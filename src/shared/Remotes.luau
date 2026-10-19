@@ -13,6 +13,8 @@ local NAMES = {
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
 	"SetPrices", -- client → server: ({ [productId: string]: number })
+	"CheckoutUpdate", -- server → client: (total: number?, remaining: number) nil total = checkout over
+	"Charge", -- client → server: take payment for the fully scanned checkout
 }
 
 local isServer = RunService:IsServer()
@@ -46,4 +48,6 @@ return {
 	SellShelf = remotes.SellShelf,
 	StockShelf = remotes.StockShelf,
 	SetPrices = remotes.SetPrices,
+	CheckoutUpdate = remotes.CheckoutUpdate,
+	Charge = remotes.Charge,
 }

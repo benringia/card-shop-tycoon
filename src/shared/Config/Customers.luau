@@ -16,15 +16,19 @@ return {
 	ENTRY_DISTANCE = 8, -- studs out on the street from the shop front, where customers appear and leave
 
 	QUEUE_PATIENCE = 40, -- seconds in the register queue before giving up (Bigger Queue upgrade +50% later)
+	CHECKOUT_PATIENCE = 60, -- once scanning starts, seconds after the latest scan before giving up
 	QUEUE_SPACING = 3,
 	QUEUE_CHECK_INTERVAL = 0.5,
+	COUNTER_ARRIVE_DISTANCE = 1.5, -- close enough to a queue slot to count as standing there
 
-	MAX_LIFETIME = 180, -- safety net: stuck customers are removed after this many seconds
+	MAX_LIFETIME = 180, -- safety net: customers stuck outside the queue are removed after this many seconds
+	LIFETIME_RECHECK = 10, -- queued customers have their own timers, so the safety net checks again later
 
 	BUBBLE_SECONDS = 2.5,
 	BUBBLE_ANNOYED = "😠", -- price over the top band
 	BUBBLE_NO_STOCK = "😕", -- nothing they wanted on the shelves
 	BUBBLE_GAVE_UP = "⌛", -- waited too long in the queue
+	BUBBLE_HAPPY = "😊", -- paid at the register
 
 	PATH_AGENT = {
 		AgentRadius = 2,

@@ -1,7 +1,7 @@
 --!strict
 -- NPC customers: spawn on the street, walk to stocked shelves, decide to buy based on price,
 -- queue at the register, and leave if they wait too long. Each customer runs as one thread.
--- Checkout at the register comes with the next checklist item; until then queued customers time out.
+-- RegisterService handles checkout via OnReachedCounter / OnLeft / CompletePurchase.
 local PathfindingService = game:GetService("PathfindingService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
@@ -30,7 +30,7 @@ type Item = {
 	unitPrice: number, -- price when picked up, so later price changes don't affect this sale
 }
 
-type Customer = {
+export type Customer = {
 	plot: Plot,
 	owner: Player,
 	model: Model,
@@ -39,7 +39,11 @@ type Customer = {
 	items: { Item },
 	alive: boolean,
 	thread: thread?,
+	atCounter: boolean,
+	lastScanAt: number?, -- set by RegisterService on each scan; switches to checkout patience
 }
+
+type CustomerCallback = (customer: Customer) -> ()
 
 type PlotState = {
 	customers: { Customer },
@@ -55,6 +59,14 @@ local CustomerService = {}
 local plotStates: { [Plot]: PlotState } = {}
 local rng = Random.new()
 local customersFolder: Folder
+local reachedCounterCallbacks: { CustomerCallback } = {}
+local leftCallbacks: { CustomerCallback } = {}
+
+local function runCallbacks(callbacks: { CustomerCallback }, customer: Customer)
+	for _, callback in callbacks do
+		task.spawn(callback, customer)
+	end
+end
 
 local function getPlotState(plot: Plot): PlotState
 	local state = plotStates[plot]
@@ -251,6 +263,7 @@ local function despawn(customer: Customer, restore: boolean)
 		table.remove(state.queue, queueIndex)
 	end
 	customer.model:Destroy()
+	runCallbacks(leftCallbacks, customer)
 
 	local thread = customer.thread
 	if thread and thread ~= coroutine.running() then
@@ -348,16 +361,27 @@ local function waitInQueue(customer: Customer)
 	table.insert(state.queue, customer)
 	walkTo(customer, getQueuePoint(customer.plot, #state.queue))
 
-	local deadline = os.clock() + CustomerConfig.QUEUE_PATIENCE
-	while customer.alive and os.clock() < deadline do
+	local queueDeadline = os.clock() + CustomerConfig.QUEUE_PATIENCE
+	local function getDeadline(): number
+		local lastScanAt = customer.lastScanAt
+		return if lastScanAt then lastScanAt + CustomerConfig.CHECKOUT_PATIENCE else queueDeadline
+	end
+
+	while customer.alive and os.clock() < getDeadline() do
 		local index = table.find(state.queue, customer)
 		if not index then
-			return
+			return -- served by CompletePurchase
 		end
 		-- Step forward as people ahead leave
 		local target = getQueuePoint(customer.plot, index)
-		if (customer.root.Position - target).Magnitude > 1.5 then
+		-- Flat distance: the root part floats above the floor-level target
+		local offset = customer.root.Position - target
+		local distance = Vector3.new(offset.X, 0, offset.Z).Magnitude
+		if distance > CustomerConfig.COUNTER_ARRIVE_DISTANCE then
 			customer.humanoid:MoveTo(target)
+		elseif index == 1 and not customer.atCounter then
+			customer.atCounter = true
+			runCallbacks(reachedCounterCallbacks, customer)
 		end
 		task.wait(CustomerConfig.QUEUE_CHECK_INTERVAL)
 	end
@@ -417,6 +441,8 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 		items = {},
 		alive = true,
 		thread = nil,
+		atCounter = false,
+		lastScanAt = nil,
 	}
 	table.insert(state.customers, customer)
 
@@ -426,9 +452,19 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 	setupAnimations(humanoid)
 
 	customer.thread = task.spawn(run, customer)
-	task.delay(CustomerConfig.MAX_LIFETIME, function()
+
+	-- Safety net for customers stuck on a bad path; queued customers are left to the queue timers
+	local function checkLifetime()
+		if not customer.alive then
+			return
+		end
+		if table.find(state.queue, customer) then
+			task.delay(CustomerConfig.LIFETIME_RECHECK, checkLifetime)
+			return
+		end
 		despawn(customer, true)
-	end)
+	end
+	task.delay(CustomerConfig.MAX_LIFETIME, checkLifetime)
 end
 
 local function onReleased(_player: Player, plot: Plot)
@@ -459,6 +495,30 @@ local function spawnTick()
 			task.spawn(spawnCustomer, plot, owner, state)
 		end
 	end
+end
+
+-- Fires when the front customer is standing at the counter, ready to be checked out
+function CustomerService.OnReachedCounter(callback: CustomerCallback)
+	table.insert(reachedCounterCallbacks, callback)
+end
+
+-- Fires whenever a customer is removed, paid or not
+function CustomerService.OnLeft(callback: CustomerCallback)
+	table.insert(leftCallbacks, callback)
+end
+
+-- The customer paid: their items are sold (not returned to shelves) and they head out happy
+function CustomerService.CompletePurchase(customer: Customer)
+	if not customer.alive then
+		return
+	end
+	table.clear(customer.items)
+	local state = getPlotState(customer.plot)
+	local index = table.find(state.queue, customer)
+	if index then
+		table.remove(state.queue, index)
+	end
+	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
 end
 
 function CustomerService.Start()

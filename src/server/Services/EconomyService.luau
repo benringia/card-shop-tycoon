@@ -66,6 +66,17 @@ function EconomyService.AddCash(player: Player, amount: number): boolean
 	return true
 end
 
+-- Level-ups from XP come with the levels system
+function EconomyService.AddXP(player: Player, amount: number): boolean
+	local wallet = wallets[player]
+	if not wallet or not isValidAmount(amount) then
+		return false
+	end
+	wallet.xp += math.floor(amount)
+	sync(player, wallet)
+	return true
+end
+
 -- Takes the cash only if the player can afford it
 function EconomyService.TrySpend(player: Player, amount: number): boolean
 	local wallet = wallets[player]

@@ -399,7 +399,7 @@ Bump `version` and write a migration whenever the shape changes.
 - [x] Small Pack Rack placement (grid, rotate)
 - [x] Pricing UI for booster packs
 - [x] NPC customers: walk in, pick packs, queue, leave if waiting too long
-- [ ] Register checkout
+- [x] Register checkout
 - [ ] Cash + XP + levels 1–5
 - [ ] Pack opening (Set 1, server rolls, flip animation, foil effect)
 - [ ] Binder UI
