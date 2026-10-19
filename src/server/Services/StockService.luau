@@ -120,9 +120,12 @@ local function setPromptEnabled(box: Part, enabled: boolean)
 	end
 end
 
--- Lets the client show the right shelf prompt (Stock while carrying, Edit otherwise)
-local function syncCarryCount(shop: Shop)
+-- Lets the client show the right prompts and buttons (Stock vs Edit, Drop, Rip a pack + units left)
+local function syncCarry(shop: Shop)
+	local top = shop.carried[#shop.carried]
 	shop.owner:SetAttribute("CarryCount", #shop.carried)
+	shop.owner:SetAttribute("CarryProductId", if top then top:GetAttribute("ProductId") else nil)
+	shop.owner:SetAttribute("CarryUnits", if top then top:GetAttribute("Units") else nil)
 end
 
 -- Carried boxes go back to the pad when the character dies or respawns
@@ -134,7 +137,7 @@ local function returnCarried(shop: Shop)
 	end
 	table.clear(shop.carried)
 	layoutWaiting(shop)
-	syncCarryCount(shop)
+	syncCarry(shop)
 end
 
 local function onPickup(player: Player, shop: Shop, box: Part)
@@ -160,7 +163,7 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	setPromptEnabled(box, false)
 	attachToCharacter(box, root, #shop.carried)
 	layoutWaiting(shop)
-	syncCarryCount(shop)
+	syncCarry(shop)
 end
 
 local function deliverBox(player: Player, shop: Shop, product: Product)
@@ -270,9 +273,9 @@ local function onStockShelf(player: Player, uid: unknown)
 	else
 		table.remove(shop.carried)
 		box:Destroy()
-		syncCarryCount(shop)
 		notify(player, `Stocked {added}.`, false)
 	end
+	syncCarry(shop)
 end
 
 -- Boxes go back on the delivery pad (with whatever units are left) to pick up again later
@@ -319,6 +322,35 @@ local function onPlayerRemoving(player: Player)
 		box:Destroy()
 	end
 	shops[player] = nil
+end
+
+-- Product in the box on top of the player's carried stack, if any
+function StockService.GetCarriedProductId(player: Player): string?
+	local shop = shops[player]
+	local box = if shop then shop.carried[#shop.carried] else nil
+	local productId = if box then box:GetAttribute("ProductId") else nil
+	return if typeof(productId) == "string" then productId else nil
+end
+
+-- Removes up to `units` from the top carried box (opening packs yourself). Returns units taken.
+function StockService.TakeCarriedUnits(player: Player, units: number): number
+	local shop = shops[player]
+	local box = if shop then shop.carried[#shop.carried] else nil
+	local available = if box then box:GetAttribute("Units") else nil
+	if not shop or not box or typeof(available) ~= "number" or available <= 0 then
+		return 0
+	end
+
+	local taken = math.min(units, available)
+	local left = available - taken
+	if left > 0 then
+		box:SetAttribute("Units", left)
+	else
+		table.remove(shop.carried)
+		box:Destroy()
+	end
+	syncCarry(shop)
+	return taken
 end
 
 function StockService.Start()

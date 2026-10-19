@@ -1,0 +1,18 @@
+--!strict
+-- Pack opening presentation (client only). Timings in seconds. See DESIGN.md section 5.7.
+-- Sound IDs are empty until you pick some: paste e.g. "rbxassetid://123" to enable.
+return {
+	TEAR_SECONDS = 0.45,
+	DEAL_DELAY = 0.08, -- between each face-down card appearing
+	FLIP_SECONDS = 0.18, -- each half of the flip
+	HIT_BUILDUP_SECONDS = 0.8, -- the hit slot pulses this long before flipping
+	FLASH_SECONDS = 0.6, -- legendary screen flash
+	FOIL_SHIMMER_SECONDS = 1.6, -- one sweep of the foil shimmer
+
+	-- Border thickness by rarity, so better pulls feel heavier
+	STROKE_THICKNESS = { Common = 2, Rare = 3, Epic = 4, Legendary = 6 },
+
+	TEAR_SOUND_ID = "",
+	FLIP_SOUND_ID = "",
+	HIT_SOUND_IDS = { Rare = "", Epic = "", Legendary = "" },
+}

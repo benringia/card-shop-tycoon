@@ -17,6 +17,8 @@ local NAMES = {
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	"LevelUp", -- server → client: (level: number)
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
+	"RipPack", -- client → server: open one pack from the carried box
+	"PackOpened", -- server → client: (productId: string, results: { { cardId: string, foil: boolean } })
 }
 
 local isServer = RunService:IsServer()
@@ -54,4 +56,6 @@ return {
 	Charge = remotes.Charge,
 	LevelUp = remotes.LevelUp,
 	DropBox = remotes.DropBox,
+	RipPack = remotes.RipPack,
+	PackOpened = remotes.PackOpened,
 }

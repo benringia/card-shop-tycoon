@@ -315,7 +315,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CustomerService.luau  # NPC spawn, pathing, buying, queue
     │   │   ├── RegisterService.luau  # checkout flow
     │   │   ├── PackService.luau      # server-side pack rolls
-    │   │   ├── CollectionService.luau# binder, showcase, quick sell
+    │   │   ├── CardService.luau      # card collection: binder, showcase, quick sell (not named CollectionService to avoid clashing with Roblox's)
+    │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # passes, dev products, ProcessReceipt
     │   └── Util/
     │       └── RateLimiter.luau      # per-player remote cooldowns
@@ -328,6 +329,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau
+    │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   └── BinderController.luau
     │   └── Util/
@@ -343,13 +345,18 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Stock.luau      # delivery, carrying
         │   ├── Placement.luau  # grid, starter shelves
         │   ├── Pricing.luau    # price limits, customer buy bands
+        │   ├── Customers.luau  # NPC spawn, patience, bubbles
+        │   ├── Register.luau   # checkout reach, counter items
+        │   ├── Packs.luau      # pack slots and odds
+        │   ├── PackOpening.luau # reveal timings and sounds (client)
         │   ├── Levels.luau
         │   ├── Upgrades.luau
         │   └── Monetization.luau # pass/product IDs
         ├── Remotes.luau        # all RemoteEvents/Functions defined in one place
         └── Util/
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
-            └── PriceRules.luau    # price clamping and buy bands
+            ├── PriceRules.luau    # price clamping and buy bands
+            └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
 ### 10.3 Rules for the code
@@ -401,7 +408,7 @@ Bump `version` and write a migration whenever the shape changes.
 - [x] NPC customers: walk in, pick packs, queue, leave if waiting too long
 - [x] Register checkout
 - [x] Cash + XP + levels 1–5
-- [ ] Pack opening (Set 1, server rolls, flip animation, foil effect)
+- [x] Pack opening (Set 1, server rolls, flip animation, foil effect)
 - [ ] Binder UI
 - [ ] Quick sell cards
 - [ ] Saving with ProfileStore

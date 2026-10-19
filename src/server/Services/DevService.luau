@@ -1,5 +1,5 @@
 --!strict
--- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>.
+-- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /testpack.
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,8 +10,9 @@ local Levels = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local Services = script.Parent :: Instance
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local PackService = require(Services:WaitForChild("PackService"))
 
-type CommandHandler = (player: Player, amount: number) -> ...any
+type CommandHandler = (player: Player, text: string) -> ()
 
 local DevService = {}
 
@@ -31,11 +32,20 @@ local function addCommand(folder: Instance, alias: string, handler: CommandHandl
 
 	command.Triggered:Connect(function(textSource: TextSource, text: string)
 		local player = Players:GetPlayerByUserId(textSource.UserId)
-		local amount = parseAmount(text)
-		if player and amount then
-			handler(player, amount)
+		if player then
+			handler(player, text)
 		end
 	end)
+end
+
+-- Wraps an economy function so the command reads its amount from the chat text
+local function withAmount(apply: (player: Player, amount: number) -> ...any): CommandHandler
+	return function(player: Player, text: string)
+		local amount = parseAmount(text)
+		if amount then
+			apply(player, amount)
+		end
+	end
 end
 
 local function jumpToLevel(player: Player, level: number)
@@ -56,10 +66,13 @@ function DevService.Start()
 	end
 
 	local folder = TextChatService:FindFirstChild("TextChatCommands") or TextChatService
-	addCommand(folder, "cash", EconomyService.AddCash)
-	addCommand(folder, "xp", EconomyService.AddXP)
-	addCommand(folder, "level", jumpToLevel)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>")
+	addCommand(folder, "cash", withAmount(EconomyService.AddCash))
+	addCommand(folder, "xp", withAmount(EconomyService.AddXP))
+	addCommand(folder, "level", withAmount(jumpToLevel))
+	addCommand(folder, "testpack", function(player)
+		PackService.OpenTestPack(player)
+	end)
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /testpack")
 end
 
 return DevService
