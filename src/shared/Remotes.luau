@@ -8,6 +8,10 @@ local NAMES = {
 	"OpenOrderMenu", -- server → client: owner used their order computer
 	"OrderProduct", -- client → server: (productId: string)
 	"Notify", -- server → client: (message: string, isError: boolean)
+	"PlaceShelf", -- client → server: (shelfId: string, gridX: number, gridZ: number, rotation: number)
+	"MoveShelf", -- client → server: (uid: string, gridX: number, gridZ: number, rotation: number)
+	"SellShelf", -- client → server: (uid: string)
+	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
 }
 
 local isServer = RunService:IsServer()
@@ -36,4 +40,8 @@ return {
 	OpenOrderMenu = remotes.OpenOrderMenu,
 	OrderProduct = remotes.OrderProduct,
 	Notify = remotes.Notify,
+	PlaceShelf = remotes.PlaceShelf,
+	MoveShelf = remotes.MoveShelf,
+	SellShelf = remotes.SellShelf,
+	StockShelf = remotes.StockShelf,
 }

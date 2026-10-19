@@ -4,6 +4,10 @@ local Controllers = script:WaitForChild("Controllers")
 
 local UIController = require(Controllers:WaitForChild("UIController"))
 local OrderController = require(Controllers:WaitForChild("OrderController"))
+local PlacementController = require(Controllers:WaitForChild("PlacementController"))
+local BuildController = require(Controllers:WaitForChild("BuildController"))
 
 UIController.Start()
 OrderController.Start()
+PlacementController.Start()
+BuildController.Start()

@@ -1,6 +1,6 @@
 --!strict
--- Ordering stock at the plot computer, delivering boxes to the delivery pad, and carrying them.
--- Putting boxes on shelves comes with the shelf placement system.
+-- Ordering stock at the plot computer, delivering boxes to the delivery pad, carrying them,
+-- and unpacking a carried box onto a shelf.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,12 +14,14 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
+local PlacementService = require(Services:WaitForChild("PlacementService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
 type Product = typeof(Products.List[1])
 
 type Shop = {
+	owner: Player,
 	plot: Plot,
 	waiting: { Part }, -- boxes sitting on the delivery pad
 	carried: { Part },
@@ -31,6 +33,7 @@ local StockService = {}
 
 local shops: { [Player]: Shop } = {}
 local allowOrder = RateLimiter.new(StockConfig.ORDER_COOLDOWN)
+local allowStock = RateLimiter.new(StockConfig.STOCK_COOLDOWN)
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -45,7 +48,7 @@ local function getShop(player: Player): Shop?
 	if not plot then
 		return nil
 	end
-	local shop: Shop = { plot = plot, waiting = {}, carried = {}, incoming = 0, active = true }
+	local shop: Shop = { owner = player, plot = plot, waiting = {}, carried = {}, incoming = 0, active = true }
 	shops[player] = shop
 	return shop
 end
@@ -116,6 +119,11 @@ local function setPromptEnabled(box: Part, enabled: boolean)
 	end
 end
 
+-- Lets the client show the right shelf prompt (Stock while carrying, Edit otherwise)
+local function syncCarryCount(shop: Shop)
+	shop.owner:SetAttribute("CarryCount", #shop.carried)
+end
+
 -- Carried boxes go back to the pad when the character dies or respawns
 local function returnCarried(shop: Shop)
 	for _, box in shop.carried do
@@ -125,6 +133,7 @@ local function returnCarried(shop: Shop)
 	end
 	table.clear(shop.carried)
 	layoutWaiting(shop)
+	syncCarryCount(shop)
 end
 
 local function onPickup(player: Player, shop: Shop, box: Part)
@@ -150,6 +159,7 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	setPromptEnabled(box, false)
 	attachToCharacter(box, root, #shop.carried)
 	layoutWaiting(shop)
+	syncCarryCount(shop)
 end
 
 local function deliverBox(player: Player, shop: Shop, product: Product)
@@ -218,6 +228,52 @@ local function onOrder(player: Player, productId: unknown)
 	end)
 end
 
+-- Unpacks the top carried box onto the shelf. A part-used box stays in the player's hands.
+local function onStockShelf(player: Player, uid: unknown)
+	if not allowStock(player) then
+		return
+	end
+	if typeof(uid) ~= "string" then
+		return
+	end
+	local shelf = PlacementService.GetShelf(player, uid)
+	if not shelf then
+		return
+	end
+	if not isNear(player, shelf.part) then
+		notify(player, "Get closer to the shelf.", true)
+		return
+	end
+	local shop = shops[player]
+	local box = if shop then shop.carried[#shop.carried] else nil
+	if not shop or not box then
+		notify(player, "Carry a box here to stock this shelf.", true)
+		return
+	end
+	local productId = box:GetAttribute("ProductId")
+	local units = box:GetAttribute("Units")
+	if typeof(productId) ~= "string" or typeof(units) ~= "number" then
+		return
+	end
+
+	local added, reason = PlacementService.AddStock(shelf, productId, units)
+	if added == 0 then
+		notify(player, reason or "You can't stock that here.", true)
+		return
+	end
+
+	local left = units - added
+	if left > 0 then
+		box:SetAttribute("Units", left)
+		notify(player, `Stocked {added}. {left} left in the box.`, false)
+	else
+		table.remove(shop.carried)
+		box:Destroy()
+		syncCarryCount(shop)
+		notify(player, `Stocked {added}.`, false)
+	end
+end
+
 local function onComputerUsed(player: Player, plot: Plot)
 	if plot.owner ~= player then
 		notify(player, "This is someone else's shop.", true)
@@ -260,6 +316,7 @@ function StockService.Start()
 	end
 
 	Remotes.OrderProduct.OnServerEvent:Connect(onOrder)
+	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
 	for _, player in Players:GetPlayers() do

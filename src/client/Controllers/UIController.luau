@@ -5,10 +5,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local UIKit = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
 
 local TOAST_SECONDS = 2.5
-local INFO_COLOR = Color3.fromRGB(40, 160, 90)
-local ERROR_COLOR = Color3.fromRGB(200, 60, 60)
 
 local player = Players.LocalPlayer
 
@@ -18,12 +17,6 @@ local screenGui: ScreenGui
 local cashLabel: TextLabel
 local toastLabel: TextLabel
 local toastToken = 0
-
-local function addCorner(parent: GuiObject)
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = parent
-end
 
 local function formatCash(amount: number): string
 	return string.format("$%.2f", amount)
@@ -42,7 +35,7 @@ function UIController.Notify(message: string, isError: boolean?)
 	toastToken += 1
 	local token = toastToken
 	toastLabel.Text = message
-	toastLabel.BackgroundColor3 = if isError then ERROR_COLOR else INFO_COLOR
+	toastLabel.BackgroundColor3 = if isError then UIKit.Colors.Danger else UIKit.Colors.Accent
 	toastLabel.Visible = true
 
 	task.delay(TOAST_SECONDS, function()
@@ -70,7 +63,7 @@ function UIController.Start()
 	cashLabel.TextColor3 = Color3.fromRGB(120, 230, 120)
 	cashLabel.TextSize = 30
 	cashLabel.Parent = screenGui
-	addCorner(cashLabel)
+	UIKit.corner(cashLabel, 12)
 
 	toastLabel = Instance.new("TextLabel")
 	toastLabel.Name = "Toast"
@@ -84,7 +77,7 @@ function UIController.Start()
 	toastLabel.Visible = false
 	toastLabel.ZIndex = 10
 	toastLabel.Parent = screenGui
-	addCorner(toastLabel)
+	UIKit.corner(toastLabel, 12)
 
 	local toastSize = Instance.new("UISizeConstraint")
 	toastSize.MaxSize = Vector2.new(480, math.huge)

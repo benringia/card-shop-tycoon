@@ -14,13 +14,24 @@ export type Plot = {
 	spawn: SpawnLocation,
 	computer: Part,
 	deliverySpot: Part,
+	shelvesFolder: Folder,
 	owner: Player?,
 }
+
+type PlotCallback = (player: Player, plot: Plot) -> ()
 
 local PlotService = {}
 
 local plots: { Plot } = {}
 local plotByPlayer: { [Player]: Plot } = {}
+local claimedCallbacks: { PlotCallback } = {}
+local releasedCallbacks: { PlotCallback } = {}
+
+local function runCallbacks(callbacks: { PlotCallback }, player: Player, plot: Plot)
+	for _, callback in callbacks do
+		task.spawn(callback, player, plot)
+	end
+end
 
 -- Plot CFrame sits at the floor centre with LookVector pointing at the street (the shop front)
 local function getPlotCFrame(index: number): CFrame
@@ -79,6 +90,7 @@ local function buildComputer(plotCFrame: CFrame, parent: Instance): Part
 			PlotConfig.DEPTH / 2 - PlotConfig.COMPUTER_INSET
 		)
 	computer.Color = PlotConfig.COMPUTER_COLOR
+	computer:SetAttribute("BlocksPlacement", true)
 	computer.Parent = parent
 
 	addSurfaceLabel(computer, PlotConfig.COMPUTER_TEXT)
@@ -99,6 +111,7 @@ local function buildDeliverySpot(plotCFrame: CFrame, parent: Instance): Part
 			-PlotConfig.DEPTH / 2 + PlotConfig.DELIVERY_INSET
 		)
 	pad.Color = PlotConfig.DELIVERY_COLOR
+	pad:SetAttribute("BlocksPlacement", true)
 	pad.Parent = parent
 	return pad
 end
@@ -115,6 +128,7 @@ local function buildSpawn(plotCFrame: CFrame, parent: Instance): SpawnLocation
 	spawn.CFrame = plotCFrame
 		* CFrame.new(0, 0, -PlotConfig.DEPTH / 2 + PlotConfig.SPAWN_INSET)
 		* CFrame.Angles(0, math.pi, 0)
+	spawn:SetAttribute("BlocksPlacement", true)
 	spawn.Parent = parent
 	return spawn
 end
@@ -137,6 +151,10 @@ local function buildPlot(id: number, folder: Folder): Plot
 	floor.Parent = model
 	model.PrimaryPart = floor
 
+	local shelvesFolder = Instance.new("Folder")
+	shelvesFolder.Name = "Shelves"
+	shelvesFolder.Parent = model
+
 	local plot: Plot = {
 		id = id,
 		model = model,
@@ -145,6 +163,7 @@ local function buildPlot(id: number, folder: Folder): Plot
 		spawn = buildSpawn(plotCFrame, model),
 		computer = buildComputer(plotCFrame, model),
 		deliverySpot = buildDeliverySpot(plotCFrame, model),
+		shelvesFolder = shelvesFolder,
 		owner = nil,
 	}
 	model.Parent = folder
@@ -183,6 +202,8 @@ local function claim(player: Player)
 	if player.Character then
 		player:LoadCharacter()
 	end
+
+	runCallbacks(claimedCallbacks, player, plot)
 end
 
 local function release(player: Player)
@@ -196,10 +217,21 @@ local function release(player: Player)
 	plot.model:SetAttribute("OwnerUserId", 0)
 	plot.floor.Color = PlotConfig.FREE_COLOR
 	plot.signLabel.Text = PlotConfig.FREE_SIGN_TEXT
+
+	runCallbacks(releasedCallbacks, player, plot)
 end
 
 function PlotService.GetPlot(player: Player): Plot?
 	return plotByPlayer[player]
+end
+
+-- Register before PlotService.Start() so no claim is missed
+function PlotService.OnClaimed(callback: PlotCallback)
+	table.insert(claimedCallbacks, callback)
+end
+
+function PlotService.OnReleased(callback: PlotCallback)
+	table.insert(releasedCallbacks, callback)
 end
 
 function PlotService.GetPlots(): { Plot }

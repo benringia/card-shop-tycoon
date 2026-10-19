@@ -382,7 +382,7 @@ Bump `version` and write a migration whenever the shape changes.
 - [x] Rojo project set up and syncing
 - [x] Plot claiming (6 plots)
 - [x] Order computer + delivery + carrying boxes
-- [ ] Small Pack Rack placement (grid, rotate)
+- [x] Small Pack Rack placement (grid, rotate)
 - [ ] Pricing UI for booster packs
 - [ ] NPC customers: walk in, pick packs, queue, leave if waiting too long
 - [ ] Register checkout

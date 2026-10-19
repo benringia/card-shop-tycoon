@@ -6,6 +6,7 @@ return {
 	MAX_BOXES_PER_PLOT = 12, -- incoming + waiting + carried, stops order spam filling the shop
 
 	ORDER_COOLDOWN = 0.3, -- seconds between order requests per player
+	STOCK_COOLDOWN = 0.3, -- seconds between shelf stocking requests per player
 	PROMPT_DISTANCE = 8, -- ProximityPrompt range
 	INTERACT_DISTANCE = 14, -- server-side distance check, a little looser than the prompt
 
