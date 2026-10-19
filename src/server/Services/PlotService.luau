@@ -14,6 +14,7 @@ export type Plot = {
 	spawn: SpawnLocation,
 	computer: Part,
 	deliverySpot: Part,
+	register: Part,
 	shelvesFolder: Folder,
 	owner: Player?,
 }
@@ -116,6 +117,42 @@ local function buildDeliverySpot(plotCFrame: CFrame, parent: Instance): Part
 	return pad
 end
 
+-- Register faces the street like the plot; customers queue in front of it, the owner stands behind
+local function buildRegister(plotCFrame: CFrame, parent: Instance): Part
+	local size = PlotConfig.REGISTER_SIZE
+	local register = Instance.new("Part")
+	register.Name = "Register"
+	register.Anchored = true
+	register.Size = size
+	register.CFrame = plotCFrame
+		* CFrame.new(
+			-PlotConfig.WIDTH / 2 + PlotConfig.REGISTER_SIDE_INSET,
+			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
+			PlotConfig.DEPTH / 2 - PlotConfig.REGISTER_BACK_INSET
+		)
+	register.Color = PlotConfig.REGISTER_COLOR
+	register.Material = Enum.Material.Wood
+	register:SetAttribute("BlocksPlacement", true)
+	register.Parent = parent
+	addSurfaceLabel(register, PlotConfig.REGISTER_TEXT)
+
+	-- Keeps shelves out of the customer queue line
+	local zone = Instance.new("Part")
+	zone.Name = "QueueZone"
+	zone.Anchored = true
+	zone.CanCollide = false
+	zone.CanQuery = false
+	zone.CanTouch = false
+	zone.Transparency = 1
+	zone.Size = Vector3.new(PlotConfig.QUEUE_ZONE_WIDTH, 0.2, PlotConfig.QUEUE_ZONE_LENGTH)
+	zone.CFrame = register.CFrame
+		* CFrame.new(0, -size.Y / 2, -(size.Z + PlotConfig.QUEUE_ZONE_LENGTH) / 2)
+	zone:SetAttribute("BlocksPlacement", true)
+	zone.Parent = parent
+
+	return register
+end
+
 -- Invisible pad used as the owner's RespawnLocation. Turned 180° so they face into the shop.
 local function buildSpawn(plotCFrame: CFrame, parent: Instance): SpawnLocation
 	local spawn = Instance.new("SpawnLocation")
@@ -163,6 +200,7 @@ local function buildPlot(id: number, folder: Folder): Plot
 		spawn = buildSpawn(plotCFrame, model),
 		computer = buildComputer(plotCFrame, model),
 		deliverySpot = buildDeliverySpot(plotCFrame, model),
+		register = buildRegister(plotCFrame, model),
 		shelvesFolder = shelvesFolder,
 		owner = nil,
 	}

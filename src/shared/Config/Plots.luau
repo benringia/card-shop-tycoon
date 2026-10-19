@@ -37,4 +37,17 @@ return {
 	DELIVERY_PAD_SIZE = Vector3.new(6, 0.2, 6),
 	DELIVERY_INSET = 5, -- from the front and side walls
 	DELIVERY_COLOR = Color3.fromRGB(240, 200, 60),
+
+	-- Register counter on the left side near the back. Customers queue in front of it toward the street;
+	-- the owner stands behind it.
+	REGISTER_SIZE = Vector3.new(6, 3.5, 2),
+	REGISTER_SIDE_INSET = 5, -- from the side wall to the counter centre
+	REGISTER_BACK_INSET = 6, -- from the back wall to the counter centre
+	REGISTER_COLOR = Color3.fromRGB(90, 60, 45),
+	REGISTER_TEXT = "REGISTER",
+
+	-- Invisible strip in front of the register that shelves can't be placed on.
+	-- Keep QUEUE_ZONE_LENGTH >= Customers.MAX_PER_PLOT * Customers.QUEUE_SPACING.
+	QUEUE_ZONE_LENGTH = 14,
+	QUEUE_ZONE_WIDTH = 4,
 }

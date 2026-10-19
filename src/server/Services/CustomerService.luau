@@ -1,0 +1,491 @@
+--!strict
+-- NPC customers: spawn on the street, walk to stocked shelves, decide to buy based on price,
+-- queue at the register, and leave if they wait too long. Each customer runs as one thread.
+-- Checkout at the register comes with the next checklist item; until then queued customers time out.
+local PathfindingService = game:GetService("PathfindingService")
+local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = Shared:WaitForChild("Config")
+local CustomerConfig = require(Config:WaitForChild("Customers"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
+local Products = require(Config:WaitForChild("Products"))
+local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
+
+local Services = script.Parent :: Instance
+local EconomyService = require(Services:WaitForChild("EconomyService"))
+local PlacementService = require(Services:WaitForChild("PlacementService"))
+local PlotService = require(Services:WaitForChild("PlotService"))
+local PricingService = require(Services:WaitForChild("PricingService"))
+
+type Plot = typeof(PlotService.GetPlots()[1])
+type PlacedShelf = typeof(PlacementService.GetShelves((nil :: any))[1])
+
+type Item = {
+	shelfUid: string,
+	productId: string,
+	units: number,
+	unitPrice: number, -- price when picked up, so later price changes don't affect this sale
+}
+
+type Customer = {
+	plot: Plot,
+	owner: Player,
+	model: Model,
+	humanoid: Humanoid,
+	root: BasePart,
+	items: { Item },
+	alive: boolean,
+	thread: thread?,
+}
+
+type PlotState = {
+	customers: { Customer },
+	queue: { Customer },
+	nextSpawnAt: number,
+}
+
+local CUSTOMER_GROUP = "Customers"
+local PLAYER_GROUP = "Players"
+
+local CustomerService = {}
+
+local plotStates: { [Plot]: PlotState } = {}
+local rng = Random.new()
+local customersFolder: Folder
+
+local function getPlotState(plot: Plot): PlotState
+	local state = plotStates[plot]
+	if not state then
+		state = { customers = {}, queue = {}, nextSpawnAt = 0 }
+		plotStates[plot] = state
+	end
+	return state
+end
+
+local function floorTop(plot: Plot): number
+	return plot.floor.Position.Y + PlotConfig.FLOOR_THICKNESS / 2
+end
+
+-- On the street in front of the shop, turned 180° to face it
+local function getEntryCFrame(plot: Plot): CFrame
+	return plot.floor.CFrame
+		* CFrame.new(0, 0, -PlotConfig.DEPTH / 2 - CustomerConfig.ENTRY_DISTANCE)
+		* CFrame.Angles(0, math.pi, 0)
+end
+
+local function getShelfStandPoint(plot: Plot, shelf: PlacedShelf): Vector3
+	local part = shelf.part
+	local point = part.CFrame * CFrame.new(0, 0, -(part.Size.Z / 2 + CustomerConfig.SHELF_STAND_DISTANCE))
+	return Vector3.new(point.X, floorTop(plot), point.Z)
+end
+
+-- Queue slot 1 is right at the counter; later slots line up toward the street
+local function getQueuePoint(plot: Plot, index: number): Vector3
+	local register = plot.register
+	local offset = register.Size.Z / 2 + 1.5 + (index - 1) * CustomerConfig.QUEUE_SPACING
+	local point = register.CFrame * CFrame.new(0, 0, -offset)
+	return Vector3.new(point.X, floorTop(plot), point.Z)
+end
+
+local function setupCollisionGroups()
+	PhysicsService:RegisterCollisionGroup(CUSTOMER_GROUP)
+	PhysicsService:RegisterCollisionGroup(PLAYER_GROUP)
+	PhysicsService:CollisionGroupSetCollidable(CUSTOMER_GROUP, CUSTOMER_GROUP, false)
+	PhysicsService:CollisionGroupSetCollidable(CUSTOMER_GROUP, PLAYER_GROUP, false)
+end
+
+local function setGroup(instance: Instance, group: string)
+	if instance:IsA("BasePart") then
+		instance.CollisionGroup = group
+	end
+end
+
+-- Players walk through customers so nobody can push them around or block the queue
+local function onCharacterAdded(character: Model)
+	for _, descendant in character:GetDescendants() do
+		setGroup(descendant, PLAYER_GROUP)
+	end
+	character.DescendantAdded:Connect(function(descendant)
+		setGroup(descendant, PLAYER_GROUP)
+	end)
+end
+
+local function pickColor(colors: { Color3 }): Color3
+	return colors[rng:NextInteger(1, #colors)]
+end
+
+local function createModel(spawnCFrame: CFrame): Model
+	local description = Instance.new("HumanoidDescription")
+	local skin = pickColor(CustomerConfig.SKIN_COLORS)
+	description.HeadColor = skin
+	description.LeftArmColor = skin
+	description.RightArmColor = skin
+	description.TorsoColor = pickColor(CustomerConfig.CLOTHES_COLORS)
+	local legs = pickColor(CustomerConfig.CLOTHES_COLORS)
+	description.LeftLegColor = legs
+	description.RightLegColor = legs
+
+	local model = Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+	model.Name = "Customer"
+	for _, descendant in model:GetDescendants() do
+		setGroup(descendant, CUSTOMER_GROUP)
+	end
+	model:PivotTo(spawnCFrame + Vector3.new(0, 3, 0))
+	return model
+end
+
+local function setupAnimations(humanoid: Humanoid)
+	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator")
+	animator.Parent = humanoid
+
+	local walkAnimation = Instance.new("Animation")
+	walkAnimation.AnimationId = CustomerConfig.WALK_ANIMATION
+	local idleAnimation = Instance.new("Animation")
+	idleAnimation.AnimationId = CustomerConfig.IDLE_ANIMATION
+
+	local walk = animator:LoadAnimation(walkAnimation)
+	local idle = animator:LoadAnimation(idleAnimation)
+	idle:Play()
+
+	humanoid.Running:Connect(function(speed)
+		if speed > 0.5 then
+			if not walk.IsPlaying then
+				idle:Stop()
+				walk:Play()
+			end
+		elseif not idle.IsPlaying then
+			walk:Stop()
+			idle:Play()
+		end
+	end)
+end
+
+local function showBubble(customer: Customer, text: string)
+	local head = customer.model:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Bubble"
+	gui.Size = UDim2.fromOffset(56, 56)
+	gui.StudsOffset = Vector3.new(0, 2.5, 0)
+	gui.AlwaysOnTop = true
+	gui.MaxDistance = 80
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Text = text
+	label.Parent = gui
+
+	gui.Parent = head
+	task.delay(CustomerConfig.BUBBLE_SECONDS, function()
+		gui:Destroy()
+	end)
+end
+
+local function moveDirect(customer: Customer, target: Vector3): boolean
+	customer.humanoid:MoveTo(target)
+	-- MoveToFinished fires false on its own after 8 seconds if the target isn't reached
+	return customer.humanoid.MoveToFinished:Wait()
+end
+
+-- Walks along a computed path; falls back to a straight line if no path is found
+local function walkTo(customer: Customer, target: Vector3): boolean
+	local path = PathfindingService:CreatePath(CustomerConfig.PATH_AGENT)
+	local ok = pcall(function()
+		path:ComputeAsync(customer.root.Position, target)
+	end)
+	if not customer.alive then
+		return false
+	end
+	if not ok or path.Status ~= Enum.PathStatus.Success then
+		return moveDirect(customer, target)
+	end
+
+	for _, waypoint in path:GetWaypoints() do
+		if not customer.alive then
+			return false
+		end
+		if waypoint.Action == Enum.PathWaypointAction.Jump then
+			customer.humanoid.Jump = true
+		end
+		if not moveDirect(customer, waypoint.Position) then
+			return false
+		end
+	end
+	return true
+end
+
+-- Puts picked items back on the shelves they came from (customer left without paying)
+local function restoreItems(customer: Customer)
+	for _, item in customer.items do
+		local shelf = PlacementService.GetShelf(customer.owner, item.shelfUid)
+		if shelf then
+			PlacementService.AddStock(shelf, item.productId, item.units)
+		end
+	end
+	table.clear(customer.items)
+end
+
+local function despawn(customer: Customer, restore: boolean)
+	if not customer.alive then
+		return
+	end
+	customer.alive = false
+	if restore then
+		restoreItems(customer)
+	end
+
+	local state = getPlotState(customer.plot)
+	local index = table.find(state.customers, customer)
+	if index then
+		table.remove(state.customers, index)
+	end
+	local queueIndex = table.find(state.queue, customer)
+	if queueIndex then
+		table.remove(state.queue, queueIndex)
+	end
+	customer.model:Destroy()
+
+	local thread = customer.thread
+	if thread and thread ~= coroutine.running() then
+		task.cancel(thread)
+	end
+end
+
+local function leaveShop(customer: Customer)
+	walkTo(customer, getEntryCFrame(customer.plot).Position)
+	despawn(customer, true)
+end
+
+-- Products this shop has unlocked, so customers only ask for things the owner could stock
+local function pickShoppingList(owner: Player): { [string]: number }
+	local level = EconomyService.GetLevel(owner)
+	local unlocked = {}
+	for _, product in Products.List do
+		if product.unlockLevel <= level then
+			table.insert(unlocked, product.id)
+		end
+	end
+
+	local list: { [string]: number } = {}
+	if #unlocked == 0 then
+		return list
+	end
+	for _ = 1, rng:NextInteger(CustomerConfig.ITEMS_MIN, CustomerConfig.ITEMS_MAX) do
+		local productId = unlocked[rng:NextInteger(1, #unlocked)]
+		list[productId] = (list[productId] or 0) + 1
+	end
+	return list
+end
+
+local function findStockedShelf(owner: Player, productId: string): PlacedShelf?
+	local candidates = {}
+	for _, shelf in PlacementService.GetShelves(owner) do
+		if shelf.productId == productId and shelf.units > 0 then
+			table.insert(candidates, shelf)
+		end
+	end
+	if #candidates == 0 then
+		return nil
+	end
+	return candidates[rng:NextInteger(1, #candidates)]
+end
+
+-- Walks to a shelf with the product and decides whether to take it at the owner's price
+local function shopFor(customer: Customer, productId: string, wanted: number): boolean
+	local shelf = findStockedShelf(customer.owner, productId)
+	if not shelf then
+		return false
+	end
+	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+	if not customer.alive then
+		return true
+	end
+	task.wait(CustomerConfig.BROWSE_SECONDS)
+
+	local product = Products.ById[productId]
+	local price = PricingService.GetPrice(customer.owner, productId)
+	local band = PriceRules.getBand(price, product.marketPrice)
+	if not band then
+		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+		return true
+	end
+	if rng:NextNumber() > band.chance then
+		return true
+	end
+
+	-- Someone else may have emptied it while this customer walked over
+	local taken = PlacementService.TakeStock(shelf, wanted)
+	if taken > 0 then
+		table.insert(customer.items, { shelfUid = shelf.uid, productId = productId, units = taken, unitPrice = price })
+	end
+	return true
+end
+
+-- Nothing they wanted was stocked: still walk in and look around so the owner sees the lost sale
+local function browseEmptyShop(customer: Customer)
+	local shelves = PlacementService.GetShelves(customer.owner)
+	local target = if #shelves > 0
+		then getShelfStandPoint(customer.plot, shelves[rng:NextInteger(1, #shelves)])
+		else Vector3.new(customer.plot.floor.Position.X, floorTop(customer.plot), customer.plot.floor.Position.Z)
+	walkTo(customer, target)
+	if not customer.alive then
+		return
+	end
+	task.wait(CustomerConfig.BROWSE_SECONDS)
+	showBubble(customer, CustomerConfig.BUBBLE_NO_STOCK)
+	task.wait(CustomerConfig.BUBBLE_SECONDS)
+end
+
+local function waitInQueue(customer: Customer)
+	local state = getPlotState(customer.plot)
+	table.insert(state.queue, customer)
+	walkTo(customer, getQueuePoint(customer.plot, #state.queue))
+
+	local deadline = os.clock() + CustomerConfig.QUEUE_PATIENCE
+	while customer.alive and os.clock() < deadline do
+		local index = table.find(state.queue, customer)
+		if not index then
+			return
+		end
+		-- Step forward as people ahead leave
+		local target = getQueuePoint(customer.plot, index)
+		if (customer.root.Position - target).Magnitude > 1.5 then
+			customer.humanoid:MoveTo(target)
+		end
+		task.wait(CustomerConfig.QUEUE_CHECK_INTERVAL)
+	end
+	if not customer.alive then
+		return
+	end
+
+	local index = table.find(state.queue, customer)
+	if index then
+		table.remove(state.queue, index)
+	end
+	showBubble(customer, CustomerConfig.BUBBLE_GAVE_UP)
+end
+
+local function run(customer: Customer)
+	local foundAny = false
+	for productId, wanted in pickShoppingList(customer.owner) do
+		if shopFor(customer, productId, wanted) then
+			foundAny = true
+		end
+		if not customer.alive then
+			return
+		end
+	end
+
+	if #customer.items == 0 then
+		if not foundAny then
+			browseEmptyShop(customer)
+		end
+		if customer.alive then
+			leaveShop(customer)
+		end
+		return
+	end
+
+	waitInQueue(customer)
+	if customer.alive then
+		leaveShop(customer)
+	end
+end
+
+local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
+	local entry = getEntryCFrame(plot)
+	local model = createModel(entry)
+	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	humanoid.WalkSpeed = CustomerConfig.WALK_SPEED
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+
+	local customer: Customer = {
+		plot = plot,
+		owner = owner,
+		model = model,
+		humanoid = humanoid,
+		root = root,
+		items = {},
+		alive = true,
+		thread = nil,
+	}
+	table.insert(state.customers, customer)
+
+	model.Parent = customersFolder
+	-- Server-owned physics so clients can't fling or teleport customers
+	root:SetNetworkOwner(nil)
+	setupAnimations(humanoid)
+
+	customer.thread = task.spawn(run, customer)
+	task.delay(CustomerConfig.MAX_LIFETIME, function()
+		despawn(customer, true)
+	end)
+end
+
+local function onReleased(_player: Player, plot: Plot)
+	local state = plotStates[plot]
+	if not state then
+		return
+	end
+	-- Copy first: despawn removes from the list
+	for _, customer in table.clone(state.customers) do
+		despawn(customer, false)
+	end
+	plotStates[plot] = nil
+end
+
+local function spawnTick()
+	local now = os.clock()
+	for _, plot in PlotService.GetPlots() do
+		local owner = plot.owner
+		if not owner then
+			continue
+		end
+		local state = getPlotState(plot)
+		if state.nextSpawnAt == 0 then
+			state.nextSpawnAt = now + CustomerConfig.FIRST_SPAWN_DELAY
+		elseif now >= state.nextSpawnAt and #state.customers < CustomerConfig.MAX_PER_PLOT then
+			state.nextSpawnAt = now
+				+ rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX)
+			task.spawn(spawnCustomer, plot, owner, state)
+		end
+	end
+end
+
+function CustomerService.Start()
+	setupCollisionGroups()
+
+	customersFolder = Instance.new("Folder")
+	customersFolder.Name = "Customers"
+	customersFolder.Parent = workspace
+
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(onCharacterAdded)
+	end)
+	for _, player in Players:GetPlayers() do
+		player.CharacterAdded:Connect(onCharacterAdded)
+		if player.Character then
+			onCharacterAdded(player.Character)
+		end
+	end
+
+	PlotService.OnReleased(onReleased)
+
+	task.spawn(function()
+		while true do
+			task.wait(CustomerConfig.SPAWN_CHECK_INTERVAL)
+			spawnTick()
+		end
+	end)
+end
+
+return CustomerService

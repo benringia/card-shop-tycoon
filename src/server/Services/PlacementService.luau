@@ -290,6 +290,28 @@ function PlacementService.GetShelf(player: Player, uid: string): PlacedShelf?
 	return if layout then layout[uid] else nil
 end
 
+function PlacementService.GetShelves(player: Player): { PlacedShelf }
+	local list: { PlacedShelf } = {}
+	local layout = layouts[player]
+	if layout then
+		for _, shelf in layout do
+			table.insert(list, shelf)
+		end
+	end
+	return list
+end
+
+-- Removes up to `units` from the shelf (a customer picking them up). Returns units taken.
+function PlacementService.TakeStock(shelf: PlacedShelf, units: number): number
+	local taken = math.min(units, shelf.units)
+	if taken <= 0 then
+		return 0
+	end
+	shelf.units -= taken
+	updateLabel(shelf)
+	return taken
+end
+
 -- Puts up to maxUnits of a product on the shelf. Returns units added, or 0 and a reason.
 function PlacementService.AddStock(shelf: PlacedShelf, productId: string, maxUnits: number): (number, string?)
 	local accepts = shelf.def.accepts
