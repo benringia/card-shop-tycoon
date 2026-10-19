@@ -1,7 +1,7 @@
 --!strict
 -- NPC customers: spawn on the street, walk to stocked shelves, decide to buy based on price,
 -- queue at the register, and leave if they wait too long. Each customer runs as one thread.
--- RegisterService handles checkout via OnReachedCounter / OnLeft / CompletePurchase.
+-- RegisterService handles checkout via OnReachedCounter / OnLeftQueue / CompletePurchase.
 local PathfindingService = game:GetService("PathfindingService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
@@ -39,7 +39,6 @@ export type Customer = {
 	items: { Item },
 	alive: boolean,
 	thread: thread?,
-	atCounter: boolean,
 	lastScanAt: number?, -- set by RegisterService on each scan; switches to checkout patience
 }
 
@@ -60,7 +59,7 @@ local plotStates: { [Plot]: PlotState } = {}
 local rng = Random.new()
 local customersFolder: Folder
 local reachedCounterCallbacks: { CustomerCallback } = {}
-local leftCallbacks: { CustomerCallback } = {}
+local leftQueueCallbacks: { CustomerCallback } = {}
 
 local function runCallbacks(callbacks: { CustomerCallback }, customer: Customer)
 	for _, callback in callbacks do
@@ -244,6 +243,17 @@ local function restoreItems(customer: Customer)
 	table.clear(customer.items)
 end
 
+-- Every way out of the queue goes through here so RegisterService can clear the counter straight away
+local function removeFromQueue(customer: Customer)
+	local state = getPlotState(customer.plot)
+	local index = table.find(state.queue, customer)
+	if not index then
+		return
+	end
+	table.remove(state.queue, index)
+	runCallbacks(leftQueueCallbacks, customer)
+end
+
 local function despawn(customer: Customer, restore: boolean)
 	if not customer.alive then
 		return
@@ -253,17 +263,13 @@ local function despawn(customer: Customer, restore: boolean)
 		restoreItems(customer)
 	end
 
+	removeFromQueue(customer)
 	local state = getPlotState(customer.plot)
 	local index = table.find(state.customers, customer)
 	if index then
 		table.remove(state.customers, index)
 	end
-	local queueIndex = table.find(state.queue, customer)
-	if queueIndex then
-		table.remove(state.queue, queueIndex)
-	end
 	customer.model:Destroy()
-	runCallbacks(leftCallbacks, customer)
 
 	local thread = customer.thread
 	if thread and thread ~= coroutine.running() then
@@ -379,8 +385,8 @@ local function waitInQueue(customer: Customer)
 		local distance = Vector3.new(offset.X, 0, offset.Z).Magnitude
 		if distance > CustomerConfig.COUNTER_ARRIVE_DISTANCE then
 			customer.humanoid:MoveTo(target)
-		elseif index == 1 and not customer.atCounter then
-			customer.atCounter = true
+		elseif index == 1 then
+			-- Fired every check while waiting at the counter; RegisterService ignores repeats
 			runCallbacks(reachedCounterCallbacks, customer)
 		end
 		task.wait(CustomerConfig.QUEUE_CHECK_INTERVAL)
@@ -389,10 +395,7 @@ local function waitInQueue(customer: Customer)
 		return
 	end
 
-	local index = table.find(state.queue, customer)
-	if index then
-		table.remove(state.queue, index)
-	end
+	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_GAVE_UP)
 end
 
@@ -441,7 +444,6 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 		items = {},
 		alive = true,
 		thread = nil,
-		atCounter = false,
 		lastScanAt = nil,
 	}
 	table.insert(state.customers, customer)
@@ -497,14 +499,14 @@ local function spawnTick()
 	end
 end
 
--- Fires when the front customer is standing at the counter, ready to be checked out
+-- Fires repeatedly while the front customer stands at the counter, ready to be checked out
 function CustomerService.OnReachedCounter(callback: CustomerCallback)
 	table.insert(reachedCounterCallbacks, callback)
 end
 
--- Fires whenever a customer is removed, paid or not
-function CustomerService.OnLeft(callback: CustomerCallback)
-	table.insert(leftCallbacks, callback)
+-- Fires when a customer leaves the queue for any reason: paid, gave up, or removed
+function CustomerService.OnLeftQueue(callback: CustomerCallback)
+	table.insert(leftQueueCallbacks, callback)
 end
 
 -- The customer paid: their items are sold (not returned to shelves) and they head out happy
@@ -513,11 +515,7 @@ function CustomerService.CompletePurchase(customer: Customer)
 		return
 	end
 	table.clear(customer.items)
-	local state = getPlotState(customer.plot)
-	local index = table.find(state.queue, customer)
-	if index then
-		table.remove(state.queue, index)
-	end
+	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
 end
 

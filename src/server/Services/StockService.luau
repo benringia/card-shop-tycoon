@@ -34,6 +34,7 @@ local StockService = {}
 local shops: { [Player]: Shop } = {}
 local allowOrder = RateLimiter.new(StockConfig.ORDER_COOLDOWN)
 local allowStock = RateLimiter.new(StockConfig.STOCK_COOLDOWN)
+local allowDrop = RateLimiter.new(StockConfig.DROP_COOLDOWN)
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -274,6 +275,19 @@ local function onStockShelf(player: Player, uid: unknown)
 	end
 end
 
+-- Boxes go back on the delivery pad (with whatever units are left) to pick up again later
+local function onDropBox(player: Player)
+	if not allowDrop(player) then
+		return
+	end
+	local shop = shops[player]
+	if not shop or #shop.carried == 0 then
+		return
+	end
+	returnCarried(shop)
+	notify(player, "Box put back on the delivery pad.", false)
+end
+
 local function onComputerUsed(player: Player, plot: Plot)
 	if plot.owner ~= player then
 		notify(player, "This is someone else's shop.", true)
@@ -317,6 +331,7 @@ function StockService.Start()
 
 	Remotes.OrderProduct.OnServerEvent:Connect(onOrder)
 	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
+	Remotes.DropBox.OnServerEvent:Connect(onDropBox)
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
 	for _, player in Players:GetPlayers() do

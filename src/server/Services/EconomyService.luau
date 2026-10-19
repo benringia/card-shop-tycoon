@@ -5,7 +5,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local EconomyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Economy"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local EconomyConfig = require(Shared:WaitForChild("Config"):WaitForChild("Economy"))
+local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 
 type Wallet = {
 	cash: number,
@@ -66,14 +69,24 @@ function EconomyService.AddCash(player: Player, amount: number): boolean
 	return true
 end
 
--- Level-ups from XP come with the levels system
+-- Adds XP and levels the shop up when it crosses a threshold (can skip several levels at once)
 function EconomyService.AddXP(player: Player, amount: number): boolean
 	local wallet = wallets[player]
 	if not wallet or not isValidAmount(amount) then
 		return false
 	end
 	wallet.xp += math.floor(amount)
+
+	local oldLevel = wallet.level
+	local newLevel = LevelRules.getLevelForXp(wallet.xp)
+	if newLevel > oldLevel then
+		wallet.level = newLevel
+	end
 	sync(player, wallet)
+	-- One message per level gained, so skipped levels still announce their unlocks
+	for level = oldLevel + 1, newLevel do
+		Remotes.LevelUp:FireClient(player, level)
+	end
 	return true
 end
 

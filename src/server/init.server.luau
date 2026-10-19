@@ -9,6 +9,7 @@ local CustomerService = require(Services:WaitForChild("CustomerService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local StockService = require(Services:WaitForChild("StockService"))
 local RegisterService = require(Services:WaitForChild("RegisterService"))
+local DevService = require(Services:WaitForChild("DevService"))
 
 EconomyService.Start()
 PricingService.Start()
@@ -18,5 +19,6 @@ CustomerService.Start()
 PlotService.Start()
 StockService.Start() -- needs plots built
 RegisterService.Start()
+DevService.Start() -- Studio only
 
 print("[Server] Booted")

@@ -15,6 +15,8 @@ local NAMES = {
 	"SetPrices", -- client → server: ({ [productId: string]: number })
 	"CheckoutUpdate", -- server → client: (total: number?, remaining: number) nil total = checkout over
 	"Charge", -- client → server: take payment for the fully scanned checkout
+	"LevelUp", -- server → client: (level: number)
+	"DropBox", -- client → server: put carried boxes back on the delivery pad
 }
 
 local isServer = RunService:IsServer()
@@ -50,4 +52,6 @@ return {
 	SetPrices = remotes.SetPrices,
 	CheckoutUpdate = remotes.CheckoutUpdate,
 	Charge = remotes.Charge,
+	LevelUp = remotes.LevelUp,
+	DropBox = remotes.DropBox,
 }

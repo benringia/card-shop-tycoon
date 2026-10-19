@@ -7,6 +7,7 @@ return {
 
 	ORDER_COOLDOWN = 0.3, -- seconds between order requests per player
 	STOCK_COOLDOWN = 0.3, -- seconds between shelf stocking requests per player
+	DROP_COOLDOWN = 0.3,
 	PROMPT_DISTANCE = 8, -- ProximityPrompt range
 	INTERACT_DISTANCE = 14, -- server-side distance check, a little looser than the prompt
 

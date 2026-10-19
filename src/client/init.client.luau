@@ -8,6 +8,7 @@ local PlacementController = require(Controllers:WaitForChild("PlacementControlle
 local BuildController = require(Controllers:WaitForChild("BuildController"))
 local PricingController = require(Controllers:WaitForChild("PricingController"))
 local RegisterController = require(Controllers:WaitForChild("RegisterController"))
+local CarryController = require(Controllers:WaitForChild("CarryController"))
 
 UIController.Start()
 OrderController.Start()
@@ -15,3 +16,4 @@ PlacementController.Start()
 BuildController.Start()
 PricingController.Start()
 RegisterController.Start()
+CarryController.Start()

@@ -104,10 +104,19 @@ local function onScan(player: Player, plot: Plot, part: BasePart)
 	sendUpdate(checkout)
 end
 
--- Lays one counter item per unit along the counter top, each clickable/tappable to scan
+-- Lays one counter item per unit along the counter top, each clickable/tappable to scan.
+-- Called repeatedly while the front customer waits, so it must be safe to repeat.
 local function startCheckout(customer: Customer)
 	local plot = customer.plot
-	if checkouts[plot] or #customer.items == 0 then
+	local existing = checkouts[plot]
+	if existing and existing.customer == customer then
+		return
+	end
+	-- Only the front customer calls this, so any other open checkout is stale
+	if existing then
+		endCheckout(plot)
+	end
+	if #customer.items == 0 then
 		return
 	end
 
@@ -181,7 +190,7 @@ local function onCharge(player: Player)
 	notify(player, string.format("Sale! +$%.2f", total), false)
 end
 
-local function onCustomerLeft(customer: Customer)
+local function onCustomerLeftQueue(customer: Customer)
 	local checkout = checkouts[customer.plot]
 	if checkout and checkout.customer == customer then
 		endCheckout(customer.plot)
@@ -190,7 +199,7 @@ end
 
 function RegisterService.Start()
 	CustomerService.OnReachedCounter(startCheckout)
-	CustomerService.OnLeft(onCustomerLeft)
+	CustomerService.OnLeftQueue(onCustomerLeftQueue)
 	Remotes.Charge.OnServerEvent:Connect(onCharge)
 	Players.PlayerRemoving:Connect(function(player)
 		for plot, checkout in checkouts do
