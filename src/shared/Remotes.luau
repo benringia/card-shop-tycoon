@@ -12,6 +12,7 @@ local NAMES = {
 	"MoveShelf", -- client → server: (uid: string, gridX: number, gridZ: number, rotation: number)
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
+	"SetPrices", -- client → server: ({ [productId: string]: number })
 }
 
 local isServer = RunService:IsServer()
@@ -44,4 +45,5 @@ return {
 	MoveShelf = remotes.MoveShelf,
 	SellShelf = remotes.SellShelf,
 	StockShelf = remotes.StockShelf,
+	SetPrices = remotes.SetPrices,
 }

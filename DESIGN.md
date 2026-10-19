@@ -305,37 +305,51 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
-    │   └── Services/
-    │       ├── DataService.luau      # ProfileStore, load/save, defaults
-    │       ├── PlotService.luau      # claim/release plots, build saved layout
-    │       ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
-    │       ├── StockService.luau     # orders, deliveries, shelf stock
-    │       ├── PlacementService.luau # validate + place/move/sell shelves
-    │       ├── CustomerService.luau  # NPC spawn, pathing, buying, queue
-    │       ├── RegisterService.luau  # checkout flow
-    │       ├── PackService.luau      # server-side pack rolls
-    │       ├── CollectionService.luau# binder, showcase, quick sell
-    │       └── MonetizationService.luau # passes, dev products, ProcessReceipt
+    │   ├── Services/
+    │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
+    │   │   ├── PlotService.luau      # claim/release plots, build saved layout
+    │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
+    │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
+    │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
+    │   │   ├── PricingService.luau   # player sell prices per product
+    │   │   ├── CustomerService.luau  # NPC spawn, pathing, buying, queue
+    │   │   ├── RegisterService.luau  # checkout flow
+    │   │   ├── PackService.luau      # server-side pack rolls
+    │   │   ├── CollectionService.luau# binder, showcase, quick sell
+    │   │   └── MonetizationService.luau # passes, dev products, ProcessReceipt
+    │   └── Util/
+    │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
-    │   └── Controllers/
-    │       ├── UIController.luau
-    │       ├── OrderController.luau
-    │       ├── PlacementController.luau
-    │       ├── RegisterController.luau
-    │       ├── PackOpeningController.luau
-    │       └── BinderController.luau
+    │   ├── Controllers/
+    │   │   ├── UIController.luau       # cash display, toasts
+    │   │   ├── OrderController.luau
+    │   │   ├── BuildController.luau    # build menu, shelf prompts, shelf edit menu
+    │   │   ├── PlacementController.luau
+    │   │   ├── PricingController.luau
+    │   │   ├── RegisterController.luau
+    │   │   ├── PackOpeningController.luau
+    │   │   └── BinderController.luau
+    │   └── Util/
+    │       └── UIKit.luau              # shared UI building helpers
     └── shared/                 # → ReplicatedStorage
         ├── Config/
         │   ├── Cards.luau      # Set 1 card list
         │   ├── Rarities.luau   # odds, values, colors
         │   ├── Products.luau   # stock catalog
         │   ├── Shelves.luau
+        │   ├── Plots.luau      # plot layout and fixtures
+        │   ├── Economy.luau    # starting cash/level
+        │   ├── Stock.luau      # delivery, carrying
+        │   ├── Placement.luau  # grid, starter shelves
+        │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── Levels.luau
         │   ├── Upgrades.luau
         │   └── Monetization.luau # pass/product IDs
         ├── Remotes.luau        # all RemoteEvents/Functions defined in one place
         └── Util/
+            ├── PlacementGrid.luau # grid maths shared by client preview + server validation
+            └── PriceRules.luau    # price clamping and buy bands
 ```
 
 ### 10.3 Rules for the code
@@ -383,7 +397,7 @@ Bump `version` and write a migration whenever the shape changes.
 - [x] Plot claiming (6 plots)
 - [x] Order computer + delivery + carrying boxes
 - [x] Small Pack Rack placement (grid, rotate)
-- [ ] Pricing UI for booster packs
+- [x] Pricing UI for booster packs
 - [ ] NPC customers: walk in, pick packs, queue, leave if waiting too long
 - [ ] Register checkout
 - [ ] Cash + XP + levels 1–5

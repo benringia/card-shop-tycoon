@@ -16,6 +16,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
+local PricingService = require(Services:WaitForChild("PricingService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
@@ -23,6 +24,7 @@ type ShelfDef = typeof(Shelves.List[1])
 
 export type PlacedShelf = {
 	uid: string,
+	owner: Player,
 	def: ShelfDef,
 	gridX: number,
 	gridZ: number,
@@ -65,8 +67,12 @@ end
 
 local function updateLabel(shelf: PlacedShelf)
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
-	local name = if product and shelf.units > 0 then product.name else "Empty"
-	shelf.label.Text = `{name}\n{shelf.units}/{shelf.def.capacity}`
+	if not product or shelf.units <= 0 then
+		shelf.label.Text = `Empty\n0/{shelf.def.capacity}`
+		return
+	end
+	local price = PricingService.GetPrice(shelf.owner, product.id)
+	shelf.label.Text = string.format("%s\n%d/%d · $%.2f", product.name, shelf.units, shelf.def.capacity, price)
 end
 
 local function positionShelf(plot: Plot, shelf: PlacedShelf)
@@ -118,6 +124,7 @@ local function createShelf(
 
 	local shelf: PlacedShelf = {
 		uid = uid,
+		owner = player,
 		def = def,
 		gridX = gridX,
 		gridZ = gridZ,
@@ -304,9 +311,22 @@ function PlacementService.AddStock(shelf: PlacedShelf, productId: string, maxUni
 	return added, nil
 end
 
+local function onPriceChanged(player: Player, productId: string, _price: number)
+	local layout = layouts[player]
+	if not layout then
+		return
+	end
+	for _, shelf in layout do
+		if shelf.productId == productId then
+			updateLabel(shelf)
+		end
+	end
+end
+
 function PlacementService.Start()
 	PlotService.OnClaimed(onClaimed)
 	PlotService.OnReleased(onReleased)
+	PricingService.OnPriceChanged(onPriceChanged)
 
 	Remotes.PlaceShelf.OnServerEvent:Connect(onPlace)
 	Remotes.MoveShelf.OnServerEvent:Connect(onMove)
