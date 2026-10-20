@@ -1,7 +1,6 @@
 --!strict
--- Builds the shop plots and assigns one to each player on join, releasing it on leave.
+-- Builds the shop plots. DataService claims one per player on join and releases it on leave.
 -- Other services ask PlotService.GetPlot(player) to find a player's plot.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -29,14 +28,7 @@ local PlotService = {}
 
 local plots: { Plot } = {}
 local plotByPlayer: { [Player]: Plot } = {}
-local claimedCallbacks: { PlotCallback } = {}
 local releasedCallbacks: { PlotCallback } = {}
-
-local function runCallbacks(callbacks: { PlotCallback }, player: Player, plot: Plot)
-	for _, callback in callbacks do
-		task.spawn(callback, player, plot)
-	end
-end
 
 -- Plot CFrame sits at the floor centre with LookVector pointing at the street (the shop front)
 local function getPlotCFrame(index: number): CFrame
@@ -224,7 +216,8 @@ local function findFreePlot(): Plot?
 	return nil
 end
 
-local function claim(player: Player)
+-- Called by DataService when a player joins
+function PlotService.Claim(player: Player)
 	if plotByPlayer[player] then
 		return
 	end
@@ -247,11 +240,10 @@ local function claim(player: Player)
 	if player.Character then
 		player:LoadCharacter()
 	end
-
-	runCallbacks(claimedCallbacks, player, plot)
 end
 
-local function release(player: Player)
+-- Called by DataService after the player's data has been saved
+function PlotService.Release(player: Player)
 	local plot = plotByPlayer[player]
 	if not plot then
 		return
@@ -265,16 +257,13 @@ local function release(player: Player)
 	-- The next owner gets the default layout
 	setComputerCell(plot.computer, plot.floor.CFrame, PlotConfig.COMPUTER_GRID_X, PlotConfig.COMPUTER_GRID_Z, 0)
 
-	runCallbacks(releasedCallbacks, player, plot)
+	for _, callback in releasedCallbacks do
+		task.spawn(callback, player, plot)
+	end
 end
 
 function PlotService.GetPlot(player: Player): Plot?
 	return plotByPlayer[player]
-end
-
--- Register before PlotService.Start() so no claim is missed
-function PlotService.OnClaimed(callback: PlotCallback)
-	table.insert(claimedCallbacks, callback)
 end
 
 function PlotService.OnReleased(callback: PlotCallback)
@@ -299,13 +288,6 @@ function PlotService.Start()
 
 	for id = 1, PlotConfig.COUNT do
 		table.insert(plots, buildPlot(id, folder))
-	end
-
-	Players.PlayerAdded:Connect(claim)
-	Players.PlayerRemoving:Connect(release)
-	-- Players who joined before this ran (common in Studio play tests)
-	for _, player in Players:GetPlayers() do
-		claim(player)
 	end
 end
 

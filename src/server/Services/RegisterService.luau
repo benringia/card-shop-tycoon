@@ -11,6 +11,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CustomerService = require(Services:WaitForChild("CustomerService"))
+local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
@@ -187,6 +188,8 @@ local function onCharge(player: Player)
 		EconomyService.AddCash(player, total)
 	end
 	EconomyService.AddXP(player, math.max(RegisterConfig.MIN_XP_PER_SALE, math.round(total)))
+	DataService.AddStat(player, "customersServed", 1)
+	DataService.AddStat(player, "totalEarned", total)
 	notify(player, string.format("Sale! +$%.2f", total), false)
 end
 

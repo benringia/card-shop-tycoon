@@ -1,28 +1,32 @@
 --!strict
 -- Server entry point. Requires and starts each service in dependency order.
+-- Services that store player data register with DataService in their Start(); DataService starts
+-- last and then drives every player's join (load) and leave (save, unload).
 local Services = script:WaitForChild("Services")
 
+local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
+local PlotService = require(Services:WaitForChild("PlotService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local CustomerService = require(Services:WaitForChild("CustomerService"))
-local PlotService = require(Services:WaitForChild("PlotService"))
 local StockService = require(Services:WaitForChild("StockService"))
 local RegisterService = require(Services:WaitForChild("RegisterService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local PackService = require(Services:WaitForChild("PackService"))
 local DevService = require(Services:WaitForChild("DevService"))
 
+PlotService.Start() -- builds the plots everything else uses
+-- Data handlers load in this order (and unload in reverse)
 EconomyService.Start()
 PricingService.Start()
--- These register plot callbacks, so they must start before PlotService
 PlacementService.Start()
-CustomerService.Start()
-PlotService.Start()
-StockService.Start() -- needs plots built
-RegisterService.Start()
+StockService.Start()
 CardService.Start()
+CustomerService.Start()
+RegisterService.Start()
 PackService.Start()
 DevService.Start() -- Studio only
+DataService.Start() -- last: starts loading players
 
 print("[Server] Booted")

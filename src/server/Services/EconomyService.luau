@@ -1,14 +1,17 @@
 --!strict
 -- The ONLY place cash, XP and level change. Other services call these functions.
 -- Values are mirrored to player attributes (Cash, XP, Level) so client UI can read them.
--- No saving yet: DataService will load and store these later.
-local Players = game:GetService("Players")
+-- Loaded from and saved to the player's profile through DataService.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local EconomyConfig = require(Shared:WaitForChild("Config"):WaitForChild("Economy"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local DataService = require((script.Parent :: Instance):WaitForChild("DataService"))
+
+type PlayerData = DataService.PlayerData
 
 type Wallet = {
 	cash: number,
@@ -36,17 +39,30 @@ local function sync(player: Player, wallet: Wallet)
 	player:SetAttribute("Level", wallet.level)
 end
 
-local function setup(player: Player)
-	if wallets[player] then
-		return
-	end
+local function readNumber(value: unknown, default: number): number
+	return if typeof(value) == "number" and value == value and value >= 0 and value < math.huge then value else default
+end
+
+local function load(player: Player, data: PlayerData)
+	local xp = math.floor(readNumber(data.xp, 0))
 	local wallet: Wallet = {
-		cash = EconomyConfig.STARTING_CASH,
-		xp = 0,
-		level = EconomyConfig.STARTING_LEVEL,
+		cash = roundCents(readNumber(data.cash, EconomyConfig.STARTING_CASH)),
+		xp = xp,
+		-- Derived from XP so a bad saved level can't stick
+		level = math.max(EconomyConfig.STARTING_LEVEL, LevelRules.getLevelForXp(xp)),
 	}
 	wallets[player] = wallet
 	sync(player, wallet)
+end
+
+local function save(player: Player, data: PlayerData)
+	local wallet = wallets[player]
+	if not wallet then
+		return -- never loaded: keep what's saved
+	end
+	data.cash = wallet.cash
+	data.xp = wallet.xp
+	data.level = wallet.level
 end
 
 function EconomyService.GetCash(player: Player): number
@@ -102,13 +118,14 @@ function EconomyService.TrySpend(player: Player, amount: number): boolean
 end
 
 function EconomyService.Start()
-	Players.PlayerAdded:Connect(setup)
-	Players.PlayerRemoving:Connect(function(player)
-		wallets[player] = nil
-	end)
-	for _, player in Players:GetPlayers() do
-		setup(player)
-	end
+	DataService.Register({
+		name = "EconomyService",
+		load = load,
+		save = save,
+		unload = function(player: Player)
+			wallets[player] = nil
+		end,
+	})
 end
 
 return EconomyService

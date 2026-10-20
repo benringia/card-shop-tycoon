@@ -1,8 +1,8 @@
 --!strict
 -- Each player's card collection: { [cardId] = { normal = n, foil = n } }, plus quick sell.
--- The whole collection is pushed to the client on every change (Set 1 is only 30 cards). No saving yet.
--- (DESIGN.md calls this CollectionService; renamed to avoid clashing with Roblox's own service.)
-local Players = game:GetService("Players")
+-- The whole collection is pushed to the client on every change (Set 1 is only 30 cards).
+-- Saved through DataService. (DESIGN.md calls this CollectionService; renamed to avoid clashing
+-- with Roblox's own service.)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -14,8 +14,11 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+
+type PlayerData = DataService.PlayerData
 
 export type Owned = { normal: number, foil: number }
 export type PullResult = { cardId: string, foil: boolean }
@@ -126,16 +129,48 @@ local function onSellDuplicates(player: Player)
 	Remotes.Notify:FireClient(player, string.format("Sold %d duplicates for $%.2f", sold, total), false)
 end
 
-function CardService.Start()
-	Players.PlayerAdded:Connect(function(player)
-		collections[player] = {}
-	end)
-	Players.PlayerRemoving:Connect(function(player)
-		collections[player] = nil
-	end)
-	for _, player in Players:GetPlayers() do
-		collections[player] = collections[player] or {}
+local function readCount(value: unknown): number
+	return if typeof(value) == "number" and value == value and value > 0 then math.floor(value) else 0
+end
+
+-- Unknown card IDs and bad counts in saved data are dropped
+local function load(player: Player, data: PlayerData)
+	local collection: { [string]: Owned } = {}
+	for cardId, saved in data.cards do
+		if Cards.ById[cardId] and typeof(saved) == "table" then
+			local owned = { normal = readCount(saved.normal), foil = readCount(saved.foil) }
+			if owned.normal + owned.foil > 0 then
+				collection[cardId] = owned
+			end
+		end
 	end
+	collections[player] = collection
+	sync(player)
+end
+
+local function save(player: Player, data: PlayerData)
+	local collection = collections[player]
+	if not collection then
+		return
+	end
+	local cards = {}
+	for cardId, owned in collection do
+		if owned.normal + owned.foil > 0 then
+			cards[cardId] = { normal = owned.normal, foil = owned.foil }
+		end
+	end
+	data.cards = cards
+end
+
+function CardService.Start()
+	DataService.Register({
+		name = "CardService",
+		load = load,
+		save = save,
+		unload = function(player: Player)
+			collections[player] = nil
+		end,
+	})
 
 	Remotes.RequestCollection.OnServerEvent:Connect(function(player)
 		if allowRequest(player) then

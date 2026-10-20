@@ -12,6 +12,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
+local DataService = require(Services:WaitForChild("DataService"))
 local StockService = require(Services:WaitForChild("StockService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -66,6 +67,7 @@ local function onRip(player: Player)
 
 	local results = rollPack(pack)
 	CardService.AddCards(player, results)
+	DataService.AddStat(player, "packsOpened", 1)
 	Remotes.PackOpened:FireClient(player, productId, results)
 end
 

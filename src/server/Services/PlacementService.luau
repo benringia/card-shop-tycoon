@@ -14,6 +14,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
@@ -21,6 +22,9 @@ local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
 type ShelfDef = typeof(Shelves.List[1])
+type PlayerData = DataService.PlayerData
+type SavedShelf = DataService.SavedShelf
+type SavedCell = DataService.SavedCell
 
 export type PlacedShelf = {
 	uid: string,
@@ -284,12 +288,84 @@ local function onSell(player: Player, uid: unknown)
 	notify(player, string.format("Sold %s for $%.2f.", shelf.def.name, refund), false)
 end
 
--- New shops start with an empty floor; every shelf is bought from the Build menu
-local function onClaimed(player: Player, _plot: Plot)
-	layouts[player] = {}
+local function restoreComputer(plot: Plot, saved: SavedCell?)
+	if typeof(saved) ~= "table" then
+		return
+	end
+	if not isGridInteger(saved.gridX) or not isGridInteger(saved.gridZ) or not isValidRotation(saved.rotation) then
+		return
+	end
+	local fixtureId = PlotService.COMPUTER_FIXTURE_ID
+	if canPlaceAt(plot, plot.computer.Size, saved.gridX, saved.gridZ, saved.rotation, fixtureId) then
+		PlotService.SetComputerCell(plot, saved.gridX, saved.gridZ, saved.rotation)
+	end
 end
 
-local function onReleased(player: Player, _plot: Plot)
+local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf)
+	if typeof(saved) ~= "table" then
+		return
+	end
+	local def = Shelves.ById[saved.shelfId]
+	if not def or not isGridInteger(saved.gridX) or not isGridInteger(saved.gridZ) or not isValidRotation(saved.rotation) then
+		return
+	end
+	-- A layout saved under older config might not fit any more; skip that shelf rather than overlap
+	if not canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, nil) then
+		return
+	end
+
+	local paid = if typeof(saved.paid) == "number" then math.clamp(saved.paid, 0, def.cost) else 0
+	local shelf = createShelf(player, plot, def, saved.gridX, saved.gridZ, saved.rotation, paid)
+	local units = if typeof(saved.units) == "number" then math.floor(saved.units) else 0
+	if typeof(saved.productId) == "string" and Products.ById[saved.productId] and units > 0 then
+		PlacementService.AddStock(shelf, saved.productId, units)
+	end
+end
+
+-- New shops have an empty layout; returning players get their shelves and stock back.
+-- The computer goes first so shelves saved around its moved spot still fit.
+local function load(player: Player, data: PlayerData)
+	local plot = PlotService.GetPlot(player)
+	if not plot then
+		return -- no free plot this session; leave the saved layout untouched
+	end
+	layouts[player] = {}
+	restoreComputer(plot, data.fixtures[PlotService.COMPUTER_FIXTURE_ID])
+	for _, saved in data.layout do
+		restoreShelf(player, plot, saved)
+	end
+end
+
+local function save(player: Player, data: PlayerData)
+	local layout = layouts[player]
+	local plot = PlotService.GetPlot(player)
+	if not layout or not plot then
+		return
+	end
+
+	local savedLayout: { SavedShelf } = {}
+	for _, shelf in layout do
+		table.insert(savedLayout, {
+			shelfId = shelf.def.id,
+			gridX = shelf.gridX,
+			gridZ = shelf.gridZ,
+			rotation = shelf.rotation,
+			productId = if shelf.units > 0 then shelf.productId else nil,
+			units = shelf.units,
+			paid = shelf.paid,
+		})
+	end
+	data.layout = savedLayout
+
+	local computer = plot.computer
+	data.fixtures[PlotService.COMPUTER_FIXTURE_ID] = {
+		gridX = computer:GetAttribute("GridX") :: number,
+		gridZ = computer:GetAttribute("GridZ") :: number,
+		rotation = computer:GetAttribute("Rotation") :: number,
+	}
+end
+
+local function unload(player: Player)
 	local layout = layouts[player]
 	if not layout then
 		return
@@ -361,8 +437,7 @@ local function onPriceChanged(player: Player, productId: string, _price: number)
 end
 
 function PlacementService.Start()
-	PlotService.OnClaimed(onClaimed)
-	PlotService.OnReleased(onReleased)
+	DataService.Register({ name = "PlacementService", load = load, save = save, unload = unload })
 	PricingService.OnPriceChanged(onPriceChanged)
 
 	Remotes.PlaceShelf.OnServerEvent:Connect(onPlace)

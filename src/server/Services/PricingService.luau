@@ -1,7 +1,6 @@
 --!strict
 -- Holds each player's sell price per product. Prices are mirrored to player attributes
--- ("Price_<productId>") so the client UI can show them. No saving yet.
-local Players = game:GetService("Players")
+-- ("Price_<productId>") so the client UI can show them. Saved through DataService.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -14,7 +13,9 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local DataService = require(Services:WaitForChild("DataService"))
 
+type PlayerData = DataService.PlayerData
 type PriceChangedCallback = (player: Player, productId: string, price: number) -> ()
 
 local PricingService = {}
@@ -27,13 +28,25 @@ local function attributeName(productId: string): string
 	return "Price_" .. productId
 end
 
-local function setup(player: Player)
-	if prices[player] then
-		return
-	end
-	prices[player] = {}
+-- Saved prices are re-clamped, and prices for products that no longer exist are dropped
+local function load(player: Player, data: PlayerData)
+	local playerPrices: { [string]: number } = {}
 	for _, product in Products.List do
-		player:SetAttribute(attributeName(product.id), PriceRules.getDefault(product.marketPrice))
+		local saved = data.prices[product.id]
+		local price = PriceRules.getDefault(product.marketPrice)
+		if typeof(saved) == "number" and saved == saved then
+			price = PriceRules.clamp(saved, product.marketPrice)
+			playerPrices[product.id] = price
+		end
+		player:SetAttribute(attributeName(product.id), price)
+	end
+	prices[player] = playerPrices
+end
+
+local function save(player: Player, data: PlayerData)
+	local playerPrices = prices[player]
+	if playerPrices then
+		data.prices = table.clone(playerPrices)
 	end
 end
 
@@ -86,13 +99,14 @@ end
 
 function PricingService.Start()
 	Remotes.SetPrices.OnServerEvent:Connect(onSetPrices)
-	Players.PlayerAdded:Connect(setup)
-	Players.PlayerRemoving:Connect(function(player)
-		prices[player] = nil
-	end)
-	for _, player in Players:GetPlayers() do
-		setup(player)
-	end
+	DataService.Register({
+		name = "PricingService",
+		load = load,
+		save = save,
+		unload = function(player: Player)
+			prices[player] = nil
+		end,
+	})
 end
 
 return PricingService

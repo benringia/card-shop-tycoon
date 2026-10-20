@@ -349,6 +349,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
+        │   ├── Collection.luau # quick sell rate
+        │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Levels.luau
         │   ├── Upgrades.luau
         │   └── Monetization.luau # pass/product IDs
@@ -378,17 +380,23 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     level = 1,
     shopName = "",
     upgrades = {},          -- { [upgradeId] = true }
-    stock = {},             -- { [productId] = unitsInBackroom }
-    layout = {},            -- { { shelfId, gridX, gridZ, rotation, contents = { productId, units } } }
     prices = {},            -- { [productId] = price }
+    layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid } }
+    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
+    boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { normal = n, foil = n } }
     showcase = {},          -- { { cardId, foil, price } }
-    unopenedPacks = {},     -- { [packId] = n }
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
+Template and types live in `DataService.luau`. Packs are opened straight from carried boxes, so there is no
+separate unopened-packs inventory; unsold stock is saved as `boxes` rather than a backroom count.
+
+Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomputed from XP, and saved shelves
+that no longer fit are skipped. A service that didn't load for a player (e.g. no free plot) never overwrites
+their saved data.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.

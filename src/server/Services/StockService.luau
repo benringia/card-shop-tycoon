@@ -1,6 +1,7 @@
 --!strict
 -- Ordering stock at the plot computer, delivering boxes to the delivery pad, carrying them,
--- and unpacking a carried box onto a shelf.
+-- and unpacking a carried box onto a shelf. Boxes (waiting, carried or still on order) are saved
+-- through DataService and come back on the delivery pad next session.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,20 +13,22 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
-type Product = typeof(Products.List[1])
+type PlayerData = DataService.PlayerData
+type SavedBox = DataService.SavedBox
 
 type Shop = {
 	owner: Player,
 	plot: Plot,
 	waiting: { Part }, -- boxes sitting on the delivery pad
 	carried: { Part },
-	incoming: number, -- ordered, not delivered yet
+	incoming: { string }, -- product IDs ordered but not delivered yet
 	active: boolean, -- false once the owner leaves, so pending deliveries cancel
 }
 
@@ -40,18 +43,9 @@ local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
 end
 
+-- Shops exist once the player's data has loaded and they have a plot
 local function getShop(player: Player): Shop?
-	local existing = shops[player]
-	if existing then
-		return existing
-	end
-	local plot = PlotService.GetPlot(player)
-	if not plot then
-		return nil
-	end
-	local shop: Shop = { owner = player, plot = plot, waiting = {}, carried = {}, incoming = 0, active = true }
-	shops[player] = shop
-	return shop
+	return shops[player]
 end
 
 local function getRoot(player: Player): BasePart?
@@ -166,15 +160,17 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	syncCarry(shop)
 end
 
-local function deliverBox(player: Player, shop: Shop, product: Product)
+-- Puts a box on the delivery pad
+local function createBox(shop: Shop, productId: string, units: number)
+	local product = Products.ById[productId]
 	local box = Instance.new("Part")
 	box.Name = "StockBox"
 	box.Size = StockConfig.BOX_SIZE
 	box.Color = StockConfig.BOX_COLOR
 	box.Material = Enum.Material.Cardboard
 	box.Anchored = true
-	box:SetAttribute("ProductId", product.id)
-	box:SetAttribute("Units", product.unitsPerBox)
+	box:SetAttribute("ProductId", productId)
+	box:SetAttribute("Units", units)
 
 	local prompt = makePrompt(box, "Pick up", product.name)
 	prompt.Triggered:Connect(function(triggeringPlayer)
@@ -184,7 +180,6 @@ local function deliverBox(player: Player, shop: Shop, product: Product)
 	table.insert(shop.waiting, box)
 	layoutWaiting(shop)
 	box.Parent = shop.plot.model
-	notify(player, `Your {product.name} box arrived!`, false)
 end
 
 local function onOrder(player: Player, productId: unknown)
@@ -211,7 +206,7 @@ local function onOrder(player: Player, productId: unknown)
 		notify(player, `Unlocks at shop level {product.unlockLevel}.`, true)
 		return
 	end
-	if shop.incoming + #shop.waiting + #shop.carried >= StockConfig.MAX_BOXES_PER_PLOT then
+	if #shop.incoming + #shop.waiting + #shop.carried >= StockConfig.MAX_BOXES_PER_PLOT then
 		notify(player, "Your delivery area is full. Unpack some boxes first.", true)
 		return
 	end
@@ -220,15 +215,17 @@ local function onOrder(player: Player, productId: unknown)
 		return
 	end
 
-	shop.incoming += 1
+	table.insert(shop.incoming, product.id)
 	notify(player, `Ordered {product.name}. Arrives in {StockConfig.DELIVERY_SECONDS}s.`, false)
 
 	task.delay(StockConfig.DELIVERY_SECONDS, function()
-		if not shop.active then
+		local index = table.find(shop.incoming, product.id)
+		if not shop.active or not index then
 			return
 		end
-		shop.incoming -= 1
-		deliverBox(player, shop, product)
+		table.remove(shop.incoming, index)
+		createBox(shop, product.id, product.unitsPerBox)
+		notify(player, `Your {product.name} box arrived!`, false)
 	end)
 end
 
@@ -308,8 +305,62 @@ local function onPlayerAdded(player: Player)
 	end)
 end
 
--- No saving yet, so a leaving player's boxes are simply removed
-local function onPlayerRemoving(player: Player)
+local function isValidSavedBox(saved: SavedBox): boolean
+	if typeof(saved) ~= "table" or typeof(saved.productId) ~= "string" or typeof(saved.units) ~= "number" then
+		return false
+	end
+	local product = Products.ById[saved.productId]
+	return product ~= nil and saved.units >= 1 and saved.units <= product.unitsPerBox
+end
+
+local function load(player: Player, data: PlayerData)
+	local plot = PlotService.GetPlot(player)
+	if not plot then
+		return -- no free plot this session; leave the saved boxes untouched
+	end
+	local shop: Shop = { owner = player, plot = plot, waiting = {}, carried = {}, incoming = {}, active = true }
+	shops[player] = shop
+	for index, saved in data.boxes do
+		if index > StockConfig.MAX_BOXES_PER_PLOT then
+			break
+		end
+		if isValidSavedBox(saved) then
+			createBox(shop, saved.productId, math.floor(saved.units))
+		end
+	end
+	syncCarry(shop)
+end
+
+-- Every box the player owns: on the pad, in their hands, and ones paid for but not delivered yet
+local function save(player: Player, data: PlayerData)
+	local shop = shops[player]
+	if not shop then
+		return
+	end
+	local boxes: { SavedBox } = {}
+	local function addPart(box: Part)
+		local productId = box:GetAttribute("ProductId")
+		local units = box:GetAttribute("Units")
+		if typeof(productId) == "string" and typeof(units) == "number" and units > 0 then
+			table.insert(boxes, { productId = productId, units = units })
+		end
+	end
+	for _, box in shop.waiting do
+		addPart(box)
+	end
+	for _, box in shop.carried do
+		addPart(box)
+	end
+	for _, productId in shop.incoming do
+		local product = Products.ById[productId]
+		if product then
+			table.insert(boxes, { productId = productId, units = product.unitsPerBox })
+		end
+	end
+	data.boxes = boxes
+end
+
+local function unload(player: Player)
 	local shop = shops[player]
 	if not shop then
 		return
@@ -364,8 +415,8 @@ function StockService.Start()
 	Remotes.OrderProduct.OnServerEvent:Connect(onOrder)
 	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
 	Remotes.DropBox.OnServerEvent:Connect(onDropBox)
+	DataService.Register({ name = "StockService", load = load, save = save, unload = unload })
 	Players.PlayerAdded:Connect(onPlayerAdded)
-	Players.PlayerRemoving:Connect(onPlayerRemoving)
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)
 	end
