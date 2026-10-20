@@ -22,21 +22,24 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Card = typeof(Cards.List[1])
 type Owned = { normal: number, foil: number }
-type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: number, stars: number }
+type Stacks = { [string]: { [string]: Owned } } -- cardId -> grade -> counts
+type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string }
+-- One row in the card view: a stack of plain copies (one grade, foil or not) or a levelled card
+type Entry = { key: string, power: number, value: number, beast: Beast?, grade: string, foil: boolean, count: number }
 
 type Tile = {
 	card: Card,
 	inner: Frame,
 	stroke: UIStroke,
 	countLabel: TextLabel,
-	levelLabel: TextLabel, -- best levelled copy, e.g. "Lv 12"
+	levelLabel: TextLabel, -- best grade and best levelled copy, e.g. "S · Lv 12"
 }
 
 local TILE_SIZE = Vector2.new(78, 112)
 local BINDER_KEY = Enum.KeyCode.B
 local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
 local BEAST_ROW_HEIGHT = 100
-local FRESH_ROW_HEIGHT = 64
+local STACK_ROW_HEIGHT = 80
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
 local XP_BAR_COLOR = Color3.fromRGB(90, 160, 255)
 local XP_TRACK_COLOR = Color3.fromRGB(25, 25, 35)
@@ -45,7 +48,8 @@ local player = Players.LocalPlayer
 
 local BinderController = {}
 
-local collection: { [string]: Owned } = {}
+local graded: Stacks = {}
+local collection: { [string]: Owned } = {} -- graded, summed per card
 local beasts: { [string]: Beast } = {}
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
@@ -60,7 +64,7 @@ local detailSubtitle: TextLabel
 local detailSummary: TextLabel
 local raisedList: ScrollingFrame
 local detailCard: Card? = nil
-local selectedBeastId: string? = nil -- the beast shown on the big card; nil shows a plain copy
+local selectedKey: string? = nil -- the row shown on the big card (Entry.key)
 local plotConnections: { RBXScriptConnection } = {}
 local refreshQueued = false
 
@@ -68,7 +72,7 @@ local function getCount(source: { [string]: Owned }, cardId: string): Owned
 	return source[cardId] or { normal = 0, foil = 0 }
 end
 
--- This card's levelled cards in the binder, strongest (highest value) first
+-- This card's levelled cards in the binder, strongest (Power) first
 local function getRaised(cardId: string): { Beast }
 	local list: { Beast } = {}
 	for _, beast in beasts do
@@ -78,9 +82,79 @@ local function getRaised(cardId: string): { Beast }
 	end
 	local card = Cards.ById[cardId]
 	table.sort(list, function(a, b)
-		return BeastRules.getValue(card, a.foil, a.level, a.stars) > BeastRules.getValue(card, b.foil, b.level, b.stars)
+		return BeastRules.getPower(card, a.foil, a.level, a.stars, a.grade) > BeastRules.getPower(card, b.foil, b.level, b.stars, b.grade)
 	end)
 	return list
+end
+
+local function sumGrades(stacks: Stacks): { [string]: Owned }
+	local summed: { [string]: Owned } = {}
+	for cardId, byGrade in stacks do
+		local total = { normal = 0, foil = 0 }
+		for _, owned in byGrade do
+			total.normal += owned.normal
+			total.foil += owned.foil
+		end
+		summed[cardId] = total
+	end
+	return summed
+end
+
+-- Every row for this card: plain stacks per grade and foil, plus levelled cards, strongest first
+local function getEntries(card: Card): { Entry }
+	local entries: { Entry } = {}
+	for grade, owned in graded[card.id] or {} do
+		for _, foil in { true, false } do
+			local count = if foil then owned.foil else owned.normal
+			if count > 0 then
+				table.insert(entries, {
+					key = `stack:{grade}:{foil}`,
+					power = BeastRules.getPower(card, foil, 1, BeastRules.START_STARS, grade),
+					value = BeastRules.getValue(card, foil, 1, BeastRules.START_STARS, grade),
+					grade = grade,
+					foil = foil,
+					count = count,
+				})
+			end
+		end
+	end
+	for _, beast in getRaised(card.id) do
+		table.insert(entries, {
+			key = beast.id,
+			power = BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade),
+			value = BeastRules.getValue(card, beast.foil, beast.level, beast.stars, beast.grade),
+			beast = beast,
+			grade = beast.grade,
+			foil = beast.foil,
+			count = 1,
+		})
+	end
+	table.sort(entries, function(a, b)
+		if a.power ~= b.power then
+			return a.power > b.power
+		end
+		return a.value > b.value
+	end)
+	return entries
+end
+
+-- Best grade owned of this card (plain or levelled), or nil
+local function getBestGrade(cardId: string): string?
+	local best: string? = nil
+	local function consider(grade: string)
+		if not best or BeastRules.getGradeRank(grade) > BeastRules.getGradeRank(best) then
+			best = grade
+		end
+	end
+	for grade, owned in graded[cardId] or {} do
+		if owned.normal + owned.foil > 0 then
+			consider(grade)
+		end
+	end
+	for _, beast in getRaised(cardId) do
+		consider(beast.grade)
+	end
+	return best
 end
 
 -- Cards currently in this player's own cases, read from the card parts on their plot
@@ -158,25 +232,32 @@ end
 
 local refreshDetail: () -> ()
 
-local function selectBeast(beastId: string?)
-	selectedBeastId = beastId
+local function selectEntry(key: string)
+	selectedKey = key
 	refreshDetail()
 end
 
--- One levelled card: growth and value / stats / XP bar / what it needs for the next star
-local function addBeastRow(card: Card, beast: Beast, order: number)
-	local row = makeRow(order, BEAST_ROW_HEIGHT, beast.id == selectedBeastId, function()
-		selectBeast(beast.id)
+local function addValueText(row: GuiObject, value: number)
+	local label = addRowText(row, string.format("$%.2f", value), 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
+	label.TextXAlignment = Enum.TextXAlignment.Right
+end
+
+local function describeStats(card: Card, entry: Entry, level: number, stars: number): string
+	local stats = BeastRules.getStats(card, entry.foil, level, stars, entry.grade)
+	return `Power {entry.power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`
+end
+
+-- One levelled card: grade, growth and value / stats / XP bar / what it needs for the next star
+local function addBeastRow(card: Card, entry: Entry, beast: Beast, order: number)
+	local row = makeRow(order, BEAST_ROW_HEIGHT, entry.key == selectedKey, function()
+		selectEntry(entry.key)
 	end)
 
-	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrowth(beast.level, beast.stars)}`
+	local growth = BeastRules.describeGrowth(beast.level, beast.stars)
+	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}`
 	addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
-	local valueText = string.format("$%.2f", BeastRules.getValue(card, beast.foil, beast.level, beast.stars))
-	local value = addRowText(row, valueText, 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
-	value.TextXAlignment = Enum.TextXAlignment.Right
-
-	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars)
-	addRowText(row, `HP {stats.hp}   ATK {stats.atk}   SPD {stats.spd}`, 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+	addValueText(row, entry.value)
+	addRowText(row, describeStats(card, entry, beast.level, beast.stars), 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
 
 	-- XP bar with the numbers on it
 	local toNext = BeastRules.getXpToNext(beast.level)
@@ -202,21 +283,17 @@ local function addBeastRow(card: Card, beast: Beast, order: number)
 	addRowText(row, BeastRules.describeStarProgress(beast.stars), 72, 24, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
--- Plain copies (level 1, 0 stars): how many and what they're worth
-local function addFreshRow(card: Card, inBinder: Owned, order: number)
-	local row = makeRow(order, FRESH_ROW_HEIGHT, selectedBeastId == nil, function()
-		selectBeast(nil)
+-- Plain copies of one grade (level 1, 0 stars): how many, how strong and what they're worth
+local function addStackRow(card: Card, entry: Entry, order: number)
+	local row = makeRow(order, STACK_ROW_HEIGHT, entry.key == selectedKey, function()
+		selectEntry(entry.key)
 	end)
-	local count = if inBinder.foil == 0
-		then `{inBinder.normal}`
-		elseif inBinder.normal == 0 then `{inBinder.foil} foil`
-		else `{inBinder.normal} + {inBinder.foil} foil`
 	local growth = BeastRules.describeGrowth(1, BeastRules.START_STARS)
-	addRowText(row, `Owned {count} · {growth}`, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
-	local valueText = string.format("$%.2f", CardRules.getMarketValue(card, inBinder.foil > 0))
-	local value = addRowText(row, valueText, 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
-	value.TextXAlignment = Enum.TextXAlignment.Right
-	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 30, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+	local title = `{if entry.foil then "FOIL · " else ""}{BeastRules.describeGrade(entry.grade)} · Owned {entry.count} · {growth}`
+	addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	addValueText(row, entry.value)
+	addRowText(row, describeStats(card, entry, 1, BeastRules.START_STARS), 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 48, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
 refreshDetail = function()
@@ -224,54 +301,61 @@ refreshDetail = function()
 	if not card then
 		return
 	end
-	local inBinder = getCount(collection, card.id)
 	local shown = getCount(displayed, card.id)
-	local raised = getRaised(card.id)
-	local freshCount = inBinder.normal + inBinder.foil
-	if freshCount + shown.normal + shown.foil + #raised == 0 then
+	local entries = getEntries(card)
+	local onDisplay = shown.normal + shown.foil
+	if #entries + onDisplay == 0 then
 		detail.Visible = false
 		detailCard = nil
 		return
 	end
 
-	-- Keep the selection valid: if that card left the binder, show the plain copies (or the best levelled one)
-	local selected: Beast? = nil
-	for _, beast in raised do
-		if beast.id == selectedBeastId then
-			selected = beast
+	-- Keep the selection valid: if that copy left the binder, show the strongest one
+	local selected: Entry? = nil
+	for _, entry in entries do
+		if entry.key == selectedKey then
+			selected = entry
 		end
 	end
-	if not selected and freshCount == 0 then
-		selected = raised[1]
-	end
-	selectedBeastId = if selected then selected.id else nil
+	selected = selected or entries[1]
+	selectedKey = if selected then selected.key else nil
 
 	if selected then
-		CardFace.render(detailInner, detailStroke, card, selected.foil, true, { level = selected.level, stars = selected.stars })
+		local beast = selected.beast
+		local growth = {
+			level = if beast then beast.level else 1,
+			stars = if beast then beast.stars else BeastRules.START_STARS,
+			grade = selected.grade,
+		}
+		CardFace.render(detailInner, detailStroke, card, selected.foil, true, growth)
 	else
-		-- Show the foil version when the player has one, it's the one they'll want to look at
-		CardFace.render(detailInner, detailStroke, card, inBinder.foil + shown.foil > 0)
+		CardFace.render(detailInner, detailStroke, card, shown.foil > 0)
 	end
 
+	local owned = 0
+	for _, entry in entries do
+		owned += entry.count
+	end
 	detailName.Text = card.name
 	detailSubtitle.Text = string.format("#%02d · %s · %s", card.number, card.element, card.rarity)
-	local onDisplay = shown.normal + shown.foil
 	detailSummary.Text = string.format(
 		"Owned %d%s%s",
-		freshCount + #raised,
+		owned,
 		if onDisplay > 0 then ` · {onDisplay} on display` else "",
-		if #raised + (if freshCount > 0 then 1 else 0) > 1 then " · tap a row to view it" else ""
+		if #entries > 1 then " · strongest first, tap one to view it" else ""
 	)
 
 	clearRows()
-	for index, beast in raised do
-		addBeastRow(card, beast, index)
-	end
-	if freshCount > 0 then
-		addFreshRow(card, inBinder, #raised + 1)
+	for index, entry in entries do
+		local beast = entry.beast
+		if beast then
+			addBeastRow(card, entry, beast, index)
+		else
+			addStackRow(card, entry, index)
+		end
 	end
 	local footer = UIKit.label(raisedList, HOW_TO_SELL, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-	footer.LayoutOrder = #raised + 2
+	footer.LayoutOrder = #entries + 1
 	footer.Size = UDim2.new(1, -8, 0, 44)
 	footer.ZIndex = 12
 end
@@ -295,9 +379,18 @@ local function refresh()
 			local owned = binderTotal + raised
 			tile.countLabel.Text = if owned > 0 then `Owned {owned}` else "on display"
 			tile.countLabel.Visible = true
+			-- Chip: best grade owned, plus the best levelled copy's level
+			local bestGrade = getBestGrade(tile.card.id)
 			local best = getRaised(tile.card.id)[1]
-			tile.levelLabel.Text = if best then `Lv {best.level}` else ""
-			tile.levelLabel.Visible = best ~= nil
+			local parts = {}
+			if bestGrade then
+				table.insert(parts, bestGrade)
+			end
+			if best then
+				table.insert(parts, `Lv {best.level}`)
+			end
+			tile.levelLabel.Text = table.concat(parts, " · ")
+			tile.levelLabel.Visible = #parts > 0
 		else
 			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
 			tile.countLabel.Visible = false
@@ -312,8 +405,8 @@ end
 
 local function openDetail(card: Card)
 	detailCard = card
-	local best = getRaised(card.id)[1] -- open on the strongest beast, the most interesting one
-	selectedBeastId = if best then best.id else nil
+	local strongest = getEntries(card)[1] -- open on the strongest copy
+	selectedKey = if strongest then strongest.key else nil
 	refreshDetail()
 	detail.Visible = detailCard ~= nil
 end
@@ -343,7 +436,7 @@ local function buildTile(card: Card, parent: Instance): Tile
 	levelLabel.Name = "Level"
 	levelLabel.AnchorPoint = Vector2.new(0.5, 0)
 	levelLabel.Position = UDim2.fromScale(0.5, 0.55) -- the empty band under the element letter
-	levelLabel.Size = UDim2.fromOffset(44, 16)
+	levelLabel.Size = UDim2.fromOffset(60, 16)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
 	levelLabel.BackgroundColor3 = UIKit.Colors.Accent
 	levelLabel.Visible = false
@@ -450,11 +543,12 @@ local function buildPanel(parent: Instance)
 	buildDetail(panel)
 end
 
-local function onCollectionChanged(payload: { stacks: { [string]: Owned }, beasts: { [string]: Beast } })
+local function onCollectionChanged(payload: { stacks: Stacks, beasts: { [string]: Beast } })
 	if typeof(payload) ~= "table" then
 		return
 	end
-	collection = if typeof(payload.stacks) == "table" then payload.stacks else {}
+	graded = if typeof(payload.stacks) == "table" then payload.stacks else {}
+	collection = sumGrades(graded)
 	beasts = if typeof(payload.beasts) == "table" then payload.beasts else {}
 	refresh()
 end
@@ -512,9 +606,14 @@ local function watchOwnPlot()
 	queueRefresh()
 end
 
--- The cards in the player's binder (not counting ones on display)
+-- The cards in the player's binder (not counting ones on display), summed over grades
 function BinderController.GetCollection(): { [string]: Owned }
 	return collection
+end
+
+-- The plain copies in the binder by card, then grade
+function BinderController.GetGradedStacks(): Stacks
+	return graded
 end
 
 -- The player's levelled cards (not counting ones on display)

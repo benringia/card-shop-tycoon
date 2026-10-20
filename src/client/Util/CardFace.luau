@@ -12,8 +12,8 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
 type Card = typeof(Cards.List[1])
--- A levelled card's level and stars; nil means a plain copy (level 1, 0 stars)
-export type Growth = { level: number, stars: number }
+-- A copy's level, stars and grade; nil means a plain Grade C copy (level 1, 0 stars)
+export type Growth = { level: number, stars: number, grade: string }
 
 local BACK_COLOR = Color3.fromRGB(40, 40, 60)
 local MISSING_COLOR = Color3.fromRGB(55, 55, 65)
@@ -100,6 +100,7 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 	clear(frame)
 	local level = if growth then growth.level else 1
 	local stars = if growth then growth.stars else BeastRules.START_STARS
+	local grade = if growth then growth.grade else BeastRules.DEFAULT_GRADE
 	frame.BackgroundColor3 = Cards.ELEMENTS[card.element] or BACK_COLOR
 	stroke.Color = CardFace.getRarityColor(card.rarity)
 	stroke.Thickness = PackOpening.STROKE_THICKNESS[card.rarity] or 2
@@ -108,15 +109,17 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 	-- Placeholder art until real card art exists: the element's initial, big
 	CardFace.addLabel(frame, string.sub(card.element, 1, 1), 0.24, 0.3, Enum.Font.FredokaOne).TextTransparency = 0.3
 	if growth then
-		CardFace.addLabel(frame, BeastRules.describeGrowth(level, stars), 0.55, 0.08, Enum.Font.GothamBold)
+		local growthText = `{BeastRules.describeGrade(grade)} · {BeastRules.describeGrowth(level, stars)}`
+		CardFace.addLabel(frame, growthText, 0.55, 0.08, Enum.Font.GothamBold)
 	end
 	if showValue ~= false then
-		local stats = BeastRules.getStats(card, foil, level, stars)
-		CardFace.addLabel(frame, `HP {stats.hp} · ATK {stats.atk} · SPD {stats.spd}`, 0.64, 0.07, Enum.Font.GothamBold)
+		local stats = BeastRules.getStats(card, foil, level, stars, grade)
+		local power = BeastRules.getPower(card, foil, level, stars, grade)
+		CardFace.addLabel(frame, `Power {power} · HP {stats.hp} ATK {stats.atk} SPD {stats.spd}`, 0.64, 0.07, Enum.Font.GothamBold)
 	end
 	CardFace.addLabel(frame, card.rarity, 0.72, 0.1, Enum.Font.GothamBold).TextColor3 = CardFace.getRarityColor(card.rarity)
 	if showValue ~= false then
-		CardFace.addLabel(frame, string.format("$%.2f", BeastRules.getValue(card, foil, level, stars)), 0.84, 0.1, Enum.Font.GothamBold)
+		CardFace.addLabel(frame, string.format("$%.2f", BeastRules.getValue(card, foil, level, stars, grade)), 0.84, 0.1, Enum.Font.GothamBold)
 	end
 
 	-- Plain text only: Roblox's built-in fonts have no glyphs for symbols like ✦

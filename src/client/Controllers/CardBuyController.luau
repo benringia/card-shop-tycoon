@@ -72,35 +72,36 @@ local function getCard(part: BasePart): (Card?, boolean)
 	return card, part:GetAttribute("Foil") == true
 end
 
--- A displayed card's level and stars (1, 0 for a plain copy)
-local function getGrowthFromPart(part: BasePart): (number, number)
-	local level, stars = part:GetAttribute("Level"), part:GetAttribute("Stars")
-	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else BeastRules.START_STARS
+-- A displayed card's level, stars and grade (1, 0, C for a plain Grade C copy)
+local function getGrowthFromPart(part: BasePart): (number, number, string)
+	local level, stars, grade = part:GetAttribute("Level"), part:GetAttribute("Stars"), part:GetAttribute("Grade")
+	return if typeof(level) == "number" then level else 1,
+		if typeof(stars) == "number" then stars else BeastRules.START_STARS,
+		if BeastRules.isGrade(grade) then grade :: string else BeastRules.DEFAULT_GRADE
 end
 
--- Always drawn, so visitors can see the level and stars of every card
+-- Always drawn, so visitors can see the grade, level and stars of every card
 local function getFaceGrowth(part: BasePart): CardFace.Growth
-	local level, stars = getGrowthFromPart(part)
-	return { level = level, stars = stars }
+	local level, stars, grade = getGrowthFromPart(part)
+	return { level = level, stars = stars, grade = grade }
 end
 
--- "Lv 12 · 2 stars"
+-- "Grade S · Lv 12 · 2 stars"
 local function describeKind(part: BasePart): string
-	local level, stars = getGrowthFromPart(part)
-	return BeastRules.describeGrowth(level, stars)
+	local level, stars, grade = getGrowthFromPart(part)
+	return `{BeastRules.describeGrade(grade)} · {BeastRules.describeGrowth(level, stars)}`
 end
 
 local function getMarket(part: BasePart, card: Card, foil: boolean): number
-	local level, stars = getGrowthFromPart(part)
-	return CardRules.getMarketValue(card, foil, level, stars)
+	local level, stars, grade = getGrowthFromPart(part)
+	return CardRules.getMarketValue(card, foil, level, stars, grade)
 end
 
 local function describe(part: BasePart): string
 	local card, foil = getCard(part)
 	local name = if card then card.name else "card"
 	name = if foil then `FOIL {name}` else name
-	local level, stars = getGrowthFromPart(part)
-	return `{name} ({BeastRules.describeGrowth(level, stars)})`
+	return `{name} ({describeKind(part)})`
 end
 
 local function getOwner(instance: Instance): Player?

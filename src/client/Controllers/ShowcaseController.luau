@@ -95,10 +95,12 @@ local function makeCardFace(parent: Instance, card: Card, foil: boolean, showVal
 	return face
 end
 
--- A displayed card's level and stars (1, 0 for a plain copy)
-local function getGrowthFromPart(part: BasePart): (number, number)
-	local level, stars = part:GetAttribute("Level"), part:GetAttribute("Stars")
-	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else BeastRules.START_STARS
+-- A displayed card's level, stars and grade (1, 0, C for a plain Grade C copy)
+local function getGrowthFromPart(part: BasePart): (number, number, string)
+	local level, stars, grade = part:GetAttribute("Level"), part:GetAttribute("Stars"), part:GetAttribute("Grade")
+	return if typeof(level) == "number" then level else 1,
+		if typeof(stars) == "number" then stars else BeastRules.START_STARS,
+		if BeastRules.isGrade(grade) then grade :: string else BeastRules.DEFAULT_GRADE
 end
 
 -- All, every rarity from Common up (read from the config, so new tiers show up here), then Foil
@@ -156,21 +158,24 @@ local function queuePrice(slot: number, price: number)
 	task.delay(SEND_DELAY, flush, token)
 end
 
-local function nudge(slot: number, card: Card, foil: boolean, level: number, stars: number, current: number, direction: number)
-	local step = CardRules.getPriceStep(card, foil, level, stars)
-	queuePrice(slot, CardRules.clampPrice(current + direction * step, card, foil, level, stars))
+-- One copy's growth, so price maths use its real value
+type CopyGrowth = { level: number, stars: number, grade: string }
+
+local function nudge(slot: number, card: Card, foil: boolean, growth: CopyGrowth, current: number, direction: number)
+	local step = CardRules.getPriceStep(card, foil, growth.level, growth.stars, growth.grade)
+	queuePrice(slot, CardRules.clampPrice(current + direction * step, card, foil, growth.level, growth.stars, growth.grade))
 end
 
 -- Accepts "275", "$275.50" or "1,200"; anything else puts the current price back.
 -- Clamped here for display; the server clamps again.
-local function setTypedPrice(slot: number, card: Card, foil: boolean, level: number, stars: number, box: TextBox)
+local function setTypedPrice(slot: number, card: Card, foil: boolean, growth: CopyGrowth, box: TextBox)
 	local cleaned = string.gsub(box.Text, "[%$,%s]", "")
 	local typed = tonumber(cleaned)
 	if not typed or typed ~= typed then
 		render()
 		return
 	end
-	queuePrice(slot, CardRules.clampPrice(typed, card, foil, level, stars))
+	queuePrice(slot, CardRules.clampPrice(typed, card, foil, growth.level, growth.stars, growth.grade))
 end
 
 -- The middle of the price stepper, between the - and + buttons
@@ -191,9 +196,10 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	local foil = cardPart:GetAttribute("Foil") == true
 	local serverPrice = cardPart:GetAttribute("Price")
 	local price = pending[slot] or (if typeof(serverPrice) == "number" then serverPrice else 0)
-	local level, stars = getGrowthFromPart(cardPart)
-	local market = CardRules.getMarketValue(card, foil, level, stars)
-	local step = CardRules.getPriceStep(card, foil, level, stars)
+	local level, stars, grade = getGrowthFromPart(cardPart)
+	local growth: CopyGrowth = { level = level, stars = stars, grade = grade }
+	local market = CardRules.getMarketValue(card, foil, level, stars, grade)
+	local step = CardRules.getPriceStep(card, foil, level, stars, grade)
 
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = slot
@@ -211,7 +217,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	makeCardFace(thumbnail, card, foil, false)
 
 	local titleText = `{slot}. {describe(card, foil)}`
-	titleText ..= ` · {BeastRules.describeGrowth(level, stars)}`
+	titleText ..= ` · {BeastRules.describeGrade(grade)} · {BeastRules.describeGrowth(level, stars)}`
 	local title = UIKit.label(frame, titleText, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
 	title.Position = UDim2.fromOffset(THUMBNAIL_SIZE.X + 18, 8)
 	title.Size = UDim2.new(1, -(THUMBNAIL_SIZE.X + 130), 0, 32)
@@ -241,7 +247,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	minus.Size = UDim2.new(0, STEP_BUTTON_WIDTH, 1, 0)
 	minus.TextSize = 16
 	minus.Activated:Connect(function()
-		nudge(slot, card, foil, level, stars, price, -1)
+		nudge(slot, card, foil, growth, price, -1)
 	end)
 
 	-- Collector Cases (sold to players) also take a typed price; Glass Showcases use the steps only
@@ -255,7 +261,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 		box.TextSize = 24
 		box.TextColor3 = PRICE_TEXT_COLOR
 		box.FocusLost:Connect(function()
-			setTypedPrice(slot, card, foil, level, stars, box)
+			setTypedPrice(slot, card, foil, growth, box)
 		end)
 		box.Parent = stepper
 		placePriceBox(box)
@@ -271,7 +277,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	plus.Size = UDim2.new(0, STEP_BUTTON_WIDTH, 1, 0)
 	plus.TextSize = 16
 	plus.Activated:Connect(function()
-		nudge(slot, card, foil, level, stars, price, 1)
+		nudge(slot, card, foil, growth, price, 1)
 	end)
 
 	-- Market comparison, plus how customers react for a Glass Showcase
@@ -329,19 +335,21 @@ local function renderPicker()
 	clearChildren(pickerList)
 	refreshFilterButtons()
 	local collection = BinderController.GetCollection()
+	local graded = BinderController.GetGradedStacks()
 	local order = 0
-	local function addTile(card: Card, foil: boolean, count: number)
+	-- One tile per stack of plain copies (card, grade, foil); the server takes a copy of exactly that grade
+	local function addTile(card: Card, foil: boolean, grade: string, count: number)
 		if not passesFilter(card, foil) then
 			return
 		end
 		order += 1
 		local tile = Instance.new("TextButton")
-		tile.Name = describe(card, foil)
+		tile.Name = `{describe(card, foil)} {grade}`
 		tile.LayoutOrder = order
 		tile.BackgroundTransparency = 1
 		tile.Text = ""
 		tile.Parent = pickerList
-		makeCardFace(tile, card, foil, true)
+		makeCardFace(tile, card, foil, true, { level = 1, stars = BeastRules.START_STARS, grade = grade })
 
 		local badge = UIKit.label(tile, `x{count}`, Enum.Font.GothamBold, 14, UIKit.Colors.Text)
 		badge.AnchorPoint = Vector2.new(1, 0)
@@ -358,7 +366,7 @@ local function renderPicker()
 			local slot = pickerSlot
 			picker.Visible = false
 			if part and slot then
-				Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, card.id, foil)
+				Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, card.id, foil, nil, grade)
 			end
 		end)
 	end
@@ -369,7 +377,7 @@ local function renderPicker()
 	end
 	table.sort(raised, function(a, b)
 		local cardA, cardB = Cards.ById[a.cardId], Cards.ById[b.cardId]
-		return BeastRules.getValue(cardA, a.foil, a.level, a.stars) > BeastRules.getValue(cardB, b.foil, b.level, b.stars)
+		return BeastRules.getValue(cardA, a.foil, a.level, a.stars, a.grade) > BeastRules.getValue(cardB, b.foil, b.level, b.stars, b.grade)
 	end)
 	for _, beast in raised do
 		local card = Cards.ById[beast.cardId]
@@ -380,7 +388,7 @@ local function renderPicker()
 			tile.BackgroundTransparency = 1
 			tile.Text = ""
 			tile.Parent = pickerList
-			makeCardFace(tile, card, beast.foil, true, { level = beast.level, stars = beast.stars })
+			makeCardFace(tile, card, beast.foil, true, { level = beast.level, stars = beast.stars, grade = beast.grade })
 			tile.Activated:Connect(function()
 				local part, slot = casePart, pickerSlot
 				picker.Visible = false
@@ -390,15 +398,17 @@ local function renderPicker()
 			end)
 		end
 	end
-	-- Then plain copies, rarest first: those are the ones worth showing off
+	-- Then plain copies, rarest first, best grade and foil first: those are the ones worth showing off
 	for _, card in Cards.RarestFirst do
-		local owned = collection[card.id]
-		if owned then
-			if owned.foil > 0 then
-				addTile(card, true, owned.foil)
+		local byGrade = graded[card.id] or {}
+		for index = #BeastRules.GRADES, 1, -1 do
+			local grade = BeastRules.GRADES[index]
+			local owned = byGrade[grade]
+			if owned and owned.foil > 0 then
+				addTile(card, true, grade, owned.foil)
 			end
-			if owned.normal > 0 then
-				addTile(card, false, owned.normal)
+			if owned and owned.normal > 0 then
+				addTile(card, false, grade, owned.normal)
 			end
 		end
 	end

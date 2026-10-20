@@ -16,6 +16,7 @@ local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 
 local Controllers = script.Parent :: Instance
@@ -27,11 +28,12 @@ local AnnouncementController = require(Controllers:WaitForChild("AnnouncementCon
 
 type Card = typeof(Cards.List[1])
 type Pack = typeof(Packs.ById[""])
-type PullResult = { cardId: string, foil: boolean }
+type PullResult = { cardId: string, foil: boolean, grade: string }
 
 type CardView = {
 	card: Card,
 	foil: boolean,
+	grade: string,
 	button: TextButton,
 	inner: Frame,
 	stroke: UIStroke,
@@ -84,7 +86,7 @@ local function playSound(soundId: string)
 end
 
 local function getCardValue(view: CardView): number
-	return CardRules.getMarketValue(view.card, view.foil)
+	return CardRules.getMarketValue(view.card, view.foil, 1, BeastRules.START_STARS, view.grade)
 end
 
 local function buildOddsText(pack: Pack): string
@@ -133,7 +135,7 @@ end
 local function flipCard(view: CardView)
 	playSound(PackOpening.FLIP_SOUND_ID)
 	tween(view.inner, PackOpening.FLIP_SECONDS, { Size = UDim2.fromScale(0, 1) }).Completed:Wait()
-	CardFace.render(view.inner, view.stroke, view.card, view.foil)
+	CardFace.render(view.inner, view.stroke, view.card, view.foil, true, { level = 1, stars = BeastRules.START_STARS, grade = view.grade })
 	tween(view.inner, PackOpening.FLIP_SECONDS, { Size = UDim2.fromScale(1, 1) }).Completed:Wait()
 end
 
@@ -199,7 +201,7 @@ local function onCardTapped(view: CardView)
 	end
 end
 
-local function makeCardView(card: Card, foil: boolean, order: number): CardView
+local function makeCardView(card: Card, foil: boolean, grade: string, order: number): CardView
 	local button = Instance.new("TextButton")
 	button.Name = "Card" .. order
 	button.LayoutOrder = order
@@ -229,6 +231,7 @@ local function makeCardView(card: Card, foil: boolean, order: number): CardView
 	local view: CardView = {
 		card = card,
 		foil = foil,
+		grade = grade,
 		button = button,
 		inner = inner,
 		stroke = stroke,
@@ -256,7 +259,8 @@ local function dealCards(results: { PullResult })
 	for index, result in results do
 		local card = Cards.ById[result.cardId]
 		if card then
-			table.insert(views, makeCardView(card, result.foil == true, index))
+			local grade = if BeastRules.isGrade(result.grade) then result.grade else BeastRules.DEFAULT_GRADE
+			table.insert(views, makeCardView(card, result.foil == true, grade, index))
 			task.wait(PackOpening.DEAL_DELAY)
 		end
 	end
