@@ -231,6 +231,8 @@ Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 
 `STAR_VALUE = { 1, 1.5, 2.25, 3.5, 5 }`.
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
+Stars: a beast must reach Lv 30 (`STAR_UPGRADE_LEVEL`) before it can gain its next star (star upgrades arrive with roadmap step 4).
+The binder shows this on every beast ("Stars 1/5 · level up to Lv 30 to unlock the next star").
 Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to your best beast or rarest fresh card.
 
 ---

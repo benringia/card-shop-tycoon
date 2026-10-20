@@ -41,9 +41,20 @@ function BeastRules.sanitize(raw: unknown): BeastMath.BeastData?
 	return BeastMath.sanitize(Beasts, raw, isKnownCard)
 end
 
--- "Lv 6 · 2-star" (text, because Roblox's built-in fonts can't draw a star symbol)
+-- "Lv 6 · 2 stars" (text, because Roblox's built-in fonts can't draw a star symbol)
 function BeastRules.describeGrowth(level: number, stars: number): string
-	return `Lv {level} · {stars}-star`
+	return `Lv {level} · {stars} {if stars == 1 then "star" else "stars"}`
+end
+
+-- What the player needs to do for the next star
+function BeastRules.describeStarProgress(level: number, stars: number): string
+	local progress = `Stars {stars}/{Beasts.MAX_STARS}`
+	if stars >= Beasts.MAX_STARS then
+		return `{progress} · fully upgraded`
+	elseif level < Beasts.STAR_UPGRADE_LEVEL then
+		return `{progress} · level up to Lv {Beasts.STAR_UPGRADE_LEVEL} to unlock the next star`
+	end
+	return `{progress} · ready for a star upgrade (coming soon)`
 end
 
 return BeastRules

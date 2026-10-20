@@ -34,6 +34,11 @@ type Tile = {
 local TILE_SIZE = Vector2.new(78, 112)
 local BINDER_KEY = Enum.KeyCode.B
 local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
+local BEAST_ROW_HEIGHT = 100
+local FRESH_ROW_HEIGHT = 64
+local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
+local XP_BAR_COLOR = Color3.fromRGB(90, 160, 255)
+local XP_TRACK_COLOR = Color3.fromRGB(25, 25, 35)
 
 local player = Players.LocalPlayer
 
@@ -49,9 +54,12 @@ local completionLabel: TextLabel
 local detail: Frame
 local detailInner: Frame
 local detailStroke: UIStroke
-local detailInfo: TextLabel
+local detailName: TextLabel
+local detailSubtitle: TextLabel
+local detailSummary: TextLabel
 local raisedList: ScrollingFrame
 local detailCard: Card? = nil
+local selectedBeastId: string? = nil -- the beast shown on the big card; nil shows a fresh copy
 local plotConnections: { RBXScriptConnection } = {}
 local refreshQueued = false
 
@@ -111,7 +119,105 @@ local function addCardFrame(parent: Instance): (Frame, UIStroke)
 	return inner, stroke
 end
 
-local function refreshDetail()
+local function clearRows()
+	for _, child in raisedList:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+end
+
+local function addRowText(row: GuiObject, text: string, y: number, height: number, font: Enum.Font, size: number, color: Color3): TextLabel
+	local label = UIKit.label(row, text, font, size, color)
+	label.Position = UDim2.fromOffset(10, y)
+	label.Size = UDim2.new(1, -20, 0, height)
+	label.ZIndex = 13
+	return label
+end
+
+local function makeRow(order: number, height: number, selected: boolean, onTap: () -> ()): TextButton
+	local row = Instance.new("TextButton")
+	row.LayoutOrder = order
+	row.Size = UDim2.new(1, -8, 0, height)
+	row.BackgroundColor3 = UIKit.Colors.Row
+	row.Text = ""
+	row.ZIndex = 12
+	row.Parent = raisedList
+	UIKit.corner(row, 8)
+	if selected then
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Color = UIKit.Colors.Accent
+		stroke.Thickness = 2
+		stroke.Parent = row
+	end
+	row.Activated:Connect(onTap)
+	return row
+end
+
+local refreshDetail: () -> ()
+
+local function selectBeast(beastId: string?)
+	selectedBeastId = beastId
+	refreshDetail()
+end
+
+-- One raised beast: growth and value / stats / XP bar / what it needs for the next star
+local function addBeastRow(card: Card, beast: Beast, order: number)
+	local row = makeRow(order, BEAST_ROW_HEIGHT, beast.id == selectedBeastId, function()
+		selectBeast(beast.id)
+	end)
+
+	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrowth(beast.level, beast.stars)}`
+	addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	local valueText = string.format("$%.2f", BeastRules.getValue(card, beast.foil, beast.level, beast.stars))
+	local value = addRowText(row, valueText, 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
+	value.TextXAlignment = Enum.TextXAlignment.Right
+
+	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars)
+	addRowText(row, `HP {stats.hp}   ATK {stats.atk}   SPD {stats.spd}`, 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+
+	-- XP bar with the numbers on it
+	local toNext = BeastRules.getXpToNext(beast.level)
+	local track = Instance.new("Frame")
+	track.Position = UDim2.fromOffset(10, 50)
+	track.Size = UDim2.new(1, -20, 0, 18)
+	track.BackgroundColor3 = XP_TRACK_COLOR
+	track.ZIndex = 13
+	track.Parent = row
+	UIKit.corner(track, 6)
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(if toNext > 0 then math.clamp(beast.xp / toNext, 0, 1) else 1, 1)
+	fill.BackgroundColor3 = if toNext > 0 then XP_BAR_COLOR else UIKit.Colors.Accent
+	fill.ZIndex = 14
+	fill.Parent = track
+	UIKit.corner(fill, 6)
+	local xpText = UIKit.label(track, if toNext > 0 then `XP {beast.xp} / {toNext}` else "MAX LEVEL", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
+	xpText.Size = UDim2.fromScale(1, 1)
+	xpText.TextXAlignment = Enum.TextXAlignment.Center
+	xpText.TextStrokeTransparency = 0.6
+	xpText.ZIndex = 15
+
+	addRowText(row, BeastRules.describeStarProgress(beast.level, beast.stars), 72, 24, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+end
+
+-- Untouched copies: how many and what they're worth
+local function addFreshRow(card: Card, inBinder: Owned, order: number)
+	local row = makeRow(order, FRESH_ROW_HEIGHT, selectedBeastId == nil, function()
+		selectBeast(nil)
+	end)
+	local count = if inBinder.foil == 0
+		then `x{inBinder.normal}`
+		elseif inBinder.normal == 0 then `x{inBinder.foil} foil`
+		else `x{inBinder.normal} + {inBinder.foil} foil`
+	addRowText(row, `Fresh copies {count} · Lv 1`, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	local valueText = string.format("$%.2f", CardRules.getMarketValue(card, inBinder.foil > 0))
+	local value = addRowText(row, valueText, 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
+	value.TextXAlignment = Enum.TextXAlignment.Right
+	addRowText(row, "Give a copy XP and it becomes a beast that levels up.", 30, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+end
+
+refreshDetail = function()
 	local card = detailCard
 	if not card then
 		return
@@ -119,61 +225,54 @@ local function refreshDetail()
 	local inBinder = getCount(collection, card.id)
 	local shown = getCount(displayed, card.id)
 	local raised = getRaised(card.id)
-	if inBinder.normal + inBinder.foil + shown.normal + shown.foil + #raised == 0 then
+	local freshCount = inBinder.normal + inBinder.foil
+	if freshCount + shown.normal + shown.foil + #raised == 0 then
 		detail.Visible = false
 		detailCard = nil
 		return
 	end
 
-	-- Show the foil version when the player has one, it's the one they'll want to look at
-	CardFace.render(detailInner, detailStroke, card, inBinder.foil + shown.foil > 0)
-	detailInfo.Text = string.format(
-		"#%02d %s · %s %s\nFresh: %d normal, %d foil · on display: %d\nMarket (fresh): $%.2f (foil $%.2f)",
-		card.number,
-		card.name,
-		card.element,
-		card.rarity,
-		inBinder.normal,
-		inBinder.foil,
-		shown.normal + shown.foil,
-		CardRules.getMarketValue(card, false),
-		CardRules.getMarketValue(card, true)
-	)
-
-	-- Raised beasts of this card, strongest first
-	for _, child in raisedList:GetChildren() do
-		if child:IsA("TextLabel") then
-			child:Destroy()
+	-- Keep the selection valid: if that beast left the binder, show the fresh copies (or the best beast)
+	local selected: Beast? = nil
+	for _, beast in raised do
+		if beast.id == selectedBeastId then
+			selected = beast
 		end
 	end
+	if not selected and freshCount == 0 then
+		selected = raised[1]
+	end
+	selectedBeastId = if selected then selected.id else nil
+
+	if selected then
+		CardFace.render(detailInner, detailStroke, card, selected.foil, true, { level = selected.level, stars = selected.stars })
+	else
+		-- Show the foil version when the player has one, it's the one they'll want to look at
+		CardFace.render(detailInner, detailStroke, card, inBinder.foil + shown.foil > 0)
+	end
+
+	detailName.Text = card.name
+	detailSubtitle.Text = string.format("#%02d · %s · %s", card.number, card.element, card.rarity)
+	local onDisplay = shown.normal + shown.foil
+	detailSummary.Text = string.format(
+		"%d raised · %d fresh%s%s",
+		#raised,
+		freshCount,
+		if onDisplay > 0 then ` · {onDisplay} on display` else "",
+		if #raised + (if freshCount > 0 then 1 else 0) > 1 then " · tap a row to view it" else ""
+	)
+
+	clearRows()
 	for index, beast in raised do
-		local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars)
-		local toNext = BeastRules.getXpToNext(beast.level)
-		local line = UIKit.label(
-			raisedList,
-			string.format(
-				"%s%s · XP %s · $%.2f\nHP %d  ATK %d  SPD %d",
-				if beast.foil then "FOIL " else "",
-				BeastRules.describeGrowth(beast.level, beast.stars),
-				if toNext > 0 then `{beast.xp}/{toNext}` else "max",
-				BeastRules.getValue(card, beast.foil, beast.level, beast.stars),
-				stats.hp,
-				stats.atk,
-				stats.spd
-			),
-			Enum.Font.Gotham,
-			12,
-			UIKit.Colors.Text
-		)
-		line.LayoutOrder = index
-		line.Size = UDim2.new(1, -6, 0, 30)
-		line.ZIndex = 12
+		addBeastRow(card, beast, index)
 	end
-	if #raised == 0 then
-		local none = UIKit.label(raisedList, "No raised beasts yet. " .. HOW_TO_SELL, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-		none.Size = UDim2.new(1, -6, 0, 60)
-		none.ZIndex = 12
+	if freshCount > 0 then
+		addFreshRow(card, inBinder, #raised + 1)
 	end
+	local footer = UIKit.label(raisedList, HOW_TO_SELL, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+	footer.LayoutOrder = #raised + 2
+	footer.Size = UDim2.new(1, -8, 0, 44)
+	footer.ZIndex = 12
 end
 
 local function refresh()
@@ -186,7 +285,11 @@ local function refresh()
 		local raised = #getRaised(tile.card.id)
 		if binderTotal + shown.normal + shown.foil + raised > 0 then
 			ownedKinds += 1
-			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0, false)
+			local hasFoilBeast = false
+			for _, beast in getRaised(tile.card.id) do
+				hasFoilBeast = hasFoilBeast or beast.foil
+			end
+			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false)
 			local freshText = if binderTotal == 0
 				then (if raised > 0 then "" else "on display")
 				elseif inBinder.foil == 0 then `x{inBinder.normal}`
@@ -209,6 +312,8 @@ end
 
 local function openDetail(card: Card)
 	detailCard = card
+	local best = getRaised(card.id)[1] -- open on the strongest beast, the most interesting one
+	selectedBeastId = if best then best.id else nil
 	refreshDetail()
 	detail.Visible = detailCard ~= nil
 end
@@ -262,15 +367,26 @@ local function buildDetail(parent: Frame)
 	cardHolder.Parent = detail
 	detailInner, detailStroke = addCardFrame(cardHolder)
 
-	detailInfo = UIKit.label(detail, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	detailInfo.Position = UDim2.fromOffset(180, 16)
-	detailInfo.Size = UDim2.new(1, -192, 0, 92)
-	detailInfo.TextYAlignment = Enum.TextYAlignment.Top
-	detailInfo.ZIndex = 11
+	detailName = UIKit.label(detail, "", Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
+	detailName.Position = UDim2.fromOffset(180, 12)
+	detailName.Size = UDim2.new(1, -192, 0, 26)
+	detailName.ZIndex = 11
 
+	detailSubtitle = UIKit.label(detail, "", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
+	detailSubtitle.Position = UDim2.fromOffset(180, 38)
+	detailSubtitle.Size = UDim2.new(1, -192, 0, 16)
+	detailSubtitle.ZIndex = 11
+
+	detailSummary = UIKit.label(detail, "", Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+	detailSummary.Position = UDim2.fromOffset(180, 56)
+	detailSummary.Size = UDim2.new(1, -192, 0, 28)
+	detailSummary.TextYAlignment = Enum.TextYAlignment.Top
+	detailSummary.ZIndex = 11
+
+	-- Beasts and fresh copies; scrolls when there are many, ends above the Back button
 	raisedList = Instance.new("ScrollingFrame")
-	raisedList.Position = UDim2.fromOffset(180, 112)
-	raisedList.Size = UDim2.new(1, -192, 0, 76)
+	raisedList.Position = UDim2.fromOffset(180, 88)
+	raisedList.Size = UDim2.new(1, -184, 1, -150)
 	raisedList.BackgroundTransparency = 1
 	raisedList.BorderSizePixel = 0
 	raisedList.ScrollBarThickness = 4
@@ -279,12 +395,12 @@ local function buildDetail(parent: Frame)
 	raisedList.ZIndex = 11
 	raisedList.Parent = detail
 	local raisedLayout = Instance.new("UIListLayout")
-	raisedLayout.Padding = UDim.new(0, 4)
+	raisedLayout.Padding = UDim.new(0, 6)
 	raisedLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	raisedLayout.Parent = raisedList
 
 	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
-	back.Position = UDim2.fromOffset(180, 194)
+	back.Position = UDim2.new(0, 180, 1, -56)
 	back.Size = UDim2.new(1, -192, 0, 48)
 	back.TextSize = 16
 	back.ZIndex = 12

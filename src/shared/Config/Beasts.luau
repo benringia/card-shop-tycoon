@@ -29,4 +29,7 @@ return {
 	-- XP to go from level L to L + 1 = round(XP_BASE * L ^ XP_EXPONENT)
 	XP_BASE = 50,
 	XP_EXPONENT = 1.5,
+
+	-- A beast must reach this level before it can gain a star (star upgrades arrive with star merging)
+	STAR_UPGRADE_LEVEL = 30,
 }
