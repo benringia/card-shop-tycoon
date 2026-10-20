@@ -24,6 +24,8 @@ local NAMES = {
 	"RequestCollection", -- client → server: ask for a CollectionChanged (sent on client start)
 	"QuickSell", -- client → server: (cardId: string, foil: boolean) sell one copy
 	"SellDuplicates", -- client → server: sell every copy beyond the first of each card (normal and foil kept separately)
+	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
+	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 }
 
 local isServer = RunService:IsServer()
@@ -68,4 +70,6 @@ return {
 	RequestCollection = remotes.RequestCollection,
 	QuickSell = remotes.QuickSell,
 	SellDuplicates = remotes.SellDuplicates,
+	PullAnnouncement = remotes.PullAnnouncement,
+	PullRevealed = remotes.PullRevealed,
 }

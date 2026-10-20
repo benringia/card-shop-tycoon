@@ -23,6 +23,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 
 type Card = typeof(Cards.List[1])
 type Pack = typeof(Packs.ById[""])
@@ -183,6 +184,11 @@ local function onCardTapped(view: CardView)
 	flippedCount += 1
 	if view.card.rarity == "Legendary" then
 		task.spawn(flashScreen)
+	end
+	-- Big pulls go to chat only now that they're revealed: ours locally, everyone else via the server
+	if CardRules.shouldAnnounce(view.card, view.foil) then
+		AnnouncementController.Show(player.DisplayName, view.card, view.foil)
+		Remotes.PullRevealed:FireServer(view.card.id, view.foil)
 	end
 	busy = false
 

@@ -11,6 +11,7 @@ local RegisterController = require(Controllers:WaitForChild("RegisterController"
 local CarryController = require(Controllers:WaitForChild("CarryController"))
 local PackOpeningController = require(Controllers:WaitForChild("PackOpeningController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
+local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 
 UIController.Start()
 OrderController.Start()
@@ -21,3 +22,4 @@ RegisterController.Start()
 CarryController.Start()
 PackOpeningController.Start()
 BinderController.Start()
+AnnouncementController.Start()

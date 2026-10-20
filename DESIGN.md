@@ -331,6 +331,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── RegisterController.luau
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
+    │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   └── BinderController.luau
     │   └── Util/
     │       └── UIKit.luau              # shared UI building helpers
@@ -350,6 +351,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
         │   ├── Collection.luau # quick sell rate
+        │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Levels.luau
         │   ├── Upgrades.luau
@@ -420,7 +422,7 @@ their saved data.
 - [x] Binder UI
 - [x] Quick sell cards
 - [x] Saving with ProfileStore
-- [ ] Server pull announcements
+- [x] Server pull announcements
 
 **Out (later):** showcase selling to players, trading, staff, expansions, card battles, Set 2, events, most cosmetics.
 
