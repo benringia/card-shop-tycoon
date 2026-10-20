@@ -204,7 +204,7 @@ Direction: TCG card shop meets creature collecting. Cards become beasts that gro
 Full spec: `docs/superpowers/specs/2026-10-20-beast-cards-design.md`.
 
 Roadmap (one sub-project at a time):
-1. **Beast cards** — level, XP, stars, stats, value (built, awaiting Studio test).
+1. **Beast cards** — level, XP, stars, grades, stats, value (done).
 2. **Shop jobs** — beasts work in your shop (replace hired staff, 7.4).
 3. **Party & summoning** — summon beasts to follow and fight beside you.
 4. **Star merging** — the Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`).
