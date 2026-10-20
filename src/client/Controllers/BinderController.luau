@@ -1,6 +1,8 @@
 --!strict
 -- Binder: a two-page spread like a real binder, 9 card pockets per page, owned cards in colour with
--- counts, missing ones greyed out. Turn pages with the arrows.
+-- counts, missing ones greyed out. Turn pages with the arrows; search and filter chips narrow the pages
+-- (built for card lists far bigger than Set 1). Hovering a pocket with a mouse shows a tooltip.
+-- Only the pockets on the open spread are drawn, so a big collection stays cheap.
 -- Tap an owned card to see it large. Cards earn money only from a showcase, so the binder just
 -- shows what you have; cards on display in your cases count towards completion.
 -- The server sends the binder whenever it changes; displayed cards are read from your plot.
@@ -11,6 +13,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -45,6 +48,9 @@ local BINDER_MAX_SIZE = Vector2.new(920, 600)
 local COVER_COLOR = Color3.fromRGB(70, 40, 30) -- binder cover and spine
 local PAGE_COLOR = Color3.fromRGB(40, 40, 54)
 local TITLE_VALUE_ROOM = 96 -- right side of a row title kept free for the price
+local TOOLTIP_WIDTH = 230
+local FILTER_CHIP_WIDTH = 84
+local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
 local BINDER_KEY = Enum.KeyCode.B
 local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
 local BEAST_ROW_HEIGHT = 100
@@ -67,6 +73,12 @@ local completionLabel: TextLabel
 local pages: { Frame } = {} -- left and right page
 local pageLabel: TextLabel
 local spreadIndex = 1
+local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
+local binderFilter = ALL_FILTER -- All, Owned, Missing or a rarity name
+local searchText = ""
+local filterButtons: { [string]: TextButton } = {}
+local tooltip: Frame
+local tooltipText: TextLabel
 
 local detail: Frame
 local detailInner: Frame
@@ -376,47 +388,187 @@ refreshDetail = function()
 	footer.ZIndex = 12
 end
 
-local function refresh()
-	displayed = readDisplayedCards()
-	local ownedKinds = 0
-	for _, tile in tiles do
-		local inBinder = getCount(collection, tile.card.id)
-		local shown = getCount(displayed, tile.card.id)
-		local binderTotal = inBinder.normal + inBinder.foil
-		local raised = #getRaised(tile.card.id)
-		if binderTotal + shown.normal + shown.foil + raised > 0 then
-			ownedKinds += 1
-			local hasFoilBeast = false
-			for _, beast in getRaised(tile.card.id) do
-				hasFoilBeast = hasFoilBeast or beast.foil
-			end
-			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false)
-			-- Total copies in the binder; the level chip shows the best levelled one (details in the card view)
-			local owned = binderTotal + raised
-			tile.countLabel.Text = if owned > 0 then `Owned {owned}` else "on display"
-			tile.countLabel.Visible = true
-			-- Chip: best grade owned, plus the best levelled copy's level
-			local bestGrade = getBestGrade(tile.card.id)
-			local best = getRaised(tile.card.id)[1]
-			local parts = {}
-			if bestGrade then
-				table.insert(parts, bestGrade)
-			end
-			if best then
-				table.insert(parts, `Lv {best.level}`)
-			end
-			tile.levelLabel.Text = table.concat(parts, " · ")
-			tile.levelLabel.Visible = #parts > 0
-		else
-			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
-			tile.countLabel.Visible = false
-			tile.levelLabel.Visible = false
+-- Copies of this card the player has: in the binder (plain + levelled) and on display
+local function getOwnedCounts(cardId: string): (number, number)
+	local inBinder = getCount(collection, cardId)
+	local shown = getCount(displayed, cardId)
+	return inBinder.normal + inBinder.foil + #getRaised(cardId), shown.normal + shown.foil
+end
+
+local function isCollected(cardId: string): boolean
+	local owned, onDisplay = getOwnedCounts(cardId)
+	return owned + onDisplay > 0
+end
+
+-- Draws one pocket (only called for pockets on the open spread)
+local function renderTile(tile: Tile)
+	local cardId = tile.card.id
+	local inBinder = getCount(collection, cardId)
+	local shown = getCount(displayed, cardId)
+	local owned, onDisplay = getOwnedCounts(cardId)
+	if owned + onDisplay == 0 then
+		CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
+		tile.countLabel.Visible = false
+		tile.levelLabel.Visible = false
+		return
+	end
+	local raised = getRaised(cardId)
+	local hasFoilBeast = false
+	for _, beast in raised do
+		hasFoilBeast = hasFoilBeast or beast.foil
+	end
+	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false)
+	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
+	tile.countLabel.Text = if owned > 0 then `Owned {owned}` else "on display"
+	tile.countLabel.Visible = true
+	local bestGrade = getBestGrade(cardId)
+	local parts = {}
+	if bestGrade then
+		table.insert(parts, bestGrade)
+	end
+	if raised[1] then
+		table.insert(parts, `Lv {raised[1].level}`)
+	end
+	tile.levelLabel.Text = table.concat(parts, " · ")
+	tile.levelLabel.Visible = #parts > 0
+end
+
+local function passesFilter(card: Card): boolean
+	if searchText ~= "" then
+		local query = string.lower(searchText)
+		local number = tonumber((string.gsub(query, "#", "")))
+		local nameMatch = string.find(string.lower(card.name), query, 1, true) ~= nil
+		if not nameMatch and number ~= card.number then
+			return false
 		end
 	end
+	if binderFilter == OWNED_FILTER then
+		return isCollected(card.id)
+	elseif binderFilter == MISSING_FILTER then
+		return not isCollected(card.id)
+	elseif binderFilter ~= ALL_FILTER then
+		return card.rarity == binderFilter
+	end
+	return true
+end
 
-	local percent = math.floor(ownedKinds / #Cards.List * 100)
-	completionLabel.Text = `{ownedKinds}/{#Cards.List} cards · {percent}%`
+local function getSpreadCount(): number
+	return math.max(1, math.ceil(#visibleTiles / (CARDS_PER_PAGE * 2)))
+end
+
+-- Puts the tiles of the current spread into the two pages and draws them; the rest wait off-screen
+local function showSpread(index: number)
+	spreadIndex = math.clamp(index, 1, getSpreadCount())
+	local first = (spreadIndex - 1) * CARDS_PER_PAGE * 2 + 1
+	local shownSet: { [Tile]: boolean } = {}
+	for position, tile in visibleTiles do
+		local offset = position - first
+		if offset >= 0 and offset < CARDS_PER_PAGE * 2 then
+			shownSet[tile] = true
+			tile.button.LayoutOrder = offset
+			tile.button.Parent = pages[if offset < CARDS_PER_PAGE then 1 else 2]
+			renderTile(tile)
+		end
+	end
+	for _, tile in tiles do
+		if not shownSet[tile] then
+			tile.button.Parent = nil
+		end
+	end
+	if #visibleTiles == 0 then
+		pageLabel.Text = "No cards match"
+		return
+	end
+	local leftPage = spreadIndex * 2 - 1
+	local cardWord = if #visibleTiles == 1 then "card" else "cards"
+	pageLabel.Text = `Pages {leftPage}-{leftPage + 1} of {getSpreadCount() * 2} · {#visibleTiles} {cardWord}`
+end
+
+local function refreshFilterButtons()
+	for filter, button in filterButtons do
+		button.BackgroundColor3 = if filter == binderFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	end
+end
+
+-- Re-applies search and filter, then redraws the open spread (keeping the page when possible)
+local function applyFilter()
+	visibleTiles = {}
+	for _, tile in tiles do
+		if passesFilter(tile.card) then
+			table.insert(visibleTiles, tile)
+		end
+	end
+	refreshFilterButtons()
+	showSpread(spreadIndex)
+end
+
+local function refresh()
+	displayed = readDisplayedCards()
+	local collected = 0
+	for _, card in Cards.List do
+		if isCollected(card.id) then
+			collected += 1
+		end
+	end
+	local percent = math.floor(collected / #Cards.List * 100)
+	completionLabel.Text = `{collected}/{#Cards.List} cards · {percent}%`
+	applyFilter()
 	refreshDetail()
+end
+
+-- Tooltip (mouse only) -------------------------------------------------------------------------------
+
+local function describeTooltip(card: Card): string
+	local lines = { card.name, `{card.rarity} · {card.element} · #{card.number}` }
+	local owned, onDisplay = getOwnedCounts(card.id)
+	if owned + onDisplay == 0 then
+		table.insert(lines, "Not collected yet")
+		return table.concat(lines, "\n")
+	end
+	table.insert(lines, `Owned {owned}{if onDisplay > 0 then ` · {onDisplay} on display` else ""}`)
+	local entries = getEntries(card)
+	local bestGrade = getBestGrade(card.id)
+	if bestGrade then
+		table.insert(lines, `Best grade {bestGrade}`)
+	end
+	local raised = getRaised(card.id)
+	if raised[1] then
+		table.insert(lines, `Best level Lv {raised[1].level}`)
+	end
+	if entries[1] then
+		local low, high = math.huge, 0
+		for _, entry in entries do
+			low = math.min(low, entry.value)
+			high = math.max(high, entry.value)
+		end
+		table.insert(lines, `Strongest: Power {entries[1].power}`)
+		table.insert(lines, if low == high then string.format("Worth $%.2f", high) else string.format("Worth $%.2f - $%.2f", low, high))
+	end
+	table.insert(lines, "Tap for details")
+	return table.concat(lines, "\n")
+end
+
+local function showTooltip(tile: Tile)
+	if not UserInputService.MouseEnabled or not tile.button.Parent then
+		return
+	end
+	tooltipText.Text = describeTooltip(tile.card)
+	-- Beside the pocket, kept on screen
+	local screen = tooltip.Parent :: any
+	local origin: Vector2 = screen.AbsolutePosition
+	local screenSize: Vector2 = screen.AbsoluteSize
+	local button = tile.button
+	local x = button.AbsolutePosition.X - origin.X + button.AbsoluteSize.X + 8
+	if x + TOOLTIP_WIDTH > screenSize.X then
+		x = button.AbsolutePosition.X - origin.X - TOOLTIP_WIDTH - 8
+	end
+	local y = button.AbsolutePosition.Y - origin.Y
+	tooltip.Position = UDim2.fromOffset(math.max(0, x), math.clamp(y, 0, math.max(0, screenSize.Y - tooltip.AbsoluteSize.Y)))
+	tooltip.Visible = true
+end
+
+local function hideTooltip()
+	tooltip.Visible = false
 end
 
 local function openDetail(card: Card)
@@ -461,8 +613,13 @@ local function buildTile(card: Card, parent: Instance): Tile
 
 	local tile: Tile = { card = card, button = button, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
 	button.Activated:Connect(function()
+		hideTooltip()
 		openDetail(card)
 	end)
+	button.MouseEnter:Connect(function()
+		showTooltip(tile)
+	end)
+	button.MouseLeave:Connect(hideTooltip)
 	return tile
 end
 
@@ -530,27 +687,6 @@ local function buildDetail(parent: Frame)
 	end)
 end
 
-local function getSpreadCount(): number
-	return math.max(1, math.ceil(#tiles / (CARDS_PER_PAGE * 2)))
-end
-
--- Puts the tiles of the current spread into the two pages; the rest wait off-screen
-local function showSpread(index: number)
-	spreadIndex = math.clamp(index, 1, getSpreadCount())
-	local first = (spreadIndex - 1) * CARDS_PER_PAGE * 2 + 1
-	for position, tile in tiles do
-		local offset = position - first
-		if offset >= 0 and offset < CARDS_PER_PAGE * 2 then
-			tile.button.LayoutOrder = offset
-			tile.button.Parent = pages[if offset < CARDS_PER_PAGE then 1 else 2]
-		else
-			tile.button.Parent = nil
-		end
-	end
-	local leftPage = spreadIndex * 2 - 1
-	pageLabel.Text = `Pages {leftPage}-{leftPage + 1} of {getSpreadCount() * 2}`
-end
-
 -- Pockets fill each page 3 x 3 at card proportions, whatever the screen size
 local function fitPockets(page: Frame, grid: UIGridLayout)
 	local size = page.AbsoluteSize
@@ -594,15 +730,79 @@ local function buildPanel(parent: Instance)
 		sizeLimit.MaxSize = BINDER_MAX_SIZE
 	end
 
-	completionLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
+	completionLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
 	completionLabel.Position = UDim2.fromOffset(16, 56)
-	completionLabel.Size = UDim2.new(1, -32, 0, 24)
+	completionLabel.Size = UDim2.fromOffset(170, 32)
+
+	-- Search by name or number, then filter chips (they scroll sideways on narrow screens)
+	local search = Instance.new("TextBox")
+	search.Name = "Search"
+	search.Position = UDim2.fromOffset(190, 56)
+	search.Size = UDim2.fromOffset(180, 32)
+	search.BackgroundColor3 = UIKit.Colors.Row
+	search.ClearTextOnFocus = false
+	search.PlaceholderText = "Search name or #"
+	search.Text = ""
+	search.Font = Enum.Font.Gotham
+	search.TextSize = 14
+	search.TextColor3 = UIKit.Colors.Text
+	search.Parent = panel
+	UIKit.corner(search, 8)
+	search:GetPropertyChangedSignal("Text"):Connect(function()
+		searchText = search.Text
+		spreadIndex = 1
+		applyFilter()
+	end)
+
+	local chips = Instance.new("ScrollingFrame")
+	chips.Name = "Filters"
+	chips.Position = UDim2.fromOffset(380, 54)
+	chips.Size = UDim2.new(1, -392, 0, 38)
+	chips.BackgroundTransparency = 1
+	chips.BorderSizePixel = 0
+	chips.ScrollBarThickness = 3
+	chips.ScrollingDirection = Enum.ScrollingDirection.X
+	chips.CanvasSize = UDim2.new()
+	chips.AutomaticCanvasSize = Enum.AutomaticSize.X
+	chips.Parent = panel
+	local chipLayout = Instance.new("UIListLayout")
+	chipLayout.FillDirection = Enum.FillDirection.Horizontal
+	chipLayout.Padding = UDim.new(0, 6)
+	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chipLayout.Parent = chips
+	local filters = { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }
+	local rarities: { string } = {}
+	for name in Rarities.Tiers do
+		table.insert(rarities, name)
+	end
+	table.sort(rarities, function(a, b)
+		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
+	end)
+	for _, name in rarities do
+		table.insert(filters, name)
+	end
+	for index, filter in filters do
+		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
+		chip.LayoutOrder = index
+		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 32)
+		chip.TextSize = 13
+		local tier = Rarities.Tiers[filter]
+		if tier then
+			chip.TextColor3 = tier.color
+		end
+		chip.Activated:Connect(function()
+			binderFilter = filter
+			spreadIndex = 1
+			applyFilter()
+		end)
+		filterButtons[filter] = chip
+	end
 
 	-- The open binder: cover with a spine down the middle and a page either side
 	local spread = Instance.new("Frame")
 	spread.Name = "Spread"
-	spread.Position = UDim2.fromOffset(12, 84)
-	spread.Size = UDim2.new(1, -24, 1, -144)
+	spread.Position = UDim2.fromOffset(12, 96)
+	spread.Size = UDim2.new(1, -24, 1, -156)
 	spread.BackgroundColor3 = COVER_COLOR
 	spread.Parent = panel
 	UIKit.corner(spread, 12)
@@ -636,12 +836,36 @@ local function buildPanel(parent: Instance)
 	pageLabel.Size = UDim2.new(1, -168, 0, 46)
 	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
 
+	tooltip = Instance.new("Frame")
+	tooltip.Name = "BinderTooltip"
+	tooltip.Size = UDim2.fromOffset(TOOLTIP_WIDTH, 0)
+	tooltip.AutomaticSize = Enum.AutomaticSize.Y
+	tooltip.BackgroundColor3 = UIKit.Colors.Panel
+	tooltip.ZIndex = 50
+	tooltip.Visible = false
+	tooltip.Parent = parent
+	UIKit.corner(tooltip, 8)
+	local tooltipStroke = Instance.new("UIStroke")
+	tooltipStroke.Color = UIKit.Colors.Accent
+	tooltipStroke.Parent = tooltip
+	local tooltipPadding = Instance.new("UIPadding")
+	tooltipPadding.PaddingTop = UDim.new(0, 8)
+	tooltipPadding.PaddingBottom = UDim.new(0, 8)
+	tooltipPadding.PaddingLeft = UDim.new(0, 10)
+	tooltipPadding.PaddingRight = UDim.new(0, 10)
+	tooltipPadding.Parent = tooltip
+	tooltipText = UIKit.label(tooltip, "", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+	tooltipText.Size = UDim2.fromScale(1, 0)
+	tooltipText.AutomaticSize = Enum.AutomaticSize.Y
+	tooltipText.ZIndex = 51
+
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, panel))
 	end
-	showSpread(1)
+	applyFilter()
 
 	buildDetail(panel)
+	panel:GetPropertyChangedSignal("Visible"):Connect(hideTooltip)
 end
 
 local function onCollectionChanged(payload: { stacks: Stacks, beasts: { [string]: Beast } })
