@@ -210,7 +210,19 @@ Roadmap (one sub-project at a time):
 4. **Star merging** — the Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`).
 5. **Battles** — real-time auto-fight between players' parties.
 
-Plain copies stack; a copy becomes an individual card the first time it gains XP or a star.
+Plain copies stack by card, foil and grade; a copy becomes an individual card (keeping its grade) the first time it gains XP or a star.
+
+**Grades** (spec `2026-10-20-card-grades-design.md`): every pulled card rolls a grade on the server, fixed forever.
+
+| Grade | Chance | Stats and value |
+|---|---|---|
+| C | 50% | +0% |
+| B | 30% | +3% |
+| A | 15% | +6% |
+| S | 5% | +10% |
+
+**Power** = HP + 5 × ATK + 5 × SPD, shown on cards. Rarity always beats grade at equal level and stars: the best
+copy of a rarity (best element, S, foil) has less Power than the worst copy of the next rarity (unit-tested).
 
 | Beast field | Meaning |
 |---|---|
@@ -227,9 +239,9 @@ Base stats by rarity:
 |---|---|---|---|
 | Common | 60 | 12 | 10 |
 | Rare | 80 | 16 | 12 |
-| Very Rare | 95 | 19 | 13 |
-| Epic | 110 | 22 | 14 |
-| Legendary | 150 | 30 | 16 |
+| Very Rare | 100 | 21 | 14 |
+| Epic | 135 | 27 | 17 |
+| Legendary | 180 | 36 | 20 |
 
 Element multipliers: Ember ATK ×1.20 · Tide HP ×1.20 · Bloom HP and ATK ×1.10 · Volt SPD ×1.25 · Shade ATK and SPD ×1.10.
 Then × level `1 + 0.06 × (level − 1)`, × stars `1 + 0.15 × stars`, × foil 1.05, rounded.
@@ -448,10 +460,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v4)
+### 10.4 Player data schema (v5)
 ```lua
 {
-    version = 4,
+    version = 5,
     cash = 200,
     xp = 0,
     level = 1,
@@ -459,11 +471,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     upgrades = {},          -- { [upgradeId] = true }
     prices = {},            -- { [productId] = price }
     layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
-                            --   cards (card cases): { { slot, cardId, foil, price, beastId?, level?, xp?, stars? } } (stars 0-5)
+                            --   cards (card cases): { { slot, cardId, foil, price, grade, beastId?, level?, xp?, stars? } } (stars 0-5)
     fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
-    cards = {},             -- { [cardId] = { normal = n, foil = n } } fresh copies in the binder, not on display
-    beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars } } levelled cards in the binder (stars 0-5)
+    cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display
+    beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -476,7 +488,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget

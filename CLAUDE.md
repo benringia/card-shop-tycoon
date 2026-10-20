@@ -39,6 +39,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   items: return them somewhere (e.g. displayed cards → binder).
 - Changing the saved shape: bump `SCHEMA_VERSION` in `Config/Data.luau`, add a step to `MIGRATIONS` in `server/Util/Migrations.luau` (with a Lune test),
   update the types/template and DESIGN.md 10.4.
+- Every card copy has a grade (C/B/A/S), rolled only on the server. Any code that moves, prices or values a
+  card must carry its grade along with level and stars (CardService.GiveCard/TakeFresh, CardRules, BeastRules).
 - Saved tables hold plain data only (no Instances, Vector3, Color3; no mixed or gappy arrays).
 
 ## UI
