@@ -15,7 +15,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
-- `lune run tests/run` — unit tests for pure modules (BeastMath). Pure logic goes in Roblox-free modules so it can be tested here.
+- `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -37,7 +37,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `save` must do nothing if that service never loaded for the player, so a failed load can't wipe data.
 - Validate everything on load (unknown IDs, bad numbers, layouts that no longer fit). Never silently lose
   items: return them somewhere (e.g. displayed cards → binder).
-- Changing the saved shape: bump `SCHEMA_VERSION` in `Config/Data.luau`, add a step to `MIGRATIONS` in DataService,
+- Changing the saved shape: bump `SCHEMA_VERSION` in `Config/Data.luau`, add a step to `MIGRATIONS` in `server/Util/Migrations.luau` (with a Lune test),
   update the types/template and DESIGN.md 10.4.
 - Saved tables hold plain data only (no Instances, Vector3, Color3; no mixed or gappy arrays).
 

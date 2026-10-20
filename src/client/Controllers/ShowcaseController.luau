@@ -179,7 +179,6 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	local serverPrice = cardPart:GetAttribute("Price")
 	local price = pending[slot] or (if typeof(serverPrice) == "number" then serverPrice else 0)
 	local level, stars = getGrowthFromPart(cardPart)
-	local raised = typeof(cardPart:GetAttribute("BeastId")) == "string"
 	local market = CardRules.getMarketValue(card, foil, level, stars)
 	local step = CardRules.getPriceStep(card, foil, level, stars)
 
@@ -199,7 +198,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	makeCardFace(thumbnail, card, foil, false)
 
 	local titleText = `{slot}. {describe(card, foil)}`
-	titleText ..= ` · {BeastRules.describeGrowth(level, stars)}{if raised then "" else " (fresh)"}`
+	titleText ..= ` · {BeastRules.describeGrowth(level, stars)}`
 	local title = UIKit.label(frame, titleText, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
 	title.Position = UDim2.fromOffset(THUMBNAIL_SIZE.X + 18, 8)
 	title.Size = UDim2.new(1, -(THUMBNAIL_SIZE.X + 130), 0, 32)
@@ -350,7 +349,7 @@ local function renderPicker()
 			end
 		end)
 	end
-	-- Raised beasts first, most valuable first; each tile sends that beast's ID
+	-- Levelled cards first, most valuable first; each tile sends that card's ID
 	local raised = {}
 	for _, beast in BinderController.GetBeasts() do
 		table.insert(raised, beast)
@@ -378,7 +377,7 @@ local function renderPicker()
 			end)
 		end
 	end
-	-- Then fresh copies, rarest first: those are the ones worth showing off
+	-- Then plain copies, rarest first: those are the ones worth showing off
 	for _, card in Cards.RarestFirst do
 		local owned = collection[card.id]
 		if owned then

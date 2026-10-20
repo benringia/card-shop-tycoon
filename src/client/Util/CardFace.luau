@@ -12,7 +12,7 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
 type Card = typeof(Cards.List[1])
--- A raised beast's level and stars; nil means a plain copy (level 1, 0 stars)
+-- A levelled card's level and stars; nil means a plain copy (level 1, 0 stars)
 export type Growth = { level: number, stars: number }
 
 local BACK_COLOR = Color3.fromRGB(40, 40, 60)
@@ -95,7 +95,7 @@ function CardFace.renderMissing(frame: Frame, stroke: UIStroke, card: Card)
 end
 
 -- showValue = false for small tiles (hides value and stats, a count badge sits over the bottom).
--- growth = nil for a fresh copy; a raised beast shows its level and stars.
+-- growth = nil for a plain copy; a levelled card shows its level and stars.
 function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boolean, showValue: boolean?, growth: Growth?)
 	clear(frame)
 	local level = if growth then growth.level else 1

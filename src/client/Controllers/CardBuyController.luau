@@ -78,21 +78,16 @@ local function getGrowthFromPart(part: BasePart): (number, number)
 	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else BeastRules.START_STARS
 end
 
--- Always drawn, so visitors can see the level of every card, fresh or raised
+-- Always drawn, so visitors can see the level and stars of every card
 local function getFaceGrowth(part: BasePart): CardFace.Growth
 	local level, stars = getGrowthFromPart(part)
 	return { level = level, stars = stars }
 end
 
--- A raised beast carries its ID on the part; fresh copies don't
-local function isBeast(part: BasePart): boolean
-	return typeof(part:GetAttribute("BeastId")) == "string"
-end
-
--- "Lv 12 · 2 stars · raised beast" / "Lv 1 · 1 star · fresh copy"
+-- "Lv 12 · 2 stars"
 local function describeKind(part: BasePart): string
 	local level, stars = getGrowthFromPart(part)
-	return `{BeastRules.describeGrowth(level, stars)} · {if isBeast(part) then "raised beast" else "fresh copy"}`
+	return BeastRules.describeGrowth(level, stars)
 end
 
 local function getMarket(part: BasePart, card: Card, foil: boolean): number

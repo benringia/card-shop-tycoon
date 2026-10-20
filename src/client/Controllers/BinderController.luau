@@ -59,7 +59,7 @@ local detailSubtitle: TextLabel
 local detailSummary: TextLabel
 local raisedList: ScrollingFrame
 local detailCard: Card? = nil
-local selectedBeastId: string? = nil -- the beast shown on the big card; nil shows a fresh copy
+local selectedBeastId: string? = nil -- the beast shown on the big card; nil shows a plain copy
 local plotConnections: { RBXScriptConnection } = {}
 local refreshQueued = false
 
@@ -67,7 +67,7 @@ local function getCount(source: { [string]: Owned }, cardId: string): Owned
 	return source[cardId] or { normal = 0, foil = 0 }
 end
 
--- This card's raised beasts in the binder, strongest (highest value) first
+-- This card's levelled cards in the binder, strongest (highest value) first
 local function getRaised(cardId: string): { Beast }
 	local list: { Beast } = {}
 	for _, beast in beasts do
@@ -162,7 +162,7 @@ local function selectBeast(beastId: string?)
 	refreshDetail()
 end
 
--- One raised beast: growth and value / stats / XP bar / what it needs for the next star
+-- One levelled card: growth and value / stats / XP bar / what it needs for the next star
 local function addBeastRow(card: Card, beast: Beast, order: number)
 	local row = makeRow(order, BEAST_ROW_HEIGHT, beast.id == selectedBeastId, function()
 		selectBeast(beast.id)
@@ -201,20 +201,21 @@ local function addBeastRow(card: Card, beast: Beast, order: number)
 	addRowText(row, BeastRules.describeStarProgress(beast.stars), 72, 24, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
--- Untouched copies: how many and what they're worth
+-- Plain copies (level 1, 0 stars): how many and what they're worth
 local function addFreshRow(card: Card, inBinder: Owned, order: number)
 	local row = makeRow(order, FRESH_ROW_HEIGHT, selectedBeastId == nil, function()
 		selectBeast(nil)
 	end)
 	local count = if inBinder.foil == 0
-		then `x{inBinder.normal}`
-		elseif inBinder.normal == 0 then `x{inBinder.foil} foil`
-		else `x{inBinder.normal} + {inBinder.foil} foil`
-	addRowText(row, `Fresh copies {count} · Lv 1`, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+		then `{inBinder.normal}`
+		elseif inBinder.normal == 0 then `{inBinder.foil} foil`
+		else `{inBinder.normal} + {inBinder.foil} foil`
+	local growth = BeastRules.describeGrowth(1, BeastRules.START_STARS)
+	addRowText(row, `Owned {count} · {growth}`, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
 	local valueText = string.format("$%.2f", CardRules.getMarketValue(card, inBinder.foil > 0))
 	local value = addRowText(row, valueText, 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
 	value.TextXAlignment = Enum.TextXAlignment.Right
-	addRowText(row, "Give a copy XP and it becomes a beast that levels up.", 30, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 30, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
 refreshDetail = function()
@@ -232,7 +233,7 @@ refreshDetail = function()
 		return
 	end
 
-	-- Keep the selection valid: if that beast left the binder, show the fresh copies (or the best beast)
+	-- Keep the selection valid: if that card left the binder, show the plain copies (or the best levelled one)
 	local selected: Beast? = nil
 	for _, beast in raised do
 		if beast.id == selectedBeastId then
@@ -255,9 +256,8 @@ refreshDetail = function()
 	detailSubtitle.Text = string.format("#%02d · %s · %s", card.number, card.element, card.rarity)
 	local onDisplay = shown.normal + shown.foil
 	detailSummary.Text = string.format(
-		"%d raised · %d fresh%s%s",
-		#raised,
-		freshCount,
+		"Owned %d%s%s",
+		freshCount + #raised,
 		if onDisplay > 0 then ` · {onDisplay} on display` else "",
 		if #raised + (if freshCount > 0 then 1 else 0) > 1 then " · tap a row to view it" else ""
 	)
@@ -290,14 +290,11 @@ local function refresh()
 				hasFoilBeast = hasFoilBeast or beast.foil
 			end
 			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false)
-			local freshText = if binderTotal == 0
-				then (if raised > 0 then "" else "on display")
-				elseif inBinder.foil == 0 then `x{inBinder.normal}`
-				elseif inBinder.normal == 0 then `{inBinder.foil} foil`
-				else `x{inBinder.normal} · {inBinder.foil} foil`
-			tile.countLabel.Text = if raised > 0
-				then (if freshText == "" then `{raised} raised` else `{freshText} · {raised} raised`)
-				else freshText
+			tile.countLabel.Text = if binderTotal > 0 and raised > 0
+				then `Owned {binderTotal} · {raised} levelled`
+				elseif binderTotal > 0 then `Owned {binderTotal}`
+				elseif raised > 0 then `{raised} levelled`
+				else "on display"
 			tile.countLabel.Visible = true
 		else
 			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
@@ -383,7 +380,7 @@ local function buildDetail(parent: Frame)
 	detailSummary.TextYAlignment = Enum.TextYAlignment.Top
 	detailSummary.ZIndex = 11
 
-	-- Beasts and fresh copies; scrolls when there are many, ends above the Back button
+	-- Levelled cards and plain copies; scrolls when there are many, ends above the Back button
 	raisedList = Instance.new("ScrollingFrame")
 	raisedList.Position = UDim2.fromOffset(180, 88)
 	raisedList.Size = UDim2.new(1, -184, 1, -150)
@@ -506,7 +503,7 @@ function BinderController.GetCollection(): { [string]: Owned }
 	return collection
 end
 
--- The player's raised beasts (not counting ones on display)
+-- The player's levelled cards (not counting ones on display)
 function BinderController.GetBeasts(): { [string]: Beast }
 	return beasts
 end

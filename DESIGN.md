@@ -207,7 +207,7 @@ Roadmap (one sub-project at a time):
 1. **Beast cards** — level, XP, stars, stats, value (built, awaiting Studio test).
 2. **Shop jobs** — beasts work in your shop (replace hired staff, 7.4).
 3. **Party & summoning** — summon beasts to follow and fight beside you.
-4. **Star merging** — combine copies to raise stars.
+4. **Star merging** — the Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`).
 5. **Battles** — real-time auto-fight between players' parties.
 
 Fresh copies stack; a copy becomes an individual beast the first time it gains XP.
@@ -219,7 +219,7 @@ Fresh copies stack; a copy becomes an individual beast the first time it gains X
 | `foil` | boolean |
 | `level` | 1–30 |
 | `xp` | progress toward the next level |
-| `stars` | 1–5 |
+| `stars` | 0–5 (every card starts at 0) |
 
 Base stats by rarity:
 
@@ -232,14 +232,20 @@ Base stats by rarity:
 | Legendary | 150 | 30 | 16 |
 
 Element multipliers: Ember ATK ×1.20 · Tide HP ×1.20 · Bloom HP and ATK ×1.10 · Volt SPD ×1.25 · Shade ATK and SPD ×1.10.
-Then × level `1 + 0.06 × (level − 1)`, × stars `1 + 0.15 × (stars − 1)`, × foil 1.05, rounded.
+Then × level `1 + 0.06 × (level − 1)`, × stars `1 + 0.15 × stars`, × foil 1.05, rounded.
 
 Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 0.10 × (level − 1)) × STAR_VALUE[stars]`,
-`STAR_VALUE = { 1, 1.5, 2.25, 3.5, 5 }`.
+`STAR_VALUE` for 0–5 stars = `{ 1, 6, 15, 30, 50, 80 }` (roughly the duplicates condensed plus a bonus).
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
-Stars: a beast must reach Lv 30 (`STAR_UPGRADE_LEVEL`) before it can gain its next star (star upgrades arrive with roadmap step 4).
-The binder shows this on every beast ("Stars 1/5 · level up to Lv 30 to unlock the next star").
+Stars come only from the Condenser (no level gate; levels raise stats only). Duplicates per star (`STAR_COSTS`):
+
+| Step | 0→1 | 1→2 | 2→3 | 3→4 | 4→5 | Total |
+|---|---|---|---|---|---|---|
+| Duplicates | 4 | 8 | 12 | 16 | 24 | 64 |
+
+The binder shows the next step on every card ("Stars 0/5 · condense 4 duplicates for the next star").
+Player-facing text says "Owned" and "levelled", never "fresh" or "raised".
 Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to your best beast or rarest fresh card.
 
 ---
@@ -445,7 +451,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ### 10.4 Player data schema (v3)
 ```lua
 {
-    version = 3,
+    version = 4,
     cash = 200,
     xp = 0,
     level = 1,
@@ -453,11 +459,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     upgrades = {},          -- { [upgradeId] = true }
     prices = {},            -- { [productId] = price }
     layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
-                            --   cards (card cases): { { slot, cardId, foil, price, beastId?, level?, xp?, stars? } }
+                            --   cards (card cases): { { slot, cardId, foil, price, beastId?, level?, xp?, stars? } } (stars 0-5)
     fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { normal = n, foil = n } } fresh copies in the binder, not on display
-    beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars } } raised beasts in the binder
+    beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars } } levelled cards in the binder (stars 0-5)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -470,7 +476,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the raised `beasts` table. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget
