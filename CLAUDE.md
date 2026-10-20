@@ -49,6 +49,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - ScreenGuis made in code default to `ZIndexBehavior.Global`; set `Sibling` (MainGui does) or a raised panel hides its own children.
 - Text: plain ASCII plus `·` and emoji only. Gotham/FredokaOne draw symbols like ✦ − ★ as empty boxes.
 - HUD buttons stack on the middle-left (clear of the mobile thumbstick and jump button).
+- Panels made with `UIKit.panel` hide the thumbstick and jump button while open (they cover panel buttons on phones).
 - Two ProximityPrompts on one part overlap: show one at a time, or offset with `UIOffset`.
 - Owner-only prompts are created on the client for the owner's own plot, so visitors never see them.
 

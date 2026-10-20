@@ -1,6 +1,8 @@
 --!strict
 -- Small helpers for building the game's UI in code, so every panel looks the same.
 -- Sizes follow mobile-first rules: tap targets at least 48px.
+local GuiService = game:GetService("GuiService")
+
 local UIKit = {}
 
 UIKit.Colors = {
@@ -14,6 +16,25 @@ UIKit.Colors = {
 }
 
 UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another one (card picker) goes higher
+
+-- Roblox's on-screen thumbstick and jump button sit over panel buttons on phones (the binder's
+-- page arrows, Back buttons), so they are hidden while any panel is open
+local openPanels: { [Frame]: boolean } = {}
+
+local function updateTouchControls()
+	GuiService.TouchControlsEnabled = next(openPanels) == nil
+end
+
+local function trackPanel(frame: Frame)
+	frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		openPanels[frame] = if frame.Visible then true else nil
+		updateTouchControls()
+	end)
+	frame.Destroying:Connect(function()
+		openPanels[frame] = nil
+		updateTouchControls()
+	end)
+end
 
 function UIKit.corner(parent: GuiObject, radius: number)
 	local corner = Instance.new("UICorner")
@@ -94,6 +115,7 @@ function UIKit.panel(parent: Instance, name: string, title: string): (Frame, Scr
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = list
 
+	trackPanel(frame)
 	return frame, list
 end
 
