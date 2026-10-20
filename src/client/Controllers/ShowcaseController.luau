@@ -31,7 +31,8 @@ type PickerFilter = string
 local ALL_FILTER = "All"
 local FOIL_FILTER = "Foil"
 local FILTER_CHIP_WIDTH = 96
-local PICKER_TILE_SIZE = Vector2.new(96, 136)
+local PICKER_TILE_SIZE = Vector2.new(92, 168) -- card face on top, grade/count and value underneath
+local PICKER_FACE_HEIGHT = 118
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local PANEL_MAX_SIZE = Vector2.new(820, 520)
 local LIST_WIDTH_SCALE = 0.55 -- listings table share of the panel width; details pane gets the rest
@@ -65,6 +66,8 @@ local subtitle: TextLabel
 local picker: Frame
 local pickerList: ScrollingFrame
 local pickerTitle: TextLabel
+local pickerPane: ScrollingFrame
+local pickerSelectedKey: string? = nil
 local filterButtons: { [PickerFilter]: TextButton } = {}
 local pickerFilter: PickerFilter = ALL_FILTER
 
@@ -533,47 +536,135 @@ local function refreshFilterButtons()
 	end
 end
 
--- Grid of card faces, rarest first; one tap puts the card in the slot (Remove undoes it)
-local function renderPicker()
-	clearChildren(pickerList)
-	refreshFilterButtons()
-	local collection = BinderController.GetCollection()
-	local graded = BinderController.GetGradedStacks()
-	local order = 0
-	-- One tile per stack of plain copies (card, grade, foil); the server takes a copy of exactly that grade
-	local function addTile(card: Card, foil: boolean, grade: string, count: number)
-		if not passesFilter(card, foil) then
-			return
-		end
-		order += 1
-		local tile = Instance.new("TextButton")
-		tile.Name = `{describe(card, foil)} {grade}`
-		tile.LayoutOrder = order
-		tile.BackgroundTransparency = 1
-		tile.Text = ""
-		tile.Parent = pickerList
-		makeCardFace(tile, card, foil, true, { level = 1, stars = BeastRules.START_STARS, grade = grade })
+-- One choice in the picker: a stack of plain copies (card, grade, foil) or one levelled card
+type PickerEntry = {
+	key: string,
+	card: Card,
+	foil: boolean,
+	growth: CopyGrowth,
+	beastId: string?,
+	count: number,
+}
 
-		local badge = UIKit.label(tile, `x{count}`, Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-		badge.AnchorPoint = Vector2.new(1, 0)
-		badge.Position = UDim2.new(1, -4, 0, 4)
-		badge.Size = UDim2.fromOffset(34, 20)
-		badge.TextXAlignment = Enum.TextXAlignment.Center
-		badge.BackgroundTransparency = 0.15
-		badge.BackgroundColor3 = UIKit.Colors.Panel
-		badge.ZIndex = 3
-		UIKit.corner(badge, 6)
+local function describeCopy(entry: PickerEntry): string
+	local card, growth = entry.card, entry.growth
+	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, growth.grade)
+	local power = BeastRules.getPower(card, entry.foil, growth.level, growth.stars, growth.grade)
+	local market = CardRules.getMarketValue(card, entry.foil, growth.level, growth.stars, growth.grade)
+	return table.concat({
+		`{card.name}{if entry.foil then " (FOIL)" else ""}`,
+		`{card.rarity} · {card.element} · #{card.number}`,
+		`{BeastRules.describeGrade(growth.grade)} · {BeastRules.describeGrowth(growth.level, growth.stars)}`,
+		`Power {power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`,
+		string.format("Market $%.2f", market),
+		if entry.beastId then "Levelled card" else `You have x{entry.count} of this copy`,
+	}, "\n")
+end
 
-		tile.Activated:Connect(function()
-			local part = casePart
-			local slot = pickerSlot
-			picker.Visible = false
-			if part and slot then
-				Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, card.id, foil, nil, grade)
-			end
-		end)
+local function listEntry(entry: PickerEntry)
+	local part, slot = casePart, pickerSlot
+	picker.Visible = false
+	if not part or not slot then
+		return
 	end
-	-- Levelled cards first, most valuable first; each tile sends that card's ID
+	if entry.beastId then
+		Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, entry.card.id, entry.foil, entry.beastId)
+	else
+		Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, entry.card.id, entry.foil, nil, entry.growth.grade)
+	end
+end
+
+-- Right side of the picker: the chosen (or hovered) card large, its details and the List button
+local function renderPickerPane(entry: PickerEntry?, isPreview: boolean)
+	clearChildren(pickerPane)
+	if not entry then
+		local hint = UIKit.label(pickerPane, "Tap a card to see its details.", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
+		hint.Position = UDim2.fromOffset(10, 10)
+		hint.Size = UDim2.new(1, -20, 0, 40)
+		return
+	end
+	local faceHolder = Instance.new("Frame")
+	faceHolder.Position = UDim2.fromOffset(8, 8)
+	faceHolder.Size = UDim2.fromOffset(DETAIL_FACE_SIZE.X, DETAIL_FACE_SIZE.Y)
+	faceHolder.BackgroundTransparency = 1
+	faceHolder.Parent = pickerPane
+	makeCardFace(faceHolder, entry.card, entry.foil, true, entry.growth)
+
+	local info = UIKit.label(pickerPane, describeCopy(entry), Enum.Font.GothamBold, 12, UIKit.Colors.Text)
+	info.Position = UDim2.fromOffset(DETAIL_FACE_SIZE.X + 16, 8)
+	info.Size = UDim2.new(1, -(DETAIL_FACE_SIZE.X + 22), 0, DETAIL_FACE_SIZE.Y)
+	info.TextYAlignment = Enum.TextYAlignment.Top
+
+	if isPreview then
+		return
+	end
+	local list = UIKit.button(pickerPane, `List in slot {pickerSlot or 0}`, UIKit.Colors.Accent)
+	list.Position = UDim2.fromOffset(8, DETAIL_FACE_SIZE.Y + 16)
+	list.Size = UDim2.new(1, -16, 0, 48)
+	list.TextSize = 17
+	list.Activated:Connect(function()
+		listEntry(entry)
+	end)
+end
+
+local renderPicker: () -> ()
+
+-- Card face with grade/count and value underneath, so the grid stays readable
+local function buildPickerTile(entry: PickerEntry, order: number, selected: PickerEntry?, choose: (PickerEntry) -> ())
+	local tile = Instance.new("TextButton")
+	tile.Name = entry.key
+	tile.LayoutOrder = order
+	tile.BackgroundColor3 = UIKit.Colors.Row
+	tile.Text = ""
+	tile.Parent = pickerList
+	UIKit.corner(tile, 8)
+	if selected and selected.key == entry.key then
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Color = UIKit.Colors.Accent
+		stroke.Thickness = 2
+		stroke.Parent = tile
+	end
+
+	local faceHolder = Instance.new("Frame")
+	faceHolder.Position = UDim2.fromOffset(4, 4)
+	faceHolder.Size = UDim2.new(1, -8, 0, PICKER_FACE_HEIGHT)
+	faceHolder.BackgroundTransparency = 1
+	faceHolder.Parent = tile
+	makeCardFace(faceHolder, entry.card, entry.foil, false)
+
+	local growth = entry.growth
+	local detail = if entry.beastId then `{growth.grade} · Lv {growth.level}` else `Grade {growth.grade} · x{entry.count}`
+	local line = UIKit.label(tile, detail, Enum.Font.GothamBold, 12, UIKit.Colors.Text)
+	line.Position = UDim2.fromOffset(2, PICKER_FACE_HEIGHT + 6)
+	line.Size = UDim2.new(1, -4, 0, 16)
+	line.TextXAlignment = Enum.TextXAlignment.Center
+	line.TextTruncate = Enum.TextTruncate.AtEnd
+	local market = CardRules.getMarketValue(entry.card, entry.foil, growth.level, growth.stars, growth.grade)
+	local value = UIKit.label(tile, string.format("$%.2f", market), Enum.Font.FredokaOne, 15, PRICE_TEXT_COLOR)
+	value.Position = UDim2.fromOffset(2, PICKER_FACE_HEIGHT + 24)
+	value.Size = UDim2.new(1, -4, 0, 18)
+	value.TextXAlignment = Enum.TextXAlignment.Center
+
+	tile.Activated:Connect(function()
+		choose(entry)
+	end)
+	tile.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			renderPickerPane(entry, true)
+		end
+	end)
+	tile.MouseLeave:Connect(function()
+		if UserInputService.MouseEnabled then
+			renderPickerPane(selected, false)
+		end
+	end)
+end
+
+-- Every copy the player can list: levelled cards (most valuable first), then plain stacks rarest first,
+-- best grade and foil first
+local function getPickerEntries(): { PickerEntry }
+	local entries: { PickerEntry } = {}
 	local raised = {}
 	for _, beast in BinderController.GetBeasts() do
 		table.insert(raised, beast)
@@ -585,46 +676,71 @@ local function renderPicker()
 	for _, beast in raised do
 		local card = Cards.ById[beast.cardId]
 		if card and passesFilter(card, beast.foil) then
-			order += 1
-			local tile = Instance.new("TextButton")
-			tile.LayoutOrder = order
-			tile.BackgroundTransparency = 1
-			tile.Text = ""
-			tile.Parent = pickerList
-			makeCardFace(tile, card, beast.foil, true, { level = beast.level, stars = beast.stars, grade = beast.grade })
-			tile.Activated:Connect(function()
-				local part, slot = casePart, pickerSlot
-				picker.Visible = false
-				if part and slot then
-					Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, card.id, beast.foil, beast.id)
-				end
-			end)
+			table.insert(entries, {
+				key = beast.id,
+				card = card,
+				foil = beast.foil,
+				growth = { level = beast.level, stars = beast.stars, grade = beast.grade },
+				beastId = beast.id,
+				count = 1,
+			})
 		end
 	end
-	-- Then plain copies, rarest first, best grade and foil first: those are the ones worth showing off
+	local graded = BinderController.GetGradedStacks()
 	for _, card in Cards.RarestFirst do
 		local byGrade = graded[card.id] or {}
 		for index = #BeastRules.GRADES, 1, -1 do
 			local grade = BeastRules.GRADES[index]
 			local owned = byGrade[grade]
-			if owned and owned.foil > 0 then
-				addTile(card, true, grade, owned.foil)
-			end
-			if owned and owned.normal > 0 then
-				addTile(card, false, grade, owned.normal)
+			for _, foil in { true, false } do
+				local count = if owned then (if foil then owned.foil else owned.normal) else 0
+				if count > 0 and passesFilter(card, foil) then
+					table.insert(entries, {
+						key = `{card.id}:{grade}:{foil}`,
+						card = card,
+						foil = foil,
+						growth = { level = 1, stars = BeastRules.START_STARS, grade = grade },
+						count = count,
+					})
+				end
 			end
 		end
 	end
-	if order == 0 then
-		local binderEmpty = next(collection) == nil and next(BinderController.GetBeasts()) == nil
+	return entries
+end
+
+-- Grid of cards on the left, details and the List button on the right
+renderPicker = function()
+	clearChildren(pickerList)
+	refreshFilterButtons()
+	local entries = getPickerEntries()
+	local selected: PickerEntry? = nil
+	for _, entry in entries do
+		if entry.key == pickerSelectedKey then
+			selected = entry
+		end
+	end
+	selected = selected or entries[1]
+	pickerSelectedKey = if selected then selected.key else nil
+
+	for order, entry in entries do
+		buildPickerTile(entry, order, selected, function(chosen)
+			pickerSelectedKey = chosen.key
+			renderPicker()
+		end)
+	end
+	if #entries == 0 then
+		local binderEmpty = next(BinderController.GetCollection()) == nil and next(BinderController.GetBeasts()) == nil
 		local message = if binderEmpty then "Your binder is empty. Rip some packs first." else "No cards match this filter."
 		local empty = UIKit.label(pickerList, message, Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
 		empty.Size = UDim2.fromOffset(300, 60)
 	end
+	renderPickerPane(selected, false)
 end
 
 openPicker = function(slot: number)
 	pickerSlot = slot
+	pickerSelectedKey = nil
 	pickerTitle.Text = `Choose a card for slot {slot}`
 	renderPicker()
 	picker.Visible = true
@@ -633,6 +749,12 @@ end
 local function buildPicker(parent: Instance)
 	picker, pickerList = UIKit.panel(parent, "CardPicker", "Pick a card")
 	picker.ZIndex = 5
+	-- Same size as the case manager so it covers it completely
+	picker.Size = UDim2.fromScale(0.94, 0.86)
+	local sizeLimit = picker:FindFirstChildOfClass("UISizeConstraint")
+	if sizeLimit then
+		sizeLimit.MaxSize = PANEL_MAX_SIZE
+	end
 	pickerTitle = picker:FindFirstChild("Title") :: TextLabel
 	pickerTitle.TextSize = 22
 
@@ -668,9 +790,9 @@ local function buildPicker(parent: Instance)
 		filterButtons[filter] = chip
 	end
 
-	-- Swap the panel's list layout for a grid of card tiles
-	pickerList.Position = UDim2.fromOffset(12, 110)
-	pickerList.Size = UDim2.new(1, -24, 1, -122)
+	-- Grid of card tiles on the left
+	pickerList.Position = UDim2.fromOffset(12, 112)
+	pickerList.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -124)
 	local listLayout = pickerList:FindFirstChildOfClass("UIListLayout")
 	if listLayout then
 		listLayout:Destroy()
@@ -681,6 +803,20 @@ local function buildPicker(parent: Instance)
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = pickerList
+
+	-- Details of the chosen card on the right
+	pickerPane = Instance.new("ScrollingFrame")
+	pickerPane.Name = "Details"
+	pickerPane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 112)
+	pickerPane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -124)
+	pickerPane.BackgroundColor3 = UIKit.Colors.Row
+	pickerPane.BackgroundTransparency = 0.4
+	pickerPane.BorderSizePixel = 0
+	pickerPane.ScrollBarThickness = 4
+	pickerPane.CanvasSize = UDim2.new()
+	pickerPane.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	pickerPane.Parent = picker
+	UIKit.corner(pickerPane, 10)
 end
 
 local function disconnectCase()
