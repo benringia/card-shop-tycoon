@@ -1,5 +1,6 @@
 --!strict
--- Binder: every Set 1 card in a grid, owned ones in colour with counts, missing ones greyed out.
+-- Binder: a two-page spread like a real binder, 9 card pockets per page, owned cards in colour with
+-- counts, missing ones greyed out. Turn pages with the arrows.
 -- Tap an owned card to see it large. Cards earn money only from a showcase, so the binder just
 -- shows what you have; cards on display in your cases count towards completion.
 -- The server sends the binder whenever it changes; displayed cards are read from your plot.
@@ -29,13 +30,22 @@ type Entry = { key: string, power: number, value: number, beast: Beast?, grade: 
 
 type Tile = {
 	card: Card,
+	button: TextButton,
 	inner: Frame,
 	stroke: UIStroke,
 	countLabel: TextLabel,
 	levelLabel: TextLabel, -- best grade and best levelled copy, e.g. "S · Lv 12"
 }
 
-local TILE_SIZE = Vector2.new(78, 112)
+local PAGE_COLUMNS = 3
+local PAGE_ROWS = 3
+local CARDS_PER_PAGE = PAGE_COLUMNS * PAGE_ROWS
+local CARD_ASPECT = 0.7 -- width / height of a card pocket
+local POCKET_GAP = 6
+local BINDER_MAX_SIZE = Vector2.new(920, 600)
+local COVER_COLOR = Color3.fromRGB(70, 40, 30) -- binder cover and spine
+local PAGE_COLOR = Color3.fromRGB(40, 40, 54)
+local TITLE_VALUE_ROOM = 96 -- right side of a row title kept free for the price
 local BINDER_KEY = Enum.KeyCode.B
 local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
 local BEAST_ROW_HEIGHT = 100
@@ -55,6 +65,9 @@ local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
 local completionLabel: TextLabel
+local pages: { Frame } = {} -- left and right page
+local pageLabel: TextLabel
+local spreadIndex = 1
 
 local detail: Frame
 local detailInner: Frame
@@ -255,7 +268,9 @@ local function addBeastRow(card: Card, entry: Entry, beast: Beast, order: number
 
 	local growth = BeastRules.describeGrowth(beast.level, beast.stars)
 	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}`
-	addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	local titleLabel = addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	titleLabel.Size = UDim2.new(1, -(TITLE_VALUE_ROOM + 10), 0, 20)
+	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	addValueText(row, entry.value)
 	addRowText(row, describeStats(card, entry, beast.level, beast.stars), 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
 
@@ -290,7 +305,9 @@ local function addStackRow(card: Card, entry: Entry, order: number)
 	end)
 	local growth = BeastRules.describeGrowth(1, BeastRules.START_STARS)
 	local title = `{if entry.foil then "FOIL · " else ""}{BeastRules.describeGrade(entry.grade)} · Owned {entry.count} · {growth}`
-	addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	local titleLabel = addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	titleLabel.Size = UDim2.new(1, -(TITLE_VALUE_ROOM + 10), 0, 20)
+	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	addValueText(row, entry.value)
 	addRowText(row, describeStats(card, entry, 1, BeastRules.START_STARS), 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
 	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 48, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
@@ -443,7 +460,7 @@ local function buildTile(card: Card, parent: Instance): Tile
 	levelLabel.ZIndex = 3
 	UIKit.corner(levelLabel, 6)
 
-	local tile: Tile = { card = card, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
+	local tile: Tile = { card = card, button = button, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
 	button.Activated:Connect(function()
 		openDetail(card)
 	end)
@@ -514,31 +531,115 @@ local function buildDetail(parent: Frame)
 	end)
 end
 
+local function getSpreadCount(): number
+	return math.max(1, math.ceil(#tiles / (CARDS_PER_PAGE * 2)))
+end
+
+-- Puts the tiles of the current spread into the two pages; the rest wait off-screen
+local function showSpread(index: number)
+	spreadIndex = math.clamp(index, 1, getSpreadCount())
+	local first = (spreadIndex - 1) * CARDS_PER_PAGE * 2 + 1
+	for position, tile in tiles do
+		local offset = position - first
+		if offset >= 0 and offset < CARDS_PER_PAGE * 2 then
+			tile.button.LayoutOrder = offset
+			tile.button.Parent = pages[if offset < CARDS_PER_PAGE then 1 else 2]
+		else
+			tile.button.Parent = nil
+		end
+	end
+	local leftPage = spreadIndex * 2 - 1
+	pageLabel.Text = `Pages {leftPage}-{leftPage + 1} of {getSpreadCount() * 2}`
+end
+
+-- Pockets fill each page 3 x 3 at card proportions, whatever the screen size
+local function fitPockets(page: Frame, grid: UIGridLayout)
+	local size = page.AbsoluteSize
+	local height = (size.Y - POCKET_GAP * (PAGE_ROWS + 1)) / PAGE_ROWS
+	local width = math.min(height * CARD_ASPECT, (size.X - POCKET_GAP * (PAGE_COLUMNS + 1)) / PAGE_COLUMNS)
+	width = math.max(width, 1)
+	grid.CellSize = UDim2.fromOffset(math.floor(width), math.floor(width / CARD_ASPECT))
+end
+
+local function buildPage(spread: Frame, isLeft: boolean): Frame
+	local page = Instance.new("Frame")
+	page.Name = if isLeft then "LeftPage" else "RightPage"
+	page.Position = if isLeft then UDim2.fromOffset(8, 8) else UDim2.new(0.5, 6, 0, 8)
+	page.Size = UDim2.new(0.5, -14, 1, -16)
+	page.BackgroundColor3 = PAGE_COLOR
+	page.Parent = spread
+	UIKit.corner(page, 8)
+
+	local grid = Instance.new("UIGridLayout")
+	grid.CellPadding = UDim2.fromOffset(POCKET_GAP, POCKET_GAP)
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.VerticalAlignment = Enum.VerticalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = page
+	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		fitPockets(page, grid)
+	end)
+	fitPockets(page, grid)
+	return page
+end
+
 local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(parent, "Binder", "Binder")
-
-	-- Room for the completion line above the grid
-	list.Position = UDim2.fromOffset(12, 100)
-	list.Size = UDim2.new(1, -24, 1, -112)
-	local listLayout = list:FindFirstChildOfClass("UIListLayout")
-	if listLayout then
-		listLayout:Destroy()
+	list:Destroy() -- the binder uses pages instead of a scrolling list
+	-- Bigger than other panels: it's the main way to look at your collection
+	panel.Size = UDim2.fromScale(0.96, 0.9)
+	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
+	if sizeLimit then
+		sizeLimit.MaxSize = BINDER_MAX_SIZE
 	end
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset(TILE_SIZE.X, TILE_SIZE.Y)
-	grid.CellPadding = UDim2.fromOffset(8, 8)
-	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = list
 
 	completionLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
-	completionLabel.Position = UDim2.fromOffset(16, 62)
-	completionLabel.Size = UDim2.new(1, -32, 0, 32)
+	completionLabel.Position = UDim2.fromOffset(16, 56)
+	completionLabel.Size = UDim2.new(1, -32, 0, 24)
+
+	-- The open binder: cover with a spine down the middle and a page either side
+	local spread = Instance.new("Frame")
+	spread.Name = "Spread"
+	spread.Position = UDim2.fromOffset(12, 84)
+	spread.Size = UDim2.new(1, -24, 1, -144)
+	spread.BackgroundColor3 = COVER_COLOR
+	spread.Parent = panel
+	UIKit.corner(spread, 12)
+	local spine = Instance.new("Frame")
+	spine.Name = "Spine"
+	spine.AnchorPoint = Vector2.new(0.5, 0)
+	spine.Position = UDim2.fromScale(0.5, 0)
+	spine.Size = UDim2.new(0, 4, 1, 0)
+	spine.BackgroundColor3 = Color3.new(0, 0, 0)
+	spine.BackgroundTransparency = 0.5
+	spine.BorderSizePixel = 0
+	spine.Parent = spread
+	pages = { buildPage(spread, true), buildPage(spread, false) }
+
+	-- Page turning
+	local previous = UIKit.button(panel, "<", UIKit.Colors.Row)
+	previous.Position = UDim2.new(0, 12, 1, -54)
+	previous.Size = UDim2.fromOffset(64, 46)
+	previous.Activated:Connect(function()
+		showSpread(spreadIndex - 1)
+	end)
+	local nextButton = UIKit.button(panel, ">", UIKit.Colors.Row)
+	nextButton.AnchorPoint = Vector2.new(1, 0)
+	nextButton.Position = UDim2.new(1, -12, 1, -54)
+	nextButton.Size = UDim2.fromOffset(64, 46)
+	nextButton.Activated:Connect(function()
+		showSpread(spreadIndex + 1)
+	end)
+	pageLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
+	pageLabel.Position = UDim2.new(0, 84, 1, -54)
+	pageLabel.Size = UDim2.new(1, -168, 0, 46)
+	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	for _, card in Cards.List do
-		table.insert(tiles, buildTile(card, list))
+		table.insert(tiles, buildTile(card, panel))
 	end
+	showSpread(1)
 
 	buildDetail(panel)
 end
