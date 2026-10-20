@@ -108,7 +108,7 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	plus.TextSize = 28
 	plus.Size = UDim2.fromOffset(52, 52)
 
-	local minus = UIKit.button(frame, "−", UIKit.Colors.Danger)
+	local minus = UIKit.button(frame, "-", UIKit.Colors.Danger)
 	minus.TextSize = 28
 	minus.AnchorPoint = Vector2.new(1, 0.5)
 	minus.Position = UDim2.new(1, -70, 0.5, 0)

@@ -1,5 +1,6 @@
 --!strict
--- Placement mode: a ghost shelf follows the pointer, snaps to the grid, and turns red where it can't go.
+-- Placement mode: a ghost follows the pointer, snaps to the grid, and turns red where it can't go.
+-- Used for buying shelves and for moving shelves or fixtures (the order computer).
 -- Mouse: click to place, R to rotate, Q to cancel. Touch: tap to move the ghost, then use the buttons.
 -- The server runs the same PlacementGrid checks, so the ghost colour is only a preview.
 local Players = game:GetService("Players")
@@ -9,7 +10,6 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
-local Shelves = require(Config:WaitForChild("Shelves"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -18,12 +18,15 @@ local Controllers = script.Parent :: Instance
 local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
-type ShelfDef = typeof(Shelves.List[1])
 type Rect = PlacementGrid.Rect
 
+-- NewShelf: id is a shelf type. MoveShelf: id is the shelf's uid. MoveFixture: id is the fixture name.
+export type PlacementKind = "NewShelf" | "MoveShelf" | "MoveFixture"
+
 type Session = {
-	def: ShelfDef,
-	moveUid: string?,
+	kind: PlacementKind,
+	id: string,
+	size: Vector3,
 	rotation: number,
 	gridX: number,
 	gridZ: number,
@@ -53,10 +56,10 @@ local function getOwnPlot(): Model?
 	return plots:FindFirstChild("Plot" .. plotId) :: Model?
 end
 
-local function makeGhost(def: ShelfDef): Part
+local function makeGhost(size: Vector3): Part
 	local ghost = Instance.new("Part")
 	ghost.Name = "PlacementGhost"
-	ghost.Size = def.size
+	ghost.Size = size
 	ghost.Anchored = true
 	ghost.CanCollide = false
 	ghost.CanQuery = false
@@ -82,7 +85,7 @@ local function followPointer(current: Session)
 	if not result then
 		return
 	end
-	local w, d = PlacementGrid.getFootprint(current.def.size, current.rotation)
+	local w, d = PlacementGrid.getFootprint(current.size, current.rotation)
 	current.gridX, current.gridZ = PlacementGrid.worldToCell(current.floor.CFrame, result.Position, w, d)
 end
 
@@ -93,7 +96,7 @@ local function update()
 	end
 	followPointer(current)
 
-	local size = current.def.size
+	local size = current.size
 	current.ghost.CFrame = current.floor.CFrame
 		* PlacementGrid.getLocalCFrame(size, current.gridX, current.gridZ, current.rotation)
 	current.valid = PlacementGrid.isFree(current.blocked, size, current.gridX, current.gridZ, current.rotation)
@@ -133,23 +136,24 @@ local function confirm()
 		return
 	end
 
-	if current.moveUid then
-		Remotes.MoveShelf:FireServer(current.moveUid, current.gridX, current.gridZ, current.rotation)
-	else
-		Remotes.PlaceShelf:FireServer(current.def.id, current.gridX, current.gridZ, current.rotation)
-	end
+	local remote = if current.kind == "NewShelf"
+		then Remotes.PlaceShelf
+		elseif current.kind == "MoveShelf" then Remotes.MoveShelf
+		else Remotes.MoveFixture
+	remote:FireServer(current.id, current.gridX, current.gridZ, current.rotation)
 	PlacementController.Cancel()
 end
 
 export type BeginOptions = {
-	moveUid: string?,
+	kind: PlacementKind,
+	id: string,
 	rotation: number?,
 	gridX: number?,
 	gridZ: number?,
 }
 
--- Starts placing a new shelf, or moving an existing one when options.moveUid is set
-function PlacementController.Begin(def: ShelfDef, options: BeginOptions?)
+-- Starts placement mode for something of this size: a new shelf, or moving a shelf or fixture
+function PlacementController.Begin(size: Vector3, opts: BeginOptions)
 	PlacementController.Cancel()
 
 	local plotModel = getOwnPlot()
@@ -159,21 +163,22 @@ function PlacementController.Begin(def: ShelfDef, options: BeginOptions?)
 		return
 	end
 
-	local opts: BeginOptions = options or {}
 	local camera = workspace.CurrentCamera
-	-- New shelves start under the screen centre; moved shelves start where they are
+	-- New shelves start under the screen centre; moved things start where they are
 	pointer = if opts.gridX == nil and camera then camera.ViewportSize / 2 else nil
+	local ignoreId = if opts.kind == "NewShelf" then nil else opts.id
 
 	session = {
-		def = def,
-		moveUid = opts.moveUid,
+		kind = opts.kind,
+		id = opts.id,
+		size = size,
 		rotation = opts.rotation or 0,
 		gridX = opts.gridX or 0,
 		gridZ = opts.gridZ or 0,
 		valid = false,
 		floor = floor,
-		blocked = PlacementGrid.getBlockedRects(plotModel, floor.CFrame, opts.moveUid),
-		ghost = makeGhost(def),
+		blocked = PlacementGrid.getBlockedRects(plotModel, floor.CFrame, ignoreId),
+		ghost = makeGhost(size),
 	}
 	bar.Visible = true
 	update()

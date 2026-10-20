@@ -10,6 +10,7 @@ local NAMES = {
 	"Notify", -- server → client: (message: string, isError: boolean)
 	"PlaceShelf", -- client → server: (shelfId: string, gridX: number, gridZ: number, rotation: number)
 	"MoveShelf", -- client → server: (uid: string, gridX: number, gridZ: number, rotation: number)
+	"MoveFixture", -- client → server: (fixtureId: string, gridX: number, gridZ: number, rotation: number)
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
 	"SetPrices", -- client → server: ({ [productId: string]: number })
@@ -19,6 +20,10 @@ local NAMES = {
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
 	"RipPack", -- client → server: open one pack from the carried box
 	"PackOpened", -- server → client: (productId: string, results: { { cardId: string, foil: boolean } })
+	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
+	"RequestCollection", -- client → server: ask for a CollectionChanged (sent on client start)
+	"QuickSell", -- client → server: (cardId: string, foil: boolean) sell one copy
+	"SellDuplicates", -- client → server: sell every copy beyond the first of each card (normal and foil kept separately)
 }
 
 local isServer = RunService:IsServer()
@@ -49,6 +54,7 @@ return {
 	Notify = remotes.Notify,
 	PlaceShelf = remotes.PlaceShelf,
 	MoveShelf = remotes.MoveShelf,
+	MoveFixture = remotes.MoveFixture,
 	SellShelf = remotes.SellShelf,
 	StockShelf = remotes.StockShelf,
 	SetPrices = remotes.SetPrices,
@@ -58,4 +64,8 @@ return {
 	DropBox = remotes.DropBox,
 	RipPack = remotes.RipPack,
 	PackOpened = remotes.PackOpened,
+	CollectionChanged = remotes.CollectionChanged,
+	RequestCollection = remotes.RequestCollection,
+	QuickSell = remotes.QuickSell,
+	SellDuplicates = remotes.SellDuplicates,
 }

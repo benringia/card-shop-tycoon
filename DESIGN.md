@@ -67,7 +67,7 @@ Order stock (computer) → Restock shelves → Set prices
 
 | Shelf | Capacity | Cost | Unlock |
 |---|---|---|---|
-| Small Pack Rack | 24 packs | $100 | Start (1 free) |
+| Small Pack Rack | 24 packs | $100 | Start |
 | Wall Shelf | 48 packs | $350 | Shop Lv 3 |
 | Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
 | Glass Showcase | 6 single cards | $800 | Shop Lv 4 |
@@ -205,7 +205,7 @@ Player can also open their own stock instead of selling it. Trade-off: sell for 
 
 ### 7.1 Start
 - Starting cash: **$200**
-- Starting shop: small room, 1 Small Pack Rack, register, order computer.
+- Starting shop: small room, register, order computer. No shelves: the first Small Pack Rack is bought from the Build menu.
 
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1)
 
@@ -343,7 +343,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Plots.luau      # plot layout and fixtures
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
-        │   ├── Placement.luau  # grid, starter shelves
+        │   ├── Placement.luau  # grid, placement rules
         │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
         │   ├── Register.luau   # checkout reach, counter items
@@ -409,8 +409,8 @@ Bump `version` and write a migration whenever the shape changes.
 - [x] Register checkout
 - [x] Cash + XP + levels 1–5
 - [x] Pack opening (Set 1, server rolls, flip animation, foil effect)
-- [ ] Binder UI
-- [ ] Quick sell cards
+- [x] Binder UI
+- [x] Quick sell cards
 - [ ] Saving with ProfileStore
 - [ ] Server pull announcements
 

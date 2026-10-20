@@ -65,9 +65,7 @@ local function onRip(player: Player)
 	end
 
 	local results = rollPack(pack)
-	for _, result in results do
-		CardService.AddCard(player, result.cardId, result.foil)
-	end
+	CardService.AddCards(player, results)
 	Remotes.PackOpened:FireClient(player, productId, results)
 end
 
@@ -77,9 +75,7 @@ function PackService.OpenTestPack(player: Player)
 	local results = rollPack(Packs.ById[productId])
 	local legendaries = Cards.ByRarity.Legendary
 	results[#results] = { cardId = legendaries[rng:NextInteger(1, #legendaries)].id, foil = true }
-	for _, result in results do
-		CardService.AddCard(player, result.cardId, result.foil)
-	end
+	CardService.AddCards(player, results)
 	Remotes.PackOpened:FireClient(player, productId, results)
 end
 

@@ -150,9 +150,9 @@ local function isNearPlot(player: Player, plot: Plot): boolean
 	return root ~= nil and (root.Position - plot.floor.Position).Magnitude <= PlacementConfig.MAX_EDIT_DISTANCE
 end
 
-local function canPlaceAt(plot: Plot, def: ShelfDef, gridX: number, gridZ: number, rotation: number, ignoreUid: string?): boolean
-	local blocked = PlacementGrid.getBlockedRects(plot.model, plot.floor.CFrame, ignoreUid)
-	return PlacementGrid.isFree(blocked, def.size, gridX, gridZ, rotation)
+local function canPlaceAt(plot: Plot, size: Vector3, gridX: number, gridZ: number, rotation: number, ignoreId: string?): boolean
+	local blocked = PlacementGrid.getBlockedRects(plot.model, plot.floor.CFrame, ignoreId)
+	return PlacementGrid.isFree(blocked, size, gridX, gridZ, rotation)
 end
 
 -- Shared checks for every edit request. Returns the plot and layout when the player may edit.
@@ -194,7 +194,7 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 		notify(player, "Your shop can't fit any more shelves.", true)
 		return
 	end
-	if not canPlaceAt(plot, def, gx, gz, rot, nil) then
+	if not canPlaceAt(plot, def.size, gx, gz, rot, nil) then
 		notify(player, "That spot is blocked.", true)
 		return
 	end
@@ -223,13 +223,36 @@ local function onMove(player: Player, uid: unknown, gridX: unknown, gridZ: unkno
 		return
 	end
 	local gx, gz, rot = gridX :: number, gridZ :: number, rotation :: number
-	if not canPlaceAt(plot, shelf.def, gx, gz, rot, uid) then
+	if not canPlaceAt(plot, shelf.def.size, gx, gz, rot, uid) then
 		notify(player, "That spot is blocked.", true)
 		return
 	end
 
 	shelf.gridX, shelf.gridZ, shelf.rotation = gx, gz, rot
 	positionShelf(plot, shelf)
+end
+
+-- Only the order computer can be moved for now; the register stays put because the queue lines up on it
+local function onMoveFixture(player: Player, fixtureId: unknown, gridX: unknown, gridZ: unknown, rotation: unknown)
+	if not allowAction(player) then
+		return
+	end
+	if fixtureId ~= PlotService.COMPUTER_FIXTURE_ID then
+		return
+	end
+	if not isGridInteger(gridX) or not isGridInteger(gridZ) or not isValidRotation(rotation) then
+		return
+	end
+	local plot = getEditablePlot(player)
+	if not plot then
+		return
+	end
+	local gx, gz, rot = gridX :: number, gridZ :: number, rotation :: number
+	if not canPlaceAt(plot, plot.computer.Size, gx, gz, rot, fixtureId) then
+		notify(player, "That spot is blocked.", true)
+		return
+	end
+	PlotService.SetComputerCell(plot, gx, gz, rot)
 end
 
 local function onSell(player: Player, uid: unknown)
@@ -261,17 +284,9 @@ local function onSell(player: Player, uid: unknown)
 	notify(player, string.format("Sold %s for $%.2f.", shelf.def.name, refund), false)
 end
 
--- No saving yet, so every new shop gets the starter shelves
-local function onClaimed(player: Player, plot: Plot)
+-- New shops start with an empty floor; every shelf is bought from the Build menu
+local function onClaimed(player: Player, _plot: Plot)
 	layouts[player] = {}
-	for _, starter in PlacementConfig.STARTER_SHELVES do
-		local def = Shelves.ById[starter.shelfId]
-		if def and canPlaceAt(plot, def, starter.gridX, starter.gridZ, starter.rotation, nil) then
-			createShelf(player, plot, def, starter.gridX, starter.gridZ, starter.rotation, 0)
-		else
-			warn(`[PlacementService] Starter shelf {starter.shelfId} doesn't fit, check Placement config`)
-		end
-	end
 end
 
 local function onReleased(player: Player, _plot: Plot)
@@ -352,6 +367,7 @@ function PlacementService.Start()
 
 	Remotes.PlaceShelf.OnServerEvent:Connect(onPlace)
 	Remotes.MoveShelf.OnServerEvent:Connect(onMove)
+	Remotes.MoveFixture.OnServerEvent:Connect(onMoveFixture)
 	Remotes.SellShelf.OnServerEvent:Connect(onSell)
 end
 

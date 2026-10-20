@@ -27,9 +27,11 @@ return {
 	SPAWN_INSET = 6,
 	SPAWN_PAD_SIZE = Vector3.new(4, 1, 4),
 
-	-- Order computer sits in a back corner, screen facing the shop front
+	-- Order computer starts in a back corner, screen facing the shop front. The owner can move it;
+	-- it returns here when the plot is released. Grid cells count from the front-left corner.
 	COMPUTER_SIZE = Vector3.new(4, 3, 2),
-	COMPUTER_INSET = 4, -- from the back and side walls
+	COMPUTER_GRID_X = 17,
+	COMPUTER_GRID_Z = 18,
 	COMPUTER_COLOR = Color3.fromRGB(60, 65, 80),
 	COMPUTER_TEXT = "ORDER STOCK",
 

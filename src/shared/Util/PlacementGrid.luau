@@ -67,15 +67,17 @@ function PlacementGrid.partToRect(plotCFrame: CFrame, part: BasePart, margin: nu
 	return { x = minX, z = minZ, w = maxX - minX, d = maxZ - minZ }
 end
 
--- Every obstacle on the plot. Pass ignoreUid when moving a shelf so it doesn't block itself.
-function PlacementGrid.getBlockedRects(plotModel: Model, plotCFrame: CFrame, ignoreUid: string?): { Rect }
+-- Every obstacle on the plot. Pass ignoreId (a ShelfUid or FixtureId) when moving something
+-- so it doesn't block itself.
+function PlacementGrid.getBlockedRects(plotModel: Model, plotCFrame: CFrame, ignoreId: string?): { Rect }
 	local rects: { Rect } = {}
 	for _, instance in plotModel:GetDescendants() do
 		if not instance:IsA("BasePart") or not instance:GetAttribute("BlocksPlacement") then
 			continue
 		end
 		local uid = instance:GetAttribute("ShelfUid")
-		if uid ~= nil and uid == ignoreUid then
+		local id = uid or instance:GetAttribute("FixtureId")
+		if id ~= nil and id == ignoreId then
 			continue
 		end
 		-- Shelves may sit side by side; fixed fixtures keep a walking gap

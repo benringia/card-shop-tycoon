@@ -1,6 +1,7 @@
 --!strict
--- Build button and shelf shop menu, plus the Stock / Edit prompts on your own shelves.
--- Prompts are created on this client only, so visitors never see them. The server re-checks everything.
+-- Build button and shelf shop menu, the Stock / Edit prompts on your own shelves, and the Move
+-- prompt on your order computer. Prompts are created on this client only, so visitors never see them.
+-- The server re-checks everything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -27,6 +28,8 @@ type ShelfPrompts = {
 	edit: ProximityPrompt,
 }
 
+local COMPUTER_PROMPT_OFFSET = 80 -- pixels below the computer's "Order stock" prompt
+
 local player = Players.LocalPlayer
 
 local BuildController = {}
@@ -38,6 +41,7 @@ local editTitle: TextLabel
 local sellDetail: TextLabel
 local editingPart: BasePart? = nil
 local shelvesConnection: RBXScriptConnection? = nil
+local computerPrompt: ProximityPrompt? = nil
 local promptsByShelf: { [BasePart]: ShelfPrompts } = {}
 
 local function getNumberAttribute(instance: Instance, name: string, default: number): number
@@ -68,7 +72,7 @@ local function onBuy(def: ShelfDef)
 		return
 	end
 	shopPanel.Visible = false
-	PlacementController.Begin(def)
+	PlacementController.Begin(def.size, { kind = "NewShelf", id = def.id })
 end
 
 local function buildShopPanel(parent: Instance)
@@ -105,8 +109,9 @@ local function onMove()
 	if not part or not def or typeof(uid) ~= "string" then
 		return
 	end
-	PlacementController.Begin(def, {
-		moveUid = uid,
+	PlacementController.Begin(def.size, {
+		kind = "MoveShelf",
+		id = uid,
 		rotation = getNumberAttribute(part, "Rotation", 0),
 		gridX = getNumberAttribute(part, "GridX", 0),
 		gridZ = getNumberAttribute(part, "GridZ", 0),
@@ -195,7 +200,32 @@ local function addShelfPrompts(child: Instance)
 	end)
 end
 
--- Adds prompts to every shelf on the player's own plot, including ones placed later
+-- Move prompt on the owner's order computer. It sits below the server's "Order stock" prompt
+-- on the same part, so it's offset to avoid the two drawing on top of each other.
+local function addComputerPrompt(computer: BasePart)
+	if computerPrompt then
+		computerPrompt:Destroy()
+	end
+	local prompt = makePrompt(computer, "Move", "Computer", Enum.KeyCode.F)
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+	prompt.UIOffset = Vector2.new(0, COMPUTER_PROMPT_OFFSET)
+	prompt.Triggered:Connect(function()
+		local fixtureId = computer:GetAttribute("FixtureId")
+		if PlacementController.IsActive() or typeof(fixtureId) ~= "string" then
+			return
+		end
+		PlacementController.Begin(computer.Size, {
+			kind = "MoveFixture",
+			id = fixtureId,
+			rotation = getNumberAttribute(computer, "Rotation", 0),
+			gridX = getNumberAttribute(computer, "GridX", 0),
+			gridZ = getNumberAttribute(computer, "GridZ", 0),
+		})
+	end)
+	computerPrompt = prompt
+end
+
+-- Adds prompts to every shelf on the player's own plot (including ones placed later) and its computer
 local function watchOwnPlot()
 	if shelvesConnection then
 		shelvesConnection:Disconnect()
@@ -206,6 +236,7 @@ local function watchOwnPlot()
 		return
 	end
 	local plot = workspace:WaitForChild("Plots"):WaitForChild("Plot" .. plotId)
+	addComputerPrompt(plot:WaitForChild("OrderComputer") :: BasePart)
 	local shelvesFolder = plot:WaitForChild("Shelves")
 
 	shelvesConnection = shelvesFolder.ChildAdded:Connect(addShelfPrompts)

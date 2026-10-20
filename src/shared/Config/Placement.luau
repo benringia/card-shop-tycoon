@@ -10,11 +10,6 @@ return {
 	ACTION_COOLDOWN = 0.3, -- seconds between place/move/sell requests per player
 	MAX_EDIT_DISTANCE = 40, -- player must be this close to their plot centre to edit it
 
-	-- Every new shop starts with these, free. Grid cells count from the front-left corner.
-	STARTER_SHELVES = {
-		{ shelfId = "SmallPackRack", gridX = 9, gridZ = 9, rotation = 0 },
-	},
-
 	GHOST_VALID_COLOR = Color3.fromRGB(80, 220, 120),
 	GHOST_INVALID_COLOR = Color3.fromRGB(230, 70, 70),
 	GHOST_TRANSPARENCY = 0.5,

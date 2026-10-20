@@ -16,8 +16,12 @@ local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
+local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Card = typeof(Cards.List[1])
@@ -33,7 +37,6 @@ type CardView = {
 	flipped: boolean,
 }
 
-local CARD_BACK_COLOR = Color3.fromRGB(40, 40, 60)
 local RIP_WAIT_SECONDS = 3 -- re-enable the button if the server never answers
 local RIP_KEY = Enum.KeyCode.T -- rips a pack, then advances the opening screen (tear → flip → done)
 
@@ -79,13 +82,8 @@ local function playSound(soundId: string)
 	end)
 end
 
-local function getRarityColor(rarity: string): Color3
-	local tier = Rarities.Tiers[rarity]
-	return if tier then tier.color else Color3.new(1, 1, 1)
-end
-
 local function getCardValue(view: CardView): number
-	return view.card.value * (if view.foil then Rarities.FOIL_MULTIPLIER else 1)
+	return CardRules.getMarketValue(view.card, view.foil)
 end
 
 local function buildOddsText(pack: Pack): string
@@ -131,82 +129,16 @@ local function onRip()
 	end)
 end
 
-local function addCardLabel(parent: Instance, text: string, y: number, height: number, font: Enum.Font): TextLabel
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.AnchorPoint = Vector2.new(0.5, 0)
-	label.Position = UDim2.fromScale(0.5, y)
-	label.Size = UDim2.fromScale(0.9, height)
-	label.Font = font
-	label.Text = text
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.5
-	label.TextScaled = true
-	label.Parent = parent
-
-	local limit = Instance.new("UITextSizeConstraint")
-	limit.MaxTextSize = 28
-	limit.Parent = label
-	return label
-end
-
-local function addFoilShimmer(inner: Frame)
-	-- A bright rainbow band sweeping across the card face
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-		ColorSequenceKeypoint.new(0.4, Color3.new(1, 1, 1)),
-		ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255, 150, 220)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 255, 255)),
-		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 255, 150)),
-		ColorSequenceKeypoint.new(0.6, Color3.new(1, 1, 1)),
-		ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-	})
-	gradient.Rotation = 25
-	gradient.Offset = Vector2.new(-1, 0)
-	gradient.Parent = inner
-
-	local info = TweenInfo.new(PackOpening.FOIL_SHIMMER_SECONDS, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
-	TweenService:Create(gradient, info, { Offset = Vector2.new(1, 0) }):Play()
-end
-
--- Swaps the face-down back for the card face
-local function reveal(view: CardView)
-	local inner = view.inner
-	local card = view.card
-	for _, child in inner:GetChildren() do
-		if child:IsA("TextLabel") then
-			child:Destroy()
-		end
-	end
-
-	inner.BackgroundColor3 = Cards.ELEMENTS[card.element] or CARD_BACK_COLOR
-	view.stroke.Color = getRarityColor(card.rarity)
-	view.stroke.Thickness = PackOpening.STROKE_THICKNESS[card.rarity] or 2
-
-	addCardLabel(inner, card.name, 0.06, 0.16, Enum.Font.FredokaOne)
-	-- Placeholder art until real card art exists: the element's initial, big
-	local art = addCardLabel(inner, string.sub(card.element, 1, 1), 0.26, 0.4, Enum.Font.FredokaOne)
-	art.TextTransparency = 0.3
-	addCardLabel(inner, card.rarity, 0.7, 0.11, Enum.Font.GothamBold).TextColor3 = getRarityColor(card.rarity)
-	addCardLabel(inner, string.format("$%.2f", getCardValue(view)), 0.83, 0.1, Enum.Font.GothamBold)
-
-	if view.foil then
-		addCardLabel(inner, "✦ FOIL ✦", 0.2, 0.08, Enum.Font.GothamBold)
-		addFoilShimmer(inner)
-	end
-end
-
 local function flipCard(view: CardView)
 	playSound(PackOpening.FLIP_SOUND_ID)
 	tween(view.inner, PackOpening.FLIP_SECONDS, { Size = UDim2.fromScale(0, 1) }).Completed:Wait()
-	reveal(view)
+	CardFace.render(view.inner, view.stroke, view.card, view.foil)
 	tween(view.inner, PackOpening.FLIP_SECONDS, { Size = UDim2.fromScale(1, 1) }).Completed:Wait()
 end
 
 -- The hit slot glows in its rarity colour and pulses before it flips
 local function buildUp(view: CardView)
-	view.stroke.Color = getRarityColor(view.card.rarity)
+	view.stroke.Color = CardFace.getRarityColor(view.card.rarity)
 	local pulses = 3
 	local pulseSeconds = PackOpening.HIT_BUILDUP_SECONDS / (pulses * 2)
 	for _ = 1, pulses do
@@ -279,17 +211,14 @@ local function makeCardView(card: Card, foil: boolean, order: number): CardView
 	inner.AnchorPoint = Vector2.new(0.5, 0.5)
 	inner.Position = UDim2.fromScale(0.5, 0.5)
 	inner.Size = UDim2.fromScale(1, 1)
-	inner.BackgroundColor3 = CARD_BACK_COLOR
 	inner.Parent = button
 	UIKit.corner(inner, 10)
 
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = Color3.fromRGB(120, 120, 140)
-	stroke.Thickness = 2
 	stroke.Parent = inner
 
-	addCardLabel(inner, "?", 0.3, 0.4, Enum.Font.FredokaOne)
+	CardFace.renderBack(inner, stroke)
 
 	local view: CardView = {
 		card = card,

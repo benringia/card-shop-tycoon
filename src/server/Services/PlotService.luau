@@ -4,7 +4,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlotConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Plots"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local PlotConfig = require(Shared:WaitForChild("Config"):WaitForChild("Plots"))
+local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
+
+local COMPUTER_FIXTURE_ID = "OrderComputer"
 
 export type Plot = {
 	id: number,
@@ -78,20 +82,23 @@ local function buildSign(plotCFrame: CFrame, parent: Instance): TextLabel
 	return addSurfaceLabel(sign, PlotConfig.FREE_SIGN_TEXT)
 end
 
+-- Snaps the computer to a grid cell. Attributes let the owner's client start a move from here.
+local function setComputerCell(computer: Part, plotCFrame: CFrame, gridX: number, gridZ: number, rotation: number)
+	computer.CFrame = plotCFrame * PlacementGrid.getLocalCFrame(computer.Size, gridX, gridZ, rotation)
+	computer:SetAttribute("GridX", gridX)
+	computer:SetAttribute("GridZ", gridZ)
+	computer:SetAttribute("Rotation", rotation)
+end
+
 local function buildComputer(plotCFrame: CFrame, parent: Instance): Part
-	local size = PlotConfig.COMPUTER_SIZE
 	local computer = Instance.new("Part")
-	computer.Name = "OrderComputer"
+	computer.Name = COMPUTER_FIXTURE_ID
 	computer.Anchored = true
-	computer.Size = size
-	computer.CFrame = plotCFrame
-		* CFrame.new(
-			PlotConfig.WIDTH / 2 - PlotConfig.COMPUTER_INSET,
-			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
-			PlotConfig.DEPTH / 2 - PlotConfig.COMPUTER_INSET
-		)
+	computer.Size = PlotConfig.COMPUTER_SIZE
 	computer.Color = PlotConfig.COMPUTER_COLOR
 	computer:SetAttribute("BlocksPlacement", true)
+	computer:SetAttribute("FixtureId", COMPUTER_FIXTURE_ID)
+	setComputerCell(computer, plotCFrame, PlotConfig.COMPUTER_GRID_X, PlotConfig.COMPUTER_GRID_Z, 0)
 	computer.Parent = parent
 
 	addSurfaceLabel(computer, PlotConfig.COMPUTER_TEXT)
@@ -255,6 +262,8 @@ local function release(player: Player)
 	plot.model:SetAttribute("OwnerUserId", 0)
 	plot.floor.Color = PlotConfig.FREE_COLOR
 	plot.signLabel.Text = PlotConfig.FREE_SIGN_TEXT
+	-- The next owner gets the default layout
+	setComputerCell(plot.computer, plot.floor.CFrame, PlotConfig.COMPUTER_GRID_X, PlotConfig.COMPUTER_GRID_Z, 0)
 
 	runCallbacks(releasedCallbacks, player, plot)
 end
@@ -274,6 +283,13 @@ end
 
 function PlotService.GetPlots(): { Plot }
 	return plots
+end
+
+PlotService.COMPUTER_FIXTURE_ID = COMPUTER_FIXTURE_ID
+
+-- Moves the order computer. PlacementService validates the spot first.
+function PlotService.SetComputerCell(plot: Plot, gridX: number, gridZ: number, rotation: number)
+	setComputerCell(plot.computer, plot.floor.CFrame, gridX, gridZ, rotation)
 end
 
 function PlotService.Start()
