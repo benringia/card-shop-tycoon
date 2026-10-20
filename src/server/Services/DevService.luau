@@ -68,7 +68,7 @@ local function jumpToLevel(player: Player, level: number)
 	end
 end
 
--- Highest-rarity levelled card (then highest level); otherwise the rarest plain copy, foil first
+-- Highest-rarity levelled card (then highest level); otherwise the rarest plain copy, best grade and foil first
 local function pickXpTarget(player: Player): CardService.XpTarget?
 	local best: CardService.Beast? = nil
 	local bestScore = -1
@@ -84,11 +84,15 @@ local function pickXpTarget(player: Player): CardService.XpTarget?
 	end
 	local stacks = CardService.GetStacks(player)
 	for _, card in Cards.RarestFirst do
-		local owned = stacks[card.id]
-		if owned and owned.foil > 0 then
-			return { cardId = card.id, foil = true }
-		elseif owned and owned.normal > 0 then
-			return { cardId = card.id, foil = false }
+		local byGrade = stacks[card.id] or {}
+		for index = #BeastRules.GRADES, 1, -1 do
+			local grade = BeastRules.GRADES[index]
+			local owned = byGrade[grade]
+			if owned and owned.foil > 0 then
+				return { cardId = card.id, foil = true, grade = grade }
+			elseif owned and owned.normal > 0 then
+				return { cardId = card.id, foil = false, grade = grade }
+			end
 		end
 	end
 	return nil

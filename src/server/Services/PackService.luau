@@ -10,6 +10,7 @@ local Announcements = require(Config:WaitForChild("Announcements"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Packs = require(Config:WaitForChild("Packs"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -23,7 +24,7 @@ local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 type Pack = typeof(Packs.ById[""])
 type Weighted = typeof(Packs.ById[""].slots[1][1])
 
-export type PullResult = { cardId: string, foil: boolean }
+export type PullResult = { cardId: string, foil: boolean, grade: string }
 
 local PackService = {}
 
@@ -51,13 +52,13 @@ local function rollPack(pack: Pack): { PullResult }
 	for _, slot in pack.slots do
 		local pool = Cards.ByRarity[rollRarity(slot)]
 		local card = pool[rng:NextInteger(1, #pool)]
-		table.insert(results, { cardId = card.id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE })
+		table.insert(results, { cardId = card.id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE, grade = BeastRules.rollGrade(rng:NextNumber()) })
 	end
 	return results
 end
 
 -- Tells every other player; the puller shows their own message locally when they flip
-local function announce(player: Player, pull: PullResult)
+local function announce(player: Player, pull: { cardId: string, foil: boolean })
 	for _, other in Players:GetPlayers() do
 		if other ~= player then
 			Remotes.PullAnnouncement:FireClient(other, player.DisplayName, pull.cardId, pull.foil)
@@ -137,7 +138,7 @@ function PackService.OpenTestPack(player: Player)
 	local productId = "FirstSparkPack"
 	local results = rollPack(Packs.ById[productId])
 	local legendaries = Cards.ByRarity.Legendary
-	results[#results] = { cardId = legendaries[rng:NextInteger(1, #legendaries)].id, foil = true }
+	results[#results] = { cardId = legendaries[rng:NextInteger(1, #legendaries)].id, foil = true, grade = BeastRules.rollGrade(rng:NextNumber()) }
 	deliverPack(player, productId, results)
 end
 

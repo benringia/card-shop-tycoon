@@ -1,7 +1,7 @@
 --!strict
--- Each player's cards: plain stacks { [cardId] = { normal, foil } } of untouched copies, and levelled
--- cards { [beastId] = Beast } with their own level, XP and stars. A plain copy becomes its own card the
--- first time it gains XP or a star. Cards on display leave here while shown (PlacementService holds them).
+-- Each player's cards: plain stacks { [cardId] = { [grade] = { normal, foil } } } of untouched copies,
+-- and levelled cards { [beastId] = Beast } with their own level, XP, stars and grade. A plain copy
+-- becomes its own card (keeping its grade) the first time it gains XP or a star. Cards on display leave here while shown (PlacementService holds them).
 -- The client gets { stacks, beasts } on every change. Saved through DataService.
 -- (DESIGN.md calls this CollectionService; renamed to avoid clashing with Roblox's own service.)
 local HttpService = game:GetService("HttpService")
@@ -22,11 +22,12 @@ local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 type PlayerData = DataService.PlayerData
 
 export type Owned = { normal: number, foil: number }
-export type PullResult = { cardId: string, foil: boolean }
-export type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: number, stars: number }
-export type XpTarget = string | { cardId: string, foil: boolean }
+export type Stacks = { [string]: { [string]: Owned } } -- cardId -> grade -> counts
+export type PullResult = { cardId: string, foil: boolean, grade: string }
+export type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string }
+export type XpTarget = string | { cardId: string, foil: boolean, grade: string }
 
-type Inventory = { stacks: { [string]: Owned }, beasts: { [string]: Beast } }
+type Inventory = { stacks: Stacks, beasts: { [string]: Beast } }
 
 local CardService = {}
 
@@ -40,18 +41,24 @@ local function sync(player: Player)
 	end
 end
 
-local function getOwned(stacks: { [string]: Owned }, cardId: string): Owned
-	local owned = stacks[cardId]
+local function getOwned(stacks: Stacks, cardId: string, grade: string): Owned
+	local byGrade = stacks[cardId]
+	if not byGrade then
+		byGrade = {}
+		stacks[cardId] = byGrade
+	end
+	local owned = byGrade[grade]
 	if not owned then
 		owned = { normal = 0, foil = 0 }
-		stacks[cardId] = owned
+		byGrade[grade] = owned
 	end
 	return owned
 end
 
 -- Removes one plain copy without syncing; returns false if there is none
-local function takeFreshCopy(inventory: Inventory, cardId: string, foil: boolean): boolean
-	local owned = inventory.stacks[cardId]
+local function takeFreshCopy(inventory: Inventory, cardId: string, foil: boolean, grade: string): boolean
+	local byGrade = inventory.stacks[cardId]
+	local owned = if byGrade then byGrade[grade] else nil
 	if not owned then
 		return false
 	end
@@ -77,7 +84,8 @@ function CardService.AddFresh(player: Player, results: { PullResult })
 	end
 	for _, result in results do
 		if Cards.ById[result.cardId] then
-			local owned = getOwned(inventory.stacks, result.cardId)
+			local grade = if BeastRules.isGrade(result.grade) then result.grade else BeastRules.DEFAULT_GRADE
+			local owned = getOwned(inventory.stacks, result.cardId, grade)
 			if result.foil then
 				owned.foil += 1
 			else
@@ -88,9 +96,10 @@ function CardService.AddFresh(player: Player, results: { PullResult })
 	sync(player)
 end
 
-function CardService.TakeFresh(player: Player, cardId: string, foil: boolean): boolean
+-- Takes one plain copy of exactly this card, foil and grade
+function CardService.TakeFresh(player: Player, cardId: string, foil: boolean, grade: string): boolean
 	local inventory = inventories[player]
-	if not inventory or not takeFreshCopy(inventory, cardId, foil) then
+	if not inventory or not takeFreshCopy(inventory, cardId, foil, grade) then
 		return false
 	end
 	sync(player)
@@ -133,17 +142,17 @@ function CardService.GetBeasts(player: Player): { [string]: Beast }
 	return if inventory then inventory.beasts else {}
 end
 
-function CardService.GetStacks(player: Player): { [string]: Owned }
+function CardService.GetStacks(player: Player): Stacks
 	local inventory = inventories[player]
 	return if inventory then inventory.stacks else {}
 end
 
 -- Returns a card to the binder the way it left: as its beast, or as a plain copy
-function CardService.GiveCard(player: Player, cardId: string, foil: boolean, beast: Beast?)
+function CardService.GiveCard(player: Player, cardId: string, foil: boolean, grade: string, beast: Beast?)
 	if beast then
 		CardService.AddBeast(player, beast)
 	else
-		CardService.AddFresh(player, { { cardId = cardId, foil = foil } })
+		CardService.AddFresh(player, { { cardId = cardId, foil = foil, grade = grade } })
 	end
 end
 
@@ -157,7 +166,7 @@ function CardService.AddXP(player: Player, target: XpTarget, amount: number): Be
 	local beast: Beast?
 	if typeof(target) == "string" then
 		beast = inventory.beasts[target]
-	elseif Cards.ById[target.cardId] and takeFreshCopy(inventory, target.cardId, target.foil) then
+	elseif Cards.ById[target.cardId] and takeFreshCopy(inventory, target.cardId, target.foil, target.grade) then
 		local newBeast: Beast = {
 			id = HttpService:GenerateGUID(false),
 			cardId = target.cardId,
@@ -165,6 +174,7 @@ function CardService.AddXP(player: Player, target: XpTarget, amount: number): Be
 			level = 1,
 			xp = 0,
 			stars = BeastRules.START_STARS,
+			grade = target.grade,
 		}
 		inventory.beasts[newBeast.id] = newBeast
 		beast = newBeast
@@ -187,18 +197,26 @@ end
 
 -- Unknown card IDs, bad counts and invalid beasts in saved data are dropped or clamped
 local function load(player: Player, data: PlayerData)
-	local stacks: { [string]: Owned } = {}
-	for cardId, saved in data.cards do
-		if Cards.ById[cardId] and typeof(saved) == "table" then
-			local owned = { normal = readCount(saved.normal), foil = readCount(saved.foil) }
-			if owned.normal + owned.foil > 0 then
-				stacks[cardId] = owned
+	local stacks: Stacks = {}
+	local savedCards: any = if typeof(data.cards) == "table" then data.cards else {}
+	for cardId, byGrade in savedCards do
+		if Cards.ById[cardId] and typeof(byGrade) == "table" then
+			for _, grade in BeastRules.GRADES do
+				local saved = byGrade[grade]
+				if typeof(saved) == "table" then
+					local normal, foil = readCount(saved.normal), readCount(saved.foil)
+					if normal + foil > 0 then
+						local owned = getOwned(stacks, cardId, grade)
+						owned.normal, owned.foil = normal, foil
+					end
+				end
 			end
 		end
 	end
 
 	local beasts: { [string]: Beast } = {}
-	for beastId, saved in data.beasts do
+	local savedBeasts: any = if typeof(data.beasts) == "table" then data.beasts else {}
+	for beastId, saved in savedBeasts do
 		local clean = BeastRules.sanitize(saved)
 		if typeof(beastId) == "string" and clean then
 			beasts[beastId] = {
@@ -208,6 +226,7 @@ local function load(player: Player, data: PlayerData)
 				level = clean.level,
 				xp = clean.xp,
 				stars = clean.stars,
+				grade = clean.grade,
 			}
 		end
 	end
@@ -222,14 +241,24 @@ local function save(player: Player, data: PlayerData)
 		return
 	end
 	local cards = {}
-	for cardId, owned in inventory.stacks do
-		if owned.normal + owned.foil > 0 then
-			cards[cardId] = { normal = owned.normal, foil = owned.foil }
+	for cardId, byGrade in inventory.stacks do
+		for grade, owned in byGrade do
+			if owned.normal + owned.foil > 0 then
+				cards[cardId] = cards[cardId] or {}
+				cards[cardId][grade] = { normal = owned.normal, foil = owned.foil }
+			end
 		end
 	end
 	local beasts = {}
 	for beastId, beast in inventory.beasts do
-		beasts[beastId] = { cardId = beast.cardId, foil = beast.foil, level = beast.level, xp = beast.xp, stars = beast.stars }
+		beasts[beastId] = {
+			cardId = beast.cardId,
+			foil = beast.foil,
+			level = beast.level,
+			xp = beast.xp,
+			stars = beast.stars,
+			grade = beast.grade,
+		}
 	end
 	data.cards = cards
 	data.beasts = beasts
