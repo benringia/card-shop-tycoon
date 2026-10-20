@@ -5,6 +5,7 @@ local process = require("@lune/process")
 
 local specs: { [string]: { [string]: () -> () } } = {
 	BeastMath = require("./BeastMath.spec"),
+	Migrations = require("./Migrations.spec"),
 }
 
 local passed, failed = 0, 0

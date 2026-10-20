@@ -15,6 +15,7 @@ local ProfileStore = require(ServerStorage:WaitForChild("ServerPackages"):WaitFo
 
 local Services = script.Parent :: Instance
 local PlotService = require(Services:WaitForChild("PlotService"))
+local Migrations = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Migrations"))
 
 -- Shape of what's saved. Tables only hold plain data: no Instances, Vector3s or Color3s.
 export type SavedCard = {
@@ -22,13 +23,13 @@ export type SavedCard = {
 	cardId: string,
 	foil: boolean,
 	price: number,
-	-- Set when the displayed card is a raised beast
+	-- Set when the displayed card is a levelled card (stars 0-5)
 	beastId: string?,
 	level: number?,
 	xp: number?,
 	stars: number?,
 }
-export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number }
+export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number } -- stars 0-5
 export type SavedShelf = {
 	shelfId: string,
 	gridX: number,
@@ -82,30 +83,6 @@ local TEMPLATE: PlayerData = {
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
-
--- MIGRATIONS[n] upgrades a profile from version n to n + 1
-local MIGRATIONS: { [number]: (data: any) -> () } = {
-	-- v2: displayed cards live on each saved shelf; the old top-level showcase list was never used
-	[1] = function(data)
-		data.showcase = nil
-	end,
-	-- v3: raised beasts live in their own table; existing cards are fresh stacks already
-	[2] = function(data)
-		data.beasts = data.beasts or {}
-	end,
-}
-
-local function migrate(data: any)
-	local version = if typeof(data.version) == "number" then data.version else 1
-	while version < DataConfig.SCHEMA_VERSION do
-		local step = MIGRATIONS[version]
-		if step then
-			step(data)
-		end
-		version += 1
-	end
-	data.version = DataConfig.SCHEMA_VERSION
-end
 
 local DataService = {}
 
@@ -165,7 +142,7 @@ local function onPlayerAdded(player: Player)
 	end
 
 	profile:AddUserId(player.UserId) -- GDPR: links the data to this user for deletion requests
-	migrate(profile.Data)
+	Migrations.run(profile.Data, DataConfig.SCHEMA_VERSION)
 	profile:Reconcile() -- fills in fields added to TEMPLATE since this profile was created
 
 	profile.OnSessionEnd:Connect(function()
