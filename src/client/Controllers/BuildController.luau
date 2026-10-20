@@ -89,6 +89,7 @@ local function buildShopPanel(parent: Instance)
 	for index, def in Shelves.List do
 		local detail = if def.kind == "Products"
 			then string.format("Holds %d · $%.2f", def.capacity, def.cost)
+			elseif def.kind == "Condenser" then string.format("Combine duplicates for stars · $%.2f", def.cost)
 			else string.format("%d cards, %s · $%.2f", def.capacity, CASE_BUYERS[def.kind], def.cost)
 		local frame, button = UIKit.row(list, index, def.name, detail)
 		frame.Name = def.id
@@ -104,11 +105,14 @@ local function openEditPanel(part: BasePart)
 	if not def then
 		return
 	end
-	local isCase = def.kind ~= "Products"
+	local isCase = def.kind == "CustomerCards" or def.kind == "PlayerCards"
 	editingPart = part
 	editTitle.Text = def.name
 	cardsRow.Visible = isCase
-	moveDetail.Text = if isCase then "Pick a new spot. Cards stay in it." else "Pick a new spot. Stock stays on it."
+	moveDetail.Text = if isCase
+		then "Pick a new spot. Cards stay in it."
+		elseif def.kind == "Condenser" then "Pick a new spot."
+		else "Pick a new spot. Stock stays on it."
 	sellDetail.Text = string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
 	shopPanel.Visible = false
 	editPanel.Visible = true

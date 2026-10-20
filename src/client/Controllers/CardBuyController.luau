@@ -425,7 +425,8 @@ local function isOtherPlayersCase(instance: Instance): boolean
 		return false
 	end
 	local def = Shelves.ById[instance.Name]
-	if not def or def.kind == "Products" or instance:GetAttribute("ShelfUid") == nil then
+	local isCase = def ~= nil and (def.kind == "CustomerCards" or def.kind == "PlayerCards")
+	if not isCase or instance:GetAttribute("ShelfUid") == nil then
 		return false
 	end
 	local owner = getOwner(instance)

@@ -91,7 +91,11 @@ local function getRefund(shelf: PlacedShelf): number
 end
 
 local function isCardCase(def: ShelfDef): boolean
-	return def.kind ~= "Products"
+	return def.kind == "CustomerCards" or def.kind == "PlayerCards"
+end
+
+local function isCondenser(def: ShelfDef): boolean
+	return def.kind == "Condenser"
 end
 
 local function countCards(shelf: PlacedShelf): number
@@ -103,6 +107,10 @@ local function countCards(shelf: PlacedShelf): number
 end
 
 local function updateLabel(shelf: PlacedShelf)
+	if isCondenser(shelf.def) then
+		shelf.label.Text = shelf.def.name
+		return
+	end
 	if isCardCase(shelf.def) then
 		shelf.label.Text = `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`
 		return
@@ -272,7 +280,10 @@ local function createShelf(
 	part.Anchored = true
 	part.Size = def.size
 	part.Color = def.color
-	part.Material = if isCardCase(def) then Enum.Material.Glass else Enum.Material.Wood
+	part.Material = if isCardCase(def)
+		then Enum.Material.Glass
+		elseif isCondenser(def) then Enum.Material.Metal
+		else Enum.Material.Wood
 	part:SetAttribute("BlocksPlacement", true)
 	part:SetAttribute("ShelfUid", uid)
 	part:SetAttribute("ShelfId", def.id)
@@ -647,6 +658,8 @@ end
 function PlacementService.AddStock(shelf: PlacedShelf, productId: string, maxUnits: number): (number, string?)
 	if isCardCase(shelf.def) then
 		return 0, "This case shows single cards, not stock."
+	elseif shelf.def.kind ~= "Products" then
+		return 0, "This doesn't hold stock."
 	end
 	local accepts = shelf.def.accepts
 	if accepts and not table.find(accepts, productId) then
@@ -676,6 +689,10 @@ end
 
 function PlacementService.IsCardCase(shelf: PlacedShelf): boolean
 	return isCardCase(shelf.def)
+end
+
+function PlacementService.IsCondenser(shelf: PlacedShelf): boolean
+	return isCondenser(shelf.def)
 end
 
 function PlacementService.GetFreeSlot(shelf: PlacedShelf): number?

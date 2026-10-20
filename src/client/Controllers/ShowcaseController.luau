@@ -818,7 +818,7 @@ end
 -- Opens the manager for one of your own card cases
 function ShowcaseController.Open(part: BasePart)
 	local def = Shelves.ById[part.Name]
-	if not def or def.kind == "Products" then
+	if not def or (def.kind ~= "CustomerCards" and def.kind ~= "PlayerCards") then
 		return
 	end
 	disconnectCase()

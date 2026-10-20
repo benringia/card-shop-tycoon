@@ -4,7 +4,8 @@
 --   kind "Products":      holds stock units that NPC customers buy
 --   kind "CustomerCards": displays single cards that NPC customers may buy
 --   kind "PlayerCards":   displays single cards that only other players can buy
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards"
+--   kind "Condenser":     a machine that combines duplicate cards for stars (holds nothing)
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser"
 
 export type Shelf = {
 	id: string,
@@ -48,6 +49,16 @@ local List: { Shelf } = {
 		unlockLevel = 1,
 		size = Vector3.new(6, 4, 2),
 		color = Color3.fromRGB(185, 160, 230),
+	},
+	{
+		id = "Condenser",
+		name = "Card Condenser",
+		kind = "Condenser",
+		capacity = 0,
+		cost = 500,
+		unlockLevel = 4,
+		size = Vector3.new(4, 5, 4),
+		color = Color3.fromRGB(90, 200, 220),
 	},
 	{
 		id = "WallShelf",
