@@ -416,7 +416,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # two-page binder (3x3 pockets), search + filters, hover tooltips
+    │   │   ├── BinderController.luau   # two-page binder (3x3 pockets, fewer bigger ones on phones), search + filters, hover tooltips
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases

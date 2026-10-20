@@ -8,6 +8,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	Migrations = require("./Migrations.spec"),
 	SaleRules = require("./SaleRules.spec"),
 	CondenseRules = require("./CondenseRules.spec"),
+	PocketLayout = require("./PocketLayout.spec"),
 }
 
 local passed, failed = 0, 0

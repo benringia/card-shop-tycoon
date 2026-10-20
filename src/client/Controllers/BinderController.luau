@@ -21,6 +21,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Card = typeof(Cards.List[1])
@@ -39,11 +40,17 @@ type Tile = {
 	levelLabel: TextLabel, -- best grade and best levelled copy, e.g. "S · Lv 12"
 }
 
-local PAGE_COLUMNS = 3
-local PAGE_ROWS = 3
-local CARDS_PER_PAGE = PAGE_COLUMNS * PAGE_ROWS
-local CARD_ASPECT = 0.7 -- width / height of a card pocket
-local POCKET_GAP = 6
+-- 3 x 3 pockets like a real binder; short screens (landscape phones) get fewer, bigger pockets
+local POCKET_OPTIONS: PocketLayout.Options = {
+	aspect = 0.7, -- card width / height
+	gap = 6,
+	preferredColumns = 3,
+	preferredRows = 3,
+	minWidth = 70,
+	maxColumns = 5,
+	maxRows = 3,
+	minPockets = 4,
+}
 local BINDER_MAX_SIZE = Vector2.new(920, 600)
 local COVER_COLOR = Color3.fromRGB(70, 40, 30) -- binder cover and spine
 local PAGE_COLOR = Color3.fromRGB(40, 40, 54)
@@ -73,6 +80,8 @@ local completionLabel: TextLabel
 local pages: { Frame } = {} -- left and right page
 local pageLabel: TextLabel
 local spreadIndex = 1
+local pocketsPerPage = POCKET_OPTIONS.preferredColumns * POCKET_OPTIONS.preferredRows
+local pageGrids: { UIGridLayout } = {}
 local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
 local binderFilter = ALL_FILTER -- All, Owned, Missing or a rarity name
 local searchText = ""
@@ -453,20 +462,20 @@ local function passesFilter(card: Card): boolean
 end
 
 local function getSpreadCount(): number
-	return math.max(1, math.ceil(#visibleTiles / (CARDS_PER_PAGE * 2)))
+	return math.max(1, math.ceil(#visibleTiles / (pocketsPerPage * 2)))
 end
 
 -- Puts the tiles of the current spread into the two pages and draws them; the rest wait off-screen
 local function showSpread(index: number)
 	spreadIndex = math.clamp(index, 1, getSpreadCount())
-	local first = (spreadIndex - 1) * CARDS_PER_PAGE * 2 + 1
+	local first = (spreadIndex - 1) * pocketsPerPage * 2 + 1
 	local shownSet: { [Tile]: boolean } = {}
 	for position, tile in visibleTiles do
 		local offset = position - first
-		if offset >= 0 and offset < CARDS_PER_PAGE * 2 then
+		if offset >= 0 and offset < pocketsPerPage * 2 then
 			shownSet[tile] = true
 			tile.button.LayoutOrder = offset
-			tile.button.Parent = pages[if offset < CARDS_PER_PAGE then 1 else 2]
+			tile.button.Parent = pages[if offset < pocketsPerPage then 1 else 2]
 			renderTile(tile)
 		end
 	end
@@ -688,13 +697,27 @@ local function buildDetail(parent: Frame)
 	end)
 end
 
--- Pockets fill each page 3 x 3 at card proportions, whatever the screen size
-local function fitPockets(page: Frame, grid: UIGridLayout)
-	local size = page.AbsoluteSize
-	local height = (size.Y - POCKET_GAP * (PAGE_ROWS + 1)) / PAGE_ROWS
-	local width = math.min(height * CARD_ASPECT, (size.X - POCKET_GAP * (PAGE_COLUMNS + 1)) / PAGE_COLUMNS)
-	width = math.max(width, 1)
-	grid.CellSize = UDim2.fromOffset(math.floor(width), math.floor(width / CARD_ASPECT))
+-- Sizes the pockets for the pages' size on screen; a layout change re-pages the binder
+local function fitPockets()
+	local page = pages[1]
+	if not page then
+		return
+	end
+	local layout = PocketLayout.choose(page.AbsoluteSize.X, page.AbsoluteSize.Y, POCKET_OPTIONS)
+	for _, grid in pageGrids do
+		grid.CellSize = UDim2.fromOffset(layout.width, layout.height)
+		grid.FillDirectionMaxCells = layout.columns
+	end
+	local perPage = layout.columns * layout.rows
+	if perPage ~= pocketsPerPage then
+		-- Keep the first card of the current spread in view
+		local firstCard = (spreadIndex - 1) * pocketsPerPage * 2 + 1
+		pocketsPerPage = perPage
+		spreadIndex = math.floor((firstCard - 1) / (pocketsPerPage * 2)) + 1
+		if #visibleTiles > 0 then
+			showSpread(spreadIndex)
+		end
+	end
 end
 
 local function buildPage(spread: Frame, isLeft: boolean): Frame
@@ -707,16 +730,14 @@ local function buildPage(spread: Frame, isLeft: boolean): Frame
 	UIKit.corner(page, 8)
 
 	local grid = Instance.new("UIGridLayout")
-	grid.CellPadding = UDim2.fromOffset(POCKET_GAP, POCKET_GAP)
+	grid.CellPadding = UDim2.fromOffset(POCKET_OPTIONS.gap, POCKET_OPTIONS.gap)
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.VerticalAlignment = Enum.VerticalAlignment.Center
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.FillDirectionMaxCells = PAGE_COLUMNS -- 3 pockets per row, so each page is 3 x 3
+	grid.FillDirectionMaxCells = POCKET_OPTIONS.preferredColumns
 	grid.Parent = page
-	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		fitPockets(page, grid)
-	end)
-	fitPockets(page, grid)
+	table.insert(pageGrids, grid)
+	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitPockets)
 	return page
 end
 
@@ -817,6 +838,7 @@ local function buildPanel(parent: Instance)
 	spine.BorderSizePixel = 0
 	spine.Parent = spread
 	pages = { buildPage(spread, true), buildPage(spread, false) }
+	fitPockets()
 
 	-- Page turning
 	local previous = UIKit.button(panel, "<", UIKit.Colors.Row)
