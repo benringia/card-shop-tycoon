@@ -78,10 +78,21 @@ local function getGrowthFromPart(part: BasePart): (number, number)
 	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else 1
 end
 
--- Growth for CardFace: nil for a fresh copy so no level line is drawn
-local function getFaceGrowth(part: BasePart): CardFace.Growth?
+-- Always drawn, so visitors can see the level of every card, fresh or raised
+local function getFaceGrowth(part: BasePart): CardFace.Growth
 	local level, stars = getGrowthFromPart(part)
-	return if level > 1 or stars > 1 then { level = level, stars = stars } else nil
+	return { level = level, stars = stars }
+end
+
+-- A raised beast carries its ID on the part; fresh copies don't
+local function isBeast(part: BasePart): boolean
+	return typeof(part:GetAttribute("BeastId")) == "string"
+end
+
+-- "Lv 12 · 2 stars · raised beast" / "Lv 1 · 1 star · fresh copy"
+local function describeKind(part: BasePart): string
+	local level, stars = getGrowthFromPart(part)
+	return `{BeastRules.describeGrowth(level, stars)} · {if isBeast(part) then "raised beast" else "fresh copy"}`
 end
 
 local function getMarket(part: BasePart, card: Card, foil: boolean): number
@@ -94,7 +105,7 @@ local function describe(part: BasePart): string
 	local name = if card then card.name else "card"
 	name = if foil then `FOIL {name}` else name
 	local level, stars = getGrowthFromPart(part)
-	return if level > 1 or stars > 1 then `{name} ({BeastRules.describeGrowth(level, stars)})` else name
+	return `{name} ({BeastRules.describeGrowth(level, stars)})`
 end
 
 local function getOwner(instance: Instance): Player?
@@ -204,11 +215,15 @@ local function renderDetail()
 	local price = getPrice(part)
 	local market = getMarket(part, card, foil)
 	local deal = getDeal(price, market)
+	local level, stars = getGrowthFromPart(part)
 	detailInfo.Text = string.format(
-		"%s\n%s %s\n\nPrice: $%.2f\nMarket value: $%.2f\n%s",
-		describe(part),
+		"%s%s\n%s %s\n%s\n%s\n\nPrice: $%.2f\nMarket value: $%.2f\n%s",
+		if foil then "FOIL " else "",
+		card.name,
 		card.element,
 		card.rarity,
+		describeKind(part),
+		BeastRules.describeStarProgress(level, stars),
 		price,
 		market,
 		if isBuyable(part) then deal else "For customers only"
@@ -450,13 +465,13 @@ local function buildDetail()
 	detailFaceHolder.BackgroundTransparency = 1
 	detailFaceHolder.Parent = detail
 
-	detailInfo = UIKit.label(detail, "", Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	detailInfo = UIKit.label(detail, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
 	detailInfo.Position = UDim2.fromOffset(180, 16)
-	detailInfo.Size = UDim2.new(1, -192, 0, 130)
+	detailInfo.Size = UDim2.new(1, -192, 0, 170)
 	detailInfo.TextYAlignment = Enum.TextYAlignment.Top
 
 	detailBuy = UIKit.button(detail, "Buy", UIKit.Colors.Accent)
-	detailBuy.Position = UDim2.fromOffset(180, 154)
+	detailBuy.Position = UDim2.fromOffset(180, 192)
 	detailBuy.Size = UDim2.new(1, -192, 0, 48)
 	detailBuy.Activated:Connect(function()
 		if detailPart then
@@ -465,7 +480,7 @@ local function buildDetail()
 	end)
 
 	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
-	back.Position = UDim2.fromOffset(180, 210)
+	back.Position = UDim2.fromOffset(180, 248)
 	back.Size = UDim2.new(1, -192, 0, 44)
 	back.TextSize = 16
 	back.Activated:Connect(function()

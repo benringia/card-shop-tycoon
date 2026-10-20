@@ -179,7 +179,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	local serverPrice = cardPart:GetAttribute("Price")
 	local price = pending[slot] or (if typeof(serverPrice) == "number" then serverPrice else 0)
 	local level, stars = getGrowthFromPart(cardPart)
-	local grown = level > 1 or stars > 1
+	local raised = typeof(cardPart:GetAttribute("BeastId")) == "string"
 	local market = CardRules.getMarketValue(card, foil, level, stars)
 	local step = CardRules.getPriceStep(card, foil, level, stars)
 
@@ -196,12 +196,10 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	thumbnail.Size = UDim2.fromOffset(THUMBNAIL_SIZE.X, THUMBNAIL_SIZE.Y)
 	thumbnail.BackgroundTransparency = 1
 	thumbnail.Parent = frame
-	makeCardFace(thumbnail, card, foil, false, if grown then { level = level, stars = stars } else nil)
+	makeCardFace(thumbnail, card, foil, false)
 
 	local titleText = `{slot}. {describe(card, foil)}`
-	if grown then
-		titleText ..= ` · {BeastRules.describeGrowth(level, stars)}`
-	end
+	titleText ..= ` · {BeastRules.describeGrowth(level, stars)}{if raised then "" else " (fresh)"}`
 	local title = UIKit.label(frame, titleText, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
 	title.Position = UDim2.fromOffset(THUMBNAIL_SIZE.X + 18, 8)
 	title.Size = UDim2.new(1, -(THUMBNAIL_SIZE.X + 130), 0, 32)
