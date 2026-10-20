@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local Rarities = require(Config:WaitForChild("Rarities"))
 local CondenserConfig = require(Config:WaitForChild("Condenser"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
@@ -37,6 +38,9 @@ local DISTANCE_CHECK_SECONDS = 0.5
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
 local READY_COLOR = Color3.fromRGB(60, 200, 110)
 local SUBTITLE_TEXT = "Combine duplicates into one card for +1 star."
+local FILTER_CHIP_WIDTH = 84
+local ALL_FILTER, READY_FILTER, RAISING_FILTER = "All", "Ready", "Raising"
+local LIST_TOP = 124 -- below the subtitle and the search/filter row
 
 local player = Players.LocalPlayer
 
@@ -48,6 +52,9 @@ local list: ScrollingFrame
 local pane: ScrollingFrame
 local machine: BasePart? = nil
 local selectedCardId: string? = nil
+local searchText = ""
+local activeFilter = ALL_FILTER -- All, Ready, Raising or a rarity name
+local filterButtons: { [string]: TextButton } = {}
 local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
 local inFlight = false -- a Condense request is waiting for the server; the button stays locked
 local inFlightToken = 0
@@ -124,6 +131,29 @@ local function getPlan(card: Card, main: Candidate): ({ CondenseRules.Take }?, s
 end
 
 -- Whether the default main copy of this card can take a star right now
+-- Search by name or number, then the chip: Ready (can take a star now), Raising (has a levelled or
+-- starred copy) or one rarity
+local function passesFilter(card: Card): boolean
+	if searchText ~= "" then
+		local query = string.lower(searchText)
+		local number = tonumber((string.gsub(query, "#", "")))
+		if not string.find(string.lower(card.name), query, 1, true) and number ~= card.number then
+			return false
+		end
+	end
+	if activeFilter == RAISING_FILTER then
+		for _, beast in BinderController.GetBeasts() do
+			if beast.cardId == card.id then
+				return true
+			end
+		end
+		return false
+	elseif activeFilter ~= ALL_FILTER and activeFilter ~= READY_FILTER then
+		return card.rarity == activeFilter
+	end
+	return true
+end
+
 local function isReady(card: Card): boolean
 	local main = getCandidates(card)[1]
 	return main ~= nil and (getPlan(card, main)) ~= nil
@@ -372,7 +402,15 @@ render = function()
 	end
 	clear(list)
 	-- Ready cards first (keeping rarest-first order inside each group)
-	local cards = getCondensableCards()
+	local cards: { Card } = {}
+	for _, card in getCondensableCards() do
+		if passesFilter(card) and (activeFilter ~= READY_FILTER or isReady(card)) then
+			table.insert(cards, card)
+		end
+	end
+	for filter, button in filterButtons do
+		button.BackgroundColor3 = if filter == activeFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	end
 	local readyCount = 0
 	local ready: { [string]: boolean } = {}
 	for _, card in cards do
@@ -407,7 +445,9 @@ render = function()
 		buildCardRow(card, order)
 	end
 	if #cards == 0 then
-		local empty = UIKit.label(list, "No duplicates yet. Rip more packs!", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
+		local filtering = searchText ~= "" or activeFilter ~= ALL_FILTER
+		local message = if filtering then "No cards match." else "No duplicates yet. Rip more packs!"
+		local empty = UIKit.label(list, message, Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
 		empty.Size = UDim2.new(1, -10, 0, 40)
 	end
 	renderPane(selected)
@@ -455,13 +495,75 @@ function CondenserController.Start()
 	subtitle = UIKit.label(panel, SUBTITLE_TEXT, Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
 	subtitle.Position = UDim2.fromOffset(16, 56)
 	subtitle.Size = UDim2.new(1, -32, 0, 22)
-	list.Position = UDim2.fromOffset(12, 84)
-	list.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -96)
+	-- Search by name or #number, then filter chips (they scroll sideways on narrow screens)
+	local search = Instance.new("TextBox")
+	search.Name = "Search"
+	search.Position = UDim2.fromOffset(16, 82)
+	search.Size = UDim2.fromOffset(180, 34)
+	search.BackgroundColor3 = UIKit.Colors.Row
+	search.ClearTextOnFocus = false
+	search.PlaceholderText = "Search name or #"
+	search.Text = ""
+	search.Font = Enum.Font.Gotham
+	search.TextSize = 14
+	search.TextColor3 = UIKit.Colors.Text
+	search.Parent = panel
+	UIKit.corner(search, 8)
+	search:GetPropertyChangedSignal("Text"):Connect(function()
+		searchText = search.Text
+		render()
+	end)
+
+	local chips = Instance.new("ScrollingFrame")
+	chips.Name = "Filters"
+	chips.Position = UDim2.fromOffset(206, 80)
+	chips.Size = UDim2.new(1, -218, 0, 40)
+	chips.BackgroundTransparency = 1
+	chips.BorderSizePixel = 0
+	chips.ScrollBarThickness = 3
+	chips.ScrollingDirection = Enum.ScrollingDirection.X
+	chips.CanvasSize = UDim2.new()
+	chips.AutomaticCanvasSize = Enum.AutomaticSize.X
+	chips.Parent = panel
+	local chipLayout = Instance.new("UIListLayout")
+	chipLayout.FillDirection = Enum.FillDirection.Horizontal
+	chipLayout.Padding = UDim.new(0, 6)
+	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chipLayout.Parent = chips
+	local filters = { ALL_FILTER, READY_FILTER, RAISING_FILTER }
+	local rarities: { string } = {}
+	for name in Rarities.Tiers do
+		table.insert(rarities, name)
+	end
+	table.sort(rarities, function(a, b)
+		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
+	end)
+	for _, name in rarities do
+		table.insert(filters, name)
+	end
+	for index, filter in filters do
+		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
+		chip.LayoutOrder = index
+		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 34)
+		chip.TextSize = 13
+		local tier = Rarities.Tiers[filter]
+		if tier then
+			chip.TextColor3 = tier.color
+		end
+		chip.Activated:Connect(function()
+			activeFilter = filter
+			render()
+		end)
+		filterButtons[filter] = chip
+	end
+
+	list.Position = UDim2.fromOffset(12, LIST_TOP)
+	list.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -(LIST_TOP + 12))
 
 	pane = Instance.new("ScrollingFrame")
 	pane.Name = "Details"
-	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 84)
-	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -96)
+	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, LIST_TOP)
+	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -(LIST_TOP + 12))
 	pane.BackgroundColor3 = UIKit.Colors.Row
 	pane.BackgroundTransparency = 0.4
 	pane.BorderSizePixel = 0
