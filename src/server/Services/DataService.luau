@@ -17,7 +17,18 @@ local Services = script.Parent :: Instance
 local PlotService = require(Services:WaitForChild("PlotService"))
 
 -- Shape of what's saved. Tables only hold plain data: no Instances, Vector3s or Color3s.
-export type SavedCard = { slot: number, cardId: string, foil: boolean, price: number }
+export type SavedCard = {
+	slot: number,
+	cardId: string,
+	foil: boolean,
+	price: number,
+	-- Set when the displayed card is a raised beast
+	beastId: string?,
+	level: number?,
+	xp: number?,
+	stars: number?,
+}
+export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number }
 export type SavedShelf = {
 	shelfId: string,
 	gridX: number,
@@ -43,6 +54,7 @@ export type PlayerData = {
 	fixtures: { [string]: SavedCell },
 	boxes: { SavedBox },
 	cards: { [string]: { normal: number, foil: number } },
+	beasts: { [string]: SavedBeast }, -- raised beasts by ID
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -66,6 +78,7 @@ local TEMPLATE: PlayerData = {
 	fixtures = {},
 	boxes = {},
 	cards = {},
+	beasts = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
@@ -75,6 +88,10 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 	-- v2: displayed cards live on each saved shelf; the old top-level showcase list was never used
 	[1] = function(data)
 		data.showcase = nil
+	end,
+	-- v3: raised beasts live in their own table; existing cards are fresh stacks already
+	[2] = function(data)
+		data.beasts = data.beasts or {}
 	end,
 }
 

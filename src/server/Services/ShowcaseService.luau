@@ -86,7 +86,7 @@ local function onDisplayCard(player: Player, shelfUid: unknown, slot: unknown, c
 	if slotNumber > shelf.def.capacity or shelf.cards[slotNumber] then
 		return
 	end
-	if not CardService.TakeCard(player, cardId, foil) then
+	if not CardService.TakeFresh(player, cardId, foil) then
 		notify(player, "You don't have that card in your binder.", true)
 		return
 	end
@@ -107,7 +107,7 @@ local function onRemoveCard(player: Player, shelfUid: unknown, slot: unknown)
 		return
 	end
 	PlacementService.SetDisplayedCard(shelf, slot :: number, nil)
-	CardService.AddCards(player, { { cardId = displayed.cardId, foil = displayed.foil } })
+	CardService.AddFresh(player, { { cardId = displayed.cardId, foil = displayed.foil } })
 end
 
 -- Batched so several quick +/- taps across slots arrive as one request
@@ -192,7 +192,7 @@ local function onBuyCard(
 
 	PlacementService.SetDisplayedCard(shelf, slotNumber, nil)
 	EconomyService.AddCash(owner, displayed.price)
-	CardService.AddCards(buyer, { { cardId = displayed.cardId, foil = displayed.foil } })
+	CardService.AddFresh(buyer, { { cardId = displayed.cardId, foil = displayed.foil } })
 	local priceText = string.format("$%.2f", displayed.price)
 	notify(buyer, `Bought {describe(displayed)} for {priceText}!`, false)
 	notify(owner, `{buyer.DisplayName} bought your {describe(displayed)} for {priceText}!`, false)
@@ -234,7 +234,7 @@ function ShowcaseService.ReturnFromCustomer(owner: Player, shelfUid: string, slo
 			return
 		end
 	end
-	CardService.AddCards(owner, { { cardId = displayed.cardId, foil = displayed.foil } })
+	CardService.AddFresh(owner, { { cardId = displayed.cardId, foil = displayed.foil } })
 end
 
 function ShowcaseService.Start()

@@ -21,6 +21,7 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Card = typeof(Cards.List[1])
 type Owned = { normal: number, foil: number }
+type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: number, stars: number }
 
 type Tile = {
 	card: Card,
@@ -38,6 +39,7 @@ local player = Players.LocalPlayer
 local BinderController = {}
 
 local collection: { [string]: Owned } = {}
+local beasts: { [string]: Beast } = {}
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
@@ -250,11 +252,12 @@ local function buildPanel(parent: Instance)
 	buildDetail(panel)
 end
 
-local function onCollectionChanged(newCollection: { [string]: Owned })
-	if typeof(newCollection) ~= "table" then
+local function onCollectionChanged(payload: { stacks: { [string]: Owned }, beasts: { [string]: Beast } })
+	if typeof(payload) ~= "table" then
 		return
 	end
-	collection = newCollection
+	collection = if typeof(payload.stacks) == "table" then payload.stacks else {}
+	beasts = if typeof(payload.beasts) == "table" then payload.beasts else {}
 	refresh()
 end
 
@@ -314,6 +317,11 @@ end
 -- The cards in the player's binder (not counting ones on display)
 function BinderController.GetCollection(): { [string]: Owned }
 	return collection
+end
+
+-- The player's raised beasts (not counting ones on display)
+function BinderController.GetBeasts(): { [string]: Beast }
+	return beasts
 end
 
 function BinderController.Start()

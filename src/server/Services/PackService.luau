@@ -109,7 +109,7 @@ end
 
 -- Gives the cards, queues any big-pull announcements, and sends the result for the reveal animation
 local function deliverPack(player: Player, productId: string, results: { PullResult })
-	CardService.AddCards(player, results)
+	CardService.AddFresh(player, results)
 	queueAnnouncements(player, results)
 	Remotes.PackOpened:FireClient(player, productId, results)
 end

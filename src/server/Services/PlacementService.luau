@@ -511,7 +511,7 @@ local function load(player: Player, data: PlayerData)
 		restoreShelf(player, plot, saved, leftovers)
 	end
 	if #leftovers > 0 then
-		CardService.AddCards(player, leftovers)
+		CardService.AddFresh(player, leftovers)
 	end
 end
 
