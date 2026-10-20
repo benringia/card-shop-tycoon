@@ -3,8 +3,9 @@
 local Rarities = {
 	Common = { order = 1, color = Color3.fromRGB(160, 160, 160), minValue = 0.10, maxValue = 0.50 },
 	Rare = { order = 2, color = Color3.fromRGB(70, 140, 255), minValue = 1, maxValue = 3 },
-	Epic = { order = 3, color = Color3.fromRGB(170, 80, 255), minValue = 5, maxValue = 20 },
-	Legendary = { order = 4, color = Color3.fromRGB(255, 200, 40), minValue = 40, maxValue = 150 },
+	["Very Rare"] = { order = 3, color = Color3.fromRGB(40, 210, 200), minValue = 3, maxValue = 6 },
+	Epic = { order = 4, color = Color3.fromRGB(170, 80, 255), minValue = 5, maxValue = 20 },
+	Legendary = { order = 5, color = Color3.fromRGB(255, 200, 40), minValue = 40, maxValue = 150 },
 }
 
 -- Chance any card rolls foil, and how much foil multiplies value

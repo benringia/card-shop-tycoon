@@ -10,9 +10,9 @@ return {
 	FOIL_SHIMMER_SECONDS = 1.6, -- one sweep of the foil shimmer
 
 	-- Border thickness by rarity, so better pulls feel heavier
-	STROKE_THICKNESS = { Common = 2, Rare = 3, Epic = 4, Legendary = 6 },
+	STROKE_THICKNESS = { Common = 2, Rare = 3, ["Very Rare"] = 3.5, Epic = 4, Legendary = 6 },
 
 	TEAR_SOUND_ID = "",
 	FLIP_SOUND_ID = "",
-	HIT_SOUND_IDS = { Rare = "", Epic = "", Legendary = "" },
+	HIT_SOUND_IDS = { Rare = "", ["Very Rare"] = "", Epic = "", Legendary = "" },
 }

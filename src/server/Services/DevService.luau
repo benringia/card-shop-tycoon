@@ -83,8 +83,7 @@ local function pickXpTarget(player: Player): CardService.XpTarget?
 		return best.id
 	end
 	local stacks = CardService.GetStacks(player)
-	for index = #Cards.List, 1, -1 do
-		local card = Cards.List[index]
+	for _, card in Cards.RarestFirst do
 		local owned = stacks[card.id]
 		if owned and owned.foil > 0 then
 			return { cardId = card.id, foil = true }

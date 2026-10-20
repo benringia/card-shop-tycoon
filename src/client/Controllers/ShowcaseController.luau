@@ -379,8 +379,7 @@ local function renderPicker()
 		end
 	end
 	-- Then fresh copies, rarest first: those are the ones worth showing off
-	for index = #Cards.List, 1, -1 do
-		local card = Cards.List[index]
+	for _, card in Cards.RarestFirst do
 		local owned = collection[card.id]
 		if owned then
 			if owned.foil > 0 then

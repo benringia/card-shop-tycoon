@@ -23,7 +23,7 @@ local ById: { [string]: Pack } = {
 			COMMON,
 			COMMON,
 			{ { rarity = "Common", weight = 0.7 }, { rarity = "Rare", weight = 0.3 } },
-			{ { rarity = "Rare", weight = 0.8 }, { rarity = "Epic", weight = 0.17 }, { rarity = "Legendary", weight = 0.03 } },
+			{ { rarity = "Rare", weight = 0.68 }, { rarity = "Very Rare", weight = 0.15 }, { rarity = "Epic", weight = 0.14 }, { rarity = "Legendary", weight = 0.03 } },
 		},
 	},
 }

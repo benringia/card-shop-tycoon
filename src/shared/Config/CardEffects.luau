@@ -20,6 +20,7 @@ return {
 		Common = { glow = 0, glowRange = 0, sparkleRate = 0, burst = 8, pop = false, flash = false, pulse = false },
 		-- Glows are kept soft: a full case of six still lights the case, not the whole floor
 		Rare = { glow = 0.5, glowRange = 3.5, sparkleRate = 0, burst = 18, pop = false, flash = false, pulse = false },
+		["Very Rare"] = { glow = 0.6, glowRange = 4, sparkleRate = 1, burst = 24, pop = false, flash = false, pulse = false },
 		Epic = { glow = 0.75, glowRange = 5, sparkleRate = 2, burst = 30, pop = true, flash = false, pulse = false },
 		Legendary = { glow = 1.25, glowRange = 7, sparkleRate = 5, burst = 50, pop = true, flash = true, pulse = true },
 	} :: { [string]: RarityEffect },

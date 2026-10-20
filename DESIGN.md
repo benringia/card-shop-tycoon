@@ -122,6 +122,7 @@ Five elements, each with its own color and frame:
 |---|---|---|
 | Common | Grey | $0.10 – $0.50 |
 | Rare | Blue | $1 – $3 |
+| Very Rare | Cyan | $3 – $6 |
 | Epic | Purple | $5 – $20 |
 | Legendary | Gold, animated | $40 – $150 |
 
@@ -131,12 +132,12 @@ Five elements, each with its own color and frame:
 Each pack = 5 cards:
 - Slots 1–3: Common
 - Slot 4: Common 70% / Rare 30%
-- Slot 5 ("hit slot"): Rare 80% / Epic 17% / Legendary 3%
+- Slot 5 ("hit slot"): Rare 68% / Very Rare 15% / Epic 14% / Legendary 3%
 
 **Odds are always visible in-game** (pack info button). Required by Roblox for any paid random items, and we show them for everything anyway.
 
-### 5.4 Set 1 — "First Spark" (30 cards)
-15 Common, 9 Rare, 4 Epic, 2 Legendary. Placeholder names, art TBD.
+### 5.4 Set 1 — "First Spark" (35 cards)
+15 Common, 9 Rare, 5 Very Rare, 4 Epic, 2 Legendary. Placeholder names, art TBD.
 
 | # | Name | Element | Rarity |
 |---|---|---|---|
@@ -170,6 +171,11 @@ Each pack = 5 cards:
 | 28 | Eclipse Fox | Shade | Epic |
 | 29 | Solarion | Ember | Legendary |
 | 30 | Voidmaw | Shade | Legendary |
+| 31 | Emberwing | Ember | Very Rare |
+| 32 | Tidecaller | Tide | Very Rare |
+| 33 | Briarhorn | Bloom | Very Rare |
+| 34 | Voltkit | Volt | Very Rare |
+| 35 | Duskstalker | Shade | Very Rare |
 
 ### 5.5 Card art plan
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
@@ -221,6 +227,7 @@ Base stats by rarity:
 |---|---|---|---|
 | Common | 60 | 12 | 10 |
 | Rare | 80 | 16 | 12 |
+| Very Rare | 95 | 19 | 13 |
 | Epic | 110 | 22 | 14 |
 | Legendary | 150 | 30 | 16 |
 

@@ -1,6 +1,8 @@
 --!strict
--- Set 1 "First Spark" card list. Names, elements and rarities from DESIGN.md section 5.4.
+-- Set 1 "First Spark" card list (35 cards). Names, elements and rarities from DESIGN.md section 5.4.
 -- Values are market value in dollars, inside each rarity's range (Rarities.luau). Foil = value × FOIL_MULTIPLIER.
+local Rarities = require((script.Parent :: Instance):WaitForChild("Rarities"))
+
 export type Card = {
 	id: string,
 	number: number,
@@ -50,6 +52,11 @@ local ROWS = {
 	{ "Eclipse Fox", "Shade", "Epic", 20.00 },
 	{ "Solarion", "Ember", "Legendary", 90.00 },
 	{ "Voidmaw", "Shade", "Legendary", 150.00 },
+	{ "Emberwing", "Ember", "Very Rare", 3.00 },
+	{ "Tidecaller", "Tide", "Very Rare", 3.50 },
+	{ "Briarhorn", "Bloom", "Very Rare", 4.00 },
+	{ "Voltkit", "Volt", "Very Rare", 5.00 },
+	{ "Duskstalker", "Shade", "Very Rare", 6.00 },
 }
 
 local List: { Card } = {}
@@ -71,8 +78,23 @@ for index, row in ROWS do
 	table.insert(ByRarity[card.rarity], card)
 end
 
+-- Rarest first (then highest number), for lists that show the best cards on top.
+-- Card numbers are not in rarity order: the Very Rares (31-35) came after the Legendaries.
+local RarestFirst = table.clone(List)
+local function getOrder(card: Card): number
+	local tier = Rarities.Tiers[card.rarity]
+	return if tier then tier.order else 0
+end
+table.sort(RarestFirst, function(a, b)
+	if getOrder(a) ~= getOrder(b) then
+		return getOrder(a) > getOrder(b)
+	end
+	return a.number > b.number
+end)
+
 return {
 	List = List,
+	RarestFirst = RarestFirst,
 	ById = ById,
 	ByRarity = ByRarity,
 	ELEMENTS = ELEMENTS,
