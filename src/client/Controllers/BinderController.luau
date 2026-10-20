@@ -29,6 +29,7 @@ type Tile = {
 	inner: Frame,
 	stroke: UIStroke,
 	countLabel: TextLabel,
+	levelLabel: TextLabel, -- best levelled copy, e.g. "Lv 12"
 }
 
 local TILE_SIZE = Vector2.new(78, 112)
@@ -290,15 +291,17 @@ local function refresh()
 				hasFoilBeast = hasFoilBeast or beast.foil
 			end
 			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false)
-			tile.countLabel.Text = if binderTotal > 0 and raised > 0
-				then `Owned {binderTotal} · {raised} levelled`
-				elseif binderTotal > 0 then `Owned {binderTotal}`
-				elseif raised > 0 then `{raised} levelled`
-				else "on display"
+			-- Total copies in the binder; the level chip shows the best levelled one (details in the card view)
+			local owned = binderTotal + raised
+			tile.countLabel.Text = if owned > 0 then `Owned {owned}` else "on display"
 			tile.countLabel.Visible = true
+			local best = getRaised(tile.card.id)[1]
+			tile.levelLabel.Text = if best then `Lv {best.level}` else ""
+			tile.levelLabel.Visible = best ~= nil
 		else
 			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
 			tile.countLabel.Visible = false
+			tile.levelLabel.Visible = false
 		end
 	end
 
@@ -336,7 +339,18 @@ local function buildTile(card: Card, parent: Instance): Tile
 	countLabel.ZIndex = 3
 	UIKit.corner(countLabel, 6)
 
-	local tile: Tile = { card = card, inner = inner, stroke = stroke, countLabel = countLabel }
+	local levelLabel = UIKit.label(button, "", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
+	levelLabel.Name = "Level"
+	levelLabel.AnchorPoint = Vector2.new(0.5, 0)
+	levelLabel.Position = UDim2.fromScale(0.5, 0.55) -- the empty band under the element letter
+	levelLabel.Size = UDim2.fromOffset(44, 16)
+	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
+	levelLabel.BackgroundColor3 = UIKit.Colors.Accent
+	levelLabel.Visible = false
+	levelLabel.ZIndex = 3
+	UIKit.corner(levelLabel, 6)
+
+	local tile: Tile = { card = card, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
 	button.Activated:Connect(function()
 		openDetail(card)
 	end)
