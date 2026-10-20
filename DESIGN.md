@@ -412,7 +412,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
-    │   │   ├── CardBuyController.luau  # visitors browse other players' cases; buy from Collector Cases
+    │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
     │   └── Util/
     │       └── UIKit.luau              # shared UI building helpers
