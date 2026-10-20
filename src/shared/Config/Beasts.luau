@@ -6,13 +6,14 @@ return {
 	START_STARS = 0, -- every card starts with no stars
 	MAX_STARS = 5,
 
-	-- Base stats by rarity, before element, level, stars and foil
+	-- Base stats by rarity, before element, level, stars, grade and foil. Spaced so rarity always beats
+	-- grade at equal level and stars (tests/BeastMath.spec checks it).
 	BASE_STATS = {
 		Common = { hp = 60, atk = 12, spd = 10 },
 		Rare = { hp = 80, atk = 16, spd = 12 },
-		["Very Rare"] = { hp = 95, atk = 19, spd = 13 },
-		Epic = { hp = 110, atk = 22, spd = 14 },
-		Legendary = { hp = 150, atk = 30, spd = 16 },
+		["Very Rare"] = { hp = 100, atk = 21, spd = 14 },
+		Epic = { hp = 135, atk = 27, spd = 17 },
+		Legendary = { hp = 180, atk = 36, spd = 20 },
 	},
 	ELEMENT_MULTIPLIERS = {
 		Ember = { hp = 1, atk = 1.2, spd = 1 },
@@ -35,4 +36,14 @@ return {
 	XP_BASE = 50,
 	XP_EXPONENT = 1.5,
 
+
+	-- Grades, weakest first. Rolled once when a card is pulled; boost stats and value.
+	GRADES = { "C", "B", "A", "S" },
+	GRADE_CHANCES = { C = 0.5, B = 0.3, A = 0.15, S = 0.05 },
+	GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 },
+	DEFAULT_GRADE = "C",
+
+	-- Power = HP + ATK * weight + SPD * weight: one number to compare cards
+	POWER_ATK_WEIGHT = 5,
+	POWER_SPD_WEIGHT = 5,
 }

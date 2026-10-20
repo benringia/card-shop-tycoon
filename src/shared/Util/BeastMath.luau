@@ -3,7 +3,7 @@
 -- No Roblox APIs and no requires, so it runs in Studio and in Lune tests (tests/).
 -- Callers pass the config (Config/Beasts.luau) in; BeastRules does that for game code.
 export type Stats = { hp: number, atk: number, spd: number }
-export type BeastData = { cardId: string, foil: boolean, level: number, xp: number, stars: number }
+export type BeastData = { cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string }
 export type BeastConfig = {
 	MAX_LEVEL: number,
 	START_STARS: number,
@@ -18,6 +18,12 @@ export type BeastConfig = {
 	STAR_COSTS: { number },
 	XP_BASE: number,
 	XP_EXPONENT: number,
+	GRADES: { string },
+	GRADE_CHANCES: { [string]: number },
+	GRADE_BONUS: { [string]: number },
+	DEFAULT_GRADE: string,
+	POWER_ATK_WEIGHT: number,
+	POWER_SPD_WEIGHT: number,
 }
 
 local NO_ELEMENT: Stats = { hp = 1, atk = 1, spd = 1 }
@@ -35,12 +41,50 @@ local function clampInteger(value: unknown, min: number, max: number, default: n
 	return math.clamp(math.floor(value :: number), min, max)
 end
 
-function BeastMath.getStats(config: BeastConfig, rarity: string, element: string, foil: boolean, level: number, stars: number): Stats
+local function getGradeMultiplier(config: BeastConfig, grade: string): number
+	return 1 + (config.GRADE_BONUS[grade] or 0)
+end
+
+function BeastMath.isGrade(config: BeastConfig, grade: unknown): boolean
+	return typeof(grade) == "string" and config.GRADE_BONUS[grade] ~= nil
+end
+
+function BeastMath.getGradeRank(config: BeastConfig, grade: string): number
+	return table.find(config.GRADES, grade) or 0
+end
+
+-- roll is a uniform random number in [0, 1); the caller supplies it so this stays pure
+function BeastMath.rollGrade(config: BeastConfig, roll: number): string
+	local total = 0
+	for _, grade in config.GRADES do
+		total += config.GRADE_CHANCES[grade] or 0
+		-- The epsilon keeps float sums like 0.5 + 0.3 + 0.15 = 0.95000000000000001 on the right boundary
+		if roll < total - 1e-9 then
+			return grade
+		end
+	end
+	return config.GRADES[#config.GRADES]
+end
+
+function BeastMath.getPower(config: BeastConfig, stats: Stats): number
+	return stats.hp + stats.atk * config.POWER_ATK_WEIGHT + stats.spd * config.POWER_SPD_WEIGHT
+end
+
+function BeastMath.getStats(
+	config: BeastConfig,
+	rarity: string,
+	element: string,
+	foil: boolean,
+	level: number,
+	stars: number,
+	grade: string
+): Stats
 	local base = config.BASE_STATS[rarity] or config.BASE_STATS.Common
 	local elementBias = config.ELEMENT_MULTIPLIERS[element] or NO_ELEMENT
 	local growth = (1 + config.LEVEL_STAT_GROWTH * (level - 1))
 		* (1 + config.STAR_STAT_GROWTH * stars)
 		* (if foil then config.FOIL_STAT_MULTIPLIER else 1)
+		* getGradeMultiplier(config, grade)
 	return {
 		hp = math.round(base.hp * elementBias.hp * growth),
 		atk = math.round(base.atk * elementBias.atk * growth),
@@ -48,11 +92,20 @@ function BeastMath.getStats(config: BeastConfig, rarity: string, element: string
 	}
 end
 
-function BeastMath.getValue(config: BeastConfig, baseValue: number, foilMultiplier: number, foil: boolean, level: number, stars: number): number
+function BeastMath.getValue(
+	config: BeastConfig,
+	baseValue: number,
+	foilMultiplier: number,
+	foil: boolean,
+	level: number,
+	stars: number,
+	grade: string
+): number
 	local value = baseValue
 		* (if foil then foilMultiplier else 1)
 		* (1 + config.LEVEL_VALUE_GROWTH * (level - 1))
 		* (config.STAR_VALUE[stars + 1] or 1)
+		* getGradeMultiplier(config, grade)
 	return math.round(value * 100) / 100
 end
 
@@ -110,6 +163,7 @@ function BeastMath.sanitize(config: BeastConfig, raw: unknown, isKnownCard: (str
 		level = level,
 		xp = clampInteger(entry.xp, 0, xpCap, 0),
 		stars = stars,
+		grade = if BeastMath.isGrade(config, entry.grade) then entry.grade :: string else config.DEFAULT_GRADE,
 	}
 end
 

@@ -9,7 +9,7 @@ end
 
 return {
 	["stats: plain common ember"] = function()
-		local stats = BeastMath.getStats(config, "Common", "Ember", false, 1, 0)
+		local stats = BeastMath.getStats(config, "Common", "Ember", false, 1, 0, "C")
 		expect.equal(stats.hp, 60, "hp")
 		expect.equal(stats.atk, 14, "atk") -- 12 * 1.2 = 14.4
 		expect.equal(stats.spd, 10, "spd")
@@ -17,37 +17,37 @@ return {
 
 	["stats: max foil legendary shade"] = function()
 		-- growth = 2.74 (Lv 30) * 1.75 (5 stars) * 1.05 (foil) = 5.03475
-		local stats = BeastMath.getStats(config, "Legendary", "Shade", true, 30, 5)
-		expect.equal(stats.hp, 755, "hp")
-		expect.equal(stats.atk, 166, "atk")
-		expect.equal(stats.spd, 89, "spd")
+		local stats = BeastMath.getStats(config, "Legendary", "Shade", true, 30, 5, "C")
+		expect.equal(stats.hp, 906, "hp")
+		expect.equal(stats.atk, 199, "atk")
+		expect.equal(stats.spd, 111, "spd")
 	end,
 
 	["stats: unknown rarity and element fall back"] = function()
-		local stats = BeastMath.getStats(config, "Mythic", "Plasma", false, 1, 0)
+		local stats = BeastMath.getStats(config, "Mythic", "Plasma", false, 1, 0, "C")
 		expect.equal(stats.hp, 60, "hp")
 		expect.equal(stats.atk, 12, "atk")
 	end,
 
 	["stats: very rare base"] = function()
-		local stats = BeastMath.getStats(config, "Very Rare", "Tide", false, 1, 0)
-		expect.equal(stats.hp, 114, "hp") -- 95 * 1.2
-		expect.equal(stats.atk, 19, "atk")
-		expect.equal(stats.spd, 13, "spd")
+		local stats = BeastMath.getStats(config, "Very Rare", "Tide", false, 1, 0, "C")
+		expect.equal(stats.hp, 120, "hp") -- 100 * 1.2
+		expect.equal(stats.atk, 21, "atk")
+		expect.equal(stats.spd, 14, "spd")
 	end,
 
 	["value: Cindercub Lv 15 3 stars"] = function()
-		expect.near(BeastMath.getValue(config, 0.20, 3, false, 15, 3), 14.40, 0.001) -- 0.20 * 2.4 * 30
+		expect.near(BeastMath.getValue(config, 0.20, 3, false, 15, 3, "C"), 14.40, 0.001) -- 0.20 * 2.4 * 30
 	end,
 
 	["value: plain foil"] = function()
-		expect.near(BeastMath.getValue(config, 0.20, 3, true, 1, 0), 0.60, 0.001)
+		expect.near(BeastMath.getValue(config, 0.20, 3, true, 1, 0, "C"), 0.60, 0.001)
 	end,
 
 	["value: star table 0 to 5"] = function()
 		local expected = { 1, 6, 15, 30, 50, 80 }
 		for stars = 0, 5 do
-			expect.near(BeastMath.getValue(config, 1, 3, false, 1, stars), expected[stars + 1], 0.001, `{stars} stars`)
+			expect.near(BeastMath.getValue(config, 1, 3, false, 1, stars, "C"), expected[stars + 1], 0.001, `{stars} stars`)
 		end
 	end,
 
@@ -131,5 +131,68 @@ return {
 		expect.isNil(BeastMath.sanitize(config, { cardId = "NOPE", level = 1, xp = 0, stars = 0 }, isKnown), "unknown")
 		expect.isNil(BeastMath.sanitize(config, "junk", isKnown), "string")
 		expect.isNil(BeastMath.sanitize(config, nil, isKnown), "nil")
+	end,
+	["grade: S boosts stats and value by 10%"] = function()
+		local c = BeastMath.getStats(config, "Legendary", "Volt", false, 1, 0, "C")
+		local s = BeastMath.getStats(config, "Legendary", "Volt", false, 1, 0, "S")
+		expect.equal(c.hp, 180, "C hp")
+		expect.equal(s.hp, 198, "S hp")
+		expect.near(BeastMath.getValue(config, 10, 3, false, 1, 0, "S"), 11, 0.001, "S value")
+		expect.near(BeastMath.getValue(config, 10, 3, false, 1, 0, "B"), 10.3, 0.001, "B value")
+	end,
+
+	["grade: unknown grade counts as C"] = function()
+		local c = BeastMath.getStats(config, "Rare", "Tide", false, 1, 0, "C")
+		local x = BeastMath.getStats(config, "Rare", "Tide", false, 1, 0, "Z")
+		expect.equal(x.hp, c.hp, "hp")
+	end,
+
+	["grade: roll boundaries"] = function()
+		local cases = { { 0, "C" }, { 0.49, "C" }, { 0.5, "B" }, { 0.79, "B" }, { 0.8, "A" }, { 0.949, "A" }, { 0.95, "S" }, { 0.9999, "S" } }
+		for _, case in cases do
+			expect.equal(BeastMath.rollGrade(config, case[1]), case[2], `roll {case[1]}`)
+		end
+	end,
+
+	["grade: helpers"] = function()
+		expect.equal(BeastMath.isGrade(config, "S"), true, "S")
+		expect.equal(BeastMath.isGrade(config, "Z"), false, "Z")
+		expect.equal(BeastMath.isGrade(config, 5), false, "number")
+		expect.equal(BeastMath.getGradeRank(config, "C"), 1, "C rank")
+		expect.equal(BeastMath.getGradeRank(config, "S"), 4, "S rank")
+		expect.equal(BeastMath.getGradeRank(config, "Z"), 0, "unknown rank")
+	end,
+
+	["power: weighted sum"] = function()
+		expect.equal(BeastMath.getPower(config, { hp = 60, atk = 12, spd = 10 }), 170, "common base")
+	end,
+
+	["power: rarity beats grade at every level and star"] = function()
+		local rarities = { "Common", "Rare", "Very Rare", "Epic", "Legendary" }
+		local elements = {}
+		for name in config.ELEMENT_MULTIPLIERS do
+			table.insert(elements, name)
+		end
+		for i = 1, #rarities - 1 do
+			for _, level in { 1, 15, 30 } do
+				for stars = 0, 5 do
+					local best, worst = -math.huge, math.huge
+					for _, element in elements do
+						best = math.max(best, BeastMath.getPower(config, BeastMath.getStats(config, rarities[i], element, true, level, stars, "S")))
+						worst = math.min(worst, BeastMath.getPower(config, BeastMath.getStats(config, rarities[i + 1], element, false, level, stars, "C")))
+					end
+					assert(best < worst, `{rarities[i]} {best} >= {rarities[i + 1]} {worst} at Lv {level}, {stars} stars`)
+				end
+			end
+		end
+	end,
+
+	["sanitize: grade kept or defaulted"] = function()
+		local s = BeastMath.sanitize(config, { cardId = "FS01", level = 1, xp = 0, stars = 0, grade = "S" }, isKnown)
+		assert(s, "expected a card")
+		expect.equal(s.grade, "S", "kept")
+		local bad = BeastMath.sanitize(config, { cardId = "FS01", level = 1, xp = 0, stars = 0, grade = "ZZ" }, isKnown)
+		assert(bad, "expected a card")
+		expect.equal(bad.grade, "C", "defaulted")
 	end,
 }
