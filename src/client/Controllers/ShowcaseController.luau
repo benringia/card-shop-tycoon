@@ -10,6 +10,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Pricing = require(Config:WaitForChild("Pricing"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Shelves = require(Config:WaitForChild("Shelves"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -78,7 +79,7 @@ local function describe(card: Card, foil: boolean): string
 end
 
 -- A card face drawn into a new frame (the same look as the binder and pack reveal)
-local function makeCardFace(parent: Instance, card: Card, foil: boolean, showValue: boolean): Frame
+local function makeCardFace(parent: Instance, card: Card, foil: boolean, showValue: boolean, growth: CardFace.Growth?): Frame
 	local face = Instance.new("Frame")
 	face.Name = "Face"
 	face.Size = UDim2.fromScale(1, 1)
@@ -87,8 +88,14 @@ local function makeCardFace(parent: Instance, card: Card, foil: boolean, showVal
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = face
-	CardFace.render(face, stroke, card, foil, showValue)
+	CardFace.render(face, stroke, card, foil, showValue, growth)
 	return face
+end
+
+-- A displayed card's level and stars (1, 1 for a fresh copy)
+local function getGrowthFromPart(part: BasePart): (number, number)
+	local level, stars = part:GetAttribute("Level"), part:GetAttribute("Stars")
+	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else 1
 end
 
 local function getRarityOrder(card: Card): number
@@ -136,21 +143,21 @@ local function queuePrice(slot: number, price: number)
 	task.delay(SEND_DELAY, flush, token)
 end
 
-local function nudge(slot: number, card: Card, foil: boolean, current: number, direction: number)
-	local step = CardRules.getPriceStep(card, foil)
-	queuePrice(slot, CardRules.clampPrice(current + direction * step, card, foil))
+local function nudge(slot: number, card: Card, foil: boolean, level: number, stars: number, current: number, direction: number)
+	local step = CardRules.getPriceStep(card, foil, level, stars)
+	queuePrice(slot, CardRules.clampPrice(current + direction * step, card, foil, level, stars))
 end
 
 -- Accepts "275", "$275.50" or "1,200"; anything else puts the current price back.
 -- Clamped here for display; the server clamps again.
-local function setTypedPrice(slot: number, card: Card, foil: boolean, box: TextBox)
+local function setTypedPrice(slot: number, card: Card, foil: boolean, level: number, stars: number, box: TextBox)
 	local cleaned = string.gsub(box.Text, "[%$,%s]", "")
 	local typed = tonumber(cleaned)
 	if not typed or typed ~= typed then
 		render()
 		return
 	end
-	queuePrice(slot, CardRules.clampPrice(typed, card, foil))
+	queuePrice(slot, CardRules.clampPrice(typed, card, foil, level, stars))
 end
 
 -- The middle of the price stepper, between the - and + buttons
@@ -171,8 +178,10 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	local foil = cardPart:GetAttribute("Foil") == true
 	local serverPrice = cardPart:GetAttribute("Price")
 	local price = pending[slot] or (if typeof(serverPrice) == "number" then serverPrice else 0)
-	local market = CardRules.getMarketValue(card, foil)
-	local step = CardRules.getPriceStep(card, foil)
+	local level, stars = getGrowthFromPart(cardPart)
+	local grown = level > 1 or stars > 1
+	local market = CardRules.getMarketValue(card, foil, level, stars)
+	local step = CardRules.getPriceStep(card, foil, level, stars)
 
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = slot
@@ -187,9 +196,13 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	thumbnail.Size = UDim2.fromOffset(THUMBNAIL_SIZE.X, THUMBNAIL_SIZE.Y)
 	thumbnail.BackgroundTransparency = 1
 	thumbnail.Parent = frame
-	makeCardFace(thumbnail, card, foil, false)
+	makeCardFace(thumbnail, card, foil, false, if grown then { level = level, stars = stars } else nil)
 
-	local title = UIKit.label(frame, `{slot}. {describe(card, foil)}`, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
+	local titleText = `{slot}. {describe(card, foil)}`
+	if grown then
+		titleText ..= ` · {BeastRules.describeGrowth(level, stars)}`
+	end
+	local title = UIKit.label(frame, titleText, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
 	title.Position = UDim2.fromOffset(THUMBNAIL_SIZE.X + 18, 8)
 	title.Size = UDim2.new(1, -(THUMBNAIL_SIZE.X + 130), 0, 32)
 
@@ -218,7 +231,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	minus.Size = UDim2.new(0, STEP_BUTTON_WIDTH, 1, 0)
 	minus.TextSize = 16
 	minus.Activated:Connect(function()
-		nudge(slot, card, foil, price, -1)
+		nudge(slot, card, foil, level, stars, price, -1)
 	end)
 
 	-- Collector Cases (sold to players) also take a typed price; Glass Showcases use the steps only
@@ -232,7 +245,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 		box.TextSize = 24
 		box.TextColor3 = PRICE_TEXT_COLOR
 		box.FocusLost:Connect(function()
-			setTypedPrice(slot, card, foil, box)
+			setTypedPrice(slot, card, foil, level, stars, box)
 		end)
 		box.Parent = stepper
 		placePriceBox(box)
@@ -248,7 +261,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	plus.Size = UDim2.new(0, STEP_BUTTON_WIDTH, 1, 0)
 	plus.TextSize = 16
 	plus.Activated:Connect(function()
-		nudge(slot, card, foil, price, 1)
+		nudge(slot, card, foil, level, stars, price, 1)
 	end)
 
 	-- Market comparison, plus how customers react for a Glass Showcase
@@ -339,7 +352,35 @@ local function renderPicker()
 			end
 		end)
 	end
-	-- Rarest first: those are the ones worth showing off
+	-- Raised beasts first, most valuable first; each tile sends that beast's ID
+	local raised = {}
+	for _, beast in BinderController.GetBeasts() do
+		table.insert(raised, beast)
+	end
+	table.sort(raised, function(a, b)
+		local cardA, cardB = Cards.ById[a.cardId], Cards.ById[b.cardId]
+		return BeastRules.getValue(cardA, a.foil, a.level, a.stars) > BeastRules.getValue(cardB, b.foil, b.level, b.stars)
+	end)
+	for _, beast in raised do
+		local card = Cards.ById[beast.cardId]
+		if card and passesFilter(card, beast.foil) then
+			order += 1
+			local tile = Instance.new("TextButton")
+			tile.LayoutOrder = order
+			tile.BackgroundTransparency = 1
+			tile.Text = ""
+			tile.Parent = pickerList
+			makeCardFace(tile, card, beast.foil, true, { level = beast.level, stars = beast.stars })
+			tile.Activated:Connect(function()
+				local part, slot = casePart, pickerSlot
+				picker.Visible = false
+				if part and slot then
+					Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, card.id, beast.foil, beast.id)
+				end
+			end)
+		end
+	end
+	-- Then fresh copies, rarest first: those are the ones worth showing off
 	for index = #Cards.List, 1, -1 do
 		local card = Cards.List[index]
 		local owned = collection[card.id]
@@ -353,7 +394,8 @@ local function renderPicker()
 		end
 	end
 	if order == 0 then
-		local message = if next(collection) == nil then "Your binder is empty. Rip some packs first." else "No cards match this filter."
+		local binderEmpty = next(collection) == nil and next(BinderController.GetBeasts()) == nil
+		local message = if binderEmpty then "Your binder is empty. Rip some packs first." else "No cards match this filter."
 		local empty = UIKit.label(pickerList, message, Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
 		empty.Size = UDim2.fromOffset(300, 60)
 	end

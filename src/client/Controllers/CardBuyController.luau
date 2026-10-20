@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -71,10 +72,29 @@ local function getCard(part: BasePart): (Card?, boolean)
 	return card, part:GetAttribute("Foil") == true
 end
 
+-- A displayed card's level and stars (1, 1 for a fresh copy)
+local function getGrowthFromPart(part: BasePart): (number, number)
+	local level, stars = part:GetAttribute("Level"), part:GetAttribute("Stars")
+	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else 1
+end
+
+-- Growth for CardFace: nil for a fresh copy so no level line is drawn
+local function getFaceGrowth(part: BasePart): CardFace.Growth?
+	local level, stars = getGrowthFromPart(part)
+	return if level > 1 or stars > 1 then { level = level, stars = stars } else nil
+end
+
+local function getMarket(part: BasePart, card: Card, foil: boolean): number
+	local level, stars = getGrowthFromPart(part)
+	return CardRules.getMarketValue(card, foil, level, stars)
+end
+
 local function describe(part: BasePart): string
 	local card, foil = getCard(part)
 	local name = if card then card.name else "card"
-	return if foil then `FOIL {name}` else name
+	name = if foil then `FOIL {name}` else name
+	local level, stars = getGrowthFromPart(part)
+	return if level > 1 or stars > 1 then `{name} ({BeastRules.describeGrowth(level, stars)})` else name
 end
 
 local function getOwner(instance: Instance): Player?
@@ -94,7 +114,7 @@ local function getDeal(price: number, market: number): (string, Color3)
 end
 
 -- showValue = false on browse tiles: the asking price sits right under the card instead
-local function makeFace(parent: Instance, card: Card, foil: boolean, size: UDim2, showValue: boolean)
+local function makeFace(parent: Instance, card: Card, foil: boolean, size: UDim2, showValue: boolean, growth: CardFace.Growth?)
 	local face = Instance.new("Frame")
 	face.Size = size
 	face.Parent = parent
@@ -102,7 +122,7 @@ local function makeFace(parent: Instance, card: Card, foil: boolean, size: UDim2
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = face
-	CardFace.render(face, stroke, card, foil, showValue)
+	CardFace.render(face, stroke, card, foil, showValue, growth)
 end
 
 local function isBuyable(part: BasePart): boolean
@@ -156,7 +176,8 @@ local function onConfirmBuy()
 		part:GetAttribute("Slot"),
 		part:GetAttribute("CardId"),
 		part:GetAttribute("Foil"),
-		pendingPrice
+		pendingPrice,
+		part:GetAttribute("BeastId")
 	)
 end
 
@@ -178,10 +199,10 @@ local function renderDetail()
 	for _, child in detailFaceHolder:GetChildren() do
 		child:Destroy()
 	end
-	makeFace(detailFaceHolder, card, foil, UDim2.fromScale(1, 1), true)
+	makeFace(detailFaceHolder, card, foil, UDim2.fromScale(1, 1), true, getFaceGrowth(part))
 
 	local price = getPrice(part)
-	local market = CardRules.getMarketValue(card, foil)
+	local market = getMarket(part, card, foil)
 	local deal = getDeal(price, market)
 	detailInfo.Text = string.format(
 		"%s\n%s %s\n\nPrice: $%.2f\nMarket value: $%.2f\n%s",
@@ -210,7 +231,7 @@ local function buildTile(part: BasePart, order: number)
 		return
 	end
 	local price = getPrice(part)
-	local market = CardRules.getMarketValue(card, foil)
+	local market = getMarket(part, card, foil)
 
 	local tile = Instance.new("Frame")
 	tile.LayoutOrder = order
@@ -222,7 +243,7 @@ local function buildTile(part: BasePart, order: number)
 	faceButton.BackgroundTransparency = 1
 	faceButton.Text = ""
 	faceButton.Parent = tile
-	makeFace(faceButton, card, foil, UDim2.fromScale(1, 1), false)
+	makeFace(faceButton, card, foil, UDim2.fromScale(1, 1), false, getFaceGrowth(part))
 	faceButton.Activated:Connect(function()
 		openDetail(part)
 	end)

@@ -9,9 +9,11 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Rarities = require(Config:WaitForChild("Rarities"))
-local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
 type Card = typeof(Cards.List[1])
+-- A raised beast's level and stars; nil means a fresh copy (level 1, 1 star)
+export type Growth = { level: number, stars: number }
 
 local BACK_COLOR = Color3.fromRGB(40, 40, 60)
 local MISSING_COLOR = Color3.fromRGB(55, 55, 65)
@@ -92,24 +94,34 @@ function CardFace.renderMissing(frame: Frame, stroke: UIStroke, card: Card)
 	CardFace.addLabel(frame, string.format("#%02d", card.number), 0.35, 0.2, Enum.Font.GothamBold).TextTransparency = 0.4
 end
 
--- showValue = false for small tiles where a count badge sits over the bottom of the card
-function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boolean, showValue: boolean?)
+-- showValue = false for small tiles (hides value and stats, a count badge sits over the bottom).
+-- growth = nil for a fresh copy; a raised beast shows its level and stars.
+function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boolean, showValue: boolean?, growth: Growth?)
 	clear(frame)
+	local level = if growth then growth.level else 1
+	local stars = if growth then growth.stars else 1
 	frame.BackgroundColor3 = Cards.ELEMENTS[card.element] or BACK_COLOR
 	stroke.Color = CardFace.getRarityColor(card.rarity)
 	stroke.Thickness = PackOpening.STROKE_THICKNESS[card.rarity] or 2
 
-	CardFace.addLabel(frame, card.name, 0.06, 0.16, Enum.Font.FredokaOne)
+	CardFace.addLabel(frame, card.name, 0.05, 0.14, Enum.Font.FredokaOne)
 	-- Placeholder art until real card art exists: the element's initial, big
-	CardFace.addLabel(frame, string.sub(card.element, 1, 1), 0.26, 0.4, Enum.Font.FredokaOne).TextTransparency = 0.3
-	CardFace.addLabel(frame, card.rarity, 0.7, 0.11, Enum.Font.GothamBold).TextColor3 = CardFace.getRarityColor(card.rarity)
+	CardFace.addLabel(frame, string.sub(card.element, 1, 1), 0.24, 0.3, Enum.Font.FredokaOne).TextTransparency = 0.3
+	if growth then
+		CardFace.addLabel(frame, BeastRules.describeGrowth(level, stars), 0.55, 0.08, Enum.Font.GothamBold)
+	end
 	if showValue ~= false then
-		CardFace.addLabel(frame, string.format("$%.2f", CardRules.getMarketValue(card, foil)), 0.83, 0.1, Enum.Font.GothamBold)
+		local stats = BeastRules.getStats(card, foil, level, stars)
+		CardFace.addLabel(frame, `HP {stats.hp} · ATK {stats.atk} · SPD {stats.spd}`, 0.64, 0.07, Enum.Font.GothamBold)
+	end
+	CardFace.addLabel(frame, card.rarity, 0.72, 0.1, Enum.Font.GothamBold).TextColor3 = CardFace.getRarityColor(card.rarity)
+	if showValue ~= false then
+		CardFace.addLabel(frame, string.format("$%.2f", BeastRules.getValue(card, foil, level, stars)), 0.84, 0.1, Enum.Font.GothamBold)
 	end
 
 	-- Plain text only: Roblox's built-in fonts have no glyphs for symbols like ✦
 	if foil then
-		CardFace.addLabel(frame, "FOIL", 0.2, 0.08, Enum.Font.GothamBold)
+		CardFace.addLabel(frame, "FOIL", 0.18, 0.06, Enum.Font.GothamBold)
 		addFoilShimmer(frame)
 	end
 end

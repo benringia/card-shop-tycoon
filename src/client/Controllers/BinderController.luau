@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -49,12 +50,28 @@ local detail: Frame
 local detailInner: Frame
 local detailStroke: UIStroke
 local detailInfo: TextLabel
+local raisedList: ScrollingFrame
 local detailCard: Card? = nil
 local plotConnections: { RBXScriptConnection } = {}
 local refreshQueued = false
 
 local function getCount(source: { [string]: Owned }, cardId: string): Owned
 	return source[cardId] or { normal = 0, foil = 0 }
+end
+
+-- This card's raised beasts in the binder, strongest (highest value) first
+local function getRaised(cardId: string): { Beast }
+	local list: { Beast } = {}
+	for _, beast in beasts do
+		if beast.cardId == cardId then
+			table.insert(list, beast)
+		end
+	end
+	local card = Cards.ById[cardId]
+	table.sort(list, function(a, b)
+		return BeastRules.getValue(card, a.foil, a.level, a.stars) > BeastRules.getValue(card, b.foil, b.level, b.stars)
+	end)
+	return list
 end
 
 -- Cards currently in this player's own cases, read from the card parts on their plot
@@ -101,7 +118,8 @@ local function refreshDetail()
 	end
 	local inBinder = getCount(collection, card.id)
 	local shown = getCount(displayed, card.id)
-	if inBinder.normal + inBinder.foil + shown.normal + shown.foil == 0 then
+	local raised = getRaised(card.id)
+	if inBinder.normal + inBinder.foil + shown.normal + shown.foil + #raised == 0 then
 		detail.Visible = false
 		detailCard = nil
 		return
@@ -110,7 +128,7 @@ local function refreshDetail()
 	-- Show the foil version when the player has one, it's the one they'll want to look at
 	CardFace.render(detailInner, detailStroke, card, inBinder.foil + shown.foil > 0)
 	detailInfo.Text = string.format(
-		"#%02d %s · %s %s\nIn binder: %d normal, %d foil\nOn display: %d\nMarket: $%.2f (foil $%.2f)\n\n%s",
+		"#%02d %s · %s %s\nFresh: %d normal, %d foil · on display: %d\nMarket (fresh): $%.2f (foil $%.2f)",
 		card.number,
 		card.name,
 		card.element,
@@ -119,9 +137,43 @@ local function refreshDetail()
 		inBinder.foil,
 		shown.normal + shown.foil,
 		CardRules.getMarketValue(card, false),
-		CardRules.getMarketValue(card, true),
-		HOW_TO_SELL
+		CardRules.getMarketValue(card, true)
 	)
+
+	-- Raised beasts of this card, strongest first
+	for _, child in raisedList:GetChildren() do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+	for index, beast in raised do
+		local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars)
+		local toNext = BeastRules.getXpToNext(beast.level)
+		local line = UIKit.label(
+			raisedList,
+			string.format(
+				"%s%s · XP %s · $%.2f\nHP %d  ATK %d  SPD %d",
+				if beast.foil then "FOIL " else "",
+				BeastRules.describeGrowth(beast.level, beast.stars),
+				if toNext > 0 then `{beast.xp}/{toNext}` else "max",
+				BeastRules.getValue(card, beast.foil, beast.level, beast.stars),
+				stats.hp,
+				stats.atk,
+				stats.spd
+			),
+			Enum.Font.Gotham,
+			12,
+			UIKit.Colors.Text
+		)
+		line.LayoutOrder = index
+		line.Size = UDim2.new(1, -6, 0, 30)
+		line.ZIndex = 12
+	end
+	if #raised == 0 then
+		local none = UIKit.label(raisedList, "No raised beasts yet. " .. HOW_TO_SELL, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+		none.Size = UDim2.new(1, -6, 0, 60)
+		none.ZIndex = 12
+	end
 end
 
 local function refresh()
@@ -131,14 +183,18 @@ local function refresh()
 		local inBinder = getCount(collection, tile.card.id)
 		local shown = getCount(displayed, tile.card.id)
 		local binderTotal = inBinder.normal + inBinder.foil
-		if binderTotal + shown.normal + shown.foil > 0 then
+		local raised = #getRaised(tile.card.id)
+		if binderTotal + shown.normal + shown.foil + raised > 0 then
 			ownedKinds += 1
 			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0, false)
-			tile.countLabel.Text = if binderTotal == 0
-				then "on display"
+			local freshText = if binderTotal == 0
+				then (if raised > 0 then "" else "on display")
 				elseif inBinder.foil == 0 then `x{inBinder.normal}`
 				elseif inBinder.normal == 0 then `{inBinder.foil} foil`
 				else `x{inBinder.normal} · {inBinder.foil} foil`
+			tile.countLabel.Text = if raised > 0
+				then (if freshText == "" then `{raised} raised` else `{freshText} · {raised} raised`)
+				else freshText
 			tile.countLabel.Visible = true
 		else
 			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
@@ -208,9 +264,24 @@ local function buildDetail(parent: Frame)
 
 	detailInfo = UIKit.label(detail, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
 	detailInfo.Position = UDim2.fromOffset(180, 16)
-	detailInfo.Size = UDim2.new(1, -192, 0, 170)
+	detailInfo.Size = UDim2.new(1, -192, 0, 92)
 	detailInfo.TextYAlignment = Enum.TextYAlignment.Top
 	detailInfo.ZIndex = 11
+
+	raisedList = Instance.new("ScrollingFrame")
+	raisedList.Position = UDim2.fromOffset(180, 112)
+	raisedList.Size = UDim2.new(1, -192, 0, 76)
+	raisedList.BackgroundTransparency = 1
+	raisedList.BorderSizePixel = 0
+	raisedList.ScrollBarThickness = 4
+	raisedList.CanvasSize = UDim2.new()
+	raisedList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	raisedList.ZIndex = 11
+	raisedList.Parent = detail
+	local raisedLayout = Instance.new("UIListLayout")
+	raisedLayout.Padding = UDim.new(0, 4)
+	raisedLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	raisedLayout.Parent = raisedList
 
 	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
 	back.Position = UDim2.fromOffset(180, 194)
