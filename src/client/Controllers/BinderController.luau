@@ -12,7 +12,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
-local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
