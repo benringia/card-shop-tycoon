@@ -44,7 +44,7 @@ Bought and placed through the existing build menu; can be moved and sold like an
 3. Shows `Stars 1/5 → 2/5 · uses 8 duplicates (Owned 11)` and the new stats/value preview.
 4. **Condense** button (disabled with the reason if not enough duplicates or already 5★).
 
-**Which copies are used:** plain copies of the same card only — normal copies first, then foil.
+**Which copies are used:** superseded by `2026-10-20-card-grades-design.md` section 6 — plain copies of the same card, lowest grade first, normal before foil.
 Levelled or starred individuals are never used as duplicates. The panel says exactly what will be
 used ("uses 6 normal + 2 foil"). If the main card is itself a plain copy, it is taken out of the
 stack first and does not count as a duplicate.
