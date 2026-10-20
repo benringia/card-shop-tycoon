@@ -575,6 +575,7 @@ local function buildPage(spread: Frame, isLeft: boolean): Frame
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.VerticalAlignment = Enum.VerticalAlignment.Center
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.FillDirectionMaxCells = PAGE_COLUMNS -- 3 pockets per row, so each page is 3 x 3
 	grid.Parent = page
 	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		fitPockets(page, grid)

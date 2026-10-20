@@ -13,6 +13,8 @@ UIKit.Colors = {
 	Subtext = Color3.fromRGB(190, 190, 205),
 }
 
+UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another one (card picker) goes higher
+
 function UIKit.corner(parent: GuiObject, radius: number)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, radius)
@@ -53,6 +55,7 @@ function UIKit.panel(parent: Instance, name: string, title: string): (Frame, Scr
 	frame.Size = UDim2.fromScale(0.92, 0.7)
 	frame.BackgroundColor3 = UIKit.Colors.Panel
 	frame.Visible = false
+	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame.Parent = parent
 	UIKit.corner(frame, 14)
 

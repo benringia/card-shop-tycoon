@@ -737,7 +737,7 @@ end
 
 local function buildPicker(parent: Instance)
 	picker, pickerList = UIKit.panel(parent, "CardPicker", "Pick a card")
-	picker.ZIndex = 5
+	picker.ZIndex = UIKit.PANEL_Z_INDEX + 1 -- over the case manager it opens from
 	-- Same size as the case manager so it covers it completely
 	picker.Size = UDim2.fromScale(0.94, 0.86)
 	local sizeLimit = picker:FindFirstChildOfClass("UISizeConstraint")
