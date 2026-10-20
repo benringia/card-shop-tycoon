@@ -35,12 +35,15 @@ local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
+local READY_COLOR = Color3.fromRGB(60, 200, 110)
+local SUBTITLE_TEXT = "Combine duplicates into one card for +1 star."
 
 local player = Players.LocalPlayer
 
 local CondenserController = {}
 
 local panel: Frame
+local subtitle: TextLabel
 local list: ScrollingFrame
 local pane: ScrollingFrame
 local machine: BasePart? = nil
@@ -118,6 +121,12 @@ end
 local function getPlan(card: Card, main: Candidate): ({ CondenseRules.Take }?, string?)
 	local byGrade = BinderController.GetGradedStacks()[card.id] or {}
 	return CondenseRules.plan(Beasts, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars })
+end
+
+-- Whether the default main copy of this card can take a star right now
+local function isReady(card: Card): boolean
+	local main = getCandidates(card)[1]
+	return main ~= nil and (getPlan(card, main)) ~= nil
 end
 
 -- Cards with at least one duplicate to use: a levelled copy plus a plain one, or two plain copies.
@@ -299,6 +308,11 @@ local function buildCardRow(card: Card, order: number)
 	for _, candidate in candidates do
 		owned += candidate.count
 	end
+	local takes: { CondenseRules.Take }?, reason: string? = nil, nil
+	if strongest then
+		takes, reason = getPlan(card, strongest)
+	end
+	local ready = takes ~= nil
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -6, 0, ROW_HEIGHT)
@@ -321,14 +335,26 @@ local function buildCardRow(card: Card, order: number)
 	makeFace(thumbnail, card, strongest ~= nil and strongest.foil, false)
 
 	local textX = THUMBNAIL_SIZE.X + 14
-	addLabel(row, card.name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + 8), 0, 20), Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	local nameRoom = if ready then 84 else 8 -- leave room for the READY chip
+	addLabel(row, card.name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + nameRoom), 0, 20), Enum.Font.GothamBold, 15, UIKit.Colors.Text)
 	local status = `Owned {owned}`
 	if strongest then
-		local takes, reason = getPlan(card, strongest)
 		local cost = BeastRules.getCondenseCost(strongest.stars)
 		status ..= if takes and cost then ` · next star: {cost} duplicates` elseif reason == "max" then " · max stars" else ` · {describeReason(reason)}`
 	end
-	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then READY_COLOR else UIKit.Colors.Subtext)
+
+	-- Can take a star right now: green chip on the row
+	if ready then
+		local chip = UIKit.label(row, "READY", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
+		chip.AnchorPoint = Vector2.new(1, 0)
+		chip.Position = UDim2.new(1, -8, 0, 8)
+		chip.Size = UDim2.fromOffset(68, 20)
+		chip.TextXAlignment = Enum.TextXAlignment.Center
+		chip.BackgroundColor3 = READY_COLOR
+		chip.BackgroundTransparency = 0
+		UIKit.corner(chip, 6)
+	end
 
 	row.Activated:Connect(function()
 		if selectedCardId ~= card.id then
@@ -345,7 +371,30 @@ render = function()
 		return
 	end
 	clear(list)
+	-- Ready cards first (keeping rarest-first order inside each group)
 	local cards = getCondensableCards()
+	local readyCount = 0
+	local ready: { [string]: boolean } = {}
+	for _, card in cards do
+		if isReady(card) then
+			ready[card.id] = true
+			readyCount += 1
+		end
+	end
+	local position: { [string]: number } = {}
+	for index, card in cards do
+		position[card.id] = index
+	end
+	table.sort(cards, function(a, b)
+		if (ready[a.id] == true) ~= (ready[b.id] == true) then
+			return ready[a.id] == true
+		end
+		return position[a.id] < position[b.id]
+	end)
+	subtitle.Text = if readyCount > 0
+		then `{readyCount} {if readyCount == 1 then "card" else "cards"} ready to condense · {SUBTITLE_TEXT}`
+		else SUBTITLE_TEXT
+	subtitle.TextColor3 = if readyCount > 0 then READY_COLOR else UIKit.Colors.Subtext
 	local selected: Card? = nil
 	for _, card in cards do
 		if card.id == selectedCardId then
@@ -403,7 +452,7 @@ function CondenserController.Start()
 	if sizeLimit then
 		sizeLimit.MaxSize = PANEL_MAX_SIZE
 	end
-	local subtitle = UIKit.label(panel, "Combine duplicates into one card for +1 star.", Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
+	subtitle = UIKit.label(panel, SUBTITLE_TEXT, Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
 	subtitle.Position = UDim2.fromOffset(16, 56)
 	subtitle.Size = UDim2.new(1, -32, 0, 22)
 	list.Position = UDim2.fromOffset(12, 84)
