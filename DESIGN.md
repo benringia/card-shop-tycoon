@@ -419,7 +419,7 @@ their saved data.
 - [x] Pack opening (Set 1, server rolls, flip animation, foil effect)
 - [x] Binder UI
 - [x] Quick sell cards
-- [ ] Saving with ProfileStore
+- [x] Saving with ProfileStore
 - [ ] Server pull announcements
 
 **Out (later):** showcase selling to players, trading, staff, expansions, card battles, Set 2, events, most cosmetics.
