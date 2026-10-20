@@ -1,7 +1,7 @@
 --!strict
--- Each player's cards: fresh stacks { [cardId] = { normal, foil } } of untouched copies, and raised
--- beasts { [beastId] = Beast } with their own level, XP and stars. A fresh copy becomes a beast the
--- first time it gains XP. Cards on display leave here while shown (PlacementService holds them).
+-- Each player's cards: plain stacks { [cardId] = { normal, foil } } of untouched copies, and levelled
+-- cards { [beastId] = Beast } with their own level, XP and stars. A plain copy becomes its own card the
+-- first time it gains XP or a star. Cards on display leave here while shown (PlacementService holds them).
 -- The client gets { stacks, beasts } on every change. Saved through DataService.
 -- (DESIGN.md calls this CollectionService; renamed to avoid clashing with Roblox's own service.)
 local HttpService = game:GetService("HttpService")
@@ -49,7 +49,7 @@ local function getOwned(stacks: { [string]: Owned }, cardId: string): Owned
 	return owned
 end
 
--- Removes one fresh copy without syncing; returns false if there is none
+-- Removes one plain copy without syncing; returns false if there is none
 local function takeFreshCopy(inventory: Inventory, cardId: string, foil: boolean): boolean
 	local owned = inventory.stacks[cardId]
 	if not owned then
@@ -69,7 +69,7 @@ local function takeFreshCopy(inventory: Inventory, cardId: string, foil: boolean
 	return true
 end
 
--- Adds a batch of fresh copies (a pack, a purchase, cards coming back off display) and syncs once
+-- Adds a batch of plain copies (a pack, a purchase, cards coming back off display) and syncs once
 function CardService.AddFresh(player: Player, results: { PullResult })
 	local inventory = inventories[player]
 	if not inventory then
@@ -97,7 +97,7 @@ function CardService.TakeFresh(player: Player, cardId: string, foil: boolean): b
 	return true
 end
 
--- Adds a raised beast. Keeps its ID unless that ID is already used, then gives it a new one.
+-- Adds a levelled card. Keeps its ID unless that ID is already used, then gives it a new one.
 function CardService.AddBeast(player: Player, beast: Beast): Beast
 	local inventory = inventories[player]
 	if not inventory then
@@ -138,7 +138,7 @@ function CardService.GetStacks(player: Player): { [string]: Owned }
 	return if inventory then inventory.stacks else {}
 end
 
--- Returns a card to the binder the way it left: as its beast, or as a fresh copy
+-- Returns a card to the binder the way it left: as its beast, or as a plain copy
 function CardService.GiveCard(player: Player, cardId: string, foil: boolean, beast: Beast?)
 	if beast then
 		CardService.AddBeast(player, beast)
@@ -147,7 +147,7 @@ function CardService.GiveCard(player: Player, cardId: string, foil: boolean, bea
 	end
 end
 
--- The only way beasts gain XP. A fresh-card target splits one copy off its stack into a new beast.
+-- The only way beasts gain XP. A plain-card target splits one copy off its stack into a new beast.
 -- Returns the beast, or nil if the player doesn't have the target.
 function CardService.AddXP(player: Player, target: XpTarget, amount: number): Beast?
 	local inventory = inventories[player]

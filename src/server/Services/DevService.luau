@@ -1,6 +1,6 @@
 --!strict
 -- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /testpack,
--- /beastxp <amount> (XP for your best raised beast, or your rarest fresh card).
+-- /beastxp <amount> (XP for your best levelled card, or your rarest plain card).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,7 +68,7 @@ local function jumpToLevel(player: Player, level: number)
 	end
 end
 
--- Highest-rarity raised beast (then highest level); otherwise the rarest fresh copy, foil first
+-- Highest-rarity levelled card (then highest level); otherwise the rarest plain copy, foil first
 local function pickXpTarget(player: Player): CardService.XpTarget?
 	local best: CardService.Beast? = nil
 	local bestScore = -1

@@ -36,7 +36,7 @@ type SavedCard = DataService.SavedCard
 type SavedCell = DataService.SavedCell
 
 type Beast = CardService.Beast
--- A card in a case slot: a fresh copy (beast = nil) or a specific raised beast
+-- A card in a case slot: a plain copy (beast = nil) or a specific levelled card
 export type DisplayedCard = { cardId: string, foil: boolean, price: number, beast: Beast? }
 
 export type PlacedShelf = {

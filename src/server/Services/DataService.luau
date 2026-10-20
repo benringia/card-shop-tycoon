@@ -55,7 +55,7 @@ export type PlayerData = {
 	fixtures: { [string]: SavedCell },
 	boxes: { SavedBox },
 	cards: { [string]: { normal: number, foil: number } },
-	beasts: { [string]: SavedBeast }, -- raised beasts by ID
+	beasts: { [string]: SavedBeast }, -- levelled cards by ID
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }

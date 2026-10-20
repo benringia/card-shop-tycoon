@@ -35,6 +35,13 @@ return {
 		expect.equal(data.beasts.a.stars, 2, "not lowered twice")
 	end,
 
+	["run: newer save is never downgraded"] = function()
+		local data: any = { version = 5, beasts = { a = { stars = 2 } } }
+		Migrations.run(data, 4)
+		expect.equal(data.version, 5, "version kept")
+		expect.equal(data.beasts.a.stars, 2, "stars untouched")
+	end,
+
 	["run: v1 goes through every step"] = function()
 		local data: any = { showcase = { 1 } }
 		Migrations.run(data, 4)

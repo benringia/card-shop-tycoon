@@ -39,6 +39,11 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 
 function Migrations.run(data: any, targetVersion: number)
 	local version = if typeof(data.version) == "number" then data.version else 1
+	-- A save written by newer code (e.g. an old server still running during an update) keeps its
+	-- version, so the newer code never runs the same migration on it twice
+	if version >= targetVersion then
+		return
+	end
 	while version < targetVersion do
 		local step = MIGRATIONS[version]
 		if step then

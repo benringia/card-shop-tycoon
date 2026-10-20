@@ -210,7 +210,7 @@ Roadmap (one sub-project at a time):
 4. **Star merging** — the Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`).
 5. **Battles** — real-time auto-fight between players' parties.
 
-Fresh copies stack; a copy becomes an individual beast the first time it gains XP.
+Plain copies stack; a copy becomes an individual card the first time it gains XP or a star.
 
 | Beast field | Meaning |
 |---|---|
@@ -238,7 +238,7 @@ Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 
 `STAR_VALUE` for 0–5 stars = `{ 1, 6, 15, 30, 50, 80 }` (roughly the duplicates condensed plus a bonus).
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
-Stars come only from the Condenser (no level gate; levels raise stats only). Duplicates per star (`STAR_COSTS`):
+Stars come only from the Condenser (Plan B, not built yet; no level gate, levels raise stats only). Duplicates per star (`STAR_COSTS`):
 
 | Step | 0→1 | 1→2 | 2→3 | 3→4 | 4→5 | Total |
 |---|---|---|---|---|---|---|
@@ -246,7 +246,7 @@ Stars come only from the Condenser (no level gate; levels raise stats only). Dup
 
 The binder shows the next step on every card ("Stars 0/5 · condense 4 duplicates for the next star").
 Player-facing text says "Owned" and "levelled", never "fresh" or "raised".
-Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to your best beast or rarest fresh card.
+Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to your best levelled card or rarest plain card.
 
 ---
 
@@ -448,7 +448,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v3)
+### 10.4 Player data schema (v4)
 ```lua
 {
     version = 4,

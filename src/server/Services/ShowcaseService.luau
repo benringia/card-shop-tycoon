@@ -1,9 +1,9 @@
 --!strict
--- Single cards on display. Owners move cards (fresh copies or raised beasts) from their binder into
+-- Single cards on display. Owners move cards (plain copies or levelled cards) from their binder into
 -- card cases and price them:
 --   Glass Showcase (CustomerCards): NPC customers may take a card and pay at the register.
 --   Collector Case (PlayerCards):  other players buy directly, after confirming the price.
--- A raised beast moves as itself (level, XP and stars intact). PlacementService holds what's in each
+-- A levelled card moves as itself (level, XP and stars intact). PlacementService holds what's in each
 -- slot and saves it; this service runs the actions.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -83,7 +83,7 @@ local function describe(displayed: DisplayedCard): string
 	return if beast then `{name} ({BeastRules.describeGrowth(beast.level, beast.stars)})` else name
 end
 
--- beastId set: that specific raised beast; nil: a fresh copy
+-- beastId set: that specific levelled card; nil: a plain copy
 local function onDisplayCard(player: Player, shelfUid: unknown, slot: unknown, cardId: unknown, foil: unknown, beastId: unknown)
 	if not allowAction(player) or not isSlot(slot) or typeof(cardId) ~= "string" or typeof(foil) ~= "boolean" then
 		return
