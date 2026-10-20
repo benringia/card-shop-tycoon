@@ -1,12 +1,12 @@
 --!strict
--- Card value maths shared by the server (paying out) and the binder UI (showing prices).
+-- Card value and price maths shared by the server (validation, customers) and the UI (showing prices).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local Announcements = require(Config:WaitForChild("Announcements"))
 local Cards = require(Config:WaitForChild("Cards"))
-local Collection = require(Config:WaitForChild("Collection"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local Showcase = require(Config:WaitForChild("Showcase"))
 
 type Card = typeof(Cards.List[1])
 
@@ -16,10 +16,20 @@ function CardRules.getMarketValue(card: Card, foil: boolean): number
 	return card.value * (if foil then Rarities.FOIL_MULTIPLIER else 1)
 end
 
--- What quick sell pays for one copy, rounded down to the cent
-function CardRules.getQuickSellValue(card: Card, foil: boolean): number
-	local value = CardRules.getMarketValue(card, foil) * Collection.QUICK_SELL_RATE
-	return math.max(Collection.MIN_SELL_PRICE, math.floor(value * 100 + 1e-6) / 100)
+local function roundCents(value: number): number
+	return math.round(value * 100) / 100
+end
+
+-- Showcase price: rounded to cents, between MIN_PRICE and MAX_MARKUP × market value
+function CardRules.clampPrice(price: number, card: Card, foil: boolean): number
+	local market = CardRules.getMarketValue(card, foil)
+	return math.clamp(roundCents(price), Showcase.MIN_PRICE, roundCents(market * Showcase.MAX_MARKUP))
+end
+
+-- One +/- tap in the showcase UI, scaled to the card's value so commons and legendaries both feel right
+function CardRules.getPriceStep(card: Card, foil: boolean): number
+	local step = roundCents(CardRules.getMarketValue(card, foil) * Showcase.PRICE_STEP_RATIO)
+	return math.max(Showcase.MIN_PRICE_STEP, step)
 end
 
 -- Whether pulling this card gets a server-wide chat announcement

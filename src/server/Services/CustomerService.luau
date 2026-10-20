@@ -1,6 +1,7 @@
 --!strict
 -- NPC customers: spawn on the street, walk to stocked shelves, decide to buy based on price,
--- queue at the register, and leave if they wait too long. Each customer runs as one thread.
+-- sometimes look at the Glass Showcase for a single card, queue at the register, and leave if they
+-- wait too long. Each customer runs as one thread.
 -- RegisterService handles checkout via OnReachedCounter / OnLeftQueue / CompletePurchase.
 local PathfindingService = game:GetService("PathfindingService")
 local PhysicsService = game:GetService("PhysicsService")
@@ -9,25 +10,34 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
+local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 
 local Services = script.Parent :: Instance
+local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
+local ShowcaseService = require(Services:WaitForChild("ShowcaseService"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
 type PlacedShelf = typeof(PlacementService.GetShelves((nil :: any))[1])
+type DisplayedCard = PlacementService.DisplayedCard
 
+-- Products have productId; single cards have card + slot. Both carry units and unitPrice for checkout.
 type Item = {
 	shelfUid: string,
-	productId: string,
 	units: number,
 	unitPrice: number, -- price when picked up, so later price changes don't affect this sale
+	productId: string?,
+	card: DisplayedCard?,
+	slot: number?,
 }
 
 export type Customer = {
@@ -235,9 +245,14 @@ end
 -- Puts picked items back on the shelves they came from (customer left without paying)
 local function restoreItems(customer: Customer)
 	for _, item in customer.items do
-		local shelf = PlacementService.GetShelf(customer.owner, item.shelfUid)
-		if shelf then
-			PlacementService.AddStock(shelf, item.productId, item.units)
+		local card, productId = item.card, item.productId
+		if card then
+			ShowcaseService.ReturnFromCustomer(customer.owner, item.shelfUid, item.slot or 1, card)
+		elseif productId then
+			local shelf = PlacementService.GetShelf(customer.owner, item.shelfUid)
+			if shelf then
+				PlacementService.AddStock(shelf, productId, item.units)
+			end
 		end
 	end
 	table.clear(customer.items)
@@ -347,6 +362,41 @@ local function shopFor(customer: Customer, productId: string, wanted: number): b
 	return true
 end
 
+-- Looks at one card in a Glass Showcase and maybe takes it, judged on price like packs.
+-- Returns whether there was a card to look at.
+local function shopForCard(customer: Customer): boolean
+	local shelf, slot = ShowcaseService.PickCardForCustomer(customer.owner)
+	if not shelf or not slot then
+		return false
+	end
+	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+	if not customer.alive then
+		return true
+	end
+	task.wait(CustomerConfig.BROWSE_SECONDS)
+
+	-- The case may have been sold or the card taken while this customer walked over
+	local displayed = shelf.cards[slot]
+	if PlacementService.GetShelf(customer.owner, shelf.uid) ~= shelf or not displayed then
+		return true
+	end
+	local card = Cards.ById[displayed.cardId]
+	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil))
+	if not band then
+		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+		return true
+	end
+	if rng:NextNumber() > band.chance then
+		return true
+	end
+
+	local taken = ShowcaseService.TakeForCustomer(shelf, slot)
+	if taken then
+		table.insert(customer.items, { shelfUid = shelf.uid, units = 1, unitPrice = taken.price, card = taken, slot = slot })
+	end
+	return true
+end
+
 -- Nothing they wanted was stocked: still walk in and look around so the owner sees the lost sale
 local function browseEmptyShop(customer: Customer)
 	local shelves = PlacementService.GetShelves(customer.owner)
@@ -408,6 +458,13 @@ local function run(customer: Customer)
 		if not customer.alive then
 			return
 		end
+	end
+	-- Only some customers care about singles
+	if rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE and shopForCard(customer) then
+		foundAny = true
+	end
+	if not customer.alive then
+		return
 	end
 
 	if #customer.items == 0 then
@@ -537,6 +594,16 @@ function CustomerService.Start()
 	end
 
 	PlotService.OnReleased(onReleased)
+	-- When the owner leaves, customers put picked-up stock and cards back first, so they're saved
+	DataService.OnBeforeLeave(function(owner: Player)
+		local plot = PlotService.GetPlot(owner)
+		local state = if plot then plotStates[plot] else nil
+		if state then
+			for _, customer in table.clone(state.customers) do
+				despawn(customer, true)
+			end
+		end
+	end)
 
 	task.spawn(function()
 		while true do

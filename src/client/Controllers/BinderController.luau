@@ -1,7 +1,9 @@
 --!strict
 -- Binder: every Set 1 card in a grid, owned ones in colour with counts, missing ones greyed out.
--- Tap an owned card to see it large and quick sell copies. "Sell dupes" keeps one of each.
--- The server sends the whole collection whenever it changes; this only displays it.
+-- Tap an owned card to see it large. Cards earn money only from a showcase, so the binder just
+-- shows what you have; cards on display in your cases count towards completion.
+-- The server sends the binder whenever it changes; displayed cards are read from your plot.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -29,25 +31,52 @@ type Tile = {
 
 local TILE_SIZE = Vector2.new(78, 112)
 local BINDER_KEY = Enum.KeyCode.B
+local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
+
+local player = Players.LocalPlayer
 
 local BinderController = {}
 
 local collection: { [string]: Owned } = {}
+local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
 local completionLabel: TextLabel
-local dupesButton: TextButton
 
 local detail: Frame
 local detailInner: Frame
 local detailStroke: UIStroke
 local detailInfo: TextLabel
-local sellNormalButton: TextButton
-local sellFoilButton: TextButton
 local detailCard: Card? = nil
+local plotConnections: { RBXScriptConnection } = {}
+local refreshQueued = false
 
-local function getOwned(cardId: string): Owned
-	return collection[cardId] or { normal = 0, foil = 0 }
+local function getCount(source: { [string]: Owned }, cardId: string): Owned
+	return source[cardId] or { normal = 0, foil = 0 }
+end
+
+-- Cards currently in this player's own cases, read from the card parts on their plot
+local function readDisplayedCards(): { [string]: Owned }
+	local counts: { [string]: Owned } = {}
+	local plotId = player:GetAttribute("PlotId")
+	local plots = workspace:FindFirstChild("Plots")
+	local plot = if typeof(plotId) == "number" and plots then plots:FindFirstChild("Plot" .. plotId) else nil
+	if not plot then
+		return counts
+	end
+	for _, part in plot:GetDescendants() do
+		local cardId = part:GetAttribute("CardId")
+		if typeof(cardId) == "string" and part:GetAttribute("OwnerUserId") == player.UserId then
+			local owned = counts[cardId] or { normal = 0, foil = 0 }
+			counts[cardId] = owned
+			if part:GetAttribute("Foil") == true then
+				owned.foil += 1
+			else
+				owned.normal += 1
+			end
+		end
+	end
+	return counts
 end
 
 local function addCardFrame(parent: Instance): (Frame, UIStroke)
@@ -63,62 +92,51 @@ local function addCardFrame(parent: Instance): (Frame, UIStroke)
 	return inner, stroke
 end
 
-local function getDuplicatesValue(): (number, number)
-	local count, value = 0, 0
-	for cardId, owned in collection do
-		local card = Cards.ById[cardId]
-		if card then
-			local extraNormal = math.max(0, owned.normal - 1)
-			local extraFoil = math.max(0, owned.foil - 1)
-			count += extraNormal + extraFoil
-			value += extraNormal * CardRules.getQuickSellValue(card, false)
-				+ extraFoil * CardRules.getQuickSellValue(card, true)
-		end
-	end
-	return count, value
-end
-
 local function refreshDetail()
 	local card = detailCard
 	if not card then
 		return
 	end
-	local owned = getOwned(card.id)
-	if owned.normal + owned.foil == 0 then
+	local inBinder = getCount(collection, card.id)
+	local shown = getCount(displayed, card.id)
+	if inBinder.normal + inBinder.foil + shown.normal + shown.foil == 0 then
 		detail.Visible = false
 		detailCard = nil
 		return
 	end
 
 	-- Show the foil version when the player has one, it's the one they'll want to look at
-	CardFace.render(detailInner, detailStroke, card, owned.foil > 0)
+	CardFace.render(detailInner, detailStroke, card, inBinder.foil + shown.foil > 0)
 	detailInfo.Text = string.format(
-		"#%02d %s · %s %s\nYou own %d normal, %d foil",
+		"#%02d %s · %s %s\nIn binder: %d normal, %d foil\nOn display: %d\nMarket: $%.2f (foil $%.2f)\n\n%s",
 		card.number,
 		card.name,
 		card.element,
 		card.rarity,
-		owned.normal,
-		owned.foil
+		inBinder.normal,
+		inBinder.foil,
+		shown.normal + shown.foil,
+		CardRules.getMarketValue(card, false),
+		CardRules.getMarketValue(card, true),
+		HOW_TO_SELL
 	)
-	sellNormalButton.Visible = owned.normal > 0
-	sellNormalButton.Text = string.format("Sell 1 · $%.2f", CardRules.getQuickSellValue(card, false))
-	sellFoilButton.Visible = owned.foil > 0
-	sellFoilButton.Text = string.format("Sell 1 foil · $%.2f", CardRules.getQuickSellValue(card, true))
 end
 
 local function refresh()
+	displayed = readDisplayedCards()
 	local ownedKinds = 0
 	for _, tile in tiles do
-		local owned = getOwned(tile.card.id)
-		local total = owned.normal + owned.foil
-		if total > 0 then
+		local inBinder = getCount(collection, tile.card.id)
+		local shown = getCount(displayed, tile.card.id)
+		local binderTotal = inBinder.normal + inBinder.foil
+		if binderTotal + shown.normal + shown.foil > 0 then
 			ownedKinds += 1
-			CardFace.render(tile.inner, tile.stroke, tile.card, owned.foil > 0, false)
-			tile.countLabel.Text = if owned.foil == 0
-				then `x{owned.normal}`
-				elseif owned.normal == 0 then `{owned.foil} foil`
-				else `x{owned.normal} · {owned.foil} foil`
+			CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0, false)
+			tile.countLabel.Text = if binderTotal == 0
+				then "on display"
+				elseif inBinder.foil == 0 then `x{inBinder.normal}`
+				elseif inBinder.normal == 0 then `{inBinder.foil} foil`
+				else `x{inBinder.normal} · {inBinder.foil} foil`
 			tile.countLabel.Visible = true
 		else
 			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
@@ -128,11 +146,6 @@ local function refresh()
 
 	local percent = math.floor(ownedKinds / #Cards.List * 100)
 	completionLabel.Text = `{ownedKinds}/{#Cards.List} cards · {percent}%`
-
-	local dupes, dupesValue = getDuplicatesValue()
-	dupesButton.Visible = dupes > 0
-	dupesButton.Text = string.format("Sell %d dupe%s · $%.2f", dupes, if dupes == 1 then "" else "s", dupesValue)
-
 	refreshDetail()
 end
 
@@ -165,15 +178,12 @@ local function buildTile(card: Card, parent: Instance): Tile
 
 	local tile: Tile = { card = card, inner = inner, stroke = stroke, countLabel = countLabel }
 	button.Activated:Connect(function()
-		local owned = getOwned(card.id)
-		if owned.normal + owned.foil > 0 then
-			openDetail(card)
-		end
+		openDetail(card)
 	end)
 	return tile
 end
 
--- Card shown large over the grid, with quick sell buttons
+-- Card shown large over the grid with its counts and value
 local function buildDetail(parent: Frame)
 	detail = Instance.new("Frame")
 	detail.Name = "Detail"
@@ -185,7 +195,7 @@ local function buildDetail(parent: Frame)
 	detail.Parent = parent
 	UIKit.corner(detail, 14)
 
-	-- Card on the left, info and buttons on the right: fits short landscape phone screens
+	-- Card on the left, info on the right: fits short landscape phone screens
 	local cardHolder = Instance.new("Frame")
 	cardHolder.Position = UDim2.fromOffset(16, 16)
 	cardHolder.Size = UDim2.fromOffset(150, 214)
@@ -194,48 +204,17 @@ local function buildDetail(parent: Frame)
 	cardHolder.Parent = detail
 	detailInner, detailStroke = addCardFrame(cardHolder)
 
-	detailInfo = UIKit.label(detail, "", Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	detailInfo = UIKit.label(detail, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
 	detailInfo.Position = UDim2.fromOffset(180, 16)
-	detailInfo.Size = UDim2.new(1, -192, 0, 60)
+	detailInfo.Size = UDim2.new(1, -192, 0, 170)
+	detailInfo.TextYAlignment = Enum.TextYAlignment.Top
 	detailInfo.ZIndex = 11
 
-	local buttons = Instance.new("Frame")
-	buttons.Position = UDim2.fromOffset(180, 84)
-	buttons.Size = UDim2.new(1, -192, 0, 170)
-	buttons.BackgroundTransparency = 1
-	buttons.ZIndex = 11
-	buttons.Parent = detail
-
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 8)
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = buttons
-
-	local function makeButton(text: string, color: Color3, order: number): TextButton
-		local button = UIKit.button(buttons, text, color)
-		button.LayoutOrder = order
-		button.Size = UDim2.new(1, 0, 0, 48)
-		button.TextSize = 16
-		button.ZIndex = 12
-		return button
-	end
-
-	sellNormalButton = makeButton("", UIKit.Colors.Accent, 1)
-	sellNormalButton.Activated:Connect(function()
-		if detailCard then
-			Remotes.QuickSell:FireServer(detailCard.id, false)
-		end
-	end)
-
-	sellFoilButton = makeButton("", UIKit.Colors.Accent, 2)
-	sellFoilButton.Activated:Connect(function()
-		if detailCard then
-			Remotes.QuickSell:FireServer(detailCard.id, true)
-		end
-	end)
-
-	local back = makeButton("Back", UIKit.Colors.Row, 3)
+	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
+	back.Position = UDim2.fromOffset(180, 194)
+	back.Size = UDim2.new(1, -192, 0, 48)
+	back.TextSize = 16
+	back.ZIndex = 12
 	back.Activated:Connect(function()
 		detail.Visible = false
 		detailCard = nil
@@ -246,9 +225,9 @@ local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(parent, "Binder", "Binder")
 
-	-- Room for the completion line and Sell dupes above the grid
-	list.Position = UDim2.fromOffset(12, 124)
-	list.Size = UDim2.new(1, -24, 1, -136)
+	-- Room for the completion line above the grid
+	list.Position = UDim2.fromOffset(12, 100)
+	list.Size = UDim2.new(1, -24, 1, -112)
 	local listLayout = list:FindFirstChildOfClass("UIListLayout")
 	if listLayout then
 		listLayout:Destroy()
@@ -261,17 +240,8 @@ local function buildPanel(parent: Instance)
 	grid.Parent = list
 
 	completionLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
-	completionLabel.Position = UDim2.fromOffset(16, 64)
-	completionLabel.Size = UDim2.new(0.5, -16, 0, 48)
-
-	dupesButton = UIKit.button(panel, "", UIKit.Colors.Accent)
-	dupesButton.AnchorPoint = Vector2.new(1, 0)
-	dupesButton.Position = UDim2.new(1, -12, 0, 64)
-	dupesButton.Size = UDim2.new(0.5, -12, 0, 48)
-	dupesButton.TextSize = 16
-	dupesButton.Activated:Connect(function()
-		Remotes.SellDuplicates:FireServer()
-	end)
+	completionLabel.Position = UDim2.fromOffset(16, 62)
+	completionLabel.Size = UDim2.new(1, -32, 0, 32)
 
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, list))
@@ -292,6 +262,9 @@ local function toggle()
 	detail.Visible = false
 	detailCard = nil
 	panel.Visible = not panel.Visible
+	if panel.Visible then
+		refresh() -- displayed cards may have sold since last time
+	end
 end
 
 local function buildButton(parent: Instance)
@@ -303,6 +276,44 @@ local function buildButton(parent: Instance)
 	button.Size = UDim2.fromOffset(96, 56)
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
+end
+
+-- Batches bursts of card parts appearing or leaving into one refresh
+local function queueRefresh()
+	if refreshQueued then
+		return
+	end
+	refreshQueued = true
+	task.defer(function()
+		refreshQueued = false
+		refresh()
+	end)
+end
+
+-- Refreshes when a card goes on display, sells or comes off, so "on display" counts stay right
+local function watchOwnPlot()
+	for _, connection in plotConnections do
+		connection:Disconnect()
+	end
+	table.clear(plotConnections)
+	local plotId = player:GetAttribute("PlotId")
+	if typeof(plotId) ~= "number" then
+		return
+	end
+	local shelves = workspace:WaitForChild("Plots"):WaitForChild("Plot" .. plotId):WaitForChild("Shelves")
+	local function onChanged(instance: Instance)
+		if instance:GetAttribute("CardId") ~= nil then
+			queueRefresh()
+		end
+	end
+	table.insert(plotConnections, shelves.DescendantAdded:Connect(onChanged))
+	table.insert(plotConnections, shelves.DescendantRemoving:Connect(onChanged))
+	queueRefresh()
+end
+
+-- The cards in the player's binder (not counting ones on display)
+function BinderController.GetCollection(): { [string]: Owned }
+	return collection
 end
 
 function BinderController.Start()
@@ -319,6 +330,8 @@ function BinderController.Start()
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
 	Remotes.RequestCollection:FireServer()
+	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
+	task.spawn(watchOwnPlot)
 end
 
 return BinderController

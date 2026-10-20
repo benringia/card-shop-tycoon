@@ -17,6 +17,7 @@ local Services = script.Parent :: Instance
 local PlotService = require(Services:WaitForChild("PlotService"))
 
 -- Shape of what's saved. Tables only hold plain data: no Instances, Vector3s or Color3s.
+export type SavedCard = { slot: number, cardId: string, foil: boolean, price: number }
 export type SavedShelf = {
 	shelfId: string,
 	gridX: number,
@@ -25,6 +26,7 @@ export type SavedShelf = {
 	productId: string?,
 	units: number,
 	paid: number,
+	cards: { SavedCard }?, -- card cases only: what's on display
 }
 export type SavedBox = { productId: string, units: number }
 export type SavedCell = { gridX: number, gridZ: number, rotation: number }
@@ -41,7 +43,6 @@ export type PlayerData = {
 	fixtures: { [string]: SavedCell },
 	boxes: { SavedBox },
 	cards: { [string]: { normal: number, foil: number } },
-	showcase: { any },
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -65,15 +66,35 @@ local TEMPLATE: PlayerData = {
 	fixtures = {},
 	boxes = {},
 	cards = {},
-	showcase = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
+
+-- MIGRATIONS[n] upgrades a profile from version n to n + 1
+local MIGRATIONS: { [number]: (data: any) -> () } = {
+	-- v2: displayed cards live on each saved shelf; the old top-level showcase list was never used
+	[1] = function(data)
+		data.showcase = nil
+	end,
+}
+
+local function migrate(data: any)
+	local version = if typeof(data.version) == "number" then data.version else 1
+	while version < DataConfig.SCHEMA_VERSION do
+		local step = MIGRATIONS[version]
+		if step then
+			step(data)
+		end
+		version += 1
+	end
+	data.version = DataConfig.SCHEMA_VERSION
+end
 
 local DataService = {}
 
 local store = ProfileStore.New(DataConfig.STORE_NAME, TEMPLATE)
 local handlers: { Handler } = {}
+local beforeLeaveCallbacks: { (player: Player) -> () } = {}
 local profiles: { [Player]: any } = {}
 
 -- Runs one handler step; a bug in one service must not stop the others saving
@@ -127,9 +148,8 @@ local function onPlayerAdded(player: Player)
 	end
 
 	profile:AddUserId(player.UserId) -- GDPR: links the data to this user for deletion requests
+	migrate(profile.Data)
 	profile:Reconcile() -- fills in fields added to TEMPLATE since this profile was created
-	-- Migrations go here when SCHEMA_VERSION goes up
-	profile.Data.version = DataConfig.SCHEMA_VERSION
 
 	profile.OnSessionEnd:Connect(function()
 		profiles[player] = nil
@@ -153,6 +173,14 @@ local function onPlayerAdded(player: Player)
 end
 
 local function onPlayerRemoving(player: Player)
+	-- e.g. customers put picked-up stock and cards back, so they're on shelves when we save
+	for _, callback in beforeLeaveCallbacks do
+		local ok, err = pcall(callback, player)
+		if not ok then
+			warn(`[DataService] before-leave callback failed: {err}`)
+		end
+	end
+
 	local profile = profiles[player]
 	if profile then
 		collect(player, profile.Data)
@@ -166,6 +194,11 @@ end
 -- Services register in their Start(), before DataService.Start(). Load runs in registration order.
 function DataService.Register(handler: Handler)
 	table.insert(handlers, handler)
+end
+
+-- Runs when a player leaves, before their data is collected (not on autosaves)
+function DataService.OnBeforeLeave(callback: (player: Player) -> ())
+	table.insert(beforeLeaveCallbacks, callback)
 end
 
 -- Lifetime counters (DESIGN stats). Written straight into the profile.

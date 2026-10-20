@@ -62,16 +62,17 @@ Order stock (computer) → Restock shelves → Set prices
 
 ### 4.3 Shelves & placement
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
-- Each shelf type holds a set number of product units.
+- Each product shelf holds a set number of product units; card cases hold single cards (see 5.6).
 - Customers can only buy what's on shelves. Empty shelves = lost sales.
 
 | Shelf | Capacity | Cost | Unlock |
 |---|---|---|---|
 | Small Pack Rack | 24 packs | $100 | Start |
+| Glass Showcase | 6 single cards, NPC customers buy | $250 | Start |
+| Collector Case | 6 single cards, other players buy | $300 | Start |
 | Wall Shelf | 48 packs | $350 | Shop Lv 3 |
-| Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
-| Glass Showcase | 6 single cards | $800 | Shop Lv 4 |
 | Accessory Hook | 20 accessories | $250 | Shop Lv 5 |
+| Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
 
 ### 4.4 Pricing
 - Each product has a **market price** (shown in UI). Player sets their sell price per product type.
@@ -175,9 +176,16 @@ Each pack = 5 cards:
 - All art must be original and uploaded as decals/images to Roblox.
 
 ### 5.6 What you do with pulled cards
-- **Binder:** collection book UI, shows owned/missing, completion %.
-- **Showcase:** put singles in a glass case in your shop. Customers (NPC) may buy them at your set price. Other players can buy them too.
-- **Quick sell:** sell back to the "market" for 70% of market value (cash sink-ish, prevents hoarding dead commons).
+- **Binder:** collection book UI, shows owned/missing, completion % (cards on display count as owned).
+- **Glass Showcase:** put singles on display for NPC customers. Some customers (about 30%) look at it; whether they
+  take a card depends on your price vs its market value, using the same bands as packs (4.4). They pay at the register.
+  If they give up in the queue, the card goes back in the case.
+- **Collector Case:** singles for other players only. Visitors press E on a card, confirm the price, and buy;
+  cash goes to the owner, the card to the buyer's binder. The server rejects the buy if the price changed after
+  the buyer saw it.
+- Card prices default to market value; +/- steps are 10% of market value, capped at 3× market.
+- Cards on display leave the binder while shown and come back when removed. A case can't be sold while it holds cards.
+- **No quick sell.** Cards only earn money by selling to customers or players, which keeps pulls tied to running the shop.
 - **Trading (post-MVP):** player to player trade window.
 
 ### 5.7 Pack opening feel (important)
@@ -214,7 +222,7 @@ Player can also open their own stock instead of selling it. Trade-off: sell for 
 | 1 | 0 | Base |
 | 2 | 150 | Card Sleeves |
 | 3 | 500 | Wall Shelf |
-| 4 | 1,200 | Glass Showcase |
+| 4 | 1,200 | — |
 | 5 | 2,500 | Accessory Hook, Deck Box, Expansion 1 |
 | 6 | 5,000 | Big Display Rack |
 | 7 | 9,000 | Sealed Booster Box |
@@ -280,7 +288,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 
 ## 9. Social features (post-MVP order)
 1. Server-wide pull announcements (MVP, cheap win)
-2. Buy singles from other players' showcases
+2. Buy singles from other players' Collector Cases (done)
 3. Trading window (with confirm + both sides lock)
 4. Leaderboards: richest shop, rarest collection
 5. Play Glimmerbeasts at tables (simple card battle mini-game), tournaments bring customers
@@ -315,7 +323,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CustomerService.luau  # NPC spawn, pathing, buying, queue
     │   │   ├── RegisterService.luau  # checkout flow
     │   │   ├── PackService.luau      # server-side pack rolls
-    │   │   ├── CardService.luau      # card collection: binder, showcase, quick sell (not named CollectionService to avoid clashing with Roblox's)
+    │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
+    │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # passes, dev products, ProcessReceipt
     │   └── Util/
@@ -332,7 +341,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   └── BinderController.luau
+    │   │   ├── BinderController.luau
+    │   │   ├── ShowcaseController.luau # manage your own card case: slots, prices, add/remove
+    │   │   └── CardBuyController.luau  # Buy prompts + confirm on other players' Collector Cases
     │   └── Util/
     │       └── UIKit.luau              # shared UI building helpers
     └── shared/                 # → ReplicatedStorage
@@ -350,7 +361,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
-        │   ├── Collection.luau # quick sell rate
+        │   ├── Collection.luau # binder request limits
+        │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Levels.luau
@@ -383,11 +395,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     shopName = "",
     upgrades = {},          -- { [upgradeId] = true }
     prices = {},            -- { [productId] = price }
-    layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid } }
+    layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
+                            --   cards (card cases): { { slot, cardId, foil, price } }
     fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
-    cards = {},             -- { [cardId] = { normal = n, foil = n } }
-    showcase = {},          -- { { cardId, foil, price } }
+    cards = {},             -- { [cardId] = { normal = n, foil = n } } binder only, not cards on display
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -397,7 +409,10 @@ Template and types live in `DataService.luau`. Packs are opened straight from ca
 separate unopened-packs inventory; unsold stock is saved as `boxes` rather than a backroom count.
 
 Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomputed from XP, and saved shelves
-that no longer fit are skipped. A service that didn't load for a player (e.g. no free plot) never overwrites
+that no longer fit are skipped (cards from a skipped case go back to the binder).
+When a player leaves, customers put picked-up stock and cards back before the save.
+
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget
@@ -420,13 +435,14 @@ their saved data.
 - [x] Cash + XP + levels 1–5
 - [x] Pack opening (Set 1, server rolls, flip animation, foil effect)
 - [x] Binder UI
-- [x] Quick sell cards
+- [x] ~~Quick sell cards~~ (removed: cards now sell through card cases)
 - [x] Saving with ProfileStore
 - [x] Server pull announcements
+- [x] Card cases: Glass Showcase (NPC customers buy) + Collector Case (players buy, with confirm)
 
-**Out (later):** showcase selling to players, trading, staff, expansions, card battles, Set 2, events, most cosmetics.
+**Out (later):** trading, staff, expansions, card battles, Set 2, events, most cosmetics.
 
-**Milestone after MVP (v0.2):** showcase + player-to-player singles, game passes live, expansions, more shelves. Soft launch, watch retention (D1/D7) before adding big features.
+**Milestone after MVP (v0.2):** game passes live, expansions, more shelves. Soft launch, watch retention (D1/D7) before adding big features.
 
 ---
 

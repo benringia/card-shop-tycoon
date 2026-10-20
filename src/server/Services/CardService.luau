@@ -1,5 +1,6 @@
 --!strict
--- Each player's card collection: { [cardId] = { normal = n, foil = n } }, plus quick sell.
+-- Each player's binder: { [cardId] = { normal = n, foil = n } }. Cards on display in a showcase are
+-- taken out of the binder while shown (PlacementService holds them) and come back when removed.
 -- The whole collection is pushed to the client on every change (Set 1 is only 30 cards).
 -- Saved through DataService. (DESIGN.md calls this CollectionService; renamed to avoid clashing
 -- with Roblox's own service.)
@@ -9,13 +10,11 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Collection = require(Config:WaitForChild("Collection"))
-local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local DataService = require(Services:WaitForChild("DataService"))
-local EconomyService = require(Services:WaitForChild("EconomyService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type PlayerData = DataService.PlayerData
@@ -26,7 +25,6 @@ export type PullResult = { cardId: string, foil: boolean }
 local CardService = {}
 
 local collections: { [Player]: { [string]: Owned } } = {}
-local allowSell = RateLimiter.new(Collection.SELL_COOLDOWN)
 local allowRequest = RateLimiter.new(Collection.REQUEST_COOLDOWN)
 
 local function sync(player: Player)
@@ -45,7 +43,7 @@ local function getOwned(collection: { [string]: Owned }, cardId: string): Owned
 	return owned
 end
 
--- Adds a batch of pulls (one pack) and syncs once
+-- Adds a batch of cards (a pack, a purchase, or cards coming back off display) and syncs once
 function CardService.AddCards(player: Player, results: { PullResult })
 	local collection = collections[player]
 	if not collection then
@@ -64,69 +62,31 @@ function CardService.AddCards(player: Player, results: { PullResult })
 	sync(player)
 end
 
-function CardService.GetCollection(player: Player): { [string]: Owned }
-	return collections[player] or {}
-end
-
-local function onQuickSell(player: Player, cardId: unknown, foil: unknown)
-	if not allowSell(player) or typeof(cardId) ~= "string" or typeof(foil) ~= "boolean" then
-		return
-	end
-	local card = Cards.ById[cardId]
+-- Removes one copy from the binder (to put it on display). Returns false if the player has none.
+function CardService.TakeCard(player: Player, cardId: string, foil: boolean): boolean
 	local collection = collections[player]
 	local owned = if collection then collection[cardId] else nil
-	if not card or not owned then
-		return
+	if not owned then
+		return false
 	end
-	local count = if foil then owned.foil else owned.normal
-	if count <= 0 then
-		return
-	end
-
 	if foil then
+		if owned.foil <= 0 then
+			return false
+		end
 		owned.foil -= 1
 	else
+		if owned.normal <= 0 then
+			return false
+		end
 		owned.normal -= 1
 	end
-	local payout = CardRules.getQuickSellValue(card, foil)
-	EconomyService.AddCash(player, payout)
 	sync(player)
-	Remotes.Notify:FireClient(player, string.format("Sold %s%s for $%.2f", if foil then "foil " else "", card.name, payout), false)
+	return true
 end
 
--- Keeps one normal and one foil of each card, sells the rest
-local function onSellDuplicates(player: Player)
-	if not allowSell(player) then
-		return
-	end
-	local collection = collections[player]
-	if not collection then
-		return
-	end
-
-	local total = 0
-	local sold = 0
-	for cardId, owned in collection do
-		local card = Cards.ById[cardId]
-		if not card then
-			continue
-		end
-		local extraNormal = math.max(0, owned.normal - 1)
-		local extraFoil = math.max(0, owned.foil - 1)
-		total += extraNormal * CardRules.getQuickSellValue(card, false) + extraFoil * CardRules.getQuickSellValue(card, true)
-		sold += extraNormal + extraFoil
-		owned.normal -= extraNormal
-		owned.foil -= extraFoil
-	end
-	if sold == 0 then
-		Remotes.Notify:FireClient(player, "No duplicates to sell.", true)
-		return
-	end
-
-	total = math.round(total * 100) / 100
-	EconomyService.AddCash(player, total)
-	sync(player)
-	Remotes.Notify:FireClient(player, string.format("Sold %d duplicates for $%.2f", sold, total), false)
+-- Whether the player's binder has loaded (they can receive cards)
+function CardService.IsLoaded(player: Player): boolean
+	return collections[player] ~= nil
 end
 
 local function readCount(value: unknown): number
@@ -177,8 +137,6 @@ function CardService.Start()
 			sync(player)
 		end
 	end)
-	Remotes.QuickSell.OnServerEvent:Connect(onQuickSell)
-	Remotes.SellDuplicates.OnServerEvent:Connect(onSellDuplicates)
 end
 
 return CardService

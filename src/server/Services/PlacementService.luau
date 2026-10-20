@@ -1,19 +1,26 @@
 --!strict
--- Places, moves and sells shelves on a player's plot, and holds what is stocked on each shelf.
+-- Places, moves and sells shelves on a player's plot, and holds what is on each shelf: stock units
+-- on product shelves, displayed cards on card cases (ShowcaseService handles the card actions).
 -- Shelf parts carry attributes (ShelfUid, ShelfId, GridX, GridZ, Rotation, Refund) for the client.
+-- Displayed card parts carry CardId, Foil, Price, Slot, ShelfUid, OwnerUserId and ShelfKind.
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Cards = require(Config:WaitForChild("Cards"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
+local Rarities = require(Config:WaitForChild("Rarities"))
+local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
@@ -24,7 +31,10 @@ type Plot = typeof(PlotService.GetPlots()[1])
 type ShelfDef = typeof(Shelves.List[1])
 type PlayerData = DataService.PlayerData
 type SavedShelf = DataService.SavedShelf
+type SavedCard = DataService.SavedCard
 type SavedCell = DataService.SavedCell
+
+export type DisplayedCard = { cardId: string, foil: boolean, price: number }
 
 export type PlacedShelf = {
 	uid: string,
@@ -35,9 +45,16 @@ export type PlacedShelf = {
 	rotation: number,
 	productId: string?,
 	units: number,
+	cards: { [number]: DisplayedCard }, -- card cases: slot → card on display
+	cardParts: { [number]: Part },
 	paid: number, -- what the player spent, for the sell-back refund
 	part: Part,
 	label: TextLabel,
+}
+
+local KIND_LABELS = {
+	CustomerCards = "For customers",
+	PlayerCards = "For players",
 }
 
 local PlacementService = {}
@@ -69,7 +86,23 @@ local function getRefund(shelf: PlacedShelf): number
 	return math.floor(shelf.paid * PlacementConfig.SELL_REFUND * 100) / 100
 end
 
+local function isCardCase(def: ShelfDef): boolean
+	return def.kind ~= "Products"
+end
+
+local function countCards(shelf: PlacedShelf): number
+	local count = 0
+	for _ in shelf.cards do
+		count += 1
+	end
+	return count
+end
+
 local function updateLabel(shelf: PlacedShelf)
+	if isCardCase(shelf.def) then
+		shelf.label.Text = `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`
+		return
+	end
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
 	if not product or shelf.units <= 0 then
 		shelf.label.Text = `Empty\n0/{shelf.def.capacity}`
@@ -79,15 +112,113 @@ local function updateLabel(shelf: PlacedShelf)
 	shelf.label.Text = string.format("%s\n%d/%d · $%.2f", product.name, shelf.units, shelf.def.capacity, price)
 end
 
+-- Card slots sit just in front of the case's front face, in a grid below its label
+local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
+	local columns = ShowcaseConfig.SLOT_COLUMNS
+	local rows = math.ceil(shelf.def.capacity / columns)
+	local col = (slot - 1) % columns
+	local row = (slot - 1) // columns
+	local x = (col - (columns - 1) / 2) * ShowcaseConfig.SLOT_SPACING.X
+	local y = ((rows - 1) / 2 - row) * ShowcaseConfig.SLOT_SPACING.Y + ShowcaseConfig.SLOTS_OFFSET_Y
+	local z = -(shelf.part.Size.Z + ShowcaseConfig.CARD_SIZE.Z) / 2 - 0.02
+	return shelf.part.CFrame * CFrame.new(x, y, z)
+end
+
+local function addCardText(parent: Instance, text: string, y: number, height: number): TextLabel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.fromScale(0.05, y)
+	label.Size = UDim2.fromScale(0.9, height)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.4
+	label.Text = text
+	label.Parent = parent
+	return label
+end
+
+local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: DisplayedCard): Part
+	local card = Cards.ById[displayed.cardId]
+	local part = Instance.new("Part")
+	part.Name = "DisplayedCard" .. slot
+	part.Anchored = true
+	part.CanCollide = false
+	part.Size = ShowcaseConfig.CARD_SIZE
+	part.Color = Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3)
+	part.Material = if displayed.foil then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	part.CFrame = getSlotCFrame(shelf, slot)
+	part:SetAttribute("CardId", displayed.cardId)
+	part:SetAttribute("Foil", displayed.foil)
+	part:SetAttribute("Price", displayed.price)
+	part:SetAttribute("Slot", slot)
+	part:SetAttribute("ShelfUid", shelf.uid)
+	part:SetAttribute("OwnerUserId", shelf.owner.UserId)
+	part:SetAttribute("ShelfKind", shelf.def.kind)
+
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 60
+	gui.Parent = part
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundTransparency = 1
+	frame.Parent = gui
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 4
+	stroke.Color = Rarities.Tiers[card.rarity].color
+	stroke.Parent = frame
+
+	addCardText(frame, card.name, 0.06, 0.24)
+	if displayed.foil then
+		addCardText(frame, "FOIL", 0.32, 0.16)
+	end
+	addCardText(frame, card.rarity, 0.52, 0.16).TextColor3 = Rarities.Tiers[card.rarity].color
+	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
+
+	part.Parent = shelf.part
+	return part
+end
+
+-- A price change updates the existing part, so buyers looking at it don't see it vanish and reappear
+local function renderCardSlot(shelf: PlacedShelf, slot: number)
+	local existing = shelf.cardParts[slot]
+	local displayed = shelf.cards[slot]
+	if existing and displayed
+		and existing:GetAttribute("CardId") == displayed.cardId
+		and existing:GetAttribute("Foil") == displayed.foil
+	then
+		existing:SetAttribute("Price", displayed.price)
+		local priceLabel = existing:FindFirstChild("PriceLabel", true)
+		if priceLabel and priceLabel:IsA("TextLabel") then
+			priceLabel.Text = string.format("$%.2f", displayed.price)
+		end
+		return
+	end
+
+	if existing then
+		existing:Destroy()
+		shelf.cardParts[slot] = nil
+	end
+	if displayed then
+		shelf.cardParts[slot] = buildCardPart(shelf, slot, displayed)
+	end
+end
+
 local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	shelf.part.CFrame = plot.floor.CFrame
 		* PlacementGrid.getLocalCFrame(shelf.def.size, shelf.gridX, shelf.gridZ, shelf.rotation)
 	shelf.part:SetAttribute("GridX", shelf.gridX)
 	shelf.part:SetAttribute("GridZ", shelf.gridZ)
 	shelf.part:SetAttribute("Rotation", shelf.rotation)
+	for slot, part in shelf.cardParts do
+		part.CFrame = getSlotCFrame(shelf, slot)
+	end
 end
 
-local function buildLabel(part: Part): TextLabel
+local function buildLabel(part: Part, def: ShelfDef): TextLabel
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -95,7 +226,8 @@ local function buildLabel(part: Part): TextLabel
 	gui.Parent = part
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 0.4)
+	-- Card cases keep most of the face free for the cards
+	label.Size = UDim2.fromScale(1, if isCardCase(def) then ShowcaseConfig.LABEL_HEIGHT else 0.4)
 	label.BackgroundTransparency = 1
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBold
@@ -121,7 +253,7 @@ local function createShelf(
 	part.Anchored = true
 	part.Size = def.size
 	part.Color = def.color
-	part.Material = Enum.Material.Wood
+	part.Material = if isCardCase(def) then Enum.Material.Glass else Enum.Material.Wood
 	part:SetAttribute("BlocksPlacement", true)
 	part:SetAttribute("ShelfUid", uid)
 	part:SetAttribute("ShelfId", def.id)
@@ -135,9 +267,11 @@ local function createShelf(
 		rotation = rotation,
 		productId = nil,
 		units = 0,
+		cards = {},
+		cardParts = {},
 		paid = paid,
 		part = part,
-		label = buildLabel(part),
+		label = buildLabel(part, def),
 	}
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
@@ -278,6 +412,10 @@ local function onSell(player: Player, uid: unknown)
 		notify(player, "Sell the stock on this shelf first.", true)
 		return
 	end
+	if countCards(shelf) > 0 then
+		notify(player, "Take the cards out of this case first.", true)
+		return
+	end
 
 	local refund = getRefund(shelf)
 	layout[uid] = nil
@@ -301,16 +439,49 @@ local function restoreComputer(plot: Plot, saved: SavedCell?)
 	end
 end
 
-local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf)
+-- Valid saved cards for this case, keyed by slot. Anything that can't go back in a slot (or every
+-- card, when def is nil because the case itself couldn't be restored) is added to `leftovers` so it
+-- returns to the binder instead of being lost. Each saved card ends up in exactly one of the two.
+local function readSavedCards(def: ShelfDef?, saved: { SavedCard }?, leftovers: { DisplayedCard }): { [number]: DisplayedCard }
+	local bySlot: { [number]: DisplayedCard } = {}
+	if typeof(saved) ~= "table" then
+		return bySlot
+	end
+	for _, entry in saved do
+		if typeof(entry) ~= "table" or typeof(entry.cardId) ~= "string" or typeof(entry.foil) ~= "boolean" then
+			continue
+		end
+		local card = Cards.ById[entry.cardId]
+		if not card then
+			continue
+		end
+		local price = if typeof(entry.price) == "number" and entry.price == entry.price
+			then CardRules.clampPrice(entry.price, card, entry.foil)
+			else CardRules.getMarketValue(card, entry.foil)
+		local displayed: DisplayedCard = { cardId = entry.cardId, foil = entry.foil, price = price }
+		local slot = entry.slot
+		if def and isCardCase(def) and isGridInteger(slot) and slot >= 1 and slot <= def.capacity and not bySlot[slot] then
+			bySlot[slot] = displayed
+		else
+			table.insert(leftovers, displayed)
+		end
+	end
+	return bySlot
+end
+
+local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, leftovers: { DisplayedCard })
 	if typeof(saved) ~= "table" then
 		return
 	end
 	local def = Shelves.ById[saved.shelfId]
-	if not def or not isGridInteger(saved.gridX) or not isGridInteger(saved.gridZ) or not isValidRotation(saved.rotation) then
-		return
-	end
-	-- A layout saved under older config might not fit any more; skip that shelf rather than overlap
-	if not canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, nil) then
+	local valid = def ~= nil
+		and isGridInteger(saved.gridX)
+		and isGridInteger(saved.gridZ)
+		and isValidRotation(saved.rotation)
+		-- A layout saved under older config might not fit any more; skip that shelf rather than overlap
+		and canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, nil)
+	if not valid or not def then
+		readSavedCards(nil, saved.cards, leftovers)
 		return
 	end
 
@@ -320,10 +491,14 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf)
 	if typeof(saved.productId) == "string" and Products.ById[saved.productId] and units > 0 then
 		PlacementService.AddStock(shelf, saved.productId, units)
 	end
+	for slot, displayed in readSavedCards(def, saved.cards, leftovers) do
+		PlacementService.SetDisplayedCard(shelf, slot, displayed)
+	end
 end
 
--- New shops have an empty layout; returning players get their shelves and stock back.
--- The computer goes first so shelves saved around its moved spot still fit.
+-- New shops have an empty layout; returning players get their shelves, stock and displayed cards back.
+-- The computer goes first so shelves saved around its moved spot still fit. CardService loads before
+-- this, so displayed cards that can't be put back are returned to the binder.
 local function load(player: Player, data: PlayerData)
 	local plot = PlotService.GetPlot(player)
 	if not plot then
@@ -331,8 +506,12 @@ local function load(player: Player, data: PlayerData)
 	end
 	layouts[player] = {}
 	restoreComputer(plot, data.fixtures[PlotService.COMPUTER_FIXTURE_ID])
+	local leftovers: { DisplayedCard } = {}
 	for _, saved in data.layout do
-		restoreShelf(player, plot, saved)
+		restoreShelf(player, plot, saved, leftovers)
+	end
+	if #leftovers > 0 then
+		CardService.AddCards(player, leftovers)
 	end
 end
 
@@ -345,6 +524,10 @@ local function save(player: Player, data: PlayerData)
 
 	local savedLayout: { SavedShelf } = {}
 	for _, shelf in layout do
+		local savedCards: { SavedCard } = {}
+		for slot, displayed in shelf.cards do
+			table.insert(savedCards, { slot = slot, cardId = displayed.cardId, foil = displayed.foil, price = displayed.price })
+		end
 		table.insert(savedLayout, {
 			shelfId = shelf.def.id,
 			gridX = shelf.gridX,
@@ -353,6 +536,7 @@ local function save(player: Player, data: PlayerData)
 			productId = if shelf.units > 0 then shelf.productId else nil,
 			units = shelf.units,
 			paid = shelf.paid,
+			cards = if #savedCards > 0 then savedCards else nil,
 		})
 	end
 	data.layout = savedLayout
@@ -405,6 +589,9 @@ end
 
 -- Puts up to maxUnits of a product on the shelf. Returns units added, or 0 and a reason.
 function PlacementService.AddStock(shelf: PlacedShelf, productId: string, maxUnits: number): (number, string?)
+	if isCardCase(shelf.def) then
+		return 0, "This case shows single cards, not stock."
+	end
 	local accepts = shelf.def.accepts
 	if accepts and not table.find(accepts, productId) then
 		return 0, "This shelf can't hold that."
@@ -422,6 +609,26 @@ function PlacementService.AddStock(shelf: PlacedShelf, productId: string, maxUni
 	shelf.units += added
 	updateLabel(shelf)
 	return added, nil
+end
+
+-- Card cases: put a card in a slot, or clear it with nil. Callers handle the binder side.
+function PlacementService.SetDisplayedCard(shelf: PlacedShelf, slot: number, displayed: DisplayedCard?)
+	shelf.cards[slot] = displayed
+	renderCardSlot(shelf, slot)
+	updateLabel(shelf)
+end
+
+function PlacementService.IsCardCase(shelf: PlacedShelf): boolean
+	return isCardCase(shelf.def)
+end
+
+function PlacementService.GetFreeSlot(shelf: PlacedShelf): number?
+	for slot = 1, shelf.def.capacity do
+		if not shelf.cards[slot] then
+			return slot
+		end
+	end
+	return nil
 end
 
 local function onPriceChanged(player: Player, productId: string, _price: number)

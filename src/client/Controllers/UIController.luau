@@ -96,6 +96,9 @@ function UIController.Start()
 	screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "MainGui"
 	screenGui.ResetOnSpawn = false
+	-- Children always draw above their parent; ZIndex only orders panels against each other.
+	-- (The code default is Global, where a raised panel would cover its own contents.)
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
 	cashLabel = Instance.new("TextLabel")

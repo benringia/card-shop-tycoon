@@ -22,8 +22,10 @@ local NAMES = {
 	"PackOpened", -- server → client: (productId: string, results: { { cardId: string, foil: boolean } })
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
 	"RequestCollection", -- client → server: ask for a CollectionChanged (sent on client start)
-	"QuickSell", -- client → server: (cardId: string, foil: boolean) sell one copy
-	"SellDuplicates", -- client → server: sell every copy beyond the first of each card (normal and foil kept separately)
+	"DisplayCard", -- client → server: (shelfUid: string, slot: number, cardId: string, foil: boolean) binder → case
+	"RemoveDisplayedCard", -- client → server: (shelfUid: string, slot: number) case → binder
+	"SetCardPrice", -- client → server: (shelfUid: string, changes: { { slot: number, price: number } })
+	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice) from a Collector Case
 	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 }
@@ -68,8 +70,10 @@ return {
 	PackOpened = remotes.PackOpened,
 	CollectionChanged = remotes.CollectionChanged,
 	RequestCollection = remotes.RequestCollection,
-	QuickSell = remotes.QuickSell,
-	SellDuplicates = remotes.SellDuplicates,
+	DisplayCard = remotes.DisplayCard,
+	RemoveDisplayedCard = remotes.RemoveDisplayedCard,
+	SetCardPrice = remotes.SetCardPrice,
+	BuyDisplayedCard = remotes.BuyDisplayedCard,
 	PullAnnouncement = remotes.PullAnnouncement,
 	PullRevealed = remotes.PullRevealed,
 }
