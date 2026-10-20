@@ -193,6 +193,46 @@ Each pack = 5 cards:
 - Hit slot flips last with a build-up. Rarity-colored glow + sound. Legendary = screen flash, server-wide chat announcement ("Ben pulled a FOIL Solarion!").
 - "Open all" button for fast opening once players have lots of packs.
 
+### 5.8 Glimmerbeasts (cards that grow)
+Direction: TCG card shop meets creature collecting. Cards become beasts that grow, work and fight.
+Full spec: `docs/superpowers/specs/2026-10-20-beast-cards-design.md`.
+
+Roadmap (one sub-project at a time):
+1. **Beast cards** — level, XP, stars, stats, value (done).
+2. **Shop jobs** — beasts work in your shop (replace hired staff, 7.4).
+3. **Party & summoning** — summon beasts to follow and fight beside you.
+4. **Star merging** — combine copies to raise stars.
+5. **Battles** — real-time auto-fight between players' parties.
+
+Fresh copies stack; a copy becomes an individual beast the first time it gains XP.
+
+| Beast field | Meaning |
+|---|---|
+| `id` | GUID, unique per beast |
+| `cardId` | which Set 1 card |
+| `foil` | boolean |
+| `level` | 1–30 |
+| `xp` | progress toward the next level |
+| `stars` | 1–5 |
+
+Base stats by rarity:
+
+| Rarity | HP | ATK | SPD |
+|---|---|---|---|
+| Common | 60 | 12 | 10 |
+| Rare | 80 | 16 | 12 |
+| Epic | 110 | 22 | 14 |
+| Legendary | 150 | 30 | 16 |
+
+Element multipliers: Ember ATK ×1.20 · Tide HP ×1.20 · Bloom HP and ATK ×1.10 · Volt SPD ×1.25 · Shade ATK and SPD ×1.10.
+Then × level `1 + 0.06 × (level − 1)`, × stars `1 + 0.15 × (stars − 1)`, × foil 1.05, rounded.
+
+Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 0.10 × (level − 1)) × STAR_VALUE[stars]`,
+`STAR_VALUE = { 1, 1.5, 2.25, 3.5, 5 }`.
+
+XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
+Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to your best beast or rarest fresh card.
+
 ---
 
 ## 6. Products (stock you sell)
@@ -242,6 +282,7 @@ Player can also open their own stock instead of selling it. Trade-off: sell for 
 | Expansion 2 | Second room | $8,000 |
 
 ### 7.4 Staff (post-MVP but planned)
+- Superseded: beast shop jobs (5.8 roadmap step 2) replace hired staff.
 - **Restocker:** moves boxes from delivery to shelves automatically. Hourly wage in-game cash.
 - **Cashier:** checks out customers automatically, slightly slower than player.
 - Staff keep earning only while player is online (no offline earnings in MVP).
@@ -310,6 +351,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── DESIGN.md
 ├── default.project.json        # Rojo project
 ├── wally.toml
+├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -367,6 +409,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
+        │   ├── Beasts.luau     # beast stats, value and XP numbers
         │   ├── Levels.luau
         │   ├── Upgrades.luau
         │   └── Monetization.luau # pass/product IDs
@@ -374,6 +417,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         └── Util/
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
             ├── PriceRules.luau    # price clamping and buy bands
+            ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
+            ├── BeastRules.luau    # BeastMath bound to the game configs
+            ├── CardRules.luau     # card market value and price limits
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -387,10 +433,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v1)
+### 10.4 Player data schema (v3)
 ```lua
 {
-    version = 1,
+    version = 3,
     cash = 200,
     xp = 0,
     level = 1,
@@ -398,10 +444,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     upgrades = {},          -- { [upgradeId] = true }
     prices = {},            -- { [productId] = price }
     layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
-                            --   cards (card cases): { { slot, cardId, foil, price } }
+                            --   cards (card cases): { { slot, cardId, foil, price, beastId?, level?, xp?, stars? } }
     fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
-    cards = {},             -- { [cardId] = { normal = n, foil = n } } binder only, not cards on display
+    cards = {},             -- { [cardId] = { normal = n, foil = n } } fresh copies in the binder, not on display
+    beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars } } raised beasts in the binder
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -414,7 +461,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the raised `beasts` table. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget
