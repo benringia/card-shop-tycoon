@@ -1,7 +1,7 @@
 --!strict
 -- Visiting other players' card cases: a "Browse cards" prompt opens a marketplace-style panel, listings
 -- on the left (price and deal tag), the selected card's details on the right (hover a row with a mouse to
--- preview it). Collector Cases have a Buy button (then a confirm box whose price the server re-checks);
+-- select it). Collector Cases have a Buy button (then a confirm box whose price the server re-checks);
 -- Glass Showcases are view only, since NPC customers buy from those.
 -- Prompts are created on this client only, never on your own cases.
 local Players = game:GetService("Players")
@@ -197,9 +197,8 @@ local function clearPane()
 	end
 end
 
--- The card large, its details, price, deal and (Collector Cases) the Buy button.
--- isPreview: hovering a row; shows the details without the Buy button.
-local function renderPane(part: BasePart?, isPreview: boolean)
+-- The card large, its details, price, deal and (Collector Cases) the Buy button
+local function renderPane(part: BasePart?)
 	clearPane()
 	local card: Card?, foil = nil, false
 	if part then
@@ -251,7 +250,7 @@ local function renderPane(part: BasePart?, isPreview: boolean)
 	dealLine.Size = UDim2.new(1, -20, 0, 18)
 	y += 26
 
-	if isPreview or not isBuyable(part) then
+	if not isBuyable(part) then
 		return
 	end
 	local buy = UIKit.button(pane, string.format("Buy $%.2f", price), UIKit.Colors.Accent)
@@ -324,14 +323,12 @@ local function buildRow(part: BasePart, order: number)
 		selectedPart = part
 		render()
 	end)
+	-- With a mouse, hovering selects, so the details (and Buy) always match the row under the cursor.
+	-- The check stops the redrawn row under the cursor from selecting again.
 	row.MouseEnter:Connect(function()
-		if UserInputService.MouseEnabled then
-			renderPane(part, true)
-		end
-	end)
-	row.MouseLeave:Connect(function()
-		if UserInputService.MouseEnabled then
-			renderPane(selectedPart, false)
+		if UserInputService.MouseEnabled and selectedPart ~= part then
+			selectedPart = part
+			render()
 		end
 	end)
 end
@@ -358,7 +355,7 @@ render = function()
 		local empty = UIKit.label(browseList, "This case is empty right now.", Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
 		empty.Size = UDim2.fromOffset(280, 40)
 	end
-	renderPane(selectedPart, false)
+	renderPane(selectedPart)
 	-- Keep an open confirm box honest: show the new price if the owner changes it
 	local part = pendingPart
 	if part and confirm.Visible and part.Parent and getPrice(part) ~= pendingPrice then

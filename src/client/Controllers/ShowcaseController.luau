@@ -98,10 +98,6 @@ local function getCardPart(slot: number): BasePart?
 	return nil
 end
 
-local function describe(card: Card, foil: boolean): string
-	return if foil then `{card.name} (FOIL)` else card.name
-end
-
 -- A card face drawn into a new frame (the same look as the binder and pack reveal)
 local function makeCardFace(parent: Instance, card: Card, foil: boolean, showValue: boolean, growth: CardFace.Growth?): Frame
 	local face = Instance.new("Frame")
@@ -574,8 +570,8 @@ local function listEntry(entry: PickerEntry)
 	end
 end
 
--- Right side of the picker: the chosen (or hovered) card large, its details and the List button
-local function renderPickerPane(entry: PickerEntry?, isPreview: boolean)
+-- Right side of the picker: the chosen card large, its details and the List button
+local function renderPickerPane(entry: PickerEntry?)
 	clearChildren(pickerPane)
 	if not entry then
 		local hint = UIKit.label(pickerPane, "Tap a card to see its details.", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
@@ -595,14 +591,11 @@ local function renderPickerPane(entry: PickerEntry?, isPreview: boolean)
 	info.Size = UDim2.new(1, -(DETAIL_FACE_SIZE.X + 22), 0, DETAIL_FACE_SIZE.Y)
 	info.TextYAlignment = Enum.TextYAlignment.Top
 
-	if isPreview then
-		return
-	end
-	local list = UIKit.button(pickerPane, `List in slot {pickerSlot or 0}`, UIKit.Colors.Accent)
-	list.Position = UDim2.fromOffset(8, DETAIL_FACE_SIZE.Y + 16)
-	list.Size = UDim2.new(1, -16, 0, 48)
-	list.TextSize = 17
-	list.Activated:Connect(function()
+	local listButton = UIKit.button(pickerPane, `List in slot {pickerSlot or 0}`, UIKit.Colors.Accent)
+	listButton.Position = UDim2.fromOffset(8, DETAIL_FACE_SIZE.Y + 16)
+	listButton.Size = UDim2.new(1, -16, 0, 48)
+	listButton.TextSize = 17
+	listButton.Activated:Connect(function()
 		listEntry(entry)
 	end)
 end
@@ -649,14 +642,10 @@ local function buildPickerTile(entry: PickerEntry, order: number, selected: Pick
 	tile.Activated:Connect(function()
 		choose(entry)
 	end)
+	-- With a mouse, hovering selects, so the details (and List) always match the tile under the cursor
 	tile.MouseEnter:Connect(function()
-		if UserInputService.MouseEnabled then
-			renderPickerPane(entry, true)
-		end
-	end)
-	tile.MouseLeave:Connect(function()
-		if UserInputService.MouseEnabled then
-			renderPickerPane(selected, false)
+		if UserInputService.MouseEnabled and not (selected and selected.key == entry.key) then
+			choose(entry)
 		end
 	end)
 end
@@ -735,7 +724,7 @@ renderPicker = function()
 		local empty = UIKit.label(pickerList, message, Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
 		empty.Size = UDim2.fromOffset(300, 60)
 	end
-	renderPickerPane(selected, false)
+	renderPickerPane(selected)
 end
 
 openPicker = function(slot: number)
