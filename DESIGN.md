@@ -343,7 +343,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau
     │   │   ├── ShowcaseController.luau # manage your own card case: slots, prices, add/remove
-    │   │   └── CardBuyController.luau  # Buy prompts + confirm on other players' Collector Cases
+    │   │   ├── CardBuyController.luau  # Buy prompts + confirm on other players' Collector Cases
+    │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
     │   └── Util/
     │       └── UIKit.luau              # shared UI building helpers
     └── shared/                 # → ReplicatedStorage
@@ -363,6 +364,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── PackOpening.luau # reveal timings and sounds (client)
         │   ├── Collection.luau # binder request limits
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
+        │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Levels.luau

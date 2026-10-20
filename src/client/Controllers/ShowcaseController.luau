@@ -1,6 +1,6 @@
 --!strict
 -- Managing your own card case (Glass Showcase or Collector Case): one row per slot to price cards
--- with +/- or take them back, and a picker to fill empty slots from your binder.
+-- with +/- or take them back, and a visual card picker (with rarity filters) to fill empty slots.
 -- Opened from the case's Edit menu. The server checks every change; this reads the case's card parts.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,17 +8,25 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Pricing = require(Config:WaitForChild("Pricing"))
+local Rarities = require(Config:WaitForChild("Rarities"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
 type Card = typeof(Cards.List[1])
+type PickerFilter = "All" | "Rare+" | "Epic+" | "Foil"
+
+local PICKER_FILTERS: { PickerFilter } = { "All", "Rare+", "Epic+", "Foil" }
+local PICKER_TILE_SIZE = Vector2.new(96, 136)
+local THUMBNAIL_SIZE = Vector2.new(36, 50)
 
 local SEND_DELAY = 0.4 -- price taps are sent together once tapping stops
 local KIND_DESCRIPTIONS = {
@@ -34,6 +42,9 @@ local titleLabel: TextLabel
 local subtitle: TextLabel
 local picker: Frame
 local pickerList: ScrollingFrame
+local pickerTitle: TextLabel
+local filterButtons: { [PickerFilter]: TextButton } = {}
+local pickerFilter: PickerFilter = "All"
 
 local casePart: BasePart? = nil
 local caseConnections: { RBXScriptConnection } = {}
@@ -66,7 +77,37 @@ local function describe(card: Card, foil: boolean): string
 	return if foil then `{card.name} (FOIL)` else card.name
 end
 
-local FILLED_ROW_HEIGHT = 132
+-- A card face drawn into a new frame (the same look as the binder and pack reveal)
+local function makeCardFace(parent: Instance, card: Card, foil: boolean, showValue: boolean): Frame
+	local face = Instance.new("Frame")
+	face.Name = "Face"
+	face.Size = UDim2.fromScale(1, 1)
+	face.Parent = parent
+	UIKit.corner(face, 8)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = face
+	CardFace.render(face, stroke, card, foil, showValue)
+	return face
+end
+
+local function getRarityOrder(card: Card): number
+	local tier = Rarities.Tiers[card.rarity]
+	return if tier then tier.order else 0
+end
+
+local function passesFilter(card: Card, foil: boolean): boolean
+	if pickerFilter == "Foil" then
+		return foil
+	elseif pickerFilter == "Rare+" then
+		return getRarityOrder(card) >= Rarities.Tiers.Rare.order
+	elseif pickerFilter == "Epic+" then
+		return getRarityOrder(card) >= Rarities.Tiers.Epic.order
+	end
+	return true
+end
+
+local FILLED_ROW_HEIGHT = 144
 local STEP_BUTTON_WIDTH = 92
 local PRICE_BOX_COLOR = Color3.fromRGB(20, 20, 30)
 local PRICE_TEXT_COLOR = Color3.fromRGB(120, 230, 120)
@@ -140,9 +181,17 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 	frame.Parent = list
 	UIKit.corner(frame, 10)
 
+	-- Small card face so the slot's card is recognisable at a glance
+	local thumbnail = Instance.new("Frame")
+	thumbnail.Position = UDim2.fromOffset(10, 6)
+	thumbnail.Size = UDim2.fromOffset(THUMBNAIL_SIZE.X, THUMBNAIL_SIZE.Y)
+	thumbnail.BackgroundTransparency = 1
+	thumbnail.Parent = frame
+	makeCardFace(thumbnail, card, foil, false)
+
 	local title = UIKit.label(frame, `{slot}. {describe(card, foil)}`, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
-	title.Position = UDim2.fromOffset(12, 8)
-	title.Size = UDim2.new(1, -124, 0, 32)
+	title.Position = UDim2.fromOffset(THUMBNAIL_SIZE.X + 18, 8)
+	title.Size = UDim2.new(1, -(THUMBNAIL_SIZE.X + 130), 0, 32)
 
 	local removeButton = UIKit.button(frame, "Remove", UIKit.Colors.Danger)
 	removeButton.AnchorPoint = Vector2.new(1, 0)
@@ -156,11 +205,11 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 
 	-- Price stepper
 	local priceHeading = UIKit.label(frame, "PRICE", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
-	priceHeading.Position = UDim2.fromOffset(12, 50)
+	priceHeading.Position = UDim2.fromOffset(12, 60)
 	priceHeading.Size = UDim2.fromOffset(60, 16)
 
 	local stepper = Instance.new("Frame")
-	stepper.Position = UDim2.fromOffset(12, 68)
+	stepper.Position = UDim2.fromOffset(12, 78)
 	stepper.Size = UDim2.new(1, -24, 0, 44)
 	stepper.BackgroundTransparency = 1
 	stepper.Parent = frame
@@ -211,7 +260,7 @@ local function buildFilledRow(slot: number, cardPart: BasePart, kind: string)
 		hint = hint .. " · " .. (if band then band.label else Pricing.NEVER_LABEL)
 	end
 	local hintLabel = UIKit.label(frame, hint, Enum.Font.Gotham, 13, UIKit.Colors.Subtext)
-	hintLabel.Position = UDim2.fromOffset(12, 114)
+	hintLabel.Position = UDim2.fromOffset(12, 124)
 	hintLabel.Size = UDim2.new(1, -24, 0, 16)
 	hintLabel.TextTruncate = Enum.TextTruncate.AtEnd
 end
@@ -246,16 +295,42 @@ render = function()
 	end
 end
 
+local function refreshFilterButtons()
+	for filter, button in filterButtons do
+		button.BackgroundColor3 = if filter == pickerFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	end
+end
+
+-- Grid of card faces, rarest first; one tap puts the card in the slot (Remove undoes it)
 local function renderPicker()
 	clearChildren(pickerList)
+	refreshFilterButtons()
 	local collection = BinderController.GetCollection()
 	local order = 0
-	local function addOption(card: Card, foil: boolean, count: number)
+	local function addTile(card: Card, foil: boolean, count: number)
+		if not passesFilter(card, foil) then
+			return
+		end
 		order += 1
-		local detail = string.format("x%d in binder · market $%.2f", count, CardRules.getMarketValue(card, foil))
-		local _, button = UIKit.row(pickerList, order, describe(card, foil), detail)
-		button.Text = "Add"
-		button.Activated:Connect(function()
+		local tile = Instance.new("TextButton")
+		tile.Name = describe(card, foil)
+		tile.LayoutOrder = order
+		tile.BackgroundTransparency = 1
+		tile.Text = ""
+		tile.Parent = pickerList
+		makeCardFace(tile, card, foil, true)
+
+		local badge = UIKit.label(tile, `x{count}`, Enum.Font.GothamBold, 14, UIKit.Colors.Text)
+		badge.AnchorPoint = Vector2.new(1, 0)
+		badge.Position = UDim2.new(1, -4, 0, 4)
+		badge.Size = UDim2.fromOffset(34, 20)
+		badge.TextXAlignment = Enum.TextXAlignment.Center
+		badge.BackgroundTransparency = 0.15
+		badge.BackgroundColor3 = UIKit.Colors.Panel
+		badge.ZIndex = 3
+		UIKit.corner(badge, 6)
+
+		tile.Activated:Connect(function()
 			local part = casePart
 			local slot = pickerSlot
 			picker.Visible = false
@@ -270,22 +345,69 @@ local function renderPicker()
 		local owned = collection[card.id]
 		if owned then
 			if owned.foil > 0 then
-				addOption(card, true, owned.foil)
+				addTile(card, true, owned.foil)
 			end
 			if owned.normal > 0 then
-				addOption(card, false, owned.normal)
+				addTile(card, false, owned.normal)
 			end
 		end
 	end
 	if order == 0 then
-		UIKit.row(pickerList, 1, "Your binder is empty", "Rip some packs first.")
+		local message = if next(collection) == nil then "Your binder is empty. Rip some packs first." else "No cards match this filter."
+		local empty = UIKit.label(pickerList, message, Enum.Font.GothamBold, 16, UIKit.Colors.Subtext)
+		empty.Size = UDim2.fromOffset(300, 60)
 	end
 end
 
 openPicker = function(slot: number)
 	pickerSlot = slot
+	pickerTitle.Text = `Choose a card for slot {slot}`
 	renderPicker()
 	picker.Visible = true
+end
+
+local function buildPicker(parent: Instance)
+	picker, pickerList = UIKit.panel(parent, "CardPicker", "Pick a card")
+	picker.ZIndex = 5
+	pickerTitle = picker:FindFirstChild("Title") :: TextLabel
+	pickerTitle.TextSize = 22
+
+	-- Rarity filter chips
+	local chips = Instance.new("Frame")
+	chips.Position = UDim2.fromOffset(12, 62)
+	chips.Size = UDim2.new(1, -24, 0, 40)
+	chips.BackgroundTransparency = 1
+	chips.Parent = picker
+	local chipLayout = Instance.new("UIListLayout")
+	chipLayout.FillDirection = Enum.FillDirection.Horizontal
+	chipLayout.Padding = UDim.new(0, 8)
+	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chipLayout.Parent = chips
+	for index, filter in PICKER_FILTERS do
+		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
+		chip.LayoutOrder = index
+		chip.Size = UDim2.fromOffset(76, 40)
+		chip.TextSize = 15
+		chip.Activated:Connect(function()
+			pickerFilter = filter
+			renderPicker()
+		end)
+		filterButtons[filter] = chip
+	end
+
+	-- Swap the panel's list layout for a grid of card tiles
+	pickerList.Position = UDim2.fromOffset(12, 110)
+	pickerList.Size = UDim2.new(1, -24, 1, -122)
+	local listLayout = pickerList:FindFirstChildOfClass("UIListLayout")
+	if listLayout then
+		listLayout:Destroy()
+	end
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(PICKER_TILE_SIZE.X, PICKER_TILE_SIZE.Y)
+	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = pickerList
 end
 
 local function disconnectCase()
@@ -343,8 +465,7 @@ function ShowcaseController.Start()
 	list.Position = UDim2.fromOffset(12, 84)
 	list.Size = UDim2.new(1, -24, 1, -96)
 
-	picker, pickerList = UIKit.panel(screenGui, "CardPicker", "Pick a card")
-	picker.ZIndex = 5
+	buildPicker(screenGui)
 
 	-- Binder changes (a card going on display) refresh the picker if it's open
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()

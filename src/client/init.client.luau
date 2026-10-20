@@ -13,6 +13,7 @@ local PackOpeningController = require(Controllers:WaitForChild("PackOpeningContr
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
 local CardBuyController = require(Controllers:WaitForChild("CardBuyController"))
+local CardEffectsController = require(Controllers:WaitForChild("CardEffectsController"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 
 UIController.Start()
@@ -26,4 +27,5 @@ PackOpeningController.Start()
 BinderController.Start()
 ShowcaseController.Start()
 CardBuyController.Start()
+CardEffectsController.Start()
 AnnouncementController.Start()
