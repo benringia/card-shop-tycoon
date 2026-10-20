@@ -25,7 +25,7 @@ local NAMES = {
 	"DisplayCard", -- client → server: (shelfUid: string, slot: number, cardId: string, foil: boolean, beastId: string?, grade: string?) binder → case; plain copies picked by grade
 	"RemoveDisplayedCard", -- client → server: (shelfUid: string, slot: number) case → binder
 	"SetCardPrice", -- client → server: (shelfUid: string, changes: { { slot: number, price: number } })
-	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?) from a Collector Case
+	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?, expectedGrade?) from a Collector Case
 	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 }

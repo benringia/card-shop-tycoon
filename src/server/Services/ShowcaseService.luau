@@ -23,11 +23,10 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local SaleRules = require(Util:WaitForChild("SaleRules"))
 
 type PlacedShelf = typeof(PlacementService.GetShelves((nil :: any))[1])
 type DisplayedCard = PlacementService.DisplayedCard
-
-local PRICE_TOLERANCE = 0.001 -- floating point slack when comparing the price a buyer saw
 
 local ShowcaseService = {}
 
@@ -194,7 +193,8 @@ local function onBuyCard(
 	cardId: unknown,
 	foil: unknown,
 	expectedPrice: unknown,
-	expectedBeastId: unknown
+	expectedBeastId: unknown,
+	expectedGrade: unknown
 )
 	if not allowBuy(buyer) then
 		return
@@ -216,18 +216,22 @@ local function onBuyCard(
 	local slotNumber = slot :: number
 	local displayed = shelf.cards[slotNumber]
 	local cardPart = shelf.cardParts[slotNumber]
-	if not displayed or not cardPart or displayed.cardId ~= cardId or displayed.foil ~= foil then
+	if not displayed or not cardPart then
 		notify(buyer, "That card is no longer for sale.", true)
 		return
 	end
-	-- The owner may have swapped in a different beast of the same card after the buyer looked
-	local actualBeastId = if displayed.beast then displayed.beast.id else nil
-	local wantedBeastId = if typeof(expectedBeastId) == "string" then expectedBeastId else nil
-	if actualBeastId ~= wantedBeastId then
+	-- The owner may have swapped in another copy (grade, foil, levelled card) or changed the price
+	local result = SaleRules.check({
+		cardId = displayed.cardId,
+		foil = displayed.foil,
+		grade = displayed.grade,
+		price = displayed.price,
+		beastId = if displayed.beast then displayed.beast.id else nil,
+	}, { cardId = cardId, foil = foil, grade = expectedGrade, price = expectedPrice, beastId = expectedBeastId })
+	if result == "gone" then
 		notify(buyer, "That card is no longer for sale.", true)
 		return
-	end
-	if math.abs(displayed.price - expectedPrice) > PRICE_TOLERANCE then
+	elseif result == "price" then
 		notify(buyer, string.format("The price changed to $%.2f. Check it and try again.", displayed.price), true)
 		return
 	end

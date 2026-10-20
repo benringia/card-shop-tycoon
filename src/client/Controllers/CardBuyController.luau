@@ -184,7 +184,8 @@ local function onConfirmBuy()
 		part:GetAttribute("CardId"),
 		part:GetAttribute("Foil"),
 		pendingPrice,
-		part:GetAttribute("BeastId")
+		part:GetAttribute("BeastId"),
+		part:GetAttribute("Grade")
 	)
 end
 
