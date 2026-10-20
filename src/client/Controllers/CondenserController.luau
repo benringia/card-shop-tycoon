@@ -129,8 +129,8 @@ local function isReady(card: Card): boolean
 	return main ~= nil and (getPlan(card, main)) ~= nil
 end
 
--- Cards with at least one duplicate to use: a levelled copy plus a plain one, or two plain copies.
--- Rarest first.
+-- Cards you're raising (any levelled or starred copy, even with no duplicates yet, so you can see what
+-- the next star needs) and cards with two or more plain copies. Rarest first.
 local function getCondensableCards(): { Card }
 	local result: { Card } = {}
 	for _, card in Cards.RarestFirst do
@@ -142,7 +142,7 @@ local function getCondensableCards(): { Card }
 				plain += candidate.count
 			end
 		end
-		if plain >= 2 or (levelled > 0 and plain >= 1) then
+		if plain >= 2 or levelled > 0 then
 			table.insert(result, card)
 		end
 	end
