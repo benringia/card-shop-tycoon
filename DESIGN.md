@@ -70,6 +70,7 @@ Order stock (computer) → Restock shelves → Set prices
 | Small Pack Rack | 24 packs | $100 | Start |
 | Glass Showcase | 6 single cards, NPC customers buy | $250 | Start |
 | Collector Case | 6 single cards, other players buy | $300 | Start |
+| Card Condenser | machine: combine duplicates for +1 star (5.8) | $500 | Shop Lv 4 |
 | Wall Shelf | 48 packs | $350 | Shop Lv 3 |
 | Accessory Hook | 20 accessories | $250 | Shop Lv 5 |
 | Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
@@ -207,7 +208,7 @@ Roadmap (one sub-project at a time):
 1. **Beast cards** — level, XP, stars, grades, stats, value (done).
 2. **Shop jobs** — beasts work in your shop (replace hired staff, 7.4).
 3. **Party & summoning** — summon beasts to follow and fight beside you.
-4. **Star merging** — the Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`).
+4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; built, awaiting Studio test).
 5. **Battles** — real-time auto-fight between players' parties.
 
 Plain copies stack by card, foil and grade; a copy becomes an individual card (keeping its grade) the first time it gains XP or a star.
@@ -250,7 +251,11 @@ Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 
 `STAR_VALUE` for 0–5 stars = `{ 1, 6, 15, 30, 50, 80 }` (roughly the duplicates condensed plus a bonus).
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
-Stars come only from the Condenser (Plan B, not built yet; no level gate, levels raise stats only). Duplicates per star (`STAR_COSTS`):
+Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 4, $500; no level gate,
+levels raise stats only). Press E on it, pick a card and its main copy, see the cost and before -> after, then Condense.
+Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
+weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
+own card. One star per press. Duplicates per star (`STAR_COSTS`):
 
 | Step | 0→1 | 1→2 | 2→3 | 3→4 | 4→5 | Total |
 |---|---|---|---|---|---|---|
@@ -394,6 +399,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PackService.luau      # server-side pack rolls
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
+    │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # passes, dev products, ProcessReceipt
     │   └── Util/
@@ -412,6 +418,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau   # two-page binder (3x3 pockets), search + filters, hover tooltips
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
+    │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
     │   └── Util/
@@ -433,6 +440,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── PackOpening.luau # reveal timings and sounds (client)
         │   ├── Collection.luau # binder request limits
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
+        │   ├── Condenser.luau  # Card Condenser cooldown and use distance
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
@@ -446,6 +454,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PriceRules.luau    # price clamping and buy bands
             ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
             ├── BeastRules.luau    # BeastMath bound to the game configs
+            ├── CondenseRules.luau # which duplicates a star uses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```

@@ -15,7 +15,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
-- `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations). Pure logic goes in Roblox-free modules so it can be tested here.
+- `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -54,7 +54,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 
 ## Workflow
 - Work one system at a time. After each, tell me exactly what to test in Studio (stop → Play to load new code).
-- Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary).
+- Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
+  `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.
