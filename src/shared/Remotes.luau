@@ -28,6 +28,7 @@ local NAMES = {
 	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?, expectedGrade?) from a Collector Case
 	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
+	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
 }
 
 local isServer = RunService:IsServer()
@@ -76,4 +77,5 @@ return {
 	BuyDisplayedCard = remotes.BuyDisplayedCard,
 	PullAnnouncement = remotes.PullAnnouncement,
 	PullRevealed = remotes.PullRevealed,
+	Condense = remotes.Condense,
 }

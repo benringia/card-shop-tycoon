@@ -9,9 +9,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Collection = require(Config:WaitForChild("Collection"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -185,6 +187,72 @@ function CardService.AddXP(player: Player, target: XpTarget, amount: number): Be
 	beast.level, beast.xp = BeastRules.applyXp(beast.level, beast.xp, amount)
 	sync(player)
 	return beast
+end
+
+-- The Condenser: +1 star for the main copy, paid for with plain duplicates of the same card
+-- (Util/CondenseRules picks them). A plain main leaves its stack and becomes its own card.
+-- All in one step with no yields. Returns the main card, or nil and a reason ("max", "short:<have>:<need>",
+-- "missing").
+function CardService.Condense(player: Player, cardId: string, main: XpTarget): (Beast?, string?)
+	local inventory = inventories[player]
+	if not inventory or not Cards.ById[cardId] then
+		return nil, "missing"
+	end
+	local beast: Beast? = nil
+	local foil: boolean
+	local grade: string
+	if typeof(main) == "string" then
+		beast = inventory.beasts[main]
+		if not beast or beast.cardId ~= cardId then
+			return nil, "missing"
+		end
+		foil, grade = beast.foil, beast.grade
+	else
+		local byGrade = inventory.stacks[cardId]
+		local owned = if byGrade then byGrade[main.grade] else nil
+		local count = if owned then (if main.foil then owned.foil else owned.normal) else 0
+		if main.cardId ~= cardId or count <= 0 then
+			return nil, "missing"
+		end
+		foil, grade = main.foil, main.grade
+	end
+
+	local stacks = inventory.stacks[cardId] or {}
+	local takes, reason = CondenseRules.plan(Beasts, stacks, {
+		beast = beast ~= nil,
+		foil = foil,
+		grade = grade,
+		stars = if beast then beast.stars else BeastRules.START_STARS,
+	})
+	if not takes then
+		return nil, reason
+	end
+	for _, take in takes do
+		local owned = getOwned(inventory.stacks, cardId, take.grade)
+		if take.foil then
+			owned.foil -= take.count
+		else
+			owned.normal -= take.count
+		end
+	end
+	if not beast then
+		takeFreshCopy(inventory, cardId, foil, grade)
+		local newBeast: Beast = {
+			id = HttpService:GenerateGUID(false),
+			cardId = cardId,
+			foil = foil,
+			level = 1,
+			xp = 0,
+			stars = BeastRules.START_STARS,
+			grade = grade,
+		}
+		inventory.beasts[newBeast.id] = newBeast
+		beast = newBeast
+	end
+	local condensed = beast :: Beast
+	condensed.stars += 1
+	sync(player)
+	return condensed
 end
 
 function CardService.IsLoaded(player: Player): boolean

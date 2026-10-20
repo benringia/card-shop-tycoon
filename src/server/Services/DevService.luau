@@ -1,6 +1,7 @@
 --!strict
 -- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /testpack,
--- /beastxp <amount> (XP for your best levelled card, or your rarest plain card).
+-- /beastxp <amount> (XP for your best levelled card, or your rarest plain card),
+-- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -98,6 +99,26 @@ local function pickXpTarget(player: Player): CardService.XpTarget?
 	return nil
 end
 
+local MAX_GIVE_CARDS = 500 -- per /givecard, so a typo can't flood the save
+
+-- "/givecard 30 70": 70 plain copies of card #30, each rolling its grade like a pack pull
+local function giveCards(player: Player, text: string)
+	local numberText, amountText = string.match(text, "%s+(%d+)%s+(%d+)")
+	local card = if numberText then Cards.List[tonumber(numberText) :: number] else nil
+	local amount = math.clamp(tonumber(amountText or "") or 0, 0, MAX_GIVE_CARDS)
+	if not card or amount <= 0 then
+		Remotes.Notify:FireClient(player, "Usage: /givecard <card number> <amount>", true)
+		return
+	end
+	local results = {}
+	local rng = Random.new()
+	for _ = 1, amount do
+		table.insert(results, { cardId = card.id, foil = false, grade = BeastRules.rollGrade(rng:NextNumber()) })
+	end
+	CardService.AddFresh(player, results)
+	Remotes.Notify:FireClient(player, `Gave {amount} {card.name}`, false)
+end
+
 local function grantBeastXp(player: Player, amount: number)
 	local target = pickXpTarget(player)
 	local beast = if target then CardService.AddXP(player, target, amount) else nil
@@ -119,10 +140,11 @@ function DevService.Start()
 	addCommand(folder, "xp", withAmount(EconomyService.AddXP))
 	addCommand(folder, "level", withAmount(jumpToLevel))
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
+	addCommand(folder, "givecard", giveCards)
 	addCommand(folder, "testpack", function(player)
 		PackService.OpenTestPack(player)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /testpack")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /testpack")
 end
 
 return DevService
