@@ -6,6 +6,7 @@ export type Stats = { hp: number, atk: number, spd: number }
 export type BeastData = { cardId: string, foil: boolean, level: number, xp: number, stars: number }
 export type BeastConfig = {
 	MAX_LEVEL: number,
+	START_STARS: number,
 	MAX_STARS: number,
 	BASE_STATS: { [string]: Stats },
 	ELEMENT_MULTIPLIERS: { [string]: Stats },
@@ -14,6 +15,7 @@ export type BeastConfig = {
 	FOIL_STAT_MULTIPLIER: number,
 	LEVEL_VALUE_GROWTH: number,
 	STAR_VALUE: { number },
+	STAR_COSTS: { number },
 	XP_BASE: number,
 	XP_EXPONENT: number,
 }
@@ -37,7 +39,7 @@ function BeastMath.getStats(config: BeastConfig, rarity: string, element: string
 	local base = config.BASE_STATS[rarity] or config.BASE_STATS.Common
 	local elementBias = config.ELEMENT_MULTIPLIERS[element] or NO_ELEMENT
 	local growth = (1 + config.LEVEL_STAT_GROWTH * (level - 1))
-		* (1 + config.STAR_STAT_GROWTH * (stars - 1))
+		* (1 + config.STAR_STAT_GROWTH * stars)
 		* (if foil then config.FOIL_STAT_MULTIPLIER else 1)
 	return {
 		hp = math.round(base.hp * elementBias.hp * growth),
@@ -50,7 +52,7 @@ function BeastMath.getValue(config: BeastConfig, baseValue: number, foilMultipli
 	local value = baseValue
 		* (if foil then foilMultiplier else 1)
 		* (1 + config.LEVEL_VALUE_GROWTH * (level - 1))
-		* (config.STAR_VALUE[stars] or 1)
+		* (config.STAR_VALUE[stars + 1] or 1)
 	return math.round(value * 100) / 100
 end
 
@@ -59,6 +61,14 @@ function BeastMath.getXpToNext(config: BeastConfig, level: number): number
 		return 0
 	end
 	return math.round(config.XP_BASE * level ^ config.XP_EXPONENT)
+end
+
+-- Duplicates needed for the next star, or nil if there is no next star
+function BeastMath.getCondenseCost(config: BeastConfig, stars: number): number?
+	if stars < 0 or stars >= config.MAX_STARS then
+		return nil
+	end
+	return config.STAR_COSTS[math.floor(stars) + 1]
 end
 
 -- Applies every level-up the XP covers; leftover XP carries over. XP stops at max level.
@@ -92,7 +102,7 @@ function BeastMath.sanitize(config: BeastConfig, raw: unknown, isKnownCard: (str
 		return nil
 	end
 	local level = clampInteger(entry.level, 1, config.MAX_LEVEL, 1)
-	local stars = clampInteger(entry.stars, 1, config.MAX_STARS, 1)
+	local stars = clampInteger(entry.stars, 0, config.MAX_STARS, config.START_STARS)
 	local xpCap = math.max(0, BeastMath.getXpToNext(config, level) - 1)
 	return {
 		cardId = cardId,

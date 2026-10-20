@@ -8,33 +8,58 @@ local function isKnown(cardId: string): boolean
 end
 
 return {
-	["stats: fresh common ember"] = function()
-		local stats = BeastMath.getStats(config, "Common", "Ember", false, 1, 1)
+	["stats: plain common ember"] = function()
+		local stats = BeastMath.getStats(config, "Common", "Ember", false, 1, 0)
 		expect.equal(stats.hp, 60, "hp")
 		expect.equal(stats.atk, 14, "atk") -- 12 * 1.2 = 14.4
 		expect.equal(stats.spd, 10, "spd")
 	end,
 
 	["stats: max foil legendary shade"] = function()
-		-- growth = 2.74 (Lv 30) * 1.6 (5 stars) * 1.05 (foil) = 4.6032
+		-- growth = 2.74 (Lv 30) * 1.75 (5 stars) * 1.05 (foil) = 5.03475
 		local stats = BeastMath.getStats(config, "Legendary", "Shade", true, 30, 5)
-		expect.equal(stats.hp, 690, "hp")
-		expect.equal(stats.atk, 152, "atk")
-		expect.equal(stats.spd, 81, "spd")
+		expect.equal(stats.hp, 755, "hp")
+		expect.equal(stats.atk, 166, "atk")
+		expect.equal(stats.spd, 89, "spd")
 	end,
 
 	["stats: unknown rarity and element fall back"] = function()
-		local stats = BeastMath.getStats(config, "Mythic", "Plasma", false, 1, 1)
+		local stats = BeastMath.getStats(config, "Mythic", "Plasma", false, 1, 0)
 		expect.equal(stats.hp, 60, "hp")
 		expect.equal(stats.atk, 12, "atk")
 	end,
 
-	["value: spec example Cindercub Lv 15 3-star"] = function()
-		expect.near(BeastMath.getValue(config, 0.20, 3, false, 15, 3), 1.08, 0.001)
+	["stats: very rare base"] = function()
+		local stats = BeastMath.getStats(config, "Very Rare", "Tide", false, 1, 0)
+		expect.equal(stats.hp, 114, "hp") -- 95 * 1.2
+		expect.equal(stats.atk, 19, "atk")
+		expect.equal(stats.spd, 13, "spd")
 	end,
 
-	["value: fresh foil"] = function()
-		expect.near(BeastMath.getValue(config, 0.20, 3, true, 1, 1), 0.60, 0.001)
+	["value: Cindercub Lv 15 3 stars"] = function()
+		expect.near(BeastMath.getValue(config, 0.20, 3, false, 15, 3), 14.40, 0.001) -- 0.20 * 2.4 * 30
+	end,
+
+	["value: plain foil"] = function()
+		expect.near(BeastMath.getValue(config, 0.20, 3, true, 1, 0), 0.60, 0.001)
+	end,
+
+	["value: star table 0 to 5"] = function()
+		local expected = { 1, 6, 15, 30, 50, 80 }
+		for stars = 0, 5 do
+			expect.near(BeastMath.getValue(config, 1, 3, false, 1, stars), expected[stars + 1], 0.001, `{stars} stars`)
+		end
+	end,
+
+	["condense cost per star, 64 total"] = function()
+		local total = 0
+		for stars, cost in { [0] = 4, [1] = 8, [2] = 12, [3] = 16, [4] = 24 } do
+			expect.equal(BeastMath.getCondenseCost(config, stars), cost, `{stars} stars`)
+			total += cost
+		end
+		expect.equal(total, 64, "total")
+		expect.isNil(BeastMath.getCondenseCost(config, 5), "max stars")
+		expect.isNil(BeastMath.getCondenseCost(config, -1), "negative")
 	end,
 
 	["xp curve"] = function()
@@ -77,21 +102,33 @@ return {
 		expect.equal(beast.foil, true, "foil")
 	end,
 
+	["sanitize: stars default and floor are 0"] = function()
+		local nan = 0 / 0
+		for _, raw in { -3, nan, "two" } do
+			local beast = BeastMath.sanitize(config, { cardId = "FS01", level = 1, xp = 0, stars = raw }, isKnown)
+			assert(beast, "expected a beast")
+			expect.equal(beast.stars, 0, `stars {tostring(raw)}`)
+		end
+		local missing = BeastMath.sanitize(config, { cardId = "FS01", level = 1, xp = 0 }, isKnown)
+		assert(missing, "expected a beast")
+		expect.equal(missing.stars, 0, "missing stars")
+	end,
+
 	["sanitize: xp above the level cap is trimmed"] = function()
-		local beast = BeastMath.sanitize(config, { cardId = "FS01", level = 2, xp = 999, stars = 1 }, isKnown)
+		local beast = BeastMath.sanitize(config, { cardId = "FS01", level = 2, xp = 999, stars = 0 }, isKnown)
 		assert(beast, "expected a beast")
 		expect.equal(beast.xp, 140, "xp") -- xpToNext(2) - 1
 		expect.equal(beast.foil, false, "missing foil -> false")
 	end,
 
 	["sanitize: NaN level falls back to 1"] = function()
-		local beast = BeastMath.sanitize(config, { cardId = "FS01", level = 0 / 0, xp = 0, stars = 1 }, isKnown)
+		local beast = BeastMath.sanitize(config, { cardId = "FS01", level = 0 / 0, xp = 0, stars = 0 }, isKnown)
 		assert(beast, "expected a beast")
 		expect.equal(beast.level, 1, "level")
 	end,
 
 	["sanitize: rejects unknown cards and non-tables"] = function()
-		expect.isNil(BeastMath.sanitize(config, { cardId = "NOPE", level = 1, xp = 0, stars = 1 }, isKnown), "unknown")
+		expect.isNil(BeastMath.sanitize(config, { cardId = "NOPE", level = 1, xp = 0, stars = 0 }, isKnown), "unknown")
 		expect.isNil(BeastMath.sanitize(config, "junk", isKnown), "string")
 		expect.isNil(BeastMath.sanitize(config, nil, isKnown), "nil")
 	end,
