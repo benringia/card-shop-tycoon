@@ -11,6 +11,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local DataConfig = require(Config:WaitForChild("Data"))
 local EconomyConfig = require(Config:WaitForChild("Economy"))
+local BeastRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BeastRules"))
 local ProfileStore = require(ServerStorage:WaitForChild("ServerPackages"):WaitForChild("ProfileStore"))
 
 local Services = script.Parent :: Instance
@@ -28,8 +29,10 @@ export type SavedCard = {
 	level: number?,
 	xp: number?,
 	stars: number?,
+	grade: string?, -- C/B/A/S; a levelled card's grade is on the card too
 }
-export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number } -- stars 0-5
+export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string } -- stars 0-5
+export type SavedOwned = { normal: number, foil: number }
 export type SavedShelf = {
 	shelfId: string,
 	gridX: number,
@@ -54,7 +57,7 @@ export type PlayerData = {
 	layout: { SavedShelf },
 	fixtures: { [string]: SavedCell },
 	boxes: { SavedBox },
-	cards: { [string]: { normal: number, foil: number } },
+	cards: { [string]: { [string]: SavedOwned } }, -- cardId -> grade -> plain copies in the binder
 	beasts: { [string]: SavedBeast }, -- levelled cards by ID
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
@@ -85,6 +88,12 @@ local TEMPLATE: PlayerData = {
 }
 
 local DataService = {}
+
+-- Gives each existing copy a grade when an old save is upgraded (schema v5)
+local gradeRng = Random.new()
+local function rollGrade(): string
+	return BeastRules.rollGrade(gradeRng:NextNumber())
+end
 
 local store = ProfileStore.New(DataConfig.STORE_NAME, TEMPLATE)
 local handlers: { Handler } = {}
@@ -142,7 +151,7 @@ local function onPlayerAdded(player: Player)
 	end
 
 	profile:AddUserId(player.UserId) -- GDPR: links the data to this user for deletion requests
-	Migrations.run(profile.Data, DataConfig.SCHEMA_VERSION)
+	Migrations.run(profile.Data, DataConfig.SCHEMA_VERSION, rollGrade)
 	profile:Reconcile() -- fills in fields added to TEMPLATE since this profile was created
 
 	profile.OnSessionEnd:Connect(function()

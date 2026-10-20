@@ -2,6 +2,14 @@
 local Migrations = require("../src/server/Util/Migrations")
 local expect = require("./lib/expect")
 
+local function sequence(grades: { string }): () -> string
+	local i = 0
+	return function()
+		i += 1
+		return grades[(i - 1) % #grades + 1]
+	end
+end
+
 return {
 	["v4: lowers saved beast stars by one, not below 0"] = function()
 		local data: any = { version = 3, beasts = { a = { stars = 1 }, b = { stars = 3 }, c = { stars = 0 } } }
@@ -48,5 +56,46 @@ return {
 		expect.isNil(data.showcase, "v2 dropped showcase")
 		expect.equal(typeof(data.beasts), "table", "v3 added beasts")
 		expect.equal(data.version, 4, "version")
+	end,
+	["v5: splits old stacks into grades"] = function()
+		local data: any = { version = 4, cards = { FS01 = { normal = 3, foil = 1 } }, beasts = {} }
+		Migrations.run(data, 5, sequence({ "S", "C", "C", "B" }))
+		local stack = data.cards.FS01
+		expect.equal(stack.S.normal, 1, "S normal")
+		expect.equal(stack.C.normal, 2, "C normal")
+		expect.equal(stack.B.foil, 1, "B foil")
+		expect.equal(data.version, 5, "version")
+	end,
+
+	["v5: levelled and displayed cards get a grade, existing grades kept"] = function()
+		local data: any = {
+			version = 4,
+			cards = {},
+			beasts = { a = { cardId = "FS01", stars = 0 }, b = { cardId = "FS02", stars = 0, grade = "A" } },
+			layout = { { cards = { { slot = 1, cardId = "FS03" } } } },
+		}
+		Migrations.run(data, 5, sequence({ "B" }))
+		expect.equal(data.beasts.a.grade, "B", "rolled")
+		expect.equal(data.beasts.b.grade, "A", "kept")
+		expect.equal(data.layout[1].cards[1].grade, "B", "displayed rolled")
+	end,
+
+	["v5: huge counts are capped, totals kept"] = function()
+		local calls = 0
+		local data: any = { version = 4, cards = { FS01 = { normal = 1e9, foil = -5 }, FS02 = { normal = 0 / 0 } } }
+		Migrations.run(data, 5, function()
+			calls += 1
+			return "S"
+		end)
+		local stack = data.cards.FS01
+		expect.equal((stack.S and stack.S.normal or 0) + (stack.C and stack.C.normal or 0), 1e9, "total normal")
+		assert(calls <= 10000, `rolled {calls} times`)
+		expect.equal(next(data.cards.FS02 or {}), nil, "NaN stack empty")
+	end,
+
+	["v5: already graded stacks untouched"] = function()
+		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
+		Migrations.run(data, 5, sequence({ "C" }))
+		expect.equal(data.cards.FS01.S.normal, 2, "kept")
 	end,
 }

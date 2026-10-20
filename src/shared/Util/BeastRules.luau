@@ -17,17 +17,42 @@ local BeastRules = {}
 BeastRules.MAX_LEVEL = Beasts.MAX_LEVEL
 BeastRules.MAX_STARS = Beasts.MAX_STARS
 BeastRules.START_STARS = Beasts.START_STARS
+BeastRules.GRADES = Beasts.GRADES
+BeastRules.DEFAULT_GRADE = Beasts.DEFAULT_GRADE
 
 local function isKnownCard(cardId: string): boolean
 	return Cards.ById[cardId] ~= nil
 end
 
-function BeastRules.getStats(card: Card, foil: boolean, level: number, stars: number): BeastMath.Stats
-	return BeastMath.getStats(Beasts, card.rarity, card.element, foil, level, stars)
+-- grade: missing reads as no bonus
+function BeastRules.getStats(card: Card, foil: boolean, level: number, stars: number, grade: string?): BeastMath.Stats
+	return BeastMath.getStats(Beasts, card.rarity, card.element, foil, level, stars, grade or Beasts.DEFAULT_GRADE)
 end
 
-function BeastRules.getValue(card: Card, foil: boolean, level: number, stars: number): number
-	return BeastMath.getValue(Beasts, card.value, Rarities.FOIL_MULTIPLIER, foil, level, stars)
+function BeastRules.getPower(card: Card, foil: boolean, level: number, stars: number, grade: string?): number
+	return BeastMath.getPower(Beasts, BeastRules.getStats(card, foil, level, stars, grade))
+end
+
+function BeastRules.getValue(card: Card, foil: boolean, level: number, stars: number, grade: string?): number
+	return BeastMath.getValue(Beasts, card.value, Rarities.FOIL_MULTIPLIER, foil, level, stars, grade or Beasts.DEFAULT_GRADE)
+end
+
+function BeastRules.isGrade(grade: unknown): boolean
+	return BeastMath.isGrade(Beasts, grade)
+end
+
+-- 1 = weakest grade; 0 for an unknown one
+function BeastRules.getGradeRank(grade: string): number
+	return BeastMath.getGradeRank(Beasts, grade)
+end
+
+-- roll: a uniform random number in [0, 1)
+function BeastRules.rollGrade(roll: number): string
+	return BeastMath.rollGrade(Beasts, roll)
+end
+
+function BeastRules.describeGrade(grade: string): string
+	return `Grade {grade}`
 end
 
 function BeastRules.getXpToNext(level: number): number
