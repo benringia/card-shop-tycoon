@@ -14,6 +14,11 @@ return {
 	BUY_COOLDOWN = 0.5, -- player-to-player purchases per buyer
 	BUY_DISTANCE = 14, -- studs; buyer must be this close to the card
 	BUY_PROMPT_DISTANCE = 8,
+	BROWSE_CLOSE_DISTANCE = 24, -- the browse panel closes if the visitor walks this far from the case
+
+	-- Deal tag shown to visitors: price ÷ market value
+	GOOD_DEAL_MAX_RATIO = 1.0,
+	FAIR_DEAL_MAX_RATIO = 1.2,
 
 	-- Card slots laid out on the case's front face, left to right then top to bottom.
 	-- The top strip of the face is kept clear for the case's label.

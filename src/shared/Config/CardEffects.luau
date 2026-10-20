@@ -18,9 +18,10 @@ return {
 
 	BY_RARITY = {
 		Common = { glow = 0, glowRange = 0, sparkleRate = 0, burst = 8, pop = false, flash = false, pulse = false },
-		Rare = { glow = 1, glowRange = 5, sparkleRate = 0, burst = 18, pop = false, flash = false, pulse = false },
-		Epic = { glow = 1.5, glowRange = 7, sparkleRate = 2, burst = 30, pop = true, flash = false, pulse = false },
-		Legendary = { glow = 2.5, glowRange = 10, sparkleRate = 5, burst = 50, pop = true, flash = true, pulse = true },
+		-- Glows are kept soft: a full case of six still lights the case, not the whole floor
+		Rare = { glow = 0.5, glowRange = 3.5, sparkleRate = 0, burst = 18, pop = false, flash = false, pulse = false },
+		Epic = { glow = 0.75, glowRange = 5, sparkleRate = 2, burst = 30, pop = true, flash = false, pulse = false },
+		Legendary = { glow = 1.25, glowRange = 7, sparkleRate = 5, burst = 50, pop = true, flash = true, pulse = true },
 	} :: { [string]: RarityEffect },
 
 	FOIL_GLINT_RATE = 3, -- extra white glints per second on foil cards
