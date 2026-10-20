@@ -381,7 +381,10 @@ local function shopForCard(customer: Customer): boolean
 		return true
 	end
 	local card = Cards.ById[displayed.cardId]
-	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil))
+	-- A raised beast is judged against its own (higher) value
+	local level = if displayed.beast then displayed.beast.level else 1
+	local stars = if displayed.beast then displayed.beast.stars else 1
+	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil, level, stars))
 	if not band then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
 		return true

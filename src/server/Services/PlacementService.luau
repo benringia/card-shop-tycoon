@@ -14,6 +14,7 @@ local Products = require(Config:WaitForChild("Products"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -34,7 +35,9 @@ type SavedShelf = DataService.SavedShelf
 type SavedCard = DataService.SavedCard
 type SavedCell = DataService.SavedCell
 
-export type DisplayedCard = { cardId: string, foil: boolean, price: number }
+type Beast = CardService.Beast
+-- A card in a case slot: a fresh copy (beast = nil) or a specific raised beast
+export type DisplayedCard = { cardId: string, foil: boolean, price: number, beast: Beast? }
 
 export type PlacedShelf = {
 	uid: string,
@@ -138,6 +141,11 @@ local function addCardText(parent: Instance, text: string, y: number, height: nu
 	return label
 end
 
+local function getGrowth(displayed: DisplayedCard): (number, number)
+	local beast = displayed.beast
+	return if beast then beast.level else 1, if beast then beast.stars else 1
+end
+
 local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: DisplayedCard): Part
 	local card = Cards.ById[displayed.cardId]
 	local part = Instance.new("Part")
@@ -155,6 +163,10 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part:SetAttribute("ShelfUid", shelf.uid)
 	part:SetAttribute("OwnerUserId", shelf.owner.UserId)
 	part:SetAttribute("ShelfKind", shelf.def.kind)
+	local level, stars = getGrowth(displayed)
+	part:SetAttribute("Level", level)
+	part:SetAttribute("Stars", stars)
+	part:SetAttribute("BeastId", if displayed.beast then displayed.beast.id else nil)
 
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
@@ -171,11 +183,14 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	stroke.Color = Rarities.Tiers[card.rarity].color
 	stroke.Parent = frame
 
-	addCardText(frame, card.name, 0.06, 0.24)
+	addCardText(frame, card.name, 0.04, 0.2)
 	if displayed.foil then
-		addCardText(frame, "FOIL", 0.32, 0.16)
+		addCardText(frame, "FOIL", 0.25, 0.12)
 	end
-	addCardText(frame, card.rarity, 0.52, 0.16).TextColor3 = Rarities.Tiers[card.rarity].color
+	if displayed.beast then
+		addCardText(frame, BeastRules.describeGrowth(level, stars), 0.38, 0.13)
+	end
+	addCardText(frame, card.rarity, 0.53, 0.14).TextColor3 = Rarities.Tiers[card.rarity].color
 	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
 
 	part.Parent = shelf.part
@@ -189,6 +204,7 @@ local function renderCardSlot(shelf: PlacedShelf, slot: number)
 	if existing and displayed
 		and existing:GetAttribute("CardId") == displayed.cardId
 		and existing:GetAttribute("Foil") == displayed.foil
+		and existing:GetAttribute("BeastId") == (if displayed.beast then displayed.beast.id else nil)
 	then
 		existing:SetAttribute("Price", displayed.price)
 		local priceLabel = existing:FindFirstChild("PriceLabel", true)
@@ -455,10 +471,19 @@ local function readSavedCards(def: ShelfDef?, saved: { SavedCard }?, leftovers: 
 		if not card then
 			continue
 		end
+		local beast: Beast? = nil
+		if typeof(entry.beastId) == "string" then
+			local clean = BeastRules.sanitize(entry)
+			if clean then
+				beast = { id = entry.beastId, cardId = clean.cardId, foil = clean.foil, level = clean.level, xp = clean.xp, stars = clean.stars }
+			end
+		end
+		local level = if beast then beast.level else 1
+		local stars = if beast then beast.stars else 1
 		local price = if typeof(entry.price) == "number" and entry.price == entry.price
-			then CardRules.clampPrice(entry.price, card, entry.foil)
-			else CardRules.getMarketValue(card, entry.foil)
-		local displayed: DisplayedCard = { cardId = entry.cardId, foil = entry.foil, price = price }
+			then CardRules.clampPrice(entry.price, card, entry.foil, level, stars)
+			else CardRules.getMarketValue(card, entry.foil, level, stars)
+		local displayed: DisplayedCard = { cardId = entry.cardId, foil = entry.foil, price = price, beast = beast }
 		local slot = entry.slot
 		if def and isCardCase(def) and isGridInteger(slot) and slot >= 1 and slot <= def.capacity and not bySlot[slot] then
 			bySlot[slot] = displayed
@@ -492,6 +517,11 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 		PlacementService.AddStock(shelf, saved.productId, units)
 	end
 	for slot, displayed in readSavedCards(def, saved.cards, leftovers) do
+		-- A beast ID already used in the binder gets a new one, so neither copy is overwritten
+		local beast = displayed.beast
+		if beast and CardService.GetBeast(player, beast.id) then
+			beast.id = HttpService:GenerateGUID(false)
+		end
 		PlacementService.SetDisplayedCard(shelf, slot, displayed)
 	end
 end
@@ -510,8 +540,8 @@ local function load(player: Player, data: PlayerData)
 	for _, saved in data.layout do
 		restoreShelf(player, plot, saved, leftovers)
 	end
-	if #leftovers > 0 then
-		CardService.AddFresh(player, leftovers)
+	for _, displayed in leftovers do
+		CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.beast)
 	end
 end
 
@@ -526,7 +556,17 @@ local function save(player: Player, data: PlayerData)
 	for _, shelf in layout do
 		local savedCards: { SavedCard } = {}
 		for slot, displayed in shelf.cards do
-			table.insert(savedCards, { slot = slot, cardId = displayed.cardId, foil = displayed.foil, price = displayed.price })
+			local beast = displayed.beast
+			table.insert(savedCards, {
+				slot = slot,
+				cardId = displayed.cardId,
+				foil = displayed.foil,
+				price = displayed.price,
+				beastId = if beast then beast.id else nil,
+				level = if beast then beast.level else nil,
+				xp = if beast then beast.xp else nil,
+				stars = if beast then beast.stars else nil,
+			})
 		end
 		table.insert(savedLayout, {
 			shelfId = shelf.def.id,

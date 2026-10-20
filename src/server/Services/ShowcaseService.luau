@@ -1,8 +1,10 @@
 --!strict
--- Single cards on display. Owners move cards from their binder into card cases and price them:
+-- Single cards on display. Owners move cards (fresh copies or raised beasts) from their binder into
+-- card cases and price them:
 --   Glass Showcase (CustomerCards): NPC customers may take a card and pay at the register.
 --   Collector Case (PlayerCards):  other players buy directly, after confirming the price.
--- PlacementService holds what's in each slot and saves it; this service runs the actions.
+-- A raised beast moves as itself (level, XP and stars intact). PlacementService holds what's in each
+-- slot and saves it; this service runs the actions.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -38,6 +41,11 @@ end
 
 local function isSlot(value: unknown): boolean
 	return typeof(value) == "number" and value == math.floor(value) and value >= 1 and value <= 64
+end
+
+local function getGrowth(displayed: DisplayedCard): (number, number)
+	local beast = displayed.beast
+	return if beast then beast.level else 1, if beast then beast.stars else 1
 end
 
 local function getRoot(player: Player): BasePart?
@@ -70,10 +78,13 @@ end
 
 local function describe(displayed: DisplayedCard): string
 	local card = Cards.ById[displayed.cardId]
-	return `{if displayed.foil then "foil " else ""}{card.name}`
+	local name = `{if displayed.foil then "foil " else ""}{card.name}`
+	local beast = displayed.beast
+	return if beast then `{name} ({BeastRules.describeGrowth(beast.level, beast.stars)})` else name
 end
 
-local function onDisplayCard(player: Player, shelfUid: unknown, slot: unknown, cardId: unknown, foil: unknown)
+-- beastId set: that specific raised beast; nil: a fresh copy
+local function onDisplayCard(player: Player, shelfUid: unknown, slot: unknown, cardId: unknown, foil: unknown, beastId: unknown)
 	if not allowAction(player) or not isSlot(slot) or typeof(cardId) ~= "string" or typeof(foil) ~= "boolean" then
 		return
 	end
@@ -86,14 +97,27 @@ local function onDisplayCard(player: Player, shelfUid: unknown, slot: unknown, c
 	if slotNumber > shelf.def.capacity or shelf.cards[slotNumber] then
 		return
 	end
-	if not CardService.TakeFresh(player, cardId, foil) then
+
+	local beast: CardService.Beast? = nil
+	if typeof(beastId) == "string" then
+		local owned = CardService.GetBeast(player, beastId)
+		if not owned or owned.cardId ~= cardId or owned.foil ~= foil then
+			notify(player, "You don't have that beast in your binder.", true)
+			return
+		end
+		beast = CardService.TakeBeast(player, beastId)
+	elseif not CardService.TakeFresh(player, cardId, foil) then
 		notify(player, "You don't have that card in your binder.", true)
 		return
 	end
+
+	local level = if beast then beast.level else 1
+	local stars = if beast then beast.stars else 1
 	PlacementService.SetDisplayedCard(shelf, slotNumber, {
 		cardId = cardId,
 		foil = foil,
-		price = CardRules.clampPrice(CardRules.getMarketValue(card, foil), card, foil),
+		price = CardRules.clampPrice(CardRules.getMarketValue(card, foil, level, stars), card, foil, level, stars),
+		beast = beast,
 	})
 end
 
@@ -107,7 +131,7 @@ local function onRemoveCard(player: Player, shelfUid: unknown, slot: unknown)
 		return
 	end
 	PlacementService.SetDisplayedCard(shelf, slot :: number, nil)
-	CardService.AddFresh(player, { { cardId = displayed.cardId, foil = displayed.foil } })
+	CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.beast)
 end
 
 -- Batched so several quick +/- taps across slots arrive as one request
@@ -131,16 +155,19 @@ local function onSetPrices(player: Player, shelfUid: unknown, changes: unknown)
 		local displayed = shelf.cards[slot :: number]
 		if displayed then
 			local card = Cards.ById[displayed.cardId]
+			local level, stars = getGrowth(displayed)
 			PlacementService.SetDisplayedCard(shelf, slot :: number, {
 				cardId = displayed.cardId,
 				foil = displayed.foil,
-				price = CardRules.clampPrice(price, card, displayed.foil),
+				price = CardRules.clampPrice(price, card, displayed.foil, level, stars),
+				beast = displayed.beast,
 			})
 		end
 	end
 end
 
--- Player-to-player: only from a Collector Case, only at the price the buyer confirmed
+-- Player-to-player: only from a Collector Case, only for the exact card (and beast) and price the
+-- buyer confirmed
 local function onBuyCard(
 	buyer: Player,
 	ownerUserId: unknown,
@@ -148,7 +175,8 @@ local function onBuyCard(
 	slot: unknown,
 	cardId: unknown,
 	foil: unknown,
-	expectedPrice: unknown
+	expectedPrice: unknown,
+	expectedBeastId: unknown
 )
 	if not allowBuy(buyer) then
 		return
@@ -174,6 +202,13 @@ local function onBuyCard(
 		notify(buyer, "That card is no longer for sale.", true)
 		return
 	end
+	-- The owner may have swapped in a different beast of the same card after the buyer looked
+	local actualBeastId = if displayed.beast then displayed.beast.id else nil
+	local wantedBeastId = if typeof(expectedBeastId) == "string" then expectedBeastId else nil
+	if actualBeastId ~= wantedBeastId then
+		notify(buyer, "That card is no longer for sale.", true)
+		return
+	end
 	if math.abs(displayed.price - expectedPrice) > PRICE_TOLERANCE then
 		notify(buyer, string.format("The price changed to $%.2f. Check it and try again.", displayed.price), true)
 		return
@@ -192,7 +227,7 @@ local function onBuyCard(
 
 	PlacementService.SetDisplayedCard(shelf, slotNumber, nil)
 	EconomyService.AddCash(owner, displayed.price)
-	CardService.AddFresh(buyer, { { cardId = displayed.cardId, foil = displayed.foil } })
+	CardService.GiveCard(buyer, displayed.cardId, displayed.foil, displayed.beast)
 	local priceText = string.format("$%.2f", displayed.price)
 	notify(buyer, `Bought {describe(displayed)} for {priceText}!`, false)
 	notify(owner, `{buyer.DisplayName} bought your {describe(displayed)} for {priceText}!`, false)
@@ -234,7 +269,7 @@ function ShowcaseService.ReturnFromCustomer(owner: Player, shelfUid: string, slo
 			return
 		end
 	end
-	CardService.AddFresh(owner, { { cardId = displayed.cardId, foil = displayed.foil } })
+	CardService.GiveCard(owner, displayed.cardId, displayed.foil, displayed.beast)
 end
 
 function ShowcaseService.Start()

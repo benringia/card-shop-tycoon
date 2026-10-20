@@ -22,10 +22,10 @@ local NAMES = {
 	"PackOpened", -- server → client: (productId: string, results: { { cardId: string, foil: boolean } })
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
 	"RequestCollection", -- client → server: ask for a CollectionChanged (sent on client start)
-	"DisplayCard", -- client → server: (shelfUid: string, slot: number, cardId: string, foil: boolean) binder → case
+	"DisplayCard", -- client → server: (shelfUid: string, slot: number, cardId: string, foil: boolean, beastId: string?) binder → case
 	"RemoveDisplayedCard", -- client → server: (shelfUid: string, slot: number) case → binder
 	"SetCardPrice", -- client → server: (shelfUid: string, changes: { { slot: number, price: number } })
-	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice) from a Collector Case
+	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?) from a Collector Case
 	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 }
