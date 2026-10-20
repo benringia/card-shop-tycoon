@@ -17,9 +17,9 @@ local function roundCents(value: number): number
 	return math.round(value * 100) / 100
 end
 
--- Market value of a fresh copy (level 1, 1 star) or a raised beast
+-- Market value of a plain copy (level 1, 0 stars) or a levelled card
 function CardRules.getMarketValue(card: Card, foil: boolean, level: number?, stars: number?): number
-	return BeastRules.getValue(card, foil, level or 1, stars or 1)
+	return BeastRules.getValue(card, foil, level or 1, stars or BeastRules.START_STARS)
 end
 
 -- Showcase price: rounded to cents, between MIN_PRICE and MAX_MARKUP × market value

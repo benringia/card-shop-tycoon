@@ -16,6 +16,7 @@ local BeastRules = {}
 
 BeastRules.MAX_LEVEL = Beasts.MAX_LEVEL
 BeastRules.MAX_STARS = Beasts.MAX_STARS
+BeastRules.START_STARS = Beasts.START_STARS
 
 local function isKnownCard(cardId: string): boolean
 	return Cards.ById[cardId] ~= nil
@@ -33,6 +34,10 @@ function BeastRules.getXpToNext(level: number): number
 	return BeastMath.getXpToNext(Beasts, level)
 end
 
+function BeastRules.getCondenseCost(stars: number): number?
+	return BeastMath.getCondenseCost(Beasts, stars)
+end
+
 function BeastRules.applyXp(level: number, xp: number, amount: number): (number, number)
 	return BeastMath.applyXp(Beasts, level, xp, amount)
 end
@@ -47,14 +52,13 @@ function BeastRules.describeGrowth(level: number, stars: number): string
 end
 
 -- What the player needs to do for the next star
-function BeastRules.describeStarProgress(level: number, stars: number): string
+function BeastRules.describeStarProgress(stars: number): string
 	local progress = `Stars {stars}/{Beasts.MAX_STARS}`
-	if stars >= Beasts.MAX_STARS then
-		return `{progress} · fully upgraded`
-	elseif level < Beasts.STAR_UPGRADE_LEVEL then
-		return `{progress} · level up to Lv {Beasts.STAR_UPGRADE_LEVEL} to unlock the next star`
+	local cost = BeastMath.getCondenseCost(Beasts, stars)
+	if not cost then
+		return `{progress} · max stars`
 	end
-	return `{progress} · ready for a star upgrade (coming soon)`
+	return `{progress} · condense {cost} duplicates for the next star`
 end
 
 return BeastRules

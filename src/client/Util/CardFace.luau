@@ -12,7 +12,7 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
 type Card = typeof(Cards.List[1])
--- A raised beast's level and stars; nil means a fresh copy (level 1, 1 star)
+-- A raised beast's level and stars; nil means a plain copy (level 1, 0 stars)
 export type Growth = { level: number, stars: number }
 
 local BACK_COLOR = Color3.fromRGB(40, 40, 60)
@@ -99,7 +99,7 @@ end
 function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boolean, showValue: boolean?, growth: Growth?)
 	clear(frame)
 	local level = if growth then growth.level else 1
-	local stars = if growth then growth.stars else 1
+	local stars = if growth then growth.stars else BeastRules.START_STARS
 	frame.BackgroundColor3 = Cards.ELEMENTS[card.element] or BACK_COLOR
 	stroke.Color = CardFace.getRarityColor(card.rarity)
 	stroke.Thickness = PackOpening.STROKE_THICKNESS[card.rarity] or 2

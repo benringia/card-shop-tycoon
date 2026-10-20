@@ -164,7 +164,7 @@ function CardService.AddXP(player: Player, target: XpTarget, amount: number): Be
 			foil = target.foil,
 			level = 1,
 			xp = 0,
-			stars = 1,
+			stars = BeastRules.START_STARS,
 		}
 		inventory.beasts[newBeast.id] = newBeast
 		beast = newBeast

@@ -45,7 +45,7 @@ end
 
 local function getGrowth(displayed: DisplayedCard): (number, number)
 	local beast = displayed.beast
-	return if beast then beast.level else 1, if beast then beast.stars else 1
+	return if beast then beast.level else 1, if beast then beast.stars else BeastRules.START_STARS
 end
 
 local function getRoot(player: Player): BasePart?
@@ -112,7 +112,7 @@ local function onDisplayCard(player: Player, shelfUid: unknown, slot: unknown, c
 	end
 
 	local level = if beast then beast.level else 1
-	local stars = if beast then beast.stars else 1
+	local stars = if beast then beast.stars else BeastRules.START_STARS
 	PlacementService.SetDisplayedCard(shelf, slotNumber, {
 		cardId = cardId,
 		foil = foil,

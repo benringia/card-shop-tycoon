@@ -143,7 +143,7 @@ end
 
 local function getGrowth(displayed: DisplayedCard): (number, number)
 	local beast = displayed.beast
-	return if beast then beast.level else 1, if beast then beast.stars else 1
+	return if beast then beast.level else 1, if beast then beast.stars else BeastRules.START_STARS
 end
 
 local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: DisplayedCard): Part
@@ -479,7 +479,7 @@ local function readSavedCards(def: ShelfDef?, saved: { SavedCard }?, leftovers: 
 			end
 		end
 		local level = if beast then beast.level else 1
-		local stars = if beast then beast.stars else 1
+		local stars = if beast then beast.stars else BeastRules.START_STARS
 		local price = if typeof(entry.price) == "number" and entry.price == entry.price
 			then CardRules.clampPrice(entry.price, card, entry.foil, level, stars)
 			else CardRules.getMarketValue(card, entry.foil, level, stars)

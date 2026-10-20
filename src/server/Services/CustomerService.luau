@@ -15,6 +15,7 @@ local CustomerConfig = require(Config:WaitForChild("Customers"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 
@@ -383,7 +384,7 @@ local function shopForCard(customer: Customer): boolean
 	local card = Cards.ById[displayed.cardId]
 	-- A raised beast is judged against its own (higher) value
 	local level = if displayed.beast then displayed.beast.level else 1
-	local stars = if displayed.beast then displayed.beast.stars else 1
+	local stars = if displayed.beast then displayed.beast.stars else BeastRules.START_STARS
 	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil, level, stars))
 	if not band then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)

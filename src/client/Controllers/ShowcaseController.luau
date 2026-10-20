@@ -92,10 +92,10 @@ local function makeCardFace(parent: Instance, card: Card, foil: boolean, showVal
 	return face
 end
 
--- A displayed card's level and stars (1, 1 for a fresh copy)
+-- A displayed card's level and stars (1, 0 for a plain copy)
 local function getGrowthFromPart(part: BasePart): (number, number)
 	local level, stars = part:GetAttribute("Level"), part:GetAttribute("Stars")
-	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else 1
+	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else BeastRules.START_STARS
 end
 
 local function getRarityOrder(card: Card): number

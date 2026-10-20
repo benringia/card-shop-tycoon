@@ -198,7 +198,7 @@ local function addBeastRow(card: Card, beast: Beast, order: number)
 	xpText.TextStrokeTransparency = 0.6
 	xpText.ZIndex = 15
 
-	addRowText(row, BeastRules.describeStarProgress(beast.level, beast.stars), 72, 24, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+	addRowText(row, BeastRules.describeStarProgress(beast.stars), 72, 24, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
 -- Untouched copies: how many and what they're worth
