@@ -1,6 +1,7 @@
 --!strict
 -- Build button and shelf shop menu, the Stock / Edit prompts on your own shelves (card cases get a
--- Cards option instead of stocking), and the Move prompt on your order computer. Prompts are created
+-- Cards option instead of stocking; the Card Condenser gets a Condense prompt), and the Move prompt
+-- on your order computer. Prompts are created
 -- on this client only, so visitors never see them. The server re-checks everything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +17,7 @@ local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):Wait
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
+local CondenserController = require(Controllers:WaitForChild("CondenserController"))
 
 type ShelfDef = typeof(Shelves.List[1])
 
@@ -35,6 +37,7 @@ type ShelfPrompts = {
 }
 
 local COMPUTER_PROMPT_OFFSET = 80 -- pixels below the computer's "Order stock" prompt
+local CONDENSER_EDIT_OFFSET = 80 -- the Condenser shows Condense and Edit together, so Edit sits below
 
 local player = Players.LocalPlayer
 
@@ -46,6 +49,7 @@ local editPanel: Frame
 local editTitle: TextLabel
 local sellDetail: TextLabel
 local cardsRow: Frame
+local condenseRow: Frame
 local moveDetail: TextLabel
 local editingPart: BasePart? = nil
 local shelvesConnection: RBXScriptConnection? = nil
@@ -109,6 +113,7 @@ local function openEditPanel(part: BasePart)
 	editingPart = part
 	editTitle.Text = def.name
 	cardsRow.Visible = isCase
+	condenseRow.Visible = def.kind == "Condenser"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
 		elseif def.kind == "Condenser" then "Pick a new spot."
@@ -123,6 +128,14 @@ local function onCards()
 	editPanel.Visible = false
 	if part then
 		ShowcaseController.Open(part)
+	end
+end
+
+local function onCondense()
+	local part = editingPart
+	editPanel.Visible = false
+	if part then
+		CondenserController.Open(part)
 	end
 end
 
@@ -162,12 +175,17 @@ local function buildEditPanel(parent: Instance)
 	cardsButton.Text = "Cards"
 	cardsButton.Activated:Connect(onCards)
 
-	local _, moveButton, moveLabel = UIKit.row(list, 2, "Move", "")
+	local condenseButton: TextButton
+	condenseRow, condenseButton = UIKit.row(list, 2, "Condense", "Combine duplicates for +1 star.")
+	condenseButton.Text = "Open"
+	condenseButton.Activated:Connect(onCondense)
+
+	local _, moveButton, moveLabel = UIKit.row(list, 3, "Move", "")
 	moveDetail = moveLabel
 	moveButton.Text = "Move"
 	moveButton.Activated:Connect(onMove)
 
-	local _, sellButton, detail = UIKit.row(list, 3, "Sell", "")
+	local _, sellButton, detail = UIKit.row(list, 4, "Sell", "")
 	sellDetail = detail
 	sellButton.Text = "Sell"
 	sellButton.BackgroundColor3 = UIKit.Colors.Danger
@@ -189,6 +207,12 @@ end
 -- Card cases never take stock, so they always show Edit.
 local function applyPromptMode(part: BasePart, prompts: ShelfPrompts)
 	local def = Shelves.ById[part.Name]
+	if def and def.kind == "Condenser" then
+		-- Condense (E) and Edit (F) both show; Edit is offset so they don't overlap
+		prompts.stock.Enabled = true
+		prompts.edit.Enabled = true
+		return
+	end
 	local takesStock = def ~= nil and def.kind == "Products"
 	local carrying = getNumberAttribute(player, "CarryCount", 0) > 0
 	prompts.stock.Enabled = takesStock and carrying
@@ -210,8 +234,16 @@ local function addShelfPrompts(child: Instance)
 		return
 	end
 
-	local stock = makePrompt(child, "Stock shelf", def.name, Enum.KeyCode.E)
+	local isCondenser = def.kind == "Condenser"
+	-- E: stock a product shelf, or open the Condenser
+	local stock = makePrompt(child, if isCondenser then "Condense" else "Stock shelf", def.name, Enum.KeyCode.E)
 	stock.Triggered:Connect(function()
+		if isCondenser then
+			if not PlacementController.IsActive() then
+				CondenserController.Open(child)
+			end
+			return
+		end
 		local uid = child:GetAttribute("ShelfUid")
 		if typeof(uid) == "string" then
 			Remotes.StockShelf:FireServer(uid)
@@ -220,6 +252,9 @@ local function addShelfPrompts(child: Instance)
 
 	local edit = makePrompt(child, "Edit", def.name, Enum.KeyCode.F)
 	edit.GamepadKeyCode = Enum.KeyCode.ButtonY
+	if isCondenser then
+		edit.UIOffset = Vector2.new(0, CONDENSER_EDIT_OFFSET)
+	end
 	edit.Triggered:Connect(function()
 		if not PlacementController.IsActive() then
 			openEditPanel(child)
