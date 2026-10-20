@@ -23,9 +23,12 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
 type Card = typeof(Cards.List[1])
-type PickerFilter = "All" | "Rare+" | "Epic+" | "Foil"
+-- "All", "Foil", or a rarity name (exactly that rarity)
+type PickerFilter = string
 
-local PICKER_FILTERS: { PickerFilter } = { "All", "Rare+", "Epic+", "Foil" }
+local ALL_FILTER = "All"
+local FOIL_FILTER = "Foil"
+local FILTER_CHIP_WIDTH = 96
 local PICKER_TILE_SIZE = Vector2.new(96, 136)
 local THUMBNAIL_SIZE = Vector2.new(36, 50)
 
@@ -45,7 +48,7 @@ local picker: Frame
 local pickerList: ScrollingFrame
 local pickerTitle: TextLabel
 local filterButtons: { [PickerFilter]: TextButton } = {}
-local pickerFilter: PickerFilter = "All"
+local pickerFilter: PickerFilter = ALL_FILTER
 
 local casePart: BasePart? = nil
 local caseConnections: { RBXScriptConnection } = {}
@@ -98,20 +101,30 @@ local function getGrowthFromPart(part: BasePart): (number, number)
 	return if typeof(level) == "number" then level else 1, if typeof(stars) == "number" then stars else BeastRules.START_STARS
 end
 
-local function getRarityOrder(card: Card): number
-	local tier = Rarities.Tiers[card.rarity]
-	return if tier then tier.order else 0
+-- All, every rarity from Common up (read from the config, so new tiers show up here), then Foil
+local function getPickerFilters(): { PickerFilter }
+	local rarities: { string } = {}
+	for name in Rarities.Tiers do
+		table.insert(rarities, name)
+	end
+	table.sort(rarities, function(a, b)
+		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
+	end)
+	local filters: { PickerFilter } = { ALL_FILTER }
+	for _, name in rarities do
+		table.insert(filters, name)
+	end
+	table.insert(filters, FOIL_FILTER)
+	return filters
 end
 
 local function passesFilter(card: Card, foil: boolean): boolean
-	if pickerFilter == "Foil" then
+	if pickerFilter == ALL_FILTER then
+		return true
+	elseif pickerFilter == FOIL_FILTER then
 		return foil
-	elseif pickerFilter == "Rare+" then
-		return getRarityOrder(card) >= Rarities.Tiers.Rare.order
-	elseif pickerFilter == "Epic+" then
-		return getRarityOrder(card) >= Rarities.Tiers.Epic.order
 	end
-	return true
+	return card.rarity == pickerFilter
 end
 
 local FILLED_ROW_HEIGHT = 144
@@ -410,22 +423,31 @@ local function buildPicker(parent: Instance)
 	pickerTitle = picker:FindFirstChild("Title") :: TextLabel
 	pickerTitle.TextSize = 22
 
-	-- Rarity filter chips
-	local chips = Instance.new("Frame")
+	-- Rarity filter chips; the row scrolls sideways when it's wider than the panel (phones)
+	local chips = Instance.new("ScrollingFrame")
 	chips.Position = UDim2.fromOffset(12, 62)
-	chips.Size = UDim2.new(1, -24, 0, 40)
+	chips.Size = UDim2.new(1, -24, 0, 44)
 	chips.BackgroundTransparency = 1
+	chips.BorderSizePixel = 0
+	chips.ScrollBarThickness = 3
+	chips.ScrollingDirection = Enum.ScrollingDirection.X
+	chips.CanvasSize = UDim2.new()
+	chips.AutomaticCanvasSize = Enum.AutomaticSize.X
 	chips.Parent = picker
 	local chipLayout = Instance.new("UIListLayout")
 	chipLayout.FillDirection = Enum.FillDirection.Horizontal
 	chipLayout.Padding = UDim.new(0, 8)
 	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	chipLayout.Parent = chips
-	for index, filter in PICKER_FILTERS do
+	for index, filter in getPickerFilters() do
 		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
 		chip.LayoutOrder = index
-		chip.Size = UDim2.fromOffset(76, 40)
+		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 40)
 		chip.TextSize = 15
+		local tier = Rarities.Tiers[filter]
+		if tier then
+			chip.TextColor3 = tier.color
+		end
 		chip.Activated:Connect(function()
 			pickerFilter = filter
 			renderPicker()
