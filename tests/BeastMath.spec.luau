@@ -148,7 +148,8 @@ return {
 	end,
 
 	["grade: roll boundaries"] = function()
-		local cases = { { 0, "C" }, { 0.49, "C" }, { 0.5, "B" }, { 0.79, "B" }, { 0.8, "A" }, { 0.949, "A" }, { 0.95, "S" }, { 0.9999, "S" } }
+		-- C 55% / B 30% / A 13% / S 2%
+		local cases = { { 0, "C" }, { 0.549, "C" }, { 0.55, "B" }, { 0.849, "B" }, { 0.85, "A" }, { 0.979, "A" }, { 0.98, "S" }, { 0.9999, "S" } }
 		for _, case in cases do
 			expect.equal(BeastMath.rollGrade(config, case[1]), case[2], `roll {case[1]}`)
 		end

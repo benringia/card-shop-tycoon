@@ -16,16 +16,16 @@ the Condenser (Plan B).
 
 | Grade | Chance | Stats and value |
 |---|---|---|
-| C | 50% | +0% |
+| C | 55% | +0% |
 | B | 30% | +3% |
-| A | 15% | +6% |
-| S | 5% | +10% |
+| A | 13% | +6% |
+| S | 2% | +10% |
 
 - Rolled on the server when a card is pulled (packs, `/testpack`). Never changes afterwards.
 - Stats: × grade multiplier on HP, ATK and SPD, on top of element, level, stars and foil.
 - Value: × the same grade multiplier.
 - Config in `Config/Beasts.luau`: `GRADES = { "C", "B", "A", "S" }` (weakest first),
-  `GRADE_CHANCES = { C = 0.5, B = 0.3, A = 0.15, S = 0.05 }`, `GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 }`,
+  `GRADE_CHANCES = { C = 0.55, B = 0.3, A = 0.13, S = 0.02 }`, `GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 }`,
   `DEFAULT_GRADE = "C"`.
 - Text: grade shown as `Grade S` (plain letters, no symbols).
 

@@ -216,10 +216,10 @@ Plain copies stack by card, foil and grade; a copy becomes an individual card (k
 
 | Grade | Chance | Stats and value |
 |---|---|---|
-| C | 50% | +0% |
+| C | 55% | +0% |
 | B | 30% | +3% |
-| A | 15% | +6% |
-| S | 5% | +10% |
+| A | 13% | +6% |
+| S | 2% | +10% |
 
 **Power** = HP + 5 × ATK + 5 × SPD, shown on cards. Rarity always beats grade at equal level and stars: the best
 copy of a rarity (best element, S, foil) has less Power than the worst copy of the next rarity (unit-tested).

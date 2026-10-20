@@ -39,7 +39,7 @@ return {
 
 	-- Grades, weakest first. Rolled once when a card is pulled; boost stats and value.
 	GRADES = { "C", "B", "A", "S" },
-	GRADE_CHANCES = { C = 0.5, B = 0.3, A = 0.15, S = 0.05 },
+	GRADE_CHANCES = { C = 0.55, B = 0.3, A = 0.13, S = 0.02 },
 	GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 },
 	DEFAULT_GRADE = "C",
 
