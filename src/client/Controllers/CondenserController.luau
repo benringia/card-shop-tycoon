@@ -30,7 +30,7 @@ type Candidate = { key: string, beast: Beast?, foil: boolean, grade: string, lev
 local PANEL_MAX_SIZE = Vector2.new(820, 520)
 local LIST_WIDTH_SCALE = 0.5
 local ROW_HEIGHT = 64
-local MAIN_ROW_HEIGHT = 40
+local MAIN_ROW_HEIGHT = 48 -- tap target minimum
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
@@ -45,7 +45,11 @@ local list: ScrollingFrame
 local pane: ScrollingFrame
 local machine: BasePart? = nil
 local selectedCardId: string? = nil
-local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = strongest
+local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
+local inFlight = false -- a Condense request is waiting for the server; the button stays locked
+local inFlightToken = 0
+-- A plain main being condensed: the levelled card it becomes is selected once it arrives
+local awaitingNewCard: { before: { [string]: boolean }, cardId: string, foil: boolean, grade: string }? = nil
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -107,12 +111,7 @@ local function getCandidates(card: Card): { Candidate }
 			end
 		end
 	end
-	table.sort(candidates, function(a, b)
-		if a.power ~= b.power then
-			return a.power > b.power
-		end
-		return a.key < b.key
-	end)
+	CondenseRules.sortMainChoices(candidates)
 	return candidates
 end
 
@@ -121,15 +120,20 @@ local function getPlan(card: Card, main: Candidate): ({ CondenseRules.Take }?, s
 	return CondenseRules.plan(Beasts, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars })
 end
 
--- Cards worth showing: two or more copies in total (something to condense), rarest first
+-- Cards with at least one duplicate to use: a levelled copy plus a plain one, or two plain copies.
+-- Rarest first.
 local function getCondensableCards(): { Card }
 	local result: { Card } = {}
 	for _, card in Cards.RarestFirst do
-		local total = 0
+		local plain, levelled = 0, 0
 		for _, candidate in getCandidates(card) do
-			total += candidate.count
+			if candidate.beast then
+				levelled += 1
+			else
+				plain += candidate.count
+			end
 		end
-		if total >= 2 then
+		if plain >= 2 or (levelled > 0 and plain >= 1) then
 			table.insert(result, card)
 		end
 	end
@@ -165,6 +169,15 @@ local function renderPane(card: Card?)
 		return
 	end
 	local candidates = getCandidates(card)
+	-- A plain main just became a levelled card: keep condensing that card
+	local waiting = awaitingNewCard
+	if waiting and waiting.cardId == card.id then
+		local newId = CondenseRules.findNewCard(waiting.before, BinderController.GetBeasts(), card.id, waiting.foil, waiting.grade)
+		if newId then
+			mainKey = newId
+			awaitingNewCard = nil
+		end
+	end
 	local main: Candidate? = nil
 	for _, candidate in candidates do
 		if candidate.key == mainKey then
@@ -204,24 +217,41 @@ local function renderPane(card: Card?)
 	info.TextYAlignment = Enum.TextYAlignment.Top
 
 	local y = DETAIL_FACE_SIZE.Y + 16
-	local condense = UIKit.button(pane, if takes then "Condense +1 star" else describeReason(reason), if takes then UIKit.Colors.Accent else UIKit.Colors.Locked)
+	local canCondense = takes ~= nil and not inFlight
+	local buttonText = if inFlight then "Condensing..." elseif takes then "Condense +1 star" else describeReason(reason)
+	local condense = UIKit.button(pane, buttonText, if canCondense then UIKit.Colors.Accent else UIKit.Colors.Locked)
 	condense.Position = UDim2.fromOffset(8, y)
 	condense.Size = UDim2.new(1, -16, 0, 48)
 	condense.TextSize = 16
-	condense.AutoButtonColor = takes ~= nil
+	condense.AutoButtonColor = canCondense
 	condense.Activated:Connect(function()
 		local part = machine
-		if not takes or not part then
+		if not canCondense or inFlight or not part then
 			return
 		end
+		-- Locked until the binder sync arrives (or a timeout if the server refused), so a second tap
+		-- can't send the same stale request
+		inFlight = true
+		inFlightToken += 1
+		local token = inFlightToken
+		task.delay(CondenserConfig.IN_FLIGHT_TIMEOUT, function()
+			if token == inFlightToken and inFlight then
+				inFlight = false
+				render()
+			end
+		end)
 		local beast = chosen.beast
 		if beast then
 			Remotes.Condense:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id)
 		else
-			-- The plain copy becomes a new levelled card; select the strongest copy (it) after the sync
-			mainKey = nil
+			local before: { [string]: boolean } = {}
+			for id in BinderController.GetBeasts() do
+				before[id] = true
+			end
+			awaitingNewCard = { before = before, cardId = card.id, foil = chosen.foil, grade = chosen.grade }
 			Remotes.Condense:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade)
 		end
+		render()
 	end)
 	y += 58
 
@@ -304,6 +334,7 @@ local function buildCardRow(card: Card, order: number)
 		if selectedCardId ~= card.id then
 			selectedCardId = card.id
 			mainKey = nil
+			awaitingNewCard = nil
 		end
 		render()
 	end)
@@ -343,6 +374,8 @@ function CondenserController.Open(part: BasePart)
 	machine = part
 	selectedCardId = nil
 	mainKey = nil
+	awaitingNewCard = nil
+	inFlight = false
 	panel.Visible = true
 	render()
 end
@@ -391,7 +424,10 @@ function CondenserController.Start()
 
 	-- Condensing changes the binder; redraw with the new counts and stars
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
-		task.defer(render) -- after BinderController has stored the new binder
+		task.defer(function() -- after BinderController has stored the new binder
+			inFlight = false
+			render()
+		end)
 	end)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not panel.Visible then

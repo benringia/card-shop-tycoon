@@ -54,6 +54,37 @@ return {
 		expect.equal(reason, "max", "reason")
 	end,
 
+	["default main: levelled first, then plain foil, then plain normal"] = function()
+		local copies = {
+			{ key = "plainSfoil", beast = false, foil = true, power = 300 },
+			{ key = "plainC", beast = false, foil = false, power = 200 },
+			{ key = "lv1", beast = true, foil = false, power = 230 },
+			{ key = "lv8", beast = true, foil = false, power = 400 },
+			{ key = "plainBfoil", beast = false, foil = true, power = 250 },
+		}
+		CondenseRules.sortMainChoices(copies)
+		local order = {}
+		for _, copy in copies do
+			table.insert(order, copy.key)
+		end
+		expect.equal(table.concat(order, ","), "lv8,lv1,plainSfoil,plainBfoil,plainC", "order")
+	end,
+
+	["finds the card a plain main became"] = function()
+		local before = { old = true }
+		local beasts = {
+			old = { cardId = "FS30", foil = false, grade = "C" },
+			other = { cardId = "FS01", foil = false, grade = "C" },
+			wrongGrade = { cardId = "FS30", foil = false, grade = "S" },
+			fresh = { cardId = "FS30", foil = false, grade = "C" },
+		}
+		before.other = true
+		before.wrongGrade = true
+		expect.equal(CondenseRules.findNewCard(before, beasts, "FS30", false, "C"), "fresh", "new one")
+		before.fresh = true
+		expect.isNil(CondenseRules.findNewCard(before, beasts, "FS30", false, "C"), "none new")
+	end,
+
 	["junk counts are ignored"] = function()
 		local stacks: any = { C = { normal = -3, foil = 0 / 0 }, B = "junk", Z = counts(50, 0) }
 		local takes, reason = CondenseRules.plan(config, stacks, { beast = true, foil = false, grade = "C", stars = 0 })

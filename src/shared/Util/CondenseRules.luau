@@ -65,4 +65,40 @@ function CondenseRules.plan(config: Config, byGrade: { [string]: any }, main: Ma
 	return takes, nil
 end
 
+-- Main copy choices in default order: levelled cards first (the card you've been raising), then plain
+-- foil, then plain normal; strongest first inside each group. Sorts in place.
+export type MainChoice = { key: string, beast: any, foil: boolean, power: number } -- beast: truthy for a levelled card
+
+function CondenseRules.sortMainChoices<T>(choices: { T & MainChoice })
+	local function group(choice: MainChoice): number
+		return if choice.beast then 1 elseif choice.foil then 2 else 3
+	end
+	table.sort(choices, function(a, b)
+		if group(a) ~= group(b) then
+			return group(a) < group(b)
+		end
+		if a.power ~= b.power then
+			return a.power > b.power
+		end
+		return a.key < b.key
+	end)
+end
+
+-- After condensing a plain main: the levelled card it became (an ID that wasn't there before, same card,
+-- foil and grade), so the panel keeps condensing that card instead of jumping to another one
+function CondenseRules.findNewCard(
+	beforeIds: { [string]: boolean },
+	beasts: { [string]: { cardId: string, foil: boolean, grade: string } },
+	cardId: string,
+	foil: boolean,
+	grade: string
+): string?
+	for id, beast in beasts do
+		if not beforeIds[id] and beast.cardId == cardId and beast.foil == foil and beast.grade == grade then
+			return id
+		end
+	end
+	return nil
+end
+
 return CondenseRules
