@@ -7,6 +7,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BeastMath = require("./BeastMath.spec"),
 	Migrations = require("./Migrations.spec"),
 	SaleRules = require("./SaleRules.spec"),
+	CondenseRules = require("./CondenseRules.spec"),
 }
 
 local passed, failed = 0, 0
