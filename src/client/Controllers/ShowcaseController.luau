@@ -271,7 +271,8 @@ end
 -- Tooltip (mouse only) -------------------------------------------------------------------------------
 
 local function showTooltip(row: GuiObject, listing: Listing, kind: string)
-	if not UserInputService.MouseEnabled then
+	-- Rows under the open card picker still get mouse events; no tooltip through it
+	if not UserInputService.MouseEnabled or picker.Visible then
 		return
 	end
 	tooltipText.Text = describeDetails(listing, kind)

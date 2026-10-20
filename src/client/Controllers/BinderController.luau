@@ -549,7 +549,8 @@ local function describeTooltip(card: Card): string
 end
 
 local function showTooltip(tile: Tile)
-	if not UserInputService.MouseEnabled or not tile.button.Parent then
+	-- Pockets under the open card view still get mouse events; no tooltip through it
+	if not UserInputService.MouseEnabled or not tile.button.Parent or detail.Visible then
 		return
 	end
 	tooltipText.Text = describeTooltip(tile.card)
