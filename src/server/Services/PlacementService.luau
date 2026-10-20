@@ -2,7 +2,7 @@
 -- Places, moves and sells shelves on a player's plot, and holds what is on each shelf: stock units
 -- on product shelves, displayed cards on card cases (ShowcaseService handles the card actions).
 -- Shelf parts carry attributes (ShelfUid, ShelfId, GridX, GridZ, Rotation, Refund) for the client.
--- Displayed card parts carry CardId, Foil, Price, Slot, ShelfUid, OwnerUserId and ShelfKind.
+-- Displayed card parts carry CardId, Foil, Grade, Price, Slot, ShelfUid, OwnerUserId, ShelfKind, Level, Stars, BeastId.
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -36,8 +36,9 @@ type SavedCard = DataService.SavedCard
 type SavedCell = DataService.SavedCell
 
 type Beast = CardService.Beast
--- A card in a case slot: a plain copy (beast = nil) or a specific levelled card
-export type DisplayedCard = { cardId: string, foil: boolean, price: number, beast: Beast? }
+-- A card in a case slot: a plain copy (beast = nil) or a specific levelled card. grade is the copy's
+-- grade (for a levelled card, the same as beast.grade).
+export type DisplayedCard = { cardId: string, foil: boolean, grade: string, price: number, beast: Beast? }
 
 export type PlacedShelf = {
 	uid: string,
@@ -141,9 +142,9 @@ local function addCardText(parent: Instance, text: string, y: number, height: nu
 	return label
 end
 
-local function getGrowth(displayed: DisplayedCard): (number, number)
+local function getGrowth(displayed: DisplayedCard): (number, number, string)
 	local beast = displayed.beast
-	return if beast then beast.level else 1, if beast then beast.stars else BeastRules.START_STARS
+	return if beast then beast.level else 1, if beast then beast.stars else BeastRules.START_STARS, displayed.grade
 end
 
 local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: DisplayedCard): Part
@@ -163,7 +164,8 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part:SetAttribute("ShelfUid", shelf.uid)
 	part:SetAttribute("OwnerUserId", shelf.owner.UserId)
 	part:SetAttribute("ShelfKind", shelf.def.kind)
-	local level, stars = getGrowth(displayed)
+	local level, stars, grade = getGrowth(displayed)
+	part:SetAttribute("Grade", grade)
 	part:SetAttribute("Level", level)
 	part:SetAttribute("Stars", stars)
 	part:SetAttribute("BeastId", if displayed.beast then displayed.beast.id else nil)
@@ -190,7 +192,7 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	if displayed.beast then
 		addCardText(frame, BeastRules.describeGrowth(level, stars), 0.38, 0.13)
 	end
-	addCardText(frame, card.rarity, 0.53, 0.14).TextColor3 = Rarities.Tiers[card.rarity].color
+	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = Rarities.Tiers[card.rarity].color
 	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
 
 	part.Parent = shelf.part
@@ -204,6 +206,7 @@ local function renderCardSlot(shelf: PlacedShelf, slot: number)
 	if existing and displayed
 		and existing:GetAttribute("CardId") == displayed.cardId
 		and existing:GetAttribute("Foil") == displayed.foil
+		and existing:GetAttribute("Grade") == displayed.grade
 		and existing:GetAttribute("BeastId") == (if displayed.beast then displayed.beast.id else nil)
 	then
 		existing:SetAttribute("Price", displayed.price)
@@ -475,15 +478,27 @@ local function readSavedCards(def: ShelfDef?, saved: { SavedCard }?, leftovers: 
 		if typeof(entry.beastId) == "string" then
 			local clean = BeastRules.sanitize(entry)
 			if clean then
-				beast = { id = entry.beastId, cardId = clean.cardId, foil = clean.foil, level = clean.level, xp = clean.xp, stars = clean.stars }
+				beast = {
+					id = entry.beastId,
+					cardId = clean.cardId,
+					foil = clean.foil,
+					level = clean.level,
+					xp = clean.xp,
+					stars = clean.stars,
+					grade = clean.grade,
+				}
 			end
 		end
 		local level = if beast then beast.level else 1
 		local stars = if beast then beast.stars else BeastRules.START_STARS
+		local grade = if beast
+			then beast.grade
+			elseif BeastRules.isGrade(entry.grade) then entry.grade :: string
+			else BeastRules.DEFAULT_GRADE
 		local price = if typeof(entry.price) == "number" and entry.price == entry.price
-			then CardRules.clampPrice(entry.price, card, entry.foil, level, stars)
-			else CardRules.getMarketValue(card, entry.foil, level, stars)
-		local displayed: DisplayedCard = { cardId = entry.cardId, foil = entry.foil, price = price, beast = beast }
+			then CardRules.clampPrice(entry.price, card, entry.foil, level, stars, grade)
+			else CardRules.getMarketValue(card, entry.foil, level, stars, grade)
+		local displayed: DisplayedCard = { cardId = entry.cardId, foil = entry.foil, grade = grade, price = price, beast = beast }
 		local slot = entry.slot
 		if def and isCardCase(def) and isGridInteger(slot) and slot >= 1 and slot <= def.capacity and not bySlot[slot] then
 			bySlot[slot] = displayed
@@ -541,7 +556,7 @@ local function load(player: Player, data: PlayerData)
 		restoreShelf(player, plot, saved, leftovers)
 	end
 	for _, displayed in leftovers do
-		CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.beast)
+		CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.grade, displayed.beast)
 	end
 end
 
@@ -562,6 +577,7 @@ local function save(player: Player, data: PlayerData)
 				cardId = displayed.cardId,
 				foil = displayed.foil,
 				price = displayed.price,
+				grade = displayed.grade,
 				beastId = if beast then beast.id else nil,
 				level = if beast then beast.level else nil,
 				xp = if beast then beast.xp else nil,

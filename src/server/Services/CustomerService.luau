@@ -385,7 +385,7 @@ local function shopForCard(customer: Customer): boolean
 	-- A levelled card is judged against its own (higher) value
 	local level = if displayed.beast then displayed.beast.level else 1
 	local stars = if displayed.beast then displayed.beast.stars else BeastRules.START_STARS
-	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil, level, stars))
+	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil, level, stars, displayed.grade))
 	if not band then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
 		return true
