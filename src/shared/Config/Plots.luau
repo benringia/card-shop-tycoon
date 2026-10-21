@@ -12,12 +12,10 @@ return {
 	GAP = 8, -- space between neighbouring plots in a row
 	STREET_WIDTH = 30, -- distance between the two rows
 
-	FREE_COLOR = Color3.fromRGB(120, 120, 120),
-	OWNED_COLOR = Color3.fromRGB(205, 185, 150),
+	FREE_COLOR = Color3.fromRGB(120, 120, 120), -- floor while for rent; owned plots use their theme (Config/Town)
 
-	-- Sign floats above the front edge, facing the street
+	-- Sign stands on the awning's outer lip, facing the street
 	SIGN_SIZE = Vector3.new(16, 4, 1),
-	SIGN_HEIGHT = 8,
 	SIGN_COLOR = Color3.fromRGB(40, 40, 50),
 	SIGN_TEXT_COLOR = Color3.fromRGB(255, 255, 255),
 	FREE_SIGN_TEXT = "For Rent",
@@ -45,7 +43,6 @@ return {
 	REGISTER_SIZE = Vector3.new(6, 3.5, 2),
 	REGISTER_SIDE_INSET = 5, -- from the side wall to the counter centre
 	REGISTER_BACK_INSET = 6, -- from the back wall to the counter centre
-	REGISTER_COLOR = Color3.fromRGB(90, 60, 45),
 	REGISTER_TEXT = "REGISTER",
 
 	-- Invisible strip in front of the register that shelves can't be placed on.

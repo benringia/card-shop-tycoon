@@ -1,11 +1,16 @@
 --!strict
--- Builds the shop plots. DataService claims one per player on join and releases it on leave.
+-- Builds the shop plots and their shells (themed walls, open front, striped awning, roof; main town spec).
+-- DataService claims one per player on join and releases it on leave.
 -- Other services ask PlotService.GetPlot(player) to find a player's plot.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local PlotConfig = require(Shared:WaitForChild("Config"):WaitForChild("Plots"))
+local Config = Shared:WaitForChild("Config")
+local PlotConfig = require(Config:WaitForChild("Plots"))
+local Town = require(Config:WaitForChild("Town"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
+
+local Props = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Props"))
 
 local COMPUTER_FIXTURE_ID = "OrderComputer"
 
@@ -18,6 +23,7 @@ export type Plot = {
 	computer: Part,
 	deliverySpot: Part,
 	register: Part,
+	roof: Part,
 	shelvesFolder: Folder,
 	owner: Player?,
 }
@@ -62,12 +68,86 @@ local function addSurfaceLabel(part: Part, text: string): TextLabel
 	return label
 end
 
+local function getTheme(id: number)
+	return Town.PLOT_THEMES[(id - 1) % #Town.PLOT_THEMES + 1]
+end
+
+-- Height of the wall tops above the plot CFrame (the floor centre)
+local function wallTop(): number
+	return PlotConfig.FLOOR_THICKNESS / 2 + Town.WALL_HEIGHT
+end
+
+local function shellPart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanTouch = false
+	part.Size = size
+	part.CFrame = cframe
+	part.Color = color
+	part.Material = material or Enum.Material.SmoothPlastic
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Parent = parent
+	return part
+end
+
+-- A wall with a trim strip along its top and a baseboard (both a little thicker than the wall)
+local function buildWall(parent: Instance, plotCFrame: CFrame, size: Vector3, offset: Vector3, wall: Color3, trim: Color3)
+	local bottom = -PlotConfig.FLOOR_THICKNESS / 2
+	local height = wallTop() - bottom
+	shellPart(parent, "Wall", Vector3.new(size.X, height, size.Z), plotCFrame * CFrame.new(offset.X, bottom + height / 2, offset.Z), wall)
+	local trimSize = Vector3.new(size.X + 0.2, Town.TRIM_HEIGHT, size.Z + 0.2)
+	shellPart(parent, "Trim", trimSize, plotCFrame * CFrame.new(offset.X, wallTop() - Town.TRIM_HEIGHT / 2, offset.Z), trim)
+	local baseboard = shellPart(parent, "Baseboard", trimSize, plotCFrame * CFrame.new(offset.X, PlotConfig.FLOOR_THICKNESS / 2 + Town.TRIM_HEIGHT / 2, offset.Z), trim)
+	baseboard.CanCollide = false
+end
+
+-- Walls sit outside the floor edges, so the placement grid and saved layouts are unchanged. Open front.
+local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Part
+	local theme = getTheme(id)
+	local wall, trim = Props.color(theme.wall), Props.color(theme.trim)
+	local thickness = Town.WALL_THICKNESS
+	local halfWidth, halfDepth = PlotConfig.WIDTH / 2, PlotConfig.DEPTH / 2
+	local outerWidth = PlotConfig.WIDTH + thickness * 2
+	local bottom = -PlotConfig.FLOOR_THICKNESS / 2
+
+	buildWall(parent, plotCFrame, Vector3.new(outerWidth, 0, thickness), Vector3.new(0, 0, halfDepth + thickness / 2), wall, trim)
+	for _, side in { -1, 1 } do
+		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), wall, trim)
+		local pillar = Vector3.new(Town.PILLAR_SIZE, wallTop() - bottom, Town.PILLAR_SIZE)
+		shellPart(parent, "Pillar", pillar, plotCFrame * CFrame.new(side * (halfWidth + thickness / 2), bottom + pillar.Y / 2, -halfDepth), trim)
+	end
+
+	-- Striped awning sloping down and out over the street from the front top edge
+	local slope = math.atan2(Town.AWNING_DROP, Town.AWNING_DEPTH)
+	local length = math.sqrt(Town.AWNING_DEPTH ^ 2 + Town.AWNING_DROP ^ 2)
+	local stripe = outerWidth / Town.AWNING_STRIPES
+	for index = 1, Town.AWNING_STRIPES do
+		local x = -outerWidth / 2 + (index - 0.5) * stripe
+		local color = if index % 2 == 1 then Props.color(theme.awning) else Props.color(Town.STRIPE_COLOR)
+		local cframe = plotCFrame
+			* CFrame.new(x, wallTop() - Town.AWNING_DROP / 2, -halfDepth - Town.AWNING_DEPTH / 2)
+			* CFrame.Angles(-slope, 0, 0)
+		local part = shellPart(parent, "Awning", Vector3.new(stripe, 0.3, length), cframe, color, Enum.Material.Fabric)
+		part.CanCollide = false
+	end
+
+	-- The client hides this roof while you stand in the shop (TownController)
+	local roofSize = Vector3.new(outerWidth, Town.ROOF_THICKNESS, PlotConfig.DEPTH + thickness)
+	local roof = shellPart(parent, "Roof", roofSize, plotCFrame * CFrame.new(0, wallTop() + Town.ROOF_THICKNESS / 2, thickness / 2), Props.color(theme.roof))
+	roof.CanQuery = false -- the camera never pulls in because of it
+	return roof
+end
+
+-- The shop sign stands on the awning's outer lip, facing the street
 local function buildSign(plotCFrame: CFrame, parent: Instance): TextLabel
 	local sign = Instance.new("Part")
 	sign.Name = "Sign"
 	sign.Anchored = true
 	sign.Size = PlotConfig.SIGN_SIZE
-	sign.CFrame = plotCFrame * CFrame.new(0, PlotConfig.SIGN_HEIGHT, -PlotConfig.DEPTH / 2)
+	sign.CFrame = plotCFrame
+		* CFrame.new(0, wallTop() - Town.AWNING_DROP + PlotConfig.SIGN_SIZE.Y / 2, -PlotConfig.DEPTH / 2 - Town.AWNING_DEPTH)
 	sign.Color = PlotConfig.SIGN_COLOR
 	sign.Parent = parent
 
@@ -116,8 +196,9 @@ local function buildDeliverySpot(plotCFrame: CFrame, parent: Instance): Part
 	return pad
 end
 
--- Register faces the street like the plot; customers queue in front of it, the owner stands behind
-local function buildRegister(plotCFrame: CFrame, parent: Instance): Part
+-- Register faces the street like the plot; customers queue in front of it, the owner stands behind.
+-- The counter part is what the shop systems use; the register and counter props sit on top of it.
+local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): Part
 	local size = PlotConfig.REGISTER_SIZE
 	local register = Instance.new("Part")
 	register.Name = "Register"
@@ -129,11 +210,14 @@ local function buildRegister(plotCFrame: CFrame, parent: Instance): Part
 			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
 			PlotConfig.DEPTH / 2 - PlotConfig.REGISTER_BACK_INSET
 		)
-	register.Color = PlotConfig.REGISTER_COLOR
+	register.Color = Props.color(getTheme(id).trim)
 	register.Material = Enum.Material.Wood
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
 	addSurfaceLabel(register, PlotConfig.REGISTER_TEXT)
+	local counterTop = register.CFrame * CFrame.new(0, size.Y / 2, 0)
+	Props.place("Register", counterTop * CFrame.new(-size.X / 6, 0, 0), parent)
+	Props.place("CounterDecor", counterTop * CFrame.new(size.X / 3, 0, 0), parent, id)
 
 	-- Keeps shelves out of the customer queue line
 	local zone = Instance.new("Part")
@@ -199,7 +283,8 @@ local function buildPlot(id: number, folder: Folder): Plot
 		spawn = buildSpawn(plotCFrame, model),
 		computer = buildComputer(plotCFrame, model),
 		deliverySpot = buildDeliverySpot(plotCFrame, model),
-		register = buildRegister(plotCFrame, model),
+		register = buildRegister(id, plotCFrame, model),
+		roof = buildShell(id, plotCFrame, model),
 		shelvesFolder = shelvesFolder,
 		owner = nil,
 	}
@@ -231,7 +316,7 @@ function PlotService.Claim(player: Player)
 	plot.owner = player
 	plotByPlayer[player] = plot
 	plot.model:SetAttribute("OwnerUserId", player.UserId)
-	plot.floor.Color = PlotConfig.OWNED_COLOR
+	plot.floor.Color = Props.color(getTheme(plot.id).floor)
 	plot.signLabel.Text = string.format(PlotConfig.OWNED_SIGN_FORMAT, player.DisplayName)
 	player:SetAttribute("PlotId", plot.id)
 	player.RespawnLocation = plot.spawn
