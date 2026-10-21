@@ -6,6 +6,7 @@ return {
 	ORIGIN = { x = 0, y = 0, z = 1200 },
 	PLAZA_PORTAL = { x = 84, y = 0, z = -9 }, -- east end of the street (rows span x -68..68), beside the Frontier portal
 	SPRING = { x = 0, y = 0, z = 0 }, -- plaza centre between the shop rows
+	SPRING_LABEL_DISTANCE = 35, -- the healing spring's name shows only this close
 	PORTAL_SIGN_HEIGHT = 17, -- portal signs float above the portal frame prop (Town.SLOTS.Portal)
 	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN
 	ZONE_SIZE = 120, -- each zone is a square this wide

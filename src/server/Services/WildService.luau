@@ -234,7 +234,7 @@ local function buildPlaza()
 	local board = Instance.new("BillboardGui")
 	board.Size = UDim2.fromOffset(200, 40)
 	board.StudsOffset = Vector3.new(0, 5, 0)
-	board.MaxDistance = 80
+	board.MaxDistance = Wild.SPRING_LABEL_DISTANCE
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1

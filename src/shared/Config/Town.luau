@@ -58,7 +58,7 @@ return {
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
 	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
-	PORTAL_LABEL_DISTANCE = 150, -- shown up to this far away
+	PORTAL_LABEL_DISTANCE = 40, -- shown only this close, so far labels don't pile up
 
 	-- Register counter (front = customer side). The register takes the left end, full depth; scan items lie
 	-- along the front edge to its right; the decor sits in a strip along the back. Props are fitted into these
