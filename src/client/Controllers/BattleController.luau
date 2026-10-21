@@ -45,6 +45,7 @@ type Snapshot = {
 	callInFor: number,
 	runIn: number,
 	runChance: number,
+	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
 }
 
 type FighterView = {
@@ -60,6 +61,10 @@ local bar: Frame
 local monsterName: TextLabel
 local monsterHpFill: Frame
 local monsterHpText: TextLabel
+local monsterTrack: Frame
+local enemyRow: Frame -- PvP: one small HP bar per enemy creature
+local enemyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
+local mode = "wild" -- "wild" | "pvp"
 local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
@@ -137,6 +142,7 @@ local function toView(raw: any): Snapshot
 		callInFor = mine.callInFor,
 		runIn = mine.runIn,
 		runChance = mine.runChance,
+		enemies = enemy.fighters,
 	}
 end
 
@@ -296,6 +302,28 @@ local function refreshTimers()
 	runButton.BackgroundColor3 = if runWait > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Danger
 end
 
+-- PvP: the other player's creatures as compact HP bars across the top
+local function buildEnemies(snapshot: Snapshot)
+	clear(enemyRow)
+	enemyBars = {}
+	local count = math.max(#snapshot.enemies, 1)
+	for index, enemy in snapshot.enemies do
+		local holder = Instance.new("Frame")
+		holder.LayoutOrder = index
+		holder.Size = UDim2.new(1 / count, -6, 1, 0)
+		holder.BackgroundTransparency = 1
+		holder.Parent = enemyRow
+		local name = UIKit.label(holder, `{elementIcon(enemy.element)} {fightNames[enemy.id] or "?"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		name.Size = UDim2.new(1, 0, 0, 13)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
+		track.Position = UDim2.fromOffset(0, 14)
+		track.Size = UDim2.new(1, 0, 0, 12)
+		text.TextSize = 10
+		enemyBars[enemy.id] = { fill = fill, text = text, frame = holder }
+	end
+end
+
 local function applySnapshot(snapshot: Snapshot)
 	local fighterCount = 0
 	for _ in fighterViews do
@@ -309,6 +337,15 @@ local function applySnapshot(snapshot: Snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+	if mode == "pvp" then
+		for _, enemy in snapshot.enemies do
+			local view = enemyBars[enemy.id]
+			if view then
+				setBar(view.fill, view.text, enemy.hp, enemy.maxHp)
+				view.frame.BackgroundTransparency = 1
+			end
+		end
+	end
 	for _, fighter in snapshot.fighters do
 		local view = fighterViews[fighter.id]
 		if view then
@@ -380,14 +417,50 @@ local function onEvents(events: { any })
 	end
 end
 
+-- PvP result with a countdown until the server sends both players home
+local function showPvpEnd(summary: any)
+	local outcome = summary.outcome
+	local cash = if typeof(summary.cash) == "number" then summary.cash else 0
+	if outcome == "win" then
+		endTitle.Text = if summary.forfeit then "Opponent left · you win!" else "You win!"
+		endTitle.TextColor3 = HEAL_COLOR
+	elseif outcome == "lose" then
+		endTitle.Text = "You lose"
+		endTitle.TextColor3 = UIKit.Colors.Danger
+	else
+		endTitle.Text = "Draw"
+		endTitle.TextColor3 = UIKit.Colors.Text
+	end
+	local money = if cash > 0 then `+${cash}` elseif cash < 0 then `-${-cash}` elseif outcome == "draw" then "Bets returned" else "Friendly match"
+	local opponent = if typeof(summary.opponentName) == "string" then ` vs {summary.opponentName}` else ""
+	local seconds = if typeof(summary.returnIn) == "number" then summary.returnIn else 10
+	endScreen.Visible = true
+	task.spawn(function()
+		for left = seconds, 1, -1 do
+			if fighting then
+				return -- a new fight started
+			end
+			endBody.Text = `{money}{opponent}\nGoing home in {left}...`
+			task.wait(1)
+		end
+		if not fighting then
+			endScreen.Visible = false
+		end
+	end)
+end
+
 local function showEnd(summary: any)
+	if summary.mode == "pvp" then
+		showPvpEnd(summary)
+		return
+	end
 	local result = summary.result
 	if result == "win" then
 		endTitle.Text = "Victory!"
 		endTitle.TextColor3 = HEAL_COLOR
 		local names = {}
 		for _, beastId in (if typeof(summary.partyIds) == "table" then summary.partyIds else {}) do
-			table.insert(names, fightNames[beastId] or "card")
+			table.insert(names, fightNames[`a:{beastId}`] or "card")
 		end
 		local lines = { `+{summary.xpEach or 0} XP each: {table.concat(names, ", ")}`, string.format("+$%.2f", summary.cash or 0) }
 		if typeof(summary.card) == "table" and Cards.ById[summary.card.cardId] then
@@ -423,8 +496,21 @@ local function onStarted(payload: any)
 	local view = toView(payload.snapshot)
 	endScreen.Visible = false
 	local species = if typeof(payload.species) == "string" then payload.species else "Monster"
-	monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
-	monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
+	mode = if payload.mode == "pvp" then "pvp" else "wild"
+	if mode == "pvp" then
+		local bet = if typeof(payload.bet) == "number" and payload.bet > 0 then ` · bet ${payload.bet}` else " · Friendly"
+		monsterName.Text = `⚔ vs {payload.opponentName or "Opponent"}{bet}`
+		monsterName.TextColor3 = UIKit.Colors.Text
+	else
+		monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
+		monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
+	end
+	monsterTrack.Visible = mode == "wild"
+	enemyRow.Visible = mode == "pvp"
+	runButton.Visible = mode == "wild"
+	if mode == "pvp" then
+		buildEnemies(view)
+	end
 	fighterViews = {}
 	buildFighters(view)
 	buildCallIns(view)
@@ -506,6 +592,19 @@ local function build()
 	track.Position = UDim2.fromOffset(12, 28)
 	track.Size = UDim2.new(1, -24, 0, 14)
 	monsterHpFill, monsterHpText = fill, text
+	monsterTrack = track
+
+	enemyRow = Instance.new("Frame")
+	enemyRow.Position = UDim2.fromOffset(12, 24)
+	enemyRow.Size = UDim2.new(1, -24, 0, 26)
+	enemyRow.BackgroundTransparency = 1
+	enemyRow.Visible = false
+	enemyRow.Parent = bar
+	local enemyLayout = Instance.new("UIListLayout")
+	enemyLayout.FillDirection = Enum.FillDirection.Horizontal
+	enemyLayout.Padding = UDim.new(0, 6)
+	enemyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	enemyLayout.Parent = enemyRow
 
 	fighterRow = Instance.new("Frame")
 	fighterRow.Position = UDim2.fromOffset(12, 48)
