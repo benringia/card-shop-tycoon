@@ -257,6 +257,19 @@ local function findStockedShelf(owner: Player, productId: string): PlacedShelf?
 	return candidates[rng:NextInteger(1, #candidates)]
 end
 
+-- Turns a customer (standing still) to look at a shelf they're browsing
+local function faceShelf(customer: Customer, shelf: PlacedShelf)
+	if not customer.alive then
+		return
+	end
+	local root = customer.root
+	local toShelf = shelf.part.Position - root.Position
+	local flat = Vector3.new(toShelf.X, 0, toShelf.Z)
+	if flat.Magnitude > 0.1 then
+		root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit)
+	end
+end
+
 -- Shelves a customer may buy from and that have something on them: stocked product shelves and Glass
 -- Showcases with cards. Collector Cases (players only) and the Card Condenser are never browsed.
 local function getBrowsableShelves(owner: Player): { PlacedShelf }
@@ -278,6 +291,7 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 	end
 	visited[shelf.uid] = true
 	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+	faceShelf(customer, shelf)
 	if not customer.alive then
 		return true
 	end
@@ -311,6 +325,7 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 	end
 	visited[shelf.uid] = true
 	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+	faceShelf(customer, shelf)
 	if not customer.alive then
 		return true
 	end
@@ -362,6 +377,7 @@ local function searchShelves(customer: Customer, visited: { [string]: boolean })
 		local shelf = table.remove(candidates, rng:NextInteger(1, #candidates)) :: PlacedShelf
 		visited[shelf.uid] = true
 		walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+		faceShelf(customer, shelf)
 		if not customer.alive then
 			return
 		end
