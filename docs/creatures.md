@@ -16,8 +16,11 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
 
 ## Rules the game applies
 
-- **Scripts never run.** The server destroys every script in `CreatureModels` at start, and each client
-  strips scripts, prompts, click detectors, sounds and tools from its copy again.
+- **No scripts, ever.** Delete every script from a model before saving it. `lune run tests/run` fails if any
+  `.rbxm` in `assets/creatures` still holds one: run it after adding a model. This is the real gate, because a
+  Script set to RunContext Server or Client runs from ReplicatedStorage as soon as the place starts. As a second
+  layer the server destroys scripts in `CreatureModels` at start, and each client strips scripts, prompts, click
+  detectors, sounds and tools from its own copy.
 - **Size by rarity.** Any model is scaled so its height is `CREATURE_HEIGHT × SIZE_BY_RARITY` (Config/Party).
 - **Part cap.** Models with more than `MAX_MODEL_PARTS` (200) parts use the placeholder.
 - **No collisions.** All parts are made non-colliding, non-touching and non-queryable.
