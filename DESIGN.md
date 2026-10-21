@@ -186,6 +186,8 @@ Each pack = 5 cards:
 ### 5.5 Card art plan
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
 - All art must be original and uploaded as decals/images to Roblox.
+- Summoned creatures use free or bought Creator Store models as stand-ins for now, mapped by card name, with a
+  placeholder blob for cards without one. How to add, size and animate them: `docs/creatures.md`.
 
 ### 5.6 What you do with pulled cards
 - **Binder:** collection book UI, shows owned/missing, completion % (cards on display count as owned).
@@ -212,9 +214,27 @@ Full spec: `docs/superpowers/specs/2026-10-20-beast-cards-design.md`.
 Roadmap (one sub-project at a time):
 1. **Beast cards** — level, XP, stars, grades, stats, value (done).
 2. **Shop jobs** — cards work in your shop as Restocker or Cashier (spec `2026-10-21-shop-jobs-design.md`; done).
-3. **Party & summoning** — summon beasts to follow and fight beside you.
+3. **Party & summoning** — 3 party cards, one summoned creature follows you and gives its element's perk
+   (spec `2026-10-21-party-summoning-design.md`; built, awaiting Studio test).
 4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; done).
 5. **Battles** — real-time auto-fight between players' parties.
+
+**Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
+panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is summoned at a time: the server moves
+an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
+client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
+be displayed or given a job; they can be condensed. Perks, from the summoned card only, read live:
+
+| Element | Perk | Effect | Common, 0 stars |
+|---|---|---|---|
+| Ember | Hype | customers arrive more often (spawn interval ÷ (1 + perk)) | 5% |
+| Tide | Calm | customers wait longer in the queue | 10% |
+| Bloom | Express | deliveries arrive faster | 10% |
+| Volt | Hustle | you walk faster | 5% |
+| Shade | Haggle | customers more willing to buy at your price (buy chance, capped at 100%) | 5% |
+
+Perk = base × rarity (Common 1, Rare 1.5, Very Rare 2, Epic 2.5, Legendary 3) × (1 + 0.10 × stars).
+Numbers live in `Config/Party.luau`.
 
 Plain copies stack by card, foil and grade; a copy becomes an individual card (keeping its grade) the first time it gains XP or a star.
 
@@ -399,6 +419,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── default.project.json        # Rojo project
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
+├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -416,6 +437,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
     │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
     │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
+    │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
@@ -439,6 +461,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
+    │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
+    │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
     │   └── Util/
@@ -462,6 +486,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
+        │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
@@ -477,6 +502,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BeastRules.luau    # BeastMath bound to the game configs
             ├── CondenseRules.luau # which duplicates a star uses (pure, Lune-tested)
             ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
+            ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
+            ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
@@ -491,10 +518,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v6)
+### 10.4 Player data schema (v7)
 ```lua
 {
-    version = 6,
+    version = 7,
     cash = 200,
     xp = 0,
     level = 1,
@@ -508,6 +535,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display
     beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)
     jobs = {},              -- { { slot, beastId, job } } cards working in the shop (Restocker / Cashier)
+    party = { slots = {} }, -- { slots = { ["1".."3"] = beastId }, summoned = slot? } party cards and the summoned one
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -520,7 +548,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget

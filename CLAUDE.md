@@ -7,6 +7,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Roblox, Luau, synced with Rojo (`default.project.json`)
 - `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared
 - `ServerPackages/` (Wally, not in git) → ServerStorage.ServerPackages. ProfileStore lives there.
+- `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
+  (docs/creatures.md). Scripts inside them are destroyed on server start and stripped on clients.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 
