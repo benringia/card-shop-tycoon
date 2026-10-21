@@ -442,6 +442,11 @@ function WildService.AddTravelBlocker(blocker: (player: Player) -> string?)
 	table.insert(travelBlockers, blocker)
 end
 
+-- A glowing ring with a prompt (FrontierService uses it for the Frontier portal)
+function WildService.BuildPortal(parent: Instance, name: string, position: Vector3, facing: Vector3, actionText: string, onTriggered: (Player) -> ())
+	portal(parent, name, position, facing, actionText, onTriggered)
+end
+
 function WildService.IsInWild(player: Player): boolean
 	return inWild[player] == true
 end

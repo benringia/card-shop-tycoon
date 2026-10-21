@@ -24,6 +24,7 @@ local CreatureController = require(Controllers:WaitForChild("CreatureController"
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
+local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -37,6 +38,7 @@ if Place.isFrontier() then
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	FrontierController.Start() -- the home button
 else
 	UIController.Start()
 	OrderController.Start()
@@ -60,4 +62,5 @@ else
 	MonsterController.Start()
 	BattleController.Start()
 	ChallengeController.Start()
+	FrontierController.Start() -- the portal menu
 end

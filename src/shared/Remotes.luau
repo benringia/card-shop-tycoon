@@ -54,6 +54,7 @@ local NAMES = {
 	"ChallengeStatus", -- server → client: { state: sent|declined|expired|cancelled|queued|starting|refused, message?, position? }
 	"ItemsChanged", -- server → owner: { [itemId] = count }
 	"RequestItems", -- client → server: () resend ItemsChanged
+	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 }
 
 local isServer = RunService:IsServer()
@@ -128,4 +129,5 @@ return {
 	ChallengeStatus = remotes.ChallengeStatus,
 	ItemsChanged = remotes.ItemsChanged,
 	RequestItems = remotes.RequestItems,
+	FrontierTravel = remotes.FrontierTravel,
 }

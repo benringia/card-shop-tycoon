@@ -4,4 +4,6 @@
 return {
 	MAIN_PLACE_ID = 75599593337434,
 	FRONTIER_PLACE_ID = 0,
+	FRONTIER_PORTAL = { x = 84, y = 0, z = -26 }, -- main game plaza: next to the wild portal, past the last plots
+	TRAVEL_COOLDOWN = 3, -- seconds between travel requests
 }

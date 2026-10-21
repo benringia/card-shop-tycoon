@@ -23,6 +23,7 @@ local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local ArenaService = require(Services:WaitForChild("ArenaService"))
+local FrontierService = require(Services:WaitForChild("FrontierService"))
 local DevService = require(Services:WaitForChild("DevService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
@@ -37,6 +38,7 @@ if Place.isFrontier() then
 	PartyService.Start()
 	WildService.Start() -- the Frontier map, its spring and monsters
 	BattleService.Start()
+	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 else
@@ -60,6 +62,7 @@ else
 	WildService.Start() -- wild map, plaza portal, spring and monsters
 	BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
 	ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)
+	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end
