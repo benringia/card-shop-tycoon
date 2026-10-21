@@ -4,7 +4,7 @@
 return {
 	-- Far from the plots (they sit around the origin); zones run along +Z from here
 	ORIGIN = { x = 0, y = 0, z = 1200 },
-	PLAZA_PORTAL = { x = 0, y = 0, z = -60 }, -- end of the street
+	PLAZA_PORTAL = { x = 84, y = 0, z = 0 }, -- end of the street, past the last plots (rows span x -68..68)
 	SPRING = { x = 0, y = 0, z = 0 }, -- plaza centre between the shop rows
 	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN
 	ZONE_SIZE = 120, -- each zone is a square this wide

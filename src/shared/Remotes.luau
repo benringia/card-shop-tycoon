@@ -38,6 +38,7 @@ local NAMES = {
 	"Summon", -- client → server: (slot: number?) nil unsummons
 	"PartyChanged", -- server → owner: { slots = { { slot, beastId } }, summoned: number?, perk = { kind, value, text }? }
 	"RequestParty", -- client → server: () resend PartyChanged
+	"WildTravel", -- client → server: (where: "wild" | "home"); server → client: (where) after moving you
 }
 
 local isServer = RunService:IsServer()
@@ -96,4 +97,5 @@ return {
 	Summon = remotes.Summon,
 	PartyChanged = remotes.PartyChanged,
 	RequestParty = remotes.RequestParty,
+	WildTravel = remotes.WildTravel,
 }
