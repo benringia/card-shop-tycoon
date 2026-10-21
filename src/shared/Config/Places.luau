@@ -4,6 +4,6 @@
 return {
 	MAIN_PLACE_ID = 75599593337434,
 	FRONTIER_PLACE_ID = 73033858769620,
-	FRONTIER_PORTAL = { x = 84, y = 0, z = 9 }, -- main game: east end of the street, beside the Wild portal
+	FRONTIER_PORTAL = { x = 96, y = 0, z = 9 }, -- main game: east end of the street, beside the Wild portal
 	TRAVEL_COOLDOWN = 3, -- seconds between travel requests
 }

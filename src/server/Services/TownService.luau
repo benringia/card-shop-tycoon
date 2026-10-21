@@ -62,9 +62,14 @@ local function ground(parent: Instance, name: string, size: Vector3, cframe: CFr
 	return part
 end
 
-local function buildGround(folder: Folder)
+-- The town is all there is: the Baseplate shrinks to the bounds and invisible walls keep players on it
+local function buildBounds(folder: Folder)
+	local bounds = Town.BOUNDS
 	local baseplate = workspace:FindFirstChild("Baseplate")
 	if baseplate and baseplate:IsA("BasePart") then
+		local top = baseplate.Position.Y + baseplate.Size.Y / 2
+		baseplate.Size = Vector3.new(bounds.HALF_X * 2, baseplate.Size.Y, bounds.HALF_Z * 2)
+		baseplate.Position = Vector3.new(0, top - baseplate.Size.Y / 2, 0)
 		baseplate.Color = Props.color(Town.GRASS_COLOR)
 		baseplate.Material = Enum.Material.Grass
 		baseplate.Transparency = 0
@@ -73,6 +78,27 @@ local function buildGround(folder: Folder)
 			texture:Destroy() -- the default grid
 		end
 	end
+	local walls = {
+		{ size = Vector3.new(bounds.HALF_X * 2 + 2, bounds.WALL_HEIGHT, 1), x = 0, z = bounds.HALF_Z + 0.5 },
+		{ size = Vector3.new(bounds.HALF_X * 2 + 2, bounds.WALL_HEIGHT, 1), x = 0, z = -bounds.HALF_Z - 0.5 },
+		{ size = Vector3.new(1, bounds.WALL_HEIGHT, bounds.HALF_Z * 2 + 2), x = bounds.HALF_X + 0.5, z = 0 },
+		{ size = Vector3.new(1, bounds.WALL_HEIGHT, bounds.HALF_Z * 2 + 2), x = -bounds.HALF_X - 0.5, z = 0 },
+	}
+	for _, spec in walls do
+		local wall = Instance.new("Part")
+		wall.Name = "TownEdge"
+		wall.Anchored = true
+		wall.Transparency = 1
+		wall.CanQuery = false -- the camera can still look past it
+		wall.CanTouch = false
+		wall.Size = spec.size
+		wall.Position = Vector3.new(spec.x, bounds.WALL_HEIGHT / 2, spec.z)
+		wall.Parent = folder
+	end
+end
+
+local function buildGround(folder: Folder)
+	buildBounds(folder)
 
 	local layout = Town.LAYOUT
 	ground(folder, "Street", Vector3.new(layout.STREET_HALF_LENGTH * 2, GROUND_THICKNESS, PlotConfig.STREET_WIDTH), CFrame.new(), Town.STREET_COLOR, Enum.Material.Cobblestone)

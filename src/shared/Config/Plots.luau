@@ -9,7 +9,7 @@ return {
 	WIDTH = 40,
 	DEPTH = 40,
 	FLOOR_THICKNESS = 1,
-	GAP = 8, -- space between neighbouring plots in a row
+	GAP = 16, -- space between neighbouring plots in a row (rows span x -76..76)
 	STREET_WIDTH = 30, -- distance between the two rows
 
 	FREE_COLOR = Color3.fromRGB(120, 120, 120), -- floor while for rent; owned plots use their theme (Config/Town)

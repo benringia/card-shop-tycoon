@@ -46,12 +46,12 @@ return {
 		GAP_CRATE_DEPTH = 3, -- crate and barrel this far back from the street, in the gaps between plots
 		GAP_CRATE_SPREAD = 1.5, -- crate and barrel sit this far either side of the gap centre
 		FENCE_OFFSET = 5, -- fence line behind the back of each row
-		FENCE_HALF_LENGTH = 70,
+		FENCE_HALF_LENGTH = 80,
 		FENCE_SECTION = 8, -- one Fence prop per section
 		TREE_OFFSET = 12, -- tree line behind the back of each row
 		TREE_SPACING = 14,
-		STREET_HALF_LENGTH = 90, -- the cobblestone street runs x -90..90
-		STREET_END_TREE_X = 100,
+		STREET_HALF_LENGTH = 100, -- the cobblestone street runs x -100..100
+		STREET_END_TREE_X = 110,
 		STREET_END_TREE_Z = 22,
 		PORTAL_ROCK_BACK = 12, -- rocks behind each portal, away from the town
 		PORTAL_ROCK_SIDE = 4,
@@ -59,6 +59,9 @@ return {
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
+
+	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
+	BOUNDS = { HALF_X = 118, HALF_Z = 75, WALL_HEIGHT = 60 },
 	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
 	PORTAL_LABEL_DISTANCE = 40, -- shown only this close, so far labels don't pile up
 

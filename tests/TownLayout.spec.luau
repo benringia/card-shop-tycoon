@@ -13,7 +13,7 @@ local WORLD: TownLayout.World = {
 	perRow = 3,
 	plotWidth = 40,
 	plotDepth = 40,
-	gap = 8,
+	gap = 16,
 	streetWidth = 30,
 	portals = {
 		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z },
@@ -45,12 +45,12 @@ return {
 	["plot rects match the plot grid"] = function()
 		local rects = TownLayout.plotRects(WORLD)
 		expect.equal(#rects, 6, "rect count")
-		expect.equal(rects[1].minX, -68, "rect 1 minX")
-		expect.equal(rects[1].maxX, -28, "rect 1 maxX")
+		expect.equal(rects[1].minX, -76, "rect 1 minX")
+		expect.equal(rects[1].maxX, -36, "rect 1 maxX")
 		expect.equal(rects[1].minZ, -55, "rect 1 minZ")
 		expect.equal(rects[1].maxZ, -15, "rect 1 maxZ")
-		expect.equal(rects[6].minX, 28, "rect 6 minX")
-		expect.equal(rects[6].maxX, 68, "rect 6 maxX")
+		expect.equal(rects[6].minX, 36, "rect 6 minX")
+		expect.equal(rects[6].maxX, 76, "rect 6 maxX")
 		expect.equal(rects[6].minZ, 15, "rect 6 minZ")
 		expect.equal(rects[6].maxZ, 55, "rect 6 maxZ")
 	end,
@@ -90,6 +90,22 @@ return {
 			for other = index + 1, #WORLD.portals do
 				assert(distance(portal, WORLD.portals[other]) >= 16, `portals {index} and {other} overlap`)
 			end
+		end
+	end,
+
+	["the whole town fits inside the bounds"] = function()
+		local bounds = town.BOUNDS
+		local function inside(x: number, z: number, margin: number): boolean
+			return math.abs(x) + margin <= bounds.HALF_X and math.abs(z) + margin <= bounds.HALF_Z
+		end
+		for _, rect in TownLayout.plotRects(WORLD) do
+			assert(inside(rect.minX, rect.minZ, 0) and inside(rect.maxX, rect.maxZ, 0), "a plot pokes out")
+		end
+		for _, placement in TownLayout.build(WORLD, town) do
+			assert(inside(placement.x, placement.z, 2), `{placement.slot} at {placement.x}, {placement.z} is at or past the edge`)
+		end
+		for _, portal in WORLD.portals do
+			assert(inside(portal.x, portal.z, 8), "a portal is too close to the edge")
 		end
 	end,
 
