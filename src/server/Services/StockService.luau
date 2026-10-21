@@ -1,6 +1,7 @@
 --!strict
 -- Ordering stock at the plot computer, delivering boxes to the delivery pad, carrying them,
--- and unpacking a carried box onto a shelf. Boxes (waiting, carried or still on order) are saved
+-- and unpacking a carried box onto a shelf. Restocker workers (JobService) take boxes from the pad
+-- through the Worker API below. Boxes (waiting, carried by the owner or a worker, or still on order) are saved
 -- through DataService and come back on the delivery pad next session.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,6 +29,7 @@ type Shop = {
 	plot: Plot,
 	waiting: { Part }, -- boxes sitting on the delivery pad
 	carried: { Part },
+	workerBoxes: { Part }, -- taken off the pad by a restocker worker
 	incoming: { string }, -- product IDs ordered but not delivered yet
 	active: boolean, -- false once the owner leaves, so pending deliveries cancel
 }
@@ -206,7 +208,7 @@ local function onOrder(player: Player, productId: unknown)
 		notify(player, `Unlocks at shop level {product.unlockLevel}.`, true)
 		return
 	end
-	if #shop.incoming + #shop.waiting + #shop.carried >= StockConfig.MAX_BOXES_PER_PLOT then
+	if #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes >= StockConfig.MAX_BOXES_PER_PLOT then
 		notify(player, "Your delivery area is full. Unpack some boxes first.", true)
 		return
 	end
@@ -318,7 +320,7 @@ local function load(player: Player, data: PlayerData)
 	if not plot then
 		return -- no free plot this session; leave the saved boxes untouched
 	end
-	local shop: Shop = { owner = player, plot = plot, waiting = {}, carried = {}, incoming = {}, active = true }
+	local shop: Shop = { owner = player, plot = plot, waiting = {}, carried = {}, workerBoxes = {}, incoming = {}, active = true }
 	shops[player] = shop
 	for index, saved in data.boxes do
 		if index > StockConfig.MAX_BOXES_PER_PLOT then
@@ -351,6 +353,9 @@ local function save(player: Player, data: PlayerData)
 	for _, box in shop.carried do
 		addPart(box)
 	end
+	for _, box in shop.workerBoxes do
+		addPart(box)
+	end
 	for _, productId in shop.incoming do
 		local product = Products.ById[productId]
 		if product then
@@ -370,6 +375,9 @@ local function unload(player: Player)
 		box:Destroy()
 	end
 	for _, box in shop.carried do
+		box:Destroy()
+	end
+	for _, box in shop.workerBoxes do
 		box:Destroy()
 	end
 	shops[player] = nil
@@ -402,6 +410,59 @@ function StockService.TakeCarriedUnits(player: Player, units: number): number
 	end
 	syncCarry(shop)
 	return taken
+end
+
+-- Worker API (JobService restockers) -------------------------------------------------------------
+
+-- Boxes waiting on the delivery pad, in pad order
+function StockService.GetWaitingBoxes(player: Player): { Part }
+	local shop = shops[player]
+	return if shop then table.clone(shop.waiting) else {}
+end
+
+-- A worker picks a box off the pad; false if it's gone (the owner took it first)
+function StockService.TakeWaitingBox(player: Player, box: Part): boolean
+	local shop = shops[player]
+	local index = if shop then table.find(shop.waiting, box) else nil
+	if not shop or not index then
+		return false
+	end
+	table.remove(shop.waiting, index)
+	table.insert(shop.workerBoxes, box)
+	setPromptEnabled(box, false)
+	layoutWaiting(shop)
+	return true
+end
+
+-- A worker's box goes back on the pad (dropped, or it couldn't place the rest)
+function StockService.ReturnBox(player: Player, box: Part)
+	local shop = shops[player]
+	local index = if shop then table.find(shop.workerBoxes, box) else nil
+	if not shop or not index then
+		return
+	end
+	table.remove(shop.workerBoxes, index)
+	detachFromCharacter(box)
+	setPromptEnabled(box, true)
+	table.insert(shop.waiting, box)
+	layoutWaiting(shop)
+end
+
+-- Units a worker stocked from its box; the box is used up at 0
+function StockService.ConsumeUnits(player: Player, box: Part, units: number)
+	local shop = shops[player]
+	local index = if shop then table.find(shop.workerBoxes, box) else nil
+	local available = box:GetAttribute("Units")
+	if not shop or not index or typeof(available) ~= "number" then
+		return
+	end
+	local left = available - units
+	if left > 0 then
+		box:SetAttribute("Units", left)
+	else
+		table.remove(shop.workerBoxes, index)
+		box:Destroy()
+	end
 end
 
 function StockService.Start()

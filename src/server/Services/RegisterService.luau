@@ -1,6 +1,7 @@
 --!strict
 -- Checkout at the register: the front customer's items appear on the counter, the owner taps each
--- one to scan it, then charges the total. Cash and XP go through EconomyService.
+-- one to scan it, then charges the total. A cashier worker (JobService) can do the same through the
+-- Worker API below; both end in completeSale. Cash and XP go through EconomyService.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -23,6 +24,7 @@ type Checkout = {
 	customer: Customer,
 	pending: { [BasePart]: number }, -- unscanned counter items → unit price
 	remaining: number,
+	count: number, -- items at the start of checkout
 	total: number, -- sum of scanned items
 }
 
@@ -79,6 +81,37 @@ local function endCheckout(plot: Plot)
 	end
 end
 
+-- Scans one counter item: shared by the owner's taps and a cashier worker
+local function scanItem(plot: Plot, checkout: Checkout, part: BasePart)
+	local unitPrice = checkout.pending[part]
+	if not unitPrice then
+		return
+	end
+	checkout.pending[part] = nil
+	part:Destroy()
+	checkout.remaining -= 1
+	checkout.total = math.round((checkout.total + unitPrice) * 100) / 100
+	checkout.customer.lastScanAt = os.clock()
+	playScanSound(plot)
+	sendUpdate(checkout)
+end
+
+-- Charges a fully scanned checkout: shared by the owner and a cashier worker
+local function completeSale(checkout: Checkout)
+	local customer = checkout.customer
+	local owner = customer.owner
+	local total = checkout.total
+	endCheckout(customer.plot)
+	CustomerService.CompletePurchase(customer)
+	if total > 0 then
+		EconomyService.AddCash(owner, total)
+	end
+	EconomyService.AddXP(owner, math.max(RegisterConfig.MIN_XP_PER_SALE, math.round(total)))
+	DataService.AddStat(owner, "customersServed", 1)
+	DataService.AddStat(owner, "totalEarned", total)
+	notify(owner, string.format("Sale! +$%.2f", total), false)
+end
+
 local function onScan(player: Player, plot: Plot, part: BasePart)
 	if not allowScan(player) then
 		return
@@ -95,14 +128,7 @@ local function onScan(player: Player, plot: Plot, part: BasePart)
 		notify(player, "Stand behind the register to scan.", true)
 		return
 	end
-
-	checkout.pending[part] = nil
-	part:Destroy()
-	checkout.remaining -= 1
-	checkout.total = math.round((checkout.total + unitPrice) * 100) / 100
-	checkout.customer.lastScanAt = os.clock()
-	playScanSound(plot)
-	sendUpdate(checkout)
+	scanItem(plot, checkout, part)
 end
 
 -- Lays one counter item per unit along the counter top, each clickable/tappable to scan.
@@ -128,7 +154,7 @@ local function startCheckout(customer: Customer)
 		end
 	end
 
-	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, total = 0 }
+	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0 }
 	checkouts[plot] = checkout
 
 	local register = plot.register
@@ -175,22 +201,11 @@ local function onCharge(player: Player)
 		notify(player, "Scan every item first.", true)
 		return
 	end
-	local customer = checkout.customer
-	if not isBehindCounter(player, customer.plot) then
+	if not isBehindCounter(player, checkout.customer.plot) then
 		notify(player, "Stand behind the register to charge.", true)
 		return
 	end
-
-	local total = checkout.total
-	endCheckout(customer.plot)
-	CustomerService.CompletePurchase(customer)
-	if total > 0 then
-		EconomyService.AddCash(player, total)
-	end
-	EconomyService.AddXP(player, math.max(RegisterConfig.MIN_XP_PER_SALE, math.round(total)))
-	DataService.AddStat(player, "customersServed", 1)
-	DataService.AddStat(player, "totalEarned", total)
-	notify(player, string.format("Sale! +$%.2f", total), false)
+	completeSale(checkout)
 end
 
 local function onCustomerLeftQueue(customer: Customer)
@@ -198,6 +213,44 @@ local function onCustomerLeftQueue(customer: Customer)
 	if checkout and checkout.customer == customer then
 		endCheckout(customer.plot)
 	end
+end
+
+-- Worker API (JobService cashiers) ---------------------------------------------------------------
+
+export type CheckoutInfo = { remaining: number, scanned: number }
+
+-- The checkout at this plot's register, if a customer is being served
+function RegisterService.GetCheckout(plot: Plot): CheckoutInfo?
+	local checkout = checkouts[plot]
+	if not checkout then
+		return nil
+	end
+	return { remaining = checkout.remaining, scanned = checkout.count - checkout.remaining }
+end
+
+-- Scans one counter item as the owner would; false when there is nothing left to scan
+function RegisterService.ScanNext(plot: Plot): boolean
+	local checkout = checkouts[plot]
+	local part = if checkout then next(checkout.pending) else nil
+	if not checkout or not part then
+		return false
+	end
+	scanItem(plot, checkout, part)
+	return true
+end
+
+-- Charges the checkout once every item is scanned; false if there's nothing to charge
+function RegisterService.ChargeByWorker(plot: Plot): boolean
+	local checkout = checkouts[plot]
+	if not checkout or checkout.remaining > 0 then
+		return false
+	end
+	completeSale(checkout)
+	return true
+end
+
+function RegisterService.IsOwnerAtRegister(player: Player, plot: Plot): boolean
+	return isBehindCounter(player, plot)
 end
 
 function RegisterService.Start()
