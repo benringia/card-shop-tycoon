@@ -26,7 +26,8 @@ return {
 		PlazaDecor = { height = 2.5, collide = false },
 		Register = { height = 1.5, collide = false },
 		CounterDecor = { height = 1.2, collide = false },
-		Shelf = { height = 0, collide = false, yaw = 90 }, -- the Store Shelf model faces -X
+		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
+		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
 	},
 	TREE_SLOTS = { "Tree", "Pine" }, -- the tree lines alternate these
 

@@ -36,6 +36,25 @@ return {
 		expect.equal(town.SLOTS.Shelf.yaw, 90, "Shelf yaw")
 	end,
 
+	["a stretched prop fills its box on every axis"] = function()
+		local sx, sy, sz = PropFit.stretchFactors(SHELF_BOX, PACK_RACK, 90)
+		expect.near(sx, 4 / 12.9, 0.001, "x")
+		expect.near(sy, 5 / 9.4, 0.001, "y")
+		expect.near(sz, 2 / 3.6, 0.001, "z")
+	end,
+
+	["only straight parts can stretch"] = function()
+		local up = { x = 0, y = 1, z = 0 }
+		assert(PropFit.isAxisAligned({ { x = 1, y = 0, z = 0 }, up, { x = 0, y = 0, z = -1 } }), "straight")
+		assert(PropFit.isAxisAligned({ { x = 0, y = 0, z = 1 }, up, { x = 1, y = 0, z = 0 } }), "quarter turn")
+		local tilt = math.sqrt(0.5)
+		assert(not PropFit.isAxisAligned({ { x = tilt, y = 0, z = tilt }, up, { x = -tilt, y = 0, z = tilt } }), "45 degrees")
+	end,
+
+	["the shelf slot stretches"] = function()
+		expect.equal(town.SLOTS.Shelf.stretch, true, "Shelf stretch")
+	end,
+
 	["counter props stay behind the scan items"] = function()
 		local itemZ, propZ = PropFit.counterZ(COUNTER_DEPTH, ITEM_DEPTH, town.COUNTER.PROP_DEPTH)
 		local itemBack = itemZ + ITEM_DEPTH / 2

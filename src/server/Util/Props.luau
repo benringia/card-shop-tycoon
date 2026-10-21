@@ -154,8 +154,49 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 	return model
 end
 
+local function toSize(vector: Vector3): PropFit.Size
+	return { x = vector.X, y = vector.Y, z = vector.Z }
+end
+
+-- Stretches a model of plain straight blocks to fill `fit` exactly, in its pivot's space. False (model untouched)
+-- when any part is a mesh, a non-block shape or turned at an angle: those can only scale evenly.
+local function stretch(model: Model, boxSize: Vector3, fit: Vector3, yaw: number): boolean
+	local parts: { Part } = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			if not descendant:IsA("Part") or descendant.Shape ~= Enum.PartType.Block then
+				return false
+			end
+			table.insert(parts, descendant)
+		elseif descendant:IsA("SpecialMesh") or descendant:IsA("Decal") or descendant:IsA("Texture") then
+			return false
+		end
+	end
+	local pivot = model.WorldPivot
+	local relatives: { CFrame } = {}
+	for index, part in parts do
+		local relative = pivot:ToObjectSpace(part.CFrame)
+		if not PropFit.isAxisAligned({ toSize(relative.RightVector), toSize(relative.UpVector), toSize(relative.LookVector) }) then
+			return false
+		end
+		relatives[index] = relative
+	end
+	local sx, sy, sz = PropFit.stretchFactors(toSize(boxSize), toSize(fit), yaw)
+	local scale = Vector3.new(sx, sy, sz)
+	for index, part in parts do
+		local relative = relatives[index]
+		-- How much each of the part's own axes grows, given where it points in pivot space
+		local function grow(axis: Vector3): number
+			return (axis * scale).Magnitude
+		end
+		part.Size = Vector3.new(part.Size.X * grow(relative.RightVector), part.Size.Y * grow(relative.UpVector), part.Size.Z * grow(relative.LookVector))
+		part.CFrame = pivot * (CFrame.new(relative.Position * scale) * relative.Rotation)
+	end
+	return true
+end
+
 -- Clone a source model and size it: to `height`, or (when `fit` is given) to the largest size that fits inside it
-local function prepareModel(source: Instance, height: number, fit: Vector3?, slotYaw: number?): Model
+local function prepareModel(source: Instance, height: number, fit: Vector3?, slotYaw: number?, canStretch: boolean): Model
 	local model: Model
 	if source:IsA("Model") then
 		model = source:Clone()
@@ -179,6 +220,9 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?, slo
 	local yaw = PropFit.resolveYaw(model:GetAttribute("YawOffset"), slotYaw) -- degrees, for models that don't face -Z
 	local boxCFrame, boxSize = model:GetBoundingBox()
 	model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0) * CFrame.Angles(0, math.rad(yaw), 0)
+	if fit and canStretch and stretch(model, boxSize, fit, yaw) then
+		return model
+	end
 	local ratio = if fit
 		then PropFit.fitRatio({ x = boxSize.X, y = boxSize.Y, z = boxSize.Z }, { x = fit.X, y = fit.Y, z = fit.Z }, yaw)
 		else height / math.max(boxSize.Y, MIN_HEIGHT)
@@ -209,7 +253,7 @@ local function make(slot: string, at: CFrame, parent: Instance, variant: number?
 	local variants = getVariants(slot)
 	if #variants > 0 then
 		local source = variants[(index - 1) % #variants + 1]
-		local ok, model = pcall(prepareModel, source, height, fit, if info then (info :: any).yaw else nil)
+		local ok, model = pcall(prepareModel, source, height, fit, if info then (info :: any).yaw else nil, info ~= nil and (info :: any).stretch == true)
 		if ok then
 			return finish(model, slot, at, parent)
 		end
