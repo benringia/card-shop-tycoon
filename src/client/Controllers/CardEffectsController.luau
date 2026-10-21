@@ -164,6 +164,16 @@ local function attach(instance: Instance, isNewListing: boolean)
 	local foil = instance:GetAttribute("Foil") == true
 
 	addAlwaysOn(instance, effect, color, foil)
+	if frontier then
+		-- The server draws a white border; here it becomes the moving aurora, with a shimmer like a foil's
+		local border = instance:FindFirstChild("Border", true)
+		if border and border:IsA("UIStroke") then
+			CardFace.addAurora(border)
+		end
+		if not foil then
+			addFoilShimmer(instance)
+		end
+	end
 	if isNewListing then
 		playListingBurst(instance, effect, color, foil)
 	end

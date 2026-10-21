@@ -13,6 +13,7 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
@@ -189,18 +190,29 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	frame.BackgroundTransparency = 1
 	frame.Parent = gui
 	local stroke = Instance.new("UIStroke")
+	stroke.Name = "Border"
 	stroke.Thickness = 4
 	stroke.Color = Rarities.Tiers[card.rarity].color
 	stroke.Parent = frame
 
+	-- Frontier cards: darker element colour, a white border the client turns into a moving aurora, a ribbon
+	local frontier = card.set == "Frontier"
+	local aurora = CardEffects.FRONTIER.AURORA
+	if frontier then
+		part.Color = part.Color:Lerp(Color3.new(0, 0, 0), CardEffects.FRONTIER.BACKGROUND_DARKEN)
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = 6
+	end
 	addCardText(frame, card.name, 0.04, 0.2)
-	if displayed.foil then
+	if frontier then
+		addCardText(frame, if displayed.foil then "FOIL FRONTIER" else "FRONTIER", 0.25, 0.12).TextColor3 = aurora[3]
+	elseif displayed.foil then
 		addCardText(frame, "FOIL", 0.25, 0.12)
 	end
 	if displayed.beast then
 		addCardText(frame, BeastRules.describeGrowth(level, stars), 0.38, 0.13)
 	end
-	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = Rarities.Tiers[card.rarity].color
+	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = if frontier then aurora[1] else Rarities.Tiers[card.rarity].color
 	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
 
 	part.Parent = shelf.part
