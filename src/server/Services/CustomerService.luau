@@ -341,6 +341,21 @@ local function browseEmptyShop(customer: Customer)
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
 
+-- Turns a customer standing in the queue toward the register (and whoever is behind it)
+local function faceRegister(customer: Customer)
+	local look = -customer.plot.register.CFrame.LookVector -- the queue is on the register's front side
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude == 0 then
+		return
+	end
+	local root = customer.root
+	local facing = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	if facing.Magnitude > 0 and facing.Unit:Dot(flat.Unit) > 0.99 then
+		return -- already facing it; don't keep nudging
+	end
+	root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit)
+end
+
 local function waitInQueue(customer: Customer)
 	local state = getPlotState(customer.plot)
 	table.insert(state.queue, customer)
@@ -364,9 +379,12 @@ local function waitInQueue(customer: Customer)
 		local distance = Vector3.new(offset.X, 0, offset.Z).Magnitude
 		if distance > CustomerConfig.COUNTER_ARRIVE_DISTANCE then
 			customer.humanoid:MoveTo(target)
-		elseif index == 1 then
-			-- Fired every check while waiting at the counter; RegisterService ignores repeats
-			runCallbacks(reachedCounterCallbacks, customer)
+		else
+			faceRegister(customer)
+			if index == 1 then
+				-- Fired every check while waiting at the counter; RegisterService ignores repeats
+				runCallbacks(reachedCounterCallbacks, customer)
+			end
 		end
 		task.wait(CustomerConfig.QUEUE_CHECK_INTERVAL)
 	end
