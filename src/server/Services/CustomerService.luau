@@ -257,12 +257,26 @@ local function findStockedShelf(owner: Player, productId: string): PlacedShelf?
 	return candidates[rng:NextInteger(1, #candidates)]
 end
 
+-- Shelves a customer may buy from and that have something on them: stocked product shelves and Glass
+-- Showcases with cards. Collector Cases (players only) and the Card Condenser are never browsed.
+local function getBrowsableShelves(owner: Player): { PlacedShelf }
+	local result: { PlacedShelf } = {}
+	for _, shelf in PlacementService.GetShelves(owner) do
+		local kind = shelf.def.kind
+		if (kind == "Products" and shelf.units > 0) or (kind == "CustomerCards" and next(shelf.cards) ~= nil) then
+			table.insert(result, shelf)
+		end
+	end
+	return result
+end
+
 -- Walks to a shelf with the product and decides whether to take it at the owner's price
-local function shopFor(customer: Customer, productId: string, wanted: number): boolean
+local function shopFor(customer: Customer, productId: string, wanted: number, visited: { [string]: boolean }): boolean
 	local shelf = findStockedShelf(customer.owner, productId)
 	if not shelf then
 		return false
 	end
+	visited[shelf.uid] = true
 	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
 	if not customer.alive then
 		return true
@@ -290,11 +304,12 @@ end
 
 -- Looks at one card in a Glass Showcase and maybe takes it, judged on price like packs.
 -- Returns whether there was a card to look at.
-local function shopForCard(customer: Customer): boolean
+local function shopForCard(customer: Customer, visited: { [string]: boolean }): boolean
 	local shelf, slot = ShowcaseService.PickCardForCustomer(customer.owner)
 	if not shelf or not slot then
 		return false
 	end
+	visited[shelf.uid] = true
 	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
 	if not customer.alive then
 		return true
@@ -326,17 +341,32 @@ local function shopForCard(customer: Customer): boolean
 	return true
 end
 
--- Nothing they wanted was stocked: still walk in and look around so the owner sees the lost sale
-local function browseEmptyShop(customer: Customer)
-	local shelves = PlacementService.GetShelves(customer.owner)
-	local target = if #shelves > 0
-		then getShelfStandPoint(customer.plot, shelves[rng:NextInteger(1, #shelves)])
-		else Vector3.new(customer.plot.floor.Position.X, floorTop(customer.plot), customer.plot.floor.Position.Z)
-	walkTo(customer, target)
-	if not customer.alive then
-		return
+-- Something they wanted wasn't on the shelves: look at a few more shelves they haven't checked yet,
+-- then show the "no stock" bubble so the owner sees the lost sale. In an empty shop, walk to the middle.
+local function searchShelves(customer: Customer, visited: { [string]: boolean })
+	local candidates: { PlacedShelf } = {}
+	for _, shelf in getBrowsableShelves(customer.owner) do
+		if not visited[shelf.uid] then
+			table.insert(candidates, shelf)
+		end
 	end
-	task.wait(CustomerConfig.BROWSE_SECONDS)
+	if #candidates == 0 and next(visited) == nil then
+		local floor = customer.plot.floor.Position
+		walkTo(customer, Vector3.new(floor.X, floorTop(customer.plot), floor.Z))
+		if not customer.alive then
+			return
+		end
+		task.wait(CustomerConfig.BROWSE_SECONDS)
+	end
+	for _ = 1, math.min(CustomerConfig.SEARCH_SHELVES, #candidates) do
+		local shelf = table.remove(candidates, rng:NextInteger(1, #candidates)) :: PlacedShelf
+		visited[shelf.uid] = true
+		walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+		if not customer.alive then
+			return
+		end
+		task.wait(CustomerConfig.BROWSE_SECONDS)
+	end
 	showBubble(customer, CustomerConfig.BUBBLE_NO_STOCK)
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
@@ -397,27 +427,31 @@ local function waitInQueue(customer: Customer)
 end
 
 local function run(customer: Customer)
-	local foundAny = false
+	local visited: { [string]: boolean } = {} -- shelf uids this customer has looked at
+	local missing = false -- something on their list wasn't on any shelf
 	for productId, wanted in pickShoppingList(customer.owner) do
-		if shopFor(customer, productId, wanted) then
-			foundAny = true
+		if not shopFor(customer, productId, wanted, visited) then
+			missing = true
 		end
 		if not customer.alive then
 			return
 		end
 	end
 	-- Only some customers care about singles
-	if rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE and shopForCard(customer) then
-		foundAny = true
+	if rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE then
+		shopForCard(customer, visited)
 	end
 	if not customer.alive then
 		return
 	end
+	if missing then
+		searchShelves(customer, visited)
+		if not customer.alive then
+			return
+		end
+	end
 
 	if #customer.items == 0 then
-		if not foundAny then
-			browseEmptyShop(customer)
-		end
 		if customer.alive then
 			leaveShop(customer)
 		end

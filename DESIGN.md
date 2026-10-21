@@ -89,6 +89,9 @@ Order stock (computer) → Restock shelves → Set prices
 ### 4.5 Customers (NPCs)
 - Spawn from the street, walk in using PathfindingService.
 - Each customer has a small shopping list (1–3 items), browses shelves, picks items, joins the register queue.
+- They only browse what they can buy: stocked product shelves and Glass Showcases with cards (never Collector
+  Cases or the Card Condenser). If something on their list isn't stocked, they check up to 2 more shelves
+  (`SEARCH_SHELVES`) before showing the "no stock" bubble. In the queue they face the register.
 - If they wait too long in the queue they leave (no sale).
 - Customer spawn rate scales with **shop rating** (cleanliness of stock, price fairness, decor score).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.

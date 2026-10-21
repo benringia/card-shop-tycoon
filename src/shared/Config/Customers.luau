@@ -13,6 +13,7 @@ return {
 	WALK_SPEED = 10,
 	BROWSE_SECONDS = 1.5, -- time spent looking at a shelf
 	SHELF_STAND_DISTANCE = 2.5, -- studs in front of a shelf's front face
+	SEARCH_SHELVES = 2, -- more shelves a customer checks when something on their list isn't on the shelves
 	ENTRY_DISTANCE = 8, -- studs out on the street from the shop front, where customers appear and leave
 
 	QUEUE_PATIENCE = 40, -- seconds in the register queue before giving up (Bigger Queue upgrade +50% later)
