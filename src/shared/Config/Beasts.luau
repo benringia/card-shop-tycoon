@@ -31,6 +31,7 @@ return {
 	STAR_VALUE = { 1, 6, 15, 30, 50, 80 },
 	-- Duplicates condensed for the next star: 0->1, 1->2, 2->3, 3->4, 4->5 (64 total)
 	STAR_COSTS = { 4, 8, 12, 16, 24 },
+	MAX_SHARD_SHARE = 0.5, -- Star Shards can cover at most this share of a star's duplicates
 
 	-- XP to go from level L to L + 1 = round(XP_BASE * L ^ XP_EXPONENT)
 	XP_BASE = 50,

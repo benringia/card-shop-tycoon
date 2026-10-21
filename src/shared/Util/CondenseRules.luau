@@ -8,7 +8,7 @@ local CondenseRules = {}
 export type Counts = { normal: number, foil: number }
 export type Take = { grade: string, foil: boolean, count: number }
 export type Main = { beast: boolean, foil: boolean, grade: string, stars: number }
-type Config = { GRADES: { string }, STAR_COSTS: { number }, MAX_STARS: number }
+type Config = { GRADES: { string }, STAR_COSTS: { number }, MAX_STARS: number, MAX_SHARD_SHARE: number? }
 
 local DEFAULT_GRADES = { "C", "B", "A", "S" } -- matches Config/Beasts GRADES when no config is passed
 
@@ -43,18 +43,22 @@ function CondenseRules.countDuplicates(byGrade: { [string]: any }, main: Main, c
 	return total
 end
 
--- The copies to take for the next star, or nil and a reason: "max" or "short:<have>:<need>"
-function CondenseRules.plan(config: Config, byGrade: { [string]: any }, main: Main): ({ Take }?, string?)
+-- The copies to take for the next star, or nil and a reason: "max" or "short:<have>:<need>". With shards,
+-- real duplicates go first and Star Shards cover what's missing, up to MAX_SHARD_SHARE of the cost.
+-- The third result is how many shards to use.
+function CondenseRules.plan(config: Config, byGrade: { [string]: any }, main: Main, shards: number?): ({ Take }?, string?, number)
 	if main.stars >= config.MAX_STARS then
-		return nil, "max"
+		return nil, "max", 0
 	end
 	local need = config.STAR_COSTS[math.floor(main.stars) + 1] or math.huge
 	local have = CondenseRules.countDuplicates(byGrade, main, config)
-	if have < need then
-		return nil, `short:{have}:{need}`
+	local maxShards = math.floor(need * (config.MAX_SHARD_SHARE or 0))
+	local used = math.max(0, math.min(need - have, maxShards, math.floor(shards or 0)))
+	if have + used < need then
+		return nil, `short:{have}:{need}`, 0
 	end
 	local takes: { Take } = {}
-	local remaining = need
+	local remaining = need - used
 	eachStack(config.GRADES, function(grade, foil)
 		local count = math.min(remaining, available(byGrade, grade, foil, main))
 		if count > 0 then
@@ -62,7 +66,7 @@ function CondenseRules.plan(config: Config, byGrade: { [string]: any }, main: Ma
 			remaining -= count
 		end
 	end)
-	return takes, nil
+	return takes, nil, used
 end
 
 -- Main copy choices in default order: levelled cards first (the card you've been raising), then plain

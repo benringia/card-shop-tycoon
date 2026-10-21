@@ -15,7 +15,41 @@ local function total(takes: { any }): number
 	return sum
 end
 
+local BEAST_STAR0 = { beast = true, foil = false, grade = "S", stars = 0 } -- next star costs 4
+local BEAST_STAR1 = { beast = true, foil = false, grade = "S", stars = 1 } -- next star costs 8
+
 return {
+	["shards: not used when duplicates are enough"] = function()
+		local takes, reason, used = CondenseRules.plan(config, { C = counts(4, 0) }, BEAST_STAR0, 10)
+		assert(takes, `expected a plan, got {reason}`)
+		expect.equal(used, 0, "no shards")
+		expect.equal(total(takes), 4, "four duplicates")
+	end,
+
+	["shards: cover the shortfall after duplicates"] = function()
+		local takes, reason, used = CondenseRules.plan(config, { C = counts(5, 0) }, BEAST_STAR1, 3)
+		assert(takes, `expected a plan, got {reason}`)
+		expect.equal(used, 3, "three shards")
+		expect.equal(total(takes), 5, "all five duplicates")
+	end,
+
+	["shards: at most half the cost"] = function()
+		local takes, reason, used = CondenseRules.plan(config, { C = counts(3, 0) }, BEAST_STAR1, 10)
+		expect.isNil(takes, "refused")
+		expect.equal(reason, "short:3:8", "reason")
+		expect.equal(used, 0, "nothing used")
+		local ok, _, half = CondenseRules.plan(config, { C = counts(4, 0) }, BEAST_STAR1, 4)
+		assert(ok, "4 duplicates + 4 shards is enough")
+		expect.equal(half, 4, "half the cost in shards")
+	end,
+
+	["shards: nil means no shards"] = function()
+		local takes, reason, used = CondenseRules.plan(config, { C = counts(5, 0) }, BEAST_STAR1)
+		expect.isNil(takes, "short without shards")
+		expect.equal(reason, "short:5:8", "reason")
+		expect.equal(used, 0, "zero")
+	end,
+
 	["uses normals weakest grade first, then foils"] = function()
 		local stacks = { C = counts(2, 1), B = counts(1, 0), S = counts(3, 2) }
 		local takes = CondenseRules.plan(config, stacks, { beast = true, foil = false, grade = "S", stars = 1 }) -- needs 8

@@ -57,6 +57,8 @@ local activeFilter = ALL_FILTER -- All, Ready, Raising or a rarity name
 local filterButtons: { [string]: TextButton } = {}
 local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
 local inFlight = false -- a Condense request is waiting for the server; the button stays locked
+local useShards = false -- Star Shards fill missing duplicates (up to half a star's cost)
+local shardCount = 0 -- from ItemsChanged
 local inFlightToken = 0
 -- A plain main being condensed: the levelled card it becomes is selected once it arrives
 local awaitingNewCard: { before: { [string]: boolean }, cardId: string, foil: boolean, grade: string }? = nil
@@ -126,9 +128,10 @@ local function getCandidates(card: Card): { Candidate }
 	return candidates
 end
 
-local function getPlan(card: Card, main: Candidate): ({ CondenseRules.Take }?, string?)
+local function getPlan(card: Card, main: Candidate): ({ CondenseRules.Take }?, string?, number)
 	local byGrade = BinderController.GetGradedStacks()[card.id] or {}
-	return CondenseRules.plan(Beasts, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars })
+	local shards = if useShards then shardCount else nil
+	return CondenseRules.plan(Beasts, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars }, shards)
 end
 
 -- Whether the default main copy of this card can take a star right now
@@ -238,7 +241,7 @@ local function renderPane(card: Card?)
 	faceHolder.Parent = pane
 	makeFace(faceHolder, card, chosen.foil, true, { level = chosen.level, stars = chosen.stars, grade = chosen.grade })
 
-	local takes, reason = getPlan(card, chosen)
+	local takes, reason, shardsUsed = getPlan(card, chosen)
 	local nextStars = math.min(chosen.stars + 1, BeastRules.MAX_STARS)
 	local powerAfter = BeastRules.getPower(card, chosen.foil, chosen.level, nextStars, chosen.grade)
 	local valueNow = BeastRules.getValue(card, chosen.foil, chosen.level, chosen.stars, chosen.grade)
@@ -249,7 +252,7 @@ local function renderPane(card: Card?)
 		`Stars {chosen.stars}/{BeastRules.MAX_STARS} -> {nextStars}/{BeastRules.MAX_STARS}`,
 		`Power {chosen.power} -> {powerAfter}`,
 		string.format("Value $%.2f -> $%.2f", valueNow, valueAfter),
-		if takes then describeTakes(takes) else describeReason(reason),
+		if takes then describeTakes(takes) .. (if shardsUsed > 0 then ` + {shardsUsed} Star Shard{if shardsUsed == 1 then "" else "s"}` else "") else describeReason(reason),
 	}
 	local info = UIKit.label(pane, table.concat(lines, "\n"), Enum.Font.GothamBold, 12, UIKit.Colors.Text)
 	info.Position = UDim2.fromOffset(DETAIL_FACE_SIZE.X + 16, 8)
@@ -282,16 +285,34 @@ local function renderPane(card: Card?)
 		end)
 		local beast = chosen.beast
 		if beast then
-			Remotes.Condense:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id)
+			Remotes.Condense:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id, nil, nil, useShards)
 		else
 			local before: { [string]: boolean } = {}
 			for id in BinderController.GetBeasts() do
 				before[id] = true
 			end
 			awaitingNewCard = { before = before, cardId = card.id, foil = chosen.foil, grade = chosen.grade }
-			Remotes.Condense:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade)
+			Remotes.Condense:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade, useShards)
 		end
 		render()
+	end)
+	y += 58
+
+	-- Star Shards toggle: they fill in for missing duplicates (never more than half a star)
+	local hasShards = shardCount > 0
+	local shardText = if not hasShards then "✨ No Star Shards (they drop in the Frontier)"
+		elseif useShards then `✨ Using Star Shards (you have {shardCount})`
+		else `✨ Use Star Shards (you have {shardCount})`
+	local shardButton = UIKit.button(pane, shardText, if useShards and hasShards then UIKit.Colors.Accent else UIKit.Colors.Row)
+	shardButton.Position = UDim2.fromOffset(8, y)
+	shardButton.Size = UDim2.new(1, -16, 0, 48)
+	shardButton.TextSize = 14
+	shardButton.AutoButtonColor = hasShards
+	shardButton.Activated:Connect(function()
+		if hasShards then
+			useShards = not useShards
+			render()
+		end
 	end)
 	y += 58
 
@@ -575,6 +596,16 @@ function CondenserController.Start()
 	UIKit.corner(pane, 10)
 
 	-- Condensing changes the binder; redraw with the new counts and stars
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
+		local count = if typeof(items) == "table" then items.starShard else nil
+		shardCount = if typeof(count) == "number" then count else 0
+		if shardCount == 0 then
+			useShards = false
+		end
+		if panel.Visible then
+			render()
+		end
+	end)
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(function() -- after BinderController has stored the new binder
 			inFlight = false
