@@ -26,6 +26,16 @@ return {
 		expect.near(PropFit.fitRatio(SHELF_BOX, PACK_RACK, 0), 2 / 12.9, 0.001, "ratio")
 	end,
 
+	["a YawOffset attribute beats the slot's turn"] = function()
+		expect.equal(PropFit.resolveYaw(180, 90), 180, "attribute")
+		expect.equal(PropFit.resolveYaw(nil, 90), 90, "slot turn")
+		expect.equal(PropFit.resolveYaw("x", nil), 0, "neither")
+	end,
+
+	["the shelf slot turns the owner's sideways shelf"] = function()
+		expect.equal(town.SLOTS.Shelf.yaw, 90, "Shelf yaw")
+	end,
+
 	["counter props stay behind the scan items"] = function()
 		local itemZ, propZ = PropFit.counterZ(COUNTER_DEPTH, ITEM_DEPTH, town.COUNTER.PROP_DEPTH)
 		local itemBack = itemZ + ITEM_DEPTH / 2

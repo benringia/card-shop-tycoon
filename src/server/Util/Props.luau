@@ -155,7 +155,7 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 end
 
 -- Clone a source model and size it: to `height`, or (when `fit` is given) to the largest size that fits inside it
-local function prepareModel(source: Instance, height: number, fit: Vector3?): Model
+local function prepareModel(source: Instance, height: number, fit: Vector3?, slotYaw: number?): Model
 	local model: Model
 	if source:IsA("Model") then
 		model = source:Clone()
@@ -176,8 +176,7 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?): Mo
 			end
 		end
 	end
-	local yawAttribute = model:GetAttribute("YawOffset") -- degrees, for models that don't face -Z
-	local yaw = if typeof(yawAttribute) == "number" then yawAttribute else 0
+	local yaw = PropFit.resolveYaw(model:GetAttribute("YawOffset"), slotYaw) -- degrees, for models that don't face -Z
 	local boxCFrame, boxSize = model:GetBoundingBox()
 	model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0) * CFrame.Angles(0, math.rad(yaw), 0)
 	local ratio = if fit
@@ -210,7 +209,7 @@ local function make(slot: string, at: CFrame, parent: Instance, variant: number?
 	local variants = getVariants(slot)
 	if #variants > 0 then
 		local source = variants[(index - 1) % #variants + 1]
-		local ok, model = pcall(prepareModel, source, height, fit)
+		local ok, model = pcall(prepareModel, source, height, fit, if info then (info :: any).yaw else nil)
 		if ok then
 			return finish(model, slot, at, parent)
 		end

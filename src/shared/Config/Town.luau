@@ -9,6 +9,7 @@ return {
 	-- Each slot is a file name in assets/props. A slot also uses its variants: files named after the slot plus a
 	-- suffix that starts with a capital letter or digit (Tree, TreeA, TreeB ... ; Flower, FlowerBlue ...), taken in
 	-- turn. height = bounding-box height after scaling (studs). Shelf fits the shelf's own size instead.
+	-- yaw (degrees) turns a slot's models whose front isn't -Z; a model's own YawOffset attribute wins.
 	SLOTS = {
 		Tree = { height = 18, collide = true },
 		Pine = { height = 20, collide = true },
@@ -18,14 +19,14 @@ return {
 		Rock = { height = 3, collide = true },
 		Crate = { height = 3, collide = true },
 		Barrel = { height = 3.5, collide = true },
-		Lamp = { height = 12, collide = true },
+		Lamp = { height = 9, collide = true },
 		Bench = { height = 3, collide = true },
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
 		PlazaDecor = { height = 2.5, collide = false },
 		Register = { height = 1.5, collide = false },
 		CounterDecor = { height = 1.2, collide = false },
-		Shelf = { height = 0, collide = false },
+		Shelf = { height = 0, collide = false, yaw = 90 }, -- the Store Shelf model faces -X
 	},
 	TREE_SLOTS = { "Tree", "Pine" }, -- the tree lines alternate these
 

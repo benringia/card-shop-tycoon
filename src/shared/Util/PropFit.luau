@@ -22,6 +22,14 @@ function PropFit.fitRatio(box: Size, fit: Size, yaw: number): number
 	)
 end
 
+-- A model's own YawOffset attribute wins; otherwise the slot's turn (Town.SLOTS[slot].yaw); otherwise none
+function PropFit.resolveYaw(attribute: unknown, slotYaw: number?): number
+	if typeof(attribute) == "number" then
+		return attribute
+	end
+	return slotYaw or 0
+end
+
 -- Register counter, front (customer side) at -Z: scan items lie along the front edge, props along the back.
 -- Returns the z offsets of the item row and the prop row from the counter centre.
 function PropFit.counterZ(counterDepth: number, itemDepth: number, propDepth: number): (number, number)

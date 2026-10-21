@@ -16,14 +16,14 @@ shows its stand-in.
 | `Clover` | ground patches in the gaps between shops | 1 | no |
 | `Rock` | behind the portals | 3 | yes |
 | `Crate`, `Barrel` | street end of the gaps between shops | 3 / 3.5 | yes |
-| `Lamp` | street edges | 12 | yes |
+| `Lamp` | street edges | 9 | yes |
 | `Bench` | around the healing spring | 3 | yes |
 | `Fence` | one section, repeated every 8 studs behind each row | 4 | yes |
 | `Portal` | frame around each plaza portal ring | 14 | no |
 | `PlazaDecor` | two spots on the plaza edge | 2.5 | no |
 | `Register` | back of each shop's register counter, left end | fits 1.8 x 1.5 x 0.6 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
-| `Shelf` | the look of Products shelves (pack racks) | fits the shelf | (the shelf's own hitbox) |
+| `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`) | fits the shelf | (the shelf's own hitbox) |
 
 **Variants:** a slot also uses every file named after it plus a suffix starting with a capital letter or digit:
 `Tree.rbxm`, `TreeA.rbxm`, `TreeB.rbxm` ... or `FlowerBlue.rbxm`, `FlowerPink.rbxm`. The game takes them in turn
