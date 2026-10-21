@@ -16,13 +16,14 @@ local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
 -- Status sits in the bottom-right corner (the top corners hold Roblox's menu and the player list).
 -- On touch screens it sits above the jump button.
 local STATUS_MARGIN = 12
-local TOUCH_JUMP_CLEARANCE = 170
+local TOUCH_JUMP_CLEARANCE = 130
 
 local player = Players.LocalPlayer
 
 local UIController = {}
 
 local screenGui: ScreenGui
+local statusRow: Frame
 local statusFrame: Frame
 local cashLabel: TextLabel
 local levelLabel: TextLabel
@@ -56,6 +57,11 @@ end
 -- Bottom-right column: items stack upwards, right-aligned. Cash is LayoutOrder 2, XP 3; lower orders go above.
 function UIController.GetStatusFrame(): Frame
 	return statusFrame
+end
+
+-- The whole bottom-right corner, laid out left to right; the status column (GetStatusFrame) is LayoutOrder 10
+function UIController.GetStatusRow(): Frame
+	return statusRow
 end
 
 function UIController.Notify(message: string, isError: boolean?, duration: number?)
@@ -107,15 +113,30 @@ function UIController.Start()
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
+	-- A row (party bar, then the column of buff, cash and XP) so the corner stays short on landscape phones
+	statusRow = Instance.new("Frame")
+	statusRow.Name = "StatusRow"
+	statusRow.AnchorPoint = Vector2.new(1, 1)
+	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
+	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
+	statusRow.Size = UDim2.new()
+	statusRow.AutomaticSize = Enum.AutomaticSize.XY
+	statusRow.BackgroundTransparency = 1
+	statusRow.Parent = screenGui
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.Padding = UDim.new(0, 8)
+	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rowLayout.Parent = statusRow
+
 	statusFrame = Instance.new("Frame")
 	statusFrame.Name = "Status"
-	statusFrame.AnchorPoint = Vector2.new(1, 1)
-	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
-	statusFrame.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
+	statusFrame.LayoutOrder = 10
 	statusFrame.Size = UDim2.fromOffset(180, 0)
 	statusFrame.AutomaticSize = Enum.AutomaticSize.Y
 	statusFrame.BackgroundTransparency = 1
-	statusFrame.Parent = screenGui
+	statusFrame.Parent = statusRow
 	local statusLayout = Instance.new("UIListLayout")
 	statusLayout.Padding = UDim.new(0, 4)
 	statusLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right

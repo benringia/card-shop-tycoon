@@ -1169,6 +1169,16 @@ function BinderController.GetWorking(): { [string]: string }
 	return working
 end
 
+-- Opens the binder on its pages (from the Jobs or Party panel), with a hint saying what to do next
+function BinderController.Open(hint: string?)
+	if not panel.Visible then
+		toggle()
+	end
+	if hint then
+		UIController.Notify(hint, false, 4)
+	end
+end
+
 -- Cards in the party: beastId -> true
 function BinderController.GetPartied(): { [string]: boolean }
 	return partied

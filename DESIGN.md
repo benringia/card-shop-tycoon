@@ -224,7 +224,9 @@ panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is s
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
-(bottom-right status corner, with cash and level/XP) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Perks, from the summoned card
+(bottom-right status corner, with cash and level/XP) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar shows your avatar
+(opens Party) and the 3 party slots: tap one to summon it, tap the summoned one to unsummon, tap an empty one to pick
+a card in the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
 
 | Element | Perk | Effect | Common, 0 stars |
@@ -465,6 +467,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right, above the cash) and tooltip for the summoned creature's perk
+    │   │   ├── PartyBarController.luau  # bottom-right quick bar: your avatar + 3 party slots, tap to summon
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts

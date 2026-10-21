@@ -64,8 +64,17 @@ end
 
 local function buildEmptyRow(slot: number)
 	local row = makeRow(slot)
-	addText(row, `Slot {slot} · empty`, 14, 12, UDim.new(1, -28), 22, Enum.Font.GothamBold, 17, UIKit.Colors.Text)
-	addText(row, "Open your binder, tap a card and press Add to party.", 14, 40, UDim.new(1, -28), 40, Enum.Font.Gotham, 13, UIKit.Colors.Subtext).TextWrapped = true
+	addText(row, `Slot {slot} · empty`, 14, 12, UDim.new(1, -(BUTTON_WIDTH + 30)), 22, Enum.Font.GothamBold, 17, UIKit.Colors.Text)
+	addText(row, "Pick a card in your binder and press Add to party.", 14, 40, UDim.new(1, -(BUTTON_WIDTH + 30)), 40, Enum.Font.Gotham, 13, UIKit.Colors.Subtext).TextWrapped = true
+	local add = UIKit.button(row, "Add card", UIKit.Colors.Accent)
+	add.AnchorPoint = Vector2.new(1, 0.5)
+	add.Position = UDim2.new(1, -10, 0.5, 0)
+	add.Size = UDim2.fromOffset(BUTTON_WIDTH, 48)
+	add.TextSize = 14
+	add.Activated:Connect(function()
+		panel.Visible = false
+		BinderController.Open("Tap a card, then Add to party.")
+	end)
 end
 
 local function buildCardRow(slot: number, beastId: string, summoned: boolean)
@@ -161,6 +170,11 @@ local function toggle()
 		Remotes.RequestParty:FireServer()
 		render()
 	end
+end
+
+-- Opens or closes the Party panel (also from the avatar in the party bar)
+function PartyController.Toggle()
+	toggle()
 end
 
 function PartyController.Start()
