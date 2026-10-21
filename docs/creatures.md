@@ -45,6 +45,13 @@ Set per rarity in `Party.GLOW`: a point light in the element colour, sparkles (m
 and an outline for Epic and Legendary (Legendary pulses). Foils get a rainbow outline and sparkles. Roblox draws
 at most 31 outlines on screen, so the rarest and nearest creatures get them first.
 
+## Wild monsters
+
+Monsters work the same way: save a model as `assets/monsters/<Species>.rbxm` (species names are in
+`Config/Wild.luau`, e.g. `Mossling`, `Cave Bat`). It is scaled to `MONSTER_HEIGHT` (elites `ELITE_SIZE` times
+bigger), the same script test and part cap apply, and the server and clients strip scripts the same way. Flying
+species are listed in `Wild.FLYING`. Species without a model get a part-built placeholder in their element colour.
+
 ## Originality
 
 Free and bought models are stand-ins. Check each model's licence and creator before shipping, and plan to
