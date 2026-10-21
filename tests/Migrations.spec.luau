@@ -115,6 +115,18 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v9: adds an empty pvp record, keeps existing"] = function()
+		local data: any = { version = 8, resting = {} }
+		Migrations.run(data, 9)
+		expect.equal(typeof(data.pvp), "table", "pvp added")
+		expect.equal(data.pvp.wins, 0, "wins")
+		expect.equal(data.pvp.losses, 0, "losses")
+		expect.equal(data.pvp.draws, 0, "draws")
+		local kept: any = { version = 8, pvp = { wins = 4, losses = 1, draws = 0 } }
+		Migrations.run(kept, 9)
+		expect.equal(kept.pvp.wins, 4, "kept")
+	end,
+
 	["v8: adds empty resting, keeps existing"] = function()
 		local data: any = { version = 7, party = { slots = {} } }
 		Migrations.run(data, 8)

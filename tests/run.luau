@@ -17,6 +17,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CombatMath = require("./CombatMath.spec"),
 	BattleSim = require("./BattleSim.spec"),
 	SourceOrder = require("./SourceOrder.spec"),
+	PvpRules = require("./PvpRules.spec"),
 }
 
 local passed, failed = 0, 0

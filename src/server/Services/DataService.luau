@@ -65,6 +65,7 @@ export type PlayerData = {
 	jobs: { SavedJob }, -- cards working in the shop
 	party: SavedParty, -- 3 party cards, one summoned
 	resting: { [string]: number }, -- beastId -> Unix time it can fight again (fainted in battle)
+	pvp: { wins: number, losses: number, draws: number }, -- PvP record
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -92,6 +93,7 @@ local TEMPLATE: PlayerData = {
 	jobs = {},
 	party = { slots = {} },
 	resting = {},
+	pvp = { wins = 0, losses = 0, draws = 0 },
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
