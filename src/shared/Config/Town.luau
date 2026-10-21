@@ -45,9 +45,9 @@ return {
 		GAP_CLOVER_DEPTHS = { 12, 28 }, -- clover patches this far back from the street in each gap
 		GAP_CRATE_DEPTH = 3, -- crate and barrel this far back from the street, in the gaps between plots
 		GAP_CRATE_SPREAD = 1.5, -- crate and barrel sit this far either side of the gap centre
-		FENCE_OFFSET = 5, -- fence line behind the back of each row
-		FENCE_HALF_LENGTH = 88,
-		FENCE_SECTION = 8, -- one Fence prop per section
+		EDGE_FENCE_INSET = 2, -- the fence round the island stands this far inside the bounds
+		FENCE_SECTION = 6.5, -- one Fence prop per section (the Fence model is 6.5 long at its 4-stud height)
+		TREE_LINE_HALF_LENGTH = 88,
 		TREE_OFFSET = 12, -- tree line behind the back of each row
 		TREE_SPACING = 14,
 		STREET_HALF_LENGTH = 110, -- the cobblestone street runs x -110..110

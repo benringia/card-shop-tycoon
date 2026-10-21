@@ -1,7 +1,7 @@
 --!strict
 -- Where every town decoration goes (main town spec). Pure: takes the plot grid, portal and spring spots and
 -- Config/Town, returns a fixed list of prop placements, so every server looks the same. TownService places them.
--- Lune-tested: nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
+-- Lune-tested: a fence rings the island; nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
 -- in the spring area (except benches and flowers).
 export type Point = { x: number, z: number }
 export type World = {
@@ -97,14 +97,25 @@ function TownLayout.build(world: World, town: any): { Placement }
 			add("Crate", x - layout.GAP_CRATE_SPREAD, crateZ, towardStreet)
 			add("Barrel", x + layout.GAP_CRATE_SPREAD, crateZ, towardStreet)
 		end
+	end
 
-		-- Fence behind the row
-		local sections = math.floor(2 * layout.FENCE_HALF_LENGTH / layout.FENCE_SECTION)
-		local fenceStart = -(sections * layout.FENCE_SECTION) / 2 + layout.FENCE_SECTION / 2
-		local fenceZ = side * (halfStreet + world.plotDepth + layout.FENCE_OFFSET)
+	-- Fence round the island's edge, just inside the bounds, facing in
+	local edgeX = town.BOUNDS.HALF_X - layout.EDGE_FENCE_INSET
+	local edgeZ = town.BOUNDS.HALF_Z - layout.EDGE_FENCE_INSET
+	local function fenceLine(half: number, place: (along: number) -> ())
+		local sections = math.floor(2 * half / layout.FENCE_SECTION)
+		local start = -(sections * layout.FENCE_SECTION) / 2 + layout.FENCE_SECTION / 2
 		for index = 0, sections - 1 do
-			add("Fence", fenceStart + index * layout.FENCE_SECTION, fenceZ, towardStreet)
+			place(start + index * layout.FENCE_SECTION)
 		end
+	end
+	for _, side in SIDES do
+		fenceLine(edgeX, function(x)
+			add("Fence", x, side * edgeZ, faceYaw(0, -side))
+		end)
+		fenceLine(edgeZ, function(z)
+			add("Fence", side * edgeX, z, faceYaw(-side, 0))
+		end)
 	end
 
 	-- Tree lines behind both rows, then a pair at each street end; slots alternate, turns vary
@@ -115,8 +126,8 @@ function TownLayout.build(world: World, town: any): { Placement }
 	end
 	for _, side in SIDES do
 		local z = side * (halfStreet + world.plotDepth + layout.TREE_OFFSET)
-		local x = -layout.FENCE_HALF_LENGTH
-		while x <= layout.FENCE_HALF_LENGTH do
+		local x = -layout.TREE_LINE_HALF_LENGTH
+		while x <= layout.TREE_LINE_HALF_LENGTH do
 			tree(x, z)
 			x += layout.TREE_SPACING
 		end

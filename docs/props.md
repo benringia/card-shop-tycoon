@@ -18,7 +18,7 @@ shows its stand-in.
 | `Crate`, `Barrel` | street end of the gaps between shops | 3 / 3.5 | yes |
 | `Lamp` | street edges | 9 | yes |
 | `Bench` | around the healing spring | 3 | yes |
-| `Fence` | one section, repeated every 8 studs behind each row | 4 | yes |
+| `Fence` | one section, repeated every 6.5 studs round the island's edge | 4 | yes |
 | `Portal` | frame around each plaza portal ring | 14 | no |
 | `PlazaDecor` | two spots on the plaza edge | 2.5 | no |
 | `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |

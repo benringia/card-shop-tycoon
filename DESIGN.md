@@ -54,8 +54,8 @@ with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by s
 the PvP Arena (-104, 0) at the west end, each with a floating name label. Plots stand 24 studs apart. The town is
 the whole main-game world: the Baseplate is cut to x ±130, z ±90 and ringed with invisible walls (`Town.BOUNDS`). Decor is fixed (`Util/TownLayout`, same on every server): lamps
 on the street edges at every plot gap and row end, 4 benches with flower beds and 2 plaza decor spots round the
-spring, a bush, clover, a crate and a barrel in each gap between plots, a fence and a tree line (Tree and Pine in
-turn) behind each row, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
+spring, a bush, clover, a crate and a barrel in each gap between plots, a tree line (Tree and Pine in turn) behind each
+row, a fence round the whole island just inside its edge, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
 in the street (except lamps, portals and the plaza), within 10 studs of a portal, or in the spring area (except
 benches and flowers). **Shops:** an open front; back and side walls outside the floor (12 tall, trim and
 baseboard), front corner pillars, an awning (the Awning prop repeated across the front and tinted in the theme colour, or

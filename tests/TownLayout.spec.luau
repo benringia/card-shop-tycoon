@@ -116,6 +116,37 @@ return {
 		assert(town.LAYOUT.PLAZA_RADIUS >= 20, "plaza radius")
 	end,
 
+	["a fence rings the whole island"] = function()
+		local bounds, layout = town.BOUNDS, town.LAYOUT
+		local edgeX, edgeZ = bounds.HALF_X - layout.EDGE_FENCE_INSET, bounds.HALF_Z - layout.EDGE_FENCE_INSET
+		local sides = { north = {}, south = {}, east = {}, west = {} }
+		for _, placement in TownLayout.build(WORLD, town) do
+			if placement.slot == "Fence" then
+				if math.abs(placement.z - edgeZ) < 0.01 then
+					table.insert(sides.north, placement.x)
+				elseif math.abs(placement.z + edgeZ) < 0.01 then
+					table.insert(sides.south, placement.x)
+				elseif math.abs(placement.x - edgeX) < 0.01 then
+					table.insert(sides.east, placement.z)
+				elseif math.abs(placement.x + edgeX) < 0.01 then
+					table.insert(sides.west, placement.z)
+				else
+					error(`fence at {placement.x}, {placement.z} is not on the edge`)
+				end
+			end
+		end
+		for name, along in sides do
+			local half = if name == "north" or name == "south" then edgeX else edgeZ
+			table.sort(along)
+			assert(#along > 0, `no fence on the {name} side`)
+			assert(along[1] - layout.FENCE_SECTION / 2 <= -half + layout.FENCE_SECTION, `{name} side starts late`)
+			assert(along[#along] + layout.FENCE_SECTION / 2 >= half - layout.FENCE_SECTION, `{name} side ends early`)
+			for index = 2, #along do
+				expect.near(along[index] - along[index - 1], layout.FENCE_SECTION, 0.01, `{name} spacing`)
+			end
+		end
+	end,
+
 	["portals stay clear"] = function()
 		local placements = TownLayout.build(WORLD, town)
 		expect.equal(count(placements, "Portal"), #WORLD.portals, "portal frames")
