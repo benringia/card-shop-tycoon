@@ -606,6 +606,7 @@ function CondenserController.Start()
 			render()
 		end
 	end)
+	Remotes.RequestItems:FireServer() -- our own copy of the shard count, whatever order the controllers start in
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(function() -- after BinderController has stored the new binder
 			inFlight = false

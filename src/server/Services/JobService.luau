@@ -656,6 +656,23 @@ local function statusLoop()
 	end
 end
 
+-- Frontier place: no shop jobs run there, but cards with a saved job stay locked, so they can't join a party
+-- and come home in a different state. Read-only: it never saves, so the saved jobs come back untouched.
+function JobService.StartLocksOnly()
+	DataService.Register({
+		name = "JobLocks",
+		load = function(player: Player, data: PlayerData)
+			for beastId, job in JobRules.getSavedLocks(Jobs, data.jobs) do
+				if CardService.GetBeast(player, beastId) then
+					CardService.SetWorking(player, beastId, job)
+				end
+			end
+		end,
+		save = function() end,
+		unload = function() end,
+	})
+end
+
 function JobService.Start()
 	workersFolder = Instance.new("Folder")
 	workersFolder.Name = "Workers"

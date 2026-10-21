@@ -35,6 +35,7 @@ if Place.isFrontier() then
 	MonetizationService.Start()
 	CardService.Start()
 	ItemService.Start()
+	JobService.StartLocksOnly() -- before PartyService: cards with a shop job stay out of the party
 	PartyService.Start()
 	WildService.Start() -- the Frontier map, its spring and monsters
 	BattleService.Start()

@@ -43,4 +43,20 @@ function JobRules.getSlotCount(config: Config, level: number, hasPass: boolean):
 	return config.FREE_SLOTS + (if hasPass then config.PASS_SLOTS else 0)
 end
 
+-- Which cards hold a saved shop job (beastId -> job), from the saved jobs list. The Frontier place doesn't run
+-- shop jobs but still locks these cards, so they can't join a party there.
+function JobRules.getSavedLocks(config: { JOBS: { string } }, raw: unknown): { [string]: string }
+	local locks: { [string]: string } = {}
+	if typeof(raw) ~= "table" then
+		return locks
+	end
+	for _, entry in raw :: { any } do
+		if typeof(entry) == "table" and typeof(entry.beastId) == "string" and typeof(entry.job) == "string"
+			and table.find(config.JOBS, entry.job) and not locks[entry.beastId] then
+			locks[entry.beastId] = entry.job
+		end
+	end
+	return locks
+end
+
 return JobRules

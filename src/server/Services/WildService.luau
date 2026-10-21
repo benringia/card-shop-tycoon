@@ -53,6 +53,7 @@ local inWild: { [Player]: boolean } = {}
 local contactCallbacks: { (player: Player, monster: Monster) -> () } = {}
 local travelBlockers: { (player: Player) -> string? } = {}
 local homeHandler: ((player: Player) -> ())? = nil
+local frontierSpawn: SpawnLocation? = nil -- Frontier: everyone spawns here (not on a template spawn pad)
 local allowTravel = RateLimiter.new(TRAVEL_COOLDOWN)
 local rng = Random.new()
 local rayParams = RaycastParams.new()
@@ -152,7 +153,7 @@ local function buildMap(): Folder
 	portal(folder, "Return to shop", entrance + Vector3.new(0, 0, -9), Vector3.new(0, 0, 1), "Return", function(player)
 		WildService.TravelHome(player)
 	end)
-	sign(folder, "The Wild", CFrame.new(entrance + Vector3.new(10, 4, -9)) * CFrame.Angles(0, math.pi, 0))
+	sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(entrance + Vector3.new(10, 4, -9)) * CFrame.Angles(0, math.pi, 0))
 
 	for index, zone in Wild.ZONES do
 		local center = zoneCenter(index)
@@ -197,6 +198,7 @@ local function buildPlaza()
 		spawn.CanCollide = false
 		spawn.Duration = 0
 		spawn.Parent = folder
+		frontierSpawn = spawn
 		local dungeonSpot = vec((Wild :: any).DUNGEON_PORTAL)
 		portal(folder, "Dungeon", dungeonSpot, Vector3.new(1, 0, 0), "Enter", function(player)
 			notify(player, "Dungeons are coming soon!", false)
@@ -596,6 +598,7 @@ function WildService.Start()
 		if Place.isFrontier() then
 			-- The whole Frontier is wild: monsters wake for everyone here
 			inWild[player] = true
+			player.RespawnLocation = frontierSpawn
 			player.CharacterAdded:Connect(function()
 				inWild[player] = true
 			end)

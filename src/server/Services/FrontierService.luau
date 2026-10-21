@@ -89,6 +89,12 @@ end
 
 function FrontierService.Start()
 	Remotes.FrontierTravel.OnServerEvent:Connect(onTravel)
+	-- Failures Roblox reports after the teleport started (server full, shut down...): the player is still here
+	TeleportService.TeleportInitFailed:Connect(function(player, result, message)
+		warn(`[FrontierService] teleport failed for {player.Name}: {result} {message}`)
+		tell(player, if result == Enum.TeleportResult.GameFull then "That server is full. Try again or Explore instead."
+			else "The teleport didn't work. Try again in a moment.")
+	end)
 	if Place.isFrontier() then
 		WildService.SetHomeHandler(function(player)
 			teleport(player, Places.MAIN_PLACE_ID)

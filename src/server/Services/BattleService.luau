@@ -388,7 +388,7 @@ local function whyNot(player: Player, monster: Monster?): string?
 	if not leaderId or not CardService.GetBeast(player, leaderId) then
 		return "Summon a party creature to fight."
 	elseif isResting(player, leaderId) then
-		return "Your creature is resting. Summon a rested one or visit the plaza spring."
+		return `Your creature is resting. Summon a rested one or visit {if Place.isFrontier() then "the spring at the entrance" else "the plaza spring"}.`
 	elseif not getRoot(player) or not PartyService.GetMarker(player) then
 		return "You can't fight right now."
 	end

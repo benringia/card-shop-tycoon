@@ -476,7 +476,8 @@ local function showEnd(summary: any)
 	elseif result == "lose" then
 		endTitle.Text = "Your party fainted"
 		endTitle.TextColor3 = UIKit.Colors.Danger
-		endBody.Text = `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · the plaza spring heals faster`
+		local spring = if require(Shared:WaitForChild("Util"):WaitForChild("Place")).isFrontier() then "the entrance spring" else "the plaza spring"
+		endBody.Text = `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
 	else
 		endTitle.Text = "Got away safely"
 		endTitle.TextColor3 = UIKit.Colors.Text
