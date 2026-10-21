@@ -66,15 +66,37 @@ function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, 
 	end)
 end
 
-local function moveDirect(humanoid: Humanoid, target: Vector3): boolean
+-- graceSeconds nil: Roblox's own timeout (MoveToFinished fires false after 8 seconds).
+-- Otherwise give up after the expected walk time plus graceSeconds, so a blocked NPC isn't stuck for long.
+local function moveDirect(humanoid: Humanoid, root: BasePart, target: Vector3, graceSeconds: number?): boolean
+	if not graceSeconds then
+		humanoid:MoveTo(target)
+		return humanoid.MoveToFinished:Wait()
+	end
+	local finished, reached = false, false
+	local connection = humanoid.MoveToFinished:Connect(function(didReach)
+		finished, reached = true, didReach
+	end)
 	humanoid:MoveTo(target)
-	-- MoveToFinished fires false on its own after 8 seconds if the target isn't reached
-	return humanoid.MoveToFinished:Wait()
+	local limit = (root.Position - target).Magnitude / math.max(humanoid.WalkSpeed, 1) * 2 + graceSeconds
+	local started = os.clock()
+	while not finished and os.clock() - started < limit do
+		task.wait(0.1)
+	end
+	connection:Disconnect()
+	return finished and reached
 end
 
 -- Walks along a computed path; falls back to a straight line if no path is found.
--- isAlive lets the caller stop the walk early (NPC removed).
-function NpcMotion.walkTo(humanoid: Humanoid, root: BasePart, target: Vector3, agentParams: { [string]: any }, isAlive: () -> boolean): boolean
+-- isAlive lets the caller stop the walk early (NPC removed). graceSeconds: see moveDirect.
+function NpcMotion.walkTo(
+	humanoid: Humanoid,
+	root: BasePart,
+	target: Vector3,
+	agentParams: { [string]: any },
+	isAlive: () -> boolean,
+	graceSeconds: number?
+): boolean
 	local path = PathfindingService:CreatePath(agentParams)
 	local ok = pcall(function()
 		path:ComputeAsync(root.Position, target)
@@ -83,7 +105,7 @@ function NpcMotion.walkTo(humanoid: Humanoid, root: BasePart, target: Vector3, a
 		return false
 	end
 	if not ok or path.Status ~= Enum.PathStatus.Success then
-		return moveDirect(humanoid, target)
+		return moveDirect(humanoid, root, target, graceSeconds)
 	end
 
 	for _, waypoint in path:GetWaypoints() do
@@ -93,7 +115,7 @@ function NpcMotion.walkTo(humanoid: Humanoid, root: BasePart, target: Vector3, a
 		if waypoint.Action == Enum.PathWaypointAction.Jump then
 			humanoid.Jump = true
 		end
-		if not moveDirect(humanoid, waypoint.Position) then
+		if not moveDirect(humanoid, root, waypoint.Position, graceSeconds) then
 			return false
 		end
 	end

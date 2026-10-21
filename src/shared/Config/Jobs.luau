@@ -22,6 +22,7 @@ return {
 	MISTAKE_POWER_LOW = 170,
 	MISTAKE_POWER_HIGH = 485,
 	IDLE_RECHECK_SECONDS = 2,
+	STUCK_GRACE_SECONDS = 1, -- extra time per path step before a worker counts as stuck and re-paths
 	ACTION_COOLDOWN = 0.5, -- seconds between assign/unassign requests (server)
 	STATUS_SEND_SECONDS = 1, -- status updates to the owner are batched to at most one per this
 	RARITY_SCALE = { Common = 0.8, Rare = 0.9, ["Very Rare"] = 1, Epic = 1.15, Legendary = 1.3 },

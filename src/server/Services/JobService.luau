@@ -60,6 +60,10 @@ type PlayerJobs = {
 local PASS_KEY = "ExtraJobSlot"
 local MINUTE = 60
 local CARRY_OFFSET = CFrame.new(0, 0.5, -1.4) -- box in front of the worker's chest
+-- Workers start inside the shop and never need to jump; without jumping, paths go around the counter
+-- instead of over it (a failed jump there used to leave them stuck)
+local WORKER_AGENT = table.clone(CustomerConfig.PATH_AGENT)
+WORKER_AGENT.AgentCanJump = false
 
 local JobService = {}
 
@@ -241,14 +245,25 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 	updateLabel(player, worker)
 end
 
+-- Never stuck: a blocked walk re-paths once from where the worker stands, then it hops to the target
 local function walk(worker: Worker, target: Vector3): boolean
 	local humanoid, root = worker.humanoid, worker.root
 	if not humanoid or not root or not worker.alive then
 		return false
 	end
-	return NpcMotion.walkTo(humanoid, root, target, CustomerConfig.PATH_AGENT, function()
+	local function isAlive(): boolean
 		return worker.alive
-	end)
+	end
+	for _ = 1, 2 do
+		if NpcMotion.walkTo(humanoid, root, target, WORKER_AGENT, isAlive, Jobs.STUCK_GRACE_SECONDS) then
+			return true
+		end
+		if not worker.alive then
+			return false
+		end
+	end
+	root.CFrame = CFrame.new(target + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2, 0)) * root.CFrame.Rotation
+	return true
 end
 
 local function waitWork(player: Player, worker: Worker, baseSeconds: number): boolean
