@@ -17,6 +17,7 @@ local CondenserController = require(Controllers:WaitForChild("CondenserControlle
 local JobsController = require(Controllers:WaitForChild("JobsController"))
 local CardEffectsController = require(Controllers:WaitForChild("CardEffectsController"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
+local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 
 UIController.Start()
 OrderController.Start()
@@ -33,3 +34,4 @@ CondenserController.Start()
 JobsController.Start()
 CardEffectsController.Start()
 AnnouncementController.Start()
+CreatureController.Start()
