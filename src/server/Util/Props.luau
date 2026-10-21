@@ -233,6 +233,11 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?, slo
 	return model
 end
 
+-- True when assets/props holds a usable model for this slot (no stand-in needed)
+function Props.hasModel(slot: string): boolean
+	return #getVariants(slot) > 0
+end
+
 -- The size a slot's model will have before scaling (first variant, turned by its yaw), or nil with no model
 function Props.getSourceSize(slot: string): Vector3?
 	local source = getVariants(slot)[1]

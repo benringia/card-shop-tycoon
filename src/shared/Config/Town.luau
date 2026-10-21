@@ -28,6 +28,10 @@ return {
 		CounterDecor = { height = 1.2, collide = false },
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
 		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
+		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
+		Computer = { height = 0, collide = false }, -- the order computer (ORDER STOCK)
+		Condenser = { height = 0, collide = false }, -- the Card Condenser
+		Counter = { height = 0, collide = false, stretch = true }, -- the register counter
 		-- the Collector Case's look: a glass cabinet built from plain blocks, stretched to fill the case
 		GlassCase = { height = 0, collide = false, stretch = true, yaw = 180 }, -- GlassCaseA's glass doors face its +Z
 		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour

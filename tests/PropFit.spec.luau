@@ -68,6 +68,15 @@ return {
 		expect.equal(slot.yaw, 180, "GlassCase yaw")
 	end,
 
+	["fixture slots: order computer, condenser, register counter"] = function()
+		for _, name in { "Computer", "Condenser", "Counter" } do
+			local slot = town.SLOTS[name]
+			assert(slot ~= nil, `no {name} slot`)
+			expect.equal(slot.collide, false, `{name} collide (the fixture part is the hitbox)`)
+		end
+		expect.equal(town.SLOTS.Counter.stretch, true, "Counter stretches along the counter")
+	end,
+
 	["the shelf slot stretches"] = function()
 		expect.equal(town.SLOTS.Shelf.stretch, true, "Shelf stretch")
 	end,

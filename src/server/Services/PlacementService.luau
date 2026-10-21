@@ -186,7 +186,7 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	local x = (col - (columns - 1) / 2) * ShowcaseConfig.SLOT_SPACING.X
 	local y = ((rows - 1) / 2 - row) * ShowcaseConfig.SLOT_SPACING.Y + ShowcaseConfig.SLOTS_OFFSET_Y
 	local z = -(shelf.part.Size.Z + ShowcaseConfig.CARD_SIZE.Z) / 2 - 0.02
-	if shelf.def.prop then
+	if shelf.visual then
 		-- Inside the glass: behind the front face, standing on the cabinet's shelves
 		z = -shelf.part.Size.Z / 2 + ShowcaseConfig.CASED_CARD_INSET
 		y += ShowcaseConfig.CASED_CARD_RAISE
@@ -379,7 +379,7 @@ local function createShelf(
 	}
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
-	if def.prop then
+	if def.prop and Props.hasModel(def.prop) then
 		-- The part stays as the hitbox (prompts, label, customers); the prop is the look. Its label still shows.
 		part.Transparency = 1
 		shelf.visual = Props.fit(def.prop, def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)

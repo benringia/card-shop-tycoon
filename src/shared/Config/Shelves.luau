@@ -17,7 +17,7 @@ export type Shelf = {
 	size: Vector3,
 	color: Color3,
 	accepts: { string }?, -- product shelves only: product IDs it can hold, nil = any product
-	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox
+	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
 }
 
 local List: { Shelf } = {
@@ -55,6 +55,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "Condenser",
+		prop = "Condenser",
 		name = "Card Condenser",
 		kind = "Condenser",
 		capacity = 0,
