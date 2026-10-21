@@ -21,6 +21,7 @@ local PartyBarController = require(Controllers:WaitForChild("PartyBarController"
 local CardEffectsController = require(Controllers:WaitForChild("CardEffectsController"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
+local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 
 UIController.Start()
 OrderController.Start()
@@ -41,3 +42,4 @@ PartyBarController.Start()
 CardEffectsController.Start()
 AnnouncementController.Start()
 CreatureController.Start()
+MonsterController.Start()

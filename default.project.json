@@ -8,6 +8,9 @@
       },
       "CreatureModels": {
         "$path": "assets/creatures"
+      },
+      "MonsterModels": {
+        "$path": "assets/monsters"
       }
     },
     "ServerScriptService": {
