@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Jobs = require(Config:WaitForChild("Jobs"))
+local Party = require(Config:WaitForChild("Party"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -75,9 +76,16 @@ local graded: Stacks = {}
 local collection: { [string]: Owned } = {} -- graded, summed per card
 local beasts: { [string]: Beast } = {}
 local working: { [string]: string } = {} -- beastId -> job, for cards working in the shop
+local partied: { [string]: boolean } = {} -- beastId -> in the party
+local hintToast: number? = nil -- toast from BinderController.Open, hidden once a card is tapped
+local partySlots: { [number]: string } = {} -- party slot -> beastId
 local assignButton: TextButton
 local jobChooser: Frame
 local assignTarget: (string | { cardId: string, foil: boolean, grade: string })? = nil
+local partyButton: TextButton
+local partyChooser: Frame
+local partySlotButtons: { TextButton } = {}
+local partyTarget: (string | { cardId: string, foil: boolean, grade: string })? = nil
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
@@ -294,7 +302,8 @@ local function addBeastRow(card: Card, entry: Entry, beast: Beast, order: number
 
 	local growth = BeastRules.describeGrowth(beast.level, beast.stars)
 	local job = working[beast.id]
-	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}{if job then ` · Working: {job}` else ""}`
+	local status = if job then ` · Working: {job}` elseif partied[beast.id] then " · In party" else ""
+	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}{status}`
 	local titleLabel = addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
 	titleLabel.Size = UDim2.new(1, -(TITLE_VALUE_ROOM + 10), 0, 20)
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -340,8 +349,41 @@ local function addStackRow(card: Card, entry: Entry, order: number)
 	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 48, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
+-- "Add to party" for the selected copy, or why it can't join
+local function refreshPartyButton(selected: Entry?)
+	partyChooser.Visible = false
+	local beast = if selected then selected.beast else nil
+	local text, ready
+	if not selected then
+		text, ready = "Add to party", false
+	elseif beast and partied[beast.id] then
+		text, ready = "In party", false
+	elseif beast and working[beast.id] then
+		text, ready = "Working", false
+	else
+		text, ready = "Add to party", true
+	end
+	partyButton.Text = text
+	partyButton.BackgroundColor3 = if ready then UIKit.Colors.Accent else UIKit.Colors.Locked
+	partyButton.AutoButtonColor = ready
+	partyTarget = if not ready or not selected
+		then nil
+		elseif beast then beast.id
+		else { cardId = (detailCard :: Card).id, foil = selected.foil, grade = selected.grade }
+end
+
+-- Slot buttons say which card each party slot holds now
+local function refreshPartyChooser()
+	for slot, button in partySlotButtons do
+		local beast = beasts[partySlots[slot] or ""]
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		button.Text = if card then `Slot {slot}\n{card.name}` else `Slot {slot}\nempty`
+	end
+end
+
 -- "Assign to job" for the selected copy, or why it can't be assigned
 refreshAssignButton = function(selected: Entry?)
+	refreshPartyButton(selected)
 	jobChooser.Visible = false
 	local slots = player:GetAttribute("JobSlots")
 	local used = player:GetAttribute("JobsUsed")
@@ -354,6 +396,8 @@ refreshAssignButton = function(selected: Entry?)
 		text, ready = "Assign to job", false
 	elseif job then
 		text, ready = `Working: {job}`, false
+	elseif beast and partied[beast.id] then
+		text, ready = "In party", false
 	elseif slotCount == 0 then
 		text, ready = `Jobs at shop Lv {Jobs.UNLOCK_LEVEL}`, false
 	elseif usedCount >= slotCount then
@@ -479,6 +523,12 @@ local function renderTile(tile: Tile)
 	for _, beast in raised do
 		if working[beast.id] then
 			table.insert(parts, "Job")
+			break
+		end
+	end
+	for _, beast in raised do
+		if partied[beast.id] then
+			table.insert(parts, "Party")
 			break
 		end
 	end
@@ -631,6 +681,10 @@ local function openDetail(card: Card)
 	selectedKey = if strongest then strongest.key else nil
 	refreshDetail()
 	detail.Visible = detailCard ~= nil
+	if detail.Visible and hintToast then
+		UIController.Dismiss(hintToast) -- "Tap a card, then ..." is done once a card is open
+		hintToast = nil
+	end
 end
 
 local function buildTile(card: Card, parent: Instance): Tile
@@ -730,16 +784,72 @@ local function buildDetail(parent: Frame)
 	raisedLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	raisedLayout.Parent = raisedList
 
-	-- Assign the selected copy to a shop job (left half), Back (right half)
+	-- Bottom row, in thirds of the space right of the card: Assign to job, Add to party, Back
+	local function placeBottom(button: TextButton, third: number)
+		button.Position = UDim2.new(third / 3, 180 - third * 61, 1, -56)
+		button.Size = UDim2.new(1 / 3, -69, 0, 48)
+		button.TextSize = 14
+		button.ZIndex = 12
+	end
 	assignButton = UIKit.button(detail, "Assign to job", UIKit.Colors.Locked)
-	assignButton.Position = UDim2.new(0, 180, 1, -56)
-	assignButton.Size = UDim2.new(0.5, -98, 0, 48)
-	assignButton.TextSize = 15
-	assignButton.ZIndex = 12
+	placeBottom(assignButton, 0)
 	assignButton.Activated:Connect(function()
 		if assignTarget then
+			partyChooser.Visible = false
 			jobChooser.Visible = true
 		end
+	end)
+
+	partyButton = UIKit.button(detail, "Add to party", UIKit.Colors.Locked)
+	placeBottom(partyButton, 1)
+	partyButton.Activated:Connect(function()
+		if partyTarget then
+			jobChooser.Visible = false
+			refreshPartyChooser()
+			partyChooser.Visible = true
+		end
+	end)
+
+	partyChooser = Instance.new("Frame")
+	partyChooser.Name = "PartyChooser"
+	partyChooser.AnchorPoint = Vector2.new(0.5, 1)
+	partyChooser.Position = UDim2.new(0.5, 0, 1, -62)
+	partyChooser.Size = UDim2.fromOffset(330, 142)
+	partyChooser.BackgroundColor3 = UIKit.Colors.Panel
+	partyChooser.Visible = false
+	partyChooser.ZIndex = 20
+	partyChooser.Parent = detail
+	UIKit.corner(partyChooser, 12)
+	local partyStroke = Instance.new("UIStroke")
+	partyStroke.Color = UIKit.Colors.Accent
+	partyStroke.Parent = partyChooser
+	local partyTitle = UIKit.label(partyChooser, "Which party slot? A card there goes back to your binder.", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+	partyTitle.Position = UDim2.fromOffset(12, 8)
+	partyTitle.Size = UDim2.new(1, -24, 0, 22)
+	partyTitle.TextTruncate = Enum.TextTruncate.AtEnd
+	partyTitle.ZIndex = 21
+	for slot = 1, Party.PARTY_SIZE do
+		local choice = UIKit.button(partyChooser, `Slot {slot}`, UIKit.Colors.Accent)
+		choice.Position = UDim2.new((slot - 1) / Party.PARTY_SIZE, if slot == 1 then 12 else 4, 0, 36)
+		choice.Size = UDim2.new(1 / Party.PARTY_SIZE, -16, 0, 56)
+		choice.TextSize = 13
+		choice.TextWrapped = true
+		choice.ZIndex = 21
+		choice.Activated:Connect(function()
+			partyChooser.Visible = false
+			if partyTarget then
+				Remotes.SetPartySlot:FireServer(slot, partyTarget)
+			end
+		end)
+		partySlotButtons[slot] = choice
+	end
+	local partyCancel = UIKit.button(partyChooser, "Cancel", UIKit.Colors.Row)
+	partyCancel.Position = UDim2.new(0, 12, 0, 98)
+	partyCancel.Size = UDim2.new(1, -24, 0, 36)
+	partyCancel.TextSize = 14
+	partyCancel.ZIndex = 21
+	partyCancel.Activated:Connect(function()
+		partyChooser.Visible = false
 	end)
 
 	jobChooser = Instance.new("Frame")
@@ -782,10 +892,7 @@ local function buildDetail(parent: Frame)
 	end)
 
 	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
-	back.Position = UDim2.new(0.5, 88, 1, -56)
-	back.Size = UDim2.new(0.5, -100, 0, 48)
-	back.TextSize = 16
-	back.ZIndex = 12
+	placeBottom(back, 2)
 	back.Activated:Connect(function()
 		detail.Visible = false
 		detailCard = nil
@@ -994,6 +1101,7 @@ local function onCollectionChanged(payload: { stacks: Stacks, beasts: { [string]
 	collection = sumGrades(graded)
 	beasts = if typeof(payload.beasts) == "table" then payload.beasts else {}
 	working = if typeof((payload :: any).working) == "table" then (payload :: any).working else {}
+	partied = if typeof((payload :: any).partied) == "table" then (payload :: any).partied else {}
 	refresh()
 end
 
@@ -1011,8 +1119,8 @@ local function buildButton(parent: Instance)
 	button.Name = "BinderButton"
 	-- Above the Build button on the middle-left
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -66)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, -28)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
 end
@@ -1066,6 +1174,21 @@ function BinderController.GetWorking(): { [string]: string }
 	return working
 end
 
+-- Opens the binder on its pages (from the Jobs or Party panel), with a hint saying what to do next
+function BinderController.Open(hint: string?)
+	if not panel.Visible then
+		toggle()
+	end
+	if hint then
+		hintToast = UIController.Notify(hint, false, 4)
+	end
+end
+
+-- Cards in the party: beastId -> true
+function BinderController.GetPartied(): { [string]: boolean }
+	return partied
+end
+
 function BinderController.GetBeasts(): { [string]: Beast }
 	return beasts
 end
@@ -1091,7 +1214,21 @@ function BinderController.Start()
 			end
 		end)
 	end
+	-- Party slot names in the "Which party slot?" chooser
+	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
+		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then
+			return
+		end
+		partySlots = {}
+		for _, entry in payload.slots do
+			if typeof(entry) == "table" and typeof(entry.slot) == "number" and typeof(entry.beastId) == "string" then
+				partySlots[entry.slot] = entry.beastId
+			end
+		end
+		refreshPartyChooser()
+	end)
 	Remotes.RequestCollection:FireServer()
+	Remotes.RequestParty:FireServer()
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	task.spawn(watchOwnPlot)
 end

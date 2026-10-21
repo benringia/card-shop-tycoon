@@ -118,6 +118,10 @@ local function onDisplayCard(
 			notify(player, "That card is working. Unassign it first.", true)
 			return
 		end
+		if CardService.IsPartied(player, beastId) then
+			notify(player, "That card is in your party. Remove it from the party first.", true)
+			return
+		end
 		beast = CardService.TakeBeast(player, beastId)
 		copyGrade = owned.grade
 	else
@@ -256,7 +260,7 @@ local function onBuyCard(
 	CardService.GiveCard(buyer, displayed.cardId, displayed.foil, displayed.grade, displayed.beast)
 	local priceText = string.format("$%.2f", displayed.price)
 	notify(buyer, `Bought {describe(displayed)} for {priceText}!`, false)
-	notify(owner, `{buyer.DisplayName} bought your {describe(displayed)} for {priceText}!`, false)
+	Remotes.Notify:FireClient(owner, `{buyer.DisplayName} bought your {describe(displayed)} for {priceText}!`, false, "side")
 end
 
 -- A random card from the owner's Glass Showcases, for a customer to consider

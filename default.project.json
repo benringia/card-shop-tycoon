@@ -5,6 +5,9 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
+      },
+      "CreatureModels": {
+        "$path": "assets/creatures"
       }
     },
     "ServerScriptService": {

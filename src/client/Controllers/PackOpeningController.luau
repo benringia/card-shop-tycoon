@@ -456,8 +456,8 @@ function PackOpeningController.Start()
 	ripButton.Name = "RipButton"
 	-- Next to the Drop button on the middle-left
 	ripButton.AnchorPoint = Vector2.new(0, 0.5)
-	ripButton.Position = UDim2.new(0, 116, 0.5, 132)
-	ripButton.Size = UDim2.fromOffset(130, 56)
+	ripButton.Position = UDim2.new(0, 116, 0.5, 140)
+	ripButton.Size = UDim2.fromOffset(130, 50)
 	ripButton.TextSize = 16
 	ripButton.Visible = false
 	ripButton.Activated:Connect(onRip)

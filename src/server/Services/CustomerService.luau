@@ -20,6 +20,7 @@ local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"
 local Services = script.Parent :: Instance
 local NpcMotion = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("NpcMotion"))
 local DataService = require(Services:WaitForChild("DataService"))
+local PartyService = require(Services:WaitForChild("PartyService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
@@ -304,7 +305,8 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
 		return true
 	end
-	if rng:NextNumber() > band.chance then
+	-- Haggle (Shade creature summoned): more willing to buy at the owner's price
+	if rng:NextNumber() > math.min(1, band.chance * (1 + PartyService.GetPerk(customer.owner, "Haggle"))) then
 		return true
 	end
 
@@ -345,7 +347,8 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
 		return true
 	end
-	if rng:NextNumber() > band.chance then
+	-- Haggle (Shade creature summoned): more willing to buy at the owner's price
+	if rng:NextNumber() > math.min(1, band.chance * (1 + PartyService.GetPerk(customer.owner, "Haggle"))) then
 		return true
 	end
 
@@ -407,7 +410,8 @@ local function waitInQueue(customer: Customer)
 	table.insert(state.queue, customer)
 	walkTo(customer, getQueuePoint(customer.plot, #state.queue))
 
-	local queueDeadline = os.clock() + CustomerConfig.QUEUE_PATIENCE
+	-- Calm (Tide creature summoned): customers wait longer
+	local queueDeadline = os.clock() + CustomerConfig.QUEUE_PATIENCE * (1 + PartyService.GetPerk(customer.owner, "Calm"))
 	local function getDeadline(): number
 		local lastScanAt = customer.lastScanAt
 		return if lastScanAt then lastScanAt + CustomerConfig.CHECKOUT_PATIENCE else queueDeadline
@@ -546,8 +550,9 @@ local function spawnTick()
 		if state.nextSpawnAt == 0 then
 			state.nextSpawnAt = now + CustomerConfig.FIRST_SPAWN_DELAY
 		elseif now >= state.nextSpawnAt and #state.customers < CustomerConfig.MAX_PER_PLOT then
-			state.nextSpawnAt = now
-				+ rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX)
+			-- Hype (Ember creature summoned): customers arrive more often
+			local interval = rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX)
+			state.nextSpawnAt = now + interval / (1 + PartyService.GetPerk(owner, "Hype"))
 			task.spawn(spawnCustomer, plot, owner, state)
 		end
 	end

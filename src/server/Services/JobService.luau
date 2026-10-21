@@ -525,6 +525,10 @@ local function onAssign(player: Player, target: unknown, job: unknown)
 
 	local beastId: string? = nil
 	if typeof(target) == "string" then
+		if CardService.IsPartied(player, target) then
+			notify(player, "That card is in your party. Remove it from the party first.", true)
+			return
+		end
 		if CardService.GetBeast(player, target) and not CardService.IsWorking(player, target) then
 			beastId = target
 		end

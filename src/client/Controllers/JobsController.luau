@@ -99,8 +99,17 @@ end
 
 local function buildEmptyRow(slot: number)
 	local row = makeRow(slot)
-	addText(row, `Slot {slot} · empty`, 14, 12, UDim.new(1, -28), 22, Enum.Font.GothamBold, 17, UIKit.Colors.Text)
-	addText(row, "Open your binder, tap a card and press Assign to job.", 14, 40, UDim.new(1, -28), 40, Enum.Font.Gotham, 13, UIKit.Colors.Subtext).TextWrapped = true
+	addText(row, `Slot {slot} · empty`, 14, 12, UDim.new(1, -150), 22, Enum.Font.GothamBold, 17, UIKit.Colors.Text)
+	addText(row, "Pick a card in your binder and press Assign to job.", 14, 40, UDim.new(1, -150), 40, Enum.Font.Gotham, 13, UIKit.Colors.Subtext).TextWrapped = true
+	local assign = UIKit.button(row, "Assign", UIKit.Colors.Accent)
+	assign.AnchorPoint = Vector2.new(1, 0.5)
+	assign.Position = UDim2.new(1, -12, 0.5, 0)
+	assign.Size = UDim2.fromOffset(124, 48)
+	assign.TextSize = 15
+	assign.Activated:Connect(function()
+		panel.Visible = false
+		BinderController.Open("Tap a card, then Assign to job.")
+	end)
 end
 
 local function buildWorkerRow(slot: number, info: SlotInfo)
@@ -212,8 +221,8 @@ function JobsController.Start()
 	local button = UIKit.button(screenGui, "Jobs", UIKit.Colors.Row)
 	button.Name = "JobsButton"
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -132)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, -84)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
 

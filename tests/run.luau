@@ -11,6 +11,9 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PocketLayout = require("./PocketLayout.spec"),
 	JobRules = require("./JobRules.spec"),
 	LevelMath = require("./LevelMath.spec"),
+	PartyRules = require("./PartyRules.spec"),
+	CreatureMotion = require("./CreatureMotion.spec"),
+	CreatureAssets = require("./CreatureAssets.spec"),
 }
 
 local passed, failed = 0, 0

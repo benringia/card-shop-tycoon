@@ -18,6 +18,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
+local PartyService = require(Services:WaitForChild("PartyService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
@@ -218,9 +219,11 @@ local function onOrder(player: Player, productId: unknown)
 	end
 
 	table.insert(shop.incoming, product.id)
-	notify(player, `Ordered {product.name}. Arrives in {StockConfig.DELIVERY_SECONDS}s.`, false)
+	-- Express (Bloom creature summoned): deliveries arrive faster
+	local deliverySeconds = math.max(1, math.round(StockConfig.DELIVERY_SECONDS * (1 - PartyService.GetPerk(player, "Express"))))
+	notify(player, `Ordered {product.name}. Arrives in {deliverySeconds}s.`, false)
 
-	task.delay(StockConfig.DELIVERY_SECONDS, function()
+	task.delay(deliverySeconds, function()
 		local index = table.find(shop.incoming, product.id)
 		if not shop.active or not index then
 			return

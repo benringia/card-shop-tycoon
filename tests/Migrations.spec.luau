@@ -103,6 +103,18 @@ return {
 		expect.equal(kept.jobs[1].job, "Cashier", "kept")
 	end,
 
+	["v7: adds an empty party, keeps existing"] = function()
+		local data: any = { version = 6, jobs = {} }
+		Migrations.run(data, 7)
+		expect.equal(typeof(data.party), "table", "party added")
+		expect.equal(typeof(data.party.slots), "table", "slots")
+		expect.equal(next(data.party.slots), nil, "empty")
+		local kept: any = { version = 6, party = { slots = { ["1"] = "abc" }, summoned = 1 } }
+		Migrations.run(kept, 7)
+		expect.equal(kept.party.slots["1"], "abc", "kept slot")
+		expect.equal(kept.party.summoned, 1, "kept summon")
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))

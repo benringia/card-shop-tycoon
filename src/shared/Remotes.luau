@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local NAMES = {
 	"OpenOrderMenu", -- server → client: owner used their order computer
 	"OrderProduct", -- client → server: (productId: string)
-	"Notify", -- server → client: (message: string, isError: boolean)
+	"Notify", -- server → client: (message: string, isError: boolean, style: "side"?) side = small toast at the left (sales)
 	"PlaceShelf", -- client → server: (shelfId: string, gridX: number, gridZ: number, rotation: number)
 	"MoveShelf", -- client → server: (uid: string, gridX: number, gridZ: number, rotation: number)
 	"MoveFixture", -- client → server: (fixtureId: string, gridX: number, gridZ: number, rotation: number)
@@ -34,6 +34,10 @@ local NAMES = {
 	"UnassignJob", -- client → server: (slot: number)
 	"JobsChanged", -- server → owner: { slotCount, maxSlots, unlockLevel, hasPass, passId, slots = { { slot, beastId, job, status } } }
 	"RequestJobs", -- client → server: () resend JobsChanged
+	"SetPartySlot", -- client → server: (slot: number, target: beastId | { cardId, foil, grade } | nil) nil removes
+	"Summon", -- client → server: (slot: number?) nil unsummons
+	"PartyChanged", -- server → owner: { slots = { { slot, beastId } }, summoned: number?, perk = { kind, value, text }? }
+	"RequestParty", -- client → server: () resend PartyChanged
 }
 
 local isServer = RunService:IsServer()
@@ -88,4 +92,8 @@ return {
 	UnassignJob = remotes.UnassignJob,
 	JobsChanged = remotes.JobsChanged,
 	RequestJobs = remotes.RequestJobs,
+	SetPartySlot = remotes.SetPartySlot,
+	Summon = remotes.Summon,
+	PartyChanged = remotes.PartyChanged,
+	RequestParty = remotes.RequestParty,
 }
