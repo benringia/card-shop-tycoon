@@ -25,6 +25,8 @@ return {
 	SLOT_COLUMNS = 3,
 	SLOT_SPACING = Vector2.new(1.9, 1.55), -- studs between slot centres
 	SLOTS_OFFSET_Y = -0.35, -- shifts the card grid down, below the label
+	CASED_CARD_INSET = 0.45, -- cases drawn with a prop: cards stand this far behind the case's front face
+	CASED_CARD_RAISE = 0.25, -- and this much higher, on the cabinet's shelves
 	CARD_SIZE = Vector3.new(1.5, 1.4, 0.1),
 	LABEL_HEIGHT = 0.2, -- fraction of the case face used for its label
 }

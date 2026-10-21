@@ -17,11 +17,13 @@ export type Shelf = {
 	size: Vector3,
 	color: Color3,
 	accepts: { string }?, -- product shelves only: product IDs it can hold, nil = any product
+	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox
 }
 
 local List: { Shelf } = {
 	{
 		id = "SmallPackRack",
+		prop = "Shelf",
 		name = "Small Pack Rack",
 		kind = "Products",
 		capacity = 24,
@@ -42,6 +44,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "CollectorCase",
+		prop = "GlassCase",
 		name = "Collector Case",
 		kind = "PlayerCards",
 		capacity = 6,
@@ -62,6 +65,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "WallShelf",
+		prop = "Shelf",
 		name = "Wall Shelf",
 		kind = "Products",
 		capacity = 48,
@@ -72,6 +76,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "AccessoryHook",
+		prop = "Shelf",
 		name = "Accessory Hook",
 		kind = "Products",
 		capacity = 20,
@@ -83,6 +88,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "BigDisplayRack",
+		prop = "Shelf",
 		name = "Big Display Rack",
 		kind = "Products",
 		capacity = 96,

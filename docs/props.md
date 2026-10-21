@@ -23,6 +23,7 @@ shows its stand-in.
 | `PlazaDecor` | two spots on the plaza edge | 2.5 | no |
 | `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
+| `GlassCase` | the look of the Collector Case: a glass cabinet stretched to fill the case; cards stand inside behind the glass | fills the case | (the case's own hitbox) |
 | `Awning` | shop fronts: repeated across each front, top at the wall top; parts named `COLOUR ME` take the plot's awning colour | about 5 deep, fills the front | no |
 | `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |
 

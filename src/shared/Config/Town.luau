@@ -28,6 +28,8 @@ return {
 		CounterDecor = { height = 1.2, collide = false },
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
 		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
+		-- the Collector Case's look: a glass cabinet built from plain blocks, stretched to fill the case
+		GlassCase = { height = 0, collide = false, stretch = true },
 		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
 		Awning = { height = 0, collide = false },
 	},

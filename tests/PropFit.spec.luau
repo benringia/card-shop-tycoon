@@ -59,6 +59,13 @@ return {
 		expect.equal(town.SLOTS.Lamp.yaw, 90, "Lamp yaw")
 	end,
 
+	["the glass case slot stretches to fill the Collector Case"] = function()
+		local slot = town.SLOTS.GlassCase
+		assert(slot ~= nil, "no GlassCase slot")
+		expect.equal(slot.stretch, true, "GlassCase stretch")
+		expect.equal(slot.collide, false, "GlassCase collide (the case part is the hitbox)")
+	end,
+
 	["the shelf slot stretches"] = function()
 		expect.equal(town.SLOTS.Shelf.stretch, true, "Shelf stretch")
 	end,
