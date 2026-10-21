@@ -57,10 +57,19 @@ end
 
 local function updateCash()
 	local cash = player:GetAttribute("Cash")
-	cashLabel.Text = if typeof(cash) == "number" then string.format("$%.2f", cash) else "$--"
+	-- No Cash yet = the save is still loading (can take a while in Studio): say so, so it never looks like a reset
+	local loaded = typeof(cash) == "number"
+	cashLabel.Text = if loaded then string.format("$%.2f", cash) else "Loading..."
+	cashLabel.TextSize = if loaded then 28 else 20
 end
 
 local function updateXp()
+	if typeof(player:GetAttribute("XP")) ~= "number" then
+		levelLabel.Text = ""
+		xpLabel.Text = "Loading your shop..."
+		xpFill.Size = UDim2.fromScale(0, 1)
+		return
+	end
 	local xp = getNumber("XP", 0)
 	levelLabel.Text = `Lv {getNumber("Level", 1)}`
 	local into, span = LevelRules.getProgress(xp)
