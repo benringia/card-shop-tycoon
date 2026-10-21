@@ -1,10 +1,13 @@
 --!strict
 local town = require("../src/shared/Config/Town")
+local wild = require("../src/shared/Config/Wild")
+local places = require("../src/shared/Config/Places")
+local pvp = require("../src/shared/Config/Pvp")
+local combat = require("../src/shared/Config/Combat")
 local TownLayout = require("../src/shared/Util/TownLayout")
 local expect = require("./lib/expect")
 
--- Copied from Config/Plots, Wild.PLAZA_PORTAL, Places.FRONTIER_PORTAL, Pvp.ARENA_PORTAL, Wild.SPRING and
--- Combat.SPRING_RADIUS: Config/Plots holds Color3 and Vector3 values, so Lune can't load it.
+-- Plot numbers copied from Config/Plots (it holds Color3 and Vector3 values, so Lune can't load it)
 local WORLD: TownLayout.World = {
 	plotCount = 6,
 	perRow = 3,
@@ -12,9 +15,13 @@ local WORLD: TownLayout.World = {
 	plotDepth = 40,
 	gap = 8,
 	streetWidth = 30,
-	portals = { { x = 84, z = 0 }, { x = 84, z = -26 }, { x = -84, z = 0 } },
-	spring = { x = 0, z = 0 },
-	springRadius = 12,
+	portals = {
+		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z },
+		{ x = places.FRONTIER_PORTAL.x, z = places.FRONTIER_PORTAL.z },
+		{ x = pvp.ARENA_PORTAL.x, z = pvp.ARENA_PORTAL.z },
+	},
+	spring = { x = wild.SPRING.x, z = wild.SPRING.z },
+	springRadius = combat.SPRING_RADIUS,
 }
 
 local HALF_STREET = WORLD.streetWidth / 2
@@ -72,6 +79,16 @@ return {
 				else
 					assert(placement.slot == "Portal", `{where} is in the street`)
 				end
+			end
+		end
+	end,
+
+	["every plaza portal stands at a street end, apart from the others"] = function()
+		for index, portal in WORLD.portals do
+			assert(math.abs(portal.z) < HALF_STREET, `portal {index} at z {portal.z} is off the street`)
+			assert(math.abs(portal.x) <= town.LAYOUT.STREET_HALF_LENGTH, `portal {index} is past the street end`)
+			for other = index + 1, #WORLD.portals do
+				assert(distance(portal, WORLD.portals[other]) >= 16, `portals {index} and {other} overlap`)
 			end
 		end
 	end,

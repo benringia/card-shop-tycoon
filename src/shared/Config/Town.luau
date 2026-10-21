@@ -57,6 +57,8 @@ return {
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
+	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
+	PORTAL_LABEL_DISTANCE = 150, -- shown up to this far away
 
 	-- Register counter (front = customer side): scan items lie along the front edge, props in a strip along the
 	-- back. Props are fitted into these boxes (width, height); x = offset from the counter centre.
@@ -91,7 +93,6 @@ return {
 	GRASS_COLOR = { 120, 180, 95 },
 	STREET_COLOR = { 190, 175, 155 },
 	PLAZA_COLOR = { 215, 205, 190 },
-	PATH_COLOR = { 200, 185, 160 },
 
 	-- Main town only; the Frontier keeps its own lighting
 	LIGHTING = {

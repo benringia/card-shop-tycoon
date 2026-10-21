@@ -21,8 +21,14 @@ local Props = require((script.Parent :: Instance).Parent:WaitForChild("Util"):Wa
 
 local TownService = {}
 
-local GROUND_THICKNESS = 0.2 -- street, paths and plaza sink half into the baseplate: no z-fighting on top
-local FRONTIER_PATH_WIDTH = 8
+local GROUND_THICKNESS = 0.2 -- street and plaza sink half into the baseplate: no z-fighting on top
+
+-- Floating names over the plaza portals
+local PORTAL_LABELS = {
+	{ spot = Wild.PLAZA_PORTAL, text = "🌿 The Wild", detail = "Lv 1-15 monsters" },
+	{ spot = Places.FRONTIER_PORTAL, text = "❄️ The Frontier", detail = "Lv 15+ · rare cards" },
+	{ spot = Pvp.ARENA_PORTAL, text = "⚔️ PvP Arena", detail = "Watch battles" },
+}
 
 local function point(spot: { x: number, z: number }): TownLayout.Point
 	return { x = spot.x, z = spot.z }
@@ -76,12 +82,44 @@ local function buildGround(folder: Folder)
 	local plaza = ground(folder, "Plaza", Vector3.new(GROUND_THICKNESS * 1.5, layout.PLAZA_RADIUS * 2, layout.PLAZA_RADIUS * 2), CFrame.new(spring.x, 0, spring.z) * CFrame.Angles(0, 0, math.rad(90)), Town.PLAZA_COLOR, Enum.Material.Slate)
 	plaza.Shape = Enum.PartType.Cylinder
 	plaza.CanCollide = false
+end
 
-	-- The Frontier portal stands off the street: a path out to it
-	local portal = Places.FRONTIER_PORTAL
-	local streetEdge = (if portal.z < 0 then -1 else 1) * PlotConfig.STREET_WIDTH / 2
-	local length = math.abs(portal.z - streetEdge) + FRONTIER_PATH_WIDTH / 2
-	ground(folder, "FrontierPath", Vector3.new(FRONTIER_PATH_WIDTH, GROUND_THICKNESS, length), CFrame.new(portal.x, 0, (streetEdge + portal.z) / 2), Town.PATH_COLOR, Enum.Material.Cobblestone)
+local function addLabelText(parent: Instance, text: string, size: number, position: UDim2, height: number)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = position
+	label.Size = UDim2.new(1, 0, height, 0)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.3
+	label.Text = text
+	label.Parent = parent
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = size
+	limit.Parent = label
+end
+
+local function buildPortalLabels(folder: Folder)
+	for _, entry in PORTAL_LABELS do
+		local anchor = Instance.new("Part")
+		anchor.Name = "PortalLabel"
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.new(1, 1, 1)
+		anchor.Position = Vector3.new(entry.spot.x, Town.PORTAL_LABEL_HEIGHT, entry.spot.z)
+		anchor.Parent = folder
+		local board = Instance.new("BillboardGui")
+		board.Size = UDim2.fromOffset(260, 70)
+		board.MaxDistance = Town.PORTAL_LABEL_DISTANCE
+		board.LightInfluence = 0
+		board.Parent = anchor
+		addLabelText(board, entry.text, 36, UDim2.fromScale(0, 0), 0.62)
+		addLabelText(board, entry.detail, 20, UDim2.fromScale(0, 0.62), 0.38)
+	end
 end
 
 local function buildDecor(folder: Folder)
@@ -133,6 +171,7 @@ function TownService.Start()
 	folder.Name = "Town"
 	buildGround(folder)
 	buildDecor(folder)
+	buildPortalLabels(folder)
 	folder.Parent = workspace
 	setLighting()
 end

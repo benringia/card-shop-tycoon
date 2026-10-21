@@ -4,7 +4,7 @@
 return {
 	-- Far from the plots (they sit around the origin); zones run along +Z from here
 	ORIGIN = { x = 0, y = 0, z = 1200 },
-	PLAZA_PORTAL = { x = 84, y = 0, z = 0 }, -- end of the street, past the last plots (rows span x -68..68)
+	PLAZA_PORTAL = { x = 84, y = 0, z = -9 }, -- east end of the street (rows span x -68..68), beside the Frontier portal
 	SPRING = { x = 0, y = 0, z = 0 }, -- plaza centre between the shop rows
 	PORTAL_SIGN_HEIGHT = 17, -- portal signs float above the portal frame prop (Town.SLOTS.Portal)
 	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN

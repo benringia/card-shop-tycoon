@@ -49,8 +49,9 @@ Order stock (computer) → Restock shelves → Set prices
 
 **Main town (world pass 1; spec `2026-10-25-main-town-design.md`; built, awaiting Studio test).** A cozy stylized
 village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
-between the two rows (x -90..90), a round stone plaza (radius 14) round the healing spring, a path to the Frontier
-portal, warm afternoon lighting with light haze. Decor is fixed (`Util/TownLayout`, same on every server): lamps
+between the two rows (x -90..90), a round stone plaza (radius 14) round the healing spring, warm afternoon lighting
+with light haze. Portals: the Wild (84, -9) and the Frontier (84, 9) side by side at the east end of the street,
+the PvP Arena (-84, 0) at the west end, each with a floating name label. Decor is fixed (`Util/TownLayout`, same on every server): lamps
 on the street edges at every plot gap and row end, 4 benches with flower beds and 2 plaza decor spots round the
 spring, a bush, clover, a crate and a barrel in each gap between plots, a fence and a tree line (Tree and Pine in
 turn) behind each row, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
