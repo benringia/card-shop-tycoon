@@ -22,6 +22,9 @@
     "ServerStorage": {
       "ServerPackages": {
         "$path": "ServerPackages"
+      },
+      "PropModels": {
+        "$path": "assets/props"
       }
     },
     "StarterPlayer": {

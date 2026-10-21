@@ -1,11 +1,12 @@
 --!strict
 -- Creature models are free/bought assets: no script inside one may ever reach the game. A Script with
 -- RunContext Server/Client runs from ReplicatedStorage before PartyService can strip it, so this test is the
--- real gate: it fails on any script in assets/creatures or assets/monsters (and checks the scanner catches nested ones).
+-- real gate: it fails on any script in assets/creatures, assets/monsters or assets/props (and checks the scanner
+-- catches nested ones).
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDERS = { "assets/creatures", "assets/monsters" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props" }
 
 local function findScripts(roots: { any }): { string }
 	local found = {}
@@ -29,6 +30,10 @@ return {
 		assert(#findScripts({ model }) == 1, "nested script not found")
 	end,
 
+	["the prop folder is scanned too"] = function()
+		assert(table.find(FOLDERS, "assets/props"), "assets/props is not in FOLDERS")
+	end,
+
 	["no creature or monster model contains a script"] = function()
 		local bad = {}
 		for _, folder in FOLDERS do
@@ -43,6 +48,6 @@ return {
 				end
 			end
 		end
-		assert(#bad == 0, `scripts in creature models (delete them before saving):\n    {table.concat(bad, "\n    ")}`)
+		assert(#bad == 0, `scripts in creature, monster or prop models (delete them before saving):\n    {table.concat(bad, "\n    ")}`)
 	end,
 }
