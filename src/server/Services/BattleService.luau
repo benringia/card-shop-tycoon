@@ -4,7 +4,6 @@
 -- steps it at Combat.TICK_RATE, moves the markers (lunges, the fight ring), sends events to the player's client
 -- and pays out: card XP split across the 3 party cards, cash, and sometimes a card. Fainted cards rest
 -- (saved as resting = { [beastId] = Unix time }), faster near the plaza spring.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -53,7 +52,10 @@ local LUNGE_SECONDS = 0.15
 local fights: { [Player]: Fight } = {}
 local resting: { [Player]: { [string]: number } } = {} -- beastId -> Unix time it can fight again
 local nearSpring: { [Player]: boolean } = {}
-local allowAction = RateLimiter.new(Combat.ACTION_COOLDOWN)
+-- One limiter per remote, so tapping two fighters' abilities quickly doesn't drop the second
+local allowAbility = RateLimiter.new(Combat.ACTION_COOLDOWN / 2)
+local allowCallIn = RateLimiter.new(Combat.ACTION_COOLDOWN)
+local allowRun = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 
@@ -453,7 +455,7 @@ end
 
 local function onCallIn(player: Player, beastId: unknown)
 	local fight = fights[player]
-	if not allowAction(player) or not fight or typeof(beastId) ~= "string" then
+	if not allowCallIn(player) or not fight or typeof(beastId) ~= "string" then
 		return
 	end
 	local ok = BattleSim.callIn(fight.sim, beastId)
@@ -469,7 +471,7 @@ end
 
 local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	local fight = fights[player]
-	if not allowAction(player) or not fight or typeof(fighterId) ~= "string" then
+	if not allowAbility(player) or not fight or typeof(fighterId) ~= "string" then
 		return
 	end
 	if which ~= "element" and which ~= "signature" then
@@ -486,7 +488,7 @@ end
 
 local function onRun(player: Player)
 	local fight = fights[player]
-	if not allowAction(player) or not fight then
+	if not allowRun(player) or not fight then
 		return
 	end
 	handleEvents(fight, BattleSim.tryRun(fight.sim))
@@ -589,6 +591,13 @@ end
 
 function BattleService.Start()
 	DataService.Register({ name = "BattleService", load = load, save = save, unload = unload })
+	-- End a fight before the leave save, so cards that fainted in it are saved as resting
+	DataService.OnBeforeLeave(function(player)
+		local fight = fights[player]
+		if fight then
+			endFight(fight, "run")
+		end
+	end)
 	Remotes.StartFight.OnServerEvent:Connect(onStartFight)
 	Remotes.CallIn.OnServerEvent:Connect(onCallIn)
 	Remotes.UseAbility.OnServerEvent:Connect(onUseAbility)
@@ -615,12 +624,6 @@ function BattleService.Start()
 		if sinceSpring >= 1 then
 			sinceSpring = 0
 			tickSpring()
-		end
-	end)
-	Players.PlayerRemoving:Connect(function(player)
-		local fight = fights[player]
-		if fight then
-			endFight(fight, "run")
 		end
 	end)
 end

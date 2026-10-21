@@ -93,18 +93,6 @@ function PartyService.GetMarker(player: Player): BasePart?
 	return if state then state.marker else nil
 end
 
--- An extra creature for one of the player's cards (a fight call-in); the caller destroys it
-function PartyService.CreateMarker(player: Player, beastId: string, cframe: CFrame): BasePart?
-	local beast = CardService.GetBeast(player, beastId)
-	if not beast then
-		return nil
-	end
-	local marker = newMarker(`Creature_{player.UserId}_{beastId}`, cframe)
-	setMarkerAttributes(marker, player, beast)
-	marker.Parent = creaturesFolder
-	return marker
-end
-
 function PartyService.GetPerk(player: Player, kind: string): number
 	local perk = getCurrentPerk(player)
 	return if perk and perk.kind == kind then perk.value else 0
@@ -176,6 +164,18 @@ local function newMarker(name: string, cframe: CFrame): Part
 	marker.CanTouch = false
 	marker.Transparency = 1
 	marker.CFrame = cframe
+	return marker
+end
+
+-- An extra creature for one of the player's cards (a fight call-in); the caller destroys it
+function PartyService.CreateMarker(player: Player, beastId: string, cframe: CFrame): BasePart?
+	local beast = CardService.GetBeast(player, beastId)
+	if not beast then
+		return nil
+	end
+	local marker = newMarker(`Creature_{player.UserId}_{beastId}`, cframe)
+	setMarkerAttributes(marker, player, beast)
+	marker.Parent = creaturesFolder
 	return marker
 end
 

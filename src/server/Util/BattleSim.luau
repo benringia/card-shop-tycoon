@@ -187,7 +187,8 @@ function BattleSim.step(state: State, dt: number): { Event }
 	local combat = state.combat
 	local monster = state.monster
 
-	if monster.burnUntil > 0 and state.time <= monster.burnUntil + 1e-9 and state.time >= monster.burnTick then
+	-- One burn per second of Inferno; a long frame catches up on every tick it covered
+	while monster.burnUntil > 0 and monster.burnTick <= math.min(state.time, monster.burnUntil) + 1e-9 do
 		monster.burnTick += 1
 		local damage = math.max(1, math.round(monster.burnPerSecond))
 		monster.hp = math.max(0, monster.hp - damage)
@@ -260,7 +261,8 @@ local function applyAbility(state: State, fighter: Fighter, ability: any, events
 		monster.slowUntil, monster.slow = state.time + ability.seconds, ability.slow
 		table.insert(events, { type = "ability", kind = kind, from = fighter.id, to = "monster" })
 	elseif kind == "Overcharge" then
-		fighter.overcharge = ability.attacks
+		-- Pulling the next attack in is the first fast one; the rest shorten the gaps after it
+		fighter.overcharge = ability.attacks - 1
 		fighter.nextAttack = math.min(fighter.nextAttack, state.time + CombatMath.getAttackInterval(state.combat, fighter.spd) / ability.speed)
 		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
 	elseif kind == "Curse" then

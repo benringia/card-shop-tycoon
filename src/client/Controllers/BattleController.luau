@@ -150,7 +150,7 @@ local function floatText(id: string, text: string, color: Color3)
 	label.TextStrokeTransparency = 0.3
 	label.Text = text
 	label.Parent = gui
-	gui.Parent = screenGui
+	gui.Parent = player:WaitForChild("PlayerGui") -- a BillboardGui inside another ScreenGui never draws
 	TweenService:Create(gui, NUMBER_RISE, { StudsOffset = Vector3.new(0, 7, 0) }):Play()
 	TweenService:Create(label, NUMBER_RISE, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 	task.delay(NUMBER_RISE.Time, function()

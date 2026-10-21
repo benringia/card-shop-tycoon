@@ -42,7 +42,6 @@ local WildService = {}
 local SPAWN_TAG = "WildSpawn"
 local TRAVEL_COOLDOWN = 1
 local ARRIVAL_LIFT = 3 -- studs above the pad, so characters drop onto it
-local CHASE_REST_SECONDS = 6 -- after contact or giving up, a monster won't chase again for this long
 local PORTAL_COLOR = Color3.fromRGB(120, 90, 255)
 local SPRING_COLOR = Color3.fromRGB(80, 190, 255)
 
@@ -310,11 +309,14 @@ local function moveToward(monster: Monster, target: Vector3, speed: number, dt: 
 	return stepLength >= distance
 end
 
-local function nearestPlayer(position: Vector3): (Player?, number)
+local busy: { [Player]: boolean } = {} -- players in a fight right now (rebuilt every monster tick)
+
+-- Nearest player in the wild; with skipBusy, ignoring players already in a fight (nobody chases into a ring)
+local function nearestPlayer(position: Vector3, skipBusy: boolean?): (Player?, number)
 	local best, bestDistance = nil, math.huge
 	for player in inWild do
 		local root = getRoot(player)
-		if root then
+		if root and not (skipBusy and busy[player]) then
 			local distance = (root.Position - position).Magnitude
 			if distance < bestDistance then
 				best, bestDistance = player, distance
@@ -335,10 +337,12 @@ local function updateMonster(monster: Monster, dt: number, now: number)
 	local zone = Wild.ZONES[monster.zone]
 	local aggressive = monster.elite or (zone ~= nil and zone.aggro)
 	local fromHome = (monster.marker.Position - monster.home).Magnitude
-	if aggressive and now >= monster.chaseCooldownUntil and distance <= Wild.AGGRO_RADIUS and fromHome <= Wild.CHASE_GIVE_UP then
+	local prey, preyDistance = nearestPlayer(monster.marker.Position, true)
+	if aggressive and prey and now >= monster.chaseCooldownUntil and preyDistance <= Wild.AGGRO_RADIUS and fromHome <= Wild.CHASE_GIVE_UP then
+		player, distance = prey, preyDistance
 		local root = getRoot(player) :: BasePart
 		if distance <= Wild.CONTACT_DISTANCE then
-			monster.chaseCooldownUntil = now + CHASE_REST_SECONDS
+			monster.chaseCooldownUntil = now + Wild.CHASE_REST_SECONDS
 			monster.wanderTarget = monster.home
 			for _, callback in contactCallbacks do
 				task.spawn(callback, player, monster)
@@ -349,7 +353,7 @@ local function updateMonster(monster: Monster, dt: number, now: number)
 		return
 	end
 	if fromHome > Wild.CHASE_GIVE_UP then
-		monster.chaseCooldownUntil = now + CHASE_REST_SECONDS
+		monster.chaseCooldownUntil = now + Wild.CHASE_REST_SECONDS
 		monster.wanderTarget = monster.home -- too far from home: walk back
 	end
 	if now < monster.waitUntil then
@@ -382,7 +386,7 @@ end
 function WildService.Unlock(monster: Monster)
 	monster.fightingPlayer = nil
 	monster.wanderTarget = monster.home
-	monster.chaseCooldownUntil = os.clock() + CHASE_REST_SECONDS
+	monster.chaseCooldownUntil = os.clock() + Wild.CHASE_REST_SECONDS
 	setMarker(monster)
 end
 
@@ -537,6 +541,12 @@ function WildService.Start()
 		local step = elapsed
 		elapsed = 0
 		local now = os.clock()
+		table.clear(busy)
+		for _, monster in monsters do
+			if monster.fightingPlayer then
+				busy[monster.fightingPlayer] = true
+			end
+		end
 		for _, monster in monsters do
 			updateMonster(monster, step, now)
 		end

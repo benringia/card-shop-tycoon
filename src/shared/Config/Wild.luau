@@ -43,6 +43,7 @@ return {
 	CHASE_SPEED = 11,
 	CHASE_GIVE_UP = 45, -- studs from home
 	CONTACT_DISTANCE = 4, -- a chasing monster this close starts the fight
+	CHASE_REST_SECONDS = 25, -- after catching you, a fight or giving up, a monster won't chase again for this long
 	MARKER_RATE = 10, -- monster marker updates per second
 	PROMPT_DISTANCE = 10,
 

@@ -2,6 +2,11 @@
 local BattleSim = require("../src/server/Util/BattleSim")
 local combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
+local CombatMath = require("../src/shared/Util/CombatMath")
+
+local function CombatMathInterval(spd: number): number
+	return CombatMath.getAttackInterval(combat, spd)
+end
 
 local function fighter(id: string, element: string, hp: number, atk: number, spd: number, signature: string?)
 	return { id = id, element = element, hp = hp, atk = atk, spd = spd, signature = signature }
@@ -188,6 +193,54 @@ return {
 		local state = BattleSim.new(combat, fighter("a", "Ember", 1e9, 0, 1), {}, monster("Ember", 1e9, 0, 1), 10)
 		local result = runToEnd(state, combat.MAX_FIGHT_SECONDS + 5)
 		expect.equal(result, "run", "timeout")
+	end,
+
+	["Inferno burns for every second, even with uneven frames"] = function()
+		local state = BattleSim.new(combat, fighter("a", "Ember", 1e6, 10, 1, "Infernox"), {}, monster("Tide", 1e6, 0, 1), 12)
+		BattleSim.useAbility(state, "a", "signature")
+		local burns = 0
+		local steps = { 0.033, 0.017, 0.05, 0.1, 0.25, 0.033 }
+		local t = 0
+		local index = 0
+		while t < combat.SIGNATURES.Infernox.seconds + 2 do
+			index = index % #steps + 1
+			for _, e in BattleSim.step(state, steps[index]) do
+				if e.type == "ability" and e.kind == "Burn" then
+					burns += 1
+				end
+			end
+			t += steps[index]
+		end
+		expect.equal(burns, combat.SIGNATURES.Infernox.seconds, "one burn per second")
+	end,
+
+	["Overcharge speeds up exactly the next 3 attacks"] = function()
+		local spd = 10
+		local normal = CombatMathInterval(spd)
+		local state = BattleSim.new(combat, fighter("a", "Volt", 1e6, 1, spd), {}, monster("Tide", 1e9, 0, 1), 13)
+		-- Let the first normal attack land, then overcharge
+		local times = {}
+		local t = 0
+		local charged = false
+		while #times < 7 and t < 60 do
+			for _, e in BattleSim.step(state, 0.01) do
+				if e.type == "attack" and e.from == "a" then
+					table.insert(times, state.time)
+				end
+			end
+			t += 0.01
+			if #times == 1 and not charged then
+				charged = true
+				BattleSim.useAbility(state, "a", "element")
+			end
+		end
+		local fast = 0
+		for i = 2, #times do
+			if times[i] - times[i - 1] < normal * 0.75 then
+				fast += 1
+			end
+		end
+		expect.equal(fast, combat.ABILITIES.Volt.attacks, "fast attacks")
 	end,
 
 	["nothing happens after the end"] = function()

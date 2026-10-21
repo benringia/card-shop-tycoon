@@ -16,6 +16,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CreatureAssets = require("./CreatureAssets.spec"),
 	CombatMath = require("./CombatMath.spec"),
 	BattleSim = require("./BattleSim.spec"),
+	SourceOrder = require("./SourceOrder.spec"),
 }
 
 local passed, failed = 0, 0
