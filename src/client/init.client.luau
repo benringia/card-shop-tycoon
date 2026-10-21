@@ -22,6 +22,7 @@ local CardEffectsController = require(Controllers:WaitForChild("CardEffectsContr
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
+local BattleController = require(Controllers:WaitForChild("BattleController"))
 
 UIController.Start()
 OrderController.Start()
@@ -43,3 +44,4 @@ CardEffectsController.Start()
 AnnouncementController.Start()
 CreatureController.Start()
 MonsterController.Start()
+BattleController.Start()

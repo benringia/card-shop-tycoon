@@ -3,6 +3,7 @@
 -- while summoned, Summon / Unsummon and Remove. One card is summoned at a time: it follows you around and
 -- its perk works. Cards are added from the binder card view. The server sends PartyChanged on every change.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -15,6 +16,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
@@ -35,6 +37,7 @@ local panel: Frame
 local list: ScrollingFrame
 local perkLabel: TextLabel
 local state: PartyState? = nil
+local hintLabels: { [string]: TextLabel } = {} -- beastId -> the row's bottom line (perk hint, or resting time)
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -114,7 +117,7 @@ local function buildCardRow(slot: number, beastId: string, summoned: boolean)
 	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
 	local perkText = if perk then PartyRules.describe(perk) else "No perk"
 	addText(row, `{card.element} perk · {perkText}`, x, 48, textWidth, 36, Enum.Font.GothamBold, 13, UIKit.Colors.Text).TextWrapped = true
-	addText(row, "More stars make the perk stronger.", x, 86, textWidth, 16, Enum.Font.Gotham, 11, UIKit.Colors.Subtext)
+	hintLabels[beastId] = addText(row, "", x, 86, textWidth, 16, Enum.Font.Gotham, 11, UIKit.Colors.Subtext)
 
 	local summon = UIKit.button(row, if summoned then "Unsummon" else "Summon", if summoned then UIKit.Colors.Row else UIKit.Colors.Accent)
 	summon.AnchorPoint = Vector2.new(1, 0)
@@ -135,11 +138,27 @@ local function buildCardRow(slot: number, beastId: string, summoned: boolean)
 	end)
 end
 
+-- Bottom line of each card row: resting countdown after fainting, otherwise the perk hint
+local function updateHints()
+	for beastId, label in hintLabels do
+		local seconds = RestTimers.GetSeconds(beastId)
+		if seconds > 0 then
+			local spring = if RestTimers.IsNearSpring() then " · Healing faster" else " · plaza spring heals faster"
+			label.Text = `😴 Resting {RestTimers.Format(seconds)} · can't fight{spring}`
+			label.TextColor3 = UIKit.Colors.Text
+		else
+			label.Text = "More stars make the perk stronger."
+			label.TextColor3 = UIKit.Colors.Subtext
+		end
+	end
+end
+
 local function render()
 	if not panel.Visible then
 		return
 	end
 	clear(list)
+	hintLabels = {}
 	local current = state
 	if not current then
 		perkLabel.Text = ""
@@ -162,6 +181,7 @@ local function render()
 			buildEmptyRow(slot)
 		end
 	end
+	updateHints()
 end
 
 local function toggle()
@@ -202,6 +222,14 @@ function PartyController.Start()
 		end
 		state = payload
 		render()
+	end)
+	local sinceHints = 0
+	RunService.Heartbeat:Connect(function(dt)
+		sinceHints += dt
+		if sinceHints >= 0.5 and panel.Visible then
+			sinceHints = 0
+			updateHints()
+		end
 	end)
 	-- Levels and stars change perks; redraw with the new binder
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()

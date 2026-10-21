@@ -1,9 +1,10 @@
 --!strict
 -- Quick party bar in the bottom-right corner, left of the cash: your avatar, then your 3 party slots. Tap a party card to
 -- summon it (tap the summoned one again to unsummon); tap an empty slot to pick a card in the binder; tap your
--- avatar to open the Party panel.
+-- avatar to open the Party panel. Cards resting after a fight show "😴 2:41".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -13,12 +14,13 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 
-type SlotButton = { button: TextButton, stroke: UIStroke, scale: UIScale }
+type SlotButton = { button: TextButton, stroke: UIStroke, scale: UIScale, rest: TextLabel }
 
 local PORTRAIT_SIZE = 48
 local SUMMONED_STROKE = 3
@@ -115,7 +117,16 @@ function PartyBarController.Start()
 		button.Name = `Slot{slot}`
 		local scale = Instance.new("UIScale")
 		scale.Parent = button
-		slotButtons[slot] = { button = button, stroke = stroke, scale = scale }
+		local rest = UIKit.label(button, "", Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		rest.AnchorPoint = Vector2.new(0.5, 1)
+		rest.Position = UDim2.new(0.5, 0, 1, 6)
+		rest.Size = UDim2.fromOffset(PORTRAIT_SIZE + 10, 16)
+		rest.TextXAlignment = Enum.TextXAlignment.Center
+		rest.BackgroundColor3 = EMPTY_COLOR
+		rest.BackgroundTransparency = 0.15
+		rest.Visible = false
+		UIKit.corner(rest, 6)
+		slotButtons[slot] = { button = button, stroke = stroke, scale = scale, rest = rest }
 		button.Activated:Connect(function()
 			if not slots[slot] then
 				BinderController.Open("Tap a card, then Add to party.")
@@ -144,6 +155,23 @@ function PartyBarController.Start()
 	-- Party cards arrive with the binder; redraw when it changes
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(render)
+	end)
+
+	-- Resting countdowns
+	local sinceRest = 0
+	RunService.Heartbeat:Connect(function(dt)
+		sinceRest += dt
+		if sinceRest < 0.5 then
+			return
+		end
+		sinceRest = 0
+		for slot, entry in slotButtons do
+			local seconds = if slots[slot] then RestTimers.GetSeconds(slots[slot]) else 0
+			entry.rest.Visible = seconds > 0
+			if seconds > 0 then
+				entry.rest.Text = `😴 {RestTimers.Format(seconds)}`
+			end
+		end
 	end)
 end
 
