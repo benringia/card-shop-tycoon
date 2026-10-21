@@ -26,7 +26,6 @@ local BattleController = require(Controllers:WaitForChild("BattleController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
-local TownController = require(Controllers:WaitForChild("TownController"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -68,5 +67,4 @@ else
 	ChallengeController.Start()
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
-	TownController.Start() -- hides the roof of the shop you stand in
 end

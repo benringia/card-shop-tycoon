@@ -57,10 +57,11 @@ on the street edges at every plot gap and row end, 4 benches with flower beds an
 spring, a bush, clover, a crate and a barrel in each gap between plots, a tree line (Tree and Pine in turn) behind each
 row, a fence round the whole island just inside its edge, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
 in the street (except lamps, portals and the plaza), within 10 studs of a portal, or in the spring area (except
-benches and flowers). **Shops:** an open front; back and side walls outside the floor (12 tall, trim and
-baseboard), front corner pillars, an awning (the Awning prop repeated across the front and tinted in the theme colour, or
-code-built stripes; about 5 studs out), the shop sign on the roof's front edge, a roof the client
-hides while you stand inside. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
+benches and flowers). **Shops:** an open front up to the awning; back and side walls outside the floor (18 tall, trim and
+baseboard), front corner pillars, an awning 12 studs up (the Awning prop repeated across the front and tinted in the
+theme colour, or code-built stripes; about 5 studs out), a front wall above it carrying the shop sign, a flat ceiling
+(the camera stays under it inside) with 3 warm ceiling lights, and a gable roof on top (ridge side to side, 8 high,
+1.5 overhang). The roof always shows. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
 trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register prop at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Products shelves show the Shelf prop (the part stays as the invisible hitbox) and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
@@ -578,7 +579,6 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
-    │   │   ├── TownController.luau  # hides the roof of the shop you stand in (this client only)
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts

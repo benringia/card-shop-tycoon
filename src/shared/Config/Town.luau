@@ -85,16 +85,17 @@ return {
 	},
 
 	-- Shop shells (PlotService). Walls sit outside the floor edges.
-	WALL_HEIGHT = 12,
+	WALL_HEIGHT = 18, -- room for the camera under the ceiling
+	AWNING_HEIGHT = 12, -- the awning's top edge above the floor; a front wall above it carries the sign
 	WALL_THICKNESS = 1,
 	TRIM_HEIGHT = 0.6,
 	PILLAR_SIZE = 1.6,
 	AWNING_DEPTH = 5, -- how far the awning reaches out over the street
 	AWNING_DROP = 2.5, -- how far it slopes down over that distance
 	AWNING_STRIPES = 8,
-	ROOF_THICKNESS = 1,
-	ROOF_CHECK_SECONDS = 0.2, -- client: how often it checks which shop you stand in
-	INDOOR_SHADE = { EXPOSURE = -0.6, SECONDS = 0.4 }, -- client: lighting dims this much inside a shop (roof hidden)
+	ROOF_THICKNESS = 1, -- the flat ceiling and the gable panels
+	GABLE = { RISE = 8, OVERHANG = 1.5 }, -- roof ridge runs side to side, this high above the ceiling
+	CEILING_LIGHTS = { XS = { -12, 0, 12 }, SIZE = 3, RANGE = 26, BRIGHTNESS = 1.2, COLOR = { 255, 225, 180 } },
 
 	-- One theme per plot id
 	PLOT_THEMES = {

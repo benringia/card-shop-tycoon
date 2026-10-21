@@ -113,6 +113,15 @@ return {
 		assert(not PropFit.isTintPart("White"), "White")
 	end,
 
+	["shop fronts: awning under the ceiling, room for the sign above it"] = function()
+		local SIGN_HEIGHT = 4 -- Plots.SIGN_SIZE.Y
+		expect.equal(town.WALL_HEIGHT, 18, "wall height")
+		assert(town.AWNING_HEIGHT < town.WALL_HEIGHT, "the awning is above the ceiling")
+		assert(town.WALL_HEIGHT - town.AWNING_HEIGHT >= SIGN_HEIGHT + 1, "no room for the sign above the awning")
+		assert(town.GABLE.RISE > 0 and town.GABLE.OVERHANG >= 0, "gable roof")
+		expect.equal(#town.CEILING_LIGHTS.XS, 3, "ceiling lights")
+	end,
+
 	["portal signs clear the portal frame"] = function()
 		assert(
 			wild.PORTAL_SIGN_HEIGHT - WILD_SIGN_HALF_HEIGHT >= town.SLOTS.Portal.height,
