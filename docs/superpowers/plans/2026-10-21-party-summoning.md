@@ -109,29 +109,41 @@ return {
 
 ---
 
-### Task 4: Creature models
+### Task 4: Motion kit (pure, tested)
 
-**Files:** Create `assets/creatures/README.md` (the checklist + naming), `src/server/Util/CreatureModels.luau`; modify `default.project.json` (`ServerStorage.CreatureModels` → `$path: "assets/creatures"`).
+**Files:** Create `src/shared/Util/CreatureMotion.luau`, `tests/CreatureMotion.spec.luau`; extend `Config/Party.luau` with `MOTION = { BREATH_SECONDS = 3, BREATH_AMOUNT = 0.03, HOP_HEIGHT = 0.6, STEP_LENGTH = 2.5, WADDLE_DEGREES = 8, LEAN_DEGREES = 10, LAND_SQUASH = 0.08, HOVER_HEIGHT = 2.5, HOVER_BOB = 0.4 }`, `FLYING = { ... card names }`, `MODEL_FOR_CARD = {}`, glow table `GLOW = { [rarity] = { light, lightRange, sparkles, outline, pulse } }`, `MAX_OUTLINES = 31`.
 
-- [ ] `CreatureModels.create(card, sizeMultiplier): Model` — find `ServerStorage.CreatureModels:FindFirstChild(card.name)` (a Model); clone; remove every descendant that `IsA("LuaSourceContainer")`; if part count > MAX_MODEL_PARTS or no BasePart → placeholder; all BaseParts `Anchored = false, CanCollide = false, CanQuery = false, CanTouch = false, Massless = true`; set `PrimaryPart` (existing, else the largest part); weld every other part to it (WeldConstraint) so it moves as one; `ScaleTo(CREATURE_HEIGHT × size / current height)`. Placeholder: a Ball body in the element colour plus two small white eye balls with black pupils, welded, sized the same way. Name the model `Creature_<card.name>`.
-- [ ] `README.md`: how to Save to File, naming by exact card name, the checklist (free, no scripts in Explorer, < 200 parts, creature-like), and the originality note.
-- [ ] build (Rojo builds with an empty folder: add `.gitkeep`? Rojo ignores non-model files; `README.md` is ignored by Rojo only if… — use a `README.md` outside the synced path: put it at `docs/creatures.md` and keep `assets/creatures/.gitkeep`). **Commit** "Creature models from the Creator Store, with a placeholder".
+- `CreatureMotion.getPose(motion, time, speed, distanceWalked, flying) -> { offsetY, scaleX, scaleY, roll, pitch }`:
+  idle (speed ≈ 0): offsetY 0 (flyer: HOVER_HEIGHT + bob), scaleY = 1 + BREATH_AMOUNT·sin(2πt/BREATH_SECONDS), scaleX = 1/√scaleY; walking: phase = distanceWalked / STEP_LENGTH; offsetY = HOP_HEIGHT·|sin(π·phase)|; roll = WADDLE·sin(π·phase); pitch = LEAN·min(speed/12, 1); squash near landing.
+- Tests: idle breathing stays within ±3% and has no hop; walking hops ≥ 0 and ≤ HOP_HEIGHT; waddle alternates sign each step; flyer idles at hover height; scale keeps volume (scaleX²·scaleY ≈ 1).
+- **Commit** "Creature motion kit".
 
 ---
 
-### Task 5: PartyService
+### Task 5: PartyService and the server marker
 
-**Files:** Create `src/server/Services/PartyService.luau`; modify `Remotes.luau`, `init.server.luau`, `CustomerService.luau`, `StockService.luau`.
+**Files:** Create `src/server/Services/PartyService.luau`; modify `default.project.json` (`ReplicatedStorage.CreatureModels` → `$path: "assets/creatures"`, plus `assets/creatures/.gitkeep`), `Remotes.luau`, `init.server.luau`, `CustomerService.luau`, `StockService.luau`.
 
-- [ ] State per player: `slots[1..3] = beastId?`, `summoned = slot?`, `creature = { model, root, alignPosition, alignOrientation, attachment }?`.
-- [ ] Remotes `SetPartySlot(slot, target?)`, `Summon(slot?)`, `RequestParty`, `PartyChanged` (`{ slots = { { slot, beastId } }, summoned, perk = { kind, value, text }? }` — list form).
-  - SetPartySlot: rate limit; slot 1..3; target nil → remove (unsummon if it was summoned, `SetPartied(false)`); target string beast owned, not working, not already in party; table → `MakeIndividual`; replace an occupied slot (old card un-partied).
-  - Summon: nil → unsummon; slot with a card → despawn current, spawn new.
-- [ ] Creature: `CreatureModels.create(card, SIZE_BY_RARITY[rarity])`, billboard (name, `Grade · Lv · stars`), parented to a `Creatures` folder; root gets Attachment + `AlignPosition` (RigidityEnabled false, MaxForce high, Responsiveness 25) and `AlignOrientation` (Responsiveness 20); a Heartbeat loop per server (one connection for all creatures) sets the targets: owner root position + offset (side/back/up rotated by the owner's facing) + bob; orientation = owner's facing. Distance > TELEPORT_DISTANCE → PivotTo next to the owner. `root:SetNetworkOwner(owner)` in pcall. Owner without a character → hide (keep model parented to nil) until CharacterAdded.
-- [ ] Perks: `PartyService.GetPerk(player, kind): number` (0 unless the summoned card's perk is that kind; reads the beast's current rarity/stars live). Hustle: on summon/unsummon/CharacterAdded set `Humanoid.WalkSpeed = DEFAULT_WALK_SPEED × (1 + perk)` (16 default via `StarterPlayer.CharacterWalkSpeed`), restore on unsummon.
-- [ ] Hooks: CustomerService — spawn interval ÷ (1 + Hype), QUEUE_PATIENCE × (1 + Calm), band.chance × (1 + Haggle) capped at 1 (both shopFor and shopForCard); StockService — DELIVERY_SECONDS × (1 − Express). PartyService must not require these services (they require it).
-- [ ] Load/save/unload (after CardService and JobService): load validates (beast exists, not working, no duplicates), `SetPartied(true)`, deferred summon; save writes string-keyed slots; unload despawns, restores WalkSpeed.
-- [ ] build, tests, syntax, sourcemap. **Commit** "PartyService: party, summoned creature, perks".
+- On start: destroy every `LuaSourceContainer` under `ReplicatedStorage.CreatureModels`.
+- State per player: `slots[1..3] = beastId?`, `summoned = slot?`, `marker: Part?`.
+- Remotes `SetPartySlot(slot, target?)`, `Summon(slot?)`, `RequestParty`, `PartyChanged` (list form: `{ slots = { { slot, beastId } }, summoned, perk = { kind, value, text }? }`). Validation as before: slot 1..3, owned, not working, not already in party; table target → `MakeIndividual`; replacing a slot un-parties the old card.
+- Marker: anchored, CanCollide/CanQuery/CanTouch false, Transparency 1, size 1, attributes OwnerUserId/CardId/Foil/Grade/Level/Stars (refreshed on CollectionChanged-worthy changes), in `workspace.Creatures`. One Heartbeat loop moves all markers (throttled to 20 Hz): target = owner root + rotated FOLLOW_OFFSET, raycast down (exclude characters and creatures) for ground Y; face owner's move direction; > TELEPORT_DISTANCE → snap. Owner without a character → marker parked (not destroyed).
+- Perks: `PartyService.GetPerk(player, kind)`; Hustle sets WalkSpeed on summon/CharacterAdded, restored on unsummon/unload; hooks in CustomerService (spawn interval, queue patience, buy chance) and StockService (delivery time). PartyService never requires those services.
+- Load/save/unload after CardService and JobService; validation per spec; unload removes the marker and restores WalkSpeed.
+- build, tests, syntax, sourcemap. **Commit** "PartyService: party, summon marker, perks".
+
+---
+
+### Task 5b: Client creatures
+
+**Files:** Create `src/client/Controllers/CreatureController.luau`.
+
+- Watches `workspace.Creatures` markers; for each: clone `ReplicatedStorage.CreatureModels[MODEL_FOR_CARD[name] or name]` (strip scripts again, part cap, unanchor? no: client-only visual, anchored parts moved by PivotTo each frame; CanCollide/CanQuery/CanTouch false), else placeholder; scale by rarity; element tint only for shared models.
+- RenderStepped: smooth follow of the marker (lerp), speed and distance walked from marker motion, pose from `CreatureMotion.getPose`, apply via PivotTo (offset + roll/pitch) and `Model:ScaleTo` for breathing (throttled: scale every other frame).
+- Rigged models: if `Animations` folder has Idle/Walk and an AnimationController/Humanoid exists, play them locally by speed instead of the hop/waddle.
+- Glow per rarity/element/foil/grade/stars: PointLight, ParticleEmitter, Highlight (rainbow cycle for foil, pulse for Legendary). Every second, give outlines to the MAX_OUTLINES nearest/rarest creatures only.
+- Name tag BillboardGui. Cleanup when a marker is removed.
+- build, syntax. **Commit** "Creatures drawn on each client with walking, breathing and glow".
 
 ---
 
