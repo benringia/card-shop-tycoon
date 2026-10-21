@@ -395,6 +395,8 @@ refreshAssignButton = function(selected: Entry?)
 		text, ready = "Assign to job", false
 	elseif job then
 		text, ready = `Working: {job}`, false
+	elseif beast and partied[beast.id] then
+		text, ready = "In party", false
 	elseif slotCount == 0 then
 		text, ready = `Jobs at shop Lv {Jobs.UNLOCK_LEVEL}`, false
 	elseif usedCount >= slotCount then
@@ -1112,8 +1114,8 @@ local function buildButton(parent: Instance)
 	button.Name = "BinderButton"
 	-- Above the Build button on the middle-left
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -66)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, -28)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
 end
@@ -1211,6 +1213,7 @@ function BinderController.Start()
 		refreshPartyChooser()
 	end)
 	Remotes.RequestCollection:FireServer()
+	Remotes.RequestParty:FireServer()
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	task.spawn(watchOwnPlot)
 end

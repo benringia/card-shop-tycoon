@@ -177,8 +177,8 @@ function PartyController.Start()
 	local button = UIKit.button(screenGui, "Party", UIKit.Colors.Row)
 	button.Name = "PartyButton"
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -198)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, -140)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
 

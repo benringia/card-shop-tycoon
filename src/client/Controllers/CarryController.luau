@@ -38,8 +38,8 @@ function CarryController.Start()
 	dropButton.Name = "DropButton"
 	-- Under the Build and Prices buttons on the middle-left
 	dropButton.AnchorPoint = Vector2.new(0, 0.5)
-	dropButton.Position = UDim2.new(0, 12, 0.5, 132)
-	dropButton.Size = UDim2.fromOffset(96, 56)
+	dropButton.Position = UDim2.new(0, 12, 0.5, 140)
+	dropButton.Size = UDim2.fromOffset(96, 50)
 	dropButton.TextSize = 18
 	dropButton.Activated:Connect(drop)
 

@@ -129,8 +129,8 @@ local function buildButton(parent: Instance)
 	button.Name = "PricesButton"
 	-- Sits under the Build button on the middle-left
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, 66)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, 84)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.Activated:Connect(function()
 		refreshAll()
 		panel.Visible = not panel.Visible

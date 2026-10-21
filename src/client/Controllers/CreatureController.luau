@@ -128,8 +128,10 @@ end
 -- Rigged = an Animations folder with Idle and Walk, and something to play them on
 local function getAnimator(model: Model): Animator?
 	local animations = model:FindFirstChild("Animations")
-	if not animations or not animations:FindFirstChild("Idle") or not animations:FindFirstChild("Walk") then
-		return nil
+	local idle = if animations then animations:FindFirstChild("Idle") else nil
+	local walk = if animations then animations:FindFirstChild("Walk") else nil
+	if not idle or not idle:IsA("Animation") or not walk or not walk:IsA("Animation") or not findRigRoot(model) then
+		return nil -- no rig root to hold it up: treat it as a static model
 	end
 	local controller = model:FindFirstChildOfClass("Humanoid") or model:FindFirstChildOfClass("AnimationController")
 	if not controller then
@@ -307,15 +309,6 @@ local function add(marker: BasePart)
 	local animator = getAnimator(model)
 	local root, scale = prepare(model, card.rarity, animator ~= nil)
 	local tracks: { idle: AnimationTrack?, walk: AnimationTrack? } = {}
-	if animator then
-		local animations = model:FindFirstChild("Animations") :: Instance
-		tracks.idle = animator:LoadAnimation(animations:FindFirstChild("Idle") :: Animation)
-		tracks.walk = animator:LoadAnimation(animations:FindFirstChild("Walk") :: Animation)
-		for _, track in { tracks.idle, tracks.walk } do
-			(track :: AnimationTrack).Looped = true
-		end
-		;(tracks.idle :: AnimationTrack):Play()
-	end
 
 	local height = Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[card.rarity] or 1)
 	local creature: Creature = {
@@ -347,6 +340,16 @@ local function add(marker: BasePart)
 	end))
 	model:PivotTo(marker.CFrame)
 	model.Parent = workspace
+	-- Animators only load animations once they're in the game
+	if animator then
+		local animations = model:FindFirstChild("Animations") :: Instance
+		local idle = animator:LoadAnimation(animations:FindFirstChild("Idle") :: Animation)
+		local walk = animator:LoadAnimation(animations:FindFirstChild("Walk") :: Animation)
+		idle.Looped = true
+		walk.Looped = true
+		idle:Play()
+		tracks.idle, tracks.walk = idle, walk
+	end
 	creatures[marker] = creature
 end
 

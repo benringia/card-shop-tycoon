@@ -169,9 +169,11 @@ local function moveMarkers()
 			table.insert(excluded, player.Character)
 		end
 	end
-	local workers = workspace:FindFirstChild("Workers")
-	if workers then
-		table.insert(excluded, workers)
+	for _, name in { "Workers", "Customers" } do
+		local npcs = workspace:FindFirstChild(name)
+		if npcs then
+			table.insert(excluded, npcs) -- stand on the floor, never on an NPC's head
+		end
 	end
 	rayParams.FilterDescendantsInstances = excluded
 

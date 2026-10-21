@@ -335,8 +335,8 @@ local function buildButton(parent: Instance)
 	button.Name = "BuildButton"
 	-- Middle-left keeps clear of the mobile thumbstick (bottom-left) and jump button (bottom-right)
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, 0)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, 28)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.Activated:Connect(function()
 		if PlacementController.IsActive() then
 			return

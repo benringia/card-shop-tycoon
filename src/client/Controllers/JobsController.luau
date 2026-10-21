@@ -212,8 +212,8 @@ function JobsController.Start()
 	local button = UIKit.button(screenGui, "Jobs", UIKit.Colors.Row)
 	button.Name = "JobsButton"
 	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -132)
-	button.Size = UDim2.fromOffset(96, 56)
+	button.Position = UDim2.new(0, 12, 0.5, -84)
+	button.Size = UDim2.fromOffset(96, 50)
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
 
