@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local CardEffects = require(Config:WaitForChild("CardEffects"))
+local CardFace = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CardFace"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 

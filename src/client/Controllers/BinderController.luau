@@ -8,6 +8,7 @@
 -- The server sends the binder whenever it changes; displayed cards are read from your plot.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 
@@ -65,6 +66,7 @@ local FILTER_CHIP_WIDTH = 84
 local ALL_FILTER, OWNED_FILTER, MISSING_FILTER, FRONTIER_FILTER = "All", "Owned", "Missing", "Frontier"
 local BINDER_KEY = Enum.KeyCode.B
 local BAG_KEY = Enum.KeyCode.I -- inventory: the binder's Bag tab
+local BAG_PRIORITY_MARGIN = 100 -- above every built-in binding (the camera's I zoom included)
 local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
 local BEAST_ROW_HEIGHT = 100
 local STACK_ROW_HEIGHT = 80
@@ -1442,19 +1444,26 @@ function BinderController.Start()
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if input.KeyCode == BINDER_KEY and not gameProcessed then
 			toggle()
-		elseif input.KeyCode == BAG_KEY and not isTyping() then
-			-- Not gated on gameProcessed: Roblox's camera zooms on I and marks it processed
-			-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
-			if panel.Visible and bagOverlay.Visible then
-				toggle()
-			else
-				if not panel.Visible then
-					toggle()
-				end
-				showTab(true)
-			end
 		end
 	end)
+	-- I opens the Bag. Roblox's camera binds I (zoom) through ContextActionService and swallows it before
+	-- InputBegan sees it, so the Bag binds there too, above the camera's priority. Bound actions never fire
+	-- while the player types (chat, text boxes).
+	ContextActionService:BindActionAtPriority("OpenBag", function(_, state)
+		if state ~= Enum.UserInputState.Begin or isTyping() then
+			return Enum.ContextActionResult.Pass
+		end
+		-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
+		if panel.Visible and bagOverlay.Visible then
+			toggle()
+		else
+			if not panel.Visible then
+				toggle()
+			end
+			showTab(true)
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value + BAG_PRIORITY_MARGIN, BAG_KEY)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
 	-- Job slots opening or filling up change the card view's Assign button
