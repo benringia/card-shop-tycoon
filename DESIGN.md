@@ -220,8 +220,21 @@ Roadmap (one sub-project at a time):
 5. **Battles** — real-time auto-battles, in three parts:
    1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
-   3. The Frontier (a separate place shared by players from every server: high-level monsters, exclusive valuable
-      drops) and boss challenges for groups (later).
+   3. a) The Frontier (spec `2026-10-24-frontier-design.md`; built, awaiting Studio test).
+      b) Dungeons: a third place with late-game bosses for groups, reached from the Frontier (later).
+
+**Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
+The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
+A teleport is a leave (fights end, the save goes to the next server); your shop pauses and rebuilds from the save
+when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
+(Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
+spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
+and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Aurora Drake, Stormking, never in
+packs). Items: `items = { [itemId] = count }`, listed in `Config/Items` and changed only by ItemService; the binder's
+Bag tab shows them. Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
+up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
+`PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
+`Config/Frontier`, `Config/Items`, `Config/Places` (place ids; `FRONTIER_PLACE_ID = 0` until the place exists).
 
 **Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
 min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
@@ -476,7 +489,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ```
 /
 ├── DESIGN.md
-├── default.project.json        # Rojo project
+├── default.project.json        # Rojo project (main game)
+├── frontier.project.json       # Rojo project for the Frontier place (same src, PlaceKind = "Frontier", port 34873)
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
@@ -502,6 +516,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
+    │   │   ├── ItemService.luau      # item inventory (Star Shards): give, take, save
+    │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
@@ -532,6 +548,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
+    │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
@@ -562,6 +579,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
+        │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
+        │   ├── Items.luau      # every item: name, icon, description; stack limit
+        │   ├── Places.luau     # place ids, Frontier portal spot
+        │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
@@ -579,6 +600,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
+            ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
+            ├── Place.luau         # which place this is; its wild-map config
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -595,10 +618,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v9)
+### 10.4 Player data schema (v10)
 ```lua
 {
-    version = 9,
+    version = 10,
     cash = 200,
     xp = 0,
     level = 1,
@@ -615,6 +638,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     party = { slots = {} }, -- { slots = { ["1".."3"] = beastId }, summoned = slot? } party cards and the summoned one
     resting = {},           -- { [beastId] = unixTime } cards that fainted in a fight, resting until then
     pvp = { wins = 0, losses = 0, draws = 0 }, -- PvP record
+    items = {},             -- { [itemId] = count } item inventory (Config/Items), e.g. starShard
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -627,7 +651,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget
