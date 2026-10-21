@@ -218,6 +218,9 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?, slo
 		end
 	end
 	local yaw = PropFit.resolveYaw(model:GetAttribute("YawOffset"), slotYaw) -- degrees, for models that don't face -Z
+	-- Measure along world axes: some packs save a tipped pivot (Z-up exports), which would lay the model down
+	model.PrimaryPart = nil
+	model.WorldPivot = CFrame.new(model:GetPivot().Position)
 	local boxCFrame, boxSize = model:GetBoundingBox()
 	model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0) * CFrame.Angles(0, math.rad(yaw), 0)
 	if fit and canStretch and stretch(model, boxSize, fit, yaw) then
