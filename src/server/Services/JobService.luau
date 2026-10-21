@@ -136,12 +136,18 @@ local function sendJobs(player: Player)
 	if not state then
 		return
 	end
+	-- A list, not a slot-keyed table: remotes mangle tables with gaps in their number keys
 	local slots = {}
 	for slot, worker in state.slots do
-		slots[slot] = { beastId = worker.beastId, job = worker.job, status = worker.status }
+		table.insert(slots, { slot = slot, beastId = worker.beastId, job = worker.job, status = worker.status })
 	end
+	local used = #slots
+	local slotCount = getSlotCount(player)
+	-- Mirrored as attributes so the binder can show "Assign to job" without asking the Jobs panel
+	player:SetAttribute("JobSlots", slotCount)
+	player:SetAttribute("JobsUsed", used)
 	Remotes.JobsChanged:FireClient(player, {
-		slotCount = getSlotCount(player),
+		slotCount = slotCount,
 		maxSlots = Jobs.FREE_SLOTS + Jobs.PASS_SLOTS,
 		unlockLevel = Jobs.UNLOCK_LEVEL,
 		hasPass = MonetizationService.HasPass(player, PASS_KEY),

@@ -656,8 +656,11 @@ end
 local function getPickerEntries(): { PickerEntry }
 	local entries: { PickerEntry } = {}
 	local raised = {}
-	for _, beast in BinderController.GetBeasts() do
-		table.insert(raised, beast)
+	local working = BinderController.GetWorking()
+	for id, beast in BinderController.GetBeasts() do
+		if not working[id] then -- working cards stay in the shop job
+			table.insert(raised, beast)
+		end
 	end
 	table.sort(raised, function(a, b)
 		local cardA, cardB = Cards.ById[a.cardId], Cards.ById[b.cardId]

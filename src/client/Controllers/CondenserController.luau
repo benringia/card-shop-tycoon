@@ -91,8 +91,9 @@ end
 -- Every copy of this card that could be the main card, strongest first
 local function getCandidates(card: Card): { Candidate }
 	local candidates: { Candidate } = {}
-	for _, beast in BinderController.GetBeasts() do
-		if beast.cardId == card.id then
+	local working = BinderController.GetWorking()
+	for id, beast in BinderController.GetBeasts() do
+		if beast.cardId == card.id and not working[id] then -- working cards can't be condensed
 			table.insert(candidates, {
 				key = beast.id,
 				beast = beast,

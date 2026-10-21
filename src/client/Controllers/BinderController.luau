@@ -13,6 +13,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local Jobs = require(Config:WaitForChild("Jobs"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -73,6 +74,10 @@ local BinderController = {}
 local graded: Stacks = {}
 local collection: { [string]: Owned } = {} -- graded, summed per card
 local beasts: { [string]: Beast } = {}
+local working: { [string]: string } = {} -- beastId -> job, for cards working in the shop
+local assignButton: TextButton
+local jobChooser: Frame
+local assignTarget: (string | { cardId: string, foil: boolean, grade: string })? = nil
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
@@ -264,6 +269,7 @@ local function makeRow(order: number, height: number, selected: boolean, onTap: 
 end
 
 local refreshDetail: () -> ()
+local refreshAssignButton: (selected: Entry?) -> ()
 
 local function selectEntry(key: string)
 	selectedKey = key
@@ -287,7 +293,8 @@ local function addBeastRow(card: Card, entry: Entry, beast: Beast, order: number
 	end)
 
 	local growth = BeastRules.describeGrowth(beast.level, beast.stars)
-	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}`
+	local job = working[beast.id]
+	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}{if job then ` · Working: {job}` else ""}`
 	local titleLabel = addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
 	titleLabel.Size = UDim2.new(1, -(TITLE_VALUE_ROOM + 10), 0, 20)
 	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -333,6 +340,36 @@ local function addStackRow(card: Card, entry: Entry, order: number)
 	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 48, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 end
 
+-- "Assign to job" for the selected copy, or why it can't be assigned
+refreshAssignButton = function(selected: Entry?)
+	jobChooser.Visible = false
+	local slots = player:GetAttribute("JobSlots")
+	local used = player:GetAttribute("JobsUsed")
+	local slotCount = if typeof(slots) == "number" then slots else 0
+	local usedCount = if typeof(used) == "number" then used else 0
+	local beast = if selected then selected.beast else nil
+	local job = if beast then working[beast.id] else nil
+	local text, ready
+	if not selected then
+		text, ready = "Assign to job", false
+	elseif job then
+		text, ready = `Working: {job}`, false
+	elseif slotCount == 0 then
+		text, ready = `Jobs at shop Lv {Jobs.UNLOCK_LEVEL}`, false
+	elseif usedCount >= slotCount then
+		text, ready = "Job slots full", false
+	else
+		text, ready = "Assign to job", true
+	end
+	assignButton.Text = text
+	assignButton.BackgroundColor3 = if ready then UIKit.Colors.Accent else UIKit.Colors.Locked
+	assignButton.AutoButtonColor = ready
+	assignTarget = if not ready or not selected
+		then nil
+		elseif beast then beast.id
+		else { cardId = (detailCard :: Card).id, foil = selected.foil, grade = selected.grade }
+end
+
 refreshDetail = function()
 	local card = detailCard
 	if not card then
@@ -368,6 +405,7 @@ refreshDetail = function()
 	else
 		CardFace.render(detailInner, detailStroke, card, shown.foil > 0)
 	end
+	refreshAssignButton(selected)
 
 	local owned = 0
 	for _, entry in entries do
@@ -437,6 +475,12 @@ local function renderTile(tile: Tile)
 	end
 	if raised[1] then
 		table.insert(parts, `Lv {raised[1].level}`)
+	end
+	for _, beast in raised do
+		if working[beast.id] then
+			table.insert(parts, "Job")
+			break
+		end
 	end
 	tile.levelLabel.Text = table.concat(parts, " · ")
 	tile.levelLabel.Visible = #parts > 0
@@ -686,9 +730,60 @@ local function buildDetail(parent: Frame)
 	raisedLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	raisedLayout.Parent = raisedList
 
+	-- Assign the selected copy to a shop job (left half), Back (right half)
+	assignButton = UIKit.button(detail, "Assign to job", UIKit.Colors.Locked)
+	assignButton.Position = UDim2.new(0, 180, 1, -56)
+	assignButton.Size = UDim2.new(0.5, -98, 0, 48)
+	assignButton.TextSize = 15
+	assignButton.ZIndex = 12
+	assignButton.Activated:Connect(function()
+		if assignTarget then
+			jobChooser.Visible = true
+		end
+	end)
+
+	jobChooser = Instance.new("Frame")
+	jobChooser.Name = "JobChooser"
+	jobChooser.AnchorPoint = Vector2.new(0.5, 1)
+	jobChooser.Position = UDim2.new(0.5, 0, 1, -62)
+	jobChooser.Size = UDim2.fromOffset(300, 132)
+	jobChooser.BackgroundColor3 = UIKit.Colors.Panel
+	jobChooser.Visible = false
+	jobChooser.ZIndex = 20
+	jobChooser.Parent = detail
+	UIKit.corner(jobChooser, 12)
+	local chooserStroke = Instance.new("UIStroke")
+	chooserStroke.Color = UIKit.Colors.Accent
+	chooserStroke.Parent = jobChooser
+	local chooserTitle = UIKit.label(jobChooser, "Which job?", Enum.Font.GothamBold, 16, UIKit.Colors.Text)
+	chooserTitle.Position = UDim2.fromOffset(12, 8)
+	chooserTitle.Size = UDim2.new(1, -24, 0, 22)
+	chooserTitle.ZIndex = 21
+	for index, job in Jobs.JOBS do
+		local choice = UIKit.button(jobChooser, job, UIKit.Colors.Accent)
+		choice.Position = UDim2.new((index - 1) / #Jobs.JOBS, if index == 1 then 12 else 4, 0, 36)
+		choice.Size = UDim2.new(1 / #Jobs.JOBS, -16, 0, 48)
+		choice.TextSize = 15
+		choice.ZIndex = 21
+		choice.Activated:Connect(function()
+			jobChooser.Visible = false
+			if assignTarget then
+				Remotes.AssignJob:FireServer(assignTarget, job)
+			end
+		end)
+	end
+	local cancel = UIKit.button(jobChooser, "Cancel", UIKit.Colors.Row)
+	cancel.Position = UDim2.new(0, 12, 0, 90)
+	cancel.Size = UDim2.new(1, -24, 0, 34)
+	cancel.TextSize = 14
+	cancel.ZIndex = 21
+	cancel.Activated:Connect(function()
+		jobChooser.Visible = false
+	end)
+
 	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
-	back.Position = UDim2.new(0, 180, 1, -56)
-	back.Size = UDim2.new(1, -192, 0, 48)
+	back.Position = UDim2.new(0.5, 88, 1, -56)
+	back.Size = UDim2.new(0.5, -100, 0, 48)
 	back.TextSize = 16
 	back.ZIndex = 12
 	back.Activated:Connect(function()
@@ -898,6 +993,7 @@ local function onCollectionChanged(payload: { stacks: Stacks, beasts: { [string]
 	graded = if typeof(payload.stacks) == "table" then payload.stacks else {}
 	collection = sumGrades(graded)
 	beasts = if typeof(payload.beasts) == "table" then payload.beasts else {}
+	working = if typeof((payload :: any).working) == "table" then (payload :: any).working else {}
 	refresh()
 end
 
@@ -965,6 +1061,11 @@ function BinderController.GetGradedStacks(): Stacks
 end
 
 -- The player's levelled cards (not counting ones on display)
+-- Cards working a shop job: beastId -> job
+function BinderController.GetWorking(): { [string]: string }
+	return working
+end
+
 function BinderController.GetBeasts(): { [string]: Beast }
 	return beasts
 end
@@ -982,6 +1083,14 @@ function BinderController.Start()
 	end)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
+	-- Job slots opening or filling up change the card view's Assign button
+	for _, name in { "JobSlots", "JobsUsed" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			if detail.Visible then
+				refreshDetail()
+			end
+		end)
+	end
 	Remotes.RequestCollection:FireServer()
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	task.spawn(watchOwnPlot)
