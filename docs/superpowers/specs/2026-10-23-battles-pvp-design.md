@@ -17,7 +17,7 @@ are back at their shops. Others can watch from the stands.
 | Fairness | Real stats; challenge popups show both sides' total Power |
 | Stakes | Cash bet held in escrow; winner takes the pot |
 | Bet limit | min(challenger cash, target cash, $50 × the lower shop level); Friendly ($0) allowed |
-| Arena | One stadium area in the same server with 3 pads and stands; anyone can watch |
+| Arena | One stadium area in the same server with a single pad and stands; anyone can watch |
 | After the fight | Both go back to their shops after 10 s |
 | Resting | No resting from PvP: every creature recovers when the fight ends |
 | Leaving | Leave, reset or disconnect mid-fight = forfeit (opponent gets the pot); no Run in PvP |
@@ -36,9 +36,9 @@ are back at their shops. Others can watch from the stands.
 4. Target popup: "Ben challenges you · bet $40 · Your Power 1,240 vs 3,980", Accept / Decline, 15 s timer
    (no answer = decline).
 5. Accept: server re-checks everything, then takes both bets with `EconomyService.TrySpend` (if either fails,
-   the challenge is cancelled and anything taken is refunded). Then a free pad is reserved; if all 3 are busy the
-   match waits in a queue ("Waiting for a free arena pad...") and starts when one frees up (escrow already taken;
-   leaving the queue refunds both).
+   the challenge is cancelled and anything taken is refunded). If the pad is free the fight starts; if another
+   fight is on, the match waits in a queue ("Waiting for the arena... 1 match ahead") and starts when the pad
+   frees up (escrow already taken; leaving the queue refunds both).
 
 ## 4. Fight rules
 
@@ -71,7 +71,8 @@ are back at their shops. Others can watch from the stands.
 
 - Built in code far from the shops and the wild (`ARENA_ORIGIN`), with a plaza portal "Arena" next to the wild
   one so spectators can walk in, and a "Return" portal in the stands.
-- 3 pads in a row, each a ring `PAD_SIZE` (40 studs) across with low walls, side spawn spots and stands around it.
+- One pad: a ring `PAD_SIZE` (40 studs) across with low walls, side spawn spots and stands around it. One fight
+  at a time; others queue (first come, first served).
 - Fighters are streamed in (RequestStreamAroundAsync) and moved to opposite ends of their pad; their creatures
   (party markers, as for summoned creatures) line up in front of them facing the other side. A floating HP bar
   over each creature lets spectators follow.
