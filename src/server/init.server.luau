@@ -24,6 +24,7 @@ local WildService = require(Services:WaitForChild("WildService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local FrontierService = require(Services:WaitForChild("FrontierService"))
+local TownService = require(Services:WaitForChild("TownService"))
 local DevService = require(Services:WaitForChild("DevService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
@@ -64,6 +65,7 @@ else
 	BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
 	ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)
 	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
+	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end
