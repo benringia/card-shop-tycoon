@@ -3,8 +3,6 @@
 -- sometimes look at the Glass Showcase for a single card, queue at the register, and leave if they
 -- wait too long. Each customer runs as one thread.
 -- RegisterService handles checkout via OnReachedCounter / OnLeftQueue / CompletePurchase.
-local PathfindingService = game:GetService("PathfindingService")
-local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -20,6 +18,7 @@ local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 
 local Services = script.Parent :: Instance
+local NpcMotion = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("NpcMotion"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
@@ -60,9 +59,6 @@ type PlotState = {
 	queue: { Customer },
 	nextSpawnAt: number,
 }
-
-local CUSTOMER_GROUP = "Customers"
-local PLAYER_GROUP = "Players"
 
 local CustomerService = {}
 
@@ -112,26 +108,13 @@ local function getQueuePoint(plot: Plot, index: number): Vector3
 	return Vector3.new(point.X, floorTop(plot), point.Z)
 end
 
-local function setupCollisionGroups()
-	PhysicsService:RegisterCollisionGroup(CUSTOMER_GROUP)
-	PhysicsService:RegisterCollisionGroup(PLAYER_GROUP)
-	PhysicsService:CollisionGroupSetCollidable(CUSTOMER_GROUP, CUSTOMER_GROUP, false)
-	PhysicsService:CollisionGroupSetCollidable(CUSTOMER_GROUP, PLAYER_GROUP, false)
-end
-
-local function setGroup(instance: Instance, group: string)
-	if instance:IsA("BasePart") then
-		instance.CollisionGroup = group
-	end
-end
-
 -- Players walk through customers so nobody can push them around or block the queue
 local function onCharacterAdded(character: Model)
 	for _, descendant in character:GetDescendants() do
-		setGroup(descendant, PLAYER_GROUP)
+		NpcMotion.setGroup(descendant, NpcMotion.PLAYER_GROUP)
 	end
 	character.DescendantAdded:Connect(function(descendant)
-		setGroup(descendant, PLAYER_GROUP)
+		NpcMotion.setGroup(descendant, NpcMotion.PLAYER_GROUP)
 	end)
 end
 
@@ -150,39 +133,7 @@ local function createModel(spawnCFrame: CFrame): Model
 	description.LeftLegColor = legs
 	description.RightLegColor = legs
 
-	local model = Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
-	model.Name = "Customer"
-	for _, descendant in model:GetDescendants() do
-		setGroup(descendant, CUSTOMER_GROUP)
-	end
-	model:PivotTo(spawnCFrame + Vector3.new(0, 3, 0))
-	return model
-end
-
-local function setupAnimations(humanoid: Humanoid)
-	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator")
-	animator.Parent = humanoid
-
-	local walkAnimation = Instance.new("Animation")
-	walkAnimation.AnimationId = CustomerConfig.WALK_ANIMATION
-	local idleAnimation = Instance.new("Animation")
-	idleAnimation.AnimationId = CustomerConfig.IDLE_ANIMATION
-
-	local walk = animator:LoadAnimation(walkAnimation)
-	local idle = animator:LoadAnimation(idleAnimation)
-	idle:Play()
-
-	humanoid.Running:Connect(function(speed)
-		if speed > 0.5 then
-			if not walk.IsPlaying then
-				idle:Stop()
-				walk:Play()
-			end
-		elseif not idle.IsPlaying then
-			walk:Stop()
-			idle:Play()
-		end
-	end)
+	return NpcMotion.createRig(description, "Customer", spawnCFrame)
 end
 
 local function showBubble(customer: Customer, text: string)
@@ -210,37 +161,11 @@ local function showBubble(customer: Customer, text: string)
 	end)
 end
 
-local function moveDirect(customer: Customer, target: Vector3): boolean
-	customer.humanoid:MoveTo(target)
-	-- MoveToFinished fires false on its own after 8 seconds if the target isn't reached
-	return customer.humanoid.MoveToFinished:Wait()
-end
-
 -- Walks along a computed path; falls back to a straight line if no path is found
 local function walkTo(customer: Customer, target: Vector3): boolean
-	local path = PathfindingService:CreatePath(CustomerConfig.PATH_AGENT)
-	local ok = pcall(function()
-		path:ComputeAsync(customer.root.Position, target)
+	return NpcMotion.walkTo(customer.humanoid, customer.root, target, CustomerConfig.PATH_AGENT, function()
+		return customer.alive
 	end)
-	if not customer.alive then
-		return false
-	end
-	if not ok or path.Status ~= Enum.PathStatus.Success then
-		return moveDirect(customer, target)
-	end
-
-	for _, waypoint in path:GetWaypoints() do
-		if not customer.alive then
-			return false
-		end
-		if waypoint.Action == Enum.PathWaypointAction.Jump then
-			customer.humanoid.Jump = true
-		end
-		if not moveDirect(customer, waypoint.Position) then
-			return false
-		end
-	end
-	return true
 end
 
 -- Puts picked items back on the shelves they came from (customer left without paying)
@@ -512,7 +437,7 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 	model.Parent = customersFolder
 	-- Server-owned physics so clients can't fling or teleport customers
 	root:SetNetworkOwner(nil)
-	setupAnimations(humanoid)
+	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
 
 	customer.thread = task.spawn(run, customer)
 
@@ -581,7 +506,7 @@ function CustomerService.CompletePurchase(customer: Customer)
 end
 
 function CustomerService.Start()
-	setupCollisionGroups()
+	NpcMotion.setupCollisionGroups()
 
 	customersFolder = Instance.new("Folder")
 	customersFolder.Name = "Customers"
