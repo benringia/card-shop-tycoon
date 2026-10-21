@@ -8,6 +8,7 @@
 -- The server sends the binder whenever it changes; displayed cards are read from your plot.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -93,6 +94,7 @@ local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
 local completionBars: { [string]: { label: TextLabel, fill: Frame } } = {} -- set name -> its progress bar
+local bagOverlay: Frame -- the Bag tab (built in buildBag); the card tooltip stays off while it shows
 local pages: { Frame } = {} -- left and right page
 local pageLabel: TextLabel
 local spreadIndex = 1
@@ -666,7 +668,7 @@ end
 
 local function showTooltip(tile: Tile)
 	-- Pockets under the open card view still get mouse events; no tooltip through it
-	if not UserInputService.MouseEnabled or not tile.button.Parent or detail.Visible then
+	if not UserInputService.MouseEnabled or not tile.button.Parent or detail.Visible or bagOverlay.Visible then
 		return
 	end
 	tooltipText.Text = describeTooltip(tile.card)
@@ -958,7 +960,6 @@ end
 
 -- Bag: the item inventory (Config/Items), the binder's second tab. Item tiles on the left, the chosen item's
 -- details (what it does, where to get it, how to use it) on the right.
-local bagOverlay: Frame
 local bagGrid: ScrollingFrame
 local bagDetail: Frame
 local bagItems: { [string]: number } = {}
@@ -1073,6 +1074,9 @@ local function renderBag()
 end
 
 local function showTab(bag: boolean)
+	if bag then
+		hideTooltip()
+	end
 	bagOverlay.Visible = bag
 	cardsTab.BackgroundColor3 = if bag then UIKit.Colors.Row else UIKit.Colors.Accent
 	bagTab.BackgroundColor3 = if bag then UIKit.Colors.Accent else UIKit.Colors.Row
@@ -1427,22 +1431,27 @@ function BinderController.Start()
 	refresh()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		-- Roblox's camera uses I to zoom and marks it processed, so I only checks that nobody is typing
-		local typing = UserInputService:GetFocusedTextBox() ~= nil
 		if input.KeyCode == BINDER_KEY and not gameProcessed then
 			toggle()
-		elseif input.KeyCode == BAG_KEY and not typing then
-			-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
-			if panel.Visible and bagOverlay.Visible then
-				toggle()
-			else
-				if not panel.Visible then
-					toggle()
-				end
-				showTab(true)
-			end
 		end
 	end)
+	-- I opens the Bag. Bound above the camera's I-to-zoom (which would swallow it); bound actions don't fire
+	-- while the player is typing, chat included.
+	ContextActionService:BindActionAtPriority("OpenBag", function(_, state)
+		if state ~= Enum.UserInputState.Begin then
+			return Enum.ContextActionResult.Pass
+		end
+		-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
+		if panel.Visible and bagOverlay.Visible then
+			toggle()
+		else
+			if not panel.Visible then
+				toggle()
+			end
+			showTab(true)
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value, BAG_KEY)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
 	-- Job slots opening or filling up change the card view's Assign button
