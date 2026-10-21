@@ -103,6 +103,10 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			end
 		end
 	end,
+	-- v6: shop jobs; cards assigned to job slots
+	[5] = function(data)
+		data.jobs = data.jobs or {}
+	end,
 }
 
 local function lowestGrade(): string

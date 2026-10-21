@@ -93,6 +93,16 @@ return {
 		expect.equal(next(data.cards.FS02 or {}), nil, "NaN stack empty")
 	end,
 
+	["v6: adds an empty jobs list, keeps existing"] = function()
+		local data: any = { version = 5, cards = {} }
+		Migrations.run(data, 6)
+		expect.equal(typeof(data.jobs), "table", "jobs added")
+		expect.equal(next(data.jobs), nil, "empty")
+		local kept: any = { version = 5, jobs = { { slot = 1, beastId = "a", job = "Cashier" } } }
+		Migrations.run(kept, 6)
+		expect.equal(kept.jobs[1].job, "Cashier", "kept")
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))

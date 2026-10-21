@@ -33,6 +33,7 @@ export type SavedCard = {
 }
 export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string } -- stars 0-5
 export type SavedOwned = { normal: number, foil: number }
+export type SavedJob = { slot: number, beastId: string, job: string }
 export type SavedShelf = {
 	shelfId: string,
 	gridX: number,
@@ -59,6 +60,7 @@ export type PlayerData = {
 	boxes: { SavedBox },
 	cards: { [string]: { [string]: SavedOwned } }, -- cardId -> grade -> plain copies in the binder
 	beasts: { [string]: SavedBeast }, -- levelled cards by ID
+	jobs: { SavedJob }, -- cards working in the shop
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -83,6 +85,7 @@ local TEMPLATE: PlayerData = {
 	boxes = {},
 	cards = {},
 	beasts = {},
+	jobs = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
