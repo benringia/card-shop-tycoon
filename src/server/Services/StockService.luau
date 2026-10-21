@@ -277,6 +277,51 @@ local function onStockShelf(player: Player, uid: unknown)
 	syncCarry(shop)
 end
 
+-- Takes a product shelf's stock back off it into boxes on the delivery pad (as many as the pad has room
+-- for); restock it elsewhere or sell it later. Prices stay as they are.
+local function onRemoveStock(player: Player, uid: unknown)
+	if not allowStock(player) or typeof(uid) ~= "string" then
+		return
+	end
+	local shop = shops[player]
+	local shelf = PlacementService.GetShelf(player, uid)
+	if not shop or not shelf or shelf.def.kind ~= "Products" then
+		return
+	end
+	if not isNear(player, shelf.part) then
+		notify(player, "Get closer to the shelf.", true)
+		return
+	end
+	local productId = shelf.productId
+	local product = if productId then Products.ById[productId] else nil
+	if not product or shelf.units <= 0 then
+		notify(player, "This shelf is already empty.", true)
+		return
+	end
+	local boxCount = #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes
+	local room = StockConfig.MAX_BOXES_PER_PLOT - boxCount
+	if room <= 0 then
+		notify(player, "Your delivery area is full. Unpack some boxes first.", true)
+		return
+	end
+
+	local taken = PlacementService.TakeStock(shelf, math.min(shelf.units, room * product.unitsPerBox))
+	local left = taken
+	while left > 0 do
+		local units = math.min(left, product.unitsPerBox)
+		createBox(shop, product.id, units)
+		left -= units
+	end
+	local onShelf = shelf.units
+	notify(
+		player,
+		if onShelf > 0
+			then `Boxed {taken} {product.name}. {onShelf} still on the shelf (delivery area full).`
+			else `Boxed {taken} {product.name}. They're on the delivery pad.`,
+		false
+	)
+end
+
 -- Boxes go back on the delivery pad (with whatever units are left) to pick up again later
 local function onDropBox(player: Player)
 	if not allowDrop(player) then
@@ -476,6 +521,7 @@ function StockService.Start()
 	Remotes.OrderProduct.OnServerEvent:Connect(onOrder)
 	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
 	Remotes.DropBox.OnServerEvent:Connect(onDropBox)
+	Remotes.RemoveStock.OnServerEvent:Connect(onRemoveStock)
 	DataService.Register({ name = "StockService", load = load, save = save, unload = unload })
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	for _, player in Players:GetPlayers() do

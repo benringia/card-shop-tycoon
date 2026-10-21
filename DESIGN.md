@@ -64,6 +64,8 @@ Order stock (computer) → Restock shelves → Set prices
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
 - Each product shelf holds a set number of product units; card cases hold single cards (see 5.6).
 - Customers can only buy what's on shelves. Empty shelves = lost sales.
+- **Remove stock** (shelf Edit menu): boxes a product shelf's stock back onto the delivery pad, as many boxes as
+  the pad has room for.
 
 | Shelf | Capacity | Cost | Unlock |
 |---|---|---|---|

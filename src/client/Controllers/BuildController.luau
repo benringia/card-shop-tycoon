@@ -49,6 +49,7 @@ local editPanel: Frame
 local editTitle: TextLabel
 local sellDetail: TextLabel
 local cardsRow: Frame
+local removeStockRow: Frame
 local condenseRow: Frame
 local moveDetail: TextLabel
 local editingPart: BasePart? = nil
@@ -114,6 +115,7 @@ local function openEditPanel(part: BasePart)
 	editTitle.Text = def.name
 	cardsRow.Visible = isCase
 	condenseRow.Visible = def.kind == "Condenser"
+	removeStockRow.Visible = def.kind == "Products"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
 		elseif def.kind == "Condenser" then "Pick a new spot."
@@ -136,6 +138,15 @@ local function onCondense()
 	editPanel.Visible = false
 	if part then
 		CondenserController.Open(part)
+	end
+end
+
+local function onRemoveStock()
+	local part = editingPart
+	local uid = part and part:GetAttribute("ShelfUid")
+	editPanel.Visible = false
+	if typeof(uid) == "string" then
+		Remotes.RemoveStock:FireServer(uid)
 	end
 end
 
@@ -180,12 +191,17 @@ local function buildEditPanel(parent: Instance)
 	condenseButton.Text = "Open"
 	condenseButton.Activated:Connect(onCondense)
 
-	local _, moveButton, moveLabel = UIKit.row(list, 3, "Move", "")
+	local removeStockButton: TextButton
+	removeStockRow, removeStockButton = UIKit.row(list, 3, "Remove stock", "Box it up onto the delivery pad.")
+	removeStockButton.Text = "Remove"
+	removeStockButton.Activated:Connect(onRemoveStock)
+
+	local _, moveButton, moveLabel = UIKit.row(list, 4, "Move", "")
 	moveDetail = moveLabel
 	moveButton.Text = "Move"
 	moveButton.Activated:Connect(onMove)
 
-	local _, sellButton, detail = UIKit.row(list, 4, "Sell", "")
+	local _, sellButton, detail = UIKit.row(list, 5, "Sell", "")
 	sellDetail = detail
 	sellButton.Text = "Sell"
 	sellButton.BackgroundColor3 = UIKit.Colors.Danger

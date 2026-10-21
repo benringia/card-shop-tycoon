@@ -18,6 +18,7 @@ local NAMES = {
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	"LevelUp", -- server → client: (level: number)
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
+	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
 	"RipPack", -- client → server: open one pack from the carried box
 	"PackOpened", -- server → client: (productId: string, results: { { cardId: string, foil: boolean } })
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
@@ -71,6 +72,7 @@ return {
 	Charge = remotes.Charge,
 	LevelUp = remotes.LevelUp,
 	DropBox = remotes.DropBox,
+	RemoveStock = remotes.RemoveStock,
 	RipPack = remotes.RipPack,
 	PackOpened = remotes.PackOpened,
 	CollectionChanged = remotes.CollectionChanged,

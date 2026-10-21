@@ -124,6 +124,19 @@ local function getRegisterPoint(plot: Plot): Vector3
 	return floorPoint(plot, register.CFrame * CFrame.new(0, 0, register.Size.Z / 2 + 2))
 end
 
+-- Turns a worker standing behind the register toward the customer queue (the register's front)
+local function faceCustomers(worker: Worker, plot: Plot)
+	local root = worker.root
+	if not root or not worker.alive then
+		return
+	end
+	local look = plot.register.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude > 0 then
+		root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit)
+	end
+end
+
 -- Out of the owner's way when they take over the register
 local function getAsidePoint(plot: Plot): Vector3
 	local register = plot.register
@@ -384,6 +397,7 @@ local function runCashier(player: Player, state: PlayerJobs, worker: Worker)
 		if not checkout then
 			setStatus(player, worker, "Idle: no customers")
 			walk(worker, getRegisterPoint(plot))
+			faceCustomers(worker, plot)
 			task.wait(Jobs.IDLE_RECHECK_SECONDS)
 			continue
 		end
@@ -395,6 +409,7 @@ local function runCashier(player: Player, state: PlayerJobs, worker: Worker)
 		end
 
 		walk(worker, getRegisterPoint(plot))
+		faceCustomers(worker, plot)
 		if checkout.remaining > 0 then
 			setStatus(player, worker, `Scanning {checkout.scanned + 1}/{checkout.scanned + checkout.remaining}`)
 			if not waitWork(player, worker, Jobs.SCAN_SECONDS) then
