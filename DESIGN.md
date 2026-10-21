@@ -206,7 +206,7 @@ Full spec: `docs/superpowers/specs/2026-10-20-beast-cards-design.md`.
 
 Roadmap (one sub-project at a time):
 1. **Beast cards** — level, XP, stars, grades, stats, value (done).
-2. **Shop jobs** — beasts work in your shop (replace hired staff, 7.4).
+2. **Shop jobs** — cards work in your shop as Restocker or Cashier (spec `2026-10-21-shop-jobs-design.md`; built, awaiting Studio test).
 3. **Party & summoning** — summon beasts to follow and fight beside you.
 4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; done).
 5. **Battles** — real-time auto-fight between players' parties.
@@ -313,11 +313,17 @@ Player can also open their own stock instead of selling it. Trade-off: sell for 
 | Expansion 1 | +50% floor space | $2,000 |
 | Expansion 2 | Second room | $8,000 |
 
-### 7.4 Staff (post-MVP but planned)
-- Superseded: beast shop jobs (5.8 roadmap step 2) replace hired staff.
-- **Restocker:** moves boxes from delivery to shelves automatically. Hourly wage in-game cash.
-- **Cashier:** checks out customers automatically, slightly slower than player.
-- Staff keep earning only while player is online (no offline earnings in MVP).
+### 7.4 Staff: shop jobs (cards that work)
+Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
+- **Slots:** 1 at shop Lv 10; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
+  view ("Assign to job"); the **Jobs** HUD button shows each slot's card, status, XP, speed and mistakes.
+- **Restocker:** carries delivered boxes from the pad to shelves that hold (or accept) that product and stocks them.
+- **Cashier:** scans and charges customers like you do; steps aside while you're at the register.
+- **SPD = speed** (×0.6 to ×2 of base), **Power = fewer mistakes** (20% for a fresh Common down to 3%):
+  a dropped box goes back to the pad, a mis-scan is scanned again. Mistakes cost time only.
+- **XP:** 2 per minute per working card, only while you're online. Battles and quests will be the main way to level.
+- Working cards are locked: no display, condensing or second job until unassigned.
+- In the shop they're placeholder creatures (R15 rig in the element colour, sized by rarity) until real models (step 3).
 
 ### 7.5 Tuning goals
 - First upgrade within ~3 minutes.
@@ -400,9 +406,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
     │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
+    │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
     │   │   ├── DevService.luau       # Studio-only test chat commands
-    │   │   └── MonetizationService.luau # passes, dev products, ProcessReceipt
+    │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
+    │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
+    │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
+    │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -419,6 +429,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BinderController.luau   # two-page binder (3x3 pockets, fewer bigger ones on phones), search + filters, hover tooltips
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
+    │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
     │   └── Util/
@@ -441,13 +452,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Collection.luau # binder request limits
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
+        │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Beasts.luau     # beast stats, value and XP numbers
         │   ├── Levels.luau
         │   ├── Upgrades.luau
-        │   └── Monetization.luau # pass/product IDs
+        │   └── Monetization.luau # game pass IDs (0 = not created yet)
         ├── Remotes.luau        # all RemoteEvents/Functions defined in one place
         └── Util/
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
@@ -455,6 +467,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
             ├── BeastRules.luau    # BeastMath bound to the game configs
             ├── CondenseRules.luau # which duplicates a star uses (pure, Lune-tested)
+            ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
@@ -469,10 +482,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v5)
+### 10.4 Player data schema (v6)
 ```lua
 {
-    version = 5,
+    version = 6,
     cash = 200,
     xp = 0,
     level = 1,
@@ -485,6 +498,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display
     beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)
+    jobs = {},              -- { { slot, beastId, job } } cards working in the shop (Restocker / Cashier)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -497,7 +511,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget

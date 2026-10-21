@@ -27,9 +27,9 @@ hired staff planned in DESIGN 7.4.
 
 ## 3. The creature (placeholder)
 
-- A small rig: body block in the card's element colour, size by rarity (Common 0.8× … Legendary 1.3×),
-  two eye dots, a BillboardGui with the card name, `Grade · Lv` and the job. Uses a Humanoid so it walks
-  with the same pathing approach as NPC customers. Spawns at the shop entrance.
+- An R15 rig (like NPC customers) with every body part in the card's element colour, scaled by rarity
+  (Common 0.8× … Legendary 1.3×), and a BillboardGui with the card name, `Grade · Lv` and the job. It walks
+  with the customers' pathing (Util/NpcMotion). Spawns just inside the shop front.
 - Real creature models replace it in roadmap step 3 (summoning), from the Creator Store.
 
 ## 4. Jobs
