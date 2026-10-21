@@ -29,6 +29,7 @@ local SIDE_TOAST_MAX_TOUCH = 2 -- landscape phones are short
 local SIDE_TOAST_HEIGHT = 38
 local SIDE_TOAST_LIGHT = Color3.fromRGB(80, 210, 110)
 local SIDE_TOAST_DARK = Color3.fromRGB(25, 130, 60)
+local SIDE_TOAST_OUTLINE = Color3.fromRGB(10, 60, 25) -- dark text outline so white text reads on green
 local SIDE_POP = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local SIDE_SETTLE = TweenInfo.new(0.6)
 local SIDE_FADE = TweenInfo.new(0.3)
@@ -102,31 +103,37 @@ end
 -- pill that pops in with a white flash, then fades. Newest sits at the bottom, nearest the cash.
 function UIController.NotifySide(message: string)
 	sideToastOrder += 1
-	local label = UIKit.label(sideToasts, `💰 {message}`, Enum.Font.FredokaOne, 18, Color3.new(1, 1, 1))
-	label.LayoutOrder = sideToastOrder
-	label.Size = UDim2.fromOffset(0, SIDE_TOAST_HEIGHT)
-	label.AutomaticSize = Enum.AutomaticSize.X
-	label.BackgroundColor3 = Color3.new(1, 1, 1) -- coloured by the gradient
-	label.BackgroundTransparency = 0
-	label.TextStrokeColor3 = SIDE_TOAST_DARK
-	label.TextStrokeTransparency = 0.4
-	UIKit.corner(label, SIDE_TOAST_HEIGHT / 2)
+	-- The pill carries the gradient; the text sits in its own label (a UIGradient would tint the text too)
+	local pill = Instance.new("Frame")
+	pill.Name = "MoneyToast"
+	pill.LayoutOrder = sideToastOrder
+	pill.Size = UDim2.fromOffset(0, SIDE_TOAST_HEIGHT)
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.BackgroundColor3 = Color3.new(1, 1, 1) -- coloured by the gradient
+	pill.Parent = sideToasts
+	UIKit.corner(pill, SIDE_TOAST_HEIGHT / 2)
 	local padding = Instance.new("UIPadding")
 	padding.PaddingLeft = UDim.new(0, 14)
 	padding.PaddingRight = UDim.new(0, 14)
-	padding.Parent = label
+	padding.Parent = pill
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new(SIDE_TOAST_LIGHT, SIDE_TOAST_DARK)
 	gradient.Rotation = 90
-	gradient.Parent = label
+	gradient.Parent = pill
+	local label = UIKit.label(pill, `💰 {message}`, Enum.Font.FredokaOne, 19, Color3.new(1, 1, 1))
+	label.Size = UDim2.fromScale(0, 1)
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.BackgroundTransparency = 1
+	label.TextStrokeColor3 = SIDE_TOAST_OUTLINE
+	label.TextStrokeTransparency = 0
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = Color3.new(1, 1, 1)
 	stroke.Thickness = 3
-	stroke.Parent = label
+	stroke.Parent = pill
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.5
-	scale.Parent = label
+	scale.Parent = pill
 	-- Pop in, and the bright outline settles to a thin one
 	TweenService:Create(scale, SIDE_POP, { Scale = 1 }):Play()
 	TweenService:Create(stroke, SIDE_SETTLE, { Thickness = 1.5, Transparency = 0.3 }):Play()
@@ -134,7 +141,7 @@ function UIController.NotifySide(message: string)
 	-- Too many at once: drop the oldest
 	local shown = {}
 	for _, child in sideToasts:GetChildren() do
-		if child:IsA("TextLabel") then
+		if child:IsA("Frame") then
 			table.insert(shown, child)
 		end
 	end
@@ -147,14 +154,15 @@ function UIController.NotifySide(message: string)
 	end
 
 	task.delay(SIDE_TOAST_SECONDS, function()
-		if not label.Parent then
+		if not pill.Parent then
 			return
 		end
-		TweenService:Create(label, SIDE_FADE, { BackgroundTransparency = 1, TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+		TweenService:Create(pill, SIDE_FADE, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(label, SIDE_FADE, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 		TweenService:Create(stroke, SIDE_FADE, { Transparency = 1 }):Play()
 		TweenService:Create(scale, SIDE_FADE, { Scale = 0.8 }):Play()
 		task.delay(SIDE_FADE.Time, function()
-			label:Destroy()
+			pill:Destroy()
 		end)
 	end)
 end
