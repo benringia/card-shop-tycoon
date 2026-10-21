@@ -36,6 +36,9 @@ local function trackPanel(frame: Frame)
 	end)
 end
 
+-- Hides the thumbstick and jump button while this frame is visible (the fight bar uses it too)
+UIKit.hideTouchControlsWhileVisible = trackPanel
+
 function UIKit.corner(parent: GuiObject, radius: number)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, radius)

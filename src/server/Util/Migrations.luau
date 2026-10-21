@@ -115,6 +115,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.party.slots = {}
 		end
 	end,
+	-- v8: fainted cards resting until a Unix time (battles)
+	[7] = function(data)
+		if typeof(data.resting) ~= "table" then
+			data.resting = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

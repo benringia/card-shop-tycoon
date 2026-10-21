@@ -38,6 +38,15 @@ local NAMES = {
 	"Summon", -- client → server: (slot: number?) nil unsummons
 	"PartyChanged", -- server → owner: { slots = { { slot, beastId } }, summoned: number?, perk = { kind, value, text }? }
 	"RequestParty", -- client → server: () resend PartyChanged
+	"WildTravel", -- client → server: (where: "wild" | "home"); server → client: (where) after moving you
+	"StartFight", -- client → server: (monsterId: string)
+	"CallIn", -- client → server: (beastId: string) second party card joins, first seconds only
+	"UseAbility", -- client → server: (fighterId: string, which: "element" | "signature")
+	"RunFight", -- client → server: ()
+	"BattleStarted", -- server → client: { monsterId, species, level, elite, element, names = { [beastId] = name }, snapshot }
+	"BattleEvent", -- server → client: { events = { Event }, snapshot } (BattleSim)
+	"BattleEnded", -- server → client: { result, rested = { beastId }, xpEach?, cash?, card? = { cardId, foil, grade }, partyIds? }
+	"RestChanged", -- server → client: { entries = { { beastId, seconds } }, nearSpring: boolean }
 }
 
 local isServer = RunService:IsServer()
@@ -96,4 +105,13 @@ return {
 	Summon = remotes.Summon,
 	PartyChanged = remotes.PartyChanged,
 	RequestParty = remotes.RequestParty,
+	WildTravel = remotes.WildTravel,
+	StartFight = remotes.StartFight,
+	CallIn = remotes.CallIn,
+	UseAbility = remotes.UseAbility,
+	RunFight = remotes.RunFight,
+	BattleStarted = remotes.BattleStarted,
+	BattleEvent = remotes.BattleEvent,
+	BattleEnded = remotes.BattleEnded,
+	RestChanged = remotes.RestChanged,
 }

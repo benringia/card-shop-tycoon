@@ -31,6 +31,8 @@ type PartyState = {
 	marker: Part?,
 	hustle: number, -- walk speed bonus currently applied
 	sentPerk: number, -- perk value the client last got, to resend when stars make it grow
+	locked: boolean, -- in a fight (BattleService): no party changes or summons
+	hold: CFrame?, -- in a fight the summoned creature stands here instead of following
 }
 
 local PartyService = {}
@@ -61,6 +63,36 @@ local function getCurrentPerk(player: Player): PartyRules.Perk?
 end
 
 -- Perk strength of this kind for the player (0 if their summoned creature has another perk or none)
+-- The party right now: slot -> beastId and the summoned slot (nil before the player loads)
+function PartyService.GetParty(player: Player): { slots: { [number]: string }, summoned: number? }?
+	local state = states[player]
+	return if state then { slots = table.clone(state.slots), summoned = state.summoned } else nil
+end
+
+-- In a fight: party changes and summons are refused until unlocked
+function PartyService.SetLocked(player: Player, locked: boolean)
+	local state = states[player]
+	if state then
+		state.locked = locked
+	end
+end
+
+-- Holds the summoned creature at a spot (a fight ring), or nil to follow the owner again
+function PartyService.SetHold(player: Player, cframe: CFrame?)
+	local state = states[player]
+	if state then
+		state.hold = cframe
+		if cframe and state.marker then
+			state.marker.CFrame = cframe
+		end
+	end
+end
+
+function PartyService.GetMarker(player: Player): BasePart?
+	local state = states[player]
+	return if state then state.marker else nil
+end
+
 function PartyService.GetPerk(player: Player, kind: string): number
 	local perk = getCurrentPerk(player)
 	return if perk and perk.kind == kind then perk.value else 0
@@ -99,13 +131,8 @@ end
 
 -- The marker ---------------------------------------------------------------------------------------------
 
-local function refreshMarker(player: Player)
-	local state = states[player]
-	local marker = if state then state.marker else nil
-	local beast = getSummonedBeast(player)
-	if not marker or not beast then
-		return
-	end
+-- What every client needs to draw a creature on a marker (CreatureController)
+local function setMarkerAttributes(marker: BasePart, player: Player, beast: CardService.Beast)
 	local card = Cards.ById[beast.cardId]
 	marker:SetAttribute("OwnerUserId", player.UserId)
 	marker:SetAttribute("CardId", card.id)
@@ -116,6 +143,40 @@ local function refreshMarker(player: Player)
 	marker:SetAttribute("Grade", beast.grade)
 	marker:SetAttribute("Level", beast.level)
 	marker:SetAttribute("Stars", beast.stars)
+end
+
+local function refreshMarker(player: Player)
+	local state = states[player]
+	local marker = if state then state.marker else nil
+	local beast = getSummonedBeast(player)
+	if marker and beast then
+		setMarkerAttributes(marker, player, beast)
+	end
+end
+
+local function newMarker(name: string, cframe: CFrame): Part
+	local marker = Instance.new("Part")
+	marker.Name = name
+	marker.Size = Vector3.new(1, 1, 1)
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.CanTouch = false
+	marker.Transparency = 1
+	marker.CFrame = cframe
+	return marker
+end
+
+-- An extra creature for one of the player's cards (a fight call-in); the caller destroys it
+function PartyService.CreateMarker(player: Player, beastId: string, cframe: CFrame): BasePart?
+	local beast = CardService.GetBeast(player, beastId)
+	if not beast then
+		return nil
+	end
+	local marker = newMarker(`Creature_{player.UserId}_{beastId}`, cframe)
+	setMarkerAttributes(marker, player, beast)
+	marker.Parent = creaturesFolder
+	return marker
 end
 
 local function despawn(player: Player)
@@ -132,16 +193,8 @@ local function spawnMarker(player: Player)
 		return
 	end
 	despawn(player)
-	local marker = Instance.new("Part")
-	marker.Name = `Creature_{player.UserId}`
-	marker.Size = Vector3.new(1, 1, 1)
-	marker.Anchored = true
-	marker.CanCollide = false
-	marker.CanQuery = false
-	marker.CanTouch = false
-	marker.Transparency = 1
 	local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-	marker.CFrame = if root then root.CFrame else CFrame.new(0, -500, 0)
+	local marker = newMarker(`Creature_{player.UserId}`, if root then root.CFrame else CFrame.new(0, -500, 0))
 	state.marker = marker
 	refreshMarker(player)
 	marker.Parent = creaturesFolder
@@ -182,7 +235,9 @@ local function moveMarkers()
 	for player, state in states do
 		local marker = state.marker
 		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-		if marker and root then
+		if marker and state.hold then
+			marker.CFrame = state.hold -- in a fight: BattleService places it
+		elseif marker and root then
 			local target = getFollowCFrame(root, marker.CFrame)
 			if (target.Position - marker.Position).Magnitude > Party.TELEPORT_DISTANCE then
 				marker.CFrame = target -- teleported, fell or respawned: appear right next to the owner
@@ -213,6 +268,10 @@ end
 local function onSetSlot(player: Player, slot: unknown, target: unknown)
 	local state = states[player]
 	if not allowAction(player) or not state or not isSlot(slot) then
+		return
+	end
+	if state.locked then
+		notify(player, "You can't change your party during a fight.", true)
 		return
 	end
 	local slotNumber = slot :: number
@@ -273,6 +332,10 @@ local function onSummon(player: Player, slot: unknown)
 	if not allowAction(player) or not state then
 		return
 	end
+	if state.locked then
+		notify(player, "You can't change your party during a fight.", true)
+		return
+	end
 	if slot == nil then
 		unsummon(player)
 	elseif isSlot(slot) and state.slots[slot :: number] then
@@ -288,7 +351,7 @@ end
 -- Data ----------------------------------------------------------------------------------------------------
 
 local function load(player: Player, data: PlayerData)
-	local state: PartyState = { slots = {}, summoned = nil, marker = nil, hustle = 0, sentPerk = 0 }
+	local state: PartyState = { slots = {}, summoned = nil, marker = nil, hustle = 0, sentPerk = 0, locked = false, hold = nil }
 	local saved: any = if typeof(data.party) == "table" then data.party else {}
 	local savedSlots = if typeof(saved.slots) == "table" then saved.slots else {}
 	local seen: { [string]: boolean } = {}

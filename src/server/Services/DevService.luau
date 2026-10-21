@@ -2,7 +2,8 @@
 -- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /testpack,
 -- /beastxp <amount> (XP for your best levelled card, or your rarest plain card),
 -- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser),
--- /jobslot (toggle owning the Extra Job Slot pass).
+-- /jobslot (toggle owning the Extra Job Slot pass), /wild (travel to the wild map), /rest (wake resting cards),
+-- /elite (an elite monster next to you, at your summoned card's level).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +13,7 @@ local TextChatService = game:GetService("TextChatService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local Wild = require(Config:WaitForChild("Wild"))
 local Levels = require(Config:WaitForChild("Levels"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -19,10 +21,13 @@ local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
+local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local PackService = require(Services:WaitForChild("PackService"))
+local PartyService = require(Services:WaitForChild("PartyService"))
+local WildService = require(Services:WaitForChild("WildService"))
 
 type CommandHandler = (player: Player, text: string) -> ()
 
@@ -109,6 +114,27 @@ local function toggleJobSlot(player: Player)
 	Remotes.Notify:FireClient(player, if owns then "Extra Job Slot pass removed (Studio)" else "Extra Job Slot pass added (Studio)", false)
 end
 
+-- An elite at your summoned card's level, a few studs in front of you, from the zone that fits that level
+local function spawnElite(player: Player)
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+	if not root then
+		return
+	end
+	local party = PartyService.GetParty(player)
+	local leaderId = if party and party.summoned then party.slots[party.summoned] else nil
+	local leader = if leaderId then CardService.GetBeast(player, leaderId) else nil
+	local level = if leader then leader.level else 1
+	local zone = Wild.ZONES[1]
+	for _, candidate in Wild.ZONES do
+		if level >= candidate.minLevel then
+			zone = candidate
+		end
+	end
+	local species = zone.species[math.random(1, #zone.species)]
+	WildService.SpawnAt(root.Position + root.CFrame.LookVector * 10, species, math.clamp(level, zone.minLevel, zone.maxLevel), true)
+end
+
 local MAX_GIVE_CARDS = 500 -- per /givecard, so a typo can't flood the save
 
 -- "/givecard 30 70": 70 plain copies of card #30, each rolling its grade like a pack pull
@@ -152,10 +178,17 @@ function DevService.Start()
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
 	addCommand(folder, "givecard", giveCards)
 	addCommand(folder, "jobslot", toggleJobSlot)
+	addCommand(folder, "wild", function(player)
+		WildService.TravelToWild(player)
+	end)
+	addCommand(folder, "rest", function(player)
+		BattleService.ClearResting(player)
+	end)
+	addCommand(folder, "elite", spawnElite)
 	addCommand(folder, "testpack", function(player)
 		PackService.OpenTestPack(player)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /testpack")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /testpack")
 end
 
 return DevService

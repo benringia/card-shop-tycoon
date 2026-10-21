@@ -217,7 +217,51 @@ Roadmap (one sub-project at a time):
 3. **Party & summoning** — 3 party cards, one summoned creature follows you and gives its element's perk
    (spec `2026-10-21-party-summoning-design.md`; done).
 4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; done).
-5. **Battles** — real-time auto-fight between players' parties.
+5. **Battles** — real-time auto-battles, in three parts:
+   1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
+   2. PvP challenges and an arena (later).
+   3. The Frontier (a separate place shared by players from every server: high-level monsters, exclusive valuable
+      drops) and boss challenges for groups (later).
+
+**Battles part 1: wild fights.** A portal at the end of the plaza street moves you to the wild map (same server, far
+from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
+summoned creature fights (it must be rested); in the first 5 s you may call in one more party card (max 2 of yours
+vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD: Common ~2 s, Legendary ~1 s); each has an element
+ability (8 s cooldown) and the 6 Epic/Legendary cards a signature ability (15 s). Element wheel: Ember > Bloom >
+Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
+(`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
+Win: XP `12 × level^1.3` (×3 elite) split evenly across all 3 party cards, $0.40 × level, 5% (elite 20%) chance of a
+card of the zone's elements. Lose: nothing is lost, but fainted cards rest 3 minutes (3x faster standing at the
+healing spring in the plaza centre). A fight still going after 2 minutes ends as a run. Numbers:
+`Config/Combat.luau`, `Config/Wild.luau`; maths in `Util/CombatMath`, fights in `server/Util/BattleSim` (both
+Lune-tested).
+
+| Element | Ability | Effect |
+|---|---|---|
+| Ember | Fireball | 2.5× ATK hit |
+| Tide | Wave | heals your fighters 25% max HP |
+| Bloom | Vine Snare | monster attacks 40% slower for 4 s |
+| Volt | Overcharge | next 3 attacks twice as fast |
+| Shade | Curse | monster ATK −30% for 5 s |
+
+| Card | Signature | Effect |
+|---|---|---|
+| Infernox | Inferno | burns 6 s (0.4× ATK per second) |
+| Abyssal Koi | Tidal Shield | absorbs damage up to 30% of its max HP |
+| Thunderhorn | Stampede | 2× ATK hit + 2 s stun |
+| Eclipse Fox | Eclipse | dodges everything for 3 s |
+| Solarion | Supernova | 4× ATK hit |
+| Voidmaw | Devour | 2× ATK hit, heals half the damage |
+
+| Zone | Monster Lv | Species (element) | Chases you |
+|---|---|---|---|
+| Meadow | 1–5 | Mossling (Bloom), Puddle Crab (Tide) | elites only |
+| Caves | 5–10 | Cave Bat (Shade), Spark Beetle (Volt) | elites only |
+| Ember Ridge | 10–15 | Magma Golem (Ember), Ash Wolf (Ember) | all |
+
+About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, ×1.6 stats, ×3 rewards).
+Monsters sleep with no player within 100 studs. Placeholder map and monsters are built in code; monster models
+go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/rest`, `/elite`.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
 panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is summoned at a time: the server moves
@@ -424,6 +468,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
+├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -442,12 +487,15 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
     │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
+    │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
+    │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
     │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
+    │       ├── BattleSim.luau        # seeded wild fight simulation (pure, Lune-tested)
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -468,11 +516,15 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right, above the cash) and tooltip for the summoned creature's perk
     │   │   ├── PartyBarController.luau  # bottom-right quick bar: your avatar + 3 party slots, tap to summon
+    │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
+    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar, damage numbers, end screen
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
     │   └── Util/
-    │       └── UIKit.luau              # shared UI building helpers
+    │       ├── UIKit.luau              # shared UI building helpers
+    │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
+    │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
     └── shared/                 # → ReplicatedStorage
         ├── Config/
         │   ├── Cards.luau      # Set 1 card list
@@ -493,6 +545,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
+        │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
+        │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
@@ -508,6 +562,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BeastRules.luau    # BeastMath bound to the game configs
             ├── CondenseRules.luau # which duplicates a star uses (pure, Lune-tested)
             ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
+            ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -524,10 +579,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v7)
+### 10.4 Player data schema (v8)
 ```lua
 {
-    version = 7,
+    version = 8,
     cash = 200,
     xp = 0,
     level = 1,
@@ -542,6 +597,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)
     jobs = {},              -- { { slot, beastId, job } } cards working in the shop (Restocker / Cashier)
     party = { slots = {} }, -- { slots = { ["1".."3"] = beastId }, summoned = slot? } party cards and the summoned one
+    resting = {},           -- { [beastId] = unixTime } cards that fainted in a fight, resting until then
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -554,7 +610,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget

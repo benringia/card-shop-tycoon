@@ -1,11 +1,11 @@
 --!strict
 -- Creature models are free/bought assets: no script inside one may ever reach the game. A Script with
 -- RunContext Server/Client runs from ReplicatedStorage before PartyService can strip it, so this test is the
--- real gate: it fails on any script in assets/creatures (and checks the scanner catches nested ones).
+-- real gate: it fails on any script in assets/creatures or assets/monsters (and checks the scanner catches nested ones).
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDER = "assets/creatures"
+local FOLDERS = { "assets/creatures", "assets/monsters" }
 
 local function findScripts(roots: { any }): { string }
 	local found = {}
@@ -29,16 +29,17 @@ return {
 		assert(#findScripts({ model }) == 1, "nested script not found")
 	end,
 
-	["no creature model contains a script"] = function()
-		if not fs.isDir(FOLDER) then
-			return
-		end
+	["no creature or monster model contains a script"] = function()
 		local bad = {}
-		for _, name in fs.readDir(FOLDER) do
-			if string.match(name, "%.rbxmx?$") then
-				local roots = roblox.deserializeModel(fs.readFile(`{FOLDER}/{name}`))
-				for _, path in findScripts(roots) do
-					table.insert(bad, `{name}: {path}`)
+		for _, folder in FOLDERS do
+			if fs.isDir(folder) then
+				for _, name in fs.readDir(folder) do
+					if string.match(name, "%.rbxmx?$") then
+						local roots = roblox.deserializeModel(fs.readFile(`{folder}/{name}`))
+						for _, path in findScripts(roots) do
+							table.insert(bad, `{folder}/{name}: {path}`)
+						end
+					end
 				end
 			end
 		end

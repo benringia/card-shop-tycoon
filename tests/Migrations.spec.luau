@@ -115,6 +115,16 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v8: adds empty resting, keeps existing"] = function()
+		local data: any = { version = 7, party = { slots = {} } }
+		Migrations.run(data, 8)
+		expect.equal(typeof(data.resting), "table", "resting added")
+		expect.equal(next(data.resting), nil, "empty")
+		local kept: any = { version = 7, resting = { abc = 123 } }
+		Migrations.run(kept, 8)
+		expect.equal(kept.resting.abc, 123, "kept")
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))

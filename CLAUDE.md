@@ -9,6 +9,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `ServerPackages/` (Wally, not in git) → ServerStorage.ServerPackages. ProfileStore lives there.
 - `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
   (docs/creatures.md). Scripts inside them are destroyed on server start and stripped on clients.
+- `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, same rules.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 
@@ -17,7 +18,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
-- `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules). Pure logic goes in Roblox-free modules so it can be tested here.
+- `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
+  CreatureMotion, CombatMath, BattleSim) plus the model script gate (CreatureAssets) and SourceOrder (no local function called above its definition). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -59,7 +61,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Work one system at a time. After each, tell me exactly what to test in Studio (stop → Play to load new code).
 - Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
-  `/jobslot` (toggle the Extra Job Slot pass in Studio).
+  `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
+  cards), `/elite` (an elite monster next to you).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.
