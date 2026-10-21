@@ -17,6 +17,7 @@ local StockService = require(Services:WaitForChild("StockService"))
 local RegisterService = require(Services:WaitForChild("RegisterService"))
 local PackService = require(Services:WaitForChild("PackService"))
 local CondenserService = require(Services:WaitForChild("CondenserService"))
+local JobService = require(Services:WaitForChild("JobService"))
 local DevService = require(Services:WaitForChild("DevService"))
 
 PlotService.Start() -- builds the plots everything else uses
@@ -33,6 +34,7 @@ CustomerService.Start()
 RegisterService.Start()
 PackService.Start()
 CondenserService.Start()
+JobService.Start() -- after CardService, PlacementService and StockService: it loads after them
 DevService.Start() -- Studio only
 DataService.Start() -- last: starts loading players
 

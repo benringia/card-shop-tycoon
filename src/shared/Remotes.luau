@@ -29,6 +29,10 @@ local NAMES = {
 	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
+	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
+	"UnassignJob", -- client → server: (slot: number)
+	"JobsChanged", -- server → owner: { slotCount, maxSlots, unlockLevel, hasPass, passId, slots = { [slot] = { beastId, job, status } } }
+	"RequestJobs", -- client → server: () resend JobsChanged
 }
 
 local isServer = RunService:IsServer()
@@ -78,4 +82,8 @@ return {
 	PullAnnouncement = remotes.PullAnnouncement,
 	PullRevealed = remotes.PullRevealed,
 	Condense = remotes.Condense,
+	AssignJob = remotes.AssignJob,
+	UnassignJob = remotes.UnassignJob,
+	JobsChanged = remotes.JobsChanged,
+	RequestJobs = remotes.RequestJobs,
 }
