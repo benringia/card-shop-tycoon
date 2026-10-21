@@ -64,7 +64,8 @@ function UIController.GetStatusRow(): Frame
 	return statusRow
 end
 
-function UIController.Notify(message: string, isError: boolean?, duration: number?)
+-- Returns a token for UIController.Dismiss
+function UIController.Notify(message: string, isError: boolean?, duration: number?): number
 	toastToken += 1
 	local token = toastToken
 	toastLabel.Text = message
@@ -77,6 +78,14 @@ function UIController.Notify(message: string, isError: boolean?, duration: numbe
 			toastLabel.Visible = false
 		end
 	end)
+	return token
+end
+
+-- Hides a toast early (e.g. a hint once it's been followed); does nothing if a newer toast replaced it
+function UIController.Dismiss(token: number)
+	if toastToken == token then
+		toastLabel.Visible = false
+	end
 end
 
 -- Several level-ups can arrive at once; show them one after another instead of overwriting

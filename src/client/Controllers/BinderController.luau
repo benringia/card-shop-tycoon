@@ -77,6 +77,7 @@ local collection: { [string]: Owned } = {} -- graded, summed per card
 local beasts: { [string]: Beast } = {}
 local working: { [string]: string } = {} -- beastId -> job, for cards working in the shop
 local partied: { [string]: boolean } = {} -- beastId -> in the party
+local hintToast: number? = nil -- toast from BinderController.Open, hidden once a card is tapped
 local partySlots: { [number]: string } = {} -- party slot -> beastId
 local assignButton: TextButton
 local jobChooser: Frame
@@ -680,6 +681,10 @@ local function openDetail(card: Card)
 	selectedKey = if strongest then strongest.key else nil
 	refreshDetail()
 	detail.Visible = detailCard ~= nil
+	if detail.Visible and hintToast then
+		UIController.Dismiss(hintToast) -- "Tap a card, then ..." is done once a card is open
+		hintToast = nil
+	end
 end
 
 local function buildTile(card: Card, parent: Instance): Tile
@@ -1175,7 +1180,7 @@ function BinderController.Open(hint: string?)
 		toggle()
 	end
 	if hint then
-		UIController.Notify(hint, false, 4)
+		hintToast = UIController.Notify(hint, false, 4)
 	end
 end
 
