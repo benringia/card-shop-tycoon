@@ -118,6 +118,10 @@ local function onDisplayCard(
 			notify(player, "That card is working. Unassign it first.", true)
 			return
 		end
+		if CardService.IsPartied(player, beastId) then
+			notify(player, "That card is in your party. Remove it from the party first.", true)
+			return
+		end
 		beast = CardService.TakeBeast(player, beastId)
 		copyGrade = owned.grade
 	else
