@@ -1,7 +1,8 @@
 --!strict
 -- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /testpack,
 -- /beastxp <amount> (XP for your best levelled card, or your rarest plain card),
--- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser).
+-- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser),
+-- /jobslot (toggle owning the Extra Job Slot pass).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,6 +20,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local CardService = require(Services:WaitForChild("CardService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local PackService = require(Services:WaitForChild("PackService"))
 
 type CommandHandler = (player: Player, text: string) -> ()
@@ -99,6 +101,13 @@ local function pickXpTarget(player: Player): CardService.XpTarget?
 	return nil
 end
 
+-- Studio stand-in for buying or refunding the Extra Job Slot pass
+local function toggleJobSlot(player: Player)
+	local owns = MonetizationService.HasPass(player, "ExtraJobSlot")
+	MonetizationService.SetDevPass(player, "ExtraJobSlot", not owns)
+	Remotes.Notify:FireClient(player, if owns then "Extra Job Slot pass removed (Studio)" else "Extra Job Slot pass added (Studio)", false)
+end
+
 local MAX_GIVE_CARDS = 500 -- per /givecard, so a typo can't flood the save
 
 -- "/givecard 30 70": 70 plain copies of card #30, each rolling its grade like a pack pull
@@ -141,10 +150,11 @@ function DevService.Start()
 	addCommand(folder, "level", withAmount(jumpToLevel))
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
 	addCommand(folder, "givecard", giveCards)
+	addCommand(folder, "jobslot", toggleJobSlot)
 	addCommand(folder, "testpack", function(player)
 		PackService.OpenTestPack(player)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /testpack")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /testpack")
 end
 
 return DevService

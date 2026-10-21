@@ -6,6 +6,7 @@ local Services = script:WaitForChild("Services")
 
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local CardService = require(Services:WaitForChild("CardService"))
@@ -22,6 +23,7 @@ PlotService.Start() -- builds the plots everything else uses
 -- Data handlers load in this order (and unload in reverse). CardService loads before
 -- PlacementService so displayed cards that can't be restored go back to the binder.
 EconomyService.Start()
+MonetizationService.Start()
 PricingService.Start()
 CardService.Start()
 PlacementService.Start()
