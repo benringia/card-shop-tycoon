@@ -15,9 +15,11 @@ local PlacementConfig = require(Config:WaitForChild("Placement"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
+local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -57,6 +59,7 @@ export type PlacedShelf = {
 	part: Part,
 	label: TextLabel,
 	visual: Model?, -- Products shelves: the Shelf prop drawn on the invisible hitbox part
+	stockBoxes: { Part }, -- Products shelves: boxes showing how full it is (ShelfStock)
 }
 
 local KIND_LABELS = {
@@ -109,6 +112,52 @@ local function countCards(shelf: PlacedShelf): number
 	return count
 end
 
+local STOCK_SLOTS = #Town.SHELF_STOCK.LEVELS * Town.SHELF_STOCK.PER_LEVEL
+
+local function toVec(vector: Vector3): ShelfStock.Vec
+	return { x = vector.X, y = vector.Y, z = vector.Z }
+end
+
+-- Products shelves show up to STOCK_SLOTS boxes in the product's colour, filling from the bottom level
+local function updateStockBoxes(shelf: PlacedShelf)
+	if shelf.def.kind ~= "Products" then
+		return
+	end
+	local product = if shelf.productId then Products.ById[shelf.productId] else nil
+	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, STOCK_SLOTS) else 0
+	local boxes = shelf.stockBoxes
+	while #boxes > count do
+		local box = table.remove(boxes)
+		if box then
+			box:Destroy()
+		end
+	end
+	if not product then
+		return
+	end
+	local size = ShelfStock.boxSize(toVec(shelf.def.size), Town.SHELF_STOCK)
+	local slots = ShelfStock.slots(toVec(shelf.def.size), Town.SHELF_STOCK)
+	local color = product.color
+	for index = 1, count do
+		local box = boxes[index]
+		if not box then
+			box = Instance.new("Part")
+			box.Name = "StockBox"
+			box.Anchored = true
+			box.CanCollide = false
+			box.CanQuery = false
+			box.CanTouch = false
+			box.Material = Enum.Material.SmoothPlastic
+			box.Parent = shelf.part
+			boxes[index] = box
+		end
+		local slot = slots[index]
+		box.Size = Vector3.new(size.x, size.y, size.z)
+		box.Color = Color3.fromRGB(color[1], color[2], color[3])
+		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z)
+	end
+end
+
 local function updateLabel(shelf: PlacedShelf)
 	if isCondenser(shelf.def) then
 		shelf.label.Text = shelf.def.name
@@ -118,6 +167,7 @@ local function updateLabel(shelf: PlacedShelf)
 		shelf.label.Text = `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`
 		return
 	end
+	updateStockBoxes(shelf)
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
 	if not product or shelf.units <= 0 then
 		shelf.label.Text = `Empty\n0/{shelf.def.capacity}`
@@ -260,6 +310,7 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	if shelf.visual then
 		shelf.visual:PivotTo(shelf.part.CFrame * CFrame.new(0, -shelf.def.size.Y / 2, 0))
 	end
+	updateStockBoxes(shelf)
 end
 
 local function buildLabel(part: Part, def: ShelfDef): TextLabel
@@ -316,6 +367,7 @@ local function createShelf(
 		units = 0,
 		cards = {},
 		cardParts = {},
+		stockBoxes = {},
 		paid = paid,
 		part = part,
 		label = buildLabel(part, def),

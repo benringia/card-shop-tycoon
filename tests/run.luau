@@ -22,6 +22,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ItemRules = require("./ItemRules.spec"),
 	TownLayout = require("./TownLayout.spec"),
 	PropFit = require("./PropFit.spec"),
+	ShelfStock = require("./ShelfStock.spec"),
 }
 
 local passed, failed = 0, 0

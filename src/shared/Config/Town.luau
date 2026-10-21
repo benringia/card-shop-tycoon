@@ -68,6 +68,15 @@ return {
 		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
 	},
 
+	-- Stock boxes on Products shelves (ShelfStock): levels match the Store Shelf's plates
+	SHELF_STOCK = {
+		LEVELS = { 0.1, 0.37, 0.62 },
+		PER_LEVEL = 4,
+		BOX_HEIGHT = 0.9,
+		WIDTH_FILL = 0.7,
+		DEPTH_FILL = 0.5,
+	},
+
 	-- Shop shells (PlotService). Walls sit outside the floor edges.
 	WALL_HEIGHT = 12,
 	WALL_THICKNESS = 1,
