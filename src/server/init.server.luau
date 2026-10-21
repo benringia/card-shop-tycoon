@@ -25,27 +25,43 @@ local BattleService = require(Services:WaitForChild("BattleService"))
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local DevService = require(Services:WaitForChild("DevService"))
 
-PlotService.Start() -- builds the plots everything else uses
--- Data handlers load in this order (and unload in reverse). CardService loads before
--- PlacementService so displayed cards that can't be restored go back to the binder.
-EconomyService.Start()
-MonetizationService.Start()
-PricingService.Start()
-CardService.Start()
-ItemService.Start()
-PlacementService.Start()
-StockService.Start()
-ShowcaseService.Start()
-CustomerService.Start()
-RegisterService.Start()
-PackService.Start()
-CondenserService.Start()
-JobService.Start() -- after CardService, PlacementService and StockService: it loads after them
-PartyService.Start() -- after JobService: party loading checks which cards are working
-WildService.Start() -- wild map, plaza portal, spring and monsters
-BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
-ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)
-DevService.Start() -- Studio only
-DataService.Start() -- last: starts loading players
+local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
-print("[Server] Booted")
+if Place.isFrontier() then
+	-- The Frontier place: no plots or shop systems, only what the shared high-level map needs.
+	-- Data handlers load in this order (and unload in reverse), as in the main game.
+	EconomyService.Start()
+	MonetizationService.Start()
+	CardService.Start()
+	ItemService.Start()
+	PartyService.Start()
+	WildService.Start() -- the Frontier map, its spring and monsters
+	BattleService.Start()
+	DevService.Start() -- Studio only
+	DataService.Start() -- last: starts loading players
+else
+	PlotService.Start() -- builds the plots everything else uses
+	-- Data handlers load in this order (and unload in reverse). CardService loads before
+	-- PlacementService so displayed cards that can't be restored go back to the binder.
+	EconomyService.Start()
+	MonetizationService.Start()
+	PricingService.Start()
+	CardService.Start()
+	ItemService.Start()
+	PlacementService.Start()
+	StockService.Start()
+	ShowcaseService.Start()
+	CustomerService.Start()
+	RegisterService.Start()
+	PackService.Start()
+	CondenserService.Start()
+	JobService.Start() -- after CardService, PlacementService and StockService: it loads after them
+	PartyService.Start() -- after JobService: party loading checks which cards are working
+	WildService.Start() -- wild map, plaza portal, spring and monsters
+	BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
+	ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)
+	DevService.Start() -- Studio only
+	DataService.Start() -- last: starts loading players
+end
+
+print(`[Server] Booted ({if Place.isFrontier() then "Frontier" else "main game"})`)

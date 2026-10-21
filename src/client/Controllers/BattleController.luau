@@ -13,7 +13,8 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Party = require(Config:WaitForChild("Party"))
-local Wild = require(Config:WaitForChild("Wild"))
+-- The server wild map in the main game, the Frontier in the Frontier place
+local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -465,6 +466,9 @@ local function showEnd(summary: any)
 			table.insert(names, fightNames[`a:{beastId}`] or "card")
 		end
 		local lines = { `+{summary.xpEach or 0} XP each: {table.concat(names, ", ")}`, string.format("+$%.2f", summary.cash or 0) }
+		if typeof(summary.shards) == "number" and summary.shards > 0 then
+			table.insert(lines, `✨ +{summary.shards} Star Shard{if summary.shards == 1 then "" else "s"}`)
+		end
 		if typeof(summary.card) == "table" and Cards.ById[summary.card.cardId] then
 			table.insert(lines, `🎴 New card: {Cards.ById[summary.card.cardId].name} (grade {summary.card.grade})`)
 		end

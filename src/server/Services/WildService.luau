@@ -12,7 +12,9 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
-local Wild = require(Config:WaitForChild("Wild"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+-- The server wild map in the main game, the Frontier's map in the Frontier place (same shape)
+local Wild = Place.getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -50,6 +52,7 @@ local monstersFolder: Folder
 local inWild: { [Player]: boolean } = {}
 local contactCallbacks: { (player: Player, monster: Monster) -> () } = {}
 local travelBlockers: { (player: Player) -> string? } = {}
+local homeHandler: ((player: Player) -> ())? = nil
 local allowTravel = RateLimiter.new(TRAVEL_COOLDOWN)
 local rng = Random.new()
 local rayParams = RaycastParams.new()
@@ -179,14 +182,33 @@ local function buildMap(): Folder
 	return folder
 end
 
+-- Main game: the wild portal at the end of the street. Frontier: a spawn on the entrance and the Dungeon portal.
 local function buildPlaza()
 	local folder = Instance.new("Folder")
 	folder.Name = "Plaza"
-	local portalSpot = vec(Wild.PLAZA_PORTAL)
-	portal(folder, "The Wild", portalSpot, Vector3.new(-1, 0, 0), "Travel", function(player)
-		WildService.TravelToWild(player)
-	end)
-	sign(folder, "To the Wild", CFrame.new(portalSpot + Vector3.new(0, 12, 0)) * CFrame.Angles(0, math.rad(-90), 0))
+	if Place.isFrontier() then
+		local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
+		local spawn = Instance.new("SpawnLocation")
+		spawn.Name = "FrontierSpawn"
+		spawn.Anchored = true
+		spawn.Size = Vector3.new(6, 1, 6)
+		spawn.CFrame = CFrame.lookAt(entrance + Vector3.new(0, 0.5, 4), entrance + Vector3.new(0, 0.5, 20))
+		spawn.Transparency = 1
+		spawn.CanCollide = false
+		spawn.Duration = 0
+		spawn.Parent = folder
+		local dungeonSpot = vec((Wild :: any).DUNGEON_PORTAL)
+		portal(folder, "Dungeon", dungeonSpot, Vector3.new(1, 0, 0), "Enter", function(player)
+			notify(player, "Dungeons are coming soon!", false)
+		end)
+		sign(folder, "Dungeons · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, 12, 0)) * CFrame.Angles(0, math.rad(90), 0))
+	else
+		local portalSpot = vec(Wild.PLAZA_PORTAL)
+		portal(folder, "The Wild", portalSpot, Vector3.new(-1, 0, 0), "Travel", function(player)
+			WildService.TravelToWild(player)
+		end)
+		sign(folder, "To the Wild", CFrame.new(portalSpot + Vector3.new(0, 12, 0)) * CFrame.Angles(0, math.rad(-90), 0))
+	end
 
 	local springSpot = vec(Wild.SPRING)
 	local pool = block(folder, "HealingSpring", Vector3.new(0.6, 10, 10), CFrame.new(springSpot + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90)), SPRING_COLOR, Enum.Material.Neon)
@@ -510,8 +532,19 @@ function WildService.TravelToWild(player: Player)
 	end
 end
 
+-- Frontier only: what "home" means there (FrontierService teleports back to the main game)
+function WildService.SetHomeHandler(handler: (player: Player) -> ())
+	homeHandler = handler
+end
+
 function WildService.TravelHome(player: Player)
 	if not canTravel(player) then
+		return
+	end
+	if Place.isFrontier() then
+		if homeHandler then
+			homeHandler(player)
+		end
 		return
 	end
 	local plot = PlotService.GetPlot(player)
@@ -555,6 +588,14 @@ function WildService.Start()
 		end
 	end)
 	local function watch(player: Player)
+		if Place.isFrontier() then
+			-- The whole Frontier is wild: monsters wake for everyone here
+			inWild[player] = true
+			player.CharacterAdded:Connect(function()
+				inWild[player] = true
+			end)
+			return
+		end
 		-- Respawning puts you back at your shop
 		player.CharacterAdded:Connect(function()
 			if inWild[player] then

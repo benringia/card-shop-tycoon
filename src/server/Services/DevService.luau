@@ -3,7 +3,8 @@
 -- /beastxp <amount> (XP for your best levelled card, or your rarest plain card),
 -- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser),
 -- /jobslot (toggle owning the Extra Job Slot pass), /wild (travel to the wild map), /rest (wake resting cards),
--- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands).
+-- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands),
+-- /frontierdrop (a Star Shard and a random Frontier card).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +25,7 @@ local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local PackService = require(Services:WaitForChild("PackService"))
@@ -186,13 +188,20 @@ function DevService.Start()
 		BattleService.ClearResting(player)
 	end)
 	addCommand(folder, "elite", spawnElite)
+	addCommand(folder, "frontierdrop", function(player)
+		ItemService.GiveItem(player, "starShard", 1)
+		local pool = Cards.BySet.Frontier
+		local card = pool[math.random(1, #pool)]
+		CardService.AddFresh(player, { { cardId = card.id, foil = false, grade = BeastRules.rollGrade(math.random()) } })
+		Remotes.Notify:FireClient(player, `+1 Star Shard and a {card.name} (Studio)`, false)
+	end)
 	addCommand(folder, "arena", function(player)
 		ArenaService.TravelToStands(player)
 	end)
 	addCommand(folder, "testpack", function(player)
 		PackService.OpenTestPack(player)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /arena, /testpack")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack")
 end
 
 return DevService
