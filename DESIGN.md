@@ -223,8 +223,8 @@ Roadmap (one sub-project at a time):
 panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
-be displayed or given a job; they can be condensed. While a creature is summoned, a buff chip under the XP bar
-shows its perk (element icon and colour), with a toast when the buff turns on or off. Perks, from the summoned card
+be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge in the top-right
+corner shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Perks, from the summoned card
 only, read live:
 
 | Element | Perk | Effect | Common, 0 stars |
@@ -464,6 +464,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
+    │   │   ├── BuffController.luau      # top-right buff badge and tooltip for the summoned creature's perk
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
