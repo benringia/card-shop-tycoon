@@ -51,6 +51,11 @@ return {
 		assert(not PropFit.isAxisAligned({ { x = tilt, y = 0, z = tilt }, up, { x = -tilt, y = 0, z = tilt } }), "45 degrees")
 	end,
 
+	["lamps hang their lantern toward the street"] = function()
+		-- The lantern pole's arm points along the model's -X; a quarter turn points it along -Z (the facing)
+		expect.equal(town.SLOTS.Lamp.yaw, 90, "Lamp yaw")
+	end,
+
 	["the shelf slot stretches"] = function()
 		expect.equal(town.SLOTS.Shelf.stretch, true, "Shelf stretch")
 	end,

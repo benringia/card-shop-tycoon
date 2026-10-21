@@ -19,7 +19,7 @@ return {
 		Rock = { height = 3, collide = true },
 		Crate = { height = 3, collide = true },
 		Barrel = { height = 3.5, collide = true },
-		Lamp = { height = 9, collide = true },
+		Lamp = { height = 9, collide = true, yaw = 90 }, -- the lantern pole's arm points along the model's -X
 		Bench = { height = 3, collide = true },
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },

@@ -27,7 +27,7 @@ local List: { Shelf } = {
 		capacity = 24,
 		cost = 100,
 		unlockLevel = 1,
-		size = Vector3.new(4, 5, 2),
+		size = Vector3.new(4, 7, 2), -- height is free (the grid only uses X and Z)
 		color = Color3.fromRGB(170, 110, 70),
 	},
 	{
@@ -67,7 +67,7 @@ local List: { Shelf } = {
 		capacity = 48,
 		cost = 350,
 		unlockLevel = 3,
-		size = Vector3.new(8, 7, 2),
+		size = Vector3.new(8, 8, 2),
 		color = Color3.fromRGB(140, 95, 60),
 	},
 	{
@@ -77,7 +77,7 @@ local List: { Shelf } = {
 		capacity = 20,
 		cost = 250,
 		unlockLevel = 5,
-		size = Vector3.new(4, 6, 2),
+		size = Vector3.new(4, 7, 2),
 		color = Color3.fromRGB(110, 110, 125),
 		accepts = { "CardSleeves", "DeckBox" },
 	},
@@ -88,7 +88,7 @@ local List: { Shelf } = {
 		capacity = 96,
 		cost = 1200,
 		unlockLevel = 6,
-		size = Vector3.new(8, 6, 4),
+		size = Vector3.new(8, 7, 4),
 		color = Color3.fromRGB(120, 80, 55),
 	},
 }
