@@ -71,11 +71,11 @@ hired staff planned in DESIGN 7.4.
 
 - `JobService` owns workers per player: assignment, the creature, the job loops, status, and a once-a-minute
   XP tick (`CardService.AddXP(player, beastId, XP_PER_MINUTE)`). Workers run only while the owner is online.
-- `CardService`: `MakeIndividual(player, cardId, foil, grade) -> Beast?`; `SetWorking(player, beastId, bool)`;
+- `CardService`: `MakeIndividual(player, cardId, foil, grade) -> Beast?`; `SetWorking(player, beastId, job?)`;
   `TakeBeast`, `Condense` and display refuse working cards. Sync payload gains `working = { [beastId] = job }`.
-- `StockService`: `TakeWaitingBox(player, productFilter?) -> Part?`, `ReturnBox(player, box)`,
-  `ConsumeBox(player, box)` so restockers share the same boxes (and saves) as the owner.
-- `RegisterService`: `GetCheckout(plot)`, `ScanNext(plot) -> boolean`, `Charge(plot)`, `IsOwnerAtRegister`;
+- `StockService`: `GetWaitingBoxes(player)`, `TakeWaitingBox(player, box) -> boolean`, `ReturnBox(player, box)`,
+  `ConsumeUnits(player, box, units)` so restockers share the same boxes (and saves) as the owner.
+- `RegisterService`: `GetCheckout(plot)`, `ScanNext(plot) -> boolean`, `ChargeByWorker(plot) -> boolean`, `IsOwnerAtRegister`;
   the owner's charge and the cashier's charge share one function.
 - `MonetizationService` (new): `HasPass(player, "ExtraJobSlot")` via `MarketplaceService:UserOwnsGamePassAsync`
   (pcall, cached per session), refreshed on `PromptGamePassPurchaseFinished`. Studio: `/jobslot` toggles a

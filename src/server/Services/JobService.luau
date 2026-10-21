@@ -76,8 +76,9 @@ local function isJob(job: unknown): boolean
 	return typeof(job) == "string" and table.find(Jobs.JOBS, job) ~= nil
 end
 
-local function getSlotCount(player: Player): number
-	return JobRules.getSlotCount(Jobs, EconomyService.GetLevel(player), MonetizationService.HasPass(player, PASS_KEY))
+local function getSlotCount(player: Player, hasPass: boolean?): number
+	local owns = if hasPass ~= nil then hasPass else MonetizationService.HasPass(player, PASS_KEY)
+	return JobRules.getSlotCount(Jobs, EconomyService.GetLevel(player), owns)
 end
 
 -- Card, stats and job numbers for a worker's card right now (they change as it levels)
@@ -142,7 +143,8 @@ local function sendJobs(player: Player)
 		table.insert(slots, { slot = slot, beastId = worker.beastId, job = worker.job, status = worker.status })
 	end
 	local used = #slots
-	local slotCount = getSlotCount(player)
+	local hasPass = MonetizationService.HasPass(player, PASS_KEY) -- one check per update
+	local slotCount = getSlotCount(player, hasPass)
 	-- Mirrored as attributes so the binder can show "Assign to job" without asking the Jobs panel
 	player:SetAttribute("JobSlots", slotCount)
 	player:SetAttribute("JobsUsed", used)
@@ -150,7 +152,7 @@ local function sendJobs(player: Player)
 		slotCount = slotCount,
 		maxSlots = Jobs.FREE_SLOTS + Jobs.PASS_SLOTS,
 		unlockLevel = Jobs.UNLOCK_LEVEL,
-		hasPass = MonetizationService.HasPass(player, PASS_KEY),
+		hasPass = hasPass,
 		passId = Monetization.PASSES[PASS_KEY],
 		slots = slots,
 	})
@@ -325,6 +327,11 @@ local function runRestocker(player: Player, state: PlayerJobs, worker: Worker)
 			continue -- the owner picked it up first
 		end
 		carry(worker, chosen)
+		if worker.carrying ~= chosen then
+			StockService.ReturnBox(player, chosen) -- no creature to hold it
+			task.wait(Jobs.IDLE_RECHECK_SECONDS)
+			continue
+		end
 		local productId = chosen:GetAttribute("ProductId") :: string
 		local product = Products.ById[productId]
 
@@ -352,6 +359,9 @@ local function runRestocker(player: Player, state: PlayerJobs, worker: Worker)
 			local units = chosen:GetAttribute("Units")
 			if typeof(units) ~= "number" then
 				break
+			end
+			if PlacementService.GetShelf(player, shelf.uid) ~= shelf then
+				continue -- the owner sold it on the way; pick another shelf (or put the box back)
 			end
 			local added = PlacementService.AddStock(shelf, productId, units)
 			if added > 0 then
@@ -523,9 +533,16 @@ local function load(player: Player, data: PlayerData)
 	if not plot then
 		return
 	end
+	-- The pass check can yield; until it's done there is no state, so an autosave can't write empty jobs.
+	-- If Roblox can't answer right now, keep the saved pass-slot job rather than drop a paying player's card.
+	local count = if MonetizationService.IsCheckFailing(player, PASS_KEY)
+		then JobRules.getSlotCount(Jobs, EconomyService.GetLevel(player), true)
+		else getSlotCount(player)
+	if player.Parent ~= Players then
+		return
+	end
 	local state: PlayerJobs = { plot = plot, slots = {}, dirty = false }
 	states[player] = state
-	local count = getSlotCount(player)
 	local seen: { [string]: boolean } = {}
 	local saved = if typeof(data.jobs) == "table" then data.jobs else {}
 	for _, entry in saved do

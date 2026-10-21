@@ -13,6 +13,7 @@ local Monetization = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChi
 local MonetizationService = {}
 
 local owned: { [Player]: { [string]: boolean } } = {} -- only successful checks are cached
+local retryAt: { [Player]: { [string]: number } } = {} -- failed checks: don't ask Roblox again before this
 local passChangedCallbacks: { (player: Player, passKey: string) -> () } = {}
 
 local function check(player: Player, passKey: string): boolean
@@ -27,10 +28,20 @@ local function check(player: Player, passKey: string): boolean
 	if cache and cache[passKey] ~= nil then
 		return cache[passKey]
 	end
+	-- Backoff after a failure so an outage doesn't mean a Roblox call every status update
+	local failures = retryAt[player]
+	if failures and failures[passKey] and os.clock() < failures[passKey] then
+		return false
+	end
 	local ok, result = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, passId)
 	if not ok then
 		warn(`[MonetizationService] pass check failed for {player.Name}: {result}`)
+		retryAt[player] = retryAt[player] or {}
+		retryAt[player][passKey] = os.clock() + Monetization.CHECK_RETRY_SECONDS
 		return false
+	end
+	if failures then
+		failures[passKey] = nil
 	end
 	owned[player] = owned[player] or {}
 	owned[player][passKey] = result == true
@@ -51,6 +62,15 @@ end
 
 function MonetizationService.HasPass(player: Player, passKey: string): boolean
 	return check(player, passKey)
+end
+
+-- True while the last ownership check failed and is waiting to retry (Roblox couldn't answer)
+function MonetizationService.IsCheckFailing(player: Player, passKey: string): boolean
+	if not owned[player] or owned[player][passKey] == nil then
+		check(player, passKey)
+	end
+	local failures = retryAt[player]
+	return failures ~= nil and failures[passKey] ~= nil
 end
 
 function MonetizationService.OnPassChanged(callback: (player: Player, passKey: string) -> ())
@@ -78,6 +98,7 @@ function MonetizationService.Start()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		owned[player] = nil
+		retryAt[player] = nil
 	end)
 
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
@@ -86,9 +107,10 @@ function MonetizationService.Start()
 		end
 		for passKey, id in Monetization.PASSES do
 			if id == passId then
-				local cache = owned[player]
-				if cache then
-					cache[passKey] = nil -- check again now that they bought it
+				owned[player] = owned[player] or {}
+				owned[player][passKey] = true
+				if retryAt[player] then
+					retryAt[player][passKey] = nil
 				end
 				refresh(player, passKey)
 			end

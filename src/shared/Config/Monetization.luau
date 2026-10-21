@@ -6,4 +6,5 @@ return {
 	PASSES = {
 		ExtraJobSlot = 0, -- +1 shop job slot (DESIGN 8)
 	},
+	CHECK_RETRY_SECONDS = 60, -- after a failed ownership check, wait this long before asking Roblox again
 }
