@@ -27,6 +27,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
+local Props = require(Util:WaitForChild("Props"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
@@ -55,6 +56,7 @@ export type PlacedShelf = {
 	paid: number, -- what the player spent, for the sell-back refund
 	part: Part,
 	label: TextLabel,
+	visual: Model?, -- Products shelves: the Shelf prop drawn on the invisible hitbox part
 }
 
 local KIND_LABELS = {
@@ -255,6 +257,9 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	for slot, part in shelf.cardParts do
 		part.CFrame = getSlotCFrame(shelf, slot)
 	end
+	if shelf.visual then
+		shelf.visual:PivotTo(shelf.part.CFrame * CFrame.new(0, -shelf.def.size.Y / 2, 0))
+	end
 end
 
 local function buildLabel(part: Part, def: ShelfDef): TextLabel
@@ -317,6 +322,11 @@ local function createShelf(
 	}
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
+	if def.kind == "Products" then
+		-- The part stays as the hitbox (prompts, label, customers); the prop is the look. Its label still shows.
+		part.Transparency = 1
+		shelf.visual = Props.fit("Shelf", def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)
+	end
 	updateLabel(shelf)
 	part.Parent = plot.shelvesFolder
 
