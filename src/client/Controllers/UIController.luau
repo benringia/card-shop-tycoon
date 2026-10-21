@@ -22,11 +22,16 @@ local TOUCH_JUMP_CLEARANCE = 130
 local STATUS_WIDTH = 180
 local STATUS_HEIGHT = 130 -- buff badge 48 + cash 44 + XP 26 + gaps
 local STATUS_ROW_WIDTH = 420 -- party bar + gap + status column; spare width is empty and lets clicks through
--- Side toasts (sales): small, right of the middle-left HUD buttons, newest at the bottom
-local SIDE_TOAST_SECONDS = 3
+-- Money toasts (sales): stacked above the status corner, newest at the bottom
+local SIDE_TOAST_SECONDS = 3.5
 local SIDE_TOAST_MAX = 4
-local SIDE_TOAST_COLOR = Color3.fromRGB(120, 230, 120)
-local SIDE_FADE = TweenInfo.new(0.2)
+local SIDE_TOAST_MAX_TOUCH = 2 -- landscape phones are short
+local SIDE_TOAST_HEIGHT = 38
+local SIDE_TOAST_LIGHT = Color3.fromRGB(80, 210, 110)
+local SIDE_TOAST_DARK = Color3.fromRGB(25, 130, 60)
+local SIDE_POP = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local SIDE_SETTLE = TweenInfo.new(0.6)
+local SIDE_FADE = TweenInfo.new(0.3)
 
 local player = Players.LocalPlayer
 
@@ -93,28 +98,38 @@ function UIController.Notify(message: string, isError: boolean?, duration: numbe
 	return token
 end
 
--- A small toast at the left (sales and other money coming in): noticeable without covering the screen
+-- Money toast above the buff badge in the bottom-right corner (sales and other money coming in): a green
+-- pill that pops in with a white flash, then fades. Newest sits at the bottom, nearest the cash.
 function UIController.NotifySide(message: string)
 	sideToastOrder += 1
-	local label = UIKit.label(sideToasts, message, Enum.Font.GothamBold, 14, SIDE_TOAST_COLOR)
+	local label = UIKit.label(sideToasts, `💰 {message}`, Enum.Font.FredokaOne, 18, Color3.new(1, 1, 1))
 	label.LayoutOrder = sideToastOrder
-	label.Size = UDim2.fromOffset(0, 30)
+	label.Size = UDim2.fromOffset(0, SIDE_TOAST_HEIGHT)
 	label.AutomaticSize = Enum.AutomaticSize.X
-	label.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-	label.BackgroundTransparency = 1
-	label.TextTransparency = 1
-	UIKit.corner(label, 8)
+	label.BackgroundColor3 = Color3.new(1, 1, 1) -- coloured by the gradient
+	label.BackgroundTransparency = 0
+	label.TextStrokeColor3 = SIDE_TOAST_DARK
+	label.TextStrokeTransparency = 0.4
+	UIKit.corner(label, SIDE_TOAST_HEIGHT / 2)
 	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
+	padding.PaddingLeft = UDim.new(0, 14)
+	padding.PaddingRight = UDim.new(0, 14)
 	padding.Parent = label
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new(SIDE_TOAST_LIGHT, SIDE_TOAST_DARK)
+	gradient.Rotation = 90
+	gradient.Parent = label
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = SIDE_TOAST_COLOR
-	stroke.Transparency = 1
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Thickness = 3
 	stroke.Parent = label
-	TweenService:Create(label, SIDE_FADE, { BackgroundTransparency = 0.25, TextTransparency = 0 }):Play()
-	TweenService:Create(stroke, SIDE_FADE, { Transparency = 0.5 }):Play()
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.5
+	scale.Parent = label
+	-- Pop in, and the bright outline settles to a thin one
+	TweenService:Create(scale, SIDE_POP, { Scale = 1 }):Play()
+	TweenService:Create(stroke, SIDE_SETTLE, { Thickness = 1.5, Transparency = 0.3 }):Play()
 
 	-- Too many at once: drop the oldest
 	local shown = {}
@@ -126,7 +141,8 @@ function UIController.NotifySide(message: string)
 	table.sort(shown, function(a, b)
 		return a.LayoutOrder < b.LayoutOrder
 	end)
-	for index = 1, #shown - SIDE_TOAST_MAX do
+	local max = if UserInputService.TouchEnabled then SIDE_TOAST_MAX_TOUCH else SIDE_TOAST_MAX
+	for index = 1, #shown - max do
 		shown[index]:Destroy()
 	end
 
@@ -134,8 +150,9 @@ function UIController.NotifySide(message: string)
 		if not label.Parent then
 			return
 		end
-		TweenService:Create(label, SIDE_FADE, { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+		TweenService:Create(label, SIDE_FADE, { BackgroundTransparency = 1, TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 		TweenService:Create(stroke, SIDE_FADE, { Transparency = 1 }):Play()
+		TweenService:Create(scale, SIDE_FADE, { Scale = 0.8 }):Play()
 		task.delay(SIDE_FADE.Time, function()
 			label:Destroy()
 		end)
@@ -271,12 +288,15 @@ function UIController.Start()
 
 	sideToasts = Instance.new("Frame")
 	sideToasts.Name = "SideToasts"
-	sideToasts.Position = UDim2.new(0, 116, 0.5, -165) -- right of the HUD buttons, level with the top one
-	sideToasts.Size = UDim2.fromOffset(300, 150)
+	sideToasts.AnchorPoint = Vector2.new(1, 1)
+	sideToasts.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + STATUS_HEIGHT + 6)) -- just above the buff badge
+	sideToasts.Size = UDim2.fromOffset(320, SIDE_TOAST_MAX * (SIDE_TOAST_HEIGHT + 6))
 	sideToasts.BackgroundTransparency = 1
 	sideToasts.Parent = screenGui
 	local sideLayout = Instance.new("UIListLayout")
-	sideLayout.Padding = UDim.new(0, 4)
+	sideLayout.Padding = UDim.new(0, 6)
+	sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	sideLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	sideLayout.Parent = sideToasts
 
