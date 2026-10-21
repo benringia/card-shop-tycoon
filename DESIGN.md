@@ -47,6 +47,22 @@ Order stock (computer) → Restock shelves → Set prices
 - Plots are fixed size but have **expansion zones** that unlock (walls move back / second room opens).
 - Other players can walk into your shop and see your shelves and display cases.
 
+**Main town (world pass 1; spec `2026-10-25-main-town-design.md`; built, awaiting Studio test).** A cozy stylized
+village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
+between the two rows (x -90..90), a round stone plaza (radius 14) round the healing spring, a path to the Frontier
+portal, warm afternoon lighting with light haze. Decor is fixed (`Util/TownLayout`, same on every server): lamps
+on the street edges at every plot gap and row end, 4 benches with flower beds and 2 plaza decor spots round the
+spring, a bush, clover, a crate and a barrel in each gap between plots, a fence and a tree line (Tree and Pine in
+turn) behind each row, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
+in the street (except lamps, portals and the plaza), within 10 studs of a portal, or in the spring area (except
+benches and flowers). **Shops:** an open front; back and side walls outside the floor (12 tall, trim and
+baseboard), front corner pillars, a striped awning (4 studs out) with the shop sign on its lip, a roof the client
+hides while you stand inside. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
+trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register and a counter
+decor prop; Products shelves show the Shelf prop (the part stays as the invisible hitbox). **Props:** every
+decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
+code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
+
 ---
 
 ## 4. Shop systems
@@ -499,12 +515,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
 ├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
+├── assets/props/               # town prop models (.rbxm) → ServerStorage.PropModels (docs/props.md)
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
     │   ├── Services/
     │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
-    │   │   ├── PlotService.luau      # claim/release plots, build saved layout
+    │   │   ├── PlotService.luau      # claim/release plots, shop shells (themed walls, awning, roof)
+    │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portal frames, lighting
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
@@ -529,6 +547,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded wild fight simulation (pure, Lune-tested)
+    │       ├── Props.luau            # place swappable prop models (assets/props) or part stand-ins
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -554,6 +573,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
+    │   │   ├── TownController.luau  # hides the roof of the shop you stand in (this client only)
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
@@ -586,6 +606,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
         │   ├── Items.luau      # every item: name, icon, description; stack limit
+        │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, lighting
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
@@ -607,6 +628,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
             ├── Place.luau         # which place this is; its wild-map config
+            ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -663,6 +685,8 @@ their saved data.
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.
 - Use CollectionService tags for shelves/interactables.
 - Stream-friendly: enable StreamingEnabled, test on low-end phone.
+- Town props: under 2k triangles per prop model and 60k for the whole town; models over 150 parts use the
+  stand-in. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
 
 ---
 
