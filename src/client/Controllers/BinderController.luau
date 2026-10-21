@@ -1086,13 +1086,13 @@ local function buildBag(parent: Frame)
 	local function tab(text: string, x: number): TextButton
 		local button = UIKit.button(parent, text, UIKit.Colors.Row)
 		button.Position = UDim2.fromOffset(x, 10)
-		button.Size = UDim2.fromOffset(112, 48)
+		button.Size = UDim2.fromOffset(116, 48)
 		button.TextSize = 15
 		button.ZIndex = 12
 		return button
 	end
-	cardsTab = tab("📖 Cards", 132)
-	bagTab = tab("🎒 Bag", 250)
+	cardsTab = tab("📖 Cards", 150)
+	bagTab = tab("🎒 Bag", 272)
 
 	bagOverlay = Instance.new("Frame")
 	bagOverlay.Name = "Bag"
@@ -1157,15 +1157,16 @@ local function buildPanel(parent: Instance)
 	-- Collection progress per set: First Spark (packs) and the Frontier set
 	for index, set in { "First Spark", "Frontier" } do
 		local row = Instance.new("Frame")
-		row.Position = UDim2.fromOffset(16, 54 + (index - 1) * 18)
-		row.Size = UDim2.fromOffset(170, 16)
+		-- Bottom bar, left of the page count
+		row.Position = UDim2.new(0, 88, 1, -52 + (index - 1) * 20)
+		row.Size = UDim2.fromOffset(200, 16)
 		row.BackgroundTransparency = 1
 		row.Parent = panel
 		local label = UIKit.label(row, "", Enum.Font.GothamBold, 11, if set == "Frontier" then CardEffects.FRONTIER.AURORA[1] else UIKit.Colors.Subtext)
-		label.Size = UDim2.new(0, 96, 1, 0)
+		label.Size = UDim2.new(0, 110, 1, 0)
 		local track = Instance.new("Frame")
-		track.Position = UDim2.fromOffset(98, 4)
-		track.Size = UDim2.new(1, -98, 0, 8)
+		track.Position = UDim2.fromOffset(112, 4)
+		track.Size = UDim2.new(1, -112, 0, 8)
 		track.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 		track.Parent = row
 		UIKit.corner(track, 4)
@@ -1183,8 +1184,8 @@ local function buildPanel(parent: Instance)
 	-- Search by name or number, then filter chips (they scroll sideways on narrow screens)
 	local search = Instance.new("TextBox")
 	search.Name = "Search"
-	search.Position = UDim2.fromOffset(190, 56)
-	search.Size = UDim2.fromOffset(180, 32)
+	search.Position = UDim2.fromOffset(16, 66)
+	search.Size = UDim2.fromOffset(180, 34)
 	search.BackgroundColor3 = UIKit.Colors.Row
 	search.ClearTextOnFocus = false
 	search.PlaceholderText = "Search name or #"
@@ -1202,8 +1203,8 @@ local function buildPanel(parent: Instance)
 
 	local chips = Instance.new("ScrollingFrame")
 	chips.Name = "Filters"
-	chips.Position = UDim2.fromOffset(380, 54)
-	chips.Size = UDim2.new(1, -392, 0, 38)
+	chips.Position = UDim2.fromOffset(204, 64)
+	chips.Size = UDim2.new(1, -216, 0, 38)
 	chips.BackgroundTransparency = 1
 	chips.BorderSizePixel = 0
 	chips.ScrollBarThickness = 3
@@ -1216,7 +1217,7 @@ local function buildPanel(parent: Instance)
 	chipLayout.Padding = UDim.new(0, 6)
 	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	chipLayout.Parent = chips
-	local filters = { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }
+	local filters = { ALL_FILTER, OWNED_FILTER, MISSING_FILTER, FRONTIER_FILTER }
 	local rarities: { string } = {}
 	for name in Rarities.Tiers do
 		table.insert(rarities, name)
@@ -1227,7 +1228,6 @@ local function buildPanel(parent: Instance)
 	for _, name in rarities do
 		table.insert(filters, name)
 	end
-	table.insert(filters, FRONTIER_FILTER)
 	for index, filter in filters do
 		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
 		chip.LayoutOrder = index
@@ -1250,8 +1250,8 @@ local function buildPanel(parent: Instance)
 	-- The open binder: cover with a spine down the middle and a page either side
 	local spread = Instance.new("Frame")
 	spread.Name = "Spread"
-	spread.Position = UDim2.fromOffset(12, 96)
-	spread.Size = UDim2.new(1, -24, 1, -156)
+	spread.Position = UDim2.fromOffset(12, 108)
+	spread.Size = UDim2.new(1, -24, 1, -168)
 	spread.BackgroundColor3 = COVER_COLOR
 	spread.Parent = panel
 	UIKit.corner(spread, 12)
@@ -1284,6 +1284,7 @@ local function buildPanel(parent: Instance)
 	pageLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
 	pageLabel.Position = UDim2.new(0, 84, 1, -54)
 	pageLabel.Size = UDim2.new(1, -168, 0, 46)
+	pageLabel.TextXAlignment = Enum.TextXAlignment.Right -- the set progress bars sit on the left of this bar
 	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	tooltip = Instance.new("Frame")
@@ -1426,12 +1427,11 @@ function BinderController.Start()
 	refresh()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then
-			return
-		end
-		if input.KeyCode == BINDER_KEY then
+		-- Roblox's camera uses I to zoom and marks it processed, so I only checks that nobody is typing
+		local typing = UserInputService:GetFocusedTextBox() ~= nil
+		if input.KeyCode == BINDER_KEY and not gameProcessed then
 			toggle()
-		elseif input.KeyCode == BAG_KEY then
+		elseif input.KeyCode == BAG_KEY and not typing then
 			-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
 			if panel.Visible and bagOverlay.Visible then
 				toggle()

@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Pricing = require(Config:WaitForChild("Pricing"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
@@ -30,6 +31,7 @@ type PickerFilter = string
 
 local ALL_FILTER = "All"
 local FOIL_FILTER = "Foil"
+local FRONTIER_FILTER = "Frontier"
 local FILTER_CHIP_WIDTH = 96
 local PICKER_TILE_SIZE = Vector2.new(92, 168) -- card face on top, grade/count and value underneath
 local PICKER_FACE_HEIGHT = 118
@@ -129,7 +131,7 @@ local function getPickerFilters(): { PickerFilter }
 	table.sort(rarities, function(a, b)
 		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
 	end)
-	local filters: { PickerFilter } = { ALL_FILTER }
+	local filters: { PickerFilter } = { ALL_FILTER, FRONTIER_FILTER }
 	for _, name in rarities do
 		table.insert(filters, name)
 	end
@@ -142,6 +144,8 @@ local function passesFilter(card: Card, foil: boolean): boolean
 		return true
 	elseif pickerFilter == FOIL_FILTER then
 		return foil
+	elseif pickerFilter == FRONTIER_FILTER then
+		return card.set == "Frontier"
 	end
 	return card.rarity == pickerFilter
 end
@@ -783,6 +787,8 @@ local function buildPicker(parent: Instance)
 		local tier = Rarities.Tiers[filter]
 		if tier then
 			chip.TextColor3 = tier.color
+		elseif filter == FRONTIER_FILTER then
+			chip.TextColor3 = CardEffects.FRONTIER.AURORA[1]
 		end
 		chip.Activated:Connect(function()
 			pickerFilter = filter

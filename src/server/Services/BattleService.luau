@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local Announcements = require(Config:WaitForChild("Announcements"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
@@ -306,8 +307,10 @@ local function payOut(fight: Fight): any
 		if #pool > 0 then
 			frontierCard = { cardId = pool[rng:NextInteger(1, #pool)], foil = false, grade = BeastRules.rollGrade(rng:NextNumber()) }
 			CardService.AddFresh(player, { frontierCard })
-			-- Rare enough that the whole server hears about it
-			Remotes.PullAnnouncement:FireAllClients(player.DisplayName, frontierCard.cardId, false, "frontier", player.UserId)
+			-- Epic and Legendary ones: the whole server hears, and the finder gets the big reveal
+			if Announcements.FRONTIER_RARITIES[Cards.ById[frontierCard.cardId].rarity] then
+				Remotes.PullAnnouncement:FireAllClients(player.DisplayName, frontierCard.cardId, false, "frontier", player.UserId)
+			end
 		end
 	end
 	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards }

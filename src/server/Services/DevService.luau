@@ -194,7 +194,9 @@ function DevService.Start()
 		local card = pool[math.random(1, #pool)]
 		CardService.AddFresh(player, { { cardId = card.id, foil = false, grade = BeastRules.rollGrade(math.random()) } })
 		Remotes.Notify:FireClient(player, `+1 Star Shard and a {card.name} (Studio)`, false)
-		Remotes.PullAnnouncement:FireAllClients(player.DisplayName, card.id, false, "frontier", player.UserId) -- the reveal
+		if card.rarity == "Epic" or card.rarity == "Legendary" then
+			Remotes.PullAnnouncement:FireAllClients(player.DisplayName, card.id, false, "frontier", player.UserId) -- the reveal
+		end
 	end)
 	addCommand(folder, "arena", function(player)
 		ArenaService.TravelToStands(player)
