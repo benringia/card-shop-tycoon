@@ -19,7 +19,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim) plus the model script gate (CreatureAssets) and SourceOrder (no local function called above its definition). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules) plus the model script gate (CreatureAssets) and SourceOrder (no local function called above its definition). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -62,7 +62,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
-  cards), `/elite` (an elite monster next to you).
+  cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.

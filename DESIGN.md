@@ -219,9 +219,21 @@ Roadmap (one sub-project at a time):
 4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; done).
 5. **Battles** — real-time auto-battles, in three parts:
    1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
-   2. PvP challenges and an arena (later).
+   2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; built, awaiting Studio test).
    3. The Frontier (a separate place shared by players from every server: high-level monsters, exclusive valuable
       drops) and boss challenges for groups (later).
+
+**Battles part 2: PvP.** Walk up to another player and press C (Challenge): pick a bet (Friendly, or up to
+min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
+accept. Both bets are then held by the server and the match goes to the arena (one pad, far from the shops; others
+queue first come, first served; leaving the queue refunds both). Full parties fight (cards resting from the wild sit
+out), same combat rules as the wild, no call-in and no Run; you can roam your half of the pad. Winner takes both
+bets; the 2-minute limit is a draw (both refunded); leaving or resetting mid-fight forfeits. No XP, drops or resting
+from PvP. 10 s after the result both go home. Anyone can watch from the stands (plaza "Arena" portal, `/arena`);
+creatures in a fight show floating HP bars. Wins-losses-draws are saved and shown in the Party panel. A declined
+challenge blocks that pair for 30 s; 10 s cooldown between challenges. Numbers: `Config/Pvp.luau`; bet and record
+rules in `Util/PvpRules` (Lune-tested). The fight engine (`BattleSim`) runs two sides of fighters: wild fights are
+the party vs a one-monster side.
 
 **Battles part 1: wild fights.** A portal at the end of the plaza street moves you to the wild map (same server, far
 from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
@@ -489,6 +501,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
     │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
+    │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
@@ -517,7 +530,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BuffController.luau      # buff badge (bottom-right, above the cash) and tooltip for the summoned creature's perk
     │   │   ├── PartyBarController.luau  # bottom-right quick bar: your avatar + 3 party slots, tap to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
-    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar, damage numbers, end screen
+    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
+    │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
@@ -547,6 +561,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
+        │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
@@ -563,6 +578,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CondenseRules.luau # which duplicates a star uses (pure, Lune-tested)
             ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
+            ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -579,10 +595,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v8)
+### 10.4 Player data schema (v9)
 ```lua
 {
-    version = 8,
+    version = 9,
     cash = 200,
     xp = 0,
     level = 1,
@@ -598,6 +614,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     jobs = {},              -- { { slot, beastId, job } } cards working in the shop (Restocker / Cashier)
     party = { slots = {} }, -- { slots = { ["1".."3"] = beastId }, summoned = slot? } party cards and the summoned one
     resting = {},           -- { [beastId] = unixTime } cards that fainted in a fight, resting until then
+    pvp = { wins = 0, losses = 0, draws = 0 }, -- PvP record
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -610,7 +627,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget
