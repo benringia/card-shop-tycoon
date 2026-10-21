@@ -218,7 +218,7 @@ Roadmap (one sub-project at a time):
    (spec `2026-10-21-party-summoning-design.md`; done).
 4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; done).
 5. **Battles** — real-time auto-battles, in three parts:
-   1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; built, awaiting Studio test).
+   1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
    2. PvP challenges and an arena (later).
    3. The Frontier (a separate place shared by players from every server: high-level monsters, exclusive valuable
       drops) and boss challenges for groups (later).
