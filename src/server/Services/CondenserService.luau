@@ -29,6 +29,8 @@ end
 local function describeReason(reason: string?): string
 	if reason == "max" then
 		return "Already at max stars."
+	elseif reason == "working" then
+		return "That card is working. Unassign it first."
 	end
 	local have, need = string.match(reason or "", "^short:(%d+):(%d+)$")
 	if have and need then

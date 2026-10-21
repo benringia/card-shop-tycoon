@@ -114,6 +114,10 @@ local function onDisplayCard(
 			notify(player, "You don't have that beast in your binder.", true)
 			return
 		end
+		if CardService.IsWorking(player, beastId) then
+			notify(player, "That card is working. Unassign it first.", true)
+			return
+		end
 		beast = CardService.TakeBeast(player, beastId)
 		copyGrade = owned.grade
 	else

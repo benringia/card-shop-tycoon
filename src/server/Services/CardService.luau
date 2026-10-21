@@ -2,7 +2,8 @@
 -- Each player's cards: plain stacks { [cardId] = { [grade] = { normal, foil } } } of untouched copies,
 -- and levelled cards { [beastId] = Beast } with their own level, XP, stars and grade. A plain copy
 -- becomes its own card (keeping its grade) the first time it gains XP or a star. Cards on display leave here while shown (PlacementService holds them).
--- The client gets { stacks, beasts } on every change. Saved through DataService.
+-- Cards working a shop job (JobService) are locked: they can't be displayed or condensed.
+-- The client gets { stacks, beasts, working } on every change. Saved through DataService.
 -- (DESIGN.md calls this CollectionService; renamed to avoid clashing with Roblox's own service.)
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,7 +30,11 @@ export type PullResult = { cardId: string, foil: boolean, grade: string }
 export type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string }
 export type XpTarget = string | { cardId: string, foil: boolean, grade: string }
 
-type Inventory = { stacks: Stacks, beasts: { [string]: Beast } }
+type Inventory = {
+	stacks: Stacks,
+	beasts: { [string]: Beast },
+	working: { [string]: string }, -- beastId -> job; runtime only, JobService rebuilds it from saved jobs
+}
 
 local CardService = {}
 
@@ -39,7 +44,7 @@ local allowRequest = RateLimiter.new(Collection.REQUEST_COOLDOWN)
 local function sync(player: Player)
 	local inventory = inventories[player]
 	if inventory then
-		Remotes.CollectionChanged:FireClient(player, { stacks = inventory.stacks, beasts = inventory.beasts })
+		Remotes.CollectionChanged:FireClient(player, { stacks = inventory.stacks, beasts = inventory.beasts, working = inventory.working })
 	end
 end
 
@@ -123,10 +128,11 @@ function CardService.AddBeast(player: Player, beast: Beast): Beast
 	return beast
 end
 
+-- Removes a levelled card from the binder (to display it). Working cards stay put.
 function CardService.TakeBeast(player: Player, beastId: string): Beast?
 	local inventory = inventories[player]
 	local beast = if inventory then inventory.beasts[beastId] else nil
-	if not inventory or not beast then
+	if not inventory or not beast or inventory.working[beastId] then
 		return nil
 	end
 	inventory.beasts[beastId] = nil
@@ -206,6 +212,9 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget): (
 		if not beast or beast.cardId ~= cardId then
 			return nil, "missing"
 		end
+		if inventory.working[main] then
+			return nil, "working"
+		end
 		foil, grade = beast.foil, beast.grade
 	else
 		local byGrade = inventory.stacks[cardId]
@@ -255,6 +264,41 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget): (
 	return condensed
 end
 
+-- Splits one plain copy off its stack into its own card (to give it a job). Nil if there is no such copy.
+function CardService.MakeIndividual(player: Player, cardId: string, foil: boolean, grade: string): Beast?
+	local inventory = inventories[player]
+	if not inventory or not Cards.ById[cardId] or not takeFreshCopy(inventory, cardId, foil, grade) then
+		return nil
+	end
+	local beast: Beast = {
+		id = HttpService:GenerateGUID(false),
+		cardId = cardId,
+		foil = foil,
+		level = 1,
+		xp = 0,
+		stars = BeastRules.START_STARS,
+		grade = grade,
+	}
+	inventory.beasts[beast.id] = beast
+	sync(player)
+	return beast
+end
+
+-- Marks a levelled card as working a job (nil = not working)
+function CardService.SetWorking(player: Player, beastId: string, job: string?)
+	local inventory = inventories[player]
+	if not inventory or (job and not inventory.beasts[beastId]) then
+		return
+	end
+	inventory.working[beastId] = job
+	sync(player)
+end
+
+function CardService.IsWorking(player: Player, beastId: string): boolean
+	local inventory = inventories[player]
+	return inventory ~= nil and inventory.working[beastId] ~= nil
+end
+
 function CardService.IsLoaded(player: Player): boolean
 	return inventories[player] ~= nil
 end
@@ -299,7 +343,7 @@ local function load(player: Player, data: PlayerData)
 		end
 	end
 
-	inventories[player] = { stacks = stacks, beasts = beasts }
+	inventories[player] = { stacks = stacks, beasts = beasts, working = {} }
 	sync(player)
 end
 
