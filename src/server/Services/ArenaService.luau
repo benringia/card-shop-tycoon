@@ -700,7 +700,6 @@ runMatch = function(current: Fight, a: Player, b: Player, spawnA: CFrame, spawnB
 	if current.ended then
 		return
 	end
-	current.started = true
 	for _, side in { current.sides.a, current.sides.b } do
 		local character = side.player.Character
 		local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
@@ -735,8 +734,15 @@ runMatch = function(current: Fight, a: Player, b: Player, spawnA: CFrame, spawnB
 			bet = match.bet,
 			markers = current.markers,
 			snapshot = snapshot,
+			startsIn = Pvp.COUNTDOWN_SECONDS,
 		})
 	end
+	-- 3, 2, 1, FIGHT! on both screens, then the fight runs (leaving or resetting meanwhile still forfeits)
+	task.delay(Pvp.COUNTDOWN_SECONDS, function()
+		if not current.ended then
+			current.started = true
+		end
+	end)
 end
 
 tryStartNext = function()

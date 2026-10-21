@@ -2,7 +2,7 @@
 -- PvP challenges and the arena (battles part 2 spec). Plain data only (positions are { x, y, z } tables) so
 -- Lune tests can load this file.
 return {
-	CHALLENGE_DISTANCE = 15, -- studs between the players to send a challenge
+	CHALLENGE_DISTANCE = 8, -- studs between the players for the Challenge prompt (and the server check)
 	CHALLENGE_SECONDS = 15, -- the target has this long to answer
 	CHALLENGE_COOLDOWN = 10, -- seconds between challenges from one player
 	DECLINE_BLOCK_SECONDS = 30, -- after a decline, that pair can't challenge again for this long
@@ -10,6 +10,7 @@ return {
 	BET_STEP = 5,
 	BET_PRESETS = { 0, 10, 25, 50 }, -- 0 = Friendly
 	RETURN_SECONDS = 10, -- after the result, both go home
+	COUNTDOWN_SECONDS = 3, -- 3, 2, 1, FIGHT! once both players are on the pad
 	ACTION_COOLDOWN = 0.5, -- remote rate limit
 
 	-- The arena: one pad, far from the plots and the wild

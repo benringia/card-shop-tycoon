@@ -223,10 +223,10 @@ Roadmap (one sub-project at a time):
    3. The Frontier (a separate place shared by players from every server: high-level monsters, exclusive valuable
       drops) and boss challenges for groups (later).
 
-**Battles part 2: PvP.** Walk up to another player and press C (Challenge): pick a bet (Friendly, or up to
+**Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
 min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
 accept. Both bets are then held by the server and the match goes to the arena (one pad, far from the shops; others
-queue first come, first served; leaving the queue refunds both). Full parties fight (cards resting from the wild sit
+queue first come, first served; leaving the queue refunds both). After a 3-2-1 countdown, full parties fight (cards resting from the wild sit
 out), same combat rules as the wild, no call-in and no Run; you can roam your half of the pad. Winner takes both
 bets; the 2-minute limit is a draw (both refunded); leaving or resetting mid-fight forfeits. No XP, drops or resting
 from PvP. 10 s after the result both go home. Anyone can watch from the stands (plaza "Arena" portal, `/arena`);

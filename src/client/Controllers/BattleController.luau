@@ -69,6 +69,8 @@ local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
 local endScreen: Frame
+local countdownLabel: TextLabel -- arena: 3, 2, 1, FIGHT!
+local countdownToken = 0
 local endTitle: TextLabel
 local endBody: TextLabel
 local shopButton: TextButton
@@ -484,6 +486,32 @@ local function showEnd(summary: any)
 	end)
 end
 
+local COUNTDOWN_POP = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- Big numbers in the middle of the screen before an arena fight starts
+local function showCountdown(seconds: number)
+	countdownToken += 1
+	local token = countdownToken
+	local scale = countdownLabel:FindFirstChildOfClass("UIScale") :: UIScale
+	task.spawn(function()
+		for left = seconds, 0, -1 do
+			if countdownToken ~= token or not fighting then
+				countdownLabel.Visible = false
+				return
+			end
+			countdownLabel.Text = if left > 0 then tostring(left) else "FIGHT!"
+			countdownLabel.TextColor3 = if left > 0 then Color3.new(1, 1, 1) else ELITE_COLOR
+			countdownLabel.Visible = true
+			scale.Scale = 1.8
+			TweenService:Create(scale, COUNTDOWN_POP, { Scale = 1 }):Play()
+			task.wait(if left > 0 then 1 else 0.8)
+		end
+		if countdownToken == token then
+			countdownLabel.Visible = false
+		end
+	end)
+end
+
 local function onStarted(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.snapshot) ~= "table" then
 		return
@@ -510,6 +538,9 @@ local function onStarted(payload: any)
 	runButton.Visible = mode == "wild"
 	if mode == "pvp" then
 		buildEnemies(view)
+	end
+	if typeof(payload.startsIn) == "number" and payload.startsIn > 0 then
+		showCountdown(payload.startsIn)
 	end
 	fighterViews = {}
 	buildFighters(view)
@@ -636,6 +667,17 @@ local function build()
 	runButton.Activated:Connect(function()
 		Remotes.RunFight:FireServer()
 	end)
+
+	countdownLabel = UIKit.label(screenGui, "", Enum.Font.FredokaOne, 96, Color3.new(1, 1, 1))
+	countdownLabel.Name = "FightCountdown"
+	countdownLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	countdownLabel.Position = UDim2.fromScale(0.5, 0.38)
+	countdownLabel.Size = UDim2.fromOffset(400, 120)
+	countdownLabel.TextXAlignment = Enum.TextXAlignment.Center
+	countdownLabel.TextStrokeTransparency = 0.2
+	countdownLabel.Visible = false
+	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
+	Instance.new("UIScale").Parent = countdownLabel
 
 	endScreen = Instance.new("Frame")
 	endScreen.Name = "FightEnd"
