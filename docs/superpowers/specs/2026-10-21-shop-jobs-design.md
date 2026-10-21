@@ -57,8 +57,9 @@ hired staff planned in DESIGN 7.4.
 | UNLOCK_LEVEL | 10 | shop level for slot 1 |
 | FREE_SLOTS / PASS_SLOTS | 1 / 1 | max 2 |
 | XP_PER_MINUTE | 2 | while working and the owner is online |
-| REFERENCE_SPD | 12 | SPD that works at base speed |
-| SPEED_MIN / SPEED_MAX | 0.6 / 2.0 | clamp on SPD / REFERENCE_SPD |
+| REFERENCE_SPD | 14 | SPD that works at base speed (a fresh Very Rare) |
+| SPEED_EXPONENT | 1.5 | speed = (SPD / REFERENCE_SPD) ^ exponent, widening the rarity gap |
+| SPEED_MIN / SPEED_MAX | 0.4 / 2.5 | clamp on the speed factor |
 | WALK_SPEED | 12 | studs/s at base speed |
 | STOCK_SECONDS | 2 | stocking one box at base speed |
 | SCAN_SECONDS | 1.2 | one item at base speed |

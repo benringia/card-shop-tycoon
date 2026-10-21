@@ -324,7 +324,8 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
   view ("Assign to job"); the **Jobs** HUD button shows each slot's card, status, XP, speed and mistakes.
 - **Restocker:** carries delivered boxes from the pad to shelves that hold (or accept) that product and stocks them.
 - **Cashier:** scans and charges customers like you do; steps aside while you're at the register.
-- **SPD = speed** (×0.6 to ×2 of base), **Power = fewer mistakes** (20% for a fresh Common down to 3%):
+- **SPD = speed**: (SPD / 14)^1.5, clamped ×0.4 to ×2.5, so a fresh Grade C Common scans in ~2.0 s and a fresh
+  Legendary in ~0.7 s (base 1.2 s); levelling raises SPD. **Power = fewer mistakes** (20% for a fresh Common down to 3%):
   a dropped box goes back to the pad, a mis-scan is scanned again. Mistakes cost time only.
 - **XP:** 2 per minute per working card, only while you're online. Battles and quests will be the main way to level.
 - Working cards are locked: no display, condensing or second job until unassigned.

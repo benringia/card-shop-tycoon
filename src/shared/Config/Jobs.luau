@@ -7,9 +7,13 @@ return {
 	FREE_SLOTS = 1,
 	PASS_SLOTS = 1, -- extra slots from the Extra Job Slot game pass
 	XP_PER_MINUTE = 2, -- per working card, while the owner is online
-	REFERENCE_SPD = 12, -- this SPD works at base speed
-	SPEED_MIN = 0.6,
-	SPEED_MAX = 2.0,
+	-- Work speed = (SPD / REFERENCE_SPD) ^ SPEED_EXPONENT, clamped. The exponent widens the gap between
+	-- rarities: a fresh Grade C Common (SPD 10) works at ~0.6x, a fresh Legendary (SPD 20) at ~1.7x.
+	-- Levelling raises SPD, so a raised Common catches up.
+	REFERENCE_SPD = 14, -- this SPD (a fresh Very Rare) works at base speed
+	SPEED_EXPONENT = 1.5,
+	SPEED_MIN = 0.4,
+	SPEED_MAX = 2.5,
 	WALK_SPEED = 12, -- studs per second at base speed
 	STOCK_SECONDS = 2, -- stocking one box at base speed
 	SCAN_SECONDS = 1.2, -- one counter item at base speed

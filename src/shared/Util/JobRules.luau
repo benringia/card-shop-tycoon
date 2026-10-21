@@ -5,6 +5,7 @@ local JobRules = {}
 
 type Config = {
 	REFERENCE_SPD: number,
+	SPEED_EXPONENT: number,
 	SPEED_MIN: number,
 	SPEED_MAX: number,
 	MISTAKE_MAX: number,
@@ -21,7 +22,7 @@ function JobRules.getSpeedFactor(config: Config, spd: number): number
 	if spd ~= spd then
 		return 1
 	end
-	return math.clamp(spd / config.REFERENCE_SPD, config.SPEED_MIN, config.SPEED_MAX)
+	return math.clamp((spd / config.REFERENCE_SPD) ^ config.SPEED_EXPONENT, config.SPEED_MIN, config.SPEED_MAX)
 end
 
 function JobRules.getDuration(config: Config, baseSeconds: number, spd: number): number
