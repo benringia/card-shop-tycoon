@@ -94,7 +94,7 @@ return {
 	AWNING_STRIPES = 8,
 	ROOF_THICKNESS = 1,
 	ROOF_CHECK_SECONDS = 0.2, -- client: how often it checks which shop you stand in
-	ROOF_SHADE_LIFT = 40, -- client: the stand-in roof that keeps the shade sits this far toward the sun
+	INDOOR_SHADE = { EXPOSURE = -0.6, SECONDS = 0.4 }, -- client: lighting dims this much inside a shop (roof hidden)
 
 	-- One theme per plot id
 	PLOT_THEMES = {

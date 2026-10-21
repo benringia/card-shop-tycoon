@@ -1,43 +1,32 @@
 --!strict
 -- Hides the roof of the shop you're standing in, on this client only, so the camera can see inside; roofs show
 -- from the street (main town spec). Main game only. Plots stream in and out, so roofs are looked up every tick.
--- A hidden part casts no shadow, so a stand-in roof sits further toward the sun: its shadow lands on the shop,
--- keeping the shade inside, while it stays up out of the camera's view.
+-- A hidden part casts no shadow, so inside a shop this client's lighting dims a little instead (indoor shade).
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Town = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Town"))
 
 local TownController = {}
 
-local shadeCaster: Part? = nil
+local SHADE_TWEEN = TweenInfo.new(Town.INDOOR_SHADE.SECONDS)
 
--- Puts the stand-in roof up toward the sun from `roof`, or removes it when no roof is hidden
-local function setShade(roof: BasePart?)
-	if not roof then
-		if shadeCaster then
-			shadeCaster:Destroy()
-			shadeCaster = nil
-		end
+local shaded = false
+local outdoorExposure = 0
+
+-- Dims this client's lighting while it stands in a shop, back to normal outside
+local function setShade(inside: boolean)
+	if inside == shaded then
 		return
 	end
-	local caster = shadeCaster
-	if not caster then
-		local created = Instance.new("Part")
-		created.Name = "RoofShade"
-		created.Anchored = true
-		created.CanCollide = false
-		created.CanQuery = false
-		created.CanTouch = false
-		created.CastShadow = true
-		created.Parent = workspace
-		shadeCaster = created
-		caster = created
+	if inside then
+		outdoorExposure = Lighting.ExposureCompensation
 	end
-	caster.Size = roof.Size
-	caster.Color = roof.Color
-	caster.CFrame = roof.CFrame + Lighting:GetSunDirection() * Town.ROOF_SHADE_LIFT
+	shaded = inside
+	local exposure = if inside then outdoorExposure + Town.INDOOR_SHADE.EXPOSURE else outdoorExposure
+	TweenService:Create(Lighting, SHADE_TWEEN, { ExposureCompensation = exposure }):Play()
 end
 
 local function isInside(floor: BasePart, position: Vector3): boolean
@@ -52,19 +41,17 @@ local function update()
 	end
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local hidden: BasePart? = nil
+	local inAnyShop = false
 	for _, plot in plots:GetChildren() do
 		local roof = plot:FindFirstChild("Roof")
 		local floor = plot:FindFirstChild("Floor")
 		if roof and roof:IsA("BasePart") then
 			local inside = root ~= nil and floor ~= nil and floor:IsA("BasePart") and isInside(floor, root.Position)
 			roof.LocalTransparencyModifier = if inside then 1 else 0
-			if inside then
-				hidden = roof
-			end
+			inAnyShop = inAnyShop or inside
 		end
 	end
-	setShade(hidden)
+	setShade(inAnyShop)
 end
 
 function TownController.Start()
