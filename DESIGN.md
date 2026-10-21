@@ -294,13 +294,16 @@ Player can also open their own stock instead of selling it. Trade-off: sell for 
 | 1 | 0 | Base |
 | 2 | 150 | Card Sleeves |
 | 3 | 500 | Wall Shelf |
-| 4 | 1,200 | — |
+| 4 | 1,200 | Card Condenser |
 | 5 | 2,500 | Accessory Hook, Deck Box, Expansion 1 |
 | 6 | 5,000 | Big Display Rack |
 | 7 | 9,000 | Sealed Booster Box |
-| 8 | 15,000 | Hire Restocker |
-| 9 | 24,000 | Hire Cashier, Expansion 2 |
-| 10 | 36,000 | Set 2 |
+| 8 | 15,000 | — |
+| 9 | 24,000 | Expansion 2 |
+| 10 | 36,000 | Shop jobs (first slot), Set 2 |
+
+There is no level cap: after Lv 10 each level costs 15% more XP than the step before it
+(`Levels.XP_GROWTH`; Lv 11 = 49,800, Lv 12 = 65,670). Maths in `Util/LevelMath.luau` (Lune-tested).
 
 ### 7.3 Upgrades (one-off purchases)
 

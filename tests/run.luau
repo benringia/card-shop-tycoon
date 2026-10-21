@@ -10,6 +10,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CondenseRules = require("./CondenseRules.spec"),
 	PocketLayout = require("./PocketLayout.spec"),
 	JobRules = require("./JobRules.spec"),
+	LevelMath = require("./LevelMath.spec"),
 }
 
 local passed, failed = 0, 0

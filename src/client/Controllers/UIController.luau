@@ -39,13 +39,8 @@ local function updateXp()
 	local xp = getNumber("XP", 0)
 	levelLabel.Text = `Lv {getNumber("Level", 1)}`
 	local into, span = LevelRules.getProgress(xp)
-	if span then
-		xpLabel.Text = `{into}/{span} XP`
-		xpFill.Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1)
-	else
-		xpLabel.Text = "MAX"
-		xpFill.Size = UDim2.fromScale(1, 1)
-	end
+	xpLabel.Text = `{into}/{span} XP`
+	xpFill.Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1)
 end
 
 function UIController.GetScreenGui(): ScreenGui

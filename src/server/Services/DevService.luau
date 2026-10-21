@@ -15,6 +15,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Levels = require(Config:WaitForChild("Levels"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -60,10 +61,10 @@ local function withAmount(apply: (player: Player, amount: number) -> ...any): Co
 end
 
 local function jumpToLevel(player: Player, level: number)
-	local required = Levels.XP_REQUIRED[math.floor(level)]
-	if not required then
+	if level < 1 or level > Levels.LEVEL_LIMIT then
 		return
 	end
+	local required = LevelRules.getRequiredXp(level)
 	local current = player:GetAttribute("XP")
 	local missing = required - (if typeof(current) == "number" then current else 0)
 	if missing > 0 then

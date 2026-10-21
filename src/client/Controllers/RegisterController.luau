@@ -1,26 +1,55 @@
 --!strict
 -- Checkout panel: shows the running total and how many items are left to scan,
 -- and the Charge button once everything is scanned. Scanning itself is tapping items on the counter.
+-- It only shows while you're at your register: elsewhere (or while a cashier card serves) it stays hidden.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local RegisterConfig = require(Shared:WaitForChild("Config"):WaitForChild("Register"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+
+local NEAR_CHECK_SECONDS = 0.25
+
+local player = Players.LocalPlayer
 
 local RegisterController = {}
 
 local panel: Frame
 local statusLabel: TextLabel
 local chargeButton: TextButton
+local checkoutOpen = false -- the server says a customer is being checked out
+
+-- Your own plot's register, if you have a plot
+local function getRegister(): BasePart?
+	local plotId = player:GetAttribute("PlotId")
+	local plots = workspace:FindFirstChild("Plots")
+	local plot = if typeof(plotId) == "number" and plots then plots:FindFirstChild("Plot" .. plotId) else nil
+	local register = if plot then plot:FindFirstChild("Register", true) else nil
+	return if register and register:IsA("BasePart") then register else nil
+end
+
+local function isAtRegister(): boolean
+	local register = getRegister()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return register ~= nil and root ~= nil and (root.Position - register.Position).Magnitude <= RegisterConfig.REACH
+end
+
+local function updateVisible()
+	panel.Visible = checkoutOpen and isAtRegister()
+end
 
 local function onUpdate(total: number?, remaining: number)
+	checkoutOpen = total ~= nil
+	updateVisible()
 	if total == nil then
-		panel.Visible = false
 		return
 	end
-	panel.Visible = true
 	if remaining > 0 then
 		statusLabel.Text = string.format("Tap items on the counter\n%d left · $%.2f", remaining, total)
 		chargeButton.Visible = false
@@ -63,6 +92,14 @@ end
 function RegisterController.Start()
 	buildPanel(UIController.GetScreenGui())
 	Remotes.CheckoutUpdate.OnClientEvent:Connect(onUpdate)
+	task.spawn(function()
+		while true do
+			task.wait(NEAR_CHECK_SECONDS)
+			if checkoutOpen then
+				updateVisible()
+			end
+		end
+	end)
 end
 
 return RegisterController
