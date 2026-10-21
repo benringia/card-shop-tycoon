@@ -34,6 +34,8 @@ export type SavedCard = {
 export type SavedBeast = { cardId: string, foil: boolean, level: number, xp: number, stars: number, grade: string } -- stars 0-5
 export type SavedOwned = { normal: number, foil: number }
 export type SavedJob = { slot: number, beastId: string, job: string }
+-- Party slots keyed "1".."3" so the saved table stays a plain dictionary; summoned is a slot number
+export type SavedParty = { slots: { [string]: string }, summoned: number? }
 export type SavedShelf = {
 	shelfId: string,
 	gridX: number,
@@ -61,6 +63,7 @@ export type PlayerData = {
 	cards: { [string]: { [string]: SavedOwned } }, -- cardId -> grade -> plain copies in the binder
 	beasts: { [string]: SavedBeast }, -- levelled cards by ID
 	jobs: { SavedJob }, -- cards working in the shop
+	party: SavedParty, -- 3 party cards, one summoned
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -86,6 +89,7 @@ local TEMPLATE: PlayerData = {
 	cards = {},
 	beasts = {},
 	jobs = {},
+	party = { slots = {} },
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }

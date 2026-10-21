@@ -107,6 +107,14 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 	[5] = function(data)
 		data.jobs = data.jobs or {}
 	end,
+	-- v7: party of 3 cards (slot keys "1".."3") and which slot is summoned
+	[6] = function(data)
+		if typeof(data.party) ~= "table" then
+			data.party = { slots = {} }
+		elseif typeof(data.party.slots) ~= "table" then
+			data.party.slots = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string
