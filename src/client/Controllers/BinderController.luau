@@ -607,14 +607,20 @@ end
 
 local function refresh()
 	displayed = readDisplayedCards()
-	local collected = 0
-	for _, card in Cards.List do
-		if isCollected(card.id) then
-			collected += 1
+	-- Per set: First Spark (packs) and, once you have any, the Frontier set
+	local function count(set: string): number
+		local collected = 0
+		for _, card in Cards.BySet[set] do
+			if isCollected(card.id) then
+				collected += 1
+			end
 		end
+		return collected
 	end
-	local percent = math.floor(collected / #Cards.List * 100)
-	completionLabel.Text = `{collected}/{#Cards.List} cards · {percent}%`
+	local firstSpark, frontier = count("First Spark"), count("Frontier")
+	local percent = math.floor(firstSpark / #Cards.BySet["First Spark"] * 100)
+	local frontierText = if frontier > 0 then ` · Frontier {frontier}/{#Cards.BySet.Frontier}` else ""
+	completionLabel.Text = `{firstSpark}/{#Cards.BySet["First Spark"]} cards · {percent}%{frontierText}`
 	applyFilter()
 	refreshDetail()
 end

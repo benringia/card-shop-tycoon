@@ -251,7 +251,7 @@ local function rollDrop(monster: Monster): string?
 	end
 	local rarity = rollWeighted(Wild.DROP_RARITY)
 	local ofRarity, ofElement = {}, {}
-	for _, card in Cards.List do
+	for _, card in Cards.BySet["First Spark"] do -- Frontier cards only drop in the Frontier
 		if elements[card.element] then
 			table.insert(ofElement, card.id)
 			if card.rarity == rarity then
