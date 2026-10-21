@@ -223,7 +223,9 @@ Roadmap (one sub-project at a time):
 panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
-be displayed or given a job; they can be condensed. Perks, from the summoned card only, read live:
+be displayed or given a job; they can be condensed. While a creature is summoned, a buff chip under the XP bar
+shows its perk (element icon and colour), with a toast when the buff turns on or off. Perks, from the summoned card
+only, read live:
 
 | Element | Perk | Effect | Common, 0 stars |
 |---|---|---|---|

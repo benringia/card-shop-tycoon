@@ -30,6 +30,7 @@ type PartyState = {
 	summoned: number?,
 	marker: Part?,
 	hustle: number, -- walk speed bonus currently applied
+	sentPerk: number, -- perk value the client last got, to resend when stars make it grow
 }
 
 local PartyService = {}
@@ -76,6 +77,7 @@ local function sendParty(player: Player)
 		table.insert(slots, { slot = slot, beastId = beastId })
 	end
 	local perk = getCurrentPerk(player)
+	state.sentPerk = if perk then perk.value else 0
 	Remotes.PartyChanged:FireClient(player, {
 		slots = slots,
 		summoned = state.summoned,
@@ -286,7 +288,7 @@ end
 -- Data ----------------------------------------------------------------------------------------------------
 
 local function load(player: Player, data: PlayerData)
-	local state: PartyState = { slots = {}, summoned = nil, marker = nil, hustle = 0 }
+	local state: PartyState = { slots = {}, summoned = nil, marker = nil, hustle = 0, sentPerk = 0 }
 	local saved: any = if typeof(data.party) == "table" then data.party else {}
 	local savedSlots = if typeof(saved.slots) == "table" then saved.slots else {}
 	local seen: { [string]: boolean } = {}
@@ -384,6 +386,10 @@ function PartyService.Start()
 						refreshMarker(player)
 						if PartyService.GetPerk(player, "Hustle") ~= state.hustle then
 							applyHustle(player)
+						end
+						local perk = getCurrentPerk(player)
+						if (if perk then perk.value else 0) ~= state.sentPerk then
+							sendParty(player) -- a new star: the buff chip and panel show the stronger perk
 						end
 					else
 						unsummon(player) -- the card is gone

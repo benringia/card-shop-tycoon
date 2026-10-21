@@ -5,11 +5,11 @@ return {
 	PARTY_SIZE = 3,
 	-- Perk per element: its kind and the value for a Common at 0 stars
 	PERKS = {
-		Ember = { kind = "Hype", base = 0.05 }, -- customers arrive more often
-		Tide = { kind = "Calm", base = 0.10 }, -- customers wait longer in the queue
-		Bloom = { kind = "Express", base = 0.10 }, -- deliveries arrive faster
-		Volt = { kind = "Hustle", base = 0.05 }, -- you walk faster
-		Shade = { kind = "Haggle", base = 0.05 }, -- customers more willing to buy at your price
+		Ember = { kind = "Hype", base = 0.05, icon = "🔥" }, -- customers arrive more often
+		Tide = { kind = "Calm", base = 0.10, icon = "💧" }, -- customers wait longer in the queue
+		Bloom = { kind = "Express", base = 0.10, icon = "🌿" }, -- deliveries arrive faster
+		Volt = { kind = "Hustle", base = 0.05, icon = "⚡" }, -- you walk faster
+		Shade = { kind = "Haggle", base = 0.05, icon = "🌙" }, -- customers more willing to buy at your price
 	},
 	RARITY_MULTIPLIER = { Common = 1, Rare = 1.5, ["Very Rare"] = 2, Epic = 2.5, Legendary = 3 },
 	STAR_BONUS = 0.10, -- each star adds this share of the perk

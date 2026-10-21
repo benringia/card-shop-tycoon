@@ -34,7 +34,43 @@ local PartyController = {}
 local panel: Frame
 local list: ScrollingFrame
 local perkLabel: TextLabel
+local buffChip: TextLabel
+local buffStroke: UIStroke
 local state: PartyState? = nil
+local shownBuff: string? = nil -- perk text the buff chip shows, to toast only on a change
+
+-- Icon and element colour for a perk kind ("Hustle" -> the Volt icon and colour)
+local function getPerkLook(kind: string): (string, Color3)
+	for element, perk in Party.PERKS do
+		if perk.kind == kind then
+			return perk.icon, Cards.ELEMENTS[element] or UIKit.Colors.Accent
+		end
+	end
+	return "", UIKit.Colors.Accent
+end
+
+-- HUD chip under the XP bar while a summoned creature gives a buff; a toast when it turns on or off
+local function updateBuff(perk: { kind: string, value: number, text: string }?)
+	local text = if perk then perk.text else nil
+	if text == shownBuff then
+		return
+	end
+	local previous = shownBuff
+	shownBuff = text
+	if perk then
+		local icon, color = getPerkLook(perk.kind)
+		buffChip.Text = `{icon} {perk.text}`
+		buffStroke.Color = color
+		buffChip.Visible = true
+		-- Only the buff turning on or changing kind is news; a bigger number after a star is shown quietly
+		if not previous or not string.find(previous, perk.kind, 1, true) then
+			UIController.Notify(`Buff on: {icon} {perk.text}`)
+		end
+	else
+		buffChip.Visible = false
+		UIController.Notify("Buff off: no creature summoned")
+	end
+end
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -182,11 +218,33 @@ function PartyController.Start()
 	button.TextSize = 17
 	button.Activated:Connect(toggle)
 
+	-- Active buff, top centre under the XP bar
+	buffChip = UIKit.label(screenGui, "", Enum.Font.GothamBold, 15, UIKit.Colors.Text)
+	buffChip.Name = "BuffChip"
+	buffChip.AnchorPoint = Vector2.new(0.5, 0)
+	buffChip.Position = UDim2.new(0.5, 0, 0, 94)
+	buffChip.Size = UDim2.fromOffset(0, 30)
+	buffChip.AutomaticSize = Enum.AutomaticSize.X
+	buffChip.TextXAlignment = Enum.TextXAlignment.Center
+	buffChip.BackgroundColor3 = UIKit.Colors.Panel
+	buffChip.BackgroundTransparency = 0.15
+	buffChip.Visible = false
+	UIKit.corner(buffChip, 15)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = buffChip
+	buffStroke = Instance.new("UIStroke")
+	buffStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	buffStroke.Thickness = 2
+	buffStroke.Parent = buffChip
+
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload: PartyState)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then
 			return
 		end
 		state = payload
+		updateBuff(if typeof(payload.perk) == "table" then payload.perk else nil)
 		render()
 	end)
 	-- Levels and stars change perks; redraw with the new binder
