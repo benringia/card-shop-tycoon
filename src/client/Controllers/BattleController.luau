@@ -45,6 +45,7 @@ type Snapshot = {
 	callInFor: number,
 	runIn: number,
 	runChance: number,
+	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
 }
 
 type FighterView = {
@@ -60,17 +61,24 @@ local bar: Frame
 local monsterName: TextLabel
 local monsterHpFill: Frame
 local monsterHpText: TextLabel
+local monsterTrack: Frame
+local enemyRow: Frame -- PvP: one small HP bar per enemy creature
+local enemyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
+local mode = "wild" -- "wild" | "pvp"
 local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
 local endScreen: Frame
+local countdownLabel: TextLabel -- arena: 3, 2, 1, FIGHT!
+local countdownToken = 0
 local endTitle: TextLabel
 local endBody: TextLabel
 local shopButton: TextButton
 
 local fighting = false
 local fightNames: { [string]: string } = {}
-local monsterId: string? = nil
+local mySide = "a" -- which side of the fight is mine ("a" in the wild)
+local markers: { [string]: BasePart } = {} -- sim fighter id -> its marker part, from the server
 local latest: Snapshot? = nil
 local latestAt = 0 -- os.clock() when `latest` arrived, to count cooldowns down between snapshots
 local fighterViews: { [string]: FighterView } = {}
@@ -118,15 +126,37 @@ end
 -- Markers -------------------------------------------------------------------------------------------------
 
 local function markerFor(id: string): BasePart?
-	if id == "monster" then
-		local folder = workspace:FindFirstChild("Monsters")
-		return if folder and monsterId then folder:FindFirstChild(`Monster_{monsterId}`) :: BasePart? else nil
+	local marker = markers[id]
+	return if marker and marker.Parent then marker else nil
+end
+
+-- The server's two-sided snapshot as the bar's view: my fighters, my call-ins and run, and the enemy's first
+-- fighter as "the monster" (wild fights have exactly one)
+local function toView(raw: any): Snapshot
+	local mine = raw.sides[mySide]
+	local enemy = raw.sides[if mySide == "a" then "b" else "a"]
+	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
+	return {
+		time = raw.time,
+		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true },
+		fighters = mine.fighters,
+		reserves = mine.reserves,
+		callInFor = mine.callInFor,
+		runIn = mine.runIn,
+		runChance = mine.runChance,
+		enemies = enemy.fighters,
+	}
+end
+
+local function addMarkers(list: unknown)
+	if typeof(list) ~= "table" then
+		return
 	end
-	local creatures = workspace:FindFirstChild("Creatures")
-	if not creatures then
-		return nil
+	for id, marker in list :: { [any]: any } do
+		if typeof(id) == "string" and typeof(marker) == "Instance" and marker:IsA("BasePart") then
+			markers[id] = marker
+		end
 	end
-	return (creatures:FindFirstChild(`Creature_{player.UserId}_{id}`) or creatures:FindFirstChild(`Creature_{player.UserId}`)) :: BasePart?
 end
 
 -- A number that floats up over a fighter and fades
@@ -274,6 +304,28 @@ local function refreshTimers()
 	runButton.BackgroundColor3 = if runWait > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Danger
 end
 
+-- PvP: the other player's creatures as compact HP bars across the top
+local function buildEnemies(snapshot: Snapshot)
+	clear(enemyRow)
+	enemyBars = {}
+	local count = math.max(#snapshot.enemies, 1)
+	for index, enemy in snapshot.enemies do
+		local holder = Instance.new("Frame")
+		holder.LayoutOrder = index
+		holder.Size = UDim2.new(1 / count, -6, 1, 0)
+		holder.BackgroundTransparency = 1
+		holder.Parent = enemyRow
+		local name = UIKit.label(holder, `{elementIcon(enemy.element)} {fightNames[enemy.id] or "?"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		name.Size = UDim2.new(1, 0, 0, 13)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
+		track.Position = UDim2.fromOffset(0, 14)
+		track.Size = UDim2.new(1, 0, 0, 12)
+		text.TextSize = 10
+		enemyBars[enemy.id] = { fill = fill, text = text, frame = holder }
+	end
+end
+
 local function applySnapshot(snapshot: Snapshot)
 	local fighterCount = 0
 	for _ in fighterViews do
@@ -287,6 +339,15 @@ local function applySnapshot(snapshot: Snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+	if mode == "pvp" then
+		for _, enemy in snapshot.enemies do
+			local view = enemyBars[enemy.id]
+			if view then
+				setBar(view.fill, view.text, enemy.hp, enemy.maxHp)
+				view.frame.BackgroundTransparency = 1
+			end
+		end
+	end
 	for _, fighter in snapshot.fighters do
 		local view = fighterViews[fighter.id]
 		if view then
@@ -358,14 +419,50 @@ local function onEvents(events: { any })
 	end
 end
 
+-- PvP result with a countdown until the server sends both players home
+local function showPvpEnd(summary: any)
+	local outcome = summary.outcome
+	local cash = if typeof(summary.cash) == "number" then summary.cash else 0
+	if outcome == "win" then
+		endTitle.Text = if summary.forfeit then "Opponent left · you win!" else "You win!"
+		endTitle.TextColor3 = HEAL_COLOR
+	elseif outcome == "lose" then
+		endTitle.Text = "You lose"
+		endTitle.TextColor3 = UIKit.Colors.Danger
+	else
+		endTitle.Text = "Draw"
+		endTitle.TextColor3 = UIKit.Colors.Text
+	end
+	local money = if cash > 0 then `+${cash}` elseif cash < 0 then `-${-cash}` elseif outcome == "draw" then "Bets returned" else "Friendly match"
+	local opponent = if typeof(summary.opponentName) == "string" then ` vs {summary.opponentName}` else ""
+	local seconds = if typeof(summary.returnIn) == "number" then summary.returnIn else 10
+	endScreen.Visible = true
+	task.spawn(function()
+		for left = seconds, 1, -1 do
+			if fighting then
+				return -- a new fight started
+			end
+			endBody.Text = `{money}{opponent}\nGoing home in {left}...`
+			task.wait(1)
+		end
+		if not fighting then
+			endScreen.Visible = false
+		end
+	end)
+end
+
 local function showEnd(summary: any)
+	if summary.mode == "pvp" then
+		showPvpEnd(summary)
+		return
+	end
 	local result = summary.result
 	if result == "win" then
 		endTitle.Text = "Victory!"
 		endTitle.TextColor3 = HEAL_COLOR
 		local names = {}
 		for _, beastId in (if typeof(summary.partyIds) == "table" then summary.partyIds else {}) do
-			table.insert(names, fightNames[beastId] or "card")
+			table.insert(names, fightNames[`a:{beastId}`] or "card")
 		end
 		local lines = { `+{summary.xpEach or 0} XP each: {table.concat(names, ", ")}`, string.format("+$%.2f", summary.cash or 0) }
 		if typeof(summary.card) == "table" and Cards.ById[summary.card.cardId] then
@@ -389,21 +486,66 @@ local function showEnd(summary: any)
 	end)
 end
 
+local COUNTDOWN_POP = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- Big numbers in the middle of the screen before an arena fight starts
+local function showCountdown(seconds: number)
+	countdownToken += 1
+	local token = countdownToken
+	local scale = countdownLabel:FindFirstChildOfClass("UIScale") :: UIScale
+	task.spawn(function()
+		for left = seconds, 0, -1 do
+			if countdownToken ~= token or not fighting then
+				countdownLabel.Visible = false
+				return
+			end
+			countdownLabel.Text = if left > 0 then tostring(left) else "FIGHT!"
+			countdownLabel.TextColor3 = if left > 0 then Color3.new(1, 1, 1) else ELITE_COLOR
+			countdownLabel.Visible = true
+			scale.Scale = 1.8
+			TweenService:Create(scale, COUNTDOWN_POP, { Scale = 1 }):Play()
+			task.wait(if left > 0 then 1 else 0.8)
+		end
+		if countdownToken == token then
+			countdownLabel.Visible = false
+		end
+	end)
+end
+
 local function onStarted(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.snapshot) ~= "table" then
 		return
 	end
 	fighting = true
-	monsterId = payload.monsterId
+	mySide = if payload.side == "b" then "b" else "a"
+	markers = {}
+	addMarkers(payload.markers)
 	fightNames = if typeof(payload.names) == "table" then payload.names else {}
+	local view = toView(payload.snapshot)
 	endScreen.Visible = false
 	local species = if typeof(payload.species) == "string" then payload.species else "Monster"
-	monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
-	monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
+	mode = if payload.mode == "pvp" then "pvp" else "wild"
+	if mode == "pvp" then
+		local bet = if typeof(payload.bet) == "number" and payload.bet > 0 then ` · bet ${payload.bet}` else " · Friendly"
+		monsterName.Text = `⚔ vs {payload.opponentName or "Opponent"}{bet}`
+		monsterName.TextColor3 = UIKit.Colors.Text
+	else
+		monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
+		monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
+	end
+	monsterTrack.Visible = mode == "wild"
+	enemyRow.Visible = mode == "pvp"
+	runButton.Visible = mode == "wild"
+	if mode == "pvp" then
+		buildEnemies(view)
+	end
+	if typeof(payload.startsIn) == "number" and payload.startsIn > 0 then
+		showCountdown(payload.startsIn)
+	end
 	fighterViews = {}
-	buildFighters(payload.snapshot)
-	buildCallIns(payload.snapshot)
-	applySnapshot(payload.snapshot)
+	buildFighters(view)
+	buildCallIns(view)
+	applySnapshot(view)
 	setHudHidden(true)
 	bar.Visible = true
 	for _, prompt in prompts do
@@ -481,6 +623,19 @@ local function build()
 	track.Position = UDim2.fromOffset(12, 28)
 	track.Size = UDim2.new(1, -24, 0, 14)
 	monsterHpFill, monsterHpText = fill, text
+	monsterTrack = track
+
+	enemyRow = Instance.new("Frame")
+	enemyRow.Position = UDim2.fromOffset(12, 24)
+	enemyRow.Size = UDim2.new(1, -24, 0, 26)
+	enemyRow.BackgroundTransparency = 1
+	enemyRow.Visible = false
+	enemyRow.Parent = bar
+	local enemyLayout = Instance.new("UIListLayout")
+	enemyLayout.FillDirection = Enum.FillDirection.Horizontal
+	enemyLayout.Padding = UDim.new(0, 6)
+	enemyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	enemyLayout.Parent = enemyRow
 
 	fighterRow = Instance.new("Frame")
 	fighterRow.Position = UDim2.fromOffset(12, 48)
@@ -512,6 +667,17 @@ local function build()
 	runButton.Activated:Connect(function()
 		Remotes.RunFight:FireServer()
 	end)
+
+	countdownLabel = UIKit.label(screenGui, "", Enum.Font.FredokaOne, 96, Color3.new(1, 1, 1))
+	countdownLabel.Name = "FightCountdown"
+	countdownLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	countdownLabel.Position = UDim2.fromScale(0.5, 0.38)
+	countdownLabel.Size = UDim2.fromOffset(400, 120)
+	countdownLabel.TextXAlignment = Enum.TextXAlignment.Center
+	countdownLabel.TextStrokeTransparency = 0.2
+	countdownLabel.Visible = false
+	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
+	Instance.new("UIScale").Parent = countdownLabel
 
 	endScreen = Instance.new("Frame")
 	endScreen.Name = "FightEnd"
@@ -555,11 +721,12 @@ function BattleController.Start()
 		if not fighting or typeof(payload) ~= "table" then
 			return
 		end
+		addMarkers(payload.markers)
 		if typeof(payload.events) == "table" then
 			onEvents(payload.events)
 		end
-		if typeof(payload.snapshot) == "table" then
-			applySnapshot(payload.snapshot)
+		if typeof(payload.snapshot) == "table" and typeof(payload.snapshot.sides) == "table" then
+			applySnapshot(toView(payload.snapshot))
 		end
 	end)
 	Remotes.BattleEnded.OnClientEvent:Connect(onEnded)

@@ -47,6 +47,11 @@ local NAMES = {
 	"BattleEvent", -- server → client: { events = { Event }, snapshot } (BattleSim)
 	"BattleEnded", -- server → client: { result, rested = { beastId }, xpEach?, cash?, card? = { cardId, foil, grade }, partyIds? }
 	"RestChanged", -- server → client: { entries = { { beastId, seconds } }, nearSpring: boolean }
+	"Challenge", -- client → server: (targetUserId: number, bet: number) PvP challenge
+	"ChallengeRespond", -- client → server: (accept: boolean)
+	"ChallengeCancel", -- client → server: () cancel your challenge or leave the arena queue
+	"ChallengeIncoming", -- server → target: { fromUserId, fromName, bet, yourPower, theirPower, seconds }
+	"ChallengeStatus", -- server → client: { state: sent|declined|expired|cancelled|queued|starting|refused, message?, position? }
 }
 
 local isServer = RunService:IsServer()
@@ -114,4 +119,9 @@ return {
 	BattleEvent = remotes.BattleEvent,
 	BattleEnded = remotes.BattleEnded,
 	RestChanged = remotes.RestChanged,
+	Challenge = remotes.Challenge,
+	ChallengeRespond = remotes.ChallengeRespond,
+	ChallengeCancel = remotes.ChallengeCancel,
+	ChallengeIncoming = remotes.ChallengeIncoming,
+	ChallengeStatus = remotes.ChallengeStatus,
 }

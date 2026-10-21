@@ -23,6 +23,7 @@ local AnnouncementController = require(Controllers:WaitForChild("AnnouncementCon
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
 
 UIController.Start()
 OrderController.Start()
@@ -45,3 +46,4 @@ AnnouncementController.Start()
 CreatureController.Start()
 MonsterController.Start()
 BattleController.Start()
+ChallengeController.Start()

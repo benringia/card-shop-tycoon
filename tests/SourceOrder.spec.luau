@@ -68,7 +68,54 @@ local function findEarlyCalls(path: string): { string }
 	return problems
 end
 
+-- File-level `local name = ...` / `local name: T` used inside a function written above it: same trap, the
+-- name is a nil global there. Only top-level (unindented) declarations count, and a use only counts when the
+-- earlier line doesn't declare its own `name` (as a local, a parameter or a loop variable).
+local function findEarlyVariables(path: string): { string }
+	local lines = codeLines(fs.readFile(path))
+	local problems = {}
+	for index, line in lines do
+		local name = string.match(line, "^local%s+([%w_]+)%s*[:=]")
+		if name and not string.match(line, "^local%s+function") then
+			for earlier = 1, index - 1 do
+				local text = lines[earlier]
+				local ownsName = string.match(text, "local%s+[%w_,%s]*%f[%w_]" .. name .. "%f[^%w_]")
+					or string.match(text, "function[^%(]*%([^%)]*%f[%w_]" .. name .. "%f[^%w_]")
+					or string.match(text, "for%s+[%w_,%s]*%f[%w_]" .. name .. "%f[^%w_]")
+				local start = 1
+				while not ownsName do
+					local from, to = string.find(text, "%f[%w_]" .. name .. "%f[^%w_]", start)
+					if not from then
+						break
+					end
+					local before = if from > 1 then string.sub(text, from - 1, from - 1) else ""
+					local inString = select(2, string.gsub(string.sub(text, 1, from), "[\"`]", "")) % 2 == 1
+					if not string.match(before, "[%.:]") and not inString then
+						table.insert(problems, `{path}:{earlier}: {name} is used before line {index} declares it`)
+						break
+					end
+					start = to + 1
+				end
+			end
+		end
+	end
+	return problems
+end
+
 return {
+	["no file-level local is used above its declaration"] = function()
+		local files = {}
+		listFiles("src", files)
+		local problems = {}
+		for _, path in files do
+			for _, problem in findEarlyVariables(path) do
+				table.insert(problems, problem)
+			end
+		end
+		table.sort(problems)
+		assert(#problems == 0, `locals used before they exist:\n    {table.concat(problems, "\n    ")}`)
+	end,
+
 	["no local function is called above its definition"] = function()
 		local files = {}
 		listFiles("src", files)

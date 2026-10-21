@@ -2,6 +2,7 @@
 -- Party panel: your 3 party cards. Each slot shows the card (face, grade, level, stars), the perk it gives
 -- while summoned, Summon / Unsummon and Remove. One card is summoned at a time: it follows you around and
 -- its perk works. Cards are added from the binder card view. The server sends PartyChanged on every change.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -139,6 +140,16 @@ local function buildCardRow(slot: number, beastId: string, summoned: boolean)
 end
 
 -- Bottom line of each card row: resting countdown after fainting, otherwise the perk hint
+-- "PvP 12-5-1" from the attributes ArenaService keeps on the player
+local function describeRecord(): string
+	local player = Players.LocalPlayer
+	local function count(name: string): number
+		local value = player:GetAttribute(name)
+		return if typeof(value) == "number" then value else 0
+	end
+	return `PvP {count("PvpWins")}-{count("PvpLosses")}-{count("PvpDraws")}`
+end
+
 local function updateHints()
 	for beastId, label in hintLabels do
 		local seconds = RestTimers.GetSeconds(beastId)
@@ -166,9 +177,8 @@ local function render()
 		wait.Size = UDim2.new(1, 0, 0, 30)
 		return
 	end
-	perkLabel.Text = if current.perk
-		then `Active perk: {current.perk.text}`
-		else "No creature summoned. Summon one to get its perk."
+	local perkText = if current.perk then `Active perk: {current.perk.text}` else "No creature summoned. Summon one to get its perk."
+	perkLabel.Text = `{perkText}  ·  {describeRecord()}`
 	local bySlot: { [number]: string } = {}
 	for _, entry in current.slots do
 		bySlot[entry.slot] = entry.beastId

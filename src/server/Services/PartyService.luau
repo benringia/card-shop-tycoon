@@ -70,6 +70,11 @@ function PartyService.GetParty(player: Player): { slots: { [number]: string }, s
 end
 
 -- In a fight: party changes and summons are refused until unlocked
+function PartyService.IsLocked(player: Player): boolean
+	local state = states[player]
+	return state ~= nil and state.locked
+end
+
 function PartyService.SetLocked(player: Player, locked: boolean)
 	local state = states[player]
 	if state then

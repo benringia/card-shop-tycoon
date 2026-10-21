@@ -121,6 +121,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.resting = {}
 		end
 	end,
+	-- v9: PvP record (battles part 2)
+	[8] = function(data)
+		if typeof(data.pvp) ~= "table" then
+			data.pvp = { wins = 0, losses = 0, draws = 0 }
+		end
+	end,
 }
 
 local function lowestGrade(): string

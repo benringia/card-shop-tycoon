@@ -27,6 +27,9 @@ type Creature = {
 	highlight: Highlight?,
 	light: PointLight?,
 	tag: TextLabel,
+	hpBar: BillboardGui?, -- in an arena fight: a bar everyone can see
+	hpFill: Frame?,
+	height: number,
 	connections: { RBXScriptConnection },
 }
 
@@ -133,6 +136,43 @@ local function updateTag(creature: Creature)
 	creature.tag.Text = `{ownerText}{name}\nLv {if typeof(level) == "number" then level else 1}{starText}`
 end
 
+local HP_HIGH = Color3.fromRGB(90, 210, 110)
+local HP_LOW = Color3.fromRGB(220, 70, 60)
+
+-- Arena fights put Hp / MaxHp attributes on fighting markers: show a small bar over the creature
+local function updateHpBar(creature: Creature)
+	local hp = creature.marker:GetAttribute("Hp")
+	local maxHp = creature.marker:GetAttribute("MaxHp")
+	if typeof(hp) ~= "number" or typeof(maxHp) ~= "number" or maxHp <= 0 then
+		if creature.hpBar then
+			creature.hpBar.Enabled = false
+		end
+		return
+	end
+	if not creature.hpBar then
+		local gui = Instance.new("BillboardGui")
+		gui.Size = UDim2.fromOffset(80, 10)
+		gui.StudsOffset = Vector3.new(0, creature.height + 2.6, 0)
+		gui.MaxDistance = 90
+		gui.LightInfluence = 0
+		local track = Instance.new("Frame")
+		track.Size = UDim2.fromScale(1, 1)
+		track.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+		track.BorderSizePixel = 0
+		track.Parent = gui
+		local fill = Instance.new("Frame")
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+		gui.Parent = creature.body.root
+		creature.hpBar, creature.hpFill = gui, fill
+	end
+	local share = math.clamp(hp / maxHp, 0, 1)
+	local fill = creature.hpFill :: Frame
+	fill.Size = UDim2.fromScale(share, 1)
+	fill.BackgroundColor3 = HP_LOW:Lerp(HP_HIGH, share)
+	;(creature.hpBar :: BillboardGui).Enabled = true
+end
+
 local function remove(marker: BasePart)
 	local creature = creatures[marker]
 	if not creature then
@@ -179,14 +219,19 @@ local function add(marker: BasePart)
 		highlight = nil,
 		light = nil,
 		tag = CreatureVisuals.makeTag(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), tagColor),
+		hpBar = nil,
+		hpFill = nil,
+		height = height + (if flying then Party.MOTION.HOVER_HEIGHT else 0),
 		connections = {},
 	}
 	local grade = marker:GetAttribute("Grade")
 	local stars = marker:GetAttribute("Stars")
 	addGlow(creature, card.element, if typeof(grade) == "string" then grade else "C", if typeof(stars) == "number" then stars else 0)
 	updateTag(creature)
+	updateHpBar(creature)
 	table.insert(creature.connections, marker.AttributeChanged:Connect(function()
 		updateTag(creature)
+		updateHpBar(creature)
 	end))
 	creatures[marker] = creature
 end
