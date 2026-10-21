@@ -52,6 +52,8 @@ local NAMES = {
 	"ChallengeCancel", -- client → server: () cancel your challenge or leave the arena queue
 	"ChallengeIncoming", -- server → target: { fromUserId, fromName, bet, yourPower, theirPower, seconds }
 	"ChallengeStatus", -- server → client: { state: sent|declined|expired|cancelled|queued|starting|refused, message?, position? }
+	"ItemsChanged", -- server → owner: { [itemId] = count }
+	"RequestItems", -- client → server: () resend ItemsChanged
 }
 
 local isServer = RunService:IsServer()
@@ -124,4 +126,6 @@ return {
 	ChallengeCancel = remotes.ChallengeCancel,
 	ChallengeIncoming = remotes.ChallengeIncoming,
 	ChallengeStatus = remotes.ChallengeStatus,
+	ItemsChanged = remotes.ItemsChanged,
+	RequestItems = remotes.RequestItems,
 }

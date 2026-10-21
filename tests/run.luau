@@ -19,6 +19,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SourceOrder = require("./SourceOrder.spec"),
 	PvpRules = require("./PvpRules.spec"),
 	Frontier = require("./Frontier.spec"),
+	ItemRules = require("./ItemRules.spec"),
 }
 
 local passed, failed = 0, 0

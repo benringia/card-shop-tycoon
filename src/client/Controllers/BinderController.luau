@@ -15,6 +15,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Jobs = require(Config:WaitForChild("Jobs"))
 local Party = require(Config:WaitForChild("Party"))
+local Items = require(Config:WaitForChild("Items"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -949,6 +950,101 @@ local function buildPage(spread: Frame, isLeft: boolean): Frame
 	return page
 end
 
+-- Bag: the item inventory (Config/Items), shown over the binder pages
+local bagOverlay: Frame
+local bagList: ScrollingFrame
+local bagItems: { [string]: number } = {}
+
+local function renderBag()
+	for _, child in bagList:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	local order = 0
+	for id, info in Items.ITEMS do
+		local count = bagItems[id] or 0
+		if count > 0 then
+			order += 1
+			local row = Instance.new("Frame")
+			row.LayoutOrder = order
+			row.Size = UDim2.new(1, -8, 0, 60)
+			row.BackgroundColor3 = UIKit.Colors.Row
+			row.ZIndex = 32
+			row.Parent = bagList
+			UIKit.corner(row, 10)
+			local title = UIKit.label(row, `{info.icon} {info.name} · x{count}`, Enum.Font.GothamBold, 16, UIKit.Colors.Text)
+			title.Position = UDim2.fromOffset(12, 6)
+			title.Size = UDim2.new(1, -24, 0, 22)
+			title.ZIndex = 33
+			local text = UIKit.label(row, info.description, Enum.Font.Gotham, 13, UIKit.Colors.Subtext)
+			text.Position = UDim2.fromOffset(12, 30)
+			text.Size = UDim2.new(1, -24, 0, 24)
+			text.TextWrapped = true
+			text.ZIndex = 33
+		end
+	end
+	if order == 0 then
+		local empty = UIKit.label(bagList, "Your bag is empty. Items drop in the Frontier.", Enum.Font.GothamBold, 14, UIKit.Colors.Subtext)
+		empty.Size = UDim2.new(1, -8, 0, 40)
+		empty.ZIndex = 33
+	end
+end
+
+local function buildBag(parent: Frame)
+	local open = UIKit.button(parent, "🎒 Bag", UIKit.Colors.Row)
+	open.AnchorPoint = Vector2.new(1, 0)
+	open.Position = UDim2.new(1, -66, 0, 10)
+	open.Size = UDim2.fromOffset(100, 48)
+	open.TextSize = 15
+	open.ZIndex = 12
+
+	bagOverlay = Instance.new("Frame")
+	bagOverlay.Name = "Bag"
+	bagOverlay.Position = UDim2.fromOffset(12, 64)
+	bagOverlay.Size = UDim2.new(1, -24, 1, -76)
+	bagOverlay.BackgroundColor3 = UIKit.Colors.Panel
+	bagOverlay.Visible = false
+	bagOverlay.ZIndex = 30
+	bagOverlay.Parent = parent
+	UIKit.corner(bagOverlay, 12)
+	local title = UIKit.label(bagOverlay, "🎒 Bag", Enum.Font.FredokaOne, 20, UIKit.Colors.Text)
+	title.Position = UDim2.fromOffset(12, 8)
+	title.Size = UDim2.new(1, -140, 0, 30)
+	title.ZIndex = 31
+	local back = UIKit.button(bagOverlay, "Back", UIKit.Colors.Row)
+	back.AnchorPoint = Vector2.new(1, 0)
+	back.Position = UDim2.new(1, -8, 0, 4)
+	back.Size = UDim2.fromOffset(100, 48)
+	back.TextSize = 15
+	back.ZIndex = 31
+	bagList = Instance.new("ScrollingFrame")
+	bagList.Position = UDim2.fromOffset(8, 58)
+	bagList.Size = UDim2.new(1, -16, 1, -66)
+	bagList.BackgroundTransparency = 1
+	bagList.BorderSizePixel = 0
+	bagList.ScrollBarThickness = 4
+	bagList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	bagList.CanvasSize = UDim2.new()
+	bagList.ZIndex = 31
+	bagList.Parent = bagOverlay
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = bagList
+
+	open.Activated:Connect(function()
+		renderBag()
+		bagOverlay.Visible = true
+	end)
+	back.Activated:Connect(function()
+		bagOverlay.Visible = false
+	end)
+	parent:GetPropertyChangedSignal("Visible"):Connect(function()
+		bagOverlay.Visible = false
+	end)
+end
+
 local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(parent, "Binder", "Binder")
@@ -1096,6 +1192,7 @@ local function buildPanel(parent: Instance)
 	applyFilter()
 
 	buildDetail(panel)
+	buildBag(panel)
 	panel:GetPropertyChangedSignal("Visible"):Connect(hideTooltip)
 end
 
@@ -1233,8 +1330,15 @@ function BinderController.Start()
 		end
 		refreshPartyChooser()
 	end)
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
+		bagItems = if typeof(items) == "table" then items else {}
+		if bagOverlay.Visible then
+			renderBag()
+		end
+	end)
 	Remotes.RequestCollection:FireServer()
 	Remotes.RequestParty:FireServer()
+	Remotes.RequestItems:FireServer()
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	task.spawn(watchOwnPlot)
 end

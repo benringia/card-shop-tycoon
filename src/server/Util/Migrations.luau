@@ -127,6 +127,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.pvp = { wins = 0, losses = 0, draws = 0 }
 		end
 	end,
+	-- v10: item inventory (Star Shards first)
+	[9] = function(data)
+		if typeof(data.items) ~= "table" then
+			data.items = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

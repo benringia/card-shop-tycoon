@@ -66,6 +66,7 @@ export type PlayerData = {
 	party: SavedParty, -- 3 party cards, one summoned
 	resting: { [string]: number }, -- beastId -> Unix time it can fight again (fainted in battle)
 	pvp: { wins: number, losses: number, draws: number }, -- PvP record
+	items: { [string]: number }, -- itemId -> count (Config/Items)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -94,6 +95,7 @@ local TEMPLATE: PlayerData = {
 	party = { slots = {} },
 	resting = {},
 	pvp = { wins = 0, losses = 0, draws = 0 },
+	items = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
