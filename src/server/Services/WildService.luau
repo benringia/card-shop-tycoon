@@ -451,13 +451,37 @@ local function canTravel(player: Player): boolean
 	return true
 end
 
+-- StreamingEnabled: the client only has parts near it. Load the arrival area on their device first, or the
+-- character lands before the floor exists there and falls through the world.
 local function moveCharacter(player: Player, cframe: CFrame): boolean
+	if not player.Character or not getRoot(player) then
+		return false
+	end
+	local ok, err = pcall(function()
+		player:RequestStreamAroundAsync(cframe.Position, Wild.STREAM_TIMEOUT)
+	end)
+	if not ok then
+		warn(`[WildService] streaming around the destination failed: {err}`)
+	end
 	local character = player.Character
 	if not character or not getRoot(player) then
-		return false
+		return false -- left or died while it loaded
 	end
 	character:PivotTo(cframe + Vector3.new(0, ARRIVAL_LIFT, 0))
 	return true
+end
+
+-- Safety net: anyone in the wild who falls well below its floor goes back to the entrance
+local function rescueFallen()
+	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
+	for player in inWild do
+		local root = getRoot(player)
+		if root and root.Position.Y < ORIGIN.Y - Wild.FALL_RESCUE_DEPTH and not root.Anchored then
+			root.AssemblyLinearVelocity = Vector3.zero
+			local character = player.Character :: Model
+			character:PivotTo(CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1)) + Vector3.new(0, ARRIVAL_LIFT, 0))
+		end
+	end
 end
 
 function WildService.TravelToWild(player: Player)
@@ -541,6 +565,7 @@ function WildService.Start()
 		local step = elapsed
 		elapsed = 0
 		local now = os.clock()
+		rescueFallen()
 		table.clear(busy)
 		for _, monster in monsters do
 			if monster.fightingPlayer then

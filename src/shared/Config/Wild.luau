@@ -46,6 +46,8 @@ return {
 	CHASE_REST_SECONDS = 25, -- after catching you, a fight or giving up, a monster won't chase again for this long
 	MARKER_RATE = 10, -- monster marker updates per second
 	PROMPT_DISTANCE = 10,
+	STREAM_TIMEOUT = 10, -- seconds to wait for the destination to load on the player's device before moving them
+	FALL_RESCUE_DEPTH = 40, -- studs below the wild floor: put the player back at the entrance
 
 	-- Rewards (win): xp = XP_BASE * level ^ XP_EXPONENT (split across the party), cash = CASH_PER_LEVEL * level
 	XP_BASE = 12,
