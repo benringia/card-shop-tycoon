@@ -48,6 +48,7 @@ type Fight = {
 	sim: BattleSim.State,
 	sides: { a: FightSide, b: FightSide },
 	markers: { [string]: BasePart }, -- sim id -> marker
+	extras: { BasePart }, -- every marker made for this fight (not the summoned ones), for clean-up
 	spots: { [string]: CFrame }, -- sim id -> where it stands
 	sinceSnapshot: number,
 	started: boolean, -- both players are on the pad: the sim runs
@@ -67,6 +68,7 @@ local cooldownUntil: { [Player]: number } = {}
 local blockedUntil: { [string]: number } = {} -- pair key -> time
 local queue: { Match } = {}
 local fight: Fight? = nil
+local padBusy = false -- the last pair is still on the pad (the 10 s before they go home)
 local busyReturning: { [Player]: boolean } = {} -- in the 10 s after a fight
 local challengeToken = 0
 local allowAction = RateLimiter.new(Pvp.ACTION_COOLDOWN)
@@ -544,6 +546,7 @@ endFight = function(current: Fight)
 		end
 	end
 
+	padBusy = true
 	task.delay(Pvp.RETURN_SECONDS, function()
 		for _, side in { current.sides.a, current.sides.b } do
 			busyReturning[side.player] = nil
@@ -551,6 +554,7 @@ endFight = function(current: Fight)
 				goHome(side.player)
 			end
 		end
+		padBusy = false
 		tryStartNext()
 	end)
 end
@@ -587,12 +591,46 @@ local function buildSide(current: Fight, player: Player, name: string, spawn: CF
 			local marker = PartyService.CreateMarker(player, input.id, spot)
 			if marker then
 				table.insert(side.extraMarkers, marker)
+				table.insert(current.extras, marker)
 				current.markers[id] = marker
 			end
 		end
 	end
 	return side
 end
+
+-- Something broke while starting: undo everything for both players and give the bets back
+local function abortMatch(current: Fight, match: Match, err: unknown)
+	warn(`[ArenaService] a match failed to start: {err}`)
+	if current.ended then
+		return
+	end
+	current.ended = true
+	if fight == current then
+		fight = nil
+	end
+	for _, player in { match.a, match.b } do
+		PartyService.SetHold(player, nil)
+		PartyService.SetLocked(player, false)
+		for _, beast in usableCards(player) do
+			CardService.SetFighting(player, beast.id, false)
+		end
+		local summoned = PartyService.GetMarker(player)
+		if summoned then
+			summoned:SetAttribute("Hp", nil)
+			summoned:SetAttribute("MaxHp", nil)
+			summoned:SetAttribute("Fainted", nil)
+		end
+		refund(player, match.bet)
+		status(player, "refused", "The match couldn't start. Your bet was returned.")
+	end
+	for _, marker in current.extras do
+		marker:Destroy()
+	end
+	task.defer(tryStartNext)
+end
+
+local runMatch: (current: Fight, a: Player, b: Player, spawnA: CFrame, spawnB: CFrame, inputsA: { BattleSim.FighterInput }, inputsB: { BattleSim.FighterInput }) -> ()
 
 local function startMatch(match: Match): boolean
 	local a, b = match.a, match.b
@@ -624,6 +662,7 @@ local function startMatch(match: Match): boolean
 		match = match,
 		sim = BattleSim.new(Combat, { fighters = inputsA, abilities = true, canRun = false }, { fighters = inputsB, abilities = true, canRun = false }, rng:NextInteger(1, 2 ^ 30)),
 		markers = {},
+		extras = {},
 		spots = {},
 		sinceSnapshot = 0,
 		started = false,
@@ -631,6 +670,15 @@ local function startMatch(match: Match): boolean
 		ended = false,
 	}
 	fight = current
+	local ok, err = pcall(runMatch, current, a, b, spawnA, spawnB, inputsA, inputsB)
+	if not ok then
+		abortMatch(current, match, err)
+	end
+	return true
+end
+
+runMatch = function(current: Fight, a: Player, b: Player, spawnA: CFrame, spawnB: CFrame, inputsA: { BattleSim.FighterInput }, inputsB: { BattleSim.FighterInput })
+	local match = current.match
 	PartyService.SetLocked(a, true)
 	PartyService.SetLocked(b, true)
 	-- Sides first, so a player leaving while being moved still forfeits through onLeaving
@@ -645,9 +693,12 @@ local function startMatch(match: Match): boolean
 	status(b, "starting")
 	-- Streams the pad in on each device first (can take a few seconds)
 	WildService.MoveTo(a, spawnA)
+	if current.ended then
+		return -- someone left while moving: already settled (don't pull the other one in)
+	end
 	WildService.MoveTo(b, spawnB)
 	if current.ended then
-		return true -- someone left while moving: already settled
+		return
 	end
 	current.started = true
 	for _, side in { current.sides.a, current.sides.b } do
@@ -686,11 +737,10 @@ local function startMatch(match: Match): boolean
 			snapshot = snapshot,
 		})
 	end
-	return true
 end
 
 tryStartNext = function()
-	while not fight and #queue > 0 do
+	while not fight and not padBusy and #queue > 0 do
 		local match = table.remove(queue, 1) :: Match
 		if startMatch(match) then
 			break

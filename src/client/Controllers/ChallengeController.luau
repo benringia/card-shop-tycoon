@@ -30,6 +30,7 @@ local incomingPopup: Frame
 local incomingTitle: TextLabel
 local incomingBody: TextLabel
 local incomingTimer: TextLabel
+local cancelButton: TextButton -- while a challenge is out or you're in the arena queue
 local target: Player? = nil
 local bet = 0
 local busy = false -- in a challenge, the queue or a fight: no prompts
@@ -217,6 +218,8 @@ local function onStatus(payload: any)
 	elseif state == "sent" or state == "queued" or state == "starting" then
 		setBusy(true)
 	end
+	cancelButton.Visible = state == "sent" or state == "queued"
+	cancelButton.Text = if state == "queued" then "Leave arena queue" else "Cancel challenge"
 	local message = if typeof(payload.message) == "string" then payload.message else STATUS_TEXT[state]
 	if state == "queued" then
 		local ahead = if typeof(payload.position) == "number" then payload.position - 1 else 0
@@ -266,11 +269,24 @@ end
 function ChallengeController.Start()
 	buildSend()
 	buildIncoming()
+	-- Top centre, under where the wild's Shop button sits
+	cancelButton = UIKit.button(UIController.GetScreenGui(), "Cancel challenge", UIKit.Colors.Danger)
+	cancelButton.Name = "ChallengeCancel"
+	cancelButton.AnchorPoint = Vector2.new(0.5, 0)
+	cancelButton.Position = UDim2.new(0.5, 0, 0, 62)
+	cancelButton.Size = UDim2.fromOffset(190, 48)
+	cancelButton.TextSize = 15
+	cancelButton.Visible = false
+	cancelButton.Activated:Connect(function()
+		cancelButton.Visible = false
+		Remotes.ChallengeCancel:FireServer()
+	end)
 	Remotes.ChallengeIncoming.OnClientEvent:Connect(onIncoming)
 	Remotes.ChallengeStatus.OnClientEvent:Connect(onStatus)
 	-- Fights (wild or PvP) hide the prompts until they end
 	Remotes.BattleStarted.OnClientEvent:Connect(function()
 		sendPopup.Visible = false
+		cancelButton.Visible = false
 		setBusy(true)
 	end)
 	Remotes.BattleEnded.OnClientEvent:Connect(function(summary)

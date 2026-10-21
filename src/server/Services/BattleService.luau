@@ -60,6 +60,7 @@ local allowCallIn = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowRun = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowStart = RateLimiter.new(1)
 local rng = Random.new()
+local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -116,8 +117,6 @@ function BattleService.ClearResting(player: Player)
 end
 
 -- Fighters ------------------------------------------------------------------------------------------------
-
-local startBlockers: { (player: Player) -> string? } = {}
 
 local function fighterInput(beast: Beast): BattleSim.FighterInput
 	local card = Cards.ById[beast.cardId]
