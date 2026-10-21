@@ -161,10 +161,13 @@ local function startCheckout(customer: Customer)
 
 	local register = plot.register
 	local size = RegisterConfig.ITEM_SIZE
-	-- Along the counter's front edge: the register and decor props sit along the back (PlotService)
-	local itemZ = PropFit.counterZ(register.Size.Z, size.Z, Town.COUNTER.PROP_DEPTH)
+	-- Along the counter's front edge, right of the register prop; the decor sits along the back (PlotService)
+	local counter = Town.COUNTER
+	local itemZ = PropFit.counterZ(register.Size.Z, size.Z, counter.PROP_DEPTH)
+	local spanMin = counter.REGISTER.x + counter.REGISTER.width / 2 + counter.ITEM_GAP
+	local xs = PropFit.itemXs(#prices, spanMin, register.Size.X / 2, size.X, RegisterConfig.ITEM_SPACING)
 	for index, unitPrice in prices do
-		local x = (index - (#prices + 1) / 2) * RegisterConfig.ITEM_SPACING
+		local x = xs[index]
 		local part = Instance.new("Part")
 		part.Name = "CounterItem"
 		part.Anchored = true

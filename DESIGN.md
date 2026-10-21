@@ -59,8 +59,8 @@ in the street (except lamps, portals and the plaza), within 10 studs of a portal
 benches and flowers). **Shops:** an open front; back and side walls outside the floor (12 tall, trim and
 baseboard), front corner pillars, a striped awning (4 studs out) with the shop sign on its lip, a roof the client
 hides while you stand inside. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
-trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register and a counter
-decor prop along its back edge (scan items lie along the front edge); Products shelves show the Shelf prop (the part stays as the invisible hitbox) and up to 12 stock boxes in
+trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register prop at its left end and a
+counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Products shelves show the Shelf prop (the part stays as the invisible hitbox) and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the

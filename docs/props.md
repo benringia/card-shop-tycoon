@@ -21,7 +21,7 @@ shows its stand-in.
 | `Fence` | one section, repeated every 8 studs behind each row | 4 | yes |
 | `Portal` | frame around each plaza portal ring | 14 | no |
 | `PlazaDecor` | two spots on the plaza edge | 2.5 | no |
-| `Register` | back of each shop's register counter, left end | fits 1.8 x 1.5 x 0.6 | no |
+| `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |
 

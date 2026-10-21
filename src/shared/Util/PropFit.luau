@@ -49,6 +49,22 @@ function PropFit.resolveYaw(attribute: unknown, slotYaw: number?): number
 	return slotYaw or 0
 end
 
+-- x centres for `count` scan items between spanMin and spanMax, centred, `spacing` apart or closer if they
+-- would not fit (they may overlap when there are many)
+function PropFit.itemXs(count: number, spanMin: number, spanMax: number, itemWidth: number, spacing: number): { number }
+	local xs = {}
+	if count <= 0 then
+		return xs
+	end
+	local first, last = spanMin + itemWidth / 2, spanMax - itemWidth / 2
+	local step = if count > 1 then math.min(spacing, math.max(last - first, 0) / (count - 1)) else 0
+	local start = (first + last) / 2 - step * (count - 1) / 2
+	for index = 1, count do
+		table.insert(xs, start + (index - 1) * step)
+	end
+	return xs
+end
+
 -- Register counter, front (customer side) at -Z: scan items lie along the front edge, props along the back.
 -- Returns the z offsets of the item row and the prop row from the counter centre.
 function PropFit.counterZ(counterDepth: number, itemDepth: number, propDepth: number): (number, number)

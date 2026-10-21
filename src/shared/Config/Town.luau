@@ -24,7 +24,7 @@ return {
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
 		PlazaDecor = { height = 2.5, collide = false },
-		Register = { height = 1.5, collide = false },
+		Register = { height = 1.5, collide = false, yaw = -90 }, -- the cash register's price display faces its +X
 		CounterDecor = { height = 1.2, collide = false },
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
 		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
@@ -60,12 +60,14 @@ return {
 	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
 	PORTAL_LABEL_DISTANCE = 150, -- shown up to this far away
 
-	-- Register counter (front = customer side): scan items lie along the front edge, props in a strip along the
-	-- back. Props are fitted into these boxes (width, height); x = offset from the counter centre.
+	-- Register counter (front = customer side). The register takes the left end, full depth; scan items lie
+	-- along the front edge to its right; the decor sits in a strip along the back. Props are fitted into these
+	-- boxes; x = offset from the counter centre.
 	COUNTER = {
-		PROP_DEPTH = 0.6,
-		REGISTER = { x = -1.9, width = 1.8, height = 1.5 },
+		PROP_DEPTH = 0.6, -- the back strip (decor)
+		REGISTER = { x = -1.8, width = 2.4, height = 2.2, depth = 2 },
 		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
+		ITEM_GAP = 0.15, -- between the register and the first scan item
 	},
 
 	-- Stock boxes on Products shelves (ShelfStock): levels match the Store Shelf's plates

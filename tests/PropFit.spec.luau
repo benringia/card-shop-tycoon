@@ -11,6 +11,9 @@ local PACK_RACK = { x = 4, y = 5, z = 2 } -- Small Pack Rack hitbox
 -- Config/Register and Config/Plots hold Vector3 values, so Lune can't load them: copied here
 local COUNTER_DEPTH = 2 -- Plots.REGISTER_SIZE.Z
 local ITEM_DEPTH = 1.4 -- Register.ITEM_SIZE.Z
+local ITEM_WIDTH = 1 -- Register.ITEM_SIZE.X
+local ITEM_SPACING = 1.3 -- Register.ITEM_SPACING
+local COUNTER_WIDTH = 6 -- Plots.REGISTER_SIZE.X
 local WILD_SIGN_HALF_HEIGHT = 2.5 -- WildService sign boards are 5 tall
 
 return {
@@ -67,6 +70,30 @@ return {
 		assert(itemBack <= propFront + 0.001, `items reach z {itemBack}, props start at {propFront}`)
 		assert(itemZ - ITEM_DEPTH / 2 >= -COUNTER_DEPTH / 2 - 0.001, "items hang off the front")
 		assert(propZ + town.COUNTER.PROP_DEPTH / 2 <= COUNTER_DEPTH / 2 + 0.001, "props hang off the back")
+	end,
+
+	["the register faces the customers"] = function()
+		-- Its price display faces the model's +X; a -90 turn points that along -Z (the counter's customer side)
+		expect.equal(town.SLOTS.Register.yaw, -90, "Register yaw")
+	end,
+
+	["scan items spread right of the register"] = function()
+		local counter = town.COUNTER
+		local registerRight = counter.REGISTER.x + counter.REGISTER.width / 2
+		for _, count in { 1, 2, 4, 8 } do
+			local xs = PropFit.itemXs(count, registerRight + counter.ITEM_GAP, COUNTER_WIDTH / 2, ITEM_WIDTH, ITEM_SPACING)
+			expect.equal(#xs, count, `{count} items`)
+			for _, x in xs do
+				assert(x - ITEM_WIDTH / 2 >= registerRight + counter.ITEM_GAP - 0.001, `{count} items: one is under the register`)
+				assert(x + ITEM_WIDTH / 2 <= COUNTER_WIDTH / 2 + 0.001, `{count} items: one hangs off the end`)
+			end
+		end
+	end,
+
+	["the register sits on the counter"] = function()
+		local register = town.COUNTER.REGISTER
+		assert(register.x - register.width / 2 >= -COUNTER_WIDTH / 2 - 0.001, "register hangs off the end")
+		assert(register.depth <= COUNTER_DEPTH + 0.001, "register is deeper than the counter")
 	end,
 
 	["portal signs clear the portal frame"] = function()
