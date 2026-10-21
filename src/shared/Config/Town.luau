@@ -28,6 +28,8 @@ return {
 		CounterDecor = { height = 1.2, collide = false },
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
 		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
+		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
+		Awning = { height = 0, collide = false },
 	},
 	TREE_SLOTS = { "Tree", "Pine" }, -- the tree lines alternate these
 
@@ -84,7 +86,7 @@ return {
 	WALL_THICKNESS = 1,
 	TRIM_HEIGHT = 0.6,
 	PILLAR_SIZE = 1.6,
-	AWNING_DEPTH = 4, -- how far the awning reaches out over the street
+	AWNING_DEPTH = 5, -- how far the awning reaches out over the street
 	AWNING_DROP = 2.5, -- how far it slopes down over that distance
 	AWNING_STRIPES = 8,
 	ROOF_THICKNESS = 1,

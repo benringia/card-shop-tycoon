@@ -57,7 +57,8 @@ spring, a bush, clover, a crate and a barrel in each gap between plots, a fence 
 turn) behind each row, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
 in the street (except lamps, portals and the plaza), within 10 studs of a portal, or in the spring area (except
 benches and flowers). **Shops:** an open front; back and side walls outside the floor (12 tall, trim and
-baseboard), front corner pillars, a striped awning (4 studs out) with the shop sign on its lip, a roof the client
+baseboard), front corner pillars, an awning (the Awning prop repeated across the front and tinted in the theme colour, or
+code-built stripes; about 5 studs out), the shop sign on the roof's front edge, a roof the client
 hides while you stand inside. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
 trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register prop at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Products shelves show the Shelf prop (the part stays as the invisible hitbox) and up to 12 stock boxes in

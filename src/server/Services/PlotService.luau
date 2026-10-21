@@ -105,6 +105,42 @@ local function buildWall(parent: Instance, plotCFrame: CFrame, size: Vector3, of
 	baseboard.CanCollide = false
 end
 
+-- Striped awning sloping down and out over the street from the front top edge (code-built stand-in)
+local function buildStripedAwning(theme, plotCFrame: CFrame, parent: Instance, outerWidth: number)
+	local halfDepth = PlotConfig.DEPTH / 2
+	local slope = math.atan2(Town.AWNING_DROP, Town.AWNING_DEPTH)
+	local length = math.sqrt(Town.AWNING_DEPTH ^ 2 + Town.AWNING_DROP ^ 2)
+	local stripe = outerWidth / Town.AWNING_STRIPES
+	for index = 1, Town.AWNING_STRIPES do
+		local x = -outerWidth / 2 + (index - 0.5) * stripe
+		local color = if index % 2 == 1 then Props.color(theme.awning) else Props.color(Town.STRIPE_COLOR)
+		local cframe = plotCFrame
+			* CFrame.new(x, wallTop() - Town.AWNING_DROP / 2, -halfDepth - Town.AWNING_DEPTH / 2)
+			* CFrame.Angles(-slope, 0, 0)
+		local part = shellPart(parent, "Awning", Vector3.new(stripe, 0.3, length), cframe, color, Enum.Material.Fabric)
+		part.CanCollide = false
+	end
+end
+
+-- The Awning prop repeated across the front, its top at the wall top, tinted in the plot's awning colour;
+-- the striped stand-in when there is no Awning model
+local function buildAwning(theme, plotCFrame: CFrame, parent: Instance, outerWidth: number)
+	local source = Props.getSourceSize("Awning")
+	if not source then
+		buildStripedAwning(theme, plotCFrame, parent, outerWidth)
+		return
+	end
+	local count, scale = PropFit.tileAcross(outerWidth, source.X, source.Z, Town.AWNING_DEPTH)
+	local size = source * scale
+	local tile = outerWidth / count
+	for index = 1, count do
+		local x = -outerWidth / 2 + (index - 0.5) * tile
+		local at = plotCFrame * CFrame.new(x, wallTop() - size.Y, -PlotConfig.DEPTH / 2 - size.Z / 2)
+		local awning = Props.fit("Awning", size + Vector3.new(0.01, 0.01, 0.01), at, parent)
+		Props.tint(awning, Props.color(theme.awning))
+	end
+end
+
 -- Walls sit outside the floor edges, so the placement grid and saved layouts are unchanged. Open front.
 local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Part
 	local theme = getTheme(id)
@@ -121,19 +157,7 @@ local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Par
 		shellPart(parent, "Pillar", pillar, plotCFrame * CFrame.new(side * (halfWidth + thickness / 2), bottom + pillar.Y / 2, -halfDepth), trim)
 	end
 
-	-- Striped awning sloping down and out over the street from the front top edge
-	local slope = math.atan2(Town.AWNING_DROP, Town.AWNING_DEPTH)
-	local length = math.sqrt(Town.AWNING_DEPTH ^ 2 + Town.AWNING_DROP ^ 2)
-	local stripe = outerWidth / Town.AWNING_STRIPES
-	for index = 1, Town.AWNING_STRIPES do
-		local x = -outerWidth / 2 + (index - 0.5) * stripe
-		local color = if index % 2 == 1 then Props.color(theme.awning) else Props.color(Town.STRIPE_COLOR)
-		local cframe = plotCFrame
-			* CFrame.new(x, wallTop() - Town.AWNING_DROP / 2, -halfDepth - Town.AWNING_DEPTH / 2)
-			* CFrame.Angles(-slope, 0, 0)
-		local part = shellPart(parent, "Awning", Vector3.new(stripe, 0.3, length), cframe, color, Enum.Material.Fabric)
-		part.CanCollide = false
-	end
+	buildAwning(theme, plotCFrame, parent, outerWidth)
 
 	-- The client hides this roof while you stand in the shop (TownController)
 	local roofSize = Vector3.new(outerWidth, Town.ROOF_THICKNESS, PlotConfig.DEPTH + thickness)
@@ -142,14 +166,16 @@ local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Par
 	return roof
 end
 
--- The shop sign stands on the awning's outer lip, facing the street
+-- The shop sign stands on the front edge of the roof, above the awning, facing the street
 local function buildSign(plotCFrame: CFrame, parent: Instance): TextLabel
 	local sign = Instance.new("Part")
 	sign.Name = "Sign"
 	sign.Anchored = true
+	sign.CanCollide = false
+	sign.CanQuery = false -- the camera never snaps in because of it
 	sign.Size = PlotConfig.SIGN_SIZE
 	sign.CFrame = plotCFrame
-		* CFrame.new(0, wallTop() - Town.AWNING_DROP + PlotConfig.SIGN_SIZE.Y / 2, -PlotConfig.DEPTH / 2 - Town.AWNING_DEPTH)
+		* CFrame.new(0, wallTop() + Town.ROOF_THICKNESS + PlotConfig.SIGN_SIZE.Y / 2, -PlotConfig.DEPTH / 2 + PlotConfig.SIGN_SIZE.Z / 2)
 	sign.Color = PlotConfig.SIGN_COLOR
 	sign.Parent = parent
 

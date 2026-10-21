@@ -14,7 +14,7 @@ return {
 
 	FREE_COLOR = Color3.fromRGB(120, 120, 120), -- floor while for rent; owned plots use their theme (Config/Town)
 
-	-- Sign stands on the awning's outer lip, facing the street
+	-- Sign stands on the front edge of the roof, above the awning, facing the street
 	SIGN_SIZE = Vector3.new(16, 4, 1),
 	SIGN_COLOR = Color3.fromRGB(40, 40, 50),
 	SIGN_TEXT_COLOR = Color3.fromRGB(255, 255, 255),

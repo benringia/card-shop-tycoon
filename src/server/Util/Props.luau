@@ -233,6 +233,35 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?, slo
 	return model
 end
 
+-- The size a slot's model will have before scaling (first variant, turned by its yaw), or nil with no model
+function Props.getSourceSize(slot: string): Vector3?
+	local source = getVariants(slot)[1]
+	if not source then
+		return nil
+	end
+	local info = Town.SLOTS[slot]
+	local ok, model = pcall(prepareModel, source, 1, nil, if info then (info :: any).yaw else nil, false)
+	if not ok then
+		return nil
+	end
+	local _, size = model:GetBoundingBox()
+	local scale = model:GetScale()
+	model:Destroy()
+	return size / scale
+end
+
+-- Paints the parts a prop marks for its owner's colour ("COLOUR ME")
+function Props.tint(model: Model, color: Color3)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") and PropFit.isTintPart(descendant.Name) then
+			descendant.Color = color
+			if descendant:IsA("UnionOperation") then
+				descendant.UsePartColor = true
+			end
+		end
+	end
+end
+
 local function finish(model: Model, slot: string, at: CFrame, parent: Instance): Model
 	local collide = Town.SLOTS[slot] ~= nil and Town.SLOTS[slot].collide
 	for _, descendant in model:GetDescendants() do

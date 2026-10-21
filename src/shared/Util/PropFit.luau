@@ -65,6 +65,21 @@ function PropFit.itemXs(count: number, spanMin: number, spanMax: number, itemWid
 	return xs
 end
 
+-- How many copies of a model (modelWidth x modelDepth) to line up across totalWidth, and the even scale that
+-- makes them fill it exactly while staying close to targetDepth deep
+function PropFit.tileAcross(totalWidth: number, modelWidth: number, modelDepth: number, targetDepth: number): (number, number)
+	local wanted = targetDepth / math.max(modelDepth, MIN_SIZE)
+	local count = math.max(1, math.floor(totalWidth / math.max(modelWidth * wanted, MIN_SIZE) + 0.5))
+	return count, totalWidth / (count * math.max(modelWidth, MIN_SIZE))
+end
+
+-- Parts a prop wants painted in its owner's colour (e.g. the awning's "COLOUR ME" union)
+local TINT_NAMES = { ["COLOUR ME"] = true, ["COLOR ME"] = true, ColourMe = true, ColorMe = true, Tint = true }
+
+function PropFit.isTintPart(name: string): boolean
+	return TINT_NAMES[name] == true
+end
+
 -- Register counter, front (customer side) at -Z: scan items lie along the front edge, props along the back.
 -- Returns the z offsets of the item row and the prop row from the counter centre.
 function PropFit.counterZ(counterDepth: number, itemDepth: number, propDepth: number): (number, number)

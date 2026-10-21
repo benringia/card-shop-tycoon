@@ -96,6 +96,23 @@ return {
 		assert(register.depth <= COUNTER_DEPTH + 0.001, "register is deeper than the counter")
 	end,
 
+	["awnings tile across the shop front"] = function()
+		-- The owner's awning: 13.9 wide, 7.4 deep; shop fronts are 42 wide, awnings about 5 deep
+		local count, scale = PropFit.tileAcross(42, 13.9, 7.4, town.AWNING_DEPTH)
+		expect.equal(count, 4, "copies")
+		expect.near(count * 13.9 * scale, 42, 0.001, "they fill the front exactly")
+		local one, wide = PropFit.tileAcross(10, 13.9, 7.4, 5)
+		expect.equal(one, 1, "a narrow front still gets one")
+		expect.near(13.9 * wide, 10, 0.001, "and it fits")
+	end,
+
+	["tinted part names"] = function()
+		assert(PropFit.isTintPart("COLOUR ME"), "COLOUR ME")
+		assert(PropFit.isTintPart("ColorMe"), "ColorMe")
+		assert(PropFit.isTintPart("Tint"), "Tint")
+		assert(not PropFit.isTintPart("White"), "White")
+	end,
+
 	["portal signs clear the portal frame"] = function()
 		assert(
 			wild.PORTAL_SIGN_HEIGHT - WILD_SIGN_HALF_HEIGHT >= town.SLOTS.Portal.height,
