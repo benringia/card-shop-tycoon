@@ -234,7 +234,7 @@ packs). Items: `items = { [itemId] = count }`, listed in `Config/Items` and chan
 Bag tab shows them. Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
-`Config/Frontier`, `Config/Items`, `Config/Places` (place ids; `FRONTIER_PLACE_ID = 0` until the place exists).
+`Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
 
 **Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
 min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to

@@ -70,6 +70,6 @@ return {
 	["Set 1 unchanged"] = function()
 		expect.equal(#cardList.SET1, 35, "35 cards")
 		expect.equal(cardList.SET1[1][1], "Cindercub", "FS01 is still Cindercub")
-		expect.equal(places.FRONTIER_PLACE_ID, 0, "Frontier not created yet")
+		assert(places.FRONTIER_PLACE_ID ~= places.MAIN_PLACE_ID, "two different places")
 	end,
 }
