@@ -13,8 +13,8 @@ local WORLD: TownLayout.World = {
 	perRow = 3,
 	plotWidth = 40,
 	plotDepth = 40,
-	gap = 16,
-	streetWidth = 30,
+	gap = 24,
+	streetWidth = 60,
 	portals = {
 		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z },
 		{ x = places.FRONTIER_PORTAL.x, z = places.FRONTIER_PORTAL.z },
@@ -45,14 +45,14 @@ return {
 	["plot rects match the plot grid"] = function()
 		local rects = TownLayout.plotRects(WORLD)
 		expect.equal(#rects, 6, "rect count")
-		expect.equal(rects[1].minX, -76, "rect 1 minX")
-		expect.equal(rects[1].maxX, -36, "rect 1 maxX")
-		expect.equal(rects[1].minZ, -55, "rect 1 minZ")
-		expect.equal(rects[1].maxZ, -15, "rect 1 maxZ")
-		expect.equal(rects[6].minX, 36, "rect 6 minX")
-		expect.equal(rects[6].maxX, 76, "rect 6 maxX")
-		expect.equal(rects[6].minZ, 15, "rect 6 minZ")
-		expect.equal(rects[6].maxZ, 55, "rect 6 maxZ")
+		expect.equal(rects[1].minX, -84, "rect 1 minX")
+		expect.equal(rects[1].maxX, -44, "rect 1 maxX")
+		expect.equal(rects[1].minZ, -70, "rect 1 minZ")
+		expect.equal(rects[1].maxZ, -30, "rect 1 maxZ")
+		expect.equal(rects[6].minX, 44, "rect 6 minX")
+		expect.equal(rects[6].maxX, 84, "rect 6 maxX")
+		expect.equal(rects[6].minZ, 30, "rect 6 minZ")
+		expect.equal(rects[6].maxZ, 70, "rect 6 maxZ")
 	end,
 
 	["nothing inside a plot footprint"] = function()
@@ -107,6 +107,13 @@ return {
 		for _, portal in WORLD.portals do
 			assert(inside(portal.x, portal.z, 8), "a portal is too close to the edge")
 		end
+	end,
+
+	["the plaza leaves open room for events"] = function()
+		-- Between the plaza decor and the plot fronts there must be a clear ring for event NPCs and stalls
+		local open = HALF_STREET - town.LAYOUT.PLAZA_RADIUS
+		assert(open >= 6, `only {open} studs between the plaza and the shops`)
+		assert(town.LAYOUT.PLAZA_RADIUS >= 20, "plaza radius")
 	end,
 
 	["portals stay clear"] = function()

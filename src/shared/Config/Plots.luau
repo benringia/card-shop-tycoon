@@ -9,8 +9,8 @@ return {
 	WIDTH = 40,
 	DEPTH = 40,
 	FLOOR_THICKNESS = 1,
-	GAP = 16, -- space between neighbouring plots in a row (rows span x -76..76)
-	STREET_WIDTH = 30, -- distance between the two rows
+	GAP = 24, -- space between neighbouring plots in a row (rows span x -84..84)
+	STREET_WIDTH = 60, -- distance between the two rows (the plaza and room for events sit in it)
 
 	FREE_COLOR = Color3.fromRGB(120, 120, 120), -- floor while for rent; owned plots use their theme (Config/Town)
 

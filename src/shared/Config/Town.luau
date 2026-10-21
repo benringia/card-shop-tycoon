@@ -37,31 +37,31 @@ return {
 	LAYOUT = {
 		LAMP_INSET = 2, -- lamps stand this far into the street from the plot fronts
 		ROW_END_LAMP_OFFSET = 4, -- past the outer edge of each row's end plots
-		BENCH_RADIUS = 10, -- around the spring
+		BENCH_RADIUS = 11, -- around the spring
 		BENCH_ANGLES = { 45, 135, 225, 315 },
 		FLOWER_ANGLE_OFFSET = 18, -- flower bed beside each bench
 		PLAZA_DECOR_ANGLES = { 0, 180 }, -- on the plaza edge, between the benches
-		PLAZA_DECOR_RADIUS = 13,
+		PLAZA_DECOR_RADIUS = 20,
 		GAP_CLOVER_DEPTHS = { 12, 28 }, -- clover patches this far back from the street in each gap
 		GAP_CRATE_DEPTH = 3, -- crate and barrel this far back from the street, in the gaps between plots
 		GAP_CRATE_SPREAD = 1.5, -- crate and barrel sit this far either side of the gap centre
 		FENCE_OFFSET = 5, -- fence line behind the back of each row
-		FENCE_HALF_LENGTH = 80,
+		FENCE_HALF_LENGTH = 88,
 		FENCE_SECTION = 8, -- one Fence prop per section
 		TREE_OFFSET = 12, -- tree line behind the back of each row
 		TREE_SPACING = 14,
-		STREET_HALF_LENGTH = 100, -- the cobblestone street runs x -100..100
-		STREET_END_TREE_X = 110,
-		STREET_END_TREE_Z = 22,
+		STREET_HALF_LENGTH = 110, -- the cobblestone street runs x -110..110
+		STREET_END_TREE_X = 120,
+		STREET_END_TREE_Z = 36,
 		PORTAL_ROCK_BACK = 12, -- rocks behind each portal, away from the town
 		PORTAL_ROCK_SIDE = 4,
-		PLAZA_RADIUS = 14, -- round stone pad around the spring
+		PLAZA_RADIUS = 22, -- round stone pad around the spring; open room for event NPCs and stalls
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
 
 	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
-	BOUNDS = { HALF_X = 118, HALF_Z = 75, WALL_HEIGHT = 60 },
+	BOUNDS = { HALF_X = 130, HALF_Z = 90, WALL_HEIGHT = 60 },
 	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
 	PORTAL_LABEL_DISTANCE = 40, -- shown only this close, so far labels don't pile up
 
