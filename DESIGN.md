@@ -211,7 +211,7 @@ Full spec: `docs/superpowers/specs/2026-10-20-beast-cards-design.md`.
 
 Roadmap (one sub-project at a time):
 1. **Beast cards** — level, XP, stars, grades, stats, value (done).
-2. **Shop jobs** — cards work in your shop as Restocker or Cashier (spec `2026-10-21-shop-jobs-design.md`; built, awaiting Studio test).
+2. **Shop jobs** — cards work in your shop as Restocker or Cashier (spec `2026-10-21-shop-jobs-design.md`; done).
 3. **Party & summoning** — summon beasts to follow and fight beside you.
 4. **Star merging** — the Card Condenser combines duplicates to raise stars (spec `2026-10-20-stars-condenser-design.md`; done).
 5. **Battles** — real-time auto-fight between players' parties.
