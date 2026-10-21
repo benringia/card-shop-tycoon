@@ -49,7 +49,7 @@ local monsters: { [string]: Monster } = {}
 local monstersFolder: Folder
 local inWild: { [Player]: boolean } = {}
 local contactCallbacks: { (player: Player, monster: Monster) -> () } = {}
-local travelBlocker: ((player: Player) -> string?)? = nil
+local travelBlockers: { (player: Player) -> string? } = {}
 local allowTravel = RateLimiter.new(TRAVEL_COOLDOWN)
 local rng = Random.new()
 local rayParams = RaycastParams.new()
@@ -415,9 +415,9 @@ function WildService.OnContact(callback: (player: Player, monster: Monster) -> (
 	table.insert(contactCallbacks, callback)
 end
 
--- BattleService refuses travel while fighting (it can't be required from here: it requires this service)
-function WildService.SetTravelBlocker(blocker: (player: Player) -> string?)
-	travelBlocker = blocker
+-- BattleService and ArenaService refuse travel mid-fight (they can't be required from here: they require this)
+function WildService.AddTravelBlocker(blocker: (player: Player) -> string?)
+	table.insert(travelBlockers, blocker)
 end
 
 function WildService.IsInWild(player: Player): boolean
@@ -443,10 +443,12 @@ local function canTravel(player: Player): boolean
 	if not allowTravel(player) then
 		return false
 	end
-	local reason = if travelBlocker then travelBlocker(player) else nil
-	if reason then
-		notify(player, reason, true)
-		return false
+	for _, blocker in travelBlockers do
+		local reason = blocker(player)
+		if reason then
+			notify(player, reason, true)
+			return false
+		end
 	end
 	return true
 end
@@ -482,6 +484,19 @@ local function rescueFallen()
 			character:PivotTo(CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1)) + Vector3.new(0, ARRIVAL_LIFT, 0))
 		end
 	end
+end
+
+-- Moves a player somewhere outside the wild (the arena, their shop), streaming the spot in first.
+-- Not blocked by fights: the caller decides. False if they have no character.
+function WildService.MoveTo(player: Player, cframe: CFrame): boolean
+	if not moveCharacter(player, cframe) then
+		return false
+	end
+	if inWild[player] then
+		inWild[player] = nil
+		Remotes.WildTravel:FireClient(player, "home")
+	end
+	return true
 end
 
 function WildService.TravelToWild(player: Player)

@@ -81,6 +81,11 @@ function BattleService.IsResting(player: Player, beastId: string): boolean
 	return isResting(player, beastId)
 end
 
+-- ArenaService refuses wild fights while a player has a challenge, a queued match or a PvP fight
+function BattleService.AddStartBlocker(blocker: (player: Player) -> string?)
+	table.insert(startBlockers, blocker)
+end
+
 function BattleService.IsFighting(player: Player): boolean
 	return fights[player] ~= nil
 end
@@ -112,6 +117,8 @@ end
 
 -- Fighters ------------------------------------------------------------------------------------------------
 
+local startBlockers: { (player: Player) -> string? } = {}
+
 local function fighterInput(beast: Beast): BattleSim.FighterInput
 	local card = Cards.ById[beast.cardId]
 	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade)
@@ -123,6 +130,11 @@ local function fighterInput(beast: Beast): BattleSim.FighterInput
 		spd = stats.spd,
 		signature = if Combat.SIGNATURES[card.name] then card.name else nil,
 	}
+end
+
+-- A card as a fighter: its stats now, and its signature ability if it has one (ArenaService uses it too)
+function BattleService.FighterInput(beast: Beast): BattleSim.FighterInput
+	return fighterInput(beast)
 end
 
 local function getPartyIds(player: Player): { string }
@@ -331,9 +343,16 @@ end
 
 -- Why this player can't start a fight now, or nil
 local function whyNot(player: Player, monster: Monster?): string?
-	if fights[player] then
+	if fights[player] or PartyService.IsLocked(player) then
 		return "You're already in a fight."
-	elseif not monster or monster.fightingPlayer then
+	end
+	for _, blocker in startBlockers do
+		local reason = blocker(player)
+		if reason then
+			return reason
+		end
+	end
+	if not monster or monster.fightingPlayer then
 		return "Someone is already fighting that monster."
 	end
 	local party = PartyService.GetParty(player)
@@ -635,7 +654,7 @@ function BattleService.Start()
 	Remotes.UseAbility.OnServerEvent:Connect(onUseAbility)
 	Remotes.RunFight.OnServerEvent:Connect(onRun)
 
-	WildService.SetTravelBlocker(function(player)
+	WildService.AddTravelBlocker(function(player)
 		return if fights[player] then "You can't travel during a fight." else nil
 	end)
 	-- A chasing monster caught you: fight, if you can (otherwise it just gives up)

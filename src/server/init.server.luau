@@ -21,6 +21,7 @@ local JobService = require(Services:WaitForChild("JobService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
+local ArenaService = require(Services:WaitForChild("ArenaService"))
 local DevService = require(Services:WaitForChild("DevService"))
 
 PlotService.Start() -- builds the plots everything else uses
@@ -41,6 +42,7 @@ JobService.Start() -- after CardService, PlacementService and StockService: it l
 PartyService.Start() -- after JobService: party loading checks which cards are working
 WildService.Start() -- wild map, plaza portal, spring and monsters
 BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
+ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)
 DevService.Start() -- Studio only
 DataService.Start() -- last: starts loading players
 

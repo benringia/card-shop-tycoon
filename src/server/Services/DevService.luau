@@ -3,7 +3,7 @@
 -- /beastxp <amount> (XP for your best levelled card, or your rarest plain card),
 -- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser),
 -- /jobslot (toggle owning the Extra Job Slot pass), /wild (travel to the wild map), /rest (wake resting cards),
--- /elite (an elite monster next to you, at your summoned card's level).
+-- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +21,7 @@ local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
+local ArenaService = require(Services:WaitForChild("ArenaService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -185,10 +186,13 @@ function DevService.Start()
 		BattleService.ClearResting(player)
 	end)
 	addCommand(folder, "elite", spawnElite)
+	addCommand(folder, "arena", function(player)
+		ArenaService.TravelToStands(player)
+	end)
 	addCommand(folder, "testpack", function(player)
 		PackService.OpenTestPack(player)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /testpack")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /arena, /testpack")
 end
 
 return DevService
