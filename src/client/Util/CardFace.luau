@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
@@ -56,6 +57,43 @@ local function clear(frame: Frame)
 	end
 end
 
+local AURORA = CardEffects.FRONTIER.AURORA
+
+function CardFace.isFrontier(card: Card): boolean
+	return card.set == "Frontier"
+end
+
+-- The aurora colours as a looping sequence (for borders, text and the drop reveal)
+function CardFace.getAuroraSequence(): ColorSequence
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, AURORA[1]),
+		ColorSequenceKeypoint.new(0.33, AURORA[2]),
+		ColorSequenceKeypoint.new(0.66, AURORA[3]),
+		ColorSequenceKeypoint.new(1, AURORA[1]),
+	})
+end
+
+-- A slowly turning aurora gradient on a border (or any GuiObject / UIStroke)
+function CardFace.addAurora(target: Instance)
+	local old = target:FindFirstChild("Aurora")
+	if old then
+		old:Destroy()
+	end
+	local gradient = Instance.new("UIGradient")
+	gradient.Name = "Aurora"
+	gradient.Color = CardFace.getAuroraSequence()
+	gradient.Parent = target
+	local info = TweenInfo.new(CardEffects.FRONTIER.AURORA_SECONDS, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
+	TweenService:Create(gradient, info, { Rotation = 360 }):Play()
+end
+
+local function removeAurora(stroke: UIStroke)
+	local old = stroke:FindFirstChild("Aurora")
+	if old then
+		old:Destroy()
+	end
+end
+
 local function addFoilShimmer(frame: Frame)
 	-- A bright rainbow band sweeping across the card face
 	local gradient = Instance.new("UIGradient")
@@ -79,6 +117,7 @@ end
 -- Face-down card
 function CardFace.renderBack(frame: Frame, stroke: UIStroke)
 	clear(frame)
+	removeAurora(stroke)
 	frame.BackgroundColor3 = BACK_COLOR
 	stroke.Color = NEUTRAL_STROKE
 	stroke.Thickness = 2
@@ -88,6 +127,18 @@ end
 -- Binder slot for a card the player doesn't own yet
 function CardFace.renderMissing(frame: Frame, stroke: UIStroke, card: Card)
 	clear(frame)
+	removeAurora(stroke)
+	if CardFace.isFrontier(card) then
+		-- A mystery: a dark silhouette with the aurora edge, and where to look
+		frame.BackgroundColor3 = Color3.fromRGB(20, 18, 34)
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = 2
+		CardFace.addAurora(stroke)
+		CardFace.addLabel(frame, "?", 0.22, 0.36, Enum.Font.FredokaOne).TextTransparency = 0.25
+		local hint = CardFace.addLabel(frame, "Found in the Frontier", 0.68, 0.12, Enum.Font.GothamBold)
+		hint.TextColor3 = AURORA[1]
+		return
+	end
 	frame.BackgroundColor3 = MISSING_COLOR
 	stroke.Color = NEUTRAL_STROKE
 	stroke.Thickness = 1
@@ -98,6 +149,7 @@ end
 -- growth = nil for a plain copy; a levelled card shows its level and stars.
 function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boolean, showValue: boolean?, growth: Growth?)
 	clear(frame)
+	removeAurora(stroke)
 	local level = if growth then growth.level else 1
 	local stars = if growth then growth.stars else BeastRules.START_STARS
 	local grade = if growth then growth.grade else BeastRules.DEFAULT_GRADE
@@ -117,12 +169,23 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 		local power = BeastRules.getPower(card, foil, level, stars, grade)
 		CardFace.addLabel(frame, `Power {power} · HP {stats.hp} ATK {stats.atk} SPD {stats.spd}`, 0.64, 0.07, Enum.Font.GothamBold)
 	end
-	CardFace.addLabel(frame, card.rarity, 0.72, 0.1, Enum.Font.GothamBold).TextColor3 = CardFace.getRarityColor(card.rarity)
+	CardFace.addLabel(frame, card.rarity, 0.72, 0.1, Enum.Font.GothamBold).TextColor3 = if CardFace.isFrontier(card) then AURORA[1] else CardFace.getRarityColor(card.rarity)
 	if showValue ~= false then
 		CardFace.addLabel(frame, string.format("$%.2f", BeastRules.getValue(card, foil, level, stars, grade)), 0.84, 0.1, Enum.Font.GothamBold)
 	end
 
 	-- Plain text only: Roblox's built-in fonts have no glyphs for symbols like ✦
+	if CardFace.isFrontier(card) then
+		-- Frontier cards: darker element background, aurora border and rarity, a ribbon, always shimmering
+		frame.BackgroundColor3 = frame.BackgroundColor3:Lerp(Color3.new(0, 0, 0), CardEffects.FRONTIER.BACKGROUND_DARKEN)
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = math.max(stroke.Thickness, 3)
+		CardFace.addAurora(stroke)
+		local ribbon = CardFace.addLabel(frame, if foil then "FOIL FRONTIER" else "FRONTIER", 0.18, 0.06, Enum.Font.GothamBold)
+		ribbon.TextColor3 = AURORA[3]
+		addFoilShimmer(frame)
+		return
+	end
 	if foil then
 		CardFace.addLabel(frame, "FOIL", 0.18, 0.06, Enum.Font.GothamBold)
 		addFoilShimmer(frame)

@@ -9,6 +9,7 @@ return {
 
 	FOIL_FORMAT = "%s pulled a FOIL %s!",
 	NORMAL_FORMAT = "%s pulled %s!",
+	FRONTIER_FORMAT = "✨ %s found a Frontier card: %s!", -- every Frontier card drop, to the whole server
 
 	-- Announcements wait until the puller flips the card. If they never do, announce after this long.
 	REVEAL_TIMEOUT = 30,

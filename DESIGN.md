@@ -230,8 +230,12 @@ when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the 
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
 spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
 and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Aurora Drake, Stormking, never in
-packs). Items: `items = { [itemId] = count }`, listed in `Config/Items` and changed only by ItemService; the binder's
-Bag tab shows them. Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
+packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER ribbon, a constant
+shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
+one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
+Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
+and changed only by ItemService. The binder has two tabs, 📖 Cards and 🎒 Bag (key I opens the Bag): item tiles with a
+detail panel. The Cards tab has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
@@ -549,6 +553,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
+    │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts

@@ -8,6 +8,7 @@ local TextChatService = game:GetService("TextChatService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Announcements = require(Config:WaitForChild("Announcements"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -31,8 +32,8 @@ local function getGeneralChannel(): TextChannel?
 	return if general and general:IsA("TextChannel") then general else nil
 end
 
-function AnnouncementController.Show(displayName: string, card: Card, foil: boolean)
-	local format = if foil then Announcements.FOIL_FORMAT else Announcements.NORMAL_FORMAT
+function AnnouncementController.Show(displayName: string, card: Card, foil: boolean, kind: string?)
+	local format = if kind == "frontier" then Announcements.FRONTIER_FORMAT elseif foil then Announcements.FOIL_FORMAT else Announcements.NORMAL_FORMAT
 	local plain = string.format(format, displayName, card.name)
 
 	local channel = getGeneralChannel()
@@ -41,16 +42,16 @@ function AnnouncementController.Show(displayName: string, card: Card, foil: bool
 		UIController.Notify(plain, false)
 		return
 	end
-	local color = CardFace.getRarityColor(card.rarity):ToHex()
+	local color = (if kind == "frontier" then CardEffects.FRONTIER.AURORA[1] else CardFace.getRarityColor(card.rarity)):ToHex()
 	local text = string.format(format, escape(displayName), card.name)
 	channel:DisplaySystemMessage(`<font color="#{color}"><b>{text}</b></font>`)
 end
 
 function AnnouncementController.Start()
-	Remotes.PullAnnouncement.OnClientEvent:Connect(function(displayName: string, cardId: string, foil: boolean)
+	Remotes.PullAnnouncement.OnClientEvent:Connect(function(displayName: string, cardId: string, foil: boolean, kind: string?)
 		local card = Cards.ById[cardId]
 		if card and typeof(displayName) == "string" then
-			AnnouncementController.Show(displayName, card, foil == true)
+			AnnouncementController.Show(displayName, card, foil == true, if kind == "frontier" then "frontier" else nil)
 		end
 	end)
 end

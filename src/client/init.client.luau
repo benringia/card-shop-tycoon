@@ -25,6 +25,7 @@ local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
+local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -39,6 +40,8 @@ if Place.isFrontier() then
 	MonsterController.Start()
 	BattleController.Start()
 	FrontierController.Start() -- the home button
+	AnnouncementController.Start() -- Frontier card finds in chat
+	FrontierRevealController.Start() -- the big moment when you find a Frontier card
 else
 	UIController.Start()
 	OrderController.Start()
@@ -63,4 +66,5 @@ else
 	BattleController.Start()
 	ChallengeController.Start()
 	FrontierController.Start() -- the portal menu
+	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 end

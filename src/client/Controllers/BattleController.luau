@@ -470,7 +470,8 @@ local function showEnd(summary: any)
 			table.insert(lines, `✨ +{summary.shards} Star Shard{if summary.shards == 1 then "" else "s"}`)
 		end
 		if typeof(summary.card) == "table" and Cards.ById[summary.card.cardId] then
-			table.insert(lines, `🎴 New card: {Cards.ById[summary.card.cardId].name} (grade {summary.card.grade})`)
+			local found = Cards.ById[summary.card.cardId]
+			table.insert(lines, if found.set == "Frontier" then `✨ FRONTIER CARD: {found.name}!` else `🎴 New card: {found.name} (grade {summary.card.grade})`)
 		end
 		endBody.Text = table.concat(lines, "\n")
 	elseif result == "lose" then

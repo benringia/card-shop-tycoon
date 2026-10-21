@@ -9,6 +9,8 @@ return {
 			name = "Star Shard",
 			icon = "✨",
 			description = "Counts as one duplicate when condensing any card.",
+			source = "Frontier monsters · 3% (elites 10%)",
+			use = "Card Condenser → Use Star Shards (covers up to half of a star)",
 		},
 	},
 }

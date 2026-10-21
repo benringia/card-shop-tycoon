@@ -16,6 +16,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Jobs = require(Config:WaitForChild("Jobs"))
 local Party = require(Config:WaitForChild("Party"))
 local Items = require(Config:WaitForChild("Items"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -60,8 +61,9 @@ local PAGE_COLOR = Color3.fromRGB(40, 40, 54)
 local TITLE_VALUE_ROOM = 96 -- right side of a row title kept free for the price
 local TOOLTIP_WIDTH = 230
 local FILTER_CHIP_WIDTH = 84
-local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
+local ALL_FILTER, OWNED_FILTER, MISSING_FILTER, FRONTIER_FILTER = "All", "Owned", "Missing", "Frontier"
 local BINDER_KEY = Enum.KeyCode.B
+local BAG_KEY = Enum.KeyCode.I -- inventory: the binder's Bag tab
 local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
 local BEAST_ROW_HEIGHT = 100
 local STACK_ROW_HEIGHT = 80
@@ -90,7 +92,7 @@ local partyTarget: (string | { cardId: string, foil: boolean, grade: string })? 
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
-local completionLabel: TextLabel
+local completionBars: { [string]: { label: TextLabel, fill: Frame } } = {} -- set name -> its progress bar
 local pages: { Frame } = {} -- left and right page
 local pageLabel: TextLabel
 local spreadIndex = 1
@@ -550,6 +552,8 @@ local function passesFilter(card: Card): boolean
 		return isCollected(card.id)
 	elseif binderFilter == MISSING_FILTER then
 		return not isCollected(card.id)
+	elseif binderFilter == FRONTIER_FILTER then
+		return card.set == "Frontier"
 	elseif binderFilter ~= ALL_FILTER then
 		return card.rarity == binderFilter
 	end
@@ -618,10 +622,12 @@ local function refresh()
 		end
 		return collected
 	end
-	local firstSpark, frontier = count("First Spark"), count("Frontier")
-	local percent = math.floor(firstSpark / #Cards.BySet["First Spark"] * 100)
-	local frontierText = if frontier > 0 then ` · Frontier {frontier}/{#Cards.BySet.Frontier}` else ""
-	completionLabel.Text = `{firstSpark}/{#Cards.BySet["First Spark"]} cards · {percent}%{frontierText}`
+	for set, bar in completionBars do
+		local total = #Cards.BySet[set]
+		local owned = count(set)
+		bar.label.Text = `{set} {owned}/{total}`
+		bar.fill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
+	end
 	applyFilter()
 	refreshDetail()
 end
@@ -950,54 +956,143 @@ local function buildPage(spread: Frame, isLeft: boolean): Frame
 	return page
 end
 
--- Bag: the item inventory (Config/Items), shown over the binder pages
+-- Bag: the item inventory (Config/Items), the binder's second tab. Item tiles on the left, the chosen item's
+-- details (what it does, where to get it, how to use it) on the right.
 local bagOverlay: Frame
-local bagList: ScrollingFrame
+local bagGrid: ScrollingFrame
+local bagDetail: Frame
 local bagItems: { [string]: number } = {}
+local selectedItem: string? = nil
+local cardsTab: TextButton
+local bagTab: TextButton
 
-local function renderBag()
-	for _, child in bagList:GetChildren() do
+local BAG_TILE = Vector2.new(108, 124)
+
+local function bagLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, y: number, height: number): TextLabel
+	local label = UIKit.label(parent, text, font, size, color)
+	label.Position = UDim2.fromOffset(12, y)
+	label.Size = UDim2.new(1, -24, 0, height)
+	label.TextWrapped = true
+	label.TextYAlignment = Enum.TextYAlignment.Top
+	label.ZIndex = 33
+	return label
+end
+
+local function ownedItemIds(): { string }
+	local ids = {}
+	for id in Items.ITEMS do
+		if (bagItems[id] or 0) > 0 then
+			table.insert(ids, id)
+		end
+	end
+	table.sort(ids)
+	return ids
+end
+
+local function renderBagDetail()
+	for _, child in bagDetail:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
-	local order = 0
-	for id, info in Items.ITEMS do
-		local count = bagItems[id] or 0
-		if count > 0 then
-			order += 1
-			local row = Instance.new("Frame")
-			row.LayoutOrder = order
-			row.Size = UDim2.new(1, -8, 0, 60)
-			row.BackgroundColor3 = UIKit.Colors.Row
-			row.ZIndex = 32
-			row.Parent = bagList
-			UIKit.corner(row, 10)
-			local title = UIKit.label(row, `{info.icon} {info.name} · x{count}`, Enum.Font.GothamBold, 16, UIKit.Colors.Text)
-			title.Position = UDim2.fromOffset(12, 6)
-			title.Size = UDim2.new(1, -24, 0, 22)
-			title.ZIndex = 33
-			local text = UIKit.label(row, info.description, Enum.Font.Gotham, 13, UIKit.Colors.Subtext)
-			text.Position = UDim2.fromOffset(12, 30)
-			text.Size = UDim2.new(1, -24, 0, 24)
-			text.TextWrapped = true
-			text.ZIndex = 33
+	local info = if selectedItem then Items.ITEMS[selectedItem] else nil
+	if not info or not selectedItem then
+		bagLabel(bagDetail, "Tap an item to see what it does.", Enum.Font.GothamBold, 14, UIKit.Colors.Subtext, 16, 40)
+		return
+	end
+	local icon = bagLabel(bagDetail, info.icon, Enum.Font.GothamBold, 56, UIKit.Colors.Text, 10, 64)
+	icon.TextXAlignment = Enum.TextXAlignment.Center
+	local name = bagLabel(bagDetail, `{info.name} · x{bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 20, UIKit.Colors.Text, 78, 26)
+	name.TextXAlignment = Enum.TextXAlignment.Center
+	bagLabel(bagDetail, info.description, Enum.Font.Gotham, 14, UIKit.Colors.Text, 112, 40)
+	if info.source then
+		bagLabel(bagDetail, "Where to get it", Enum.Font.GothamBold, 13, UIKit.Colors.Accent, 160, 18)
+		bagLabel(bagDetail, info.source, Enum.Font.Gotham, 13, UIKit.Colors.Subtext, 178, 36)
+	end
+	if info.use then
+		bagLabel(bagDetail, "How to use it", Enum.Font.GothamBold, 13, UIKit.Colors.Accent, 220, 18)
+		bagLabel(bagDetail, info.use, Enum.Font.Gotham, 13, UIKit.Colors.Subtext, 238, 36)
+	end
+end
+
+local function renderBag()
+	for _, child in bagGrid:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
 		end
 	end
-	if order == 0 then
-		local empty = UIKit.label(bagList, "Your bag is empty. Items drop in the Frontier.", Enum.Font.GothamBold, 14, UIKit.Colors.Subtext)
-		empty.Size = UDim2.new(1, -8, 0, 40)
+	local ids = ownedItemIds()
+	if selectedItem and not table.find(ids, selectedItem) then
+		selectedItem = nil
+	end
+	selectedItem = selectedItem or ids[1]
+	if #ids == 0 then
+		local empty = UIKit.label(bagGrid, "🎒 Your bag is empty.\nItems drop in the Frontier: take its portal in the plaza.", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
+		empty.Size = UDim2.new(1, -8, 0, 80)
+		empty.TextWrapped = true
+		empty.TextXAlignment = Enum.TextXAlignment.Center
 		empty.ZIndex = 33
+	end
+	for order, id in ids do
+		local info = Items.ITEMS[id]
+		local tile = Instance.new("TextButton")
+		tile.Text = ""
+		tile.LayoutOrder = order
+		tile.AutoButtonColor = true
+		tile.BackgroundColor3 = UIKit.Colors.Row
+		tile.ZIndex = 32
+		tile.Parent = bagGrid
+		UIKit.corner(tile, 12)
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Color = if id == selectedItem then UIKit.Colors.Accent else Color3.fromRGB(80, 80, 100)
+		stroke.Thickness = if id == selectedItem then 3 else 1
+		stroke.Parent = tile
+		local icon = UIKit.label(tile, info.icon, Enum.Font.GothamBold, 44, UIKit.Colors.Text)
+		icon.Position = UDim2.fromOffset(0, 10)
+		icon.Size = UDim2.new(1, 0, 0, 56)
+		icon.TextXAlignment = Enum.TextXAlignment.Center
+		icon.ZIndex = 33
+		local name = UIKit.label(tile, info.name, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+		name.Position = UDim2.fromOffset(4, 70)
+		name.Size = UDim2.new(1, -8, 0, 18)
+		name.TextXAlignment = Enum.TextXAlignment.Center
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+		name.ZIndex = 33
+		local badge = UIKit.label(tile, `x{bagItems[id]}`, Enum.Font.FredokaOne, 16, UIKit.Colors.Accent)
+		badge.Position = UDim2.fromOffset(4, 92)
+		badge.Size = UDim2.new(1, -8, 0, 22)
+		badge.TextXAlignment = Enum.TextXAlignment.Center
+		badge.ZIndex = 33
+		tile.Activated:Connect(function()
+			selectedItem = id
+			renderBag()
+		end)
+	end
+	renderBagDetail()
+end
+
+local function showTab(bag: boolean)
+	bagOverlay.Visible = bag
+	cardsTab.BackgroundColor3 = if bag then UIKit.Colors.Row else UIKit.Colors.Accent
+	bagTab.BackgroundColor3 = if bag then UIKit.Colors.Accent else UIKit.Colors.Row
+	if bag then
+		renderBag()
 	end
 end
 
 local function buildBag(parent: Frame)
-	local open = UIKit.button(parent, "🎒 Bag", UIKit.Colors.Row)
-	open.AnchorPoint = Vector2.new(1, 0)
-	open.Position = UDim2.new(1, -66, 0, 10)
-	open.Size = UDim2.fromOffset(100, 48)
-	open.TextSize = 15
-	open.ZIndex = 12
+	-- Two tabs in the header, next to the title
+	local function tab(text: string, x: number): TextButton
+		local button = UIKit.button(parent, text, UIKit.Colors.Row)
+		button.Position = UDim2.fromOffset(x, 10)
+		button.Size = UDim2.fromOffset(112, 48)
+		button.TextSize = 15
+		button.ZIndex = 12
+		return button
+	end
+	cardsTab = tab("📖 Cards", 132)
+	bagTab = tab("🎒 Bag", 250)
 
 	bagOverlay = Instance.new("Frame")
 	bagOverlay.Name = "Bag"
@@ -1008,41 +1103,44 @@ local function buildBag(parent: Frame)
 	bagOverlay.ZIndex = 30
 	bagOverlay.Parent = parent
 	UIKit.corner(bagOverlay, 12)
-	local title = UIKit.label(bagOverlay, "🎒 Bag", Enum.Font.FredokaOne, 20, UIKit.Colors.Text)
-	title.Position = UDim2.fromOffset(12, 8)
-	title.Size = UDim2.new(1, -140, 0, 30)
-	title.ZIndex = 31
-	local back = UIKit.button(bagOverlay, "Back", UIKit.Colors.Row)
-	back.AnchorPoint = Vector2.new(1, 0)
-	back.Position = UDim2.new(1, -8, 0, 4)
-	back.Size = UDim2.fromOffset(100, 48)
-	back.TextSize = 15
-	back.ZIndex = 31
-	bagList = Instance.new("ScrollingFrame")
-	bagList.Position = UDim2.fromOffset(8, 58)
-	bagList.Size = UDim2.new(1, -16, 1, -66)
-	bagList.BackgroundTransparency = 1
-	bagList.BorderSizePixel = 0
-	bagList.ScrollBarThickness = 4
-	bagList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	bagList.CanvasSize = UDim2.new()
-	bagList.ZIndex = 31
-	bagList.Parent = bagOverlay
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 6)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = bagList
 
-	open.Activated:Connect(function()
-		renderBag()
-		bagOverlay.Visible = true
+	bagGrid = Instance.new("ScrollingFrame")
+	bagGrid.Position = UDim2.fromOffset(8, 8)
+	bagGrid.Size = UDim2.new(0.58, -12, 1, -16)
+	bagGrid.BackgroundTransparency = 1
+	bagGrid.BorderSizePixel = 0
+	bagGrid.ScrollBarThickness = 4
+	bagGrid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	bagGrid.CanvasSize = UDim2.new()
+	bagGrid.ZIndex = 31
+	bagGrid.Parent = bagOverlay
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(BAG_TILE.X, BAG_TILE.Y)
+	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = bagGrid
+
+	bagDetail = Instance.new("Frame")
+	bagDetail.AnchorPoint = Vector2.new(1, 0)
+	bagDetail.Position = UDim2.new(1, -8, 0, 8)
+	bagDetail.Size = UDim2.new(0.42, -4, 1, -16)
+	bagDetail.BackgroundColor3 = UIKit.Colors.Row
+	bagDetail.ZIndex = 32
+	bagDetail.Parent = bagOverlay
+	UIKit.corner(bagDetail, 12)
+
+	cardsTab.Activated:Connect(function()
+		showTab(false)
 	end)
-	back.Activated:Connect(function()
-		bagOverlay.Visible = false
+	bagTab.Activated:Connect(function()
+		showTab(true)
 	end)
 	parent:GetPropertyChangedSignal("Visible"):Connect(function()
-		bagOverlay.Visible = false
+		if not parent.Visible then
+			showTab(false)
+		end
 	end)
+	showTab(false)
 end
 
 local function buildPanel(parent: Instance)
@@ -1056,9 +1154,31 @@ local function buildPanel(parent: Instance)
 		sizeLimit.MaxSize = BINDER_MAX_SIZE
 	end
 
-	completionLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
-	completionLabel.Position = UDim2.fromOffset(16, 56)
-	completionLabel.Size = UDim2.fromOffset(170, 32)
+	-- Collection progress per set: First Spark (packs) and the Frontier set
+	for index, set in { "First Spark", "Frontier" } do
+		local row = Instance.new("Frame")
+		row.Position = UDim2.fromOffset(16, 54 + (index - 1) * 18)
+		row.Size = UDim2.fromOffset(170, 16)
+		row.BackgroundTransparency = 1
+		row.Parent = panel
+		local label = UIKit.label(row, "", Enum.Font.GothamBold, 11, if set == "Frontier" then CardEffects.FRONTIER.AURORA[1] else UIKit.Colors.Subtext)
+		label.Size = UDim2.new(0, 96, 1, 0)
+		local track = Instance.new("Frame")
+		track.Position = UDim2.fromOffset(98, 4)
+		track.Size = UDim2.new(1, -98, 0, 8)
+		track.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+		track.Parent = row
+		UIKit.corner(track, 4)
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.fromScale(0, 1)
+		fill.BackgroundColor3 = if set == "Frontier" then Color3.new(1, 1, 1) else UIKit.Colors.Accent
+		fill.Parent = track
+		UIKit.corner(fill, 4)
+		if set == "Frontier" then
+			CardFace.addAurora(fill)
+		end
+		completionBars[set] = { label = label, fill = fill }
+	end
 
 	-- Search by name or number, then filter chips (they scroll sideways on narrow screens)
 	local search = Instance.new("TextBox")
@@ -1107,6 +1227,7 @@ local function buildPanel(parent: Instance)
 	for _, name in rarities do
 		table.insert(filters, name)
 	end
+	table.insert(filters, FRONTIER_FILTER)
 	for index, filter in filters do
 		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
 		chip.LayoutOrder = index
@@ -1115,6 +1236,8 @@ local function buildPanel(parent: Instance)
 		local tier = Rarities.Tiers[filter]
 		if tier then
 			chip.TextColor3 = tier.color
+		elseif filter == FRONTIER_FILTER then
+			chip.TextColor3 = CardEffects.FRONTIER.AURORA[1]
 		end
 		chip.Activated:Connect(function()
 			binderFilter = filter
@@ -1303,8 +1426,21 @@ function BinderController.Start()
 	refresh()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if not gameProcessed and input.KeyCode == BINDER_KEY then
+		if gameProcessed then
+			return
+		end
+		if input.KeyCode == BINDER_KEY then
 			toggle()
+		elseif input.KeyCode == BAG_KEY then
+			-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
+			if panel.Visible and bagOverlay.Visible then
+				toggle()
+			else
+				if not panel.Visible then
+					toggle()
+				end
+				showTab(true)
+			end
 		end
 	end)
 

@@ -36,4 +36,13 @@ return {
 	FLASH_SECONDS = 0.5,
 
 	JOIN_GRACE_SECONDS = 4, -- cards appearing this soon after joining were already on display: no burst
+
+	-- Frontier cards: an aurora look everywhere (card faces, cases, the drop reveal)
+	FRONTIER = {
+		AURORA = { Color3.fromRGB(70, 230, 210), Color3.fromRGB(150, 90, 255), Color3.fromRGB(255, 205, 80) },
+		AURORA_SECONDS = 4, -- one full turn of the aurora border
+		BACKGROUND_DARKEN = 0.45, -- the element colour, this much darker
+		CASE_EFFECT = { glow = 1.1, glowRange = 6, sparkleRate = 4, burst = 45, pop = true, flash = true, pulse = true },
+		REVEAL_SECONDS = 4.5, -- the drop reveal closes itself after this long
+	},
 }

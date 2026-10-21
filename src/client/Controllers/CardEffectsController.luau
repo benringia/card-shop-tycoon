@@ -155,11 +155,12 @@ local function attach(instance: Instance, isNewListing: boolean)
 	if not card then
 		return
 	end
-	local effect = CardEffects.BY_RARITY[card.rarity]
+	local frontier = card.set == "Frontier"
+	local effect = if frontier then CardEffects.FRONTIER.CASE_EFFECT else CardEffects.BY_RARITY[card.rarity]
 	if not effect then
 		return
 	end
-	local color = getRarityColor(card.rarity)
+	local color = if frontier then CardEffects.FRONTIER.AURORA[1] else getRarityColor(card.rarity)
 	local foil = instance:GetAttribute("Foil") == true
 
 	addAlwaysOn(instance, effect, color, foil)

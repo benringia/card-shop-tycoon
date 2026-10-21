@@ -27,7 +27,7 @@ local NAMES = {
 	"RemoveDisplayedCard", -- client → server: (shelfUid: string, slot: number) case → binder
 	"SetCardPrice", -- client → server: (shelfUid: string, changes: { { slot: number, price: number } })
 	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?, expectedGrade?) from a Collector Case
-	"PullAnnouncement", -- server → other clients: (displayName: string, cardId: string, foil: boolean)
+	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?) big pulls and Frontier finds
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
