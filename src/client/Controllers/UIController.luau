@@ -1,8 +1,9 @@
 --!strict
--- Owns the main ScreenGui: cash display, shop level / XP bar, and short toast messages.
--- Other controllers add their panels to UIController.GetScreenGui().
+-- Owns the main ScreenGui: the status corner (cash, shop level / XP bar, buffs) and short toast messages.
+-- Other controllers add their panels to UIController.GetScreenGui(), and status items to GetStatusFrame().
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -12,12 +13,17 @@ local UIKit = require(((script.Parent :: Instance).Parent :: Instance):WaitForCh
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
 local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
+-- Status sits in the bottom-right corner (the top corners hold Roblox's menu and the player list).
+-- On touch screens it sits above the jump button.
+local STATUS_MARGIN = 12
+local TOUCH_JUMP_CLEARANCE = 170
 
 local player = Players.LocalPlayer
 
 local UIController = {}
 
 local screenGui: ScreenGui
+local statusFrame: Frame
 local cashLabel: TextLabel
 local levelLabel: TextLabel
 local xpLabel: TextLabel
@@ -45,6 +51,11 @@ end
 
 function UIController.GetScreenGui(): ScreenGui
 	return screenGui
+end
+
+-- Bottom-right column: items stack upwards, right-aligned. Cash is LayoutOrder 2, XP 3; lower orders go above.
+function UIController.GetStatusFrame(): Frame
+	return statusFrame
 end
 
 function UIController.Notify(message: string, isError: boolean?, duration: number?)
@@ -96,29 +107,43 @@ function UIController.Start()
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
+	statusFrame = Instance.new("Frame")
+	statusFrame.Name = "Status"
+	statusFrame.AnchorPoint = Vector2.new(1, 1)
+	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
+	statusFrame.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
+	statusFrame.Size = UDim2.fromOffset(180, 0)
+	statusFrame.AutomaticSize = Enum.AutomaticSize.Y
+	statusFrame.BackgroundTransparency = 1
+	statusFrame.Parent = screenGui
+	local statusLayout = Instance.new("UIListLayout")
+	statusLayout.Padding = UDim.new(0, 4)
+	statusLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	statusLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	statusLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	statusLayout.Parent = statusFrame
+
 	cashLabel = Instance.new("TextLabel")
 	cashLabel.Name = "Cash"
-	cashLabel.AnchorPoint = Vector2.new(0.5, 0)
-	cashLabel.Position = UDim2.new(0.5, 0, 0, 8)
-	cashLabel.Size = UDim2.fromOffset(180, 48)
+	cashLabel.LayoutOrder = 2
+	cashLabel.Size = UDim2.fromOffset(180, 44)
 	cashLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	cashLabel.BackgroundTransparency = 0.2
 	cashLabel.Font = Enum.Font.FredokaOne
 	cashLabel.TextColor3 = Color3.fromRGB(120, 230, 120)
-	cashLabel.TextSize = 30
-	cashLabel.Parent = screenGui
+	cashLabel.TextSize = 28
+	cashLabel.Parent = statusFrame
 	UIKit.corner(cashLabel, 12)
 
 	-- Level badge + XP bar under the cash display
 	local xpBar = Instance.new("Frame")
 	xpBar.Name = "XPBar"
-	xpBar.AnchorPoint = Vector2.new(0.5, 0)
-	xpBar.Position = UDim2.new(0.5, 0, 0, 62)
+	xpBar.LayoutOrder = 3
 	xpBar.Size = UDim2.fromOffset(180, 26)
 	xpBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	xpBar.BackgroundTransparency = 0.2
 	xpBar.ClipsDescendants = true
-	xpBar.Parent = screenGui
+	xpBar.Parent = statusFrame
 	UIKit.corner(xpBar, 8)
 
 	xpFill = Instance.new("Frame")

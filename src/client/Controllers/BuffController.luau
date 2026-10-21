@@ -1,5 +1,5 @@
 --!strict
--- Small buff badge in the top-right corner while a summoned creature gives a perk ("⚡ +10%"). Hover it (or tap
+-- Small buff badge above the cash in the bottom-right status corner while a summoned creature gives a perk ("⚡ +10%"). Hover it (or tap
 -- on a phone) for a tooltip saying what the buff does and which party card it comes from.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -57,6 +57,8 @@ end
 local function showTooltip(visible: boolean)
 	local current = perk
 	if visible and current then
+		-- Just above the badge, right edges lined up
+		tooltip.Position = UDim2.fromOffset(badge.AbsolutePosition.X + badge.AbsoluteSize.X, badge.AbsolutePosition.Y - 4)
 		local icon, color = getPerkLook(current.kind)
 		tooltipTitle.Text = `{icon} {current.text}`
 		tooltipTitle.TextColor3 = color:Lerp(Color3.new(1, 1, 1), 0.3)
@@ -90,22 +92,21 @@ end
 function BuffController.Start()
 	local screenGui = UIController.GetScreenGui()
 
-	-- 48px tall hit area (phones), with a smaller pill drawn inside it
+	-- 48px tall hit area (phones), with a smaller pill drawn inside it; sits above the cash
 	badge = Instance.new("TextButton")
 	badge.Name = "BuffBadge"
+	badge.LayoutOrder = 1
 	badge.Text = ""
 	badge.AutoButtonColor = false
 	badge.BackgroundTransparency = 1
-	badge.AnchorPoint = Vector2.new(1, 0)
-	badge.Position = UDim2.new(1, -12, 0, 4)
 	badge.Size = UDim2.fromOffset(48, 48)
 	badge.AutomaticSize = Enum.AutomaticSize.X
 	badge.Visible = false
-	badge.Parent = screenGui
+	badge.Parent = UIController.GetStatusFrame()
 
 	pill = UIKit.label(badge, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	pill.AnchorPoint = Vector2.new(1, 0.5)
-	pill.Position = UDim2.fromScale(1, 0.5)
+	pill.AnchorPoint = Vector2.new(0, 0.5)
+	pill.Position = UDim2.fromScale(0, 0.5)
 	pill.Size = UDim2.fromOffset(0, 28)
 	pill.AutomaticSize = Enum.AutomaticSize.X
 	pill.TextXAlignment = Enum.TextXAlignment.Center
@@ -126,8 +127,7 @@ function BuffController.Start()
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BuffTooltip"
-	tooltip.AnchorPoint = Vector2.new(1, 0)
-	tooltip.Position = UDim2.new(1, -12, 0, 54)
+	tooltip.AnchorPoint = Vector2.new(1, 1)
 	tooltip.Size = UDim2.fromOffset(250, 0)
 	tooltip.AutomaticSize = Enum.AutomaticSize.Y
 	tooltip.BackgroundColor3 = UIKit.Colors.Panel
