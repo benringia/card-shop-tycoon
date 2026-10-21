@@ -64,6 +64,7 @@ export type PlayerData = {
 	beasts: { [string]: SavedBeast }, -- levelled cards by ID
 	jobs: { SavedJob }, -- cards working in the shop
 	party: SavedParty, -- 3 party cards, one summoned
+	resting: { [string]: number }, -- beastId -> Unix time it can fight again (fainted in battle)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -90,6 +91,7 @@ local TEMPLATE: PlayerData = {
 	beasts = {},
 	jobs = {},
 	party = { slots = {} },
+	resting = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }

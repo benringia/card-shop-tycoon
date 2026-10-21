@@ -3,8 +3,9 @@
 -- and levelled cards { [beastId] = Beast } with their own level, XP, stars and grade. A plain copy
 -- becomes its own card (keeping its grade) the first time it gains XP or a star. Cards on display leave here while shown (PlacementService holds them).
 -- Cards working a shop job (JobService) are locked: they can't be displayed or condensed. Party cards
--- (PartyService) can't be displayed or given a job, but can be condensed.
--- The client gets { stacks, beasts, working, partied } on every change. Saved through DataService.
+-- (PartyService) can't be displayed or given a job, but can be condensed. Cards in a fight (BattleService)
+-- can't be condensed either.
+-- The client gets { stacks, beasts, working, partied, fighting } on every change. Saved through DataService.
 -- (DESIGN.md calls this CollectionService; renamed to avoid clashing with Roblox's own service.)
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,6 +37,7 @@ type Inventory = {
 	beasts: { [string]: Beast },
 	working: { [string]: string }, -- beastId -> job; runtime only, JobService rebuilds it from saved jobs
 	partied: { [string]: boolean }, -- beastId -> in the party; runtime only, PartyService rebuilds it
+	fighting: { [string]: boolean }, -- beastId -> in a fight right now; runtime only
 }
 
 local CardService = {}
@@ -46,7 +48,7 @@ local allowRequest = RateLimiter.new(Collection.REQUEST_COOLDOWN)
 local function sync(player: Player)
 	local inventory = inventories[player]
 	if inventory then
-		Remotes.CollectionChanged:FireClient(player, { stacks = inventory.stacks, beasts = inventory.beasts, working = inventory.working, partied = inventory.partied })
+		Remotes.CollectionChanged:FireClient(player, { stacks = inventory.stacks, beasts = inventory.beasts, working = inventory.working, partied = inventory.partied, fighting = inventory.fighting })
 	end
 end
 
@@ -216,6 +218,8 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget): (
 		end
 		if inventory.working[main] then
 			return nil, "working"
+		elseif inventory.fighting[main] then
+			return nil, "fighting"
 		end
 		foil, grade = beast.foil, beast.grade
 	else
@@ -306,6 +310,21 @@ function CardService.SetPartied(player: Player, beastId: string, partied: boolea
 	sync(player)
 end
 
+-- Marks a levelled card as fighting (BattleService); false when the fight ends
+function CardService.SetFighting(player: Player, beastId: string, fighting: boolean)
+	local inventory = inventories[player]
+	if not inventory or (fighting and not inventory.beasts[beastId]) then
+		return
+	end
+	inventory.fighting[beastId] = if fighting then true else nil
+	sync(player)
+end
+
+function CardService.IsFighting(player: Player, beastId: string): boolean
+	local inventory = inventories[player]
+	return inventory ~= nil and inventory.fighting[beastId] == true
+end
+
 function CardService.IsPartied(player: Player, beastId: string): boolean
 	local inventory = inventories[player]
 	return inventory ~= nil and inventory.partied[beastId] == true
@@ -360,7 +379,7 @@ local function load(player: Player, data: PlayerData)
 		end
 	end
 
-	inventories[player] = { stacks = stacks, beasts = beasts, working = {}, partied = {} }
+	inventories[player] = { stacks = stacks, beasts = beasts, working = {}, partied = {}, fighting = {} }
 	sync(player)
 end
 
