@@ -21,8 +21,8 @@ shows its stand-in.
 | `Fence` | one section, repeated every 8 studs behind each row | 4 | yes |
 | `Portal` | frame around each plaza portal ring | 14 | no |
 | `PlazaDecor` | two spots on the plaza edge | 2.5 | no |
-| `Register` | on top of each shop's register counter | 1.5 | no |
-| `CounterDecor` | next to the register on the counter | 1.2 | no |
+| `Register` | back of each shop's register counter, left end | fits 1.8 x 1.5 x 0.6 | no |
+| `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Shelf` | the look of Products shelves (pack racks) | fits the shelf | (the shelf's own hitbox) |
 
 **Variants:** a slot also uses every file named after it plus a suffix starting with a capital letter or digit:
@@ -41,7 +41,8 @@ Numbers live in `Config/Town.luau` (`SLOTS`).
    `assets/props/<Slot>.rbxm`. Delete it from the Workspace.
 5. Run `lune run tests/run`: it fails if any prop still holds a script. Stop → Play to see it.
 
-Size doesn't matter: the game scales each prop to its slot height and stands it on the ground.
+Size doesn't matter: the game scales each prop to its slot height (or fits it in its box) and stands it on the
+ground. Turn it with `YawOffset`, not by rotating parts: fitted props use the turned size.
 
 ## Rules the game applies
 

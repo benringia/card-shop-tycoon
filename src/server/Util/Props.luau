@@ -7,6 +7,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
+local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
 
 local Props = {}
@@ -175,12 +176,12 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?): Mo
 			end
 		end
 	end
-	local yaw = model:GetAttribute("YawOffset") -- degrees, for models that don't face -Z
-	local turn = CFrame.Angles(0, math.rad(if typeof(yaw) == "number" then yaw else 0), 0)
+	local yawAttribute = model:GetAttribute("YawOffset") -- degrees, for models that don't face -Z
+	local yaw = if typeof(yawAttribute) == "number" then yawAttribute else 0
 	local boxCFrame, boxSize = model:GetBoundingBox()
-	model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0) * turn
+	model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0) * CFrame.Angles(0, math.rad(yaw), 0)
 	local ratio = if fit
-		then math.min(fit.X / math.max(boxSize.X, MIN_HEIGHT), fit.Y / math.max(boxSize.Y, MIN_HEIGHT), fit.Z / math.max(boxSize.Z, MIN_HEIGHT))
+		then PropFit.fitRatio({ x = boxSize.X, y = boxSize.Y, z = boxSize.Z }, { x = fit.X, y = fit.Y, z = fit.Z }, yaw)
 		else height / math.max(boxSize.Y, MIN_HEIGHT)
 	model:ScaleTo(model:GetScale() * ratio)
 	return model
@@ -223,9 +224,9 @@ function Props.place(slot: string, at: CFrame, parent: Instance, variant: number
 	return make(slot, at, parent, variant, nil)
 end
 
--- A prop scaled to fit inside `size`, bottom centre on `at` (Shelf on a shelf's hitbox)
-function Props.fit(slot: string, size: Vector3, at: CFrame, parent: Instance): Model
-	return make(slot, at, parent, nil, size)
+-- A prop scaled to fit inside `size`, bottom centre on `at` (Shelf on a shelf's hitbox, counter props)
+function Props.fit(slot: string, size: Vector3, at: CFrame, parent: Instance, variant: number?): Model
+	return make(slot, at, parent, variant, size)
 end
 
 return Props

@@ -56,6 +56,14 @@ return {
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
 
+	-- Register counter (front = customer side): scan items lie along the front edge, props in a strip along the
+	-- back. Props are fitted into these boxes (width, height); x = offset from the counter centre.
+	COUNTER = {
+		PROP_DEPTH = 0.6,
+		REGISTER = { x = -1.9, width = 1.8, height = 1.5 },
+		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
+	},
+
 	-- Shop shells (PlotService). Walls sit outside the floor edges.
 	WALL_HEIGHT = 12,
 	WALL_THICKNESS = 1,

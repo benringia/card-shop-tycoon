@@ -9,6 +9,8 @@ local Config = Shared:WaitForChild("Config")
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
+local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
+local RegisterConfig = require(Config:WaitForChild("Register"))
 
 local Props = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Props"))
 
@@ -215,9 +217,14 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
 	addSurfaceLabel(register, PlotConfig.REGISTER_TEXT)
-	local counterTop = register.CFrame * CFrame.new(0, size.Y / 2, 0)
-	Props.place("Register", counterTop * CFrame.new(-size.X / 6, 0, 0), parent)
-	Props.place("CounterDecor", counterTop * CFrame.new(size.X / 3, 0, 0), parent, id)
+	-- Props go in the strip along the back edge, clear of the scan items on the front edge (RegisterService)
+	local counter = Town.COUNTER
+	local _, propZ = PropFit.counterZ(size.Z, RegisterConfig.ITEM_SIZE.Z, counter.PROP_DEPTH)
+	local counterTop = register.CFrame * CFrame.new(0, size.Y / 2, propZ)
+	local registerBox = Vector3.new(counter.REGISTER.width, counter.REGISTER.height, counter.PROP_DEPTH)
+	Props.fit("Register", registerBox, counterTop * CFrame.new(counter.REGISTER.x, 0, 0), parent)
+	local decorBox = Vector3.new(counter.DECOR.width, counter.DECOR.height, counter.PROP_DEPTH)
+	Props.fit("CounterDecor", decorBox, counterTop * CFrame.new(counter.DECOR.x, 0, 0), parent, id)
 
 	-- Keeps shelves out of the customer queue line
 	local zone = Instance.new("Part")

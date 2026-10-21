@@ -7,6 +7,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RegisterConfig = require(Shared:WaitForChild("Config"):WaitForChild("Register"))
+local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
+local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -159,6 +161,8 @@ local function startCheckout(customer: Customer)
 
 	local register = plot.register
 	local size = RegisterConfig.ITEM_SIZE
+	-- Along the counter's front edge: the register and decor props sit along the back (PlotService)
+	local itemZ = PropFit.counterZ(register.Size.Z, size.Z, Town.COUNTER.PROP_DEPTH)
 	for index, unitPrice in prices do
 		local x = (index - (#prices + 1) / 2) * RegisterConfig.ITEM_SPACING
 		local part = Instance.new("Part")
@@ -167,7 +171,7 @@ local function startCheckout(customer: Customer)
 		part.CanCollide = false
 		part.Size = size
 		part.Color = RegisterConfig.ITEM_COLOR
-		part.CFrame = register.CFrame * CFrame.new(x, (register.Size.Y + size.Y) / 2, 0)
+		part.CFrame = register.CFrame * CFrame.new(x, (register.Size.Y + size.Y) / 2, itemZ)
 
 		local click = Instance.new("ClickDetector")
 		click.MaxActivationDistance = RegisterConfig.REACH

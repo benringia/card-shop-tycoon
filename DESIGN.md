@@ -59,7 +59,7 @@ benches and flowers). **Shops:** an open front; back and side walls outside the 
 baseboard), front corner pillars, a striped awning (4 studs out) with the shop sign on its lip, a roof the client
 hides while you stand inside. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
 trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register and a counter
-decor prop; Products shelves show the Shelf prop (the part stays as the invisible hitbox). **Props:** every
+decor prop along its back edge (scan items lie along the front edge); Products shelves show the Shelf prop (the part stays as the invisible hitbox). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 
@@ -629,6 +629,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
             ├── Place.luau         # which place this is; its wild-map config
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
+            ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits

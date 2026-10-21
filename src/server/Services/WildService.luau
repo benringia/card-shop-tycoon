@@ -203,13 +203,13 @@ local function buildPlaza()
 		portal(folder, "Dungeon", dungeonSpot, Vector3.new(1, 0, 0), "Enter", function(player)
 			notify(player, "Dungeons are coming soon!", false)
 		end)
-		sign(folder, "Dungeons · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, 12, 0)) * CFrame.Angles(0, math.rad(90), 0))
+		sign(folder, "Dungeons · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(90), 0))
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		portal(folder, "The Wild", portalSpot, Vector3.new(-1, 0, 0), "Travel", function(player)
 			WildService.TravelToWild(player)
 		end)
-		sign(folder, "To the Wild", CFrame.new(portalSpot + Vector3.new(0, 12, 0)) * CFrame.Angles(0, math.rad(-90), 0))
+		sign(folder, "To the Wild", CFrame.new(portalSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(-90), 0))
 	end
 
 	local springSpot = vec(Wild.SPRING)

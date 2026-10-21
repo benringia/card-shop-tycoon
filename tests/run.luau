@@ -21,6 +21,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	Frontier = require("./Frontier.spec"),
 	ItemRules = require("./ItemRules.spec"),
 	TownLayout = require("./TownLayout.spec"),
+	PropFit = require("./PropFit.spec"),
 }
 
 local passed, failed = 0, 0

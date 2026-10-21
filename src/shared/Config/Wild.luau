@@ -6,6 +6,7 @@ return {
 	ORIGIN = { x = 0, y = 0, z = 1200 },
 	PLAZA_PORTAL = { x = 84, y = 0, z = 0 }, -- end of the street, past the last plots (rows span x -68..68)
 	SPRING = { x = 0, y = 0, z = 0 }, -- plaza centre between the shop rows
+	PORTAL_SIGN_HEIGHT = 17, -- portal signs float above the portal frame prop (Town.SLOTS.Portal)
 	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN
 	ZONE_SIZE = 120, -- each zone is a square this wide
 	ZONE_GAP = 20, -- path between zones
