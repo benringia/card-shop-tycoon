@@ -657,8 +657,9 @@ local function getPickerEntries(): { PickerEntry }
 	local entries: { PickerEntry } = {}
 	local raised = {}
 	local working = BinderController.GetWorking()
+	local partied = BinderController.GetPartied()
 	for id, beast in BinderController.GetBeasts() do
-		if not working[id] then -- working cards stay in the shop job
+		if not working[id] and not partied[id] then -- working and party cards stay where they are
 			table.insert(raised, beast)
 		end
 	end
