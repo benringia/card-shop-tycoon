@@ -64,6 +64,8 @@ return {
 		assert(slot ~= nil, "no GlassCase slot")
 		expect.equal(slot.stretch, true, "GlassCase stretch")
 		expect.equal(slot.collide, false, "GlassCase collide (the case part is the hitbox)")
+		-- GlassCaseA has its glass doors on its +Z side and a solid wood back on -Z: turned round to face out
+		expect.equal(slot.yaw, 180, "GlassCase yaw")
 	end,
 
 	["the shelf slot stretches"] = function()
