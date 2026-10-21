@@ -39,6 +39,8 @@ type Fight = {
 	extraMarker: BasePart?,
 	partyIds: { string }, -- all party cards: they share the XP
 	spots: { [string]: CFrame }, -- where each fighter (and "monster") stands in the ring
+	center: Vector3, -- the ring; the player may roam within Combat.LEASH_RADIUS of it
+	leashWarnedAt: number,
 	sinceSnapshot: number,
 	died: RBXScriptConnection?,
 	ended: boolean,
@@ -277,10 +279,6 @@ local function endFight(fight: Fight, result: string)
 	else
 		WildService.Unlock(fight.monster)
 	end
-	local root = getRoot(player)
-	if root then
-		root.Anchored = false
-	end
 	PartyService.SetHold(player, nil)
 	PartyService.SetLocked(player, false)
 	local leaderMarker = PartyService.GetMarker(player)
@@ -385,6 +383,8 @@ local function startFight(player: Player, monster: Monster)
 			[leaderId] = CFrame.lookAt(leaderSpot, leaderSpot - direction),
 			extra = CFrame.lookAt(extraSpot, extraSpot - direction),
 		},
+		center = center,
+		leashWarnedAt = 0,
 		sinceSnapshot = 0,
 		died = nil,
 		ended = false,
@@ -395,9 +395,6 @@ local function startFight(player: Player, monster: Monster)
 	PartyService.SetHold(player, fight.spots[leaderId])
 	WildService.SetFightPose(monster, fight.spots.monster)
 	CardService.SetFighting(player, leaderId, true)
-	-- Stand still and watch: no walking out of the fight
-	root.CFrame = CFrame.lookAt(root.Position, Vector3.new(center.X, root.Position.Y, center.Z))
-	root.Anchored = true
 	local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		fight.died = humanoid.Died:Connect(function()
@@ -509,11 +506,32 @@ local function stillValid(fight: Fight): boolean
 		and fight.monster.alive
 end
 
+-- Players may run around during a fight, but not away from it: past the leash they're put back at its edge
+local function keepNear(fight: Fight)
+	local root = getRoot(fight.player)
+	if not root then
+		return
+	end
+	local offset = Vector3.new(root.Position.X - fight.center.X, 0, root.Position.Z - fight.center.Z)
+	if offset.Magnitude <= Combat.LEASH_RADIUS then
+		return
+	end
+	local edge = fight.center + offset.Unit * (Combat.LEASH_RADIUS - 2)
+	local back = Vector3.new(edge.X, root.Position.Y, edge.Z)
+	root.AssemblyLinearVelocity = Vector3.zero
+	;(fight.player.Character :: Model):PivotTo(CFrame.lookAt(back, Vector3.new(fight.center.X, back.Y, fight.center.Z)))
+	if os.clock() - fight.leashWarnedAt > 3 then
+		fight.leashWarnedAt = os.clock()
+		notify(fight.player, "Stay near the fight! (Run to leave it)", true)
+	end
+end
+
 local function stepFights(dt: number)
 	for _, fight in fights do
 		if not stillValid(fight) then
 			endFight(fight, "run")
 		else
+			keepNear(fight)
 			handleEvents(fight, BattleSim.step(fight.sim, dt))
 			if fight.sim.result then
 				endFight(fight, fight.sim.result :: string)

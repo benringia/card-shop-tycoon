@@ -59,6 +59,7 @@ return {
 	-- World
 	FIGHT_RANGE = 12, -- studs from player to monster to start
 	RING_RADIUS = 6, -- fighters stand this far from the ring centre
+	LEASH_RADIUS = 25, -- players may roam this far from the ring during a fight
 	LUNGE_STUDS = 1.5,
 	ACTION_COOLDOWN = 0.25, -- remote rate limit
 	END_SCREEN_SECONDS = 4,

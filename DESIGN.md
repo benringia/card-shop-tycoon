@@ -226,7 +226,7 @@ Roadmap (one sub-project at a time):
 **Battles part 1: wild fights.** A portal at the end of the plaza street moves you to the wild map (same server, far
 from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
 summoned creature fights (it must be rested); in the first 5 s you may call in one more party card (max 2 of yours
-vs 1 monster). Fighters attack on their own (interval from SPD: Common ~2 s, Legendary ~1 s); each has an element
+vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD: Common ~2 s, Legendary ~1 s); each has an element
 ability (8 s cooldown) and the 6 Epic/Legendary cards a signature ability (15 s). Element wheel: Ember > Bloom >
 Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
 (`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
