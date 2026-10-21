@@ -70,7 +70,8 @@ local shopButton: TextButton
 
 local fighting = false
 local fightNames: { [string]: string } = {}
-local monsterId: string? = nil
+local mySide = "a" -- which side of the fight is mine ("a" in the wild)
+local markers: { [string]: BasePart } = {} -- sim fighter id -> its marker part, from the server
 local latest: Snapshot? = nil
 local latestAt = 0 -- os.clock() when `latest` arrived, to count cooldowns down between snapshots
 local fighterViews: { [string]: FighterView } = {}
@@ -118,15 +119,36 @@ end
 -- Markers -------------------------------------------------------------------------------------------------
 
 local function markerFor(id: string): BasePart?
-	if id == "monster" then
-		local folder = workspace:FindFirstChild("Monsters")
-		return if folder and monsterId then folder:FindFirstChild(`Monster_{monsterId}`) :: BasePart? else nil
+	local marker = markers[id]
+	return if marker and marker.Parent then marker else nil
+end
+
+-- The server's two-sided snapshot as the bar's view: my fighters, my call-ins and run, and the enemy's first
+-- fighter as "the monster" (wild fights have exactly one)
+local function toView(raw: any): Snapshot
+	local mine = raw.sides[mySide]
+	local enemy = raw.sides[if mySide == "a" then "b" else "a"]
+	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
+	return {
+		time = raw.time,
+		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true },
+		fighters = mine.fighters,
+		reserves = mine.reserves,
+		callInFor = mine.callInFor,
+		runIn = mine.runIn,
+		runChance = mine.runChance,
+	}
+end
+
+local function addMarkers(list: unknown)
+	if typeof(list) ~= "table" then
+		return
 	end
-	local creatures = workspace:FindFirstChild("Creatures")
-	if not creatures then
-		return nil
+	for id, marker in list :: { [any]: any } do
+		if typeof(id) == "string" and typeof(marker) == "Instance" and marker:IsA("BasePart") then
+			markers[id] = marker
+		end
 	end
-	return (creatures:FindFirstChild(`Creature_{player.UserId}_{id}`) or creatures:FindFirstChild(`Creature_{player.UserId}`)) :: BasePart?
 end
 
 -- A number that floats up over a fighter and fades
@@ -394,16 +416,19 @@ local function onStarted(payload: any)
 		return
 	end
 	fighting = true
-	monsterId = payload.monsterId
+	mySide = if payload.side == "b" then "b" else "a"
+	markers = {}
+	addMarkers(payload.markers)
 	fightNames = if typeof(payload.names) == "table" then payload.names else {}
+	local view = toView(payload.snapshot)
 	endScreen.Visible = false
 	local species = if typeof(payload.species) == "string" then payload.species else "Monster"
 	monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
 	monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
 	fighterViews = {}
-	buildFighters(payload.snapshot)
-	buildCallIns(payload.snapshot)
-	applySnapshot(payload.snapshot)
+	buildFighters(view)
+	buildCallIns(view)
+	applySnapshot(view)
 	setHudHidden(true)
 	bar.Visible = true
 	for _, prompt in prompts do
@@ -555,11 +580,12 @@ function BattleController.Start()
 		if not fighting or typeof(payload) ~= "table" then
 			return
 		end
+		addMarkers(payload.markers)
 		if typeof(payload.events) == "table" then
 			onEvents(payload.events)
 		end
-		if typeof(payload.snapshot) == "table" then
-			applySnapshot(payload.snapshot)
+		if typeof(payload.snapshot) == "table" and typeof(payload.snapshot.sides) == "table" then
+			applySnapshot(toView(payload.snapshot))
 		end
 	end)
 	Remotes.BattleEnded.OnClientEvent:Connect(onEnded)

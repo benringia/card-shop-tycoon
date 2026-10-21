@@ -38,7 +38,7 @@ type Fight = {
 	extraId: string?,
 	extraMarker: BasePart?,
 	partyIds: { string }, -- all party cards: they share the XP
-	spots: { [string]: CFrame }, -- where each fighter (and "monster") stands in the ring
+	spots: { [string]: CFrame }, -- where each fighter stands in the ring, by sim id ("a:<beastId>", "b:m")
 	center: Vector3, -- the ring; the player may roam within Combat.LEASH_RADIUS of it
 	leashWarnedAt: number,
 	sinceSnapshot: number,
@@ -139,23 +139,35 @@ local function getPartyIds(player: Player): { string }
 	return ids
 end
 
+-- Sim ids: the party is side A ("a:<beastId>"), the monster side B ("b:m")
+local MONSTER_ID = "b:m"
+
+local function partyId(beastId: string): string
+	return `a:{beastId}`
+end
+
+-- The sim's result as the player sees it
+local function outcomeOf(result: string?): string
+	return if result == "a" then "win" elseif result == "b" then "lose" else "run"
+end
+
 local function markerFor(fight: Fight, id: string): BasePart?
-	if id == "monster" then
+	if id == MONSTER_ID then
 		return fight.monster.marker
-	elseif id == fight.leaderId then
+	elseif id == partyId(fight.leaderId) then
 		return PartyService.GetMarker(fight.player)
-	elseif id == fight.extraId then
+	elseif fight.extraId and id == partyId(fight.extraId) then
 		return fight.extraMarker
 	end
 	return nil
 end
 
 local function place(fight: Fight, id: string, cframe: CFrame)
-	if id == "monster" then
+	if id == MONSTER_ID then
 		WildService.SetFightPose(fight.monster, cframe)
-	elseif id == fight.leaderId then
+	elseif id == partyId(fight.leaderId) then
 		PartyService.SetHold(fight.player, cframe)
-	elseif id == fight.extraId and fight.extraMarker then
+	elseif fight.extraId and id == partyId(fight.extraId) and fight.extraMarker then
 		fight.extraMarker.CFrame = cframe
 	end
 end
@@ -297,11 +309,9 @@ local function endFight(fight: Fight, result: string)
 	local rested = {}
 	local entries = resting[player]
 	if entries then
-		for _, fighter in fight.sim.fighters do
-			if fighter.fainted then
-				entries[fighter.id] = os.time() + Combat.REST_SECONDS
-				table.insert(rested, fighter.id)
-			end
+		for _, beastId in BattleSim.getFainted(fight.sim, "a") do
+			entries[beastId] = os.time() + Combat.REST_SECONDS
+			table.insert(rested, beastId)
 		end
 	end
 
@@ -355,12 +365,10 @@ local function startFight(player: Player, monster: Monster)
 	if not stats then
 		return
 	end
-	local sim = BattleSim.new(Combat, fighterInput(leader), reserves, {
-		element = monster.element,
-		hp = stats.hp,
-		atk = stats.atk,
-		spd = stats.spd,
-		elite = monster.elite,
+	local sim = BattleSim.new(Combat, { fighters = { fighterInput(leader) }, reserves = reserves, abilities = true, canRun = true }, {
+		fighters = { { id = "m", element = monster.element, hp = stats.hp, atk = stats.atk, spd = stats.spd, elite = monster.elite } },
+		abilities = false,
+		canRun = false,
 	}, rng:NextInteger(1, 2 ^ 30))
 
 	-- The ring: the monster where it stands, facing the player; the leader between them
@@ -379,8 +387,8 @@ local function startFight(player: Player, monster: Monster)
 		extraMarker = nil,
 		partyIds = partyIds,
 		spots = {
-			monster = CFrame.lookAt(center, center + direction),
-			[leaderId] = CFrame.lookAt(leaderSpot, leaderSpot - direction),
+			[MONSTER_ID] = CFrame.lookAt(center, center + direction),
+			[partyId(leaderId)] = CFrame.lookAt(leaderSpot, leaderSpot - direction),
 			extra = CFrame.lookAt(extraSpot, extraSpot - direction),
 		},
 		center = center,
@@ -392,8 +400,8 @@ local function startFight(player: Player, monster: Monster)
 	fights[player] = fight
 	WildService.Lock(monster, player)
 	PartyService.SetLocked(player, true)
-	PartyService.SetHold(player, fight.spots[leaderId])
-	WildService.SetFightPose(monster, fight.spots.monster)
+	PartyService.SetHold(player, fight.spots[partyId(leaderId)])
+	WildService.SetFightPose(monster, fight.spots[MONSTER_ID])
 	CardService.SetFighting(player, leaderId, true)
 	local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
 	if humanoid then
@@ -406,7 +414,7 @@ local function startFight(player: Player, monster: Monster)
 	for _, beastId in partyIds do
 		local beast = CardService.GetBeast(player, beastId)
 		if beast then
-			names[beastId] = Cards.ById[beast.cardId].name
+			names[partyId(beastId)] = Cards.ById[beast.cardId].name
 		end
 	end
 	Remotes.BattleStarted:FireClient(player, {
@@ -416,6 +424,8 @@ local function startFight(player: Player, monster: Monster)
 		elite = monster.elite,
 		element = monster.element,
 		names = names,
+		side = "a",
+		markers = { [partyId(leaderId)] = PartyService.GetMarker(player), [MONSTER_ID] = monster.marker },
 		snapshot = snapshot(fight),
 	})
 end
@@ -450,25 +460,29 @@ local function onStartFight(player: Player, monsterId: unknown)
 	startFight(player, monster :: Monster)
 end
 
-local function onCallIn(player: Player, beastId: unknown)
+local function onCallIn(player: Player, id: unknown)
 	local fight = fights[player]
-	if not allowCallIn(player) or not fight or typeof(beastId) ~= "string" then
+	if not allowCallIn(player) or not fight or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
 		return
 	end
-	local ok = BattleSim.callIn(fight.sim, beastId)
+	local ok = BattleSim.callIn(fight.sim, id)
 	if not ok then
 		return
 	end
+	local beastId = string.sub(id, 3)
 	fight.extraId = beastId
-	fight.spots[beastId] = fight.spots.extra
+	fight.spots[id] = fight.spots.extra
 	fight.extraMarker = PartyService.CreateMarker(player, beastId, fight.spots.extra)
 	CardService.SetFighting(player, beastId, true)
-	handleEvents(fight, { { type = "callin", from = beastId } })
+	-- The new creature's marker, so the client can float numbers over it
+	Remotes.BattleEvent:FireClient(player, { events = {}, markers = { [id] = fight.extraMarker }, snapshot = snapshot(fight) })
+	handleEvents(fight, { { type = "callin", from = id } })
 end
 
 local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	local fight = fights[player]
-	if not allowAbility(player) or not fight or typeof(fighterId) ~= "string" then
+	-- Only your own side's fighters (side A)
+	if not allowAbility(player) or not fight or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
 		return
 	end
 	if which ~= "element" and which ~= "signature" then
@@ -478,7 +492,7 @@ local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	if events then
 		handleEvents(fight, events)
 		if fight.sim.result then
-			endFight(fight, fight.sim.result :: string)
+			endFight(fight, outcomeOf(fight.sim.result))
 		end
 	end
 end
@@ -488,9 +502,9 @@ local function onRun(player: Player)
 	if not allowRun(player) or not fight then
 		return
 	end
-	handleEvents(fight, BattleSim.tryRun(fight.sim))
+	handleEvents(fight, BattleSim.tryRun(fight.sim, "a"))
 	if fight.sim.result then
-		endFight(fight, fight.sim.result :: string)
+		endFight(fight, outcomeOf(fight.sim.result))
 	end
 end
 
@@ -534,7 +548,7 @@ local function stepFights(dt: number)
 			keepNear(fight)
 			handleEvents(fight, BattleSim.step(fight.sim, dt))
 			if fight.sim.result then
-				endFight(fight, fight.sim.result :: string)
+				endFight(fight, outcomeOf(fight.sim.result))
 			else
 				fight.sinceSnapshot += dt
 				if fight.sinceSnapshot >= SNAPSHOT_SECONDS then
