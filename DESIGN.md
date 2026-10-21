@@ -452,7 +452,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── UIController.luau       # bottom-right status (cash, level/XP, buffs), toasts
+    │   │   ├── UIController.luau       # bottom-right status (cash, level/XP, buffs), toasts, side toasts for sales
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # build menu, shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau

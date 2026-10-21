@@ -3,6 +3,7 @@
 -- Other controllers add their panels to UIController.GetScreenGui(), and status items to GetStatusFrame().
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -17,6 +18,15 @@ local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
 -- On touch screens it sits above the jump button.
 local STATUS_MARGIN = 12
 local TOUCH_JUMP_CLEARANCE = 130
+-- Fixed sizes, not AutomaticSize: an auto-sized frame anchored to the right edge can lay out past the screen edge
+local STATUS_WIDTH = 180
+local STATUS_HEIGHT = 130 -- buff badge 48 + cash 44 + XP 26 + gaps
+local STATUS_ROW_WIDTH = 420 -- party bar + gap + status column; spare width is empty and lets clicks through
+-- Side toasts (sales): small, right of the middle-left HUD buttons, newest at the bottom
+local SIDE_TOAST_SECONDS = 3
+local SIDE_TOAST_MAX = 4
+local SIDE_TOAST_COLOR = Color3.fromRGB(120, 230, 120)
+local SIDE_FADE = TweenInfo.new(0.2)
 
 local player = Players.LocalPlayer
 
@@ -25,6 +35,8 @@ local UIController = {}
 local screenGui: ScreenGui
 local statusRow: Frame
 local statusFrame: Frame
+local sideToasts: Frame
+local sideToastOrder = 0
 local cashLabel: TextLabel
 local levelLabel: TextLabel
 local xpLabel: TextLabel
@@ -81,6 +93,55 @@ function UIController.Notify(message: string, isError: boolean?, duration: numbe
 	return token
 end
 
+-- A small toast at the left (sales and other money coming in): noticeable without covering the screen
+function UIController.NotifySide(message: string)
+	sideToastOrder += 1
+	local label = UIKit.label(sideToasts, message, Enum.Font.GothamBold, 14, SIDE_TOAST_COLOR)
+	label.LayoutOrder = sideToastOrder
+	label.Size = UDim2.fromOffset(0, 30)
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	label.BackgroundTransparency = 1
+	label.TextTransparency = 1
+	UIKit.corner(label, 8)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = label
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = SIDE_TOAST_COLOR
+	stroke.Transparency = 1
+	stroke.Parent = label
+	TweenService:Create(label, SIDE_FADE, { BackgroundTransparency = 0.25, TextTransparency = 0 }):Play()
+	TweenService:Create(stroke, SIDE_FADE, { Transparency = 0.5 }):Play()
+
+	-- Too many at once: drop the oldest
+	local shown = {}
+	for _, child in sideToasts:GetChildren() do
+		if child:IsA("TextLabel") then
+			table.insert(shown, child)
+		end
+	end
+	table.sort(shown, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	for index = 1, #shown - SIDE_TOAST_MAX do
+		shown[index]:Destroy()
+	end
+
+	task.delay(SIDE_TOAST_SECONDS, function()
+		if not label.Parent then
+			return
+		end
+		TweenService:Create(label, SIDE_FADE, { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+		TweenService:Create(stroke, SIDE_FADE, { Transparency = 1 }):Play()
+		task.delay(SIDE_FADE.Time, function()
+			label:Destroy()
+		end)
+	end)
+end
+
 -- Hides a toast early (e.g. a hint once it's been followed); does nothing if a newer toast replaced it
 function UIController.Dismiss(token: number)
 	if toastToken == token then
@@ -128,13 +189,13 @@ function UIController.Start()
 	statusRow.AnchorPoint = Vector2.new(1, 1)
 	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
 	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
-	statusRow.Size = UDim2.new()
-	statusRow.AutomaticSize = Enum.AutomaticSize.XY
+	statusRow.Size = UDim2.fromOffset(STATUS_ROW_WIDTH, STATUS_HEIGHT)
 	statusRow.BackgroundTransparency = 1
 	statusRow.Parent = screenGui
 	local rowLayout = Instance.new("UIListLayout")
 	rowLayout.FillDirection = Enum.FillDirection.Horizontal
 	rowLayout.Padding = UDim.new(0, 8)
+	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	rowLayout.Parent = statusRow
@@ -142,8 +203,7 @@ function UIController.Start()
 	statusFrame = Instance.new("Frame")
 	statusFrame.Name = "Status"
 	statusFrame.LayoutOrder = 10
-	statusFrame.Size = UDim2.fromOffset(180, 0)
-	statusFrame.AutomaticSize = Enum.AutomaticSize.Y
+	statusFrame.Size = UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT)
 	statusFrame.BackgroundTransparency = 1
 	statusFrame.Parent = statusRow
 	local statusLayout = Instance.new("UIListLayout")
@@ -156,7 +216,7 @@ function UIController.Start()
 	cashLabel = Instance.new("TextLabel")
 	cashLabel.Name = "Cash"
 	cashLabel.LayoutOrder = 2
-	cashLabel.Size = UDim2.fromOffset(180, 44)
+	cashLabel.Size = UDim2.fromOffset(STATUS_WIDTH, 44)
 	cashLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	cashLabel.BackgroundTransparency = 0.2
 	cashLabel.Font = Enum.Font.FredokaOne
@@ -209,6 +269,17 @@ function UIController.Start()
 	toastLabel.Parent = screenGui
 	UIKit.corner(toastLabel, 12)
 
+	sideToasts = Instance.new("Frame")
+	sideToasts.Name = "SideToasts"
+	sideToasts.Position = UDim2.new(0, 116, 0.5, -165) -- right of the HUD buttons, level with the top one
+	sideToasts.Size = UDim2.fromOffset(300, 150)
+	sideToasts.BackgroundTransparency = 1
+	sideToasts.Parent = screenGui
+	local sideLayout = Instance.new("UIListLayout")
+	sideLayout.Padding = UDim.new(0, 4)
+	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sideLayout.Parent = sideToasts
+
 	local toastSize = Instance.new("UISizeConstraint")
 	toastSize.MaxSize = Vector2.new(480, math.huge)
 	toastSize.Parent = toastLabel
@@ -218,7 +289,16 @@ function UIController.Start()
 	player:GetAttributeChangedSignal("Cash"):Connect(updateCash)
 	player:GetAttributeChangedSignal("XP"):Connect(updateXp)
 	player:GetAttributeChangedSignal("Level"):Connect(updateXp)
-	Remotes.Notify.OnClientEvent:Connect(UIController.Notify)
+	Remotes.Notify.OnClientEvent:Connect(function(message: string, isError: boolean?, style: string?)
+		if typeof(message) ~= "string" then
+			return
+		end
+		if style == "side" then
+			UIController.NotifySide(message)
+		else
+			UIController.Notify(message, isError == true)
+		end
+	end)
 	Remotes.LevelUp.OnClientEvent:Connect(queueLevelUp)
 end
 

@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local NAMES = {
 	"OpenOrderMenu", -- server → client: owner used their order computer
 	"OrderProduct", -- client → server: (productId: string)
-	"Notify", -- server → client: (message: string, isError: boolean)
+	"Notify", -- server → client: (message: string, isError: boolean, style: "side"?) side = small toast at the left (sales)
 	"PlaceShelf", -- client → server: (shelfId: string, gridX: number, gridZ: number, rotation: number)
 	"MoveShelf", -- client → server: (uid: string, gridX: number, gridZ: number, rotation: number)
 	"MoveFixture", -- client → server: (fixtureId: string, gridX: number, gridZ: number, rotation: number)

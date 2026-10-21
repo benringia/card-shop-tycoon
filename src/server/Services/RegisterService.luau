@@ -109,7 +109,7 @@ local function completeSale(checkout: Checkout)
 	EconomyService.AddXP(owner, math.max(RegisterConfig.MIN_XP_PER_SALE, math.round(total)))
 	DataService.AddStat(owner, "customersServed", 1)
 	DataService.AddStat(owner, "totalEarned", total)
-	notify(owner, string.format("Sale! +$%.2f", total), false)
+	Remotes.Notify:FireClient(owner, string.format("Sale! +$%.2f", total), false, "side")
 end
 
 local function onScan(player: Player, plot: Plot, part: BasePart)
