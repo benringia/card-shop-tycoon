@@ -12,6 +12,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	JobRules = require("./JobRules.spec"),
 	LevelMath = require("./LevelMath.spec"),
 	PartyRules = require("./PartyRules.spec"),
+	CreatureMotion = require("./CreatureMotion.spec"),
 }
 
 local passed, failed = 0, 0
