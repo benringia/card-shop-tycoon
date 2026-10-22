@@ -240,7 +240,34 @@ Each pack = 5 cards:
 
 ### 5.7 Pack opening feel (important)
 - Tap pack → tear animation → cards fan out face down → tap to flip each.
-- Hit slot flips last with a build-up. Rarity-colored glow + sound. Legendary = screen flash, server-wide chat announcement ("Ben pulled a FOIL Solarion!").
+- Hit slot flips last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
+  - **Tease** before the flip: the face-down card glows in its rarity colour, breathes and shakes, and the
+    screen dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons flip at once).
+  - **After the flip:** sparks burst out and a banner pops ("RARE!", "VERY RARE!"); the glow stays behind the card.
+  - **Epic and Legendary** get a spotlight: the card big in the middle, turning light rays, banner, confetti, until
+    tapped (or T). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
+  - **Foil** adds sparks, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!", a plain foil "FOIL!").
+  - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
+- Card faces (`Util/CardFace`, `Config/CardDesign`), full-art TCG style everywhere cards show: the art fills the
+  card (element colour and glow with the element emoji until real creature art exists) under a frame image per
+  rarity plus Frontier (thick metal border, silver trim on Common/Rare and gold from Very Rare, rarity ribbon
+  top-left, level hex top-right, a dark info panel over the lower half with an element socket and a divider, 0
+  to 4 rarity studs on the bottom edge, a crown on Legendary and Frontier). Every card, at any size, shows the
+  same rows: name · star slots (faint when empty) and a GRADE pill in its colour · "Level 3 · Ember" · divider ·
+  💪Power ❤️HP ⚔️ATK 💨SPD · value. The binder's chip row under each card has copies, best grade and level. Effects on the art: Epic and up a white shine now and then, foil a rainbow holo and a
+  FOIL tag, Frontier an aurora rim and constant holo. Frames are drawn by `tools/card-frames/make_frames.py`
+  (Pillow; PNGs in `assets/ui/card-frames`, 600x840) and uploaded to the owner's account; a missing frame id
+  falls back to a plain rarity-coloured card. The face-down back is the "Glowing neon card frame" decal; glows use
+  the "Glow Circle / Radial Glow" decal (both public Creator Store images).
+- Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
+  server's plain card part (1.05 x 1.5 studs; glass counters lie them on the bed, rows 1.12 apart), with the asking
+  price in gold ("PRICE $3.00") in the value row. To make visitors want to buy, the face glows (it ignores the
+  room's light), a neon halo in the rarity colour sits just behind it (pulsing on Epic and up), and rarer cards
+  light the case and sparkle more (`Config/CardEffects` BY_RARITY: glow, range, sparkles, halo). Grade S copies
+  glow brighter and sparkle more (GRADE_S). Grade S Legendaries and Grade S Frontier cards are "supreme": a solid
+  pulsing halo, golden sparkles and blue-white lightning bolts crackling off the card's edges every 0.35-1.1s
+  (SUPREME; no bolts while the camera is over 70 studs away). Their card face also gets a spinning gold rim round
+  the art everywhere (binder, packs, cases; `Config/CardDesign` SUPREME_RIM).
 - "Open all" button for fast opening once players have lots of packs.
 
 ### 5.8 Glimmerbeasts (cards that grow)
@@ -581,7 +608,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # two-page binder (3x3 pockets, fewer bigger ones on phones), search + filters, hover tooltips
+    │   │   ├── BinderController.luau   # two-page binder (3x3 pockets, fewer bigger ones on short screens, at least 3 a page; a chip row under each card: copies, best grade and level), search + filters, hover tooltips, big-card detail view
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
@@ -595,9 +622,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
-    │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
+    │   │   └── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers
+    │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
     └── shared/                 # → ReplicatedStorage
@@ -615,6 +643,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
+        │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
+        │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
@@ -654,6 +684,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
+            ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 

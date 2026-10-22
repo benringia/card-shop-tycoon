@@ -27,8 +27,8 @@ return {
 	SLOTS_OFFSET_Y = -0.35, -- shifts the card grid down a little on the case face
 	CASED_CARD_INSET = 0.45, -- cases drawn with a prop: cards stand this far behind the case's front face
 	CASED_CARD_RAISE = 0.25, -- and this much higher, on the cabinet's shelves
-	CARD_SIZE = Vector3.new(1.5, 1.4, 0.1),
+	CARD_SIZE = Vector3.new(1.05, 1.5, 0.08), -- the card's 0.7 shape; the client draws the card face on it
 	-- Glass counters (Shelves cardsFlat, drawn with a prop): smaller cards lying on the bed, leaning up toward
 	-- the front so customers can read them. BED = height of the bed as a fraction of the case height.
-	FLAT = { SCALE = 0.62, BED = 0.74, TILT = 20, SPACING = Vector2.new(1.9, 0.95) },
+	FLAT = { SCALE = 0.62, BED = 0.74, TILT = 20, SPACING = Vector2.new(1.9, 1.12) },
 }

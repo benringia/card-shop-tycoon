@@ -142,6 +142,26 @@ function PackService.OpenTestPack(player: Player)
 	deliverPack(player, productId, results)
 end
 
+-- Studio only (DevService /raritypack): one card of each rarity, rarest last, to see every reveal at once
+function PackService.OpenRarityPack(player: Player, foil: boolean)
+	local productId = "FirstSparkPack"
+	local tiers = {}
+	for name, tier in Rarities.Tiers do
+		if Cards.ByRarity[name] then
+			table.insert(tiers, { name = name, order = tier.order })
+		end
+	end
+	table.sort(tiers, function(a, b)
+		return a.order < b.order
+	end)
+	local results = {}
+	for _, tier in tiers do
+		local pool = Cards.ByRarity[tier.name]
+		table.insert(results, { cardId = pool[rng:NextInteger(1, #pool)].id, foil = foil, grade = BeastRules.rollGrade(rng:NextNumber()) })
+	end
+	deliverPack(player, productId, results)
+end
+
 function PackService.Start()
 	Remotes.RipPack.OnServerEvent:Connect(onRip)
 	Remotes.PullRevealed.OnServerEvent:Connect(onPullRevealed)

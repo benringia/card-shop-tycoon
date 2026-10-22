@@ -1,7 +1,9 @@
 --!strict
 -- Pack opening: the "Rip a pack" button (while carrying a box of packs) and the opening screen.
--- Tap the pack to tear it, then tap each face-down card to flip it. The hit slot flips last with a
--- rarity-coloured build-up. The server already rolled the cards; this only plays the reveal.
+-- Tap the pack to tear it, then tap each face-down card to flip it. The hit slot flips last. Better pulls
+-- tease first (the card glows in its rarity colour and shakes), then celebrate: sparks, confetti, a banner,
+-- and a big spotlight for Epic and up (Config/CardReveal). The server already rolled the cards; this only
+-- plays the reveal.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -10,6 +12,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local CardDesign = require(Config:WaitForChild("CardDesign"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
+local CardReveal = require(Config:WaitForChild("CardReveal"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Packs = require(Config:WaitForChild("Packs"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
@@ -18,6 +23,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local RevealRules = require(Shared:WaitForChild("Util"):WaitForChild("RevealRules"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -29,6 +35,7 @@ local AnnouncementController = require(Controllers:WaitForChild("AnnouncementCon
 type Card = typeof(Cards.List[1])
 type Pack = typeof(Packs.ById[""])
 type PullResult = { cardId: string, foil: boolean, grade: string }
+type Plan = RevealRules.Plan
 
 type CardView = {
 	card: Card,
@@ -37,11 +44,22 @@ type CardView = {
 	button: TextButton,
 	inner: Frame,
 	stroke: UIStroke,
+	glow: ImageLabel, -- the tease glow behind the card
+	plan: Plan,
 	flipped: boolean,
 }
 
 local RIP_WAIT_SECONDS = 3 -- re-enable the button if the server never answers
 local RIP_KEY = Enum.KeyCode.T -- rips a pack, then advances the opening screen (tear → flip → done)
+local BACKDROP_TRANSPARENCY = 0.25
+local WHITE = Color3.new(1, 1, 1)
+local CONFETTI_COLORS = {
+	Color3.fromRGB(255, 90, 120),
+	Color3.fromRGB(255, 200, 60),
+	Color3.fromRGB(90, 200, 255),
+	Color3.fromRGB(120, 230, 120),
+	Color3.fromRGB(200, 120, 255),
+}
 
 local player = Players.LocalPlayer
 
@@ -56,6 +74,10 @@ local statusLabel: TextLabel
 local doneButton: TextButton
 local oddsPanel: TextLabel
 local flash: Frame
+local backdrop: Frame
+local fxLayer: Frame -- sparks, confetti and banners float here, above the cards
+local spotlight: Instance? = nil -- the big card view; a tap (or T) closes it
+local closeSpotlight: (() -> ())? = nil
 
 local isOpening = false
 local waitingForServer = false
@@ -139,16 +161,8 @@ local function flipCard(view: CardView)
 	tween(view.inner, PackOpening.FLIP_SECONDS, { Size = UDim2.fromScale(1, 1) }).Completed:Wait()
 end
 
--- The hit slot glows in its rarity colour and pulses before it flips
-local function buildUp(view: CardView)
-	view.stroke.Color = CardFace.getRarityColor(view.card.rarity)
-	local pulses = 3
-	local pulseSeconds = PackOpening.HIT_BUILDUP_SECONDS / (pulses * 2)
-	for _ = 1, pulses do
-		tween(view.stroke, pulseSeconds, { Thickness = 8 }).Completed:Wait()
-		tween(view.stroke, pulseSeconds, { Thickness = 3 }).Completed:Wait()
-	end
-	playSound(PackOpening.HIT_SOUND_IDS[view.card.rarity] or "")
+local function getRevealColor(view: CardView): Color3
+	return if CardFace.isFrontier(view.card) then CardEffects.FRONTIER.AURORA[1] else CardFace.getRarityColor(view.card.rarity)
 end
 
 local function flashScreen()
@@ -156,6 +170,275 @@ local function flashScreen()
 	flash.Visible = true
 	tween(flash, PackOpening.FLASH_SECONDS, { BackgroundTransparency = 1 }).Completed:Wait()
 	flash.Visible = false
+end
+
+local function setDim(dim: number, seconds: number)
+	tween(backdrop, seconds, { BackgroundTransparency = BACKDROP_TRANSPARENCY * (1 - dim) })
+end
+
+-- Before the flip: the face-down card glows in its rarity colour, breathes and shakes, building up
+local function tease(view: CardView)
+	local plan = view.plan
+	if plan.tease <= 0 then
+		return
+	end
+	local color = getRevealColor(view)
+	view.glow.ImageColor3 = color
+	view.glow.Visible = true
+	view.stroke.Color = color
+	setDim(plan.dim, plan.tease / 2)
+
+	local breath = CardReveal.TEASE_PULSE_SECONDS
+	local elapsed = 0
+	local wobble = 1
+	while elapsed < plan.tease do
+		local strength = 0.4 + 0.6 * elapsed / plan.tease
+		local glowSize = 1.5 + 0.5 * strength
+		tween(view.glow, breath, { ImageTransparency = 0.6 - 0.5 * strength, Size = UDim2.fromScale(glowSize, glowSize) })
+		tween(view.inner, breath / 2, { Rotation = plan.shake * strength * wobble })
+		tween(view.stroke, breath, { Thickness = 3 + 5 * strength })
+		wobble = -wobble
+		task.wait(breath)
+		elapsed += breath
+	end
+	tween(view.inner, 0.08, { Rotation = 0 })
+	playSound(PackOpening.HIT_SOUND_IDS[view.card.rarity] or "")
+end
+
+-- Sparks flying out from a point on the screen
+local function burst(center: Vector2, count: number, color: Color3, parent: Instance)
+	for _ = 1, count do
+		local spark = Instance.new("ImageLabel")
+		spark.BackgroundTransparency = 1
+		spark.Image = CardDesign.IMAGES.GLOW
+		spark.ImageColor3 = if math.random() < 0.35 then WHITE else color
+		spark.AnchorPoint = Vector2.new(0.5, 0.5)
+		local size = math.random(14, 34)
+		spark.Size = UDim2.fromOffset(size, size)
+		spark.Position = UDim2.fromOffset(center.X, center.Y)
+		spark.ZIndex = 30
+		spark.Parent = parent
+		local angle = math.random() * math.pi * 2
+		local goal = center + Vector2.new(math.cos(angle), math.sin(angle)) * math.random(120, 320)
+		tween(spark, CardReveal.BURST_SECONDS, { Position = UDim2.fromOffset(goal.X, goal.Y), ImageTransparency = 1, Size = UDim2.fromOffset(4, 4) })
+		task.delay(CardReveal.BURST_SECONDS, function()
+			spark:Destroy()
+		end)
+	end
+end
+
+local function confetti(count: number, parent: GuiObject)
+	local width = parent.AbsoluteSize.X
+	local height = parent.AbsoluteSize.Y
+	for _ = 1, count do
+		local piece = Instance.new("Frame")
+		piece.BorderSizePixel = 0
+		piece.BackgroundColor3 = CONFETTI_COLORS[math.random(#CONFETTI_COLORS)]
+		piece.Size = UDim2.fromOffset(math.random(8, 14), math.random(14, 22))
+		piece.AnchorPoint = Vector2.new(0.5, 0.5)
+		local x = math.random() * width
+		piece.Position = UDim2.fromOffset(x, -20 - math.random() * height * 0.3)
+		piece.Rotation = math.random(0, 360)
+		piece.ZIndex = 29
+		piece.Parent = parent
+		local seconds = CardReveal.CONFETTI_SECONDS * (0.7 + math.random() * 0.5)
+		local info = TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		TweenService:Create(piece, info, {
+			Position = UDim2.fromOffset(x + math.random(-120, 120), height + 30),
+			Rotation = piece.Rotation + math.random(-540, 540),
+		}):Play()
+		task.delay(seconds, function()
+			piece:Destroy()
+		end)
+	end
+end
+
+-- A word that pops in (RARE!, LEGENDARY!), its bottom centre at a point
+local function showBanner(text: string, color: Color3, bottom: Vector2, width: number, parent: Instance): TextLabel
+	local banner = Instance.new("TextLabel")
+	banner.BackgroundTransparency = 1
+	banner.AnchorPoint = Vector2.new(0.5, 1)
+	banner.Position = UDim2.fromOffset(bottom.X, bottom.Y)
+	banner.Size = UDim2.fromOffset(math.max(width, 220), 64)
+	banner.Font = Enum.Font.FredokaOne
+	banner.Text = text
+	banner.TextColor3 = color:Lerp(WHITE, 0.25)
+	banner.TextScaled = true
+	banner.ZIndex = 31
+	banner.Parent = parent
+	local outline = Instance.new("UIStroke")
+	outline.Color = color:Lerp(Color3.new(0, 0, 0), 0.6)
+	outline.Thickness = 3
+	outline.Parent = banner
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0
+	scale.Parent = banner
+	local info = TweenInfo.new(CardReveal.BANNER_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	TweenService:Create(scale, info, { Scale = 1 }):Play()
+	return banner
+end
+
+-- Light rays turning behind a point: thin bars fading outwards, each on its own turned pivot
+local function addRays(parent: Instance, center: Vector2, radius: number, color: Color3)
+	local holder = Instance.new("Frame")
+	holder.Name = "Rays"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromOffset(center.X, center.Y)
+	holder.Size = UDim2.fromOffset(radius * 2, radius * 2)
+	holder.ZIndex = 21
+	holder.Parent = parent
+	for index = 1, CardReveal.RAY_COUNT do
+		local pivot = Instance.new("Frame")
+		pivot.BackgroundTransparency = 1
+		pivot.AnchorPoint = Vector2.new(0.5, 0.5)
+		pivot.Position = UDim2.fromScale(0.5, 0.5)
+		pivot.Size = UDim2.fromScale(1, 1)
+		pivot.Rotation = index * 360 / CardReveal.RAY_COUNT
+		pivot.ZIndex = 21
+		pivot.Parent = holder
+
+		local ray = Instance.new("Frame")
+		ray.BorderSizePixel = 0
+		ray.AnchorPoint = Vector2.new(0.5, 1)
+		ray.Position = UDim2.fromScale(0.5, 0.5)
+		ray.Size = UDim2.fromScale(0.12, 0.5)
+		ray.BackgroundColor3 = color:Lerp(WHITE, 0.3)
+		ray.ZIndex = 21
+		ray.Parent = pivot
+		local fade = Instance.new("UIGradient")
+		fade.Rotation = -90
+		fade.Transparency = NumberSequence.new(0.35, 1)
+		fade.Parent = ray
+	end
+	local info = TweenInfo.new(CardReveal.RAY_TURN_SECONDS, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
+	TweenService:Create(holder, info, { Rotation = 360 }):Play()
+end
+
+local function getCenter(object: GuiObject): Vector2
+	return object.AbsolutePosition + object.AbsoluteSize / 2
+end
+
+-- Epic and up: the card big in the middle with a glow (and rays), until the player taps
+local function showSpotlight(view: CardView)
+	local plan = view.plan
+	local color = getRevealColor(view)
+	local overlay = Instance.new("TextButton")
+	overlay.Name = "Spotlight"
+	overlay.Text = ""
+	overlay.AutoButtonColor = false
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 0.25
+	overlay.ZIndex = 20
+	overlay.Parent = gui
+
+	local cardSize = view.button.AbsoluteSize * CardReveal.SPOTLIGHT_SCALE
+	local maxHeight = overlay.AbsoluteSize.Y * CardReveal.SPOTLIGHT_MAX_HEIGHT
+	if cardSize.Y > maxHeight then
+		cardSize *= maxHeight / cardSize.Y
+	end
+	local center = overlay.AbsoluteSize / 2 + Vector2.new(0, cardSize.Y * 0.04)
+	if plan.rays then
+		addRays(overlay, center, cardSize.Y * 1.1, color)
+	end
+
+	local glow = Instance.new("ImageLabel")
+	glow.BackgroundTransparency = 1
+	glow.Image = CardDesign.IMAGES.GLOW
+	glow.ImageColor3 = color
+	glow.ImageTransparency = 0.15
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.fromOffset(center.X, center.Y)
+	glow.Size = UDim2.fromOffset(cardSize.Y * 1.5, cardSize.Y * 1.5)
+	glow.ZIndex = 22
+	glow.Parent = overlay
+
+	local card = Instance.new("Frame")
+	card.AnchorPoint = Vector2.new(0.5, 0.5)
+	card.Position = UDim2.fromOffset(center.X, center.Y)
+	card.Size = UDim2.fromOffset(cardSize.X, cardSize.Y)
+	card.ZIndex = 23
+	card.Parent = overlay
+	UIKit.corner(card, 16)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = card
+	CardFace.render(card, stroke, view.card, view.foil, true, { level = 1, stars = BeastRules.START_STARS, grade = view.grade })
+	stroke.Thickness = 6
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.3
+	scale.Parent = card
+	TweenService:Create(scale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+
+	if plan.banner then
+		showBanner(plan.banner, color, center - Vector2.new(0, cardSize.Y / 2 + 8), cardSize.X * 1.4, overlay)
+	end
+	local hint = UIKit.label(overlay, "Tap to continue", Enum.Font.GothamBold, 20, UIKit.Colors.Subtext)
+	hint.TextXAlignment = Enum.TextXAlignment.Center
+	hint.AnchorPoint = Vector2.new(0.5, 0)
+	hint.Position = UDim2.fromOffset(center.X, center.Y + cardSize.Y / 2 + 12)
+	hint.Size = UDim2.fromOffset(260, 30)
+	hint.ZIndex = 31
+
+	burst(center, plan.burst, color, overlay)
+	if plan.confetti > 0 then
+		confetti(plan.confetti, overlay)
+	end
+
+	local closed = Instance.new("BindableEvent")
+	local function closeIt()
+		if spotlight ~= overlay then
+			return
+		end
+		spotlight = nil
+		closeSpotlight = nil
+		overlay:Destroy()
+		closed:Fire()
+	end
+	spotlight = overlay
+	closeSpotlight = closeIt
+	-- A short pause first, so a double tap on the flip doesn't skip the moment
+	task.delay(CardReveal.SPOTLIGHT_TAP_DELAY, function()
+		overlay.Activated:Connect(closeIt)
+	end)
+	closed.Event:Wait()
+	closed:Destroy()
+end
+
+-- After the flip: sparks, confetti and a banner by the card, or the spotlight for big pulls
+local function celebrate(view: CardView)
+	local plan = view.plan
+	if plan.flash then
+		task.spawn(flashScreen)
+	end
+	if plan.tease > 0 then
+		-- The glow stays behind the card, softer
+		tween(view.glow, 0.4, { ImageTransparency = 0.3, Size = UDim2.fromScale(1.5, 1.5) })
+	end
+	if plan.spotlight then
+		showSpotlight(view)
+		setDim(0, 0.3)
+		return
+	end
+	local color = getRevealColor(view)
+	local center = getCenter(view.button)
+	burst(center, plan.burst, color, fxLayer)
+	if plan.confetti > 0 then
+		confetti(plan.confetti, fxLayer)
+	end
+	local text = plan.banner
+	if text then
+		local size = view.button.AbsoluteSize
+		local banner = showBanner(text, color, center - Vector2.new(0, size.Y / 2), size.X * 1.3, fxLayer)
+		task.delay(CardReveal.BANNER_HOLD_SECONDS, function()
+			tween(banner, 0.3, { TextTransparency = 1 })
+			task.delay(0.3, function()
+				banner:Destroy()
+			end)
+		end)
+	end
+	setDim(0, 0.4)
 end
 
 local function finish()
@@ -178,15 +461,11 @@ local function onCardTapped(view: CardView)
 	end
 
 	busy = true
-	if isHit then
-		buildUp(view)
-	end
+	tease(view)
 	flipCard(view)
 	view.flipped = true
 	flippedCount += 1
-	if view.card.rarity == "Legendary" then
-		task.spawn(flashScreen)
-	end
+	celebrate(view)
 	-- Big pulls go to chat only now that they're revealed: ours locally, everyone else via the server
 	if CardRules.shouldAnnounce(view.card, view.foil) then
 		AnnouncementController.Show(player.DisplayName, view.card, view.foil)
@@ -227,6 +506,19 @@ local function makeCardView(card: Card, foil: boolean, grade: string, order: num
 	stroke.Parent = inner
 
 	CardFace.renderBack(inner, stroke)
+	inner.ZIndex = 2
+
+	local glow = Instance.new("ImageLabel")
+	glow.Name = "Glow"
+	glow.BackgroundTransparency = 1
+	glow.Image = CardDesign.IMAGES.GLOW
+	glow.ImageTransparency = 0.6
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.fromScale(0.5, 0.5)
+	glow.Size = UDim2.fromScale(1.5, 1.5)
+	glow.ZIndex = 1
+	glow.Visible = false
+	glow.Parent = button
 
 	local view: CardView = {
 		card = card,
@@ -235,6 +527,8 @@ local function makeCardView(card: Card, foil: boolean, grade: string, order: num
 		button = button,
 		inner = inner,
 		stroke = stroke,
+		glow = glow,
+		plan = RevealRules.plan(CardReveal, card.rarity, foil, CardFace.isFrontier(card)),
 		flipped = false,
 	}
 	button.Activated:Connect(function()
@@ -295,6 +589,10 @@ local function tearPack()
 end
 
 local function close()
+	if closeSpotlight then
+		closeSpotlight()
+	end
+	setDim(0, 0)
 	gui.Enabled = false
 	oddsPanel.Visible = false
 	clearCards()
@@ -331,13 +629,14 @@ local function buildScreen()
 	gui.IgnoreGuiInset = true
 	gui.ResetOnSpawn = false
 	gui.Enabled = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	local backdrop = Instance.new("Frame")
+	backdrop = Instance.new("Frame")
 	backdrop.Name = "Backdrop"
 	backdrop.Size = UDim2.fromScale(1, 1)
 	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
-	backdrop.BackgroundTransparency = 0.25
+	backdrop.BackgroundTransparency = BACKDROP_TRANSPARENCY
 	backdrop.Active = true -- swallow taps so the world behind isn't clicked
 	backdrop.Parent = gui
 
@@ -415,18 +714,27 @@ local function buildScreen()
 	boxLabel.Position = UDim2.fromOffset(16, 64)
 	boxLabel.Size = UDim2.fromOffset(260, 40)
 
+	fxLayer = Instance.new("Frame")
+	fxLayer.Name = "Fx"
+	fxLayer.Size = UDim2.fromScale(1, 1)
+	fxLayer.BackgroundTransparency = 1
+	fxLayer.ZIndex = 15
+	fxLayer.Parent = gui
+
 	flash = Instance.new("Frame")
 	flash.Name = "Flash"
 	flash.Size = UDim2.fromScale(1, 1)
 	flash.BackgroundColor3 = Color3.new(1, 1, 1)
-	flash.ZIndex = 20
+	flash.ZIndex = 40 -- above the spotlight
 	flash.Visible = false
 	flash.Parent = gui
 end
 
 -- T on the opening screen: tear the pack, else flip the next card, else close
 local function advance()
-	if pendingResults then
+	if closeSpotlight then
+		closeSpotlight()
+	elseif pendingResults then
 		tearPack()
 	elseif doneButton.Visible then
 		close()

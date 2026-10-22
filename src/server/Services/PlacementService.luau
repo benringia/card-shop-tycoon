@@ -12,8 +12,6 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
-local Rarities = require(Config:WaitForChild("Rarities"))
-local CardEffects = require(Config:WaitForChild("CardEffects"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -205,34 +203,20 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	return shelf.part.CFrame * CFrame.new(x, y, z)
 end
 
-local function addCardText(parent: Instance, text: string, y: number, height: number): TextLabel
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromScale(0.05, y)
-	label.Size = UDim2.fromScale(0.9, height)
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Text = text
-	label.Parent = parent
-	return label
-end
-
 local function getGrowth(displayed: DisplayedCard): (number, number, string)
 	local beast = displayed.beast
 	return if beast then beast.level else 1, if beast then beast.stars else BeastRules.START_STARS, displayed.grade
 end
 
 local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: DisplayedCard): Part
-	local card = Cards.ById[displayed.cardId]
 	local part = Instance.new("Part")
 	part.Name = "DisplayedCard" .. slot
 	part.Anchored = true
 	part.CanCollide = false
 	part.Size = if shelf.visual and shelf.def.cardsFlat then ShowcaseConfig.CARD_SIZE * ShowcaseConfig.FLAT.SCALE else ShowcaseConfig.CARD_SIZE
-	part.Color = Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3)
-	part.Material = if displayed.foil then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	-- A plain dark card: every client draws the card face, glow and halo on it (CardEffectsController)
+	part.Color = Color3.fromRGB(30, 26, 40)
+	part.Material = Enum.Material.SmoothPlastic
 	part.CFrame = getSlotCFrame(shelf, slot)
 	part:SetAttribute("CardId", displayed.cardId)
 	part:SetAttribute("Foil", displayed.foil)
@@ -246,42 +230,6 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part:SetAttribute("Level", level)
 	part:SetAttribute("Stars", stars)
 	part:SetAttribute("BeastId", if displayed.beast then displayed.beast.id else nil)
-
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 60
-	gui.Parent = part
-
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundTransparency = 1
-	frame.Parent = gui
-	local stroke = Instance.new("UIStroke")
-	stroke.Name = "Border"
-	stroke.Thickness = 4
-	stroke.Color = Rarities.Tiers[card.rarity].color
-	stroke.Parent = frame
-
-	-- Frontier cards: darker element colour, a white border the client turns into a moving aurora, a ribbon
-	local frontier = card.set == "Frontier"
-	local aurora = CardEffects.FRONTIER.AURORA
-	if frontier then
-		part.Color = part.Color:Lerp(Color3.new(0, 0, 0), CardEffects.FRONTIER.BACKGROUND_DARKEN)
-		stroke.Color = Color3.new(1, 1, 1)
-		stroke.Thickness = 6
-	end
-	addCardText(frame, card.name, 0.04, 0.2)
-	if frontier then
-		addCardText(frame, if displayed.foil then "FOIL FRONTIER" else "FRONTIER", 0.25, 0.12).TextColor3 = aurora[3]
-	elseif displayed.foil then
-		addCardText(frame, "FOIL", 0.25, 0.12)
-	end
-	if displayed.beast then
-		addCardText(frame, BeastRules.describeGrowth(level, stars), 0.38, 0.13)
-	end
-	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = if frontier then aurora[1] else Rarities.Tiers[card.rarity].color
-	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
 
 	part.Parent = shelf.part
 	return part
@@ -297,11 +245,7 @@ local function renderCardSlot(shelf: PlacedShelf, slot: number)
 		and existing:GetAttribute("Grade") == displayed.grade
 		and existing:GetAttribute("BeastId") == (if displayed.beast then displayed.beast.id else nil)
 	then
-		existing:SetAttribute("Price", displayed.price)
-		local priceLabel = existing:FindFirstChild("PriceLabel", true)
-		if priceLabel and priceLabel:IsA("TextLabel") then
-			priceLabel.Text = string.format("$%.2f", displayed.price)
-		end
+		existing:SetAttribute("Price", displayed.price) -- the client redraws the price
 		return
 	end
 

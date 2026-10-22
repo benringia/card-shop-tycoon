@@ -4,7 +4,8 @@
 -- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser),
 -- /jobslot (toggle owning the Extra Job Slot pass), /wild (travel to the wild map), /rest (wake resting cards),
 -- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands),
--- /frontierdrop (a Star Shard and a random Frontier card).
+-- /frontierdrop (a Star Shard and a random Frontier card), /raritypack [foil] (one card of each rarity, to
+-- see every pack reveal), /legendarys [foil] (a Grade S copy of every Legendary).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -158,6 +159,19 @@ local function giveCards(player: Player, text: string)
 	Remotes.Notify:FireClient(player, `Gave {amount} {card.name}`, false)
 end
 
+-- A Grade S copy of every Legendary (foil with "foil" in the text), to see their display effects
+local function giveSupremeLegendaries(player: Player, text: string)
+	local foil = string.find(string.lower(text), "foil") ~= nil
+	local results = {}
+	for _, card in Cards.List do
+		if card.rarity == "Legendary" then -- packs and Frontier
+			table.insert(results, { cardId = card.id, foil = foil, grade = "S" })
+		end
+	end
+	CardService.AddFresh(player, results)
+	Remotes.Notify:FireClient(player, `Gave {#results} Grade S Legendaries`, false)
+end
+
 local function grantBeastXp(player: Player, amount: number)
 	local target = pickXpTarget(player)
 	local beast = if target then CardService.AddXP(player, target, amount) else nil
@@ -204,7 +218,11 @@ function DevService.Start()
 	addCommand(folder, "testpack", function(player)
 		PackService.OpenTestPack(player)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack")
+	addCommand(folder, "legendarys", giveSupremeLegendaries)
+	addCommand(folder, "raritypack", function(player, text)
+		PackService.OpenRarityPack(player, string.find(string.lower(text), "foil") ~= nil)
+	end)
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
 end
 
 return DevService

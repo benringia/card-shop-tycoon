@@ -46,16 +46,23 @@ type Tile = {
 	levelLabel: TextLabel, -- best grade and best levelled copy, e.g. "S · Lv 12"
 }
 
--- 3 x 3 pockets like a real binder; short screens (landscape phones) get fewer, bigger pockets
+-- A pocket is the card plus a chip row under it (copies owned, best grade and level)
+local CARD_ASPECT = 0.7
+local CHIP_ROW = 22 -- pixels
+-- The card view: a big card on the left, the copies list and buttons right of it
+local DETAIL_CARD = Vector2.new(220, 314)
+local DETAIL_X = 16 + DETAIL_CARD.X + 14
+-- 3 x 3 pockets like a real binder; short screens get fewer, bigger pockets (3 a page at least, so the
+-- card text stays readable)
 local POCKET_OPTIONS: PocketLayout.Options = {
-	aspect = 0.7, -- card width / height
+	aspect = 0.63, -- pocket width / height: a 0.7 card plus the chip row
 	gap = 6,
 	preferredColumns = 3,
 	preferredRows = 3,
-	minWidth = 70,
+	minWidth = 110,
 	maxColumns = 5,
 	maxRows = 3,
-	minPockets = 4,
+	minPockets = 3,
 }
 local BINDER_MAX_SIZE = Vector2.new(920, 600)
 local COVER_COLOR = Color3.fromRGB(70, 40, 30) -- binder cover and spine
@@ -515,11 +522,15 @@ local function renderTile(tile: Tile)
 	for _, beast in raised do
 		hasFoilBeast = hasFoilBeast or beast.foil
 	end
-	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false)
-	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
-	tile.countLabel.Text = if owned > 0 then `Owned {owned}` else "on display"
-	tile.countLabel.Visible = true
+	-- The tile shows the stats of the best copy: the strongest levelled one, else a plain one of the best grade
 	local bestGrade = getBestGrade(cardId)
+	local strongest = raised[1]
+	local growth = if strongest
+		then { level = strongest.level, stars = strongest.stars, grade = strongest.grade }
+		else { level = 1, stars = BeastRules.START_STARS, grade = bestGrade or BeastRules.DEFAULT_GRADE }
+	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false, growth)
+	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
+	tile.countLabel.Visible = true
 	local parts = {}
 	if bestGrade then
 		table.insert(parts, bestGrade)
@@ -541,6 +552,10 @@ local function renderTile(tile: Tile)
 	end
 	tile.levelLabel.Text = table.concat(parts, " · ")
 	tile.levelLabel.Visible = #parts > 0
+	-- With chips the count shrinks to the left part of the row
+	local short = #parts > 0
+	tile.countLabel.Size = UDim2.new(if short then 0.36 else 1, 0, 0, CHIP_ROW - 3)
+	tile.countLabel.Text = if owned == 0 then "shown" elseif short then `x{owned}` else `Owned {owned}`
 end
 
 local function passesFilter(card: Card): boolean
@@ -712,13 +727,24 @@ local function buildTile(card: Card, parent: Instance): Tile
 	button.Text = ""
 	button.Parent = parent
 
-	local inner, stroke = addCardFrame(button)
+	-- The card on top, keeping its shape; the chips sit in the row under it, clear of the card's text
+	local holder = Instance.new("Frame")
+	holder.Name = "CardHolder"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.new(1, 0, 1, -CHIP_ROW)
+	holder.Parent = button
+	local inner, stroke = addCardFrame(holder)
+	inner.AnchorPoint = Vector2.new(0.5, 0)
+	inner.Position = UDim2.fromScale(0.5, 0)
+	local shape = Instance.new("UIAspectRatioConstraint")
+	shape.AspectRatio = CARD_ASPECT
+	shape.Parent = inner
 
 	local countLabel = UIKit.label(button, "", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
 	countLabel.Name = "Count"
-	countLabel.AnchorPoint = Vector2.new(0.5, 1)
-	countLabel.Position = UDim2.new(0.5, 0, 1, -3)
-	countLabel.Size = UDim2.new(1, -6, 0, 18)
+	countLabel.AnchorPoint = Vector2.new(0, 1)
+	countLabel.Position = UDim2.fromScale(0, 1)
+	countLabel.Size = UDim2.new(1, 0, 0, CHIP_ROW - 3)
 	countLabel.TextXAlignment = Enum.TextXAlignment.Center
 	countLabel.BackgroundColor3 = UIKit.Colors.Panel
 	countLabel.BackgroundTransparency = 0.2
@@ -727,9 +753,9 @@ local function buildTile(card: Card, parent: Instance): Tile
 
 	local levelLabel = UIKit.label(button, "", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
 	levelLabel.Name = "Level"
-	levelLabel.AnchorPoint = Vector2.new(0.5, 0)
-	levelLabel.Position = UDim2.fromScale(0.5, 0.55) -- the empty band under the element letter
-	levelLabel.Size = UDim2.fromOffset(60, 16)
+	levelLabel.AnchorPoint = Vector2.new(1, 1)
+	levelLabel.Position = UDim2.fromScale(1, 1)
+	levelLabel.Size = UDim2.new(0.62, 0, 0, CHIP_ROW - 3)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
 	levelLabel.BackgroundColor3 = UIKit.Colors.Accent
 	levelLabel.Visible = false
@@ -763,32 +789,32 @@ local function buildDetail(parent: Frame)
 	-- Card on the left, info on the right: fits short landscape phone screens
 	local cardHolder = Instance.new("Frame")
 	cardHolder.Position = UDim2.fromOffset(16, 16)
-	cardHolder.Size = UDim2.fromOffset(150, 214)
+	cardHolder.Size = UDim2.fromOffset(DETAIL_CARD.X, DETAIL_CARD.Y)
 	cardHolder.BackgroundTransparency = 1
 	cardHolder.ZIndex = 11
 	cardHolder.Parent = detail
 	detailInner, detailStroke = addCardFrame(cardHolder)
 
 	detailName = UIKit.label(detail, "", Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
-	detailName.Position = UDim2.fromOffset(180, 12)
-	detailName.Size = UDim2.new(1, -192, 0, 26)
+	detailName.Position = UDim2.fromOffset(DETAIL_X, 12)
+	detailName.Size = UDim2.new(1, -(DETAIL_X + 12), 0, 26)
 	detailName.ZIndex = 11
 
 	detailSubtitle = UIKit.label(detail, "", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
-	detailSubtitle.Position = UDim2.fromOffset(180, 38)
-	detailSubtitle.Size = UDim2.new(1, -192, 0, 16)
+	detailSubtitle.Position = UDim2.fromOffset(DETAIL_X, 38)
+	detailSubtitle.Size = UDim2.new(1, -(DETAIL_X + 12), 0, 16)
 	detailSubtitle.ZIndex = 11
 
 	detailSummary = UIKit.label(detail, "", Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-	detailSummary.Position = UDim2.fromOffset(180, 56)
-	detailSummary.Size = UDim2.new(1, -192, 0, 28)
+	detailSummary.Position = UDim2.fromOffset(DETAIL_X, 56)
+	detailSummary.Size = UDim2.new(1, -(DETAIL_X + 12), 0, 28)
 	detailSummary.TextYAlignment = Enum.TextYAlignment.Top
 	detailSummary.ZIndex = 11
 
 	-- Levelled cards and plain copies; scrolls when there are many, ends above the Back button
 	raisedList = Instance.new("ScrollingFrame")
-	raisedList.Position = UDim2.fromOffset(180, 88)
-	raisedList.Size = UDim2.new(1, -184, 1, -150)
+	raisedList.Position = UDim2.fromOffset(DETAIL_X, 88)
+	raisedList.Size = UDim2.new(1, -(DETAIL_X + 4), 1, -150)
 	raisedList.BackgroundTransparency = 1
 	raisedList.BorderSizePixel = 0
 	raisedList.ScrollBarThickness = 4
@@ -803,8 +829,8 @@ local function buildDetail(parent: Frame)
 
 	-- Bottom row, in thirds of the space right of the card: Assign to job, Add to party, Back
 	local function placeBottom(button: TextButton, third: number)
-		button.Position = UDim2.new(third / 3, 180 - third * 61, 1, -56)
-		button.Size = UDim2.new(1 / 3, -69, 0, 48)
+		button.Position = UDim2.new(third / 3, DETAIL_X - third * (DETAIL_X / 3 + 1), 1, -56)
+		button.Size = UDim2.new(1 / 3, -(DETAIL_X / 3 + 9), 0, 48)
 		button.TextSize = 14
 		button.ZIndex = 12
 	end
@@ -1099,6 +1125,11 @@ local function buildBag(parent: Frame)
 	end
 	cardsTab = tab("📖 Cards", 150)
 	bagTab = tab("🎒 Bag", 272)
+	-- The card view covers the whole binder, title row included: hide the tabs while it's open
+	detail:GetPropertyChangedSignal("Visible"):Connect(function()
+		cardsTab.Visible = not detail.Visible
+		bagTab.Visible = not detail.Visible
+	end)
 
 	bagOverlay = Instance.new("Frame")
 	bagOverlay.Name = "Bag"
