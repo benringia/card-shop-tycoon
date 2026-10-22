@@ -360,7 +360,7 @@ panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is s
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
-(bottom-right status corner, with cash and level/XP) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar shows your avatar
+(bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar shows your avatar
 (opens Party) and the 3 party slots: tap one to summon it, tap the summoned one to unsummon, tap an empty one to pick
 a card in the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
@@ -599,7 +599,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── UIController.luau       # bottom-right status (cash, level/XP, buffs), toasts, money toasts above the buff
+    │   │   ├── UIController.luau       # main ScreenGui, top pills (cash, level, shards, XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # build menu, shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
@@ -613,7 +613,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
-    │   │   ├── BuffController.luau      # buff badge (bottom-right, above the cash) and tooltip for the summoned creature's perk
+    │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── PartyBarController.luau  # bottom-right quick bar: your avatar + 3 party slots, tap to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
@@ -624,7 +624,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
     │   └── Util/
-    │       ├── UIKit.luau              # shared UI building helpers
+    │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
+    │       ├── Motion.luau             # pop in/out, press squash, bumps
+    │       ├── Hud.luau                # HUD layout: Manage fan, bottom tiles, context tiles, top bar
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -643,6 +645,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
+        │   ├── UIMotion.luau   # UI motion timings and scales (client)
+        │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
@@ -685,6 +689,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
+            ├── FanLayout.luau     # the HUD Manage fan's button positions (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -735,6 +740,19 @@ When a player leaves, customers put picked-up stock and cards back before the sa
 
 Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
+
+### 10.6 UI style and HUD
+Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
+- **Style** (`Util/UIKit`): light-blue panel bodies with a white border, a blue gradient header with the title, a
+  red close button on the top-right corner, white cards and rows, chunky buttons with a darker bottom lip
+  (blue-violet primary, white secondary). Text picks white or navy for the surface behind it.
+- **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
+  button shrinks them away; buttons squash while held; number pills bump when they change.
+- **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle opens a fan of round buttons
+  (Build, Prices, Jobs, Party) and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
+  chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
+  Top centre: a cash pill, a round level badge and a Star Shards pill, with an XP bar under them. Bottom right:
+  party bar and buff badge. Toasts sit above the bottom row. The fight screen hides the HUD groups.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.

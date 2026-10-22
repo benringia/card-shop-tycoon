@@ -12,10 +12,17 @@ local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Motion = require(ClientUtil:WaitForChild("Motion"))
+local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
 
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
 local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
+local TOP_PILL_COLOR = Color3.fromRGB(20, 28, 60)
+local TOP_PILL_HEIGHT = 44
+local CASH_COLOR = Color3.fromRGB(130, 235, 140)
+local SHARD_COLOR = Color3.fromRGB(205, 175, 255)
+local XP_PILL_WIDTH = 200
 -- Status sits in the bottom-right corner (the top corners hold Roblox's menu and the player list).
 -- On touch screens it sits above the jump button.
 local STATUS_MARGIN = 12
@@ -49,6 +56,10 @@ local cashLabel: TextLabel
 local levelLabel: TextLabel
 local xpLabel: TextLabel
 local xpFill: Frame
+local shardsLabel: TextLabel
+local cashPill: Frame
+local levelBadge: Frame
+local shardsPill: Frame
 local toastLabel: TextLabel
 local toastToken = 0
 
@@ -61,8 +72,11 @@ local function updateCash()
 	local cash = player:GetAttribute("Cash")
 	-- No Cash yet = the save is still loading (can take a while in Studio): say so, so it never looks like a reset
 	local loaded = typeof(cash) == "number"
-	cashLabel.Text = if loaded then string.format("$%.2f", cash) else "Loading..."
-	cashLabel.TextSize = if loaded then 28 else 20
+	local text = if loaded then string.format("$%.2f", cash) else "Loading..."
+	if cashLabel.Text ~= text and cashLabel.Text ~= "" then
+		Motion.bump(cashPill)
+	end
+	cashLabel.Text = text
 end
 
 local function updateXp()
@@ -73,9 +87,13 @@ local function updateXp()
 		return
 	end
 	local xp = getNumber("XP", 0)
-	levelLabel.Text = `Lv {getNumber("Level", 1)}`
+	local level = tostring(getNumber("Level", 1))
+	if levelLabel.Text ~= level and levelLabel.Text ~= "" then
+		Motion.bump(levelBadge)
+	end
+	levelLabel.Text = level
 	local into, span = LevelRules.getProgress(xp)
-	xpLabel.Text = `{into}/{span} XP`
+	xpLabel.Text = `XP {into} / {span}`
 	xpFill.Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1)
 end
 
@@ -210,6 +228,111 @@ local function queueLevelUp(level: number)
 	end
 end
 
+-- A dark rounded pill with an icon and a value (the top bar's cash and shards)
+local function makePill(parent: Instance, order: number, icon: string, color: Color3): (Frame, TextLabel)
+	local pill = Instance.new("Frame")
+	pill.LayoutOrder = order
+	pill.Size = UDim2.fromOffset(0, TOP_PILL_HEIGHT)
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.BackgroundColor3 = TOP_PILL_COLOR
+	pill.BackgroundTransparency = 0.1
+	pill.Parent = parent
+	UIKit.corner(pill, TOP_PILL_HEIGHT / 2)
+	UIKit.outline(pill, Color3.fromRGB(60, 80, 140), 2)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 16)
+	padding.Parent = pill
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.VerticalAlignment = Enum.VerticalAlignment.Center
+	row.Padding = UDim.new(0, 8)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = pill
+	local iconLabel = UIKit.label(pill, icon, Enum.Font.FredokaOne, 24, Color3.new(1, 1, 1))
+	iconLabel.LayoutOrder = 1
+	iconLabel.Size = UDim2.fromOffset(28, TOP_PILL_HEIGHT)
+	iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+	local value = UIKit.label(pill, "", Enum.Font.FredokaOne, 22, color)
+	value.LayoutOrder = 2
+	value.Size = UDim2.fromOffset(0, TOP_PILL_HEIGHT)
+	value.AutomaticSize = Enum.AutomaticSize.X
+	value.TextWrapped = false
+	return pill, value
+end
+
+-- Top centre: cash pill, level badge, Star Shards pill; the XP pill under them
+local function buildTopBar()
+	local top = Hud.getTop()
+	local bar = Instance.new("Frame")
+	bar.Name = "Pills"
+	bar.BackgroundTransparency = 1
+	bar.Size = UDim2.fromOffset(0, TOP_PILL_HEIGHT + 8)
+	bar.AutomaticSize = Enum.AutomaticSize.X
+	bar.Parent = top
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.VerticalAlignment = Enum.VerticalAlignment.Center
+	row.Padding = UDim.new(0, 8)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = bar
+	local column = Instance.new("UIListLayout")
+	column.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	column.Padding = UDim.new(0, 4)
+	column.SortOrder = Enum.SortOrder.LayoutOrder
+	column.Parent = top
+
+	cashPill, cashLabel = makePill(bar, 1, "💵", CASH_COLOR)
+	cashPill.Name = "Cash"
+
+	levelBadge = Instance.new("Frame")
+	levelBadge.Name = "Level"
+	levelBadge.LayoutOrder = 2
+	levelBadge.Size = UDim2.fromOffset(TOP_PILL_HEIGHT + 8, TOP_PILL_HEIGHT + 8)
+	levelBadge.BackgroundColor3 = HudLayout.TILE
+	levelBadge.Parent = bar
+	UIKit.corner(levelBadge, (TOP_PILL_HEIGHT + 8) / 2)
+	UIKit.outline(levelBadge, Color3.new(1, 1, 1), 3)
+	levelLabel = UIKit.label(levelBadge, "", Enum.Font.FredokaOne, 22, Color3.new(1, 1, 1))
+	levelLabel.Size = UDim2.fromScale(1, 1)
+	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+	shardsPill, shardsLabel = makePill(bar, 3, "✨", SHARD_COLOR)
+	shardsPill.Name = "Shards"
+	shardsLabel.Text = "0"
+
+	-- XP to the next level, small, under the pills
+	local xpPill = Instance.new("Frame")
+	xpPill.Name = "XP"
+	xpPill.LayoutOrder = 2
+	xpPill.Size = UDim2.fromOffset(XP_PILL_WIDTH, 24)
+	xpPill.BackgroundColor3 = TOP_PILL_COLOR
+	xpPill.BackgroundTransparency = 0.1
+	xpPill.ClipsDescendants = true
+	xpPill.Parent = top
+	UIKit.corner(xpPill, 12)
+	xpFill = Instance.new("Frame")
+	xpFill.Name = "Fill"
+	xpFill.BackgroundColor3 = XP_FILL_COLOR
+	xpFill.BorderSizePixel = 0
+	xpFill.Size = UDim2.fromScale(0, 1)
+	xpFill.Parent = xpPill
+	UIKit.corner(xpFill, 12)
+	xpLabel = UIKit.label(xpPill, "", Enum.Font.GothamBold, 13, Color3.new(1, 1, 1))
+	xpLabel.Size = UDim2.fromScale(1, 1)
+	xpLabel.TextXAlignment = Enum.TextXAlignment.Center
+	xpLabel.ZIndex = 2
+end
+
+local function updateShards(items: unknown)
+	local count = if typeof(items) == "table" then (items :: { [string]: any }).starShard else nil
+	local text = tostring(if typeof(count) == "number" then count else 0)
+	if shardsLabel.Text ~= text then
+		Motion.bump(shardsPill)
+	end
+	shardsLabel.Text = text
+end
+
 function UIController.Start()
 	screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "MainGui"
@@ -250,52 +373,13 @@ function UIController.Start()
 	statusLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	statusLayout.Parent = statusFrame
 
-	cashLabel = Instance.new("TextLabel")
-	cashLabel.Name = "Cash"
-	cashLabel.LayoutOrder = 2
-	cashLabel.Size = UDim2.fromOffset(STATUS_WIDTH, 44)
-	cashLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-	cashLabel.BackgroundTransparency = 0.2
-	cashLabel.Font = Enum.Font.FredokaOne
-	cashLabel.TextColor3 = Color3.fromRGB(120, 230, 120)
-	cashLabel.TextSize = 28
-	cashLabel.Parent = statusFrame
-	UIKit.corner(cashLabel, 12)
-
-	-- Level badge + XP bar under the cash display
-	local xpBar = Instance.new("Frame")
-	xpBar.Name = "XPBar"
-	xpBar.LayoutOrder = 3
-	xpBar.Size = UDim2.fromOffset(180, 26)
-	xpBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-	xpBar.BackgroundTransparency = 0.2
-	xpBar.ClipsDescendants = true
-	xpBar.Parent = statusFrame
-	UIKit.corner(xpBar, 8)
-
-	xpFill = Instance.new("Frame")
-	xpFill.Name = "Fill"
-	xpFill.BackgroundColor3 = XP_FILL_COLOR
-	xpFill.BorderSizePixel = 0
-	xpFill.Size = UDim2.fromScale(0, 1)
-	xpFill.Parent = xpBar
-	UIKit.corner(xpFill, 8)
-
-	levelLabel = UIKit.label(xpBar, "Lv 1", Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
-	levelLabel.Position = UDim2.fromOffset(8, 0)
-	levelLabel.Size = UDim2.new(0, 50, 1, 0)
-	levelLabel.ZIndex = 2
-
-	xpLabel = UIKit.label(xpBar, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	xpLabel.TextXAlignment = Enum.TextXAlignment.Right
-	xpLabel.Position = UDim2.fromOffset(56, 0)
-	xpLabel.Size = UDim2.new(1, -64, 1, 0)
-	xpLabel.ZIndex = 2
+	buildTopBar()
 
 	toastLabel = Instance.new("TextLabel")
 	toastLabel.Name = "Toast"
 	toastLabel.AnchorPoint = Vector2.new(0.5, 1)
-	toastLabel.Position = UDim2.new(0.5, 0, 1, -24)
+	-- Above the bottom HUD row
+	toastLabel.Position = UDim2.new(0.5, 0, 1, -(HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + 16))
 	toastLabel.Size = UDim2.new(0.9, 0, 0, 52)
 	toastLabel.Font = Enum.Font.GothamBold
 	toastLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -329,6 +413,7 @@ function UIController.Start()
 	player:GetAttributeChangedSignal("Cash"):Connect(updateCash)
 	player:GetAttributeChangedSignal("XP"):Connect(updateXp)
 	player:GetAttributeChangedSignal("Level"):Connect(updateXp)
+	Remotes.ItemsChanged.OnClientEvent:Connect(updateShards)
 	Remotes.Notify.OnClientEvent:Connect(function(message: string, isError: boolean?, style: string?)
 		if typeof(message) ~= "string" then
 			return
