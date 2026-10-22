@@ -80,6 +80,8 @@ code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 green or red with an outline, gliding between grid cells; its footprint cells drawn on the floor, a chevron at its
 front, a label above it ("Wall Shelf · $350", "Move Collector Case", "Can't place here"). Buttons Rotate (R), Place
 (Click; greyed while blocked), Cancel (Q). Shop prompts are hidden while placing. Numbers: `Config/Placement`.
+Shelves, cases and fixtures carry a small name tag floating just above them (product and count, the case's
+count, "📦 Order Stock", "💰 Register", "✨ Card Condenser"), shown within 40 studs (`Placement.TAG`).
 
 ---
 

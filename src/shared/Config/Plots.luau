@@ -31,7 +31,7 @@ return {
 	COMPUTER_GRID_X = 15,
 	COMPUTER_GRID_Z = 17,
 	COMPUTER_COLOR = Color3.fromRGB(60, 65, 80),
-	COMPUTER_TEXT = "ORDER STOCK",
+	COMPUTER_TEXT = "📦 Order Stock", -- its floating tag (Placement.TAG)
 
 	-- Delivery pad sits in a front corner, where ordered boxes appear
 	DELIVERY_PAD_SIZE = Vector3.new(6, 0.2, 6),
@@ -43,7 +43,7 @@ return {
 	REGISTER_SIZE = Vector3.new(6, 2.5, 2), -- low, so small cashier pets behind it still show
 	REGISTER_SIDE_INSET = 5, -- from the side wall to the counter centre
 	REGISTER_BACK_INSET = 6, -- from the back wall to the counter centre
-	REGISTER_TEXT = "REGISTER",
+	REGISTER_TEXT = "💰 Register",
 
 	-- Invisible strip in front of the register that shelves can't be placed on.
 	-- Keep QUEUE_ZONE_LENGTH >= Customers.MAX_PER_PLOT * Customers.QUEUE_SPACING.

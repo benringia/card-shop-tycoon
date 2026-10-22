@@ -19,4 +19,7 @@ return {
 	FOOTPRINT_TRANSPARENCY = 0.55, -- the cells it covers, drawn on the floor
 	GHOST_LABEL_HEIGHT = 1.5, -- the name label floats this far above the ghost
 	INVALID_TEXT = "Can't place here",
+
+	-- Name tags floating above shelves and fixtures (sizes in studs, so they shrink with distance)
+	TAG = { GAP = 0.8, HEIGHT = 1.5, MIN_WIDTH = 4, MAX_DISTANCE = 40 },
 }

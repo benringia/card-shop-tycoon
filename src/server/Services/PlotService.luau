@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
+local PlacementConfig = require(Config:WaitForChild("Placement"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
@@ -49,6 +50,27 @@ local function getPlotCFrame(index: number): CFrame
 	local center = Vector3.new(x, PlotConfig.FLOOR_THICKNESS / 2, z)
 
 	return CFrame.lookAt(center, center + Vector3.new(0, 0, -side))
+end
+
+-- A small name tag floating above a fixture (raise: extra height, e.g. over the register stall's canopy)
+local function addTag(part: Part, text: string, raise: number?)
+	local tag = PlacementConfig.TAG
+	local board = Instance.new("BillboardGui")
+	board.Name = "FixtureTag"
+	board.Size = UDim2.new(math.max(part.Size.X * 0.6, tag.MIN_WIDTH), 0, tag.HEIGHT, 0)
+	board.StudsOffset = Vector3.new(0, part.Size.Y / 2 + (raise or 0) + tag.GAP + tag.HEIGHT / 2, 0)
+	board.MaxDistance = tag.MAX_DISTANCE
+	board.LightInfluence = 0
+	board.Parent = part
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.3
+	label.Text = text
+	label.Parent = board
 end
 
 local function addSurfaceLabel(part: Part, text: string): TextLabel
@@ -290,7 +312,7 @@ local function buildComputer(plotCFrame: CFrame, parent: Instance): Part
 	setComputerCell(computer, plotCFrame, PlotConfig.COMPUTER_GRID_X, PlotConfig.COMPUTER_GRID_Z, 0)
 	computer.Parent = parent
 
-	addSurfaceLabel(computer, PlotConfig.COMPUTER_TEXT)
+	addTag(computer, PlotConfig.COMPUTER_TEXT)
 	dressFixture(computer, "Computer", computer) -- a child, so it moves with the computer
 	return computer
 end
@@ -337,7 +359,7 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 	register.Material = Enum.Material.Wood
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
-	addSurfaceLabel(register, PlotConfig.REGISTER_TEXT)
+	addTag(register, PlotConfig.REGISTER_TEXT, Town.COUNTER.STALL.height - register.Size.Y)
 	local stall = Town.COUNTER.STALL
 	dressFixture(register, "Counter", parent, Vector3.new(stall.width, stall.height, stall.depth))
 	-- The register takes the left end; the decor sits in the back strip, clear of the scan items on the

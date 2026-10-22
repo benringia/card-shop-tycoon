@@ -162,7 +162,7 @@ end
 
 local function updateLabel(shelf: PlacedShelf)
 	if isCondenser(shelf.def) then
-		shelf.label.Text = shelf.def.name
+		shelf.label.Text = `✨ {shelf.def.name}`
 		return
 	end
 	if isCardCase(shelf.def) then
@@ -329,22 +329,25 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	updateStockBoxes(shelf)
 end
 
+-- A tag floating just above the shelf (what it holds, or the case's count), clear of its model and cards
 local function buildLabel(part: Part, def: ShelfDef): TextLabel
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
-	gui.Parent = part
+	local tag = PlacementConfig.TAG
+	local board = Instance.new("BillboardGui")
+	board.Name = "ShelfTag"
+	board.Size = UDim2.new(math.max(def.size.X, tag.MIN_WIDTH), 0, tag.HEIGHT, 0)
+	board.StudsOffset = Vector3.new(0, def.size.Y / 2 + tag.GAP + tag.HEIGHT / 2, 0)
+	board.MaxDistance = tag.MAX_DISTANCE
+	board.LightInfluence = 0
+	board.Parent = part
 
 	local label = Instance.new("TextLabel")
-	-- Card cases keep most of the face free for the cards
-	label.Size = UDim2.fromScale(1, if isCardCase(def) then ShowcaseConfig.LABEL_HEIGHT else 0.4)
+	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBold
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
+	label.TextStrokeTransparency = 0.3
+	label.Parent = board
 	return label
 end
 
