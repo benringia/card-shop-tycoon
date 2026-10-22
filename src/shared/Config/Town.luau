@@ -11,19 +11,10 @@ return {
 	-- turn. height = bounding-box height after scaling (studs). Shelf fits the shelf's own size instead.
 	-- yaw (degrees) turns a slot's models whose front isn't -Z; a model's own YawOffset attribute wins.
 	SLOTS = {
-		Tree = { height = 18, collide = true },
-		Pine = { height = 20, collide = true },
-		Bush = { height = 3, collide = false },
-		Flower = { height = 1.5, collide = false },
-		Clover = { height = 1, collide = false },
-		Rock = { height = 3, collide = true },
-		Crate = { height = 3, collide = true },
-		Barrel = { height = 3.5, collide = true },
 		Lamp = { height = 9, collide = true, yaw = 90 }, -- the lantern pole's arm points along the model's -X
 		Bench = { height = 3, collide = true },
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
-		PlazaDecor = { height = 2.5, collide = false },
 		Register = { height = 1.5, collide = false, yaw = -90 }, -- the cash register's price display faces its +X
 		CounterDecor = { height = 1.2, collide = false },
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
@@ -37,30 +28,15 @@ return {
 		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
 		Awning = { height = 0, collide = false },
 	},
-	TREE_SLOTS = { "Tree", "Pine" }, -- the tree lines alternate these
-
 	-- Decor layout (TownLayout). Distances in studs.
 	LAYOUT = {
 		LAMP_INSET = 2, -- lamps stand this far into the street from the plot fronts
 		ROW_END_LAMP_OFFSET = 4, -- past the outer edge of each row's end plots
 		BENCH_RADIUS = 11, -- around the spring
 		BENCH_ANGLES = { 45, 135, 225, 315 },
-		FLOWER_ANGLE_OFFSET = 18, -- flower bed beside each bench
-		PLAZA_DECOR_ANGLES = { 0, 180 }, -- on the plaza edge, between the benches
-		PLAZA_DECOR_RADIUS = 20,
-		GAP_CLOVER_DEPTHS = { 12, 28 }, -- clover patches this far back from the street in each gap
-		GAP_CRATE_DEPTH = 3, -- crate and barrel this far back from the street, in the gaps between plots
-		GAP_CRATE_SPREAD = 1.5, -- crate and barrel sit this far either side of the gap centre
 		EDGE_FENCE_INSET = 2, -- the fence round the island stands this far inside the bounds
 		FENCE_SECTION = 6.5, -- one Fence prop per section (the Fence model is 6.5 long at its 4-stud height)
-		TREE_LINE_HALF_LENGTH = 88,
-		TREE_OFFSET = 12, -- tree line behind the back of each row
-		TREE_SPACING = 14,
 		STREET_HALF_LENGTH = 110, -- the cobblestone street runs x -110..110
-		STREET_END_TREE_X = 120,
-		STREET_END_TREE_Z = 36,
-		PORTAL_ROCK_BACK = 12, -- rocks behind each portal, away from the town
-		PORTAL_ROCK_SIDE = 4,
 		PLAZA_RADIUS = 22, -- round stone pad around the spring; open room for event NPCs and stalls
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},

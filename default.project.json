@@ -32,6 +32,11 @@
           "$path": "src/client"
         }
       }
+    },
+    "Workspace": {
+      "TownDecor": {
+        "$path": "assets/town"
+      }
     }
   }
 }

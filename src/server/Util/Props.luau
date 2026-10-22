@@ -17,13 +17,22 @@ local MIN_HEIGHT = 0.05
 
 local WOOD = Color3.fromRGB(125, 90, 60)
 local DARK_WOOD = Color3.fromRGB(95, 65, 45)
-local LEAVES = Color3.fromRGB(100, 165, 90)
-local PINE = Color3.fromRGB(60, 125, 80)
 local STONE = Color3.fromRGB(150, 145, 140)
 local LAMP_GLOW = Color3.fromRGB(255, 220, 150)
-local PETALS = { Color3.fromRGB(240, 130, 160), Color3.fromRGB(250, 220, 90), Color3.fromRGB(150, 170, 240) }
 
 local variantCache: { [string]: { Instance } } = {}
+
+-- Free models can carry scripts and noise: none of it may run or play
+function Props.strip(root: Instance)
+	for _, descendant in root:GetDescendants() do
+		for _, className in STRIPPED do
+			if descendant:IsA(className) then
+				descendant:Destroy()
+				break
+			end
+		end
+	end
+end
 
 function Props.color(rgb: { number }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
@@ -98,26 +107,8 @@ local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
 -- Stand-ins built around the origin, bottom at y = 0, front facing -Z
 local function buildFallback(slot: string, height: number, size: Vector3?, variant: number): Model
 	local model = Instance.new("Model")
-	local block, ball, cylinder = Enum.PartType.Block, Enum.PartType.Ball, Enum.PartType.Cylinder
-	if slot == "Tree" then
-		addPart(model, cylinder, Vector3.new(height * 0.45, 1.6, 1.6), CFrame.new(0, height * 0.225, 0) * UPRIGHT, WOOD, Enum.Material.Wood)
-		addPart(model, ball, Vector3.one * height * 0.6, CFrame.new(0, height * 0.7, 0), LEAVES)
-	elseif slot == "Pine" then
-		addPart(model, cylinder, Vector3.new(height * 0.3, 1.4, 1.4), CFrame.new(0, height * 0.15, 0) * UPRIGHT, WOOD, Enum.Material.Wood)
-		for tier = 0, 2 do
-			local width = height * (0.45 - tier * 0.12)
-			addPart(model, block, Vector3.new(width, height * 0.22, width), CFrame.new(0, height * (0.35 + tier * 0.2), 0) * CFrame.Angles(0, math.rad(45), 0), PINE)
-		end
-	elseif slot == "Bush" then
-		addPart(model, ball, Vector3.new(height * 1.4, height, height * 1.4), CFrame.new(0, height / 2, 0), LEAVES)
-	elseif slot == "Flower" or slot == "Clover" then
-		local color = if slot == "Clover" then LEAVES else PETALS[(variant - 1) % #PETALS + 1]
-		addPart(model, cylinder, Vector3.new(height, 3, 3), CFrame.new(0, height / 2, 0) * UPRIGHT, color)
-	elseif slot == "Rock" then
-		addPart(model, block, Vector3.new(height * 1.3, height, height * 1.1), CFrame.new(0, height / 2, 0) * CFrame.Angles(0, math.rad(20), 0), STONE, Enum.Material.Slate)
-	elseif slot == "Barrel" then
-		addPart(model, cylinder, Vector3.new(height, height * 0.7, height * 0.7), CFrame.new(0, height / 2, 0) * UPRIGHT, WOOD, Enum.Material.Wood)
-	elseif slot == "Lamp" then
+	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
+	if slot == "Lamp" then
 		addPart(model, cylinder, Vector3.new(height * 0.9, 0.5, 0.5), CFrame.new(0, height * 0.45, 0) * UPRIGHT, DARK_WOOD, Enum.Material.Wood)
 		local head = addPart(model, block, Vector3.new(1.4, height * 0.1, 1.4), CFrame.new(0, height * 0.95, 0), LAMP_GLOW, Enum.Material.Neon)
 		local light = Instance.new("PointLight")
@@ -146,7 +137,7 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		end
 		addPart(model, block, Vector3.new(width + 1.5, 1.5, 1.5), CFrame.new(0, height - 0.75, 0), STONE, Enum.Material.Slate)
 	else
-		-- Crate, PlazaDecor, Register, CounterDecor, Shelf and anything new: a plain box
+		-- Register, CounterDecor, Shelf and anything new: a plain box
 		local box = size or Vector3.new(height, height, height)
 		addPart(model, block, box, CFrame.new(0, box.Y / 2, 0), WOOD, Enum.Material.Wood)
 	end
@@ -209,14 +200,7 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?, slo
 			model:SetAttribute("YawOffset", yaw)
 		end
 	end
-	for _, descendant in model:GetDescendants() do
-		for _, className in STRIPPED do
-			if descendant:IsA(className) then
-				descendant:Destroy()
-				break
-			end
-		end
-	end
+	Props.strip(model)
 	local yaw = PropFit.resolveYaw(model:GetAttribute("YawOffset"), slotYaw) -- degrees, for models that don't face -Z
 	-- Measure along world axes: some packs save a tipped pivot (Z-up exports), which would lay the model down
 	model.PrimaryPart = nil

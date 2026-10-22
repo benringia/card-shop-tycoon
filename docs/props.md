@@ -9,18 +9,10 @@ shows its stand-in.
 
 | File (and variants) | Used for | Height (studs) | Collides |
 |---|---|---|---|
-| `Tree` | tree lines behind the shops, street ends | 18 | yes |
-| `Pine` | tree lines (alternating with `Tree`) | 20 | yes |
-| `Bush` | gaps between shops | 3 | no |
-| `Flower` | flower beds by the plaza benches | 1.5 | no |
-| `Clover` | ground patches in the gaps between shops | 1 | no |
-| `Rock` | behind the portals | 3 | yes |
-| `Crate`, `Barrel` | street end of the gaps between shops | 3 / 3.5 | yes |
 | `Lamp` | street edges | 9 | yes |
 | `Bench` | around the healing spring | 3 | yes |
 | `Fence` | one section, repeated every 6.5 studs round the island's edge | 4 | yes |
 | `Portal` | frame around each plaza portal ring | 14 | no |
-| `PlazaDecor` | two spots on the plaza edge | 2.5 | no |
 | `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Computer` | the order computer (ORDER STOCK); moves with it | fits 4 x 3 x 2 | (its own hitbox) |
@@ -39,6 +31,19 @@ Fixtures (Computer, Condenser, Counter, and shelves with a `prop`) keep their ol
 exists; then the block becomes an invisible hitbox under the model.
 
 Numbers live in `Config/Town.luau` (`SLOTS`).
+
+## Hand-placed decor (TownDecor)
+
+Trees, bushes, flowers, rocks, crates and other scenery are placed by hand in Studio, not by code. They live in
+one Model, `TownDecor`, saved as `assets/town/TownDecor.rbxm`; Rojo syncs `assets/town` to `Workspace.TownDecor`
+(main game only). The Inno pieces in `assets/props` (TreeA, PineA, FlowerBlue, RockA ...) are the source pieces
+for it.
+
+- Editing: work on a copy outside `Workspace.TownDecor` (Rojo owns that folder and resets it on sync), then
+  right-click the Model → Save to File over `assets/town/TownDecor.rbxm`, delete the copy, and commit.
+- Keep out of the plots, the street, the shop fronts, the open ring round the plaza and the space in front of
+  the portals. Anchor everything; no scripts (the Lune test checks `assets/town` too, and the server strips
+  them at start).
 
 ## Adding a prop
 

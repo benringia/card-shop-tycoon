@@ -52,12 +52,12 @@ village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is re
 between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring, warm afternoon lighting
 with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
 the PvP Arena (-104, 0) at the west end, each with a floating name label. Plots stand 24 studs apart. The town is
-the whole main-game world: the Baseplate is cut to x ±130, z ±90 and ringed with invisible walls (`Town.BOUNDS`). Decor is fixed (`Util/TownLayout`, same on every server): lamps
-on the street edges at every plot gap and row end, 4 benches with flower beds and 2 plaza decor spots round the
-spring, a bush, clover, a crate and a barrel in each gap between plots, a tree line (Tree and Pine in turn) behind each
-row, a fence round the whole island just inside its edge, trees at the street ends, a frame and two rocks at each portal. Nothing lands inside a plot,
-in the street (except lamps, portals and the plaza), within 10 studs of a portal, or in the spring area (except
-benches and flowers). **Shops:** an open front up to the awning; back and side walls outside the floor (18 tall, trim and
+the whole main-game world: the Baseplate is cut to x ±130, z ±90 and ringed with invisible walls (`Town.BOUNDS`). Code builds the fixed pieces (`Util/TownLayout`, same on every
+server): lamps on the street edges at every plot gap and row end, 4 benches round the spring, a fence round the whole
+island just inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except lamps, portals
+and the plaza), within 10 studs of a portal, or in the spring area (except benches). The scenery (trees, flowers,
+rocks, crates ...) is hand-placed in Studio and saved as `assets/town/TownDecor.rbxm` → `Workspace.TownDecor`
+(docs/props.md). **Shops:** an open front up to the awning; back and side walls outside the floor (18 tall, trim and
 baseboard), front corner pillars, an awning 12 studs up (the Awning prop repeated across the front and tinted in the
 theme colour, or code-built stripes; about 5 studs out), a front wall above it carrying the shop sign, a flat ceiling
 (the camera stays under it inside) with 3 warm ceiling lights, and a gable roof on top (ridge side to side, 8 high,
@@ -523,6 +523,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
 ├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
 ├── assets/props/               # town prop models (.rbxm) → ServerStorage.PropModels (docs/props.md)
+├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services

@@ -193,6 +193,11 @@ function TownService.Start()
 	if Place.isFrontier() then
 		return
 	end
+	-- Hand-placed decor (assets/town): the Lune test keeps scripts out; this is the second layer
+	local decor = workspace:FindFirstChild("TownDecor")
+	if decor then
+		Props.strip(decor)
+	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Town"
 	buildGround(folder)

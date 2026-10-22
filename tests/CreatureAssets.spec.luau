@@ -6,7 +6,7 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town" }
 
 local function findScripts(roots: { any }): { string }
 	local found = {}
@@ -32,6 +32,7 @@ return {
 
 	["the prop folder is scanned too"] = function()
 		assert(table.find(FOLDERS, "assets/props"), "assets/props is not in FOLDERS")
+		assert(table.find(FOLDERS, "assets/town"), "assets/town is not in FOLDERS")
 	end,
 
 	["no creature or monster model contains a script"] = function()

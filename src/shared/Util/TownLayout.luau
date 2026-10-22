@@ -1,6 +1,8 @@
 --!strict
--- Where every town decoration goes (main town spec). Pure: takes the plot grid, portal and spring spots and
--- Config/Town, returns a fixed list of prop placements, so every server looks the same. TownService places them.
+-- Where the code-built town pieces go (main town spec): street lamps, plaza benches, the island fence and the
+-- portal frames. Pure: takes the plot grid, portal and spring spots and Config/Town, returns a fixed list of prop
+-- placements, so every server looks the same. TownService places them. The rest of the decoration (trees,
+-- flowers, rocks ...) is hand-placed in Studio and saved as assets/town (docs/props.md).
 -- Lune-tested: a fence rings the island; nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
 -- in the spring area (except benches and flowers).
 export type Point = { x: number, z: number }
@@ -99,17 +101,6 @@ function TownLayout.build(world: World, town: any): { Placement }
 		for _, x in lampXs do
 			add("Lamp", x, lampZ, towardStreet)
 		end
-
-		-- Gaps between plots: a bush halfway back, clover patches, a crate and a barrel by the street
-		for _, x in gapXs do
-			add("Bush", x, side * (halfStreet + world.plotDepth / 2), towardStreet)
-			for _, depth in layout.GAP_CLOVER_DEPTHS do
-				add("Clover", x, side * (halfStreet + depth), towardStreet)
-			end
-			local crateZ = side * (halfStreet + layout.GAP_CRATE_DEPTH)
-			add("Crate", x - layout.GAP_CRATE_SPREAD, crateZ, towardStreet)
-			add("Barrel", x + layout.GAP_CRATE_SPREAD, crateZ, towardStreet)
-		end
 	end
 
 	-- Fence round the island's edge, just inside the bounds, facing in
@@ -131,47 +122,17 @@ function TownLayout.build(world: World, town: any): { Placement }
 		end)
 	end
 
-	-- Tree lines behind both rows, then a pair at each street end; slots alternate, turns vary
-	local trees = 0
-	local function tree(x: number, z: number)
-		trees += 1
-		add(town.TREE_SLOTS[(trees - 1) % #town.TREE_SLOTS + 1], x, z, (trees * 47) % 360)
-	end
-	for _, side in SIDES do
-		local z = side * (halfStreet + world.plotDepth + layout.TREE_OFFSET)
-		local x = -layout.TREE_LINE_HALF_LENGTH
-		while x <= layout.TREE_LINE_HALF_LENGTH do
-			tree(x, z)
-			x += layout.TREE_SPACING
-		end
-	end
-	for _, xSign in SIDES do
-		for _, zSign in SIDES do
-			tree(xSign * layout.STREET_END_TREE_X, zSign * layout.STREET_END_TREE_Z)
-		end
-	end
-
-	-- Plaza: benches facing the spring, a flower bed beside each, decor on the edge
-	local function around(slot: string, angle: number, radius: number)
-		local x = world.spring.x + radius * math.cos(math.rad(angle))
-		local z = world.spring.z + radius * math.sin(math.rad(angle))
-		add(slot, x, z, faceYaw(world.spring.x - x, world.spring.z - z))
-	end
+	-- Plaza: benches facing the spring
 	for _, angle in layout.BENCH_ANGLES do
-		around("Bench", angle, layout.BENCH_RADIUS)
-		around("Flower", angle + layout.FLOWER_ANGLE_OFFSET, layout.BENCH_RADIUS)
-	end
-	for _, angle in layout.PLAZA_DECOR_ANGLES do
-		around("PlazaDecor", angle, layout.PLAZA_DECOR_RADIUS)
+		local x = world.spring.x + layout.BENCH_RADIUS * math.cos(math.rad(angle))
+		local z = world.spring.z + layout.BENCH_RADIUS * math.sin(math.rad(angle))
+		add("Bench", x, z, faceYaw(world.spring.x - x, world.spring.z - z))
 	end
 
-	-- Portals: a frame facing the town, two rocks behind it
+	-- Portals: a frame facing the town
 	for _, portal in world.portals do
 		local away = if portal.x >= 0 then 1 else -1
 		add("Portal", portal.x, portal.z, faceYaw(-away, 0))
-		for _, rockSide in SIDES do
-			add("Rock", portal.x + away * layout.PORTAL_ROCK_BACK, portal.z + rockSide * layout.PORTAL_ROCK_SIDE, faceYaw(-away, 0))
-		end
 	end
 
 	return placements

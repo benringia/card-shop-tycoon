@@ -147,6 +147,14 @@ return {
 		end
 	end,
 
+	["code builds only lamps, benches, the island fence and portal frames"] = function()
+		-- Trees, bushes, flowers, rocks, crates and the rest are hand-placed in Studio (assets/town, TownDecor)
+		local allowed = { Lamp = true, Bench = true, Fence = true, Portal = true }
+		for _, placement in TownLayout.build(WORLD, town) do
+			assert(allowed[placement.slot], `{placement.slot} is still code-built`)
+		end
+	end,
+
 	["portals stay clear"] = function()
 		local placements = TownLayout.build(WORLD, town)
 		expect.equal(count(placements, "Portal"), #WORLD.portals, "portal frames")
