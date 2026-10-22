@@ -109,7 +109,7 @@ return {
 	AWNING_STRIPES = 8,
 	ROOF_THICKNESS = 1, -- the flat ceiling and the gable panels
 	GABLE = { RISE = 8, OVERHANG = 1.5 }, -- roof ridge runs side to side, this high above the ceiling
-	CEILING_LIGHTS = { XS = { -12, 0, 12 }, SIZE = 3, RANGE = 26, BRIGHTNESS = 1.2, COLOR = { 255, 225, 180 } },
+	CEILING_LIGHTS = { XS = { -12, 0, 12 }, SIZE = 3, RANGE = 26, BRIGHTNESS = 0.8, COLOR = { 255, 225, 180 } },
 
 	-- One theme per plot id
 	PLOT_THEMES = {
@@ -128,9 +128,11 @@ return {
 
 	-- Main town only; the Frontier keeps its own lighting
 	LIGHTING = {
-		CLOCK_TIME = 14.5,
-		AMBIENT = { 120, 110, 105 },
-		OUTDOOR_AMBIENT = { 150, 140, 130 },
+		CLOCK_TIME = 15.5, -- mid-afternoon, a slightly lower sun
+		BRIGHTNESS = 1.6, -- sunlight (Roblox default 2)
+		EXPOSURE = -0.25, -- whole-scene exposure: a softer, dimmer look
+		AMBIENT = { 95, 88, 85 },
+		OUTDOOR_AMBIENT = { 120, 112, 105 },
 		ATMOSPHERE = { density = 0.25, offset = 0.1, haze = 1.2, glare = 0.2, color = { 225, 215, 200 }, decay = { 140, 160, 190 } },
 		BLOOM = { intensity = 0.4, size = 24, threshold = 1.6 },
 		SATURATION = 0.12,

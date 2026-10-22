@@ -266,6 +266,8 @@ end
 local function setLighting()
 	local settings = Town.LIGHTING
 	Lighting.ClockTime = settings.CLOCK_TIME
+	Lighting.Brightness = settings.BRIGHTNESS
+	Lighting.ExposureCompensation = settings.EXPOSURE
 	Lighting.Ambient = Props.color(settings.AMBIENT)
 	Lighting.OutdoorAmbient = Props.color(settings.OUTDOOR_AMBIENT)
 
