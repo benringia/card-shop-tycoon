@@ -47,7 +47,7 @@ Order stock (computer) → Restock shelves → Set prices
 - Plots are fixed size but have **expansion zones** that unlock (walls move back / second room opens).
 - Other players can walk into your shop and see your shelves and display cases.
 
-**Main town (world pass 1; spec `2026-10-25-main-town-design.md`; built, awaiting Studio test).** A cozy stylized
+**Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
 village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
 between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring, warm afternoon lighting
 with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
@@ -256,7 +256,7 @@ Roadmap (one sub-project at a time):
 5. **Battles** — real-time auto-battles, in three parts:
    1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
-   3. a) The Frontier (spec `2026-10-24-frontier-design.md`; built, awaiting Studio test).
+   3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
       b) Dungeons: a third place with late-game bosses for groups, reached from the Frontier (later).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
