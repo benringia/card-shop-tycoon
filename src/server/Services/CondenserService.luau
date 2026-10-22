@@ -15,6 +15,9 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
+
+local SHARD_ID = "starShard"
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -41,7 +44,7 @@ local function describeReason(reason: string?): string
 	return "You don't have that card."
 end
 
-local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown)
+local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useShards: unknown)
 	if not allowAction(player) then
 		return
 	end
@@ -69,12 +72,19 @@ local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, ma
 		return
 	end
 
-	local beast, reason = CardService.Condense(player, cardId, target)
+	-- Recounted here: the client's number is only a preview
+	local shards = if useShards == true then ItemService.GetCount(player, SHARD_ID) else 0
+	local beast, reason, shardsUsed = CardService.Condense(player, cardId, target, shards)
 	if not beast then
 		notify(player, describeReason(reason), true)
 		return
 	end
-	notify(player, `{card.name} is now {BeastRules.describeGrowth(beast.level, beast.stars)}!`, false)
+	-- Same step, no yields: the shards counted above are still there
+	if shardsUsed > 0 then
+		ItemService.TakeItem(player, SHARD_ID, shardsUsed)
+	end
+	local shardText = if shardsUsed > 0 then ` (used {shardsUsed} Star Shard{if shardsUsed == 1 then "" else "s"})` else ""
+	notify(player, `{card.name} is now {BeastRules.describeGrowth(beast.level, beast.stars)}!{shardText}`, false)
 end
 
 function CondenserService.Start()

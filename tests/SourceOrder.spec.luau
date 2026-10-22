@@ -102,7 +102,68 @@ local function findEarlyVariables(path: string): { string }
 	return problems
 end
 
+-- A capitalised name used like a module or library (`Name.x` / `Name:x`) that the file never declares and that
+-- isn't a Roblox or Luau global: it's a nil global at runtime (a missing require).
+local GLOBALS = {}
+for _, name in {
+	"Enum", "Instance", "Vector2", "Vector3", "CFrame", "Color3", "UDim", "UDim2", "TweenInfo", "NumberSequence",
+	"NumberSequenceKeypoint", "ColorSequence", "ColorSequenceKeypoint", "NumberRange", "Random", "RaycastParams",
+	"OverlapParams", "BrickColor", "Rect", "Region3", "Ray", "Font", "DateTime", "PhysicalProperties", "Axes", "Faces",
+	"Vector2int16", "Vector3int16", "Content", "SharedTable", "Path2DControlPoint",
+} do
+	GLOBALS[name] = true
+end
+
+local function findUndeclared(path: string): { string }
+	local lines = codeLines(fs.readFile(path))
+	local declared: { [string]: boolean } = {}
+	for _, line in lines do
+		for name in string.gmatch(line, "local%s+([%w_]+)") do
+			declared[name] = true
+		end
+		for name in string.gmatch(line, "local%s+function%s+([%w_]+)") do
+			declared[name] = true
+		end
+		-- function parameters and for-loop names
+		for params in string.gmatch(line, "function[^%(]*%(([^%)]*)%)") do
+			for name in string.gmatch(params, "([%w_]+)") do
+				declared[name] = true
+			end
+		end
+		for names in string.gmatch(line, "for%s+([%w_,%s]+)%s+in") do
+			for name in string.gmatch(names, "([%w_]+)") do
+				declared[name] = true
+			end
+		end
+	end
+	local problems, seen = {}, {}
+	for index, line in lines do
+		local stripped = string.gsub(line, "%b\"\"", "")
+		stripped = string.gsub(stripped, "%b``", "")
+		for before, name in string.gmatch(stripped, "(.?)%f[%w_]([A-Z][%w_]*)%s*[%.:][%a_]") do
+			if before ~= "." and before ~= ":" and not declared[name] and not GLOBALS[name] and not seen[name] then
+				seen[name] = true
+				table.insert(problems, `{path}:{index}: {name} is used but never required or declared`)
+			end
+		end
+	end
+	return problems
+end
+
 return {
+	["every module a file uses is required or declared"] = function()
+		local files = {}
+		listFiles("src", files)
+		local problems = {}
+		for _, path in files do
+			for _, problem in findUndeclared(path) do
+				table.insert(problems, problem)
+			end
+		end
+		table.sort(problems)
+		assert(#problems == 0, `undeclared names:\n    {table.concat(problems, "\n    ")}`)
+	end,
+
 	["no file-level local is used above its declaration"] = function()
 		local files = {}
 		listFiles("src", files)

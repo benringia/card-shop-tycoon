@@ -11,6 +11,9 @@
       },
       "MonsterModels": {
         "$path": "assets/monsters"
+      },
+      "PropModels": {
+        "$path": "assets/props"
       }
     },
     "ServerScriptService": {
@@ -28,6 +31,11 @@
         "Client": {
           "$path": "src/client"
         }
+      }
+    },
+    "Workspace": {
+      "TownDecor": {
+        "$path": "assets/town"
       }
     }
   }

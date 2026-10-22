@@ -6,7 +6,6 @@
 -- Prompts are created on this client only, never on your own cases.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -323,13 +322,13 @@ local function buildRow(part: BasePart, order: number)
 		selectedPart = part
 		render()
 	end)
-	-- With a mouse, hovering selects, so the details (and Buy) always match the row under the cursor.
-	-- The check stops the redrawn row under the cursor from selecting again.
+	-- Hover only brightens the row; selecting takes a click, so passing over rows never changes the choice
+	local base = row.BackgroundColor3
 	row.MouseEnter:Connect(function()
-		if UserInputService.MouseEnabled and selectedPart ~= part then
-			selectedPart = part
-			render()
-		end
+		row.BackgroundColor3 = base:Lerp(Color3.new(1, 1, 1), 0.08)
+	end)
+	row.MouseLeave:Connect(function()
+		row.BackgroundColor3 = base
 	end)
 end
 

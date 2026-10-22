@@ -47,6 +47,42 @@ Order stock (computer) → Restock shelves → Set prices
 - Plots are fixed size but have **expansion zones** that unlock (walls move back / second room opens).
 - Other players can walk into your shop and see your shelves and display cases.
 
+**Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
+village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
+between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring, warm afternoon lighting
+with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
+the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
+with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
+embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Plots stand 24 studs apart. The town is
+the whole main-game world: the Baseplate is cut to x ±130, z ±90 and ringed with invisible walls (`Town.BOUNDS`). Code builds the fixed pieces (`Util/TownLayout`, same on every
+server): lamps on the street edges at every plot gap and row end, 4 benches round the spring, a fence round the whole
+island just inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except lamps, portals
+and the plaza), within 10 studs of a portal, or in the spring area (except benches). The scenery (trees, flowers,
+rocks, crates ...) is hand-placed in Studio and saved as `assets/town/TownDecor.rbxm` → `Workspace.TownDecor`
+(docs/props.md). **Shops:** an open front up to the awning; back and side walls outside the floor (18 tall, trim and
+baseboard), front corner pillars, an awning 12 studs up (the Awning prop repeated across the front and tinted in the
+theme colour, or code-built stripes; about 5 studs out), a front wall above it carrying the shop sign, a flat ceiling
+(the camera stays under it inside) with 3 warm ceiling lights, and a gable roof on top (ridge side to side, 8 high,
+1.5 overhang). The roof always shows. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
+trim, awning, roof, owned floor; grey floor while for rent). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
+cashier stands inside; it carries a Register prop at its left end and a
+counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part: Small Pack Rack → Shelf, Wall
+Shelf → WallShelf, Accessory Hook → HookRack (pegboard), Big Display Rack → DisplayRack, Glass Showcase →
+Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → the same counter recoloured
+(`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Delivery boxes show their
+product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
+the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
+`Town.SHELF_STOCK`, `Products.color`). **Props:** every
+decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
+code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
+
+**Placement ghost (build mode):** a see-through copy of the real model (the shelf's `prop`, or the desk), tinted
+green or red with an outline, gliding between grid cells; its footprint cells drawn on the floor, a chevron at its
+front, a label above it ("Wall Shelf · $350", "Move Collector Case", "Can't place here"). Buttons Rotate (R), Place
+(Click; greyed while blocked), Cancel (Q). Shop prompts are hidden while placing. Numbers: `Config/Placement`.
+Shelves, cases and fixtures carry a small name tag floating just above them (product and count, the case's
+count, "📦 Order Stock", "💰 Register", "✨ Card Condenser"), shown within 40 studs (`Placement.TAG`).
+
 ---
 
 ## 4. Shop systems
@@ -220,8 +256,25 @@ Roadmap (one sub-project at a time):
 5. **Battles** — real-time auto-battles, in three parts:
    1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
-   3. The Frontier (a separate place shared by players from every server: high-level monsters, exclusive valuable
-      drops) and boss challenges for groups (later).
+   3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
+      b) Dungeons: a third place with late-game bosses for groups, reached from the Frontier (later).
+
+**Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
+The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
+A teleport is a leave (fights end, the save goes to the next server); your shop pauses and rebuilds from the save
+when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
+(Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
+spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
+and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Aurora Drake, Stormking, never in
+packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER ribbon, a constant
+shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
+an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
+Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
+and changed only by ItemService. The binder has two tabs, 📖 Cards and 🎒 Bag (key I opens the Bag): item tiles with a
+detail panel. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
+up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
+`PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
+`Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
 
 **Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
 min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
@@ -476,17 +529,21 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ```
 /
 ├── DESIGN.md
-├── default.project.json        # Rojo project
+├── default.project.json        # Rojo project (main game)
+├── frontier.project.json       # Rojo project for the Frontier place (same src, PlaceKind = "Frontier", port 34873)
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
 ├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
+├── assets/props/               # town prop models (.rbxm) → ReplicatedStorage.PropModels (docs/props.md)
+├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
     │   ├── Services/
     │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
-    │   │   ├── PlotService.luau      # claim/release plots, build saved layout
+    │   │   ├── PlotService.luau      # claim/release plots, shop shells (themed walls, awning, roof)
+    │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portal frames, lighting
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
@@ -502,6 +559,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
+    │   │   ├── ItemService.luau      # item inventory (Star Shards): give, take, save
+    │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
@@ -532,6 +591,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
+    │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
+    │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
@@ -562,6 +623,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
+        │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
+        │   ├── Items.luau      # every item: name, icon, description; stack limit
+        │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, lighting
+        │   ├── Places.luau     # place ids, Frontier portal spot
+        │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
@@ -579,6 +645,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
+            ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
+            ├── Place.luau         # which place this is; its wild-map config
+            ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
+            ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
+            ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
+            ├── ShelfStock.luau    # how many stock boxes a shelf shows and where (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -595,10 +667,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v9)
+### 10.4 Player data schema (v10)
 ```lua
 {
-    version = 9,
+    version = 10,
     cash = 200,
     xp = 0,
     level = 1,
@@ -607,7 +679,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     prices = {},            -- { [productId] = price }
     layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
                             --   cards (card cases): { { slot, cardId, foil, price, grade, beastId?, level?, xp?, stars? } } (stars 0-5)
-    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
+    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer (a 10x6 desk;
+                            -- restored after the shelves, to the nearest free spot if its own is taken).
+                            -- Saved shelves that no longer fit their spot (a shelf grew) move to the nearest free one.
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display
     beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)
@@ -615,6 +689,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     party = { slots = {} }, -- { slots = { ["1".."3"] = beastId }, summoned = slot? } party cards and the summoned one
     resting = {},           -- { [beastId] = unixTime } cards that fainted in a fight, resting until then
     pvp = { wins = 0, losses = 0, draws = 0 }, -- PvP record
+    items = {},             -- { [itemId] = count } item inventory (Config/Items), e.g. starShard
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -627,13 +702,15 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.
 - Use CollectionService tags for shelves/interactables.
 - Stream-friendly: enable StreamingEnabled, test on low-end phone.
+- Town props: under 2k triangles per prop model and 60k for the whole town; models over 150 parts use the
+  stand-in. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
 
 ---
 

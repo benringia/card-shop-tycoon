@@ -10,7 +10,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
-local Wild = require(Config:WaitForChild("Wild"))
+-- The server wild map in the main game, the Frontier in the Frontier place
+local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 
 local MonsterController = {}

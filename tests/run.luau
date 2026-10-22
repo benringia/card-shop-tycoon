@@ -18,6 +18,13 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BattleSim = require("./BattleSim.spec"),
 	SourceOrder = require("./SourceOrder.spec"),
 	PvpRules = require("./PvpRules.spec"),
+	Frontier = require("./Frontier.spec"),
+	ItemRules = require("./ItemRules.spec"),
+	TownLayout = require("./TownLayout.spec"),
+	PropFit = require("./PropFit.spec"),
+	ShelfStock = require("./ShelfStock.spec"),
+	CellSearch = require("./CellSearch.spec"),
+	ShelvesConfig = require("./ShelvesConfig.spec"),
 }
 
 local passed, failed = 0, 0

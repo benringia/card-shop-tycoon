@@ -10,8 +10,11 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local Announcements = require(Config:WaitForChild("Announcements"))
 local Combat = require(Config:WaitForChild("Combat"))
-local Wild = require(Config:WaitForChild("Wild"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+-- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
+local Wild = Place.getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -22,6 +25,7 @@ local BattleSim = require(Util:WaitForChild("BattleSim"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
@@ -241,17 +245,23 @@ end
 
 -- A random card of the zone's elements: rarity by Wild.DROP_RARITY, any rarity if none of that rarity exists
 local function rollDrop(monster: Monster): string?
-	local zone = Wild.ZONES[monster.zone]
+	local zone: any = Wild.ZONES[monster.zone]
 	local elements: { [string]: boolean } = {}
-	for _, species in (if zone then zone.species else { monster.species }) do
-		local info = Wild.SPECIES[species]
-		if info then
-			elements[info.element] = true
+	if zone and zone.elements then
+		for _, element in zone.elements do -- e.g. The Rift: all five
+			elements[element] = true
+		end
+	else
+		for _, species in (if zone then zone.species else { monster.species }) do
+			local info = Wild.SPECIES[species]
+			if info then
+				elements[info.element] = true
+			end
 		end
 	end
 	local rarity = rollWeighted(Wild.DROP_RARITY)
 	local ofRarity, ofElement = {}, {}
-	for _, card in Cards.List do
+	for _, card in Cards.BySet["First Spark"] do -- Frontier cards only drop in the Frontier
 		if elements[card.element] then
 			table.insert(ofElement, card.id)
 			if card.rarity == rarity then
@@ -279,7 +289,31 @@ local function payOut(fight: Fight): any
 			CardService.AddFresh(player, { dropped })
 		end
 	end
-	return { xpEach = each, cash = rewards.cash, card = dropped }
+	-- Frontier only: Star Shards and Frontier cards
+	local world: any = Wild
+	local shards = 0
+	if world.SHARD_CHANCE and rng:NextNumber() < (if monster.elite then world.ELITE_SHARD_CHANCE else world.SHARD_CHANCE) then
+		shards = ItemService.GiveItem(player, "starShard", 1)
+	end
+	local frontierCard = nil
+	if world.CARD_CHANCE and rng:NextNumber() < (if monster.elite then world.ELITE_CARD_CHANCE else world.CARD_CHANCE) then
+		local rarity = rollWeighted(world.CARD_RARITY)
+		local pool = {}
+		for _, card in Cards.BySet.Frontier do
+			if card.rarity == rarity then
+				table.insert(pool, card.id)
+			end
+		end
+		if #pool > 0 then
+			frontierCard = { cardId = pool[rng:NextInteger(1, #pool)], foil = false, grade = BeastRules.rollGrade(rng:NextNumber()) }
+			CardService.AddFresh(player, { frontierCard })
+			-- Epic and Legendary ones: the whole server hears, and the finder gets the big reveal
+			if Announcements.FRONTIER_RARITIES[Cards.ById[frontierCard.cardId].rarity] then
+				Remotes.PullAnnouncement:FireAllClients(player.DisplayName, frontierCard.cardId, false, "frontier", player.UserId)
+			end
+		end
+	end
+	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards }
 end
 
 -- Ending --------------------------------------------------------------------------------------------------
@@ -329,7 +363,7 @@ local function endFight(fight: Fight, result: string)
 	local summary: any = { result = result, rested = rested }
 	if result == "win" and player.Parent then
 		local paid = payOut(fight)
-		summary.xpEach, summary.cash, summary.card = paid.xpEach, paid.cash, paid.card
+		summary.xpEach, summary.cash, summary.card, summary.shards = paid.xpEach, paid.cash, paid.card, paid.shards
 		summary.partyIds = fight.partyIds
 	end
 	if player.Parent then
@@ -359,7 +393,7 @@ local function whyNot(player: Player, monster: Monster?): string?
 	if not leaderId or not CardService.GetBeast(player, leaderId) then
 		return "Summon a party creature to fight."
 	elseif isResting(player, leaderId) then
-		return "Your creature is resting. Summon a rested one or visit the plaza spring."
+		return `Your creature is resting. Summon a rested one or visit {if Place.isFrontier() then "the spring at the entrance" else "the plaza spring"}.`
 	elseif not getRoot(player) or not PartyService.GetMarker(player) then
 		return "You can't fight right now."
 	end

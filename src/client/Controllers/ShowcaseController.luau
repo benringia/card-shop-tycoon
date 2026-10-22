@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Pricing = require(Config:WaitForChild("Pricing"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
@@ -30,6 +31,7 @@ type PickerFilter = string
 
 local ALL_FILTER = "All"
 local FOIL_FILTER = "Foil"
+local FRONTIER_FILTER = "Frontier"
 local FILTER_CHIP_WIDTH = 96
 local PICKER_TILE_SIZE = Vector2.new(92, 168) -- card face on top, grade/count and value underneath
 local PICKER_FACE_HEIGHT = 118
@@ -129,7 +131,7 @@ local function getPickerFilters(): { PickerFilter }
 	table.sort(rarities, function(a, b)
 		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
 	end)
-	local filters: { PickerFilter } = { ALL_FILTER }
+	local filters: { PickerFilter } = { ALL_FILTER, FRONTIER_FILTER }
 	for _, name in rarities do
 		table.insert(filters, name)
 	end
@@ -142,6 +144,8 @@ local function passesFilter(card: Card, foil: boolean): boolean
 		return true
 	elseif pickerFilter == FOIL_FILTER then
 		return foil
+	elseif pickerFilter == FRONTIER_FILTER then
+		return card.set == "Frontier"
 	end
 	return card.rarity == pickerFilter
 end
@@ -603,6 +607,18 @@ end
 
 local renderPicker: () -> ()
 
+-- Hover only brightens a tile; selecting takes a click, so passing over other tiles never changes the choice
+local HOVER_COLOR = Color3.fromRGB(62, 62, 82)
+local function addHover(button: GuiButton)
+	local base = button.BackgroundColor3
+	button.MouseEnter:Connect(function()
+		button.BackgroundColor3 = HOVER_COLOR
+	end)
+	button.MouseLeave:Connect(function()
+		button.BackgroundColor3 = base
+	end)
+end
+
 -- Card face with grade/count and value underneath, so the grid stays readable
 local function buildPickerTile(entry: PickerEntry, order: number, selected: PickerEntry?, choose: (PickerEntry) -> ())
 	local tile = Instance.new("TextButton")
@@ -643,12 +659,7 @@ local function buildPickerTile(entry: PickerEntry, order: number, selected: Pick
 	tile.Activated:Connect(function()
 		choose(entry)
 	end)
-	-- With a mouse, hovering selects, so the details (and List) always match the tile under the cursor
-	tile.MouseEnter:Connect(function()
-		if UserInputService.MouseEnabled and not (selected and selected.key == entry.key) then
-			choose(entry)
-		end
-	end)
+	addHover(tile)
 end
 
 -- Every copy the player can list: levelled cards (most valuable first), then plain stacks rarest first,
@@ -776,6 +787,8 @@ local function buildPicker(parent: Instance)
 		local tier = Rarities.Tiers[filter]
 		if tier then
 			chip.TextColor3 = tier.color
+		elseif filter == FRONTIER_FILTER then
+			chip.TextColor3 = CardEffects.FRONTIER.AURORA[1]
 		end
 		chip.Activated:Connect(function()
 			pickerFilter = filter

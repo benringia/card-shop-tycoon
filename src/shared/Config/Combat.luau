@@ -41,6 +41,11 @@ return {
 		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 3 },
 		Solarion = { kind = "Supernova", name = "Supernova", power = 4 },
 		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5 },
+		-- Frontier cards: same ability kinds, their own names
+		Riftwalker = { kind = "Eclipse", name = "Rift Step", seconds = 3 },
+		["Cinder Titan"] = { kind = "Stampede", name = "Magma Slam", power = 2, stun = 2 },
+		["Aurora Drake"] = { kind = "TidalShield", name = "Aurora Veil", shield = 0.35 },
+		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4 },
 	},
 
 	-- Run: clamp(RUN_BASE + RUN_PER_SPD * (leaderSPD - monsterSPD), RUN_MIN, RUN_MAX) - elite penalty (>= RUN_MIN)

@@ -199,14 +199,15 @@ function CardService.AddXP(player: Player, target: XpTarget, amount: number): Be
 	return beast
 end
 
--- The Condenser: +1 star for the main copy, paid for with plain duplicates of the same card
+-- The Condenser: +1 star for the main copy, paid for with plain duplicates of the same card (and, if `shards`
+-- is given, up to that many Star Shards for what's missing; the caller takes the shards it reports used)
 -- (Util/CondenseRules picks them). A plain main leaves its stack and becomes its own card.
 -- All in one step with no yields. Returns the main card, or nil and a reason ("max", "short:<have>:<need>",
 -- "missing").
-function CardService.Condense(player: Player, cardId: string, main: XpTarget): (Beast?, string?)
+function CardService.Condense(player: Player, cardId: string, main: XpTarget, shards: number?): (Beast?, string?, number)
 	local inventory = inventories[player]
 	if not inventory or not Cards.ById[cardId] then
-		return nil, "missing"
+		return nil, "missing", 0
 	end
 	local beast: Beast? = nil
 	local foil: boolean
@@ -214,12 +215,12 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget): (
 	if typeof(main) == "string" then
 		beast = inventory.beasts[main]
 		if not beast or beast.cardId ~= cardId then
-			return nil, "missing"
+			return nil, "missing", 0
 		end
 		if inventory.working[main] then
-			return nil, "working"
+			return nil, "working", 0
 		elseif inventory.fighting[main] then
-			return nil, "fighting"
+			return nil, "fighting", 0
 		end
 		foil, grade = beast.foil, beast.grade
 	else
@@ -227,20 +228,20 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget): (
 		local owned = if byGrade then byGrade[main.grade] else nil
 		local count = if owned then (if main.foil then owned.foil else owned.normal) else 0
 		if main.cardId ~= cardId or count <= 0 then
-			return nil, "missing"
+			return nil, "missing", 0
 		end
 		foil, grade = main.foil, main.grade
 	end
 
 	local stacks = inventory.stacks[cardId] or {}
-	local takes, reason = CondenseRules.plan(Beasts, stacks, {
+	local takes, reason, shardsUsed = CondenseRules.plan(Beasts, stacks, {
 		beast = beast ~= nil,
 		foil = foil,
 		grade = grade,
 		stars = if beast then beast.stars else BeastRules.START_STARS,
-	})
+	}, shards)
 	if not takes then
-		return nil, reason
+		return nil, reason, 0
 	end
 	for _, take in takes do
 		local owned = getOwned(inventory.stacks, cardId, take.grade)
@@ -267,7 +268,7 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget): (
 	local condensed = beast :: Beast
 	condensed.stars += 1
 	sync(player)
-	return condensed
+	return condensed, nil, shardsUsed
 end
 
 -- Splits one plain copy off its stack into its own card (to give it a job). Nil if there is no such copy.

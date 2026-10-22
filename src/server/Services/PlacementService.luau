@@ -13,10 +13,16 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
+local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"))
+local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
+local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -54,6 +60,8 @@ export type PlacedShelf = {
 	paid: number, -- what the player spent, for the sell-back refund
 	part: Part,
 	label: TextLabel,
+	visual: Model?, -- shelves with a prop (Shelves def.prop): the prop drawn on the invisible hitbox part
+	stockBoxes: { Part }, -- Products shelves: boxes showing how full it is (ShelfStock)
 }
 
 local KIND_LABELS = {
@@ -106,15 +114,62 @@ local function countCards(shelf: PlacedShelf): number
 	return count
 end
 
+local STOCK_SLOTS = #Town.SHELF_STOCK.LEVELS * Town.SHELF_STOCK.PER_LEVEL
+
+local function toVec(vector: Vector3): ShelfStock.Vec
+	return { x = vector.X, y = vector.Y, z = vector.Z }
+end
+
+-- Products shelves show up to STOCK_SLOTS boxes in the product's colour, filling from the bottom level
+local function updateStockBoxes(shelf: PlacedShelf)
+	if shelf.def.kind ~= "Products" then
+		return
+	end
+	local product = if shelf.productId then Products.ById[shelf.productId] else nil
+	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, STOCK_SLOTS) else 0
+	local boxes = shelf.stockBoxes
+	while #boxes > count do
+		local box = table.remove(boxes)
+		if box then
+			box:Destroy()
+		end
+	end
+	if not product then
+		return
+	end
+	local size = ShelfStock.boxSize(toVec(shelf.def.size), Town.SHELF_STOCK)
+	local slots = ShelfStock.slots(toVec(shelf.def.size), Town.SHELF_STOCK)
+	local color = product.color
+	for index = 1, count do
+		local box = boxes[index]
+		if not box then
+			box = Instance.new("Part")
+			box.Name = "StockBox"
+			box.Anchored = true
+			box.CanCollide = false
+			box.CanQuery = false
+			box.CanTouch = false
+			box.Material = Enum.Material.SmoothPlastic
+			box.Parent = shelf.part
+			boxes[index] = box
+		end
+		local slot = slots[index]
+		box.Size = Vector3.new(size.x, size.y, size.z)
+		box.Color = Color3.fromRGB(color[1], color[2], color[3])
+		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z)
+	end
+end
+
 local function updateLabel(shelf: PlacedShelf)
 	if isCondenser(shelf.def) then
-		shelf.label.Text = shelf.def.name
+		shelf.label.Text = `✨ {shelf.def.name}`
 		return
 	end
 	if isCardCase(shelf.def) then
 		shelf.label.Text = `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`
 		return
 	end
+	updateStockBoxes(shelf)
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
 	if not product or shelf.units <= 0 then
 		shelf.label.Text = `Empty\n0/{shelf.def.capacity}`
@@ -130,9 +185,23 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	local rows = math.ceil(shelf.def.capacity / columns)
 	local col = (slot - 1) % columns
 	local row = (slot - 1) // columns
+	if shelf.visual and shelf.def.cardsFlat then
+		-- Lying on the bed under the glass, back row first, leaning up toward the front
+		local flat = ShowcaseConfig.FLAT
+		local size = shelf.part.Size
+		local x = (col - (columns - 1) / 2) * flat.SPACING.X
+		local z = ((rows - 1) / 2 - row) * flat.SPACING.Y
+		local y = -size.Y / 2 + flat.BED * size.Y + ShowcaseConfig.CARD_SIZE.Z
+		return shelf.part.CFrame * CFrame.new(x, y, z) * CFrame.Angles(math.rad(90 - flat.TILT), 0, 0)
+	end
 	local x = (col - (columns - 1) / 2) * ShowcaseConfig.SLOT_SPACING.X
 	local y = ((rows - 1) / 2 - row) * ShowcaseConfig.SLOT_SPACING.Y + ShowcaseConfig.SLOTS_OFFSET_Y
 	local z = -(shelf.part.Size.Z + ShowcaseConfig.CARD_SIZE.Z) / 2 - 0.02
+	if shelf.visual then
+		-- Inside the glass: behind the front face, standing on the cabinet's shelves
+		z = -shelf.part.Size.Z / 2 + ShowcaseConfig.CASED_CARD_INSET
+		y += ShowcaseConfig.CASED_CARD_RAISE
+	end
 	return shelf.part.CFrame * CFrame.new(x, y, z)
 end
 
@@ -161,7 +230,7 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part.Name = "DisplayedCard" .. slot
 	part.Anchored = true
 	part.CanCollide = false
-	part.Size = ShowcaseConfig.CARD_SIZE
+	part.Size = if shelf.visual and shelf.def.cardsFlat then ShowcaseConfig.CARD_SIZE * ShowcaseConfig.FLAT.SCALE else ShowcaseConfig.CARD_SIZE
 	part.Color = Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3)
 	part.Material = if displayed.foil then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	part.CFrame = getSlotCFrame(shelf, slot)
@@ -189,18 +258,29 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	frame.BackgroundTransparency = 1
 	frame.Parent = gui
 	local stroke = Instance.new("UIStroke")
+	stroke.Name = "Border"
 	stroke.Thickness = 4
 	stroke.Color = Rarities.Tiers[card.rarity].color
 	stroke.Parent = frame
 
+	-- Frontier cards: darker element colour, a white border the client turns into a moving aurora, a ribbon
+	local frontier = card.set == "Frontier"
+	local aurora = CardEffects.FRONTIER.AURORA
+	if frontier then
+		part.Color = part.Color:Lerp(Color3.new(0, 0, 0), CardEffects.FRONTIER.BACKGROUND_DARKEN)
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = 6
+	end
 	addCardText(frame, card.name, 0.04, 0.2)
-	if displayed.foil then
+	if frontier then
+		addCardText(frame, if displayed.foil then "FOIL FRONTIER" else "FRONTIER", 0.25, 0.12).TextColor3 = aurora[3]
+	elseif displayed.foil then
 		addCardText(frame, "FOIL", 0.25, 0.12)
 	end
 	if displayed.beast then
 		addCardText(frame, BeastRules.describeGrowth(level, stars), 0.38, 0.13)
 	end
-	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = Rarities.Tiers[card.rarity].color
+	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = if frontier then aurora[1] else Rarities.Tiers[card.rarity].color
 	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
 
 	part.Parent = shelf.part
@@ -243,24 +323,31 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	for slot, part in shelf.cardParts do
 		part.CFrame = getSlotCFrame(shelf, slot)
 	end
+	if shelf.visual then
+		shelf.visual:PivotTo(shelf.part.CFrame * CFrame.new(0, -shelf.def.size.Y / 2, 0))
+	end
+	updateStockBoxes(shelf)
 end
 
+-- A tag floating just above the shelf (what it holds, or the case's count), clear of its model and cards
 local function buildLabel(part: Part, def: ShelfDef): TextLabel
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
-	gui.Parent = part
+	local tag = PlacementConfig.TAG
+	local board = Instance.new("BillboardGui")
+	board.Name = "ShelfTag"
+	board.Size = UDim2.new(math.max(def.size.X, tag.MIN_WIDTH), 0, tag.HEIGHT, 0)
+	board.StudsOffset = Vector3.new(0, def.size.Y / 2 + tag.GAP + tag.HEIGHT / 2, 0)
+	board.MaxDistance = tag.MAX_DISTANCE
+	board.LightInfluence = 0
+	board.Parent = part
 
 	local label = Instance.new("TextLabel")
-	-- Card cases keep most of the face free for the cards
-	label.Size = UDim2.fromScale(1, if isCardCase(def) then ShowcaseConfig.LABEL_HEIGHT else 0.4)
+	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBold
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
+	label.TextStrokeTransparency = 0.3
+	label.Parent = board
 	return label
 end
 
@@ -299,12 +386,25 @@ local function createShelf(
 		units = 0,
 		cards = {},
 		cardParts = {},
+		stockBoxes = {},
 		paid = paid,
 		part = part,
 		label = buildLabel(part, def),
 	}
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
+	if def.prop and Props.hasModel(def.prop) then
+		-- The part stays as the hitbox (prompts, label, customers); the prop is the look. Its label still shows.
+		part.Transparency = 1
+		local visual = Props.fit(def.prop, def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)
+		for _, descendant in visual:GetDescendants() do
+			local color = def.propColors and descendant:IsA("BasePart") and def.propColors[descendant.Name]
+			if color then
+				(descendant :: BasePart).Color = color
+			end
+		end
+		shelf.visual = visual
+	end
 	updateLabel(shelf)
 	part.Parent = plot.shelvesFolder
 
@@ -456,16 +556,33 @@ local function onSell(player: Player, uid: unknown)
 	notify(player, string.format("Sold %s for $%.2f.", shelf.def.name, refund), false)
 end
 
+-- The saved cell when `size` still fits there, else the nearest free one (a shelf or the computer grew, or
+-- something else now stands there). Nil when the plot has no room at all.
+local function nearestFreeCell(plot: Plot, size: Vector3, startX: number, startZ: number, rotation: number, ignoreId: string?): (number?, number?)
+	local w, d = PlacementGrid.getFootprint(size, rotation)
+	local grid = PlacementConfig.GRID_SIZE
+	local maxX, maxZ = PlotConfig.WIDTH // grid - w, PlotConfig.DEPTH // grid - d
+	for _, cell in CellSearch.byDistance(startX, startZ, maxX, maxZ) do
+		if canPlaceAt(plot, size, cell.x, cell.z, rotation, ignoreId) then
+			return cell.x, cell.z
+		end
+	end
+	return nil, nil
+end
+
+-- Runs after the shelves: the computer goes back to its saved spot, or (when that is taken, or a bigger
+-- computer no longer fits there) to the nearest free spot, so no saved shelf is ever pushed out
 local function restoreComputer(plot: Plot, saved: SavedCell?)
-	if typeof(saved) ~= "table" then
-		return
-	end
-	if not isGridInteger(saved.gridX) or not isGridInteger(saved.gridZ) or not isValidRotation(saved.rotation) then
-		return
-	end
-	local fixtureId = PlotService.COMPUTER_FIXTURE_ID
-	if canPlaceAt(plot, plot.computer.Size, saved.gridX, saved.gridZ, saved.rotation, fixtureId) then
-		PlotService.SetComputerCell(plot, saved.gridX, saved.gridZ, saved.rotation)
+	local valid = typeof(saved) == "table"
+		and isGridInteger(saved.gridX)
+		and isGridInteger(saved.gridZ)
+		and isValidRotation(saved.rotation)
+	local startX = if valid then saved.gridX else PlotConfig.COMPUTER_GRID_X
+	local startZ = if valid then saved.gridZ else PlotConfig.COMPUTER_GRID_Z
+	local rotation = if valid then saved.rotation else 0
+	local x, z = nearestFreeCell(plot, plot.computer.Size, startX, startZ, rotation, PlotService.COMPUTER_FIXTURE_ID)
+	if x and z then
+		PlotService.SetComputerCell(plot, x, z, rotation)
 	end
 end
 
@@ -525,19 +642,20 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 		return
 	end
 	local def = Shelves.ById[saved.shelfId]
-	local valid = def ~= nil
-		and isGridInteger(saved.gridX)
-		and isGridInteger(saved.gridZ)
-		and isValidRotation(saved.rotation)
-		-- A layout saved under older config might not fit any more; skip that shelf rather than overlap
-		and canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, nil)
-	if not valid or not def then
+	local valid = def ~= nil and isGridInteger(saved.gridX) and isGridInteger(saved.gridZ) and isValidRotation(saved.rotation)
+	-- A shelf saved under older config (or one that grew) may not fit its spot any more: it moves to the
+	-- nearest free one. The computer is placed after the shelves (ignored here), so it never pushes one out.
+	local gridX, gridZ
+	if valid and def then
+		gridX, gridZ = nearestFreeCell(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, PlotService.COMPUTER_FIXTURE_ID)
+	end
+	if not def or not gridX or not gridZ then
 		readSavedCards(nil, saved.cards, leftovers)
 		return
 	end
 
 	local paid = if typeof(saved.paid) == "number" then math.clamp(saved.paid, 0, def.cost) else 0
-	local shelf = createShelf(player, plot, def, saved.gridX, saved.gridZ, saved.rotation, paid)
+	local shelf = createShelf(player, plot, def, gridX, gridZ, saved.rotation, paid)
 	local units = if typeof(saved.units) == "number" then math.floor(saved.units) else 0
 	if typeof(saved.productId) == "string" and Products.ById[saved.productId] and units > 0 then
 		PlacementService.AddStock(shelf, saved.productId, units)
@@ -553,19 +671,19 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 end
 
 -- New shops have an empty layout; returning players get their shelves, stock and displayed cards back.
--- The computer goes first so shelves saved around its moved spot still fit. CardService loads before
--- this, so displayed cards that can't be put back are returned to the binder.
+-- Shelves go first (ignoring the computer), then the computer finds its spot around them. CardService loads
+-- before this, so displayed cards that can't be put back are returned to the binder.
 local function load(player: Player, data: PlayerData)
 	local plot = PlotService.GetPlot(player)
 	if not plot then
 		return -- no free plot this session; leave the saved layout untouched
 	end
 	layouts[player] = {}
-	restoreComputer(plot, data.fixtures[PlotService.COMPUTER_FIXTURE_ID])
 	local leftovers: { DisplayedCard } = {}
 	for _, saved in data.layout do
 		restoreShelf(player, plot, saved, leftovers)
 	end
+	restoreComputer(plot, data.fixtures[PlotService.COMPUTER_FIXTURE_ID])
 	for _, displayed in leftovers do
 		CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.grade, displayed.beast)
 	end

@@ -13,6 +13,8 @@ return {
 
 	BOX_SIZE = Vector3.new(2.5, 1.5, 2),
 	BOX_COLOR = Color3.fromRGB(190, 145, 95),
+	-- Boxes without their own model (Products boxProp) get a band in the product's colour and its name
+	BOX_LABEL = { BAND = 0.42, PIXELS_PER_STUD = 60, NAMED_FACES = { "Front", "Back" } },
 	BOXES_PER_LAYER = 4, -- 2x2 grid on the delivery pad, then stack upward
 	CARRY_OFFSET = CFrame.new(0, 0, -2), -- in front of the HumanoidRootPart
 }

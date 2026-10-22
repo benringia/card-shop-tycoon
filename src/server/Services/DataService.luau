@@ -16,6 +16,7 @@ local ProfileStore = require(ServerStorage:WaitForChild("ServerPackages"):WaitFo
 
 local Services = script.Parent :: Instance
 local PlotService = require(Services:WaitForChild("PlotService"))
+local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 local Migrations = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Migrations"))
 
 -- Shape of what's saved. Tables only hold plain data: no Instances, Vector3s or Color3s.
@@ -66,6 +67,7 @@ export type PlayerData = {
 	party: SavedParty, -- 3 party cards, one summoned
 	resting: { [string]: number }, -- beastId -> Unix time it can fight again (fainted in battle)
 	pvp: { wins: number, losses: number, draws: number }, -- PvP record
+	items: { [string]: number }, -- itemId -> count (Config/Items)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -94,6 +96,7 @@ local TEMPLATE: PlayerData = {
 	party = { slots = {} },
 	resting = {},
 	pvp = { wins = 0, losses = 0, draws = 0 },
+	items = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }
@@ -143,7 +146,9 @@ end
 
 local function onPlayerAdded(player: Player)
 	-- Claim first so the player spawns in their shop while the profile loads
-	PlotService.Claim(player)
+	if not Place.isFrontier() then -- the Frontier place has no plots
+		PlotService.Claim(player)
+	end
 
 	local profile = store:StartSessionAsync(DataConfig.KEY_PREFIX .. player.UserId, {
 		Cancel = function()
@@ -202,7 +207,9 @@ local function onPlayerRemoving(player: Player)
 		profile:EndSession()
 	end
 	unloadAll(player)
-	PlotService.Release(player)
+	if not Place.isFrontier() then
+		PlotService.Release(player)
+	end
 end
 
 -- Services register in their Start(), before DataService.Start(). Load runs in registration order.

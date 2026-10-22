@@ -1,11 +1,12 @@
 --!strict
 -- Creature models are free/bought assets: no script inside one may ever reach the game. A Script with
 -- RunContext Server/Client runs from ReplicatedStorage before PartyService can strip it, so this test is the
--- real gate: it fails on any script in assets/creatures or assets/monsters (and checks the scanner catches nested ones).
+-- real gate: it fails on any script in assets/creatures, assets/monsters or assets/props (and checks the scanner
+-- catches nested ones).
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDERS = { "assets/creatures", "assets/monsters" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props" }
 
 local function findScripts(roots: { any }): { string }
 	local found = {}
@@ -29,6 +30,32 @@ return {
 		assert(#findScripts({ model }) == 1, "nested script not found")
 	end,
 
+	["the prop folder is scanned too"] = function()
+		assert(table.find(FOLDERS, "assets/props"), "assets/props is not in FOLDERS")
+		assert(table.find(FOLDERS, "assets/town"), "assets/town is not in FOLDERS")
+		assert(table.find(FOLDERS, "assets/place-props"), "assets/place-props is not in FOLDERS")
+	end,
+
+	["no Rojo-synced prop holds a union (Rojo live sync drops union shapes)"] = function()
+		local bad = {}
+		for _, folder in { "assets/props", "assets/town" } do
+			if fs.isDir(folder) then
+				for _, name in fs.readDir(folder) do
+					if string.match(name, "%.rbxmx?$") then
+						for _, root in roblox.deserializeModel(fs.readFile(`{folder}/{name}`)) do
+							for _, instance in { root, table.unpack(root:GetDescendants()) } do
+								if instance:IsA("UnionOperation") then
+									table.insert(bad, `{folder}/{name}: {instance:GetFullName()}`)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		assert(#bad == 0, `models with unions go in assets/place-props (Insert from File into ReplicatedStorage.PlaceProps):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["no creature or monster model contains a script"] = function()
 		local bad = {}
 		for _, folder in FOLDERS do
@@ -43,6 +70,6 @@ return {
 				end
 			end
 		end
-		assert(#bad == 0, `scripts in creature models (delete them before saving):\n    {table.concat(bad, "\n    ")}`)
+		assert(#bad == 0, `scripts in creature, monster or prop models (delete them before saving):\n    {table.concat(bad, "\n    ")}`)
 	end,
 }

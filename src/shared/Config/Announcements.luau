@@ -9,6 +9,8 @@ return {
 
 	FOIL_FORMAT = "%s pulled a FOIL %s!",
 	NORMAL_FORMAT = "%s pulled %s!",
+	FRONTIER_FORMAT = "✨ %s found a Frontier card: %s!", -- to the whole server, for these rarities only:
+	FRONTIER_RARITIES = { Epic = true, Legendary = true },
 
 	-- Announcements wait until the puller flips the card. If they never do, announce after this long.
 	REVEAL_TIMEOUT = 30,

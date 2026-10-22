@@ -85,7 +85,13 @@ local function onBuy(def: ShelfDef)
 		return
 	end
 	shopPanel.Visible = false
-	PlacementController.Begin(def.size, { kind = "NewShelf", id = def.id })
+	PlacementController.Begin(def.size, {
+		kind = "NewShelf",
+		id = def.id,
+		prop = def.prop,
+		propColors = def.propColors,
+		title = `{def.name} · ${def.cost}`,
+	})
 end
 
 local function buildShopPanel(parent: Instance)
@@ -161,6 +167,9 @@ local function onMove()
 	PlacementController.Begin(def.size, {
 		kind = "MoveShelf",
 		id = uid,
+		prop = def.prop,
+		propColors = def.propColors,
+		title = `Move {def.name}`,
 		rotation = getNumberAttribute(part, "Rotation", 0),
 		gridX = getNumberAttribute(part, "GridX", 0),
 		gridZ = getNumberAttribute(part, "GridZ", 0),
@@ -302,6 +311,8 @@ local function addComputerPrompt(computer: BasePart)
 		PlacementController.Begin(computer.Size, {
 			kind = "MoveFixture",
 			id = fixtureId,
+			prop = "Computer",
+			title = "Move Order Stock",
 			rotation = getNumberAttribute(computer, "Rotation", 0),
 			gridX = getNumberAttribute(computer, "GridX", 0),
 			gridZ = getNumberAttribute(computer, "GridZ", 0),

@@ -10,6 +10,7 @@ export type Card = {
 	element: string,
 	rarity: string,
 	value: number,
+	set: string, -- "First Spark" (packs) or "Frontier" (Frontier drops only)
 }
 
 local ELEMENTS = {
@@ -20,63 +21,35 @@ local ELEMENTS = {
 	Shade = Color3.fromRGB(135, 70, 200),
 }
 
--- { name, element, rarity, value }
-local ROWS = {
-	{ "Cindercub", "Ember", "Common", 0.20 },
-	{ "Puffpuddle", "Tide", "Common", 0.20 },
-	{ "Sprouthop", "Bloom", "Common", 0.20 },
-	{ "Zappit", "Volt", "Common", 0.20 },
-	{ "Gloomlet", "Shade", "Common", 0.30 },
-	{ "Ashbeak", "Ember", "Common", 0.10 },
-	{ "Shellshy", "Tide", "Common", 0.10 },
-	{ "Mossmole", "Bloom", "Common", 0.10 },
-	{ "Fizzlebug", "Volt", "Common", 0.15 },
-	{ "Wispurr", "Shade", "Common", 0.40 },
-	{ "Coalbit", "Ember", "Common", 0.15 },
-	{ "Driplet", "Tide", "Common", 0.10 },
-	{ "Petalpaw", "Bloom", "Common", 0.25 },
-	{ "Sparkrat", "Volt", "Common", 0.15 },
-	{ "Hushmoth", "Shade", "Common", 0.50 },
-	{ "Blazehound", "Ember", "Rare", 2.00 },
-	{ "Reefray", "Tide", "Rare", 1.50 },
-	{ "Thornback", "Bloom", "Rare", 1.25 },
-	{ "Boltlynx", "Volt", "Rare", 2.50 },
-	{ "Nightowl", "Shade", "Rare", 3.00 },
-	{ "Magmaw", "Ember", "Rare", 1.00 },
-	{ "Mistfin", "Tide", "Rare", 1.25 },
-	{ "Vinewyrm", "Bloom", "Rare", 1.75 },
-	{ "Stormjack", "Volt", "Rare", 2.00 },
-	{ "Infernox", "Ember", "Epic", 12.00 },
-	{ "Abyssal Koi", "Tide", "Epic", 8.00 },
-	{ "Thunderhorn", "Volt", "Epic", 10.00 },
-	{ "Eclipse Fox", "Shade", "Epic", 20.00 },
-	{ "Solarion", "Ember", "Legendary", 90.00 },
-	{ "Voidmaw", "Shade", "Legendary", 150.00 },
-	{ "Emberwing", "Ember", "Very Rare", 3.00 },
-	{ "Tidecaller", "Tide", "Very Rare", 3.50 },
-	{ "Briarhorn", "Bloom", "Very Rare", 4.00 },
-	{ "Voltkit", "Volt", "Very Rare", 5.00 },
-	{ "Duskstalker", "Shade", "Very Rare", 6.00 },
-}
+local CardList = require((script.Parent :: Instance):WaitForChild("CardList"))
 
 local List: { Card } = {}
 local ById: { [string]: Card } = {}
-local ByRarity: { [string]: { Card } } = {}
+local ByRarity: { [string]: { Card } } = {} -- pack pools: First Spark only
+local BySet: { [string]: { Card } } = { ["First Spark"] = {}, Frontier = {} }
 
-for index, row in ROWS do
-	local card: Card = {
-		id = string.format("FS%02d", index),
-		number = index,
-		name = row[1] :: string,
-		element = row[2] :: string,
-		rarity = row[3] :: string,
-		value = row[4] :: number,
-	}
-	table.insert(List, card)
-	ById[card.id] = card
-	ByRarity[card.rarity] = ByRarity[card.rarity] or {}
-	table.insert(ByRarity[card.rarity], card)
+local function addSet(rows: { any }, set: string, prefix: string)
+	for index, row in rows do
+		local card: Card = {
+			id = string.format("%s%02d", prefix, index),
+			number = #List + 1,
+			name = row[1] :: string,
+			element = row[2] :: string,
+			rarity = row[3] :: string,
+			value = row[4] :: number,
+			set = set,
+		}
+		table.insert(List, card)
+		ById[card.id] = card
+		table.insert(BySet[set], card)
+		if set == "First Spark" then
+			ByRarity[card.rarity] = ByRarity[card.rarity] or {}
+			table.insert(ByRarity[card.rarity], card)
+		end
+	end
 end
+addSet(CardList.SET1, "First Spark", "FS")
+addSet(CardList.FRONTIER, "Frontier", "FR")
 
 -- Rarest first (then highest number), for lists that show the best cards on top.
 -- Card numbers are not in rarity order: the Very Rares (31-35) came after the Legendaries.
@@ -97,5 +70,6 @@ return {
 	RarestFirst = RarestFirst,
 	ById = ById,
 	ByRarity = ByRarity,
+	BySet = BySet,
 	ELEMENTS = ELEMENTS,
 }

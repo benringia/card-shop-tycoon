@@ -1,0 +1,67 @@
+--!strict
+-- Config/Shelves holds Vector3 and Color3 values, so Lune can't load it; these checks read its text instead.
+local fs = require("@lune/fs")
+
+local SOURCE = fs.readFile("src/shared/Config/Shelves.luau")
+
+-- Each shelf entry, from its `id = "..."` line to the next one
+local function entries(): { { id: string, body: string } }
+	local found = {}
+	local starts = {}
+	for position, id in string.gmatch(SOURCE, '()id = "([%w_]+)"') do
+		table.insert(starts, { position = position :: number, id = id })
+	end
+	for index, start in starts do
+		local finish = if starts[index + 1] then starts[index + 1].position - 1 else #SOURCE
+		table.insert(found, { id = start.id, body = string.sub(SOURCE, start.position, finish) })
+	end
+	return found
+end
+
+return {
+	["no shelf entry sets the same field twice"] = function()
+		for _, entry in entries() do
+			local seen: { [string]: boolean } = {}
+			for field in string.gmatch(entry.body, "\n%s*([%a_]+)%s*=") do
+				assert(not seen[field], `{entry.id} sets {field} twice (Luau keeps the last one)`)
+				seen[field] = true
+			end
+		end
+	end,
+
+	["each shelf type has its own look"] = function()
+		local props: { [string]: string } = {}
+		for _, entry in entries() do
+			props[entry.id] = string.match(entry.body, 'prop = "([%w_]+)"') or ""
+		end
+		assert(props.WallShelf == "WallShelf", "WallShelf prop")
+		assert(props.AccessoryHook == "HookRack", "AccessoryHook prop")
+		assert(props.BigDisplayRack == "DisplayRack", "BigDisplayRack prop")
+		assert(props.GlassShowcase == "Showcase", "GlassShowcase prop")
+	end,
+
+	["the Card Condenser stands big enough to read as a machine"] = function()
+		for _, entry in entries() do
+			if entry.id == "Condenser" then
+				local x, y, z = string.match(entry.body, "size = Vector3.new%((%d+), (%d+), (%d+)%)")
+				assert(tonumber(x) == 6 and tonumber(y) == 7 and tonumber(z) == 6, `Condenser size {x} x {y} x {z}`)
+				return
+			end
+		end
+		error("no Condenser entry")
+	end,
+
+	["the Collector Case is a glass counter in its own colours"] = function()
+		for _, entry in entries() do
+			if entry.id == "CollectorCase" then
+				assert(string.find(entry.body, 'prop = "Showcase"', 1, true), "CollectorCase uses the Showcase counter")
+				assert(string.find(entry.body, "cardsFlat = true", 1, true), "its cards lie flat")
+				for _, part in { "Support", "Frame", "Carpet" } do
+					assert(string.find(entry.body, part .. " = Color3", 1, true), `CollectorCase recolours {part}`)
+				end
+				return
+			end
+		end
+		error("no CollectorCase entry")
+	end,
+}
