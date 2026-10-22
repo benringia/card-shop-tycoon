@@ -7,6 +7,8 @@
 -- Sizes follow mobile-first rules: tap targets at least 48px.
 local GuiService = game:GetService("GuiService")
 
+local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
+
 local UIKit = {}
 
 UIKit.Colors = {
@@ -145,6 +147,7 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	button.Text = text
 	button.Parent = parent
 	UIKit.corner(button, 12)
+	Motion.press(button)
 
 	local lip = Instance.new("UIGradient")
 	lip.Name = "Lip"
@@ -232,6 +235,16 @@ function UIKit.header(parent: GuiObject, title: string): (Frame, TextLabel)
 	return header, titleLabel
 end
 
+-- Closes a panel with a quick shrink (a panel shown again meanwhile stays open)
+function UIKit.closePanel(frame: GuiObject)
+	if not frame.Visible then
+		return
+	end
+	Motion.popOut(frame, function()
+		frame.Visible = false
+	end)
+end
+
 -- Centred modal panel: blue header with the title, red close button, light body with a scrolling list.
 -- Starts hidden. The title label is named "Title" (inside the header) for callers that change it.
 function UIKit.panel(parent: Instance, name: string, title: string): (Frame, ScrollingFrame)
@@ -259,7 +272,15 @@ function UIKit.panel(parent: Instance, name: string, title: string): (Frame, Scr
 
 	local close = UIKit.closeButton(frame)
 	close.Activated:Connect(function()
-		frame.Visible = false
+		UIKit.closePanel(frame)
+	end)
+	-- Pops in whenever it's shown; hidden straight away (by code) it just resets
+	frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if frame.Visible then
+			Motion.popIn(frame)
+		else
+			Motion.reset(frame)
+		end
 	end)
 
 	local list = Instance.new("ScrollingFrame")
