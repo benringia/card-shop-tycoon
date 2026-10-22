@@ -758,6 +758,7 @@ local function buildTile(card: Card, parent: Instance): Tile
 	levelLabel.Size = UDim2.new(0.62, 0, 0, CHIP_ROW - 3)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
 	levelLabel.BackgroundColor3 = UIKit.Colors.Accent
+	levelLabel.BackgroundTransparency = 0.1
 	levelLabel.Visible = false
 	levelLabel.ZIndex = 3
 	UIKit.corner(levelLabel, 6)
