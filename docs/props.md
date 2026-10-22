@@ -15,8 +15,8 @@ shows its stand-in.
 | `Portal` | frame around each plaza portal ring; its Neon parts take the portal's colour (`Town.PORTAL_EFFECTS`), particles come from code | 14 | no |
 | `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
-| `Computer` | the order computer (ORDER STOCK): a desk set, turned 90° in code; moves with it | fits 8 x 4.5 x 6 | (its own hitbox) |
-| `Condenser` | the Card Condenser: a starry glass "blender" (effects trimmed to 7) | fits 4 x 5 x 4 | (its own hitbox) |
+| `Computer` | the order computer (ORDER STOCK): a desk set, turned 90° in code; moves with it | fits 10 x 5.5 x 6 | (its own hitbox) |
+| `Condenser` | the Card Condenser: a starry glass "blender" (effects trimmed to 7) | fits 6 x 7 x 6 | (its own hitbox) |
 | `Counter` | the register counter: a market stall, its front on the counter's front, reaching back over the cashier | fits 6.6 x 7.2 x 4.2 (`COUNTER.STALL`) | (the counter's own hitbox) |
 | `WallShelf` | the Wall Shelf | fits 8 x 8 x 2 | (its own hitbox) |
 | `HookRack` | the Accessory Hook: a pegboard, stood upright in code (`roll`) | fits 4 x 7 x 2 | (its own hitbox) |

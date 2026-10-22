@@ -27,7 +27,7 @@ return {
 
 	-- Order computer starts in a back corner, screen facing the shop front. The owner can move it;
 	-- it returns here when the plot is released. Grid cells count from the front-left corner.
-	COMPUTER_SIZE = Vector3.new(8, 4.5, 6), -- a desk with the computer and a chair
+	COMPUTER_SIZE = Vector3.new(10, 5.5, 6), -- a desk with the computer and a chair
 	COMPUTER_GRID_X = 15,
 	COMPUTER_GRID_Z = 17,
 	COMPUTER_COLOR = Color3.fromRGB(60, 65, 80),

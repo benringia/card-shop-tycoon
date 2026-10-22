@@ -553,6 +553,20 @@ local function onSell(player: Player, uid: unknown)
 	notify(player, string.format("Sold %s for $%.2f.", shelf.def.name, refund), false)
 end
 
+-- The saved cell when `size` still fits there, else the nearest free one (a shelf or the computer grew, or
+-- something else now stands there). Nil when the plot has no room at all.
+local function nearestFreeCell(plot: Plot, size: Vector3, startX: number, startZ: number, rotation: number, ignoreId: string?): (number?, number?)
+	local w, d = PlacementGrid.getFootprint(size, rotation)
+	local grid = PlacementConfig.GRID_SIZE
+	local maxX, maxZ = PlotConfig.WIDTH // grid - w, PlotConfig.DEPTH // grid - d
+	for _, cell in CellSearch.byDistance(startX, startZ, maxX, maxZ) do
+		if canPlaceAt(plot, size, cell.x, cell.z, rotation, ignoreId) then
+			return cell.x, cell.z
+		end
+	end
+	return nil, nil
+end
+
 -- Runs after the shelves: the computer goes back to its saved spot, or (when that is taken, or a bigger
 -- computer no longer fits there) to the nearest free spot, so no saved shelf is ever pushed out
 local function restoreComputer(plot: Plot, saved: SavedCell?)
@@ -563,16 +577,9 @@ local function restoreComputer(plot: Plot, saved: SavedCell?)
 	local startX = if valid then saved.gridX else PlotConfig.COMPUTER_GRID_X
 	local startZ = if valid then saved.gridZ else PlotConfig.COMPUTER_GRID_Z
 	local rotation = if valid then saved.rotation else 0
-	local size = plot.computer.Size
-	local w, d = PlacementGrid.getFootprint(size, rotation)
-	local grid = PlacementConfig.GRID_SIZE
-	local maxX, maxZ = PlotConfig.WIDTH // grid - w, PlotConfig.DEPTH // grid - d
-	local fixtureId = PlotService.COMPUTER_FIXTURE_ID
-	for _, cell in CellSearch.byDistance(startX, startZ, maxX, maxZ) do
-		if canPlaceAt(plot, size, cell.x, cell.z, rotation, fixtureId) then
-			PlotService.SetComputerCell(plot, cell.x, cell.z, rotation)
-			return
-		end
+	local x, z = nearestFreeCell(plot, plot.computer.Size, startX, startZ, rotation, PlotService.COMPUTER_FIXTURE_ID)
+	if x and z then
+		PlotService.SetComputerCell(plot, x, z, rotation)
 	end
 end
 
@@ -632,20 +639,20 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 		return
 	end
 	local def = Shelves.ById[saved.shelfId]
-	local valid = def ~= nil
-		and isGridInteger(saved.gridX)
-		and isGridInteger(saved.gridZ)
-		and isValidRotation(saved.rotation)
-		-- A layout saved under older config might not fit any more; skip that shelf rather than overlap
-		-- The computer is placed after the shelves, so it never pushes a saved shelf out
-		and canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, PlotService.COMPUTER_FIXTURE_ID)
-	if not valid or not def then
+	local valid = def ~= nil and isGridInteger(saved.gridX) and isGridInteger(saved.gridZ) and isValidRotation(saved.rotation)
+	-- A shelf saved under older config (or one that grew) may not fit its spot any more: it moves to the
+	-- nearest free one. The computer is placed after the shelves (ignored here), so it never pushes one out.
+	local gridX, gridZ
+	if valid and def then
+		gridX, gridZ = nearestFreeCell(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, PlotService.COMPUTER_FIXTURE_ID)
+	end
+	if not def or not gridX or not gridZ then
 		readSavedCards(nil, saved.cards, leftovers)
 		return
 	end
 
 	local paid = if typeof(saved.paid) == "number" then math.clamp(saved.paid, 0, def.cost) else 0
-	local shelf = createShelf(player, plot, def, saved.gridX, saved.gridZ, saved.rotation, paid)
+	local shelf = createShelf(player, plot, def, gridX, gridZ, saved.rotation, paid)
 	local units = if typeof(saved.units) == "number" then math.floor(saved.units) else 0
 	if typeof(saved.productId) == "string" and Products.ById[saved.productId] and units > 0 then
 		PlacementService.AddStock(shelf, saved.productId, units)

@@ -40,6 +40,17 @@ return {
 		assert(props.GlassShowcase == "Showcase", "GlassShowcase prop")
 	end,
 
+	["the Card Condenser stands big enough to read as a machine"] = function()
+		for _, entry in entries() do
+			if entry.id == "Condenser" then
+				local x, y, z = string.match(entry.body, "size = Vector3.new%((%d+), (%d+), (%d+)%)")
+				assert(tonumber(x) == 6 and tonumber(y) == 7 and tonumber(z) == 6, `Condenser size {x} x {y} x {z}`)
+				return
+			end
+		end
+		error("no Condenser entry")
+	end,
+
 	["the Collector Case is a glass counter in its own colours"] = function()
 		for _, entry in entries() do
 			if entry.id == "CollectorCase" then

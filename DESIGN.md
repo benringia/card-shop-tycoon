@@ -672,8 +672,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     prices = {},            -- { [productId] = price }
     layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
                             --   cards (card cases): { { slot, cardId, foil, price, grade, beastId?, level?, xp?, stars? } } (stars 0-5)
-    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer (a 8x6 desk;
-                            -- restored after the shelves, to the nearest free spot if its own is taken)
+    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer (a 10x6 desk;
+                            -- restored after the shelves, to the nearest free spot if its own is taken).
+                            -- Saved shelves that no longer fit their spot (a shelf grew) move to the nearest free one.
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display
     beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)

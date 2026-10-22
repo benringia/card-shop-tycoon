@@ -71,7 +71,7 @@ local List: { Shelf } = {
 		capacity = 0,
 		cost = 500,
 		unlockLevel = 4,
-		size = Vector3.new(4, 5, 4),
+		size = Vector3.new(6, 7, 6), -- big enough to read as a machine (saved ones too big for their spot move over)
 		color = Color3.fromRGB(90, 200, 220),
 	},
 	{
