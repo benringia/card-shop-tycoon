@@ -34,7 +34,7 @@ local WEAK_COLOR = Color3.fromRGB(170, 170, 180)
 local HEAL_COLOR = Color3.fromRGB(120, 230, 120)
 local NUMBER_RISE = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 -- HUD hidden while fighting so nothing gets tapped by mistake
-local HUD_NAMES = { "PartyButton", "JobsButton", "BinderButton", "BuildButton", "PricesButton", "StatusRow", "ShopButton" }
+local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" }
 
 local BattleController = {}
 

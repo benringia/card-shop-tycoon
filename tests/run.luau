@@ -27,6 +27,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ShelvesConfig = require("./ShelvesConfig.spec"),
 	RevealRules = require("./RevealRules.spec"),
 	ElementFxRules = require("./ElementFxRules.spec"),
+	FanLayout = require("./FanLayout.spec"),
 }
 
 local passed, failed = 0, 0

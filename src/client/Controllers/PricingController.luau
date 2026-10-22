@@ -12,7 +12,9 @@ local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Product = typeof(Products.List[1])
@@ -124,17 +126,17 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	return row
 end
 
-local function buildButton(parent: Instance)
-	local button = UIKit.button(parent, "Prices", UIKit.Colors.Row)
-	button.Name = "PricesButton"
-	-- Sits under the Build button on the middle-left
-	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, 84)
-	button.Size = UDim2.fromOffset(96, 50)
-	button.Activated:Connect(function()
-		refreshAll()
-		panel.Visible = not panel.Visible
-	end)
+local function buildButton()
+	Hud.fanButton({
+		id = "Prices",
+		icon = "💲",
+		label = "Prices",
+		order = 2,
+		onClick = function()
+			refreshAll()
+			panel.Visible = not panel.Visible
+		end,
+	})
 end
 
 function PricingController.Start()
@@ -144,7 +146,7 @@ function PricingController.Start()
 	for index, product in Products.List do
 		table.insert(rows, buildRow(product, list, index))
 	end
-	buildButton(screenGui)
+	buildButton()
 
 	player:GetAttributeChangedSignal("Level"):Connect(refreshAll)
 	for _, product in Products.List do

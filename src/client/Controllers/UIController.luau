@@ -9,7 +9,9 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
-local UIKit = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
@@ -216,6 +218,7 @@ function UIController.Start()
 	-- (The code default is Global, where a raised panel would cover its own contents.)
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
+	Hud.mount(screenGui)
 
 	-- A row (party bar, then the column of buff, cash and XP) so the corner stays short on landscape phones
 	statusRow = Instance.new("Frame")

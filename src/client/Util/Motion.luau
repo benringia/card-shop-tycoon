@@ -10,6 +10,7 @@ local UIMotion = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local Motion = {}
 
 local running: { [GuiObject]: Tween } = setmetatable({}, { __mode = "k" }) :: any
+local closing: { [GuiObject]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- popping out: presses leave it alone
 
 local function getScale(gui: GuiObject): UIScale
 	local scale = gui:FindFirstChild("MotionScale")
@@ -35,15 +36,18 @@ end
 
 -- Grows from a little smaller to full size with a slight overshoot
 function Motion.popIn(gui: GuiObject)
+	closing[gui] = nil
 	getScale(gui).Scale = UIMotion.OPEN_FROM
 	play(gui, 1, TweenInfo.new(UIMotion.OPEN_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out))
 end
 
 -- Shrinks a little and calls onDone when it finishes (not if another motion cancelled it)
 function Motion.popOut(gui: GuiObject, onDone: (() -> ())?)
+	closing[gui] = true
 	local tween = play(gui, UIMotion.OPEN_FROM, TweenInfo.new(UIMotion.CLOSE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In))
 	tween.Completed:Once(function(state)
 		if state == Enum.PlaybackState.Completed then
+			closing[gui] = nil
 			getScale(gui).Scale = 1
 			if onDone then
 				onDone()
@@ -59,6 +63,7 @@ function Motion.reset(gui: GuiObject)
 		current:Cancel()
 		running[gui] = nil
 	end
+	closing[gui] = nil
 	local scale = gui:FindFirstChild("MotionScale")
 	if scale and scale:IsA("UIScale") then
 		scale.Scale = 1
@@ -70,10 +75,12 @@ function Motion.press(button: GuiButton)
 	local pressInfo = TweenInfo.new(UIMotion.PRESS_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local releaseInfo = TweenInfo.new(UIMotion.PRESS_SECONDS * 2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	button.MouseButton1Down:Connect(function()
-		play(button, UIMotion.PRESS_SCALE, pressInfo)
+		if not closing[button] then
+			play(button, UIMotion.PRESS_SCALE, pressInfo)
+		end
 	end)
 	local function release()
-		if getScale(button).Scale < 1 then
+		if not closing[button] and getScale(button).Scale < 1 then
 			play(button, 1, releaseInfo)
 		end
 	end

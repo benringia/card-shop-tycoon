@@ -29,6 +29,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 
@@ -139,7 +140,7 @@ local function refreshRipButton()
 	local carryingPacks = typeof(productId) == "string" and Packs.ById[productId] ~= nil
 	local left = getPacksLeft()
 	ripButton.Visible = carryingPacks and not isOpening
-	ripButton.Text = `Rip a pack (T)\n{left} left`
+	Hud.setLabel("Rip", `Rip · {left}`)
 	boxLabel.Text = if carryingPacks then `{left} packs left in box` else "Box empty"
 end
 
@@ -760,15 +761,8 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 end
 
 function PackOpeningController.Start()
-	ripButton = UIKit.button(UIController.GetScreenGui(), "", UIKit.Colors.Accent)
-	ripButton.Name = "RipButton"
-	-- Next to the Drop button on the middle-left
-	ripButton.AnchorPoint = Vector2.new(0, 0.5)
-	ripButton.Position = UDim2.new(0, 116, 0.5, 140)
-	ripButton.Size = UDim2.fromOffset(130, 50)
-	ripButton.TextSize = 16
-	ripButton.Visible = false
-	ripButton.Activated:Connect(onRip)
+	-- An orange tile in the bottom row while carrying a box of packs
+	ripButton = Hud.tile({ id = "Rip", icon = "🃏", label = "Rip", key = "T", group = "Context", order = 21, onClick = onRip })
 
 	buildScreen()
 	refreshRipButton()

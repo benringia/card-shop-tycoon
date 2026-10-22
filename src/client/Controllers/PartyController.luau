@@ -19,6 +19,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -217,14 +218,7 @@ function PartyController.Start()
 	list.Position = UDim2.fromOffset(12, 84)
 	list.Size = UDim2.new(1, -24, 1, -96)
 
-	-- Top of the middle-left HUD stack, above the Jobs button
-	local button = UIKit.button(screenGui, "Party", UIKit.Colors.Row)
-	button.Name = "PartyButton"
-	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -140)
-	button.Size = UDim2.fromOffset(96, 50)
-	button.TextSize = 17
-	button.Activated:Connect(toggle)
+	Hud.fanButton({ id = "Party", icon = "🐾", label = "Party", order = 4, onClick = toggle })
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload: PartyState)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then

@@ -27,6 +27,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -1388,15 +1389,22 @@ local function toggle()
 	end
 end
 
-local function buildButton(parent: Instance)
-	local button = UIKit.button(parent, "Binder (B)", UIKit.Colors.Row)
-	button.Name = "BinderButton"
-	-- Above the Build button on the middle-left
-	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -28)
-	button.Size = UDim2.fromOffset(96, 50)
-	button.TextSize = 17
-	button.Activated:Connect(toggle)
+-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
+local function toggleBag()
+	if panel.Visible and bagOverlay.Visible then
+		toggle()
+	else
+		if not panel.Visible then
+			toggle()
+		end
+		showTab(true)
+	end
+end
+
+-- Bottom-centre tiles: Cards (the binder) and Bag
+local function buildButtons()
+	Hud.tile({ id = "Cards", icon = "📖", label = "Cards", key = "B", group = "Bottom", order = 1, onClick = toggle })
+	Hud.tile({ id = "Bag", icon = "🎒", label = "Bag", key = "I", group = "Bottom", order = 2, onClick = toggleBag })
 end
 
 -- Batches bursts of card parts appearing or leaving into one refresh
@@ -1470,7 +1478,7 @@ end
 function BinderController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildPanel(screenGui)
-	buildButton(screenGui)
+	buildButtons()
 	refresh()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1485,15 +1493,7 @@ function BinderController.Start()
 		if state ~= Enum.UserInputState.Begin or isTyping() then
 			return Enum.ContextActionResult.Pass
 		end
-		-- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
-		if panel.Visible and bagOverlay.Visible then
-			toggle()
-		else
-			if not panel.Visible then
-				toggle()
-			end
-			showTab(true)
-		end
+		toggleBag()
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.ContextActionPriority.High.Value + BAG_PRIORITY_MARGIN, BAG_KEY)
 

@@ -19,6 +19,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -217,14 +218,7 @@ function JobsController.Start()
 	list.Position = UDim2.fromOffset(12, 84)
 	list.Size = UDim2.new(1, -24, 1, -96)
 
-	-- Top of the middle-left HUD stack, above the Binder button
-	local button = UIKit.button(screenGui, "Jobs", UIKit.Colors.Row)
-	button.Name = "JobsButton"
-	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, -84)
-	button.Size = UDim2.fromOffset(96, 50)
-	button.TextSize = 17
-	button.Activated:Connect(toggle)
+	Hud.fanButton({ id = "Jobs", icon = "👷", label = "Jobs", order = 3, onClick = toggle })
 
 	Remotes.JobsChanged.OnClientEvent:Connect(function(payload: JobsState)
 		if typeof(payload) ~= "table" then

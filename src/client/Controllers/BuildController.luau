@@ -13,7 +13,9 @@ local StockConfig = require(Config:WaitForChild("Stock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
@@ -341,28 +343,28 @@ local function watchOwnPlot()
 	end
 end
 
-local function buildButton(parent: Instance)
-	local button = UIKit.button(parent, "Build", UIKit.Colors.Accent)
-	button.Name = "BuildButton"
-	-- Middle-left keeps clear of the mobile thumbstick (bottom-left) and jump button (bottom-right)
-	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, 28)
-	button.Size = UDim2.fromOffset(96, 50)
-	button.Activated:Connect(function()
-		if PlacementController.IsActive() then
-			return
-		end
-		editPanel.Visible = false
-		refreshShopRows()
-		shopPanel.Visible = not shopPanel.Visible
-	end)
+local function buildButton()
+	Hud.fanButton({
+		id = "Build",
+		icon = "🔨",
+		label = "Build",
+		order = 1,
+		onClick = function()
+			if PlacementController.IsActive() then
+				return
+			end
+			editPanel.Visible = false
+			refreshShopRows()
+			shopPanel.Visible = not shopPanel.Visible
+		end,
+	})
 end
 
 function BuildController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildShopPanel(screenGui)
 	buildEditPanel(screenGui)
-	buildButton(screenGui)
+	buildButton()
 
 	player:GetAttributeChangedSignal("Level"):Connect(refreshShopRows)
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)

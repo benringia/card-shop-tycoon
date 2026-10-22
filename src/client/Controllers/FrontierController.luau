@@ -106,7 +106,7 @@ function FrontierController.Start()
 		local home = UIKit.button(screenGui, "🏠 Back to the shops", UIKit.Colors.Row)
 		home.Name = "FrontierHome"
 		home.AnchorPoint = Vector2.new(0.5, 0)
-		home.Position = UDim2.new(0.5, 0, 0, 8)
+		home.Position = UDim2.new(0.5, 0, 0, 70) -- under the top pills
 		home.Size = UDim2.fromOffset(200, 48)
 		home.TextSize = 16
 		home.Activated:Connect(function()

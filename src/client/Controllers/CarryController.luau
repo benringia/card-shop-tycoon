@@ -7,8 +7,8 @@ local UserInputService = game:GetService("UserInputService")
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
-local UIController = require(Controllers:WaitForChild("UIController"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 
 local DROP_KEY = Enum.KeyCode.G
 
@@ -34,14 +34,8 @@ local function refresh()
 end
 
 function CarryController.Start()
-	dropButton = UIKit.button(UIController.GetScreenGui(), "Drop (G)", UIKit.Colors.Danger)
-	dropButton.Name = "DropButton"
-	-- Under the Build and Prices buttons on the middle-left
-	dropButton.AnchorPoint = Vector2.new(0, 0.5)
-	dropButton.Position = UDim2.new(0, 12, 0.5, 140)
-	dropButton.Size = UDim2.fromOffset(96, 50)
-	dropButton.TextSize = 18
-	dropButton.Activated:Connect(drop)
+	-- An orange tile in the bottom row while carrying a box
+	dropButton = Hud.tile({ id = "Drop", icon = "📦", label = "Drop", key = "G", group = "Context", order = 20, onClick = drop })
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if not gameProcessed and input.KeyCode == DROP_KEY then
