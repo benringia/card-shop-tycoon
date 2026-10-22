@@ -38,6 +38,21 @@ exists; then the block becomes an invisible hitbox under the model.
 
 Numbers live in `Config/Town.luau` (`SLOTS`).
 
+## Models with unions (PlaceProps)
+
+Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models
+that contain unions do **not** go in `assets/props`. Their copies are kept in `assets/place-props/` (git only, not
+synced), and the real ones live in the place file under `ReplicatedStorage.PlaceProps`:
+
+1. In Studio's Explorer, right-click `ReplicatedStorage.PlaceProps` → **Insert from File…** → pick the `.rbxm`
+   from `assets/place-props/`. Insert from File keeps union shapes.
+2. Save the place (and publish), since PlaceProps lives in the place file.
+3. After changing one in Studio, Save to File over its copy in `assets/place-props/` and commit.
+
+`Props` looks in `PlaceProps` first, then `PropModels`. The Lune test fails if a file in `assets/props` or
+`assets/town` contains a union, and checks `assets/place-props` for scripts like the rest.
+Today: Awning, Condenser, Counter, HookRack, Register, WallShelf.
+
 ## Hand-placed decor (TownDecor)
 
 Trees, bushes, flowers, rocks, crates and other scenery are placed by hand in Studio, not by code. They live in

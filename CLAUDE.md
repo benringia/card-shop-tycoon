@@ -12,6 +12,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, same rules.
 - `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
+- `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
+  into the place file's `ReplicatedStorage.PlaceProps` with Insert from File (docs/props.md).
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.

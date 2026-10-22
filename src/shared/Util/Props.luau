@@ -14,6 +14,9 @@ local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"
 local Props = {}
 
 local STRIPPED = { "LuaSourceContainer", "ProximityPrompt", "ClickDetector", "Sound", "Tool" }
+-- PropModels: synced by Rojo from assets/props. PlaceProps: kept in the place file, for models with unions
+-- (Rojo live sync drops union shapes); their git copies are in assets/place-props (docs/props.md)
+local SOURCE_FOLDERS = { "PlaceProps", "PropModels" }
 local MIN_HEIGHT = 0.05
 
 local WOOD = Color3.fromRGB(125, 90, 60)
@@ -74,9 +77,9 @@ local function getVariants(slot: string): { Instance }
 		return cached
 	end
 	local found: { Instance } = {}
-	local folder = ReplicatedStorage:FindFirstChild("PropModels")
-	if folder then
-		for _, child in folder:GetChildren() do
+	for _, folderName in SOURCE_FOLDERS do
+		local folder = ReplicatedStorage:FindFirstChild(folderName)
+		for _, child in if folder then folder:GetChildren() else {} do
 			if TownLayout.isVariant(slot, child.Name, Town.SLOTS) and isUsable(child) then
 				table.insert(found, child)
 			end
@@ -324,9 +327,11 @@ end
 -- The models replicate to every client: the Lune test keeps scripts out of assets/props, and the server strips
 -- the source folder once at start as a second layer
 if RunService:IsServer() then
-	local folder = ReplicatedStorage:FindFirstChild("PropModels")
-	if folder then
-		Props.strip(folder)
+	for _, folderName in SOURCE_FOLDERS do
+		local folder = ReplicatedStorage:FindFirstChild(folderName)
+		if folder then
+			Props.strip(folder)
+		end
 	end
 end
 
