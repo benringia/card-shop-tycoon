@@ -39,4 +39,18 @@ return {
 		assert(props.BigDisplayRack == "DisplayRack", "BigDisplayRack prop")
 		assert(props.GlassShowcase == "Showcase", "GlassShowcase prop")
 	end,
+
+	["the Collector Case is a glass counter in its own colours"] = function()
+		for _, entry in entries() do
+			if entry.id == "CollectorCase" then
+				assert(string.find(entry.body, 'prop = "Showcase"', 1, true), "CollectorCase uses the Showcase counter")
+				assert(string.find(entry.body, "cardsFlat = true", 1, true), "its cards lie flat")
+				for _, part in { "Support", "Frame", "Carpet" } do
+					assert(string.find(entry.body, part .. " = Color3", 1, true), `CollectorCase recolours {part}`)
+				end
+				return
+			end
+		end
+		error("no CollectorCase entry")
+	end,
 }

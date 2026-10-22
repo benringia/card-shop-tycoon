@@ -19,6 +19,7 @@ export type Shelf = {
 	accepts: { string }?, -- product shelves only: product IDs it can hold, nil = any product
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
 	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
+	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
 }
 
 local List: { Shelf } = {
@@ -47,7 +48,13 @@ local List: { Shelf } = {
 	},
 	{
 		id = "CollectorCase",
-		prop = "GlassCase",
+		prop = "Showcase", -- the same glass counter as the Glass Showcase, in collector colours
+		cardsFlat = true,
+		propColors = {
+			Support = Color3.fromRGB(38, 44, 70), -- dark navy base
+			Frame = Color3.fromRGB(212, 175, 85), -- gold trim
+			Carpet = Color3.fromRGB(40, 70, 170), -- royal blue bed
+		},
 		name = "Collector Case",
 		kind = "PlayerCards",
 		capacity = 6,

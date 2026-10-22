@@ -68,8 +68,8 @@ trim, awning, roof, owned floor; grey floor while for rent). The register counte
 cashier stands inside; it carries a Register prop at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part: Small Pack Rack → Shelf, Wall
 Shelf → WallShelf, Accessory Hook → HookRack (pegboard), Big Display Rack → DisplayRack, Glass Showcase →
-Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → GlassCase (cards stand behind the
-glass), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Products shelves and up to 12 stock boxes in
+Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → the same counter recoloured
+(`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the

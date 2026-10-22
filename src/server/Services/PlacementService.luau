@@ -393,7 +393,14 @@ local function createShelf(
 	if def.prop and Props.hasModel(def.prop) then
 		-- The part stays as the hitbox (prompts, label, customers); the prop is the look. Its label still shows.
 		part.Transparency = 1
-		shelf.visual = Props.fit(def.prop, def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)
+		local visual = Props.fit(def.prop, def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)
+		for _, descendant in visual:GetDescendants() do
+			local color = def.propColors and descendant:IsA("BasePart") and def.propColors[descendant.Name]
+			if color then
+				(descendant :: BasePart).Color = color
+			end
+		end
+		shelf.visual = visual
 	end
 	updateLabel(shelf)
 	part.Parent = plot.shelvesFolder

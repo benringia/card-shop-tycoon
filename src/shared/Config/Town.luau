@@ -23,8 +23,6 @@ return {
 		Computer = { height = 0, collide = false, yaw = 90 }, -- the order computer (a desk set; its monitor faces -X)
 		Condenser = { height = 0, collide = false }, -- the Card Condenser
 		Counter = { height = 0, collide = false }, -- the register counter: a market stall drawn over it (COUNTER.STALL)
-		-- the Collector Case's look: a glass cabinet built from plain blocks, stretched to fill the case
-		GlassCase = { height = 0, collide = false, stretch = true, yaw = 180 }, -- GlassCaseA's glass doors face its +Z
 		-- each shelf type's look (Config/Shelves prop); roll stands a model up (degrees about its Z, before yaw)
 		WallShelf = { height = 0, collide = false },
 		HookRack = { height = 0, collide = false, roll = 90 }, -- a landscape pegboard, stood upright
