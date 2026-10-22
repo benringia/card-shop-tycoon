@@ -17,7 +17,7 @@ local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 
-local Props = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Props"))
+local Props = require(SharedUtil:WaitForChild("Props"))
 
 local TownService = {}
 

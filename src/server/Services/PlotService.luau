@@ -12,7 +12,7 @@ local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("Placemen
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
 
-local Props = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Props"))
+local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 
 local COMPUTER_FIXTURE_ID = "OrderComputer"
 

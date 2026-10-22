@@ -10,7 +10,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
   (docs/creatures.md). Scripts inside them are destroyed on server start and stripped on clients.
 - `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, same rules.
-- `assets/props` → ServerStorage.PropModels: town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
+- `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.

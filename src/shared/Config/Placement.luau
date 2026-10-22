@@ -12,5 +12,11 @@ return {
 
 	GHOST_VALID_COLOR = Color3.fromRGB(80, 220, 120),
 	GHOST_INVALID_COLOR = Color3.fromRGB(230, 70, 70),
-	GHOST_TRANSPARENCY = 0.5,
+	GHOST_TRANSPARENCY = 0.5, -- the plain box ghost (things without a prop model)
+	GHOST_MODEL_TRANSPARENCY = 0.35, -- the see-through copy of the real model
+	GHOST_FILL_TRANSPARENCY = 0.7, -- its green/red tint
+	GHOST_GLIDE = 18, -- how fast the ghost glides to its snapped cell (higher = snappier)
+	FOOTPRINT_TRANSPARENCY = 0.55, -- the cells it covers, drawn on the floor
+	GHOST_LABEL_HEIGHT = 1.5, -- the name label floats this far above the ghost
+	INVALID_TEXT = "Can't place here",
 }

@@ -1,9 +1,10 @@
 --!strict
--- Swappable town props (main town spec, docs/props.md). A slot's model comes from ServerStorage.PropModels
+-- Swappable town props (main town spec, docs/props.md). A slot's model comes from ReplicatedStorage.PropModels
 -- (assets/props/<Slot>.rbxm and its variants); a missing, empty, too-big or broken one gets a part-built stand-in,
 -- so the town never breaks. Placed props are stripped of scripts, scaled, anchored and stood on the given spot.
+-- Shared: the server builds the town and shops with it, the client builds placement ghosts the same way.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
@@ -73,7 +74,7 @@ local function getVariants(slot: string): { Instance }
 		return cached
 	end
 	local found: { Instance } = {}
-	local folder = ServerStorage:FindFirstChild("PropModels")
+	local folder = ReplicatedStorage:FindFirstChild("PropModels")
 	if folder then
 		for _, child in folder:GetChildren() do
 			if TownLayout.isVariant(slot, child.Name, Town.SLOTS) and isUsable(child) then
@@ -318,6 +319,15 @@ end
 -- A prop scaled to fit inside `size`, bottom centre on `at` (Shelf on a shelf's hitbox, counter props)
 function Props.fit(slot: string, size: Vector3, at: CFrame, parent: Instance, variant: number?): Model
 	return make(slot, at, parent, variant, size)
+end
+
+-- The models replicate to every client: the Lune test keeps scripts out of assets/props, and the server strips
+-- the source folder once at start as a second layer
+if RunService:IsServer() then
+	local folder = ReplicatedStorage:FindFirstChild("PropModels")
+	if folder then
+		Props.strip(folder)
+	end
 end
 
 return Props

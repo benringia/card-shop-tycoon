@@ -2,7 +2,8 @@
 
 The main town is built in code (`TownService`, `PlotService`). Every decoration is a **prop slot**: save a
 model as `assets/props/<Slot>.rbxm` and it replaces the code-built stand-in. Rojo syncs `assets/props` to
-`ServerStorage.PropModels` (server only). A missing, empty or too-big file never breaks the town: that slot just
+`ReplicatedStorage.PropModels`: the server builds the town and shops with them, and each client builds
+placement ghosts (a see-through copy of what you are placing) from the same models. A missing, empty or too-big file never breaks the town: that slot just
 shows its stand-in.
 
 ## Slots

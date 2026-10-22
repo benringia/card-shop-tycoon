@@ -11,6 +11,9 @@
       },
       "MonsterModels": {
         "$path": "assets/monsters"
+      },
+      "PropModels": {
+        "$path": "assets/props"
       }
     },
     "ServerScriptService": {
@@ -21,9 +24,6 @@
     "ServerStorage": {
       "ServerPackages": {
         "$path": "ServerPackages"
-      },
-      "PropModels": {
-        "$path": "assets/props"
       }
     },
     "StarterPlayer": {

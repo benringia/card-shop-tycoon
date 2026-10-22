@@ -76,6 +76,11 @@ the product's colour (3 levels of 4, filling from the bottom; any stock shows at
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 
+**Placement ghost (build mode):** a see-through copy of the real model (the shelf's `prop`, or the desk), tinted
+green or red with an outline, gliding between grid cells; its footprint cells drawn on the floor, a chevron at its
+front, a label above it ("Wall Shelf · $350", "Move Collector Case", "Can't place here"). Buttons Rotate (R), Place
+(Click; greyed while blocked), Cancel (Q). Shop prompts are hidden while placing. Numbers: `Config/Placement`.
+
 ---
 
 ## 4. Shop systems
@@ -528,7 +533,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
 ├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
-├── assets/props/               # town prop models (.rbxm) → ServerStorage.PropModels (docs/props.md)
+├── assets/props/               # town prop models (.rbxm) → ReplicatedStorage.PropModels (docs/props.md)
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 └── src/
     ├── server/                 # → ServerScriptService
@@ -561,7 +566,6 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded wild fight simulation (pure, Lune-tested)
-    │       ├── Props.luau            # place swappable prop models (assets/props) or part stand-ins
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -642,6 +646,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
             ├── Place.luau         # which place this is; its wild-map config
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
+            ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # how many stock boxes a shelf shows and where (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
