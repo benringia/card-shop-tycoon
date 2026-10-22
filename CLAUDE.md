@@ -62,7 +62,11 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Owner-only prompts are created on the client for the owner's own plot, so visitors never see them.
 
 ## Workflow
-- Work one system at a time. After each, tell me exactly what to test in Studio (stop → Play to load new code).
+- Work one system at a time. After each: Lune tests → Rojo sync (`rojo serve` running) → Claude presses Play through
+  the Roblox Studio MCP, checks Output for errors and screenshots the key spots, fixes anything obvious, then tells
+  me exactly what to judge in Studio (stop → Play to load new code).
+- Studio MCP: reading and inspecting the place is fine anytime; ask before changing the place itself (deleting or
+  editing objects, Lighting, the Baseplate). Scripts still live only in the repo.
 - Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
