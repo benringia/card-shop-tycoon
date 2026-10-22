@@ -185,6 +185,15 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	local rows = math.ceil(shelf.def.capacity / columns)
 	local col = (slot - 1) % columns
 	local row = (slot - 1) // columns
+	if shelf.visual and shelf.def.cardsFlat then
+		-- Lying on the bed under the glass, back row first, leaning up toward the front
+		local flat = ShowcaseConfig.FLAT
+		local size = shelf.part.Size
+		local x = (col - (columns - 1) / 2) * flat.SPACING.X
+		local z = ((rows - 1) / 2 - row) * flat.SPACING.Y
+		local y = -size.Y / 2 + flat.BED * size.Y + ShowcaseConfig.CARD_SIZE.Z
+		return shelf.part.CFrame * CFrame.new(x, y, z) * CFrame.Angles(math.rad(90 - flat.TILT), 0, 0)
+	end
 	local x = (col - (columns - 1) / 2) * ShowcaseConfig.SLOT_SPACING.X
 	local y = ((rows - 1) / 2 - row) * ShowcaseConfig.SLOT_SPACING.Y + ShowcaseConfig.SLOTS_OFFSET_Y
 	local z = -(shelf.part.Size.Z + ShowcaseConfig.CARD_SIZE.Z) / 2 - 0.02
@@ -221,7 +230,7 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part.Name = "DisplayedCard" .. slot
 	part.Anchored = true
 	part.CanCollide = false
-	part.Size = ShowcaseConfig.CARD_SIZE
+	part.Size = if shelf.visual and shelf.def.cardsFlat then ShowcaseConfig.CARD_SIZE * ShowcaseConfig.FLAT.SCALE else ShowcaseConfig.CARD_SIZE
 	part.Color = Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3)
 	part.Material = if displayed.foil then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	part.CFrame = getSlotCFrame(shelf, slot)

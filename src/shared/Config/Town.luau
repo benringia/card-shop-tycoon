@@ -25,6 +25,12 @@ return {
 		Counter = { height = 0, collide = false }, -- the register counter: a market stall drawn over it (COUNTER.STALL)
 		-- the Collector Case's look: a glass cabinet built from plain blocks, stretched to fill the case
 		GlassCase = { height = 0, collide = false, stretch = true, yaw = 180 }, -- GlassCaseA's glass doors face its +Z
+		-- each shelf type's look (Config/Shelves prop); roll stands a model up (degrees about its Z, before yaw)
+		WallShelf = { height = 0, collide = false },
+		HookRack = { height = 0, collide = false, roll = 90 }, -- a landscape pegboard, stood upright
+		DisplayRack = { height = 0, collide = false, yaw = 90, stretch = true }, -- double-sided, long side on its Z
+		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z
+		DeliveryPad = { height = 0, collide = false, stretch = true }, -- a wooden pallet
 		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
 		Awning = { height = 0, collide = false },
 	},
@@ -73,6 +79,7 @@ return {
 			},
 		},
 	},
+	DELIVERY_PALLET = { height = 1 }, -- the DeliveryPad model's height; delivered boxes stand on top of it
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)

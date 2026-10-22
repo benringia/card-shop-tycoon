@@ -78,13 +78,15 @@ end
 local function layoutWaiting(shop: Shop)
 	local pad = shop.plot.deliverySpot
 	local size = StockConfig.BOX_SIZE
+	local standHeight = pad:GetAttribute("StandHeight") -- the pallet drawn on the pad (PlotService)
+	local lift = if typeof(standHeight) == "number" then standHeight else 0
 	for index, box in shop.waiting do
 		local i = index - 1
 		local layer = i // StockConfig.BOXES_PER_LAYER
 		local slot = i % StockConfig.BOXES_PER_LAYER
 		local x = (slot % 2 - 0.5) * size.X
 		local z = (slot // 2 - 0.5) * size.Z
-		local y = pad.Size.Y / 2 + size.Y * (layer + 0.5)
+		local y = pad.Size.Y / 2 + lift + size.Y * (layer + 0.5)
 		box.CFrame = pad.CFrame * CFrame.new(x, y, z)
 	end
 end

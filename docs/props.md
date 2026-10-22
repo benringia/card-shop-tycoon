@@ -19,6 +19,11 @@ shows its stand-in.
 | `Condenser` | the Card Condenser | fits 4 x 5 x 4 | (its own hitbox) |
 | `Counter` | the register counter: a market stall, its front on the counter's front, reaching back over the cashier | fits 6.6 x 7.2 x 4.2 (`COUNTER.STALL`) | (the counter's own hitbox) |
 | `GlassCase` | the look of the Collector Case: a glass cabinet stretched to fill the case; cards stand inside behind the glass | fills the case | (the case's own hitbox) |
+| `WallShelf` | the Wall Shelf | fits 8 x 8 x 2 | (its own hitbox) |
+| `HookRack` | the Accessory Hook: a pegboard, stood upright in code (`roll`) | fits 4 x 7 x 2 | (its own hitbox) |
+| `DisplayRack` | the Big Display Rack (double-sided), turned 90° and stretched | fills 8 x 7 x 4 | (its own hitbox) |
+| `Showcase` | the Glass Showcase: a glass counter; its cards lie on the bed (`cardsFlat`, `Showcase.FLAT`) | fills 6 x 4 x 2 | (its own hitbox) |
+| `DeliveryPad` | the delivery spot: a pallet; delivered boxes stand on it | fills 6 x 1 x 6 | no |
 | `Awning` | shop fronts: repeated across each front, top at the wall top; parts named `COLOUR ME` take the plot's awning colour | about 5 deep, fills the front | no |
 | `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |
 

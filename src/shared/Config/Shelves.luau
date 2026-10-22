@@ -18,6 +18,7 @@ export type Shelf = {
 	color: Color3,
 	accepts: { string }?, -- product shelves only: product IDs it can hold, nil = any product
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
+	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
 }
 
 local List: { Shelf } = {
@@ -34,6 +35,8 @@ local List: { Shelf } = {
 	},
 	{
 		id = "GlassShowcase",
+		prop = "Showcase",
+		cardsFlat = true, -- a glass counter: its cards lie on the velvet bed under the glass
 		name = "Glass Showcase",
 		kind = "CustomerCards",
 		capacity = 6,
@@ -66,7 +69,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "WallShelf",
-		prop = "Shelf",
+		prop = "WallShelf",
 		name = "Wall Shelf",
 		kind = "Products",
 		capacity = 48,
@@ -77,7 +80,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "AccessoryHook",
-		prop = "Shelf",
+		prop = "HookRack",
 		name = "Accessory Hook",
 		kind = "Products",
 		capacity = 20,
@@ -89,7 +92,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "BigDisplayRack",
-		prop = "Shelf",
+		prop = "DisplayRack",
 		name = "Big Display Rack",
 		kind = "Products",
 		capacity = 96,

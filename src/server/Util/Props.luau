@@ -187,7 +187,7 @@ local function stretch(model: Model, boxSize: Vector3, fit: Vector3, yaw: number
 end
 
 -- Clone a source model and size it: to `height`, or (when `fit` is given) to the largest size that fits inside it
-local function prepareModel(source: Instance, height: number, fit: Vector3?, slotYaw: number?, canStretch: boolean): Model
+local function prepareModel(source: Instance, height: number, fit: Vector3?, slotYaw: number?, canStretch: boolean, roll: number?): Model
 	local model: Model
 	if source:IsA("Model") then
 		model = source:Clone()
@@ -205,6 +205,11 @@ local function prepareModel(source: Instance, height: number, fit: Vector3?, slo
 	-- Measure along world axes: some packs save a tipped pivot (Z-up exports), which would lay the model down
 	model.PrimaryPart = nil
 	model.WorldPivot = CFrame.new(model:GetPivot().Position)
+	if roll and roll ~= 0 then
+		-- Stand the model up first (e.g. a landscape board turned portrait), then measure it upright
+		model:PivotTo(model:GetPivot() * CFrame.Angles(0, 0, math.rad(roll)))
+		model.WorldPivot = CFrame.new(model:GetPivot().Position)
+	end
 	local boxCFrame, boxSize = model:GetBoundingBox()
 	model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0) * CFrame.Angles(0, math.rad(yaw), 0)
 	if fit and canStretch and stretch(model, boxSize, fit, yaw) then
@@ -229,7 +234,7 @@ function Props.getSourceSize(slot: string): Vector3?
 		return nil
 	end
 	local info = Town.SLOTS[slot]
-	local ok, model = pcall(prepareModel, source, 1, nil, if info then (info :: any).yaw else nil, false)
+	local ok, model = pcall(prepareModel, source, 1, nil, if info then (info :: any).yaw else nil, false, if info then (info :: any).roll else nil)
 	if not ok then
 		return nil
 	end
@@ -274,7 +279,7 @@ local function make(slot: string, at: CFrame, parent: Instance, variant: number?
 	local variants = getVariants(slot)
 	if #variants > 0 then
 		local source = variants[(index - 1) % #variants + 1]
-		local ok, model = pcall(prepareModel, source, height, fit, if info then (info :: any).yaw else nil, info ~= nil and (info :: any).stretch == true)
+		local ok, model = pcall(prepareModel, source, height, fit, if info then (info :: any).yaw else nil, info ~= nil and (info :: any).stretch == true, if info then (info :: any).roll else nil)
 		if ok then
 			return finish(model, slot, at, parent)
 		end

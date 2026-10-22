@@ -77,6 +77,18 @@ return {
 		expect.equal(town.SLOTS.Computer.yaw, 90, "the desk set's monitor faces its -X")
 	end,
 
+	["each shelf type has its own look"] = function()
+		local slots = town.SLOTS
+		assert(slots.WallShelf ~= nil, "WallShelf slot")
+		expect.equal(slots.HookRack.roll, 90, "the pegboard stands upright (its long side is horizontal)")
+		expect.equal(slots.DisplayRack.yaw, 90, "DisplayRack: long side along its Z")
+		expect.equal(slots.DisplayRack.stretch, true, "DisplayRack stretches")
+		expect.equal(slots.Showcase.yaw, 90, "Showcase: long side along its Z")
+		expect.equal(slots.Showcase.stretch, true, "Showcase stretches")
+		expect.equal(slots.DeliveryPad.stretch, true, "DeliveryPad stretches")
+		assert(town.DELIVERY_PALLET.height > 0, "boxes stand on the pallet")
+	end,
+
 	["the shelf slot stretches"] = function()
 		expect.equal(town.SLOTS.Shelf.stretch, true, "Shelf stretch")
 	end,

@@ -257,14 +257,15 @@ end
 -- Snaps the computer to a grid cell. Attributes let the owner's client start a move from here.
 -- A fixture part that shows a prop model: the part turns into an invisible hitbox (prompts and its label stay).
 -- `box` (width, height, depth) lets the model be bigger than the part, its front lined up with the part's.
-local function dressFixture(part: Part, slot: string, parent: Instance, box: Vector3?)
+local function dressFixture(part: Part, slot: string, parent: Instance, box: Vector3?): boolean
 	if not Props.hasModel(slot) then
-		return
+		return false
 	end
 	part.Transparency = 1
 	local size = box or part.Size
 	local front = -part.Size.Z / 2 + size.Z / 2
 	Props.fit(slot, size, part.CFrame * CFrame.new(0, -part.Size.Y / 2, front), parent)
+	return true
 end
 
 local function setComputerCell(computer: Part, plotCFrame: CFrame, gridX: number, gridZ: number, rotation: number)
@@ -310,6 +311,11 @@ local function buildDeliverySpot(plotCFrame: CFrame, parent: Instance): Part
 	pad.Color = PlotConfig.DELIVERY_COLOR
 	pad:SetAttribute("BlocksPlacement", true)
 	pad.Parent = parent
+	-- Drawn as a wooden pallet when the model exists; delivered boxes then stand on top of it (StockService)
+	local pallet = Town.DELIVERY_PALLET.height
+	if dressFixture(pad, "DeliveryPad", parent, Vector3.new(size.X, pallet, size.Z)) then
+		pad:SetAttribute("StandHeight", pallet)
+	end
 	return pad
 end
 
