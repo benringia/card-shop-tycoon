@@ -1,7 +1,8 @@
 --!strict
--- Binder: a two-page spread like a real binder, 9 card pockets per page, owned cards in colour with
--- counts, missing ones greyed out. Turn pages with the arrows; search and filter chips narrow the pages
--- (built for card lists far bigger than Set 1). Hovering a pocket with a mouse shows a tooltip.
+-- Binder: a full-screen book per set (set tabs on its edge). Spread 1 is the set's cover and page 1; later
+-- spreads are two pages of pockets, owned cards in colour with counts, missing ones as "?" slots. Turn pages
+-- with the arrows or Q/E (A/D: first/last); Filters (F) narrow and sort the pages while the book shrinks aside.
+-- Hovering a pocket with a mouse shows a tooltip.
 -- Only the pockets on the open spread are drawn, so a big collection stays cheap.
 -- Tap an owned card to see it large. Cards earn money only from a showcase, so the binder just
 -- shows what you have; cards on display in your cases count towards completion.
@@ -9,6 +10,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 
@@ -20,7 +22,9 @@ local Party = require(Config:WaitForChild("Party"))
 local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local Collection = require(Config:WaitForChild("Collection"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -28,6 +32,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Motion = require(ClientUtil:WaitForChild("Motion"))
 local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -65,13 +70,10 @@ local POCKET_OPTIONS: PocketLayout.Options = {
 	maxRows = 3,
 	minPockets = 3,
 }
-local BINDER_MAX_SIZE = Vector2.new(920, 600)
-local COVER_COLOR = Color3.fromRGB(70, 40, 30) -- binder cover and spine
-local PAGE_COLOR = Color3.fromRGB(40, 40, 54)
 local TITLE_VALUE_ROOM = 96 -- right side of a row title kept free for the price
 local TOOLTIP_WIDTH = 230
-local FILTER_CHIP_WIDTH = 84
-local ALL_FILTER, OWNED_FILTER, MISSING_FILTER, FRONTIER_FILTER = "All", "Owned", "Missing", "Frontier"
+local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
+local PAGE_KEYS = { [Enum.KeyCode.Q] = -1, [Enum.KeyCode.E] = 1 }
 local BINDER_KEY = Enum.KeyCode.B
 local BAG_KEY = Enum.KeyCode.I -- inventory: the binder's Bag tab
 local BAG_PRIORITY_MARGIN = 100 -- above every built-in binding (the camera's I zoom included)
@@ -103,7 +105,28 @@ local partyTarget: (string | { cardId: string, foil: boolean, grade: string })? 
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
-local completionBars: { [string]: { label: TextLabel, fill: Frame } } = {} -- set name -> its progress bar
+local currentSet = Collection.SETS[1]
+local book: Frame
+local bookHolder: Frame
+local bookScale: UIScale
+local coverPage: Frame
+local coverTitle: TextLabel
+local coverProgress: TextLabel
+local coverEmblem: TextLabel
+local setTabs: { [string]: TextButton } = {}
+local progressName: TextLabel
+local progressCount: TextLabel
+local progressValue: TextLabel
+local progressFill: Frame
+local filtersPanel: Frame
+local setFiltersOpen: (open: boolean) -> ()
+local rarityGuideButton: TextButton
+local showButtons: { [string]: TextButton } = {}
+local sortButtons: { [string]: TextButton } = {}
+local rarityChips: { [string]: TextButton } = {}
+local rarityPicks: { [string]: boolean } = {} -- none picked = every rarity
+local showFilter = ALL_FILTER -- All, Owned or Missing
+local sortBy = "Set" -- Set (card number), Value, Copies or Rarity
 local bagOverlay: Frame -- the Bag tab (built in buildBag); the card tooltip stays off while it shows
 local pages: { Frame } = {} -- left and right page
 local pageLabel: TextLabel
@@ -111,9 +134,7 @@ local spreadIndex = 1
 local pocketsPerPage = POCKET_OPTIONS.preferredColumns * POCKET_OPTIONS.preferredRows
 local pageGrids: { UIGridLayout } = {}
 local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
-local binderFilter = ALL_FILTER -- All, Owned, Missing or a rarity name
 local searchText = ""
-local filterButtons: { [string]: TextButton } = {}
 local tooltip: Frame
 local tooltipText: TextLabel
 
@@ -560,6 +581,9 @@ local function renderTile(tile: Tile)
 end
 
 local function passesFilter(card: Card): boolean
+	if card.set ~= currentSet then
+		return false
+	end
 	if searchText ~= "" then
 		local query = string.lower(searchText)
 		local number = tonumber((string.gsub(query, "#", "")))
@@ -568,57 +592,97 @@ local function passesFilter(card: Card): boolean
 			return false
 		end
 	end
-	if binderFilter == OWNED_FILTER then
-		return isCollected(card.id)
-	elseif binderFilter == MISSING_FILTER then
-		return not isCollected(card.id)
-	elseif binderFilter == FRONTIER_FILTER then
-		return card.set == "Frontier"
-	elseif binderFilter ~= ALL_FILTER then
-		return card.rarity == binderFilter
+	if showFilter == OWNED_FILTER and not isCollected(card.id) then
+		return false
+	elseif showFilter == MISSING_FILTER and isCollected(card.id) then
+		return false
+	end
+	if next(rarityPicks) ~= nil and not rarityPicks[card.rarity] then
+		return false
 	end
 	return true
 end
 
-local function getSpreadCount(): number
-	return math.max(1, math.ceil(#visibleTiles / (pocketsPerPage * 2)))
+-- Best value among your copies of a card (0 if you have none)
+local function getBestValue(card: Card): number
+	local best = 0
+	for _, entry in getEntries(card) do
+		best = math.max(best, entry.value)
+	end
+	return best
 end
 
--- Puts the tiles of the current spread into the two pages and draws them; the rest wait off-screen
+local function sortTiles(list: { Tile })
+	local keys: { [Tile]: number } = {}
+	for _, tile in list do
+		local card = tile.card
+		if sortBy == "Value" then
+			keys[tile] = -getBestValue(card)
+		elseif sortBy == "Copies" then
+			local owned, onDisplay = getOwnedCounts(card.id)
+			keys[tile] = -(owned + onDisplay)
+		elseif sortBy == "Rarity" then
+			local tier = Rarities.Tiers[card.rarity]
+			keys[tile] = -(if tier then tier.order else 0)
+		else
+			keys[tile] = 0
+		end
+	end
+	table.sort(list, function(a, b)
+		if keys[a] ~= keys[b] then
+			return keys[a] < keys[b]
+		end
+		return a.card.number < b.card.number
+	end)
+end
+
+local function getSpreadCount(): number
+	return BinderSpreads.count(#visibleTiles, pocketsPerPage)
+end
+
+-- Puts the tiles of the current spread into the pages and draws them; the rest wait off-screen.
+-- Spread 1 is the set's cover (left page) and page 1 (right page).
 local function showSpread(index: number)
 	spreadIndex = math.clamp(index, 1, getSpreadCount())
-	local first = (spreadIndex - 1) * pocketsPerPage * 2 + 1
+	local first, last = BinderSpreads.cards(spreadIndex, #visibleTiles, pocketsPerPage)
 	local shownSet: { [Tile]: boolean } = {}
-	for position, tile in visibleTiles do
+	for position = first, last do
+		local tile = visibleTiles[position]
 		local offset = position - first
-		if offset >= 0 and offset < pocketsPerPage * 2 then
-			shownSet[tile] = true
-			tile.button.LayoutOrder = offset
+		shownSet[tile] = true
+		tile.button.LayoutOrder = offset
+		if spreadIndex == 1 then
+			tile.button.Parent = pages[2]
+		else
 			tile.button.Parent = pages[if offset < pocketsPerPage then 1 else 2]
-			renderTile(tile)
 		end
+		renderTile(tile)
 	end
 	for _, tile in tiles do
 		if not shownSet[tile] then
 			tile.button.Parent = nil
 		end
 	end
-	if #visibleTiles == 0 then
-		pageLabel.Text = "No cards match"
-		return
-	end
-	local leftPage = spreadIndex * 2 - 1
-	local cardWord = if #visibleTiles == 1 then "card" else "cards"
-	pageLabel.Text = `Pages {leftPage}-{leftPage + 1} of {getSpreadCount() * 2} · {#visibleTiles} {cardWord}`
+	coverPage.Visible = spreadIndex == 1
+	pageLabel.Text = BinderSpreads.label(spreadIndex, BinderSpreads.pages(#visibleTiles, pocketsPerPage))
 end
 
+-- Lights up the Filters panel's choices
 local function refreshFilterButtons()
-	for filter, button in filterButtons do
-		button.BackgroundColor3 = if filter == binderFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	for value, button in showButtons do
+		button.BackgroundColor3 = if value == showFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	end
+	for value, button in sortButtons do
+		button.BackgroundColor3 = if value == sortBy then UIKit.Colors.Accent else UIKit.Colors.Row
+	end
+	for rarity, chip in rarityChips do
+		local tier = Rarities.Tiers[rarity]
+		local color = if tier then tier.color else UIKit.Colors.Accent
+		chip.BackgroundColor3 = if rarityPicks[rarity] then color else UIKit.Colors.Row
 	end
 end
 
--- Re-applies search and filter, then redraws the open spread (keeping the page when possible)
+-- Re-applies search, filters and sort, then redraws the open spread (keeping the page when possible)
 local function applyFilter()
 	visibleTiles = {}
 	for _, tile in tiles do
@@ -626,30 +690,54 @@ local function applyFilter()
 			table.insert(visibleTiles, tile)
 		end
 	end
+	sortTiles(visibleTiles)
 	refreshFilterButtons()
 	showSpread(spreadIndex)
 end
 
+-- The current set's cover page, set tabs and the progress card
+local function refreshSet()
+	local owned, total, value = 0, 0, 0
+	for _, card in Cards.BySet[currentSet] or {} do
+		total += 1
+		if isCollected(card.id) then
+			owned += 1
+		end
+		for _, entry in getEntries(card) do
+			value += entry.value * entry.count
+		end
+	end
+	local color = Collection.SET_COLORS[currentSet] or UIKit.Colors.Accent
+	coverPage.BackgroundColor3 = color
+	coverTitle.Text = string.upper(currentSet)
+	coverProgress.Text = `{owned} / {total}`
+	coverEmblem.Text = Collection.SET_EMBLEMS[currentSet] or "✨"
+	progressName.Text = currentSet
+	progressCount.Text = `📖 {owned} / {total}`
+	progressValue.Text = string.format("$%.2f", value)
+	progressFill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
+	progressFill.BackgroundColor3 = color
+	for set, tab in setTabs do
+		local active = set == currentSet
+		tab.BackgroundColor3 = if active then (Collection.SET_COLORS[set] or UIKit.Colors.Accent) else UIKit.Colors.Row
+		tab.Size = UDim2.fromOffset(if active then 76 else 64, 70)
+	end
+end
+
 local function refresh()
 	displayed = readDisplayedCards()
-	-- Per set: First Spark (packs) and, once you have any, the Frontier set
-	local function count(set: string): number
-		local collected = 0
-		for _, card in Cards.BySet[set] do
-			if isCollected(card.id) then
-				collected += 1
-			end
-		end
-		return collected
-	end
-	for set, bar in completionBars do
-		local total = #Cards.BySet[set]
-		local owned = count(set)
-		bar.label.Text = `{set} {owned}/{total}`
-		bar.fill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
-	end
+	refreshSet()
 	applyFilter()
 	refreshDetail()
+end
+
+local function openSet(set: string)
+	if not Cards.BySet[set] then
+		return
+	end
+	currentSet = set
+	spreadIndex = 1
+	refresh()
 end
 
 -- Tooltip (mouse only) -------------------------------------------------------------------------------
@@ -958,34 +1046,21 @@ local function fitPockets()
 	local perPage = layout.columns * layout.rows
 	if perPage ~= pocketsPerPage then
 		-- Keep the first card of the current spread in view
-		local firstCard = (spreadIndex - 1) * pocketsPerPage * 2 + 1
+		local firstCard = BinderSpreads.cards(spreadIndex, #visibleTiles, pocketsPerPage)
 		pocketsPerPage = perPage
-		spreadIndex = math.floor((firstCard - 1) / (pocketsPerPage * 2)) + 1
-		if #visibleTiles > 0 then
+		local spread = 1
+		while spread < BinderSpreads.count(#visibleTiles, pocketsPerPage) do
+			local _, last = BinderSpreads.cards(spread, #visibleTiles, pocketsPerPage)
+			if last >= firstCard then
+				break
+			end
+			spread += 1
+		end
+		spreadIndex = spread
+		if coverPage then
 			showSpread(spreadIndex)
 		end
 	end
-end
-
-local function buildPage(spread: Frame, isLeft: boolean): Frame
-	local page = Instance.new("Frame")
-	page.Name = if isLeft then "LeftPage" else "RightPage"
-	page.Position = if isLeft then UDim2.fromOffset(8, 8) else UDim2.new(0.5, 6, 0, 8)
-	page.Size = UDim2.new(0.5, -14, 1, -16)
-	page.BackgroundColor3 = PAGE_COLOR
-	page.Parent = spread
-	UIKit.corner(page, 8)
-
-	local grid = Instance.new("UIGridLayout")
-	grid.CellPadding = UDim2.fromOffset(POCKET_OPTIONS.gap, POCKET_OPTIONS.gap)
-	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	grid.VerticalAlignment = Enum.VerticalAlignment.Center
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.FillDirectionMaxCells = POCKET_OPTIONS.preferredColumns
-	grid.Parent = page
-	table.insert(pageGrids, grid)
-	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitPockets)
-	return page
 end
 
 -- Bag: the item inventory (Config/Items), the binder's second tab. Item tiles on the left, the chosen item's
@@ -1182,81 +1257,135 @@ local function buildBag(parent: Frame)
 	showTab(false)
 end
 
-local function buildPanel(parent: Instance)
-	local list: ScrollingFrame
-	panel, list = UIKit.panel(parent, "Binder", "Binder")
-	list:Destroy() -- the binder uses pages instead of a scrolling list
-	-- Bigger than other panels: it's the main way to look at your collection
-	panel.Size = UDim2.fromScale(0.96, 0.9)
-	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
-	if sizeLimit then
-		sizeLimit.MaxSize = BINDER_MAX_SIZE
-	end
+-- A small dark key hint on a button's corner ("Q", "E")
+local function addKeyChip(button: GuiObject, key: string)
+	local chip = Instance.new("TextLabel")
+	chip.Name = "Key"
+	chip.AnchorPoint = Vector2.new(1, 1)
+	chip.Position = UDim2.new(1, 10, 1, 10)
+	chip.Size = UDim2.fromOffset(24, 24)
+	chip.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
+	chip.Font = Enum.Font.FredokaOne
+	chip.Text = key
+	chip.TextSize = 14
+	chip.TextColor3 = Color3.new(1, 1, 1)
+	chip.ZIndex = button.ZIndex + 2
+	chip.Parent = button
+	UIKit.corner(chip, 6)
+	UIKit.outline(chip, Color3.new(1, 1, 1), 1.5)
+end
 
-	-- Collection progress per set: First Spark (packs) and the Frontier set
-	for index, set in { "First Spark", "Frontier" } do
-		local row = Instance.new("Frame")
-		-- Bottom bar, left of the page count
-		row.Position = UDim2.new(0, 88, 1, -52 + (index - 1) * 20)
-		row.Size = UDim2.fromOffset(200, 16)
-		row.BackgroundTransparency = 1
-		row.Parent = panel
-		local label = UIKit.label(row, "", Enum.Font.GothamBold, 11, if set == "Frontier" then CardEffects.FRONTIER.AURORA[1] else UIKit.Colors.Subtext)
-		label.Size = UDim2.new(0, 110, 1, 0)
-		local track = Instance.new("Frame")
-		track.Position = UDim2.fromOffset(112, 4)
-		track.Size = UDim2.new(1, -112, 0, 8)
-		track.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-		track.Parent = row
-		UIKit.corner(track, 4)
-		local fill = Instance.new("Frame")
-		fill.Size = UDim2.fromScale(0, 1)
-		fill.BackgroundColor3 = if set == "Frontier" then Color3.new(1, 1, 1) else UIKit.Colors.Accent
-		fill.Parent = track
-		UIKit.corner(fill, 4)
-		if set == "Frontier" then
-			CardFace.addAurora(fill)
-		end
-		completionBars[set] = { label = label, fill = fill }
+local function choiceRow(parent: Instance, order: number, values: { string }, onPick: (string) -> ()): { [string]: TextButton }
+	local row = Instance.new("Frame")
+	row.LayoutOrder = order
+	row.Size = UDim2.new(1, 0, 0, 44)
+	row.BackgroundTransparency = 1
+	row.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local buttons: { [string]: TextButton } = {}
+	for index, value in values do
+		local button = UIKit.button(row, value, UIKit.Colors.Row)
+		button.LayoutOrder = index
+		button.Size = UDim2.new(1 / #values, -6, 1, 0)
+		button.TextSize = 15
+		button.Activated:Connect(function()
+			onPick(value)
+		end)
+		buttons[value] = button
 	end
+	return buttons
+end
 
-	-- Search by name or number, then filter chips (they scroll sideways on narrow screens)
+local function sectionLabel(parent: Instance, order: number, text: string)
+	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
+	label.LayoutOrder = order
+	label.Size = UDim2.new(1, 0, 0, 24)
+end
+
+-- The Filters panel on the right: search, Show, Sort by, rarity chips. The book shrinks aside while it's open.
+local function buildFilters(parent: Frame)
+	filtersPanel = Instance.new("Frame")
+	filtersPanel.Name = "Filters"
+	-- Between the close / Filters buttons (top right) and the set progress card (bottom right)
+	filtersPanel.AnchorPoint = Vector2.new(1, 0)
+	filtersPanel.Position = UDim2.new(1, -16, 0, 84)
+	filtersPanel.Size = UDim2.new(0, Collection.FILTERS_WIDTH, 1, -(84 + 100))
+	filtersPanel.BackgroundColor3 = UIKit.Colors.Panel
+	filtersPanel.Visible = false
+	filtersPanel.ZIndex = 6
+	filtersPanel.Parent = parent
+	UIKit.corner(filtersPanel, 16)
+	UIKit.outline(filtersPanel, Color3.new(1, 1, 1), 3)
+	UIKit.header(filtersPanel, "Filters")
+	local close = UIKit.closeButton(filtersPanel)
+	close.Activated:Connect(function()
+		setFiltersOpen(false)
+	end)
+
+	local body = Instance.new("ScrollingFrame")
+	body.Position = UDim2.fromOffset(14, UIKit.HEADER_HEIGHT + 10)
+	body.Size = UDim2.new(1, -28, 1, -(UIKit.HEADER_HEIGHT + 20))
+	body.BackgroundTransparency = 1
+	body.BorderSizePixel = 0
+	body.ScrollBarThickness = 4
+	body.CanvasSize = UDim2.new()
+	body.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	body.ZIndex = filtersPanel.ZIndex
+	body.Parent = filtersPanel
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 8)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = body
+
 	local search = Instance.new("TextBox")
 	search.Name = "Search"
-	search.Position = UDim2.fromOffset(16, 66)
-	search.Size = UDim2.fromOffset(180, 34)
+	search.LayoutOrder = 1
+	search.Size = UDim2.new(1, 0, 0, 44)
 	search.BackgroundColor3 = UIKit.Colors.Row
 	search.ClearTextOnFocus = false
-	search.PlaceholderText = "Search name or #"
+	search.PlaceholderText = "🔍 Search name or #"
 	search.Text = ""
-	search.Font = Enum.Font.Gotham
-	search.TextSize = 14
-	search.TextColor3 = UIKit.Colors.Text
-	search.Parent = panel
-	UIKit.corner(search, 8)
+	search.Font = Enum.Font.GothamBold
+	search.TextSize = 15
+	search.TextColor3 = UIKit.Colors.Ink
+	search.PlaceholderColor3 = UIKit.Colors.InkSoft
+	search.Parent = body
+	UIKit.corner(search, 12)
+	UIKit.outline(search)
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		searchText = search.Text
 		spreadIndex = 1
 		applyFilter()
 	end)
 
-	local chips = Instance.new("ScrollingFrame")
-	chips.Name = "Filters"
-	chips.Position = UDim2.fromOffset(204, 64)
-	chips.Size = UDim2.new(1, -216, 0, 38)
+	sectionLabel(body, 2, "Show")
+	showButtons = choiceRow(body, 3, { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }, function(value)
+		showFilter = value
+		spreadIndex = 1
+		applyFilter()
+	end)
+	sectionLabel(body, 4, "Sort by")
+	sortButtons = choiceRow(body, 5, { "Set", "Value", "Copies", "Rarity" }, function(value)
+		sortBy = value
+		spreadIndex = 1
+		applyFilter()
+	end)
+	sectionLabel(body, 6, "Rarity")
+	local chips = Instance.new("Frame")
+	chips.LayoutOrder = 7
+	chips.Size = UDim2.new(1, 0, 0, 0)
+	chips.AutomaticSize = Enum.AutomaticSize.Y
 	chips.BackgroundTransparency = 1
-	chips.BorderSizePixel = 0
-	chips.ScrollBarThickness = 3
-	chips.ScrollingDirection = Enum.ScrollingDirection.X
-	chips.CanvasSize = UDim2.new()
-	chips.AutomaticCanvasSize = Enum.AutomaticSize.X
-	chips.Parent = panel
-	local chipLayout = Instance.new("UIListLayout")
-	chipLayout.FillDirection = Enum.FillDirection.Horizontal
-	chipLayout.Padding = UDim.new(0, 6)
-	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	chipLayout.Parent = chips
-	local filters = { ALL_FILTER, OWNED_FILTER, MISSING_FILTER, FRONTIER_FILTER }
+	chips.Parent = body
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.new(0.5, -4, 0, 40)
+	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = chips
 	local rarities: { string } = {}
 	for name in Rarities.Tiers do
 		table.insert(rarities, name)
@@ -1264,80 +1393,329 @@ local function buildPanel(parent: Instance)
 	table.sort(rarities, function(a, b)
 		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
 	end)
-	for _, name in rarities do
-		table.insert(filters, name)
-	end
-	for index, filter in filters do
-		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
+	for index, rarity in rarities do
+		local chip = UIKit.button(chips, rarity, UIKit.Colors.Row)
 		chip.LayoutOrder = index
-		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 32)
-		chip.TextSize = 13
-		local tier = Rarities.Tiers[filter]
-		if tier then
-			chip.TextColor3 = tier.color
-		elseif filter == FRONTIER_FILTER then
-			chip.TextColor3 = CardEffects.FRONTIER.AURORA[1]
-		end
+		chip.TextSize = 15
 		chip.Activated:Connect(function()
-			binderFilter = filter
+			rarityPicks[rarity] = if rarityPicks[rarity] then nil else true
 			spreadIndex = 1
 			applyFilter()
 		end)
-		filterButtons[filter] = chip
+		rarityChips[rarity] = chip
+	end
+end
+
+-- Opens or closes the Filters panel; the book shrinks and slides left to make room
+function setFiltersOpen(open: boolean)
+	local info = TweenInfo.new(Collection.BOOK.SLIDE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(bookScale, info, { Scale = if open then Collection.BOOK.FILTER_SCALE else 1 }):Play()
+	TweenService:Create(bookHolder, info, {
+		Position = UDim2.fromScale(if open then Collection.BOOK.FILTER_X else 0.5, Collection.BOOK.CENTRE_Y),
+	}):Play()
+	if open then
+		filtersPanel.Visible = true
+		Motion.popIn(filtersPanel)
+	else
+		Motion.popOut(filtersPanel, function()
+			filtersPanel.Visible = false
+		end)
+	end
+end
+
+local function makePage(book: Frame, isLeft: boolean): Frame
+	local page = Instance.new("Frame")
+	page.Name = if isLeft then "LeftPage" else "RightPage"
+	page.Position = if isLeft then UDim2.new(0, 14, 0, 14) else UDim2.new(0.5, 10, 0, 14)
+	page.Size = UDim2.new(0.5, -24, 1, -28)
+	page.BackgroundColor3 = Collection.BOOK.PAGE_COLOR
+	page.Parent = book
+	UIKit.corner(page, 10)
+
+	local grid = Instance.new("UIGridLayout")
+	grid.CellPadding = UDim2.fromOffset(POCKET_OPTIONS.gap, POCKET_OPTIONS.gap)
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.VerticalAlignment = Enum.VerticalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.FillDirectionMaxCells = POCKET_OPTIONS.preferredColumns
+	grid.Parent = page
+	table.insert(pageGrids, grid)
+	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitPockets)
+	return page
+end
+
+-- The set's cover over spread 1's left page: its colour, name, progress and emblem. It sits on the book,
+-- not in the page (the page's grid would size it like a pocket).
+local function buildCover(page: Frame)
+	coverPage = Instance.new("Frame")
+	coverPage.Name = "Cover"
+	coverPage.Position = page.Position
+	coverPage.Size = page.Size
+	coverPage.BackgroundColor3 = UIKit.Colors.Accent
+	coverPage.ZIndex = page.ZIndex + 1
+	coverPage.Parent = page.Parent
+	UIKit.corner(coverPage, 10)
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 90
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
+	gradient.Parent = coverPage
+	local border = Instance.new("Frame")
+	border.Position = UDim2.fromScale(0.06, 0.05)
+	border.Size = UDim2.fromScale(0.88, 0.9)
+	border.BackgroundTransparency = 1
+	border.ZIndex = coverPage.ZIndex
+	border.Parent = coverPage
+	UIKit.corner(border, 12)
+	UIKit.outline(border, Color3.new(1, 1, 1), 2).Transparency = 0.5
+	local band = Instance.new("Frame")
+	band.Position = UDim2.fromScale(0.06, 0.16)
+	band.Size = UDim2.fromScale(0.88, 0.22)
+	band.BackgroundColor3 = Color3.new(0, 0, 0)
+	band.BackgroundTransparency = 0.75
+	band.BorderSizePixel = 0
+	band.ZIndex = coverPage.ZIndex
+	band.Parent = coverPage
+	coverTitle = UIKit.label(band, "", Enum.Font.FredokaOne, 40, Color3.new(1, 1, 1))
+	coverTitle.Position = UDim2.fromScale(0.05, 0.05)
+	coverTitle.Size = UDim2.fromScale(0.9, 0.55)
+	coverTitle.TextScaled = true
+	coverTitle.TextXAlignment = Enum.TextXAlignment.Center
+	coverTitle.ZIndex = band.ZIndex + 1
+	coverProgress = UIKit.label(band, "", Enum.Font.FredokaOne, 24, Color3.new(1, 1, 1))
+	coverProgress.Position = UDim2.fromScale(0.05, 0.6)
+	coverProgress.Size = UDim2.fromScale(0.9, 0.32)
+	coverProgress.TextScaled = true
+	coverProgress.TextXAlignment = Enum.TextXAlignment.Center
+	coverProgress.ZIndex = band.ZIndex + 1
+	coverEmblem = UIKit.label(coverPage, "", Enum.Font.FredokaOne, 80, Color3.new(1, 1, 1))
+	coverEmblem.AnchorPoint = Vector2.new(0.5, 0.5)
+	coverEmblem.Position = UDim2.fromScale(0.5, 0.66)
+	coverEmblem.Size = UDim2.fromScale(0.5, 0.36)
+	coverEmblem.TextScaled = true
+	coverEmblem.TextXAlignment = Enum.TextXAlignment.Center
+	coverEmblem.TextTransparency = 0.15
+	coverEmblem.ZIndex = coverPage.ZIndex + 1
+end
+
+-- A round arrow button beside the book, with its key chip
+local function arrowButton(parent: Instance, text: string, key: string, big: boolean, onClick: () -> ()): TextButton
+	local button = UIKit.button(parent, text, if big then UIKit.Colors.Accent else UIKit.Colors.Row)
+	button.Size = UDim2.fromOffset(if big then 64 else 52, if big then 64 else 52)
+	button.Font = Enum.Font.FredokaOne
+	button.TextSize = if big then 30 else 24
+	addKeyChip(button, key)
+	button.Activated:Connect(onClick)
+	return button
+end
+
+local function buildPanel(parent: Instance)
+	local list: ScrollingFrame
+	panel, list = UIKit.panel(parent, "Binder", "Binder")
+	list:Destroy() -- the binder uses pages instead of a scrolling list
+	-- Full screen, the world dimmed behind; no header (the book is the screen)
+	panel.Size = UDim2.fromScale(1, 1)
+	panel.BackgroundColor3 = Color3.new(0, 0, 0)
+	panel.BackgroundTransparency = 0.45
+	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
+	if sizeLimit then
+		sizeLimit:Destroy()
+	end
+	for _, name in { "Header", "Title" } do
+		local item = panel:FindFirstChild(name)
+		if item then
+			item:Destroy()
+		end
+	end
+	local edge = panel:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge:Destroy()
+	end
+	local corner = panel:FindFirstChildOfClass("UICorner")
+	if corner then
+		corner:Destroy()
+	end
+	local close = panel:FindFirstChild("Close") :: GuiObject?
+	if close then
+		close.Position = UDim2.new(1, -16, 0, 16)
 	end
 
-	-- The open binder: cover with a spine down the middle and a page either side
-	local spread = Instance.new("Frame")
-	spread.Name = "Spread"
-	spread.Position = UDim2.fromOffset(12, 108)
-	spread.Size = UDim2.new(1, -24, 1, -168)
-	spread.BackgroundColor3 = COVER_COLOR
-	spread.Parent = panel
-	UIKit.corner(spread, 12)
-	local spine = Instance.new("Frame")
-	spine.Name = "Spine"
-	spine.AnchorPoint = Vector2.new(0.5, 0)
-	spine.Position = UDim2.fromScale(0.5, 0)
-	spine.Size = UDim2.new(0, 4, 1, 0)
-	spine.BackgroundColor3 = Color3.new(0, 0, 0)
-	spine.BackgroundTransparency = 0.5
-	spine.BorderSizePixel = 0
-	spine.Parent = spread
-	pages = { buildPage(spread, true), buildPage(spread, false) }
-	fitPockets()
+	-- The book: holder keeps the shape and position (it slides when Filters open), the scale shrinks it
+	bookHolder = Instance.new("Frame")
+	bookHolder.Name = "BookHolder"
+	bookHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+	bookHolder.Position = UDim2.fromScale(0.5, Collection.BOOK.CENTRE_Y)
+	bookHolder.Size = UDim2.fromScale(Collection.BOOK.WIDTH, Collection.BOOK.HEIGHT)
+	bookHolder.BackgroundTransparency = 1
+	bookHolder.ZIndex = panel.ZIndex
+	bookHolder.Parent = panel
+	local shape = Instance.new("UIAspectRatioConstraint")
+	shape.AspectRatio = Collection.BOOK.ASPECT
+	shape.Parent = bookHolder
+	bookScale = Instance.new("UIScale")
+	bookScale.Parent = bookHolder
 
-	-- Page turning
-	local previous = UIKit.button(panel, "<", UIKit.Colors.Row)
-	previous.Position = UDim2.new(0, 12, 1, -54)
-	previous.Size = UDim2.fromOffset(64, 46)
-	previous.Activated:Connect(function()
-		showSpread(spreadIndex - 1)
-	end)
-	local nextButton = UIKit.button(panel, ">", UIKit.Colors.Row)
-	nextButton.AnchorPoint = Vector2.new(1, 0)
-	nextButton.Position = UDim2.new(1, -12, 1, -54)
-	nextButton.Size = UDim2.fromOffset(64, 46)
-	nextButton.Activated:Connect(function()
-		showSpread(spreadIndex + 1)
-	end)
-	pageLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
-	pageLabel.Position = UDim2.new(0, 84, 1, -54)
-	pageLabel.Size = UDim2.new(1, -168, 0, 46)
-	pageLabel.TextXAlignment = Enum.TextXAlignment.Right -- the set progress bars sit on the left of this bar
+	book = Instance.new("Frame")
+	book.Name = "Book"
+	book.Size = UDim2.fromScale(1, 1)
+	book.BackgroundColor3 = Collection.BOOK.COLOR
+	book.ZIndex = panel.ZIndex
+	book.Parent = bookHolder
+	UIKit.corner(book, 18)
+	UIKit.outline(book, Collection.BOOK.STITCH, 2).Transparency = 0.4
+	pages = { makePage(book, true), makePage(book, false) }
+	buildCover(pages[1])
+
+	-- Rings down the middle
+	for index = 1, 3 do
+		local ring = Instance.new("Frame")
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromScale(0.5, index / 4)
+		ring.Size = UDim2.fromOffset(46, 14)
+		ring.BackgroundColor3 = Color3.fromRGB(225, 228, 238)
+		ring.ZIndex = book.ZIndex + 3
+		ring.Parent = book
+		UIKit.corner(ring, 7)
+		UIKit.outline(ring, Color3.fromRGB(120, 125, 145), 2)
+	end
+
+	-- Set tabs on the book's left edge
+	for index, set in Collection.SETS do
+		if Cards.BySet[set] then
+			local tab = UIKit.button(bookHolder, string.upper(set), UIKit.Colors.Row)
+			tab.Name = "SetTab" .. string.gsub(set, " ", "")
+			tab.AnchorPoint = Vector2.new(1, 0)
+			tab.Position = UDim2.new(0, 10, 0, 24 + (index - 1) * 80)
+			tab.Size = UDim2.fromOffset(64, 70)
+			tab.Font = Enum.Font.FredokaOne
+			tab.TextScaled = true
+			tab.TextWrapped = true
+			local tabPadding = tab:FindFirstChildOfClass("UIPadding")
+			if tabPadding then
+				tabPadding.PaddingLeft = UDim.new(0, 6)
+				tabPadding.PaddingRight = UDim.new(0, 8)
+				tabPadding.PaddingTop = UDim.new(0, 6)
+				tabPadding.PaddingBottom = UDim.new(0, 10)
+			end
+			tab.ZIndex = book.ZIndex - 1
+			tab.Activated:Connect(function()
+				openSet(set)
+			end)
+			setTabs[set] = tab
+		end
+	end
+
+	-- Page counter under the book, arrows either side (Q/E one spread, A/D first/last)
+	local counter = Instance.new("Frame")
+	counter.Name = "Counter"
+	counter.AnchorPoint = Vector2.new(0.5, 0)
+	counter.Position = UDim2.new(0.5, 0, 1, 10)
+	counter.Size = UDim2.fromOffset(140, 40)
+	counter.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
+	counter.ZIndex = book.ZIndex
+	counter.Parent = bookHolder
+	UIKit.corner(counter, 20)
+	pageLabel = UIKit.label(counter, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
+	pageLabel.Size = UDim2.fromScale(1, 1)
 	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+	local leftArrows = Instance.new("Frame")
+	leftArrows.AnchorPoint = Vector2.new(1, 0.5)
+	leftArrows.Position = UDim2.new(0, -96, 0.5, 0) -- clear of the set tabs
+	leftArrows.Size = UDim2.fromOffset(64, 140)
+	leftArrows.BackgroundTransparency = 1
+	leftArrows.Parent = bookHolder
+	local leftList = Instance.new("UIListLayout")
+	leftList.Padding = UDim.new(0, 16)
+	leftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	leftList.Parent = leftArrows
+	arrowButton(leftArrows, "<", "Q", true, function()
+		showSpread(spreadIndex - 1)
+	end).LayoutOrder = 1
+	arrowButton(leftArrows, "<<", "A", false, function()
+		showSpread(1)
+	end).LayoutOrder = 2
+
+	local rightArrows = leftArrows:Clone()
+	for _, child in rightArrows:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	rightArrows.AnchorPoint = Vector2.new(0, 0.5)
+	rightArrows.Position = UDim2.new(1, 18, 0.5, 0)
+	rightArrows.Parent = bookHolder
+	arrowButton(rightArrows, ">", "E", true, function()
+		showSpread(spreadIndex + 1)
+	end).LayoutOrder = 1
+	arrowButton(rightArrows, ">>", "D", false, function()
+		showSpread(getSpreadCount())
+	end).LayoutOrder = 2
+
+	-- Filters (F), top right next to the close button
+	local filterButton = UIKit.button(panel, "🔍", UIKit.Colors.Row)
+	filterButton.Name = "FilterButton"
+	filterButton.AnchorPoint = Vector2.new(1, 0)
+	filterButton.Position = UDim2.new(1, -84, 0, 16)
+	filterButton.Size = UDim2.fromOffset(52, 52)
+	filterButton.TextSize = 24
+	addKeyChip(filterButton, "F")
+	filterButton.Activated:Connect(function()
+		setFiltersOpen(not filtersPanel.Visible)
+	end)
+	buildFilters(panel)
+
+	-- Set progress, bottom right
+	local progress = Instance.new("Frame")
+	progress.Name = "SetProgress"
+	progress.AnchorPoint = Vector2.new(1, 1)
+	progress.Position = UDim2.new(1, -16, 1, -16)
+	progress.Size = UDim2.fromOffset(300, 74)
+	progress.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
+	progress.ZIndex = panel.ZIndex + 1
+	progress.Parent = panel
+	UIKit.corner(progress, 14)
+	UIKit.outline(progress, Color3.fromRGB(60, 80, 140), 2)
+	progressName = UIKit.label(progress, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
+	progressName.Position = UDim2.fromOffset(14, 6)
+	progressName.Size = UDim2.new(1, -110, 0, 30)
+	progressValue = UIKit.label(progress, "", Enum.Font.FredokaOne, 20, VALUE_COLOR)
+	progressValue.AnchorPoint = Vector2.new(1, 0)
+	progressValue.Position = UDim2.new(1, -14, 0, 6)
+	progressValue.Size = UDim2.fromOffset(100, 30)
+	progressValue.TextXAlignment = Enum.TextXAlignment.Right
+	progressCount = UIKit.label(progress, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
+	progressCount.Position = UDim2.fromOffset(14, 40)
+	progressCount.Size = UDim2.fromOffset(110, 26)
+	local track = Instance.new("Frame")
+	track.Position = UDim2.new(0, 130, 0, 50)
+	track.Size = UDim2.new(1, -144, 0, 8)
+	track.BackgroundColor3 = Color3.fromRGB(60, 70, 110)
+	track.Parent = progress
+	UIKit.corner(track, 4)
+	progressFill = Instance.new("Frame")
+	progressFill.Size = UDim2.fromScale(0, 1)
+	progressFill.Parent = track
+	UIKit.corner(progressFill, 4)
+
+	-- Rarity guide, bottom left (shown once the guide exists)
+	rarityGuideButton = UIKit.button(panel, "ℹ️ Rarity guide", UIKit.Colors.Row)
+	rarityGuideButton.Name = "RarityGuide"
+	rarityGuideButton.AnchorPoint = Vector2.new(0, 1)
+	rarityGuideButton.Position = UDim2.new(0, 16, 1, -16)
+	rarityGuideButton.Size = UDim2.fromOffset(190, 52)
+	rarityGuideButton.TextSize = 17
+	rarityGuideButton.Visible = false
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BinderTooltip"
 	tooltip.Size = UDim2.fromOffset(TOOLTIP_WIDTH, 0)
 	tooltip.AutomaticSize = Enum.AutomaticSize.Y
-	tooltip.BackgroundColor3 = UIKit.Colors.Panel
+	tooltip.BackgroundColor3 = UIKit.Colors.Row
 	tooltip.ZIndex = 50
 	tooltip.Visible = false
 	tooltip.Parent = parent
-	UIKit.corner(tooltip, 8)
-	local tooltipStroke = Instance.new("UIStroke")
-	tooltipStroke.Color = UIKit.Colors.Accent
-	tooltipStroke.Parent = tooltip
+	UIKit.corner(tooltip, 10)
+	UIKit.outline(tooltip, UIKit.Colors.Accent, 2)
 	local tooltipPadding = Instance.new("UIPadding")
 	tooltipPadding.PaddingTop = UDim.new(0, 8)
 	tooltipPadding.PaddingBottom = UDim.new(0, 8)
@@ -1352,11 +1730,21 @@ local function buildPanel(parent: Instance)
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, panel))
 	end
+	fitPockets()
+	refreshSet()
 	applyFilter()
 
 	buildDetail(panel)
 	buildBag(panel)
-	panel:GetPropertyChangedSignal("Visible"):Connect(hideTooltip)
+	panel:GetPropertyChangedSignal("Visible"):Connect(function()
+		hideTooltip()
+		Hud.setHidden("Binder", panel.Visible)
+		if not panel.Visible and filtersPanel.Visible then
+			filtersPanel.Visible = false
+			bookScale.Scale = 1
+			bookHolder.Position = UDim2.fromScale(0.5, Collection.BOOK.CENTRE_Y)
+		end
+	end)
 end
 
 local function onCollectionChanged(payload: { stacks: Stacks, beasts: { [string]: Beast } })
@@ -1482,8 +1870,25 @@ function BinderController.Start()
 	refresh()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if input.KeyCode == BINDER_KEY and not gameProcessed then
+		if gameProcessed then
+			return
+		end
+		if input.KeyCode == BINDER_KEY then
 			toggle()
+			return
+		end
+		if not panel.Visible or bagOverlay.Visible or detail.Visible or isTyping() then
+			return
+		end
+		local step = PAGE_KEYS[input.KeyCode]
+		if step then
+			showSpread(spreadIndex + step)
+		elseif input.KeyCode == Enum.KeyCode.A then
+			showSpread(1)
+		elseif input.KeyCode == Enum.KeyCode.D then
+			showSpread(getSpreadCount())
+		elseif input.KeyCode == Enum.KeyCode.F then
+			setFiltersOpen(not filtersPanel.Visible)
 		end
 	end)
 	-- I opens the Bag. Roblox's camera binds I (zoom) through ContextActionService and swallows it before

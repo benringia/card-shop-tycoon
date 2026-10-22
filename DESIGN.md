@@ -608,7 +608,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # two-page binder (3x3 pockets, fewer bigger ones on short screens, at least 3 a page; a chip row under each card: copies, best grade and level), search + filters, hover tooltips, big-card detail view
+    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E/A/D page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
@@ -690,6 +690,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── FanLayout.luau     # the HUD Manage fan's button positions (pure, Lune-tested)
+            ├── BinderSpreads.luau # binder spreads, card ranges and the page counter (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -753,6 +754,13 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Top centre: a cash pill, a round level badge and a Star Shards pill, with an XP bar under them. Bottom right:
   party bar and buff badge. Toasts sit above the bottom row. The fight screen hides the HUD groups.
+- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world, one book per set
+  (FIRST SPARK, FRONTIER tabs on its left edge). Spread 1 is the set's cover (colour, name, "34 / 35", emblem) and
+  page 1; later spreads are two pages. Page counter pill under the book ("2-3 / 9"); arrows with key chips
+  (Q/E one spread, A/D first/last). Top right: Filters (F) and close. The Filters panel (search, Show
+  All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book shrinks to
+  0.72 and slides left. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
+  The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.

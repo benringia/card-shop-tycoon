@@ -271,4 +271,16 @@ function Hud.getTop(): Frame
 	return top
 end
 
+-- Full-screen views (the binder) hide the side and bottom HUD while they show; each caller has its own reason
+local hiddenBy: { [string]: boolean } = {}
+function Hud.setHidden(reason: string, hidden: boolean)
+	hiddenBy[reason] = if hidden then true else nil
+	local show = next(hiddenBy) == nil
+	side.Visible = show
+	bottom.Visible = show
+	if not show and fanOpen then
+		setFan(false)
+	end
+end
+
 return Hud
