@@ -35,6 +35,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
 
 type Card = typeof(Cards.List[1])
 type Owned = { normal: number, foil: number }
@@ -1697,14 +1698,14 @@ local function buildPanel(parent: Instance)
 	progressFill.Parent = track
 	UIKit.corner(progressFill, 4)
 
-	-- Rarity guide, bottom left (shown once the guide exists)
+	-- Rarity guide, bottom left
 	rarityGuideButton = UIKit.button(panel, "ℹ️ Rarity guide", UIKit.Colors.Row)
 	rarityGuideButton.Name = "RarityGuide"
 	rarityGuideButton.AnchorPoint = Vector2.new(0, 1)
 	rarityGuideButton.Position = UDim2.new(0, 16, 1, -16)
 	rarityGuideButton.Size = UDim2.fromOffset(190, 52)
 	rarityGuideButton.TextSize = 17
-	rarityGuideButton.Visible = false
+	rarityGuideButton.Activated:Connect(RarityGuideController.Open)
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BinderTooltip"

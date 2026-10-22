@@ -620,6 +620,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
+    │   │   ├── RarityGuideController.luau # rarity guide panel (odds from the pack configs)
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
@@ -691,6 +692,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── FanLayout.luau     # the HUD Manage fan's button positions (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges and the page counter (pure, Lune-tested)
+            ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -761,6 +763,10 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book shrinks to
   0.72 and slides left. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
   The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
+- **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
+  with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
+  19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
+  `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.
