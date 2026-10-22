@@ -20,9 +20,9 @@ return {
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
 		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
-		Computer = { height = 0, collide = false }, -- the order computer (ORDER STOCK)
+		Computer = { height = 0, collide = false, yaw = 90 }, -- the order computer (a desk set; its monitor faces -X)
 		Condenser = { height = 0, collide = false }, -- the Card Condenser
-		Counter = { height = 0, collide = false, stretch = true }, -- the register counter
+		Counter = { height = 0, collide = false }, -- the register counter: a market stall drawn over it (COUNTER.STALL)
 		-- the Collector Case's look: a glass cabinet built from plain blocks, stretched to fill the case
 		GlassCase = { height = 0, collide = false, stretch = true, yaw = 180 }, -- GlassCaseA's glass doors face its +Z
 		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
@@ -87,6 +87,10 @@ return {
 		REGISTER = { x = -1.8, width = 2.4, height = 2.2, depth = 2 },
 		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
 		ITEM_GAP = 0.15, -- between the register and the first scan item
+		-- The Counter prop is a market stall: its front lines up with the counter's, it reaches back over the
+		-- cashier, and its canopy starts at canopyFrom x height
+		STALL = { width = 6.6, height = 7.2, depth = 4.2, canopyFrom = 0.79 },
+		STAFF_BEHIND = 1.6, -- the cashier (owner or pet) stands this far behind the counter, inside the stall
 	},
 
 	-- Stock boxes on Products shelves (ShelfStock): levels match the Store Shelf's plates

@@ -74,7 +74,7 @@ return {
 			assert(slot ~= nil, `no {name} slot`)
 			expect.equal(slot.collide, false, `{name} collide (the fixture part is the hitbox)`)
 		end
-		expect.equal(town.SLOTS.Counter.stretch, true, "Counter stretches along the counter")
+		expect.equal(town.SLOTS.Computer.yaw, 90, "the desk set's monitor faces its -X")
 	end,
 
 	["the shelf slot stretches"] = function()
@@ -88,6 +88,17 @@ return {
 		assert(itemBack <= propFront + 0.001, `items reach z {itemBack}, props start at {propFront}`)
 		assert(itemZ - ITEM_DEPTH / 2 >= -COUNTER_DEPTH / 2 - 0.001, "items hang off the front")
 		assert(propZ + town.COUNTER.PROP_DEPTH / 2 <= COUNTER_DEPTH / 2 + 0.001, "props hang off the back")
+	end,
+
+	["the cashier pet stands inside the stall, under its canopy"] = function()
+		local COUNTER_HEIGHT = 2.5 -- Plots.REGISTER_SIZE.Y
+		local BIGGEST_PET = 4.2 -- Party.CREATURE_HEIGHT x Legendary size
+		local stall = town.COUNTER.STALL
+		local staffZ = COUNTER_DEPTH / 2 + town.COUNTER.STAFF_BEHIND -- from the counter centre
+		local stallBack = -COUNTER_DEPTH / 2 + stall.depth -- the stall's front lines up with the counter's
+		assert(staffZ < stallBack, `cashier at {staffZ} is outside the stall (back at {stallBack})`)
+		assert(stall.height * stall.canopyFrom >= BIGGEST_PET + 0.3, "the biggest pet hits the canopy")
+		assert(COUNTER_HEIGHT < BIGGEST_PET * 0.7, "the counter hides small pets")
 	end,
 
 	["the register faces the customers"] = function()

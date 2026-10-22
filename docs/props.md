@@ -15,9 +15,9 @@ shows its stand-in.
 | `Portal` | frame around each plaza portal ring; its Neon parts take the portal's colour (`Town.PORTAL_EFFECTS`), particles come from code | 14 | no |
 | `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
-| `Computer` | the order computer (ORDER STOCK); moves with it | fits 4 x 3 x 2 | (its own hitbox) |
+| `Computer` | the order computer (ORDER STOCK): a desk set, turned 90° in code; moves with it | fits 8 x 4.5 x 6 | (its own hitbox) |
 | `Condenser` | the Card Condenser | fits 4 x 5 x 4 | (its own hitbox) |
-| `Counter` | the register counter; stretched along it when built from plain blocks | fills 6 x 3.5 x 2 | (its own hitbox) |
+| `Counter` | the register counter: a market stall, its front on the counter's front, reaching back over the cashier | fits 6.6 x 7.2 x 4.2 (`COUNTER.STALL`) | (the counter's own hitbox) |
 | `GlassCase` | the look of the Collector Case: a glass cabinet stretched to fill the case; cards stand inside behind the glass | fills the case | (the case's own hitbox) |
 | `Awning` | shop fronts: repeated across each front, top at the wall top; parts named `COLOUR ME` take the plot's awning colour | about 5 deep, fills the front | no |
 | `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |

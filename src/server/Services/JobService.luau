@@ -14,6 +14,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local Jobs = require(Config:WaitForChild("Jobs"))
+local Town = require(Config:WaitForChild("Town"))
 local Monetization = require(Config:WaitForChild("Monetization"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
@@ -122,10 +123,10 @@ local function getShelfPoint(plot: Plot, shelf: PlacedShelf): Vector3
 	return floorPoint(plot, part.CFrame * CFrame.new(0, 0, -(part.Size.Z / 2 + CustomerConfig.SHELF_STAND_DISTANCE)))
 end
 
--- Behind the counter (the staff side, where the owner stands to scan)
+-- Behind the counter (the staff side, where the owner stands to scan), inside the stall
 local function getRegisterPoint(plot: Plot): Vector3
 	local register = plot.register
-	return floorPoint(plot, register.CFrame * CFrame.new(0, 0, register.Size.Z / 2 + 2))
+	return floorPoint(plot, register.CFrame * CFrame.new(0, 0, register.Size.Z / 2 + Town.COUNTER.STAFF_BEHIND))
 end
 
 -- Turns a worker standing behind the register toward the customer queue (the register's front)
@@ -144,7 +145,7 @@ end
 -- Out of the owner's way when they take over the register
 local function getAsidePoint(plot: Plot): Vector3
 	local register = plot.register
-	return floorPoint(plot, register.CFrame * CFrame.new(register.Size.X / 2 + 3, 0, register.Size.Z / 2 + 2))
+	return floorPoint(plot, register.CFrame * CFrame.new(register.Size.X / 2 + 3, 0, register.Size.Z / 2 + Town.COUNTER.STAFF_BEHIND))
 end
 
 -- Status and the creature ---------------------------------------------------------------------------

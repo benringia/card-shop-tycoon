@@ -255,13 +255,16 @@ local function buildSign(plotCFrame: CFrame, parent: Instance): TextLabel
 end
 
 -- Snaps the computer to a grid cell. Attributes let the owner's client start a move from here.
--- A fixture part that shows a prop model: the part turns into an invisible hitbox (prompts and its label stay)
-local function dressFixture(part: Part, slot: string, parent: Instance)
+-- A fixture part that shows a prop model: the part turns into an invisible hitbox (prompts and its label stay).
+-- `box` (width, height, depth) lets the model be bigger than the part, its front lined up with the part's.
+local function dressFixture(part: Part, slot: string, parent: Instance, box: Vector3?)
 	if not Props.hasModel(slot) then
 		return
 	end
 	part.Transparency = 1
-	Props.fit(slot, part.Size, part.CFrame * CFrame.new(0, -part.Size.Y / 2, 0), parent)
+	local size = box or part.Size
+	local front = -part.Size.Z / 2 + size.Z / 2
+	Props.fit(slot, size, part.CFrame * CFrame.new(0, -part.Size.Y / 2, front), parent)
 end
 
 local function setComputerCell(computer: Part, plotCFrame: CFrame, gridX: number, gridZ: number, rotation: number)
@@ -329,7 +332,8 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
 	addSurfaceLabel(register, PlotConfig.REGISTER_TEXT)
-	dressFixture(register, "Counter", parent)
+	local stall = Town.COUNTER.STALL
+	dressFixture(register, "Counter", parent, Vector3.new(stall.width, stall.height, stall.depth))
 	-- The register takes the left end; the decor sits in the back strip, clear of the scan items on the
 	-- front edge (RegisterService)
 	local counter = Town.COUNTER

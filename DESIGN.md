@@ -64,7 +64,8 @@ baseboard), front corner pillars, an awning 12 studs up (the Awning prop repeate
 theme colour, or code-built stripes; about 5 studs out), a front wall above it carrying the shop sign, a flat ceiling
 (the camera stays under it inside) with 3 warm ceiling lights, and a gable roof on top (ridge side to side, 8 high,
 1.5 overhang). The roof always shows. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
-trim, awning, roof, owned floor; grey floor while for rent). The register counter carries a Register prop at its left end and a
+trim, awning, roof, owned floor; grey floor while for rent). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
+cashier stands inside; it carries a Register prop at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part: Products shelves show the
 Shelf prop, the Collector Case the GlassCase cabinet (its cards stand inside, behind the glass). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
@@ -668,7 +669,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     prices = {},            -- { [productId] = price }
     layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
                             --   cards (card cases): { { slot, cardId, foil, price, grade, beastId?, level?, xp?, stars? } } (stars 0-5)
-    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer
+    fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer (a 8x6 desk;
+                            -- restored after the shelves, to the nearest free spot if its own is taken)
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display
     beasts = {},            -- { [beastId] = { cardId, foil, level, xp, stars, grade } } levelled cards in the binder (stars 0-5)

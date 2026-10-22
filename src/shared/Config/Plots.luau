@@ -27,9 +27,9 @@ return {
 
 	-- Order computer starts in a back corner, screen facing the shop front. The owner can move it;
 	-- it returns here when the plot is released. Grid cells count from the front-left corner.
-	COMPUTER_SIZE = Vector3.new(4, 3, 2),
-	COMPUTER_GRID_X = 17,
-	COMPUTER_GRID_Z = 18,
+	COMPUTER_SIZE = Vector3.new(8, 4.5, 6), -- a desk with the computer and a chair
+	COMPUTER_GRID_X = 15,
+	COMPUTER_GRID_Z = 17,
 	COMPUTER_COLOR = Color3.fromRGB(60, 65, 80),
 	COMPUTER_TEXT = "ORDER STOCK",
 
@@ -40,7 +40,7 @@ return {
 
 	-- Register counter on the left side near the back. Customers queue in front of it toward the street;
 	-- the owner stands behind it.
-	REGISTER_SIZE = Vector3.new(6, 3.5, 2),
+	REGISTER_SIZE = Vector3.new(6, 2.5, 2), -- low, so small cashier pets behind it still show
 	REGISTER_SIDE_INSET = 5, -- from the side wall to the counter centre
 	REGISTER_BACK_INSET = 6, -- from the back wall to the counter centre
 	REGISTER_TEXT = "REGISTER",

@@ -19,6 +19,8 @@ local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
+local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -535,16 +537,26 @@ local function onSell(player: Player, uid: unknown)
 	notify(player, string.format("Sold %s for $%.2f.", shelf.def.name, refund), false)
 end
 
+-- Runs after the shelves: the computer goes back to its saved spot, or (when that is taken, or a bigger
+-- computer no longer fits there) to the nearest free spot, so no saved shelf is ever pushed out
 local function restoreComputer(plot: Plot, saved: SavedCell?)
-	if typeof(saved) ~= "table" then
-		return
-	end
-	if not isGridInteger(saved.gridX) or not isGridInteger(saved.gridZ) or not isValidRotation(saved.rotation) then
-		return
-	end
+	local valid = typeof(saved) == "table"
+		and isGridInteger(saved.gridX)
+		and isGridInteger(saved.gridZ)
+		and isValidRotation(saved.rotation)
+	local startX = if valid then saved.gridX else PlotConfig.COMPUTER_GRID_X
+	local startZ = if valid then saved.gridZ else PlotConfig.COMPUTER_GRID_Z
+	local rotation = if valid then saved.rotation else 0
+	local size = plot.computer.Size
+	local w, d = PlacementGrid.getFootprint(size, rotation)
+	local grid = PlacementConfig.GRID_SIZE
+	local maxX, maxZ = PlotConfig.WIDTH // grid - w, PlotConfig.DEPTH // grid - d
 	local fixtureId = PlotService.COMPUTER_FIXTURE_ID
-	if canPlaceAt(plot, plot.computer.Size, saved.gridX, saved.gridZ, saved.rotation, fixtureId) then
-		PlotService.SetComputerCell(plot, saved.gridX, saved.gridZ, saved.rotation)
+	for _, cell in CellSearch.byDistance(startX, startZ, maxX, maxZ) do
+		if canPlaceAt(plot, size, cell.x, cell.z, rotation, fixtureId) then
+			PlotService.SetComputerCell(plot, cell.x, cell.z, rotation)
+			return
+		end
 	end
 end
 
@@ -609,7 +621,8 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 		and isGridInteger(saved.gridZ)
 		and isValidRotation(saved.rotation)
 		-- A layout saved under older config might not fit any more; skip that shelf rather than overlap
-		and canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, nil)
+		-- The computer is placed after the shelves, so it never pushes a saved shelf out
+		and canPlaceAt(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, PlotService.COMPUTER_FIXTURE_ID)
 	if not valid or not def then
 		readSavedCards(nil, saved.cards, leftovers)
 		return
@@ -632,19 +645,19 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 end
 
 -- New shops have an empty layout; returning players get their shelves, stock and displayed cards back.
--- The computer goes first so shelves saved around its moved spot still fit. CardService loads before
--- this, so displayed cards that can't be put back are returned to the binder.
+-- Shelves go first (ignoring the computer), then the computer finds its spot around them. CardService loads
+-- before this, so displayed cards that can't be put back are returned to the binder.
 local function load(player: Player, data: PlayerData)
 	local plot = PlotService.GetPlot(player)
 	if not plot then
 		return -- no free plot this session; leave the saved layout untouched
 	end
 	layouts[player] = {}
-	restoreComputer(plot, data.fixtures[PlotService.COMPUTER_FIXTURE_ID])
 	local leftovers: { DisplayedCard } = {}
 	for _, saved in data.layout do
 		restoreShelf(player, plot, saved, leftovers)
 	end
+	restoreComputer(plot, data.fixtures[PlotService.COMPUTER_FIXTURE_ID])
 	for _, displayed in leftovers do
 		CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.grade, displayed.beast)
 	end
