@@ -29,6 +29,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ElementFxRules = require("./ElementFxRules.spec"),
 	FanLayout = require("./FanLayout.spec"),
 	BinderSpreads = require("./BinderSpreads.spec"),
+	OddsRules = require("./OddsRules.spec"),
 }
 
 local passed, failed = 0, 0
