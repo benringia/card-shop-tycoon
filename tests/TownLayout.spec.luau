@@ -200,6 +200,13 @@ return {
 		end
 	end,
 
+	["a file belongs to the longest slot name it matches"] = function()
+		assert(not TownLayout.isVariant("Counter", "CounterDecorA", town.SLOTS), "CounterDecorA is not a Counter")
+		assert(TownLayout.isVariant("CounterDecor", "CounterDecorA", town.SLOTS), "CounterDecorA is a CounterDecor")
+		assert(TownLayout.isVariant("Counter", "CounterA", town.SLOTS), "CounterA is a Counter")
+		assert(TownLayout.isVariant("Tree", "TreeB", town.SLOTS), "TreeB is a Tree")
+	end,
+
 	["variant names"] = function()
 		assert(TownLayout.isVariant("Tree", "Tree"), "Tree")
 		assert(TownLayout.isVariant("Tree", "TreeA"), "TreeA")

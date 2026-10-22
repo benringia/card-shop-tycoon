@@ -47,14 +47,27 @@ function TownLayout.plotRects(world: World): { Rect }
 	return rects
 end
 
--- A file belongs to a slot when it is named after it, optionally followed by a suffix that starts with a
--- capital letter or digit: Tree, TreeA, Tree2, FlowerBlue (not Treehouse or Flowers)
-function TownLayout.isVariant(slot: string, name: string): boolean
+local function matches(slot: string, name: string): boolean
 	if string.sub(name, 1, #slot) ~= slot then
 		return false
 	end
 	local rest = string.sub(name, #slot + 1)
 	return rest == "" or string.match(rest, "^[%u%d]") ~= nil
+end
+
+-- A file belongs to a slot when it is named after it, optionally followed by a suffix that starts with a
+-- capital letter or digit: Tree, TreeA, Tree2, FlowerBlue (not Treehouse or Flowers). Given every slot, a file
+-- goes to the longest slot name it matches: CounterDecorA is a CounterDecor, not a Counter.
+function TownLayout.isVariant(slot: string, name: string, slots: { [string]: any }?): boolean
+	if not matches(slot, name) then
+		return false
+	end
+	for other in slots or {} do
+		if #other > #slot and matches(other, name) then
+			return false
+		end
+	end
+	return true
 end
 
 function TownLayout.build(world: World, town: any): { Placement }

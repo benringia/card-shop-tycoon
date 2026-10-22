@@ -67,7 +67,7 @@ local function getVariants(slot: string): { Instance }
 	local folder = ServerStorage:FindFirstChild("PropModels")
 	if folder then
 		for _, child in folder:GetChildren() do
-			if TownLayout.isVariant(slot, child.Name) and isUsable(child) then
+			if TownLayout.isVariant(slot, child.Name, Town.SLOTS) and isUsable(child) then
 				table.insert(found, child)
 			end
 		end
