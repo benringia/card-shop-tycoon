@@ -28,6 +28,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	RevealRules = require("./RevealRules.spec"),
 	ElementFxRules = require("./ElementFxRules.spec"),
 	FanLayout = require("./FanLayout.spec"),
+	BinderSpreads = require("./BinderSpreads.spec"),
 }
 
 local passed, failed = 0, 0
