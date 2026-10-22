@@ -51,7 +51,9 @@ Order stock (computer) → Restock shelves → Set prices
 village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
 between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring, warm afternoon lighting
 with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
-the PvP Arena (-104, 0) at the west end, each with a floating name label. Plots stand 24 studs apart. The town is
+the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
+with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
+embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Plots stand 24 studs apart. The town is
 the whole main-game world: the Baseplate is cut to x ±130, z ±90 and ringed with invisible walls (`Town.BOUNDS`). Code builds the fixed pieces (`Util/TownLayout`, same on every
 server): lamps on the street edges at every plot gap and row end, 4 benches round the spring, a fence round the whole
 island just inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except lamps, portals

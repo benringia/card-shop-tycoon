@@ -12,7 +12,7 @@ shows its stand-in.
 | `Lamp` | street edges | 9 | yes |
 | `Bench` | around the healing spring | 3 | yes |
 | `Fence` | one section, repeated every 6.5 studs round the island's edge | 4 | yes |
-| `Portal` | frame around each plaza portal ring | 14 | no |
+| `Portal` | frame around each plaza portal ring; its Neon parts take the portal's colour (`Town.PORTAL_EFFECTS`), particles come from code | 14 | no |
 | `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Computer` | the order computer (ORDER STOCK); moves with it | fits 4 x 3 x 2 | (its own hitbox) |

@@ -140,6 +140,19 @@ return {
 		expect.equal(#town.CEILING_LIGHTS.XS, 3, "ceiling lights")
 	end,
 
+	["each plaza portal has its own light effects"] = function()
+		for _, key in { "Wild", "Frontier", "Arena" } do
+			local effect = town.PORTAL_EFFECTS[key]
+			assert(effect ~= nil, `no effects for {key}`)
+			assert(#effect.ring == 3, `{key} ring colour`)
+			assert(#effect.colors >= 2, `{key} needs at least 2 particle colours`)
+			for _, color in effect.colors do
+				assert(#color == 3, `{key} colour`)
+			end
+			assert(#effect.emitters >= 1 and #effect.emitters <= 3, `{key}: 1 to 3 emitters (phones)`)
+		end
+	end,
+
 	["portal signs clear the portal frame"] = function()
 		assert(
 			wild.PORTAL_SIGN_HEIGHT - WILD_SIGN_HALF_HEIGHT >= town.SLOTS.Portal.height,

@@ -44,6 +44,38 @@ return {
 
 	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
 	BOUNDS = { HALF_X = 130, HALF_Z = 90, WALL_HEIGHT = 60 },
+	-- Each plaza portal's look: ring and glow-part colour, particle colours, and 1-3 emitters (phones).
+	-- Emitters sit on a box filling the ring. speed/lifetime/size are { min, max } or { start, end };
+	-- rise = upward pull (negative falls); colors on an emitter override the portal's.
+	PORTAL_EFFECTS = {
+		Wild = {
+			ring = { 110, 210, 90 },
+			colors = { { 140, 235, 110 }, { 245, 215, 90 } },
+			emitters = {
+				{ texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 16, lifetime = { 2, 3 }, speed = { 1.5, 3 }, size = { 0.9, 0 }, rise = 1, spin = 60 },
+				{ texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 6, lifetime = { 1.5, 2 }, speed = { 0.3, 0.6 }, size = { 1.2, 0.2 }, rise = 0, spin = 180 },
+			},
+		},
+		Frontier = {
+			ring = { 70, 150, 255 },
+			colors = { { 215, 245, 255 }, { 160, 205, 255 } },
+			emitters = {
+				{ texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 14, lifetime = { 3, 4 }, speed = { 0.4, 1 }, size = { 0.7, 0.4 }, rise = -0.8, spin = 30 },
+				{ texture = "rbxasset://textures/particles/smoke_main.dds", rate = 3, lifetime = { 2.5, 3.5 }, speed = { 0.2, 0.5 }, size = { 3, 5 }, rise = 0.3, spin = 20, transparency = { 0.82, 1 }, colors = { { 120, 255, 200 }, { 140, 170, 255 }, { 210, 140, 255 } } },
+			},
+		},
+		Arena = {
+			ring = { 230, 60, 45 },
+			colors = { { 255, 205, 90 }, { 255, 90, 40 } },
+			emitters = {
+				{ texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 20, lifetime = { 1.2, 1.8 }, speed = { 3, 5 }, size = { 0.6, 0 }, rise = 3, spin = 90 },
+				{ texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 5, lifetime = { 1, 1.5 }, speed = { 0.3, 0.6 }, size = { 1.4, 0.3 }, rise = 0, spin = 200 },
+			},
+		},
+	},
+	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
+	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
+	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)
 	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
 	PORTAL_LABEL_DISTANCE = 40, -- shown only this close, so far labels don't pile up
 

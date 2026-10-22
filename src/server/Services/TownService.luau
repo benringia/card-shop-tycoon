@@ -23,12 +23,14 @@ local TownService = {}
 
 local GROUND_THICKNESS = 0.2 -- street and plaza sink half into the baseplate: no z-fighting on top
 
--- Floating names over the plaza portals
+-- The plaza portals: floating names, their ring part's name (built by WildService, FrontierService and
+-- ArenaService) and their look (Town.PORTAL_EFFECTS)
 local PORTAL_LABELS = {
-	{ spot = Wild.PLAZA_PORTAL, text = "🌿 The Wild", detail = "Lv 1-15 monsters" },
-	{ spot = Places.FRONTIER_PORTAL, text = "❄️ The Frontier", detail = "Lv 15+ · rare cards" },
-	{ spot = Pvp.ARENA_PORTAL, text = "⚔️ PvP Arena", detail = "Watch battles" },
+	{ spot = Wild.PLAZA_PORTAL, text = "🌿 The Wild", detail = "Lv 1-15 monsters", ring = "The Wild", effect = "Wild" },
+	{ spot = Places.FRONTIER_PORTAL, text = "❄️ The Frontier", detail = "Lv 15+ · rare cards", ring = "The Frontier", effect = "Frontier" },
+	{ spot = Pvp.ARENA_PORTAL, text = "⚔️ PvP Arena", detail = "Watch battles", ring = "Arena", effect = "Arena" },
 }
+local PORTAL_MATCH_DISTANCE = 1 -- a Portal prop at this spot belongs to that portal
 
 local function point(spot: { x: number, z: number }): TownLayout.Point
 	return { x = spot.x, z = spot.z }
@@ -148,10 +150,105 @@ local function buildPortalLabels(folder: Folder)
 	end
 end
 
+local function portalAt(x: number, z: number)
+	for _, entry in PORTAL_LABELS do
+		if math.abs(entry.spot.x - x) < PORTAL_MATCH_DISTANCE and math.abs(entry.spot.z - z) < PORTAL_MATCH_DISTANCE then
+			return entry
+		end
+	end
+	return nil
+end
+
+-- Glowing (Neon) parts of a portal frame take the portal's ring colour; its see-through panels get clearer
+local function tintGlow(model: Instance, color: Color3)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant.Material == Enum.Material.Neon then
+			descendant.Color = color
+			if descendant.Transparency > 0 then
+				descendant.Transparency = math.max(descendant.Transparency, Town.PORTAL_PANEL_TRANSPARENCY)
+			end
+		end
+	end
+end
+
 local function buildDecor(folder: Folder)
 	for _, placement in TownLayout.build(getWorld(), Town) do
 		local at = CFrame.new(placement.x, 0, placement.z) * CFrame.Angles(0, math.rad(placement.yaw), 0)
-		Props.place(placement.slot, at, folder, placement.variant)
+		local model = Props.place(placement.slot, at, folder, placement.variant)
+		local portal = if placement.slot == "Portal" then portalAt(placement.x, placement.z) else nil
+		if portal then
+			tintGlow(model, Props.color(Town.PORTAL_EFFECTS[portal.effect].ring))
+		end
+	end
+end
+
+local function colorSequence(colors: { { number } }): ColorSequence
+	if #colors == 1 then
+		return ColorSequence.new(Props.color(colors[1]))
+	end
+	local keys = {}
+	for index, rgb in colors do
+		table.insert(keys, ColorSequenceKeypoint.new((index - 1) / (#colors - 1), Props.color(rgb)))
+	end
+	return ColorSequence.new(keys)
+end
+
+local function findRing(name: string, spot: { x: number, z: number }): BasePart?
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant.Name == name then
+			local offset = descendant.Position - Vector3.new(spot.x, descendant.Position.Y, spot.z)
+			if offset.Magnitude < PORTAL_MATCH_DISTANCE + 1 then
+				return descendant
+			end
+		end
+	end
+	return nil
+end
+
+-- Each plaza portal: its ring tinted, a soft light, and particles rising (or drifting) out of the ring
+local function buildPortalEffects(folder: Folder)
+	for _, entry in PORTAL_LABELS do
+		local look = Town.PORTAL_EFFECTS[entry.effect]
+		local ringColor = Props.color(look.ring)
+		local ring = findRing(entry.ring, entry.spot)
+		local anchor = Instance.new("Part")
+		anchor.Name = "PortalEffect"
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Transparency = 1
+		anchor.Size = if ring then Vector3.new(1, ring.Size.Y * 0.8, ring.Size.Z * 0.8) else Vector3.new(1, 8, 8)
+		anchor.CFrame = if ring
+			then ring.CFrame -- the ring lies on its side: its thin X axis points the way it faces, Y is up
+			else CFrame.new(entry.spot.x, Town.PORTAL_RING_CENTRE, entry.spot.z)
+		anchor.Parent = folder
+		if ring then
+			ring.Color = ringColor
+		end
+		local light = Instance.new("PointLight")
+		light.Color = ringColor
+		light.Brightness = Town.PORTAL_GLOW.BRIGHTNESS
+		light.Range = Town.PORTAL_GLOW.RANGE
+		light.Parent = anchor
+		for _, spec in look.emitters do
+			local emitter = Instance.new("ParticleEmitter")
+			emitter.Texture = spec.texture
+			emitter.Rate = spec.rate
+			emitter.Lifetime = NumberRange.new(spec.lifetime[1], spec.lifetime[2])
+			emitter.Speed = NumberRange.new(spec.speed[1], spec.speed[2])
+			emitter.Size = NumberSequence.new(spec.size[1], spec.size[2])
+			emitter.Transparency = if spec.transparency then NumberSequence.new(spec.transparency[1], spec.transparency[2]) else NumberSequence.new(0, 1)
+			emitter.Color = colorSequence(spec.colors or look.colors)
+			emitter.Acceleration = Vector3.new(0, spec.rise, 0)
+			emitter.RotSpeed = NumberRange.new(-spec.spin, spec.spin)
+			emitter.Rotation = NumberRange.new(0, 360)
+			emitter.SpreadAngle = Vector2.new(180, 180)
+			emitter.Shape = Enum.ParticleEmitterShape.Box
+			emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+			emitter.LightEmission = 1
+			emitter.Parent = anchor
+		end
 	end
 end
 
@@ -203,6 +300,7 @@ function TownService.Start()
 	buildGround(folder)
 	buildDecor(folder)
 	buildPortalLabels(folder)
+	buildPortalEffects(folder)
 	folder.Parent = workspace
 	setLighting()
 end
