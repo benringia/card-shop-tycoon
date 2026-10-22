@@ -23,6 +23,7 @@ shows its stand-in.
 | `DisplayRack` | the Big Display Rack (double-sided), turned 90° and stretched | fills 8 x 7 x 4 | (its own hitbox) |
 | `Showcase` | the Glass Showcase and the Collector Case: a glass counter; cards lie on the bed (`cardsFlat`, `Showcase.FLAT`); the Collector Case recolours its Support, Frame and Carpet parts (`propColors` in Config/Shelves) | fills 6 x 4 x 2 | (its own hitbox) |
 | `DeliveryPad` | the delivery spot: a pallet; delivered boxes stand on it | fills 6 x 1 x 6 | no |
+| `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; without a model the box gets a band in the product's colour and its name (`Stock.BOX_LABEL`) | fits 2.5 x 1.5 x 2 | no |
 | `Awning` | shop fronts: repeated across each front, top at the wall top; parts named `COLOUR ME` take the plot's awning colour | about 5 deep, fills the front | no |
 | `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |
 

@@ -293,6 +293,28 @@ function Props.place(slot: string, at: CFrame, parent: Instance, variant: number
 	return make(slot, at, parent, variant, nil)
 end
 
+-- The slot's model fitted onto a part that moves (a delivery box someone carries): unanchored, weightless and
+-- welded to the part. Nil (the part keeps its own look) when the slot has no model.
+function Props.weldFit(slot: string, part: BasePart): Model?
+	if not Props.hasModel(slot) then
+		return nil
+	end
+	local model = make(slot, part.CFrame * CFrame.new(0, -part.Size.Y / 2, 0), part, nil, part.Size)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = false
+			descendant.Massless = true
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = part
+			weld.Part1 = descendant
+			weld.Parent = descendant
+		end
+	end
+	return model
+end
+
 -- A prop scaled to fit inside `size`, bottom centre on `at` (Shelf on a shelf's hitbox, counter props)
 function Props.fit(slot: string, size: Vector3, at: CFrame, parent: Instance, variant: number?): Model
 	return make(slot, at, parent, variant, size)

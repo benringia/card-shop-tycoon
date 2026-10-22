@@ -29,6 +29,11 @@ return {
 		DisplayRack = { height = 0, collide = false, yaw = 90, stretch = true }, -- double-sided, long side on its Z
 		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z
 		DeliveryPad = { height = 0, collide = false, stretch = true }, -- a wooden pallet
+		-- delivery boxes, one per product (Products boxProp); welded to the box part, so they travel when carried
+		BoxPacks = { height = 0, collide = false },
+		BoxSleeves = { height = 0, collide = false },
+		BoxDecks = { height = 0, collide = false },
+		BoxBooster = { height = 0, collide = false },
 		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
 		Awning = { height = 0, collide = false },
 	},

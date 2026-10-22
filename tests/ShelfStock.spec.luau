@@ -39,6 +39,17 @@ return {
 		end
 	end,
 
+	["every product has its own delivery box model slot"] = function()
+		local seen: { [string]: boolean } = {}
+		for _, product in products.List do
+			local slot = (product :: any).boxProp
+			assert(typeof(slot) == "string", `{product.id} has no boxProp`)
+			assert(town.SLOTS[slot] ~= nil, `{product.id}: no Town slot {slot}`)
+			assert(not seen[slot], `{slot} used twice`)
+			seen[slot] = true
+		end
+	end,
+
 	["every product has a box colour"] = function()
 		for _, product in products.List do
 			local color = (product :: any).color

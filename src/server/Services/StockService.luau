@@ -19,6 +19,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
+local Props = require(Util:WaitForChild("Props"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
@@ -165,6 +166,41 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	syncCarry(shop)
 end
 
+-- A band in the product's colour round a plain cardboard box, with the product's name on the front and back
+local function labelBox(box: Part, product: typeof(Products.List[1]))
+	local label = StockConfig.BOX_LABEL
+	local color = Color3.fromRGB(product.color[1], product.color[2], product.color[3])
+	local function face(normal: Enum.NormalId, text: string?)
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = normal
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = label.PIXELS_PER_STUD
+		gui.Parent = box
+		local band = Instance.new("Frame")
+		band.AnchorPoint = Vector2.new(0, 0.5)
+		band.Position = UDim2.fromScale(0, 0.5)
+		band.Size = UDim2.fromScale(1, label.BAND)
+		band.BackgroundColor3 = color
+		band.BorderSizePixel = 0
+		band.Parent = gui
+		if text then
+			local name = Instance.new("TextLabel")
+			name.BackgroundTransparency = 1
+			name.Size = UDim2.fromScale(1, 1)
+			name.Font = Enum.Font.FredokaOne
+			name.TextScaled = true
+			name.TextColor3 = Color3.new(1, 1, 1)
+			name.TextStrokeTransparency = 0.5
+			name.Text = text
+			name.Parent = band
+		end
+	end
+	for _, normal in label.NAMED_FACES do
+		face((Enum.NormalId :: any)[normal], product.name)
+	end
+	face(Enum.NormalId.Top, nil)
+end
+
 -- Puts a box on the delivery pad
 local function createBox(shop: Shop, productId: string, units: number)
 	local product = Products.ById[productId]
@@ -176,6 +212,12 @@ local function createBox(shop: Shop, productId: string, units: number)
 	box.Anchored = true
 	box:SetAttribute("ProductId", productId)
 	box:SetAttribute("Units", units)
+	-- The product's own box model, welded on, when assets/props has it; the part stays as the hitbox
+	if Props.weldFit(product.boxProp, box) then
+		box.Transparency = 1
+	else
+		labelBox(box, product)
+	end
 
 	local prompt = makePrompt(box, "Pick up", product.name)
 	prompt.Triggered:Connect(function(triggeringPlayer)
