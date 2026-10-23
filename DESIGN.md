@@ -628,7 +628,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
-    │       ├── FontStyle.luau          # switches every text to the game font (Fredoka)
+    │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
@@ -649,7 +649,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
-        │   ├── UIFonts.luau    # the game font and its weights (client)
+        │   ├── UIFonts.luau    # the game fonts (client)
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
@@ -751,9 +751,9 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - **Style** (`Util/UIKit`): light-blue panel bodies with a white border, a blue gradient header with the title, a
   red close button on the top-right corner, white cards and rows, chunky buttons with a darker bottom lip
   (blue-violet primary, white secondary). Text picks white or navy for the surface behind it.
-- **Font** (`Util/FontStyle`, `Config/UIFonts`): Fredoka everywhere (screens, card faces, tags): Bold for titles,
-  buttons and numbers, SemiBold for body text. Code still names FredokaOne / Gotham; FontStyle switches each
-  text object as it appears.
+- **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
+  for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
+  text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held; number pills bump when they change.
 - **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to

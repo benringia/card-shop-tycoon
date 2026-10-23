@@ -1,8 +1,7 @@
 --!strict
--- One rounded font everywhere (Fredoka, built into Roblox): screens, card faces, name tags. Code across the
--- game still sets the older fonts (FredokaOne for titles and buttons, Gotham for text); every text object that
--- appears is switched to Fredoka here: bold ones to Fredoka Bold, plain Gotham to Fredoka SemiBold.
--- Weights: Config/UIFonts.
+-- Rounded fonts everywhere: screens, card faces, name tags. Code across the game still sets Gotham for text;
+-- every text object that appears is switched here: bold Gotham to the title font (FredokaOne), plain Gotham to
+-- the body font (Nunito). Fonts: Config/UIFonts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,22 +9,16 @@ local UIFonts = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("C
 
 local FontStyle = {}
 
-local OLD_FAMILIES = {
-	["rbxasset://fonts/families/FredokaOne.json"] = "BOLD",
-	["rbxasset://fonts/families/GothamSSm.json"] = "BODY",
-}
+local GOTHAM = "rbxasset://fonts/families/GothamSSm.json"
 
 local function restyle(text: TextLabel | TextButton | TextBox)
 	local face = text.FontFace
-	local role = OLD_FAMILIES[face.Family]
-	if not role then
+	if face.Family ~= GOTHAM then
 		return
 	end
 	-- Gotham's bold and black weights read as headings; its regular and medium as body text
-	if role == "BODY" and (face.Weight == Enum.FontWeight.Bold or face.Weight == Enum.FontWeight.Heavy) then
-		role = "BOLD"
-	end
-	text.FontFace = Font.new(UIFonts.FAMILY, if role == "BOLD" then UIFonts.BOLD else UIFonts.BODY, face.Style)
+	local bold = face.Weight == Enum.FontWeight.Bold or face.Weight == Enum.FontWeight.Heavy
+	text.FontFace = if bold then UIFonts.BOLD else UIFonts.BODY
 end
 
 local function watch(instance: Instance)

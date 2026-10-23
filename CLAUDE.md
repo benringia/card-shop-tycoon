@@ -60,7 +60,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Mobile-first: tap targets ≥ 48px, test landscape phone in the Device emulator.
 - Build UI in code with `src/client/Util/UIKit.luau`; card faces with `CardFace.luau`.
 - ScreenGuis made in code default to `ZIndexBehavior.Global`; set `Sibling` (MainGui does) or a raised panel hides its own children.
-- Font: Fredoka everywhere, applied by `Util/FontStyle` (code may keep naming FredokaOne/GothamBold).
+- Fonts: FredokaOne (titles, buttons) and Nunito Bold (body), applied by `Util/FontStyle` (code may keep naming Gotham). Fredoka does not load in Play.
 - Text: plain ASCII plus `·` and emoji only. Gotham/FredokaOne draw symbols like ✦ − ★ as empty boxes.
 - HUD buttons go through `Util/Hud` (Manage tray on the left, tiles at the bottom centre, context tiles for
   Drop/Rip), clear of the mobile thumbstick and jump button. Look and motion: `Util/UIKit`, `Util/Motion`.
