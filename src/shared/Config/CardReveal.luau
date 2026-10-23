@@ -7,7 +7,7 @@ export type Tier = {
 	dim: number, -- extra backdrop darkness while teasing (0 to 1)
 	rays: boolean, -- light rays turn behind the card
 	flash: boolean, -- white screen flash on the flip
-	spotlight: boolean, -- the card is shown big in the middle until tapped
+	spotlight: boolean, -- the card pops bigger and taps are ignored a moment, so a double tap can't skip it
 	burst: number, -- sparks flying out on the flip
 	confetti: number, -- confetti pieces raining down
 	banner: string?, -- word that pops above the card
@@ -29,11 +29,10 @@ return {
 	FOIL = { MIN_TEASE = 0.6, EXTRA_BURST = 12, PREFIX = "FOIL " },
 
 	TEASE_PULSE_SECONDS = 0.25, -- one glow breath while teasing
-	SPOTLIGHT_SCALE = 2.4, -- the spotlight card, times the card row's card size
-	SPOTLIGHT_MAX_HEIGHT = 0.7, -- of the screen, so the banner and "Tap to continue" still fit
+	SPOTLIGHT_POP = 1.08, -- a spotlight card's size after its flip, times its normal size
 	BANNER_SECONDS = 0.35, -- the banner's pop-in
 	BANNER_HOLD_SECONDS = 1.4, -- a banner by the card stays this long, then fades
-	SPOTLIGHT_TAP_DELAY = 0.6, -- taps on the spotlight are ignored this long, so a double tap can't skip it
+	SPOTLIGHT_TAP_DELAY = 0.6, -- taps after a spotlight card's flip are ignored this long
 	BURST_SECONDS = 0.7, -- how long sparks fly
 	CONFETTI_SECONDS = 2.2, -- how long confetti falls
 	RAY_COUNT = 12,

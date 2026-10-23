@@ -239,13 +239,20 @@ Each pack = 5 cards:
 - **Trading (post-MVP):** player to player trade window.
 
 ### 5.7 Pack opening feel (important)
-- Tap pack → tear animation → cards fan out face down → tap to flip each.
-- Hit slot flips last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
+- A light stage (soft blue-grey with a white glow) with the illustrated pack floating in the middle (`Config/Packs`
+  art, the logo and crimped edges drawn in code; art in `assets/ui/packs`, made with Figma's image generator).
+  "Drag across the top to open!": dragging over 80% of the pack's width tears the top off along the dashed line
+  (a tap, Space or T tears it by itself). The pack slides away and the cards rise out as a stack.
+- Cards are revealed one at a time, big in the middle; a tap, Space, T or the round Next button slides the card off
+  to the left and shows the next ("2 / 5 · Tap for the next card" at the bottom). After the last card comes the
+  summary: every card in a big row popping in, the pack's value and a green Done. Odds sit in the top right (hidden on the
+  summary, whose row spans the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar.
+- Hit slot comes last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
   - **Tease** before the flip: the face-down card glows in its rarity colour, breathes and shakes, and the
-    screen dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons flip at once).
+    stage dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons come out face up at once).
   - **After the flip:** sparks burst out and a banner pops ("RARE!", "VERY RARE!"); the glow stays behind the card.
-  - **Epic and Legendary** get a spotlight: the card big in the middle, turning light rays, banner, confetti, until
-    tapped (or T). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
+  - **Epic and Legendary** add turning light rays, confetti and a pop (taps are ignored 0.6s so a double tap can't
+    skip it). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
   - **Foil** adds sparks, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!", a plain foil "FOIL!").
   - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),

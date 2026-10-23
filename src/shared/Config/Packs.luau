@@ -8,6 +8,7 @@ export type Pack = {
 	productId: string,
 	name: string,
 	color: Color3,
+	art: string?, -- the pack's front picture (assets/ui/packs); none = a plain pack in its colour
 	slots: { { Weighted } },
 }
 
@@ -18,6 +19,7 @@ local ById: { [string]: Pack } = {
 		productId = "FirstSparkPack",
 		name = "First Spark",
 		color = Color3.fromRGB(255, 140, 50),
+		art = "rbxassetid://81309929146607", -- fire phoenix (Figma image generator)
 		slots = {
 			COMMON,
 			COMMON,
