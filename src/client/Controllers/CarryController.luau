@@ -35,7 +35,7 @@ end
 
 function CarryController.Start()
 	-- An orange tile in the bottom row while carrying a box
-	dropButton = Hud.tile({ id = "Drop", icon = "📦", label = "Drop", key = "G", group = "Context", order = 20, onClick = drop })
+	dropButton = Hud.tile({ id = "Drop", icon = "Box", label = "Drop", key = "G", group = "Context", order = 20, onClick = drop })
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if not gameProcessed and input.KeyCode == DROP_KEY then

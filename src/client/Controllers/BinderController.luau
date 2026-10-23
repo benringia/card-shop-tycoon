@@ -1542,11 +1542,11 @@ local function buildCover(page: Frame)
 end
 
 -- A round arrow button beside the book, with its key chip
-local function arrowButton(parent: Instance, text: string, key: string, big: boolean, onClick: () -> ()): TextButton
-	local button = UIKit.button(parent, text, if big then UIKit.Colors.Accent else UIKit.Colors.Row)
-	button.Size = UDim2.fromOffset(if big then 64 else 52, if big then 64 else 52)
+local function arrowButton(parent: Instance, text: string, key: string, onClick: () -> ()): TextButton
+	local button = UIKit.button(parent, text, UIKit.Colors.Accent)
+	button.Size = UDim2.fromOffset(64, 64)
 	button.Font = Enum.Font.FredokaOne
-	button.TextSize = if big then 30 else 24
+	button.TextSize = 30
 	addKeyChip(button, key)
 	button.Activated:Connect(onClick)
 	return button
@@ -1648,7 +1648,7 @@ local function buildPanel(parent: Instance)
 		end
 	end
 
-	-- Page counter under the book, arrows either side (Q/E one spread, A/D first/last)
+	-- Page counter under the book, an arrow either side (Q/E one spread)
 	local counter = Instance.new("Frame")
 	counter.Name = "Counter"
 	counter.AnchorPoint = Vector2.new(0.5, 0)
@@ -1665,19 +1665,16 @@ local function buildPanel(parent: Instance)
 	local leftArrows = Instance.new("Frame")
 	leftArrows.AnchorPoint = Vector2.new(1, 0.5)
 	leftArrows.Position = UDim2.new(0, -96, 0.5, 0) -- clear of the set tabs
-	leftArrows.Size = UDim2.fromOffset(64, 140)
+	leftArrows.Size = UDim2.fromOffset(64, 64)
 	leftArrows.BackgroundTransparency = 1
 	leftArrows.Parent = bookHolder
 	local leftList = Instance.new("UIListLayout")
 	leftList.Padding = UDim.new(0, 16)
 	leftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	leftList.Parent = leftArrows
-	arrowButton(leftArrows, "<", "Q", true, function()
+	arrowButton(leftArrows, "<", "Q", function()
 		showSpread(spreadIndex - 1)
 	end).LayoutOrder = 1
-	arrowButton(leftArrows, "<<", "A", false, function()
-		showSpread(1)
-	end).LayoutOrder = 2
 
 	local rightArrows = leftArrows:Clone()
 	for _, child in rightArrows:GetChildren() do
@@ -1688,12 +1685,9 @@ local function buildPanel(parent: Instance)
 	rightArrows.AnchorPoint = Vector2.new(0, 0.5)
 	rightArrows.Position = UDim2.new(1, 18, 0.5, 0)
 	rightArrows.Parent = bookHolder
-	arrowButton(rightArrows, ">", "E", true, function()
+	arrowButton(rightArrows, ">", "E", function()
 		showSpread(spreadIndex + 1)
 	end).LayoutOrder = 1
-	arrowButton(rightArrows, ">>", "D", false, function()
-		showSpread(getSpreadCount())
-	end).LayoutOrder = 2
 
 	-- Filters (F), top right next to the close button
 	local filterButton = UIKit.button(panel, "🔍", UIKit.Colors.Row)
@@ -1838,8 +1832,8 @@ end
 
 -- Bottom-centre tiles: Cards (the binder) and Bag
 local function buildButtons()
-	Hud.tile({ id = "Cards", icon = "📖", label = "Cards", key = "B", group = "Bottom", order = 1, onClick = toggle })
-	Hud.tile({ id = "Bag", icon = "🎒", label = "Bag", key = "I", group = "Bottom", order = 2, onClick = toggleBag })
+	Hud.tile({ id = "Cards", icon = "Cards", label = "Cards", key = "B", group = "Bottom", order = 1, onClick = toggle })
+	Hud.tile({ id = "Bag", icon = "Bag", label = "Bag", key = "I", group = "Bottom", order = 2, onClick = toggleBag })
 end
 
 -- Batches bursts of card parts appearing or leaving into one refresh
@@ -1930,10 +1924,6 @@ function BinderController.Start()
 		local step = PAGE_KEYS[input.KeyCode]
 		if step then
 			showSpread(spreadIndex + step)
-		elseif input.KeyCode == Enum.KeyCode.A then
-			showSpread(1)
-		elseif input.KeyCode == Enum.KeyCode.D then
-			showSpread(getSpreadCount())
 		elseif input.KeyCode == Enum.KeyCode.F then
 			setFiltersOpen(not filtersPanel.Visible)
 		end

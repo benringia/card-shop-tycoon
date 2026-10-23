@@ -2,7 +2,6 @@
 -- The HUD layout, in one place: controllers register their buttons here instead of positioning them.
 --   Side:    blue icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
 --   Bottom:  blue icon tiles in a centred row (Cards, Bag); Context tiles (orange) join the row while visible.
---   Top:     a centred pill bar (cash, level, shards), for UIController.
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
 -- Numbers: Config/HudLayout. Motion: Util/Motion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,11 +13,12 @@ local UIMotion = require(Shared:WaitForChild("Config"):WaitForChild("UIMotion"))
 local Util = script.Parent :: Instance
 local UIKit = require(Util:WaitForChild("UIKit"))
 local Motion = require(Util:WaitForChild("Motion"))
+local Icon = require(Util:WaitForChild("Icon"))
 
 export type Group = "Side" | "Bottom" | "Context"
 export type TileSpec = {
 	id: string,
-	icon: string,
+	icon: string, -- a Config/UIIcons name (or an emoji)
 	label: string,
 	key: string?,
 	group: Group,
@@ -32,7 +32,6 @@ local Hud = {}
 
 local side: Frame
 local bottom: Frame
-local top: Frame
 local fan: Frame
 local manageTile: TextButton? = nil
 local fanOpen = false
@@ -40,15 +39,8 @@ local tiles: { [string]: TextButton } = {}
 local fanButtons: { { order: number, button: TextButton } } = {}
 
 local function iconAndLabel(button: GuiButton, icon: string, label: string, iconHeight: number)
-	local iconLabel = Instance.new("TextLabel")
-	iconLabel.Name = "Icon"
-	iconLabel.BackgroundTransparency = 1
-	iconLabel.Position = UDim2.fromScale(0, 0.06)
-	iconLabel.Size = UDim2.fromScale(1, iconHeight)
-	iconLabel.Font = Enum.Font.FredokaOne
-	iconLabel.Text = icon
-	iconLabel.TextScaled = true
-	iconLabel.Parent = button
+	local holder = Icon.make(button, icon, UDim2.fromScale(1, iconHeight))
+	holder.Position = UDim2.fromScale(0, 0.05)
 
 	local text = Instance.new("TextLabel")
 	text.Name = "Label"
@@ -86,7 +78,7 @@ local function addKeyChip(button: GuiButton, key: string)
 	UIKit.outline(chip, Color3.new(1, 1, 1), 1.5)
 end
 
--- A blue (or given colour) square with a soft top-to-bottom gradient, emoji icon above the label
+-- A blue (or given colour) square with a soft top-to-bottom gradient, icon above the label
 local function makeTile(parent: Instance, spec: TileSpec): TextButton
 	local color = spec.color or (if spec.group == "Context" then HudLayout.CONTEXT else HudLayout.TILE)
 	local tile = UIKit.button(parent, "", color)
@@ -114,11 +106,11 @@ local function setFan(open: boolean)
 	fanOpen = open
 	local tile = manageTile
 	if tile then
-		local icon = tile:FindFirstChild("Icon") :: TextLabel?
+		local icon = tile:FindFirstChild("Icon") :: Frame?
 		local label = tile:FindFirstChild("Label") :: TextLabel?
 		tile.BackgroundColor3 = if open then HudLayout.TILE_DARK else HudLayout.TILE
 		if icon then
-			icon.Text = if open then "❌" else "🧰"
+			Icon.set(icon, if open then "❌" else "Manage")
 		end
 		if label then
 			label.Text = if open then "Close" else "Manage"
@@ -156,7 +148,7 @@ local function ensureManageTile()
 	end
 	manageTile = makeTile(side, {
 		id = "Manage",
-		icon = "🧰",
+		icon = "Manage",
 		label = "Manage",
 		group = "Side",
 		order = 0,
@@ -195,15 +187,6 @@ function Hud.mount(screenGui: ScreenGui)
 	bottomList.Padding = UDim.new(0, HudLayout.GAP)
 	bottomList.SortOrder = Enum.SortOrder.LayoutOrder
 	bottomList.Parent = bottom
-
-	top = Instance.new("Frame")
-	top.Name = "HudTop"
-	top.BackgroundTransparency = 1
-	top.AnchorPoint = Vector2.new(0.5, 0)
-	top.Position = UDim2.new(0.5, 0, 0, HudLayout.TOP_Y)
-	top.Size = UDim2.fromOffset(0, 0)
-	top.AutomaticSize = Enum.AutomaticSize.XY
-	top.Parent = screenGui
 
 	-- The Manage tray: a soft white bar right of the Manage tile holding its tiles in a row
 	fan = Instance.new("Frame")
@@ -276,17 +259,23 @@ function Hud.setLabel(id: string, text: string)
 	end
 end
 
-function Hud.getTop(): Frame
-	return top
-end
-
 -- Full-screen views (the binder) hide the side and bottom HUD while they show; each caller has its own reason
 local hiddenBy: { [string]: boolean } = {}
+local hideWithHud: { GuiObject } = {}
+
+-- Other HUD pieces that hide along with the tiles (the status corner and its money toasts)
+function Hud.hideWith(object: GuiObject)
+	table.insert(hideWithHud, object)
+end
+
 function Hud.setHidden(reason: string, hidden: boolean)
 	hiddenBy[reason] = if hidden then true else nil
 	local show = next(hiddenBy) == nil
 	side.Visible = show
 	bottom.Visible = show
+	for _, object in hideWithHud do
+		object.Visible = show
+	end
 	if not show and fanOpen then
 		setFan(false)
 	end

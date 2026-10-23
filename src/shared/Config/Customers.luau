@@ -26,10 +26,11 @@ return {
 	LIFETIME_RECHECK = 10, -- queued customers have their own timers, so the safety net checks again later
 
 	BUBBLE_SECONDS = 2.5,
-	BUBBLE_ANNOYED = "😠", -- price over the top band
-	BUBBLE_NO_STOCK = "😕", -- nothing they wanted on the shelves
+	-- Config/UIIcons names (anything else shows as text)
+	BUBBLE_ANNOYED = "Angry", -- price over the top band
+	BUBBLE_NO_STOCK = "Thinking", -- nothing they wanted on the shelves
 	BUBBLE_GAVE_UP = "⌛", -- waited too long in the queue
-	BUBBLE_HAPPY = "😊", -- paid at the register
+	BUBBLE_HAPPY = "Happy", -- paid at the register
 
 	PATH_AGENT = {
 		AgentRadius = 2,

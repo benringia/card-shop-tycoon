@@ -218,7 +218,7 @@ function JobsController.Start()
 	list.Position = UDim2.fromOffset(12, 84)
 	list.Size = UDim2.new(1, -24, 1, -96)
 
-	Hud.fanButton({ id = "Jobs", icon = "👷", label = "Jobs", order = 3, onClick = toggle })
+	Hud.fanButton({ id = "Jobs", icon = "Jobs", label = "Jobs", order = 3, onClick = toggle })
 
 	Remotes.JobsChanged.OnClientEvent:Connect(function(payload: JobsState)
 		if typeof(payload) ~= "table" then

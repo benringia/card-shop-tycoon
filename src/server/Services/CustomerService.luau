@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
@@ -137,7 +138,8 @@ local function createModel(spawnCFrame: CFrame): Model
 	return NpcMotion.createRig(description, "Customer", spawnCFrame)
 end
 
-local function showBubble(customer: Customer, text: string)
+-- A mood icon over the customer's head (Config/UIIcons name), or the text itself if there's no such icon
+local function showBubble(customer: Customer, icon: string)
 	local head = customer.model:FindFirstChild("Head")
 	if not head then
 		return
@@ -149,12 +151,21 @@ local function showBubble(customer: Customer, text: string)
 	gui.AlwaysOnTop = true
 	gui.MaxDistance = 80
 
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.TextScaled = true
-	label.Text = text
-	label.Parent = gui
+	local image = UIIcons[icon]
+	if image then
+		local picture = Instance.new("ImageLabel")
+		picture.Size = UDim2.fromScale(1, 1)
+		picture.BackgroundTransparency = 1
+		picture.Image = image
+		picture.Parent = gui
+	else
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.TextScaled = true
+		label.Text = icon
+		label.Parent = gui
+	end
 
 	gui.Parent = head
 	task.delay(CustomerConfig.BUBBLE_SECONDS, function()

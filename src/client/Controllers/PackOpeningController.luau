@@ -1254,7 +1254,7 @@ end
 
 function PackOpeningController.Start()
 	-- An orange tile in the bottom row while carrying a box of packs
-	ripButton = Hud.tile({ id = "Rip", icon = "🃏", label = "Rip", key = "T", group = "Context", order = 21, onClick = onRip })
+	ripButton = Hud.tile({ id = "Rip", icon = "Pack", label = "Rip", key = "T", group = "Context", order = 21, onClick = onRip })
 
 	buildScreen()
 	refreshRipButton()

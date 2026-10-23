@@ -493,7 +493,7 @@ end
 local function buildButton()
 	Hud.fanButton({
 		id = "Build",
-		icon = "🔨",
+		icon = "Build",
 		label = "Build",
 		order = 1,
 		onClick = function()

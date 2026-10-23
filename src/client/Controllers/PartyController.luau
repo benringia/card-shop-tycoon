@@ -218,7 +218,7 @@ function PartyController.Start()
 	list.Position = UDim2.fromOffset(12, 84)
 	list.Size = UDim2.new(1, -24, 1, -96)
 
-	Hud.fanButton({ id = "Party", icon = "🐾", label = "Party", order = 4, onClick = toggle })
+	Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, onClick = toggle })
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload: PartyState)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then

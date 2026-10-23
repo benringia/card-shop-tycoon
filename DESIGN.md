@@ -611,7 +611,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── UIController.luau       # main ScreenGui, top pills (cash, level, shards, XP), toasts, money toasts
+    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, shards, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
@@ -620,7 +620,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E/A/D page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
+    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
@@ -642,6 +642,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
+    │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -662,6 +663,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── PackOpening.luau # reveal timings and sounds (client)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
+        │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
@@ -772,12 +774,17 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to
   its right (Build, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
-  Top centre: a cash pill, a round level badge and a Star Shards pill, with an XP bar under them. Bottom right:
-  party bar and buff badge. Toasts sit above the bottom row. The fight screen hides the HUD groups.
+  Bottom right, one corner cluster (above the jump button on touch screens): the party bar, and beside it a
+  right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
+  party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. Each icon sits over its
+  pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
+  HUD tiles, the top bar and customer mood bubbles (Angry, Thinking, Happy); made as one sheet with Figma's image
+  generator and cut by `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Names without a picture show
+  as text (the ❌ on Close, ⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
 - **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world, one book per set
   (FIRST SPARK, FRONTIER tabs on its left edge). Spread 1 is the set's cover (colour, name, "34 / 35", emblem) and
   page 1; later spreads are two pages. Page counter pill under the book ("2-3 / 9"); arrows with key chips
-  (Q/E one spread, A/D first/last). Top right: Filters (F) and close. The Filters panel (search, Show
+  (Q/E one spread). Top right: Filters (F) and close. The Filters panel (search, Show
   All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book shrinks to
   0.72 and slides left. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
   The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
