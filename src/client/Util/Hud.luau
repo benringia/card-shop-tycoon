@@ -1,6 +1,6 @@
 --!strict
 -- The HUD layout, in one place: controllers register their buttons here instead of positioning them.
---   Side:    blue icon tiles down the left middle; the Manage tile opens a fan of round buttons.
+--   Side:    blue icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
 --   Bottom:  blue icon tiles in a centred row (Cards, Bag); Context tiles (orange) join the row while visible.
 --   Top:     a centred pill bar (cash, level, shards), for UIController.
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
 local UIMotion = require(Shared:WaitForChild("Config"):WaitForChild("UIMotion"))
-local FanLayout = require(Shared:WaitForChild("Util"):WaitForChild("FanLayout"))
 
 local Util = script.Parent :: Instance
 local UIKit = require(Util:WaitForChild("UIKit"))
@@ -110,13 +109,14 @@ local function makeTile(parent: Instance, spec: TileSpec): TextButton
 	return tile
 end
 
+-- Opens or folds the Manage tray: its tiles pop in one after another, left to right
 local function setFan(open: boolean)
 	fanOpen = open
 	local tile = manageTile
 	if tile then
 		local icon = tile:FindFirstChild("Icon") :: TextLabel?
 		local label = tile:FindFirstChild("Label") :: TextLabel?
-		tile.BackgroundColor3 = if open then UIKit.Colors.Row else HudLayout.TILE
+		tile.BackgroundColor3 = if open then HudLayout.TILE_DARK else HudLayout.TILE
 		if icon then
 			icon.Text = if open then "❌" else "🧰"
 		end
@@ -127,30 +127,26 @@ local function setFan(open: boolean)
 	table.sort(fanButtons, function(a, b)
 		return a.order < b.order
 	end)
+	if open then
+		fan.Visible = true
+		Motion.popIn(fan)
+	end
 	for index, entry in fanButtons do
 		local button = entry.button
 		if open then
+			button.Visible = false
 			task.delay((index - 1) * UIMotion.FAN_STAGGER, function()
 				if fanOpen then
 					button.Visible = true
 					Motion.popIn(button)
 				end
 			end)
-		else
-			Motion.popOut(button, function()
-				button.Visible = false
-			end)
 		end
 	end
-end
-
-local function layoutFan()
-	table.sort(fanButtons, function(a, b)
-		return a.order < b.order
-	end)
-	local points = FanLayout.positions(#fanButtons, HudLayout.FAN.RADIUS, HudLayout.FAN.FROM, HudLayout.FAN.TO)
-	for index, entry in fanButtons do
-		entry.button.Position = UDim2.fromOffset(points[index].x, points[index].y)
+	if not open then
+		Motion.popOut(fan, function()
+			fan.Visible = false
+		end)
 	end
 end
 
@@ -209,19 +205,36 @@ function Hud.mount(screenGui: ScreenGui)
 	top.AutomaticSize = Enum.AutomaticSize.XY
 	top.Parent = screenGui
 
-	-- The fan grows out of the Manage tile's centre
+	-- The Manage tray: a soft white bar right of the Manage tile holding its tiles in a row
 	fan = Instance.new("Frame")
 	fan.Name = "HudFan"
-	fan.BackgroundTransparency = 1
-	fan.AnchorPoint = Vector2.new(0.5, 0.5)
-	fan.Size = UDim2.fromOffset(0, 0)
+	fan.AnchorPoint = Vector2.new(0, 0.5)
+	fan.Size = UDim2.fromOffset(0, HudLayout.TILE_SIZE.Y + HudLayout.TRAY.PADDING * 2)
+	fan.AutomaticSize = Enum.AutomaticSize.X
+	fan.BackgroundColor3 = Color3.new(1, 1, 1)
+	fan.BackgroundTransparency = HudLayout.TRAY.TRANSPARENCY
+	fan.Visible = false
 	fan.ZIndex = 3
 	fan.Parent = screenGui
+	UIKit.corner(fan, 18)
+	UIKit.outline(fan, Color3.new(1, 1, 1), 2)
+	local padding = Instance.new("UIPadding")
+	for _, side_ in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		(padding :: any)[side_] = UDim.new(0, HudLayout.TRAY.PADDING)
+	end
+	padding.Parent = fan
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.VerticalAlignment = Enum.VerticalAlignment.Center
+	row.Padding = UDim.new(0, HudLayout.GAP)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = fan
 	local function placeFan()
 		local tile = manageTile
 		if tile then
-			local centre = tile.AbsolutePosition + tile.AbsoluteSize / 2
-			fan.Position = UDim2.fromOffset(centre.X, centre.Y)
+			local left = tile.AbsolutePosition.X + tile.AbsoluteSize.X + HudLayout.GAP
+			local middle = tile.AbsolutePosition.Y + tile.AbsoluteSize.Y / 2
+			fan.Position = UDim2.fromOffset(left, middle)
 		end
 	end
 	side:GetPropertyChangedSignal("AbsolutePosition"):Connect(placeFan)
@@ -236,26 +249,22 @@ function Hud.tile(spec: TileSpec): TextButton
 	return tile
 end
 
--- A round white button in the Manage fan; tapping it also folds the fan away
+-- A blue tile in the Manage tray; tapping it also folds the tray away
 function Hud.fanButton(spec: FanSpec): TextButton
 	ensureManageTile()
-	local button = UIKit.button(fan, "", UIKit.Colors.Row)
-	button.Name = spec.id
-	button.AnchorPoint = Vector2.new(0.5, 0.5)
-	button.Size = UDim2.fromOffset(HudLayout.FAN.BUTTON, HudLayout.FAN.BUTTON)
-	button.Visible = false
-	button.ZIndex = fan.ZIndex
-	local corner = button:FindFirstChildWhichIsA("UICorner")
-	if corner then
-		corner.CornerRadius = UDim.new(0.5, 0)
-	end
-	iconAndLabel(button, spec.icon, spec.label, 0.48)
-	button.Activated:Connect(function()
-		setFan(false)
-		spec.onClick()
-	end)
+	local button = makeTile(fan, {
+		id = spec.id,
+		icon = spec.icon,
+		label = spec.label,
+		group = "Side",
+		order = spec.order,
+		onClick = function()
+			setFan(false)
+			spec.onClick()
+		end,
+	})
+	button.ZIndex = fan.ZIndex + 1
 	table.insert(fanButtons, { order = spec.order, button = button })
-	layoutFan()
 	return button
 end
 

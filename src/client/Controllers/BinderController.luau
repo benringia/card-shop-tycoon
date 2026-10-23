@@ -893,9 +893,10 @@ local function buildDetail(parent: Frame)
 	-- A panel on the right; the 3D card (CardInspectorController) sits left of it
 	detail = Instance.new("Frame")
 	detail.Name = "Detail"
-	detail.AnchorPoint = Vector2.new(1, 0.5)
-	detail.Position = UDim2.new(1, -16, 0.5, 0)
-	detail.Size = UDim2.new(0, DETAIL_WIDTH, 0.86, 0)
+	-- Below the binder's close button (top right) so the two never overlap
+	detail.AnchorPoint = Vector2.new(1, 0)
+	detail.Position = UDim2.new(1, -16, 0, 84)
+	detail.Size = UDim2.new(0, DETAIL_WIDTH, 1, -100)
 	detail.BackgroundColor3 = UIKit.Colors.Panel
 	detail.ZIndex = 10
 	detail.Visible = false
@@ -912,6 +913,9 @@ local function buildDetail(parent: Frame)
 	flip.ZIndex = 12
 	flip.Activated:Connect(CardInspectorController.Flip)
 	detail:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not detail.Visible then
+			detailCard = nil -- so a later collection update can't reopen the 3D card on its own
+		end
 		setInspecting(detail.Visible)
 	end)
 

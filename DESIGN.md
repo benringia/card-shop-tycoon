@@ -628,7 +628,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
-    │       ├── Hud.luau                # HUD layout: Manage fan, bottom tiles, context tiles, top bar
+    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -691,7 +691,6 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
-            ├── FanLayout.luau     # the HUD Manage fan's button positions (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges and the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -752,8 +751,8 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   (blue-violet primary, white secondary). Text picks white or navy for the surface behind it.
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held; number pills bump when they change.
-- **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle opens a fan of round buttons
-  (Build, Prices, Jobs, Party) and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
+- **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to
+  its right (Build, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Top centre: a cash pill, a round level badge and a Star Shards pill, with an XP bar under them. Bottom right:
   party bar and buff badge. Toasts sit above the bottom row. The fight screen hides the HUD groups.

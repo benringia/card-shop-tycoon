@@ -28,7 +28,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, FanLayout, BinderSpreads, OddsRules) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -61,7 +61,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Build UI in code with `src/client/Util/UIKit.luau`; card faces with `CardFace.luau`.
 - ScreenGuis made in code default to `ZIndexBehavior.Global`; set `Sibling` (MainGui does) or a raised panel hides its own children.
 - Text: plain ASCII plus `·` and emoji only. Gotham/FredokaOne draw symbols like ✦ − ★ as empty boxes.
-- HUD buttons go through `Util/Hud` (Manage fan on the left, tiles at the bottom centre, context tiles for
+- HUD buttons go through `Util/Hud` (Manage tray on the left, tiles at the bottom centre, context tiles for
   Drop/Rip), clear of the mobile thumbstick and jump button. Look and motion: `Util/UIKit`, `Util/Motion`.
 - Panels made with `UIKit.panel` hide the thumbstick and jump button while open (they cover panel buttons on phones).
 - Two ProximityPrompts on one part overlap: show one at a time, or offset with `UIOffset`.
