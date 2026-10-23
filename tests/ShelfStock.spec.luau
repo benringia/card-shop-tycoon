@@ -8,6 +8,23 @@ local RACK = { x = 4, y = 7, z = 2 } -- Small Pack Rack
 local SLOTS = #town.SHELF_STOCK.LEVELS * town.SHELF_STOCK.PER_LEVEL
 
 return {
+	["a stack of packs spreads front to back over the box depth"] = function()
+		local zs = ShelfStock.stackOffsets(4, 1)
+		expect.equal(#zs, 4, "count")
+		expect.near(zs[1], -0.375, 1e-9, "front pack")
+		expect.near(zs[4], 0.375, 1e-9, "back pack")
+		assert(zs[1] < zs[2], "front first")
+		expect.equal(#ShelfStock.stackOffsets(0, 1), 0, "none")
+	end,
+
+	["price tags go on every level that has stock"] = function()
+		expect.equal(ShelfStock.stockedLevels(0, 4), 0, "empty")
+		expect.equal(ShelfStock.stockedLevels(1, 4), 1, "one box")
+		expect.equal(ShelfStock.stockedLevels(4, 4), 1, "one full level")
+		expect.equal(ShelfStock.stockedLevels(5, 4), 2, "into level 2")
+		expect.equal(ShelfStock.stockedLevels(12, 4), 3, "full")
+	end,
+
 	["boxes follow how full the shelf is"] = function()
 		expect.equal(ShelfStock.boxCount(0, 24, 12), 0, "empty")
 		expect.equal(ShelfStock.boxCount(1, 24, 12), 1, "one unit still shows a box")

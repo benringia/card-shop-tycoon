@@ -110,6 +110,18 @@ return {
 		BOX_HEIGHT = 0.9,
 		WIDTH_FILL = 0.7,
 		DEPTH_FILL = 0.5,
+		-- Pack products: each box's place holds a stack of thin packs with the pack art (Config/Packs art)
+		PACKS = { PER_STACK = 5, HEIGHT = 1.05, ASPECT = 0.65, THICKNESS = 0.05, LEAN = 10 },
+		-- The orange price tag on the front of each stocked level, at its left end
+		TAG = {
+			SIZE = { 0.95, 0.42, 0.05 }, -- studs: width, height, depth
+			COLOR = { 255, 160, 30 },
+			EDGE = { 215, 95, 10 },
+			TEXT = { 45, 25, 10 },
+			INSET = 0.25, -- from the shelf's left edge
+			GAP = 0.08, -- in front of the boxes
+			TILT = 6, -- degrees, hung a little crooked
+		},
 	},
 
 	-- Shop shells (PlotService). Walls sit outside the floor edges.
@@ -123,7 +135,7 @@ return {
 	AWNING_STRIPES = 8,
 	ROOF_THICKNESS = 1, -- the flat ceiling and the gable panels
 	GABLE = { RISE = 8, OVERHANG = 1.5 }, -- roof ridge runs side to side, this high above the ceiling
-	CEILING_LIGHTS = { XS = { -12, 0, 12 }, SIZE = 3, RANGE = 26, BRIGHTNESS = 0.8, COLOR = { 255, 225, 180 } },
+	CEILING_LIGHTS = { XS = { -12, 0, 12 }, SIZE = 3, RANGE = 22, BRIGHTNESS = 0.5, COLOR = { 255, 225, 180 } }, -- brighter washes out the pale walls
 
 	-- One theme per plot id
 	PLOT_THEMES = {
@@ -145,10 +157,11 @@ return {
 		CLOCK_TIME = 15.5, -- mid-afternoon, a slightly lower sun
 		BRIGHTNESS = 1.6, -- sunlight (Roblox default 2)
 		EXPOSURE = -0.25, -- whole-scene exposure: a softer, dimmer look
-		AMBIENT = { 95, 88, 85 },
+		AMBIENT = { 110, 102, 96 },
 		OUTDOOR_AMBIENT = { 120, 112, 105 },
 		ATMOSPHERE = { density = 0.25, offset = 0.1, haze = 1.2, glare = 0.2, color = { 225, 215, 200 }, decay = { 140, 160, 190 } },
-		BLOOM = { intensity = 0.4, size = 24, threshold = 1.6 },
+		BLOOM = { intensity = 0.25, size = 24, threshold = 2 }, -- only the brightest spots glow
+		SPECULAR = 0.35, -- how much walls and floors reflect the sky (Roblox default 1 makes bright patches)
 		SATURATION = 0.12,
 	},
 }

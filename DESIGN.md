@@ -50,7 +50,7 @@ Order stock (computer) → Restock shelves → Set prices
 **Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
 village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
 between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring, warm afternoon lighting
-with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
+with light haze, soft bloom and low wall shine (`Town.LIGHTING`; dim warm shop ceiling lights so pale walls never wash out). Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
 the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
 with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
 embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Plots stand 24 studs apart. The town is
@@ -72,7 +72,9 @@ Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → 
 (`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Delivery boxes show their
 product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
-`Town.SHELF_STOCK`, `Products.color`). **Props:** every
+`Town.SHELF_STOCK`, `Products.color`). Packs (products with `Packs` art) show as stacks of 5 thin upright packs
+with the pack art, leaning back, instead of boxes. Each stocked level has an orange price tag with the
+product's price at its front left. **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 
@@ -698,7 +700,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
-            ├── ShelfStock.luau    # how many stock boxes a shelf shows and where (pure, Lune-tested)
+            ├── ShelfStock.luau    # stock boxes, pack stacks and price tags on shelves (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
