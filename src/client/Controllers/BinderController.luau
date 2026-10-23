@@ -556,7 +556,7 @@ local function renderTile(tile: Tile)
 	local growth = if strongest
 		then { level = strongest.level, stars = strongest.stars, grade = strongest.grade }
 		else { level = 1, stars = BeastRules.START_STARS, grade = bestGrade or BeastRules.DEFAULT_GRADE }
-	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, false, growth)
+	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, true, growth)
 	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
 	tile.countLabel.Visible = true
 	local parts = {}

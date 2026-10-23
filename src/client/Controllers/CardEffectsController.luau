@@ -82,7 +82,7 @@ local function drawFace(part: BasePart, card: Card, foil: boolean)
 			grade = if BeastRules.isGrade(grade) then grade :: string else BeastRules.DEFAULT_GRADE,
 		}
 		local price = part:GetAttribute("Price")
-		CardFace.render(frame, stroke, card, foil, true, growth, if typeof(price) == "number" then price else nil)
+		CardFace.render(frame, stroke, card, foil, false, growth, if typeof(price) == "number" then price else nil)
 	end
 	render()
 	for _, attribute in { "Price", "Level", "Stars", "Grade" } do

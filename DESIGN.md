@@ -248,20 +248,21 @@ Each pack = 5 cards:
     tapped (or T). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
   - **Foil** adds sparks, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!", a plain foil "FOIL!").
   - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
-- Card faces (`Util/CardFace`, `Config/CardDesign`), full-art TCG style everywhere cards show: the art fills the
-  card (element colour and glow with the element emoji until real creature art exists) under a frame image per
-  rarity plus Frontier (thick metal border, silver trim on Common/Rare and gold from Very Rare, rarity ribbon
-  top-left, level hex top-right, a dark info panel over the lower half with an element socket and a divider, 0
-  to 4 rarity studs on the bottom edge, a crown on Legendary and Frontier). Every card, at any size, shows the
-  same rows: name · star slots (faint when empty) and a GRADE pill in its colour · "Level 3 · Ember" · divider ·
-  💪Power ❤️HP ⚔️ATK 💨SPD · value. The binder's chip row under each card has copies, best grade and level. Effects on the art: Epic and up a white shine now and then, foil a rainbow holo and a
-  FOIL tag, Frontier an aurora rim and constant holo. Frames are drawn by `tools/card-frames/make_frames.py`
-  (Pillow; PNGs in `assets/ui/card-frames`, 600x840) and uploaded to the owner's account; a missing frame id
-  falls back to a plain rarity-coloured card. The face-down back is the "Glowing neon card frame" decal; glows use
-  the "Glow Circle / Radial Glow" decal (both public Creator Store images).
+- Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
+  built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
+  (white Common, blue Rare, teal Very Rare, purple Epic, gold Legendary; a turning rainbow on foil, aurora on
+  Frontier). Outlined text over soft dark bands: element emoji and name top left, a grade letter pill top right,
+  the value (or a case's asking price, in gold) big at the bottom. Detailed faces (binder, packs, inspector,
+  everywhere but shelves and small job/party tiles) add star slots under the name, a "Lv 3" chip under the grade
+  and a FOIL / FRONTIER chip. Art: a card's own image (`ART_IMAGES`, by name) else its element's painted scene
+  (`SCENES`: fireplace, coral reef, forest, stormy peak, moonlit graveyard; made with Figma's image generator,
+  JPEGs in `assets/ui/card-scenes`) with the element emoji on a glow, else an element gradient; the art will be replaced by renders of
+  the creature models. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
+  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is a deep blue card with
+  🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
   server's plain card part (1.05 x 1.5 studs; glass counters lie them on the bed, rows 1.12 apart), with the asking
-  price in gold ("PRICE $3.00") in the value row. To make visitors want to buy, the face glows (it ignores the
+  price in gold in the value row. To make visitors want to buy, the face glows (it ignores the
   room's light), a neon halo in the rarity colour sits just behind it (pulsing on Epic and up), and rarer cards
   light the case and sparkle more (`Config/CardEffects` BY_RARITY: glow, range, sparkles, halo). Grade S copies
   glow brighter and sparkle more (GRADE_S). Grade S Legendaries and Grade S Frontier cards are "supreme": a solid
@@ -293,7 +294,7 @@ when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the 
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
 spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
 and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Aurora Drake, Stormking, never in
-packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER ribbon, a constant
+packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER chip, a constant
 shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
 an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)

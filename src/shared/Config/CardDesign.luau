@@ -1,66 +1,93 @@
 --!strict
--- The look of a card face (client only): image ids, layout as fractions of the card, colours.
--- Frame images are drawn by tools/card-frames/make_frames.py (600x840, saved in assets/ui/card-frames) and
--- uploaded to the game owner's account; the boxes below are measured from that 600x840 layout.
--- A missing frame id falls back to a plain rarity-coloured card. See DESIGN.md section 5.7.
+-- The look of a card face (client only): full-art cards with a thin rarity-coloured rim, built in code.
+-- The art fills the card; name and grade sit on the top, the value on the bottom, in outlined text.
+-- Layout is in fractions of the card. See DESIGN.md section 5.7.
 export type Box = { x: number, y: number, w: number, h: number }
 
 return {
 	IMAGES = {
-		-- One full-art frame per rarity (transparent art window), keyed by rarity name, plus Frontier
-		FRAMES = {
-			Common = "rbxassetid://75093670445013",
-			Rare = "rbxassetid://70681193815131",
-			["Very Rare"] = "rbxassetid://81299306585658",
-			Epic = "rbxassetid://111780676111166",
-			Legendary = "rbxassetid://76146349903815",
-			Frontier = "rbxassetid://87019213393421",
-		} :: { [string]: string },
 		-- "Glow Circle / Radial Glow" (Creator Store 88881587400917), tinted per rarity
 		GLOW = "rbxassetid://118302663239247",
-		-- "Glowing neon card frame" (Creator Store 93396924861432), the face-down card
-		BACK = "rbxassetid://88901535925819",
 	},
 
-	-- The art window inside the border; the art (and the shine, holo and aurora) is drawn here
-	ART = { x = 0.05, y = 0.0357, w = 0.9, h = 0.9286 } :: Box,
-	ART_CORNER = 0.045,
-	EMOJI_CENTER = 0.25, -- placeholder emoji: centre height within the art, above the info panel
-	EMOJI_SIZE = 0.36, -- of the art's width
+	-- Card art. A card's own picture (by card name) wins; otherwise its element's scene with the element
+	-- emoji standing in for the creature; with no scene either, an element-coloured gradient.
+	-- These will be replaced by renders of the creature models later.
+	ART_IMAGES = {} :: { [string]: string },
+	-- By element. Painted with Figma's image generator; the JPEGs are kept in assets/ui/card-scenes.
+	SCENES = {
+		Ember = "rbxassetid://131233630668123", -- fireplace
+		Tide = "rbxassetid://97300154620727", -- coral reef
+		Bloom = "rbxassetid://71240095691398", -- forest clearing
+		Volt = "rbxassetid://102167319370921", -- stormy peak
+		Shade = "rbxassetid://136974770450599", -- moonlit graveyard
+	} :: { [string]: string },
 
-	-- Where the text sits on the frame (fractions of the whole card). The info panel (y 420-796 of 840) holds
-	-- one row each; the frame's divider line is at y 598, between LEVEL and STATS, so no text crosses it.
+	RIM_WIDTH = 0.035, -- of the card's width: the rim around the art
+	CORNER = 0.07, -- of the card's shorter side
+	ART_CORNER = 0.05,
+	EMOJI_CENTER = 0.48, -- placeholder creature: centre height within the art
+	EMOJI_SIZE = 0.5, -- of the art's width
+	-- Rim colours: light at the top, darker at the bottom
+	RIMS = {
+		Common = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 196, 212) },
+		Rare = { Color3.fromRGB(130, 190, 255), Color3.fromRGB(40, 95, 225) },
+		["Very Rare"] = { Color3.fromRGB(130, 245, 235), Color3.fromRGB(20, 150, 165) },
+		Epic = { Color3.fromRGB(215, 150, 255), Color3.fromRGB(125, 50, 215) },
+		Legendary = { Color3.fromRGB(255, 240, 150), Color3.fromRGB(230, 150, 20) },
+	} :: { [string]: { Color3 } },
+	FOIL_RIM_SECONDS = 3, -- one turn of the rainbow round a foil card's rim
+	FOIL_RIM = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 200)),
+		ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 220, 110)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(130, 255, 160)),
+		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(110, 220, 255)),
+		ColorSequenceKeypoint.new(0.8, Color3.fromRGB(190, 140, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 120, 200)),
+	}),
+
+	-- Where things sit (fractions of the whole card). Stars, level and the foil tag show on detailed faces only.
 	TEXT = {
-		RIBBON = { x = 0.057, y = 0.026, w = 0.393, h = 0.05 } :: Box, -- rarity, in the top-left ribbon
-		HEX = { x = 0.833, y = 0.045, w = 0.1, h = 0.062 } :: Box, -- level, in the top-right hex
-		NAME = { x = 0.107, y = 0.514, w = 0.68, h = 0.074 } :: Box, -- y 432-494
-		SOCKET = { x = 0.817, y = 0.523, w = 0.08, h = 0.057 } :: Box, -- element emoji, in the panel's socket
-		STARS = { x = 0.107, y = 0.598, w = 0.5, h = 0.048 } :: Box, -- y 502-542: one star per slot, empty ones faint
-		GRADE = { x = 0.66, y = 0.598, w = 0.24, h = 0.048 } :: Box, -- a pill in the grade's colour
-		LEVEL = { x = 0.107, y = 0.652, w = 0.79, h = 0.043 } :: Box, -- y 548-584: level and element
-		STATS = { x = 0.093, y = 0.726, w = 0.813, h = 0.067 } :: Box, -- y 610-666: below the divider
-		VALUE = { x = 0.093, y = 0.805, w = 0.813, h = 0.07 } :: Box, -- y 676-735
-		FOIL = { x = 0.04, y = 0.07, w = 0.4, h = 0.05 } :: Box, -- within the art, under the ribbon
+		NAME = { x = 0.07, y = 0.035, w = 0.64, h = 0.085 } :: Box, -- element emoji and name, top left
+		GRADE = { x = 0.75, y = 0.035, w = 0.18, h = 0.075 } :: Box, -- grade letter pill, top right
+		STARS = { x = 0.07, y = 0.125, w = 0.4, h = 0.05 } :: Box, -- under the name
+		LEVEL = { x = 0.73, y = 0.12, w = 0.22, h = 0.06 } :: Box, -- under the grade
+		FOIL = { x = 0.07, y = 0.765, w = 0.3, h = 0.055 } :: Box, -- above the value
+		VALUE = { x = 0.06, y = 0.83, w = 0.88, h = 0.115 } :: Box, -- bottom centre
 	},
-	EMPTY_STAR_TRANSPARENCY = 0.75,
-	LOADING_BORDER = 4, -- pixels: the rarity-coloured border shown while a frame image is still downloading
+	OUTLINE = 0.09, -- text outline thickness, of the text box's height
+	OUTLINE_COLOR = Color3.fromRGB(25, 18, 40),
+	SHADE = 0.45, -- how dark the soft bands behind the top and bottom text get (0 none, 1 black)
+	EMPTY_STAR_TRANSPARENCY = 0.7,
 	GRADE_COLORS = {
 		C = Color3.fromRGB(130, 130, 145),
 		B = Color3.fromRGB(60, 170, 85),
 		A = Color3.fromRGB(60, 125, 240),
 		S = Color3.fromRGB(235, 165, 25),
 	},
+	LEVEL_CHIP = Color3.fromRGB(25, 18, 40),
+	LEVEL_CHIP_TRANSPARENCY = 0.3,
+
+	-- The face-down card: a deep blue card with the shop's name
+	BACK = {
+		RIM = { Color3.fromRGB(120, 170, 255), Color3.fromRGB(40, 70, 200) },
+		INSIDE = { Color3.fromRGB(70, 110, 245), Color3.fromRGB(25, 35, 120) },
+		TITLE = "CARD\nSHOP",
+		EMBLEM = "🃏",
+	},
+	MISSING = {
+		RIM = { Color3.fromRGB(150, 155, 170), Color3.fromRGB(95, 100, 115) },
+		INSIDE = Color3.fromRGB(45, 47, 60),
+	},
 
 	EMOJI = { Ember = "🔥", Tide = "💧", Bloom = "🌿", Volt = "⚡", Shade = "🌙" },
-	HEX_TEXT = Color3.fromRGB(255, 225, 120),
-	SUBTEXT = Color3.fromRGB(210, 205, 225),
-	VALUE_TEXT = Color3.fromRGB(120, 230, 140),
+	VALUE_TEXT = Color3.fromRGB(255, 255, 255),
 	PRICE_TEXT = Color3.fromRGB(255, 215, 90), -- a case's asking price
 
 	SHINE_FROM = "Epic", -- this rarity and up get a white shine sweeping across the art now and then
 	SHINE_SECONDS = 1.1, -- one sweep
 	SHINE_PAUSE = 2.5, -- between sweeps
-	FOIL_TRANSPARENCY = 0.5, -- the rainbow holo over foil art
+	FOIL_TRANSPARENCY = 0.55, -- the rainbow holo over foil art
 	-- Grade S Legendaries: an electric gold rim spinning round the art (cases add lightning: Config/CardEffects)
 	SUPREME_RIM = {
 		THICKNESS = 4,
