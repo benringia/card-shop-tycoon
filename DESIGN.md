@@ -621,6 +621,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
     │   │   ├── RarityGuideController.luau # rarity guide panel (odds from the pack configs)
+    │   │   ├── CardInspectorController.luau # the 3D card you tilt and flip from the binder
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   └── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
@@ -767,6 +768,11 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
   19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
+- **Card inspector** (`CardInspectorController`, `Config/Inspector`): tapping a binder card shows it as a real 3D
+  card left of centre in front of the camera (front: the card face; back: the card back), on a solid dark sheet
+  that hides the world. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
+  Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
+  Add to party and Back. Closing restores the camera; dying closes it too.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.

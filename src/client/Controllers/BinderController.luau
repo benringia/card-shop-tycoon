@@ -36,6 +36,7 @@ local Motion = require(ClientUtil:WaitForChild("Motion"))
 local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
+local CardInspectorController = require(Controllers:WaitForChild("CardInspectorController"))
 
 type Card = typeof(Cards.List[1])
 type Owned = { normal: number, foil: number }
@@ -56,9 +57,10 @@ type Tile = {
 -- A pocket is the card plus a chip row under it (copies owned, best grade and level)
 local CARD_ASPECT = 0.7
 local CHIP_ROW = 22 -- pixels
--- The card view: a big card on the left, the copies list and buttons right of it
+-- The card view: the 3D card in the inspector on the left, this panel (copies list and buttons) on the right
 local DETAIL_CARD = Vector2.new(220, 314)
-local DETAIL_X = 16 + DETAIL_CARD.X + 14
+local DETAIL_X = 16
+local DETAIL_WIDTH = 440
 -- 3 x 3 pockets like a real binder; short screens get fewer, bigger pockets (3 a page at least, so the
 -- card text stays readable)
 local POCKET_OPTIONS: PocketLayout.Options = {
@@ -121,6 +123,7 @@ local progressValue: TextLabel
 local progressFill: Frame
 local filtersPanel: Frame
 local setFiltersOpen: (open: boolean) -> ()
+local setInspecting: (on: boolean) -> ()
 local rarityGuideButton: TextButton
 local showButtons: { [string]: TextButton } = {}
 local sortButtons: { [string]: TextButton } = {}
@@ -483,8 +486,10 @@ refreshDetail = function()
 			grade = selected.grade,
 		}
 		CardFace.render(detailInner, detailStroke, card, selected.foil, true, growth)
+		CardInspectorController.Show(card, selected.foil, growth)
 	else
 		CardFace.render(detailInner, detailStroke, card, shown.foil > 0)
+		CardInspectorController.Show(card, shown.foil > 0, nil)
 	end
 	refreshAssignButton(selected)
 
@@ -866,16 +871,49 @@ local function buildTile(card: Card, parent: Instance): Tile
 end
 
 -- Card shown large over the grid with its counts and value
+-- While a card is inspected the book, backdrop and binder buttons hide so the 3D card shows
+function setInspecting(on: boolean)
+	if not on then
+		CardInspectorController.Close()
+	end
+	panel.BackgroundTransparency = if on then 1 else 0.45
+	bookHolder.Visible = not on
+	for _, name in { "FilterButton", "SetProgress", "RarityGuide" } do
+		local item = panel:FindFirstChild(name)
+		if item and item:IsA("GuiObject") then
+			item.Visible = not on
+		end
+	end
+	if on and filtersPanel.Visible then
+		setFiltersOpen(false)
+	end
+end
+
 local function buildDetail(parent: Frame)
+	-- A panel on the right; the 3D card (CardInspectorController) sits left of it
 	detail = Instance.new("Frame")
 	detail.Name = "Detail"
-	detail.Size = UDim2.fromScale(1, 1)
+	detail.AnchorPoint = Vector2.new(1, 0.5)
+	detail.Position = UDim2.new(1, -16, 0.5, 0)
+	detail.Size = UDim2.new(0, DETAIL_WIDTH, 0.86, 0)
 	detail.BackgroundColor3 = UIKit.Colors.Panel
 	detail.ZIndex = 10
 	detail.Visible = false
 	detail.Active = true
 	detail.Parent = parent
-	UIKit.corner(detail, 14)
+	UIKit.corner(detail, 16)
+	UIKit.outline(detail, Color3.new(1, 1, 1), 3)
+	local flip = UIKit.button(detail, "🔄 Flip", UIKit.Colors.Row)
+	flip.Name = "Flip"
+	flip.AnchorPoint = Vector2.new(1, 0)
+	flip.Position = UDim2.new(1, -12, 0, 12)
+	flip.Size = UDim2.fromOffset(96, 44)
+	flip.TextSize = 16
+	flip.ZIndex = 12
+	flip.Activated:Connect(CardInspectorController.Flip)
+	detail:GetPropertyChangedSignal("Visible"):Connect(function()
+		setInspecting(detail.Visible)
+	end)
 
 	-- Card on the left, info on the right: fits short landscape phone screens
 	local cardHolder = Instance.new("Frame")
@@ -883,6 +921,7 @@ local function buildDetail(parent: Frame)
 	cardHolder.Size = UDim2.fromOffset(DETAIL_CARD.X, DETAIL_CARD.Y)
 	cardHolder.BackgroundTransparency = 1
 	cardHolder.ZIndex = 11
+	cardHolder.Visible = false -- the inspector shows the card in 3D
 	cardHolder.Parent = detail
 	detailInner, detailStroke = addCardFrame(cardHolder)
 
@@ -1740,6 +1779,9 @@ local function buildPanel(parent: Instance)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		hideTooltip()
 		Hud.setHidden("Binder", panel.Visible)
+		if not panel.Visible then
+			detail.Visible = false -- closes the inspector too
+		end
 		if not panel.Visible and filtersPanel.Visible then
 			filtersPanel.Visible = false
 			bookScale.Scale = 1
