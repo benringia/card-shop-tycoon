@@ -245,8 +245,10 @@ Each pack = 5 cards:
   (a tap, Space or T tears it by itself). The pack slides away and the cards rise out as a stack.
 - Cards are revealed one at a time, big in the middle; a tap, Space, T or the round Next button slides the card off
   to the left and shows the next ("2 / 5 · Tap for the next card" at the bottom). After the last card comes the
-  summary: every card in a big row popping in, the pack's value and a green Done. Odds sit in the top right (hidden on the
-  summary, whose row spans the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar.
+  results screen: every card in a big row popping in, a yellow NEW ribbon on cards the player didn't own before
+  (binder, beasts or on display; the server checks before adding them, `Util/NewPulls`, only the first copy in a
+  pack), pills on top (🃏 Your cards · NEW x2 · pack value · ℹ️ Rarity guide, which opens over the results) and a
+  green Next. Odds sit in the top right (hidden on the results, whose row and pills span the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar.
 - Hit slot comes last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
   - **Tease** before the flip: the face-down card glows in its rarity colour, breathes and shakes, and the
     stage dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons come out face up at once).
@@ -703,6 +705,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges and the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
+            ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 

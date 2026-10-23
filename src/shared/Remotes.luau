@@ -20,7 +20,7 @@ local NAMES = {
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
 	"RipPack", -- client → server: open one pack from the carried box
-	"PackOpened", -- server → client: (productId: string, results: { { cardId: string, foil: boolean } })
+	"PackOpened", -- server → client: (productId: string, results: { { cardId, foil, grade } }, newFlags: { boolean })
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
 	"RequestCollection", -- client → server: ask for a CollectionChanged (sent on client start)
 	"DisplayCard", -- client → server: (shelfUid: string, slot: number, cardId: string, foil: boolean, beastId: string?, grade: string?) binder → case; plain copies picked by grade

@@ -154,6 +154,26 @@ function CardService.GetBeasts(player: Player): { [string]: Beast }
 	return if inventory then inventory.beasts else {}
 end
 
+-- Every card the player has a copy of in the binder or as a beast (cards on display: PlacementService)
+function CardService.GetOwnedCardIds(player: Player): { [string]: boolean }
+	local owned: { [string]: boolean } = {}
+	local inventory = inventories[player]
+	if not inventory then
+		return owned
+	end
+	for cardId, byGrade in inventory.stacks do
+		for _, counts in byGrade do
+			if counts.normal + counts.foil > 0 then
+				owned[cardId] = true
+			end
+		end
+	end
+	for _, beast in inventory.beasts do
+		owned[beast.cardId] = true
+	end
+	return owned
+end
+
 function CardService.GetStacks(player: Player): Stacks
 	local inventory = inventories[player]
 	return if inventory then inventory.stacks else {}

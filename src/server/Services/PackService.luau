@@ -12,12 +12,14 @@ local Packs = require(Config:WaitForChild("Packs"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local NewPulls = require(Shared:WaitForChild("Util"):WaitForChild("NewPulls"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
+local PlacementService = require(Services:WaitForChild("PlacementService"))
 local StockService = require(Services:WaitForChild("StockService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -109,10 +111,23 @@ local function onPullRevealed(player: Player, cardId: unknown, foil: unknown)
 end
 
 -- Gives the cards, queues any big-pull announcements, and sends the result for the reveal animation
+-- Cards the player has now: binder, beasts and cards on display in their cases
+local function getOwnedCardIds(player: Player): { [string]: boolean }
+	local owned = CardService.GetOwnedCardIds(player)
+	for _, shelf in PlacementService.GetShelves(player) do
+		for _, displayed in shelf.cards do
+			owned[displayed.cardId] = true
+		end
+	end
+	return owned
+end
+
 local function deliverPack(player: Player, productId: string, results: { PullResult })
+	-- Checked before the cards are added, so the results screen can mark first-ever copies NEW
+	local newFlags = NewPulls.flag(results, getOwnedCardIds(player))
 	CardService.AddFresh(player, results)
 	queueAnnouncements(player, results)
-	Remotes.PackOpened:FireClient(player, productId, results)
+	Remotes.PackOpened:FireClient(player, productId, results, newFlags)
 end
 
 local function onRip(player: Player)

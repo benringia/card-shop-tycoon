@@ -169,13 +169,15 @@ local function build(): Frame
 	return frame
 end
 
-function RarityGuideController.Open()
+-- Returns the guide's panel, so screens drawn above the HUD (the pack results) can lift it over themselves
+function RarityGuideController.Open(): Frame
 	local frame = panel
 	if not frame then
 		frame = build()
 		panel = frame
 	end
 	frame.Visible = true
+	return frame
 end
 
 return RarityGuideController

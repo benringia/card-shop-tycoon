@@ -36,8 +36,8 @@ return {
 	CARD_Y = 0.53, -- the card being revealed: centre height
 	CARD_HEIGHT = 0.56,
 	BANNER = { SCALE = 0.2, MIN = 36, MAX = 64 }, -- the RARE! banner's height: of the card's height, in pixels
-	SUMMARY_Y = 0.46, -- the summary row: centre height (clear of the Odds button on phones)
-	SUMMARY_HEIGHT = 0.44, -- each card in the summary row
+	SUMMARY_Y = 0.5, -- the results row: centre height (below the pills, with room for the NEW ribbons)
+	SUMMARY_HEIGHT = 0.42, -- each card in the results row
 
 	-- Border thickness by rarity, so better pulls feel heavier
 	STROKE_THICKNESS = { Common = 2, Rare = 3, ["Very Rare"] = 3.5, Epic = 4, Legendary = 6 },

@@ -4,7 +4,9 @@
 -- cards rise out as a stack. They are revealed one at a time, big in the middle; a tap (Space, T or the Next
 -- button) slides the card away and shows the next. The hit slot comes last. Better pulls tease first (the
 -- face-down card glows in its rarity colour and shakes), then celebrate: sparks, a banner, rays and confetti
--- for Epic and up (Config/CardReveal). After the last card, all of them line up in a summary row. The server already rolled the cards; this only plays the reveal.
+-- for Epic and up (Config/CardReveal). After the last card comes the results screen: every card in a row, a
+-- NEW ribbon on cards the player didn't own before (the server says which), and pills for the NEW count, the
+-- pack's value and the Rarity guide. The server already rolled the cards; this only plays the reveal.
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -33,6 +35,7 @@ local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
+local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
 
 type Card = typeof(Cards.List[1])
 type Pack = typeof(Packs.ById[""])
@@ -52,6 +55,7 @@ type CardView = {
 	plan: Plan,
 	revealed: boolean,
 	announced: boolean,
+	isNew: boolean, -- the first copy the player owns
 }
 
 local RIP_WAIT_SECONDS = 3 -- re-enable the button if the server never answers
@@ -69,6 +73,7 @@ local CONFETTI_COLORS = {
 	Color3.fromRGB(120, 230, 120),
 	Color3.fromRGB(200, 120, 255),
 }
+local NEW_COLOR = Color3.fromRGB(255, 205, 40)
 local LOGO_COLORS = ColorSequence.new(Color3.fromRGB(255, 245, 150), Color3.fromRGB(255, 175, 40))
 
 local player = Players.LocalPlayer
@@ -85,8 +90,12 @@ local fxLayer: Frame -- sparks, confetti and banners float here, above the cards
 local hintPill: Frame
 local hintLabel: TextLabel
 local summaryRow: Frame
+local resultsBar: Frame -- the pills over the results: Your cards, NEW x2, pack value, Rarity guide
+local newPill: Frame
+local newLabel: TextLabel
 local valueLabel: TextLabel
 local doneButton: TextButton
+local nextButton: TextButton -- the round one; the results have their own green Next
 local oddsButton: TextButton
 local oddsPanel: TextLabel
 local boxLabel: TextLabel
@@ -106,6 +115,7 @@ local waitingForServer = false
 local busy = false -- a card is being revealed
 local tapsLockedUntil = 0
 local pendingResults: { PullResult }? = nil
+local pendingNew: { boolean } = {}
 local views: { CardView } = {}
 local current = 0
 
@@ -629,7 +639,7 @@ local function showTear(minX: number, maxX: number)
 	tearLine.Size = UDim2.fromOffset(to - from, 6)
 end
 
-local function makeCardView(card: Card, foil: boolean, grade: string, order: number, total: number): CardView
+local function makeCardView(card: Card, foil: boolean, grade: string, isNew: boolean, order: number, total: number): CardView
 	local slot = Instance.new("Frame")
 	slot.Name = "Card" .. order
 	slot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -681,6 +691,7 @@ local function makeCardView(card: Card, foil: boolean, grade: string, order: num
 		plan = RevealRules.plan(CardReveal, card.rarity, foil, CardFace.isFrontier(card)),
 		revealed = false,
 		announced = false,
+		isNew = isNew,
 	}
 end
 
@@ -695,26 +706,54 @@ local function clearCards()
 	current = 0
 end
 
-local function makeViews(results: { PullResult })
+local function makeViews(results: { PullResult }, newFlags: { boolean })
 	for index, result in results do
 		local card = Cards.ById[result.cardId]
 		if card then
 			local grade = if BeastRules.isGrade(result.grade) then result.grade else BeastRules.DEFAULT_GRADE
-			table.insert(views, makeCardView(card, result.foil == true, grade, index, #results))
+			table.insert(views, makeCardView(card, result.foil == true, grade, newFlags[index] == true, index, #results))
 		end
 	end
 end
 
--- Every card in a row, popping in one after another, with the pack's value and Done
+-- A yellow NEW ribbon over a card's top-left corner
+local function addNewRibbon(holder: Frame)
+	local ribbon = Instance.new("Frame")
+	ribbon.Name = "New"
+	ribbon.AnchorPoint = Vector2.new(0, 0.5)
+	ribbon.Position = UDim2.fromScale(-0.06, 0.01)
+	ribbon.Size = UDim2.fromScale(0.46, 0.1)
+	ribbon.Rotation = -8
+	ribbon.BackgroundColor3 = NEW_COLOR
+	ribbon.ZIndex = 30
+	ribbon.Parent = holder
+	UIKit.corner(ribbon, 6)
+	UIKit.outline(ribbon, WHITE, 2)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.fromScale(0.08, 0.08)
+	label.Size = UDim2.fromScale(0.84, 0.84)
+	label.Font = Enum.Font.FredokaOne
+	label.Text = "NEW"
+	label.TextColor3 = INK
+	label.TextScaled = true
+	label.ZIndex = 31
+	label.Parent = ribbon
+end
+
+-- The results: every card in a row popping in one after another, NEW ribbons, the pills and Next
 local function showSummary()
 	phase = "summary"
 	setHint(nil)
 	setDim(0, 0.2)
-	-- The row spans the screen, so the Odds button steps aside (it would sit on the last card on small phones)
+	-- The row and pills span the screen, so the Odds button, box count and round Next step aside
+	nextButton.Visible = false
 	oddsButton.Visible = false
 	oddsPanel.Visible = false
+	boxLabel.Visible = false
 	clearLayer(raysLayer)
 	local total = 0
+	local newCount = 0
 	for index, view in views do
 		announce(view)
 		total += getCardValue(view)
@@ -738,14 +777,20 @@ local function showSummary()
 		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		stroke.Parent = face
 		CardFace.render(face, stroke, view.card, view.foil, true, { level = 1, stars = BeastRules.START_STARS, grade = view.grade })
+		if view.isNew then
+			newCount += 1
+			addNewRibbon(holder)
+		end
 		task.delay((index - 1) * PackOpening.SUMMARY_STAGGER, function()
 			tween(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
 		end)
 	end
 	table.clear(views)
 	summaryRow.Visible = true
-	valueLabel.Text = string.format("Pack value: $%.2f", total)
-	valueLabel.Visible = true
+	newLabel.Text = `NEW x{newCount}`
+	newPill.Visible = newCount > 0
+	valueLabel.Text = string.format("$%.2f", total)
+	resultsBar.Visible = true
 	doneButton.Visible = true
 end
 
@@ -797,6 +842,8 @@ local function tearPack()
 	end
 	phase = "tearing"
 	pendingResults = nil
+	local newFlags = pendingNew
+	pendingNew = {}
 	dragging = false
 	playSound(PackOpening.TEAR_SOUND_ID)
 	if packBob then
@@ -807,7 +854,7 @@ local function tearPack()
 	local seconds = PackOpening.TEAR_SECONDS
 	tween(packCap, seconds, { Position = UDim2.fromScale(0.25, -0.5), Rotation = 28 })
 	task.wait(seconds * 0.5)
-	makeViews(results)
+	makeViews(results, newFlags)
 	for index, view in views do
 		view.slot.Position = UDim2.fromScale(0.5, 0.62)
 		view.pop.Scale = 0.7
@@ -846,6 +893,7 @@ local function close()
 	stage.Visible = false
 	gui.Enabled = false
 	oddsPanel.Visible = false
+	resultsBar.Visible = false
 	refreshRipButton()
 end
 
@@ -860,7 +908,7 @@ local function advance()
 	end
 end
 
-local function onPackOpened(productId: string, results: { PullResult })
+local function onPackOpened(productId: string, results: { PullResult }, newFlags: { boolean }?)
 	waitingForServer = false
 	local pack = Packs.ById[productId]
 	if not pack or typeof(results) ~= "table" or phase ~= "closed" then
@@ -872,14 +920,17 @@ local function onPackOpened(productId: string, results: { PullResult })
 	tapsLockedUntil = 0
 	refreshRipButton()
 	pendingResults = results
+	pendingNew = if typeof(newFlags) == "table" then newFlags else {}
 
 	dressPack(pack)
 	summaryRow.Visible = false
-	valueLabel.Visible = false
 	doneButton.Visible = false
 	setHint("👋 Drag across the top to open!")
 	oddsPanel.Text = buildOddsText(pack)
 	oddsButton.Visible = true
+	nextButton.Visible = true
+	boxLabel.Visible = true
+	resultsBar.Visible = false
 	stage.Visible = true
 	gui.Enabled = true
 	ContextActionService:BindActionAtPriority(ADVANCE_ACTION, function(_, state)
@@ -888,6 +939,78 @@ local function onPackOpened(productId: string, results: { PullResult })
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, RIP_KEY)
+end
+
+-- The Rarity guide lives in the HUD under this screen; it's lifted over the results while open
+local function openRarityGuide()
+	local frame = RarityGuideController.Open()
+	local home = frame.Parent
+	if home == gui then
+		return
+	end
+	frame.Parent = gui
+	local watch: RBXScriptConnection
+	watch = frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not frame.Visible then
+			watch:Disconnect()
+			frame.Parent = home
+		end
+	end)
+end
+
+-- A rounded pill in the results bar
+local function addPill(name: string, text: string, color: Color3, edge: Color3, textColor: Color3, order: number): (Frame, TextLabel)
+	local pill = Instance.new("Frame")
+	pill.Name = name
+	pill.LayoutOrder = order
+	pill.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT)
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.BackgroundColor3 = color
+	pill.Parent = resultsBar
+	UIKit.corner(pill, 14)
+	UIKit.outline(pill, edge, 3)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 16)
+	pad.PaddingRight = UDim.new(0, 16)
+	pad.Parent = pill
+	local label = UIKit.label(pill, text, Enum.Font.FredokaOne, 22, textColor)
+	label.Size = UDim2.fromScale(0, 1)
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	return pill, label
+end
+
+-- The pills over the results, like the card games' results screens
+local function buildResultsBar()
+	resultsBar = Instance.new("Frame")
+	resultsBar.Name = "ResultsBar"
+	resultsBar.AnchorPoint = Vector2.new(0.5, 0)
+	resultsBar.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP)
+	resultsBar.Size = UDim2.new(1, -32, 0, PackOpening.PILL_HEIGHT)
+	resultsBar.BackgroundTransparency = 1
+	resultsBar.Visible = false
+	resultsBar.Parent = stage
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	row.VerticalAlignment = Enum.VerticalAlignment.Center
+	row.Padding = UDim.new(0, 10)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = resultsBar
+
+	addPill("YourCards", "🃏 Your cards", WHITE, INK, INK, 1)
+	newPill, newLabel = addPill("NewCount", "NEW x0", NEW_COLOR, Color3.fromRGB(230, 150, 20), INK, 2)
+	local _, value = addPill("Value", "$0.00", Color3.fromRGB(225, 250, 230), Color3.fromRGB(60, 180, 90), Color3.fromRGB(25, 130, 55), 3)
+	valueLabel = value
+	local guide = addPill("RarityGuide", "ℹ️ Rarity guide", Color3.fromRGB(225, 235, 255), Color3.fromRGB(120, 150, 230), Color3.fromRGB(40, 70, 170), 4)
+	local tap = Instance.new("TextButton")
+	tap.Name = "Open"
+	tap.Text = ""
+	tap.BackgroundTransparency = 1
+	tap.Position = UDim2.fromOffset(-16, 0)
+	tap.Size = UDim2.new(1, 32, 1, 0)
+	tap.Parent = guide
+	tap.Activated:Connect(openRarityGuide)
 end
 
 -- A round white button on the right with a key chip under it (Next)
@@ -1032,24 +1155,18 @@ local function buildScreen()
 	hintLabel.AutomaticSize = Enum.AutomaticSize.X
 	hintLabel.TextXAlignment = Enum.TextXAlignment.Center
 
-	valueLabel = UIKit.label(stage, "", Enum.Font.FredokaOne, 26, INK)
-	valueLabel.Name = "PackValue"
-	valueLabel.AnchorPoint = Vector2.new(0.5, 0)
-	valueLabel.Position = UDim2.new(0.5, 0, PackOpening.SUMMARY_Y + PackOpening.SUMMARY_HEIGHT / 2, 14)
-	valueLabel.Size = UDim2.fromOffset(360, 36)
-	valueLabel.TextXAlignment = Enum.TextXAlignment.Center
-	valueLabel.Visible = false
+	buildResultsBar()
 
-	doneButton = UIKit.button(stage, "✔ Done", UIKit.Colors.Success)
+	doneButton = UIKit.button(stage, "➡️ Next", UIKit.Colors.Success)
 	doneButton.Name = "Done"
 	doneButton.AnchorPoint = Vector2.new(0.5, 0)
-	doneButton.Position = UDim2.new(0.5, 0, PackOpening.SUMMARY_Y + PackOpening.SUMMARY_HEIGHT / 2, 56)
+	doneButton.Position = UDim2.new(0.5, 0, PackOpening.SUMMARY_Y + PackOpening.SUMMARY_HEIGHT / 2, 18)
 	doneButton.Size = UDim2.fromOffset(240, 54)
 	doneButton.TextSize = 26
 	doneButton.Visible = false
 	doneButton.Activated:Connect(close)
 
-	roundButton("Next", "➡️", "SPACE", 0.8, function()
+	nextButton = roundButton("Next", "➡️", "SPACE", 0.8, function()
 		task.spawn(advance)
 	end)
 
