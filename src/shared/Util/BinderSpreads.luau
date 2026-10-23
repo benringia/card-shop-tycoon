@@ -24,6 +24,26 @@ function BinderSpreads.cards(spread: number, cardCount: number, pocketsPerPage: 
 	return first, math.min(first + pocketsPerPage * 2 - 1, cardCount)
 end
 
+export type Side = "Left" | "Right"
+
+-- Which page a card sits on: offset counts from the spread's first card (0-based)
+function BinderSpreads.side(spread: number, offset: number, pocketsPerPage: number): Side
+	if spread <= 1 or offset >= pocketsPerPage then
+		return "Right"
+	end
+	return "Left"
+end
+
+-- The page that turns when going from one spread to another (nil when it's the same spread)
+function BinderSpreads.turningSide(from: number, to: number): Side?
+	if to > from then
+		return "Right"
+	elseif to < from then
+		return "Left"
+	end
+	return nil
+end
+
 -- "1 / 14" on the cover spread, "2-3 / 14" after (one number when the last spread has one page)
 function BinderSpreads.label(spread: number, totalPages: number): string
 	if totalPages <= 0 then

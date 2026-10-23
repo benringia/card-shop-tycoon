@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
@@ -18,6 +19,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Jobs = require(Config:WaitForChild("Jobs"))
+local Packs = require(Config:WaitForChild("Packs"))
 local Party = require(Config:WaitForChild("Party"))
 local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
@@ -57,6 +59,7 @@ type Tile = {
 -- A pocket is the card plus a chip row under it (copies owned, best grade and level)
 local CARD_ASPECT = 0.7
 local CHIP_ROW = 22 -- pixels
+local SMALL_POCKET = 90 -- pixels wide: smaller pockets show only the copies chip
 -- The card view: the 3D card in the inspector on the left, this panel (copies list and buttons) on the right
 local DETAIL_CARD = Vector2.new(220, 314)
 local DETAIL_X = 16
@@ -68,7 +71,7 @@ local POCKET_OPTIONS: PocketLayout.Options = {
 	gap = 6,
 	preferredColumns = 3,
 	preferredRows = 3,
-	minWidth = 110,
+	minWidth = 90,
 	maxColumns = 5,
 	maxRows = 3,
 	minPockets = 3,
@@ -84,6 +87,7 @@ local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collecto
 local BEAST_ROW_HEIGHT = 100
 local STACK_ROW_HEIGHT = 80
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
+local COVER_TEXT = Color3.fromRGB(255, 250, 240)
 local XP_BAR_COLOR = Color3.fromRGB(90, 160, 255)
 local XP_TRACK_COLOR = Color3.fromRGB(25, 25, 35)
 
@@ -116,6 +120,9 @@ local coverPage: Frame
 local coverTitle: TextLabel
 local coverProgress: TextLabel
 local coverEmblem: TextLabel
+local coverArt: ImageLabel
+local coverFill: Frame
+local coverValue: TextLabel
 local setTabs: { [string]: TextButton } = {}
 local progressName: TextLabel
 local progressCount: TextLabel
@@ -124,6 +131,9 @@ local progressFill: Frame
 local filtersPanel: Frame
 local setFiltersOpen: (open: boolean) -> ()
 local setInspecting: (on: boolean) -> ()
+local buildCase: () -> ()
+local buildSpine: () -> ()
+local getSetArt: (set: string) -> string?
 local rarityGuideButton: TextButton
 local showButtons: { [string]: TextButton } = {}
 local sortButtons: { [string]: TextButton } = {}
@@ -137,6 +147,17 @@ local pageLabel: TextLabel
 local spreadIndex = 1
 local pocketsPerPage = POCKET_OPTIONS.preferredColumns * POCKET_OPTIONS.preferredRows
 local pageGrids: { UIGridLayout } = {}
+local progressCard: Frame
+local arrowLanes: { Frame } = {}
+-- The page turn (flipTo): a sheet lying over the turning page that carries its cards as it folds
+local flipSheet: Frame
+local flipContent: Frame
+local flipShade: Frame
+local flipLift: UIScale -- the page swelling a little as it lifts toward the viewer
+local flipShadow: Frame -- the lifted page's shadow on the page underneath
+local flipShadowFade: UIGradient
+local flipping = false
+local queuedSpread: number? = nil -- a redraw asked for mid-turn, done when the turn ends
 local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
 local searchText = ""
 local tooltip: Frame
@@ -578,10 +599,12 @@ local function renderTile(tile: Tile)
 			break
 		end
 	end
+	-- Tiny pockets (small phones) keep just the count: the second chip's text would not fit
+	local roomy = (pageGrids[1] and pageGrids[1].CellSize.X.Offset or 0) >= SMALL_POCKET
 	tile.levelLabel.Text = table.concat(parts, " · ")
-	tile.levelLabel.Visible = #parts > 0
+	tile.levelLabel.Visible = roomy and #parts > 0
 	-- With chips the count shrinks to the left part of the row
-	local short = #parts > 0
+	local short = roomy and #parts > 0
 	tile.countLabel.Size = UDim2.new(if short then 0.36 else 1, 0, 0, CHIP_ROW - 3)
 	tile.countLabel.Text = if owned == 0 then "shown" elseif short then `x{owned}` else `Owned {owned}`
 end
@@ -646,31 +669,169 @@ local function getSpreadCount(): number
 	return BinderSpreads.count(#visibleTiles, pocketsPerPage)
 end
 
--- Puts the tiles of the current spread into the pages and draws them; the rest wait off-screen.
+-- The tiles a spread shows on its left and right page, in pocket order.
 -- Spread 1 is the set's cover (left page) and page 1 (right page).
-local function showSpread(index: number)
-	spreadIndex = math.clamp(index, 1, getSpreadCount())
-	local first, last = BinderSpreads.cards(spreadIndex, #visibleTiles, pocketsPerPage)
-	local shownSet: { [Tile]: boolean } = {}
+local function getSpreadTiles(index: number): ({ Tile }, { Tile })
+	local first, last = BinderSpreads.cards(index, #visibleTiles, pocketsPerPage)
+	local left, right = {}, {}
 	for position = first, last do
 		local tile = visibleTiles[position]
 		local offset = position - first
-		shownSet[tile] = true
 		tile.button.LayoutOrder = offset
-		if spreadIndex == 1 then
-			tile.button.Parent = pages[2]
-		else
-			tile.button.Parent = pages[if offset < pocketsPerPage then 1 else 2]
-		end
+		table.insert(if BinderSpreads.side(index, offset, pocketsPerPage) == "Left" then left else right, tile)
+	end
+	return left, right
+end
+
+local function placeTiles(list: { Tile }, parent: Instance)
+	for _, tile in list do
+		tile.button.Parent = parent
 		renderTile(tile)
 	end
+end
+
+local function getTilesOn(parent: Instance): { Tile }
+	local list = {}
 	for _, tile in tiles do
-		if not shownSet[tile] then
-			tile.button.Parent = nil
+		if tile.button.Parent == parent then
+			table.insert(list, tile)
 		end
 	end
-	coverPage.Visible = spreadIndex == 1
+	return list
+end
+
+local function updatePageLabel()
 	pageLabel.Text = BinderSpreads.label(spreadIndex, BinderSpreads.pages(#visibleTiles, pocketsPerPage))
+end
+
+-- Puts the tiles of a spread into the pages at once and draws them; the rest wait off-screen
+local function showSpread(index: number)
+	if flipping then
+		queuedSpread = index
+		return
+	end
+	spreadIndex = math.clamp(index, 1, getSpreadCount())
+	local left, right = getSpreadTiles(spreadIndex)
+	for _, tile in tiles do
+		tile.button.Parent = nil
+	end
+	placeTiles(left, pages[1])
+	placeTiles(right, pages[2])
+	coverPage.Visible = spreadIndex == 1
+	updatePageLabel()
+end
+
+-- Where the sheet and its shadow sit: against the spine on the given side, the cards held at the spine edge
+local function dockSheet(side: BinderSpreads.Side)
+	local onRight = side == "Right"
+	flipSheet.AnchorPoint = Vector2.new(if onRight then 0 else 1, 0.5)
+	flipSheet.Position = if onRight then UDim2.new(0.5, 10, 0.5, 0) else UDim2.new(0.5, -10, 0.5, 0)
+	flipContent.AnchorPoint = Vector2.new(if onRight then 0 else 1, 0.5)
+	flipContent.Position = UDim2.fromScale(if onRight then 0 else 1, 0.5)
+	flipShadow.AnchorPoint = flipSheet.AnchorPoint
+	flipShadow.Position = flipSheet.Position
+	-- Darkest against the page's edge, fading away from the spine
+	flipShadowFade.Rotation = if onRight then 0 else 180
+end
+
+-- One frame of the turn. turn: 0 (flat on its first side) to 1 (flat on the other). The page rotates about the
+-- spine: seen from the front its width follows cos(angle); it swells a little as it lifts toward the viewer,
+-- darkens as it turns edge-on, and its shadow stretches across the page underneath.
+local function poseSheet(turn: number, size: Vector2)
+	local look = Collection.BOOK
+	local angle = turn * math.pi
+	local lift = math.sin(angle)
+	local width = math.abs(math.cos(angle)) * size.X
+	flipSheet.Size = UDim2.fromOffset(width, size.Y)
+	flipLift.Scale = 1 + look.FLIP_LIFT * lift
+	-- Front face darkens as it turns away; the back face starts dim and brightens as it lands
+	local shade = if turn < 0.5 then look.FLIP_SHADE * lift else look.FLIP_SHADE * lift * 0.7
+	flipShade.BackgroundTransparency = 1 - shade
+	flipShadow.Size = UDim2.fromOffset(width + size.X * look.FLIP_SHADOW * lift, size.Y)
+	flipShadow.BackgroundTransparency = 1 - 0.55 * lift
+end
+
+-- Turns to a spread like a real page: the turning page (with its cards) rotates about the spine, then lands on
+-- the other side showing the next cards, its back. Everything else updates at once (showSpread).
+local function flipTo(index: number)
+	if flipping then
+		return
+	end
+	local target = math.clamp(index, 1, getSpreadCount())
+	local side = BinderSpreads.turningSide(spreadIndex, target)
+	if not side or not panel.Visible then
+		showSpread(target)
+		return
+	end
+	flipping = true
+	local look = Collection.BOOK
+	local forward = side == "Right"
+	local turning = pages[if forward then 2 else 1]
+	local landing = pages[if forward then 1 else 2]
+	local newLeft, newRight = getSpreadTiles(target)
+	-- In the book's own pixels: the book is scaled down while Filters are open
+	local size = turning.AbsoluteSize / bookScale.Scale
+	flipContent.Size = UDim2.fromOffset(size.X, size.Y)
+
+	-- The sheet lifts the turning page's cards; the new cards wait underneath it
+	dockSheet(side)
+	local leaving = getTilesOn(turning)
+	for _, tile in leaving do
+		tile.button.Parent = flipContent
+	end
+	placeTiles(if forward then newRight else newLeft, turning)
+	if not forward and target == 1 then
+		coverPage.Visible = true -- the cover is under the left page that turns away
+	end
+	local arriving = if forward then newLeft else newRight
+	poseSheet(0, size)
+	flipSheet.Visible = true
+	flipShadow.Visible = true
+
+	local started = os.clock()
+	local flippedOver = false
+	local done = Instance.new("BindableEvent")
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = math.min(1, (os.clock() - started) / look.FLIP_SECONDS)
+		-- Ease in and out: slow lift, quick swing over the spine, soft landing
+		local turn = t * t * (3 - 2 * t)
+		if turn >= 0.5 and not flippedOver then
+			-- Edge-on at the spine: the sheet now shows its back (the next cards) on the other side
+			flippedOver = true
+			for _, tile in leaving do
+				tile.button.Parent = nil
+			end
+			dockSheet(if forward then "Left" else "Right")
+			placeTiles(arriving, flipContent)
+		end
+		poseSheet(turn, size)
+		if t >= 1 then
+			connection:Disconnect()
+			done:Fire()
+		end
+	end)
+	done.Event:Wait()
+	done:Destroy()
+
+	for _, tile in getTilesOn(landing) do
+		tile.button.Parent = nil
+	end
+	for _, tile in arriving do
+		tile.button.Parent = landing
+	end
+	flipSheet.Visible = false
+	flipShadow.Visible = false
+	flipLift.Scale = 1
+	spreadIndex = target
+	coverPage.Visible = target == 1
+	updatePageLabel()
+	flipping = false
+	local queued = queuedSpread
+	if queued then
+		queuedSpread = nil
+		showSpread(queued)
+	end
 end
 
 -- Lights up the Filters panel's choices
@@ -714,9 +875,16 @@ local function refreshSet()
 		end
 	end
 	local color = Collection.SET_COLORS[currentSet] or UIKit.Colors.Accent
-	coverPage.BackgroundColor3 = color
+	local art = getSetArt(currentSet)
+	local leather = coverPage:FindFirstChild("Leather") :: UIGradient
+	leather.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.12), color:Lerp(Color3.new(0, 0, 0), 0.35))
+	coverArt.Image = art or ""
+	coverArt.BackgroundColor3 = color:Lerp(Color3.new(0, 0, 0), 0.25)
+	coverEmblem.Visible = art == nil
 	coverTitle.Text = string.upper(currentSet)
-	coverProgress.Text = `{owned} / {total}`
+	coverProgress.Text = `{owned} / {total} collected`
+	coverFill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
+	coverValue.Text = string.format("Worth $%.2f", value)
 	coverEmblem.Text = Collection.SET_EMBLEMS[currentSet] or "✨"
 	progressName.Text = currentSet
 	progressCount.Text = `📖 {owned} / {total}`
@@ -726,7 +894,8 @@ local function refreshSet()
 	for set, tab in setTabs do
 		local active = set == currentSet
 		tab.BackgroundColor3 = if active then (Collection.SET_COLORS[set] or UIKit.Colors.Accent) else UIKit.Colors.Row
-		tab.Size = UDim2.fromOffset(if active then 76 else 64, 70)
+		-- The open set's tab sticks out a little further
+		tab.Size = UDim2.fromOffset(Collection.BOOK.TAB_WIDTH + (if active then 20 else 12), Collection.BOOK.TAB_HEIGHT)
 	end
 end
 
@@ -822,18 +991,53 @@ local function buildTile(card: Card, parent: Instance): Tile
 	button.Text = ""
 	button.Parent = parent
 
-	-- The card on top, keeping its shape; the chips sit in the row under it, clear of the card's text
+	-- The card on top, keeping its shape, in a plastic sleeve; the chips sit in the row under it
 	local holder = Instance.new("Frame")
 	holder.Name = "CardHolder"
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.new(1, 0, 1, -CHIP_ROW)
 	holder.Parent = button
+	local sleeve = Instance.new("Frame")
+	sleeve.Name = "Sleeve"
+	sleeve.AnchorPoint = Vector2.new(0.5, 0)
+	sleeve.Position = UDim2.fromScale(0.5, 0)
+	sleeve.Size = UDim2.fromScale(1, 1)
+	sleeve.BackgroundColor3 = Collection.BOOK.SLEEVE
+	sleeve.Parent = holder
+	UIKit.corner(sleeve, 8)
+	UIKit.outline(sleeve, Collection.BOOK.SLEEVE_EDGE, 1.5)
+	local sleeveShape = Instance.new("UIAspectRatioConstraint")
+	sleeveShape.AspectRatio = CARD_ASPECT
+	sleeveShape.Parent = sleeve
 	local inner, stroke = addCardFrame(holder)
 	inner.AnchorPoint = Vector2.new(0.5, 0)
 	inner.Position = UDim2.fromScale(0.5, 0)
 	local shape = Instance.new("UIAspectRatioConstraint")
 	shape.AspectRatio = CARD_ASPECT
 	shape.Parent = inner
+	-- The plastic's glint, a soft diagonal band over the card
+	local glint = Instance.new("Frame")
+	glint.Name = "Glint"
+	glint.AnchorPoint = Vector2.new(0.5, 0)
+	glint.Position = UDim2.fromScale(0.5, 0)
+	glint.Size = UDim2.fromScale(1, 1)
+	glint.BackgroundColor3 = Color3.new(1, 1, 1)
+	glint.BorderSizePixel = 0
+	glint.ZIndex = 20
+	glint.Parent = holder
+	UIKit.corner(glint, 8)
+	local glintShape = Instance.new("UIAspectRatioConstraint")
+	glintShape.AspectRatio = CARD_ASPECT
+	glintShape.Parent = glint
+	local glintBand = Instance.new("UIGradient")
+	glintBand.Rotation = 35
+	glintBand.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.18, Collection.BOOK.SLEEVE_SHINE),
+		NumberSequenceKeypoint.new(0.32, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	glintBand.Parent = glint
 
 	local countLabel = UIKit.label(button, "", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
 	countLabel.Name = "Count"
@@ -841,10 +1045,11 @@ local function buildTile(card: Card, parent: Instance): Tile
 	countLabel.Position = UDim2.fromScale(0, 1)
 	countLabel.Size = UDim2.new(1, 0, 0, CHIP_ROW - 3)
 	countLabel.TextXAlignment = Enum.TextXAlignment.Center
-	countLabel.BackgroundColor3 = UIKit.Colors.Panel
-	countLabel.BackgroundTransparency = 0.2
+	countLabel.TextColor3 = Collection.BOOK.INK
+	countLabel.BackgroundColor3 = Color3.fromRGB(24, 26, 36)
 	countLabel.ZIndex = 3
-	UIKit.corner(countLabel, 6)
+	UIKit.corner(countLabel, 8)
+	UIKit.outline(countLabel, Collection.BOOK.EDGE, 1.5)
 
 	local levelLabel = UIKit.label(button, "", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
 	levelLabel.Name = "Level"
@@ -852,11 +1057,26 @@ local function buildTile(card: Card, parent: Instance): Tile
 	levelLabel.Position = UDim2.fromScale(1, 1)
 	levelLabel.Size = UDim2.new(0.62, 0, 0, CHIP_ROW - 3)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
-	levelLabel.BackgroundColor3 = UIKit.Colors.Accent
-	levelLabel.BackgroundTransparency = 0.1
+	levelLabel.TextColor3 = Color3.fromRGB(210, 225, 255)
+	levelLabel.BackgroundColor3 = Color3.fromRGB(45, 70, 150)
 	levelLabel.Visible = false
 	levelLabel.ZIndex = 3
-	UIKit.corner(levelLabel, 6)
+	UIKit.corner(levelLabel, 8)
+	UIKit.outline(levelLabel, Color3.fromRGB(90, 120, 210), 1.5)
+
+	-- Chip text shrinks to fit narrow pockets ("B · Lv 4 · Job")
+	for _, chip in { countLabel, levelLabel } do
+		chip.TextScaled = true
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MaxTextSize = 13
+		fit.Parent = chip
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft = UDim.new(0, 3)
+		pad.PaddingRight = UDim.new(0, 3)
+		pad.PaddingTop = UDim.new(0, 2)
+		pad.PaddingBottom = UDim.new(0, 2)
+		pad.Parent = chip
+	end
 
 	local tile: Tile = { card = card, button = button, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
 	button.Activated:Connect(function()
@@ -1082,7 +1302,9 @@ local function fitPockets()
 	if not page then
 		return
 	end
-	local layout = PocketLayout.choose(page.AbsoluteSize.X, page.AbsoluteSize.Y, POCKET_OPTIONS)
+	-- In the book's own pixels: the book is scaled down while Filters are open
+	local scale = if bookScale then bookScale.Scale else 1
+	local layout = PocketLayout.choose(page.AbsoluteSize.X / scale, page.AbsoluteSize.Y / scale, POCKET_OPTIONS)
 	for _, grid in pageGrids do
 		grid.CellSize = UDim2.fromOffset(layout.width, layout.height)
 		grid.FillDirectionMaxCells = layout.columns
@@ -1104,6 +1326,8 @@ local function fitPockets()
 		if coverPage then
 			showSpread(spreadIndex)
 		end
+	elseif coverPage then
+		showSpread(spreadIndex) -- same pockets, new size: redraw so the chips fit
 	end
 end
 
@@ -1244,8 +1468,8 @@ local function buildBag(parent: Frame)
 		button.ZIndex = 12
 		return button
 	end
-	cardsTab = tab("📖 Cards", 150)
-	bagTab = tab("🎒 Bag", 272)
+	cardsTab = tab("📖 Cards", 16)
+	bagTab = tab("🎒 Bag", 138)
 	-- The card view covers the whole binder, title row included: hide the tabs while it's open
 	detail:GetPropertyChangedSignal("Visible"):Connect(function()
 		cardsTab.Visible = not detail.Visible
@@ -1451,12 +1675,55 @@ local function buildFilters(parent: Frame)
 end
 
 -- Opens or closes the Filters panel; the book shrinks and slides left to make room
+-- Where the book sits: as big as its binder shape fits between the top row, bottom row and arrow lanes,
+-- centred there, or (Filters open) shrunk into the room left of the Filters panel, arrows included
+local function getBookLayout(filtersOpen: boolean): (UDim2, UDim2, number)
+	local look = Collection.BOOK
+	local area = panel.AbsoluteSize
+	-- The biggest binder shape between a top and bottom margin, and the lanes either side
+	local lane = if area.X < look.NARROW_BELOW then look.NARROW_LANE else look.SIDE_LANE
+	local function fit(top: number, bottom: number): (number, number, number)
+		local width = math.max(200, area.X - lane * 2)
+		local height = math.max(140, area.Y - top - bottom)
+		if width / height > look.ASPECT then
+			width = height * look.ASPECT
+		else
+			height = width / look.ASPECT
+		end
+		return width, height, top + (area.Y - top - bottom) / 2
+	end
+	local width, height, centreY = fit(look.MARGIN, look.MARGIN_BOTTOM)
+	local left = (area.X - width) / 2 - look.TAB_WIDTH
+	local right = (area.X + width) / 2
+	if left < look.CORNER_LEFT or right > area.X - look.CORNER_RIGHT then
+		width, height, centreY = fit(look.TOP_BAND, look.BOTTOM_BAND)
+	end
+	local size = UDim2.fromOffset(width, height)
+	if not filtersOpen then
+		return size, UDim2.new(0.5, 0, 0, centreY), 1
+	end
+	local room = area.X - Collection.FILTERS_WIDTH - 32
+	local scale = math.min(1, room / (width + lane * 2))
+	return size, UDim2.fromOffset(room / 2, centreY), scale
+end
+
+local function layoutBook()
+	local size, position, scale = getBookLayout(filtersPanel.Visible)
+	bookHolder.Size = size
+	bookHolder.Position = position
+	bookScale.Scale = scale
+	progressCard.Visible = panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
+	local roomy = panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
+	for _, arrows in arrowLanes do
+		arrows.Visible = roomy
+	end
+end
+
 function setFiltersOpen(open: boolean)
 	local info = TweenInfo.new(Collection.BOOK.SLIDE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(bookScale, info, { Scale = if open then Collection.BOOK.FILTER_SCALE else 1 }):Play()
-	TweenService:Create(bookHolder, info, {
-		Position = UDim2.fromScale(if open then Collection.BOOK.FILTER_X else 0.5, Collection.BOOK.CENTRE_Y),
-	}):Play()
+	local _, position, scale = getBookLayout(open)
+	TweenService:Create(bookScale, info, { Scale = scale }):Play()
+	TweenService:Create(bookHolder, info, { Position = position }):Play()
 	if open then
 		filtersPanel.Visible = true
 		Motion.popIn(filtersPanel)
@@ -1475,6 +1742,7 @@ local function makePage(book: Frame, isLeft: boolean): Frame
 	page.BackgroundColor3 = Collection.BOOK.PAGE_COLOR
 	page.Parent = book
 	UIKit.corner(page, 10)
+	UIKit.outline(page, Collection.BOOK.EDGE, 1.5)
 
 	local grid = Instance.new("UIGridLayout")
 	grid.CellPadding = UDim2.fromOffset(POCKET_OPTIONS.gap, POCKET_OPTIONS.gap)
@@ -1488,57 +1756,218 @@ local function makePage(book: Frame, isLeft: boolean): Frame
 	return page
 end
 
--- The set's cover over spread 1's left page: its colour, name, progress and emblem. It sits on the book,
--- not in the page (the page's grid would size it like a pocket).
+-- The art for a set's cover: the front of the pack that sells it (none for sets without a pack)
+function getSetArt(set: string): string?
+	for _, pack in Packs.ById do
+		if pack.name == set and pack.art then
+			return pack.art
+		end
+	end
+	return nil
+end
+
+-- The set's cover over spread 1's left page: leather in the set's colour with an embossed border, a title band
+-- (name and progress), the pack art in a framed window, the set's worth. It sits on the book, not in the page
+-- (the page's grid would size it like a pocket).
 local function buildCover(page: Frame)
 	coverPage = Instance.new("Frame")
 	coverPage.Name = "Cover"
 	coverPage.Position = page.Position
 	coverPage.Size = page.Size
-	coverPage.BackgroundColor3 = UIKit.Colors.Accent
+	coverPage.BackgroundColor3 = Color3.new(1, 1, 1)
 	coverPage.ZIndex = page.ZIndex + 1
 	coverPage.Parent = page.Parent
 	UIKit.corner(coverPage, 10)
-	local gradient = Instance.new("UIGradient")
-	gradient.Rotation = 90
-	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 150))
-	gradient.Parent = coverPage
-	local border = Instance.new("Frame")
-	border.Position = UDim2.fromScale(0.06, 0.05)
-	border.Size = UDim2.fromScale(0.88, 0.9)
-	border.BackgroundTransparency = 1
-	border.ZIndex = coverPage.ZIndex
-	border.Parent = coverPage
-	UIKit.corner(border, 12)
-	UIKit.outline(border, Color3.new(1, 1, 1), 2).Transparency = 0.5
+	local leather = Instance.new("UIGradient")
+	leather.Name = "Leather"
+	leather.Rotation = 60
+	leather.Parent = coverPage
+	local emboss = Instance.new("Frame")
+	emboss.Name = "Emboss"
+	emboss.Position = UDim2.fromScale(0.05, 0.035)
+	emboss.Size = UDim2.fromScale(0.9, 0.93)
+	emboss.BackgroundTransparency = 1
+	emboss.ZIndex = coverPage.ZIndex + 1
+	emboss.Parent = coverPage
+	UIKit.corner(emboss, 10)
+	UIKit.outline(emboss, Color3.new(1, 1, 1), 2).Transparency = 0.6
+
 	local band = Instance.new("Frame")
-	band.Position = UDim2.fromScale(0.06, 0.16)
-	band.Size = UDim2.fromScale(0.88, 0.22)
+	band.Name = "TitleBand"
+	band.Position = UDim2.fromScale(0.05, 0.1)
+	band.Size = UDim2.fromScale(0.9, 0.2)
 	band.BackgroundColor3 = Color3.new(0, 0, 0)
-	band.BackgroundTransparency = 0.75
+	band.BackgroundTransparency = 0.72
 	band.BorderSizePixel = 0
-	band.ZIndex = coverPage.ZIndex
+	band.ZIndex = coverPage.ZIndex + 1
 	band.Parent = coverPage
-	coverTitle = UIKit.label(band, "", Enum.Font.FredokaOne, 40, Color3.new(1, 1, 1))
-	coverTitle.Position = UDim2.fromScale(0.05, 0.05)
-	coverTitle.Size = UDim2.fromScale(0.9, 0.55)
+	-- Warm off-white: plain white would be taken as UIKit's auto colour and turn navy on the cover's base
+	coverTitle = UIKit.label(band, "", Enum.Font.FredokaOne, 40, COVER_TEXT)
+	coverTitle.Position = UDim2.fromScale(0.05, 0.06)
+	coverTitle.Size = UDim2.fromScale(0.9, 0.5)
 	coverTitle.TextScaled = true
 	coverTitle.TextXAlignment = Enum.TextXAlignment.Center
 	coverTitle.ZIndex = band.ZIndex + 1
-	coverProgress = UIKit.label(band, "", Enum.Font.FredokaOne, 24, Color3.new(1, 1, 1))
+	coverProgress = UIKit.label(band, "", Enum.Font.FredokaOne, 24, Color3.fromRGB(255, 230, 200))
 	coverProgress.Position = UDim2.fromScale(0.05, 0.6)
 	coverProgress.Size = UDim2.fromScale(0.9, 0.32)
 	coverProgress.TextScaled = true
 	coverProgress.TextXAlignment = Enum.TextXAlignment.Center
 	coverProgress.ZIndex = band.ZIndex + 1
-	coverEmblem = UIKit.label(coverPage, "", Enum.Font.FredokaOne, 80, Color3.new(1, 1, 1))
+
+	-- The pack art in a framed window, like a label set into the leather
+	coverArt = Instance.new("ImageLabel")
+	coverArt.Name = "Art"
+	coverArt.AnchorPoint = Vector2.new(0.5, 0)
+	coverArt.Position = UDim2.fromScale(0.5, 0.36)
+	coverArt.Size = UDim2.fromScale(0.62, 0.44)
+	coverArt.ScaleType = Enum.ScaleType.Crop
+	coverArt.ZIndex = coverPage.ZIndex + 1
+	coverArt.Parent = coverPage
+	UIKit.corner(coverArt, 10)
+	UIKit.outline(coverArt, Color3.fromRGB(255, 225, 160), 3)
+	coverEmblem = UIKit.label(coverArt, "", Enum.Font.FredokaOne, 80, COVER_TEXT)
 	coverEmblem.AnchorPoint = Vector2.new(0.5, 0.5)
-	coverEmblem.Position = UDim2.fromScale(0.5, 0.66)
-	coverEmblem.Size = UDim2.fromScale(0.5, 0.36)
+	coverEmblem.Position = UDim2.fromScale(0.5, 0.5)
+	coverEmblem.Size = UDim2.fromScale(0.6, 0.6)
 	coverEmblem.TextScaled = true
 	coverEmblem.TextXAlignment = Enum.TextXAlignment.Center
-	coverEmblem.TextTransparency = 0.15
-	coverEmblem.ZIndex = coverPage.ZIndex + 1
+	coverEmblem.ZIndex = coverArt.ZIndex + 1
+
+	local track = Instance.new("Frame")
+	track.Name = "Progress"
+	track.Position = UDim2.fromScale(0.18, 0.85)
+	track.Size = UDim2.fromScale(0.64, 0.025)
+	track.BackgroundColor3 = Color3.new(0, 0, 0)
+	track.BackgroundTransparency = 0.6
+	track.ZIndex = coverPage.ZIndex + 1
+	track.Parent = coverPage
+	UIKit.corner(track, 6)
+	coverFill = Instance.new("Frame")
+	coverFill.Size = UDim2.fromScale(0, 1)
+	coverFill.BackgroundColor3 = Color3.fromRGB(255, 230, 160)
+	coverFill.ZIndex = track.ZIndex + 1
+	coverFill.Parent = track
+	UIKit.corner(coverFill, 6)
+	coverValue = UIKit.label(coverPage, "", Enum.Font.FredokaOne, 24, COVER_TEXT)
+	coverValue.Position = UDim2.fromScale(0.1, 0.885)
+	coverValue.Size = UDim2.fromScale(0.8, 0.055)
+	coverValue.TextScaled = true
+	coverValue.TextXAlignment = Enum.TextXAlignment.Center
+	coverValue.ZIndex = coverPage.ZIndex + 1
+end
+
+-- The sheet that turns (flipTo): page-coloured, clipping a page-sized holder for the turning cards, with a
+-- shade that darkens as it folds edge-on
+local function buildFlipSheet()
+	local look = Collection.BOOK
+	flipSheet = Instance.new("Frame")
+	flipSheet.Name = "TurningPage"
+	flipSheet.BackgroundColor3 = look.PAGE_COLOR
+	flipSheet.ClipsDescendants = true
+	flipSheet.Visible = false
+	flipSheet.ZIndex = pages[1].ZIndex + 2
+	flipSheet.Parent = book
+	UIKit.corner(flipSheet, 14)
+	UIKit.outline(flipSheet, look.EDGE, 1.5)
+	flipContent = Instance.new("Frame")
+	flipContent.Name = "Cards"
+	flipContent.BackgroundTransparency = 1
+	flipContent.ZIndex = flipSheet.ZIndex
+	flipContent.Parent = flipSheet
+	local grid = pageGrids[1]:Clone()
+	grid.Parent = flipContent
+	table.insert(pageGrids, grid)
+	flipShade = Instance.new("Frame")
+	flipShade.Name = "Shade"
+	flipShade.Size = UDim2.fromScale(1, 1)
+	flipShade.BackgroundColor3 = Color3.fromRGB(20, 26, 50)
+	flipShade.BackgroundTransparency = 1
+	flipShade.BorderSizePixel = 0
+	flipShade.ZIndex = flipSheet.ZIndex + 5
+	flipShade.Parent = flipSheet
+	local shadeGlint = Instance.new("UIGradient") -- the edge nearest the spine catches the light
+	shadeGlint.Transparency = NumberSequence.new(0, 0.35)
+	shadeGlint.Parent = flipShade
+	flipLift = Instance.new("UIScale")
+	flipLift.Parent = flipSheet
+
+	flipShadow = Instance.new("Frame")
+	flipShadow.Name = "TurnShadow"
+	flipShadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	flipShadow.BorderSizePixel = 0
+	flipShadow.Visible = false
+	flipShadow.ZIndex = flipSheet.ZIndex - 1
+	flipShadow.Parent = book
+	flipShadowFade = Instance.new("UIGradient")
+	flipShadowFade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.7, 0.4),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	flipShadowFade.Parent = flipShadow
+end
+
+-- The binder's case: dark leather with a soft sheen and a stitched seam just inside its edge
+function buildCase()
+	local look = Collection.BOOK
+	book.BackgroundColor3 = Color3.new(1, 1, 1)
+	book.ZIndex = panel.ZIndex
+	book.Parent = bookHolder
+	UIKit.corner(book, 20)
+	UIKit.outline(book, look.CASE_DARK, 3)
+	local leather = Instance.new("UIGradient")
+	leather.Color = ColorSequence.new(look.CASE, look.CASE_DARK)
+	leather.Rotation = 70
+	leather.Parent = book
+	local seam = Instance.new("Frame")
+	seam.Name = "Stitching"
+	seam.Position = UDim2.fromOffset(6, 6)
+	seam.Size = UDim2.new(1, -12, 1, -12)
+	seam.BackgroundTransparency = 1
+	seam.ZIndex = book.ZIndex
+	seam.Parent = book
+	UIKit.corner(seam, 16)
+	UIKit.outline(seam, look.STITCH, 1.5).Transparency = 0.45
+end
+
+-- A chrome bar down the middle with three rings over it, holding the pages
+function buildSpine()
+	local look = Collection.BOOK
+	local rail = Instance.new("Frame")
+	rail.Name = "Spine"
+	rail.AnchorPoint = Vector2.new(0.5, 0)
+	rail.Position = UDim2.new(0.5, 0, 0, 22)
+	rail.Size = UDim2.new(0, 14, 1, -44)
+	rail.BackgroundColor3 = Color3.new(1, 1, 1)
+	rail.ZIndex = book.ZIndex + 6
+	rail.Parent = book
+	UIKit.corner(rail, 7)
+	local railShine = Instance.new("UIGradient")
+	railShine.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, look.CHROME[2]),
+		ColorSequenceKeypoint.new(0.4, look.CHROME[1]),
+		ColorSequenceKeypoint.new(1, look.CHROME[2]),
+	})
+	railShine.Parent = rail
+	for _, y in { 0.2, 0.5, 0.8 } do
+		local ring = Instance.new("Frame")
+		ring.Name = "Ring"
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromScale(0.5, y)
+		ring.Size = UDim2.new(0.075, 0, 0.065, 0) -- scales with the book
+		ring.BackgroundTransparency = 1
+		ring.ZIndex = book.ZIndex + 7
+		ring.Parent = book
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(0.5, 0)
+		round.Parent = ring
+		local metal = UIKit.outline(ring, Color3.new(1, 1, 1), 3)
+		local shine = Instance.new("UIGradient")
+		shine.Color = ColorSequence.new(look.CHROME[1], look.CHROME[2])
+		shine.Rotation = 90
+		shine.Parent = metal
+	end
 end
 
 -- A round arrow button beside the book, with its key chip
@@ -1559,7 +1988,7 @@ local function buildPanel(parent: Instance)
 	-- Full screen, the world dimmed behind; no header (the book is the screen)
 	panel.Size = UDim2.fromScale(1, 1)
 	panel.BackgroundColor3 = Color3.new(0, 0, 0)
-	panel.BackgroundTransparency = 0.45
+	panel.BackgroundTransparency = Collection.BOOK.BACKDROP_TRANSPARENCY
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
 		sizeLimit:Destroy()
@@ -1587,75 +2016,57 @@ local function buildPanel(parent: Instance)
 	bookHolder = Instance.new("Frame")
 	bookHolder.Name = "BookHolder"
 	bookHolder.AnchorPoint = Vector2.new(0.5, 0.5)
-	bookHolder.Position = UDim2.fromScale(0.5, Collection.BOOK.CENTRE_Y)
-	bookHolder.Size = UDim2.fromScale(Collection.BOOK.WIDTH, Collection.BOOK.HEIGHT)
+	bookHolder.Position = UDim2.fromScale(0.5, 0.5)
+	bookHolder.Size = UDim2.fromScale(0.8, 0.8) -- layoutBook sizes it to the screen
 	bookHolder.BackgroundTransparency = 1
 	bookHolder.ZIndex = panel.ZIndex
 	bookHolder.Parent = panel
-	local shape = Instance.new("UIAspectRatioConstraint")
-	shape.AspectRatio = Collection.BOOK.ASPECT
-	shape.Parent = bookHolder
 	bookScale = Instance.new("UIScale")
 	bookScale.Parent = bookHolder
 
 	book = Instance.new("Frame")
 	book.Name = "Book"
 	book.Size = UDim2.fromScale(1, 1)
-	book.BackgroundColor3 = Collection.BOOK.COLOR
-	book.ZIndex = panel.ZIndex
-	book.Parent = bookHolder
-	UIKit.corner(book, 18)
-	UIKit.outline(book, Collection.BOOK.STITCH, 2).Transparency = 0.4
+	buildCase()
 	pages = { makePage(book, true), makePage(book, false) }
 	buildCover(pages[1])
+	buildFlipSheet()
+	buildSpine()
 
-	-- Rings down the middle
-	for index = 1, 3 do
-		local ring = Instance.new("Frame")
-		ring.AnchorPoint = Vector2.new(0.5, 0.5)
-		ring.Position = UDim2.fromScale(0.5, index / 4)
-		ring.Size = UDim2.fromOffset(46, 14)
-		ring.BackgroundColor3 = Color3.fromRGB(225, 228, 238)
-		ring.ZIndex = book.ZIndex + 3
-		ring.Parent = book
-		UIKit.corner(ring, 7)
-		UIKit.outline(ring, Color3.fromRGB(120, 125, 145), 2)
-	end
-
-	-- Set tabs on the book's left edge
-	for index, set in Collection.SETS do
+	-- Set tabs: bookmarks sticking out of the book's left edge, tucked under it
+	local tabIndex = 0
+	local look = Collection.BOOK
+	for _, set in Collection.SETS do
 		if Cards.BySet[set] then
-			local tab = UIKit.button(bookHolder, string.upper(set), UIKit.Colors.Row)
+			local tab = UIKit.button(bookHolder, string.gsub(string.upper(set), " ", "\n"), UIKit.Colors.Row)
 			tab.Name = "SetTab" .. string.gsub(set, " ", "")
 			tab.AnchorPoint = Vector2.new(1, 0)
-			tab.Position = UDim2.new(0, 10, 0, 24 + (index - 1) * 80)
-			tab.Size = UDim2.fromOffset(64, 70)
-			tab.Font = Enum.Font.FredokaOne
+			tab.Position = UDim2.new(0, 12, 0, 40 + tabIndex * (look.TAB_HEIGHT + 8))
+			tab.Size = UDim2.fromOffset(look.TAB_WIDTH + 12, look.TAB_HEIGHT)
 			tab.TextScaled = true
 			tab.TextWrapped = true
+			tab.ZIndex = book.ZIndex - 1
 			local tabPadding = tab:FindFirstChildOfClass("UIPadding")
 			if tabPadding then
 				tabPadding.PaddingLeft = UDim.new(0, 6)
-				tabPadding.PaddingRight = UDim.new(0, 8)
-				tabPadding.PaddingTop = UDim.new(0, 6)
-				tabPadding.PaddingBottom = UDim.new(0, 10)
+				tabPadding.PaddingRight = UDim.new(0, 18) -- the tucked-in part
 			end
-			tab.ZIndex = book.ZIndex - 1
 			tab.Activated:Connect(function()
 				openSet(set)
 			end)
 			setTabs[set] = tab
+			tabIndex += 1
 		end
 	end
 
-	-- Page counter under the book, an arrow either side (Q/E one spread)
+	-- Page counter on the book's bottom edge like a binder tab, an arrow either side (Q/E one spread)
 	local counter = Instance.new("Frame")
 	counter.Name = "Counter"
-	counter.AnchorPoint = Vector2.new(0.5, 0)
-	counter.Position = UDim2.new(0.5, 0, 1, 10)
-	counter.Size = UDim2.fromOffset(140, 40)
+	counter.AnchorPoint = Vector2.new(0.5, 0.5)
+	counter.Position = UDim2.new(0.5, 0, 1, 4)
+	counter.Size = UDim2.fromOffset(128, 36)
 	counter.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
-	counter.ZIndex = book.ZIndex
+	counter.ZIndex = book.ZIndex + 8
 	counter.Parent = bookHolder
 	UIKit.corner(counter, 20)
 	pageLabel = UIKit.label(counter, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
@@ -1664,7 +2075,7 @@ local function buildPanel(parent: Instance)
 
 	local leftArrows = Instance.new("Frame")
 	leftArrows.AnchorPoint = Vector2.new(1, 0.5)
-	leftArrows.Position = UDim2.new(0, -96, 0.5, 0) -- clear of the set tabs
+	leftArrows.Position = UDim2.new(0, -(Collection.BOOK.TAB_WIDTH + 24), 0.5, 0) -- clear of the set tabs
 	leftArrows.Size = UDim2.fromOffset(64, 64)
 	leftArrows.BackgroundTransparency = 1
 	leftArrows.Parent = bookHolder
@@ -1672,8 +2083,9 @@ local function buildPanel(parent: Instance)
 	leftList.Padding = UDim.new(0, 16)
 	leftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	leftList.Parent = leftArrows
+	table.insert(arrowLanes, leftArrows)
 	arrowButton(leftArrows, "<", "Q", function()
-		showSpread(spreadIndex - 1)
+		task.spawn(flipTo, spreadIndex - 1)
 	end).LayoutOrder = 1
 
 	local rightArrows = leftArrows:Clone()
@@ -1683,10 +2095,11 @@ local function buildPanel(parent: Instance)
 		end
 	end
 	rightArrows.AnchorPoint = Vector2.new(0, 0.5)
-	rightArrows.Position = UDim2.new(1, 18, 0.5, 0)
+	rightArrows.Position = UDim2.new(1, 20, 0.5, 0)
 	rightArrows.Parent = bookHolder
+	table.insert(arrowLanes, rightArrows)
 	arrowButton(rightArrows, ">", "E", function()
-		showSpread(spreadIndex + 1)
+		task.spawn(flipTo, spreadIndex + 1)
 	end).LayoutOrder = 1
 
 	-- Filters (F), top right next to the close button
@@ -1706,28 +2119,29 @@ local function buildPanel(parent: Instance)
 	local progress = Instance.new("Frame")
 	progress.Name = "SetProgress"
 	progress.AnchorPoint = Vector2.new(1, 1)
-	progress.Position = UDim2.new(1, -16, 1, -16)
-	progress.Size = UDim2.fromOffset(300, 74)
-	progress.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
+	progress.Position = UDim2.new(1, -12, 1, -6)
+	progress.Size = UDim2.fromOffset(280, 46)
+	progress.BackgroundColor3 = Collection.BOOK.CASE
 	progress.ZIndex = panel.ZIndex + 1
 	progress.Parent = panel
-	UIKit.corner(progress, 14)
-	UIKit.outline(progress, Color3.fromRGB(60, 80, 140), 2)
-	progressName = UIKit.label(progress, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
-	progressName.Position = UDim2.fromOffset(14, 6)
-	progressName.Size = UDim2.new(1, -110, 0, 30)
+	progressCard = progress
+	UIKit.corner(progress, 12)
+	UIKit.outline(progress, Collection.BOOK.EDGE, 2)
+	progressName = UIKit.label(progress, "", Enum.Font.FredokaOne, 20, Collection.BOOK.INK)
+	progressName.Position = UDim2.fromOffset(12, 2)
+	progressName.Size = UDim2.new(1, -110, 0, 22)
 	progressValue = UIKit.label(progress, "", Enum.Font.FredokaOne, 20, VALUE_COLOR)
 	progressValue.AnchorPoint = Vector2.new(1, 0)
-	progressValue.Position = UDim2.new(1, -14, 0, 6)
-	progressValue.Size = UDim2.fromOffset(100, 30)
+	progressValue.Position = UDim2.new(1, -12, 0, 2)
+	progressValue.Size = UDim2.fromOffset(100, 22)
 	progressValue.TextXAlignment = Enum.TextXAlignment.Right
-	progressCount = UIKit.label(progress, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
-	progressCount.Position = UDim2.fromOffset(14, 40)
-	progressCount.Size = UDim2.fromOffset(110, 26)
+	progressCount = UIKit.label(progress, "", Enum.Font.FredokaOne, 16, Collection.BOOK.SUBTEXT)
+	progressCount.Position = UDim2.fromOffset(12, 24)
+	progressCount.Size = UDim2.fromOffset(110, 20)
 	local track = Instance.new("Frame")
-	track.Position = UDim2.new(0, 130, 0, 50)
+	track.Position = UDim2.new(0, 124, 0, 31)
 	track.Size = UDim2.new(1, -144, 0, 8)
-	track.BackgroundColor3 = Color3.fromRGB(60, 70, 110)
+	track.BackgroundColor3 = Color3.fromRGB(60, 66, 88)
 	track.Parent = progress
 	UIKit.corner(track, 4)
 	progressFill = Instance.new("Frame")
@@ -1739,8 +2153,8 @@ local function buildPanel(parent: Instance)
 	rarityGuideButton = UIKit.button(panel, "ℹ️ Rarity guide", UIKit.Colors.Row)
 	rarityGuideButton.Name = "RarityGuide"
 	rarityGuideButton.AnchorPoint = Vector2.new(0, 1)
-	rarityGuideButton.Position = UDim2.new(0, 16, 1, -16)
-	rarityGuideButton.Size = UDim2.fromOffset(190, 52)
+	rarityGuideButton.Position = UDim2.new(0, 12, 1, -6)
+	rarityGuideButton.Size = UDim2.fromOffset(170, 44)
 	rarityGuideButton.TextSize = 17
 	rarityGuideButton.Activated:Connect(RarityGuideController.Open)
 
@@ -1768,6 +2182,8 @@ local function buildPanel(parent: Instance)
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, panel))
 	end
+	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
+	layoutBook()
 	fitPockets()
 	refreshSet()
 	applyFilter()
@@ -1782,8 +2198,7 @@ local function buildPanel(parent: Instance)
 		end
 		if not panel.Visible and filtersPanel.Visible then
 			filtersPanel.Visible = false
-			bookScale.Scale = 1
-			bookHolder.Position = UDim2.fromScale(0.5, Collection.BOOK.CENTRE_Y)
+			layoutBook()
 		end
 	end)
 end
@@ -1910,6 +2325,19 @@ function BinderController.Start()
 	buildButtons()
 	refresh()
 
+	-- Phones: a swipe across the open binder turns the page (left = next)
+	if Collection.BOOK.SWIPE then
+		UserInputService.TouchSwipe:Connect(function(direction)
+			if not panel.Visible or bagOverlay.Visible or detail.Visible then
+				return
+			end
+			if direction == Enum.SwipeDirection.Left then
+				task.spawn(flipTo, spreadIndex + 1)
+			elseif direction == Enum.SwipeDirection.Right then
+				task.spawn(flipTo, spreadIndex - 1)
+			end
+		end)
+	end
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then
 			return
@@ -1923,7 +2351,7 @@ function BinderController.Start()
 		end
 		local step = PAGE_KEYS[input.KeyCode]
 		if step then
-			showSpread(spreadIndex + step)
+			task.spawn(flipTo, spreadIndex + step)
 		elseif input.KeyCode == Enum.KeyCode.F then
 			setFiltersOpen(not filtersPanel.Visible)
 		end

@@ -75,9 +75,11 @@ return {
 		TITLE = "CARD\nSHOP",
 		EMBLEM = "🃏",
 	},
+	-- A pocket the player hasn't filled yet: a dark slot in the binder's sleeve
 	MISSING = {
-		RIM = { Color3.fromRGB(150, 155, 170), Color3.fromRGB(95, 100, 115) },
-		INSIDE = Color3.fromRGB(45, 47, 60),
+		RIM = { Color3.fromRGB(78, 86, 112), Color3.fromRGB(50, 55, 74) },
+		INSIDE = Color3.fromRGB(42, 46, 62),
+		MARK = Color3.fromRGB(120, 130, 165),
 	},
 
 	EMOJI = { Ember = "🔥", Tide = "💧", Bloom = "🌿", Volt = "⚡", Shade = "🌙" },

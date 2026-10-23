@@ -429,18 +429,24 @@ function CardFace.renderMissing(frame: Frame, stroke: UIStroke, card: Card)
 		silhouette.ImageColor3 = BLACK
 		silhouette.ImageTransparency = 0.35
 	end
-	local mark = text(art, "?", { x = 0.25, y = 0.28, w = 0.5, h = 0.3 }, WHITE, 4)
+	local mark = text(art, "?", { x = 0.25, y = 0.28, w = 0.5, h = 0.3 }, look.MARK, 4)
 	mark.TextXAlignment = Enum.TextXAlignment.Center
-	mark.TextTransparency = 0.3
+	local markEdge = mark:FindFirstChildOfClass("UIStroke")
+	if markEdge then
+		markEdge.Transparency = 1 -- soft grey on the light slot, no dark outline
+	end
 	if CardFace.isFrontier(card) then
 		-- A mystery from the Frontier: the aurora rim and where to look
 		spinRim(rim, CardFace.getAuroraSequence(), CardEffects.FRONTIER.AURORA_SECONDS)
 		local hint = text(art, "Found in the Frontier", { x = 0.08, y = 0.72, w = 0.84, h = 0.1 }, AURORA[1], 4)
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 	else
-		local number = text(art, string.format("#%02d", card.number), { x = 0.25, y = 0.72, w = 0.5, h = 0.12 }, WHITE, 4)
+		local number = text(art, string.format("#%02d", card.number), { x = 0.25, y = 0.72, w = 0.5, h = 0.12 }, look.MARK, 4)
 		number.TextXAlignment = Enum.TextXAlignment.Center
-		number.TextTransparency = 0.4
+		local numberEdge = number:FindFirstChildOfClass("UIStroke")
+		if numberEdge then
+			numberEdge.Transparency = 1
+		end
 	end
 	lift(frame, face)
 end

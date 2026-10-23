@@ -707,7 +707,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
-            ├── BinderSpreads.luau # binder spreads, card ranges and the page counter (pure, Lune-tested)
+            ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -781,12 +781,22 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   HUD tiles, the top bar and customer mood bubbles (Angry, Thinking, Happy); made as one sheet with Figma's image
   generator and cut by `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Names without a picture show
   as text (the ❌ on Close, ⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
-- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world, one book per set
-  (FIRST SPARK, FRONTIER tabs on its left edge). Spread 1 is the set's cover (colour, name, "34 / 35", emblem) and
-  page 1; later spreads are two pages. Page counter pill under the book ("2-3 / 9"); arrows with key chips
+- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world, drawn like a real
+  binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
+  plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
+  are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
+  page is the cover: leather in the set's colour with an embossed border, a title band (name, "34 / 35
+  collected"), the pack art in a framed window, a progress bar and the set's worth; then page 1. Pages hold 3x3
+  pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.5 wide
+  to 1 tall) and nearly fills the screen's height when the corner buttons stay clear, else fits between the top
+  row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
+  page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
+  (0.6s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,
+  darkens edge-on and casts a shadow on the page underneath, then lands on the other side showing the next cards. Q/E, the
+  arrows and a swipe turn pages. Page counter pill ("2-3 / 9"); arrows with key chips
   (Q/E one spread). Top right: Filters (F) and close. The Filters panel (search, Show
-  All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book shrinks to
-  0.72 and slides left. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
+  All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book (arrows
+  included) shrinks into the room left of it. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
   The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare

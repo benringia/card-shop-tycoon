@@ -23,6 +23,23 @@ return {
 		expect.equal(BinderSpreads.label(3, 4), "4 / 4", "last spread has one page")
 	end,
 
+	["the cover spread puts every card on the right page"] = function()
+		expect.equal(BinderSpreads.side(1, 0, 9), "Right", "first pocket")
+		expect.equal(BinderSpreads.side(1, 8, 9), "Right", "last pocket")
+	end,
+
+	["later spreads fill the left page, then the right"] = function()
+		expect.equal(BinderSpreads.side(2, 0, 9), "Left", "first pocket")
+		expect.equal(BinderSpreads.side(2, 8, 9), "Left", "end of left page")
+		expect.equal(BinderSpreads.side(2, 9, 9), "Right", "start of right page")
+	end,
+
+	["turning forward folds the right page, back folds the left"] = function()
+		expect.equal(BinderSpreads.turningSide(1, 2), "Right", "forward")
+		expect.equal(BinderSpreads.turningSide(3, 2), "Left", "back")
+		expect.equal(BinderSpreads.turningSide(2, 2), nil, "same spread: no turn")
+	end,
+
 	["no cards still has the cover spread, showing nothing"] = function()
 		expect.equal(BinderSpreads.count(0, 9), 1, "spreads")
 		local first, last = BinderSpreads.cards(1, 0, 9)
