@@ -38,6 +38,7 @@ local yaw, pitch = 0, 0 -- current tilt (degrees)
 local dragYaw, dragPitch = 0, 0 -- what the drag asks for
 local flipped = false
 local dragging = false
+local lastPointer = Vector2.zero
 local shownKey = ""
 
 local function surface(part: BasePart, face: Enum.NormalId): (Frame, UIStroke)
@@ -114,11 +115,27 @@ local function onRender(dt: number)
 	end
 end
 
-local function onInputBegan(input: InputObject, gameProcessed: boolean)
-	if gameProcessed then
-		return
+-- The binder's full-screen panel counts every click as handled UI, so instead a drag starts anywhere except
+-- over a button or a scrolling list (the info panel's rows and buttons)
+local function overControls(position: Vector3): boolean
+	local playerGui = player:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return false
 	end
+	for _, item in playerGui:GetGuiObjectsAtPosition(position.X, position.Y) do
+		if item:IsA("GuiButton") or item:IsA("ScrollingFrame") or item:IsA("TextBox") then
+			return true
+		end
+	end
+	return false
+end
+
+local function onInputBegan(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		if overControls(input.Position) then
+			return
+		end
+		lastPointer = Vector2.new(input.Position.X, input.Position.Y)
 		dragging = true
 		dragYaw, dragPitch = 0, 0
 	end
@@ -130,8 +147,11 @@ local function onInputChanged(input: InputObject)
 	end
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		-- Sideways turns freely (far enough flips it on release); up/down tilts at most MAX_TILT
-		dragYaw = math.clamp(dragYaw + input.Delta.X * Inspector.DRAG_DEGREES_PER_PIXEL, -180, 180)
-		dragPitch = math.clamp(dragPitch - input.Delta.Y * Inspector.DRAG_DEGREES_PER_PIXEL, -Inspector.MAX_TILT, Inspector.MAX_TILT)
+		local pointer = Vector2.new(input.Position.X, input.Position.Y)
+		local delta = pointer - lastPointer
+		lastPointer = pointer
+		dragYaw = math.clamp(dragYaw + delta.X * Inspector.DRAG_DEGREES_PER_PIXEL, -180, 180)
+		dragPitch = math.clamp(dragPitch - delta.Y * Inspector.DRAG_DEGREES_PER_PIXEL, -Inspector.MAX_TILT, Inspector.MAX_TILT)
 	end
 end
 

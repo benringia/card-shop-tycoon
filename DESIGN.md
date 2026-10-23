@@ -601,7 +601,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── Controllers/
     │   │   ├── UIController.luau       # main ScreenGui, top pills (cash, level, shards, XP), toasts, money toasts
     │   │   ├── OrderController.luau
-    │   │   ├── BuildController.luau    # build menu, shelf prompts, shelf edit menu
+    │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau
@@ -769,10 +769,14 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
 - **Card inspector** (`CardInspectorController`, `Config/Inspector`): tapping a binder card shows it as a real 3D
-  card left of centre in front of the camera (front: the card face; back: the card back), on a solid dark sheet
-  that hides the world. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
+  card left of centre close in front of the camera (front: the card face; back: the card back), on a solid dark
+  sheet just behind it that hides the world (and your pet). Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
   Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
   Add to party and Back. Closing restores the camera; dying closes it too.
+- **Build menu** (`BuildController`): a "Build" panel with tabs Shelves / Cases / Fixtures / Decor (each shelf's
+  `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
+  the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
+  green price, red when you can't afford it, grey "Lv N" while locked. Buying places it as before.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.

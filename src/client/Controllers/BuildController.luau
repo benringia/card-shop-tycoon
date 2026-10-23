@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Shelves = require(Config:WaitForChild("Shelves"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -27,6 +28,15 @@ local CASE_BUYERS = {
 	CustomerCards = "customers buy",
 	PlayerCards = "players buy",
 }
+
+-- Build menu tabs (Config/Shelves `category`); Decor has nothing yet and says so
+local BUILD_TABS = {
+	{ name = "Shelves", icon = "🗄️" },
+	{ name = "Cases", icon = "💎" },
+	{ name = "Fixtures", icon = "⚙️" },
+	{ name = "Decor", icon = "🌱" },
+}
+local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110, PICTURE_COLOR = Color3.fromRGB(255, 226, 180) }
 
 type ShopRow = {
 	def: ShelfDef,
@@ -69,11 +79,13 @@ local function isLocked(def: ShelfDef): boolean
 end
 
 local function refreshShopRows()
+	local cash = getNumberAttribute(player, "Cash", 0)
 	for _, row in shopRows do
 		local locked = isLocked(row.def)
-		row.button.Text = if locked then `Lv {row.def.unlockLevel}` else "Buy"
-		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked else UIKit.Colors.Accent
-		row.button.AutoButtonColor = not locked
+		local short = not locked and cash < row.def.cost
+		row.button.Text = if locked then `🔒 Lv {row.def.unlockLevel}` else string.format("$%d", row.def.cost)
+		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked else UIKit.Colors.Row
+		row.button.TextColor3 = if locked then Color3.new(1, 1, 1) elseif short then UIKit.Colors.Danger else UIKit.Colors.Success
 	end
 end
 
@@ -96,21 +108,156 @@ local function onBuy(def: ShelfDef)
 	})
 end
 
+-- A 3D picture of the shelf: its prop model (or the code stand-in) in a ViewportFrame, framed on its bounds
+local function addPreview(parent: GuiObject, def: ShelfDef)
+	local view = Instance.new("ViewportFrame")
+	view.Name = "Preview"
+	view.Position = UDim2.fromOffset(8, 8)
+	view.Size = UDim2.new(1, -16, 0, BUILD_TILE.PICTURE)
+	view.BackgroundColor3 = BUILD_TILE.PICTURE_COLOR
+	view.Ambient = Color3.fromRGB(200, 200, 200)
+	view.LightColor = Color3.new(1, 1, 1)
+	view.LightDirection = Vector3.new(-1, -1, -1)
+	view.Parent = parent
+	UIKit.corner(view, 10)
+	local world = Instance.new("WorldModel")
+	world.Parent = view
+
+	local model: Model
+	if def.prop then
+		model = Props.fit(def.prop, def.size, CFrame.new(), world)
+		if def.propColors then
+			for partName, color in def.propColors do
+				for _, part in model:GetDescendants() do
+					if part:IsA("BasePart") and part.Name == partName then
+						part.Color = color
+					end
+				end
+			end
+		end
+	else
+		model = Instance.new("Model")
+		local block = Instance.new("Part")
+		block.Anchored = true
+		block.Size = def.size
+		block.Color = def.color
+		block.CFrame = CFrame.new(0, def.size.Y / 2, 0)
+		block.Parent = model
+		model.Parent = world
+	end
+	local centre, size = model:GetBoundingBox()
+	local reach = math.max(size.X, size.Y, size.Z)
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 40
+	-- Three-quarter view from the front (-Z) and a little above
+	local eye = centre.Position + Vector3.new(reach * 0.9, reach * 0.7, -reach * 1.5)
+	camera.CFrame = CFrame.lookAt(eye, centre.Position)
+	camera.Parent = view
+	view.CurrentCamera = camera
+end
+
+local function buildTile(parent: Instance, order: number, def: ShelfDef)
+	local tile = Instance.new("Frame")
+	tile.Name = def.id
+	tile.LayoutOrder = order
+	tile.BackgroundColor3 = UIKit.Colors.Row
+	tile.Parent = parent
+	UIKit.corner(tile, 14)
+	UIKit.outline(tile)
+	addPreview(tile, def)
+	local name = UIKit.label(tile, def.name, Enum.Font.FredokaOne, 17, UIKit.Colors.Text)
+	name.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 12)
+	name.Size = UDim2.new(1, -20, 0, 22)
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	name.TextWrapped = false
+	local detail = if def.kind == "Products"
+		then `Holds {def.capacity}`
+		elseif def.kind == "Condenser" then "Duplicates to stars"
+		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
+	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
+	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
+	info.Size = UDim2.new(1, -20, 0, 18)
+	local button = UIKit.button(tile, "", UIKit.Colors.Row)
+	button.AnchorPoint = Vector2.new(0.5, 1)
+	button.Position = UDim2.new(0.5, 0, 1, -8)
+	button.Size = UDim2.new(1, -16, 0, 48)
+	button.Font = Enum.Font.FredokaOne
+	button.TextSize = 20
+	button.Activated:Connect(function()
+		onBuy(def)
+	end)
+	table.insert(shopRows, { def = def, button = button })
+end
+
+-- The Build panel: category tabs and a grid of tiles, each with a 3D picture of the model
 local function buildShopPanel(parent: Instance)
 	local list: ScrollingFrame
-	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Build")
-	for index, def in Shelves.List do
-		local detail = if def.kind == "Products"
-			then string.format("Holds %d · $%.2f", def.capacity, def.cost)
-			elseif def.kind == "Condenser" then string.format("Combine duplicates for stars · $%.2f", def.cost)
-			else string.format("%d cards, %s · $%.2f", def.capacity, CASE_BUYERS[def.kind], def.cost)
-		local frame, button = UIKit.row(list, index, def.name, detail)
-		frame.Name = def.id
-		button.Activated:Connect(function()
-			onBuy(def)
-		end)
-		table.insert(shopRows, { def = def, button = button })
+	shopPanel, list = UIKit.panel(parent, "BuildMenu", "🔨 Build")
+	shopPanel.Size = UDim2.fromScale(0.9, 0.85)
+	local limit = shopPanel:FindFirstChildOfClass("UISizeConstraint")
+	if limit then
+		limit.MaxSize = Vector2.new(720, 560)
 	end
+
+	local tabs = Instance.new("Frame")
+	tabs.Name = "Tabs"
+	tabs.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + 10)
+	tabs.Size = UDim2.new(1, -24, 0, 48)
+	tabs.BackgroundTransparency = 1
+	tabs.Parent = shopPanel
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.Padding = UDim.new(0, 8)
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Parent = tabs
+
+	list.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + 68)
+	list.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + 78))
+	local oldLayout = list:FindFirstChildOfClass("UIListLayout")
+	if oldLayout then
+		oldLayout:Destroy()
+	end
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(BUILD_TILE.WIDTH, BUILD_TILE.HEIGHT)
+	grid.CellPadding = UDim2.fromOffset(10, 10)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = list
+
+	local soon = UIKit.label(list, "Decor is coming soon!", Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
+	soon.Name = "ComingSoon"
+	soon.Visible = false
+
+	local tabButtons: { [string]: TextButton } = {}
+	local function showCategory(category: string)
+		for name, button in tabButtons do
+			button.BackgroundColor3 = if name == category then UIKit.Colors.Accent else UIKit.Colors.Row
+		end
+		local any = false
+		for _, row in shopRows do
+			local tile = row.button.Parent :: GuiObject
+			tile.Visible = row.def.category == category
+			any = any or tile.Visible
+		end
+		soon.Visible = not any
+		list.CanvasPosition = Vector2.zero
+	end
+	for index, tab in BUILD_TABS do
+		local button = UIKit.button(tabs, `{tab.icon} {tab.name}`, UIKit.Colors.Row)
+		button.Name = "Tab" .. tab.name
+		button.LayoutOrder = index
+		button.Size = UDim2.new(1 / #BUILD_TABS, -8, 1, 0)
+		button.TextSize = 17
+		button.Activated:Connect(function()
+			showCategory(tab.name)
+		end)
+		tabButtons[tab.name] = button
+	end
+
+	for index, def in Shelves.List do
+		buildTile(list, index, def)
+	end
+	showCategory(BUILD_TABS[1].name)
+	player:GetAttributeChangedSignal("Cash"):Connect(refreshShopRows)
 end
 
 local function openEditPanel(part: BasePart)
