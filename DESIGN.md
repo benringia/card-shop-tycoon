@@ -844,7 +844,12 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
   right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
-  party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. Each icon sits over its
+  party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. On touch screens (short
+  landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
+  the middle: buff, cash, shards, level, then the party bar, then the money toasts. Nothing sits in the middle of
+  the screen. The whole HUD (tiles, Manage
+  tray, corner, toasts) shrinks with the screen's height (`HudLayout.SCALE`, `Hud.scaleWith`): full size from 560 px
+  tall, down to 70% on short phones (tiles stay over 48 px to tap). Each icon sits over its
   pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
   HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
   (Angry, Thinking, Happy); made as three sheets with Figma's image generator and cut by
@@ -863,7 +868,9 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   collected"), the pack art in a framed window, a progress bar and the set's worth; then page 1. Pages hold 3x3
   pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.36 wide
   to 1 tall) and nearly fills the screen's height (on its own full-screen layer, rising into Roblox's top bar strip,
-  with the page counter just under it) when the corner buttons stay clear, else fits between the top
+  with the page counter just under it) when the corner buttons stay clear; on phones (screens under 900 wide) the
+  corner buttons go compact (icons only: Cards and Bag down the left edge, Rarity guide bottom left, Filters under
+  the close button) and the book takes the full height between those slim lanes; otherwise it fits between the top
   row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
   page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
   (0.35s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,

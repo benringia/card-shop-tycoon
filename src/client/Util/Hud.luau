@@ -37,6 +37,8 @@ local manageTile: TextButton? = nil
 local fanOpen = false
 local tiles: { [string]: TextButton } = {}
 local fanButtons: { { order: number, button: TextButton } } = {}
+local screen: ScreenGui
+local scaled: { { scale: UIScale, min: number } } = {}
 
 local function iconAndLabel(button: GuiButton, icon: string, label: string, iconHeight: number)
 	local holder = Icon.make(button, icon, UDim2.fromScale(1, iconHeight))
@@ -158,8 +160,30 @@ local function ensureManageTile()
 	})
 end
 
+-- How big the HUD draws on this screen (HudLayout.SCALE): 1 on roomy screens, smaller on short ones, at least min
+function Hud.scaleFor(min: number?): number
+	local look = HudLayout.SCALE
+	local height = if screen then screen.AbsoluteSize.Y else look.REFERENCE_HEIGHT
+	return math.clamp(height / look.REFERENCE_HEIGHT, min or look.MIN, 1)
+end
+
+-- Gives a HUD frame a UIScale that follows the screen's height (kept up to date when the screen resizes)
+function Hud.scaleWith(frame: GuiObject, min: number?): UIScale
+	local scale = Instance.new("UIScale")
+	scale.Scale = Hud.scaleFor(min)
+	scale.Parent = frame
+	table.insert(scaled, { scale = scale, min = min or HudLayout.SCALE.MIN })
+	return scale
+end
+
 -- Builds the HUD containers on the main ScreenGui; UIController calls it first thing
 function Hud.mount(screenGui: ScreenGui)
+	screen = screenGui
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		for _, entry in scaled do
+			entry.scale.Scale = Hud.scaleFor(entry.min)
+		end
+	end)
 	side = Instance.new("Frame")
 	side.Name = "HudSide"
 	side.BackgroundTransparency = 1
@@ -223,6 +247,9 @@ function Hud.mount(screenGui: ScreenGui)
 	side:GetPropertyChangedSignal("AbsolutePosition"):Connect(placeFan)
 	side:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeFan)
 	task.defer(placeFan)
+	for _, frame in { side, bottom, fan } do
+		Hud.scaleWith(frame)
+	end
 end
 
 function Hud.tile(spec: TileSpec): TextButton

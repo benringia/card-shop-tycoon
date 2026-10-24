@@ -138,6 +138,7 @@ local buildCase: () -> ()
 local buildSpine: () -> ()
 local getSetArt: (set: string) -> string?
 local rarityGuideButton: TextButton
+local filterButton: TextButton
 local showButtons: { [string]: TextButton } = {}
 local sortButtons: { [string]: TextButton } = {}
 local rarityChips: { [string]: TextButton } = {}
@@ -1832,6 +1833,26 @@ local function getBookLayout(filtersOpen: boolean): (UDim2, UDim2, number)
 		end
 		return width, height, top + (area.Y - top - bottom) / 2
 	end
+	if area.X < look.NARROW_BELOW then
+		-- Phones: the full height, between slim lanes of compact buttons (placeCorners)
+		local leftLane = look.NARROW_LEFT + look.TAB_WIDTH
+		local room = area.X - leftLane - look.NARROW_RIGHT
+		local width = math.max(200, room)
+		local height = math.max(140, area.Y - look.MARGIN - look.MARGIN_BOTTOM)
+		if width / height > look.ASPECT then
+			width = height * look.ASPECT
+		else
+			height = width / look.ASPECT
+		end
+		local centreY = look.MARGIN + (area.Y - look.MARGIN - look.MARGIN_BOTTOM) / 2
+		local size = UDim2.fromOffset(width, height)
+		if not filtersOpen then
+			return size, UDim2.fromOffset(leftLane + room / 2, centreY), 1
+		end
+		local besideFilters = area.X - Collection.FILTERS_WIDTH - 32 - look.NARROW_LEFT
+		local scale = math.min(1, besideFilters / (width + look.TAB_WIDTH))
+		return size, UDim2.fromOffset(look.NARROW_LEFT + besideFilters / 2 + look.TAB_WIDTH * scale / 2, centreY), scale
+	end
 	local width, height, centreY = fit(look.MARGIN, look.MARGIN_BOTTOM)
 	local left = (area.X - width) / 2 - look.TAB_WIDTH
 	local right = (area.X + width) / 2
@@ -1848,7 +1869,32 @@ local function getBookLayout(filtersOpen: boolean): (UDim2, UDim2, number)
 	return size, UDim2.fromOffset(look.CORNER_LEFT + room / 2, centreY), scale
 end
 
+-- The corner buttons: full size in the corners on roomy screens; compact icons in slim side lanes on phones
+local function placeCorners(narrow: boolean)
+	for index, tab in { cardsTab, bagTab } do
+		tab.Position = if narrow then UDim2.fromOffset(12, 10 + (index - 1) * 56) else UDim2.fromOffset(16 + (index - 1) * 122, 10)
+		tab.Size = if narrow then UDim2.fromOffset(64, 48) else UDim2.fromOffset(116, 48)
+		local name = tab:FindFirstChild("Name", true)
+		if name and name:IsA("GuiObject") then
+			name.Visible = not narrow
+		end
+	end
+	rarityGuideButton.Size = if narrow then UDim2.fromOffset(64, 48) else UDim2.fromOffset(170, 44)
+	rarityGuideButton.Text = if narrow then "" else "Rarity guide"
+	local guidePad = rarityGuideButton:FindFirstChildOfClass("UIPadding")
+	if guidePad then
+		guidePad.PaddingLeft = UDim.new(0, if narrow then 0 else 30)
+	end
+	local guideIcon = rarityGuideButton:FindFirstChild("Icon") :: GuiObject?
+	if guideIcon then
+		guideIcon.AnchorPoint = if narrow then Vector2.new(0.5, 0.5) else Vector2.new(0, 0.5)
+		guideIcon.Position = if narrow then UDim2.fromScale(0.5, 0.45) else UDim2.new(0, 10, 0.45, 0)
+	end
+	filterButton.Position = if narrow then UDim2.new(1, -16, 0, 76) else UDim2.new(1, -84, 0, 16)
+end
+
 local function layoutBook()
+	placeCorners(bookGui.AbsoluteSize.X < Collection.BOOK.NARROW_BELOW)
 	local size, position, scale = getBookLayout(filtersPanel.Visible)
 	bookHolder.Size = size
 	bookHolder.Position = position
@@ -2273,7 +2319,11 @@ local function buildPanel(parent: Instance)
 	end).LayoutOrder = 1
 
 	-- Filters (F), top right next to the close button
-	local filterButton = UIKit.button(panel, "🔍", UIKit.Colors.Row)
+	filterButton = UIKit.button(panel, "", UIKit.Colors.Row)
+	local filterIcon = Icon.make(filterButton, "Search", UDim2.fromOffset(28, 28))
+	filterIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	filterIcon.Position = UDim2.fromScale(0.5, 0.45)
+	filterIcon.ZIndex = filterButton.ZIndex + 1
 	filterButton.Name = "FilterButton"
 	filterButton.AnchorPoint = Vector2.new(1, 0)
 	filterButton.Position = UDim2.new(1, -84, 0, 16)
@@ -2320,12 +2370,15 @@ local function buildPanel(parent: Instance)
 	UIKit.corner(progressFill, 4)
 
 	-- Rarity guide, bottom left
-	rarityGuideButton = UIKit.button(panel, "ℹ️ Rarity guide", UIKit.Colors.Row)
+	rarityGuideButton = UIKit.button(panel, "Rarity guide", UIKit.Colors.Row)
 	rarityGuideButton.Name = "RarityGuide"
 	rarityGuideButton.AnchorPoint = Vector2.new(0, 1)
 	rarityGuideButton.Position = UDim2.new(0, 12, 1, -6)
 	rarityGuideButton.Size = UDim2.fromOffset(170, 44)
 	rarityGuideButton.TextSize = 17
+	rarityGuideButton.Font = Enum.Font.FredokaOne
+	local guideIcon = Icon.make(rarityGuideButton, "Info", UDim2.fromOffset(26, 26))
+	guideIcon.ZIndex = rarityGuideButton.ZIndex + 1
 	rarityGuideButton.Activated:Connect(RarityGuideController.Open)
 
 	tooltip = Instance.new("Frame")
@@ -2352,15 +2405,14 @@ local function buildPanel(parent: Instance)
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, panel))
 	end
+	buildDetail(panel)
+	buildBag(panel) -- before the first layout: it places the Cards / Bag tabs
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	bookGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	layoutBook()
 	fitPockets()
 	refreshSet()
 	applyFilter()
-
-	buildDetail(panel)
-	buildBag(panel)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		hideTooltip()
 		Hud.setHidden("Binder", panel.Visible)
