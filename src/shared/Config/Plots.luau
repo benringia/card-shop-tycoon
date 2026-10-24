@@ -31,7 +31,7 @@ return {
 	COMPUTER_GRID_X = 15,
 	COMPUTER_GRID_Z = 17,
 	COMPUTER_COLOR = Color3.fromRGB(60, 65, 80),
-	COMPUTER_TEXT = "📦 Order Stock", -- its floating tag (Placement.TAG)
+	COMPUTER_TEXT = "📦 Order Stock", -- the owner's hover tooltip over it (ShelfInfoController)
 
 	-- Delivery pad sits in a front corner, where ordered boxes appear
 	DELIVERY_PAD_SIZE = Vector3.new(6, 0.2, 6),

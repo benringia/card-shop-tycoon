@@ -58,7 +58,6 @@ export type PlacedShelf = {
 	cardParts: { [number]: Part },
 	paid: number, -- what the player spent, for the sell-back refund
 	part: Part,
-	label: TextLabel,
 	visual: Model?, -- shelves with a prop (Shelves def.prop): the prop drawn on the invisible hitbox part
 	stockBoxes: { Part }, -- Products shelves: boxes (or stacks of packs) showing how full it is (ShelfStock)
 	priceTags: { Part }, -- Products shelves: an orange price tag on each stocked level
@@ -296,25 +295,29 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	end
 end
 
-local function updateLabel(shelf: PlacedShelf)
-	-- Clients read this to offer the product's price in the shelf's own menu
-	shelf.part:SetAttribute("ProductId", if shelf.units > 0 then shelf.productId else nil)
+-- What the owner's hover tooltip says (Info) and whether a product shelf needs restocking (Empty), read by
+-- ShelfInfoController; ProductId lets clients offer the product's price in the shelf's own menu
+local function updateInfo(shelf: PlacedShelf)
+	local part = shelf.part
+	part:SetAttribute("ProductId", if shelf.units > 0 then shelf.productId else nil)
 	if isCondenser(shelf.def) then
-		shelf.label.Text = `✨ {shelf.def.name}`
+		part:SetAttribute("Info", `✨ {shelf.def.name}`)
 		return
 	end
 	if isCardCase(shelf.def) then
-		shelf.label.Text = `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`
+		part:SetAttribute("Info", `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`)
 		return
 	end
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
 	local price = if product then PricingService.GetPrice(shelf.owner, product.id) else 0
 	updateStockBoxes(shelf, price)
-	if not product or shelf.units <= 0 then
-		shelf.label.Text = `Empty\n0/{shelf.def.capacity}`
+	local empty = not product or shelf.units <= 0
+	part:SetAttribute("Empty", empty)
+	if empty or not product then
+		part:SetAttribute("Info", `{shelf.def.name} · Empty 0/{shelf.def.capacity}`)
 		return
 	end
-	shelf.label.Text = string.format("%s\n%d/%d · $%.2f", product.name, shelf.units, shelf.def.capacity, price)
+	part:SetAttribute("Info", `{product.name} · {shelf.units}/{shelf.def.capacity}`)
 end
 
 -- Card slots sit just in front of the case's front face, in a grid below its label
@@ -410,29 +413,7 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	if shelf.visual then
 		shelf.visual:PivotTo(shelf.part.CFrame * CFrame.new(0, -shelf.def.size.Y / 2, 0))
 	end
-	updateLabel(shelf)
-end
-
--- A tag floating just above the shelf (what it holds, or the case's count), clear of its model and cards
-local function buildLabel(part: Part, def: ShelfDef): TextLabel
-	local tag = PlacementConfig.TAG
-	local board = Instance.new("BillboardGui")
-	board.Name = "ShelfTag"
-	board.Size = UDim2.new(math.max(def.size.X, tag.MIN_WIDTH), 0, tag.HEIGHT, 0)
-	board.StudsOffset = Vector3.new(0, def.size.Y / 2 + tag.GAP + tag.HEIGHT / 2, 0)
-	board.MaxDistance = tag.MAX_DISTANCE
-	board.LightInfluence = 0
-	board.Parent = part
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextStrokeTransparency = 0.3
-	label.Parent = board
-	return label
+	updateInfo(shelf)
 end
 
 local function createShelf(
@@ -474,12 +455,11 @@ local function createShelf(
 		priceTags = {},
 		paid = paid,
 		part = part,
-		label = buildLabel(part, def),
 	}
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
 	if def.prop and Props.hasModel(def.prop) then
-		-- The part stays as the hitbox (prompts, label, customers); the prop is the look. Its label still shows.
+		-- The part stays as the hitbox (prompts, customers, the owner's tooltip); the prop is the look.
 		part.Transparency = 1
 		local visual = Props.fit(def.prop, def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)
 		for _, descendant in visual:GetDescendants() do
@@ -490,7 +470,7 @@ local function createShelf(
 		end
 		shelf.visual = visual
 	end
-	updateLabel(shelf)
+	updateInfo(shelf)
 	part.Parent = plot.shelvesFolder
 
 	layouts[player][uid] = shelf
@@ -853,7 +833,7 @@ function PlacementService.TakeStock(shelf: PlacedShelf, units: number): number
 		return 0
 	end
 	shelf.units -= taken
-	updateLabel(shelf)
+	updateInfo(shelf)
 	return taken
 end
 
@@ -879,7 +859,7 @@ function PlacementService.AddStock(shelf: PlacedShelf, productId: string, maxUni
 	local added = math.min(space, maxUnits)
 	shelf.productId = productId
 	shelf.units += added
-	updateLabel(shelf)
+	updateInfo(shelf)
 	return added, nil
 end
 
@@ -887,7 +867,7 @@ end
 function PlacementService.SetDisplayedCard(shelf: PlacedShelf, slot: number, displayed: DisplayedCard?)
 	shelf.cards[slot] = displayed
 	renderCardSlot(shelf, slot)
-	updateLabel(shelf)
+	updateInfo(shelf)
 end
 
 function PlacementService.IsCardCase(shelf: PlacedShelf): boolean
@@ -914,7 +894,7 @@ local function onPriceChanged(player: Player, productId: string, _price: number)
 	end
 	for _, shelf in layout do
 		if shelf.productId == productId then
-			updateLabel(shelf)
+			updateInfo(shelf)
 		end
 	end
 end

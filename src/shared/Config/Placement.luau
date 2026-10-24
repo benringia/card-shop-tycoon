@@ -20,6 +20,11 @@ return {
 	GHOST_LABEL_HEIGHT = 1.5, -- the name label floats this far above the ghost
 	INVALID_TEXT = "Can't place here",
 
-	-- Name tags floating above shelves and fixtures (sizes in studs, so they shrink with distance)
-	TAG = { GAP = 0.8, HEIGHT = 1.5, MIN_WIDTH = 4, MAX_DISTANCE = 40 },
+	-- Your own shelves and order computer (ShelfInfoController): point at one (or tap it) and it lights up, with a
+	-- tooltip saying what it holds; an empty
+	-- product shelf shows a floating "Empty" badge. Studs.
+	-- Name tags floating above shop fixtures: the register (sizes in studs). FORWARD pulls
+	-- the tag this far out past the fixture's front, so a wall behind it never cuts through the tag.
+	FIXTURE_TAG = { GAP = 0.8, HEIGHT = 1.5, MIN_WIDTH = 4, MAX_DISTANCE = 40, FORWARD = 1.5 },
+	SHELF_INFO = { REACH = 30, TAP_SECONDS = 2.5, EMPTY_GAP = 0.8, EMPTY_FORWARD = 1.5, EMPTY_MAX_DISTANCE = 60 },
 }

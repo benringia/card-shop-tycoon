@@ -54,13 +54,14 @@ local function getPlotCFrame(index: number): CFrame
 	return CFrame.lookAt(center, center + Vector3.new(0, 0, -side))
 end
 
--- A small name tag floating above a fixture (raise: extra height, e.g. over the register stall's canopy)
+-- A small name tag floating above a fixture (raise: extra height, e.g. over the register stall's canopy), out past
+-- its front so the wall behind it can't cut through (the offset is in the fixture's own space: it follows moves)
 local function addTag(part: Part, text: string, raise: number?)
-	local tag = PlacementConfig.TAG
+	local tag = PlacementConfig.FIXTURE_TAG
 	local board = Instance.new("BillboardGui")
 	board.Name = "FixtureTag"
 	board.Size = UDim2.new(math.max(part.Size.X * 0.6, tag.MIN_WIDTH), 0, tag.HEIGHT, 0)
-	board.StudsOffset = Vector3.new(0, part.Size.Y / 2 + (raise or 0) + tag.GAP + tag.HEIGHT / 2, 0)
+	board.StudsOffsetWorldSpace = Vector3.new(0, part.Size.Y / 2 + (raise or 0) + tag.GAP + tag.HEIGHT / 2, -(part.Size.Z / 2 + tag.FORWARD))
 	board.MaxDistance = tag.MAX_DISTANCE
 	board.LightInfluence = 0
 	board.Parent = part
@@ -394,7 +395,7 @@ local function buildComputer(plotCFrame: CFrame, parent: Instance): Part
 	setComputerCell(computer, plotCFrame, PlotConfig.COMPUTER_GRID_X, PlotConfig.COMPUTER_GRID_Z, 0)
 	computer.Parent = parent
 
-	addTag(computer, PlotConfig.COMPUTER_TEXT)
+	computer:SetAttribute("Info", PlotConfig.COMPUTER_TEXT) -- the owner's hover tooltip (ShelfInfoController)
 	dressFixture(computer, "Computer", computer) -- a child, so it moves with the computer
 	return computer
 end

@@ -36,8 +36,12 @@ local function getOwnShelves(): Instance?
 	return plot and plot:FindFirstChild("Shelves")
 end
 
--- The price tag under a screen point on your own shelves, within reach (nil if none)
+-- The price tag under a screen point on your own shelves, within reach (nil if none, while a window is open,
+-- or over UI)
 local function tagAt(screen: Vector2): BasePart?
+	if UIKit.pointerBlocked(screen) then
+		return nil
+	end
 	local camera = workspace.CurrentCamera
 	local shelves = getOwnShelves()
 	local character = player.Character
@@ -150,7 +154,9 @@ function PriceTagController.Start()
 		if not isClick and not isTap then
 			return
 		end
-		local tag = if isClick then hovered else tagAt(Vector2.new(input.Position.X, input.Position.Y))
+		-- Touch positions start below the top bar; rays use the whole viewport
+		local inset = game:GetService("GuiService"):GetGuiInset()
+		local tag = if isClick then hovered else tagAt(Vector2.new(input.Position.X, input.Position.Y + inset.Y))
 		if tag then
 			setHovered(tag)
 			openFor(tag)
