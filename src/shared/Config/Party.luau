@@ -52,10 +52,12 @@ return {
 		HeronDemon = { "Root.L" },
 	} :: { [string]: { string } },
 	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
-	-- forward from there, bend = elbows. Flametor holds its short arms up in front like a T-rex.
+	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING). Flametor holds its short
+	-- arms up in front like a T-rex; Boltlynx swings its arms wide like a marching warrior.
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
-	} :: { [string]: { hang: number, forward: number, bend: number } },
+		Boltlynx = { hang = 10, forward = 0, bend = 8, swing = 40 },
+	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
 		HeronDemon = 0.55,
@@ -180,7 +182,7 @@ return {
 		Zappit = { pack = "UltraPets", model = "FairyRabbit", tint = { 255, 240, 150 } },
 		Fizzlebug = { pack = "UltraPets", model = "Venowasp" },
 		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },
-		Boltlynx = { pack = "UltraPets", model = "Leonstrike", size = 1.3 },
+		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/build_boltlynx.py
 		Stormjack = { pack = "UltraPets", model = "Stormhydra", size = 1.8 },
 		Thunderhorn = { pack = "UltraPets", model = "Lumistag", tint = { 255, 235, 150 }, size = 1.3 },
 		Voltkit = { pack = "UltraPets", model = "PurpleFox", tint = { 255, 220, 120 }, size = 1.3 },

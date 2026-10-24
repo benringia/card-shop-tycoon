@@ -6,3 +6,5 @@ Packages/
 ServerPackages/
 *.rbxlx
 .superpowers/
+*.blend1
+*.fbm/
