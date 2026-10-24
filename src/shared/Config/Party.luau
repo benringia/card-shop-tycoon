@@ -52,4 +52,17 @@ return {
 	GRADE_S_SPARKLES = 2,
 	MAX_OUTLINES = 31, -- Roblox draws at most 31 Highlights on a screen
 	ACTION_COOLDOWN = 0.5,
+
+	-- The quick party bar in the bottom-right corner (PartyBarController). Pixels; colours as { r, g, b }.
+	BAR = {
+		AVATAR = 54,
+		SLOT = { 48, 66 }, -- a party card, width and height
+		GAP = 8,
+		RIM = 2.5,
+		LIFT = 1.12, -- the summoned card grows this much
+		TRAY = { 20, 28, 60 },
+		TRAY_TRANSPARENCY = 0.1,
+		EMPTY = { 38, 46, 84 },
+		EMPTY_EDGE = { 90, 100, 140 },
+	},
 }
