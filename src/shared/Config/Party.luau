@@ -15,7 +15,7 @@ return {
 	STAR_BONUS = 0.10, -- each star adds this share of the perk
 
 	-- Creature size, as a multiple of CREATURE_HEIGHT
-	SIZE_BY_RARITY = { Common = 0.7, Rare = 0.85, ["Very Rare"] = 1, Epic = 1.2, Legendary = 1.4 },
+	SIZE_BY_RARITY = { Common = 0.7, Rare = 0.85, ["Very Rare"] = 1, Epic = 1.5, Legendary = 1.4 },
 	CREATURE_HEIGHT = 3, -- studs, for size 1
 	FOLLOW_OFFSET = { side = 3, back = 3.5 }, -- studs from the owner, on the ground (times a model entry's size)
 	TELEPORT_DISTANCE = 40, -- further than this and the creature jumps next to its owner

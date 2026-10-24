@@ -275,7 +275,9 @@ Each pack = 5 cards:
   violet; `Util/KeyframePlayer` plays the saved animations on each client). They stand 2.2x their rarity size (about 9
   studs), follow further out to match, burn with their element (`Util/BeastAura`, `Config/BeastFx`: fire on bones
   spread over the body, lightning arcing between them, ground flames, a flickering light; Ember orange fire, Shade
-  purple-black fire, Tide blue spirit fire, Volt white fire with constant lightning), kick up dust as they move, and between their idle, now and then roar (rear back, lunge, an element-coloured
+  purple-black fire, Tide blue spirit fire, Volt white fire with constant lightning), kick up dust as they move (grade S and A copies of other cards get a lighter aura,
+  `BeastFx.TIERS`: S fire on 6 bones with now-and-then lightning, A a faint flame on 4 and a soft glow; Epics stand
+  1.5x, `Party.SIZE_BY_RARITY`), and between their idle, now and then roar (rear back, lunge, an element-coloured
   shockwave ring and sparks) or stomp (a dust ring). The pets' bones are animated in code on
   each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping, breathing, tail wags,
   ear flops, hip sways for tails without bones, and idle fidgets (look around, tilt, sniff, stretch, happy wag,
@@ -339,10 +341,11 @@ Each pack = 5 cards:
   Frontier). Outlined text over soft dark bands: element emoji and name top left, a grade letter pill top right,
   the value (or a case's asking price, in gold) big at the bottom. Detailed faces (binder, packs, inspector,
   everywhere but shelves and small job/party tiles) add star slots under the name, a "Lv 3" chip under the grade
-  and a FOIL / FRONTIER chip. Art: a card's own image (`ART_IMAGES`, by name) else its element's painted scene
-  (`SCENES`: fireplace, coral reef, forest, stormy peak, moonlit graveyard; made with Figma's image generator,
-  JPEGs in `assets/ui/card-scenes`) with the element emoji on a glow, else an element gradient; the art will be replaced by renders of
-  the creature models. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
+  and a FOIL / FRONTIER chip. Art: every card has its own painting (`ART_IMAGES`, by name): its creature model
+  described and painted into its element's scene with Figma's image generator (prompts in `docs/card-art.md`,
+  JPEGs in `assets/ui/card-art`). A card without one falls back to its element's painted scene (`SCENES`:
+  fireplace, coral reef, forest, stormy peak, moonlit graveyard; `assets/ui/card-scenes`) with the element emoji
+  on a glow, else an element gradient. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
   sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is a deep blue card with
   🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
@@ -876,7 +879,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   (Angry, Thinking, Happy); made as three sheets with Figma's image generator and cut by
   `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
-  their icons ready. Names without a picture show as text (⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
+  their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row. The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
@@ -885,8 +888,9 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
   are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
-  page is the cover: leather in the set's colour with an embossed border, a title band (name, "34 / 35
-  collected"), the pack art in a framed window, a progress bar and the set's worth; then page 1. Pages hold 3x3
+  page is the cover: full art (the pack art over the whole cover; leather in the set's colour without one), an
+  embossed border, the title (name, "34 / 35 collected") and the set's worth in outlined text over dark fades,
+  a progress bar; then page 1. Pages hold 3x3
   pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.36 wide
   to 1 tall) and nearly fills the screen's height (on its own full-screen layer, rising into Roblox's top bar strip,
   with the page counter just under it) when the corner buttons stay clear; on phones (screens under 900 wide) the

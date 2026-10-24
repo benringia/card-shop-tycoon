@@ -885,7 +885,6 @@ local function refreshSet()
 	local leather = coverPage:FindFirstChild("Leather") :: UIGradient
 	leather.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.12), color:Lerp(Color3.new(0, 0, 0), 0.35))
 	coverArt.Image = art or ""
-	coverArt.BackgroundColor3 = color:Lerp(Color3.new(0, 0, 0), 0.25)
 	coverEmblem.Visible = art == nil
 	coverTitle.Text = string.upper(currentSet)
 	coverProgress.Text = `{owned} / {total} collected`
@@ -1953,8 +1952,8 @@ function getSetArt(set: string): string?
 	return nil
 end
 
--- The set's cover over spread 1's left page: leather in the set's colour with an embossed border, a title band
--- (name and progress), the pack art in a framed window, the set's worth. It sits on the book, not in the page
+-- The set's cover over spread 1's left page: the pack art over the whole cover (leather in the set's colour when
+-- there is none), dark fades behind a title band (name and progress) and the set's worth, an embossed border. It sits on the book, not in the page
 -- (the page's grid would size it like a pocket).
 local function buildCover(page: Frame)
 	coverPage = Instance.new("Frame")
@@ -1969,12 +1968,49 @@ local function buildCover(page: Frame)
 	leather.Name = "Leather"
 	leather.Rotation = 60
 	leather.Parent = coverPage
+	-- Full art: the pack art fills the cover, under everything else
+	coverArt = Instance.new("ImageLabel")
+	coverArt.Name = "Art"
+	coverArt.Size = UDim2.fromScale(1, 1)
+	coverArt.BackgroundTransparency = 1
+	coverArt.ScaleType = Enum.ScaleType.Crop
+	coverArt.ZIndex = coverPage.ZIndex + 1
+	coverArt.Parent = coverPage
+	UIKit.corner(coverArt, 10)
+	coverEmblem = UIKit.label(coverArt, "", Enum.Font.FredokaOne, 80, COVER_TEXT)
+	coverEmblem.AnchorPoint = Vector2.new(0.5, 0.5)
+	coverEmblem.Position = UDim2.fromScale(0.5, 0.55)
+	coverEmblem.Size = UDim2.fromScale(0.5, 0.5)
+	coverEmblem.SizeConstraint = Enum.SizeConstraint.RelativeXX
+	coverEmblem.TextScaled = true
+	coverEmblem.TextXAlignment = Enum.TextXAlignment.Center
+	coverEmblem.ZIndex = coverArt.ZIndex + 1
+	-- Dark fades into the art behind the title and the worth, so the text reads on any picture
+	for _, fade in { { name = "TopFade", y = 0, h = 0.4, rotation = 90 }, { name = "BottomFade", y = 0.7, h = 0.3, rotation = -90 } } do
+		local strip = Instance.new("Frame")
+		strip.Name = fade.name
+		strip.Position = UDim2.fromScale(0, fade.y)
+		strip.Size = UDim2.fromScale(1, fade.h)
+		strip.BackgroundColor3 = Color3.new(0, 0, 0)
+		strip.BorderSizePixel = 0
+		strip.ZIndex = coverArt.ZIndex + 1
+		strip.Parent = coverPage
+		UIKit.corner(strip, 10)
+		local gradient = Instance.new("UIGradient")
+		gradient.Rotation = fade.rotation
+		gradient.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.25),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		gradient.Parent = strip
+	end
+
 	local emboss = Instance.new("Frame")
 	emboss.Name = "Emboss"
 	emboss.Position = UDim2.fromScale(0.05, 0.035)
 	emboss.Size = UDim2.fromScale(0.9, 0.93)
 	emboss.BackgroundTransparency = 1
-	emboss.ZIndex = coverPage.ZIndex + 1
+	emboss.ZIndex = coverArt.ZIndex + 2
 	emboss.Parent = coverPage
 	UIKit.corner(emboss, 10)
 	UIKit.outline(emboss, Color3.new(1, 1, 1), 2).Transparency = 0.6
@@ -1984,9 +2020,9 @@ local function buildCover(page: Frame)
 	band.Position = UDim2.fromScale(0.05, 0.1)
 	band.Size = UDim2.fromScale(0.9, 0.2)
 	band.BackgroundColor3 = Color3.new(0, 0, 0)
-	band.BackgroundTransparency = 0.72
+	band.BackgroundTransparency = 1
 	band.BorderSizePixel = 0
-	band.ZIndex = coverPage.ZIndex + 1
+	band.ZIndex = coverArt.ZIndex + 2
 	band.Parent = coverPage
 	-- Warm off-white: plain white would be taken as UIKit's auto colour and turn navy on the cover's base
 	coverTitle = UIKit.label(band, "", Enum.Font.FredokaOne, 40, COVER_TEXT)
@@ -2002,32 +2038,13 @@ local function buildCover(page: Frame)
 	coverProgress.TextXAlignment = Enum.TextXAlignment.Center
 	coverProgress.ZIndex = band.ZIndex + 1
 
-	-- The pack art in a framed window, like a label set into the leather
-	coverArt = Instance.new("ImageLabel")
-	coverArt.Name = "Art"
-	coverArt.AnchorPoint = Vector2.new(0.5, 0)
-	coverArt.Position = UDim2.fromScale(0.5, 0.36)
-	coverArt.Size = UDim2.fromScale(0.62, 0.44)
-	coverArt.ScaleType = Enum.ScaleType.Crop
-	coverArt.ZIndex = coverPage.ZIndex + 1
-	coverArt.Parent = coverPage
-	UIKit.corner(coverArt, 10)
-	UIKit.outline(coverArt, Color3.fromRGB(255, 225, 160), 3)
-	coverEmblem = UIKit.label(coverArt, "", Enum.Font.FredokaOne, 80, COVER_TEXT)
-	coverEmblem.AnchorPoint = Vector2.new(0.5, 0.5)
-	coverEmblem.Position = UDim2.fromScale(0.5, 0.5)
-	coverEmblem.Size = UDim2.fromScale(0.6, 0.6)
-	coverEmblem.TextScaled = true
-	coverEmblem.TextXAlignment = Enum.TextXAlignment.Center
-	coverEmblem.ZIndex = coverArt.ZIndex + 1
-
 	local track = Instance.new("Frame")
 	track.Name = "Progress"
 	track.Position = UDim2.fromScale(0.18, 0.85)
 	track.Size = UDim2.fromScale(0.64, 0.025)
 	track.BackgroundColor3 = Color3.new(0, 0, 0)
-	track.BackgroundTransparency = 0.6
-	track.ZIndex = coverPage.ZIndex + 1
+	track.BackgroundTransparency = 0.5
+	track.ZIndex = coverArt.ZIndex + 2
 	track.Parent = coverPage
 	UIKit.corner(track, 6)
 	coverFill = Instance.new("Frame")
@@ -2041,7 +2058,15 @@ local function buildCover(page: Frame)
 	coverValue.Size = UDim2.fromScale(0.8, 0.055)
 	coverValue.TextScaled = true
 	coverValue.TextXAlignment = Enum.TextXAlignment.Center
-	coverValue.ZIndex = coverPage.ZIndex + 1
+	coverValue.ZIndex = coverArt.ZIndex + 2
+	-- A dark outline keeps the cover text readable over bright art
+	for _, label in { coverTitle, coverProgress, coverValue } do
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(40, 20, 10)
+		stroke.Thickness = 2
+		stroke.Transparency = 0.25
+		stroke.Parent = label
+	end
 end
 
 -- The sheet that turns (flipTo): page-coloured, clipping a page-sized holder for the turning cards, with a

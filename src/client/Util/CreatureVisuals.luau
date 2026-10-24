@@ -42,7 +42,7 @@ export type Body = {
 	-- Creatures without bones: a whole-body fidget now and then while standing (PET_ANIM.BODY_FIDGETS)
 	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random, fired: boolean },
 	fxColor: Color3, -- roar shockwaves and sparks (the card's element colour)
-	aura: BeastAura.Aura?, -- big beasts: element fire, lightning and footstep dust (addBeastFx)
+	aura: BeastAura.Aura?, -- Legendaries and grade S/A copies: element fire, lightning, footstep dust (addBeastFx)
 }
 
 function CreatureVisuals.countParts(model: Instance): number
@@ -130,9 +130,9 @@ function CreatureVisuals.preload(cardNames: { string })
 	end)
 end
 
--- The element aura on a big saved-animation beast (Util/BeastAura): fire on its bones, lightning, ground flames
-function CreatureVisuals.addBeastFx(body: Body, element: string)
-	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size)
+-- The element aura (Util/BeastAura): fire on its bones, lightning, ground flames, at a tier (Legendary, S, A)
+function CreatureVisuals.addBeastFx(body: Body, element: string, tier: string)
+	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size, tier)
 end
 
 -- How tall a card's creature stands: its rarity's size (Party.SIZE_BY_RARITY), times its model entry's size
@@ -493,6 +493,10 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 	end
 
 	local near = (body.cframe.Position - origin).Magnitude <= NEAR_DISTANCE
+	if body.aura then
+		local away = (body.cframe.Position - origin).Magnitude
+		BeastAura.step(body.aura, dt, body.speed, body.speed >= motion.WALK_SPEED_MIN and not body.flying, away > BeastFx.FAR)
+	end
 	if body.rigged then
 		-- Its own animations do the walking and breathing; the kit only lifts flyers
 		local walking = body.speed >= motion.WALK_SPEED_MIN
@@ -511,9 +515,6 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		local away = (body.cframe.Position - origin).Magnitude
 		if away <= Party.PET_ANIM.DISTANCE then
 			KeyframePlayer.step(body.keyframes, dt, body.speed, body.size, body.model:GetScale())
-		end
-		if body.aura then
-			BeastAura.step(body.aura, dt, body.speed, body.speed >= motion.WALK_SPEED_MIN and not body.flying, away > BeastFx.FAR)
 		end
 		local hover = if body.flying then CreatureMotion.getPose(motion, now, body.speed, body.walked, true).offsetY else 0
 		local extra = stepIdle(body, now, body.speed >= motion.WALK_SPEED_MIN)

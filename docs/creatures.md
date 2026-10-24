@@ -21,7 +21,11 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   Script set to RunContext Server or Client runs from ReplicatedStorage as soon as the place starts. As a second
   layer the server destroys scripts in `CreatureModels` at start, and each client strips scripts, prompts, click
   detectors, sounds and tools from its own copy.
-- **Size by rarity.** Any model is scaled so its height is `CREATURE_HEIGHT × SIZE_BY_RARITY` (Config/Party).
+- **Size by rarity.** Any model is scaled so its height is `CREATURE_HEIGHT × SIZE_BY_RARITY` (Config/Party:
+  Common 0.7, Rare 0.85, Very Rare 1, Epic 1.5, Legendary 1.4), times its model entry's `size`.
+- **Grade aura.** Legendaries burn with their element (`Util/BeastAura`); grade S and A copies of the rest get a
+  lighter tier of it (`BeastFx.TIERS`: fewer bones, smaller flames, a dimmer light, S keeps rare lightning; no
+  ground flames or dust).
 - **Part cap.** Models with more than `MAX_MODEL_PARTS` (200) parts use the placeholder.
 - **No collisions.** All parts are made non-colliding, non-touching and non-queryable.
 
