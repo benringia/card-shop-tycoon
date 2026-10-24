@@ -52,7 +52,11 @@ village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is re
 between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring (the HealingSpring prop slot, 14 tall: the free "Better Low Poly Fountain" by scene_boy,
 recoloured moonstone with glowing water, kept in the place's `PlaceProps` (copy: `assets/place-props/HealingSpring.rbxm`);
 the code adds a big turning, bobbing gem over its top, rising sparkles, a blue light, breathing water and a faint
-disc for the 12-stud healing area; a part-built stand-in is used if the model is missing), warm afternoon lighting
+disc for the 12-stud healing area; a part-built stand-in is used if the model is missing). Around it, `Workspace.PlazaGarden` (hand-placed in the
+place, like TownDecor): 4 cherry trees between the benches (street and shop lanes left open), glowing spotted
+mushrooms at the basin, a ring of flowers and bushes; Creator Store pieces were stripped to parts, meshes, lights and
+particles (the cherry trees came with backdoor scripts). Butterflies (`ButterflyController`, client only,
+`Town.BUTTERFLIES`) flutter in loops round the spring, warm afternoon lighting
 with light haze, soft bloom and low wall shine (`Town.LIGHTING`; dim warm shop ceiling lights so pale walls never wash out). Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
 the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
 with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
@@ -638,6 +642,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
+    │   │   ├── ButterflyController.luau # client butterflies round the plaza spring
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)

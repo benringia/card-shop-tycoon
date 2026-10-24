@@ -53,6 +53,18 @@ return {
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
+	-- Butterflies round the healing spring (ButterflyController, client only). Studs; colours as { r, g, b }.
+	BUTTERFLIES = {
+		COUNT = 10,
+		SIZE = 0.55, -- one wing's width
+		SPEED = 3, -- studs a second along their loop
+		FLAP_SPEED = 14,
+		MIN_RADIUS = 6,
+		MAX_RADIUS = 17,
+		MIN_HEIGHT = 2.5,
+		MAX_HEIGHT = 8,
+		COLORS = { { 255, 150, 210 }, { 140, 210, 255 }, { 255, 230, 120 }, { 190, 150, 255 }, { 150, 240, 190 } },
+	},
 
 	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
 	BOUNDS = { HALF_X = 130, HALF_Z = 90, WALL_HEIGHT = 60 },
