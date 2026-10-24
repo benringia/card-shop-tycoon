@@ -34,6 +34,39 @@ return {
 		expect.equal(ShelfStock.boxCount(5, 0, 12), 0, "no capacity")
 	end,
 
+	["a double-sided shelf stocks both sides, each level front then back"] = function()
+		local config = ShelfStock.configFor(town.SHELF_STOCK, { SIDES = { -0.2, 0.2 }, DEPTH_FILL = 0.3 })
+		local rack = { x = 8, y = 7, z = 4 }
+		local slots = ShelfStock.slots(rack, config)
+		local perLevel = config.PER_LEVEL
+		expect.equal(#slots, #config.LEVELS * perLevel * 2, "slot count")
+		expect.equal(ShelfStock.slotCount(config), #slots, "slotCount")
+		expect.near(slots[1].z, -0.8, 1e-9, "front row first")
+		expect.equal(slots[1].back, false, "front faces front")
+		expect.near(slots[perLevel + 1].z, 0.8, 1e-9, "then the back row")
+		expect.equal(slots[perLevel + 1].back, true, "back faces back")
+		expect.equal(slots[1].y, slots[perLevel + 1].y, "same level")
+		assert(slots[perLevel * 2 + 1].y > slots[1].y, "then the next level up")
+	end,
+
+	["stocked rows map to a level and a side"] = function()
+		local level, side = ShelfStock.row(1, 2)
+		expect.equal(level, 1, "row 1 level")
+		expect.equal(side, 1, "row 1 side")
+		level, side = ShelfStock.row(2, 2)
+		expect.equal(level, 1, "row 2 level")
+		expect.equal(side, 2, "row 2 side")
+		level, side = ShelfStock.row(3, 2)
+		expect.equal(level, 2, "row 3 level")
+		expect.equal(side, 1, "row 3 side")
+	end,
+
+	["a one-sided shelf keeps the default sides"] = function()
+		local config = ShelfStock.configFor(town.SHELF_STOCK, nil)
+		expect.equal(ShelfStock.slotCount(config), SLOTS, "slots")
+		expect.equal(ShelfStock.slots(RACK, config)[1].back, false, "front")
+	end,
+
 	["12 slots: 3 levels of 4"] = function()
 		expect.equal(SLOTS, 12, "slots")
 	end,

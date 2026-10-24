@@ -21,6 +21,9 @@ export type Shelf = {
 	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
 	category: "Shelves" | "Cases" | "Fixtures", -- the Build menu tab it's listed under
+	-- Products shelves whose model isn't a plain one-sided rack: their own stock levels and sides
+	-- (Util/ShelfStock StockOverride; fractions measured from the prop model)
+	stock: { LEVELS: { number }?, SIDES: { number }?, DEPTH_FILL: number? }?,
 }
 
 local List: { Shelf } = {
@@ -115,6 +118,8 @@ local List: { Shelf } = {
 		unlockLevel = 6,
 		size = Vector3.new(8, 7, 4),
 		color = Color3.fromRGB(120, 80, 55),
+		-- Double-sided: shelf tops at 1.04 / 2.54 / 3.85 of 7 studs, a row each side of the middle divider
+		stock = { LEVELS = { 0.149, 0.362, 0.549 }, SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.3 },
 	},
 }
 

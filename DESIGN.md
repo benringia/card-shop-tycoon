@@ -72,9 +72,13 @@ Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → 
 (`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Delivery boxes show their
 product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
-`Town.SHELF_STOCK`, `Products.color`). Packs (products with `Packs` art) show as stacks of 5 thin upright packs
-with the pack art, leaning back, instead of boxes. Each stocked level has an orange price tag with the
-product's price at its front left. **Props:** every
+`Town.SHELF_STOCK`, `Products.color`). A shelf whose model isn't a one-sided rack sets its own levels and sides (`Shelves` `stock`): the
+Big Display Rack is double-sided, filling each level front then back, with its back rows, packs and tags facing
+the back aisle. Packs (products with `Packs` art) show as stacks of 5 thin upright packs
+with the pack art, leaning back, instead of boxes. Each stocked row has a yellow price tag with the
+product's price on its outer edge, under the row's first stack (so always next to stock on display). On your own shelves the tags are buttons (`PriceTagController`): point at one
+(within 24 studs) and it lights up with a "Set Price" tooltip by the cursor; click or tap it for a small Set Price window with
+that product's +/- row (the same price as the Prices panel; the server sets the shelf's `ProductId` attribute). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 
@@ -631,6 +635,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
+    │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen

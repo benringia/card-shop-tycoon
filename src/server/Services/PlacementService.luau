@@ -114,7 +114,10 @@ local function countCards(shelf: PlacedShelf): number
 	return count
 end
 
-local STOCK_SLOTS = #Town.SHELF_STOCK.LEVELS * Town.SHELF_STOCK.PER_LEVEL
+-- A shelf's stock layout: the town's default with the shelf's own overrides (double-sided racks)
+local function stockConfig(shelf: PlacedShelf): ShelfStock.StockConfig
+	return ShelfStock.configFor(Town.SHELF_STOCK, shelf.def.stock)
+end
 
 local function toVec(vector: Vector3): ShelfStock.Vec
 	return { x = vector.X, y = vector.Y, z = vector.Z }
@@ -168,6 +171,7 @@ end
 local function newPriceTag(parent: Instance): Part
 	local look = Town.SHELF_STOCK.TAG
 	local tag = newDecorPart("PriceTag", parent)
+	tag.CanQuery = true -- the owner points at it to set the price (PriceTagController)
 	tag.Size = Vector3.new(look.SIZE[1], look.SIZE[2], look.SIZE[3])
 	tag.Color = rgb(look.COLOR)
 	local gui = Instance.new("SurfaceGui")
@@ -210,24 +214,36 @@ local function trim(parts: { Part }, count: number)
 	end
 end
 
--- Price tags on the front edge of each level that has stock
+-- Price tags on the outer edge of each row that has stock (both faces of a double-sided rack)
 local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
-	local config = Town.SHELF_STOCK
-	local levels = ShelfStock.stockedLevels(boxes, config.PER_LEVEL)
+	local config = stockConfig(shelf)
+	local tagLook = Town.SHELF_STOCK.TAG
+	local sides = config.SIDES or { 0 }
+	local rows = ShelfStock.stockedLevels(boxes, config.PER_LEVEL)
 	local tags = shelf.priceTags
-	trim(tags, levels)
+	trim(tags, rows)
 	local size = shelf.def.size
 	local box = ShelfStock.boxSize(toVec(size), config)
-	for index = 1, levels do
+	for index = 1, rows do
 		local tag = tags[index]
 		if not tag then
 			tag = newPriceTag(shelf.part)
 			tags[index] = tag
 		end
-		local bottom = -size.Y / 2 + config.LEVELS[index] * size.Y
-		local x = -size.X / 2 + config.TAG.INSET + tag.Size.X / 2
-		local z = -box.z / 2 - tag.Size.Z / 2 - config.TAG.GAP
-		tag.CFrame = shelf.part.CFrame * CFrame.new(x, bottom + tag.Size.Y / 2, z) * CFrame.Angles(0, 0, math.rad(config.TAG.TILT))
+		local level, side = ShelfStock.row(index, #sides)
+		local centre = sides[side] * size.Z
+		local back = centre > 0
+		local bottom = -size.Y / 2 + config.LEVELS[level] * size.Y
+		-- Under the row's first stack (rows fill from -X), so the tag is always by cards on display
+		local cell = size.X / config.PER_LEVEL
+		local x = -size.X / 2 + (cell - box.x) / 2 + tag.Size.X / 2
+		local z = centre + (if back then 1 else -1) * (box.z / 2 + tag.Size.Z / 2 + tagLook.GAP)
+		-- Back tags turn round to face the back aisle
+		local turn = if back then CFrame.Angles(0, math.pi, 0) else CFrame.new()
+		tag.CFrame = shelf.part.CFrame
+			* CFrame.new(x, bottom + tag.Size.Y / 2, z)
+			* turn
+			* CFrame.Angles(0, 0, math.rad(tagLook.TILT))
 		local gui = tag:FindFirstChildOfClass("SurfaceGui")
 		local label = if gui then gui:FindFirstChild("Price") :: TextLabel? else nil
 		if label then
@@ -236,14 +252,15 @@ local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
 	end
 end
 
--- Products shelves show up to STOCK_SLOTS boxes in the product's colour, filling from the bottom level.
+-- Products shelves show up to their stock slots of boxes in the product's colour, filling from the bottom level.
 -- Packs show as stacks of packs with their art instead of boxes.
 local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	if shelf.def.kind ~= "Products" then
 		return
 	end
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
-	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, STOCK_SLOTS) else 0
+	local config = stockConfig(shelf)
+	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, ShelfStock.slotCount(config)) else 0
 	local boxes = shelf.stockBoxes
 	-- A different product may have taken the shelf: start the boxes fresh
 	local kind = if product then product.id else ""
@@ -257,8 +274,8 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	end
 	local pack = Packs.ById[product.id]
 	local art = if pack and pack.art then pack.art else nil
-	local size = ShelfStock.boxSize(toVec(shelf.def.size), Town.SHELF_STOCK)
-	local slots = ShelfStock.slots(toVec(shelf.def.size), Town.SHELF_STOCK)
+	local size = ShelfStock.boxSize(toVec(shelf.def.size), config)
+	local slots = ShelfStock.slots(toVec(shelf.def.size), config)
 	local color = rgb(product.color)
 	for index = 1, count do
 		local box = boxes[index]
@@ -270,7 +287,8 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 		local slot = slots[index]
 		box.Size = Vector3.new(size.x, size.y, size.z)
 		box.Color = color
-		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z)
+		-- Back-row boxes turn round so their packs face the back aisle
+		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z) * (if slot.back then CFrame.Angles(0, math.pi, 0) else CFrame.new())
 		if art then
 			box.Transparency = 1
 			fillWithPacks(box, art, color)
@@ -279,6 +297,8 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 end
 
 local function updateLabel(shelf: PlacedShelf)
+	-- Clients read this to offer the product's price in the shelf's own menu
+	shelf.part:SetAttribute("ProductId", if shelf.units > 0 then shelf.productId else nil)
 	if isCondenser(shelf.def) then
 		shelf.label.Text = `✨ {shelf.def.name}`
 		return
