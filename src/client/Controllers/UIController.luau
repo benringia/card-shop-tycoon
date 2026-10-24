@@ -26,15 +26,19 @@ local ICON_SIZE = 48 -- the icon pokes out a little past the pill's top and bott
 local XP_BAR_WIDTH = 140
 local CASH_COLOR = Color3.fromRGB(130, 235, 140)
 local SHARD_COLOR = Color3.fromRGB(205, 175, 255)
--- Status sits in the bottom-right corner (the top corners hold Roblox's menu, chat and the player list).
--- On touch screens it sits above the jump button. The column, bottom up: level + XP (in line with the party
--- bar), shards, cash, then the buff badge; money toasts pop in just above it.
+-- Status sits in the bottom-right corner (the top corners hold Roblox's menu, chat and the player list). The
+-- column, bottom up: level + XP (in line with the party bar), shards, cash, then the buff badge; money toasts pop
+-- in just above it. Touch screens: see TOUCH_TOP.
 local STATUS_MARGIN = 12
-local TOUCH_JUMP_CLEARANCE = 130
 -- Fixed sizes, not AutomaticSize: an auto-sized frame anchored to the right edge can lay out past the screen edge
 local STATUS_WIDTH = 250
 local STATUS_HEIGHT = 48 + 3 * 42 + 3 * 8 -- buff badge + three pills + gaps
 local STATUS_ROW_WIDTH = 500 -- party bar + gap + status column; spare width is empty and lets clicks through
+-- Everything in the corner shrinks with the screen's height (Hud.scaleWith, HudLayout.SCALE). On touch screens
+-- (landscape phones are short, the jump button takes the bottom right) it is one column down the right edge from
+-- the top: buff, cash, shards, level, then the party bar, then the money toasts; it ends around the middle.
+local TOUCH_TOP = 8
+local TOUCH_PARTY_HEIGHT = 84 -- room for the party bar under the column
 -- Money toasts (sales): stacked above the status corner, newest at the bottom
 local SIDE_TOAST_SECONDS = 3.5
 local SIDE_TOAST_MAX = 4
@@ -114,6 +118,7 @@ end
 function UIController.GetStatusRow(): Frame
 	return statusRow
 end
+
 
 -- Returns a token for UIController.Dismiss
 function UIController.Notify(message: string, isError: boolean?, duration: number?): number
@@ -338,21 +343,29 @@ local function updateShards(items: unknown)
 	shardsLabel.Text = text
 end
 
--- The bottom-right corner sits above the jump button on touch screens. On a narrow screen the party bar would
--- reach over the bottom-centre tiles (Cards, Bag ...): then the corner lifts above the tile row too. The money
--- toasts stay just above it.
+-- The bottom-right corner (PC). On a narrow window the party bar would reach over the bottom-centre tiles (Cards,
+-- Bag ...): then the corner lifts above the tile row. The money toasts stay just above it. On touch screens the
+-- corner is a column from the top right instead, the toasts under it.
 local function placeStatusRow(rowLayout: UIListLayout)
-	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
+	if UserInputService.TouchEnabled then
+		statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 0, TOUCH_TOP)
+		if sideToasts then
+			sideToasts.Position = UDim2.new(1, -STATUS_MARGIN, 0, TOUCH_TOP + rowLayout.AbsoluteContentSize.Y + 6)
+		end
+		return
+	end
+	local bottom = STATUS_MARGIN
 	local width = screenGui.AbsoluteSize.X
 	local tiles = screenGui:FindFirstChild("HudBottom")
 	local tilesRight = width / 2 + (if tiles and tiles:IsA("GuiObject") then tiles.AbsoluteSize.X / 2 else 0)
 	local rowLeft = width - STATUS_MARGIN - rowLayout.AbsoluteContentSize.X
+	local scale = Hud.scaleFor()
 	if rowLeft < tilesRight + STATUS_MARGIN then
-		bottom = math.max(bottom, HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + PILL_GAP)
+		bottom = math.max(bottom, HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y * scale + PILL_GAP)
 	end
 	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
 	if sideToasts then
-		sideToasts.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + STATUS_HEIGHT + 6)) -- just above the buff badge
+		sideToasts.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + STATUS_HEIGHT * scale + 6)) -- just above the buff badge
 	end
 end
 
@@ -380,6 +393,15 @@ function UIController.Start()
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	rowLayout.Parent = statusRow
+	local touch = UserInputService.TouchEnabled
+	if touch then
+		-- One column down the right edge from the top (placeStatusRow)
+		statusRow.AnchorPoint = Vector2.new(1, 0)
+		statusRow.Size = UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT + 8 + TOUCH_PARTY_HEIGHT)
+		rowLayout.FillDirection = Enum.FillDirection.Vertical
+		rowLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	end
+	Hud.scaleWith(statusRow)
 	local function place()
 		placeStatusRow(rowLayout)
 	end
@@ -393,14 +415,15 @@ function UIController.Start()
 
 	statusFrame = Instance.new("Frame")
 	statusFrame.Name = "Status"
-	statusFrame.LayoutOrder = 10
-	statusFrame.Size = UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT)
+	statusFrame.LayoutOrder = if touch then -1 else 10 -- above the party bar on touch screens, right of it on PC
+	statusFrame.Size = if touch then UDim2.fromOffset(STATUS_WIDTH, 0) else UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT)
+	statusFrame.AutomaticSize = if touch then Enum.AutomaticSize.Y else Enum.AutomaticSize.None
 	statusFrame.BackgroundTransparency = 1
 	statusFrame.Parent = statusRow
 	local statusLayout = Instance.new("UIListLayout")
 	statusLayout.Padding = UDim.new(0, PILL_GAP)
 	statusLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	statusLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	statusLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
 	statusLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	statusLayout.Parent = statusFrame
 
@@ -423,8 +446,9 @@ function UIController.Start()
 
 	sideToasts = Instance.new("Frame")
 	sideToasts.Name = "SideToasts"
-	sideToasts.AnchorPoint = Vector2.new(1, 1)
+	sideToasts.AnchorPoint = if UserInputService.TouchEnabled then Vector2.new(1, 0) else Vector2.new(1, 1)
 	sideToasts.Size = UDim2.fromOffset(320, SIDE_TOAST_MAX * (SIDE_TOAST_HEIGHT + 6))
+	Hud.scaleWith(sideToasts)
 	sideToasts.BackgroundTransparency = 1
 	sideToasts.Parent = screenGui
 	place()
@@ -434,7 +458,7 @@ function UIController.Start()
 	local sideLayout = Instance.new("UIListLayout")
 	sideLayout.Padding = UDim.new(0, 6)
 	sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	sideLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	sideLayout.VerticalAlignment = if UserInputService.TouchEnabled then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
 	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	sideLayout.Parent = sideToasts
 

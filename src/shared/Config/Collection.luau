@@ -28,6 +28,11 @@ return {
 		SIDE_LANE = 152, -- either side: a set tab and a page arrow
 		NARROW_BELOW = 900, -- screen width: narrower screens drop the arrows (swipe turns pages) for a bigger book
 		NARROW_LANE = 72, -- and keep only room for the set tabs
+		-- Narrow screens (phones): the corner buttons go compact (icons only) and stack in slim side lanes, so the
+		-- book can take the full height: Cards and Bag down the left edge, Rarity guide bottom left, Filters under
+		-- the close button
+		NARROW_LEFT = 88,
+		NARROW_RIGHT = 80,
 		TAB_WIDTH = 64, -- set bookmark tabs sticking out of the book's left edge
 		TAB_HEIGHT = 88,
 		PROGRESS_FROM = 900, -- screen width in pixels: narrower screens skip the progress card (the cover shows it)

@@ -11,4 +11,7 @@ return {
 	TILE_DARK = Color3.fromRGB(22, 70, 200), -- tile gradient bottom
 	CONTEXT = Color3.fromRGB(245, 140, 40), -- contextual tiles (Rip a pack, Drop box)
 	KEY_CHIP = Color3.fromRGB(20, 28, 60),
+	-- The whole HUD shrinks with the screen's height on small screens (landscape phones): 1 at REFERENCE_HEIGHT
+	-- and up, never below MIN (tiles stay over 48 px to tap)
+	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7 },
 }
