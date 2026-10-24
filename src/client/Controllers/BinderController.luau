@@ -1356,12 +1356,12 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	SLOT_COLOR = Color3.fromRGB(206, 216, 250), -- a filled slot: soft blue so pale items still stand out
-	EMPTY_COLOR = Color3.fromRGB(232, 238, 252),
-	EMPTY_EDGE = Color3.fromRGB(200, 210, 236),
-	BADGE = Color3.fromRGB(28, 36, 66),
-	INK = Color3.fromRGB(28, 36, 66),
-	SUBTEXT = Color3.fromRGB(95, 108, 150),
+	SLOT_COLOR = Color3.fromRGB(46, 54, 76), -- a filled slot: lighter slate so items stand out (Midnight & Gold)
+	EMPTY_COLOR = Color3.fromRGB(28, 33, 47),
+	EMPTY_EDGE = Color3.fromRGB(48, 56, 78),
+	BADGE = Color3.fromRGB(14, 16, 24),
+	INK = Color3.fromRGB(244, 241, 233),
+	SUBTEXT = Color3.fromRGB(150, 158, 178),
 }
 
 local function bagLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, y: number, height: number): TextLabel
@@ -1888,7 +1888,7 @@ local function placeCorners(narrow: boolean)
 	local guideIcon = rarityGuideButton:FindFirstChild("Icon") :: GuiObject?
 	if guideIcon then
 		guideIcon.AnchorPoint = if narrow then Vector2.new(0.5, 0.5) else Vector2.new(0, 0.5)
-		guideIcon.Position = if narrow then UDim2.fromScale(0.5, 0.45) else UDim2.new(0, 10, 0.45, 0)
+		guideIcon.Position = if narrow then UDim2.fromScale(0.5, 0.45) else UDim2.new(0, -22, 0.45, 0) -- in the left padding, before the text
 	end
 	filterButton.Position = if narrow then UDim2.new(1, -16, 0, 76) else UDim2.new(1, -84, 0, 16)
 end

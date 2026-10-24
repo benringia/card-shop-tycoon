@@ -285,7 +285,7 @@ Each pack = 5 cards:
 - **Trading (post-MVP):** player to player trade window.
 
 ### 5.7 Pack opening feel (important)
-- A light stage (soft blue fading to lavender, a white glow) with the illustrated pack floating in the middle (`Config/Packs`
+- A midnight stage (deep navy fading to near-black, a soft glow) with the illustrated pack floating in the middle (`Config/Packs`
   art, the logo and crimped edges drawn in code; art in `assets/ui/packs`, made with Figma's image generator). It
   feels premium (`Util/PackStage`, `PackOpening.AMBIENT`): long soft light rays in the pack's colour turn slowly
   behind it, bokeh sparkles drift up the screen, a glowing pedestal pulses under it and a soft vignette darkens the
@@ -369,7 +369,7 @@ shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontie
 an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
 and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
-is an inventory window in the middle of the whole screen ("Bag", "1 / 20 slots" in its blue header): a 5x4 grid of slots (more rows if
+is an inventory window in the middle of the whole screen ("Bag", "1 / 20 slots" in its header): a 5x4 grid of slots (more rows if
 needed), filled ones soft blue with the item icon and an "x2" badge, the rest empty; the chosen item's details on
 the right (big icon, name, "You have 2", what it does, Where to get it / How to use it boxes). It scales down to
 fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
@@ -830,16 +830,18 @@ their saved data.
 
 ### 10.6 UI style and HUD
 Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
-- **Style** (`Util/UIKit`): light-blue panel bodies with a white border, a blue gradient header with the title, a
-  red close button on the top-right corner, white cards and rows, chunky buttons with a darker bottom lip
-  (blue-violet primary, white secondary). Text picks white or navy for the surface behind it.
+- **Style** (`Util/UIKit`, "Midnight & Gold"): deep navy-charcoal panel bodies with a soft gold rim, a dark
+  gradient header with the title and a thin gold rule under it, a red close button on the top-right corner, slate
+  cards and rows with thin edges, chunky buttons with a darker bottom lip (warm gold primary with dark text, slate
+  secondary). Text picks warm white or dark ink for the surface behind it. HUD tiles are midnight slate; the Bag,
+  hover tooltips, Shop pictures and the pack opening stage use the same palette.
 - **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
   for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held; number pills bump when they change.
-- **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to
-  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
+- **HUD** (`Util/Hud`, `Config/HudLayout`): a midnight **Manage** tile on the left middle slides out a tray of tiles to
+  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; tiles at the bottom centre (Cards B, Bag I) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a

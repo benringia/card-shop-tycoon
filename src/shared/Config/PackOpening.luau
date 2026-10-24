@@ -13,9 +13,10 @@ return {
 
 	-- The light stage behind everything
 	STAGE = {
-		TOP = Color3.fromRGB(236, 238, 255),
-		BOTTOM = Color3.fromRGB(178, 186, 236), -- a richer lavender blue at the foot
-		GLOW_TRANSPARENCY = 0.35, -- the soft white glow in the middle
+		-- Midnight & Gold, like the windows: deep navy at the top, near-black at the foot, a soft glow behind the pack
+		TOP = Color3.fromRGB(30, 36, 56),
+		BOTTOM = Color3.fromRGB(10, 12, 20),
+		GLOW_TRANSPARENCY = 0.78, -- the soft glow in the middle
 		DIM = 0.55, -- how dark the stage gets at a tease's full dim (CardReveal dim = 1)
 	},
 	-- The premium backdrop (Util/PackStage): slow light rays behind the pack in its colour, bokeh sparkles drifting
@@ -36,7 +37,7 @@ return {
 		PEDESTAL_GAP = 0.01, -- under the pack's foot
 		PEDESTAL_TRANSPARENCY = 0.25,
 		PEDESTAL_PULSE_SECONDS = 1.8,
-		VIGNETTE_COLOR = Color3.fromRGB(70, 70, 140),
+		VIGNETTE_COLOR = Color3.fromRGB(0, 0, 0),
 		VIGNETTE_SIZE = 0.28,
 		VIGNETTE_TRANSPARENCY = 0.7, -- at the very edge
 	},

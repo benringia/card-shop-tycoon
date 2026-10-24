@@ -14,7 +14,7 @@ local PricingController = require(Controllers:WaitForChild("PricingController"))
 
 local REACH = 24 -- studs from your character a tag can be used from
 local HIGHLIGHT = Color3.fromRGB(255, 255, 255)
-local HINT_COLOR = Color3.fromRGB(28, 36, 66)
+local HINT_COLOR = Color3.fromRGB(20, 24, 36) -- the windows' midnight
 
 local player = Players.LocalPlayer
 

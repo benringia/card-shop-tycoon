@@ -31,14 +31,14 @@ local CASE_BUYERS = {
 }
 
 -- Build menu tabs (Config/Shelves `category`); Decor has nothing yet and says so
-local TAB_TEXT = Color3.fromRGB(28, 36, 66)
+local TAB_TEXT = Color3.fromRGB(150, 158, 178) -- a closed tab (UIKit Subtext); the open one is dark on gold
 local BUILD_TABS = {
 	{ name = "Shelves", icon = "Shelves" },
 	{ name = "Cases", icon = "Cases" },
 	{ name = "Fixtures", icon = "Fixtures" },
 	{ name = "Decor", icon = "Decor" },
 }
-local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110, PICTURE_COLOR = Color3.fromRGB(255, 226, 180) }
+local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110, PICTURE_COLOR = Color3.fromRGB(52, 60, 82) } -- a lighter slate stage for the 3D picture
 
 type ShopRow = {
 	def: ShelfDef,
@@ -236,7 +236,7 @@ local function buildShopPanel(parent: Instance)
 			button.BackgroundColor3 = if name == category then UIKit.Colors.Accent else UIKit.Colors.Row
 			local label = button:FindFirstChild("Name", true) :: TextLabel?
 			if label then
-				label.TextColor3 = if name == category then Color3.new(1, 1, 1) else TAB_TEXT
+				label.TextColor3 = if name == category then UIKit.Colors.Ink else TAB_TEXT
 			end
 		end
 		local any = false

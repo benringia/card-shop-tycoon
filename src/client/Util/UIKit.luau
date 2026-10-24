@@ -12,20 +12,21 @@ local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
 
 local UIKit = {}
 
+-- Midnight & Gold: dark navy-charcoal windows, slate rows, warm gold for primary buttons and highlights
 UIKit.Colors = {
-	Panel = Color3.fromRGB(212, 225, 248), -- panel body (light blue)
-	Row = Color3.fromRGB(255, 255, 255), -- cards and rows on a panel; secondary buttons
-	Accent = Color3.fromRGB(88, 101, 242), -- primary buttons, selected tabs (blue-violet)
-	Success = Color3.fromRGB(46, 180, 95),
-	Danger = Color3.fromRGB(232, 64, 76),
-	Locked = Color3.fromRGB(160, 170, 192),
-	Text = Color3.fromRGB(255, 255, 255), -- text on dark or coloured surfaces (navy on light ones, see label)
-	Subtext = Color3.fromRGB(205, 210, 230),
-	Ink = Color3.fromRGB(28, 38, 82), -- text on light surfaces
-	InkSoft = Color3.fromRGB(88, 102, 145),
-	Outline = Color3.fromRGB(176, 196, 236), -- thin borders on light cards
-	HeaderTop = Color3.fromRGB(70, 140, 255),
-	HeaderBottom = Color3.fromRGB(28, 78, 232),
+	Panel = Color3.fromRGB(20, 24, 36), -- panel body (deep navy-charcoal)
+	Row = Color3.fromRGB(34, 40, 56), -- cards and rows on a panel; secondary buttons (slate)
+	Accent = Color3.fromRGB(226, 178, 72), -- primary buttons, selected tabs, highlights (warm gold)
+	Success = Color3.fromRGB(52, 190, 115),
+	Danger = Color3.fromRGB(225, 72, 78),
+	Locked = Color3.fromRGB(64, 70, 86),
+	Text = Color3.fromRGB(244, 241, 233), -- text on dark or coloured surfaces (dark on light ones, see label)
+	Subtext = Color3.fromRGB(150, 158, 178),
+	Ink = Color3.fromRGB(34, 28, 16), -- text on light surfaces (gold buttons, white pills)
+	InkSoft = Color3.fromRGB(110, 100, 80),
+	Outline = Color3.fromRGB(58, 66, 90), -- thin borders on rows and cards
+	HeaderTop = Color3.fromRGB(38, 44, 66),
+	HeaderBottom = Color3.fromRGB(26, 30, 46),
 }
 
 UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another one (card picker) goes higher
@@ -249,13 +250,13 @@ function UIKit.closeButton(parent: GuiObject): TextButton
 	close.ZIndex = parent.ZIndex + 3
 	local ring = close:FindFirstChildWhichIsA("UIStroke")
 	if ring then
-		ring.Color = Color3.new(1, 1, 1)
-		ring.Thickness = 3
+		ring.Color = UIKit.Colors.Text
+		ring.Thickness = 2
 	end
 	return close
 end
 
--- The blue gradient strip across the top of a panel, with the title in it
+-- The dark gradient strip across the top of a panel, with the title in it and a gold rule under it
 function UIKit.header(parent: GuiObject, title: string): (Frame, TextLabel)
 	local header = Instance.new("Frame")
 	header.Name = "Header"
@@ -282,6 +283,17 @@ function UIKit.header(parent: GuiObject, title: string): (Frame, TextLabel)
 	local bottomGradient = gradient:Clone()
 	bottomGradient.Color = ColorSequence.new(UIKit.Colors.HeaderBottom)
 	bottomGradient.Parent = squareBottom
+	-- A thin gold rule where the header meets the body
+	local rule = Instance.new("Frame")
+	rule.Name = "Rule"
+	rule.AnchorPoint = Vector2.new(0, 1)
+	rule.Position = UDim2.fromScale(0, 1)
+	rule.Size = UDim2.new(1, 0, 0, 2)
+	rule.BackgroundColor3 = UIKit.Colors.Accent
+	rule.BackgroundTransparency = 0.3
+	rule.BorderSizePixel = 0
+	rule.ZIndex = header.ZIndex + 1
+	rule.Parent = header
 
 	local titleLabel = UIKit.label(header, title, Enum.Font.FredokaOne, 28, UIKit.Colors.Text)
 	titleLabel.Name = "Title"
@@ -303,7 +315,7 @@ function UIKit.closePanel(frame: GuiObject)
 	end)
 end
 
--- Centred modal panel: blue header with the title, red close button, light body with a scrolling list.
+-- Centred modal panel: dark header with the title, red close button, dark body with a scrolling list.
 -- Starts hidden. The title label is named "Title" (inside the header) for callers that change it.
 function UIKit.panel(parent: Instance, name: string, title: string): (Frame, ScrollingFrame)
 	local frame = Instance.new("Frame")
@@ -316,7 +328,9 @@ function UIKit.panel(parent: Instance, name: string, title: string): (Frame, Scr
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame.Parent = parent
 	UIKit.corner(frame, 16)
-	UIKit.outline(frame, Color3.new(1, 1, 1), 3)
+	-- A soft gold rim
+	local rim = UIKit.outline(frame, UIKit.Colors.Accent, 1.5)
+	rim.Transparency = 0.5
 
 	local sizeLimit = Instance.new("UISizeConstraint")
 	sizeLimit.MaxSize = Vector2.new(460, 520)
