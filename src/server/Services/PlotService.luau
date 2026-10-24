@@ -1,8 +1,10 @@
 --!strict
--- Builds the shop plots and their shells (themed walls, open front, striped awning, roof; main town spec).
+-- Builds the shop plots and their modern shells (white walls, glass front with sliding doors, sign band, flat
+-- roof; main town spec).
 -- DataService claims one per player on join and releases it on leave.
 -- Other services ask PlotService.GetPlot(player) to find a player's plot.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -101,8 +103,8 @@ local function wallTop(): number
 	return PlotConfig.FLOOR_THICKNESS / 2 + Town.WALL_HEIGHT
 end
 
--- Height of the awning's top edge above the plot CFrame
-local function awningTop(): number
+-- Height of the glass shop front's top above the plot CFrame (the sign band runs above it)
+local function frontTop(): number
 	return PlotConfig.FLOOR_THICKNESS / 2 + Town.AWNING_HEIGHT
 end
 
@@ -121,146 +123,226 @@ local function shellPart(parent: Instance, name: string, size: Vector3, cframe: 
 	return part
 end
 
--- A wall with a trim strip along its top and a baseboard (both a little thicker than the wall)
-local function buildWall(parent: Instance, plotCFrame: CFrame, size: Vector3, offset: Vector3, wall: Color3, trim: Color3)
+-- Decoration that never blocks the camera, clicks or paths
+local function trimPart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?): Part
+	local part = shellPart(parent, name, size, cframe, color, material)
+	part.CanCollide = false
+	part.CanQuery = false
+	return part
+end
+
+-- A smooth white wall with the charcoal band along its outside foot
+local function buildWall(parent: Instance, plotCFrame: CFrame, size: Vector3, offset: Vector3, outward: Vector3)
+	local look = Town.SHOP
 	local bottom = -PlotConfig.FLOOR_THICKNESS / 2
 	local height = wallTop() - bottom
-	shellPart(parent, "Wall", Vector3.new(size.X, height, size.Z), plotCFrame * CFrame.new(offset.X, bottom + height / 2, offset.Z), wall)
-	local trimSize = Vector3.new(size.X + 0.2, Town.TRIM_HEIGHT, size.Z + 0.2)
-	shellPart(parent, "Trim", trimSize, plotCFrame * CFrame.new(offset.X, wallTop() - Town.TRIM_HEIGHT / 2, offset.Z), trim)
-	local baseboard = shellPart(parent, "Baseboard", trimSize, plotCFrame * CFrame.new(offset.X, PlotConfig.FLOOR_THICKNESS / 2 + Town.TRIM_HEIGHT / 2, offset.Z), trim)
-	baseboard.CanCollide = false
+	shellPart(parent, "Wall", Vector3.new(size.X, height, size.Z), plotCFrame * CFrame.new(offset.X, bottom + height / 2, offset.Z), Props.color(look.WALL))
+	local band = Vector3.new(size.X + math.abs(outward.X) * 0.1, look.BASE_HEIGHT, size.Z + math.abs(outward.Z) * 0.1)
+	trimPart(parent, "BaseBand", band, plotCFrame * CFrame.new(offset + outward * 0.05 + Vector3.new(0, bottom + look.BASE_HEIGHT / 2 - offset.Y, 0)), Props.color(look.CHARCOAL))
 end
 
--- Striped awning sloping down and out over the street from the front top edge (code-built stand-in)
-local function buildStripedAwning(theme, plotCFrame: CFrame, parent: Instance, outerWidth: number)
-	local halfDepth = PlotConfig.DEPTH / 2
-	local slope = math.atan2(Town.AWNING_DROP, Town.AWNING_DEPTH)
-	local length = math.sqrt(Town.AWNING_DEPTH ^ 2 + Town.AWNING_DROP ^ 2)
-	local stripe = outerWidth / Town.AWNING_STRIPES
-	for index = 1, Town.AWNING_STRIPES do
-		local x = -outerWidth / 2 + (index - 0.5) * stripe
-		local color = if index % 2 == 1 then Props.color(theme.awning) else Props.color(Town.STRIPE_COLOR)
-		local cframe = plotCFrame
-			* CFrame.new(x, awningTop() - Town.AWNING_DROP / 2, -halfDepth - Town.AWNING_DEPTH / 2)
-			* CFrame.Angles(-slope, 0, 0)
-		local part = shellPart(parent, "Awning", Vector3.new(stripe, 0.3, length), cframe, color, Enum.Material.Fabric)
-		part.CanCollide = false
-	end
-end
-
--- The Awning prop repeated across the front, its top at the wall top, tinted in the plot's awning colour;
--- the striped stand-in when there is no Awning model
-local function buildAwning(theme, plotCFrame: CFrame, parent: Instance, outerWidth: number)
-	local source = Props.getSourceSize("Awning")
-	if not source then
-		buildStripedAwning(theme, plotCFrame, parent, outerWidth)
-		return
-	end
-	local count, scale = PropFit.tileAcross(outerWidth, source.X, source.Z, Town.AWNING_DEPTH)
-	local size = source * scale
-	local tile = outerWidth / count
-	for index = 1, count do
-		local x = -outerWidth / 2 + (index - 0.5) * tile
-		local at = plotCFrame * CFrame.new(x, awningTop() - size.Y, -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS - size.Z / 2)
-		local awning = Props.fit("Awning", size + Vector3.new(0.01, 0.01, 0.01), at, parent)
-		Props.tint(awning, Props.color(theme.awning))
-	end
-end
-
--- Gable roof over the ceiling: two sloping panels meeting at a ridge that runs side to side, with triangle
--- ends over the side walls
-local function buildGable(theme, plotCFrame: CFrame, parent: Instance, outerWidth: number)
-	local gable = Town.GABLE
-	local thickness = Town.WALL_THICKNESS
-	local base = wallTop() + Town.ROOF_THICKNESS
-	local front, back = -PlotConfig.DEPTH / 2 - thickness - gable.OVERHANG, PlotConfig.DEPTH / 2 + thickness + gable.OVERHANG
-	local middle = (front + back) / 2
-	local run = (back - front) / 2
-	local slope = math.atan2(gable.RISE, run)
-	local length = math.sqrt(run ^ 2 + gable.RISE ^ 2)
-	local roofColor = Props.color(theme.roof)
-	local panel = Vector3.new(outerWidth + gable.OVERHANG * 2, Town.ROOF_THICKNESS, length)
+-- Sliding glass doors: two panels that part when anyone (players or customers) comes near. They never collide,
+-- so nothing is ever stuck behind them; the panes beside them are the solid wall.
+local function buildDoors(parent: Instance, plotCFrame: CFrame)
+	local look = Town.SHOP
+	local z = -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS / 2
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local half = look.DOOR_WIDTH / 2
+	local glass, frame = Props.color(look.GLASS), Props.color(look.FRAME)
+	local panels = {}
 	for _, side in { -1, 1 } do
-		-- side -1: the front slope (its street edge is the low one); side 1: the back slope
-		local cframe = plotCFrame
-			* CFrame.new(0, base + gable.RISE / 2, middle + side * run / 2)
-			* CFrame.Angles(side * slope, 0, 0)
-		local part = shellPart(parent, "RoofPanel", panel, cframe, roofColor)
-		part.CanQuery = false
+		local closed = plotCFrame * CFrame.new(side * half / 2, floorTop + look.DOOR_HEIGHT / 2, z)
+		local panel = trimPart(parent, "DoorGlass", Vector3.new(half, look.DOOR_HEIGHT, 0.2), closed, glass, Enum.Material.Glass)
+		panel.Transparency = look.GLASS_TRANSPARENCY
+		-- A thin frame round each panel, and a long bar handle by the middle
+		local edge = Instance.new("SelectionBox")
+		edge.Adornee = panel
+		edge.Color3 = frame
+		edge.LineThickness = 0.08
+		edge.SurfaceTransparency = 1
+		edge.Parent = panel
+		local handle = trimPart(parent, "DoorHandle", Vector3.new(0.15, 3.5, 0.15), closed * CFrame.new(-side * (half / 2 - 0.6), 0, -0.25), frame, Enum.Material.Metal)
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = panel
+		weld.Part1 = handle
+		weld.Parent = panel
+		handle.Anchored = false
+		table.insert(panels, { part = panel, closed = closed, open = closed * CFrame.new(side * (half - 0.4), 0, 0.35) })
 	end
-	-- Triangles closing each end: two wedges per end, their tall edges meeting under the ridge
-	local wallRun = run - gable.OVERHANG
-	local rise = gable.RISE * wallRun / run
-	local wall = Props.color(theme.wall)
-	for _, xSide in { -1, 1 } do
-		local x = xSide * (outerWidth / 2 - thickness / 2)
-		for _, zSide in { -1, 1 } do
-			local wedge = Instance.new("WedgePart")
-			wedge.Name = "Gable"
-			wedge.Anchored = true
-			wedge.CanTouch = false
-			wedge.CanQuery = false
-			wedge.Size = Vector3.new(thickness, rise, wallRun)
-			-- A wedge's tall edge is on its +Z side: the front half keeps it, the back half turns round
-			wedge.CFrame = plotCFrame
-				* CFrame.new(x, base + rise / 2, middle + zSide * wallRun / 2)
-				* CFrame.Angles(0, if zSide < 0 then 0 else math.pi, 0)
-			wedge.Color = wall
-			wedge.Material = Enum.Material.SmoothPlastic
-			wedge.Parent = parent
+	-- Door head: the frame bar over the doorway
+	trimPart(parent, "DoorHead", Vector3.new(look.DOOR_WIDTH + look.MULLION * 2, look.MULLION, 0.6), plotCFrame * CFrame.new(0, floorTop + look.DOOR_HEIGHT, z), frame, Enum.Material.Metal)
+
+	local centre = (plotCFrame * CFrame.new(0, floorTop + 3, z)).Position
+	local sense = OverlapParams.new()
+	sense.FilterType = Enum.RaycastFilterType.Include
+	local isOpen = false
+	local info = TweenInfo.new(look.DOOR_OPEN_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	task.spawn(function()
+		-- The plot is built first and put in the world after, so wait for it
+		while not parent:IsDescendantOf(workspace) do
+			task.wait(0.5)
+		end
+		while parent:IsDescendantOf(workspace) do
+			-- Anyone's root part within reach of the doorway, on either side
+			local roots = {}
+			for _, model in workspace:GetChildren() do
+				local root = model:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					table.insert(roots, root)
+				end
+			end
+			local customers = workspace:FindFirstChild("Customers")
+			if customers then
+				for _, model in customers:GetChildren() do
+					local root = model:FindFirstChild("HumanoidRootPart")
+					if root then
+						table.insert(roots, root)
+					end
+				end
+			end
+			local near = false
+			for _, root in roots do
+				if ((root :: BasePart).Position - centre).Magnitude <= look.DOOR_SENSE then
+					near = true
+					break
+				end
+			end
+			if near ~= isOpen then
+				isOpen = near
+				for _, panel in panels do
+					TweenService:Create(panel.part, info, { CFrame = if near then panel.open else panel.closed }):Play()
+				end
+			end
+			task.wait(0.15)
+		end
+	end)
+end
+
+-- The glass shop front: black-framed panes each side of the sliding doors, up to the sign band
+local function buildStorefront(parent: Instance, plotCFrame: CFrame, outerWidth: number)
+	local look = Town.SHOP
+	local z = -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS / 2
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local bottom = -PlotConfig.FLOOR_THICKNESS / 2
+	local height = frontTop() - bottom
+	local glass, frame = Props.color(look.GLASS), Props.color(look.FRAME)
+	local doorHalf = look.DOOR_WIDTH / 2
+	local sideWidth = outerWidth / 2 - doorHalf
+	for _, side in { -1, 1 } do
+		local paneWidth = sideWidth / look.PANES
+		for index = 1, look.PANES do
+			local x = side * (doorHalf + (index - 0.5) * paneWidth)
+			local pane = shellPart(parent, "ShopWindow", Vector3.new(paneWidth, height, 0.3), plotCFrame * CFrame.new(x, bottom + height / 2, z), glass, Enum.Material.Glass)
+			pane.Transparency = look.GLASS_TRANSPARENCY
+			pane.CastShadow = false
+		end
+		-- Uprights between the panes and at the door jambs
+		for index = 0, look.PANES do
+			local x = side * (doorHalf + index * paneWidth)
+			trimPart(parent, "Mullion", Vector3.new(look.MULLION, height, 0.6), plotCFrame * CFrame.new(x, bottom + height / 2, z), frame, Enum.Material.Metal)
+		end
+		-- A transom bar across the panes at door height, and the sill
+		local midX = side * (doorHalf + sideWidth / 2)
+		trimPart(parent, "Transom", Vector3.new(sideWidth, look.MULLION, 0.6), plotCFrame * CFrame.new(midX, floorTop + look.DOOR_HEIGHT, z), frame, Enum.Material.Metal)
+		trimPart(parent, "Sill", Vector3.new(sideWidth, look.BASE_HEIGHT * 0.6, 0.7), plotCFrame * CFrame.new(midX, floorTop + look.BASE_HEIGHT * 0.3, z), Props.color(look.CHARCOAL))
+	end
+	-- Glass over the doors up to the sign band
+	local over = frontTop() - (floorTop + look.DOOR_HEIGHT)
+	local fanlight = shellPart(parent, "ShopWindow", Vector3.new(look.DOOR_WIDTH, over, 0.3), plotCFrame * CFrame.new(0, floorTop + look.DOOR_HEIGHT + over / 2, z), glass, Enum.Material.Glass)
+	fanlight.Transparency = look.GLASS_TRANSPARENCY
+	fanlight.CanCollide = false
+	buildDoors(parent, plotCFrame)
+end
+
+-- A slim flat canopy over the doors with small down-lights, and a planter each side of the doorway
+local function buildEntrance(parent: Instance, plotCFrame: CFrame)
+	local look = Town.SHOP
+	local front = -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local width = look.DOOR_WIDTH + 6
+	local y = floorTop + look.DOOR_HEIGHT + 0.8
+	trimPart(parent, "Canopy", Vector3.new(width, 0.4, Town.AWNING_DEPTH), plotCFrame * CFrame.new(0, y, front - Town.AWNING_DEPTH / 2), Props.color(look.CANOPY), Enum.Material.Metal)
+	for _, x in { -width / 2 + 2, 0, width / 2 - 2 } do
+		local lamp = trimPart(parent, "CanopyLight", Vector3.new(0.8, 0.1, 0.8), plotCFrame * CFrame.new(x, y - 0.25, front - Town.AWNING_DEPTH / 2), Props.color(look.CANOPY_LIGHT), Enum.Material.Neon)
+		local light = Instance.new("SpotLight")
+		light.Face = Enum.NormalId.Bottom
+		light.Color = lamp.Color
+		light.Range = 12
+		light.Angle = 70
+		light.Brightness = 1.2
+		light.Parent = lamp
+	end
+	for _, side in { -1, 1 } do
+		local x = side * (look.DOOR_WIDTH / 2 + 2.2)
+		local at = plotCFrame * CFrame.new(x, floorTop, front - 1.4)
+		trimPart(parent, "Planter", Vector3.new(1.8, 2.6, 1.8), at * CFrame.new(0, 1.3, 0), Props.color(look.PLANTER), Enum.Material.Concrete)
+		local leaves = trimPart(parent, "PlanterLeaves", Vector3.new(2.6, 3.4, 2.6), at * CFrame.new(0, 4.1, 0), Props.color(look.LEAVES), Enum.Material.Grass)
+		leaves.Shape = Enum.PartType.Ball
+	end
+end
+
+-- Modern LED ceiling panels in rows, so the shop is evenly bright
+local function buildCeilingLights(plotCFrame: CFrame, parent: Instance)
+	local look = Town.SHOP
+	local color = Props.color(look.PANEL)
+	for _, z in look.PANEL_ROWS do
+		for _, x in look.PANEL_COLS do
+			local panel = trimPart(parent, "CeilingLight", Vector3.new(look.PANEL_SIZE[1], 0.15, look.PANEL_SIZE[2]), plotCFrame * CFrame.new(x, wallTop() - 0.08, z), color, Enum.Material.Neon)
+			if z == 0 then
+				local light = Instance.new("SurfaceLight")
+				light.Face = Enum.NormalId.Bottom
+				light.Color = color
+				light.Range = look.PANEL_RANGE
+				light.Angle = 110
+				light.Brightness = look.PANEL_BRIGHTNESS
+				light.Parent = panel
+			end
 		end
 	end
 end
 
--- Warm lights under the ceiling so the shop isn't dark under its roof
-local function buildCeilingLights(plotCFrame: CFrame, parent: Instance)
-	local lights = Town.CEILING_LIGHTS
-	local color = Props.color(lights.COLOR)
-	for _, x in lights.XS do
-		local panel = shellPart(parent, "CeilingLight", Vector3.new(lights.SIZE, 0.2, lights.SIZE), plotCFrame * CFrame.new(x, wallTop() - 0.1, 0), color, Enum.Material.Neon)
-		panel.CanCollide = false
-		panel.CanQuery = false
-		local light = Instance.new("PointLight")
-		light.Color = color
-		light.Range = lights.RANGE
-		light.Brightness = lights.BRIGHTNESS
-		light.Parent = panel
-	end
-end
-
--- Walls sit outside the floor edges, so the placement grid and saved layouts are unchanged. Open front up to
--- the awning; above it a front wall carries the sign.
+-- The modern shell: white walls with a charcoal foot, a glass shop front with sliding doors, a charcoal sign
+-- band, a flat roof with a slim edge, a feature wall in the shop's accent colour and LED panels inside.
+-- Walls sit outside the floor edges, so the placement grid and saved layouts are unchanged.
 local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Part
+	local look = Town.SHOP
 	local theme = getTheme(id)
-	local wall, trim = Props.color(theme.wall), Props.color(theme.trim)
+	local accent = Props.color(theme.accent)
+	local charcoal = Props.color(look.CHARCOAL)
 	local thickness = Town.WALL_THICKNESS
 	local halfWidth, halfDepth = PlotConfig.WIDTH / 2, PlotConfig.DEPTH / 2
 	local outerWidth = PlotConfig.WIDTH + thickness * 2
-	local bottom = -PlotConfig.FLOOR_THICKNESS / 2
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
 
-	buildWall(parent, plotCFrame, Vector3.new(outerWidth, 0, thickness), Vector3.new(0, 0, halfDepth + thickness / 2), wall, trim)
+	buildWall(parent, plotCFrame, Vector3.new(outerWidth, 0, thickness), Vector3.new(0, 0, halfDepth + thickness / 2), Vector3.new(0, 0, 1))
 	for _, side in { -1, 1 } do
-		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), wall, trim)
-		local pillar = Vector3.new(Town.PILLAR_SIZE, wallTop() - bottom, Town.PILLAR_SIZE)
-		shellPart(parent, "Pillar", pillar, plotCFrame * CFrame.new(side * (halfWidth + thickness / 2), bottom + pillar.Y / 2, -halfDepth), trim)
+		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), Vector3.new(side, 0, 0))
 	end
+	-- Feature wall: the back wall's inside face in the shop's accent colour, with a matte finish
+	trimPart(parent, "FeatureWall", Vector3.new(PlotConfig.WIDTH, Town.WALL_HEIGHT - 1, 0.1), plotCFrame * CFrame.new(0, floorTop + (Town.WALL_HEIGHT - 1) / 2, halfDepth - 0.05), accent)
 
-	-- Front wall above the open front (the sign hangs on it)
-	local header = wallTop() - awningTop()
-	shellPart(parent, "FrontWall", Vector3.new(outerWidth, header, thickness), plotCFrame * CFrame.new(0, awningTop() + header / 2, -halfDepth - thickness / 2), wall)
+	buildStorefront(parent, plotCFrame, outerWidth)
+	-- Sign band: charcoal from the top of the glass to the roof edge, with a glowing accent strip under it
+	local band = wallTop() - frontTop()
+	shellPart(parent, "FrontWall", Vector3.new(outerWidth, band, thickness), plotCFrame * CFrame.new(0, frontTop() + band / 2, -halfDepth - thickness / 2), charcoal)
+	trimPart(parent, "AccentStrip", Vector3.new(outerWidth, look.ACCENT_STRIP, 0.2), plotCFrame * CFrame.new(0, frontTop() + look.ACCENT_STRIP / 2, -halfDepth - thickness - 0.1), accent, Enum.Material.Neon)
+	buildEntrance(parent, plotCFrame)
 
-	buildAwning(theme, plotCFrame, parent, outerWidth)
-
-	-- Flat ceiling: the camera stays under it inside the shop
-	local ceilingSize = Vector3.new(outerWidth, Town.ROOF_THICKNESS, PlotConfig.DEPTH + thickness * 2)
-	local ceiling = shellPart(parent, "Roof", ceilingSize, plotCFrame * CFrame.new(0, wallTop() + Town.ROOF_THICKNESS / 2, 0), Props.color(theme.wall))
-	buildGable(theme, plotCFrame, parent, outerWidth)
+	-- Flat roof: the camera stays under it inside the shop; a slim charcoal parapet round the edge
+	local roofSize = Vector3.new(outerWidth, Town.ROOF_THICKNESS, PlotConfig.DEPTH + thickness * 2)
+	local roof = shellPart(parent, "Roof", roofSize, plotCFrame * CFrame.new(0, wallTop() + Town.ROOF_THICKNESS / 2, 0), Props.color(look.CEILING))
+	local top = wallTop() + Town.ROOF_THICKNESS + look.PARAPET / 2
+	for _, z in { -1, 1 } do
+		trimPart(parent, "Parapet", Vector3.new(outerWidth + 0.4, look.PARAPET, 0.6), plotCFrame * CFrame.new(0, top, z * (halfDepth + thickness)), charcoal)
+	end
+	for _, x in { -1, 1 } do
+		trimPart(parent, "Parapet", Vector3.new(0.6, look.PARAPET, PlotConfig.DEPTH + thickness * 2 + 0.4), plotCFrame * CFrame.new(x * (halfWidth + thickness), top, 0), charcoal)
+	end
 	buildCeilingLights(plotCFrame, parent)
-	return ceiling
+	return roof
 end
 
--- The shop sign hangs on the front wall above the awning, facing the street
+-- The shop sign: a lit sign box on the charcoal band above the glass, facing the street
 local function buildSign(plotCFrame: CFrame, parent: Instance): TextLabel
 	local sign = Instance.new("Part")
 	sign.Name = "Sign"
@@ -269,7 +351,7 @@ local function buildSign(plotCFrame: CFrame, parent: Instance): TextLabel
 	sign.CanQuery = false -- the camera never snaps in because of it
 	sign.Size = PlotConfig.SIGN_SIZE
 	sign.CFrame = plotCFrame
-		* CFrame.new(0, (awningTop() + wallTop()) / 2, -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS - PlotConfig.SIGN_SIZE.Z / 2)
+		* CFrame.new(0, (frontTop() + wallTop()) / 2, -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS - PlotConfig.SIGN_SIZE.Z / 2)
 	sign.Color = PlotConfig.SIGN_COLOR
 	sign.Parent = parent
 
@@ -355,7 +437,7 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
 			PlotConfig.DEPTH / 2 - PlotConfig.REGISTER_BACK_INSET
 		)
-	register.Color = Props.color(getTheme(id).trim)
+	register.Color = Props.color(Town.SHOP.CHARCOAL)
 	register.Material = Enum.Material.Wood
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
@@ -469,7 +551,7 @@ function PlotService.Claim(player: Player)
 	plot.owner = player
 	plotByPlayer[player] = plot
 	plot.model:SetAttribute("OwnerUserId", player.UserId)
-	plot.floor.Color = Props.color(getTheme(plot.id).floor)
+	plot.floor.Color = Props.color(Town.SHOP.FLOOR)
 	plot.signLabel.Text = string.format(PlotConfig.OWNED_SIGN_FORMAT, player.DisplayName)
 	player:SetAttribute("PlotId", plot.id)
 	player.RespawnLocation = plot.spawn

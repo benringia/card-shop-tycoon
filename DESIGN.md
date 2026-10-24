@@ -67,12 +67,15 @@ server): lamps on the street edges at every plot gap and row end, 4 benches roun
 island just inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except lamps, portals
 and the plaza), within 10 studs of a portal, or in the spring area (except benches). The scenery (trees, flowers,
 rocks, crates ...) is hand-placed in Studio and saved as `assets/town/TownDecor.rbxm` → `Workspace.TownDecor`
-(docs/props.md). **Shops:** an open front up to the awning; back and side walls outside the floor (18 tall, trim and
-baseboard), front corner pillars, an awning 12 studs up (the Awning prop repeated across the front and tinted in the
-theme colour, or code-built stripes; about 5 studs out), a front wall above it carrying the shop sign, a flat ceiling
-(the camera stays under it inside) with 3 warm ceiling lights, and a gable roof on top (ridge side to side, 8 high,
-1.5 overhang). The roof always shows. Each plot has a fixed pastel theme: Mint, Peach, Lavender, Butter, Sky, Rose (walls,
-trim, awning, roof, owned floor; grey floor while for rent). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
+(docs/props.md). **Shops:** one modern look for every shop (`Town.SHOP`, built in code by PlotService): smooth white
+walls outside the floor (18 tall) with a charcoal band along their foot; a glass shop front 12 studs tall with thin black
+frames, three panes each side and a transom; automatic sliding glass doors in the middle (12 wide, 10 tall) that part
+when any player or customer comes within 9 studs, and never collide so paths are never blocked (the panes beside them
+are the solid wall); a charcoal sign band above the glass carrying the shop sign, with a glowing strip in the shop's
+accent colour under it; a slim flat canopy over the doors with three down-lights; a planter each side of the doorway;
+a flat roof with a slim charcoal parapet (the camera stays under it inside); inside, a light oak floor (grey while for
+rent), a back feature wall in the shop's accent colour and 3 x 3 LED ceiling panels. Each plot has a fixed accent
+(Mint, Coral, Violet, Gold, Azure, Rose). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
 cashier stands inside; it carries a Register prop at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part: Small Pack Rack → Shelf, Wall
 Shelf → WallShelf, Accessory Hook → HookRack (pegboard), Big Display Rack → DisplayRack, Glass Showcase →
@@ -598,7 +601,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── init.server.luau    # boots services
     │   ├── Services/
     │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
-    │   │   ├── PlotService.luau      # claim/release plots, shop shells (themed walls, awning, roof)
+    │   │   ├── PlotService.luau      # claim/release plots, modern shop shells (glass front, sliding doors, sign band, roof)
     │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portal frames, lighting
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
