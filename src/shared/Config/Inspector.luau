@@ -3,8 +3,8 @@
 -- Studs and degrees. See DESIGN.md section 10.6.
 return {
 	DISTANCE = 3, -- studs in front of the camera (close: nothing in the world gets in front)
-	OFFSET_X = -0.7, -- the card sits left of centre; the info panel is on the right
-	CARD_SIZE = Vector3.new(1.225, 1.75, 0.03),
+	OFFSET_X = -1, -- the card sits left of centre; the info panel is on the right
+	CARD_SIZE = Vector3.new(1.8, 2.57, 0.03), -- about 60% of the screen's height
 	MAX_TILT = 35, -- degrees the card tilts while dragged
 	DRAG_DEGREES_PER_PIXEL = 0.45,
 	FLIP_DRAG = 110, -- dragging sideways past this many degrees flips the card

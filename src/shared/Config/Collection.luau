@@ -19,8 +19,8 @@ return {
 		-- buttons (Cards / Bag / Rarity guide on the left, Filters / close / progress on the right) it fits
 		-- between the top and bottom rows instead. Pixels.
 		ASPECT = 1.36, -- a touch narrower than wide-open, so it stands taller
-		MARGIN = 6,
-		MARGIN_BOTTOM = 24,
+		MARGIN = 6, -- from the very top of the screen (the book may rise into Roblox's top bar strip)
+		MARGIN_BOTTOM = 50, -- room for the page counter under the book
 		TOP_BAND = 64,
 		BOTTOM_BAND = 52,
 		CORNER_LEFT = 270, -- room the left corner buttons need

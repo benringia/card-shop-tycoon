@@ -149,6 +149,7 @@ local pocketsPerPage = POCKET_OPTIONS.preferredColumns * POCKET_OPTIONS.preferre
 local pageGrids: { UIGridLayout } = {}
 local progressCard: Frame
 local backdropGui: ScreenGui -- the dimmed world behind the binder (off while a card is inspected)
+local bookGui: ScreenGui -- the book's own full-screen layer, so it can rise into Roblox's top bar strip
 local arrowLanes: { Frame } = {}
 -- The page turn (flipTo): a sheet lying over the turning page that carries its cards as it folds
 local flipSheet: Frame
@@ -1681,7 +1682,10 @@ end
 -- centred there, or (Filters open) shrunk into the room left of the Filters panel, arrows included
 local function getBookLayout(filtersOpen: boolean): (UDim2, UDim2, number)
 	local look = Collection.BOOK
-	local area = panel.AbsoluteSize
+	-- The whole screen, top bar strip included (the book's layer ignores the inset); the rows' bands count
+	-- from below the strip, where the buttons are
+	local area = bookGui.AbsoluteSize
+	local inset = area.Y - panel.AbsoluteSize.Y
 	-- The biggest binder shape between a top and bottom margin, and the lanes either side
 	local lane = if area.X < look.NARROW_BELOW then look.NARROW_LANE else look.SIDE_LANE
 	local function fit(top: number, bottom: number): (number, number, number)
@@ -1698,15 +1702,16 @@ local function getBookLayout(filtersOpen: boolean): (UDim2, UDim2, number)
 	local left = (area.X - width) / 2 - look.TAB_WIDTH
 	local right = (area.X + width) / 2
 	if left < look.CORNER_LEFT or right > area.X - look.CORNER_RIGHT then
-		width, height, centreY = fit(look.TOP_BAND, look.BOTTOM_BAND)
+		width, height, centreY = fit(look.TOP_BAND + inset, look.BOTTOM_BAND)
 	end
 	local size = UDim2.fromOffset(width, height)
 	if not filtersOpen then
 		return size, UDim2.new(0.5, 0, 0, centreY), 1
 	end
-	local room = area.X - Collection.FILTERS_WIDTH - 32
+	-- Between the left corner buttons (Cards, Bag) and the Filters panel
+	local room = area.X - Collection.FILTERS_WIDTH - 32 - look.CORNER_LEFT
 	local scale = math.min(1, room / (width + lane * 2))
-	return size, UDim2.fromOffset(room / 2, centreY), scale
+	return size, UDim2.fromOffset(look.CORNER_LEFT + room / 2, centreY), scale
 end
 
 local function layoutBook()
@@ -2007,8 +2012,18 @@ local function buildPanel(parent: Instance)
 	backdrop.BorderSizePixel = 0
 	backdrop.Active = true -- clicks on the backdrop don't reach the world
 	backdrop.Parent = backdropGui
+	bookGui = Instance.new("ScreenGui")
+	bookGui.Name = "BinderBook"
+	bookGui.IgnoreGuiInset = true
+	bookGui.ResetOnSpawn = false
+	bookGui.DisplayOrder = -1 -- under the main screen, so its panels (Rarity guide, tooltips) open over the book
+	bookGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	bookGui.Enabled = false
+	bookGui.Parent = backdropGui.Parent
+	backdropGui.DisplayOrder = -2
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		backdropGui.Enabled = panel.Visible and bookHolder.Visible
+		bookGui.Enabled = panel.Visible
 	end)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
@@ -2041,7 +2056,7 @@ local function buildPanel(parent: Instance)
 	bookHolder.Size = UDim2.fromScale(0.8, 0.8) -- layoutBook sizes it to the screen
 	bookHolder.BackgroundTransparency = 1
 	bookHolder.ZIndex = panel.ZIndex
-	bookHolder.Parent = panel
+	bookHolder.Parent = bookGui
 	bookScale = Instance.new("UIScale")
 	bookScale.Parent = bookHolder
 
@@ -2083,8 +2098,8 @@ local function buildPanel(parent: Instance)
 	-- Page counter on the book's bottom edge like a binder tab, an arrow either side (Q/E one spread)
 	local counter = Instance.new("Frame")
 	counter.Name = "Counter"
-	counter.AnchorPoint = Vector2.new(0.5, 0.5)
-	counter.Position = UDim2.new(0.5, 0, 1, 4)
+	counter.AnchorPoint = Vector2.new(0.5, 0)
+	counter.Position = UDim2.new(0.5, 0, 1, 6) -- just under the book, clear of the pockets
 	counter.Size = UDim2.fromOffset(128, 36)
 	counter.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
 	counter.ZIndex = book.ZIndex + 8
@@ -2204,6 +2219,7 @@ local function buildPanel(parent: Instance)
 		table.insert(tiles, buildTile(card, panel))
 	end
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
+	bookGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	layoutBook()
 	fitPockets()
 	refreshSet()
