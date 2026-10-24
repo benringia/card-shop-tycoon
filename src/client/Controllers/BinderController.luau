@@ -35,6 +35,7 @@ local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
 local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
@@ -1377,8 +1378,9 @@ local function renderBagDetail()
 		bagLabel(bagDetail, "Tap an item to see what it does.", Enum.Font.GothamBold, 14, UIKit.Colors.Subtext, 16, 40)
 		return
 	end
-	local icon = bagLabel(bagDetail, info.icon, Enum.Font.GothamBold, 56, UIKit.Colors.Text, 10, 64)
-	icon.TextXAlignment = Enum.TextXAlignment.Center
+	local icon = Icon.make(bagDetail, info.icon, UDim2.fromOffset(64, 64))
+	icon.AnchorPoint = Vector2.new(0.5, 0)
+	icon.Position = UDim2.new(0.5, 0, 0, 10)
 	local name = bagLabel(bagDetail, `{info.name} · x{bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 20, UIKit.Colors.Text, 78, 26)
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	bagLabel(bagDetail, info.description, Enum.Font.Gotham, 14, UIKit.Colors.Text, 112, 40)
@@ -1425,11 +1427,11 @@ local function renderBag()
 		stroke.Color = if id == selectedItem then UIKit.Colors.Accent else Color3.fromRGB(80, 80, 100)
 		stroke.Thickness = if id == selectedItem then 3 else 1
 		stroke.Parent = tile
-		local icon = UIKit.label(tile, info.icon, Enum.Font.GothamBold, 44, UIKit.Colors.Text)
-		icon.Position = UDim2.fromOffset(0, 10)
-		icon.Size = UDim2.new(1, 0, 0, 56)
-		icon.TextXAlignment = Enum.TextXAlignment.Center
+		local icon = Icon.make(tile, info.icon, UDim2.fromOffset(56, 56))
+		icon.AnchorPoint = Vector2.new(0.5, 0)
+		icon.Position = UDim2.new(0.5, 0, 0, 10)
 		icon.ZIndex = 33
+		Icon.set(icon, info.icon)
 		local name = UIKit.label(tile, info.name, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
 		name.Position = UDim2.fromOffset(4, 70)
 		name.Size = UDim2.new(1, -8, 0, 18)
@@ -1454,6 +1456,19 @@ local function showTab(bag: boolean)
 		hideTooltip()
 	end
 	bagOverlay.Visible = bag
+	-- The book draws on its own layer, so the Bag would leave it showing around the edges; the book's corner
+	-- buttons (Filters, Rarity guide, progress) would peek out under the Bag too
+	bookGui.Enabled = panel.Visible and not bag
+	for _, name in { "FilterButton", "RarityGuide" } do
+		local item = panel:FindFirstChild(name)
+		if item and item:IsA("GuiObject") then
+			item.Visible = not bag
+		end
+	end
+	if bag and filtersPanel.Visible then
+		setFiltersOpen(false)
+	end
+	progressCard.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
 	cardsTab.BackgroundColor3 = if bag then UIKit.Colors.Row else UIKit.Colors.Accent
 	bagTab.BackgroundColor3 = if bag then UIKit.Colors.Accent else UIKit.Colors.Row
 	if bag then
@@ -1719,7 +1734,7 @@ local function layoutBook()
 	bookHolder.Size = size
 	bookHolder.Position = position
 	bookScale.Scale = scale
-	progressCard.Visible = panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
+	progressCard.Visible = not (bagOverlay and bagOverlay.Visible) and panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
 	local roomy = panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
 	for _, arrows in arrowLanes do
 		arrows.Visible = roomy
@@ -2023,7 +2038,7 @@ local function buildPanel(parent: Instance)
 	backdropGui.DisplayOrder = -2
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		backdropGui.Enabled = panel.Visible and bookHolder.Visible
-		bookGui.Enabled = panel.Visible
+		bookGui.Enabled = panel.Visible and not bagOverlay.Visible
 	end)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then

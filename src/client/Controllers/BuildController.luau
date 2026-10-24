@@ -17,6 +17,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
@@ -30,11 +31,12 @@ local CASE_BUYERS = {
 }
 
 -- Build menu tabs (Config/Shelves `category`); Decor has nothing yet and says so
+local TAB_TEXT = Color3.fromRGB(28, 36, 66)
 local BUILD_TABS = {
-	{ name = "Shelves", icon = "🗄️" },
-	{ name = "Cases", icon = "💎" },
-	{ name = "Fixtures", icon = "⚙️" },
-	{ name = "Decor", icon = "🌱" },
+	{ name = "Shelves", icon = "Shelves" },
+	{ name = "Cases", icon = "Cases" },
+	{ name = "Fixtures", icon = "Fixtures" },
+	{ name = "Decor", icon = "Decor" },
 }
 local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110, PICTURE_COLOR = Color3.fromRGB(255, 226, 180) }
 
@@ -192,7 +194,14 @@ end
 -- The Build panel: category tabs and a grid of tiles, each with a 3D picture of the model
 local function buildShopPanel(parent: Instance)
 	local list: ScrollingFrame
-	shopPanel, list = UIKit.panel(parent, "BuildMenu", "🔨 Build")
+	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Shop")
+	-- The shop icon before the title
+	local title = shopPanel:FindFirstChild("Title", true) :: TextLabel
+	local headerIcon = Icon.make(title.Parent :: Instance, "Shop", UDim2.fromOffset(40, 40))
+	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
+	headerIcon.Position = UDim2.fromOffset(14, UIKit.HEADER_HEIGHT / 2)
+	headerIcon.ZIndex = title.ZIndex
+	title.Position = UDim2.fromOffset(60, 0)
 	shopPanel.Size = UDim2.fromScale(0.9, 0.85)
 	local limit = shopPanel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
@@ -231,6 +240,10 @@ local function buildShopPanel(parent: Instance)
 	local function showCategory(category: string)
 		for name, button in tabButtons do
 			button.BackgroundColor3 = if name == category then UIKit.Colors.Accent else UIKit.Colors.Row
+			local label = button:FindFirstChild("Name", true) :: TextLabel?
+			if label then
+				label.TextColor3 = if name == category then Color3.new(1, 1, 1) else TAB_TEXT
+			end
 		end
 		local any = false
 		for _, row in shopRows do
@@ -242,11 +255,36 @@ local function buildShopPanel(parent: Instance)
 		list.CanvasPosition = Vector2.zero
 	end
 	for index, tab in BUILD_TABS do
-		local button = UIKit.button(tabs, `{tab.icon} {tab.name}`, UIKit.Colors.Row)
+		local button = UIKit.button(tabs, "", UIKit.Colors.Row)
 		button.Name = "Tab" .. tab.name
 		button.LayoutOrder = index
 		button.Size = UDim2.new(1 / #BUILD_TABS, -8, 1, 0)
-		button.TextSize = 17
+		-- The icon and the name side by side, centred on the tab
+		local row = Instance.new("Frame")
+		row.Name = "Content"
+		row.AnchorPoint = Vector2.new(0.5, 0.5)
+		row.Position = UDim2.fromScale(0.5, 0.45)
+		row.Size = UDim2.fromScale(0, 1)
+		row.AutomaticSize = Enum.AutomaticSize.X
+		row.BackgroundTransparency = 1
+		row.ZIndex = button.ZIndex + 1
+		row.Parent = button
+		local rowLayout = Instance.new("UIListLayout")
+		rowLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		rowLayout.Padding = UDim.new(0, 6)
+		rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		rowLayout.Parent = row
+		local tabIcon = Icon.make(row, tab.icon, UDim2.fromOffset(28, 28))
+		tabIcon.LayoutOrder = 1
+		tabIcon.ZIndex = row.ZIndex
+		local name = UIKit.label(row, tab.name, Enum.Font.FredokaOne, 17, TAB_TEXT)
+		name.Name = "Name"
+		name.LayoutOrder = 2
+		name.Size = UDim2.fromScale(0, 1)
+		name.AutomaticSize = Enum.AutomaticSize.X
+		name.TextWrapped = false
+		name.ZIndex = row.ZIndex
 		button.Activated:Connect(function()
 			showCategory(tab.name)
 		end)
@@ -493,8 +531,8 @@ end
 local function buildButton()
 	Hud.fanButton({
 		id = "Build",
-		icon = "Build",
-		label = "Build",
+		icon = "Shop",
+		label = "Shop",
 		order = 1,
 		onClick = function()
 			if PlacementController.IsActive() then

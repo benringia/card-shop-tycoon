@@ -772,15 +772,17 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held; number pills bump when they change.
 - **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to
-  its right (Build, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
+  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Bottom right, one corner cluster (above the jump button on touch screens): the party bar, and beside it a
   right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
   party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. Each icon sits over its
   pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
-  HUD tiles, the top bar and customer mood bubbles (Angry, Thinking, Happy); made as one sheet with Figma's image
-  generator and cut by `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Names without a picture show
-  as text (the ❌ on Close, ⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
+  HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
+  (Angry, Thinking, Happy); made as two sheets with Figma's image generator and cut by
+  `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Every icon is kept drawn, tiny and nearly invisible,
+  from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
+  their icons ready. Names without a picture show as text (⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
 - **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
@@ -808,7 +810,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   sheet just behind it that hides the world (and your pet); the binder's dim and always-on-top tags (customer mood bubbles) switch off while it shows. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
   Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
   Add to party and Back. Closing restores the camera; dying closes it too.
-- **Build menu** (`BuildController`): a "Build" panel with tabs Shelves / Cases / Fixtures / Decor (each shelf's
+- **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
   `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
   the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
   green price, red when you can't afford it, grey "Lv N" while locked. Buying places it as before.

@@ -1,19 +1,27 @@
 """Cuts the UI icon sheet (a 4x4 grid on a magenta background, made with Figma's image generator) into separate
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
-Usage: python tools/ui-icons/slice_icons.py <sheet.jpg>
+Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number, default 1]
 """
 import os
 import sys
 
 from PIL import Image
 
-NAMES = [
-    "Cash", "Shard", "Level", "Manage",
-    "Cards", "Bag", "Build", "Prices",
-    "Jobs", "Party", "Pack", "Box",
-    "Info", "Angry", "Happy", "Thinking",
-]
+SHEETS = {
+    1: [
+        "Cash", "Shard", "Level", "Manage",
+        "Cards", "Bag", "Build", "Prices",
+        "Jobs", "Party", "Pack", "Box",
+        "Info", "Angry", "Happy", "Thinking",
+    ],
+    2: [
+        "Shop", "Shelves", "Cases", "Fixtures",
+        "Decor", "Close", "Search", "Odds",
+        "Flip", "Hourglass", "Ember", "Tide",
+        "Bloom", "Volt", "Shade", "Coin",
+    ],
+}
 GRID = 4
 OUT_SIZE = 256
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "ui", "icons")
@@ -48,6 +56,12 @@ def key_out(cell: Image.Image) -> Image.Image:
             continue
         pixels[x, y] = (r, g, b, int(255 * (1 - amount)))
         stack.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+    # Holes the flood can't reach (inside a gear or a ring): only strong, pure magenta is cleared there
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = pixels[x, y]
+            if a == 255 and r > 200 and b > 200 and g < 70:
+                pixels[x, y] = (r, g, b, 0)
     return rgba
 
 
@@ -61,12 +75,13 @@ def square(icon: Image.Image) -> Image.Image:
     return canvas.resize((OUT_SIZE, OUT_SIZE), Image.LANCZOS)
 
 
-def main(path: str):
+def main(path: str, sheet: int):
+    names = SHEETS[sheet]
     sheet = Image.open(path)
     cell_w = sheet.width / GRID
     cell_h = sheet.height / GRID
     os.makedirs(OUT_DIR, exist_ok=True)
-    for index, name in enumerate(NAMES):
+    for index, name in enumerate(names):
         col, row = index % GRID, index // GRID
         # A small inset skips the darker tile edges between cells
         inset = cell_w * 0.04
@@ -75,8 +90,8 @@ def main(path: str):
             int((col + 1) * cell_w - inset), int((row + 1) * cell_h - inset),
         ))
         square(key_out(cell)).save(os.path.join(OUT_DIR, f"{name}.png"))
-    print(f"saved {len(NAMES)} icons to {os.path.abspath(OUT_DIR)}")
+    print(f"saved {len(names)} icons to {os.path.abspath(OUT_DIR)}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 1)

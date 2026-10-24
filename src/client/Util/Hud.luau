@@ -110,7 +110,7 @@ local function setFan(open: boolean)
 		local label = tile:FindFirstChild("Label") :: TextLabel?
 		tile.BackgroundColor3 = if open then HudLayout.TILE_DARK else HudLayout.TILE
 		if icon then
-			Icon.set(icon, if open then "❌" else "Manage")
+			Icon.set(icon, if open then "Close" else "Manage")
 		end
 		if label then
 			label.Text = if open then "Close" else "Manage"

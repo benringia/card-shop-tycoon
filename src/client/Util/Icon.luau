@@ -2,18 +2,32 @@
 -- Draws an icon by name (Config/UIIcons) into a holder frame: the picture if the name has one, else the text
 -- itself (an emoji such as "❌"). Swapping keeps the holder, so layouts and sizes stay put.
 local ContentProvider = game:GetService("ContentProvider")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
 
 local Icon = {}
 
--- Fetch every icon up front, so HUD tiles don't show empty the first time they open
+-- Fetch every icon up front and keep each one drawn, tiny and nearly invisible, in a corner: Roblox only
+-- finishes loading an image once something draws it, so hidden tiles (the Manage tray) would open blank
 task.spawn(function()
+	local cache = Instance.new("ScreenGui")
+	cache.Name = "IconCache"
+	cache.ResetOnSpawn = false
+	cache.DisplayOrder = -10
 	local images = {}
-	for _, id in UIIcons do
+	for name, id in UIIcons do
 		table.insert(images, id)
+		local keep = Instance.new("ImageLabel")
+		keep.Name = name
+		keep.BackgroundTransparency = 1
+		keep.Size = UDim2.fromOffset(2, 2)
+		keep.Image = id
+		keep.ImageTransparency = 0.98
+		keep.Parent = cache
 	end
+	cache.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	ContentProvider:PreloadAsync(images)
 end)
 

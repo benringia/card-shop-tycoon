@@ -7,7 +7,7 @@ return {
 	ITEMS = {
 		starShard = {
 			name = "Star Shard",
-			icon = "✨",
+			icon = "Shard", -- a Config/UIIcons name (or an emoji)
 			description = "Counts as one duplicate when condensing any card.",
 			source = "Frontier monsters · 3% (elites 10%)",
 			use = "Card Condenser → Use Star Shards (covers up to half of a star)",
