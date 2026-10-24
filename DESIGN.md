@@ -74,8 +74,9 @@ product: a band in the product's colour with its name (or a per-product box mode
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). Packs (products with `Packs` art) show as stacks of 5 thin upright packs
 with the pack art, leaning back, instead of boxes. Each stocked level has a yellow price tag with the
-product's price at its front left. A stocked shelf's own menu (Edit, F) starts with that product's price row
-(the same +/- and price as the Prices panel; the server sets the shelf's `ProductId` attribute for it). **Props:** every
+product's price at its front left. On your own shelves the tags are buttons (`PriceTagController`): point at one
+(within 24 studs) and it lights up with a "Set Price" tooltip by the cursor; click or tap it for a small Set Price window with
+that product's +/- row (the same price as the Prices panel; the server sets the shelf's `ProductId` attribute). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 
@@ -632,6 +633,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
+    │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen

@@ -168,6 +168,7 @@ end
 local function newPriceTag(parent: Instance): Part
 	local look = Town.SHELF_STOCK.TAG
 	local tag = newDecorPart("PriceTag", parent)
+	tag.CanQuery = true -- the owner points at it to set the price (PriceTagController)
 	tag.Size = Vector3.new(look.SIZE[1], look.SIZE[2], look.SIZE[3])
 	tag.Color = rgb(look.COLOR)
 	local gui = Instance.new("SurfaceGui")

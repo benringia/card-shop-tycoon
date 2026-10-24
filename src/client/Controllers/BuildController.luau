@@ -22,7 +22,6 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
 local CondenserController = require(Controllers:WaitForChild("CondenserController"))
-local PricingController = require(Controllers:WaitForChild("PricingController"))
 
 type ShelfDef = typeof(Shelves.List[1])
 
@@ -61,8 +60,6 @@ local BuildController = {}
 local shopPanel: Frame
 local shopRows: { ShopRow } = {}
 local editPanel: Frame
-local editList: ScrollingFrame
-local priceRow: Frame? = nil -- the stocked product's price, at the top of the shelf menu
 local editTitle: TextLabel
 local sellDetail: TextLabel
 local cardsRow: Frame
@@ -317,15 +314,6 @@ local function openEditPanel(part: BasePart)
 		elseif def.kind == "Condenser" then "Pick a new spot."
 		else "Pick a new spot. Stock stays on it."
 	sellDetail.Text = string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
-	-- A stocked shelf offers its product's price right here (the same price as in Prices)
-	if priceRow then
-		priceRow:Destroy()
-		priceRow = nil
-	end
-	local productId = part:GetAttribute("ProductId")
-	if def.kind == "Products" and typeof(productId) == "string" then
-		priceRow = PricingController.AddRow(editList, 0, productId)
-	end
 	shopPanel.Visible = false
 	editPanel.Visible = true
 end
@@ -387,7 +375,6 @@ end
 local function buildEditPanel(parent: Instance)
 	local list: ScrollingFrame
 	editPanel, list = UIKit.panel(parent, "ShelfMenu", "Shelf")
-	editList = list
 	editTitle = editPanel:FindFirstChild("Title") :: TextLabel
 
 	local cardsButton: TextButton
