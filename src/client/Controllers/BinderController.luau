@@ -1987,8 +1987,27 @@ local function buildPanel(parent: Instance)
 	list:Destroy() -- the binder uses pages instead of a scrolling list
 	-- Full screen, the world dimmed behind; no header (the book is the screen)
 	panel.Size = UDim2.fromScale(1, 1)
-	panel.BackgroundColor3 = Color3.new(0, 0, 0)
-	panel.BackgroundTransparency = Collection.BOOK.BACKDROP_TRANSPARENCY
+	panel.BackgroundTransparency = 1
+	-- The dimmed backdrop is its own screen that covers Roblox's top bar strip too (a normal screen starts below
+	-- it), drawn behind the binder; the buttons stay below the bar
+	local backdropGui = Instance.new("ScreenGui")
+	backdropGui.Name = "BinderBackdrop"
+	backdropGui.IgnoreGuiInset = true
+	backdropGui.ResetOnSpawn = false
+	backdropGui.DisplayOrder = -1
+	backdropGui.Enabled = false
+	backdropGui.Parent = player:WaitForChild("PlayerGui")
+	local backdrop = Instance.new("Frame")
+	backdrop.Name = "Backdrop"
+	backdrop.Size = UDim2.fromScale(1, 1)
+	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
+	backdrop.BackgroundTransparency = Collection.BOOK.BACKDROP_TRANSPARENCY
+	backdrop.BorderSizePixel = 0
+	backdrop.Active = true -- clicks on the backdrop don't reach the world
+	backdrop.Parent = backdropGui
+	panel:GetPropertyChangedSignal("Visible"):Connect(function()
+		backdropGui.Enabled = panel.Visible
+	end)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
 		sizeLimit:Destroy()

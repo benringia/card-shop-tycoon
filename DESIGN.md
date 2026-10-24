@@ -781,7 +781,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   HUD tiles, the top bar and customer mood bubbles (Angry, Thinking, Happy); made as one sheet with Figma's image
   generator and cut by `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Names without a picture show
   as text (the ❌ on Close, ⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
-- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world, drawn like a real
+- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
   are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
