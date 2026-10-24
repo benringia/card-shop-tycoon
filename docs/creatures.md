@@ -50,7 +50,7 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   off straight down (measured per rig from shoulder to hand) and swing `ARM_SWING` against the leg on their side;
   IK feet are carried round with their leg's hip and lift `FOOT_LIFT` as the leg swings forward, so feet walk
   with the legs instead of staying planted. `Party.ARM_POSE` holds a model's arms another way (Flametor: up in
-  front like a T-rex: less drop, reaching forward, elbows bent).
+  front like a T-rex: less drop, reaching forward, elbows bent) and can widen the swing (`swing`: Boltlynx 40).
 - Body waves (`Party.UNDULATE`): "swim" models (IceShark, Merilux) float and wave from head to tail
   (`SWIM_BEND`, `SWIM_LAG`, `SWIM_SECONDS`), legs paddling slowly; "slither" (GiantSnake) stays on the ground and
   waves mostly while moving (`SLITHER_STILL` standing).
@@ -109,11 +109,28 @@ the follow offset by the same amount. Keyframe beasts also get `CreatureVisuals.
 element fire on bones spread over the body (`Util/BeastFxRules`), arcs lightning between them, adds ground
 flames, a flickering light and footstep dust (`Config/BeastFx`).
 
-Current packs: **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
-AnimationController, no animations; every non-Legendary card uses them), **CrystalTitans** (bought, Accretion "Stud Pet Pack 03 | Crystal Titans": RubyCerberus,
+Current packs: **Originals** (our own Blender models, see below: Boltlynx), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
+AnimationController, no animations; every other non-Legendary card uses them), **CrystalTitans** (bought, Accretion "Stud Pet Pack 03 | Crystal Titans": RubyCerberus,
 SapphireCrab, RainbowHydra, each with Idle, Walk and Run; the Legendaries use them), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
 versions: skinned meshes with bones, an AnimationController, no animations yet; no card uses them now, kept for
 customers, NPCs or decoration).
+
+## Original models (Blender)
+
+Original creatures are built by scripts in `tools/blender/` (run inside Blender, e.g. through the Blender MCP), which
+write `assets/blender/<Card>/` (the `.blend`, an `.fbx` and its palette PNG; not synced by Rojo). Each is one
+blocky mesh with a palette texture, every vertex weighted fully to one bone, on an armature whose bones already
+carry `PetRig` role names (`Pelvis`, `Spine_0`, `Neck`, `Head_0`, `Arm_Left_0..2`, `0_Left_Limb_0..2`,
+`Tail_0..3`, `Ear_Left_0`), so the code walk and fidgets drive them with no `RigGuess` or aliases. They face -Y in
+Blender (Roblox -Z), arms in a T-pose.
+
+- **Boltlynx** (`build_boltlynx.py`): the card art's lion warrior, 24 bones, about 1,300 triangles.
+
+Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
+faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns
+the MeshPart's `PivotOffset` 90 degrees on X (Blender is Z-up); reset its rotation
+(`mesh.PivotOffset = CFrame.new(mesh.PivotOffset.Position)`) before saving, or the game stands the model's bounding box
+upright and the creature lies on its back.
 
 ## Glow
 

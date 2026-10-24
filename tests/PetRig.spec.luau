@@ -248,6 +248,9 @@ return {
 			armForward = math.rad(55), armBend = math.rad(50) })
 		assert(trex["arm:Left:0"].x - standing["arm:Left:0"].x > math.rad(50), "the arms don't reach forward")
 		assert(trex["arm:Left:1"].x > standing["arm:Left:1"].x + math.rad(30), "the elbows don't bend more")
+		local wide = poseAt(BIPED, { time = 0, phase = math.pi / 2, moving = 1, fidget = nil, fidgetProgress = 0, armDrop = drop,
+			armSwing = math.rad(40) })
+		assert(math.abs(wide["arm:Left:0"].x) > math.abs(step["arm:Left:0"].x) + math.rad(10), "Party.ARM_POSE swing doesn't widen the swing")
 	end,
 
 	["feet lift as their leg swings forward and stay down standing"] = function()

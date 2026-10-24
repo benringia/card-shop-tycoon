@@ -28,6 +28,7 @@ export type Rig = {
 	armDrop: { [string]: number }, -- radians each side's arm is lowered (from its T-pose)
 	armForward: number?, -- Party.ARM_POSE for this model, radians
 	armBend: number?,
+	armSwing: number?, -- radians the arms swing walking (Party.ARM_POSE), else PET_ANIM.ARM_SWING
 	feet: { Foot }, -- IK target feet, carried with their leg
 	size: number,
 	flapRate: number, -- Party.WING_SPEED for this model, else 1
@@ -166,6 +167,7 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		armDrop = armDrop,
 		armForward = if armPose then math.rad(armPose.forward) else nil,
 		armBend = if armPose then math.rad(armPose.bend) else nil,
+		armSwing = if armPose and armPose.swing then math.rad(armPose.swing) else nil,
 		feet = feet,
 		size = size,
 		flapRate = Party.WING_SPEED[sourceName] or 1,
@@ -226,6 +228,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		armDrop = rig.armDrop,
 		armForward = rig.armForward,
 		armBend = rig.armBend,
+		armSwing = rig.armSwing,
 		undulate = rig.undulate,
 		swimPhase = rig.swimPhase,
 	}

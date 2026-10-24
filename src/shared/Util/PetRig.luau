@@ -20,6 +20,7 @@ export type State = {
 	armDrop: { [string]: number }?, -- radians each side's arm turns down from its rest (T-posed arms hang)
 	armForward: number?, -- radians the arms reach forward once lowered (a T-rex's), from Party.ARM_POSE
 	armBend: number?, -- radians the elbows bend, else PET_ANIM.ARM_BEND
+	armSwing: number?, -- radians the arms swing walking, else PET_ANIM.ARM_SWING
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
 	swimPhase: number?, -- that wave, radians, built up frame by frame (PetRig.swimSpeed)
 }
@@ -301,7 +302,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			local drop = if state.armDrop then state.armDrop[role.side] or 0 else 0
 			if role.segment == 0 then
 				z = if role.side == "Left" then drop else -drop
-				x = rad(cfg.ARM_SWING) * math.sin(state.phase + legOffset(role, biped) + math.pi) * moving + breath * idle
+				x = (state.armSwing or rad(cfg.ARM_SWING)) * math.sin(state.phase + legOffset(role, biped) + math.pi) * moving + breath * idle
 					+ (state.armForward or 0)
 			elseif drop > 0 then
 				x = (state.armBend or rad(cfg.ARM_BEND)) / role.segment -- elbows forward
