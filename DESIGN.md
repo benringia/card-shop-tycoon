@@ -49,9 +49,10 @@ Order stock (computer) → Restock shelves → Set prices
 
 **Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
 village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
-between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring (the HealingSpring prop slot: a stone fountain stand-in with a carved rim, glowing
-breathing water, a tiered pillar and a floating turning gem; sparkles, a soft blue light and a faint disc for the
-12-stud healing area; a real model's parts named Water and Crystal keep the effects), warm afternoon lighting
+between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring (the HealingSpring prop slot, 14 tall: the free "Better Low Poly Fountain" by scene_boy,
+recoloured moonstone with glowing water, kept in the place's `PlaceProps` (copy: `assets/place-props/HealingSpring.rbxm`);
+the code adds a big turning, bobbing gem over its top, rising sparkles, a blue light, breathing water and a faint
+disc for the 12-stud healing area; a part-built stand-in is used if the model is missing), warm afternoon lighting
 with light haze, soft bloom and low wall shine (`Town.LIGHTING`; dim warm shop ceiling lights so pale walls never wash out). Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
 the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
 with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying

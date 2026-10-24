@@ -46,6 +46,7 @@ export type Monster = {
 local WildService = {}
 
 local buildSpring: (folder: Instance) -> ()
+local GEM_SIZE = 2.2 -- the floating gem made over a fountain model without one
 
 local SPAWN_TAG = "WildSpawn"
 local TRAVEL_COOLDOWN = 1
@@ -117,6 +118,27 @@ function buildSpring(folder: Instance)
 			end
 		end
 	end
+	local _, box = model:GetBoundingBox()
+	-- No gem in the model: one floats above its top tier
+	if not crystal then
+		local gem = Instance.new("Part")
+		gem.Name = "Crystal"
+		gem.Anchored = true
+		gem.CanCollide = false
+		gem.CanQuery = false
+		gem.Size = Vector3.new(1, 1, 1) * GEM_SIZE
+		gem.Color = Color3.fromRGB(110, 210, 255)
+		gem.Material = Enum.Material.Glass
+		gem.Transparency = 0.15
+		gem.Reflectance = 0.2
+		gem.CFrame = CFrame.new(spot + Vector3.new(0, box.Y + GEM_SIZE, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(35.26))
+		gem.Parent = model
+		crystal = gem
+	end
+	-- The highest water gets the sparkles and the light
+	table.sort(waters, function(a, b)
+		return a.Position.Y > b.Position.Y
+	end)
 	local top = waters[1] or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
 	for _, water in waters do
 		-- The water slowly breathes between brighter and softer
@@ -131,14 +153,14 @@ function buildSpring(folder: Instance)
 		rising.Speed = NumberRange.new(1.2, 2.4)
 		rising.SpreadAngle = Vector2.new(25, 25)
 		rising.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
-		rising.EmissionDirection = Enum.NormalId.Right -- the water discs lie on their side: X points up
+		rising.EmissionDirection = if (top :: BasePart).Size.Y < (top :: BasePart).Size.X then Enum.NormalId.Top else Enum.NormalId.Right -- flat discs emit up; cylinders lie on their side
 		rising.Color = ColorSequence.new(SPRING_COLOR, Color3.new(1, 1, 1))
 		rising.LightEmission = 1
 		rising.Parent = top
 		local light = Instance.new("PointLight")
 		light.Color = SPRING_COLOR
-		light.Range = 16
-		light.Brightness = 1.2
+		light.Range = 24
+		light.Brightness = 1.5
 		light.Parent = top
 	end
 	if crystal then
@@ -179,7 +201,8 @@ function buildSpring(folder: Instance)
 
 	local board = Instance.new("BillboardGui")
 	board.Size = UDim2.fromOffset(200, 40)
-	board.StudsOffsetWorldSpace = Vector3.new(0, Town.SLOTS.HealingSpring.height + 2, 0)
+	-- Over the gem; a screen-up offset, since the gem itself is tilted and turning
+	board.StudsOffset = Vector3.new(0, 2.5, 0)
 	board.MaxDistance = Wild.SPRING_LABEL_DISTANCE
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
@@ -190,7 +213,7 @@ function buildSpring(folder: Instance)
 	label.TextStrokeTransparency = 0.4
 	label.Text = "💧 Healing Spring"
 	label.Parent = board
-	board.Adornee = area
+	board.Adornee = crystal
 	board.Parent = area
 end
 
