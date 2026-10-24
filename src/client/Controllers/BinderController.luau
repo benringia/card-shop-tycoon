@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1353,7 +1354,7 @@ local BAG = {
 	GAP = 8,
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
-	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 460), -- grid + padding + details
+	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
 	SLOT_COLOR = Color3.fromRGB(206, 216, 250), -- a filled slot: soft blue so pale items still stand out
 	EMPTY_COLOR = Color3.fromRGB(232, 238, 252),
 	EMPTY_EDGE = Color3.fromRGB(200, 210, 236),
@@ -1577,7 +1578,7 @@ local function buildBag(parent: Frame)
 	bagOverlay = Instance.new("Frame")
 	bagOverlay.Name = "Bag"
 	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
-	bagOverlay.Position = UDim2.new(0.5, 0, 0.5, 28)
+	bagOverlay.Position = UDim2.fromScale(0.5, 0.5)
 	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
 	bagOverlay.BackgroundColor3 = UIKit.Colors.Panel
 	bagOverlay.Visible = false
@@ -1590,6 +1591,9 @@ local function buildBag(parent: Frame)
 	local function fitWindow()
 		local room = parent.AbsoluteSize
 		fit.Scale = math.min(1, (room.X - 24) / BAG.WINDOW.X, (room.Y - 84) / BAG.WINDOW.Y)
+		-- The middle of the whole screen: this screen starts below Roblox's top bar strip
+		local inset = GuiService:GetGuiInset().Y
+		bagOverlay.Position = UDim2.new(0.5, 0, 0.5, -inset / 2)
 	end
 	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
 	fitWindow()
