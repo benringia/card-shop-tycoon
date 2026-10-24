@@ -44,15 +44,13 @@ local function add(rig: Instance)
 	end
 	local root = rig:WaitForChild("HumanoidRootPart", 10)
 	local humanoid = rig:FindFirstChildOfClass("Humanoid")
-	local template, variant = CreatureVisuals.cardTemplate(card.name)
+	local template = CreatureVisuals.cardTemplate(card.name)
 	if not template or not root or not root:IsA("BasePart") or not humanoid or not rig.Parent then
 		return
 	end
 	local model = template:Clone()
 	CreatureVisuals.strip(model)
-	if variant then
-		CreatureVisuals.applyVariant(model, variant)
-	end
+	CreatureVisuals.dress(model, card.name)
 	model.Name = `{card.name}_Worker`
 	-- A local stand-in marker at the rig's feet, moved every frame
 	local feet = Instance.new("Part")
@@ -65,8 +63,8 @@ local function add(rig: Instance)
 	feet.Size = Vector3.new(0.2, 0.2, 0.2)
 	feet.CFrame = feetCFrame(root, humanoid)
 	feet.Parent = workspace
-	local height = math.max(Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[card.rarity] or 1), Jobs.CREATURE_MIN_HEIGHT)
-	local flying = table.find(Party.FLYING, card.name) ~= nil
+	local height = math.max(CreatureVisuals.cardHeight(card.name, card.rarity), Jobs.CREATURE_MIN_HEIGHT)
+	local flying = CreatureVisuals.isFlying(card.name)
 	workers[rig] = { rig = rig, root = root, humanoid = humanoid, feet = feet, body = CreatureVisuals.build(model, feet, height, flying, template.Name) }
 end
 

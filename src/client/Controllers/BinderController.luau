@@ -1757,8 +1757,8 @@ local function buildFilters(parent: Frame)
 	search.Text = ""
 	search.Font = Enum.Font.GothamBold
 	search.TextSize = 15
-	search.TextColor3 = UIKit.Colors.Ink
-	search.PlaceholderColor3 = UIKit.Colors.InkSoft
+	search.TextColor3 = UIKit.Colors.Text
+	search.PlaceholderColor3 = UIKit.Colors.Subtext
 	search.Parent = body
 	UIKit.corner(search, 12)
 	UIKit.outline(search)

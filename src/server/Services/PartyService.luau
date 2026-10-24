@@ -209,11 +209,12 @@ local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
 -- Where the creature stands: behind and to the side of its owner, on the ground
-local function getFollowCFrame(root: BasePart, current: CFrame): CFrame
+-- spread: how much further out a big creature walks (its model entry's size), so it never stands on its owner
+local function getFollowCFrame(root: BasePart, current: CFrame, spread: number): CFrame
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 	look = if look.Magnitude > 0 then look.Unit else Vector3.new(0, 0, -1)
 	local right = Vector3.new(-look.Z, 0, look.X)
-	local target = root.Position - look * Party.FOLLOW_OFFSET.back + right * Party.FOLLOW_OFFSET.side
+	local target = root.Position - look * Party.FOLLOW_OFFSET.back * spread + right * Party.FOLLOW_OFFSET.side * spread
 	local hit = workspace:Raycast(target + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), rayParams)
 	local ground = if hit then hit.Position else target - Vector3.new(0, 3, 0)
 	-- Face the way it's heading (toward the follow point), or the owner's way when standing still
@@ -243,7 +244,8 @@ local function moveMarkers()
 		if marker and state.hold then
 			marker.CFrame = state.hold -- in a fight: BattleService places it
 		elseif marker and root then
-			local target = getFollowCFrame(root, marker.CFrame)
+			local entry = Party.CREATURE_MODELS[marker:GetAttribute("CardName") :: string]
+			local target = getFollowCFrame(root, marker.CFrame, if entry and entry.size then entry.size else 1)
 			if (target.Position - marker.Position).Magnitude > Party.TELEPORT_DISTANCE then
 				marker.CFrame = target -- teleported, fell or respawned: appear right next to the owner
 			else

@@ -269,12 +269,21 @@ Each pack = 5 cards:
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
 - All art must be original and uploaded as decals/images to Roblox.
 - Summoned creatures use free or bought Creator Store models as stand-ins for now, with a placeholder blob for
-  cards without one. 23 cards use the bought Cute Pets pack (`Party.CREATURE_MODELS`: a pack model per card, some
-  in its Golden, Rainbow or Shadow colours so shared models still differ); Legendaries, Frontier cards and a few
-  others keep the placeholder until higher-rarity models are chosen. The pets' bones are animated in code on
+  cards without one. Every card (all 41, both sets) uses the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a
+  pack model per card, all 30 models used, a few shared ones tinted to their element), except the four Legendaries, which use the bought Crystal Titans pack with its own walk, run and idle animations (Solarion:
+  Ruby Cerberus, Stormking: Sapphire Crystal Crab, Aurora Drake: Rainbow Crystal Hydra, Voidmaw: the Hydra tinted
+  violet; `Util/KeyframePlayer` plays the saved animations on each client). They stand 2.2x their rarity size (about 9
+  studs), follow further out to match, burn with their element (`Util/BeastAura`, `Config/BeastFx`: fire on bones
+  spread over the body, lightning arcing between them, ground flames, a flickering light; Ember orange fire, Shade
+  purple-black fire, Tide blue spirit fire, Volt white fire with constant lightning), kick up dust as they move, and between their idle, now and then roar (rear back, lunge, an element-coloured
+  shockwave ring and sparks) or stomp (a dust ring). The pets' bones are animated in code on
   each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping, breathing, tail wags,
   ear flops, hip sways for tails without bones, and idle fidgets (look around, tilt, sniff, stretch, happy wag,
-  hop, spin, shake, sit, scratch, yawn); creatures without bones hop, spin, shake, look round and bounce. How to
+  hop, spin, shake, sit, scratch, yawn); the Ultra pack's bones have generic names, so `Util/RigGuess` works out
+  pelvis, spine, neck, head, tail, legs (front and hind) with their IK feet, arms and ears from where they sit
+  (arms hang and swing, feet step with the legs); the winged ones (`Party.WINGS`: bat, moth, wasp, swallow, stone
+  bird, heron) fly and beat their wings; fish swim afloat and the snake slithers (`Party.UNDULATE`); the otter
+  and creatures without bones hop, spin, shake, look round and bounce. How to
   add, size and animate them:
   `docs/creatures.md`.
 

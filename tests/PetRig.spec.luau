@@ -201,4 +201,112 @@ return {
 			assert(moved, `{kind} doesn't move a creature without bones`)
 		end
 	end,
+
+	["flying pets tuck their legs instead of walking, and beat with the flap"] = function()
+		local function fly(phase: number, flap: number, moving: number): { [string]: PetRig.Angles }
+			return poseAt(BIRD, { time = 1, phase = phase, moving = moving, fidget = nil, fidgetProgress = 0, flying = true, flapPhase = flap })
+		end
+		local a, b = fly(0.3, 0, 1), fly(2.4, 0, 1)
+		expect.near(a["leg:0:Left:0"].x, b["leg:0:Left:0"].x, 1e-9, "the legs don't stride in the air")
+		expect.near(a["leg:0:Left:0"].x, a["leg:0:Right:0"].x, 1e-9, "both legs tucked the same")
+		assert(math.abs(a["leg:0:Left:0"].x) > math.rad(15), "the legs aren't tucked")
+		local up, down = fly(0, math.pi / 2, 0), fly(0, -math.pi / 2, 0)
+		assert(math.abs(up["spine:0"].x - down["spine:0"].x) > math.rad(4), "the body doesn't beat with the flap")
+		assertBounded(up, "flying")
+	end,
+
+	["wings beat up and down together, mirrored, and rest folded on the ground"] = function()
+		local WINGED = table.clone(BIRD)
+		for _, name in { "Wing_Left_0", "Wing_Left_1", "Wing_Right_0", "Wing_Right_1" } do
+			table.insert(WINGED, name)
+		end
+		local role = PetRig.role("Wing_Left_1")
+		assert(role and role.kind == "wing" and role.side == "Left" and role.segment == 1, "Wing_Left_1 is a wing")
+		local function fly(flap: number): { [string]: PetRig.Angles }
+			return poseAt(WINGED, { time = 1, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, flying = true, flapPhase = flap })
+		end
+		local up, down = fly(math.pi / 2), fly(-math.pi / 2)
+		assert(math.abs(up["wing:Left:0"].z - down["wing:Left:0"].z) > math.rad(40), "the wing doesn't beat")
+		expect.near(up["wing:Left:0"].z, -up["wing:Right:0"].z, 1e-9, "the wings mirror each other")
+		assertBounded(up, "flapping")
+		local ground = poseAt(WINGED, still(1))
+		assert(math.abs(ground["wing:Left:0"].z) < math.rad(10), "wings flap on the ground")
+	end,
+
+	["arms hang down at the sides and swing against the legs"] = function()
+		local BIPED = { "Pelvis", "Spine_0", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Left_1", "Arm_Right_0" }
+		local role = PetRig.role("Arm_Left_1")
+		assert(role and role.kind == "arm" and role.side == "Left" and role.segment == 1, "Arm_Left_1 is an arm")
+		local drop = { Left = math.rad(70), Right = math.rad(70) }
+		local standing = poseAt(BIPED, { time = 0, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, armDrop = drop })
+		expect.near(standing["arm:Left:0"].z, math.rad(70), 1e-9, "the left arm lowered")
+		expect.near(standing["arm:Right:0"].z, -math.rad(70), 1e-9, "the right arm lowered the other way")
+		local step = poseAt(BIPED, { time = 0, phase = math.pi / 2, moving = 1, fidget = nil, fidgetProgress = 0, armDrop = drop })
+		assert(step["arm:Left:0"].x * step["leg:0:Left:0"].x < 0, "the arm swings against its leg")
+		assertBounded(step, "walking arms")
+		local trex = poseAt(BIPED, { time = 0, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, armDrop = drop,
+			armForward = math.rad(55), armBend = math.rad(50) })
+		assert(trex["arm:Left:0"].x - standing["arm:Left:0"].x > math.rad(50), "the arms don't reach forward")
+		assert(trex["arm:Left:1"].x > standing["arm:Left:1"].x + math.rad(30), "the elbows don't bend more")
+	end,
+
+	["feet lift as their leg swings forward and stay down standing"] = function()
+		local foot = PetRig.role("Foot_1_Right")
+		assert(foot and foot.kind == "foot" and foot.pair == 1 and foot.side == "Right", "Foot_1_Right is a foot")
+		local roles = rolesOf(QUAD)
+		local lifts = {}
+		for step = 0, 15 do
+			lifts[step] = PetRig.footLift(CFG, foot, false, walking(step / 16 * math.pi * 2))
+		end
+		local most, least = -1, 1
+		for _, lift in lifts do
+			most, least = math.max(most, lift), math.min(least, lift)
+		end
+		assert(most > 0.1 and least >= 0, "the foot doesn't step")
+		expect.near(PetRig.footLift(CFG, foot, false, still(1)), 0, 1e-9, "standing, the foot is down")
+		local _ = roles
+	end,
+
+	["swimmers wave their body from head to tail, even standing still"] = function()
+		local FISH = { "Pelvis", "Spine_0", "Neck", "Head_0", "Tail_0", "Tail_1", "Tail_2" }
+		local function swim(swimPhase: number, moving: number, kind: string): { [string]: PetRig.Angles }
+			return poseAt(FISH, { time = 0, phase = 0, moving = moving, fidget = nil, fidgetProgress = 0, undulate = kind, swimPhase = swimPhase })
+		end
+		local a = swim(1, 0, "swim")
+		assert(math.abs(a["tail:2"].y) > math.rad(8), "the tail doesn't sweep")
+		assert(math.abs(a["tail:2"].y - a["tail:0"].y) > 1e-3, "the wave doesn't travel down the tail")
+		assert(math.abs(a["head:0"].y) < math.abs(a["tail:2"].y), "the head sweeps as much as the tail")
+		assertBounded(a, "swimming")
+		local still, going = swim(1, 0, "slither"), swim(1, 1, "slither")
+		assert(math.abs(going["tail:1"].y) > math.abs(still["tail:1"].y) * 2, "a slither is mostly while moving")
+		assert(PetRig.swimSpeed(CFG, 1) > PetRig.swimSpeed(CFG, 0), "swims faster going along")
+	end,
+
+	["the flap lifts the body up and down"] = function()
+		expect.near(PetRig.flapLift(CFG, 0), 0, 1e-9, "level")
+		assert(PetRig.flapLift(CFG, math.pi / 2) > 0.1, "doesn't rise")
+		assert(PetRig.flapLift(CFG, -math.pi / 2) < -0.05, "doesn't dip")
+		assert(PetRig.flapSpeed(CFG, 1) > PetRig.flapSpeed(CFG, 0), "flaps faster flying along")
+	end,
+
+	["a roar rears back, lunges forward and settles"] = function()
+		expect.near(PetRig.body(CFG, "roar", 0, 1).pitch, 0, 1e-6, "starts level")
+		expect.near(PetRig.body(CFG, "roar", 1, 1).pitch, 0, 1e-6, "ends level")
+		local rear, lunge = 0, 0
+		for step = 0, 100 do
+			local pitch = PetRig.body(CFG, "roar", step / 100, 1).pitch
+			rear = math.max(rear, pitch)
+			lunge = math.min(lunge, pitch)
+		end
+		assert(rear > math.rad(10), "doesn't rear back")
+		assert(lunge < -math.rad(4), "doesn't lunge forward")
+		assert(PetRig.roarBurst(CFG, 0.3) == false and PetRig.roarBurst(CFG, 0.5) == true, "the shockwave goes off at the lunge")
+	end,
+
+	["a stomp rises and slams back down"] = function()
+		expect.near(PetRig.body(CFG, "stomp", 0, 1).lift, 0, 1e-6, "starts down")
+		expect.near(PetRig.body(CFG, "stomp", 1, 1).lift, 0, 1e-6, "ends down")
+		assert(PetRig.body(CFG, "stomp", 0.3, 1).lift > 0.2, "doesn't rise")
+		assert(#CFG.TITAN_FIDGETS >= 3, "too few titan fidgets")
+	end,
 }
