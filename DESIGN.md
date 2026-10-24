@@ -309,8 +309,11 @@ packs). Frontier cards look special everywhere: an aurora border and rarity, a F
 shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
 an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
-and changed only by ItemService. The binder has two tabs, 📖 Cards and 🎒 Bag (key I opens the Bag): item tiles with a
-detail panel. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
+and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
+is a centred inventory window ("Bag", "1 / 20 slots" in its blue header): a 5x4 grid of slots (more rows if
+needed), filled ones soft blue with the item icon and an "x2" badge, the rest empty; the chosen item's details on
+the right (big icon, name, "You have 2", what it does, Where to get it / How to use it boxes). It scales down to
+fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).

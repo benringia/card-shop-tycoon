@@ -132,6 +132,7 @@ local progressFill: Frame
 local filtersPanel: Frame
 local setFiltersOpen: (open: boolean) -> ()
 local setInspecting: (on: boolean) -> ()
+local renderBag: () -> ()
 local buildCase: () -> ()
 local buildSpine: () -> ()
 local getSetArt: (set: string) -> string?
@@ -1335,24 +1336,38 @@ local function fitPockets()
 	end
 end
 
--- Bag: the item inventory (Config/Items), the binder's second tab. Item tiles on the left, the chosen item's
--- details (what it does, where to get it, how to use it) on the right.
+-- Bag: the item inventory (Config/Items), the binder's second tab. A centred inventory window: a grid of slots
+-- on the left (items with a count badge, the rest empty), the chosen item's details on the right.
 local bagGrid: ScrollingFrame
 local bagDetail: Frame
+local bagCount: TextLabel
 local bagItems: { [string]: number } = {}
 local selectedItem: string? = nil
 local cardsTab: TextButton
 local bagTab: TextButton
 
-local BAG_TILE = Vector2.new(108, 124)
+local BAG = {
+	SLOTS = 20, -- slots always drawn (more appear if needed)
+	COLUMNS = 5,
+	SLOT = 84, -- pixels, square
+	GAP = 8,
+	DETAIL_WIDTH = 280,
+	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 460), -- grid + padding + details
+	SLOT_COLOR = Color3.fromRGB(206, 216, 250), -- a filled slot: soft blue so pale items still stand out
+	EMPTY_COLOR = Color3.fromRGB(232, 238, 252),
+	EMPTY_EDGE = Color3.fromRGB(200, 210, 236),
+	BADGE = Color3.fromRGB(28, 36, 66),
+	INK = Color3.fromRGB(28, 36, 66),
+	SUBTEXT = Color3.fromRGB(95, 108, 150),
+}
 
 local function bagLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, y: number, height: number): TextLabel
 	local label = UIKit.label(parent, text, font, size, color)
-	label.Position = UDim2.fromOffset(12, y)
-	label.Size = UDim2.new(1, -24, 0, height)
+	label.Position = UDim2.fromOffset(16, y)
+	label.Size = UDim2.new(1, -32, 0, height)
 	label.TextWrapped = true
 	label.TextYAlignment = Enum.TextYAlignment.Top
-	label.ZIndex = 33
+	label.ZIndex = 34
 	return label
 end
 
@@ -1375,26 +1390,97 @@ local function renderBagDetail()
 	end
 	local info = if selectedItem then Items.ITEMS[selectedItem] else nil
 	if not info or not selectedItem then
-		bagLabel(bagDetail, "Tap an item to see what it does.", Enum.Font.GothamBold, 14, UIKit.Colors.Subtext, 16, 40)
+		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, BAG.SUBTEXT, 24, 60)
+		hint.TextXAlignment = Enum.TextXAlignment.Center
 		return
 	end
-	local icon = Icon.make(bagDetail, info.icon, UDim2.fromOffset(64, 64))
-	icon.AnchorPoint = Vector2.new(0.5, 0)
-	icon.Position = UDim2.new(0.5, 0, 0, 10)
-	local name = bagLabel(bagDetail, `{info.name} · x{bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 20, UIKit.Colors.Text, 78, 26)
+	-- The item big on a soft circle, its name and how many you have
+	local halo = Instance.new("Frame")
+	halo.AnchorPoint = Vector2.new(0.5, 0)
+	halo.Position = UDim2.new(0.5, 0, 0, 16)
+	halo.Size = UDim2.fromOffset(104, 104)
+	halo.BackgroundColor3 = BAG.SLOT_COLOR
+	halo.ZIndex = 33
+	halo.Parent = bagDetail
+	UIKit.corner(halo, 52)
+	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(76, 76))
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.ZIndex = 34
+	Icon.set(icon, info.icon)
+	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 24, BAG.INK, 128, 30)
 	name.TextXAlignment = Enum.TextXAlignment.Center
-	bagLabel(bagDetail, info.description, Enum.Font.Gotham, 14, UIKit.Colors.Text, 112, 40)
-	if info.source then
-		bagLabel(bagDetail, "Where to get it", Enum.Font.GothamBold, 13, UIKit.Colors.Accent, 160, 18)
-		bagLabel(bagDetail, info.source, Enum.Font.Gotham, 13, UIKit.Colors.Subtext, 178, 36)
-	end
-	if info.use then
-		bagLabel(bagDetail, "How to use it", Enum.Font.GothamBold, 13, UIKit.Colors.Accent, 220, 18)
-		bagLabel(bagDetail, info.use, Enum.Font.Gotham, 13, UIKit.Colors.Subtext, 238, 36)
+	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIKit.Colors.Accent, 158, 20)
+	owned.TextXAlignment = Enum.TextXAlignment.Center
+	local about = bagLabel(bagDetail, info.description, Enum.Font.Gotham, 14, BAG.INK, 188, 44)
+	about.TextXAlignment = Enum.TextXAlignment.Center
+	-- Where to get it / how to use it, as two soft boxes
+	local y = 240
+	for _, section in { { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
+		if section.text then
+			local box = Instance.new("Frame")
+			box.Position = UDim2.fromOffset(12, y)
+			box.Size = UDim2.new(1, -24, 0, 62)
+			box.BackgroundColor3 = BAG.EMPTY_COLOR
+			box.ZIndex = 33
+			box.Parent = bagDetail
+			UIKit.corner(box, 10)
+			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIKit.Colors.Accent, 6, 18)
+			heading.Position = UDim2.fromOffset(10, 6)
+			heading.Size = UDim2.new(1, -20, 0, 18)
+			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.SUBTEXT, 26, 32)
+			body.Position = UDim2.fromOffset(10, 26)
+			body.Size = UDim2.new(1, -20, 0, 32)
+			y += 70
+		end
 	end
 end
 
-local function renderBag()
+-- One inventory slot: a filled one (icon and a count badge) or an empty one
+local function addSlot(order: number, id: string?)
+	local filled = id ~= nil
+	local slot = Instance.new("TextButton")
+	slot.Name = if id then id else "Empty"
+	slot.Text = ""
+	slot.LayoutOrder = order
+	slot.AutoButtonColor = filled
+	slot.Active = filled
+	slot.BackgroundColor3 = if filled then BAG.SLOT_COLOR else BAG.EMPTY_COLOR
+	slot.ZIndex = 32
+	slot.Parent = bagGrid
+	UIKit.corner(slot, 14)
+	local selected = filled and id == selectedItem
+	UIKit.outline(slot, if selected then UIKit.Colors.Accent else BAG.EMPTY_EDGE, if selected then 3 else 2)
+	if not id then
+		return
+	end
+	local info = Items.ITEMS[id]
+	local icon = Icon.make(slot, info.icon, UDim2.fromScale(0.68, 0.68))
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.46)
+	icon.ZIndex = 33
+	Icon.set(icon, info.icon)
+	local badge = UIKit.label(slot, `x{bagItems[id]}`, Enum.Font.FredokaOne, 14, Color3.fromRGB(255, 255, 255))
+	badge.AnchorPoint = Vector2.new(1, 1)
+	badge.Position = UDim2.new(1, -4, 1, -4)
+	badge.Size = UDim2.fromOffset(0, 20)
+	badge.AutomaticSize = Enum.AutomaticSize.X
+	badge.BackgroundColor3 = BAG.BADGE
+	badge.BackgroundTransparency = 0
+	badge.TextXAlignment = Enum.TextXAlignment.Center
+	badge.ZIndex = 34
+	UIKit.corner(badge, 10)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 6)
+	pad.PaddingRight = UDim.new(0, 6)
+	pad.Parent = badge
+	slot.Activated:Connect(function()
+		selectedItem = id
+		renderBag()
+	end)
+end
+
+function renderBag()
 	for _, child in bagGrid:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
@@ -1405,49 +1491,11 @@ local function renderBag()
 		selectedItem = nil
 	end
 	selectedItem = selectedItem or ids[1]
-	if #ids == 0 then
-		local empty = UIKit.label(bagGrid, "🎒 Your bag is empty.\nItems drop in the Frontier: take its portal in the plaza.", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
-		empty.Size = UDim2.new(1, -8, 0, 80)
-		empty.TextWrapped = true
-		empty.TextXAlignment = Enum.TextXAlignment.Center
-		empty.ZIndex = 33
+	local slots = math.max(BAG.SLOTS, math.ceil(#ids / BAG.COLUMNS) * BAG.COLUMNS)
+	for order = 1, slots do
+		addSlot(order, ids[order])
 	end
-	for order, id in ids do
-		local info = Items.ITEMS[id]
-		local tile = Instance.new("TextButton")
-		tile.Text = ""
-		tile.LayoutOrder = order
-		tile.AutoButtonColor = true
-		tile.BackgroundColor3 = UIKit.Colors.Row
-		tile.ZIndex = 32
-		tile.Parent = bagGrid
-		UIKit.corner(tile, 12)
-		local stroke = Instance.new("UIStroke")
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Color = if id == selectedItem then UIKit.Colors.Accent else Color3.fromRGB(80, 80, 100)
-		stroke.Thickness = if id == selectedItem then 3 else 1
-		stroke.Parent = tile
-		local icon = Icon.make(tile, info.icon, UDim2.fromOffset(56, 56))
-		icon.AnchorPoint = Vector2.new(0.5, 0)
-		icon.Position = UDim2.new(0.5, 0, 0, 10)
-		icon.ZIndex = 33
-		Icon.set(icon, info.icon)
-		local name = UIKit.label(tile, info.name, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-		name.Position = UDim2.fromOffset(4, 70)
-		name.Size = UDim2.new(1, -8, 0, 18)
-		name.TextXAlignment = Enum.TextXAlignment.Center
-		name.TextTruncate = Enum.TextTruncate.AtEnd
-		name.ZIndex = 33
-		local badge = UIKit.label(tile, `x{bagItems[id]}`, Enum.Font.FredokaOne, 16, UIKit.Colors.Accent)
-		badge.Position = UDim2.fromOffset(4, 92)
-		badge.Size = UDim2.new(1, -8, 0, 22)
-		badge.TextXAlignment = Enum.TextXAlignment.Center
-		badge.ZIndex = 33
-		tile.Activated:Connect(function()
-			selectedItem = id
-			renderBag()
-		end)
-	end
+	bagCount.Text = `{#ids} / {slots} slots`
 	renderBagDetail()
 end
 
@@ -1471,6 +1519,12 @@ local function showTab(bag: boolean)
 	progressCard.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
 	cardsTab.BackgroundColor3 = if bag then UIKit.Colors.Row else UIKit.Colors.Accent
 	bagTab.BackgroundColor3 = if bag then UIKit.Colors.Accent else UIKit.Colors.Row
+	for button, open in { [cardsTab] = not bag, [bagTab] = bag } do
+		local name = button:FindFirstChild("Name", true) :: TextLabel?
+		if name then
+			name.TextColor3 = if open then Color3.new(1, 1, 1) else BAG.INK
+		end
+	end
 	if bag then
 		renderBag()
 	end
@@ -1478,35 +1532,87 @@ end
 
 local function buildBag(parent: Frame)
 	-- Two tabs in the header, next to the title
-	local function tab(text: string, x: number): TextButton
-		local button = UIKit.button(parent, text, UIKit.Colors.Row)
+	-- An icon and a name side by side, centred on the tab (the name turns white on the open tab: showTab)
+	local function tab(icon: string, text: string, x: number): TextButton
+		local button = UIKit.button(parent, "", UIKit.Colors.Row)
 		button.Position = UDim2.fromOffset(x, 10)
 		button.Size = UDim2.fromOffset(116, 48)
-		button.TextSize = 15
 		button.ZIndex = 12
+		local row = Instance.new("Frame")
+		row.AnchorPoint = Vector2.new(0.5, 0.5)
+		row.Position = UDim2.fromScale(0.5, 0.45)
+		row.Size = UDim2.fromScale(0, 1)
+		row.AutomaticSize = Enum.AutomaticSize.X
+		row.BackgroundTransparency = 1
+		row.ZIndex = 13
+		row.Parent = button
+		local list = Instance.new("UIListLayout")
+		list.FillDirection = Enum.FillDirection.Horizontal
+		list.VerticalAlignment = Enum.VerticalAlignment.Center
+		list.Padding = UDim.new(0, 6)
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Parent = row
+		local picture = Icon.make(row, icon, UDim2.fromOffset(28, 28))
+		picture.LayoutOrder = 1
+		picture.ZIndex = 13
+		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, BAG.INK)
+		name.Name = "Name"
+		name.LayoutOrder = 2
+		name.Size = UDim2.fromScale(0, 1)
+		name.AutomaticSize = Enum.AutomaticSize.X
+		name.TextWrapped = false
+		name.ZIndex = 13
 		return button
 	end
-	cardsTab = tab("📖 Cards", 16)
-	bagTab = tab("🎒 Bag", 138)
+	cardsTab = tab("Cards", "Cards", 16)
+	bagTab = tab("Bag", "Bag", 138)
 	-- The card view covers the whole binder, title row included: hide the tabs while it's open
 	detail:GetPropertyChangedSignal("Visible"):Connect(function()
 		cardsTab.Visible = not detail.Visible
 		bagTab.Visible = not detail.Visible
 	end)
 
+	-- The window, centred; scaled down to fit small screens
 	bagOverlay = Instance.new("Frame")
 	bagOverlay.Name = "Bag"
-	bagOverlay.Position = UDim2.fromOffset(12, 64)
-	bagOverlay.Size = UDim2.new(1, -24, 1, -76)
+	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
+	bagOverlay.Position = UDim2.new(0.5, 0, 0.5, 28)
+	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
 	bagOverlay.BackgroundColor3 = UIKit.Colors.Panel
 	bagOverlay.Visible = false
 	bagOverlay.ZIndex = 30
 	bagOverlay.Parent = parent
-	UIKit.corner(bagOverlay, 12)
+	UIKit.corner(bagOverlay, 16)
+	UIKit.outline(bagOverlay, Color3.new(1, 1, 1), 3)
+	local fit = Instance.new("UIScale")
+	fit.Parent = bagOverlay
+	local function fitWindow()
+		local room = parent.AbsoluteSize
+		fit.Scale = math.min(1, (room.X - 24) / BAG.WINDOW.X, (room.Y - 84) / BAG.WINDOW.Y)
+	end
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
+	fitWindow()
 
+	local header, title = UIKit.header(bagOverlay, "Bag")
+	header.ZIndex = 31
+	title.ZIndex = 32
+	title.Position = UDim2.fromOffset(62, 0)
+	local headerIcon = Icon.make(header, "Bag", UDim2.fromOffset(40, 40))
+	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
+	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
+	headerIcon.ZIndex = 32
+	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.fromRGB(225, 235, 255))
+	bagCount.AnchorPoint = Vector2.new(1, 0.5)
+	bagCount.Position = UDim2.new(1, -18, 0.5, 0)
+	bagCount.Size = UDim2.fromOffset(160, 24)
+	bagCount.TextXAlignment = Enum.TextXAlignment.Right
+	bagCount.ZIndex = 32
+
+	local top = UIKit.HEADER_HEIGHT + 12
 	bagGrid = Instance.new("ScrollingFrame")
-	bagGrid.Position = UDim2.fromOffset(8, 8)
-	bagGrid.Size = UDim2.new(0.58, -12, 1, -16)
+	bagGrid.Name = "Slots"
+	bagGrid.Position = UDim2.fromOffset(16, top)
+	bagGrid.Size = UDim2.new(0, BAG.COLUMNS * BAG.SLOT + (BAG.COLUMNS - 1) * BAG.GAP + 8, 1, -(top + 16))
 	bagGrid.BackgroundTransparency = 1
 	bagGrid.BorderSizePixel = 0
 	bagGrid.ScrollBarThickness = 4
@@ -1515,19 +1621,21 @@ local function buildBag(parent: Frame)
 	bagGrid.ZIndex = 31
 	bagGrid.Parent = bagOverlay
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset(BAG_TILE.X, BAG_TILE.Y)
-	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.CellSize = UDim2.fromOffset(BAG.SLOT, BAG.SLOT)
+	grid.CellPadding = UDim2.fromOffset(BAG.GAP, BAG.GAP)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = bagGrid
 
 	bagDetail = Instance.new("Frame")
+	bagDetail.Name = "Details"
 	bagDetail.AnchorPoint = Vector2.new(1, 0)
-	bagDetail.Position = UDim2.new(1, -8, 0, 8)
-	bagDetail.Size = UDim2.new(0.42, -4, 1, -16)
-	bagDetail.BackgroundColor3 = UIKit.Colors.Row
+	bagDetail.Position = UDim2.new(1, -16, 0, top)
+	bagDetail.Size = UDim2.new(0, BAG.DETAIL_WIDTH, 1, -(top + 16))
+	bagDetail.BackgroundColor3 = Color3.new(1, 1, 1)
 	bagDetail.ZIndex = 32
 	bagDetail.Parent = bagOverlay
-	UIKit.corner(bagDetail, 12)
+	UIKit.corner(bagDetail, 14)
+	UIKit.outline(bagDetail, BAG.EMPTY_EDGE, 2)
 
 	cardsTab.Activated:Connect(function()
 		showTab(false)
