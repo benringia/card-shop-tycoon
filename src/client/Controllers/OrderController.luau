@@ -9,7 +9,10 @@ local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
+local ProductPicture = require(ClientUtil:WaitForChild("ProductPicture"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Product = typeof(Products.List[1])
@@ -53,6 +56,7 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	)
 	local frame, button = UIKit.row(parent, order, product.name, detail)
 	frame.Name = product.id
+	ProductPicture.add(frame, product.id, product.icon)
 
 	button.Activated:Connect(function()
 		if isLocked(product) then
@@ -73,6 +77,7 @@ end
 function OrderController.Start()
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(UIController.GetScreenGui(), "OrderMenu", "Order Stock")
+	Icon.header(panel, "Order", UIKit.HEADER_HEIGHT)
 	for index, product in Products.List do
 		table.insert(rows, buildRow(product, list, index))
 	end

@@ -69,4 +69,15 @@ function Icon.make(parent: Instance, name: string, size: UDim2): Frame
 	return holder
 end
 
+-- An icon before a UIKit.panel's title (headerHeight: UIKit.HEADER_HEIGHT); the title moves over to make room
+function Icon.header(panel: Frame, name: string, headerHeight: number): Frame
+	local title = panel:FindFirstChild("Title", true) :: TextLabel
+	local icon = Icon.make(title.Parent :: Instance, name, UDim2.fromOffset(40, 40))
+	icon.AnchorPoint = Vector2.new(0, 0.5)
+	icon.Position = UDim2.fromOffset(14, headerHeight / 2)
+	icon.ZIndex = title.ZIndex
+	title.Position = UDim2.fromOffset(60, 0)
+	return icon
+end
+
 return Icon

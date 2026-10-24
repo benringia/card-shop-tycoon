@@ -195,13 +195,7 @@ end
 local function buildShopPanel(parent: Instance)
 	local list: ScrollingFrame
 	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Shop")
-	-- The shop icon before the title
-	local title = shopPanel:FindFirstChild("Title", true) :: TextLabel
-	local headerIcon = Icon.make(title.Parent :: Instance, "Shop", UDim2.fromOffset(40, 40))
-	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
-	headerIcon.Position = UDim2.fromOffset(14, UIKit.HEADER_HEIGHT / 2)
-	headerIcon.ZIndex = title.ZIndex
-	title.Position = UDim2.fromOffset(60, 0)
+	Icon.header(shopPanel, "Shop", UIKit.HEADER_HEIGHT)
 	shopPanel.Size = UDim2.fromScale(0.9, 0.85)
 	local limit = shopPanel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then

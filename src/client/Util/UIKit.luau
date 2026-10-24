@@ -6,6 +6,7 @@
 -- made with Colors.Text / Colors.Subtext turn navy when the surface behind them is light.
 -- Sizes follow mobile-first rules: tap targets at least 48px.
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
 
@@ -55,6 +56,28 @@ local function closeOthers(frame: Frame)
 			other.Visible = false
 		end
 	end
+end
+
+-- World hovers and taps (shelf tooltips, price tags) stay off while a window is open or the pointer is over
+-- visible UI. screen is a viewport point, like UserInputService:GetMouseLocation().
+function UIKit.pointerBlocked(screen: Vector2): boolean
+	if next(openPanels) ~= nil then
+		return true
+	end
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return false
+	end
+	local inset = GuiService:GetGuiInset()
+	for _, object in playerGui:GetGuiObjectsAtPosition(screen.X, screen.Y - inset.Y) do
+		local drawn = object.BackgroundTransparency < 1
+			or (object:IsA("ImageLabel") or object:IsA("ImageButton")) and object.ImageTransparency < 1 and object.Image ~= ""
+			or object:IsA("TextButton")
+		if drawn and object.Visible then
+			return true
+		end
+	end
+	return false
 end
 
 local function trackPanel(frame: Frame)

@@ -102,8 +102,12 @@ code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 green or red with an outline, gliding between grid cells; its footprint cells drawn on the floor, a chevron at its
 front, a label above it ("Wall Shelf · $350", "Move Collector Case", "Can't place here"). Buttons Rotate (R), Place
 (Click; greyed while blocked), Cancel (Q). Shop prompts are hidden while placing. Numbers: `Config/Placement`.
-Shelves, cases and fixtures carry a small name tag floating just above them (product and count, the case's
-count, "📦 Order Stock", "💰 Register", "✨ Card Condenser"), shown within 40 studs (`Placement.TAG`).
+The register carries a small name tag floating just above it ("💰 Register"), out past its front so walls never cut
+it, shown within 40 studs (`Placement.FIXTURE_TAG`). Shelves, cases and the order computer carry none: on your own
+shop, pointing at one (or tapping it) gives it a soft white outline and a tooltip by the cursor with its product
+and stock ("First Spark Booster Pack · 24/96"), a case's kind and count, "✨ Card Condenser" or "📦 Order Stock"
+(`ShelfInfoController`, within 30 studs; the server sets the part's `Info` attribute), and an empty product shelf shows a red "📦 Empty" badge over it
+(the `Empty` attribute) so it can be spotted across the shop. Visitors see neither (`Placement.SHELF_INFO`).
 
 ---
 
