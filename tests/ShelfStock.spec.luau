@@ -106,4 +106,29 @@ return {
 			assert(typeof(color) == "table" and #color == 3, `{product.id} has no color`)
 		end
 	end,
+
+	["card sleeves stand on shelves as sleeve packets that fit their box"] = function()
+		expect.equal(products.ById.CardSleeves.stockLook, "Sleeves", "Card Sleeves look")
+		local look = town.SHELF_STOCK.SLEEVES
+		local config = town.SHELF_STOCK
+		-- The narrowest box any shelf gives a stock slot: the 4-wide racks
+		local boxWidth = RACK.x / config.PER_LEVEL * config.WIDTH_FILL
+		assert(look.WIDTH <= boxWidth + 1e-9, "a packet is wider than its box")
+		assert(look.HEIGHT + look.TAB <= config.BOX_HEIGHT + 1e-9, "a packet is taller than its box")
+		assert(#look.COLORS >= 3, "an assortment of sleeve colours")
+		for _, color in look.COLORS do
+			assert(#color == 3, "colours are { r, g, b }")
+		end
+	end,
+
+	["deck boxes stand on shelves as little deck boxes that fit their box"] = function()
+		expect.equal(products.ById.DeckBox.stockLook, "Deck", "Deck Box look")
+		local look = town.SHELF_STOCK.DECKS
+		local config = town.SHELF_STOCK
+		local boxWidth = RACK.x / config.PER_LEVEL * config.WIDTH_FILL
+		local boxDepth = RACK.z * config.DEPTH_FILL
+		assert(look.WIDTH <= boxWidth + 1e-9, "a deck box is wider than its place")
+		assert(look.HEIGHT <= config.BOX_HEIGHT + 1e-9, "a deck box is taller than its place")
+		assert(look.PER_STACK * look.DEPTH <= boxDepth + 1e-9, "the deck boxes don't fit front to back")
+	end,
 }

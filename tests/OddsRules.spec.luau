@@ -14,7 +14,38 @@ local FIRST_SPARK = {
 	},
 }
 
+-- The First Spark Deck Box's slots (Config/Packs DeckBox): 5 cards opened at once, $9 against a pack's $3
+local DECK_BOX = {
+	slots = {
+		COMMON,
+		COMMON,
+		{ { rarity = "Common", weight = 0.5 }, { rarity = "Rare", weight = 0.5 } },
+		{ { rarity = "Rare", weight = 0.75 }, { rarity = "Very Rare", weight = 0.25 } },
+		{ { rarity = "Rare", weight = 0.45 }, { rarity = "Very Rare", weight = 0.25 }, { rarity = "Epic", weight = 0.22 }, { rarity = "Legendary", weight = 0.08 } },
+	},
+}
+
 return {
+	["a deck box beats a pack: 5 cards, two guaranteed Rare or better, better hit odds"] = function()
+		expect.equal(#DECK_BOX.slots, 5, "5 cards")
+		local guaranteed = 0
+		for _, slot in DECK_BOX.slots do
+			local common = false
+			for _, option in slot do
+				common = common or option.rarity == "Common"
+			end
+			if not common then
+				guaranteed += 1
+			end
+		end
+		expect.equal(guaranteed, 2, "Rare-or-better slots")
+		local deck, pack = OddsRules.perCard(DECK_BOX), OddsRules.perCard(FIRST_SPARK)
+		for _, rarity in { "Very Rare", "Epic", "Legendary" } do
+			assert(deck[rarity] > pack[rarity], `{rarity} odds are no better than a pack's`)
+			assert(deck[rarity] < pack[rarity] * 4, `{rarity} odds are too generous for 3x a pack's price`)
+		end
+	end,
+
 	["per-card odds average the pack's slots"] = function()
 		local odds = OddsRules.perCard(FIRST_SPARK)
 		expect.near(odds.Common, 0.74, 1e-9, "Common")

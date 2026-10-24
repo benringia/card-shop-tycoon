@@ -38,6 +38,9 @@ return {
 		HALO = 0, -- halo transparency
 	},
 
+	-- Cards on display cast no light of their own: under the glass it lit the whole case up. The halo, sparkles,
+	-- element aura particles, listing burst and flash stay.
+	DISPLAY_LIGHTS = false,
 	FACE_BRIGHTNESS = 1.6, -- the card face on display: brighter than a lit surface, so it glows
 	FACE_PIXELS_PER_STUD = 200, -- sharpness of the card face on display
 	HALO_MARGIN = 0.06, -- studs the halo sticks out round the card

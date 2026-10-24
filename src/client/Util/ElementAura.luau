@@ -136,8 +136,8 @@ local function addLight(part: BasePart, light: ElementFx.Light, intensity: numbe
 end
 
 -- Adds the element's effect to the part. scale grows the particles for bigger things (creatures); 1 for cards.
--- Returns false for an element without an effect.
-function ElementAura.attach(part: BasePart, element: string, intensity: number, scale: number?): boolean
+-- lit = false leaves out the steady light (cards in glass cases). Returns false for an element without an effect.
+function ElementAura.attach(part: BasePart, element: string, intensity: number, scale: number?, lit: boolean?): boolean
 	local fx = ElementFx.ELEMENTS[element]
 	if not fx then
 		return false
@@ -146,7 +146,9 @@ function ElementAura.attach(part: BasePart, element: string, intensity: number, 
 	for _, spec in fx.emitters do
 		addEmitter(part, spec, intensity, size)
 	end
-	addLight(part, fx.light, intensity)
+	if lit ~= false then
+		addLight(part, fx.light, intensity)
+	end
 	if fx.bolts then
 		startBolts(part, fx.bolts, intensity)
 	end

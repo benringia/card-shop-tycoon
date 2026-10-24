@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
+local ShelfLooks = require(Shared:WaitForChild("Util"):WaitForChild("ShelfLooks"))
 
 local Props = {}
 
@@ -24,6 +25,8 @@ local DARK_WOOD = Color3.fromRGB(95, 65, 45)
 local STONE = Color3.fromRGB(150, 145, 140)
 local LAMP_GLOW = Color3.fromRGB(255, 220, 150)
 local STEEL_BLACK = Color3.fromRGB(28, 30, 36)
+local CHARCOAL = Color3.fromRGB(52, 56, 64)
+local WHITE = Color3.fromRGB(244, 245, 248)
 local LED_WHITE = Color3.fromRGB(255, 246, 228)
 local HEDGE_GREEN = Color3.fromRGB(72, 132, 70)
 local SPRING_STONE = Color3.fromRGB(196, 202, 214)
@@ -84,6 +87,12 @@ local function getVariants(slot: string): { Instance }
 		return cached
 	end
 	local found: { Instance } = {}
+	local info = Town.SLOTS[slot]
+	if info and (info :: any).built then
+		-- A code-built look wins: old model files for it are ignored
+		variantCache[slot] = found
+		return found
+	end
 	for _, folderName in SOURCE_FOLDERS do
 		local folder = ReplicatedStorage:FindFirstChild(folderName)
 		for _, child in if folder then folder:GetChildren() else {} do
@@ -115,11 +124,95 @@ end
 -- Cylinders run along X: this stands one up
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
 
+-- The Card Condenser (Town.CONDENSER_LOOK), bottom centre at the origin, front -Z. Its Rotor (the crystal and the
+-- floating cards) is a Model of its own that CondenserFxController spins on each client.
+local function buildCondenser(model: Model)
+	local look = Town.CONDENSER_LOOK
+	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
+	local body, trim, glow = Props.color(look.BODY), Props.color(look.TRIM), Props.color(look.GLOW)
+	local baseTop = look.BASE_HEIGHT
+	local chamberTop = baseTop + look.CHAMBER_HEIGHT
+	local chamberY = baseTop + look.CHAMBER_HEIGHT / 2
+	-- Base: the plinth, a glowing ring round its top, a screen and a card slot on its front
+	addPart(model, cylinder, Vector3.new(look.BASE_HEIGHT, look.BASE_RADIUS * 2, look.BASE_RADIUS * 2), CFrame.new(0, baseTop / 2, 0) * UPRIGHT, body, Enum.Material.Metal)
+	addPart(model, cylinder, Vector3.new(0.12, look.BASE_RADIUS * 2 + 0.1, look.BASE_RADIUS * 2 + 0.1), CFrame.new(0, baseTop - 0.1, 0) * UPRIGHT, glow, Enum.Material.Neon)
+	addPart(model, block, Vector3.new(1.9, 0.8, 0.3), CFrame.new(0, 0.6, -look.BASE_RADIUS + 0.1), trim, Enum.Material.SmoothPlastic)
+	local screen = addPart(model, block, Vector3.new(1.7, 0.6, 0.02), CFrame.new(0, 0.6, -look.BASE_RADIUS - 0.06), Color3.fromRGB(22, 20, 40), Enum.Material.SmoothPlastic)
+	screen.Name = "Screen"
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(340, 120)
+	gui.LightInfluence = 0
+	gui.Parent = screen
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = glow:Lerp(Color3.new(1, 1, 1), 0.5)
+	label.Text = look.SCREEN_TEXT
+	label.Parent = gui
+	addPart(model, block, Vector3.new(1.2, 0.06, 0.1), CFrame.new(0, baseTop - 0.3, -look.BASE_RADIUS + 0.2), glow, Enum.Material.Neon).Name = "CardSlot"
+	-- Chamber: glass with a glowing floor
+	local glass = addPart(model, cylinder, Vector3.new(look.CHAMBER_HEIGHT, look.CHAMBER_RADIUS * 2, look.CHAMBER_RADIUS * 2), CFrame.new(0, chamberY, 0) * UPRIGHT, Props.color(look.GLASS), Enum.Material.Glass)
+	glass.Name = "Glass"
+	glass.Transparency = look.GLASS_TRANSPARENCY
+	glass.CastShadow = false
+	local floor = addPart(model, cylinder, Vector3.new(0.04, look.CHAMBER_RADIUS * 1.7, look.CHAMBER_RADIUS * 1.7), CFrame.new(0, baseTop + 0.02, 0) * UPRIGHT, glow, Enum.Material.Neon)
+	floor.Transparency = look.FLOOR_TRANSPARENCY
+	-- Side pillars with light strips, holding the cap
+	local pillarX = (look.CHAMBER_RADIUS + look.BASE_RADIUS) / 2
+	for _, side in { -1, 1 } do
+		addPart(model, block, Vector3.new(0.45, look.CHAMBER_HEIGHT, 0.45), CFrame.new(side * pillarX, chamberY, 0), body, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(0.08, look.CHAMBER_HEIGHT - 0.4, 0.06), CFrame.new(side * pillarX, chamberY, -0.25), glow, Enum.Material.Neon)
+	end
+	local capRadius = pillarX + 0.3
+	addPart(model, cylinder, Vector3.new(0.1, capRadius * 2 + 0.1, capRadius * 2 + 0.1), CFrame.new(0, chamberTop + 0.05, 0) * UPRIGHT, glow, Enum.Material.Neon)
+	addPart(model, cylinder, Vector3.new(look.CAP_HEIGHT, capRadius * 2, capRadius * 2), CFrame.new(0, chamberTop + look.CAP_HEIGHT / 2, 0) * UPRIGHT, body, Enum.Material.Metal)
+	addPart(model, cylinder, Vector3.new(0.25, 2, 2), CFrame.new(0, chamberTop + look.CAP_HEIGHT + 0.12, 0) * UPRIGHT, trim, Enum.Material.Metal)
+
+	-- Rotor: a crystal with three cards circling it, sparkling
+	local rotor = Instance.new("Model")
+	rotor.Name = "Rotor"
+	rotor:SetAttribute("RotorY", chamberY)
+	local crystal = Instance.new("Part")
+	crystal.Name = "Crystal"
+	crystal.Size = Vector3.new(0.6, 1.1, 0.6)
+	crystal.CFrame = CFrame.new(0, chamberY, 0) * CFrame.Angles(0, math.rad(45), 0)
+	crystal.Color = glow
+	crystal.Material = Enum.Material.Neon
+	crystal.Parent = rotor
+	for index = 1, 3 do
+		local angle = (index - 1) * math.pi * 2 / 3
+		local card = Instance.new("Part")
+		card.Name = "Card"
+		card.Size = Vector3.new(0.55, 0.8, 0.04)
+		card.CFrame = CFrame.new(0, chamberY, 0) * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, -look.CORE_RADIUS) * CFrame.Angles(math.rad(10), 0, 0)
+		card.Color = Props.color(look.CARD)
+		card.Material = Enum.Material.SmoothPlastic
+		card.Parent = rotor
+	end
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkles.Rate = 6
+	sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkles.Speed = NumberRange.new(0.3, 0.8)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Size = NumberSequence.new(0.3, 0)
+	sparkles.Color = ColorSequence.new(glow:Lerp(Color3.new(1, 1, 1), 0.4))
+	sparkles.LightEmission = 1
+	sparkles.Parent = crystal
+	rotor.PrimaryPart = crystal
+	rotor.Parent = model
+end
+
 -- Stand-ins built around the origin, bottom at y = 0, front facing -Z
 local function buildFallback(slot: string, height: number, size: Vector3?, variant: number): Model
 	local model = Instance.new("Model")
 	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
-	if slot == "Lamp" then
+	if ShelfLooks.isShelf(slot) then
+		ShelfLooks.draw(model, slot, size or Vector3.new(4, 7, 2))
+	elseif slot == "Lamp" then
 		addPart(model, cylinder, Vector3.new(height * 0.9, 0.5, 0.5), CFrame.new(0, height * 0.45, 0) * UPRIGHT, DARK_WOOD, Enum.Material.Wood)
 		local head = addPart(model, block, Vector3.new(1.4, height * 0.1, 1.4), CFrame.new(0, height * 0.95, 0), LAMP_GLOW, Enum.Material.Neon)
 		local light = Instance.new("PointLight")
@@ -161,6 +254,69 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		local length = Town.LAYOUT.FENCE_SECTION
 		addPart(model, block, Vector3.new(length, 0.5, 1.8), CFrame.new(0, 0.25, 0), Color3.fromRGB(170, 172, 178), Enum.Material.Concrete)
 		addPart(model, block, Vector3.new(length, height - 0.5, 1.4), CFrame.new(0, 0.5 + (height - 0.5) / 2, 0), HEDGE_GREEN, Enum.Material.Grass)
+	elseif slot == "Condenser" then
+		buildCondenser(model)
+	elseif slot == "Computer" then
+		-- A modern workstation, its front (-Z) the room side: a white desk on black panel legs, a slim widescreen
+		-- facing the chair, keyboard, mouse, a small plant, a drawer unit underneath and an office chair
+		local deskTop = 2.6
+		addPart(model, block, Vector3.new(7, 0.2, 3), CFrame.new(0, deskTop - 0.1, 0.9), WHITE, Enum.Material.SmoothPlastic)
+		for _, side in { -1, 1 } do
+			addPart(model, block, Vector3.new(0.2, deskTop - 0.2, 2.6), CFrame.new(side * 3.3, (deskTop - 0.2) / 2, 0.9), STEEL_BLACK, Enum.Material.Metal)
+		end
+		addPart(model, block, Vector3.new(1.7, 2.1, 2.4), CFrame.new(2.2, 1.05, 1), CHARCOAL, Enum.Material.SmoothPlastic)
+		addPart(model, block, Vector3.new(1.4, 0.06, 0.04), CFrame.new(2.2, 1.6, -0.22), STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(1.4, 0.06, 0.04), CFrame.new(2.2, 0.8, -0.22), STEEL_BLACK, Enum.Material.Metal)
+		-- Monitor
+		addPart(model, block, Vector3.new(1.2, 0.08, 0.8), CFrame.new(0, deskTop + 0.04, 1.6), STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(0.18, 1, 0.12), CFrame.new(0, deskTop + 0.55, 1.75), STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(3.6, 1.9, 0.12), CFrame.new(0, deskTop + 1.75, 1.65), STEEL_BLACK, Enum.Material.SmoothPlastic)
+		local screen = addPart(model, block, Vector3.new(3.4, 1.7, 0.02), CFrame.new(0, deskTop + 1.75, 1.58), Color3.fromRGB(22, 34, 60), Enum.Material.SmoothPlastic)
+		screen.Name = "Screen"
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front
+		gui.CanvasSize = Vector2.new(340, 170)
+		gui.LightInfluence = 0
+		gui.Parent = screen
+		local title = Instance.new("TextLabel")
+		title.BackgroundTransparency = 1
+		title.Position = UDim2.fromOffset(16, 10)
+		title.Size = UDim2.new(1, -32, 0, 34)
+		title.Font = Enum.Font.FredokaOne
+		title.TextScaled = true
+		title.TextXAlignment = Enum.TextXAlignment.Left
+		title.TextColor3 = Color3.fromRGB(255, 255, 255)
+		title.Text = "📦 ORDER STOCK"
+		title.Parent = gui
+		for row = 1, 3 do
+			local bar = Instance.new("Frame")
+			bar.BorderSizePixel = 0
+			bar.BackgroundColor3 = if row == 1 then Color3.fromRGB(110, 120, 240) else Color3.fromRGB(60, 78, 120)
+			bar.Position = UDim2.fromOffset(16, 40 + row * 30)
+			bar.Size = UDim2.new(1, -32, 0, 20)
+			bar.Parent = gui
+		end
+		addPart(model, block, Vector3.new(2.2, 0.08, 0.7), CFrame.new(0, deskTop + 0.04, 0.2), CHARCOAL, Enum.Material.SmoothPlastic)
+		addPart(model, block, Vector3.new(0.3, 0.08, 0.45), CFrame.new(1.6, deskTop + 0.04, 0.25), CHARCOAL, Enum.Material.SmoothPlastic)
+		-- A small plant at the back corner
+		addPart(model, cylinder, Vector3.new(0.6, 0.6, 0.6), CFrame.new(-2.8, deskTop + 0.3, 1.8) * UPRIGHT, WHITE, Enum.Material.SmoothPlastic)
+		addPart(model, Enum.PartType.Ball, Vector3.new(0.9, 0.9, 0.9), CFrame.new(-2.8, deskTop + 0.95, 1.8), HEDGE_GREEN, Enum.Material.Grass)
+		-- Office chair on the room side, facing the desk
+		local chairZ = -1.6
+		addPart(model, cylinder, Vector3.new(0.12, 1.7, 1.7), CFrame.new(0, 0.06, chairZ) * UPRIGHT, STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, cylinder, Vector3.new(1.1, 0.2, 0.2), CFrame.new(0, 0.65, chairZ) * UPRIGHT, STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(1.6, 0.3, 1.5), CFrame.new(0, 1.35, chairZ), CHARCOAL, Enum.Material.Fabric)
+		addPart(model, block, Vector3.new(1.5, 1.8, 0.2), CFrame.new(0, 2.4, chairZ - 0.75) * CFrame.Angles(math.rad(-8), 0, 0), CHARCOAL, Enum.Material.Fabric)
+	elseif slot == "Terminal" then
+		-- A POS tablet on a stand, its screen tilted toward the cashier (+Z), and a card reader on the customers' side
+		addPart(model, block, Vector3.new(1.1, 0.12, 0.9), CFrame.new(-0.3, 0.06, 0.15), STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, cylinder, Vector3.new(0.7, 0.3, 0.3), CFrame.new(-0.3, 0.47, 0.25) * UPRIGHT, STEEL_BLACK, Enum.Material.Metal)
+		local tilt = CFrame.new(-0.3, 1.25, 0.25) * CFrame.Angles(math.rad(-18), math.pi, 0)
+		addPart(model, block, Vector3.new(1.7, 1.1, 0.1), tilt, STEEL_BLACK, Enum.Material.SmoothPlastic)
+		local screen = addPart(model, block, Vector3.new(1.55, 0.95, 0.02), tilt * CFrame.new(0, 0, -0.06), Color3.fromRGB(40, 95, 170), Enum.Material.Neon)
+		screen.Name = "Screen"
+		addPart(model, block, Vector3.new(0.45, 0.1, 0.7), CFrame.new(0.75, 0.05, -0.45) * CFrame.Angles(math.rad(8), 0, 0), STEEL_BLACK, Enum.Material.SmoothPlastic)
+		addPart(model, block, Vector3.new(0.12, 0.02, 0.12), CFrame.new(0.75, 0.11, -0.65), Color3.fromRGB(90, 230, 140), Enum.Material.Neon)
 	elseif slot == "HealingSpring" then
 		-- A round stone basin with a carved rim, glowing water, a pillar and a crystal floating above it
 		local radius = 5
@@ -198,7 +354,7 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		end
 		addPart(model, block, Vector3.new(width + 1.5, 1.5, 1.5), CFrame.new(0, height - 0.75, 0), STONE, Enum.Material.Slate)
 	else
-		-- Register, CounterDecor, Shelf and anything new: a plain box
+		-- CounterDecor and anything new: a plain box
 		local box = size or Vector3.new(height, height, height)
 		addPart(model, block, box, CFrame.new(0, box.Y / 2, 0), WOOD, Enum.Material.Wood)
 	end
@@ -286,6 +442,12 @@ end
 -- True when assets/props holds a usable model for this slot (no stand-in needed)
 function Props.hasModel(slot: string): boolean
 	return #getVariants(slot) > 0
+end
+
+-- True when the slot has a real look: a model, or a code-built one (Town.SLOTS built = true)
+function Props.hasLook(slot: string): boolean
+	local info = Town.SLOTS[slot]
+	return Props.hasModel(slot) or (info ~= nil and (info :: any).built == true)
 end
 
 -- The size a slot's model will have before scaling (first variant, turned by its yaw), or nil with no model

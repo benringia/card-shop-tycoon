@@ -1900,7 +1900,7 @@ end
 -- The art for a set's cover: the front of the pack that sells it (none for sets without a pack)
 function getSetArt(set: string): string?
 	for _, pack in Packs.ById do
-		if pack.name == set and pack.art then
+		if pack.name == set and pack.art and pack.kind ~= "Deck" then
 			return pack.art
 		end
 	end

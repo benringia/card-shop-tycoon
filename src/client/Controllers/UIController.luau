@@ -338,6 +338,24 @@ local function updateShards(items: unknown)
 	shardsLabel.Text = text
 end
 
+-- The bottom-right corner sits above the jump button on touch screens. On a narrow screen the party bar would
+-- reach over the bottom-centre tiles (Cards, Bag ...): then the corner lifts above the tile row too. The money
+-- toasts stay just above it.
+local function placeStatusRow(rowLayout: UIListLayout)
+	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
+	local width = screenGui.AbsoluteSize.X
+	local tiles = screenGui:FindFirstChild("HudBottom")
+	local tilesRight = width / 2 + (if tiles and tiles:IsA("GuiObject") then tiles.AbsoluteSize.X / 2 else 0)
+	local rowLeft = width - STATUS_MARGIN - rowLayout.AbsoluteContentSize.X
+	if rowLeft < tilesRight + STATUS_MARGIN then
+		bottom = math.max(bottom, HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + PILL_GAP)
+	end
+	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
+	if sideToasts then
+		sideToasts.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + STATUS_HEIGHT + 6)) -- just above the buff badge
+	end
+end
+
 function UIController.Start()
 	screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "MainGui"
@@ -352,8 +370,6 @@ function UIController.Start()
 	statusRow = Instance.new("Frame")
 	statusRow.Name = "StatusRow"
 	statusRow.AnchorPoint = Vector2.new(1, 1)
-	local bottom = STATUS_MARGIN + (if UserInputService.TouchEnabled then TOUCH_JUMP_CLEARANCE else 0)
-	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
 	statusRow.Size = UDim2.fromOffset(STATUS_ROW_WIDTH, STATUS_HEIGHT)
 	statusRow.BackgroundTransparency = 1
 	statusRow.Parent = screenGui
@@ -364,6 +380,16 @@ function UIController.Start()
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	rowLayout.Parent = statusRow
+	local function place()
+		placeStatusRow(rowLayout)
+	end
+	place()
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+	rowLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(place)
+	local tiles = screenGui:FindFirstChild("HudBottom")
+	if tiles and tiles:IsA("GuiObject") then
+		tiles:GetPropertyChangedSignal("AbsoluteSize"):Connect(place) -- context tiles (Drop, Rip) widen the row
+	end
 
 	statusFrame = Instance.new("Frame")
 	statusFrame.Name = "Status"
@@ -398,10 +424,10 @@ function UIController.Start()
 	sideToasts = Instance.new("Frame")
 	sideToasts.Name = "SideToasts"
 	sideToasts.AnchorPoint = Vector2.new(1, 1)
-	sideToasts.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + STATUS_HEIGHT + 6)) -- just above the buff badge
 	sideToasts.Size = UDim2.fromOffset(320, SIDE_TOAST_MAX * (SIDE_TOAST_HEIGHT + 6))
 	sideToasts.BackgroundTransparency = 1
 	sideToasts.Parent = screenGui
+	place()
 	-- Full-screen views (the binder) cover this corner with their own panels
 	Hud.hideWith(statusRow)
 	Hud.hideWith(sideToasts)

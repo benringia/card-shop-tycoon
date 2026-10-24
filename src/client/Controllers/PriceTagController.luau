@@ -140,8 +140,7 @@ function PriceTagController.Start()
 		local mouse = UserInputService:GetMouseLocation()
 		setHovered(tagAt(mouse))
 		if hovered then
-			local inset = game:GetService("GuiService"):GetGuiInset()
-			hint.Position = UDim2.fromOffset(mouse.X + 16, mouse.Y - inset.Y + 12)
+			hint.Position = UIKit.cursorTipPosition(hint, mouse)
 		end
 	end)
 	-- Click (or tap) a tag to set its price

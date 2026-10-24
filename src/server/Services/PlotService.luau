@@ -10,7 +10,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
-local PlacementConfig = require(Config:WaitForChild("Placement"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
@@ -52,28 +51,6 @@ local function getPlotCFrame(index: number): CFrame
 	local center = Vector3.new(x, PlotConfig.FLOOR_THICKNESS / 2, z)
 
 	return CFrame.lookAt(center, center + Vector3.new(0, 0, -side))
-end
-
--- A small name tag floating above a fixture (raise: extra height, e.g. over the register stall's canopy), out past
--- its front so the wall behind it can't cut through (the offset is in the fixture's own space: it follows moves)
-local function addTag(part: Part, text: string, raise: number?)
-	local tag = PlacementConfig.FIXTURE_TAG
-	local board = Instance.new("BillboardGui")
-	board.Name = "FixtureTag"
-	board.Size = UDim2.new(math.max(part.Size.X * 0.6, tag.MIN_WIDTH), 0, tag.HEIGHT, 0)
-	board.StudsOffsetWorldSpace = Vector3.new(0, part.Size.Y / 2 + (raise or 0) + tag.GAP + tag.HEIGHT / 2, -(part.Size.Z / 2 + tag.FORWARD))
-	board.MaxDistance = tag.MAX_DISTANCE
-	board.LightInfluence = 0
-	board.Parent = part
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.TextScaled = true
-	label.Font = Enum.Font.FredokaOne
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.3
-	label.Text = text
-	label.Parent = board
 end
 
 local function addSurfaceLabel(part: Part, text: string): TextLabel
@@ -274,9 +251,9 @@ local function buildEntrance(parent: Instance, plotCFrame: CFrame)
 		light.Parent = lamp
 	end
 	for _, side in { -1, 1 } do
-		local x = side * (look.DOOR_WIDTH / 2 + 2.2)
+		local x = side * (look.DOOR_WIDTH / 2 + look.PLANTER_OFFSET)
 		local at = plotCFrame * CFrame.new(x, floorTop, front - 1.4)
-		trimPart(parent, "Planter", Vector3.new(1.8, 2.6, 1.8), at * CFrame.new(0, 1.3, 0), Props.color(look.PLANTER), Enum.Material.Concrete)
+		trimPart(parent, "Planter", Vector3.new(look.PLANTER_SIZE, 2.6, look.PLANTER_SIZE), at * CFrame.new(0, 1.3, 0), Props.color(look.PLANTER), Enum.Material.Concrete)
 		local leaves = trimPart(parent, "PlanterLeaves", Vector3.new(2.6, 3.4, 2.6), at * CFrame.new(0, 4.1, 0), Props.color(look.LEAVES), Enum.Material.Grass)
 		leaves.Shape = Enum.PartType.Ball
 	end
@@ -363,7 +340,7 @@ end
 -- A fixture part that shows a prop model: the part turns into an invisible hitbox (prompts and its label stay).
 -- `box` (width, height, depth) lets the model be bigger than the part, its front lined up with the part's.
 local function dressFixture(part: Part, slot: string, parent: Instance, box: Vector3?): boolean
-	if not Props.hasModel(slot) then
+	if not Props.hasLook(slot) then
 		return false
 	end
 	part.Transparency = 1
@@ -400,32 +377,96 @@ local function buildComputer(plotCFrame: CFrame, parent: Instance): Part
 	return computer
 end
 
+-- The delivery spot outside on the sidewalk beside the doors (Town.DELIVERY): a concrete platform level with the
+-- shop floor, a charcoal mat with a yellow border, a sign on its street face and two bollards. The returned part is
+-- the invisible spot boxes stand on (StockService); it lies flush with the mat.
 local function buildDeliverySpot(plotCFrame: CFrame, parent: Instance): Part
-	local size = PlotConfig.DELIVERY_PAD_SIZE
+	local look = Town.DELIVERY
+	local size = Vector3.new(look.SIZE[1], look.SIZE[2], look.SIZE[3])
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local centre = plotCFrame * CFrame.new(look.X, 0, -PlotConfig.DEPTH / 2 - Town.WALL_THICKNESS - look.GAP - size.Z / 2)
+	-- From the ground (the floor's underside) up to the floor top
+	local platform = shellPart(parent, "DeliveryPlatform", Vector3.new(size.X, PlotConfig.FLOOR_THICKNESS, size.Z), centre, Props.color(look.PLATFORM), Enum.Material.Concrete)
+	local mat = trimPart(parent, "DeliveryMat", Vector3.new(size.X - 0.2, 0.06, size.Z - 0.2), centre * CFrame.new(0, floorTop + 0.03, 0), Props.color(look.MAT), Enum.Material.Fabric)
+	local inner = size.X - 0.2 - look.BORDER_WIDTH * 2
+	for _, side in { -1, 1 } do
+		local edge = (size.X - 0.2) / 2 - look.BORDER_WIDTH / 2
+		trimPart(parent, "DeliveryBorder", Vector3.new(size.X - 0.2, 0.02, look.BORDER_WIDTH), mat.CFrame * CFrame.new(0, 0.04, side * edge), Props.color(look.BORDER))
+		trimPart(parent, "DeliveryBorder", Vector3.new(look.BORDER_WIDTH, 0.02, inner), mat.CFrame * CFrame.new(side * edge, 0.04, 0), Props.color(look.BORDER))
+		-- Bollards on the street-side corners
+		local bollard = trimPart(parent, "DeliveryBollard", Vector3.new(look.BOLLARD_HEIGHT, look.BOLLARD_SIZE, look.BOLLARD_SIZE), centre * CFrame.new(side * (size.X / 2 - 0.5), floorTop + look.BOLLARD_HEIGHT / 2, -(size.Z / 2 - 0.5)) * CFrame.Angles(0, 0, math.rad(90)), Props.color(look.BOLLARD), Enum.Material.Metal)
+		bollard.Shape = Enum.PartType.Cylinder
+		bollard.CanCollide = true
+		local band = trimPart(parent, "DeliveryBollardBand", Vector3.new(0.3, look.BOLLARD_SIZE + 0.04, look.BOLLARD_SIZE + 0.04), bollard.CFrame * CFrame.new(look.BOLLARD_HEIGHT / 2 - 0.45, 0, 0), Props.color(look.BORDER))
+		band.Shape = Enum.PartType.Cylinder
+	end
+	local sign = Instance.new("SurfaceGui")
+	sign.Face = Enum.NormalId.Front
+	sign.CanvasSize = Vector2.new(600, 100)
+	sign.LightInfluence = 0
+	sign.Parent = platform
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.FredokaOne
+	text.TextScaled = true
+	text.TextColor3 = Props.color(look.BORDER)
+	text.Text = look.TEXT
+	text.Parent = sign
+
 	local pad = Instance.new("Part")
 	pad.Name = "DeliverySpot"
 	pad.Anchored = true
 	pad.CanCollide = false
+	pad.CanQuery = false
+	pad.Transparency = 1
 	pad.Size = size
-	pad.CFrame = plotCFrame
-		* CFrame.new(
-			-PlotConfig.WIDTH / 2 + PlotConfig.DELIVERY_INSET,
-			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
-			-PlotConfig.DEPTH / 2 + PlotConfig.DELIVERY_INSET
-		)
-	pad.Color = PlotConfig.DELIVERY_COLOR
-	pad:SetAttribute("BlocksPlacement", true)
+	pad.CFrame = mat.CFrame * CFrame.new(0, 0.03 - size.Y / 2, 0)
 	pad.Parent = parent
-	-- Drawn as a wooden pallet when the model exists; delivered boxes then stand on top of it (StockService)
-	local pallet = Town.DELIVERY_PALLET.height
-	if dressFixture(pad, "DeliveryPad", parent, Vector3.new(size.X, pallet, size.Z)) then
-		pad:SetAttribute("StandHeight", pallet)
-	end
 	return pad
 end
 
+-- The modern checkout (Town.COUNTER) around the counter part, which is its white body: a charcoal plinth, a dark
+-- stone top overhanging the customers' side, an LED strip in the shop's accent colour under it, and pendant
+-- lights hanging from the ceiling over it
+local function buildCheckout(register: Part, accent: Color3, parent: Instance)
+	local look = Town.COUNTER
+	local size = register.Size
+	local cframe = register.CFrame
+	local bottom = -size.Y / 2
+	register.Color = Props.color(Town.SHOP.WALL)
+	register.Material = Enum.Material.SmoothPlastic
+	trimPart(parent, "CounterPlinth", Vector3.new(size.X + 0.04, look.PLINTH_HEIGHT, size.Z + 0.04), cframe * CFrame.new(0, bottom + look.PLINTH_HEIGHT / 2, 0), Props.color(Town.SHOP.CHARCOAL))
+	-- The top's surface sits just above the body's, where the terminal and scan items stand
+	local topY = size.Y / 2 - look.TOP_THICKNESS / 2 + 0.01
+	trimPart(parent, "CounterTop", Vector3.new(size.X + 0.1, look.TOP_THICKNESS, size.Z + look.TOP_OVERHANG), cframe * CFrame.new(0, topY, -look.TOP_OVERHANG / 2), Props.color(look.TOP), Enum.Material.Marble)
+	local ledY = size.Y / 2 - look.TOP_THICKNESS - look.LED_HEIGHT / 2 - 0.05
+	trimPart(parent, "CounterLed", Vector3.new(size.X, look.LED_HEIGHT, 0.04), cframe * CFrame.new(0, ledY, -size.Z / 2 - 0.02), accent, Enum.Material.Neon)
+
+	local pendant = look.PENDANT
+	local cordLength = Town.WALL_HEIGHT - pendant.BOTTOM - pendant.SHADE_HEIGHT
+	for index = 1, pendant.COUNT do
+		local x = (index - 1 - (pendant.COUNT - 1) / 2) * pendant.SPREAD
+		local shadeY = bottom + pendant.BOTTOM + pendant.SHADE_HEIGHT / 2
+		local cord = trimPart(parent, "PendantCord", Vector3.new(cordLength, pendant.CORD, pendant.CORD), cframe * CFrame.new(x, shadeY + pendant.SHADE_HEIGHT / 2 + cordLength / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), Props.color(Town.SHOP.FRAME))
+		cord.Shape = Enum.PartType.Cylinder
+		local shade = trimPart(parent, "PendantShade", Vector3.new(pendant.SHADE_HEIGHT, pendant.SHADE_WIDTH, pendant.SHADE_WIDTH), cframe * CFrame.new(x, shadeY, 0) * CFrame.Angles(0, 0, math.rad(90)), Props.color(Town.SHOP.FRAME), Enum.Material.Metal)
+		shade.Shape = Enum.PartType.Cylinder
+		local bulb = trimPart(parent, "PendantBulb", Vector3.new(0.45, 0.45, 0.45), cframe * CFrame.new(x, shadeY - pendant.SHADE_HEIGHT / 2, 0), Props.color(pendant.BULB), Enum.Material.Neon)
+		bulb.Shape = Enum.PartType.Ball
+		bulb.CastShadow = false
+		local light = Instance.new("SpotLight")
+		light.Face = Enum.NormalId.Bottom
+		light.Angle = 80
+		light.Color = Props.color(pendant.BULB)
+		light.Brightness = pendant.BRIGHTNESS
+		light.Range = pendant.RANGE
+		light.Parent = bulb
+	end
+end
+
 -- Register faces the street like the plot; customers queue in front of it, the owner stands behind.
--- The counter part is what the shop systems use; the register and counter props sit on top of it.
+-- The counter part is what the shop systems use; the terminal and counter props sit on top of it.
 local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): Part
 	local size = PlotConfig.REGISTER_SIZE
 	local register = Instance.new("Part")
@@ -438,19 +479,16 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
 			PlotConfig.DEPTH / 2 - PlotConfig.REGISTER_BACK_INSET
 		)
-	register.Color = Props.color(Town.SHOP.CHARCOAL)
-	register.Material = Enum.Material.Wood
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
-	addTag(register, PlotConfig.REGISTER_TEXT, Town.COUNTER.STALL.height - register.Size.Y)
-	local stall = Town.COUNTER.STALL
-	dressFixture(register, "Counter", parent, Vector3.new(stall.width, stall.height, stall.depth))
-	-- The register takes the left end; the decor sits in the back strip, clear of the scan items on the
-	-- front edge (RegisterService)
 	local counter = Town.COUNTER
+	register:SetAttribute("Info", PlotConfig.REGISTER_TEXT) -- the owner's hover tooltip (ShelfInfoController)
+	buildCheckout(register, Props.color(getTheme(id).accent), parent)
+	-- The terminal takes the left end; the decor sits in the back strip, clear of the scan items on the
+	-- front edge (RegisterService)
 	local counterTop = register.CFrame * CFrame.new(0, size.Y / 2, 0)
 	local registerBox = Vector3.new(counter.REGISTER.width, counter.REGISTER.height, counter.REGISTER.depth)
-	Props.fit("Register", registerBox, counterTop * CFrame.new(counter.REGISTER.x, 0, 0), parent)
+	Props.fit("Terminal", registerBox, counterTop * CFrame.new(counter.REGISTER.x, 0, 0), parent)
 	local _, propZ = PropFit.counterZ(size.Z, RegisterConfig.ITEM_SIZE.Z, counter.PROP_DEPTH)
 	local decorBox = Vector3.new(counter.DECOR.width, counter.DECOR.height, counter.PROP_DEPTH)
 	Props.fit("CounterDecor", decorBox, counterTop * CFrame.new(counter.DECOR.x, 0, propZ), parent, id)

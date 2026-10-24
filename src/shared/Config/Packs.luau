@@ -9,6 +9,8 @@ export type Pack = {
 	name: string,
 	color: Color3,
 	art: string?, -- the pack's front picture (assets/ui/packs); none = a plain pack in its colour
+	-- "Deck": a deck box (its lid lifts off and every card shows at once); nil = a pack (torn open, one card at a time)
+	kind: string?,
 	slots: { { Weighted } },
 }
 
@@ -26,6 +28,21 @@ local ById: { [string]: Pack } = {
 			COMMON,
 			{ { rarity = "Common", weight = 0.7 }, { rarity = "Rare", weight = 0.3 } },
 			{ { rarity = "Rare", weight = 0.68 }, { rarity = "Very Rare", weight = 0.15 }, { rarity = "Epic", weight = 0.14 }, { rarity = "Legendary", weight = 0.03 } },
+		},
+	},
+	-- The First Spark Deck Box: 5 cards opened at once, two of them Rare or better ($9 against a pack's $3)
+	DeckBox = {
+		productId = "DeckBox",
+		name = "First Spark",
+		kind = "Deck",
+		color = Color3.fromRGB(150, 95, 210),
+		art = "rbxassetid://81309929146607", -- the First Spark phoenix, like the pack
+		slots = {
+			COMMON,
+			COMMON,
+			{ { rarity = "Common", weight = 0.5 }, { rarity = "Rare", weight = 0.5 } },
+			{ { rarity = "Rare", weight = 0.75 }, { rarity = "Very Rare", weight = 0.25 } },
+			{ { rarity = "Rare", weight = 0.45 }, { rarity = "Very Rare", weight = 0.25 }, { rarity = "Epic", weight = 0.22 }, { rarity = "Legendary", weight = 0.08 } },
 		},
 	},
 }
