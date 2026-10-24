@@ -789,7 +789,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
-- **Prices** rows show each product's picture (`Products.icon`, a UIIcons name) beside its name and price.
+- **Prices** rows show each product's picture beside its name and price: packs their real front (`Packs` art, as on the shelves), others their icon (`Products.icon`).
 - **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
