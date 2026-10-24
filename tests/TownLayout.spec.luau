@@ -14,7 +14,7 @@ local WORLD: TownLayout.World = {
 	plotWidth = 40,
 	plotDepth = 40,
 	gap = 24,
-	streetWidth = 60,
+	streetWidth = 96,
 	portals = {
 		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z },
 		{ x = places.FRONTIER_PORTAL.x, z = places.FRONTIER_PORTAL.z },
@@ -47,12 +47,12 @@ return {
 		expect.equal(#rects, 6, "rect count")
 		expect.equal(rects[1].minX, -84, "rect 1 minX")
 		expect.equal(rects[1].maxX, -44, "rect 1 maxX")
-		expect.equal(rects[1].minZ, -70, "rect 1 minZ")
-		expect.equal(rects[1].maxZ, -30, "rect 1 maxZ")
+		expect.equal(rects[1].minZ, -88, "rect 1 minZ")
+		expect.equal(rects[1].maxZ, -48, "rect 1 maxZ")
 		expect.equal(rects[6].minX, 44, "rect 6 minX")
 		expect.equal(rects[6].maxX, 84, "rect 6 maxX")
-		expect.equal(rects[6].minZ, 30, "rect 6 minZ")
-		expect.equal(rects[6].maxZ, 70, "rect 6 maxZ")
+		expect.equal(rects[6].minZ, 48, "rect 6 minZ")
+		expect.equal(rects[6].maxZ, 88, "rect 6 maxZ")
 	end,
 
 	["nothing inside a plot footprint"] = function()
@@ -68,11 +68,11 @@ return {
 		end
 	end,
 
-	["only lamps, portals and the plaza in the street"] = function()
+	["only street lights, portals and the plaza in the street"] = function()
 		for _, placement in TownLayout.build(WORLD, town) do
 			if math.abs(placement.x) <= town.LAYOUT.STREET_HALF_LENGTH and math.abs(placement.z) < HALF_STREET then
 				local where = `{placement.slot} at {placement.x}, {placement.z}`
-				if placement.slot == "Lamp" then
+				if placement.slot == "StreetLight" then
 					assert(HALF_STREET - math.abs(placement.z) <= 3, `{where} is not near a plot front`)
 				elseif PLAZA_SLOTS[placement.slot] then
 					assert(distance(placement, WORLD.spring) <= town.LAYOUT.PLAZA_RADIUS, `{where} is off the plaza`)
@@ -116,12 +116,12 @@ return {
 		assert(town.LAYOUT.PLAZA_RADIUS >= 20, "plaza radius")
 	end,
 
-	["a fence rings the whole island"] = function()
+	["a hedge rings the whole island"] = function()
 		local bounds, layout = town.BOUNDS, town.LAYOUT
 		local edgeX, edgeZ = bounds.HALF_X - layout.EDGE_FENCE_INSET, bounds.HALF_Z - layout.EDGE_FENCE_INSET
 		local sides = { north = {}, south = {}, east = {}, west = {} }
 		for _, placement in TownLayout.build(WORLD, town) do
-			if placement.slot == "Fence" then
+			if placement.slot == "Hedge" then
 				if math.abs(placement.z - edgeZ) < 0.01 then
 					table.insert(sides.north, placement.x)
 				elseif math.abs(placement.z + edgeZ) < 0.01 then
@@ -147,9 +147,9 @@ return {
 		end
 	end,
 
-	["code builds only lamps, benches, the island fence and portal frames"] = function()
+	["code builds only street lights, benches, the island hedge and portal frames"] = function()
 		-- Trees, bushes, flowers, rocks, crates and the rest are hand-placed in Studio (assets/town, TownDecor)
-		local allowed = { Lamp = true, Bench = true, Fence = true, Portal = true }
+		local allowed = { StreetLight = true, Bench = true, Hedge = true, Portal = true }
 		for _, placement in TownLayout.build(WORLD, town) do
 			assert(allowed[placement.slot], `{placement.slot} is still code-built`)
 		end
@@ -223,5 +223,56 @@ return {
 		assert(not TownLayout.isVariant("Tree", "Treehouse"), "Treehouse")
 		assert(not TownLayout.isVariant("Flower", "Flowers"), "Flowers")
 		assert(not TownLayout.isVariant("Rock", "BigRock"), "BigRock")
+	end,
+
+	["crosswalk stripes lie in the road, between the sidewalks and off the plaza"] = function()
+		local stripes = TownLayout.crosswalks(WORLD, town)
+		assert(#stripes > 0, "some stripes")
+		local roadHalf = HALF_STREET - town.LAYOUT.SIDEWALK
+		for _, stripe in stripes do
+			assert(stripe.minZ >= -roadHalf and stripe.maxZ <= roadHalf, `stripe z {stripe.minZ}..{stripe.maxZ} off the road`)
+			local centre = { x = (stripe.minX + stripe.maxX) / 2, z = (stripe.minZ + stripe.maxZ) / 2 }
+			assert(distance(centre, WORLD.spring) > town.LAYOUT.PLAZA_RADIUS, `stripe at {centre.x}, {centre.z} on the plaza`)
+		end
+	end,
+
+	["a crosswalk in front of every shop door"] = function()
+		local columns: { [number]: boolean } = {}
+		for _, stripe in TownLayout.crosswalks(WORLD, town) do
+			columns[(stripe.minX + stripe.maxX) / 2] = true
+			expect.equal(stripe.maxX - stripe.minX, town.FLOOR.CROSSWALK.WIDTH, "stripe width")
+		end
+		for _, x in { -64, 0, 64 } do
+			assert(columns[x], `no crosswalk at x {x}`)
+		end
+	end,
+
+	["crosswalks reach both sidewalks"] = function()
+		local roadHalf = HALF_STREET - town.LAYOUT.SIDEWALK
+		local minZ, maxZ = math.huge, -math.huge
+		for _, stripe in TownLayout.crosswalks(WORLD, town) do
+			if stripe.minX < -64 and stripe.maxX > -64 then
+				minZ = math.min(minZ, stripe.minZ)
+				maxZ = math.max(maxZ, stripe.maxZ)
+			end
+		end
+		local pitch = town.FLOOR.CROSSWALK.STRIPE + town.FLOOR.CROSSWALK.GAP
+		assert(minZ <= -roadHalf + pitch, `starts at {minZ}`)
+		assert(maxZ >= roadHalf - pitch, `ends at {maxZ}`)
+	end,
+
+	["a glowing path from the plaza edge to each portal"] = function()
+		local paths = TownLayout.portalPaths(WORLD, town)
+		expect.equal(#paths, #WORLD.portals, "one path per portal")
+		for index, path in paths do
+			local portal = WORLD.portals[index]
+			expect.equal(path.from.z, portal.z, "path starts level with its portal")
+			expect.equal(path.to.z, portal.z, "path runs straight to its portal")
+			local edge = distance(path.from, WORLD.spring)
+			assert(math.abs(edge - town.LAYOUT.PLAZA_RADIUS) < 0.01, `path starts {edge} from the spring`)
+			local gap = math.abs(portal.x - path.to.x)
+			expect.equal(gap, town.FLOOR.PATH_END_INSET, "path stops short of the portal")
+			assert(math.abs(path.to.x) > math.abs(path.from.x), "path runs outward")
+		end
 	end,
 }

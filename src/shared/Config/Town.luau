@@ -12,6 +12,10 @@ return {
 	-- yaw (degrees) turns a slot's models whose front isn't -Z; a model's own YawOffset attribute wins.
 	SLOTS = {
 		Lamp = { height = 9, collide = true, yaw = 90 }, -- the lantern pole's arm points along the model's -X
+		-- Modern high street (code-built stand-ins until models are added): black LED street lights along the
+		-- sidewalks, trimmed hedges round the island's edge
+		StreetLight = { height = 11, collide = true },
+		Hedge = { height = 3, collide = true },
 		Bench = { height = 3, collide = true },
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
@@ -46,8 +50,9 @@ return {
 		BENCH_ANGLES = { 45, 135, 225, 315 },
 		EDGE_FENCE_INSET = 2, -- the fence round the island stands this far inside the bounds
 		FENCE_SECTION = 6.5, -- one Fence prop per section (the Fence model is 6.5 long at its 4-stud height)
-		STREET_HALF_LENGTH = 110, -- the cobblestone street runs x -110..110
-		PLAZA_RADIUS = 22, -- round stone pad around the spring; open room for event NPCs and stalls
+		STREET_HALF_LENGTH = 110, -- the street runs x -110..110
+		PLAZA_RADIUS = 26, -- round stone pad around the spring; open room for event NPCs and stalls
+		SIDEWALK = 8, -- the paved strip along each shop row's front
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
@@ -65,7 +70,7 @@ return {
 	},
 
 	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
-	BOUNDS = { HALF_X = 130, HALF_Z = 90, WALL_HEIGHT = 60 },
+	BOUNDS = { HALF_X = 130, HALF_Z = 110, WALL_HEIGHT = 60 },
 	-- Each plaza portal's look: ring and glow-part colour, particle colours, and 1-3 emitters (phones).
 	-- Emitters sit on a box filling the ring. speed/lifetime/size are { min, max } or { start, end };
 	-- rise = upward pull (negative falls); colors on an emitter override the portal's.
@@ -184,8 +189,26 @@ return {
 	},
 
 	GRASS_COLOR = { 120, 180, 95 },
-	STREET_COLOR = { 190, 175, 155 },
-	PLAZA_COLOR = { 215, 205, 190 },
+	STREET_COLOR = { 62, 64, 72 }, -- charcoal asphalt
+	PLAZA_COLOR = { 236, 231, 220 }, -- pale limestone
+	SIDEWALK_COLOR = { 205, 207, 212 }, -- pale concrete paving
+	-- Floor details (TownService; crosswalks and portal paths placed by TownLayout). Studs; colours as { r, g, b }.
+	FLOOR = {
+		SIDEWALK_TILE = 4, -- square paving slabs: a seam every this many studs
+		SEAM_WIDTH = 0.15,
+		SEAM_COLOR = { 170, 173, 180 },
+		-- Zebra crossings in front of every shop door, sidewalk to sidewalk (skipping the plaza)
+		CROSSWALK = { WIDTH = 7, STRIPE = 1.4, GAP = 1.4, COLOR = { 240, 240, 234 } },
+		-- Glowing rings set into the plaza: one at the healing area's edge (Combat.SPRING_RADIUS) and one this far
+		-- inside the plaza's rim
+		RING_WIDTH = 0.35,
+		RING_RIM_INSET = 2,
+		RING_COLOR = { 120, 220, 255 },
+		-- A glowing line from the plaza's edge to each portal, in that portal's ring colour (PORTAL_EFFECTS)
+		PATH_WIDTH = 0.5,
+		PATH_END_INSET = 6, -- stops this far short of the portal
+		GLOW_TRANSPARENCY = 0.15,
+	},
 
 	-- Main town only; the Frontier keeps its own lighting
 	LIGHTING = {

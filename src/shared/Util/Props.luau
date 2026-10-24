@@ -23,6 +23,9 @@ local WOOD = Color3.fromRGB(125, 90, 60)
 local DARK_WOOD = Color3.fromRGB(95, 65, 45)
 local STONE = Color3.fromRGB(150, 145, 140)
 local LAMP_GLOW = Color3.fromRGB(255, 220, 150)
+local STEEL_BLACK = Color3.fromRGB(28, 30, 36)
+local LED_WHITE = Color3.fromRGB(255, 246, 228)
+local HEDGE_GREEN = Color3.fromRGB(72, 132, 70)
 local SPRING_STONE = Color3.fromRGB(196, 202, 214)
 local SPRING_TRIM = Color3.fromRGB(150, 160, 182)
 local SPRING_WATER = Color3.fromRGB(90, 200, 255)
@@ -138,6 +141,26 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		for _, y in { height * 0.4, height * 0.8 } do
 			addPart(model, block, Vector3.new(length, 0.35, 0.25), CFrame.new(0, y, 0), WOOD, Enum.Material.Wood)
 		end
+	elseif slot == "StreetLight" then
+		-- A slim black pole with a flat arm reaching over the street and an LED head
+		addPart(model, block, Vector3.new(1.2, 0.5, 1.2), CFrame.new(0, 0.25, 0), STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, cylinder, Vector3.new(height - 0.4, 0.35, 0.35), CFrame.new(0, (height - 0.4) / 2 + 0.3, 0) * UPRIGHT, STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(0.3, 0.3, 2.4), CFrame.new(0, height - 0.2, -1.1), STEEL_BLACK, Enum.Material.Metal)
+		addPart(model, block, Vector3.new(0.9, 0.25, 1.4), CFrame.new(0, height - 0.45, -2.1), STEEL_BLACK, Enum.Material.Metal)
+		local glow = addPart(model, block, Vector3.new(0.7, 0.06, 1.2), CFrame.new(0, height - 0.6, -2.1), LED_WHITE, Enum.Material.Neon)
+		glow.Name = "LED"
+		local light = Instance.new("SpotLight")
+		light.Face = Enum.NormalId.Bottom
+		light.Color = LED_WHITE
+		light.Range = 22
+		light.Angle = 100
+		light.Brightness = 1.2
+		light.Parent = glow
+	elseif slot == "Hedge" then
+		-- A trimmed box hedge on a low stone curb, one fence section long
+		local length = Town.LAYOUT.FENCE_SECTION
+		addPart(model, block, Vector3.new(length, 0.5, 1.8), CFrame.new(0, 0.25, 0), Color3.fromRGB(170, 172, 178), Enum.Material.Concrete)
+		addPart(model, block, Vector3.new(length, height - 0.5, 1.4), CFrame.new(0, 0.5 + (height - 0.5) / 2, 0), HEDGE_GREEN, Enum.Material.Grass)
 	elseif slot == "HealingSpring" then
 		-- A round stone basin with a carved rim, glowing water, a pillar and a crystal floating above it
 		local radius = 5

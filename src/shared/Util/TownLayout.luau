@@ -1,10 +1,10 @@
 --!strict
--- Where the code-built town pieces go (main town spec): street lamps, plaza benches, the island fence and the
+-- Where the code-built town pieces go (main town spec): street lights, plaza benches, the island hedge and the
 -- portal frames. Pure: takes the plot grid, portal and spring spots and Config/Town, returns a fixed list of prop
 -- placements, so every server looks the same. TownService places them. The rest of the decoration (trees,
 -- flowers, rocks ...) is hand-placed in Studio and saved as assets/town (docs/props.md).
--- Lune-tested: a fence rings the island; nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
--- in the spring area (except benches and flowers).
+-- Lune-tested: a hedge rings the island; nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
+-- in the spring area (except benches and flowers). (The Fence slot is still used by the plaza garden.)
 export type Point = { x: number, z: number }
 export type World = {
 	plotCount: number,
@@ -91,7 +91,7 @@ function TownLayout.build(world: World, town: any): { Placement }
 
 	for _, side in SIDES do
 		local towardStreet = faceYaw(0, -side)
-		-- Lamps: street edges at every gap and past each row end
+		-- Street lights: on the sidewalk at every gap and past each row end
 		local lampZ = side * (halfStreet - layout.LAMP_INSET)
 		local lampXs = { -(rowHalf + layout.ROW_END_LAMP_OFFSET) }
 		for _, x in gapXs do
@@ -99,11 +99,11 @@ function TownLayout.build(world: World, town: any): { Placement }
 		end
 		table.insert(lampXs, rowHalf + layout.ROW_END_LAMP_OFFSET)
 		for _, x in lampXs do
-			add("Lamp", x, lampZ, towardStreet)
+			add("StreetLight", x, lampZ, towardStreet)
 		end
 	end
 
-	-- Fence round the island's edge, just inside the bounds, facing in
+	-- Hedge round the island's edge, just inside the bounds, facing in
 	local edgeX = town.BOUNDS.HALF_X - layout.EDGE_FENCE_INSET
 	local edgeZ = town.BOUNDS.HALF_Z - layout.EDGE_FENCE_INSET
 	local function fenceLine(half: number, place: (along: number) -> ())
@@ -115,10 +115,10 @@ function TownLayout.build(world: World, town: any): { Placement }
 	end
 	for _, side in SIDES do
 		fenceLine(edgeX, function(x)
-			add("Fence", x, side * edgeZ, faceYaw(0, -side))
+			add("Hedge", x, side * edgeZ, faceYaw(0, -side))
 		end)
 		fenceLine(edgeZ, function(z)
-			add("Fence", side * edgeX, z, faceYaw(-side, 0))
+			add("Hedge", side * edgeX, z, faceYaw(-side, 0))
 		end)
 	end
 
@@ -136,6 +136,50 @@ function TownLayout.build(world: World, town: any): { Placement }
 	end
 
 	return placements
+end
+
+-- Zebra stripes in front of every shop door: across the road from sidewalk to sidewalk, one stripe every
+-- STRIPE + GAP studs, leaving out any that would sit on the plaza
+function TownLayout.crosswalks(world: World, town: any): { Rect }
+	local crosswalk = town.FLOOR.CROSSWALK
+	local roadHalf = world.streetWidth / 2 - town.LAYOUT.SIDEWALK
+	local pitch = crosswalk.STRIPE + crosswalk.GAP
+	local count = math.floor((2 * roadHalf + crosswalk.GAP) / pitch)
+	local start = -(count * pitch - crosswalk.GAP) / 2
+	local stripes: { Rect } = {}
+	for col = 0, world.perRow - 1 do
+		local x = (col - (world.perRow - 1) / 2) * (world.plotWidth + world.gap)
+		for index = 0, count - 1 do
+			local minZ = start + index * pitch
+			local z = minZ + crosswalk.STRIPE / 2
+			local dx, dz = x - world.spring.x, z - world.spring.z
+			if math.sqrt(dx * dx + dz * dz) > town.LAYOUT.PLAZA_RADIUS then
+				table.insert(stripes, {
+					minX = x - crosswalk.WIDTH / 2,
+					maxX = x + crosswalk.WIDTH / 2,
+					minZ = minZ,
+					maxZ = minZ + crosswalk.STRIPE,
+				})
+			end
+		end
+	end
+	return stripes
+end
+
+-- A straight line from the plaza's edge to each portal, level with it, stopping PATH_END_INSET short
+function TownLayout.portalPaths(world: World, town: any): { { from: Point, to: Point } }
+	local radius = town.LAYOUT.PLAZA_RADIUS
+	local paths = {}
+	for _, portal in world.portals do
+		local away = if portal.x >= world.spring.x then 1 else -1
+		local dz = math.min(math.abs(portal.z - world.spring.z), radius)
+		local edgeX = world.spring.x + away * math.sqrt(radius * radius - dz * dz)
+		table.insert(paths, {
+			from = { x = edgeX, z = portal.z },
+			to = { x = portal.x - away * town.FLOOR.PATH_END_INSET, z = portal.z },
+		})
+	end
+	return paths
 end
 
 return TownLayout
