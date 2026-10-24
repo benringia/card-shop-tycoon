@@ -1351,6 +1351,7 @@ local BAG = {
 	COLUMNS = 5,
 	SLOT = 84, -- pixels, square
 	GAP = 8,
+	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 460), -- grid + padding + details
 	SLOT_COLOR = Color3.fromRGB(206, 216, 250), -- a filled slot: soft blue so pale items still stand out
@@ -1611,8 +1612,8 @@ local function buildBag(parent: Frame)
 	local top = UIKit.HEADER_HEIGHT + 12
 	bagGrid = Instance.new("ScrollingFrame")
 	bagGrid.Name = "Slots"
-	bagGrid.Position = UDim2.fromOffset(16, top)
-	bagGrid.Size = UDim2.new(0, BAG.COLUMNS * BAG.SLOT + (BAG.COLUMNS - 1) * BAG.GAP + 8, 1, -(top + 16))
+	bagGrid.Position = UDim2.fromOffset(16 - BAG.EDGE, top - BAG.EDGE)
+	bagGrid.Size = UDim2.new(0, BAG.COLUMNS * BAG.SLOT + (BAG.COLUMNS - 1) * BAG.GAP + 8 + BAG.EDGE * 2, 1, -(top + 16) + BAG.EDGE * 2)
 	bagGrid.BackgroundTransparency = 1
 	bagGrid.BorderSizePixel = 0
 	bagGrid.ScrollBarThickness = 4
@@ -1625,6 +1626,12 @@ local function buildBag(parent: Frame)
 	grid.CellPadding = UDim2.fromOffset(BAG.GAP, BAG.GAP)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = bagGrid
+	-- Room inside the scrolling grid's clip for the selected slot's outline
+	local edge = Instance.new("UIPadding")
+	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		(edge :: any)[side] = UDim.new(0, BAG.EDGE)
+	end
+	edge.Parent = bagGrid
 
 	bagDetail = Instance.new("Frame")
 	bagDetail.Name = "Details"
