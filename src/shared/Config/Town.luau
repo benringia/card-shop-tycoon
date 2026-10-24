@@ -112,11 +112,11 @@ return {
 		DEPTH_FILL = 0.5,
 		-- Pack products: each box's place holds a stack of thin packs with the pack art (Config/Packs art)
 		PACKS = { PER_STACK = 5, HEIGHT = 1.05, ASPECT = 0.65, THICKNESS = 0.05, LEAN = 10 },
-		-- The orange price tag on the front of each stocked level, at its left end
+		-- The yellow price tag on the front of each stocked level, at its left end
 		TAG = {
 			SIZE = { 0.95, 0.42, 0.05 }, -- studs: width, height, depth
-			COLOR = { 255, 160, 30 },
-			EDGE = { 215, 95, 10 },
+			COLOR = { 255, 214, 50 },
+			EDGE = { 220, 160, 10 },
 			TEXT = { 45, 25, 10 },
 			INSET = 0.25, -- from the shelf's left edge
 			GAP = 0.08, -- in front of the boxes

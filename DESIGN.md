@@ -73,8 +73,9 @@ Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → 
 product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). Packs (products with `Packs` art) show as stacks of 5 thin upright packs
-with the pack art, leaning back, instead of boxes. Each stocked level has an orange price tag with the
-product's price at its front left. **Props:** every
+with the pack art, leaning back, instead of boxes. Each stocked level has a yellow price tag with the
+product's price at its front left. A stocked shelf's own menu (Edit, F) starts with that product's price row
+(the same +/- and price as the Prices panel; the server sets the shelf's `ProductId` attribute for it). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 

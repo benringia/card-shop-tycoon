@@ -279,6 +279,8 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 end
 
 local function updateLabel(shelf: PlacedShelf)
+	-- Clients read this to offer the product's price in the shelf's own menu
+	shelf.part:SetAttribute("ProductId", if shelf.units > 0 then shelf.productId else nil)
 	if isCondenser(shelf.def) then
 		shelf.label.Text = `✨ {shelf.def.name}`
 		return

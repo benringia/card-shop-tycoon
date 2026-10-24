@@ -155,6 +155,24 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	return row
 end
 
+-- A price row for one product in another panel (a shelf's own menu): the same +/- and price as the Prices panel
+function PricingController.AddRow(parent: Instance, order: number, productId: string): Frame?
+	local product = Products.ById[productId]
+	if not product then
+		return nil
+	end
+	local row = buildRow(product, parent, order)
+	table.insert(rows, row)
+	refreshRow(row)
+	row.frame.Destroying:Connect(function()
+		local index = table.find(rows, row)
+		if index then
+			table.remove(rows, index)
+		end
+	end)
+	return row.frame
+end
+
 local function buildButton()
 	Hud.fanButton({
 		id = "Prices",
