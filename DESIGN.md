@@ -74,8 +74,8 @@ when any player or customer comes within 9 studs, and never collide so paths are
 are the solid wall); a charcoal sign band above the glass carrying the shop sign, with a glowing strip in the shop's
 accent colour under it; a slim flat canopy over the doors with three down-lights; a planter each side of the doorway;
 a flat roof with a slim charcoal parapet (the camera stays under it inside); inside, a light oak floor (grey while for
-rent), a back feature wall in the shop's accent colour and 3 x 3 LED ceiling panels. Each plot has a fixed accent
-(Mint, Coral, Violet, Gold, Azure, Rose). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
+rent), a warm greige back feature wall (the same in every shop) and 3 x 3 LED ceiling panels. Each plot has a fixed
+accent for the glowing strip under its sign (Mint, Coral, Violet, Gold, Azure, Rose). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
 cashier stands inside; it carries a Register prop at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part: Small Pack Rack → Shelf, Wall
 Shelf → WallShelf, Accessory Hook → HookRack (pegboard), Big Display Rack → DisplayRack, Glass Showcase →

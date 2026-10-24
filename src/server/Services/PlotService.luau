@@ -302,7 +302,7 @@ local function buildCeilingLights(plotCFrame: CFrame, parent: Instance)
 end
 
 -- The modern shell: white walls with a charcoal foot, a glass shop front with sliding doors, a charcoal sign
--- band, a flat roof with a slim edge, a feature wall in the shop's accent colour and LED panels inside.
+-- band with a strip in the shop's accent colour, a flat roof with a slim edge, a greige feature wall and LED panels.
 -- Walls sit outside the floor edges, so the placement grid and saved layouts are unchanged.
 local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Part
 	local look = Town.SHOP
@@ -318,8 +318,8 @@ local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Par
 	for _, side in { -1, 1 } do
 		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), Vector3.new(side, 0, 0))
 	end
-	-- Feature wall: the back wall's inside face in the shop's accent colour, with a matte finish
-	trimPart(parent, "FeatureWall", Vector3.new(PlotConfig.WIDTH, Town.WALL_HEIGHT - 1, 0.1), plotCFrame * CFrame.new(0, floorTop + (Town.WALL_HEIGHT - 1) / 2, halfDepth - 0.05), accent)
+	-- Feature wall: the back wall's inside face in a warm greige (the same in every shop)
+	trimPart(parent, "FeatureWall", Vector3.new(PlotConfig.WIDTH, Town.WALL_HEIGHT - 1, 0.1), plotCFrame * CFrame.new(0, floorTop + (Town.WALL_HEIGHT - 1) / 2, halfDepth - 0.05), Props.color(look.FEATURE_WALL))
 
 	buildStorefront(parent, plotCFrame, outerWidth)
 	-- Sign band: charcoal from the top of the glass to the roof edge, with a glowing accent strip under it

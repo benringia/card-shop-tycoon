@@ -150,6 +150,7 @@ return {
 		GLASS = { 190, 220, 235 },
 		GLASS_TRANSPARENCY = 0.72,
 		FLOOR = { 214, 186, 150 }, -- light oak (owned shops)
+		FEATURE_WALL = { 222, 216, 206 }, -- the back wall inside: a warm greige, the same in every shop
 		BASE_HEIGHT = 1.2, -- the charcoal band along the bottom of the outside walls
 		PARAPET = 1.2, -- the roof edge rising above the walls
 		MULLION = 0.35, -- frame bar thickness
@@ -172,7 +173,7 @@ return {
 		ACCENT_STRIP = 0.4, -- the glowing strip under the sign band, in the shop's accent colour
 	},
 
-	-- One accent colour per plot id: the back feature wall and the strip under the sign
+	-- One accent colour per plot id: the glowing strip under the sign
 	PLOT_THEMES = {
 		{ name = "Mint", accent = { 88, 190, 150 } },
 		{ name = "Coral", accent = { 240, 125, 100 } },
