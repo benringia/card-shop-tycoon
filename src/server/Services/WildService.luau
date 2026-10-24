@@ -9,6 +9,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -16,6 +17,9 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier's map in the Frontier place (same shape)
 local Wild = Place.getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Combat = require(Config:WaitForChild("Combat"))
+local Town = require(Config:WaitForChild("Town"))
+local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -40,6 +44,8 @@ export type Monster = {
 }
 
 local WildService = {}
+
+local buildSpring: (folder: Instance) -> ()
 
 local SPAWN_TAG = "WildSpawn"
 local TRAVEL_COOLDOWN = 1
@@ -91,6 +97,101 @@ local function block(parent: Instance, name: string, size: Vector3, cframe: CFra
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
 	return part
+end
+
+-- The healing spring: the HealingSpring prop (a stone fountain stand-in until a model is added), its water
+-- glowing and sparkling, its crystal turning and bobbing, a faint ring on the ground for the healing area
+-- (Combat.SPRING_RADIUS) and its name. Effects go on parts named Water and Crystal, so a real model can keep them.
+function buildSpring(folder: Instance)
+	local spot = vec(Wild.SPRING)
+	local model = Props.place("HealingSpring", CFrame.new(spot), folder)
+	model.Name = "HealingSpring"
+	local waters, crystal = {}, nil :: BasePart?
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			if part.Name == "Water" then
+				table.insert(waters, part)
+			elseif part.Name == "Crystal" then
+				crystal = part
+			end
+		end
+	end
+	local top = waters[1] or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+	for _, water in waters do
+		-- The water slowly breathes between brighter and softer
+		TweenService:Create(water, TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = math.min(water.Transparency + 0.25, 0.8) }):Play()
+	end
+	if top then
+		local rising = Instance.new("ParticleEmitter")
+		rising.Name = "Sparkles"
+		rising.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		rising.Rate = 10
+		rising.Lifetime = NumberRange.new(1.6, 2.6)
+		rising.Speed = NumberRange.new(1.2, 2.4)
+		rising.SpreadAngle = Vector2.new(25, 25)
+		rising.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+		rising.EmissionDirection = Enum.NormalId.Right -- the water discs lie on their side: X points up
+		rising.Color = ColorSequence.new(SPRING_COLOR, Color3.new(1, 1, 1))
+		rising.LightEmission = 1
+		rising.Parent = top
+		local light = Instance.new("PointLight")
+		light.Color = SPRING_COLOR
+		light.Range = 16
+		light.Brightness = 1.2
+		light.Parent = top
+	end
+	if crystal then
+		local home = crystal.CFrame
+		-- Turning slowly and bobbing (two loops on a holder value, applied each step)
+		local bob = Instance.new("NumberValue")
+		bob.Parent = crystal
+		TweenService:Create(bob, TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Value = 0.5 }):Play()
+		local spin = 0
+		RunService.Heartbeat:Connect(function(dt)
+			spin = (spin + dt * 45) % 360
+			-- Turn about the world's up axis, keeping the gem's tilt
+			crystal.CFrame = CFrame.new(home.Position + Vector3.new(0, bob.Value, 0)) * CFrame.Angles(0, math.rad(spin), 0) * home.Rotation
+		end)
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(170, 240, 255)
+		glow.Range = 10
+		glow.Brightness = 1.5
+		glow.Parent = crystal
+		local drift = Instance.new("ParticleEmitter")
+		drift.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		drift.Rate = 4
+		drift.Lifetime = NumberRange.new(0.8, 1.4)
+		drift.Speed = NumberRange.new(0.3, 0.8)
+		drift.SpreadAngle = Vector2.new(180, 180)
+		drift.Size = NumberSequence.new(0.35, 0)
+		drift.Color = ColorSequence.new(Color3.fromRGB(200, 250, 255))
+		drift.LightEmission = 1
+		drift.Parent = crystal
+	end
+	-- The healing area: a faint glowing disc on the ground
+	local area = block(folder, "HealingArea", Vector3.new(0.1, Combat.SPRING_RADIUS * 2, Combat.SPRING_RADIUS * 2), CFrame.new(spot + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90)), SPRING_COLOR, Enum.Material.Neon)
+	area.Shape = Enum.PartType.Cylinder
+	area.Transparency = 0.88
+	area.CanCollide = false
+	area.CanQuery = false
+	area.CastShadow = false
+
+	local board = Instance.new("BillboardGui")
+	board.Size = UDim2.fromOffset(200, 40)
+	board.StudsOffsetWorldSpace = Vector3.new(0, Town.SLOTS.HealingSpring.height + 2, 0)
+	board.MaxDistance = Wild.SPRING_LABEL_DISTANCE
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.4
+	label.Text = "💧 Healing Spring"
+	label.Parent = board
+	board.Adornee = area
+	board.Parent = area
 end
 
 local function sign(parent: Instance, text: string, cframe: CFrame)
@@ -212,39 +313,7 @@ local function buildPlaza()
 		end)
 	end
 
-	local springSpot = vec(Wild.SPRING)
-	local pool = block(folder, "HealingSpring", Vector3.new(0.6, 10, 10), CFrame.new(springSpot + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90)), SPRING_COLOR, Enum.Material.Neon)
-	pool.Shape = Enum.PartType.Cylinder
-	pool.CanCollide = false
-	pool.Transparency = 0.3
-	local sparkle = Instance.new("ParticleEmitter")
-	sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	sparkle.Rate = 6
-	sparkle.Lifetime = NumberRange.new(1.5, 2.5)
-	sparkle.Speed = NumberRange.new(1, 2)
-	sparkle.EmissionDirection = Enum.NormalId.Right -- the cylinder lies on its side: its X axis points up
-	sparkle.Color = ColorSequence.new(SPRING_COLOR)
-	sparkle.LightEmission = 1
-	sparkle.Parent = pool
-	local light = Instance.new("PointLight")
-	light.Color = SPRING_COLOR
-	light.Range = 14
-	light.Brightness = 1
-	light.Parent = pool
-	local board = Instance.new("BillboardGui")
-	board.Size = UDim2.fromOffset(200, 40)
-	board.StudsOffset = Vector3.new(0, 5, 0)
-	board.MaxDistance = Wild.SPRING_LABEL_DISTANCE
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Text = "💧 Healing Spring"
-	label.Parent = board
-	board.Parent = pool
+	buildSpring(folder)
 	folder.Parent = workspace
 end
 

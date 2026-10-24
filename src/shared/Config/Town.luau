@@ -15,6 +15,8 @@ return {
 		Bench = { height = 3, collide = true },
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
+		-- The plaza's healing fountain (WildService): parts named Water and Crystal get the glow and motion
+		HealingSpring = { height = 6, collide = true },
 		Register = { height = 1.5, collide = false, yaw = -90 }, -- the cash register's price display faces its +X
 		CounterDecor = { height = 1.2, collide = false },
 		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
