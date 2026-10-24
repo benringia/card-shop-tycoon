@@ -14,26 +14,25 @@ shows its stand-in.
 | `Bench` | around the healing spring | 3 | yes |
 | `Hedge` | one section, repeated every 6.5 studs round the island's edge | 3 | yes |
 | `Portal` | frame around each plaza portal ring; its Neon parts take the portal's colour (`Town.PORTAL_EFFECTS`), particles come from code | 14 | no |
-| `Register` | left end of each shop's register counter, full depth; turned -90° in code (`yaw`) | fits 2.4 x 2.2 x 2 | no |
+| `Terminal` | the POS terminal at the left end of each shop's checkout counter, full depth; screen toward the cashier (+Z) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
-| `Computer` | the order computer (ORDER STOCK): a desk set, turned 90° in code; moves with it | fits 10 x 5.5 x 6 | (its own hitbox) |
-| `Condenser` | the Card Condenser: a starry glass "blender" (effects trimmed to 7) | fits 6 x 7 x 6 | (its own hitbox) |
-| `Counter` | the register counter: a market stall, its front on the counter's front, reaching back over the cashier | fits 6.6 x 7.2 x 4.2 (`COUNTER.STALL`) | (the counter's own hitbox) |
-| `WallShelf` | the Wall Shelf | fits 8 x 8 x 2 | (its own hitbox) |
-| `HookRack` | the Accessory Hook: a pegboard, stood upright in code (`roll`) | fits 4 x 7 x 2 | (its own hitbox) |
-| `DisplayRack` | the Big Display Rack (double-sided), turned 90° and stretched | fills 8 x 7 x 4 | (its own hitbox) |
+| `Computer` | the order computer: a code-built modern workstation (`built`: white desk on black legs, a widescreen showing ORDER STOCK, keyboard, plant, drawers, office chair); a model file would replace it; moves with it | fits 10 x 5.5 x 6 | (its own hitbox) |
+| `Condenser` | the Card Condenser: code-built (`built`, `CONDENSER_LOOK`); its Rotor model spins on each client | fills 6 x 7 x 6 | (its own hitbox) |
+| `WallShelf` | the Wall Shelf: code-built (`built`, Util/ShelfLooks) | fills 8 x 8 x 2 | (its own hitbox) |
+| `HookRack` | the Accessory Hook: a code-built pegboard with hooks (`built`) | fills 4 x 7 x 2 | (its own hitbox) |
+| `DisplayRack` | the Big Display Rack: code-built, double-sided (`built`) | fills 8 x 7 x 4 | (its own hitbox) |
 | `Showcase` | the Glass Showcase and the Collector Case: a glass counter; cards lie on the bed (`cardsFlat`, `Showcase.FLAT`); the Collector Case recolours its Support, Frame and Carpet parts (`propColors` in Config/Shelves) | fills 6 x 4 x 2 | (its own hitbox) |
-| `DeliveryPad` | the delivery spot: a pallet; delivered boxes stand on it | fills 6 x 1 x 6 | no |
 | `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; without a model the box gets a band in the product's colour and its name (`Stock.BOX_LABEL`) | fits 2.5 x 1.5 x 2 | no |
-| `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |
+| `Shelf` | the Small Pack Rack: a code-built one-sided gondola (`built`) | fills 4 x 7 x 2 | (the shelf's own hitbox) |
 
 **Variants:** a slot also uses every file named after it plus a suffix starting with a capital letter or digit:
 `Tree.rbxm`, `TreeA.rbxm`, `TreeB.rbxm` ... or `FlowerBlue.rbxm`, `FlowerPink.rbxm`. The game takes them in turn
 (sorted by name), so every server looks the same. One file per model: a file with several models at its top level
 stops Rojo from building (group them into one Model first, or save each one on its own).
 
-Fixtures (Computer, Condenser, Counter, and shelves with a `prop`) keep their old block until the model file
-exists; then the block becomes an invisible hitbox under the model.
+Fixtures and shelves with a `prop` keep their old block until the model file exists; then the block becomes an
+invisible hitbox under the model. A slot marked `built = true` (Computer, Condenser, the four product shelves) uses its
+code-built look the same way, with no file. The checkout counter, POS terminal (Terminal slot) and delivery spot are built in code.
 
 Numbers live in `Config/Town.luau` (`SLOTS`).
 
@@ -50,7 +49,8 @@ synced), and the real ones live in the place file under `ReplicatedStorage.Place
 
 `Props` looks in `PlaceProps` first, then `PropModels`. The Lune test fails if a file in `assets/props` or
 `assets/town` contains a union, and checks `assets/place-props` for scripts like the rest.
-Today: Condenser, Counter, HookRack, Register, WallShelf.
+Today: none. (A `built` slot ignores model files, so old Counter, Register, WallShelf, HookRack or Condenser copies
+left in the place's PlaceProps do nothing and can be deleted.)
 
 ## Hand-placed decor (TownDecor)
 

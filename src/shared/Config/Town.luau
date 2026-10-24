@@ -22,20 +22,19 @@ return {
 		-- The plaza's healing fountain (WildService): parts named Water glow and breathe; a floating gem (the
 		-- model's Crystal part, or one made above its top) turns over it. The model lives in PlaceProps (meshes).
 		HealingSpring = { height = 14, collide = true },
-		Register = { height = 1.5, collide = false, yaw = -90 }, -- the cash register's price display faces its +X
+		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
-		-- the Store Shelf model faces -X; stretch = fill the shelf's box on every axis (plain straight parts only)
-		Shelf = { height = 0, collide = false, yaw = 90, stretch = true },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
-		Computer = { height = 0, collide = false, yaw = 90 }, -- the order computer (a desk set; its monitor faces -X)
-		Condenser = { height = 0, collide = false }, -- the Card Condenser
-		Counter = { height = 0, collide = false }, -- the register counter: a market stall drawn over it (COUNTER.STALL)
-		-- each shelf type's look (Config/Shelves prop); roll stands a model up (degrees about its Z, before yaw)
-		WallShelf = { height = 0, collide = false },
-		HookRack = { height = 0, collide = false, roll = 90 }, -- a landscape pegboard, stood upright
-		DisplayRack = { height = 0, collide = false, yaw = 90, stretch = true }, -- double-sided, long side on its Z
+		-- built = the code-built look is the real one: model files are ignored, placement ghosts use it too
+		Computer = { height = 0, collide = false, built = true }, -- the order computer: a modern workstation
+		Condenser = { height = 0, collide = false, built = true }, -- the Card Condenser (CONDENSER_LOOK)
+		-- each product shelf's look (Config/Shelves prop): code-built modern shelving (Util/ShelfLooks, SHELF_LOOK)
+		Shelf = { height = 0, collide = false, built = true }, -- Small Pack Rack: a one-sided gondola
+		WallShelf = { height = 0, collide = false, built = true },
+		HookRack = { height = 0, collide = false, built = true }, -- Accessory Hook: a pegboard with hooks
+		DisplayRack = { height = 0, collide = false, built = true }, -- Big Display Rack: double-sided
+		-- stretch = fill the box on every axis (plain straight parts only); roll stands a model up (degrees about Z)
 		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z
-		DeliveryPad = { height = 0, collide = false, stretch = true }, -- a wooden pallet
 		-- delivery boxes, one per product (Products boxProp); welded to the box part, so they travel when carried
 		BoxPacks = { height = 0, collide = false },
 		BoxSleeves = { height = 0, collide = false },
@@ -100,25 +99,58 @@ return {
 			},
 		},
 	},
-	DELIVERY_PALLET = { height = 1 }, -- the DeliveryPad model's height; delivered boxes stand on top of it
+	-- The delivery spot (PlotService, StockService): outside on the sidewalk beside the doors, a concrete platform
+	-- level with the shop floor, a charcoal mat with a yellow safety border, a "DELIVERIES" sign on its street face and
+	-- two bollards at its street corners. Delivered boxes stand on the mat. X = plot-local offset of its centre
+	-- (negative = the register's side); GAP = from the shop front wall out to the pad. Studs; colours { r, g, b }.
+	DELIVERY = {
+		X = -12.7,
+		GAP = 0.6,
+		SIZE = { 6, 0.2, 6 }, -- the spot boxes stand on (width, height, depth)
+		PLATFORM = { 178, 181, 188 },
+		MAT = { 44, 47, 54 },
+		BORDER = { 245, 200, 40 },
+		BORDER_WIDTH = 0.3,
+		BOLLARD = { 28, 30, 36 },
+		BOLLARD_SIZE = 0.5,
+		BOLLARD_HEIGHT = 2.4,
+		TEXT = "📦 DELIVERIES",
+	},
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)
 	PORTAL_LABEL_HEIGHT = 17, -- floating name above each plaza portal
 	PORTAL_LABEL_DISTANCE = 40, -- shown only this close, so far labels don't pile up
 
-	-- Register counter (front = customer side). The register takes the left end, full depth; scan items lie
-	-- along the front edge to its right; the decor sits in a strip along the back. Props are fitted into these
-	-- boxes; x = offset from the counter centre.
+	-- The checkout counter (front = customer side), built in code to match the shop shell (PlotService): a white
+	-- body on a charcoal plinth, a dark stone top overhanging the front, an LED strip in the shop's accent colour
+	-- under it, and pendant lights hanging over it. The POS terminal takes the left end, full depth; scan items
+	-- lie along the front edge to its right; the decor sits in a strip along the back. Props are fitted into
+	-- these boxes; x = offset from the counter centre. Studs; colours as { r, g, b }.
 	COUNTER = {
 		PROP_DEPTH = 0.6, -- the back strip (decor)
-		REGISTER = { x = -1.8, width = 2.4, height = 2.2, depth = 2 },
+		REGISTER = { x = -1.8, width = 2.4, height = 2.2, depth = 2 }, -- the POS terminal's box
 		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
-		ITEM_GAP = 0.15, -- between the register and the first scan item
-		-- The Counter prop is a market stall: its front lines up with the counter's, it reaches back over the
-		-- cashier, and its canopy starts at canopyFrom x height
-		STALL = { width = 6.6, height = 7.2, depth = 4.2, canopyFrom = 0.79 },
-		STAFF_BEHIND = 1.6, -- the cashier (owner or pet) stands this far behind the counter, inside the stall
+		ITEM_GAP = 0.15, -- between the terminal and the first scan item
+		STAFF_BEHIND = 1.6, -- the cashier (owner or pet) stands this far behind the counter
+		TOP = { 58, 62, 72 }, -- dark quartz
+		TOP_THICKNESS = 0.2,
+		TOP_OVERHANG = 0.3, -- past the body's front, over the customers' side
+		PLINTH_HEIGHT = 0.3, -- the charcoal kick along the foot
+		LED_HEIGHT = 0.12,
+		-- Pendant lights over the counter: a thin cord from the ceiling to a black cone shade with a warm bulb.
+		-- BOTTOM is the shade's bottom above the floor; SPREAD the distance between the two.
+		PENDANT = {
+			COUNT = 2,
+			SPREAD = 3.2,
+			BOTTOM = 7.5,
+			SHADE_WIDTH = 1.3,
+			SHADE_HEIGHT = 0.9,
+			CORD = 0.06,
+			BULB = { 255, 228, 180 },
+			BRIGHTNESS = 0.7,
+			RANGE = 12,
+		},
 	},
 
 	-- Stock boxes on Products shelves (ShelfStock): levels match the Store Shelf's plates
@@ -130,6 +162,23 @@ return {
 		DEPTH_FILL = 0.5,
 		-- Pack products: each box's place holds a stack of thin packs with the pack art (Config/Packs art)
 		PACKS = { PER_STACK = 5, HEIGHT = 1.05, ASPECT = 0.65, THICKNESS = 0.05, LEAN = 10 },
+		-- Card sleeves (Products stockLook "Sleeves"): retail packets in each box's place, leaning back: a white
+		-- backing card with a header tab and hang hole, a clear window showing the sleeves, a strip in the product's
+		-- colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.
+		-- Deck boxes (Products stockLook "Deck"): little upright boxes in the product's colour with the set's art
+		-- on the front (Config/Packs) and a gold lid band, leaning back a little
+		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LID = 0.16, LID_COLOR = { 235, 190, 80 }, LEAN = 4 },
+		SLEEVES = {
+			PER_STACK = 2,
+			WIDTH = 0.62,
+			HEIGHT = 0.74,
+			TAB = 0.14,
+			THICKNESS = 0.1,
+			LEAN = 8,
+			CARD = { 242, 242, 246 },
+			WINDOW_TRANSPARENCY = 0.6,
+			COLORS = { { 220, 60, 70 }, { 60, 120, 230 }, { 40, 170, 110 }, { 150, 90, 210 }, { 32, 34, 40 }, { 240, 170, 40 } },
+		},
 		-- The yellow price tag on the front edge of each stocked row, under its first stack
 		TAG = {
 			SIZE = { 0.95, 0.42, 0.05 }, -- studs: width, height, depth
@@ -139,6 +188,53 @@ return {
 			GAP = 0.08, -- in front of the boxes
 			TILT = 6, -- degrees, hung a little crooked
 		},
+	},
+
+	-- The Card Condenser (Props, code-built): a charcoal plinth with a glowing ring, a screen and a card slot; a glass
+	-- chamber with a violet crystal ringed by floating cards (the Rotor: CondenserFxController spins and bobs it on
+	-- each client); charcoal side pillars with light strips holding a cap. No lights. Studs; colours { r, g, b }.
+	CONDENSER_LOOK = {
+		BASE_RADIUS = 2.5,
+		BASE_HEIGHT = 1.4,
+		CHAMBER_RADIUS = 1.8,
+		CHAMBER_HEIGHT = 3.6,
+		CAP_HEIGHT = 0.7,
+		CORE_RADIUS = 1.05, -- the floating cards' circle round the crystal
+		BODY = { 38, 41, 48 },
+		TRIM = { 70, 74, 84 },
+		GLOW = { 170, 110, 255 }, -- violet
+		GLASS = { 210, 225, 245 },
+		GLASS_TRANSPARENCY = 0.7,
+		FLOOR_TRANSPARENCY = 0.35, -- the chamber's glowing floor, softened
+		CARD = { 255, 214, 110 },
+		SCREEN_TEXT = "✨ CONDENSER",
+		SPIN_SPEED = 40, -- degrees a second
+		BOB = 0.15, -- studs up and down
+		BOB_SECONDS = 2.4,
+		FX_DISTANCE = 80, -- only spun this close to the camera
+	},
+
+	-- Code-built product shelves (Util/ShelfLayout places the parts, Util/ShelfLooks draws them): charcoal posts and
+	-- base, light grey plates with dark price rails, an oak slat back (a pegboard on the Accessory Hook) and a
+	-- charcoal header sign. No lights of their own. Studs; colours as { r, g, b }.
+	SHELF_LOOK = {
+		POST = 0.2,
+		PLATE = 0.1,
+		RAIL = 0.22,
+		BACK = 0.15,
+		BASE = 0.35,
+		HEADER = 0.7,
+		HOOK = 0.6, -- how far a pegboard hook reaches out
+		FRAME = { 38, 41, 48 },
+		PLATE_COLOR = { 214, 217, 222 },
+		RAIL_COLOR = { 70, 74, 84 },
+		BACK_COLOR = { 196, 160, 118 }, -- light oak, like the floor
+		SLAT_GAP = { 160, 126, 90 },
+		PEGBOARD = { 92, 97, 108 },
+		CHROME = { 190, 195, 202 },
+		HEADER_TEXT = { 255, 255, 255 },
+		-- Words on the header sign, per prop slot
+		HEADERS = { Shelf = "TRADING CARDS", WallShelf = "TRADING CARDS", DisplayRack = "TRADING CARDS", HookRack = "ACCESSORIES" },
 	},
 
 	-- Shop shells (PlotService): one modern look for every shop. Walls sit outside the floor edges, so the
@@ -165,6 +261,8 @@ return {
 		DOOR_OPEN_SECONDS = 0.45,
 		DOOR_SENSE = 9, -- studs: anyone this close to the doorway (inside or out) opens it
 		CANOPY = { 36, 39, 46 },
+		PLANTER_OFFSET = 2.2, -- a planter each side of the doorway, this far past the door's edge
+		PLANTER_SIZE = 1.8,
 		CANOPY_LIGHT = { 255, 240, 215 },
 		PLANTER = { 52, 56, 64 },
 		LEAVES = { 70, 140, 85 },

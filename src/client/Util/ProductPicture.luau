@@ -1,6 +1,6 @@
 --!strict
 -- A product's picture on the left of a UIKit.row (Prices, Order Stock): packs show their real front (the art on
--- the shelves), other products their icon (Products icon). The row's text moves over to make room.
+-- the shelves), other products (deck boxes too) their icon (Products icon). The row's text moves over to make room.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Packs = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Packs"))
@@ -16,7 +16,7 @@ ProductPicture.WIDTH = 66 -- how far the row's text moves right
 function ProductPicture.add(row: Frame, productId: string, iconName: string): GuiObject
 	local pack = Packs.ById[productId]
 	local picture: GuiObject
-	if pack and pack.art then
+	if pack and pack.art and pack.kind ~= "Deck" then
 		local front = Instance.new("ImageLabel")
 		front.Name = "PackArt"
 		front.BackgroundColor3 = pack.color

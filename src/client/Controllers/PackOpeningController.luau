@@ -33,6 +33,8 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
+local PackStage = require(ClientUtil:WaitForChild("PackStage"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
@@ -63,6 +65,8 @@ local RIP_KEY = Enum.KeyCode.T -- rips a pack while the screen is closed
 local ADVANCE_ACTION = "PackOpeningAdvance"
 local CARD_ASPECT = 0.7
 local ROUND_BUTTON = 76 -- pixels: the Next button
+local RIBBON_RISE = 0.04 -- a NEW ribbon pokes this far above its card (of the card's height)
+local RIBBON_CLEARANCE = 4 -- pixels between the ribbons and the pills over them
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
 local INK = Color3.fromRGB(28, 36, 66)
@@ -91,7 +95,7 @@ local hintPill: Frame
 local hintLabel: TextLabel
 local summaryRow: Frame
 local resultsBar: Frame -- the pills over the results: Your cards, NEW x2, pack value, Rarity guide
-local newPill: Frame
+local newPill: GuiObject
 local newLabel: TextLabel
 local valueLabel: TextLabel
 local doneButton: TextButton
@@ -109,8 +113,13 @@ local packArt: ImageLabel
 local packLogo: TextLabel
 local tearLine: Frame
 local packBob: Tween? = nil
+local packLoops: { Tween } = {} -- the floating pack's sway and foil shine, stopped when it opens
+local packScale: UIScale
+local packShine: UIGradient
+local ambient: PackStage.Stage
 
 local phase: Phase = "closed"
+local openingDeck = false -- a deck box (Config/Packs kind "Deck"): its lid lifts and every card shows at once
 local waitingForServer = false
 local busy = false -- a card is being revealed
 local tapsLockedUntil = 0
@@ -171,14 +180,15 @@ local function getPacksLeft(): number
 	return if typeof(units) == "number" then units else 0
 end
 
--- Ripping is offered while carrying a box whose product is a pack
+-- Ripping is offered while carrying a box whose product is a pack (or a deck box: "Open")
 local function refreshRipButton()
 	local productId = player:GetAttribute("CarryProductId")
-	local carryingPacks = typeof(productId) == "string" and Packs.ById[productId] ~= nil
+	local pack = if typeof(productId) == "string" then Packs.ById[productId] else nil
+	local deck = pack ~= nil and pack.kind == "Deck"
 	local left = getPacksLeft()
-	ripButton.Visible = carryingPacks and phase == "closed"
-	Hud.setLabel("Rip", `Rip · {left}`)
-	boxLabel.Text = if carryingPacks then `{left} packs left in box` else "Box empty"
+	ripButton.Visible = pack ~= nil and phase == "closed"
+	Hud.setLabel("Rip", if deck then `Open · {left}` else `Rip · {left}`)
+	boxLabel.Text = if not pack then "Box empty" elseif deck then `{left} deck boxes left in box` else `{left} packs left in box`
 end
 
 local function onRip()
@@ -447,14 +457,34 @@ local function addTeeth(parent: Frame, edge: number, color: Color3)
 	end
 end
 
-local function startBob()
+-- Stops the floating pack's bob, sway and shine (it is being opened, or the screen closed)
+local function stopBob()
 	if packBob then
 		packBob:Cancel()
+		packBob = nil
 	end
-	packFrame.Position = UDim2.new(0.5, 0, PackOpening.PACK.Y, 0)
-	local info = TweenInfo.new(PackOpening.PACK.BOB_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
-	packBob = TweenService:Create(packFrame, info, { Position = UDim2.new(0.5, 0, PackOpening.PACK.Y, -PackOpening.PACK.BOB_PIXELS) })
+	for _, loop in packLoops do
+		loop:Cancel()
+	end
+	table.clear(packLoops)
+end
+
+-- The pack floats: bobbing up and down, rocking a little, a foil shine sweeping across it now and then
+local function startBob()
+	stopBob()
+	local look = PackOpening.PACK
+	packFrame.Position = UDim2.new(0.5, 0, look.Y, 0)
+	local info = TweenInfo.new(look.BOB_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	packBob = TweenService:Create(packFrame, info, { Position = UDim2.new(0.5, 0, look.Y, -look.BOB_PIXELS) })
 	;(packBob :: Tween):Play()
+	packFrame.Rotation = -look.SWAY
+	local sway = TweenService:Create(packFrame, TweenInfo.new(look.SWAY_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = look.SWAY })
+	packShine.Offset = Vector2.new(-1.2, 0)
+	local shine = TweenService:Create(packShine, TweenInfo.new(look.SHINE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, false, look.SHINE_EVERY), { Offset = Vector2.new(1.2, 0) })
+	for _, loop in { sway, shine } do
+		loop:Play()
+		table.insert(packLoops, loop)
+	end
 end
 
 -- The pack: an illustrated front with the logo, a crimped strip on top that tears off along the dashed line
@@ -476,11 +506,12 @@ local function buildPack(parent: Instance)
 	shadow.Name = "Shadow"
 	shadow.BackgroundTransparency = 1
 	shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-	shadow.Position = UDim2.fromScale(0.5, 0.55)
-	shadow.Size = UDim2.fromScale(1.6, 1.3)
+	-- A soft dark shadow under it, so it floats over the stage
+	shadow.Position = UDim2.fromScale(0.5, 0.6)
+	shadow.Size = UDim2.fromScale(1.5, 1.2)
 	shadow.Image = CardDesign.IMAGES.GLOW
-	shadow.ImageColor3 = WHITE
-	shadow.ImageTransparency = 0.2
+	shadow.ImageColor3 = Color3.fromRGB(40, 52, 96)
+	shadow.ImageTransparency = 0.72
 	shadow.ZIndex = 0
 	shadow.Parent = packFrame
 
@@ -499,6 +530,28 @@ local function buildPack(parent: Instance)
 	packArt.ScaleType = Enum.ScaleType.Crop
 	packArt.ZIndex = 2
 	packArt.Parent = packBody
+
+	-- A bright band of light that sweeps across the foil now and then (startBob)
+	local shine = Instance.new("Frame")
+	shine.Name = "Shine"
+	shine.Size = UDim2.fromScale(1, 1)
+	shine.BackgroundColor3 = WHITE
+	shine.BorderSizePixel = 0
+	shine.ZIndex = 3
+	shine.Parent = packBody
+	packShine = Instance.new("UIGradient")
+	packShine.Rotation = 25
+	packShine.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.45),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	packShine.Offset = Vector2.new(-1.2, 0)
+	packShine.Parent = shine
+	packScale = Instance.new("UIScale")
+	packScale.Parent = packFrame
 
 	-- A soft glossy sheen down the left side, like foil catching the light
 	local gloss = Instance.new("Frame")
@@ -603,8 +656,9 @@ local function buildPack(parent: Instance)
 	end)
 end
 
--- Colours and art for this pack
+-- Colours and art for this pack. A deck box gets a solid lid with a gold band instead of a crimped, torn strip.
 local function dressPack(pack: Pack)
+	local deck = pack.kind == "Deck"
 	for _, part in { packCap, packBody } do
 		part.BackgroundColor3 = pack.color
 		for _, child in part:GetChildren() do
@@ -613,12 +667,75 @@ local function dressPack(pack: Pack)
 			end
 		end
 	end
-	addTeeth(packCap, 0, pack.color:Lerp(WHITE, 0.35))
-	addTeeth(packBody, 1, pack.color)
+	if not deck then
+		addTeeth(packCap, 0, pack.color:Lerp(WHITE, 0.35))
+		addTeeth(packBody, 1, pack.color)
+	end
 	local capShade = packCap:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
-	capShade.Color = ColorSequence.new(pack.color:Lerp(WHITE, 0.35), pack.color)
+	capShade.Color = if deck
+		then ColorSequence.new(pack.color:Lerp(BLACK, 0.2), pack.color:Lerp(BLACK, 0.4))
+		else ColorSequence.new(pack.color:Lerp(WHITE, 0.35), pack.color)
 	capShade.Rotation = 90
 	capShade.Parent = packCap
+	local band = packCap:FindFirstChild("LidBand") :: Frame?
+	if not band then
+		local newBand = Instance.new("Frame")
+		newBand.Name = "LidBand"
+		newBand.AnchorPoint = Vector2.new(0, 1)
+		newBand.Position = UDim2.fromScale(0, 1)
+		newBand.Size = UDim2.fromScale(1, 0.28)
+		newBand.BackgroundColor3 = Color3.fromRGB(235, 190, 80)
+		newBand.BorderSizePixel = 0
+		newBand.ZIndex = 2
+		newBand.Parent = packCap
+		band = newBand
+	end
+	(band :: Frame).Visible = deck
+	-- Shape: a deck box is boxier, with a deeper lid and a side face
+	local look = PackOpening.PACK
+	local cap = if deck then PackOpening.DECK.LID else look.CAP
+	local aspect = packFrame:FindFirstChildOfClass("UIAspectRatioConstraint")
+	if aspect then
+		aspect.AspectRatio = if deck then PackOpening.DECK.ASPECT else look.ASPECT
+	end
+	packCap.Size = UDim2.fromScale(1, cap)
+	packBody.Position = UDim2.fromScale(0, cap)
+	packBody.Size = UDim2.fromScale(1, 1 - cap)
+	local side = packFrame:FindFirstChild("Side") :: Frame?
+	if not side then
+		local newSide = Instance.new("Frame")
+		newSide.Name = "Side"
+		newSide.AnchorPoint = Vector2.new(0, 0)
+		newSide.Position = UDim2.fromScale(1, 0.03)
+		newSide.Size = UDim2.fromScale(PackOpening.DECK.SIDE, 0.97)
+		newSide.BorderSizePixel = 0
+		newSide.ZIndex = 0
+		newSide.Parent = packFrame
+		side = newSide
+	end
+	(side :: Frame).BackgroundColor3 = pack.color:Lerp(BLACK, 0.45)
+	;(side :: Frame).Visible = deck
+	-- A deck box is a rigid box with soft rounded edges; a pack keeps its crimped square ends
+	for _, part in { packCap, packBody, side :: Frame } do
+		local corner = part:FindFirstChild("DeckCorner")
+		if deck and not corner then
+			local round = Instance.new("UICorner")
+			round.Name = "DeckCorner"
+			round.CornerRadius = UDim.new(0, 6)
+			round.Parent = part
+		elseif not deck and corner then
+			corner:Destroy()
+		end
+	end
+	local perforation = packFrame:FindFirstChild("Perforation") :: Frame?
+	if perforation then
+		perforation.Visible = not deck
+	end
+	tearLine.Visible = not deck
+	local tagline = packBody:FindFirstChild("Tagline") :: TextLabel?
+	if tagline then
+		tagline.Text = if deck then "DECK BOX · 5 CARDS" else "TRADING CARD GAME"
+	end
 	packArt.Image = pack.art or ""
 	packLogo.Text = string.upper(pack.name)
 	packCap.Position = UDim2.fromScale(0, 0)
@@ -626,6 +743,9 @@ local function dressPack(pack: Pack)
 	packCap.Visible = true
 	tearLine.Size = UDim2.fromOffset(0, 6)
 	packFrame.Visible = true
+	-- Pops in when the screen opens
+	packScale.Scale = 0.55
+	tween(packScale, PackOpening.PACK.ENTER_SECONDS, { Scale = 1 }, Enum.EasingStyle.Back)
 	startBob()
 end
 
@@ -716,6 +836,27 @@ local function makeViews(results: { PullResult }, newFlags: { boolean })
 	end
 end
 
+-- On small phones: the pills over the results shrink to fit the width (never grow past their own size), and the
+-- card row and Continue move down just enough that the NEW ribbons clear the pills
+local function fitResultsBar()
+	local layout = resultsBar:FindFirstChildOfClass("UIListLayout")
+	local scale = resultsBar:FindFirstChildOfClass("UIScale")
+	if not layout or not scale then
+		return
+	end
+	local content = layout.AbsoluteContentSize.X / math.max(scale.Scale, 0.01)
+	local room = stage.AbsoluteSize.X - PackOpening.EDGE * 2
+	scale.Scale = if content > 0 then math.min(1, room / content) else 1
+
+	local height = stage.AbsoluteSize.Y
+	local rowHeight = height * PackOpening.SUMMARY_HEIGHT
+	local barBottom = PackOpening.TOP + PackOpening.PILL_HEIGHT * scale.Scale
+	local ribbonTop = height * PackOpening.SUMMARY_Y - rowHeight / 2 - rowHeight * RIBBON_RISE
+	local shift = math.max(0, barBottom + RIBBON_CLEARANCE - ribbonTop)
+	summaryRow.Position = UDim2.new(0.5, 0, PackOpening.SUMMARY_Y, shift)
+	doneButton.Position = UDim2.new(0.5, 0, PackOpening.SUMMARY_Y + PackOpening.SUMMARY_HEIGHT / 2, 18 + shift)
+end
+
 -- A yellow NEW ribbon over a card's top-left corner
 local function addNewRibbon(holder: Frame)
 	local ribbon = Instance.new("Frame")
@@ -791,6 +932,7 @@ local function showSummary()
 	newPill.Visible = newCount > 0
 	valueLabel.Text = string.format("$%.2f", total)
 	resultsBar.Visible = true
+	task.defer(fitResultsBar) -- once the pills have their new text
 	doneButton.Visible = true
 end
 
@@ -834,6 +976,30 @@ local function nextCard()
 	revealCard(current + 1)
 end
 
+-- A deck box: the lid lifts off, the box slides away and every card shows at once in the results, with the
+-- biggest pull's flash and confetti
+local function openDeck(results: { PullResult }, newFlags: { boolean })
+	local seconds = PackOpening.TEAR_SECONDS
+	tween(packCap, seconds, { Position = UDim2.fromScale(0, -0.7) })
+	task.wait(seconds * 0.6)
+	makeViews(results, newFlags)
+	local flashes, pieces = false, 0
+	for _, view in views do
+		view.slot.Visible = false
+		flashes = flashes or view.plan.flash
+		pieces = math.max(pieces, view.plan.confetti)
+	end
+	tween(packFrame, seconds, { Position = UDim2.fromScale(0.5, 1.6) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In).Completed:Wait()
+	packFrame.Visible = false
+	showSummary()
+	if flashes then
+		task.spawn(flashScreen)
+	end
+	if pieces > 0 then
+		confetti(pieces, fxLayer)
+	end
+end
+
 -- The top flies off, the pack slides down out of view and the cards rise out of it as a stack
 local function tearPack()
 	local results = pendingResults
@@ -846,10 +1012,12 @@ local function tearPack()
 	pendingNew = {}
 	dragging = false
 	playSound(PackOpening.TEAR_SOUND_ID)
-	if packBob then
-		packBob:Cancel()
-	end
+	stopBob()
 	setHint(nil)
+	if openingDeck then
+		openDeck(results, newFlags)
+		return
+	end
 
 	local seconds = PackOpening.TEAR_SECONDS
 	tween(packCap, seconds, { Position = UDim2.fromScale(0.25, -0.5), Rotation = 28 })
@@ -874,6 +1042,10 @@ local function autoTear()
 		return
 	end
 	dragging = false
+	if openingDeck then
+		tearPack() -- a lid lifts at once: nothing to tear
+		return
+	end
 	local width = packFrame.AbsoluteSize.X
 	tearLine.Position = UDim2.fromScale(0, PackOpening.PACK.CAP)
 	tween(tearLine, PackOpening.AUTO_TEAR_SECONDS, { Size = UDim2.fromOffset(width, 6) }).Completed:Wait()
@@ -884,14 +1056,13 @@ local function close()
 	phase = "closed"
 	busy = false
 	dragging = false
-	if packBob then
-		packBob:Cancel()
-	end
+	stopBob()
 	ContextActionService:UnbindAction(ADVANCE_ACTION)
 	setDim(0, 0)
 	clearCards()
 	stage.Visible = false
 	gui.Enabled = false
+	ambient.setActive(false)
 	oddsPanel.Visible = false
 	resultsBar.Visible = false
 	refreshRipButton()
@@ -922,10 +1093,13 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	pendingResults = results
 	pendingNew = if typeof(newFlags) == "table" then newFlags else {}
 
+	openingDeck = pack.kind == "Deck"
+	ambient.setTint(pack.color)
+	ambient.setActive(true)
 	dressPack(pack)
 	summaryRow.Visible = false
 	doneButton.Visible = false
-	setHint("👋 Drag across the top to open!")
+	setHint(if openingDeck then "Tap the lid to open" else "Swipe across the top to open")
 	oddsPanel.Text = buildOddsText(pack)
 	oddsButton.Visible = true
 	nextButton.Visible = true
@@ -958,22 +1132,34 @@ local function openRarityGuide()
 	end)
 end
 
--- A rounded pill in the results bar
-local function addPill(name: string, text: string, color: Color3, edge: Color3, textColor: Color3, order: number): (Frame, TextLabel)
-	local pill = Instance.new("Frame")
+-- A rounded pill in the results bar: an icon (Config/UIIcons) and its text, with a thin edge like the windows' rows
+-- Each pill is a button (only the Rarity guide's does anything), so a tap layer never joins its icon row
+local function addPill(name: string, icon: string, text: string, fill: Color3, textColor: Color3, order: number): (TextButton, TextLabel)
+	local pill = Instance.new("TextButton")
 	pill.Name = name
+	pill.Text = ""
+	pill.AutoButtonColor = false
 	pill.LayoutOrder = order
 	pill.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT)
 	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.BackgroundColor3 = color
+	pill.BackgroundColor3 = fill
 	pill.Parent = resultsBar
-	UIKit.corner(pill, 14)
-	UIKit.outline(pill, edge, 3)
+	UIKit.corner(pill, PackOpening.PILL_HEIGHT / 2)
+	UIKit.outline(pill, if UIKit.isLight(fill) then UIKit.Colors.Outline else fill:Lerp(BLACK, 0.25), 1.5)
 	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 16)
-	pad.PaddingRight = UDim.new(0, 16)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 18)
 	pad.Parent = pill
-	local label = UIKit.label(pill, text, Enum.Font.FredokaOne, 22, textColor)
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = pill
+	local glyph = Icon.make(pill, icon, UDim2.fromOffset(28, 28))
+	glyph.LayoutOrder = 1
+	local label = UIKit.label(pill, text, Enum.Font.FredokaOne, 21, textColor)
+	label.LayoutOrder = 2
 	label.Size = UDim2.fromScale(0, 1)
 	label.AutomaticSize = Enum.AutomaticSize.X
 	label.TextXAlignment = Enum.TextXAlignment.Center
@@ -997,52 +1183,45 @@ local function buildResultsBar()
 	row.Padding = UDim.new(0, 10)
 	row.SortOrder = Enum.SortOrder.LayoutOrder
 	row.Parent = resultsBar
+	local fit = Instance.new("UIScale")
+	fit.Parent = resultsBar
 
-	addPill("YourCards", "🃏 Your cards", WHITE, INK, INK, 1)
-	newPill, newLabel = addPill("NewCount", "NEW x0", NEW_COLOR, Color3.fromRGB(230, 150, 20), INK, 2)
-	local _, value = addPill("Value", "$0.00", Color3.fromRGB(225, 250, 230), Color3.fromRGB(60, 180, 90), Color3.fromRGB(25, 130, 55), 3)
+	addPill("YourCards", "Cards", "Your cards", WHITE, UIKit.Colors.Ink, 1)
+	newPill, newLabel = addPill("NewCount", "Star", "NEW x0", NEW_COLOR, UIKit.Colors.Ink, 2)
+	local _, value = addPill("Value", "Cash", "$0.00", WHITE, Color3.fromRGB(25, 140, 60), 3)
 	valueLabel = value
-	local guide = addPill("RarityGuide", "ℹ️ Rarity guide", Color3.fromRGB(225, 235, 255), Color3.fromRGB(120, 150, 230), Color3.fromRGB(40, 70, 170), 4)
-	local tap = Instance.new("TextButton")
-	tap.Name = "Open"
-	tap.Text = ""
-	tap.BackgroundTransparency = 1
-	tap.Position = UDim2.fromOffset(-16, 0)
-	tap.Size = UDim2.new(1, 32, 1, 0)
-	tap.Parent = guide
-	tap.Activated:Connect(openRarityGuide)
+	local guide = addPill("RarityGuide", "Info", "Rarity guide", WHITE, UIKit.Colors.Accent, 4)
+	guide.AutoButtonColor = true
+	guide.Activated:Connect(openRarityGuide)
 end
 
--- A round white button on the right with a key chip under it (Next)
+-- A round accent-blue button on the right (like the HUD tiles) with its icon and a key chip under it (Next)
 local function roundButton(name: string, icon: string, key: string, y: number, onClick: () -> ()): TextButton
 	local button = Instance.new("TextButton")
 	button.Name = name
 	button.AnchorPoint = Vector2.new(1, 0.5)
 	button.Position = UDim2.new(1, -28, y, 0)
 	button.Size = UDim2.fromOffset(ROUND_BUTTON, ROUND_BUTTON)
-	button.BackgroundColor3 = WHITE
+	button.BackgroundColor3 = UIKit.Colors.Accent
 	button.AutoButtonColor = true
-	button.Font = Enum.Font.FredokaOne
-	button.Text = icon
-	button.TextSize = 34
-	button.TextColor3 = INK
+	button.Text = ""
 	button.ZIndex = 10
 	button.Parent = stage
 	UIKit.corner(button, ROUND_BUTTON / 2)
-	UIKit.outline(button, Color3.fromRGB(170, 185, 215), 3)
-	local shine = Instance.new("UIGradient")
-	shine.Color = ColorSequence.new(WHITE, Color3.fromRGB(205, 215, 235))
-	shine.Rotation = 90
-	shine.Parent = button
-	local chip = UIKit.label(button, key, Enum.Font.FredokaOne, 15, WHITE)
+	UIKit.outline(button, WHITE, 2)
+	local glyph = Icon.make(button, icon, UDim2.fromOffset(40, 40))
+	glyph.AnchorPoint = Vector2.new(0.5, 0.5)
+	glyph.Position = UDim2.fromScale(0.5, 0.5)
+	glyph.ZIndex = 11
+	local chip = UIKit.label(button, key, Enum.Font.GothamBold, 13, WHITE)
 	chip.AnchorPoint = Vector2.new(0.5, 0)
-	chip.Position = UDim2.new(0.5, 0, 1, 6)
-	chip.Size = UDim2.fromOffset(70, 24)
+	chip.Position = UDim2.new(0.5, 0, 1, 8)
+	chip.Size = UDim2.fromOffset(64, 22)
 	chip.TextXAlignment = Enum.TextXAlignment.Center
-	chip.BackgroundColor3 = INK
-	chip.BackgroundTransparency = 0
+	chip.BackgroundColor3 = UIKit.Colors.Ink
+	chip.BackgroundTransparency = 0.25
 	chip.ZIndex = 10
-	UIKit.corner(chip, 6)
+	UIKit.corner(chip, 11)
 	button.Activated:Connect(onClick)
 	return button
 end
@@ -1090,6 +1269,7 @@ local function buildScreen()
 	centreGlow.ImageColor3 = WHITE
 	centreGlow.ImageTransparency = PackOpening.STAGE.GLOW_TRANSPARENCY
 	centreGlow.Parent = stage
+	ambient = PackStage.build(stage)
 
 	dimmer = Instance.new("Frame")
 	dimmer.Name = "Dim"
@@ -1141,41 +1321,54 @@ local function buildScreen()
 	hintPill.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP)
 	hintPill.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT)
 	hintPill.AutomaticSize = Enum.AutomaticSize.X
-	hintPill.BackgroundColor3 = INK
-	hintPill.BackgroundTransparency = 0.05
+	hintPill.BackgroundColor3 = UIKit.Colors.Ink
+	hintPill.BackgroundTransparency = 0.2
 	hintPill.Parent = stage
 	UIKit.corner(hintPill, PackOpening.PILL_HEIGHT / 2)
-	UIKit.outline(hintPill, Color3.fromRGB(110, 125, 170), 2)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 24)
 	pad.PaddingRight = UDim.new(0, 24)
 	pad.Parent = hintPill
-	hintLabel = UIKit.label(hintPill, "", Enum.Font.FredokaOne, 22, WHITE)
+	hintLabel = UIKit.label(hintPill, "", Enum.Font.FredokaOne, 20, WHITE)
 	hintLabel.Size = UDim2.fromScale(0, 1)
 	hintLabel.AutomaticSize = Enum.AutomaticSize.X
 	hintLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	buildResultsBar()
+	stage:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitResultsBar)
+	-- The pills' text (NEW x3, the value) settles a frame or two after it changes
+	local pills = resultsBar:FindFirstChildOfClass("UIListLayout") :: UIListLayout
+	pills:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitResultsBar)
 
-	doneButton = UIKit.button(stage, "➡️ Next", UIKit.Colors.Success)
+	doneButton = UIKit.button(stage, "Continue", UIKit.Colors.Success)
 	doneButton.Name = "Done"
 	doneButton.AnchorPoint = Vector2.new(0.5, 0)
 	doneButton.Position = UDim2.new(0.5, 0, PackOpening.SUMMARY_Y + PackOpening.SUMMARY_HEIGHT / 2, 18)
 	doneButton.Size = UDim2.fromOffset(240, 54)
-	doneButton.TextSize = 26
+	doneButton.TextSize = 24
+	doneButton.Font = Enum.Font.FredokaOne
 	doneButton.Visible = false
 	doneButton.Activated:Connect(close)
 
-	nextButton = roundButton("Next", "➡️", "SPACE", 0.8, function()
+	nextButton = roundButton("Next", "Next", "SPACE", 0.8, function()
 		task.spawn(advance)
 	end)
 
-	oddsButton = UIKit.button(stage, "❔ Odds", UIKit.Colors.Row)
+	oddsButton = UIKit.button(stage, "Odds", UIKit.Colors.Row)
 	oddsButton.Name = "OddsButton"
 	oddsButton.AnchorPoint = Vector2.new(1, 0)
 	oddsButton.Position = UDim2.new(1, -16, 0, PackOpening.TOP)
-	oddsButton.Size = UDim2.fromOffset(110, 48)
+	oddsButton.Size = UDim2.fromOffset(124, PackOpening.PILL_HEIGHT)
+	oddsButton.Font = Enum.Font.FredokaOne
 	oddsButton.ZIndex = 10
+	local oddsPad = oddsButton:FindFirstChildOfClass("UIPadding")
+	if oddsPad then
+		oddsPad.PaddingLeft = UDim.new(0, 30)
+	end
+	local oddsIcon = Icon.make(oddsButton, "Odds", UDim2.fromOffset(26, 26))
+	oddsIcon.AnchorPoint = Vector2.new(0, 0.5)
+	oddsIcon.Position = UDim2.new(0, -18, 0.5, 0)
+	oddsIcon.ZIndex = 11
 
 	oddsPanel = UIKit.label(stage, "", Enum.Font.Gotham, 16, UIKit.Colors.Text)
 	oddsPanel.Name = "Odds"
@@ -1197,10 +1390,22 @@ local function buildScreen()
 		oddsPanel.Visible = not oddsPanel.Visible
 	end)
 
-	boxLabel = UIKit.label(stage, "", Enum.Font.FredokaOne, 18, INK)
+	-- How many are left in the carried box: a soft white pill top left
+	boxLabel = UIKit.label(stage, "", Enum.Font.FredokaOne, 18, UIKit.Colors.Ink)
 	boxLabel.Name = "PacksLeft"
-	boxLabel.Position = UDim2.fromOffset(16, PackOpening.TOP + 4)
-	boxLabel.Size = UDim2.fromOffset(260, 40)
+	boxLabel.Position = UDim2.fromOffset(16, PackOpening.TOP)
+	boxLabel.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT)
+	boxLabel.AutomaticSize = Enum.AutomaticSize.X
+	boxLabel.TextWrapped = false
+	boxLabel.TextXAlignment = Enum.TextXAlignment.Center
+	boxLabel.BackgroundColor3 = WHITE
+	boxLabel.BackgroundTransparency = 0.15
+	UIKit.corner(boxLabel, PackOpening.PILL_HEIGHT / 2)
+	UIKit.outline(boxLabel, UIKit.Colors.Outline, 1.5)
+	local boxPad = Instance.new("UIPadding")
+	boxPad.PaddingLeft = UDim.new(0, 18)
+	boxPad.PaddingRight = UDim.new(0, 18)
+	boxPad.Parent = boxLabel
 
 	flash = Instance.new("Frame")
 	flash.Name = "Flash"

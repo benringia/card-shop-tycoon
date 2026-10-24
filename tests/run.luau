@@ -23,6 +23,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	TownLayout = require("./TownLayout.spec"),
 	PropFit = require("./PropFit.spec"),
 	ShelfStock = require("./ShelfStock.spec"),
+	ShelfLayout = require("./ShelfLayout.spec"),
 	CellSearch = require("./CellSearch.spec"),
 	ShelvesConfig = require("./ShelvesConfig.spec"),
 	RevealRules = require("./RevealRules.spec"),

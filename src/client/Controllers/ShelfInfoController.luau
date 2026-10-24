@@ -1,8 +1,8 @@
 --!strict
--- What your own shelves hold, only when you want it: point at a shelf or the order computer (or tap it on a phone)
+-- What your own shelves hold, only when you want it: point at a shelf, the order computer or the checkout (or tap it on a phone)
 -- and it gets a soft outline, with a tooltip by the cursor showing its Info attribute (product and stock, a card
--- case's count, "Order Stock"), and an "Empty" badge floats over any product shelf with nothing on it so you can
--- spot it across the shop. PlacementService (shelves) and PlotService (the computer) set Info; Empty is shelves only.
+-- case's count, "Order Stock", "Register"), and an "Empty" badge floats over any product shelf with nothing on it so
+-- you can spot it across the shop. PlacementService (shelves) and PlotService (fixtures) set Info; Empty is shelves only.
 -- Visitors see neither. Price tags keep their own "Set Price" tooltip (PriceTagController).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -67,6 +67,7 @@ local function shelfAt(screen: Vector2): BasePart?
 	local plot = getOwnPlot()
 	local shelves = plot and plot:FindFirstChild("Shelves")
 	local computer = plot and plot:FindFirstChild("OrderComputer", true)
+	local register = plot and plot:FindFirstChild("Register")
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not camera or not plot or not shelves or not root then
@@ -74,7 +75,13 @@ local function shelfAt(screen: Vector2): BasePart?
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = if computer then { shelves, computer } else { shelves }
+	local targets: { Instance } = { shelves }
+	for _, fixture in { computer, register } do
+		if fixture then
+			table.insert(targets, fixture)
+		end
+	end
+	params.FilterDescendantsInstances = targets
 	local ray = camera:ViewportPointToRay(screen.X, screen.Y)
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 200, params)
 	if not hit or hit.Instance.Name == "PriceTag" then
@@ -105,8 +112,7 @@ local function showTip(shelf: BasePart?, screen: Vector2)
 	end
 	outline(shelf)
 	tip.Text = info
-	local inset = GuiService:GetGuiInset()
-	tip.Position = UDim2.fromOffset(screen.X + 16, screen.Y - inset.Y + 12)
+	tip.Position = UIKit.cursorTipPosition(tip, screen)
 	tip.Visible = true
 end
 

@@ -80,18 +80,35 @@ are the solid wall); a charcoal sign band above the glass carrying the shop sign
 accent colour under it; a slim flat canopy over the doors with three down-lights; a planter each side of the doorway;
 a flat roof with a slim charcoal parapet (the camera stays under it inside); inside, a light oak floor (grey while for
 rent), a warm greige back feature wall (the same in every shop) and 3 x 3 LED ceiling panels. Each plot has a fixed
-accent for the glowing strip under its sign (Mint, Coral, Violet, Gold, Azure, Rose). The register counter (6 x 2.5 x 2, low so small cashier pets show) is drawn as a market stall the
-cashier stands inside; it carries a Register prop at its left end and a
-counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part: Small Pack Rack → Shelf, Wall
-Shelf → WallShelf, Accessory Hook → HookRack (pegboard), Big Display Rack → DisplayRack, Glass Showcase →
+accent for the glowing strip under its sign (Mint, Coral, Violet, Gold, Azure, Rose). The checkout counter (6 x 2.5 x 2, low so small cashier pets show) is built in code to match the
+shell (`Town.COUNTER`): a white body on a charcoal plinth, a dark quartz top overhanging the customers' side, a thin
+LED strip in the shop's accent colour under it, and two black pendant lights with warm bulbs hanging from the
+ceiling over it (shade bottoms 7.5 up, clear of the cashier). A POS terminal (Terminal slot: a tablet on a stand,
+its screen toward the cashier, a card reader on the customers' side) stands at its left end and a
+counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part. The four product shelves are
+code-built modern shelving in one style (`Util/ShelfLayout` places the parts so every plate sits under a stock level,
+`Util/ShelfLooks` draws them, `Town.SHELF_LOOK`; no lights of their own): charcoal posts and base, light grey plates with
+dark price rails, an oak slat back and a charcoal header sign ("TRADING CARDS", "ACCESSORIES"). Small Pack Rack → Shelf
+(one-sided gondola), Wall Shelf → WallShelf (the same, wider and taller), Accessory Hook → HookRack (a grey pegboard with
+chrome wire shelves and a row of hooks over each level), Big Display Rack → DisplayRack (double-sided: plates through an
+oak middle divider, a price rail and header text on both faces). Glass Showcase →
 Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → the same counter recoloured
-(`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Delivery boxes show their
+(`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`: a charcoal
+plinth with a glowing violet ring, a "✨ CONDENSER" screen and a card slot, a glass chamber in which a violet crystal
+ringed by three gold cards spins and bobs (`CondenserFxController`, each client, within 80 studs), charcoal side pillars
+with light strips and a cap; no lights). The delivery spot is outside on the sidewalk, left of the doors (`Town.DELIVERY`, built in code): a
+concrete platform level with the shop floor, a charcoal mat with a yellow safety border, "📦 DELIVERIES" on its street
+face and two black bollards with yellow bands at its street corners; boxes stand on the mat, and stocker pets fetch
+them from its doorway side. Delivery boxes show their
 product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). A shelf whose model isn't a one-sided rack sets its own levels and sides (`Shelves` `stock`): the
 Big Display Rack is double-sided, filling each level front then back, with its back rows, packs and tags facing
 the back aisle. Packs (products with `Packs` art) show as stacks of 5 thin upright packs
-with the pack art, leaning back, instead of boxes. Each stocked row has a yellow price tag with the
+with the pack art, leaning back, instead of boxes. Card Sleeves (Products `stockLook = "Sleeves"`) show as 2 retail
+sleeve packets per slot, leaning back: a white backing card with a header tab and hang hole, the sleeves behind a clear
+window and a strip in the product's blue; each slot takes the next colour of `SHELF_STOCK.SLEEVES.COLORS`, so a shelf
+reads as an assortment. Each stocked row has a yellow price tag with the
 product's price on its outer edge, under the row's first stack (so always next to stock on display). On your own shelves the tags are buttons (`PriceTagController`): point at one
 (within 24 studs) and it lights up with a "Set Price" tooltip by the cursor; click or tap it for a small Set Price window with
 that product's +/- row (the same price as the Prices panel; the server sets the shelf's `ProductId` attribute). **Props:** every
@@ -102,12 +119,13 @@ code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 green or red with an outline, gliding between grid cells; its footprint cells drawn on the floor, a chevron at its
 front, a label above it ("Wall Shelf · $350", "Move Collector Case", "Can't place here"). Buttons Rotate (R), Place
 (Click; greyed while blocked), Cancel (Q). Shop prompts are hidden while placing. Numbers: `Config/Placement`.
-The register carries a small name tag floating just above it ("💰 Register"), out past its front so walls never cut
-it, shown within 40 studs (`Placement.FIXTURE_TAG`). Shelves, cases and the order computer carry none: on your own
-shop, pointing at one (or tapping it) gives it a soft white outline and a tooltip by the cursor with its product
-and stock ("First Spark Booster Pack · 24/96"), a case's kind and count, "✨ Card Condenser" or "📦 Order Stock"
+Shelves, cases and fixtures carry no floating labels: on your own shop, pointing at one (or tapping it) gives it a
+soft white outline and a tooltip by the cursor with its product and stock ("First Spark Booster Pack · 24/96"), a
+case's kind and count, "✨ Card Condenser", "📦 Order Stock" or "💰 Register"
 (`ShelfInfoController`, within 30 studs; the server sets the part's `Info` attribute), and an empty product shelf shows a red "📦 Empty" badge over it
-(the `Empty` attribute) so it can be spotted across the shop. Visitors see neither (`Placement.SHELF_INFO`).
+(the `Empty` attribute, out past the shelf's front so walls never cut it) so it can be spotted across the shop.
+Visitors see neither (`Placement.SHELF_INFO`). World hovers and taps are off while a window is open or the pointer
+is over UI (`UIKit.pointerBlocked`).
 
 ---
 
@@ -118,7 +136,9 @@ and stock ("First Spark Booster Pack · 24/96"), a case's kind and count, "✨ C
 - Plot owner name + shop name shown on a sign out front. Shop name is player-chosen (filtered with TextService).
 
 ### 4.2 Ordering stock
-- Computer in the back room opens the **Order UI** (catalog of products unlocked so far).
+- Computer in the back room opens the **Order UI** (catalog of products unlocked so far). It is a modern workstation
+  built in code (Computer slot, `built`): a white desk on black panel legs, a slim widescreen showing "ORDER STOCK",
+  keyboard, mouse, a small plant, a drawer unit and an office chair.
 - Ordering costs cash immediately. Delivery arrives after a short delay (10s at start, upgradable) as boxes at the delivery spot.
 - Player picks up a box (carry it, one at a time at start) and places it on a shelf to stock it.
 
@@ -265,16 +285,30 @@ Each pack = 5 cards:
 - **Trading (post-MVP):** player to player trade window.
 
 ### 5.7 Pack opening feel (important)
-- A light stage (soft blue-grey with a white glow) with the illustrated pack floating in the middle (`Config/Packs`
-  art, the logo and crimped edges drawn in code; art in `assets/ui/packs`, made with Figma's image generator).
-  "Drag across the top to open!": dragging over 80% of the pack's width tears the top off along the dashed line
+- A light stage (soft blue fading to lavender, a white glow) with the illustrated pack floating in the middle (`Config/Packs`
+  art, the logo and crimped edges drawn in code; art in `assets/ui/packs`, made with Figma's image generator). It
+  feels premium (`Util/PackStage`, `PackOpening.AMBIENT`): long soft light rays in the pack's colour turn slowly
+  behind it, bokeh sparkles drift up the screen, a glowing pedestal pulses under it and a soft vignette darkens the
+  edges; all of it stops when the screen closes. The pack pops in, bobs, rocks a little either way and a foil shine
+  sweeps across it every couple of seconds.
+  "Swipe across the top to open": dragging over 80% of the pack's width tears the top off along the dashed line
   (a tap, Space or T tears it by itself). The pack slides away and the cards rise out as a stack.
+- **Deck boxes** (`Config/Packs` entries with `kind = "Deck"`, opened the same way: carry a box of them, Open T):
+  the First Spark Deck Box holds 5 cards, two of them Rare or better (Common, Common, Common/Rare 50/50, Rare 75 /
+  Very Rare 25, and a hit slot of Rare 45 / Very Rare 25 / Epic 22 / Legendary 8, against a pack's 68/15/14/3), for
+  $9 against a pack's $3. On the stage it is a boxier box (`PackOpening.DECK`) with a dark lid, a gold band and a
+  side face, "DECK BOX · 5 CARDS"; tapping it (or Space / T) lifts the lid, the box slides away and every card
+  shows at once in the results row, with the best pull's flash and confetti. On shelves deck boxes stand as little
+  upright boxes in purple with the First Spark art and a gold lid (Products `stockLook = "Deck"`); menus show the
+  Deck Box icon.
 - Cards are revealed one at a time, big in the middle; a tap, Space, T or the round Next button slides the card off
   to the left and shows the next ("2 / 5 · Tap for the next card" at the bottom). After the last card comes the
   results screen: every card in a big row popping in, a yellow NEW ribbon on cards the player didn't own before
   (binder, beasts or on display; the server checks before adding them, `Util/NewPulls`, only the first copy in a
-  pack), pills on top (🃏 Your cards · NEW x2 · pack value · ℹ️ Rarity guide, which opens over the results) and a
-  green Next. Odds sit in the top right (hidden on the results, whose row and pills span the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar.
+  pack), pills on top (Your cards · NEW x2 · pack value · Rarity guide, which opens over the results) and a
+  green Continue. The screen matches the other windows: icons from `Config/UIIcons` (no emojis), rounded pills with
+  thin edges, a translucent navy hint capsule, a round accent-blue Next button with a key chip, a soft white "N left
+  in box" pill and a soft shadow under the pack. Odds sit in the top right (hidden on the results, whose row and pills span the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar; on smaller ones (568x320) the results pills shrink to the screen's width and the card row moves down just enough that the NEW ribbons clear them.
 - Hit slot comes last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
   - **Tease** before the flip: the face-down card glows in its rarity colour, breathes and shakes, and the
     stage dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons come out face up at once).
@@ -299,7 +333,8 @@ Each pack = 5 cards:
   server's plain card part (1.05 x 1.5 studs; glass counters lie them on the bed, rows 1.12 apart), with the asking
   price in gold in the value row. To make visitors want to buy, the face glows (it ignores the
   room's light), a neon halo in the rarity colour sits just behind it (pulsing on Epic and up), and rarer cards
-  light the case and sparkle more (`Config/CardEffects` BY_RARITY: glow, range, sparkles, halo). Grade S copies
+  sparkle more (`Config/CardEffects` BY_RARITY: sparkles, halo). Displayed cards cast no light of their own
+  (`DISPLAY_LIGHTS = false`: under the glass it lit the whole case up); Legendary auras keep their particles. Grade S copies
   glow brighter and sparkle more (GRADE_S). Grade S Legendaries and Grade S Frontier cards are "supreme": a solid
   pulsing halo, golden sparkles and blue-white lightning bolts crackling off the card's edges every 0.35-1.1s
   (SUPREME; no bolts while the camera is over 70 studs away). Their card face also gets a spinning gold rim round
@@ -483,7 +518,8 @@ Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to yo
 | First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 7 |
 | Set 2 Booster Pack | TBD | 24 | TBD | Lv 10 |
 
-Player can also open their own stock instead of selling it. Trade-off: sell for safe profit, or gamble on a big pull.
+Player can also open their own stock instead of selling it: packs (rip one at a time) and deck boxes (5 cards
+at once, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
 
 ---
 
@@ -805,7 +841,8 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to
   its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
-  Bottom right, one corner cluster (above the jump button on touch screens): the party bar, and beside it a
+  Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
+  would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
   right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
   party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. Each icon sits over its
   pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the

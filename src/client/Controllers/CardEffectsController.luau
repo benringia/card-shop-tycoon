@@ -1,6 +1,6 @@
 --!strict
 -- Cards displayed in card cases, drawn locally on every client: the full card face (CardFace, with the asking
--- price), a neon halo in the rarity colour behind it, glows and sparkles while shown, an element aura on
+-- price), a neon halo in the rarity colour behind it, sparkles while shown (a light too, if DISPLAY_LIGHTS), an element aura on
 -- Legendaries (Util/ElementAura, stronger with grade and stars), plus a burst when a card is listed. The server only places plain card parts with attributes; nothing here is replicated, so pulsing
 -- costs no network.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -120,7 +120,7 @@ local function addHalo(part: BasePart, effect: RarityEffect, color: Color3)
 end
 
 local function addAlwaysOn(part: BasePart, effect: RarityEffect, color: Color3, foil: boolean)
-	if effect.glow > 0 then
+	if effect.glow > 0 and CardEffects.DISPLAY_LIGHTS then
 		local pointLight = Instance.new("PointLight")
 		pointLight.Color = color
 		pointLight.Brightness = effect.glow
@@ -232,7 +232,7 @@ local function attach(instance: Instance, isNewListing: boolean)
 			if typeof(grade) == "string" then grade else BeastRules.DEFAULT_GRADE,
 			if typeof(stars) == "number" then stars else BeastRules.START_STARS
 		)
-		ElementAura.attach(instance, card.element, intensity)
+		ElementAura.attach(instance, card.element, intensity, nil, CardEffects.DISPLAY_LIGHTS)
 	end
 	if isNewListing then
 		playListingBurst(instance, effect, color, foil)

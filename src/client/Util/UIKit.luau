@@ -80,6 +80,26 @@ function UIKit.pointerBlocked(screen: Vector2): boolean
 	return false
 end
 
+-- Where a tooltip goes by the cursor (screen: a viewport point, like GetMouseLocation): below and right of it,
+-- flipped to the left or above when it would leave the screen (small phones, the screen's edges). For a tooltip on
+-- a ScreenGui that starts below Roblox's top bar.
+local TIP_GAP = Vector2.new(16, 12)
+function UIKit.cursorTipPosition(tip: GuiObject, screen: Vector2): UDim2
+	local camera = workspace.CurrentCamera
+	local view = if camera then camera.ViewportSize else Vector2.new(math.huge, math.huge)
+	local inset = GuiService:GetGuiInset()
+	local size = tip.AbsoluteSize
+	local x = screen.X + TIP_GAP.X
+	if x + size.X > view.X then
+		x = screen.X - TIP_GAP.X - size.X
+	end
+	local y = screen.Y + TIP_GAP.Y
+	if y + size.Y > view.Y then
+		y = screen.Y - TIP_GAP.Y - size.Y
+	end
+	return UDim2.fromOffset(math.max(x, 0), math.max(y, inset.Y) - inset.Y)
+end
+
 local function trackPanel(frame: Frame)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		openPanels[frame] = if frame.Visible then true else nil

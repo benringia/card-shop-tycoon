@@ -150,7 +150,7 @@ local function makeGhost(size: Vector3, opts: BeginOptions): (Model, Part, { Ins
 	for _, arm in addArrow(ghost, size) do
 		table.insert(tinted, arm)
 	end
-	if opts.prop and Props.hasModel(opts.prop) then
+	if opts.prop and Props.hasLook(opts.prop) then
 		box.Transparency = 1
 		local model = Props.fit(opts.prop, size, CFrame.new(0, -size.Y / 2, 0), ghost)
 		for _, descendant in model:GetDescendants() do

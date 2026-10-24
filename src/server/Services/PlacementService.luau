@@ -166,6 +166,60 @@ local function fillWithPacks(box: Part, art: string, color: Color3)
 	end
 end
 
+-- A box's place filled with little deck boxes (Town.SHELF_STOCK.DECKS), front first, leaning back a little: the
+-- product's colour with the set's art on the front and a gold lid band
+local function fillWithDecks(box: Part, art: string?, color: Color3)
+	local look = Town.SHELF_STOCK.DECKS
+	box:ClearAllChildren()
+	local offsets = ShelfStock.stackOffsets(look.PER_STACK, box.Size.Z)
+	for index = 1, look.PER_STACK do
+		local base = box.CFrame * CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0) * CFrame.Angles(math.rad(look.LEAN), 0, 0)
+		local deck = newDecorPart("Deck", box)
+		deck.Size = Vector3.new(look.WIDTH, look.HEIGHT - look.LID, look.DEPTH)
+		deck.CFrame = base * CFrame.new(0, deck.Size.Y / 2, 0)
+		deck.Color = color
+		if art then
+			local front = Instance.new("Decal")
+			front.Face = Enum.NormalId.Front
+			front.Texture = art
+			front.Parent = deck
+		end
+		local lid = newDecorPart("Lid", box)
+		lid.Size = Vector3.new(look.WIDTH + 0.02, look.LID, look.DEPTH + 0.02)
+		lid.CFrame = base * CFrame.new(0, look.HEIGHT - look.LID / 2, 0)
+		lid.Color = rgb(look.LID_COLOR)
+	end
+end
+
+-- A box's place filled with card sleeve packets (Town.SHELF_STOCK.SLEEVES), leaning back a little, front first:
+-- a backing card with a header tab and hang hole, the sleeves behind a clear window, a strip in the product's colour
+local function fillWithSleeves(box: Part, sleeveColor: Color3, brandColor: Color3)
+	local look = Town.SHELF_STOCK.SLEEVES
+	local card = rgb(look.CARD)
+	local width, height, thickness = look.WIDTH, look.HEIGHT, look.THICKNESS
+	box:ClearAllChildren()
+	local offsets = ShelfStock.stackOffsets(look.PER_STACK, box.Size.Z)
+	for index = 1, look.PER_STACK do
+		-- Standing on the box's bottom, tipped back about its foot
+		local base = box.CFrame * CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0) * CFrame.Angles(math.rad(look.LEAN), 0, 0)
+		local function piece(name: string, size: Vector3, offset: CFrame, color: Color3): Part
+			local part = newDecorPart(name, box)
+			part.Size = size
+			part.CFrame = base * offset
+			part.Color = color
+			return part
+		end
+		piece("Backing", Vector3.new(width, height, thickness * 0.4), CFrame.new(0, height / 2, thickness * 0.3), card)
+		piece("Sleeves", Vector3.new(width - 0.1, height * 0.6, thickness * 0.4), CFrame.new(0, height * 0.52, -thickness * 0.05), sleeveColor)
+		local window = piece("Window", Vector3.new(width - 0.06, height * 0.66, thickness * 0.2), CFrame.new(0, height * 0.52, -thickness * 0.35), Color3.new(1, 1, 1))
+		window.Material = Enum.Material.Glass
+		window.Transparency = look.WINDOW_TRANSPARENCY
+		piece("Brand", Vector3.new(width, height * 0.14, thickness * 0.5), CFrame.new(0, height * 0.07, -thickness * 0.05), brandColor)
+		piece("Tab", Vector3.new(width * 0.5, look.TAB, thickness * 0.4), CFrame.new(0, height + look.TAB / 2, thickness * 0.3), card)
+		piece("Hole", Vector3.new(0.12, 0.05, thickness * 0.45), CFrame.new(0, height + look.TAB * 0.55, thickness * 0.3), Color3.fromRGB(30, 32, 38))
+	end
+end
+
 -- An orange tag with the price on the front of a level, like a shop's shelf label
 local function newPriceTag(parent: Instance): Part
 	local look = Town.SHELF_STOCK.TAG
@@ -252,7 +306,7 @@ local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
 end
 
 -- Products shelves show up to their stock slots of boxes in the product's colour, filling from the bottom level.
--- Packs show as stacks of packs with their art instead of boxes.
+-- Packs show as stacks of packs with their art instead of boxes; card sleeves and deck boxes by their stockLook.
 local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	if shelf.def.kind ~= "Products" then
 		return
@@ -273,6 +327,7 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	end
 	local pack = Packs.ById[product.id]
 	local art = if pack and pack.art then pack.art else nil
+	local sleeveColors = Town.SHELF_STOCK.SLEEVES.COLORS
 	local size = ShelfStock.boxSize(toVec(shelf.def.size), config)
 	local slots = ShelfStock.slots(toVec(shelf.def.size), config)
 	local color = rgb(product.color)
@@ -288,9 +343,15 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 		box.Color = color
 		-- Back-row boxes turn round so their packs face the back aisle
 		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z) * (if slot.back then CFrame.Angles(0, math.pi, 0) else CFrame.new())
-		if art then
+		if product.stockLook == "Deck" then
+			box.Transparency = 1
+			fillWithDecks(box, art, color)
+		elseif art then
 			box.Transparency = 1
 			fillWithPacks(box, art, color)
+		elseif product.stockLook == "Sleeves" then
+			box.Transparency = 1
+			fillWithSleeves(box, rgb(sleeveColors[(index - 1) % #sleeveColors + 1]), color)
 		end
 	end
 end
@@ -458,7 +519,7 @@ local function createShelf(
 	}
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
-	if def.prop and Props.hasModel(def.prop) then
+	if def.prop and Props.hasLook(def.prop) then
 		-- The part stays as the hitbox (prompts, customers, the owner's tooltip); the prop is the look.
 		part.Transparency = 1
 		local visual = Props.fit(def.prop, def.size, part.CFrame * CFrame.new(0, -def.size.Y / 2, 0), part)

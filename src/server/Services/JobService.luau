@@ -113,9 +113,11 @@ local function getEntryCFrame(plot: Plot): CFrame
 	return plot.floor.CFrame * CFrame.new(0, 0, -PlotConfig.DEPTH / 2 + 3)
 end
 
+-- Beside the delivery spot on the doorway side (it stands outside, its street side is the road)
 local function getPadPoint(plot: Plot): Vector3
 	local pad = plot.deliverySpot
-	return floorPoint(plot, pad.CFrame * CFrame.new(0, 0, -(pad.Size.Z / 2 + 2)))
+	local towardDoor = if plot.floor.CFrame:PointToObjectSpace(pad.Position).X < 0 then 1 else -1
+	return floorPoint(plot, pad.CFrame * CFrame.new(towardDoor * (pad.Size.X / 2 + 1.5), 0, 0))
 end
 
 local function getShelfPoint(plot: Plot, shelf: PlacedShelf): Vector3
