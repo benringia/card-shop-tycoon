@@ -186,17 +186,21 @@ local function add(marker: BasePart)
 	if not card then
 		return
 	end
-	local flying = table.find(Party.FLYING, card.name) ~= nil
-	local template, variant = CreatureVisuals.cardTemplate(card.name)
+	local flying = CreatureVisuals.isFlying(card.name)
+	local template = CreatureVisuals.cardTemplate(card.name)
 	local model = if template then template:Clone() else makePlaceholder(Cards.ELEMENTS[card.element], flying)
 	CreatureVisuals.strip(model)
 	model.Name = `{card.name}_{marker:GetAttribute("OwnerUserId")}`
-	if template and variant then
-		CreatureVisuals.applyVariant(model, variant)
+	if template then
+		CreatureVisuals.dress(model, card.name)
 	end
 
-	local height = Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[card.rarity] or 1)
+	local height = CreatureVisuals.cardHeight(card.name, card.rarity)
 	local body = CreatureVisuals.build(model, marker, height, flying, if template then template.Name else nil)
+	body.fxColor = Cards.ELEMENTS[card.element] or body.fxColor
+	if body.keyframes then
+		CreatureVisuals.addBeastFx(body, card.element)
+	end
 	local tagColor = rarityColor(card.rarity):Lerp(Color3.new(1, 1, 1), 0.35)
 	local creature: Creature = {
 		marker = marker,

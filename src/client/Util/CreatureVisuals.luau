@@ -5,12 +5,16 @@
 -- animations. A marker with the attribute Fainted = true makes its body lie down.
 local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureMotion = require(Shared:WaitForChild("Util"):WaitForChild("CreatureMotion"))
 local Party = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
+local BeastFx = require(Shared:WaitForChild("Config"):WaitForChild("BeastFx"))
 local PetRig = require(Shared:WaitForChild("Util"):WaitForChild("PetRig"))
 local PetAnimator = require((script.Parent :: Instance):WaitForChild("PetAnimator"))
+local KeyframePlayer = require((script.Parent :: Instance):WaitForChild("KeyframePlayer"))
+local BeastAura = require((script.Parent :: Instance):WaitForChild("BeastAura"))
 
 local CreatureVisuals = {}
 
@@ -33,9 +37,12 @@ export type Body = {
 	frame: number,
 	tracks: { idle: AnimationTrack?, walk: AnimationTrack? },
 	pet: PetAnimator.Rig?, -- a rigged pack pet: its bones walk, breathe and fidget (Util/PetAnimator)
+	keyframes: KeyframePlayer.Player?, -- a model with its own saved Idle/Walk/Run animations (Util/KeyframePlayer)
 	size: number, -- height / Party.CREATURE_HEIGHT
 	-- Creatures without bones: a whole-body fidget now and then while standing (PET_ANIM.BODY_FIDGETS)
-	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random },
+	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random, fired: boolean },
+	fxColor: Color3, -- roar shockwaves and sparks (the card's element colour)
+	aura: BeastAura.Aura?, -- big beasts: element fire, lightning and footstep dust (addBeastFx)
 }
 
 function CreatureVisuals.countParts(model: Instance): number
@@ -123,6 +130,28 @@ function CreatureVisuals.preload(cardNames: { string })
 	end)
 end
 
+-- The element aura on a big saved-animation beast (Util/BeastAura): fire on its bones, lightning, ground flames
+function CreatureVisuals.addBeastFx(body: Body, element: string)
+	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size)
+end
+
+-- How tall a card's creature stands: its rarity's size (Party.SIZE_BY_RARITY), times its model entry's size
+function CreatureVisuals.cardHeight(cardName: string, rarity: string): number
+	local entry = Party.CREATURE_MODELS[cardName]
+	return Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[rarity] or 1) * (if entry and entry.size then entry.size else 1)
+end
+
+-- Whether a card's creature flies: a pack model flies only if its pack does (Party.FLYING_PACKS); a card's own
+-- model or the placeholder flies if the card is in Party.FLYING
+function CreatureVisuals.isFlying(cardName: string): boolean
+	local entry = Party.CREATURE_MODELS[cardName]
+	if entry then
+		return table.find(Party.FLYING_PACKS, entry.pack) ~= nil or Party.WINGS[entry.model] ~= nil
+			or Party.UNDULATE[entry.model] == "swim"
+	end
+	return table.find(Party.FLYING, cardName) ~= nil
+end
+
 -- A card's creature model: the one Party.CREATURE_MODELS gives it (in a pack, maybe with a colour variant), or one
 -- named after the card; nil (use a placeholder) without either. Shared by summoned creatures and shop workers.
 function CreatureVisuals.cardTemplate(cardName: string): (Model?, string?)
@@ -131,6 +160,48 @@ function CreatureVisuals.cardTemplate(cardName: string): (Model?, string?)
 		return CreatureVisuals.getTemplate("CreatureModels", entry.model, Party.MAX_MODEL_PARTS, entry.pack), entry.variant
 	end
 	return CreatureVisuals.getTemplate("CreatureModels", cardName, Party.MAX_MODEL_PARTS), nil
+end
+
+-- Dresses a card's cloned model as Party.CREATURE_MODELS says: its colour variant, and a tint over its textures
+function CreatureVisuals.dress(model: Model, cardName: string)
+	local entry = Party.CREATURE_MODELS[cardName]
+	if not entry then
+		return
+	end
+	if entry.variant then
+		CreatureVisuals.applyVariant(model, entry.variant)
+	end
+	if entry.hue then
+		CreatureVisuals.recolor(model, entry.hue)
+	end
+	local tint = entry.tint
+	if tint then
+		local color = Color3.fromRGB(tint[1], tint[2], tint[3])
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("SurfaceAppearance") and not (descendant.Parent and descendant.Parent.Name == "Variants") then
+				descendant.Color = color
+			elseif descendant:IsA("BasePart") and not descendant:FindFirstChildOfClass("SurfaceAppearance") then
+				-- Plain-coloured parts (the Ultra pack's horns, crystals, gear) take the tint too
+				local own = descendant.Color
+				descendant.Color = Color3.new(own.R * color.R, own.G * color.G, own.B * color.B)
+			end
+		end
+	end
+end
+
+-- Turns a model's colours to another hue, keeping how light and how strong each one is (plain-coloured models,
+-- the Ultra pack: green to fire orange). Greys stay grey; textures (SurfaceAppearance) take the hue as a tint.
+function CreatureVisuals.recolor(model: Model, hue: number)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("SurfaceAppearance") and not (descendant.Parent and descendant.Parent.Name == "Variants") then
+			descendant.Color = Color3.fromHSV(hue, 0.6, 1)
+		elseif descendant:IsA("BasePart") and not descendant:FindFirstChildOfClass("SurfaceAppearance") then
+			local _, saturation, value = descendant.Color:ToHSV()
+			if saturation > 0.15 then
+				descendant.Color = Color3.fromHSV(hue, saturation, value)
+			end
+		end
+	end
 end
 
 -- Dresses a pack model in one of its colour variants: a SurfaceAppearance in its Variants folder replaces the
@@ -268,11 +339,17 @@ function CreatureVisuals.build(model: Model, marker: BasePart, height: number, f
 		frame = 0,
 		tracks = {},
 		pet = nil,
+		keyframes = nil,
 		size = height / Party.CREATURE_HEIGHT,
-		idle = { kind = nil, start = 0, length = 1, side = 1, nextAt = os.clock() + 2 + math.random() * 4, random = Random.new() },
+		idle = { kind = nil, start = 0, length = 1, side = 1, nextAt = os.clock() + 2 + math.random() * 4, random = Random.new(), fired = false },
+		fxColor = Color3.new(1, 1, 1),
+		aura = nil,
 	}
-	if not animator and sourceName then
-		body.pet = PetAnimator.attach(model, root, sourceName, height / Party.CREATURE_HEIGHT)
+	if not animator then
+		body.keyframes = KeyframePlayer.attach(model)
+		if not body.keyframes and sourceName then
+			body.pet = PetAnimator.attach(model, root, sourceName, height / Party.CREATURE_HEIGHT, flying)
+		end
 	end
 	model:PivotTo(marker.CFrame)
 	model.Parent = workspace
@@ -309,6 +386,56 @@ function CreatureVisuals.makeTag(root: BasePart, above: number, color: Color3): 
 end
 
 -- Creatures without bones: picks a whole-body fidget now and then while standing, and returns its pose
+-- A flat ring on the ground that grows and fades: a roar's shockwave or a stomp's dust
+local function groundRing(at: Vector3, color: Color3, radius: number, neon: boolean)
+	local ring = Instance.new("Part")
+	ring.Name = "CreatureRing"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	ring.Material = if neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	ring.Color = color
+	ring.Transparency = if neon then 0.3 else 0.45
+	ring.Size = Vector3.new(0.1, radius * 0.3, radius * 0.3)
+	ring.CFrame = CFrame.new(at + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+	ring.Parent = workspace
+	local grow = TweenService:Create(ring, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.1, radius * 2, radius * 2),
+		Transparency = 1,
+	})
+	grow.Completed:Once(function()
+		ring:Destroy()
+	end)
+	grow:Play()
+end
+
+-- A roar: a shockwave ring and a burst of sparks from the mouth end, in the creature's colour
+local function roarFx(body: Body)
+	local cf, size = body.model:GetBoundingBox()
+	local feet = body.cframe.Position
+	groundRing(feet, body.fxColor, math.max(size.X, size.Z) * 1.2, true)
+	local holder = Instance.new("Attachment")
+	holder.WorldPosition = (cf * CFrame.new(0, size.Y * 0.2, 0)).Position + body.cframe.LookVector * size.Z * 0.4
+	holder.Parent = workspace.Terrain
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparks.Color = ColorSequence.new(body.fxColor, Color3.new(1, 1, 1))
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new(0.6, 0)
+	sparks.Lifetime = NumberRange.new(0.4, 0.8)
+	sparks.Speed = NumberRange.new(8, 16)
+	sparks.SpreadAngle = Vector2.new(35, 35)
+	sparks.EmissionDirection = Enum.NormalId.Front
+	sparks.Rate = 0
+	sparks.Parent = holder
+	holder.WorldCFrame = CFrame.lookAt(holder.WorldPosition, holder.WorldPosition + body.cframe.LookVector)
+	sparks:Emit(40)
+	task.delay(1.2, holder.Destroy, holder)
+end
+
 local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 	local idle = body.idle
 	local anim = Party.PET_ANIM
@@ -321,16 +448,27 @@ local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 		idle.kind = nil
 		idle.nextAt = math.max(idle.nextAt, now + 1)
 	elseif not idle.kind and now >= idle.nextAt then
-		local kinds = anim.BODY_FIDGETS
+		local kinds = if body.keyframes then anim.TITAN_FIDGETS else anim.BODY_FIDGETS
 		idle.kind = kinds[idle.random:NextInteger(1, #kinds)]
+		idle.fired = false
 		idle.start = now
 		idle.length = anim.FIDGET_SECONDS[idle.kind] or 1.5
 		idle.side = if idle.random:NextNumber() < 0.5 then 1 else -1
 	end
 	if not idle.kind then
-		return { lift = 0, yaw = 0, roll = 0 }
+		return { lift = 0, yaw = 0, roll = 0, pitch = 0 }
 	end
-	return PetRig.body(anim, idle.kind, (now - idle.start) / idle.length, idle.side, false)
+	local progress = (now - idle.start) / idle.length
+	-- The moment a roar lunges or a stomp lands, its effect goes off once
+	if not idle.fired and idle.kind == "roar" and PetRig.roarBurst(anim, progress) then
+		idle.fired = true
+		roarFx(body)
+	elseif not idle.fired and idle.kind == "stomp" and progress >= 0.95 then
+		idle.fired = true
+		local _, size = body.model:GetBoundingBox()
+		groundRing(body.cframe.Position, Color3.fromRGB(190, 180, 165), math.max(size.X, size.Z) * 0.9, false)
+	end
+	return PetRig.body(anim, idle.kind, progress, idle.side, false)
 end
 
 -- One frame: follow the marker smoothly, then pose (motion kit or animations), or lie down when fainted
@@ -368,6 +506,18 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		end
 		local hover = if body.flying then CreatureMotion.getPose(motion, now, body.speed, body.walked, true).offsetY else 0
 		body.model:PivotTo(body.cframe * CFrame.new(0, hover, 0))
+	elseif body.keyframes then
+		-- Its own saved animations walk, run and idle; a whole-body fidget now and then while standing
+		local away = (body.cframe.Position - origin).Magnitude
+		if away <= Party.PET_ANIM.DISTANCE then
+			KeyframePlayer.step(body.keyframes, dt, body.speed, body.size, body.model:GetScale())
+		end
+		if body.aura then
+			BeastAura.step(body.aura, dt, body.speed, body.speed >= motion.WALK_SPEED_MIN and not body.flying, away > BeastFx.FAR)
+		end
+		local hover = if body.flying then CreatureMotion.getPose(motion, now, body.speed, body.walked, true).offsetY else 0
+		local extra = stepIdle(body, now, body.speed >= motion.WALK_SPEED_MIN)
+		body.model:PivotTo(body.cframe * CFrame.new(0, hover + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(extra.pitch, 0, extra.roll))
 	elseif body.pet then
 		-- The bones do the walking, breathing and fidgets; the whole body hops and sways a little, and moves for
 		-- the fidgets that need it (hop, spin, shake)
@@ -379,6 +529,7 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
 		local hop = if body.flying then pose.offsetY else pose.offsetY * anim.HOP_SCALE
 		local extra = PetAnimator.bodyPose(pet, now)
+		hop += PetAnimator.flapLift(pet) * body.size
 		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll * anim.WADDLE_SCALE + extra.roll))
 	else
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)

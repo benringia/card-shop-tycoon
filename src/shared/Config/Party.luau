@@ -17,7 +17,7 @@ return {
 	-- Creature size, as a multiple of CREATURE_HEIGHT
 	SIZE_BY_RARITY = { Common = 0.7, Rare = 0.85, ["Very Rare"] = 1, Epic = 1.2, Legendary = 1.4 },
 	CREATURE_HEIGHT = 3, -- studs, for size 1
-	FOLLOW_OFFSET = { side = 3, back = 3.5 }, -- studs from the owner, on the ground
+	FOLLOW_OFFSET = { side = 3, back = 3.5 }, -- studs from the owner, on the ground (times a model entry's size)
 	TELEPORT_DISTANCE = 40, -- further than this and the creature jumps next to its owner
 	MARKER_RATE = 20, -- server marker updates per second
 	MAX_MODEL_PARTS = 200, -- bigger models fall back to the placeholder
@@ -36,7 +36,38 @@ return {
 		HOVER_HEIGHT = 2.5,
 		HOVER_BOB = 0.4,
 	},
+	-- Cards that fly when drawn with their own model or the placeholder
 	FLYING = { "Solarion", "Voidmaw", "Nightowl", "Emberwing", "Hushmoth", "Fizzlebug" },
+	-- Packs whose models fly (wings with bones of their own). Cute Pets walks: its wings can't flap.
+	FLYING_PACKS = {} :: { string },
+	-- Pack models that fly, by the first bone of each left wing (the right one is the same name with .R for .L;
+	-- the bones after it on the same side flap too, trailing it). Found by hand: the Ultra pack names them
+	-- Root.L.009 and the like.
+	WINGS = {
+		DarkBat = { "Root.L.009" },
+		FairyMoth = { "Root.L.004", "Root.L.009" },
+		Venowasp = { "Root.L.009" },
+		NeonSwallow = { "Root.L.009" },
+		StoneBird = { "Root.L.009" },
+		HeronDemon = { "Root.L" },
+	} :: { [string]: { string } },
+	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
+	-- forward from there, bend = elbows. Flametor holds its short arms up in front like a T-rex.
+	ARM_POSE = {
+		Flametor = { hang = 50, forward = 55, bend = 60 },
+	} :: { [string]: { hang: number, forward: number, bend: number } },
+	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
+	WING_SPEED = {
+		HeronDemon = 0.55,
+		NeonSwallow = 0.55,
+	} :: { [string]: number },
+	-- Pack models whose body waves side to side instead of walking: "swim" floats and swims (fish), "slither"
+	-- stays on the ground and waves mostly while moving (snakes)
+	UNDULATE = {
+		IceShark = "swim",
+		Merilux = "swim",
+		GiantSnake = "slither",
+	} :: { [string]: string },
 	-- Bone animation for rigged pack models (Util/PetRig, Util/PetAnimator), drawn on each client. Angles in
 	-- degrees unless named _RAD; seconds. Walks trot (diagonal legs together) or step (two legs); the spine
 	-- breathes, tails wag in a wave, ears flop; standing, a random fidget plays every FIDGET_GAP seconds.
@@ -70,10 +101,39 @@ return {
 		-- Fidgets for rigged pets (bones), and for creatures without bones (whole-body only)
 		FIDGETS = { "look", "tilt", "sniff", "stretch", "wag", "hop", "spin", "shake", "sit", "scratch", "yawn" },
 		BODY_FIDGETS = { "hop", "spin", "shake", "look", "bounce" },
+		-- Saved-animation beasts (Crystal Titans): a roar (rear back, lunge, shockwave ring and sparks in the element
+		-- colour), a stomp (rise and slam, dust ring) or a look round, between their own idle animation
+		TITAN_FIDGETS = { "roar", "stomp", "look", "roar" },
+		ROAR_PITCH = 18,
+		ROAR_LIFT = 0.25,
+		ROAR_BURST = 0.4, -- of the way through: the lunge and shockwave
+		STOMP_HEIGHT = 0.5,
+		-- Flying pets (owls, phoenixes, dragons: the pack's wings have no bones of their own, so the whole body beats):
+		-- legs tucked, the body rising and dipping with each flap, the spine pulsing, the head steadying
+		FLAP_SECONDS = 0.34, -- one wingbeat hovering
+		FLAP_FAST = 1.35, -- this much quicker flying along
+		FLAP_LIFT = 0.22, -- studs at size 1
+		FLAP_PITCH = 7, -- spine, each beat
+		WING_FLAP = 35, -- degrees up and down from rest, each wing bone (Party.WINGS)
+		WING_LAG = 0.5, -- radians the next wing bone trails its parent
+		-- Rigs named by Util/RigGuess: arms lowered from a T-pose swing against the legs; IK feet lift as they step;
+		-- fish swim and snakes slither with a wave down the body (Party.UNDULATE)
+		ARM_SWING = 24,
+		ARM_BEND = 14, -- elbows, when hanging
+		ARM_HANG = 15, -- degrees from straight down a lowered arm ends
+		FOOT_LIFT = 0.28, -- studs at size 1
+		SWIM_SECONDS = 1.4,
+		SWIM_FAST = 1.6,
+		SWIM_BEND = 14, -- degrees, scaled up towards the tail
+		SWIM_LAG = 0.8, -- radians of phase per bone along the body
+		SLITHER_STILL = 0.25, -- how much a snake waves standing still
+		LEG_TUCK = 38,
+		KNEE_TUCK = 30,
+		FLY_FIDGETS = { "look", "tilt", "spin", "wag" },
 		FIDGET_GAP = { 2.5, 6 },
 		FIDGET_SECONDS = {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
-			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1,
+			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 		},
 		BLEND_SECONDS = 0.25, -- standing <-> walking
 		DISTANCE = 70, -- only animated this close to the camera
@@ -95,30 +155,60 @@ return {
 	-- optionally in one of its colour variants (a SurfaceAppearance in the model's Variants folder). Cards not
 	-- listed use a model named after the card, else the placeholder. Cute Pets: bought pack (BabBabyTV).
 	CREATURE_MODELS = {
-		Cindercub = { pack = "CutePets", model = "RedPanda" },
-		Puffpuddle = { pack = "CutePets", model = "Axolotl" },
-		Sprouthop = { pack = "CutePets", model = "Bunny" },
-		Zappit = { pack = "CutePets", model = "Hamster" },
-		Gloomlet = { pack = "CutePets", model = "Cat" },
-		Ashbeak = { pack = "CutePets", model = "Chick" },
-		Shellshy = { pack = "CutePets", model = "Penguin" },
-		Mossmole = { pack = "CutePets", model = "Capybara" },
-		Wispurr = { pack = "CutePets", model = "CrystalCat" },
-		Coalbit = { pack = "CutePets", model = "Raccoon" },
-		Petalpaw = { pack = "CutePets", model = "Fawn" },
-		Hushmoth = { pack = "CutePets", model = "Owl", variant = "Shadow" },
-		Sparkrat = { pack = "CutePets", model = "Hamster", variant = "Golden" },
-		Driplet = { pack = "CutePets", model = "Penguin", variant = "Rainbow" },
-		Blazehound = { pack = "CutePets", model = "Puppy" },
-		Boltlynx = { pack = "CutePets", model = "Cat", variant = "Golden" },
-		Nightowl = { pack = "CutePets", model = "Owl" },
-		Vinewyrm = { pack = "CutePets", model = "BabyDragon" },
-		Emberwing = { pack = "CutePets", model = "Phoenix" },
-		Voltkit = { pack = "CutePets", model = "Fox", variant = "Golden" },
-		Briarhorn = { pack = "CutePets", model = "Unicorn" },
-		Duskstalker = { pack = "CutePets", model = "ShadowDragon" },
-		["Eclipse Fox"] = { pack = "CutePets", model = "Kitsune" },
-	} :: { [string]: { pack: string, model: string, variant: string? } },
+		-- Ultra Detailed pack (bought): rigged without animations, so Util/RigGuess finds the legs, tail and head
+		-- and the code walk drives them; rigs without legs hop. Tints colour the models to their element.
+		Cindercub = { pack = "UltraPets", model = "RedMole" },
+		Ashbeak = { pack = "UltraPets", model = "StoneBird", tint = { 255, 150, 100 }, size = 1.3 },
+		Coalbit = { pack = "UltraPets", model = "Salamander", tint = { 130, 110, 110 } },
+		Blazehound = { pack = "UltraPets", model = "HotDog" },
+		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },
+		Infernox = { pack = "UltraPets", model = "Flametor", size = 1.3 },
+		Emberwing = { pack = "UltraPets", model = "NeonSwallow", tint = { 255, 140, 80 } },
+		Puffpuddle = { pack = "UltraPets", model = "OtterKing" },
+		Shellshy = { pack = "UltraPets", model = "Turtle" },
+		Driplet = { pack = "UltraPets", model = "FrostDove" },
+		Reefray = { pack = "UltraPets", model = "MetalCrab" },
+		Mistfin = { pack = "UltraPets", model = "IceShark", size = 1.3 },
+		["Abyssal Koi"] = { pack = "UltraPets", model = "IceShark", tint = { 90, 110, 200 } },
+		Tidecaller = { pack = "UltraPets", model = "Merilux", size = 1.3 },
+		Sprouthop = { pack = "UltraPets", model = "RootFrog", size = 1.6 },
+		Mossmole = { pack = "UltraPets", model = "RedMole", tint = { 150, 210, 130 } },
+		Petalpaw = { pack = "UltraPets", model = "PlantSquirrel", size = 1.3 },
+		Thornback = { pack = "UltraPets", model = "KungFuMantis", size = 1.3 },
+		Vinewyrm = { pack = "UltraPets", model = "GiantSnake" },
+		Briarhorn = { pack = "UltraPets", model = "EarthBull", size = 1.3 },
+		Zappit = { pack = "UltraPets", model = "FairyRabbit", tint = { 255, 240, 150 } },
+		Fizzlebug = { pack = "UltraPets", model = "Venowasp" },
+		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },
+		Boltlynx = { pack = "UltraPets", model = "Leonstrike", size = 1.3 },
+		Stormjack = { pack = "UltraPets", model = "Stormhydra", size = 1.8 },
+		Thunderhorn = { pack = "UltraPets", model = "Lumistag", tint = { 255, 235, 150 }, size = 1.3 },
+		Voltkit = { pack = "UltraPets", model = "PurpleFox", tint = { 255, 220, 120 }, size = 1.3 },
+		Gloomlet = { pack = "UltraPets", model = "DarkBat", size = 1.3 },
+		Wispurr = { pack = "UltraPets", model = "FairyRabbit", tint = { 170, 130, 230 }, size = 1.3 },
+		Hushmoth = { pack = "UltraPets", model = "FairyMoth", size = 1.3 },
+		Nightowl = { pack = "UltraPets", model = "HeronDemon" },
+		["Eclipse Fox"] = { pack = "UltraPets", model = "PurpleFox" },
+		Duskstalker = { pack = "UltraPets", model = "FighterMonkey", tint = { 150, 110, 210 }, size = 1.3 },
+		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
+		Solarion = { pack = "CrystalTitans", model = "RubyCerberus", size = 2.2 },
+		Voidmaw = { pack = "CrystalTitans", model = "RainbowHydra", tint = { 120, 70, 200 }, size = 2.2 },
+		-- Frontier set
+		Frostfang = { pack = "UltraPets", model = "PurpleFox", tint = { 170, 220, 255 } },
+		["Gale Sprite"] = { pack = "UltraPets", model = "NeonSwallow" },
+		Riftwalker = { pack = "UltraPets", model = "VoidDragon" },
+		["Cinder Titan"] = { pack = "UltraPets", model = "GorillaVulcano" },
+		["Aurora Drake"] = { pack = "CrystalTitans", model = "RainbowHydra", size = 2.2 },
+		Stormking = { pack = "CrystalTitans", model = "SapphireCrab", size = 2.2 },
+	} :: { [string]: { pack: string, model: string, variant: string?, tint: { number }?, hue: number?, size: number? } },
+	-- Saved-animation models (Util/KeyframePlayer): idle below WALK_FROM, run blending in from RUN_FROM to RUN_FULL
+	-- (studs a second at size 1, so following a player at 16 studs a second runs); the walk plays at normal speed
+	-- at WALK_SPEED, the run at RUN_SPEED. AMPLIFY exaggerates each animation's turns (the pack's own walk only bends
+	-- the legs 11 degrees, too little to see on a big spiky beast).
+	KEYFRAME_ANIM = {
+		WALK_FROM = 0.5, RUN_FROM = 4, RUN_FULL = 6.5, WALK_SPEED = 3, RUN_SPEED = 6.5, BLEND_SECONDS = 0.25,
+		AMPLIFY = { 1, 2, 1.6 }, -- idle, walk, run
+	},
 
 	-- Glow by rarity: point light brightness and range, sparkles per second, outline, pulsing aura
 	GLOW = {

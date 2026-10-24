@@ -529,6 +529,7 @@ function CondenserController.Start()
 	search.Font = Enum.Font.Gotham
 	search.TextSize = 14
 	search.TextColor3 = UIKit.Colors.Text
+	search.PlaceholderColor3 = UIKit.Colors.Subtext
 	search.Parent = panel
 	UIKit.corner(search, 8)
 	search:GetPropertyChangedSignal("Text"):Connect(function()

@@ -255,7 +255,8 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 				descendant.Transparency = 1
 			end
 		end
-		local height = math.max(Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[profile.card.rarity] or 1), Jobs.CREATURE_MIN_HEIGHT)
+		local size = Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[profile.card.rarity] or 1) * (creature.size or 1)
+		local height = math.max(size, Jobs.CREATURE_MIN_HEIGHT)
 		local feet = humanoid.HipHeight + root.Size.Y / 2
 		gui.Parent = root
 		gui.StudsOffset = Vector3.new(0, height - feet + 1.6, 0)
