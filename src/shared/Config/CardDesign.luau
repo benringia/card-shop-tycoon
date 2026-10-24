@@ -12,8 +12,51 @@ return {
 
 	-- Card art. A card's own picture (by card name) wins; otherwise its element's scene with the element
 	-- emoji standing in for the creature; with no scene either, an element-coloured gradient.
-	-- These will be replaced by renders of the creature models later.
-	ART_IMAGES = {} :: { [string]: string },
+	-- Own pictures: each card's creature model painted into its element's scene with Figma's image generator
+	-- (prompts in docs/card-art.md); the JPEGs are kept in assets/ui/card-art (spaces in names as _).
+	ART_IMAGES = {
+		Cindercub = "rbxassetid://126732765920014",
+		Puffpuddle = "rbxassetid://93976550251850",
+		Sprouthop = "rbxassetid://127358969281432",
+		Zappit = "rbxassetid://72205266740863",
+		Gloomlet = "rbxassetid://120458286445236",
+		Ashbeak = "rbxassetid://76273054801846",
+		Shellshy = "rbxassetid://102591477668369",
+		Mossmole = "rbxassetid://89537616362748",
+		Fizzlebug = "rbxassetid://128755684478888",
+		Wispurr = "rbxassetid://103469674409221",
+		Coalbit = "rbxassetid://90753846796689",
+		Driplet = "rbxassetid://136894180835732",
+		Petalpaw = "rbxassetid://90528551972311",
+		Sparkrat = "rbxassetid://112902791686860",
+		Hushmoth = "rbxassetid://88489800871262",
+		Blazehound = "rbxassetid://91834682792754",
+		Reefray = "rbxassetid://131946421951305",
+		Thornback = "rbxassetid://112745687041591",
+		Boltlynx = "rbxassetid://133440053219864",
+		Nightowl = "rbxassetid://79071974462559",
+		Magmaw = "rbxassetid://119953935554994",
+		Mistfin = "rbxassetid://108837635904996",
+		Vinewyrm = "rbxassetid://88152210657585",
+		Stormjack = "rbxassetid://127079643385444",
+		Infernox = "rbxassetid://116090911680429",
+		["Abyssal Koi"] = "rbxassetid://102778519848890",
+		Thunderhorn = "rbxassetid://99651725753080",
+		["Eclipse Fox"] = "rbxassetid://110036017937008",
+		Solarion = "rbxassetid://103027823544487",
+		Voidmaw = "rbxassetid://119360143577682",
+		Emberwing = "rbxassetid://101962217902584",
+		Tidecaller = "rbxassetid://75698620065742",
+		Briarhorn = "rbxassetid://102039719436551",
+		Voltkit = "rbxassetid://138894700834562",
+		Duskstalker = "rbxassetid://134524177073399",
+		Frostfang = "rbxassetid://71053054421008",
+		["Gale Sprite"] = "rbxassetid://135400093816653",
+		Riftwalker = "rbxassetid://73213439313305",
+		["Cinder Titan"] = "rbxassetid://110760394592318",
+		["Aurora Drake"] = "rbxassetid://100546252309842",
+		Stormking = "rbxassetid://101277001928201",
+	} :: { [string]: string },
 	-- By element. Painted with Figma's image generator; the JPEGs are kept in assets/ui/card-scenes.
 	SCENES = {
 		Ember = "rbxassetid://131233630668123", -- fireplace

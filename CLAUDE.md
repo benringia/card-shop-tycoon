@@ -15,7 +15,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
   into the place file's `ReplicatedStorage.PlaceProps` with Insert from File (docs/props.md).
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
-- `assets/ui/card-scenes` (one JPEG per element, ids in `Config/CardDesign`) and `assets/ui/packs` (pack fronts, ids in
+- `assets/ui/card-art` (one painting per card, `docs/card-art.md`), `assets/ui/card-scenes` (one JPEG per element; ids for both in `Config/CardDesign`) and `assets/ui/packs` (pack fronts, ids in
   `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
   `tools/ui-icons/slice_icons.py <sheet> <1|2|3>` (needs Pillow). Not synced by Rojo.

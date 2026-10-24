@@ -65,4 +65,15 @@ return {
 			end
 		end
 	end,
+
+	["grade S and A auras are lighter than a Legendary's, and A lighter than S"] = function()
+		local legendary, s, a = BeastFx.TIERS.Legendary, BeastFx.TIERS.S, BeastFx.TIERS.A
+		assert(legendary and s and a, "every tier is there")
+		for _, field in { "bones", "rate", "size", "light" } do
+			assert(legendary[field] > s[field], `S {field} isn't below Legendary`)
+			assert(s[field] > a[field], `A {field} isn't below S`)
+		end
+		assert(legendary.ground and legendary.arcs and legendary.dust, "the Legendary aura is complete")
+		assert(not s.ground and not a.ground and not a.arcs, "S and A keep it small")
+	end,
 }

@@ -2,7 +2,8 @@
 -- The big beasts' element aura (Crystal Titan Legendaries), on this client only: fire burning on bones spread
 -- over the body (Util/BeastFxRules picks them, so the flames move with the animation), lightning arcing between
 -- them, flames licking up from the ground, a flickering light and dust from the feet while it moves.
--- Everything turns off while the camera is far away. Numbers: Config/BeastFx.
+-- Everything turns off while the camera is far away. Legendaries get all of it; grade S and A copies of other
+-- cards a lighter tier (BeastFx.TIERS). Numbers: Config/BeastFx.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -13,10 +14,11 @@ local BeastFxRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastFxRu
 export type Aura = {
 	model: Model,
 	look: BeastFx.Look,
+	tier: BeastFx.Tier,
 	size: number,
 	bones: { Bone },
 	emitters: { ParticleEmitter },
-	dust: ParticleEmitter,
+	dust: ParticleEmitter?,
 	light: PointLight,
 	near: boolean,
 	nextArc: number,
@@ -32,13 +34,13 @@ local function rgb(color: BeastFx.Rgb): Color3
 	return Color3.fromRGB(color[1], color[2], color[3])
 end
 
-local function addFlame(parent: Instance, flame: BeastFx.Flame, size: number): ParticleEmitter
+local function addFlame(parent: Instance, flame: BeastFx.Flame, size: number, tier: BeastFx.Tier): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = "BeastFire"
 	emitter.Texture = flame.texture
 	emitter.Color = ColorSequence.new(rgb(flame.colors[1]), rgb(flame.colors[#flame.colors]))
-	emitter.Rate = flame.rate
-	local wide = flame.size * size
+	emitter.Rate = flame.rate * tier.rate
+	local wide = flame.size * size * tier.size
 	emitter.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, wide * 0.6),
 		NumberSequenceKeypoint.new(0.35, wide),
@@ -101,13 +103,15 @@ local function arc(aura: Aura)
 		end)
 		tween:Play()
 	end
-	aura.light.Brightness = aura.look.light.brightness * 2.5
+	aura.light.Brightness = aura.look.light.brightness * aura.tier.light * 2.5
 end
 
--- Adds the aura to a beast model standing on `floor`; nil for an element without a look
-function BeastAura.attach(model: Model, floor: CFrame, element: string, size: number): Aura?
+-- Adds the aura to a creature model standing on `floor`, at a tier (BeastFx.TIERS: Legendary, S, A); nil for an
+-- element or tier without one
+function BeastAura.attach(model: Model, floor: CFrame, element: string, size: number, tierName: string): Aura?
 	local look = BeastFx.ELEMENTS[element]
-	if not look then
+	local tier = BeastFx.TIERS[tierName]
+	if not look or not tier then
 		return nil
 	end
 	local bones: { Bone } = {}
@@ -121,11 +125,11 @@ function BeastAura.attach(model: Model, floor: CFrame, element: string, size: nu
 	end
 	local emitters: { ParticleEmitter } = {}
 	local burning: { Bone } = {}
-	for _, index in BeastFxRules.spread(points, BeastFx.BONES) do
+	for _, index in BeastFxRules.spread(points, tier.bones) do
 		local bone = bones[index]
 		table.insert(burning, bone)
 		for _, flame in look.flames do
-			table.insert(emitters, addFlame(bone, flame, size))
+			table.insert(emitters, addFlame(bone, flame, size, tier))
 		end
 	end
 
@@ -141,14 +145,16 @@ function BeastAura.attach(model: Model, floor: CFrame, element: string, size: nu
 	base.Size = Vector3.new(extent.X * 0.8, 0.2, extent.Z * 0.8)
 	base.CFrame = floor * CFrame.new(0, 0.1, 0)
 	base.Parent = model
-	for _, flame in look.ground do
-		table.insert(emitters, addFlame(base, flame, size))
+	if tier.ground then
+		for _, flame in look.ground do
+			table.insert(emitters, addFlame(base, flame, size, tier))
+		end
 	end
 
 	local light = Instance.new("PointLight")
 	light.Color = rgb(look.light.color)
-	light.Brightness = look.light.brightness
-	light.Range = look.light.range
+	light.Brightness = look.light.brightness * tier.light
+	light.Range = look.light.range * math.sqrt(tier.light)
 	light.Shadows = false
 	local glow = Instance.new("Attachment")
 	glow.Name = "Glow"
@@ -156,21 +162,26 @@ function BeastAura.attach(model: Model, floor: CFrame, element: string, size: nu
 	glow.Parent = base
 	light.Parent = glow
 
-	local dust = Instance.new("ParticleEmitter")
-	dust.Name = "Dust"
-	dust.Texture = DUST_TEXTURE
-	dust.Color = ColorSequence.new(Color3.fromRGB(200, 190, 175))
-	dust.Transparency = NumberSequence.new(0.55, 1)
-	dust.Size = NumberSequence.new(size * 0.6, size * 1.6)
-	dust.Lifetime = NumberRange.new(0.6, 1)
-	dust.Speed = NumberRange.new(1, 3)
-	dust.SpreadAngle = Vector2.new(70, 70)
-	dust.Rate = 0
-	dust.Parent = base
+	local dust: ParticleEmitter? = nil
+	if tier.dust then
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "Dust"
+		emitter.Texture = DUST_TEXTURE
+		emitter.Color = ColorSequence.new(Color3.fromRGB(200, 190, 175))
+		emitter.Transparency = NumberSequence.new(0.55, 1)
+		emitter.Size = NumberSequence.new(size * 0.6, size * 1.6)
+		emitter.Lifetime = NumberRange.new(0.6, 1)
+		emitter.Speed = NumberRange.new(1, 3)
+		emitter.SpreadAngle = Vector2.new(70, 70)
+		emitter.Rate = 0
+		emitter.Parent = base
+		dust = emitter
+	end
 
 	return {
 		model = model,
 		look = look,
+		tier = tier,
 		size = size,
 		bones = burning,
 		emitters = emitters,
@@ -192,19 +203,25 @@ function BeastAura.step(aura: Aura, dt: number, speed: number, moving: boolean, 
 		end
 		aura.light.Enabled = near
 	end
-	aura.dust.Rate = if near and moving then math.min(speed * BeastFx.DUST.PER_SPEED, BeastFx.DUST.MAX) else 0
+	local dust = aura.dust
+	if dust then
+		dust.Rate = if near and moving then math.min(speed * BeastFx.DUST.PER_SPEED, BeastFx.DUST.MAX) else 0
+	end
 	if not near then
 		return
 	end
 	aura.nextFlicker -= dt
 	if aura.nextFlicker <= 0 then
 		aura.nextFlicker = BeastFx.FLICKER_SECONDS
-		aura.light.Brightness = aura.look.light.brightness * rng:NextNumber(BeastFx.FLICKER[1], BeastFx.FLICKER[2])
+		aura.light.Brightness = aura.look.light.brightness * aura.tier.light * rng:NextNumber(BeastFx.FLICKER[1], BeastFx.FLICKER[2])
+	end
+	if not aura.tier.arcs then
+		return
 	end
 	aura.nextArc -= dt
 	if aura.nextArc <= 0 then
 		local every = aura.look.arcs.every
-		aura.nextArc = rng:NextNumber(every[1], every[2])
+		aura.nextArc = rng:NextNumber(every[1], every[2]) * aura.tier.arcSlow
 		arc(aura)
 	end
 end

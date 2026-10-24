@@ -19,6 +19,9 @@ export type Flame = {
 	spin: number?, -- degrees a second either way
 }
 export type Arcs = { color: Rgb, every: { number }, segments: number, jitter: number, width: number, seconds: number }
+-- How much of the aura a creature gets: Legendaries all of it; grade S and A copies of other cards a lighter
+-- touch. bones: how many burn; rate, size, light: times the look's own; arcSlow: lightning this many times rarer.
+export type Tier = { bones: number, rate: number, size: number, light: number, ground: boolean, arcs: boolean, arcSlow: number, dust: boolean }
 export type Look = {
 	flames: { Flame }, -- on every chosen bone
 	ground: { Flame }, -- from the footprint
@@ -48,7 +51,11 @@ local function arcs(color: Rgb, every: { number }): Arcs
 end
 
 return {
-	BONES = 9, -- bones the fire burns on, picked spread over the body (Util/BeastFxRules)
+	TIERS = {
+		Legendary = { bones = 9, rate = 1, size = 1, light = 1, ground = true, arcs = true, arcSlow = 1, dust = true },
+		S = { bones = 6, rate = 0.7, size = 0.95, light = 0.6, ground = false, arcs = true, arcSlow = 3, dust = false },
+		A = { bones = 4, rate = 0.5, size = 0.85, light = 0.4, ground = false, arcs = false, arcSlow = 1, dust = false },
+	} :: { [string]: Tier },
 	FAR = 120, -- no fire or lightning while the camera is further away than this (studs)
 	FLICKER_SECONDS = 0.08,
 	FLICKER = { 0.6, 1.2 }, -- light brightness times this, at random
