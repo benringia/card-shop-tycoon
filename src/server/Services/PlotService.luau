@@ -442,6 +442,12 @@ local function buildCheckout(register: Part, accent: Color3, parent: Instance)
 	trimPart(parent, "CounterTop", Vector3.new(size.X + 0.1, look.TOP_THICKNESS, size.Z + look.TOP_OVERHANG), cframe * CFrame.new(0, topY, -look.TOP_OVERHANG / 2), Props.color(look.TOP), Enum.Material.Marble)
 	local ledY = size.Y / 2 - look.TOP_THICKNESS - look.LED_HEIGHT / 2 - 0.05
 	trimPart(parent, "CounterLed", Vector3.new(size.X, look.LED_HEIGHT, 0.04), cframe * CFrame.new(0, ledY, -size.Z / 2 - 0.02), accent, Enum.Material.Neon)
+	-- The cashier's step behind the counter: solid, so the owner and cashier pets stand on it and show over the top
+	local step = look.STEP
+	local stepZ = size.Z / 2 + look.STAFF_BEHIND
+	local stepPart = shellPart(parent, "CashierStep", Vector3.new(step.width, step.height, step.depth), cframe * CFrame.new(0, bottom + step.height / 2, stepZ), Props.color(Town.SHOP.CHARCOAL))
+	stepPart.CanQuery = false
+	stepPart:SetAttribute("BlocksPlacement", true)
 
 	local pendant = look.PENDANT
 	local cordLength = Town.WALL_HEIGHT - pendant.BOTTOM - pendant.SHADE_HEIGHT

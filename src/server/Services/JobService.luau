@@ -14,6 +14,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local Jobs = require(Config:WaitForChild("Jobs"))
+local Party = require(Config:WaitForChild("Party"))
 local Town = require(Config:WaitForChild("Town"))
 local Monetization = require(Config:WaitForChild("Monetization"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
@@ -239,6 +240,26 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 	label.TextStrokeTransparency = 0.4
 	label.Parent = gui
 	gui.Parent = head or root
+
+	-- Cards with a creature model (Party.CREATURE_MODELS) are drawn by each client on this rig, which then only
+	-- walks (WorkerVisualController): hide it and lift the name over the creature
+	local creature = Party.CREATURE_MODELS[profile.card.name]
+	local models = ReplicatedStorage:FindFirstChild("CreatureModels")
+	local pack = if creature and models then models:FindFirstChild(creature.pack) else nil
+	if pack and pack:FindFirstChild(creature.model) then
+		model:SetAttribute("CardId", profile.card.id)
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Transparency = 1
+			elseif descendant:IsA("Decal") then
+				descendant.Transparency = 1
+			end
+		end
+		local height = math.max(Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[profile.card.rarity] or 1), Jobs.CREATURE_MIN_HEIGHT)
+		local feet = humanoid.HipHeight + root.Size.Y / 2
+		gui.Parent = root
+		gui.StudsOffset = Vector3.new(0, height - feet + 1.6, 0)
+	end
 
 	model.Parent = workersFolder
 	root:SetNetworkOwner(nil) -- server-owned physics, like customers

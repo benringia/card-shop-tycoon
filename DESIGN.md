@@ -268,8 +268,15 @@ Each pack = 5 cards:
 ### 5.5 Card art plan
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
 - All art must be original and uploaded as decals/images to Roblox.
-- Summoned creatures use free or bought Creator Store models as stand-ins for now, mapped by card name, with a
-  placeholder blob for cards without one. How to add, size and animate them: `docs/creatures.md`.
+- Summoned creatures use free or bought Creator Store models as stand-ins for now, with a placeholder blob for
+  cards without one. 23 cards use the bought Cute Pets pack (`Party.CREATURE_MODELS`: a pack model per card, some
+  in its Golden, Rainbow or Shadow colours so shared models still differ); Legendaries, Frontier cards and a few
+  others keep the placeholder until higher-rarity models are chosen. The pets' bones are animated in code on
+  each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping, breathing, tail wags,
+  ear flops, hip sways for tails without bones, and idle fidgets (look around, tilt, sniff, stretch, happy wag,
+  hop, spin, shake, sit, scratch, yawn); creatures without bones hop, spin, shake, look round and bounce. How to
+  add, size and animate them:
+  `docs/creatures.md`.
 
 ### 5.6 What you do with pulled cards
 - **Binder:** collection book UI, shows owned/missing, completion % (cards on display count as owned).
@@ -569,7 +576,10 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
   a dropped box goes back to the pad, a mis-scan is scanned again. Mistakes cost time only.
 - **XP:** 2 per minute per working card, only while you're online. Battles and quests will be the main way to level.
 - Working cards are locked: no display, condensing or second job until unassigned.
-- In the shop they're placeholder creatures (R15 rig in the element colour, sized by rarity) until real models (step 3).
+- In the shop they walk as invisible R15 rigs (pathfinding) that each client draws as the card's creature model
+  (`WorkerVisualController`, `Party.CREATURE_MODELS`; at least `Jobs.CREATURE_MIN_HEIGHT` 3.4 tall), with the motion
+  kit; cards without a model show the R15 rig in the element colour, sized by rarity. The cashier stands on a low
+  charcoal step behind the counter (`Town.COUNTER.STEP`, solid, 1 tall) so even a small pet shows over it.
 
 ### 7.5 Tuning goals
 - First upgrade within ~3 minutes.

@@ -66,13 +66,6 @@ local function makePlaceholder(color: Color3, flying: boolean): Model
 	return model
 end
 
--- Finds the model for this card: its own (by card name) or a shared one (Party.MODEL_FOR_CARD)
-local function getTemplate(cardName: string): (Model?, boolean)
-	local shared = Party.MODEL_FOR_CARD[cardName]
-	local template = CreatureVisuals.getTemplate("CreatureModels", shared or cardName, Party.MAX_MODEL_PARTS)
-	return template, template ~= nil and shared ~= nil
-end
-
 local function addGlow(creature: Creature, element: string, grade: string, stars: number)
 	local glow = Party.GLOW[creature.rarity] or Party.GLOW.Common
 	local color = Cards.ELEMENTS[element] or Color3.new(1, 1, 1)
@@ -194,21 +187,16 @@ local function add(marker: BasePart)
 		return
 	end
 	local flying = table.find(Party.FLYING, card.name) ~= nil
-	local template, shared = getTemplate(card.name)
+	local template, variant = CreatureVisuals.cardTemplate(card.name)
 	local model = if template then template:Clone() else makePlaceholder(Cards.ELEMENTS[card.element], flying)
 	CreatureVisuals.strip(model)
 	model.Name = `{card.name}_{marker:GetAttribute("OwnerUserId")}`
-	if shared then
-		-- One model for several cards: tint untextured parts toward the card's element so they differ
-		for _, descendant in model:GetDescendants() do
-			if descendant:IsA("BasePart") then
-				descendant.Color = descendant.Color:Lerp(Cards.ELEMENTS[card.element], 0.35)
-			end
-		end
+	if template and variant then
+		CreatureVisuals.applyVariant(model, variant)
 	end
 
 	local height = Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[card.rarity] or 1)
-	local body = CreatureVisuals.build(model, marker, height, flying)
+	local body = CreatureVisuals.build(model, marker, height, flying, if template then template.Name else nil)
 	local tagColor = rarityColor(card.rarity):Lerp(Color3.new(1, 1, 1), 0.35)
 	local creature: Creature = {
 		marker = marker,
@@ -270,6 +258,8 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 end
 
 function CreatureController.Start()
+	-- Every creature model downloads in the background (the party bar starts its own party's first)
+	CreatureVisuals.preload({})
 	local folder = workspace:WaitForChild("Creatures")
 	local function watch(child: Instance)
 		if not child:IsA("BasePart") then

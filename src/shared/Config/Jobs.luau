@@ -26,4 +26,7 @@ return {
 	ACTION_COOLDOWN = 0.5, -- seconds between assign/unassign requests (server)
 	STATUS_SEND_SECONDS = 1, -- status updates to the owner are batched to at most one per this
 	RARITY_SCALE = { Common = 0.8, Rare = 0.9, ["Very Rare"] = 1, Epic = 1.15, Legendary = 1.3 },
+	-- Workers drawn with a creature model (WorkerVisualController) are at least this tall, so a cashier shows
+	-- over the counter (2.5 tall) even as a small Common
+	CREATURE_MIN_HEIGHT = 3.4,
 }

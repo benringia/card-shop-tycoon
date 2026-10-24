@@ -22,6 +22,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
@@ -241,8 +242,31 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	}
 end
 
+local preloaded = false
+
+-- Once the party is known: download its pets' models first, then every other creature model
+local function preloadModels(beasts: { [string]: any })
+	if preloaded then
+		return
+	end
+	local names = {}
+	for _, beastId in slots do
+		local beast = beasts[beastId]
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		if card then
+			table.insert(names, card.name)
+		end
+	end
+	if #names == 0 then
+		return
+	end
+	preloaded = true
+	CreatureVisuals.preload(names)
+end
+
 local function render()
 	local beasts = BinderController.GetBeasts()
+	preloadModels(beasts)
 	for slot, view in slotViews do
 		local beast = beasts[slots[slot] or ""]
 		local card = if beast then Cards.ById[beast.cardId] else nil
