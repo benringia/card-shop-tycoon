@@ -1,5 +1,5 @@
 --!strict
--- The main town around the plots (main town spec): grass, the cobblestone street, the plaza pad round the
+-- The main town around the plots (main town spec): grass, the asphalt street and paved sidewalks, the plaza pad round the
 -- healing spring, every decoration from TownLayout (swappable props, docs/props.md), portal frames and the
 -- lighting. Main game only. Everything here is decoration: no gameplay reads it.
 local Lighting = game:GetService("Lighting")
@@ -22,6 +22,8 @@ local Props = require(SharedUtil:WaitForChild("Props"))
 local TownService = {}
 
 local GROUND_THICKNESS = 0.2 -- street and plaza sink half into the baseplate: no z-fighting on top
+local SIDEWALK_HEIGHT = 0.4 -- a low kerb above the street
+local MARKING_THICKNESS = 0.04 -- each marking or plaza layer sits this much above the one under it
 
 -- The plaza portals: floating names, their ring part's name (built by WildService, FrontierService and
 -- ArenaService) and their look (Town.PORTAL_EFFECTS)
@@ -99,17 +101,83 @@ local function buildBounds(folder: Folder)
 	end
 end
 
+-- A thin marking lying on a surface whose top is at `top`: no collisions, no shadow
+local function marking(parent: Instance, name: string, size: Vector3, x: number, top: number, z: number, color: { number }, material: Enum.Material): Part
+	local part = ground(parent, name, Vector3.new(size.X, MARKING_THICKNESS, size.Z), CFrame.new(x, top + MARKING_THICKNESS / 2, z), color, material)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CastShadow = false
+	return part
+end
+
+-- A flat disc centred on the spring with its top at `top` (cylinders run along X: lay it flat)
+local function disc(parent: Instance, name: string, radius: number, top: number, color: { number }, material: Enum.Material): Part
+	local spring = Wild.SPRING
+	local part = ground(parent, name, Vector3.new(GROUND_THICKNESS, radius * 2, radius * 2), CFrame.new(spring.x, top - GROUND_THICKNESS / 2, spring.z) * CFrame.Angles(0, 0, math.rad(90)), color, material)
+	part.Shape = Enum.PartType.Cylinder
+	part.CanCollide = false
+	return part
+end
+
+-- Square paving slabs: a seam across the sidewalk every tile, and one down its middle
+local function buildSidewalkSeams(folder: Instance, z: number, top: number)
+	local floor = Town.FLOOR
+	local layout = Town.LAYOUT
+	local length = layout.STREET_HALF_LENGTH * 2
+	marking(folder, "Seam", Vector3.new(length, 0, floor.SEAM_WIDTH), 0, top, z, floor.SEAM_COLOR, Enum.Material.Concrete)
+	for x = -layout.STREET_HALF_LENGTH + floor.SIDEWALK_TILE, layout.STREET_HALF_LENGTH - floor.SIDEWALK_TILE, floor.SIDEWALK_TILE do
+		marking(folder, "Seam", Vector3.new(floor.SEAM_WIDTH, 0, layout.SIDEWALK), x, top, z, floor.SEAM_COLOR, Enum.Material.Concrete)
+	end
+end
+
+-- The plaza's glowing rings: a neon disc with a stone disc just inside it on top, so only a thin ring shows
+local function buildPlazaRings(folder: Instance, top: number)
+	local floor = Town.FLOOR
+	local radii = { Town.LAYOUT.PLAZA_RADIUS - floor.RING_RIM_INSET, Combat.SPRING_RADIUS }
+	for _, radius in radii do
+		top += MARKING_THICKNESS
+		local glow = disc(folder, "PlazaRing", radius + floor.RING_WIDTH, top, floor.RING_COLOR, Enum.Material.Neon)
+		glow.Transparency = floor.GLOW_TRANSPARENCY
+		glow.CastShadow = false
+		top += MARKING_THICKNESS
+		disc(folder, "Plaza", radius, top, Town.PLAZA_COLOR, Enum.Material.Limestone)
+	end
+end
+
 local function buildGround(folder: Folder)
 	buildBounds(folder)
 
 	local layout = Town.LAYOUT
-	ground(folder, "Street", Vector3.new(layout.STREET_HALF_LENGTH * 2, GROUND_THICKNESS, PlotConfig.STREET_WIDTH), CFrame.new(), Town.STREET_COLOR, Enum.Material.Cobblestone)
+	local floor = Town.FLOOR
+	local world = getWorld()
+	ground(folder, "Street", Vector3.new(layout.STREET_HALF_LENGTH * 2, GROUND_THICKNESS, PlotConfig.STREET_WIDTH), CFrame.new(), Town.STREET_COLOR, Enum.Material.Asphalt)
+	local streetTop = GROUND_THICKNESS / 2
 
-	local spring = Wild.SPRING
-	-- Cylinders run along X: lay the disc flat
-	local plaza = ground(folder, "Plaza", Vector3.new(GROUND_THICKNESS * 1.5, layout.PLAZA_RADIUS * 2, layout.PLAZA_RADIUS * 2), CFrame.new(spring.x, 0, spring.z) * CFrame.Angles(0, 0, math.rad(90)), Town.PLAZA_COLOR, Enum.Material.Slate)
-	plaza.Shape = Enum.PartType.Cylinder
-	plaza.CanCollide = false
+	-- Pale concrete sidewalks along each shop row's front, a little above the street, paved in square slabs
+	local walk = layout.SIDEWALK
+	for _, side in { -1, 1 } do
+		local z = side * (PlotConfig.STREET_WIDTH / 2 - walk / 2)
+		local sidewalk = ground(folder, "Sidewalk", Vector3.new(layout.STREET_HALF_LENGTH * 2, SIDEWALK_HEIGHT, walk), CFrame.new(0, (SIDEWALK_HEIGHT - GROUND_THICKNESS) / 2, z), Town.SIDEWALK_COLOR, Enum.Material.Concrete)
+		sidewalk.CanCollide = false
+		buildSidewalkSeams(folder, z, sidewalk.Position.Y + SIDEWALK_HEIGHT / 2)
+	end
+
+	for _, stripe in TownLayout.crosswalks(world, Town) do
+		marking(folder, "Crosswalk", Vector3.new(stripe.maxX - stripe.minX, 0, stripe.maxZ - stripe.minZ), (stripe.minX + stripe.maxX) / 2, streetTop, (stripe.minZ + stripe.maxZ) / 2, floor.CROSSWALK.COLOR, Enum.Material.SmoothPlastic)
+	end
+
+	-- Pale limestone plaza with glowing rings; glowing lines in each portal's colour lead from it to the portals
+	local plazaTop = streetTop + MARKING_THICKNESS
+	disc(folder, "Plaza", layout.PLAZA_RADIUS, plazaTop, Town.PLAZA_COLOR, Enum.Material.Limestone)
+	buildPlazaRings(folder, plazaTop)
+
+	for index, path in TownLayout.portalPaths(world, Town) do
+		local look = Town.PORTAL_EFFECTS[PORTAL_LABELS[index].effect]
+		local length = math.abs(path.to.x - path.from.x)
+		-- Above the crosswalk stripes it crosses
+		local line = marking(folder, "PortalPath", Vector3.new(length, 0, floor.PATH_WIDTH), (path.from.x + path.to.x) / 2, streetTop + MARKING_THICKNESS, path.from.z, look.ring, Enum.Material.Neon)
+		line.Transparency = floor.GLOW_TRANSPARENCY
+	end
 end
 
 local function addLabelText(parent: Instance, text: string, size: number, position: UDim2, height: number)

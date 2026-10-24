@@ -48,8 +48,12 @@ Order stock (computer) → Restock shelves → Set prices
 - Other players can walk into your shop and see your shelves and display cases.
 
 **Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
-village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
-between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring (the HealingSpring prop slot, 14 tall: the free "Better Low Poly Fountain" by scene_boy,
+village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a charcoal asphalt street
+between the two rows (x -110..110, 96 wide: shop fronts at z ±48) with a zebra crossing in front of every shop door, a pale
+concrete sidewalk (8 wide, square 4-stud slabs) along each row's front, a round pale limestone plaza (radius 26, open room for
+event NPCs and event stalls) with two glowing blue rings set in it (the healing area's edge at 12 and one near the rim), a
+glowing line on the street from the plaza to each portal in that portal's colour (`Town.FLOOR`, `TownLayout.crosswalks` /
+`portalPaths`) round the healing spring (the HealingSpring prop slot, 14 tall: the free "Better Low Poly Fountain" by scene_boy,
 recoloured moonstone with glowing water, kept in the place's `PlaceProps` (copy: `assets/place-props/HealingSpring.rbxm`);
 the code adds a big turning, bobbing gem over its top, rising sparkles, a blue light, breathing water and a faint
 disc for the 12-stud healing area; a part-built stand-in is used if the model is missing). Around it, `Workspace.PlazaGarden` (hand-placed in the
@@ -62,11 +66,12 @@ with light haze, soft bloom and low wall shine (`Town.LIGHTING`; dim warm shop c
 the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
 with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
 embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Plots stand 24 studs apart. The town is
-the whole main-game world: the Baseplate is cut to x ±130, z ±90 and ringed with invisible walls (`Town.BOUNDS`). Code builds the fixed pieces (`Util/TownLayout`, same on every
-server): lamps on the street edges at every plot gap and row end, 4 benches round the spring, a fence round the whole
-island just inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except lamps, portals
+the whole main-game world: the Baseplate is cut to x ±130, z ±110 and ringed with invisible walls (`Town.BOUNDS`). Code builds the fixed pieces (`Util/TownLayout`, same on every
+server): modern black LED street lights (StreetLight slot, 11 tall, arm over the street) on the sidewalks at every plot gap
+and row end, 4 benches round the spring, a trimmed hedge on a concrete curb (Hedge slot) round the whole island just
+inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except street lights, portals
 and the plaza), within 10 studs of a portal, or in the spring area (except benches). The scenery (trees, flowers,
-rocks, crates ...) is hand-placed in Studio and saved as `assets/town/TownDecor.rbxm` → `Workspace.TownDecor`
+rocks, and a modern planter each side of every plot gap) is hand-placed in Studio and saved as `assets/town/TownDecor.rbxm` → `Workspace.TownDecor`
 (docs/props.md). **Shops:** one modern look for every shop (`Town.SHOP`, built in code by PlotService): smooth white
 walls outside the floor (18 tall) with a charcoal band along their foot; a glass shop front 12 studs tall with thin black
 frames, three panes each side and a transom; automatic sliding glass doors in the middle (12 wide, 10 tall) that part
