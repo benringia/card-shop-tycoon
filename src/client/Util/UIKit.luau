@@ -42,6 +42,21 @@ local function updateTouchControls()
 	GuiService.TouchControlsEnabled = next(openPanels) == nil
 end
 
+-- Main windows (UIKit.panel) open one at a time: showing one closes the others, so they never pile up.
+-- A panel with the "Overlay" attribute opens over another (the Rarity guide over the binder) and closes nothing.
+local mainPanels: { [Frame]: boolean } = {}
+
+local function closeOthers(frame: Frame)
+	if frame:GetAttribute("Overlay") then
+		return
+	end
+	for other in mainPanels do
+		if other ~= frame and other.Visible and not other:GetAttribute("Overlay") then
+			other.Visible = false
+		end
+	end
+end
+
 local function trackPanel(frame: Frame)
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		openPanels[frame] = if frame.Visible then true else nil
@@ -300,6 +315,15 @@ function UIKit.panel(parent: Instance, name: string, title: string): (Frame, Scr
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = list
 
+	mainPanels[frame] = true
+	frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if frame.Visible then
+			closeOthers(frame)
+		end
+	end)
+	frame.Destroying:Connect(function()
+		mainPanels[frame] = nil
+	end)
 	trackPanel(frame)
 	return frame, list
 end

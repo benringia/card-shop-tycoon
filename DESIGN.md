@@ -782,10 +782,14 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. Each icon sits over its
   pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
   HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
-  (Angry, Thinking, Happy); made as two sheets with Figma's image generator and cut by
+  (Angry, Thinking, Happy); made as three sheets with Figma's image generator and cut by
   `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
+- **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
+  closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
+  closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
+- **Prices** rows show each product's picture (`Products.icon`, a UIIcons name) beside its name and price.
 - **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
@@ -797,7 +801,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   with the page counter just under it) when the corner buttons stay clear, else fits between the top
   row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
   page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
-  (0.6s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,
+  (0.35s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,
   darkens edge-on and casts a shadow on the page underneath, then lands on the other side showing the next cards. Q/E, the
   arrows and a swipe turn pages. Page counter pill ("2-3 / 9"); arrows with key chips
   (Q/E one spread). Top right: Filters (F) and close. The Filters panel (search, Show

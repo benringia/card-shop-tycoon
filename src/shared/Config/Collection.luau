@@ -47,7 +47,7 @@ return {
 		INK = Color3.fromRGB(240, 242, 250), -- text on the dark pages
 		SUBTEXT = Color3.fromRGB(170, 178, 205),
 		-- Page turn: the page rotates about the spine and lands on the other side showing the next cards
-		FLIP_SECONDS = 0.6,
+		FLIP_SECONDS = 0.35,
 		FLIP_SHADE = 0.55, -- how dark a page gets edge-on (0 none, 1 black)
 		FLIP_LIFT = 0.07, -- how much it swells as it lifts toward the viewer
 		FLIP_SHADOW = 0.35, -- how far its shadow stretches past it, of a page's width

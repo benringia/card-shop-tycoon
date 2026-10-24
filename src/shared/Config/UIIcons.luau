@@ -1,5 +1,5 @@
 --!strict
--- The game's UI icons (glossy cartoon style), by name. Made as two sheets with Figma's image generator and cut up
+-- The game's UI icons (glossy cartoon style), by name. Made as three sheets with Figma's image generator and cut up
 -- by tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. HUD tiles, the top bar and customer bubbles
 -- use these names; anything not listed here is drawn as text (an emoji). See DESIGN.md 10.6.
 return {
@@ -36,4 +36,21 @@ return {
 	Volt = "rbxassetid://90302026496319",
 	Shade = "rbxassetid://97634629126115",
 	Coin = "rbxassetid://127231658719284",
+	-- Sheet 3
+	BoosterPack = "rbxassetid://137878291773371",
+	Sleeves = "rbxassetid://117859693650848",
+	DeckBox = "rbxassetid://74533547590343",
+	BoosterBox = "rbxassetid://121791535580264",
+	Register = "rbxassetid://97522123786450",
+	Condenser = "rbxassetid://101424203398327",
+	Order = "rbxassetid://112511223667323",
+	Customer = "rbxassetid://77604247843612",
+	Trophy = "rbxassetid://118220724387080",
+	Gift = "rbxassetid://81487341571661",
+	Lock = "rbxassetid://126931591650684",
+	Check = "rbxassetid://134111044278552",
+	Next = "rbxassetid://85219685038174",
+	Heart = "rbxassetid://81178736634418",
+	Star = "rbxassetid://109389918339627",
+	Gem = "rbxassetid://78526112614740",
 } :: { [string]: string }

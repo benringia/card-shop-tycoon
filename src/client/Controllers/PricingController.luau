@@ -15,6 +15,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Product = typeof(Products.List[1])
@@ -103,8 +104,19 @@ end
 local function buildRow(product: Product, parent: Instance, order: number): Row
 	local frame, plus, detail = UIKit.row(parent, order, product.name, "")
 	frame.Name = product.id
-	detail.Size = UDim2.new(1, -140, 0, 32)
+	detail.Size = UDim2.new(1, -208, 0, 32)
 	detail.TextSize = 14
+	-- The product's picture on the left, its name and price after it
+	local picture = Icon.make(frame, product.icon, UDim2.fromOffset(56, 56))
+	picture.AnchorPoint = Vector2.new(0, 0.5)
+	picture.Position = UDim2.new(0, 10, 0.5, 0)
+	for _, label in frame:GetChildren() do
+		if label:IsA("TextLabel") then
+			label.Position += UDim2.fromOffset(66, 0)
+			label.Size -= UDim2.fromOffset(66, 0)
+		end
+	end
+	detail.Size = UDim2.new(1, -208, 0, 32)
 
 	plus.Text = "+"
 	plus.TextSize = 28

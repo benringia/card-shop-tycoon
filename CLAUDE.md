@@ -18,7 +18,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/ui/card-scenes` (one JPEG per element, ids in `Config/CardDesign`) and `assets/ui/packs` (pack fronts, ids in
   `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
-  `tools/ui-icons/slice_icons.py <sheet> <1|2>` (needs Pillow). Not synced by Rojo.
+  `tools/ui-icons/slice_icons.py <sheet> <1|2|3>` (needs Pillow). Not synced by Rojo.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 
@@ -66,6 +66,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Text: plain ASCII plus `·` and emoji only. Gotham/FredokaOne draw symbols like ✦ − ★ as empty boxes.
 - HUD buttons go through `Util/Hud` (Manage tray on the left, tiles at the bottom centre, context tiles for
   Drop/Rip), clear of the mobile thumbstick and jump button. Look and motion: `Util/UIKit`, `Util/Motion`.
+- `UIKit.panel` windows open one at a time (set the `Overlay` attribute for one that opens on top of another).
 - Panels made with `UIKit.panel` hide the thumbstick and jump button while open (they cover panel buttons on phones).
 - Two ProximityPrompts on one part overlap: show one at a time, or offset with `UIOffset`.
 - Owner-only prompts are created on the client for the owner's own plot, so visitors never see them.

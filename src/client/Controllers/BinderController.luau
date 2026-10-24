@@ -2499,7 +2499,7 @@ function BinderController.Start()
 	-- Phones: a swipe across the open binder turns the page (left = next)
 	if Collection.BOOK.SWIPE then
 		UserInputService.TouchSwipe:Connect(function(direction)
-			if not panel.Visible or bagOverlay.Visible or detail.Visible then
+			if not panel.Visible or bagOverlay.Visible or detail.Visible or RarityGuideController.IsOpen() then
 				return
 			end
 			if direction == Enum.SwipeDirection.Left then
@@ -2517,7 +2517,8 @@ function BinderController.Start()
 			toggle()
 			return
 		end
-		if not panel.Visible or bagOverlay.Visible or detail.Visible or isTyping() then
+		-- Windows over the binder (the Rarity guide) keep the keys
+		if not panel.Visible or bagOverlay.Visible or detail.Visible or isTyping() or RarityGuideController.IsOpen() then
 			return
 		end
 		local step = PAGE_KEYS[input.KeyCode]

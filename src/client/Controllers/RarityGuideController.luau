@@ -135,6 +135,7 @@ end
 
 local function build(): Frame
 	local frame, list = UIKit.panel(UIController.GetScreenGui(), "RarityGuide", "ℹ️ Rarity guide")
+	frame:SetAttribute("Overlay", true) -- opens over the binder or pack results without closing them
 	frame.ZIndex = GUIDE_Z_INDEX
 	frame.Size = UDim2.fromScale(0.92, 0.88)
 	local limit = frame:FindFirstChildOfClass("UISizeConstraint")
@@ -167,6 +168,10 @@ local function build(): Frame
 	end
 	addLine(list, 21, `🏅 Grades: every card gets one when pulled. {table.concat(gradeParts, " · ")}.`)
 	return frame
+end
+
+function RarityGuideController.IsOpen(): boolean
+	return panel ~= nil and panel.Visible
 end
 
 -- Returns the guide's panel, so screens drawn above the HUD (the pack results) can lift it over themselves
