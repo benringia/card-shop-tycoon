@@ -18,9 +18,9 @@ return {
 		-- (MARGIN above, MARGIN_BOTTOM below for the page counter tab); when that would run into the corner
 		-- buttons (Cards / Bag / Rarity guide on the left, Filters / close / progress on the right) it fits
 		-- between the top and bottom rows instead. Pixels.
-		ASPECT = 1.5,
-		MARGIN = 14,
-		MARGIN_BOTTOM = 30,
+		ASPECT = 1.36, -- a touch narrower than wide-open, so it stands taller
+		MARGIN = 6,
+		MARGIN_BOTTOM = 24,
 		TOP_BAND = 64,
 		BOTTOM_BAND = 52,
 		CORNER_LEFT = 270, -- room the left corner buttons need

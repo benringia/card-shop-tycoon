@@ -148,6 +148,7 @@ local spreadIndex = 1
 local pocketsPerPage = POCKET_OPTIONS.preferredColumns * POCKET_OPTIONS.preferredRows
 local pageGrids: { UIGridLayout } = {}
 local progressCard: Frame
+local backdropGui: ScreenGui -- the dimmed world behind the binder (off while a card is inspected)
 local arrowLanes: { Frame } = {}
 -- The page turn (flipTo): a sheet lying over the turning page that carries its cards as it folds
 local flipSheet: Frame
@@ -1096,7 +1097,8 @@ function setInspecting(on: boolean)
 	if not on then
 		CardInspectorController.Close()
 	end
-	panel.BackgroundTransparency = if on then 1 else 0.45
+	-- The 3D card needs the world undimmed
+	backdropGui.Enabled = panel.Visible and not on
 	bookHolder.Visible = not on
 	for _, name in { "FilterButton", "SetProgress", "RarityGuide" } do
 		local item = panel:FindFirstChild(name)
@@ -1990,7 +1992,7 @@ local function buildPanel(parent: Instance)
 	panel.BackgroundTransparency = 1
 	-- The dimmed backdrop is its own screen that covers Roblox's top bar strip too (a normal screen starts below
 	-- it), drawn behind the binder; the buttons stay below the bar
-	local backdropGui = Instance.new("ScreenGui")
+	backdropGui = Instance.new("ScreenGui")
 	backdropGui.Name = "BinderBackdrop"
 	backdropGui.IgnoreGuiInset = true
 	backdropGui.ResetOnSpawn = false
@@ -2006,7 +2008,7 @@ local function buildPanel(parent: Instance)
 	backdrop.Active = true -- clicks on the backdrop don't reach the world
 	backdrop.Parent = backdropGui
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
-		backdropGui.Enabled = panel.Visible
+		backdropGui.Enabled = panel.Visible and bookHolder.Visible
 	end)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then

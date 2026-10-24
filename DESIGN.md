@@ -787,7 +787,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
   page is the cover: leather in the set's colour with an embossed border, a title band (name, "34 / 35
   collected"), the pack art in a framed window, a progress bar and the set's worth; then page 1. Pages hold 3x3
-  pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.5 wide
+  pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.36 wide
   to 1 tall) and nearly fills the screen's height when the corner buttons stay clear, else fits between the top
   row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
   page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
@@ -804,7 +804,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
 - **Card inspector** (`CardInspectorController`, `Config/Inspector`): tapping a binder card shows it as a real 3D
   card left of centre close in front of the camera (front: the card face; back: the card back), on a solid dark
-  sheet just behind it that hides the world (and your pet). Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
+  sheet just behind it that hides the world (and your pet); the binder's dim and always-on-top tags (customer mood bubbles) switch off while it shows. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
   Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
   Add to party and Back. Closing restores the camera; dying closes it too.
 - **Build menu** (`BuildController`): a "Build" panel with tabs Shelves / Cases / Fixtures / Decor (each shelf's

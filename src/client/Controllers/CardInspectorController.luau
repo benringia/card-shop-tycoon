@@ -170,6 +170,38 @@ function CardInspectorController.IsOpen(): boolean
 end
 
 -- Shows this card (and copy) in the inspector, opening it if needed
+-- Tags and bubbles drawn on top of everything (customer moods, pet name tags) would show through the backdrop:
+-- they're switched off while the card is up, and back on when it closes
+local hiddenTags: { [BillboardGui]: boolean } = {}
+local tagWatch: RBXScriptConnection? = nil
+
+local function hideTag(item: Instance)
+	if item:IsA("BillboardGui") and item.AlwaysOnTop and item.Enabled then
+		hiddenTags[item] = true
+		item.Enabled = false
+	end
+end
+
+local function hideTags()
+	for _, item in workspace:GetDescendants() do
+		hideTag(item)
+	end
+	tagWatch = workspace.DescendantAdded:Connect(hideTag)
+end
+
+local function showTags()
+	if tagWatch then
+		tagWatch:Disconnect()
+		tagWatch = nil
+	end
+	for tag in hiddenTags do
+		if tag.Parent then
+			tag.Enabled = true
+		end
+	end
+	table.clear(hiddenTags)
+end
+
 function CardInspectorController.Show(card: Card, foil: boolean, growth: Growth?)
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -177,6 +209,7 @@ function CardInspectorController.Show(card: Card, foil: boolean, growth: Growth?
 	end
 	if not backdrop then
 		buildBackdrop(camera)
+		hideTags()
 		savedCameraType = camera.CameraType
 		camera.CameraType = Enum.CameraType.Scriptable -- the camera holds still; drags turn the card
 		yaw, pitch, flipped = 0, 0, false
@@ -229,6 +262,7 @@ function CardInspectorController.Close()
 	if backdrop then
 		backdrop:Destroy()
 		backdrop = nil
+		showTags()
 	end
 	local camera = workspace.CurrentCamera
 	if camera and savedCameraType then
