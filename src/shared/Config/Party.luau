@@ -60,9 +60,9 @@ return {
 		GAP = 8,
 		RIM = 2.5,
 		LIFT = 1.12, -- the summoned card grows this much
-		TRAY = { 20, 28, 60 },
+		TRAY = { 22, 26, 38 },
 		TRAY_TRANSPARENCY = 0.1,
-		EMPTY = { 38, 46, 84 },
-		EMPTY_EDGE = { 90, 100, 140 },
+		EMPTY = { 36, 42, 58 },
+		EMPTY_EDGE = { 70, 78, 100 },
 	},
 }

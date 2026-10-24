@@ -1186,11 +1186,11 @@ local function buildResultsBar()
 	local fit = Instance.new("UIScale")
 	fit.Parent = resultsBar
 
-	addPill("YourCards", "Cards", "Your cards", WHITE, UIKit.Colors.Ink, 1)
+	addPill("YourCards", "Cards", "Your cards", UIKit.Colors.Row, UIKit.Colors.Text, 1)
 	newPill, newLabel = addPill("NewCount", "Star", "NEW x0", NEW_COLOR, UIKit.Colors.Ink, 2)
-	local _, value = addPill("Value", "Cash", "$0.00", WHITE, Color3.fromRGB(25, 140, 60), 3)
+	local _, value = addPill("Value", "Cash", "$0.00", UIKit.Colors.Row, Color3.fromRGB(110, 225, 140), 3)
 	valueLabel = value
-	local guide = addPill("RarityGuide", "Info", "Rarity guide", WHITE, UIKit.Colors.Accent, 4)
+	local guide = addPill("RarityGuide", "Info", "Rarity guide", UIKit.Colors.Row, UIKit.Colors.Accent, 4)
 	guide.AutoButtonColor = true
 	guide.Activated:Connect(openRarityGuide)
 end
@@ -1208,7 +1208,7 @@ local function roundButton(name: string, icon: string, key: string, y: number, o
 	button.ZIndex = 10
 	button.Parent = stage
 	UIKit.corner(button, ROUND_BUTTON / 2)
-	UIKit.outline(button, WHITE, 2)
+	UIKit.outline(button, UIKit.Colors.Text, 2)
 	local glyph = Icon.make(button, icon, UDim2.fromOffset(40, 40))
 	glyph.AnchorPoint = Vector2.new(0.5, 0.5)
 	glyph.Position = UDim2.fromScale(0.5, 0.5)
@@ -1321,7 +1321,7 @@ local function buildScreen()
 	hintPill.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP)
 	hintPill.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT)
 	hintPill.AutomaticSize = Enum.AutomaticSize.X
-	hintPill.BackgroundColor3 = UIKit.Colors.Ink
+	hintPill.BackgroundColor3 = UIKit.Colors.Panel
 	hintPill.BackgroundTransparency = 0.2
 	hintPill.Parent = stage
 	UIKit.corner(hintPill, PackOpening.PILL_HEIGHT / 2)
@@ -1390,16 +1390,16 @@ local function buildScreen()
 		oddsPanel.Visible = not oddsPanel.Visible
 	end)
 
-	-- How many are left in the carried box: a soft white pill top left
-	boxLabel = UIKit.label(stage, "", Enum.Font.FredokaOne, 18, UIKit.Colors.Ink)
+	-- How many are left in the carried box: a slate pill top left
+	boxLabel = UIKit.label(stage, "", Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
 	boxLabel.Name = "PacksLeft"
 	boxLabel.Position = UDim2.fromOffset(16, PackOpening.TOP)
 	boxLabel.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT)
 	boxLabel.AutomaticSize = Enum.AutomaticSize.X
 	boxLabel.TextWrapped = false
 	boxLabel.TextXAlignment = Enum.TextXAlignment.Center
-	boxLabel.BackgroundColor3 = WHITE
-	boxLabel.BackgroundTransparency = 0.15
+	boxLabel.BackgroundColor3 = UIKit.Colors.Row
+	boxLabel.BackgroundTransparency = 0.1
 	UIKit.corner(boxLabel, PackOpening.PILL_HEIGHT / 2)
 	UIKit.outline(boxLabel, UIKit.Colors.Outline, 1.5)
 	local boxPad = Instance.new("UIPadding")

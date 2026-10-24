@@ -16,7 +16,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Placement"))
 
-local TIP_COLOR = Color3.fromRGB(28, 36, 66)
+local TIP_COLOR = Color3.fromRGB(20, 24, 36) -- the windows' midnight
 local TIP_TEXT = Color3.fromRGB(255, 250, 235)
 local EMPTY_COLOR = Color3.fromRGB(225, 70, 60)
 local HOVER_COLOR = Color3.fromRGB(255, 255, 255)
@@ -177,7 +177,7 @@ function ShelfInfoController.Start()
 	tip.ZIndex = 60
 	tip.Visible = false
 	UIKit.corner(tip, 17)
-	UIKit.outline(tip, Color3.fromRGB(150, 170, 230), 2)
+	UIKit.outline(tip, UIKit.Colors.Accent, 1.5)
 
 	highlight = Instance.new("Highlight")
 	highlight.Name = "ShelfHover"

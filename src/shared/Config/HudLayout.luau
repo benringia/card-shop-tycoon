@@ -7,10 +7,10 @@ return {
 	BOTTOM_MARGIN = 16, -- the bottom row sits this far above the screen's bottom
 	GAP = 10,
 	TRAY = { PADDING = 8, TRANSPARENCY = 0.35 }, -- the bar the Manage tiles slide out in
-	TILE = Color3.fromRGB(38, 110, 245),
-	TILE_DARK = Color3.fromRGB(22, 70, 200), -- tile gradient bottom
+	TILE = Color3.fromRGB(38, 44, 64), -- midnight slate (UIKit Midnight & Gold)
+	TILE_DARK = Color3.fromRGB(22, 26, 38), -- tile gradient bottom
 	CONTEXT = Color3.fromRGB(245, 140, 40), -- contextual tiles (Rip a pack, Drop box)
-	KEY_CHIP = Color3.fromRGB(20, 28, 60),
+	KEY_CHIP = Color3.fromRGB(14, 16, 24),
 	-- The whole HUD shrinks with the screen's height on small screens (landscape phones): 1 at REFERENCE_HEIGHT
 	-- and up, never below MIN (tiles stay over 48 px to tap)
 	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7 },

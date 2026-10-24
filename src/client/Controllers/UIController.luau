@@ -19,7 +19,7 @@ local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
 local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
-local PILL_COLOR = Color3.fromRGB(20, 28, 60)
+local PILL_COLOR = Color3.fromRGB(22, 26, 38)
 local PILL_HEIGHT = 42
 local PILL_GAP = 8
 local ICON_SIZE = 48 -- the icon pokes out a little past the pill's top and bottom
@@ -126,6 +126,7 @@ function UIController.Notify(message: string, isError: boolean?, duration: numbe
 	local token = toastToken
 	toastLabel.Text = message
 	toastLabel.BackgroundColor3 = if isError then UIKit.Colors.Danger else UIKit.Colors.Accent
+	toastLabel.TextColor3 = if isError then UIKit.Colors.Text else UIKit.Colors.Ink -- dark on gold
 	toastLabel.Visible = true
 
 	task.delay(duration or TOAST_SECONDS, function()
@@ -248,7 +249,7 @@ local function makePill(parent: Instance, order: number, icon: string): (Frame, 
 	pill.BackgroundTransparency = 0.1
 	pill.Parent = parent
 	UIKit.corner(pill, PILL_HEIGHT / 2)
-	UIKit.outline(pill, Color3.fromRGB(60, 80, 140), 2)
+	UIKit.outline(pill, UIKit.Colors.Outline, 2)
 	local padding = Instance.new("UIPadding")
 	padding.PaddingLeft = UDim.new(0, ICON_SIZE - 4)
 	padding.PaddingRight = UDim.new(0, 16)
@@ -307,7 +308,7 @@ local function buildStatusPills()
 	xpBar.Name = "XP"
 	xpBar.LayoutOrder = 2
 	xpBar.Size = UDim2.fromOffset(XP_BAR_WIDTH, 22)
-	xpBar.BackgroundColor3 = Color3.fromRGB(45, 55, 100)
+	xpBar.BackgroundColor3 = Color3.fromRGB(42, 48, 66)
 	xpBar.ClipsDescendants = true
 	xpBar.Parent = levelBadge
 	UIKit.corner(xpBar, 11)

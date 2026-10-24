@@ -194,7 +194,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	plus.TextXAlignment = Enum.TextXAlignment.Center
 	plus.ZIndex = 3
 
-	local outTag = UIKit.label(button, "OUT", Enum.Font.FredokaOne, 11, WHITE)
+	local outTag = UIKit.label(button, "OUT", Enum.Font.FredokaOne, 11, UIKit.Colors.Ink)
 	outTag.Name = "Out"
 	outTag.AnchorPoint = Vector2.new(0.5, 0.5)
 	outTag.Position = UDim2.new(0.5, 0, 0, 0)
@@ -286,7 +286,7 @@ function PartyBarController.Start()
 	bar.BackgroundTransparency = BAR.TRAY_TRANSPARENCY
 	bar.Parent = UIController.GetStatusRow()
 	UIKit.corner(bar, 16)
-	UIKit.outline(bar, Color3.fromRGB(60, 80, 140), 2)
+	UIKit.outline(bar, UIKit.Colors.Outline, 2)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 8)
 	pad.PaddingRight = UDim.new(0, 10)
@@ -315,7 +315,7 @@ function PartyBarController.Start()
 	headshot.BackgroundTransparency = 1
 	headshot.Parent = avatar
 	UIKit.corner(headshot, BAR.AVATAR / 2)
-	local tag = UIKit.label(avatar, "PARTY", Enum.Font.FredokaOne, 10, WHITE)
+	local tag = UIKit.label(avatar, "PARTY", Enum.Font.FredokaOne, 10, UIKit.Colors.Ink)
 	tag.AnchorPoint = Vector2.new(0.5, 0.5)
 	tag.Position = UDim2.new(0.5, 0, 1, 0)
 	tag.Size = UDim2.fromOffset(44, 16)
