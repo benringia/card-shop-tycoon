@@ -25,7 +25,6 @@ shows its stand-in.
 | `Showcase` | the Glass Showcase and the Collector Case: a glass counter; cards lie on the bed (`cardsFlat`, `Showcase.FLAT`); the Collector Case recolours its Support, Frame and Carpet parts (`propColors` in Config/Shelves) | fills 6 x 4 x 2 | (its own hitbox) |
 | `DeliveryPad` | the delivery spot: a pallet; delivered boxes stand on it | fills 6 x 1 x 6 | no |
 | `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; without a model the box gets a band in the product's colour and its name (`Stock.BOX_LABEL`) | fits 2.5 x 1.5 x 2 | no |
-| `Awning` | shop fronts: repeated across each front, top at the wall top; parts named `COLOUR ME` take the plot's awning colour | about 5 deep, fills the front | no |
 | `Shelf` | the look of Products shelves (pack racks); turned 90° in code (`yaw`), stretched to fill the rack (`stretch`, plain blocks only) | fills the shelf | (the shelf's own hitbox) |
 
 **Variants:** a slot also uses every file named after it plus a suffix starting with a capital letter or digit:
@@ -51,7 +50,7 @@ synced), and the real ones live in the place file under `ReplicatedStorage.Place
 
 `Props` looks in `PlaceProps` first, then `PropModels`. The Lune test fails if a file in `assets/props` or
 `assets/town` contains a union, and checks `assets/place-props` for scripts like the rest.
-Today: Awning, Condenser, Counter, HookRack, Register, WallShelf.
+Today: Condenser, Counter, HookRack, Register, WallShelf.
 
 ## Hand-placed decor (TownDecor)
 

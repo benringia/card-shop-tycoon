@@ -37,8 +37,6 @@ return {
 		BoxSleeves = { height = 0, collide = false },
 		BoxDecks = { height = 0, collide = false },
 		BoxBooster = { height = 0, collide = false },
-		-- shop front awning, repeated across the front; parts named "COLOUR ME" take the plot's awning colour
-		Awning = { height = 0, collide = false },
 	},
 	-- Decor layout (TownLayout). Distances in studs.
 	LAYOUT = {
@@ -138,29 +136,52 @@ return {
 		},
 	},
 
-	-- Shop shells (PlotService). Walls sit outside the floor edges.
+	-- Shop shells (PlotService): one modern look for every shop. Walls sit outside the floor edges, so the
+	-- placement grid is unchanged. Studs; colours as { r, g, b }.
 	WALL_HEIGHT = 18, -- room for the camera under the ceiling
-	AWNING_HEIGHT = 12, -- the awning's top edge above the floor; a front wall above it carries the sign
+	AWNING_HEIGHT = 12, -- the top of the glass shop front; the dark sign band runs above it
+	AWNING_DEPTH = 4, -- how far the flat canopy over the doors reaches out over the street
 	WALL_THICKNESS = 1,
-	TRIM_HEIGHT = 0.6,
-	PILLAR_SIZE = 1.6,
-	AWNING_DEPTH = 5, -- how far the awning reaches out over the street
-	AWNING_DROP = 2.5, -- how far it slopes down over that distance
-	AWNING_STRIPES = 8,
-	ROOF_THICKNESS = 1, -- the flat ceiling and the gable panels
-	GABLE = { RISE = 8, OVERHANG = 1.5 }, -- roof ridge runs side to side, this high above the ceiling
-	CEILING_LIGHTS = { XS = { -12, 0, 12 }, SIZE = 3, RANGE = 22, BRIGHTNESS = 0.5, COLOR = { 255, 225, 180 } }, -- brighter washes out the pale walls
-
-	-- One theme per plot id
-	PLOT_THEMES = {
-		{ name = "Mint", wall = { 198, 236, 214 }, trim = { 88, 160, 124 }, awning = { 110, 190, 150 }, roof = { 120, 170, 140 }, floor = { 225, 240, 228 } },
-		{ name = "Peach", wall = { 255, 218, 193 }, trim = { 200, 120, 85 }, awning = { 240, 150, 110 }, roof = { 190, 120, 95 }, floor = { 250, 232, 218 } },
-		{ name = "Lavender", wall = { 222, 208, 240 }, trim = { 130, 105, 175 }, awning = { 160, 130, 210 }, roof = { 125, 105, 160 }, floor = { 238, 230, 248 } },
-		{ name = "Butter", wall = { 255, 240, 184 }, trim = { 195, 160, 60 }, awning = { 240, 200, 80 }, roof = { 180, 150, 80 }, floor = { 252, 246, 220 } },
-		{ name = "Sky", wall = { 200, 226, 248 }, trim = { 80, 130, 190 }, awning = { 110, 165, 225 }, roof = { 95, 130, 175 }, floor = { 228, 240, 252 } },
-		{ name = "Rose", wall = { 250, 208, 220 }, trim = { 190, 95, 125 }, awning = { 235, 125, 160 }, roof = { 175, 100, 125 }, floor = { 250, 230, 236 } },
+	ROOF_THICKNESS = 1,
+	SHOP = {
+		WALL = { 244, 245, 248 }, -- smooth white render
+		CHARCOAL = { 38, 41, 48 }, -- base band, sign band, roof edge
+		FRAME = { 24, 26, 30 }, -- black aluminium round the glass
+		GLASS = { 190, 220, 235 },
+		GLASS_TRANSPARENCY = 0.72,
+		FLOOR = { 214, 186, 150 }, -- light oak (owned shops)
+		FEATURE_WALL = { 222, 216, 206 }, -- the back wall inside: a warm greige, the same in every shop
+		BASE_HEIGHT = 1.2, -- the charcoal band along the bottom of the outside walls
+		PARAPET = 1.2, -- the roof edge rising above the walls
+		MULLION = 0.35, -- frame bar thickness
+		PANES = 3, -- glass panes each side of the doors
+		DOOR_WIDTH = 12, -- the doorway (two sliding panels)
+		DOOR_HEIGHT = 10,
+		DOOR_OPEN_SECONDS = 0.45,
+		DOOR_SENSE = 9, -- studs: anyone this close to the doorway (inside or out) opens it
+		CANOPY = { 36, 39, 46 },
+		CANOPY_LIGHT = { 255, 240, 215 },
+		PLANTER = { 52, 56, 64 },
+		LEAVES = { 70, 140, 85 },
+		CEILING = { 250, 250, 252 },
+		PANEL = { 255, 252, 245 }, -- LED ceiling panels
+		PANEL_ROWS = { -12, 0, 12 },
+		PANEL_COLS = { -13, 0, 13 },
+		PANEL_SIZE = { 6, 3 },
+		PANEL_RANGE = 20,
+		PANEL_BRIGHTNESS = 0.45,
+		ACCENT_STRIP = 0.4, -- the glowing strip under the sign band, in the shop's accent colour
 	},
-	STRIPE_COLOR = { 255, 255, 255 },
+
+	-- One accent colour per plot id: the glowing strip under the sign
+	PLOT_THEMES = {
+		{ name = "Mint", accent = { 88, 190, 150 } },
+		{ name = "Coral", accent = { 240, 125, 100 } },
+		{ name = "Violet", accent = { 150, 115, 220 } },
+		{ name = "Gold", accent = { 235, 185, 60 } },
+		{ name = "Azure", accent = { 70, 150, 235 } },
+		{ name = "Rose", accent = { 230, 110, 150 } },
+	},
 
 	GRASS_COLOR = { 120, 180, 95 },
 	STREET_COLOR = { 190, 175, 155 },

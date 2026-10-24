@@ -128,30 +128,16 @@ return {
 		assert(register.depth <= COUNTER_DEPTH + 0.001, "register is deeper than the counter")
 	end,
 
-	["awnings tile across the shop front"] = function()
-		-- The owner's awning: 13.9 wide, 7.4 deep; shop fronts are 42 wide, awnings about 5 deep
-		local count, scale = PropFit.tileAcross(42, 13.9, 7.4, town.AWNING_DEPTH)
-		expect.equal(count, 4, "copies")
-		expect.near(count * 13.9 * scale, 42, 0.001, "they fill the front exactly")
-		local one, wide = PropFit.tileAcross(10, 13.9, 7.4, 5)
-		expect.equal(one, 1, "a narrow front still gets one")
-		expect.near(13.9 * wide, 10, 0.001, "and it fits")
-	end,
-
-	["tinted part names"] = function()
-		assert(PropFit.isTintPart("COLOUR ME"), "COLOUR ME")
-		assert(PropFit.isTintPart("ColorMe"), "ColorMe")
-		assert(PropFit.isTintPart("Tint"), "Tint")
-		assert(not PropFit.isTintPart("White"), "White")
-	end,
-
-	["shop fronts: awning under the ceiling, room for the sign above it"] = function()
+	["shop fronts: glass under the ceiling, room for the sign band above it, doors fit"] = function()
 		local SIGN_HEIGHT = 4 -- Plots.SIGN_SIZE.Y
+		local shop = town.SHOP
 		expect.equal(town.WALL_HEIGHT, 18, "wall height")
-		assert(town.AWNING_HEIGHT < town.WALL_HEIGHT, "the awning is above the ceiling")
-		assert(town.WALL_HEIGHT - town.AWNING_HEIGHT >= SIGN_HEIGHT + 1, "no room for the sign above the awning")
-		assert(town.GABLE.RISE > 0 and town.GABLE.OVERHANG >= 0, "gable roof")
-		expect.equal(#town.CEILING_LIGHTS.XS, 3, "ceiling lights")
+		assert(town.AWNING_HEIGHT < town.WALL_HEIGHT, "the glass front is above the ceiling")
+		assert(town.WALL_HEIGHT - town.AWNING_HEIGHT >= SIGN_HEIGHT + 1, "no room for the sign above the glass")
+		assert(shop.DOOR_HEIGHT < town.AWNING_HEIGHT, "the doors are taller than the glass front")
+		assert(shop.DOOR_WIDTH >= 8, "the doorway is too narrow for customers to path through")
+		assert(shop.DOOR_WIDTH <= 40 - 8, "no room for windows beside the doors")
+		assert(#shop.PANEL_ROWS * #shop.PANEL_COLS >= 4, "ceiling panels")
 	end,
 
 	["each plaza portal has its own light effects"] = function()
