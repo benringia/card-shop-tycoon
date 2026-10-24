@@ -133,6 +133,8 @@ return {
 		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
 		ITEM_GAP = 0.15, -- between the terminal and the first scan item
 		STAFF_BEHIND = 1.6, -- the cashier (owner or pet) stands this far behind the counter
+		-- A low step behind the counter the cashier stands on, so a small pet still shows over the counter
+		STEP = { width = 5, depth = 2.6, height = 1 },
 		TOP = { 58, 62, 72 }, -- dark quartz
 		TOP_THICKNESS = 0.2,
 		TOP_OVERHANG = 0.3, -- past the body's front, over the customers' side

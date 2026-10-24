@@ -3,10 +3,14 @@
 -- (imported, or a placeholder built from parts) into a client-only "body" that follows an invisible server
 -- marker smoothly, with the motion kit (breathing, hop-and-waddle, hover) or the model's own Idle/Walk
 -- animations. A marker with the attribute Fainted = true makes its body lie down.
+local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureMotion = require(Shared:WaitForChild("Util"):WaitForChild("CreatureMotion"))
+local Party = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
+local PetRig = require(Shared:WaitForChild("Util"):WaitForChild("PetRig"))
+local PetAnimator = require((script.Parent :: Instance):WaitForChild("PetAnimator"))
 
 local CreatureVisuals = {}
 
@@ -28,6 +32,10 @@ export type Body = {
 	walked: number,
 	frame: number,
 	tracks: { idle: AnimationTrack?, walk: AnimationTrack? },
+	pet: PetAnimator.Rig?, -- a rigged pack pet: its bones walk, breathe and fidget (Util/PetAnimator)
+	size: number, -- height / Party.CREATURE_HEIGHT
+	-- Creatures without bones: a whole-body fidget now and then while standing (PET_ANIM.BODY_FIDGETS)
+	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random },
 }
 
 function CreatureVisuals.countParts(model: Instance): number
@@ -40,14 +48,106 @@ function CreatureVisuals.countParts(model: Instance): number
 	return count
 end
 
--- A model from a ReplicatedStorage folder (CreatureModels, MonsterModels), or nil if missing or too big
-function CreatureVisuals.getTemplate(folderName: string, name: string, maxParts: number): Model?
-	local folder = ReplicatedStorage:FindFirstChild(folderName)
+-- A model from a ReplicatedStorage folder (CreatureModels, MonsterModels), or nil if missing or too big.
+-- pack: a folder inside it holding several models (a pack file such as CutePets.rbxm)
+function CreatureVisuals.getTemplate(folderName: string, name: string, maxParts: number, pack: string?): Model?
+	local folder: Instance? = ReplicatedStorage:FindFirstChild(folderName)
+	if folder and pack then
+		folder = folder:FindFirstChild(pack)
+	end
 	local template = if folder then folder:FindFirstChild(name) else nil
 	if not template or not template:IsA("Model") or CreatureVisuals.countParts(template) > maxParts then
 		return nil
 	end
 	return template
+end
+
+local warmed = false
+
+-- Keeps a copy of every creature model drawn in a tiny, nearly invisible viewport in a corner of the screen.
+-- Roblox only finishes loading a texture once something draws it, so without this a pet's first summon showed
+-- it pale until its textures arrived.
+local function warmTextures(models: Instance)
+	if warmed then
+		return
+	end
+	warmed = true
+	local player = game:GetService("Players").LocalPlayer
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "CreatureCache"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = -10
+	local view = Instance.new("ViewportFrame")
+	view.BackgroundTransparency = 1
+	view.Size = UDim2.fromOffset(4, 4)
+	view.ImageTransparency = 0.98
+	view.Parent = gui
+	local camera = Instance.new("Camera")
+	camera.CFrame = CFrame.lookAt(Vector3.new(0, 4, 30), Vector3.new(0, 1, 0))
+	camera.Parent = view
+	view.CurrentCamera = camera
+	local x = -40
+	for _, model in models:GetDescendants() do
+		if model:IsA("Model") and model:FindFirstChildWhichIsA("MeshPart") and not model.Parent:IsA("Model") then
+			local copy = model:Clone()
+			CreatureVisuals.strip(copy)
+			copy:PivotTo(CFrame.new(x, 0, 0))
+			copy.Parent = view
+			x += 4
+		end
+	end
+	gui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Downloads every creature model's meshes and textures in the background as soon as the game starts, so a pet
+-- appears fully drawn the first time it's summoned instead of popping in a moment later. The models this
+-- player's party uses go first (cardNames), then the rest; then they stay drawn (warmTextures).
+function CreatureVisuals.preload(cardNames: { string })
+	task.spawn(function()
+		local models = ReplicatedStorage:WaitForChild("CreatureModels", 30)
+		if not models then
+			return
+		end
+		warmTextures(models)
+		local first: { Instance } = {}
+		for _, name in cardNames do
+			local template = CreatureVisuals.cardTemplate(name)
+			if template then
+				table.insert(first, template)
+			end
+		end
+		if #first > 0 then
+			ContentProvider:PreloadAsync(first)
+		end
+		ContentProvider:PreloadAsync({ models })
+	end)
+end
+
+-- A card's creature model: the one Party.CREATURE_MODELS gives it (in a pack, maybe with a colour variant), or one
+-- named after the card; nil (use a placeholder) without either. Shared by summoned creatures and shop workers.
+function CreatureVisuals.cardTemplate(cardName: string): (Model?, string?)
+	local entry = Party.CREATURE_MODELS[cardName]
+	if entry then
+		return CreatureVisuals.getTemplate("CreatureModels", entry.model, Party.MAX_MODEL_PARTS, entry.pack), entry.variant
+	end
+	return CreatureVisuals.getTemplate("CreatureModels", cardName, Party.MAX_MODEL_PARTS), nil
+end
+
+-- Dresses a pack model in one of its colour variants: a SurfaceAppearance in its Variants folder replaces the
+-- one on each textured part (Cute Pets: Golden, Rainbow, Shadow). Unknown variants leave it as it is.
+function CreatureVisuals.applyVariant(model: Model, variant: string)
+	local variants = model:FindFirstChild("Variants")
+	local look = if variants then variants:FindFirstChild(variant) else nil
+	if not look or not look:IsA("SurfaceAppearance") then
+		return
+	end
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("SurfaceAppearance") and descendant.Parent ~= variants then
+			local parent = descendant.Parent
+			descendant:Destroy()
+			look:Clone().Parent = parent
+		end
+	end
 end
 
 -- Free models can carry scripts and noise: none of it may run or play on this client
@@ -150,8 +250,9 @@ local function prepare(model: Model, height: number, rigged: boolean): (BasePart
 	return root, scale
 end
 
--- Sizes the model, places it on the marker and puts it in the world. Strip it first.
-function CreatureVisuals.build(model: Model, marker: BasePart, height: number, flying: boolean): Body
+-- Sizes the model, places it on the marker and puts it in the world. Strip it first. sourceName: the pack
+-- model it was cloned from (its bones are named after it), for bone animation.
+function CreatureVisuals.build(model: Model, marker: BasePart, height: number, flying: boolean, sourceName: string?): Body
 	local animator = getAnimator(model)
 	local root, scale = prepare(model, height, animator ~= nil)
 	local body: Body = {
@@ -166,7 +267,13 @@ function CreatureVisuals.build(model: Model, marker: BasePart, height: number, f
 		walked = 0,
 		frame = 0,
 		tracks = {},
+		pet = nil,
+		size = height / Party.CREATURE_HEIGHT,
+		idle = { kind = nil, start = 0, length = 1, side = 1, nextAt = os.clock() + 2 + math.random() * 4, random = Random.new() },
 	}
+	if not animator and sourceName then
+		body.pet = PetAnimator.attach(model, root, sourceName, height / Party.CREATURE_HEIGHT)
+	end
 	model:PivotTo(marker.CFrame)
 	model.Parent = workspace
 	-- Animators only load animations once they're in the game
@@ -199,6 +306,31 @@ function CreatureVisuals.makeTag(root: BasePart, above: number, color: Color3): 
 	label.Parent = gui
 	gui.Parent = root
 	return label
+end
+
+-- Creatures without bones: picks a whole-body fidget now and then while standing, and returns its pose
+local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
+	local idle = body.idle
+	local anim = Party.PET_ANIM
+	if idle.kind and now - idle.start >= idle.length then
+		idle.kind = nil
+		idle.nextAt = now + idle.random:NextNumber(anim.FIDGET_GAP[1], anim.FIDGET_GAP[2])
+	end
+	if walking then
+		-- Walking cancels a fidget; the next waits until it stops
+		idle.kind = nil
+		idle.nextAt = math.max(idle.nextAt, now + 1)
+	elseif not idle.kind and now >= idle.nextAt then
+		local kinds = anim.BODY_FIDGETS
+		idle.kind = kinds[idle.random:NextInteger(1, #kinds)]
+		idle.start = now
+		idle.length = anim.FIDGET_SECONDS[idle.kind] or 1.5
+		idle.side = if idle.random:NextNumber() < 0.5 then 1 else -1
+	end
+	if not idle.kind then
+		return { lift = 0, yaw = 0, roll = 0 }
+	end
+	return PetRig.body(anim, idle.kind, (now - idle.start) / idle.length, idle.side, false)
 end
 
 -- One frame: follow the marker smoothly, then pose (motion kit or animations), or lie down when fainted
@@ -236,9 +368,22 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		end
 		local hover = if body.flying then CreatureMotion.getPose(motion, now, body.speed, body.walked, true).offsetY else 0
 		body.model:PivotTo(body.cframe * CFrame.new(0, hover, 0))
+	elseif body.pet then
+		-- The bones do the walking, breathing and fidgets; the whole body hops and sways a little, and moves for
+		-- the fidgets that need it (hop, spin, shake)
+		local pet = body.pet
+		local anim = Party.PET_ANIM
+		if (body.cframe.Position - origin).Magnitude <= anim.DISTANCE then
+			PetAnimator.step(pet, dt, now, body.speed >= motion.WALK_SPEED_MIN, body.walked)
+		end
+		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
+		local hop = if body.flying then pose.offsetY else pose.offsetY * anim.HOP_SCALE
+		local extra = PetAnimator.bodyPose(pet, now)
+		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll * anim.WADDLE_SCALE + extra.roll))
 	else
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
-		body.model:PivotTo(body.cframe * CFrame.new(0, pose.offsetY, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll))
+		local extra = stepIdle(body, now, body.speed >= motion.WALK_SPEED_MIN)
+		body.model:PivotTo(body.cframe * CFrame.new(0, pose.offsetY + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll + extra.roll))
 		-- Model:ScaleTo is uniform: breathing grows and shrinks a little, every other frame, only up close
 		if near and body.frame % 2 == 0 then
 			body.model:ScaleTo(body.baseScale * pose.scaleY)

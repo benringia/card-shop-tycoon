@@ -24,6 +24,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PropFit = require("./PropFit.spec"),
 	ShelfStock = require("./ShelfStock.spec"),
 	ShelfLayout = require("./ShelfLayout.spec"),
+	PetRig = require("./PetRig.spec"),
 	CellSearch = require("./CellSearch.spec"),
 	ShelvesConfig = require("./ShelvesConfig.spec"),
 	RevealRules = require("./RevealRules.spec"),

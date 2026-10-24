@@ -20,7 +20,49 @@ local function findScripts(roots: { any }): { string }
 	return found
 end
 
+-- A creature model in a pack file: assets/creatures/<pack>.rbxm holds a folder of models
+local function findPackModel(pack: string, model: string): any?
+	local path = `assets/creatures/{pack}.rbxm`
+	if not fs.isFile(path) then
+		return nil
+	end
+	for _, root in roblox.deserializeModel(fs.readFile(path)) do
+		local found = if root.Name == model then root else root:FindFirstChild(model)
+		if found then
+			return found
+		end
+	end
+	return nil
+end
+
 return {
+	["every card's creature model is in its pack, with the colour variant it asks for"] = function()
+		local party = require("../src/shared/Config/Party")
+		local cards = require("../src/shared/Config/CardList")
+		local names: { [string]: boolean } = {}
+		for _, rows in cards do
+			for _, row in rows do
+				names[row[1]] = true
+			end
+		end
+		local bad = {}
+		for card, entry in party.CREATURE_MODELS do
+			if not names[card] then
+				table.insert(bad, `{card}: not a card`)
+			end
+			local model = findPackModel(entry.pack, entry.model)
+			if not model then
+				table.insert(bad, `{card}: no {entry.model} in assets/creatures/{entry.pack}.rbxm`)
+			elseif entry.variant then
+				local variants = model:FindFirstChild("Variants")
+				if not variants or not variants:FindFirstChild(entry.variant) then
+					table.insert(bad, `{card}: {entry.model} has no {entry.variant} variant`)
+				end
+			end
+		end
+		assert(#bad == 0, `creature models (Party.CREATURE_MODELS):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["scanner finds a nested script"] = function()
 		local model = roblox.Instance.new("Model")
 		local folder = roblox.Instance.new("Folder")
