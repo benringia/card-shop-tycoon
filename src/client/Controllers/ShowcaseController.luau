@@ -753,6 +753,7 @@ end
 
 local function buildPicker(parent: Instance)
 	picker, pickerList = UIKit.panel(parent, "CardPicker", "Pick a card")
+	picker:SetAttribute("Overlay", true) -- opens over the case's panel
 	picker.ZIndex = UIKit.PANEL_Z_INDEX + 1 -- over the case manager it opens from
 	-- Same size as the case manager so it covers it completely
 	picker.Size = UDim2.fromScale(0.94, 0.86)

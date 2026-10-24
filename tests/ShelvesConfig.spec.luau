@@ -29,6 +29,16 @@ return {
 		end
 	end,
 
+	["every shelf sits in a Build menu category that matches its kind"] = function()
+		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures" }
+		for _, entry in entries() do
+			local kind = string.match(entry.body, 'kind = "([%w_]+)"')
+			local category = string.match(entry.body, 'category = "([%w_]+)"')
+			assert(category, `{entry.id} has no category`)
+			assert(category == byKind[kind], `{entry.id} ({kind}) is in {category}, expected {byKind[kind]}`)
+		end
+	end,
+
 	["each shelf type has its own look"] = function()
 		local props: { [string]: string } = {}
 		for _, entry in entries() do

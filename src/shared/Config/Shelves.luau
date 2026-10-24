@@ -20,6 +20,7 @@ export type Shelf = {
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
 	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
+	category: "Shelves" | "Cases" | "Fixtures", -- the Build menu tab it's listed under
 }
 
 local List: { Shelf } = {
@@ -28,6 +29,7 @@ local List: { Shelf } = {
 		prop = "Shelf",
 		name = "Small Pack Rack",
 		kind = "Products",
+		category = "Shelves", -- Build menu tab
 		capacity = 24,
 		cost = 100,
 		unlockLevel = 1,
@@ -40,6 +42,7 @@ local List: { Shelf } = {
 		cardsFlat = true, -- a glass counter: its cards lie on the velvet bed under the glass
 		name = "Glass Showcase",
 		kind = "CustomerCards",
+		category = "Cases", -- Build menu tab
 		capacity = 6,
 		cost = 250,
 		unlockLevel = 1,
@@ -57,6 +60,7 @@ local List: { Shelf } = {
 		},
 		name = "Collector Case",
 		kind = "PlayerCards",
+		category = "Cases", -- Build menu tab
 		capacity = 6,
 		cost = 300,
 		unlockLevel = 1,
@@ -68,6 +72,7 @@ local List: { Shelf } = {
 		prop = "Condenser",
 		name = "Card Condenser",
 		kind = "Condenser",
+		category = "Fixtures", -- Build menu tab
 		capacity = 0,
 		cost = 500,
 		unlockLevel = 4,
@@ -79,6 +84,7 @@ local List: { Shelf } = {
 		prop = "WallShelf",
 		name = "Wall Shelf",
 		kind = "Products",
+		category = "Shelves", -- Build menu tab
 		capacity = 48,
 		cost = 350,
 		unlockLevel = 3,
@@ -90,6 +96,7 @@ local List: { Shelf } = {
 		prop = "HookRack",
 		name = "Accessory Hook",
 		kind = "Products",
+		category = "Shelves", -- Build menu tab
 		capacity = 20,
 		cost = 250,
 		unlockLevel = 5,
@@ -102,6 +109,7 @@ local List: { Shelf } = {
 		prop = "DisplayRack",
 		name = "Big Display Rack",
 		kind = "Products",
+		category = "Shelves", -- Build menu tab
 		capacity = 96,
 		cost = 1200,
 		unlockLevel = 6,

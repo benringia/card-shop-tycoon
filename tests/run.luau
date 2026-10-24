@@ -25,6 +25,11 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ShelfStock = require("./ShelfStock.spec"),
 	CellSearch = require("./CellSearch.spec"),
 	ShelvesConfig = require("./ShelvesConfig.spec"),
+	RevealRules = require("./RevealRules.spec"),
+	ElementFxRules = require("./ElementFxRules.spec"),
+	BinderSpreads = require("./BinderSpreads.spec"),
+	OddsRules = require("./OddsRules.spec"),
+	NewPulls = require("./NewPulls.spec"),
 }
 
 local passed, failed = 0, 0

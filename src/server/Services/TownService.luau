@@ -270,6 +270,7 @@ local function setLighting()
 	Lighting.ExposureCompensation = settings.EXPOSURE
 	Lighting.Ambient = Props.color(settings.AMBIENT)
 	Lighting.OutdoorAmbient = Props.color(settings.OUTDOOR_AMBIENT)
+	Lighting.EnvironmentSpecularScale = settings.SPECULAR
 
 	local atmosphere = effect("Atmosphere", "TownAtmosphere") :: Atmosphere
 	atmosphere.Density = settings.ATMOSPHERE.density

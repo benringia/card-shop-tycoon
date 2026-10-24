@@ -5,3 +5,4 @@ sourcemap.json
 Packages/
 ServerPackages/
 *.rbxlx
+.superpowers/

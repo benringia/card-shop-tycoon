@@ -27,6 +27,9 @@ local ChallengeController = require(Controllers:WaitForChild("ChallengeControlle
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
 
+-- One rounded font for every text in the game, before any screen is built
+require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
+
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
 if Place.isFrontier() then

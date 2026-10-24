@@ -42,4 +42,22 @@ function ShelfStock.slots(shelf: Vec, config: StockConfig): { Vec }
 	return slots
 end
 
+-- Pack products stand as a stack of thin packs in each box's place: their z offsets from the box centre,
+-- front (-Z) first, spread evenly over the box depth
+function ShelfStock.stackOffsets(count: number, depth: number): { number }
+	local offsets = {}
+	for index = 1, count do
+		offsets[index] = -depth / 2 + (index - 0.5) * depth / count
+	end
+	return offsets
+end
+
+-- How many levels (bottom first) have at least one box: each gets a price tag
+function ShelfStock.stockedLevels(boxes: number, perLevel: number): number
+	if boxes <= 0 or perLevel <= 0 then
+		return 0
+	end
+	return math.ceil(boxes / perLevel)
+end
+
 return ShelfStock

@@ -7,12 +7,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
+local Packs = require(Config:WaitForChild("Packs"))
 local PricingConfig = require(Config:WaitForChild("Pricing"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
-local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Product = typeof(Products.List[1])
@@ -101,8 +105,35 @@ end
 local function buildRow(product: Product, parent: Instance, order: number): Row
 	local frame, plus, detail = UIKit.row(parent, order, product.name, "")
 	frame.Name = product.id
-	detail.Size = UDim2.new(1, -140, 0, 32)
+	detail.Size = UDim2.new(1, -208, 0, 32)
 	detail.TextSize = 14
+	-- The product's picture on the left, its name and price after it
+	-- Packs show their real front (the art on the shelves); other products their icon
+	local pack = Packs.ById[product.id]
+	local picture: GuiObject
+	if pack and pack.art then
+		local front = Instance.new("ImageLabel")
+		front.Name = "PackArt"
+		front.BackgroundColor3 = pack.color
+		front.Size = UDim2.fromOffset(38, 56)
+		front.Image = pack.art
+		front.ScaleType = Enum.ScaleType.Crop
+		front.Parent = frame
+		UIKit.corner(front, 6)
+		UIKit.outline(front, pack.color, 2)
+		picture = front
+	else
+		picture = Icon.make(frame, product.icon, UDim2.fromOffset(56, 56))
+	end
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.Position = UDim2.new(0, 38, 0.5, 0)
+	for _, label in frame:GetChildren() do
+		if label:IsA("TextLabel") then
+			label.Position += UDim2.fromOffset(66, 0)
+			label.Size -= UDim2.fromOffset(66, 0)
+		end
+	end
+	detail.Size = UDim2.new(1, -208, 0, 32)
 
 	plus.Text = "+"
 	plus.TextSize = 28
@@ -124,17 +155,17 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	return row
 end
 
-local function buildButton(parent: Instance)
-	local button = UIKit.button(parent, "Prices", UIKit.Colors.Row)
-	button.Name = "PricesButton"
-	-- Sits under the Build button on the middle-left
-	button.AnchorPoint = Vector2.new(0, 0.5)
-	button.Position = UDim2.new(0, 12, 0.5, 84)
-	button.Size = UDim2.fromOffset(96, 50)
-	button.Activated:Connect(function()
-		refreshAll()
-		panel.Visible = not panel.Visible
-	end)
+local function buildButton()
+	Hud.fanButton({
+		id = "Prices",
+		icon = "Prices",
+		label = "Prices",
+		order = 2,
+		onClick = function()
+			refreshAll()
+			panel.Visible = not panel.Visible
+		end,
+	})
 end
 
 function PricingController.Start()
@@ -144,7 +175,7 @@ function PricingController.Start()
 	for index, product in Products.List do
 		table.insert(rows, buildRow(product, list, index))
 	end
-	buildButton(screenGui)
+	buildButton()
 
 	player:GetAttributeChangedSignal("Level"):Connect(refreshAll)
 	for _, product in Products.List do

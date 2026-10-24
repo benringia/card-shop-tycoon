@@ -12,12 +12,14 @@ local Packs = require(Config:WaitForChild("Packs"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local NewPulls = require(Shared:WaitForChild("Util"):WaitForChild("NewPulls"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
+local PlacementService = require(Services:WaitForChild("PlacementService"))
 local StockService = require(Services:WaitForChild("StockService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -109,10 +111,23 @@ local function onPullRevealed(player: Player, cardId: unknown, foil: unknown)
 end
 
 -- Gives the cards, queues any big-pull announcements, and sends the result for the reveal animation
+-- Cards the player has now: binder, beasts and cards on display in their cases
+local function getOwnedCardIds(player: Player): { [string]: boolean }
+	local owned = CardService.GetOwnedCardIds(player)
+	for _, shelf in PlacementService.GetShelves(player) do
+		for _, displayed in shelf.cards do
+			owned[displayed.cardId] = true
+		end
+	end
+	return owned
+end
+
 local function deliverPack(player: Player, productId: string, results: { PullResult })
+	-- Checked before the cards are added, so the results screen can mark first-ever copies NEW
+	local newFlags = NewPulls.flag(results, getOwnedCardIds(player))
 	CardService.AddFresh(player, results)
 	queueAnnouncements(player, results)
-	Remotes.PackOpened:FireClient(player, productId, results)
+	Remotes.PackOpened:FireClient(player, productId, results, newFlags)
 end
 
 local function onRip(player: Player)
@@ -139,6 +154,26 @@ function PackService.OpenTestPack(player: Player)
 	local results = rollPack(Packs.ById[productId])
 	local legendaries = Cards.ByRarity.Legendary
 	results[#results] = { cardId = legendaries[rng:NextInteger(1, #legendaries)].id, foil = true, grade = BeastRules.rollGrade(rng:NextNumber()) }
+	deliverPack(player, productId, results)
+end
+
+-- Studio only (DevService /raritypack): one card of each rarity, rarest last, to see every reveal at once
+function PackService.OpenRarityPack(player: Player, foil: boolean)
+	local productId = "FirstSparkPack"
+	local tiers = {}
+	for name, tier in Rarities.Tiers do
+		if Cards.ByRarity[name] then
+			table.insert(tiers, { name = name, order = tier.order })
+		end
+	end
+	table.sort(tiers, function(a, b)
+		return a.order < b.order
+	end)
+	local results = {}
+	for _, tier in tiers do
+		local pool = Cards.ByRarity[tier.name]
+		table.insert(results, { cardId = pool[rng:NextInteger(1, #pool)].id, foil = foil, grade = BeastRules.rollGrade(rng:NextNumber()) })
+	end
 	deliverPack(player, productId, results)
 end
 

@@ -11,9 +11,8 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
+local Packs = require(Config:WaitForChild("Packs"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
-local Rarities = require(Config:WaitForChild("Rarities"))
-local CardEffects = require(Config:WaitForChild("CardEffects"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -61,7 +60,8 @@ export type PlacedShelf = {
 	part: Part,
 	label: TextLabel,
 	visual: Model?, -- shelves with a prop (Shelves def.prop): the prop drawn on the invisible hitbox part
-	stockBoxes: { Part }, -- Products shelves: boxes showing how full it is (ShelfStock)
+	stockBoxes: { Part }, -- Products shelves: boxes (or stacks of packs) showing how full it is (ShelfStock)
+	priceTags: { Part }, -- Products shelves: an orange price tag on each stocked level
 }
 
 local KIND_LABELS = {
@@ -120,43 +120,161 @@ local function toVec(vector: Vector3): ShelfStock.Vec
 	return { x = vector.X, y = vector.Y, z = vector.Z }
 end
 
--- Products shelves show up to STOCK_SLOTS boxes in the product's colour, filling from the bottom level
-local function updateStockBoxes(shelf: PlacedShelf)
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+local function newDecorPart(name: string, parent: Instance): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Material = Enum.Material.SmoothPlastic
+	part.Parent = parent
+	return part
+end
+
+-- A box's place filled with thin upright packs showing the pack art, leaning back a little (front first)
+local function fillWithPacks(box: Part, art: string, color: Color3)
+	local look = Town.SHELF_STOCK.PACKS
+	local packs = box:GetChildren()
+	if #packs == 0 then
+		for index = 1, look.PER_STACK do
+			local pack = newDecorPart("Pack" .. index, box)
+			pack.Size = Vector3.new(look.HEIGHT * look.ASPECT, look.HEIGHT, look.THICKNESS)
+			local front = Instance.new("Decal")
+			front.Face = Enum.NormalId.Front
+			front.Texture = art
+			front.Parent = pack
+		end
+		packs = box:GetChildren()
+	end
+	local offsets = ShelfStock.stackOffsets(#packs, box.Size.Z)
+	for index, pack in packs do
+		if pack:IsA("BasePart") then
+			pack.Color = color
+			-- Standing on the box's bottom, tipped back about its foot
+			pack.CFrame = box.CFrame
+				* CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0)
+				* CFrame.Angles(math.rad(look.LEAN), 0, 0)
+				* CFrame.new(0, pack.Size.Y / 2, 0)
+		end
+	end
+end
+
+-- An orange tag with the price on the front of a level, like a shop's shelf label
+local function newPriceTag(parent: Instance): Part
+	local look = Town.SHELF_STOCK.TAG
+	local tag = newDecorPart("PriceTag", parent)
+	tag.Size = Vector3.new(look.SIZE[1], look.SIZE[2], look.SIZE[3])
+	tag.Color = rgb(look.COLOR)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 100
+	gui.LightInfluence = 0
+	gui.Parent = tag
+	local label = Instance.new("TextLabel")
+	label.Name = "Price"
+	label.BackgroundColor3 = rgb(look.COLOR)
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = rgb(look.TEXT)
+	label.TextScaled = true
+	label.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.2, 0)
+	corner.Parent = label
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = rgb(look.EDGE)
+	edge.Thickness = 3
+	edge.Parent = label
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0.08, 0)
+	pad.PaddingRight = UDim.new(0.08, 0)
+	pad.PaddingTop = UDim.new(0.1, 0)
+	pad.PaddingBottom = UDim.new(0.1, 0)
+	pad.Parent = label
+	return tag
+end
+
+local function trim(parts: { Part }, count: number)
+	while #parts > count do
+		local part = table.remove(parts)
+		if part then
+			part:Destroy()
+		end
+	end
+end
+
+-- Price tags on the front edge of each level that has stock
+local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
+	local config = Town.SHELF_STOCK
+	local levels = ShelfStock.stockedLevels(boxes, config.PER_LEVEL)
+	local tags = shelf.priceTags
+	trim(tags, levels)
+	local size = shelf.def.size
+	local box = ShelfStock.boxSize(toVec(size), config)
+	for index = 1, levels do
+		local tag = tags[index]
+		if not tag then
+			tag = newPriceTag(shelf.part)
+			tags[index] = tag
+		end
+		local bottom = -size.Y / 2 + config.LEVELS[index] * size.Y
+		local x = -size.X / 2 + config.TAG.INSET + tag.Size.X / 2
+		local z = -box.z / 2 - tag.Size.Z / 2 - config.TAG.GAP
+		tag.CFrame = shelf.part.CFrame * CFrame.new(x, bottom + tag.Size.Y / 2, z) * CFrame.Angles(0, 0, math.rad(config.TAG.TILT))
+		local gui = tag:FindFirstChildOfClass("SurfaceGui")
+		local label = if gui then gui:FindFirstChild("Price") :: TextLabel? else nil
+		if label then
+			label.Text = string.format("$%.2f", price)
+		end
+	end
+end
+
+-- Products shelves show up to STOCK_SLOTS boxes in the product's colour, filling from the bottom level.
+-- Packs show as stacks of packs with their art instead of boxes.
+local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	if shelf.def.kind ~= "Products" then
 		return
 	end
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
 	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, STOCK_SLOTS) else 0
 	local boxes = shelf.stockBoxes
-	while #boxes > count do
-		local box = table.remove(boxes)
-		if box then
-			box:Destroy()
-		end
+	-- A different product may have taken the shelf: start the boxes fresh
+	local kind = if product then product.id else ""
+	if boxes[1] and boxes[1]:GetAttribute("ProductId") ~= kind then
+		trim(boxes, 0)
 	end
+	trim(boxes, count)
+	updatePriceTags(shelf, count, price)
 	if not product then
 		return
 	end
+	local pack = Packs.ById[product.id]
+	local art = if pack and pack.art then pack.art else nil
 	local size = ShelfStock.boxSize(toVec(shelf.def.size), Town.SHELF_STOCK)
 	local slots = ShelfStock.slots(toVec(shelf.def.size), Town.SHELF_STOCK)
-	local color = product.color
+	local color = rgb(product.color)
 	for index = 1, count do
 		local box = boxes[index]
 		if not box then
-			box = Instance.new("Part")
-			box.Name = "StockBox"
-			box.Anchored = true
-			box.CanCollide = false
-			box.CanQuery = false
-			box.CanTouch = false
-			box.Material = Enum.Material.SmoothPlastic
-			box.Parent = shelf.part
+			box = newDecorPart("StockBox", shelf.part)
+			box:SetAttribute("ProductId", kind)
 			boxes[index] = box
 		end
 		local slot = slots[index]
 		box.Size = Vector3.new(size.x, size.y, size.z)
-		box.Color = Color3.fromRGB(color[1], color[2], color[3])
+		box.Color = color
 		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z)
+		if art then
+			box.Transparency = 1
+			fillWithPacks(box, art, color)
+		end
 	end
 end
 
@@ -169,13 +287,13 @@ local function updateLabel(shelf: PlacedShelf)
 		shelf.label.Text = `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`
 		return
 	end
-	updateStockBoxes(shelf)
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
+	local price = if product then PricingService.GetPrice(shelf.owner, product.id) else 0
+	updateStockBoxes(shelf, price)
 	if not product or shelf.units <= 0 then
 		shelf.label.Text = `Empty\n0/{shelf.def.capacity}`
 		return
 	end
-	local price = PricingService.GetPrice(shelf.owner, product.id)
 	shelf.label.Text = string.format("%s\n%d/%d · $%.2f", product.name, shelf.units, shelf.def.capacity, price)
 end
 
@@ -205,34 +323,20 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	return shelf.part.CFrame * CFrame.new(x, y, z)
 end
 
-local function addCardText(parent: Instance, text: string, y: number, height: number): TextLabel
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromScale(0.05, y)
-	label.Size = UDim2.fromScale(0.9, height)
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Text = text
-	label.Parent = parent
-	return label
-end
-
 local function getGrowth(displayed: DisplayedCard): (number, number, string)
 	local beast = displayed.beast
 	return if beast then beast.level else 1, if beast then beast.stars else BeastRules.START_STARS, displayed.grade
 end
 
 local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: DisplayedCard): Part
-	local card = Cards.ById[displayed.cardId]
 	local part = Instance.new("Part")
 	part.Name = "DisplayedCard" .. slot
 	part.Anchored = true
 	part.CanCollide = false
 	part.Size = if shelf.visual and shelf.def.cardsFlat then ShowcaseConfig.CARD_SIZE * ShowcaseConfig.FLAT.SCALE else ShowcaseConfig.CARD_SIZE
-	part.Color = Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3)
-	part.Material = if displayed.foil then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	-- A plain dark card: every client draws the card face, glow and halo on it (CardEffectsController)
+	part.Color = Color3.fromRGB(30, 26, 40)
+	part.Material = Enum.Material.SmoothPlastic
 	part.CFrame = getSlotCFrame(shelf, slot)
 	part:SetAttribute("CardId", displayed.cardId)
 	part:SetAttribute("Foil", displayed.foil)
@@ -246,42 +350,6 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part:SetAttribute("Level", level)
 	part:SetAttribute("Stars", stars)
 	part:SetAttribute("BeastId", if displayed.beast then displayed.beast.id else nil)
-
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 60
-	gui.Parent = part
-
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundTransparency = 1
-	frame.Parent = gui
-	local stroke = Instance.new("UIStroke")
-	stroke.Name = "Border"
-	stroke.Thickness = 4
-	stroke.Color = Rarities.Tiers[card.rarity].color
-	stroke.Parent = frame
-
-	-- Frontier cards: darker element colour, a white border the client turns into a moving aurora, a ribbon
-	local frontier = card.set == "Frontier"
-	local aurora = CardEffects.FRONTIER.AURORA
-	if frontier then
-		part.Color = part.Color:Lerp(Color3.new(0, 0, 0), CardEffects.FRONTIER.BACKGROUND_DARKEN)
-		stroke.Color = Color3.new(1, 1, 1)
-		stroke.Thickness = 6
-	end
-	addCardText(frame, card.name, 0.04, 0.2)
-	if frontier then
-		addCardText(frame, if displayed.foil then "FOIL FRONTIER" else "FRONTIER", 0.25, 0.12).TextColor3 = aurora[3]
-	elseif displayed.foil then
-		addCardText(frame, "FOIL", 0.25, 0.12)
-	end
-	if displayed.beast then
-		addCardText(frame, BeastRules.describeGrowth(level, stars), 0.38, 0.13)
-	end
-	addCardText(frame, `{card.rarity} · {BeastRules.describeGrade(grade)}`, 0.53, 0.14).TextColor3 = if frontier then aurora[1] else Rarities.Tiers[card.rarity].color
-	addCardText(frame, string.format("$%.2f", displayed.price), 0.72, 0.22).Name = "PriceLabel"
 
 	part.Parent = shelf.part
 	return part
@@ -297,11 +365,7 @@ local function renderCardSlot(shelf: PlacedShelf, slot: number)
 		and existing:GetAttribute("Grade") == displayed.grade
 		and existing:GetAttribute("BeastId") == (if displayed.beast then displayed.beast.id else nil)
 	then
-		existing:SetAttribute("Price", displayed.price)
-		local priceLabel = existing:FindFirstChild("PriceLabel", true)
-		if priceLabel and priceLabel:IsA("TextLabel") then
-			priceLabel.Text = string.format("$%.2f", displayed.price)
-		end
+		existing:SetAttribute("Price", displayed.price) -- the client redraws the price
 		return
 	end
 
@@ -326,7 +390,7 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	if shelf.visual then
 		shelf.visual:PivotTo(shelf.part.CFrame * CFrame.new(0, -shelf.def.size.Y / 2, 0))
 	end
-	updateStockBoxes(shelf)
+	updateLabel(shelf)
 end
 
 -- A tag floating just above the shelf (what it holds, or the case's count), clear of its model and cards
@@ -387,6 +451,7 @@ local function createShelf(
 		cards = {},
 		cardParts = {},
 		stockBoxes = {},
+		priceTags = {},
 		paid = paid,
 		part = part,
 		label = buildLabel(part, def),

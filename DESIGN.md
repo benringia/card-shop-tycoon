@@ -50,7 +50,7 @@ Order stock (computer) → Restock shelves → Set prices
 **Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
 village (Inno's Stylized Asset Pack outdoors). Grass ground (the Baseplate is recoloured), a cobblestone street
 between the two rows (x -110..110, 60 wide), a round stone plaza (radius 22, open room for event NPCs) round the healing spring, warm afternoon lighting
-with light haze. Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
+with light haze, soft bloom and low wall shine (`Town.LIGHTING`; dim warm shop ceiling lights so pale walls never wash out). Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
 the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
 with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
 embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Plots stand 24 studs apart. The town is
@@ -72,7 +72,9 @@ Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → 
 (`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser. The delivery spot is drawn as a pallet (DeliveryPad); boxes stand on it. Delivery boxes show their
 product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
-`Town.SHELF_STOCK`, `Products.color`). **Props:** every
+`Town.SHELF_STOCK`, `Products.color`). Packs (products with `Packs` art) show as stacks of 5 thin upright packs
+with the pack art, leaning back, instead of boxes. Each stocked level has an orange price tag with the
+product's price at its front left. **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
 code-built stand-ins (docs/props.md). Numbers: `Config/Town`.
 
@@ -239,8 +241,45 @@ Each pack = 5 cards:
 - **Trading (post-MVP):** player to player trade window.
 
 ### 5.7 Pack opening feel (important)
-- Tap pack → tear animation → cards fan out face down → tap to flip each.
-- Hit slot flips last with a build-up. Rarity-colored glow + sound. Legendary = screen flash, server-wide chat announcement ("Ben pulled a FOIL Solarion!").
+- A light stage (soft blue-grey with a white glow) with the illustrated pack floating in the middle (`Config/Packs`
+  art, the logo and crimped edges drawn in code; art in `assets/ui/packs`, made with Figma's image generator).
+  "Drag across the top to open!": dragging over 80% of the pack's width tears the top off along the dashed line
+  (a tap, Space or T tears it by itself). The pack slides away and the cards rise out as a stack.
+- Cards are revealed one at a time, big in the middle; a tap, Space, T or the round Next button slides the card off
+  to the left and shows the next ("2 / 5 · Tap for the next card" at the bottom). After the last card comes the
+  results screen: every card in a big row popping in, a yellow NEW ribbon on cards the player didn't own before
+  (binder, beasts or on display; the server checks before adding them, `Util/NewPulls`, only the first copy in a
+  pack), pills on top (🃏 Your cards · NEW x2 · pack value · ℹ️ Rarity guide, which opens over the results) and a
+  green Next. Odds sit in the top right (hidden on the results, whose row and pills span the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar.
+- Hit slot comes last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
+  - **Tease** before the flip: the face-down card glows in its rarity colour, breathes and shakes, and the
+    stage dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons come out face up at once).
+  - **After the flip:** sparks burst out and a banner pops ("RARE!", "VERY RARE!"); the glow stays behind the card.
+  - **Epic and Legendary** add turning light rays, confetti and a pop (taps are ignored 0.6s so a double tap can't
+    skip it). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
+  - **Foil** adds sparks, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!", a plain foil "FOIL!").
+  - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
+- Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
+  built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
+  (white Common, blue Rare, teal Very Rare, purple Epic, gold Legendary; a turning rainbow on foil, aurora on
+  Frontier). Outlined text over soft dark bands: element emoji and name top left, a grade letter pill top right,
+  the value (or a case's asking price, in gold) big at the bottom. Detailed faces (binder, packs, inspector,
+  everywhere but shelves and small job/party tiles) add star slots under the name, a "Lv 3" chip under the grade
+  and a FOIL / FRONTIER chip. Art: a card's own image (`ART_IMAGES`, by name) else its element's painted scene
+  (`SCENES`: fireplace, coral reef, forest, stormy peak, moonlit graveyard; made with Figma's image generator,
+  JPEGs in `assets/ui/card-scenes`) with the element emoji on a glow, else an element gradient; the art will be replaced by renders of
+  the creature models. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
+  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is a deep blue card with
+  🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
+- Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
+  server's plain card part (1.05 x 1.5 studs; glass counters lie them on the bed, rows 1.12 apart), with the asking
+  price in gold in the value row. To make visitors want to buy, the face glows (it ignores the
+  room's light), a neon halo in the rarity colour sits just behind it (pulsing on Epic and up), and rarer cards
+  light the case and sparkle more (`Config/CardEffects` BY_RARITY: glow, range, sparkles, halo). Grade S copies
+  glow brighter and sparkle more (GRADE_S). Grade S Legendaries and Grade S Frontier cards are "supreme": a solid
+  pulsing halo, golden sparkles and blue-white lightning bolts crackling off the card's edges every 0.35-1.1s
+  (SUPREME; no bolts while the camera is over 70 studs away). Their card face also gets a spinning gold rim round
+  the art everywhere (binder, packs, cases; `Config/CardDesign` SUPREME_RIM).
 - "Open all" button for fast opening once players have lots of packs.
 
 ### 5.8 Glimmerbeasts (cards that grow)
@@ -266,12 +305,15 @@ when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the 
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
 spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
 and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Aurora Drake, Stormking, never in
-packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER ribbon, a constant
+packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER chip, a constant
 shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
 an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
-and changed only by ItemService. The binder has two tabs, 📖 Cards and 🎒 Bag (key I opens the Bag): item tiles with a
-detail panel. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
+and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
+is an inventory window in the middle of the whole screen ("Bag", "1 / 20 slots" in its blue header): a 5x4 grid of slots (more rows if
+needed), filled ones soft blue with the item icon and an "x2" badge, the rest empty; the chosen item's details on
+the right (big icon, name, "You have 2", what it does, Where to get it / How to use it boxes). It scales down to
+fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
@@ -333,7 +375,7 @@ panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is s
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
-(bottom-right status corner, with cash and level/XP) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar shows your avatar
+(bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar shows your avatar
 (opens Party) and the 3 party slots: tap one to summon it, tap the summoned one to unsummon, tap an empty one to pick
 a card in the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
@@ -572,32 +614,39 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── UIController.luau       # bottom-right status (cash, level/XP, buffs), toasts, money toasts above the buff
+    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, shards, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
-    │   │   ├── BuildController.luau    # build menu, shelf prompts, shelf edit menu
+    │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # two-page binder (3x3 pockets, fewer bigger ones on phones), search + filters, hover tooltips
+    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
-    │   │   ├── BuffController.luau      # buff badge (bottom-right, above the cash) and tooltip for the summoned creature's perk
+    │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── PartyBarController.luau  # bottom-right quick bar: your avatar + 3 party slots, tap to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
+    │   │   ├── RarityGuideController.luau # rarity guide panel (odds from the pack configs)
+    │   │   ├── CardInspectorController.luau # the 3D card you tilt and flip from the binder
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
-    │   │   └── CardEffectsController.luau # rarity glows, sparkles, foil shimmer, listing bursts
+    │   │   └── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
     │   └── Util/
-    │       ├── UIKit.luau              # shared UI building helpers
+    │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
+    │       ├── Motion.luau             # pop in/out, press squash, bumps
+    │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
+    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
+    │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
+    │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
     └── shared/                 # → ReplicatedStorage
@@ -615,6 +664,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # reveal timings and sounds (client)
+        │   ├── UIMotion.luau   # UI motion timings and scales (client)
+        │   ├── UIFonts.luau    # the game fonts (client)
+        │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
+        │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
+        │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
+        │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
@@ -650,10 +705,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
-            ├── ShelfStock.luau    # how many stock boxes a shelf shows and where (pure, Lune-tested)
+            ├── ShelfStock.luau    # stock boxes, pack stacks and price tags on shelves (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
+            ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
+            ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
+            ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
+            ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -704,6 +763,64 @@ When a player leaves, customers put picked-up stock and cards back before the sa
 
 Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
+
+### 10.6 UI style and HUD
+Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
+- **Style** (`Util/UIKit`): light-blue panel bodies with a white border, a blue gradient header with the title, a
+  red close button on the top-right corner, white cards and rows, chunky buttons with a darker bottom lip
+  (blue-violet primary, white secondary). Text picks white or navy for the surface behind it.
+- **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
+  for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
+  text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
+- **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
+  button shrinks them away; buttons squash while held; number pills bump when they change.
+- **HUD** (`Util/Hud`, `Config/HudLayout`): a blue **Manage** tile on the left middle slides out a tray of blue tiles to
+  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; blue tiles at the bottom centre (Cards B, Bag I) with key
+  chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
+  Bottom right, one corner cluster (above the jump button on touch screens): the party bar, and beside it a
+  right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
+  party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. Each icon sits over its
+  pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
+  HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
+  (Angry, Thinking, Happy); made as three sheets with Figma's image generator and cut by
+  `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Every icon is kept drawn, tiny and nearly invisible,
+  from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
+  their icons ready. Names without a picture show as text (⌛ in a bubble). Card element emojis stay until the creature art comes. Toasts sit above the bottom row. The fight screen hides the HUD groups.
+- **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
+  closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
+  closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
+- **Prices** rows show each product's picture beside its name and price: packs their real front (`Packs` art, as on the shelves), others their icon (`Products.icon`).
+- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
+  binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
+  plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
+  are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
+  page is the cover: leather in the set's colour with an embossed border, a title band (name, "34 / 35
+  collected"), the pack art in a framed window, a progress bar and the set's worth; then page 1. Pages hold 3x3
+  pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.36 wide
+  to 1 tall) and nearly fills the screen's height (on its own full-screen layer, rising into Roblox's top bar strip,
+  with the page counter just under it) when the corner buttons stay clear, else fits between the top
+  row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
+  page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
+  (0.35s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,
+  darkens edge-on and casts a shadow on the page underneath, then lands on the other side showing the next cards. Q/E, the
+  arrows and a swipe turn pages. Page counter pill ("2-3 / 9"); arrows with key chips
+  (Q/E one spread). Top right: Filters (F) and close. The Filters panel (search, Show
+  All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book (arrows
+  included) shrinks into the room left of it. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
+  The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
+- **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
+  with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
+  19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
+  `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
+- **Card inspector** (`CardInspectorController`, `Config/Inspector`): tapping a binder card shows it as a real 3D
+  card (about 60% of the screen's height) left of centre close in front of the camera (front: the card face; back: the card back), on a solid dark
+  sheet just behind it that hides the world (and your pet); the binder's dim and always-on-top tags (customer mood bubbles) switch off while it shows. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
+  Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
+  Add to party and Back. Closing restores the camera; dying closes it too.
+- **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
+  `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
+  the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
+  green price, red when you can't afford it, grey "Lv N" while locked. Buying places it as before.
 
 ### 10.5 Performance budget
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.

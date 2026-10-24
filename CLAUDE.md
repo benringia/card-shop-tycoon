@@ -15,6 +15,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
   into the place file's `ReplicatedStorage.PlaceProps` with Insert from File (docs/props.md).
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
+- `assets/ui/card-scenes` (one JPEG per element, ids in `Config/CardDesign`) and `assets/ui/packs` (pack fronts, ids in
+  `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
+- `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
+  `tools/ui-icons/slice_icons.py <sheet> <1|2|3>` (needs Pillow). Not synced by Rojo.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 
@@ -26,7 +30,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, CellSearch, ShelvesConfig) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -58,8 +62,11 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Mobile-first: tap targets ≥ 48px, test landscape phone in the Device emulator.
 - Build UI in code with `src/client/Util/UIKit.luau`; card faces with `CardFace.luau`.
 - ScreenGuis made in code default to `ZIndexBehavior.Global`; set `Sibling` (MainGui does) or a raised panel hides its own children.
+- Fonts: FredokaOne (titles, buttons) and Nunito Bold (body), applied by `Util/FontStyle` (code may keep naming Gotham). Fredoka does not load in Play.
 - Text: plain ASCII plus `·` and emoji only. Gotham/FredokaOne draw symbols like ✦ − ★ as empty boxes.
-- HUD buttons stack on the middle-left (clear of the mobile thumbstick and jump button).
+- HUD buttons go through `Util/Hud` (Manage tray on the left, tiles at the bottom centre, context tiles for
+  Drop/Rip), clear of the mobile thumbstick and jump button. Look and motion: `Util/UIKit`, `Util/Motion`.
+- `UIKit.panel` windows open one at a time (set the `Overlay` attribute for one that opens on top of another).
 - Panels made with `UIKit.panel` hide the thumbstick and jump button while open (they cover panel buttons on phones).
 - Two ProximityPrompts on one part overlap: show one at a time, or offset with `UIOffset`.
 - Owner-only prompts are created on the client for the owner's own plot, so visitors never see them.
@@ -73,7 +80,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
-  cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card).
+  cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
+  `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/legendarys [foil]` (a Grade S
+  copy of every Legendary, to see the lightning on display).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.

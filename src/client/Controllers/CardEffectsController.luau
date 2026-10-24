@@ -1,19 +1,27 @@
 --!strict
--- Rarity effects on cards displayed in card cases, run locally on every client:
--- glows, ambient sparkles and a foil shimmer while shown, plus a burst when a card is listed.
--- The server only places the card parts; nothing here is replicated, so pulsing costs no network.
+-- Cards displayed in card cases, drawn locally on every client: the full card face (CardFace, with the asking
+-- price), a neon halo in the rarity colour behind it, glows and sparkles while shown, an element aura on
+-- Legendaries (Util/ElementAura, stronger with grade and stars), plus a burst when a card is listed. The server only places plain card parts with attributes; nothing here is replicated, so pulsing
+-- costs no network.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = Shared:WaitForChild("Config")
 local CardEffects = require(Config:WaitForChild("CardEffects"))
-local CardFace = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CardFace"))
+local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local ElementAura = require(ClientUtil:WaitForChild("ElementAura"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local ElementFx = require(Config:WaitForChild("ElementFx"))
+local ElementFxRules = require(Shared:WaitForChild("Util"):WaitForChild("ElementFxRules"))
 
 type RarityEffect = CardEffects.RarityEffect
 
 local BURST_CLEANUP_SECONDS = 3
+local SUPREME = CardEffects.SUPREME
 
 local CardEffectsController = {}
 
@@ -44,41 +52,71 @@ local function makeEmitter(parent: Instance, color: Color3, rate: number): Parti
 	return emitter
 end
 
--- A rainbow band sweeping across the card face, drawn over the server's SurfaceGui
-local function addFoilShimmer(part: BasePart)
+type Card = typeof(Cards.List[1])
+
+-- The card face on the part's front, glowing (it ignores the room's light). Redrawn when the price or the
+-- copy's growth changes.
+local function drawFace(part: BasePart, card: Card, foil: boolean)
 	local gui = Instance.new("SurfaceGui")
-	gui.Name = "FoilShimmer"
+	gui.Name = "CardFace"
 	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = CardEffects.FACE_PIXELS_PER_STUD
 	gui.LightInfluence = 0
-	gui.ZOffset = 1 -- draw above the server's card text on the same face
+	gui.Brightness = CardEffects.FACE_BRIGHTNESS
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = part
 
-	local overlay = Instance.new("Frame")
-	overlay.Size = UDim2.fromScale(1, 1)
-	overlay.BackgroundColor3 = Color3.new(1, 1, 1)
-	overlay.BorderSizePixel = 0
-	overlay.Parent = gui
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.Parent = gui
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = frame
 
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 220)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 255, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 150)),
-	})
-	-- Only a narrow band is visible; the rest of the overlay is fully transparent
-	gradient.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.4, 1),
-		NumberSequenceKeypoint.new(0.5, 0.45),
-		NumberSequenceKeypoint.new(0.6, 1),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	gradient.Rotation = 25
-	gradient.Offset = Vector2.new(-1, 0)
-	gradient.Parent = overlay
+	local function render()
+		local level, stars, grade = part:GetAttribute("Level"), part:GetAttribute("Stars"), part:GetAttribute("Grade")
+		local growth = {
+			level = if typeof(level) == "number" then level else 1,
+			stars = if typeof(stars) == "number" then stars else BeastRules.START_STARS,
+			grade = if BeastRules.isGrade(grade) then grade :: string else BeastRules.DEFAULT_GRADE,
+		}
+		local price = part:GetAttribute("Price")
+		CardFace.render(frame, stroke, card, foil, false, growth, if typeof(price) == "number" then price else nil)
+	end
+	render()
+	for _, attribute in { "Price", "Level", "Stars", "Grade" } do
+		part:GetAttributeChangedSignal(attribute):Connect(render)
+	end
+end
 
-	local info = TweenInfo.new(CardEffects.SHIMMER_SECONDS, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1)
-	TweenService:Create(gradient, info, { Offset = Vector2.new(1, 0) }):Play()
+-- A neon card-shaped glow just behind the card, a little bigger, in the rarity colour
+local function addHalo(part: BasePart, effect: RarityEffect, color: Color3)
+	if effect.halo >= 1 then
+		return
+	end
+	local margin = CardEffects.HALO_MARGIN
+	local halo = Instance.new("Part")
+	halo.Name = "Halo"
+	halo.Anchored = true
+	halo.CanCollide = false
+	halo.CanQuery = false -- clicks and prompts still hit the card
+	halo.CanTouch = false
+	halo.CastShadow = false
+	halo.Material = Enum.Material.Neon
+	halo.Color = color
+	halo.Transparency = effect.halo
+	halo.Size = Vector3.new(part.Size.X + margin * 2, part.Size.Y + margin * 2, 0.02)
+	-- The front face is -Z, so +Z is just behind the card
+	halo.CFrame = part.CFrame * CFrame.new(0, 0, part.Size.Z / 2 + 0.015)
+	halo.Parent = part
+	part:GetPropertyChangedSignal("CFrame"):Connect(function()
+		halo.CFrame = part.CFrame * CFrame.new(0, 0, part.Size.Z / 2 + 0.015)
+	end)
+	if effect.pulse then
+		local info = TweenInfo.new(CardEffects.PULSE_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+		TweenService:Create(halo, info, { Transparency = CardEffects.HALO_PULSE_TRANSPARENCY }):Play()
+	end
 end
 
 local function addAlwaysOn(part: BasePart, effect: RarityEffect, color: Color3, foil: boolean)
@@ -106,7 +144,6 @@ local function addAlwaysOn(part: BasePart, effect: RarityEffect, color: Color3, 
 	end
 	if foil then
 		makeEmitter(part, Color3.new(1, 1, 1), CardEffects.FOIL_GLINT_RATE).Name = "FoilGlints"
-		addFoilShimmer(part)
 	end
 end
 
@@ -147,6 +184,23 @@ local function playListingBurst(part: BasePart, effect: RarityEffect, color: Col
 	end
 end
 
+-- Grade S copies shine brighter; a Grade S Legendary (or Frontier card) is "supreme": a solid halo, more glow
+local function boostForGrade(effect: RarityEffect, grade: unknown, supreme: boolean): RarityEffect
+	if grade ~= "S" then
+		return effect
+	end
+	local boosted = table.clone(effect)
+	boosted.glow *= CardEffects.GRADE_S.GLOW_MULTIPLIER
+	boosted.sparkleRate *= CardEffects.GRADE_S.SPARKLE_MULTIPLIER
+	if supreme then
+		boosted.glow *= SUPREME.GLOW_MULTIPLIER
+		boosted.glowRange *= SUPREME.RANGE_MULTIPLIER
+		boosted.halo = SUPREME.HALO
+		boosted.pulse = true
+	end
+	return boosted
+end
+
 local function attach(instance: Instance, isNewListing: boolean)
 	if not instance:IsA("BasePart") then
 		return
@@ -163,17 +217,22 @@ local function attach(instance: Instance, isNewListing: boolean)
 	end
 	local color = if frontier then CardEffects.FRONTIER.AURORA[1] else getRarityColor(card.rarity)
 	local foil = instance:GetAttribute("Foil") == true
+	local grade = instance:GetAttribute("Grade")
+	local supreme = grade == "S" and (frontier or card.rarity == "Legendary")
+	effect = boostForGrade(effect, grade, supreme)
 
+	drawFace(instance, card, foil)
+	addHalo(instance, effect, color)
 	addAlwaysOn(instance, effect, color, foil)
-	if frontier then
-		-- The server draws a white border; here it becomes the moving aurora, with a shimmer like a foil's
-		local border = instance:FindFirstChild("Border", true)
-		if border and border:IsA("UIStroke") then
-			CardFace.addAurora(border)
-		end
-		if not foil then
-			addFoilShimmer(instance)
-		end
+	-- Legendaries burn, bubble, bloom, crackle or smoke by element, stronger with grade and stars
+	if card.rarity == "Legendary" then
+		local stars = instance:GetAttribute("Stars")
+		local intensity = ElementFxRules.intensity(
+			ElementFx.INTENSITY,
+			if typeof(grade) == "string" then grade else BeastRules.DEFAULT_GRADE,
+			if typeof(stars) == "number" then stars else BeastRules.START_STARS
+		)
+		ElementAura.attach(instance, card.element, intensity)
 	end
 	if isNewListing then
 		playListingBurst(instance, effect, color, foil)
