@@ -234,12 +234,14 @@ local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
 		local centre = sides[side] * size.Z
 		local back = centre > 0
 		local bottom = -size.Y / 2 + config.LEVELS[level] * size.Y
-		local x = -size.X / 2 + tagLook.INSET + tag.Size.X / 2
+		-- Under the row's first stack (rows fill from -X), so the tag is always by cards on display
+		local cell = size.X / config.PER_LEVEL
+		local x = -size.X / 2 + (cell - box.x) / 2 + tag.Size.X / 2
 		local z = centre + (if back then 1 else -1) * (box.z / 2 + tag.Size.Z / 2 + tagLook.GAP)
-		-- Back tags turn round to face the back aisle (and sit at that side's left end)
+		-- Back tags turn round to face the back aisle
 		local turn = if back then CFrame.Angles(0, math.pi, 0) else CFrame.new()
 		tag.CFrame = shelf.part.CFrame
-			* CFrame.new(if back then -x else x, bottom + tag.Size.Y / 2, z)
+			* CFrame.new(x, bottom + tag.Size.Y / 2, z)
 			* turn
 			* CFrame.Angles(0, 0, math.rad(tagLook.TILT))
 		local gui = tag:FindFirstChildOfClass("SurfaceGui")

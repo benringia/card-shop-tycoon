@@ -75,8 +75,8 @@ the product's colour (3 levels of 4, filling from the bottom; any stock shows at
 `Town.SHELF_STOCK`, `Products.color`). A shelf whose model isn't a one-sided rack sets its own levels and sides (`Shelves` `stock`): the
 Big Display Rack is double-sided, filling each level front then back, with its back rows, packs and tags facing
 the back aisle. Packs (products with `Packs` art) show as stacks of 5 thin upright packs
-with the pack art, leaning back, instead of boxes. Each stocked level has a yellow price tag with the
-product's price at its front left. On your own shelves the tags are buttons (`PriceTagController`): point at one
+with the pack art, leaning back, instead of boxes. Each stocked row has a yellow price tag with the
+product's price on its outer edge, under the row's first stack (so always next to stock on display). On your own shelves the tags are buttons (`PriceTagController`): point at one
 (within 24 studs) and it lights up with a "Set Price" tooltip by the cursor; click or tap it for a small Set Price window with
 that product's +/- row (the same price as the Prices panel; the server sets the shelf's `ProductId` attribute). **Props:** every
 decoration is a slot; `assets/props/<Slot>.rbxm` and its variants (`TreeA`, `FlowerBlue` ...) replace the
