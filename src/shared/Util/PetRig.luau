@@ -212,15 +212,22 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 
 	local wagScale = (1 + (if fidget == "wag" then (cfg.HAPPY_WAG - 1) * amount else 0)) * (1 + (cfg.TAIL_WALK_AMOUNT - 1) * moving)
 	local wag = state.tailPhase or state.time * TAU / cfg.TAIL_SECONDS
-	local hasTail = false
+	local hasTail, hasUpperSpine, hasNeck = false, false, false
 	for _, role in roles do
-		if role.kind == "tail" then
-			hasTail = true
-			break
-		end
+		hasTail = hasTail or role.kind == "tail"
+		hasUpperSpine = hasUpperSpine or (role.kind == "spine" and role.segment == 1)
+		hasNeck = hasNeck or role.kind == "neck"
 	end
-	-- No tail bones: the tails are skinned to the hips, so the hips sway them and the spine turns back
-	local hips = if hasTail then 0 else rad(cfg.HIP_SWAY) * math.sin(wag) * wagScale
+	-- No tail bones: the tails are skinned to the hips, so the hips sway them and the spine turns back. Two-legged
+	-- rigs without a tail have no tail to swish: they shift their weight slowly from foot to foot instead
+	local hips = if hasTail or biped then 0 else rad(cfg.HIP_SWAY) * math.sin(wag) * wagScale
+	local weight = if biped and not hasTail then rad(cfg.IDLE_SWAY) * math.sin(state.time * TAU / cfg.IDLE_SWAY_SECONDS) * idle else 0
+	-- Walking on two legs: the hips turn with the forward leg and dip over the standing one, the shoulders turn
+	-- back against them and the neck keeps the head facing ahead
+	local walkTwist = if biped and not flying then -rad(cfg.HIP_TWIST) * math.sin(state.phase) * moving else 0
+	local walkRoll = if biped and not flying then rad(cfg.HIP_ROLL) * math.sin(state.phase) * moving else 0
+	-- What's left of the twist at the shoulders, undone by the neck (or the head without one)
+	local shoulderTwist = walkTwist * (0.5 - (if hasUpperSpine then cfg.SHOULDER_COUNTER else 0))
 
 	local flying = state.flying == true
 	local flap = if flying then math.sin(state.flapPhase or 0) else 0
@@ -265,24 +272,31 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				end
 			end
 		elseif role.kind == "pelvis" then
-			y = hips
+			y = hips + walkTwist
+			z = walkRoll + weight
 			if fidget == "sit" then
 				x = rad(cfg.SIT) * amount
 			end
 		elseif role.kind == "spine" then
 			x = (if flying then rad(cfg.FLAP_PITCH) * flap else breath * idle + bob * 0.5)
 			if role.segment == 0 then
-				y = -hips
+				y = -hips - walkTwist * 0.5
+				z = -(walkRoll + weight) * 0.7
+			elseif role.segment == 1 then
+				y = -walkTwist * cfg.SHOULDER_COUNTER
 			end
 			if fidget == "stretch" then
 				x += rad(cfg.STRETCH) * 0.4 * amount
 			elseif fidget == "sit" then
 				x -= rad(cfg.SIT) * 0.8 * amount -- the front stays up while the hips go down
 			end
-			z = shake * 0.6
+			z += shake * 0.6
 		elseif role.kind == "neck" or role.kind == "head" then
 			local share = if role.kind == "neck" then 0.45 else 0.55
 			y = lookYaw * share
+			if role.segment == 0 and (role.kind == "neck" or not hasNeck) then
+				y -= shoulderTwist
+			end
 			x = if flying then -rad(cfg.FLAP_PITCH) * flap * share else -bob * share
 			z = shake * share
 			if fidget == "sniff" then

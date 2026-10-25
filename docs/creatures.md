@@ -37,7 +37,10 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   Puppy's ears flopping, and standing still a random fidget every few seconds (look around, head tilt, sniff,
   stretch, happy wag, hop, spin round, shake like a wet dog, sit, scratch with a hind leg, yawn). Pets without
   tail bones (Kitsune, Baby Dragon) sway their hips so their tails swish while the spine turns back to keep the
-  head still. The whole body still hops and sways a little, and moves for the hop, spin and shake.
+  head still; two-legged ones without a tail (Sprouthop) shift their weight slowly from foot to foot instead
+  (`IDLE_SWAY`). Walking on two legs, the hips turn with the forward leg and dip over the standing one, the chest
+  turns back against them and the neck keeps the head facing ahead (`HIP_TWIST`, `HIP_ROLL`, `SHOULDER_COUNTER`).
+  The whole body still hops and sways a little, and moves for the hop, spin and shake.
 - Rigs with generic bone names (the Ultra pack: Root.M.004, Root.L.009, Leg.R, leg.l, ik.l) get their roles
   from `Util/RigGuess` (Lune-tested). .L/.R chains (any case): high ones pointing up are ears; sideways ones
   starting above 0.4 of the height (not named leg) are arms, named only on two-legged rigs (every arm chain on a
@@ -50,7 +53,7 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   off straight down (measured per rig from shoulder to hand) and swing `ARM_SWING` against the leg on their side;
   IK feet are carried round with their leg's hip and lift `FOOT_LIFT` as the leg swings forward, so feet walk
   with the legs instead of staying planted. `Party.ARM_POSE` holds a model's arms another way (Flametor: up in
-  front like a T-rex: less drop, reaching forward, elbows bent) and can widen the swing (`swing`: Boltlynx 40).
+  front like a T-rex: less drop, reaching forward, elbows bent) and can widen the swing (`swing`: Boltlynx 40, Sprouthop 32).
 - Body waves (`Party.UNDULATE`): "swim" models (IceShark, Merilux) float and wave from head to tail
   (`SWIM_BEND`, `SWIM_LAG`, `SWIM_SECONDS`), legs paddling slowly; "slither" (GiantSnake) stays on the ground and
   waves mostly while moving (`SLITHER_STILL` standing).
@@ -109,7 +112,7 @@ the follow offset by the same amount. Keyframe beasts also get `CreatureVisuals.
 element fire on bones spread over the body (`Util/BeastFxRules`), arcs lightning between them, adds ground
 flames, a flickering light and footstep dust (`Config/BeastFx`).
 
-Current packs: **Originals** (our own Blender models, see below: Boltlynx, Voidmaw), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
+Current packs: **Originals** (our own Blender models, see below: Boltlynx, Voidmaw, Sprouthop), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
 AnimationController, no animations; every other non-Legendary card uses them), **CrystalTitans** (bought, Accretion "Stud Pet Pack 03 | Crystal Titans": RubyCerberus,
 SapphireCrab, RainbowHydra, each with Idle, Walk and Run; Solarion, Stormking and Aurora Drake use them), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
 versions: skinned meshes with bones, an AnimationController, no animations yet; no card uses them now, kept for
@@ -134,6 +137,9 @@ yawn and shake fidgets; jaws snap open now and then, each at its own moment, and
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.
+- **Sprouthop** (`build_sprouthop.py`): a little tree sprite: twisted bark body, big blocky face with glossy eyes,
+  a leafy cap and two twig antlers (its `Ear_` bones, so they wiggle), twig fingers, root feet; no tail, so its hips
+  sway like a sapling. 20 bones, about 2,800 triangles.
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns

@@ -53,10 +53,11 @@ return {
 	} :: { [string]: { string } },
 	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
 	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING). Flametor holds its short
-	-- arms up in front like a T-rex; Boltlynx swings its arms wide like a marching warrior.
+	-- arms up in front like a T-rex; Boltlynx swings its arms wide like a marching warrior, Sprouthop a little less.
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
 		Boltlynx = { hang = 10, forward = 0, bend = 8, swing = 40 },
+		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
@@ -93,6 +94,11 @@ return {
 		STRETCH = 26, -- front legs reach forward, spine dips
 		HAPPY_WAG = 2.4, -- tail wag multiplier
 		HIP_SWAY = 9, -- pets without tail bones (Kitsune): the hips sway so the tails swish, the spine turns back
+		IDLE_SWAY = 2.5, -- two-legged rigs without a tail: weight shifting slowly from foot to foot instead
+		IDLE_SWAY_SECONDS = 4.2,
+		HIP_TWIST = 9, -- walking on two legs: the hips turn with the forward leg...
+		HIP_ROLL = 4, -- ...and dip over the standing one
+		SHOULDER_COUNTER = 0.75, -- the chest turns back against the hips (more than cancelling them)
 		SIT = 22, -- sit: hips down, hind legs fold
 		SCRATCH = 50, -- a hind leg up to scratch
 		SHAKE = 16, -- shake like a wet dog: spine and head roll, fast
@@ -182,7 +188,7 @@ return {
 		Mistfin = { pack = "UltraPets", model = "IceShark", size = 1.3 },
 		["Abyssal Koi"] = { pack = "UltraPets", model = "IceShark", tint = { 90, 110, 200 } },
 		Tidecaller = { pack = "UltraPets", model = "Merilux", size = 1.3 },
-		Sprouthop = { pack = "UltraPets", model = "RootFrog", size = 1.6 },
+		Sprouthop = { pack = "Originals", model = "Sprouthop", size = 2.2 }, -- original, tools/blender/build_sprouthop.py
 		Mossmole = { pack = "UltraPets", model = "RedMole", tint = { 150, 210, 130 } },
 		Petalpaw = { pack = "UltraPets", model = "PlantSquirrel", size = 1.3 },
 		Thornback = { pack = "UltraPets", model = "KungFuMantis", size = 1.3 },
