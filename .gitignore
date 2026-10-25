@@ -8,3 +8,4 @@ ServerPackages/
 .superpowers/
 *.blend1
 *.fbm/
+__pycache__/
