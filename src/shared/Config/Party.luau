@@ -97,6 +97,15 @@ return {
 		SCRATCH = 50, -- a hind leg up to scratch
 		SHAKE = 16, -- shake like a wet dog: spine and head roll, fast
 		YAWN = 26, -- head up
+		-- Many-headed rigs (Hydra_<head>_<bone>, Jaw_<head>): each neck sways and nods on its own beat
+		HYDRA_SWAY = 14,
+		HYDRA_NOD = 7,
+		HYDRA_SECONDS = 3.4,
+		HYDRA_SPREAD = 2.4, -- radians of beat between one head and the next (out of step, never in a row)
+		HYDRA_LAG = 0.6, -- radians of beat per bone up the neck
+		JAW_SNAP = 24, -- degrees a jaw snaps open now and then
+		JAW_SNAP_SECONDS = 2.2,
+		JAW_YAWN = 42,
 		HOP_HEIGHT = 0.9, -- whole-body hop (studs at size 1), twice
 		BOUNCE = 0.35, -- creatures without bones: a few quick bounces
 		SHAKE_BODY = 10, -- the whole body rolls during a shake
@@ -194,7 +203,7 @@ return {
 		Duskstalker = { pack = "UltraPets", model = "FighterMonkey", tint = { 150, 110, 210 }, size = 1.3 },
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
 		Solarion = { pack = "CrystalTitans", model = "RubyCerberus", size = 2.2 },
-		Voidmaw = { pack = "CrystalTitans", model = "RainbowHydra", tint = { 120, 70, 200 }, size = 2.2 },
+		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 3 }, -- original, tools/blender/build_voidmaw.py
 		-- Frontier set
 		Frostfang = { pack = "UltraPets", model = "PurpleFox", tint = { 170, 220, 255 } },
 		["Gale Sprite"] = { pack = "UltraPets", model = "NeonSwallow" },
