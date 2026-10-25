@@ -253,6 +253,40 @@ return {
 		assert(math.abs(wide["arm:Left:0"].x) > math.abs(step["arm:Left:0"].x) + math.rad(10), "Party.ARM_POSE swing doesn't widen the swing")
 	end,
 
+	["hydra necks sway each on their own, jaws snap and open wide on a yawn"] = function()
+		local neck = PetRig.role("Hydra_3_2")
+		assert(neck and neck.kind == "hydra" and neck.pair == 3 and neck.segment == 2, "Hydra_3_2 is the third bone of head 3")
+		local jaw = PetRig.role("Jaw_4")
+		assert(jaw and jaw.kind == "jaw" and jaw.pair == 4, "Jaw_4 is head 4's jaw")
+		local HYDRA = { "Pelvis", "Spine_0", "Spine_1" }
+		for head = 0, 2 do
+			for segment = 0, 3 do
+				table.insert(HYDRA, `Hydra_{head}_{segment}`)
+			end
+			table.insert(HYDRA, `Jaw_{head}`)
+		end
+		local a = poseAt(HYDRA, still(0.7))
+		local b = poseAt(HYDRA, still(1.9))
+		assert(math.abs(a["hydra:1:1"].y - b["hydra:1:1"].y) > math.rad(3), "the necks don't sway")
+		assert(math.abs(a["hydra:1:1"].y - a["hydra:2:1"].y) > math.rad(2), "the heads sway in step")
+		assertBounded(a, "hydra standing")
+		local widest, shut = 0, 0
+		for step = 0, 80 do
+			local x = poseAt(HYDRA, still(step * 0.1))["jaw:1"].x
+			widest, shut = math.min(widest, x), math.max(shut, x)
+		end
+		assert(widest < -math.rad(10), "the jaw never opens")
+		assert(shut > -math.rad(2), "the jaw never closes")
+		local yawn = poseAt(HYDRA, { time = 0, phase = 0, moving = 0, fidget = "yawn", fidgetProgress = 0.5 })
+		assert(yawn["jaw:1"].x < widest - math.rad(5), "a yawn doesn't open the jaws wide")
+		local look = poseAt(HYDRA, { time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0.5, side = 1 })
+		local rest = poseAt(HYDRA, still(0))
+		for head = 0, 2 do
+			assert(look[`hydra:{head}:0`].y - rest[`hydra:{head}:0`].y > math.rad(4), `head {head} doesn't look round`)
+		end
+		assertBounded(yawn, "hydra yawning")
+	end,
+
 	["feet lift as their leg swings forward and stay down standing"] = function()
 		local foot = PetRig.role("Foot_1_Right")
 		assert(foot and foot.kind == "foot" and foot.pair == 1 and foot.side == "Right", "Foot_1_Right is a foot")

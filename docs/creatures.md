@@ -109,9 +109,9 @@ the follow offset by the same amount. Keyframe beasts also get `CreatureVisuals.
 element fire on bones spread over the body (`Util/BeastFxRules`), arcs lightning between them, adds ground
 flames, a flickering light and footstep dust (`Config/BeastFx`).
 
-Current packs: **Originals** (our own Blender models, see below: Boltlynx), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
+Current packs: **Originals** (our own Blender models, see below: Boltlynx, Voidmaw), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
 AnimationController, no animations; every other non-Legendary card uses them), **CrystalTitans** (bought, Accretion "Stud Pet Pack 03 | Crystal Titans": RubyCerberus,
-SapphireCrab, RainbowHydra, each with Idle, Walk and Run; the Legendaries use them), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
+SapphireCrab, RainbowHydra, each with Idle, Walk and Run; Solarion, Stormking and Aurora Drake use them), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
 versions: skinned meshes with bones, an AnimationController, no animations yet; no card uses them now, kept for
 customers, NPCs or decoration).
 
@@ -121,10 +121,19 @@ Original creatures are built by scripts in `tools/blender/` (run inside Blender,
 write `assets/blender/<Card>/` (the `.blend`, an `.fbx` and its palette PNG; not synced by Rojo). Each is one
 blocky mesh with a palette texture, every vertex weighted fully to one bone, on an armature whose bones already
 carry `PetRig` role names (`Pelvis`, `Spine_0`, `Neck`, `Head_0`, `Arm_Left_0..2`, `0_Left_Limb_0..2`,
-`Tail_0..3`, `Ear_Left_0`), so the code walk and fidgets drive them with no `RigGuess` or aliases. They face -Y in
-Blender (Roblox -Z), arms in a T-pose.
+`Tail_0..5`, `Ear_Left_0`), so the code walk and fidgets drive them with no `RigGuess` or aliases. They face -Y in
+Blender (Roblox -Z), arms in a T-pose. `voxel_kit.py` holds the shared part: the box/spike mesh builder, palette,
+material, armature and export; each `build_<card>.py` only describes its creature.
+
+Many-headed rigs name each neck `Hydra_<head>_0..2` with the head as `Hydra_<head>_3`, and each lower jaw
+`Jaw_<head>`: every neck sways and nods on its own beat (the wave running up it) and joins the look, sniff, tilt,
+yawn and shake fidgets; jaws snap open now and then, each at its own moment, and gape in a yawn
+(`PET_ANIM.HYDRA_*`, `JAW_*`).
 
 - **Boltlynx** (`build_boltlynx.py`): the card art's lion warrior, 24 bones, about 1,300 triangles.
+- **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
+  (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
+  of 4 plus 7 jaws), about 2,750 triangles.
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns

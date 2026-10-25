@@ -5,17 +5,18 @@ src/shared/Util/PetRig.luau reads (Pelvis, Spine_0, Neck, Head_0, Arm_Left_0, 0_
 so the game's code walk, arm swing, tail wag and fidgets drive it without Util/RigGuess or config.
 
 Blender: Z up, the creature faces -Y, its left is +X. Arms in a T-pose (PetAnimator lowers them).
-Run inside Blender (MCP execute or Text Editor). Writes assets/blender/Boltlynx/{Boltlynx.blend,.fbx,palette png}.
+Run inside Blender (MCP execute or Text Editor; tools/blender/voxel_kit.py does the file, palette and export).
+Writes assets/blender/Boltlynx/{Boltlynx.blend,.fbx,palette png}.
 """
 import math
 import os
+import sys
 
-import bmesh
-import bpy
 from mathutils import Matrix, Vector
 
-REPO = os.environ.get("CARD_SHOP_REPO", r"C:\Users\Ben\Documents\roblox-project\card-shop-tycoon")
-OUT_DIR = os.path.join(REPO, "assets", "blender", "Boltlynx")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import voxel_kit  # noqa: E402
+
 NAME = "Boltlynx"
 
 # Palette: one flat colour per cell of an 8x8 grid
@@ -43,84 +44,6 @@ COLORS = {
     "trousers": (82, 56, 36),
     "trousers_dark": (64, 42, 28),
 }
-CELLS = 8
-CELL_PX = 8
-COLOR_INDEX = {name: i for i, name in enumerate(COLORS)}
-
-
-def cell_uv(color):
-    i = COLOR_INDEX[color]
-    return (((i % CELLS) + 0.5) / CELLS, ((i // CELLS) + 0.5) / CELLS)
-
-
-class Builder:
-    def __init__(self):
-        self.bm = bmesh.new()
-        self.uv = self.bm.loops.layers.uv.new("UVMap")
-        self.deform = self.bm.verts.layers.deform.new()
-        self.groups = []
-        self.xform = None  # Matrix 4x4 applied to every new vertex (the head is built at size 1, then scaled)
-
-    def group(self, bone):
-        if bone not in self.groups:
-            self.groups.append(bone)
-        return self.groups.index(bone)
-
-    def _face(self, verts, color):
-        face = self.bm.faces.new(verts)
-        u, v = cell_uv(color)
-        for loop in face.loops:
-            loop[self.uv].uv = (u, v)
-        return face
-
-    def _verts(self, points, bone):
-        index = self.group(bone)
-        verts = []
-        for p in points:
-            vert = self.bm.verts.new(self.xform @ Vector(p) if self.xform else p)
-            vert[self.deform][index] = 1.0
-            verts.append(vert)
-        return verts
-
-    def box(self, center, size, color, bone, rot=None):
-        """Axis-aligned box (or turned by rot, a Matrix 3x3, about its centre)."""
-        c = Vector(center)
-        hx, hy, hz = size[0] / 2, size[1] / 2, size[2] / 2
-        corners = [Vector((x, y, z)) for z in (-hz, hz) for y in (-hy, hy) for x in (-hx, hx)]
-        if rot is not None:
-            corners = [rot @ p for p in corners]
-        v = self._verts([c + p for p in corners], bone)
-        for quad in ((0, 2, 3, 1), (4, 5, 7, 6), (0, 1, 5, 4), (2, 6, 7, 3), (0, 4, 6, 2), (1, 3, 7, 5)):
-            self._face([v[i] for i in quad], color)
-
-    def span(self, a, b, width, color, bone, overlap=0.0):
-        """Square-section box from point a to point b."""
-        a, b = Vector(a), Vector(b)
-        along = b - a
-        length = along.length + overlap * 2
-        rot = along.to_track_quat("Z", "Y").to_matrix()
-        self.box((a + b) / 2, (width, width, length), color, bone, rot)
-
-    def spike(self, base, direction, width, length, color, bone):
-        """Four-sided pyramid from a square base, pointing along direction."""
-        base, d = Vector(base), Vector(direction).normalized()
-        rot = d.to_track_quat("Z", "Y").to_matrix()
-        h = width / 2
-        corners = [base + rot @ Vector(p) for p in ((-h, -h, 0), (h, -h, 0), (h, h, 0), (-h, h, 0))]
-        v = self._verts(corners + [base + d * length], bone)
-        self._face([v[3], v[2], v[1], v[0]], color)
-        for i in range(4):
-            self._face([v[i], v[(i + 1) % 4], v[4]], color)
-
-    def to_object(self, name):
-        mesh = bpy.data.meshes.new(name)
-        self.bm.to_mesh(mesh)
-        self.bm.free()
-        obj = bpy.data.objects.new(name, mesh)
-        for bone in self.groups:
-            obj.vertex_groups.new(name=bone)
-        return obj
-
 
 # Rig: (bone, parent, head, tail). Heights in metres, about 4 tall with the mane.
 HIP, KNEE, ANKLE = 1.32, 0.82, 0.3
@@ -292,113 +215,12 @@ def build_tail(b):
         b.spike(tip + Vector((0, 0.04, 0.1)), direction, 0.2, 0.3, color, "Tail_3")
 
 
-def make_palette():
-    size = CELLS * CELL_PX
-    image = bpy.data.images.get(f"{NAME}_palette") or bpy.data.images.new(f"{NAME}_palette", size, size, alpha=False)
-    pixels = [0.0] * (size * size * 4)
-    names = list(COLORS)
-    for py in range(size):
-        for px in range(size):
-            i = (py // CELL_PX) * CELLS + (px // CELL_PX)
-            r, g, b = COLORS[names[i]] if i < len(names) else (255, 0, 255)
-            o = (py * size + px) * 4
-            pixels[o:o + 4] = [r / 255, g / 255, b / 255, 1.0]
-    image.pixels = pixels
-    image.filepath_raw = os.path.join(OUT_DIR, f"{NAME}_palette.png")
-    image.file_format = "PNG"
-    image.save()
-    return image
-
-
-def make_material(image):
-    mat = bpy.data.materials.get(NAME) or bpy.data.materials.new(NAME)
-    mat.use_nodes = True
-    nodes = mat.node_tree.nodes
-    bsdf = next(n for n in nodes if n.type == "BSDF_PRINCIPLED")
-    tex = next((n for n in nodes if n.type == "TEX_IMAGE"), None) or nodes.new("ShaderNodeTexImage")
-    tex.image = image
-    tex.interpolation = "Closest"
-    mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
-    bsdf.inputs["Roughness"].default_value = 0.8
-    return mat
-
-
-def clear_previous():
-    for name in (NAME, f"{NAME}Rig"):
-        obj = bpy.data.objects.get(name)
-        if obj:
-            bpy.data.objects.remove(obj, do_unlink=True)
-    for coll in (bpy.data.meshes, bpy.data.armatures):
-        for block in list(coll):
-            if block.users == 0:
-                coll.remove(block)
-
-
-def build():
-    os.makedirs(OUT_DIR, exist_ok=True)
-    if bpy.context.object and bpy.context.object.mode != "OBJECT":
-        bpy.ops.object.mode_set(mode="OBJECT")
-    clear_previous()
-    scene = bpy.context.scene
-    scene.unit_settings.system = "METRIC"
-
-    # Armature
-    arm_data = bpy.data.armatures.new(f"{NAME}Rig")
-    rig = bpy.data.objects.new(f"{NAME}Rig", arm_data)
-    scene.collection.objects.link(rig)
-    bpy.context.view_layer.objects.active = rig
-    bpy.ops.object.mode_set(mode="EDIT")
-    for name, parent, head, tail in rig_bones():
-        bone = arm_data.edit_bones.new(name)
-        bone.head, bone.tail = head, tail
-        if parent:
-            bone.parent = arm_data.edit_bones[parent]
-    bpy.ops.object.mode_set(mode="OBJECT")
-    arm_data.display_type = "STICK"
-    rig.show_in_front = True
-
-    # Mesh
-    b = Builder()
+def parts(b):
     build_legs(b)
     build_body(b)
     build_head(b)
     build_arms(b)
     build_tail(b)
-    obj = b.to_object(NAME)
-    scene.collection.objects.link(obj)
-    obj.data.materials.append(make_material(make_palette()))
-    obj.parent = rig
-    modifier = obj.modifiers.new("Armature", "ARMATURE")
-    modifier.object = rig
-    for poly in obj.data.polygons:
-        poly.use_smooth = False
-
-    missing = [g for g in b.groups if g not in arm_data.bones]
-    print("vertex groups without a bone:", missing)
-    print("bones:", len(arm_data.bones), "verts:", len(obj.data.vertices), "tris:", sum(len(p.vertices) - 2 for p in obj.data.polygons))
-    return rig, obj
 
 
-def export(rig, obj):
-    bpy.ops.object.select_all(action="DESELECT")
-    rig.select_set(True)
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = rig
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT_DIR, f"{NAME}.blend"))
-    bpy.ops.export_scene.fbx(
-        filepath=os.path.join(OUT_DIR, f"{NAME}.fbx"),
-        use_selection=True,
-        object_types={"ARMATURE", "MESH"},
-        add_leaf_bones=False,
-        bake_anim=False,
-        path_mode="COPY",
-        embed_textures=True,
-        mesh_smooth_type="FACE",
-        apply_scale_options="FBX_SCALE_ALL",
-    )
-    print("exported to", OUT_DIR)
-
-
-RIG, OBJ = build()
-if os.environ.get("BOLTLYNX_EXPORT", "1") == "1":
-    export(RIG, OBJ)
+voxel_kit.run(NAME, COLORS, rig_bones(), parts)

@@ -54,6 +54,14 @@ function PetRig.role(name: string): Role?
 	if wingSide and wingSegment then
 		return { kind = "wing", pair = 0, side = wingSide, segment = tonumber(wingSegment) :: number, key = `wing:{wingSide}:{wingSegment}` }
 	end
+	local hydraHead, hydraSegment = string.match(name, "^Hydra_(%d)_(%d)$")
+	if hydraHead and hydraSegment then
+		return { kind = "hydra", pair = tonumber(hydraHead) :: number, side = "", segment = tonumber(hydraSegment) :: number, key = `hydra:{hydraHead}:{hydraSegment}` }
+	end
+	local jawHead = string.match(name, "^Jaw_(%d)$")
+	if jawHead then
+		return { kind = "jaw", pair = tonumber(jawHead) :: number, side = "", segment = 0, key = `jaw:{jawHead}` }
+	end
 	local earSide, earSegment = string.match(name, "^Ear_(%a+)_(%d)$")
 	if earSide and earSegment then
 		return { kind = "ear", pair = 0, side = earSide, segment = tonumber(earSegment) :: number, key = `ear:{earSide}:{earSegment}` }
@@ -292,6 +300,29 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				x *= 0.3
 				y *= 0.3
 				z *= 0.3
+			end
+		elseif role.kind == "hydra" then
+			-- One neck of many (Hydra_<head>_<bone>, the last bone its head): each sways and nods on its own beat, the
+			-- wave running up the neck; they all join in the look, sniff, yawn and shake
+			local beat = state.time * TAU / cfg.HYDRA_SECONDS + role.pair * cfg.HYDRA_SPREAD - role.segment * cfg.HYDRA_LAG
+			local share = 0.25 + 0.15 * role.segment
+			local calm = 1 - 0.4 * moving
+			y = rad(cfg.HYDRA_SWAY) * math.sin(beat) * calm + lookYaw * share
+			x = rad(cfg.HYDRA_NOD) * math.sin(beat * 1.6 + 1) * calm - bob * share
+			z = shake * share
+			if fidget == "sniff" then
+				x += rad(cfg.SNIFF) * share * amount
+			elseif fidget == "yawn" then
+				x -= rad(cfg.YAWN) * share * amount
+			elseif fidget == "tilt" and role.segment == 3 then
+				z += rad(cfg.TILT) * amount * (if role.pair % 2 == 0 then 1 else -1)
+			end
+		elseif role.kind == "jaw" then
+			-- Snapping open now and then, each head at its own moment; wide open in a yawn
+			local snap = math.max(0, math.sin(state.time * TAU / cfg.JAW_SNAP_SECONDS + role.pair * cfg.HYDRA_SPREAD * 2)) ^ 4
+			x = -rad(cfg.JAW_SNAP) * snap
+			if fidget == "yawn" then
+				x = math.min(x, -rad(cfg.JAW_YAWN) * amount)
 			end
 		elseif role.kind == "tail" then
 			local amplitude = rad(cfg.TAIL_WAG) * (1 + cfg.TAIL_GROW * role.segment) * wagScale
