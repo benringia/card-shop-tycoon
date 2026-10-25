@@ -253,6 +253,36 @@ return {
 		assert(math.abs(wide["arm:Left:0"].x) > math.abs(step["arm:Left:0"].x) + math.rad(10), "Party.ARM_POSE swing doesn't widen the swing")
 	end,
 
+	["two-legged walks twist the hips with the stride and the shoulders against them"] = function()
+		local BIPED = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0" }
+		local step = poseAt(BIPED, walking(math.pi / 2))
+		assert(step["pelvis:0"].y * step["leg:0:Left:0"].x < 0, "the hips don't turn with the forward leg")
+		assert(math.abs(step["pelvis:0"].z) > math.rad(1), "no weight shift onto the standing leg")
+		local shoulders = step["pelvis:0"].y + step["spine:0"].y + step["spine:1"].y
+		assert(shoulders * step["pelvis:0"].y < 0, "the shoulders don't turn against the hips")
+		local head = shoulders + step["neck:0"].y + step["head:0"].y
+		assert(math.abs(head) < math.rad(1), "the head doesn't stay facing ahead")
+		assertBounded(step, "two-legged walk")
+	end,
+
+	["tailless two-legged rigs sway their weight slowly instead of wagging their hips"] = function()
+		local BIPED = { "Pelvis", "Spine_0", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0" }
+		local most, changes = 0, 0
+		local last = nil
+		for step = 0, 40 do
+			local pose = poseAt(BIPED, still(step * 0.1))
+			most = math.max(most, math.abs(pose["pelvis:0"].y))
+			if last then
+				changes = math.max(changes, math.abs(pose["pelvis:0"].z - last))
+			end
+			last = pose["pelvis:0"].z
+		end
+		assert(most < 1e-9, "the hips still wag")
+		assert(changes > 0 and changes < math.rad(0.5), "the weight sway is missing or too quick")
+		local tailless = poseAt({ "Pelvis", "Spine_0", "0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0" }, still(0.3))
+		assert(math.abs(tailless["pelvis:0"].y) > 0, "four-legged pets without tail bones stopped swishing their hips")
+	end,
+
 	["hydra necks sway each on their own, jaws snap and open wide on a yawn"] = function()
 		local neck = PetRig.role("Hydra_3_2")
 		assert(neck and neck.kind == "hydra" and neck.pair == 3 and neck.segment == 2, "Hydra_3_2 is the third bone of head 3")
