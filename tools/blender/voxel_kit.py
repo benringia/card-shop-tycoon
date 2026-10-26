@@ -1,7 +1,8 @@
 """Shared kit for the blocky creature build scripts (build_<card>.py) run inside Blender.
 
-Builder collects boxes and pyramids into one mesh, each face coloured by a palette cell (an 8x8 grid texture) and
-every vertex weighted fully to one bone. build() makes a fresh file with the armature and mesh, export() saves
+Builder collects boxes, pyramids, rounded boxes and smooth ellipsoids into one mesh, each face coloured by a palette
+cell (an 8x8 grid texture) and every vertex weighted fully to one bone. New models should lean on round_box and blob
+so they look as little blocky as possible (box and spike stay for the older, chunkier ones). build() makes a fresh file with the armature and mesh, export() saves
 assets/blender/<Name>/<Name>.blend and .fbx (texture embedded) for Studio's 3D Importer.
 
 Blender: Z up, creatures face -Y, their left is +X (Roblox: -Z front once imported).
@@ -91,6 +92,40 @@ class Builder:
         for i in range(4):
             self._face([v[i], v[(i + 1) % 4], v[4]], color)
 
+    def _finish(self, faces, color, bone, smooth):
+        """Colours, weights and shades faces made by a bmesh operator (new verts get the bone fully)."""
+        index = self.group(bone)
+        i = self.index[color]
+        u, v = ((i % CELLS) + 0.5) / CELLS, ((i // CELLS) + 0.5) / CELLS
+        for face in faces:
+            face.smooth = smooth
+            for loop in face.loops:
+                loop[self.uv].uv = (u, v)
+                weights = loop.vert[self.deform]
+                weights.clear()
+                weights[index] = 1.0
+
+    def round_box(self, center, size, color, bone, rot=None, bevel=0.3, segments=2):
+        """A box with rounded edges; bevel is the fraction of its smallest side rounded off (less blocky)."""
+        before = set(self.bm.faces)
+        self.box(center, size, color, bone, rot)
+        made = [f for f in self.bm.faces if f not in before]
+        edges = {e for f in made for e in f.edges}
+        radius = min(size) * bevel * 0.5
+        bmesh.ops.bevel(self.bm, geom=list(edges), offset=radius, segments=segments, profile=0.5, affect="EDGES", clamp_overlap=True)
+        # Bevelling replaces the box's faces: colour everything that's new since before the box
+        self._finish([f for f in self.bm.faces if f not in before], color, bone, True)
+
+    def blob(self, center, radii, color, bone, rot=None, segments=10, rings=7):
+        """A smooth ellipsoid (radii along x, y, z, turned by rot): heads, bellies, cheeks, paws."""
+        m = Matrix.Translation(Vector(center)) @ (rot.to_4x4() if rot is not None else Matrix.Identity(4)) \
+            @ Matrix.Diagonal((radii[0], radii[1], radii[2], 1.0))
+        if self.xform is not None:
+            m = self.xform @ m
+        result = bmesh.ops.create_uvsphere(self.bm, u_segments=segments, v_segments=rings, radius=1.0, matrix=m)
+        faces = {f for vert in result["verts"] for f in vert.link_faces}
+        self._finish(list(faces), color, bone, True)
+
     def to_object(self, name):
         mesh = bpy.data.meshes.new(name)
         self.bm.to_mesh(mesh)
@@ -166,8 +201,6 @@ def build(name, colors, bones, parts):
     obj.parent = rig
     modifier = obj.modifiers.new("Armature", "ARMATURE")
     modifier.object = rig
-    for poly in obj.data.polygons:
-        poly.use_smooth = False
 
     missing = [g for g in b.groups if g not in arm_data.bones]
     print("vertex groups without a bone:", missing)

@@ -16,7 +16,7 @@ return {
 	-- (prompts in docs/card-art.md); the JPEGs are kept in assets/ui/card-art (spaces in names as _).
 	ART_IMAGES = {
 		Cindercub = "rbxassetid://126732765920014",
-		Puffpuddle = "rbxassetid://93976550251850",
+		Puffpuddle = "rbxassetid://85967530259039",
 		Sprouthop = "rbxassetid://109907428433527",
 		Zappit = "rbxassetid://72205266740863",
 		Gloomlet = "rbxassetid://120458286445236",

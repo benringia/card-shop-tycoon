@@ -332,6 +332,69 @@ return {
 		assert(PetRig.cue(CFG, "stomp", 0.96) and not PetRig.cue(CFG, "stomp", 0.5), "a stomp's dust goes off as it lands")
 	end,
 
+	["sea otters sit up to groom and crack shells with their front paws, and roll over; swimmers don't walk-twist; sneezes snap; kung fu alternates arms"] = function()
+		assert(PetRig.cue(CFG, "shellcrack", 0.25) and not PetRig.cue(CFG, "shellcrack", 0.1), "the taps start with the first one")
+		assert(PetRig.cue(CFG, "roll", 0.5) and not PetRig.cue(CFG, "roll", 0.3), "the dust goes with the roll")
+		local OTTER = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Tail_0",
+			"0_Left_Limb_0", "0_Left_Limb_1", "0_Right_Limb_0", "0_Right_Limb_1", "1_Left_Limb_0", "1_Left_Limb_1", "1_Right_Limb_0", "1_Right_Limb_1" }
+		local function otterAt(kind: string, progress: number): { [string]: PetRig.Angles }
+			return poseAt(OTTER, { time = 0, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress })
+		end
+		local rest = otterAt("look", 0)
+		local groom = otterAt("groom", 0.5)
+		assert(groom["leg:0:Left:0"].x - rest["leg:0:Left:0"].x > math.rad(30) and groom["leg:0:Right:0"].x - rest["leg:0:Right:0"].x > math.rad(30),
+			"the front paws don't come up to the face")
+		-- Positive x tips a bone's front end up: the hips pitch the whole front up, the hind legs turn back to stay planted
+		assert(groom["pelvis:0"].x > rest["pelvis:0"].x + math.rad(30), "it doesn't sit right up on its hips to groom")
+		assert(groom["spine:0"].x >= rest["spine:0"].x, "the spine pulls the front back down")
+		assert(groom["leg:1:Left:0"].x < rest["leg:1:Left:0"].x - math.rad(30), "the hind legs don't turn back to stay planted")
+		assertBounded(groom, "grooming")
+		local lowest, highest = math.huge, -math.huge
+		for step = 4, 16 do
+			local lift = otterAt("shellcrack", step / 20)["leg:0:Right:0"].x
+			lowest, highest = math.min(lowest, lift), math.max(highest, lift)
+		end
+		assert(highest - lowest > math.rad(12), "the front paws don't tap the shell")
+		assert(otterAt("shellcrack", 0.5)["head:0"].x > rest["head:0"].x, "it doesn't look down at its shell")
+		assertBounded(otterAt("shellcrack", 0.3), "shell cracking")
+		local half = PetRig.body(CFG, "roll", 0.5, 1, true)
+		expect.near(math.abs(half.roll), math.pi, 1e-6, "halfway through a roll it isn't on its back")
+		expect.near(PetRig.body(CFG, "roll", 1, 1, true).roll, math.pi * 2, 1e-6, "a roll doesn't come all the way round")
+
+		local BIPED = { "Pelvis", "Spine_0", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Tail_0" }
+		local function swimming(phase: number): { [string]: PetRig.Angles }
+			return poseAt(BIPED, { time = 1, phase = phase, moving = 1, fidget = nil, fidgetProgress = 0, undulate = "swim", swimPhase = 0.4 })
+		end
+		expect.near(swimming(0.3)["pelvis:0"].y, swimming(1.9)["pelvis:0"].y, 1e-9, "a swimmer's hips twist with a walking stride")
+
+		local function at(names: { string }, kind: string, progress: number): { [string]: PetRig.Angles }
+			return poseAt(names, { time = 0, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress,
+				armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		end
+		assert(PetRig.cue(CFG, "sneeze", CFG.ROAR_BURST) and not PetRig.cue(CFG, "sneeze", 0.1), "the sneeze fires with the snap forward")
+		assert(PetRig.cue(CFG, "kungfu", 0.3) and not PetRig.cue(CFG, "kungfu", 0.1), "the leaves fly with the first chop")
+
+		local DOG = { "Pelvis", "Spine_0", "Neck", "Head_0", "Jaw_0", "Tail_0", "0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0" }
+		assert(at(DOG, "sneeze", 0.25)["head:0"].x < -math.rad(5), "no rear back before the sneeze")
+		assert(at(DOG, "sneeze", 0.55)["head:0"].x > math.rad(3), "no snap forward for the sneeze")
+
+		local MANTIS = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Left_1", "Arm_Right_0", "Arm_Right_1",
+			"0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0", "Tail_0" }
+		local mantisRest = at(MANTIS, "look", 0)
+		local strikes = {}
+		for step = 0, 20 do
+			local pose = at(MANTIS, "kungfu", step / 20)
+			strikes[step] = { right = pose["arm:Right:0"].x - mantisRest["arm:Right:0"].x, left = pose["arm:Left:0"].x - mantisRest["arm:Left:0"].x }
+			assertBounded(pose, "kung fu")
+		end
+		local rightFirst, leftFirst = false, false
+		for _, strike in strikes do
+			rightFirst = rightFirst or (strike.right > math.rad(30) and strike.left < math.rad(10))
+			leftFirst = leftFirst or (strike.left > math.rad(30) and strike.right < math.rad(10))
+		end
+		assert(rightFirst and leftFirst, "the arms don't chop one after the other")
+	end,
+
 	["two-legged walks twist the hips with the stride and the shoulders against them"] = function()
 		local BIPED = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0" }
 		local step = poseAt(BIPED, walking(math.pi / 2))

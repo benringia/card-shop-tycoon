@@ -231,7 +231,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 	if walking then
 		rig.nextFidget = math.max(rig.nextFidget, now + 1) -- a fidget waits until it stops
 	elseif not rig.fidget and now >= rig.nextFidget then
-		local kinds = if rig.flying or rig.undulate then cfg.FLY_FIDGETS else rig.fidgets or cfg.FIDGETS
+		local kinds = rig.fidgets or (if rig.flying or rig.undulate then cfg.FLY_FIDGETS else cfg.FIDGETS)
 		local kind = kinds[rig.random:NextInteger(1, #kinds)]
 		local signature = rig.signature
 		if signature and rig.random:NextNumber() < signature.chance then
