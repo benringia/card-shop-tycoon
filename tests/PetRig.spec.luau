@@ -551,6 +551,25 @@ return {
 		expect.near(PetRig.body(CFG, "thundercall", 1, 1, true).pitch, 0, 1e-6, "it doesn't come back level")
 	end,
 
+	["folded wings on the ground shift gently and spread wide for a roar"] = function()
+		local DRAGON = { "Pelvis", "Spine_0", "Neck", "Head_0", "Jaw_0", "Wing_Left_0", "Wing_Left_1", "Wing_Right_0", "Wing_Right_1",
+			"0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0", "Tail_0" }
+		local function at(kind: string?, progress: number, time: number): { [string]: PetRig.Angles }
+			return poseAt(DRAGON, { time = time, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress })
+		end
+		assert(math.abs(at(nil, 0, 0.5)["wing:Left:0"].z - at(nil, 0, 2)["wing:Left:0"].z) > math.rad(1), "folded wings never move")
+		local rest = at(nil, 0, 0)["wing:Left:0"].z
+		local roar = at("riftroar", 0.5, 0)["wing:Left:0"].z
+		assert(math.abs(roar - rest) > math.rad(CFG.WING_SPREAD) * 0.6, "the wings don't spread for the roar")
+		expect.near(at("riftroar", 0.5, 0)["wing:Right:0"].z, -roar, 1e-6, "the wings don't spread evenly")
+		assert(at("riftroar", 0.5, 0)["jaw:0"].x < -math.rad(10), "the jaw doesn't open for the roar")
+	end,
+
+	["a rift roar rears back and lunges like the other roars"] = function()
+		assert(PetRig.cue(CFG, "riftroar", CFG.ROAR_BURST) and not PetRig.cue(CFG, "riftroar", 0.1), "the rift doesn't open with the lunge")
+		assert(PetRig.body(CFG, "riftroar", CFG.ROAR_BURST * 0.9, 1, true).pitch > 0, "it doesn't rear back first")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

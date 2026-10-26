@@ -395,6 +395,24 @@ def skin(mesh, rig, bones, params):
         print("WARNING: these bones move no vertices, move them into the mesh:", ", ".join(sorted(idle)))
 
 
+def reweight(mesh, bone, share_of):
+    """Hands part of the mesh to one bone after skin(): share_of(point) gives each vertex's share (0..1) for `bone`;
+    the vertex's other weights are scaled down to make room (a jaw cut out of a head, say). Keeps four bones a vertex."""
+    group = mesh.vertex_groups.get(bone) or mesh.vertex_groups.new(name=bone)
+    names = {g.index: g for g in mesh.vertex_groups}
+    for v in mesh.data.vertices:
+        share = share_of(mesh.matrix_world @ v.co)
+        if share <= 0:
+            continue
+        others = [(names[g.group], g.weight) for g in v.groups if g.group != group.index]
+        for g, w in others:
+            g.add([v.index], w * (1 - share), "REPLACE")
+        group.add([v.index], share, "REPLACE")
+        kept = sorted(((names[g.group], g.weight) for g in v.groups), key=lambda gw: -gw[1])
+        for g, _ in kept[MAX_BONES:]:
+            g.remove([v.index])
+
+
 def export(name, rig, mesh):
     out = os.path.join(REPO, "assets", "blender", name, name + ".fbx")
     bpy.ops.object.select_all(action="DESELECT")
@@ -415,9 +433,9 @@ def export(name, rig, mesh):
     print("exported", out)
 
 
-def run(name, mesh_name, bones, params=None, target_tris=10000):
-    """Optimizes the mesh, builds the skeleton, skins the mesh and (unless EXPORT=0) exports
-    assets/blender/<name>/<name>.fbx."""
+def run(name, mesh_name, bones, params=None, target_tris=10000, export_now=True):
+    """Optimizes the mesh, builds the skeleton, skins the mesh and (unless EXPORT=0 or export_now is False, for a
+    script that still changes the weights) exports assets/blender/<name>/<name>.fbx."""
     params = params or Params()
     mesh = bpy.data.objects[mesh_name]
     mesh.parent = None
@@ -426,6 +444,6 @@ def run(name, mesh_name, bones, params=None, target_tris=10000):
     optimize(mesh, name, target_tris)
     rig = build_rig(name + "Rig", bones)
     skin(mesh, rig, bones, params)
-    if os.environ.get("EXPORT", "1") == "1":
+    if export_now and os.environ.get("EXPORT", "1") == "1":
         export(name, rig, mesh)
     return rig, mesh

@@ -235,7 +235,7 @@ local function hiccupPulse(cfg: any, progress: number): number
 	return pulse
 end
 
-local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, solarroar = true }
+local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, solarroar = true, riftroar = true }
 
 export type Body = { lift: number, yaw: number, roll: number, pitch: number, forward: number }
 
@@ -673,8 +673,11 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				x += (if role.segment == 0 then rad(cfg.BUTTERFLY_ARM) else rad(30) / role.segment) * lifted
 			end
 		elseif role.kind == "wing" then
-			-- Beating about the body's length, the tip a little behind the root; folded still on the ground
-			local beat = if flying then rad(cfg.WING_FLAP) * math.sin((state.flapPhase or 0) - role.segment * cfg.WING_LAG) else 0
+			-- Beating about the body's length, the tip a little behind the root. Folded on the ground they shift a little
+			-- as it breathes and spread wide for a roar (the same way a flap's downstroke goes)
+			local beat = if flying then rad(cfg.WING_FLAP) * math.sin((state.flapPhase or 0) - role.segment * cfg.WING_LAG)
+				else rad(cfg.WING_REST) * math.sin(state.time * TAU / cfg.BREATH_SECONDS - role.segment * cfg.WING_LAG)
+					+ (if roaring and role.segment == 0 then rad(cfg.WING_SPREAD) * hold(progress) * idle else 0)
 			z = if role.side == "Left" then -beat else beat
 		elseif role.kind == "ear" then
 			local flop = rad(cfg.EAR_FLOP) * (math.sin(state.phase * 2 + role.segment) * moving + 0.3 * math.sin(state.time * 1.7 + role.segment) * idle)

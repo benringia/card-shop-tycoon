@@ -534,7 +534,7 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 				local _, size = body.model:GetBoundingBox()
 				groundRing(body.cframe.Position, Color3.fromRGB(190, 180, 165), math.max(size.X, size.Z) * 0.9, false)
 			elseif cue then
-				if cue == "voidroar" or cue == "thunderroar" or cue == "stormroar" or cue == "solarroar" then
+				if cue == "voidroar" or cue == "thunderroar" or cue == "stormroar" or cue == "solarroar" or cue == "riftroar" then
 					roarFx(body)
 				end
 				SignatureFx.play(cue, body.model, body.size)

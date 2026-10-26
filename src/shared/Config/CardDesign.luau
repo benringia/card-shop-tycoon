@@ -52,7 +52,7 @@ return {
 		Duskstalker = "rbxassetid://127609859696351",
 		Frostfang = "rbxassetid://71053054421008",
 		["Gale Sprite"] = "rbxassetid://135400093816653",
-		Riftwalker = "rbxassetid://73213439313305",
+		Riftwalker = "rbxassetid://134478592556938",
 		["Cinder Titan"] = "rbxassetid://110760394592318",
 		["Aurora Drake"] = "rbxassetid://100546252309842",
 		Stormking = "rbxassetid://101277001928201",
