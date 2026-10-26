@@ -24,6 +24,7 @@
 -- * tidecall (Tidecaller): rears up and stamps down; a ring of water splashes out round it with spray.
 -- * thorncharge (Briarhorn): head down, a short charge forward; thorny vines burst up in front of it with petals.
 -- * abysschomp (Abyssal Koi): draws back and lunges, snapping; a dark surge of deep water bursts from its fangs.
+-- * thundercall (Thunderhorn): rears and stamps; lightning strikes its golden antlers and crackles round its hooves.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -417,6 +418,39 @@ local function sporepuff(model: Model, size: number)
 	light.Parent = glow
 	TweenService:Create(light, TweenInfo.new(1.4), { Brightness = 0 }):Play()
 	task.delay(1.5, glow.Destroy, glow)
+end
+
+-- A thunder call: as it stamps down, lightning strikes from the sky onto its golden antlers and crackles round its hooves
+local function thundercall(model: Model, size: number)
+	local pivot = model:GetPivot().Position
+	for wave = 0, 2 do
+		task.delay(wave * 0.12, function()
+			if not model.Parent then
+				return
+			end
+			for _, name in { "Ear_Left_0", "Ear_Right_0" } do
+				local tip = bonePosition(model, name)
+				if tip then
+					local sky = tip + Vector3.new(rng:NextNumber(-1, 1), 6, rng:NextNumber(-1, 1)) * size
+					bolt(sky, tip, 0.12 * size)
+				end
+			end
+			for _ = 1, 3 do
+				local out = Vector3.new(rng:NextNumber(-1, 1), 0, rng:NextNumber(-1, 1)).Unit
+				bolt(pivot + Vector3.new(0, 0.2 * size, 0), pivot + out * rng:NextNumber(1.5, 2.5) * size, 0.06 * size)
+			end
+		end)
+	end
+	local flash = Instance.new("Attachment")
+	flash.WorldPosition = pivot + Vector3.new(0, 3 * size, 0)
+	flash.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = LIGHTNING_COLOR
+	light.Brightness = 5
+	light.Range = 14 * size
+	light.Parent = flash
+	TweenService:Create(light, TweenInfo.new(0.7), { Brightness = 0 }):Play()
+	task.delay(0.8, flash.Destroy, flash)
 end
 
 -- An abyss chomp: as its jaws snap, a dark surge of deep water bursts from its mouth with glowing cyan sparks and bubbles
@@ -830,6 +864,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		thorncharge(model, size)
 	elseif kind == "abysschomp" then
 		abysschomp(model, size)
+	elseif kind == "thundercall" then
+		thundercall(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

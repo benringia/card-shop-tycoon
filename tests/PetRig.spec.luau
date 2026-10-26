@@ -545,6 +545,12 @@ return {
 		expect.near(PetRig.body(CFG, "abysschomp", 1, 1, true).forward, 0, 1e-6, "it doesn't settle back")
 	end,
 
+	["a thunder call rears up and comes down as lightning strikes"] = function()
+		assert(PetRig.cue(CFG, "thundercall", 0.55) and not PetRig.cue(CFG, "thundercall", 0.4), "the strike doesn't come with the stamp")
+		assert(PetRig.body(CFG, "thundercall", 0.35, 1, true).pitch > math.rad(CFG.THUNDER_REAR) * 0.9, "it doesn't rear up")
+		expect.near(PetRig.body(CFG, "thundercall", 1, 1, true).pitch, 0, 1e-6, "it doesn't come back level")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

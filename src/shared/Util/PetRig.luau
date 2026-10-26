@@ -283,7 +283,7 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- rising, starting to fade
 	elseif kind == "flameswoop" then
 		return progress >= 0.4 -- the dive starts
-	elseif kind == "tidecall" then
+	elseif kind == "tidecall" or kind == "thundercall" then
 		return progress >= 0.55 -- the front feet stamp down
 	elseif kind == "thorncharge" then
 		return progress >= 0.5 -- the lunge
@@ -348,13 +348,14 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local dash = math.clamp((p - 0.4) / 0.15, 0, 1)
 		local back = math.clamp((p - 0.6) / 0.4, 0, 1)
 		forward = cfg.CHARGE_LUNGE * math.sin(dash * math.pi / 2) * (1 - back * back * (3 - 2 * back))
-	elseif kind == "tidecall" then
+	elseif kind == "tidecall" or kind == "thundercall" then
 		-- Rearing up on its hind legs (held at 0.35), then stamping down hard at 0.55 and settling
 		local up = if p < 0.35 then math.sin(p / 0.35 * math.pi / 2)
 			elseif p < 0.45 then 1
 			else math.max(0, 1 - (p - 0.45) / 0.1)
-		pitch = math.rad(cfg.TIDE_REAR) * up
-		lift = cfg.TIDE_LIFT * up
+		local thunder = kind == "thundercall"
+		pitch = math.rad(if thunder then cfg.THUNDER_REAR else cfg.TIDE_REAR) * up
+		lift = (if thunder then cfg.THUNDER_LIFT else cfg.TIDE_LIFT) * up
 	elseif kind == "flameswoop" then
 		-- Climbing to the top at 0.35, then diving nose-down past its height and swooping back up level
 		if p < 0.35 then
