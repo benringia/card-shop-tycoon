@@ -67,6 +67,9 @@ Element scenes (matching `CardDesign.SCENES`):
   body with a cream belly, big shiny eyes, soft pink blush, a small orange beak, a little flame crest, glowing orange
   ember zigzag cracks across its back, a short fiery tail, small folded wings flapping, a puff of embers (lighting:
   warm cozy firelight).
+- **Shellshy** (original baby sea turtle, Common): a very cute chubby shy cartoon baby sea turtle on four stubby
+  flippers, mint-green skin, big shiny eyes, soft pink blush, a shy smile, a teal dome shell with glowing aqua swirls,
+  a small glowing pearl on its head, little bubbles round it (lighting: soft sunlit underwater light).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

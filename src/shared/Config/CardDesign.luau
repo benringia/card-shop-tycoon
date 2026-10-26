@@ -21,7 +21,7 @@ return {
 		Zappit = "rbxassetid://140500297417545",
 		Gloomlet = "rbxassetid://89857060047198",
 		Ashbeak = "rbxassetid://140445779213532",
-		Shellshy = "rbxassetid://102591477668369",
+		Shellshy = "rbxassetid://80678222886311",
 		Mossmole = "rbxassetid://87307676644811",
 		Fizzlebug = "rbxassetid://128755684478888",
 		Wispurr = "rbxassetid://103469674409221",
