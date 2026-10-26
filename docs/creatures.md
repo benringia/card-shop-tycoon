@@ -125,8 +125,11 @@ write `assets/blender/<Card>/` (the `.blend`, an `.fbx` and its palette PNG; not
 blocky mesh with a palette texture, every vertex weighted fully to one bone, on an armature whose bones already
 carry `PetRig` role names (`Pelvis`, `Spine_0`, `Neck`, `Head_0`, `Arm_Left_0..2`, `0_Left_Limb_0..2`,
 `Tail_0..5`, `Ear_Left_0`), so the code walk and fidgets drive them with no `RigGuess` or aliases. They face -Y in
-Blender (Roblox -Z), arms in a T-pose. `voxel_kit.py` holds the shared part: the box/spike mesh builder, palette,
-material, armature and export; each `build_<card>.py` only describes its creature.
+Blender (Roblox -Z), arms in a T-pose. `voxel_kit.py` holds the shared part: the mesh builder (boxes, spikes,
+`round_box` with bevelled edges, smooth `blob` ellipsoids), palette, material, armature and export; each
+`build_<card>.py` only describes its creature. New models are less blocky (Puffpuddle onwards): mostly rounded boxes,
+smooth blobs for heads, cheeks and paws, a few plain blocks where they read well; the earlier ones are chunkier voxel
+builds.
 
 Many-headed rigs name each neck `Hydra_<head>_0..2` with the head as `Hydra_<head>_3`, and each lower jaw
 `Jaw_<head>`: every neck sways and nods on its own beat (the wave running up it) and joins the look, sniff, tilt,
@@ -150,6 +153,12 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
   pours from its mouth (and follows it) for over a second, lighting up round it.
+- **shellcrack** (Puffpuddle): sits up on its hind legs, a blue clam appears between its front paws and it looks down
+  and taps it four times, a little sparkle with each tap; the clam fades away.
+- **sneeze** (Blazehound): a quick rear back and a sharp snap forward, a little puff of flame, embers and smoke from
+  its nose.
+- **kungfu** (Thornback): chops with the right scythe, then the left, twice, turning into each chop, while leaves
+  whirl out round it.
 
 - **Boltlynx** (`build_boltlynx.py`): a golden lion on four legs with a huge spiky mane tipped in yellow, white
   lightning-bolt markings on its flanks, a jaw that opens to roar and a spiky tail tuft; 25 bones, about 1,300
@@ -168,6 +177,17 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Infernox** (`build_infernox.py`): a red T-rex with black tiger stripes, a big head with a cream jaw (`Jaw_0`),
   tiny arms held up in front (`ARM_POSE`), a long striped tail and a flame crest whose side flames are its `Ear_`
   bones, so they flicker; 25 bones, about 1,050 triangles.
+- **Puffpuddle** (`build_puffpuddle.py`, Common): a sea otter on all fours, less blocky (a rounded-box body and legs,
+  a smooth head, muzzle, ears and paws): a long dark brown body, pale fluffy face and chest, big shiny eyes, blush,
+  whiskers and a smile, big webbed hind feet, a flat tail; 23 bones, about 3,400 triangles. It trots and runs on its four
+  feet; its fidgets (`CREATURE_STYLE`) are sea otter ones: sitting up on its hind legs to groom its face with its front
+  paws, rolling right over with a puff of dust (`roll`), sniffing, looking round, a tail wag, a shake, a yawn.
+- **Blazehound** (`build_blazehound.py`, Rare): a long dachshund on stubby legs, black with tan points, big kind eyes,
+  droopy ears on its `Ear_` bones (they flop), two flame tufts on its head and a flame on its tail tip, a jaw for its
+  sneeze; 24 bones, about 770 triangles.
+- **Thornback** (`build_thornback.py`, Rare): a kung-fu mantis, lime with soft orange armour, big round green eyes,
+  antennae on its `Ear_` bones, blunt rounded scythes folded in front (`ARM_POSE`), four walking legs and its abdomen as
+  a tail; 29 bones, about 800 triangles.
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns

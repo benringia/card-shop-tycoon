@@ -57,18 +57,23 @@ return {
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
 		Infernox = { hang = 8, forward = 60, bend = 70, swing = 8 }, -- nearly straight down first, so the forward swing brings them in front
+		Thornback = { hang = 8, forward = 65, bend = 90, swing = 6 }, -- scythes folded up in front, praying
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling round its mane, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Blazehound sneezes a puff of fire,
+	-- Thornback does kung fu
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
 		Infernox = { fidget = "firebreath", chance = 0.35 },
+		Puffpuddle = { fidget = "shellcrack", chance = 0.35 },
+		Blazehound = { fidget = "sneeze", chance = 0.35 },
+		Thornback = { fidget = "kungfu", chance = 0.35 },
 	} :: { [string]: { fidget: string, chance: number } },
 	-- How a model carries itself, so each moves like the creature it is (else the defaults): its own idle fidgets
 	-- (else PET_ANIM.FIDGETS), its tail's swish speed and size (times PET_ANIM's), and how much it bounces walking
@@ -79,6 +84,9 @@ return {
 		Stormjack = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "hop", "wag", "sit", "stretch" }, tailSpeed = 0.8 },
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
+		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
+		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
+		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
 	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, bounce: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
@@ -152,6 +160,10 @@ return {
 		BUTTERFLY_ARM = 65, -- the right arm comes up this far
 		BUTTERFLY_LOOK = 20, -- the head looks up...
 		BUTTERFLY_FOLLOW = 30, -- ...and turns to follow it round
+		KUNGFU_CHOP = 60, -- each arm swings up and chops this far
+		SIT_UP = 45, -- a four-legged creature sitting right up on its hind legs (a sea otter grooming) pitches up this far
+		GROOM_PAW = 55, -- a sea otter sitting up lifts its front paws this far, to its face or to hold a shell...
+		SHELL_TAP = 20, -- ...and taps the shell by dropping them this far
 		STOMP_HEIGHT = 0.5,
 		-- Flying pets (owls, phoenixes, dragons: the pack's wings have no bones of their own, so the whole body beats):
 		-- legs tucked, the body rising and dipping with each flap, the spine pulsing, the head steadying
@@ -179,7 +191,8 @@ return {
 		FIDGET_SECONDS = {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
-			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2,
+			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
+			groom = 3, shellcrack = 3, roll = 1.4,
 		},
 		BLEND_SECONDS = 0.25, -- standing <-> walking
 		DISTANCE = 70, -- only animated this close to the camera
@@ -206,11 +219,11 @@ return {
 		Cindercub = { pack = "UltraPets", model = "RedMole" },
 		Ashbeak = { pack = "UltraPets", model = "StoneBird", tint = { 255, 150, 100 }, size = 1.3 },
 		Coalbit = { pack = "UltraPets", model = "Salamander", tint = { 130, 110, 110 } },
-		Blazehound = { pack = "UltraPets", model = "HotDog" },
+		Blazehound = { pack = "Originals", model = "Blazehound" }, -- original, tools/blender/build_blazehound.py
 		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },
 		Infernox = { pack = "Originals", model = "Infernox", size = 1.3 }, -- original, tools/blender/build_infernox.py
 		Emberwing = { pack = "UltraPets", model = "NeonSwallow", tint = { 255, 140, 80 } },
-		Puffpuddle = { pack = "UltraPets", model = "OtterKing" },
+		Puffpuddle = { pack = "Originals", model = "Puffpuddle" }, -- original, tools/blender/build_puffpuddle.py
 		Shellshy = { pack = "UltraPets", model = "Turtle" },
 		Driplet = { pack = "UltraPets", model = "FrostDove" },
 		Reefray = { pack = "UltraPets", model = "MetalCrab" },
@@ -220,7 +233,7 @@ return {
 		Sprouthop = { pack = "Originals", model = "Sprouthop", size = 2.2 }, -- original, tools/blender/build_sprouthop.py
 		Mossmole = { pack = "UltraPets", model = "RedMole", tint = { 150, 210, 130 } },
 		Petalpaw = { pack = "UltraPets", model = "PlantSquirrel", size = 1.3 },
-		Thornback = { pack = "UltraPets", model = "KungFuMantis", size = 1.3 },
+		Thornback = { pack = "Originals", model = "Thornback", size = 1.3 }, -- original, tools/blender/build_thornback.py
 		Vinewyrm = { pack = "UltraPets", model = "GiantSnake" },
 		Briarhorn = { pack = "UltraPets", model = "EarthBull", size = 1.3 },
 		Zappit = { pack = "UltraPets", model = "FairyRabbit", tint = { 255, 240, 150 } },

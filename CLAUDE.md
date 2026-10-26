@@ -9,6 +9,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `ServerPackages/` (Wally, not in git) → ServerStorage.ServerPackages. ProfileStore lives there.
 - `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
   (docs/creatures.md). Scripts inside them are destroyed on server start and stripped on clients.
+- Original creatures (replacing the bought packs card by card) live in the pack file `assets/creatures/Originals.rbxm`
+  (`Party.CREATURE_MODELS` entries `{ pack = "Originals", model = "<Card>" }`), built by `tools/blender/build_<card>.py`
+  on `tools/blender/voxel_kit.py` (run in Blender through the Blender MCP), sources in `assets/blender/<Card>/`
+  (.blend, .fbx, palette PNG; not synced). Workflow and rules: docs/creatures.md "Original models".
 - `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, same rules.
 - `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
@@ -77,6 +81,14 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   me exactly what to judge in Studio (stop → Play to load new code).
 - Studio MCP: reading and inspecting the place is fine anytime; ask before changing the place itself (deleting or
   editing objects, Lighting, the Baseplate). Scripts still live only in the repo.
+- Remodelling a creature (docs/creatures.md "Original models"): look at its card art and rarity (the more common the
+  card, the cuter and less dangerous it looks; Common cute, Legendary terrifying), build it as little blocky as
+  possible (mostly `round_box`, `blob` for heads and paws, some plain blocks are fine; real gait on its legs), give it every bone the creature needs named for `PetRig`, its own fidgets/tail/bounce
+  (`Party.CREATURE_STYLE`) and a signature idle (`Party.SIGNATURE`, poses in `Util/PetRig`, effects in
+  `Util/SignatureFx`, Lune-tested). I import the FBX (Rig Type Custom, Keep Zero Influence Bones); Claude resets the
+  MeshPart's `PivotOffset` rotation, builds `Workspace.Originals` from the current pack plus the new model; I save the
+  folder over `assets/creatures/Originals.rbxm`; Claude checks every model is in the synced pack before deleting the
+  workspace copy. New card art (Figma, `docs/card-art.md`) when the design changes.
 - Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting

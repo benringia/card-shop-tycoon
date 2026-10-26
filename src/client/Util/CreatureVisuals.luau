@@ -527,13 +527,13 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		local anim = Party.PET_ANIM
 		if (body.cframe.Position - origin).Magnitude <= anim.DISTANCE then
 			PetAnimator.step(pet, dt, now, body.speed >= motion.WALK_SPEED_MIN, body.walked)
-			-- A signature idle's effect: roars get the shockwave too (not the butterfly or the fire breath)
+			-- A signature idle's effect: the big roars get the shockwave too
 			local cue = PetAnimator.takeCue(pet, now)
 			if cue == "stomp" then
 				local _, size = body.model:GetBoundingBox()
 				groundRing(body.cframe.Position, Color3.fromRGB(190, 180, 165), math.max(size.X, size.Z) * 0.9, false)
 			elseif cue then
-				if cue ~= "butterfly" and cue ~= "firebreath" then
+				if cue == "voidroar" or cue == "thunderroar" or cue == "stormroar" then
 					roarFx(body)
 				end
 				SignatureFx.play(cue, body.model, body.size)

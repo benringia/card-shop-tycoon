@@ -7,6 +7,10 @@
 -- * voidroar (Voidmaw): dark void smoke bursts from every mouth.
 -- * stormroar (Stormjack): lightning leaps between its mouths in four bursts.
 -- * firebreath (Infernox): a cone of fire pours from its mouth for a moment, lighting up round it.
+-- * shellcrack (Puffpuddle, a sea otter): sitting up, a blue clam appears between its front paws and sparkles as
+--   it taps it; rolling over (roll) puffs up dust.
+-- * sneeze (Blazehound): a little puff of flame, embers and smoke from its nose.
+-- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
 local RunService = game:GetService("RunService")
@@ -261,6 +265,90 @@ local function fireBreath(model: Model, size: number)
 	end)
 end
 
+-- Between a four-legged creature's front paws (where a sitting-up sea otter holds its shell)
+local function frontPaws(model: Model): Vector3?
+	local left, right = bonePosition(model, "0_Left_Limb_2"), bonePosition(model, "0_Right_Limb_2")
+	return if left and right then (left + right) / 2 else nil
+end
+
+-- A sea otter sitting up, a blue clam shell appearing between its front paws as it taps it, a little sparkle with
+-- each tap (in step with PetRig's taps), then the shell fading away
+local function shellcrack(model: Model, size: number)
+	local folder = Instance.new("Folder")
+	folder.Name = "Shell"
+	local shell = fxPart(Vector3.new(0.34, 0.1, 0.28) * size * 0.6, Color3.fromRGB(110, 170, 230), false)
+	local stripe = fxPart(Vector3.new(0.05, 0.11, 0.28) * size * 0.6, Color3.fromRGB(180, 220, 255), false)
+	shell.Parent, stripe.Parent = folder, folder
+	folder.Parent = workspace
+	local start = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.Heartbeat:Connect(function()
+		local t = os.clock() - start
+		local paws = frontPaws(model)
+		if not paws or not model.Parent or t > 2.2 then
+			connection:Disconnect()
+			folder:Destroy()
+			return
+		end
+		local at = CFrame.new(paws) * model:GetPivot().Rotation * CFrame.new(0, 0.05 * size, -0.08 * size)
+		shell.CFrame, stripe.CFrame = at, at
+		local fade = math.clamp((t - 1.8) / 0.4, 0, 1)
+		shell.Transparency, stripe.Transparency = fade, fade
+	end)
+	for _, delay in { 0.19, 0.94, 1.69 } do
+		task.delay(delay, function()
+			local paws = frontPaws(model)
+			if paws and model.Parent then
+				burst(CFrame.lookAt(paws, paws + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(200, 235, 255)), 8, 0.25 * size, 3 * size, 0.5)
+			end
+		end)
+	end
+end
+
+-- Rolling over on the ground: a puff of dust as it comes round
+local function rollDust(model: Model, size: number)
+	local at = model:GetPivot().Position
+	burst(CFrame.lookAt(at, at + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(190, 180, 165)), 8, 0.8 * size, 2 * size, 0.9)
+end
+
+-- A sneeze: a little puff of flame, embers and smoke from the nose
+local function sneeze(model: Model, size: number)
+	local head = bonePosition(model, "Head_0")
+	if not head then
+		return
+	end
+	local forward = model:GetPivot().LookVector
+	local nose = head + forward * 0.6 * size
+	local aim = CFrame.lookAt(nose, nose + forward)
+	burst(aim, "rbxasset://textures/particles/fire_main.dds", ColorSequence.new(Color3.fromRGB(255, 220, 110), Color3.fromRGB(255, 90, 30)), 14, 0.7 * size, 5 * size, 0.45)
+	burst(aim, SPARKLES, ColorSequence.new(Color3.fromRGB(255, 190, 80)), 10, 0.3 * size, 7 * size, 0.6)
+	burst(aim, SMOKE, ColorSequence.new(Color3.fromRGB(120, 110, 105)), 4, 0.8 * size, 2 * size, 0.8)
+end
+
+-- Kung fu: leaves whirl out round the creature with each chop
+local function kungfu(model: Model, size: number)
+	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
+	local leafColors = { Color3.fromRGB(120, 200, 70), Color3.fromRGB(170, 225, 90), Color3.fromRGB(80, 150, 50) }
+	for i = 1, 14 do
+		local angle = i / 14 * math.pi * 2
+		local leaf = fxPart(Vector3.new(0.25, 0.04, 0.18) * size, leafColors[(i % 3) + 1], false)
+		leaf.CFrame = CFrame.new(centre) * CFrame.Angles(0, angle, 0) * CFrame.new(0.6 * size, 0, 0)
+		leaf.Parent = workspace
+		local out = CFrame.new(centre) * CFrame.Angles(0, angle + 1.4, 0) * CFrame.new(2.6 * size, 1 * size, 0) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), 0)
+		local whirl = TweenService:Create(leaf, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = out, Transparency = 1 })
+		whirl.Completed:Once(function()
+			leaf:Destroy()
+		end)
+		whirl:Play()
+	end
+	for _, name in { "Arm_Right_2", "Arm_Left_2" } do
+		local hand = bonePosition(model, name)
+		if hand then
+			burst(CFrame.lookAt(hand, hand + model:GetPivot().LookVector), SPARKLES, ColorSequence.new(Color3.fromRGB(210, 255, 150)), 8, 0.35 * size, 5 * size, 0.5)
+		end
+	end
+end
+
 -- The effect of a signature idle (Party.SIGNATURE), from the creature's current pose; size: its size multiplier
 function SignatureFx.play(kind: string, model: Model, size: number)
 	if kind == "butterfly" then
@@ -273,6 +361,14 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		storm(model, size)
 	elseif kind == "firebreath" then
 		fireBreath(model, size)
+	elseif kind == "shellcrack" then
+		shellcrack(model, size)
+	elseif kind == "roll" then
+		rollDust(model, size)
+	elseif kind == "sneeze" then
+		sneeze(model, size)
+	elseif kind == "kungfu" then
+		kungfu(model, size)
 	end
 end
 

@@ -55,6 +55,11 @@ Element scenes (matching `CardDesign.SCENES`):
   with no teeth, two little yellow horn nubs and a tiny yellow lightning-bolt tuft, a short curly tail ending in a
   little yellow lightning bolt, small friendly sparks (lighting: bright playful stormy lighting).
 
+- **Puffpuddle** (original sea otter, Common): a very cute chubby sea otter standing on all four short legs, rounded
+  soft toy style (smooth rounded shapes, slightly blocky), a long dark brown body, a round pale cream fluffy face, big
+  shiny dark eyes, pink blushing cheeks, a tiny black nose, whiskers and a happy smile, small round ears, a pale chest,
+  big flat webbed hind feet, a flat tail (pose: standing happily on a rock).
+
 Tone follows rarity: the more common the card, the cuter and less dangerous the creature and its art.
 - **Solarion** (RubyCerberus): a massive three-headed wolf made of jagged glowing ruby-red crystals and black
   obsidian stone, glowing red eyes, white crystal fangs, tall red crystal spikes along its back, red crystal talons.
