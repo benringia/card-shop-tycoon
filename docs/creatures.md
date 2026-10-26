@@ -183,6 +183,7 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   ear and tail bolts with a burst of sparks.
 - **sporepuff** (Mossmole): up onto its toes, leaning back, as glowing teal spores rise from its mushroom garden
   with a soft glow (`SPORE_*`).
+- **petaltwirl** (Petalpaw): a happy spin on its toes (`TWIRL_LIFT`) while pink petals swirl out round it.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -219,6 +220,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Mossmole** (`rig_mossmole.py`, Meshy): a very cute upright egg-shaped mole, brown with a cream face and pink
   cheeks, hugging a little moss garden with glowing teal mushrooms to its chest; waddles on tiny feet, arms barely
   swinging. Remeshed and baked (`rig_kit.remesh_bake`). 18 bones, 10,000 triangles. Replaced the tinted RedMole.
+- **Petalpaw** (`rig_petalpaw.py`, Meshy): a very cute upright orange squirrel cub with a cream belly, pink blush,
+  a pink five-petal flower on its head and a big tail painted as a pink petal (rose fading to blush); walks upright,
+  arms swinging, the tail swaying slowly. Remeshed and baked. 24 bones, 8,000 triangles. Replaced PlantSquirrel.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

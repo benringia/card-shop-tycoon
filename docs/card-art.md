@@ -55,6 +55,10 @@ Element scenes (matching `CardDesign.SCENES`):
   rounded egg-shaped toy-like 3D style, warm reddish-brown body, a cream face with big round eyes, long eyelashes, big
   pink cheeks and a round pink nose, hugging a little round moss garden with three small glowing teal mushrooms, tiny
   glowing teal spores floating up (lighting: soft green sunlight).
+- **Petalpaw** (original flower squirrel, Common): a very cute chubby cartoon squirrel cub standing upright on two
+  short legs, warm orange body with a big cream belly, big shiny dark eyes, soft pink blush, a pink five-petal flower
+  on its head, a big fluffy tail shaped like a soft pink petal (rose at the base fading to blush), pink petals
+  swirling round it as it twirls (lighting: soft warm sunlight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

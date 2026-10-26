@@ -273,7 +273,7 @@ Each pack = 5 cards:
   a few shared ones tinted to their element); two Legendaries use the bought Crystal Titans pack with its own walk,
   run and idle animations (Stormking: Sapphire Crystal Crab, Aurora Drake: Rainbow Crystal Hydra;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
-  them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (cartoon electric lynx, generated with Meshy), Cindercub (fire bear cub, Meshy), Zappit (lavender electric bunny, Meshy), Mossmole (forest mole with a mushroom garden, Meshy), Voidmaw
+  them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (cartoon electric lynx, generated with Meshy), Cindercub (fire bear cub, Meshy), Zappit (lavender electric bunny, Meshy), Mossmole (forest mole with a mushroom garden, Meshy), Petalpaw (flower squirrel, Meshy), Voidmaw
   (seven-headed crystal hydra dragon, every neck and jaw animated in code), Solarion (three-headed ruby cerberus),
   Sprouthop (tree sprite), Stormjack (baby storm hydra), Infernox (T-rex), Puffpuddle (sea otter on all fours),
   Blazehound (flame dachshund), Thornback (kung-fu mantis), Duskstalker (shadow Monkey King), Eclipse Fox
