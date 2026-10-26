@@ -510,6 +510,15 @@ return {
 		expect.near(done.roll, 0, 1e-6, "it doesn't straighten up")
 	end,
 
+	["a flame swoop climbs, then dives nose-down trailing fire, and levels out"] = function()
+		assert(PetRig.cue(CFG, "flameswoop", 0.4) and not PetRig.cue(CFG, "flameswoop", 0.3), "the fire doesn't trail as the dive starts")
+		assert(PetRig.body(CFG, "flameswoop", 0.35, 1, true).lift > CFG.SWOOP_HEIGHT * 0.9, "it doesn't climb first")
+		assert(PetRig.body(CFG, "flameswoop", 0.6, 1, true).pitch < -math.rad(15), "it doesn't dive nose-down")
+		local done = PetRig.body(CFG, "flameswoop", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't come back to its height")
+		expect.near(done.pitch, 0, 1e-6, "it doesn't level out")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

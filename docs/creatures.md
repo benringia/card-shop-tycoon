@@ -197,6 +197,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   from its stinger and its antenna bolts spark.
 - **ghostfloat** (Wispurr): drifts up swaying (`GHOST_RISE`, `GHOST_SWAY`) while fading half see-through
   (`GHOST_FADE`), violet wisps swirling round it, then sinks back down solid.
+- **flameswoop** (Emberwing): climbs, then dives nose-down (`SWOOP_HEIGHT`, `SWOOP_DIVE`) with fire streaming off
+  its wing tips and tail, levelling out in a burst of embers.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -254,6 +256,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Wispurr** (`rig_wispurr.py`, Meshy): a cute upright ghost kitten, tinted pale lavender by hand, with big teal
   eyes, a violet star on its forehead and a tail ending in a glowing violet wisp flame; paws held up in front. 20 bones,
   about 6,800 triangles. Replaced the tinted FairyRabbit.
+- **Emberwing** (`rig_emberwing.py`, Meshy, Very Rare): a proud charcoal fire swallow with fierce amber eyes, flame-
+  feather wings spread wide, a flame crest and a fanned flame tail. Flies; three `Wing_` bones per wing. Right first
+  time. 22 bones, about 8,000 triangles. Replaced the tinted NeonSwallow.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

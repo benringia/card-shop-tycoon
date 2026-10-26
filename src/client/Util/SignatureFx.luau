@@ -20,6 +20,7 @@
 -- * shypeek (Shellshy): ducks shyly into its shell, then peeks out with rising bubbles and aqua sparkles.
 -- * buzzzap (Fizzlebug): a zigzag buzz up into the air; at the top a bolt shoots down from its stinger.
 -- * ghostfloat (Wispurr): drifts up fading half see-through, violet wisps swirling round it, then comes back solid.
+-- * flameswoop (Emberwing): climbs, then dives nose-down with fire streaming off its wing tips and tail.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -415,6 +416,31 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A flame swoop: through the dive its wing tips and tail stream fire, with a burst of embers as it levels out
+local FIRE = "rbxasset://textures/particles/fire_main.dds"
+local function flameswoop(model: Model, size: number)
+	local seconds = Party.PET_ANIM.FIDGET_SECONDS.flameswoop * 0.6
+	for step = 0, 6 do
+		task.delay(step * seconds / 7, function()
+			if not model.Parent then
+				return
+			end
+			for _, name in { "Wing_Left_2", "Wing_Right_2", "Tail_3" } do
+				local tip = bonePosition(model, name)
+				if tip then
+					burst(CFrame.lookAt(tip, tip + Vector3.yAxis), FIRE, ColorSequence.new(Color3.fromRGB(255, 220, 110), Color3.fromRGB(255, 80, 20)), 4, 0.5 * size, 1 * size, 0.5)
+				end
+			end
+		end)
+	end
+	task.delay(seconds, function()
+		local body = bonePosition(model, "Spine_0")
+		if body and model.Parent then
+			burst(CFrame.new(body), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 170, 70)), 16, 0.3 * size, 5 * size, 0.8)
+		end
+	end)
+end
+
 -- A ghost float: it fades half see-through as it drifts up, violet wisps swirling round it, then comes back solid
 local function ghostfloat(model: Model, size: number)
 	local anim = Party.PET_ANIM
@@ -718,6 +744,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		buzzzap(model, size)
 	elseif kind == "ghostfloat" then
 		ghostfloat(model, size)
+	elseif kind == "flameswoop" then
+		flameswoop(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

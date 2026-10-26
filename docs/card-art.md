@@ -76,6 +76,9 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Wispurr** (original ghost kitten, Common): a very cute chubby round cartoon ghost kitten standing upright, pale
   lavender and faintly see-through, big teal eyes, soft pink blush, a violet star on its forehead, paws held up, a thin
   tail ending in a glowing violet wisp flame, violet wisps round it (lighting: eerie violet moonlight).
+- **Emberwing** (original fire swallow, Very Rare): a proud slightly fierce cartoon fire swallow flying, wings spread,
+  charcoal-black body, glowing amber eyes with determined brows, a golden beak, flame-feather wings, a flame crest and a
+  fanned flame tail, embers trailing (lighting: warm dramatic firelight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
