@@ -73,6 +73,9 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Fizzlebug** (original electric bee, Common): a very cute chubby round cartoon bumblebee flying, soft yellow with
   dark navy stripes, big shiny eyes, soft pink blush, antennae tipped with small glowing cyan bolts, small lilac wings,
   little arms, a small glowing cyan stinger crackling with a spark (lighting: bright playful stormy lighting).
+- **Wispurr** (original ghost kitten, Common): a very cute chubby round cartoon ghost kitten standing upright, pale
+  lavender and faintly see-through, big teal eyes, soft pink blush, a violet star on its forehead, paws held up, a thin
+  tail ending in a glowing violet wisp flame, violet wisps round it (lighting: eerie violet moonlight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

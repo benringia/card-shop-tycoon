@@ -279,6 +279,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.7 -- peeking back out
 	elseif kind == "buzzzap" then
 		return progress >= 0.6 -- the top of the buzz
+	elseif kind == "ghostfloat" then
+		return progress >= 0.1 -- rising, starting to fade
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -319,6 +321,11 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "ghostfloat" then
+		-- Drifting up like a ghost, swaying gently, then sinking back down
+		local float = math.sin(p * math.pi)
+		lift = cfg.GHOST_RISE * float
+		roll = math.rad(cfg.GHOST_SWAY) * math.sin(p * TAU * 2) * float
 	elseif kind == "buzzzap" then
 		-- Buzzing in a quick zigzag, rising to the top at 0.6, then settling
 		yaw = math.rad(cfg.BUZZ_ZIGZAG) * math.sin(p * TAU * 3) * math.sin(p * math.pi)

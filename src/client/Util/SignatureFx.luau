@@ -19,6 +19,7 @@
 -- * emberflap (Ashbeak): a flapping hop; at the top, a flame bursts from its crest with a puff of embers.
 -- * shypeek (Shellshy): ducks shyly into its shell, then peeks out with rising bubbles and aqua sparkles.
 -- * buzzzap (Fizzlebug): a zigzag buzz up into the air; at the top a bolt shoots down from its stinger.
+-- * ghostfloat (Wispurr): drifts up fading half see-through, violet wisps swirling round it, then comes back solid.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -414,6 +415,29 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A ghost float: it fades half see-through as it drifts up, violet wisps swirling round it, then comes back solid
+local function ghostfloat(model: Model, size: number)
+	local anim = Party.PET_ANIM
+	local seconds = anim.FIDGET_SECONDS.ghostfloat
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			local solid = part.Transparency
+			local fade = TweenService:Create(part, TweenInfo.new(seconds * 0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, true, seconds * 0.15),
+				{ Transparency = solid + (1 - solid) * anim.GHOST_FADE })
+			fade:Play()
+		end
+	end
+	for wave = 0, 3 do
+		task.delay(wave * seconds * 0.18, function()
+			local body = bonePosition(model, "Spine_0")
+			if body and model.Parent then
+				burst(CFrame.lookAt(body, body + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(190, 140, 255), Color3.fromRGB(120, 70, 200)), 4, 0.6 * size, 1 * size, 1.2)
+				burst(CFrame.new(body), SPARKLES, ColorSequence.new(Color3.fromRGB(210, 170, 255)), 5, 0.25 * size, 2 * size, 0.8)
+			end
+		end)
+	end
+end
+
 -- A buzz zap: at the top of its zigzag buzz, a bolt shoots down from its stinger and sparks fly off its antenna bolts
 local function buzzzap(model: Model, size: number)
 	local stinger = bonePosition(model, "Tail_0")
@@ -692,6 +716,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		shypeek(model, size)
 	elseif kind == "buzzzap" then
 		buzzzap(model, size)
+	elseif kind == "ghostfloat" then
+		ghostfloat(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
