@@ -38,7 +38,7 @@ return {
 		Magmaw = "rbxassetid://119953935554994",
 		Mistfin = "rbxassetid://108837635904996",
 		Vinewyrm = "rbxassetid://88152210657585",
-		Stormjack = "rbxassetid://127079643385444",
+		Stormjack = "rbxassetid://112352621291533",
 		Infernox = "rbxassetid://116090911680429",
 		["Abyssal Koi"] = "rbxassetid://102778519848890",
 		Thunderhorn = "rbxassetid://99651725753080",

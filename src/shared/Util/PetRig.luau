@@ -21,6 +21,7 @@ export type State = {
 	armForward: number?, -- radians the arms reach forward once lowered (a T-rex's), from Party.ARM_POSE
 	armBend: number?, -- radians the elbows bend, else PET_ANIM.ARM_BEND
 	armSwing: number?, -- radians the arms swing walking, else PET_ANIM.ARM_SWING
+	tailAmount: number?, -- how big the tail's swish is (Party.CREATURE_STYLE), else 1
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
 	swimPhase: number?, -- that wave, radians, built up frame by frame (PetRig.swimSpeed)
 }
@@ -179,7 +180,19 @@ local function gape(cfg: any, progress: number): number
 	return open * shut
 end
 
-local ROARS = { roar = true, voidroar = true, thunderroar = true }
+-- Fire breath: rear back, then thrust the head out and hold it there while the fire pours out, then settle
+local function breathCurve(cfg: any, progress: number): number
+	local p = math.clamp(progress, 0, 1)
+	local burst = cfg.ROAR_BURST
+	if p < burst then
+		return -math.sin(p / burst * math.pi / 2)
+	end
+	local thrust = math.clamp((p - burst) / 0.1, 0, 1)
+	local settle = math.clamp((1 - p) / 0.15, 0, 1)
+	return 0.5 * thrust * settle - (1 - thrust)
+end
+
+local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true }
 
 export type Body = { lift: number, yaw: number, roll: number, pitch: number }
 
@@ -189,11 +202,13 @@ function PetRig.roarBurst(cfg: any, progress: number): boolean
 end
 
 -- Whether a fidget's effect (Util/SignatureFx) is due this far through it: the butterfly as the hand comes up,
--- a signature roar's shockwave with the lunge. Callers fire it once.
+-- a signature roar's shockwave (or fire breath) with the lunge. Callers fire it once.
 function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 	if kind == "butterfly" then
 		return progress >= cfg.BUTTERFLY_CUE
-	elseif kind == "voidroar" or kind == "thunderroar" then
+	elseif kind == "stomp" then
+		return progress >= 0.95 -- as it lands
+	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
 	return false
@@ -251,6 +266,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local shake = if fidget == "shake" then rad(cfg.SHAKE) * math.sin(progress * TAU * 6) * (1 - progress) * idle else 0
 
 	local wagScale = (1 + (if fidget == "wag" then (cfg.HAPPY_WAG - 1) * amount else 0)) * (1 + (cfg.TAIL_WALK_AMOUNT - 1) * moving)
+		* (state.tailAmount or 1)
 	local wag = state.tailPhase or state.time * TAU / cfg.TAIL_SECONDS
 	local hasTail, hasUpperSpine, hasNeck, hasHydra = false, false, false, false
 	for _, role in roles do
@@ -296,7 +312,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			local hind = not biped and role.pair == 1
 			if role.segment == 0 then
 				x = rad(cfg.LEG_SWING) * swing
-				if fidget == "stretch" and role.pair == 0 then
+				if fidget == "stretch" and role.pair == 0 and not biped then
 					x -= rad(cfg.STRETCH) * amount
 				elseif fidget == "sit" and hind then
 					x -= rad(cfg.SIT) * 1.5 * amount
@@ -330,7 +346,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				y = -walkTwist * cfg.SHOULDER_COUNTER
 			end
 			if fidget == "stretch" then
-				x += rad(cfg.STRETCH) * 0.4 * amount
+				-- Four legs: the spine dips as the front legs reach; two legs: leaning back with the arms up
+				x += rad(cfg.STRETCH) * (if biped then -0.5 else 0.4) * amount
 			elseif fidget == "sit" then
 				x -= rad(cfg.SIT) * 0.8 * amount -- the front stays up while the hips go down
 			elseif roaring then
@@ -355,7 +372,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			if fidget == "tilt" and role.kind == "head" and role.segment == 0 then
 				z = rad(cfg.TILT) * amount
 			elseif roaring then
-				x += rad(cfg.ROAR_NECK) * share * roarCurve(cfg, progress) * idle
+				local curve = if fidget == "firebreath" then breathCurve(cfg, progress) else roarCurve(cfg, progress)
+				x += rad(cfg.ROAR_NECK) * share * curve * idle
 			elseif fidget == "butterfly" then
 				-- Looking up at the butterfly and following it round
 				x -= rad(cfg.BUTTERFLY_LOOK) * share * lifted
@@ -412,6 +430,9 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 					+ (state.armForward or 0)
 			elseif drop > 0 then
 				x = (state.armBend or rad(cfg.ARM_BEND)) / role.segment -- elbows forward
+			end
+			if role.segment == 0 and fidget == "stretch" then
+				x += rad(cfg.STRETCH) * 1.6 * amount
 			end
 			if role.side == "Right" and lifted > 0 then
 				-- The right hand held up, palm out, for the butterfly to land on

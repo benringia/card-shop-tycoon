@@ -133,6 +133,11 @@ Many-headed rigs name each neck `Hydra_<head>_0..2` with the head as `Hydra_<hea
 yawn and shake fidgets; jaws snap open now and then, each at its own moment, and gape in a yawn
 (`PET_ANIM.HYDRA_*`, `JAW_*`). A single `Jaw_0` (Boltlynx) stays shut except in a yawn or roar.
 
+Each original also carries itself like the creature it is (`Party.CREATURE_STYLE`): its own idle fidgets (the big
+beasts never hop or spin, Infernox stomps with a dust ring, the lion sits and scratches like a cat, Sprouthop skips
+the tail wag it can't do), a slower, smaller tail swish (a lion's swish, a T-rex's heavy sway, a hydra's drift instead
+of a dog's wag) and less bounce in its walk. Two-legged rigs stretch by leaning back with their arms up.
+
 Each original has a signature idle (`Party.SIGNATURE`: the fidget and how often it replaces an ordinary one; bone
 poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.cue` says so):
 - **butterfly** (Sprouthop): the right hand comes up, a butterfly appears on it in a puff of sparkles, flutters round
@@ -141,6 +146,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   dark void smoke bursting from every mouth, with the roar's shockwave ring.
 - **thunderroar** (Boltlynx): head reared back then lunging with the mouth wide, ears flat, tail stiff; lightning
   crackles out of the mane in three bursts with a flash, plus the shockwave ring.
+- **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
+  four bursts, plus the shockwave ring.
+- **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
+  pours from its mouth (and follows it) for over a second, lighting up round it.
 
 - **Boltlynx** (`build_boltlynx.py`): a golden lion on four legs with a huge spiky mane tipped in yellow, white
   lightning-bolt markings on its flanks, a jaw that opens to roar and a spiky tail tuft; 25 bones, about 1,300
@@ -151,6 +160,14 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Sprouthop** (`build_sprouthop.py`): a little tree sprite: twisted bark body, big blocky face with glossy eyes,
   a leafy cap and two twig antlers (its `Ear_` bones, so they wiggle), twig fingers, root feet; no tail, so its hips
   sway like a sapling. 20 bones, about 2,800 triangles.
+- **Stormjack** (`build_stormjack.py`): a Rare, so a friendly baby storm hydra: a chunky round electric-blue body on
+  stubby legs with pink toe beans, three short necks with big round heads (big shiny eyes, blush, no fangs, little
+  horn nubs and a lightning-bolt tuft), a cream tummy and a curly tail with a bolt tip; 36 bones (3 necks of 4 plus 3
+  jaws), about 1,450 triangles. It hops and wags like a pup. Creatures look less dangerous the more common their card
+  (Common cute, Legendary terrifying).
+- **Infernox** (`build_infernox.py`): a red T-rex with black tiger stripes, a big head with a cream jaw (`Jaw_0`),
+  tiny arms held up in front (`ARM_POSE`), a long striped tail and a flame crest whose side flames are its `Ear_`
+  bones, so they flicker; 25 bones, about 1,050 triangles.
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns

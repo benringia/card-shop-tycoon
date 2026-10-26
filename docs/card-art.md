@@ -49,6 +49,13 @@ Element scenes (matching `CardDesign.SCENES`):
   face, big glossy dark eyes with white shine, pink blush and a small smile, a fluffy cap of green leaf cubes with two
   small twig antlers, thin bark arms with twig fingers, its right hand raised holding a tiny sprout with a small
   butterfly landing on it, root-like feet, little mushrooms on its legs.
+- **Stormjack** (original baby hydra, Rare so friendly): a cute chunky blocky voxel-style baby hydra, friendly and
+  harmless, a round light electric-blue body on short stubby legs with pink toe beans, a cream yellow tummy, three
+  short necks with big round blocky heads, each with big shiny dark eyes, pink blushing cheeks, a small happy smile
+  with no teeth, two little yellow horn nubs and a tiny yellow lightning-bolt tuft, a short curly tail ending in a
+  little yellow lightning bolt, small friendly sparks (lighting: bright playful stormy lighting).
+
+Tone follows rarity: the more common the card, the cuter and less dangerous the creature and its art.
 - **Solarion** (RubyCerberus): a massive three-headed wolf made of jagged glowing ruby-red crystals and black
   obsidian stone, glowing red eyes, white crystal fangs, tall red crystal spikes along its back, red crystal talons.
 

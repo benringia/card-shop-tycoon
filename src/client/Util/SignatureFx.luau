@@ -5,6 +5,8 @@
 --   head and flies off.
 -- * thunderroar (Boltlynx): lightning crackles out of the mane in three bursts, with a flash.
 -- * voidroar (Voidmaw): dark void smoke bursts from every mouth.
+-- * stormroar (Stormjack): lightning leaps between its mouths in four bursts.
+-- * firebreath (Infernox): a cone of fire pours from its mouth for a moment, lighting up round it.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
 local RunService = game:GetService("RunService")
@@ -180,6 +182,85 @@ local function void(model: Model, size: number)
 	end
 end
 
+local function mouths(model: Model): { Bone }
+	local found = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Bone") and string.match(descendant.Name, "^Jaw_%d$") then
+			table.insert(found, descendant)
+		end
+	end
+	return found
+end
+
+local function storm(model: Model, size: number)
+	local jaws = mouths(model)
+	if #jaws < 2 then
+		return
+	end
+	for wave = 0, 3 do
+		task.delay(wave * 0.14, function()
+			if not model.Parent then
+				return
+			end
+			-- Lightning leaps from every mouth to every other
+			for i = 1, #jaws do
+				for j = i + 1, #jaws do
+					bolt(jaws[i].TransformedWorldCFrame.Position, jaws[j].TransformedWorldCFrame.Position, 0.06 * size)
+				end
+			end
+		end)
+	end
+	for _, jaw in jaws do
+		local mouth = jaw.TransformedWorldCFrame.Position
+		burst(CFrame.lookAt(mouth, mouth + Vector3.yAxis), SPARKLES, ColorSequence.new(LIGHTNING_COLOR, Color3.fromRGB(120, 210, 255)), 10, 0.4 * size, 6 * size, 0.6)
+	end
+end
+
+local function fireBreath(model: Model, size: number)
+	local jaw = mouths(model)[1]
+	if not jaw then
+		return
+	end
+	local holder = Instance.new("Attachment")
+	holder.Parent = workspace.Terrain
+	local fire = Instance.new("ParticleEmitter")
+	fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+	fire.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 150)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 140, 30)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 30, 10)),
+	})
+	fire.LightEmission = 0.9
+	fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4 * size), NumberSequenceKeypoint.new(1, 1.6 * size) })
+	fire.Transparency = NumberSequence.new(0.1, 1)
+	fire.Lifetime = NumberRange.new(0.35, 0.55)
+	fire.Speed = NumberRange.new(10 * size, 14 * size)
+	fire.SpreadAngle = Vector2.new(14, 14)
+	fire.EmissionDirection = Enum.NormalId.Front
+	fire.Rate = 140
+	fire.Parent = holder
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 150, 50)
+	light.Brightness = 3
+	light.Range = 8 * size
+	light.Parent = holder
+	-- The flames follow the mouth, pouring forward and a little down, then stop and fade out
+	local start = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.Heartbeat:Connect(function()
+		if not model.Parent or os.clock() - start > 1.3 then
+			connection:Disconnect()
+			fire.Enabled = false
+			TweenService:Create(light, TweenInfo.new(0.5), { Brightness = 0 }):Play()
+			task.delay(0.8, holder.Destroy, holder)
+			return
+		end
+		local mouth = jaw.TransformedWorldCFrame.Position
+		local forward = model:GetPivot().LookVector
+		holder.WorldCFrame = CFrame.lookAt(mouth, mouth + forward - Vector3.new(0, 0.25, 0))
+	end)
+end
+
 -- The effect of a signature idle (Party.SIGNATURE), from the creature's current pose; size: its size multiplier
 function SignatureFx.play(kind: string, model: Model, size: number)
 	if kind == "butterfly" then
@@ -188,6 +269,10 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		thunder(model, size)
 	elseif kind == "voidroar" then
 		void(model, size)
+	elseif kind == "stormroar" then
+		storm(model, size)
+	elseif kind == "firebreath" then
+		fireBreath(model, size)
 	end
 end
 

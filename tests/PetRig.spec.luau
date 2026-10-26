@@ -290,6 +290,48 @@ return {
 		assertBounded(roar, "thunder roar")
 	end,
 
+	["storm roars ripple through a hydra's heads; fire breath holds the mouth open with the head thrust out"] = function()
+		assert(PetRig.cue(CFG, "stormroar", CFG.ROAR_BURST) and PetRig.cue(CFG, "firebreath", CFG.ROAR_BURST), "no effect cue with the lunge")
+		local function at(names: { string }, kind: string, progress: number): { [string]: PetRig.Angles }
+			return poseAt(names, { time = 0, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress })
+		end
+		local HYDRA = { "Pelvis", "Spine_0" }
+		for head = 0, 2 do
+			table.insert(HYDRA, `Hydra_{head}_3`)
+			table.insert(HYDRA, `Jaw_{head}`)
+		end
+		local rear = at(HYDRA, "stormroar", 0.25)
+		assert(rear["hydra:0:3"].x < -math.rad(5), "the heads don't rear back")
+		assert(math.abs(rear["hydra:0:3"].x - rear["hydra:2:3"].x) > math.rad(2), "the heads roar at once instead of rippling")
+		assert(at(HYDRA, "stormroar", 0.55)["jaw:1"].x < -math.rad(25), "the jaws don't gape")
+
+		local REX = { "Pelvis", "Spine_0", "Neck", "Head_0", "Jaw_0", "Tail_0", "0_Left_Limb_0", "0_Right_Limb_0" }
+		local breathing = at(REX, "firebreath", 0.7)
+		assert(breathing["jaw:0"].x < -math.rad(25), "the mouth isn't open while breathing fire")
+		assert(breathing["head:0"].x > math.rad(3), "the head isn't thrust forward while breathing fire")
+		assert(at(REX, "firebreath", 0.25)["head:0"].x < -math.rad(5), "no rear back before the breath")
+		assertBounded(breathing, "fire breath")
+	end,
+
+	["two-legged rigs stretch by leaning back with their arms up; tails can swish smaller; stomps land with a cue"] = function()
+		local BIPED = { "Pelvis", "Spine_0", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0", "Tail_0", "Tail_1" }
+		local function at(state: PetRig.State): { [string]: PetRig.Angles }
+			return poseAt(BIPED, state)
+		end
+		local rest = at({ time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0 })
+		local stretch = at({ time = 0, phase = 0, moving = 0, fidget = "stretch", fidgetProgress = 0.5 })
+		expect.near(stretch["leg:0:Left:0"].x, rest["leg:0:Left:0"].x, 1e-9, "a two-legged stretch kicks its legs")
+		assert(stretch["spine:0"].x < rest["spine:0"].x - math.rad(5), "a two-legged stretch doesn't lean back")
+		assert(stretch["arm:Left:0"].x > rest["arm:Left:0"].x + math.rad(20), "a two-legged stretch doesn't lift its arms")
+		assertBounded(stretch, "two-legged stretch")
+
+		local full = at({ time = 0.3, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, tailPhase = 1 })
+		local small = at({ time = 0.3, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, tailPhase = 1, tailAmount = 0.5 })
+		expect.near(small["tail:1"].y, full["tail:1"].y * 0.5, 1e-9, "tailAmount doesn't scale the swish")
+
+		assert(PetRig.cue(CFG, "stomp", 0.96) and not PetRig.cue(CFG, "stomp", 0.5), "a stomp's dust goes off as it lands")
+	end,
+
 	["two-legged walks twist the hips with the stride and the shoulders against them"] = function()
 		local BIPED = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0" }
 		local step = poseAt(BIPED, walking(math.pi / 2))

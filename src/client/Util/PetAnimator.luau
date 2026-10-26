@@ -35,6 +35,10 @@ export type Rig = {
 	nextFidget: number,
 	random: Random,
 	signature: { fidget: string, chance: number }?, -- Party.SIGNATURE for this model
+	fidgets: { string }?, -- Party.CREATURE_STYLE: this model's own idle fidgets
+	tailSpeed: number, -- and its tail's swish speed and size, and how much it bounces walking
+	tailAmount: number,
+	bounce: number,
 	cued: boolean, -- the playing fidget's effect has gone off
 }
 
@@ -151,6 +155,7 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		end
 	end
 	local random = Random.new()
+	local style = Party.CREATURE_STYLE[sourceName]
 	return {
 		bones = bones,
 		roles = roles,
@@ -177,6 +182,10 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		random = random,
 		signature = Party.SIGNATURE[sourceName],
 		cued = false,
+		fidgets = style and style.fidgets,
+		tailSpeed = style and style.tailSpeed or 1,
+		tailAmount = style and style.tailAmount or 1,
+		bounce = style and style.bounce or 1,
 	}
 end
 
@@ -208,7 +217,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 	local cfg = Party.PET_ANIM
 	local target = if walking then 1 else 0
 	rig.moving += (target - rig.moving) * math.min(1, dt / cfg.BLEND_SECONDS)
-	rig.tailPhase = (rig.tailPhase + PetRig.wagSpeed(cfg, rig.moving) * math.min(dt, 0.1)) % (math.pi * 2)
+	rig.tailPhase = (rig.tailPhase + PetRig.wagSpeed(cfg, rig.moving) * rig.tailSpeed * math.min(dt, 0.1)) % (math.pi * 2)
 	if rig.flying then
 		rig.flapPhase = (rig.flapPhase + PetRig.flapSpeed(cfg, rig.moving) * rig.flapRate * math.min(dt, 0.1)) % (math.pi * 2)
 	end
@@ -222,7 +231,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 	if walking then
 		rig.nextFidget = math.max(rig.nextFidget, now + 1) -- a fidget waits until it stops
 	elseif not rig.fidget and now >= rig.nextFidget then
-		local kinds = if rig.flying or rig.undulate then cfg.FLY_FIDGETS else cfg.FIDGETS
+		local kinds = if rig.flying or rig.undulate then cfg.FLY_FIDGETS else rig.fidgets or cfg.FIDGETS
 		local kind = kinds[rig.random:NextInteger(1, #kinds)]
 		local signature = rig.signature
 		if signature and rig.random:NextNumber() < signature.chance then
@@ -248,6 +257,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		armForward = rig.armForward,
 		armBend = rig.armBend,
 		armSwing = rig.armSwing,
+		tailAmount = rig.tailAmount,
 		undulate = rig.undulate,
 		swimPhase = rig.swimPhase,
 	}
