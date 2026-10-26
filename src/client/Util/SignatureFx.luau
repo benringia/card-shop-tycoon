@@ -16,6 +16,7 @@
 -- * sporepuff (Mossmole): up on its toes, glowing teal spores rise from the mushroom garden it hugs, with a soft glow.
 -- * petaltwirl (Petalpaw): a happy spin while pink petals swirl out round it.
 -- * shadowloop (Gloomlet): a loop-the-loop in the air trailing violet shadow smoke, sparkles off its ear wisps.
+-- * emberflap (Ashbeak): a flapping hop; at the top, a flame bursts from its crest with a puff of embers.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -411,6 +412,18 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- An ember flap: at the top of its flapping hop, a puff of embers and a little flame burst from its crest
+local function emberflap(model: Model, size: number)
+	local crest = bonePosition(model, "Ear_Left_0") or bonePosition(model, "Head_0")
+	if not crest then
+		return
+	end
+	local up = CFrame.lookAt(crest, crest + Vector3.yAxis)
+	burst(up, "rbxasset://textures/particles/fire_main.dds", ColorSequence.new(Color3.fromRGB(255, 210, 100), Color3.fromRGB(255, 90, 30)), 10, 0.45 * size, 2.5 * size, 0.5)
+	local body = model:GetPivot().Position + Vector3.new(0, 0.8 * size, 0)
+	burst(CFrame.lookAt(body, body + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 170, 70)), 14, 0.3 * size, 4 * size, 0.8)
+end
+
 -- A shadow loop: a trail of violet shadow smoke follows it round the loop, with sparkles off its ear wisps
 local function shadowloop(model: Model, size: number)
 	local duration = Party.PET_ANIM.FIDGET_SECONDS.shadowloop * 0.8
@@ -629,6 +642,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		petaltwirl(model, size)
 	elseif kind == "shadowloop" then
 		shadowloop(model, size)
+	elseif kind == "emberflap" then
+		emberflap(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

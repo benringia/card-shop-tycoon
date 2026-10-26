@@ -262,6 +262,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the twirl starts
 	elseif kind == "shadowloop" then
 		return progress >= 0.1 -- the loop starts
+	elseif kind == "emberflap" then
+		return progress >= 0.45 -- the top of the hop
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -302,6 +304,9 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "emberflap" then
+		-- A little flapping hop, the top halfway
+		lift = cfg.FLAP_HOP * math.sin(math.clamp((p - 0.2) / 0.6, 0, 1) * math.pi)
 	elseif kind == "shadowloop" then
 		-- A loop-the-loop forwards in the air (a flyer), rising as it goes over the top
 		local air = math.clamp((p - 0.1) / 0.8, 0, 1)
@@ -377,6 +382,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local chopping = if fidget == "kungfu" then hold(progress) * idle else 0
 	-- A volt charge: both fists brought up in front, braced, lightning arcing between them
 	local charging = if fidget == "voltcharge" then hold(progress) * idle else 0
+	-- An ember flap: folded wings (arms) beat out and up fast, three times
+	local flapping = if fidget == "emberflap" then hold(progress) * idle else 0
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
@@ -569,6 +576,10 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			end
 			if role.segment == 0 and fidget == "stretch" then
 				x += rad(cfg.STRETCH) * 1.6 * amount
+			end
+			if flapping > 0 and role.segment == 0 then
+				local beat = rad(cfg.EMBER_FLAP) * (0.5 + 0.5 * math.sin(progress * TAU * 3)) * flapping
+				z += if role.side == "Left" then beat else -beat
 			end
 			if charging > 0 then
 				-- Both fists up in front, elbows bent, braced

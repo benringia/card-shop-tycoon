@@ -20,7 +20,7 @@ return {
 		Sprouthop = "rbxassetid://109907428433527",
 		Zappit = "rbxassetid://140500297417545",
 		Gloomlet = "rbxassetid://89857060047198",
-		Ashbeak = "rbxassetid://76273054801846",
+		Ashbeak = "rbxassetid://140445779213532",
 		Shellshy = "rbxassetid://102591477668369",
 		Mossmole = "rbxassetid://87307676644811",
 		Fizzlebug = "rbxassetid://128755684478888",
