@@ -53,19 +53,33 @@ return {
 	} :: { [string]: { string } },
 	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
 	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING). Flametor holds its short
-	-- arms up in front like a T-rex; Sprouthop swings its arms wide.
+	-- arms up in front like a T-rex, and so does Infernox; Sprouthop swings its arms wide.
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
+		Infernox = { hang = 8, forward = 60, bend = 70, swing = 8 }, -- nearly straight down first, so the forward swing brings them in front
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
-	-- another, Boltlynx roars with lightning crackling round its mane
+	-- another, Boltlynx roars with lightning crackling round its mane, Stormjack's heads roar with lightning leaping
+	-- between their mouths, Infernox breathes fire
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
+		Stormjack = { fidget = "stormroar", chance = 0.35 },
+		Infernox = { fidget = "firebreath", chance = 0.35 },
 	} :: { [string]: { fidget: string, chance: number } },
+	-- How a model carries itself, so each moves like the creature it is (else the defaults): its own idle fidgets
+	-- (else PET_ANIM.FIDGETS), its tail's swish speed and size (times PET_ANIM's), and how much it bounces walking
+	-- (times PET_ANIM.HOP_SCALE). Big beasts swish slowly, don't hop or spin, and walk heavily; Infernox stomps.
+	CREATURE_STYLE = {
+		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
+		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
+		Stormjack = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "hop", "wag", "sit", "stretch" }, tailSpeed = 0.8 },
+		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
+		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
+	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, bounce: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
 		HeronDemon = 0.55,
@@ -165,7 +179,7 @@ return {
 		FIDGET_SECONDS = {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
-			butterfly = 4.5, voidroar = 3, thunderroar = 2.6,
+			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2,
 		},
 		BLEND_SECONDS = 0.25, -- standing <-> walking
 		DISTANCE = 70, -- only animated this close to the camera
@@ -194,7 +208,7 @@ return {
 		Coalbit = { pack = "UltraPets", model = "Salamander", tint = { 130, 110, 110 } },
 		Blazehound = { pack = "UltraPets", model = "HotDog" },
 		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },
-		Infernox = { pack = "UltraPets", model = "Flametor", size = 1.3 },
+		Infernox = { pack = "Originals", model = "Infernox", size = 1.3 }, -- original, tools/blender/build_infernox.py
 		Emberwing = { pack = "UltraPets", model = "NeonSwallow", tint = { 255, 140, 80 } },
 		Puffpuddle = { pack = "UltraPets", model = "OtterKing" },
 		Shellshy = { pack = "UltraPets", model = "Turtle" },
@@ -213,7 +227,7 @@ return {
 		Fizzlebug = { pack = "UltraPets", model = "Venowasp" },
 		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },
 		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/build_boltlynx.py
-		Stormjack = { pack = "UltraPets", model = "Stormhydra", size = 1.8 },
+		Stormjack = { pack = "Originals", model = "Stormjack", size = 1.8 }, -- original, tools/blender/build_stormjack.py
 		Thunderhorn = { pack = "UltraPets", model = "Lumistag", tint = { 255, 235, 150 }, size = 1.3 },
 		Voltkit = { pack = "UltraPets", model = "PurpleFox", tint = { 255, 220, 120 }, size = 1.3 },
 		Gloomlet = { pack = "UltraPets", model = "DarkBat", size = 1.3 },
