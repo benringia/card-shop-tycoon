@@ -28,6 +28,7 @@
 -- * riftroar (Riftwalker): a roar that tears a swirling violet void rift open in the air behind it, then closes it.
 -- * lavaslam (Cinder Titan): pounds its chest, raises both fists and slams them down in a ring of fire and lava.
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
+-- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -422,6 +423,39 @@ local function sporepuff(model: Model, size: number)
 	light.Parent = glow
 	TweenService:Create(light, TweenInfo.new(1.4), { Brightness = 0 }):Play()
 	task.delay(1.5, glow.Destroy, glow)
+end
+
+-- A horn storm: as it charges, its horn crackles and lightning rains down in a ring round it, each bolt bursting in sparks
+local function hornstorm(model: Model, size: number)
+	local pivot = model:GetPivot()
+	local head = bonePosition(model, "Head_0")
+	if head then
+		for _ = 1, 3 do
+			local out = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(0.2, 1), rng:NextNumber(-1, 1)).Unit
+			bolt(head + Vector3.new(0, 0.5 * size, 0), head + out * 1.6 * size, 0.07 * size)
+		end
+	end
+	for i = 1, 6 do
+		task.delay(i * 0.08, function()
+			if not model.Parent then
+				return
+			end
+			local angle = i / 6 * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
+			local ground = pivot.Position + Vector3.new(math.cos(angle), 0, math.sin(angle)) * rng:NextNumber(2.5, 3.5) * size
+			bolt(ground + Vector3.new(rng:NextNumber(-1, 1), 8, rng:NextNumber(-1, 1)) * size, ground, 0.1 * size)
+			burst(CFrame.lookAt(ground, ground + Vector3.yAxis), SPARKLES, ColorSequence.new(LIGHTNING_COLOR, Color3.fromRGB(120, 180, 255)), 10, 0.35 * size, 4 * size, 0.5)
+		end)
+	end
+	local flash = Instance.new("Attachment")
+	flash.WorldPosition = pivot.Position + Vector3.new(0, 4 * size, 0)
+	flash.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(150, 200, 255)
+	light.Brightness = 5
+	light.Range = 18 * size
+	light.Parent = flash
+	TweenService:Create(light, TweenInfo.new(0.9), { Brightness = 0 }):Play()
+	task.delay(1, flash.Destroy, flash)
 end
 
 -- A celestial blessing: as it stamps down a spiral of water and golden light rises round it, rays shine up from its
@@ -1014,6 +1048,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		lavaslam(model, size)
 	elseif kind == "blessing" then
 		blessing(model, size)
+	elseif kind == "hornstorm" then
+		hornstorm(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

@@ -551,6 +551,13 @@ return {
 		expect.near(PetRig.body(CFG, "thundercall", 1, 1, true).pitch, 0, 1e-6, "it doesn't come back level")
 	end,
 
+	["a horn storm charges like a thorn charge, the storm striking with the lunge"] = function()
+		assert(PetRig.cue(CFG, "hornstorm", 0.5) and not PetRig.cue(CFG, "hornstorm", 0.4), "the storm doesn't strike with the lunge")
+		local storm, thorn = PetRig.body(CFG, "hornstorm", 0.55, 1, true), PetRig.body(CFG, "thorncharge", 0.55, 1, true)
+		expect.near(storm.forward, thorn.forward, 1e-9, "the horn storm doesn't charge like the thorn charge")
+		assert(PetRig.body(CFG, "hornstorm", 0.3, 1, true).pitch < 0, "it doesn't lower its horn first")
+	end,
+
 	["a celestial blessing rears up and stamps, its light rising with the stamp"] = function()
 		assert(PetRig.cue(CFG, "blessing", 0.55) and not PetRig.cue(CFG, "blessing", 0.4), "the light doesn't rise with the stamp")
 		assert(PetRig.body(CFG, "blessing", 0.35, 1, true).pitch > math.rad(CFG.BLESSING_REAR) * 0.9, "it doesn't rear up")
