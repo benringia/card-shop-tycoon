@@ -142,12 +142,13 @@ function CreatureVisuals.cardHeight(cardName: string, rarity: string): number
 	return Party.CREATURE_HEIGHT * (Party.SIZE_BY_RARITY[rarity] or 1) * (if entry and entry.size then entry.size else 1)
 end
 
--- Whether a card's creature flies: a pack model flies only if its pack does (Party.FLYING_PACKS); a card's own
--- model or the placeholder flies if the card is in Party.FLYING
+-- Whether a card's creature flies: a pack model flies only if its pack does (Party.FLYING_PACKS), its entry says so
+-- (an original with its own Wing_ bones) or it has wings listed; a card's own model or the placeholder flies if the
+-- card is in Party.FLYING
 function CreatureVisuals.isFlying(cardName: string): boolean
 	local entry = Party.CREATURE_MODELS[cardName]
 	if entry then
-		return table.find(Party.FLYING_PACKS, entry.pack) ~= nil or Party.WINGS[entry.model] ~= nil
+		return entry.flies == true or table.find(Party.FLYING_PACKS, entry.pack) ~= nil or Party.WINGS[entry.model] ~= nil
 			or Party.UNDULATE[entry.model] == "swim"
 	end
 	return table.find(Party.FLYING, cardName) ~= nil

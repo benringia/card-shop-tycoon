@@ -59,6 +59,10 @@ Element scenes (matching `CardDesign.SCENES`):
   short legs, warm orange body with a big cream belly, big shiny dark eyes, soft pink blush, a pink five-petal flower
   on its head, a big fluffy tail shaped like a soft pink petal (rose at the base fading to blush), pink petals
   swirling round it as it twirls (lighting: soft warm sunlight).
+- **Gloomlet** (original shadow bat, Common): a very cute chubby round cartoon bat flying with its wings spread wide,
+  dark purple body with a lilac belly, big shiny eyes, soft pink blush, a small smile with two tiny fangs, a small
+  glowing violet flame wisp on each ear tip, a glowing pale crescent moon on its forehead, a trail of violet shadow
+  smoke (lighting: eerie violet moonlight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

@@ -15,6 +15,7 @@
 -- * zaphop (Zappit): at the top of a big bunny jump, lightning crackles up off its ear and tail bolts with sparks.
 -- * sporepuff (Mossmole): up on its toes, glowing teal spores rise from the mushroom garden it hugs, with a soft glow.
 -- * petaltwirl (Petalpaw): a happy spin while pink petals swirl out round it.
+-- * shadowloop (Gloomlet): a loop-the-loop in the air trailing violet shadow smoke, sparkles off its ear wisps.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -410,6 +411,26 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A shadow loop: a trail of violet shadow smoke follows it round the loop, with sparkles off its ear wisps
+local function shadowloop(model: Model, size: number)
+	local duration = Party.PET_ANIM.FIDGET_SECONDS.shadowloop * 0.8
+	for step = 0, 5 do
+		task.delay(step * duration / 6, function()
+			local body = bonePosition(model, "Spine_0")
+			if not body or not model.Parent then
+				return
+			end
+			burst(CFrame.new(body), SMOKE, ColorSequence.new(VOID_COLOR, Color3.fromRGB(30, 15, 45)), 4, 0.7 * size, 0.6 * size, 0.9)
+			for _, name in { "Ear_Left_0", "Ear_Right_0" } do
+				local ear = bonePosition(model, name)
+				if ear then
+					burst(CFrame.new(ear), SPARKLES, ColorSequence.new(Color3.fromRGB(200, 150, 255)), 3, 0.25 * size, 1.5 * size, 0.5)
+				end
+			end
+		end)
+	end
+end
+
 -- A petal twirl: pink petals swirl out round it as it spins, drifting up and fading
 local PETAL_COLORS = { Color3.fromRGB(255, 170, 205), Color3.fromRGB(255, 205, 225), Color3.fromRGB(240, 130, 180) }
 local function petaltwirl(model: Model, size: number)
@@ -606,6 +627,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		sporepuff(model, size)
 	elseif kind == "petaltwirl" then
 		petaltwirl(model, size)
+	elseif kind == "shadowloop" then
+		shadowloop(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
