@@ -61,15 +61,17 @@ return {
 		Duskstalker = { hang = 14, forward = 10, bend = 30, swing = 38 }, -- fists ready, a fighter's swagger
 		Voltkit = { hang = 12, forward = 5, bend = 20, swing = 34 }, -- a hero's stride
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
+		Cindercub = { hang = 0, forward = 0, bend = 0, swing = 14 }, -- paws rest on its tummy, so only a little swing
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
+		Cindercub = { fidget = "hiccup", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -91,6 +93,7 @@ return {
 		Stormjack = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "hop", "wag", "sit", "stretch" }, tailSpeed = 0.8 },
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
+		Cindercub = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn", "wag" }, tailSpeed = 1.2, bounce = 1.2 },
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -215,7 +218,15 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
+			hiccup = 2.4,
 		},
+		-- Cindercub's hiccups: when each one comes (fractions of the fidget), how sharp, the hop (studs at size 1),
+		-- the body's tip back and the head's jolt back (degrees)
+		HICCUP_BEATS = { 0.2, 0.5, 0.8 },
+		HICCUP_WIDTH = 0.07,
+		HICCUP_HOP = 0.25,
+		HICCUP_PITCH = 6,
+		HICCUP_HEAD = 22,
 		BLEND_SECONDS = 0.25, -- standing <-> walking
 		DISTANCE = 70, -- only animated this close to the camera
 		-- The rigged pack's whole-body motion is gentler: the legs do the walking
@@ -238,7 +249,7 @@ return {
 	CREATURE_MODELS = {
 		-- Ultra Detailed pack (bought): rigged without animations, so Util/RigGuess finds the legs, tail and head
 		-- and the code walk drives them; rigs without legs hop. Tints colour the models to their element.
-		Cindercub = { pack = "UltraPets", model = "RedMole" },
+		Cindercub = { pack = "Originals", model = "Cindercub", size = 1.6 }, -- original, tools/blender/rig_cindercub.py (Meshy-generated fire bear cub)
 		Ashbeak = { pack = "UltraPets", model = "StoneBird", tint = { 255, 150, 100 }, size = 1.3 },
 		Coalbit = { pack = "UltraPets", model = "Salamander", tint = { 130, 110, 110 } },
 		Blazehound = { pack = "Originals", model = "Blazehound" }, -- original, tools/blender/build_blazehound.py

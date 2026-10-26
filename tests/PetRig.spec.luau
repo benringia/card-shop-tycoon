@@ -395,6 +395,27 @@ return {
 		assert(rightFirst and leftFirst, "the arms don't chop one after the other")
 	end,
 
+	["a hiccup hops three times with the head jolting back, puffing on the first"] = function()
+		assert(PetRig.cue(CFG, "hiccup", 0.2) and not PetRig.cue(CFG, "hiccup", 0.1), "the first puff doesn't go with the first hiccup")
+		for _, beat in CFG.HICCUP_BEATS do
+			assert(PetRig.body(CFG, "hiccup", beat, 1, true).lift > CFG.HICCUP_HOP * 0.9, `no hop at hiccup {beat}`)
+		end
+		expect.near(PetRig.body(CFG, "hiccup", 0.35, 1, true).lift, 0, 1e-9, "it hovers between hiccups")
+		expect.near(PetRig.body(CFG, "hiccup", 0, 1, true).lift, 0, 1e-9, "it hops before the first hiccup")
+
+		local BEAR = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Right_0", "0_Left_Limb_0", "0_Right_Limb_0", "Tail_0" }
+		local function bearAt(kind: string, progress: number): { [string]: PetRig.Angles }
+			return poseAt(BEAR, { time = 0, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress })
+		end
+		local rest = bearAt("look", 0)
+		for _, beat in CFG.HICCUP_BEATS do
+			local pose = bearAt("hiccup", beat)
+			assert(pose["head:0"].x < rest["head:0"].x - math.rad(5), `the head doesn't jolt back at hiccup {beat}`)
+			assertBounded(pose, "hiccuping")
+		end
+		expect.near(bearAt("hiccup", 0.35)["head:0"].x, rest["head:0"].x, math.rad(1), "the head jolts between hiccups")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

@@ -153,6 +153,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   dark void smoke bursting from every mouth, with the roar's shockwave ring.
 - **thunderroar** (Boltlynx): head reared back then lunging, ears flat, tail stiff; lightning crackles round its head
   and leaps off the bolts on its ear tips and tail tip in three bursts with a flash, plus the shockwave ring.
+- **hiccup** (Cindercub): three little hiccups (`HICCUP_BEATS`), each a small hop with the head jolting back and
+  a puff of flame and smoke from its mouth.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -178,6 +180,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   ears, white zigzag stripes and a long tail; flat lightning bolts added by hand on its tail tip and ear tips (mapped
   to a pale yellow patch painted into the colour map) so it reads as mythical. One closed mesh, 24 bones (with
   `Ear_` bones), about 8,400 triangles. Replaced the blocky lion (`build_boltlynx.py`, kept for reference).
+- **Cindercub** (`rig_cindercub.py`, Meshy): a very cute red-orange fire bear cub standing upright like a teddy
+  bear, paws resting on its cream tummy, a little flame tuft on its head and a flame-tipped stubby tail; walks on two
+  short legs with a small arm swing (`ARM_POSE` swing 14). One closed mesh, 22 bones (with `Ear_` bones), about
+  8,400 triangles. Replaced the bought RedMole.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

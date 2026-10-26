@@ -211,6 +211,19 @@ local function sneezeCurve(cfg: any, progress: number): number
 	return 1.2 * math.sin(math.min(q * 3, 1) * math.pi / 2) * (1 - q) ^ 2
 end
 
+-- Hiccups: a sharp jolt at each of HICCUP_BEATS (fractions of the way through the fidget), still between them
+local function hiccupPulse(cfg: any, progress: number): number
+	local p = math.clamp(progress, 0, 1)
+	local pulse = 0
+	for _, beat in cfg.HICCUP_BEATS do
+		local distance = math.abs(p - beat) / cfg.HICCUP_WIDTH
+		if distance < 1 then
+			pulse = math.max(pulse, (1 - distance) ^ 2)
+		end
+	end
+	return pulse
+end
+
 local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, solarroar = true }
 
 export type Body = { lift: number, yaw: number, roll: number, pitch: number }
@@ -239,6 +252,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- taking off
 	elseif kind == "stomp" then
 		return progress >= 0.95 -- as it lands
+	elseif kind == "hiccup" then
+		return progress >= cfg.HICCUP_BEATS[1] -- the first hiccup (SignatureFx times the other puffs)
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -270,6 +285,10 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		pitch = math.rad(6) * envelope(p)
 	elseif kind == "hop" then
 		lift = cfg.HOP_HEIGHT * math.abs(math.sin(p * TAU))
+	elseif kind == "hiccup" then
+		local pulse = hiccupPulse(cfg, p)
+		lift = cfg.HICCUP_HOP * pulse
+		pitch = math.rad(cfg.HICCUP_PITCH) * pulse
 	elseif kind == "backflip" then
 		-- Crouch, spring up and flip right over backwards, land and settle
 		local air = math.clamp((p - 0.1) / 0.75, 0, 1)
@@ -328,6 +347,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
+	local hiccup = if fidget == "hiccup" then hiccupPulse(cfg, progress) * idle else 0
 	local sitting = if fidget == "sit" then amount else 0
 	-- Sitting right up on its hind legs (positive x tips a bone's front end up): the hips pitch the body up, the hind
 	-- legs turn back to stay planted
@@ -437,6 +457,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 					elseif fidget == "sneeze" then sneezeCurve(cfg, progress)
 					else roarCurve(cfg, progress)
 				x += rad(cfg.ROAR_NECK) * share * curve * idle
+			elseif hiccup > 0 then
+				x -= rad(cfg.HICCUP_HEAD) * share * hiccup -- jolted back by each hiccup
 			elseif grooming > 0 then
 				z += rad(10) * share * math.sin(progress * TAU * 2.5) * grooming -- tilting into the paws
 			elseif cracking > 0 then
