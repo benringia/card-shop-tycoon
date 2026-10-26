@@ -65,11 +65,12 @@ return {
 		Zappit = { hang = 0, forward = 0, bend = 10, swing = 18 }, -- arms hang at its sides
 		Mossmole = { hang = 0, forward = 0, bend = 0, swing = 4 }, -- hugging its moss garden
 		Petalpaw = { hang = 0, forward = 0, bend = 15, swing = 24 },
+		Ashbeak = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- folded wings, fluttering a little
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -79,6 +80,7 @@ return {
 		Mossmole = { fidget = "sporepuff", chance = 0.35 },
 		Petalpaw = { fidget = "petaltwirl", chance = 0.35 },
 		Gloomlet = { fidget = "shadowloop", chance = 0.35 },
+		Ashbeak = { fidget = "emberflap", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -105,6 +107,7 @@ return {
 		Mossmole = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "hop" }, bounce = 0.8 }, -- a gentle waddler
 		Petalpaw = { fidgets = { "look", "tilt", "sniff", "hop", "shake", "wag", "stretch" }, tailSpeed = 0.7, tailAmount = 1.2, bounce = 1.2 }, -- a big slow tail sway
 		Gloomlet = { fidgets = { "look", "tilt", "spin", "shake" } }, -- a flyer
+		Ashbeak = { fidgets = { "look", "tilt", "sniff", "hop", "shake", "wag" }, tailSpeed = 1.3, bounce = 1.3 }, -- a bobbing chick
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -229,8 +232,11 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6,
+			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8,
 		},
+		-- Ashbeak's ember flap: how high it hops (studs at size 1) and how far its folded wings beat out (degrees)
+		FLAP_HOP = 0.5,
+		EMBER_FLAP = 55,
 		-- Gloomlet's shadow loop: how high it rises over the top of the loop (studs at size 1)
 		LOOP_HEIGHT = 1.2,
 		-- Petalpaw's petal twirl: how high it lifts mid-spin (studs at size 1)
@@ -271,7 +277,7 @@ return {
 		-- Ultra Detailed pack (bought): rigged without animations, so Util/RigGuess finds the legs, tail and head
 		-- and the code walk drives them; rigs without legs hop. Tints colour the models to their element.
 		Cindercub = { pack = "Originals", model = "Cindercub", size = 1.6 }, -- original, tools/blender/rig_cindercub.py (Meshy-generated fire bear cub)
-		Ashbeak = { pack = "UltraPets", model = "StoneBird", tint = { 255, 150, 100 }, size = 1.3 },
+		Ashbeak = { pack = "Originals", model = "Ashbeak", size = 1.4 }, -- original, tools/blender/rig_ashbeak.py (Meshy-generated ember chick)
 		Coalbit = { pack = "UltraPets", model = "Salamander", tint = { 130, 110, 110 } },
 		Blazehound = { pack = "Originals", model = "Blazehound" }, -- original, tools/blender/build_blazehound.py
 		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },

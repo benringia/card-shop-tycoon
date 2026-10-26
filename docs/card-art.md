@@ -63,6 +63,10 @@ Element scenes (matching `CardDesign.SCENES`):
   dark purple body with a lilac belly, big shiny eyes, soft pink blush, a small smile with two tiny fangs, a small
   glowing violet flame wisp on each ear tip, a glowing pale crescent moon on its forehead, a trail of violet shadow
   smoke (lighting: eerie violet moonlight).
+- **Ashbeak** (original ember chick, Common): a very cute chubby round cartoon baby chick on two orange feet, ash-grey
+  body with a cream belly, big shiny eyes, soft pink blush, a small orange beak, a little flame crest, glowing orange
+  ember zigzag cracks across its back, a short fiery tail, small folded wings flapping, a puff of embers (lighting:
+  warm cozy firelight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

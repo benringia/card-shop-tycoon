@@ -451,6 +451,25 @@ return {
 		expect.near(PetRig.body(CFG, "shadowloop", 1, 1, true).lift, 0, 1e-6, "it doesn't come back down")
 	end,
 
+	["an ember flap flaps its wings up and hops, puffing embers at the top"] = function()
+		assert(PetRig.cue(CFG, "emberflap", 0.45) and not PetRig.cue(CFG, "emberflap", 0.3), "no embers at the top of the hop")
+		assert(PetRig.body(CFG, "emberflap", 0.5, 1, true).lift > CFG.FLAP_HOP * 0.9, "it doesn't hop up")
+		expect.near(PetRig.body(CFG, "emberflap", 1, 1, true).lift, 0, 1e-6, "it doesn't land")
+		local CHICK = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Left_1", "Arm_Right_0", "Arm_Right_1",
+			"0_Left_Limb_0", "0_Right_Limb_0", "Tail_0" }
+		local function at(progress: number): { [string]: PetRig.Angles }
+			return poseAt(CHICK, { time = 0, phase = 0, moving = 0, fidget = "emberflap", fidgetProgress = progress })
+		end
+		local rest = poseAt(CHICK, { time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0 })
+		local lowest, highest = math.huge, -math.huge
+		for step = 2, 18 do
+			local z = at(step / 20)["arm:Left:0"].z - rest["arm:Left:0"].z
+			lowest, highest = math.min(lowest, z), math.max(highest, z)
+			assertBounded(at(step / 20), "ember flapping")
+		end
+		assert(highest - lowest > math.rad(30), "the wings don't flap")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

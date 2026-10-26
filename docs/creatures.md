@@ -186,6 +186,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **petaltwirl** (Petalpaw): a happy spin on its toes (`TWIRL_LIFT`) while pink petals swirl out round it.
 - **shadowloop** (Gloomlet): a loop-the-loop in the air (`LOOP_HEIGHT`) trailing violet shadow smoke, sparkles off its
   ear wisps.
+- **emberflap** (Ashbeak): a hop with its folded wings beating out (`FLAP_HOP`, `EMBER_FLAP`); at the top a flame
+  bursts from its crest with a puff of embers.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -229,6 +231,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   tiny fangs, a crescent moon on its brow and a glowing violet wisp on each ear tip (added by hand). The first original
   that flies: `flies = true` in `Party.CREATURE_MODELS`, its `Wing_<Side>_0..2` bones flap. 18 bones, about 8,000
   triangles (collapse decimation; a voxel remesh would melt the wing membranes). Replaced the DarkBat.
+- **Ashbeak** (`rig_ashbeak.py`, Meshy): a very cute ash-grey chick with a cream belly, a flame crest, glowing
+  ember zigzags round its back and a fiery tail (both painted by hand: Meshy left them out); waddles on orange feet,
+  folded wings as arms fluttering at its sides (it no longer flies). 21 bones, about 7,000 triangles. Replaced the
+  tinted StoneBird.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.
