@@ -205,6 +205,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **abysschomp** (Abyssal Koi): draws back and lunges forward snapping (`CHOMP_DRAW`, `CHOMP_LUNGE`); a dark surge of
+  deep water bursts from its fangs with cyan sparks and bubbles.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -271,6 +273,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Briarhorn** (`rig_briarhorn.py`, Meshy, Very Rare): a fierce red-brown forest bull with big pale horns (as `Ear_`
   bones) and thorny rose vines wrapped round its body. Remeshed and baked; turned 19 degrees straight (it was generated
   mid-stride). 23 bones, 10,000 triangles. Replaced the EarthBull.
+- **Abyssal Koi** (`rig_abyssalkoi.py`, Meshy, Epic): a giant menacing armoured abyss fish with a huge fanged maw,
+  glowing cyan eyes and spots and crystal fins. Swims (`Party.UNDULATE` "swim"): a head-to-tail chain of 9 bones
+  waves. Right first time. 10 bones, about 8,500 triangles. Replaced the tinted IceShark.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

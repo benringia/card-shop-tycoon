@@ -538,6 +538,13 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't level out")
 	end,
 
+	["an abyss chomp draws back, then lunges and snaps forward"] = function()
+		assert(PetRig.cue(CFG, "abysschomp", 0.5) and not PetRig.cue(CFG, "abysschomp", 0.4), "no burst with the snap")
+		assert(PetRig.body(CFG, "abysschomp", 0.3, 1, true).forward < 0, "it doesn't draw back first")
+		assert(PetRig.body(CFG, "abysschomp", 0.5, 1, true).forward > CFG.CHOMP_LUNGE * 0.9, "it doesn't lunge forward")
+		expect.near(PetRig.body(CFG, "abysschomp", 1, 1, true).forward, 0, 1e-6, "it doesn't settle back")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

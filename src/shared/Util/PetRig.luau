@@ -287,6 +287,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.55 -- the front feet stamp down
 	elseif kind == "thorncharge" then
 		return progress >= 0.5 -- the lunge
+	elseif kind == "abysschomp" then
+		return progress >= 0.5 -- the snap
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -327,6 +329,18 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "abysschomp" then
+		-- Drawing back (to 0.35), a fast lunge snapping at 0.5, then easing back to its place
+		if p < 0.35 then
+			forward = -cfg.CHOMP_DRAW * math.sin(p / 0.35 * math.pi / 2)
+		elseif p < 0.5 then
+			local t = (p - 0.35) / 0.15
+			forward = -cfg.CHOMP_DRAW + (cfg.CHOMP_LUNGE + cfg.CHOMP_DRAW) * math.sin(t * math.pi / 2)
+		else
+			local t = math.clamp((p - 0.5) / 0.5, 0, 1)
+			forward = cfg.CHOMP_LUNGE * (1 - t * t * (3 - 2 * t))
+		end
+		roll = math.rad(4) * math.sin(p * TAU * 3) * math.clamp((p - 0.5) * 4, 0, 1) * (1 - p)
 	elseif kind == "thorncharge" then
 		-- Head down and pawing (to 0.4), a short charge forward peaking at 0.55, then backing up to its spot
 		local lower = if p < 0.4 then math.sin(p / 0.4 * math.pi / 2) else math.max(0, 1 - (p - 0.55) / 0.3)
