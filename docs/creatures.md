@@ -150,6 +150,8 @@ character only, nothing else: no base, no ground, no grass, no rocks, no stand, 
 each other. One solid closed shape.
 ```
 
+- Never skinny: ask for a massive, heavy, bulky body with thick legs, a broad chest and a low wide stance (chunky and
+  stocky for cute ones), and match the card art's build. Briarhorn came out too slim and is queued for a redo.
 - Character plus its mythical parts only; never scenery. Grass or ground under it fuses with the feet and can't be
   rigged (Mossmole's first try: a grass patch round its feet, a hollow mossy underside, 5.7M triangles).
 - Keep add-ons chunky and attached (moss as a patch on the back, mushroom caps sitting on it); thin stalks and loose
@@ -201,6 +203,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   its wing tips and tail, levelling out in a burst of embers.
 - **tidecall** (Tidecaller): rears up on its hind legs (`TIDE_REAR`, `TIDE_LIFT`) and stamps down; a ring of water
   splashes out round it with spray.
+- **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
+  `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -264,6 +268,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Tidecaller** (`rig_tidecaller.py`, Meshy, Very Rare): a pale aqua sea dragon on four legs with crystal horns
   (as `Ear_` bones), a ridge of spines, crystal fin-wings on its back (`Wing_` bones, folded on the ground) and a
   fish-fin tail. Right first time. 28 bones, about 9,900 triangles. Replaced the Merilux.
+- **Briarhorn** (`rig_briarhorn.py`, Meshy, Very Rare): a fierce red-brown forest bull with big pale horns (as `Ear_`
+  bones) and thorny rose vines wrapped round its body. Remeshed and baked; turned 19 degrees straight (it was generated
+  mid-stride). 23 bones, 10,000 triangles. Replaced the EarthBull.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

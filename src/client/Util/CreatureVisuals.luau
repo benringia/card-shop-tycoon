@@ -458,7 +458,7 @@ local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 		idle.side = if idle.random:NextNumber() < 0.5 then 1 else -1
 	end
 	if not idle.kind then
-		return { lift = 0, yaw = 0, roll = 0, pitch = 0 }
+		return { lift = 0, yaw = 0, roll = 0, pitch = 0, forward = 0 }
 	end
 	local progress = (now - idle.start) / idle.length
 	-- The moment a roar lunges or a stomp lands, its effect goes off once
@@ -520,7 +520,7 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		end
 		local hover = if body.flying then CreatureMotion.getPose(motion, now, body.speed, body.walked, true).offsetY else 0
 		local extra = stepIdle(body, now, body.speed >= motion.WALK_SPEED_MIN)
-		body.model:PivotTo(body.cframe * CFrame.new(0, hover + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(extra.pitch, 0, extra.roll))
+		body.model:PivotTo(body.cframe * CFrame.new(0, hover + extra.lift * body.size, -extra.forward * body.size) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(extra.pitch, 0, extra.roll))
 	elseif body.pet then
 		-- The bones do the walking, breathing and fidgets; the whole body hops and sways a little, and moves for
 		-- the fidgets that need it (hop, spin, shake)
@@ -546,13 +546,13 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		hop += PetAnimator.flapLift(pet) * body.size
 		-- A fidget's pitch (a backflip) turns the creature round its middle, so its head doesn't go into the ground
 		local middle = CFrame.new(0, Party.CREATURE_HEIGHT * body.size * 0.5, 0)
-		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0)
+		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, -extra.forward * body.size) * CFrame.Angles(0, extra.yaw, 0)
 			* middle * CFrame.Angles(extra.pitch, 0, 0) * middle:Inverse()
 			* CFrame.Angles(-pose.pitch, 0, pose.roll * anim.WADDLE_SCALE + extra.roll))
 	else
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
 		local extra = stepIdle(body, now, body.speed >= motion.WALK_SPEED_MIN)
-		body.model:PivotTo(body.cframe * CFrame.new(0, pose.offsetY + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll + extra.roll))
+		body.model:PivotTo(body.cframe * CFrame.new(0, pose.offsetY + extra.lift * body.size, -extra.forward * body.size) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll + extra.roll))
 		-- Model:ScaleTo is uniform: breathing grows and shrinks a little, every other frame, only up close
 		if near and body.frame % 2 == 0 then
 			body.model:ScaleTo(body.baseScale * pose.scaleY)

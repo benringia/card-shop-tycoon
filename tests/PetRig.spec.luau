@@ -529,6 +529,15 @@ return {
 		expect.near(done.lift, 0, 1e-6, "it doesn't land")
 	end,
 
+	["a thorn charge lowers its head, lunges forward and settles back"] = function()
+		assert(PetRig.cue(CFG, "thorncharge", 0.5) and not PetRig.cue(CFG, "thorncharge", 0.4), "no burst of thorns with the lunge")
+		assert(PetRig.body(CFG, "thorncharge", 0.3, 1, true).pitch < -math.rad(5), "it doesn't lower its head to charge")
+		assert(PetRig.body(CFG, "thorncharge", 0.55, 1, true).forward > CFG.CHARGE_LUNGE * 0.9, "it doesn't lunge forward")
+		local done = PetRig.body(CFG, "thorncharge", 1, 1, true)
+		expect.near(done.forward, 0, 1e-6, "it doesn't come back to its spot")
+		expect.near(done.pitch, 0, 1e-6, "it doesn't level out")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

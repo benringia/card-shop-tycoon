@@ -72,7 +72,7 @@ return {
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -88,6 +88,7 @@ return {
 		Wispurr = { fidget = "ghostfloat", chance = 0.35 },
 		Emberwing = { fidget = "flameswoop", chance = 0.35 },
 		Tidecaller = { fidget = "tidecall", chance = 0.35 },
+		Briarhorn = { fidget = "thorncharge", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -120,6 +121,7 @@ return {
 		Wispurr = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake", "wag" }, tailSpeed = 0.7, bounce = 0.9 }, -- a lazy cat
 		Emberwing = { fidgets = { "look", "tilt", "spin", "shake" }, tailSpeed = 0.6 }, -- a flyer
 		Tidecaller = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake" }, tailSpeed = 0.45, tailAmount = 1.1, bounce = 0.4 }, -- a proud sea dragon
+		Briarhorn = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.5, tailAmount = 0.9, bounce = 0.35 }, -- a heavy bull
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -245,8 +247,11 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4,
+			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2,
 		},
+		-- Briarhorn's thorn charge: how far its head goes down (degrees) and how far it lunges forward (studs at size 1)
+		CHARGE_LOWER = 14,
+		CHARGE_LUNGE = 1.2,
 		-- Tidecaller's tide call: how far it rears up (degrees) and lifts (studs at size 1) before stamping down
 		TIDE_REAR = 28,
 		TIDE_LIFT = 0.3,
@@ -324,7 +329,7 @@ return {
 		Petalpaw = { pack = "Originals", model = "Petalpaw", size = 1.5 }, -- original, tools/blender/rig_petalpaw.py (Meshy-generated flower squirrel)
 		Thornback = { pack = "Originals", model = "Thornback", size = 1.3 }, -- original, tools/blender/build_thornback.py
 		Vinewyrm = { pack = "UltraPets", model = "GiantSnake" },
-		Briarhorn = { pack = "UltraPets", model = "EarthBull", size = 1.3 },
+		Briarhorn = { pack = "Originals", model = "Briarhorn", size = 1.7 }, -- original, tools/blender/rig_briarhorn.py (Meshy-generated forest bull)
 		Zappit = { pack = "Originals", model = "Zappit", size = 1.5 }, -- original, tools/blender/rig_zappit.py (Meshy-generated electric bunny)
 		Fizzlebug = { pack = "Originals", model = "Fizzlebug", size = 1.6, flies = true }, -- original, tools/blender/rig_fizzlebug.py (Meshy-generated electric bee)
 		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },

@@ -22,6 +22,7 @@
 -- * ghostfloat (Wispurr): drifts up fading half see-through, violet wisps swirling round it, then comes back solid.
 -- * flameswoop (Emberwing): climbs, then dives nose-down with fire streaming off its wing tips and tail.
 -- * tidecall (Tidecaller): rears up and stamps down; a ring of water splashes out round it with spray.
+-- * thorncharge (Briarhorn): head down, a short charge forward; thorny vines burst up in front of it with petals.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -417,6 +418,31 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A thorn charge: as it lunges, thorny vines burst up from the ground in front of it with pink petals and dust
+local function thorncharge(model: Model, size: number)
+	local pivot = model:GetPivot()
+	local front = pivot.Position + pivot.LookVector * 1.6 * size
+	for i = 1, 7 do
+		local side = (i - 4) * 0.28 * size
+		local base = front + pivot.RightVector * side
+		local thorn = fxPart(Vector3.new(0.18, 0.1, 0.18) * size, Color3.fromRGB(70, 120, 55), false)
+		thorn.CFrame = CFrame.new(base) * CFrame.Angles(0, rng:NextNumber(0, 6), rng:NextNumber(-0.3, 0.3))
+		thorn.Parent = workspace
+		local up = TweenService:Create(thorn, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(0.18, rng:NextNumber(0.9, 1.4), 0.18) * size, CFrame = thorn.CFrame * CFrame.new(0, 0.5 * size, 0) })
+		up:Play()
+		task.delay(0.9, function()
+			local fade = TweenService:Create(thorn, TweenInfo.new(0.4), { Transparency = 1 })
+			fade.Completed:Once(function()
+				thorn:Destroy()
+			end)
+			fade:Play()
+		end)
+	end
+	burst(CFrame.lookAt(front, front + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 170, 205)), 16, 0.3 * size, 4 * size, 0.9)
+	burst(CFrame.lookAt(front, front + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(170, 150, 120)), 6, 0.8 * size, 2 * size, 0.8)
+end
+
 -- A tide call: as its front feet stamp down, a ring of water splashes out round it with spray and bubbles
 local WATER = Color3.fromRGB(110, 210, 240)
 local function tidecall(model: Model, size: number)
@@ -771,6 +797,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		flameswoop(model, size)
 	elseif kind == "tidecall" then
 		tidecall(model, size)
+	elseif kind == "thorncharge" then
+		thorncharge(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

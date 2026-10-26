@@ -237,7 +237,7 @@ end
 
 local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, solarroar = true }
 
-export type Body = { lift: number, yaw: number, roll: number, pitch: number }
+export type Body = { lift: number, yaw: number, roll: number, pitch: number, forward: number }
 
 -- When a roar's shockwave goes off: as the lunge starts (ROAR_BURST of the way through)
 function PetRig.roarBurst(cfg: any, progress: number): boolean
@@ -285,17 +285,19 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.4 -- the dive starts
 	elseif kind == "tidecall" then
 		return progress >= 0.55 -- the front feet stamp down
+	elseif kind == "thorncharge" then
+		return progress >= 0.5 -- the lunge
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
 	return false
 end
 
--- The whole creature's part of a fidget: lift (studs at size 1), yaw, roll and pitch (radians, positive rears back). boned: a rigged pet, whose
+-- The whole creature's part of a fidget: lift and forward (studs at size 1), yaw, roll and pitch (radians, positive rears back). boned: a rigged pet, whose
 -- look-around is its head's job, not the body's
 function PetRig.body(cfg: any, kind: string?, progress: number, side: number, boned: boolean?): Body
 	local p = math.clamp(progress, 0, 1)
-	local lift, yaw, roll, pitch = 0, 0, 0, 0
+	local lift, yaw, roll, pitch, forward = 0, 0, 0, 0, 0
 	if kind and ROARS[kind] then
 		-- Rear back, then lunge forward with a shudder, then settle
 		local burst = cfg.ROAR_BURST
@@ -325,6 +327,13 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "thorncharge" then
+		-- Head down and pawing (to 0.4), a short charge forward peaking at 0.55, then backing up to its spot
+		local lower = if p < 0.4 then math.sin(p / 0.4 * math.pi / 2) else math.max(0, 1 - (p - 0.55) / 0.3)
+		pitch = -math.rad(cfg.CHARGE_LOWER) * lower
+		local dash = math.clamp((p - 0.4) / 0.15, 0, 1)
+		local back = math.clamp((p - 0.6) / 0.4, 0, 1)
+		forward = cfg.CHARGE_LUNGE * math.sin(dash * math.pi / 2) * (1 - back * back * (3 - 2 * back))
 	elseif kind == "tidecall" then
 		-- Rearing up on its hind legs (held at 0.35), then stamping down hard at 0.55 and settling
 		local up = if p < 0.35 then math.sin(p / 0.35 * math.pi / 2)
@@ -398,7 +407,7 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 	elseif kind == "bounce" then
 		lift = cfg.BOUNCE * math.abs(math.sin(p * TAU * 1.5)) * (1 - p)
 	end
-	return { lift = lift, yaw = yaw, roll = roll, pitch = pitch }
+	return { lift = lift, yaw = yaw, roll = roll, pitch = pitch, forward = forward }
 end
 
 function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): { [string]: Angles }
