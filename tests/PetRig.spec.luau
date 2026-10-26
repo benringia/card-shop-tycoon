@@ -416,6 +416,15 @@ return {
 		expect.near(bearAt("hiccup", 0.35)["head:0"].x, rest["head:0"].x, math.rad(1), "the head jolts between hiccups")
 	end,
 
+	["a zap hop crouches, jumps high and comes down, crackling at the top"] = function()
+		assert(PetRig.cue(CFG, "zaphop", 0.5) and not PetRig.cue(CFG, "zaphop", 0.3), "the lightning doesn't crackle at the top of the jump")
+		local top = PetRig.body(CFG, "zaphop", 0.5, 1, true)
+		expect.near(top.lift, CFG.ZAPHOP_HEIGHT, 1e-6, "the top of the jump isn't ZAPHOP_HEIGHT up")
+		assert(PetRig.body(CFG, "zaphop", 0.15, 1, true).lift < 0, "it doesn't crouch before jumping")
+		expect.near(PetRig.body(CFG, "zaphop", 1, 1, true).lift, 0, 1e-6, "it doesn't land back on the ground")
+		expect.near(PetRig.body(CFG, "zaphop", 0, 1, true).lift, 0, 1e-6, "it starts off the ground")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

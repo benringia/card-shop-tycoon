@@ -12,6 +12,7 @@
 --   it taps it; rolling over (roll) puffs up dust.
 -- * sneeze (Blazehound): a little puff of flame, embers and smoke from its nose.
 -- * hiccup (Cindercub): three hiccups, each puffing a little flame and a smoke ring from its mouth.
+-- * zaphop (Zappit): at the top of a big bunny jump, lightning crackles up off its ear and tail bolts with sparks.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -363,6 +364,27 @@ local function hiccup(model: Model, size: number)
 	end
 end
 
+-- A zap hop: at the top of the jump lightning crackles up off its ear-tip and tail bolts, with a burst of sparks
+local ZAP_TIPS = { "Ear_Left_1", "Ear_Right_1", "Tail_1" }
+local function zaphop(model: Model, size: number)
+	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
+	burst(CFrame.new(centre), SPARKLES, ColorSequence.new(Color3.fromRGB(150, 220, 255), LIGHTNING_COLOR), 16, 0.4 * size, 6 * size, 0.6)
+	for wave = 0, 1 do
+		task.delay(wave * 0.12, function()
+			if not model.Parent then
+				return
+			end
+			for _, name in ZAP_TIPS do
+				local tip = bonePosition(model, name)
+				if tip then
+					local up = Vector3.new(rng:NextNumber(-0.5, 0.5), 1, rng:NextNumber(-0.5, 0.5)).Unit
+					bolt(tip + Vector3.yAxis * 0.2 * size, tip + up * rng:NextNumber(0.7, 1.1) * size, 0.05 * size)
+				end
+			end
+		end)
+	end
+end
+
 -- Kung fu: leaves whirl out round the creature with each chop
 local function kungfu(model: Model, size: number)
 	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
@@ -533,6 +555,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		sneeze(model, size)
 	elseif kind == "hiccup" then
 		hiccup(model, size)
+	elseif kind == "zaphop" then
+		zaphop(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
