@@ -382,6 +382,17 @@ def skin(mesh, rig, bones, params):
     mod = mesh.modifiers.new("Armature", "ARMATURE")
     mod.object = rig
     print("vertices:", len(mesh.data.vertices), "without a bone:", sum(1 for v in mesh.data.vertices if not v.groups))
+    # A bone that moves nothing means it sits away from its part (Petalpaw's arm bones were behind the arms, which
+    # then never moved in game): move it into the mesh
+    moved = {n: 0 for n in deform}
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    for v in mesh.data.vertices:
+        for g in v.groups:
+            if g.weight > 0.3:
+                moved[names[g.group]] += 1
+    idle = [n for n, count in moved.items() if count == 0]
+    if idle:
+        print("WARNING: these bones move no vertices, move them into the mesh:", ", ".join(sorted(idle)))
 
 
 def export(name, rig, mesh):

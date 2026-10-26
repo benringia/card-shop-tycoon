@@ -14,6 +14,7 @@
 -- * hiccup (Cindercub): three hiccups, each puffing a little flame and a smoke ring from its mouth.
 -- * zaphop (Zappit): at the top of a big bunny jump, lightning crackles up off its ear and tail bolts with sparks.
 -- * sporepuff (Mossmole): up on its toes, glowing teal spores rise from the mushroom garden it hugs, with a soft glow.
+-- * petaltwirl (Petalpaw): a happy spin while pink petals swirl out round it.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -409,6 +410,26 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A petal twirl: pink petals swirl out round it as it spins, drifting up and fading
+local PETAL_COLORS = { Color3.fromRGB(255, 170, 205), Color3.fromRGB(255, 205, 225), Color3.fromRGB(240, 130, 180) }
+local function petaltwirl(model: Model, size: number)
+	local centre = model:GetPivot().Position + Vector3.new(0, 1 * size, 0)
+	for i = 1, 12 do
+		local angle = i / 12 * math.pi * 2
+		local petal = fxPart(Vector3.new(0.22, 0.03, 0.14) * size, PETAL_COLORS[(i % 3) + 1], false)
+		petal.CFrame = CFrame.new(centre) * CFrame.Angles(0, angle, 0) * CFrame.new(0.5 * size, 0, 0)
+		petal.Parent = workspace
+		local out = CFrame.new(centre) * CFrame.Angles(0, angle + 2.2, 0) * CFrame.new(2 * size, 1.4 * size, 0)
+			* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), 0)
+		local swirl = TweenService:Create(petal, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { CFrame = out, Transparency = 1 })
+		swirl.Completed:Once(function()
+			petal:Destroy()
+		end)
+		swirl:Play()
+	end
+	burst(CFrame.lookAt(centre, centre + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 200, 225)), 10, 0.3 * size, 3 * size, 0.8)
+end
+
 -- Kung fu: leaves whirl out round the creature with each chop
 local function kungfu(model: Model, size: number)
 	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
@@ -583,6 +604,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		zaphop(model, size)
 	elseif kind == "sporepuff" then
 		sporepuff(model, size)
+	elseif kind == "petaltwirl" then
+		petaltwirl(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
