@@ -23,6 +23,7 @@
 -- * flameswoop (Emberwing): climbs, then dives nose-down with fire streaming off its wing tips and tail.
 -- * tidecall (Tidecaller): rears up and stamps down; a ring of water splashes out round it with spray.
 -- * thorncharge (Briarhorn): head down, a short charge forward; thorny vines burst up in front of it with petals.
+-- * abysschomp (Abyssal Koi): draws back and lunges, snapping; a dark surge of deep water bursts from its fangs.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -418,6 +419,34 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- An abyss chomp: as its jaws snap, a dark surge of deep water bursts from its mouth with glowing cyan sparks and bubbles
+local function abysschomp(model: Model, size: number)
+	local head = bonePosition(model, "Head_0")
+	if not head then
+		return
+	end
+	local forward = model:GetPivot().LookVector
+	local mouth = head + forward * 0.8 * size
+	local aim = CFrame.lookAt(mouth, mouth + forward)
+	burst(aim, SMOKE, ColorSequence.new(Color3.fromRGB(30, 60, 110), Color3.fromRGB(10, 20, 40)), 10, 1.1 * size, 4 * size, 0.9)
+	burst(aim, SPARKLES, ColorSequence.new(Color3.fromRGB(90, 230, 255)), 16, 0.35 * size, 7 * size, 0.6)
+	for i = 1, 6 do
+		local bubble = fxPart(Vector3.one * rng:NextNumber(0.15, 0.3) * size, Color3.fromRGB(150, 220, 255), false)
+		bubble.Shape = Enum.PartType.Ball
+		bubble.Transparency = 0.4
+		bubble.Position = mouth + Vector3.new(rng:NextNumber(-0.5, 0.5), rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.5, 0.5)) * size
+		bubble.Parent = workspace
+		local rise = TweenService:Create(bubble, TweenInfo.new(1.2, Enum.EasingStyle.Sine),
+			{ Position = bubble.Position + Vector3.new(0, 2 * size, 0) + forward * size, Transparency = 1 })
+		rise.Completed:Once(function()
+			bubble:Destroy()
+		end)
+		task.delay(i * 0.04, function()
+			rise:Play()
+		end)
+	end
+end
+
 -- A thorn charge: as it lunges, thorny vines burst up from the ground in front of it with pink petals and dust
 local function thorncharge(model: Model, size: number)
 	local pivot = model:GetPivot()
@@ -799,6 +828,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		tidecall(model, size)
 	elseif kind == "thorncharge" then
 		thorncharge(model, size)
+	elseif kind == "abysschomp" then
+		abysschomp(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
