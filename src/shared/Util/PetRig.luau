@@ -289,7 +289,7 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.4 -- the dive starts
 	elseif kind == "tidecall" or kind == "thundercall" or kind == "blessing" then
 		return progress >= 0.55 -- the front feet stamp down
-	elseif kind == "thorncharge" then
+	elseif kind == "thorncharge" or kind == "hornstorm" then
 		return progress >= 0.5 -- the lunge
 	elseif kind == "abysschomp" then
 		return progress >= 0.5 -- the snap
@@ -345,7 +345,7 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 			forward = cfg.CHOMP_LUNGE * (1 - t * t * (3 - 2 * t))
 		end
 		roll = math.rad(4) * math.sin(p * TAU * 3) * math.clamp((p - 0.5) * 4, 0, 1) * (1 - p)
-	elseif kind == "thorncharge" then
+	elseif kind == "thorncharge" or kind == "hornstorm" then
 		-- Head down and pawing (to 0.4), a short charge forward peaking at 0.55, then backing up to its spot
 		local lower = if p < 0.4 then math.sin(p / 0.4 * math.pi / 2) else math.max(0, 1 - (p - 0.55) / 0.3)
 		pitch = -math.rad(cfg.CHARGE_LOWER) * lower

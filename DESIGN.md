@@ -271,7 +271,7 @@ Each pack = 5 cards:
 - Summoned creatures use free or bought Creator Store models as stand-ins for now, with a placeholder blob for
   cards without one. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
   a few shared ones tinted to their element); two Legendaries use the bought Crystal Titans pack with its own walk,
-  run and idle animations (Stormking: Sapphire Crystal Crab, Tideborne Kirin (was Aurora Drake) is now an original celestial kirin;
+  run and idle animations (Stormking is now an original storm titan beetle and Tideborne Kirin (was Aurora Drake) an original celestial kirin;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
   them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (cartoon electric lynx, generated with Meshy), Cindercub (fire bear cub, Meshy), Zappit (lavender electric bunny, Meshy), Mossmole (forest mole with a mushroom garden, Meshy), Petalpaw (flower squirrel, Meshy), Gloomlet (flying shadow bat, Meshy), Ashbeak (ember chick, Meshy), Shellshy (shy baby sea turtle, Meshy), Fizzlebug (flying electric bee, Meshy), Wispurr (ghost kitten, Meshy), Emberwing (flying fire swallow, Meshy), Tidecaller (sea dragon, Meshy), Briarhorn (thorn-vined forest bull, Meshy), Abyssal Koi (swimming abyss fish, Meshy), Thunderhorn (gold-armoured thunder stag, Meshy), Riftwalker (void dragon, Meshy), Cinder Titan (volcano gorilla, Meshy), Voidmaw
   (seven-headed crystal hydra dragon, every neck and jaw animated in code), Solarion (three-headed ruby cerberus),

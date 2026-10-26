@@ -114,7 +114,7 @@ flames, a flickering light and footstep dust (`Config/BeastFx`).
 
 Current packs: **Originals** (our own Blender models, see below: Boltlynx, Voidmaw, Sprouthop), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
 AnimationController, no animations; every other non-Legendary card uses them), **CrystalTitans** (bought, Accretion "Stud Pet Pack 03 | Crystal Titans": RubyCerberus,
-SapphireCrab, RainbowHydra, each with Idle, Walk and Run; Stormking uses them; RainbowHydra was Aurora Drake's, now unused), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
+SapphireCrab, RainbowHydra, each with Idle, Walk and Run; both now unused: Tideborne Kirin and Stormking are originals), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
 versions: skinned meshes with bones, an AnimationController, no animations yet; no card uses them now, kept for
 customers, NPCs or decoration).
 
@@ -219,6 +219,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   (`SLAM_RAISE`, `SLAM_LIFT`) and slams them down: a ring of fire and lava bursts out, its fists blazing.
 - **blessing** (Tideborne Kirin): rears and stamps (`BLESSING_REAR`, `BLESSING_LIFT`; the tide call's curve); water
   and golden light spiral up round it, golden rays shine from its feet and a ring of light flares behind its head.
+- **hornstorm** (Stormking): the thorn charge's motion (head down, a short charge); its horn crackles and lightning
+  rains down in a ring round it with a flash.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -303,6 +305,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   pearl-white with an aqua water mane and wave tail, golden horns (as `Ear_` bones), a golden halo and golden armour.
   Meshy made it prancing: the raised right front leg was replaced by a mirror of the left (see `rig_kirin.py`). Walks
   with a long unhurried stride at size 2.5. 25 bones, 14,000 triangles. Replaced the Crystal Titans RainbowHydra.
+- **Stormking** (`rig_stormking.py`, Meshy, Legendary): a colossal storm titan beetle, an armoured sapphire shell with
+  glowing crystal spikes, a gold horn and a long tail spike, on four thick armoured legs. Remeshed and baked. 21 bones,
+  12,000 triangles. Replaced the Crystal Titans SapphireCrab.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

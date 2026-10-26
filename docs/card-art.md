@@ -93,6 +93,9 @@ Element scenes (matching `CardDesign.SCENES`):
   standing proudly, pearl-white with aqua shading, a flowing aqua water mane and wave tail, glowing aqua eyes, curved
   golden horns, a golden halo, golden armour, glowing aqua hooves, water and golden light spiralling round it (lighting:
   epic divine golden and aqua).
+- **Stormking** (original storm titan beetle, Legendary): a colossal godlike storm titan beetle, a massive armoured
+  sapphire shell with glowing blue crystal spikes and gold trim, a huge golden horn crackling with lightning, four thick
+  armoured legs, a long tail spike, lightning striking in a ring round it (lighting: epic dramatic storm).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
