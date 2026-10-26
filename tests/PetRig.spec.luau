@@ -443,6 +443,14 @@ return {
 		expect.near(PetRig.body(CFG, "petaltwirl", 1, 1, true).lift, 0, 1e-6, "it doesn't land")
 	end,
 
+	["a shadow loop goes right round forwards in the air and comes back level"] = function()
+		assert(PetRig.cue(CFG, "shadowloop", 0.1) and not PetRig.cue(CFG, "shadowloop", 0.05), "no smoke as the loop starts")
+		expect.near(PetRig.body(CFG, "shadowloop", 1, 1, true).pitch, -math.pi * 2, 1e-6, "the loop doesn't go right round forwards")
+		assert(PetRig.body(CFG, "shadowloop", 0.5, 1, true).pitch < -math.pi * 0.5, "halfway it isn't upside down")
+		assert(PetRig.body(CFG, "shadowloop", 0.5, 1, true).lift > CFG.LOOP_HEIGHT * 0.9, "it doesn't rise for the loop")
+		expect.near(PetRig.body(CFG, "shadowloop", 1, 1, true).lift, 0, 1e-6, "it doesn't come back down")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

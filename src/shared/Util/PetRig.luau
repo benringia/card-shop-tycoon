@@ -260,6 +260,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.4 -- up on its toes
 	elseif kind == "petaltwirl" then
 		return progress >= 0.1 -- the twirl starts
+	elseif kind == "shadowloop" then
+		return progress >= 0.1 -- the loop starts
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -300,6 +302,12 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "shadowloop" then
+		-- A loop-the-loop forwards in the air (a flyer), rising as it goes over the top
+		local air = math.clamp((p - 0.1) / 0.8, 0, 1)
+		local eased = air * air * (3 - 2 * air)
+		pitch = -TAU * eased
+		lift = cfg.LOOP_HEIGHT * math.sin(air * math.pi)
 	elseif kind == "petaltwirl" then
 		-- A happy spin right round on its toes
 		local eased = p * p * (3 - 2 * p)

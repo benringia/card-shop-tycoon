@@ -69,7 +69,7 @@ return {
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -78,6 +78,7 @@ return {
 		Zappit = { fidget = "zaphop", chance = 0.35 },
 		Mossmole = { fidget = "sporepuff", chance = 0.35 },
 		Petalpaw = { fidget = "petaltwirl", chance = 0.35 },
+		Gloomlet = { fidget = "shadowloop", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -103,6 +104,7 @@ return {
 		Zappit = { fidgets = { "look", "tilt", "sniff", "hop", "hop", "spin", "shake", "wag" }, tailSpeed = 1.4, bounce = 1.8 }, -- a bunny: hops about
 		Mossmole = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "hop" }, bounce = 0.8 }, -- a gentle waddler
 		Petalpaw = { fidgets = { "look", "tilt", "sniff", "hop", "shake", "wag", "stretch" }, tailSpeed = 0.7, tailAmount = 1.2, bounce = 1.2 }, -- a big slow tail sway
+		Gloomlet = { fidgets = { "look", "tilt", "spin", "shake" } }, -- a flyer
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -227,8 +229,10 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6,
+			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6,
 		},
+		-- Gloomlet's shadow loop: how high it rises over the top of the loop (studs at size 1)
+		LOOP_HEIGHT = 1.2,
 		-- Petalpaw's petal twirl: how high it lifts mid-spin (studs at size 1)
 		TWIRL_LIFT = 0.2,
 		-- Mossmole's spore puff: how far it rises onto its toes (studs at size 1) and leans back (degrees)
@@ -293,7 +297,7 @@ return {
 		Stormjack = { pack = "Originals", model = "Stormjack", size = 1.8 }, -- original, tools/blender/build_stormjack.py
 		Thunderhorn = { pack = "UltraPets", model = "Lumistag", tint = { 255, 235, 150 }, size = 1.3 },
 		Voltkit = { pack = "Originals", model = "Voltkit", size = 1.4 }, -- original, tools/blender/build_voltkit.py
-		Gloomlet = { pack = "UltraPets", model = "DarkBat", size = 1.3 },
+		Gloomlet = { pack = "Originals", model = "Gloomlet", size = 1.4, flies = true }, -- original, tools/blender/rig_gloomlet.py (Meshy-generated shadow bat)
 		Wispurr = { pack = "UltraPets", model = "FairyRabbit", tint = { 170, 130, 230 }, size = 1.3 },
 		Hushmoth = { pack = "UltraPets", model = "FairyMoth", size = 1.3 },
 		Nightowl = { pack = "UltraPets", model = "HeronDemon" },
@@ -309,7 +313,7 @@ return {
 		["Cinder Titan"] = { pack = "UltraPets", model = "GorillaVulcano" },
 		["Aurora Drake"] = { pack = "CrystalTitans", model = "RainbowHydra", size = 2.2 },
 		Stormking = { pack = "CrystalTitans", model = "SapphireCrab", size = 2.2 },
-	} :: { [string]: { pack: string, model: string, variant: string?, tint: { number }?, hue: number?, size: number? } },
+	} :: { [string]: { pack: string, model: string, variant: string?, tint: { number }?, hue: number?, size: number?, flies: boolean? } },
 	-- Saved-animation models (Util/KeyframePlayer): idle below WALK_FROM, run blending in from RUN_FROM to RUN_FULL
 	-- (studs a second at size 1, so following a player at 16 studs a second runs); the walk plays at normal speed
 	-- at WALK_SPEED, the run at RUN_SPEED. AMPLIFY exaggerates each animation's turns (the pack's own walk only bends
