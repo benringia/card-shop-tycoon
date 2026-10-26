@@ -11,6 +11,7 @@
 -- * shellcrack (Puffpuddle, a sea otter): sitting up, a blue clam appears between its front paws and sparkles as
 --   it taps it; rolling over (roll) puffs up dust.
 -- * sneeze (Blazehound): a little puff of flame, embers and smoke from its nose.
+-- * hiccup (Cindercub): three hiccups, each puffing a little flame and a smoke ring from its mouth.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -18,8 +19,11 @@
 -- * voltcharge (Voltkit): lightning arcs between its raised fists, building up, then a bolt shoots into the sky.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+
+local Party = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Party"))
 
 local SignatureFx = {}
 
@@ -339,6 +343,26 @@ local function sneeze(model: Model, size: number)
 	burst(aim, SMOKE, ColorSequence.new(Color3.fromRGB(120, 110, 105)), 4, 0.8 * size, 2 * size, 0.8)
 end
 
+-- Hiccups: a little puff of flame and a smoke ring from the mouth with each hiccup (cued on the first; the others
+-- follow at Party's HICCUP_BEATS)
+local function hiccup(model: Model, size: number)
+	local anim = Party.PET_ANIM
+	local beats = anim.HICCUP_BEATS
+	for _, beat in beats do
+		task.delay((beat - beats[1]) * anim.FIDGET_SECONDS.hiccup, function()
+			local head = bonePosition(model, "Head_0")
+			if not head or not model.Parent then
+				return
+			end
+			local forward = model:GetPivot().LookVector
+			local mouth = head + forward * 0.85 * size
+			local aim = CFrame.lookAt(mouth, mouth + forward + Vector3.new(0, 0.6, 0))
+			burst(aim, "rbxasset://textures/particles/fire_main.dds", ColorSequence.new(Color3.fromRGB(255, 220, 110), Color3.fromRGB(255, 110, 40)), 6, 0.35 * size, 2.5 * size, 0.35)
+			burst(aim, SMOKE, ColorSequence.new(Color3.fromRGB(150, 140, 135)), 3, 0.5 * size, 1.5 * size, 0.9)
+		end)
+	end
+end
+
 -- Kung fu: leaves whirl out round the creature with each chop
 local function kungfu(model: Model, size: number)
 	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
@@ -507,6 +531,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		rollDust(model, size)
 	elseif kind == "sneeze" then
 		sneeze(model, size)
+	elseif kind == "hiccup" then
+		hiccup(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

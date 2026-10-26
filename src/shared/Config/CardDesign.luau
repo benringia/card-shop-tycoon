@@ -15,7 +15,7 @@ return {
 	-- Own pictures: each card's creature model painted into its element's scene with Figma's image generator
 	-- (prompts in docs/card-art.md); the JPEGs are kept in assets/ui/card-art (spaces in names as _).
 	ART_IMAGES = {
-		Cindercub = "rbxassetid://126732765920014",
+		Cindercub = "rbxassetid://85793984557948",
 		Puffpuddle = "rbxassetid://85967530259039",
 		Sprouthop = "rbxassetid://109907428433527",
 		Zappit = "rbxassetid://72205266740863",

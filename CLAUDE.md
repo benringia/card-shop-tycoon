@@ -79,6 +79,11 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Work one system at a time. After each: Lune tests → Rojo sync (`rojo serve` running) → Claude presses Play through
   the Roblox Studio MCP, checks Output for errors and screenshots the key spots, fixes anything obvious, then tells
   me exactly what to judge in Studio (stop → Play to load new code).
+- Skills: `roblox-dev-skill` (user scope, `~/.claude/skills`, MSayib/roblox-dev-skill: Luau, security, DataStores,
+  UI, performance, Studio MCP) for Roblox knowledge; the rules in this file win where it differs (it edits scripts
+  in Studio and its template uses PlayerAdded; here code lives in the repo and saved state goes through DataService).
+  Studio's own `skill` tool has Roblox's first-party guides: `rbx-device-simulator-lua` for phone/tablet UI checks,
+  `rbx-scene-analysis` and `rbx-perf-profiling` for memory and frame time, `rbx-debug` for breakpoints.
 - Studio MCP: reading and inspecting the place is fine anytime; ask before changing the place itself (deleting or
   editing objects, Lighting, the Baseplate). Scripts still live only in the repo.
 - Remodelling a creature (docs/creatures.md "Original models"): look at its card art and rarity (the more common the

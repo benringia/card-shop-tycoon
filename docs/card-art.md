@@ -41,6 +41,11 @@ Element scenes (matching `CardDesign.SCENES`):
   pale yellow lightning bolt, sharp amber eyes with a confident look, a long thin tail with brown bands ending in a big
   glowing pale yellow zigzag lightning bolt, small crackling sparks leaping off its ear and tail bolts (pose: standing
   alert and confident on a rocky ledge; lighting: dramatic stormy lighting with bright flashes).
+- **Cindercub** (original fire bear cub, Common): a very cute chubby cartoon fire bear cub standing upright on two
+  short stubby legs like a teddy bear, rounded stylized toy-like 3D style, bright red-orange body, big round head with
+  small round ears, big shiny dark eyes, pink blushing cheeks, a tiny happy smile with its little pink tongue out, a
+  cream muzzle and a big round cream tummy with its small paws resting on it, a little flame tuft on its head, a short
+  stubby tail with a tiny flame, a small puff of flame and smoke as it hiccups (lighting: warm cozy firelight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

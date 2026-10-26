@@ -32,6 +32,8 @@ class Params:
     # between the legs doesn't tear down the middle (each side follows its own leg); 0 turns it off
     belly_mid = 0.0
     belly_fade = 0.04
+    arm_core = 0.04  # within this of an arm bone a vertex can be all arm; beyond arm_radius it's all body
+    arm_radius = 0.08
     tail_from = 0.4  # tail bones only move vertices behind this (Y)
     head_from = -0.45  # neck and head bones only move vertices in front of this (Y)
     falloff = 2.5  # how sharply a vertex prefers its nearest bone (lower blends more)
@@ -196,16 +198,29 @@ def skin(mesh, rig, bones, params):
             share = _ramp(p.z, params.leg_top, params.leg_full) * _ramp(near_leg, params.leg_radius, params.leg_core)
             if params.belly_mid > 0:
                 share *= _ramp(abs(p.x - params.mid_x), params.belly_mid, params.belly_mid + params.belly_fade)
+        # Arms (two-legged creatures) work like legs without the height rule: only vertices close to that side's
+        # arm bones follow them, so hands resting on the belly don't drag it along
+        arm = "Arm_" + ("Left_" if p.x > params.mid_x else "Right_")
+        arm_bones = [deform[arm + str(i)] for i in range(3) if arm + str(i) in deform]
+        arm_share = 0.0
+        if arm_bones:
+            near_arm = min(_segment_distance(p, *bone) for bone in arm_bones)
+            arm_share = _ramp(near_arm, params.arm_radius, params.arm_core) * (1 - share)
+        body = 1 - share - arm_share
         scored = {}
         for name, (a, b) in deform.items():
             if "_Limb_" in name:
                 if not leg or not name.startswith(leg) or share <= 0:
                     continue
                 part = share
-            else:
-                if not _body_allowed(name, p, params) or share >= 1:
+            elif name.startswith("Arm_"):
+                if not name.startswith(arm) or arm_share <= 0:
                     continue
-                part = 1 - share
+                part = arm_share
+            else:
+                if not _body_allowed(name, p, params) or body <= 0:
+                    continue
+                part = body
             scored[name] = part / (_segment_distance(p, a, b) ** params.falloff + 1e-6)
         total = sum(scored.values())
         weights.append({n: w / total for n, w in scored.items()})
