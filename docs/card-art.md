@@ -35,10 +35,20 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Blazehound** (HotDog): a chunky blocky voxel-style dachshund dog, glossy jet-black body with warm tan-orange
   muzzle, chest, belly and paws, droopy black ears, two little red flame tufts with yellow tips on top of its
   head, a thin black tail ending in a bright red-and-yellow flame.
-- **Boltlynx** (Leonstrike): a chunky blocky voxel-style anthropomorphic lion warrior standing upright, huge spiky
-  golden-yellow mane, grey sleeveless tunic with a yellow lightning bolt emblem, golden shoulder armour with
-  black-and-white pauldrons, golden arm guards, brown belt with pouches, dark brown trousers, black-and-gold
-  striped boots, a lion tail with a golden tuft, small sparks of electricity.
+- **Boltlynx** (original lion): a chunky blocky voxel-style lion standing on four legs, golden-orange fur, a huge
+  spiky golden mane made of sharp pointed spikes with bright yellow tips, white zigzag lightning-bolt markings on its
+  flanks, amber eyes, cream muzzle and belly, big paws, a long thin tail ending in a spiky golden tuft, small
+  crackling sparks of electricity around its mane (pose: standing proudly and roaring).
+- **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
+  its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
+  along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
+  dragon head with glowing pale eyes, white teeth, glowing purple mouths and a crown of violet crystals, the middle
+  head tallest.
+- **Sprouthop** (original tree sprite): a chunky blocky voxel-style little tree sprite standing upright on two legs
+  like a person, a twisted brown bark body with lighter bark strands, a big square blocky head with a light wooden
+  face, big glossy dark eyes with white shine, pink blush and a small smile, a fluffy cap of green leaf cubes with two
+  small twig antlers, thin bark arms with twig fingers, its right hand raised holding a tiny sprout with a small
+  butterfly landing on it, root-like feet, little mushrooms on its legs.
 - **Solarion** (RubyCerberus): a massive three-headed wolf made of jagged glowing ruby-red crystals and black
   obsidian stone, glowing red eyes, white crystal fangs, tall red crystal spikes along its back, red crystal talons.
 

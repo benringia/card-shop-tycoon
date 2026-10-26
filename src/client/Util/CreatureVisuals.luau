@@ -15,6 +15,7 @@ local PetRig = require(Shared:WaitForChild("Util"):WaitForChild("PetRig"))
 local PetAnimator = require((script.Parent :: Instance):WaitForChild("PetAnimator"))
 local KeyframePlayer = require((script.Parent :: Instance):WaitForChild("KeyframePlayer"))
 local BeastAura = require((script.Parent :: Instance):WaitForChild("BeastAura"))
+local SignatureFx = require((script.Parent :: Instance):WaitForChild("SignatureFx"))
 
 local CreatureVisuals = {}
 
@@ -526,6 +527,14 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		local anim = Party.PET_ANIM
 		if (body.cframe.Position - origin).Magnitude <= anim.DISTANCE then
 			PetAnimator.step(pet, dt, now, body.speed >= motion.WALK_SPEED_MIN, body.walked)
+			-- A signature idle's effect: roars get the shockwave too
+			local cue = PetAnimator.takeCue(pet, now)
+			if cue then
+				if cue ~= "butterfly" then
+					roarFx(body)
+				end
+				SignatureFx.play(cue, body.model, body.size)
+			end
 		end
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
 		local hop = if body.flying then pose.offsetY else pose.offsetY * anim.HOP_SCALE

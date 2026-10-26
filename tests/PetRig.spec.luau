@@ -253,6 +253,43 @@ return {
 		assert(math.abs(wide["arm:Left:0"].x) > math.abs(step["arm:Left:0"].x) + math.rad(10), "Party.ARM_POSE swing doesn't widen the swing")
 	end,
 
+	["signature idles: a butterfly on the raised hand, a rippling hydra roar, a lion's roar"] = function()
+		assert(not PetRig.cue(CFG, "butterfly", 0.05) and PetRig.cue(CFG, "butterfly", 0.2), "the butterfly appears as the hand comes up")
+		assert(PetRig.cue(CFG, "voidroar", CFG.ROAR_BURST) and not PetRig.cue(CFG, "voidroar", CFG.ROAR_BURST - 0.05), "the void roar goes off with the lunge")
+		assert(PetRig.cue(CFG, "thunderroar", CFG.ROAR_BURST), "the thunder roar goes off with the lunge")
+		assert(not PetRig.cue(CFG, "look", 0.9), "ordinary fidgets have no effect")
+
+		local function at(names: { string }, kind: string, progress: number): { [string]: PetRig.Angles }
+			return poseAt(names, { time = 0, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress, armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		end
+		local SPRITE = { "Pelvis", "Spine_0", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0", "Arm_Right_1", "Ear_Left_0" }
+		local rest, lifted = at(SPRITE, "look", 0), at(SPRITE, "butterfly", 0.5)
+		assert(lifted["arm:Right:0"].x - rest["arm:Right:0"].x > math.rad(40), "the hand doesn't come up for the butterfly")
+		assert(math.abs(lifted["arm:Left:0"].x - rest["arm:Left:0"].x) < math.rad(5), "the other arm moves too")
+		assert(lifted["head:0"].x < rest["head:0"].x, "it doesn't look up at the butterfly")
+		assertBounded(lifted, "butterfly")
+
+		local HYDRA = { "Pelvis", "Spine_0", "Spine_1" }
+		for head = 0, 6 do
+			table.insert(HYDRA, `Hydra_{head}_3`)
+			table.insert(HYDRA, `Jaw_{head}`)
+		end
+		local rear, lunge = at(HYDRA, "voidroar", 0.25), at(HYDRA, "voidroar", 0.7)
+		assert(rear["hydra:0:3"].x < -math.rad(5) and lunge["hydra:0:3"].x > math.rad(3), "the heads don't rear back and lunge")
+		assert(math.abs(rear["hydra:0:3"].x - rear["hydra:6:3"].x) > math.rad(2), "all heads roar at once instead of rippling")
+		assert(at(HYDRA, "voidroar", 0.55)["jaw:3"].x < -math.rad(25), "the jaws don't gape")
+		assertBounded(rear, "void roar")
+
+		local LION = { "Pelvis", "Spine_0", "Neck", "Head_0", "Jaw_0", "Tail_0", "Tail_1", "0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0" }
+		for step = 0, 30 do
+			expect.near(poseAt(LION, still(step * 0.13))["jaw:0"].x, 0, 1e-9, "a lion's jaw snaps while idle")
+		end
+		local roar = at(LION, "thunderroar", 0.55)
+		assert(roar["jaw:0"].x < -math.rad(25), "the lion doesn't open its mouth to roar")
+		assert(at(LION, "thunderroar", 0.25)["head:0"].x < -math.rad(5), "the lion doesn't rear its head back")
+		assertBounded(roar, "thunder roar")
+	end,
+
 	["two-legged walks twist the hips with the stride and the shoulders against them"] = function()
 		local BIPED = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0" }
 		local step = poseAt(BIPED, walking(math.pi / 2))
