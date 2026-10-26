@@ -22,6 +22,8 @@ export type State = {
 	armBend: number?, -- radians the elbows bend, else PET_ANIM.ARM_BEND
 	armSwing: number?, -- radians the arms swing walking, else PET_ANIM.ARM_SWING
 	tailAmount: number?, -- how big the tail's swish is (Party.CREATURE_STYLE), else 1
+	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
+	legSwing: number?, -- and how much of PET_ANIM.LEG_SWING its legs use, else 1
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
 	swimPhase: number?, -- that wave, radians, built up frame by frame (PetRig.swimSpeed)
 }
@@ -275,6 +277,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the loop starts
 	elseif kind == "emberflap" then
 		return progress >= 0.45 -- the top of the hop
+	elseif kind == "lavaslam" then
+		return progress >= 0.73 -- the fists hit the ground
 	elseif kind == "shypeek" then
 		return progress >= 0.7 -- peeking back out
 	elseif kind == "buzzzap" then
@@ -379,6 +383,11 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 	elseif kind == "shypeek" then
 		-- Sinking low into its shell, then up again
 		lift = -cfg.SHY_DUCK * shyDuck(p)
+	elseif kind == "lavaslam" then
+		-- Rising a little as the fists go up, then dropping with the slam
+		lift = cfg.SLAM_LIFT * math.max(0, math.sin(math.clamp((p - 0.5) / 0.23, 0, 1) * math.pi))
+		pitch = math.rad(6) * math.max(0, math.sin(math.clamp((p - 0.5) / 0.15, 0, 1) * math.pi / 2)) * (if p < 0.73 then 1 else 0)
+			- math.rad(8) * math.max(0, math.sin(math.clamp((p - 0.73) / 0.2, 0, 1) * math.pi))
 	elseif kind == "emberflap" then
 		-- A little flapping hop, the top halfway
 		lift = cfg.FLAP_HOP * math.sin(math.clamp((p - 0.2) / 0.6, 0, 1) * math.pi)
@@ -459,6 +468,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local charging = if fidget == "voltcharge" then hold(progress) * idle else 0
 	-- An ember flap: folded wings (arms) beat out and up fast, three times
 	local flapping = if fidget == "emberflap" then hold(progress) * idle else 0
+	-- A lava slam: the arms pound the chest in turn (to 0.5), then both fists go up (0.65) and slam down (0.75)
+	local slamming = if fidget == "lavaslam" then idle else 0
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
@@ -477,8 +488,11 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	-- Walking on two legs: the hips turn with the forward leg and dip over the standing one, the shoulders turn
 	-- back against them and the neck keeps the head facing ahead
 	local striding = biped and not flying and state.undulate == nil -- swimmers paddle instead
-	local walkTwist = if striding then -rad(cfg.HIP_TWIST) * math.sin(state.phase) * moving else 0
-	local walkRoll = if striding then rad(cfg.HIP_ROLL) * math.sin(state.phase) * moving else 0
+	-- A heavy gait (sway above 1) rolls and twists further over each leg and sinks onto a bent standing knee
+	local sway = state.sway or 1
+	local heavy = math.clamp(sway - 1, 0, 1)
+	local walkTwist = if striding then -rad(cfg.HIP_TWIST) * math.sin(state.phase) * moving * math.sqrt(sway) else 0
+	local walkRoll = if striding then rad(cfg.HIP_ROLL) * math.sin(state.phase) * moving * sway else 0
 	-- What's left of the twist at the shoulders, undone by the neck (or the head without one)
 	local shoulderTwist = walkTwist * (0.5 - (if hasUpperSpine then cfg.SHOULDER_COUNTER else 0))
 
@@ -501,7 +515,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			local swing = math.sin(state.phase + offset) * moving
 			local hind = not biped and role.pair == 1
 			if role.segment == 0 then
-				x = rad(cfg.LEG_SWING) * swing
+				x = rad(cfg.LEG_SWING) * (state.legSwing or 1) * swing
 				if fidget == "stretch" and role.pair == 0 and not biped then
 					x -= rad(cfg.STRETCH) * amount
 				elseif (sitting > 0 or sitUp > 0) and hind then
@@ -519,6 +533,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			else
 				-- The lower leg bends as the leg comes forward, then straightens to land
 				x = -rad(cfg.KNEE_LIFT) * math.max(0, math.cos(state.phase + offset)) * moving / role.segment
+					- rad(cfg.HEAVY_KNEE) * heavy * math.max(0, -math.cos(state.phase + offset)) * moving / role.segment
 				if (sitting > 0 or sitUp > 0) and hind then
 					x += (rad(cfg.SIT) * 2 * sitting + rad(cfg.SIT_UP) * 0.6 * sitUp) / role.segment
 				elseif role.pair == 0 and not biped then
@@ -654,6 +669,19 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			end
 			if role.segment == 0 and fidget == "stretch" then
 				x += rad(cfg.STRETCH) * 1.6 * amount
+			end
+			if slamming > 0 then
+				local p = progress
+				local lift = 0
+				if p < 0.5 then
+					local pound = math.max(0, math.sin(p * TAU * 4 + (if role.side == "Left" then 0 else math.pi)))
+					lift = rad(cfg.SLAM_POUND) * pound * math.min(1, p / 0.08)
+				elseif p < 0.65 then
+					lift = rad(cfg.SLAM_RAISE) * math.sin((p - 0.5) / 0.15 * math.pi / 2)
+				else
+					lift = rad(cfg.SLAM_RAISE) * math.max(0, 1 - (p - 0.65) / 0.08)
+				end
+				x += (if role.segment == 0 then lift else rad(30) / role.segment * math.min(1, lift / rad(cfg.SLAM_RAISE))) * slamming
 			end
 			if flapping > 0 and role.segment == 0 then
 				local beat = rad(cfg.EMBER_FLAP) * (0.5 + 0.5 * math.sin(progress * TAU * 3)) * flapping
