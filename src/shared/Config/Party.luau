@@ -72,7 +72,7 @@ return {
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -86,6 +86,7 @@ return {
 		Shellshy = { fidget = "shypeek", chance = 0.35 },
 		Fizzlebug = { fidget = "buzzzap", chance = 0.35 },
 		Wispurr = { fidget = "ghostfloat", chance = 0.35 },
+		Emberwing = { fidget = "flameswoop", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -116,6 +117,7 @@ return {
 		Shellshy = { fidgets = { "look", "tilt", "sniff", "yawn", "shake" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.3 }, -- a slow plodder
 		Fizzlebug = { fidgets = { "look", "tilt", "spin", "shake" } }, -- a flyer
 		Wispurr = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake", "wag" }, tailSpeed = 0.7, bounce = 0.9 }, -- a lazy cat
+		Emberwing = { fidgets = { "look", "tilt", "spin", "shake" }, tailSpeed = 0.6 }, -- a flyer
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -241,8 +243,11 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3,
+			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2,
 		},
+		-- Emberwing's flame swoop: how high it climbs (studs at size 1) and how steeply it dives (degrees)
+		SWOOP_HEIGHT = 1.2,
+		SWOOP_DIVE = 35,
 		-- Wispurr's ghost float: how high it drifts (studs at size 1) and sways (degrees), and how see-through it goes
 		GHOST_RISE = 1,
 		GHOST_SWAY = 8,
@@ -301,7 +306,7 @@ return {
 		Blazehound = { pack = "Originals", model = "Blazehound" }, -- original, tools/blender/build_blazehound.py
 		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },
 		Infernox = { pack = "Originals", model = "Infernox", size = 1.3 }, -- original, tools/blender/build_infernox.py
-		Emberwing = { pack = "UltraPets", model = "NeonSwallow", tint = { 255, 140, 80 } },
+		Emberwing = { pack = "Originals", model = "Emberwing", size = 1.2, flies = true }, -- original, tools/blender/rig_emberwing.py (Meshy-generated fire swallow)
 		Puffpuddle = { pack = "Originals", model = "Puffpuddle" }, -- original, tools/blender/build_puffpuddle.py
 		Shellshy = { pack = "Originals", model = "Shellshy", size = 1.4 }, -- original, tools/blender/rig_shellshy.py (Meshy-generated baby sea turtle)
 		Driplet = { pack = "UltraPets", model = "FrostDove" },

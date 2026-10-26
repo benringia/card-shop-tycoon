@@ -45,7 +45,7 @@ return {
 		["Eclipse Fox"] = "rbxassetid://112592110270496",
 		Solarion = "rbxassetid://103027823544487",
 		Voidmaw = "rbxassetid://121642395980341",
-		Emberwing = "rbxassetid://101962217902584",
+		Emberwing = "rbxassetid://74189264541735",
 		Tidecaller = "rbxassetid://75698620065742",
 		Briarhorn = "rbxassetid://102039719436551",
 		Voltkit = "rbxassetid://138894700834562",

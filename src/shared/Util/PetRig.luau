@@ -281,6 +281,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.6 -- the top of the buzz
 	elseif kind == "ghostfloat" then
 		return progress >= 0.1 -- rising, starting to fade
+	elseif kind == "flameswoop" then
+		return progress >= 0.4 -- the dive starts
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -320,6 +322,17 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 			lift = cfg.ZAPHOP_HEIGHT * math.sin((p - 0.25) / 0.5 * math.pi)
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
+		end
+	elseif kind == "flameswoop" then
+		-- Climbing to the top at 0.35, then diving nose-down past its height and swooping back up level
+		if p < 0.35 then
+			lift = cfg.SWOOP_HEIGHT * math.sin(p / 0.35 * math.pi / 2)
+			pitch = math.rad(10) * math.sin(p / 0.35 * math.pi) -- tipping up into the climb
+		else
+			local q = (p - 0.35) / 0.65
+			-- Down from the top, dipping below its height mid-dive, back to level at the end
+			lift = cfg.SWOOP_HEIGHT * (math.cos(q * math.pi / 2) * (1 - q) - 0.4 * math.sin(q * math.pi))
+			pitch = -math.rad(cfg.SWOOP_DIVE) * math.sin(q * math.pi)
 		end
 	elseif kind == "ghostfloat" then
 		-- Drifting up like a ghost, swaying gently, then sinking back down
