@@ -283,6 +283,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- rising, starting to fade
 	elseif kind == "flameswoop" then
 		return progress >= 0.4 -- the dive starts
+	elseif kind == "tidecall" then
+		return progress >= 0.55 -- the front feet stamp down
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -323,6 +325,13 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "tidecall" then
+		-- Rearing up on its hind legs (held at 0.35), then stamping down hard at 0.55 and settling
+		local up = if p < 0.35 then math.sin(p / 0.35 * math.pi / 2)
+			elseif p < 0.45 then 1
+			else math.max(0, 1 - (p - 0.45) / 0.1)
+		pitch = math.rad(cfg.TIDE_REAR) * up
+		lift = cfg.TIDE_LIFT * up
 	elseif kind == "flameswoop" then
 		-- Climbing to the top at 0.35, then diving nose-down past its height and swooping back up level
 		if p < 0.35 then

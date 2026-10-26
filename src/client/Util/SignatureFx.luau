@@ -21,6 +21,7 @@
 -- * buzzzap (Fizzlebug): a zigzag buzz up into the air; at the top a bolt shoots down from its stinger.
 -- * ghostfloat (Wispurr): drifts up fading half see-through, violet wisps swirling round it, then comes back solid.
 -- * flameswoop (Emberwing): climbs, then dives nose-down with fire streaming off its wing tips and tail.
+-- * tidecall (Tidecaller): rears up and stamps down; a ring of water splashes out round it with spray.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -416,6 +417,28 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A tide call: as its front feet stamp down, a ring of water splashes out round it with spray and bubbles
+local WATER = Color3.fromRGB(110, 210, 240)
+local function tidecall(model: Model, size: number)
+	local feet = model:GetPivot().Position
+	for i = 1, 14 do
+		local angle = i / 14 * math.pi * 2
+		local drop = fxPart(Vector3.new(0.25, 0.25, 0.25) * size, WATER, false)
+		drop.Shape = Enum.PartType.Ball
+		drop.Transparency = 0.25
+		drop.Position = feet + Vector3.new(math.cos(angle), 0.2, math.sin(angle)) * 0.6 * size
+		drop.Parent = workspace
+		local out = feet + Vector3.new(math.cos(angle) * 2.4, rng:NextNumber(0.8, 1.4), math.sin(angle) * 2.4) * size
+		local splash = TweenService:Create(drop, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = out, Transparency = 1 })
+		splash.Completed:Once(function()
+			drop:Destroy()
+		end)
+		splash:Play()
+	end
+	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(190, 245, 255)), 18, 0.35 * size, 5 * size, 0.8)
+	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(200, 235, 245)), 6, 0.9 * size, 2 * size, 0.9)
+end
+
 -- A flame swoop: through the dive its wing tips and tail stream fire, with a burst of embers as it levels out
 local FIRE = "rbxasset://textures/particles/fire_main.dds"
 local function flameswoop(model: Model, size: number)
@@ -746,6 +769,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		ghostfloat(model, size)
 	elseif kind == "flameswoop" then
 		flameswoop(model, size)
+	elseif kind == "tidecall" then
+		tidecall(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

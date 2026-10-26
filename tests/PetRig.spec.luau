@@ -519,6 +519,16 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't level out")
 	end,
 
+	["a tide call rears up and stamps down, splashing as it lands"] = function()
+		assert(PetRig.cue(CFG, "tidecall", 0.55) and not PetRig.cue(CFG, "tidecall", 0.4), "the splash doesn't come with the stamp")
+		local reared = PetRig.body(CFG, "tidecall", 0.35, 1, true)
+		assert(reared.pitch > math.rad(CFG.TIDE_REAR) * 0.9, "it doesn't rear up")
+		assert(reared.lift > 0, "it doesn't lift as it rears")
+		local done = PetRig.body(CFG, "tidecall", 1, 1, true)
+		expect.near(done.pitch, 0, 1e-6, "it doesn't come back level")
+		expect.near(done.lift, 0, 1e-6, "it doesn't land")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

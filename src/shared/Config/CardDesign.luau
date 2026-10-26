@@ -46,7 +46,7 @@ return {
 		Solarion = "rbxassetid://103027823544487",
 		Voidmaw = "rbxassetid://121642395980341",
 		Emberwing = "rbxassetid://74189264541735",
-		Tidecaller = "rbxassetid://75698620065742",
+		Tidecaller = "rbxassetid://133334447011122",
 		Briarhorn = "rbxassetid://102039719436551",
 		Voltkit = "rbxassetid://138894700834562",
 		Duskstalker = "rbxassetid://127609859696351",
