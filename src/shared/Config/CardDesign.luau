@@ -22,7 +22,7 @@ return {
 		Gloomlet = "rbxassetid://120458286445236",
 		Ashbeak = "rbxassetid://76273054801846",
 		Shellshy = "rbxassetid://102591477668369",
-		Mossmole = "rbxassetid://89537616362748",
+		Mossmole = "rbxassetid://87307676644811",
 		Fizzlebug = "rbxassetid://128755684478888",
 		Wispurr = "rbxassetid://103469674409221",
 		Coalbit = "rbxassetid://90753846796689",

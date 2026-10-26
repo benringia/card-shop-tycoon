@@ -116,6 +116,83 @@ def optimize(mesh, name, target_tris=10000, texture_size=1024, crumb_verts=12):
           sum(len(p.vertices) - 2 for p in mesh.data.polygons), "triangles,", len(mesh.data.vertices), "vertices")
 
 
+def remesh_bake(source, name, voxel=0.006, target_tris=10000, texture_size=1024):
+    """For generated meshes that collapse-decimate badly (dense fine detail like grass blades eats the triangle budget
+    and the body turns to shards): rebuilds `source` as one clean closed surface (voxel remesh), reduces that to about
+    target_tris, unwraps it and bakes the source's colours onto a new texture_size map, saved as
+    assets/blender/<name>/<name>_color.png. Returns the new object (<source name>_Remesh); the source is hidden, kept
+    for re-baking. Fine detail thinner than `voxel` (metres) melts away, which is usually what we want."""
+    bpy.ops.object.select_all(action="DESELECT")
+    low = source.copy()
+    low.data = source.data.copy()
+    low.name = source.name + "_Remesh"
+    bpy.context.scene.collection.objects.link(low)
+    low.data.materials.clear()
+    bpy.context.view_layer.objects.active = low
+    low.select_set(True)
+    remesh = low.modifiers.new("Remesh", "REMESH")
+    remesh.mode = "VOXEL"
+    remesh.voxel_size = voxel
+    bpy.ops.object.modifier_apply(modifier=remesh.name)
+    tris = sum(len(p.vertices) - 2 for p in low.data.polygons)
+    if tris > target_tris:
+        dec = low.modifiers.new("Decimate", "DECIMATE")
+        dec.decimate_type = "COLLAPSE"
+        dec.use_collapse_triangulate = True
+        dec.ratio = target_tris / tris
+        bpy.ops.object.modifier_apply(modifier=dec.name)
+    for poly in low.data.polygons:
+        poly.use_smooth = True
+    while low.data.uv_layers:
+        low.data.uv_layers.remove(low.data.uv_layers[0])
+    low.data.uv_layers.new(name="UVMap")
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.004)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    image = bpy.data.images.new(f"{name}_color", texture_size, texture_size)
+    mat = bpy.data.materials.new(f"{name}_mat")
+    mat.use_nodes = True
+    tex = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    tex.image = image
+    bsdf = next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    mat.node_tree.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.7
+    low.data.materials.append(mat)
+    mat.node_tree.nodes.active = tex
+
+    scene = bpy.context.scene
+    engine = scene.render.engine
+    try:
+        scene.render.engine = "CYCLES"
+    except TypeError:
+        pass
+    scene.cycles.samples = 1
+    bake = scene.render.bake
+    bake.use_selected_to_active = True
+    bake.cage_extrusion = voxel * 3
+    bake.max_ray_distance = voxel * 8
+    bake.use_pass_direct = False
+    bake.use_pass_indirect = False
+    bake.margin = 4
+    bpy.ops.object.select_all(action="DESELECT")
+    source.hide_set(False)
+    source.select_set(True)
+    low.select_set(True)
+    bpy.context.view_layer.objects.active = low
+    bpy.ops.object.bake(type="DIFFUSE")
+    scene.render.engine = engine
+    path = os.path.join(REPO, "assets", "blender", name, f"{name}_color.png")
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    image.pack()
+    source.hide_set(True)
+    print("remesh_bake:", sum(len(p.vertices) - 2 for p in low.data.polygons), "triangles, baked", path)
+    return low
+
+
 def paint_patch(mesh, color, cells=64):
     """Paints a small patch of `color` (RGB 0..1) into a corner of the colour map no UV uses and returns its UV, so
     pieces added by hand (bolt()) take that colour without a second material. Run after optimize()."""
