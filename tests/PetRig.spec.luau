@@ -551,6 +551,12 @@ return {
 		expect.near(PetRig.body(CFG, "thundercall", 1, 1, true).pitch, 0, 1e-6, "it doesn't come back level")
 	end,
 
+	["a celestial blessing rears up and stamps, its light rising with the stamp"] = function()
+		assert(PetRig.cue(CFG, "blessing", 0.55) and not PetRig.cue(CFG, "blessing", 0.4), "the light doesn't rise with the stamp")
+		assert(PetRig.body(CFG, "blessing", 0.35, 1, true).pitch > math.rad(CFG.BLESSING_REAR) * 0.9, "it doesn't rear up")
+		expect.near(PetRig.body(CFG, "blessing", 1, 1, true).pitch, 0, 1e-6, "it doesn't come back level")
+	end,
+
 	["a heavy gait sways the body more, swings the legs less and bends the knees"] = function()
 		local APE = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Right_0",
 			"0_Left_Limb_0", "0_Left_Limb_1", "0_Right_Limb_0", "0_Right_Limb_1" }

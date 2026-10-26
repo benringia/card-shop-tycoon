@@ -271,7 +271,7 @@ Each pack = 5 cards:
 - Summoned creatures use free or bought Creator Store models as stand-ins for now, with a placeholder blob for
   cards without one. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
   a few shared ones tinted to their element); two Legendaries use the bought Crystal Titans pack with its own walk,
-  run and idle animations (Stormking: Sapphire Crystal Crab, Aurora Drake: Rainbow Crystal Hydra;
+  run and idle animations (Stormking: Sapphire Crystal Crab, Tideborne Kirin (was Aurora Drake) is now an original celestial kirin;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
   them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (cartoon electric lynx, generated with Meshy), Cindercub (fire bear cub, Meshy), Zappit (lavender electric bunny, Meshy), Mossmole (forest mole with a mushroom garden, Meshy), Petalpaw (flower squirrel, Meshy), Gloomlet (flying shadow bat, Meshy), Ashbeak (ember chick, Meshy), Shellshy (shy baby sea turtle, Meshy), Fizzlebug (flying electric bee, Meshy), Wispurr (ghost kitten, Meshy), Emberwing (flying fire swallow, Meshy), Tidecaller (sea dragon, Meshy), Briarhorn (thorn-vined forest bull, Meshy), Abyssal Koi (swimming abyss fish, Meshy), Thunderhorn (gold-armoured thunder stag, Meshy), Riftwalker (void dragon, Meshy), Cinder Titan (volcano gorilla, Meshy), Voidmaw
   (seven-headed crystal hydra dragon, every neck and jaw animated in code), Solarion (three-headed ruby cerberus),
@@ -388,7 +388,7 @@ A teleport is a leave (fights end, the save goes to the next server); your shop 
 when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
 spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
-and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Aurora Drake, Stormking, never in
+and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Tideborne Kirin, Stormking, never in
 packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER chip, a constant
 shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
 an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").

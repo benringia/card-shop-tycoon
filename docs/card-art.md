@@ -89,6 +89,10 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Cinder Titan** (original volcano gorilla, Epic): a massive menacing volcano gorilla lava golem, huge bulky body,
   dark charcoal rock skin with glowing molten cracks across its chest, black volcanic rock shoulder armour, glowing orange
   eyes, giant flaming boulder fists slamming the ground in a ring of fire and lava (lighting: dramatic fiery).
+- **Tideborne Kirin** (original celestial sea kirin, Legendary; was Aurora Drake): a majestic divine sea kirin
+  standing proudly, pearl-white with aqua shading, a flowing aqua water mane and wave tail, glowing aqua eyes, curved
+  golden horns, a golden halo, golden armour, glowing aqua hooves, water and golden light spiralling round it (lighting:
+  epic divine golden and aqua).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
