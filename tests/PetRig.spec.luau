@@ -425,6 +425,16 @@ return {
 		expect.near(PetRig.body(CFG, "zaphop", 0, 1, true).lift, 0, 1e-6, "it starts off the ground")
 	end,
 
+	["a spore puff rises onto the toes and leans back, puffing at the top"] = function()
+		assert(PetRig.cue(CFG, "sporepuff", 0.4) and not PetRig.cue(CFG, "sporepuff", 0.2), "the spores don't puff at the top of the rise")
+		local top = PetRig.body(CFG, "sporepuff", 0.4, 1, true)
+		assert(top.lift > CFG.SPORE_LIFT * 0.9, "it doesn't rise onto its toes")
+		assert(top.pitch > 0, "it doesn't lean back as the spores puff")
+		local done = PetRig.body(CFG, "sporepuff", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't settle back down")
+		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

@@ -51,6 +51,10 @@ Element scenes (matching `CardDesign.SCENES`):
   big round shiny dark eyes set close together, soft pink blush, tiny pink nose and small happy smile, a small golden
   gem on its forehead, long upright ears with pink insides each tipped with a small glowing yellow lightning bolt, a
   round glowing yellow ball of crackling lightning as its tail (lighting: bright playful stormy lighting).
+- **Mossmole** (original forest mole, Common): a very cute chubby cartoon mole standing upright on tiny pink feet,
+  rounded egg-shaped toy-like 3D style, warm reddish-brown body, a cream face with big round eyes, long eyelashes, big
+  pink cheeks and a round pink nose, hugging a little round moss garden with three small glowing teal mushrooms, tiny
+  glowing teal spores floating up (lighting: soft green sunlight).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

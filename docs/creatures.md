@@ -131,6 +131,30 @@ Blender (Roblox -Z), arms in a T-pose. `voxel_kit.py` holds the shared part: the
 box sized like an ellipsoid); Puffpuddle and Solarion use a smoother style (`round_box`, `blob`). Blocky is the
 default: the smooth look made Eclipse Fox and Duskstalker look awkward, so they went back to blocky.
 
+### Meshy-generated originals (the current way)
+
+New originals are generated with Meshy through the Blender MCP and rigged with `tools/blender/rig_kit.py` (one
+`rig_<card>.py` per creature). Meshy credits are capped (1000 in all), so each prompt must be right the first time.
+
+Meshy prompt template:
+
+```
+very cute chubby cartoon <animal>, mythical <element> creature, <pose: standing on all four short legs / standing
+upright on two short legs>, toy-like collectible creature, round plump body, big round head, big shiny dark eyes set
+close together, small centred smile, <colours>, <mythical parts: chunky, attached to the body>. Perfectly symmetrical
+face. Smooth simple rounded shapes, flat clean colors, low poly, no fur detail, no realistic textures. Isolated single
+character only, nothing else: no base, no ground, no grass, no rocks, no stand, no props. Legs clearly separate from
+each other. One solid closed shape.
+```
+
+- Character plus its mythical parts only; never scenery. Grass or ground under it fuses with the feet and can't be
+  rigged (Mossmole's first try: a grass patch round its feet, a hollow mossy underside, 5.7M triangles).
+- Keep add-ons chunky and attached (moss as a patch on the back, mushroom caps sitting on it); thin stalks and loose
+  bits break up when the mesh is reduced.
+- Check the result before spending more: one island, a clean symmetric face, under ~500k triangles, nothing that looks
+  like a famous character. Fix small things in Blender (recolour, add bolts with `rig_kit.bolt`); regenerate only when
+  the mesh is unusable. Re-polling a finished job re-imports it for free.
+
 Capes hang on their own bones (`Cape_0..2` from the chest): they billow back as the creature runs and flutter standing,
 each bone trailing the one above (`PET_ANIM.CAPE_*`).
 Many-tailed rigs name each tail `Tails_<tail>_0..2`: every tail swishes on its own beat, fanned out from the others,
@@ -157,6 +181,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   a puff of flame and smoke from its mouth.
 - **zaphop** (Zappit): a crouch and a big bunny jump (`ZAPHOP_HEIGHT`); at the top lightning crackles up off its
   ear and tail bolts with a burst of sparks.
+- **sporepuff** (Mossmole): up onto its toes, leaning back, as glowing teal spores rise from its mushroom garden
+  with a soft glow (`SPORE_*`).
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -190,6 +216,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   gem on its brow, small yellow lightning bolts on its long ear tips and a round yellow ball of lightning for a tail.
   Walks on short legs with big feet, arms at its sides; two bones per ear. 24 bones, about 8,500 triangles. Replaced
   the tinted FairyRabbit. (Regenerated: the first one looked like Pikachu and had a lopsided face.)
+- **Mossmole** (`rig_mossmole.py`, Meshy): a very cute upright egg-shaped mole, brown with a cream face and pink
+  cheeks, hugging a little moss garden with glowing teal mushrooms to its chest; waddles on tiny feet, arms barely
+  swinging. Remeshed and baked (`rig_kit.remesh_bake`). 18 bones, 10,000 triangles. Replaced the tinted RedMole.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

@@ -13,6 +13,7 @@
 -- * sneeze (Blazehound): a little puff of flame, embers and smoke from its nose.
 -- * hiccup (Cindercub): three hiccups, each puffing a little flame and a smoke ring from its mouth.
 -- * zaphop (Zappit): at the top of a big bunny jump, lightning crackles up off its ear and tail bolts with sparks.
+-- * sporepuff (Mossmole): up on its toes, glowing teal spores rise from the mushroom garden it hugs, with a soft glow.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -385,6 +386,29 @@ local function zaphop(model: Model, size: number)
 	end
 end
 
+-- A spore puff: glowing teal spores rise from the mushroom garden it hugs to its chest, with a soft teal glow
+local SPORE_COLOR = Color3.fromRGB(110, 230, 210)
+local function sporepuff(model: Model, size: number)
+	local spine = bonePosition(model, "Spine_1")
+	if not spine then
+		return
+	end
+	local garden = spine + model:GetPivot().LookVector * 0.5 * size
+	local up = CFrame.lookAt(garden, garden + Vector3.yAxis)
+	burst(up, SPARKLES, ColorSequence.new(SPORE_COLOR, Color3.fromRGB(200, 255, 240)), 18, 0.35 * size, 2.5 * size, 1.6)
+	burst(up, SMOKE, ColorSequence.new(SPORE_COLOR), 5, 0.6 * size, 1.2 * size, 1.4)
+	local glow = Instance.new("Attachment")
+	glow.WorldPosition = garden
+	glow.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = SPORE_COLOR
+	light.Brightness = 2
+	light.Range = 6 * size
+	light.Parent = glow
+	TweenService:Create(light, TweenInfo.new(1.4), { Brightness = 0 }):Play()
+	task.delay(1.5, glow.Destroy, glow)
+end
+
 -- Kung fu: leaves whirl out round the creature with each chop
 local function kungfu(model: Model, size: number)
 	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
@@ -557,6 +581,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		hiccup(model, size)
 	elseif kind == "zaphop" then
 		zaphop(model, size)
+	elseif kind == "sporepuff" then
+		sporepuff(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
