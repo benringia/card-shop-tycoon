@@ -254,6 +254,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.95 -- as it lands
 	elseif kind == "hiccup" then
 		return progress >= cfg.HICCUP_BEATS[1] -- the first hiccup (SignatureFx times the other puffs)
+	elseif kind == "zaphop" then
+		return progress >= 0.5 -- the top of the jump
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -285,6 +287,15 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		pitch = math.rad(6) * envelope(p)
 	elseif kind == "hop" then
 		lift = cfg.HOP_HEIGHT * math.abs(math.sin(p * TAU))
+	elseif kind == "zaphop" then
+		-- Crouch, spring high (the top at halfway), land with a little squash
+		if p < 0.25 then
+			lift = -cfg.ZAPHOP_CROUCH * math.sin(p / 0.25 * math.pi)
+		elseif p < 0.75 then
+			lift = cfg.ZAPHOP_HEIGHT * math.sin((p - 0.25) / 0.5 * math.pi)
+		else
+			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
+		end
 	elseif kind == "hiccup" then
 		local pulse = hiccupPulse(cfg, p)
 		lift = cfg.HICCUP_HOP * pulse

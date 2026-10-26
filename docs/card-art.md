@@ -46,6 +46,11 @@ Element scenes (matching `CardDesign.SCENES`):
   small round ears, big shiny dark eyes, pink blushing cheeks, a tiny happy smile with its little pink tongue out, a
   cream muzzle and a big round cream tummy with its small paws resting on it, a little flame tuft on its head, a short
   stubby tail with a tiny flame, a small puff of flame and smoke as it hiccups (lighting: warm cozy firelight).
+- **Zappit** (original electric bunny, Common): a very cute chubby cartoon bunny standing upright on two short legs
+  with big feet, rounded stylized toy-like 3D style, soft lavender-violet body with a white tummy, big round head, two
+  big round shiny dark eyes set close together, soft pink blush, tiny pink nose and small happy smile, a small golden
+  gem on its forehead, long upright ears with pink insides each tipped with a small glowing yellow lightning bolt, a
+  round glowing yellow ball of crackling lightning as its tail (lighting: bright playful stormy lighting).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

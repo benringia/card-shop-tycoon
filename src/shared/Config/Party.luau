@@ -62,16 +62,18 @@ return {
 		Voltkit = { hang = 12, forward = 5, bend = 20, swing = 34 }, -- a hero's stride
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 		Cindercub = { hang = 0, forward = 0, bend = 0, swing = 14 }, -- paws rest on its tummy, so only a little swing
+		Zappit = { hang = 0, forward = 0, bend = 10, swing = 18 }, -- arms hang at its sides
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
 		Cindercub = { fidget = "hiccup", chance = 0.35 },
+		Zappit = { fidget = "zaphop", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -94,6 +96,7 @@ return {
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
 		Cindercub = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn", "wag" }, tailSpeed = 1.2, bounce = 1.2 },
+		Zappit = { fidgets = { "look", "tilt", "sniff", "hop", "hop", "spin", "shake", "wag" }, tailSpeed = 1.4, bounce = 1.8 }, -- a bunny: hops about
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -218,8 +221,11 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4,
+			hiccup = 2.4, zaphop = 1.6,
 		},
+		-- Zappit's zap hop: how high it springs and how low it crouches first (studs at size 1)
+		ZAPHOP_HEIGHT = 1.4,
+		ZAPHOP_CROUCH = 0.15,
 		-- Cindercub's hiccups: when each one comes (fractions of the fidget), how sharp, the hop (studs at size 1),
 		-- the body's tip back and the head's jolt back (degrees)
 		HICCUP_BEATS = { 0.2, 0.5, 0.8 },
@@ -269,7 +275,7 @@ return {
 		Thornback = { pack = "Originals", model = "Thornback", size = 1.3 }, -- original, tools/blender/build_thornback.py
 		Vinewyrm = { pack = "UltraPets", model = "GiantSnake" },
 		Briarhorn = { pack = "UltraPets", model = "EarthBull", size = 1.3 },
-		Zappit = { pack = "UltraPets", model = "FairyRabbit", tint = { 255, 240, 150 } },
+		Zappit = { pack = "Originals", model = "Zappit", size = 1.5 }, -- original, tools/blender/rig_zappit.py (Meshy-generated electric bunny)
 		Fizzlebug = { pack = "UltraPets", model = "Venowasp" },
 		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },
 		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/rig_boltlynx.py (Meshy-generated lynx)

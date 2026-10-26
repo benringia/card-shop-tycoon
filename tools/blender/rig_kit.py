@@ -116,6 +116,59 @@ def optimize(mesh, name, target_tris=10000, texture_size=1024, crumb_verts=12):
           sum(len(p.vertices) - 2 for p in mesh.data.polygons), "triangles,", len(mesh.data.vertices), "vertices")
 
 
+def paint_patch(mesh, color, cells=64):
+    """Paints a small patch of `color` (RGB 0..1) into a corner of the colour map no UV uses and returns its UV, so
+    pieces added by hand (bolt()) take that colour without a second material. Run after optimize()."""
+    import numpy as np
+
+    image = next(n.image for n in mesh.data.materials[0].node_tree.nodes if n.type == "TEX_IMAGE")
+    used = np.zeros((cells, cells), bool)
+    for loop in mesh.data.uv_layers.active.data:
+        u, v = loop.uv
+        used[min(cells - 1, max(0, int(v * cells))), min(cells - 1, max(0, int(u * cells)))] = True
+    free = next((cx, cy) for cy in range(1, cells - 1) for cx in range(1, cells - 1)
+                if not used[cy - 1:cy + 2, cx - 1:cx + 2].any())
+    w, h = image.size
+    cell = w // cells
+    px = np.array(image.pixels[:]).reshape(h, w, 4)
+    cx, cy = free
+    px[cy * cell:(cy + 1) * cell, cx * cell:(cx + 1) * cell, :3] = color
+    image.pixels[:] = px.ravel()
+    image.update()
+    image.pack()
+    return ((cx + 0.5) / cells, (cy + 0.5) / cells)
+
+
+BOLT_SHAPE = [(0.05, 1.0), (0.45, 1.0), (0.22, 0.58), (0.5, 0.58), (-0.1, -0.25), (0.12, 0.38), (-0.12, 0.38)]
+
+
+def bolt(mesh, base, up, side, size, thick, uv):
+    """Adds a flat zigzag lightning bolt with real thickness to the mesh: from `base` it rises along `up`, its zigzag
+    spread along `side`, its sharp tip furthest out. All its faces take the colour at `uv` (paint_patch)."""
+    import bmesh
+
+    up, side = Vector(up).normalized(), Vector(side).normalized()
+    normal = up.cross(side).normalized()
+    base = Vector(base)
+    points = [base + side * ((a - 0.17) * size) + up * ((1.0 - b) * size) for a, b in BOLT_SHAPE]
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    front = [bm.verts.new(p + normal * thick / 2) for p in points]
+    back = [bm.verts.new(p - normal * thick / 2) for p in points]
+    faces = [bm.faces.new(front), bm.faces.new(list(reversed(back)))]
+    for i in range(len(points)):
+        j = (i + 1) % len(points)
+        faces.append(bm.faces.new((front[j], front[i], back[i], back[j])))
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    layer = bm.loops.layers.uv.active
+    for face in bmesh.ops.triangulate(bm, faces=faces)["faces"]:
+        face.smooth = False
+        for loop in face.loops:
+            loop[layer].uv = uv
+    bm.to_mesh(mesh.data)
+    bm.free()
+
+
 def build_rig(name, bones):
     """A fresh armature from (bone, parent, head, tail) tuples; Root doesn't deform."""
     old = bpy.data.objects.get(name)

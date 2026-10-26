@@ -18,7 +18,7 @@ return {
 		Cindercub = "rbxassetid://85793984557948",
 		Puffpuddle = "rbxassetid://85967530259039",
 		Sprouthop = "rbxassetid://109907428433527",
-		Zappit = "rbxassetid://72205266740863",
+		Zappit = "rbxassetid://140500297417545",
 		Gloomlet = "rbxassetid://120458286445236",
 		Ashbeak = "rbxassetid://76273054801846",
 		Shellshy = "rbxassetid://102591477668369",
