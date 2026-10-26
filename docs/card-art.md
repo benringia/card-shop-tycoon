@@ -82,6 +82,10 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Tidecaller** (original sea dragon, Very Rare): a confident slightly fierce cartoon sea dragon on four legs, pale
   aqua-white scales with a teal belly, a long neck, glowing aqua eyes, swept-back crystal horns, crystal spines and
   fin-wings, a long tail ending in an aqua fish fin, water currents swirling round it (lighting: soft sunlit underwater).
+- **Riftwalker** (original void dragon, Epic): a massive menacing void dragon crouched low and roaring, black
+  obsidian armour with glowing violet rift cracks, glowing violet eyes, an open fanged jaw, swept-back horns, back
+  spikes, dark purple wings spread, a spiked tail, a swirling violet void rift tearing open behind it (lighting:
+  menacing eerie violet).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

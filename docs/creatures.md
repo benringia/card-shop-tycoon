@@ -160,6 +160,8 @@ each other. One solid closed shape.
   like a famous character. Fix small things in Blender (recolour, add bolts with `rig_kit.bolt`); regenerate only when
   the mesh is unusable. Re-polling a finished job re-imports it for free.
 
+Folded wings on the ground (`Wing_<Side>_<n>` on a creature that walks) shift a little with each breath
+(`PET_ANIM.WING_REST`) and spread wide for a roar (`WING_SPREAD`).
 Capes hang on their own bones (`Cape_0..2` from the chest): they billow back as the creature runs and flutter standing,
 each bone trailing the one above (`PET_ANIM.CAPE_*`).
 Many-tailed rigs name each tail `Tails_<tail>_0..2`: every tail swishes on its own beat, fanned out from the others,
@@ -209,6 +211,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   deep water bursts from its fangs with cyan sparks and bubbles.
 - **thundercall** (Thunderhorn): rears up and stamps down (`THUNDER_REAR`, `THUNDER_LIFT`; shares the tide call's
   curve) as lightning strikes from the sky onto its antlers and crackles round its hooves, with a flash.
+- **riftroar** (Riftwalker): a roar (rears back, lunges, shockwave ring) that tears a swirling violet void rift open
+  in the air behind it, then closes it, with dark smoke from its jaws.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -281,6 +285,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Thunderhorn** (`rig_thunderhorn.py`, Meshy, Epic): a massive muscular cream thunder stag with gold antlers (as
   `Ear_` bones), gold shoulder armour and gold hooves, and a simple short mane. Right first time. 22 bones, about 8,700
   triangles. Replaced the tinted Lumistag.
+- **Riftwalker** (`rig_riftwalker.py`, Meshy, Epic): a massive black void dragon with glowing violet rift cracks, a
+  fanged roaring maw, swept-back horns, back spikes, folded wings (`Wing_` bones) and a long spiked tail; prowls on four
+  legs; its lower jaw is on `Jaw_0` (cut out of the head with `rig_kit.reweight`) and opens for roars and yawns.
+  Right first time. 27 bones, about 10,000 triangles. Replaced the VoidDragon.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

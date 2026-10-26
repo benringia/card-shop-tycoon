@@ -25,6 +25,7 @@
 -- * thorncharge (Briarhorn): head down, a short charge forward; thorny vines burst up in front of it with petals.
 -- * abysschomp (Abyssal Koi): draws back and lunges, snapping; a dark surge of deep water bursts from its fangs.
 -- * thundercall (Thunderhorn): rears and stamps; lightning strikes its golden antlers and crackles round its hooves.
+-- * riftroar (Riftwalker): a roar that tears a swirling violet void rift open in the air behind it, then closes it.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -418,6 +419,47 @@ local function sporepuff(model: Model, size: number)
 	light.Parent = glow
 	TweenService:Create(light, TweenInfo.new(1.4), { Brightness = 0 }):Play()
 	task.delay(1.5, glow.Destroy, glow)
+end
+
+-- A rift roar: a swirling violet void rift tears open in the air behind it, spins, and closes; dark smoke from its jaws
+local function riftroar(model: Model, size: number)
+	local pivot = model:GetPivot()
+	local centre = pivot.Position - pivot.LookVector * 1.2 * size + Vector3.new(0, 2.2 * size, 0)
+	local facing = CFrame.lookAt(centre, centre + pivot.LookVector)
+	local rings = {}
+	for i = 1, 3 do
+		local ring = fxPart(Vector3.new(0.15, 1, 1) * size, if i == 2 then Color3.fromRGB(30, 10, 50) else VOID_COLOR, i ~= 2)
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Transparency = 0.25
+		ring.CFrame = facing * CFrame.Angles(0, math.pi / 2, 0)
+		ring.Parent = workspace
+		table.insert(rings, ring)
+		local open = TweenService:Create(ring, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(0.15, 4.2 - i * 0.9, 4.2 - i * 0.9) * size })
+		open:Play()
+	end
+	local spin = RunService.RenderStepped:Connect(function(dt)
+		for i, ring in rings do
+			ring.CFrame = ring.CFrame * CFrame.Angles(dt * (2 + i), 0, 0)
+		end
+	end)
+	burst(facing, SPARKLES, ColorSequence.new(Color3.fromRGB(200, 140, 255)), 24, 0.4 * size, 4 * size, 1.2)
+	burst(facing, SMOKE, ColorSequence.new(VOID_COLOR, Color3.fromRGB(20, 10, 30)), 10, 1.4 * size, 1.5 * size, 1.4)
+	local head = bonePosition(model, "Head_0")
+	if head then
+		burst(CFrame.lookAt(head, head + pivot.LookVector), SMOKE, ColorSequence.new(VOID_COLOR, Color3.fromRGB(20, 10, 30)), 10, 0.9 * size, 5 * size, 1)
+	end
+	task.delay(1.6, function()
+		spin:Disconnect()
+		for _, ring in rings do
+			local close = TweenService:Create(ring, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{ Size = Vector3.new(0.15, 0.1, 0.1) * size, Transparency = 1 })
+			close.Completed:Once(function()
+				ring:Destroy()
+			end)
+			close:Play()
+		end
+	end)
 end
 
 -- A thunder call: as it stamps down, lightning strikes from the sky onto its golden antlers and crackles round its hooves
@@ -866,6 +908,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		abysschomp(model, size)
 	elseif kind == "thundercall" then
 		thundercall(model, size)
+	elseif kind == "riftroar" then
+		riftroar(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
