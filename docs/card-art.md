@@ -35,10 +35,12 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Blazehound** (HotDog): a chunky blocky voxel-style dachshund dog, glossy jet-black body with warm tan-orange
   muzzle, chest, belly and paws, droopy black ears, two little red flame tufts with yellow tips on top of its
   head, a thin black tail ending in a bright red-and-yellow flame.
-- **Boltlynx** (original lion): a chunky blocky voxel-style lion standing on four legs, golden-orange fur, a huge
-  spiky golden mane made of sharp pointed spikes with bright yellow tips, white zigzag lightning-bolt markings on its
-  flanks, amber eyes, cream muzzle and belly, big paws, a long thin tail ending in a spiky golden tuft, small
-  crackling sparks of electricity around its mane (pose: standing proudly and roaring).
+- **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
+  rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
+  flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
+  pale yellow lightning bolt, sharp amber eyes with a confident look, a long thin tail with brown bands ending in a big
+  glowing pale yellow zigzag lightning bolt, small crackling sparks leaping off its ear and tail bolts (pose: standing
+  alert and confident on a rocky ledge; lighting: dramatic stormy lighting with bright flashes).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
@@ -59,6 +61,16 @@ Element scenes (matching `CardDesign.SCENES`):
   soft toy style (smooth rounded shapes, slightly blocky), a long dark brown body, a round pale cream fluffy face, big
   shiny dark eyes, pink blushing cheeks, a tiny black nose, whiskers and a happy smile, small round ears, a pale chest,
   big flat webbed hind feet, a flat tail (pose: standing happily on a rock).
+- **Eclipse Fox** (original nine-tailed kitsune, Epic): a sturdy fierce mystical nine-tailed kitsune fox standing on
+  four thick legs, rounded stylized toy-like 3D style, deep violet fur with a big fluffy white chest ruff, white cheek
+  tufts, glowing violet crescent moon markings on its flanks, a small glowing violet gem on its brow, narrow sharp golden
+  eyes, tall pointed ears, nine huge fluffy violet tails with white tips fanned out behind it, above its head a dark
+  eclipse with a glowing golden ring of light (lighting: eerie violet moonlight).
+- **Duskstalker** (original Monkey King, Very Rare): a stocky confident monkey king warrior standing upright on two
+  legs, rounded stylized toy-like 3D style, dark plum fur, a tan face and chest, big round head, glowing amber eyes
+  under low brows with a sly half smile, a golden circlet with a violet gem, gold shoulder armour, a red cape, purple
+  trousers with a gold belt, gold wrist and ankle bands, big fists, a long curling tail, a tall golden staff with red
+  bands upright in its right hand (lighting: moonlit night with purple mist).
 
 Tone follows rarity: the more common the card, the cuter and less dangerous the creature and its art.
 - **Solarion** (RubyCerberus): a massive three-headed wolf made of jagged glowing ruby-red crystals and black

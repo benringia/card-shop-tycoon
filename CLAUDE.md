@@ -82,8 +82,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Studio MCP: reading and inspecting the place is fine anytime; ask before changing the place itself (deleting or
   editing objects, Lighting, the Baseplate). Scripts still live only in the repo.
 - Remodelling a creature (docs/creatures.md "Original models"): look at its card art and rarity (the more common the
-  card, the cuter and less dangerous it looks; Common cute, Legendary terrifying), build it as little blocky as
-  possible (mostly `round_box`, `blob` for heads and paws, some plain blocks are fine; real gait on its legs), give it every bone the creature needs named for `PetRig`, its own fidgets/tail/bounce
+  card, the cuter it looks: Common cute, Rare and Very Rare slightly dangerous and medium size, Epic very dangerous and bigger, Legendary godlike and big), make it in the
+  stylized cartoon style of the Cute Pets pack (smooth, simple shapes, flat colours, light, keeping the mythical card
+  design): generate it with Meshy through the Blender MCP, reduce it to a few thousand triangles and rig it with our
+  own skinning (`tools/blender/rig_kit.py`, one `rig_<card>.py` with bone positions per creature); the scripted voxel builds are the older models, give it every bone the creature needs named for `PetRig`, its own fidgets/tail/bounce
   (`Party.CREATURE_STYLE`) and a signature idle (`Party.SIGNATURE`, poses in `Util/PetRig`, effects in
   `Util/SignatureFx`, Lune-tested). I import the FBX (Rig Type Custom, Keep Zero Influence Bones); Claude resets the
   MeshPart's `PivotOffset` rotation, builds `Workspace.Originals` from the current pack plus the new model; I save the
@@ -98,3 +100,5 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.
+- Keep the Obsidian vault `C:/Users/Ben/Documents/obsidian/card-shop-tycoon` up to date as we go (Home.md is the
+  index): creature roster, decisions log, lessons learned and the topic notes, written for reuse on future projects.

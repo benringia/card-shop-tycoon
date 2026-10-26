@@ -127,18 +127,22 @@ carry `PetRig` role names (`Pelvis`, `Spine_0`, `Neck`, `Head_0`, `Arm_Left_0..2
 `Tail_0..5`, `Ear_Left_0`), so the code walk and fidgets drive them with no `RigGuess` or aliases. They face -Y in
 Blender (Roblox -Z), arms in a T-pose. `voxel_kit.py` holds the shared part: the mesh builder (boxes, spikes,
 `round_box` with bevelled edges, smooth `blob` ellipsoids), palette, material, armature and export; each
-`build_<card>.py` only describes its creature. New models are less blocky (Puffpuddle onwards): mostly rounded boxes,
-smooth blobs for heads, cheeks and paws, a few plain blocks where they read well; the earlier ones are chunkier voxel
-builds.
+`build_<card>.py` only describes its creature. Most originals are blocky voxel builds (`box`, `spike`, and `cube`, a
+box sized like an ellipsoid); Puffpuddle and Solarion use a smoother style (`round_box`, `blob`). Blocky is the
+default: the smooth look made Eclipse Fox and Duskstalker look awkward, so they went back to blocky.
 
+Capes hang on their own bones (`Cape_0..2` from the chest): they billow back as the creature runs and flutter standing,
+each bone trailing the one above (`PET_ANIM.CAPE_*`).
+Many-tailed rigs name each tail `Tails_<tail>_0..2`: every tail swishes on its own beat, fanned out from the others,
+rising and falling a little (`PET_ANIM.TAILS_*`), and they count as a tail, so the hips stay still.
 Many-headed rigs name each neck `Hydra_<head>_0..2` with the head as `Hydra_<head>_3`, and each lower jaw
 `Jaw_<head>`: every neck sways and nods on its own beat (the wave running up it) and joins the look, sniff, tilt,
 yawn and shake fidgets; jaws snap open now and then, each at its own moment, and gape in a yawn
-(`PET_ANIM.HYDRA_*`, `JAW_*`). A single `Jaw_0` (Boltlynx) stays shut except in a yawn or roar.
+(`PET_ANIM.HYDRA_*`, `JAW_*`). A single `Jaw_0` stays shut except in a yawn or roar.
 
 Each original also carries itself like the creature it is (`Party.CREATURE_STYLE`): its own idle fidgets (the big
-beasts never hop or spin, Infernox stomps with a dust ring, the lion sits and scratches like a cat, Sprouthop skips
-the tail wag it can't do), a slower, smaller tail swish (a lion's swish, a T-rex's heavy sway, a hydra's drift instead
+beasts never hop or spin, Infernox stomps with a dust ring, the lynx sits and scratches like a cat, Sprouthop skips
+the tail wag it can't do), a slower, smaller tail swish (a cat's swish, a T-rex's heavy sway, a hydra's drift instead
 of a dog's wag) and less bounce in its walk. Two-legged rigs stretch by leaning back with their arms up.
 
 Each original has a signature idle (`Party.SIGNATURE`: the fidget and how often it replaces an ordinary one; bone
@@ -147,8 +151,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   its head while it looks up and follows it, then flies away fading; its antlers perk up.
 - **voidroar** (Voidmaw): the heads stop swaying, rear back and lunge one after another (`ROAR_RIPPLE`), jaws gaping,
   dark void smoke bursting from every mouth, with the roar's shockwave ring.
-- **thunderroar** (Boltlynx): head reared back then lunging with the mouth wide, ears flat, tail stiff; lightning
-  crackles out of the mane in three bursts with a flash, plus the shockwave ring.
+- **thunderroar** (Boltlynx): head reared back then lunging, ears flat, tail stiff; lightning crackles round its head
+  and leaps off the bolts on its ear tips and tail tip in three bursts with a flash, plus the shockwave ring.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -159,10 +163,21 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   its nose.
 - **kungfu** (Thornback): chops with the right scythe, then the left, twice, turning into each chop, while leaves
   whirl out round it.
+- **eclipse** (Eclipse Fox): sits back on its haunches and looks to the sky as a dark orb ringed with golden light
+  rises over its head, glowing violet, then fades.
+- **backflip** (Duskstalker): crouches, springs up and flips right over backwards (`BACKFLIP_HEIGHT`), shadow smoke
+  where it takes off and a smoky trail through the flip.
+  A fidget's whole-body pitch (the flip, a roar's rear-back, a stomp's tip) turns rigged pets round their middle, so a
+  flip never puts the head in the ground.
+- **voltcharge** (Voltkit): brings both fists up in front, braced, its cape swept back; lightning arcs between its
+  fists, building up, then a bolt shoots into the sky with a flash.
+- **solarroar** (Solarion): its three heads rear and lunge one after another, jaws wide, fire bursting from every
+  mouth with a flash of sunlight and the shockwave ring.
 
-- **Boltlynx** (`build_boltlynx.py`): a golden lion on four legs with a huge spiky mane tipped in yellow, white
-  lightning-bolt markings on its flanks, a jaw that opens to roar and a spiky tail tuft; 25 bones, about 1,300
-  triangles.
+- **Boltlynx** (`rig_boltlynx.py`, the first Meshy-generated original): a golden cartoon electric lynx with tall
+  ears, white zigzag stripes and a long tail; flat lightning bolts added by hand on its tail tip and ear tips (mapped
+  to a pale yellow patch painted into the colour map) so it reads as mythical. One closed mesh, 24 bones (with
+  `Ear_` bones), about 8,400 triangles. Replaced the blocky lion (`build_boltlynx.py`, kept for reference).
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.
@@ -188,6 +203,23 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Thornback** (`build_thornback.py`, Rare): a kung-fu mantis, lime with soft orange armour, big round green eyes,
   antennae on its `Ear_` bones, blunt rounded scythes folded in front (`ARM_POSE`), four walking legs and its abdomen as
   a tail; 29 bones, about 800 triangles.
+- **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
+  barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
+  under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,
+  gold belt, wrist and ankle bands, a golden staff with red bands, longer than it is tall, gripped through its right fist
+  like a carried weapon (it crosses the fist, so with the arm hanging it points forward, nearly level, held at its
+  middle), a long curled tail; 24 bones, about 650 triangles.
+- **Eclipse Fox** (`build_eclipsefox.py`, model `EclipseFox`, Epic): a sturdy nine-tailed shadow kitsune on four thick
+  legs, deep violet with a huge white ruff, chest and cheek tufts, glowing violet crescents on its flanks, a brow gem,
+  narrow golden eyes, tall ears and nine big fluffy white-tipped tails fanned out behind (`Tails_<tail>_0..2`, each on
+  its own beat); 47 bones, about 1,050 triangles.
+- **Voltkit** (`build_voltkit.py`, Very Rare): a fox hero on two legs, blocky and sturdy: golden fur, a cream chest
+  with magenta chevrons, magenta ear tips, cuffs and tail band, amber eyes under determined magenta brows, a pink gem on
+  its brow and another on a magenta necklace, a magenta cape on `Cape_` bones, dark gloves and boots, a bushy
+  cream-tipped tail; 27 bones, about 700 triangles. Replaces the tinted Ultra pack PurpleFox.
+- **Solarion** (`build_solarion.py`, Legendary): a massive three-headed cerberus of black obsidian and jagged glowing
+  ruby crystals: snarling wolf heads with red eyes and crystal fangs on short thick necks (`Hydra_` bones, each with a
+  jaw), crystal spikes along its back, crystal talons, a crystal-tipped tail; 35 bones, about 7,300 triangles.
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns

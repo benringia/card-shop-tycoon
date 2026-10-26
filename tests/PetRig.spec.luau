@@ -395,6 +395,80 @@ return {
 		assert(rightFirst and leftFirst, "the arms don't chop one after the other")
 	end,
 
+	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
+		local cape = PetRig.role("Cape_1")
+		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")
+		local HERO = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Right_0", "0_Left_Limb_0", "0_Right_Limb_0",
+			"Cape_0", "Cape_1", "Cape_2", "Tail_0" }
+		local standing, running = poseAt(HERO, still(1.2)), poseAt(HERO, walking(1.2))
+		-- Negative x swings a hanging bone's lower end back, behind the body
+		assert(running["cape:0"].x < standing["cape:0"].x - math.rad(15), "the cape doesn't billow back when running")
+		local a, b = poseAt(HERO, still(0.3)), poseAt(HERO, still(1.1))
+		assert(math.abs(a["cape:2"].x - b["cape:2"].x) > math.rad(1), "the cape doesn't flutter standing")
+		assertBounded(running, "billowing cape")
+
+		assert(PetRig.cue(CFG, "voltcharge", 0.2) and not PetRig.cue(CFG, "voltcharge", 0.05), "the lightning starts once the fists are up")
+		local charge = poseAt(HERO, { time = 0, phase = 0, moving = 0, fidget = "voltcharge", fidgetProgress = 0.5,
+			armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		local rest = poseAt(HERO, { time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0, armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		for _, side in { "Left", "Right" } do
+			assert(charge[`arm:{side}:0`].x - rest[`arm:{side}:0`].x > math.rad(40), `the {side} fist doesn't come up`)
+		end
+		assertBounded(charge, "volt charge")
+	end,
+
+	["nine tails each sway on their own beat and fan out, and count as a tail for the hips"] = function()
+		local role = PetRig.role("Tails_4_2")
+		assert(role and role.kind == "tails" and role.pair == 4 and role.segment == 2, "Tails_4_2 is the third bone of tail 4")
+		local KITSUNE = { "Pelvis", "Spine_0", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0" }
+		for tail = 0, 8 do
+			for segment = 0, 2 do
+				table.insert(KITSUNE, `Tails_{tail}_{segment}`)
+			end
+		end
+		local function at(wag: number): { [string]: PetRig.Angles }
+			return poseAt(KITSUNE, { time = 0.5, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, tailPhase = wag })
+		end
+		local lowest, highest, inStep = math.huge, -math.huge, true
+		for step = 0, 15 do
+			local pose = at(step / 16 * math.pi * 2)
+			lowest, highest = math.min(lowest, pose["tails:4:1"].y), math.max(highest, pose["tails:4:1"].y)
+			inStep = inStep and math.abs(pose["tails:0:1"].y - pose["tails:8:1"].y) < math.rad(3)
+			expect.near(pose["pelvis:0"].y, 0, 1e-9, "a kitsune's hips wag like a tailless pet")
+			assertBounded(pose, "nine tails")
+		end
+		assert(highest - lowest > math.rad(10), "the tails don't sway")
+		assert(not inStep, "the tails sway in step")
+	end,
+
+	["an eclipse sits up and looks to the sky, a backflip goes all the way over, solar roars ripple"] = function()
+		assert(PetRig.cue(CFG, "eclipse", 0.3) and not PetRig.cue(CFG, "eclipse", 0.1), "the eclipse rises once it's sitting up")
+		assert(PetRig.cue(CFG, "backflip", 0.15) and not PetRig.cue(CFG, "backflip", 0.05), "the smoke goes as it takes off")
+		assert(PetRig.cue(CFG, "solarroar", CFG.ROAR_BURST), "the solar fire goes with the lunge")
+		local FOX = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Tail_0", "Tail_1",
+			"0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Left_Limb_1", "1_Right_Limb_0", "1_Right_Limb_1" }
+		local rest = poseAt(FOX, still(0))
+		local gazing = poseAt(FOX, { time = 0, phase = 0, moving = 0, fidget = "eclipse", fidgetProgress = 0.5 })
+		assert(gazing["pelvis:0"].x > rest["pelvis:0"].x + math.rad(10), "it doesn't sit back for the eclipse")
+		assert(gazing["head:0"].x < rest["head:0"].x - math.rad(10), "it doesn't look up at the sky")
+		assertBounded(gazing, "eclipse")
+
+		local top = PetRig.body(CFG, "backflip", 0.5, 1, true)
+		assert(top.lift > CFG.BACKFLIP_HEIGHT * 0.8, "the backflip doesn't leave the ground")
+		-- Positive pitch rears back (nose up), so a backflip turns all the way round the positive way
+		assert(PetRig.body(CFG, "backflip", 0.3, 1, true).pitch > 0, "the flip goes forwards, not backwards")
+		expect.near(PetRig.body(CFG, "backflip", 1, 1, true).pitch, math.pi * 2, 1e-6, "the backflip doesn't land the right way up")
+		expect.near(PetRig.body(CFG, "backflip", 1, 1, true).lift, 0, 1e-6, "the backflip doesn't land")
+
+		local HYDRA = { "Pelvis", "Spine_0" }
+		for head = 0, 2 do
+			table.insert(HYDRA, `Hydra_{head}_3`)
+			table.insert(HYDRA, `Jaw_{head}`)
+		end
+		local roar = poseAt(HYDRA, { time = 0, phase = 0, moving = 0, fidget = "solarroar", fidgetProgress = 0.25 })
+		assert(roar["hydra:0:3"].x < -math.rad(5) and math.abs(roar["hydra:0:3"].x - roar["hydra:2:3"].x) > math.rad(2), "the solar roar doesn't ripple")
+	end,
+
 	["two-legged walks twist the hips with the stride and the shoulders against them"] = function()
 		local BIPED = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0" }
 		local step = poseAt(BIPED, walking(math.pi / 2))
