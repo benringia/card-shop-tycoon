@@ -482,6 +482,21 @@ return {
 		assertBounded(hidden, "hiding")
 	end,
 
+	["a buzz zap zigzags side to side, rising, and fires a zap at the top"] = function()
+		assert(PetRig.cue(CFG, "buzzzap", 0.6) and not PetRig.cue(CFG, "buzzzap", 0.4), "no zap at the top of the buzz")
+		local lefts, rights = false, false
+		for step = 1, 19 do
+			local body = PetRig.body(CFG, "buzzzap", step / 20, 1, true)
+			lefts = lefts or body.yaw > math.rad(10)
+			rights = rights or body.yaw < -math.rad(10)
+		end
+		assert(lefts and rights, "it doesn't zigzag both ways")
+		assert(PetRig.body(CFG, "buzzzap", 0.6, 1, true).lift > CFG.BUZZ_RISE * 0.9, "it doesn't rise")
+		local done = PetRig.body(CFG, "buzzzap", 1, 1, true)
+		expect.near(done.yaw, 0, 1e-6, "it doesn't face forward again")
+		expect.near(done.lift, 0, 1e-6, "it doesn't settle back")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")
