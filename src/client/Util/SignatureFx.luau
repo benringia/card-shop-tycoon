@@ -18,6 +18,7 @@
 -- * shadowloop (Gloomlet): a loop-the-loop in the air trailing violet shadow smoke, sparkles off its ear wisps.
 -- * emberflap (Ashbeak): a flapping hop; at the top, a flame bursts from its crest with a puff of embers.
 -- * shypeek (Shellshy): ducks shyly into its shell, then peeks out with rising bubbles and aqua sparkles.
+-- * buzzzap (Fizzlebug): a zigzag buzz up into the air; at the top a bolt shoots down from its stinger.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -413,6 +414,22 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A buzz zap: at the top of its zigzag buzz, a bolt shoots down from its stinger and sparks fly off its antenna bolts
+local function buzzzap(model: Model, size: number)
+	local stinger = bonePosition(model, "Tail_0")
+	if stinger then
+		local ground = stinger - Vector3.new(rng:NextNumber(-0.5, 0.5), 2.2, rng:NextNumber(-0.5, 0.5)) * size
+		bolt(stinger, ground, 0.06 * size)
+		burst(CFrame.lookAt(ground, ground + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(150, 240, 255)), 12, 0.3 * size, 4 * size, 0.5)
+	end
+	for _, name in { "Ear_Left_0", "Ear_Right_0" } do
+		local tip = bonePosition(model, name)
+		if tip then
+			burst(CFrame.lookAt(tip, tip + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(150, 240, 255), LIGHTNING_COLOR), 6, 0.25 * size, 3 * size, 0.4)
+		end
+	end
+end
+
 -- A shy peek: as it pops back out of its shell, bubbles rise and its shell's swirls sparkle aqua
 local function shypeek(model: Model, size: number)
 	local shell = bonePosition(model, "Spine_0")
@@ -673,6 +690,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		emberflap(model, size)
 	elseif kind == "shypeek" then
 		shypeek(model, size)
+	elseif kind == "buzzzap" then
+		buzzzap(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

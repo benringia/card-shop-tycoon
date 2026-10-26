@@ -190,6 +190,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   bursts from its crest with a puff of embers.
 - **shypeek** (Shellshy): sinks into its shell with its head tucked (`SHY_DUCK`, `SHY_HEAD`), then peeks back out
   as bubbles rise and its shell sparkles aqua.
+- **buzzzap** (Fizzlebug): a zigzag buzz up into the air (`BUZZ_ZIGZAG`, `BUZZ_RISE`); at the top a bolt shoots down
+  from its stinger and its antenna bolts spark.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -240,6 +242,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Shellshy** (`rig_shellshy.py`, Meshy): a shy mint-green baby sea turtle with a teal dome shell covered in aqua
   swirls and a small pearl on its head; plods on four stubby flippers. Right first time. 20 bones, about 6,700
   triangles. Replaced the Turtle.
+- **Fizzlebug** (`rig_fizzlebug.py`, Meshy): a chubby upright bumblebee, yellow with navy stripes, with cyan
+  lightning bolts on its antenna tips and a glowing cyan stinger (both added by hand: Meshy left the stinger as a loose
+  crystal). Flies (`flies = true`), one `Wing_` bone per wing beating (`WING_SPEED` 0.9: faster shook the whole body). 19 bones, about 7,700
+  triangles. Replaced the Venowasp.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

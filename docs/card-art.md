@@ -70,6 +70,9 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Shellshy** (original baby sea turtle, Common): a very cute chubby shy cartoon baby sea turtle on four stubby
   flippers, mint-green skin, big shiny eyes, soft pink blush, a shy smile, a teal dome shell with glowing aqua swirls,
   a small glowing pearl on its head, little bubbles round it (lighting: soft sunlit underwater light).
+- **Fizzlebug** (original electric bee, Common): a very cute chubby round cartoon bumblebee flying, soft yellow with
+  dark navy stripes, big shiny eyes, soft pink blush, antennae tipped with small glowing cyan bolts, small lilac wings,
+  little arms, a small glowing cyan stinger crackling with a spark (lighting: bright playful stormy lighting).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
