@@ -130,7 +130,7 @@ return {
 		Wispurr = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake", "wag" }, tailSpeed = 0.7, bounce = 0.9 }, -- a lazy cat
 		Emberwing = { fidgets = { "look", "tilt", "spin", "shake" }, tailSpeed = 0.6 }, -- a flyer
 		Tidecaller = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake" }, tailSpeed = 0.45, tailAmount = 1.1, bounce = 0.4 }, -- a proud sea dragon
-		Briarhorn = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.5, tailAmount = 0.9, bounce = 0.35 }, -- a heavy bull
+		Briarhorn = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.5, tailAmount = 0.9, bounce = 0.6, stride = 1.25, legSwing = 0.75, sway = 1.8 }, -- a heavy bison on short legs: shorter swings so it plods instead of crouching
 		AbyssalKoi = { fidgets = { "look", "tilt", "shake" }, tailSpeed = 0.5 }, -- a lurking swimmer
 		Thunderhorn = { fidgets = { "look", "sniff", "shake", "stomp", "tilt" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.35 }, -- a proud stag
 		Riftwalker = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.4, tailAmount = 0.8, bounce = 0.3 }, -- a prowling dragon
@@ -362,7 +362,7 @@ return {
 		Petalpaw = { pack = "Originals", model = "Petalpaw", size = 1.5 }, -- original, tools/blender/rig_petalpaw.py (Meshy-generated flower squirrel)
 		Thornback = { pack = "Originals", model = "Thornback", size = 1.3 }, -- original, tools/blender/build_thornback.py
 		Vinewyrm = { pack = "UltraPets", model = "GiantSnake" },
-		Briarhorn = { pack = "Originals", model = "Briarhorn", size = 1.7 }, -- original, tools/blender/rig_briarhorn.py (Meshy-generated forest bull)
+		Briarhorn = { pack = "Originals", model = "Briarhorn", size = 1.7 }, -- original, tools/blender/rig_briarhorn.py (Meshy-generated forest bison)
 		Zappit = { pack = "Originals", model = "Zappit", size = 1.5 }, -- original, tools/blender/rig_zappit.py (Meshy-generated electric bunny)
 		Fizzlebug = { pack = "Originals", model = "Fizzlebug", size = 1.6, flies = true }, -- original, tools/blender/rig_fizzlebug.py (Meshy-generated electric bee)
 		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },

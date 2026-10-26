@@ -151,7 +151,7 @@ each other. One solid closed shape.
 ```
 
 - Never skinny: ask for a massive, heavy, bulky body with thick legs, a broad chest and a low wide stance (chunky and
-  stocky for cute ones), and match the card art's build. Briarhorn came out too slim and is queued for a redo.
+  stocky for cute ones), and match the card art's build. Briarhorn's first cow came out too slim and was remade as a bison.
 - Character plus its mythical parts only; never scenery. Grass or ground under it fuses with the feet and can't be
   rigged (Mossmole's first try: a grass patch round its feet, a hollow mossy underside, 5.7M triangles).
 - Keep add-ons chunky and attached (moss as a patch on the back, mushroom caps sitting on it); thin stalks and loose
@@ -284,9 +284,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Tidecaller** (`rig_tidecaller.py`, Meshy, Very Rare): a pale aqua sea dragon on four legs with crystal horns
   (as `Ear_` bones), a ridge of spines, crystal fin-wings on its back (`Wing_` bones, folded on the ground) and a
   fish-fin tail. Right first time. 28 bones, about 9,900 triangles. Replaced the Merilux.
-- **Briarhorn** (`rig_briarhorn.py`, Meshy, Very Rare): a fierce red-brown forest bull with big pale horns (as `Ear_`
-  bones) and thorny rose vines wrapped round its body. Remeshed and baked; turned 19 degrees straight (it was generated
-  mid-stride). 23 bones, 10,000 triangles. Replaced the EarthBull.
+- **Briarhorn** (`rig_briarhorn.py`, Meshy, Very Rare): a massive rusty forest bison with a tall hump, white horns
+  (as `Ear_` bones) wrapped in thorny vines and roses, and a rose wreath on its hump, matching its card art. Remade
+  27 Oct (the first model, a slim cow, was too skinny). Remeshed and baked; heavy gait (`legSwing` 0.75: its short legs
+  under a deep belly looked crouched at the full swing). 23 bones, 10,000 triangles. Replaced the EarthBull.
 - **Abyssal Koi** (`rig_abyssalkoi.py`, Meshy, Epic): a giant menacing armoured abyss fish with a huge fanged maw,
   glowing cyan eyes and spots and crystal fins. Swims (`Party.UNDULATE` "swim"): a head-to-tail chain of 9 bones
   waves. Right first time. 10 bones, about 8,500 triangles. Replaced the tinted IceShark.
