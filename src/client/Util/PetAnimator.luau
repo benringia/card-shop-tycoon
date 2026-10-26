@@ -192,7 +192,7 @@ end
 -- The whole body's part of the fidget playing (a hop, a spin, a shake), in studs at size 1 and radians
 function PetAnimator.bodyPose(rig: Rig, now: number): PetRig.Body
 	if not rig.fidget then
-		return { lift = 0, yaw = 0, roll = 0, pitch = 0 }
+		return { lift = 0, yaw = 0, roll = 0, pitch = 0, forward = 0 }
 	end
 	return PetRig.body(Party.PET_ANIM, rig.fidget, (now - rig.fidgetStart) / rig.fidgetLength, rig.side, true)
 end
