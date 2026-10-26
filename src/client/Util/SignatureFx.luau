@@ -17,6 +17,7 @@
 -- * petaltwirl (Petalpaw): a happy spin while pink petals swirl out round it.
 -- * shadowloop (Gloomlet): a loop-the-loop in the air trailing violet shadow smoke, sparkles off its ear wisps.
 -- * emberflap (Ashbeak): a flapping hop; at the top, a flame bursts from its crest with a puff of embers.
+-- * shypeek (Shellshy): ducks shyly into its shell, then peeks out with rising bubbles and aqua sparkles.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -412,6 +413,32 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A shy peek: as it pops back out of its shell, bubbles rise and its shell's swirls sparkle aqua
+local function shypeek(model: Model, size: number)
+	local shell = bonePosition(model, "Spine_0")
+	if not shell then
+		return
+	end
+	local top = shell + Vector3.new(0, 0.5 * size, 0)
+	local up = CFrame.lookAt(top, top + Vector3.yAxis)
+	burst(up, "rbxasset://textures/particles/sparkles_main.dds", ColorSequence.new(Color3.fromRGB(150, 255, 240)), 14, 0.35 * size, 2.5 * size, 0.9)
+	for i = 1, 8 do
+		local bubble = fxPart(Vector3.one * rng:NextNumber(0.12, 0.22) * size, Color3.fromRGB(190, 240, 255), false)
+		bubble.Shape = Enum.PartType.Ball
+		bubble.Transparency = 0.4
+		bubble.Position = top + Vector3.new(rng:NextNumber(-0.4, 0.4), 0, rng:NextNumber(-0.4, 0.4)) * size
+		bubble.Parent = workspace
+		local rise = TweenService:Create(bubble, TweenInfo.new(rng:NextNumber(1, 1.6), Enum.EasingStyle.Sine),
+			{ Position = bubble.Position + Vector3.new(rng:NextNumber(-0.3, 0.3), rng:NextNumber(1.5, 2.5), 0) * size, Transparency = 1 })
+		rise.Completed:Once(function()
+			bubble:Destroy()
+		end)
+		task.delay(i * 0.05, function()
+			rise:Play()
+		end)
+	end
+end
+
 -- An ember flap: at the top of its flapping hop, a puff of embers and a little flame burst from its crest
 local function emberflap(model: Model, size: number)
 	local crest = bonePosition(model, "Ear_Left_0") or bonePosition(model, "Head_0")
@@ -644,6 +671,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		shadowloop(model, size)
 	elseif kind == "emberflap" then
 		emberflap(model, size)
+	elseif kind == "shypeek" then
+		shypeek(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

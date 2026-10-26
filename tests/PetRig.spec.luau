@@ -470,6 +470,18 @@ return {
 		assert(highest - lowest > math.rad(30), "the wings don't flap")
 	end,
 
+	["a shy peek ducks into the shell, then pops back up with bubbles"] = function()
+		assert(PetRig.cue(CFG, "shypeek", 0.7) and not PetRig.cue(CFG, "shypeek", 0.5), "no bubbles as it peeks out")
+		assert(PetRig.body(CFG, "shypeek", 0.4, 1, true).lift < -CFG.SHY_DUCK * 0.9, "it doesn't duck down")
+		expect.near(PetRig.body(CFG, "shypeek", 1, 1, true).lift, 0, 1e-6, "it doesn't come back up")
+		local TURTLE = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Tail_0",
+			"0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0" }
+		local rest = poseAt(TURTLE, { time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0 })
+		local hidden = poseAt(TURTLE, { time = 0, phase = 0, moving = 0, fidget = "shypeek", fidgetProgress = 0.4 })
+		assert(hidden["head:0"].x > rest["head:0"].x + math.rad(10), "the head doesn't tuck down")
+		assertBounded(hidden, "hiding")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")

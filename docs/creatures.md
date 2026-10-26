@@ -188,6 +188,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   ear wisps.
 - **emberflap** (Ashbeak): a hop with its folded wings beating out (`FLAP_HOP`, `EMBER_FLAP`); at the top a flame
   bursts from its crest with a puff of embers.
+- **shypeek** (Shellshy): sinks into its shell with its head tucked (`SHY_DUCK`, `SHY_HEAD`), then peeks back out
+  as bubbles rise and its shell sparkles aqua.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -235,6 +237,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   ember zigzags round its back and a fiery tail (both painted by hand: Meshy left them out); waddles on orange feet,
   folded wings as arms fluttering at its sides (it no longer flies). 21 bones, about 7,000 triangles. Replaced the
   tinted StoneBird.
+- **Shellshy** (`rig_shellshy.py`, Meshy): a shy mint-green baby sea turtle with a teal dome shell covered in aqua
+  swirls and a small pearl on its head; plods on four stubby flippers. Right first time. 20 bones, about 6,700
+  triangles. Replaced the Turtle.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

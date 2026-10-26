@@ -211,6 +211,17 @@ local function sneezeCurve(cfg: any, progress: number): number
 	return 1.2 * math.sin(math.min(q * 3, 1) * math.pi / 2) * (1 - q) ^ 2
 end
 
+-- A shy peek: 0 to 1 as it ducks into its shell (by 0.2), held hidden, then popping back out by 0.75
+local function shyDuck(progress: number): number
+	local p = math.clamp(progress, 0, 1)
+	if p < 0.2 then
+		return math.sin(p / 0.2 * math.pi / 2)
+	elseif p < 0.6 then
+		return 1
+	end
+	return 1 - math.sin(math.clamp((p - 0.6) / 0.15, 0, 1) * math.pi / 2)
+end
+
 -- Hiccups: a sharp jolt at each of HICCUP_BEATS (fractions of the way through the fidget), still between them
 local function hiccupPulse(cfg: any, progress: number): number
 	local p = math.clamp(progress, 0, 1)
@@ -264,6 +275,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the loop starts
 	elseif kind == "emberflap" then
 		return progress >= 0.45 -- the top of the hop
+	elseif kind == "shypeek" then
+		return progress >= 0.7 -- peeking back out
 	elseif kind and kind ~= "roar" and ROARS[kind] then
 		return progress >= cfg.ROAR_BURST
 	end
@@ -304,6 +317,9 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "shypeek" then
+		-- Sinking low into its shell, then up again
+		lift = -cfg.SHY_DUCK * shyDuck(p)
 	elseif kind == "emberflap" then
 		-- A little flapping hop, the top halfway
 		lift = cfg.FLAP_HOP * math.sin(math.clamp((p - 0.2) / 0.6, 0, 1) * math.pi)
@@ -388,6 +404,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
 	local hiccup = if fidget == "hiccup" then hiccupPulse(cfg, progress) * idle else 0
+	local ducking = if fidget == "shypeek" then shyDuck(progress) * idle else 0
 	local sitting = if fidget == "sit" then amount else 0
 	-- Sitting right up on its hind legs (positive x tips a bone's front end up): the hips pitch the body up, the hind
 	-- legs turn back to stay planted
@@ -499,6 +516,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				x += rad(cfg.ROAR_NECK) * share * curve * idle
 			elseif hiccup > 0 then
 				x -= rad(cfg.HICCUP_HEAD) * share * hiccup -- jolted back by each hiccup
+			elseif ducking > 0 then
+				x += rad(cfg.SHY_HEAD) * share * ducking -- tucked down under the shell's rim
 			elseif grooming > 0 then
 				z += rad(10) * share * math.sin(progress * TAU * 2.5) * grooming -- tilting into the paws
 			elseif cracking > 0 then
