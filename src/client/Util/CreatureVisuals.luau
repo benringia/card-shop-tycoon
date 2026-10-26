@@ -533,7 +533,7 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 				local _, size = body.model:GetBoundingBox()
 				groundRing(body.cframe.Position, Color3.fromRGB(190, 180, 165), math.max(size.X, size.Z) * 0.9, false)
 			elseif cue then
-				if cue == "voidroar" or cue == "thunderroar" or cue == "stormroar" then
+				if cue == "voidroar" or cue == "thunderroar" or cue == "stormroar" or cue == "solarroar" then
 					roarFx(body)
 				end
 				SignatureFx.play(cue, body.model, body.size)
@@ -543,7 +543,11 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		local hop = if body.flying then pose.offsetY else pose.offsetY * anim.HOP_SCALE * pet.bounce
 		local extra = PetAnimator.bodyPose(pet, now)
 		hop += PetAnimator.flapLift(pet) * body.size
-		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll * anim.WADDLE_SCALE + extra.roll))
+		-- A fidget's pitch (a backflip) turns the creature round its middle, so its head doesn't go into the ground
+		local middle = CFrame.new(0, Party.CREATURE_HEIGHT * body.size * 0.5, 0)
+		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, 0) * CFrame.Angles(0, extra.yaw, 0)
+			* middle * CFrame.Angles(extra.pitch, 0, 0) * middle:Inverse()
+			* CFrame.Angles(-pose.pitch, 0, pose.roll * anim.WADDLE_SCALE + extra.roll))
 	else
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
 		local extra = stepIdle(body, now, body.speed >= motion.WALK_SPEED_MIN)

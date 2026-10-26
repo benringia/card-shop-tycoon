@@ -3,7 +3,8 @@
 -- Util/CreatureVisuals when Util/PetRig says the fidget's moment has come:
 -- * butterfly (Sprouthop): a little butterfly appears on the raised hand in a puff of sparkles, flutters round the
 --   head and flies off.
--- * thunderroar (Boltlynx): lightning crackles out of the mane in three bursts, with a flash.
+-- * thunderroar (Boltlynx): lightning crackles round its head and leaps off its ear and tail bolts in three bursts,
+--   with a flash.
 -- * voidroar (Voidmaw): dark void smoke bursts from every mouth.
 -- * stormroar (Stormjack): lightning leaps between its mouths in four bursts.
 -- * firebreath (Infernox): a cone of fire pours from its mouth for a moment, lighting up round it.
@@ -11,6 +12,10 @@
 --   it taps it; rolling over (roll) puffs up dust.
 -- * sneeze (Blazehound): a little puff of flame, embers and smoke from its nose.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
+-- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
+-- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
+-- * solarroar (Solarion): fire bursts from every mouth with a flash of sunlight.
+-- * voltcharge (Voltkit): lightning arcs between its raised fists, building up, then a bolt shoots into the sky.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
 local RunService = game:GetService("RunService")
@@ -24,6 +29,7 @@ local BUTTERFLY_COLORS = { Color3.fromRGB(120, 190, 255), Color3.fromRGB(255, 15
 local BUTTERFLY_SECONDS = 3.6
 local LIGHTNING_COLOR = Color3.fromRGB(255, 246, 170)
 local VOID_COLOR = Color3.fromRGB(120, 50, 200)
+local THUNDER_TIPS = { "Ear_Left_0", "Ear_Right_0", "Tail_3" }
 local rng = Random.new()
 
 local function bonePosition(model: Model, name: string): Vector3?
@@ -169,6 +175,14 @@ local function thunder(model: Model, size: number)
 			for _ = 1, 4 do
 				local out = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(0, 1), rng:NextNumber(-1, 1)).Unit
 				bolt(now + out * 0.35 * size, now + out * rng:NextNumber(1.1, 1.7) * size, 0.07 * size)
+			end
+			-- Lightning also leaps up off the bolts on its ear tips and tail tip
+			for _, name in THUNDER_TIPS do
+				local tip = bonePosition(model, name)
+				if tip then
+					local up = Vector3.new(rng:NextNumber(-0.4, 0.4), 1, rng:NextNumber(-0.4, 0.4)).Unit
+					bolt(tip + Vector3.yAxis * 0.3 * size, tip + up * rng:NextNumber(0.8, 1.2) * size, 0.05 * size)
+				end
 			end
 		end)
 	end
@@ -349,6 +363,132 @@ local function kungfu(model: Model, size: number)
 	end
 end
 
+-- An eclipse rising over the head: a dark orb ringed with golden light, a faint violet glow, then fading
+local function eclipse(model: Model, size: number)
+	local head = bonePosition(model, "Head_0")
+	if not head then
+		return
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Eclipse"
+	local radius = 0.7 * size
+	local corona = fxPart(Vector3.one * radius * 2.5, Color3.fromRGB(255, 214, 110), true)
+	corona.Shape = Enum.PartType.Ball
+	corona.Transparency = 0.55
+	local moon = fxPart(Vector3.one * radius * 2, Color3.fromRGB(16, 8, 26), false)
+	moon.Shape = Enum.PartType.Ball
+	moon.Material = Enum.Material.SmoothPlastic
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(170, 110, 255)
+	light.Brightness = 0
+	light.Range = 12 * size
+	light.Parent = moon
+	corona.Parent, moon.Parent = folder, folder
+	folder.Parent = workspace
+	local start = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.Heartbeat:Connect(function()
+		local t = os.clock() - start
+		local now = bonePosition(model, "Head_0")
+		if not now or not model.Parent or t > 2.8 then
+			connection:Disconnect()
+			folder:Destroy()
+			return
+		end
+		-- Rising out of the head over half a second, hanging there while the corona pulses, fading at the end
+		local rise = math.min(t / 0.5, 1)
+		local fade = math.clamp((t - 2.3) / 0.5, 0, 1)
+		local at = now + Vector3.new(0, (0.6 + 1.6 * rise) * size, 0)
+		moon.Position = at
+		corona.Position = at + model:GetPivot().LookVector * -0.05
+		corona.Size = Vector3.one * radius * (2.4 + 0.25 * math.sin(t * 6)) * rise
+		moon.Size = Vector3.one * radius * 2 * rise
+		moon.Transparency = fade
+		corona.Transparency = 0.55 + 0.45 * fade
+		light.Brightness = 2 * rise * (1 - fade)
+	end)
+	burst(CFrame.lookAt(head, head + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(200, 150, 255), Color3.fromRGB(255, 220, 120)), 16, 0.35 * size, 4 * size, 0.9)
+end
+
+-- A backflip: a puff of shadow smoke where it takes off, and a smoky trail through the flip
+local function backflip(model: Model, size: number)
+	local shadow = ColorSequence.new(Color3.fromRGB(120, 70, 190), Color3.fromRGB(30, 15, 45))
+	local feet = model:GetPivot().Position
+	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SMOKE, shadow, 10, 0.9 * size, 2.5 * size, 0.9)
+	for i = 1, 4 do
+		task.delay(i * 0.18, function()
+			local body = bonePosition(model, "Spine_0")
+			if body and model.Parent then
+				burst(CFrame.new(body), SMOKE, shadow, 4, 0.6 * size, 0.8 * size, 0.7)
+			end
+		end)
+	end
+end
+
+-- A solar roar: fire bursting from every mouth and a flash of sunlight
+local function solar(model: Model, size: number)
+	local forward = model:GetPivot().LookVector
+	local fire = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 150)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 120, 30)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 20, 20)),
+	})
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Bone") and string.match(descendant.Name, "^Jaw_%d$") then
+			local mouth = descendant.TransformedWorldCFrame.Position
+			burst(CFrame.lookAt(mouth, mouth + forward + Vector3.new(0, 0.2, 0)), "rbxasset://textures/particles/fire_main.dds", fire, 16, 1.1 * size, 8 * size, 0.6)
+		end
+	end
+	local at = model:GetPivot().Position + Vector3.new(0, 2 * size, 0)
+	local holder = Instance.new("Attachment")
+	holder.WorldPosition = at
+	holder.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 170, 70)
+	light.Brightness = 5
+	light.Range = 16 * size
+	light.Parent = holder
+	TweenService:Create(light, TweenInfo.new(0.9), { Brightness = 0 }):Play()
+	task.delay(1, holder.Destroy, holder)
+end
+
+-- A volt charge: lightning arcing between the raised fists, building up, then a bolt shot up into the sky with a flash
+local function voltcharge(model: Model, size: number)
+	for i = 0, 9 do
+		task.delay(i * 0.16, function()
+			local left, right = bonePosition(model, "Arm_Left_2"), bonePosition(model, "Arm_Right_2")
+			if not left or not right or not model.Parent then
+				return
+			end
+			bolt(left, right, (0.04 + i * 0.005) * size)
+			if i % 3 == 0 then
+				local middle = (left + right) / 2
+				burst(CFrame.lookAt(middle, middle + Vector3.yAxis), SPARKLES, ColorSequence.new(LIGHTNING_COLOR, Color3.fromRGB(120, 210, 255)), 6, 0.3 * size, 3 * size, 0.4)
+			end
+		end)
+	end
+	task.delay(1.7, function()
+		local left, right = bonePosition(model, "Arm_Left_2"), bonePosition(model, "Arm_Right_2")
+		if not left or not right or not model.Parent then
+			return
+		end
+		local middle = (left + right) / 2
+		for _ = 1, 3 do
+			bolt(middle, middle + Vector3.new(rng:NextNumber(-1, 1), 9, rng:NextNumber(-1, 1)) * size, 0.12 * size)
+		end
+		local flash = Instance.new("Attachment")
+		flash.WorldPosition = middle
+		flash.Parent = workspace.Terrain
+		local light = Instance.new("PointLight")
+		light.Color = LIGHTNING_COLOR
+		light.Brightness = 5
+		light.Range = 14 * size
+		light.Parent = flash
+		TweenService:Create(light, TweenInfo.new(0.6), { Brightness = 0 }):Play()
+		task.delay(0.7, flash.Destroy, flash)
+	end)
+end
+
 -- The effect of a signature idle (Party.SIGNATURE), from the creature's current pose; size: its size multiplier
 function SignatureFx.play(kind: string, model: Model, size: number)
 	if kind == "butterfly" then
@@ -369,6 +509,14 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		sneeze(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
+	elseif kind == "eclipse" then
+		eclipse(model, size)
+	elseif kind == "backflip" then
+		backflip(model, size)
+	elseif kind == "solarroar" then
+		solar(model, size)
+	elseif kind == "voltcharge" then
+		voltcharge(model, size)
 	end
 end
 

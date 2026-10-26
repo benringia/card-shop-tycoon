@@ -55,6 +55,14 @@ function PetRig.role(name: string): Role?
 	if wingSide and wingSegment then
 		return { kind = "wing", pair = 0, side = wingSide, segment = tonumber(wingSegment) :: number, key = `wing:{wingSide}:{wingSegment}` }
 	end
+	local capeSegment = string.match(name, "^Cape_(%d)$")
+	if capeSegment then
+		return { kind = "cape", pair = 0, side = "", segment = tonumber(capeSegment) :: number, key = `cape:{capeSegment}` }
+	end
+	local tailIndex, tailSegment = string.match(name, "^Tails_(%d)_(%d)$")
+	if tailIndex and tailSegment then
+		return { kind = "tails", pair = tonumber(tailIndex) :: number, side = "", segment = tonumber(tailSegment) :: number, key = `tails:{tailIndex}:{tailSegment}` }
+	end
 	local hydraHead, hydraSegment = string.match(name, "^Hydra_(%d)_(%d)$")
 	if hydraHead and hydraSegment then
 		return { kind = "hydra", pair = tonumber(hydraHead) :: number, side = "", segment = tonumber(hydraSegment) :: number, key = `hydra:{hydraHead}:{hydraSegment}` }
@@ -203,7 +211,7 @@ local function sneezeCurve(cfg: any, progress: number): number
 	return 1.2 * math.sin(math.min(q * 3, 1) * math.pi / 2) * (1 - q) ^ 2
 end
 
-local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true }
+local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, solarroar = true }
 
 export type Body = { lift: number, yaw: number, roll: number, pitch: number }
 
@@ -223,6 +231,12 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.5 -- belly-down in the water: a splash
 	elseif kind == "kungfu" then
 		return progress >= 0.25 -- the first chop
+	elseif kind == "eclipse" then
+		return progress >= 0.25 -- sitting up, looking to the sky
+	elseif kind == "voltcharge" then
+		return progress >= 0.15 -- fists up, the lightning starts
+	elseif kind == "backflip" then
+		return progress >= 0.1 -- taking off
 	elseif kind == "stomp" then
 		return progress >= 0.95 -- as it lands
 	elseif kind and kind ~= "roar" and ROARS[kind] then
@@ -256,6 +270,12 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		pitch = math.rad(6) * envelope(p)
 	elseif kind == "hop" then
 		lift = cfg.HOP_HEIGHT * math.abs(math.sin(p * TAU))
+	elseif kind == "backflip" then
+		-- Crouch, spring up and flip right over backwards, land and settle
+		local air = math.clamp((p - 0.1) / 0.75, 0, 1)
+		local eased = air * air * (3 - 2 * air)
+		pitch = TAU * eased -- rearing back, right over
+		lift = cfg.BACKFLIP_HEIGHT * math.sin(air * math.pi)
 	elseif kind == "roll" then
 		-- Rolling right over in the water, round the length of the body (a sea otter)
 		local eased = p * p * (3 - 2 * p)
@@ -291,7 +311,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local wag = state.tailPhase or state.time * TAU / cfg.TAIL_SECONDS
 	local hasTail, hasUpperSpine, hasNeck, hasHydra = false, false, false, false
 	for _, role in roles do
-		hasTail = hasTail or role.kind == "tail"
+		hasTail = hasTail or role.kind == "tail" or role.kind == "tails"
 		hasUpperSpine = hasUpperSpine or (role.kind == "spine" and role.segment == 1)
 		hasNeck = hasNeck or role.kind == "neck"
 		hasHydra = hasHydra or role.kind == "hydra"
@@ -303,13 +323,17 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local settle = 1 - math.clamp((progress - 0.85) / 0.15, 0, 1)
 	local lifted = if fidget == "butterfly" then hold(progress) * idle else 0
 	local chopping = if fidget == "kungfu" then hold(progress) * idle else 0
+	-- A volt charge: both fists brought up in front, braced, lightning arcing between them
+	local charging = if fidget == "voltcharge" then hold(progress) * idle else 0
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
 	local sitting = if fidget == "sit" then amount else 0
 	-- Sitting right up on its hind legs (positive x tips a bone's front end up): the hips pitch the body up, the hind
 	-- legs turn back to stay planted
-	local sitUp = if biped then 0 else grooming + cracking
+	-- Gazing up at an eclipse: sitting back on its haunches, head raised to the sky
+	local gazing = if fidget == "eclipse" then hold(progress) * idle else 0
+	local sitUp = if biped then 0 else grooming + cracking + gazing * 0.45
 	-- No tail bones: the tails are skinned to the hips, so the hips sway them and the spine turns back. Two-legged
 	-- rigs without a tail have no tail to swish: they shift their weight slowly from foot to foot instead
 	local hips = if hasTail or biped then 0 else rad(cfg.HIP_SWAY) * math.sin(wag) * wagScale
@@ -417,6 +441,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				z += rad(10) * share * math.sin(progress * TAU * 2.5) * grooming -- tilting into the paws
 			elseif cracking > 0 then
 				x += rad(15) * share * cracking -- looking down at the shell
+			elseif gazing > 0 then
+				x -= rad(cfg.ECLIPSE_LOOK) * share * gazing -- looking up at the sky
 			elseif fidget == "butterfly" then
 				-- Looking up at the butterfly and following it round
 				x -= rad(cfg.BUTTERFLY_LOOK) * share * lifted
@@ -457,6 +483,18 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				local delay = if hasHydra then role.pair * cfg.ROAR_RIPPLE else 0
 				x = math.min(x, -rad(cfg.JAW_YAWN) * gape(cfg, progress - delay) * settle * idle)
 			end
+		elseif role.kind == "cape" then
+			-- A cape hanging from the shoulders (Cape_<bone>): it billows out behind as the creature runs, flutters in
+			-- the breeze standing, each bone a little behind the one above. Negative x swings it back
+			local flutter = rad(cfg.CAPE_FLUTTER) * math.sin(state.time * TAU / cfg.CAPE_SECONDS - role.segment * 0.9)
+			x = -(rad(cfg.CAPE_BILLOW) * moving * (if role.segment == 0 then 1 else 0.35)) - flutter * (0.5 + role.segment * 0.5)
+				- rad(10) * charging * (if role.segment == 0 then 1 else 0.3)
+			z = rad(cfg.CAPE_FLUTTER) * 0.5 * math.sin(state.time * TAU / cfg.CAPE_SECONDS * 0.7 + role.segment) * idle
+		elseif role.kind == "tails" then
+			-- One of many tails (Tails_<tail>_<bone>, a kitsune): each sways on its own beat, fanned out from the others
+			local amplitude = rad(cfg.TAIL_WAG) * (1 + cfg.TAIL_GROW * role.segment) * wagScale * cfg.TAILS_AMOUNT
+			y = amplitude * math.sin(wag - role.segment * cfg.TAIL_LAG + role.pair * cfg.TAILS_SPREAD)
+			x = -breath * 0.5 + rad(cfg.TAILS_RISE) * math.sin(wag * 0.5 + role.pair * 1.3) * (1 - 0.5 * moving)
 		elseif role.kind == "tail" then
 			local amplitude = rad(cfg.TAIL_WAG) * (1 + cfg.TAIL_GROW * role.segment) * wagScale
 			y = amplitude * math.sin(wag - role.segment * cfg.TAIL_LAG)
@@ -476,6 +514,10 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			end
 			if role.segment == 0 and fidget == "stretch" then
 				x += rad(cfg.STRETCH) * 1.6 * amount
+			end
+			if charging > 0 then
+				-- Both fists up in front, elbows bent, braced
+				x += (if role.segment == 0 then rad(cfg.VOLT_FISTS) else rad(35) / role.segment) * charging
 			end
 			if chopping > 0 then
 				-- Kung fu: the right arm chops, then the left, twice

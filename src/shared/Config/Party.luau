@@ -58,13 +58,16 @@ return {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
 		Infernox = { hang = 8, forward = 60, bend = 70, swing = 8 }, -- nearly straight down first, so the forward swing brings them in front
 		Thornback = { hang = 8, forward = 65, bend = 90, swing = 6 }, -- scythes folded up in front, praying
+		Duskstalker = { hang = 14, forward = 10, bend = 30, swing = 38 }, -- fists ready, a fighter's swagger
+		Voltkit = { hang = 12, forward = 5, bend = 20, swing = 34 }, -- a hero's stride
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
-	-- another, Boltlynx roars with lightning crackling round its mane, Stormjack's heads roar with lightning leaping
+	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
 	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Blazehound sneezes a puff of fire,
-	-- Thornback does kung fu
+	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
+	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
@@ -74,6 +77,10 @@ return {
 		Puffpuddle = { fidget = "shellcrack", chance = 0.35 },
 		Blazehound = { fidget = "sneeze", chance = 0.35 },
 		Thornback = { fidget = "kungfu", chance = 0.35 },
+		EclipseFox = { fidget = "eclipse", chance = 0.35 },
+		Duskstalker = { fidget = "backflip", chance = 0.35 },
+		Solarion = { fidget = "solarroar", chance = 0.35 },
+		Voltkit = { fidget = "voltcharge", chance = 0.35 },
 	} :: { [string]: { fidget: string, chance: number } },
 	-- How a model carries itself, so each moves like the creature it is (else the defaults): its own idle fidgets
 	-- (else PET_ANIM.FIDGETS), its tail's swish speed and size (times PET_ANIM's), and how much it bounces walking
@@ -87,6 +94,10 @@ return {
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
+		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7 },
+		Duskstalker = { fidgets = { "look", "tilt", "stretch", "hop", "shake", "yawn", "spin" }, tailSpeed = 0.7 },
+		Solarion = { fidgets = { "look", "sniff", "yawn", "shake", "stomp", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
+		Voltkit = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "shake", "wag", "yawn" }, tailSpeed = 0.8, tailAmount = 1.1 },
 	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, bounce: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
@@ -117,6 +128,14 @@ return {
 		TAIL_WALK_AMOUNT = 0.55, -- and smaller
 		TAIL_LAG = 0.7, -- radians of phase per segment (the wave)
 		EAR_FLOP = 12,
+		-- Many tails (Tails_<tail>_<bone>, a kitsune): each on its own beat, fanned, rising and falling a little
+		TAILS_SPREAD = 1.9, -- radians of wag between one tail and the next
+		TAILS_AMOUNT = 0.7, -- of a single tail's swish
+		TAILS_RISE = 6, -- degrees each tail lifts and drops
+		-- Capes (Cape_<bone>): billowing back when running, fluttering standing
+		CAPE_BILLOW = 45,
+		CAPE_FLUTTER = 6,
+		CAPE_SECONDS = 1.6,
 		LOOK = 38, -- look around: head and neck turn
 		TILT = 18, -- head tilt
 		SNIFF = 24, -- head and neck down
@@ -161,6 +180,9 @@ return {
 		BUTTERFLY_LOOK = 20, -- the head looks up...
 		BUTTERFLY_FOLLOW = 30, -- ...and turns to follow it round
 		KUNGFU_CHOP = 60, -- each arm swings up and chops this far
+		VOLT_FISTS = 60, -- Voltkit's volt charge brings both fists up this far
+		ECLIPSE_LOOK = 40, -- Eclipse Fox looks up at its eclipse this far
+		BACKFLIP_HEIGHT = 1.4, -- studs at size 1
 		SIT_UP = 45, -- a four-legged creature sitting right up on its hind legs (a sea otter grooming) pitches up this far
 		GROOM_PAW = 55, -- a sea otter sitting up lifts its front paws this far, to its face or to hold a shell...
 		SHELL_TAP = 20, -- ...and taps the shell by dropping them this far
@@ -192,7 +214,7 @@ return {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
-			groom = 3, shellcrack = 3, roll = 1.4,
+			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
 		},
 		BLEND_SECONDS = 0.25, -- standing <-> walking
 		DISTANCE = 70, -- only animated this close to the camera
@@ -239,18 +261,18 @@ return {
 		Zappit = { pack = "UltraPets", model = "FairyRabbit", tint = { 255, 240, 150 } },
 		Fizzlebug = { pack = "UltraPets", model = "Venowasp" },
 		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },
-		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/build_boltlynx.py
+		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/rig_boltlynx.py (Meshy-generated lynx)
 		Stormjack = { pack = "Originals", model = "Stormjack", size = 1.8 }, -- original, tools/blender/build_stormjack.py
 		Thunderhorn = { pack = "UltraPets", model = "Lumistag", tint = { 255, 235, 150 }, size = 1.3 },
-		Voltkit = { pack = "UltraPets", model = "PurpleFox", tint = { 255, 220, 120 }, size = 1.3 },
+		Voltkit = { pack = "Originals", model = "Voltkit", size = 1.4 }, -- original, tools/blender/build_voltkit.py
 		Gloomlet = { pack = "UltraPets", model = "DarkBat", size = 1.3 },
 		Wispurr = { pack = "UltraPets", model = "FairyRabbit", tint = { 170, 130, 230 }, size = 1.3 },
 		Hushmoth = { pack = "UltraPets", model = "FairyMoth", size = 1.3 },
 		Nightowl = { pack = "UltraPets", model = "HeronDemon" },
-		["Eclipse Fox"] = { pack = "UltraPets", model = "PurpleFox" },
-		Duskstalker = { pack = "UltraPets", model = "FighterMonkey", tint = { 150, 110, 210 }, size = 1.3 },
+		["Eclipse Fox"] = { pack = "Originals", model = "EclipseFox", size = 1.2 }, -- original, tools/blender/build_eclipsefox.py
+		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.4 }, -- original, tools/blender/build_duskstalker.py
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
-		Solarion = { pack = "CrystalTitans", model = "RubyCerberus", size = 2.2 },
+		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/build_solarion.py
 		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 3 }, -- original, tools/blender/build_voidmaw.py
 		-- Frontier set
 		Frostfang = { pack = "UltraPets", model = "PurpleFox", tint = { 170, 220, 255 } },

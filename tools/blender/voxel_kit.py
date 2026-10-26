@@ -1,8 +1,9 @@
 """Shared kit for the blocky creature build scripts (build_<card>.py) run inside Blender.
 
 Builder collects boxes, pyramids, rounded boxes and smooth ellipsoids into one mesh, each face coloured by a palette
-cell (an 8x8 grid texture) and every vertex weighted fully to one bone. New models should lean on round_box and blob
-so they look as little blocky as possible (box and spike stay for the older, chunkier ones). build() makes a fresh file with the armature and mesh, export() saves
+cell (an 8x8 grid texture) and every vertex weighted fully to one bone. Blocky voxel builds use box, spike and cube
+(a box sized like an ellipsoid); round_box and blob make smoother shapes (Puffpuddle, Solarion). Blocky is the
+default: the smooth look made Eclipse Fox and Duskstalker look awkward, so they went back to blocky. build() makes a fresh file with the armature and mesh, export() saves
 assets/blender/<Name>/<Name>.blend and .fbx (texture embedded) for Studio's 3D Importer.
 
 Blender: Z up, creatures face -Y, their left is +X (Roblox: -Z front once imported).
@@ -115,6 +116,10 @@ class Builder:
         bmesh.ops.bevel(self.bm, geom=list(edges), offset=radius, segments=segments, profile=0.5, affect="EDGES", clamp_overlap=True)
         # Bevelling replaces the box's faces: colour everything that's new since before the box
         self._finish([f for f in self.bm.faces if f not in before], color, bone, True)
+
+    def cube(self, center, radii, color, bone, rot=None, segments=None, rings=None):
+        """The blocky stand-in for a blob: a box about as big as that ellipsoid looks (radii along x, y, z)."""
+        self.box(center, (radii[0] * 1.7, radii[1] * 1.7, radii[2] * 1.7), color, bone, rot)
 
     def blob(self, center, radii, color, bone, rot=None, segments=10, rings=7):
         """A smooth ellipsoid (radii along x, y, z, turned by rot): heads, bellies, cheeks, paws."""
