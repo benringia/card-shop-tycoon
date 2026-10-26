@@ -335,6 +335,8 @@ def skin(mesh, rig, bones, params):
         arm_share = 0.0
         if arm_bones:
             near_arm = min(_segment_distance(p, *bone) for bone in arm_bones)
+            if leg and share > 0 and near_arm < near_leg:
+                share = 0.0  # knuckles hanging by the knees belong to the arm, or they'd stretch with the stride
             arm_share = _ramp(near_arm, params.arm_radius, params.arm_core) * (1 - share)
         body = 1 - share - arm_share
         scored = {}

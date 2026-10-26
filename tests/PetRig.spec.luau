@@ -551,6 +551,49 @@ return {
 		expect.near(PetRig.body(CFG, "thundercall", 1, 1, true).pitch, 0, 1e-6, "it doesn't come back level")
 	end,
 
+	["a heavy gait sways the body more, swings the legs less and bends the knees"] = function()
+		local APE = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Right_0",
+			"0_Left_Limb_0", "0_Left_Limb_1", "0_Right_Limb_0", "0_Right_Limb_1" }
+		local function walk(phase: number, sway: number?, legSwing: number?): { [string]: PetRig.Angles }
+			return poseAt(APE, { time = 0, phase = phase, moving = 1, fidget = nil, fidgetProgress = 0, sway = sway, legSwing = legSwing })
+		end
+		local plain, heavy = walk(math.pi / 2), walk(math.pi / 2, 2.5, 0.7)
+		assert(math.abs(heavy["pelvis:0"].z) > math.abs(plain["pelvis:0"].z) * 2, "a heavy gait doesn't sway more")
+		expect.near(heavy["leg:0:Left:0"].x, plain["leg:0:Left:0"].x * 0.7, 1e-6, "legSwing doesn't scale the stride angle")
+		local stance = walk(math.pi, 2.5, 0.7) -- mid-stance: the left foot planted under the body
+		assert(stance["leg:0:Left:1"].x < -math.rad(3), "the standing knee doesn't flex under a heavy body")
+		assertBounded(heavy, "heavy gait")
+	end,
+
+	["a lava slam pounds its chest, then raises both fists and slams them down"] = function()
+		assert(PetRig.cue(CFG, "lavaslam", 0.75) and not PetRig.cue(CFG, "lavaslam", 0.6), "the fire ring doesn't come with the slam")
+		local APE = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Left_1", "Arm_Right_0", "Arm_Right_1",
+			"0_Left_Limb_0", "0_Right_Limb_0" }
+		local function at(progress: number): { [string]: PetRig.Angles }
+			return poseAt(APE, { time = 0, phase = 0, moving = 0, fidget = "lavaslam", fidgetProgress = progress,
+				armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		end
+		local rest = poseAt(APE, { time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0,
+			armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		local beats = 0
+		local last = 0
+		for step = 0, 40 do
+			local lift = at(step / 40 * 0.5)["arm:Left:0"].x - rest["arm:Left:0"].x
+			if lift > math.rad(25) and last <= math.rad(25) then
+				beats += 1
+			end
+			last = lift
+		end
+		assert(beats >= 2, "it doesn't pound its chest")
+		local up = at(0.65)
+		assert(up["arm:Left:0"].x - rest["arm:Left:0"].x > math.rad(CFG.SLAM_RAISE) * 0.8
+			and up["arm:Right:0"].x - rest["arm:Right:0"].x > math.rad(CFG.SLAM_RAISE) * 0.8, "both fists don't go up for the slam")
+		assert(at(0.8)["arm:Left:0"].x - rest["arm:Left:0"].x < math.rad(15), "the fists don't come down")
+		for step = 0, 20 do
+			assertBounded(at(step / 20), "lava slam")
+		end
+	end,
+
 	["folded wings on the ground shift gently and spread wide for a roar"] = function()
 		local DRAGON = { "Pelvis", "Spine_0", "Neck", "Head_0", "Jaw_0", "Wing_Left_0", "Wing_Left_1", "Wing_Right_0", "Wing_Right_1",
 			"0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0", "Tail_0" }

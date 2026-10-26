@@ -39,6 +39,8 @@ export type Rig = {
 	tailSpeed: number, -- and its tail's swish speed and size, and how much it bounces walking
 	tailAmount: number,
 	bounce: number,
+	sway: number?, -- Party.CREATURE_STYLE: a heavy gait's hip roll and leg swing
+	legSwing: number?,
 	cued: boolean, -- the playing fidget's effect has gone off
 }
 
@@ -160,7 +162,7 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		bones = bones,
 		roles = roles,
 		biped = PetRig.isBiped(roles),
-		stride = Party.PET_ANIM.STRIDE * size,
+		stride = Party.PET_ANIM.STRIDE * size * (style and style.stride or 1),
 		moving = 0,
 		fidget = nil,
 		fidgetStart = 0,
@@ -186,6 +188,8 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		tailSpeed = style and style.tailSpeed or 1,
 		tailAmount = style and style.tailAmount or 1,
 		bounce = style and style.bounce or 1,
+		sway = style and style.sway,
+		legSwing = style and style.legSwing,
 	}
 end
 
@@ -258,6 +262,8 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		armBend = rig.armBend,
 		armSwing = rig.armSwing,
 		tailAmount = rig.tailAmount,
+		sway = rig.sway,
+		legSwing = rig.legSwing,
 		undulate = rig.undulate,
 		swimPhase = rig.swimPhase,
 	}

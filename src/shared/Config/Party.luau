@@ -65,6 +65,7 @@ return {
 		Zappit = { hang = 0, forward = 0, bend = 10, swing = 18 }, -- arms hang at its sides
 		Mossmole = { hang = 0, forward = 0, bend = 0, swing = 4 }, -- hugging its moss garden
 		Petalpaw = { hang = 0, forward = 0, bend = 15, swing = 24 },
+		CinderTitan = { hang = 6, forward = 8, bend = 20, swing = 30 }, -- heavy knuckle-dragging swing
 		Ashbeak = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- folded wings, fluttering a little
 		Fizzlebug = { hang = 0, forward = 0, bend = 15, swing = 12 },
 		Wispurr = { hang = 0, forward = 0, bend = 0, swing = 12 }, -- paws held up in front
@@ -72,7 +73,7 @@ return {
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -92,6 +93,7 @@ return {
 		AbyssalKoi = { fidget = "abysschomp", chance = 0.35 },
 		Thunderhorn = { fidget = "thundercall", chance = 0.35 },
 		Riftwalker = { fidget = "riftroar", chance = 0.35 },
+		CinderTitan = { fidget = "lavaslam", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "stormroar", chance = 0.35 },
@@ -107,6 +109,8 @@ return {
 	-- How a model carries itself, so each moves like the creature it is (else the defaults): its own idle fidgets
 	-- (else PET_ANIM.FIDGETS), its tail's swish speed and size (times PET_ANIM's), and how much it bounces walking
 	-- (times PET_ANIM.HOP_SCALE). Big beasts swish slowly, don't hop or spin, and walk heavily; Infernox stomps.
+	-- A heavy gait: stride (times PET_ANIM.STRIDE: longer, slower steps), legSwing (times LEG_SWING) and sway (times
+	-- the two-legged hip roll; above 1 it also sinks onto a bent standing knee, PET_ANIM.HEAVY_KNEE).
 	CREATURE_STYLE = {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
 		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
@@ -128,6 +132,7 @@ return {
 		AbyssalKoi = { fidgets = { "look", "tilt", "shake" }, tailSpeed = 0.5 }, -- a lurking swimmer
 		Thunderhorn = { fidgets = { "look", "sniff", "shake", "stomp", "tilt" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.35 }, -- a proud stag
 		Riftwalker = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.4, tailAmount = 0.8, bounce = 0.3 }, -- a prowling dragon
+		CinderTitan = { fidgets = { "look", "sniff", "shake", "stomp", "yawn", "stretch" }, bounce = 0.9, stride = 1.35, legSwing = 0.75, sway = 2.6 }, -- a heavy brute: long slow lumbering steps, rolling from foot to foot
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
@@ -135,7 +140,7 @@ return {
 		Duskstalker = { fidgets = { "look", "tilt", "stretch", "hop", "shake", "yawn", "spin" }, tailSpeed = 0.7 },
 		Solarion = { fidgets = { "look", "sniff", "yawn", "shake", "stomp", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
 		Voltkit = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "shake", "wag", "yawn" }, tailSpeed = 0.8, tailAmount = 1.1 },
-	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, bounce: number? } },
+	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
 		HeronDemon = 0.55,
@@ -185,6 +190,7 @@ return {
 		IDLE_SWAY_SECONDS = 4.2,
 		HIP_TWIST = 9, -- walking on two legs: the hips turn with the forward leg...
 		HIP_ROLL = 4, -- ...and dip over the standing one
+		HEAVY_KNEE = 14, -- degrees a heavy gait (CREATURE_STYLE sway) bends the standing knee
 		SHOULDER_COUNTER = 0.75, -- the chest turns back against the hips (more than cancelling them)
 		SIT = 22, -- sit: hips down, hind legs fold
 		SCRATCH = 50, -- a hind leg up to scratch
@@ -256,8 +262,13 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2, abysschomp = 2, thundercall = 2.4, riftroar = 3,
+			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2, abysschomp = 2, thundercall = 2.4, riftroar = 3, lavaslam = 3,
 		},
+		-- Cinder Titan's lava slam: how far the arms pound the chest and go up for the slam (degrees), and the rise
+		-- (studs at size 1)
+		SLAM_POUND = 45,
+		SLAM_RAISE = 66,
+		SLAM_LIFT = 0.25,
 		-- Thunderhorn's thunder call: how far it rears (degrees) and lifts (studs at size 1) before the strike
 		THUNDER_REAR = 32,
 		THUNDER_LIFT = 0.35,
@@ -365,7 +376,7 @@ return {
 		Frostfang = { pack = "UltraPets", model = "PurpleFox", tint = { 170, 220, 255 } },
 		["Gale Sprite"] = { pack = "UltraPets", model = "NeonSwallow" },
 		Riftwalker = { pack = "Originals", model = "Riftwalker", size = 1.5 }, -- original, tools/blender/rig_riftwalker.py (Meshy-generated void dragon)
-		["Cinder Titan"] = { pack = "UltraPets", model = "GorillaVulcano" },
+		["Cinder Titan"] = { pack = "Originals", model = "CinderTitan", size = 2 }, -- original, tools/blender/rig_cindertitan.py (Meshy-generated volcano gorilla)
 		["Aurora Drake"] = { pack = "CrystalTitans", model = "RainbowHydra", size = 2.2 },
 		Stormking = { pack = "CrystalTitans", model = "SapphireCrab", size = 2.2 },
 	} :: { [string]: { pack: string, model: string, variant: string?, tint: { number }?, hue: number?, size: number?, flies: boolean? } },

@@ -160,6 +160,8 @@ each other. One solid closed shape.
   like a famous character. Fix small things in Blender (recolour, add bolts with `rig_kit.bolt`); regenerate only when
   the mesh is unusable. Re-polling a finished job re-imports it for free.
 
+Heavy two-legged creatures can lumber: `Party.CREATURE_STYLE` `stride` (longer, slower steps), `legSwing` (smaller
+leg angle) and `sway` (more hip roll and twist, the standing knee bending under the weight, `PET_ANIM.HEAVY_KNEE`).
 Folded wings on the ground (`Wing_<Side>_<n>` on a creature that walks) shift a little with each breath
 (`PET_ANIM.WING_REST`) and spread wide for a roar (`WING_SPREAD`).
 Capes hang on their own bones (`Cape_0..2` from the chest): they billow back as the creature runs and flutter standing,
@@ -213,6 +215,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   curve) as lightning strikes from the sky onto its antlers and crackles round its hooves, with a flash.
 - **riftroar** (Riftwalker): a roar (rears back, lunges, shockwave ring) that tears a swirling violet void rift open
   in the air behind it, then closes it, with dark smoke from its jaws.
+- **lavaslam** (Cinder Titan): pounds its chest with each arm in turn (`SLAM_POUND`), raises both fists
+  (`SLAM_RAISE`, `SLAM_LIFT`) and slams them down: a ring of fire and lava bursts out, its fists blazing.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -289,6 +293,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   fanged roaring maw, swept-back horns, back spikes, folded wings (`Wing_` bones) and a long spiked tail; prowls on four
   legs; its lower jaw is on `Jaw_0` (cut out of the head with `rig_kit.reweight`) and opens for roars and yawns.
   Right first time. 27 bones, about 10,000 triangles. Replaced the VoidDragon.
+- **Cinder Titan** (`rig_cindertitan.py`, Meshy, Epic): a massive charcoal volcano gorilla with a molten lava chest,
+  glowing claws and rock shoulder armour; lumbers upright with a heavy gait (long slow steps, rolling from foot to
+  foot onto a bent knee: `CREATURE_STYLE` stride/legSwing/sway), its huge arms swinging low (`ARM_POSE`). Remeshed and baked.
+  18 bones, 10,000 triangles. Replaced the GorillaVulcano.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

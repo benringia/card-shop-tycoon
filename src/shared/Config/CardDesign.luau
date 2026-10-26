@@ -53,7 +53,7 @@ return {
 		Frostfang = "rbxassetid://71053054421008",
 		["Gale Sprite"] = "rbxassetid://135400093816653",
 		Riftwalker = "rbxassetid://134478592556938",
-		["Cinder Titan"] = "rbxassetid://110760394592318",
+		["Cinder Titan"] = "rbxassetid://72010145388086",
 		["Aurora Drake"] = "rbxassetid://100546252309842",
 		Stormking = "rbxassetid://101277001928201",
 	} :: { [string]: string },

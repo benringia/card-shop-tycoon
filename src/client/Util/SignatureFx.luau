@@ -26,6 +26,7 @@
 -- * abysschomp (Abyssal Koi): draws back and lunges, snapping; a dark surge of deep water bursts from its fangs.
 -- * thundercall (Thunderhorn): rears and stamps; lightning strikes its golden antlers and crackles round its hooves.
 -- * riftroar (Riftwalker): a roar that tears a swirling violet void rift open in the air behind it, then closes it.
+-- * lavaslam (Cinder Titan): pounds its chest, raises both fists and slams them down in a ring of fire and lava.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -47,6 +48,7 @@ local BUTTERFLY_COLORS = { Color3.fromRGB(120, 190, 255), Color3.fromRGB(255, 15
 local BUTTERFLY_SECONDS = 3.6
 local LIGHTNING_COLOR = Color3.fromRGB(255, 246, 170)
 local VOID_COLOR = Color3.fromRGB(120, 50, 200)
+local FIRE = "rbxasset://textures/particles/fire_main.dds"
 local THUNDER_TIPS = { "Ear_Left_0", "Ear_Right_0", "Tail_3" }
 local rng = Random.new()
 
@@ -421,6 +423,37 @@ local function sporepuff(model: Model, size: number)
 	task.delay(1.5, glow.Destroy, glow)
 end
 
+-- A lava slam: its fists blaze while it pounds its chest; as they hit the ground a ring of fire and lava bursts out
+local function lavaslam(model: Model, size: number)
+	local pivot = model:GetPivot()
+	local front = pivot.Position + pivot.LookVector * 0.9 * size
+	for i = 1, 16 do
+		local angle = i / 16 * math.pi * 2
+		local flame = fxPart(Vector3.new(0.4, 0.5, 0.4) * size, if i % 2 == 0 then Color3.fromRGB(255, 120, 30) else Color3.fromRGB(255, 200, 70), true)
+		flame.CFrame = CFrame.new(front + Vector3.new(math.cos(angle), 0.2, math.sin(angle)) * 0.6 * size)
+		flame.Parent = workspace
+		local out = TweenService:Create(flame, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(front + Vector3.new(math.cos(angle) * 3, rng:NextNumber(0.4, 1.2), math.sin(angle) * 3) * size),
+			Size = Vector3.new(0.1, 0.1, 0.1) * size,
+			Transparency = 1,
+		})
+		out.Completed:Once(function()
+			flame:Destroy()
+		end)
+		out:Play()
+	end
+	local up = CFrame.lookAt(front, front + Vector3.yAxis)
+	burst(up, FIRE, ColorSequence.new(Color3.fromRGB(255, 220, 110), Color3.fromRGB(255, 70, 20)), 20, 1 * size, 4 * size, 0.6)
+	burst(up, SMOKE, ColorSequence.new(Color3.fromRGB(80, 70, 65)), 10, 1.4 * size, 2 * size, 1.2)
+	burst(up, SPARKLES, ColorSequence.new(Color3.fromRGB(255, 160, 60)), 20, 0.35 * size, 7 * size, 0.8)
+	for _, name in { "Arm_Left_2", "Arm_Right_2" } do
+		local fist = bonePosition(model, name)
+		if fist then
+			burst(CFrame.lookAt(fist, fist + Vector3.yAxis), FIRE, ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 80, 20)), 8, 0.6 * size, 2 * size, 0.6)
+		end
+	end
+end
+
 -- A rift roar: a swirling violet void rift tears open in the air behind it, spins, and closes; dark smoke from its jaws
 local function riftroar(model: Model, size: number)
 	local pivot = model:GetPivot()
@@ -571,7 +604,6 @@ local function tidecall(model: Model, size: number)
 end
 
 -- A flame swoop: through the dive its wing tips and tail stream fire, with a burst of embers as it levels out
-local FIRE = "rbxasset://textures/particles/fire_main.dds"
 local function flameswoop(model: Model, size: number)
 	local seconds = Party.PET_ANIM.FIDGET_SECONDS.flameswoop * 0.6
 	for step = 0, 6 do
@@ -910,6 +942,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		thundercall(model, size)
 	elseif kind == "riftroar" then
 		riftroar(model, size)
+	elseif kind == "lavaslam" then
+		lavaslam(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
