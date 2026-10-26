@@ -133,6 +133,9 @@ default: the smooth look made Eclipse Fox and Duskstalker look awkward, so they 
 
 ### Meshy-generated originals (the current way)
 
+Priority (Meshy credits are capped): Very Rare, Epic and Legendary cards first, then the other cards still on bought
+models if credits remain; the rest use Cute Pets models, tinted per card.
+
 New originals are generated with Meshy through the Blender MCP and rigged with `tools/blender/rig_kit.py` (one
 `rig_<card>.py` per creature). Meshy credits are capped (1000 in all), so each prompt must be right the first time.
 
@@ -192,6 +195,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   as bubbles rise and its shell sparkles aqua.
 - **buzzzap** (Fizzlebug): a zigzag buzz up into the air (`BUZZ_ZIGZAG`, `BUZZ_RISE`); at the top a bolt shoots down
   from its stinger and its antenna bolts spark.
+- **ghostfloat** (Wispurr): drifts up swaying (`GHOST_RISE`, `GHOST_SWAY`) while fading half see-through
+  (`GHOST_FADE`), violet wisps swirling round it, then sinks back down solid.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -246,6 +251,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   lightning bolts on its antenna tips and a glowing cyan stinger (both added by hand: Meshy left the stinger as a loose
   crystal). Flies (`flies = true`), one `Wing_` bone per wing beating (`WING_SPEED` 0.9: faster shook the whole body). 19 bones, about 7,700
   triangles. Replaced the Venowasp.
+- **Wispurr** (`rig_wispurr.py`, Meshy): a cute upright ghost kitten, tinted pale lavender by hand, with big teal
+  eyes, a violet star on its forehead and a tail ending in a glowing violet wisp flame; paws held up in front. 20 bones,
+  about 6,800 triangles. Replaced the tinted FairyRabbit.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

@@ -497,6 +497,19 @@ return {
 		expect.near(done.lift, 0, 1e-6, "it doesn't settle back")
 	end,
 
+	["a ghost float drifts up and sways, then sinks back down"] = function()
+		assert(PetRig.cue(CFG, "ghostfloat", 0.1) and not PetRig.cue(CFG, "ghostfloat", 0.05), "the fade doesn't start as it rises")
+		assert(PetRig.body(CFG, "ghostfloat", 0.5, 1, true).lift > CFG.GHOST_RISE * 0.9, "it doesn't float up")
+		local sways = false
+		for step = 1, 19 do
+			sways = sways or math.abs(PetRig.body(CFG, "ghostfloat", step / 20, 1, true).roll) > math.rad(4)
+		end
+		assert(sways, "it doesn't sway as it floats")
+		local done = PetRig.body(CFG, "ghostfloat", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't sink back down")
+		expect.near(done.roll, 0, 1e-6, "it doesn't straighten up")
+	end,
+
 	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")
