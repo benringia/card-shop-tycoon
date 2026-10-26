@@ -34,6 +34,8 @@ export type Rig = {
 	flapRate: number, -- Party.WING_SPEED for this model, else 1
 	nextFidget: number,
 	random: Random,
+	signature: { fidget: string, chance: number }?, -- Party.SIGNATURE for this model
+	cued: boolean, -- the playing fidget's effect has gone off
 }
 
 -- An IK target foot (named Foot_<pair>_<Side> by Util/RigGuess) and where it sits from its leg's hip at rest
@@ -173,6 +175,8 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		flapRate = Party.WING_SPEED[sourceName] or 1,
 		nextFidget = os.clock() + gap(random),
 		random = random,
+		signature = Party.SIGNATURE[sourceName],
+		cued = false,
 	}
 end
 
@@ -182,6 +186,16 @@ function PetAnimator.bodyPose(rig: Rig, now: number): PetRig.Body
 		return { lift = 0, yaw = 0, roll = 0, pitch = 0 }
 	end
 	return PetRig.body(Party.PET_ANIM, rig.fidget, (now - rig.fidgetStart) / rig.fidgetLength, rig.side, true)
+end
+
+-- The playing fidget's effect, once, when it's due (Util/SignatureFx draws it); nil otherwise
+function PetAnimator.takeCue(rig: Rig, now: number): string?
+	local fidget = rig.fidget
+	if not fidget or rig.cued or not PetRig.cue(Party.PET_ANIM, fidget, (now - rig.fidgetStart) / rig.fidgetLength) then
+		return nil
+	end
+	rig.cued = true
+	return fidget
 end
 
 -- How far this frame's wingbeat lifts the body (studs at size 1); 0 for pets on the ground
@@ -210,7 +224,12 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 	elseif not rig.fidget and now >= rig.nextFidget then
 		local kinds = if rig.flying or rig.undulate then cfg.FLY_FIDGETS else cfg.FIDGETS
 		local kind = kinds[rig.random:NextInteger(1, #kinds)]
+		local signature = rig.signature
+		if signature and rig.random:NextNumber() < signature.chance then
+			kind = signature.fidget
+		end
 		rig.fidget = kind
+		rig.cued = false
 		rig.fidgetStart = now
 		rig.fidgetLength = cfg.FIDGET_SECONDS[kind] or 2
 		rig.side = if rig.random:NextNumber() < 0.5 then 1 else -1

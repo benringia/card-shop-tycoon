@@ -53,12 +53,19 @@ return {
 	} :: { [string]: { string } },
 	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
 	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING). Flametor holds its short
-	-- arms up in front like a T-rex; Boltlynx swings its arms wide like a marching warrior, Sprouthop a little less.
+	-- arms up in front like a T-rex; Sprouthop swings its arms wide.
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
-		Boltlynx = { hang = 10, forward = 0, bend = 8, swing = 40 },
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
+	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
+	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
+	-- another, Boltlynx roars with lightning crackling round its mane
+	SIGNATURE = {
+		Sprouthop = { fidget = "butterfly", chance = 0.35 },
+		Voidmaw = { fidget = "voidroar", chance = 0.35 },
+		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
+	} :: { [string]: { fidget: string, chance: number } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
 		HeronDemon = 0.55,
@@ -124,6 +131,13 @@ return {
 		ROAR_PITCH = 18,
 		ROAR_LIFT = 0.25,
 		ROAR_BURST = 0.4, -- of the way through: the lunge and shockwave
+		-- Signature idles (Party.SIGNATURE, effects in Util/SignatureFx)
+		ROAR_NECK = 30, -- a roaring head rears back and lunges this far
+		ROAR_RIPPLE = 0.05, -- of the fidget between one hydra head's roar and the next
+		BUTTERFLY_CUE = 0.15, -- of the way through: the butterfly appears on the raised hand
+		BUTTERFLY_ARM = 65, -- the right arm comes up this far
+		BUTTERFLY_LOOK = 20, -- the head looks up...
+		BUTTERFLY_FOLLOW = 30, -- ...and turns to follow it round
 		STOMP_HEIGHT = 0.5,
 		-- Flying pets (owls, phoenixes, dragons: the pack's wings have no bones of their own, so the whole body beats):
 		-- legs tucked, the body rising and dipping with each flap, the spine pulsing, the head steadying
@@ -151,6 +165,7 @@ return {
 		FIDGET_SECONDS = {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
+			butterfly = 4.5, voidroar = 3, thunderroar = 2.6,
 		},
 		BLEND_SECONDS = 0.25, -- standing <-> walking
 		DISTANCE = 70, -- only animated this close to the camera

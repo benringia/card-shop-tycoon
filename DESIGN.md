@@ -273,7 +273,7 @@ Each pack = 5 cards:
   a few shared ones tinted to their element); three Legendaries use the bought Crystal Titans pack with its own walk,
   run and idle animations (Solarion: Ruby Cerberus, Stormking: Sapphire Crystal Crab, Aurora Drake: Rainbow Crystal
   Hydra; `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
-  them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (lion warrior), Voidmaw
+  them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (lightning lion), Voidmaw
   (seven-headed crystal hydra dragon, every neck and jaw animated in code) and Sprouthop (tree sprite). The Legendaries stand 2.2x their rarity size (about 9
   studs), follow further out to match, burn with their element (`Util/BeastAura`, `Config/BeastFx`: fire on bones
   spread over the body, lightning arcing between them, ground flames, a flickering light; Ember orange fire, Shade

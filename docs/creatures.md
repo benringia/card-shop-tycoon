@@ -53,7 +53,7 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   off straight down (measured per rig from shoulder to hand) and swing `ARM_SWING` against the leg on their side;
   IK feet are carried round with their leg's hip and lift `FOOT_LIFT` as the leg swings forward, so feet walk
   with the legs instead of staying planted. `Party.ARM_POSE` holds a model's arms another way (Flametor: up in
-  front like a T-rex: less drop, reaching forward, elbows bent) and can widen the swing (`swing`: Boltlynx 40, Sprouthop 32).
+  front like a T-rex: less drop, reaching forward, elbows bent) and can widen the swing (`swing`: Sprouthop 32).
 - Body waves (`Party.UNDULATE`): "swim" models (IceShark, Merilux) float and wave from head to tail
   (`SWIM_BEND`, `SWIM_LAG`, `SWIM_SECONDS`), legs paddling slowly; "slither" (GiantSnake) stays on the ground and
   waves mostly while moving (`SLITHER_STILL` standing).
@@ -131,9 +131,20 @@ material, armature and export; each `build_<card>.py` only describes its creatur
 Many-headed rigs name each neck `Hydra_<head>_0..2` with the head as `Hydra_<head>_3`, and each lower jaw
 `Jaw_<head>`: every neck sways and nods on its own beat (the wave running up it) and joins the look, sniff, tilt,
 yawn and shake fidgets; jaws snap open now and then, each at its own moment, and gape in a yawn
-(`PET_ANIM.HYDRA_*`, `JAW_*`).
+(`PET_ANIM.HYDRA_*`, `JAW_*`). A single `Jaw_0` (Boltlynx) stays shut except in a yawn or roar.
 
-- **Boltlynx** (`build_boltlynx.py`): the card art's lion warrior, 24 bones, about 1,300 triangles.
+Each original has a signature idle (`Party.SIGNATURE`: the fidget and how often it replaces an ordinary one; bone
+poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.cue` says so):
+- **butterfly** (Sprouthop): the right hand comes up, a butterfly appears on it in a puff of sparkles, flutters round
+  its head while it looks up and follows it, then flies away fading; its antlers perk up.
+- **voidroar** (Voidmaw): the heads stop swaying, rear back and lunge one after another (`ROAR_RIPPLE`), jaws gaping,
+  dark void smoke bursting from every mouth, with the roar's shockwave ring.
+- **thunderroar** (Boltlynx): head reared back then lunging with the mouth wide, ears flat, tail stiff; lightning
+  crackles out of the mane in three bursts with a flash, plus the shockwave ring.
+
+- **Boltlynx** (`build_boltlynx.py`): a golden lion on four legs with a huge spiky mane tipped in yellow, white
+  lightning-bolt markings on its flanks, a jaw that opens to roar and a spiky tail tuft; 25 bones, about 1,300
+  triangles.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.
