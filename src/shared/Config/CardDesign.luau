@@ -54,7 +54,7 @@ return {
 		["Gale Sprite"] = "rbxassetid://135400093816653",
 		Riftwalker = "rbxassetid://134478592556938",
 		["Cinder Titan"] = "rbxassetid://72010145388086",
-		["Aurora Drake"] = "rbxassetid://100546252309842",
+		["Tideborne Kirin"] = "rbxassetid://140707784458440",
 		Stormking = "rbxassetid://101277001928201",
 	} :: { [string]: string },
 	-- By element. Painted with Figma's image generator; the JPEGs are kept in assets/ui/card-scenes.

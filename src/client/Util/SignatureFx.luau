@@ -27,6 +27,7 @@
 -- * thundercall (Thunderhorn): rears and stamps; lightning strikes its golden antlers and crackles round its hooves.
 -- * riftroar (Riftwalker): a roar that tears a swirling violet void rift open in the air behind it, then closes it.
 -- * lavaslam (Cinder Titan): pounds its chest, raises both fists and slams them down in a ring of fire and lava.
+-- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -418,6 +419,73 @@ local function sporepuff(model: Model, size: number)
 	light.Color = SPORE_COLOR
 	light.Brightness = 2
 	light.Range = 6 * size
+	light.Parent = glow
+	TweenService:Create(light, TweenInfo.new(1.4), { Brightness = 0 }):Play()
+	task.delay(1.5, glow.Destroy, glow)
+end
+
+-- A celestial blessing: as it stamps down a spiral of water and golden light rises round it, rays shine up from its
+-- feet and a golden ring of light flares behind its head
+local GOLD = Color3.fromRGB(255, 215, 120)
+local function blessing(model: Model, size: number)
+	local pivot = model:GetPivot()
+	local feet = pivot.Position
+	for i = 1, 18 do
+		local angle = i / 18 * math.pi * 4
+		local orb = fxPart(Vector3.one * 0.22 * size, if i % 3 == 0 then GOLD else Color3.fromRGB(140, 230, 255), true)
+		orb.Shape = Enum.PartType.Ball
+		orb.Position = feet + Vector3.new(math.cos(angle) * 1.4, 0.1, math.sin(angle) * 1.4) * size
+		orb.Parent = workspace
+		local rise = TweenService:Create(orb, TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+			Position = feet + Vector3.new(math.cos(angle + 2) * 0.8, 4 + i * 0.1, math.sin(angle + 2) * 0.8) * size,
+			Transparency = 1,
+		})
+		rise.Completed:Once(function()
+			orb:Destroy()
+		end)
+		task.delay(i * 0.03, function()
+			rise:Play()
+		end)
+	end
+	for i = 1, 6 do
+		local angle = i / 6 * math.pi * 2
+		local ray = fxPart(Vector3.new(0.12, 0.1, 0.12) * size, GOLD, true)
+		ray.Transparency = 0.3
+		ray.CFrame = CFrame.new(feet + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 0.9 * size)
+		ray.Parent = workspace
+		local shine = TweenService:Create(ray, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(0.12, 5, 0.12) * size, CFrame = ray.CFrame * CFrame.new(0, 2.5 * size, 0) })
+		shine:Play()
+		task.delay(1, function()
+			local fade = TweenService:Create(ray, TweenInfo.new(0.5), { Transparency = 1 })
+			fade.Completed:Once(function()
+				ray:Destroy()
+			end)
+			fade:Play()
+		end)
+	end
+	local head = bonePosition(model, "Head_0")
+	if head then
+		local halo = fxPart(Vector3.new(0.08, 0.6, 0.6) * size, GOLD, true)
+		halo.Shape = Enum.PartType.Cylinder
+		halo.Transparency = 0.3
+		halo.CFrame = CFrame.lookAt(head - pivot.LookVector * 0.3 * size + Vector3.new(0, 0.4 * size, 0), head + pivot.LookVector) * CFrame.Angles(0, math.pi / 2, 0)
+		halo.Parent = workspace
+		local flare = TweenService:Create(halo, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(0.08, 2.2, 2.2) * size, Transparency = 1 })
+		flare.Completed:Once(function()
+			halo:Destroy()
+		end)
+		flare:Play()
+	end
+	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SPARKLES, ColorSequence.new(GOLD, Color3.fromRGB(180, 240, 255)), 24, 0.35 * size, 5 * size, 1.2)
+	local glow = Instance.new("Attachment")
+	glow.WorldPosition = feet + Vector3.new(0, 2 * size, 0)
+	glow.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = GOLD
+	light.Brightness = 3
+	light.Range = 14 * size
 	light.Parent = glow
 	TweenService:Create(light, TweenInfo.new(1.4), { Brightness = 0 }):Play()
 	task.delay(1.5, glow.Destroy, glow)
@@ -944,6 +1012,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		riftroar(model, size)
 	elseif kind == "lavaslam" then
 		lavaslam(model, size)
+	elseif kind == "blessing" then
+		blessing(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

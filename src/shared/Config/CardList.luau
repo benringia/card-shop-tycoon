@@ -44,7 +44,7 @@ return {
 		{ "Gale Sprite", "Volt", "Rare", 3.00 },
 		{ "Riftwalker", "Shade", "Epic", 18.00 },
 		{ "Cinder Titan", "Ember", "Epic", 20.00 },
-		{ "Aurora Drake", "Tide", "Legendary", 140.00 },
+		{ "Tideborne Kirin", "Tide", "Legendary", 140.00 },
 		{ "Stormking", "Volt", "Legendary", 150.00 },
 	},
 }

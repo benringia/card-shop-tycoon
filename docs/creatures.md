@@ -114,7 +114,7 @@ flames, a flickering light and footstep dust (`Config/BeastFx`).
 
 Current packs: **Originals** (our own Blender models, see below: Boltlynx, Voidmaw, Sprouthop), **UltraPets** (bought, "Ultra Detailed" pets: 30 skinned models with bones and an
 AnimationController, no animations; every other non-Legendary card uses them), **CrystalTitans** (bought, Accretion "Stud Pet Pack 03 | Crystal Titans": RubyCerberus,
-SapphireCrab, RainbowHydra, each with Idle, Walk and Run; Solarion, Stormking and Aurora Drake use them), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
+SapphireCrab, RainbowHydra, each with Idle, Walk and Run; Stormking uses them; RainbowHydra was Aurora Drake's, now unused), **CutePets** (bought, "Cute Pets: 20 Pet Models, Rigged + Color Variants" by BabBabyTV; the rigged
 versions: skinned meshes with bones, an AnimationController, no animations yet; no card uses them now, kept for
 customers, NPCs or decoration).
 
@@ -217,6 +217,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   in the air behind it, then closes it, with dark smoke from its jaws.
 - **lavaslam** (Cinder Titan): pounds its chest with each arm in turn (`SLAM_POUND`), raises both fists
   (`SLAM_RAISE`, `SLAM_LIFT`) and slams them down: a ring of fire and lava bursts out, its fists blazing.
+- **blessing** (Tideborne Kirin): rears and stamps (`BLESSING_REAR`, `BLESSING_LIFT`; the tide call's curve); water
+  and golden light spiral up round it, golden rays shine from its feet and a ring of light flares behind its head.
 - **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
   four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
@@ -297,6 +299,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   glowing claws and rock shoulder armour; lumbers upright with a heavy gait (long slow steps, rolling from foot to
   foot onto a bent knee: `CREATURE_STYLE` stride/legSwing/sway), its huge arms swinging low (`ARM_POSE`). Remeshed and baked.
   18 bones, 10,000 triangles. Replaced the GorillaVulcano.
+- **Tideborne Kirin** (was Aurora Drake; `rig_kirin.py`, model `Kirin`, Meshy, Legendary): a celestial sea kirin,
+  pearl-white with an aqua water mane and wave tail, golden horns (as `Ear_` bones), a golden halo and golden armour.
+  Meshy made it prancing: the raised right front leg was replaced by a mirror of the left (see `rig_kirin.py`). Walks
+  with a long unhurried stride at size 2.5. 25 bones, 14,000 triangles. Replaced the Crystal Titans RainbowHydra.
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.

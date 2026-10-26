@@ -44,7 +44,7 @@ return {
 		-- Frontier cards: same ability kinds, their own names
 		Riftwalker = { kind = "Eclipse", name = "Rift Step", seconds = 3 },
 		["Cinder Titan"] = { kind = "Stampede", name = "Magma Slam", power = 2, stun = 2 },
-		["Aurora Drake"] = { kind = "TidalShield", name = "Aurora Veil", shield = 0.35 },
+		["Tideborne Kirin"] = { kind = "TidalShield", name = "Tidal Blessing", shield = 0.35 },
 		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4 },
 	},
 
