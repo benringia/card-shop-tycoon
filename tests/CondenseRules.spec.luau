@@ -164,15 +164,15 @@ return {
 		expect.equal(unknown, "unknown", "no costs for that rarity")
 	end,
 
-	["grading: costs rise with each step and with rarity, Legendary C to S 6 copies and $52,000"] = function()
+	["grading: costs rise with each step, Legendary C to S 6 copies and $15,500"] = function()
 		for rarity, steps in grading.COSTS do
 			assert(steps.B.cash < steps.A.cash and steps.A.cash < steps.S.cash, `{rarity} cash doesn't rise`)
 			assert(steps.B.copies <= steps.A.copies and steps.A.copies <= steps.S.copies, `{rarity} copies don't rise`)
 		end
-		assert(grading.COSTS.Legendary.S.cash > grading.COSTS.Epic.S.cash, "Legendary isn't the dearest")
+		assert(grading.COSTS.Legendary.S.cash >= 12500, "Legendary A -> S costs at least $12,500")
 		local top = CondenseRules.gradeCostToTop(grading, config.GRADES, "Legendary", "C")
 		expect.equal(top.copies, 6, "copies C to S")
-		expect.equal(top.cash, 52000, "cash C to S")
+		expect.equal(top.cash, 15500, "cash C to S")
 		local fromS = CondenseRules.gradeCostToTop(grading, config.GRADES, "Legendary", "S")
 		expect.equal(fromS.copies, 0, "nothing past S")
 	end,

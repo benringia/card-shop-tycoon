@@ -221,7 +221,17 @@ Five elements, each with its own color and frame:
 Each pack = 5 cards:
 - Slots 1–3: Common
 - Slot 4: Common 70% / Rare 30%
-- Slot 5 ("hit slot"): Rare 68% / Very Rare 15% / Epic 14% / Legendary 3%
+- Slot 5 ("hit slot"): Rare 70% / Very Rare 15% / Epic 14% / Legendary 1%
+
+The Deck Box's hit slot: Rare 52% / Very Rare 25% / Epic 22% / Legendary 1%. Slot odds and pity live in
+`Config/PackOdds` (plain data, so the Lune tests and the economy simulator use the real numbers).
+
+**Pity** (bad-luck protection, `PackOdds.PITY`, `Util/PityRules`, Lune-tested): counted per player over every pack
+and Deck Box they open (saved, `data.pity`). A player's first Legendary is guaranteed within 130 packs (a quick hook),
+every later one within 210: the last pack of the run has a Legendary in its hit slot. Saves from before this that
+already own a Legendary start on 210. The 40th pack without an Epic or better has an Epic. A pity Legendary guarantees the card, not a good copy: its grade rolls
+C 80% / B 18% / A 1.8% / S 0.2% (a lucky pull's Legendary is S 1%). The pack screen shows "Legendary in N packs ·
+Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the rarity guide explain it.
 
 **Odds are always visible in-game** (pack info button). Required by Roblox for any paid random items, and we show them for everything anyway.
 
@@ -493,7 +503,7 @@ Plain copies stack by card, foil and grade; a copy becomes an individual card (k
 | S | 2% | +10% |
 
 Rarer cards are less often Grade S (`Beasts.GRADE_CHANCES_BY_RARITY`, the difference going to C): Epic S 1.5%
-(C 55.5%), Legendary S 1% (C 56%). A Grade S Legendary is the chase: about 1 in 3,300 First Spark packs, shown on its
+(C 55.5%), Legendary S 1% (C 56%). A Grade S Legendary is the chase: about 1 in 10,000 First Spark packs (luck alone), shown on its
 own line in the rarity guide (`OddsRules.perPack`). The Grading Station (5.9) raises a copy's grade with duplicates and
 cash, a slow but sure path to Grade S.
 
@@ -542,7 +552,7 @@ Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to yo
 
 ### 5.9 Grading Station (grade-ups)
 
-The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 3,300 packs, 5.8).
+The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 10,000 packs, 5.8).
 A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`, a code-built
 cabinet with a scanner bed, a magnifier and a graded slab: `Town.GRADING_LOOK`). Press E on it: pick a card and the
 copy to grade, see the next grade, its cost, which duplicates go, Power and value before -> after and the whole way to
@@ -560,7 +570,7 @@ Cost per step, duplicates + cash (`Config/Grading.COSTS`):
 | Common, Rare | 2 + $100 | 4 + $500 | 8 + $2,500 | 14 + $3,100 |
 | Very Rare | 2 + $250 | 3 + $1,000 | 6 + $5,000 | 11 + $6,250 |
 | Epic | 1 + $500 | 2 + $2,500 | 4 + $10,000 | 7 + $13,000 |
-| Legendary | 1 + $2,000 | 2 + $10,000 | 3 + $40,000 | 6 + $52,000 |
+| Legendary | 1 + $500 | 2 + $2,500 | 3 + $12,500 | 6 + $15,500 |
 
 ---
 
@@ -838,6 +848,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
+            ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
@@ -852,10 +863,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v10)
+### 10.4 Player data schema (v11)
 ```lua
 {
-    version = 10,
+    version = 11,
     cash = 200,
     xp = 0,
     level = 1,
@@ -875,6 +886,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     resting = {},           -- { [beastId] = unixTime } cards that fainted in a fight, resting until then
     pvp = { wins = 0, losses = 0, draws = 0 }, -- PvP record
     items = {},             -- { [itemId] = count } item inventory (Config/Items), e.g. starShard
+    pity = { legendary = 0, epic = 0, firstDone = false }, -- packs since the last Legendary / Epic or better; had a first Legendary
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }

@@ -103,6 +103,7 @@ local nextButton: TextButton -- the round one; the results have their own green 
 local oddsButton: TextButton
 local oddsPanel: TextLabel
 local boxLabel: TextLabel
+local pityLabel: TextLabel -- packs left until the pity Legendary and Epic, under the box count
 local flash: Frame
 
 -- The pack
@@ -172,7 +173,22 @@ local function buildOddsText(pack: Pack): string
 		table.insert(lines, `Card {index}: {table.concat(parts, " / ")}`)
 	end
 	table.insert(lines, string.format("Any card can be Foil (%gx value): %g%%", Rarities.FOIL_MULTIPLIER, Rarities.FOIL_CHANCE * 100))
+	table.insert(lines, `Pity: your first Legendary within {Packs.PITY.FIRST_LEGENDARY_PACKS} packs, then one at least every {Packs.PITY.LEGENDARY_PACKS}; an Epic or better every {Packs.PITY.EPIC_PACKS}`)
 	return table.concat(lines, "\n")
+end
+
+-- Packs left until each guarantee (the server keeps the count; PackService sets these attributes)
+local function refreshPity()
+	local legendary = player:GetAttribute("PityLegendary")
+	local epic = player:GetAttribute("PityEpic")
+	if typeof(legendary) ~= "number" or typeof(epic) ~= "number" then
+		pityLabel.Text = ""
+		return
+	end
+	local function packs(count: number): string
+		return if count == 1 then "next pack" else `{count} packs`
+	end
+	pityLabel.Text = `👑 Legendary in {packs(legendary)} · Epic in {packs(epic)}`
 end
 
 local function getPacksLeft(): number
@@ -892,6 +908,7 @@ local function showSummary()
 	oddsButton.Visible = false
 	oddsPanel.Visible = false
 	boxLabel.Visible = false
+	pityLabel.Visible = false
 	clearLayer(raysLayer)
 	local total = 0
 	local newCount = 0
@@ -1104,6 +1121,7 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	oddsButton.Visible = true
 	nextButton.Visible = true
 	boxLabel.Visible = true
+	pityLabel.Visible = pityLabel.Text ~= ""
 	resultsBar.Visible = false
 	stage.Visible = true
 	gui.Enabled = true
@@ -1374,7 +1392,7 @@ local function buildScreen()
 	oddsPanel.Name = "Odds"
 	oddsPanel.AnchorPoint = Vector2.new(1, 0)
 	oddsPanel.Position = UDim2.new(1, -16, 0, PackOpening.TOP + 56)
-	oddsPanel.Size = UDim2.fromOffset(330, 190)
+	oddsPanel.Size = UDim2.fromOffset(330, 230)
 	oddsPanel.BackgroundTransparency = 0.05
 	oddsPanel.BackgroundColor3 = UIKit.Colors.Panel
 	oddsPanel.TextYAlignment = Enum.TextYAlignment.Top
@@ -1406,6 +1424,23 @@ local function buildScreen()
 	boxPad.PaddingLeft = UDim.new(0, 18)
 	boxPad.PaddingRight = UDim.new(0, 18)
 	boxPad.Parent = boxLabel
+
+	-- Pity under it: how many packs until a Legendary and an Epic are guaranteed
+	pityLabel = UIKit.label(stage, "", Enum.Font.FredokaOne, 16, Color3.fromRGB(255, 214, 110))
+	pityLabel.Name = "Pity"
+	pityLabel.Position = UDim2.fromOffset(16, PackOpening.TOP + PackOpening.PILL_HEIGHT + 8)
+	pityLabel.Size = UDim2.fromOffset(0, PackOpening.PILL_HEIGHT - 8)
+	pityLabel.AutomaticSize = Enum.AutomaticSize.X
+	pityLabel.TextWrapped = false
+	pityLabel.TextXAlignment = Enum.TextXAlignment.Center
+	pityLabel.BackgroundColor3 = UIKit.Colors.Row
+	pityLabel.BackgroundTransparency = 0.1
+	UIKit.corner(pityLabel, (PackOpening.PILL_HEIGHT - 8) / 2)
+	UIKit.outline(pityLabel, UIKit.Colors.Outline, 1.5)
+	local pityPad = Instance.new("UIPadding")
+	pityPad.PaddingLeft = UDim.new(0, 14)
+	pityPad.PaddingRight = UDim.new(0, 14)
+	pityPad.Parent = pityLabel
 
 	flash = Instance.new("Frame")
 	flash.Name = "Flash"
@@ -1466,6 +1501,9 @@ function PackOpeningController.Start()
 
 	player:GetAttributeChangedSignal("CarryProductId"):Connect(refreshRipButton)
 	player:GetAttributeChangedSignal("CarryUnits"):Connect(refreshRipButton)
+	player:GetAttributeChangedSignal("PityLegendary"):Connect(refreshPity)
+	player:GetAttributeChangedSignal("PityEpic"):Connect(refreshPity)
+	refreshPity()
 	UserInputService.InputBegan:Connect(onInputBegan)
 	UserInputService.InputChanged:Connect(onInputChanged)
 	UserInputService.InputEnded:Connect(onInputEnded)

@@ -35,6 +35,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BinderSpreads = require("./BinderSpreads.spec"),
 	OddsRules = require("./OddsRules.spec"),
 	NewPulls = require("./NewPulls.spec"),
+	PityRules = require("./PityRules.spec"),
 }
 
 local passed, failed = 0, 0

@@ -9,7 +9,7 @@ local COSTS: { [string]: { [string]: Step } } = {
 	Rare = { B = { copies = 2, cash = 100 }, A = { copies = 4, cash = 500 }, S = { copies = 8, cash = 2500 } },
 	["Very Rare"] = { B = { copies = 2, cash = 250 }, A = { copies = 3, cash = 1000 }, S = { copies = 6, cash = 5000 } },
 	Epic = { B = { copies = 1, cash = 500 }, A = { copies = 2, cash = 2500 }, S = { copies = 4, cash = 10000 } },
-	Legendary = { B = { copies = 1, cash = 2000 }, A = { copies = 2, cash = 10000 }, S = { copies = 3, cash = 40000 } },
+	Legendary = { B = { copies = 1, cash = 500 }, A = { copies = 2, cash = 2500 }, S = { copies = 3, cash = 12500 } },
 }
 
 return {

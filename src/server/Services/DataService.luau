@@ -68,6 +68,7 @@ export type PlayerData = {
 	resting: { [string]: number }, -- beastId -> Unix time it can fight again (fainted in battle)
 	pvp: { wins: number, losses: number, draws: number }, -- PvP record
 	items: { [string]: number }, -- itemId -> count (Config/Items)
+	pity: { legendary: number, epic: number, firstDone: boolean }, -- packs since the last Legendary / Epic or better (PackService)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -97,6 +98,7 @@ local TEMPLATE: PlayerData = {
 	resting = {},
 	pvp = { wins = 0, losses = 0, draws = 0 },
 	items = {},
+	pity = { legendary = 0, epic = 0, firstDone = false },
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }

@@ -176,6 +176,7 @@ local function build(): Frame
 	local sLegendary = OddsRules.perPack(pack, "Legendary") * (BeastRules.gradeChances("Legendary").S or 0)
 	addLine(list, 22, string.format("👑 Grade S is rarer on rare cards: %s. A Grade S Legendary: about 1 in %d %s packs.",
 		table.concat(sParts, " · "), OddsRules.oneIn(sLegendary), pack.name))
+	addLine(list, 23, `🛡️ Pity: your first Legendary within {Packs.PITY.FIRST_LEGENDARY_PACKS} packs, then one at least every {Packs.PITY.LEGENDARY_PACKS} (a pity one is almost never high grade: S {percent(Packs.PITY.LEGENDARY_GRADES.S)}); an Epic or better every {Packs.PITY.EPIC_PACKS}.`)
 	return frame
 end
 
