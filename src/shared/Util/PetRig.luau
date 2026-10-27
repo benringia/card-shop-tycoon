@@ -300,6 +300,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the twirl starts: the dust begins to fall
 	elseif kind == "mistwave" then
 		return progress >= 0.55 -- it lands: the mist rolls out
+	elseif kind == "vinebloom" then
+		return progress >= 0.35 -- reared up tall: the flowers burst
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -441,6 +443,12 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "vinebloom" then
+		-- Rearing up tall (by 0.35, held to 0.7) and swaying side to side as the flowers burst, then settling
+		local up = if p < 0.35 then math.sin(p / 0.35 * math.pi / 2) elseif p < 0.7 then 1 else math.cos(math.clamp((p - 0.7) / 0.3, 0, 1) * math.pi / 2)
+		lift = cfg.BLOOM_RISE * up
+		pitch = math.rad(cfg.BLOOM_LEAN) * up
+		roll = math.rad(cfg.BLOOM_SWAY) * math.sin(p * TAU * 2) * up
 	elseif kind == "mistwave" then
 		-- Crouching (to 0.2), a proud little hop (the top at 0.4), landing hard at 0.55, then settling
 		if p < 0.2 then

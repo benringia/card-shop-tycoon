@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * vinebloom (Vinewyrm): rears up tall and sways as petals and leaves burst from its flower crown.
 -- * mistwave (Mistfin): a proud little hop, and as it lands a ring of glowing mist rolls out with frosty sparkles.
 -- * mothdust (Hushmoth): twirls slowly in the air as glowing pastel dust sheds from its wing tips.
 -- * watershake (Driplet): shakes itself dry with its wings out; drops fly off in a ring, its head drop sparkles.
@@ -1036,6 +1037,31 @@ local function petaltwirl(model: Model, size: number)
 	burst(CFrame.lookAt(centre, centre + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 200, 225)), 10, 0.3 * size, 3 * size, 0.8)
 end
 
+-- A vine bloom: reared up tall, pink petals and green leaves burst from its flower crown and drift out round it
+local LEAF = Color3.fromRGB(90, 170, 70)
+local function vinebloom(model: Model, size: number)
+	local crown = bonePosition(model, "Head_0")
+	if not crown then
+		return
+	end
+	for i = 1, 14 do
+		local angle = i / 14 * math.pi * 2
+		local leafy = i % 3 == 0
+		local bit = fxPart((if leafy then Vector3.new(0.18, 0.03, 0.1) else Vector3.new(0.14, 0.03, 0.1)) * size,
+			if leafy then LEAF else PETAL_COLORS[(i % #PETAL_COLORS) + 1], false)
+		bit.CFrame = CFrame.new(crown) * CFrame.Angles(0, angle, 0)
+		bit.Parent = workspace
+		local out = CFrame.new(crown) * CFrame.Angles(0, angle + 0.8, 0) * CFrame.new(1.8 * size, -0.6 * size, 0)
+			* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), 0)
+		local drift = TweenService:Create(bit, TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { CFrame = out, Transparency = 1 })
+		drift.Completed:Once(function()
+			bit:Destroy()
+		end)
+		drift:Play()
+	end
+	burst(CFrame.lookAt(crown, crown + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 200, 225), Color3.fromRGB(180, 240, 150)), 14, 0.3 * size, 3 * size, 0.9)
+end
+
 -- Kung fu: leaves whirl out round the creature with each chop
 local function kungfu(model: Model, size: number)
 	local centre = model:GetPivot().Position + Vector3.new(0, 1.2 * size, 0)
@@ -1254,6 +1280,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		mothdust(model, size)
 	elseif kind == "mistwave" then
 		mistwave(model, size)
+	elseif kind == "vinebloom" then
+		vinebloom(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
