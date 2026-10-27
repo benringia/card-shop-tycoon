@@ -454,6 +454,17 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
 	end,
 
+	["a gale dive climbs, dives spinning one full roll, and comes back level"] = function()
+		assert(PetRig.cue(CFG, "galedive", 0.5) and not PetRig.cue(CFG, "galedive", 0.45), "the gust doesn't come at the bottom of the dive")
+		assert(PetRig.body(CFG, "galedive", 0.3, 1, true).lift > CFG.GALE_CLIMB * 0.9, "it doesn't climb first")
+		assert(PetRig.body(CFG, "galedive", 0.5, 1, true).lift < 0, "it doesn't dive below its height")
+		assert(PetRig.body(CFG, "galedive", 0.45, 1, true).pitch < 0, "it doesn't dive nose down")
+		local done = PetRig.body(CFG, "galedive", 1, 1, true)
+		expect.near(done.roll, math.pi * 2, 1e-6, "the spin doesn't come all the way round")
+		expect.near(done.lift, 0, 1e-6, "it doesn't come back to its height")
+		expect.near(done.pitch, 0, 1e-6, "it doesn't level out")
+	end,
+
 	["a frost pounce crouches, leaps forward and lands, the ice bursting as it lands"] = function()
 		assert(PetRig.cue(CFG, "frostpounce", 0.6) and not PetRig.cue(CFG, "frostpounce", 0.55), "the ice doesn't burst as it lands")
 		local crouch = PetRig.body(CFG, "frostpounce", 0.3, 1, true)
