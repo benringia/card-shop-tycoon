@@ -29,7 +29,8 @@ local BossService = {}
 
 local records: { [Player]: { [string]: BossRules.Record } } = {} -- loaded players only
 local arenas: { [string]: WildService.BossArena } = {}
-local occupants: { [string]: WildService.Monster } = {} -- the boss being fought in each arena (one at a time; groups come later)
+local occupants: { [string]: WildService.Monster } = {} -- the boss being fought in each arena (one fight at a time)
+local lobbies: { [string]: { members: { Player } } } = {} -- a group forming at each gate (the first member leads)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowRequest = RateLimiter.new(1)
 local rng = Random.new()
@@ -79,10 +80,10 @@ local function sendBosses(player: Player)
 	Remotes.BossesChanged:FireClient(player, payload)
 end
 
--- The strongest party card's Power (bosses recommend a Power per card)
-local function partyPower(player: Player, partyIds: { string }): number
+-- The strongest fighter's Power (bosses recommend a Power per card)
+local function partyPower(player: Player, fighterIds: { string }): number
 	local best = 0
-	for _, beastId in partyIds do
+	for _, beastId in fighterIds do
 		local beast = CardService.GetBeast(player, beastId)
 		local card = if beast then Cards.ById[beast.cardId] else nil
 		if beast and card then
@@ -120,8 +121,10 @@ end
 
 -- A boss win's items (BattleService calls this; the XP and cash are already paid). Farm protection (spec section 7):
 -- too fast a win gives no drops; full loot once per LOOT_COOLDOWN per boss, its chances shrunk by the daily soft cap
--- and the over-power penalty; the first clear and the day's first rewarded win add their chests.
-local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, partyIds: { string } }): any
+-- and the over-power penalty; the first clear and the day's first rewarded win add their chests. A group member who
+-- helped too little (fight.contributed false) gets only the carried roll: a quarter of the chances, no fragments, no
+-- chests.
+local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }): any
 	local bossId = monster.boss :: string
 	local boss = Bosses.BOSSES[bossId]
 	local byBoss = records[player]
@@ -132,31 +135,35 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	local today = BossRules.dayNumber(now)
 	local record = BossRules.dayCounts(byBoss[bossId], today)
 	byBoss[bossId] = record
-	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, reduced = false, flagged = false }
+	local carried = not fight.contributed
+	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, reduced = false, flagged = false, carried = carried }
 
-	-- The first clear's chest always comes (it's the way up the ladder, however strong the party)
-	if not record.cleared then
+	-- The first clear's chest always comes to those who helped (it's the way up the ladder, however strong the party)
+	if not record.cleared and not carried then
 		record.cleared = true
 		result.firstClear = true
 		grant(player, boss.firstClear, result.items)
 		Remotes.BossCleared:FireAllClients(player.DisplayName, bossId)
 	end
 	if fight.seconds < boss.minFightSeconds then
-		warn(`[BossService] {player.Name} beat {bossId} in {fight.seconds}s (minimum {boss.minFightSeconds}): no drops`)
 		result.flagged = true
 	elseif BossRules.lootEligible(record, now) then
-		local factor = BossRules.dropFactor(Bosses, record, partyPower(player, fight.partyIds), boss.recommended)
+		local factor = BossRules.dropFactor(Bosses, record, partyPower(player, fight.fighterIds), boss.recommended)
 		result.reduced = factor < 1
 		record.lootAt = now + Bosses.LOOT_COOLDOWN
 		record.rewardedToday += 1
 		local drops: { Grant } = {}
 		for _, drop in boss.drops do
-			if wanted(byBoss, drop.item) and rng:NextNumber() < drop.chance * factor then
+			local chance = drop.chance * factor
+			if carried then
+				chance = BossRules.carriedDrop(Bosses, drop.item, chance, opensBoss[drop.item] ~= nil)
+			end
+			if wanted(byBoss, drop.item) and rng:NextNumber() < chance then
 				table.insert(drops, { item = drop.item, count = rng:NextInteger(drop.min, drop.max) })
 			end
 		end
 		grant(player, drops, result.items)
-		if record.bonusDay ~= today then
+		if record.bonusDay ~= today and not carried then
 			record.bonusDay = today
 			result.bonus = true
 			grant(player, boss.dailyBonus, result.items)
@@ -172,66 +179,207 @@ local function describeItem(id: string): string
 	return if item then item.name else id
 end
 
--- The gate's prompt: checks, the key (used once), then the boss for this player alone
-local function onGate(player: Player, bossId: string)
+-- Gates ----------------------------------------------------------------------------------------------------
+
+-- Why this player can't take part in this boss now (record, distance from the gate, key, able to fight), or nil
+local function whyNotMember(player: Player, bossId: string, reach: number): string?
 	local boss = Bosses.BOSSES[bossId]
 	local arena = arenas[bossId]
 	local record = BossService.GetRecord(player, bossId)
-	if not allowStart(player) or not boss or not arena or not record then
-		return
-	end
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-	if not root then
-		return
+	if not boss or not arena or not record or not root or not player.Parent then
+		return "You can't fight right now."
 	end
-	if (root.Position - arena.gatePosition).Magnitude > Bosses.GATE_DISTANCE then
-		notify(player, "Get closer to the gate.", true)
-		return
+	if (root.Position - arena.gatePosition).Magnitude > reach then
+		return "Get closer to the gate."
 	end
 	local unlock = boss.unlock
 	local owned = if unlock then ItemService.GetCount(player, unlock.item) else 0
 	if not BossRules.canStart(record, unlock, owned) and unlock then
-		notify(player, `Needs {unlock.count} {describeItem(unlock.item)}s (you have {owned}). Beat the boss before it.`, true)
-		return
+		return `Needs {unlock.count} {describeItem(unlock.item)}s (you have {owned}). Beat the boss before it.`
 	end
-	-- One boss per arena: someone else's fight there must end first
+	return BattleService.WhyNotFight(player)
+end
+
+-- Why the arena can't take this player now: someone else's fight, or a group forming that they're not in
+local function whyArenaBusy(player: Player, bossId: string): string?
+	local boss = Bosses.BOSSES[bossId]
 	local occupant = occupants[bossId]
-	if occupant and occupant.alive and occupant.fightingPlayer ~= player then
-		notify(player, `Someone is fighting the {boss.name}. Wait for them to finish.`, true)
+	if occupant and occupant.alive then
+		return `Someone is fighting the {boss.name}. Wait for them to finish.`
+	end
+	local lobby = lobbies[bossId]
+	if lobby and not table.find(lobby.members, player) then
+		return `A group is forming at the {boss.name}: join it (F) or wait.`
+	end
+	return nil
+end
+
+-- One boss for these players (the first leads), scaled to the group; keys are taken only once it really starts.
+-- No yields: the key counts and the fight start in one step.
+local function startBoss(bossId: string, players: { Player }): (boolean, string?)
+	local boss = Bosses.BOSSES[bossId]
+	local arena = arenas[bossId]
+	local monster = WildService.SpawnAt(arena.spawn.Position, boss.name, boss.level, false, bossId)
+	if not monster then
+		return false, "The boss couldn't start. Try again."
+	end
+	monster.marker.CFrame = arena.spawn
+	local started, why = BattleService.StartGroupFight(players, monster)
+	if not started then
+		WildService.Defeat(monster)
+		return false, why or "The boss couldn't start. Try again."
+	end
+	occupants[bossId] = monster -- free again once it's defeated or despawned (alive = false)
+	local unlock = boss.unlock
+	for _, player in players do
+		local record = BossService.GetRecord(player, bossId)
+		if record and not record.unlocked and unlock then
+			ItemService.TakeItem(player, unlock.item, unlock.count)
+			record.unlocked = true
+			notify(player, `Used {unlock.count} {describeItem(unlock.item)}s: the {boss.name} is open for good.`, false)
+			sendBosses(player)
+		end
+	end
+	return true, nil
+end
+
+-- The Fight prompt: the boss for this player alone
+local function onGate(player: Player, bossId: string)
+	if not allowStart(player) or not Bosses.BOSSES[bossId] or not arenas[bossId] then
 		return
 	end
-	local reason = BattleService.WhyNotFight(player)
+	local lobby = lobbies[bossId]
+	if lobby and table.find(lobby.members, player) then
+		notify(player, "You're in the group forming here: it starts soon (the leader can start it now with F).", true)
+		return
+	end
+	local reason = whyArenaBusy(player, bossId) or whyNotMember(player, bossId, Bosses.GATE_DISTANCE)
 	if reason then
 		notify(player, reason, true)
 		return
 	end
-	-- No yields from here: the key count and the fight start in one step
-	local monster = WildService.SpawnAt(arena.spawn.Position, boss.name, boss.level, false, bossId)
-	if not monster then
-		return
-	end
-	monster.marker.CFrame = arena.spawn
-	local started, why = BattleService.StartFight(player, monster)
+	local started, why = startBoss(bossId, { player })
 	if not started then
-		WildService.Defeat(monster)
 		notify(player, why or "The boss couldn't start. Try again.", true)
-		return
-	end
-	occupants[bossId] = monster -- free again once it's defeated or despawned (alive = false)
-	if not record.unlocked and unlock then
-		ItemService.TakeItem(player, unlock.item, unlock.count)
-		record.unlocked = true
-		notify(player, `Used {unlock.count} {describeItem(unlock.item)}s: the {boss.name} is open for good.`, false)
-		sendBosses(player)
 	end
 end
 
--- /boss <n> fight: the gate, as if its prompt was used (same checks)
-function BossService.UseGate(player: Player, index: number)
+-- Players who left the game are dropped from a forming group (the next member leads); an empty group closes
+local function pruneLobby(bossId: string)
+	local lobby = lobbies[bossId]
+	if not lobby then
+		return
+	end
+	local present = {}
+	for _, member in lobby.members do
+		if member.Parent then
+			table.insert(present, member)
+		end
+	end
+	lobby.members = present
+	if #present == 0 then
+		lobbies[bossId] = nil
+	end
+end
+
+local function updateGroupPrompt(bossId: string)
+	local lobby = lobbies[bossId]
+	arenas[bossId].groupPrompt.ActionText = if lobby then `Join group ({#lobby.members}/{Bosses.GROUP_MAX})` else "Start group"
+end
+
+-- The lobby closes (time up, full, or the leader starts it): members who can still fight go in, the first one leads
+local function closeLobby(bossId: string)
+	local lobby = lobbies[bossId]
+	if not lobby then
+		return
+	end
+	lobbies[bossId] = nil
+	updateGroupPrompt(bossId)
+	local boss = Bosses.BOSSES[bossId]
+	local ready: { Player } = {}
+	for _, player in lobby.members do
+		local reason = whyNotMember(player, bossId, Bosses.GATE_DISTANCE * 2)
+		if reason then
+			if player.Parent then
+				notify(player, `You weren't let into the {boss.name} fight: {reason}`, true)
+			end
+		else
+			table.insert(ready, player)
+		end
+	end
+	if #ready == 0 then
+		return
+	end
+	local started, why = startBoss(bossId, ready)
+	if not started then
+		for _, player in ready do
+			notify(player, why or "The boss couldn't start. Try again.", true)
+		end
+	end
+end
+
+-- The group prompt: open a group (the leader), join one, or (the leader again) start it now
+local function onGroup(player: Player, bossId: string)
+	local boss = Bosses.BOSSES[bossId]
+	if not allowStart(player) or not boss or not arenas[bossId] then
+		return
+	end
+	pruneLobby(bossId)
+	updateGroupPrompt(bossId)
+	local lobby = lobbies[bossId]
+	if lobby then
+		if lobby.members[1] == player then
+			closeLobby(bossId)
+			return
+		elseif table.find(lobby.members, player) then
+			notify(player, `Waiting for {lobby.members[1].DisplayName} to start ({#lobby.members}/{Bosses.GROUP_MAX}).`, false)
+			return
+		elseif #lobby.members >= Bosses.GROUP_MAX then
+			notify(player, "That group is full.", true)
+			return
+		end
+		local reason = whyNotMember(player, bossId, Bosses.GATE_DISTANCE)
+		if reason then
+			notify(player, reason, true)
+			return
+		end
+		table.insert(lobby.members, player)
+		updateGroupPrompt(bossId)
+		for _, member in lobby.members do
+			notify(member, `{player.DisplayName} joined the {boss.name} group ({#lobby.members}/{Bosses.GROUP_MAX}).`, false)
+		end
+		if #lobby.members >= Bosses.GROUP_MAX then
+			closeLobby(bossId)
+		end
+		return
+	end
+	local reason = whyArenaBusy(player, bossId) or whyNotMember(player, bossId, Bosses.GATE_DISTANCE)
+	if reason then
+		notify(player, reason, true)
+		return
+	end
+	local opened = { members = { player } }
+	lobbies[bossId] = opened
+	updateGroupPrompt(bossId)
+	notify(player, `Group open: others have {Bosses.JOIN_SECONDS} s to join at the gate (F). Press F again to start now.`, false)
+	task.delay(Bosses.JOIN_SECONDS, function()
+		if lobbies[bossId] == opened then
+			closeLobby(bossId)
+		end
+	end)
+end
+
+-- /boss <n> fight and /boss <n> group: the gate's prompts, as if used (same checks)
+function BossService.UseGate(player: Player, index: number, group: boolean?)
 	local bossId = Bosses.LADDER[index]
 	if bossId then
-		onGate(player, bossId)
+		if group then
+			onGroup(player, bossId)
+		else
+			onGate(player, bossId)
+		end
 	end
 end
 
@@ -255,11 +403,22 @@ end
 
 local function unload(player: Player)
 	records[player] = nil
+	-- Out of any group forming: the next member leads, the prompt shows the new count
+	for bossId, lobby in lobbies do
+		if table.find(lobby.members, player) then
+			local index = table.find(lobby.members, player) :: number
+			table.remove(lobby.members, index)
+			if #lobby.members == 0 then
+				lobbies[bossId] = nil
+			end
+			updateGroupPrompt(bossId)
+		end
+	end
 end
 
 function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
-	arenas = WildService.BuildBossArenas(onGate)
+	arenas = WildService.BuildBossArenas(onGate, onGroup)
 	BattleService.SetBossRewards(onBossWin)
 	Remotes.RequestBosses.OnServerEvent:Connect(function(player)
 		if allowRequest(player) then

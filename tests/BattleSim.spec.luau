@@ -48,6 +48,22 @@ local function count(events: { any }, predicate: (any) -> boolean): number
 	return n
 end
 
+-- A group fight: two players' leaders on side A, each with their own reserves, one big boss on side B
+local function owned(id: string, owner: string, hp: number?)
+	local input: any = fighter(id, "Ember", hp or 500, 20, 10)
+	input.owner = owner
+	return input
+end
+
+local function group(seed: number): any
+	return BattleSim.new(combat, {
+		fighters = { owned("p1", "1"), owned("p2", "2") },
+		reserves = { owned("r1", "1"), owned("r1b", "1"), owned("r2", "2") },
+		abilities = true,
+		canRun = true,
+	}, { fighters = { monster("Bloom", 100000, 10, 10) }, abilities = false, canRun = false }, seed)
+end
+
 return {
 	["strong party beats a weak monster"] = function()
 		local state = wild(fighter("a", "Ember", 200, 30, 15), {}, monster("Bloom", 100, 2, 5), 1)
@@ -404,5 +420,44 @@ return {
 		expect.isNil(state.result, "still going past the usual limit")
 		runToEnd(state, 120)
 		expect.equal(state.result, "run", "ends at its own limit")
+	end,
+
+	["group: each owner calls in one reserve of their own"] = function()
+		local state = group(3)
+		expect.equal((BattleSim.callIn(state, "a:r2", "1")), false, "not your reserve")
+		expect.equal((BattleSim.callIn(state, "a:r1", "1")), true, "your reserve")
+		expect.equal((BattleSim.callIn(state, "a:r1b", "1")), false, "one call-in each")
+		expect.equal((BattleSim.callIn(state, "a:r2", "2")), true, "the other player still can")
+	end,
+
+	["group: abilities only on your own fighters"] = function()
+		local state = group(4)
+		local events, why = BattleSim.useAbility(state, "a:p2", "element", "1")
+		expect.isNil(events, "someone else's fighter")
+		expect.equal(why, "missing", "reason")
+		expect.equal(BattleSim.useAbility(state, "a:p2", "element", "2") ~= nil, true, "your own fighter")
+	end,
+
+	["group: a player leaving takes only their fighters out"] = function()
+		local state = group(5)
+		BattleSim.withdraw(state, "1")
+		local _, events = runToEnd(state, 10)
+		local p1 = BattleSim.getFighter(state, "a:p1") :: any
+		expect.equal(p1.fainted, false, "left, not fainted")
+		expect.equal(count(events, function(e)
+			return e.to == "a:p1"
+		end), 0, "never targeted after leaving")
+		expect.isNil(state.result, "the other player fights on")
+		BattleSim.withdraw(state, "2")
+		expect.equal(state.result, "run", "nobody left: the fight ends")
+	end,
+
+	["group: damage dealt and taken are tallied per owner"] = function()
+		local state = group(6)
+		runToEnd(state, 5)
+		local one, two = BattleSim.contribution(state, "1"), BattleSim.contribution(state, "2")
+		expect.equal(one.totalDealt > 0 and one.totalTaken > 0, true, "something happened")
+		expect.equal(one.dealt + two.dealt, one.totalDealt, "dealt adds up")
+		expect.equal(one.taken + two.taken, one.totalTaken, "taken adds up")
 	end,
 }

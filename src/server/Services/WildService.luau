@@ -566,11 +566,11 @@ function WildService.SpawnAt(position: Vector3, species: string, level: number, 
 	return createMonster(species, level, elite, zone, position, nil, boss)
 end
 
-export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame }
+export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame, groupPrompt: ProximityPrompt }
 
--- Main game: a fenced ring beside each boss's zone with a gate (server prompt "Fight boss" -> onGate) and a sign.
--- Returns where each gate and boss stand, by boss id.
-function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) -> ()): { [string]: BossArena }
+-- Main game: a fenced ring beside each boss's zone with a gate (server prompts "Fight boss" -> onGate, "Start group" ->
+-- onGroup; BossService changes the group prompt's text) and a sign. Returns where each gate and boss stand, by boss id.
+function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> ()): { [string]: BossArena }
 	local arenas: { [string]: BossArena } = {}
 	local folder = Instance.new("Folder")
 	folder.Name = "BossArenas"
@@ -605,12 +605,26 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		prompt.Triggered:Connect(function(player)
 			onGate(player, bossId)
 		end)
+		local groupPrompt = Instance.new("ProximityPrompt")
+		groupPrompt.Name = "GroupPrompt"
+		groupPrompt.ActionText = "Start group"
+		groupPrompt.ObjectText = `{boss.name} · 2-{Bosses.GROUP_MAX} players`
+		groupPrompt.HoldDuration = 0
+		groupPrompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
+		groupPrompt.RequiresLineOfSight = false
+		groupPrompt.KeyboardKeyCode = Enum.KeyCode.F
+		groupPrompt.UIOffset = Vector2.new(0, Bosses.GROUP_PROMPT_OFFSET)
+		groupPrompt.Parent = gate
+		groupPrompt.Triggered:Connect(function(player)
+			onGroup(player, bossId)
+		end)
 		-- Faces the way players arrive (from the zone, -X)
 		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
 		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, 0, 0)
 		arenas[bossId] = {
 			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center), -- where /boss puts you, outside the gate
 			gatePosition = gate.Position, -- what the server measures a start from (the prompt's part)
+			groupPrompt = groupPrompt,
 			spawn = CFrame.lookAt(bossSpot, gateSpot),
 		}
 	end

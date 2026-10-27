@@ -3,7 +3,9 @@
 -- card may be called in during the first seconds. BattleSim (pure, seeded) decides every hit; this service
 -- steps it at Combat.TICK_RATE, moves the markers (lunges, the fight ring), sends events to the player's client
 -- and pays out: card XP split across the 3 party cards, cash, and sometimes a card. Fainted cards rest
--- (saved as resting = { [beastId] = Unix time }), faster near the plaza spring.
+-- (saved as resting = { [beastId] = Unix time }), faster near the plaza spring. A fight has members: a Wild fight or a
+-- solo boss is a group of one; boss groups (BossService) put 2-4 players on side A against one scaled boss, each
+-- calling in and using abilities only on their own creatures, leaving on their own, and paid on their own.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -17,6 +19,7 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
 local Wild = Place.getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -35,19 +38,26 @@ type PlayerData = DataService.PlayerData
 type Monster = WildService.Monster
 type Beast = CardService.Beast
 
-type Fight = {
+-- One player in a fight: their own creatures on side A
+type Member = {
 	player: Player,
-	monster: Monster,
-	sim: BattleSim.State,
+	owner: string, -- BattleSim owner: the player's UserId
 	leaderId: string,
 	extraId: string?,
 	extraMarker: BasePart?,
-	partyIds: { string }, -- all party cards: they share the XP
-	spots: { [string]: CFrame }, -- where each fighter stands in the ring, by sim id ("a:<beastId>", "b:m")
-	center: Vector3, -- the ring; the player may roam within Combat.LEASH_RADIUS of it
-	leashWarnedAt: number,
-	sinceSnapshot: number,
+	partyIds: { string }, -- all their party cards: they share the XP
 	died: RBXScriptConnection?,
+	leashWarnedAt: number,
+}
+
+type Fight = {
+	members: { [Player]: Member }, -- still in the fight
+	size: number, -- members at the start (a boss is scaled to it)
+	monster: Monster,
+	sim: BattleSim.State,
+	spots: { [string]: CFrame }, -- where each fighter stands in the ring, by sim id ("a:<beastId>", "b:m"; "extra:<owner>")
+	center: Vector3, -- the ring; players may roam within the leash of it
+	sinceSnapshot: number,
 	ended: boolean,
 }
 
@@ -56,7 +66,8 @@ local BattleService = {}
 local SNAPSHOT_SECONDS = 1 -- resend timers this often even when nothing happened
 local LUNGE_SECONDS = 0.15
 
-local fights: { [Player]: Fight } = {}
+local fights: { [Player]: Fight } = {} -- every member points at their fight
+local running: { [Fight]: boolean } = {} -- each fight once, for the loop
 local resting: { [Player]: { [string]: number } } = {} -- beastId -> Unix time it can fight again
 local nearSpring: { [Player]: boolean } = {}
 -- One limiter per remote, so tapping two fighters' abilities quickly doesn't drop the second
@@ -67,7 +78,7 @@ local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
-local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, partyIds: { string } }) -> any)? = nil
+local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -169,24 +180,40 @@ local function outcomeOf(result: string?): string
 	return if result == "a" then "win" elseif result == "b" then "lose" else "run"
 end
 
+-- The member a side-A fighter belongs to
+local function memberOf(fight: Fight, id: string): Member?
+	for _, member in fight.members do
+		if id == partyId(member.leaderId) or (member.extraId and id == partyId(member.extraId)) then
+			return member
+		end
+	end
+	return nil
+end
+
 local function markerFor(fight: Fight, id: string): BasePart?
 	if id == MONSTER_ID then
 		return fight.monster.marker
-	elseif id == partyId(fight.leaderId) then
-		return PartyService.GetMarker(fight.player)
-	elseif fight.extraId and id == partyId(fight.extraId) then
-		return fight.extraMarker
 	end
-	return nil
+	local member = memberOf(fight, id)
+	if not member then
+		return nil
+	end
+	return if id == partyId(member.leaderId) then PartyService.GetMarker(member.player) else member.extraMarker
 end
 
 local function place(fight: Fight, id: string, cframe: CFrame)
 	if id == MONSTER_ID then
 		WildService.SetFightPose(fight.monster, cframe)
-	elseif id == partyId(fight.leaderId) then
-		PartyService.SetHold(fight.player, cframe)
-	elseif fight.extraId and id == partyId(fight.extraId) and fight.extraMarker then
-		fight.extraMarker.CFrame = cframe
+		return
+	end
+	local member = memberOf(fight, id)
+	if not member then
+		return
+	end
+	if id == partyId(member.leaderId) then
+		PartyService.SetHold(member.player, cframe)
+	elseif member.extraMarker then
+		member.extraMarker.CFrame = cframe
 	end
 end
 
@@ -212,6 +239,13 @@ local function snapshot(fight: Fight): any
 	return BattleSim.snapshot(fight.sim)
 end
 
+-- To every member still in the fight
+local function broadcast(fight: Fight, payload: any)
+	for player in fight.members do
+		Remotes.BattleEvent:FireClient(player, payload)
+	end
+end
+
 local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	for _, event in events do
 		if event.type == "attack" and event.from and event.to then
@@ -225,7 +259,7 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	end
 	if #events > 0 then
 		fight.sinceSnapshot = 0
-		Remotes.BattleEvent:FireClient(fight.player, { events = events, snapshot = snapshot(fight) })
+		broadcast(fight, { events = events, snapshot = snapshot(fight) })
 	end
 end
 
@@ -276,23 +310,31 @@ local function rollDrop(monster: Monster): string?
 	return if #pool > 0 then pool[rng:NextInteger(1, #pool)] else nil
 end
 
-local function payOut(fight: Fight): any
-	local player, monster = fight.player, fight.monster
+-- One member's win: their own party's XP and cash; a boss's items through BossService (their contribution decides)
+local function payOut(fight: Fight, member: Member): any
+	local player, monster = member.player, fight.monster
 	local bossId = monster.boss
 	if bossId then
 		-- Bosses: their own XP and cash, every win; items only through BossService's farm-protected rules
 		local boss = Bosses.BOSSES[bossId]
-		local xpEach = CombatMath.splitXp(boss.xp, #fight.partyIds)
-		for _, beastId in fight.partyIds do
+		local xpEach = CombatMath.splitXp(boss.xp, #member.partyIds)
+		for _, beastId in member.partyIds do
 			CardService.AddXP(player, beastId, xpEach)
 		end
 		EconomyService.AddCash(player, boss.cash)
-		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, partyIds = fight.partyIds }) else nil
+		-- The cards that really fought (resting ones in the party never did): the over-power check weighs these
+		local fighterIds = { member.leaderId }
+		if member.extraId then
+			table.insert(fighterIds, member.extraId)
+		end
+		local share = BattleSim.contribution(fight.sim, member.owner)
+		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
+		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, fighterIds = fighterIds, contributed = contributed }) else nil
 		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
-	local each = CombatMath.splitXp(rewards.xp, #fight.partyIds)
-	for _, beastId in fight.partyIds do
+	local each = CombatMath.splitXp(rewards.xp, #member.partyIds)
+	for _, beastId in member.partyIds do
 		CardService.AddXP(player, beastId, each)
 	end
 	EconomyService.AddCash(player, rewards.cash)
@@ -333,23 +375,15 @@ end
 
 -- Ending --------------------------------------------------------------------------------------------------
 
-local function endFight(fight: Fight, result: string)
-	if fight.ended then
-		return
-	end
-	fight.ended = true
-	local player = fight.player
+-- A member is out of the fight: their creatures are released, fainted ones rest. Returns the ones that rest.
+local function release(fight: Fight, member: Member): { string }
+	local player = member.player
+	fight.members[player] = nil
 	if fights[player] == fight then
 		fights[player] = nil
 	end
-	if fight.died then
-		fight.died:Disconnect()
-	end
-
-	if result == "win" or fight.monster.boss then
-		WildService.Defeat(fight.monster) -- bosses are fought alone and always go when the fight ends
-	else
-		WildService.Unlock(fight.monster)
+	if member.died then
+		member.died:Disconnect()
 	end
 	PartyService.SetHold(player, nil)
 	PartyService.SetLocked(player, false)
@@ -357,33 +391,78 @@ local function endFight(fight: Fight, result: string)
 	if leaderMarker then
 		leaderMarker:SetAttribute("Fainted", nil)
 	end
-	CardService.SetFighting(player, fight.leaderId, false)
-	if fight.extraId then
-		CardService.SetFighting(player, fight.extraId, false)
+	CardService.SetFighting(player, member.leaderId, false)
+	if member.extraId then
+		CardService.SetFighting(player, member.extraId, false)
 	end
-	if fight.extraMarker then
-		fight.extraMarker:Destroy()
+	if member.extraMarker then
+		member.extraMarker:Destroy()
 	end
-
 	-- Fainted fighters rest, whatever the result (a run or a win doesn't wake them)
 	local rested = {}
 	local entries = resting[player]
 	if entries then
 		for _, beastId in BattleSim.getFainted(fight.sim, "a") do
-			entries[beastId] = os.time() + Combat.REST_SECONDS
-			table.insert(rested, beastId)
+			if beastId == member.leaderId or beastId == member.extraId then
+				entries[beastId] = os.time() + Combat.REST_SECONDS
+				table.insert(rested, beastId)
+			end
 		end
 	end
+	return rested
+end
 
-	local summary: any = { result = result, rested = rested }
-	if result == "win" and player.Parent then
-		local paid = payOut(fight)
-		summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
-		summary.partyIds = fight.partyIds
+local function endFight(fight: Fight, result: string)
+	if fight.ended then
+		return
 	end
+	fight.ended = true
+	running[fight] = nil
+	if result == "win" or fight.monster.boss then
+		WildService.Defeat(fight.monster) -- a boss always goes when its fight ends
+	else
+		WildService.Unlock(fight.monster)
+	end
+	for player, member in table.clone(fight.members) do
+		local summary: any = { result = result, rested = release(fight, member) }
+		if result == "win" and player.Parent then
+			local paid = payOut(fight, member)
+			summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
+			summary.partyIds = member.partyIds
+		end
+		if player.Parent then
+			Remotes.BattleEnded:FireClient(player, summary)
+			sendResting(player)
+		end
+	end
+end
+
+-- A member leaves (ran, died, left the game, lost their creature): in a group the others fight on; the last one out
+-- ends the fight as a run
+local function leave(fight: Fight, member: Member)
+	if fight.ended or not fight.members[member.player] then
+		return
+	end
+	local others = 0
+	for player in fight.members do
+		if player ~= member.player then
+			others += 1
+		end
+	end
+	if others == 0 then
+		endFight(fight, "run")
+		return
+	end
+	local events = BattleSim.withdraw(fight.sim, member.owner)
+	local player = member.player
+	local rested = release(fight, member)
 	if player.Parent then
-		Remotes.BattleEnded:FireClient(player, summary)
+		Remotes.BattleEnded:FireClient(player, { result = "run", rested = rested })
 		sendResting(player)
+	end
+	handleEvents(fight, events)
+	if fight.sim.result then
+		endFight(fight, outcomeOf(fight.sim.result))
 	end
 end
 
@@ -429,25 +508,38 @@ function BattleService.WhyNotFight(player: Player): string?
 	return whyNotPlayer(player)
 end
 
-local function startFight(player: Player, monster: Monster): boolean
-	local party = PartyService.GetParty(player) :: { slots: { [number]: string }, summoned: number? }
-	local leaderId = party.slots[party.summoned :: number]
-	local leader = CardService.GetBeast(player, leaderId) :: Beast
-	local root = getRoot(player) :: BasePart
-	local partyIds = getPartyIds(player)
-	local reserves = {}
-	for _, beastId in partyIds do
-		local beast = CardService.GetBeast(player, beastId)
-		if beast and beastId ~= leaderId and not isResting(player, beastId) then
-			table.insert(reserves, fighterInput(beast))
-		end
-	end
+-- Players (the first leads) against one monster. Every check is done by the caller (whyNot for each).
+local function startFight(players: { Player }, monster: Monster): boolean
 	local boss = if monster.boss then Bosses.BOSSES[monster.boss] else nil
 	local stats = if boss then { hp = boss.hp, atk = boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
-	if not stats then
+	if not stats or #players == 0 then
 		return false
 	end
-	local sim = BattleSim.new(Combat, { fighters = { fighterInput(leader) }, reserves = reserves, abilities = true, canRun = true }, {
+	if boss then
+		stats.hp, stats.atk = BossRules.groupStats(Bosses, stats.hp, stats.atk, #players)
+	end
+
+	local members: { Member } = {}
+	local leaders, reserves = {}, {}
+	for _, player in players do
+		local party = PartyService.GetParty(player) :: { slots: { [number]: string }, summoned: number? }
+		local leaderId = party.slots[party.summoned :: number]
+		local owner = tostring(player.UserId)
+		local partyIds = getPartyIds(player)
+		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast)
+		leaderInput.owner = owner
+		table.insert(leaders, leaderInput)
+		for _, beastId in partyIds do
+			local beast = CardService.GetBeast(player, beastId)
+			if beast and beastId ~= leaderId and not isResting(player, beastId) then
+				local input = fighterInput(beast)
+				input.owner = owner
+				table.insert(reserves, input)
+			end
+		end
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, extraId = nil, extraMarker = nil, partyIds = partyIds, died = nil, leashWarnedAt = 0 })
+	end
+	local sim = BattleSim.new(Combat, { fighters = leaders, reserves = reserves, abilities = true, canRun = true }, {
 		fighters = { {
 			id = "m",
 			element = monster.element,
@@ -465,64 +557,89 @@ local function startFight(player: Player, monster: Monster): boolean
 		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
 	end
 
-	-- The ring: the monster where it stands, facing the player; the leader between them
+	-- The ring: the monster where it stands, facing the leader; the leaders on an arc between, each extra beside its own
 	local center = monster.marker.Position
+	local root = getRoot(players[1]) :: BasePart
 	local toPlayer = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z)
 	local direction = if toPlayer.Magnitude > 0.1 then toPlayer.Unit else Vector3.new(0, 0, -1)
-	local right = Vector3.new(-direction.Z, 0, direction.X)
-	local leaderSpot = center + direction * (if boss then Bosses.RING_RADIUS else Combat.RING_RADIUS)
-	local extraSpot = leaderSpot + right * 3
+	local radius = if boss then Bosses.RING_RADIUS else Combat.RING_RADIUS
+	local spots: { [string]: CFrame } = { [MONSTER_ID] = CFrame.lookAt(center, center + direction) }
+	local step = Bosses.GROUP_SPACING / radius
+	for index, member in members do
+		local angle = (index - (#members + 1) / 2) * step
+		local facing = CFrame.Angles(0, angle, 0):VectorToWorldSpace(direction)
+		local spot = center + facing * radius
+		local right = Vector3.new(-facing.Z, 0, facing.X)
+		local extra = spot + right * 3
+		spots[partyId(member.leaderId)] = CFrame.lookAt(spot, spot - facing)
+		spots[`extra:{member.owner}`] = CFrame.lookAt(extra, extra - facing)
+	end
 	local fight: Fight = {
-		player = player,
+		members = {},
+		size = #members,
 		monster = monster,
 		sim = sim,
-		leaderId = leaderId,
-		extraId = nil,
-		extraMarker = nil,
-		partyIds = partyIds,
-		spots = {
-			[MONSTER_ID] = CFrame.lookAt(center, center + direction),
-			[partyId(leaderId)] = CFrame.lookAt(leaderSpot, leaderSpot - direction),
-			extra = CFrame.lookAt(extraSpot, extraSpot - direction),
-		},
+		spots = spots,
 		center = center,
-		leashWarnedAt = 0,
 		sinceSnapshot = 0,
-		died = nil,
 		ended = false,
 	}
-	fights[player] = fight
-	WildService.Lock(monster, player)
-	PartyService.SetLocked(player, true)
-	PartyService.SetHold(player, fight.spots[partyId(leaderId)])
-	WildService.SetFightPose(monster, fight.spots[MONSTER_ID])
-	CardService.SetFighting(player, leaderId, true)
-	local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		fight.died = humanoid.Died:Connect(function()
-			endFight(fight, "run")
-		end)
-	end
-
-	local names: { [string]: string } = {}
-	for _, beastId in partyIds do
-		local beast = CardService.GetBeast(player, beastId)
-		if beast then
-			names[partyId(beastId)] = Cards.ById[beast.cardId].name
+	running[fight] = true
+	WildService.Lock(monster, players[1])
+	WildService.SetFightPose(monster, spots[MONSTER_ID])
+	for _, member in members do
+		local player = member.player
+		fight.members[player] = member
+		fights[player] = fight
+		PartyService.SetLocked(player, true)
+		PartyService.SetHold(player, spots[partyId(member.leaderId)])
+		CardService.SetFighting(player, member.leaderId, true)
+		local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			member.died = humanoid.Died:Connect(function()
+				leave(fight, member)
+			end)
 		end
 	end
-	Remotes.BattleStarted:FireClient(player, {
-		monsterId = monster.id,
-		species = monster.species,
-		level = monster.level,
-		elite = monster.elite,
-		element = monster.element,
-		boss = monster.boss,
-		names = names,
-		side = "a",
-		markers = { [partyId(leaderId)] = PartyService.GetMarker(player), [MONSTER_ID] = monster.marker },
-		snapshot = snapshot(fight),
-	})
+
+	local markers: { [string]: BasePart } = { [MONSTER_ID] = monster.marker }
+	for _, member in members do
+		local marker = PartyService.GetMarker(member.player)
+		if marker then
+			markers[partyId(member.leaderId)] = marker
+		end
+	end
+	for _, member in members do
+		local player = member.player
+		local names: { [string]: string } = {}
+		for _, beastId in member.partyIds do
+			local beast = CardService.GetBeast(player, beastId)
+			if beast then
+				names[partyId(beastId)] = Cards.ById[beast.cardId].name
+			end
+		end
+		local allies: { [string]: string } = {}
+		for _, other in members do
+			local beast = CardService.GetBeast(other.player, other.leaderId)
+			if other ~= member and beast then
+				allies[partyId(other.leaderId)] = `{other.player.DisplayName} · {Cards.ById[beast.cardId].name}`
+			end
+		end
+		Remotes.BattleStarted:FireClient(player, {
+			monsterId = monster.id,
+			species = monster.species,
+			level = monster.level,
+			elite = monster.elite,
+			element = monster.element,
+			boss = monster.boss,
+			names = names,
+			allies = allies,
+			group = #members > 1,
+			side = "a",
+			markers = markers,
+			snapshot = snapshot(fight),
+		})
+	end
 	return true
 end
 
@@ -531,19 +648,27 @@ local function tryStart(player: Player, monster: Monster?): boolean
 	if reason then
 		return false
 	end
-	return startFight(player, monster :: Monster)
+	return startFight({ player }, monster :: Monster)
 end
 
--- BossService: the player fights this monster now (false and why if they can't)
-function BattleService.StartFight(player: Player, monster: Monster): (boolean, string?)
-	local reason = whyNot(player, monster)
-	if reason then
-		return false, reason
+-- BossService: these players (the first leads) fight this monster together now (false and the first reason if any
+-- of them can't)
+function BattleService.StartGroupFight(players: { Player }, monster: Monster): (boolean, string?)
+	for _, player in players do
+		local reason = whyNot(player, monster)
+		if reason then
+			return false, reason
+		end
 	end
-	return startFight(player, monster), nil
+	return startFight(players, monster), nil
 end
 
-function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, partyIds: { string } }) -> any)
+-- BossService: the player fights this monster alone now
+function BattleService.StartFight(player: Player, monster: Monster): (boolean, string?)
+	return BattleService.StartGroupFight({ player }, monster)
+end
+
+function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)
 	bossRewards = handler
 end
 
@@ -568,38 +693,44 @@ local function onStartFight(player: Player, monsterId: unknown)
 		notify(player, reason, true)
 		return
 	end
-	startFight(player, monster :: Monster)
+	startFight({ player }, monster :: Monster)
 end
 
 local function onCallIn(player: Player, id: unknown)
 	local fight = fights[player]
-	if not allowCallIn(player) or not fight or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
+	local member = if fight then fight.members[player] else nil
+	if not allowCallIn(player) or not fight or not member or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
 		return
 	end
-	local ok = BattleSim.callIn(fight.sim, id)
+	-- Only one of your own reserves (the sim checks the owner)
+	local ok = BattleSim.callIn(fight.sim, id, member.owner)
 	if not ok then
 		return
 	end
 	local beastId = string.sub(id, 3)
-	fight.extraId = beastId
-	fight.spots[id] = fight.spots.extra
-	fight.extraMarker = PartyService.CreateMarker(player, beastId, fight.spots.extra)
+	local spot = fight.spots[`extra:{member.owner}`]
+	member.extraId = beastId
+	fight.spots[id] = spot
+	member.extraMarker = PartyService.CreateMarker(player, beastId, spot)
 	CardService.SetFighting(player, beastId, true)
-	-- The new creature's marker, so the client can float numbers over it
-	Remotes.BattleEvent:FireClient(player, { events = {}, markers = { [id] = fight.extraMarker }, snapshot = snapshot(fight) })
+	-- The new creature's marker, so clients can float numbers over it; the others see whose it is
+	local beast = CardService.GetBeast(player, beastId)
+	local allyName = if beast then `{player.DisplayName} · {Cards.ById[beast.cardId].name}` else player.DisplayName
+	broadcast(fight, { events = {}, markers = { [id] = member.extraMarker }, allies = { [id] = allyName }, snapshot = snapshot(fight) })
 	handleEvents(fight, { { type = "callin", from = id } })
 end
 
 local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	local fight = fights[player]
-	-- Only your own side's fighters (side A)
-	if not allowAbility(player) or not fight or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
+	local member = if fight then fight.members[player] else nil
+	-- Only your own fighters (the sim checks the owner)
+	if not allowAbility(player) or not fight or not member or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
 		return
 	end
 	if which ~= "element" and which ~= "signature" then
 		return
 	end
-	local events = BattleSim.useAbility(fight.sim, fighterId, which :: string)
+	local events = BattleSim.useAbility(fight.sim, fighterId, which :: string, member.owner)
 	if events then
 		handleEvents(fight, events)
 		if fight.sim.result then
@@ -610,7 +741,13 @@ end
 
 local function onRun(player: Player)
 	local fight = fights[player]
-	if not allowRun(player) or not fight then
+	local member = if fight then fight.members[player] else nil
+	if not allowRun(player) or not fight or not member then
+		return
+	end
+	-- In a group fight, Run is leaving (the others fight on), even for the last one still in it: never a run roll
+	if fight.size > 1 then
+		leave(fight, member)
 		return
 	end
 	handleEvents(fight, BattleSim.tryRun(fight.sim, "a"))
@@ -621,19 +758,19 @@ end
 
 -- Loop ----------------------------------------------------------------------------------------------------
 
--- Ends fights that can't go on: the player's character or summoned creature is gone
-local function stillValid(fight: Fight): boolean
-	local player = fight.player
+-- A member who can't go on: their character or summoned creature is gone
+local function memberValid(member: Member): boolean
+	local player = member.player
 	return player.Parent ~= nil
 		and getRoot(player) ~= nil
 		and PartyService.GetMarker(player) ~= nil
-		and CardService.GetBeast(player, fight.leaderId) ~= nil
-		and fight.monster.alive
+		and CardService.GetBeast(player, member.leaderId) ~= nil
 end
 
 -- Players may run around during a fight, but not away from it: past the leash they're put back at its edge
-local function keepNear(fight: Fight)
-	local root = getRoot(fight.player)
+local function keepNear(fight: Fight, member: Member)
+	local player = member.player
+	local root = getRoot(player)
 	if not root then
 		return
 	end
@@ -645,28 +782,37 @@ local function keepNear(fight: Fight)
 	local edge = fight.center + offset.Unit * (leash - 2)
 	local back = Vector3.new(edge.X, root.Position.Y, edge.Z)
 	root.AssemblyLinearVelocity = Vector3.zero
-	;(fight.player.Character :: Model):PivotTo(CFrame.lookAt(back, Vector3.new(fight.center.X, back.Y, fight.center.Z)))
-	if os.clock() - fight.leashWarnedAt > 3 then
-		fight.leashWarnedAt = os.clock()
-		notify(fight.player, "Stay near the fight! (Run to leave it)", true)
+	;(player.Character :: Model):PivotTo(CFrame.lookAt(back, Vector3.new(fight.center.X, back.Y, fight.center.Z)))
+	if os.clock() - member.leashWarnedAt > 3 then
+		member.leashWarnedAt = os.clock()
+		notify(player, "Stay near the fight! (Run to leave it)", true)
 	end
 end
 
 local function stepFights(dt: number)
-	for _, fight in fights do
-		if not stillValid(fight) then
+	for fight in table.clone(running) do
+		if not fight.monster.alive then
 			endFight(fight, "run")
-		else
-			keepNear(fight)
-			handleEvents(fight, BattleSim.step(fight.sim, dt))
-			if fight.sim.result then
-				endFight(fight, outcomeOf(fight.sim.result))
+			continue
+		end
+		for _, member in table.clone(fight.members) do
+			if not memberValid(member) then
+				leave(fight, member)
 			else
-				fight.sinceSnapshot += dt
-				if fight.sinceSnapshot >= SNAPSHOT_SECONDS then
-					fight.sinceSnapshot = 0
-					Remotes.BattleEvent:FireClient(fight.player, { events = {}, snapshot = snapshot(fight) })
-				end
+				keepNear(fight, member)
+			end
+		end
+		if fight.ended then
+			continue
+		end
+		handleEvents(fight, BattleSim.step(fight.sim, dt))
+		if fight.sim.result then
+			endFight(fight, outcomeOf(fight.sim.result))
+		else
+			fight.sinceSnapshot += dt
+			if fight.sinceSnapshot >= SNAPSHOT_SECONDS then
+				fight.sinceSnapshot = 0
+				broadcast(fight, { events = {}, snapshot = snapshot(fight) })
 			end
 		end
 	end
@@ -726,8 +872,9 @@ end
 
 local function unload(player: Player)
 	local fight = fights[player]
-	if fight then
-		endFight(fight, "run")
+	local member = if fight then fight.members[player] else nil
+	if fight and member then
+		leave(fight, member)
 	end
 	resting[player] = nil
 	nearSpring[player] = nil
@@ -738,8 +885,9 @@ function BattleService.Start()
 	-- End a fight before the leave save, so cards that fainted in it are saved as resting
 	DataService.OnBeforeLeave(function(player)
 		local fight = fights[player]
-		if fight then
-			endFight(fight, "run")
+		local member = if fight then fight.members[player] else nil
+		if fight and member then
+			leave(fight, member)
 		end
 	end)
 	Remotes.StartFight.OnServerEvent:Connect(onStartFight)

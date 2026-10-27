@@ -2,6 +2,8 @@
 local BossRules = require("../src/shared/Util/BossRules")
 local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
+local luau = require("@lune/luau")
 
 local function record(fields: { [string]: any }): BossRules.Record
 	local base = BossRules.read(nil, false)
@@ -91,5 +93,54 @@ return {
 		expect.equal(out.frostTyrant.cleared, true, "unknown boss kept")
 		expect.equal(out.frostTyrant.lootAt, 5, "unknown boss untouched")
 		expect.equal(BossRules.write(nil, { meadowWarden = record({}) }).meadowWarden.cleared, false, "no save yet")
+	end,
+	["the ladder can be climbed: each key's fragments come from the boss before"] = function()
+		for index, bossId in Bosses.LADDER do
+			local unlock = Bosses.BOSSES[bossId].unlock
+			if index == 1 then
+				assert(unlock == nil, "the first boss is open")
+				continue
+			end
+			assert(unlock, `{bossId} needs a key`)
+			local previous = Bosses.BOSSES[Bosses.LADDER[index - 1]]
+			local fromClear, dropped = 0, false
+			for _, grant in previous.firstClear do
+				if grant.item == unlock.item then
+					fromClear += grant.count
+				end
+			end
+			for _, drop in previous.drops do
+				dropped = dropped or (drop.item == unlock.item and drop.chance > 0)
+			end
+			assert(fromClear > 0, `{previous.name}'s first clear gives {unlock.item}`)
+			assert(fromClear >= unlock.count or dropped, `{unlock.item}: {fromClear} from the first clear and no drop for the rest`)
+		end
+	end,
+	["groupStats: HP +80% and ATK +15% per extra player"] = function()
+		expect.equal(select(1, BossRules.groupStats(Bosses, 1200, 9, 1)), 1200, "solo HP")
+		local hp, atk = BossRules.groupStats(Bosses, 1200, 9, 2)
+		expect.equal(hp, 2160, "2 players HP")
+		expect.equal(atk, 10, "2 players ATK (10.35)")
+		hp, atk = BossRules.groupStats(Bosses, 4800, 18, 4)
+		expect.equal(hp, 16320, "4 players HP")
+		expect.equal(atk, 26, "4 players ATK (26.1)")
+	end,
+
+	["contributed: 10% of the damage or 15% of the hits taken"] = function()
+		expect.equal(BossRules.contributed(Bosses, 10, 0, 100, 100), true, "10% damage")
+		expect.equal(BossRules.contributed(Bosses, 9, 15, 100, 100), true, "15% tanked")
+		expect.equal(BossRules.contributed(Bosses, 9, 14, 100, 100), false, "carried")
+		expect.equal(BossRules.contributed(Bosses, 0, 0, 0, 0), true, "nothing happened: no penalty")
+	end,
+
+	["carriedDrop: a quarter of the chance, never fragments"] = function()
+		expect.equal(BossRules.carriedDrop(Bosses, "xpTonic", 0.6, false), 0.15, "tonic")
+		expect.equal(BossRules.carriedDrop(Bosses, "fragment_caveBroodQueen", 0.7, true), 0, "fragment")
+	end,
+	["every rule exists as soon as the module loads (none nested inside another)"] = function()
+		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop" } do
+			expect.equal(typeof(fresh[name]), "function", name)
+		end
 	end,
 }

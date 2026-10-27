@@ -395,7 +395,7 @@ Roadmap (one sub-project at a time):
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
       b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
-         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, done: 5.10).
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, and phase 2, groups, done: 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
@@ -593,25 +593,39 @@ and rewards in `BossService`.
 
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
-  key's fragments are used the first time only. The boss is spawned for you alone, stands still, and always goes when
-  the fight ends (win, loss or run). One boss per arena: while someone fights there, the gate tells others to wait
-  (shared group fights come with groups, phase 3). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
+  the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
+  group, below). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
   studs, stuns on a boss last at most 1 s.
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
-  strongest party card above 2.5x the recommended Power makes them x0.35. Fragments for a boss you've already opened
+  strongest card that fought (leader or called in; resting party cards don't count) above 2.5x the recommended
+  Power makes them x0.35. Fragments for a boss you've already opened
   never drop. The first clear's chest (and the server-wide chat message) comes even on a too-fast win, so a strong
   player can still climb.
 - **Items:** XP Tonic (400 card XP, used from the Party panel, never on a Lv 30 card), Grading Seal (one missing
-  duplicate at the Grading Station, at most half a step), Star Shards, fragments, trophies.
-- **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; a stone
+  duplicate at the Grading Station, at most half a step, so never on a 1-duplicate step; the toggle says when they
+  can't help), Star Shards, fragments, trophies.
+- **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
+  count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
 - **UI:** the Bosses HUD tile (K) opens the Boss Ladder: lock and fragments x/N, recommended Power vs your strongest
   party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
-- Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` (use the gate there).
-- Boss models are placeholders (Wild shapes at 2.5-3.2x). Phases 2-4: Frontier bosses, groups, the Dungeon.
+- **Groups (phase 2):** the gate's second prompt (F) "Start group" opens a group; others press "Join group (n/4)"
+  within 15 s (`JOIN_SECONDS`), the leader can press again to start at once, it starts by itself when full (4).
+  Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
+  and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
+  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`).
+  Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
+  others fight on, and the fight ends when nobody is left. On a win each player gets their own XP, cash and loot roll.
+  Full loot needs 10% of the group's damage or 15% of the hits it took (`BossRules.contributed`); below that a player
+  is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown and soft cap
+  still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
+  were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
+- Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` and `/boss <n> group` (use that prompt).
+- Boss models are placeholders (Wild shapes at 2.5-3.2x). Next (spec section 10): Frontier bosses (phase 3), the Dungeon (4).
 
 ---
 
