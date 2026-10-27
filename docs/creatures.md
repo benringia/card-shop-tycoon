@@ -150,6 +150,7 @@ character only, nothing else: no base, no ground, no grass, no rocks, no stand, 
 each other. One solid closed shape.
 ```
 
+- Flat creatures (rays): ask for "lying flat, back facing up, belly down"; Reefray came out standing on end, belly up.
 - Neutral rest pose, always: four-legged creatures "standing still in a neutral pose, all four feet planted square,
   head and body facing straight forward, head level, not turned"; two-legged / humanlike ones in a T-pose (generate_3d
   `pose_mode="t-pose"`). Never "side view", walking, prancing or turned poses: Briarhorn (turned 19 degrees), the
@@ -213,6 +214,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **mantaroll** (Reefray): rises (`MANTA_RISE`) and turns one full barrel roll, aqua sparkles streaming off its wing
+  tips, then a ring of water splashes out (the effects go by its wingspan, `MANTA_SPAN`).
 - **abysschomp** (Abyssal Koi): draws back and lunges forward snapping (`CHOMP_DRAW`, `CHOMP_LUNGE`); a dark surge of
   deep water bursts from its fangs with cyan sparks and bubbles.
 - **thundercall** (Thunderhorn): rears up and stamps down (`THUNDER_REAR`, `THUNDER_LIFT`; shares the tide call's
@@ -292,6 +295,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   (as `Ear_` bones) wrapped in thorny vines and roses, and a rose wreath on its hump, matching its card art. Remade
   27 Oct (the first model, a slim cow, was too skinny). Remeshed and baked; heavy gait (`legSwing` 0.75: its short legs
   under a deep belly looked crouched at the full swing). 23 bones, 10,000 triangles. Replaced the EarthBull.
+- **Reefray** (`rig_reefray.py`, Meshy, Rare): a coral manta ray (a full redesign, replacing the bought metal crab):
+  pale with glowing aqua spots, teal edges and curled coral head fins. Generated standing on end and belly up (turned
+  over by hand). Flies; flat, so `size` 0.6 (models scale by height) and `wingAmount` 0.3 (full wingbeats folded its
+  broad wings up on end). Signature manta roll. 21 bones, 8,000 triangles. Card art still to do.
 - **Abyssal Koi** (`rig_abyssalkoi.py`, Meshy, Epic): a massive fierce ice shark (remade 27 Oct on the user's call,
   replacing the first armoured koi). Meshy gave only cyan fin tips, so 19 ice crystals were added by hand with
   `rig_kit.crystal` (dorsal crown, back ridge, ice horns over the eyes, fin and tail shards; two colours from

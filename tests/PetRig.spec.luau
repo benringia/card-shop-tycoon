@@ -231,6 +231,9 @@ return {
 		assertBounded(up, "flapping")
 		local ground = poseAt(WINGED, still(1))
 		assert(math.abs(ground["wing:Left:0"].z) < math.rad(10), "wings flap on the ground")
+		-- A flat manta beats shallow (wingAmount), or its broad wings fold it up on end
+		local shallow = poseAt(WINGED, { time = 1, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, flying = true, flapPhase = math.pi / 2, wingAmount = 0.3 })
+		expect.near(shallow["wing:Left:0"].z, up["wing:Left:0"].z * 0.3, 1e-9, "wingAmount doesn't scale the beat")
 	end,
 
 	["arms hang down at the sides and swing against the legs"] = function()
@@ -449,6 +452,16 @@ return {
 		assert(PetRig.body(CFG, "shadowloop", 0.5, 1, true).pitch < -math.pi * 0.5, "halfway it isn't upside down")
 		assert(PetRig.body(CFG, "shadowloop", 0.5, 1, true).lift > CFG.LOOP_HEIGHT * 0.9, "it doesn't rise for the loop")
 		expect.near(PetRig.body(CFG, "shadowloop", 1, 1, true).lift, 0, 1e-6, "it doesn't come back down")
+	end,
+
+	["a manta roll turns one full barrel roll to its side, rising, and comes back level"] = function()
+		assert(PetRig.cue(CFG, "mantaroll", 0.1) and not PetRig.cue(CFG, "mantaroll", 0.05), "no sparkles as the roll starts")
+		expect.near(PetRig.body(CFG, "mantaroll", 1, 1, true).roll, math.pi * 2, 1e-6, "the roll doesn't come all the way round")
+		expect.near(PetRig.body(CFG, "mantaroll", 1, -1, true).roll, -math.pi * 2, 1e-6, "the roll ignores which way it turns")
+		expect.near(math.abs(PetRig.body(CFG, "mantaroll", 0.45, 1, true).roll), math.pi, 0.05, "halfway it isn't upside down")
+		assert(PetRig.body(CFG, "mantaroll", 0.45, 1, true).lift > CFG.MANTA_RISE * 0.9, "it doesn't rise for the roll")
+		expect.near(PetRig.body(CFG, "mantaroll", 1, 1, true).lift, 0, 1e-6, "it doesn't come back down")
+		expect.near(PetRig.body(CFG, "mantaroll", 1, 1, true).pitch, 0, 1e-6, "the roll tips it nose up or down")
 	end,
 
 	["an ember flap flaps its wings up and hops, puffing embers at the top"] = function()

@@ -29,6 +29,7 @@
 -- * lavaslam (Cinder Titan): pounds its chest, raises both fists and slams them down in a ring of fire and lava.
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
+-- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -685,24 +686,55 @@ end
 
 -- A tide call: as its front feet stamp down, a ring of water splashes out round it with spray and bubbles
 local WATER = Color3.fromRGB(110, 210, 240)
-local function tidecall(model: Model, size: number)
-	local feet = model:GetPivot().Position
+-- A ring of water drops splashing out from `centre`, with spray and sparkles
+local function waterRing(centre: Vector3, size: number)
 	for i = 1, 14 do
 		local angle = i / 14 * math.pi * 2
 		local drop = fxPart(Vector3.new(0.25, 0.25, 0.25) * size, WATER, false)
 		drop.Shape = Enum.PartType.Ball
 		drop.Transparency = 0.25
-		drop.Position = feet + Vector3.new(math.cos(angle), 0.2, math.sin(angle)) * 0.6 * size
+		drop.Position = centre + Vector3.new(math.cos(angle), 0.2, math.sin(angle)) * 0.6 * size
 		drop.Parent = workspace
-		local out = feet + Vector3.new(math.cos(angle) * 2.4, rng:NextNumber(0.8, 1.4), math.sin(angle) * 2.4) * size
+		local out = centre + Vector3.new(math.cos(angle) * 2.4, rng:NextNumber(0.8, 1.4), math.sin(angle) * 2.4) * size
 		local splash = TweenService:Create(drop, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = out, Transparency = 1 })
 		splash.Completed:Once(function()
 			drop:Destroy()
 		end)
 		splash:Play()
 	end
-	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(190, 245, 255)), 18, 0.35 * size, 5 * size, 0.8)
-	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(200, 235, 245)), 6, 0.9 * size, 2 * size, 0.9)
+	burst(CFrame.lookAt(centre, centre + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(190, 245, 255)), 18, 0.35 * size, 5 * size, 0.8)
+	burst(CFrame.lookAt(centre, centre + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(200, 235, 245)), 6, 0.9 * size, 2 * size, 0.9)
+end
+
+local function tidecall(model: Model, size: number)
+	waterRing(model:GetPivot().Position, size)
+end
+
+-- A manta roll: glowing aqua sparkles stream off its wing tips through the barrel roll, then a ring of water splashes
+-- out round it. It is flat (a small size for its wingspan), so the effects go by its wingspan, MANTA_SPAN sizes
+local MANTA_SPAN = 2.5
+local function mantaroll(model: Model, size: number)
+	local span = size * MANTA_SPAN
+	local seconds = Party.PET_ANIM.FIDGET_SECONDS.mantaroll * 0.7
+	for step = 0, 6 do
+		task.delay(step * seconds / 7, function()
+			if not model.Parent then
+				return
+			end
+			for _, name in { "Wing_Left_2", "Wing_Right_2" } do
+				local tip = bonePosition(model, name)
+				if tip then
+					burst(CFrame.new(tip), SPARKLES, ColorSequence.new(Color3.fromRGB(150, 255, 240), WATER), 4, 0.25 * span, 0.8 * span, 0.7)
+				end
+			end
+		end)
+	end
+	task.delay(seconds, function()
+		local body = bonePosition(model, "Spine_0")
+		if body and model.Parent then
+			waterRing(body, span)
+		end
+	end)
 end
 
 -- A flame swoop: through the dive its wing tips and tail stream fire, with a burst of embers as it levels out
@@ -1050,6 +1082,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		blessing(model, size)
 	elseif kind == "hornstorm" then
 		hornstorm(model, size)
+	elseif kind == "mantaroll" then
+		mantaroll(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
