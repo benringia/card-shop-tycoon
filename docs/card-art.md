@@ -108,6 +108,12 @@ Element scenes (matching `CardDesign.SCENES`):
   rounded ears with pink insides, a round peach-coloured belly with its little paws resting on it, a small orange flame
   tuft on top of its head, a short thick tail with glowing orange ember spots, a few glowing embers floating around it
   (pose: sitting happily on a rug; lighting: warm cozy firelight).
+- **Sparkrat** (original electric mouse, Common; was the LightingMouse): a very cute chubby cartoon electric mouse,
+  rounded stylized toy-like 3D style, a round plump egg-shaped body of soft mauve pink fur, a big round cream belly,
+  big shiny dark eyes, rosy pink cheeks, a small pink nose and a cheeky happy grin with two little buck teeth, two big
+  round ears with orange insides, short stubby arms held out happily, tiny feet, a short tail with a big glowing yellow
+  lightning bolt rising from it, little sparks of static crackling around its ears and tail (pose: standing happily on
+  a rocky ledge; lighting: bright playful stormy lighting with flashes).
 - **Reefray** (original coral manta ray, Rare; was the metal crab): a slightly fierce cartoon coral manta ray, rounded
   stylized toy-like 3D style, wide graceful wings spread out, pale cream-white back covered in glowing aqua spots, teal
   edges along its wings and head, two curled coral-pink head fins like horns at the front, fierce glowing aqua eyes, a

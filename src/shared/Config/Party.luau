@@ -52,7 +52,8 @@ return {
 		HeronDemon = { "Root.L" },
 	} :: { [string]: { string } },
 	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
-	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING). Flametor holds its short
+	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING), idle = how far they bob
+	-- standing (none if left out). Flametor holds its short
 	-- arms up in front like a T-rex (Infernox's are modelled that way); Sprouthop swings its arms wide.
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
@@ -63,6 +64,7 @@ return {
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 		Cindercub = { hang = 0, forward = 0, bend = 0, swing = 14 }, -- paws rest on its tummy, so only a little swing
 		Coalbit = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- paws resting on its belly
+		Sparkrat = { hang = 50, forward = 0, bend = 20, swing = 30, idle = 18 }, -- stubby arms held out happily (lower and they sink into its round belly), bobbing as it stands
 		Zappit = { hang = 0, forward = 0, bend = 10, swing = 18 }, -- arms hang at its sides
 		Mossmole = { hang = 0, forward = 0, bend = 0, swing = 4 }, -- hugging its moss garden
 		Petalpaw = { hang = 0, forward = 0, bend = 15, swing = 24 },
@@ -70,11 +72,11 @@ return {
 		Ashbeak = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- folded wings, fluttering a little
 		Fizzlebug = { hang = 0, forward = 0, bend = 15, swing = 12 },
 		Wispurr = { hang = 0, forward = 0, bend = 0, swing = 12 }, -- paws held up in front
-	} :: { [string]: { hang: number, forward: number, bend: number, swing: number? } },
+	} :: { [string]: { hang: number, forward: number, bend: number, swing: number?, idle: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Blazehound sneezes a puff of fire,
+	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Sparkrat shivers with static and zaps lightning from its tail to its ears, Blazehound sneezes a puff of fire,
 	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -99,6 +101,7 @@ return {
 		Stormking = { fidget = "hornstorm", chance = 0.35 },
 		Reefray = { fidget = "mantaroll", chance = 0.35 },
 		Coalbit = { fidget = "emberglow", chance = 0.35 },
+		Sparkrat = { fidget = "staticshock", chance = 0.35 },
 		Nightowl = { fidget = "owlturn", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
@@ -142,6 +145,7 @@ return {
 		Kirin = { fidgets = { "look", "tilt", "sniff", "shake", "stretch" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.6, stride = 1.2 }, -- a graceful, unhurried divine beast
 		Stormking = { fidgets = { "look", "sniff", "shake", "stomp" }, tailSpeed = 0.4, tailAmount = 0.7, bounce = 0.3, stride = 1.3 }, -- a colossal armoured plodder
 		Nightowl = { fidgets = { "look", "tilt", "tilt", "shake" }, tailSpeed = 0.6 }, -- a watchful owl, head tilting
+		Sparkrat = { fidgets = { "look", "tilt", "sniff", "hop", "hop", "spin", "shake", "wag" }, tailSpeed = 1.3, bounce = 1.4 }, -- a zippy little mouse
 		Coalbit = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "wag", "hop" }, tailSpeed = 1.1, bounce = 1.2 }, -- a bouncy little cub waddling upright, its tail swishing
 		Reefray = { fidgets = { "look", "tilt", "shake" }, tailSpeed = 0.5, tailAmount = 0.5, wingAmount = 0.3 }, -- a gliding manta: shallow beats of its broad wings (full ones folded it up on end), its long tail trailing
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "groom", "roll", "yawn", "wag", "shake", "groom" }, tailSpeed = 0.6 }, -- a sea otter
@@ -176,6 +180,7 @@ return {
 		KNEE_LIFT = 32, -- lower leg bends as it swings forward
 		BREATH = math.rad(2.5), -- spine pitch, radians
 		BREATH_SECONDS = 2.6,
+		ARM_IDLE_SECONDS = 1.6, -- one bob of the arms standing (ARM_POSE idle)
 		WALK_BOB = 4, -- spine and head nod per step
 		TAIL_WAG = 14, -- base of the tail, standing; each segment further adds TAIL_GROW
 		TAIL_GROW = 0.45,
@@ -274,11 +279,15 @@ return {
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
-			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2, abysschomp = 2, thundercall = 2.4, riftroar = 3, lavaslam = 3, blessing = 3.2, hornstorm = 2.4, mantaroll = 2.2, owlturn = 2.6, emberglow = 2.6,
+			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2, abysschomp = 2, thundercall = 2.4, riftroar = 3, lavaslam = 3, blessing = 3.2, hornstorm = 2.4, mantaroll = 2.2, owlturn = 2.6, emberglow = 2.6, staticshock = 2.2,
 		},
 		-- Nightowl's owl turn: how far its head swivels round (degrees, neck and head together) and nods with the hoot
 		OWL_TURN = 120,
 		HOOT_NOD = 16,
+		-- Sparkrat's static shock: how much it shivers as static builds (degrees) and how high it hops as it discharges (studs at size 1)
+		STATIC_SHIVER = 4,
+		STATIC_HOP = 0.4,
+		STATIC_ARMS = 45, -- and how far its arms fling up (degrees)
 		-- Coalbit's ember glow: how low it hunkers (studs at size 1) and how much it shivers (degrees) as its embers flare
 		EMBER_CROUCH = 0.12,
 		EMBER_SHIVER = 3,
@@ -381,7 +390,7 @@ return {
 		Briarhorn = { pack = "Originals", model = "Briarhorn", size = 1.7 }, -- original, tools/blender/rig_briarhorn.py (Meshy-generated forest bison)
 		Zappit = { pack = "Originals", model = "Zappit", size = 1.5 }, -- original, tools/blender/rig_zappit.py (Meshy-generated electric bunny)
 		Fizzlebug = { pack = "Originals", model = "Fizzlebug", size = 1.6, flies = true }, -- original, tools/blender/rig_fizzlebug.py (Meshy-generated electric bee)
-		Sparkrat = { pack = "UltraPets", model = "LightingMouse" },
+		Sparkrat = { pack = "Originals", model = "Sparkrat", size = 1.4 }, -- original, tools/blender/rig_sparkrat.py (Meshy-generated electric mouse, bolt tail added by hand)
 		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/rig_boltlynx.py (Meshy-generated lynx)
 		Stormjack = { pack = "Originals", model = "Stormjack", size = 1.8 }, -- original, tools/blender/build_stormjack.py
 		Thunderhorn = { pack = "Originals", model = "Thunderhorn", size = 1.8 }, -- original, tools/blender/rig_thunderhorn.py (Meshy-generated thunder stag; slim, so a size up)

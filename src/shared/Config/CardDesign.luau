@@ -28,7 +28,7 @@ return {
 		Coalbit = "rbxassetid://101814810649328",
 		Driplet = "rbxassetid://136894180835732",
 		Petalpaw = "rbxassetid://106765768029335",
-		Sparkrat = "rbxassetid://112902791686860",
+		Sparkrat = "rbxassetid://89169094983645",
 		Hushmoth = "rbxassetid://88489800871262",
 		Blazehound = "rbxassetid://91834682792754",
 		Reefray = "rbxassetid://87314441883255",

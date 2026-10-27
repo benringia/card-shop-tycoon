@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **staticshock** (Sparkrat): shivers faster as static builds (`STATIC_SHIVER`), then hops (`STATIC_HOP`) with its
+  arms flung up (`STATIC_ARMS`) as lightning arcs from its bolt tail to both ears.
 - **emberglow** (Coalbit): hunkers down (`EMBER_CROUCH`) and shivers (`EMBER_SHIVER`) as its ember spots flare;
   embers, sparks and smoke rise off its back in waves with a warm orange glow.
 - **owlturn** (Nightowl): the head swivels round behind (`OWL_TURN` degrees over neck and head), snaps back and nods
@@ -306,6 +308,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   salamander) had five legs and was replaced (`Coalbit_v1.blend`). Hand fixes: a loose second tail deleted, the turned
   body and head straightened, the ear bones limited to the ear tips. No neck bone (the head sits on the short body).
   Signature ember glow. Size 1.4. 17 bones, 7,500 triangles.
+- **Sparkrat** (`rig_sparkrat.py`, Meshy, Common; was the LightingMouse): a chubby mauve-pink electric mouse with a
+  cream belly, buck teeth and big orange-lined ears, generated in a T-pose (right first time). Its tail came out a
+  plain stub, so a big yellow bolt was added by hand (`rig_kit.bolt`). The arm band is reweighted to the arm bones (the
+  still upper arms looked like a second pair once the arms moved). Arms held out (`ARM_POSE` hang 50) and bobbing
+  standing (`idle` 18). Signature static shock. Size 1.4. 19 bones, 7,000 triangles.
 - **Nightowl** (`rig_nightowl.py`, Meshy, Rare): a shadow owl (a redesign to match its name, replacing the bought
   heron demon): plump, dark violet, glowing violet eyes, a silver crescent moon on its forehead, smoky wing tips.
   Right first time; 1.2M triangles of feathers shattered under collapse decimate, so remesh_bake at a fine 4 mm voxel.
