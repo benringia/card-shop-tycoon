@@ -283,8 +283,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.25 -- the first chop
 	elseif kind == "eclipse" then
 		return progress >= 0.25 -- sitting up, looking to the sky
-	elseif kind == "voltcharge" then
-		return progress >= 0.15 -- fists up, the lightning starts
+	elseif kind == "tailstrike" then
+		return progress >= 0.45 -- the tail is curled up over its back: the orb charges and strikes
 	elseif kind == "backflip" then
 		return progress >= 0.1 -- taking off
 	elseif kind == "stomp" then
@@ -583,7 +583,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local lifted = if fidget == "butterfly" then hold(progress) * idle else 0
 	local chopping = if fidget == "kungfu" then hold(progress) * idle else 0
 	-- A volt charge: both fists brought up in front, braced, lightning arcing between them
-	local charging = if fidget == "voltcharge" then hold(progress) * idle else 0
+	-- A tail strike: the tail curls up over the back like a scorpion's, held while the lightning strikes
+	local striking = if fidget == "tailstrike" then hold(progress) * idle else 0
 	-- An ember flap: folded wings (arms) beat out and up fast, three times
 	local flapping = if fidget == "emberflap" or fidget == "watershake" then hold(progress) * idle else 0
 	-- A lava slam: the arms pound the chest in turn (to 0.5), then both fists go up (0.65) and slam down (0.75)
@@ -768,7 +769,6 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			-- the breeze standing, each bone a little behind the one above. Negative x swings it back
 			local flutter = rad(cfg.CAPE_FLUTTER) * math.sin(state.time * TAU / cfg.CAPE_SECONDS - role.segment * 0.9)
 			x = -(rad(cfg.CAPE_BILLOW) * moving * (if role.segment == 0 then 1 else 0.35)) - flutter * (0.5 + role.segment * 0.5)
-				- rad(10) * charging * (if role.segment == 0 then 1 else 0.3)
 			z = rad(cfg.CAPE_FLUTTER) * 0.5 * math.sin(state.time * TAU / cfg.CAPE_SECONDS * 0.7 + role.segment) * idle
 		elseif role.kind == "tails" then
 			-- One of many tails (Tails_<tail>_<bone>, a kitsune): each sways on its own beat, fanned out from the others
@@ -781,6 +781,10 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			x = -breath * 0.5
 			if fidget == "thunderroar" then
 				x -= rad(14) * hold(progress) * idle -- the tail lifts stiff
+			end
+			if striking > 0 then
+				y *= 1 - striking
+				x -= rad(cfg.STRIKE_CURL[role.segment + 1] or 0) * striking
 			end
 		elseif role.kind == "arm" then
 			-- Lowered from a T-pose to hang at the sides, swinging against the leg on the same side
@@ -826,10 +830,6 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			if flapping > 0 and role.segment == 0 then
 				local beat = rad(cfg.EMBER_FLAP) * (0.5 + 0.5 * math.sin(progress * TAU * 3)) * flapping
 				z += if role.side == "Left" then beat else -beat
-			end
-			if charging > 0 then
-				-- Both fists up in front, elbows bent, braced
-				x += (if role.segment == 0 then rad(cfg.VOLT_FISTS) else rad(35) / role.segment) * charging
 			end
 			if chopping > 0 then
 				-- Kung fu: the right arm chops, then the left, twice

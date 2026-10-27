@@ -14,7 +14,7 @@ Blender space: Z up, creatures face -Y, their left is +X. Run inside Blender wit
 import os
 
 import bpy
-from mathutils import Vector, kdtree
+from mathutils import Matrix, Vector, kdtree
 
 REPO = os.environ.get("CARD_SHOP_REPO", r"C:\Users\Ben\Documents\roblox-project\card-shop-tycoon")
 MAX_BONES = 4  # Roblox's limit
@@ -323,6 +323,25 @@ def droplet(mesh, base, radius, height, uv_body, uv_tip, segments=12, rings=10):
         upper = face.calc_center_median().z > base.z + height * 0.6
         for loop in face.loops:
             loop[layer].uv = uv_tip if upper else uv_body
+    bm.to_mesh(mesh.data)
+    bm.free()
+
+
+def orb(mesh, centre, radius, uv, segments=16, rings=10):
+    """Adds a smooth ball of `radius` at `centre` to the mesh, all its faces the colour at `uv` (paint_patch): a glowing
+    orb on a tail tip, say."""
+    import bmesh
+
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    made = bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=radius,
+                                     matrix=Matrix.Translation(Vector(centre)))
+    faces = list({f for v in made["verts"] for f in v.link_faces})
+    layer = bm.loops.layers.uv.active
+    for face in bmesh.ops.triangulate(bm, faces=faces)["faces"]:
+        face.smooth = True
+        for loop in face.loops:
+            loop[layer].uv = uv
     bm.to_mesh(mesh.data)
     bm.free()
 

@@ -171,6 +171,13 @@ Element scenes (matching `CardDesign.SCENES`):
   bush, short chunky bark arms with little twig fingers, short stubby root feet, one hand raised with a small blue
   butterfly landing on it (pose: standing happily; lighting: soft warm green sunlight).
 
+- **Voltkit** (original storm pangolin, Very Rare; Meshy remake): a slightly fierce chunky mythical storm pangolin,
+  rounded stylized toy-like 3D style, a plump round body covered in overlapping dark steel-blue armour scales, a cream
+  belly and long cream snout, fierce glowing yellow eyes, two tall yellow lightning-bolt crests on its head, a yellow
+  lightning bolt mark on its armoured flank, short thick legs with sturdy claws, its thin tail curled up over its back
+  like a scorpion with a glowing yellow electric orb crackling at the tip (pose: standing on a rocky ledge; lighting:
+  dramatic stormy lighting with bright flashes under a stormy dusk sky).
+
 - **Puffpuddle** (original sea otter, Common; Meshy remake, upright): a very cute chubby cartoon baby sea otter
   standing upright on two short legs, rounded stylized toy-like 3D style, warm chocolate brown fur, a lighter brown
   head, a cream face and a big round cream belly with its little paws resting on it, big shiny dark eyes, a black

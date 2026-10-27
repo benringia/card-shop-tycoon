@@ -775,7 +775,7 @@ return {
 		assert(PetRig.body(CFG, "riftroar", CFG.ROAR_BURST * 0.9, 1, true).pitch > 0, "it doesn't rear back first")
 	end,
 
-	["a cape billows back when running and flutters standing; a volt charge raises both fists"] = function()
+	["a cape billows back when running and flutters standing"] = function()
 		local cape = PetRig.role("Cape_1")
 		assert(cape and cape.kind == "cape" and cape.segment == 1, "Cape_1 is the cape's second bone")
 		local HERO = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Arm_Left_0", "Arm_Right_0", "0_Left_Limb_0", "0_Right_Limb_0",
@@ -786,15 +786,21 @@ return {
 		local a, b = poseAt(HERO, still(0.3)), poseAt(HERO, still(1.1))
 		assert(math.abs(a["cape:2"].x - b["cape:2"].x) > math.rad(1), "the cape doesn't flutter standing")
 		assertBounded(running, "billowing cape")
+	end,
 
-		assert(PetRig.cue(CFG, "voltcharge", 0.2) and not PetRig.cue(CFG, "voltcharge", 0.05), "the lightning starts once the fists are up")
-		local charge = poseAt(HERO, { time = 0, phase = 0, moving = 0, fidget = "voltcharge", fidgetProgress = 0.5,
-			armDrop = { Left = math.rad(70), Right = math.rad(70) } })
-		local rest = poseAt(HERO, { time = 0, phase = 0, moving = 0, fidget = "look", fidgetProgress = 0, armDrop = { Left = math.rad(70), Right = math.rad(70) } })
-		for _, side in { "Left", "Right" } do
-			assert(charge[`arm:{side}:0`].x - rest[`arm:{side}:0`].x > math.rad(40), `the {side} fist doesn't come up`)
+	["a tail strike curls the tail up over the back, still, and lets it down again"] = function()
+		assert(PetRig.cue(CFG, "tailstrike", 0.5) and not PetRig.cue(CFG, "tailstrike", 0.3), "the strike comes once the tail is up")
+		local PANGOLIN = { "Pelvis", "Spine_0", "Head_0", "Tail_0", "Tail_1", "Tail_2", "Tail_3", "0_Left_Limb_0", "1_Left_Limb_0" }
+		local rest = poseAt(PANGOLIN, still(0.7))
+		local curled = poseAt(PANGOLIN, { time = 0.7, phase = 0, moving = 0, fidget = "tailstrike", fidgetProgress = 0.5 })
+		for segment = 0, 3 do
+			local key = `tail:{segment}`
+			expect.near(curled[key].x - rest[key].x, -math.rad(CFG.STRIKE_CURL[segment + 1]), math.rad(1), `tail bone {segment} doesn't turn as set`)
+			expect.near(curled[key].y, 0, 1e-6, `tail bone {segment} still wags`)
 		end
-		assertBounded(charge, "volt charge")
+		assert(CFG.STRIKE_CURL[1] > 90, "the base doesn't lift the tail up over the back")
+		local after = poseAt(PANGOLIN, { time = 0.7, phase = 0, moving = 0, fidget = "tailstrike", fidgetProgress = 1 })
+		expect.near(after["tail:3"].x, rest["tail:3"].x, math.rad(1), "the tail doesn't come back down")
 	end,
 
 	["nine tails each sway on their own beat and fan out, and count as a tail for the hips"] = function()

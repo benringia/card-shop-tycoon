@@ -277,7 +277,7 @@ Each pack = 5 cards:
   (cosmic void dragon, Meshy), Solarion (sun fire god titan, Meshy),
   Sprouthop (tree sprite), Stormjack (storm ram, Meshy), Infernox (T-rex), Puffpuddle (sea otter on all fours),
   Blazehound (flame dachshund), Thornback (thorn boar, Meshy), Duskstalker (shadow Monkey King), Eclipse Fox
-  (shadow kitsune, Meshy, three tails built in code) and Voltkit (caped fox hero),
+  (shadow kitsune, Meshy, three tails built in code) and Voltkit (storm pangolin, Meshy),
   each with its own signature idle; the more common the card, the cuter the creature. The Legendaries stand 2.2x their rarity size (about 9
   studs), follow further out to match, burn with their element (`Util/BeastAura`, `Config/BeastFx`: fire on bones
   spread over the body, lightning arcing between them, ground flames, a flickering light; Ember orange fire, Shade

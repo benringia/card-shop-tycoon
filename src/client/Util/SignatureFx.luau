@@ -45,7 +45,7 @@
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
 -- * sunburst (Solarion): arms raised, a small sun forms above its fists and bursts in rays and a ring of fire.
--- * voltcharge (Voltkit): lightning arcs between its raised fists, building up, then a bolt shoots into the sky.
+-- * tailstrike (Voltkit): its tail curls up over its back; the orb crackles, then lightning strikes down from it twice.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1329,41 +1329,45 @@ local function sunburst(model: Model, size: number)
 	end)
 end
 
--- A volt charge: lightning arcing between the raised fists, building up, then a bolt shot up into the sky with a flash
-local function voltcharge(model: Model, size: number)
-	for i = 0, 9 do
-		task.delay(i * 0.16, function()
-			local left, right = bonePosition(model, "Arm_Left_2"), bonePosition(model, "Arm_Right_2")
-			if not left or not right or not model.Parent then
+-- A tail strike: the orb on the curled-up tail crackles as it charges, then lightning strikes down from it twice to the
+-- ground in front of the creature, sparks bursting where it hits, with a flash
+local STRIKE_CHARGE = 0.45 -- seconds the orb crackles before it strikes
+local function tailstrike(model: Model, size: number)
+	local function orbAt(): Vector3?
+		return bonePosition(model, "Tail_3") or bonePosition(model, "Tail_2")
+	end
+	for i = 0, 2 do
+		task.delay(i * STRIKE_CHARGE / 3, function()
+			local orb = orbAt()
+			if not orb or not model.Parent then
 				return
 			end
-			bolt(left, right, (0.04 + i * 0.005) * size)
-			if i % 3 == 0 then
-				local middle = (left + right) / 2
-				burst(CFrame.lookAt(middle, middle + Vector3.yAxis), SPARKLES, ColorSequence.new(LIGHTNING_COLOR, Color3.fromRGB(120, 210, 255)), 6, 0.3 * size, 3 * size, 0.4)
-			end
+			burst(CFrame.lookAt(orb, orb + Vector3.yAxis), SPARKLES, ColorSequence.new(LIGHTNING_COLOR, Color3.fromRGB(120, 210, 255)), 8, 0.3 * size, 3 * size, 0.4)
+			bolt(orb, orb + Vector3.new(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0.2, 0.6), rng:NextNumber(-0.5, 0.5)) * size, 0.03 * size)
 		end)
 	end
-	task.delay(1.7, function()
-		local left, right = bonePosition(model, "Arm_Left_2"), bonePosition(model, "Arm_Right_2")
-		if not left or not right or not model.Parent then
-			return
-		end
-		local middle = (left + right) / 2
-		for _ = 1, 3 do
-			bolt(middle, middle + Vector3.new(rng:NextNumber(-1, 1), 9, rng:NextNumber(-1, 1)) * size, 0.12 * size)
-		end
-		local flash = Instance.new("Attachment")
-		flash.WorldPosition = middle
-		flash.Parent = workspace.Terrain
-		local light = Instance.new("PointLight")
-		light.Color = LIGHTNING_COLOR
-		light.Brightness = 5
-		light.Range = 14 * size
-		light.Parent = flash
-		TweenService:Create(light, TweenInfo.new(0.6), { Brightness = 0 }):Play()
-		task.delay(0.7, flash.Destroy, flash)
-	end)
+	for strike = 0, 1 do
+		task.delay(STRIKE_CHARGE + strike * 0.22, function()
+			local orb = orbAt()
+			if not orb or not model.Parent then
+				return
+			end
+			local pivot = model:GetPivot()
+			local hit = pivot.Position + pivot.LookVector * (1.6 + strike * 0.5) * size + pivot.RightVector * (strike - 0.5) * 0.8 * size
+			bolt(orb, hit, 0.1 * size)
+			burst(CFrame.lookAt(hit, hit + Vector3.yAxis), SPARKLES, ColorSequence.new(LIGHTNING_COLOR, Color3.fromRGB(120, 210, 255)), 18, 0.35 * size, 5 * size, 0.6)
+			local flash = Instance.new("Attachment")
+			flash.WorldPosition = hit + Vector3.new(0, 0.5 * size, 0)
+			flash.Parent = workspace.Terrain
+			local light = Instance.new("PointLight")
+			light.Color = LIGHTNING_COLOR
+			light.Brightness = 3
+			light.Range = 10 * size
+			light.Parent = flash
+			TweenService:Create(light, TweenInfo.new(0.4), { Brightness = 0 }):Play()
+			task.delay(0.5, flash.Destroy, flash)
+		end)
+	end
 end
 
 -- The effect of a signature idle (Party.SIGNATURE), from the creature's current pose; size: its size multiplier
@@ -1448,8 +1452,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		backflip(model, size)
 	elseif kind == "sunburst" then
 		sunburst(model, size)
-	elseif kind == "voltcharge" then
-		voltcharge(model, size)
+	elseif kind == "tailstrike" then
+		tailstrike(model, size)
 	end
 end
 

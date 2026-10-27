@@ -48,7 +48,7 @@ return {
 		Emberwing = "rbxassetid://74189264541735",
 		Tidecaller = "rbxassetid://133334447011122",
 		Briarhorn = "rbxassetid://102039719436551",
-		Voltkit = "rbxassetid://138894700834562",
+		Voltkit = "rbxassetid://126355805367260",
 		Duskstalker = "rbxassetid://127609859696351",
 		Frostfang = "rbxassetid://125805428261687",
 		["Gale Sprite"] = "rbxassetid://139554335157891",
