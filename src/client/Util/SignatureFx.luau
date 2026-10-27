@@ -309,8 +309,12 @@ local function fireBreath(model: Model, size: number)
 end
 
 -- Between a four-legged creature's front paws (where a sitting-up sea otter holds its shell)
+-- Its paws: the hands of a creature standing on two legs (Arm_ bones), else the front feet of one on four
 local function frontPaws(model: Model): Vector3?
-	local left, right = bonePosition(model, "0_Left_Limb_2"), bonePosition(model, "0_Right_Limb_2")
+	local left, right = bonePosition(model, "Arm_Left_2"), bonePosition(model, "Arm_Right_2")
+	if not (left and right) then
+		left, right = bonePosition(model, "0_Left_Limb_2"), bonePosition(model, "0_Right_Limb_2")
+	end
 	return if left and right then (left + right) / 2 else nil
 end
 

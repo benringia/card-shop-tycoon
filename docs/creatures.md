@@ -373,11 +373,12 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   tiger stripes, a cream belly and jaw, a flame crest down its neck, small arms held in front as modelled (`ARM_POSE`
   hang 0) and its lower jaw on `Jaw_0` (`rig_kit.reweight`) for the fire breath. Remeshed and baked; its turned head
   and curved tail were straightened by hand (steps in the script). Size 1.8. 24 bones, 10,000 triangles.
-- **Puffpuddle** (`build_puffpuddle.py`, Common): a sea otter on all fours, less blocky (a rounded-box body and legs,
-  a smooth head, muzzle, ears and paws): a long dark brown body, pale fluffy face and chest, big shiny eyes, blush,
-  whiskers and a smile, big webbed hind feet, a flat tail; 23 bones, about 3,400 triangles. It trots and runs on its four
-  feet; its fidgets (`CREATURE_STYLE`) are sea otter ones: sitting up on its hind legs to groom its face with its front
-  paws, rolling right over with a puff of dust (`roll`), sniffing, looking round, a tail wag, a shake, a yawn.
+- **Puffpuddle** (`rig_puffpuddle.py`, Meshy, Common; was the voxel `build_puffpuddle.py`): a cute baby sea otter
+  standing upright with its paws on its cream belly and a glowing aqua pearl on its forehead. Coat warmed from rusty
+  red to the card's brown by hand; its lumpy left foot replaced by a mirror of the right (seam-only merge, on the full
+  mesh). Arms are moulded to the belly, so only a small swing (`ARM_POSE` swing 6). Shell crack signature: the clam
+  appears between its hands (`SignatureFx` frontPaws uses `Arm_` hands when it has them). Size 1.4. 22 bones, 8,000
+  triangles.
 - **Blazehound** (`build_blazehound.py`, Rare): a long dachshund on stubby legs, black with tan points, big kind eyes,
   droopy ears on its `Ear_` bones (they flop), two flame tufts on its head and a flame on its tail tip, a jaw for its
   sneeze; 24 bones, about 770 triangles.
