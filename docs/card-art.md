@@ -135,10 +135,12 @@ Element scenes (matching `CardDesign.SCENES`):
   with no teeth, two little yellow horn nubs and a tiny yellow lightning-bolt tuft, a short curly tail ending in a
   little yellow lightning bolt, small friendly sparks (lighting: bright playful stormy lighting).
 
-- **Puffpuddle** (original sea otter, Common): a very cute chubby sea otter standing on all four short legs, rounded
-  soft toy style (smooth rounded shapes, slightly blocky), a long dark brown body, a round pale cream fluffy face, big
-  shiny dark eyes, pink blushing cheeks, a tiny black nose, whiskers and a happy smile, small round ears, a pale chest,
-  big flat webbed hind feet, a flat tail (pose: standing happily on a rock).
+- **Puffpuddle** (original sea otter, Common; Meshy remake, upright): a very cute chubby cartoon baby sea otter
+  standing upright on two short legs, rounded stylized toy-like 3D style, warm chocolate brown fur, a lighter brown
+  head, a cream face and a big round cream belly with its little paws resting on it, big shiny dark eyes, a black
+  button nose, pink blush cheeks and a small happy smile, small round ears, a small glowing aqua pearl on its forehead,
+  a thick flat brown tail, a small blue clam shell beside its feet (pose: standing happily on a mossy rock; lighting:
+  bright underwater light rays).
 - **Eclipse Fox** (original nine-tailed kitsune, Epic): a sturdy fierce mystical nine-tailed kitsune fox standing on
   four thick legs, rounded stylized toy-like 3D style, deep violet fur with a big fluffy white chest ruff, white cheek
   tufts, glowing violet crescent moon markings on its flanks, a small glowing violet gem on its brow, narrow sharp golden
