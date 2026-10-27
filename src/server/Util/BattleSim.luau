@@ -9,10 +9,13 @@ local CombatMath = if game ~= nil
 
 local BattleSim = {}
 
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean? }
+-- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown, enrage once below one. boss: stuns on
+-- it last at most BOSS_MAX_STUN seconds
+export type Mechanics = { heal: { below: number, fraction: number, cooldown: number }?, enrage: { below: number, atkMultiplier: number }? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean }
 export type Event = {
-	type: string, -- "attack" | "ability" | "faint" | "callin" | "run" | "end"
+	type: string, -- "attack" | "ability" | "faint" | "callin" | "run" | "end" | "heal" | "enrage"
 	from: string?,
 	to: string?,
 	damage: number?,
@@ -49,6 +52,10 @@ type Fighter = {
 	burnPerSecond: number,
 	burnTick: number,
 	fainted: boolean,
+	mechanics: Mechanics?,
+	boss: boolean,
+	healReady: number,
+	enraged: boolean,
 }
 
 type Side = {
@@ -102,6 +109,10 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		burnPerSecond = 0,
 		burnTick = 0,
 		fainted = false,
+		mechanics = input.mechanics,
+		boss = input.boss == true,
+		healReady = time,
+		enraged = false,
 	}
 end
 
@@ -232,6 +243,28 @@ local function burn(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
+-- A boss's mechanics, checked every step: heal under its HP fraction (then wait the cooldown), enrage once
+local function bossMechanics(state: State, fighter: Fighter, events: { Event })
+	local mechanics = fighter.mechanics
+	if not mechanics or fighter.fainted then
+		return
+	end
+	local share = fighter.hp / fighter.maxHp
+	local heal = mechanics.heal
+	if heal and share < heal.below and state.time >= fighter.healReady then
+		local amount = math.round(fighter.maxHp * heal.fraction)
+		fighter.hp = math.min(fighter.maxHp, fighter.hp + amount)
+		fighter.healReady = state.time + heal.cooldown
+		table.insert(events, { type = "heal", to = fighter.id, heal = amount })
+	end
+	local enrage = mechanics.enrage
+	if enrage and not fighter.enraged and share < enrage.below then
+		fighter.enraged = true
+		fighter.atk *= enrage.atkMultiplier
+		table.insert(events, { type = "enrage", from = fighter.id })
+	end
+end
+
 function BattleSim.step(state: State, dt: number): { Event }
 	local events: { Event } = {}
 	if state.result then
@@ -243,6 +276,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 	for _, side in { state.sides.a, state.sides.b } do
 		for _, fighter in side.fighters do
 			burn(state, fighter, events)
+			bossMechanics(state, fighter, events)
 		end
 	end
 
@@ -335,7 +369,7 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 	elseif kind == "Stampede" then
 		if target then
 			hit(state, fighter, target, ability.power, events, kind)
-			target.stunUntil = state.time + ability.stun
+			target.stunUntil = state.time + (if target.boss then math.min(ability.stun, state.combat.BOSS_MAX_STUN) else ability.stun)
 			target.nextAttack = math.max(target.nextAttack, target.stunUntil)
 		end
 	elseif kind == "Eclipse" then

@@ -333,4 +333,68 @@ return {
 		expect.isNil(none, "no ability")
 		expect.equal(reason, "ended", "reason")
 	end,
+	["a boss heals once under half HP, then waits its cooldown"] = function()
+		local boss = monster("Bloom", 1000, 1, 1)
+		boss.mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12 } }
+		boss.boss = true
+		local state = wild(fighter("x", "Ember", 100000, 1, 1), {}, boss, 7)
+		local bossFighter = state.sides.b.fighters[1]
+		local function heals(seconds: number): { any }
+			local found = {}
+			local t = 0
+			while t < seconds - 1e-9 do
+				for _, event in BattleSim.step(state, 0.1) do
+					if event.type == "heal" then
+						table.insert(found, event)
+					end
+				end
+				t += 0.1
+			end
+			return found
+		end
+		expect.equal(#heals(1), 0, "no heal above half HP")
+		bossFighter.hp = 400
+		local first = heals(0.1)
+		expect.equal(#first, 1, "heals once under half")
+		expect.equal(first[1].heal, 150, "15% of max HP")
+		expect.equal(bossFighter.hp, 550, "healed")
+		bossFighter.hp = 400
+		expect.equal(#heals(5), 0, "waits its cooldown")
+		expect.equal(#heals(8), 1, "heals again after 12 s")
+	end,
+
+	["a boss enrages once under half HP and hits harder"] = function()
+		local boss = monster("Ember", 1000, 20, 30)
+		boss.mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } }
+		boss.boss = true
+		local state = wild(fighter("x", "Ember", 100000, 1, 1), {}, boss, 7)
+		local bossFighter = state.sides.b.fighters[1]
+		local before = bossFighter.atk
+		local enrages = 0
+		local function run(seconds: number)
+			local t = 0
+			while t < seconds - 1e-9 do
+				for _, event in BattleSim.step(state, 0.1) do
+					if event.type == "enrage" then
+						enrages += 1
+					end
+				end
+				t += 0.1
+			end
+		end
+		run(1)
+		expect.equal(enrages, 0, "calm above half HP")
+		bossFighter.hp = 400
+		run(3)
+		expect.equal(enrages, 1, "enrages once")
+		expect.near(bossFighter.atk, before * 1.5, 1e-9, "ATK x1.5")
+	end,
+
+	["fighters without mechanics never heal or enrage"] = function()
+		local state = wild(fighter("x", "Ember", 300, 30, 15), {}, monster("Bloom", 400, 8, 8), 3)
+		local _, events = runToEnd(state)
+		for _, event in events do
+			assert(event.type ~= "heal" and event.type ~= "enrage", "a plain monster used a boss mechanic")
+		end
+	end,
 }
