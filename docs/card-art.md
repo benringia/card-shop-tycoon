@@ -96,6 +96,12 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Stormking** (original storm titan beetle, Legendary): a colossal godlike storm titan beetle, a massive armoured
   sapphire shell with glowing blue crystal spikes and gold trim, a huge golden horn crackling with lightning, four thick
   armoured legs, a long tail spike, lightning striking in a ring round it (lighting: epic dramatic storm).
+- **Nightowl** (original shadow owl, Rare; was the heron demon): a slightly fierce cartoon shadow owl, rounded stylized
+  toy-like 3D style, plump stocky round body and big round head, large fierce glowing violet eyes, a small sharp hooked
+  dark beak, dark violet and deep purple feathers with a pale lilac face disc and lilac patterned chest, small ear
+  tufts, a glowing silver crescent moon mark on its forehead, wings spread wide with ghostly purple smoke-tipped
+  feathers, short legs with dark talons (pose: hovering with wings spread above a tilted gravestone; lighting: eerie
+  moonlit lighting with soft violet glow).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky

@@ -34,7 +34,7 @@ return {
 		Reefray = "rbxassetid://131946421951305",
 		Thornback = "rbxassetid://112745687041591",
 		Boltlynx = "rbxassetid://74544534062504",
-		Nightowl = "rbxassetid://79071974462559",
+		Nightowl = "rbxassetid://135174335258875",
 		Magmaw = "rbxassetid://119953935554994",
 		Mistfin = "rbxassetid://108837635904996",
 		Vinewyrm = "rbxassetid://88152210657585",

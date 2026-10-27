@@ -225,6 +225,17 @@ local function shyDuck(progress: number): number
 	return 1 - math.sin(math.clamp((p - 0.6) / 0.15, 0, 1) * math.pi / 2)
 end
 
+-- An owl turn: the head swivels round to look behind (there by 0.25, held to 0.55), then snaps back to the front by 0.65
+local function owlSwivel(progress: number): number
+	local p = math.clamp(progress, 0, 1)
+	if p < 0.25 then
+		return math.sin(p / 0.25 * math.pi / 2)
+	elseif p < 0.55 then
+		return 1
+	end
+	return 1 - math.sin(math.clamp((p - 0.55) / 0.1, 0, 1) * math.pi / 2)
+end
+
 -- Hiccups: a sharp jolt at each of HICCUP_BEATS (fractions of the way through the fidget), still between them
 local function hiccupPulse(cfg: any, progress: number): number
 	local p = math.clamp(progress, 0, 1)
@@ -276,6 +287,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the twirl starts
 	elseif kind == "shadowloop" then
 		return progress >= 0.1 -- the loop starts
+	elseif kind == "owlturn" then
+		return progress >= 0.65 -- snapped back to the front: the hoot
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -485,6 +498,9 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
 	local hiccup = if fidget == "hiccup" then hiccupPulse(cfg, progress) * idle else 0
 	local ducking = if fidget == "shypeek" then shyDuck(progress) * idle else 0
+	-- An owl turn: the head swivels round behind (owlSwivel), then a hoot's nod once it snaps back (0.65 to 0.85)
+	local owlTurn = if fidget == "owlturn" then owlSwivel(progress) * idle else 0
+	local hoot = if fidget == "owlturn" then math.sin(math.clamp((progress - 0.65) / 0.2, 0, 1) * math.pi) * idle else 0
 	local sitting = if fidget == "sit" then amount else 0
 	-- Sitting right up on its hind legs (positive x tips a bone's front end up): the hips pitch the body up, the hind
 	-- legs turn back to stay planted
@@ -578,7 +594,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			z += shake * 0.6
 		elseif role.kind == "neck" or role.kind == "head" then
 			local share = if role.kind == "neck" then 0.45 else 0.55
-			y = lookYaw * share
+			y = lookYaw * share + rad(cfg.OWL_TURN) * share * owlTurn * side
 			if role.segment == 0 and (role.kind == "neck" or not hasNeck) then
 				y -= shoulderTwist
 			end
@@ -602,6 +618,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				x -= rad(cfg.HICCUP_HEAD) * share * hiccup -- jolted back by each hiccup
 			elseif ducking > 0 then
 				x += rad(cfg.SHY_HEAD) * share * ducking -- tucked down under the shell's rim
+			elseif hoot > 0 then
+				x += rad(cfg.HOOT_NOD) * share * hoot -- head bobbing down with the hoot
 			elseif grooming > 0 then
 				z += rad(10) * share * math.sin(progress * TAU * 2.5) * grooming -- tilting into the paws
 			elseif cracking > 0 then

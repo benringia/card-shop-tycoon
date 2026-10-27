@@ -454,6 +454,23 @@ return {
 		expect.near(PetRig.body(CFG, "shadowloop", 1, 1, true).lift, 0, 1e-6, "it doesn't come back down")
 	end,
 
+	["an owl turn swivels the head round behind, snaps back and nods with the hoot"] = function()
+		local OWL = { "Pelvis", "Spine_0", "Neck", "Head_0", "Wing_Left_0", "Wing_Right_0", "0_Left_Limb_0", "0_Right_Limb_0" }
+		local function at(progress: number, side: number): { [string]: PetRig.Angles }
+			return poseAt(OWL, { time = 0, phase = 0, moving = 0, fidget = "owlturn", fidgetProgress = progress, side = side })
+		end
+		assert(PetRig.cue(CFG, "owlturn", 0.65) and not PetRig.cue(CFG, "owlturn", 0.6), "the hoot doesn't come as the head snaps back")
+		local behind = at(0.4, 1)
+		expect.near(behind["neck:0"].y + behind["head:0"].y, math.rad(CFG.OWL_TURN), 1e-6, "the head doesn't swivel right round")
+		expect.near(at(0.4, -1)["head:0"].y, -behind["head:0"].y, 1e-6, "the swivel ignores which way it turns")
+		assertBounded(behind, "owl turn")
+		local hooting = at(0.75, 1)
+		assert(math.abs(hooting["head:0"].y) < 1e-6, "the head isn't back to the front for the hoot")
+		assert(hooting["head:0"].x > math.rad(CFG.HOOT_NOD) * 0.3, "no nod with the hoot")
+		local done = at(1, 1)
+		assert(math.abs(done["head:0"].x) < 1e-6 and math.abs(done["head:0"].y) < 1e-6, "the head doesn't settle")
+	end,
+
 	["a manta roll turns one full barrel roll to its side, rising, and comes back level"] = function()
 		assert(PetRig.cue(CFG, "mantaroll", 0.1) and not PetRig.cue(CFG, "mantaroll", 0.05), "no sparkles as the roll starts")
 		expect.near(PetRig.body(CFG, "mantaroll", 1, 1, true).roll, math.pi * 2, 1e-6, "the roll doesn't come all the way round")

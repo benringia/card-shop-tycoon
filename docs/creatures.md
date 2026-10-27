@@ -214,6 +214,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **owlturn** (Nightowl): the head swivels round behind (`OWL_TURN` degrees over neck and head), snaps back and nods
+  with a hoot (`HOOT_NOD`); eyes flash, shadow feathers burst, a silver crescent moon rises behind its head.
 - **mantaroll** (Reefray): rises (`MANTA_RISE`) and turns one full barrel roll, aqua sparkles streaming off its wing
   tips, then a ring of water splashes out (the effects go by its wingspan, `MANTA_SPAN`).
 - **abysschomp** (Abyssal Koi): draws back and lunges forward snapping (`CHOMP_DRAW`, `CHOMP_LUNGE`); a dark surge of
@@ -295,6 +297,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   (as `Ear_` bones) wrapped in thorny vines and roses, and a rose wreath on its hump, matching its card art. Remade
   27 Oct (the first model, a slim cow, was too skinny). Remeshed and baked; heavy gait (`legSwing` 0.75: its short legs
   under a deep belly looked crouched at the full swing). 23 bones, 10,000 triangles. Replaced the EarthBull.
+- **Nightowl** (`rig_nightowl.py`, Meshy, Rare): a shadow owl (a redesign to match its name, replacing the bought
+  heron demon): plump, dark violet, glowing violet eyes, a silver crescent moon on its forehead, smoky wing tips.
+  Right first time; 1.2M triangles of feathers shattered under collapse decimate, so remesh_bake at a fine 4 mm voxel.
+  Flies. Signature owl turn. 20 bones, 10,000 triangles.
 - **Reefray** (`rig_reefray.py`, Meshy, Rare): a coral manta ray (a full redesign, replacing the bought metal crab):
   pale with glowing aqua spots, teal edges and curled coral head fins. Generated standing on end and belly up (turned
   over by hand). Flies; flat, so `size` 0.6 (models scale by height) and `wingAmount` 0.3 (full wingbeats folded its
