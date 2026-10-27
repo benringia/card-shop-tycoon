@@ -454,6 +454,15 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
 	end,
 
+	["a mist wave crouches, hops and lands, the mist rolling out as it lands"] = function()
+		assert(PetRig.cue(CFG, "mistwave", 0.55) and not PetRig.cue(CFG, "mistwave", 0.5), "the mist doesn't come with the landing")
+		assert(PetRig.body(CFG, "mistwave", 0.1, 1, true).lift < -CFG.MIST_CROUCH * 0.5, "no crouch first")
+		assert(PetRig.body(CFG, "mistwave", 0.375, 1, true).lift > CFG.MIST_HOP * 0.9, "no hop")
+		local done = PetRig.body(CFG, "mistwave", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't settle")
+		expect.near(done.pitch, 0, 1e-6, "it stays leaning")
+	end,
+
 	["moth dust twirls right round in the air, drifting up and back down"] = function()
 		assert(PetRig.cue(CFG, "mothdust", 0.1) and not PetRig.cue(CFG, "mothdust", 0.05), "the dust doesn't fall as the twirl starts")
 		expect.near(PetRig.body(CFG, "mothdust", 1, 1, true).yaw, math.pi * 2, 1e-6, "the twirl doesn't come all the way round")
