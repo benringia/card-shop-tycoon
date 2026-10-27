@@ -295,13 +295,14 @@ end
 -- The Grading Station: the main copy's grade goes up one step (C -> B -> A -> S), paid for with plain duplicates of
 -- the same card (Util/CondenseRules.gradePlan picks them) and cash: `pay` is called with the cash once everything else
 -- checks out and must take it, returning false if it can't (then nothing changes). A plain main moves up to the next
--- grade's stack and stays plain. All in one step with no yields. Returns the new grade, or nil and a reason ("max",
--- "short:<have>:<need>", "cash:<need>", "working", "fighting", "missing", "unknown").
-function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number) -> boolean): (string?, string?)
+-- grade's stack and stays plain. With `seals`, up to that many Grading Seals cover missing duplicates (the caller takes
+-- the number it reports used). All in one step with no yields. Returns the new grade, or nil and a reason ("max",
+-- "short:<have>:<need>", "cash:<need>", "working", "fighting", "missing", "unknown"), and the seals used.
+function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number) -> boolean, seals: number?): (string?, string?, number)
 	local inventory = inventories[player]
 	local card = Cards.ById[cardId]
 	if not inventory or not card then
-		return nil, "missing"
+		return nil, "missing", 0
 	end
 	local beast: Beast? = nil
 	local foil: boolean
@@ -309,12 +310,12 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 	if typeof(main) == "string" then
 		beast = inventory.beasts[main]
 		if not beast or beast.cardId ~= cardId then
-			return nil, "missing"
+			return nil, "missing", 0
 		end
 		if inventory.working[main] then
-			return nil, "working"
+			return nil, "working", 0
 		elseif inventory.fighting[main] then
-			return nil, "fighting"
+			return nil, "fighting", 0
 		end
 		foil, grade = beast.foil, beast.grade
 	else
@@ -322,7 +323,7 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 		local owned = if byGrade then byGrade[main.grade] else nil
 		local count = if owned then (if main.foil then owned.foil else owned.normal) else 0
 		if main.cardId ~= cardId or count <= 0 then
-			return nil, "missing"
+			return nil, "missing", 0
 		end
 		foil, grade = main.foil, main.grade
 	end
@@ -333,12 +334,12 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 		foil = foil,
 		grade = grade,
 		stars = if beast then beast.stars else BeastRules.START_STARS,
-	})
+	}, seals)
 	if not plan then
-		return nil, reason
+		return nil, reason, 0
 	end
 	if not pay(plan.cash) then
-		return nil, `cash:{plan.cash}`
+		return nil, `cash:{plan.cash}`, 0
 	end
 	for _, take in plan.takes do
 		local owned = getOwned(inventory.stacks, cardId, take.grade)
@@ -360,7 +361,7 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 		end
 	end
 	sync(player)
-	return plan.grade, nil
+	return plan.grade, nil, plan.seals
 end
 
 -- Splits one plain copy off its stack into its own card (to give it a job). Nil if there is no such copy.

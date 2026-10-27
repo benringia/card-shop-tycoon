@@ -115,8 +115,8 @@ end
 -- Grading Station ------------------------------------------------------------------------------------------------
 
 export type GradeStep = { copies: number, cash: number }
-export type GradePlan = { grade: string, copies: number, cash: number, takes: { Take } }
-type GradingConfig = { COSTS: { [string]: { [string]: GradeStep } } }
+export type GradePlan = { grade: string, copies: number, cash: number, takes: { Take }, seals: number } -- seals: Grading Seals used
+type GradingConfig = { COSTS: { [string]: { [string]: GradeStep } }, MAX_SEAL_SHARE: number? }
 
 -- The grade one step above, or nil at the top (or for an unknown grade)
 function CondenseRules.nextGrade(grades: { string }, grade: string): string?
@@ -131,8 +131,9 @@ function CondenseRules.gradeStepCost(grading: GradingConfig, rarity: string, gra
 end
 
 -- The next grade for this main copy and what it takes, or nil and a reason: "max", "unknown" (no cost for that
--- rarity) or "short:<have>:<need>" (duplicates). The caller checks the cash against the player's.
-function CondenseRules.gradePlan(grading: GradingConfig, config: Config, rarity: string, byGrade: { [string]: any }, main: Main): (GradePlan?, string?)
+-- rarity) or "short:<have>:<need>" (duplicates). With `seals`, real duplicates go first and Grading Seals cover what's
+-- missing, up to MAX_SEAL_SHARE of the step. The caller checks the cash against the player's.
+function CondenseRules.gradePlan(grading: GradingConfig, config: Config, rarity: string, byGrade: { [string]: any }, main: Main, seals: number?): (GradePlan?, string?)
 	local grade = CondenseRules.nextGrade(config.GRADES, main.grade)
 	if not grade then
 		return nil, "max"
@@ -142,10 +143,18 @@ function CondenseRules.gradePlan(grading: GradingConfig, config: Config, rarity:
 		return nil, "unknown"
 	end
 	local have = CondenseRules.countDuplicates(byGrade, main, config)
-	if have < step.copies then
+	local maxSeals = math.floor(step.copies * (grading.MAX_SEAL_SHARE or 0))
+	local used = math.max(0, math.min(step.copies - have, maxSeals, math.floor(seals or 0)))
+	if have + used < step.copies then
 		return nil, `short:{have}:{step.copies}`
 	end
-	return { grade = grade, copies = step.copies, cash = step.cash, takes = CondenseRules.pick(config.GRADES, byGrade, main, step.copies) }, nil
+	return {
+		grade = grade,
+		copies = step.copies,
+		cash = step.cash,
+		takes = CondenseRules.pick(config.GRADES, byGrade, main, step.copies - used),
+		seals = used,
+	}, nil
 end
 
 -- Copies and cash to take a copy from `grade` all the way to the top (the panel's "to Grade S" line)

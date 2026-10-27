@@ -17,7 +17,10 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
+
+local SEAL_ID = "gradingSeal"
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 local GradingService = {}
@@ -48,7 +51,7 @@ local function describeReason(reason: string?): string
 	return "You don't have that card."
 end
 
-local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown)
+local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useSeals: unknown)
 	if not allowAction(player) then
 		return
 	end
@@ -76,15 +79,22 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 		return
 	end
 
-	-- The cash is recomputed and taken inside the same step as the cards: the client's preview is never trusted
-	local grade, reason = CardService.GradeUp(player, cardId, target, function(cash)
+	-- The cash and seals are recomputed and taken inside the same step as the cards: the client's preview is never
+	-- trusted
+	local seals = if useSeals == true then ItemService.GetCount(player, SEAL_ID) else 0
+	local grade, reason, sealsUsed = CardService.GradeUp(player, cardId, target, function(cash)
 		return EconomyService.TrySpend(player, cash)
-	end)
+	end, seals)
 	if not grade then
 		notify(player, describeReason(reason), true)
 		return
 	end
-	notify(player, `{card.name} is now {BeastRules.describeGrade(grade)}!`, false)
+	-- Same step, no yields: the seals counted above are still there
+	if sealsUsed > 0 then
+		ItemService.TakeItem(player, SEAL_ID, sealsUsed)
+	end
+	local sealText = if sealsUsed > 0 then ` (used {sealsUsed} Grading Seal{if sealsUsed == 1 then "" else "s"})` else ""
+	notify(player, `{card.name} is now {BeastRules.describeGrade(grade)}!{sealText}`, false)
 end
 
 function GradingService.Start()

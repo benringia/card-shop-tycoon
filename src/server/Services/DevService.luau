@@ -45,7 +45,10 @@ local function parseAmount(text: string): number?
 	return amount
 end
 
+local handlersByAlias: { [string]: CommandHandler } = {}
+
 local function addCommand(folder: Instance, alias: string, handler: CommandHandler)
+	handlersByAlias[alias] = handler
 	local command = Instance.new("TextChatCommand")
 	command.Name = "Dev" .. alias
 	command.PrimaryAlias = "/" .. alias
@@ -142,6 +145,20 @@ end
 local MAX_GIVE_CARDS = 500 -- per /givecard, so a typo can't flood the save
 
 -- "/givecard 30 70": 70 plain copies of card #30, each rolling its grade like a pack pull
+local MAX_GIVE_ITEMS = 999 -- per /item
+
+-- "/item gradingSeal 5": items for testing (any Config/Items id)
+local function giveItems(player: Player, text: string)
+	local id, amountText = string.match(text, "%s+([%w_]+)%s+(%d+)")
+	local amount = math.clamp(tonumber(amountText or "") or 0, 0, MAX_GIVE_ITEMS)
+	if not id or amount <= 0 then
+		Remotes.Notify:FireClient(player, "Usage: /item <item id> <amount>", true)
+		return
+	end
+	local given = ItemService.GiveItem(player, id, amount)
+	Remotes.Notify:FireClient(player, if given > 0 then `Gave {given} {id}` else `Unknown item {id}`, given <= 0)
+end
+
 local function giveCards(player: Player, text: string)
 	local numberText, amountText = string.match(text, "%s+(%d+)%s+(%d+)")
 	local card = if numberText then Cards.List[tonumber(numberText) :: number] else nil
@@ -194,6 +211,7 @@ function DevService.Start()
 	addCommand(folder, "level", withAmount(jumpToLevel))
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
 	addCommand(folder, "givecard", giveCards)
+	addCommand(folder, "item", giveItems)
 	addCommand(folder, "jobslot", toggleJobSlot)
 	addCommand(folder, "wild", function(player)
 		WildService.TravelToWild(player)
@@ -222,7 +240,21 @@ function DevService.Start()
 	addCommand(folder, "raritypack", function(player, text)
 		PackService.OpenRarityPack(player, string.find(string.lower(text), "foil") ~= nil)
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
+	-- The same commands for Studio's scripting tools, which can't type in chat:
+	-- ServerStorage.DevCommand:Invoke(player, "/item gradingSeal 5"). Studio only, like the chat commands.
+	local runner = Instance.new("BindableFunction")
+	runner.Name = "DevCommand"
+	runner.OnInvoke = function(player: Player, text: string): boolean
+		local alias = string.match(text, "^/(%w+)")
+		local handler = if alias then handlersByAlias[alias] else nil
+		if not handler or typeof(player) ~= "Instance" or not player:IsA("Player") then
+			return false
+		end
+		handler(player, text)
+		return true
+	end
+	runner.Parent = game:GetService("ServerStorage")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
 end
 
 return DevService
