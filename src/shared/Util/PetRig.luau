@@ -21,6 +21,7 @@ export type State = {
 	armForward: number?, -- radians the arms reach forward once lowered (a T-rex's), from Party.ARM_POSE
 	armBend: number?, -- radians the elbows bend, else PET_ANIM.ARM_BEND
 	armSwing: number?, -- radians the arms swing walking, else PET_ANIM.ARM_SWING
+	armIdle: number?, -- radians the arms bob up and down standing (Party.ARM_POSE idle), out of step with each other, else none
 	tailAmount: number?, -- how big the tail's swish is (Party.CREATURE_STYLE), else 1
 	wingAmount: number?, -- and the wingbeat's (a flat manta's broad wings beat shallow), else 1
 	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
@@ -291,6 +292,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.65 -- snapped back to the front: the hoot
 	elseif kind == "emberglow" then
 		return progress >= 0.3 -- hunkered down: the embers flare
+	elseif kind == "staticshock" then
+		return progress >= 0.5 -- the hop: the static discharges
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -432,6 +435,11 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "staticshock" then
+		-- Shivering faster and faster as static builds (to 0.5), then a little hop as it discharges, and settling
+		local build = math.clamp(p / 0.5, 0, 1)
+		roll = math.rad(cfg.STATIC_SHIVER) * math.sin(p * TAU * (4 + 8 * build)) * build * (if p < 0.5 then 1 else 0)
+		lift = cfg.STATIC_HOP * math.max(0, math.sin(math.clamp((p - 0.5) / 0.25, 0, 1) * math.pi))
 	elseif kind == "emberglow" then
 		-- Hunkering down low (there by 0.3, held to 0.7) and shivering as its embers flare, then back up
 		local down = if p < 0.3 then math.sin(p / 0.3 * math.pi / 2) elseif p < 0.7 then 1 else math.cos(math.clamp((p - 0.7) / 0.3, 0, 1) * math.pi / 2)
@@ -704,6 +712,18 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			end
 			if role.segment == 0 and fidget == "stretch" then
 				x += rad(cfg.STRETCH) * 1.6 * amount
+			end
+			if role.segment == 0 and state.armIdle then
+				-- A lively creature's arms bob up and down while it stands, each a beat behind the other
+				local bob = state.armIdle * math.sin(state.time * TAU / cfg.ARM_IDLE_SECONDS + (if role.side == "Left" then 0 else math.pi * 0.6)) * idle
+				z += if role.side == "Left" then -bob else bob
+			end
+			if role.segment == 0 and fidget == "staticshock" then
+				-- Arms flung up as the static discharges, jittering while it builds
+				local fling = math.max(0, math.sin(math.clamp((progress - 0.45) / 0.35, 0, 1) * math.pi))
+				local jitter = rad(6) * math.sin(progress * TAU * 10) * math.clamp(progress / 0.45, 0, 1) * (if progress < 0.45 then 1 else 0)
+				local up = rad(cfg.STATIC_ARMS) * fling + jitter
+				z += (if role.side == "Left" then -up else up) * idle
 			end
 			if slamming > 0 then
 				local p = progress

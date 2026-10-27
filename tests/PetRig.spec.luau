@@ -254,6 +254,22 @@ return {
 		local wide = poseAt(BIPED, { time = 0, phase = math.pi / 2, moving = 1, fidget = nil, fidgetProgress = 0, armDrop = drop,
 			armSwing = math.rad(40) })
 		assert(math.abs(wide["arm:Left:0"].x) > math.abs(step["arm:Left:0"].x) + math.rad(10), "Party.ARM_POSE swing doesn't widen the swing")
+		-- Party.ARM_POSE idle: the arms bob up and down standing, out of step; without it they keep still
+		local function bob(time: number, idleArms: number?): { [string]: PetRig.Angles }
+			return poseAt(BIPED, { time = time, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, armDrop = drop, armIdle = idleArms })
+		end
+		local low, high = math.huge, -math.huge
+		for t = 0, 16 do
+			local z = bob(t / 10, math.rad(18))["arm:Left:0"].z
+			low, high = math.min(low, z), math.max(high, z)
+		end
+		assert(high - low > math.rad(30), "the arms don't bob standing")
+		expect.near(bob(0.4, nil)["arm:Left:0"].z, bob(1.1, nil)["arm:Left:0"].z, 1e-9, "arms bob without ARM_POSE idle")
+		assert(math.abs(bob(0.3, math.rad(18))["arm:Left:0"].z - bob(0.3, math.rad(18))["arm:Right:0"].z * -1) > 1e-3, "both arms bob in step")
+		-- A static shock flings the arms up (z back towards the T-pose)
+		local zap = poseAt(BIPED, { time = 0, phase = 0, moving = 0, fidget = "staticshock", fidgetProgress = 0.62, armDrop = drop })
+		assert(zap["arm:Left:0"].z < math.rad(70) - math.rad(CFG.STATIC_ARMS) * 0.8, "the arms don't fling up for the static shock")
+		assertBounded(zap, "static shock arms")
 	end,
 
 	["signature idles: a butterfly on the raised hand, a rippling hydra roar, a lion's roar"] = function()
@@ -436,6 +452,21 @@ return {
 		local done = PetRig.body(CFG, "sporepuff", 1, 1, true)
 		expect.near(done.lift, 0, 1e-6, "it doesn't settle back down")
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
+	end,
+
+	["a static shock shivers faster as it builds, hops as it discharges, and settles"] = function()
+		assert(PetRig.cue(CFG, "staticshock", 0.5) and not PetRig.cue(CFG, "staticshock", 0.45), "the lightning doesn't come with the hop")
+		local shivering = false
+		for step = 20, 49 do
+			if math.abs(PetRig.body(CFG, "staticshock", step / 100, 1, true).roll) > math.rad(CFG.STATIC_SHIVER) * 0.5 then
+				shivering = true
+			end
+		end
+		assert(shivering, "it doesn't shiver as the static builds")
+		assert(PetRig.body(CFG, "staticshock", 0.625, 1, true).lift > CFG.STATIC_HOP * 0.9, "no hop as it discharges")
+		local done = PetRig.body(CFG, "staticshock", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't land")
+		expect.near(done.roll, 0, 1e-6, "it keeps shivering")
 	end,
 
 	["an ember glow hunkers down and shivers while the embers flare, then stands back up"] = function()

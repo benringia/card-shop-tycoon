@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * staticshock (Sparkrat): shivers as static builds, then hops as lightning arcs from its bolt tail to its ears.
 -- * emberglow (Coalbit): hunkers down and shivers as its ember spots flare; embers and smoke rise off its back.
 -- * owlturn (Nightowl): its head swivels round to look behind, snaps back and hoots; eyes flash, shadow feathers
 --   burst and a silver crescent moon rises behind its head.
@@ -741,6 +742,26 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- A static shock: as it hops, lightning arcs from its bolt tail up to each ear, with sparks bursting round it
+local function staticshock(model: Model, size: number)
+	local tail = bonePosition(model, "Tail_1")
+	local body = bonePosition(model, "Spine_0")
+	if body then
+		burst(CFrame.new(body), SPARKLES, ColorSequence.new(Color3.fromRGB(255, 240, 140), LIGHTNING_COLOR), 16, 0.3 * size, 4 * size, 0.5)
+	end
+	if not tail then
+		return
+	end
+	local tip = (model:FindFirstChild("Tail_1", true) :: Bone).TransformedWorldCFrame * Vector3.new(0, 0.15 * size, 0)
+	for _, name in { "Ear_Left_0", "Ear_Right_0" } do
+		local ear = bonePosition(model, name)
+		if ear then
+			bolt(tip, ear, 0.05 * size)
+			burst(CFrame.new(ear), SPARKLES, ColorSequence.new(LIGHTNING_COLOR), 6, 0.25 * size, 2.5 * size, 0.4)
+		end
+	end
+end
+
 -- An ember glow: hunkered down, its ember spots flare: embers and a little smoke rise off its back in waves, with a
 -- warm orange glow that fades
 local EMBER = Color3.fromRGB(255, 140, 40)
@@ -1154,6 +1175,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		owlturn(model, size)
 	elseif kind == "emberglow" then
 		emberglow(model, size)
+	elseif kind == "staticshock" then
+		staticshock(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
