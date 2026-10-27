@@ -69,6 +69,7 @@ export type PlayerData = {
 	pvp: { wins: number, losses: number, draws: number }, -- PvP record
 	items: { [string]: number }, -- itemId -> count (Config/Items)
 	pity: { legendary: number, epic: number, firstDone: boolean }, -- packs since the last Legendary / Epic or better (PackService)
+	bosses: { [string]: any }, -- bossId -> BossRules.Record (BossService)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 }
@@ -99,6 +100,7 @@ local TEMPLATE: PlayerData = {
 	pvp = { wins = 0, losses = 0, draws = 0 },
 	items = {},
 	pity = { legendary = 0, epic = 0, firstDone = false },
+	bosses = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 }

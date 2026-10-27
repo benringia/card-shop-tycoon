@@ -139,6 +139,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.pity = { legendary = 0, epic = 0, firstDone = false }
 		end
 	end,
+	-- v12: boss ladder progress, per boss (BossService)
+	[11] = function(data)
+		if typeof(data.bosses) ~= "table" then
+			data.bosses = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

@@ -115,6 +115,16 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v12: adds an empty bosses table, keeps existing"] = function()
+		local data: any = { version = 11, pity = { legendary = 0, epic = 0, firstDone = false } }
+		Migrations.run(data, 12)
+		expect.equal(typeof(data.bosses), "table", "bosses added")
+		expect.equal(next(data.bosses), nil, "empty")
+		local kept: any = { version = 11, bosses = { meadowWarden = { lootAt = 123 } } }
+		Migrations.run(kept, 12)
+		expect.equal(kept.bosses.meadowWarden.lootAt, 123, "kept")
+	end,
+
 	["v11: adds pity counts from zero, keeps existing"] = function()
 		local data: any = { version = 10, items = {} }
 		Migrations.run(data, 11)
