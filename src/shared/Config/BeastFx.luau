@@ -29,6 +29,9 @@ export type Look = {
 	ground: { Flame }, -- from the footprint
 	light: { color: Rgb, brightness: number, range: number },
 	arcs: Arcs,
+	-- Grade S extras turned to the void: the circling suns become little black holes in a glowing disc, the embers
+	-- dark rifts trailing smoke
+	void: boolean?,
 }
 
 local FIRE = "rbxasset://textures/particles/fire_main.dds"
@@ -64,6 +67,8 @@ return {
 	DIVINE = {
 		HALO = { count = 12, radius = 0.17, behind = 0.1, spin = 25, flame = 0.5, rate = 0.3, brightness = 1.5 }, -- a ring of flames behind its head; spin: degrees a second; rate, brightness: of each flame, times the look's
 		ORBS = { count = 3, radius = 0.5, height = 0.55, bob = 0.04, seconds = 7, size = 0.2, rate = 0.3 }, -- small suns circling it; seconds: one lap
+		-- A void orb's glowing disc: times the orb's size across, its tilt (degrees) and spin (degrees a second)
+		VOID_DISC = { size = 2.6, tilt = 70, spin = 120 },
 		EMBERS = { every = 0.28, seconds = 1.6, size = 0.5, max = 10 }, -- burning embers left behind while it walks
 	},
 	FAR = 120, -- no fire or lightning while the camera is further away than this (studs)
@@ -88,6 +93,7 @@ return {
 			ground = { groundFire({ 150, 50, 240 }, { 40, 0, 90 }, 0.6) },
 			light = { color = { 160, 70, 255 }, brightness = 2, range = 14 },
 			arcs = arcs({ 200, 130, 255 }, { 0.5, 1.3 }),
+			void = true,
 		},
 		Tide = {
 			flames = { fire({ 60, 190, 255 }, { 0, 50, 200 }, 0.7), sparks({ 150, 230, 255 }, { 40, 140, 255 }) },

@@ -18,6 +18,7 @@ export type Divine = {
 	height: number,
 	halo: Part,
 	orbs: { Part },
+	discs: { Part }, -- a void orb's glowing disc, by orb (none for suns)
 	time: number,
 	nextEmber: number,
 	embers: number,
@@ -158,11 +159,24 @@ local function addDivine(model: Model, look: BeastFx.Look, tier: BeastFx.Tier, s
 	end
 	halo.Parent = model
 	local orbs: { Part } = {}
+	local discs: { Part } = {}
 	for _ = 1, DIVINE.ORBS.count do
 		local orb = glowPart("DivineSun", Enum.PartType.Ball, DIVINE.ORBS.size * size, color, 0)
 		local sunFlame = table.clone(look.flames[1])
 		sunFlame.size *= DIVINE.ORBS.size
 		sunFlame.rate *= DIVINE.ORBS.rate
+		if look.void then
+			-- A little black hole: a black core in a glowing disc, throwing off the element's sparks
+			orb.Name = "DivineVoid"
+			orb.Material = Enum.Material.SmoothPlastic
+			orb.Color = Color3.new(0, 0, 0)
+			local disc = glowPart("DivineVoidDisc", Enum.PartType.Cylinder, orb.Size.X * DIVINE.VOID_DISC.size, color, 0.35)
+			disc.Size = Vector3.new(0.02, disc.Size.Y, disc.Size.Z)
+			disc.Parent = model
+			table.insert(discs, disc)
+			sunFlame = table.clone(look.flames[#look.flames])
+			sunFlame.size *= DIVINE.ORBS.size * 2
+		end
 		table.insert(emitters, addFlame(orb, sunFlame, size, tier))
 		orb.Parent = model
 		table.insert(orbs, orb)
@@ -172,6 +186,7 @@ local function addDivine(model: Model, look: BeastFx.Look, tier: BeastFx.Tier, s
 		height = height,
 		halo = halo,
 		orbs = orbs,
+		discs = discs,
 		time = 0,
 		nextEmber = 0,
 		embers = 0,
@@ -191,6 +206,14 @@ local function dropEmber(aura: Aura, divine: Divine)
 	local flame = table.clone(aura.look.ground[1] or aura.look.flames[1])
 	flame.size *= DIVINE.EMBERS.size
 	local emitter = addFlame(ember, flame, aura.size, aura.tier)
+	if aura.look.void then
+		-- A dark rift in the ground, smoke curling up out of it
+		ember.Name = "DivineRift"
+		ember.Color = rgb(aura.look.ground[1].colors[#aura.look.ground[1].colors])
+		local smoke = table.clone(aura.look.flames[2] or aura.look.flames[1])
+		smoke.size *= DIVINE.EMBERS.size
+		addFlame(ember, smoke, aura.size, aura.tier)
+	end
 	ember.Parent = workspace
 	local fade = TweenService:Create(ember, TweenInfo.new(DIVINE.EMBERS.seconds), { Transparency = 1 })
 	task.delay(DIVINE.EMBERS.seconds * 0.6, function()
@@ -215,6 +238,11 @@ local function stepDivine(aura: Aura, divine: Divine, dt: number, moving: boolea
 		local at = BeastFxRules.orbit(index, #divine.orbs, divine.time, DIVINE.ORBS.seconds, DIVINE.ORBS.radius * divine.height,
 			DIVINE.ORBS.height * divine.height, DIVINE.ORBS.bob * divine.height)
 		orb.CFrame = CFrame.new(feet + Vector3.new(at[1], at[2], at[3]))
+		local disc = divine.discs[index]
+		if disc then
+			disc.CFrame = orb.CFrame * CFrame.Angles(0, 0, math.rad(DIVINE.VOID_DISC.tilt))
+				* CFrame.Angles(math.rad(DIVINE.VOID_DISC.spin) * divine.time, 0, 0)
+		end
 	end
 	if not moving then
 		return
@@ -333,6 +361,9 @@ function BeastAura.step(aura: Aura, dt: number, speed: number, moving: boolean, 
 		if divine then
 			for _, orb in divine.orbs do
 				orb.Transparency = if near then 0 else 1
+			end
+			for _, disc in divine.discs do
+				disc.Transparency = if near then 0.35 else 1
 			end
 		end
 	end

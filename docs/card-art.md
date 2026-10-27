@@ -159,11 +159,12 @@ Element scenes (matching `CardDesign.SCENES`):
   edges along its wings and head, two curled coral-pink head fins like horns at the front, fierce glowing aqua eyes, a
   long thin coral-pink tail, aqua sparkles trailing from its wing tips (pose: gliding, seen from slightly above;
   lighting: bright underwater light rays).
-- **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
-  its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
-  along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
-  dragon head with glowing pale eyes, white teeth, glowing purple mouths and a crown of violet crystals, the middle
-  head tallest.
+- **Voidmaw** (original cosmic void dragon, Legendary; Meshy remake): a colossal terrifying cosmic void dragon,
+  rounded stylized toy-like 3D style, a huge heavy body of midnight blue-black skin speckled with tiny glowing stars,
+  pale violet belly plates, four thick clawed legs, small dark folded wings, a crown of tall glowing violet crystal
+  horns, violet crystal spikes along its back and long tail, a huge open jaw with glowing violet crystal fangs, and in
+  front of its maw a swirling black hole with a glowing violet accretion disc (pose: standing on a dark floating
+  rock; lighting: eerie cosmic violet light in deep space with nebula clouds).
 - **Sprouthop** (original tree sprite, Common; Meshy remake): a very cute chubby cartoon tree sprite, rounded stylized
   toy-like 3D style, a round plump body of smooth brown bark with wood grain, a big rounded wooden head with big shiny
   dark eyes, pink blush cheeks and a small happy smile, a big wide cap of bright green leaves on top of its head like a

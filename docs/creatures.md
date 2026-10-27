@@ -28,7 +28,8 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   ground flames or dust). Grade S Legendaries get more (tier `Divine`, `BeastFx.DIVINE`): fire on more bones,
   lightning more often, a ring of flames turning behind the head, three small neon suns circling it and burning
   embers left on the ground while it walks. The extras carry no lights of their own: lit from that close, the model
-  glared white.
+  glared white. Shade looks (`void = true`) turn the extras to the void: the suns become little black holes (a black
+  core in a spinning glowing disc, `BeastFx.DIVINE.VOID_DISC`) and the embers dark rifts trailing smoke.
 - **Part cap.** Models with more than `MAX_MODEL_PARTS` (200) parts use the placeholder.
 - **No collisions.** All parts are made non-colliding, non-touching and non-queryable.
 
@@ -192,8 +193,9 @@ Each original has a signature idle (`Party.SIGNATURE`: the fidget and how often 
 poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.cue` says so):
 - **butterfly** (Sprouthop): the right hand comes up, a butterfly appears on it in a puff of sparkles, flutters round
   its head while it looks up and follows it, then flies away fading; its antlers perk up.
-- **voidroar** (Voidmaw): the heads stop swaying, rear back and lunge one after another (`ROAR_RIPPLE`), jaws gaping,
-  dark void smoke bursting from every mouth, with the roar's shockwave ring.
+- **voidroar** (Voidmaw): rears back and lunges, jaw gaping, dark void smoke bursting from its maw, with the roar's
+  shockwave ring; a black hole tears open in front of it (a black core in a spinning violet disc, violet sparks pulled
+  in) and collapses with a burst. (Many-headed rigs ripple the roar head after head, `ROAR_RIPPLE`.)
 - **thunderroar** (Boltlynx): head reared back then lunging, ears flat, tail stiff; lightning crackles round its head
   and leaps off the bolts on its ear tips and tail tip in three bursts with a flash, plus the shockwave ring.
 - **hiccup** (Cindercub): three little hiccups (`HICCUP_BEATS`), each a small hop with the head jolting back and
@@ -369,9 +371,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Stormking** (`rig_stormking.py`, Meshy, Legendary): a colossal storm titan beetle, an armoured sapphire shell with
   glowing crystal spikes, a gold horn and a long tail spike, on four thick armoured legs. Remeshed and baked. 21 bones,
   12,000 triangles. Replaced the Crystal Titans SapphireCrab.
-- **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
-  (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
-  of 4 plus 7 jaws), about 2,750 triangles.
+- **Voidmaw** (`rig_voidmaw.py`, Meshy, Legendary; was the voxel `build_voidmaw.py` seven-headed hydra): a cosmic void
+  dragon with one head, midnight skin faintly speckled with stars, a pale violet belly, violet crystal horns and
+  spikes, an open fanged jaw on `Jaw_0` and small folded wings on `Wing_` bones (asked for none; kept on the user's
+  call). Meshy added a second tail along its left side, deleted by hand. Remeshed and baked (3.5 mm voxel for the thin
+  wings). It walks. Size 2.6 (it is twice as long as it is tall). 27 bones, 14,000 triangles.
 - **Sprouthop** (`rig_sprouthop.py`, Meshy, Common; was the voxel `build_sprouthop.py`): a chubby smiling bark sprite
   with a wide cap of green leaves, generated in a T-pose (Meshy `pose_mode="t-pose"`; the first try had a sad face and
   one waving arm, regenerated). The side leaf tips are its `Ear_` bones. Collapse decimate (thin leaves). Size 1.5.

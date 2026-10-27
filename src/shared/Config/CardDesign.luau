@@ -44,7 +44,7 @@ return {
 		Thunderhorn = "rbxassetid://99651725753080",
 		["Eclipse Fox"] = "rbxassetid://140066833494827",
 		Solarion = "rbxassetid://94344316072048",
-		Voidmaw = "rbxassetid://121642395980341",
+		Voidmaw = "rbxassetid://85829654802401",
 		Emberwing = "rbxassetid://74189264541735",
 		Tidecaller = "rbxassetid://133334447011122",
 		Briarhorn = "rbxassetid://102039719436551",

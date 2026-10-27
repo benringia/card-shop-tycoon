@@ -274,7 +274,7 @@ Each pack = 5 cards:
   run and idle animations (Stormking is now an original storm titan beetle and Tideborne Kirin (was Aurora Drake) an original celestial kirin;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
   them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (cartoon electric lynx, generated with Meshy), Cindercub (fire bear cub, Meshy), Zappit (lavender electric bunny, Meshy), Mossmole (forest mole with a mushroom garden, Meshy), Petalpaw (flower squirrel, Meshy), Gloomlet (flying shadow bat, Meshy), Ashbeak (ember chick, Meshy), Shellshy (shy baby sea turtle, Meshy), Fizzlebug (flying electric bee, Meshy), Wispurr (ghost kitten, Meshy), Emberwing (flying fire swallow, Meshy), Tidecaller (sea dragon, Meshy), Briarhorn (thorn-vined forest bull, Meshy), Abyssal Koi (swimming abyss fish, Meshy), Thunderhorn (gold-armoured thunder stag, Meshy), Riftwalker (void dragon, Meshy), Cinder Titan (volcano gorilla, Meshy), Voidmaw
-  (seven-headed crystal hydra dragon, every neck and jaw animated in code), Solarion (sun fire god titan, Meshy),
+  (cosmic void dragon, Meshy), Solarion (sun fire god titan, Meshy),
   Sprouthop (tree sprite), Stormjack (storm ram, Meshy), Infernox (T-rex), Puffpuddle (sea otter on all fours),
   Blazehound (flame dachshund), Thornback (thorn boar, Meshy), Duskstalker (shadow Monkey King), Eclipse Fox
   (shadow kitsune, Meshy, three tails built in code) and Voltkit (caped fox hero),
@@ -284,7 +284,8 @@ Each pack = 5 cards:
   purple-black fire, Tide blue spirit fire, Volt white fire with constant lightning), kick up dust as they move (grade S and A copies of other cards get a lighter aura,
   `BeastFx.TIERS`: S fire on 6 bones with now-and-then lightning, A a faint flame on 4 and a soft glow; grade S
   Legendaries get more, tier Divine: fire on 11 bones, more lightning, a turning ring of flames behind the head,
-  three small suns circling it and burning embers where it walks, `BeastFx.DIVINE`; Epics stand
+  three small suns circling it and burning embers where it walks, `BeastFx.DIVINE`; for Shade, black holes and dark
+  smoking rifts instead; Epics stand
   1.5x, `Party.SIZE_BY_RARITY`), and between their idle, now and then roar (rear back, lunge, an element-coloured
   shockwave ring and sparks) or stomp (a dust ring). The pets' bones are animated in code on
   each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping, breathing, tail wags,
