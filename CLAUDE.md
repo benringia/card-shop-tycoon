@@ -104,7 +104,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
   cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
   `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/item <id> <n>` (any Config/Items
-  item), `/boss <n> [fight]` (to boss n's arena gate; with fight, use the gate), `/legendarys [foil]` (a Grade S
+  item), `/boss <n> [fight|group]` (to boss n's arena gate; with fight or group, use that prompt), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
