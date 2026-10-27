@@ -176,11 +176,12 @@ Element scenes (matching `CardDesign.SCENES`):
   button nose, pink blush cheeks and a small happy smile, small round ears, a small glowing aqua pearl on its forehead,
   a thick flat brown tail, a small blue clam shell beside its feet (pose: standing happily on a mossy rock; lighting:
   bright underwater light rays).
-- **Eclipse Fox** (original nine-tailed kitsune, Epic): a sturdy fierce mystical nine-tailed kitsune fox standing on
-  four thick legs, rounded stylized toy-like 3D style, deep violet fur with a big fluffy white chest ruff, white cheek
-  tufts, glowing violet crescent moon markings on its flanks, a small glowing violet gem on its brow, narrow sharp golden
-  eyes, tall pointed ears, nine huge fluffy violet tails with white tips fanned out behind it, above its head a dark
-  eclipse with a glowing golden ring of light (lighting: eerie violet moonlight).
+- **Eclipse Fox** (original shadow kitsune, Epic; Meshy remake with three tails): a fierce menacing mythical
+  shadow kitsune fox, rounded stylized toy-like 3D style, a sturdy muscular deep violet body standing on four thick
+  legs, a big fluffy white chest ruff, narrow glowing golden eyes, sharp fangs, tall pointed ears with glowing violet
+  insides, a glowing golden eclipse ring on its forehead, glowing violet ring marks on its flanks, exactly three big
+  smooth bushy violet tails with white tips, one rising and two spread to the sides (pose: standing on a dark rocky
+  outcrop; lighting: eerie violet moonlight under a huge solar eclipse ringed with golden light).
 - **Duskstalker** (original Monkey King, Very Rare): a stocky confident monkey king warrior standing upright on two
   legs, rounded stylized toy-like 3D style, dark plum fur, a tan face and chest, big round head, glowing amber eyes
   under low brows with a sly half smile, a golden circlet with a violet gem, gold shoulder armour, a red cape, purple

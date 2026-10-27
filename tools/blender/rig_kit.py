@@ -327,6 +327,55 @@ def droplet(mesh, base, radius, height, uv_body, uv_tip, segments=12, rings=10):
     bm.free()
 
 
+def tail(mesh, points, widest, uv_body, uv_tip, tip_from=0.72, segments=12, rings=24):
+    """Adds a smooth bushy tail to the mesh along the cubic Bezier `points` (root, two handles, tip; the root sunk into
+    the body): narrow at the root, `widest` across past its middle, closing to a point. Rings past `tip_from` of its
+    length take the colour at uv_tip (a white tip), the rest uv_body. Each tail is its own shell, so tails never stick
+    together the way generated ones do."""
+    import bmesh
+    import math
+
+    p0, p1, p2, p3 = (Vector(p) for p in points)
+    def at(t):
+        s = 1 - t
+        return p0 * s ** 3 + p1 * 3 * s * s * t + p2 * 3 * s * t * t + p3 * t ** 3
+    def radius(t):
+        return widest * math.sin(math.pi * (0.12 + 0.88 * t ** 1.25)) ** 0.7
+    centres = [at(i / rings) for i in range(rings + 1)]
+    # Parallel transport keeps the rings from twisting round the curve
+    axis = (centres[1] - centres[0]).normalized()
+    side = axis.cross(Vector((0, 0, 1)) if abs(axis.z) < 0.9 else Vector((1, 0, 0))).normalized()
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    ring_verts = []
+    for i in range(rings):
+        nxt = (centres[i + 1] - centres[i]).normalized()
+        side = (side - nxt * side.dot(nxt)).normalized()
+        other = nxt.cross(side)
+        r = radius(i / rings)
+        ring_verts.append([bm.verts.new(centres[i] + (side * math.cos(a) + other * math.sin(a)) * r)
+                           for a in (2 * math.pi * k / segments for k in range(segments))])
+    tip = bm.verts.new(centres[-1])
+    faces = [bm.faces.new(list(reversed(ring_verts[0])))]
+    for k in range(segments):
+        j = (k + 1) % segments
+        for ring in range(rings - 1):
+            a, b = ring_verts[ring], ring_verts[ring + 1]
+            faces.append(bm.faces.new((a[k], a[j], b[j], b[k])))
+        faces.append(bm.faces.new((ring_verts[-1][k], ring_verts[-1][j], tip)))
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    layer = bm.loops.layers.uv.active
+    for face in bmesh.ops.triangulate(bm, faces=faces)["faces"]:
+        face.smooth = True
+        # How far along the tail the face sits, by the nearest ring centre
+        centre = face.calc_center_median()
+        nearest = min(range(rings + 1), key=lambda i: (centres[i] - centre).length)
+        for loop in face.loops:
+            loop[layer].uv = uv_tip if nearest / rings > tip_from else uv_body
+    bm.to_mesh(mesh.data)
+    bm.free()
+
+
 def build_rig(name, bones):
     """A fresh armature from (bone, parent, head, tail) tuples; Root doesn't deform."""
     old = bpy.data.objects.get(name)

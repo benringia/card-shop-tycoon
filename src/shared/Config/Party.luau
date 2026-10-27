@@ -440,7 +440,7 @@ return {
 		Wispurr = { pack = "Originals", model = "Wispurr", size = 1.4 }, -- original, tools/blender/rig_wispurr.py (Meshy-generated ghost kitten)
 		Hushmoth = { pack = "Originals", model = "Hushmoth", size = 1.4, flies = true }, -- original, tools/blender/rig_hushmoth.py (Meshy-generated fluffy moth)
 		Nightowl = { pack = "Originals", model = "Nightowl", size = 1.4, flies = true }, -- original, tools/blender/rig_nightowl.py (Meshy-generated shadow owl)
-		["Eclipse Fox"] = { pack = "Originals", model = "EclipseFox", size = 1.2 }, -- original, tools/blender/build_eclipsefox.py
+		["Eclipse Fox"] = { pack = "Originals", model = "EclipseFox", size = 1.8 }, -- original, tools/blender/rig_eclipsefox.py (Meshy-generated shadow kitsune; was the voxel build_eclipsefox.py)
 		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.4 }, -- original, tools/blender/build_duskstalker.py
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
 		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/build_solarion.py

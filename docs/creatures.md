@@ -425,10 +425,12 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   gold belt, wrist and ankle bands, a golden staff with red bands, longer than it is tall, gripped through its right fist
   like a carried weapon (it crosses the fist, so with the arm hanging it points forward, nearly level, held at its
   middle), a long curled tail; 24 bones, about 650 triangles.
-- **Eclipse Fox** (`build_eclipsefox.py`, model `EclipseFox`, Epic): a sturdy nine-tailed shadow kitsune on four thick
-  legs, deep violet with a huge white ruff, chest and cheek tufts, glowing violet crescents on its flanks, a brow gem,
-  narrow golden eyes, tall ears and nine big fluffy white-tipped tails fanned out behind (`Tails_<tail>_0..2`, each on
-  its own beat); 47 bones, about 1,050 triangles.
+- **Eclipse Fox** (`rig_eclipsefox.py`, Meshy, Epic; was the voxel `build_eclipsefox.py` nine-tailed kitsune): a
+  chunky shadow kitsune, deep violet with a big white ruff, a golden eclipse ring on its brow, violet rings on its
+  flanks, narrow golden eyes and tall ears. Meshy swung its rear half 28 degrees (straightened by hand) and bunched its
+  tails together; the user wanted two or three that animate cleanly, so every generated tail was cut off and three
+  smooth white-tipped tails built in code (`rig_kit.tail`), one rising and two fanned out, each its own shell whose
+  vertices follow only its own `Tails_<tail>_0..2` chain. Size 1.8. 29 bones, about 7,500 triangles.
 - **Voltkit** (`build_voltkit.py`, Very Rare): a fox hero on two legs, blocky and sturdy: golden fur, a cream chest
   with magenta chevrons, magenta ear tips, cuffs and tail band, amber eyes under determined magenta brows, a pink gem on
   its brow and another on a magenta necklace, a magenta cape on `Cape_` bones, dark gloves and boots, a bushy
