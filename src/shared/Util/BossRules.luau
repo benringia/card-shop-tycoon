@@ -32,6 +32,23 @@ function BossRules.read(saved: unknown, startsOpen: boolean): Record
 	}
 end
 
+-- The saved bosses table: these records over what was saved, keeping records of bosses this server doesn't know
+-- (a newer server added them), so an older server never drops their progress
+function BossRules.write(saved: unknown, records: { [string]: Record }): { [string]: any }
+	local out: { [string]: any } = {}
+	if typeof(saved) == "table" then
+		for bossId, entry in saved :: { [any]: any } do
+			if typeof(bossId) == "string" and typeof(entry) == "table" then
+				out[bossId] = table.clone(entry)
+			end
+		end
+	end
+	for bossId, record in records do
+		out[bossId] = table.clone(record)
+	end
+	return out
+end
+
 function BossRules.dayNumber(unixTime: number): number
 	return math.floor(unixTime / 86400)
 end

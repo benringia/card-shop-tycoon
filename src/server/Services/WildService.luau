@@ -566,7 +566,7 @@ function WildService.SpawnAt(position: Vector3, species: string, level: number, 
 	return createMonster(species, level, elite, zone, position, nil, boss)
 end
 
-export type BossArena = { gate: CFrame, spawn: CFrame }
+export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame }
 
 -- Main game: a fenced ring beside each boss's zone with a gate (server prompt "Fight boss" -> onGate) and a sign.
 -- Returns where each gate and boss stand, by boss id.
@@ -599,7 +599,7 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		prompt.ActionText = "Fight boss"
 		prompt.ObjectText = `{boss.name} · Power {boss.recommended}`
 		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = 10
+		prompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = gate
 		prompt.Triggered:Connect(function(player)
@@ -609,7 +609,8 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
 		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, 0, 0)
 		arenas[bossId] = {
-			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center),
+			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center), -- where /boss puts you, outside the gate
+			gatePosition = gate.Position, -- what the server measures a start from (the prompt's part)
 			spawn = CFrame.lookAt(bossSpot, gateSpot),
 		}
 	end

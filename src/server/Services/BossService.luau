@@ -181,7 +181,11 @@ local function onGate(player: Player, bossId: string)
 	end
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-	if not root or (root.Position - arena.gate.Position).Magnitude > Bosses.GATE_DISTANCE then
+	if not root then
+		return
+	end
+	if (root.Position - arena.gatePosition).Magnitude > Bosses.GATE_DISTANCE then
+		notify(player, "Get closer to the gate.", true)
 		return
 	end
 	local unlock = boss.unlock
@@ -238,11 +242,7 @@ local function save(player: Player, data: DataService.PlayerData)
 	if not byBoss then
 		return -- never loaded: keep what's saved
 	end
-	local out: { [string]: any } = {}
-	for bossId, record in byBoss do
-		out[bossId] = table.clone(record)
-	end
-	data.bosses = out
+	data.bosses = BossRules.write(data.bosses, byBoss)
 end
 
 local function unload(player: Player)

@@ -112,7 +112,8 @@ return {
 	OVERPOWER_RATIO = 2.5, -- party Power above this times the recommended shrinks drops...
 	OVERPOWER_FACTOR = 0.35, -- ...to this
 
-	GATE_DISTANCE = 12, -- studs from a boss gate to start
+	GATE_PROMPT_DISTANCE = 10, -- the gate prompt shows this close
+	GATE_DISTANCE = 12, -- studs from the gate the server accepts a start (past the prompt's reach, for lag)
 	START_COOLDOWN = 2, -- seconds between start requests per player
 
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path

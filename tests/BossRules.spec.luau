@@ -79,4 +79,17 @@ return {
 			assert(boss.recommended > 0 and boss.hp > 0 and boss.minFightSeconds > 0, `{id} numbers`)
 		end
 	end,
+	["gate: the server accepts a press from anywhere its prompt shows"] = function()
+		assert(typeof(Bosses.GATE_PROMPT_DISTANCE) == "number", "GATE_PROMPT_DISTANCE")
+		assert(Bosses.GATE_DISTANCE >= Bosses.GATE_PROMPT_DISTANCE + 2, "GATE_DISTANCE leaves room past the prompt's reach")
+	end,
+
+	["save: records of bosses this server doesn't know are kept"] = function()
+		local saved = { meadowWarden = { cleared = false }, frostTyrant = { unlocked = true, cleared = true, lootAt = 5 } }
+		local out = BossRules.write(saved, { meadowWarden = record({ cleared = true }) })
+		expect.equal(out.meadowWarden.cleared, true, "known boss written")
+		expect.equal(out.frostTyrant.cleared, true, "unknown boss kept")
+		expect.equal(out.frostTyrant.lootAt, 5, "unknown boss untouched")
+		expect.equal(BossRules.write(nil, { meadowWarden = record({}) }).meadowWarden.cleared, false, "no save yet")
+	end,
 }
