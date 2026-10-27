@@ -155,6 +155,28 @@ return {
 		end
 	end,
 
+	["grade: rarer cards are less often Grade S, the rest going to C"] = function()
+		for _, rarity in { "Common", "Rare", "Very Rare" } do
+			expect.equal(BeastMath.gradeChances(config, rarity), config.GRADE_CHANCES, `{rarity} uses the default`)
+		end
+		local epic, legendary = BeastMath.gradeChances(config, "Epic"), BeastMath.gradeChances(config, "Legendary")
+		assert(legendary.S < epic.S and epic.S < config.GRADE_CHANCES.S, "Grade S isn't rarer on rarer cards")
+		for _, chances in { epic, legendary } do
+			local total = 0
+			for _, grade in config.GRADES do
+				total += chances[grade] or 0
+			end
+			expect.near(total, 1, 1e-9, "the chances add up to 1")
+			expect.equal(chances.B, config.GRADE_CHANCES.B, "B unchanged")
+			expect.equal(chances.A, config.GRADE_CHANCES.A, "A unchanged")
+		end
+		-- Legendary: C 56% / B 30% / A 13% / S 1%
+		expect.equal(BeastMath.rollGrade(config, 0.985, "Legendary"), "A", "a roll that's S on a Common is A on a Legendary")
+		expect.equal(BeastMath.rollGrade(config, 0.985), "S", "no rarity: the default chances")
+		expect.equal(BeastMath.rollGrade(config, 0.991, "Legendary"), "S", "the top 1%")
+		expect.equal(BeastMath.rollGrade(config, 0.559, "Legendary"), "C", "C reaches 56%")
+	end,
+
 	["grade: helpers"] = function()
 		expect.equal(BeastMath.isGrade(config, "S"), true, "S")
 		expect.equal(BeastMath.isGrade(config, "Z"), false, "Z")

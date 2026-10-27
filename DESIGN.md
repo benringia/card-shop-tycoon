@@ -155,6 +155,7 @@ is over UI (`UIKit.pointerBlocked`).
 | Glass Showcase | 6 single cards, NPC customers buy | $250 | Start |
 | Collector Case | 6 single cards, other players buy | $300 | Start |
 | Card Condenser | machine: combine duplicates for +1 star (5.8) | $500 | Shop Lv 4 |
+| Grading Station | machine: duplicates and cash for +1 grade (5.9) | $5,000 | Shop Lv 8 |
 | Wall Shelf | 48 packs | $350 | Shop Lv 3 |
 | Accessory Hook | 20 accessories | $250 | Shop Lv 5 |
 | Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
@@ -491,6 +492,11 @@ Plain copies stack by card, foil and grade; a copy becomes an individual card (k
 | A | 13% | +6% |
 | S | 2% | +10% |
 
+Rarer cards are less often Grade S (`Beasts.GRADE_CHANCES_BY_RARITY`, the difference going to C): Epic S 1.5%
+(C 55.5%), Legendary S 1% (C 56%). A Grade S Legendary is the chase: about 1 in 3,300 First Spark packs, shown on its
+own line in the rarity guide (`OddsRules.perPack`). The Grading Station (5.9) raises a copy's grade with duplicates and
+cash, a slow but sure path to Grade S.
+
 **Power** = HP + 5 × ATK + 5 × SPD, shown on cards. Rarity always beats grade at equal level and stars: the best
 copy of a rarity (best element, S, foil) has less Power than the worst copy of the next rarity (unit-tested).
 
@@ -534,6 +540,28 @@ The binder shows the next step on every card ("Stars 0/5 · condense 4 duplicate
 Player-facing text says "Owned" and "levelled", never "fresh" or "raised".
 Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to your best levelled card or rarest plain card.
 
+### 5.9 Grading Station (grade-ups)
+
+The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 3,300 packs, 5.8).
+A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`, a code-built
+cabinet with a scanner bed, a magnifier and a graded slab: `Town.GRADING_LOOK`). Press E on it: pick a card and the
+copy to grade, see the next grade, its cost, which duplicates go, Power and value before -> after and the whole way to
+Grade S, then Grade Up. One step per press (C -> B -> A -> S). Duplicates are plain copies of the same card, used in
+the Condenser's order (normals weakest grade first, then foils; never levelled or starred copies, never the plain main
+itself), so stars and grades compete for the same duplicates. A plain main moves up to the next grade's stack and
+stays plain; a levelled main keeps its level and stars. Working or fighting cards can't be graded. The server
+recomputes the plan (`Util/CondenseRules.gradePlan`) and takes the cash through EconomyService in the same step
+(`CardService.GradeUp`), so a forged or stale request changes nothing.
+
+Cost per step, duplicates + cash (`Config/Grading.COSTS`):
+
+| Rarity | C -> B | B -> A | A -> S | C -> S in all |
+|---|---|---|---|---|
+| Common, Rare | 2 + $100 | 4 + $500 | 8 + $2,500 | 14 + $3,100 |
+| Very Rare | 2 + $250 | 3 + $1,000 | 6 + $5,000 | 11 + $6,250 |
+| Epic | 1 + $500 | 2 + $2,500 | 4 + $10,000 | 7 + $13,000 |
+| Legendary | 1 + $2,000 | 2 + $10,000 | 3 + $40,000 | 6 + $52,000 |
+
 ---
 
 ## 6. Products (stock you sell)
@@ -568,7 +596,7 @@ at once, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
 | 5 | 2,500 | Accessory Hook, Deck Box, Expansion 1 |
 | 6 | 5,000 | Big Display Rack |
 | 7 | 9,000 | Sealed Booster Box |
-| 8 | 15,000 | — |
+| 8 | 15,000 | Grading Station |
 | 9 | 24,000 | Expansion 2 |
 | 10 | 36,000 | Shop jobs (first slot), Set 2 |
 
@@ -689,6 +717,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
     │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
+    │   │   ├── GradingService.luau # Grading Station remote: validate, then CardService.GradeUp (cash via EconomyService)
     │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
     │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
@@ -719,6 +748,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
+    │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
     │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
@@ -768,6 +798,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Collection.luau # binder request limits
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
+        │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
@@ -791,7 +822,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PriceRules.luau    # price clamping and buy bands
             ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
             ├── BeastRules.luau    # BeastMath bound to the game configs
-            ├── CondenseRules.luau # which duplicates a star uses (pure, Lune-tested)
+            ├── CondenseRules.luau # which duplicates a star or a grade-up uses (pure, Lune-tested)
             ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)

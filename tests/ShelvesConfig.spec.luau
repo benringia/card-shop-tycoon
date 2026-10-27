@@ -30,7 +30,7 @@ return {
 	end,
 
 	["every shelf sits in a Build menu category that matches its kind"] = function()
-		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures" }
+		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures" }
 		for _, entry in entries() do
 			local kind = string.match(entry.body, 'kind = "([%w_]+)"')
 			local category = string.match(entry.body, 'category = "([%w_]+)"')

@@ -46,9 +46,13 @@ function BeastRules.getGradeRank(grade: string): number
 	return BeastMath.getGradeRank(Beasts, grade)
 end
 
--- roll: a uniform random number in [0, 1)
-function BeastRules.rollGrade(roll: number): string
-	return BeastMath.rollGrade(Beasts, roll)
+-- roll: a uniform random number in [0, 1); rarity: the card's (rarer cards are less often Grade S)
+function BeastRules.rollGrade(roll: number, rarity: string?): string
+	return BeastMath.rollGrade(Beasts, roll, rarity)
+end
+
+function BeastRules.gradeChances(rarity: string?): { [string]: number }
+	return BeastMath.gradeChances(Beasts, rarity)
 end
 
 function BeastRules.describeGrade(grade: string): string

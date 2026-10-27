@@ -5,7 +5,8 @@
 --   kind "CustomerCards": displays single cards that NPC customers may buy
 --   kind "PlayerCards":   displays single cards that only other players can buy
 --   kind "Condenser":     a machine that combines duplicate cards for stars (holds nothing)
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser"
+--   kind "Grading":       the Grading Station, a machine that raises a card's grade (holds nothing)
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading"
 
 export type Shelf = {
 	id: string,
@@ -81,6 +82,18 @@ local List: { Shelf } = {
 		unlockLevel = 4,
 		size = Vector3.new(6, 7, 6), -- big enough to read as a machine (saved ones too big for their spot move over)
 		color = Color3.fromRGB(90, 200, 220),
+	},
+	{
+		id = "GradingStation",
+		prop = "GradingStation",
+		name = "Grading Station",
+		kind = "Grading",
+		category = "Fixtures", -- Build menu tab
+		capacity = 0,
+		cost = 5000,
+		unlockLevel = 8,
+		size = Vector3.new(6, 6, 4),
+		color = Color3.fromRGB(230, 185, 80),
 	},
 	{
 		id = "WallShelf",

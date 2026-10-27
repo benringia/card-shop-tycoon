@@ -105,6 +105,15 @@ local function isCondenser(def: ShelfDef): boolean
 	return def.kind == "Condenser"
 end
 
+local function isGradingStation(def: ShelfDef): boolean
+	return def.kind == "Grading"
+end
+
+-- Machines (the Condenser, the Grading Station) hold nothing and are only used by their owner
+local function isMachine(def: ShelfDef): boolean
+	return isCondenser(def) or isGradingStation(def)
+end
+
 local function countCards(shelf: PlacedShelf): number
 	local count = 0
 	for _ in shelf.cards do
@@ -361,8 +370,8 @@ end
 local function updateInfo(shelf: PlacedShelf)
 	local part = shelf.part
 	part:SetAttribute("ProductId", if shelf.units > 0 then shelf.productId else nil)
-	if isCondenser(shelf.def) then
-		part:SetAttribute("Info", `✨ {shelf.def.name}`)
+	if isMachine(shelf.def) then
+		part:SetAttribute("Info", `{if isGradingStation(shelf.def) then "🏅" else "✨"} {shelf.def.name}`)
 		return
 	end
 	if isCardCase(shelf.def) then
@@ -495,7 +504,7 @@ local function createShelf(
 	part.Color = def.color
 	part.Material = if isCardCase(def)
 		then Enum.Material.Glass
-		elseif isCondenser(def) then Enum.Material.Metal
+		elseif isMachine(def) then Enum.Material.Metal
 		else Enum.Material.Wood
 	part:SetAttribute("BlocksPlacement", true)
 	part:SetAttribute("ShelfUid", uid)
@@ -937,6 +946,10 @@ end
 
 function PlacementService.IsCondenser(shelf: PlacedShelf): boolean
 	return isCondenser(shelf.def)
+end
+
+function PlacementService.IsGradingStation(shelf: PlacedShelf): boolean
+	return isGradingStation(shelf.def)
 end
 
 function PlacementService.GetFreeSlot(shelf: PlacedShelf): number?

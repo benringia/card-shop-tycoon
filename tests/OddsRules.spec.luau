@@ -74,4 +74,12 @@ return {
 		expect.equal(OddsRules.oneIn(0.5), 2, "half")
 		expect.equal(OddsRules.oneIn(0), math.huge, "never")
 	end,
+
+	["perPack adds up each slot's chance of a rarity"] = function()
+		expect.near(OddsRules.perPack(FIRST_SPARK, "Legendary"), 0.03, 1e-9, "one hit slot at 3%")
+		expect.near(OddsRules.perPack(FIRST_SPARK, "Rare"), 0.3 + 0.68, 1e-9, "two slots can be Rare")
+		expect.near(OddsRules.perPack(FIRST_SPARK, "Common"), 3.7, 1e-9, "about 3.7 Commons a pack")
+		expect.equal(OddsRules.perPack(FIRST_SPARK, "Mythic"), 0, "a rarity it never gives")
+		expect.equal(OddsRules.perPack({ slots = {} }, "Legendary"), 0, "an empty pack")
+	end,
 }

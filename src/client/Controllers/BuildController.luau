@@ -22,6 +22,7 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
 local CondenserController = require(Controllers:WaitForChild("CondenserController"))
+local GradingController = require(Controllers:WaitForChild("GradingController"))
 
 type ShelfDef = typeof(Shelves.List[1])
 
@@ -51,7 +52,7 @@ type ShelfPrompts = {
 }
 
 local COMPUTER_PROMPT_OFFSET = 80 -- pixels below the computer's "Order stock" prompt
-local CONDENSER_EDIT_OFFSET = 80 -- the Condenser shows Condense and Edit together, so Edit sits below
+local CONDENSER_EDIT_OFFSET = 80 -- machines show their use prompt and Edit together, so Edit sits below
 
 local player = Players.LocalPlayer
 
@@ -65,6 +66,7 @@ local sellDetail: TextLabel
 local cardsRow: Frame
 local removeStockRow: Frame
 local condenseRow: Frame
+local gradeRow: Frame
 local moveDetail: TextLabel
 local editingPart: BasePart? = nil
 local shelvesConnection: RBXScriptConnection? = nil
@@ -175,6 +177,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	local detail = if def.kind == "Products"
 		then `Holds {def.capacity}`
 		elseif def.kind == "Condenser" then "Duplicates to stars"
+		elseif def.kind == "Grading" then "Duplicates to grades"
 		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
@@ -302,10 +305,11 @@ local function openEditPanel(part: BasePart)
 	editTitle.Text = def.name
 	cardsRow.Visible = isCase
 	condenseRow.Visible = def.kind == "Condenser"
+	gradeRow.Visible = def.kind == "Grading"
 	removeStockRow.Visible = def.kind == "Products"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
-		elseif def.kind == "Condenser" then "Pick a new spot."
+		elseif def.kind == "Condenser" or def.kind == "Grading" then "Pick a new spot."
 		else "Pick a new spot. Stock stays on it."
 	sellDetail.Text = string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
 	shopPanel.Visible = false
@@ -325,6 +329,14 @@ local function onCondense()
 	editPanel.Visible = false
 	if part then
 		CondenserController.Open(part)
+	end
+end
+
+local function onGrade()
+	local part = editingPart
+	editPanel.Visible = false
+	if part then
+		GradingController.Open(part)
 	end
 end
 
@@ -381,6 +393,11 @@ local function buildEditPanel(parent: Instance)
 	condenseButton.Text = "Open"
 	condenseButton.Activated:Connect(onCondense)
 
+	local gradeButton: TextButton
+	gradeRow, gradeButton = UIKit.row(list, 2, "Grade up", "Raise a card's grade with duplicates and cash.")
+	gradeButton.Text = "Open"
+	gradeButton.Activated:Connect(onGrade)
+
 	local removeStockButton: TextButton
 	removeStockRow, removeStockButton = UIKit.row(list, 3, "Remove stock", "Box it up onto the delivery pad.")
 	removeStockButton.Text = "Remove"
@@ -413,8 +430,8 @@ end
 -- Card cases never take stock, so they always show Edit.
 local function applyPromptMode(part: BasePart, prompts: ShelfPrompts)
 	local def = Shelves.ById[part.Name]
-	if def and def.kind == "Condenser" then
-		-- Condense (E) and Edit (F) both show; Edit is offset so they don't overlap
+	if def and (def.kind == "Condenser" or def.kind == "Grading") then
+		-- A machine's use prompt (E) and Edit (F) both show; Edit is offset so they don't overlap
 		prompts.stock.Enabled = true
 		prompts.edit.Enabled = true
 		return
@@ -441,12 +458,18 @@ local function addShelfPrompts(child: Instance)
 	end
 
 	local isCondenser = def.kind == "Condenser"
-	-- E: stock a product shelf, or open the Condenser
-	local stock = makePrompt(child, if isCondenser then "Condense" else "Stock shelf", def.name, Enum.KeyCode.E)
+	local isGrading = def.kind == "Grading"
+	-- E: stock a product shelf, or open the Condenser or the Grading Station
+	local action = if isCondenser then "Condense" elseif isGrading then "Grade" else "Stock shelf"
+	local stock = makePrompt(child, action, def.name, Enum.KeyCode.E)
 	stock.Triggered:Connect(function()
-		if isCondenser then
+		if isCondenser or isGrading then
 			if not PlacementController.IsActive() then
-				CondenserController.Open(child)
+				if isCondenser then
+					CondenserController.Open(child)
+				else
+					GradingController.Open(child)
+				end
 			end
 			return
 		end
@@ -458,7 +481,7 @@ local function addShelfPrompts(child: Instance)
 
 	local edit = makePrompt(child, "Edit", def.name, Enum.KeyCode.F)
 	edit.GamepadKeyCode = Enum.KeyCode.ButtonY
-	if isCondenser then
+	if isCondenser or isGrading then
 		edit.UIOffset = Vector2.new(0, CONDENSER_EDIT_OFFSET)
 	end
 	edit.Triggered:Connect(function()

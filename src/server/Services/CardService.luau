@@ -15,6 +15,7 @@ local Config = Shared:WaitForChild("Config")
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Collection = require(Config:WaitForChild("Collection"))
+local Grading = require(Config:WaitForChild("Grading"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -289,6 +290,77 @@ function CardService.Condense(player: Player, cardId: string, main: XpTarget, sh
 	condensed.stars += 1
 	sync(player)
 	return condensed, nil, shardsUsed
+end
+
+-- The Grading Station: the main copy's grade goes up one step (C -> B -> A -> S), paid for with plain duplicates of
+-- the same card (Util/CondenseRules.gradePlan picks them) and cash: `pay` is called with the cash once everything else
+-- checks out and must take it, returning false if it can't (then nothing changes). A plain main moves up to the next
+-- grade's stack and stays plain. All in one step with no yields. Returns the new grade, or nil and a reason ("max",
+-- "short:<have>:<need>", "cash:<need>", "working", "fighting", "missing", "unknown").
+function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number) -> boolean): (string?, string?)
+	local inventory = inventories[player]
+	local card = Cards.ById[cardId]
+	if not inventory or not card then
+		return nil, "missing"
+	end
+	local beast: Beast? = nil
+	local foil: boolean
+	local grade: string
+	if typeof(main) == "string" then
+		beast = inventory.beasts[main]
+		if not beast or beast.cardId ~= cardId then
+			return nil, "missing"
+		end
+		if inventory.working[main] then
+			return nil, "working"
+		elseif inventory.fighting[main] then
+			return nil, "fighting"
+		end
+		foil, grade = beast.foil, beast.grade
+	else
+		local byGrade = inventory.stacks[cardId]
+		local owned = if byGrade then byGrade[main.grade] else nil
+		local count = if owned then (if main.foil then owned.foil else owned.normal) else 0
+		if main.cardId ~= cardId or count <= 0 then
+			return nil, "missing"
+		end
+		foil, grade = main.foil, main.grade
+	end
+
+	local stacks = inventory.stacks[cardId] or {}
+	local plan, reason = CondenseRules.gradePlan(Grading, Beasts, card.rarity, stacks, {
+		beast = beast ~= nil,
+		foil = foil,
+		grade = grade,
+		stars = if beast then beast.stars else BeastRules.START_STARS,
+	})
+	if not plan then
+		return nil, reason
+	end
+	if not pay(plan.cash) then
+		return nil, `cash:{plan.cash}`
+	end
+	for _, take in plan.takes do
+		local owned = getOwned(inventory.stacks, cardId, take.grade)
+		if take.foil then
+			owned.foil -= take.count
+		else
+			owned.normal -= take.count
+		end
+	end
+	if beast then
+		beast.grade = plan.grade
+	else
+		takeFreshCopy(inventory, cardId, foil, grade)
+		local raised = getOwned(inventory.stacks, cardId, plan.grade)
+		if foil then
+			raised.foil += 1
+		else
+			raised.normal += 1
+		end
+	end
+	sync(player)
+	return plan.grade, nil
 end
 
 -- Splits one plain copy off its stack into its own card (to give it a job). Nil if there is no such copy.

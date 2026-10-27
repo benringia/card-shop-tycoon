@@ -206,6 +206,57 @@ local function buildCondenser(model: Model)
 	rotor.Parent = model
 end
 
+-- The Grading Station (Town.GRADING_LOOK), bottom centre at the origin, front -Z: a cabinet with a screen, a scanner
+-- bed on top with a card under a glowing scan bar, a magnifier on an arm, and a graded slab on a stand at the back
+local function buildGradingStation(model: Model)
+	local look = Town.GRADING_LOOK
+	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
+	local body, trim, glow = Props.color(look.BODY), Props.color(look.TRIM), Props.color(look.GLOW)
+	local top = look.CABINET_HEIGHT
+	local frontZ = -look.DEPTH / 2
+	-- Cabinet: navy body, gold trim round the top and base, a gold plinth strip
+	addPart(model, block, Vector3.new(look.WIDTH, top, look.DEPTH), CFrame.new(0, top / 2, 0), body, Enum.Material.Metal)
+	addPart(model, block, Vector3.new(look.WIDTH + 0.12, 0.18, look.DEPTH + 0.12), CFrame.new(0, top - 0.09, 0), trim, Enum.Material.Metal)
+	addPart(model, block, Vector3.new(look.WIDTH + 0.12, 0.3, look.DEPTH + 0.12), CFrame.new(0, 0.15, 0), trim, Enum.Material.Metal)
+	-- Front screen
+	local screen = addPart(model, block, Vector3.new(3.2, 1.1, 0.06), CFrame.new(0, top * 0.6, frontZ - 0.03), Color3.fromRGB(16, 18, 30), Enum.Material.SmoothPlastic)
+	screen.Name = "Screen"
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(400, 140)
+	gui.LightInfluence = 0
+	gui.Parent = screen
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = trim:Lerp(Color3.new(1, 1, 1), 0.35)
+	label.Text = look.SCREEN_TEXT
+	label.Parent = gui
+	-- Scanner bed on top, a card lying on it under a glowing scan bar held by two gold posts
+	local bedY = top + 0.12
+	addPart(model, block, Vector3.new(2.6, 0.24, 2), CFrame.new(-0.6, bedY, -0.2), Props.color(look.BED), Enum.Material.SmoothPlastic)
+	addPart(model, block, Vector3.new(0.9, 0.04, 1.25), CFrame.new(-0.6, bedY + 0.14, -0.2), Props.color(look.CARD), Enum.Material.SmoothPlastic).Name = "Card"
+	for _, side in { -1, 1 } do
+		addPart(model, block, Vector3.new(0.18, 0.9, 0.18), CFrame.new(-0.6 + side * 1.2, bedY + 0.55, -0.2), trim, Enum.Material.Metal)
+	end
+	addPart(model, block, Vector3.new(2.6, 0.16, 0.22), CFrame.new(-0.6, bedY + 1.05, -0.2), trim, Enum.Material.Metal)
+	addPart(model, block, Vector3.new(2.3, 0.06, 0.1), CFrame.new(-0.6, bedY + 0.95, -0.2), glow, Enum.Material.Neon).Name = "ScanBar"
+	-- Magnifier on an arm over the right of the bed
+	addPart(model, block, Vector3.new(0.16, 1.4, 0.16), CFrame.new(1.7, top + 0.7, 0.6), trim, Enum.Material.Metal)
+	addPart(model, block, Vector3.new(0.12, 0.12, 1.1), CFrame.new(1.7, top + 1.4, 0.1), trim, Enum.Material.Metal)
+	addPart(model, cylinder, Vector3.new(0.12, 0.9, 0.9), CFrame.new(1.7, top + 1.25, -0.45) * UPRIGHT, trim, Enum.Material.Metal)
+	local lens = addPart(model, cylinder, Vector3.new(0.06, 0.75, 0.75), CFrame.new(1.7, top + 1.25, -0.45) * UPRIGHT, Color3.fromRGB(200, 230, 255), Enum.Material.Glass)
+	lens.Transparency = 0.5
+	-- A graded slab (a card in a clear case with a gold label) on a stand at the back
+	addPart(model, block, Vector3.new(0.5, 0.5, 0.3), CFrame.new(1.4, top + 0.25, 1.3), body, Enum.Material.Metal)
+	local slab = addPart(model, block, Vector3.new(1.1, 1.6, 0.14), CFrame.new(1.4, top + 1.3, 1.3) * CFrame.Angles(math.rad(-12), 0, 0), Props.color(look.SLAB), Enum.Material.Glass)
+	slab.Transparency = 0.25
+	addPart(model, block, Vector3.new(0.85, 0.3, 0.16), CFrame.new(1.4, top + 1.85, 1.31) * CFrame.Angles(math.rad(-12), 0, 0), trim, Enum.Material.SmoothPlastic)
+	addPart(model, block, Vector3.new(0.75, 1, 0.16), CFrame.new(1.4, top + 1.15, 1.31) * CFrame.Angles(math.rad(-12), 0, 0), Props.color(look.CARD), Enum.Material.SmoothPlastic)
+end
+
 -- Stand-ins built around the origin, bottom at y = 0, front facing -Z
 local function buildFallback(slot: string, height: number, size: Vector3?, variant: number): Model
 	local model = Instance.new("Model")
@@ -256,6 +307,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		addPart(model, block, Vector3.new(length, height - 0.5, 1.4), CFrame.new(0, 0.5 + (height - 0.5) / 2, 0), HEDGE_GREEN, Enum.Material.Grass)
 	elseif slot == "Condenser" then
 		buildCondenser(model)
+	elseif slot == "GradingStation" then
+		buildGradingStation(model)
 	elseif slot == "Computer" then
 		-- A modern workstation, its front (-Z) the room side: a white desk on black panel legs, a slim widescreen
 		-- facing the chair, keyboard, mouse, a small plant, a drawer unit underneath and an office chair
