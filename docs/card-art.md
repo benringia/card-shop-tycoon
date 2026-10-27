@@ -38,6 +38,11 @@ Element scenes (matching `CardDesign.SCENES`):
   smile, three small golden flame tufts on top of its head (one in the middle and a matching curled one on each side),
   a thin black tail held up, a few glowing embers floating around it (pose: standing happily on a rug; lighting: warm
   cozy firelight).
+- **Thornback** (original thorn boar, Rare; was the voxel kung-fu mantis): a slightly fierce chunky cartoon thorn
+  boar, rounded stylized toy-like 3D style, a stocky round moss green body on four short legs with dark hooves, a big
+  round pink snout, two white curved tusks, fierce amber eyes, small pointed ears with pink insides, a cream belly, a
+  thick crest of dark green thorny vines with small pink blossoms on top of its head, a short curly tail (pose:
+  standing firmly on a mossy path; lighting: soft green sunlight).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
