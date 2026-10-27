@@ -198,9 +198,12 @@ local function add(marker: BasePart)
 	local height = CreatureVisuals.cardHeight(card.name, card.rarity)
 	local body = CreatureVisuals.build(model, marker, height, flying, if template then template.Name else nil)
 	body.fxColor = Cards.ELEMENTS[card.element] or body.fxColor
-	-- The element aura: all of it on Legendaries, a lighter touch on grade S and A copies of the rest
+	-- The element aura: more than all of it on grade S Legendaries (Divine), all of it on other Legendaries, a lighter
+	-- touch on grade S and A copies of the rest
 	local grade = marker:GetAttribute("Grade")
-	local tier = if card.rarity == "Legendary" then "Legendary" elseif grade == "S" or grade == "A" then grade else nil
+	local tier = if card.rarity == "Legendary" then (if grade == "S" then "Divine" else "Legendary")
+		elseif grade == "S" or grade == "A" then grade
+		else nil
 	if tier then
 		CreatureVisuals.addBeastFx(body, card.element, tier :: string)
 	end

@@ -96,4 +96,22 @@ function BeastFxRules.arc(from: Point, to: Point, segments: number, jitter: numb
 	return path
 end
 
+-- `count` points evenly round a flat circle of `radius`, turned `angle` radians: { x, y } in the circle's plane
+-- (a grade S Legendary's halo of flames)
+function BeastFxRules.ring(count: number, radius: number, angle: number): { { number } }
+	local points = {}
+	for index = 0, count - 1 do
+		local at = angle + index * 2 * math.pi / count
+		table.insert(points, { math.cos(at) * radius, math.sin(at) * radius })
+	end
+	return points
+end
+
+-- Where orb `index` of `count` circling a creature is at `time`: { x, y, z } from its feet, evenly spaced round a
+-- circle of `radius` at `height`, one lap every `seconds`, bobbing up and down by `bob`
+function BeastFxRules.orbit(index: number, count: number, time: number, seconds: number, radius: number, height: number, bob: number): Point
+	local at = 2 * math.pi * (time / seconds + (index - 1) / count)
+	return { math.cos(at) * radius, height + math.sin(at * 2 + index) * bob, math.sin(at) * radius }
+end
+
 return BeastFxRules

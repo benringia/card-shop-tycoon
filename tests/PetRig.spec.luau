@@ -821,10 +821,10 @@ return {
 		assert(not inStep, "the tails sway in step")
 	end,
 
-	["an eclipse sits up and looks to the sky, a backflip goes all the way over, solar roars ripple"] = function()
+	["an eclipse sits up and looks to the sky, a backflip goes all the way over, void roars ripple"] = function()
 		assert(PetRig.cue(CFG, "eclipse", 0.3) and not PetRig.cue(CFG, "eclipse", 0.1), "the eclipse rises once it's sitting up")
 		assert(PetRig.cue(CFG, "backflip", 0.15) and not PetRig.cue(CFG, "backflip", 0.05), "the smoke goes as it takes off")
-		assert(PetRig.cue(CFG, "solarroar", CFG.ROAR_BURST), "the solar fire goes with the lunge")
+		assert(PetRig.cue(CFG, "voidroar", CFG.ROAR_BURST), "the void smoke goes with the lunge")
 		local FOX = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Tail_0", "Tail_1",
 			"0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Left_Limb_1", "1_Right_Limb_0", "1_Right_Limb_1" }
 		local rest = poseAt(FOX, still(0))
@@ -845,8 +845,28 @@ return {
 			table.insert(HYDRA, `Hydra_{head}_3`)
 			table.insert(HYDRA, `Jaw_{head}`)
 		end
-		local roar = poseAt(HYDRA, { time = 0, phase = 0, moving = 0, fidget = "solarroar", fidgetProgress = 0.25 })
-		assert(roar["hydra:0:3"].x < -math.rad(5) and math.abs(roar["hydra:0:3"].x - roar["hydra:2:3"].x) > math.rad(2), "the solar roar doesn't ripple")
+		local roar = poseAt(HYDRA, { time = 0, phase = 0, moving = 0, fidget = "voidroar", fidgetProgress = 0.25 })
+		assert(roar["hydra:0:3"].x < -math.rad(5) and math.abs(roar["hydra:0:3"].x - roar["hydra:2:3"].x) > math.rad(2), "the void roar doesn't ripple")
+	end,
+
+	["a sunburst swings both arms up overhead and back down, rising with them"] = function()
+		assert(PetRig.cue(CFG, "sunburst", 0.36) and not PetRig.cue(CFG, "sunburst", 0.3), "the sun forms once the arms are up")
+		local GOD = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0",
+			"Arm_Right_0", "Arm_Left_1", "Arm_Right_1" }
+		local rest = poseAt(GOD, still(0))
+		local up = poseAt(GOD, { time = 0, phase = 0, moving = 0, fidget = "sunburst", fidgetProgress = 0.55 })
+		for _, side in { "Left", "Right" } do
+			assert(up[`arm:{side}:0`].x - rest[`arm:{side}:0`].x > math.rad(CFG.SUN_RAISE) * 0.9, `the {side} arm doesn't go up`)
+			expect.near(up[`arm:{side}:1`].x, rest[`arm:{side}:1`].x, math.rad(1), `the {side} elbow bends`)
+		end
+		-- The shoulders go past the usual bound on purpose (arms overhead); everything else stays in it
+		local others = table.clone(up)
+		others["arm:Left:0"], others["arm:Right:0"] = nil, nil
+		assertBounded(others, "sunburst")
+		assert(PetRig.body(CFG, "sunburst", 0.55, 1, true).lift > CFG.SUN_LIFT * 0.9, "it doesn't rise with the sun")
+		local after = poseAt(GOD, { time = 0, phase = 0, moving = 0, fidget = "sunburst", fidgetProgress = 1 })
+		expect.near(after["arm:Left:0"].x, rest["arm:Left:0"].x, math.rad(1), "the arms don't come back down")
+		expect.near(PetRig.body(CFG, "sunburst", 1, 1, true).lift, 0, 1e-6, "it doesn't settle back down")
 	end,
 
 	["two-legged walks twist the hips with the stride and the shoulders against them"] = function()

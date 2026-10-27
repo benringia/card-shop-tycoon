@@ -19,9 +19,11 @@ export type Flame = {
 	spin: number?, -- degrees a second either way
 }
 export type Arcs = { color: Rgb, every: { number }, segments: number, jitter: number, width: number, seconds: number }
--- How much of the aura a creature gets: Legendaries all of it; grade S and A copies of other cards a lighter
--- touch. bones: how many burn; rate, size, light: times the look's own; arcSlow: lightning this many times rarer.
-export type Tier = { bones: number, rate: number, size: number, light: number, ground: boolean, arcs: boolean, arcSlow: number, dust: boolean }
+-- How much of the aura a creature gets: grade S Legendaries (Divine) more than all of it, other Legendaries all of
+-- it; grade S and A copies of other cards a lighter touch. bones: how many burn; rate, size, light: times the look's
+-- own; arcSlow: lightning this many times rarer. divine: the grade S Legendary extras (DIVINE: a halo of fire behind
+-- its head, small suns circling it, burning embers left where it walks).
+export type Tier = { bones: number, rate: number, size: number, light: number, ground: boolean, arcs: boolean, arcSlow: number, dust: boolean, divine: boolean? }
 export type Look = {
 	flames: { Flame }, -- on every chosen bone
 	ground: { Flame }, -- from the footprint
@@ -52,10 +54,18 @@ end
 
 return {
 	TIERS = {
+		Divine = { bones = 11, rate = 1.05, size = 1.05, light = 1.15, ground = true, arcs = true, arcSlow = 0.6, dust = true, divine = true },
 		Legendary = { bones = 9, rate = 1, size = 1, light = 1, ground = true, arcs = true, arcSlow = 1, dust = true },
 		S = { bones = 6, rate = 0.7, size = 0.95, light = 0.6, ground = false, arcs = true, arcSlow = 3, dust = false },
 		A = { bones = 4, rate = 0.5, size = 0.85, light = 0.4, ground = false, arcs = false, arcSlow = 1, dust = false },
 	} :: { [string]: Tier },
+	-- Grade S Legendary extras (tier Divine). Distances are times the creature's height; flame and orb sizes, like
+	-- the flames above, are for a creature of size 1 and grow with its size.
+	DIVINE = {
+		HALO = { count = 12, radius = 0.17, behind = 0.1, spin = 25, flame = 0.5, rate = 0.3, brightness = 1.5 }, -- a ring of flames behind its head; spin: degrees a second; rate, brightness: of each flame, times the look's
+		ORBS = { count = 3, radius = 0.5, height = 0.55, bob = 0.04, seconds = 7, size = 0.2, rate = 0.3 }, -- small suns circling it; seconds: one lap
+		EMBERS = { every = 0.28, seconds = 1.6, size = 0.5, max = 10 }, -- burning embers left behind while it walks
+	},
 	FAR = 120, -- no fire or lightning while the camera is further away than this (studs)
 	FLICKER_SECONDS = 0.08,
 	FLICKER = { 0.6, 1.2 }, -- light brightness times this, at random

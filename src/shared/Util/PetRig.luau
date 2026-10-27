@@ -215,6 +215,17 @@ local function sneezeCurve(cfg: any, progress: number): number
 	return 1.2 * math.sin(math.min(q * 3, 1) * math.pi / 2) * (1 - q) ^ 2
 end
 
+-- A sunburst: 0 to 1 as both arms swing up overhead (0.08 to 0.35), held while the sun forms and bursts, then down by 0.95
+local function sunRaise(progress: number): number
+	local p = math.clamp(progress, 0, 1)
+	if p < 0.35 then
+		return math.sin(math.clamp((p - 0.08) / 0.27, 0, 1) * math.pi / 2)
+	elseif p < 0.8 then
+		return 1
+	end
+	return 1 - math.sin(math.clamp((p - 0.8) / 0.15, 0, 1) * math.pi / 2)
+end
+
 -- A shy peek: 0 to 1 as it ducks into its shell (by 0.2), held hidden, then popping back out by 0.75
 local function shyDuck(progress: number): number
 	local p = math.clamp(progress, 0, 1)
@@ -250,7 +261,7 @@ local function hiccupPulse(cfg: any, progress: number): number
 	return pulse
 end
 
-local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, solarroar = true, riftroar = true }
+local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, riftroar = true }
 
 export type Body = { lift: number, yaw: number, roll: number, pitch: number, forward: number }
 
@@ -312,6 +323,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.45 -- the top of the hop
 	elseif kind == "lavaslam" then
 		return progress >= 0.73 -- the fists hit the ground
+	elseif kind == "sunburst" then
+		return progress >= 0.35 -- the arms are up: the sun forms (SignatureFx times its burst)
 	elseif kind == "shypeek" then
 		return progress >= 0.7 -- peeking back out
 	elseif kind == "buzzzap" then
@@ -417,6 +430,9 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 	elseif kind == "shypeek" then
 		-- Sinking low into its shell, then up again
 		lift = -cfg.SHY_DUCK * shyDuck(p)
+	elseif kind == "sunburst" then
+		-- Rising onto its toes as the arms go up
+		lift = cfg.SUN_LIFT * sunRaise(p)
 	elseif kind == "lavaslam" then
 		-- Rising a little as the fists go up, then dropping with the slam
 		lift = cfg.SLAM_LIFT * math.max(0, math.sin(math.clamp((p - 0.5) / 0.23, 0, 1) * math.pi))
@@ -572,6 +588,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local flapping = if fidget == "emberflap" or fidget == "watershake" then hold(progress) * idle else 0
 	-- A lava slam: the arms pound the chest in turn (to 0.5), then both fists go up (0.65) and slam down (0.75)
 	local slamming = if fidget == "lavaslam" then idle else 0
+	-- A sunburst: both arms swing up overhead, straight, and hold there while the sun forms and bursts
+	local sunning = if fidget == "sunburst" then sunRaise(progress) * idle else 0
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0
@@ -788,6 +806,9 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				local jitter = rad(6) * math.sin(progress * TAU * 10) * math.clamp(progress / 0.45, 0, 1) * (if progress < 0.45 then 1 else 0)
 				local up = rad(cfg.STATIC_ARMS) * fling + jitter
 				z += (if role.side == "Left" then -up else up) * idle
+			end
+			if sunning > 0 and role.segment == 0 then
+				x += rad(cfg.SUN_RAISE) * sunning
 			end
 			if slamming > 0 then
 				local p = progress

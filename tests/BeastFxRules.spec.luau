@@ -92,4 +92,45 @@ return {
 		assert(legendary.ground and legendary.arcs and legendary.dust, "the Legendary aura is complete")
 		assert(not s.ground and not a.ground and not a.arcs, "S and A keep it small")
 	end,
+
+	["a grade S Legendary's Divine aura is more than a Legendary's, with the extras"] = function()
+		local divine, legendary = BeastFx.TIERS.Divine, BeastFx.TIERS.Legendary
+		assert(divine, "the Divine tier is there")
+		for _, field in { "bones", "rate", "size", "light" } do
+			assert(divine[field] > legendary[field], `Divine {field} isn't above Legendary`)
+		end
+		assert(divine.arcSlow < legendary.arcSlow, "more lightning")
+		assert(divine.ground and divine.arcs and divine.dust and divine.divine, "the whole aura plus the extras")
+		assert(not legendary.divine, "plain Legendaries don't get the extras")
+		local cfg = BeastFx.DIVINE
+		assert(cfg.HALO.count >= 3 and cfg.ORBS.count >= 1 and cfg.EMBERS.max >= 1, "something to show")
+	end,
+
+	["ring spaces its points evenly round the circle"] = function()
+		local points = BeastFxRules.ring(4, 2, 0)
+		expect.equal(#points, 4, "four points")
+		for _, point in points do
+			expect.near(math.sqrt(point[1] ^ 2 + point[2] ^ 2), 2, 1e-9, "on the circle")
+		end
+		expect.near(points[1][1], 2, 1e-9, "starts at the angle")
+		expect.near(points[2][2], 2, 1e-9, "a quarter turn on")
+		local turned = BeastFxRules.ring(4, 2, math.pi / 2)
+		expect.near(turned[1][2], 2, 1e-9, "turning the angle turns the ring")
+	end,
+
+	["orbit keeps orbs apart and brings each round in one lap"] = function()
+		local a = BeastFxRules.orbit(1, 3, 0, 6, 5, 2, 0)
+		local b = BeastFxRules.orbit(2, 3, 0, 6, 5, 2, 0)
+		expect.near(math.sqrt(a[1] ^ 2 + a[3] ^ 2), 5, 1e-9, "on the circle")
+		expect.near(a[2], 2, 1e-9, "at its height without a bob")
+		local apart = math.sqrt((a[1] - b[1]) ^ 2 + (a[3] - b[3]) ^ 2)
+		expect.near(apart, 5 * math.sqrt(3), 1e-9, "a third of a turn apart")
+		local lap = BeastFxRules.orbit(1, 3, 6, 6, 5, 2, 0)
+		expect.near(lap[1], a[1], 1e-9, "back after one lap")
+		expect.near(lap[3], a[3], 1e-9, "back after one lap")
+		for time = 0, 6, 0.5 do
+			local bobbing = BeastFxRules.orbit(1, 3, time, 6, 5, 2, 0.3)
+			assert(math.abs(bobbing[2] - 2) <= 0.3 + 1e-9, "bobs within its range")
+		end
+	end,
 }

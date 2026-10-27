@@ -25,7 +25,10 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   Common 0.7, Rare 0.85, Very Rare 1, Epic 1.5, Legendary 1.4), times its model entry's `size`.
 - **Grade aura.** Legendaries burn with their element (`Util/BeastAura`); grade S and A copies of the rest get a
   lighter tier of it (`BeastFx.TIERS`: fewer bones, smaller flames, a dimmer light, S keeps rare lightning; no
-  ground flames or dust).
+  ground flames or dust). Grade S Legendaries get more (tier `Divine`, `BeastFx.DIVINE`): fire on more bones,
+  lightning more often, a ring of flames turning behind the head, three small neon suns circling it and burning
+  embers left on the ground while it walks. The extras carry no lights of their own: lit from that close, the model
+  glared white.
 - **Part cap.** Models with more than `MAX_MODEL_PARTS` (200) parts use the placeholder.
 - **No collisions.** All parts are made non-colliding, non-touching and non-queryable.
 
@@ -266,8 +269,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   flip never puts the head in the ground.
 - **voltcharge** (Voltkit): brings both fists up in front, braced, its cape swept back; lightning arcs between its
   fists, building up, then a bolt shoots into the sky with a flash.
-- **solarroar** (Solarion): its three heads rear and lunge one after another, jaws wide, fire bursting from every
-  mouth with a flash of sunlight and the shockwave ring.
+- **sunburst** (Solarion): swings both arms up overhead (`SUN_RAISE`) and rises onto its toes (`SUN_LIFT`); a small
+  sun forms above its fists, swells, then bursts: rays of sunlight shoot out, a ring of fire races out over the ground
+  and the light flares.
 
 - **Boltlynx** (`rig_boltlynx.py`, the first Meshy-generated original): a golden cartoon electric lynx with tall
   ears, white zigzag stripes and a long tail; flat lightning bolts added by hand on its tail tip and ear tips (mapped
@@ -435,9 +439,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   with magenta chevrons, magenta ear tips, cuffs and tail band, amber eyes under determined magenta brows, a pink gem on
   its brow and another on a magenta necklace, a magenta cape on `Cape_` bones, dark gloves and boots, a bushy
   cream-tipped tail; 27 bones, about 700 triangles. Replaces the tinted Ultra pack PurpleFox.
-- **Solarion** (`build_solarion.py`, Legendary): a massive three-headed cerberus of black obsidian and jagged glowing
-  ruby crystals: snarling wolf heads with red eyes and crystal fangs on short thick necks (`Hydra_` bones, each with a
-  jaw), crystal spikes along its back, crystal talons, a crystal-tipped tail; 35 bones, about 7,300 triangles.
+- **Solarion** (`rig_solarion.py`, Meshy, Legendary; was the voxel `build_solarion.py` three-headed cerberus): a sun
+  fire god titan on two legs, a stern bearded face, flame-orange skin, golden armour and a spiky sun disc behind it.
+  Meshy hung its arms at its sides (`ARM_POSE` hang 0) and grew the disc to three times its width, so the disc was
+  shrunk by hand to frame its head and shoulders; it rides `Spine_1`, rigid. The bake left the metallic gold armour
+  khaki, so those texels were turned gold. Size 3. 18 bones, 12,000 triangles.
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns

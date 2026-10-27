@@ -189,8 +189,12 @@ Element scenes (matching `CardDesign.SCENES`):
   bands upright in its right hand (lighting: moonlit night with purple mist).
 
 Tone follows rarity: the more common the card, the cuter and less dangerous the creature and its art.
-- **Solarion** (RubyCerberus): a massive three-headed wolf made of jagged glowing ruby-red crystals and black
-  obsidian stone, glowing red eyes, white crystal fangs, tall red crystal spikes along its back, red crystal talons.
+- **Solarion** (original sun fire god, Legendary; Meshy remake): a colossal godlike sun fire god titan, rounded
+  stylized toy-like 3D style, a huge heavy muscular humanoid body of glowing flame-orange skin standing upright with
+  fists clenched at its sides, polished golden armour on its chest, shoulders, forearms and shins, a golden loincloth,
+  a stern regal bearded face with fierce glowing white eyes, a crown of golden sun rays, a huge spiky blazing sun disc
+  behind its head and shoulders like a halo, small glowing suns orbiting it, flames and embers rising off its body
+  (pose: standing on a scorched rocky summit; lighting: blazing golden sunlight under a giant sun).
 
 The other 38 follow the same template with descriptions read off each model's render, part names and colours
 (the tinted ones described in their tint: Zappit lemon-yellow and Wispurr lavender FairyRabbit, Magmaw fire-orange
