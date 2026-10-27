@@ -142,14 +142,18 @@ New originals are generated with Meshy through the Blender MCP and rigged with `
 Meshy prompt template:
 
 ```
-very cute chubby cartoon <animal>, mythical <element> creature, <pose: standing on all four short legs / standing
-upright on two short legs>, toy-like collectible creature, round plump body, big round head, big shiny dark eyes set
+very cute chubby cartoon <animal>, mythical <element> creature, <pose: standing still in a neutral pose on all four
+legs, feet planted square, head and body facing straight forward / two-legged: T-pose>, toy-like collectible creature, round plump body, big round head, big shiny dark eyes set
 close together, small centred smile, <colours>, <mythical parts: chunky, attached to the body>. Perfectly symmetrical
 face. Smooth simple rounded shapes, flat clean colors, low poly, no fur detail, no realistic textures. Isolated single
 character only, nothing else: no base, no ground, no grass, no rocks, no stand, no props. Legs clearly separate from
 each other. One solid closed shape.
 ```
 
+- Neutral rest pose, always: four-legged creatures "standing still in a neutral pose, all four feet planted square,
+  head and body facing straight forward, head level, not turned"; two-legged / humanlike ones in a T-pose (generate_3d
+  `pose_mode="t-pose"`). Never "side view", walking, prancing or turned poses: Briarhorn (turned 19 degrees), the
+  Kirin (a raised leg) and Thunderhorn (body turned 16 degrees, head turned 38) all needed fixing by hand.
 - Never skinny: ask for a massive, heavy, bulky body with thick legs, a broad chest and a low wide stance (chunky and
   stocky for cute ones), and match the card art's build. Briarhorn's first cow came out too slim and was remade as a bison.
 - Character plus its mythical parts only; never scenery. Grass or ground under it fuses with the feet and can't be
@@ -292,9 +296,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   replacing the first armoured koi). Meshy gave only cyan fin tips, so 19 ice crystals were added by hand with
   `rig_kit.crystal` (dorsal crown, back ridge, ice horns over the eyes, fin and tail shards; two colours from
   `paint_patch`). Swims (`Party.UNDULATE` "swim"). 10 bones, about 8,400 triangles. Replaced the tinted IceShark.
-- **Thunderhorn** (`rig_thunderhorn.py`, Meshy, Epic): a massive muscular cream thunder stag with gold antlers (as
-  `Ear_` bones), gold shoulder armour and gold hooves, and a simple short mane. Right first time. 22 bones, about 8,700
-  triangles. Replaced the tinted Lumistag.
+- **Thunderhorn** (`rig_thunderhorn.py`, Meshy, Epic): a majestic cream thunder stag with huge branching golden
+  antlers (as `Ear_` bones, each antler wholly on its bone via `rig_kit.reweight`) and slim deer legs. Remade 27 Oct
+  (the first, heavy-set one read as a bull). Generated turned and with its head turned: body turned straight, head
+  straightened by hand (steps in the script). Size 1.8. 22 bones, 9,000 triangles. Replaced the tinted Lumistag.
 - **Riftwalker** (`rig_riftwalker.py`, Meshy, Epic): a massive black void dragon with glowing violet rift cracks, a
   fanged roaring maw, swept-back horns, back spikes, folded wings (`Wing_` bones) and a long spiked tail; prowls on four
   legs; its lower jaw is on `Jaw_0` (cut out of the head with `rig_kit.reweight`) and opens for roars and yawns.
