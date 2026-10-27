@@ -1,6 +1,8 @@
 --!strict
 -- Opens packs. Rolls happen here on the server only; the client just animates the result it's sent.
--- Also announces big pulls to the server once the puller has revealed them.
+-- Also announces big pulls to the server once the puller has revealed them, and keeps each player's pity: packs since
+-- their last Legendary and last Epic or better (saved; Util/PityRules raises a hit slot when one is due). What's left
+-- until each guarantee is on the player as the PityLegendary and PityEpic attributes, for the pack screen.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -13,6 +15,7 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local NewPulls = require(Shared:WaitForChild("Util"):WaitForChild("NewPulls"))
+local PityRules = require(Shared:WaitForChild("Util"):WaitForChild("PityRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -33,6 +36,13 @@ local PackService = {}
 local rng = Random.new()
 local allowRip = RateLimiter.new(Packs.RIP_COOLDOWN)
 local pendingAnnouncements: { [Player]: { PullResult } } = {}
+local pityStates: { [Player]: PityRules.State } = {} -- loaded players only
+
+local function publishPity(player: Player, state: PityRules.State)
+	local legendary, epic = PityRules.remaining(Packs.PITY, state)
+	player:SetAttribute("PityLegendary", legendary)
+	player:SetAttribute("PityEpic", epic)
+end
 
 local function rollRarity(slot: { Weighted }): string
 	local total = 0
@@ -130,6 +140,50 @@ local function deliverPack(player: Player, productId: string, results: { PullRes
 	Remotes.PackOpened:FireClient(player, productId, results, newFlags)
 end
 
+-- Counts this pack towards the player's pity and, when a guarantee is due, raises its hit slot: a pity Legendary
+-- rolls its grade from the stingy PITY.LEGENDARY_GRADES, a pity Epic like any Epic
+local function applyPity(player: Player, results: { PullResult })
+	local state = pityStates[player]
+	if not state or #results == 0 then
+		return -- not loaded yet: no pity, and nothing counted that could be lost
+	end
+	local best, bestRank = "Common", 0
+	for _, result in results do
+		local card = Cards.ById[result.cardId]
+		local rank = if card then Packs.RANK[card.rarity] or 0 else 0
+		if rank > bestRank then
+			best, bestRank = card.rarity, rank
+		end
+	end
+	local forced, after = PityRules.open(Packs.PITY, Packs.RANK, state, best)
+	pityStates[player] = after
+	if forced then
+		local pool = Cards.ByRarity[forced]
+		local grade = if forced == "Legendary"
+			then BeastRules.rollGradeFrom(rng:NextNumber(), Packs.PITY.LEGENDARY_GRADES)
+			else BeastRules.rollGrade(rng:NextNumber(), forced)
+		results[#results] = { cardId = pool[rng:NextInteger(1, #pool)].id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE, grade = grade }
+	end
+	publishPity(player, after)
+end
+
+-- Whether a save holds any Legendary, plain or levelled (cards on display come back to the binder on load)
+local function ownsLegendary(data: DataService.PlayerData): boolean
+	for cardId in data.cards or {} do
+		local card = Cards.ById[cardId]
+		if card and card.rarity == "Legendary" then
+			return true
+		end
+	end
+	for _, beast in data.beasts or {} do
+		local card = Cards.ById[beast.cardId]
+		if card and card.rarity == "Legendary" then
+			return true
+		end
+	end
+	return false
+end
+
 local function onRip(player: Player)
 	if not allowRip(player) then
 		return
@@ -145,7 +199,9 @@ local function onRip(player: Player)
 	end
 
 	DataService.AddStat(player, "packsOpened", 1)
-	deliverPack(player, productId, rollPack(pack))
+	local results = rollPack(pack)
+	applyPity(player, results)
+	deliverPack(player, productId, results)
 end
 
 -- Studio testing only (called by DevService): a normal roll with a foil legendary in the hit slot
@@ -178,6 +234,26 @@ function PackService.OpenRarityPack(player: Player, foil: boolean)
 end
 
 function PackService.Start()
+	DataService.Register({
+		name = "PackService",
+		load = function(player, data)
+			local state = PityRules.read(data.pity)
+			-- Saves from before the first-Legendary pity: anyone who already owns a Legendary is past their first
+			state.firstDone = state.firstDone or ownsLegendary(data)
+			pityStates[player] = state
+			publishPity(player, state)
+		end,
+		save = function(player, data)
+			local state = pityStates[player]
+			if not state then
+				return -- never loaded: keep what's saved
+			end
+			data.pity = { legendary = state.legendary, epic = state.epic, firstDone = state.firstDone }
+		end,
+		unload = function(player)
+			pityStates[player] = nil
+		end,
+	})
 	Remotes.RipPack.OnServerEvent:Connect(onRip)
 	Remotes.PullRevealed.OnServerEvent:Connect(onPullRevealed)
 	Players.PlayerRemoving:Connect(function(player)

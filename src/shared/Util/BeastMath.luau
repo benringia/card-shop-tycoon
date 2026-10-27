@@ -62,7 +62,11 @@ function BeastMath.gradeChances(config: BeastConfig, rarity: string?): { [string
 end
 
 function BeastMath.rollGrade(config: BeastConfig, roll: number, rarity: string?): string
-	local chances = BeastMath.gradeChances(config, rarity)
+	return BeastMath.rollGradeFrom(config, roll, BeastMath.gradeChances(config, rarity))
+end
+
+-- A grade from these chances (a pity Legendary's stingy ones, say), in GRADES order
+function BeastMath.rollGradeFrom(config: BeastConfig, roll: number, chances: { [string]: number }): string
 	local total = 0
 	for _, grade in config.GRADES do
 		total += chances[grade] or 0

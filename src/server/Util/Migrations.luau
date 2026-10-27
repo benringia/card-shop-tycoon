@@ -133,6 +133,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.items = {}
 		end
 	end,
+	-- v11: pack pity counts (packs since the last Legendary, and since the last Epic or better), from zero
+	[10] = function(data)
+		if typeof(data.pity) ~= "table" then
+			data.pity = { legendary = 0, epic = 0, firstDone = false }
+		end
+	end,
 }
 
 local function lowestGrade(): string

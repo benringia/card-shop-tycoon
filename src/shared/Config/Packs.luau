@@ -1,8 +1,9 @@
 --!strict
--- Pack contents and odds, keyed by the product ID of the pack. See DESIGN.md section 5.3.
--- Odds are shown to players in the pack opening screen, so keep these accurate.
--- The last slot is the "hit slot": it flips last, with a build-up.
-export type Weighted = { rarity: string, weight: number }
+-- Packs, keyed by the product ID of the pack. See DESIGN.md section 5.3. What each slot can roll, and the pity, live in
+-- Config/PackOdds (plain data, so Lune tests and the economy simulator load the real numbers).
+local PackOdds = require(script.Parent:WaitForChild("PackOdds"))
+
+export type Weighted = PackOdds.Weighted
 
 export type Pack = {
 	productId: string,
@@ -14,21 +15,13 @@ export type Pack = {
 	slots: { { Weighted } },
 }
 
-local COMMON: { Weighted } = { { rarity = "Common", weight = 1 } }
-
 local ById: { [string]: Pack } = {
 	FirstSparkPack = {
 		productId = "FirstSparkPack",
 		name = "First Spark",
 		color = Color3.fromRGB(255, 140, 50),
 		art = "rbxassetid://81309929146607", -- fire phoenix (Figma image generator)
-		slots = {
-			COMMON,
-			COMMON,
-			COMMON,
-			{ { rarity = "Common", weight = 0.7 }, { rarity = "Rare", weight = 0.3 } },
-			{ { rarity = "Rare", weight = 0.68 }, { rarity = "Very Rare", weight = 0.15 }, { rarity = "Epic", weight = 0.14 }, { rarity = "Legendary", weight = 0.03 } },
-		},
+		slots = PackOdds.SLOTS.FirstSparkPack,
 	},
 	-- The First Spark Deck Box: 5 cards opened at once, two of them Rare or better ($9 against a pack's $3)
 	DeckBox = {
@@ -37,17 +30,13 @@ local ById: { [string]: Pack } = {
 		kind = "Deck",
 		color = Color3.fromRGB(150, 95, 210),
 		art = "rbxassetid://81309929146607", -- the First Spark phoenix, like the pack
-		slots = {
-			COMMON,
-			COMMON,
-			{ { rarity = "Common", weight = 0.5 }, { rarity = "Rare", weight = 0.5 } },
-			{ { rarity = "Rare", weight = 0.75 }, { rarity = "Very Rare", weight = 0.25 } },
-			{ { rarity = "Rare", weight = 0.45 }, { rarity = "Very Rare", weight = 0.25 }, { rarity = "Epic", weight = 0.22 }, { rarity = "Legendary", weight = 0.08 } },
-		},
+		slots = PackOdds.SLOTS.DeckBox,
 	},
 }
 
 return {
 	ById = ById,
 	RIP_COOLDOWN = 1, -- seconds between pack opens per player (server)
+	PITY = PackOdds.PITY,
+	RANK = PackOdds.RANK,
 }

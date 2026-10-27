@@ -115,6 +115,17 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v11: adds pity counts from zero, keeps existing"] = function()
+		local data: any = { version = 10, items = {} }
+		Migrations.run(data, 11)
+		expect.equal(data.pity.legendary, 0, "legendary")
+		expect.equal(data.pity.epic, 0, "epic")
+		expect.equal(data.pity.firstDone, false, "first Legendary still to come")
+		local kept: any = { version = 10, pity = { legendary = 57, epic = 12 } }
+		Migrations.run(kept, 11)
+		expect.equal(kept.pity.legendary, 57, "kept")
+	end,
+
 	["v10: adds empty items, keeps existing"] = function()
 		local data: any = { version = 9, pvp = {} }
 		Migrations.run(data, 10)

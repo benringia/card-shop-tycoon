@@ -51,6 +51,10 @@ function BeastRules.rollGrade(roll: number, rarity: string?): string
 	return BeastMath.rollGrade(Beasts, roll, rarity)
 end
 
+function BeastRules.rollGradeFrom(roll: number, chances: { [string]: number }): string
+	return BeastMath.rollGradeFrom(Beasts, roll, chances)
+end
+
 function BeastRules.gradeChances(rarity: string?): { [string]: number }
 	return BeastMath.gradeChances(Beasts, rarity)
 end

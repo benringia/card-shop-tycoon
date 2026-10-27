@@ -177,6 +177,13 @@ return {
 		expect.equal(BeastMath.rollGrade(config, 0.559, "Legendary"), "C", "C reaches 56%")
 	end,
 
+	["grade: rolled from any chance table, like the pity Legendary's"] = function()
+		local stingy = { C = 0.8, B = 0.18, A = 0.018, S = 0.002 }
+		expect.equal(BeastMath.rollGradeFrom(config, 0.79, stingy), "C", "C up to 80%")
+		expect.equal(BeastMath.rollGradeFrom(config, 0.97, stingy), "B", "B to 98%")
+		expect.equal(BeastMath.rollGradeFrom(config, 0.9985, stingy), "S", "only the top 0.2% is S")
+	end,
+
 	["grade: helpers"] = function()
 		expect.equal(BeastMath.isGrade(config, "S"), true, "S")
 		expect.equal(BeastMath.isGrade(config, "Z"), false, "Z")
