@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **vinebloom** (Vinewyrm): rears up tall (`BLOOM_RISE`, leaning back `BLOOM_LEAN`) and sways (`BLOOM_SWAY`) as
+  pink petals and green leaves burst from its flower crown and drift out.
 - **mistwave** (Mistfin): crouches (`MIST_CROUCH`), a proud little hop (`MIST_HOP`, leaning back `MIST_LEAN`), and
   as it lands a ring of glowing mist rolls out across the ground with frosty sparkles.
 - **mothdust** (Hushmoth): twirls slowly in the air, drifting up (`DUST_RISE`) and swaying (`DUST_SWAY`), as glowing
@@ -399,6 +401,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   tail fin. Its glowing aqua marks (wavy mist lines on its back, dots on its tail) are painted into the texture by the
   script (`paint_marks`, texel by texel through the UVs). Flippers and toes weighted to their bones by position.
   Signature mist wave. Size 1.4. 20 bones, 10,000 triangles.
+- **Vinewyrm** (`rig_vinewyrm.py`, Meshy, Rare; was the GiantSnake): a chunky lime-green vine serpent with a flower
+  crown, blossoms and leaves along its sides, its neck raised and tail curled up. A bone chain from the head down the
+  neck, along the body and up the tail; slithers (`Party.UNDULATE` "slither"). Signature vine bloom. Size 1.7 (raised
+  from 1.4 on request: a Rare should read medium). 10 bones, 10,000 triangles.
 - **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
   barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
   under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,

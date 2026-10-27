@@ -454,6 +454,16 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
 	end,
 
+	["a vine bloom rears up and sways while the flowers burst, then settles"] = function()
+		assert(PetRig.cue(CFG, "vinebloom", 0.35) and not PetRig.cue(CFG, "vinebloom", 0.3), "the flowers don't burst once it's reared up")
+		local tall = PetRig.body(CFG, "vinebloom", 0.5, 1, true)
+		expect.near(tall.lift, CFG.BLOOM_RISE, 1e-6, "it doesn't rear up")
+		assert(tall.pitch > 0, "it doesn't lean back")
+		local done = PetRig.body(CFG, "vinebloom", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't settle")
+		expect.near(done.roll, 0, 1e-6, "it keeps swaying")
+	end,
+
 	["a mist wave crouches, hops and lands, the mist rolling out as it lands"] = function()
 		assert(PetRig.cue(CFG, "mistwave", 0.55) and not PetRig.cue(CFG, "mistwave", 0.5), "the mist doesn't come with the landing")
 		assert(PetRig.body(CFG, "mistwave", 0.1, 1, true).lift < -CFG.MIST_CROUCH * 0.5, "no crouch first")
