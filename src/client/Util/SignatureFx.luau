@@ -30,6 +30,8 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * owlturn (Nightowl): its head swivels round to look behind, snaps back and hoots; eyes flash, shadow feathers
+--   burst and a silver crescent moon rises behind its head.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
@@ -710,6 +712,34 @@ local function tidecall(model: Model, size: number)
 	waterRing(model:GetPivot().Position, size)
 end
 
+-- An owl turn: as its head snaps back to the front and it hoots, its eyes flash violet, shadow feathers burst out round
+-- it and a glowing silver crescent moon rises behind its head and fades
+local MOON = Color3.fromRGB(225, 225, 255)
+local function owlturn(model: Model, size: number)
+	local head = bonePosition(model, "Head_0")
+	if not head then
+		return
+	end
+	local facing = model:GetPivot()
+	burst(CFrame.new(head), SPARKLES, ColorSequence.new(Color3.fromRGB(200, 140, 255)), 14, 0.3 * size, 3 * size, 0.6)
+	burst(CFrame.lookAt(head, head + Vector3.yAxis), SMOKE, ColorSequence.new(VOID_COLOR, Color3.fromRGB(40, 20, 60)), 8, 0.6 * size, 2.5 * size, 1)
+	-- The crescent: glowing beads along most of a circle behind the head, open at the top right
+	local centre = head - facing.LookVector * 0.6 * size + Vector3.new(0, 0.5 * size, 0)
+	for i = 0, 8 do
+		local angle = math.rad(-150 + i * 30)
+		local bead = fxPart(Vector3.one * (0.22 - math.abs(i - 4) * 0.03) * size, MOON, true)
+		bead.Shape = Enum.PartType.Ball
+		bead.Position = centre + (facing.RightVector * math.cos(angle) + Vector3.yAxis * math.sin(angle)) * 0.5 * size
+		bead.Parent = workspace
+		local rise = TweenService:Create(bead, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+			{ Position = bead.Position + Vector3.new(0, 0.8 * size, 0), Transparency = 1 })
+		rise.Completed:Once(function()
+			bead:Destroy()
+		end)
+		rise:Play()
+	end
+end
+
 -- A manta roll: glowing aqua sparkles stream off its wing tips through the barrel roll, then a ring of water splashes
 -- out round it. It is flat (a small size for its wingspan), so the effects go by its wingspan, MANTA_SPAN sizes
 local MANTA_SPAN = 2.5
@@ -1084,6 +1114,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		hornstorm(model, size)
 	elseif kind == "mantaroll" then
 		mantaroll(model, size)
+	elseif kind == "owlturn" then
+		owlturn(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
