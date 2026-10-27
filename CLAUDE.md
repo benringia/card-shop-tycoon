@@ -36,7 +36,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `lune run tools/economy/sim [players]` — economy simulator: hours to first Epic, first Legendary and a Grade S
   Legendary with 1 star, from the real odds, pity, grading costs and shop profit (Monte Carlo)
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -98,11 +98,13 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   MeshPart's `PivotOffset` rotation, builds `Workspace.Originals` from the current pack plus the new model; I save the
   folder over `assets/creatures/Originals.rbxm`; Claude checks every model is in the synced pack before deleting the
   workspace copy. New card art (Figma, `docs/card-art.md`) when the design changes.
-- Studio-only chat commands (DevService): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
+- Studio-only chat commands (DevService; from the Studio MCP run them with
+  `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
   cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
-  `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/legendarys [foil]` (a Grade S
+  `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/item <id> <n>` (any Config/Items
+  item), `/boss <n> [fight]` (to boss n's arena gate; with fight, use the gate), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
