@@ -77,8 +77,8 @@ return {
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number?, idle: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
-	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
-	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Sparkrat shivers with static and zaps lightning from its tail to its ears, Driplet shakes itself dry in a ring of splashing drops, Hushmoth twirls in the air shedding glowing pastel dust, Magmaw breathes a gout of fire, Mistfin hops and lands in a rolling wave of glowing mist, Vinewyrm rears up as flowers and leaves burst round it, Frostfang pounces and ice crystals burst up where it lands, Gale Sprite dives in a spinning gust and lightning flashes off its wings, Blazehound sneezes a puff of fire,
+	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack the storm ram charges horn first as
+	-- lightning rains round it, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Sparkrat shivers with static and zaps lightning from its tail to its ears, Driplet shakes itself dry in a ring of splashing drops, Hushmoth twirls in the air shedding glowing pastel dust, Magmaw breathes a gout of fire, Mistfin hops and lands in a rolling wave of glowing mist, Vinewyrm rears up as flowers and leaves burst round it, Frostfang pounces and ice crystals burst up where it lands, Gale Sprite dives in a spinning gust and lightning flashes off its wings, Blazehound sneezes a puff of fire,
 	-- Thornback charges in a burst of thorns, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
@@ -114,7 +114,7 @@ return {
 		Nightowl = { fidget = "owlturn", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
-		Stormjack = { fidget = "stormroar", chance = 0.35 },
+		Stormjack = { fidget = "hornstorm", chance = 0.35 },
 		Infernox = { fidget = "firebreath", chance = 0.35 },
 		Puffpuddle = { fidget = "shellcrack", chance = 0.35 },
 		Blazehound = { fidget = "sneeze", chance = 0.35 },
@@ -132,7 +132,7 @@ return {
 	CREATURE_STYLE = {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
 		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
-		Stormjack = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "hop", "wag", "sit", "stretch" }, tailSpeed = 0.8 },
+		Stormjack = { fidgets = { "look", "sniff", "shake", "stomp", "hop", "wag" }, tailSpeed = 1.2, tailAmount = 0.7, bounce = 0.8 }, -- a stocky ram, stubby tail flicking
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
 		Cindercub = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn", "wag" }, tailSpeed = 1.2, bounce = 1.2 },
@@ -433,7 +433,7 @@ return {
 		Fizzlebug = { pack = "Originals", model = "Fizzlebug", size = 1.6, flies = true }, -- original, tools/blender/rig_fizzlebug.py (Meshy-generated electric bee)
 		Sparkrat = { pack = "Originals", model = "Sparkrat", size = 1.4 }, -- original, tools/blender/rig_sparkrat.py (Meshy-generated electric mouse, bolt tail added by hand)
 		Boltlynx = { pack = "Originals", model = "Boltlynx", size = 1.7 }, -- original, tools/blender/rig_boltlynx.py (Meshy-generated lynx)
-		Stormjack = { pack = "Originals", model = "Stormjack", size = 1.8 }, -- original, tools/blender/build_stormjack.py
+		Stormjack = { pack = "Originals", model = "Stormjack", size = 1.7 }, -- original, tools/blender/rig_stormjack.py (Meshy-generated storm ram, bolts added by hand; was the voxel build_stormjack.py)
 		Thunderhorn = { pack = "Originals", model = "Thunderhorn", size = 1.8 }, -- original, tools/blender/rig_thunderhorn.py (Meshy-generated thunder stag; slim, so a size up)
 		Voltkit = { pack = "Originals", model = "Voltkit", size = 1.4 }, -- original, tools/blender/build_voltkit.py
 		Gloomlet = { pack = "Originals", model = "Gloomlet", size = 1.4, flies = true }, -- original, tools/blender/rig_gloomlet.py (Meshy-generated shadow bat)

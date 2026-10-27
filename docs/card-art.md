@@ -70,6 +70,11 @@ Element scenes (matching `CardDesign.SCENES`):
   sharp orange beak, a swirling silver wind-shaped crest on its head, both wings spread wide with bright yellow
   lightning crackling off them, a long tail ending in a fluffy grey storm cloud puff, small orange talons, swirls of
   wind around it (pose: soaring with wings spread; lighting: dramatic stormy lighting with bright flashes).
+- **Stormjack** (original storm ram, Rare; was the voxel baby hydra): a slightly fierce chunky cartoon storm ram,
+  rounded stylized toy-like 3D style, a plump round body covered in fluffy grey storm-cloud fleece, a dark slate blue
+  face and short legs with dark hooves, fierce amber eyes, two big thick curled golden horns, a bright yellow lightning
+  bolt mark on each side of its fleece, little sparks crackling round its horns (pose: standing firmly on a rocky
+  ledge; lighting: dramatic stormy lighting with bright flashes, stormy mountain peak at night).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
@@ -164,11 +169,6 @@ Element scenes (matching `CardDesign.SCENES`):
   dark eyes, pink blush cheeks and a small happy smile, a big wide cap of bright green leaves on top of its head like a
   bush, short chunky bark arms with little twig fingers, short stubby root feet, one hand raised with a small blue
   butterfly landing on it (pose: standing happily; lighting: soft warm green sunlight).
-- **Stormjack** (original baby hydra, Rare so friendly): a cute chunky blocky voxel-style baby hydra, friendly and
-  harmless, a round light electric-blue body on short stubby legs with pink toe beans, a cream yellow tummy, three
-  short necks with big round blocky heads, each with big shiny dark eyes, pink blushing cheeks, a small happy smile
-  with no teeth, two little yellow horn nubs and a tiny yellow lightning-bolt tuft, a short curly tail ending in a
-  little yellow lightning bolt, small friendly sparks (lighting: bright playful stormy lighting).
 
 - **Puffpuddle** (original sea otter, Common; Meshy remake, upright): a very cute chubby cartoon baby sea otter
   standing upright on two short legs, rounded stylized toy-like 3D style, warm chocolate brown fur, a lighter brown

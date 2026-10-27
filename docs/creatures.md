@@ -246,10 +246,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   (`SLAM_RAISE`, `SLAM_LIFT`) and slams them down: a ring of fire and lava bursts out, its fists blazing.
 - **blessing** (Tideborne Kirin): rears and stamps (`BLESSING_REAR`, `BLESSING_LIFT`; the tide call's curve); water
   and golden light spiral up round it, golden rays shine from its feet and a ring of light flares behind its head.
-- **hornstorm** (Stormking): the thorn charge's motion (head down, a short charge); its horn crackles and lightning
-  rains down in a ring round it with a flash.
-- **stormroar** (Stormjack): the three heads roar in a ripple like Voidmaw's, lightning leaping from mouth to mouth in
-  four bursts, plus the shockwave ring.
+- **hornstorm** (Stormking, Stormjack): the thorn charge's motion (head down, a short charge); its horns crackle and
+  lightning rains down in a ring round it with a flash.
+- **stormroar** (unused since Stormjack became a ram): the three heads roar in a ripple like Voidmaw's, lightning
+  leaping from mouth to mouth in four bursts, plus the shockwave ring.
 - **firebreath** (Infernox): rears back, then thrusts its head out and holds it, mouth wide, while a cone of fire
   pours from its mouth (and follows it) for over a second, lighting up round it.
 - **shellcrack** (Puffpuddle): sits up on its hind legs, a blue clam appears between its front paws and it looks down
@@ -372,11 +372,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   with a wide cap of green leaves, generated in a T-pose (Meshy `pose_mode="t-pose"`; the first try had a sad face and
   one waving arm, regenerated). The side leaf tips are its `Ear_` bones. Collapse decimate (thin leaves). Size 1.5.
   20 bones, 8,000 triangles.
-- **Stormjack** (`build_stormjack.py`): a Rare, so a friendly baby storm hydra: a chunky round electric-blue body on
-  stubby legs with pink toe beans, three short necks with big round heads (big shiny eyes, blush, no fangs, little
-  horn nubs and a lightning-bolt tuft), a cream tummy and a curly tail with a bolt tip; 36 bones (3 necks of 4 plus 3
-  jaws), about 1,450 triangles. It hops and wags like a pup. Creatures look less dangerous the more common their card
-  (Common cute, Legendary terrifying).
+- **Stormjack** (`rig_stormjack.py`, Meshy, Rare; was the voxel `build_stormjack.py` baby hydra): a chunky storm
+  ram, picked to be light and easy to animate: a grey storm-cloud fleece, dark slate face and legs, big curled golden
+  horns (its `Ear_` bones), amber eyes and one yellow bolt lying on each flank (`rig_kit.bolt`; two rising from its
+  back looked random and were removed). Remeshed and baked (5 mm voxel). Hooves by `nearest_leg`. Signature hornstorm.
+  Size 1.7. 20 bones, 9,000 triangles.
 - **Infernox** (`rig_infernox.py`, Meshy, Epic; was the voxel `build_infernox.py`): a massive red fire T-rex with black
   tiger stripes, a cream belly and jaw, a flame crest down its neck, small arms held in front as modelled (`ARM_POSE`
   hang 0) and its lower jaw on `Jaw_0` (`rig_kit.reweight`) for the fire breath. Remeshed and baked; its turned head
