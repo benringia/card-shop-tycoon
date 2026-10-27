@@ -269,8 +269,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   where it takes off and a smoky trail through the flip.
   A fidget's whole-body pitch (the flip, a roar's rear-back, a stomp's tip) turns rigged pets round their middle, so a
   flip never puts the head in the ground.
-- **voltcharge** (Voltkit): brings both fists up in front, braced, its cape swept back; lightning arcs between its
-  fists, building up, then a bolt shoots into the sky with a flash.
+- **tailstrike** (Voltkit): curls its tail up over its back like a scorpion (`STRIKE_CURL`, by tail bone: the base
+  lifts it high, the next bones ease the tip back over the armour), the wag stilled; the orb crackles, then lightning
+  strikes down from it twice to the ground in front, sparks bursting where it hits, with a flash.
 - **sunburst** (Solarion): swings both arms up overhead (`SUN_RAISE`) and rises onto its toes (`SUN_LIFT`); a small
   sun forms above its fists, swells, then bursts: rays of sunlight shoot out, a ring of fire races out over the ground
   and the light flares.
@@ -439,10 +440,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   tails together; the user wanted two or three that animate cleanly, so every generated tail was cut off and three
   smooth white-tipped tails built in code (`rig_kit.tail`), one rising and two fanned out, each its own shell whose
   vertices follow only its own `Tails_<tail>_0..2` chain. Size 1.8. 29 bones, about 7,500 triangles.
-- **Voltkit** (`build_voltkit.py`, Very Rare): a fox hero on two legs, blocky and sturdy: golden fur, a cream chest
-  with magenta chevrons, magenta ear tips, cuffs and tail band, amber eyes under determined magenta brows, a pink gem on
-  its brow and another on a magenta necklace, a magenta cape on `Cape_` bones, dark gloves and boots, a bushy
-  cream-tipped tail; 27 bones, about 700 triangles. Replaces the tinted Ultra pack PurpleFox.
+- **Voltkit** (`rig_voltkit.py`, Meshy, Very Rare; was the voxel `build_voltkit.py` caped fox hero, fully redesigned):
+  a chunky storm pangolin with overlapping steel-blue armour, a cream face and belly and yellow eyes. Meshy left out
+  the lightning, so it was added by hand: yellow crests (painted, its `Ear_` bones), a yellow bolt on each flank
+  (`rig_kit.bolt`) and a glowing orb on its tail tip (`rig_kit.orb`, riding `Tail_3`). Size 1.5. 24 bones, 10,000
+  triangles. (No creature wears a cape now; the `Cape_` rig support stays for future ones.)
 - **Solarion** (`rig_solarion.py`, Meshy, Legendary; was the voxel `build_solarion.py` three-headed cerberus): a sun
   fire god titan on two legs, a stern bearded face, flame-orange skin, golden armour and a spiky sun disc behind it.
   Meshy hung its arms at its sides (`ARM_POSE` hang 0) and grew the disc to three times its width, so the disc was
