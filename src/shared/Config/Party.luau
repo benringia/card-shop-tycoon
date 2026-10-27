@@ -58,7 +58,6 @@ return {
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
 		Infernox = { hang = 0, forward = 0, bend = 10, swing = 8 }, -- small arms already held in front, as modelled
-		Thornback = { hang = 8, forward = 65, bend = 90, swing = 6 }, -- scythes folded up in front, praying
 		Duskstalker = { hang = 14, forward = 10, bend = 30, swing = 38 }, -- fists ready, a fighter's swagger
 		Voltkit = { hang = 12, forward = 5, bend = 20, swing = 34 }, -- a hero's stride
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
@@ -79,7 +78,7 @@ return {
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack's heads roar with lightning leaping
 	-- between their mouths, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Sparkrat shivers with static and zaps lightning from its tail to its ears, Driplet shakes itself dry in a ring of splashing drops, Hushmoth twirls in the air shedding glowing pastel dust, Blazehound sneezes a puff of fire,
-	-- Thornback does kung fu, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
+	-- Thornback charges in a burst of thorns, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
@@ -113,7 +112,7 @@ return {
 		Infernox = { fidget = "firebreath", chance = 0.35 },
 		Puffpuddle = { fidget = "shellcrack", chance = 0.35 },
 		Blazehound = { fidget = "sneeze", chance = 0.35 },
-		Thornback = { fidget = "kungfu", chance = 0.35 },
+		Thornback = { fidget = "thorncharge", chance = 0.35 },
 		EclipseFox = { fidget = "eclipse", chance = 0.35 },
 		Duskstalker = { fidget = "backflip", chance = 0.35 },
 		Solarion = { fidget = "solarroar", chance = 0.35 },
@@ -156,7 +155,7 @@ return {
 		Reefray = { fidgets = { "look", "tilt", "shake" }, tailSpeed = 0.5, tailAmount = 0.5, wingAmount = 0.3 }, -- a gliding manta: shallow beats of its broad wings (full ones folded it up on end), its long tail trailing
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "yawn", "wag", "shake", "hop" }, tailSpeed = 0.6, bounce = 1.1 }, -- an upright sea otter (rolling over would cartwheel it)
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
-		Thornback = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.4, tailAmount = 0.4, bounce = 0.5 },
+		Thornback = { fidgets = { "look", "sniff", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 1.1, tailAmount = 0.7, bounce = 0.7 }, -- a snuffling boar, its curly tail flicking
 		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7 },
 		Duskstalker = { fidgets = { "look", "tilt", "stretch", "hop", "shake", "yawn", "spin" }, tailSpeed = 0.7 },
 		Solarion = { fidgets = { "look", "sniff", "yawn", "shake", "stomp", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
@@ -398,7 +397,7 @@ return {
 		Sprouthop = { pack = "Originals", model = "Sprouthop", size = 1.5 }, -- original, tools/blender/rig_sprouthop.py (Meshy-generated tree sprite; was the voxel build_sprouthop.py)
 		Mossmole = { pack = "Originals", model = "Mossmole", size = 1.5 }, -- original, tools/blender/rig_mossmole.py (Meshy-generated forest mole)
 		Petalpaw = { pack = "Originals", model = "Petalpaw", size = 1.5 }, -- original, tools/blender/rig_petalpaw.py (Meshy-generated flower squirrel)
-		Thornback = { pack = "Originals", model = "Thornback", size = 1.3 }, -- original, tools/blender/build_thornback.py
+		Thornback = { pack = "Originals", model = "Thornback", size = 1.4 }, -- original, tools/blender/rig_thornback.py (Meshy-generated thorn boar; was the voxel mantis build_thornback.py)
 		Vinewyrm = { pack = "UltraPets", model = "GiantSnake" },
 		Briarhorn = { pack = "Originals", model = "Briarhorn", size = 1.7 }, -- original, tools/blender/rig_briarhorn.py (Meshy-generated forest bison)
 		Zappit = { pack = "Originals", model = "Zappit", size = 1.5 }, -- original, tools/blender/rig_zappit.py (Meshy-generated electric bunny)

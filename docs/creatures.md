@@ -248,7 +248,7 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   and taps it four times, a little sparkle with each tap; the clam fades away.
 - **sneeze** (Blazehound): a quick rear back and a sharp snap forward, a little puff of flame, embers and smoke from
   its nose.
-- **kungfu** (Thornback): chops with the right scythe, then the left, twice, turning into each chop, while leaves
+- **kungfu** (unused since Thornback became a boar): chops with the right scythe, then the left, twice, turning into each chop, while leaves
   whirl out round it.
 - **eclipse** (Eclipse Fox): sits back on its haunches and looks to the sky as a dark orb ringed with golden light
   rises over its head, glowing violet, then fades.
@@ -383,9 +383,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   dachshund puppy with droopy ears and golden flame tufts. Right first time apart from the tufts (a curl on one side
   only): the curl was copied mirrored onto the other side on the full mesh, nothing else touched. Ear flaps weighted to
   the `Ear_` bones by position. Size 1.3. 22 bones, 8,500 triangles.
-- **Thornback** (`build_thornback.py`, Rare): a kung-fu mantis, lime with soft orange armour, big round green eyes,
-  antennae on its `Ear_` bones, blunt rounded scythes folded in front (`ARM_POSE`), four walking legs and its abdomen as
-  a tail; 29 bones, about 800 triangles.
+- **Thornback** (`rig_thornback.py`, Meshy, Rare; was the voxel kung-fu mantis `build_thornback.py`): a chunky
+  moss-green thorn boar with a pink snout, white tusks and a crest of thorny vines and blossoms (redesigned at the
+  user's call: a Meshy mantis first came out ugly, kept in `Thornback_mantis.blend`). Remesh_bake; ears weighted to the
+  `Ear_` bones by position. Signature thorn charge (shared with Briarhorn). Size 1.4. 21 bones, 10,000 triangles.
 - **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
   barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
   under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,
