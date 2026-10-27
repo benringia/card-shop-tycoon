@@ -206,7 +206,7 @@ end
 local function whyArenaBusy(player: Player, bossId: string): string?
 	local boss = Bosses.BOSSES[bossId]
 	local occupant = occupants[bossId]
-	if occupant and occupant.alive and occupant.fightingPlayer ~= player then
+	if occupant and occupant.alive then
 		return `Someone is fighting the {boss.name}. Wait for them to finish.`
 	end
 	local lobby = lobbies[bossId]
@@ -266,6 +266,24 @@ local function onGate(player: Player, bossId: string)
 	end
 end
 
+-- Players who left the game are dropped from a forming group (the next member leads); an empty group closes
+local function pruneLobby(bossId: string)
+	local lobby = lobbies[bossId]
+	if not lobby then
+		return
+	end
+	local present = {}
+	for _, member in lobby.members do
+		if member.Parent then
+			table.insert(present, member)
+		end
+	end
+	lobby.members = present
+	if #present == 0 then
+		lobbies[bossId] = nil
+	end
+end
+
 local function updateGroupPrompt(bossId: string)
 	local lobby = lobbies[bossId]
 	arenas[bossId].groupPrompt.ActionText = if lobby then `Join group ({#lobby.members}/{Bosses.GROUP_MAX})` else "Start group"
@@ -308,6 +326,8 @@ local function onGroup(player: Player, bossId: string)
 	if not allowStart(player) or not boss or not arenas[bossId] then
 		return
 	end
+	pruneLobby(bossId)
+	updateGroupPrompt(bossId)
 	local lobby = lobbies[bossId]
 	if lobby then
 		if lobby.members[1] == player then
@@ -383,6 +403,17 @@ end
 
 local function unload(player: Player)
 	records[player] = nil
+	-- Out of any group forming: the next member leads, the prompt shows the new count
+	for bossId, lobby in lobbies do
+		if table.find(lobby.members, player) then
+			local index = table.find(lobby.members, player) :: number
+			table.remove(lobby.members, index)
+			if #lobby.members == 0 then
+				lobbies[bossId] = nil
+			end
+			updateGroupPrompt(bossId)
+		end
+	end
 end
 
 function BossService.Start()

@@ -155,10 +155,13 @@ local function toView(raw: any): Snapshot
 	local mine = raw.sides[mySide]
 	local enemy = raw.sides[if mySide == "a" then "b" else "a"]
 	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
-	-- Group fights: side A holds everyone's creatures; yours get buttons, the others go in the ally row
+	-- Group fights: side A holds everyone's creatures (each tagged with its owner); yours get buttons, the others go in
+	-- the ally row. Untagged fighters (PvP) are all yours.
+	local myOwner = tostring(player.UserId)
 	local own, allies = {}, {}
 	for _, fighter in mine.fighters do
-		table.insert(if allyNames[fighter.id] then allies else own, fighter)
+		local owner = (fighter :: any).owner
+		table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
 	end
 	local reserves = {}
 	for _, id in mine.reserves do

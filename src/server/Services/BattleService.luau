@@ -745,12 +745,8 @@ local function onRun(player: Player)
 	if not allowRun(player) or not fight or not member then
 		return
 	end
-	-- In a group, Run is leaving: the others fight on
-	local count = 0
-	for _ in fight.members do
-		count += 1
-	end
-	if count > 1 then
+	-- In a group fight, Run is leaving (the others fight on), even for the last one still in it: never a run roll
+	if fight.size > 1 then
 		leave(fight, member)
 		return
 	end
