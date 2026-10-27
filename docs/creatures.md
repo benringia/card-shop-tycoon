@@ -428,12 +428,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   tail puff. Firm prompt, right first time; fine remesh (3.5 mm) keeps the thin lightning strands. Each wing, with its
   lightning, weighted to its three `Wing_` bones by how far out it reaches. Flies (`WING_SPEED` 0.8). Signature gale
   dive. Size 1.9 (raised on request). 20 bones, 10,000 triangles.
-- **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
-  barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
-  under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,
-  gold belt, wrist and ankle bands, a golden staff with red bands, longer than it is tall, gripped through its right fist
-  like a carried weapon (it crosses the fist, so with the arm hanging it points forward, nearly level, held at its
-  middle), a long curled tail; 24 bones, about 650 triangles.
+- **Duskstalker** (`rig_duskstalker.py`, Meshy, Very Rare; was the voxel `build_duskstalker.py` monkey king): a sleek
+  shadow wolf, dark indigo with a lavender chest, a tufted violet mane, violet-tipped ears and horns, glowing violet
+  eyes and a bushy violet-tipped tail, its left forefoot a stride ahead. Two monkey kings came first (a shaggy one that
+  remeshed into fur crumbs and holes, then a smooth one the user found ugly); a four-legged creature rigs cleanly.
+  Collapse decimate. Size 1.5. 23 bones, 9,000 triangles.
 - **Eclipse Fox** (`rig_eclipsefox.py`, Meshy, Epic; was the voxel `build_eclipsefox.py` nine-tailed kitsune): a
   chunky shadow kitsune, deep violet with a big white ruff, a golden eclipse ring on its brow, violet rings on its
   flanks, narrow golden eyes and tall ears. Meshy swung its rear half 28 degrees (straightened by hand) and bunched its

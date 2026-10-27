@@ -58,7 +58,6 @@ return {
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
 		Infernox = { hang = 0, forward = 0, bend = 10, swing = 8 }, -- small arms already held in front, as modelled
-		Duskstalker = { hang = 14, forward = 10, bend = 30, swing = 38 }, -- fists ready, a fighter's swagger
 		Sprouthop = { hang = 12, forward = 0, bend = 14, swing = 32 },
 		Cindercub = { hang = 0, forward = 0, bend = 0, swing = 14 }, -- paws rest on its tummy, so only a little swing
 		Coalbit = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- paws resting on its belly
@@ -168,7 +167,7 @@ return {
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "sniff", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 1.1, tailAmount = 0.7, bounce = 0.7 }, -- a snuffling boar, its curly tail flicking
 		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7 },
-		Duskstalker = { fidgets = { "look", "tilt", "stretch", "hop", "shake", "yawn", "spin" }, tailSpeed = 0.7 },
+		Duskstalker = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.7, tailAmount = 0.9, stride = 1.1 }, -- a prowling wolf
 		Solarion = { fidgets = { "look", "stomp", "stretch", "shake", "look" }, bounce = 0.5, stride = 1.25, legSwing = 0.7, sway = 1.6 }, -- a fire god: slow, heavy, majestic steps
 		Voltkit = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.6, tailAmount = 0.8, bounce = 0.7, stride = 0.9 }, -- an armoured pangolin waddle
 	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, wingAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number? } },
@@ -446,7 +445,7 @@ return {
 		Hushmoth = { pack = "Originals", model = "Hushmoth", size = 1.4, flies = true }, -- original, tools/blender/rig_hushmoth.py (Meshy-generated fluffy moth)
 		Nightowl = { pack = "Originals", model = "Nightowl", size = 1.4, flies = true }, -- original, tools/blender/rig_nightowl.py (Meshy-generated shadow owl)
 		["Eclipse Fox"] = { pack = "Originals", model = "EclipseFox", size = 1.8 }, -- original, tools/blender/rig_eclipsefox.py (Meshy-generated shadow kitsune; was the voxel build_eclipsefox.py)
-		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.4 }, -- original, tools/blender/build_duskstalker.py
+		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.5 }, -- original, tools/blender/rig_duskstalker.py (Meshy-generated shadow wolf; was the voxel build_duskstalker.py monkey king)
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
 		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/rig_solarion.py (Meshy-generated sun fire god; was the voxel build_solarion.py)
 		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 2.6 }, -- original, tools/blender/rig_voidmaw.py (Meshy-generated cosmic void dragon; was the voxel build_voidmaw.py hydra)
