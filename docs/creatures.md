@@ -288,9 +288,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   (as `Ear_` bones) wrapped in thorny vines and roses, and a rose wreath on its hump, matching its card art. Remade
   27 Oct (the first model, a slim cow, was too skinny). Remeshed and baked; heavy gait (`legSwing` 0.75: its short legs
   under a deep belly looked crouched at the full swing). 23 bones, 10,000 triangles. Replaced the EarthBull.
-- **Abyssal Koi** (`rig_abyssalkoi.py`, Meshy, Epic): a giant menacing armoured abyss fish with a huge fanged maw,
-  glowing cyan eyes and spots and crystal fins. Swims (`Party.UNDULATE` "swim"): a head-to-tail chain of 9 bones
-  waves. Right first time. 10 bones, about 8,500 triangles. Replaced the tinted IceShark.
+- **Abyssal Koi** (`rig_abyssalkoi.py`, Meshy, Epic): a massive fierce ice shark (remade 27 Oct on the user's call,
+  replacing the first armoured koi). Meshy gave only cyan fin tips, so 19 ice crystals were added by hand with
+  `rig_kit.crystal` (dorsal crown, back ridge, ice horns over the eyes, fin and tail shards; two colours from
+  `paint_patch`). Swims (`Party.UNDULATE` "swim"). 10 bones, about 8,400 triangles. Replaced the tinted IceShark.
 - **Thunderhorn** (`rig_thunderhorn.py`, Meshy, Epic): a massive muscular cream thunder stag with gold antlers (as
   `Ear_` bones), gold shoulder armour and gold hooves, and a simple short mane. Right first time. 22 bones, about 8,700
   triangles. Replaced the tinted Lumistag.
