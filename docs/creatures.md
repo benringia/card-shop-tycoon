@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **watershake** (Driplet): fluffs up (`WATER_FLUFF`), then shakes hard side to side (`WATER_SHAKE`) with its folded
+  wings flapping out; a ring of water drops splashes off and its head drop sparkles.
 - **staticshock** (Sparkrat): shivers faster as static builds (`STATIC_SHIVER`), then hops (`STATIC_HOP`) with its
   arms flung up (`STATIC_ARMS`) as lightning arcs from its bolt tail to both ears.
 - **emberglow** (Coalbit): hunkers down (`EMBER_CROUCH`) and shivers (`EMBER_SHIVER`) as its ember spots flare;
@@ -313,6 +315,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   plain stub, so a big yellow bolt was added by hand (`rig_kit.bolt`). The arm band is reweighted to the arm bones (the
   still upper arms looked like a second pair once the arms moved). Arms held out (`ARM_POSE` hang 50) and bobbing
   standing (`idle` 18). Signature static shock. Size 1.4. 19 bones, 7,000 triangles.
+- **Driplet** (`rig_driplet.py`, Meshy, Common; was the FrostDove): a chubby white water dove with blue wings, tail and
+  feather crest, keeping its card's look. Meshy put the drop on its chest, so a big glowing water drop was added on its
+  head by hand (`rig_kit.droplet`); remesh_bake (collapse decimate faceted its round body). Crest and drop on their own
+  `Ear_` bones (weights kept above the head). Signature water shake. Size 1.6. 20 bones, 9,200 triangles.
 - **Nightowl** (`rig_nightowl.py`, Meshy, Rare): a shadow owl (a redesign to match its name, replacing the bought
   heron demon): plump, dark violet, glowing violet eyes, a silver crescent moon on its forehead, smoky wing tips.
   Right first time; 1.2M triangles of feathers shattered under collapse decimate, so remesh_bake at a fine 4 mm voxel.

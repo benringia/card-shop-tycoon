@@ -454,6 +454,24 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
 	end,
 
+	["a water shake fluffs up, shakes hard with its wings out, and settles"] = function()
+		assert(PetRig.cue(CFG, "watershake", 0.3) and not PetRig.cue(CFG, "watershake", 0.25), "the drops don't fly while it shakes")
+		local hard = 0
+		for step = 30, 70 do
+			hard = math.max(hard, math.abs(PetRig.body(CFG, "watershake", step / 100, 1, true).roll))
+		end
+		assert(hard > math.rad(CFG.WATER_SHAKE) * 0.8, "it doesn't shake hard")
+		assert(PetRig.body(CFG, "watershake", 0.125, 1, true).lift > CFG.WATER_FLUFF * 0.9, "it doesn't fluff up first")
+		local done = PetRig.body(CFG, "watershake", 1, 1, true)
+		expect.near(done.roll, 0, 1e-6, "it keeps shaking")
+		expect.near(done.lift, 0, 1e-6, "it doesn't settle")
+		local WINGED = { "Pelvis", "Spine_0", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Right_0" }
+		local drop = { Left = 0, Right = 0 }
+		local still = poseAt(WINGED, { time = 0, phase = 0, moving = 0, fidget = nil, fidgetProgress = 0, armDrop = drop })
+		local out = poseAt(WINGED, { time = 0, phase = 0, moving = 0, fidget = "watershake", fidgetProgress = 0.5, armDrop = drop })
+		assert(out["arm:Left:0"].z - still["arm:Left:0"].z > math.rad(15), "its wings don't flap out")
+	end,
+
 	["a static shock shivers faster as it builds, hops as it discharges, and settles"] = function()
 		assert(PetRig.cue(CFG, "staticshock", 0.5) and not PetRig.cue(CFG, "staticshock", 0.45), "the lightning doesn't come with the hop")
 		local shivering = false

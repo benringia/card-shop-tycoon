@@ -286,6 +286,47 @@ def crystal(mesh, base, direction, length, radius, uv_side, uv_tip, sides=6, spi
     bm.free()
 
 
+def droplet(mesh, base, radius, height, uv_body, uv_tip, segments=12, rings=10):
+    """Adds a water droplet to the mesh: a round bottom resting on `base` (sunk a little into the surface) rising to a
+    point `height` above it, `radius` at its widest (the teardrop curve x = sin t * sin(t / 2)^1.5, z = cos t). Its
+    lower part takes the colour at uv_body, its upper third uv_tip (a paler shine)."""
+    import bmesh
+    import math
+
+    base = Vector(base)
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    profile = []
+    for i in range(1, rings):
+        t = math.pi * i / rings
+        profile.append((math.sin(t) * math.sin(t / 2) ** 1.5, (math.cos(t) + 1) / 2))
+    widest = max(r for r, _ in profile)
+    top = bm.verts.new(base + Vector((0, 0, height * 0.95)))
+    bottom = bm.verts.new(base - Vector((0, 0, height * 0.05)))
+    ring_verts = []
+    for r, h in profile:
+        ring_verts.append([bm.verts.new(base + Vector((math.cos(a) * r / widest * radius, math.sin(a) * r / widest * radius,
+                                                        h * height - height * 0.05)))
+                           for a in (2 * math.pi * k / segments for k in range(segments))])
+    faces = []
+    for k in range(segments):
+        j = (k + 1) % segments
+        faces.append(bm.faces.new((top, ring_verts[0][k], ring_verts[0][j])))
+        for ring in range(len(ring_verts) - 1):
+            a, b = ring_verts[ring], ring_verts[ring + 1]
+            faces.append(bm.faces.new((a[k], b[k], b[j], a[j])))
+        faces.append(bm.faces.new((ring_verts[-1][k], bottom, ring_verts[-1][j])))
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    layer = bm.loops.layers.uv.active
+    for face in bmesh.ops.triangulate(bm, faces=faces)["faces"]:
+        face.smooth = True
+        upper = face.calc_center_median().z > base.z + height * 0.6
+        for loop in face.loops:
+            loop[layer].uv = uv_tip if upper else uv_body
+    bm.to_mesh(mesh.data)
+    bm.free()
+
+
 def build_rig(name, bones):
     """A fresh armature from (bone, parent, head, tail) tuples; Root doesn't deform."""
     old = bpy.data.objects.get(name)

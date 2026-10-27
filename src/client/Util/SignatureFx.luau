@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * watershake (Driplet): shakes itself dry with its wings out; drops fly off in a ring, its head drop sparkles.
 -- * staticshock (Sparkrat): shivers as static builds, then hops as lightning arcs from its bolt tail to its ears.
 -- * emberglow (Coalbit): hunkers down and shivers as its ember spots flare; embers and smoke rise off its back.
 -- * owlturn (Nightowl): its head swivels round to look behind, snaps back and hoots; eyes flash, shadow feathers
@@ -742,6 +743,18 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- A water shake: shaking itself dry, drops fly off in a ring and the water drop on its head sparkles
+local function watershake(model: Model, size: number)
+	local body = bonePosition(model, "Spine_0")
+	if body then
+		waterRing(body, size * 0.6)
+	end
+	local drop = bonePosition(model, "Ear_Left_0")
+	if drop then
+		burst(CFrame.new(drop), SPARKLES, ColorSequence.new(Color3.fromRGB(190, 245, 255), WATER), 10, 0.25 * size, 2 * size, 0.7)
+	end
+end
+
 -- A static shock: as it hops, lightning arcs from its bolt tail up to each ear, with sparks bursting round it
 local function staticshock(model: Model, size: number)
 	local tail = bonePosition(model, "Tail_1")
@@ -1177,6 +1190,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		emberglow(model, size)
 	elseif kind == "staticshock" then
 		staticshock(model, size)
+	elseif kind == "watershake" then
+		watershake(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
