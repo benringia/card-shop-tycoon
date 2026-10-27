@@ -339,9 +339,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   horn nubs and a lightning-bolt tuft), a cream tummy and a curly tail with a bolt tip; 36 bones (3 necks of 4 plus 3
   jaws), about 1,450 triangles. It hops and wags like a pup. Creatures look less dangerous the more common their card
   (Common cute, Legendary terrifying).
-- **Infernox** (`build_infernox.py`): a red T-rex with black tiger stripes, a big head with a cream jaw (`Jaw_0`),
-  tiny arms held up in front (`ARM_POSE`), a long striped tail and a flame crest whose side flames are its `Ear_`
-  bones, so they flicker; 25 bones, about 1,050 triangles.
+- **Infernox** (`rig_infernox.py`, Meshy, Epic; was the voxel `build_infernox.py`): a massive red fire T-rex with black
+  tiger stripes, a cream belly and jaw, a flame crest down its neck, small arms held in front as modelled (`ARM_POSE`
+  hang 0) and its lower jaw on `Jaw_0` (`rig_kit.reweight`) for the fire breath. Remeshed and baked; its turned head
+  and curved tail were straightened by hand (steps in the script). Size 1.8. 24 bones, 10,000 triangles.
 - **Puffpuddle** (`build_puffpuddle.py`, Common): a sea otter on all fours, less blocky (a rounded-box body and legs,
   a smooth head, muzzle, ears and paws): a long dark brown body, pale fluffy face and chest, big shiny eyes, blush,
   whiskers and a smile, big webbed hind feet, a flat tail; 23 bones, about 3,400 triangles. It trots and runs on its four

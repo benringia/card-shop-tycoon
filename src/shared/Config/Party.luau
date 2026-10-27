@@ -53,10 +53,10 @@ return {
 	} :: { [string]: { string } },
 	-- Arms held some other way than hanging at the sides (degrees): hang = off straight down, forward = reach
 	-- forward from there, bend = elbows, swing = walking swing (else PET_ANIM.ARM_SWING). Flametor holds its short
-	-- arms up in front like a T-rex, and so does Infernox; Sprouthop swings its arms wide.
+	-- arms up in front like a T-rex (Infernox's are modelled that way); Sprouthop swings its arms wide.
 	ARM_POSE = {
 		Flametor = { hang = 50, forward = 55, bend = 60 },
-		Infernox = { hang = 8, forward = 60, bend = 70, swing = 8 }, -- nearly straight down first, so the forward swing brings them in front
+		Infernox = { hang = 0, forward = 0, bend = 10, swing = 8 }, -- small arms already held in front, as modelled
 		Thornback = { hang = 8, forward = 65, bend = 90, swing = 6 }, -- scythes folded up in front, praying
 		Duskstalker = { hang = 14, forward = 10, bend = 30, swing = 38 }, -- fists ready, a fighter's swagger
 		Voltkit = { hang = 12, forward = 5, bend = 20, swing = 34 }, -- a hero's stride
@@ -358,7 +358,7 @@ return {
 		Coalbit = { pack = "UltraPets", model = "Salamander", tint = { 130, 110, 110 } },
 		Blazehound = { pack = "Originals", model = "Blazehound" }, -- original, tools/blender/build_blazehound.py
 		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },
-		Infernox = { pack = "Originals", model = "Infernox", size = 1.3 }, -- original, tools/blender/build_infernox.py
+		Infernox = { pack = "Originals", model = "Infernox", size = 1.8 }, -- original, tools/blender/rig_infernox.py (Meshy-generated fire T-rex; was the voxel build_infernox.py)
 		Emberwing = { pack = "Originals", model = "Emberwing", size = 1.2, flies = true }, -- original, tools/blender/rig_emberwing.py (Meshy-generated fire swallow)
 		Puffpuddle = { pack = "Originals", model = "Puffpuddle" }, -- original, tools/blender/build_puffpuddle.py
 		Shellshy = { pack = "Originals", model = "Shellshy", size = 1.4 }, -- original, tools/blender/rig_shellshy.py (Meshy-generated baby sea turtle)
