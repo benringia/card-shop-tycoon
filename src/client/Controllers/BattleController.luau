@@ -2,7 +2,8 @@
 -- Wild fights on this client (battles part 1): "Fight" prompts on monsters, the Shop button while in the
 -- wild, the fight bar (monster HP, your fighters with ability buttons, Call in, Run %), floating damage
 -- numbers over the fighters, and the end screen. Boss fights add a wide HP bar at the top, banners when the boss
--- heals or enrages, and the loot on the end screen. The server decides everything; this only shows it and
+-- heals or enrages, and the loot on the end screen. In a group fight the bar shows your own creatures with their
+-- buttons, a row with the other players' creatures and HP, and Run becomes Leave. The server decides everything; this only shows it and
 -- sends intents (StartFight, CallIn, UseAbility, RunFight, WildTravel).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -54,6 +55,7 @@ type Snapshot = {
 	runIn: number,
 	runChance: number,
 	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
+	allies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean, left: boolean? } }, -- group fights
 }
 
 type FighterView = {
@@ -72,6 +74,10 @@ local monsterHpText: TextLabel
 local monsterTrack: Frame
 local enemyRow: Frame -- PvP: one small HP bar per enemy creature
 local enemyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
+local allyRow: Frame -- group fights: the other players' creatures
+local allyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
+local allyNames: { [string]: string } = {} -- sim id -> "<Player> · <Card>" (from the server)
+local groupFight = false
 local mode = "wild" -- "wild" | "pvp"
 local fighterRow: Frame
 local actionRow: Frame
@@ -149,16 +155,40 @@ local function toView(raw: any): Snapshot
 	local mine = raw.sides[mySide]
 	local enemy = raw.sides[if mySide == "a" then "b" else "a"]
 	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
+	-- Group fights: side A holds everyone's creatures; yours get buttons, the others go in the ally row
+	local own, allies = {}, {}
+	for _, fighter in mine.fighters do
+		table.insert(if allyNames[fighter.id] then allies else own, fighter)
+	end
+	local reserves = {}
+	for _, id in mine.reserves do
+		if not groupFight or fightNames[id] then
+			table.insert(reserves, id)
+		end
+	end
 	return {
 		time = raw.time,
 		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true },
-		fighters = mine.fighters,
-		reserves = mine.reserves,
+		fighters = own,
+		allies = allies,
+		reserves = reserves,
 		callInFor = mine.callInFor,
 		runIn = mine.runIn,
 		runChance = mine.runChance,
 		enemies = enemy.fighters,
 	}
+end
+
+-- The server names the other players' creatures as they join the fight
+local function addAllies(list: unknown)
+	if typeof(list) ~= "table" then
+		return
+	end
+	for id, name in list :: { [any]: any } do
+		if typeof(id) == "string" and typeof(name) == "string" then
+			allyNames[id] = name
+		end
+	end
 end
 
 local function addMarkers(list: unknown)
@@ -312,12 +342,39 @@ local function refreshTimers()
 		local name = string.match(button.Text, "^Call in ([^\n]+)") or "card"
 		button.Text = `Call in {name}\n{math.max(0, math.ceil(callInLeft))}s`
 	end
+	if groupFight then
+		runButton.Text = "Leave" -- in a group you just step out; the others fight on
+		runButton.BackgroundColor3 = UIKit.Colors.Danger
+		return
+	end
 	local runWait = snapshot.runIn - elapsed
 	runButton.Text = if runWait > 0.05 then `Run {math.ceil(runWait)}s` else `Run {math.round(snapshot.runChance * 100)}%`
 	runButton.BackgroundColor3 = if runWait > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Danger
 end
 
 -- PvP: the other player's creatures as compact HP bars across the top
+-- One small HP bar per other player's creature
+local function buildAllies(snapshot: Snapshot)
+	clear(allyRow)
+	allyBars = {}
+	local count = math.max(#snapshot.allies, 1)
+	for index, ally in snapshot.allies do
+		local holder = Instance.new("Frame")
+		holder.LayoutOrder = index
+		holder.Size = UDim2.new(1 / count, -6, 1, 0)
+		holder.BackgroundTransparency = 1
+		holder.Parent = allyRow
+		local name = UIKit.label(holder, `{elementIcon(ally.element)} {allyNames[ally.id] or "Ally"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		name.Size = UDim2.new(1, 0, 0, 13)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+		local track, fill, text = makeBar(holder, 12, HP_COLOR)
+		track.Position = UDim2.fromOffset(0, 14)
+		track.Size = UDim2.new(1, 0, 0, 12)
+		text.TextSize = 10
+		allyBars[ally.id] = { fill = fill, text = text, frame = holder }
+	end
+end
+
 local function buildEnemies(snapshot: Snapshot)
 	clear(enemyRow)
 	enemyBars = {}
@@ -369,6 +426,26 @@ local function applySnapshot(snapshot: Snapshot)
 		if view then
 			setBar(view.hpFill, view.hpText, fighter.hp, fighter.maxHp)
 			view.frame.BackgroundTransparency = if fighter.fainted then 0.6 else 0
+		end
+	end
+	if groupFight then
+		local allyCount = 0
+		for _ in allyBars do
+			allyCount += 1
+		end
+		if allyCount ~= #snapshot.allies then
+			buildAllies(snapshot)
+		end
+		for _, ally in snapshot.allies do
+			local view = allyBars[ally.id]
+			if view then
+				setBar(view.fill, view.text, if ally.left then 0 else ally.hp, ally.maxHp)
+				for _, child in view.frame:GetDescendants() do
+					if child:IsA("TextLabel") then
+						child.TextTransparency = if ally.fainted or ally.left then 0.5 else 0
+					end
+				end
+			end
 		end
 	end
 	refreshTimers()
@@ -514,6 +591,9 @@ local function bossLines(boss: any): { string }
 	if boss.bonus then
 		table.insert(lines, "🎁 Daily bonus!")
 	end
+	if boss.carried then
+		table.insert(lines, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
+	end
 	if boss.flagged then
 		table.insert(lines, "Too fast for drops this time")
 	elseif boss.reduced then
@@ -605,6 +685,11 @@ local function onStarted(payload: any)
 	markers = {}
 	addMarkers(payload.markers)
 	fightNames = if typeof(payload.names) == "table" then payload.names else {}
+	allyNames = {}
+	addAllies(payload.allies)
+	groupFight = payload.group == true
+	allyBars = {}
+	clear(allyRow)
 	local view = toView(payload.snapshot)
 	endScreen.Visible = false
 	local species = if typeof(payload.species) == "string" then payload.species else "Monster"
@@ -627,6 +712,7 @@ local function onStarted(payload: any)
 	bossBar.Visible = boss ~= nil
 	monsterTrack.Visible = mode == "wild" and boss == nil -- a boss's HP is the bar at the top
 	enemyRow.Visible = mode == "pvp"
+	allyRow.Visible = groupFight -- group fights are boss fights: the HP bar is at the top, this row takes its place
 	runButton.Visible = mode == "wild"
 	if mode == "pvp" then
 		buildEnemies(view)
@@ -731,6 +817,18 @@ local function build()
 	enemyLayout.Padding = UDim.new(0, 6)
 	enemyLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	enemyLayout.Parent = enemyRow
+
+	allyRow = Instance.new("Frame")
+	allyRow.Position = UDim2.fromOffset(12, 24)
+	allyRow.Size = UDim2.new(1, -24, 0, 26)
+	allyRow.BackgroundTransparency = 1
+	allyRow.Visible = false
+	allyRow.Parent = bar
+	local allyLayout = Instance.new("UIListLayout")
+	allyLayout.FillDirection = Enum.FillDirection.Horizontal
+	allyLayout.Padding = UDim.new(0, 6)
+	allyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	allyLayout.Parent = allyRow
 
 	fighterRow = Instance.new("Frame")
 	fighterRow.Position = UDim2.fromOffset(12, 48)
@@ -843,6 +941,7 @@ function BattleController.Start()
 			return
 		end
 		addMarkers(payload.markers)
+		addAllies(payload.allies)
 		if typeof(payload.events) == "table" then
 			onEvents(payload.events)
 		end
