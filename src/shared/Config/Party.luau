@@ -355,7 +355,7 @@ return {
 		Driplet = { pack = "UltraPets", model = "FrostDove" },
 		Reefray = { pack = "UltraPets", model = "MetalCrab" },
 		Mistfin = { pack = "UltraPets", model = "IceShark", size = 1.3 },
-		["Abyssal Koi"] = { pack = "Originals", model = "AbyssalKoi", size = 1.6 }, -- original, tools/blender/rig_abyssalkoi.py (Meshy-generated abyss koi)
+		["Abyssal Koi"] = { pack = "Originals", model = "AbyssalKoi", size = 1.6 }, -- original, tools/blender/rig_abyssalkoi.py (Meshy-generated ice shark, crystals added by hand)
 		Tidecaller = { pack = "Originals", model = "Tidecaller", size = 1.6 }, -- original, tools/blender/rig_tidecaller.py (Meshy-generated sea dragon)
 		Sprouthop = { pack = "Originals", model = "Sprouthop", size = 2.2 }, -- original, tools/blender/build_sprouthop.py
 		Mossmole = { pack = "Originals", model = "Mossmole", size = 1.5 }, -- original, tools/blender/rig_mossmole.py (Meshy-generated forest mole)

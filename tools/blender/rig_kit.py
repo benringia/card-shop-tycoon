@@ -203,6 +203,10 @@ def paint_patch(mesh, color, cells=64):
     for loop in mesh.data.uv_layers.active.data:
         u, v = loop.uv
         used[min(cells - 1, max(0, int(v * cells))), min(cells - 1, max(0, int(u * cells)))] = True
+    # Patches painted earlier that no face uses yet (two colours painted before adding the parts) stay taken too
+    painted = list(mesh.get("painted_patches", []))
+    for i in range(0, len(painted), 2):
+        used[painted[i + 1], painted[i]] = True
     free = next((cx, cy) for cy in range(1, cells - 1) for cx in range(1, cells - 1)
                 if not used[cy - 1:cy + 2, cx - 1:cx + 2].any())
     w, h = image.size
@@ -213,6 +217,7 @@ def paint_patch(mesh, color, cells=64):
     image.pixels[:] = px.ravel()
     image.update()
     image.pack()
+    mesh["painted_patches"] = painted + [cx, cy]
     return ((cx + 0.5) / cells, (cy + 0.5) / cells)
 
 
@@ -242,6 +247,41 @@ def bolt(mesh, base, up, side, size, thick, uv):
         face.smooth = False
         for loop in face.loops:
             loop[layer].uv = uv
+    bm.to_mesh(mesh.data)
+    bm.free()
+
+
+def crystal(mesh, base, direction, length, radius, uv_side, uv_tip, sides=6, spin=0.0):
+    """Adds a pointed ice crystal to the mesh: a `sides`-sided prism from `base` (sunk a little into the surface) along
+    `direction`, `length` long, ending in a point. Its sides take the colour at uv_side, its pointed tip uv_tip (a
+    lighter shade, so the facets read). `spin` turns the prism round its axis (radians)."""
+    import bmesh
+    import math
+
+    axis = Vector(direction).normalized()
+    side = axis.cross(Vector((0, 0, 1)) if abs(axis.z) < 0.9 else Vector((1, 0, 0))).normalized()
+    other = axis.cross(side)
+    base = Vector(base) - axis * radius
+    def ring(at, r):
+        return [at + (side * math.cos(spin + a) + other * math.sin(spin + a)) * r
+                for a in (2 * math.pi * i / sides for i in range(sides))]
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    bottom = [bm.verts.new(p) for p in ring(base, radius)]
+    top = [bm.verts.new(p) for p in ring(base + axis * (length * 0.72 + radius), radius * 0.9)]
+    tip = bm.verts.new(base + axis * (length + radius))
+    sides_faces, tip_faces = [bm.faces.new(list(reversed(bottom)))], []
+    for i in range(sides):
+        j = (i + 1) % sides
+        sides_faces.append(bm.faces.new((bottom[i], bottom[j], top[j], top[i])))
+        tip_faces.append(bm.faces.new((top[i], top[j], tip)))
+    bmesh.ops.recalc_face_normals(bm, faces=sides_faces + tip_faces)
+    layer = bm.loops.layers.uv.active
+    for faces, uv in ((sides_faces, uv_side), (tip_faces, uv_tip)):
+        for face in bmesh.ops.triangulate(bm, faces=faces)["faces"]:
+            face.smooth = False
+            for loop in face.loops:
+                loop[layer].uv = uv
     bm.to_mesh(mesh.data)
     bm.free()
 
