@@ -41,6 +41,12 @@ return {
 	-- Grades, weakest first. Rolled once when a card is pulled; boost stats and value.
 	GRADES = { "C", "B", "A", "S" },
 	GRADE_CHANCES = { C = 0.55, B = 0.3, A = 0.13, S = 0.02 },
+	-- Rarer cards are less likely to be Grade S (the chase); the difference goes to C. Rarities not listed use
+	-- GRADE_CHANCES. A Grade S Legendary also comes from the Grading Station (Config/Grading).
+	GRADE_CHANCES_BY_RARITY = {
+		Epic = { C = 0.555, B = 0.3, A = 0.13, S = 0.015 },
+		Legendary = { C = 0.56, B = 0.3, A = 0.13, S = 0.01 },
+	} :: { [string]: { [string]: number } },
 	GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 },
 	DEFAULT_GRADE = "C",
 

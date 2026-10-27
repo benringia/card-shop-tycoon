@@ -1,6 +1,7 @@
 --!strict
--- Which duplicates the Condenser uses for the next star, shared by the client preview and the server.
--- Pure (no requires, no Roblox APIs): callers pass Config/Beasts in, so tests/ can run it in Lune.
+-- Which duplicates the Condenser uses for the next star, and what the Grading Station needs for the next grade,
+-- shared by the client previews and the server.
+-- Pure (no requires, no Roblox APIs): callers pass Config/Beasts (and Config/Grading) in, so tests/ can run it in Lune.
 -- Rule: plain copies of the same card only; all normal copies weakest grade first, then foil copies
 -- weakest grade first. A plain main copy is set aside first and is not a duplicate.
 local CondenseRules = {}
@@ -57,16 +58,22 @@ function CondenseRules.plan(config: Config, byGrade: { [string]: any }, main: Ma
 	if have + used < need then
 		return nil, `short:{have}:{need}`, 0
 	end
+	return CondenseRules.pick(config.GRADES, byGrade, main, need - used), nil, used
+end
+
+-- The first `count` duplicates in the order they're used (normals weakest grade first, then foils), never the plain
+-- main itself. Takes fewer if there aren't that many: check countDuplicates first. Shared with the Grading Station.
+function CondenseRules.pick(grades: { string }, byGrade: { [string]: any }, main: Main, count: number): { Take }
 	local takes: { Take } = {}
-	local remaining = need - used
-	eachStack(config.GRADES, function(grade, foil)
-		local count = math.min(remaining, available(byGrade, grade, foil, main))
-		if count > 0 then
-			table.insert(takes, { grade = grade, foil = foil, count = count })
-			remaining -= count
+	local remaining = count
+	eachStack(grades, function(grade, foil)
+		local take = math.min(remaining, available(byGrade, grade, foil, main))
+		if take > 0 then
+			table.insert(takes, { grade = grade, foil = foil, count = take })
+			remaining -= take
 		end
 	end)
-	return takes, nil, used
+	return takes
 end
 
 -- Main copy choices in default order: levelled cards first (the card you've been raising), then plain
@@ -103,6 +110,57 @@ function CondenseRules.findNewCard(
 		end
 	end
 	return nil
+end
+
+-- Grading Station ------------------------------------------------------------------------------------------------
+
+export type GradeStep = { copies: number, cash: number }
+export type GradePlan = { grade: string, copies: number, cash: number, takes: { Take } }
+type GradingConfig = { COSTS: { [string]: { [string]: GradeStep } } }
+
+-- The grade one step above, or nil at the top (or for an unknown grade)
+function CondenseRules.nextGrade(grades: { string }, grade: string): string?
+	local index = table.find(grades, grade)
+	return if index then grades[index + 1] else nil
+end
+
+-- What going up to `grade` costs for a card of this rarity, or nil if there's no such step
+function CondenseRules.gradeStepCost(grading: GradingConfig, rarity: string, grade: string): GradeStep?
+	local byGrade = grading.COSTS[rarity]
+	return if byGrade then byGrade[grade] else nil
+end
+
+-- The next grade for this main copy and what it takes, or nil and a reason: "max", "unknown" (no cost for that
+-- rarity) or "short:<have>:<need>" (duplicates). The caller checks the cash against the player's.
+function CondenseRules.gradePlan(grading: GradingConfig, config: Config, rarity: string, byGrade: { [string]: any }, main: Main): (GradePlan?, string?)
+	local grade = CondenseRules.nextGrade(config.GRADES, main.grade)
+	if not grade then
+		return nil, "max"
+	end
+	local step = CondenseRules.gradeStepCost(grading, rarity, grade)
+	if not step then
+		return nil, "unknown"
+	end
+	local have = CondenseRules.countDuplicates(byGrade, main, config)
+	if have < step.copies then
+		return nil, `short:{have}:{step.copies}`
+	end
+	return { grade = grade, copies = step.copies, cash = step.cash, takes = CondenseRules.pick(config.GRADES, byGrade, main, step.copies) }, nil
+end
+
+-- Copies and cash to take a copy from `grade` all the way to the top (the panel's "to Grade S" line)
+function CondenseRules.gradeCostToTop(grading: GradingConfig, grades: { string }, rarity: string, grade: string): GradeStep
+	local total: GradeStep = { copies = 0, cash = 0 }
+	local current = CondenseRules.nextGrade(grades, grade)
+	while current do
+		local step = CondenseRules.gradeStepCost(grading, rarity, current)
+		if step then
+			total.copies += step.copies
+			total.cash += step.cash
+		end
+		current = CondenseRules.nextGrade(grades, current)
+	end
+	return total
 end
 
 return CondenseRules

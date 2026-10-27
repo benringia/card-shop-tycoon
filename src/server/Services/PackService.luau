@@ -54,7 +54,7 @@ local function rollPack(pack: Pack): { PullResult }
 	for _, slot in pack.slots do
 		local pool = Cards.ByRarity[rollRarity(slot)]
 		local card = pool[rng:NextInteger(1, #pool)]
-		table.insert(results, { cardId = card.id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE, grade = BeastRules.rollGrade(rng:NextNumber()) })
+		table.insert(results, { cardId = card.id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE, grade = BeastRules.rollGrade(rng:NextNumber(), card.rarity) })
 	end
 	return results
 end
@@ -153,7 +153,7 @@ function PackService.OpenTestPack(player: Player)
 	local productId = "FirstSparkPack"
 	local results = rollPack(Packs.ById[productId])
 	local legendaries = Cards.ByRarity.Legendary
-	results[#results] = { cardId = legendaries[rng:NextInteger(1, #legendaries)].id, foil = true, grade = BeastRules.rollGrade(rng:NextNumber()) }
+	results[#results] = { cardId = legendaries[rng:NextInteger(1, #legendaries)].id, foil = true, grade = BeastRules.rollGrade(rng:NextNumber(), "Legendary") }
 	deliverPack(player, productId, results)
 end
 
@@ -172,7 +172,7 @@ function PackService.OpenRarityPack(player: Player, foil: boolean)
 	local results = {}
 	for _, tier in tiers do
 		local pool = Cards.ByRarity[tier.name]
-		table.insert(results, { cardId = pool[rng:NextInteger(1, #pool)].id, foil = foil, grade = BeastRules.rollGrade(rng:NextNumber()) })
+		table.insert(results, { cardId = pool[rng:NextInteger(1, #pool)].id, foil = foil, grade = BeastRules.rollGrade(rng:NextNumber(), tier.name) })
 	end
 	deliverPack(player, productId, results)
 end

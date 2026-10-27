@@ -285,7 +285,7 @@ local function payOut(fight: Fight): any
 	if rng:NextNumber() < rewards.dropChance then
 		local cardId = rollDrop(monster)
 		if cardId then
-			dropped = { cardId = cardId, foil = false, grade = BeastRules.rollGrade(rng:NextNumber()) }
+			dropped = { cardId = cardId, foil = false, grade = BeastRules.rollGrade(rng:NextNumber(), Cards.ById[cardId].rarity) }
 			CardService.AddFresh(player, { dropped })
 		end
 	end
@@ -305,7 +305,7 @@ local function payOut(fight: Fight): any
 			end
 		end
 		if #pool > 0 then
-			frontierCard = { cardId = pool[rng:NextInteger(1, #pool)], foil = false, grade = BeastRules.rollGrade(rng:NextNumber()) }
+			frontierCard = { cardId = pool[rng:NextInteger(1, #pool)], foil = false, grade = BeastRules.rollGrade(rng:NextNumber(), rarity) }
 			CardService.AddFresh(player, { frontierCard })
 			-- Epic and Legendary ones: the whole server hears, and the finder gets the big reveal
 			if Announcements.FRONTIER_RARITIES[Cards.ById[frontierCard.cardId].rarity] then

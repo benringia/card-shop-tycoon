@@ -14,6 +14,7 @@ local Beasts = require(Config:WaitForChild("Beasts"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Frontier = require(Config:WaitForChild("Frontier"))
 local OddsRules = require(Shared:WaitForChild("Util"):WaitForChild("OddsRules"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -167,6 +168,14 @@ local function build(): Frame
 		table.insert(gradeParts, `{grade} {percent(Beasts.GRADE_CHANCES[grade] or 0)}{extra}`)
 	end
 	addLine(list, 21, `🏅 Grades: every card gets one when pulled. {table.concat(gradeParts, " · ")}.`)
+	-- Rarer cards are less often Grade S; the Grade S Legendary is the chase, so it gets its own line
+	local sParts = {}
+	for _, rarity in { "Epic", "Legendary" } do
+		table.insert(sParts, `{rarity} {percent(BeastRules.gradeChances(rarity).S or 0)}`)
+	end
+	local sLegendary = OddsRules.perPack(pack, "Legendary") * (BeastRules.gradeChances("Legendary").S or 0)
+	addLine(list, 22, string.format("👑 Grade S is rarer on rare cards: %s. A Grade S Legendary: about 1 in %d %s packs.",
+		table.concat(sParts, " · "), OddsRules.oneIn(sLegendary), pack.name))
 	return frame
 end
 

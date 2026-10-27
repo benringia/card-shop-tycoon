@@ -20,6 +20,7 @@ export type BeastConfig = {
 	XP_EXPONENT: number,
 	GRADES: { string },
 	GRADE_CHANCES: { [string]: number },
+	GRADE_CHANCES_BY_RARITY: { [string]: { [string]: number } }?,
 	GRADE_BONUS: { [string]: number },
 	DEFAULT_GRADE: string,
 	POWER_ATK_WEIGHT: number,
@@ -54,10 +55,17 @@ function BeastMath.getGradeRank(config: BeastConfig, grade: string): number
 end
 
 -- roll is a uniform random number in [0, 1); the caller supplies it so this stays pure
-function BeastMath.rollGrade(config: BeastConfig, roll: number): string
+-- The grade chances for a card of this rarity (GRADE_CHANCES unless the rarity has its own)
+function BeastMath.gradeChances(config: BeastConfig, rarity: string?): { [string]: number }
+	local byRarity = config.GRADE_CHANCES_BY_RARITY
+	return if rarity and byRarity and byRarity[rarity] then byRarity[rarity] else config.GRADE_CHANCES
+end
+
+function BeastMath.rollGrade(config: BeastConfig, roll: number, rarity: string?): string
+	local chances = BeastMath.gradeChances(config, rarity)
 	local total = 0
 	for _, grade in config.GRADES do
-		total += config.GRADE_CHANCES[grade] or 0
+		total += chances[grade] or 0
 		-- The epsilon keeps float sums like 0.5 + 0.3 + 0.15 = 0.95000000000000001 on the right boundary
 		if roll < total - 1e-9 then
 			return grade

@@ -27,6 +27,25 @@ function OddsRules.perCard(pack: PackSlots): { [string]: number }
 	return odds
 end
 
+-- How many cards of a rarity one pack gives on average (each slot's chance of it, added up); for a rare hit
+-- that is near enough the chance a pack has one
+function OddsRules.perPack(pack: PackSlots, rarity: string): number
+	local expected = 0
+	for _, slot in pack.slots do
+		local total, hit = 0, 0
+		for _, option in slot do
+			total += option.weight
+			if option.rarity == rarity then
+				hit += option.weight
+			end
+		end
+		if total > 0 then
+			expected += hit / total
+		end
+	end
+	return expected
+end
+
 -- "About 1 in N cards" (never: math.huge)
 function OddsRules.oneIn(chance: number): number
 	if chance <= 0 then

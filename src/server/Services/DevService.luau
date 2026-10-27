@@ -153,7 +153,7 @@ local function giveCards(player: Player, text: string)
 	local results = {}
 	local rng = Random.new()
 	for _ = 1, amount do
-		table.insert(results, { cardId = card.id, foil = false, grade = BeastRules.rollGrade(rng:NextNumber()) })
+		table.insert(results, { cardId = card.id, foil = false, grade = BeastRules.rollGrade(rng:NextNumber(), card.rarity) })
 	end
 	CardService.AddFresh(player, results)
 	Remotes.Notify:FireClient(player, `Gave {amount} {card.name}`, false)
@@ -206,7 +206,7 @@ function DevService.Start()
 		ItemService.GiveItem(player, "starShard", 1)
 		local pool = Cards.BySet.Frontier
 		local card = pool[math.random(1, #pool)]
-		CardService.AddFresh(player, { { cardId = card.id, foil = false, grade = BeastRules.rollGrade(math.random()) } })
+		CardService.AddFresh(player, { { cardId = card.id, foil = false, grade = BeastRules.rollGrade(math.random(), card.rarity) } })
 		Remotes.Notify:FireClient(player, `+1 Star Shard and a {card.name} (Studio)`, false)
 		if card.rarity == "Epic" or card.rarity == "Legendary" then
 			Remotes.PullAnnouncement:FireAllClients(player.DisplayName, card.id, false, "frontier", player.UserId) -- the reveal

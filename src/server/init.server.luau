@@ -18,6 +18,7 @@ local StockService = require(Services:WaitForChild("StockService"))
 local RegisterService = require(Services:WaitForChild("RegisterService"))
 local PackService = require(Services:WaitForChild("PackService"))
 local CondenserService = require(Services:WaitForChild("CondenserService"))
+local GradingService = require(Services:WaitForChild("GradingService"))
 local JobService = require(Services:WaitForChild("JobService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
@@ -59,6 +60,7 @@ else
 	RegisterService.Start()
 	PackService.Start()
 	CondenserService.Start()
+	GradingService.Start()
 	JobService.Start() -- after CardService, PlacementService and StockService: it loads after them
 	PartyService.Start() -- after JobService: party loading checks which cards are working
 	WildService.Start() -- wild map, plaza portal, spring and monsters

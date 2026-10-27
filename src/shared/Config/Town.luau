@@ -28,6 +28,7 @@ return {
 		-- built = the code-built look is the real one: model files are ignored, placement ghosts use it too
 		Computer = { height = 0, collide = false, built = true }, -- the order computer: a modern workstation
 		Condenser = { height = 0, collide = false, built = true }, -- the Card Condenser (CONDENSER_LOOK)
+		GradingStation = { height = 0, collide = false, built = true }, -- the Grading Station (GRADING_LOOK)
 		-- each product shelf's look (Config/Shelves prop): code-built modern shelving (Util/ShelfLooks, SHELF_LOOK)
 		Shelf = { height = 0, collide = false, built = true }, -- Small Pack Rack: a one-sided gondola
 		WallShelf = { height = 0, collide = false, built = true },
@@ -214,6 +215,22 @@ return {
 		BOB = 0.15, -- studs up and down
 		BOB_SECONDS = 2.4,
 		FX_DISTANCE = 80, -- only spun this close to the camera
+	},
+
+	-- The Grading Station (Props, code-built): a navy cabinet with gold trim and a front screen; on its top a
+	-- scanner bed where a card lies under a glowing scan bar, an arm holding a magnifier over it, and a gold
+	-- graded-card slab on a stand at the back. No lights. Studs; colours { r, g, b }.
+	GRADING_LOOK = {
+		WIDTH = 5.6,
+		DEPTH = 3.6,
+		CABINET_HEIGHT = 3.2,
+		BODY = { 34, 40, 66 }, -- navy
+		TRIM = { 218, 176, 84 }, -- gold
+		GLOW = { 120, 220, 255 }, -- the scan light
+		BED = { 24, 26, 34 },
+		CARD = { 255, 214, 110 },
+		SLAB = { 235, 240, 250 },
+		SCREEN_TEXT = "🏅 GRADING",
 	},
 
 	-- Code-built product shelves (Util/ShelfLayout places the parts, Util/ShelfLooks draws them): charcoal posts and

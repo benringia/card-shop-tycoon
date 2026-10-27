@@ -1,6 +1,7 @@
 --!strict
 local CondenseRules = require("../src/shared/Util/CondenseRules")
 local config = require("../src/shared/Config/Beasts")
+local grading = require("../src/shared/Config/Grading")
 local expect = require("./lib/expect")
 
 local function counts(normal: number, foil: number)
@@ -124,5 +125,55 @@ return {
 		local takes, reason = CondenseRules.plan(config, stacks, { beast = true, foil = false, grade = "C", stars = 0 })
 		expect.isNil(takes, "unknown grade Z and bad counts don't count")
 		expect.equal(reason, "short:0:4", "reason")
+	end,
+	["grading: the next grade, and none past S"] = function()
+		expect.equal(CondenseRules.nextGrade(config.GRADES, "C"), "B", "C")
+		expect.equal(CondenseRules.nextGrade(config.GRADES, "A"), "S", "A")
+		expect.isNil(CondenseRules.nextGrade(config.GRADES, "S"), "S is the top")
+		expect.isNil(CondenseRules.nextGrade(config.GRADES, "Z"), "unknown")
+	end,
+
+	["grading: a step costs that rarity's duplicates and cash, taking the weakest copies first"] = function()
+		local plainMain = { beast = false, foil = false, grade = "C", stars = 0 }
+		-- 3 plain C copies: one is the main, two are duplicates; a Legendary C -> B needs 1
+		local plan, reason = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(3, 0), S = counts(1, 0) }, plainMain)
+		assert(plan, `expected a plan, got {reason}`)
+		expect.equal(plan.grade, "B", "goes up to B")
+		expect.equal(plan.copies, grading.COSTS.Legendary.B.copies, "copies")
+		expect.equal(plan.cash, grading.COSTS.Legendary.B.cash, "cash")
+		expect.equal(#plan.takes, 1, "one stack")
+		expect.equal(plan.takes[1].grade, "C", "a C copy goes before the S")
+		expect.equal(total(plan.takes), plan.copies, "takes the copies it costs")
+	end,
+
+	["grading: the plain main itself is never a duplicate"] = function()
+		local plainMain = { beast = false, foil = false, grade = "C", stars = 0 }
+		local plan, reason = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(1, 0) }, plainMain)
+		expect.isNil(plan, "only the main")
+		expect.equal(reason, "short:0:1", "reason")
+	end,
+
+	["grading: short of duplicates, already S, or an unknown rarity"] = function()
+		local beastA = { beast = true, foil = false, grade = "A", stars = 2 }
+		local plan, reason = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(2, 0) }, beastA)
+		expect.isNil(plan, "A -> S needs 3")
+		expect.equal(reason, "short:2:3", "short")
+		local _, maxed = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(9, 0) }, { beast = true, foil = false, grade = "S", stars = 0 })
+		expect.equal(maxed, "max", "S can't go higher")
+		local _, unknown = CondenseRules.gradePlan(grading, config, "Mythic", { C = counts(9, 0) }, beastA)
+		expect.equal(unknown, "unknown", "no costs for that rarity")
+	end,
+
+	["grading: costs rise with each step and with rarity, Legendary C to S 6 copies and $52,000"] = function()
+		for rarity, steps in grading.COSTS do
+			assert(steps.B.cash < steps.A.cash and steps.A.cash < steps.S.cash, `{rarity} cash doesn't rise`)
+			assert(steps.B.copies <= steps.A.copies and steps.A.copies <= steps.S.copies, `{rarity} copies don't rise`)
+		end
+		assert(grading.COSTS.Legendary.S.cash > grading.COSTS.Epic.S.cash, "Legendary isn't the dearest")
+		local top = CondenseRules.gradeCostToTop(grading, config.GRADES, "Legendary", "C")
+		expect.equal(top.copies, 6, "copies C to S")
+		expect.equal(top.cash, 52000, "cash C to S")
+		local fromS = CondenseRules.gradeCostToTop(grading, config.GRADES, "Legendary", "S")
+		expect.equal(fromS.copies, 0, "nothing past S")
 	end,
 }
