@@ -1,6 +1,8 @@
 --!strict
 -- One fight between two sides of fighters, simulated on the server. Wild fights: side A is the party
--- (leader + call-in reserves), side B one monster with no abilities. PvP: both sides are full parties.
+-- (leader + call-in reserves), side B one monster with no abilities. PvP: both sides are full parties. Boss groups:
+-- side A holds several players' fighters, each tagged with its owner (one call-in per owner, abilities only on your own
+-- fighters, a player leaving withdraws only theirs, damage dealt and taken tallied for the loot rules).
 -- Pure (only CombatMath; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
 -- the same fight. Fighter ids are prefixed by side ("a:<id>", "b:<id>") in events and snapshots.
 local CombatMath = if game ~= nil
@@ -12,10 +14,10 @@ local BattleSim = {}
 -- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown, enrage once below one. boss: stuns on
 -- it last at most BOSS_MAX_STUN seconds
 export type Mechanics = { heal: { below: number, fraction: number, cooldown: number }?, enrage: { below: number, atkMultiplier: number }? }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean }
 export type Event = {
-	type: string, -- "attack" | "ability" | "faint" | "callin" | "run" | "end" | "heal" | "enrage"
+	type: string, -- "attack" | "ability" | "faint" | "callin" | "run" | "end" | "heal" | "enrage" | "leave"
 	from: string?,
 	to: string?,
 	damage: number?,
@@ -56,6 +58,11 @@ type Fighter = {
 	boss: boolean,
 	healReady: number,
 	enraged: boolean,
+	owner: string?, -- the player it belongs to (groups); nil when the side has one owner
+	left: boolean, -- its player left the fight: out, never targeted, not fainted
+	dealt: number, -- damage it did
+	taken: number, -- damage it took
+	burnBy: Fighter?, -- who set its burn (credited with the burn damage)
 }
 
 type Side = {
@@ -65,7 +72,7 @@ type Side = {
 	abilities: boolean,
 	canRun: boolean,
 	shield: number, -- damage this side still absorbs (Tidal Shield)
-	calledIn: boolean,
+	calledBy: { [string]: boolean }, -- owners ("" = the only one) who used their call-in
 	runReadyAt: number,
 }
 
@@ -114,6 +121,11 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		boss = input.boss == true,
 		healReady = time,
 		enraged = false,
+		owner = input.owner,
+		left = false,
+		dealt = 0,
+		taken = 0,
+		burnBy = nil,
 	}
 end
 
@@ -132,7 +144,7 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		abilities = input.abilities,
 		canRun = input.canRun,
 		shield = 0,
-		calledIn = false,
+		calledBy = {},
 		runReadyAt = 0,
 	}
 end
@@ -165,7 +177,7 @@ end
 local function standing(side: Side): { Fighter }
 	local list = {}
 	for _, fighter in side.fighters do
-		if not fighter.fainted then
+		if not fighter.fainted and not fighter.left then
 			table.insert(list, fighter)
 		end
 	end
@@ -190,6 +202,7 @@ local function finish(state: State, result: string, events: { Event })
 end
 
 local function takeDamage(state: State, target: Fighter, amount: number, events: { Event })
+	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true
@@ -215,6 +228,7 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 	side.shield -= absorbed
 	local taken = damage - absorbed
 	table.insert(events, { type = if kind then "ability" else "attack", kind = kind, from = from.id, to = target.id, damage = taken, strength = strength })
+	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events)
 	return taken
 end
@@ -240,6 +254,10 @@ local function burn(state: State, fighter: Fighter, events: { Event })
 		fighter.burnTick += 1
 		local damage = math.max(1, math.round(fighter.burnPerSecond))
 		table.insert(events, { type = "ability", kind = "Burn", to = fighter.id, damage = damage })
+		local source = fighter.burnBy
+		if source then
+			source.dealt += math.min(damage, fighter.hp)
+		end
 		takeDamage(state, fighter, damage, events)
 	end
 end
@@ -306,25 +324,74 @@ function BattleSim.step(state: State, dt: number): { Event }
 	return events
 end
 
-function BattleSim.callIn(state: State, id: string): (boolean, string?)
+-- One reserve joins the field. Each owner (nil: the side's only one) calls in once, only their own reserves, early on.
+function BattleSim.callIn(state: State, id: string, owner: string?): (boolean, string?)
 	if state.result then
 		return false, "ended"
 	end
 	for _, side in { state.sides.a, state.sides.b } do
 		for _, fighter in side.reserves do
-			if fighter.id == id then
-				if side.calledIn or state.time > state.combat.CALL_IN_SECONDS then
+			if fighter.id == id and (owner == nil or fighter.owner == owner) then
+				local key = fighter.owner or ""
+				if side.calledBy[key] or state.time > state.combat.CALL_IN_SECONDS then
 					return false, "closed"
 				end
-				side.calledIn = true
+				side.calledBy[key] = true
 				fighter.nextAttack = state.time + CombatMath.getAttackInterval(state.combat, fighter.spd)
 				table.insert(side.fighters, fighter)
-				side.reserves = {}
+				local rest = {}
+				for _, reserve in side.reserves do
+					if (reserve.owner or "") ~= key then
+						table.insert(rest, reserve)
+					end
+				end
+				side.reserves = rest
 				return true, nil
 			end
 		end
 	end
 	return false, "missing"
+end
+
+-- A player left a group fight: their fighters step out (not fainted, never targeted) and their reserves go. The fight
+-- ends as a run when nobody is left standing on that side.
+function BattleSim.withdraw(state: State, owner: string): { Event }
+	local events: { Event } = {}
+	for _, side in { state.sides.a, state.sides.b } do
+		local had = false
+		for _, fighter in side.fighters do
+			if fighter.owner == owner and not fighter.left then
+				fighter.left = true
+				had = true
+				table.insert(events, { type = "leave", from = fighter.id })
+			end
+		end
+		local rest = {}
+		for _, reserve in side.reserves do
+			if reserve.owner ~= owner then
+				table.insert(rest, reserve)
+			end
+		end
+		side.reserves = rest
+		if had and #standing(side) == 0 and not state.result then
+			finish(state, "run", events)
+		end
+	end
+	return events
+end
+
+-- One owner's share of side A's fight so far (the boss loot's contribution rule)
+function BattleSim.contribution(state: State, owner: string): { dealt: number, taken: number, totalDealt: number, totalTaken: number }
+	local result = { dealt = 0, taken = 0, totalDealt = 0, totalTaken = 0 }
+	for _, fighter in state.sides.a.fighters do
+		result.totalDealt += fighter.dealt
+		result.totalTaken += fighter.taken
+		if fighter.owner == owner then
+			result.dealt += fighter.dealt
+			result.taken += fighter.taken
+		end
+	end
+	return result
 end
 
 local function applyAbility(state: State, fighter: Fighter, side: Side, ability: any, events: { Event })
@@ -362,6 +429,7 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 			target.burnUntil = state.time + ability.seconds
 			target.burnPerSecond = fighter.atk * ability.perSecond
 			target.burnTick = state.time + 1
+			target.burnBy = fighter
 			table.insert(events, { type = "ability", kind = kind, from = fighter.id, to = target.id })
 		end
 	elseif kind == "TidalShield" then
@@ -384,12 +452,12 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 	end
 end
 
-function BattleSim.useAbility(state: State, id: string, which: string): ({ Event }?, string?)
+function BattleSim.useAbility(state: State, id: string, which: string, owner: string?): ({ Event }?, string?)
 	if state.result then
 		return nil, "ended"
 	end
 	local fighter, side = find(state, id)
-	if not fighter or not side or fighter.fainted then
+	if not fighter or not side or fighter.fainted or fighter.left or (owner ~= nil and fighter.owner ~= owner) then
 		return nil, "missing"
 	end
 	local combat = state.combat
@@ -498,6 +566,8 @@ function BattleSim.snapshot(state: State): any
 				signature = fighter.signature,
 				signatureIn = math.max(0, fighter.signatureReady - state.time),
 				fainted = fighter.fainted,
+				owner = fighter.owner,
+				left = fighter.left,
 			})
 		end
 		local reserves = {}
@@ -507,7 +577,7 @@ function BattleSim.snapshot(state: State): any
 		return {
 			fighters = fighters,
 			reserves = reserves,
-			callInFor = if side.calledIn or #side.reserves == 0 then 0 else math.max(0, state.combat.CALL_IN_SECONDS - state.time),
+			callInFor = if #side.reserves == 0 then 0 else math.max(0, state.combat.CALL_IN_SECONDS - state.time),
 			runIn = math.max(0, side.runReadyAt - state.time),
 			runChance = if side.canRun then BattleSim.getRunChance(state, side.name) else 0,
 			canRun = side.canRun,
