@@ -200,15 +200,21 @@ def paint_patch(mesh, color, cells=64):
 
     image = next(n.image for n in mesh.data.materials[0].node_tree.nodes if n.type == "TEX_IMAGE")
     used = np.zeros((cells, cells), bool)
-    for loop in mesh.data.uv_layers.active.data:
-        u, v = loop.uv
-        used[min(cells - 1, max(0, int(v * cells))), min(cells - 1, max(0, int(u * cells)))] = True
+    uvs = mesh.data.uv_layers.active.data
+    # Every cell a face's UV triangle box touches is taken (its corners alone miss the cells inside big triangles)
+    for face in mesh.data.polygons:
+        corners = [uvs[i].uv for i in face.loop_indices]
+        lo_u, hi_u = (min(max(0, int(f(c.x for c in corners) * cells)), cells - 1) for f in (min, max))
+        lo_v, hi_v = (min(max(0, int(f(c.y for c in corners) * cells)), cells - 1) for f in (min, max))
+        used[lo_v:hi_v + 1, lo_u:hi_u + 1] = True
     # Patches painted earlier that no face uses yet (two colours painted before adding the parts) stay taken too
     painted = list(mesh.get("painted_patches", []))
     for i in range(0, len(painted), 2):
         used[painted[i + 1], painted[i]] = True
-    free = next((cx, cy) for cy in range(1, cells - 1) for cx in range(1, cells - 1)
-                if not used[cy - 1:cy + 2, cx - 1:cx + 2].any())
+    spots = [(cx, cy) for cy in range(1, cells - 1) for cx in range(1, cells - 1) if not used[cy, cx]]
+    # A cell with free neighbours keeps the texture's blur off it; a tightly packed map (Meshy fur) may have none
+    free = next((spot for spot in spots if not used[spot[1] - 1:spot[1] + 2, spot[0] - 1:spot[0] + 2].any()), None) \
+        or spots[0]
     w, h = image.size
     cell = w // cells
     px = np.array(image.pixels[:]).reshape(h, w, 4)

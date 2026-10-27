@@ -190,11 +190,11 @@ Element scenes (matching `CardDesign.SCENES`):
   insides, a glowing golden eclipse ring on its forehead, glowing violet ring marks on its flanks, exactly three big
   smooth bushy violet tails with white tips, one rising and two spread to the sides (pose: standing on a dark rocky
   outcrop; lighting: eerie violet moonlight under a huge solar eclipse ringed with golden light).
-- **Duskstalker** (original Monkey King, Very Rare): a stocky confident monkey king warrior standing upright on two
-  legs, rounded stylized toy-like 3D style, dark plum fur, a tan face and chest, big round head, glowing amber eyes
-  under low brows with a sly half smile, a golden circlet with a violet gem, gold shoulder armour, a red cape, purple
-  trousers with a gold belt, gold wrist and ankle bands, big fists, a long curling tail, a tall golden staff with red
-  bands upright in its right hand (lighting: moonlit night with purple mist).
+- **Duskstalker** (original shadow wolf, Very Rare; Meshy remake): a slightly fierce sleek mythical shadow wolf,
+  rounded stylized toy-like 3D style, a dark indigo body with a lavender chest, a tufted dark violet mane on its neck
+  and shoulders, pointed ears with glowing violet tips, two short glowing violet horns, fierce glowing violet eyes, a
+  bushy tail fading to a glowing violet tip, wisps of violet shadow (pose: prowling forward on a dark rocky outcrop;
+  lighting: eerie violet moonlight in a dusky night forest under a huge pale crescent moon).
 
 Tone follows rarity: the more common the card, the cuter and less dangerous the creature and its art.
 - **Solarion** (original sun fire god, Legendary; Meshy remake): a colossal godlike sun fire god titan, rounded
