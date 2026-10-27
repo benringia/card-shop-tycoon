@@ -5,7 +5,8 @@
 --   head and flies off.
 -- * thunderroar (Boltlynx): lightning crackles round its head and leaps off its ear and tail bolts in three bursts,
 --   with a flash.
--- * voidroar (Voidmaw): dark void smoke bursts from every mouth.
+-- * voidroar (Voidmaw): dark void smoke bursts from its maw and a black hole tears open in front of it,
+--   pulling in violet sparks, then collapses.
 -- * stormroar (Stormjack): lightning leaps between its mouths in four bursts.
 -- * firebreath (Infernox): a cone of fire pours from its mouth for a moment, lighting up round it.
 -- * shellcrack (Puffpuddle, a sea otter): sitting up, a blue clam appears between its front paws and sparkles as
@@ -221,15 +222,75 @@ local function thunder(model: Model, size: number)
 	end
 end
 
+-- A black hole opening in front of a roaring maw: a black core in a spinning violet disc, violet sparks pulled into
+-- it from all round, then it collapses with a flash
+local HOLE_SECONDS = 1.3
+local function blackHole(at: Vector3, facing: Vector3, size: number)
+	local core = fxPart(Vector3.new(0.1, 0.1, 0.1), Color3.new(0, 0, 0), false)
+	core.Shape = Enum.PartType.Ball
+	core.CFrame = CFrame.new(at)
+	core.Parent = workspace
+	local disc = fxPart(Vector3.new(0.03, 0.1, 0.1), VOID_COLOR, true)
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Transparency = 0.3
+	local upright = CFrame.lookAt(at, at + facing) * CFrame.Angles(math.rad(60), 0, 0) * CFrame.Angles(0, math.pi / 2, 0)
+	disc.CFrame = upright
+	disc.Parent = workspace
+	local open = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	TweenService:Create(core, open, { Size = Vector3.new(1, 1, 1) * 0.7 * size }):Play()
+	TweenService:Create(disc, open, { Size = Vector3.new(0.03, 2.2, 2.2) * size }):Play()
+	-- Sparks pulled in from a shell round it
+	local pull = Instance.new("Attachment")
+	pull.WorldPosition = at
+	pull.Parent = workspace.Terrain
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = SPARKLES
+	sparks.Color = ColorSequence.new(Color3.fromRGB(230, 180, 255), VOID_COLOR)
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new(0.3 * size, 0)
+	sparks.Lifetime = NumberRange.new(0.5, 0.7)
+	sparks.Shape = Enum.ParticleEmitterShape.Sphere
+	sparks.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
+	sparks.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	sparks.Speed = NumberRange.new(2 * size, 3 * size)
+	sparks.Rate = 60
+	sparks.Parent = pull
+	local spin = RunService.RenderStepped:Connect(function(dt)
+		disc.CFrame = disc.CFrame * CFrame.Angles(dt * 3, 0, 0)
+	end)
+	task.delay(HOLE_SECONDS, function()
+		spin:Disconnect()
+		sparks.Enabled = false
+		local shut = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		TweenService:Create(core, shut, { Size = Vector3.new(0.05, 0.05, 0.05) }):Play()
+		local fold = TweenService:Create(disc, shut, { Size = Vector3.new(0.03, 0.05, 0.05), Transparency = 1 })
+		fold.Completed:Once(function()
+			core:Destroy()
+			disc:Destroy()
+			burst(CFrame.lookAt(at, at + facing), SPARKLES, ColorSequence.new(Color3.fromRGB(240, 210, 255), VOID_COLOR), 30, 0.4 * size, 9 * size, 0.6)
+		end)
+		fold:Play()
+		task.delay(1, pull.Destroy, pull)
+	end)
+end
+
 local function void(model: Model, size: number)
 	local forward = model:GetPivot().LookVector
+	local first: Vector3? = nil
+	local count = 0
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("Bone") and string.match(descendant.Name, "^Jaw_%d$") then
 			local mouth = descendant.TransformedWorldCFrame.Position
+			first = first or mouth
+			count += 1
 			burst(CFrame.lookAt(mouth, mouth + forward + Vector3.new(0, 0.3, 0)), SMOKE,
 				ColorSequence.new(VOID_COLOR, Color3.fromRGB(20, 10, 30)), 10, 0.9 * size, 5 * size, 1)
 			burst(CFrame.lookAt(mouth, mouth + forward), SPARKLES, ColorSequence.new(Color3.fromRGB(220, 170, 255)), 6, 0.4 * size, 7 * size, 0.6)
 		end
+	end
+	-- One maw (Voidmaw): a black hole tears open in front of it
+	if first and count == 1 then
+		blackHole(first + forward * 1.4 * size + Vector3.new(0, 0.3 * size, 0), forward, size)
 	end
 end
 

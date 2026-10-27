@@ -37,7 +37,7 @@ return {
 		HOVER_BOB = 0.4,
 	},
 	-- Cards that fly when drawn with their own model or the placeholder
-	FLYING = { "Voidmaw", "Nightowl", "Emberwing", "Hushmoth", "Fizzlebug" },
+	FLYING = { "Nightowl", "Emberwing", "Hushmoth", "Fizzlebug" },
 	-- Packs whose models fly (wings with bones of their own). Cute Pets walks: its wings can't flap.
 	FLYING_PACKS = {} :: { string },
 	-- Pack models that fly, by the first bone of each left wing (the right one is the same name with .R for .L;
@@ -77,8 +77,8 @@ return {
 		Wispurr = { hang = 0, forward = 0, bend = 0, swing = 12 }, -- paws held up in front
 	} :: { [string]: { hang: number, forward: number, bend: number, swing: number?, idle: number? } },
 	-- Signature idles: a model's own fidget, played instead of an ordinary one this often (Util/PetRig poses it,
-	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
-	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack the storm ram charges horn first as
+	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw roars a black hole open in
+	-- front of its maw, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack the storm ram charges horn first as
 	-- lightning rains round it, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Sparkrat shivers with static and zaps lightning from its tail to its ears, Driplet shakes itself dry in a ring of splashing drops, Hushmoth twirls in the air shedding glowing pastel dust, Magmaw breathes a gout of fire, Mistfin hops and lands in a rolling wave of glowing mist, Vinewyrm rears up as flowers and leaves burst round it, Frostfang pounces and ice crystals burst up where it lands, Gale Sprite dives in a spinning gust and lightning flashes off its wings, Blazehound sneezes a puff of fire,
 	-- Thornback charges in a burst of thorns, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion raises a sun over its head that bursts into rays and a ring of fire,
 	-- Voltkit charges lightning between its fists
@@ -132,7 +132,7 @@ return {
 	-- the two-legged hip roll; above 1 it also sinks onto a bent standing knee, PET_ANIM.HEAVY_KNEE).
 	CREATURE_STYLE = {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
-		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
+		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.4, stride = 1.2 }, -- a huge prowling dragon
 		Stormjack = { fidgets = { "look", "sniff", "shake", "stomp", "hop", "wag" }, tailSpeed = 1.2, tailAmount = 0.7, bounce = 0.8 }, -- a stocky ram, stubby tail flicking
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
@@ -448,7 +448,7 @@ return {
 		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.4 }, -- original, tools/blender/build_duskstalker.py
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
 		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/rig_solarion.py (Meshy-generated sun fire god; was the voxel build_solarion.py)
-		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 3 }, -- original, tools/blender/build_voidmaw.py
+		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 2.6 }, -- original, tools/blender/rig_voidmaw.py (Meshy-generated cosmic void dragon; was the voxel build_voidmaw.py hydra)
 		-- Frontier set
 		Frostfang = { pack = "Originals", model = "Frostfang", size = 2 }, -- original, tools/blender/rig_frostfang.py (Meshy-generated ice fox)
 		["Gale Sprite"] = { pack = "Originals", model = "GaleSprite", size = 1.9, flies = true }, -- original, tools/blender/rig_galesprite.py (Meshy-generated storm swift)
