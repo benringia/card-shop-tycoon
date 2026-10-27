@@ -102,16 +102,27 @@ Element scenes (matching `CardDesign.SCENES`):
   tufts, a glowing silver crescent moon mark on its forehead, wings spread wide with ghostly purple smoke-tipped
   feathers, short legs with dark talons (pose: hovering with wings spread above a tilted gravestone; lighting: eerie
   moonlit lighting with soft violet glow).
+- **Coalbit** (original baby coal salamander, Common; was the tinted Salamander): a very cute chubby cartoon baby coal
+  salamander cub sitting up on two short stubby legs like a teddy bear, rounded stylized toy-like 3D style, dark
+  charcoal grey skin, a big round head with big shiny dark eyes, pink blush cheeks and a small happy smile, small
+  rounded ears with pink insides, a round peach-coloured belly with its little paws resting on it, a small orange flame
+  tuft on top of its head, a short thick tail with glowing orange ember spots, a few glowing embers floating around it
+  (pose: sitting happily on a rug; lighting: warm cozy firelight).
+- **Reefray** (original coral manta ray, Rare; was the metal crab): a slightly fierce cartoon coral manta ray, rounded
+  stylized toy-like 3D style, wide graceful wings spread out, pale cream-white back covered in glowing aqua spots, teal
+  edges along its wings and head, two curled coral-pink head fins like horns at the front, fierce glowing aqua eyes, a
+  long thin coral-pink tail, aqua sparkles trailing from its wing tips (pose: gliding, seen from slightly above;
+  lighting: bright underwater light rays).
 - **Voidmaw** (original hydra, legendary): a chunky blocky voxel-style hydra dragon standing on four clawed legs with
   its body level like a beast, black obsidian body with pale violet belly plates, tall jagged glowing violet crystals
   along its back and long tail, seven long blocky necks rising from its chest in a wide fan, each ending in a blocky
   dragon head with glowing pale eyes, white teeth, glowing purple mouths and a crown of violet crystals, the middle
   head tallest.
-- **Sprouthop** (original tree sprite): a chunky blocky voxel-style little tree sprite standing upright on two legs
-  like a person, a twisted brown bark body with lighter bark strands, a big square blocky head with a light wooden
-  face, big glossy dark eyes with white shine, pink blush and a small smile, a fluffy cap of green leaf cubes with two
-  small twig antlers, thin bark arms with twig fingers, its right hand raised holding a tiny sprout with a small
-  butterfly landing on it, root-like feet, little mushrooms on its legs.
+- **Sprouthop** (original tree sprite, Common; Meshy remake): a very cute chubby cartoon tree sprite, rounded stylized
+  toy-like 3D style, a round plump body of smooth brown bark with wood grain, a big rounded wooden head with big shiny
+  dark eyes, pink blush cheeks and a small happy smile, a big wide cap of bright green leaves on top of its head like a
+  bush, short chunky bark arms with little twig fingers, short stubby root feet, one hand raised with a small blue
+  butterfly landing on it (pose: standing happily; lighting: soft warm green sunlight).
 - **Stormjack** (original baby hydra, Rare so friendly): a cute chunky blocky voxel-style baby hydra, friendly and
   harmless, a round light electric-blue body on short stubby legs with pink toe beans, a cream yellow tummy, three
   short necks with big round blocky heads, each with big shiny dark eyes, pink blushing cheeks, a small happy smile

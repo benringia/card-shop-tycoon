@@ -438,6 +438,23 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
 	end,
 
+	["an ember glow hunkers down and shivers while the embers flare, then stands back up"] = function()
+		assert(PetRig.cue(CFG, "emberglow", 0.3) and not PetRig.cue(CFG, "emberglow", 0.2), "the embers don't flare once it's hunkered down")
+		local low = PetRig.body(CFG, "emberglow", 0.5, 1, true)
+		expect.near(low.lift, -CFG.EMBER_CROUCH, 1e-6, "it doesn't hunker down")
+		local shivering = false
+		for step = 30, 70 do
+			if math.abs(PetRig.body(CFG, "emberglow", step / 100, 1, true).roll) > math.rad(CFG.EMBER_SHIVER) * 0.8 then
+				shivering = true
+			end
+		end
+		assert(shivering, "it doesn't shiver while hunkered down")
+		local done = PetRig.body(CFG, "emberglow", 1, 1, true)
+		expect.near(done.lift, 0, 1e-6, "it doesn't stand back up")
+		expect.near(done.roll, 0, 1e-6, "it keeps shivering")
+		expect.near(done.pitch, 0, 1e-6, "the glow tips it")
+	end,
+
 	["a petal twirl spins right round with a little lift, petals at the start"] = function()
 		assert(PetRig.cue(CFG, "petaltwirl", 0.1) and not PetRig.cue(CFG, "petaltwirl", 0.05), "the petals don't swirl as the twirl starts")
 		expect.near(math.abs(PetRig.body(CFG, "petaltwirl", 1, 1, true).yaw), math.pi * 2, 1e-6, "the twirl doesn't come all the way round")

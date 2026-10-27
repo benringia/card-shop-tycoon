@@ -289,6 +289,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the loop starts
 	elseif kind == "owlturn" then
 		return progress >= 0.65 -- snapped back to the front: the hoot
+	elseif kind == "emberglow" then
+		return progress >= 0.3 -- hunkered down: the embers flare
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -430,6 +432,11 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "emberglow" then
+		-- Hunkering down low (there by 0.3, held to 0.7) and shivering as its embers flare, then back up
+		local down = if p < 0.3 then math.sin(p / 0.3 * math.pi / 2) elseif p < 0.7 then 1 else math.cos(math.clamp((p - 0.7) / 0.3, 0, 1) * math.pi / 2)
+		lift = -cfg.EMBER_CROUCH * down
+		roll = math.rad(cfg.EMBER_SHIVER) * math.sin(p * TAU * 7) * down
 	elseif kind == "hiccup" then
 		local pulse = hiccupPulse(cfg, p)
 		lift = cfg.HICCUP_HOP * pulse
