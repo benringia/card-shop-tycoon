@@ -115,17 +115,20 @@ function BeastAura.attach(model: Model, floor: CFrame, element: string, size: nu
 		return nil
 	end
 	local bones: { Bone } = {}
+	local names: { string } = {}
 	local points: { BeastFxRules.Point } = {}
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("Bone") then
 			local at = descendant.WorldPosition
 			table.insert(bones, descendant)
+			table.insert(names, descendant.Name)
 			table.insert(points, { at.X, at.Y, at.Z })
 		end
 	end
 	local emitters: { ParticleEmitter } = {}
 	local burning: { Bone } = {}
-	for _, index in BeastFxRules.spread(points, tier.bones) do
+	-- Both sides burn alike: a picked ear or foot brings its mirror along
+	for _, index in BeastFxRules.withMirrors(names, BeastFxRules.spread(points, tier.bones)) do
 		local bone = bones[index]
 		table.insert(burning, bone)
 		for _, flame in look.flames do

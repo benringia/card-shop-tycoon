@@ -379,9 +379,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   mesh). Arms are moulded to the belly, so only a small swing (`ARM_POSE` swing 6). Shell crack signature: the clam
   appears between its hands (`SignatureFx` frontPaws uses `Arm_` hands when it has them). Size 1.4. 22 bones, 8,000
   triangles.
-- **Blazehound** (`build_blazehound.py`, Rare): a long dachshund on stubby legs, black with tan points, big kind eyes,
-  droopy ears on its `Ear_` bones (they flop), two flame tufts on its head and a flame on its tail tip, a jaw for its
-  sneeze; 24 bones, about 770 triangles.
+- **Blazehound** (`rig_blazehound.py`, Meshy, Rare; was the voxel `build_blazehound.py`): a chubby black-and-tan
+  dachshund puppy with droopy ears and golden flame tufts. Right first time apart from the tufts (a curl on one side
+  only): the curl was copied mirrored onto the other side on the full mesh, nothing else touched. Ear flaps weighted to
+  the `Ear_` bones by position. Size 1.3. 22 bones, 8,500 triangles.
 - **Thornback** (`build_thornback.py`, Rare): a kung-fu mantis, lime with soft orange armour, big round green eyes,
   antennae on its `Ear_` bones, blunt rounded scythes folded in front (`ARM_POSE`), four walking legs and its abdomen as
   a tail; 29 bones, about 800 triangles.
