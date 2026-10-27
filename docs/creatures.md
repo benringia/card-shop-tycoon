@@ -331,9 +331,10 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Voidmaw** (`build_voidmaw.py`): seven-headed obsidian hydra dragon with violet crystals, on four clawed legs
   (it trots), body level, a six-bone tail straight out behind and the necks rising from its chest; 57 bones (7 necks
   of 4 plus 7 jaws), about 2,750 triangles.
-- **Sprouthop** (`build_sprouthop.py`): a little tree sprite: twisted bark body, big blocky face with glossy eyes,
-  a leafy cap and two twig antlers (its `Ear_` bones, so they wiggle), twig fingers, root feet; no tail, so its hips
-  sway like a sapling. 20 bones, about 2,800 triangles.
+- **Sprouthop** (`rig_sprouthop.py`, Meshy, Common; was the voxel `build_sprouthop.py`): a chubby smiling bark sprite
+  with a wide cap of green leaves, generated in a T-pose (Meshy `pose_mode="t-pose"`; the first try had a sad face and
+  one waving arm, regenerated). The side leaf tips are its `Ear_` bones. Collapse decimate (thin leaves). Size 1.5.
+  20 bones, 8,000 triangles.
 - **Stormjack** (`build_stormjack.py`): a Rare, so a friendly baby storm hydra: a chunky round electric-blue body on
   stubby legs with pink toe beans, three short necks with big round heads (big shiny eyes, blush, no fangs, little
   horn nubs and a lightning-bolt tuft), a cream tummy and a curly tail with a bolt tip; 36 bones (3 necks of 4 plus 3
