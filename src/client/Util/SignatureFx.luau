@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * mothdust (Hushmoth): twirls slowly in the air as glowing pastel dust sheds from its wing tips.
 -- * watershake (Driplet): shakes itself dry with its wings out; drops fly off in a ring, its head drop sparkles.
 -- * staticshock (Sparkrat): shivers as static builds, then hops as lightning arcs from its bolt tail to its ears.
 -- * emberglow (Coalbit): hunkers down and shivers as its ember spots flare; embers and smoke rise off its back.
@@ -743,6 +744,40 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- Moth dust: as it twirls, glowing pastel dust sheds from its wing tips and drifts down, with a soft violet glow
+local DUST_COLORS = { Color3.fromRGB(255, 180, 230), Color3.fromRGB(200, 170, 255), Color3.fromRGB(160, 240, 240) }
+local function mothdust(model: Model, size: number)
+	local seconds = Party.PET_ANIM.FIDGET_SECONDS.mothdust * 0.8
+	for step = 0, 7 do
+		task.delay(step * seconds / 8, function()
+			if not model.Parent then
+				return
+			end
+			for _, name in { "Wing_Left_1", "Wing_Right_1" } do
+				local tip = bonePosition(model, name)
+				if tip then
+					local color = DUST_COLORS[(step % #DUST_COLORS) + 1]
+					burst(CFrame.lookAt(tip, tip - Vector3.yAxis), SPARKLES, ColorSequence.new(color), 4, 0.2 * size, 0.6 * size, 1.4)
+				end
+			end
+		end)
+	end
+	local body = bonePosition(model, "Spine_0")
+	if not body then
+		return
+	end
+	local glow = Instance.new("Attachment")
+	glow.WorldPosition = body
+	glow.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(200, 160, 255)
+	light.Brightness = 1.5
+	light.Range = 6 * size
+	light.Parent = glow
+	TweenService:Create(light, TweenInfo.new(seconds + 0.5), { Brightness = 0 }):Play()
+	task.delay(seconds + 0.6, glow.Destroy, glow)
+end
+
 -- A water shake: shaking itself dry, drops fly off in a ring and the water drop on its head sparkles
 local function watershake(model: Model, size: number)
 	local body = bonePosition(model, "Spine_0")
@@ -1192,6 +1227,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		staticshock(model, size)
 	elseif kind == "watershake" then
 		watershake(model, size)
+	elseif kind == "mothdust" then
+		mothdust(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

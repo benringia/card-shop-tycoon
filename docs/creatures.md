@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **mothdust** (Hushmoth): twirls slowly in the air, drifting up (`DUST_RISE`) and swaying (`DUST_SWAY`), as glowing
+  pastel dust sheds from its wing tips with a soft violet glow.
 - **watershake** (Driplet): fluffs up (`WATER_FLUFF`), then shakes hard side to side (`WATER_SHAKE`) with its folded
   wings flapping out; a ring of water drops splashes off and its head drop sparkles.
 - **staticshock** (Sparkrat): shivers faster as static builds (`STATIC_SHIVER`), then hops (`STATIC_HOP`) with its
@@ -319,6 +321,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   feather crest, keeping its card's look. Meshy put the drop on its chest, so a big glowing water drop was added on its
   head by hand (`rig_kit.droplet`); remesh_bake (collapse decimate faceted its round body). Crest and drop on their own
   `Ear_` bones (weights kept above the head). Signature water shake. Size 1.6. 20 bones, 9,200 triangles.
+- **Hushmoth** (`rig_hushmoth.py`, Meshy, Common; was the FairyMoth): a fluffy white moth with glowing blue eyes,
+  golden feathery antennae and small pastel wings standing up behind its head, keeping its card's look. 1.4M triangles
+  of fur: remesh_bake at a fine 4 mm voxel (keeps the wing sheets). Wings and antennae weighted by position, the wings
+  fading in from their root (a hard edge creased them). Flies (`WING_SPEED` 0.7). Signature moth dust. Size 1.4.
+  17 bones, 10,000 triangles.
 - **Nightowl** (`rig_nightowl.py`, Meshy, Rare): a shadow owl (a redesign to match its name, replacing the bought
   heron demon): plump, dark violet, glowing violet eyes, a silver crescent moon on its forehead, smoky wing tips.
   Right first time; 1.2M triangles of feathers shattered under collapse decimate, so remesh_bake at a fine 4 mm voxel.
