@@ -36,6 +36,22 @@ return {
 		expect.equal(#BeastFxRules.spread({}, 4), 0, "no points, none picked")
 	end,
 
+	["side bones burn in pairs: a picked ear brings the other ear"] = function()
+		expect.equal(BeastFxRules.mirrorName("Ear_Left_0"), "Ear_Right_0", "left to right")
+		expect.equal(BeastFxRules.mirrorName("1_Right_Limb_2"), "1_Left_Limb_2", "right to left")
+		expect.equal(BeastFxRules.mirrorName("Tail_2"), nil, "middle bones have no mirror")
+		local names = { "Head_0", "Ear_Left_0", "Ear_Right_0", "Tail_1", "0_Left_Limb_2" }
+		local out = BeastFxRules.withMirrors(names, { 2, 4, 3, 5 })
+		local has: { [number]: boolean } = {}
+		for _, index in out do
+			assert(not has[index], "an index twice")
+			has[index] = true
+		end
+		assert(has[2] and has[3], "both ears")
+		assert(has[4], "the tail")
+		assert(has[5] and #out == 4, "a side bone without a mirror stays alone")
+	end,
+
 	["an arc runs exactly from one bone to the other"] = function()
 		local from, to = { 0, 0, 0 }, { 10, 0, 0 }
 		local path = BeastFxRules.arc(from, to, 6, 0.2, counter())

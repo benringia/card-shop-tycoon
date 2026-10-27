@@ -384,7 +384,7 @@ return {
 		Cindercub = { pack = "Originals", model = "Cindercub", size = 1.6 }, -- original, tools/blender/rig_cindercub.py (Meshy-generated fire bear cub)
 		Ashbeak = { pack = "Originals", model = "Ashbeak", size = 1.4 }, -- original, tools/blender/rig_ashbeak.py (Meshy-generated ember chick)
 		Coalbit = { pack = "Originals", model = "Coalbit", size = 1.4 }, -- original, tools/blender/rig_coalbit.py (Meshy-generated baby coal salamander, upright)
-		Blazehound = { pack = "Originals", model = "Blazehound" }, -- original, tools/blender/build_blazehound.py
+		Blazehound = { pack = "Originals", model = "Blazehound", size = 1.3 }, -- original, tools/blender/rig_blazehound.py (Meshy-generated flame dachshund; was the voxel build_blazehound.py)
 		Magmaw = { pack = "UltraPets", model = "Salamander", hue = 0.04 },
 		Infernox = { pack = "Originals", model = "Infernox", size = 1.8 }, -- original, tools/blender/rig_infernox.py (Meshy-generated fire T-rex; was the voxel build_infernox.py)
 		Emberwing = { pack = "Originals", model = "Emberwing", size = 1.2, flies = true }, -- original, tools/blender/rig_emberwing.py (Meshy-generated fire swallow)

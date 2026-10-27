@@ -42,6 +42,41 @@ function BeastFxRules.spread(points: { Point }, count: number): { number }
 	return picked
 end
 
+-- The bone on the other side of the body: Left and Right swapped in its name ("Ear_Left_0" -> "Ear_Right_0"), nil for
+-- a bone on the middle line
+function BeastFxRules.mirrorName(name: string): string?
+	if string.find(name, "Left", 1, true) then
+		return (string.gsub(name, "Left", "Right"))
+	elseif string.find(name, "Right", 1, true) then
+		return (string.gsub(name, "Right", "Left"))
+	end
+	return nil
+end
+
+-- `picked` (indexes into `names`) plus the mirror of every picked side bone that has one, so the fire burns on both
+-- ears, both feet, never just one; no index twice
+function BeastFxRules.withMirrors(names: { string }, picked: { number }): { number }
+	local byName: { [string]: number } = {}
+	for index, name in names do
+		byName[name] = index
+	end
+	local out, seen = {}, {}
+	local function add(index: number)
+		if not seen[index] then
+			seen[index] = true
+			table.insert(out, index)
+		end
+	end
+	for _, index in picked do
+		add(index)
+		local mirror = BeastFxRules.mirrorName(names[index])
+		if mirror and byName[mirror] then
+			add(byName[mirror])
+		end
+	end
+	return out
+end
+
 -- The corners of a lightning arc from `from` to `to`: segments + 1 points, the ends exact, the ones between
 -- pushed off the line by up to jitter times its length. random() gives a number in 0..1.
 function BeastFxRules.arc(from: Point, to: Point, segments: number, jitter: number, random: () -> number): { Point }
