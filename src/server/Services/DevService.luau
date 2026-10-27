@@ -6,7 +6,7 @@
 -- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands),
 -- /frontierdrop (a Star Shard and a random Frontier card), /raritypack [foil] (one card of each rarity, to
 -- see every pack reveal), /legendarys [foil] (a Grade S copy of every Legendary), /item <id> <amount> (any item),
--- /boss <n> [fight] (to boss n's arena gate; with fight, use the gate there).
+-- /boss <n> [fight|group] (to boss n's arena gate; with fight or group, use that gate prompt there).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -218,9 +218,11 @@ function DevService.Start()
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)
 		if not gate then
-			Remotes.Notify:FireClient(player, "Usage: /boss <1-3> [fight]", true)
+			Remotes.Notify:FireClient(player, "Usage: /boss <1-3> [fight|group]", true)
 		elseif string.find(text, "fight") then
 			BossService.UseGate(player, index)
+		elseif string.find(text, "group") then
+			BossService.UseGate(player, index, true)
 		else
 			WildService.TravelToWild(player, gate)
 		end
@@ -267,7 +269,7 @@ function DevService.Start()
 		return true
 	end
 	runner.Parent = game:GetService("ServerStorage")
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
 end
 
 return DevService
