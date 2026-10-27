@@ -397,4 +397,12 @@ return {
 			assert(event.type ~= "heal" and event.type ~= "enrage", "a plain monster used a boss mechanic")
 		end
 	end,
+	["a fight can be given a longer time limit, like a boss's"] = function()
+		local state = wild(fighter("x", "Ember", 100000, 1, 1), {}, monster("Bloom", 100000, 1, 1), 5)
+		state.maxSeconds = combat.MAX_FIGHT_SECONDS + 60
+		runToEnd(state, combat.MAX_FIGHT_SECONDS + 10)
+		expect.isNil(state.result, "still going past the usual limit")
+		runToEnd(state, 120)
+		expect.equal(state.result, "run", "ends at its own limit")
+	end,
 }

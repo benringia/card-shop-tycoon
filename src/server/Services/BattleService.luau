@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Announcements = require(Config:WaitForChild("Announcements"))
+local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
@@ -65,6 +66,8 @@ local allowRun = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
+-- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
+local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, partyIds: { string } }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -275,6 +278,18 @@ end
 
 local function payOut(fight: Fight): any
 	local player, monster = fight.player, fight.monster
+	local bossId = monster.boss
+	if bossId then
+		-- Bosses: their own XP and cash, every win; items only through BossService's farm-protected rules
+		local boss = Bosses.BOSSES[bossId]
+		local xpEach = CombatMath.splitXp(boss.xp, #fight.partyIds)
+		for _, beastId in fight.partyIds do
+			CardService.AddXP(player, beastId, xpEach)
+		end
+		EconomyService.AddCash(player, boss.cash)
+		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, partyIds = fight.partyIds }) else nil
+		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot }
+	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
 	local each = CombatMath.splitXp(rewards.xp, #fight.partyIds)
 	for _, beastId in fight.partyIds do
@@ -331,8 +346,8 @@ local function endFight(fight: Fight, result: string)
 		fight.died:Disconnect()
 	end
 
-	if result == "win" then
-		WildService.Defeat(fight.monster)
+	if result == "win" or fight.monster.boss then
+		WildService.Defeat(fight.monster) -- bosses are fought alone and always go when the fight ends
 	else
 		WildService.Unlock(fight.monster)
 	end
@@ -363,7 +378,7 @@ local function endFight(fight: Fight, result: string)
 	local summary: any = { result = result, rested = rested }
 	if result == "win" and player.Parent then
 		local paid = payOut(fight)
-		summary.xpEach, summary.cash, summary.card, summary.shards = paid.xpEach, paid.cash, paid.card, paid.shards
+		summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
 		summary.partyIds = fight.partyIds
 	end
 	if player.Parent then
@@ -374,8 +389,8 @@ end
 
 -- Starting ------------------------------------------------------------------------------------------------
 
--- Why this player can't start a fight now, or nil
-local function whyNot(player: Player, monster: Monster?): string?
+-- Why this player can't start any fight now, or nil
+local function whyNotPlayer(player: Player): string?
 	if fights[player] or PartyService.IsLocked(player) then
 		return "You're already in a fight."
 	end
@@ -384,9 +399,6 @@ local function whyNot(player: Player, monster: Monster?): string?
 		if reason then
 			return reason
 		end
-	end
-	if not monster or monster.fightingPlayer then
-		return "Someone is already fighting that monster."
 	end
 	local party = PartyService.GetParty(player)
 	local leaderId = if party and party.summoned then party.slots[party.summoned] else nil
@@ -400,7 +412,24 @@ local function whyNot(player: Player, monster: Monster?): string?
 	return nil
 end
 
-local function startFight(player: Player, monster: Monster)
+-- Why this player can't fight this monster now, or nil
+local function whyNot(player: Player, monster: Monster?): string?
+	local reason = whyNotPlayer(player)
+	if reason then
+		return reason
+	end
+	if not monster or monster.fightingPlayer then
+		return "Someone is already fighting that monster."
+	end
+	return nil
+end
+
+-- BossService asks before it spawns a boss
+function BattleService.WhyNotFight(player: Player): string?
+	return whyNotPlayer(player)
+end
+
+local function startFight(player: Player, monster: Monster): boolean
 	local party = PartyService.GetParty(player) :: { slots: { [number]: string }, summoned: number? }
 	local leaderId = party.slots[party.summoned :: number]
 	local leader = CardService.GetBeast(player, leaderId) :: Beast
@@ -413,22 +442,35 @@ local function startFight(player: Player, monster: Monster)
 			table.insert(reserves, fighterInput(beast))
 		end
 	end
-	local stats = CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
+	local boss = if monster.boss then Bosses.BOSSES[monster.boss] else nil
+	local stats = if boss then { hp = boss.hp, atk = boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
 	if not stats then
-		return
+		return false
 	end
 	local sim = BattleSim.new(Combat, { fighters = { fighterInput(leader) }, reserves = reserves, abilities = true, canRun = true }, {
-		fighters = { { id = "m", element = monster.element, hp = stats.hp, atk = stats.atk, spd = stats.spd, elite = monster.elite } },
+		fighters = { {
+			id = "m",
+			element = monster.element,
+			hp = stats.hp,
+			atk = stats.atk,
+			spd = stats.spd,
+			elite = monster.elite,
+			mechanics = if boss then boss.mechanics else nil,
+			boss = boss ~= nil,
+		} },
 		abilities = false,
 		canRun = false,
 	}, rng:NextInteger(1, 2 ^ 30))
+	if boss then
+		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
+	end
 
 	-- The ring: the monster where it stands, facing the player; the leader between them
 	local center = monster.marker.Position
 	local toPlayer = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z)
 	local direction = if toPlayer.Magnitude > 0.1 then toPlayer.Unit else Vector3.new(0, 0, -1)
 	local right = Vector3.new(-direction.Z, 0, direction.X)
-	local leaderSpot = center + direction * Combat.RING_RADIUS
+	local leaderSpot = center + direction * (if boss then Bosses.RING_RADIUS else Combat.RING_RADIUS)
 	local extraSpot = leaderSpot + right * 3
 	local fight: Fight = {
 		player = player,
@@ -475,11 +517,13 @@ local function startFight(player: Player, monster: Monster)
 		level = monster.level,
 		elite = monster.elite,
 		element = monster.element,
+		boss = monster.boss,
 		names = names,
 		side = "a",
 		markers = { [partyId(leaderId)] = PartyService.GetMarker(player), [MONSTER_ID] = monster.marker },
 		snapshot = snapshot(fight),
 	})
+	return true
 end
 
 local function tryStart(player: Player, monster: Monster?): boolean
@@ -487,8 +531,20 @@ local function tryStart(player: Player, monster: Monster?): boolean
 	if reason then
 		return false
 	end
-	startFight(player, monster :: Monster)
-	return true
+	return startFight(player, monster :: Monster)
+end
+
+-- BossService: the player fights this monster now (false and why if they can't)
+function BattleService.StartFight(player: Player, monster: Monster): (boolean, string?)
+	local reason = whyNot(player, monster)
+	if reason then
+		return false, reason
+	end
+	return startFight(player, monster), nil
+end
+
+function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, partyIds: { string } }) -> any)
+	bossRewards = handler
 end
 
 -- Remotes -------------------------------------------------------------------------------------------------
@@ -498,6 +554,9 @@ local function onStartFight(player: Player, monsterId: unknown)
 		return
 	end
 	local monster = WildService.GetMonster(monsterId)
+	if monster and monster.boss then
+		return -- bosses start only at their gate (BossService)
+	end
 	local reason = whyNot(player, monster)
 	if not reason and monster then
 		local root = getRoot(player) :: BasePart
@@ -578,11 +637,12 @@ local function keepNear(fight: Fight)
 	if not root then
 		return
 	end
+	local leash = if fight.monster.boss then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS
 	local offset = Vector3.new(root.Position.X - fight.center.X, 0, root.Position.Z - fight.center.Z)
-	if offset.Magnitude <= Combat.LEASH_RADIUS then
+	if offset.Magnitude <= leash then
 		return
 	end
-	local edge = fight.center + offset.Unit * (Combat.LEASH_RADIUS - 2)
+	local edge = fight.center + offset.Unit * (leash - 2)
 	local back = Vector3.new(edge.X, root.Position.Y, edge.Z)
 	root.AssemblyLinearVelocity = Vector3.zero
 	;(fight.player.Character :: Model):PivotTo(CFrame.lookAt(back, Vector3.new(fight.center.X, back.Y, fight.center.Z)))

@@ -55,6 +55,9 @@ local NAMES = {
 	"ChallengeStatus", -- server → client: { state: sent|declined|expired|cancelled|queued|starting|refused, message?, position? }
 	"ItemsChanged", -- server → owner: { [itemId] = count }
 	"RequestItems", -- client → server: () resend ItemsChanged
+	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, rewardedToday, fragments } }
+	"RequestBosses", -- client → server: () resend BossesChanged
+	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 }
 
@@ -131,5 +134,8 @@ return {
 	ChallengeStatus = remotes.ChallengeStatus,
 	ItemsChanged = remotes.ItemsChanged,
 	RequestItems = remotes.RequestItems,
+	BossesChanged = remotes.BossesChanged,
+	RequestBosses = remotes.RequestBosses,
+	BossCleared = remotes.BossCleared,
 	FrontierTravel = remotes.FrontierTravel,
 }

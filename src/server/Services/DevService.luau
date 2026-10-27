@@ -5,7 +5,8 @@
 -- /jobslot (toggle owning the Extra Job Slot pass), /wild (travel to the wild map), /rest (wake resting cards),
 -- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands),
 -- /frontierdrop (a Star Shard and a random Frontier card), /raritypack [foil] (one card of each rarity, to
--- see every pack reveal), /legendarys [foil] (a Grade S copy of every Legendary).
+-- see every pack reveal), /legendarys [foil] (a Grade S copy of every Legendary), /item <id> <amount> (any item),
+-- /boss <n> [fight] (to boss n's arena gate; with fight, use the gate there).
 -- Does nothing outside Studio, so live players never get these commands.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +26,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
+local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -212,6 +214,17 @@ function DevService.Start()
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
 	addCommand(folder, "givecard", giveCards)
 	addCommand(folder, "item", giveItems)
+	addCommand(folder, "boss", function(player, text)
+		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
+		local gate = BossService.GetGate(index)
+		if not gate then
+			Remotes.Notify:FireClient(player, "Usage: /boss <1-3> [fight]", true)
+		elseif string.find(text, "fight") then
+			BossService.UseGate(player, index)
+		else
+			WildService.TravelToWild(player, gate)
+		end
+	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
 	addCommand(folder, "wild", function(player)
 		WildService.TravelToWild(player)
@@ -254,7 +267,7 @@ function DevService.Start()
 		return true
 	end
 	runner.Parent = game:GetService("ServerStorage")
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
 end
 
 return DevService

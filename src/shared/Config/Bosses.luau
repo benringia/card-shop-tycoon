@@ -114,4 +114,11 @@ return {
 
 	GATE_DISTANCE = 12, -- studs from a boss gate to start
 	START_COOLDOWN = 2, -- seconds between start requests per player
+
+	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
+	ARENA_RADIUS = 24,
+	ARENA_GAP = 16, -- path length from the zone's edge to the ring
+	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands
+	RING_RADIUS = 11, -- fighters stand this far from a boss (it's big)
+	LEASH_RADIUS = 38, -- players may roam the whole ring (and the gate) during a boss fight
 }

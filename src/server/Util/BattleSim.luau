@@ -75,6 +75,7 @@ export type State = {
 	seed: number,
 	sides: { a: Side, b: Side },
 	result: string?, -- "a" | "b" | "draw" | "run"
+	maxSeconds: number?, -- this fight's time limit (bosses get longer); combat.MAX_FIGHT_SECONDS when nil
 }
 
 -- Small deterministic generator (LCG) so fights replay identically in Lune and Roblox
@@ -299,7 +300,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 		end
 	end
 
-	if not state.result and state.time >= combat.MAX_FIGHT_SECONDS then
+	if not state.result and state.time >= (state.maxSeconds or combat.MAX_FIGHT_SECONDS) then
 		finish(state, if state.sides.a.canRun then "run" else "draw", events)
 	end
 	return events

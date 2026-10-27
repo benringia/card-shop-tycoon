@@ -575,7 +575,8 @@ end
 -- Prompts and travel --------------------------------------------------------------------------------------
 
 local function watchMonster(marker: Instance)
-	if not marker:IsA("BasePart") or prompts[marker] then
+	-- Bosses start at their arena gate, never from a prompt on them
+	if not marker:IsA("BasePart") or prompts[marker] or marker:GetAttribute("Boss") ~= nil then
 		return
 	end
 	local prompt = Instance.new("ProximityPrompt")
