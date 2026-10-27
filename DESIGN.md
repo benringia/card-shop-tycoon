@@ -394,7 +394,8 @@ Roadmap (one sub-project at a time):
    1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
-      b) Dungeons: a third place with late-game bosses for groups, reached from the Frontier (later).
+      b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1 next).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
