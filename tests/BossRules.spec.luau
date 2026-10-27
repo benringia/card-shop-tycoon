@@ -2,6 +2,8 @@
 local BossRules = require("../src/shared/Util/BossRules")
 local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
+local luau = require("@lune/luau")
 
 local function record(fields: { [string]: any }): BossRules.Record
 	local base = BossRules.read(nil, false)
@@ -134,5 +136,11 @@ return {
 	["carriedDrop: a quarter of the chance, never fragments"] = function()
 		expect.equal(BossRules.carriedDrop(Bosses, "xpTonic", 0.6, false), 0.15, "tonic")
 		expect.equal(BossRules.carriedDrop(Bosses, "fragment_caveBroodQueen", 0.7, true), 0, "fragment")
+	end,
+	["every rule exists as soon as the module loads (none nested inside another)"] = function()
+		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop" } do
+			expect.equal(typeof(fresh[name]), "function", name)
+		end
 	end,
 }

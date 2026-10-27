@@ -95,7 +95,10 @@ function BossRules.overPowerFactor(config: Config, partyPower: number, recommend
 end
 
 function BossRules.dropFactor(config: Config, record: Record, partyPower: number, recommended: number): number
-	-- A boss's HP and ATK for a group of `size` players (1 = as configured)
+	return BossRules.softCapFactor(config, record.rewardedToday) * BossRules.overPowerFactor(config, partyPower, recommended)
+end
+
+-- A boss's HP and ATK for a group of `size` players (1 = as configured)
 function BossRules.groupStats(config: GroupConfig, hp: number, atk: number, size: number): (number, number)
 	local extra = math.max(0, size - 1)
 	return math.round(hp * (1 + config.GROUP_HP_STEP * extra)), math.round(atk * (1 + config.GROUP_ATK_STEP * extra))
@@ -112,9 +115,6 @@ end
 -- A carried member's chance at a drop: a fraction of it, never a fragment
 function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
-end
-
-return BossRules.softCapFactor(config, record.rewardedToday) * BossRules.overPowerFactor(config, partyPower, recommended)
 end
 
 return BossRules
