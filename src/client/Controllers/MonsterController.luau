@@ -2,12 +2,14 @@
 -- Draws every wild monster on this client. WildService moves an invisible marker per monster in
 -- workspace.Monsters (attributes MonsterId, Species, Level, Elite, Element, Fighting); here each marker gets a
 -- model (ReplicatedStorage.MonsterModels[Species], or a placeholder shape in its element colour), the same
--- motion as summoned creatures (CreatureVisuals) and a name tag. Elites are bigger with a gold tag.
+-- motion as summoned creatures (CreatureVisuals) and a name tag. Elites are bigger with a gold tag; bosses (attribute
+-- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 -- The server wild map in the main game, the Frontier in the Frontier place
@@ -18,6 +20,7 @@ local MonsterController = {}
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
+local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
 type Monster = {
 	marker: BasePart,
@@ -102,10 +105,11 @@ local function updateTag(monster: Monster)
 	local species = marker:GetAttribute("Species")
 	local level = marker:GetAttribute("Level")
 	local elite = marker:GetAttribute("Elite") == true
+	local boss = marker:GetAttribute("Boss") ~= nil
 	local fighting = marker:GetAttribute("Fighting") == true
 	local name = if typeof(species) == "string" then species else "Monster"
-	monster.tag.Text = `{if fighting then "⚔ " else ""}{if elite then "ELITE " else ""}{name}\nLv {if typeof(level) == "number" then level else 1}`
-	monster.tag.TextColor3 = if elite then ELITE_TAG_COLOR else TAG_COLOR
+	monster.tag.Text = `{if fighting then "⚔ " else ""}{if boss then "BOSS " elseif elite then "ELITE " else ""}{name}\nLv {if typeof(level) == "number" then level else 1}`
+	monster.tag.TextColor3 = if boss then BOSS_TAG_COLOR elseif elite then ELITE_TAG_COLOR else TAG_COLOR
 end
 
 local function remove(marker: BasePart)
@@ -125,19 +129,22 @@ local function add(marker: BasePart)
 	if monsters[marker] or typeof(species) ~= "string" then
 		return
 	end
-	local info = Wild.SPECIES[species]
+	local bossId = marker:GetAttribute("Boss")
+	local boss = if typeof(bossId) == "string" then Bosses.BOSSES[bossId] else nil
+	local info: { element: string, shape: string }? = boss or Wild.SPECIES[species]
 	if not info then
 		return
 	end
 	local elite = marker:GetAttribute("Elite") == true
 	local color = Cards.ELEMENTS[info.element] or Color3.new(0.6, 0.6, 0.6)
-	local template = CreatureVisuals.getTemplate("MonsterModels", species, Wild.MAX_MODEL_PARTS)
+	-- A boss model, when it exists, is saved under the boss's id
+	local template = CreatureVisuals.getTemplate("MonsterModels", if boss then bossId :: string else species, Wild.MAX_MODEL_PARTS)
 	local model = if template then template:Clone() else makePlaceholder(info.shape, color)
 	CreatureVisuals.strip(model)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`
 
-	local flying = table.find(Wild.FLYING, species) ~= nil
-	local height = Wild.MONSTER_HEIGHT * (if elite then Wild.ELITE_SIZE else 1)
+	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
+	local height = Wild.MONSTER_HEIGHT * (if boss then boss.scale elseif elite then Wild.ELITE_SIZE else 1)
 	local body = CreatureVisuals.build(model, marker, height, flying)
 	local monster: Monster = {
 		marker = marker,
@@ -145,9 +152,9 @@ local function add(marker: BasePart)
 		tag = CreatureVisuals.makeTag(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), TAG_COLOR),
 		connections = {},
 	}
-	if elite then
+	if elite or boss then
 		local light = Instance.new("PointLight")
-		light.Color = ELITE_TAG_COLOR
+		light.Color = if boss then BOSS_TAG_COLOR else ELITE_TAG_COLOR
 		light.Brightness = 0.8
 		light.Range = 8
 		light.Parent = body.root

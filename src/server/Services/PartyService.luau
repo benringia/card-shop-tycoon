@@ -11,7 +11,9 @@ local StarterPlayer = game:GetService("StarterPlayer")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
@@ -21,6 +23,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type PlayerData = DataService.PlayerData
@@ -355,6 +358,36 @@ local function onSummon(player: Player, slot: unknown)
 	sendParty(player)
 end
 
+-- One XP Tonic (a boss drop) on a card in the party; never wasted on a max-level card
+local function onUseXpTonic(player: Player, beastId: unknown)
+	local state = states[player]
+	if not allowAction(player) or not state or typeof(beastId) ~= "string" then
+		return
+	end
+	local inParty = false
+	for slot = 1, Party.PARTY_SIZE do
+		inParty = inParty or state.slots[slot] == beastId
+	end
+	local beast = CardService.GetBeast(player, beastId)
+	if not inParty or not beast then
+		return
+	end
+	if beast.level >= Beasts.MAX_LEVEL then
+		notify(player, "That card is already max level.", true)
+		return
+	end
+	if not ItemService.TakeItem(player, "xpTonic", 1) then
+		notify(player, "You have no XP Tonics. Bosses drop them.", true)
+		return
+	end
+	local after = CardService.AddXP(player, beastId, Items.ITEMS.xpTonic.xp)
+	if after then
+		notify(player, `+{Items.ITEMS.xpTonic.xp} XP: {Cards.ById[after.cardId].name} is now {BeastRules.describeGrowth(after.level, after.stars)}`, false)
+		refreshMarker(player)
+		sendParty(player)
+	end
+end
+
 -- Data ----------------------------------------------------------------------------------------------------
 
 local function load(player: Player, data: PlayerData)
@@ -423,6 +456,7 @@ function PartyService.Start()
 	DataService.Register({ name = "PartyService", load = load, save = save, unload = unload })
 	Remotes.SetPartySlot.OnServerEvent:Connect(onSetSlot)
 	Remotes.Summon.OnServerEvent:Connect(onSummon)
+	Remotes.UseXpTonic.OnServerEvent:Connect(onUseXpTonic)
 	Remotes.RequestParty.OnServerEvent:Connect(function(player)
 		if allowAction(player) then
 			sendParty(player)

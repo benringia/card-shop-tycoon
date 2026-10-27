@@ -29,6 +29,7 @@ return {
 		Computer = { height = 0, collide = false, built = true }, -- the order computer: a modern workstation
 		Condenser = { height = 0, collide = false, built = true }, -- the Card Condenser (CONDENSER_LOOK)
 		GradingStation = { height = 0, collide = false, built = true }, -- the Grading Station (GRADING_LOOK)
+		Trophy = { height = 0, collide = false, built = true }, -- a boss trophy (TROPHY_LOOK; its Gem in the boss's colour)
 		-- each product shelf's look (Config/Shelves prop): code-built modern shelving (Util/ShelfLooks, SHELF_LOOK)
 		Shelf = { height = 0, collide = false, built = true }, -- Small Pack Rack: a one-sided gondola
 		WallShelf = { height = 0, collide = false, built = true },
@@ -231,6 +232,16 @@ return {
 		CARD = { 255, 214, 110 },
 		SLAB = { 235, 240, 250 },
 		SCREEN_TEXT = "🏅 GRADING",
+	},
+
+	-- A boss trophy (Props, code-built): a dark stone plinth with a gold band and a gem in the boss's element colour
+	-- (Config/Shelves propColors Gem), a gold cup with handles on top. No lights. Studs; colours { r, g, b }.
+	TROPHY_LOOK = {
+		PLINTH_WIDTH = 2.6,
+		PLINTH_HEIGHT = 2.2,
+		STONE = { 52, 54, 64 },
+		GOLD = { 232, 186, 70 },
+		GEM = { 255, 255, 255 }, -- recoloured per boss
 	},
 
 	-- Code-built product shelves (Util/ShelfLayout places the parts, Util/ShelfLooks draws them): charcoal posts and

@@ -14,6 +14,7 @@ local COSTS: { [string]: { [string]: Step } } = {
 
 return {
 	COSTS = COSTS,
+	MAX_SEAL_SHARE = 0.5, -- Grading Seals cover at most this share of a step's duplicates (like Star Shards)
 	ACTION_COOLDOWN = 0.5, -- seconds between grade-up requests per player (server)
 	USE_DISTANCE = 12, -- studs: how close the owner must stand to use it (server check, panel closes past it)
 	IN_FLIGHT_TIMEOUT = 2, -- seconds the Grade Up button stays locked waiting for the server (client)

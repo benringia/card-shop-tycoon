@@ -4,6 +4,8 @@ return {
 	TICK_RATE = 10, -- fight steps per second on the server
 	CALL_IN_SECONDS = 5, -- second party card may join only this early
 	MAX_FIGHT_SECONDS = 120, -- a fight still going after this ends as a run (stuck or idle)
+	BOSS_MAX_FIGHT_SECONDS = 300, -- bosses have far more HP: their fights may run this long
+	BOSS_MAX_STUN = 1, -- seconds: stuns on a boss last at most this long
 
 	-- Attacks: interval = clamp(ATTACK_BASE * SPD_REFERENCE / SPD, ATTACK_MIN, ATTACK_MAX)
 	ATTACK_BASE = 2,

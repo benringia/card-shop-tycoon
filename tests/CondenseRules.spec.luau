@@ -176,4 +176,21 @@ return {
 		local fromS = CondenseRules.gradeCostToTop(grading, config.GRADES, "Legendary", "S")
 		expect.equal(fromS.copies, 0, "nothing past S")
 	end,
+	["grading seals cover missing duplicates, at most half a step"] = function()
+		local beastA = { beast = true, foil = false, grade = "A", stars = 0 }
+		-- Legendary A -> S needs 3 duplicates; half of 3, rounded down, is 1
+		local plan, reason = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(2, 0) }, beastA, 5)
+		assert(plan, `expected a plan, got {reason}`)
+		expect.equal(plan.seals, 1, "one seal fills the gap")
+		expect.equal(total(plan.takes), 2, "the two real duplicates go first")
+		local none, short = CondenseRules.gradePlan(grading, config, "Legendary", {}, beastA, 5)
+		expect.isNil(none, "seals can't cover more than half a step")
+		expect.equal(short, "short:0:3", "reason")
+		local enough = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(3, 0) }, beastA, 5)
+		assert(enough, "a plan")
+		expect.equal(enough.seals, 0, "no seals when the duplicates are enough")
+		local without = CondenseRules.gradePlan(grading, config, "Legendary", { C = counts(3, 0) }, beastA)
+		assert(without, "a plan")
+		expect.equal(without.seals, 0, "no seals given")
+	end,
 }

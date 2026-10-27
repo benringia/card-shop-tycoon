@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -32,6 +33,7 @@ type PartyState = {
 local ROW_HEIGHT = 112
 local FACE_SIZE = Vector2.new(70, 100)
 local BUTTON_WIDTH = 116
+local TONIC_WIDTH = 84
 
 local PartyController = {}
 
@@ -40,6 +42,7 @@ local list: ScrollingFrame
 local perkLabel: TextLabel
 local state: PartyState? = nil
 local hintLabels: { [string]: TextLabel } = {} -- beastId -> the row's bottom line (perk hint, or resting time)
+local tonicCount = 0 -- XP Tonics held (from ItemsChanged)
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -112,7 +115,8 @@ local function buildCardRow(slot: number, beastId: string, summoned: boolean)
 	CardFace.render(face, faceStroke, card, beast.foil, false)
 
 	local x = FACE_SIZE.X + 18
-	local textWidth = UDim.new(1, -(x + BUTTON_WIDTH + 20))
+	local canTonic = tonicCount > 0 and beast.level < Beasts.MAX_LEVEL
+	local textWidth = UDim.new(1, -(x + BUTTON_WIDTH + 20 + (if canTonic then TONIC_WIDTH + 8 else 0)))
 	local title = `{if summoned then "Summoned · " else ""}{card.name}{if beast.foil then " FOIL" else ""}`
 	addText(row, title, x, 6, textWidth, 20, Enum.Font.GothamBold, 15, if summoned then UIKit.Colors.Accent else UIKit.Colors.Text)
 	addText(row, `{BeastRules.describeGrade(beast.grade)} · {BeastRules.describeGrowth(beast.level, beast.stars)}`, x, 28, textWidth, 16, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
@@ -138,6 +142,18 @@ local function buildCardRow(slot: number, beastId: string, summoned: boolean)
 	remove.Activated:Connect(function()
 		Remotes.SetPartySlot:FireServer(slot, nil)
 	end)
+
+	if canTonic then
+		local tonic = UIKit.button(row, `🧪 +XP\nTonic ({tonicCount})`, UIKit.Colors.Row)
+		tonic.AnchorPoint = Vector2.new(1, 0)
+		tonic.Position = UDim2.new(1, -(BUTTON_WIDTH + 18), 0, 6)
+		tonic.Size = UDim2.fromOffset(TONIC_WIDTH, 100)
+		tonic.TextSize = 14
+		tonic.TextWrapped = true
+		tonic.Activated:Connect(function()
+			Remotes.UseXpTonic:FireServer(beastId)
+		end)
+	end
 end
 
 -- Bottom line of each card row: resting countdown after fainting, otherwise the perk hint
@@ -239,6 +255,14 @@ function PartyController.Start()
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(render)
 	end)
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
+		local count = if typeof(items) == "table" then items.xpTonic else nil
+		tonicCount = if typeof(count) == "number" then count else 0
+		if panel.Visible then
+			render()
+		end
+	end)
+	Remotes.RequestItems:FireServer() -- our own copy of the tonic count, whatever order the controllers start in
 end
 
 return PartyController

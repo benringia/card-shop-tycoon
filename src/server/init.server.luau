@@ -24,6 +24,7 @@ local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local ArenaService = require(Services:WaitForChild("ArenaService"))
+local BossService = require(Services:WaitForChild("BossService"))
 local FrontierService = require(Services:WaitForChild("FrontierService"))
 local TownService = require(Services:WaitForChild("TownService"))
 local DevService = require(Services:WaitForChild("DevService"))
@@ -66,6 +67,7 @@ else
 	WildService.Start() -- wild map, plaza portal, spring and monsters
 	BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
 	ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)
+	BossService.Start() -- the boss ladder: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
 	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals
 	DevService.Start() -- Studio only

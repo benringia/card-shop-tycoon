@@ -1,7 +1,8 @@
 --!strict
 -- Wild fights on this client (battles part 1): "Fight" prompts on monsters, the Shop button while in the
 -- wild, the fight bar (monster HP, your fighters with ability buttons, Call in, Run %), floating damage
--- numbers over the fighters, and the end screen. The server decides everything; this only shows it and
+-- numbers over the fighters, and the end screen. Boss fights add a wide HP bar at the top, banners when the boss
+-- heals or enrages, and the loot on the end screen. The server decides everything; this only shows it and
 -- sends intents (StartFight, CallIn, UseAbility, RunFight, WildTravel).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,8 +11,10 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
 -- The server wild map in the main game, the Frontier in the Frontier place
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
@@ -25,6 +28,10 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local player = Players.LocalPlayer
 
 local BAR_MAX_WIDTH = 560
+local BOSS_BAR_MAX_WIDTH = 640
+local BANNER_SECONDS = 1.4
+local END_SCREEN_HEIGHT = 150
+local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
 local HP_COLOR = Color3.fromRGB(90, 210, 110)
 local MONSTER_HP_COLOR = Color3.fromRGB(220, 80, 70)
 local TRACK_COLOR = Color3.fromRGB(25, 25, 35)
@@ -74,6 +81,11 @@ local countdownLabel: TextLabel -- arena: 3, 2, 1, FIGHT!
 local countdownToken = 0
 local endTitle: TextLabel
 local endBody: TextLabel
+local bossBar: Frame -- boss fights: name and HP across the top of the screen
+local bossName: TextLabel
+local bossHpFill: Frame
+local bossHpText: TextLabel
+local bossId: string? = nil -- the boss being fought (Config/Bosses id)
 local shopButton: TextButton
 
 local fighting = false
@@ -340,6 +352,9 @@ local function applySnapshot(snapshot: Snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+	if bossId then
+		setBar(bossHpFill, bossHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+	end
 	if mode == "pvp" then
 		for _, enemy in snapshot.enemies do
 			local view = enemyBars[enemy.id]
@@ -371,7 +386,7 @@ local function setHudHidden(hidden: boolean)
 		end
 		-- Close any open panel (binder, party...) so the fight bar is on top
 		for _, child in screenGui:GetChildren() do
-			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= endScreen then
+			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= endScreen and child ~= bossBar then
 				child.Visible = false
 			end
 		end
@@ -381,6 +396,25 @@ local function setHudHidden(hidden: boolean)
 		end
 		hiddenHud = {}
 	end
+end
+
+local COUNTDOWN_POP = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- A word that pops up in the middle of the screen for a moment (the arena countdown's label)
+local function banner(text: string, color: Color3)
+	countdownToken += 1
+	local token = countdownToken
+	local scale = countdownLabel:FindFirstChildOfClass("UIScale") :: UIScale
+	countdownLabel.Text = text
+	countdownLabel.TextColor3 = color
+	countdownLabel.Visible = true
+	scale.Scale = 1.8
+	TweenService:Create(scale, COUNTDOWN_POP, { Scale = 1 }):Play()
+	task.delay(BANNER_SECONDS, function()
+		if countdownToken == token then
+			countdownLabel.Visible = false
+		end
+	end)
 end
 
 local function onEvents(events: { any })
@@ -416,6 +450,13 @@ local function onEvents(events: { any })
 			UIController.Notify("Couldn't get away!", true, 1.5)
 		elseif event.type == "callin" and event.from then
 			floatText(event.from, "Joined!", HEAL_COLOR)
+		elseif event.type == "heal" then
+			if event.to and event.heal then
+				floatText(event.to, `+{event.heal}`, HEAL_COLOR)
+			end
+			banner("Healing!", HEAL_COLOR)
+		elseif event.type == "enrage" then
+			banner("Enraged!", UIKit.Colors.Danger)
 		end
 	end
 end
@@ -452,7 +493,40 @@ local function showPvpEnd(summary: any)
 	end)
 end
 
+-- "12:34"
+local function clock(seconds: number): string
+	return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
+-- What a boss win gave (summary.boss from BossService)
+local function bossLines(boss: any): { string }
+	local lines = {}
+	if boss.firstClear then
+		table.insert(lines, "🏆 First clear!")
+	end
+	for _, entry in (if typeof(boss.items) == "table" then boss.items else {}) do
+		local item = Items.ITEMS[entry.item]
+		if item then
+			local icon = if string.match(item.icon, "^%a") then "" else `{item.icon} ` -- emoji icons only
+			table.insert(lines, `{icon}+{entry.count} {item.name}`)
+		end
+	end
+	if boss.bonus then
+		table.insert(lines, "🎁 Daily bonus!")
+	end
+	if boss.flagged then
+		table.insert(lines, "Too fast for drops this time")
+	elseif boss.reduced then
+		table.insert(lines, "Reduced drops (many wins today or a much stronger party)")
+	end
+	if typeof(boss.lootIn) == "number" and boss.lootIn > 0 then
+		table.insert(lines, `Full loot again in {clock(boss.lootIn)}`)
+	end
+	return lines
+end
+
 local function showEnd(summary: any)
+	endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT)
 	if summary.mode == "pvp" then
 		showPvpEnd(summary)
 		return
@@ -473,6 +547,12 @@ local function showEnd(summary: any)
 			local found = Cards.ById[summary.card.cardId]
 			table.insert(lines, if found.set == "Frontier" then `✨ FRONTIER CARD: {found.name}!` else `🎴 New card: {found.name} (grade {summary.card.grade})`)
 		end
+		if typeof(summary.boss) == "table" then
+			for _, line in bossLines(summary.boss) do
+				table.insert(lines, line)
+			end
+		end
+		endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT + math.max(0, #lines - 3) * END_LINE_HEIGHT)
 		endBody.Text = table.concat(lines, "\n")
 	elseif result == "lose" then
 		endTitle.Text = "Your party fainted"
@@ -491,8 +571,6 @@ local function showEnd(summary: any)
 		end
 	end)
 end
-
-local COUNTDOWN_POP = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
 -- Big numbers in the middle of the screen before an arena fight starts
 local function showCountdown(seconds: number)
@@ -539,7 +617,15 @@ local function onStarted(payload: any)
 		monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
 		monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
 	end
-	monsterTrack.Visible = mode == "wild"
+	local boss = if mode == "wild" and typeof(payload.boss) == "string" then Bosses.BOSSES[payload.boss] else nil
+	bossId = if boss then payload.boss else nil
+	if boss then
+		monsterName.Text = `BOSS {elementIcon(boss.element)} {boss.name}`
+		monsterName.TextColor3 = UIKit.Colors.Danger
+		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
+	end
+	bossBar.Visible = boss ~= nil
+	monsterTrack.Visible = mode == "wild" and boss == nil -- a boss's HP is the bar at the top
 	enemyRow.Visible = mode == "pvp"
 	runButton.Visible = mode == "wild"
 	if mode == "pvp" then
@@ -562,6 +648,8 @@ end
 local function onEnded(summary: any)
 	fighting = false
 	bar.Visible = false
+	bossBar.Visible = false
+	bossId = nil
 	latest = nil
 	setHudHidden(false)
 	for marker, prompt in prompts do
@@ -575,7 +663,8 @@ end
 -- Prompts and travel --------------------------------------------------------------------------------------
 
 local function watchMonster(marker: Instance)
-	if not marker:IsA("BasePart") or prompts[marker] then
+	-- Bosses start at their arena gate, never from a prompt on them
+	if not marker:IsA("BasePart") or prompts[marker] or marker:GetAttribute("Boss") ~= nil then
 		return
 	end
 	local prompt = Instance.new("ProximityPrompt")
@@ -684,6 +773,32 @@ local function build()
 	countdownLabel.Visible = false
 	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
 	Instance.new("UIScale").Parent = countdownLabel
+
+	-- Boss HP across the top, under the Roblox buttons
+	bossBar = Instance.new("Frame")
+	bossBar.Name = "BossBar"
+	bossBar.AnchorPoint = Vector2.new(0.5, 0)
+	bossBar.Position = UDim2.new(0.5, 0, 0, 64)
+	bossBar.Size = UDim2.new(0.7, 0, 0, 58)
+	bossBar.BackgroundColor3 = UIKit.Colors.Panel
+	bossBar.BackgroundTransparency = 0.1
+	bossBar.Visible = false
+	bossBar.ZIndex = UIKit.PANEL_Z_INDEX + 1
+	bossBar.Parent = screenGui
+	UIKit.corner(bossBar, 12)
+	local bossWidth = Instance.new("UISizeConstraint")
+	bossWidth.MaxSize = Vector2.new(BOSS_BAR_MAX_WIDTH, math.huge)
+	bossWidth.Parent = bossBar
+	bossName = UIKit.label(bossBar, "", Enum.Font.FredokaOne, 18, UIKit.Colors.Danger)
+	bossName.Position = UDim2.fromOffset(12, 4)
+	bossName.Size = UDim2.new(1, -24, 0, 22)
+	bossName.TextXAlignment = Enum.TextXAlignment.Center
+	bossName.TextTruncate = Enum.TextTruncate.AtEnd
+	local bossTrack, bossFill, bossText = makeBar(bossBar, 22, MONSTER_HP_COLOR)
+	bossTrack.Position = UDim2.fromOffset(12, 28)
+	bossTrack.Size = UDim2.new(1, -24, 0, 22)
+	bossHpFill, bossHpText = bossFill, bossText
+	bossHpText.TextSize = 14
 
 	endScreen = Instance.new("Frame")
 	endScreen.Name = "FightEnd"

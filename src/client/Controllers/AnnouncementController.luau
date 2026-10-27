@@ -1,13 +1,14 @@
 --!strict
 -- Shows server-wide pull announcements ("n0gginss pulled a FOIL Solarion!") as system chat messages.
 -- The server only sends other players' pulls, after the puller has flipped the card. Your own pulls
--- are shown by PackOpeningController at the moment you flip them.
+-- are shown by PackOpeningController at the moment you flip them. First boss clears (BossCleared) show here too.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextChatService = game:GetService("TextChatService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Announcements = require(Config:WaitForChild("Announcements"))
+local Bosses = require(Config:WaitForChild("Bosses"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -47,7 +48,28 @@ function AnnouncementController.Show(displayName: string, card: Card, foil: bool
 	channel:DisplaySystemMessage(`<font color="#{color}"><b>{text}</b></font>`)
 end
 
+local BOSS_CLEAR_COLOR = Color3.fromRGB(255, 90, 80)
+
+-- "n0gginss beat the Meadow Warden for the first time!"
+local function showBossCleared(displayName: string, bossId: string)
+	local boss = Bosses.BOSSES[bossId]
+	if not boss then
+		return
+	end
+	local channel = getGeneralChannel()
+	if not channel then
+		UIController.Notify(`{displayName} beat the {boss.name} for the first time!`, false)
+		return
+	end
+	channel:DisplaySystemMessage(`<font color="#{BOSS_CLEAR_COLOR:ToHex()}"><b>🏆 {escape(displayName)} beat the {boss.name} for the first time!</b></font>`)
+end
+
 function AnnouncementController.Start()
+	Remotes.BossCleared.OnClientEvent:Connect(function(displayName: unknown, bossId: unknown)
+		if typeof(displayName) == "string" and typeof(bossId) == "string" then
+			showBossCleared(displayName, bossId)
+		end
+	end)
 	Remotes.PullAnnouncement.OnClientEvent:Connect(function(displayName: string, cardId: string, foil: boolean, kind: string?)
 		local card = Cards.ById[cardId]
 		if card and typeof(displayName) == "string" then

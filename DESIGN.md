@@ -394,7 +394,8 @@ Roadmap (one sub-project at a time):
    1. Combat core + server wild map (spec `2026-10-22-battles-wild-design.md`; done).
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
-      b) Dungeons: a third place with late-game bosses for groups, reached from the Frontier (later).
+      b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, done: 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
@@ -572,6 +573,46 @@ Cost per step, duplicates + cash (`Config/Grading.COSTS`):
 | Epic | 1 + $500 | 2 + $2,500 | 4 + $10,000 | 7 + $13,000 |
 | Legendary | 1 + $500 | 2 + $2,500 | 3 + $12,500 | 6 + $15,500 |
 
+### 5.10 Boss ladder (phase 1: Wild bosses 1-3, solo)
+
+Spec `docs/superpowers/specs/2026-10-28-boss-ladder-design.md`. Each boss drops what helps you beat the next and
+the fragments that open it. Numbers in `Config/Bosses`, rules in `Util/BossRules` (pure, Lune-tested), saved progress
+and rewards in `BossService`.
+
+| # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Opens with |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1200 / 9 / 8 | 200 | - | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 13 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 4800 / 18 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
+
+| Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
+|---|---|---|---|---|
+| Meadow Warden | $36 / 620 | XP Tonic 60% (1-2), Brood Queen fragment 70% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
+| Cave Brood Queen | $66 / 1360 | XP Tonic 60% (1-3), Star Shard 15%, Colossus fragment 60% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
+| Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3) | trophy, 3 Grading Seals | 2 Grading Seals |
+
+- **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
+  recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
+  key's fragments are used the first time only. The boss is spawned for you alone, stands still, and always goes when
+  the fight ends (win, loss or run). One boss per arena: while someone fights there, the gate tells others to wait
+  (shared group fights come with groups, phase 3). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  studs, stuns on a boss last at most 1 s.
+- **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
+  (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
+  rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
+  strongest party card above 2.5x the recommended Power makes them x0.35. Fragments for a boss you've already opened
+  never drop. The first clear's chest (and the server-wide chat message) comes even on a too-fast win, so a strong
+  player can still climb.
+- **Items:** XP Tonic (400 card XP, used from the Party panel, never on a Lv 30 card), Grading Seal (one missing
+  duplicate at the Grading Station, at most half a step), Star Shards, fragments, trophies.
+- **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; a stone
+  plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
+- **UI:** the Bosses HUD tile (K) opens the Boss Ladder: lock and fragments x/N, recommended Power vs your strongest
+  party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
+  fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
+- Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` (use the gate there).
+- Boss models are placeholders (Wild shapes at 2.5-3.2x). Phases 2-4: Frontier bosses, groups, the Dungeon.
+
 ---
 
 ## 6. Products (stock you sell)
@@ -733,7 +774,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
-    │   │   ├── ItemService.luau      # item inventory (Star Shards): give, take, save
+    │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
+    │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates, keys, boss wins' items (farm protection)
     │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
@@ -766,7 +808,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
-    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), damage numbers, end screen
+    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder panel
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
@@ -816,6 +859,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
         │   ├── Items.luau      # every item: name, icon, description; stack limit
+        │   ├── Bosses.luau     # boss ladder: bosses, drops, chests, farm protection, arenas
         │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, lighting
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
@@ -849,6 +893,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
@@ -863,10 +908,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v11)
+### 10.4 Player data schema (v12)
 ```lua
 {
-    version = 11,
+    version = 12,
     cash = 200,
     xp = 0,
     level = 1,
@@ -887,6 +932,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     pvp = { wins = 0, losses = 0, draws = 0 }, -- PvP record
     items = {},             -- { [itemId] = count } item inventory (Config/Items), e.g. starShard
     pity = { legendary = 0, epic = 0, firstDone = false }, -- packs since the last Legendary / Epic or better; had a first Legendary
+    bosses = {},            -- { [bossId] = { unlocked, cleared, lootAt, day, rewardedToday, bonusDay } } boss ladder (5.10)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
 }
@@ -899,7 +945,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

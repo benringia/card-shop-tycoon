@@ -1,6 +1,7 @@
 --!strict
 local ItemRules = require("../src/shared/Util/ItemRules")
 local config = require("../src/shared/Config/Items")
+local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 
 return {
@@ -33,5 +34,25 @@ return {
 		expect.isNil(after.starShard, "used up -> removed")
 		expect.equal(items.starShard, 3, "input untouched")
 		expect.isNil(ItemRules.take(items, "starShard", -1), "negative refused")
+	end,
+	["every boss drop, unlock and first-clear item exists in Config/Items"] = function()
+		local function check(item: string, where: string)
+			assert(config.ITEMS[item], `{where} gives {item}, which isn't in Config/Items`)
+		end
+		for id, boss in Bosses.BOSSES do
+			for _, drop in boss.drops do
+				check(drop.item, `{id} drops`)
+			end
+			for _, grant in boss.firstClear do
+				check(grant.item, `{id} first clear`)
+			end
+			for _, grant in boss.dailyBonus do
+				check(grant.item, `{id} daily bonus`)
+			end
+			if boss.unlock then
+				check(boss.unlock.item, `{id} unlock`)
+			end
+		end
+		assert(typeof(config.ITEMS.xpTonic and config.ITEMS.xpTonic.xp) == "number", "the XP Tonic says how much XP it gives")
 	end,
 }

@@ -3,7 +3,8 @@
 -- healing spring, and the wild monsters. The server only moves an invisible marker per monster in
 -- workspace.Monsters; clients draw them (MonsterController). Monsters sleep with no player near, wander near
 -- their spawn, and elites (and every monster in an aggro zone) chase players and report contact, which
--- BattleService turns into a fight. Fights themselves live in BattleService.
+-- BattleService turns into a fight. Fights themselves live in BattleService. Boss arenas (Config/Bosses) sit beside
+-- their zones; a boss is a monster with a `boss` id that stands still until its fight ends (BossService spawns it).
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -17,6 +18,7 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier's map in the Frontier place (same shape)
 local Wild = Place.getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Town = require(Config:WaitForChild("Town"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
@@ -37,7 +39,8 @@ export type Monster = {
 	marker: Part,
 	fightingPlayer: Player?,
 	alive: boolean,
-	spawnPoint: BasePart?, -- nil for dev-spawned monsters (no respawn)
+	spawnPoint: BasePart?, -- nil for dev-spawned monsters and bosses (no respawn)
+	boss: string?, -- a Config/Bosses id: no wandering or chasing, gone when its fight ends
 	wanderTarget: Vector3?,
 	waitUntil: number,
 	chaseCooldownUntil: number,
@@ -56,6 +59,7 @@ local SPRING_COLOR = Color3.fromRGB(80, 190, 255)
 
 local monsters: { [string]: Monster } = {}
 local monstersFolder: Folder
+local mapFolder: Folder
 local inWild: { [Player]: boolean } = {}
 local contactCallbacks: { (player: Player, monster: Monster) -> () } = {}
 local travelBlockers: { (player: Player) -> string? } = {}
@@ -351,6 +355,7 @@ local function setMarker(monster: Monster)
 	marker:SetAttribute("Element", monster.element)
 	marker:SetAttribute("Zone", monster.zone)
 	marker:SetAttribute("Fighting", monster.fightingPlayer ~= nil)
+	marker:SetAttribute("Boss", monster.boss)
 end
 
 local function groundAt(position: Vector3): Vector3
@@ -358,8 +363,8 @@ local function groundAt(position: Vector3): Vector3
 	return if hit then hit.Position else position
 end
 
-local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?): Monster?
-	local info = Wild.SPECIES[species]
+local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?, boss: string?): Monster?
+	local info: { element: string }? = if boss then Bosses.BOSSES[boss] else Wild.SPECIES[species]
 	if not info then
 		return nil
 	end
@@ -384,6 +389,7 @@ local function createMonster(species: string, level: number, elite: boolean, zon
 		fightingPlayer = nil,
 		alive = true,
 		spawnPoint = spawnPoint,
+		boss = boss,
 		wanderTarget = nil,
 		waitUntil = 0,
 		chaseCooldownUntil = 0,
@@ -443,7 +449,7 @@ local function nearestPlayer(position: Vector3, skipBusy: boolean?): (Player?, n
 end
 
 local function updateMonster(monster: Monster, dt: number, now: number)
-	if not monster.alive or monster.fightingPlayer then
+	if not monster.alive or monster.fightingPlayer or monster.boss then
 		return
 	end
 	local player, distance = nearestPlayer(monster.marker.Position)
@@ -549,15 +555,66 @@ function WildService.GetSpringPosition(): Vector3
 	return vec(Wild.SPRING)
 end
 
--- Dev command (/elite): a monster at a spot, never respawned
-function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean): Monster?
+-- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id)
+function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?): Monster?
 	local zone = 1
 	for index in Wild.ZONES do
 		if (position - zoneCenter(index)).Magnitude < (position - zoneCenter(zone)).Magnitude then
 			zone = index
 		end
 	end
-	return createMonster(species, level, elite, zone, position, nil)
+	return createMonster(species, level, elite, zone, position, nil, boss)
+end
+
+export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame }
+
+-- Main game: a fenced ring beside each boss's zone with a gate (server prompt "Fight boss" -> onGate) and a sign.
+-- Returns where each gate and boss stand, by boss id.
+function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) -> ()): { [string]: BossArena }
+	local arenas: { [string]: BossArena } = {}
+	local folder = Instance.new("Folder")
+	folder.Name = "BossArenas"
+	folder.Parent = mapFolder -- part of the map, so bosses stand on its floor
+	for _, bossId in Bosses.LADDER do
+		local boss = Bosses.BOSSES[bossId]
+		local center = zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
+		local radius = Bosses.ARENA_RADIUS
+		-- Cylinders run along X: lay the disc flat
+		local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(70, 66, 80), Enum.Material.Slate)
+		floor.Shape = Enum.PartType.Cylinder
+		block(folder, "Path", Vector3.new(Bosses.ARENA_GAP + 4, 2, 14), CFrame.new(center - Vector3.new(radius + Bosses.ARENA_GAP / 2, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone)
+		-- Fence posts all round, open toward the zone (-X)
+		for step = 0, 23 do
+			local angle = step / 24 * math.pi * 2
+			local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			if direction.X > -0.95 then
+				block(folder, "Fence", Vector3.new(1.2, 5, 1.2), CFrame.new(center + direction * (radius - 0.6) + Vector3.new(0, 2.5, 0)), Color3.fromRGB(90, 70, 50), Enum.Material.Wood)
+			end
+		end
+		local gateSpot = center - Vector3.new(radius - 2, 0, 0)
+		local gate = block(folder, "BossGate", Vector3.new(1, 9, 12), CFrame.new(gateSpot + Vector3.new(0, 4.5, 0)), PORTAL_COLOR, Enum.Material.Neon)
+		gate.CanCollide = false
+		gate.Transparency = 0.6
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Fight boss"
+		prompt.ObjectText = `{boss.name} · Power {boss.recommended}`
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = gate
+		prompt.Triggered:Connect(function(player)
+			onGate(player, bossId)
+		end)
+		-- Faces the way players arrive (from the zone, -X)
+		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
+		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, 0, 0)
+		arenas[bossId] = {
+			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center), -- where /boss puts you, outside the gate
+			gatePosition = gate.Position, -- what the server measures a start from (the prompt's part)
+			spawn = CFrame.lookAt(bossSpot, gateSpot),
+		}
+	end
+	return arenas
 end
 
 local function canTravel(player: Player): boolean
@@ -620,12 +677,13 @@ function WildService.MoveTo(player: Player, cframe: CFrame): boolean
 	return true
 end
 
-function WildService.TravelToWild(player: Player)
+-- To the entrance, or to `at` in the wild (/boss)
+function WildService.TravelToWild(player: Player, at: CFrame?)
 	if not canTravel(player) then
 		return
 	end
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
-	if moveCharacter(player, CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))) then
+	if moveCharacter(player, at or CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))) then
 		inWild[player] = true
 		Remotes.WildTravel:FireClient(player, "wild")
 	end
@@ -669,9 +727,9 @@ function WildService.Start()
 	monstersFolder.Name = "Monsters"
 	monstersFolder.Parent = workspace
 
-	local map = buildMap()
-	map.Parent = workspace
-	rayParams.FilterDescendantsInstances = { map }
+	mapFolder = buildMap()
+	mapFolder.Parent = workspace
+	rayParams.FilterDescendantsInstances = { mapFolder }
 	buildPlaza()
 	for _, point in CollectionService:GetTagged(SPAWN_TAG) do
 		if point:IsA("BasePart") then

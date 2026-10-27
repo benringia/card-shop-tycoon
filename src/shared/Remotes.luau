@@ -30,7 +30,7 @@ local NAMES = {
 	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?) big pulls and Frontier finds
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
-	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 grade from duplicates and cash
+	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals) +1 grade from duplicates (and Grading Seals) and cash
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
 	"JobsChanged", -- server → owner: { slotCount, maxSlots, unlockLevel, hasPass, passId, slots = { { slot, beastId, job, status } } }
@@ -55,6 +55,10 @@ local NAMES = {
 	"ChallengeStatus", -- server → client: { state: sent|declined|expired|cancelled|queued|starting|refused, message?, position? }
 	"ItemsChanged", -- server → owner: { [itemId] = count }
 	"RequestItems", -- client → server: () resend ItemsChanged
+	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, rewardedToday, fragments } }
+	"RequestBosses", -- client → server: () resend BossesChanged
+	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
+	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 }
 
@@ -131,5 +135,9 @@ return {
 	ChallengeStatus = remotes.ChallengeStatus,
 	ItemsChanged = remotes.ItemsChanged,
 	RequestItems = remotes.RequestItems,
+	BossesChanged = remotes.BossesChanged,
+	RequestBosses = remotes.RequestBosses,
+	BossCleared = remotes.BossCleared,
+	UseXpTonic = remotes.UseXpTonic,
 	FrontierTravel = remotes.FrontierTravel,
 }

@@ -6,7 +6,8 @@
 --   kind "PlayerCards":   displays single cards that only other players can buy
 --   kind "Condenser":     a machine that combines duplicate cards for stars (holds nothing)
 --   kind "Grading":       the Grading Station, a machine that raises a card's grade (holds nothing)
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading"
+--   kind "Trophy":        a boss trophy (holds nothing): placing it takes its trophy item, selling gives it back
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Trophy"
 
 export type Shelf = {
 	id: string,
@@ -21,7 +22,8 @@ export type Shelf = {
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
 	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
-	category: "Shelves" | "Cases" | "Fixtures", -- the Build menu tab it's listed under
+	category: "Shelves" | "Cases" | "Fixtures" | "Trophies", -- the Build menu tab it's listed under
+	requiresItem: string?, -- a Config/Items id placing it takes (and selling gives back); trophies only
 	-- Products shelves whose model isn't a plain one-sided rack: their own stock levels and sides
 	-- (Util/ShelfStock StockOverride; fractions measured from the prop model)
 	stock: { LEVELS: { number }?, SIDES: { number }?, DEPTH_FILL: number? }?,
@@ -94,6 +96,48 @@ local List: { Shelf } = {
 		unlockLevel = 8,
 		size = Vector3.new(6, 6, 4),
 		color = Color3.fromRGB(230, 185, 80),
+	},
+	{
+		id = "trophy_meadowWarden",
+		prop = "Trophy",
+		name = "Meadow Warden Trophy",
+		kind = "Trophy",
+		category = "Trophies", -- Build menu tab
+		capacity = 0,
+		cost = 0,
+		unlockLevel = 1,
+		size = Vector3.new(4, 5, 4),
+		color = Color3.fromRGB(218, 176, 84),
+		requiresItem = "trophy_meadowWarden",
+		propColors = { Gem = Color3.fromRGB(70, 175, 85) },
+	},
+	{
+		id = "trophy_caveBroodQueen",
+		prop = "Trophy",
+		name = "Brood Queen Trophy",
+		kind = "Trophy",
+		category = "Trophies", -- Build menu tab
+		capacity = 0,
+		cost = 0,
+		unlockLevel = 1,
+		size = Vector3.new(4, 5, 4),
+		color = Color3.fromRGB(218, 176, 84),
+		requiresItem = "trophy_caveBroodQueen",
+		propColors = { Gem = Color3.fromRGB(135, 70, 200) },
+	},
+	{
+		id = "trophy_emberColossus",
+		prop = "Trophy",
+		name = "Ember Colossus Trophy",
+		kind = "Trophy",
+		category = "Trophies", -- Build menu tab
+		capacity = 0,
+		cost = 0,
+		unlockLevel = 1,
+		size = Vector3.new(4, 5, 4),
+		color = Color3.fromRGB(218, 176, 84),
+		requiresItem = "trophy_emberColossus",
+		propColors = { Gem = Color3.fromRGB(235, 95, 45) },
 	},
 	{
 		id = "WallShelf",

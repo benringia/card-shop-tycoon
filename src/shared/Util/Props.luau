@@ -257,6 +257,30 @@ local function buildGradingStation(model: Model)
 	addPart(model, block, Vector3.new(0.75, 1, 0.16), CFrame.new(1.4, top + 1.15, 1.31) * CFrame.Angles(math.rad(-12), 0, 0), Props.color(look.CARD), Enum.Material.SmoothPlastic)
 end
 
+-- A boss trophy (Town.TROPHY_LOOK), bottom centre at the origin, front -Z: a stone plinth with a gold band and a
+-- gem (named Gem, recoloured per boss) on its front, a gold cup with two handles on top
+local function buildTrophy(model: Model)
+	local look = Town.TROPHY_LOOK
+	local block, cylinder, ball = Enum.PartType.Block, Enum.PartType.Cylinder, Enum.PartType.Ball
+	local stone, gold = Props.color(look.STONE), Props.color(look.GOLD)
+	local width, height = look.PLINTH_WIDTH, look.PLINTH_HEIGHT
+	addPart(model, block, Vector3.new(width + 0.4, 0.3, width + 0.4), CFrame.new(0, 0.15, 0), stone, Enum.Material.Slate)
+	addPart(model, block, Vector3.new(width, height, width), CFrame.new(0, height / 2, 0), stone, Enum.Material.Slate)
+	addPart(model, block, Vector3.new(width + 0.1, 0.2, width + 0.1), CFrame.new(0, height - 0.3, 0), gold, Enum.Material.Metal)
+	local gem = addPart(model, block, Vector3.new(0.6, 0.6, 0.15), CFrame.new(0, height * 0.5, -width / 2 - 0.05) * CFrame.Angles(0, 0, math.rad(45)), Props.color(look.GEM), Enum.Material.Neon)
+	gem.Name = "Gem"
+	-- The cup: a foot, a stem, the bowl and its rim, two ring handles
+	local top = height
+	addPart(model, cylinder, Vector3.new(0.2, 1.3, 1.3), CFrame.new(0, top + 0.1, 0) * UPRIGHT, gold, Enum.Material.Metal)
+	addPart(model, cylinder, Vector3.new(0.7, 0.35, 0.35), CFrame.new(0, top + 0.55, 0) * UPRIGHT, gold, Enum.Material.Metal)
+	addPart(model, ball, Vector3.new(1.6, 1.6, 1.6), CFrame.new(0, top + 1.5, 0), gold, Enum.Material.Metal)
+	addPart(model, cylinder, Vector3.new(0.9, 1.7, 1.7), CFrame.new(0, top + 2.05, 0) * UPRIGHT, gold, Enum.Material.Metal)
+	addPart(model, cylinder, Vector3.new(0.06, 1.5, 1.5), CFrame.new(0, top + 2.52, 0) * UPRIGHT, stone, Enum.Material.SmoothPlastic)
+	for _, side in { -1, 1 } do
+		addPart(model, cylinder, Vector3.new(0.15, 0.8, 0.8), CFrame.new(side * 0.95, top + 1.75, 0), gold, Enum.Material.Metal)
+	end
+end
+
 -- Stand-ins built around the origin, bottom at y = 0, front facing -Z
 local function buildFallback(slot: string, height: number, size: Vector3?, variant: number): Model
 	local model = Instance.new("Model")
@@ -309,6 +333,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		buildCondenser(model)
 	elseif slot == "GradingStation" then
 		buildGradingStation(model)
+	elseif slot == "Trophy" then
+		buildTrophy(model)
 	elseif slot == "Computer" then
 		-- A modern workstation, its front (-Z) the room side: a white desk on black panel legs, a slim widescreen
 		-- facing the chair, keyboard, mouse, a small plant, a drawer unit underneath and an office chair

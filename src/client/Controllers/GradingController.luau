@@ -54,6 +54,8 @@ local searchText = ""
 local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
 local inFlight = false -- a Grade Up request is waiting for the server; the button stays locked
 local inFlightToken = 0
+local useSeals = false -- Grading Seals fill missing duplicates (up to half a step)
+local sealCount = 0 -- from ItemsChanged
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -133,7 +135,7 @@ end
 
 local function getPlan(card: Card, main: Candidate): (CondenseRules.GradePlan?, string?)
 	local byGrade = BinderController.GetGradedStacks()[card.id] or {}
-	return CondenseRules.gradePlan(GradingConfig, Beasts, card.rarity, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars })
+	return CondenseRules.gradePlan(GradingConfig, Beasts, card.rarity, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars }, if useSeals then sealCount else nil)
 end
 
 -- The default main copy: the first one that can still go up a grade
@@ -239,7 +241,9 @@ local function renderPane(card: Card?)
 		if step then
 			table.insert(lines, `Costs {step.copies} {if step.copies == 1 then "copy" else "copies"} + {formatCash(step.cash)}`)
 		end
-		table.insert(lines, if plan then describeTakes(plan.takes) else describeReason(reason))
+		table.insert(lines, if plan
+			then describeTakes(plan.takes) .. (if plan.seals > 0 then ` + {plan.seals} Grading Seal{if plan.seals == 1 then "" else "s"}` else "")
+			else describeReason(reason))
 	else
 		table.insert(lines, "Grade S: the best it can be")
 	end
@@ -278,13 +282,31 @@ local function renderPane(card: Card?)
 		end)
 		local beast = chosen.beast
 		if beast then
-			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id, nil, nil)
+			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id, nil, nil, useSeals)
 		else
 			-- A plain copy moves up to the next grade's stack: keep following it there
 			mainKey = `stack:{plan and plan.grade or chosen.grade}:{chosen.foil}`
-			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade)
+			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade, useSeals)
 		end
 		render()
+	end)
+	y += 58
+
+	-- Grading Seals toggle: they fill in for missing duplicates (never more than half a step)
+	local hasSeals = sealCount > 0
+	local sealText = if not hasSeals then "🏅 No Grading Seals (bosses drop them)"
+		elseif useSeals then `🏅 Using Grading Seals (you have {sealCount})`
+		else `🏅 Use Grading Seals (you have {sealCount})`
+	local sealButton = UIKit.button(pane, sealText, if useSeals and hasSeals then UIKit.Colors.Accent else UIKit.Colors.Row)
+	sealButton.Position = UDim2.fromOffset(8, y)
+	sealButton.Size = UDim2.new(1, -16, 0, 48)
+	sealButton.TextSize = 14
+	sealButton.AutoButtonColor = hasSeals
+	sealButton.Activated:Connect(function()
+		if hasSeals then
+			useSeals = not useSeals
+			render()
+		end
 	end)
 	y += 58
 
@@ -530,6 +552,18 @@ function GradingController.Start()
 	pane.Parent = panel
 	UIKit.corner(pane, 10)
 
+	-- Seals come and go with the item inventory
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
+		local count = if typeof(items) == "table" then items.gradingSeal else nil
+		sealCount = if typeof(count) == "number" then count else 0
+		if sealCount == 0 then
+			useSeals = false
+		end
+		if panel.Visible then
+			render()
+		end
+	end)
+	Remotes.RequestItems:FireServer() -- our own copy of the seal count, whatever order the controllers start in
 	-- Grading changes the binder (and the cash): redraw
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(function() -- after BinderController has stored the new binder

@@ -29,6 +29,7 @@ local AnnouncementController = require(Controllers:WaitForChild("AnnouncementCon
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local BossBoardController = require(Controllers:WaitForChild("BossBoardController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
@@ -79,6 +80,7 @@ else
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	BossBoardController.Start() -- the boss ladder (main game only in phase 1)
 	ChallengeController.Start()
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
