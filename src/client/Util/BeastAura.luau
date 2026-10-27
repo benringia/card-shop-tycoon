@@ -2,14 +2,26 @@
 -- The big beasts' element aura (Crystal Titan Legendaries), on this client only: fire burning on bones spread
 -- over the body (Util/BeastFxRules picks them, so the flames move with the animation), lightning arcing between
 -- them, flames licking up from the ground, a flickering light and dust from the feet while it moves.
--- Everything turns off while the camera is far away. Legendaries get all of it; grade S and A copies of other
--- cards a lighter tier (BeastFx.TIERS). Numbers: Config/BeastFx.
+-- Everything turns off while the camera is far away. Legendaries get all of it; grade S Legendaries more (tier
+-- Divine: also a turning halo of flames behind the head, small suns circling it and burning embers left where it
+-- walks); grade S and A copies of other cards a lighter tier (BeastFx.TIERS). Numbers: Config/BeastFx.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BeastFx = require(Shared:WaitForChild("Config"):WaitForChild("BeastFx"))
 local BeastFxRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastFxRules"))
+
+-- The grade S Legendary extras (tier Divine)
+export type Divine = {
+	head: Bone?,
+	height: number,
+	halo: Part,
+	orbs: { Part },
+	time: number,
+	nextEmber: number,
+	embers: number,
+}
 
 export type Aura = {
 	model: Model,
@@ -23,12 +35,15 @@ export type Aura = {
 	near: boolean,
 	nextArc: number,
 	nextFlicker: number,
+	base: Part,
+	divine: Divine?,
 }
 
 local BeastAura = {}
 
 local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
 local rng = Random.new()
+local DIVINE = BeastFx.DIVINE
 
 local function rgb(color: BeastFx.Rgb): Color3
 	return Color3.fromRGB(color[1], color[2], color[3])
@@ -106,7 +121,112 @@ local function arc(aura: Aura)
 	aura.light.Brightness = aura.look.light.brightness * aura.tier.light * 2.5
 end
 
--- Adds the aura to a creature model standing on `floor`, at a tier (BeastFx.TIERS: Legendary, S, A); nil for an
+local function glowPart(name: string, shape: Enum.PartType, size: number, color: Color3, transparency: number): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Shape = shape
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Material = Enum.Material.Neon
+	part.Color = color
+	part.Transparency = transparency
+	part.Size = Vector3.new(size, size, size)
+	return part
+end
+
+-- The grade S Legendary extras: a ring of flames (turned each frame to sit behind the head) and small neon suns
+-- circling it; their emitters join the aura's so they switch off with it. No lights of their own: lit from this
+-- close, the model glares white
+local function addDivine(model: Model, look: BeastFx.Look, tier: BeastFx.Tier, size: number, height: number, emitters: { ParticleEmitter }): Divine
+	local color = rgb(look.light.color)
+	local head = model:FindFirstChild("Head_0", true)
+	local halo = glowPart("DivineHalo", Enum.PartType.Block, 0.1, color, 1)
+	local flame = table.clone(look.flames[1])
+	flame.size *= DIVINE.HALO.flame
+	flame.rate *= DIVINE.HALO.rate
+	flame.brightness = DIVINE.HALO.brightness
+	for _, point in BeastFxRules.ring(DIVINE.HALO.count, DIVINE.HALO.radius * height, 0) do
+		local spot = Instance.new("Attachment")
+		spot.Position = Vector3.new(point[1], point[2], 0)
+		spot.Parent = halo
+		local emitter = addFlame(spot, flame, size, tier)
+		emitter.LockedToPart = true
+		table.insert(emitters, emitter)
+	end
+	halo.Parent = model
+	local orbs: { Part } = {}
+	for _ = 1, DIVINE.ORBS.count do
+		local orb = glowPart("DivineSun", Enum.PartType.Ball, DIVINE.ORBS.size * size, color, 0)
+		local sunFlame = table.clone(look.flames[1])
+		sunFlame.size *= DIVINE.ORBS.size
+		sunFlame.rate *= DIVINE.ORBS.rate
+		table.insert(emitters, addFlame(orb, sunFlame, size, tier))
+		orb.Parent = model
+		table.insert(orbs, orb)
+	end
+	return {
+		head = if head and head:IsA("Bone") then head else nil,
+		height = height,
+		halo = halo,
+		orbs = orbs,
+		time = 0,
+		nextEmber = 0,
+		embers = 0,
+	}
+end
+
+-- A burning ember left on the ground where it walked, fading out
+local function dropEmber(aura: Aura, divine: Divine)
+	if divine.embers >= DIVINE.EMBERS.max then
+		return
+	end
+	divine.embers += 1
+	local ember = glowPart("DivineEmber", Enum.PartType.Cylinder, DIVINE.EMBERS.size * aura.size, rgb(aura.look.light.color), 0.2)
+	ember.Size = Vector3.new(0.05, ember.Size.Y, ember.Size.Z)
+	local at = aura.base.Position + Vector3.new(rng:NextNumber(-0.3, 0.3), 0, rng:NextNumber(-0.3, 0.3)) * aura.size
+	ember.CFrame = CFrame.new(at) * CFrame.Angles(0, 0, math.pi / 2)
+	local flame = table.clone(aura.look.ground[1] or aura.look.flames[1])
+	flame.size *= DIVINE.EMBERS.size
+	local emitter = addFlame(ember, flame, aura.size, aura.tier)
+	ember.Parent = workspace
+	local fade = TweenService:Create(ember, TweenInfo.new(DIVINE.EMBERS.seconds), { Transparency = 1 })
+	task.delay(DIVINE.EMBERS.seconds * 0.6, function()
+		emitter.Enabled = false
+	end)
+	fade.Completed:Once(function()
+		ember:Destroy()
+		divine.embers -= 1
+	end)
+	fade:Play()
+end
+
+-- One frame of the extras: the halo turning behind the head, the suns circling, embers while it walks
+local function stepDivine(aura: Aura, divine: Divine, dt: number, moving: boolean)
+	divine.time += dt
+	local facing = aura.model:GetPivot().LookVector
+	local head = if divine.head then divine.head.TransformedWorldCFrame.Position else aura.base.Position + Vector3.new(0, divine.height * 0.85, 0)
+	local centre = head - facing * DIVINE.HALO.behind * divine.height
+	divine.halo.CFrame = CFrame.lookAt(centre, centre + facing) * CFrame.Angles(0, 0, math.rad(DIVINE.HALO.spin) * divine.time)
+	local feet = aura.base.Position
+	for index, orb in divine.orbs do
+		local at = BeastFxRules.orbit(index, #divine.orbs, divine.time, DIVINE.ORBS.seconds, DIVINE.ORBS.radius * divine.height,
+			DIVINE.ORBS.height * divine.height, DIVINE.ORBS.bob * divine.height)
+		orb.CFrame = CFrame.new(feet + Vector3.new(at[1], at[2], at[3]))
+	end
+	if not moving then
+		return
+	end
+	divine.nextEmber -= dt
+	if divine.nextEmber <= 0 then
+		divine.nextEmber = DIVINE.EMBERS.every
+		dropEmber(aura, divine)
+	end
+end
+
+-- Adds the aura to a creature model standing on `floor`, at a tier (BeastFx.TIERS: Divine, Legendary, S, A); nil for an
 -- element or tier without one
 function BeastAura.attach(model: Model, floor: CFrame, element: string, size: number, tierName: string): Aura?
 	local look = BeastFx.ELEMENTS[element]
@@ -165,6 +285,8 @@ function BeastAura.attach(model: Model, floor: CFrame, element: string, size: nu
 	glow.Parent = base
 	light.Parent = glow
 
+	local divine = if tier.divine then addDivine(model, look, tier, size, extent.Y, emitters) else nil
+
 	local dust: ParticleEmitter? = nil
 	if tier.dust then
 		local emitter = Instance.new("ParticleEmitter")
@@ -193,6 +315,8 @@ function BeastAura.attach(model: Model, floor: CFrame, element: string, size: nu
 		near = true,
 		nextArc = 0,
 		nextFlicker = 0,
+		base = base,
+		divine = divine,
 	}
 end
 
@@ -205,6 +329,12 @@ function BeastAura.step(aura: Aura, dt: number, speed: number, moving: boolean, 
 			emitter.Enabled = near
 		end
 		aura.light.Enabled = near
+		local divine = aura.divine
+		if divine then
+			for _, orb in divine.orbs do
+				orb.Transparency = if near then 0 else 1
+			end
+		end
 	end
 	local dust = aura.dust
 	if dust then
@@ -212,6 +342,9 @@ function BeastAura.step(aura: Aura, dt: number, speed: number, moving: boolean, 
 	end
 	if not near then
 		return
+	end
+	if aura.divine then
+		stepDivine(aura, aura.divine, dt, moving)
 	end
 	aura.nextFlicker -= dt
 	if aura.nextFlicker <= 0 then

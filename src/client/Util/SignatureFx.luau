@@ -43,7 +43,7 @@
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
--- * solarroar (Solarion): fire bursts from every mouth with a flash of sunlight.
+-- * sunburst (Solarion): arms raised, a small sun forms above its fists and bursts in rays and a ring of fire.
 -- * voltcharge (Voltkit): lightning arcs between its raised fists, building up, then a bolt shoots into the sky.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
@@ -1194,31 +1194,78 @@ local function backflip(model: Model, size: number)
 	end
 end
 
--- A solar roar: fire bursting from every mouth and a flash of sunlight
-local function solar(model: Model, size: number)
-	local forward = model:GetPivot().LookVector
-	local fire = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 150)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 120, 30)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 20, 20)),
-	})
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Bone") and string.match(descendant.Name, "^Jaw_%d$") then
-			local mouth = descendant.TransformedWorldCFrame.Position
-			burst(CFrame.lookAt(mouth, mouth + forward + Vector3.new(0, 0.2, 0)), "rbxasset://textures/particles/fire_main.dds", fire, 16, 1.1 * size, 8 * size, 0.6)
+-- A sunburst: with both arms raised, a small sun forms above its fists, swells, then bursts: rays of sunlight shoot
+-- out, a ring of fire races out over the ground and the light flares
+local SUN_CORE = Color3.fromRGB(255, 245, 190)
+local SUN_EDGE = Color3.fromRGB(255, 150, 40)
+local SUN_FORM, SUN_HOLD = 0.4, 0.15 -- seconds the sun takes to swell, and hangs before it bursts
+local function sunburst(model: Model, size: number)
+	local left, right = bonePosition(model, "Arm_Left_2"), bonePosition(model, "Arm_Right_2")
+	local head = bonePosition(model, "Head_0")
+	local above = if left and right then (left + right) / 2 + Vector3.new(0, 0.6 * size, 0)
+		elseif head then head + Vector3.new(0, 1.2 * size, 0)
+		else model:GetPivot().Position + Vector3.new(0, 3 * size, 0)
+	local sun = fxPart(Vector3.new(0.1, 0.1, 0.1), SUN_CORE, true)
+	sun.Shape = Enum.PartType.Ball
+	sun.CFrame = CFrame.new(above)
+	sun.Parent = workspace
+	local glow = Instance.new("PointLight")
+	glow.Color = SUN_EDGE
+	glow.Brightness = 2
+	glow.Range = 6 * size
+	glow.Parent = sun
+	TweenService:Create(sun, TweenInfo.new(SUN_FORM, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(1, 1, 1) * 0.9 * size }):Play()
+	local up = CFrame.lookAt(above, above + Vector3.yAxis)
+	burst(up, FIRE, ColorSequence.new(SUN_CORE, SUN_EDGE), 14, 0.7 * size, 1.5 * size, 0.6)
+	task.delay(SUN_FORM + SUN_HOLD, function()
+		if not sun.Parent then
+			return
 		end
-	end
-	local at = model:GetPivot().Position + Vector3.new(0, 2 * size, 0)
-	local holder = Instance.new("Attachment")
-	holder.WorldPosition = at
-	holder.Parent = workspace.Terrain
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 170, 70)
-	light.Brightness = 5
-	light.Range = 16 * size
-	light.Parent = holder
-	TweenService:Create(light, TweenInfo.new(0.9), { Brightness = 0 }):Play()
-	task.delay(1, holder.Destroy, holder)
+		-- The burst: the sun swells and fades, rays shoot out all round it
+		local fade = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(sun, fade, { Size = Vector3.new(1, 1, 1) * 1.6 * size, Transparency = 1 }):Play()
+		TweenService:Create(glow, TweenInfo.new(0.9), { Brightness = 0 }):Play()
+		glow.Brightness = 4
+		glow.Range = 12 * size
+		task.delay(1, sun.Destroy, sun)
+		for i = 1, 12 do
+			local angle = i / 12 * math.pi * 2
+			local out = Vector3.new(math.cos(angle), math.sin(angle) * 0.6 + 0.25, math.sin(angle))
+			local ray = fxPart(Vector3.new(0.12, 0.12, 0.6) * size, if i % 2 == 0 then SUN_CORE else SUN_EDGE, true)
+			ray.CFrame = CFrame.lookAt(above, above + out)
+			ray.Parent = workspace
+			local shoot = TweenService:Create(ray, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				CFrame = CFrame.lookAt(above + out.Unit * 2.5 * size, above + out * 2),
+				Size = Vector3.new(0.04, 0.04, 2.4) * size,
+				Transparency = 1,
+			})
+			shoot.Completed:Once(function()
+				ray:Destroy()
+			end)
+			shoot:Play()
+		end
+		burst(up, SPARKLES, ColorSequence.new(SUN_CORE, SUN_EDGE), 30, 0.4 * size, 8 * size, 1)
+		-- The ring of fire racing out over the ground round its feet
+		local feet = model:GetPivot().Position
+		for i = 1, 18 do
+			local angle = i / 18 * math.pi * 2
+			local flame = fxPart(Vector3.new(0.3, 0.3, 0.3) * size, if i % 2 == 0 then SUN_EDGE else Color3.fromRGB(255, 210, 90), true)
+			flame.Shape = Enum.PartType.Ball
+			flame.CFrame = CFrame.new(feet + Vector3.new(math.cos(angle), 0.2, math.sin(angle)) * 0.8 * size)
+			flame.Parent = workspace
+			local race = TweenService:Create(flame, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				CFrame = CFrame.new(feet + Vector3.new(math.cos(angle) * 4, rng:NextNumber(0.3, 0.9), math.sin(angle) * 4) * size),
+				Size = Vector3.new(0.1, 0.1, 0.1) * size,
+				Transparency = 1,
+			})
+			race.Completed:Once(function()
+				flame:Destroy()
+			end)
+			race:Play()
+		end
+		burst(CFrame.lookAt(feet, feet + Vector3.yAxis), FIRE, ColorSequence.new(SUN_CORE, SUN_EDGE), 20, 1 * size, 4 * size, 0.6)
+	end)
 end
 
 -- A volt charge: lightning arcing between the raised fists, building up, then a bolt shot up into the sky with a flash
@@ -1338,8 +1385,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		eclipse(model, size)
 	elseif kind == "backflip" then
 		backflip(model, size)
-	elseif kind == "solarroar" then
-		solar(model, size)
+	elseif kind == "sunburst" then
+		sunburst(model, size)
 	elseif kind == "voltcharge" then
 		voltcharge(model, size)
 	end

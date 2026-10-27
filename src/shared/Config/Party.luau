@@ -37,7 +37,7 @@ return {
 		HOVER_BOB = 0.4,
 	},
 	-- Cards that fly when drawn with their own model or the placeholder
-	FLYING = { "Solarion", "Voidmaw", "Nightowl", "Emberwing", "Hushmoth", "Fizzlebug" },
+	FLYING = { "Voidmaw", "Nightowl", "Emberwing", "Hushmoth", "Fizzlebug" },
 	-- Packs whose models fly (wings with bones of their own). Cute Pets walks: its wings can't flap.
 	FLYING_PACKS = {} :: { string },
 	-- Pack models that fly, by the first bone of each left wing (the right one is the same name with .R for .L;
@@ -71,6 +71,7 @@ return {
 		Mossmole = { hang = 0, forward = 0, bend = 0, swing = 4 }, -- hugging its moss garden
 		Petalpaw = { hang = 0, forward = 0, bend = 15, swing = 24 },
 		CinderTitan = { hang = 6, forward = 8, bend = 20, swing = 30 }, -- heavy knuckle-dragging swing
+		Solarion = { hang = 0, forward = 0, bend = 8, swing = 22 }, -- a god's measured stride, arms at its sides as modelled
 		Ashbeak = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- folded wings, fluttering a little
 		Fizzlebug = { hang = 0, forward = 0, bend = 15, swing = 12 },
 		Wispurr = { hang = 0, forward = 0, bend = 0, swing = 12 }, -- paws held up in front
@@ -79,7 +80,7 @@ return {
 	-- Util/SignatureFx draws its effect): Sprouthop holds up a hand for a butterfly, Voidmaw's heads roar one after
 	-- another, Boltlynx roars with lightning crackling off its ear and tail bolts, Stormjack the storm ram charges horn first as
 	-- lightning rains round it, Infernox breathes fire, Puffpuddle cracks a shell on its chest, Cindercub hiccups little puffs of fire, Zappit zap-hops with lightning off its bolts, Mossmole puffs glowing spores from its mushroom garden, Petalpaw twirls in a swirl of petals, Gloomlet loops the loop in shadow smoke, Ashbeak flaps up a puff of embers, Shellshy peeks out of its shell in a stream of bubbles, Fizzlebug buzzes up and zaps the ground, Wispurr floats up and fades like a ghost, Emberwing swoops trailing fire, Tidecaller rears up and splashes a ring of water, Briarhorn charges in a burst of thorns, Abyssal Koi lunges and snaps its fangs in a dark surge, Thunderhorn rears and calls lightning down onto its antlers, Riftwalker roars a void rift open behind it, Cinder Titan pounds its chest and slams the ground in a ring of fire, Tideborne Kirin rears and calls a spiral of water and golden light, Stormking charges horn-first as lightning rains round it, Reefray barrel-rolls and sends out a glowing tide ring, Nightowl swivels its head right round and hoots as a crescent moon rises, Coalbit hunkers down as its embers flare and glow, Sparkrat shivers with static and zaps lightning from its tail to its ears, Driplet shakes itself dry in a ring of splashing drops, Hushmoth twirls in the air shedding glowing pastel dust, Magmaw breathes a gout of fire, Mistfin hops and lands in a rolling wave of glowing mist, Vinewyrm rears up as flowers and leaves burst round it, Frostfang pounces and ice crystals burst up where it lands, Gale Sprite dives in a spinning gust and lightning flashes off its wings, Blazehound sneezes a puff of fire,
-	-- Thornback charges in a burst of thorns, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion's heads roar fire,
+	-- Thornback charges in a burst of thorns, Eclipse Fox summons an eclipse, Duskstalker backflips, Solarion raises a sun over its head that bursts into rays and a ring of fire,
 	-- Voltkit charges lightning between its fists
 	SIGNATURE = {
 		Sprouthop = { fidget = "butterfly", chance = 0.35 },
@@ -121,7 +122,7 @@ return {
 		Thornback = { fidget = "thorncharge", chance = 0.35 },
 		EclipseFox = { fidget = "eclipse", chance = 0.35 },
 		Duskstalker = { fidget = "backflip", chance = 0.35 },
-		Solarion = { fidget = "solarroar", chance = 0.35 },
+		Solarion = { fidget = "sunburst", chance = 0.35 },
 		Voltkit = { fidget = "voltcharge", chance = 0.35 },
 	} :: { [string]: { fidget: string, chance: number } },
 	-- How a model carries itself, so each moves like the creature it is (else the defaults): its own idle fidgets
@@ -169,7 +170,7 @@ return {
 		Thornback = { fidgets = { "look", "sniff", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 1.1, tailAmount = 0.7, bounce = 0.7 }, -- a snuffling boar, its curly tail flicking
 		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7 },
 		Duskstalker = { fidgets = { "look", "tilt", "stretch", "hop", "shake", "yawn", "spin" }, tailSpeed = 0.7 },
-		Solarion = { fidgets = { "look", "sniff", "yawn", "shake", "stomp", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.25 },
+		Solarion = { fidgets = { "look", "stomp", "stretch", "shake", "look" }, bounce = 0.5, stride = 1.25, legSwing = 0.7, sway = 1.6 }, -- a fire god: slow, heavy, majestic steps
 		Voltkit = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "shake", "wag", "yawn" }, tailSpeed = 0.8, tailAmount = 1.1 },
 	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, wingAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
@@ -297,7 +298,7 @@ return {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
-			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, solarroar = 3.2, voltcharge = 3,
+			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, sunburst = 3.2, voltcharge = 3,
 			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2, abysschomp = 2, thundercall = 2.4, riftroar = 3, lavaslam = 3, blessing = 3.2, hornstorm = 2.4, mantaroll = 2.2, owlturn = 2.6, emberglow = 2.6, staticshock = 2.2, watershake = 2, mothdust = 2.6, mistwave = 2.2, vinebloom = 2.6, frostpounce = 2.2, galedive = 2,
 		},
 		-- Nightowl's owl turn: how far its head swivels round (degrees, neck and head together) and nods with the hoot
@@ -339,6 +340,9 @@ return {
 		SLAM_POUND = 45,
 		SLAM_RAISE = 66,
 		SLAM_LIFT = 0.25,
+		-- Solarion's sunburst: how far both arms swing up overhead (degrees) and how far it rises (studs at size 1)
+		SUN_RAISE = 160,
+		SUN_LIFT = 0.15,
 		-- Tideborne Kirin's celestial blessing: how far it rears (degrees) and lifts (studs at size 1) before the light rises
 		BLESSING_REAR = 30,
 		BLESSING_LIFT = 0.4,
@@ -443,7 +447,7 @@ return {
 		["Eclipse Fox"] = { pack = "Originals", model = "EclipseFox", size = 1.8 }, -- original, tools/blender/rig_eclipsefox.py (Meshy-generated shadow kitsune; was the voxel build_eclipsefox.py)
 		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.4 }, -- original, tools/blender/build_duskstalker.py
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
-		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/build_solarion.py
+		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/rig_solarion.py (Meshy-generated sun fire god; was the voxel build_solarion.py)
 		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 3 }, -- original, tools/blender/build_voidmaw.py
 		-- Frontier set
 		Frostfang = { pack = "Originals", model = "Frostfang", size = 2 }, -- original, tools/blender/rig_frostfang.py (Meshy-generated ice fox)
