@@ -92,4 +92,26 @@ return {
 		expect.equal(out.frostTyrant.lootAt, 5, "unknown boss untouched")
 		expect.equal(BossRules.write(nil, { meadowWarden = record({}) }).meadowWarden.cleared, false, "no save yet")
 	end,
+	["the ladder can be climbed: each key's fragments come from the boss before"] = function()
+		for index, bossId in Bosses.LADDER do
+			local unlock = Bosses.BOSSES[bossId].unlock
+			if index == 1 then
+				assert(unlock == nil, "the first boss is open")
+				continue
+			end
+			assert(unlock, `{bossId} needs a key`)
+			local previous = Bosses.BOSSES[Bosses.LADDER[index - 1]]
+			local fromClear, dropped = 0, false
+			for _, grant in previous.firstClear do
+				if grant.item == unlock.item then
+					fromClear += grant.count
+				end
+			end
+			for _, drop in previous.drops do
+				dropped = dropped or (drop.item == unlock.item and drop.chance > 0)
+			end
+			assert(fromClear > 0, `{previous.name}'s first clear gives {unlock.item}`)
+			assert(fromClear >= unlock.count or dropped, `{unlock.item}: {fromClear} from the first clear and no drop for the rest`)
+		end
+	end,
 }

@@ -600,12 +600,15 @@ and rewards in `BossService`.
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
-  strongest party card above 2.5x the recommended Power makes them x0.35. Fragments for a boss you've already opened
+  strongest card that fought (leader or called in; resting party cards don't count) above 2.5x the recommended
+  Power makes them x0.35. Fragments for a boss you've already opened
   never drop. The first clear's chest (and the server-wide chat message) comes even on a too-fast win, so a strong
   player can still climb.
 - **Items:** XP Tonic (400 card XP, used from the Party panel, never on a Lv 30 card), Grading Seal (one missing
-  duplicate at the Grading Station, at most half a step), Star Shards, fragments, trophies.
-- **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; a stone
+  duplicate at the Grading Station, at most half a step, so never on a 1-duplicate step; the toggle says when they
+  can't help), Star Shards, fragments, trophies.
+- **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
+  count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
 - **UI:** the Bosses HUD tile (K) opens the Boss Ladder: lock and fragments x/N, recommended Power vs your strongest
   party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss

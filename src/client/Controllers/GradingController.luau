@@ -295,6 +295,8 @@ local function renderPane(card: Card?)
 	-- Grading Seals toggle: they fill in for missing duplicates (never more than half a step)
 	local hasSeals = sealCount > 0
 	local sealText = if not hasSeals then "🏅 No Grading Seals (bosses drop them)"
+		elseif useSeals and plan and plan.seals == 0 then `🏅 Seals not needed here (you have {sealCount})`
+		elseif useSeals and not plan and reason and string.sub(reason, 1, 5) == "short" then `🏅 Too few duplicates even with seals (max half a step)`
 		elseif useSeals then `🏅 Using Grading Seals (you have {sealCount})`
 		else `🏅 Use Grading Seals (you have {sealCount})`
 	local sealButton = UIKit.button(pane, sealText, if useSeals and hasSeals then UIKit.Colors.Accent else UIKit.Colors.Row)

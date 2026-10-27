@@ -86,10 +86,13 @@ local function isValidRotation(value: unknown): boolean
 	return isGridInteger(value) and (value :: number) >= 0 and (value :: number) < PlacementConfig.ROTATION_STEPS
 end
 
+-- Shelves toward the plot's limit (trophies are decorations and don't count)
 local function countShelves(layout: { [string]: PlacedShelf }): number
 	local count = 0
-	for _ in layout do
-		count += 1
+	for _, shelf in layout do
+		if shelf.def.kind ~= "Trophy" then
+			count += 1
+		end
 	end
 	return count
 end

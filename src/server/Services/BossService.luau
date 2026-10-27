@@ -79,10 +79,10 @@ local function sendBosses(player: Player)
 	Remotes.BossesChanged:FireClient(player, payload)
 end
 
--- The strongest party card's Power (bosses recommend a Power per card)
-local function partyPower(player: Player, partyIds: { string }): number
+-- The strongest fighter's Power (bosses recommend a Power per card)
+local function partyPower(player: Player, fighterIds: { string }): number
 	local best = 0
-	for _, beastId in partyIds do
+	for _, beastId in fighterIds do
 		local beast = CardService.GetBeast(player, beastId)
 		local card = if beast then Cards.ById[beast.cardId] else nil
 		if beast and card then
@@ -121,7 +121,7 @@ end
 -- A boss win's items (BattleService calls this; the XP and cash are already paid). Farm protection (spec section 7):
 -- too fast a win gives no drops; full loot once per LOOT_COOLDOWN per boss, its chances shrunk by the daily soft cap
 -- and the over-power penalty; the first clear and the day's first rewarded win add their chests.
-local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, partyIds: { string } }): any
+local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string } }): any
 	local bossId = monster.boss :: string
 	local boss = Bosses.BOSSES[bossId]
 	local byBoss = records[player]
@@ -142,10 +142,9 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		Remotes.BossCleared:FireAllClients(player.DisplayName, bossId)
 	end
 	if fight.seconds < boss.minFightSeconds then
-		warn(`[BossService] {player.Name} beat {bossId} in {fight.seconds}s (minimum {boss.minFightSeconds}): no drops`)
 		result.flagged = true
 	elseif BossRules.lootEligible(record, now) then
-		local factor = BossRules.dropFactor(Bosses, record, partyPower(player, fight.partyIds), boss.recommended)
+		local factor = BossRules.dropFactor(Bosses, record, partyPower(player, fight.fighterIds), boss.recommended)
 		result.reduced = factor < 1
 		record.lootAt = now + Bosses.LOOT_COOLDOWN
 		record.rewardedToday += 1

@@ -160,6 +160,10 @@ function BossBoardController.Start()
 		end
 		render()
 	end)
+	-- Levels and stars change your best Power
+	Remotes.CollectionChanged.OnClientEvent:Connect(function()
+		task.defer(render)
+	end)
 	Remotes.RequestBosses:FireServer()
 
 	local sinceTick = 0

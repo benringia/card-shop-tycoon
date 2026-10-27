@@ -67,7 +67,7 @@ local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
-local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, partyIds: { string } }) -> any)? = nil
+local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string } }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -287,7 +287,12 @@ local function payOut(fight: Fight): any
 			CardService.AddXP(player, beastId, xpEach)
 		end
 		EconomyService.AddCash(player, boss.cash)
-		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, partyIds = fight.partyIds }) else nil
+		-- The cards that really fought (resting ones in the party never did): the over-power check weighs these
+		local fighterIds = { fight.leaderId }
+		if fight.extraId then
+			table.insert(fighterIds, fight.extraId)
+		end
+		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, fighterIds = fighterIds }) else nil
 		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
@@ -543,7 +548,7 @@ function BattleService.StartFight(player: Player, monster: Monster): (boolean, s
 	return startFight(player, monster), nil
 end
 
-function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, partyIds: { string } }) -> any)
+function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string } }) -> any)
 	bossRewards = handler
 end
 
