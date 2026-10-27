@@ -387,6 +387,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   moss-green thorn boar with a pink snout, white tusks and a crest of thorny vines and blossoms (redesigned at the
   user's call: a Meshy mantis first came out ugly, kept in `Thornback_mantis.blend`). Remesh_bake; ears weighted to the
   `Ear_` bones by position. Signature thorn charge (shared with Briarhorn). Size 1.4. 21 bones, 10,000 triangles.
+- **Magmaw** (`rig_magmaw.py`, Meshy, Rare; was the tinted Salamander): a chunky red-orange lava salamander with a
+  toothy grin, glowing yellow belly and jaw and flame spikes along its back and tail. Asked for legs straight under the
+  body (Coalbit's splayed legs went wrong): four square feet, right first time. Lower jaw on `Jaw_0` (kept above the
+  claws, which reach under the snout); ground-level claws given to their feet. Signature fire breath (shared with
+  Infernox). Size 1.3. 23 bones, 9,000 triangles.
 - **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
   barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
   under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,

@@ -43,6 +43,11 @@ Element scenes (matching `CardDesign.SCENES`):
   round pink snout, two white curved tusks, fierce amber eyes, small pointed ears with pink insides, a cream belly, a
   thick crest of dark green thorny vines with small pink blossoms on top of its head, a short curly tail (pose:
   standing firmly on a mossy path; lighting: soft green sunlight).
+- **Magmaw** (original lava salamander, Rare; was the tinted Salamander): a slightly fierce chunky cartoon lava
+  salamander, rounded stylized toy-like 3D style, a long plump bright red-orange body on four short thick legs with
+  small white claws, a glowing yellow belly and lower jaw, a wide open toothy grin with small white teeth, fierce dark
+  eyes, a row of big chunky orange flame-shaped spikes along its back and long tail, small embers and a little puff of
+  flame rising from its mouth (pose: crawling across a rug; lighting: warm cozy firelight).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
