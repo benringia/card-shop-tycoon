@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * mistwave (Mistfin): a proud little hop, and as it lands a ring of glowing mist rolls out with frosty sparkles.
 -- * mothdust (Hushmoth): twirls slowly in the air as glowing pastel dust sheds from its wing tips.
 -- * watershake (Driplet): shakes itself dry with its wings out; drops fly off in a ring, its head drop sparkles.
 -- * staticshock (Sparkrat): shivers as static builds, then hops as lightning arcs from its bolt tail to its ears.
@@ -748,6 +749,24 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- A mist wave: as it lands, a ring of glowing mist rolls out across the ground round it, with frosty sparkles
+local MIST = Color3.fromRGB(170, 235, 240)
+local function mistwave(model: Model, size: number)
+	local feet = model:GetPivot().Position
+	for i = 1, 12 do
+		local angle = i / 12 * math.pi * 2
+		local start = feet + Vector3.new(math.cos(angle), 0.15, math.sin(angle)) * 0.5 * size
+		local out = feet + Vector3.new(math.cos(angle) * 2.6, 0.1, math.sin(angle) * 2.6) * size
+		burst(CFrame.new(start), SMOKE, ColorSequence.new(MIST, Color3.fromRGB(230, 250, 255)), 2, 0.7 * size, 0.4 * size, 1.4)
+		task.delay(0.15, function()
+			if model.Parent then
+				burst(CFrame.new(out), SMOKE, ColorSequence.new(MIST), 2, 0.9 * size, 0.3 * size, 1.6)
+			end
+		end)
+	end
+	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(200, 250, 255), WATER), 16, 0.3 * size, 3 * size, 0.9)
+end
+
 -- Moth dust: as it twirls, glowing pastel dust sheds from its wing tips and drifts down, with a soft violet glow
 local DUST_COLORS = { Color3.fromRGB(255, 180, 230), Color3.fromRGB(200, 170, 255), Color3.fromRGB(160, 240, 240) }
 local function mothdust(model: Model, size: number)
@@ -1233,6 +1252,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		watershake(model, size)
 	elseif kind == "mothdust" then
 		mothdust(model, size)
+	elseif kind == "mistwave" then
+		mistwave(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

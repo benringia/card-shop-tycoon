@@ -298,6 +298,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.3 -- shaking hard: the water flies off
 	elseif kind == "mothdust" then
 		return progress >= 0.1 -- the twirl starts: the dust begins to fall
+	elseif kind == "mistwave" then
+		return progress >= 0.55 -- it lands: the mist rolls out
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -439,6 +441,16 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "mistwave" then
+		-- Crouching (to 0.2), a proud little hop (the top at 0.4), landing hard at 0.55, then settling
+		if p < 0.2 then
+			lift = -cfg.MIST_CROUCH * math.sin(p / 0.2 * math.pi / 2)
+		elseif p < 0.55 then
+			lift = cfg.MIST_HOP * math.sin((p - 0.2) / 0.35 * math.pi)
+		else
+			lift = -cfg.MIST_CROUCH * math.sin(math.clamp((p - 0.55) / 0.2, 0, 1) * math.pi)
+		end
+		pitch = math.rad(cfg.MIST_LEAN) * math.sin(math.clamp(p / 0.55, 0, 1) * math.pi)
 	elseif kind == "mothdust" then
 		-- A slow twirl in the air, drifting up as it turns and gently back down, swaying a little
 		local eased = p * p * (3 - 2 * p)

@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **mistwave** (Mistfin): crouches (`MIST_CROUCH`), a proud little hop (`MIST_HOP`, leaning back `MIST_LEAN`), and
+  as it lands a ring of glowing mist rolls out across the ground with frosty sparkles.
 - **mothdust** (Hushmoth): twirls slowly in the air, drifting up (`DUST_RISE`) and swaying (`DUST_SWAY`), as glowing
   pastel dust sheds from its wing tips with a soft violet glow.
 - **watershake** (Driplet): fluffs up (`WATER_FLUFF`), then shakes hard side to side (`WATER_SHAKE`) with its folded
@@ -392,6 +394,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   body (Coalbit's splayed legs went wrong): four square feet, right first time. Lower jaw on `Jaw_0` (kept above the
   claws, which reach under the snout); ground-level claws given to their feet. Signature fire breath (shared with
   Infernox). Size 1.3. 23 bones, 9,000 triangles.
+- **Mistfin** (`rig_mistfin.py`, Meshy, Rare; was the IceShark): a proud mist seal pup standing upright (a full
+  redesign, since Abyssal Koi is the shark), grey-blue with a pale belly, a frosty tuft, flipper arms and a long flat
+  tail fin. Its glowing aqua marks (wavy mist lines on its back, dots on its tail) are painted into the texture by the
+  script (`paint_marks`, texel by texel through the UVs). Flippers and toes weighted to their bones by position.
+  Signature mist wave. Size 1.4. 20 bones, 10,000 triangles.
 - **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
   barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
   under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,

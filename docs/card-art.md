@@ -48,6 +48,12 @@ Element scenes (matching `CardDesign.SCENES`):
   small white claws, a glowing yellow belly and lower jaw, a wide open toothy grin with small white teeth, fierce dark
   eyes, a row of big chunky orange flame-shaped spikes along its back and long tail, small embers and a little puff of
   flame rising from its mouth (pose: crawling across a rug; lighting: warm cozy firelight).
+- **Mistfin** (original mist seal pup, Rare; was the IceShark): a slightly fierce, proud chunky cartoon seal pup
+  standing upright, rounded stylized toy-like 3D style, a plump grey-blue body with a pale peach belly, big shiny dark
+  eyes with a determined look, rosy cheeks, a small black nose and whiskers, a fluffy frosty white tuft on top of its
+  head, two flipper arms at its sides, a long flat tail fin, three wavy glowing aqua mist lines across its back and
+  glowing aqua dots on its tail fin, swirls of glowing mist curling around it (pose: standing proudly on a rock;
+  lighting: bright underwater light rays with soft mist).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
