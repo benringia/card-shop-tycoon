@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * frostpounce (Frostfang): a fox's pounce; where it lands a ring of glowing ice crystals bursts up and melts.
 -- * vinebloom (Vinewyrm): rears up tall and sways as petals and leaves burst from its flower crown.
 -- * mistwave (Mistfin): a proud little hop, and as it lands a ring of glowing mist rolls out with frosty sparkles.
 -- * mothdust (Hushmoth): twirls slowly in the air as glowing pastel dust sheds from its wing tips.
@@ -750,6 +751,30 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- A frost pounce: where it lands, a ring of glowing ice crystals bursts up out of the ground, glints and melts away
+local ICE = Color3.fromRGB(150, 230, 255)
+local function frostpounce(model: Model, size: number)
+	local landing = model:GetPivot().Position
+	for i = 1, 9 do
+		local angle = i / 9 * math.pi * 2
+		local spot = landing + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 1.1 * size
+		local shard = fxPart(Vector3.new(0.18, 0.7, 0.18) * size * rng:NextNumber(0.8, 1.2), ICE, true)
+		shard.Transparency = 0.25
+		shard.CFrame = CFrame.new(spot - Vector3.new(0, 0.5 * size, 0)) * CFrame.Angles(math.cos(angle) * 0.4, 0, -math.sin(angle) * 0.4)
+		shard.Parent = workspace
+		local rise = TweenService:Create(shard, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = shard.CFrame + Vector3.new(0, 0.6 * size, 0) })
+		local melt = TweenService:Create(shard, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, 0.5), { Transparency = 1, Size = shard.Size * 0.4 })
+		rise.Completed:Once(function()
+			melt:Play()
+		end)
+		melt.Completed:Once(function()
+			shard:Destroy()
+		end)
+		rise:Play()
+	end
+	burst(CFrame.lookAt(landing, landing + Vector3.yAxis), SPARKLES, ColorSequence.new(Color3.fromRGB(220, 250, 255), ICE), 18, 0.3 * size, 4 * size, 0.8)
+end
+
 -- A mist wave: as it lands, a ring of glowing mist rolls out across the ground round it, with frosty sparkles
 local MIST = Color3.fromRGB(170, 235, 240)
 local function mistwave(model: Model, size: number)
@@ -1282,6 +1307,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		mistwave(model, size)
 	elseif kind == "vinebloom" then
 		vinebloom(model, size)
+	elseif kind == "frostpounce" then
+		frostpounce(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then

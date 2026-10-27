@@ -302,6 +302,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.55 -- it lands: the mist rolls out
 	elseif kind == "vinebloom" then
 		return progress >= 0.35 -- reared up tall: the flowers burst
+	elseif kind == "frostpounce" then
+		return progress >= 0.6 -- it lands: the ice bursts up
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -443,6 +445,23 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "frostpounce" then
+		-- A fox's pounce: crouching low, rump up (to 0.3), springing up and forward (the top at 0.45), landing nose
+		-- first at 0.6, then backing up to its spot
+		if p < 0.3 then
+			local crouch = math.sin(p / 0.3 * math.pi / 2)
+			lift = -cfg.POUNCE_CROUCH * crouch
+			pitch = -math.rad(cfg.POUNCE_TIP) * crouch
+		elseif p < 0.6 then
+			local air = (p - 0.3) / 0.3
+			lift = cfg.POUNCE_HEIGHT * math.sin(air * math.pi) - cfg.POUNCE_CROUCH * (1 - air) ^ 2
+			pitch = -math.rad(cfg.POUNCE_TIP) * math.cos(air * math.pi)
+			forward = cfg.POUNCE_LEAP * math.sin(air * math.pi / 2)
+		else
+			local back = math.clamp((p - 0.6) / 0.4, 0, 1)
+			forward = cfg.POUNCE_LEAP * (1 - back * back * (3 - 2 * back))
+			pitch = -math.rad(cfg.POUNCE_TIP) * (1 - math.clamp((p - 0.6) / 0.15, 0, 1))
+		end
 	elseif kind == "vinebloom" then
 		-- Rearing up tall (by 0.35, held to 0.7) and swaying side to side as the flowers burst, then settling
 		local up = if p < 0.35 then math.sin(p / 0.35 * math.pi / 2) elseif p < 0.7 then 1 else math.cos(math.clamp((p - 0.7) / 0.3, 0, 1) * math.pi / 2)

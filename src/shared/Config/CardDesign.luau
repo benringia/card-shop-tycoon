@@ -50,7 +50,7 @@ return {
 		Briarhorn = "rbxassetid://102039719436551",
 		Voltkit = "rbxassetid://138894700834562",
 		Duskstalker = "rbxassetid://127609859696351",
-		Frostfang = "rbxassetid://71053054421008",
+		Frostfang = "rbxassetid://125805428261687",
 		["Gale Sprite"] = "rbxassetid://135400093816653",
 		Riftwalker = "rbxassetid://134478592556938",
 		["Cinder Titan"] = "rbxassetid://72010145388086",
