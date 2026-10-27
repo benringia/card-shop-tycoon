@@ -454,6 +454,19 @@ return {
 		expect.near(done.pitch, 0, 1e-6, "it doesn't straighten up again")
 	end,
 
+	["a frost pounce crouches, leaps forward and lands, the ice bursting as it lands"] = function()
+		assert(PetRig.cue(CFG, "frostpounce", 0.6) and not PetRig.cue(CFG, "frostpounce", 0.55), "the ice doesn't burst as it lands")
+		local crouch = PetRig.body(CFG, "frostpounce", 0.3, 1, true)
+		assert(crouch.lift < -CFG.POUNCE_CROUCH * 0.9 and crouch.pitch < 0, "it doesn't crouch nose down")
+		local air = PetRig.body(CFG, "frostpounce", 0.45, 1, true)
+		assert(air.lift > CFG.POUNCE_HEIGHT * 0.5 and air.forward > 0, "it doesn't leap up and forward")
+		expect.near(PetRig.body(CFG, "frostpounce", 0.6, 1, true).forward, CFG.POUNCE_LEAP, 1e-6, "it doesn't land a leap ahead")
+		local done = PetRig.body(CFG, "frostpounce", 1, 1, true)
+		expect.near(done.forward, 0, 1e-6, "it doesn't come back to its spot")
+		expect.near(done.lift, 0, 1e-6, "it isn't back on the ground")
+		expect.near(done.pitch, 0, 1e-6, "it stays tipped")
+	end,
+
 	["a vine bloom rears up and sways while the flowers burst, then settles"] = function()
 		assert(PetRig.cue(CFG, "vinebloom", 0.35) and not PetRig.cue(CFG, "vinebloom", 0.3), "the flowers don't burst once it's reared up")
 		local tall = PetRig.body(CFG, "vinebloom", 0.5, 1, true)

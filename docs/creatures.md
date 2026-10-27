@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **frostpounce** (Frostfang): crouches nose down (`POUNCE_CROUCH`, `POUNCE_TIP`), leaps up and forward
+  (`POUNCE_HEIGHT`, `POUNCE_LEAP`) and lands; a ring of glowing ice crystals bursts up there and melts.
 - **vinebloom** (Vinewyrm): rears up tall (`BLOOM_RISE`, leaning back `BLOOM_LEAN`) and sways (`BLOOM_SWAY`) as
   pink petals and green leaves burst from its flower crown and drift out.
 - **mistwave** (Mistfin): crouches (`MIST_CROUCH`), a proud little hop (`MIST_HOP`, leaning back `MIST_LEAN`), and
@@ -405,6 +407,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   crown, blossoms and leaves along its sides, its neck raised and tail curled up. A bone chain from the head down the
   neck, along the body and up the tail; slithers (`Party.UNDULATE` "slither"). Signature vine bloom. Size 1.7 (raised
   from 1.4 on request: a Rare should read medium). 10 bones, 10,000 triangles.
+- **Frostfang** (`rig_frostfang.py`, Meshy, Rare; was the tinted PurpleFox): a mythical ice fox standing square, pale
+  icy blue with a simple white mane, teal ice crystals along its back and on its forehead, a pale ice blade over its
+  rump. A loose first prompt gave a plain spiky fox sitting turned; the firm second prompt (see the script) came out
+  right. Ears and paws weighted to their bones by position. Signature frost pounce. Size 2 (raised on request).
+  22 bones, 9,000 triangles.
 - **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
   barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
   under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,

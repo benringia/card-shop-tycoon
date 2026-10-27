@@ -54,6 +54,17 @@ Element scenes (matching `CardDesign.SCENES`):
   head, two flipper arms at its sides, a long flat tail fin, three wavy glowing aqua mist lines across its back and
   glowing aqua dots on its tail fin, swirls of glowing mist curling around it (pose: standing proudly on a rock;
   lighting: bright underwater light rays with soft mist).
+- **Vinewyrm** (original vine serpent, Rare; was the GiantSnake): a slightly fierce chunky cartoon vine serpent,
+  rounded stylized toy-like 3D style, a thick plump lime green snake body lying along the ground with its neck raised
+  up tall and its tail curling up behind, a pale yellow-green banded belly, big glowing amber eyes, a small forked red
+  tongue, a crown of pink flowers and green leaves on its head, pink blossoms and leafy sprigs along its sides, a few
+  pink petals drifting around it (pose: raised up proudly on a mossy log; lighting: soft green sunlight).
+- **Frostfang** (original ice fox, Rare; was the tinted PurpleFox): a slightly fierce mythical cartoon ice fox,
+  rounded stylized toy-like 3D style, a sturdy pale icy blue body standing on four legs, a white chest and a simple
+  smooth white mane on its neck, big pointed ears, fierce glowing ice-blue eyes, glowing teal ice crystal spikes along
+  its back, a glowing teal crystal gem on its forehead, a big pale ice blade rising over its rump above a fluffy white
+  tail, small ice crystals glittering around its paws (pose: standing proudly on an icy rock; lighting: bright
+  underwater light rays with icy glints).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
