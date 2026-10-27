@@ -124,6 +124,7 @@ return {
 	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
 	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took
 	CARRIED_FACTOR = 0.25, -- below both: item chances x this, never fragments, no chests
+	GROUP_SPACING = 4, -- studs between group members' creatures on the ring
 
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
 	ARENA_RADIUS = 24,
