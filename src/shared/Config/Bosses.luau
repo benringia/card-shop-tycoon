@@ -116,6 +116,15 @@ return {
 	GATE_DISTANCE = 12, -- studs from the gate the server accepts a start (past the prompt's reach, for lag)
 	START_COOLDOWN = 2, -- seconds between start requests per player
 
+	-- Groups (spec section 5): 2-4 players, one boss scaled to the group, loot per player for those who helped
+	GROUP_MAX = 4,
+	JOIN_SECONDS = 15, -- others join this long after the leader opens a group at the gate
+	GROUP_HP_STEP = 0.8, -- boss HP x (1 + this x (players - 1))
+	GROUP_ATK_STEP = 0.15, -- boss ATK x (1 + this x (players - 1))
+	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
+	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took
+	CARRIED_FACTOR = 0.25, -- below both: item chances x this, never fragments, no chests
+
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
 	ARENA_RADIUS = 24,
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring

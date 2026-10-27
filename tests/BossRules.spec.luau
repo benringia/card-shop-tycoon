@@ -114,4 +114,25 @@ return {
 			assert(fromClear >= unlock.count or dropped, `{unlock.item}: {fromClear} from the first clear and no drop for the rest`)
 		end
 	end,
+	["groupStats: HP +80% and ATK +15% per extra player"] = function()
+		expect.equal(select(1, BossRules.groupStats(Bosses, 1200, 9, 1)), 1200, "solo HP")
+		local hp, atk = BossRules.groupStats(Bosses, 1200, 9, 2)
+		expect.equal(hp, 2160, "2 players HP")
+		expect.equal(atk, 10, "2 players ATK (10.35)")
+		hp, atk = BossRules.groupStats(Bosses, 4800, 18, 4)
+		expect.equal(hp, 16320, "4 players HP")
+		expect.equal(atk, 26, "4 players ATK (26.1)")
+	end,
+
+	["contributed: 10% of the damage or 15% of the hits taken"] = function()
+		expect.equal(BossRules.contributed(Bosses, 10, 0, 100, 100), true, "10% damage")
+		expect.equal(BossRules.contributed(Bosses, 9, 15, 100, 100), true, "15% tanked")
+		expect.equal(BossRules.contributed(Bosses, 9, 14, 100, 100), false, "carried")
+		expect.equal(BossRules.contributed(Bosses, 0, 0, 0, 0), true, "nothing happened: no penalty")
+	end,
+
+	["carriedDrop: a quarter of the chance, never fragments"] = function()
+		expect.equal(BossRules.carriedDrop(Bosses, "xpTonic", 0.6, false), 0.15, "tonic")
+		expect.equal(BossRules.carriedDrop(Bosses, "fragment_caveBroodQueen", 0.7, true), 0, "fragment")
+	end,
 }

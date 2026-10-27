@@ -14,6 +14,7 @@ export type Record = {
 	bonusDay: number, -- UTC day the daily bonus chest was last given
 }
 type Config = { SOFT_CAP_AFTER: number, SOFT_CAP_STEP: number, SOFT_CAP_FLOOR: number, OVERPOWER_RATIO: number, OVERPOWER_FACTOR: number }
+type GroupConfig = { GROUP_HP_STEP: number, GROUP_ATK_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
 
 local function readCount(value: unknown): number
 	return if typeof(value) == "number" and value == value and value >= 0 and value ~= math.huge then math.floor(value) else 0
@@ -94,7 +95,26 @@ function BossRules.overPowerFactor(config: Config, partyPower: number, recommend
 end
 
 function BossRules.dropFactor(config: Config, record: Record, partyPower: number, recommended: number): number
-	return BossRules.softCapFactor(config, record.rewardedToday) * BossRules.overPowerFactor(config, partyPower, recommended)
+	-- A boss's HP and ATK for a group of `size` players (1 = as configured)
+function BossRules.groupStats(config: GroupConfig, hp: number, atk: number, size: number): (number, number)
+	local extra = math.max(0, size - 1)
+	return math.round(hp * (1 + config.GROUP_HP_STEP * extra)), math.round(atk * (1 + config.GROUP_ATK_STEP * extra))
+end
+
+-- Whether a member helped enough for full loot: a share of the group's damage or of the hits it took (a share of
+-- nothing counts as full)
+function BossRules.contributed(config: GroupConfig, dealt: number, taken: number, totalDealt: number, totalTaken: number): boolean
+	local dealtShare = if totalDealt > 0 then dealt / totalDealt else 1
+	local takenShare = if totalTaken > 0 then taken / totalTaken else 1
+	return dealtShare >= config.CONTRIBUTION_DAMAGE or takenShare >= config.CONTRIBUTION_TANK
+end
+
+-- A carried member's chance at a drop: a fraction of it, never a fragment
+function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
+	return if isFragment then 0 else chance * config.CARRIED_FACTOR
+end
+
+return BossRules.softCapFactor(config, record.rewardedToday) * BossRules.overPowerFactor(config, partyPower, recommended)
 end
 
 return BossRules
