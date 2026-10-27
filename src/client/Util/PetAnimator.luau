@@ -38,6 +38,7 @@ export type Rig = {
 	fidgets: { string }?, -- Party.CREATURE_STYLE: this model's own idle fidgets
 	tailSpeed: number, -- and its tail's swish speed and size, and how much it bounces walking
 	tailAmount: number,
+	wingAmount: number,
 	bounce: number,
 	sway: number?, -- Party.CREATURE_STYLE: a heavy gait's hip roll and leg swing
 	legSwing: number?,
@@ -187,6 +188,7 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		fidgets = style and style.fidgets,
 		tailSpeed = style and style.tailSpeed or 1,
 		tailAmount = style and style.tailAmount or 1,
+		wingAmount = style and style.wingAmount or 1,
 		bounce = style and style.bounce or 1,
 		sway = style and style.sway,
 		legSwing = style and style.legSwing,
@@ -262,6 +264,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		armBend = rig.armBend,
 		armSwing = rig.armSwing,
 		tailAmount = rig.tailAmount,
+		wingAmount = rig.wingAmount,
 		sway = rig.sway,
 		legSwing = rig.legSwing,
 		undulate = rig.undulate,

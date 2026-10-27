@@ -22,6 +22,7 @@ export type State = {
 	armBend: number?, -- radians the elbows bend, else PET_ANIM.ARM_BEND
 	armSwing: number?, -- radians the arms swing walking, else PET_ANIM.ARM_SWING
 	tailAmount: number?, -- how big the tail's swish is (Party.CREATURE_STYLE), else 1
+	wingAmount: number?, -- and the wingbeat's (a flat manta's broad wings beat shallow), else 1
 	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
 	legSwing: number?, -- and how much of PET_ANIM.LEG_SWING its legs use, else 1
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
@@ -275,6 +276,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.1 -- the twirl starts
 	elseif kind == "shadowloop" then
 		return progress >= 0.1 -- the loop starts
+	elseif kind == "mantaroll" then
+		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
 		return progress >= 0.45 -- the top of the hop
 	elseif kind == "lavaslam" then
@@ -398,6 +401,12 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local eased = air * air * (3 - 2 * air)
 		pitch = -TAU * eased
 		lift = cfg.LOOP_HEIGHT * math.sin(air * math.pi)
+	elseif kind == "mantaroll" then
+		-- Rising a little and turning one full barrel roll (to its chosen side), then gliding on level
+		local air = math.clamp((p - 0.1) / 0.7, 0, 1)
+		local eased = air * air * (3 - 2 * air)
+		roll = side * TAU * eased
+		lift = cfg.MANTA_RISE * math.sin(math.clamp(p / 0.9, 0, 1) * math.pi)
 	elseif kind == "petaltwirl" then
 		-- A happy spin right round on its toes
 		local eased = p * p * (3 - 2 * p)
@@ -707,6 +716,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			local beat = if flying then rad(cfg.WING_FLAP) * math.sin((state.flapPhase or 0) - role.segment * cfg.WING_LAG)
 				else rad(cfg.WING_REST) * math.sin(state.time * TAU / cfg.BREATH_SECONDS - role.segment * cfg.WING_LAG)
 					+ (if roaring and role.segment == 0 then rad(cfg.WING_SPREAD) * hold(progress) * idle else 0)
+			beat *= state.wingAmount or 1
 			z = if role.side == "Left" then -beat else beat
 		elseif role.kind == "ear" then
 			local flop = rad(cfg.EAR_FLOP) * (math.sin(state.phase * 2 + role.segment) * moving + 0.3 * math.sin(state.time * 1.7 + role.segment) * idle)
