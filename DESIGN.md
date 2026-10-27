@@ -595,7 +595,7 @@ and rewards in `BossService`.
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you alone, stands still, and always goes when
   the fight ends (win, loss or run). One boss per arena: while someone fights there, the gate tells others to wait
-  (shared group fights come with groups, phase 3). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  (shared group fights come with groups, phase 2). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
   studs, stuns on a boss last at most 1 s.
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
@@ -614,7 +614,7 @@ and rewards in `BossService`.
   party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
 - Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` (use the gate there).
-- Boss models are placeholders (Wild shapes at 2.5-3.2x). Phases 2-4: Frontier bosses, groups, the Dungeon.
+- Boss models are placeholders (Wild shapes at 2.5-3.2x). Phases 2-4 (spec section 10): groups, Frontier bosses, the Dungeon.
 
 ---
 
