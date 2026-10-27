@@ -294,6 +294,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.3 -- hunkered down: the embers flare
 	elseif kind == "staticshock" then
 		return progress >= 0.5 -- the hop: the static discharges
+	elseif kind == "watershake" then
+		return progress >= 0.3 -- shaking hard: the water flies off
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -435,6 +437,11 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "watershake" then
+		-- A bird drying off: a quick fluff up, then a hard fast shake side to side (0.2 to 0.75), then settling
+		local shaking = math.sin(math.clamp((p - 0.15) / 0.65, 0, 1) * math.pi)
+		roll = math.rad(cfg.WATER_SHAKE) * math.sin(p * TAU * 9) * shaking
+		lift = cfg.WATER_FLUFF * math.sin(math.clamp(p / 0.25, 0, 1) * math.pi)
 	elseif kind == "staticshock" then
 		-- Shivering faster and faster as static builds (to 0.5), then a little hop as it discharges, and settling
 		local build = math.clamp(p / 0.5, 0, 1)
@@ -505,7 +512,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	-- A volt charge: both fists brought up in front, braced, lightning arcing between them
 	local charging = if fidget == "voltcharge" then hold(progress) * idle else 0
 	-- An ember flap: folded wings (arms) beat out and up fast, three times
-	local flapping = if fidget == "emberflap" then hold(progress) * idle else 0
+	local flapping = if fidget == "emberflap" or fidget == "watershake" then hold(progress) * idle else 0
 	-- A lava slam: the arms pound the chest in turn (to 0.5), then both fists go up (0.65) and slam down (0.75)
 	local slamming = if fidget == "lavaslam" then idle else 0
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
