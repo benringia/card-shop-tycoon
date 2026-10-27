@@ -37,6 +37,7 @@ local BUILD_TABS = {
 	{ name = "Shelves", icon = "Shelves" },
 	{ name = "Cases", icon = "Cases" },
 	{ name = "Fixtures", icon = "Fixtures" },
+	{ name = "Trophies", icon = "🏆" },
 	{ name = "Decor", icon = "Decor" },
 }
 local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110, PICTURE_COLOR = Color3.fromRGB(52, 60, 82) } -- a lighter slate stage for the 3D picture
@@ -72,6 +73,7 @@ local editingPart: BasePart? = nil
 local shelvesConnection: RBXScriptConnection? = nil
 local computerPrompt: ProximityPrompt? = nil
 local promptsByShelf: { [BasePart]: ShelfPrompts } = {}
+local items: { [string]: number } = {} -- the bag (ItemsChanged): trophies are placed from it
 
 local function getNumberAttribute(instance: Instance, name: string, default: number): number
 	local value = instance:GetAttribute(name)
@@ -82,9 +84,22 @@ local function isLocked(def: ShelfDef): boolean
 	return getNumberAttribute(player, "Level", 1) < def.unlockLevel
 end
 
+-- "Meadow Warden Trophy" -> "Meadow Warden"
+local function trophyBoss(def: ShelfDef): string
+	return (string.gsub(def.name, " Trophy$", ""))
+end
+
 local function refreshShopRows()
 	local cash = getNumberAttribute(player, "Cash", 0)
 	for _, row in shopRows do
+		local item = row.def.requiresItem
+		if item then
+			local owned = items[item] or 0
+			row.button.Text = if owned > 0 then `Place ({owned})` else "🔒 Beat it"
+			row.button.BackgroundColor3 = if owned > 0 then UIKit.Colors.Row else UIKit.Colors.Locked
+			row.button.TextColor3 = if owned > 0 then UIKit.Colors.Success else Color3.new(1, 1, 1)
+			continue
+		end
 		local locked = isLocked(row.def)
 		local short = not locked and cash < row.def.cost
 		row.button.Text = if locked then `🔒 Lv {row.def.unlockLevel}` else string.format("$%d", row.def.cost)
@@ -94,6 +109,10 @@ local function refreshShopRows()
 end
 
 local function onBuy(def: ShelfDef)
+	if def.requiresItem and (items[def.requiresItem] or 0) < 1 then
+		UIController.Notify(`Beat the {trophyBoss(def)} to earn this trophy.`, true)
+		return
+	end
 	if isLocked(def) then
 		UIController.Notify(`Unlocks at shop level {def.unlockLevel}.`, true)
 		return
@@ -108,7 +127,7 @@ local function onBuy(def: ShelfDef)
 		id = def.id,
 		prop = def.prop,
 		propColors = def.propColors,
-		title = `{def.name} · ${def.cost}`,
+		title = if def.requiresItem then def.name else `{def.name} · ${def.cost}`,
 	})
 end
 
@@ -178,6 +197,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 		then `Holds {def.capacity}`
 		elseif def.kind == "Condenser" then "Duplicates to stars"
 		elseif def.kind == "Grading" then "Duplicates to grades"
+		elseif def.kind == "Trophy" then `Beat the {trophyBoss(def)}`
 		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
@@ -309,9 +329,11 @@ local function openEditPanel(part: BasePart)
 	removeStockRow.Visible = def.kind == "Products"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
-		elseif def.kind == "Condenser" or def.kind == "Grading" then "Pick a new spot."
+		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Trophy" then "Pick a new spot."
 		else "Pick a new spot. Stock stays on it."
-	sellDetail.Text = string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
+	sellDetail.Text = if def.requiresItem
+		then "Put it back in your bag."
+		else string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
 	shopPanel.Visible = false
 	editPanel.Visible = true
 end
@@ -571,6 +593,12 @@ function BuildController.Start()
 	player:GetAttributeChangedSignal("Level"):Connect(refreshShopRows)
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	player:GetAttributeChangedSignal("CarryCount"):Connect(refreshAllPrompts)
+	-- Trophy tiles follow the bag
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(payload)
+		items = if typeof(payload) == "table" then payload else {}
+		refreshShopRows()
+	end)
+	Remotes.RequestItems:FireServer() -- our own copy of the bag, whatever order the controllers start in
 	task.spawn(watchOwnPlot)
 end
 

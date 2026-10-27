@@ -30,13 +30,25 @@ return {
 	end,
 
 	["every shelf sits in a Build menu category that matches its kind"] = function()
-		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures" }
+		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Trophy = "Trophies" }
 		for _, entry in entries() do
 			local kind = string.match(entry.body, 'kind = "([%w_]+)"')
 			local category = string.match(entry.body, 'category = "([%w_]+)"')
 			assert(category, `{entry.id} has no category`)
 			assert(category == byKind[kind], `{entry.id} ({kind}) is in {category}, expected {byKind[kind]}`)
 		end
+	end,
+
+	["each boss trophy is placed from its own trophy item"] = function()
+		local trophies = 0
+		for _, entry in entries() do
+			if string.match(entry.body, 'kind = "Trophy"') then
+				trophies += 1
+				assert(string.match(entry.body, 'requiresItem = "([%w_]+)"') == entry.id, `{entry.id} must require the item {entry.id}`)
+				assert(string.match(entry.body, "cost = 0,"), `{entry.id} must be free (the item is the price)`)
+			end
+		end
+		assert(trophies == 3, `expected 3 trophies, found {trophies}`)
 	end,
 
 	["each shelf type has its own look"] = function()

@@ -29,6 +29,7 @@ local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
@@ -112,6 +113,11 @@ end
 -- Machines (the Condenser, the Grading Station) hold nothing and are only used by their owner
 local function isMachine(def: ShelfDef): boolean
 	return isCondenser(def) or isGradingStation(def)
+end
+
+-- Boss trophies: decorations placed from a trophy item (Config/Shelves requiresItem)
+local function isTrophy(def: ShelfDef): boolean
+	return def.kind == "Trophy"
 end
 
 local function countCards(shelf: PlacedShelf): number
@@ -374,6 +380,10 @@ local function updateInfo(shelf: PlacedShelf)
 		part:SetAttribute("Info", `{if isGradingStation(shelf.def) then "🏅" else "✨"} {shelf.def.name}`)
 		return
 	end
+	if isTrophy(shelf.def) then
+		part:SetAttribute("Info", `🏆 {shelf.def.name}`)
+		return
+	end
 	if isCardCase(shelf.def) then
 		part:SetAttribute("Info", `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`)
 		return
@@ -504,7 +514,7 @@ local function createShelf(
 	part.Color = def.color
 	part.Material = if isCardCase(def)
 		then Enum.Material.Glass
-		elseif isMachine(def) then Enum.Material.Metal
+		elseif isMachine(def) or isTrophy(def) then Enum.Material.Metal
 		else Enum.Material.Wood
 	part:SetAttribute("BlocksPlacement", true)
 	part:SetAttribute("ShelfUid", uid)
@@ -601,9 +611,18 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 		notify(player, "That spot is blocked.", true)
 		return
 	end
-	if not EconomyService.TrySpend(player, def.cost) then
+	-- Trophies cost their trophy item (cost 0); checked and taken in one step with no yields
+	local item = def.requiresItem
+	if item and ItemService.GetCount(player, item) < 1 then
+		notify(player, "Beat its boss to earn this trophy.", true)
+		return
+	end
+	if def.cost > 0 and not EconomyService.TrySpend(player, def.cost) then
 		notify(player, "Not enough cash.", true)
 		return
+	end
+	if item then
+		ItemService.TakeItem(player, item, 1)
 	end
 
 	createShelf(player, plot, def, gx, gz, rot, def.cost)
@@ -687,6 +706,12 @@ local function onSell(player: Player, uid: unknown)
 	shelf.part:Destroy()
 	if refund > 0 then
 		EconomyService.AddCash(player, refund)
+	end
+	local item = shelf.def.requiresItem
+	if item then
+		ItemService.GiveItem(player, item, 1)
+		notify(player, `{shelf.def.name} is back in your bag.`, false)
+		return
 	end
 	notify(player, string.format("Sold %s for $%.2f.", shelf.def.name, refund), false)
 end
@@ -786,6 +811,9 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 	end
 	if not def or not gridX or not gridZ then
 		readSavedCards(nil, saved.cards, leftovers)
+		if def and def.requiresItem then
+			ItemService.GiveItem(player, def.requiresItem, 1) -- no room for the trophy: back to the bag, never lost
+		end
 		return
 	end
 
