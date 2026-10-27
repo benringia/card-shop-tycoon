@@ -161,6 +161,8 @@ each other. One solid closed shape.
   rigged (Mossmole's first try: a grass patch round its feet, a hollow mossy underside, 5.7M triangles).
 - Keep add-ons chunky and attached (moss as a patch on the back, mushroom caps sitting on it); thin stalks and loose
   bits break up when the mesh is reduced.
+- Count the legs: cluster the vertices at ground level (z < 0.05) and check there is one foot per leg; Meshy gave
+  Coalbit a fifth leg, which looked like a skinning bug in game until counted.
 - Check the result before spending more: one island, a clean symmetric face, under ~500k triangles, nothing that looks
   like a famous character. Fix small things in Blender (recolour, add bolts with `rig_kit.bolt`); regenerate only when
   the mesh is unusable. Re-polling a finished job re-imports it for free.
@@ -214,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **emberglow** (Coalbit): hunkers down (`EMBER_CROUCH`) and shivers (`EMBER_SHIVER`) as its ember spots flare;
+  embers, sparks and smoke rise off its back in waves with a warm orange glow.
 - **owlturn** (Nightowl): the head swivels round behind (`OWL_TURN` degrees over neck and head), snaps back and nods
   with a hoot (`HOOT_NOD`); eyes flash, shadow feathers burst, a silver crescent moon rises behind its head.
 - **mantaroll** (Reefray): rises (`MANTA_RISE`) and turns one full barrel roll, aqua sparkles streaming off its wing
@@ -297,6 +301,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   (as `Ear_` bones) wrapped in thorny vines and roses, and a rose wreath on its hump, matching its card art. Remade
   27 Oct (the first model, a slim cow, was too skinny). Remeshed and baked; heavy gait (`legSwing` 0.75: its short legs
   under a deep belly looked crouched at the full swing). 23 bones, 10,000 triangles. Replaced the EarthBull.
+- **Coalbit** (`rig_coalbit.py`, Meshy, Common; was the tinted Salamander): a cute charcoal baby salamander cub sitting
+  up on two legs with its paws on a peach belly, ember-spotted tail, flame tuft. The first try (a splayed four-legged
+  salamander) had five legs and was replaced (`Coalbit_v1.blend`). Hand fixes: a loose second tail deleted, the turned
+  body and head straightened, the ear bones limited to the ear tips. No neck bone (the head sits on the short body).
+  Signature ember glow. Size 1.4. 17 bones, 7,500 triangles.
 - **Nightowl** (`rig_nightowl.py`, Meshy, Rare): a shadow owl (a redesign to match its name, replacing the bought
   heron demon): plump, dark violet, glowing violet eyes, a silver crescent moon on its forehead, smoky wing tips.
   Right first time; 1.2M triangles of feathers shattered under collapse decimate, so remesh_bake at a fine 4 mm voxel.
@@ -304,7 +313,7 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
 - **Reefray** (`rig_reefray.py`, Meshy, Rare): a coral manta ray (a full redesign, replacing the bought metal crab):
   pale with glowing aqua spots, teal edges and curled coral head fins. Generated standing on end and belly up (turned
   over by hand). Flies; flat, so `size` 0.6 (models scale by height) and `wingAmount` 0.3 (full wingbeats folded its
-  broad wings up on end). Signature manta roll. 21 bones, 8,000 triangles. Card art still to do.
+  broad wings up on end). Signature manta roll. 21 bones, 8,000 triangles.
 - **Abyssal Koi** (`rig_abyssalkoi.py`, Meshy, Epic): a massive fierce ice shark (remade 27 Oct on the user's call,
   replacing the first armoured koi). Meshy gave only cyan fin tips, so 19 ice crystals were added by hand with
   `rig_kit.crystal` (dorsal crown, back ridge, ice horns over the eyes, fin and tail shards; two colours from

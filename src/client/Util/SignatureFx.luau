@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * emberglow (Coalbit): hunkers down and shivers as its ember spots flare; embers and smoke rise off its back.
 -- * owlturn (Nightowl): its head swivels round to look behind, snaps back and hoots; eyes flash, shadow feathers
 --   burst and a silver crescent moon rises behind its head.
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
@@ -740,6 +741,41 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- An ember glow: hunkered down, its ember spots flare: embers and a little smoke rise off its back in waves, with a
+-- warm orange glow that fades
+local EMBER = Color3.fromRGB(255, 140, 40)
+local function emberglow(model: Model, size: number)
+	local seconds = Party.PET_ANIM.FIDGET_SECONDS.emberglow * 0.4
+	for wave = 0, 3 do
+		task.delay(wave * seconds / 4, function()
+			local back = bonePosition(model, "Spine_0")
+			if not back or not model.Parent then
+				return
+			end
+			local up = CFrame.lookAt(back, back + Vector3.yAxis)
+			burst(up, FIRE, ColorSequence.new(Color3.fromRGB(255, 220, 110), EMBER), 5, 0.3 * size, 1.5 * size, 0.5)
+			burst(up, SPARKLES, ColorSequence.new(Color3.fromRGB(255, 190, 80), EMBER), 6, 0.2 * size, 2.5 * size, 1.1)
+			if wave == 0 then
+				burst(up, SMOKE, ColorSequence.new(Color3.fromRGB(110, 100, 95)), 4, 0.6 * size, 1.2 * size, 1.4)
+			end
+		end)
+	end
+	local back = bonePosition(model, "Spine_0")
+	if not back then
+		return
+	end
+	local glow = Instance.new("Attachment")
+	glow.WorldPosition = back
+	glow.Parent = workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = EMBER
+	light.Brightness = 2.5
+	light.Range = 7 * size
+	light.Parent = glow
+	TweenService:Create(light, TweenInfo.new(seconds + 0.6), { Brightness = 0 }):Play()
+	task.delay(seconds + 0.7, glow.Destroy, glow)
+end
+
 -- A manta roll: glowing aqua sparkles stream off its wing tips through the barrel roll, then a ring of water splashes
 -- out round it. It is flat (a small size for its wingspan), so the effects go by its wingspan, MANTA_SPAN sizes
 local MANTA_SPAN = 2.5
@@ -1116,6 +1152,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		mantaroll(model, size)
 	elseif kind == "owlturn" then
 		owlturn(model, size)
+	elseif kind == "emberglow" then
+		emberglow(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
