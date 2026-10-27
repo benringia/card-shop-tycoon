@@ -30,7 +30,7 @@ return {
 		Petalpaw = "rbxassetid://106765768029335",
 		Sparkrat = "rbxassetid://89169094983645",
 		Hushmoth = "rbxassetid://88489800871262",
-		Blazehound = "rbxassetid://91834682792754",
+		Blazehound = "rbxassetid://97538556445804",
 		Reefray = "rbxassetid://87314441883255",
 		Thornback = "rbxassetid://112745687041591",
 		Boltlynx = "rbxassetid://74544534062504",

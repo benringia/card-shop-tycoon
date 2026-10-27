@@ -32,9 +32,12 @@ Element scenes (matching `CardDesign.SCENES`):
 
 ## Creature descriptions used
 
-- **Blazehound** (HotDog): a chunky blocky voxel-style dachshund dog, glossy jet-black body with warm tan-orange
-  muzzle, chest, belly and paws, droopy black ears, two little red flame tufts with yellow tips on top of its
-  head, a thin black tail ending in a bright red-and-yellow flame.
+- **Blazehound** (original dachshund puppy, Rare; Meshy remake): a cute chubby cartoon dachshund puppy, rounded
+  stylized toy-like 3D style, a long low plump body on four short stubby legs, glossy black coat with warm tan-orange
+  muzzle, eyebrows, chest patch and paws, long droopy black ears, big kind shiny brown eyes, a black nose and a friendly
+  smile, three small golden flame tufts on top of its head (one in the middle and a matching curled one on each side),
+  a thin black tail held up, a few glowing embers floating around it (pose: standing happily on a rug; lighting: warm
+  cozy firelight).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing
