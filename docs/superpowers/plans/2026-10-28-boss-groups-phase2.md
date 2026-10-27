@@ -22,6 +22,9 @@ rules. Pure rules (group scaling, contribution) live in `Util/BossRules`.
 - Loot is rolled per player (everyone who contributed gets their own full roll; nothing is split).
 - Contribution: loot needs at least 10% of the damage dealt or 15% of the fight tanked, and the player must have the
   boss unlocked. Max 4 players.
+- Carried players (below the contribution share), user's call 2026-10-28: a "carried roll": item chances x0.25
+  (`Bosses.CARRIED_FACTOR`), never fragments, no first-clear chest, no daily bonus; the loot cooldown and soft cap
+  still apply. XP and cash as usual.
 - Fight HUD: boss HP bar, phase banner, group members' HP. Boss gate prompt: Fight (solo), Start group, Join.
 - Server authoritative; every remote validated and rate-limited (CLAUDE.md). No magic numbers: values in `Config/Bosses`.
 - No new saved data: groups are per fight (schema stays v12).
@@ -37,8 +40,8 @@ rules. Pure rules (group scaling, contribution) live in `Util/BossRules`.
   Checked in Task 4 (2-player Local Server).
 - A member who joined without the boss unlocked: their fragments are used only if the fight really starts.
   Checked in Task 4.
-- A carried player (almost no damage, almost no hits taken) gets XP and cash but no items. Tested in Task 1
-  (`contributed`), shown on the end screen in Task 5.
+- A carried player (almost no damage, almost no hits taken) gets XP, cash and only the carried roll (x0.25, no
+  fragments, no chests). Tested in Task 1 (`contributed`, `carriedDrop`), shown on the end screen in Task 5.
 
 ---
 
@@ -50,7 +53,10 @@ rules. Pure rules (group scaling, contribution) live in `Util/BossRules`.
 
 **Interfaces:**
 - Produces: `Bosses.GROUP_MAX = 4`, `Bosses.JOIN_SECONDS = 15`, `Bosses.GROUP_HP_STEP = 0.8`,
-  `Bosses.GROUP_ATK_STEP = 0.15`, `Bosses.CONTRIBUTION_DAMAGE = 0.10`, `Bosses.CONTRIBUTION_TANK = 0.15`.
+  `Bosses.GROUP_ATK_STEP = 0.15`, `Bosses.CONTRIBUTION_DAMAGE = 0.10`, `Bosses.CONTRIBUTION_TANK = 0.15`,
+  `Bosses.CARRIED_FACTOR = 0.25`.
+- Produces: `BossRules.carriedDrop(config, item: string, chance: number, isFragment: boolean): number` (the chance a
+  carried player rolls: 0 for fragments, `chance * CARRIED_FACTOR` otherwise).
 - Produces: `BossRules.groupStats(config, hp: number, atk: number, size: number): (number, number)` (both rounded).
 - Produces: `BossRules.contributed(config, dealt: number, taken: number, totalDealt: number, totalTaken: number): boolean`.
 
@@ -70,9 +76,13 @@ end,
 	expect.equal(BossRules.contributed(Bosses, 9, 14, 100, 100), false, "carried")
 	expect.equal(BossRules.contributed(Bosses, 0, 0, 0, 0), true, "nothing happened: no penalty")
 end,
+["carriedDrop: a quarter of the chance, never fragments"] = function()
+	expect.equal(BossRules.carriedDrop(Bosses, "xpTonic", 0.6, false), 0.15, "tonic")
+	expect.equal(BossRules.carriedDrop(Bosses, "fragment_caveBroodQueen", 0.7, true), 0, "fragment")
+end,
 ```
 
-- [ ] **Step 2: Run** `lune run tests/run`. Expected: the two new tests FAIL (functions missing).
+- [ ] **Step 2: Run** `lune run tests/run`. Expected: the three new tests FAIL (functions missing).
 - [ ] **Step 3: Implement** the config values and both functions (a zero total counts as a full share).
 - [ ] **Step 4: Run** `lune run tests/run`. Expected: all pass.
 - [ ] **Step 5: Commit** `git commit -am "Boss groups: scaling and contribution rules"`
@@ -161,8 +171,9 @@ end,
     lobby closes. Then the boss spawns with `groupStats` for the count, keys are taken from members who didn't have
     the boss unlocked, and `StartGroupFight` runs. A failed start takes no keys.
   - The solo prompt while a lobby is open: "A group is forming at the <boss>: join it or wait."
-  - Rewards: `onBossWin` withholds items when `fight.contributed` is false (`result.noContribution = true`); XP and
-    cash are paid anyway.
+  - Rewards: when `fight.contributed` is false, `onBossWin` gives the carried roll (`carriedDrop` per drop, after the
+    usual cooldown/soft-cap/over-power factor; a fragment is any item some boss's `unlock` uses), no first-clear chest
+    and no daily bonus, and sets `result.carried = true`. XP and cash are paid anyway.
 
 - [ ] **Step 1: Studio check plan written down**: Test tab -> Local Server, 2 players. Player 1 `/boss 1`, presses
   "Start group"; player 2 `/boss 1`, presses "Join group (1/4)"; after 15 s one Warden spawns with 2160 HP; both fight
@@ -178,11 +189,11 @@ end,
 - Modify: `src/client/Controllers/BattleController.luau`
 
 **Interfaces:**
-- Consumes: Task 3 payload (`allies`, `group`), snapshot fighters' `owner`/`left`, Task 4 `summary.boss.noContribution`.
+- Consumes: Task 3 payload (`allies`, `group`), snapshot fighters' `owner`/`left`, Task 4 `summary.boss.carried`.
 
 - [ ] **Step 1: Studio check plan written down**: in a group fight the bar shows your own fighters with buttons, an
   ally row with each member's creature and HP (greyed when they left), Run reads "Leave"; a carried player's end screen
-  says "Helped too little for loot (deal 10% of the damage or take 15% of the hits)". Solo fights look as before.
+  says "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)". Solo fights look as before.
 - [ ] **Step 2: Implement** (ally row reuses the PvP `enemyRow` bar style; call-in buttons only for ids in your own
   `names`).
 - [ ] **Step 3: Run** tests, `rojo build`, Studio screenshots (solo boss fight at least; group with the user).
