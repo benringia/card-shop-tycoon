@@ -65,6 +65,11 @@ Element scenes (matching `CardDesign.SCENES`):
   its back, a glowing teal crystal gem on its forehead, a big pale ice blade rising over its rump above a fluffy white
   tail, small ice crystals glittering around its paws (pose: standing proudly on an icy rock; lighting: bright
   underwater light rays with icy glints).
+- **Gale Sprite** (original storm swift, Rare; was the NeonSwallow): a slightly fierce mythical cartoon storm swift
+  bird, rounded stylized toy-like 3D style, a plump deep blue body with a white chest, fierce glowing yellow eyes, a
+  sharp orange beak, a swirling silver wind-shaped crest on its head, both wings spread wide with bright yellow
+  lightning crackling off them, a long tail ending in a fluffy grey storm cloud puff, small orange talons, swirls of
+  wind around it (pose: soaring with wings spread; lighting: dramatic stormy lighting with bright flashes).
 - **Boltlynx** (original electric lynx, Rare): a slightly fierce cartoon electric lynx standing on four slender legs,
   rounded stylized toy-like 3D style, bright golden-orange body, white zigzag lightning-stripe markings on its back and
   flanks, cream muzzle, chest and belly, very tall pointed ears with dark inner ears, each ear tipped with a glowing

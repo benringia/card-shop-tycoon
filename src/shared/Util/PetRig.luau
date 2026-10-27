@@ -304,6 +304,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.35 -- reared up tall: the flowers burst
 	elseif kind == "frostpounce" then
 		return progress >= 0.6 -- it lands: the ice bursts up
+	elseif kind == "galedive" then
+		return progress >= 0.5 -- the bottom of the dive: the gust and lightning
 	elseif kind == "mantaroll" then
 		return progress >= 0.1 -- the roll starts (SignatureFx times the tide ring for its end)
 	elseif kind == "emberflap" then
@@ -445,6 +447,14 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		local rise = math.sin(math.clamp(p / 0.4, 0, 1) * math.pi / 2) * (1 - math.clamp((p - 0.7) / 0.3, 0, 1))
 		lift = cfg.SPORE_LIFT * rise
 		pitch = math.rad(cfg.SPORE_LEAN) * rise
+	elseif kind == "galedive" then
+		-- A swift's dive: climbing (to 0.3), a fast spinning dive down through the gust (bottom at 0.5), swooping back up
+		local climb = math.sin(math.clamp(p / 0.3, 0, 1) * math.pi / 2)
+		local dive = math.sin(math.clamp((p - 0.3) / 0.2, 0, 1) * math.pi / 2)
+		local back = math.clamp((p - 0.5) / 0.5, 0, 1)
+		lift = cfg.GALE_CLIMB * (climb - dive * 1.4) * (1 - back * back * (3 - 2 * back))
+		pitch = -math.rad(cfg.GALE_DIVE) * math.sin(math.clamp((p - 0.3) / 0.35, 0, 1) * math.pi)
+		roll = side * TAU * (dive * 0.5 + 0.5 * math.clamp((p - 0.5) / 0.3, 0, 1))
 	elseif kind == "frostpounce" then
 		-- A fox's pounce: crouching low, rump up (to 0.3), springing up and forward (the top at 0.45), landing nose
 		-- first at 0.6, then backing up to its spot

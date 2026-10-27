@@ -216,6 +216,8 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   splashes out round it with spray.
 - **thorncharge** (Briarhorn): head down (`CHARGE_LOWER`), a short charge forward (`CHARGE_LUNGE`, the body's
   `forward` motion) and back; thorny vines burst up in front of it with pink petals and dust.
+- **galedive** (Gale Sprite): climbs (`GALE_CLIMB`), dives nose down (`GALE_DIVE`) in one full spinning roll; at the
+  bottom a gust swirls round it and lightning bolts flash down from its wing tips.
 - **frostpounce** (Frostfang): crouches nose down (`POUNCE_CROUCH`, `POUNCE_TIP`), leaps up and forward
   (`POUNCE_HEIGHT`, `POUNCE_LEAP`) and lands; a ring of glowing ice crystals bursts up there and melts.
 - **vinebloom** (Vinewyrm): rears up tall (`BLOOM_RISE`, leaning back `BLOOM_LEAN`) and sways (`BLOOM_SWAY`) as
@@ -412,6 +414,11 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   rump. A loose first prompt gave a plain spiky fox sitting turned; the firm second prompt (see the script) came out
   right. Ears and paws weighted to their bones by position. Signature frost pounce. Size 2 (raised on request).
   22 bones, 9,000 triangles.
+- **Gale Sprite** (`rig_galesprite.py`, Meshy, Rare; was the NeonSwallow, the last bought model): a mythical storm
+  swift, deep blue with a white chest, a silver wind crest, lightning crackling off its spread wings and a storm-cloud
+  tail puff. Firm prompt, right first time; fine remesh (3.5 mm) keeps the thin lightning strands. Each wing, with its
+  lightning, weighted to its three `Wing_` bones by how far out it reaches. Flies (`WING_SPEED` 0.8). Signature gale
+  dive. Size 1.9 (raised on request). 20 bones, 10,000 triangles.
 - **Duskstalker** (`build_duskstalker.py`, Very Rare): a shadow Monkey King on two legs, stocky (broad shoulders,
   barrel chest, thick limbs, big fists and feet, a big head): dark plum fur, a tan face and chest, glowing amber eyes
   under low brows and a sly smile, a golden circlet with a violet gem, gold pauldrons, a red cape, purple trousers,

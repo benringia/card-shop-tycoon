@@ -30,6 +30,7 @@
 -- * blessing (Tideborne Kirin): rears and stamps; water and golden light spiral up, rays shine, its halo flares.
 -- * hornstorm (Stormking): charges horn-first; its horn crackles and lightning rains down in a ring round it.
 -- * mantaroll (Reefray): a barrel roll in the air, aqua sparkles streaming off its wing tips, then a ring of water.
+-- * galedive (Gale Sprite): climbs, then a spinning dive; a gust swirls round it and lightning flashes off its wings.
 -- * frostpounce (Frostfang): a fox's pounce; where it lands a ring of glowing ice crystals bursts up and melts.
 -- * vinebloom (Vinewyrm): rears up tall and sways as petals and leaves burst from its flower crown.
 -- * mistwave (Mistfin): a proud little hop, and as it lands a ring of glowing mist rolls out with frosty sparkles.
@@ -751,6 +752,26 @@ local function owlturn(model: Model, size: number)
 	end
 end
 
+-- A gale dive: at the bottom of its dive a swirl of wind gusts round it and lightning flashes off both wing tips
+local GUST = Color3.fromRGB(210, 230, 255)
+local function galedive(model: Model, size: number)
+	local body = bonePosition(model, "Spine_0")
+	if body then
+		for i = 1, 10 do
+			local angle = i / 10 * math.pi * 2
+			local at = body + Vector3.new(math.cos(angle), rng:NextNumber(-0.3, 0.3), math.sin(angle)) * 1.3 * size
+			burst(CFrame.lookAt(at, at + Vector3.new(-math.sin(angle), 0, math.cos(angle))), SMOKE, ColorSequence.new(GUST), 2, 0.5 * size, 2.5 * size, 0.6)
+		end
+	end
+	for _, name in { "Wing_Left_2", "Wing_Right_2" } do
+		local tip = bonePosition(model, name)
+		if tip then
+			bolt(tip, tip + Vector3.new(rng:NextNumber(-0.6, 0.6), -1.6, rng:NextNumber(-0.6, 0.6)) * size, 0.05 * size)
+			burst(CFrame.new(tip), SPARKLES, ColorSequence.new(LIGHTNING_COLOR), 8, 0.25 * size, 3 * size, 0.5)
+		end
+	end
+end
+
 -- A frost pounce: where it lands, a ring of glowing ice crystals bursts up out of the ground, glints and melts away
 local ICE = Color3.fromRGB(150, 230, 255)
 local function frostpounce(model: Model, size: number)
@@ -1309,6 +1330,8 @@ function SignatureFx.play(kind: string, model: Model, size: number)
 		vinebloom(model, size)
 	elseif kind == "frostpounce" then
 		frostpounce(model, size)
+	elseif kind == "galedive" then
+		galedive(model, size)
 	elseif kind == "kungfu" then
 		kungfu(model, size)
 	elseif kind == "eclipse" then
