@@ -594,7 +594,8 @@ and rewards in `BossService`.
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you alone, stands still, and always goes when
-  the fight ends (win, loss or run). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  the fight ends (win, loss or run). One boss per arena: while someone fights there, the gate tells others to wait
+  (shared group fights come with groups, phase 3). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
   studs, stuns on a boss last at most 1 s.
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6

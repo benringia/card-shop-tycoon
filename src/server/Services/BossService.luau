@@ -29,6 +29,7 @@ local BossService = {}
 
 local records: { [Player]: { [string]: BossRules.Record } } = {} -- loaded players only
 local arenas: { [string]: WildService.BossArena } = {}
+local occupants: { [string]: WildService.Monster } = {} -- the boss being fought in each arena (one at a time; groups come later)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowRequest = RateLimiter.new(1)
 local rng = Random.new()
@@ -194,6 +195,12 @@ local function onGate(player: Player, bossId: string)
 		notify(player, `Needs {unlock.count} {describeItem(unlock.item)}s (you have {owned}). Beat the boss before it.`, true)
 		return
 	end
+	-- One boss per arena: someone else's fight there must end first
+	local occupant = occupants[bossId]
+	if occupant and occupant.alive and occupant.fightingPlayer ~= player then
+		notify(player, `Someone is fighting the {boss.name}. Wait for them to finish.`, true)
+		return
+	end
 	local reason = BattleService.WhyNotFight(player)
 	if reason then
 		notify(player, reason, true)
@@ -211,6 +218,7 @@ local function onGate(player: Player, bossId: string)
 		notify(player, why or "The boss couldn't start. Try again.", true)
 		return
 	end
+	occupants[bossId] = monster -- free again once it's defeated or despawned (alive = false)
 	if not record.unlocked and unlock then
 		ItemService.TakeItem(player, unlock.item, unlock.count)
 		record.unlocked = true
