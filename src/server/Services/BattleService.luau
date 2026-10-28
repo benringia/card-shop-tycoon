@@ -59,6 +59,8 @@ type Fight = {
 	center: Vector3, -- the ring; players may roam within the leash of it
 	sinceSnapshot: number,
 	ended: boolean,
+	startsAt: number, -- os.clock(): boss fights hold still through the intro until then
+	adds: { [string]: Monster }, -- a boss's adds, by sim id ("b:add1"...)
 }
 
 local BattleService = {}
@@ -78,6 +80,8 @@ local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
+local fightEndedHandlers: { (monster: Monster) -> () } = {}
+local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
@@ -101,6 +105,16 @@ function BattleService.IsResting(player: Player, beastId: string): boolean
 end
 
 -- ArenaService refuses wild fights while a player has a challenge, a queued match or a PvP fight
+-- BossService: a player left a fight that goes on without them (it moves them out of a sealed arena)
+function BattleService.OnMemberLeft(handler: (player: Player, monster: Monster) -> ())
+	table.insert(memberLeftHandlers, handler)
+end
+
+-- BossService: every fight's end, whatever the result (it unseals the arena)
+function BattleService.OnFightEnded(handler: (monster: Monster) -> ())
+	table.insert(fightEndedHandlers, handler)
+end
+
 function BattleService.AddStartBlocker(blocker: (player: Player) -> string?)
 	table.insert(startBlockers, blocker)
 end
@@ -194,6 +208,10 @@ local function markerFor(fight: Fight, id: string): BasePart?
 	if id == MONSTER_ID then
 		return fight.monster.marker
 	end
+	local add = fight.adds[id]
+	if add then
+		return add.marker
+	end
 	local member = memberOf(fight, id)
 	if not member then
 		return nil
@@ -204,6 +222,11 @@ end
 local function place(fight: Fight, id: string, cframe: CFrame)
 	if id == MONSTER_ID then
 		WildService.SetFightPose(fight.monster, cframe)
+		return
+	end
+	local add = fight.adds[id]
+	if add then
+		WildService.SetFightPose(add, cframe)
 		return
 	end
 	local member = memberOf(fight, id)
@@ -298,9 +321,36 @@ local function enterField(fight: Fight, event: BattleSim.Event, markers: { [stri
 	allies[id] = if beast then `{player.DisplayName} · {Cards.ById[beast.cardId].name}` else player.DisplayName
 end
 
+-- A boss summoned an add: a real wild monster of its species, held still beside the boss (left, right, further out)
+local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart }, addMonsters: { [string]: string })
+	local boss = Bosses.BOSSES[fight.monster.boss or ""]
+	local adds = if boss then boss.mechanics.adds else nil
+	local leader = next(fight.members)
+	if not boss or not adds or not leader then
+		return
+	end
+	local count = 0
+	for _ in fight.adds do
+		count += 1
+	end
+	local sideways = (if count % 2 == 0 then 1 else -1) * Bosses.ADD_SPACING * (count // 2 + 1)
+	local spot = fight.spots[MONSTER_ID] * CFrame.new(sideways, 0, 0)
+	local monster = WildService.SpawnAt(spot.Position, adds.species, boss.level, false)
+	if not monster then
+		return
+	end
+	WildService.Lock(monster, leader)
+	WildService.SetFightPose(monster, spot)
+	fight.adds[id] = monster
+	fight.spots[id] = spot
+	markers[id] = monster.marker
+	addMonsters[id] = monster.id -- clients find the marker by name when it arrives after this message
+end
+
 local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	local markers: { [string]: BasePart } = {}
 	local allies: { [string]: string } = {}
+	local addMonsters: { [string]: string } = {}
 	for _, event in events do
 		if event.type == "attack" and event.from and event.to then
 			lunge(fight, event.from, event.to)
@@ -309,6 +359,12 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			if marker then
 				marker:SetAttribute("Fainted", true)
 			end
+			local add = fight.adds[event.to]
+			if add then
+				task.delay(Bosses.ADD_FADE_SECONDS, WildService.Defeat, add)
+			end
+		elseif event.type == "spawn" and event.to then
+			spawnAdd(fight, event.to, markers, addMonsters)
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
 		end
@@ -316,7 +372,7 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	if #events > 0 then
 		fight.sinceSnapshot = 0
 		-- New creatures' markers, so clients can float numbers over them; the others see whose they are
-		broadcast(fight, { events = events, markers = markers, allies = allies, snapshot = snapshot(fight) })
+		broadcast(fight, { events = events, markers = markers, allies = allies, addMonsters = addMonsters, snapshot = snapshot(fight) })
 	end
 end
 
@@ -473,8 +529,16 @@ local function endFight(fight: Fight, result: string)
 	if fight.ended then
 		return
 	end
+	task.defer(function()
+		for _, handler in fightEndedHandlers do
+			handler(fight.monster)
+		end
+	end)
 	fight.ended = true
 	running[fight] = nil
+	for _, add in fight.adds do
+		WildService.Defeat(add) -- a boss's adds go with it
+	end
 	if result == "win" or fight.monster.boss then
 		WildService.Defeat(fight.monster) -- a boss always goes when its fight ends
 	else
@@ -513,6 +577,9 @@ local function leave(fight: Fight, member: Member)
 	local events = BattleSim.withdraw(fight.sim, member.owner)
 	local player = member.player
 	local rested = release(fight, member)
+	for _, handler in memberLeftHandlers do
+		handler(player, fight.monster)
+	end
 	if player.Parent then
 		Remotes.BattleEnded:FireClient(player, { result = "run", rested = rested })
 		sendResting(player)
@@ -572,8 +639,9 @@ local function startFight(players: { Player }, monster: Monster): boolean
 	if not stats or #players == 0 then
 		return false
 	end
+	local swings = 1
 	if boss then
-		stats.hp, stats.atk = BossRules.groupStats(Bosses, stats.hp, stats.atk, #players)
+		stats.hp, stats.atk, swings = BossRules.groupStats(Bosses, stats.hp, stats.atk, #players, boss.groupAtkStep)
 	end
 
 	local members: { Member } = {}
@@ -608,6 +676,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 			elite = monster.elite,
 			mechanics = if boss then boss.mechanics else nil,
 			boss = boss ~= nil,
+			swings = swings,
 		} },
 		abilities = false,
 		canRun = false,
@@ -642,6 +711,8 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		center = center,
 		sinceSnapshot = 0,
 		ended = false,
+		startsAt = if boss then os.clock() + Bosses.INTRO_SECONDS else 0,
+		adds = {},
 	}
 	running[fight] = true
 	WildService.Lock(monster, players[1])
@@ -691,6 +762,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 			elite = monster.elite,
 			element = monster.element,
 			boss = monster.boss,
+			intro = if boss then Bosses.INTRO_SECONDS else nil,
 			names = names,
 			allies = allies,
 			group = #members > 1,
@@ -755,10 +827,15 @@ local function onStartFight(player: Player, monsterId: unknown)
 	startFight({ player }, monster :: Monster)
 end
 
+-- Buttons pressed during a boss intro do nothing: the fight hasn't started
+local function inIntro(fight: Fight): boolean
+	return os.clock() < fight.startsAt
+end
+
 local function onCallIn(player: Player, id: unknown)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
-	if not allowCallIn(player) or not fight or not member or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
+	if not allowCallIn(player) or not fight or not member or inIntro(fight) or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
 		return
 	end
 	-- Only one of your own reserves (the sim checks the owner). Boss fights: a swap (a call-in early on).
@@ -777,7 +854,7 @@ local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
 	-- Only your own fighters (the sim checks the owner)
-	if not allowAbility(player) or not fight or not member or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
+	if not allowAbility(player) or not fight or not member or inIntro(fight) or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
 		return
 	end
 	if which ~= "element" and which ~= "signature" then
@@ -795,7 +872,7 @@ end
 local function onRun(player: Player)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
-	if not allowRun(player) or not fight or not member then
+	if not allowRun(player) or not fight or not member or inIntro(fight) then
 		return
 	end
 	-- In a group fight, Run is leaving (the others fight on), even for the last one still in it: never a run roll
@@ -855,8 +932,8 @@ local function stepFights(dt: number)
 				keepNear(fight, member)
 			end
 		end
-		if fight.ended then
-			continue
+		if fight.ended or os.clock() < fight.startsAt then
+			continue -- the intro: nothing moves yet
 		end
 		handleEvents(fight, BattleSim.step(fight.sim, dt))
 		if fight.sim.result then

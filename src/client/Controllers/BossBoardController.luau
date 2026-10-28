@@ -1,5 +1,5 @@
 --!strict
--- The boss board (HUD tile "Bosses"): the boss ladder (Config/Bosses) with each boss's lock and fragments, the
+-- The boss board (HUD tile "Bosses"): the boss ladder (Config/Bosses) with each boss's shop level, lock and fragments, the
 -- recommended Power against your strongest party card, when full loot is ready again, today's rewarded wins and the
 -- trophy once cleared. Data comes from BossService (BossesChanged); the loot timers count down here between updates.
 -- Also: the leader of a group forming at a gate sees "Start now" on its group prompt.
@@ -13,7 +13,9 @@ local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
-local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
+local WildConfig = require(Config:WaitForChild("Wild"))
+local FrontierConfig = require(Config:WaitForChild("Frontier"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -63,6 +65,11 @@ local function lootText(state: BossState): (string, Color3)
 	return if left > 0 then `Full loot in {clock(left)}` else "Full loot ready", if left > 0 then LOCKED_COLOR else READY_COLOR
 end
 
+local function shopLevel(): number
+	local level = Players.LocalPlayer:GetAttribute("Level")
+	return if typeof(level) == "number" then level else 1
+end
+
 local function addText(row: GuiObject, text: string, y: number, height: number, font: Enum.Font, size: number, color: Color3): TextLabel
 	local label = UIKit.label(row, text, font, size, color)
 	label.Position = UDim2.fromOffset(14, y)
@@ -83,13 +90,19 @@ local function buildRow(index: number, bossId: string, power: number)
 	local stroke = UIKit.outline(row, Cards.ELEMENTS[boss.element])
 	stroke.Thickness = 1.5
 
-	local zone = Wild.ZONES[boss.zone]
+	local zone = (if boss.place == "Frontier" then FrontierConfig else WildConfig).ZONES[boss.zone]
+	local away = (boss.place == "Frontier") ~= Place.isFrontier() -- its arena is in the other place
 	local trophy = if state and state.cleared then " 🏆" else ""
 	addText(row, `{index}. {boss.name}{trophy}`, 8, 22, Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
-	local where = if zone then `{zone.name} arena · ` else ""
+	local where = if zone then `{zone.name} arena{if away then ` (the {boss.place})` else ""} · ` else ""
 	local powerColor = if power >= boss.recommended then READY_COLOR else UIKit.Colors.Danger
 	addText(row, `{where}Power {boss.recommended} · your best {power}`, 32, 18, Enum.Font.GothamBold, 13, powerColor)
 
+	if not BossRules.levelReady(boss.shopLevel, shopLevel()) then
+		addText(row, `🔒 Opens at shop level {boss.shopLevel}`, 54, 20, Enum.Font.GothamBold, 15, LOCKED_COLOR)
+		addText(row, `Your shop is level {shopLevel()}: sell cards to level up.`, 78, 18, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+		return
+	end
 	local unlock = boss.unlock
 	if not state or (not state.unlocked and unlock) then
 		local have = if state then state.fragments else 0
@@ -189,6 +202,7 @@ function BossBoardController.Start()
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(render)
 	end)
+	Players.LocalPlayer:GetAttributeChangedSignal("Level"):Connect(render)
 	Remotes.RequestBosses:FireServer()
 
 	local sinceTick = 0

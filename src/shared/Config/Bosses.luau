@@ -1,12 +1,14 @@
 --!strict
 -- The boss ladder (spec 2026-10-28-boss-ladder-design.md; DESIGN.md 5.8 battles part 3b). Each boss is fought at an
--- arena at the end of its Wild zone, unlocks with fragments the boss before drops, and drops what helps beat the next.
--- Plain data so Lune tests and the economy simulator can load it. Phase 1: the three Wild bosses, solo.
+-- arena at the end of its zone (the Wild in the main game, the Frontier place for 4-6), unlocks with fragments the boss
+-- before drops, and drops what helps beat the next. Plain data so Lune tests and the economy simulator can load it.
 export type Drop = { item: string, chance: number, min: number, max: number }
 export type Grant = { item: string, count: number }
 export type Boss = {
 	name: string,
-	zone: number, -- Config/Wild ZONES index: its arena is at the end of this zone
+	title: string, -- under its name on the intro card
+	place: "Wild" | "Frontier", -- which place its arena is in (only that place builds it)
+	zone: number, -- ZONES index in that place's world (Config/Wild or Config/Frontier): its arena is at the end of it
 	shape: string, -- a Wild placeholder shape until its model exists
 	scale: number, -- placeholder size, times the monster height
 	element: string,
@@ -15,10 +17,22 @@ export type Boss = {
 	atk: number,
 	spd: number,
 	recommended: number, -- the party Power it's balanced for (shown on the board; drops shrink far above it)
+	shopLevel: number, -- the shop level a player needs to fight it (every member of a group), on top of its fragments
+	groupAtkStep: number?, -- its own ATK step per extra player in a group (nil: GROUP_ATK_STEP)
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
-	mechanics: { heal: { below: number, fraction: number, cooldown: number }?, enrage: { below: number, atkMultiplier: number }? },
+	-- heal below an HP fraction; enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
+	-- first (breaking it stuns the boss `breakStun` s); thunderclap: every `every` s stuns each enemy `seconds` x
+	-- clamp(boss SPD / its SPD, minFactor, maxFactor); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
+	-- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
+	mechanics: {
+		heal: { below: number, fraction: number, cooldown: number }?,
+		enrage: { below: number, atkMultiplier: number }?,
+		shield: { every: number, fraction: number, breakStun: number }?,
+		thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
+		adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
+	},
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -29,6 +43,8 @@ export type Boss = {
 local BOSSES: { [string]: Boss } = {
 	meadowWarden = {
 		name = "Meadow Warden",
+		title = "Guardian of the Meadow",
+		place = "Wild",
 		zone = 1,
 		shape = "slime",
 		scale = 2.5,
@@ -38,6 +54,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 11,
 		spd = 8,
 		recommended = 200,
+		shopLevel = 3,
 		minFightSeconds = 12,
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
@@ -52,6 +69,8 @@ local BOSSES: { [string]: Boss } = {
 	},
 	caveBroodQueen = {
 		name = "Cave Brood Queen",
+		title = "Mother of the Deep",
+		place = "Wild",
 		zone = 2,
 		shape = "bat",
 		scale = 2.8,
@@ -61,6 +80,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 16,
 		spd = 12,
 		recommended = 350,
+		shopLevel = 5,
 		minFightSeconds = 18,
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
@@ -77,6 +97,8 @@ local BOSSES: { [string]: Boss } = {
 	},
 	emberColossus = {
 		name = "Ember Colossus",
+		title = "The Walking Furnace",
+		place = "Wild",
 		zone = 3,
 		shape = "golem",
 		scale = 3.2,
@@ -86,25 +108,119 @@ local BOSSES: { [string]: Boss } = {
 		atk = 22,
 		spd = 9,
 		recommended = 650,
+		shopLevel = 8,
 		minFightSeconds = 25,
 		unlock = { item = "fragment_emberColossus", count = 5 },
+		fragment = "fragment_frostTyrant",
 		mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } },
 		drops = {
 			{ item = "gradingSeal", chance = 0.35, min = 1, max = 1 },
 			{ item = "xpTonic", chance = 0.4, min = 2, max = 3 },
+			{ item = "fragment_frostTyrant", chance = 0.6, min = 1, max = 1 },
 		},
-		firstClear = { { item = "trophy_emberColossus", count = 1 }, { item = "gradingSeal", count = 3 } },
+		firstClear = { { item = "fragment_frostTyrant", count = 3 }, { item = "trophy_emberColossus", count = 1 }, { item = "gradingSeal", count = 3 } },
 		dailyBonus = { { item = "gradingSeal", count = 2 } },
 		cash = 96,
 		xp = 2220,
 	},
+	-- The Frontier bosses (phase 3): arenas in the Frontier place
+	frostTyrant = {
+		name = "Frost Tyrant",
+		title = "Lord of the Long Winter",
+		place = "Frontier",
+		zone = 1,
+		shape = "slime",
+		scale = 3.0,
+		element = "Tide",
+		level = 22,
+		hp = 11500,
+		atk = 27,
+		spd = 9,
+		recommended = 1100,
+		shopLevel = 12,
+		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
+		minFightSeconds = 60,
+		unlock = { item = "fragment_frostTyrant", count = 5 },
+		fragment = "fragment_stormSovereign",
+		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
+		drops = {
+			{ item = "gradingSeal", chance = 0.4, min = 1, max = 1 },
+			{ item = "starShard", chance = 0.25, min = 1, max = 2 },
+			{ item = "fragment_stormSovereign", chance = 0.6, min = 1, max = 1 },
+		},
+		firstClear = { { item = "fragment_stormSovereign", count = 3 }, { item = "trophy_frostTyrant", count = 1 }, { item = "gradingSeal", count = 3 } },
+		dailyBonus = { { item = "gradingSeal", count = 2 } },
+		cash = 150,
+		xp = 3600,
+	},
+	stormSovereign = {
+		name = "Storm Sovereign",
+		title = "Voice of the Thunder",
+		place = "Frontier",
+		zone = 2,
+		shape = "bat",
+		scale = 3.2,
+		element = "Volt",
+		level = 32,
+		hp = 14500,
+		atk = 26,
+		spd = 14,
+		recommended = 1500,
+		shopLevel = 15,
+		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
+		minFightSeconds = 70,
+		unlock = { item = "fragment_stormSovereign", count = 8 },
+		fragment = "fragment_riftDevourer",
+		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } },
+		drops = {
+			{ item = "goldSeal", chance = 0.25, min = 1, max = 1 },
+			{ item = "fragment_riftDevourer", chance = 0.55, min = 1, max = 1 },
+		},
+		firstClear = { { item = "fragment_riftDevourer", count = 3 }, { item = "trophy_stormSovereign", count = 1 }, { item = "goldSeal", count = 1 } },
+		dailyBonus = { { item = "goldSeal", count = 1 } },
+		cash = 210,
+		xp = 5200,
+	},
+	riftDevourer = {
+		name = "Rift Devourer",
+		title = "The Hunger Between Worlds",
+		place = "Frontier",
+		zone = 3,
+		shape = "beetle",
+		scale = 3.4,
+		element = "Shade",
+		level = 45,
+		hp = 23000,
+		atk = 26,
+		spd = 10,
+		recommended = 1900,
+		shopLevel = 18,
+		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
+		minFightSeconds = 80,
+		unlock = { item = "fragment_riftDevourer", count = 8 },
+		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
+		drops = {
+			{ item = "goldSeal", chance = 0.3, min = 1, max = 1 },
+			{ item = "starShard", chance = 0.3, min = 1, max = 2 },
+		},
+		firstClear = { { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
+		dailyBonus = { { item = "goldSeal", count = 1 } },
+		cash = 280,
+		xp = 7400,
+	},
 }
 
 return {
-	LADDER = { "meadowWarden", "caveBroodQueen", "emberColossus" },
+	LADDER = { "meadowWarden", "caveBroodQueen", "emberColossus", "frostTyrant", "stormSovereign", "riftDevourer" },
 	BOSSES = BOSSES,
 
 	-- Farm protection (spec section 7)
+	-- Loot on the ground: each player's drops scatter round the boss (only they see them); walking over one picks it up
+	LOOT_SCATTER = { min = 4, max = 10 }, -- studs from the boss
+	LOOT_PICKUP_DISTANCE = 8, -- the server's limit for a pickup
+	LOOT_CLIENT_REACH = 5, -- the client asks this close
+	LOOT_AUTO_SECONDS = 60, -- whatever is left goes into the Bag by itself after this
+	LOOT_PICKUP_COOLDOWN = 0.1, -- seconds between pickup requests
 	LOOT_COOLDOWN = 900, -- seconds between full loot from the same boss, per player (saved Unix time)
 	SOFT_CAP_AFTER = 6, -- rewarded kills of a boss a day at full drop chances
 	SOFT_CAP_STEP = 0.75, -- each further rewarded kill's drop chances, times the one before
@@ -121,6 +237,7 @@ return {
 	JOIN_SECONDS = 15, -- others join this long after the leader opens a group at the gate
 	GROUP_HP_STEP = 0.8, -- boss HP x (1 + this x (players - 1))
 	GROUP_ATK_STEP = 0.15, -- boss ATK x (1 + this x (players - 1))
+	GROUP_SWINGS_STEP = 1, -- extra creatures the boss hits per attack, per extra player (so a group isn't a free win)
 	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
 	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took
 	CARRIED_FACTOR = 0.25, -- below both: item chances x this, never fragments, no chests
@@ -128,9 +245,25 @@ return {
 	GROUP_PROMPT_OFFSET = 80, -- pixels the gate's group prompt sits below its Fight prompt
 
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
-	ARENA_RADIUS = 24,
+	ARENA_RADIUS = 36,
+	-- The intro: the camera flies to the boss (name card, roar), then 3, 2, 1, FIGHT. The boss can't be hit before.
+	INTRO_SECONDS = 6,
+	INTRO_CAMERA_SECONDS = 3,
+	INTRO_SHOT = { back = 24, up = 12 }, -- studs in front of the boss and above (over the creatures), looking at it
+	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
+	PHASE_SHAKE = { seconds = 0.3, studs = 0.4 }, -- heal, enrage and the other boss moments
+	MUSIC_ID = "1843821342", -- boss ambience: "Tension Repeat Drones 22" (APM, free in the Creator Store); "" plays none
+	MUSIC_VOLUME = 0.1, -- a low drone under the attack and skill sounds, just enough that the fight isn't silent
+	MUSIC_FADE = 1, -- seconds
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring
 	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands
 	RING_RADIUS = 11, -- fighters stand this far from a boss (it's big)
-	LEASH_RADIUS = 38, -- players may roam the whole ring (and the gate) during a boss fight
+	LEASH_RADIUS = 42, -- ARENA_RADIUS + BOSS_SPOT: a backstop behind the barrier (the leash is measured from the boss)
+	-- While a fight runs the ring is sealed: a see-through wall all round, just outside the fence
+	BARRIER_SEGMENT = 6, -- studs per wall piece
+	BARRIER_HEIGHT = 14,
+	BARRIER_TRANSPARENCY = 0.55,
+	ADD_FADE_SECONDS = 1, -- a fallen add lies there this long before it goes
+	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
+	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

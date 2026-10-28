@@ -9,6 +9,7 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -33,6 +34,8 @@ local BAR_MAX_WIDTH = 560
 local BOSS_BAR_MAX_WIDTH = 640
 local BOSS_BAR_TOP = 6 -- pixels from the very top of the screen
 local BANNER_SECONDS = 1.4
+local MONSTER_ID = "b:m" -- the monster's sim id (side B, as the server names it)
+local INTRO_FLY = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local END_SCREEN_HEIGHT = 150
 local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
 local HP_COLOR = Color3.fromRGB(90, 210, 110)
@@ -42,6 +45,7 @@ local ELITE_COLOR = Color3.fromRGB(255, 205, 60)
 local STRONG_COLOR = Color3.fromRGB(255, 150, 40)
 local WEAK_COLOR = Color3.fromRGB(170, 170, 180)
 local HEAL_COLOR = Color3.fromRGB(120, 230, 120)
+local SHIELD_COLOR = Color3.fromRGB(150, 210, 255)
 local NUMBER_RISE = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 -- HUD hidden while fighting so nothing gets tapped by mistake
 local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" }
@@ -68,6 +72,8 @@ type Snapshot = {
 	runChance: number,
 	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
 	allies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean, left: boolean? } }, -- group fights
+	adds: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } }, -- a boss's adds
+	bossShield: number, -- HP the boss's shield still absorbs
 }
 
 type FighterView = {
@@ -103,8 +109,15 @@ local bossBar: Frame -- boss fights: name and HP across the top of the screen
 local bossName: TextLabel
 local bossHpFill: Frame
 local bossHpText: TextLabel
+local addsRow: Frame -- boss fights: its adds' HP, under the boss bar
+local addBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
 local bossId: string? = nil -- the boss being fought (Config/Bosses id)
 local shopButton: TextButton
+local introCard: Frame -- boss intro: the boss's name and title in the middle of the screen
+local introName: TextLabel
+local introTitle: TextLabel
+local introToken = 0
+local bossMusic: Sound? = nil
 
 local fighting = false
 local fightNames: { [string]: string } = {}
@@ -191,6 +204,12 @@ local function toView(raw: any): Snapshot
 	local mine = raw.sides[mySide]
 	local enemy = raw.sides[if mySide == "a" then "b" else "a"]
 	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
+	local adds = {}
+	for _, fighter in enemy.fighters do
+		if fighter.id ~= MONSTER_ID and bossId then
+			table.insert(adds, fighter)
+		end
+	end
 	-- Group fights: side A holds everyone's creatures (each tagged with its owner); yours get buttons, the others go in
 	-- the ally row. Untagged fighters (PvP) are all yours.
 	local myOwner = tostring(player.UserId)
@@ -210,6 +229,8 @@ local function toView(raw: any): Snapshot
 	return {
 		time = raw.time,
 		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true },
+		adds = adds,
+		bossShield = if typeof(enemy.shield) == "number" then enemy.shield else 0,
 		fighters = own,
 		allies = allies,
 		reserves = reserves,
@@ -230,6 +251,24 @@ local function addAllies(list: unknown)
 	for id, name in list :: { [any]: any } do
 		if typeof(id) == "string" and typeof(name) == "string" then
 			allyNames[id] = name
+		end
+	end
+end
+
+-- An add's marker can arrive just after the message naming it: wait for it in the Monsters folder
+local function addMonsterMarkers(list: unknown)
+	if typeof(list) ~= "table" then
+		return
+	end
+	local folder = workspace:FindFirstChild("Monsters")
+	for id, monsterId in list :: { [any]: any } do
+		if folder and typeof(id) == "string" and typeof(monsterId) == "string" and not markers[id] then
+			task.spawn(function()
+				local marker = folder:WaitForChild(`Monster_{monsterId}`, 2)
+				if marker and marker:IsA("BasePart") then
+					markers[id] = marker
+				end
+			end)
 		end
 	end
 end
@@ -464,6 +503,29 @@ local function buildEnemies(snapshot: Snapshot)
 	end
 end
 
+-- A boss's adds as small HP bars under the boss bar
+local addsKey = ""
+local function buildAdds(snapshot: Snapshot)
+	clear(addsRow)
+	addBars = {}
+	addsKey = idsOf(snapshot.adds)
+	addsRow.Visible = #snapshot.adds > 0
+	for index, add in snapshot.adds do
+		local holder = Instance.new("Frame")
+		holder.LayoutOrder = index
+		holder.Size = UDim2.new(1 / math.max(#snapshot.adds, 1), -6, 1, 0)
+		holder.BackgroundTransparency = 1
+		holder.Parent = addsRow
+		local name = UIKit.label(holder, `{elementIcon(add.element)} Spawn`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		name.Size = UDim2.new(1, 0, 0, 13)
+		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
+		track.Position = UDim2.fromOffset(0, 14)
+		track.Size = UDim2.new(1, 0, 0, 12)
+		text.TextSize = 10
+		addBars[add.id] = { fill = fill, text = text, frame = holder }
+	end
+end
+
 local function applySnapshot(snapshot: Snapshot)
 	if idsOf(snapshot.fighters) ~= fighterKey then
 		buildFighters(snapshot)
@@ -477,6 +539,19 @@ local function applySnapshot(snapshot: Snapshot)
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
 	if bossId then
 		setBar(bossHpFill, bossHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+		if snapshot.bossShield > 0 then
+			bossHpText.Text ..= ` + {math.round(snapshot.bossShield)} shield`
+		end
+		if idsOf(snapshot.adds) ~= addsKey then
+			buildAdds(snapshot)
+		end
+		for _, add in snapshot.adds do
+			local view = addBars[add.id]
+			if view then
+				setBar(view.fill, view.text, add.hp, add.maxHp)
+				view.frame.Visible = not add.fainted
+			end
+		end
 	end
 	if mode == "pvp" then
 		for _, enemy in snapshot.enemies do
@@ -515,6 +590,38 @@ local function applySnapshot(snapshot: Snapshot)
 		end
 	end
 	refreshTimers()
+end
+
+-- Camera shake (the roar, boss moments): a small random offset on top of the camera every frame for a moment
+local shakeUntil, shakeStuds = 0, 0
+local function shake(seconds: number, studs: number)
+	shakeUntil = math.max(shakeUntil, os.clock() + seconds)
+	shakeStuds = studs
+end
+
+local function stopMusic()
+	local music = bossMusic
+	bossMusic = nil
+	if music then
+		TweenService:Create(music, TweenInfo.new(Bosses.MUSIC_FADE), { Volume = 0 }):Play()
+		task.delay(Bosses.MUSIC_FADE, function()
+			music:Destroy()
+		end)
+	end
+end
+
+local function playMusic()
+	stopMusic()
+	if Bosses.MUSIC_ID == "" then
+		return
+	end
+	local music = Instance.new("Sound")
+	music.SoundId = `rbxassetid://{Bosses.MUSIC_ID}`
+	music.Looped = true
+	music.Volume = Bosses.MUSIC_VOLUME
+	music.Parent = SoundService
+	music:Play()
+	bossMusic = music
 end
 
 local function setHudHidden(hidden: boolean)
@@ -598,8 +705,24 @@ local function onEvents(events: { any })
 				floatText(event.to, `+{event.heal}`, HEAL_COLOR)
 			end
 			banner("Healing!", HEAL_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		elseif event.type == "enrage" then
 			banner("Enraged!", UIKit.Colors.Danger)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "shield" then
+			banner("Ice shield!", SHIELD_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "shieldBreak" then
+			banner("Shield broken!", ELITE_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "thunderclap" then
+			banner("Thunderclap!", STRONG_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "stun" and event.to then
+			floatText(event.to, "Stunned", WEAK_COLOR)
+		elseif event.type == "spawn" then
+			banner("Rift Spawn!", UIKit.Colors.Danger)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		end
 	end
 end
@@ -645,9 +768,16 @@ end
 local function bossLines(boss: any): { string }
 	local lines = {}
 	if boss.firstClear then
-		table.insert(lines, "🏆 First clear!")
+		table.insert(lines, "🏆 First clear! The chest went into your Bag:")
+	end
+	local listed = {}
+	for _, entry in (if typeof(boss.chest) == "table" then boss.chest else {}) do
+		table.insert(listed, entry)
 	end
 	for _, entry in (if typeof(boss.items) == "table" then boss.items else {}) do
+		table.insert(listed, entry)
+	end
+	for _, entry in listed do
 		local item = Items.ITEMS[entry.item]
 		if item then
 			local icon = if string.match(item.icon, "^%a") then "" else `{item.icon} ` -- emoji icons only
@@ -656,6 +786,9 @@ local function bossLines(boss: any): { string }
 	end
 	if boss.bonus then
 		table.insert(lines, "🎁 Daily bonus!")
+	end
+	if typeof(boss.items) == "table" and #boss.items > 0 then
+		table.insert(lines, "Your loot is on the ground: walk over it to pick it up")
 	end
 	if boss.carried then
 		table.insert(lines, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
@@ -742,6 +875,43 @@ local function showCountdown(seconds: number)
 	end)
 end
 
+-- The boss intro: fly the camera to the boss with its name card and a roar, then hand back to the player for the
+-- 3, 2, 1 (the server holds the fight until the intro is over)
+local function playIntro(boss: any, seconds: number)
+	introToken += 1
+	local token = introToken
+	local camera = workspace.CurrentCamera
+	local marker = markerFor(MONSTER_ID) -- found by onStarted, which waits a moment for a just-spawned boss
+	bar.Visible = false
+	bossBar.Visible = false
+	introName.Text = `{elementIcon(boss.element)} {boss.name}`
+	introTitle.Text = boss.title
+	introCard.Visible = true
+	if camera and marker then
+		local look = marker.CFrame
+		local eye = look.Position + look.LookVector * Bosses.INTRO_SHOT.back + Vector3.new(0, Bosses.INTRO_SHOT.up, 0)
+		camera.CameraType = Enum.CameraType.Scriptable
+		TweenService:Create(camera, INTRO_FLY, { CFrame = CFrame.lookAt(eye, look.Position + Vector3.new(0, 3, 0)) }):Play()
+	end
+	task.delay(Bosses.ROAR_SHAKE.at, function()
+		if introToken == token then
+			shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
+		end
+	end)
+	task.delay(Bosses.INTRO_CAMERA_SECONDS, function()
+		if introToken ~= token or not fighting then
+			return
+		end
+		introCard.Visible = false
+		if camera then
+			camera.CameraType = Enum.CameraType.Custom
+		end
+		bar.Visible = true
+		bossBar.Visible = true
+		showCountdown(seconds - Bosses.INTRO_CAMERA_SECONDS)
+	end)
+end
+
 local function onStarted(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.snapshot) ~= "table" then
 		return
@@ -797,10 +967,34 @@ local function onStarted(payload: any)
 	for _, prompt in prompts do
 		prompt.Enabled = false
 	end
+	if boss then
+		playMusic()
+		-- A boss spawns the moment its fight starts, so its marker can arrive just after this message
+		if not markerFor(MONSTER_ID) and typeof(payload.monsterId) == "string" then
+			local folder = workspace:FindFirstChild("Monsters")
+			local marker = if folder then folder:WaitForChild(`Monster_{payload.monsterId}`, 2) else nil
+			if marker and marker:IsA("BasePart") then
+				markers[MONSTER_ID] = marker
+			end
+		end
+		if typeof(payload.intro) == "number" and payload.intro > 0 then
+			playIntro(boss, payload.intro)
+		end
+	end
 end
 
 local function onEnded(summary: any)
 	fighting = false
+	-- A fight can end during the intro (a player left): give the camera back
+	if introCard.Visible then
+		introToken += 1
+		introCard.Visible = false
+		local camera = workspace.CurrentCamera
+		if camera then
+			camera.CameraType = Enum.CameraType.Custom
+		end
+	end
+	stopMusic()
 	bar.Visible = false
 	bossBar.Visible = false
 	bossId = nil
@@ -962,6 +1156,20 @@ local function build()
 	bossHpFill, bossHpText = bossFill, bossText
 	bossHpText.TextSize = 14
 
+	addsRow = Instance.new("Frame")
+	addsRow.Name = "BossAdds"
+	addsRow.AnchorPoint = Vector2.new(0.5, 0)
+	addsRow.Position = UDim2.new(0.5, 0, 1, 4)
+	addsRow.Size = UDim2.new(1, 0, 0, 26)
+	addsRow.BackgroundTransparency = 1
+	addsRow.Visible = false
+	addsRow.Parent = bossBar
+	local addsLayout = Instance.new("UIListLayout")
+	addsLayout.FillDirection = Enum.FillDirection.Horizontal
+	addsLayout.Padding = UDim.new(0, 6)
+	addsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	addsLayout.Parent = addsRow
+
 	endScreen = Instance.new("Frame")
 	endScreen.Name = "FightEnd"
 	endScreen.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -995,6 +1203,35 @@ local function build()
 	shopButton.Activated:Connect(function()
 		Remotes.WildTravel:FireServer("home")
 	end)
+
+	introCard = Instance.new("Frame")
+	introCard.Name = "BossIntro"
+	introCard.AnchorPoint = Vector2.new(0.5, 0.5)
+	introCard.Position = UDim2.fromScale(0.5, 0.74) -- under the boss
+	introCard.Size = UDim2.fromOffset(520, 110)
+	introCard.BackgroundTransparency = 1
+	introCard.Visible = false
+	introCard.ZIndex = UIKit.PANEL_Z_INDEX + 2
+	introCard.Parent = screenGui
+	introName = UIKit.label(introCard, "", Enum.Font.FredokaOne, 44, UIKit.Colors.Danger)
+	introName.Size = UDim2.new(1, 0, 0, 56)
+	introName.TextXAlignment = Enum.TextXAlignment.Center
+	introName.TextStrokeTransparency = 0.2
+	introTitle = UIKit.label(introCard, "", Enum.Font.FredokaOne, 22, Color3.new(1, 1, 1))
+	introTitle.Position = UDim2.fromOffset(0, 58)
+	introTitle.Size = UDim2.new(1, 0, 0, 30)
+	introTitle.TextXAlignment = Enum.TextXAlignment.Center
+	introTitle.TextStrokeTransparency = 0.3
+
+	RunService:BindToRenderStep("FightShake", Enum.RenderPriority.Camera.Value + 1, function()
+		local camera = workspace.CurrentCamera
+		if camera and os.clock() < shakeUntil then
+			local function jitter(): number
+				return (math.random() * 2 - 1) * shakeStuds
+			end
+			camera.CFrame *= CFrame.new(jitter(), jitter(), 0)
+		end
+	end)
 end
 
 function BattleController.Start()
@@ -1005,6 +1242,7 @@ function BattleController.Start()
 			return
 		end
 		addMarkers(payload.markers)
+		addMonsterMarkers(payload.addMonsters)
 		addAllies(payload.allies)
 		if typeof(payload.events) == "table" then
 			onEvents(payload.events)

@@ -30,7 +30,7 @@ local NAMES = {
 	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?) big pulls and Frontier finds
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
-	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals) +1 grade from duplicates (and Grading Seals) and cash
+	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal)
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
 	"JobsChanged", -- server → owner: { slotCount, maxSlots, unlockLevel, hasPass, passId, slots = { { slot, beastId, job, status } } }
@@ -58,6 +58,9 @@ local NAMES = {
 	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, rewardedToday, fragments } }
 	"RequestBosses", -- client → server: () resend BossesChanged
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
+	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
+	"PickUpLoot", -- client → server: (id: string) pick up one of your boss drops
+	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 }
@@ -138,6 +141,9 @@ return {
 	BossesChanged = remotes.BossesChanged,
 	RequestBosses = remotes.RequestBosses,
 	BossCleared = remotes.BossCleared,
+	BossLoot = remotes.BossLoot,
+	PickUpLoot = remotes.PickUpLoot,
+	DevPanel = remotes.DevPanel,
 	UseXpTonic = remotes.UseXpTonic,
 	FrontierTravel = remotes.FrontierTravel,
 }

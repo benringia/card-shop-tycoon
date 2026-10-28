@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -21,6 +22,7 @@ local ItemService = require(Services:WaitForChild("ItemService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 
 local SEAL_ID = "gradingSeal"
+local GOLD_ID = "goldSeal"
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 local GradingService = {}
@@ -51,7 +53,7 @@ local function describeReason(reason: string?): string
 	return "You don't have that card."
 end
 
-local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useSeals: unknown)
+local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useSeals: unknown, useGold: unknown)
 	if not allowAction(player) then
 		return
 	end
@@ -82,7 +84,13 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 	-- The cash and seals are recomputed and taken inside the same step as the cards: the client's preview is never
 	-- trusted
 	local seals = if useSeals == true then ItemService.GetCount(player, SEAL_ID) else 0
-	local grade, reason, sealsUsed = CardService.GradeUp(player, cardId, target, function(cash)
+	-- A Gold Seal pays the cash instead, when there is one and the step allows it (never a Legendary's A to S)
+	local goldUsed = false
+	local grade, reason, sealsUsed = CardService.GradeUp(player, cardId, target, function(cash, toGrade)
+		if useGold == true and ItemService.GetCount(player, GOLD_ID) > 0 and CondenseRules.goldSealAllowed(card.rarity, toGrade) then
+			goldUsed = true
+			return true
+		end
 		return EconomyService.TrySpend(player, cash)
 	end, seals)
 	if not grade then
@@ -93,7 +101,11 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 	if sealsUsed > 0 then
 		ItemService.TakeItem(player, SEAL_ID, sealsUsed)
 	end
-	local sealText = if sealsUsed > 0 then ` (used {sealsUsed} Grading Seal{if sealsUsed == 1 then "" else "s"})` else ""
+	if goldUsed then
+		ItemService.TakeItem(player, GOLD_ID, 1)
+	end
+	local sealText = (if sealsUsed > 0 then ` (used {sealsUsed} Grading Seal{if sealsUsed == 1 then "" else "s"})` else "")
+		.. (if goldUsed then " (a Gold Seal paid the cash)" else "")
 	notify(player, `{card.name} is now {BeastRules.describeGrade(grade)}!{sealText}`, false)
 end
 

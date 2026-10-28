@@ -157,6 +157,11 @@ function CondenseRules.gradePlan(grading: GradingConfig, config: Config, rarity:
 	}, nil
 end
 
+-- Whether a Gold Seal may pay this step's cash: any step but a Legendary's last one (A to S stays the cash chase)
+function CondenseRules.goldSealAllowed(rarity: string, toGrade: string): boolean
+	return not (rarity == "Legendary" and toGrade == "S")
+end
+
 -- Copies and cash to take a copy from `grade` all the way to the top (the panel's "to Grade S" line)
 function CondenseRules.gradeCostToTop(grading: GradingConfig, grades: { string }, rarity: string, grade: string): GradeStep
 	local total: GradeStep = { copies = 0, cash = 0 }

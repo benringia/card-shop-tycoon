@@ -20,6 +20,12 @@ local BEAST_STAR0 = { beast = true, foil = false, grade = "S", stars = 0 } -- ne
 local BEAST_STAR1 = { beast = true, foil = false, grade = "S", stars = 1 } -- next star costs 8
 
 return {
+	["goldSealAllowed: any step except a Legendary's A to S"] = function()
+		expect.equal(CondenseRules.goldSealAllowed("Legendary", "S"), false, "the chase stays paid")
+		expect.equal(CondenseRules.goldSealAllowed("Legendary", "A"), true, "B to A is fine")
+		expect.equal(CondenseRules.goldSealAllowed("Epic", "S"), true, "other rarities to S")
+	end,
+
 	["shards: not used when duplicates are enough"] = function()
 		local takes, reason, used = CondenseRules.plan(config, { C = counts(4, 0) }, BEAST_STAR0, 10)
 		assert(takes, `expected a plan, got {reason}`)

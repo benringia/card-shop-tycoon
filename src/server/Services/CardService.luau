@@ -298,7 +298,7 @@ end
 -- grade's stack and stays plain. With `seals`, up to that many Grading Seals cover missing duplicates (the caller takes
 -- the number it reports used). All in one step with no yields. Returns the new grade, or nil and a reason ("max",
 -- "short:<have>:<need>", "cash:<need>", "working", "fighting", "missing", "unknown"), and the seals used.
-function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number) -> boolean, seals: number?): (string?, string?, number)
+function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number, grade: string) -> boolean, seals: number?): (string?, string?, number)
 	local inventory = inventories[player]
 	local card = Cards.ById[cardId]
 	if not inventory or not card then
@@ -338,7 +338,7 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 	if not plan then
 		return nil, reason, 0
 	end
-	if not pay(plan.cash) then
+	if not pay(plan.cash, plan.grade) then
 		return nil, `cash:{plan.cash}`, 0
 	end
 	for _, take in plan.takes do

@@ -29,14 +29,19 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 ## Commands
 - `rojo serve` — sync to Studio (restart after editing `default.project.json`)
 - `rojo serve frontier.project.json` — sync the Frontier place (port 34873; same `src`, Workspace attribute
-  `PlaceKind = "Frontier"`). Place ids live in `Config/Places.luau`; teleports only work in the published game.
+  `PlaceKind = "Frontier"`; the main project sets it to `"Main"`). Place ids live in `Config/Places.luau`; teleports
+  only work in the published game. Each Studio window connects to its own port: a main place window on 34873 boots
+  as the Frontier (its Output says "Booted (Frontier)" and the Frontier spring fails to build).
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
 - `lune run tools/economy/sim [players]` — economy simulator: hours to first Epic, first Legendary and a Grade S
   Legendary with 1 star, from the real odds, pity, grading costs and shop profit (Monte Carlo)
+- `lune run tools/balance/bosses [fights] [players]` — boss balance: win rates per boss for parties at 0.8x / 1x / 1.3x
+  the recommended Power, a typical party (best card at it, two at 60%) and one maxed Legendary with two Lv 1 cards;
+  with players > 1 every row is a group of that many players against the scaled boss
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -104,8 +109,11 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
   cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
   `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/item <id> <n>` (any Config/Items
-  item), `/boss <n> [fight|group]` (to boss n's arena gate; with fight or group, use that prompt), `/legendarys [foil]` (a Grade S
-  copy of every Legendary, to see the lightning on display).
+  item), `/boss <1-6> [fight|group]` (to boss n's arena gate; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt), `/legendarys [foil]` (a Grade S
+  copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
+  max stars and Grade S, for testing fights).
+- Admin panel (Studio only): the "Admin" tile on the left opens every dev command as a button (`Config/AdminPanel`,
+  `AdminPanelController`, remote `DevPanel` handled only in Studio), plus +1/+10 of every item and Go/Fight/Group per boss.
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.

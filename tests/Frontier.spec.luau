@@ -1,5 +1,6 @@
 --!strict
 local frontier = require("../src/shared/Config/Frontier")
+local wild = require("../src/shared/Config/Wild")
 local cardList = require("../src/shared/Config/CardList")
 local combat = require("../src/shared/Config/Combat")
 local places = require("../src/shared/Config/Places")
@@ -8,6 +9,13 @@ local expect = require("./lib/expect")
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 
 return {
+	["the Frontier world has every key the Wild one has (WildService reads either)"] = function()
+		local mainOnly = { PLAZA_PORTAL = true } -- read only on the main place's branch
+		for key in wild do
+			expect.equal(mainOnly[key] == true or (frontier :: any)[key] ~= nil, true, `Frontier.{key}`)
+		end
+	end,
+
 	["every zone has known species and valid elements"] = function()
 		for _, zone in frontier.ZONES do
 			for _, species in zone.species do

@@ -6,8 +6,10 @@
 -- /elite (an elite monster next to you, at your summoned card's level), /arena (go to the arena stands),
 -- /frontierdrop (a Star Shard and a random Frontier card), /raritypack [foil] (one card of each rarity, to
 -- see every pack reveal), /legendarys [foil] (a Grade S copy of every Legendary), /item <id> <amount> (any item),
--- /boss <n> [fight|group] (to boss n's arena gate; with fight or group, use that gate prompt there).
+-- /boss <n> [fight|group] (to boss n's arena gate; with fight or group, use that gate prompt there),
+-- /maxcard <name or number> [foil] (one copy at max level, max stars and Grade S).
 -- Does nothing outside Studio, so live players never get these commands.
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -15,6 +17,8 @@ local TextChatService = game:GetService("TextChatService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Bosses = require(Config:WaitForChild("Bosses"))
+local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
@@ -22,6 +26,7 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local AdminPanel = require(Config:WaitForChild("AdminPanel"))
 
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
@@ -34,6 +39,7 @@ local MonetizationService = require(Services:WaitForChild("MonetizationService")
 local PackService = require(Services:WaitForChild("PackService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
+local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type CommandHandler = (player: Player, text: string) -> ()
 
@@ -191,6 +197,40 @@ local function giveSupremeLegendaries(player: Player, text: string)
 	Remotes.Notify:FireClient(player, `Gave {#results} Grade S Legendaries`, false)
 end
 
+-- /maxcard <name or number> [foil]: one copy at the top of everything (max level, max stars, best grade)
+local function giveMaxCard(player: Player, text: string)
+	local query = string.lower(string.gsub(string.gsub(text, "^%s*/?%a+%s*", ""), "%s+foil%s*$", ""))
+	local foil = string.find(string.lower(text), "%sfoil%s*$") ~= nil
+	local number = tonumber(query)
+	local found = nil
+	for _, card in Cards.List do
+		if (number and card.number == number) or string.lower(card.name) == query then
+			found = card
+		end
+	end
+	if not found and query ~= "" then
+		for _, card in Cards.List do
+			if string.find(string.lower(card.name), query, 1, true) then
+				found = found or card
+			end
+		end
+	end
+	if not found then
+		Remotes.Notify:FireClient(player, "Usage: /maxcard <card name or number> [foil]", true)
+		return
+	end
+	CardService.AddBeast(player, {
+		id = HttpService:GenerateGUID(false),
+		cardId = found.id,
+		foil = foil,
+		level = Beasts.MAX_LEVEL,
+		xp = 0,
+		stars = Beasts.MAX_STARS,
+		grade = Beasts.GRADES[#Beasts.GRADES],
+	})
+	Remotes.Notify:FireClient(player, `Gave a maxed {if foil then "foil " else ""}{found.name} (Lv {Beasts.MAX_LEVEL}, {Beasts.MAX_STARS} stars, Grade {Beasts.GRADES[#Beasts.GRADES]})`, false)
+end
+
 local function grantBeastXp(player: Player, amount: number)
 	local target = pickXpTarget(player)
 	local beast = if target then CardService.AddXP(player, target, amount) else nil
@@ -217,8 +257,11 @@ function DevService.Start()
 	addCommand(folder, "boss", function(player, text)
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)
-		if not gate then
-			Remotes.Notify:FireClient(player, "Usage: /boss <1-3> [fight|group]", true)
+		local elsewhere = Bosses.BOSSES[Bosses.LADDER[index] or ""]
+		if not gate and elsewhere then
+			Remotes.Notify:FireClient(player, `That boss is in the {elsewhere.place}.`, true)
+		elseif not gate then
+			Remotes.Notify:FireClient(player, `Usage: /boss <1-{#Bosses.LADDER}> [fight|group]`, true)
 		elseif string.find(text, "fight") then
 			BossService.UseGate(player, index)
 		elseif string.find(text, "group") then
@@ -252,14 +295,13 @@ function DevService.Start()
 		PackService.OpenTestPack(player)
 	end)
 	addCommand(folder, "legendarys", giveSupremeLegendaries)
+	addCommand(folder, "maxcard", giveMaxCard)
 	addCommand(folder, "raritypack", function(player, text)
 		PackService.OpenRarityPack(player, string.find(string.lower(text), "foil") ~= nil)
 	end)
 	-- The same commands for Studio's scripting tools, which can't type in chat:
 	-- ServerStorage.DevCommand:Invoke(player, "/item gradingSeal 5"). Studio only, like the chat commands.
-	local runner = Instance.new("BindableFunction")
-	runner.Name = "DevCommand"
-	runner.OnInvoke = function(player: Player, text: string): boolean
+	local function run(player: Player, text: string): boolean
 		local alias = string.match(text, "^/(%w+)")
 		local handler = if alias then handlersByAlias[alias] else nil
 		if not handler or typeof(player) ~= "Instance" or not player:IsA("Player") then
@@ -268,8 +310,18 @@ function DevService.Start()
 		handler(player, text)
 		return true
 	end
+	local runner = Instance.new("BindableFunction")
+	runner.Name = "DevCommand"
+	runner.OnInvoke = run
 	runner.Parent = game:GetService("ServerStorage")
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil]")
+	-- The admin panel's buttons (AdminPanelController). Only connected here, in Studio: the live game ignores them.
+	local allowPanel = RateLimiter.new(AdminPanel.COMMAND_COOLDOWN)
+	Remotes.DevPanel.OnServerEvent:Connect(function(player, text)
+		if allowPanel(player) and typeof(text) == "string" and #text <= AdminPanel.COMMAND_MAX_LENGTH then
+			run(player, text)
+		end
+	end)
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil]")
 end
 
 return DevService

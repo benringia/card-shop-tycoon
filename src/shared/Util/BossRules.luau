@@ -14,7 +14,7 @@ export type Record = {
 	bonusDay: number, -- UTC day the daily bonus chest was last given
 }
 type Config = { SOFT_CAP_AFTER: number, SOFT_CAP_STEP: number, SOFT_CAP_FLOOR: number, OVERPOWER_RATIO: number, OVERPOWER_FACTOR: number }
-type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
+type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, GROUP_SWINGS_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
 
 local function readCount(value: unknown): number
 	return if typeof(value) == "number" and value == value and value >= 0 and value ~= math.huge then math.floor(value) else 0
@@ -77,6 +77,11 @@ function BossRules.canStart(record: Record, unlock: { item: string, count: numbe
 	return false, `locked:{owned}:{unlock.count}`
 end
 
+-- Whether a player's shop level reaches the level a boss needs (the board shows it, BossService enforces it)
+function BossRules.levelReady(shopLevel: number, level: number): boolean
+	return level >= shopLevel
+end
+
 function BossRules.lootEligible(record: Record, now: number): boolean
 	return now >= record.lootAt
 end
@@ -99,9 +104,13 @@ function BossRules.dropFactor(config: Config, record: Record, partyPower: number
 end
 
 -- A boss's HP and ATK for a group of `size` players (1 = as configured)
-function BossRules.groupStats(config: GroupConfig, hp: number, atk: number, size: number): (number, number)
+-- A boss against `size` players: more HP and ATK, and it hits more creatures per attack (swings), never more than
+-- there are players
+-- atkStep: the boss's own ATK step per extra player (nil: the config's)
+function BossRules.groupStats(config: GroupConfig, hp: number, atk: number, size: number, atkStep: number?): (number, number, number)
 	local extra = math.max(0, size - 1)
-	return math.round(hp * (1 + config.GROUP_HP_STEP * extra)), math.round(atk * (1 + config.GROUP_ATK_STEP * extra))
+	local swings = math.min(size, 1 + math.floor(config.GROUP_SWINGS_STEP * extra))
+	return math.round(hp * (1 + config.GROUP_HP_STEP * extra)), math.round(atk * (1 + (atkStep or config.GROUP_ATK_STEP) * extra)), math.max(1, swings)
 end
 
 -- Whether a member helped enough for full loot: a share of the group's damage or of the hits it took (a share of
@@ -115,6 +124,33 @@ end
 -- A carried member's chance at a drop: a fraction of it, never a fragment
 function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
+end
+
+-- The arena barrier: centre angles (radians) of evenly spaced wall pieces at most maxWidth wide that close the ring
+function BossRules.ringSegments(radius: number, maxWidth: number): { number }
+	local count = math.max(3, math.ceil(2 * math.pi * radius / maxWidth))
+	local angles = {}
+	for index = 0, count - 1 do
+		table.insert(angles, index * 2 * math.pi / count)
+	end
+	return angles
+end
+
+-- Whether a spot (offset from the arena's centre) is inside its sealed ring, wall line included
+function BossRules.insideRing(dx: number, dz: number, radius: number): boolean
+	return dx * dx + dz * dz <= (radius + 1) ^ 2
+end
+
+-- Where each of `count` drops lands round the boss (offsets in studs): evenly round the circle from angle `turn`,
+-- every other one on the inner and outer radius so neighbours never land on each other
+function BossRules.scatter(count: number, minRadius: number, maxRadius: number, turn: number): { { x: number, z: number } }
+	local spots = {}
+	for index = 1, count do
+		local angle = turn + (index - 1) * 2 * math.pi / count
+		local radius = if index % 2 == 1 then minRadius else maxRadius
+		table.insert(spots, { x = math.cos(angle) * radius, z = math.sin(angle) * radius })
+	end
+	return spots
 end
 
 -- The gate's group prompt: open a group, join one, or (its leader) start it now. The server sets the text everyone

@@ -397,7 +397,7 @@ Roadmap (one sub-project at a time):
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
       b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
-         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, and phase 2, groups, done: 5.10).
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phases 1-3 done (Wild bosses, groups, Frontier bosses and Gold Seals): 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 Not one server for everyone: Roblox fills a Frontier server to the place's Max Players (Creator Hub) and opens more.
@@ -576,30 +576,59 @@ Cost per step, duplicates + cash (`Config/Grading.COSTS`):
 | Epic | 1 + $500 | 2 + $2,500 | 4 + $10,000 | 7 + $13,000 |
 | Legendary | 1 + $500 | 2 + $2,500 | 3 + $12,500 | 6 + $15,500 |
 
-### 5.10 Boss ladder (phase 1: Wild bosses 1-3, solo)
+Boss items at the station: Grading Seals stand in for missing duplicates (up to half a step); a Gold Seal pays one
+step's cash, any step except a Legendary's A -> S (`CondenseRules.goldSealAllowed`, checked on the server).
+
+### 5.10 Boss ladder (phases 1-3: Wild bosses 1-3, groups, Frontier bosses 4-6)
 
 Spec `docs/superpowers/specs/2026-10-28-boss-ladder-design.md`. Each boss drops what helps you beat the next and
 the fragments that open it. Numbers in `Config/Bosses`, rules in `Util/BossRules` (pure, Lune-tested), saved progress
 and rewards in `BossService`.
 
-| # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Opens with |
-|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
+| # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | 3 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 5 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 23000 / 26 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
+
+Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
+group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
 
 | Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
 |---|---|---|---|---|
 | Meadow Warden | $36 / 620 | XP Tonic 60% (1-2), Brood Queen fragment 70% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
 | Cave Brood Queen | $66 / 1360 | XP Tonic 60% (1-3), Star Shard 15%, Colossus fragment 60% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
-| Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3) | trophy, 3 Grading Seals | 2 Grading Seals |
+| Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3), Frost Tyrant fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Frost Tyrant | $150 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Storm Sovereign | $210 / 5200 | Gold Seal 25%, Devourer fragment 55% | 3 fragments, trophy, 1 Gold Seal | 1 Gold Seal |
+| Rift Devourer | $280 / 7400 | Gold Seal 30%, Star Shard 30% (1-2) | trophy, 3 Gold Seals | 1 Gold Seal |
 
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
   the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
-  group, below). Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  group, below). The ring (radius 36) seals while a fight runs: the members are moved just inside the gate and a
+  see-through wall rises all round (`BARRIER_*`), dropping when the fight ends for any reason. Anyone else inside the ring when it seals, and a group member who
+  leaves a fight that goes on, is moved out through the gate. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
   studs, stuns on a boss last at most 1 s.
+- **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
+  (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
+  until then. A low ambient drone plays through the fight ("Tension Repeat Drones 22", `MUSIC_ID`, volume 0.1: a bed under the
+  attack and skill sounds to come); heals and enrages shake the camera.
+- **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
+  the board lists all 6 and names the other place). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
+  "Shield broken!" banners. Thunderclap: "Thunderclap!" and "Stunned" over each creature. Adds: "Rift Spawn!", the
+  Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
+  them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
+  boss falls.
+- **Loot on the ground:** a win's repeatable items (drops, daily bonus) pop out of the boss and scatter
+  round it (4-10 studs, `LOOT_*`), each player's own drops seen only by them (LootController). Walking over one picks it
+  up (the server checks it's yours and within 8 studs); anything left goes into the Bag after 60 s, and everything still
+  on the ground is collected when you leave or teleport. Cash and XP stay instant. The first-clear chest (fragments,
+  trophy) goes straight into the Bag: it's one-time and the clear is saved at once.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
   which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when
@@ -630,7 +659,12 @@ and rewards in `BossService`.
   press again to start at once, it starts by itself when full (4). The Fight and group prompts have separate limiters.
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
-  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`).
+  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`;
+  the Frontier bosses use their own `groupAtkStep`, 0.35 / 0.35 / 0.5, because Legendary parties shrug off the
+  default), and it hits one more creature per attack per extra player (`GROUP_SWINGS_STEP`, never more targets than
+  players) so a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
+  whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]`: at the recommended
+  Power a 2-4 player group wins, a typical party (best card at it, two at 60%) 60-80%, boss 6 with 4 players 80%.
   Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
   others fight on, and the fight ends when nobody is left standing: a loss if a fainted member is still in it, else a
   run. Leaders stand 7 studs apart on the ring (`GROUP_SPACING`), each call-in 3 studs to its own leader's right
@@ -642,7 +676,7 @@ and rewards in `BossService`.
   still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
 - Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` and `/boss <n> group` (use that prompt).
-- Boss models are placeholders (Wild shapes at 2.5-3.2x). Next (spec section 10): Frontier bosses (phase 3), the Dungeon (4).
+- Boss models are placeholders (monster shapes at 2.5-3.4x). Next (spec section 10): the Dungeon and the final boss (phase 4).
 
 ---
 
@@ -1094,9 +1128,8 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
   (damage trail, low-HP pulse), reserves shown as small portrait buttons with their HP, ability buttons with
   cooldown sweeps instead of countdown text.
+- Admin moderation (live game): admins listed by UserId in a Config/Admins, every action checked on the server; a player
+  list with Kick, Ban (Roblox `Players:BanAsync`, works across servers, duration and reason) and Unban. The Studio admin
+  panel (dev commands as buttons) exists already; test commands stay Studio-only so the live economy can't be touched.
 - Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
   Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).
-- Dramatic boss fights: an intro before the fight starts (camera sweep to the boss, its name card, a roar, a short
-  countdown), a bigger sealed arena that nobody (players or creatures) can leave once the fight starts (a wall or
-  barrier rises at the gate and drops when it ends), boss music and phase moments (the heal and enrage get a
-  camera shake and a banner). Applies to every boss, so best done once before the Frontier bosses look final.

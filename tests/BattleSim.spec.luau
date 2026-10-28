@@ -83,7 +83,154 @@ local function ids(list: { any }): { [string]: any }
 	return byId
 end
 
+-- A boss with these mechanics (10000 HP, SPD 14) against the given fighters (default one Tide fighter with abilities)
+local function bossWith(mechanics: any, seed: number, fighters: { any }?): any
+	return BattleSim.new(combat, {
+		fighters = fighters or { fighter("a", "Tide", 100000, 20, 10) },
+		abilities = true,
+		canRun = true,
+	}, { fighters = { { id = "m", element = "Shade", hp = 10000, atk = 1, spd = 14, boss = true, mechanics = mechanics } }, abilities = false, canRun = false }, seed)
+end
+
+local SHIELD = { shield = { every = 20, fraction = 0.06, breakStun = 3 } }
+local ADDS = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.06, atkShare = 0.4, guard = 0.5, species = "Rift Horror" } }
+
+local function firstOf(events: { any }, kind: string): any
+	for _, event in events do
+		if event.type == kind then
+			return event
+		end
+	end
+	return nil
+end
+
 return {
+	["shield: goes up every 20 s and absorbs damage first"] = function()
+		local state = bossWith(SHIELD, 1)
+		local _, early = runToEnd(state, 19.9)
+		expect.isNil(firstOf(early, "shield"), "not before 20 s")
+		local _, events = runToEnd(state, 0.3)
+		local shield = firstOf(events, "shield")
+		expect.equal(shield and shield.heal, 600, "6% of 10000")
+		local boss = state.sides.b.fighters[1]
+		local hp = boss.hp
+		runToEnd(state, 1.5)
+		expect.equal(boss.hp, hp, "the hits land on the shield")
+	end,
+
+	["shield: breaking it stuns the boss for 3 s"] = function()
+		local state = bossWith(SHIELD, 2)
+		runToEnd(state, 20.2)
+		state.sides.b.shield = 1
+		local _, events = runToEnd(state, 2)
+		expect.equal(firstOf(events, "shieldBreak") ~= nil, true, "it broke")
+		local boss = state.sides.b.fighters[1]
+		expect.equal(boss.stunUntil - state.time > 1, true, "longer than the usual 1 s cap on boss stuns")
+	end,
+
+	["thunderclap: slower creatures stay stunned longer"] = function()
+		local state = bossWith({ thunderclap = { every = 12, seconds = 3, minFactor = 0.3, maxFactor = 1.5 } }, 3, {
+			fighter("slow", "Tide", 100000, 5, 5),
+			fighter("fast", "Tide", 100000, 5, 30),
+		})
+		local _, events = runToEnd(state, 12.1)
+		expect.equal(firstOf(events, "thunderclap") ~= nil, true, "it clapped")
+		local stuns = {}
+		for _, event in events do
+			if event.type == "stun" then
+				stuns[event.to] = event.damage
+			end
+		end
+		expect.equal(stuns["a:slow"], 4.5, "3 s x 1.5 (capped)")
+		expect.equal(math.abs(stuns["a:fast"] - 1.4) < 1e-9, true, "3 s x 14/30")
+	end,
+
+	["adds: two Spawn at 70% and two more at 35%"] = function()
+		local state = bossWith(ADDS, 4)
+		local boss = state.sides.b.fighters[1]
+		boss.hp = 6900
+		local events = BattleSim.step(state, 0.1)
+		expect.equal(count(events, function(e)
+			return e.type == "spawn"
+		end), 2, "two Spawn")
+		expect.equal(#state.sides.b.fighters, 3, "boss and two Spawn")
+		expect.equal(state.sides.b.fighters[2].maxHp, 600, "6% of the boss's max HP")
+		boss.hp = 3400
+		BattleSim.step(state, 0.1)
+		expect.equal(#state.sides.b.fighters, 5, "two more")
+	end,
+
+	["adds: auto-attacks hit the Spawn first, abilities hit the boss at half damage"] = function()
+		local function fireballAfter(mechanics: any): (number, string?)
+			local state = bossWith(mechanics, 5, { fighter("a", "Ember", 100000, 20, 10) })
+			state.sides.b.fighters[1].hp = 6900
+			local _, events = runToEnd(state, 3)
+			local attack = nil
+			for _, event in events do
+				if event.type == "attack" and event.from == "a:a" then
+					attack = attack or event
+				end
+			end
+			local used = BattleSim.useAbility(state, "a:a", "element") :: any
+			local blast = firstOf(used, "ability")
+			return blast.damage, attack and attack.to
+		end
+		local guarded, firstTarget = fireballAfter(ADDS)
+		local plain = fireballAfter({})
+		expect.equal(string.sub(firstTarget or "", 1, 5), "b:add", "the first attack goes to a Spawn")
+		expect.equal(math.abs(guarded - math.round(plain * 0.5)) <= 1, true, `half damage ({guarded} vs {plain})`)
+	end,
+
+	["adds: the boss falling ends the fight with Spawn alive"] = function()
+		local state = bossWith(ADDS, 6, { fighter("a", "Ember", 100000, 20, 10) })
+		state.sides.b.fighters[1].hp = 6900
+		BattleSim.step(state, 0.1)
+		state.sides.b.fighters[1].hp = 1
+		BattleSim.useAbility(state, "a:a", "element")
+		expect.equal(state.result, "a", "the boss is down: win")
+	end,
+
+	["group: Wave heals only its owner's creatures"] = function()
+		local state = BattleSim.new(combat, {
+			fighters = { { id = "p1", element = "Tide", hp = 1000, atk = 1, spd = 1, owner = "1" }, { id = "p2", element = "Ember", hp = 1000, atk = 1, spd = 1, owner = "2" } },
+			abilities = true,
+			canRun = true,
+		}, { fighters = { monster("Bloom", 100000, 1, 1) }, abilities = false, canRun = false }, 1)
+		state.sides.a.fighters[1].hp = 500
+		state.sides.a.fighters[2].hp = 500
+		BattleSim.useAbility(state, "a:p1", "element", "1")
+		expect.equal(state.sides.a.fighters[1].hp, 750, "the Tide owner's creature is healed")
+		expect.equal(state.sides.a.fighters[2].hp, 500, "the other player's is not")
+	end,
+
+	["boss swings: a boss with 2 swings hits two different creatures per attack"] = function()
+		local state = BattleSim.new(combat, {
+			fighters = { owned("p1", "1", 100000), owned("p2", "2", 100000), owned("p3", "3", 100000) },
+			abilities = false,
+			canRun = true,
+		}, { fighters = { { id = "m", element = "Bloom", hp = 100000, atk = 10, spd = 10, boss = true, swings = 2 } }, abilities = false, canRun = false }, 11)
+		local _, events = runToEnd(state, 3)
+		local count = 0
+		for _, event in events do
+			if event.type == "attack" and event.from == "b:m" then
+				count += 1
+			end
+		end
+		-- the boss attacks once per interval; with 2 swings each attack lands on 2 targets
+		expect.equal(count >= 2 and count % 2 == 0, true, `hits come in pairs ({count})`)
+		local targets = {}
+		for _, event in events do
+			if event.type == "attack" and event.from == "b:m" then
+				targets[event.to] = (targets[event.to] or 0) + 1
+			end
+		end
+		local distinct = 0
+		for _ in targets do
+			distinct += 1
+		end
+		expect.equal(distinct >= 2, true, "spread over different creatures")
+	end,
+
 	["swap: a reserve comes in and the hurt one goes back with its HP"] = function()
 		local state = swapFight(1, 1)
 		runToEnd(state, combat.CALL_IN_SECONDS + 1)

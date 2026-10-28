@@ -1,6 +1,7 @@
 --!strict
 -- Config/Shelves holds Vector3 and Color3 values, so Lune can't load it; these checks read its text instead.
 local fs = require("@lune/fs")
+local Bosses = require("../src/shared/Config/Bosses")
 
 local SOURCE = fs.readFile("src/shared/Config/Shelves.luau")
 
@@ -48,7 +49,7 @@ return {
 				assert(string.match(entry.body, "cost = 0,"), `{entry.id} must be free (the item is the price)`)
 			end
 		end
-		assert(trophies == 3, `expected 3 trophies, found {trophies}`)
+		assert(trophies == #Bosses.LADDER, `expected one trophy per boss ({#Bosses.LADDER}), found {trophies}`)
 	end,
 
 	["each shelf type has its own look"] = function()

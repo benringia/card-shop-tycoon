@@ -2,6 +2,8 @@
 local BossRules = require("../src/shared/Util/BossRules")
 local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
+local Frontier = require("../src/shared/Config/Frontier")
+local Wild = require("../src/shared/Config/Wild")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -15,6 +17,71 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["insideRing: who gets moved out of a sealed arena"] = function()
+		expect.equal(BossRules.insideRing(10, 20, Bosses.ARENA_RADIUS), true, "well inside")
+		expect.equal(BossRules.insideRing(Bosses.ARENA_RADIUS + 0.5, 0, Bosses.ARENA_RADIUS), true, "on the wall line still counts")
+		expect.equal(BossRules.insideRing(Bosses.ARENA_RADIUS + 3, 0, Bosses.ARENA_RADIUS), false, "outside the gate")
+	end,
+
+	["scatter: every drop lands in the ring, none on another"] = function()
+		local spots = BossRules.scatter(7, Bosses.LOOT_SCATTER.min, Bosses.LOOT_SCATTER.max, 0.3)
+		expect.equal(#spots, 7, "one per drop")
+		for index, spot in spots do
+			local distance = math.sqrt(spot.x ^ 2 + spot.z ^ 2)
+			expect.equal(distance >= Bosses.LOOT_SCATTER.min - 1e-9 and distance <= Bosses.LOOT_SCATTER.max + 1e-9, true, `spot {index} in the ring`)
+			for other = index + 1, #spots do
+				local gap = math.sqrt((spot.x - spots[other].x) ^ 2 + (spot.z - spots[other].z) ^ 2)
+				expect.equal(gap > 1.5, true, `spots {index} and {other} apart`)
+			end
+		end
+		expect.equal(#BossRules.scatter(0, 4, 10, 0), 0, "no loot, no spots")
+	end,
+
+	["config: the Frontier bosses sit in Frontier zones"] = function()
+		expect.equal(#Bosses.LADDER, 6, "six bosses")
+		for index, id in Bosses.LADDER do
+			local boss = Bosses.BOSSES[id]
+			local world = if boss.place == "Frontier" then Frontier else Wild
+			expect.equal(world.ZONES[boss.zone] ~= nil, true, `{id} zone`)
+			expect.equal(boss.place, if index <= 3 then "Wild" else "Frontier", `{id} place`)
+		end
+	end,
+
+	["config: each boss opens at a shop level, rising along the ladder"] = function()
+		local before = 0
+		for _, id in Bosses.LADDER do
+			local needed = Bosses.BOSSES[id].shopLevel
+			expect.equal(typeof(needed) == "number" and needed >= 1 and needed % 1 == 0, true, `{id} shopLevel`)
+			expect.equal(needed > before, true, `{id} opens after the boss before it`)
+			before = needed
+		end
+	end,
+
+	["levelReady: the shop level must reach the boss's"] = function()
+		expect.equal(BossRules.levelReady(12, 11), false, "one short")
+		expect.equal(BossRules.levelReady(12, 12), true, "exactly")
+		expect.equal(BossRules.levelReady(12, 30), true, "above")
+	end,
+
+	["read: Frontier bosses start locked"] = function()
+		expect.equal(BossRules.read(nil, Bosses.BOSSES.frostTyrant.unlock == nil).unlocked, false, "needs its key")
+	end,
+
+	["intro: the camera part ends before the 3-2-1 countdown starts"] = function()
+		expect.equal(Bosses.INTRO_SECONDS, 6, "intro length")
+		expect.equal(Bosses.INTRO_SECONDS - Bosses.INTRO_CAMERA_SECONDS >= 3, true, "room for 3, 2, 1")
+		for id, boss in Bosses.BOSSES do
+			expect.equal(typeof(boss.title) == "string" and #boss.title > 0, true, `{id} has a title`)
+		end
+	end,
+
+	["ringSegments: the barrier closes the whole ring"] = function()
+		local angles = BossRules.ringSegments(Bosses.ARENA_RADIUS, Bosses.BARRIER_SEGMENT)
+		expect.equal(#angles * Bosses.BARRIER_SEGMENT >= 2 * math.pi * Bosses.ARENA_RADIUS, true, "no gaps")
+		expect.equal(math.abs((angles[2] - angles[1]) - 2 * math.pi / #angles) < 1e-9, true, "evenly spaced")
+		expect.equal(Bosses.ARENA_RADIUS, 36, "the bigger arena")
+	end,
+
 	["group prompt: the leader sees Start now, everyone else Join"] = function()
 		expect.equal(BossRules.groupPromptText(Bosses, 0, false), "Start group", "no group yet")
 		expect.equal(BossRules.groupPromptText(Bosses, 2, false), `Join group (2/{Bosses.GROUP_MAX})`, "others join")
@@ -127,14 +194,20 @@ return {
 			assert(fromClear >= unlock.count or dropped, `{unlock.item}: {fromClear} from the first clear and no drop for the rest`)
 		end
 	end,
-	["groupStats: HP +80% and ATK +15% per extra player"] = function()
-		expect.equal(select(1, BossRules.groupStats(Bosses, 1200, 9, 1)), 1200, "solo HP")
-		local hp, atk = BossRules.groupStats(Bosses, 1200, 9, 2)
-		expect.equal(hp, 2160, "2 players HP")
-		expect.equal(atk, 10, "2 players ATK (10.35)")
-		hp, atk = BossRules.groupStats(Bosses, 4800, 18, 4)
-		expect.equal(hp, 16320, "4 players HP")
-		expect.equal(atk, 26, "4 players ATK (26.1)")
+	["groupStats: more HP and ATK per extra player, and extra swings so every creature feels the boss"] = function()
+		local hp, atk, swings = BossRules.groupStats(Bosses, 1200, 9, 1)
+		expect.equal(hp, 1200, "solo HP")
+		expect.equal(swings, 1, "solo: one target per attack")
+		hp, atk, swings = BossRules.groupStats(Bosses, 1200, 9, 2)
+		expect.equal(hp, math.round(1200 * (1 + Bosses.GROUP_HP_STEP)), "2 players HP")
+		expect.equal(atk, math.round(9 * (1 + Bosses.GROUP_ATK_STEP)), "2 players ATK")
+		expect.equal(swings, 1 + Bosses.GROUP_SWINGS_STEP, "2 players: hits more targets")
+		hp, atk, swings = BossRules.groupStats(Bosses, 4800, 18, 4)
+		expect.equal(swings, 1 + 3 * Bosses.GROUP_SWINGS_STEP, "4 players")
+		expect.equal(swings <= 4, true, "never more targets than players")
+		-- A boss may bring its own ATK step (the Frontier ones: Legendary parties shrug off the default)
+		local _, ownAtk = BossRules.groupStats(Bosses, 1000, 10, 3, 0.5)
+		expect.equal(ownAtk, 20, "ATK x (1 + 0.5 x 2)")
 	end,
 
 	["contributed: 10% of the damage or 15% of the hits taken"] = function()
@@ -150,7 +223,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

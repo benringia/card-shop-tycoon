@@ -22,6 +22,7 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Town = require(Config:WaitForChild("Town"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
+local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -568,7 +569,7 @@ function WildService.SpawnAt(position: Vector3, species: string, level: number, 
 	return createMonster(species, level, elite, zone, position, nil, boss)
 end
 
-export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame, groupPrompt: ProximityPrompt }
+export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame, groupPrompt: ProximityPrompt, barrier: { BasePart }, inside: CFrame, center: Vector3 }
 
 -- Main game: a fenced ring beside each boss's zone with a gate (server prompts "Fight boss" -> onGate, "Start group" ->
 -- onGroup; BossService changes the group prompt's text) and a sign. Returns where each gate and boss stand, by boss id.
@@ -577,8 +578,12 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 	local folder = Instance.new("Folder")
 	folder.Name = "BossArenas"
 	folder.Parent = mapFolder -- part of the map, so bosses stand on its floor
+	local here = if Place.isFrontier() then "Frontier" else "Wild"
 	for _, bossId in Bosses.LADDER do
 		local boss = Bosses.BOSSES[bossId]
+		if boss.place ~= here then
+			continue -- its arena is in the other place
+		end
 		local center = zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
 		local radius = Bosses.ARENA_RADIUS
 		-- Cylinders run along X: lay the disc flat
@@ -592,6 +597,17 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 			if direction.X > -0.95 then
 				block(folder, "Fence", Vector3.new(1.2, 5, 1.2), CFrame.new(center + direction * (radius - 0.6) + Vector3.new(0, 2.5, 0)), Color3.fromRGB(90, 70, 50), Enum.Material.Wood)
 			end
+		end
+		-- The barrier: down (invisible, no collision) until BossService seals the ring for a fight
+		local barrier: { BasePart } = {}
+		for _, angle in BossRules.ringSegments(radius + 0.5, Bosses.BARRIER_SEGMENT) do
+			local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			local spot = center + direction * (radius + 0.5) + Vector3.new(0, Bosses.BARRIER_HEIGHT / 2, 0)
+			local wall = block(folder, "Barrier", Vector3.new(Bosses.BARRIER_SEGMENT + 0.5, Bosses.BARRIER_HEIGHT, 1), CFrame.lookAt(spot, spot + direction), Color3.fromRGB(170, 120, 255), Enum.Material.ForceField)
+			wall.Transparency = 1
+			wall.CanCollide = false
+			wall.CanQuery = false
+			table.insert(barrier, wall)
 		end
 		local gateSpot = center - Vector3.new(radius - 2, 0, 0)
 		local gate = block(folder, "BossGate", Vector3.new(1, 9, 12), CFrame.new(gateSpot + Vector3.new(0, 4.5, 0)), PORTAL_COLOR, Enum.Material.Neon)
@@ -629,6 +645,9 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 			gatePosition = gate.Position, -- what the server measures a start from (the prompt's part)
 			groupPrompt = groupPrompt,
 			spawn = CFrame.lookAt(bossSpot, gateSpot),
+			barrier = barrier,
+			center = center,
+			inside = CFrame.lookAt(gateSpot + Vector3.new(Bosses.INSIDE_STEP, 3, 0), bossSpot + Vector3.new(0, 3, 0)), -- where members stand when it seals
 		}
 	end
 	return arenas
