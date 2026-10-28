@@ -26,6 +26,7 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local AdminPanel = require(Config:WaitForChild("AdminPanel"))
 
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
@@ -38,6 +39,7 @@ local MonetizationService = require(Services:WaitForChild("MonetizationService")
 local PackService = require(Services:WaitForChild("PackService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
+local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type CommandHandler = (player: Player, text: string) -> ()
 
@@ -299,9 +301,7 @@ function DevService.Start()
 	end)
 	-- The same commands for Studio's scripting tools, which can't type in chat:
 	-- ServerStorage.DevCommand:Invoke(player, "/item gradingSeal 5"). Studio only, like the chat commands.
-	local runner = Instance.new("BindableFunction")
-	runner.Name = "DevCommand"
-	runner.OnInvoke = function(player: Player, text: string): boolean
+	local function run(player: Player, text: string): boolean
 		local alias = string.match(text, "^/(%w+)")
 		local handler = if alias then handlersByAlias[alias] else nil
 		if not handler or typeof(player) ~= "Instance" or not player:IsA("Player") then
@@ -310,7 +310,17 @@ function DevService.Start()
 		handler(player, text)
 		return true
 	end
+	local runner = Instance.new("BindableFunction")
+	runner.Name = "DevCommand"
+	runner.OnInvoke = run
 	runner.Parent = game:GetService("ServerStorage")
+	-- The admin panel's buttons (AdminPanelController). Only connected here, in Studio: the live game ignores them.
+	local allowPanel = RateLimiter.new(AdminPanel.COMMAND_COOLDOWN)
+	Remotes.DevPanel.OnServerEvent:Connect(function(player, text)
+		if allowPanel(player) and typeof(text) == "string" and #text <= AdminPanel.COMMAND_MAX_LENGTH then
+			run(player, text)
+		end
+	end)
 	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil]")
 end
 

@@ -1119,5 +1119,8 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
   (damage trail, low-HP pulse), reserves shown as small portrait buttons with their HP, ability buttons with
   cooldown sweeps instead of countdown text.
+- Admin moderation (live game): admins listed by UserId in a Config/Admins, every action checked on the server; a player
+  list with Kick, Ban (Roblox `Players:BanAsync`, works across servers, duration and reason) and Unban. The Studio admin
+  panel (dev commands as buttons) exists already; test commands stay Studio-only so the live economy can't be touched.
 - Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
   Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).

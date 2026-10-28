@@ -60,6 +60,7 @@ local NAMES = {
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (id: string) pick up one of your boss drops
+	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 }
@@ -142,6 +143,7 @@ return {
 	BossCleared = remotes.BossCleared,
 	BossLoot = remotes.BossLoot,
 	PickUpLoot = remotes.PickUpLoot,
+	DevPanel = remotes.DevPanel,
 	UseXpTonic = remotes.UseXpTonic,
 	FrontierTravel = remotes.FrontierTravel,
 }
