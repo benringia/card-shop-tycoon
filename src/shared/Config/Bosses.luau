@@ -6,6 +6,7 @@ export type Drop = { item: string, chance: number, min: number, max: number }
 export type Grant = { item: string, count: number }
 export type Boss = {
 	name: string,
+	title: string, -- under its name on the intro card
 	zone: number, -- Config/Wild ZONES index: its arena is at the end of this zone
 	shape: string, -- a Wild placeholder shape until its model exists
 	scale: number, -- placeholder size, times the monster height
@@ -29,6 +30,7 @@ export type Boss = {
 local BOSSES: { [string]: Boss } = {
 	meadowWarden = {
 		name = "Meadow Warden",
+		title = "Guardian of the Meadow",
 		zone = 1,
 		shape = "slime",
 		scale = 2.5,
@@ -52,6 +54,7 @@ local BOSSES: { [string]: Boss } = {
 	},
 	caveBroodQueen = {
 		name = "Cave Brood Queen",
+		title = "Mother of the Deep",
 		zone = 2,
 		shape = "bat",
 		scale = 2.8,
@@ -77,6 +80,7 @@ local BOSSES: { [string]: Boss } = {
 	},
 	emberColossus = {
 		name = "Ember Colossus",
+		title = "The Walking Furnace",
 		zone = 3,
 		shape = "golem",
 		scale = 3.2,
@@ -129,6 +133,15 @@ return {
 
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
 	ARENA_RADIUS = 36,
+	-- The intro: the camera flies to the boss (name card, roar), then 3, 2, 1, FIGHT. The boss can't be hit before.
+	INTRO_SECONDS = 6,
+	INTRO_CAMERA_SECONDS = 3,
+	INTRO_SHOT = { back = 24, up = 12 }, -- studs in front of the boss and above (over the creatures), looking at it
+	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
+	PHASE_SHAKE = { seconds = 0.3, studs = 0.4 }, -- heal, enrage and the other boss moments
+	MUSIC_ID = "128007000574959", -- boss music: "Epic Boss Battle" (DistroKid, free in the Creator Store); "" plays none
+	MUSIC_VOLUME = 0.5,
+	MUSIC_FADE = 1, -- seconds
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring
 	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands
 	RING_RADIUS = 11, -- fighters stand this far from a boss (it's big)

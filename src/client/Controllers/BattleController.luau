@@ -9,6 +9,7 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -33,6 +34,8 @@ local BAR_MAX_WIDTH = 560
 local BOSS_BAR_MAX_WIDTH = 640
 local BOSS_BAR_TOP = 6 -- pixels from the very top of the screen
 local BANNER_SECONDS = 1.4
+local MONSTER_ID = "b:m" -- the monster's sim id (side B, as the server names it)
+local INTRO_FLY = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local END_SCREEN_HEIGHT = 150
 local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
 local HP_COLOR = Color3.fromRGB(90, 210, 110)
@@ -105,6 +108,11 @@ local bossHpFill: Frame
 local bossHpText: TextLabel
 local bossId: string? = nil -- the boss being fought (Config/Bosses id)
 local shopButton: TextButton
+local introCard: Frame -- boss intro: the boss's name and title in the middle of the screen
+local introName: TextLabel
+local introTitle: TextLabel
+local introToken = 0
+local bossMusic: Sound? = nil
 
 local fighting = false
 local fightNames: { [string]: string } = {}
@@ -517,6 +525,38 @@ local function applySnapshot(snapshot: Snapshot)
 	refreshTimers()
 end
 
+-- Camera shake (the roar, boss moments): a small random offset on top of the camera every frame for a moment
+local shakeUntil, shakeStuds = 0, 0
+local function shake(seconds: number, studs: number)
+	shakeUntil = math.max(shakeUntil, os.clock() + seconds)
+	shakeStuds = studs
+end
+
+local function stopMusic()
+	local music = bossMusic
+	bossMusic = nil
+	if music then
+		TweenService:Create(music, TweenInfo.new(Bosses.MUSIC_FADE), { Volume = 0 }):Play()
+		task.delay(Bosses.MUSIC_FADE, function()
+			music:Destroy()
+		end)
+	end
+end
+
+local function playMusic()
+	stopMusic()
+	if Bosses.MUSIC_ID == "" then
+		return
+	end
+	local music = Instance.new("Sound")
+	music.SoundId = `rbxassetid://{Bosses.MUSIC_ID}`
+	music.Looped = true
+	music.Volume = Bosses.MUSIC_VOLUME
+	music.Parent = SoundService
+	music:Play()
+	bossMusic = music
+end
+
 local function setHudHidden(hidden: boolean)
 	if hidden then
 		hiddenHud = {}
@@ -598,8 +638,10 @@ local function onEvents(events: { any })
 				floatText(event.to, `+{event.heal}`, HEAL_COLOR)
 			end
 			banner("Healing!", HEAL_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		elseif event.type == "enrage" then
 			banner("Enraged!", UIKit.Colors.Danger)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		end
 	end
 end
@@ -742,6 +784,43 @@ local function showCountdown(seconds: number)
 	end)
 end
 
+-- The boss intro: fly the camera to the boss with its name card and a roar, then hand back to the player for the
+-- 3, 2, 1 (the server holds the fight until the intro is over)
+local function playIntro(boss: any, seconds: number)
+	introToken += 1
+	local token = introToken
+	local camera = workspace.CurrentCamera
+	local marker = markerFor(MONSTER_ID) -- found by onStarted, which waits a moment for a just-spawned boss
+	bar.Visible = false
+	bossBar.Visible = false
+	introName.Text = `{elementIcon(boss.element)} {boss.name}`
+	introTitle.Text = boss.title
+	introCard.Visible = true
+	if camera and marker then
+		local look = marker.CFrame
+		local eye = look.Position + look.LookVector * Bosses.INTRO_SHOT.back + Vector3.new(0, Bosses.INTRO_SHOT.up, 0)
+		camera.CameraType = Enum.CameraType.Scriptable
+		TweenService:Create(camera, INTRO_FLY, { CFrame = CFrame.lookAt(eye, look.Position + Vector3.new(0, 3, 0)) }):Play()
+	end
+	task.delay(Bosses.ROAR_SHAKE.at, function()
+		if introToken == token then
+			shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
+		end
+	end)
+	task.delay(Bosses.INTRO_CAMERA_SECONDS, function()
+		if introToken ~= token or not fighting then
+			return
+		end
+		introCard.Visible = false
+		if camera then
+			camera.CameraType = Enum.CameraType.Custom
+		end
+		bar.Visible = true
+		bossBar.Visible = true
+		showCountdown(seconds - Bosses.INTRO_CAMERA_SECONDS)
+	end)
+end
+
 local function onStarted(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.snapshot) ~= "table" then
 		return
@@ -797,10 +876,34 @@ local function onStarted(payload: any)
 	for _, prompt in prompts do
 		prompt.Enabled = false
 	end
+	if boss then
+		playMusic()
+		-- A boss spawns the moment its fight starts, so its marker can arrive just after this message
+		if not markerFor(MONSTER_ID) and typeof(payload.monsterId) == "string" then
+			local folder = workspace:FindFirstChild("Monsters")
+			local marker = if folder then folder:WaitForChild(`Monster_{payload.monsterId}`, 2) else nil
+			if marker and marker:IsA("BasePart") then
+				markers[MONSTER_ID] = marker
+			end
+		end
+		if typeof(payload.intro) == "number" and payload.intro > 0 then
+			playIntro(boss, payload.intro)
+		end
+	end
 end
 
 local function onEnded(summary: any)
 	fighting = false
+	-- A fight can end during the intro (a player left): give the camera back
+	if introCard.Visible then
+		introToken += 1
+		introCard.Visible = false
+		local camera = workspace.CurrentCamera
+		if camera then
+			camera.CameraType = Enum.CameraType.Custom
+		end
+	end
+	stopMusic()
 	bar.Visible = false
 	bossBar.Visible = false
 	bossId = nil
@@ -994,6 +1097,35 @@ local function build()
 	shopButton.Visible = false
 	shopButton.Activated:Connect(function()
 		Remotes.WildTravel:FireServer("home")
+	end)
+
+	introCard = Instance.new("Frame")
+	introCard.Name = "BossIntro"
+	introCard.AnchorPoint = Vector2.new(0.5, 0.5)
+	introCard.Position = UDim2.fromScale(0.5, 0.74) -- under the boss
+	introCard.Size = UDim2.fromOffset(520, 110)
+	introCard.BackgroundTransparency = 1
+	introCard.Visible = false
+	introCard.ZIndex = UIKit.PANEL_Z_INDEX + 2
+	introCard.Parent = screenGui
+	introName = UIKit.label(introCard, "", Enum.Font.FredokaOne, 44, UIKit.Colors.Danger)
+	introName.Size = UDim2.new(1, 0, 0, 56)
+	introName.TextXAlignment = Enum.TextXAlignment.Center
+	introName.TextStrokeTransparency = 0.2
+	introTitle = UIKit.label(introCard, "", Enum.Font.FredokaOne, 22, Color3.new(1, 1, 1))
+	introTitle.Position = UDim2.fromOffset(0, 58)
+	introTitle.Size = UDim2.new(1, 0, 0, 30)
+	introTitle.TextXAlignment = Enum.TextXAlignment.Center
+	introTitle.TextStrokeTransparency = 0.3
+
+	RunService:BindToRenderStep("FightShake", Enum.RenderPriority.Camera.Value + 1, function()
+		local camera = workspace.CurrentCamera
+		if camera and os.clock() < shakeUntil then
+			local function jitter(): number
+				return (math.random() * 2 - 1) * shakeStuds
+			end
+			camera.CFrame *= CFrame.new(jitter(), jitter(), 0)
+		end
 	end)
 end
 

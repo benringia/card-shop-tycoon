@@ -59,6 +59,7 @@ type Fight = {
 	center: Vector3, -- the ring; players may roam within the leash of it
 	sinceSnapshot: number,
 	ended: boolean,
+	startsAt: number, -- os.clock(): boss fights hold still through the intro until then
 }
 
 local BattleService = {}
@@ -653,6 +654,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		center = center,
 		sinceSnapshot = 0,
 		ended = false,
+		startsAt = if boss then os.clock() + Bosses.INTRO_SECONDS else 0,
 	}
 	running[fight] = true
 	WildService.Lock(monster, players[1])
@@ -702,6 +704,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 			elite = monster.elite,
 			element = monster.element,
 			boss = monster.boss,
+			intro = if boss then Bosses.INTRO_SECONDS else nil,
 			names = names,
 			allies = allies,
 			group = #members > 1,
@@ -766,10 +769,15 @@ local function onStartFight(player: Player, monsterId: unknown)
 	startFight({ player }, monster :: Monster)
 end
 
+-- Buttons pressed during a boss intro do nothing: the fight hasn't started
+local function inIntro(fight: Fight): boolean
+	return os.clock() < fight.startsAt
+end
+
 local function onCallIn(player: Player, id: unknown)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
-	if not allowCallIn(player) or not fight or not member or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
+	if not allowCallIn(player) or not fight or not member or inIntro(fight) or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
 		return
 	end
 	-- Only one of your own reserves (the sim checks the owner). Boss fights: a swap (a call-in early on).
@@ -788,7 +796,7 @@ local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
 	-- Only your own fighters (the sim checks the owner)
-	if not allowAbility(player) or not fight or not member or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
+	if not allowAbility(player) or not fight or not member or inIntro(fight) or typeof(fighterId) ~= "string" or string.sub(fighterId, 1, 2) ~= "a:" then
 		return
 	end
 	if which ~= "element" and which ~= "signature" then
@@ -806,7 +814,7 @@ end
 local function onRun(player: Player)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
-	if not allowRun(player) or not fight or not member then
+	if not allowRun(player) or not fight or not member or inIntro(fight) then
 		return
 	end
 	-- In a group fight, Run is leaving (the others fight on), even for the last one still in it: never a run roll
@@ -866,8 +874,8 @@ local function stepFights(dt: number)
 				keepNear(fight, member)
 			end
 		end
-		if fight.ended then
-			continue
+		if fight.ended or os.clock() < fight.startsAt then
+			continue -- the intro: nothing moves yet
 		end
 		handleEvents(fight, BattleSim.step(fight.sim, dt))
 		if fight.sim.result then

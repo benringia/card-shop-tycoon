@@ -15,6 +15,14 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["intro: the camera part ends before the 3-2-1 countdown starts"] = function()
+		expect.equal(Bosses.INTRO_SECONDS, 6, "intro length")
+		expect.equal(Bosses.INTRO_SECONDS - Bosses.INTRO_CAMERA_SECONDS >= 3, true, "room for 3, 2, 1")
+		for id, boss in Bosses.BOSSES do
+			expect.equal(typeof(boss.title) == "string" and #boss.title > 0, true, `{id} has a title`)
+		end
+	end,
+
 	["ringSegments: the barrier closes the whole ring"] = function()
 		local angles = BossRules.ringSegments(Bosses.ARENA_RADIUS, Bosses.BARRIER_SEGMENT)
 		expect.equal(#angles * Bosses.BARRIER_SEGMENT >= 2 * math.pi * Bosses.ARENA_RADIUS, true, "no gaps")

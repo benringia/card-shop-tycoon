@@ -601,6 +601,9 @@ and rewards in `BossService`.
   group, below). The ring (radius 36) seals while a fight runs: the members are moved just inside the gate and a
   see-through wall rises all round (`BARRIER_*`), dropping when the fight ends for any reason. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
   studs, stuns on a boss last at most 1 s.
+- **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
+  (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
+  until then. Boss music plays through the fight ("Epic Boss Battle", `MUSIC_ID`); heals and enrages shake the camera.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
   which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when
@@ -1097,7 +1100,3 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   cooldown sweeps instead of countdown text.
 - Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
   Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).
-- Dramatic boss fights: an intro before the fight starts (camera sweep to the boss, its name card, a roar, a short
-  countdown), a bigger sealed arena that nobody (players or creatures) can leave once the fight starts (a wall or
-  barrier rises at the gate and drops when it ends), boss music and phase moments (the heal and enrage get a
-  camera shake and a banner). Applies to every boss, so best done once before the Frontier bosses look final.
