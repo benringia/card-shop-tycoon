@@ -15,6 +15,13 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["ringSegments: the barrier closes the whole ring"] = function()
+		local angles = BossRules.ringSegments(Bosses.ARENA_RADIUS, Bosses.BARRIER_SEGMENT)
+		expect.equal(#angles * Bosses.BARRIER_SEGMENT >= 2 * math.pi * Bosses.ARENA_RADIUS, true, "no gaps")
+		expect.equal(math.abs((angles[2] - angles[1]) - 2 * math.pi / #angles) < 1e-9, true, "evenly spaced")
+		expect.equal(Bosses.ARENA_RADIUS, 36, "the bigger arena")
+	end,
+
 	["group prompt: the leader sees Start now, everyone else Join"] = function()
 		expect.equal(BossRules.groupPromptText(Bosses, 0, false), "Start group", "no group yet")
 		expect.equal(BossRules.groupPromptText(Bosses, 2, false), `Join group (2/{Bosses.GROUP_MAX})`, "others join")
@@ -150,7 +157,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

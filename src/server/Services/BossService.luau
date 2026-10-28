@@ -219,6 +219,13 @@ end
 
 -- One boss for these players (the first leads), scaled to the group; keys are taken only once it really starts.
 -- No yields: the key counts and the fight start in one step.
+local function setBarrier(arena: WildService.BossArena, up: boolean)
+	for _, wall in arena.barrier do
+		wall.CanCollide = up
+		wall.Transparency = if up then Bosses.BARRIER_TRANSPARENCY else 1
+	end
+end
+
 local function startBoss(bossId: string, players: { Player }): (boolean, string?)
 	local boss = Bosses.BOSSES[bossId]
 	local arena = arenas[bossId]
@@ -233,6 +240,15 @@ local function startBoss(bossId: string, players: { Player }): (boolean, string?
 		return false, why or "The boss couldn't start. Try again."
 	end
 	occupants[bossId] = monster -- free again once it's defeated or despawned (alive = false)
+	-- Everyone in, then the ring seals until the fight ends (BattleService.OnFightEnded)
+	for index, player in players do
+		local character = player.Character
+		if character then
+			local sideways = (index - (#players + 1) / 2) * Bosses.INSIDE_STEP
+			character:PivotTo(arena.inside * CFrame.new(sideways, 0, 0))
+		end
+	end
+	setBarrier(arena, true)
 	local unlock = boss.unlock
 	for _, player in players do
 		local record = BossService.GetRecord(player, bossId)
@@ -425,6 +441,12 @@ function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
 	arenas = WildService.BuildBossArenas(onGate, onGroup)
 	BattleService.SetBossRewards(onBossWin)
+	BattleService.OnFightEnded(function(monster)
+		local arena = if monster.boss then arenas[monster.boss] else nil
+		if arena then
+			setBarrier(arena, false)
+		end
+	end)
 	Remotes.RequestBosses.OnServerEvent:Connect(function(player)
 		if allowRequest(player) then
 			sendBosses(player)

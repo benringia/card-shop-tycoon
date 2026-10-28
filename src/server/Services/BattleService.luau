@@ -78,6 +78,7 @@ local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
+local fightEndedHandlers: { (monster: Monster) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
@@ -101,6 +102,11 @@ function BattleService.IsResting(player: Player, beastId: string): boolean
 end
 
 -- ArenaService refuses wild fights while a player has a challenge, a queued match or a PvP fight
+-- BossService: every fight's end, whatever the result (it unseals the arena)
+function BattleService.OnFightEnded(handler: (monster: Monster) -> ())
+	table.insert(fightEndedHandlers, handler)
+end
+
 function BattleService.AddStartBlocker(blocker: (player: Player) -> string?)
 	table.insert(startBlockers, blocker)
 end
@@ -473,6 +479,11 @@ local function endFight(fight: Fight, result: string)
 	if fight.ended then
 		return
 	end
+	task.defer(function()
+		for _, handler in fightEndedHandlers do
+			handler(fight.monster)
+		end
+	end)
 	fight.ended = true
 	running[fight] = nil
 	if result == "win" or fight.monster.boss then

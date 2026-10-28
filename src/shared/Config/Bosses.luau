@@ -128,9 +128,14 @@ return {
 	GROUP_PROMPT_OFFSET = 80, -- pixels the gate's group prompt sits below its Fight prompt
 
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
-	ARENA_RADIUS = 24,
+	ARENA_RADIUS = 36,
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring
 	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands
 	RING_RADIUS = 11, -- fighters stand this far from a boss (it's big)
-	LEASH_RADIUS = 38, -- players may roam the whole ring (and the gate) during a boss fight
+	LEASH_RADIUS = 42, -- ARENA_RADIUS + BOSS_SPOT: a backstop behind the barrier (the leash is measured from the boss)
+	-- While a fight runs the ring is sealed: a see-through wall all round, just outside the fence
+	BARRIER_SEGMENT = 6, -- studs per wall piece
+	BARRIER_HEIGHT = 14,
+	BARRIER_TRANSPARENCY = 0.55,
+	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

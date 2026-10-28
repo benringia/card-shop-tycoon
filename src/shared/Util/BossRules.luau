@@ -117,6 +117,16 @@ function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: numbe
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
 end
 
+-- The arena barrier: centre angles (radians) of evenly spaced wall pieces at most maxWidth wide that close the ring
+function BossRules.ringSegments(radius: number, maxWidth: number): { number }
+	local count = math.max(3, math.ceil(2 * math.pi * radius / maxWidth))
+	local angles = {}
+	for index = 0, count - 1 do
+		table.insert(angles, index * 2 * math.pi / count)
+	end
+	return angles
+end
+
 -- The gate's group prompt: open a group, join one, or (its leader) start it now. The server sets the text everyone
 -- sees; the leader's client swaps in its own.
 function BossRules.groupPromptText(config: GroupConfig, members: number, isLeader: boolean): string

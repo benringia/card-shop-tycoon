@@ -598,7 +598,8 @@ and rewards in `BossService`.
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
   the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
-  group, below). Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  group, below). The ring (radius 36) seals while a fight runs: the members are moved just inside the gate and a
+  see-through wall rises all round (`BARRIER_*`), dropping when the fight ends for any reason. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
   studs, stuns on a boss last at most 1 s.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
