@@ -663,8 +663,17 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
   count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
-- **UI:** the Bosses HUD tile (K) opens the Boss Ladder: lock and fragments x/N, recommended Power vs your strongest
-  party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
+- **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, red band): a path of seven steps,
+  each a disc with the boss's icon (its element's; the Hydra a gem, `Util/BossTints`), its number and name, and a state
+  from `BossRules.stepState`: beaten (gold ring, trophy), ready (green glow, check: you can start it now, key fragments
+  in hand count, and your best party card's Power is enough), too weak (red ring) or locked (faded, lock: shop level or
+  fragments short). It opens on the first step still to beat. Tapping a step shows it below: name, element and where it
+  lives; your Power against the Power it needs as two bars with "You're ready!" or "Too weak", or when locked what's
+  missing as bars (shop level, keys x/N tinted for that boss) with how to get them; full loot ready or its countdown,
+  today's wins and reduced-drop notes; what it drops as icons (hover for names); and a travel button
+  (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
+  `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), "Go to the Frontier" / "Go home"
+  (the normal Frontier travel), or for the Hydra "Enter the Dungeon portal in the Frontier". In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
 - **Groups (phase 2):** the gate's second prompt (F) "Start group" opens a group; others press "Join group (n/4)"
   within 15 s (`JOIN_SECONDS`), the leader (whose prompt reads "Start now (n/4)", `BossRules.groupPromptText`) can
@@ -951,7 +960,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
-    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder panel
+    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps (beaten / ready / too weak / locked), details, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
@@ -968,6 +977,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge, IN -> OUT cards, paired stat bars, perk line
+    │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel

@@ -60,6 +60,7 @@ local NAMES = {
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
+	"BossTravel", -- client → server: (index: number) the board's Take me there: to boss n's gate when its arena is in this place
 	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
 	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "boss" | "won" | "out", message? } the Dungeon run; client → server: () ask for it
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
@@ -145,6 +146,7 @@ return {
 	BossCleared = remotes.BossCleared,
 	BossLoot = remotes.BossLoot,
 	PickUpLoot = remotes.PickUpLoot,
+	BossTravel = remotes.BossTravel,
 	DevPanel = remotes.DevPanel,
 	DungeonRun = remotes.DungeonRun,
 	DungeonLeave = remotes.DungeonLeave,
