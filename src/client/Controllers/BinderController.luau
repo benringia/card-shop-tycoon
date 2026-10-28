@@ -28,11 +28,14 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local Collection = require(Config:WaitForChild("Collection"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
@@ -79,7 +82,8 @@ local POCKET_OPTIONS: PocketLayout.Options = {
 	minPockets = 3,
 }
 local TITLE_VALUE_ROOM = 96 -- right side of a row title kept free for the price
-local TOOLTIP_WIDTH = 230
+local TOOLTIP_WIDTH = 260
+local TOOLTIP_GAP = 8
 local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
 local PAGE_KEYS = { [Enum.KeyCode.Q] = -1, [Enum.KeyCode.E] = 1 }
 local BINDER_KEY = Enum.KeyCode.B
@@ -167,7 +171,7 @@ local queuedSpread: number? = nil -- a redraw asked for mid-turn, done when the 
 local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
 local searchText = ""
 local tooltip: Frame
-local tooltipText: TextLabel
+local tooltipTile: Tile? = nil -- the pocket the tooltip describes
 
 local detail: Frame
 local detailInner: Frame
@@ -922,34 +926,44 @@ end
 
 -- Tooltip (mouse only) -------------------------------------------------------------------------------
 
-local function describeTooltip(card: Card): string
-	local lines = { card.name, `{card.rarity} · {card.element} · #{card.number}` }
+-- What the tooltip shows for a card: copies, best grade and level, strongest Power and the worth range
+local function tooltipInfo(card: Card): CardTips.CardInfo
 	local owned, onDisplay = getOwnedCounts(card.id)
-	if owned + onDisplay == 0 then
-		table.insert(lines, "Not collected yet")
-		return table.concat(lines, "\n")
-	end
-	table.insert(lines, `Owned {owned}{if onDisplay > 0 then ` · {onDisplay} on display` else ""}`)
 	local entries = getEntries(card)
-	local bestGrade = getBestGrade(card.id)
-	if bestGrade then
-		table.insert(lines, `Best grade {bestGrade}`)
-	end
 	local raised = getRaised(card.id)
-	if raised[1] then
-		table.insert(lines, `Best level Lv {raised[1].level}`)
+	local low, high = math.huge, 0
+	for _, entry in entries do
+		low = math.min(low, entry.value)
+		high = math.max(high, entry.value)
 	end
-	if entries[1] then
-		local low, high = math.huge, 0
-		for _, entry in entries do
-			low = math.min(low, entry.value)
-			high = math.max(high, entry.value)
-		end
-		table.insert(lines, `Strongest: Power {entries[1].power}`)
-		table.insert(lines, if low == high then string.format("Worth $%.2f", high) else string.format("Worth $%.2f - $%.2f", low, high))
+	return {
+		card = card,
+		owned = owned,
+		onDisplay = onDisplay,
+		bestGrade = getBestGrade(card.id),
+		bestLevel = if raised[1] then raised[1].level else nil,
+		power = if entries[1] then entries[1].power else nil,
+		worthLow = if entries[1] then low else nil,
+		worthHigh = if entries[1] then high else nil,
+	}
+end
+
+-- Level with its pocket, just outside the book (right of it, else left, else above), so it never covers a card
+local function placeTooltip()
+	local tile = tooltipTile
+	if not tile or not tooltip.Visible then
+		return
 	end
-	table.insert(lines, "Tap for details")
-	return table.concat(lines, "\n")
+	local screen = tooltip.Parent :: GuiObject
+	local origin = screen.AbsolutePosition
+	local button = tile.button
+	local spot = UiLayout.beside(
+		{ x = book.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = book.AbsoluteSize.X, h = button.AbsoluteSize.Y },
+		{ w = tooltip.AbsoluteSize.X, h = tooltip.AbsoluteSize.Y },
+		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
+		TOOLTIP_GAP
+	)
+	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
 local function showTooltip(tile: Tile)
@@ -957,23 +971,15 @@ local function showTooltip(tile: Tile)
 	if not UserInputService.MouseEnabled or not tile.button.Parent or detail.Visible or bagOverlay.Visible then
 		return
 	end
-	tooltipText.Text = describeTooltip(tile.card)
-	-- Beside the pocket, kept on screen
-	local screen = tooltip.Parent :: any
-	local origin: Vector2 = screen.AbsolutePosition
-	local screenSize: Vector2 = screen.AbsoluteSize
-	local button = tile.button
-	local x = button.AbsolutePosition.X - origin.X + button.AbsoluteSize.X + 8
-	if x + TOOLTIP_WIDTH > screenSize.X then
-		x = button.AbsolutePosition.X - origin.X - TOOLTIP_WIDTH - 8
-	end
-	local y = button.AbsolutePosition.Y - origin.Y
-	tooltip.Position = UDim2.fromOffset(math.max(0, x), math.clamp(y, 0, math.max(0, screenSize.Y - tooltip.AbsoluteSize.Y)))
+	tooltipTile = tile
+	CardTips.card(tooltip, tooltipInfo(tile.card))
 	tooltip.Visible = true
+	placeTooltip()
 end
 
 local function hideTooltip()
 	tooltip.Visible = false
+	tooltipTile = nil
 end
 
 local function openDetail(card: Card)
@@ -2410,22 +2416,19 @@ local function buildPanel(parent: Instance)
 	tooltip.Name = "BinderTooltip"
 	tooltip.Size = UDim2.fromOffset(TOOLTIP_WIDTH, 0)
 	tooltip.AutomaticSize = Enum.AutomaticSize.Y
-	tooltip.BackgroundColor3 = UIKit.Colors.Row
+	tooltip.BackgroundColor3 = UIStyle.PANEL
 	tooltip.ZIndex = 50
 	tooltip.Visible = false
 	tooltip.Parent = parent
-	UIKit.corner(tooltip, 10)
-	UIKit.outline(tooltip, UIKit.Colors.Accent, 2)
+	UIKit.corner(tooltip, 12)
+	UIKit.outline(tooltip, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
 	local tooltipPadding = Instance.new("UIPadding")
-	tooltipPadding.PaddingTop = UDim.new(0, 8)
-	tooltipPadding.PaddingBottom = UDim.new(0, 8)
+	tooltipPadding.PaddingTop = UDim.new(0, 10)
+	tooltipPadding.PaddingBottom = UDim.new(0, 10)
 	tooltipPadding.PaddingLeft = UDim.new(0, 10)
 	tooltipPadding.PaddingRight = UDim.new(0, 10)
 	tooltipPadding.Parent = tooltip
-	tooltipText = UIKit.label(tooltip, "", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-	tooltipText.Size = UDim2.fromScale(1, 0)
-	tooltipText.AutomaticSize = Enum.AutomaticSize.Y
-	tooltipText.ZIndex = 51
+	tooltip:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTooltip) -- it sizes itself after its content
 
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, panel))

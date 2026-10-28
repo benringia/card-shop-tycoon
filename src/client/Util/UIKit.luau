@@ -369,7 +369,7 @@ function UIKit.panel(parent: Instance, name: string, title: string, band: string
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame.Parent = parent
 	UIKit.corner(frame, PANEL_CORNER)
-	UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local edge = UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
 	local body = Instance.new("Frame")
 	body.Name = "Body"
 	body.Size = UDim2.new(1, 0, 1, -UIStyle.LIP)
@@ -378,6 +378,11 @@ function UIKit.panel(parent: Instance, name: string, title: string, band: string
 	body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
 	body.Parent = frame
 	UIKit.corner(body, PANEL_CORNER)
+	-- A see-through panel (the binder: its book is its own screen) shows neither face nor edge
+	frame:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+		body.BackgroundTransparency = frame.BackgroundTransparency
+		edge.Enabled = frame.BackgroundTransparency < 1
+	end)
 
 	local sizeLimit = Instance.new("UISizeConstraint")
 	sizeLimit.MaxSize = Vector2.new(460, 520)

@@ -957,6 +957,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
+    │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -1149,6 +1150,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book (arrows
   included) shrinks into the room left of it. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
   The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
+  Hovering a pocket (mouse) shows the card's tooltip (`Util/CardTips`): art, name, set number, rarity / element /
+  best-grade pills, a 2x2 grid of icons and numbers (strongest Power, copies with any on display, best level, best
+  grade), the worth range in green with the Cash icon and "Click for details"; it sits just outside the book, level
+  with the pocket (right of it, else left, else above: `UiLayout.beside`), so it never covers a card.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
   19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
