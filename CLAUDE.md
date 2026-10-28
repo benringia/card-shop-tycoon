@@ -34,7 +34,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   only work in the published game. Each Studio window connects to its own port: a main place window on 34873 boots
   as the Frontier (its Output says "Booted (Frontier)" and the Frontier spring fails to build).
 - `rojo serve dungeon.project.json` — sync the Dungeon place (port 34874; Workspace attribute `PlaceKind = "Dungeon"`).
-  In Studio the run starts for whoever is in that window; `/room <2-4>` skips to a room (4: the Prism Hydra's chamber).
+  In Studio the run starts for whoever is in that window; `/room <2-4>` opens the doors and puts you at that room's gate
+  (4: the Prism Hydra's chamber).
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`

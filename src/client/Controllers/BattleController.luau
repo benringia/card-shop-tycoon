@@ -34,6 +34,7 @@ local player = Players.LocalPlayer
 local BAR_MAX_WIDTH = 560
 local BOSS_BAR_MAX_WIDTH = 640
 local BOSS_BAR_TOP = 6 -- pixels from the very top of the screen
+local BOSS_BAR_PHONE_MARGIN = 190 -- phones: the boss bar keeps this clear on each side (the Roblox menu buttons)
 local BANNER_SECONDS = 1.4
 local MONSTER_ID = "b:m" -- the monster's sim id (side B, as the server names it)
 local INTRO_FLY = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -1023,6 +1024,7 @@ local function onStarted(payload: any)
 	end
 	bossBar.Visible = boss ~= nil
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
+	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
 	packFight = mode == "wild" and boss == nil and #view.enemies > 1
 	monsterTrack.Visible = mode == "wild" and boss == nil and not packFight -- a boss's HP is the bar at the top
 	enemyRow.Visible = mode == "pvp" or packFight

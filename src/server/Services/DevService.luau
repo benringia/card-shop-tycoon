@@ -278,7 +278,7 @@ function DevService.Start()
 			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /room <2-4> (4: the Hydra's chamber)", true)
 			return
 		end
-		DungeonService.SkipTo(room)
+		DungeonService.SkipTo(room, player)
 	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
 	addCommand(folder, "wild", function(player)

@@ -363,17 +363,33 @@ function DungeonService.GetRun(): Run
 	return run
 end
 
--- Studio only (/room): rooms before `room` count as cleared and their doors open
-function DungeonService.SkipTo(room: number)
+-- Studio only (/room): rooms before `room` count as cleared, their doors open, and `player` goes to that room's gate
+-- (rooms + 1: the Prism Hydra's chamber gate)
+function DungeonService.SkipTo(room: number, player: Player?)
 	if not RunService:IsStudio() or not layout then
 		return
 	end
+	local target = DungeonRules.skipRoom(room, #Dungeon.ROOMS)
 	run.started = true
-	for index = 1, math.clamp(room, 1, #Dungeon.ROOMS + 1) - 1 do
+	for index = 1, target - 1 do
 		openDoor(layout.rooms[index].door)
 		run.cleared = math.max(run.cleared, index)
 	end
 	sendAll(nil)
+	local character = if player then player.Character else nil
+	if not character then
+		return
+	end
+	if target <= #Dungeon.ROOMS then
+		local gate = layout.rooms[target].gate.Position
+		local spot = Vector3.new(gate.X - Bosses.INSIDE_STEP * 2, 3, gate.Z)
+		character:PivotTo(CFrame.lookAt(spot, spot + Vector3.new(1, 0, 0)))
+	else
+		local gate = BossService.GetGate(table.find(Bosses.LADDER, Dungeon.BOSS) :: number)
+		if gate then
+			character:PivotTo(gate + Vector3.new(0, 3, 0))
+		end
+	end
 end
 
 function DungeonService.Start()

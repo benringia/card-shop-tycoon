@@ -707,7 +707,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (even once its normal rest is over); no spring, no healing. A room win pays the pack's elite XP and cash, no cards
   or items, and opens the door on. A player whose whole party is down (they stay in the fight until it ends), who runs
   or who leaves is out: back to the Frontier after `OUT_DELAY`. Latecomers after the first fight go back too. The
-  run line (top left) shows "Room n of 3" / "The Prism Hydra's chamber" with a Leave button (tap twice).
+  run line (top left) shows "Room n of 3" / "The Prism Hydra's chamber" with a Leave button (tap twice). On phones
+  (`UIKit.isPhone`: touch only or a screen under 500 px tall) both are smaller and hide during fights.
 - **The Prism Hydra** ("Crown of Every Element"): in the chamber after room 3 (`BossService.StartRun` with the run's
   HP). Five phases by HP (`phases`, `BattleSim` with `BossRules.phaseAt`: forward only, a heal never takes it back):
   100-80% Tide ice shield, 80-60% Volt thunderclap, 60-40% Shade 2 Rift Spawn, 40-20% Bloom heal (5% every 20 s),
@@ -736,7 +737,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 - **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
 - Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`
-  opens the doors up to that room (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
+  opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
   the published game.
 
 ---
@@ -1200,8 +1201,9 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Admin moderation (live game): admins listed by UserId in a Config/Admins, every action checked on the server; a player
   list with Kick, Ban (Roblox `Players:BanAsync`, works across servers, duration and reason) and Unban. The Studio admin
   panel (dev commands as buttons) exists already; test commands stay Studio-only so the live economy can't be touched.
-- Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
-  Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).
+- Phone layout pass for fights: check the fight bar and end screen on small landscape phones in the Device emulator
+  (bar height, tap targets). Done so far: phones get a narrower boss bar clear of the Roblox menu buttons
+  (`BOSS_BAR_PHONE_MARGIN`), and the Dungeon run line shrinks and hides during fights (`UIKit.isPhone`).
 - Heroic tiers for the Dungeon (not decided): clearing it opens a harder tier with better drops, each clear the next,
   a leaderboard of the highest tier and the fastest clear.
 - The ranch (its own project, after the Dungeon): a place just for showing creatures off, unlocked early in the main

@@ -67,6 +67,11 @@ function DungeonRules.readyToStart(arrived: number, expected: number, waited: nu
 	return arrived >= 1 and (arrived >= expected or waited >= maxWait)
 end
 
+-- Where /room n lands (Studio): a whole room number from 1 to rooms + 1 (rooms + 1: the boss's chamber)
+function DungeonRules.skipRoom(room: number, rooms: number): number
+	return math.clamp(math.floor(room), 1, rooms + 1)
+end
+
 -- A room's pack: `count` species names, cycling through the room's list from a seeded start (mixed elements)
 function DungeonRules.pack(room: { species: { string }, count: number, level: number }, seed: number): { string }
 	local names = {}

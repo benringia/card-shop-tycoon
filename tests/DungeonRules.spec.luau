@@ -70,9 +70,17 @@ return {
 		expect.equal(DungeonRules.readyToStart(0, 1, 90, 60), false, "nobody here at all")
 	end,
 
+	["skipRoom: /room n lands on a real room or the chamber (rooms + 1)"] = function()
+		expect.equal(DungeonRules.skipRoom(2, 3), 2, "room 2")
+		expect.equal(DungeonRules.skipRoom(4, 3), 4, "the chamber")
+		expect.equal(DungeonRules.skipRoom(9, 3), 4, "past the chamber: the chamber")
+		expect.equal(DungeonRules.skipRoom(0, 3), 1, "before room 1: room 1")
+		expect.equal(DungeonRules.skipRoom(2.7, 3), 2, "whole rooms")
+	end,
+
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/DungeonRules.luau")), { debugName = "DungeonRules" })()
-		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty", "readyToStart" } do
+		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty", "readyToStart", "skipRoom" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,
