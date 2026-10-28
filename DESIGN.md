@@ -397,7 +397,7 @@ Roadmap (one sub-project at a time):
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
       b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
-         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phases 1-3 done (Wild bosses, groups, Frontier bosses and Gold Seals): 5.10).
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phases 1-4 done (Wild bosses, groups, Frontier bosses and Gold Seals, the Dungeon and the Prism Hydra): 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 Not one server for everyone: Roblox fills a Frontier server to the place's Max Players (Creator Hub) and opens more.
