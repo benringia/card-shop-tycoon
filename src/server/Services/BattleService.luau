@@ -42,9 +42,9 @@ type Beast = CardService.Beast
 type Member = {
 	player: Player,
 	owner: string, -- BattleSim owner: the player's UserId
-	leaderId: string,
-	extraId: string?,
-	extraMarker: BasePart?,
+	leaderId: string, -- the summoned card: its marker is the one that follows the player
+	markers: { [string]: BasePart }, -- their other creatures on the field (call-in, swaps), by beast id
+	fought: { [string]: boolean }, -- every card of theirs that has been on the field
 	partyIds: { string }, -- all their party cards: they share the XP
 	died: RBXScriptConnection?,
 	leashWarnedAt: number,
@@ -183,7 +183,7 @@ end
 -- The member a side-A fighter belongs to
 local function memberOf(fight: Fight, id: string): Member?
 	for _, member in fight.members do
-		if id == partyId(member.leaderId) or (member.extraId and id == partyId(member.extraId)) then
+		if table.find(member.partyIds, string.sub(id, 3)) then
 			return member
 		end
 	end
@@ -198,7 +198,7 @@ local function markerFor(fight: Fight, id: string): BasePart?
 	if not member then
 		return nil
 	end
-	return if id == partyId(member.leaderId) then PartyService.GetMarker(member.player) else member.extraMarker
+	return if id == partyId(member.leaderId) then PartyService.GetMarker(member.player) else member.markers[string.sub(id, 3)]
 end
 
 local function place(fight: Fight, id: string, cframe: CFrame)
@@ -210,10 +210,11 @@ local function place(fight: Fight, id: string, cframe: CFrame)
 	if not member then
 		return
 	end
+	local marker = member.markers[string.sub(id, 3)]
 	if id == partyId(member.leaderId) then
 		PartyService.SetHold(member.player, cframe)
-	elseif member.extraMarker then
-		member.extraMarker.CFrame = cframe
+	elseif marker then
+		marker.CFrame = cframe
 	end
 end
 
@@ -246,7 +247,60 @@ local function broadcast(fight: Fight, payload: any)
 	end
 end
 
+-- One of a member's creatures leaves the field (swapped out): the summoned one hides, the others' markers go
+local function leaveField(member: Member, beastId: string)
+	if beastId == member.leaderId then
+		local marker = PartyService.GetMarker(member.player)
+		if marker then
+			marker:SetAttribute("Benched", true)
+		end
+		return
+	end
+	local marker = member.markers[beastId]
+	if marker then
+		marker:Destroy()
+	end
+	member.markers[beastId] = nil
+end
+
+-- A creature joins the field (a call-in or a swap) where the one it replaced stood, else at its owner's extra spot.
+-- Fills in its marker and, for the other players, whose it is.
+local function enterField(fight: Fight, event: BattleSim.Event, markers: { [string]: BasePart }, allies: { [string]: string })
+	local id = event.from :: string
+	local member = memberOf(fight, id)
+	if not member then
+		return
+	end
+	local player = member.player
+	local beastId = string.sub(id, 3)
+	local spot = (if event.to then fight.spots[event.to] else nil) or fight.spots[`extra:{member.owner}`]
+	if event.to then
+		leaveField(member, string.sub(event.to, 3))
+	end
+	fight.spots[id] = spot
+	member.fought[beastId] = true
+	CardService.SetFighting(player, beastId, true)
+	local marker: BasePart?
+	if beastId == member.leaderId then
+		marker = PartyService.GetMarker(player)
+		if marker then
+			marker:SetAttribute("Benched", nil)
+		end
+		PartyService.SetHold(player, spot)
+	else
+		marker = PartyService.CreateMarker(player, beastId, spot)
+		member.markers[beastId] = marker
+	end
+	if marker then
+		markers[id] = marker
+	end
+	local beast = CardService.GetBeast(player, beastId)
+	allies[id] = if beast then `{player.DisplayName} · {Cards.ById[beast.cardId].name}` else player.DisplayName
+end
+
 local function handleEvents(fight: Fight, events: { BattleSim.Event })
+	local markers: { [string]: BasePart } = {}
+	local allies: { [string]: string } = {}
 	for _, event in events do
 		if event.type == "attack" and event.from and event.to then
 			lunge(fight, event.from, event.to)
@@ -255,11 +309,14 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			if marker then
 				marker:SetAttribute("Fainted", true)
 			end
+		elseif (event.type == "callin" or event.type == "swap") and event.from then
+			enterField(fight, event, markers, allies)
 		end
 	end
 	if #events > 0 then
 		fight.sinceSnapshot = 0
-		broadcast(fight, { events = events, snapshot = snapshot(fight) })
+		-- New creatures' markers, so clients can float numbers over them; the others see whose they are
+		broadcast(fight, { events = events, markers = markers, allies = allies, snapshot = snapshot(fight) })
 	end
 end
 
@@ -323,9 +380,9 @@ local function payOut(fight: Fight, member: Member): any
 		end
 		EconomyService.AddCash(player, boss.cash)
 		-- The cards that really fought (resting ones in the party never did): the over-power check weighs these
-		local fighterIds = { member.leaderId }
-		if member.extraId then
-			table.insert(fighterIds, member.extraId)
+		local fighterIds = {}
+		for beastId in member.fought do
+			table.insert(fighterIds, beastId)
 		end
 		local share = BattleSim.contribution(fight.sim, member.owner)
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
@@ -390,20 +447,20 @@ local function release(fight: Fight, member: Member): { string }
 	local leaderMarker = PartyService.GetMarker(player)
 	if leaderMarker then
 		leaderMarker:SetAttribute("Fainted", nil)
+		leaderMarker:SetAttribute("Benched", nil)
 	end
-	CardService.SetFighting(player, member.leaderId, false)
-	if member.extraId then
-		CardService.SetFighting(player, member.extraId, false)
+	for beastId in member.fought do
+		CardService.SetFighting(player, beastId, false)
 	end
-	if member.extraMarker then
-		member.extraMarker:Destroy()
+	for _, marker in member.markers do
+		marker:Destroy()
 	end
 	-- Fainted fighters rest, whatever the result (a run or a win doesn't wake them)
 	local rested = {}
 	local entries = resting[player]
 	if entries then
 		for _, beastId in BattleSim.getFainted(fight.sim, "a") do
-			if beastId == member.leaderId or beastId == member.extraId then
+			if table.find(member.partyIds, beastId) then
 				entries[beastId] = os.time() + Combat.REST_SECONDS
 				table.insert(rested, beastId)
 			end
@@ -537,9 +594,11 @@ local function startFight(players: { Player }, monster: Monster): boolean
 				table.insert(reserves, input)
 			end
 		end
-		table.insert(members, { player = player, owner = owner, leaderId = leaderId, extraId = nil, extraMarker = nil, partyIds = partyIds, died = nil, leashWarnedAt = 0 })
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0 })
 	end
-	local sim = BattleSim.new(Combat, { fighters = leaders, reserves = reserves, abilities = true, canRun = true }, {
+	-- Boss fights allow swaps (and the bosses are tuned for them)
+	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss then Combat.BOSS_SWAP_SECONDS else nil }
+	local sim = BattleSim.new(Combat, sideA, {
 		fighters = { {
 			id = "m",
 			element = monster.element,
@@ -570,7 +629,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		local facing = CFrame.Angles(0, angle, 0):VectorToWorldSpace(direction)
 		local spot = center + facing * radius
 		local right = Vector3.new(-facing.Z, 0, facing.X)
-		local extra = spot + right * 3
+		local extra = spot + right * Combat.EXTRA_SIDE
 		spots[partyId(member.leaderId)] = CFrame.lookAt(spot, spot - facing)
 		spots[`extra:{member.owner}`] = CFrame.lookAt(extra, extra - facing)
 	end
@@ -702,22 +761,16 @@ local function onCallIn(player: Player, id: unknown)
 	if not allowCallIn(player) or not fight or not member or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
 		return
 	end
-	-- Only one of your own reserves (the sim checks the owner)
-	local ok = BattleSim.callIn(fight.sim, id, member.owner)
-	if not ok then
-		return
+	-- Only one of your own reserves (the sim checks the owner). Boss fights: a swap (a call-in early on).
+	local events: { BattleSim.Event }? = nil
+	if (fight.sim.sides.a :: any).swapSeconds then
+		events = BattleSim.swap(fight.sim, id, member.owner)
+	elseif BattleSim.callIn(fight.sim, id, member.owner) then
+		events = { { type = "callin", from = id } }
 	end
-	local beastId = string.sub(id, 3)
-	local spot = fight.spots[`extra:{member.owner}`]
-	member.extraId = beastId
-	fight.spots[id] = spot
-	member.extraMarker = PartyService.CreateMarker(player, beastId, spot)
-	CardService.SetFighting(player, beastId, true)
-	-- The new creature's marker, so clients can float numbers over it; the others see whose it is
-	local beast = CardService.GetBeast(player, beastId)
-	local allyName = if beast then `{player.DisplayName} · {Cards.ById[beast.cardId].name}` else player.DisplayName
-	broadcast(fight, { events = {}, markers = { [id] = member.extraMarker }, allies = { [id] = allyName }, snapshot = snapshot(fight) })
-	handleEvents(fight, { { type = "callin", from = id } })
+	if events then
+		handleEvents(fight, events)
+	end
 end
 
 local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
@@ -882,6 +935,7 @@ end
 
 function BattleService.Start()
 	DataService.Register({ name = "BattleService", load = load, save = save, unload = unload })
+	WildService.SetFightCheck(BattleService.IsFighting)
 	-- End a fight before the leave save, so cards that fainted in it are saved as resting
 	DataService.OnBeforeLeave(function(player)
 		local fight = fights[player]

@@ -3,6 +3,8 @@
 -- workspace.Creatures; here each marker gets a model (ReplicatedStorage.CreatureModels, or a placeholder
 -- blob), smooth following, a motion kit (breathing, hop-and-waddle, hover for flyers) or the model's own
 -- Idle/Walk animations, a rarity glow and a name tag. Everything is local: nothing here replicates.
+-- Only your own creatures and the nearest others get a model (Util/CreatureCull, Party.CULL): the rest wait as
+-- markers until they come near, so a full server doesn't animate every pet.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,6 +14,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local CreatureCull = require(Shared:WaitForChild("Util"):WaitForChild("CreatureCull"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 
 local CreatureController = {}
@@ -33,7 +36,9 @@ type Creature = {
 	connections: { RBXScriptConnection },
 }
 
-local creatures: { [BasePart]: Creature } = {}
+local creatures: { [BasePart]: Creature } = {} -- the drawn ones
+local known: { [BasePart]: string } = {} -- every creature marker, with its cull key
+local nextKey = 0
 
 local function rarityColor(rarity: string): Color3
 	local tier = Rarities.Tiers[rarity]
@@ -255,6 +260,36 @@ local function updateOutlines()
 	end
 end
 
+-- Draw the creatures the cull picks, drop the rest
+local function refreshCull()
+	local camera = workspace.CurrentCamera
+	local origin = if camera then camera.CFrame.Position else Vector3.zero
+	local me = Players.LocalPlayer.UserId
+	local entries: { CreatureCull.Entry } = {}
+	local byKey: { [string]: BasePart } = {}
+	for marker, key in known do
+		byKey[key] = marker
+		if marker:GetAttribute("Benched") == true then
+			continue -- swapped out of a boss fight: hidden until it comes back in
+		end
+		table.insert(entries, {
+			key = key,
+			distance = (marker.Position - origin).Magnitude,
+			own = marker:GetAttribute("OwnerUserId") == me,
+			drawn = creatures[marker] ~= nil,
+		})
+	end
+	local drawn = CreatureCull.pick(entries, Party.CULL)
+	for marker in creatures do
+		if not drawn[known[marker] or ""] then
+			remove(marker)
+		end
+	end
+	for key in drawn do
+		add(byKey[key])
+	end
+end
+
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
 	CreatureVisuals.step(creature.body, dt, now, origin, Party.MOTION)
 	if creature.highlight and creature.highlight.Enabled then
@@ -275,19 +310,23 @@ function CreatureController.Start()
 		if not child:IsA("BasePart") then
 			return
 		end
-		add(child)
+		nextKey += 1
+		known[child] = tostring(nextKey)
+		refreshCull()
+		child:GetAttributeChangedSignal("Benched"):Connect(refreshCull)
 		if not creatures[child] then
 			-- Attributes can arrive a moment after the part: try again when the card id shows up
 			local connection: RBXScriptConnection
 			connection = child:GetAttributeChangedSignal("CardId"):Connect(function()
 				connection:Disconnect()
-				add(child)
+				refreshCull()
 			end)
 		end
 	end
 	folder.ChildAdded:Connect(watch)
 	folder.ChildRemoved:Connect(function(child)
 		if child:IsA("BasePart") then
+			known[child] = nil
 			remove(child)
 		end
 	end)
@@ -295,13 +334,18 @@ function CreatureController.Start()
 		watch(child)
 	end
 
-	local sinceOutlines = 0
+	local sinceOutlines, sinceCull = 0, 0
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local camera = workspace.CurrentCamera
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
 		for _, creature in creatures do
 			step(creature, dt, now, origin)
+		end
+		sinceCull += dt
+		if sinceCull >= Party.CULL_INTERVAL then
+			sinceCull = 0
+			refreshCull()
 		end
 		sinceOutlines += dt
 		if sinceOutlines >= 1 then

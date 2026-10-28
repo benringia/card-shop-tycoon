@@ -4,7 +4,8 @@ return {
 	TICK_RATE = 10, -- fight steps per second on the server
 	CALL_IN_SECONDS = 5, -- second party card may join only this early
 	MAX_FIGHT_SECONDS = 120, -- a fight still going after this ends as a run (stuck or idle)
-	BOSS_MAX_FIGHT_SECONDS = 300, -- bosses have far more HP: their fights may run this long
+	BOSS_MAX_FIGHT_SECONDS = 420, -- bosses have far more HP: their fights may run this long
+	BOSS_SWAP_SECONDS = 8, -- boss fights: seconds between a player's swaps (none needed when all of theirs fainted)
 	BOSS_MAX_STUN = 1, -- seconds: stuns on a boss last at most this long
 
 	-- Attacks: interval = clamp(ATTACK_BASE * SPD_REFERENCE / SPD, ATTACK_MIN, ATTACK_MAX)
@@ -66,6 +67,7 @@ return {
 	-- World
 	FIGHT_RANGE = 12, -- studs from player to monster to start
 	RING_RADIUS = 6, -- fighters stand this far from the ring centre
+	EXTRA_SIDE = 3, -- a called-in creature stands this far to its leader's right
 	LEASH_RADIUS = 25, -- players may roam this far from the ring during a fight
 	LUNGE_STUDS = 1.5,
 	ACTION_COOLDOWN = 0.25, -- remote rate limit

@@ -280,7 +280,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
 - All art must be original and uploaded as decals/images to Roblox.
 - Summoned creatures use free or bought Creator Store models as stand-ins for now, with a placeholder blob for
-  cards without one. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
+  cards without one. Each client draws only your own creatures plus the nearest 30 others within 140 studs (kept
+  until 170, `Party.CULL`, `Util/CreatureCull`); the rest stay invisible server markers, so a full server stays light
+  on phones. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
   a few shared ones tinted to their element); two Legendaries use the bought Crystal Titans pack with its own walk,
   run and idle animations (Stormking is now an original storm titan beetle and Tideborne Kirin (was Aurora Drake) an original celestial kirin;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
@@ -398,6 +400,7 @@ Roadmap (one sub-project at a time):
          before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, and phase 2, groups, done: 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
+Not one server for everyone: Roblox fills a Frontier server to the place's Max Players (Creator Hub) and opens more.
 The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
 A teleport is a leave (fights end, the save goes to the next server); your shop pauses and rebuilds from the save
 when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
@@ -581,9 +584,9 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Opens with |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1200 / 9 / 8 | 200 | - | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 13 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 4800 / 18 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
 
 | Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
 |---|---|---|---|---|
@@ -595,8 +598,17 @@ and rewards in `BossService`.
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
   the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
-  group, below). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  group, below). Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
   studs, stuns on a boss last at most 1 s.
+- **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
+  (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
+  which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when
+  none of yours is standing; when all of yours faint, your healthiest rested card comes in by itself, and you lose
+  only when none is left. A swapped-out summoned creature is hidden until it comes back. Because a player now brings
+  all three party cards, boss HP went up x1.5 and ATK about x1.2 (`BattleSim.swap`, Lune-tested).
+- **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
+  buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
+  about 126 px solo (`layoutBar` in BattleController).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
@@ -614,13 +626,18 @@ and rewards in `BossService`.
   party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
 - **Groups (phase 2):** the gate's second prompt (F) "Start group" opens a group; others press "Join group (n/4)"
-  within 15 s (`JOIN_SECONDS`), the leader can press again to start at once, it starts by itself when full (4).
+  within 15 s (`JOIN_SECONDS`), the leader (whose prompt reads "Start now (n/4)", `BossRules.groupPromptText`) can
+  press again to start at once, it starts by itself when full (4). The Fight and group prompts have separate limiters.
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
   member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`).
   Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
-  others fight on, and the fight ends when nobody is left. On a win each player gets their own XP, cash and loot roll.
-  Full loot needs 10% of the group's damage or 15% of the hits it took (`BossRules.contributed`); below that a player
+  others fight on, and the fight ends when nobody is left standing: a loss if a fainted member is still in it, else a
+  run. Leaders stand 7 studs apart on the ring (`GROUP_SPACING`), each call-in 3 studs to its own leader's right
+  (`Combat.EXTRA_SIDE`). Every member counts as busy for wild aggro (BattleService tells WildService), a member who left
+  doesn't. On a win each player gets their own XP, cash and loot roll.
+  Full loot needs 10% of the group's damage or 15% of the hits it took (`BossRules.contributed`, counting only the
+  players still in the fight); below that a player
   is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown and soft cap
   still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
@@ -1070,3 +1087,16 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Should customers sometimes ask for specific singles ("got any Voidmaw?") as a quest-like hook?
 - Offline earnings: yes/no? (Usually boosts retention but needs care with balance.)
 - Cash payment with making change, or keep checkout one-tap?
+
+## 13. Polish backlog (after the core loop)
+- Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
+  overlap), hit markers and a short flash on the creature hit, a screen shake on big boss hits.
+- Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
+  (damage trail, low-HP pulse), reserves shown as small portrait buttons with their HP, ability buttons with
+  cooldown sweeps instead of countdown text.
+- Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
+  Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).
+- Dramatic boss fights: an intro before the fight starts (camera sweep to the boss, its name card, a roar, a short
+  countdown), a bigger sealed arena that nobody (players or creatures) can leave once the fight starts (a wall or
+  barrier rises at the gate and drops when it ends), boss music and phase moments (the heal and enrage get a
+  camera shake and a banner). Applies to every boss, so best done once before the Frontier bosses look final.

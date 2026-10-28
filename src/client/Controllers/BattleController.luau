@@ -5,6 +5,7 @@
 -- heals or enrages, and the loot on the end screen. In a group fight the bar shows your own creatures with their
 -- buttons, a row with the other players' creatures and HP, and Run becomes Leave. The server decides everything; this only shows it and
 -- sends intents (StartFight, CallIn, UseAbility, RunFight, WildTravel).
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -30,6 +31,7 @@ local player = Players.LocalPlayer
 
 local BAR_MAX_WIDTH = 560
 local BOSS_BAR_MAX_WIDTH = 640
+local BOSS_BAR_TOP = 6 -- pixels from the very top of the screen
 local BANNER_SECONDS = 1.4
 local END_SCREEN_HEIGHT = 150
 local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
@@ -46,12 +48,22 @@ local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" 
 
 local BattleController = {}
 
+-- Fight bar layout (pixels): kept short so the fight stays visible on a landscape phone
+local PAD = 8
+local HEADER_HEIGHT = 44 -- monster name + its HP (not in boss fights: the top bar shows the boss)
+local ALLY_ROW_HEIGHT = 30
+local FIGHTER_HEIGHT = 56 -- one row per creature: name and HP on the left, ability buttons on the right
+local ACTION_HEIGHT = 48
+local INFO_SHARE = 0.4 -- of a creature's card: name and HP; the rest is buttons
+
 type Snapshot = {
 	time: number,
 	monster: { hp: number, maxHp: number, element: string, elite: boolean },
 	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean } },
 	reserves: { string },
 	callInFor: number,
+	swaps: boolean, -- boss fights: reserves may be brought in any time (a swap)
+	swapIn: number, -- seconds until my next swap
 	runIn: number,
 	runChance: number,
 	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
@@ -102,6 +114,8 @@ local latest: Snapshot? = nil
 local latestAt = 0 -- os.clock() when `latest` arrived, to count cooldowns down between snapshots
 local fighterViews: { [string]: FighterView } = {}
 local callInButtons: { TextButton } = {}
+local fighterKey = "" -- the fighter ids the bar was built for (a swap changes them)
+local reserveKey = "" -- the reserve ids the call-in buttons were built for
 local hiddenHud: { GuiObject } = {}
 local prompts: { [BasePart]: ProximityPrompt } = {}
 
@@ -142,6 +156,28 @@ local function clear(container: Instance)
 	end
 end
 
+-- Stack the bar's rows for this fight (no header in boss fights, the ally row only in groups) and fit its height
+local function layoutBar()
+	local y = PAD
+	monsterName.Visible = bossId == nil
+	if bossId == nil then
+		monsterName.Position = UDim2.fromOffset(12, y - 2)
+		monsterTrack.Position = UDim2.fromOffset(12, y + 22)
+		enemyRow.Position = UDim2.fromOffset(12, y + 18)
+		y += HEADER_HEIGHT
+	end
+	if groupFight then
+		allyRow.Position = UDim2.fromOffset(12, y)
+		y += ALLY_ROW_HEIGHT
+	end
+	fighterRow.Position = UDim2.fromOffset(12, y)
+	y += FIGHTER_HEIGHT + PAD
+	actionRow.Position = UDim2.fromOffset(12, y)
+	runButton.Position = UDim2.new(1, -12, 0, y)
+	y += ACTION_HEIGHT + PAD
+	bar.Size = UDim2.new(0.92, 0, 0, y)
+end
+
 -- Markers -------------------------------------------------------------------------------------------------
 
 local function markerFor(id: string): BasePart?
@@ -161,7 +197,9 @@ local function toView(raw: any): Snapshot
 	local own, allies = {}, {}
 	for _, fighter in mine.fighters do
 		local owner = (fighter :: any).owner
-		table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
+		if not (fighter :: any).benched then -- fainted and swapped out
+			table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
+		end
 	end
 	local reserves = {}
 	for _, id in mine.reserves do
@@ -176,6 +214,8 @@ local function toView(raw: any): Snapshot
 		allies = allies,
 		reserves = reserves,
 		callInFor = mine.callInFor,
+		swaps = mine.swaps == true,
+		swapIn = if typeof(mine.swapIn) == "table" then mine.swapIn[myOwner] or 0 else 0,
 		runIn = mine.runIn,
 		runChance = mine.runChance,
 		enemies = enemy.fighters,
@@ -240,9 +280,18 @@ local function abilityLabel(name: string, seconds: number): string
 	return if seconds > 0.05 then `{name}\n{math.ceil(seconds)}s` else name
 end
 
+local function idsOf(list: { any }): string
+	local ids = {}
+	for _, entry in list do
+		table.insert(ids, if typeof(entry) == "table" then entry.id else entry)
+	end
+	return table.concat(ids, ",")
+end
+
 local function buildFighters(snapshot: Snapshot)
 	clear(fighterRow)
 	fighterViews = {}
+	fighterKey = idsOf(snapshot.fighters)
 	for index, fighter in snapshot.fighters do
 		local frame = Instance.new("Frame")
 		frame.LayoutOrder = index
@@ -255,20 +304,21 @@ local function buildFighters(snapshot: Snapshot)
 		stroke.Thickness = 1.5
 		stroke.Parent = frame
 		local name = UIKit.label(frame, `{elementIcon(fighter.element)} {fightNames[fighter.id] or "Creature"}`, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-		name.Position = UDim2.fromOffset(8, 4)
-		name.Size = UDim2.new(1, -16, 0, 16)
+		name.Position = UDim2.fromOffset(8, 6)
+		name.Size = UDim2.new(INFO_SHARE, -12, 0, 16)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
-		local track, fill, text = makeBar(frame, 14, HP_COLOR)
-		track.Position = UDim2.fromOffset(8, 22)
-		track.Size = UDim2.new(1, -16, 0, 14)
+		local track, fill, text = makeBar(frame, 16, HP_COLOR)
+		track.Position = UDim2.fromOffset(8, 30)
+		track.Size = UDim2.new(INFO_SHARE, -12, 0, 16)
 
 		local element = Combat.ABILITIES[fighter.element]
 		local signature = if fighter.signature then Combat.SIGNATURES[fighter.signature] else nil
 		local buttons = if signature then 2 else 1
 		local function abilityButton(order: number, which: string): TextButton
 			local button = UIKit.button(frame, "", UIKit.Colors.Accent)
-			button.Position = UDim2.new((order - 1) / buttons, if order == 1 then 8 else 4, 0, 42)
-			button.Size = UDim2.new(1 / buttons, -12, 0, 48)
+			local share = (1 - INFO_SHARE) / buttons
+			button.Position = UDim2.new(INFO_SHARE + (order - 1) * share, 0, 0, 4)
+			button.Size = UDim2.new(share, -6, 0, ACTION_HEIGHT)
 			button.TextSize = 13
 			button.TextWrapped = true
 			button.Activated:Connect(function()
@@ -297,13 +347,17 @@ local function buildCallIns(snapshot: Snapshot)
 		button:Destroy()
 	end
 	callInButtons = {}
-	if snapshot.callInFor <= 0 then
+	reserveKey = idsOf(snapshot.reserves)
+	if snapshot.callInFor <= 0 and not snapshot.swaps then
 		return
 	end
+	-- Boss fights: "Bring in" (a call-in early on, later a swap for your most hurt creature)
 	for index, beastId in snapshot.reserves do
-		local button = UIKit.button(actionRow, `Call in {fightNames[beastId] or "card"}`, UIKit.Colors.Row)
+		local name = fightNames[beastId] or "card"
+		local button = UIKit.button(actionRow, `{if snapshot.swaps then "Bring in" else "Call in"} {name}`, UIKit.Colors.Row)
+		button:SetAttribute("Card", name)
 		button.LayoutOrder = index
-		button.Size = UDim2.new(0, 150, 0, 48)
+		button.Size = UDim2.new(0, 150, 0, ACTION_HEIGHT)
 		button.TextSize = 13
 		button.TextWrapped = true
 		button.Activated:Connect(function()
@@ -340,10 +394,21 @@ local function refreshTimers()
 		end
 	end
 	local callInLeft = snapshot.callInFor - elapsed
+	-- No swap wait when none of yours is standing
+	local anyStanding = false
+	for _, fighter in snapshot.fighters do
+		anyStanding = anyStanding or not fighter.fainted
+	end
+	local swapLeft = if anyStanding then snapshot.swapIn - elapsed else 0
 	for _, button in callInButtons do
-		button.Visible = callInLeft > 0
-		local name = string.match(button.Text, "^Call in ([^\n]+)") or "card"
-		button.Text = `Call in {name}\n{math.max(0, math.ceil(callInLeft))}s`
+		local name = button:GetAttribute("Card") or "card"
+		if snapshot.swaps then
+			button.Text = if swapLeft > 0.05 then `Bring in {name}\n{math.ceil(swapLeft)}s` else `Bring in {name}`
+			button.BackgroundColor3 = if swapLeft > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Row
+		else
+			button.Visible = callInLeft > 0
+			button.Text = `Call in {name}\n{math.max(0, math.ceil(callInLeft))}s`
+		end
 	end
 	if groupFight then
 		runButton.Text = "Leave" -- in a group you just step out; the others fight on
@@ -355,7 +420,6 @@ local function refreshTimers()
 	runButton.BackgroundColor3 = if runWait > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Danger
 end
 
--- PvP: the other player's creatures as compact HP bars across the top
 -- One small HP bar per other player's creature
 local function buildAllies(snapshot: Snapshot)
 	clear(allyRow)
@@ -378,6 +442,7 @@ local function buildAllies(snapshot: Snapshot)
 	end
 end
 
+-- PvP: the other player's creatures as compact HP bars across the top
 local function buildEnemies(snapshot: Snapshot)
 	clear(enemyRow)
 	enemyBars = {}
@@ -400,14 +465,12 @@ local function buildEnemies(snapshot: Snapshot)
 end
 
 local function applySnapshot(snapshot: Snapshot)
-	local fighterCount = 0
-	for _ in fighterViews do
-		fighterCount += 1
-	end
-	if fighterCount ~= #snapshot.fighters then
+	if idsOf(snapshot.fighters) ~= fighterKey then
 		buildFighters(snapshot)
 	end
-	if #callInButtons > 0 and (snapshot.callInFor <= 0 or #snapshot.reserves == 0) then
+	if snapshot.swaps and idsOf(snapshot.reserves) ~= reserveKey then
+		buildCallIns(snapshot)
+	elseif not snapshot.swaps and #callInButtons > 0 and (snapshot.callInFor <= 0 or #snapshot.reserves == 0) then
 		buildCallIns(snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()
@@ -713,10 +776,12 @@ local function onStarted(payload: any)
 		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
 	end
 	bossBar.Visible = boss ~= nil
+	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	monsterTrack.Visible = mode == "wild" and boss == nil -- a boss's HP is the bar at the top
 	enemyRow.Visible = mode == "pvp"
 	allyRow.Visible = groupFight -- group fights are boss fights: the HP bar is at the top, this row takes its place
 	runButton.Visible = mode == "wild"
+	layoutBar()
 	if mode == "pvp" then
 		buildEnemies(view)
 	end
@@ -787,7 +852,7 @@ local function build()
 	bar.Name = "FightBar"
 	bar.AnchorPoint = Vector2.new(0.5, 1)
 	bar.Position = UDim2.new(0.5, 0, 1, -10)
-	bar.Size = UDim2.new(0.92, 0, 0, 212)
+	bar.Size = UDim2.new(0.92, 0, 0, 160) -- layoutBar fits it to each fight
 	bar.BackgroundColor3 = UIKit.Colors.Panel
 	bar.BackgroundTransparency = 0.1
 	bar.Visible = false
@@ -822,8 +887,7 @@ local function build()
 	enemyLayout.Parent = enemyRow
 
 	allyRow = Instance.new("Frame")
-	allyRow.Position = UDim2.fromOffset(12, 24)
-	allyRow.Size = UDim2.new(1, -24, 0, 26)
+	allyRow.Size = UDim2.new(1, -24, 0, ALLY_ROW_HEIGHT - 4)
 	allyRow.BackgroundTransparency = 1
 	allyRow.Visible = false
 	allyRow.Parent = bar
@@ -834,8 +898,7 @@ local function build()
 	allyLayout.Parent = allyRow
 
 	fighterRow = Instance.new("Frame")
-	fighterRow.Position = UDim2.fromOffset(12, 48)
-	fighterRow.Size = UDim2.new(1, -24, 0, 96)
+	fighterRow.Size = UDim2.new(1, -24, 0, FIGHTER_HEIGHT)
 	fighterRow.BackgroundTransparency = 1
 	fighterRow.Parent = bar
 	local fighterLayout = Instance.new("UIListLayout")
@@ -845,8 +908,7 @@ local function build()
 	fighterLayout.Parent = fighterRow
 
 	actionRow = Instance.new("Frame")
-	actionRow.Position = UDim2.fromOffset(12, 152)
-	actionRow.Size = UDim2.new(1, -140, 0, 52)
+	actionRow.Size = UDim2.new(1, -140, 0, ACTION_HEIGHT)
 	actionRow.BackgroundTransparency = 1
 	actionRow.Parent = bar
 	local actionLayout = Instance.new("UIListLayout")
@@ -857,8 +919,7 @@ local function build()
 
 	runButton = UIKit.button(bar, "Run", UIKit.Colors.Danger)
 	runButton.AnchorPoint = Vector2.new(1, 0)
-	runButton.Position = UDim2.new(1, -12, 0, 154)
-	runButton.Size = UDim2.fromOffset(116, 48)
+	runButton.Size = UDim2.fromOffset(116, ACTION_HEIGHT)
 	runButton.TextSize = 15
 	runButton.Activated:Connect(function()
 		Remotes.RunFight:FireServer()
@@ -875,12 +936,12 @@ local function build()
 	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
 	Instance.new("UIScale").Parent = countdownLabel
 
-	-- Boss HP across the top, under the Roblox buttons
+	-- Boss HP at the very top: up in the Roblox top bar's row, between its buttons (placed when a fight starts)
 	bossBar = Instance.new("Frame")
 	bossBar.Name = "BossBar"
 	bossBar.AnchorPoint = Vector2.new(0.5, 0)
-	bossBar.Position = UDim2.new(0.5, 0, 0, 64)
-	bossBar.Size = UDim2.new(0.7, 0, 0, 58)
+	bossBar.Position = UDim2.new(0.5, 0, 0, 4)
+	bossBar.Size = UDim2.new(0.6, 0, 0, 46)
 	bossBar.BackgroundColor3 = UIKit.Colors.Panel
 	bossBar.BackgroundTransparency = 0.1
 	bossBar.Visible = false
@@ -890,14 +951,14 @@ local function build()
 	local bossWidth = Instance.new("UISizeConstraint")
 	bossWidth.MaxSize = Vector2.new(BOSS_BAR_MAX_WIDTH, math.huge)
 	bossWidth.Parent = bossBar
-	bossName = UIKit.label(bossBar, "", Enum.Font.FredokaOne, 18, UIKit.Colors.Danger)
-	bossName.Position = UDim2.fromOffset(12, 4)
-	bossName.Size = UDim2.new(1, -24, 0, 22)
+	bossName = UIKit.label(bossBar, "", Enum.Font.FredokaOne, 16, UIKit.Colors.Danger)
+	bossName.Position = UDim2.fromOffset(12, 3)
+	bossName.Size = UDim2.new(1, -24, 0, 18)
 	bossName.TextXAlignment = Enum.TextXAlignment.Center
 	bossName.TextTruncate = Enum.TextTruncate.AtEnd
-	local bossTrack, bossFill, bossText = makeBar(bossBar, 22, MONSTER_HP_COLOR)
-	bossTrack.Position = UDim2.fromOffset(12, 28)
-	bossTrack.Size = UDim2.new(1, -24, 0, 22)
+	local bossTrack, bossFill, bossText = makeBar(bossBar, 18, MONSTER_HP_COLOR)
+	bossTrack.Position = UDim2.fromOffset(12, 23)
+	bossTrack.Size = UDim2.new(1, -24, 0, 18)
 	bossHpFill, bossHpText = bossFill, bossText
 	bossHpText.TextSize = 14
 

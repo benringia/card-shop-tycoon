@@ -32,6 +32,7 @@ local arenas: { [string]: WildService.BossArena } = {}
 local occupants: { [string]: WildService.Monster } = {} -- the boss being fought in each arena (one fight at a time)
 local lobbies: { [string]: { members: { Player } } } = {} -- a group forming at each gate (the first member leads)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
+local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN) -- its own, so Fight then F right after both work
 local allowRequest = RateLimiter.new(1)
 local rng = Random.new()
 
@@ -286,7 +287,11 @@ end
 
 local function updateGroupPrompt(bossId: string)
 	local lobby = lobbies[bossId]
-	arenas[bossId].groupPrompt.ActionText = if lobby then `Join group ({#lobby.members}/{Bosses.GROUP_MAX})` else "Start group"
+	local prompt = arenas[bossId].groupPrompt
+	local members = if lobby then #lobby.members else 0
+	prompt.ActionText = BossRules.groupPromptText(Bosses, members, false)
+	prompt:SetAttribute("Members", members)
+	prompt:SetAttribute("LeaderId", if lobby then lobby.members[1].UserId else nil)
 end
 
 -- The lobby closes (time up, full, or the leader starts it): members who can still fight go in, the first one leads
@@ -323,7 +328,7 @@ end
 -- The group prompt: open a group (the leader), join one, or (the leader again) start it now
 local function onGroup(player: Player, bossId: string)
 	local boss = Bosses.BOSSES[bossId]
-	if not allowStart(player) or not boss or not arenas[bossId] then
+	if not allowGroup(player) or not boss or not arenas[bossId] then
 		return
 	end
 	pruneLobby(bossId)

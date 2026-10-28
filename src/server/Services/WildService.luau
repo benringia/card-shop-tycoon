@@ -431,14 +431,16 @@ local function moveToward(monster: Monster, target: Vector3, speed: number, dt: 
 	return stepLength >= distance
 end
 
-local busy: { [Player]: boolean } = {} -- players in a fight right now (rebuilt every monster tick)
+local isFighting: (player: Player) -> boolean = function()
+	return false
+end
 
 -- Nearest player in the wild; with skipBusy, ignoring players already in a fight (nobody chases into a ring)
 local function nearestPlayer(position: Vector3, skipBusy: boolean?): (Player?, number)
 	local best, bestDistance = nil, math.huge
 	for player in inWild do
 		local root = getRoot(player)
-		if root and not (skipBusy and busy[player]) then
+		if root and not (skipBusy and isFighting(player)) then
 			local distance = (root.Position - position).Magnitude
 			if distance < bestDistance then
 				best, bestDistance = player, distance
@@ -615,6 +617,7 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		groupPrompt.KeyboardKeyCode = Enum.KeyCode.F
 		groupPrompt.UIOffset = Vector2.new(0, Bosses.GROUP_PROMPT_OFFSET)
 		groupPrompt.Parent = gate
+		CollectionService:AddTag(groupPrompt, "BossGroupPrompt")
 		groupPrompt.Triggered:Connect(function(player)
 			onGroup(player, bossId)
 		end)
@@ -704,6 +707,11 @@ function WildService.TravelToWild(player: Player, at: CFrame?)
 end
 
 -- Frontier only: what "home" means there (FrontierService teleports back to the main game)
+-- BattleService tells monsters who is in a fight (nobody chases into a ring)
+function WildService.SetFightCheck(check: (player: Player) -> boolean)
+	isFighting = check
+end
+
 function WildService.SetHomeHandler(handler: (player: Player) -> ())
 	homeHandler = handler
 end
@@ -794,12 +802,6 @@ function WildService.Start()
 		elapsed = 0
 		local now = os.clock()
 		rescueFallen()
-		table.clear(busy)
-		for _, monster in monsters do
-			if monster.fightingPlayer then
-				busy[monster.fightingPlayer] = true
-			end
-		end
 		for _, monster in monsters do
 			updateMonster(monster, step, now)
 		end

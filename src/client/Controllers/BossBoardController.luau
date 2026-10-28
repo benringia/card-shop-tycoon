@@ -2,6 +2,9 @@
 -- The boss board (HUD tile "Bosses"): the boss ladder (Config/Bosses) with each boss's lock and fragments, the
 -- recommended Power against your strongest party card, when full loot is ready again, today's rewarded wins and the
 -- trophy once cleared. Data comes from BossService (BossesChanged); the loot timers count down here between updates.
+-- Also: the leader of a group forming at a gate sees "Start now" on its group prompt.
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -12,6 +15,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -131,7 +135,28 @@ local function toggle()
 	end
 end
 
+-- The server's group prompt text is for everyone else ("Join group"); its leader's copy says "Start now"
+local function watchGroupPrompt(prompt: Instance)
+	if not prompt:IsA("ProximityPrompt") then
+		return
+	end
+	local function refresh()
+		local members = prompt:GetAttribute("Members")
+		if prompt:GetAttribute("LeaderId") == Players.LocalPlayer.UserId and typeof(members) == "number" then
+			prompt.ActionText = BossRules.groupPromptText(Bosses, members, true)
+		end
+	end
+	prompt:GetAttributeChangedSignal("LeaderId"):Connect(refresh)
+	prompt:GetAttributeChangedSignal("Members"):Connect(refresh)
+	prompt:GetPropertyChangedSignal("ActionText"):Connect(refresh)
+	refresh()
+end
+
 function BossBoardController.Start()
+	CollectionService:GetInstanceAddedSignal("BossGroupPrompt"):Connect(watchGroupPrompt)
+	for _, prompt in CollectionService:GetTagged("BossGroupPrompt") do
+		watchGroupPrompt(prompt)
+	end
 	local screenGui = UIController.GetScreenGui()
 	panel, list = UIKit.panel(screenGui, "Bosses", "👑 Boss Ladder")
 	Hud.tile({ id = "Bosses", icon = "👑", label = "Bosses", key = "K", group = "Bottom", order = 3, onClick = toggle })

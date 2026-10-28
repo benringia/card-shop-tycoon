@@ -477,6 +477,9 @@ return {
 	SPARKLES_PER_STAR = 1,
 	GRADE_S_SPARKLES = 2,
 	MAX_OUTLINES = 31, -- Roblox draws at most 31 Highlights on a screen
+	-- Each client draws your own creatures plus the nearest others (Util/CreatureCull), so a full server stays light
+	CULL = { drawDistance = 140, hideDistance = 170, maxDrawn = 30 }, -- studs from the camera; creatures
+	CULL_INTERVAL = 0.5, -- seconds between checks
 	ACTION_COOLDOWN = 0.5,
 
 	-- The quick party bar in the bottom-right corner (PartyBarController). Pixels; colours as { r, g, b }.
