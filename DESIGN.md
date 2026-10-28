@@ -959,6 +959,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
+    │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge, IN -> OUT cards, paired stat bars, perk line
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -1173,7 +1174,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
   says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)) and Back. Phones get a slimmer band and no pills
   row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
-  Closing puts the camera back where it was; dying closes it too.
+  Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
+  "Add <card> to your party" and the three slots side by side (card, name, grade, level, Power and "+22 if swapped"
+  in green or red, `CompareRules.swapText`); an empty slot fills straight away; a filled one opens the kid
+  comparison (`Util/CopyCompare`): a big STRONGER +22 / WEAKER -2412 badge, the two cards (IN with a green border ->
+  OUT under a dark veil), paired HP / ATK / SPD bars where the longer green one wins (hover a bar for its number),
+  and one line: the element icons ("replaces") and the perk it brings or that you lose; then "Swap with <card>"
+  (gold) or Back. Phones lay the comparison out in two columns.
 - **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
   `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
   the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:

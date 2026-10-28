@@ -18,6 +18,8 @@ local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
+local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
+local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -25,6 +27,8 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local CopyCompare = require(ClientUtil:WaitForChild("CopyCompare"))
 local CardInspectorController = require(Controllers:WaitForChild("CardInspectorController"))
 
 type Card = typeof(Cards.List[1])
@@ -78,7 +82,13 @@ local jobButton: TextButton
 local flipButton: TextButton
 local partyChooser: Frame
 local jobChooser: Frame
-local partySlotButtons: { TextButton } = {}
+local chooserTitle: TextLabel
+local slotsHolder: Frame -- the three party slots, each with what swapping in would do
+local compareHolder: Frame -- the comparison against one slot's card
+local swapButton: TextButton
+local chooserCancel: TextButton
+local compareSlot: number? = nil
+local selectedEntry: Entry? = nil
 local partySlots: { [number]: string } = {}
 local currentCard: Card? = nil
 local selectedKey: string? = nil
@@ -361,14 +371,141 @@ local function renderSelected(card: Card, entry: Entry?)
 	end
 end
 
--- Slot buttons say which card each party slot holds now
-local function refreshPartyChooser()
-	local beasts = source.beasts()
-	for slot, button in partySlotButtons do
-		local beast = beasts[partySlots[slot] or ""]
-		local card = if beast then Cards.ById[beast.cardId] else nil
-		button.Text = if card then `Slot {slot}\n{card.name}` else `Slot {slot}\nempty`
+-- A copy as the comparison sees it: card, Power, stats and the perk it would give
+local function sideOf(card: Card, foil: boolean, growth: CardFace.Growth): CopyCompare.Side
+	local perk = PartyRules.getPerk(Party, card.element, card.rarity, growth.stars)
+	return {
+		card = card,
+		foil = foil,
+		power = BeastRules.getPower(card, foil, growth.level, growth.stars, growth.grade),
+		stats = BeastRules.getStats(card, foil, growth.level, growth.stars, growth.grade),
+		perk = if perk then PartyRules.describe(perk) else nil,
+	}
+end
+
+local function incomingSide(): CopyCompare.Side?
+	local card, entry = currentCard, selectedEntry
+	if not card or not entry then
+		return nil
 	end
+	return sideOf(card, entry.foil, growthOf(entry))
+end
+
+-- The card in a party slot, as a comparison side (nil: empty)
+local function slotSide(slot: number): CopyCompare.Side?
+	local beast = source.beasts()[partySlots[slot] or ""]
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	if not beast or not card then
+		return nil
+	end
+	return sideOf(card, beast.foil, { level = beast.level, stars = beast.stars, grade = beast.grade })
+end
+
+local function addToSlot(slot: number)
+	partyChooser.Visible = false
+	if partyTarget then
+		Remotes.SetPartySlot:FireServer(slot, partyTarget)
+	end
+end
+
+-- The chooser's first view: three slot cards, each with what swapping in would do to Power
+local function showSlots()
+	compareSlot = nil
+	compareHolder.Visible = false
+	slotsHolder.Visible = true
+	swapButton.Visible = false
+	chooserCancel.Text = "Cancel"
+	local incoming = incomingSide()
+	chooserTitle.Text = if currentCard then `Add {(currentCard :: Card).name} to your party` else "Add to your party"
+	clear(slotsHolder)
+	local phone = UIKit.isPhone()
+	local art = if phone then Vector2.new(40, 56) else Vector2.new(54, 76)
+	for slot = 1, Party.PARTY_SIZE do
+		local outgoing = slotSide(slot)
+		local button = Instance.new("TextButton")
+		button.LayoutOrder = slot
+		button.Size = UDim2.new(1 / Party.PARTY_SIZE, -4, 1, 0)
+		button.BackgroundColor3 = UIStyle.ROW
+		button.Text = ""
+		button.AutoButtonColor = true
+		button.ZIndex = slotsHolder.ZIndex + 1
+		button.Parent = slotsHolder
+		UIKit.corner(button, 10)
+		UIKit.outline(button, UIStyle.EDGE, 2)
+		-- One column, centred: the card, its name, grade and level, Power, then what the swap would do
+		local column = Instance.new("Frame")
+		column.BackgroundTransparency = 1
+		column.Position = UDim2.fromOffset(4, 6)
+		column.Size = UDim2.new(1, -8, 1, -12)
+		column.ZIndex = button.ZIndex
+		column.Parent = button
+		local stack = Instance.new("UIListLayout")
+		stack.Padding = UDim.new(0, 3)
+		stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		stack.VerticalAlignment = Enum.VerticalAlignment.Center
+		stack.SortOrder = Enum.SortOrder.LayoutOrder
+		stack.Parent = column
+		local function centredRow(order: number): Frame
+			local line = hList(column, 20, 4)
+			line.LayoutOrder = order;
+			(line:FindFirstChildOfClass("UIListLayout") :: UIListLayout).HorizontalAlignment = Enum.HorizontalAlignment.Center
+			return line
+		end
+		local beast = source.beasts()[partySlots[slot] or ""]
+		if outgoing and beast then
+			CardTips.art(column, outgoing.card, outgoing.foil, art).LayoutOrder = 0
+			local name = text(column, outgoing.card.name, UIKit.textSize("body"), WHITE, true, true)
+			name.LayoutOrder = 1
+			name.TextXAlignment = Enum.TextXAlignment.Center
+			name.TextTruncate = Enum.TextTruncate.AtEnd
+			name.Size = UDim2.new(1, 0, 0, UIKit.textSize("body") + 4)
+			local meta = centredRow(2)
+			UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C).Size = UDim2.fromOffset(0, 18)
+			text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true, true).AutomaticSize = Enum.AutomaticSize.X
+			local power = centredRow(3)
+			Icon.make(power, "Power", UDim2.fromOffset(16, 16)).ZIndex = power.ZIndex + 1
+			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("small"), UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
+		else
+			local empty = text(column, `Slot {slot} is empty`, UIKit.textSize("body"), UIKit.Colors.Subtext, true)
+			empty.LayoutOrder = 1
+			empty.TextWrapped = true
+			empty.TextXAlignment = Enum.TextXAlignment.Center
+			empty.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("body") + 6)
+		end
+		if incoming then
+			local outPower = if outgoing then outgoing.power else nil
+			local _, delta = CompareRules.verdict(incoming.power, outPower)
+			local good = outgoing == nil or delta >= 0
+			local swap = text(column, CompareRules.swapText(incoming.power, outPower), UIKit.textSize("small"), if good then UIStyle.GOOD else UIStyle.BAD, true, true)
+			swap.LayoutOrder = 4
+			swap.TextXAlignment = Enum.TextXAlignment.Center
+			swap.TextWrapped = true
+			swap.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("small") + 4)
+		end
+		button.Activated:Connect(function()
+			if outgoing then
+				CardDetailController.ShowCompare(slot)
+			else
+				addToSlot(slot) -- an empty slot fills straight away
+			end
+		end)
+	end
+end
+
+-- The chooser's second view: the kid comparison against one slot's card, then Swap or Back
+function CardDetailController.ShowCompare(slot: number)
+	local incoming, outgoing = incomingSide(), slotSide(slot)
+	if not incoming or not outgoing then
+		showSlots()
+		return
+	end
+	compareSlot = slot
+	slotsHolder.Visible = false
+	compareHolder.Visible = true
+	CopyCompare.build(compareHolder, incoming, outgoing)
+	swapButton.Text = `Swap with {outgoing.card.name}`
+	swapButton.Visible = true
+	chooserCancel.Text = "Back"
 end
 
 function CardDetailController.Refresh()
@@ -391,6 +528,7 @@ function CardDetailController.Refresh()
 	end
 	selected = selected or entries[1]
 	selectedKey = if selected then selected.key else nil
+	selectedEntry = selected
 
 	if selected then
 		CardInspectorController.Show(card, selected.foil, growthOf(selected), if selected == entries[1] and #entries > 1 then "BEST COPY" else nil)
@@ -448,8 +586,12 @@ end
 
 function CardDetailController.SetPartySlots(slots: { [number]: string })
 	partySlots = slots
-	if panel then
-		refreshPartyChooser()
+	if panel and partyChooser.Visible then
+		if compareSlot then
+			CardDetailController.ShowCompare(compareSlot)
+		else
+			showSlots()
+		end
 	end
 end
 
@@ -615,14 +757,67 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	local back = bottomButton("Back", "Close", UIKit.Colors.Secondary, 2)
 	back.Activated:Connect(CardDetailController.Close)
 
-	partyChooser = chooser("PartyChooser", "Which party slot? A card there goes back to your binder.", 150)
-	local slotLabels = {}
-	for slot = 1, Party.PARTY_SIZE do
-		table.insert(slotLabels, `Slot {slot}`)
-	end
-	partySlotButtons = choiceButtons(partyChooser, slotLabels, function(slot)
-		if partyTarget then
-			Remotes.SetPartySlot:FireServer(slot, partyTarget)
+	-- Add to party: covers the panel; slot cards first, then the comparison for a filled slot
+	partyChooser = Instance.new("Frame")
+	partyChooser.Name = "PartyChooser"
+	partyChooser.AnchorPoint = Vector2.new(0.5, 0.5)
+	partyChooser.Position = UDim2.fromScale(0.5, 0.5)
+	partyChooser.Size = UDim2.new(1, -12, 1, -12)
+	partyChooser.BackgroundColor3 = UIStyle.PANEL
+	partyChooser.Active = true
+	partyChooser.Visible = false
+	partyChooser.ZIndex = panel.ZIndex + 10
+	partyChooser.Parent = panel
+	UIKit.corner(partyChooser, 14)
+	UIKit.outline(partyChooser, UIStyle.HINT, UIStyle.EDGE_THICKNESS)
+	chooserTitle = text(partyChooser, "", UIKit.textSize("name"), WHITE, true, true)
+	chooserTitle.Position = UDim2.fromOffset(14, 8)
+	chooserTitle.Size = UDim2.new(1, -28, 0, 30)
+	chooserTitle.TextTruncate = Enum.TextTruncate.AtEnd
+	slotsHolder = Instance.new("Frame")
+	slotsHolder.Name = "Slots"
+	slotsHolder.BackgroundTransparency = 1
+	slotsHolder.Position = UDim2.fromOffset(10, 44)
+	slotsHolder.Size = UDim2.new(1, -20, 1, -(44 + 66))
+	slotsHolder.ZIndex = partyChooser.ZIndex + 1
+	slotsHolder.Parent = partyChooser
+	-- The three slot cards side by side, sharing the width
+	local slotList = Instance.new("UIListLayout")
+	slotList.FillDirection = Enum.FillDirection.Horizontal
+	slotList.Padding = UDim.new(0, 6)
+	slotList.SortOrder = Enum.SortOrder.LayoutOrder
+	slotList.Parent = slotsHolder
+	compareHolder = Instance.new("Frame")
+	compareHolder.Name = "Compare"
+	compareHolder.BackgroundTransparency = 1
+	compareHolder.Position = UDim2.fromOffset(10, 44)
+	compareHolder.Size = UDim2.new(1, -20, 1, -(44 + 66))
+	compareHolder.ZIndex = partyChooser.ZIndex + 1
+	compareHolder.Visible = false
+	compareHolder.Parent = partyChooser
+	swapButton = UIKit.iconButton(partyChooser, "Swap", "Party", UIKit.Colors.Accent)
+	swapButton.AnchorPoint = Vector2.new(0, 1)
+	swapButton.Position = UDim2.new(0, 10, 1, -10)
+	swapButton.Size = UDim2.new(0.6, -14, 0, 50)
+	swapButton.TextSize = UIKit.textSize("body")
+	swapButton.TextTruncate = Enum.TextTruncate.AtEnd
+	swapButton.ZIndex = partyChooser.ZIndex + 2
+	swapButton.Activated:Connect(function()
+		if compareSlot then
+			addToSlot(compareSlot)
+		end
+	end)
+	chooserCancel = UIKit.iconButton(partyChooser, "Cancel", "Close", UIKit.Colors.Secondary)
+	chooserCancel.AnchorPoint = Vector2.new(1, 1)
+	chooserCancel.Position = UDim2.new(1, -10, 1, -10)
+	chooserCancel.Size = UDim2.new(0.4, -4, 0, 50)
+	chooserCancel.TextSize = UIKit.textSize("body")
+	chooserCancel.ZIndex = partyChooser.ZIndex + 2
+	chooserCancel.Activated:Connect(function()
+		if compareSlot then
+			showSlots()
+		else
+			partyChooser.Visible = false
 		end
 	end)
 	jobChooser = chooser("JobChooser", "Which job?", 150)
@@ -634,7 +829,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	partyButton.Activated:Connect(function()
 		if partyTarget then
 			jobChooser.Visible = false
-			refreshPartyChooser()
+			showSlots()
 			partyChooser.Visible = true
 		end
 	end)
