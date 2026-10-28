@@ -105,7 +105,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
   `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/item <id> <n>` (any Config/Items
   item), `/boss <1-6> [fight|group]` (to boss n's arena gate; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt), `/legendarys [foil]` (a Grade S
-  copy of every Legendary, to see the lightning on display).
+  copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
+  max stars and Grade S, for testing fights).
 - Multiplayer: Test tab → Local Server, 2 players.
 - Saving in Studio needs "Enable Studio access to API services", set on Creator Hub → Game details → API services.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.
