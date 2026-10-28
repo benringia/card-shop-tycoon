@@ -378,6 +378,8 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			end
 		elseif event.type == "spawn" and event.to then
 			spawnAdd(fight, event.to, markers, addMonsters)
+		elseif event.type == "phase" and event.kind then
+			fight.monster.marker:SetAttribute("Phase", event.kind) -- everyone near sees that head light up
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
 		end
@@ -787,6 +789,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		endHp = {},
 	}
 	running[fight] = true
+	if boss and boss.phases then
+		monster.marker:SetAttribute("Phase", boss.phases[1].element)
+	end
 	WildService.Lock(monster, players[1])
 	WildService.SetFightPose(monster, spots[MONSTER_ID])
 	-- A room's pack stands beside its first monster (left, right, further out), held still like a boss's adds
@@ -815,8 +820,10 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	end
 
 	local markers: { [string]: BasePart } = { [MONSTER_ID] = monster.marker }
+	local foes: { [string]: string } = { [MONSTER_ID] = monster.species } -- a room's monsters by name (its HP bars)
 	for id, extra in fight.adds do
 		markers[id] = extra.marker
+		foes[id] = extra.species
 	end
 	for _, member in members do
 		local marker = PartyService.GetMarker(member.player)
@@ -851,6 +858,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			names = names,
 			allies = allies,
 			group = #members > 1,
+			foes = foes,
 			side = "a",
 			markers = markers,
 			snapshot = snapshot(fight),

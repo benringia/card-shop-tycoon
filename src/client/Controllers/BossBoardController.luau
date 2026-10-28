@@ -90,11 +90,13 @@ local function buildRow(index: number, bossId: string, power: number)
 	local stroke = UIKit.outline(row, Cards.ELEMENTS[boss.element])
 	stroke.Thickness = 1.5
 
-	local zone = (if boss.place == "Frontier" then FrontierConfig else WildConfig).ZONES[boss.zone]
-	local away = (boss.place == "Frontier") ~= Place.isFrontier() -- its arena is in the other place
+	local zone = if boss.place == "Dungeon" then nil else (if boss.place == "Frontier" then FrontierConfig else WildConfig).ZONES[boss.zone]
+	local here = if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Wild"
+	local away = boss.place ~= here -- its arena is in another place
 	local trophy = if state and state.cleared then " 🏆" else ""
 	addText(row, `{index}. {boss.name}{trophy}`, 8, 22, Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
-	local where = if zone then `{zone.name} arena{if away then ` (the {boss.place})` else ""} · ` else ""
+	local arena = if zone then `{zone.name} arena` elseif boss.place == "Dungeon" then "The chamber" else nil
+	local where = if arena then `{arena}{if away then ` (the {boss.place})` else ""} · ` else ""
 	local powerColor = if power >= boss.recommended then READY_COLOR else UIKit.Colors.Danger
 	addText(row, `{where}Power {boss.recommended} · your best {power}`, 32, 18, Enum.Font.GothamBold, 13, powerColor)
 

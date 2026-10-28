@@ -381,6 +381,12 @@ function DungeonService.Start()
 			markOut(player, "You left the fight, so you're out of the run.")
 		end
 	end)
+	-- A client asks where the run is (its first message may have come before it listened)
+	Remotes.DungeonRun.OnServerEvent:Connect(function(player)
+		if allowLeave(player) and table.find(run.members, player) then
+			send(player, nil)
+		end
+	end)
 	Remotes.DungeonLeave.OnServerEvent:Connect(function(player)
 		if not allowLeave(player) then
 			return

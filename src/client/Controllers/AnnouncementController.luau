@@ -56,12 +56,15 @@ local function showBossCleared(displayName: string, bossId: string)
 	if not boss then
 		return
 	end
+	-- The final boss (told to every server): the Dungeon is conquered
+	local plain = if boss.announceEverywhere then `{displayName} conquered the Dungeon!` else `{displayName} beat the {boss.name} for the first time!`
 	local channel = getGeneralChannel()
 	if not channel then
-		UIController.Notify(`{displayName} beat the {boss.name} for the first time!`, false)
+		UIController.Notify(plain, false)
 		return
 	end
-	channel:DisplaySystemMessage(`<font color="#{BOSS_CLEAR_COLOR:ToHex()}"><b>🏆 {escape(displayName)} beat the {boss.name} for the first time!</b></font>`)
+	local icon = if boss.announceEverywhere then "🐉" else "🏆"
+	channel:DisplaySystemMessage(`<font color="#{BOSS_CLEAR_COLOR:ToHex()}"><b>{icon} {escape(plain)}</b></font>`)
 end
 
 function AnnouncementController.Start()

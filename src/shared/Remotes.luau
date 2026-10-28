@@ -61,7 +61,7 @@ local NAMES = {
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
 	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
-	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "boss" | "won" | "out", message? } the Dungeon run
+	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "boss" | "won" | "out", message? } the Dungeon run; client → server: () ask for it
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
