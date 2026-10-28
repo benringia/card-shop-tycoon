@@ -933,11 +933,11 @@ local function build()
 	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
 	Instance.new("UIScale").Parent = countdownLabel
 
-	-- Boss HP across the top, under the Roblox buttons
+	-- Boss HP at the very top, just under the Roblox top bar (MainGui keeps the inset)
 	bossBar = Instance.new("Frame")
 	bossBar.Name = "BossBar"
 	bossBar.AnchorPoint = Vector2.new(0.5, 0)
-	bossBar.Position = UDim2.new(0.5, 0, 0, 64)
+	bossBar.Position = UDim2.new(0.5, 0, 0, 4)
 	bossBar.Size = UDim2.new(0.6, 0, 0, 46)
 	bossBar.BackgroundColor3 = UIKit.Colors.Panel
 	bossBar.BackgroundTransparency = 0.1

@@ -1091,3 +1091,6 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 ## 13. Polish backlog (after the core loop)
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
   overlap), hit markers and a short flash on the creature hit, a screen shake on big boss hits.
+- Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
+  (damage trail, low-HP pulse), reserves shown as small portrait buttons with their HP, ability buttons with
+  cooldown sweeps instead of countdown text.
