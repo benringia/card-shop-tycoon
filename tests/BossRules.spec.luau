@@ -132,6 +132,24 @@ return {
 		expect.equal(typeof(Bosses.DEATH_SECONDS) == "number" and Bosses.DEATH_SECONDS > 0, true, "a death scene")
 	end,
 
+	["config: the Hydra is the biggest boss, with room round it and a rainbow aura"] = function()
+		local hydra = Bosses.BOSSES.prismHydra
+		for id, boss in Bosses.BOSSES do
+			if id ~= "prismHydra" then
+				expect.equal(hydra.scale > boss.scale, true, `bigger than {id}`)
+			end
+		end
+		expect.equal((hydra.ringRadius :: number) + 4 < Bosses.ARENA_RADIUS, true, "its fighters still stand inside the ring")
+		local shot = hydra.introShot :: any
+		expect.equal(shot.back > Bosses.INTRO_SHOT.back and shot.up > Bosses.INTRO_SHOT.up, true, "the intro camera stands further off")
+		expect.equal(hydra.rainbowAura, true, "a rainbow aura")
+		local aura = Bosses.RAINBOW_AURA
+		for _, key in { "ringScale", "ringTransparency", "hueSeconds", "sparkles", "lightBrightness", "lightRange" } do
+			expect.equal(typeof(aura[key]), "number", key)
+		end
+		expect.equal(aura.ringScale > 1, true, "the ring is wider than the model, never over it")
+	end,
+
 	["config: the Rift Devourer drops the Hydra's fragments"] = function()
 		local rift = Bosses.BOSSES.riftDevourer
 		expect.equal(rift.fragment, "fragment_prismHydra", "its fragment")

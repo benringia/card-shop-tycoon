@@ -7,7 +7,7 @@ as the famous five-coloured dragon); in game only the active phase's head glows 
 
 One skinned mesh with a palette texture, rigidly weighted to an armature whose bones carry the names
 src/shared/Util/PetRig.luau reads: four legs (front 0_<side>_Limb_0..2, hind 1_<side>_Limb_0..2), Pelvis and
-Spine_0/1 level, Tail_0..3, five necks Hydra_<head>_0..2 with the head Hydra_<head>_3 and a jaw Jaw_<head>.
+Spine_0/1 level, Tail_0..4, five necks Hydra_<head>_0..2 with the head Hydra_<head>_3 and a jaw Jaw_<head>.
 Heads: 0 in the middle, then 1/2 and 3/4 outwards (left, right); their elements are Config/Bosses prismHydra.heads.
 
 Blender: Z up, the creature faces -Y, its left is +X.
@@ -53,12 +53,12 @@ NECK_ROOT_Z = 1.8
 # Thick legs (one side, +X): hip/shoulder, knee/elbow, ankle, toes
 FRONT_LEG = [(0.86, -0.55, 1.0), (0.92, -0.6, 0.55), (0.92, -0.62, 0.2), (0.92, -0.86, 0.05)]
 HIND_LEG = [(0.82, 0.78, 0.92), (0.88, 0.86, 0.52), (0.88, 0.78, 0.2), (0.88, 0.54, 0.05)]
-TAIL = [(0, 1.25, 1.02), (0, 1.7, 0.84), (0, 2.05, 0.68), (0, 2.3, 0.58), (0, 2.46, 0.54)]
+TAIL = [(0, 1.25, 1.02), (0, 1.85, 0.84), (0, 2.42, 0.68), (0, 2.95, 0.56), (0, 3.4, 0.5), (0, 3.78, 0.48)]
 # Heads: 0 in the middle and tallest, then outwards alternating sides (fan angle in degrees, + is the left)
 FAN = [0, 34, -34, 64, -64]
 NECK_BONES = 3
 HEAD_SCALE = 1.3  # heads are built at size 1 and scaled up about the top of their neck
-HEAD_LENGTH = 0.9 * HEAD_SCALE
+HEAD_LENGTH = 1.1 * HEAD_SCALE
 
 
 def neck_points(head):
@@ -102,7 +102,7 @@ def rig_bones():
         top = points[-1]
         bones.append((f"Hydra_{head}_3", f"Hydra_{head}_{NECK_BONES - 1}", tuple(top), tuple(top + forward * HEAD_LENGTH)))
         hinge = top + (forward * 0.2 + Vector((0, 0, -0.18))) * HEAD_SCALE
-        bones.append((f"Jaw_{head}", f"Hydra_{head}_3", tuple(hinge), tuple(hinge + (forward * 0.5 + Vector((0, 0, -0.08))) * HEAD_SCALE)))
+        bones.append((f"Jaw_{head}", f"Hydra_{head}_3", tuple(hinge), tuple(hinge + (forward * 0.75 + Vector((0, 0, -0.08))) * HEAD_SCALE)))
     return bones
 
 
@@ -170,12 +170,12 @@ def build_legs(b):
 
 
 def build_tail(b):
-    sizes = (0.78, 0.62, 0.48, 0.36)
+    sizes = (0.8, 0.66, 0.54, 0.44, 0.34)
     for i in range(len(TAIL) - 1):
         a, c = Vector(TAIL[i]), Vector(TAIL[i + 1])
         rot = (c - a).to_track_quat("Z", "Y").to_matrix()
         chunk(b, a.lerp(c, 0.5), (sizes[i], sizes[i], (c - a).length + 0.14), "hide" if i % 2 == 0 else "hide_dark", f"Tail_{i}", rot, studs=2.2, skip=())
-    b.spike(Vector(TAIL[-1]), (0, 1, 0.2), 0.42, 0.6, "crystal_pink", "Tail_3")
+    b.spike(Vector(TAIL[-1]), (0, 1, 0.2), 0.42, 0.7, "crystal_pink", "Tail_4")
 
 
 def build_necks(b):
@@ -200,9 +200,10 @@ def build_head(b, head, origin, forward):
         return origin + m @ Vector((x, y, z))
 
     chunk(b, at(0, 0.3, 0.12), (0.96, 0.9, 0.74), "hide", skull, m, studs=2.2, skip=("-z", "+y"))
-    chunk(b, at(0, 0.78, -0.02), (0.64, 0.42, 0.42), "bone", skull, m, studs=3.0, skip=("-z", "+y"))  # muzzle
+    chunk(b, at(0, 0.64, 0.02), (0.78, 0.36, 0.5), "hide", skull, m, studs=2.2, skip=("-z", "+y"))  # bridge
+    chunk(b, at(0, 1.0, -0.04), (0.6, 0.6, 0.4), "bone", skull, m, studs=3.0, skip=("-z", "+y"))  # a long muzzle
     for sx in (1, -1):
-        b.box(at(sx * 0.15, 1.0, 0.06), (0.1, 0.03, 0.08), "hide_dark", skull, m)  # nostril
+        b.box(at(sx * 0.14, 1.31, 0.06), (0.1, 0.03, 0.08), "hide_dark", skull, m)  # nostril
         # Slanted glowing eyes under a heavy brow
         tilt = m @ Matrix.Rotation(math.radians(-18 * sx), 3, "Y")
         b.box(at(sx * 0.27, 0.76, 0.27), (0.3, 0.06, 0.13), "eye", skull, tilt)
@@ -216,10 +217,12 @@ def build_head(b, head, origin, forward):
     b.spike(at(0, 0.66, 0.5), m @ Vector((0, 0.35, 1)), 0.2, 0.22, "crystal", skull)  # forehead gem
     b.spike(at(0, 0.66, 0.5), m @ Vector((0, -0.35, -1)), 0.2, 0.12, "crystal", skull)
     # The lower jaw, open a little, a row of teeth along the upper lip
-    chunk(b, at(0, 0.62, -0.34), (0.6, 0.6, 0.18), "bone", jaw, m, studs=0)
-    b.box(at(0, 0.66, -0.23), (0.46, 0.46, 0.04), "mouth", jaw, m)
-    for x in (-0.22, -0.08, 0.08, 0.22):
-        b.spike(at(x, 0.96, -0.2), m @ Vector((0, 0.1, -1)), 0.07, 0.13, "teeth", skull)
+    chunk(b, at(0, 0.82, -0.34), (0.56, 0.95, 0.18), "bone", jaw, m, studs=0)
+    b.box(at(0, 0.86, -0.23), (0.42, 0.8, 0.04), "mouth", jaw, m)
+    for x in (-0.2, -0.07, 0.07, 0.2):
+        b.spike(at(x, 1.24, -0.22), m @ Vector((0, 0.1, -1)), 0.07, 0.13, "teeth", skull)
+    for sx in (1, -1):  # fangs along the sides
+        b.spike(at(sx * 0.24, 0.9, -0.22), m @ Vector((0, 0.1, -1)), 0.08, 0.17, "teeth", skull)
     b.xform = None
 
 

@@ -42,6 +42,8 @@ export type Boss = {
 	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
 	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
 	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
+	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
+	rainbowAura: boolean?, -- a rainbow glow on the ground round it and sparkles rising round it (RAINBOW_AURA)
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -226,8 +228,10 @@ local BOSSES: { [string]: Boss } = {
 		place = "Dungeon",
 		zone = 1,
 		shape = "golem",
-		scale = 5.5,
-		ringRadius = 16,
+		scale = 7.0,
+		ringRadius = 21,
+		introShot = { back = 44, up = 22 },
+		rainbowAura = true,
 		element = "Tide", -- phase 1's
 		level = 55,
 		hp = 40000,
@@ -327,6 +331,10 @@ return {
 	DEATH_SECONDS = 4, -- a beaten boss lies there this long before it goes (its death scene)
 	HEAD_GLOW = { brightness = 3, range = 16, particles = 14 }, -- the active phase's head (bosses with heads)
 	HEAD_DROP = { gap = 0.5, seconds = 0.6, angle = 75 }, -- its death: one head after another, each over `seconds`, by `angle` degrees
+	-- A boss's rainbow aura (rainbowAura): a glowing disc on the ground under and round it (ringScale x its footprint, so
+	-- it shows past its feet), sparkles rising from the disc's rim (outside the model, never over it) and a light, all
+	-- slowly cycling through the colours (hueSeconds a cycle); it fades when the boss falls
+	RAINBOW_AURA = { ringScale = 1.25, ringTransparency = 0.68, hueSeconds = 6, sparkles = 16, lightBrightness = 1.2, lightRange = 40 },
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

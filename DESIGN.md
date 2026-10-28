@@ -720,9 +720,12 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   `assets/monsters/prismHydra.rbxm`) in a faceted low-poly "studded" style from the user's references (our own
   creature): chamfered chunky shapes with small raised square studs over a dark indigo hide, cream horns, muzzles and
   belly, a gold collar and claws, prism crystal shards down its back, glowing gold eyes under heavy brows and a crystal
-  gem on each forehead; all five heads share one colour (so it doesn't read as the famous five-coloured dragon; in game
-  only the active phase's head glows); about 6,100 triangles. Boss models with PetRig bones now animate
-  like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id). Scale 5.5, ring radius 16.
+  gem on each forehead, a long snout and a long tail; all five heads share one colour (so it doesn't read as the famous
+  five-coloured dragon; in game only the active phase's head glows); about 6,500 triangles. In game it is scale 7 (about
+  25 studs tall), its fighters stand 21 studs off (`ringRadius`), its intro camera further back (`introShot`), and a
+  rainbow aura (`rainbowAura`, `RAINBOW_AURA`) glows on the ground round it with sparkles rising from the glow's rim,
+  slowly cycling through the colours, never over the model. Boss models with PetRig bones now animate
+  like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
 - **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
 - Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`

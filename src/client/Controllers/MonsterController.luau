@@ -25,6 +25,7 @@ local TAG_COLOR = Color3.fromRGB(235, 235, 235)
 local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
 type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
+type Aura = { ring: Part, sparkles: ParticleEmitter, light: PointLight, floor: number }
 type Monster = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
@@ -32,6 +33,7 @@ type Monster = {
 	connections: { RBXScriptConnection },
 	heads: { Head }, -- a boss with heads: one per Hydra_<n>_3 bone, n = index - 1
 	fallenAt: number?, -- os.clock() its death began (heads dropping)
+	aura: Aura?, -- a boss with a rainbow aura
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -156,6 +158,75 @@ local function makeHeads(model: Model, elements: { string }): { Head }
 	return heads
 end
 
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 190, 60)),
+	ColorSequenceKeypoint.new(0.4, Color3.fromRGB(120, 240, 110)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 210, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(120, 110, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 110, 255)),
+})
+
+-- A rainbow aura round a boss (Bosses.RAINBOW_AURA): a glowing disc on the ground, wider than the model so it shows
+-- past its feet, sparkles rising from the disc's rim (outside the model) and a light; MonsterController's frame loop
+-- keeps it under the boss and turns its colour
+local function makeAura(body: CreatureVisuals.Body): Aura
+	local look = Bosses.RAINBOW_AURA
+	local box, size = body.model:GetBoundingBox()
+	local radius = math.max(size.X, size.Z) / 2 * look.ringScale
+	-- The floor under it (a boss never moves up or down): a ray down past the model
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { body.model, workspace:FindFirstChild("Monsters") or body.model }
+	local hit = workspace:Raycast(box.Position, Vector3.new(0, -size.Y * 2, 0), params)
+	local floor = if hit then hit.Position.Y else box.Position.Y - size.Y / 2
+	local ring = Instance.new("Part")
+	ring.Name = "RainbowAura"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.2, radius * 2, radius * 2)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = look.ringTransparency
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Shape = Enum.ParticleEmitterShape.Cylinder
+	sparkles.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface -- the rim only: round the boss, never over it
+	sparkles.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+	sparkles.Color = RAINBOW
+	sparkles.LightEmission = 1
+	sparkles.Rate = look.sparkles
+	sparkles.Lifetime = NumberRange.new(2, 3)
+	sparkles.Speed = NumberRange.new(0.5, 1.5)
+	sparkles.Acceleration = Vector3.new(0, 4, 0)
+	sparkles.Size = NumberSequence.new(0.7, 0)
+	sparkles.Rotation = NumberRange.new(0, 360)
+	sparkles.RotSpeed = NumberRange.new(-90, 90)
+	sparkles.Parent = ring
+	local light = Instance.new("PointLight")
+	light.Brightness = look.lightBrightness
+	light.Range = look.lightRange
+	light.Parent = ring
+	ring.Parent = body.model
+	return { ring = ring, sparkles = sparkles, light = light, floor = floor }
+end
+
+local function stepAura(monster: Monster, now: number)
+	local aura = monster.aura :: Aura
+	local position = monster.body.cframe.Position
+	aura.ring.CFrame = CFrame.new(position.X, aura.floor + 0.12, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	local color = Color3.fromHSV((now / Bosses.RAINBOW_AURA.hueSeconds) % 1, 0.55, 1)
+	aura.ring.Color = color
+	aura.light.Color = color
+	if monster.fallenAt then
+		aura.sparkles.Enabled = false
+		aura.ring.Transparency = math.min(1, aura.ring.Transparency + 0.02)
+		aura.light.Enabled = false
+	end
+end
+
 -- Its death: the outer heads first, the middle one last, each neck bowing down over HEAD_DROP.seconds
 local function dropHeads(monster: Monster, now: number)
 	local pet = monster.body.pet
@@ -216,6 +287,7 @@ local function add(marker: BasePart)
 		connections = {},
 		heads = if boss and boss.heads and template then makeHeads(model, boss.heads) else {},
 		fallenAt = nil,
+		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
 	}
 	if elite or boss then
 		local light = Instance.new("PointLight")
@@ -228,7 +300,7 @@ local function add(marker: BasePart)
 	lightHeads(monster)
 	table.insert(monster.connections, marker.AttributeChanged:Connect(function()
 		updateTag(monster)
-		if #monster.heads > 0 then
+		if #monster.heads > 0 or monster.aura then
 			if marker:GetAttribute("Fainted") == true and not monster.fallenAt then
 				monster.fallenAt = os.clock()
 			end
@@ -272,6 +344,9 @@ function MonsterController.Start()
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
 			if monster.fallenAt then
 				dropHeads(monster, now)
+			end
+			if monster.aura then
+				stepAura(monster, now)
 			end
 		end
 	end)

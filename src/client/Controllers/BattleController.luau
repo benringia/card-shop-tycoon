@@ -959,7 +959,8 @@ local function playIntro(boss: any, seconds: number)
 	introCard.Visible = true
 	if camera and marker then
 		local look = marker.CFrame
-		local eye = look.Position + look.LookVector * Bosses.INTRO_SHOT.back + Vector3.new(0, Bosses.INTRO_SHOT.up, 0)
+		local shot = boss.introShot or Bosses.INTRO_SHOT -- a huge boss gets a camera further off
+		local eye = look.Position + look.LookVector * shot.back + Vector3.new(0, shot.up, 0)
 		camera.CameraType = Enum.CameraType.Scriptable
 		TweenService:Create(camera, INTRO_FLY, { CFrame = CFrame.lookAt(eye, look.Position + Vector3.new(0, 3, 0)) }):Play()
 	end
