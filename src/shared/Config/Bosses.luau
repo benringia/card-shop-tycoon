@@ -40,6 +40,7 @@ export type Boss = {
 	phases: { BossPhase }?, -- the final boss: one per element, by HP
 	announceEverywhere: boolean?, -- its first clear is told to every server of the experience, not just this one
 	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
+	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -237,6 +238,7 @@ local BOSSES: { [string]: Boss } = {
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
 		clearTitle = "Dungeon Conqueror",
+		heads = { "Ember", "Tide", "Volt", "Shade", "Bloom" }, -- the middle head (0) is the finale's
 		mechanics = {},
 		phases = {
 			{ below = 1, element = "Tide", mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } } },
@@ -320,6 +322,9 @@ return {
 	BARRIER_HEIGHT = 14,
 	BARRIER_TRANSPARENCY = 0.55,
 	ADD_FADE_SECONDS = 1, -- a fallen add lies there this long before it goes
+	DEATH_SECONDS = 4, -- a beaten boss lies there this long before it goes (its death scene)
+	HEAD_GLOW = { brightness = 3, range = 16, particles = 14 }, -- the active phase's head (bosses with heads)
+	HEAD_DROP = { gap = 0.5, seconds = 0.6, angle = 75 }, -- its death: one head after another, each over `seconds`, by `angle` degrees
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

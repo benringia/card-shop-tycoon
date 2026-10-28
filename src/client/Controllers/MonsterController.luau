@@ -3,7 +3,9 @@
 -- workspace.Monsters (attributes MonsterId, Species, Level, Elite, Element, Fighting); here each marker gets a
 -- model (ReplicatedStorage.MonsterModels[Species], or a placeholder shape in its element colour), the same
 -- motion as summoned creatures (CreatureVisuals) and a name tag. Elites are bigger with a gold tag; bosses (attribute
--- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag.
+-- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag; a boss model with PetRig bones
+-- moves them (Util/PetAnimator), and one with heads (Config/Bosses heads: the Prism Hydra) lights the head of its
+-- current phase (marker attribute Phase) and drops its heads one by one when it falls.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -22,11 +24,14 @@ local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
 local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
+type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
 type Monster = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
 	tag: TextLabel,
 	connections: { RBXScriptConnection },
+	heads: { Head }, -- a boss with heads: one per Hydra_<n>_3 bone, n = index - 1
+	fallenAt: number?, -- os.clock() its death began (heads dropping)
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -112,6 +117,63 @@ local function updateTag(monster: Monster)
 	monster.tag.TextColor3 = if boss then BOSS_TAG_COLOR elseif elite then ELITE_TAG_COLOR else TAG_COLOR
 end
 
+-- Only the current phase's head glows (marker attribute Phase, set by BattleService); none once it has fallen
+local function lightHeads(monster: Monster)
+	local phase = monster.marker:GetAttribute("Phase")
+	for _, head in monster.heads do
+		local on = monster.fallenAt == nil and head.element == phase
+		head.light.Enabled = on
+		head.sparks.Enabled = on
+	end
+end
+
+-- A light and sparks on each head bone, in that head's element colour (off until its phase)
+local function makeHeads(model: Model, elements: { string }): { Head }
+	local heads = {}
+	for index, element in elements do
+		local bone = model:FindFirstChild(`Hydra_{index - 1}_3`, true)
+		if bone and bone:IsA("Bone") then
+			local color = Cards.ELEMENTS[element] or Color3.new(1, 1, 1)
+			local light = Instance.new("PointLight")
+			light.Color = color
+			light.Brightness = Bosses.HEAD_GLOW.brightness
+			light.Range = Bosses.HEAD_GLOW.range
+			light.Enabled = false
+			light.Parent = bone
+			local sparks = Instance.new("ParticleEmitter")
+			sparks.Color = ColorSequence.new(color)
+			sparks.LightEmission = 1
+			sparks.Rate = Bosses.HEAD_GLOW.particles
+			sparks.Lifetime = NumberRange.new(0.5, 0.9)
+			sparks.Speed = NumberRange.new(1, 3)
+			sparks.SpreadAngle = Vector2.new(180, 180)
+			sparks.Size = NumberSequence.new(0.5, 0)
+			sparks.Enabled = false
+			sparks.Parent = bone
+			table.insert(heads, { element = element, light = light, sparks = sparks })
+		end
+	end
+	return heads
+end
+
+-- Its death: the outer heads first, the middle one last, each neck bowing down over HEAD_DROP.seconds
+local function dropHeads(monster: Monster, now: number)
+	local pet = monster.body.pet
+	local fallenAt = monster.fallenAt
+	if not pet or not fallenAt then
+		return
+	end
+	local drop = Bosses.HEAD_DROP
+	for _, entry in (pet :: any).bones do
+		local head = tonumber(string.match(entry.key, "^hydra:(%d+):0$") or "")
+		if head then
+			local delay = (#monster.heads - 1 - head) * drop.gap
+			local share = math.clamp((now - fallenAt - delay) / drop.seconds, 0, 1)
+			entry.bone.Transform = entry.restInverse * CFrame.Angles(-math.rad(drop.angle) * share, 0, 0) * entry.rest
+		end
+	end
+end
+
 local function remove(marker: BasePart)
 	local monster = monsters[marker]
 	if not monster then
@@ -145,12 +207,15 @@ local function add(marker: BasePart)
 
 	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
 	local height = Wild.MONSTER_HEIGHT * (if boss then boss.scale elseif elite then Wild.ELITE_SIZE else 1)
-	local body = CreatureVisuals.build(model, marker, height, flying)
+	-- A boss model's bones move like a creature's (its PetRig names; Party style keyed by the boss id)
+	local body = CreatureVisuals.build(model, marker, height, flying, if boss and template then bossId :: string else nil)
 	local monster: Monster = {
 		marker = marker,
 		body = body,
 		tag = CreatureVisuals.makeTag(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), TAG_COLOR),
 		connections = {},
+		heads = if boss and boss.heads and template then makeHeads(model, boss.heads) else {},
+		fallenAt = nil,
 	}
 	if elite or boss then
 		local light = Instance.new("PointLight")
@@ -160,8 +225,15 @@ local function add(marker: BasePart)
 		light.Parent = body.root
 	end
 	updateTag(monster)
+	lightHeads(monster)
 	table.insert(monster.connections, marker.AttributeChanged:Connect(function()
 		updateTag(monster)
+		if #monster.heads > 0 then
+			if marker:GetAttribute("Fainted") == true and not monster.fallenAt then
+				monster.fallenAt = os.clock()
+			end
+			lightHeads(monster)
+		end
 	end))
 	monsters[marker] = monster
 end
@@ -198,6 +270,9 @@ function MonsterController.Start()
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
 		for _, monster in monsters do
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
+			if monster.fallenAt then
+				dropHeads(monster, now)
+			end
 		end
 	end)
 end

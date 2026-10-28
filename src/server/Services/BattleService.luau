@@ -581,7 +581,12 @@ local function endFight(fight: Fight, result: string)
 	for _, add in fight.adds do
 		WildService.Defeat(add) -- a boss's adds go with it
 	end
-	if result == "win" or fight.monster.boss or fight.run then
+	if result == "win" and fight.monster.boss then
+		-- A beaten boss lies there a moment (its death scene on clients), then goes
+		local fallen = fight.monster
+		fallen.marker:SetAttribute("Fainted", true)
+		task.delay(Bosses.DEATH_SECONDS, WildService.Defeat, fallen)
+	elseif result == "win" or fight.monster.boss or fight.run then
 		WildService.Defeat(fight.monster) -- a boss (or a Dungeon room's pack) always goes when its fight ends
 	else
 		WildService.Unlock(fight.monster)
