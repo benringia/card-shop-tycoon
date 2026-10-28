@@ -182,6 +182,20 @@ local List: { Shelf } = {
 		propColors = { Gem = Color3.fromRGB(150, 70, 220) },
 	},
 	{
+		id = "trophy_prismHydra",
+		prop = "Trophy",
+		name = "Prism Hydra Trophy",
+		kind = "Trophy",
+		category = "Trophies", -- Build menu tab
+		capacity = 0,
+		cost = 0,
+		unlockLevel = 1,
+		size = Vector3.new(4, 5, 4),
+		color = Color3.fromRGB(218, 176, 84),
+		requiresItem = "trophy_prismHydra",
+		propColors = { Gem = Color3.fromRGB(215, 240, 255) }, -- a pale prism crystal
+	},
+	{
 		id = "WallShelf",
 		prop = "WallShelf",
 		name = "Wall Shelf",

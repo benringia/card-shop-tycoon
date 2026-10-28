@@ -19,6 +19,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SourceOrder = require("./SourceOrder.spec"),
 	PvpRules = require("./PvpRules.spec"),
 	Frontier = require("./Frontier.spec"),
+	Dungeon = require("./Dungeon.spec"),
 	ItemRules = require("./ItemRules.spec"),
 	TownLayout = require("./TownLayout.spec"),
 	PropFit = require("./PropFit.spec"),

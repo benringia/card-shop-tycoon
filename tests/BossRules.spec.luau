@@ -38,12 +38,12 @@ return {
 	end,
 
 	["config: the Frontier bosses sit in Frontier zones"] = function()
-		expect.equal(#Bosses.LADDER, 6, "six bosses")
+		expect.equal(#Bosses.LADDER, 7, "seven bosses")
 		for index, id in Bosses.LADDER do
 			local boss = Bosses.BOSSES[id]
-			local world = if boss.place == "Frontier" then Frontier else Wild
+			local world = if boss.place == "Wild" then Wild else Frontier
 			expect.equal(world.ZONES[boss.zone] ~= nil, true, `{id} zone`)
-			expect.equal(boss.place, if index <= 3 then "Wild" else "Frontier", `{id} place`)
+			expect.equal(boss.place, if index <= 3 then "Wild" elseif index <= 6 then "Frontier" else "Dungeon", `{id} place`)
 		end
 	end,
 
@@ -83,6 +83,44 @@ return {
 		expect.equal(BossRules.levelReady(12, 11), false, "one short")
 		expect.equal(BossRules.levelReady(12, 12), true, "exactly")
 		expect.equal(BossRules.levelReady(12, 30), true, "above")
+	end,
+
+	["config: the Prism Hydra has five phases, one per element, in falling order"] = function()
+		local hydra = Bosses.BOSSES.prismHydra
+		expect.equal(Bosses.LADDER[7], "prismHydra", "last on the ladder")
+		expect.equal(hydra.place, "Dungeon", "its place")
+		expect.equal(hydra.shopLevel, 22, "shop level")
+		expect.equal(hydra.unlock and hydra.unlock.count, 10, "10 fragments")
+		local phases = hydra.phases :: { any }
+		expect.equal(#phases, 5, "five phases")
+		expect.equal(phases[1].below, 1, "the first starts at full HP")
+		local seen = {}
+		for index, phase in phases do
+			seen[phase.element] = true
+			if index > 1 then
+				expect.equal(phase.below < phases[index - 1].below, true, `phase {index} below the one before`)
+			end
+		end
+		for _, element in { "Tide", "Volt", "Shade", "Bloom", "Ember" } do
+			expect.equal(seen[element], true, element)
+		end
+		local m = function(i: number): any
+			return phases[i].mechanics
+		end
+		expect.equal(m(1).shield ~= nil and m(2).thunderclap ~= nil and m(3).adds ~= nil and m(4).heal ~= nil and m(5).enrage ~= nil, true, "shield, clap, adds, heal, enrage")
+	end,
+
+	["config: the Rift Devourer drops the Hydra's fragments"] = function()
+		local rift = Bosses.BOSSES.riftDevourer
+		expect.equal(rift.fragment, "fragment_prismHydra", "its fragment")
+		local inDrops, inChest = false, false
+		for _, drop in rift.drops do
+			inDrops = inDrops or drop.item == "fragment_prismHydra"
+		end
+		for _, grant in rift.firstClear do
+			inChest = inChest or (grant.item == "fragment_prismHydra" and grant.count == 3)
+		end
+		expect.equal(inDrops and inChest, true, "drop and 3 in the first clear")
 	end,
 
 	["read: Frontier bosses start locked"] = function()
