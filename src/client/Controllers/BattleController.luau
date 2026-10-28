@@ -5,6 +5,7 @@
 -- heals or enrages, and the loot on the end screen. In a group fight the bar shows your own creatures with their
 -- buttons, a row with the other players' creatures and HP, and Run becomes Leave. The server decides everything; this only shows it and
 -- sends intents (StartFight, CallIn, UseAbility, RunFight, WildTravel).
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -30,6 +31,7 @@ local player = Players.LocalPlayer
 
 local BAR_MAX_WIDTH = 560
 local BOSS_BAR_MAX_WIDTH = 640
+local BOSS_BAR_TOP = 6 -- pixels from the very top of the screen
 local BANNER_SECONDS = 1.4
 local END_SCREEN_HEIGHT = 150
 local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
@@ -774,6 +776,7 @@ local function onStarted(payload: any)
 		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
 	end
 	bossBar.Visible = boss ~= nil
+	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	monsterTrack.Visible = mode == "wild" and boss == nil -- a boss's HP is the bar at the top
 	enemyRow.Visible = mode == "pvp"
 	allyRow.Visible = groupFight -- group fights are boss fights: the HP bar is at the top, this row takes its place
@@ -933,7 +936,7 @@ local function build()
 	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
 	Instance.new("UIScale").Parent = countdownLabel
 
-	-- Boss HP at the very top, just under the Roblox top bar (MainGui keeps the inset)
+	-- Boss HP at the very top: up in the Roblox top bar's row, between its buttons (placed when a fight starts)
 	bossBar = Instance.new("Frame")
 	bossBar.Name = "BossBar"
 	bossBar.AnchorPoint = Vector2.new(0.5, 0)
