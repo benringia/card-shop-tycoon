@@ -405,7 +405,7 @@ The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or
 A teleport is a leave (fights end, the save goes to the next server); your shop pauses and rebuilds from the save
 when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
-spring at the entrance and a Dungeon portal (coming soon). Frontier-only drops: Star Shards (3% normal / 10% elite)
+spring at the entrance and the Dungeon portal (5.10, the final boss). Frontier-only drops: Star Shards (3% normal / 10% elite)
 and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Tideborne Kirin, Stormking, never in
 packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER chip, a constant
 shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
@@ -1193,6 +1193,9 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Cash payment with making change, or keep checkout one-tap?
 
 ## 13. Polish backlog (after the core loop)
+The core loop is complete (the shop loop, cards, jobs, party, stars, battles and the whole boss ladder). Order from
+2026-10-29: UI/UX design first (with the phone layout pass), then the town's design, then the remaining monster and
+boss models; the ranch and Heroic tiers come after those.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
   overlap), hit markers and a short flash on the creature hit, a screen shake on big boss hits.
 - Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
