@@ -29,6 +29,7 @@ local FrontierService = require(Services:WaitForChild("FrontierService"))
 local TownService = require(Services:WaitForChild("TownService"))
 local DevService = require(Services:WaitForChild("DevService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
+local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -60,6 +61,7 @@ elseif Place.isFrontier() then
 	BattleService.Start()
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
+	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 else

@@ -22,6 +22,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
+local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
@@ -68,6 +69,7 @@ local inWild: { [Player]: boolean } = {}
 local contactCallbacks: { (player: Player, monster: Monster) -> () } = {}
 local travelBlockers: { (player: Player) -> string? } = {}
 local homeHandler: ((player: Player) -> ())? = nil
+local dungeonHandler: ((player: Player) -> ())? = nil -- the Frontier's Dungeon portal (DungeonGateService)
 local frontierSpawn: SpawnLocation? = nil -- Frontier and Dungeon: everyone spawns here (not on a template spawn pad)
 local dungeonLayout: DungeonBuilder.DungeonLayout? = nil -- the Dungeon place's cavern
 local allowTravel = RateLimiter.new(TRAVEL_COOLDOWN)
@@ -334,9 +336,13 @@ local function buildPlaza()
 		frontierSpawn = spawn
 		local dungeonSpot = vec((Wild :: any).DUNGEON_PORTAL)
 		portal(folder, "Dungeon", dungeonSpot, Vector3.new(1, 0, 0), "Enter", function(player)
-			notify(player, "Dungeons are coming soon!", false)
+			if dungeonHandler then
+				dungeonHandler(player)
+			else
+				notify(player, "The Dungeon is coming soon!", false)
+			end
 		end)
-		sign(folder, "Dungeons · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(90), 0))
+		sign(folder, if Places.DUNGEON_PLACE_ID ~= 0 then "The Dungeon" else "The Dungeon · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(90), 0))
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		-- Its floating name label comes from TownService, like the other plaza portals
@@ -736,6 +742,11 @@ end
 -- BattleService tells monsters who is in a fight (nobody chases into a ring)
 function WildService.SetFightCheck(check: (player: Player) -> boolean)
 	isFighting = check
+end
+
+-- The Frontier: what its Dungeon portal's Enter does (DungeonGateService)
+function WildService.SetDungeonHandler(handler: (player: Player) -> ())
+	dungeonHandler = handler
 end
 
 -- The Dungeon place's cavern (nil elsewhere): its rooms, doors and spawn for DungeonService
