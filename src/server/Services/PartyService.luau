@@ -358,6 +358,20 @@ local function onSummon(player: Player, slot: unknown)
 	sendParty(player)
 end
 
+-- The Dungeon: summons a party slot from the server (a creature that can still fight in the run). False if the party
+-- is locked (mid-fight) or the slot is empty.
+function PartyService.SummonSlot(player: Player, slot: number): boolean
+	local state = states[player]
+	if not state or state.locked or not state.slots[slot] then
+		return false
+	end
+	state.summoned = slot
+	spawnMarker(player)
+	applyHustle(player)
+	sendParty(player)
+	return true
+end
+
 -- One XP Tonic (a boss drop) on a card in the party; never wasted on a max-level card
 local function onUseXpTonic(player: Player, beastId: unknown)
 	local state = states[player]

@@ -28,6 +28,7 @@ local BossService = require(Services:WaitForChild("BossService"))
 local FrontierService = require(Services:WaitForChild("FrontierService"))
 local TownService = require(Services:WaitForChild("TownService"))
 local DevService = require(Services:WaitForChild("DevService"))
+local DungeonService = require(Services:WaitForChild("DungeonService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -42,6 +43,7 @@ if Place.isDungeon() then
 	WildService.Start() -- the Dungeon's monsters (no wild map)
 	BattleService.Start()
 	BossService.Start() -- the Prism Hydra's chamber
+	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
