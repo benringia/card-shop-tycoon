@@ -487,7 +487,9 @@ be displayed or given a job; they can be condensed. While a creature is summoned
 `Config/Party` BAR) shows your avatar with a PARTY tag (opens Party) and the 3 party slots as small cards: the card's
 art in its rarity rim with "Lv 4", a key chip 1 / 2 / 3; the summoned one lifts, glows blue and has an OUT tag; an empty
 one is a dashed "+"; a resting one dims with "💤 2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
-an empty one picks a card in the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
+an empty one picks a card in the binder. Hovering a card (or holding a finger on it for `UIStyle.LONG_PRESS`, which
+then doesn't summon) shows its tooltip above the bar (`CardTips.copy`): the card, name, grade, level, Power, HP / ATK
+/ SPD bars, its perk and the resting countdown, so you don't need the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
 
 | Element | Perk | Effect | Common, 0 stars |

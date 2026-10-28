@@ -69,6 +69,11 @@ local function closeOthers(frame: Frame)
 	end
 end
 
+-- Whether any UIKit.panel window (or the fight bar) is open
+function UIKit.anyPanelOpen(): boolean
+	return next(openPanels) ~= nil
+end
+
 -- World hovers and taps (shelf tooltips, price tags) stay off while a window is open or the pointer is over
 -- visible UI. screen is a viewport point, like UserInputService:GetMouseLocation().
 function UIKit.pointerBlocked(screen: Vector2): boolean

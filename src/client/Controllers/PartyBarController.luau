@@ -3,18 +3,24 @@
 -- Party panel), then your 3 party slots as small cards. A filled slot shows the card's art in its rarity rim with
 -- its level; the summoned one lifts and glows with an OUT tag; an empty one is a dashed "+" (picks a card in the
 -- binder). Tap a slot, or press 1 / 2 / 3, to summon it (again to unsummon). Cards resting after a fight dim and show
--- "💤 2:41". Numbers: Config/Party BAR.
+-- "💤 2:41". Hovering a card (or holding a finger on it) shows its tooltip above the bar: Power, HP / ATK / SPD
+-- bars, perk and rest (Util/CardTips), so you don't need the binder. Numbers: Config/Party BAR.
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Party = require(Config:WaitForChild("Party"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -22,6 +28,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
@@ -53,6 +60,8 @@ local WHITE = Color3.new(1, 1, 1)
 local INK = Color3.fromRGB(20, 28, 60)
 local SUMMON_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
 local SUMMON_ACTION = "PartySummon"
+local TIP_GAP = 10
+local TIP_WIDTH = 250
 
 local player = Players.LocalPlayer
 
@@ -61,6 +70,67 @@ local PartyBarController = {}
 local slotViews: { SlotView } = {}
 local slots: { [number]: string } = {} -- party slot -> beastId
 local summoned: number? = nil
+local tip: Frame -- the hover / long-press tooltip over the bar
+local tipSlot: number? = nil -- the slot it describes
+local swallowTap: { [number]: boolean } = {} -- a long press shows the tooltip instead of summoning
+
+-- Above its slot (centred, kept on screen)
+local function placeTip()
+	local slot = tipSlot
+	local view = if slot then slotViews[slot] else nil
+	if not view or not tip.Visible then
+		return
+	end
+	local screen = tip.Parent :: GuiObject
+	local origin = screen.AbsolutePosition
+	local button = view.button
+	local spot = UiLayout.above(
+		{ x = button.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = button.AbsoluteSize.X, h = button.AbsoluteSize.Y },
+		{ w = tip.AbsoluteSize.X, h = tip.AbsoluteSize.Y },
+		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
+		TIP_GAP
+	)
+	tip.Position = UDim2.fromOffset(spot.x, spot.y)
+end
+
+-- Fills the tooltip with this slot's card (false: the slot is empty)
+local function fillTip(slot: number): boolean
+	local beastId = slots[slot]
+	local beast = if beastId then BinderController.GetBeasts()[beastId] else nil
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	if not beast or not card or not beastId then
+		return false
+	end
+	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
+	CardTips.copy(tip, {
+		card = card,
+		foil = beast.foil,
+		grade = beast.grade,
+		level = beast.level,
+		stars = beast.stars,
+		power = BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade),
+		stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade),
+		reference = CardTips.reference(),
+		perk = if perk then PartyRules.describe(perk) else nil,
+		restSeconds = RestTimers.GetSeconds(beastId),
+	})
+	return true
+end
+
+local function hideTip()
+	tip.Visible = false
+	tipSlot = nil
+end
+
+local function showTip(slot: number)
+	if UIKit.anyPanelOpen() or not fillTip(slot) then
+		hideTip()
+		return
+	end
+	tipSlot = slot
+	tip.Visible = true
+	placeTip()
+end
 
 -- Tap or key: an empty slot asks for a card, a party card summons, the summoned one goes back
 local function useSlot(slot: number)
@@ -224,7 +294,45 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 
 	keyChip(button, tostring(slot))
 	button.Activated:Connect(function()
+		if swallowTap[slot] then
+			swallowTap[slot] = nil
+			return
+		end
 		useSlot(slot)
+	end)
+	-- Mouse: hover for the tooltip. Touch: hold a finger on the card (the tap then doesn't summon)
+	button.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			showTip(slot)
+		end
+	end)
+	button.MouseLeave:Connect(function()
+		if tipSlot == slot then
+			hideTip()
+		end
+	end)
+	local pressed = 0
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		pressed += 1
+		local press = pressed
+		task.delay(UIStyle.LONG_PRESS, function()
+			if pressed == press and slots[slot] then
+				swallowTap[slot] = true
+				showTip(slot)
+			end
+		end)
+	end)
+	button.InputEnded:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		pressed += 1 -- cancels a hold still counting
+		if tipSlot == slot then
+			hideTip()
+		end
 	end)
 	return {
 		button = button,
@@ -358,6 +466,23 @@ function PartyBarController.Start()
 	end)
 	avatar.Activated:Connect(PartyController.Toggle)
 
+	tip = Instance.new("Frame")
+	tip.Name = "PartyTip"
+	tip.Size = UDim2.fromOffset(if UIKit.isPhone() then TIP_WIDTH - 30 else TIP_WIDTH, 0)
+	tip.AutomaticSize = Enum.AutomaticSize.Y
+	tip.BackgroundColor3 = UIStyle.PANEL
+	tip.ZIndex = 50
+	tip.Visible = false
+	tip.Parent = UIController.GetScreenGui()
+	UIKit.corner(tip, 12)
+	UIKit.outline(tip, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local tipPadding = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(tipPadding :: any)[side] = UDim.new(0, 10)
+	end
+	tipPadding.Parent = tip
+	tip:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTip) -- it sizes itself after its content
+
 	for slot = 1, Party.PARTY_SIZE do
 		slotViews[slot] = makeSlot(bar, slot)
 	end
@@ -388,6 +513,10 @@ function PartyBarController.Start()
 		end
 		summoned = if typeof(payload.summoned) == "number" then payload.summoned else nil
 		render()
+		local open = tipSlot
+		if open then
+			showTip(open)
+		end
 	end)
 	-- Party cards arrive with the binder; redraw when it changes
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
@@ -408,6 +537,10 @@ function PartyBarController.Start()
 			if seconds > 0 then
 				view.rest.Text = `💤\n{RestTimers.Format(seconds)}`
 			end
+		end
+		local open = tipSlot
+		if open and tip.Visible then
+			fillTip(open) -- the resting countdown in the tooltip
 		end
 	end)
 end
