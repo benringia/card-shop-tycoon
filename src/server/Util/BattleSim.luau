@@ -834,6 +834,24 @@ function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: nu
 	return if fighter then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted } else nil
 end
 
+-- Every fighter's HP on a side, on the field or in reserve (fainted = 0), by unprefixed id; only `owner`'s when given
+-- (the Dungeon carries these into the next room)
+function BattleSim.hpLeft(state: State, sideName: string, owner: string?): { [string]: number }
+	local out = {}
+	local side = (state.sides :: any)[sideName] :: Side?
+	if not side then
+		return out
+	end
+	for _, list in { side.fighters, side.reserves } do
+		for _, fighter in list do
+			if owner == nil or fighter.owner == owner then
+				out[fighter.rawId] = if fighter.fainted then 0 else fighter.hp
+			end
+		end
+	end
+	return out
+end
+
 -- Unprefixed ids of a side's fighters that fainted (wild: they rest)
 function BattleSim.getFainted(state: State, sideName: string): { string }
 	local list = {}

@@ -12,6 +12,9 @@ return {
 		{ species = { "Rift Horror", "Prism Crab", "Lava Brute" }, count = 3, level = 50 },
 	},
 
+	-- Pack monsters' elite stats (Frontier ELITE_STAT_MULTIPLIER) times these: three rooms in a row with no healing
+	PACK_SCALE = { hp = 1, atk = 0.35 },
+
 	ARRIVAL_WAIT = 20, -- seconds the run waits for the rest of its group before it starts without them
 	OUT_DELAY = 4, -- seconds before a player who is out goes back to the Frontier
 	ROOM_INTRO_SECONDS = 3, -- the room seals, then the pack appears after this

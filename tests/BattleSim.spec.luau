@@ -128,6 +128,18 @@ return {
 		expect.equal(x.maxHp, 100, "max stays 100")
 	end,
 
+	["hpLeft: an owner's fighters and reserves, fainted at 0"] = function()
+		local state = group(21)
+		state.sides.a.fighters[1].hp = 123
+		local left = BattleSim.hpLeft(state, "a", "1")
+		expect.equal(left.p1, 123, "the hurt leader")
+		expect.equal(left.r1, 500, "a reserve that never fought")
+		expect.isNil(left.p2, "not player 2's")
+		state.sides.a.fighters[1].fainted = true
+		expect.equal(BattleSim.hpLeft(state, "a", "1").p1, 0, "fainted counts as 0")
+		expect.equal(BattleSim.hpLeft(state, "a").p2, 500, "no owner: the whole side")
+	end,
+
 	["phases: the boss starts as phase 1"] = function()
 		local state = phasedBoss(PHASES, 11)
 		expect.equal(state.sides.b.fighters[1].element, "Tide", "phase 1's element")
