@@ -1,7 +1,8 @@
 # UI/UX pass 1: style kit and the collection screens
 
 Agreed with the user on 2026-10-29 in a brainstorm with mockups. Mockups: `.superpowers/brainstorm/935-1793212815/content/`
-(git-ignored; `style-kit.html`, `card-detail-v2.html`, `compare-kid.html`, `party-v2.html`, `bosses-bag.html`).
+(git-ignored; `style-options.html` for the look, then `card-detail-v2.html`, `compare-kid.html`, `party-v2.html`,
+`bosses-bag.html` for the layouts; those were drawn in the older look A, so take their layout, not their styling).
 Calls marked **(Claude's call)** were proposed without the user choosing them; change them freely.
 
 ## 1. Intent
@@ -19,8 +20,8 @@ remaining monster models come after the three; the ranch and Heroic tiers after 
 ## 2. Goals, non-goals, anti-goals
 
 Goals
-- A style kit every screen uses: look A ("polished dark", today's navy and gold cleaned up), colour rules for the
-  important information, button styles, and icons instead of emojis.
+- A style kit every screen uses: look E ("bold hybrid", 3.1), colour rules for the important information, button
+  styles, and icons instead of emojis.
 - A fourth icon sheet in the same glossy style for what is missing (list in 3.3).
 - The seven screens in section 4 relaid out with the kit, kid-friendly.
 - Fix the problems found in the review of today's screens (the list is in 4, by screen).
@@ -42,9 +43,24 @@ Anti-goals (a failure even if it works)
 ## 3. The style kit
 
 ### 3.1 Look
-Look A: the existing "Midnight & Gold" (`Util/UIKit`, DESIGN.md 10.6), cleaned up: navy panels with a gold rim,
-slate rows, chunky buttons with a bottom lip, FredokaOne titles and numbers, Nunito Bold body. Stat cards on a slate
-background with an icon on the left. Solid, readable, calm.
+Look E, "bold hybrid", chosen by the user from five options (A polished dark, B sky pop, C cozy card shop, D neon
+night, E bold hybrid; mockup `style-options.html`) to appeal to kids, teens and adults at once: a calm dark body that
+stays readable and grown-up, with the playful parts kids react to.
+- Panels: dark slate body (about #1B2233) with a thick near-black outline (about #0B0F1A) and a solid drop lip under
+  the panel.
+- A **coloured header band per window**, top of the panel, with a dark line under it. Party is teal; the others
+  **(Claude's call)**: binder and card detail blue, Boss ladder red, Bag orange, anything else the default teal.
+- **Outlined text**: titles, names, big numbers and text on coloured buttons are white (or their colour) with a dark
+  outline (UIStroke) and a small drop shadow.
+- **Candy buttons**: vertical gradient, thick dark outline and a dark bottom lip, so they look pressable. Gold =
+  main action, blue = other choices, red = remove / leave (replaces the slate of 3.2's first draft).
+- Thicker bars (about 12 px on desktop) with a dark track and outline; green gradient fill.
+- Card art in a thick rarity-coloured frame.
+- Text a size up from today: body about 15 px (today 13), names about 22, big numbers about 23, window titles about
+  28; titles FredokaOne, body Nunito Bold (Fredoka chosen over Luckiest Guy, Denk One and Bangers).
+- The cash counter becomes a green candy pill with outlined white text.
+The kit lives in `Util/UIKit` (panel, header, button, bar, outlined label), so every window built with it, not only the
+seven screens here, picks up the look **(Claude's call)**; only the seven screens are relaid out.
 
 ### 3.2 Colour rules (the same on every screen)
 | What | Rule |
@@ -55,7 +71,7 @@ background with an icon on the left. Solid, readable, calm.
 | Money | green, always with the Cash icon |
 | Power | orange **(Claude's call)**, with the Power icon; HP, ATK, SPD each with their icon |
 | Good / bad | green = ready, enough, better; red = locked, not enough, worse; gold = hints and the selected thing |
-| Buttons | gold = the main action, slate = other choices, red = remove / leave; every button has an icon **(Claude's call on the colours)** |
+| Buttons | candy style (3.1): gold = the main action, blue = other choices, red = remove / leave; every button has an icon **(Claude's call on the colours)** |
 | Stars | star icons (lit / dim), never the ★ character |
 
 Exact colour values live in `Util/UIKit` (or a new `Config/UIStyle`), not in screens.
@@ -162,7 +178,7 @@ The state rule is a pure, Lune-tested function. Clicking a step shows its detail
 
 ## 6. Left to the builder
 
-- Exact sizes, spacing and colour values within look A; animation (the existing `Util/Motion` style).
+- Exact sizes, spacing and colour values within look E; animation (the existing `Util/Motion` style).
 - The order of the screens; how the kit is organised in code (UIKit additions, a `Config/UIStyle`).
 - The icon sheet's prompts and the stand-ins until the icons are uploaded.
 - Phone variants of each screen, within the constraints above.
