@@ -35,6 +35,7 @@ return {
 	GOOD = Color3.fromRGB(69, 212, 131), -- ready, enough, better
 	BAD = Color3.fromRGB(255, 107, 107), -- locked, not enough, worse
 	HINT = Color3.fromRGB(226, 178, 72),
+	XP = Color3.fromRGB(90, 160, 255), -- XP bars
 	GRADES = {
 		S = Color3.fromRGB(255, 200, 40),
 		A = Color3.fromRGB(70, 140, 255),

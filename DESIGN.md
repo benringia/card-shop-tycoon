@@ -928,7 +928,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
+    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips
+    │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
@@ -1158,11 +1159,21 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
   19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
-- **Card inspector** (`CardInspectorController`, `Config/Inspector`): tapping a binder card shows it as a real 3D
-  card (about 60% of the screen's height) left of centre close in front of the camera (front: the card face; back: the card back), on a solid dark
-  sheet just behind it that hides the world (and your pet); the binder's dim and always-on-top tags (customer mood bubbles) switch off while it shows. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
-  Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
-  Add to party and Back. Closing restores the camera; dying closes it too.
+- **Card view** (`CardDetailController` with `CardInspectorController`, `Config/Inspector`): tapping a binder card
+  shows it as a real 3D card (about 60% of the screen's height) close in front of the camera (front: the card face;
+  back: the card back). While it's up the camera waits at an empty stage high above the world
+  (`Inspector.STAGE_POSITION`) with a solid dark sheet behind the card, so nothing of the world (customers, your pet)
+  shows; always-on-top tags switch off too. Drag to tilt (it eases back), drag far sideways or press Flip (under the
+  card) to turn it over; Legendaries keep their element aura; a gold "BEST COPY" ribbon sits on the card while your
+  best copy is shown. The card's right edge lands just left of the info panel (`UiLayout.inspectorCard`, Lune-tested).
+  The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
+  and copies pills; "Your copies, best first" (grade pill, level, star icons, FOIL or count, Power with its icon,
+  value; the first wears a gold BEST ribbon, the chosen one a gold outline); the chosen copy's Power / HP / ATK / SPD
+  tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
+  "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
+  says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)) and Back. Phones get a slimmer band and no pills
+  row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
+  Closing puts the camera back where it was; dying closes it too.
 - **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
   `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
   the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
