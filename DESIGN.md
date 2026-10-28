@@ -576,7 +576,10 @@ Cost per step, duplicates + cash (`Config/Grading.COSTS`):
 | Epic | 1 + $500 | 2 + $2,500 | 4 + $10,000 | 7 + $13,000 |
 | Legendary | 1 + $500 | 2 + $2,500 | 3 + $12,500 | 6 + $15,500 |
 
-### 5.10 Boss ladder (phase 1: Wild bosses 1-3, solo)
+Boss items at the station: Grading Seals stand in for missing duplicates (up to half a step); a Gold Seal pays one
+step's cash, any step except a Legendary's A -> S (`CondenseRules.goldSealAllowed`, checked on the server).
+
+### 5.10 Boss ladder (phases 1-3: Wild bosses 1-3, groups, Frontier bosses 4-6)
 
 Spec `docs/superpowers/specs/2026-10-28-boss-ladder-design.md`. Each boss drops what helps you beat the next and
 the fragments that open it. Numbers in `Config/Bosses`, rules in `Util/BossRules` (pure, Lune-tested), saved progress

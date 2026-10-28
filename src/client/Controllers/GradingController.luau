@@ -56,6 +56,8 @@ local inFlight = false -- a Grade Up request is waiting for the server; the butt
 local inFlightToken = 0
 local useSeals = false -- Grading Seals fill missing duplicates (up to half a step)
 local sealCount = 0 -- from ItemsChanged
+local useGold = false -- a Gold Seal pays the step's cash (not a Legendary's A to S)
+local goldCount = 0
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -253,10 +255,13 @@ local function renderPane(card: Card?)
 	info.TextYAlignment = Enum.TextYAlignment.Top
 
 	local y = DETAIL_FACE_SIZE.Y + 16
-	local affordable = plan ~= nil and cash >= plan.cash
+	local goldAllowed = plan ~= nil and CondenseRules.goldSealAllowed(card.rarity, plan.grade)
+	local goldPays = useGold and goldCount > 0 and goldAllowed
+	local affordable = plan ~= nil and (goldPays or cash >= plan.cash)
 	local canGrade = affordable and not inFlight
 	local buttonText = if inFlight then "Grading..."
 		elseif plan and not affordable then `Need {formatCash(plan.cash)} (you have {formatCash(cash)})`
+		elseif plan and goldPays then `Grade up to {plan.grade} · $0 (Gold Seal)`
 		elseif plan then `Grade up to {plan.grade} · {formatCash(plan.cash)}`
 		else describeReason(reason)
 	local gradeButton = UIKit.button(pane, buttonText, if canGrade then UIKit.Colors.Accent else UIKit.Colors.Locked)
@@ -282,11 +287,11 @@ local function renderPane(card: Card?)
 		end)
 		local beast = chosen.beast
 		if beast then
-			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id, nil, nil, useSeals)
+			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, beast.id, nil, nil, useSeals, goldPays)
 		else
 			-- A plain copy moves up to the next grade's stack: keep following it there
 			mainKey = `stack:{plan and plan.grade or chosen.grade}:{chosen.foil}`
-			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade, useSeals)
+			Remotes.GradeUp:FireServer(part:GetAttribute("ShelfUid"), card.id, nil, chosen.foil, chosen.grade, useSeals, goldPays)
 		end
 		render()
 	end)
@@ -307,6 +312,26 @@ local function renderPane(card: Card?)
 	sealButton.Activated:Connect(function()
 		if hasSeals then
 			useSeals = not useSeals
+			render()
+		end
+	end)
+	y += 58
+
+	-- Gold Seal toggle: pays one step's cash (never a Legendary's A to S)
+	local hasGold = goldCount > 0
+	local goldText = if not hasGold then "🥇 No Gold Seals (Frontier bosses drop them)"
+		elseif plan and not goldAllowed then "🥇 Gold Seals can't pay a Legendary's A to S step"
+		elseif useGold and plan then `🥇 A Gold Seal pays the {formatCash(plan.cash)} (you have {goldCount})`
+		elseif useGold then `🥇 Using a Gold Seal (you have {goldCount})`
+		else `🥇 Use a Gold Seal: pays the cash (you have {goldCount})`
+	local goldButton = UIKit.button(pane, goldText, if goldPays then UIKit.Colors.Accent else UIKit.Colors.Row)
+	goldButton.Position = UDim2.fromOffset(8, y)
+	goldButton.Size = UDim2.new(1, -16, 0, 48)
+	goldButton.TextSize = 14
+	goldButton.AutoButtonColor = hasGold
+	goldButton.Activated:Connect(function()
+		if hasGold then
+			useGold = not useGold
 			render()
 		end
 	end)
@@ -560,6 +585,11 @@ function GradingController.Start()
 		sealCount = if typeof(count) == "number" then count else 0
 		if sealCount == 0 then
 			useSeals = false
+		end
+		local gold = if typeof(items) == "table" then items.goldSeal else nil
+		goldCount = if typeof(gold) == "number" then gold else 0
+		if goldCount == 0 then
+			useGold = false
 		end
 		if panel.Visible then
 			render()
