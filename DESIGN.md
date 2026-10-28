@@ -1251,6 +1251,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 The core loop is complete (the shop loop, cards, jobs, party, stars, battles and the whole boss ladder). Order from
 2026-10-29: UI/UX design first (with the phone layout pass), then the town's design, then the remaining monster and
 boss models; the ranch and Heroic tiers come after those.
+- UI/UX pass 1 (spec `2026-10-29-collection-screens-ui-design.md`, branch `ui-pass-1`): look E style kit, binder
+  tooltip, card view, Add to Party with the kid comparison, Party window, party bar tooltip, boss ladder with Take me
+  there, Bag; no Star Shard pill. Built; waiting for the user's Studio check before merge. Next: UI project 2 (a 3D
+  binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
+  project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
+- Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
+  kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
   overlap), hit markers and a short flash on the creature hit, a screen shake on big boss hits.
 - Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
