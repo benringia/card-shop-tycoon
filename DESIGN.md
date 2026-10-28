@@ -473,7 +473,13 @@ Monsters sleep with no player within 100 studs. Placeholder map and monsters are
 go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/rest`, `/elite`.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
-panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is summoned at a time: the server moves
+panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
+level and star icons, its Power (big, orange), HP / ATK / SPD bars (against the best stats any card reaches,
+`CardTips.reference`), its perk (element icon and a few words), "Resting m:ss" in red after fainting, and Summon
+(gold) or the green Summoned (tap to unsummon), XP Tonic (icon with how many you hold; hidden at 0 or Lv 30) and
+Remove (red). The summoned column glows green with a SUMMONED tag; the band shows "Summoned: <card>" (or "Nobody
+summoned") and your PvP record; an empty slot has "Add a card" (opens the binder). Phones get a smaller card and
+slimmer bars so every column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
@@ -934,7 +940,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
     │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
-    │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
+    │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies round the plaza spring
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
