@@ -29,7 +29,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 ## Commands
 - `rojo serve` — sync to Studio (restart after editing `default.project.json`)
 - `rojo serve frontier.project.json` — sync the Frontier place (port 34873; same `src`, Workspace attribute
-  `PlaceKind = "Frontier"`). Place ids live in `Config/Places.luau`; teleports only work in the published game.
+  `PlaceKind = "Frontier"`; the main project sets it to `"Main"`). Place ids live in `Config/Places.luau`; teleports
+  only work in the published game. Each Studio window connects to its own port: a main place window on 34873 boots
+  as the Frontier (its Output says "Booted (Frontier)" and the Frontier spring fails to build).
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
