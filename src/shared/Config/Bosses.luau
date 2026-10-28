@@ -1,13 +1,14 @@
 --!strict
 -- The boss ladder (spec 2026-10-28-boss-ladder-design.md; DESIGN.md 5.8 battles part 3b). Each boss is fought at an
--- arena at the end of its Wild zone, unlocks with fragments the boss before drops, and drops what helps beat the next.
--- Plain data so Lune tests and the economy simulator can load it. Phase 1: the three Wild bosses, solo.
+-- arena at the end of its zone (the Wild in the main game, the Frontier place for 4-6), unlocks with fragments the boss
+-- before drops, and drops what helps beat the next. Plain data so Lune tests and the economy simulator can load it.
 export type Drop = { item: string, chance: number, min: number, max: number }
 export type Grant = { item: string, count: number }
 export type Boss = {
 	name: string,
 	title: string, -- under its name on the intro card
-	zone: number, -- Config/Wild ZONES index: its arena is at the end of this zone
+	place: "Wild" | "Frontier", -- which place its arena is in (only that place builds it)
+	zone: number, -- ZONES index in that place's world (Config/Wild or Config/Frontier): its arena is at the end of it
 	shape: string, -- a Wild placeholder shape until its model exists
 	scale: number, -- placeholder size, times the monster height
 	element: string,
@@ -19,7 +20,17 @@ export type Boss = {
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
-	mechanics: { heal: { below: number, fraction: number, cooldown: number }?, enrage: { below: number, atkMultiplier: number }? },
+	-- heal below an HP fraction; enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
+	-- first (breaking it stuns the boss `breakStun` s); thunderclap: every `every` s stuns each enemy `seconds` x
+	-- clamp(boss SPD / its SPD, minFactor, maxFactor); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
+	-- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
+	mechanics: {
+		heal: { below: number, fraction: number, cooldown: number }?,
+		enrage: { below: number, atkMultiplier: number }?,
+		shield: { every: number, fraction: number, breakStun: number }?,
+		thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
+		adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
+	},
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -31,6 +42,7 @@ local BOSSES: { [string]: Boss } = {
 	meadowWarden = {
 		name = "Meadow Warden",
 		title = "Guardian of the Meadow",
+		place = "Wild",
 		zone = 1,
 		shape = "slime",
 		scale = 2.5,
@@ -55,6 +67,7 @@ local BOSSES: { [string]: Boss } = {
 	caveBroodQueen = {
 		name = "Cave Brood Queen",
 		title = "Mother of the Deep",
+		place = "Wild",
 		zone = 2,
 		shape = "bat",
 		scale = 2.8,
@@ -81,6 +94,7 @@ local BOSSES: { [string]: Boss } = {
 	emberColossus = {
 		name = "Ember Colossus",
 		title = "The Walking Furnace",
+		place = "Wild",
 		zone = 3,
 		shape = "golem",
 		scale = 3.2,
@@ -92,20 +106,101 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 650,
 		minFightSeconds = 25,
 		unlock = { item = "fragment_emberColossus", count = 5 },
+		fragment = "fragment_frostTyrant",
 		mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } },
 		drops = {
 			{ item = "gradingSeal", chance = 0.35, min = 1, max = 1 },
 			{ item = "xpTonic", chance = 0.4, min = 2, max = 3 },
+			{ item = "fragment_frostTyrant", chance = 0.6, min = 1, max = 1 },
 		},
-		firstClear = { { item = "trophy_emberColossus", count = 1 }, { item = "gradingSeal", count = 3 } },
+		firstClear = { { item = "fragment_frostTyrant", count = 3 }, { item = "trophy_emberColossus", count = 1 }, { item = "gradingSeal", count = 3 } },
 		dailyBonus = { { item = "gradingSeal", count = 2 } },
 		cash = 96,
 		xp = 2220,
 	},
+	-- The Frontier bosses (phase 3): arenas in the Frontier place
+	frostTyrant = {
+		name = "Frost Tyrant",
+		title = "Lord of the Long Winter",
+		place = "Frontier",
+		zone = 1,
+		shape = "slime",
+		scale = 3.0,
+		element = "Tide",
+		level = 22,
+		hp = 12500,
+		atk = 30,
+		spd = 9,
+		recommended = 1100,
+		minFightSeconds = 60,
+		unlock = { item = "fragment_frostTyrant", count = 5 },
+		fragment = "fragment_stormSovereign",
+		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
+		drops = {
+			{ item = "gradingSeal", chance = 0.4, min = 1, max = 1 },
+			{ item = "starShard", chance = 0.25, min = 1, max = 2 },
+			{ item = "fragment_stormSovereign", chance = 0.6, min = 1, max = 1 },
+		},
+		firstClear = { { item = "fragment_stormSovereign", count = 3 }, { item = "trophy_frostTyrant", count = 1 }, { item = "gradingSeal", count = 3 } },
+		dailyBonus = { { item = "gradingSeal", count = 2 } },
+		cash = 150,
+		xp = 3600,
+	},
+	stormSovereign = {
+		name = "Storm Sovereign",
+		title = "Voice of the Thunder",
+		place = "Frontier",
+		zone = 2,
+		shape = "bat",
+		scale = 3.2,
+		element = "Volt",
+		level = 32,
+		hp = 17000,
+		atk = 36,
+		spd = 14,
+		recommended = 1500,
+		minFightSeconds = 70,
+		unlock = { item = "fragment_stormSovereign", count = 8 },
+		fragment = "fragment_riftDevourer",
+		mechanics = { thunderclap = { every = 12, seconds = 3, minFactor = 0.3, maxFactor = 1.5 } },
+		drops = {
+			{ item = "goldSeal", chance = 0.25, min = 1, max = 1 },
+			{ item = "fragment_riftDevourer", chance = 0.55, min = 1, max = 1 },
+		},
+		firstClear = { { item = "fragment_riftDevourer", count = 3 }, { item = "trophy_stormSovereign", count = 1 }, { item = "goldSeal", count = 1 } },
+		dailyBonus = { { item = "goldSeal", count = 1 } },
+		cash = 210,
+		xp = 5200,
+	},
+	riftDevourer = {
+		name = "Rift Devourer",
+		title = "The Hunger Between Worlds",
+		place = "Frontier",
+		zone = 3,
+		shape = "beetle",
+		scale = 3.4,
+		element = "Shade",
+		level = 45,
+		hp = 22000,
+		atk = 44,
+		spd = 10,
+		recommended = 1900,
+		minFightSeconds = 80,
+		unlock = { item = "fragment_riftDevourer", count = 8 },
+		mechanics = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.06, atkShare = 0.4, guard = 0.5, species = "Rift Horror" } },
+		drops = {
+			{ item = "goldSeal", chance = 0.3, min = 1, max = 1 },
+			{ item = "starShard", chance = 0.3, min = 1, max = 2 },
+		},
+		firstClear = { { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
+		dailyBonus = { { item = "goldSeal", count = 1 } },
+		cash = 280,
+		xp = 7400,
+	},
 }
 
 return {
-	LADDER = { "meadowWarden", "caveBroodQueen", "emberColossus" },
+	LADDER = { "meadowWarden", "caveBroodQueen", "emberColossus", "frostTyrant", "stormSovereign", "riftDevourer" },
 	BOSSES = BOSSES,
 
 	-- Farm protection (spec section 7)

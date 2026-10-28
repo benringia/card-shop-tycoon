@@ -578,8 +578,12 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 	local folder = Instance.new("Folder")
 	folder.Name = "BossArenas"
 	folder.Parent = mapFolder -- part of the map, so bosses stand on its floor
+	local here = if Place.isFrontier() then "Frontier" else "Wild"
 	for _, bossId in Bosses.LADDER do
 		local boss = Bosses.BOSSES[bossId]
+		if boss.place ~= here then
+			continue -- its arena is in the other place
+		end
 		local center = zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
 		local radius = Bosses.ARENA_RADIUS
 		-- Cylinders run along X: lay the disc flat

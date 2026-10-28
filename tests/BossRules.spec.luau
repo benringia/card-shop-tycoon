@@ -2,6 +2,8 @@
 local BossRules = require("../src/shared/Util/BossRules")
 local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
+local Frontier = require("../src/shared/Config/Frontier")
+local Wild = require("../src/shared/Config/Wild")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -15,6 +17,20 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["config: the Frontier bosses sit in Frontier zones"] = function()
+		expect.equal(#Bosses.LADDER, 6, "six bosses")
+		for index, id in Bosses.LADDER do
+			local boss = Bosses.BOSSES[id]
+			local world = if boss.place == "Frontier" then Frontier else Wild
+			expect.equal(world.ZONES[boss.zone] ~= nil, true, `{id} zone`)
+			expect.equal(boss.place, if index <= 3 then "Wild" else "Frontier", `{id} place`)
+		end
+	end,
+
+	["read: Frontier bosses start locked"] = function()
+		expect.equal(BossRules.read(nil, Bosses.BOSSES.frostTyrant.unlock == nil).unlocked, false, "needs its key")
+	end,
+
 	["intro: the camera part ends before the 3-2-1 countdown starts"] = function()
 		expect.equal(Bosses.INTRO_SECONDS, 6, "intro length")
 		expect.equal(Bosses.INTRO_SECONDS - Bosses.INTRO_CAMERA_SECONDS >= 3, true, "room for 3, 2, 1")

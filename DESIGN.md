@@ -587,12 +587,18 @@ and rewards in `BossService`.
 | 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | open |
 | 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 12500 / 30 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 17000 / 36 / 14 | 1500 | thunderclap every 12 s: stuns your creatures, shorter on fast ones | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 22000 / 44 / 10 | 1900 | 2 Rift Spawn at 70% and 35% HP: hit first, boss takes half damage meanwhile | 8 Devourer Key Fragments |
 
 | Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
 |---|---|---|---|---|
 | Meadow Warden | $36 / 620 | XP Tonic 60% (1-2), Brood Queen fragment 70% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
 | Cave Brood Queen | $66 / 1360 | XP Tonic 60% (1-3), Star Shard 15%, Colossus fragment 60% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
-| Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3) | trophy, 3 Grading Seals | 2 Grading Seals |
+| Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3), Frost Tyrant fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Frost Tyrant | $150 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Storm Sovereign | $210 / 5200 | Gold Seal 25%, Devourer fragment 55% | 3 fragments, trophy, 1 Gold Seal | 1 Gold Seal |
+| Rift Devourer | $280 / 7400 | Gold Seal 30%, Star Shard 30% (1-2) | trophy, 3 Gold Seals | 1 Gold Seal |
 
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
