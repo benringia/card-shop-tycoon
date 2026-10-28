@@ -1109,8 +1109,10 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   tall, down to 70% on short phones (tiles stay over 48 px to tap). Each icon sits over its
   pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
   HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
-  (Angry, Thinking, Happy); made as three sheets with Figma's image generator and cut by
-  `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Every icon is kept drawn, tiny and nearly invisible,
+  (Angry, Thinking, Happy); made as four sheets with Figma's image generator and cut by
+  `tools/ui-icons/slice_icons.py <sheet> <1-4>` (PNGs in `assets/ui/icons`). Sheet 4 (the style kit) adds Power, Hp,
+  Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale, tinted per boss in code), XpTonic, GradingSeal,
+  GoldSeal, Travel, Best and Pvp; Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row. The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
