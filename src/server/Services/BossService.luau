@@ -4,6 +4,7 @@
 -- over-power) are in Util/BossRules. A boss is spawned for the one player who starts it at the gate and fought on the
 -- usual combat core (BattleService); a win's XP and cash come from there, its items from here.
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -207,7 +208,11 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	if not record.cleared and not carried then
 		record.cleared = true
 		result.firstClear = true
-		grant(player, boss.firstClear, result.items)
+		-- One-time and saved as cleared at once, so it goes straight into the Bag (only repeatable loot scatters)
+		for _, entry in boss.firstClear do
+			ItemService.GiveItem(player, entry.item, entry.count)
+		end
+		result.chest = boss.firstClear
 		Remotes.BossCleared:FireAllClients(player.DisplayName, bossId)
 	end
 	if fight.seconds < boss.minFightSeconds then
@@ -284,6 +289,26 @@ end
 
 -- One boss for these players (the first leads), scaled to the group; keys are taken only once it really starts.
 -- No yields: the key counts and the fight start in one step.
+-- Out through the gate: a player who isn't (or is no longer) in the fight never stays behind the sealed wall
+local function moveOut(player: Player, arena: WildService.BossArena)
+	local character = player.Character
+	if character then
+		character:PivotTo(arena.gate)
+	end
+end
+
+-- Everyone inside the ring who isn't one of `members` (someone waiting at the gate) goes out before it seals
+local function clearRing(arena: WildService.BossArena, members: { Player })
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+		local offset = if root then root.Position - arena.center else nil
+		if offset and not table.find(members, player) and BossRules.insideRing(offset.X, offset.Z, Bosses.ARENA_RADIUS) then
+			moveOut(player, arena)
+		end
+	end
+end
+
 local function setBarrier(arena: WildService.BossArena, up: boolean)
 	for _, wall in arena.barrier do
 		wall.CanCollide = up
@@ -313,6 +338,7 @@ local function startBoss(bossId: string, players: { Player }): (boolean, string?
 			character:PivotTo(arena.inside * CFrame.new(sideways, 0, 0))
 		end
 	end
+	clearRing(arena, players)
 	setBarrier(arena, true)
 	local unlock = boss.unlock
 	for _, player in players do
@@ -507,6 +533,12 @@ function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
 	arenas = WildService.BuildBossArenas(onGate, onGroup)
 	BattleService.SetBossRewards(onBossWin)
+	BattleService.OnMemberLeft(function(player, monster)
+		local arena = if monster.boss then arenas[monster.boss] else nil
+		if arena then
+			moveOut(player, arena)
+		end
+	end)
 	BattleService.OnFightEnded(function(monster)
 		local arena = if monster.boss then arenas[monster.boss] else nil
 		if arena then

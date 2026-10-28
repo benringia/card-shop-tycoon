@@ -127,6 +127,11 @@ function BossRules.ringSegments(radius: number, maxWidth: number): { number }
 	return angles
 end
 
+-- Whether a spot (offset from the arena's centre) is inside its sealed ring, wall line included
+function BossRules.insideRing(dx: number, dz: number, radius: number): boolean
+	return dx * dx + dz * dz <= (radius + 1) ^ 2
+end
+
 -- Where each of `count` drops lands round the boss (offsets in studs): evenly round the circle from angle `turn`,
 -- every other one on the inner and outer radius so neighbours never land on each other
 function BossRules.scatter(count: number, minRadius: number, maxRadius: number, turn: number): { { x: number, z: number } }

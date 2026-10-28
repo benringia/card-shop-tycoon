@@ -17,6 +17,12 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["insideRing: who gets moved out of a sealed arena"] = function()
+		expect.equal(BossRules.insideRing(10, 20, Bosses.ARENA_RADIUS), true, "well inside")
+		expect.equal(BossRules.insideRing(Bosses.ARENA_RADIUS + 0.5, 0, Bosses.ARENA_RADIUS), true, "on the wall line still counts")
+		expect.equal(BossRules.insideRing(Bosses.ARENA_RADIUS + 3, 0, Bosses.ARENA_RADIUS), false, "outside the gate")
+	end,
+
 	["scatter: every drop lands in the ring, none on another"] = function()
 		local spots = BossRules.scatter(7, Bosses.LOOT_SCATTER.min, Bosses.LOOT_SCATTER.max, 0.3)
 		expect.equal(#spots, 7, "one per drop")
@@ -195,7 +201,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

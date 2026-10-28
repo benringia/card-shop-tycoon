@@ -81,6 +81,7 @@ local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
 local fightEndedHandlers: { (monster: Monster) -> () } = {}
+local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
@@ -104,6 +105,11 @@ function BattleService.IsResting(player: Player, beastId: string): boolean
 end
 
 -- ArenaService refuses wild fights while a player has a challenge, a queued match or a PvP fight
+-- BossService: a player left a fight that goes on without them (it moves them out of a sealed arena)
+function BattleService.OnMemberLeft(handler: (player: Player, monster: Monster) -> ())
+	table.insert(memberLeftHandlers, handler)
+end
+
 -- BossService: every fight's end, whatever the result (it unseals the arena)
 function BattleService.OnFightEnded(handler: (monster: Monster) -> ())
 	table.insert(fightEndedHandlers, handler)
@@ -571,6 +577,9 @@ local function leave(fight: Fight, member: Member)
 	local events = BattleSim.withdraw(fight.sim, member.owner)
 	local player = member.player
 	local rested = release(fight, member)
+	for _, handler in memberLeftHandlers do
+		handler(player, fight.monster)
+	end
 	if player.Parent then
 		Remotes.BattleEnded:FireClient(player, { result = "run", rested = rested })
 		sendResting(player)

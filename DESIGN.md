@@ -608,7 +608,8 @@ and rewards in `BossService`.
   key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
   the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
   group, below). The ring (radius 36) seals while a fight runs: the members are moved just inside the gate and a
-  see-through wall rises all round (`BARRIER_*`), dropping when the fight ends for any reason. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
+  see-through wall rises all round (`BARRIER_*`), dropping when the fight ends for any reason. Anyone else inside the ring when it seals, and a group member who
+  leaves a fight that goes on, is moved out through the gate. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
   studs, stuns on a boss last at most 1 s.
 - **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
   (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
@@ -619,10 +620,11 @@ and rewards in `BossService`.
   Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
   them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
   boss falls.
-- **Loot on the ground:** a win's items (drops, first-clear chest, daily bonus, trophy) pop out of the boss and scatter
+- **Loot on the ground:** a win's repeatable items (drops, daily bonus) pop out of the boss and scatter
   round it (4-10 studs, `LOOT_*`), each player's own drops seen only by them (LootController). Walking over one picks it
   up (the server checks it's yours and within 8 studs); anything left goes into the Bag after 60 s, and everything still
-  on the ground is collected when you leave or teleport. Cash and XP stay instant.
+  on the ground is collected when you leave or teleport. Cash and XP stay instant. The first-clear chest (fragments,
+  trophy) goes straight into the Bag: it's one-time and the clear is saved at once.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
   which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when

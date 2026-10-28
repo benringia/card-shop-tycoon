@@ -569,7 +569,7 @@ function WildService.SpawnAt(position: Vector3, species: string, level: number, 
 	return createMonster(species, level, elite, zone, position, nil, boss)
 end
 
-export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame, groupPrompt: ProximityPrompt, barrier: { BasePart }, inside: CFrame }
+export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame, groupPrompt: ProximityPrompt, barrier: { BasePart }, inside: CFrame, center: Vector3 }
 
 -- Main game: a fenced ring beside each boss's zone with a gate (server prompts "Fight boss" -> onGate, "Start group" ->
 -- onGroup; BossService changes the group prompt's text) and a sign. Returns where each gate and boss stand, by boss id.
@@ -646,6 +646,7 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 			groupPrompt = groupPrompt,
 			spawn = CFrame.lookAt(bossSpot, gateSpot),
 			barrier = barrier,
+			center = center,
 			inside = CFrame.lookAt(gateSpot + Vector3.new(Bosses.INSIDE_STEP, 3, 0), bossSpot + Vector3.new(0, 3, 0)), -- where members stand when it seals
 		}
 	end

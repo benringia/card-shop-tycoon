@@ -768,9 +768,16 @@ end
 local function bossLines(boss: any): { string }
 	local lines = {}
 	if boss.firstClear then
-		table.insert(lines, "🏆 First clear!")
+		table.insert(lines, "🏆 First clear! The chest went into your Bag:")
+	end
+	local listed = {}
+	for _, entry in (if typeof(boss.chest) == "table" then boss.chest else {}) do
+		table.insert(listed, entry)
 	end
 	for _, entry in (if typeof(boss.items) == "table" then boss.items else {}) do
+		table.insert(listed, entry)
+	end
+	for _, entry in listed do
 		local item = Items.ITEMS[entry.item]
 		if item then
 			local icon = if string.match(item.icon, "^%a") then "" else `{item.icon} ` -- emoji icons only
