@@ -29,7 +29,8 @@ export type Mechanics = {
 }
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
 export type Phase = { below: number, element: string, mechanics: Mechanics }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }? }
+-- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
@@ -128,7 +129,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		side = side,
 		element = if first then first.element else input.element,
 		maxHp = input.hp,
-		hp = input.hp,
+		hp = if input.hpNow then math.clamp(input.hpNow, 1, input.hp) else input.hp,
 		atk = input.atk,
 		spd = input.spd,
 		signature = input.signature,

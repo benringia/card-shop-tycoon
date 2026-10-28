@@ -120,6 +120,14 @@ local function firstOf(events: { any }, kind: string): any
 end
 
 return {
+	["hpNow: a fighter starts hurt but keeps its max HP"] = function()
+		local state = BattleSim.new(combat, { fighters = { { id = "x", element = "Ember", hp = 100, atk = 5, spd = 10, hpNow = 40 } }, abilities = false, canRun = false },
+			{ fighters = { monster("Tide", 50, 1, 1) }, abilities = false, canRun = false }, 1)
+		local x = BattleSim.getFighter(state, "a:x") :: any
+		expect.equal(x.hp, 40, "starts at 40")
+		expect.equal(x.maxHp, 100, "max stays 100")
+	end,
+
 	["phases: the boss starts as phase 1"] = function()
 		local state = phasedBoss(PHASES, 11)
 		expect.equal(state.sides.b.fighters[1].element, "Tide", "phase 1's element")
