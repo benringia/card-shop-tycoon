@@ -12,16 +12,21 @@ local function clamp(value: number, low: number, high: number): number
 	return math.clamp(value, low, math.max(low, high))
 end
 
--- Centred over the anchor, kept on screen
+-- Centred over the anchor, or under it when there's no room above (never over it), kept on screen
 function UiLayout.above(anchor: Rect, tip: Size, screen: Size, gap: number): Point
+	local y = anchor.y - gap - tip.h
+	if y < 0 then
+		y = anchor.y + anchor.h + gap
+	end
 	return {
 		x = clamp(anchor.x + anchor.w / 2 - tip.w / 2, 0, screen.w - tip.w),
-		y = clamp(anchor.y - gap - tip.h, 0, screen.h - tip.h),
+		y = clamp(y, 0, screen.h - tip.h),
 	}
 end
 
--- Right of the anchor, else left of it, else above it; level with its top, kept on screen
-function UiLayout.beside(anchor: Rect, tip: Size, screen: Size, gap: number): Point
+-- Right of the anchor, else left of it, else above (or under) `around` (the anchor when not given: the binder passes
+-- the hovered pocket while the anchor is the whole book); level with the anchor's top, kept on screen
+function UiLayout.beside(anchor: Rect, tip: Size, screen: Size, gap: number, around: Rect?): Point
 	local right = anchor.x + anchor.w + gap
 	local left = anchor.x - gap - tip.w
 	local x
@@ -30,7 +35,7 @@ function UiLayout.beside(anchor: Rect, tip: Size, screen: Size, gap: number): Po
 	elseif left >= 0 then
 		x = left
 	else
-		return UiLayout.above(anchor, tip, screen, gap)
+		return UiLayout.above(around or anchor, tip, screen, gap)
 	end
 	return { x = x, y = clamp(anchor.y, 0, screen.h - tip.h) }
 end

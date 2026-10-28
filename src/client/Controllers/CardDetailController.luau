@@ -55,7 +55,7 @@ local PANEL_TOP = 84 -- below the binder's close button
 local PHONE_RIGHT = 76 -- phones: the binder's close button keeps the top right corner
 local GAP = 8
 local ROW_HEIGHT = 52
-local PHONE_ROW_HEIGHT = 44
+local PHONE_ROW_HEIGHT = 48 -- a tap target, never smaller
 local PHONE_HEADER = 44 -- phones: a slimmer band, no pills row (the card face shows rarity and element) and no list title
 local LIST_TOP = 54 -- the copies list starts under the pills and its title
 local CARD_GAP = 16 -- between the 3D card and the panel
@@ -165,7 +165,6 @@ local function layout()
 	rowHeight = if phone then PHONE_ROW_HEIGHT else ROW_HEIGHT
 	copiesList.Position = UDim2.fromOffset(0, listTop)
 	copiesList.Size = UDim2.new(1, 0, 1, -(listTop + selectedBox.AbsoluteSize.Y + GAP))
-	CardInspectorController.SetCardRight(view.X - right - width - CARD_GAP)
 end
 
 -- The disabled look for a button that can't be used now (its text says why)
@@ -182,10 +181,8 @@ local function targetOf(entry: Entry): Target
 	return { cardId = (currentCard :: Card).id, foil = entry.foil, grade = entry.grade }
 end
 
--- Add to party / Give a job for the chosen copy, or why not
+-- Add to party / Give a job for the chosen copy, or why not (an open chooser stays open: Refresh redraws it)
 local function refreshButtons(selected: Entry?)
-	partyChooser.Visible = false
-	jobChooser.Visible = false
 	local beast = if selected then selected.beast else nil
 	local job = if beast then source.working()[beast.id] else nil
 	local inParty = beast ~= nil and source.partied()[beast.id] == true
@@ -363,7 +360,7 @@ local function renderSelected(card: Card, entry: Entry?)
 
 	local job = if beast then source.working()[beast.id] else nil
 	local busy = if job then `Working: {job}` elseif beast and source.partied()[beast.id] then "In your party" else nil
-	if busy then
+	if busy and not UIKit.isPhone() then -- phones: the disabled buttons already say it, the copies list needs the room
 		local line = hList(selectedBox, 22, 6)
 		line.LayoutOrder = 4
 		Icon.make(line, if job then "Job" else "Party", UDim2.fromOffset(20, 20)).ZIndex = line.ZIndex + 1
@@ -562,6 +559,20 @@ function CardDetailController.Refresh()
 
 	renderSelected(card, selected)
 	refreshButtons(selected)
+	-- A shop sale or a binder update mustn't close a chooser someone is reading: redraw it, or close it if the copy
+	-- can no longer go there
+	if partyChooser.Visible then
+		if not partyTarget then
+			partyChooser.Visible = false
+		elseif compareSlot then
+			CardDetailController.ShowCompare(compareSlot)
+		else
+			showSlots()
+		end
+	end
+	if jobChooser.Visible and not jobTarget then
+		jobChooser.Visible = false
+	end
 end
 
 function CardDetailController.IsOpen(): boolean
@@ -871,6 +882,12 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	if camera then
 		camera:GetPropertyChangedSignal("ViewportSize"):Connect(layout)
 	end
+	-- The 3D card's right edge follows the panel's real left edge on screen (safe areas and notches included)
+	local function followPanel()
+		CardInspectorController.SetCardRight(panel.AbsolutePosition.X - CARD_GAP)
+	end
+	panel:GetPropertyChangedSignal("AbsolutePosition"):Connect(followPanel)
+	followPanel()
 	for _, name in { "JobSlots", "JobsUsed" } do
 		player:GetAttributeChangedSignal(name):Connect(CardDetailController.Refresh)
 	end

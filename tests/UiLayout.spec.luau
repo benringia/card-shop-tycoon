@@ -29,6 +29,19 @@ return {
 		expect.equal(spot.x, 770, "clamped to the right edge")
 		expect.equal(spot.y, 312, "above the slot")
 	end,
+	["above: no room above goes below the anchor, never over it"] = function()
+		-- the HUD party bar on a touch phone sits near the top of the screen
+		local spot = UiLayout.above({ x = 600, y = 80, w = 60, h = 80 }, { w = 230, h = 180 }, { w = 750, h = 381 }, 10)
+		expect.equal(spot.y, 170, "below the slot")
+		expect.equal(spot.x, 515, "centred on it")
+	end,
+	["beside: no side room falls back around the pocket, not the whole book"] = function()
+		local book = { x = 100, y = 40, w = 560, h = 100 }
+		local pocket = { x = 500, y = 40, w = 100, h = 100 }
+		local spot = UiLayout.beside(book, { w = 260, h = 200 }, { w = 760, h = 500 }, 8, pocket)
+		expect.equal(spot.y, 148, "below the top-row pocket")
+		expect.equal(spot.x, 420, "centred on the pocket")
+	end,
 	["inspectorCard: the card's right edge lands on the panel"] = function()
 		local offset, rect = UiLayout.inspectorCard({ w = 1000, h = 500 }, 70, 3, { w = 1.8, h = 2.57 }, 0, 480, 8)
 		expect.near(offset, -1.068, 0.01, "studs left of centre")

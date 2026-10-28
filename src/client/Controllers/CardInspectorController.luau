@@ -40,7 +40,7 @@ local renderConnection: RBXScriptConnection? = nil
 local inputConnections: { RBXScriptConnection } = {}
 local savedCameraType: Enum.CameraType? = nil
 local savedCameraCFrame: CFrame? = nil
-local cardRight: number? = nil -- viewport x of the card's right edge (nil: CARD_RIGHT_SHARE of the width)
+local cardRight: number? = nil -- GUI x of the card's right edge (nil: CARD_RIGHT_SHARE of the width)
 local cardRect: UiLayout.Rect? = nil -- where the card shows, in GUI pixels (below the top bar inset)
 local yaw, pitch = 0, 0 -- current tilt (degrees)
 local dragYaw, dragPitch = 0, 0 -- what the drag asks for
@@ -115,16 +115,19 @@ local function onRender(dt: number)
 	yaw += (targetYaw - yaw) * blend
 	pitch += (targetPitch - pitch) * blend
 	local view = camera.ViewportSize
+	-- GUI space starts inside the safe area (top bar, notches): its x and y are inset from the viewport's
+	local inset = GuiService:GetGuiInset()
+	local right = cardRight
 	local offset, rect = UiLayout.inspectorCard(
 		{ w = view.X, h = view.Y },
 		camera.FieldOfView,
 		Inspector.DISTANCE,
 		{ w = Inspector.CARD_SIZE.X, h = Inspector.CARD_SIZE.Y },
 		Inspector.OFFSET_Y,
-		cardRight or view.X * Inspector.CARD_RIGHT_SHARE,
+		if right then right + inset.X else view.X * Inspector.CARD_RIGHT_SHARE,
 		Inspector.MARGIN_PX
 	)
-	cardRect = { x = rect.x, y = rect.y - GuiService:GetGuiInset().Y, w = rect.w, h = rect.h }
+	cardRect = { x = rect.x - inset.X, y = rect.y - inset.Y, w = rect.w, h = rect.h }
 	local base = camera.CFrame * CFrame.new(offset, Inspector.OFFSET_Y, -Inspector.DISTANCE)
 	-- Face the camera (the part's front, -Z, points back at it), then tilt
 	part.CFrame = base * CFrame.Angles(math.rad(pitch), math.rad(yaw + 180), 0)
@@ -260,7 +263,7 @@ local function setRibbon(text: string?)
 	padding.Parent = ribbon
 end
 
--- Where the card's right edge goes (viewport x): just left of the info panel
+-- Where the card's right edge goes (GUI x, like a frame's AbsolutePosition): just left of the info panel
 function CardInspectorController.SetCardRight(px: number)
 	cardRight = px
 end

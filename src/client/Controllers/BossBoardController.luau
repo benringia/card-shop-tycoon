@@ -304,7 +304,9 @@ local function renderDetails(index: number, step: StepState, power: number)
 
 	text(left, boss.name, UIKit.textSize("name"), WHITE, true).LayoutOrder = 1
 	local pills = strip(left, 2, 24, 6)
-	UIKit.pill(pills, boss.element, Cards.ELEMENTS[boss.element] or UIStyle.ROW, nil, BossTints.icon(bossId)).LayoutOrder = 1
+	-- The Hydra changes element with each phase: every element, not its config's starting one
+	local element = if boss.phases then "All elements" else boss.element
+	UIKit.pill(pills, element, if boss.phases then UIStyle.ROW else Cards.ELEMENTS[boss.element] or UIStyle.ROW, nil, BossTints.icon(bossId)).LayoutOrder = 1
 	UIKit.pill(pills, whereText(bossId), UIStyle.ROW, nil, "Shop").LayoutOrder = 2
 
 	if step == "locked" then

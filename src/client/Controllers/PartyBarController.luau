@@ -3,7 +3,7 @@
 -- Party panel), then your 3 party slots as small cards. A filled slot shows the card's art in its rarity rim with
 -- its level; the summoned one lifts and glows with an OUT tag; an empty one is a dashed "+" (picks a card in the
 -- binder). Tap a slot, or press 1 / 2 / 3, to summon it (again to unsummon). Cards resting after a fight dim and show
--- "💤 2:41". Hovering a card (or holding a finger on it) shows its tooltip above the bar: Power, HP / ATK / SPD
+-- an hourglass and "2:41". Hovering a card (or holding a finger on it) shows its tooltip above the bar: Power, HP / ATK / SPD
 -- bars, perk and rest (Util/CardTips), so you don't need the binder. Numbers: Config/Party BAR.
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
@@ -287,10 +287,19 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	shade.Visible = false
 	shade.Parent = button
 	UIKit.corner(shade, 8)
+	-- Resting: an hourglass over the time left (icons, not emoji)
+	local hourglass = Icon.make(shade, "Hourglass", UDim2.fromScale(0.5, 0.5))
+	hourglass.AnchorPoint = Vector2.new(0.5, 0)
+	hourglass.Position = UDim2.fromScale(0.5, 0.08)
+	hourglass.SizeConstraint = Enum.SizeConstraint.RelativeXX
+	hourglass.ZIndex = 7
 	local rest = UIKit.label(shade, "", Enum.Font.FredokaOne, 12, WHITE)
-	rest.Size = UDim2.fromScale(1, 1)
+	rest.AnchorPoint = Vector2.new(0, 1)
+	rest.Position = UDim2.fromScale(0, 0.92)
+	rest.Size = UDim2.new(1, 0, 0, 14)
 	rest.TextXAlignment = Enum.TextXAlignment.Center
 	rest.ZIndex = 7
+	UIKit.outlined(rest, 1.5)
 
 	keyChip(button, tostring(slot))
 	button.Activated:Connect(function()
@@ -316,6 +325,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 		if input.UserInputType ~= Enum.UserInputType.Touch then
 			return
 		end
+		swallowTap[slot] = nil -- a hold released off the card never fired Activated: don't eat this new tap
 		pressed += 1
 		local press = pressed
 		task.delay(UIStyle.LONG_PRESS, function()
@@ -535,7 +545,7 @@ function PartyBarController.Start()
 			local seconds = if slots[slot] then RestTimers.GetSeconds(slots[slot]) else 0
 			view.shade.Visible = seconds > 0
 			if seconds > 0 then
-				view.rest.Text = `💤\n{RestTimers.Format(seconds)}`
+				view.rest.Text = RestTimers.Format(seconds)
 			end
 		end
 		local open = tipSlot

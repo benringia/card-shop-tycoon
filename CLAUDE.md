@@ -23,7 +23,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/ui/card-art` (one painting per card, `docs/card-art.md`), `assets/ui/card-scenes` (one JPEG per element; ids for both in `Config/CardDesign`) and `assets/ui/packs` (pack fronts, ids in
   `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
-  `tools/ui-icons/slice_icons.py <sheet> <1|2|3>` (needs Pillow). Not synced by Rojo.
+  `tools/ui-icons/slice_icons.py <sheet> <1-4>` (needs Pillow). Not synced by Rojo.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 

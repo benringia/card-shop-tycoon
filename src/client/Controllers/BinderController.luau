@@ -683,7 +683,7 @@ local function tooltipInfo(card: Card): CardTips.CardInfo
 	}
 end
 
--- Level with its pocket, just outside the book (right of it, else left, else above), so it never covers a card
+-- Level with its pocket, just outside the book (right of it, else left; else above or under the pocket), never over it
 local function placeTooltip()
 	local tile = tooltipTile
 	if not tile or not tooltip.Visible then
@@ -696,7 +696,9 @@ local function placeTooltip()
 		{ x = book.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = book.AbsoluteSize.X, h = button.AbsoluteSize.Y },
 		{ w = tooltip.AbsoluteSize.X, h = tooltip.AbsoluteSize.Y },
 		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
-		TOOLTIP_GAP
+		TOOLTIP_GAP,
+		-- no room either side of the book: above or under the pocket itself
+		{ x = button.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = button.AbsoluteSize.X, h = button.AbsoluteSize.Y }
 	)
 	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
