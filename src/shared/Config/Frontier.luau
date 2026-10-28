@@ -6,6 +6,8 @@ return {
 	-- The Frontier place has no plots: the map sits at the origin, the entrance at its south edge
 	ORIGIN = { x = 0, y = 0, z = 0 },
 	SPRING = { x = 22, y = 0, z = -70 }, -- healing spring next to the entrance
+	SPRING_LABEL_DISTANCE = 35, -- the healing spring's name shows only this close
+	PORTAL_SIGN_HEIGHT = 17, -- the Dungeon portal's sign floats this high over its frame
 	DUNGEON_PORTAL = { x = -22, y = 0, z = -70 }, -- part 3b; "coming soon" until then
 	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN
 	ZONE_SIZE = 140,
