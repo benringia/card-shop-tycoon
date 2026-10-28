@@ -5,6 +5,7 @@
 -- their spawn, and elites (and every monster in an aggro zone) chase players and report contact, which
 -- BattleService turns into a fight. Fights themselves live in BattleService. Boss arenas (Config/Bosses) sit beside
 -- their zones; a boss is a monster with a `boss` id that stands still until its fight ends (BossService spawns it).
+-- The Dungeon place has no wild map: the cavern (Util/DungeonBuilder) instead, and monsters only while a room is fought.
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -20,6 +21,8 @@ local Wild = Place.getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Dungeon = require(Config:WaitForChild("Dungeon"))
+local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
@@ -27,6 +30,7 @@ local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local PlotService = require(Services:WaitForChild("PlotService"))
+local DungeonBuilder = require(Util:WaitForChild("DungeonBuilder"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 export type Monster = {
@@ -65,7 +69,9 @@ local inWild: { [Player]: boolean } = {}
 local contactCallbacks: { (player: Player, monster: Monster) -> () } = {}
 local travelBlockers: { (player: Player) -> string? } = {}
 local homeHandler: ((player: Player) -> ())? = nil
-local frontierSpawn: SpawnLocation? = nil -- Frontier: everyone spawns here (not on a template spawn pad)
+local dungeonHandler: ((player: Player) -> ())? = nil -- the Frontier's Dungeon portal (DungeonGateService)
+local frontierSpawn: SpawnLocation? = nil -- Frontier and Dungeon: everyone spawns here (not on a template spawn pad)
+local dungeonLayout: DungeonBuilder.DungeonLayout? = nil -- the Dungeon place's cavern
 local allowTravel = RateLimiter.new(TRAVEL_COOLDOWN)
 local rng = Random.new()
 local rayParams = RaycastParams.new()
@@ -330,9 +336,13 @@ local function buildPlaza()
 		frontierSpawn = spawn
 		local dungeonSpot = vec((Wild :: any).DUNGEON_PORTAL)
 		portal(folder, "Dungeon", dungeonSpot, Vector3.new(1, 0, 0), "Enter", function(player)
-			notify(player, "Dungeons are coming soon!", false)
+			if dungeonHandler then
+				dungeonHandler(player)
+			else
+				notify(player, "The Dungeon is coming soon!", false)
+			end
 		end)
-		sign(folder, "Dungeons · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(90), 0))
+		sign(folder, if Places.DUNGEON_PLACE_ID ~= 0 then "The Dungeon" else "The Dungeon · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(90), 0))
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		-- Its floating name label comes from TownService, like the other plaza portals
@@ -578,13 +588,15 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 	local folder = Instance.new("Folder")
 	folder.Name = "BossArenas"
 	folder.Parent = mapFolder -- part of the map, so bosses stand on its floor
-	local here = if Place.isFrontier() then "Frontier" else "Wild"
+	local here = if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Wild"
 	for _, bossId in Bosses.LADDER do
 		local boss = Bosses.BOSSES[bossId]
 		if boss.place ~= here then
-			continue -- its arena is in the other place
+			continue -- its arena is in another place
 		end
-		local center = zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
+		-- The Dungeon's boss: its chamber at the cavern's end; the others beside their zone
+		local center = if here == "Dungeon" then vec(Dungeon.CHAMBER)
+			else zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
 		local radius = Bosses.ARENA_RADIUS
 		-- Cylinders run along X: lay the disc flat
 		local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(70, 66, 80), Enum.Material.Slate)
@@ -690,12 +702,13 @@ end
 -- Safety net: anyone in the wild who falls well below its floor goes back to the entrance
 local function rescueFallen()
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
+	local target = if dungeonLayout then dungeonLayout.entrance else CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))
 	for player in inWild do
 		local root = getRoot(player)
 		if root and root.Position.Y < ORIGIN.Y - Wild.FALL_RESCUE_DEPTH and not root.Anchored then
 			root.AssemblyLinearVelocity = Vector3.zero
 			local character = player.Character :: Model
-			character:PivotTo(CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1)) + Vector3.new(0, ARRIVAL_LIFT, 0))
+			character:PivotTo(target + Vector3.new(0, ARRIVAL_LIFT, 0))
 		end
 	end
 end
@@ -731,6 +744,16 @@ function WildService.SetFightCheck(check: (player: Player) -> boolean)
 	isFighting = check
 end
 
+-- The Frontier: what its Dungeon portal's Enter does (DungeonGateService)
+function WildService.SetDungeonHandler(handler: (player: Player) -> ())
+	dungeonHandler = handler
+end
+
+-- The Dungeon place's cavern (nil elsewhere): its rooms, doors and spawn for DungeonService
+function WildService.GetDungeonLayout(): DungeonBuilder.DungeonLayout?
+	return dungeonLayout
+end
+
 function WildService.SetHomeHandler(handler: (player: Player) -> ())
 	homeHandler = handler
 end
@@ -739,7 +762,7 @@ function WildService.TravelHome(player: Player)
 	if not canTravel(player) then
 		return
 	end
-	if Place.isFrontier() then
+	if Place.isFrontier() or Place.isDungeon() then
 		if homeHandler then
 			homeHandler(player)
 		end
@@ -768,15 +791,25 @@ function WildService.Start()
 	monstersFolder.Name = "Monsters"
 	monstersFolder.Parent = workspace
 
-	mapFolder = buildMap()
-	mapFolder.Parent = workspace
-	rayParams.FilterDescendantsInstances = { mapFolder }
-	buildPlaza()
-	for _, point in CollectionService:GetTagged(SPAWN_TAG) do
-		if point:IsA("BasePart") then
-			spawnAt(point)
+	if Place.isDungeon() then
+		-- No wild map or spawns: the cavern, and monsters only while a room is fought
+		mapFolder = Instance.new("Folder")
+		mapFolder.Name = "Dungeon"
+		local layout = DungeonBuilder.build(mapFolder)
+		mapFolder.Parent = workspace
+		dungeonLayout = layout
+		frontierSpawn = layout.spawn
+	else
+		mapFolder = buildMap()
+		mapFolder.Parent = workspace
+		buildPlaza()
+		for _, point in CollectionService:GetTagged(SPAWN_TAG) do
+			if point:IsA("BasePart") then
+				spawnAt(point)
+			end
 		end
 	end
+	rayParams.FilterDescendantsInstances = { mapFolder }
 
 	Remotes.WildTravel.OnServerEvent:Connect(function(player, where)
 		if where == "wild" then
@@ -786,8 +819,8 @@ function WildService.Start()
 		end
 	end)
 	local function watch(player: Player)
-		if Place.isFrontier() then
-			-- The whole Frontier is wild: monsters wake for everyone here
+		if Place.isFrontier() or Place.isDungeon() then
+			-- The whole Frontier (and the Dungeon) is wild: monsters wake for everyone here
 			inWild[player] = true
 			player.RespawnLocation = frontierSpawn
 			player.CharacterAdded:Connect(function()

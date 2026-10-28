@@ -6,6 +6,7 @@
 -- made with Colors.Text / Colors.Subtext turn navy when the surface behind them is light.
 -- Sizes follow mobile-first rules: tap targets at least 48px.
 local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
@@ -79,6 +80,15 @@ function UIKit.pointerBlocked(screen: Vector2): boolean
 		end
 	end
 	return false
+end
+
+UIKit.PHONE_HEIGHT = 500 -- a screen this short (landscape phones) gets the compact layouts
+
+-- A phone-sized screen: touch only, or a short screen (the Device emulator's phones too)
+function UIKit.isPhone(): boolean
+	local camera = workspace.CurrentCamera
+	local short = camera ~= nil and camera.ViewportSize.Y < UIKit.PHONE_HEIGHT
+	return short or (UserInputService.TouchEnabled and not UserInputService.MouseEnabled)
 end
 
 -- Where a tooltip goes by the cursor (screen: a viewport point, like GetMouseLocation): below and right of it,

@@ -20,7 +20,8 @@ local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
-local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld() -- the Frontier's zones there
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -39,6 +40,7 @@ local MonetizationService = require(Services:WaitForChild("MonetizationService")
 local PackService = require(Services:WaitForChild("PackService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
+local DungeonService = require(Services:WaitForChild("DungeonService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type CommandHandler = (player: Player, text: string) -> ()
@@ -269,6 +271,14 @@ function DevService.Start()
 		else
 			WildService.TravelToWild(player, gate)
 		end
+	end)
+	addCommand(folder, "room", function(player, text)
+		local room = tonumber(string.match(text, "%s+(%d+)") or "")
+		if not Place.isDungeon() or not room then
+			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /room <2-4> (4: the Hydra's chamber)", true)
+			return
+		end
+		DungeonService.SkipTo(room, player)
 	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
 	addCommand(folder, "wild", function(player)

@@ -6,6 +6,8 @@
 -- (saved as resting = { [beastId] = Unix time }), faster near the plaza spring. A fight has members: a Wild fight or a
 -- solo boss is a group of one; boss groups (BossService) put 2-4 players on side A against one scaled boss, each
 -- calling in and using abilities only on their own creatures, leaving on their own, and paid on their own.
+-- The Dungeon (DungeonService, BossService.StartRun) starts run fights: RunOptions bring a room's pack of monsters and
+-- the HP each creature has left from earlier rooms; every fight reports each member's HP when it ends.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -15,12 +17,14 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Announcements = require(Config:WaitForChild("Announcements"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
 local Wild = Place.getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
+local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -60,8 +64,13 @@ type Fight = {
 	sinceSnapshot: number,
 	ended: boolean,
 	startsAt: number, -- os.clock(): boss fights hold still through the intro until then
-	adds: { [string]: Monster }, -- a boss's adds, by sim id ("b:add1"...)
+	adds: { [string]: Monster }, -- a boss's adds and a room's pack, by sim id ("b:add1"..., "b:p1"...)
+	run: boolean, -- a Dungeon run fight: rewards without items, Run leaves the run
+	endHp: { [Player]: { [string]: number } }, -- each member's creatures' HP when they left the fight (its end or earlier)
 }
+
+-- The Dungeon: a room's pack (`monster` is its first, `pack` the others) and the HP left from earlier rooms
+export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean? }
 
 local BattleService = {}
 
@@ -80,7 +89,7 @@ local allowStart = RateLimiter.new(1)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
-local fightEndedHandlers: { (monster: Monster) -> () } = {}
+local fightEndedHandlers: { (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }) -> () } = {}
 local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
@@ -111,7 +120,9 @@ function BattleService.OnMemberLeft(handler: (player: Player, monster: Monster) 
 end
 
 -- BossService: every fight's end, whatever the result (it unseals the arena)
-function BattleService.OnFightEnded(handler: (monster: Monster) -> ())
+-- After a fight ends (deferred): its monster, the result ("win", "lose", "run", or "timeout" when it hit the time
+-- limit) and every member's creatures' HP then
+function BattleService.OnFightEnded(handler: (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }) -> ())
 	table.insert(fightEndedHandlers, handler)
 end
 
@@ -325,6 +336,9 @@ end
 local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart }, addMonsters: { [string]: string })
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
 	local adds = if boss then boss.mechanics.adds else nil
+	for _, phase in (if boss then boss.phases else nil) or {} do
+		adds = adds or phase.mechanics.adds -- the final boss's adds come with a phase
+	end
 	local leader = next(fight.members)
 	if not boss or not adds or not leader then
 		return
@@ -365,6 +379,8 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			end
 		elseif event.type == "spawn" and event.to then
 			spawnAdd(fight, event.to, markers, addMonsters)
+		elseif event.type == "phase" and event.kind then
+			fight.monster.marker:SetAttribute("Phase", event.kind) -- everyone near sees that head light up
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
 		end
@@ -423,6 +439,17 @@ local function rollDrop(monster: Monster): string?
 	return if #pool > 0 then pool[rng:NextInteger(1, #pool)] else nil
 end
 
+-- A room's pack besides its first monster
+local function packOf(fight: Fight): { Monster }
+	local pack = {}
+	for id, monster in fight.adds do
+		if string.sub(id, 1, 3) == "b:p" then
+			table.insert(pack, monster)
+		end
+	end
+	return pack
+end
+
 -- One member's win: their own party's XP and cash; a boss's items through BossService (their contribution decides)
 local function payOut(fight: Fight, member: Member): any
 	local player, monster = member.player, fight.monster
@@ -444,6 +471,21 @@ local function payOut(fight: Fight, member: Member): any
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
 		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, fighterIds = fighterIds, contributed = contributed }) else nil
 		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot }
+	end
+	if fight.run then
+		-- A Dungeon room: the elite XP and cash of every monster in the pack, no cards or items
+		local xp, cash = 0, 0
+		for _, foe in { monster, table.unpack(packOf(fight)) } do
+			local paid = CombatMath.getRewards(Wild, foe.level, foe.elite)
+			xp += paid.xp
+			cash += paid.cash
+		end
+		local xpEach = CombatMath.splitXp(xp, #member.partyIds)
+		for _, beastId in member.partyIds do
+			CardService.AddXP(player, beastId, xpEach)
+		end
+		EconomyService.AddCash(player, cash)
+		return { xpEach = xpEach, cash = cash, shards = 0 }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
 	local each = CombatMath.splitXp(rewards.xp, #member.partyIds)
@@ -491,6 +533,7 @@ end
 -- A member is out of the fight: their creatures are released, fainted ones rest. Returns the ones that rest.
 local function release(fight: Fight, member: Member): { string }
 	local player = member.player
+	fight.endHp[player] = BattleSim.hpLeft(fight.sim, "a", member.owner)
 	fight.members[player] = nil
 	if fights[player] == fight then
 		fights[player] = nil
@@ -529,9 +572,10 @@ local function endFight(fight: Fight, result: string)
 	if fight.ended then
 		return
 	end
-	task.defer(function()
+	local reported = if fight.sim.timedOut then "timeout" else result
+	task.defer(function() -- after every member is released below, so endHp is complete
 		for _, handler in fightEndedHandlers do
-			handler(fight.monster)
+			handler(fight.monster, reported, fight.endHp)
 		end
 	end)
 	fight.ended = true
@@ -539,8 +583,13 @@ local function endFight(fight: Fight, result: string)
 	for _, add in fight.adds do
 		WildService.Defeat(add) -- a boss's adds go with it
 	end
-	if result == "win" or fight.monster.boss then
-		WildService.Defeat(fight.monster) -- a boss always goes when its fight ends
+	if result == "win" and fight.monster.boss then
+		-- A beaten boss lies there a moment (its death scene on clients), then goes
+		local fallen = fight.monster
+		fallen.marker:SetAttribute("Fainted", true)
+		task.delay(Bosses.DEATH_SECONDS, WildService.Defeat, fallen)
+	elseif result == "win" or fight.monster.boss or fight.run then
+		WildService.Defeat(fight.monster) -- a boss (or a Dungeon room's pack) always goes when its fight ends
 	else
 		WildService.Unlock(fight.monster)
 	end
@@ -608,7 +657,8 @@ local function whyNotPlayer(player: Player): string?
 	if not leaderId or not CardService.GetBeast(player, leaderId) then
 		return "Summon a party creature to fight."
 	elseif isResting(player, leaderId) then
-		return `Your creature is resting. Summon a rested one or visit {if Place.isFrontier() then "the spring at the entrance" else "the plaza spring"}.`
+		return if Place.isDungeon() then "Your creature is resting. Summon a rested one."
+			else `Your creature is resting. Summon a rested one or visit {if Place.isFrontier() then "the spring at the entrance" else "the plaza spring"}.`
 	elseif not getRoot(player) or not PartyService.GetMarker(player) then
 		return "You can't fight right now."
 	end
@@ -632,9 +682,21 @@ function BattleService.WhyNotFight(player: Player): string?
 	return whyNotPlayer(player)
 end
 
--- Players (the first leads) against one monster. Every check is done by the caller (whyNot for each).
-local function startFight(players: { Player }, monster: Monster): boolean
+-- A Dungeon room's monster as a fighter: its elite stats x Dungeon.PACK_SCALE, scaled to the group like a boss
+local function packInput(id: string, monster: Monster, size: number): BattleSim.FighterInput?
+	local stats = CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
+	if not stats then
+		return nil
+	end
+	local hp, atk, swings = BossRules.groupStats(Bosses, stats.hp * Dungeon.PACK_SCALE.hp, stats.atk * Dungeon.PACK_SCALE.atk, size)
+	return { id = id, element = monster.element, hp = hp, atk = atk, spd = stats.spd, elite = monster.elite, swings = swings }
+end
+
+-- Players (the first leads) against one monster (and a Dungeon room's pack). Every check is done by the caller.
+local function startFight(players: { Player }, monster: Monster, options: RunOptions?): boolean
 	local boss = if monster.boss then Bosses.BOSSES[monster.boss] else nil
+	local run = options ~= nil and options.run == true
+	local hpLeft = if options then options.hpLeft else nil
 	local stats = if boss then { hp = boss.hp, atk = boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
 	if not stats or #players == 0 then
 		return false
@@ -642,6 +704,34 @@ local function startFight(players: { Player }, monster: Monster): boolean
 	local swings = 1
 	if boss then
 		stats.hp, stats.atk, swings = BossRules.groupStats(Bosses, stats.hp, stats.atk, #players, boss.groupAtkStep)
+	end
+	local foes: { BattleSim.FighterInput } = {}
+	if run and not boss then
+		local first = packInput("m", monster, #players)
+		if not first then
+			return false
+		end
+		table.insert(foes, first)
+	else
+		table.insert(foes, {
+			id = "m",
+			element = monster.element,
+			hp = stats.hp,
+			atk = stats.atk,
+			spd = stats.spd,
+			elite = monster.elite,
+			mechanics = if boss then boss.mechanics else nil,
+			phases = if boss then boss.phases else nil,
+			boss = boss ~= nil,
+			swings = swings,
+		})
+	end
+	local pack = if options and options.pack then options.pack else {}
+	for index, extra in pack do
+		local input = packInput(`p{index}`, extra, #players)
+		if input then
+			table.insert(foes, input)
+		end
 	end
 
 	local members: { Member } = {}
@@ -651,37 +741,27 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		local leaderId = party.slots[party.summoned :: number]
 		local owner = tostring(player.UserId)
 		local partyIds = getPartyIds(player)
+		local left = if hpLeft then hpLeft[player] or {} else {}
 		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast)
 		leaderInput.owner = owner
+		leaderInput.hpNow = left[leaderId]
 		table.insert(leaders, leaderInput)
 		for _, beastId in partyIds do
 			local beast = CardService.GetBeast(player, beastId)
-			if beast and beastId ~= leaderId and not isResting(player, beastId) then
+			-- In a run, a card that fainted in an earlier room stays out even once it has rested
+			if beast and beastId ~= leaderId and not isResting(player, beastId) and DungeonRules.canFight(left, beastId) then
 				local input = fighterInput(beast)
 				input.owner = owner
+				input.hpNow = left[beastId]
 				table.insert(reserves, input)
 			end
 		end
 		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0 })
 	end
-	-- Boss fights allow swaps (and the bosses are tuned for them)
-	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss then Combat.BOSS_SWAP_SECONDS else nil }
-	local sim = BattleSim.new(Combat, sideA, {
-		fighters = { {
-			id = "m",
-			element = monster.element,
-			hp = stats.hp,
-			atk = stats.atk,
-			spd = stats.spd,
-			elite = monster.elite,
-			mechanics = if boss then boss.mechanics else nil,
-			boss = boss ~= nil,
-			swings = swings,
-		} },
-		abilities = false,
-		canRun = false,
-	}, rng:NextInteger(1, 2 ^ 30))
-	if boss then
+	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them)
+	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil }
+	local sim = BattleSim.new(Combat, sideA, { fighters = foes, abilities = false, canRun = false }, rng:NextInteger(1, 2 ^ 30))
+	if boss or run then
 		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
 	end
 
@@ -690,7 +770,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 	local root = getRoot(players[1]) :: BasePart
 	local toPlayer = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z)
 	local direction = if toPlayer.Magnitude > 0.1 then toPlayer.Unit else Vector3.new(0, 0, -1)
-	local radius = if boss then Bosses.RING_RADIUS else Combat.RING_RADIUS
+	local radius = if boss then boss.ringRadius or Bosses.RING_RADIUS else Combat.RING_RADIUS
 	local spots: { [string]: CFrame } = { [MONSTER_ID] = CFrame.lookAt(center, center + direction) }
 	local step = Bosses.GROUP_SPACING / radius
 	for index, member in members do
@@ -713,10 +793,25 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		ended = false,
 		startsAt = if boss then os.clock() + Bosses.INTRO_SECONDS else 0,
 		adds = {},
+		run = run,
+		endHp = {},
 	}
 	running[fight] = true
+	if boss and boss.phases then
+		monster.marker:SetAttribute("Phase", boss.phases[1].element)
+	end
 	WildService.Lock(monster, players[1])
 	WildService.SetFightPose(monster, spots[MONSTER_ID])
+	-- A room's pack stands beside its first monster (left, right, further out), held still like a boss's adds
+	for index, extra in pack do
+		local id = `b:p{index}`
+		local sideways = (if index % 2 == 1 then 1 else -1) * Bosses.ADD_SPACING * ((index + 1) // 2)
+		local spot = spots[MONSTER_ID] * CFrame.new(sideways, 0, 0)
+		WildService.Lock(extra, players[1])
+		WildService.SetFightPose(extra, spot)
+		fight.adds[id] = extra
+		fight.spots[id] = spot
+	end
 	for _, member in members do
 		local player = member.player
 		fight.members[player] = member
@@ -733,6 +828,11 @@ local function startFight(players: { Player }, monster: Monster): boolean
 	end
 
 	local markers: { [string]: BasePart } = { [MONSTER_ID] = monster.marker }
+	local foes: { [string]: string } = { [MONSTER_ID] = monster.species } -- a room's monsters by name (its HP bars)
+	for id, extra in fight.adds do
+		markers[id] = extra.marker
+		foes[id] = extra.species
+	end
 	for _, member in members do
 		local marker = PartyService.GetMarker(member.player)
 		if marker then
@@ -766,6 +866,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 			names = names,
 			allies = allies,
 			group = #members > 1,
+			foes = foes,
 			side = "a",
 			markers = markers,
 			snapshot = snapshot(fight),
@@ -784,14 +885,21 @@ end
 
 -- BossService: these players (the first leads) fight this monster together now (false and the first reason if any
 -- of them can't)
-function BattleService.StartGroupFight(players: { Player }, monster: Monster): (boolean, string?)
+-- options: a Dungeon run fight (DungeonService, BossService.StartRun)
+function BattleService.StartGroupFight(players: { Player }, monster: Monster, options: RunOptions?): (boolean, string?)
 	for _, player in players do
 		local reason = whyNot(player, monster)
 		if reason then
 			return false, reason
 		end
+		local left = if options and options.hpLeft then options.hpLeft[player] else nil
+		local party = PartyService.GetParty(player)
+		local leaderId = if party and party.summoned then party.slots[party.summoned] else nil
+		if left and leaderId and not DungeonRules.canFight(left, leaderId) then
+			return false, "That creature is out for this run. Summon another."
+		end
 	end
-	return startFight(players, monster), nil
+	return startFight(players, monster, options), nil
 end
 
 -- BossService: the player fights this monster alone now
@@ -904,7 +1012,7 @@ local function keepNear(fight: Fight, member: Member)
 	if not root then
 		return
 	end
-	local leash = if fight.monster.boss then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS
+	local leash = if fight.monster.boss or fight.run then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS -- big rings
 	local offset = Vector3.new(root.Position.X - fight.center.X, 0, root.Position.Z - fight.center.Z)
 	if offset.Magnitude <= leash then
 		return

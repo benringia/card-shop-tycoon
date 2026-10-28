@@ -397,7 +397,7 @@ Roadmap (one sub-project at a time):
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
       b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
-         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phases 1-3 done (Wild bosses, groups, Frontier bosses and Gold Seals): 5.10).
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phases 1-4 done (Wild bosses, groups, Frontier bosses and Gold Seals, the Dungeon and the Prism Hydra): 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 Not one server for everyone: Roblox fills a Frontier server to the place's Max Players (Creator Hub) and opens more.
@@ -579,7 +579,7 @@ Cost per step, duplicates + cash (`Config/Grading.COSTS`):
 Boss items at the station: Grading Seals stand in for missing duplicates (up to half a step); a Gold Seal pays one
 step's cash, any step except a Legendary's A -> S (`CondenseRules.goldSealAllowed`, checked on the server).
 
-### 5.10 Boss ladder (phases 1-3: Wild bosses 1-3, groups, Frontier bosses 4-6)
+### 5.10 Boss ladder (phases 1-4: Wild bosses 1-3, groups, Frontier bosses 4-6, the Dungeon and the Prism Hydra)
 
 Spec `docs/superpowers/specs/2026-10-28-boss-ladder-design.md`. Each boss drops what helps you beat the next and
 the fragments that open it. Numbers in `Config/Bosses`, rules in `Util/BossRules` (pure, Lune-tested), saved progress
@@ -588,11 +588,12 @@ and rewards in `BossService`.
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 5 | 3 Brood Queen Key Fragments |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
 | 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
 | 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 23000 / 26 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 40000 / 23 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -604,7 +605,8 @@ group, checked before its fragments and every time (not only the first). Below i
 | Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3), Frost Tyrant fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
 | Frost Tyrant | $150 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
 | Storm Sovereign | $210 / 5200 | Gold Seal 25%, Devourer fragment 55% | 3 fragments, trophy, 1 Gold Seal | 1 Gold Seal |
-| Rift Devourer | $280 / 7400 | Gold Seal 30%, Star Shard 30% (1-2) | trophy, 3 Gold Seals | 1 Gold Seal |
+| Rift Devourer | $280 / 7400 | Gold Seal 30%, Star Shard 30% (1-2), Hydra fragment 50% | 3 fragments, trophy, 3 Gold Seals | 1 Gold Seal |
+| Prism Hydra | $400 / 10000 | Gold Seal 40%, Star Shard 40% (1-2), Grading Seal 40% (1-2), XP Tonic 50% (2-3) | trophy, 5 each of Gold Seals, Star Shards, Grading Seals, XP Tonics | 2 Gold Seals |
 
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
@@ -677,8 +679,66 @@ group, checked before its fragments and every time (not only the first). Below i
   is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown and soft cap
   still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
+- **Boss skills keep a gap:** a boss's shield, heal and thunderclap never come back to back (`Combat.BOSS_SKILL_GAP`
+  6 s between any two), and heals run out (`heal.uses`: the Cave Brood Queen 3, the Prism Hydra's Bloom phase 2).
+  Recommended parties now beat the Brood Queen 42% of the time (was 20%: her heals stacked).
+- **Death:** a beaten boss lies there for `DEATH_SECONDS` (4) before it goes, so clients can play its fall (the
+  Prism Hydra's heads drop one by one, the outer ones first).
 - Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` and `/boss <n> group` (use that prompt).
-- Boss models are placeholders (monster shapes at 2.5-3.4x). Next (spec section 10): the Dungeon and the final boss (phase 4).
+- Boss models are placeholders (monster shapes at 2.5-3.4x) except the Prism Hydra (below).
+
+#### The Dungeon and the Prism Hydra (phase 4)
+
+Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladder's last step, about 30-45 hours in.
+- **The place:** a third place (id 79143483483478, `Config/Places.DUNGEON_PLACE_ID`; `dungeon.project.json`, port
+  34874, `PlaceKind = "Dungeon"`, `Place.isDungeon`). No plots, no shop. One run per reserved server.
+- **Getting in:** the Frontier's Dungeon portal (`DungeonGateService`): "Enter" alone or "Start group" / "Join
+  group" (2-4, 15 s, the leader starts early, like boss gates). Every member needs shop level 22, the Hydra open or 10
+  Hydra Key Fragments (the Rift Devourer drops them: 50% per full loot, 3 in its first clear), and a creature ready to
+  fight. Then one teleport takes them into a new reserved Dungeon server (`TeleportData.runSize`). The fragments are
+  taken only when the Hydra fight first starts, so a lost run costs none.
+- **The run (`DungeonService`, `Util/DungeonRules`):** a player joins the run once their save has loaded; the rooms
+  stay shut ("Waiting for n more players to load...") until everyone the teleport brought has loaded
+  (`DungeonRules.readyToStart`; after `ARRIVAL_WAIT` 60 s a player who never came, e.g. a failed teleport, is left
+  behind). Then three rooms open in turn, each a sealed ring with a "Fight" gate. Its pack of elites appears (`Config/Dungeon.ROOMS`:
+  2 Frost Wisp/Shade Lynx at Lv 45, 2 Storm Hawk/Lava Brute at Lv 47, 3 Rift Horror/Prism Crab/Lava Brute at Lv 50;
+  elite stats with ATK x0.35, `PACK_SCALE`, scaled to the group like a boss, with swings) and each monster gets a
+  small HP bar. Creatures keep their HP from room to room; a creature that faints is out for the rest of the run
+  (even once its normal rest is over); no spring, no healing. A room win pays the pack's elite XP and cash, no cards
+  or items, and opens the door on. A player whose whole party is down (they stay in the fight until it ends), who runs
+  or who leaves is out: back to the Frontier after `OUT_DELAY`. Latecomers after the first fight go back too. The
+  run line (top left) shows "Room n of 3" / "The Prism Hydra's chamber" with a Leave button (tap twice). On phones
+  (`UIKit.isPhone`: touch only or a screen under 500 px tall) both are smaller and hide during fights.
+- **The Prism Hydra** ("Crown of Every Element"): in the chamber after room 3 (`BossService.StartRun` with the run's
+  HP). Five phases by HP (`phases`, `BattleSim` with `BossRules.phaseAt`: forward only, a heal never takes it back):
+  100-80% Tide ice shield, 80-60% Volt thunderclap, 60-40% Shade 2 Rift Spawn, 40-20% Bloom heal (5% every 20 s),
+  under 20% Ember enrage (x1.15). Each phase switches its element (so the element wheel changes mid-fight), shows a
+  "Volt phase!" banner and lights that element's head on its model (marker attribute `Phase`). Tuned with the
+  balance tool (it now runs the three rooms first): solo, best card at 2400 plus two at 60% wins about 50%, one maxed
+  card with two Lv 1s 40%, three at 2400 75%, three maxed 88%; the recommended party reaches it with about 74% HP;
+  groups: 2 players 60%, 4 players 50% (typical party), group ATK step 0.25.
+- **Conquest:** the first clear shows a full-screen "DUNGEON CONQUERED", gives the chest straight into the Bag
+  (trophy, 5 each of the four items), the title "Dungeon Conqueror" over your name in every place (player attribute
+  `Title`, from the saved first clear, `Boss.clearTitle`; TitleController) and a chat message in every server of the
+  experience ("Ben conquered the Dungeon!", MessagingService topic `BossCleared`, `announceEverywhere`). Then a portal
+  home opens in the chamber (pick up your loot first). Later wins: "Victory!", the usual farm protection.
+- **The model:** a blocky remodel of the Crystal Titans Rainbow Hydra (`tools/blender/build_prismHydra.py`,
+  `assets/monsters/prismHydra.rbxm`) in a faceted low-poly "studded" style from the user's references (our own
+  creature): chamfered chunky shapes with small raised square studs over a dark indigo hide, cream horns, muzzles and
+  belly, a gold collar and claws, prism crystal shards down its back, glowing gold eyes under heavy brows and a crystal
+  gem on each forehead, a long snout and a long tail; all five heads share one colour (so it doesn't read as the famous
+  five-coloured dragon; in game only the active phase's head glows); about 6,500 triangles. In game it is scale 7 (about
+  25 studs tall), its fighters stand 21 studs off (`ringRadius`), its intro camera further back (`introShot`), and the
+  model itself glows (`rainbowAura`, `RAINBOW_AURA`: a coloured outline and a faint colour wash, a Highlight, plus a
+  light), slowly cycling through the colours; the model always shows through. Over the glow, soft aurora flames
+  (green into cyan into violet) rise off its back (`auroraFlame`, `AURORA_FLAME`: a few see-through flames per back
+  bone, started on top of the back, never from inside the body). Boss models with PetRig bones now animate
+  like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
+- **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
+  12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
+- Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`
+  opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
+  the published game.
 
 ---
 
@@ -812,6 +872,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── DESIGN.md
 ├── default.project.json        # Rojo project (main game)
 ├── frontier.project.json       # Rojo project for the Frontier place (same src, PlaceKind = "Frontier", port 34873)
+├── dungeon.project.json        # Rojo project for the Dungeon place (same src, PlaceKind = "Dungeon", port 34874)
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
@@ -843,14 +904,17 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates, keys, boss wins' items (farm protection)
-    │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home
+    │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home (Dungeon: back to the Frontier)
+    │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
+    │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, rooms, carried HP, out, the chamber, the way back)
     │   │   ├── DevService.luau       # Studio-only test chat commands
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
     │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
-    │       ├── BattleSim.luau        # seeded wild fight simulation (pure, Lune-tested)
+    │       ├── BattleSim.luau        # seeded fight simulation: packs, boss mechanics and phases, carried HP (pure, Lune-tested)
+    │       ├── DungeonBuilder.luau   # the Dungeon's cavern: rooms, barriers, doors, crystals, lighting
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -874,7 +938,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ButterflyController.luau # client butterflies round the plaza spring
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
-    │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder)
+    │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder); boss rigs, head glow, death
+    │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
+    │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder panel
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
@@ -925,6 +991,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
+        │   ├── Dungeon.luau    # the Dungeon: rooms and packs, timings, layout, lighting
         │   ├── Items.luau      # every item: name, icon, description; stack limit
         │   ├── Bosses.luau     # boss ladder: bosses, drops, chests, farm protection, arenas
         │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, lighting
@@ -960,7 +1027,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
-            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases (pure, Lune-tested)
+            ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
@@ -1133,5 +1201,10 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Admin moderation (live game): admins listed by UserId in a Config/Admins, every action checked on the server; a player
   list with Kick, Ban (Roblox `Players:BanAsync`, works across servers, duration and reason) and Unban. The Studio admin
   panel (dev commands as buttons) exists already; test commands stay Studio-only so the live economy can't be touched.
-- Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
-  Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).
+- Phone layout pass for fights: check the fight bar and end screen on small landscape phones in the Device emulator
+  (bar height, tap targets). Done so far: phones get a narrower boss bar clear of the Roblox menu buttons
+  (`BOSS_BAR_PHONE_MARGIN`), and the Dungeon run line shrinks and hides during fights (`UIKit.isPhone`).
+- Heroic tiers for the Dungeon (not decided): clearing it opens a harder tier with better drops, each clear the next,
+  a leaderboard of the highest tier and the fastest clear.
+- The ranch (its own project, after the Dungeon): a place just for showing creatures off, unlocked early in the main
+  game (about shop level 10); clearing the Dungeon adds a special Legendary habitat there.

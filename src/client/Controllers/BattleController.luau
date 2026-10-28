@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
+local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
@@ -33,6 +34,7 @@ local player = Players.LocalPlayer
 local BAR_MAX_WIDTH = 560
 local BOSS_BAR_MAX_WIDTH = 640
 local BOSS_BAR_TOP = 6 -- pixels from the very top of the screen
+local BOSS_BAR_PHONE_MARGIN = 190 -- phones: the boss bar keeps this clear on each side (the Roblox menu buttons)
 local BANNER_SECONDS = 1.4
 local MONSTER_ID = "b:m" -- the monster's sim id (side B, as the server names it)
 local INTRO_FLY = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -97,6 +99,8 @@ local allyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {
 local allyNames: { [string]: string } = {} -- sim id -> "<Player> · <Card>" (from the server)
 local groupFight = false
 local mode = "wild" -- "wild" | "pvp"
+local packFight = false -- a Dungeon room: several monsters, one small HP bar each (the PvP row)
+local conquered: Frame? = nil -- the full-screen "DUNGEON CONQUERED"
 local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
@@ -553,7 +557,7 @@ local function applySnapshot(snapshot: Snapshot)
 			end
 		end
 	end
-	if mode == "pvp" then
+	if mode == "pvp" or packFight then
 		for _, enemy in snapshot.enemies do
 			local view = enemyBars[enemy.id]
 			if view then
@@ -649,6 +653,9 @@ local function setHudHidden(hidden: boolean)
 end
 
 local COUNTDOWN_POP = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local CONQUERED_COLOR = Color3.fromRGB(255, 205, 80)
+local CONQUERED_FADE = TweenInfo.new(0.6)
+local CONQUERED_SECONDS = 4
 
 -- A word that pops up in the middle of the screen for a moment (the arena countdown's label)
 local function banner(text: string, color: Color3)
@@ -723,6 +730,14 @@ local function onEvents(events: { any })
 		elseif event.type == "spawn" then
 			banner("Rift Spawn!", UIKit.Colors.Danger)
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "phase" and typeof(event.kind) == "string" then
+			-- The final boss changes element (the server lights that head on its model)
+			banner(`{elementIcon(event.kind)} {event.kind} phase!`, Cards.ELEMENTS[event.kind] or Color3.new(1, 1, 1))
+			shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
+			local boss = if bossId then Bosses.BOSSES[bossId] else nil
+			if boss then
+				bossName.Text = `{elementIcon(event.kind)} {boss.name} · Lv {boss.level}`
+			end
 		end
 	end
 end
@@ -804,6 +819,56 @@ local function bossLines(boss: any): { string }
 	return lines
 end
 
+-- Clearing the Dungeon for the first time: the whole screen says so for a few seconds
+local function showConquered()
+	if conquered then
+		conquered:Destroy()
+	end
+	local overlay = Instance.new("Frame")
+	overlay.Name = "DungeonConquered"
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 1
+	overlay.ZIndex = 50
+	overlay.Parent = screenGui
+	local title = UIKit.label(overlay, "DUNGEON CONQUERED", Enum.Font.FredokaOne, 60, CONQUERED_COLOR)
+	title.AnchorPoint = Vector2.new(0.5, 0.5)
+	title.Position = UDim2.fromScale(0.5, 0.42)
+	title.Size = UDim2.fromScale(0.9, 0.16)
+	title.TextScaled = true
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	title.TextTransparency = 1
+	title.ZIndex = 51
+	local boss = Bosses.BOSSES[Dungeon.BOSS]
+	local subtitle = UIKit.label(overlay, `The {boss.name}, {boss.title}, has fallen`, Enum.Font.GothamBold, 22, UIKit.Colors.Text)
+	subtitle.AnchorPoint = Vector2.new(0.5, 0)
+	subtitle.Position = UDim2.fromScale(0.5, 0.52)
+	subtitle.Size = UDim2.fromScale(0.9, 0.06)
+	subtitle.TextScaled = true
+	subtitle.TextXAlignment = Enum.TextXAlignment.Center
+	subtitle.TextTransparency = 1
+	subtitle.ZIndex = 51
+	conquered = overlay
+	TweenService:Create(overlay, CONQUERED_FADE, { BackgroundTransparency = 0.35 }):Play()
+	TweenService:Create(title, CONQUERED_FADE, { TextTransparency = 0 }):Play()
+	TweenService:Create(subtitle, CONQUERED_FADE, { TextTransparency = 0 }):Play()
+	shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
+	task.delay(CONQUERED_SECONDS, function()
+		if conquered ~= overlay then
+			return
+		end
+		for _, item in { overlay, title, subtitle } do
+			TweenService:Create(item, CONQUERED_FADE, if item == overlay then { BackgroundTransparency = 1 } else { TextTransparency = 1 }):Play()
+		end
+		task.delay(CONQUERED_FADE.Time, function()
+			overlay:Destroy()
+			if conquered == overlay then
+				conquered = nil
+			end
+		end)
+	end)
+end
+
 local function showEnd(summary: any)
 	endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT)
 	if summary.mode == "pvp" then
@@ -812,8 +877,12 @@ local function showEnd(summary: any)
 	end
 	local result = summary.result
 	if result == "win" then
-		endTitle.Text = "Victory!"
-		endTitle.TextColor3 = HEAL_COLOR
+		local firstConquest = typeof(summary.boss) == "table" and summary.boss.firstClear == true and summary.boss.bossId == Dungeon.BOSS
+		endTitle.Text = if firstConquest then "Dungeon conquered!" else "Victory!"
+		endTitle.TextColor3 = if firstConquest then CONQUERED_COLOR else HEAL_COLOR
+		if firstConquest then
+			showConquered()
+		end
 		local names = {}
 		for _, beastId in (if typeof(summary.partyIds) == "table" then summary.partyIds else {}) do
 			table.insert(names, fightNames[`a:{beastId}`] or "card")
@@ -836,8 +905,10 @@ local function showEnd(summary: any)
 	elseif result == "lose" then
 		endTitle.Text = "Your party fainted"
 		endTitle.TextColor3 = UIKit.Colors.Danger
-		local spring = if require(Shared:WaitForChild("Util"):WaitForChild("Place")).isFrontier() then "the entrance spring" else "the plaza spring"
-		endBody.Text = `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
+		local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+		local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
+		endBody.Text = if place.isDungeon() then "Fainted creatures are out for the rest of this run"
+			else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
 	else
 		endTitle.Text = "Got away safely"
 		endTitle.TextColor3 = UIKit.Colors.Text
@@ -889,7 +960,8 @@ local function playIntro(boss: any, seconds: number)
 	introCard.Visible = true
 	if camera and marker then
 		local look = marker.CFrame
-		local eye = look.Position + look.LookVector * Bosses.INTRO_SHOT.back + Vector3.new(0, Bosses.INTRO_SHOT.up, 0)
+		local shot = boss.introShot or Bosses.INTRO_SHOT -- a huge boss gets a camera further off
+		local eye = look.Position + look.LookVector * shot.back + Vector3.new(0, shot.up, 0)
 		camera.CameraType = Enum.CameraType.Scriptable
 		TweenService:Create(camera, INTRO_FLY, { CFrame = CFrame.lookAt(eye, look.Position + Vector3.new(0, 3, 0)) }):Play()
 	end
@@ -921,6 +993,11 @@ local function onStarted(payload: any)
 	markers = {}
 	addMarkers(payload.markers)
 	fightNames = if typeof(payload.names) == "table" then payload.names else {}
+	for id, species in (if typeof(payload.foes) == "table" then payload.foes else {}) do
+		if typeof(id) == "string" and typeof(species) == "string" then
+			fightNames[id] = species -- a Dungeon room's monsters
+		end
+	end
 	allyNames = {}
 	addAllies(payload.allies)
 	groupFight = payload.group == true
@@ -947,12 +1024,14 @@ local function onStarted(payload: any)
 	end
 	bossBar.Visible = boss ~= nil
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
-	monsterTrack.Visible = mode == "wild" and boss == nil -- a boss's HP is the bar at the top
-	enemyRow.Visible = mode == "pvp"
+	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
+	packFight = mode == "wild" and boss == nil and #view.enemies > 1
+	monsterTrack.Visible = mode == "wild" and boss == nil and not packFight -- a boss's HP is the bar at the top
+	enemyRow.Visible = mode == "pvp" or packFight
 	allyRow.Visible = groupFight -- group fights are boss fights: the HP bar is at the top, this row takes its place
 	runButton.Visible = mode == "wild"
 	layoutBar()
-	if mode == "pvp" then
+	if mode == "pvp" or packFight then
 		buildEnemies(view)
 	end
 	if typeof(payload.startsIn) == "number" and payload.startsIn > 0 then

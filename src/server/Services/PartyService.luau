@@ -41,6 +41,7 @@ type PartyState = {
 local PartyService = {}
 
 local states: { [Player]: PartyState } = {}
+local changeBlocker: ((player: Player) -> string?)? = nil -- DungeonService: the run's party is set
 local allowAction = RateLimiter.new(Party.ACTION_COOLDOWN)
 local creaturesFolder: Folder
 local defaultWalkSpeed = StarterPlayer.CharacterWalkSpeed
@@ -284,6 +285,11 @@ local function onSetSlot(player: Player, slot: unknown, target: unknown)
 		notify(player, "You can't change your party during a fight.", true)
 		return
 	end
+	local blocked = if changeBlocker then changeBlocker(player) else nil
+	if blocked then
+		notify(player, blocked, true)
+		return
+	end
 	local slotNumber = slot :: number
 	local old = state.slots[slotNumber]
 
@@ -356,6 +362,25 @@ local function onSummon(player: Player, slot: unknown)
 		return
 	end
 	sendParty(player)
+end
+
+-- The Dungeon: no party changes once its run has started fighting (the reason shown), nil to allow them
+function PartyService.SetChangeBlocker(blocker: (player: Player) -> string?)
+	changeBlocker = blocker
+end
+
+-- The Dungeon: summons a party slot from the server (a creature that can still fight in the run). False if the party
+-- is locked (mid-fight) or the slot is empty.
+function PartyService.SummonSlot(player: Player, slot: number): boolean
+	local state = states[player]
+	if not state or state.locked or not state.slots[slot] then
+		return false
+	end
+	state.summoned = slot
+	spawnMarker(player)
+	applyHustle(player)
+	sendParty(player)
+	return true
 end
 
 -- One XP Tonic (a boss drop) on a card in the party; never wasted on a max-level card

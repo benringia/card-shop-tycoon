@@ -77,6 +77,18 @@ function BossRules.canStart(record: Record, unlock: { item: string, count: numbe
 	return false, `locked:{owned}:{unlock.count}`
 end
 
+-- The phase a boss with phases is in at this HP share (phases[i] is active below phases[i].below; the first has
+-- below = 1). Never earlier than `current`: a heal doesn't take a boss back a phase.
+function BossRules.phaseAt(phases: { { below: number } }, share: number, current: number): number
+	local index = current
+	for i, phase in phases do
+		if i > index and share < phase.below then
+			index = i
+		end
+	end
+	return index
+end
+
 -- Whether a fight's end may drop its arena's wall: not when a newer fight there already sealed it (the end handlers
 -- run deferred, so a new fight can start in between). `occupant` is the arena's current boss, if any.
 function BossRules.shouldUnseal(ended: { alive: boolean }, occupant: { alive: boolean }?): boolean

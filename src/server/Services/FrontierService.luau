@@ -3,6 +3,7 @@
 -- leave: the normal leave path ends any fight and saves, and ProfileStore hands the save to the next server.
 -- Main game: a plaza portal opens the menu (Explore, or Join a friend who is in a Frontier server).
 -- Frontier: the entrance's Return portal and the client's home button teleport back to the main game.
+-- Dungeon: the home button (and leaving the run) teleports back to the Frontier.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -61,12 +62,14 @@ local function onTravel(player: Player, where: unknown, friendUserId: unknown)
 		return
 	end
 	if where == "home" then
-		if Place.isFrontier() then
+		if Place.isDungeon() then
+			teleport(player, Places.FRONTIER_PLACE_ID)
+		elseif Place.isFrontier() then
 			teleport(player, Places.MAIN_PLACE_ID)
 		end
 		return
 	end
-	if Place.isFrontier() then
+	if Place.isFrontier() or Place.isDungeon() then
 		return -- Explore / Join friend are main-game choices
 	elseif Places.FRONTIER_PLACE_ID == 0 then
 		tell(player, "The Frontier is coming soon!")
@@ -87,6 +90,11 @@ local function onTravel(player: Player, where: unknown, friendUserId: unknown)
 	end
 end
 
+-- The Dungeon: back to the Frontier (a run's end, leaving it, the home button). In Studio it only says so.
+function FrontierService.ReturnToFrontier(player: Player)
+	teleport(player, Places.FRONTIER_PLACE_ID)
+end
+
 function FrontierService.Start()
 	Remotes.FrontierTravel.OnServerEvent:Connect(onTravel)
 	-- Failures Roblox reports after the teleport started (server full, shut down...): the player is still here
@@ -95,7 +103,10 @@ function FrontierService.Start()
 		tell(player, if result == Enum.TeleportResult.GameFull then "That server is full. Try again or Explore instead."
 			else "The teleport didn't work. Try again in a moment.")
 	end)
-	if Place.isFrontier() then
+	if Place.isDungeon() then
+		WildService.SetHomeHandler(FrontierService.ReturnToFrontier)
+		return
+	elseif Place.isFrontier() then
 		WildService.SetHomeHandler(function(player)
 			teleport(player, Places.MAIN_PLACE_ID)
 		end)

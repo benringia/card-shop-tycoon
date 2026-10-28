@@ -4,6 +4,7 @@
 -- over-power) are in Util/BossRules. A boss is spawned for the one player who starts it at the gate and fought on the
 -- usual combat core (BattleService); a win's XP and cash come from there, its items from here.
 local HttpService = game:GetService("HttpService")
+local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -15,6 +16,7 @@ local Items = require(Config:WaitForChild("Items"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -39,6 +41,7 @@ local allowPickUp = RateLimiter.new(Bosses.LOOT_PICKUP_COOLDOWN)
 local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN) -- its own, so Fight then F right after both work
 local allowRequest = RateLimiter.new(1)
 local rng = Random.new()
+local runGate: ((player: Player, bossId: string) -> ())? = nil -- the Dungeon: its run starts the chamber's boss
 
 -- The boss a fragment opens (its unlock item), by fragment id
 local opensBoss: { [string]: string } = {}
@@ -197,6 +200,32 @@ local function onPickUp(player: Player, raw: unknown)
 	end
 end
 
+-- The title over this player's name: the last cleared boss on the ladder that gives one (Dungeon Conqueror)
+local function setTitle(player: Player)
+	local byBoss = records[player]
+	local title = nil
+	for _, bossId in Bosses.LADDER do
+		local record = if byBoss then byBoss[bossId] else nil
+		local clearTitle = Bosses.BOSSES[bossId].clearTitle
+		if record and record.cleared and clearTitle then
+			title = clearTitle
+		end
+	end
+	player:SetAttribute("Title", title)
+end
+
+-- A first clear the whole experience hears about: every other server shows it too (BossService.Start subscribes)
+local function announceEverywhere(player: Player, bossId: string)
+	task.spawn(function()
+		local ok, err = pcall(function()
+			MessagingService:PublishAsync(Bosses.CLEARED_TOPIC, { name = player.DisplayName, bossId = bossId, jobId = game.JobId })
+		end)
+		if not ok then
+			warn(`[BossService] couldn't announce the clear to other servers: {err}`)
+		end
+	end)
+end
+
 local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }): any
 	local bossId = monster.boss :: string
 	local boss = Bosses.BOSSES[bossId]
@@ -221,6 +250,10 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		end
 		result.chest = boss.firstClear
 		Remotes.BossCleared:FireAllClients(player.DisplayName, bossId)
+		setTitle(player)
+		if boss.announceEverywhere then
+			announceEverywhere(player, bossId)
+		end
 	end
 	if fight.seconds < boss.minFightSeconds then
 		result.flagged = true
@@ -326,7 +359,7 @@ local function setBarrier(arena: WildService.BossArena, up: boolean)
 	end
 end
 
-local function startBoss(bossId: string, players: { Player }): (boolean, string?)
+local function startBoss(bossId: string, players: { Player }, options: BattleService.RunOptions?): (boolean, string?)
 	local boss = Bosses.BOSSES[bossId]
 	local arena = arenas[bossId]
 	local monster = WildService.SpawnAt(arena.spawn.Position, boss.name, boss.level, false, bossId)
@@ -334,7 +367,7 @@ local function startBoss(bossId: string, players: { Player }): (boolean, string?
 		return false, "The boss couldn't start. Try again."
 	end
 	monster.marker.CFrame = arena.spawn
-	local started, why = BattleService.StartGroupFight(players, monster)
+	local started, why = BattleService.StartGroupFight(players, monster, options)
 	if not started then
 		WildService.Defeat(monster)
 		return false, why or "The boss couldn't start. Try again."
@@ -363,8 +396,12 @@ local function startBoss(bossId: string, players: { Player }): (boolean, string?
 	return true, nil
 end
 
--- The Fight prompt: the boss for this player alone
+-- The Fight prompt: the boss for this player alone (the Dungeon: its run decides who fights)
 local function onGate(player: Player, bossId: string)
+	if runGate then
+		runGate(player, bossId)
+		return
+	end
 	if not allowStart(player) or not Bosses.BOSSES[bossId] or not arenas[bossId] then
 		return
 	end
@@ -444,6 +481,10 @@ end
 
 -- The group prompt: open a group (the leader), join one, or (the leader again) start it now
 local function onGroup(player: Player, bossId: string)
+	if runGate then
+		runGate(player, bossId)
+		return
+	end
 	local boss = Bosses.BOSSES[bossId]
 	if not allowGroup(player) or not boss or not arenas[bossId] then
 		return
@@ -494,6 +535,26 @@ local function onGroup(player: Player, bossId: string)
 end
 
 -- /boss <n> fight and /boss <n> group: the gate's prompts, as if used (same checks)
+-- The Dungeon: its run's players fight this boss together with the HP they have left. Each must pass the gate's checks
+-- (shop level, key) wherever they stand; the key is taken on the first start as at any gate.
+function BossService.StartRun(bossId: string, players: { Player }, hpLeft: { [Player]: { [string]: number } }): (boolean, string?)
+	if not Bosses.BOSSES[bossId] or not arenas[bossId] or #players == 0 then
+		return false, "The boss couldn't start. Try again."
+	end
+	for _, player in players do
+		local reason = whyArenaBusy(player, bossId) or whyNotMember(player, bossId, math.huge)
+		if reason then
+			return false, if #players > 1 then `{player.DisplayName}: {reason}` else reason
+		end
+	end
+	return startBoss(bossId, players, { hpLeft = hpLeft, run = true })
+end
+
+-- The Dungeon: its arena's prompts go to the run (DungeonService) instead of starting a fight here
+function BossService.SetRunGate(handler: (player: Player, bossId: string) -> ())
+	runGate = handler
+end
+
 function BossService.UseGate(player: Player, index: number, group: boolean?)
 	local bossId = Bosses.LADDER[index]
 	if bossId then
@@ -512,6 +573,7 @@ local function load(player: Player, data: DataService.PlayerData)
 		byBoss[bossId] = BossRules.read(saved[bossId], Bosses.BOSSES[bossId].unlock == nil)
 	end
 	records[player] = byBoss
+	setTitle(player)
 	task.defer(sendBosses, player) -- after the other services load (fragment counts)
 end
 
@@ -561,6 +623,29 @@ function BossService.Start()
 		end
 	end)
 	Remotes.PickUpLoot.OnServerEvent:Connect(onPickUp)
+	if Place.isDungeon() then
+		for _, arena in arenas do
+			arena.groupPrompt.Enabled = false -- the run is the group
+		end
+	end
+	-- Other servers' first clears of the bosses everyone hears about
+	task.spawn(function()
+		local ok, err = pcall(function()
+			MessagingService:SubscribeAsync(Bosses.CLEARED_TOPIC, function(message)
+				local data = message.Data
+				if typeof(data) ~= "table" or data.jobId == game.JobId then
+					return -- junk, or this server's own (already shown)
+				end
+				local name, bossId = data.name, data.bossId
+				if typeof(name) == "string" and #name <= 40 and typeof(bossId) == "string" and Bosses.BOSSES[bossId] then
+					Remotes.BossCleared:FireAllClients(name, bossId)
+				end
+			end)
+		end)
+		if not ok then
+			warn(`[BossService] cross-server clears unavailable: {err}`)
+		end
+	end)
 end
 
 return BossService

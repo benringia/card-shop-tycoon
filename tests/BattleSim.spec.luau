@@ -95,6 +95,21 @@ end
 local SHIELD = { shield = { every = 20, fraction = 0.06, breakStun = 3 } }
 local ADDS = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.06, atkShare = 0.4, guard = 0.5, species = "Rift Horror" } }
 
+-- A boss with phases (the final boss): Tide shield, then Volt thunderclap below 60%, then Ember enrage below 30%
+local PHASES = {
+	{ below = 1, element = "Tide", mechanics = { shield = { every = 1, fraction = 0.05, breakStun = 1 } } },
+	{ below = 0.6, element = "Volt", mechanics = { thunderclap = { every = 12, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } } },
+	{ below = 0.3, element = "Ember", mechanics = { enrage = { below = 0.2, atkMultiplier = 2 } } },
+}
+
+local function phasedBoss(phases: any, seed: number): any
+	return BattleSim.new(combat, { fighters = { fighter("a", "Tide", 100000, 20, 10) }, abilities = true, canRun = true }, {
+		fighters = { { id = "m", element = "Shade", hp = 10000, atk = 1, spd = 14, boss = true, mechanics = {}, phases = phases } },
+		abilities = false,
+		canRun = false,
+	}, seed)
+end
+
 local function firstOf(events: { any }, kind: string): any
 	for _, event in events do
 		if event.type == kind then
@@ -105,6 +120,119 @@ local function firstOf(events: { any }, kind: string): any
 end
 
 return {
+	["hpNow: a fighter starts hurt but keeps its max HP"] = function()
+		local state = BattleSim.new(combat, { fighters = { { id = "x", element = "Ember", hp = 100, atk = 5, spd = 10, hpNow = 40 } }, abilities = false, canRun = false },
+			{ fighters = { monster("Tide", 50, 1, 1) }, abilities = false, canRun = false }, 1)
+		local x = BattleSim.getFighter(state, "a:x") :: any
+		expect.equal(x.hp, 40, "starts at 40")
+		expect.equal(x.maxHp, 100, "max stays 100")
+	end,
+
+	["hpLeft: an owner's fighters and reserves, fainted at 0"] = function()
+		local state = group(21)
+		state.sides.a.fighters[1].hp = 123
+		local left = BattleSim.hpLeft(state, "a", "1")
+		expect.equal(left.p1, 123, "the hurt leader")
+		expect.equal(left.r1, 500, "a reserve that never fought")
+		expect.isNil(left.p2, "not player 2's")
+		state.sides.a.fighters[1].fainted = true
+		expect.equal(BattleSim.hpLeft(state, "a", "1").p1, 0, "fainted counts as 0")
+		expect.equal(BattleSim.hpLeft(state, "a").p2, 500, "no owner: the whole side")
+	end,
+
+	["the time limit ends the fight as a run and marks it timed out"] = function()
+		local state = BattleSim.new(combat, { fighters = { fighter("a", "Ember", 100000, 1, 10) }, abilities = false, canRun = true },
+			{ fighters = { monster("Tide", 100000, 1, 10) }, abilities = false, canRun = false }, 3)
+		state.maxSeconds = 5
+		runToEnd(state, 10)
+		expect.equal(state.result, "run", "result")
+		expect.equal(state.timedOut, true, "timed out")
+		local ran = wild(fighter("b", "Ember", 100, 1, 10), {}, monster("Tide", 100000, 1, 1), 4)
+		BattleSim.tryRun(ran, "a")
+		expect.equal(ran.timedOut == true, false, "a real run is not a timeout")
+	end,
+
+	["phases: the boss starts as phase 1"] = function()
+		local state = phasedBoss(PHASES, 11)
+		expect.equal(state.sides.b.fighters[1].element, "Tide", "phase 1's element")
+		local _, events = runToEnd(state, 1.05)
+		expect.equal(firstOf(events, "shield") ~= nil, true, "phase 1's shield")
+	end,
+
+	["phases: crossing a threshold switches element and mechanics once"] = function()
+		local state = phasedBoss(PHASES, 12)
+		local boss = state.sides.b.fighters[1]
+		runToEnd(state, 1.05)
+		boss.hp = 5900
+		local events = BattleSim.step(state, 0.1)
+		expect.equal(count(events, function(e)
+			return e.type == "phase"
+		end), 1, "one phase event")
+		local phase = firstOf(events, "phase")
+		expect.equal(phase and phase.kind, "Volt", "into Volt")
+		expect.equal(phase and phase.damage, 2, "phase 2")
+		expect.equal(boss.element, "Volt", "the boss is Volt now")
+		expect.equal(state.sides.b.shield, 0, "phase 1's shield is gone")
+		local _, later = runToEnd(state, 3)
+		expect.isNil(firstOf(later, "shield"), "no more shields")
+	end,
+
+	["phases never go back after a heal"] = function()
+		local state = phasedBoss(PHASES, 13)
+		local boss = state.sides.b.fighters[1]
+		boss.hp = 5900
+		BattleSim.step(state, 0.1)
+		boss.hp = 9000
+		local events = BattleSim.step(state, 0.1)
+		expect.isNil(firstOf(events, "phase"), "no phase change back")
+		expect.equal(boss.element, "Volt", "still Volt")
+	end,
+
+	["phases: a Shade adds phase spawns its adds as it starts"] = function()
+		local state = phasedBoss({
+			{ below = 1, element = "Tide", mechanics = {} },
+			{ below = 0.6, element = "Shade", mechanics = { adds = { at = { 0.6 }, count = 2, hpShare = 0.04, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } } },
+		}, 14)
+		state.sides.b.fighters[1].hp = 5900
+		local events = BattleSim.step(state, 0.1)
+		expect.equal(count(events, function(e)
+			return e.type == "spawn"
+		end), 2, "two adds")
+		expect.equal(state.sides.b.fighters[2].element, "Shade", "the add is the phase's element")
+	end,
+
+	["heal: never more than its uses in a fight"] = function()
+		local state = bossWith({ heal = { below = 0.5, fraction = 0.05, cooldown = 1, uses = 2 } }, 31)
+		local boss = state.sides.b.fighters[1]
+		local heals = 0
+		for _ = 1, 300 do
+			boss.hp = 3000
+			for _, event in BattleSim.step(state, 0.1) do
+				if event.type == "heal" then
+					heals += 1
+				end
+			end
+		end
+		expect.equal(heals, 2, "two heals in 30 s, not one a second")
+	end,
+
+	["boss skills keep a gap: a shield and a thunderclap due together come apart"] = function()
+		local state = bossWith({ shield = { every = 5, fraction = 0.01, breakStun = 1 }, thunderclap = { every = 5, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } }, 32)
+		local times = {}
+		for _ = 1, 150 do
+			for _, event in BattleSim.step(state, 0.1) do
+				if event.type == "shield" or event.type == "thunderclap" then
+					table.insert(times, state.time)
+				end
+			end
+		end
+		table.sort(times)
+		expect.equal(#times >= 2, true, "both fired")
+		for index = 2, #times do
+			expect.equal(times[index] - times[index - 1] >= combat.BOSS_SKILL_GAP - 1e-6, true, `skill {index} waited the gap`)
+		end
+	end,
+
 	["shield: goes up every 20 s and absorbs damage first"] = function()
 		local state = bossWith(SHIELD, 1)
 		local _, early = runToEnd(state, 19.9)

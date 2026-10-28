@@ -4,10 +4,24 @@
 -- before drops, and drops what helps beat the next. Plain data so Lune tests and the economy simulator can load it.
 export type Drop = { item: string, chance: number, min: number, max: number }
 export type Grant = { item: string, count: number }
+-- heal below an HP fraction (every cooldown, at most `uses` times a fight); enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
+-- first (breaking it stuns the boss `breakStun` s); thunderclap: every `every` s stuns each enemy `seconds` x
+-- clamp(boss SPD / its SPD, minFactor, maxFactor); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
+-- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
+export type Mechanics = {
+	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
+	enrage: { below: number, atkMultiplier: number }?,
+	shield: { every: number, fraction: number, breakStun: number }?,
+	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
+	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
+}
+-- One phase of a boss that has them: active while its HP share is under `below` (the first has below = 1); it
+-- switches the boss's element and mechanics. Phases only go forward (a heal never takes one back).
+export type BossPhase = { below: number, element: string, mechanics: Mechanics }
 export type Boss = {
 	name: string,
 	title: string, -- under its name on the intro card
-	place: "Wild" | "Frontier", -- which place its arena is in (only that place builds it)
+	place: "Wild" | "Frontier" | "Dungeon", -- which place its arena is in (only that place builds it)
 	zone: number, -- ZONES index in that place's world (Config/Wild or Config/Frontier): its arena is at the end of it
 	shape: string, -- a Wild placeholder shape until its model exists
 	scale: number, -- placeholder size, times the monster height
@@ -22,17 +36,15 @@ export type Boss = {
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
-	-- heal below an HP fraction; enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
-	-- first (breaking it stuns the boss `breakStun` s); thunderclap: every `every` s stuns each enemy `seconds` x
-	-- clamp(boss SPD / its SPD, minFactor, maxFactor); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
-	-- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
-	mechanics: {
-		heal: { below: number, fraction: number, cooldown: number }?,
-		enrage: { below: number, atkMultiplier: number }?,
-		shield: { every: number, fraction: number, breakStun: number }?,
-		thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
-		adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
-	},
+	mechanics: Mechanics, -- always on (a boss with phases keeps {} here: its phases bring theirs)
+	phases: { BossPhase }?, -- the final boss: one per element, by HP
+	announceEverywhere: boolean?, -- its first clear is told to every server of the experience, not just this one
+	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
+	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
+	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
+	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
+	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
+	auroraFlame: boolean?, -- soft aurora-coloured flames rise off its back (AURORA_FLAME)
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -84,7 +96,7 @@ local BOSSES: { [string]: Boss } = {
 		minFightSeconds = 18,
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
-		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12 } },
+		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12, uses = 3 } },
 		drops = {
 			{ item = "xpTonic", chance = 0.6, min = 1, max = 3 },
 			{ item = "starShard", chance = 0.15, min = 1, max = 1 },
@@ -198,20 +210,72 @@ local BOSSES: { [string]: Boss } = {
 		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 80,
 		unlock = { item = "fragment_riftDevourer", count = 8 },
+		fragment = "fragment_prismHydra",
 		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
 		drops = {
 			{ item = "goldSeal", chance = 0.3, min = 1, max = 1 },
 			{ item = "starShard", chance = 0.3, min = 1, max = 2 },
+			{ item = "fragment_prismHydra", chance = 0.5, min = 1, max = 1 },
 		},
-		firstClear = { { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
+		firstClear = { { item = "fragment_prismHydra", count = 3 }, { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
 		dailyBonus = { { item = "goldSeal", count = 1 } },
 		cash = 280,
 		xp = 7400,
 	},
+	-- The final boss (phase 4): the Dungeon place, one phase per element and per mechanic of the ladder
+	prismHydra = {
+		name = "Prism Hydra",
+		title = "Crown of Every Element",
+		place = "Dungeon",
+		zone = 1,
+		shape = "golem",
+		scale = 7.0,
+		ringRadius = 21,
+		introShot = { back = 44, up = 22 },
+		rainbowAura = true,
+		auroraFlame = true,
+		element = "Tide", -- phase 1's
+		level = 55,
+		hp = 40000,
+		atk = 23,
+		spd = 11,
+		recommended = 2400,
+		shopLevel = 22,
+		groupAtkStep = 0.25,
+		minFightSeconds = 120,
+		unlock = { item = "fragment_prismHydra", count = 10 },
+		announceEverywhere = true,
+		clearTitle = "Dungeon Conqueror",
+		heads = { "Ember", "Tide", "Volt", "Shade", "Bloom" }, -- the middle head (0) is the finale's
+		mechanics = {},
+		phases = {
+			{ below = 1, element = "Tide", mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } } },
+			{ below = 0.8, element = "Volt", mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } } },
+			{ below = 0.6, element = "Shade", mechanics = { adds = { at = { 0.6 }, count = 2, hpShare = 0.04, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } } },
+			{ below = 0.4, element = "Bloom", mechanics = { heal = { below = 0.4, fraction = 0.05, cooldown = 20, uses = 2 } } },
+			{ below = 0.2, element = "Ember", mechanics = { enrage = { below = 0.2, atkMultiplier = 1.15 } } },
+		},
+		drops = {
+			{ item = "goldSeal", chance = 0.4, min = 1, max = 1 },
+			{ item = "starShard", chance = 0.4, min = 1, max = 2 },
+			{ item = "gradingSeal", chance = 0.4, min = 1, max = 2 },
+			{ item = "xpTonic", chance = 0.5, min = 2, max = 3 },
+		},
+		firstClear = {
+			{ item = "trophy_prismHydra", count = 1 },
+			{ item = "goldSeal", count = 5 },
+			{ item = "starShard", count = 5 },
+			{ item = "gradingSeal", count = 5 },
+			{ item = "xpTonic", count = 5 },
+		},
+		dailyBonus = { { item = "goldSeal", count = 2 } },
+		cash = 400,
+		xp = 10000,
+	},
 }
 
 return {
-	LADDER = { "meadowWarden", "caveBroodQueen", "emberColossus", "frostTyrant", "stormSovereign", "riftDevourer" },
+	LADDER = { "meadowWarden", "caveBroodQueen", "emberColossus", "frostTyrant", "stormSovereign", "riftDevourer", "prismHydra" },
 	BOSSES = BOSSES,
 
 	-- Farm protection (spec section 7)
@@ -232,6 +296,7 @@ return {
 	GATE_PROMPT_DISTANCE = 10, -- the gate prompt shows this close
 	GATE_DISTANCE = 12, -- studs from the gate the server accepts a start (past the prompt's reach, for lag)
 	START_COOLDOWN = 2, -- seconds between start requests per player
+	CLEARED_TOPIC = "BossCleared", -- MessagingService topic for announceEverywhere first clears
 
 	-- Groups (spec section 5): 2-4 players, one boss scaled to the group, loot per player for those who helped
 	GROUP_MAX = 4,
@@ -265,6 +330,17 @@ return {
 	BARRIER_HEIGHT = 14,
 	BARRIER_TRANSPARENCY = 0.55,
 	ADD_FADE_SECONDS = 1, -- a fallen add lies there this long before it goes
+	DEATH_SECONDS = 4, -- a beaten boss lies there this long before it goes (its death scene)
+	HEAD_GLOW = { brightness = 3, range = 16, particles = 14 }, -- the active phase's head (bosses with heads)
+	HEAD_DROP = { gap = 0.5, seconds = 0.6, angle = 75 }, -- its death: one head after another, each over `seconds`, by `angle` degrees
+	-- A boss's rainbow aura (rainbowAura): the model itself glows, a coloured outline round it and a faint colour wash
+	-- over it (fillTransparency: the model always shows through) and a light, all slowly cycling through the colours
+	-- (hueSeconds a cycle); it fades when the boss falls
+	RAINBOW_AURA = { hueSeconds = 6, outlineTransparency = 0, fillTransparency = 0.82, lightBrightness = 1.2, lightRange = 40 },
+	-- A boss's aurora flame (auroraFlame): soft flames in aurora colours (green, cyan, violet) rising off its back, above
+	-- these bones at `height` x its model's height, few and see-through so they sit over the glow without hiding it
+	-- (studs at the boss's size; per bone)
+	AURORA_FLAME = { bones = { "Spine_0", "Spine_1", "Pelvis" }, height = 0.5, rate = 12, sizeStart = 8, sizeEnd = 2.5, lifetimeMin = 1, lifetimeMax = 1.6, rise = 10, transparency = 0.3 },
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

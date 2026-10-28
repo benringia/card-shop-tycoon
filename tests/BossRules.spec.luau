@@ -38,12 +38,12 @@ return {
 	end,
 
 	["config: the Frontier bosses sit in Frontier zones"] = function()
-		expect.equal(#Bosses.LADDER, 6, "six bosses")
+		expect.equal(#Bosses.LADDER, 7, "seven bosses")
 		for index, id in Bosses.LADDER do
 			local boss = Bosses.BOSSES[id]
-			local world = if boss.place == "Frontier" then Frontier else Wild
+			local world = if boss.place == "Wild" then Wild else Frontier
 			expect.equal(world.ZONES[boss.zone] ~= nil, true, `{id} zone`)
-			expect.equal(boss.place, if index <= 3 then "Wild" else "Frontier", `{id} place`)
+			expect.equal(boss.place, if index <= 3 then "Wild" elseif index <= 6 then "Frontier" else "Dungeon", `{id} place`)
 		end
 	end,
 
@@ -79,10 +79,96 @@ return {
 		expect.equal(Bosses.LOOT_AUTO_SECONDS, nil, "loot is never collected by itself")
 	end,
 
+	["phaseAt: by HP share, and never back"] = function()
+		local phases = { { below = 1 }, { below = 0.8 }, { below = 0.6 } }
+		expect.equal(BossRules.phaseAt(phases, 1, 1), 1, "full HP")
+		expect.equal(BossRules.phaseAt(phases, 0.79, 1), 2, "under 80%")
+		expect.equal(BossRules.phaseAt(phases, 0.1, 1), 3, "skips straight to the last reached")
+		expect.equal(BossRules.phaseAt(phases, 0.9, 3), 3, "a heal never takes it back")
+	end,
+
 	["levelReady: the shop level must reach the boss's"] = function()
 		expect.equal(BossRules.levelReady(12, 11), false, "one short")
 		expect.equal(BossRules.levelReady(12, 12), true, "exactly")
 		expect.equal(BossRules.levelReady(12, 30), true, "above")
+	end,
+
+	["config: the Prism Hydra has five phases, one per element, in falling order"] = function()
+		local hydra = Bosses.BOSSES.prismHydra
+		expect.equal(Bosses.LADDER[7], "prismHydra", "last on the ladder")
+		expect.equal(hydra.place, "Dungeon", "its place")
+		expect.equal(hydra.shopLevel, 22, "shop level")
+		expect.equal(hydra.unlock and hydra.unlock.count, 10, "10 fragments")
+		local phases = hydra.phases :: { any }
+		expect.equal(#phases, 5, "five phases")
+		expect.equal(phases[1].below, 1, "the first starts at full HP")
+		local seen = {}
+		for index, phase in phases do
+			seen[phase.element] = true
+			if index > 1 then
+				expect.equal(phase.below < phases[index - 1].below, true, `phase {index} below the one before`)
+			end
+		end
+		for _, element in { "Tide", "Volt", "Shade", "Bloom", "Ember" } do
+			expect.equal(seen[element], true, element)
+		end
+		local m = function(i: number): any
+			return phases[i].mechanics
+		end
+		expect.equal(m(1).shield ~= nil and m(2).thunderclap ~= nil and m(3).adds ~= nil and m(4).heal ~= nil and m(5).enrage ~= nil, true, "shield, clap, adds, heal, enrage")
+	end,
+
+	["config: the Hydra's five heads are its five phase elements"] = function()
+		local hydra = Bosses.BOSSES.prismHydra
+		local heads = hydra.heads :: { string }
+		expect.equal(#heads, 5, "five heads")
+		local phaseElements = {}
+		for _, phase in hydra.phases :: { any } do
+			phaseElements[phase.element] = true
+		end
+		for index, element in heads do
+			expect.equal(phaseElements[element], true, `head {index - 1}: {element}`)
+		end
+		expect.equal(typeof(Bosses.DEATH_SECONDS) == "number" and Bosses.DEATH_SECONDS > 0, true, "a death scene")
+	end,
+
+	["config: the Hydra is the biggest boss, with room round it and a rainbow aura"] = function()
+		local hydra = Bosses.BOSSES.prismHydra
+		for id, boss in Bosses.BOSSES do
+			if id ~= "prismHydra" then
+				expect.equal(hydra.scale > boss.scale, true, `bigger than {id}`)
+			end
+		end
+		expect.equal((hydra.ringRadius :: number) + 4 < Bosses.ARENA_RADIUS, true, "its fighters still stand inside the ring")
+		local shot = hydra.introShot :: any
+		expect.equal(shot.back > Bosses.INTRO_SHOT.back and shot.up > Bosses.INTRO_SHOT.up, true, "the intro camera stands further off")
+		expect.equal(hydra.rainbowAura, true, "a rainbow aura")
+		local aura = Bosses.RAINBOW_AURA
+		for _, key in { "hueSeconds", "outlineTransparency", "fillTransparency", "lightBrightness", "lightRange" } do
+			expect.equal(typeof(aura[key]), "number", key)
+		end
+		expect.equal(aura.fillTransparency >= 0.7, true, "a glow over the model, never hiding it")
+		expect.equal(hydra.auroraFlame, true, "an aurora flame over the glow")
+		local flame = Bosses.AURORA_FLAME
+		expect.equal(#flame.bones >= 1, true, "flames rise from some bones")
+		for _, key in { "rate", "sizeStart", "sizeEnd", "lifetimeMin", "lifetimeMax", "rise", "transparency" } do
+			expect.equal(typeof(flame[key]), "number", key)
+		end
+		expect.equal(flame.rate <= 12 and flame.transparency >= 0.3, true, "light: never overwhelming")
+		expect.equal(Bosses.BOSSES.caveBroodQueen.mechanics.heal and Bosses.BOSSES.caveBroodQueen.mechanics.heal.uses ~= nil, true, "the Brood Queen's heals are limited")
+	end,
+
+	["config: the Rift Devourer drops the Hydra's fragments"] = function()
+		local rift = Bosses.BOSSES.riftDevourer
+		expect.equal(rift.fragment, "fragment_prismHydra", "its fragment")
+		local inDrops, inChest = false, false
+		for _, drop in rift.drops do
+			inDrops = inDrops or drop.item == "fragment_prismHydra"
+		end
+		for _, grant in rift.firstClear do
+			inChest = inChest or (grant.item == "fragment_prismHydra" and grant.count == 3)
+		end
+		expect.equal(inDrops and inChest, true, "drop and 3 in the first clear")
 	end,
 
 	["read: Frontier bosses start locked"] = function()
@@ -245,7 +331,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

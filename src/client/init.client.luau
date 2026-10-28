@@ -35,14 +35,16 @@ local AdminPanelController = require(Controllers:WaitForChild("AdminPanelControl
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
+local DungeonController = require(Controllers:WaitForChild("DungeonController"))
+local TitleController = require(Controllers:WaitForChild("TitleController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
-if Place.isFrontier() then
-	-- The Frontier place: no shop, so only the binder, party, creatures and fights
+if Place.isFrontier() or Place.isDungeon() then
+	-- The Frontier and Dungeon places: no shop, so only the binder, party, creatures and fights
 	UIController.Start()
 	BinderController.Start()
 	PartyController.Start()
@@ -57,6 +59,10 @@ if Place.isFrontier() then
 	FrontierController.Start() -- the home button
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
+	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	if Place.isDungeon() then
+		DungeonController.Start() -- the run line and Leave
+	end
 else
 	UIController.Start()
 	OrderController.Start()
@@ -91,4 +97,5 @@ else
 	ChallengeController.Start()
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
+	TitleController.Start() -- titles over names (Dungeon Conqueror)
 end

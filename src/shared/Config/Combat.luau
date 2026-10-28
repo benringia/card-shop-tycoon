@@ -7,6 +7,7 @@ return {
 	BOSS_MAX_FIGHT_SECONDS = 420, -- bosses have far more HP: their fights may run this long
 	BOSS_SWAP_SECONDS = 8, -- boss fights: seconds between a player's swaps (none needed when all of theirs fainted)
 	BOSS_MAX_STUN = 1, -- seconds: stuns on a boss last at most this long
+	BOSS_SKILL_GAP = 6, -- seconds between any two of a boss's skills (shield, heal, thunderclap): never back to back
 
 	-- Attacks: interval = clamp(ATTACK_BASE * SPD_REFERENCE / SPD, ATTACK_MIN, ATTACK_MAX)
 	ATTACK_BASE = 2,

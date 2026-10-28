@@ -5,30 +5,37 @@
 -- fighters, a player leaving withdraws only theirs, damage dealt and taken tallied for the loot rules). Boss fights
 -- allow swaps (swapSeconds): a reserve comes in for one of its owner's creatures, which goes back to the reserves with
 -- its HP (a fainted one stays benched); when all of an owner's creatures faint, their healthiest reserve comes in.
--- Pure (only CombatMath; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
+-- Pure (only CombatMath and BossRules; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
 -- the same fight. Fighter ids are prefixed by side ("a:<id>", "b:<id>") in events and snapshots.
 local CombatMath = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CombatMath")) :: any
 	else require("../../shared/Util/CombatMath") :: any
+local BossRules = if game ~= nil
+	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BossRules")) :: any
+	else require("../../shared/Util/BossRules") :: any
 
 local BattleSim = {}
 
--- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown, enrage once below one, a shield every
+-- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown (at most `uses` times), enrage once below one, a shield every
 -- few seconds (its side's shield; breaking it stuns the boss), a thunderclap that stuns every enemy (longer on slow
 -- ones), adds at HP fractions (auto-attacks hit them first; the boss takes x guard damage while any stands; the fight is
 -- won when the boss falls, adds or not). boss: stuns on it last at most BOSS_MAX_STUN seconds (not a shield break's)
 export type Mechanics = {
-	heal: { below: number, fraction: number, cooldown: number }?,
+	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
 	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
 }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number? }
+-- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
+export type Phase = { below: number, element: string, mechanics: Mechanics }
+-- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
-	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add)
+	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
+	-- "phase" (from: the boss, kind: its new element, damage: the phase's number)
 	type: string,
 	from: string?,
 	to: string?,
@@ -72,9 +79,13 @@ type Fighter = {
 	enraged: boolean,
 	shieldReady: number, -- boss: when its next shield goes up
 	clapReady: number, -- boss: when its next thunderclap comes
+	skillReady: number, -- boss: no shield, heal or thunderclap before this (combat.BOSS_SKILL_GAP after the last one)
+	healsUsed: number, -- boss: heals so far (this phase), against heal.uses
 	addsDone: { [number]: boolean }, -- boss: which `adds.at` thresholds have summoned
 	addsMade: number, -- boss: adds summoned so far (their ids: "add1", "add2", ...)
 	swings: number, -- targets hit per attack (a boss against a group hits several)
+	phases: { Phase }?, -- a boss with phases
+	phase: number, -- its current phase (1 without phases)
 	owner: string?, -- the player it belongs to (groups); nil when the side has one owner
 	left: boolean, -- its player left the fight: out, never targeted, not fainted
 	benched: boolean, -- fainted and swapped out: off the field, but it still rests after the fight
@@ -103,6 +114,7 @@ export type State = {
 	sides: { a: Side, b: Side },
 	result: string?, -- "a" | "b" | "draw" | "run"
 	maxSeconds: number?, -- this fight's time limit (bosses get longer); combat.MAX_FIGHT_SECONDS when nil
+	timedOut: boolean?, -- it ended at the time limit (its result is "run" or "draw")
 }
 
 -- Small deterministic generator (LCG) so fights replay identically in Lune and Roblox
@@ -112,13 +124,15 @@ local function random(state: State): number
 end
 
 local function makeFighter(combat: any, input: FighterInput, side: string, time: number): Fighter
+	local first = if input.phases then input.phases[1] else nil
+	local mechanics = if first then first.mechanics else input.mechanics
 	return {
 		id = `{side}:{input.id}`,
 		rawId = input.id,
 		side = side,
-		element = input.element,
+		element = if first then first.element else input.element,
 		maxHp = input.hp,
-		hp = input.hp,
+		hp = if input.hpNow then math.clamp(input.hpNow, 1, input.hp) else input.hp,
 		atk = input.atk,
 		spd = input.spd,
 		signature = input.signature,
@@ -137,15 +151,19 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		burnPerSecond = 0,
 		burnTick = 0,
 		fainted = false,
-		mechanics = input.mechanics,
+		mechanics = mechanics,
 		boss = input.boss == true,
 		healReady = time,
 		enraged = false,
-		shieldReady = if input.mechanics and input.mechanics.shield then time + input.mechanics.shield.every else math.huge,
-		clapReady = if input.mechanics and input.mechanics.thunderclap then time + input.mechanics.thunderclap.every else math.huge,
+		shieldReady = if mechanics and mechanics.shield then time + mechanics.shield.every else math.huge,
+		clapReady = if mechanics and mechanics.thunderclap then time + mechanics.thunderclap.every else math.huge,
+		skillReady = time,
+		healsUsed = 0,
 		addsDone = {},
 		addsMade = 0,
 		swings = math.max(1, input.swings or 1),
+		phases = input.phases,
+		phase = 1,
 		owner = input.owner,
 		left = false,
 		benched = false,
@@ -430,15 +448,46 @@ local function burn(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
+-- A boss with phases moves on when its HP share drops under the next one's: its element and mechanics switch, their
+-- timers start again, phase 1's shield goes away
+local function nextPhase(state: State, fighter: Fighter, events: { Event })
+	local phases = fighter.phases
+	if not phases or fighter.fainted then
+		return
+	end
+	local index = BossRules.phaseAt(phases, fighter.hp / fighter.maxHp, fighter.phase)
+	if index == fighter.phase then
+		return
+	end
+	local phase = phases[index]
+	fighter.phase = index
+	fighter.element = phase.element
+	fighter.mechanics = phase.mechanics
+	fighter.shieldReady = if phase.mechanics.shield then state.time + phase.mechanics.shield.every else math.huge
+	fighter.clapReady = if phase.mechanics.thunderclap then state.time + phase.mechanics.thunderclap.every else math.huge
+	fighter.healReady = state.time
+	fighter.healsUsed = 0
+	fighter.addsDone = {}
+	fighter.enraged = false
+	local side = (state.sides :: any)[fighter.side] :: Side
+	side.shield = 0
+	table.insert(events, { type = "phase", from = fighter.id, kind = phase.element, damage = index })
+end
+
 -- A boss's mechanics, checked every step: heal under its HP fraction (then wait the cooldown), enrage once
 local function bossMechanics(state: State, fighter: Fighter, events: { Event })
+	nextPhase(state, fighter, events)
 	local mechanics = fighter.mechanics
 	if not mechanics or fighter.fainted then
 		return
 	end
 	local share = fighter.hp / fighter.maxHp
+	-- Shields, heals and thunderclaps keep a gap between them (never back to back); heals run out after `uses`
 	local heal = mechanics.heal
-	if heal and share < heal.below and state.time >= fighter.healReady then
+	if heal and share < heal.below and state.time >= fighter.healReady and state.time >= fighter.skillReady
+		and (heal.uses == nil or fighter.healsUsed < heal.uses) then
+		fighter.healsUsed += 1
+		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		local amount = math.round(fighter.maxHp * heal.fraction)
 		fighter.hp = math.min(fighter.maxHp, fighter.hp + amount)
 		fighter.healReady = state.time + heal.cooldown
@@ -452,15 +501,17 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 	end
 	local side = (state.sides :: any)[fighter.side] :: Side
 	local shield = mechanics.shield
-	if shield and state.time >= fighter.shieldReady then
+	if shield and state.time >= fighter.shieldReady and state.time >= fighter.skillReady then
 		fighter.shieldReady = state.time + shield.every
+		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		local amount = math.round(fighter.maxHp * shield.fraction)
 		side.shield = amount
 		table.insert(events, { type = "shield", to = fighter.id, heal = amount })
 	end
 	local clap = mechanics.thunderclap
-	if clap and state.time >= fighter.clapReady then
+	if clap and state.time >= fighter.clapReady and state.time >= fighter.skillReady then
 		fighter.clapReady = state.time + clap.every
+		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		table.insert(events, { type = "thunderclap", from = fighter.id })
 		for _, enemy in standing(other(state, side)) do
 			local seconds = clap.seconds * math.clamp(fighter.spd / enemy.spd, clap.minFactor, clap.maxFactor)
@@ -525,6 +576,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 	end
 
 	if not state.result and state.time >= (state.maxSeconds or combat.MAX_FIGHT_SECONDS) then
+		state.timedOut = true
 		finish(state, if state.sides.a.canRun then "run" else "draw", events)
 	end
 	return events
@@ -793,6 +845,24 @@ end
 function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: number, fainted: boolean }?
 	local fighter = find(state, id)
 	return if fighter then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted } else nil
+end
+
+-- Every fighter's HP on a side, on the field or in reserve (fainted = 0), by unprefixed id; only `owner`'s when given
+-- (the Dungeon carries these into the next room)
+function BattleSim.hpLeft(state: State, sideName: string, owner: string?): { [string]: number }
+	local out = {}
+	local side = (state.sides :: any)[sideName] :: Side?
+	if not side then
+		return out
+	end
+	for _, list in { side.fighters, side.reserves } do
+		for _, fighter in list do
+			if owner == nil or fighter.owner == owner then
+				out[fighter.rawId] = if fighter.fainted then 0 else fighter.hp
+			end
+		end
+	end
+	return out
 end
 
 -- Unprefixed ids of a side's fighters that fainted (wild: they rest)

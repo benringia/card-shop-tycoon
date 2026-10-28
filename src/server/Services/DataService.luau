@@ -150,7 +150,7 @@ end
 
 local function onPlayerAdded(player: Player)
 	-- Claim first so the player spawns in their shop while the profile loads
-	if not Place.isFrontier() then -- the Frontier place has no plots
+	if not Place.isFrontier() and not Place.isDungeon() then -- the Frontier and Dungeon places have no plots
 		PlotService.Claim(player)
 	end
 
@@ -211,7 +211,7 @@ local function onPlayerRemoving(player: Player)
 		profile:EndSession()
 	end
 	unloadAll(player)
-	if not Place.isFrontier() then
+	if not Place.isFrontier() and not Place.isDungeon() then
 		PlotService.Release(player)
 	end
 end

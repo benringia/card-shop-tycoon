@@ -3,7 +3,9 @@
 -- workspace.Monsters (attributes MonsterId, Species, Level, Elite, Element, Fighting); here each marker gets a
 -- model (ReplicatedStorage.MonsterModels[Species], or a placeholder shape in its element colour), the same
 -- motion as summoned creatures (CreatureVisuals) and a name tag. Elites are bigger with a gold tag; bosses (attribute
--- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag.
+-- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag; a boss model with PetRig bones
+-- moves them (Util/PetAnimator), and one with heads (Config/Bosses heads: the Prism Hydra) lights the head of its
+-- current phase (marker attribute Phase) and drops its heads one by one when it falls.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -22,11 +24,16 @@ local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
 local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
+type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
+type Aura = { highlight: Highlight, light: PointLight, flames: { ParticleEmitter } }
 type Monster = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
 	tag: TextLabel,
 	connections: { RBXScriptConnection },
+	heads: { Head }, -- a boss with heads: one per Hydra_<n>_3 bone, n = index - 1
+	fallenAt: number?, -- os.clock() its death began (heads dropping)
+	aura: Aura?, -- a boss with a rainbow aura
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -112,6 +119,141 @@ local function updateTag(monster: Monster)
 	monster.tag.TextColor3 = if boss then BOSS_TAG_COLOR elseif elite then ELITE_TAG_COLOR else TAG_COLOR
 end
 
+-- Only the current phase's head glows (marker attribute Phase, set by BattleService); none once it has fallen
+local function lightHeads(monster: Monster)
+	local phase = monster.marker:GetAttribute("Phase")
+	for _, head in monster.heads do
+		local on = monster.fallenAt == nil and head.element == phase
+		head.light.Enabled = on
+		head.sparks.Enabled = on
+	end
+end
+
+-- A light and sparks on each head bone, in that head's element colour (off until its phase)
+local function makeHeads(model: Model, elements: { string }): { Head }
+	local heads = {}
+	for index, element in elements do
+		local bone = model:FindFirstChild(`Hydra_{index - 1}_3`, true)
+		if bone and bone:IsA("Bone") then
+			local color = Cards.ELEMENTS[element] or Color3.new(1, 1, 1)
+			local light = Instance.new("PointLight")
+			light.Color = color
+			light.Brightness = Bosses.HEAD_GLOW.brightness
+			light.Range = Bosses.HEAD_GLOW.range
+			light.Enabled = false
+			light.Parent = bone
+			local sparks = Instance.new("ParticleEmitter")
+			sparks.Color = ColorSequence.new(color)
+			sparks.LightEmission = 1
+			sparks.Rate = Bosses.HEAD_GLOW.particles
+			sparks.Lifetime = NumberRange.new(0.5, 0.9)
+			sparks.Speed = NumberRange.new(1, 3)
+			sparks.SpreadAngle = Vector2.new(180, 180)
+			sparks.Size = NumberSequence.new(0.5, 0)
+			sparks.Enabled = false
+			sparks.Parent = bone
+			table.insert(heads, { element = element, light = light, sparks = sparks })
+		end
+	end
+	return heads
+end
+
+-- A rainbow aura on a boss (Bosses.RAINBOW_AURA): the model itself glows, a coloured outline round it and a faint
+-- colour wash over it (the model always shows through), and a light; MonsterController's frame loop turns the colour
+local function makeAura(body: CreatureVisuals.Body): Aura
+	local look = Bosses.RAINBOW_AURA
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "RainbowAura"
+	highlight.Adornee = body.model
+	highlight.DepthMode = Enum.HighlightDepthMode.Occluded -- not through walls
+	highlight.OutlineTransparency = look.outlineTransparency
+	highlight.FillTransparency = look.fillTransparency
+	highlight.Parent = body.model
+	local light = Instance.new("PointLight")
+	light.Brightness = look.lightBrightness
+	light.Range = look.lightRange
+	light.Parent = body.root
+	return { highlight = highlight, light = light, flames = {} }
+end
+
+local AURORA = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 255, 170)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 210, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 110, 255)),
+})
+
+-- An aurora flame (Bosses.AURORA_FLAME): soft flames in aurora colours rising off its back (above the listed bones,
+-- on its outside, not from inside the body), over the glow
+local function makeFlames(model: Model, root: BasePart): { ParticleEmitter }
+	local look = Bosses.AURORA_FLAME
+	local box, size = model:GetBoundingBox()
+	local top = box.Position.Y - size.Y / 2 + size.Y * look.height
+	local flames = {}
+	for _, name in look.bones do
+		local bone = model:FindFirstChild(name, true)
+		if bone and bone:IsA("Bone") then
+			local spot = Instance.new("Attachment")
+			spot.Name = "AuroraFlame"
+			spot.Parent = root
+			spot.WorldPosition = Vector3.new(bone.WorldPosition.X, top, bone.WorldPosition.Z)
+			local flame = Instance.new("ParticleEmitter")
+			flame.Name = "AuroraFlame"
+			flame.Texture = "rbxasset://textures/particles/fire_main.dds"
+			flame.Color = AURORA
+			flame.LightEmission = 1
+			flame.Rate = look.rate
+			flame.Lifetime = NumberRange.new(look.lifetimeMin, look.lifetimeMax)
+			flame.Speed = NumberRange.new(0.5, 1.5)
+			flame.SpreadAngle = Vector2.new(180, 180)
+			flame.Acceleration = Vector3.new(0, look.rise, 0) -- up in the world, whichever way the bone points
+			flame.Size = NumberSequence.new(look.sizeStart, look.sizeEnd)
+			flame.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.2, look.transparency),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			flame.Rotation = NumberRange.new(-20, 20)
+			flame.Parent = spot
+			table.insert(flames, flame)
+		end
+	end
+	return flames
+end
+
+local function stepAura(monster: Monster, now: number)
+	local aura = monster.aura :: Aura
+	local color = Color3.fromHSV((now / Bosses.RAINBOW_AURA.hueSeconds) % 1, 0.6, 1)
+	aura.highlight.OutlineColor = color
+	aura.highlight.FillColor = color
+	aura.light.Color = color
+	if monster.fallenAt then
+		for _, flame in aura.flames do
+			flame.Enabled = false
+		end
+		aura.highlight.OutlineTransparency = math.min(1, aura.highlight.OutlineTransparency + 0.02)
+		aura.highlight.FillTransparency = math.min(1, aura.highlight.FillTransparency + 0.02)
+		aura.light.Enabled = false
+	end
+end
+
+-- Its death: the outer heads first, the middle one last, each neck bowing down over HEAD_DROP.seconds
+local function dropHeads(monster: Monster, now: number)
+	local pet = monster.body.pet
+	local fallenAt = monster.fallenAt
+	if not pet or not fallenAt then
+		return
+	end
+	local drop = Bosses.HEAD_DROP
+	for _, entry in (pet :: any).bones do
+		local head = tonumber(string.match(entry.key, "^hydra:(%d+):0$") or "")
+		if head then
+			local delay = (#monster.heads - 1 - head) * drop.gap
+			local share = math.clamp((now - fallenAt - delay) / drop.seconds, 0, 1)
+			entry.bone.Transform = entry.restInverse * CFrame.Angles(-math.rad(drop.angle) * share, 0, 0) * entry.rest
+		end
+	end
+end
+
 local function remove(marker: BasePart)
 	local monster = monsters[marker]
 	if not monster then
@@ -145,13 +287,20 @@ local function add(marker: BasePart)
 
 	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
 	local height = Wild.MONSTER_HEIGHT * (if boss then boss.scale elseif elite then Wild.ELITE_SIZE else 1)
-	local body = CreatureVisuals.build(model, marker, height, flying)
+	-- A boss model's bones move like a creature's (its PetRig names; Party style keyed by the boss id)
+	local body = CreatureVisuals.build(model, marker, height, flying, if boss and template then bossId :: string else nil)
 	local monster: Monster = {
 		marker = marker,
 		body = body,
 		tag = CreatureVisuals.makeTag(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), TAG_COLOR),
 		connections = {},
+		heads = if boss and boss.heads and template then makeHeads(model, boss.heads) else {},
+		fallenAt = nil,
+		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
 	}
+	if monster.aura and boss and boss.auroraFlame then
+		monster.aura.flames = makeFlames(model, body.root)
+	end
 	if elite or boss then
 		local light = Instance.new("PointLight")
 		light.Color = if boss then BOSS_TAG_COLOR else ELITE_TAG_COLOR
@@ -160,8 +309,15 @@ local function add(marker: BasePart)
 		light.Parent = body.root
 	end
 	updateTag(monster)
+	lightHeads(monster)
 	table.insert(monster.connections, marker.AttributeChanged:Connect(function()
 		updateTag(monster)
+		if #monster.heads > 0 or monster.aura then
+			if marker:GetAttribute("Fainted") == true and not monster.fallenAt then
+				monster.fallenAt = os.clock()
+			end
+			lightHeads(monster)
+		end
 	end))
 	monsters[marker] = monster
 end
@@ -198,6 +354,12 @@ function MonsterController.Start()
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
 		for _, monster in monsters do
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
+			if monster.fallenAt then
+				dropHeads(monster, now)
+			end
+			if monster.aura then
+				stepAura(monster, now)
+			end
 		end
 	end)
 end
