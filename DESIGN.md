@@ -1084,12 +1084,20 @@ Schema history: v1 first release; v2 moved displayed cards onto `layout` entries
 their saved data.
 
 ### 10.6 UI style and HUD
-Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
-- **Style** (`Util/UIKit`, "Midnight & Gold"): deep navy-charcoal panel bodies with a soft gold rim, a dark
-  gradient header with the title and a thin gold rule under it, a red close button on the top-right corner, slate
-  cards and rows with thin edges, chunky buttons with a darker bottom lip (warm gold primary with dark text, slate
-  secondary). Text picks warm white or dark ink for the surface behind it. HUD tiles are midnight slate; the Bag,
-  hover tooltips, Shop pictures and the pack opening stage use the same palette.
+Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
+`docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
+- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`, look E "bold hybrid", chosen to suit kids, teens and
+  adults): dark slate panel bodies with a thick near-black outline and a drop lip, a coloured header band per window
+  (`UIKit.panel(parent, name, title, band)`: Party teal, binder and card detail blue, Boss ladder red, Bag orange,
+  others teal) with an outlined white title and a dark line under it, a red close button on the top-right corner,
+  slate rows, candy buttons (the colour darkening down the face to a bottom lip, a thick outline, outlined white
+  text; navy text on light colours): gold for the main action, blue (`Colors.Secondary`) for other choices, red to
+  remove or leave, each with an icon (`UIKit.iconButton`). Helpers: `outlined` (text outline), `pill` (rarity,
+  grade, element and count chips), `bar` and `statRow` (chunky green bars), `stars` (star icons, never the
+  character), `textSize` (body 15, small 13, name 22, number 23, title 28; 85% on phones). Colour rules on every
+  screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
+  green / C grey, money green with the Cash icon, Power orange with the Power icon, green good, red bad, gold for hints
+  and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
 - **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
   for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).

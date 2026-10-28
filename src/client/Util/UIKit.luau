@@ -1,31 +1,37 @@
 --!strict
 -- Small helpers for building the game's UI in code, so every panel looks the same.
--- Style: bright and clean (light-blue panels, white cards, a blue gradient header, chunky buttons with a
--- darker bottom lip, a red close button). Colours live in UIKit.Colors.
+-- Style: look E, "bold hybrid" (Config/UIStyle): dark slate windows with a thick outline and a drop lip, a coloured
+-- header band per window, outlined titles and big numbers, candy buttons (a gradient, a thick outline and a darker
+-- bottom lip), chunky bars, pills and star rows. Colours live in UIKit.Colors and Config/UIStyle.
 -- Text colour picks itself: buttons get white text on dark colours and navy on light ones, and labels
 -- made with Colors.Text / Colors.Subtext turn navy when the surface behind them is light.
 -- Sizes follow mobile-first rules: tap targets at least 48px.
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local UIStyle = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIStyle"))
+local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
+local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
 
 local UIKit = {}
 
--- Midnight & Gold: dark navy-charcoal windows, slate rows, warm gold for primary buttons and highlights
+-- Look E: dark slate windows, gold for the main action, blue for other choices, red for remove / leave
 UIKit.Colors = {
-	Panel = Color3.fromRGB(20, 24, 36), -- panel body (deep navy-charcoal)
-	Row = Color3.fromRGB(34, 40, 56), -- cards and rows on a panel; secondary buttons (slate)
-	Accent = Color3.fromRGB(226, 178, 72), -- primary buttons, selected tabs, highlights (warm gold)
-	Success = Color3.fromRGB(52, 190, 115),
-	Danger = Color3.fromRGB(225, 72, 78),
+	Panel = UIStyle.PANEL, -- panel body (dark slate)
+	Row = UIStyle.ROW, -- cards and rows on a panel
+	Accent = UIStyle.GOLD, -- primary buttons, selected tabs, highlights
+	Secondary = UIStyle.BLUE, -- other choices
+	Success = UIStyle.GREEN,
+	Danger = UIStyle.RED,
 	Locked = Color3.fromRGB(64, 70, 86),
 	Text = Color3.fromRGB(244, 241, 233), -- text on dark or coloured surfaces (dark on light ones, see label)
 	Subtext = Color3.fromRGB(150, 158, 178),
 	Ink = Color3.fromRGB(34, 28, 16), -- text on light surfaces (gold buttons, white pills)
 	InkSoft = Color3.fromRGB(110, 100, 80),
-	Outline = Color3.fromRGB(58, 66, 90), -- thin borders on rows and cards
+	Outline = UIStyle.EDGE, -- outlines on windows, buttons, rows and cards
 	HeaderTop = Color3.fromRGB(38, 44, 66),
 	HeaderBottom = Color3.fromRGB(26, 30, 46),
 }
@@ -34,8 +40,11 @@ UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another
 UIKit.HEADER_HEIGHT = 60
 
 local LIGHT_LUMINANCE = 0.62 -- surfaces brighter than this get navy text
-local LIP_SHADE = 0.68 -- the bottom lip of a button, this much of its colour
+local FACE_SHADE = 0.84 -- a candy button's face darkens to this much of its colour towards the lip
+local LIP_SHADE = 0.6 -- the bottom lip of a button, this much of its colour
 local LIP_START = 0.84 -- where the lip begins, from the top of the button
+local PANEL_CORNER = 16
+local ICON_SIZE = 24 -- an icon button's picture
 
 -- Roblox's on-screen thumbstick and jump button sit over panel buttons on phones (the binder's
 -- page arrows, Back buttons), so they are hidden while any panel is open
@@ -205,8 +214,26 @@ function UIKit.label(parent: Instance, text: string, font: Enum.Font, size: numb
 	return label
 end
 
--- A chunky button: its colour with a darker lip along the bottom (a gradient, so it follows colour changes),
--- and white or navy text to suit the colour. Text set by hand stays as set.
+-- Outlines text (a TextLabel's or a button's) in the kit's dark edge colour
+function UIKit.outlined(text: TextLabel | TextButton, thickness: number?): UIStroke
+	local stroke = Instance.new("UIStroke")
+	stroke.Name = "TextOutline"
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	stroke.Color = UIStyle.EDGE
+	stroke.Thickness = thickness or 2
+	stroke.LineJoinMode = Enum.LineJoinMode.Round
+	stroke.Parent = text
+	return stroke
+end
+
+-- A text size from Config/UIStyle (body, small, name, number, title), smaller on phones
+function UIKit.textSize(kind: "body" | "small" | "name" | "number" | "title"): number
+	local size = UIStyle.TEXT[kind]
+	return if UIKit.isPhone() then math.floor(size * UIStyle.PHONE_TEXT_SCALE) else size
+end
+
+-- A candy button: its colour darkening down the face to a darker lip along the bottom (a gradient, so it follows
+-- colour changes), a thick dark outline, and outlined white text (navy on light colours). Text set by hand stays as set.
 function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	local button = Instance.new("TextButton")
 	button.BackgroundColor3 = color
@@ -223,7 +250,7 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	lip.Rotation = 90
 	lip.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-		ColorSequenceKeypoint.new(LIP_START, Color3.new(1, 1, 1)),
+		ColorSequenceKeypoint.new(LIP_START, Color3.new(FACE_SHADE, FACE_SHADE, FACE_SHADE)),
 		ColorSequenceKeypoint.new(LIP_START + 0.001, Color3.new(LIP_SHADE, LIP_SHADE, LIP_SHADE)),
 		ColorSequenceKeypoint.new(1, Color3.new(LIP_SHADE, LIP_SHADE, LIP_SHADE)),
 	})
@@ -232,19 +259,25 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	padding.PaddingBottom = UDim.new(0, 4) -- keep the text on the face, above the lip
 	padding.Parent = button
 
-	local edge = UIKit.outline(button, nil, 1.5)
+	UIKit.outline(button, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local textEdge = UIKit.outlined(button)
 	local autoText: Color3? = nil -- the text colour this button last picked for itself
 	local function restyle()
 		local light = UIKit.isLight(button.BackgroundColor3)
-		edge.Color = if light then UIKit.Colors.Outline else button.BackgroundColor3:Lerp(Color3.new(0, 0, 0), 0.35)
-		local pick = if light then UIKit.Colors.Ink else UIKit.Colors.Text
+		local pick = if light then UIKit.Colors.Ink else Color3.new(1, 1, 1)
 		if autoText == nil or button.TextColor3 == autoText then
 			button.TextColor3 = pick
 		end
 		autoText = pick
 	end
+	-- Light text (white on a dark colour) gets the dark outline; navy text on a light colour doesn't
+	local function outlineText()
+		textEdge.Enabled = UIKit.isLight(button.TextColor3)
+	end
 	restyle()
+	outlineText()
 	button:GetPropertyChangedSignal("BackgroundColor3"):Connect(restyle)
+	button:GetPropertyChangedSignal("TextColor3"):Connect(outlineText)
 	return button
 end
 
@@ -258,16 +291,13 @@ function UIKit.closeButton(parent: GuiObject): TextButton
 	close.Font = Enum.Font.FredokaOne
 	close.TextSize = 26
 	close.ZIndex = parent.ZIndex + 3
-	local ring = close:FindFirstChildWhichIsA("UIStroke")
-	if ring then
-		ring.Color = UIKit.Colors.Text
-		ring.Thickness = 2
-	end
 	return close
 end
 
--- The dark gradient strip across the top of a panel, with the title in it and a gold rule under it
-function UIKit.header(parent: GuiObject, title: string): (Frame, TextLabel)
+-- The coloured band across the top of a panel (Config/UIStyle HEADERS: Party, Cards, Bosses, Bag, Default), with
+-- the outlined title in it and a dark line under it
+function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, TextLabel)
+	local colors = UIStyle.HEADERS[band or "Default"] or UIStyle.HEADERS.Default
 	local header = Instance.new("Frame")
 	header.Name = "Header"
 	header.Size = UDim2.new(1, 0, 0, UIKit.HEADER_HEIGHT)
@@ -275,42 +305,41 @@ function UIKit.header(parent: GuiObject, title: string): (Frame, TextLabel)
 	header.BorderSizePixel = 0
 	header.ZIndex = parent.ZIndex
 	header.Parent = parent
-	UIKit.corner(header, 14)
+	UIKit.corner(header, PANEL_CORNER - 2)
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
-	gradient.Color = ColorSequence.new(UIKit.Colors.HeaderTop, UIKit.Colors.HeaderBottom)
+	gradient.Color = ColorSequence.new(colors.top, colors.bottom)
 	gradient.Parent = header
 	-- Square off the header's bottom corners where it meets the body
 	local squareBottom = Instance.new("Frame")
 	squareBottom.Name = "SquareBottom"
 	squareBottom.AnchorPoint = Vector2.new(0, 1)
 	squareBottom.Position = UDim2.fromScale(0, 1)
-	squareBottom.Size = UDim2.new(1, 0, 0, 14)
+	squareBottom.Size = UDim2.new(1, 0, 0, PANEL_CORNER)
 	squareBottom.BackgroundColor3 = Color3.new(1, 1, 1)
 	squareBottom.BorderSizePixel = 0
 	squareBottom.ZIndex = header.ZIndex
 	squareBottom.Parent = header
 	local bottomGradient = gradient:Clone()
-	bottomGradient.Color = ColorSequence.new(UIKit.Colors.HeaderBottom)
+	bottomGradient.Color = ColorSequence.new(colors.bottom)
 	bottomGradient.Parent = squareBottom
-	-- A thin gold rule where the header meets the body
+	-- A dark line where the band meets the body
 	local rule = Instance.new("Frame")
 	rule.Name = "Rule"
 	rule.AnchorPoint = Vector2.new(0, 1)
 	rule.Position = UDim2.fromScale(0, 1)
-	rule.Size = UDim2.new(1, 0, 0, 2)
-	rule.BackgroundColor3 = UIKit.Colors.Accent
-	rule.BackgroundTransparency = 0.3
+	rule.Size = UDim2.new(1, 0, 0, UIStyle.EDGE_THICKNESS)
+	rule.BackgroundColor3 = UIStyle.EDGE
 	rule.BorderSizePixel = 0
 	rule.ZIndex = header.ZIndex + 1
 	rule.Parent = header
 
-	local titleLabel = UIKit.label(header, title, Enum.Font.FredokaOne, 28, UIKit.Colors.Text)
+	local titleLabel = UIKit.label(header, title, Enum.Font.FredokaOne, UIKit.textSize("title"), UIKit.Colors.Text)
 	titleLabel.Name = "Title"
 	titleLabel.Position = UDim2.fromOffset(18, 0)
 	titleLabel.Size = UDim2.new(1, -90, 1, 0)
 	titleLabel.TextColor3 = Color3.new(1, 1, 1)
-	titleLabel.TextStrokeTransparency = 0.75
+	UIKit.outlined(titleLabel, 2.5)
 	titleLabel.ZIndex = header.ZIndex + 1
 	return header, titleLabel
 end
@@ -325,28 +354,36 @@ function UIKit.closePanel(frame: GuiObject)
 	end)
 end
 
--- Centred modal panel: dark header with the title, red close button, dark body with a scrolling list.
+-- Centred modal panel: a coloured header band (`band`: a Config/UIStyle HEADERS name) with the title, red close
+-- button, dark body with a scrolling list. The frame itself is the dark edge colour and a "Body" child paints the
+-- slate face LIP pixels short of the bottom, so the edge shows there as a drop lip under a thick outline.
 -- Starts hidden. The title label is named "Title" (inside the header) for callers that change it.
-function UIKit.panel(parent: Instance, name: string, title: string): (Frame, ScrollingFrame)
+function UIKit.panel(parent: Instance, name: string, title: string, band: string?): (Frame, ScrollingFrame)
 	local frame = Instance.new("Frame")
 	frame.Name = name
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	frame.Size = UDim2.fromScale(0.92, 0.7)
-	frame.BackgroundColor3 = UIKit.Colors.Panel
+	frame.BackgroundColor3 = UIStyle.EDGE
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame.Parent = parent
-	UIKit.corner(frame, 16)
-	-- A soft gold rim
-	local rim = UIKit.outline(frame, UIKit.Colors.Accent, 1.5)
-	rim.Transparency = 0.5
+	UIKit.corner(frame, PANEL_CORNER)
+	UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.Size = UDim2.new(1, 0, 1, -UIStyle.LIP)
+	body.BackgroundColor3 = UIKit.Colors.Panel
+	body.BorderSizePixel = 0
+	body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
+	body.Parent = frame
+	UIKit.corner(body, PANEL_CORNER)
 
 	local sizeLimit = Instance.new("UISizeConstraint")
 	sizeLimit.MaxSize = Vector2.new(460, 520)
 	sizeLimit.Parent = frame
 
-	local _, titleLabel = UIKit.header(frame, title)
+	local _, titleLabel = UIKit.header(frame, title, band)
 	titleLabel.Parent = frame -- callers find it as frame.Title; it still sits over the header
 	titleLabel.Position = UDim2.fromOffset(18, 0)
 	titleLabel.Size = UDim2.new(1, -90, 0, UIKit.HEADER_HEIGHT)
@@ -419,6 +456,135 @@ function UIKit.row(parent: Instance, order: number, title: string, detail: strin
 	button.Size = UDim2.fromOffset(104, 52)
 
 	return frame, button, detailLabel
+end
+
+-- A candy button with an icon (Config/UIIcons name) before its text; with no text, just the icon, centred.
+-- The picture is the "Icon" child (callers may resize it); .Text still works.
+function UIKit.iconButton(parent: Instance, text: string, icon: string, color: Color3): TextButton
+	local button = UIKit.button(parent, text, color)
+	local picture = Icon.make(button, icon, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.ZIndex = button.ZIndex + 1
+	local padding = button:FindFirstChildOfClass("UIPadding") :: UIPadding
+	local function place()
+		if button.Text == "" then
+			padding.PaddingLeft = UDim.new()
+			picture.Position = UDim2.fromScale(0.5, 0.5)
+		else
+			padding.PaddingLeft = UDim.new(0, picture.AbsoluteSize.X + 10)
+			picture.Position = UDim2.new(0, -picture.AbsoluteSize.X / 2 - 2, 0.5, 0)
+		end
+	end
+	place()
+	button:GetPropertyChangedSignal("Text"):Connect(place)
+	picture:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+	button:GetPropertyChangedSignal("ZIndex"):Connect(function()
+		picture.ZIndex = button.ZIndex + 1
+	end)
+	return button
+end
+
+-- A rounded chip (rarity, grade, element, counts) that sizes to its text; an optional icon before the text.
+-- Text is navy on light fills and outlined white on dark ones unless textColor is given.
+function UIKit.pill(parent: Instance, text: string, fill: Color3, textColor: Color3?, icon: string?): TextLabel
+	local pill = Instance.new("TextLabel")
+	pill.Name = "Pill"
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, 24)
+	pill.BackgroundColor3 = fill
+	pill.Font = Enum.Font.FredokaOne
+	pill.TextSize = UIKit.textSize("small")
+	pill.Text = text
+	pill.TextColor3 = textColor or (if UIKit.isLight(fill) then UIKit.Colors.Ink else Color3.new(1, 1, 1))
+	pill.Parent = parent
+	UIKit.corner(pill, 12)
+	UIKit.outline(pill, UIStyle.EDGE, 2)
+	if not textColor and not UIKit.isLight(fill) then
+		UIKit.outlined(pill, 1.5)
+	end
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, if icon then 26 else 9)
+	padding.PaddingRight = UDim.new(0, 9)
+	padding.Parent = pill
+	if icon then
+		local picture = Icon.make(pill, icon, UDim2.fromOffset(18, 18))
+		picture.AnchorPoint = Vector2.new(0, 0.5)
+		picture.Position = UDim2.new(0, -21, 0.5, 0)
+		picture.ZIndex = pill.ZIndex + 1
+	end
+	return pill
+end
+
+-- A chunky bar: a dark outlined track with a fill `share` (0-1) of its width, the kit's green by default.
+-- Returns the track (size and place it) and the fill (change its Size.X to update).
+function UIKit.bar(parent: Instance, share: number, fill: Color3?): (Frame, Frame)
+	local track = Instance.new("Frame")
+	track.Name = "Bar"
+	track.Size = UDim2.new(1, 0, 0, if UIKit.isPhone() then UIStyle.BAR.phoneHeight else UIStyle.BAR.height)
+	track.BackgroundColor3 = UIStyle.EDGE
+	track.BorderSizePixel = 0
+	track.ClipsDescendants = true
+	track.Parent = parent
+	UIKit.corner(track, 999)
+	UIKit.outline(track, UIStyle.EDGE, 2)
+	local inside = Instance.new("Frame")
+	inside.Name = "Fill"
+	inside.Size = UDim2.fromScale(math.clamp(share, 0, 1), 1)
+	inside.BackgroundColor3 = fill or Color3.new(1, 1, 1)
+	inside.BorderSizePixel = 0
+	inside.ZIndex = track.ZIndex
+	inside.Parent = track
+	UIKit.corner(inside, 999)
+	local shade = Instance.new("UIGradient")
+	shade.Rotation = 90
+	shade.Color = if fill
+		then ColorSequence.new(Color3.new(1, 1, 1), Color3.new(FACE_SHADE, FACE_SHADE, FACE_SHADE))
+		else ColorSequence.new(UIStyle.BAR.fillTop, UIStyle.BAR.fillBottom)
+	shade.Parent = inside
+	return track, inside
+end
+
+-- One stat line: its icon, then a bar `share` full
+function UIKit.statRow(parent: Instance, icon: string, share: number): Frame
+	local row = Instance.new("Frame")
+	row.Name = "StatRow"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, 20)
+	row.Parent = parent
+	local picture = Icon.make(row, icon, UDim2.fromOffset(20, 20))
+	picture.ZIndex = row.ZIndex
+	local track = UIKit.bar(row, share)
+	track.AnchorPoint = Vector2.new(0, 0.5)
+	track.Position = UDim2.new(0, 26, 0.5, 0)
+	track.Size = UDim2.new(1, -26, 0, track.Size.Y.Offset)
+	return row
+end
+
+-- A row of star icons, `lit` of `total` bright, the rest dim
+function UIKit.stars(parent: Instance, lit: number, total: number, size: number): Frame
+	local row = Instance.new("Frame")
+	row.Name = "Stars"
+	row.BackgroundTransparency = 1
+	row.AutomaticSize = Enum.AutomaticSize.X
+	row.Size = UDim2.fromOffset(0, size)
+	row.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 1)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	for index = 1, total do
+		local star = Instance.new("ImageLabel")
+		star.LayoutOrder = index
+		star.BackgroundTransparency = 1
+		star.Size = UDim2.fromOffset(size, size)
+		star.Image = UIIcons.Star
+		star.ImageTransparency = if index <= lit then 0 else 0.55
+		star.ImageColor3 = if index <= lit then Color3.new(1, 1, 1) else Color3.fromRGB(90, 96, 120)
+		star.ZIndex = row.ZIndex
+		star.Parent = row
+	end
+	return row
 end
 
 return UIKit
