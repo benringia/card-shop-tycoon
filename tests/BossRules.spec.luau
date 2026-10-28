@@ -118,6 +118,20 @@ return {
 		expect.equal(m(1).shield ~= nil and m(2).thunderclap ~= nil and m(3).adds ~= nil and m(4).heal ~= nil and m(5).enrage ~= nil, true, "shield, clap, adds, heal, enrage")
 	end,
 
+	["config: the Hydra's five heads are its five phase elements"] = function()
+		local hydra = Bosses.BOSSES.prismHydra
+		local heads = hydra.heads :: { string }
+		expect.equal(#heads, 5, "five heads")
+		local phaseElements = {}
+		for _, phase in hydra.phases :: { any } do
+			phaseElements[phase.element] = true
+		end
+		for index, element in heads do
+			expect.equal(phaseElements[element], true, `head {index - 1}: {element}`)
+		end
+		expect.equal(typeof(Bosses.DEATH_SECONDS) == "number" and Bosses.DEATH_SECONDS > 0, true, "a death scene")
+	end,
+
 	["config: the Rift Devourer drops the Hydra's fragments"] = function()
 		local rift = Bosses.BOSSES.riftDevourer
 		expect.equal(rift.fragment, "fragment_prismHydra", "its fragment")
