@@ -14,7 +14,7 @@ export type Record = {
 	bonusDay: number, -- UTC day the daily bonus chest was last given
 }
 type Config = { SOFT_CAP_AFTER: number, SOFT_CAP_STEP: number, SOFT_CAP_FLOOR: number, OVERPOWER_RATIO: number, OVERPOWER_FACTOR: number }
-type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
+type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, GROUP_SWINGS_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
 
 local function readCount(value: unknown): number
 	return if typeof(value) == "number" and value == value and value >= 0 and value ~= math.huge then math.floor(value) else 0
@@ -99,9 +99,13 @@ function BossRules.dropFactor(config: Config, record: Record, partyPower: number
 end
 
 -- A boss's HP and ATK for a group of `size` players (1 = as configured)
-function BossRules.groupStats(config: GroupConfig, hp: number, atk: number, size: number): (number, number)
+-- A boss against `size` players: more HP and ATK, and it hits more creatures per attack (swings), never more than
+-- there are players
+-- atkStep: the boss's own ATK step per extra player (nil: the config's)
+function BossRules.groupStats(config: GroupConfig, hp: number, atk: number, size: number, atkStep: number?): (number, number, number)
 	local extra = math.max(0, size - 1)
-	return math.round(hp * (1 + config.GROUP_HP_STEP * extra)), math.round(atk * (1 + config.GROUP_ATK_STEP * extra))
+	local swings = math.min(size, 1 + math.floor(config.GROUP_SWINGS_STEP * extra))
+	return math.round(hp * (1 + config.GROUP_HP_STEP * extra)), math.round(atk * (1 + (atkStep or config.GROUP_ATK_STEP) * extra)), math.max(1, swings)
 end
 
 -- Whether a member helped enough for full loot: a share of the group's damage or of the hits it took (a share of

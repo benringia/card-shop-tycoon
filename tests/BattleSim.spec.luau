@@ -190,6 +190,47 @@ return {
 		expect.equal(state.result, "a", "the boss is down: win")
 	end,
 
+	["group: Wave heals only its owner's creatures"] = function()
+		local state = BattleSim.new(combat, {
+			fighters = { { id = "p1", element = "Tide", hp = 1000, atk = 1, spd = 1, owner = "1" }, { id = "p2", element = "Ember", hp = 1000, atk = 1, spd = 1, owner = "2" } },
+			abilities = true,
+			canRun = true,
+		}, { fighters = { monster("Bloom", 100000, 1, 1) }, abilities = false, canRun = false }, 1)
+		state.sides.a.fighters[1].hp = 500
+		state.sides.a.fighters[2].hp = 500
+		BattleSim.useAbility(state, "a:p1", "element", "1")
+		expect.equal(state.sides.a.fighters[1].hp, 750, "the Tide owner's creature is healed")
+		expect.equal(state.sides.a.fighters[2].hp, 500, "the other player's is not")
+	end,
+
+	["boss swings: a boss with 2 swings hits two different creatures per attack"] = function()
+		local state = BattleSim.new(combat, {
+			fighters = { owned("p1", "1", 100000), owned("p2", "2", 100000), owned("p3", "3", 100000) },
+			abilities = false,
+			canRun = true,
+		}, { fighters = { { id = "m", element = "Bloom", hp = 100000, atk = 10, spd = 10, boss = true, swings = 2 } }, abilities = false, canRun = false }, 11)
+		local _, events = runToEnd(state, 3)
+		local count = 0
+		for _, event in events do
+			if event.type == "attack" and event.from == "b:m" then
+				count += 1
+			end
+		end
+		-- the boss attacks once per interval; with 2 swings each attack lands on 2 targets
+		expect.equal(count >= 2 and count % 2 == 0, true, `hits come in pairs ({count})`)
+		local targets = {}
+		for _, event in events do
+			if event.type == "attack" and event.from == "b:m" then
+				targets[event.to] = (targets[event.to] or 0) + 1
+			end
+		end
+		local distinct = 0
+		for _ in targets do
+			distinct += 1
+		end
+		expect.equal(distinct >= 2, true, "spread over different creatures")
+	end,
+
 	["swap: a reserve comes in and the hurt one goes back with its HP"] = function()
 		local state = swapFight(1, 1)
 		runToEnd(state, combat.CALL_IN_SECONDS + 1)

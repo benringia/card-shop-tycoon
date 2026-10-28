@@ -639,8 +639,9 @@ local function startFight(players: { Player }, monster: Monster): boolean
 	if not stats or #players == 0 then
 		return false
 	end
+	local swings = 1
 	if boss then
-		stats.hp, stats.atk = BossRules.groupStats(Bosses, stats.hp, stats.atk, #players)
+		stats.hp, stats.atk, swings = BossRules.groupStats(Bosses, stats.hp, stats.atk, #players, boss.groupAtkStep)
 	end
 
 	local members: { Member } = {}
@@ -675,6 +676,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 			elite = monster.elite,
 			mechanics = if boss then boss.mechanics else nil,
 			boss = boss ~= nil,
+			swings = swings,
 		} },
 		abilities = false,
 		canRun = false,

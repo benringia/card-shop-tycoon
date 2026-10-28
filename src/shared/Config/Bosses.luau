@@ -17,6 +17,7 @@ export type Boss = {
 	atk: number,
 	spd: number,
 	recommended: number, -- the party Power it's balanced for (shown on the board; drops shrink far above it)
+	groupAtkStep: number?, -- its own ATK step per extra player in a group (nil: GROUP_ATK_STEP)
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
@@ -132,6 +133,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 27,
 		spd = 9,
 		recommended = 1100,
+		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 60,
 		unlock = { item = "fragment_frostTyrant", count = 5 },
 		fragment = "fragment_stormSovereign",
@@ -159,6 +161,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 26,
 		spd = 14,
 		recommended = 1500,
+		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 70,
 		unlock = { item = "fragment_stormSovereign", count = 8 },
 		fragment = "fragment_riftDevourer",
@@ -185,6 +188,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 26,
 		spd = 10,
 		recommended = 1900,
+		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 80,
 		unlock = { item = "fragment_riftDevourer", count = 8 },
 		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
@@ -226,6 +230,7 @@ return {
 	JOIN_SECONDS = 15, -- others join this long after the leader opens a group at the gate
 	GROUP_HP_STEP = 0.8, -- boss HP x (1 + this x (players - 1))
 	GROUP_ATK_STEP = 0.15, -- boss ATK x (1 + this x (players - 1))
+	GROUP_SWINGS_STEP = 1, -- extra creatures the boss hits per attack, per extra player (so a group isn't a free win)
 	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
 	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took
 	CARRIED_FACTOR = 0.25, -- below both: item chances x this, never fragments, no chests
@@ -241,7 +246,7 @@ return {
 	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
 	PHASE_SHAKE = { seconds = 0.3, studs = 0.4 }, -- heal, enrage and the other boss moments
 	MUSIC_ID = "128007000574959", -- boss music: "Epic Boss Battle" (DistroKid, free in the Creator Store); "" plays none
-	MUSIC_VOLUME = 0.5,
+	MUSIC_VOLUME = 0.15, -- quiet: a bed under the attack and skill sounds to come
 	MUSIC_FADE = 1, -- seconds
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring
 	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands

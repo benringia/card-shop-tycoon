@@ -178,14 +178,20 @@ return {
 			assert(fromClear >= unlock.count or dropped, `{unlock.item}: {fromClear} from the first clear and no drop for the rest`)
 		end
 	end,
-	["groupStats: HP +80% and ATK +15% per extra player"] = function()
-		expect.equal(select(1, BossRules.groupStats(Bosses, 1200, 9, 1)), 1200, "solo HP")
-		local hp, atk = BossRules.groupStats(Bosses, 1200, 9, 2)
-		expect.equal(hp, 2160, "2 players HP")
-		expect.equal(atk, 10, "2 players ATK (10.35)")
-		hp, atk = BossRules.groupStats(Bosses, 4800, 18, 4)
-		expect.equal(hp, 16320, "4 players HP")
-		expect.equal(atk, 26, "4 players ATK (26.1)")
+	["groupStats: more HP and ATK per extra player, and extra swings so every creature feels the boss"] = function()
+		local hp, atk, swings = BossRules.groupStats(Bosses, 1200, 9, 1)
+		expect.equal(hp, 1200, "solo HP")
+		expect.equal(swings, 1, "solo: one target per attack")
+		hp, atk, swings = BossRules.groupStats(Bosses, 1200, 9, 2)
+		expect.equal(hp, math.round(1200 * (1 + Bosses.GROUP_HP_STEP)), "2 players HP")
+		expect.equal(atk, math.round(9 * (1 + Bosses.GROUP_ATK_STEP)), "2 players ATK")
+		expect.equal(swings, 1 + Bosses.GROUP_SWINGS_STEP, "2 players: hits more targets")
+		hp, atk, swings = BossRules.groupStats(Bosses, 4800, 18, 4)
+		expect.equal(swings, 1 + 3 * Bosses.GROUP_SWINGS_STEP, "4 players")
+		expect.equal(swings <= 4, true, "never more targets than players")
+		-- A boss may bring its own ATK step (the Frontier ones: Legendary parties shrug off the default)
+		local _, ownAtk = BossRules.groupStats(Bosses, 1000, 10, 3, 0.5)
+		expect.equal(ownAtk, 20, "ATK x (1 + 0.5 x 2)")
 	end,
 
 	["contributed: 10% of the damage or 15% of the hits taken"] = function()

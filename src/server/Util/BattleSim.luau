@@ -24,7 +24,7 @@ export type Mechanics = {
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
 	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
 }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
@@ -74,6 +74,7 @@ type Fighter = {
 	clapReady: number, -- boss: when its next thunderclap comes
 	addsDone: { [number]: boolean }, -- boss: which `adds.at` thresholds have summoned
 	addsMade: number, -- boss: adds summoned so far (their ids: "add1", "add2", ...)
+	swings: number, -- targets hit per attack (a boss against a group hits several)
 	owner: string?, -- the player it belongs to (groups); nil when the side has one owner
 	left: boolean, -- its player left the fight: out, never targeted, not fainted
 	benched: boolean, -- fainted and swapped out: off the field, but it still rests after the fight
@@ -144,6 +145,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		clapReady = if input.mechanics and input.mechanics.thunderclap then time + input.mechanics.thunderclap.every else math.huge,
 		addsDone = {},
 		addsMade = 0,
+		swings = math.max(1, input.swings or 1),
 		owner = input.owner,
 		left = false,
 		benched = false,
@@ -387,10 +389,30 @@ local function interval(state: State, fighter: Fighter): number
 	return value
 end
 
+-- One attack: the usual target, then (a boss against a group) the next most hurt standing enemies, each once
 local function attack(state: State, fighter: Fighter, events: { Event })
 	local target = targetOf(state, fighter, true)
-	if target then
-		hit(state, fighter, target, 1, events, nil)
+	if not target then
+		return
+	end
+	hit(state, fighter, target, 1, events, nil)
+	if fighter.swings <= 1 then
+		return
+	end
+	local others = {}
+	for _, enemy in standing(other(state, (state.sides :: any)[fighter.side])) do
+		if enemy ~= target then
+			table.insert(others, enemy)
+		end
+	end
+	table.sort(others, function(a, b)
+		return a.hp / a.maxHp < b.hp / b.maxHp
+	end)
+	for index = 1, math.min(fighter.swings - 1, #others) do
+		if state.result then
+			return
+		end
+		hit(state, fighter, others[index], 1, events, nil)
 	end
 end
 
@@ -632,8 +654,12 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 			hit(state, fighter, target, ability.power, events, kind)
 		end
 	elseif kind == "Wave" then
+		-- Heals the user's own creatures (in a group, not the other players': stacked Waves would out-heal any boss)
 		local healed = 0
 		for _, ally in standing(side) do
+			if ally.owner ~= fighter.owner then
+				continue
+			end
 			local amount = math.round(ally.maxHp * ability.heal)
 			ally.hp = math.min(ally.maxHp, ally.hp + amount)
 			healed += amount

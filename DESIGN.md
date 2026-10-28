@@ -613,7 +613,8 @@ and rewards in `BossService`.
   studs, stuns on a boss last at most 1 s.
 - **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
   (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
-  until then. Boss music plays through the fight ("Epic Boss Battle", `MUSIC_ID`); heals and enrages shake the camera.
+  until then. Boss music plays quietly through the fight ("Epic Boss Battle", `MUSIC_ID`, volume 0.15: a bed under the
+  attack and skill sounds to come); heals and enrages shake the camera.
 - **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
   the board lists all 6 and names the other place). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
   "Shield broken!" banners. Thunderclap: "Thunderclap!" and "Stunned" over each creature. Adds: "Rift Spawn!", the
@@ -655,7 +656,12 @@ and rewards in `BossService`.
   press again to start at once, it starts by itself when full (4). The Fight and group prompts have separate limiters.
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
-  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`).
+  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`;
+  the Frontier bosses use their own `groupAtkStep`, 0.35 / 0.35 / 0.5, because Legendary parties shrug off the
+  default), and it hits one more creature per attack per extra player (`GROUP_SWINGS_STEP`, never more targets than
+  players) so a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
+  whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]`: at the recommended
+  Power a 2-4 player group wins, a typical party (best card at it, two at 60%) 60-80%, boss 6 with 4 players 80%.
   Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
   others fight on, and the fight ends when nobody is left standing: a loss if a fainted member is still in it, else a
   run. Leaders stand 7 studs apart on the ring (`GROUP_SPACING`), each call-in 3 studs to its own leader's right
