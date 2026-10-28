@@ -584,9 +584,9 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Opens with |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1200 / 9 / 8 | 200 | - | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 13 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 4800 / 18 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
 
 | Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
 |---|---|---|---|---|
@@ -598,8 +598,14 @@ and rewards in `BossService`.
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
   the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
-  group, below). Boss fights may last 300 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
+  group, below). Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 38
   studs, stuns on a boss last at most 1 s.
+- **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
+  (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
+  which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when
+  none of yours is standing; when all of yours faint, your healthiest rested card comes in by itself, and you lose
+  only when none is left. A swapped-out summoned creature is hidden until it comes back. Because a player now brings
+  all three party cards, boss HP went up x1.5 and ATK about x1.2 (`BattleSim.swap`, Lune-tested).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a

@@ -52,6 +52,8 @@ type Snapshot = {
 	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean } },
 	reserves: { string },
 	callInFor: number,
+	swaps: boolean, -- boss fights: reserves may be brought in any time (a swap)
+	swapIn: number, -- seconds until my next swap
 	runIn: number,
 	runChance: number,
 	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
@@ -102,6 +104,8 @@ local latest: Snapshot? = nil
 local latestAt = 0 -- os.clock() when `latest` arrived, to count cooldowns down between snapshots
 local fighterViews: { [string]: FighterView } = {}
 local callInButtons: { TextButton } = {}
+local fighterKey = "" -- the fighter ids the bar was built for (a swap changes them)
+local reserveKey = "" -- the reserve ids the call-in buttons were built for
 local hiddenHud: { GuiObject } = {}
 local prompts: { [BasePart]: ProximityPrompt } = {}
 
@@ -161,7 +165,9 @@ local function toView(raw: any): Snapshot
 	local own, allies = {}, {}
 	for _, fighter in mine.fighters do
 		local owner = (fighter :: any).owner
-		table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
+		if not (fighter :: any).benched then -- fainted and swapped out
+			table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
+		end
 	end
 	local reserves = {}
 	for _, id in mine.reserves do
@@ -176,6 +182,8 @@ local function toView(raw: any): Snapshot
 		allies = allies,
 		reserves = reserves,
 		callInFor = mine.callInFor,
+		swaps = mine.swaps == true,
+		swapIn = if typeof(mine.swapIn) == "table" then mine.swapIn[myOwner] or 0 else 0,
 		runIn = mine.runIn,
 		runChance = mine.runChance,
 		enemies = enemy.fighters,
@@ -240,9 +248,18 @@ local function abilityLabel(name: string, seconds: number): string
 	return if seconds > 0.05 then `{name}\n{math.ceil(seconds)}s` else name
 end
 
+local function idsOf(list: { any }): string
+	local ids = {}
+	for _, entry in list do
+		table.insert(ids, if typeof(entry) == "table" then entry.id else entry)
+	end
+	return table.concat(ids, ",")
+end
+
 local function buildFighters(snapshot: Snapshot)
 	clear(fighterRow)
 	fighterViews = {}
+	fighterKey = idsOf(snapshot.fighters)
 	for index, fighter in snapshot.fighters do
 		local frame = Instance.new("Frame")
 		frame.LayoutOrder = index
@@ -297,11 +314,15 @@ local function buildCallIns(snapshot: Snapshot)
 		button:Destroy()
 	end
 	callInButtons = {}
-	if snapshot.callInFor <= 0 then
+	reserveKey = idsOf(snapshot.reserves)
+	if snapshot.callInFor <= 0 and not snapshot.swaps then
 		return
 	end
+	-- Boss fights: "Bring in" (a call-in early on, later a swap for your most hurt creature)
 	for index, beastId in snapshot.reserves do
-		local button = UIKit.button(actionRow, `Call in {fightNames[beastId] or "card"}`, UIKit.Colors.Row)
+		local name = fightNames[beastId] or "card"
+		local button = UIKit.button(actionRow, `{if snapshot.swaps then "Bring in" else "Call in"} {name}`, UIKit.Colors.Row)
+		button:SetAttribute("Card", name)
 		button.LayoutOrder = index
 		button.Size = UDim2.new(0, 150, 0, 48)
 		button.TextSize = 13
@@ -340,10 +361,21 @@ local function refreshTimers()
 		end
 	end
 	local callInLeft = snapshot.callInFor - elapsed
+	-- No swap wait when none of yours is standing
+	local anyStanding = false
+	for _, fighter in snapshot.fighters do
+		anyStanding = anyStanding or not fighter.fainted
+	end
+	local swapLeft = if anyStanding then snapshot.swapIn - elapsed else 0
 	for _, button in callInButtons do
-		button.Visible = callInLeft > 0
-		local name = string.match(button.Text, "^Call in ([^\n]+)") or "card"
-		button.Text = `Call in {name}\n{math.max(0, math.ceil(callInLeft))}s`
+		local name = button:GetAttribute("Card") or "card"
+		if snapshot.swaps then
+			button.Text = if swapLeft > 0.05 then `Bring in {name}\n{math.ceil(swapLeft)}s` else `Bring in {name}`
+			button.BackgroundColor3 = if swapLeft > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Row
+		else
+			button.Visible = callInLeft > 0
+			button.Text = `Call in {name}\n{math.max(0, math.ceil(callInLeft))}s`
+		end
 	end
 	if groupFight then
 		runButton.Text = "Leave" -- in a group you just step out; the others fight on
@@ -400,14 +432,12 @@ local function buildEnemies(snapshot: Snapshot)
 end
 
 local function applySnapshot(snapshot: Snapshot)
-	local fighterCount = 0
-	for _ in fighterViews do
-		fighterCount += 1
-	end
-	if fighterCount ~= #snapshot.fighters then
+	if idsOf(snapshot.fighters) ~= fighterKey then
 		buildFighters(snapshot)
 	end
-	if #callInButtons > 0 and (snapshot.callInFor <= 0 or #snapshot.reserves == 0) then
+	if snapshot.swaps and idsOf(snapshot.reserves) ~= reserveKey then
+		buildCallIns(snapshot)
+	elseif not snapshot.swaps and #callInButtons > 0 and (snapshot.callInFor <= 0 or #snapshot.reserves == 0) then
 		buildCallIns(snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()

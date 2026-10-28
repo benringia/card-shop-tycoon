@@ -2,7 +2,9 @@
 -- One fight between two sides of fighters, simulated on the server. Wild fights: side A is the party
 -- (leader + call-in reserves), side B one monster with no abilities. PvP: both sides are full parties. Boss groups:
 -- side A holds several players' fighters, each tagged with its owner (one call-in per owner, abilities only on your own
--- fighters, a player leaving withdraws only theirs, damage dealt and taken tallied for the loot rules).
+-- fighters, a player leaving withdraws only theirs, damage dealt and taken tallied for the loot rules). Boss fights
+-- allow swaps (swapSeconds): a reserve comes in for one of its owner's creatures, which goes back to the reserves with
+-- its HP (a fainted one stays benched); when all of an owner's creatures faint, their healthiest reserve comes in.
 -- Pure (only CombatMath; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
 -- the same fight. Fighter ids are prefixed by side ("a:<id>", "b:<id>") in events and snapshots.
 local CombatMath = if game ~= nil
@@ -15,9 +17,9 @@ local BattleSim = {}
 -- it last at most BOSS_MAX_STUN seconds
 export type Mechanics = { heal: { below: number, fraction: number, cooldown: number }?, enrage: { below: number, atkMultiplier: number }? }
 export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string? }
-export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean }
+export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
 export type Event = {
-	type: string, -- "attack" | "ability" | "faint" | "callin" | "run" | "end" | "heal" | "enrage" | "leave"
+	type: string, -- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" | "leave"
 	from: string?,
 	to: string?,
 	damage: number?,
@@ -60,6 +62,7 @@ type Fighter = {
 	enraged: boolean,
 	owner: string?, -- the player it belongs to (groups); nil when the side has one owner
 	left: boolean, -- its player left the fight: out, never targeted, not fainted
+	benched: boolean, -- fainted and swapped out: off the field, but it still rests after the fight
 	dealt: number, -- damage it did
 	taken: number, -- damage it took
 	burnBy: Fighter?, -- who set its burn (credited with the burn damage)
@@ -74,6 +77,8 @@ type Side = {
 	shield: number, -- damage this side still absorbs (Tidal Shield)
 	calledBy: { [string]: boolean }, -- owners ("" = the only one) who used their call-in
 	runReadyAt: number,
+	swapSeconds: number?, -- boss fights: seconds between one owner's swaps (nil: no swaps)
+	swapReadyAt: { [string]: number }, -- by owner
 }
 
 export type State = {
@@ -123,6 +128,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		enraged = false,
 		owner = input.owner,
 		left = false,
+		benched = false,
 		dealt = 0,
 		taken = 0,
 		burnBy = nil,
@@ -146,6 +152,8 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		shield = 0,
 		calledBy = {},
 		runReadyAt = 0,
+		swapSeconds = input.swapSeconds,
+		swapReadyAt = {},
 	}
 end
 
@@ -201,6 +209,80 @@ local function finish(state: State, result: string, events: { Event })
 	table.insert(events, { type = "end", result = result })
 end
 
+local function ownerKey(fighter: Fighter): string
+	return fighter.owner or ""
+end
+
+-- One owner's creatures on the field (fainted ones too, until benched)
+local function onField(side: Side, key: string): { Fighter }
+	local list = {}
+	for _, fighter in side.fighters do
+		if ownerKey(fighter) == key and not fighter.left and not fighter.benched then
+			table.insert(list, fighter)
+		end
+	end
+	return list
+end
+
+-- A reserve comes in. It takes the place of its owner's first fainted creature, or, when the owner already has as
+-- many standing as they may (one, two after a call-in), of the one with the smallest share of its HP left.
+local function bringIn(state: State, side: Side, incoming: Fighter, events: { Event })
+	local key = ownerKey(incoming)
+	local field = onField(side, key)
+	local slots = if side.calledBy[key] then 2 else 1
+	local out: Fighter? = nil
+	local standingCount = 0
+	for _, fighter in field do
+		if fighter.fainted then
+			out = out or fighter
+		else
+			standingCount += 1
+		end
+	end
+	if not out and standingCount >= slots then
+		for _, fighter in field do
+			if not out or fighter.hp / fighter.maxHp < (out :: Fighter).hp / (out :: Fighter).maxHp then
+				out = fighter
+			end
+		end
+	end
+	table.remove(side.reserves, table.find(side.reserves, incoming) :: number)
+	incoming.nextAttack = state.time + CombatMath.getAttackInterval(state.combat, incoming.spd)
+	table.insert(side.fighters, incoming)
+	if out then
+		if out.fainted then
+			out.benched = true
+		else
+			table.remove(side.fighters, table.find(side.fighters, out) :: number)
+			table.insert(side.reserves, out)
+		end
+	end
+	table.insert(events, { type = "swap", from = incoming.id, to = if out then out.id else nil })
+end
+
+-- Swap fights: when an owner has nobody standing, their healthiest reserve comes in (true if one did)
+local function autoSwap(state: State, side: Side, key: string, events: { Event }): boolean
+	if not side.swapSeconds then
+		return false
+	end
+	for _, fighter in onField(side, key) do
+		if not fighter.fainted then
+			return false
+		end
+	end
+	local best: Fighter? = nil
+	for _, reserve in side.reserves do
+		if ownerKey(reserve) == key and (not best or reserve.hp > best.hp) then
+			best = reserve
+		end
+	end
+	if not best then
+		return false
+	end
+	bringIn(state, side, best, events)
+	return true
+end
+
 local function takeDamage(state: State, target: Fighter, amount: number, events: { Event })
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
@@ -208,6 +290,7 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 		target.fainted = true
 		table.insert(events, { type = "faint", to = target.id })
 		local side = (state.sides :: any)[target.side] :: Side
+		autoSwap(state, side, ownerKey(target), events)
 		if #standing(side) == 0 and not state.result then
 			finish(state, other(state, side).name, events)
 		end
@@ -339,9 +422,10 @@ function BattleSim.callIn(state: State, id: string, owner: string?): (boolean, s
 				side.calledBy[key] = true
 				fighter.nextAttack = state.time + CombatMath.getAttackInterval(state.combat, fighter.spd)
 				table.insert(side.fighters, fighter)
+				-- Without swaps the call-in is the owner's last chance: their other reserves go
 				local rest = {}
 				for _, reserve in side.reserves do
-					if (reserve.owner or "") ~= key then
+					if reserve ~= fighter and (side.swapSeconds or (reserve.owner or "") ~= key) then
 						table.insert(rest, reserve)
 					end
 				end
@@ -351,6 +435,42 @@ function BattleSim.callIn(state: State, id: string, owner: string?): (boolean, s
 		end
 	end
 	return false, "missing"
+end
+
+-- Boss fights: bring one of your reserves in (during the call-in window, while unused, it joins as your call-in instead).
+-- Swaps wait swapSeconds between them, except when none of yours is standing.
+function BattleSim.swap(state: State, id: string, owner: string?): ({ Event }?, string?)
+	if state.result then
+		return nil, "ended"
+	end
+	local side = state.sides.a
+	local incoming: Fighter? = nil
+	for _, reserve in side.reserves do
+		if reserve.id == id then
+			incoming = reserve
+		end
+	end
+	if not side.swapSeconds then
+		return nil, "none"
+	elseif not incoming or (owner ~= nil and incoming.owner ~= owner) then
+		return nil, "missing"
+	end
+	local key = ownerKey(incoming)
+	if not side.calledBy[key] and state.time <= state.combat.CALL_IN_SECONDS then
+		BattleSim.callIn(state, id, owner)
+		return { { type = "callin", from = id } }, nil
+	end
+	local anyStanding = false
+	for _, fighter in onField(side, key) do
+		anyStanding = anyStanding or not fighter.fainted
+	end
+	if anyStanding and state.time < (side.swapReadyAt[key] or 0) then
+		return nil, "cooldown"
+	end
+	side.swapReadyAt[key] = state.time + side.swapSeconds
+	local events: { Event } = {}
+	bringIn(state, side, incoming, events)
+	return events, nil
 end
 
 -- A player left a group fight: their fighters step out (not fainted, never targeted) and their reserves go. The fight
@@ -560,6 +680,14 @@ function BattleSim.getFainted(state: State, sideName: string): { string }
 	return list
 end
 
+local function swapWaits(state: State, side: Side): { [string]: number }
+	local waits = {}
+	for key, readyAt in side.swapReadyAt do
+		waits[key] = math.max(0, readyAt - state.time)
+	end
+	return waits
+end
+
 -- Plain view for the clients' fight bars
 function BattleSim.snapshot(state: State): any
 	local function sideView(side: Side): any
@@ -577,6 +705,7 @@ function BattleSim.snapshot(state: State): any
 				fainted = fighter.fainted,
 				owner = fighter.owner,
 				left = fighter.left,
+				benched = fighter.benched,
 			})
 		end
 		local reserves = {}
@@ -591,6 +720,8 @@ function BattleSim.snapshot(state: State): any
 			runChance = if side.canRun then BattleSim.getRunChance(state, side.name) else 0,
 			canRun = side.canRun,
 			shield = side.shield,
+			swaps = side.swapSeconds ~= nil,
+			swapIn = swapWaits(state, side), -- seconds until each owner may swap again
 		}
 	end
 	return { time = state.time, result = state.result, sides = { a = sideView(state.sides.a), b = sideView(state.sides.b) } }

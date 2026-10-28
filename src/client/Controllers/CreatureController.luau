@@ -269,6 +269,9 @@ local function refreshCull()
 	local byKey: { [string]: BasePart } = {}
 	for marker, key in known do
 		byKey[key] = marker
+		if marker:GetAttribute("Benched") == true then
+			continue -- swapped out of a boss fight: hidden until it comes back in
+		end
 		table.insert(entries, {
 			key = key,
 			distance = (marker.Position - origin).Magnitude,
@@ -310,6 +313,7 @@ function CreatureController.Start()
 		nextKey += 1
 		known[child] = tostring(nextKey)
 		refreshCull()
+		child:GetAttributeChangedSignal("Benched"):Connect(refreshCull)
 		if not creatures[child] then
 			-- Attributes can arrive a moment after the part: try again when the card id shows up
 			local connection: RBXScriptConnection

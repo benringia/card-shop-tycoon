@@ -64,7 +64,93 @@ local function group(seed: number): any
 	}, { fighters = { monster("Bloom", 100000, 10, 10) }, abilities = false, canRun = false }, seed)
 end
 
+-- A boss fight with swaps: one player's leader and two reserves against a monster of the given ATK
+local function swapFight(seed: number, foeAtk: number): any
+	return BattleSim.new(combat, {
+		fighters = { owned("p1", "1") },
+		reserves = { owned("r1", "1"), owned("r1b", "1", 300) },
+		abilities = true,
+		canRun = true,
+		swapSeconds = 10,
+	}, { fighters = { monster("Bloom", 100000, foeAtk, 10) }, abilities = false, canRun = false }, seed)
+end
+
+local function ids(list: { any }): { [string]: any }
+	local byId = {}
+	for _, fighter in list do
+		byId[fighter.id] = fighter
+	end
+	return byId
+end
+
 return {
+	["swap: a reserve comes in and the hurt one goes back with its HP"] = function()
+		local state = swapFight(1, 1)
+		runToEnd(state, combat.CALL_IN_SECONDS + 1)
+		state.sides.a.fighters[1].hp = 100
+		local events = BattleSim.swap(state, "a:r1", "1")
+		expect.equal(events and events[1].type, "swap", "a swap event")
+		expect.equal(events and events[1].to, "a:p1", "the leader went out")
+		local field, bench = ids(state.sides.a.fighters), ids(state.sides.a.reserves)
+		expect.equal(field["a:r1"] ~= nil and field["a:p1"] == nil, true, "r1 in, p1 out")
+		expect.equal(bench["a:p1"] and bench["a:p1"].hp, 100, "p1 waits with its HP")
+	end,
+
+	["swap: a cooldown between swaps"] = function()
+		local state = swapFight(2, 1)
+		runToEnd(state, combat.CALL_IN_SECONDS + 1)
+		BattleSim.swap(state, "a:r1", "1")
+		local events, reason = BattleSim.swap(state, "a:p1", "1")
+		expect.isNil(events, "refused")
+		expect.equal(reason, "cooldown", "reason")
+		runToEnd(state, 10.5)
+		expect.equal(BattleSim.swap(state, "a:p1", "1") ~= nil, true, "fine after the cooldown")
+	end,
+
+	["swap: in the call-in window it adds a second creature instead"] = function()
+		local state = swapFight(3, 1)
+		local events = BattleSim.swap(state, "a:r1", "1")
+		expect.equal(events and events[1].type, "callin", "a call-in")
+		expect.equal(#state.sides.a.fighters, 2, "both on the field")
+	end,
+
+	["swap: when all yours faint the healthiest reserve comes in by itself"] = function()
+		local state = swapFight(4, 1)
+		runToEnd(state, combat.CALL_IN_SECONDS + 1)
+		state.sides.a.fighters[1].hp = 1
+		state.sides.a.fighters[1].dodgeUntil = 0
+		state.sides.b.fighters[1].atk = 50
+		local _, events = runToEnd(state, 3)
+		expect.isNil(state.result, "the fight goes on")
+		local swap = nil
+		for _, event in events do
+			if event.type == "swap" then
+				swap = swap or event
+			end
+		end
+		expect.equal(swap and swap.from, "a:r1", "the healthiest reserve (500 HP over 300)")
+		expect.equal(swap and swap.to, "a:p1", "it takes the fainted one's place")
+		expect.equal(table.find(BattleSim.getFainted(state, "a"), "p1") ~= nil, true, "the fainted one still rests afterwards")
+	end,
+
+	["swap: the fight is lost only when nobody can come in"] = function()
+		local state = swapFight(5, 400)
+		local result = runToEnd(state, 60)
+		expect.equal(result, "b", "all three fainted")
+		expect.equal(#BattleSim.getFainted(state, "a"), 3, "every one of them")
+	end,
+
+	["swap: not in fights without swaps, and only your own"] = function()
+		local plain = group(9)
+		runToEnd(plain, combat.CALL_IN_SECONDS + 1)
+		local _, reason = BattleSim.swap(plain, "a:r1", "1")
+		expect.equal(reason, "none", "wild and PvP have no swaps")
+		local state = swapFight(6, 1)
+		runToEnd(state, combat.CALL_IN_SECONDS + 1)
+		local _, other = BattleSim.swap(state, "a:r1", "2")
+		expect.equal(other, "missing", "someone else's reserve")
+	end,
+
 	["strong party beats a weak monster"] = function()
 		local state = wild(fighter("a", "Ember", 200, 30, 15), {}, monster("Bloom", 100, 2, 5), 1)
 		local result, events = runToEnd(state)
