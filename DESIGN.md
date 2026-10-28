@@ -1094,3 +1094,9 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars
   (damage trail, low-HP pulse), reserves shown as small portrait buttons with their HP, ability buttons with
   cooldown sweeps instead of countdown text.
+- Phone layout pass for fights: check the boss bar, fight bar and end screen on small landscape phones in the
+  Device emulator (boss bar width against the Roblox buttons, bar height, tap targets).
+- Dramatic boss fights: an intro before the fight starts (camera sweep to the boss, its name card, a roar, a short
+  countdown), a bigger sealed arena that nobody (players or creatures) can leave once the fight starts (a wall or
+  barrier rises at the gate and drops when it ends), boss music and phase moments (the heal and enrage get a
+  camera shake and a banner). Applies to every boss, so best done once before the Frontier bosses look final.
