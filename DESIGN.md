@@ -717,8 +717,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   experience ("Ben conquered the Dungeon!", MessagingService topic `BossCleared`, `announceEverywhere`). Then a portal
   home opens in the chamber (pick up your loot first). Later wins: "Victory!", the usual farm protection.
 - **The model:** a blocky remodel of the Crystal Titans Rainbow Hydra (`tools/blender/build_prismHydra.py`,
-  `assets/monsters/prismHydra.rbxm`): a fat stone body on short legs, a crown of prism crystals, five crystal heads in
-  one pale palette (so it doesn't read as the famous five-coloured dragon); boss models with PetRig bones now animate
+  `assets/monsters/prismHydra.rbxm`) in the chunky "simulator pet" style the user asked for: big rounded simple shapes,
+  oversized heads with angry brows on short thick necks, stubby legs, flat bright violet, aqua and pink, a crown of
+  chunky crystals; all five heads share one colour (so it doesn't read as the famous five-coloured dragon; in game only
+  the active phase's head glows); about 3,400 triangles. Boss models with PetRig bones now animate
   like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id). Scale 5.5, ring radius 16.
 - **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
