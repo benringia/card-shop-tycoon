@@ -25,7 +25,7 @@ local TAG_COLOR = Color3.fromRGB(235, 235, 235)
 local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
 type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
-type Aura = { highlight: Highlight, light: PointLight }
+type Aura = { highlight: Highlight, light: PointLight, flames: { ParticleEmitter } }
 type Monster = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
@@ -173,7 +173,51 @@ local function makeAura(body: CreatureVisuals.Body): Aura
 	light.Brightness = look.lightBrightness
 	light.Range = look.lightRange
 	light.Parent = body.root
-	return { highlight = highlight, light = light }
+	return { highlight = highlight, light = light, flames = {} }
+end
+
+local AURORA = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 255, 170)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 210, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 110, 255)),
+})
+
+-- An aurora flame (Bosses.AURORA_FLAME): soft flames in aurora colours rising off its back (above the listed bones,
+-- on its outside, not from inside the body), over the glow
+local function makeFlames(model: Model, root: BasePart): { ParticleEmitter }
+	local look = Bosses.AURORA_FLAME
+	local box, size = model:GetBoundingBox()
+	local top = box.Position.Y - size.Y / 2 + size.Y * look.height
+	local flames = {}
+	for _, name in look.bones do
+		local bone = model:FindFirstChild(name, true)
+		if bone and bone:IsA("Bone") then
+			local spot = Instance.new("Attachment")
+			spot.Name = "AuroraFlame"
+			spot.Parent = root
+			spot.WorldPosition = Vector3.new(bone.WorldPosition.X, top, bone.WorldPosition.Z)
+			local flame = Instance.new("ParticleEmitter")
+			flame.Name = "AuroraFlame"
+			flame.Texture = "rbxasset://textures/particles/fire_main.dds"
+			flame.Color = AURORA
+			flame.LightEmission = 1
+			flame.Rate = look.rate
+			flame.Lifetime = NumberRange.new(look.lifetimeMin, look.lifetimeMax)
+			flame.Speed = NumberRange.new(0.5, 1.5)
+			flame.SpreadAngle = Vector2.new(180, 180)
+			flame.Acceleration = Vector3.new(0, look.rise, 0) -- up in the world, whichever way the bone points
+			flame.Size = NumberSequence.new(look.sizeStart, look.sizeEnd)
+			flame.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.2, look.transparency),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			flame.Rotation = NumberRange.new(-20, 20)
+			flame.Parent = spot
+			table.insert(flames, flame)
+		end
+	end
+	return flames
 end
 
 local function stepAura(monster: Monster, now: number)
@@ -183,6 +227,9 @@ local function stepAura(monster: Monster, now: number)
 	aura.highlight.FillColor = color
 	aura.light.Color = color
 	if monster.fallenAt then
+		for _, flame in aura.flames do
+			flame.Enabled = false
+		end
 		aura.highlight.OutlineTransparency = math.min(1, aura.highlight.OutlineTransparency + 0.02)
 		aura.highlight.FillTransparency = math.min(1, aura.highlight.FillTransparency + 0.02)
 		aura.light.Enabled = false
@@ -251,6 +298,9 @@ local function add(marker: BasePart)
 		fallenAt = nil,
 		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
 	}
+	if monster.aura and boss and boss.auroraFlame then
+		monster.aura.flames = makeFlames(model, body.root)
+	end
 	if elite or boss then
 		local light = Instance.new("PointLight")
 		light.Color = if boss then BOSS_TAG_COLOR else ELITE_TAG_COLOR

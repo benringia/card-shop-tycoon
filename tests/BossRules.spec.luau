@@ -148,6 +148,13 @@ return {
 			expect.equal(typeof(aura[key]), "number", key)
 		end
 		expect.equal(aura.fillTransparency >= 0.7, true, "a glow over the model, never hiding it")
+		expect.equal(hydra.auroraFlame, true, "an aurora flame over the glow")
+		local flame = Bosses.AURORA_FLAME
+		expect.equal(#flame.bones >= 1, true, "flames rise from some bones")
+		for _, key in { "rate", "sizeStart", "sizeEnd", "lifetimeMin", "lifetimeMax", "rise", "transparency" } do
+			expect.equal(typeof(flame[key]), "number", key)
+		end
+		expect.equal(flame.rate <= 12 and flame.transparency >= 0.3, true, "light: never overwhelming")
 		expect.equal(Bosses.BOSSES.caveBroodQueen.mechanics.heal and Bosses.BOSSES.caveBroodQueen.mechanics.heal.uses ~= nil, true, "the Brood Queen's heals are limited")
 	end,
 

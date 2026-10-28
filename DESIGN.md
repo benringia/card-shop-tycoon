@@ -729,7 +729,9 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   five-coloured dragon; in game only the active phase's head glows); about 6,500 triangles. In game it is scale 7 (about
   25 studs tall), its fighters stand 21 studs off (`ringRadius`), its intro camera further back (`introShot`), and the
   model itself glows (`rainbowAura`, `RAINBOW_AURA`: a coloured outline and a faint colour wash, a Highlight, plus a
-  light), slowly cycling through the colours; the model always shows through. Boss models with PetRig bones now animate
+  light), slowly cycling through the colours; the model always shows through. Over the glow, soft aurora flames
+  (green into cyan into violet) rise off its back (`auroraFlame`, `AURORA_FLAME`: a few see-through flames per back
+  bone, started on top of the back, never from inside the body). Boss models with PetRig bones now animate
   like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
 - **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.

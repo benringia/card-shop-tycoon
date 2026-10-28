@@ -44,6 +44,7 @@ export type Boss = {
 	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
 	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
 	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
+	auroraFlame: boolean?, -- soft aurora-coloured flames rise off its back (AURORA_FLAME)
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -232,6 +233,7 @@ local BOSSES: { [string]: Boss } = {
 		ringRadius = 21,
 		introShot = { back = 44, up = 22 },
 		rainbowAura = true,
+		auroraFlame = true,
 		element = "Tide", -- phase 1's
 		level = 55,
 		hp = 40000,
@@ -335,6 +337,10 @@ return {
 	-- over it (fillTransparency: the model always shows through) and a light, all slowly cycling through the colours
 	-- (hueSeconds a cycle); it fades when the boss falls
 	RAINBOW_AURA = { hueSeconds = 6, outlineTransparency = 0, fillTransparency = 0.82, lightBrightness = 1.2, lightRange = 40 },
+	-- A boss's aurora flame (auroraFlame): soft flames in aurora colours (green, cyan, violet) rising off its back, above
+	-- these bones at `height` x its model's height, few and see-through so they sit over the glow without hiding it
+	-- (studs at the boss's size; per bone)
+	AURORA_FLAME = { bones = { "Spine_0", "Spine_1", "Pelvis" }, height = 0.5, rate = 12, sizeStart = 8, sizeEnd = 2.5, lifetimeMin = 1, lifetimeMax = 1.6, rise = 10, transparency = 0.3 },
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

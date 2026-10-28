@@ -478,7 +478,7 @@ with cream horns, muzzles and belly, a gold collar and claws, prism crystal shar
 `Hydra_<n>_0..2` with big horned heads `Hydra_<n>_3` (glowing gold eyes, heavy brow, a long muzzle with teeth and
 fangs, a forehead crystal), jaws `Jaw_<n>` and a long tail `Tail_0..4` (46 bones, about 6,500 triangles), every head
 the same colour. In game the model glows in slowly changing rainbow colours (a Highlight outline and faint fill,
-MonsterController, `Bosses.RAINBOW_AURA`). Its heads' elements are `Config/Bosses` `heads` (head 0 the middle one): the current
+MonsterController, `Bosses.RAINBOW_AURA`), and soft aurora flames rise off its back (`Bosses.AURORA_FLAME`). Its heads' elements are `Config/Bosses` `heads` (head 0 the middle one): the current
 phase's head gets a PointLight and sparks on its bone, and when it falls the necks bow down one by one
 (`Bosses.HEAD_DROP`, during `DEATH_SECONDS`). Import it like the creatures (Rig Type Custom, Keep Zero Influence
 Bones), reset the MeshPart's `PivotOffset` rotation, name the model `prismHydra`.
