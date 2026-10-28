@@ -57,6 +57,28 @@ return {
 		end
 	end,
 
+	["shouldUnseal: only the arena's own fight drops its wall"] = function()
+		local ended = { alive = false }
+		local next = { alive = true }
+		expect.equal(BossRules.shouldUnseal(ended, nil), true, "nobody else in the arena")
+		expect.equal(BossRules.shouldUnseal(ended, ended), true, "its own fight ended")
+		expect.equal(BossRules.shouldUnseal(ended, next), false, "a newer fight already sealed it")
+		expect.equal(BossRules.shouldUnseal(ended, { alive = false }), true, "the newer fight is over too")
+	end,
+
+	["readIds: a list of distinct drop ids, capped"] = function()
+		local ids = BossRules.readIds({ "a", "b", "a" }, 5)
+		expect.equal(ids and #ids, 2, "duplicates once")
+		expect.equal(BossRules.readIds("a", 5), nil, "not a list")
+		expect.equal(BossRules.readIds({}, 5), nil, "empty")
+		expect.equal(BossRules.readIds({ "a", 3 }, 5), nil, "a non-string")
+		expect.equal(BossRules.readIds({ "a", "b", "c" }, 2), nil, "over the cap")
+		expect.equal(BossRules.readIds({ [1] = "a", [3] = "c" }, 5), nil, "a gappy list")
+		expect.equal(BossRules.readIds({ string.rep("x", 65) }, 5), nil, "an id far longer than a GUID")
+		expect.equal(Bosses.LOOT_PICKUP_BATCH >= 6, true, "a whole drop of loot fits in one request")
+		expect.equal(Bosses.LOOT_AUTO_SECONDS, nil, "loot is never collected by itself")
+	end,
+
 	["levelReady: the shop level must reach the boss's"] = function()
 		expect.equal(BossRules.levelReady(12, 11), false, "one short")
 		expect.equal(BossRules.levelReady(12, 12), true, "exactly")
@@ -223,7 +245,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

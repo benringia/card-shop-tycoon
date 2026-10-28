@@ -1,7 +1,7 @@
 --!strict
 -- Boss loot on the ground (BossService): this player's own drops pop out of the boss and scatter round it; walking
 -- over one asks the server to pick it up (it checks the drop is yours and you're close). Nothing here replicates, so
--- nobody else sees your drops. Whatever is left goes into the Bag by itself (the server's timer).
+-- nobody else sees your drops. Nothing is collected by itself: loot has to be picked up.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -23,6 +23,7 @@ local POP_SECONDS = 0.6 -- the arc out of the boss
 local POP_HEIGHT = 4
 local BOB = { height = 0.6, swing = 0.25, speed = 3, spin = 2 }
 local RETRY_SECONDS = 1 -- ask again if the server didn't answer
+local sentAt = 0 -- os.clock() of the last pickup request (one request names every drop in reach)
 local FLY = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 local DROP_COLOR = Color3.fromRGB(255, 205, 80)
 
@@ -76,7 +77,7 @@ local function spawnDrop(id: string, item: string, count: number, from: Vector3,
 	drops[id] = { part = part, item = item, count = count, from = from, target = target, born = os.clock(), askedAt = 0 }
 end
 
--- Picked up (or collected by the timer): it flies to you and the toast says what you got
+-- Picked up: it flies to you and the toast says what you got
 local function taken(id: string)
 	local drop = drops[id]
 	if not drop then
@@ -121,6 +122,7 @@ local function step()
 	local now = os.clock()
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+	local ask: { string } = {}
 	for id, drop in drops do
 		local age = now - drop.born
 		local position: Vector3
@@ -132,10 +134,17 @@ local function step()
 		end
 		drop.part.CFrame = CFrame.new(position) * CFrame.Angles(0, now * BOB.spin, 0)
 		local near = root ~= nil and (root.Position - drop.target).Magnitude <= Bosses.LOOT_CLIENT_REACH
-		if near and age >= POP_SECONDS and now - drop.askedAt >= RETRY_SECONDS then
-			drop.askedAt = now
-			Remotes.PickUpLoot:FireServer(id)
+		if near and age >= POP_SECONDS and now - drop.askedAt >= RETRY_SECONDS and #ask < Bosses.LOOT_PICKUP_BATCH then
+			table.insert(ask, id)
 		end
+	end
+	-- One request for every drop in reach, never faster than the server's limit (so none is turned away)
+	if #ask > 0 and now - sentAt >= Bosses.LOOT_PICKUP_COOLDOWN then
+		sentAt = now
+		for _, id in ask do
+			drops[id].askedAt = now
+		end
+		Remotes.PickUpLoot:FireServer(ask)
 	end
 end
 

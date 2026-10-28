@@ -77,6 +77,40 @@ function BossRules.canStart(record: Record, unlock: { item: string, count: numbe
 	return false, `locked:{owned}:{unlock.count}`
 end
 
+-- Whether a fight's end may drop its arena's wall: not when a newer fight there already sealed it (the end handlers
+-- run deferred, so a new fight can start in between). `occupant` is the arena's current boss, if any.
+function BossRules.shouldUnseal(ended: { alive: boolean }, occupant: { alive: boolean }?): boolean
+	return occupant == nil or occupant == ended or not occupant.alive
+end
+
+local ID_MAX_LENGTH = 64 -- drop ids are GUIDs (36 characters); anything longer is junk
+
+-- A client's list of drop ids made safe: distinct strings, a plain array of 1 to `max` (nil when it isn't)
+function BossRules.readIds(raw: unknown, max: number): { string }?
+	if typeof(raw) ~= "table" then
+		return nil
+	end
+	local list = raw :: { [any]: any }
+	local count = 0
+	for _ in list do
+		count += 1
+	end
+	if count == 0 or count > max or #list ~= count then
+		return nil
+	end
+	local ids, seen = {}, {}
+	for _, id in ipairs(list) do
+		if typeof(id) ~= "string" or #id > ID_MAX_LENGTH then
+			return nil
+		end
+		if not seen[id] then
+			seen[id] = true
+			table.insert(ids, id)
+		end
+	end
+	return ids
+end
+
 -- Whether a player's shop level reaches the level a boss needs (the board shows it, BossService enforces it)
 function BossRules.levelReady(shopLevel: number, level: number): boolean
 	return level >= shopLevel

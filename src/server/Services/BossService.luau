@@ -131,10 +131,10 @@ end
 -- chests.
 -- Loot on the ground --------------------------------------------------------------------------------------
 
-type Drop = { item: string, count: number, position: Vector3, expiresAt: number }
+type Drop = { item: string, count: number, position: Vector3 }
 local pending: { [Player]: { [string]: Drop } } = {}
 
--- One drop into the Bag (picked up, timed out or the player leaving)
+-- One drop into the Bag (picked up: nothing is collected by itself)
 local function collect(player: Player, id: string)
 	local drops = pending[player]
 	local drop = if drops then drops[id] else nil
@@ -146,12 +146,6 @@ local function collect(player: Player, id: string)
 	Remotes.BossLoot:FireClient(player, { taken = id })
 end
 
-local function collectAll(player: Player)
-	for id in table.clone(pending[player] or {}) do
-		collect(player, id)
-	end
-end
-
 -- A win's items scatter round the boss for this player only (the server keeps them until they're collected)
 local function dropLoot(player: Player, bossId: string, items: { Grant })
 	local arena = arenas[bossId]
@@ -161,7 +155,14 @@ local function dropLoot(player: Player, bossId: string, items: { Grant })
 	local center = arena.spawn.Position
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { workspace:FindFirstChild("Creatures") or workspace, workspace:FindFirstChild("Monsters") or workspace }
+	-- Only the ground: never a creature, a monster or a player standing there
+	local ignore: { Instance } = { workspace:FindFirstChild("Creatures") or workspace, workspace:FindFirstChild("Monsters") or workspace }
+	for _, other in Players:GetPlayers() do
+		if other.Character then
+			table.insert(ignore, other.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ignore
 	local drops = pending[player] or {}
 	pending[player] = drops
 	local list = {}
@@ -171,24 +172,29 @@ local function dropLoot(player: Player, bossId: string, items: { Grant })
 		local hit = workspace:Raycast(flat + Vector3.new(0, 20, 0), Vector3.new(0, -60, 0), params)
 		local position = if hit then hit.Position else flat
 		local id = HttpService:GenerateGUID(false)
-		drops[id] = { item = entry.item, count = entry.count, position = position, expiresAt = os.clock() + Bosses.LOOT_AUTO_SECONDS }
+		drops[id] = { item = entry.item, count = entry.count, position = position }
 		table.insert(list, { id = id, item = entry.item, count = entry.count, x = position.X, y = position.Y, z = position.Z })
 	end
 	Remotes.BossLoot:FireClient(player, { drops = list, from = { x = center.X, y = center.Y, z = center.Z } })
 end
 
--- A pickup: only your own drop, only from close by
-local function onPickUp(player: Player, id: unknown)
-	if not allowPickUp(player) or typeof(id) ~= "string" then
+-- A pickup: only your own drops, only those close by (one request may name several)
+local function onPickUp(player: Player, raw: unknown)
+	local ids = BossRules.readIds(raw, Bosses.LOOT_PICKUP_BATCH)
+	if not ids or not allowPickUp(player) then
 		return
 	end
-	local drop = (pending[player] or {})[id]
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-	if not drop or not root or (root.Position - drop.position).Magnitude > Bosses.LOOT_PICKUP_DISTANCE then
+	if not root then
 		return
 	end
-	collect(player, id)
+	for _, id in ids do
+		local drop = (pending[player] or {})[id]
+		if drop and (root.Position - drop.position).Magnitude <= Bosses.LOOT_PICKUP_DISTANCE then
+			collect(player, id)
+		end
+	end
 end
 
 local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }): any
@@ -519,7 +525,7 @@ end
 
 local function unload(player: Player)
 	records[player] = nil
-	pending[player] = nil -- collected before the save (OnBeforeLeave)
+	pending[player] = nil -- loot left on the ground is gone
 	-- Out of any group forming: the next member leads, the prompt shows the new count
 	for bossId, lobby in lobbies do
 		if table.find(lobby.members, player) then
@@ -545,7 +551,7 @@ function BossService.Start()
 	end)
 	BattleService.OnFightEnded(function(monster)
 		local arena = if monster.boss then arenas[monster.boss] else nil
-		if arena then
+		if arena and BossRules.shouldUnseal(monster, occupants[monster.boss :: string]) then
 			setBarrier(arena, false)
 		end
 	end)
@@ -555,21 +561,6 @@ function BossService.Start()
 		end
 	end)
 	Remotes.PickUpLoot.OnServerEvent:Connect(onPickUp)
-	-- Leaving (or teleporting) with loot on the ground: it goes into the Bag before the save
-	DataService.OnBeforeLeave(collectAll)
-	task.spawn(function()
-		while true do
-			task.wait(1)
-			local now = os.clock()
-			for player, drops in pending do
-				for id, drop in table.clone(drops) do
-					if now >= drop.expiresAt then
-						collect(player, id)
-					end
-				end
-			end
-		end
-	end)
 end
 
 return BossService

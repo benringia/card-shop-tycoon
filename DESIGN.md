@@ -626,8 +626,10 @@ group, checked before its fragments and every time (not only the first). Below i
   boss falls.
 - **Loot on the ground:** a win's repeatable items (drops, daily bonus) pop out of the boss and scatter
   round it (4-10 studs, `LOOT_*`), each player's own drops seen only by them (LootController). Walking over one picks it
-  up (the server checks it's yours and within 8 studs); anything left goes into the Bag after 60 s, and everything still
-  on the ground is collected when you leave or teleport. Cash and XP stay instant. The first-clear chest (fragments,
+  up (the server checks it's yours and within 8 studs; one request names every drop in reach, up to
+  `LOOT_PICKUP_BATCH`). Nothing is collected by itself: loot stays until you pick it up, and whatever is still on the
+  ground when you leave or teleport is gone. Drops land on the ground only, never on a player or creature standing
+  there. Cash and XP stay instant. The first-clear chest (fragments,
   trophy) goes straight into the Bag: it's one-time and the clear is saved at once.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
