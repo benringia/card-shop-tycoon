@@ -610,6 +610,12 @@ and rewards in `BossService`.
 - **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
   (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
   until then. Boss music plays through the fight ("Epic Boss Battle", `MUSIC_ID`); heals and enrages shake the camera.
+- **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
+  the board lists all 6 and names the other place). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
+  "Shield broken!" banners. Thunderclap: "Thunderclap!" and "Stunned" over each creature. Adds: "Rift Spawn!", the
+  Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
+  them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
+  boss falls.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
   which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when

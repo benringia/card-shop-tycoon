@@ -245,5 +245,7 @@ return {
 	BARRIER_SEGMENT = 6, -- studs per wall piece
 	BARRIER_HEIGHT = 14,
 	BARRIER_TRANSPARENCY = 0.55,
+	ADD_FADE_SECONDS = 1, -- a fallen add lies there this long before it goes
+	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

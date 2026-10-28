@@ -13,7 +13,9 @@ local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
-local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
+local WildConfig = require(Config:WaitForChild("Wild"))
+local FrontierConfig = require(Config:WaitForChild("Frontier"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -83,10 +85,11 @@ local function buildRow(index: number, bossId: string, power: number)
 	local stroke = UIKit.outline(row, Cards.ELEMENTS[boss.element])
 	stroke.Thickness = 1.5
 
-	local zone = Wild.ZONES[boss.zone]
+	local zone = (if boss.place == "Frontier" then FrontierConfig else WildConfig).ZONES[boss.zone]
+	local away = (boss.place == "Frontier") ~= Place.isFrontier() -- its arena is in the other place
 	local trophy = if state and state.cleared then " 🏆" else ""
 	addText(row, `{index}. {boss.name}{trophy}`, 8, 22, Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
-	local where = if zone then `{zone.name} arena · ` else ""
+	local where = if zone then `{zone.name} arena{if away then ` (the {boss.place})` else ""} · ` else ""
 	local powerColor = if power >= boss.recommended then READY_COLOR else UIKit.Colors.Danger
 	addText(row, `{where}Power {boss.recommended} · your best {power}`, 32, 18, Enum.Font.GothamBold, 13, powerColor)
 

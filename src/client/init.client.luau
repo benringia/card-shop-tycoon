@@ -49,6 +49,7 @@ if Place.isFrontier() then
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	BossBoardController.Start() -- the boss ladder (the Frontier bosses' arenas are here)
 	FrontierController.Start() -- the home button
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
@@ -80,7 +81,7 @@ else
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
-	BossBoardController.Start() -- the boss ladder (main game only in phase 1)
+	BossBoardController.Start() -- the boss ladder
 	ChallengeController.Start()
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio

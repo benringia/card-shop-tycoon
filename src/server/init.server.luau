@@ -42,6 +42,7 @@ if Place.isFrontier() then
 	PartyService.Start()
 	WildService.Start() -- the Frontier map, its spring and monsters
 	BattleService.Start()
+	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players

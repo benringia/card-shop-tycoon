@@ -60,6 +60,7 @@ type Fight = {
 	sinceSnapshot: number,
 	ended: boolean,
 	startsAt: number, -- os.clock(): boss fights hold still through the intro until then
+	adds: { [string]: Monster }, -- a boss's adds, by sim id ("b:add1"...)
 }
 
 local BattleService = {}
@@ -201,6 +202,10 @@ local function markerFor(fight: Fight, id: string): BasePart?
 	if id == MONSTER_ID then
 		return fight.monster.marker
 	end
+	local add = fight.adds[id]
+	if add then
+		return add.marker
+	end
 	local member = memberOf(fight, id)
 	if not member then
 		return nil
@@ -211,6 +216,11 @@ end
 local function place(fight: Fight, id: string, cframe: CFrame)
 	if id == MONSTER_ID then
 		WildService.SetFightPose(fight.monster, cframe)
+		return
+	end
+	local add = fight.adds[id]
+	if add then
+		WildService.SetFightPose(add, cframe)
 		return
 	end
 	local member = memberOf(fight, id)
@@ -305,9 +315,36 @@ local function enterField(fight: Fight, event: BattleSim.Event, markers: { [stri
 	allies[id] = if beast then `{player.DisplayName} · {Cards.ById[beast.cardId].name}` else player.DisplayName
 end
 
+-- A boss summoned an add: a real wild monster of its species, held still beside the boss (left, right, further out)
+local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart }, addMonsters: { [string]: string })
+	local boss = Bosses.BOSSES[fight.monster.boss or ""]
+	local adds = if boss then boss.mechanics.adds else nil
+	local leader = next(fight.members)
+	if not boss or not adds or not leader then
+		return
+	end
+	local count = 0
+	for _ in fight.adds do
+		count += 1
+	end
+	local sideways = (if count % 2 == 0 then 1 else -1) * Bosses.ADD_SPACING * (count // 2 + 1)
+	local spot = fight.spots[MONSTER_ID] * CFrame.new(sideways, 0, 0)
+	local monster = WildService.SpawnAt(spot.Position, adds.species, boss.level, false)
+	if not monster then
+		return
+	end
+	WildService.Lock(monster, leader)
+	WildService.SetFightPose(monster, spot)
+	fight.adds[id] = monster
+	fight.spots[id] = spot
+	markers[id] = monster.marker
+	addMonsters[id] = monster.id -- clients find the marker by name when it arrives after this message
+end
+
 local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	local markers: { [string]: BasePart } = {}
 	local allies: { [string]: string } = {}
+	local addMonsters: { [string]: string } = {}
 	for _, event in events do
 		if event.type == "attack" and event.from and event.to then
 			lunge(fight, event.from, event.to)
@@ -316,6 +353,12 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			if marker then
 				marker:SetAttribute("Fainted", true)
 			end
+			local add = fight.adds[event.to]
+			if add then
+				task.delay(Bosses.ADD_FADE_SECONDS, WildService.Defeat, add)
+			end
+		elseif event.type == "spawn" and event.to then
+			spawnAdd(fight, event.to, markers, addMonsters)
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
 		end
@@ -323,7 +366,7 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	if #events > 0 then
 		fight.sinceSnapshot = 0
 		-- New creatures' markers, so clients can float numbers over them; the others see whose they are
-		broadcast(fight, { events = events, markers = markers, allies = allies, snapshot = snapshot(fight) })
+		broadcast(fight, { events = events, markers = markers, allies = allies, addMonsters = addMonsters, snapshot = snapshot(fight) })
 	end
 end
 
@@ -487,6 +530,9 @@ local function endFight(fight: Fight, result: string)
 	end)
 	fight.ended = true
 	running[fight] = nil
+	for _, add in fight.adds do
+		WildService.Defeat(add) -- a boss's adds go with it
+	end
 	if result == "win" or fight.monster.boss then
 		WildService.Defeat(fight.monster) -- a boss always goes when its fight ends
 	else
@@ -655,6 +701,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		sinceSnapshot = 0,
 		ended = false,
 		startsAt = if boss then os.clock() + Bosses.INTRO_SECONDS else 0,
+		adds = {},
 	}
 	running[fight] = true
 	WildService.Lock(monster, players[1])

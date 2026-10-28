@@ -45,6 +45,7 @@ local ELITE_COLOR = Color3.fromRGB(255, 205, 60)
 local STRONG_COLOR = Color3.fromRGB(255, 150, 40)
 local WEAK_COLOR = Color3.fromRGB(170, 170, 180)
 local HEAL_COLOR = Color3.fromRGB(120, 230, 120)
+local SHIELD_COLOR = Color3.fromRGB(150, 210, 255)
 local NUMBER_RISE = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 -- HUD hidden while fighting so nothing gets tapped by mistake
 local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" }
@@ -71,6 +72,8 @@ type Snapshot = {
 	runChance: number,
 	enemies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } },
 	allies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean, left: boolean? } }, -- group fights
+	adds: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } }, -- a boss's adds
+	bossShield: number, -- HP the boss's shield still absorbs
 }
 
 type FighterView = {
@@ -106,6 +109,8 @@ local bossBar: Frame -- boss fights: name and HP across the top of the screen
 local bossName: TextLabel
 local bossHpFill: Frame
 local bossHpText: TextLabel
+local addsRow: Frame -- boss fights: its adds' HP, under the boss bar
+local addBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
 local bossId: string? = nil -- the boss being fought (Config/Bosses id)
 local shopButton: TextButton
 local introCard: Frame -- boss intro: the boss's name and title in the middle of the screen
@@ -199,6 +204,12 @@ local function toView(raw: any): Snapshot
 	local mine = raw.sides[mySide]
 	local enemy = raw.sides[if mySide == "a" then "b" else "a"]
 	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
+	local adds = {}
+	for _, fighter in enemy.fighters do
+		if fighter.id ~= MONSTER_ID and bossId then
+			table.insert(adds, fighter)
+		end
+	end
 	-- Group fights: side A holds everyone's creatures (each tagged with its owner); yours get buttons, the others go in
 	-- the ally row. Untagged fighters (PvP) are all yours.
 	local myOwner = tostring(player.UserId)
@@ -218,6 +229,8 @@ local function toView(raw: any): Snapshot
 	return {
 		time = raw.time,
 		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true },
+		adds = adds,
+		bossShield = if typeof(enemy.shield) == "number" then enemy.shield else 0,
 		fighters = own,
 		allies = allies,
 		reserves = reserves,
@@ -238,6 +251,24 @@ local function addAllies(list: unknown)
 	for id, name in list :: { [any]: any } do
 		if typeof(id) == "string" and typeof(name) == "string" then
 			allyNames[id] = name
+		end
+	end
+end
+
+-- An add's marker can arrive just after the message naming it: wait for it in the Monsters folder
+local function addMonsterMarkers(list: unknown)
+	if typeof(list) ~= "table" then
+		return
+	end
+	local folder = workspace:FindFirstChild("Monsters")
+	for id, monsterId in list :: { [any]: any } do
+		if folder and typeof(id) == "string" and typeof(monsterId) == "string" and not markers[id] then
+			task.spawn(function()
+				local marker = folder:WaitForChild(`Monster_{monsterId}`, 2)
+				if marker and marker:IsA("BasePart") then
+					markers[id] = marker
+				end
+			end)
 		end
 	end
 end
@@ -472,6 +503,29 @@ local function buildEnemies(snapshot: Snapshot)
 	end
 end
 
+-- A boss's adds as small HP bars under the boss bar
+local addsKey = ""
+local function buildAdds(snapshot: Snapshot)
+	clear(addsRow)
+	addBars = {}
+	addsKey = idsOf(snapshot.adds)
+	addsRow.Visible = #snapshot.adds > 0
+	for index, add in snapshot.adds do
+		local holder = Instance.new("Frame")
+		holder.LayoutOrder = index
+		holder.Size = UDim2.new(1 / math.max(#snapshot.adds, 1), -6, 1, 0)
+		holder.BackgroundTransparency = 1
+		holder.Parent = addsRow
+		local name = UIKit.label(holder, `{elementIcon(add.element)} Spawn`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		name.Size = UDim2.new(1, 0, 0, 13)
+		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
+		track.Position = UDim2.fromOffset(0, 14)
+		track.Size = UDim2.new(1, 0, 0, 12)
+		text.TextSize = 10
+		addBars[add.id] = { fill = fill, text = text, frame = holder }
+	end
+end
+
 local function applySnapshot(snapshot: Snapshot)
 	if idsOf(snapshot.fighters) ~= fighterKey then
 		buildFighters(snapshot)
@@ -485,6 +539,19 @@ local function applySnapshot(snapshot: Snapshot)
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
 	if bossId then
 		setBar(bossHpFill, bossHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+		if snapshot.bossShield > 0 then
+			bossHpText.Text ..= ` + {math.round(snapshot.bossShield)} shield`
+		end
+		if idsOf(snapshot.adds) ~= addsKey then
+			buildAdds(snapshot)
+		end
+		for _, add in snapshot.adds do
+			local view = addBars[add.id]
+			if view then
+				setBar(view.fill, view.text, add.hp, add.maxHp)
+				view.frame.Visible = not add.fainted
+			end
+		end
 	end
 	if mode == "pvp" then
 		for _, enemy in snapshot.enemies do
@@ -641,6 +708,20 @@ local function onEvents(events: { any })
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		elseif event.type == "enrage" then
 			banner("Enraged!", UIKit.Colors.Danger)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "shield" then
+			banner("Ice shield!", SHIELD_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "shieldBreak" then
+			banner("Shield broken!", ELITE_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "thunderclap" then
+			banner("Thunderclap!", STRONG_COLOR)
+			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+		elseif event.type == "stun" and event.to then
+			floatText(event.to, "Stunned", WEAK_COLOR)
+		elseif event.type == "spawn" then
+			banner("Rift Spawn!", UIKit.Colors.Danger)
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		end
 	end
@@ -1065,6 +1146,20 @@ local function build()
 	bossHpFill, bossHpText = bossFill, bossText
 	bossHpText.TextSize = 14
 
+	addsRow = Instance.new("Frame")
+	addsRow.Name = "BossAdds"
+	addsRow.AnchorPoint = Vector2.new(0.5, 0)
+	addsRow.Position = UDim2.new(0.5, 0, 1, 4)
+	addsRow.Size = UDim2.new(1, 0, 0, 26)
+	addsRow.BackgroundTransparency = 1
+	addsRow.Visible = false
+	addsRow.Parent = bossBar
+	local addsLayout = Instance.new("UIListLayout")
+	addsLayout.FillDirection = Enum.FillDirection.Horizontal
+	addsLayout.Padding = UDim.new(0, 6)
+	addsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	addsLayout.Parent = addsRow
+
 	endScreen = Instance.new("Frame")
 	endScreen.Name = "FightEnd"
 	endScreen.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1137,6 +1232,7 @@ function BattleController.Start()
 			return
 		end
 		addMarkers(payload.markers)
+		addMonsterMarkers(payload.addMonsters)
 		addAllies(payload.allies)
 		if typeof(payload.events) == "table" then
 			onEvents(payload.events)

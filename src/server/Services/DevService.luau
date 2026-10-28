@@ -15,6 +15,7 @@ local TextChatService = game:GetService("TextChatService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
@@ -217,8 +218,11 @@ function DevService.Start()
 	addCommand(folder, "boss", function(player, text)
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)
-		if not gate then
-			Remotes.Notify:FireClient(player, "Usage: /boss <1-3> [fight|group]", true)
+		local elsewhere = Bosses.BOSSES[Bosses.LADDER[index] or ""]
+		if not gate and elsewhere then
+			Remotes.Notify:FireClient(player, `That boss is in the {elsewhere.place}.`, true)
+		elseif not gate then
+			Remotes.Notify:FireClient(player, `Usage: /boss <1-{#Bosses.LADDER}> [fight|group]`, true)
 		elseif string.find(text, "fight") then
 			BossService.UseGate(player, index)
 		elseif string.find(text, "group") then
