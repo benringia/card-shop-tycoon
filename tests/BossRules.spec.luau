@@ -79,6 +79,14 @@ return {
 		expect.equal(Bosses.LOOT_AUTO_SECONDS, nil, "loot is never collected by itself")
 	end,
 
+	["phaseAt: by HP share, and never back"] = function()
+		local phases = { { below = 1 }, { below = 0.8 }, { below = 0.6 } }
+		expect.equal(BossRules.phaseAt(phases, 1, 1), 1, "full HP")
+		expect.equal(BossRules.phaseAt(phases, 0.79, 1), 2, "under 80%")
+		expect.equal(BossRules.phaseAt(phases, 0.1, 1), 3, "skips straight to the last reached")
+		expect.equal(BossRules.phaseAt(phases, 0.9, 3), 3, "a heal never takes it back")
+	end,
+
 	["levelReady: the shop level must reach the boss's"] = function()
 		expect.equal(BossRules.levelReady(12, 11), false, "one short")
 		expect.equal(BossRules.levelReady(12, 12), true, "exactly")
@@ -283,7 +291,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

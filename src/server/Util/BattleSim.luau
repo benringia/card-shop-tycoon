@@ -5,11 +5,14 @@
 -- fighters, a player leaving withdraws only theirs, damage dealt and taken tallied for the loot rules). Boss fights
 -- allow swaps (swapSeconds): a reserve comes in for one of its owner's creatures, which goes back to the reserves with
 -- its HP (a fainted one stays benched); when all of an owner's creatures faint, their healthiest reserve comes in.
--- Pure (only CombatMath; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
+-- Pure (only CombatMath and BossRules; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
 -- the same fight. Fighter ids are prefixed by side ("a:<id>", "b:<id>") in events and snapshots.
 local CombatMath = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CombatMath")) :: any
 	else require("../../shared/Util/CombatMath") :: any
+local BossRules = if game ~= nil
+	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BossRules")) :: any
+	else require("../../shared/Util/BossRules") :: any
 
 local BattleSim = {}
 
@@ -24,11 +27,14 @@ export type Mechanics = {
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
 	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
 }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number? }
+-- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
+export type Phase = { below: number, element: string, mechanics: Mechanics }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
-	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add)
+	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
+	-- "phase" (from: the boss, kind: its new element, damage: the phase's number)
 	type: string,
 	from: string?,
 	to: string?,
@@ -75,6 +81,8 @@ type Fighter = {
 	addsDone: { [number]: boolean }, -- boss: which `adds.at` thresholds have summoned
 	addsMade: number, -- boss: adds summoned so far (their ids: "add1", "add2", ...)
 	swings: number, -- targets hit per attack (a boss against a group hits several)
+	phases: { Phase }?, -- a boss with phases
+	phase: number, -- its current phase (1 without phases)
 	owner: string?, -- the player it belongs to (groups); nil when the side has one owner
 	left: boolean, -- its player left the fight: out, never targeted, not fainted
 	benched: boolean, -- fainted and swapped out: off the field, but it still rests after the fight
@@ -112,11 +120,13 @@ local function random(state: State): number
 end
 
 local function makeFighter(combat: any, input: FighterInput, side: string, time: number): Fighter
+	local first = if input.phases then input.phases[1] else nil
+	local mechanics = if first then first.mechanics else input.mechanics
 	return {
 		id = `{side}:{input.id}`,
 		rawId = input.id,
 		side = side,
-		element = input.element,
+		element = if first then first.element else input.element,
 		maxHp = input.hp,
 		hp = input.hp,
 		atk = input.atk,
@@ -137,15 +147,17 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		burnPerSecond = 0,
 		burnTick = 0,
 		fainted = false,
-		mechanics = input.mechanics,
+		mechanics = mechanics,
 		boss = input.boss == true,
 		healReady = time,
 		enraged = false,
-		shieldReady = if input.mechanics and input.mechanics.shield then time + input.mechanics.shield.every else math.huge,
-		clapReady = if input.mechanics and input.mechanics.thunderclap then time + input.mechanics.thunderclap.every else math.huge,
+		shieldReady = if mechanics and mechanics.shield then time + mechanics.shield.every else math.huge,
+		clapReady = if mechanics and mechanics.thunderclap then time + mechanics.thunderclap.every else math.huge,
 		addsDone = {},
 		addsMade = 0,
 		swings = math.max(1, input.swings or 1),
+		phases = input.phases,
+		phase = 1,
 		owner = input.owner,
 		left = false,
 		benched = false,
@@ -430,8 +442,34 @@ local function burn(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
+-- A boss with phases moves on when its HP share drops under the next one's: its element and mechanics switch, their
+-- timers start again, phase 1's shield goes away
+local function nextPhase(state: State, fighter: Fighter, events: { Event })
+	local phases = fighter.phases
+	if not phases or fighter.fainted then
+		return
+	end
+	local index = BossRules.phaseAt(phases, fighter.hp / fighter.maxHp, fighter.phase)
+	if index == fighter.phase then
+		return
+	end
+	local phase = phases[index]
+	fighter.phase = index
+	fighter.element = phase.element
+	fighter.mechanics = phase.mechanics
+	fighter.shieldReady = if phase.mechanics.shield then state.time + phase.mechanics.shield.every else math.huge
+	fighter.clapReady = if phase.mechanics.thunderclap then state.time + phase.mechanics.thunderclap.every else math.huge
+	fighter.healReady = state.time
+	fighter.addsDone = {}
+	fighter.enraged = false
+	local side = (state.sides :: any)[fighter.side] :: Side
+	side.shield = 0
+	table.insert(events, { type = "phase", from = fighter.id, kind = phase.element, damage = index })
+end
+
 -- A boss's mechanics, checked every step: heal under its HP fraction (then wait the cooldown), enrage once
 local function bossMechanics(state: State, fighter: Fighter, events: { Event })
+	nextPhase(state, fighter, events)
 	local mechanics = fighter.mechanics
 	if not mechanics or fighter.fainted then
 		return

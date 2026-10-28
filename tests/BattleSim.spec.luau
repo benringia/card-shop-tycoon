@@ -95,6 +95,21 @@ end
 local SHIELD = { shield = { every = 20, fraction = 0.06, breakStun = 3 } }
 local ADDS = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.06, atkShare = 0.4, guard = 0.5, species = "Rift Horror" } }
 
+-- A boss with phases (the final boss): Tide shield, then Volt thunderclap below 60%, then Ember enrage below 30%
+local PHASES = {
+	{ below = 1, element = "Tide", mechanics = { shield = { every = 1, fraction = 0.05, breakStun = 1 } } },
+	{ below = 0.6, element = "Volt", mechanics = { thunderclap = { every = 12, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } } },
+	{ below = 0.3, element = "Ember", mechanics = { enrage = { below = 0.2, atkMultiplier = 2 } } },
+}
+
+local function phasedBoss(phases: any, seed: number): any
+	return BattleSim.new(combat, { fighters = { fighter("a", "Tide", 100000, 20, 10) }, abilities = true, canRun = true }, {
+		fighters = { { id = "m", element = "Shade", hp = 10000, atk = 1, spd = 14, boss = true, mechanics = {}, phases = phases } },
+		abilities = false,
+		canRun = false,
+	}, seed)
+end
+
 local function firstOf(events: { any }, kind: string): any
 	for _, event in events do
 		if event.type == kind then
@@ -105,6 +120,55 @@ local function firstOf(events: { any }, kind: string): any
 end
 
 return {
+	["phases: the boss starts as phase 1"] = function()
+		local state = phasedBoss(PHASES, 11)
+		expect.equal(state.sides.b.fighters[1].element, "Tide", "phase 1's element")
+		local _, events = runToEnd(state, 1.05)
+		expect.equal(firstOf(events, "shield") ~= nil, true, "phase 1's shield")
+	end,
+
+	["phases: crossing a threshold switches element and mechanics once"] = function()
+		local state = phasedBoss(PHASES, 12)
+		local boss = state.sides.b.fighters[1]
+		runToEnd(state, 1.05)
+		boss.hp = 5900
+		local events = BattleSim.step(state, 0.1)
+		expect.equal(count(events, function(e)
+			return e.type == "phase"
+		end), 1, "one phase event")
+		local phase = firstOf(events, "phase")
+		expect.equal(phase and phase.kind, "Volt", "into Volt")
+		expect.equal(phase and phase.damage, 2, "phase 2")
+		expect.equal(boss.element, "Volt", "the boss is Volt now")
+		expect.equal(state.sides.b.shield, 0, "phase 1's shield is gone")
+		local _, later = runToEnd(state, 3)
+		expect.isNil(firstOf(later, "shield"), "no more shields")
+	end,
+
+	["phases never go back after a heal"] = function()
+		local state = phasedBoss(PHASES, 13)
+		local boss = state.sides.b.fighters[1]
+		boss.hp = 5900
+		BattleSim.step(state, 0.1)
+		boss.hp = 9000
+		local events = BattleSim.step(state, 0.1)
+		expect.isNil(firstOf(events, "phase"), "no phase change back")
+		expect.equal(boss.element, "Volt", "still Volt")
+	end,
+
+	["phases: a Shade adds phase spawns its adds as it starts"] = function()
+		local state = phasedBoss({
+			{ below = 1, element = "Tide", mechanics = {} },
+			{ below = 0.6, element = "Shade", mechanics = { adds = { at = { 0.6 }, count = 2, hpShare = 0.04, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } } },
+		}, 14)
+		state.sides.b.fighters[1].hp = 5900
+		local events = BattleSim.step(state, 0.1)
+		expect.equal(count(events, function(e)
+			return e.type == "spawn"
+		end), 2, "two adds")
+		expect.equal(state.sides.b.fighters[2].element, "Shade", "the add is the phase's element")
+	end,
+
 	["shield: goes up every 20 s and absorbs damage first"] = function()
 		local state = bossWith(SHIELD, 1)
 		local _, early = runToEnd(state, 19.9)
