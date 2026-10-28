@@ -655,7 +655,8 @@ local function whyNotPlayer(player: Player): string?
 	if not leaderId or not CardService.GetBeast(player, leaderId) then
 		return "Summon a party creature to fight."
 	elseif isResting(player, leaderId) then
-		return `Your creature is resting. Summon a rested one or visit {if Place.isFrontier() then "the spring at the entrance" else "the plaza spring"}.`
+		return if Place.isDungeon() then "Your creature is resting. Summon a rested one."
+			else `Your creature is resting. Summon a rested one or visit {if Place.isFrontier() then "the spring at the entrance" else "the plaza spring"}.`
 	elseif not getRoot(player) or not PartyService.GetMarker(player) then
 		return "You can't fight right now."
 	end
@@ -767,7 +768,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	local root = getRoot(players[1]) :: BasePart
 	local toPlayer = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z)
 	local direction = if toPlayer.Magnitude > 0.1 then toPlayer.Unit else Vector3.new(0, 0, -1)
-	local radius = if boss then Bosses.RING_RADIUS else Combat.RING_RADIUS
+	local radius = if boss then boss.ringRadius or Bosses.RING_RADIUS else Combat.RING_RADIUS
 	local spots: { [string]: CFrame } = { [MONSTER_ID] = CFrame.lookAt(center, center + direction) }
 	local step = Bosses.GROUP_SPACING / radius
 	for index, member in members do
@@ -1009,7 +1010,7 @@ local function keepNear(fight: Fight, member: Member)
 	if not root then
 		return
 	end
-	local leash = if fight.monster.boss then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS
+	local leash = if fight.monster.boss or fight.run then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS -- big rings
 	local offset = Vector3.new(root.Position.X - fight.center.X, 0, root.Position.Z - fight.center.Z)
 	if offset.Magnitude <= leash then
 		return

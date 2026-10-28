@@ -904,8 +904,10 @@ local function showEnd(summary: any)
 	elseif result == "lose" then
 		endTitle.Text = "Your party fainted"
 		endTitle.TextColor3 = UIKit.Colors.Danger
-		local spring = if require(Shared:WaitForChild("Util"):WaitForChild("Place")).isFrontier() then "the entrance spring" else "the plaza spring"
-		endBody.Text = `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
+		local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+		local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
+		endBody.Text = if place.isDungeon() then "Fainted creatures are out for the rest of this run"
+			else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
 	else
 		endTitle.Text = "Got away safely"
 		endTitle.TextColor3 = UIKit.Colors.Text

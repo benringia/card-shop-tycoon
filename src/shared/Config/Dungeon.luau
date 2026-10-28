@@ -35,5 +35,5 @@ return {
 		DOOR = { 120, 90, 200 },
 		CRYSTALS = { { 255, 120, 80 }, { 90, 170, 255 }, { 120, 220, 110 }, { 255, 220, 90 }, { 170, 100, 230 } }, -- the five elements
 	},
-	LIGHTING = { ambient = { 46, 36, 70 }, outdoorAmbient = { 30, 22, 50 }, brightness = 0.6, clockTime = 0, fogColor = { 18, 10, 32 }, fogEnd = 420 },
+	LIGHTING = { ambient = { 150, 138, 190 }, outdoorAmbient = { 130, 118, 175 }, brightness = 3, clockTime = 0, fogColor = { 18, 10, 32 }, fogEnd = 600, atmosphereDensity = 0.3 },
 }

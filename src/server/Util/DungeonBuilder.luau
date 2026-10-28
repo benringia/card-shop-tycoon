@@ -73,9 +73,9 @@ local function crystal(parent: Instance, position: Vector3, color: Color3, rando
 end
 
 local function shaft(parent: Instance, position: Vector3, color: Color3)
-	local beam = block(parent, "LightShaft", Vector3.new(Dungeon.WALL_HEIGHT * 2, 10, 10), CFrame.new(position + Vector3.new(0, Dungeon.WALL_HEIGHT, 0)) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon)
+	local beam = block(parent, "LightShaft", Vector3.new(Dungeon.WALL_HEIGHT * 2, 6, 6), CFrame.new(position + Vector3.new(0, Dungeon.WALL_HEIGHT, 0)) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon)
 	beam.Shape = Enum.PartType.Cylinder
-	beam.Transparency = 0.88
+	beam.Transparency = 0.9
 	beam.CanCollide = false
 	beam.CanQuery = false
 	beam.CastShadow = false
@@ -157,11 +157,12 @@ function DungeonBuilder.build(parent: Instance): DungeonLayout
 		local doorX = x + radius + gap / 2
 		crossWall(parent, doorX, origin, halfWidth)
 		made.door = door(parent, if index == #Dungeon.ROOMS then "ChamberDoor" else `Door {index}`, doorX, origin)
-		shaft(parent, center, rgb(Dungeon.COLORS.CRYSTALS[(index - 1) % #Dungeon.COLORS.CRYSTALS + 1]))
+		-- At the back of the ring, behind the pack: never over the fight
+		shaft(parent, center + Vector3.new(radius - 4, 0, 0), rgb(Dungeon.COLORS.CRYSTALS[(index - 1) % #Dungeon.COLORS.CRYSTALS + 1]))
 		table.insert(rooms, made)
 		x += radius * 2 + gap
 	end
-	shaft(parent, chamber, Color3.fromRGB(235, 245, 255))
+	shaft(parent, chamber + Vector3.new(Bosses.ARENA_RADIUS - 6, 0, 0), Color3.fromRGB(235, 245, 255))
 
 	-- Prism crystals along both walls
 	local random = Random.new(4242)
@@ -187,7 +188,7 @@ function DungeonBuilder.build(parent: Instance): DungeonLayout
 		-- Fog settings are ignored while an Atmosphere exists: tint it instead
 		atmosphere.Color = rgb(look.fogColor)
 		atmosphere.Decay = rgb(look.fogColor)
-		atmosphere.Density = 0.45
+		atmosphere.Density = look.atmosphereDensity
 	end
 
 	return {

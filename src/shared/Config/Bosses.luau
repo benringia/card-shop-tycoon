@@ -41,6 +41,7 @@ export type Boss = {
 	announceEverywhere: boolean?, -- its first clear is told to every server of the experience, not just this one
 	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
 	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
+	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -225,7 +226,8 @@ local BOSSES: { [string]: Boss } = {
 		place = "Dungeon",
 		zone = 1,
 		shape = "golem",
-		scale = 4.0,
+		scale = 5.5,
+		ringRadius = 16,
 		element = "Tide", -- phase 1's
 		level = 55,
 		hp = 40000,
