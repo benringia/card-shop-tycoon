@@ -46,6 +46,14 @@ local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" 
 
 local BattleController = {}
 
+-- Fight bar layout (pixels): kept short so the fight stays visible on a landscape phone
+local PAD = 8
+local HEADER_HEIGHT = 44 -- monster name + its HP (not in boss fights: the top bar shows the boss)
+local ALLY_ROW_HEIGHT = 30
+local FIGHTER_HEIGHT = 56 -- one row per creature: name and HP on the left, ability buttons on the right
+local ACTION_HEIGHT = 48
+local INFO_SHARE = 0.4 -- of a creature's card: name and HP; the rest is buttons
+
 type Snapshot = {
 	time: number,
 	monster: { hp: number, maxHp: number, element: string, elite: boolean },
@@ -144,6 +152,28 @@ local function clear(container: Instance)
 			child:Destroy()
 		end
 	end
+end
+
+-- Stack the bar's rows for this fight (no header in boss fights, the ally row only in groups) and fit its height
+local function layoutBar()
+	local y = PAD
+	monsterName.Visible = bossId == nil
+	if bossId == nil then
+		monsterName.Position = UDim2.fromOffset(12, y - 2)
+		monsterTrack.Position = UDim2.fromOffset(12, y + 22)
+		enemyRow.Position = UDim2.fromOffset(12, y + 18)
+		y += HEADER_HEIGHT
+	end
+	if groupFight then
+		allyRow.Position = UDim2.fromOffset(12, y)
+		y += ALLY_ROW_HEIGHT
+	end
+	fighterRow.Position = UDim2.fromOffset(12, y)
+	y += FIGHTER_HEIGHT + PAD
+	actionRow.Position = UDim2.fromOffset(12, y)
+	runButton.Position = UDim2.new(1, -12, 0, y)
+	y += ACTION_HEIGHT + PAD
+	bar.Size = UDim2.new(0.92, 0, 0, y)
 end
 
 -- Markers -------------------------------------------------------------------------------------------------
@@ -272,20 +302,21 @@ local function buildFighters(snapshot: Snapshot)
 		stroke.Thickness = 1.5
 		stroke.Parent = frame
 		local name = UIKit.label(frame, `{elementIcon(fighter.element)} {fightNames[fighter.id] or "Creature"}`, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-		name.Position = UDim2.fromOffset(8, 4)
-		name.Size = UDim2.new(1, -16, 0, 16)
+		name.Position = UDim2.fromOffset(8, 6)
+		name.Size = UDim2.new(INFO_SHARE, -12, 0, 16)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
-		local track, fill, text = makeBar(frame, 14, HP_COLOR)
-		track.Position = UDim2.fromOffset(8, 22)
-		track.Size = UDim2.new(1, -16, 0, 14)
+		local track, fill, text = makeBar(frame, 16, HP_COLOR)
+		track.Position = UDim2.fromOffset(8, 30)
+		track.Size = UDim2.new(INFO_SHARE, -12, 0, 16)
 
 		local element = Combat.ABILITIES[fighter.element]
 		local signature = if fighter.signature then Combat.SIGNATURES[fighter.signature] else nil
 		local buttons = if signature then 2 else 1
 		local function abilityButton(order: number, which: string): TextButton
 			local button = UIKit.button(frame, "", UIKit.Colors.Accent)
-			button.Position = UDim2.new((order - 1) / buttons, if order == 1 then 8 else 4, 0, 42)
-			button.Size = UDim2.new(1 / buttons, -12, 0, 48)
+			local share = (1 - INFO_SHARE) / buttons
+			button.Position = UDim2.new(INFO_SHARE + (order - 1) * share, 0, 0, 4)
+			button.Size = UDim2.new(share, -6, 0, ACTION_HEIGHT)
 			button.TextSize = 13
 			button.TextWrapped = true
 			button.Activated:Connect(function()
@@ -324,7 +355,7 @@ local function buildCallIns(snapshot: Snapshot)
 		local button = UIKit.button(actionRow, `{if snapshot.swaps then "Bring in" else "Call in"} {name}`, UIKit.Colors.Row)
 		button:SetAttribute("Card", name)
 		button.LayoutOrder = index
-		button.Size = UDim2.new(0, 150, 0, 48)
+		button.Size = UDim2.new(0, 150, 0, ACTION_HEIGHT)
 		button.TextSize = 13
 		button.TextWrapped = true
 		button.Activated:Connect(function()
@@ -747,6 +778,7 @@ local function onStarted(payload: any)
 	enemyRow.Visible = mode == "pvp"
 	allyRow.Visible = groupFight -- group fights are boss fights: the HP bar is at the top, this row takes its place
 	runButton.Visible = mode == "wild"
+	layoutBar()
 	if mode == "pvp" then
 		buildEnemies(view)
 	end
@@ -817,7 +849,7 @@ local function build()
 	bar.Name = "FightBar"
 	bar.AnchorPoint = Vector2.new(0.5, 1)
 	bar.Position = UDim2.new(0.5, 0, 1, -10)
-	bar.Size = UDim2.new(0.92, 0, 0, 212)
+	bar.Size = UDim2.new(0.92, 0, 0, 160) -- layoutBar fits it to each fight
 	bar.BackgroundColor3 = UIKit.Colors.Panel
 	bar.BackgroundTransparency = 0.1
 	bar.Visible = false
@@ -852,8 +884,7 @@ local function build()
 	enemyLayout.Parent = enemyRow
 
 	allyRow = Instance.new("Frame")
-	allyRow.Position = UDim2.fromOffset(12, 24)
-	allyRow.Size = UDim2.new(1, -24, 0, 26)
+	allyRow.Size = UDim2.new(1, -24, 0, ALLY_ROW_HEIGHT - 4)
 	allyRow.BackgroundTransparency = 1
 	allyRow.Visible = false
 	allyRow.Parent = bar
@@ -864,8 +895,7 @@ local function build()
 	allyLayout.Parent = allyRow
 
 	fighterRow = Instance.new("Frame")
-	fighterRow.Position = UDim2.fromOffset(12, 48)
-	fighterRow.Size = UDim2.new(1, -24, 0, 96)
+	fighterRow.Size = UDim2.new(1, -24, 0, FIGHTER_HEIGHT)
 	fighterRow.BackgroundTransparency = 1
 	fighterRow.Parent = bar
 	local fighterLayout = Instance.new("UIListLayout")
@@ -875,8 +905,7 @@ local function build()
 	fighterLayout.Parent = fighterRow
 
 	actionRow = Instance.new("Frame")
-	actionRow.Position = UDim2.fromOffset(12, 152)
-	actionRow.Size = UDim2.new(1, -140, 0, 52)
+	actionRow.Size = UDim2.new(1, -140, 0, ACTION_HEIGHT)
 	actionRow.BackgroundTransparency = 1
 	actionRow.Parent = bar
 	local actionLayout = Instance.new("UIListLayout")
@@ -887,8 +916,7 @@ local function build()
 
 	runButton = UIKit.button(bar, "Run", UIKit.Colors.Danger)
 	runButton.AnchorPoint = Vector2.new(1, 0)
-	runButton.Position = UDim2.new(1, -12, 0, 154)
-	runButton.Size = UDim2.fromOffset(116, 48)
+	runButton.Size = UDim2.fromOffset(116, ACTION_HEIGHT)
 	runButton.TextSize = 15
 	runButton.Activated:Connect(function()
 		Remotes.RunFight:FireServer()
@@ -910,7 +938,7 @@ local function build()
 	bossBar.Name = "BossBar"
 	bossBar.AnchorPoint = Vector2.new(0.5, 0)
 	bossBar.Position = UDim2.new(0.5, 0, 0, 64)
-	bossBar.Size = UDim2.new(0.7, 0, 0, 58)
+	bossBar.Size = UDim2.new(0.6, 0, 0, 46)
 	bossBar.BackgroundColor3 = UIKit.Colors.Panel
 	bossBar.BackgroundTransparency = 0.1
 	bossBar.Visible = false
@@ -920,14 +948,14 @@ local function build()
 	local bossWidth = Instance.new("UISizeConstraint")
 	bossWidth.MaxSize = Vector2.new(BOSS_BAR_MAX_WIDTH, math.huge)
 	bossWidth.Parent = bossBar
-	bossName = UIKit.label(bossBar, "", Enum.Font.FredokaOne, 18, UIKit.Colors.Danger)
-	bossName.Position = UDim2.fromOffset(12, 4)
-	bossName.Size = UDim2.new(1, -24, 0, 22)
+	bossName = UIKit.label(bossBar, "", Enum.Font.FredokaOne, 16, UIKit.Colors.Danger)
+	bossName.Position = UDim2.fromOffset(12, 3)
+	bossName.Size = UDim2.new(1, -24, 0, 18)
 	bossName.TextXAlignment = Enum.TextXAlignment.Center
 	bossName.TextTruncate = Enum.TextTruncate.AtEnd
-	local bossTrack, bossFill, bossText = makeBar(bossBar, 22, MONSTER_HP_COLOR)
-	bossTrack.Position = UDim2.fromOffset(12, 28)
-	bossTrack.Size = UDim2.new(1, -24, 0, 22)
+	local bossTrack, bossFill, bossText = makeBar(bossBar, 18, MONSTER_HP_COLOR)
+	bossTrack.Position = UDim2.fromOffset(12, 23)
+	bossTrack.Size = UDim2.new(1, -24, 0, 18)
 	bossHpFill, bossHpText = bossFill, bossText
 	bossHpText.TextSize = 14
 

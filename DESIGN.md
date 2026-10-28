@@ -606,6 +606,9 @@ and rewards in `BossService`.
   none of yours is standing; when all of yours faint, your healthiest rested card comes in by itself, and you lose
   only when none is left. A swapped-out summoned creature is hidden until it comes back. Because a player now brings
   all three party cards, boss HP went up x1.5 and ATK about x1.2 (`BattleSim.swap`, Lune-tested).
+- **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
+  buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
+  about 126 px solo (`layoutBar` in BattleController).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
@@ -1084,3 +1087,7 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 - Should customers sometimes ask for specific singles ("got any Voidmaw?") as a quest-like hook?
 - Offline earnings: yes/no? (Usually boosts retention but needs care with balance.)
 - Cash payment with making change, or keep checkout one-tap?
+
+## 13. Polish backlog (after the core loop)
+- Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
+  overlap), hit markers and a short flash on the creature hit, a screen shake on big boss hits.
