@@ -39,6 +39,7 @@ export type Boss = {
 	mechanics: Mechanics, -- always on (a boss with phases keeps {} here: its phases bring theirs)
 	phases: { BossPhase }?, -- the final boss: one per element, by HP
 	announceEverywhere: boolean?, -- its first clear is told to every server of the experience, not just this one
+	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -235,6 +236,7 @@ local BOSSES: { [string]: Boss } = {
 		minFightSeconds = 120,
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
+		clearTitle = "Dungeon Conqueror",
 		mechanics = {},
 		phases = {
 			{ below = 1, element = "Tide", mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } } },
@@ -284,6 +286,7 @@ return {
 	GATE_PROMPT_DISTANCE = 10, -- the gate prompt shows this close
 	GATE_DISTANCE = 12, -- studs from the gate the server accepts a start (past the prompt's reach, for lag)
 	START_COOLDOWN = 2, -- seconds between start requests per player
+	CLEARED_TOPIC = "BossCleared", -- MessagingService topic for announceEverywhere first clears
 
 	-- Groups (spec section 5): 2-4 players, one boss scaled to the group, loot per player for those who helped
 	GROUP_MAX = 4,

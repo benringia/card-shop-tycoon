@@ -43,6 +43,15 @@ AdminPanel.SECTIONS = {
 			{ label = "Toggle Extra Job Slot", command = "/jobslot" },
 		},
 	},
+	{
+		title = "Dungeon (Dungeon window)",
+		buttons = {
+			{ label = "To room 2", command = "/room 2" },
+			{ label = "To room 3", command = "/room 3" },
+			{ label = "To the Hydra", command = "/room 4" },
+			{ label = "+10 Hydra fragments", command = "/item fragment_prismHydra 10" },
+		},
+	},
 } :: { Section }
 
 AdminPanel.ITEM_AMOUNTS = { 1, 10 } -- one button each per item

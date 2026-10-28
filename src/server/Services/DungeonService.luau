@@ -20,6 +20,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
+local BossService = require(Services:WaitForChild("BossService"))
 local FrontierService = require(Services:WaitForChild("FrontierService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
@@ -36,11 +37,13 @@ export type Run = {
 	cleared: number, -- rooms won
 	room: number?, -- the room being fought
 	monster: WildService.Monster?, -- its pack's first monster (BattleService's fight)
+	bossFight: boolean, -- the Prism Hydra is being fought
+	won: boolean, -- the Hydra fell: the way back is open
 }
 
 local DungeonService = {}
 
-local run: Run = { members = {}, out = {}, hpLeft = {}, expected = 1, started = false, fought = false, cleared = 0, room = nil, monster = nil }
+local run: Run = { members = {}, out = {}, hpLeft = {}, expected = 1, started = false, fought = false, cleared = 0, room = nil, monster = nil, bossFight = false, won = false }
 local layout: DungeonBuilder.DungeonLayout
 local allowGate = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowLeave = RateLimiter.new(1)
@@ -53,6 +56,7 @@ end
 -- Where the run is, for one player's run line (DungeonController)
 local function send(player: Player, message: string?)
 	local stage = if run.out[player] then "out"
+		elseif run.won then "won"
 		elseif not run.started then "waiting"
 		elseif run.cleared >= #Dungeon.ROOMS then "boss"
 		else "room"
@@ -247,19 +251,80 @@ local function onRoomGate(player: Player, index: number)
 	end)
 end
 
+-- The chamber's gate: everyone still in the run fights the Prism Hydra with the HP they have left
+local function onChamberGate(player: Player, bossId: string)
+	if not allowGate(player) or not table.find(run.members, player) or run.out[player] or run.bossFight or run.won then
+		return
+	end
+	if run.cleared < #Dungeon.ROOMS then
+		notify(player, "Clear the three rooms first.", true)
+		return
+	end
+	local fighters = {}
+	for _, member in active() do
+		if ensureFighter(member) then
+			table.insert(fighters, member)
+		else
+			markOut(member, "None of your creatures can fight any more.")
+		end
+	end
+	local ok, why = BossService.StartRun(bossId, fighters, run.hpLeft)
+	if ok then
+		run.bossFight = true
+		run.fought = true
+	else
+		notify(player, why or "The boss couldn't start. Try again.", true)
+	end
+end
+
+-- The Hydra fell: a portal back to the Frontier opens in the chamber (players pick up their loot first)
+local function openWayBack()
+	WildService.BuildPortal(layout.spawn.Parent :: Instance, "Return to the Frontier", layout.returnSpot.Position, layout.returnSpot.LookVector, "Return", function(player)
+		FrontierService.ReturnToFrontier(player)
+	end)
+end
+
+-- HP carries over: each fighter's creatures as the fight left them
+local function carryHp(hpLeft: { [Player]: { [string]: number } })
+	for player, left in hpLeft do
+		run.hpLeft[player] = DungeonRules.merge(run.hpLeft[player] or {}, left)
+	end
+end
+
+-- The Hydra's fight ended: a win opens the way back, anyone whose party is down is out (the others may try again)
+local function onBossEnded(result: string, hpLeft: { [Player]: { [string]: number } })
+	run.bossFight = false
+	carryHp(hpLeft)
+	if result == "win" then
+		run.won = true
+		openWayBack()
+		sendAll("The Prism Hydra has fallen! Pick up your loot, then take the portal home.")
+		return
+	end
+	for player in hpLeft do
+		if result ~= "lose" then
+			markOut(player, "You left the fight, so you're out of the run.")
+		elseif DungeonRules.isOut(run.hpLeft[player], partyIds(player)) then
+			markOut(player, "Your whole party is down. Back to the Frontier...")
+		end
+	end
+end
+
 -- A room's fight ended: HP carries over, a win opens the way on, anyone whose party is down is out
 local function onFightEnded(monster: WildService.Monster, result: string, hpLeft: { [Player]: { [string]: number } })
+	if monster.boss == Dungeon.BOSS then
+		onBossEnded(result, hpLeft)
+		return
+	end
 	if monster ~= run.monster then
-		return -- the Prism Hydra's fight (BossService) or nothing of ours
+		return -- nothing of ours
 	end
 	local index = run.room :: number
 	local room = layout.rooms[index]
 	run.monster = nil
 	run.room = nil
 	setBarrier(room.barrier, false)
-	for player, left in hpLeft do
-		run.hpLeft[player] = DungeonRules.merge(run.hpLeft[player] or {}, left)
-	end
+	carryHp(hpLeft)
 	if result == "win" then
 		run.cleared = math.max(run.cleared, index)
 		openDoor(room.door)
@@ -309,9 +374,10 @@ function DungeonService.Start()
 		end)
 	end
 	BattleService.OnFightEnded(onFightEnded)
-	-- A group member who ran, died or left mid-room is out (the others fight on)
+	BossService.SetRunGate(onChamberGate)
+	-- A group member who ran, died or left mid-room (or mid-Hydra) is out (the others fight on)
 	BattleService.OnMemberLeft(function(player, monster)
-		if monster == run.monster then
+		if monster == run.monster or monster.boss == Dungeon.BOSS then
 			markOut(player, "You left the fight, so you're out of the run.")
 		end
 	end)
