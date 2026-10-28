@@ -17,6 +17,7 @@ export type Boss = {
 	atk: number,
 	spd: number,
 	recommended: number, -- the party Power it's balanced for (shown on the board; drops shrink far above it)
+	shopLevel: number, -- the shop level a player needs to fight it (every member of a group), on top of its fragments
 	groupAtkStep: number?, -- its own ATK step per extra player in a group (nil: GROUP_ATK_STEP)
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
@@ -53,6 +54,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 11,
 		spd = 8,
 		recommended = 200,
+		shopLevel = 3,
 		minFightSeconds = 12,
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
@@ -78,6 +80,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 16,
 		spd = 12,
 		recommended = 350,
+		shopLevel = 5,
 		minFightSeconds = 18,
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
@@ -105,6 +108,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 22,
 		spd = 9,
 		recommended = 650,
+		shopLevel = 8,
 		minFightSeconds = 25,
 		unlock = { item = "fragment_emberColossus", count = 5 },
 		fragment = "fragment_frostTyrant",
@@ -133,6 +137,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 27,
 		spd = 9,
 		recommended = 1100,
+		shopLevel = 12,
 		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 60,
 		unlock = { item = "fragment_frostTyrant", count = 5 },
@@ -161,6 +166,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 26,
 		spd = 14,
 		recommended = 1500,
+		shopLevel = 15,
 		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 70,
 		unlock = { item = "fragment_stormSovereign", count = 8 },
@@ -188,6 +194,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 26,
 		spd = 10,
 		recommended = 1900,
+		shopLevel = 18,
 		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 80,
 		unlock = { item = "fragment_riftDevourer", count = 8 },
@@ -245,8 +252,8 @@ return {
 	INTRO_SHOT = { back = 24, up = 12 }, -- studs in front of the boss and above (over the creatures), looking at it
 	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
 	PHASE_SHAKE = { seconds = 0.3, studs = 0.4 }, -- heal, enrage and the other boss moments
-	MUSIC_ID = "128007000574959", -- boss music: "Epic Boss Battle" (DistroKid, free in the Creator Store); "" plays none
-	MUSIC_VOLUME = 0.15, -- quiet: a bed under the attack and skill sounds to come
+	MUSIC_ID = "1843821342", -- boss ambience: "Tension Repeat Drones 22" (APM, free in the Creator Store); "" plays none
+	MUSIC_VOLUME = 0.1, -- a low drone under the attack and skill sounds, just enough that the fight isn't silent
 	MUSIC_FADE = 1, -- seconds
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring
 	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands

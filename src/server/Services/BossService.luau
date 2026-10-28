@@ -21,6 +21,7 @@ local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
+local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
@@ -252,7 +253,7 @@ end
 
 -- Gates ----------------------------------------------------------------------------------------------------
 
--- Why this player can't take part in this boss now (record, distance from the gate, key, able to fight), or nil
+-- Why this player can't take part in this boss now (record, distance from the gate, shop level, key, able to fight), or nil
 local function whyNotMember(player: Player, bossId: string, reach: number): string?
 	local boss = Bosses.BOSSES[bossId]
 	local arena = arenas[bossId]
@@ -264,6 +265,9 @@ local function whyNotMember(player: Player, bossId: string, reach: number): stri
 	end
 	if (root.Position - arena.gatePosition).Magnitude > reach then
 		return "Get closer to the gate."
+	end
+	if not BossRules.levelReady(boss.shopLevel, EconomyService.GetLevel(player)) then
+		return `The {boss.name} opens at shop level {boss.shopLevel}.`
 	end
 	local unlock = boss.unlock
 	local owned = if unlock then ItemService.GetCount(player, unlock.item) else 0

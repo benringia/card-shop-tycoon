@@ -47,6 +47,22 @@ return {
 		end
 	end,
 
+	["config: each boss opens at a shop level, rising along the ladder"] = function()
+		local before = 0
+		for _, id in Bosses.LADDER do
+			local needed = Bosses.BOSSES[id].shopLevel
+			expect.equal(typeof(needed) == "number" and needed >= 1 and needed % 1 == 0, true, `{id} shopLevel`)
+			expect.equal(needed > before, true, `{id} opens after the boss before it`)
+			before = needed
+		end
+	end,
+
+	["levelReady: the shop level must reach the boss's"] = function()
+		expect.equal(BossRules.levelReady(12, 11), false, "one short")
+		expect.equal(BossRules.levelReady(12, 12), true, "exactly")
+		expect.equal(BossRules.levelReady(12, 30), true, "above")
+	end,
+
 	["read: Frontier bosses start locked"] = function()
 		expect.equal(BossRules.read(nil, Bosses.BOSSES.frostTyrant.unlock == nil).unlocked, false, "needs its key")
 	end,
@@ -207,7 +223,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

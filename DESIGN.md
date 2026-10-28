@@ -585,14 +585,17 @@ Spec `docs/superpowers/specs/2026-10-28-boss-ladder-design.md`. Each boss drops 
 the fragments that open it. Numbers in `Config/Bosses`, rules in `Util/BossRules` (pure, Lune-tested), saved progress
 and rewards in `BossService`.
 
-| # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Opens with |
-|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 23000 / 26 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 8 Devourer Key Fragments |
+| # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | 3 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 5 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 23000 / 26 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
+
+Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
+group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
 
 | Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
 |---|---|---|---|---|
@@ -613,7 +616,7 @@ and rewards in `BossService`.
   studs, stuns on a boss last at most 1 s.
 - **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
   (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
-  until then. Boss music plays quietly through the fight ("Epic Boss Battle", `MUSIC_ID`, volume 0.15: a bed under the
+  until then. A low ambient drone plays through the fight ("Tension Repeat Drones 22", `MUSIC_ID`, volume 0.1: a bed under the
   attack and skill sounds to come); heals and enrages shake the camera.
 - **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
   the board lists all 6 and names the other place). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and

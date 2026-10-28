@@ -1,5 +1,5 @@
 --!strict
--- The boss board (HUD tile "Bosses"): the boss ladder (Config/Bosses) with each boss's lock and fragments, the
+-- The boss board (HUD tile "Bosses"): the boss ladder (Config/Bosses) with each boss's shop level, lock and fragments, the
 -- recommended Power against your strongest party card, when full loot is ready again, today's rewarded wins and the
 -- trophy once cleared. Data comes from BossService (BossesChanged); the loot timers count down here between updates.
 -- Also: the leader of a group forming at a gate sees "Start now" on its group prompt.
@@ -65,6 +65,11 @@ local function lootText(state: BossState): (string, Color3)
 	return if left > 0 then `Full loot in {clock(left)}` else "Full loot ready", if left > 0 then LOCKED_COLOR else READY_COLOR
 end
 
+local function shopLevel(): number
+	local level = Players.LocalPlayer:GetAttribute("Level")
+	return if typeof(level) == "number" then level else 1
+end
+
 local function addText(row: GuiObject, text: string, y: number, height: number, font: Enum.Font, size: number, color: Color3): TextLabel
 	local label = UIKit.label(row, text, font, size, color)
 	label.Position = UDim2.fromOffset(14, y)
@@ -93,6 +98,11 @@ local function buildRow(index: number, bossId: string, power: number)
 	local powerColor = if power >= boss.recommended then READY_COLOR else UIKit.Colors.Danger
 	addText(row, `{where}Power {boss.recommended} · your best {power}`, 32, 18, Enum.Font.GothamBold, 13, powerColor)
 
+	if not BossRules.levelReady(boss.shopLevel, shopLevel()) then
+		addText(row, `🔒 Opens at shop level {boss.shopLevel}`, 54, 20, Enum.Font.GothamBold, 15, LOCKED_COLOR)
+		addText(row, `Your shop is level {shopLevel()}: sell cards to level up.`, 78, 18, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
+		return
+	end
 	local unlock = boss.unlock
 	if not state or (not state.unlocked and unlock) then
 		local have = if state then state.fragments else 0
@@ -192,6 +202,7 @@ function BossBoardController.Start()
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		task.defer(render)
 	end)
+	Players.LocalPlayer:GetAttributeChangedSignal("Level"):Connect(render)
 	Remotes.RequestBosses:FireServer()
 
 	local sinceTick = 0

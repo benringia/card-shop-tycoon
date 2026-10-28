@@ -77,6 +77,11 @@ function BossRules.canStart(record: Record, unlock: { item: string, count: numbe
 	return false, `locked:{owned}:{unlock.count}`
 end
 
+-- Whether a player's shop level reaches the level a boss needs (the board shows it, BossService enforces it)
+function BossRules.levelReady(shopLevel: number, level: number): boolean
+	return level >= shopLevel
+end
+
 function BossRules.lootEligible(record: Record, now: number): boolean
 	return now >= record.lootAt
 end
