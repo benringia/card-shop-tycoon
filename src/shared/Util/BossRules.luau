@@ -208,4 +208,47 @@ function BossRules.groupPromptText(config: GroupConfig, members: number, isLeade
 	return `{if isLeader then "Start now" else "Join group"} ({members}/{config.GROUP_MAX})`
 end
 
+-- One boss on the board's ladder, as the player stands now. keyNeeded: fragments that open it (0: none)
+export type Step = {
+	cleared: boolean,
+	unlocked: boolean,
+	keyNeeded: number,
+	fragments: number,
+	shopLevel: number,
+	needLevel: number,
+	power: number,
+	recommended: number,
+}
+
+-- beaten; ready (you can start it now, fragments in hand count, and your Power is enough); tooWeak (you can start
+-- it but your Power is short); locked (shop level or fragments short)
+function BossRules.stepState(step: Step): "beaten" | "ready" | "tooWeak" | "locked"
+	if step.cleared then
+		return "beaten"
+	end
+	if step.shopLevel < step.needLevel then
+		return "locked"
+	end
+	if not step.unlocked and step.fragments < step.keyNeeded then
+		return "locked"
+	end
+	return if step.power >= step.recommended then "ready" else "tooWeak"
+end
+
+-- What the board's travel button does for a boss whose arena is in bossPlace ("Wild" | "Frontier" | "Dungeon")
+-- while you are in `here` ("Main" | "Frontier" | "Dungeon"): its gate in this place, the normal travel to the other
+-- place, the Dungeon portal's directions, or nothing (inside a Dungeon run)
+function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "toFrontier" | "toMain" | "viaPortal" | "none"
+	if here == "Dungeon" then
+		return "none"
+	end
+	if bossPlace == "Dungeon" then
+		return "viaPortal"
+	end
+	if (bossPlace == "Wild" and here == "Main") or (bossPlace == "Frontier" and here == "Frontier") then
+		return "gate"
+	end
+	return if bossPlace == "Frontier" then "toFrontier" else "toMain"
+end
+
 return BossRules

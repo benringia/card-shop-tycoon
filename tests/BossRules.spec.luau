@@ -331,8 +331,36 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
+	end,
+	["stepState: beaten, ready, too weak or locked"] = function()
+		local base: BossRules.Step = { cleared = false, unlocked = true, keyNeeded = 0, fragments = 0, shopLevel = 10, needLevel = 5, power = 500, recommended = 400 }
+		local function with(fields: { [string]: any }): BossRules.Step
+			local step = table.clone(base) :: any
+			for key, value in fields do
+				step[key] = value
+			end
+			return step
+		end
+		expect.equal(BossRules.stepState(with({ cleared = true, power = 1 })), "beaten", "beaten first")
+		expect.equal(BossRules.stepState(base), "ready", "open and strong enough")
+		expect.equal(BossRules.stepState(with({ power = 399 })), "tooWeak", "open, Power short")
+		expect.equal(BossRules.stepState(with({ shopLevel = 4 })), "locked", "below the shop level")
+		expect.equal(BossRules.stepState(with({ unlocked = false, keyNeeded = 3, fragments = 2 })), "locked", "short of fragments")
+		expect.equal(BossRules.stepState(with({ unlocked = false, keyNeeded = 3, fragments = 3 })), "ready", "enough fragments counts as open")
+		expect.equal(BossRules.stepState(with({ unlocked = false, keyNeeded = 3, fragments = 3, power = 10 })), "tooWeak", "can start, too weak")
+		expect.equal(BossRules.stepState(with({ unlocked = false })), "ready", "no key needed, no data yet")
+	end,
+	["travelChoice: the gate in this place, else the normal travel"] = function()
+		expect.equal(BossRules.travelChoice("Wild", "Main"), "gate", "Wild boss from the main game")
+		expect.equal(BossRules.travelChoice("Frontier", "Main"), "toFrontier", "Frontier boss from the main game")
+		expect.equal(BossRules.travelChoice("Dungeon", "Main"), "viaPortal", "the Hydra")
+		expect.equal(BossRules.travelChoice("Frontier", "Frontier"), "gate", "in the Frontier")
+		expect.equal(BossRules.travelChoice("Wild", "Frontier"), "toMain", "Wild boss from the Frontier")
+		expect.equal(BossRules.travelChoice("Dungeon", "Frontier"), "viaPortal", "the Hydra from the Frontier")
+		expect.equal(BossRules.travelChoice("Wild", "Dungeon"), "none", "in a run")
+		expect.equal(BossRules.travelChoice("Dungeon", "Dungeon"), "none", "in a run")
 	end,
 }
