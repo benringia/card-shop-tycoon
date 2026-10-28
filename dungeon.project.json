@@ -1,0 +1,43 @@
+{
+  "name": "card-shop-tycoon-dungeon",
+  "servePort": 34874,
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "CreatureModels": {
+        "$path": "assets/creatures"
+      },
+      "MonsterModels": {
+        "$path": "assets/monsters"
+      },
+      "PropModels": {
+        "$path": "assets/props"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "ServerStorage": {
+      "ServerPackages": {
+        "$path": "ServerPackages"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$attributes": {
+        "PlaceKind": "Dungeon"
+      }
+    }
+  }
+}

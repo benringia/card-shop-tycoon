@@ -31,7 +31,21 @@ local DevService = require(Services:WaitForChild("DevService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
-if Place.isFrontier() then
+if Place.isDungeon() then
+	-- The Dungeon place (one run per reserved server): the run, its fights and the final boss
+	EconomyService.Start()
+	MonetizationService.Start()
+	CardService.Start()
+	ItemService.Start()
+	JobService.StartLocksOnly() -- before PartyService: cards with a shop job stay out of the party
+	PartyService.Start()
+	WildService.Start() -- the Dungeon's monsters (no wild map)
+	BattleService.Start()
+	BossService.Start() -- the Prism Hydra's chamber
+	FrontierService.Start() -- back to the Frontier
+	DevService.Start() -- Studio only
+	DataService.Start() -- last: starts loading players
+elseif Place.isFrontier() then
 	-- The Frontier place: no plots or shop systems, only what the shared high-level map needs.
 	-- Data handlers load in this order (and unload in reverse), as in the main game.
 	EconomyService.Start()
@@ -75,4 +89,4 @@ else
 	DataService.Start() -- last: starts loading players
 end
 
-print(`[Server] Booted ({if Place.isFrontier() then "Frontier" else "main game"})`)
+print(`[Server] Booted ({if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "main game"})`)

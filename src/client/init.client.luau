@@ -41,8 +41,8 @@ require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
-if Place.isFrontier() then
-	-- The Frontier place: no shop, so only the binder, party, creatures and fights
+if Place.isFrontier() or Place.isDungeon() then
+	-- The Frontier and Dungeon places: no shop, so only the binder, party, creatures and fights
 	UIController.Start()
 	BinderController.Start()
 	PartyController.Start()
