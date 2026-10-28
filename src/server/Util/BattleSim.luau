@@ -374,16 +374,25 @@ function BattleSim.withdraw(state: State, owner: string): { Event }
 		end
 		side.reserves = rest
 		if had and #standing(side) == 0 and not state.result then
-			finish(state, "run", events)
+			-- Someone who fainted is still in it: their side lost. Everyone left: it's a run.
+			local stayed = false
+			for _, fighter in side.fighters do
+				stayed = stayed or not fighter.left
+			end
+			finish(state, if stayed then other(state, side).name else "run", events)
 		end
 	end
 	return events
 end
 
--- One owner's share of side A's fight so far (the boss loot's contribution rule)
+-- One owner's share of side A's fight so far (the boss loot's contribution rule). Players who left don't count: the
+-- shares are of what the ones still in it did.
 function BattleSim.contribution(state: State, owner: string): { dealt: number, taken: number, totalDealt: number, totalTaken: number }
 	local result = { dealt = 0, taken = 0, totalDealt = 0, totalTaken = 0 }
 	for _, fighter in state.sides.a.fighters do
+		if fighter.left then
+			continue
+		end
 		result.totalDealt += fighter.dealt
 		result.totalTaken += fighter.taken
 		if fighter.owner == owner then

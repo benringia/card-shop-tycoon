@@ -37,6 +37,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	NewPulls = require("./NewPulls.spec"),
 	PityRules = require("./PityRules.spec"),
 	BossRules = require("./BossRules.spec"),
+	CreatureCull = require("./CreatureCull.spec"),
 }
 
 local passed, failed = 0, 0

@@ -355,7 +355,6 @@ local function refreshTimers()
 	runButton.BackgroundColor3 = if runWait > 0.05 then UIKit.Colors.Locked else UIKit.Colors.Danger
 end
 
--- PvP: the other player's creatures as compact HP bars across the top
 -- One small HP bar per other player's creature
 local function buildAllies(snapshot: Snapshot)
 	clear(allyRow)
@@ -378,6 +377,7 @@ local function buildAllies(snapshot: Snapshot)
 	end
 end
 
+-- PvP: the other player's creatures as compact HP bars across the top
 local function buildEnemies(snapshot: Snapshot)
 	clear(enemyRow)
 	enemyBars = {}

@@ -280,7 +280,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
 - All art must be original and uploaded as decals/images to Roblox.
 - Summoned creatures use free or bought Creator Store models as stand-ins for now, with a placeholder blob for
-  cards without one. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
+  cards without one. Each client draws only your own creatures plus the nearest 30 others within 140 studs (kept
+  until 170, `Party.CULL`, `Util/CreatureCull`); the rest stay invisible server markers, so a full server stays light
+  on phones. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
   a few shared ones tinted to their element); two Legendaries use the bought Crystal Titans pack with its own walk,
   run and idle animations (Stormking is now an original storm titan beetle and Tideborne Kirin (was Aurora Drake) an original celestial kirin;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
@@ -398,6 +400,7 @@ Roadmap (one sub-project at a time):
          before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, and phase 2, groups, done: 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
+Not one server for everyone: Roblox fills a Frontier server to the place's Max Players (Creator Hub) and opens more.
 The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or Join a friend who is in one now.
 A teleport is a leave (fights end, the save goes to the next server); your shop pauses and rebuilds from the save
 when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
@@ -614,13 +617,18 @@ and rewards in `BossService`.
   party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
 - **Groups (phase 2):** the gate's second prompt (F) "Start group" opens a group; others press "Join group (n/4)"
-  within 15 s (`JOIN_SECONDS`), the leader can press again to start at once, it starts by itself when full (4).
+  within 15 s (`JOIN_SECONDS`), the leader (whose prompt reads "Start now (n/4)", `BossRules.groupPromptText`) can
+  press again to start at once, it starts by itself when full (4). The Fight and group prompts have separate limiters.
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
   member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`).
   Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
-  others fight on, and the fight ends when nobody is left. On a win each player gets their own XP, cash and loot roll.
-  Full loot needs 10% of the group's damage or 15% of the hits it took (`BossRules.contributed`); below that a player
+  others fight on, and the fight ends when nobody is left standing: a loss if a fainted member is still in it, else a
+  run. Leaders stand 7 studs apart on the ring (`GROUP_SPACING`), each call-in 3 studs to its own leader's right
+  (`Combat.EXTRA_SIDE`). Every member counts as busy for wild aggro (BattleService tells WildService), a member who left
+  doesn't. On a win each player gets their own XP, cash and loot roll.
+  Full loot needs 10% of the group's damage or 15% of the hits it took (`BossRules.contributed`, counting only the
+  players still in the fight); below that a player
   is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown and soft cap
   still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.

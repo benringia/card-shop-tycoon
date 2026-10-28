@@ -460,4 +460,20 @@ return {
 		expect.equal(one.dealt + two.dealt, one.totalDealt, "dealt adds up")
 		expect.equal(one.taken + two.taken, one.totalTaken, "taken adds up")
 	end,
+
+	["group: the last one leaving while the others fainted is a loss, not a run"] = function()
+		local state = group(7)
+		state.sides.a.fighters[2].fainted = true -- p2 (getFighter hands back a copy)
+		BattleSim.withdraw(state, "1")
+		expect.equal(state.result, "b", "a fainted member stayed: the side lost")
+	end,
+
+	["group: a player who left drops out of the loot shares"] = function()
+		local state = group(8)
+		runToEnd(state, 5)
+		BattleSim.withdraw(state, "2")
+		local one = BattleSim.contribution(state, "1")
+		expect.equal(one.totalDealt, one.dealt, "only those still in count toward the total dealt")
+		expect.equal(one.totalTaken, one.taken, "only those still in count toward the total taken")
+	end,
 }

@@ -570,7 +570,7 @@ local function startFight(players: { Player }, monster: Monster): boolean
 		local facing = CFrame.Angles(0, angle, 0):VectorToWorldSpace(direction)
 		local spot = center + facing * radius
 		local right = Vector3.new(-facing.Z, 0, facing.X)
-		local extra = spot + right * 3
+		local extra = spot + right * Combat.EXTRA_SIDE
 		spots[partyId(member.leaderId)] = CFrame.lookAt(spot, spot - facing)
 		spots[`extra:{member.owner}`] = CFrame.lookAt(extra, extra - facing)
 	end
@@ -882,6 +882,7 @@ end
 
 function BattleService.Start()
 	DataService.Register({ name = "BattleService", load = load, save = save, unload = unload })
+	WildService.SetFightCheck(BattleService.IsFighting)
 	-- End a fight before the leave save, so cards that fainted in it are saved as resting
 	DataService.OnBeforeLeave(function(player)
 		local fight = fights[player]

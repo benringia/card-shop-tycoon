@@ -14,7 +14,7 @@ export type Record = {
 	bonusDay: number, -- UTC day the daily bonus chest was last given
 }
 type Config = { SOFT_CAP_AFTER: number, SOFT_CAP_STEP: number, SOFT_CAP_FLOOR: number, OVERPOWER_RATIO: number, OVERPOWER_FACTOR: number }
-type GroupConfig = { GROUP_HP_STEP: number, GROUP_ATK_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
+type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
 
 local function readCount(value: unknown): number
 	return if typeof(value) == "number" and value == value and value >= 0 and value ~= math.huge then math.floor(value) else 0
@@ -115,6 +115,15 @@ end
 -- A carried member's chance at a drop: a fraction of it, never a fragment
 function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
+end
+
+-- The gate's group prompt: open a group, join one, or (its leader) start it now. The server sets the text everyone
+-- sees; the leader's client swaps in its own.
+function BossRules.groupPromptText(config: GroupConfig, members: number, isLeader: boolean): string
+	if members <= 0 then
+		return "Start group"
+	end
+	return `{if isLeader then "Start now" else "Join group"} ({members}/{config.GROUP_MAX})`
 end
 
 return BossRules

@@ -1,6 +1,7 @@
 --!strict
 local BossRules = require("../src/shared/Util/BossRules")
 local Bosses = require("../src/shared/Config/Bosses")
+local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -14,6 +15,16 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["group prompt: the leader sees Start now, everyone else Join"] = function()
+		expect.equal(BossRules.groupPromptText(Bosses, 0, false), "Start group", "no group yet")
+		expect.equal(BossRules.groupPromptText(Bosses, 2, false), `Join group (2/{Bosses.GROUP_MAX})`, "others join")
+		expect.equal(BossRules.groupPromptText(Bosses, 2, true), `Start now (2/{Bosses.GROUP_MAX})`, "the leader starts")
+	end,
+
+	["ring: an extra stands nearer its own leader than the next member's"] = function()
+		expect.equal(Bosses.GROUP_SPACING - Combat.EXTRA_SIDE > Combat.EXTRA_SIDE, true, "gap to the next leader")
+	end,
+
 	["read: bad saves become safe defaults"] = function()
 		expect.equal(BossRules.read(nil, true).unlocked, true, "an open boss starts unlocked")
 		local bad = BossRules.read({ lootAt = -5, rewardedToday = 0 / 0 }, false)
@@ -139,7 +150,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,
