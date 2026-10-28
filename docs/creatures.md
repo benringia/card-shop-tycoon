@@ -472,10 +472,11 @@ species are listed in `Wild.FLYING`. Species without a model get a part-built pl
 Boss models are saved under the boss id (`assets/monsters/<bossId>.rbxm`). A boss model with PetRig bone names moves
 like a creature (MonsterController passes the boss id to `CreatureVisuals.build`; `Party.CREATURE_STYLE` and
 `Party.SIGNATURE` are keyed by it). The Prism Hydra (`prismHydra`, the final boss) is a blocky remodel of the Crystal
-Titans Rainbow Hydra built by `tools/blender/build_prismHydra.py` in the chunky "simulator pet" style (`round_box`
-with one bevel segment, two on the heads): a round violet body with a cream belly on stubby legs, a crown of chunky
-crystals, five short thick necks `Hydra_<n>_0..2` with oversized aqua heads `Hydra_<n>_3` (big eyes, angry brow, a
-gem horn) and jaws `Jaw_<n>` (45 bones, about 3,400 triangles), flat bright colours, every head the same colour. Its heads' elements are `Config/Bosses` `heads` (head 0 the middle one): the current
+Titans Rainbow Hydra built by `tools/blender/build_prismHydra.py` in a faceted low-poly "studded" style (`chunk()`:
+`round_box` with one flat bevel plus small raised square studs scattered over its faces): a heavy dark indigo brute
+with cream horns, muzzles and belly, a gold collar and claws, prism crystal shards down its back, five thick necks
+`Hydra_<n>_0..2` with big horned heads `Hydra_<n>_3` (glowing gold eyes, heavy brow, teeth, a forehead crystal) and
+jaws `Jaw_<n>` (45 bones, about 6,100 triangles), every head the same colour. Its heads' elements are `Config/Bosses` `heads` (head 0 the middle one): the current
 phase's head gets a PointLight and sparks on its bone, and when it falls the necks bow down one by one
 (`Bosses.HEAD_DROP`, during `DEATH_SECONDS`). Import it like the creatures (Rig Type Custom, Keep Zero Influence
 Bones), reset the MeshPart's `PivotOffset` rotation, name the model `prismHydra`.

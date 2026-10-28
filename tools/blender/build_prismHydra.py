@@ -1,9 +1,9 @@
 """Builds the Prism Hydra, the final boss (Config/Bosses prismHydra, spec 2026-10-29-dungeon-final-boss-design.md),
-in the chunky "simulator pet" style: big rounded simple shapes, oversized heads on short thick necks, stubby legs,
-flat bright colours and almost no small detail. A remodel of the bought Crystal Titans Rainbow Hydra kept clearly ours
-and unlike the famous five-headed dragon: one shared colour for all five heads (in game only the active phase's head
-glows its element colour, MonsterController), a round violet body with a cream belly, and a crown of chunky crystals
-on its back. Big eyes with an angry brow so it still reads as the final boss.
+in a faceted low-poly "studded" style (the look the user showed as references, our own creature): chunky chamfered
+shapes, small raised square studs scattered over the hide, a bold base colour with cream and gold accents, glowing
+eyes and crystals. A heavy brute on thick legs with five big horned heads, a gold collar where the necks meet, prism
+crystal shards down its back and a crystal gem on every forehead. All five heads share one colour (so it doesn't read
+as the famous five-coloured dragon); in game only the active phase's head glows its element colour (MonsterController).
 
 One skinned mesh with a palette texture, rigidly weighted to an armature whose bones carry the names
 src/shared/Util/PetRig.luau reads: four legs (front 0_<side>_Limb_0..2, hind 1_<side>_Limb_0..2), Pelvis and
@@ -16,6 +16,7 @@ Writes assets/blender/PrismHydra/{PrismHydra.blend,.fbx,palette png}.
 """
 import math
 import os
+import random
 import sys
 
 from mathutils import Matrix, Vector
@@ -26,47 +27,52 @@ import voxel_kit  # noqa: E402
 NAME = "PrismHydra"
 
 COLORS = {
-    "violet": (148, 96, 255),
-    "violet_dark": (104, 62, 214),
-    "cream": (255, 238, 214),
-    "aqua": (104, 228, 255),
-    "aqua_dark": (54, 172, 232),
-    "pink": (255, 112, 214),
-    "gold": (255, 206, 64),
-    "eye": (255, 255, 255),
-    "pupil": (34, 22, 56),
-    "mouth": (96, 28, 92),
+    "hide": (58, 50, 104),
+    "hide_dark": (40, 34, 76),
+    "hide_stud": (86, 76, 144),
+    "bone": (238, 226, 198),
+    "bone_stud": (212, 198, 166),
+    "gold": (255, 190, 60),
+    "gold_dark": (212, 138, 32),
+    "crystal": (120, 230, 255),
+    "crystal_pink": (255, 120, 220),
+    "eye": (255, 196, 54),
+    "eye_core": (255, 248, 206),
+    "mouth": (72, 24, 62),
+    "teeth": (250, 246, 236),
 }
+STUD = {"hide": "hide_stud", "hide_dark": "hide_stud", "bone": "bone_stud"}
+RNG = random.Random(4242)
 
-# A round, low body: hips at the back (+Y), chest at the front (-Y); the necks leave the top of the chest
-HIPS = Vector((0, 0.7, 1.0))
-WAIST = Vector((0, 0.1, 1.05))
-CHEST = Vector((0, -0.45, 1.1))
-CHEST_FRONT = Vector((0, -0.95, 1.2))
-NECK_ROOT_Z = 1.55
-# Stubby legs (one side, +X): hip/shoulder, knee/elbow, ankle, toes
-FRONT_LEG = [(0.72, -0.55, 0.78), (0.76, -0.55, 0.45), (0.76, -0.58, 0.18), (0.76, -0.8, 0.05)]
-HIND_LEG = [(0.72, 0.72, 0.76), (0.76, 0.76, 0.45), (0.76, 0.72, 0.18), (0.76, 0.5, 0.05)]
-TAIL = [(0, 1.2, 0.95), (0, 1.62, 0.78), (0, 1.95, 0.64), (0, 2.18, 0.56), (0, 2.34, 0.52)]
+# A heavy brute: hips at the back (+Y), a big chest at the front (-Y); the necks leave the top of the chest
+HIPS = Vector((0, 0.75, 1.1))
+WAIST = Vector((0, 0.1, 1.2))
+CHEST = Vector((0, -0.45, 1.3))
+CHEST_FRONT = Vector((0, -0.95, 1.42))
+NECK_ROOT_Z = 1.8
+# Thick legs (one side, +X): hip/shoulder, knee/elbow, ankle, toes
+FRONT_LEG = [(0.86, -0.55, 1.0), (0.92, -0.6, 0.55), (0.92, -0.62, 0.2), (0.92, -0.86, 0.05)]
+HIND_LEG = [(0.82, 0.78, 0.92), (0.88, 0.86, 0.52), (0.88, 0.78, 0.2), (0.88, 0.54, 0.05)]
+TAIL = [(0, 1.25, 1.02), (0, 1.7, 0.84), (0, 2.05, 0.68), (0, 2.3, 0.58), (0, 2.46, 0.54)]
 # Heads: 0 in the middle and tallest, then outwards alternating sides (fan angle in degrees, + is the left)
 FAN = [0, 34, -34, 64, -64]
 NECK_BONES = 3
-HEAD_SCALE = 1.3  # heads are built at size 1 and scaled up about the top of their neck: oversized, simulator style
+HEAD_SCALE = 1.3  # heads are built at size 1 and scaled up about the top of their neck
 HEAD_LENGTH = 0.9 * HEAD_SCALE
 
 
 def neck_points(head):
-    """Points along one short, thick neck, base to head: up out of the chest and out to its own place in the fan."""
+    """Points along one thick neck, base to head: up out of the chest and out to its own place in the fan."""
     a = math.radians(FAN[head])
     reach = 0.25 if head % 2 == 1 else 0.0
-    base = Vector((math.sin(a) * 0.45, CHEST_FRONT.y + 0.25, NECK_ROOT_Z))
-    top = Vector((math.sin(a) * 3.0, -1.45 - reach, NECK_ROOT_Z + 0.85 + 1.05 * math.cos(a) ** 2))
-    control = Vector((math.sin(a) * 1.5, -0.75, (base.z + top.z) / 2 + 0.25))
+    base = Vector((math.sin(a) * 0.5, CHEST_FRONT.y + 0.25, NECK_ROOT_Z))
+    top = Vector((math.sin(a) * 3.0, -1.5 - reach, NECK_ROOT_Z + 0.8 + 1.05 * math.cos(a) ** 2))
+    control = Vector((math.sin(a) * 1.6, -0.8, (base.z + top.z) / 2 + 0.25))
     points = []
     for i in range(NECK_BONES + 1):
         t = i / NECK_BONES
         points.append(base * (1 - t) ** 2 + control * 2 * t * (1 - t) + top * t * t)
-    forward = Vector((math.sin(a) * 0.3, -1.0, -0.05)).normalized()
+    forward = Vector((math.sin(a) * 0.3, -1.0, -0.08)).normalized()
     return points, forward
 
 
@@ -95,32 +101,59 @@ def rig_bones():
             bones.append((f"Hydra_{head}_{i}", parent, tuple(points[i]), tuple(points[i + 1])))
         top = points[-1]
         bones.append((f"Hydra_{head}_3", f"Hydra_{head}_{NECK_BONES - 1}", tuple(top), tuple(top + forward * HEAD_LENGTH)))
-        hinge = top + (forward * 0.15 + Vector((0, 0, -0.2))) * HEAD_SCALE
-        bones.append((f"Jaw_{head}", f"Hydra_{head}_3", tuple(hinge), tuple(hinge + (forward * 0.5 + Vector((0, 0, -0.06))) * HEAD_SCALE)))
+        hinge = top + (forward * 0.2 + Vector((0, 0, -0.18))) * HEAD_SCALE
+        bones.append((f"Jaw_{head}", f"Hydra_{head}_3", tuple(hinge), tuple(hinge + (forward * 0.5 + Vector((0, 0, -0.08))) * HEAD_SCALE)))
     return bones
 
 
-def soft(b, center, size, color, bone, rot=None, bevel=0.42, segments=1):
-    """The simulator look: a box with well-rounded edges (one bevel segment keeps it low-poly; heads get two)"""
-    b.round_box(center, size, color, bone, rot, bevel=bevel, segments=segments)
+def chunk(b, center, size, color, bone, rot=None, bevel=0.3, studs=3.0, skip=("-z",)):
+    """The faceted look: a box with chamfered edges (one flat bevel), and small square studs scattered over its faces
+    (`studs` per square metre, never on the faces in `skip`)."""
+    b.round_box(center, size, color, bone, rot, bevel=bevel, segments=1)
+    stud_color = STUD.get(color)
+    if not stud_color or studs <= 0:
+        return
+    c, r = Vector(center), rot if rot is not None else Matrix.Identity(3)
+    half = [size[0] / 2, size[1] / 2, size[2] / 2]
+    inset = min(size) * bevel * 0.5  # the chamfer eats this much of every face's edge
+    s, h = 0.14, 0.05
+    for axis in range(3):
+        for sign in (1, -1):
+            if ("+" if sign > 0 else "-") + "xyz"[axis] in skip:
+                continue
+            u, v = (i for i in range(3) if i != axis)
+            room_u, room_v = half[u] - inset - s, half[v] - inset - s
+            if room_u <= 0 or room_v <= 0:
+                continue
+            for _ in range(int(size[u] * size[v] * studs)):
+                p = [0.0, 0.0, 0.0]
+                p[axis] = sign * (half[axis] + h / 2 - 0.01)
+                p[u] = RNG.uniform(-room_u, room_u)
+                p[v] = RNG.uniform(-room_v, room_v)
+                dims = [s, s, s]
+                dims[axis] = h
+                b.box(c + r @ Vector(p), dims, stud_color, bone, r)
 
 
 def build_body(b):
-    # One big round body in three soft chunks, a cream belly underneath and on the chest
-    soft(b, (0, 0.68, 1.02), (1.9, 1.05, 1.3), "violet", "Pelvis")
-    soft(b, (0, 0.08, 1.08), (2.1, 0.95, 1.42), "violet", "Spine_0")
-    soft(b, (0, -0.52, 1.14), (1.95, 0.9, 1.36), "violet", "Spine_1")
-    soft(b, (0, 0.1, 0.48), (1.5, 1.9, 0.34), "cream", "Spine_0")
-    soft(b, (0, -0.98, 1.08), (1.2, 0.18, 0.95), "cream", "Spine_1", bevel=0.6)
+    # A big chest and shoulders, a lower back, the cream belly underneath
+    chunk(b, (0, 0.72, 1.1), (1.9, 1.1, 1.3), "hide", "Pelvis")
+    chunk(b, (0, 0.08, 1.2), (2.2, 1.0, 1.5), "hide", "Spine_0")
+    chunk(b, (0, -0.55, 1.36), (2.3, 1.0, 1.65), "hide", "Spine_1")
+    chunk(b, (0, 0.05, 0.56), (1.6, 2.0, 0.36), "bone", "Spine_0", studs=1.8, skip=("-z", "+z"))
+    chunk(b, (0, -1.06, 1.28), (1.4, 0.2, 1.0), "bone", "Spine_1", studs=2.2, skip=("-z", "-y"))
+    # The gold collar where the necks meet, a crystal gem at its front
+    b.round_box((0, -0.98, 1.94), (1.9, 0.5, 0.26), "gold", "Spine_1", bevel=0.4, segments=1)
+    b.spike((0, -1.24, 1.9), (0, -1, 0.15), 0.34, 0.3, "crystal", "Spine_1")
+    b.spike((0, -1.2, 1.9), (0, -1, -0.6), 0.26, 0.32, "crystal", "Spine_1")
 
 
 def build_crown(b):
-    """A crown of chunky crystals on its back: one big pink one, two aqua beside it, gold tips at the front"""
-    b.spike((0, 0.15, 1.72), (0, 0.15, 1), 0.7, 1.15, "pink", "Spine_0")
-    for sx in (1, -1):
-        b.spike((sx * 0.5, 0.25, 1.68), (sx * 0.45, 0.2, 1), 0.5, 0.75, "aqua", "Spine_0")
-        b.spike((sx * 0.45, -0.45, 1.75), (sx * 0.35, -0.1, 1), 0.4, 0.5, "gold", "Spine_1")
-        b.spike((sx * 0.4, 0.82, 1.6), (sx * 0.3, 0.4, 1), 0.38, 0.5, "pink", "Pelvis")
+    """Prism crystal shards down the back, biggest over the shoulders"""
+    for y, z, size, bone in ((-0.4, 2.16, 1.0, "Spine_1"), (0.1, 1.96, 0.85, "Spine_0"), (0.62, 1.76, 0.7, "Pelvis"), (1.0, 1.7, 0.5, "Pelvis")):
+        b.spike((0, y, z), (0, 0.25, 1), size * 0.55, size, "crystal_pink", bone)
+        for sx in (1, -1):
+            b.spike((sx * 0.42, y + 0.08, z - 0.12), (sx * 0.55, 0.25, 1), size * 0.36, size * 0.62, "crystal", bone)
 
 
 def build_legs(b):
@@ -128,17 +161,21 @@ def build_legs(b):
         for pair, leg in ((0, FRONT_LEG), (1, HIND_LEG)):
             p = [Vector(mirror(q, sx)) for q in leg]
             upper, lower, foot = (f"{pair}_{side}_Limb_{i}" for i in range(3))
-            soft(b, p[0].lerp(p[1], 0.5), (0.72, 0.72, 0.62), "violet_dark", upper)
-            soft(b, p[1].lerp(p[2], 0.5), (0.66, 0.66, 0.42), "violet_dark", lower)
-            soft(b, p[2] + Vector((0, (p[3] - p[2]).y * 0.35, -0.08)), (0.78, 0.8, 0.26), "cream", foot, bevel=0.6)
+            chunk(b, p[0].lerp(p[1], 0.45), (0.86, 0.86, 0.72), "hide", upper, studs=2.2)
+            chunk(b, p[1].lerp(p[2], 0.5), (0.72, 0.72, 0.5), "hide_dark", lower, studs=2.2)
+            paw = p[2] + Vector((0, (p[3] - p[2]).y * 0.35, -0.08))
+            chunk(b, paw, (0.86, 0.9, 0.3), "bone", foot, studs=1.8, skip=("-z", "+z"))
+            for toe in (-0.26, 0, 0.26):  # gold claws
+                b.spike(paw + Vector((toe, -0.45, -0.04)), (0, -1, -0.3), 0.16, 0.24, "gold", foot)
 
 
 def build_tail(b):
-    sizes = (0.7, 0.56, 0.44, 0.34)
+    sizes = (0.78, 0.62, 0.48, 0.36)
     for i in range(len(TAIL) - 1):
         a, c = Vector(TAIL[i]), Vector(TAIL[i + 1])
-        soft(b, a.lerp(c, 0.5), (sizes[i], (c - a).length + 0.12, sizes[i]), "violet" if i % 2 == 0 else "violet_dark", f"Tail_{i}")
-    b.spike(Vector(TAIL[-1]), (0, 1, 0.15), 0.42, 0.55, "pink", "Tail_3")
+        rot = (c - a).to_track_quat("Z", "Y").to_matrix()
+        chunk(b, a.lerp(c, 0.5), (sizes[i], sizes[i], (c - a).length + 0.14), "hide" if i % 2 == 0 else "hide_dark", f"Tail_{i}", rot, studs=2.2, skip=())
+    b.spike(Vector(TAIL[-1]), (0, 1, 0.2), 0.42, 0.6, "crystal_pink", "Tail_3")
 
 
 def build_necks(b):
@@ -146,15 +183,15 @@ def build_necks(b):
         points, forward = neck_points(head)
         for i in range(NECK_BONES):
             a, c = points[i], points[i + 1]
-            along = (c - a)
-            rot = along.to_track_quat("Z", "Y").to_matrix()
-            width = 0.66 - 0.05 * i
-            soft(b, a.lerp(c, 0.5), (width, width, along.length + 0.2), "violet", f"Hydra_{head}_{i}", rot)
+            rot = (c - a).to_track_quat("Z", "Y").to_matrix()
+            width = 0.74 - 0.06 * i
+            chunk(b, a.lerp(c, 0.5), (width, width, (c - a).length + 0.22), "hide", f"Hydra_{head}_{i}", rot, studs=2.2, skip=())
         build_head(b, head, points[-1], forward)
 
 
 def build_head(b, head, origin, forward):
-    """A big, round crystal head: a soft block with huge eyes and an angry brow, a gem horn, the lower jaw on its own bone"""
+    """A big faceted horned head: a studded skull, a cream muzzle, glowing slanted eyes, cream horns with gold tips, a
+    crystal gem on the forehead, and an open lower jaw with teeth on its own bone"""
     skull, jaw = f"Hydra_{head}_3", f"Jaw_{head}"
     m = voxel_kit.frame(forward)
     b.xform = Matrix.Translation(origin) @ Matrix.Scale(HEAD_SCALE, 4) @ Matrix.Translation(-origin)
@@ -162,17 +199,27 @@ def build_head(b, head, origin, forward):
     def at(x, y, z):
         return origin + m @ Vector((x, y, z))
 
-    soft(b, at(0, 0.3, 0.1), (1.0, 0.95, 0.82), "aqua", skull, m, bevel=0.5, segments=2)
-    soft(b, at(0, 0.74, -0.02), (0.72, 0.36, 0.42), "aqua_dark", skull, m, bevel=0.55)  # snout
+    chunk(b, at(0, 0.3, 0.12), (0.96, 0.9, 0.74), "hide", skull, m, studs=2.2, skip=("-z", "+y"))
+    chunk(b, at(0, 0.78, -0.02), (0.64, 0.42, 0.42), "bone", skull, m, studs=3.0, skip=("-z", "+y"))  # muzzle
     for sx in (1, -1):
-        soft(b, at(sx * 0.27, 0.72, 0.27), (0.36, 0.1, 0.36), "eye", skull, m, bevel=0.5)
-        b.box(at(sx * 0.24, 0.78, 0.24), (0.16, 0.04, 0.2), "pupil", skull, m)
-        # The angry brow slants down toward the middle
-        tilt = m @ Matrix.Rotation(math.radians(-22 * sx), 3, "Y")
-        b.box(at(sx * 0.27, 0.76, 0.5), (0.4, 0.08, 0.1), "violet_dark", skull, tilt)
-    b.spike(at(0, 0.2, 0.5), m @ Vector((0, -0.35, 1)), 0.32, 0.5, "pink", skull)  # gem horn
-    soft(b, at(0, 0.62, -0.32), (0.66, 0.5, 0.2), "aqua_dark", jaw, m, bevel=0.5)
-    b.box(at(0, 0.68, -0.2), (0.5, 0.36, 0.05), "mouth", jaw, m)
+        b.box(at(sx * 0.15, 1.0, 0.06), (0.1, 0.03, 0.08), "hide_dark", skull, m)  # nostril
+        # Slanted glowing eyes under a heavy brow
+        tilt = m @ Matrix.Rotation(math.radians(-18 * sx), 3, "Y")
+        b.box(at(sx * 0.27, 0.76, 0.27), (0.3, 0.06, 0.13), "eye", skull, tilt)
+        b.box(at(sx * 0.27, 0.78, 0.27), (0.12, 0.04, 0.07), "eye_core", skull, tilt)
+        b.box(at(sx * 0.27, 0.75, 0.39), (0.38, 0.12, 0.09), "hide_dark", skull, tilt)
+        # A cream horn sweeping out and up, gold at the tip
+        root = at(sx * 0.34, 0.2, 0.42)
+        bend = at(sx * 0.62, 0.08, 0.66)
+        b.span(root, bend, 0.18, "bone", skull, 0.04)
+        b.spike(bend, m @ Vector((sx * 0.3, -0.35, 1)), 0.16, 0.3, "gold", skull)
+    b.spike(at(0, 0.66, 0.5), m @ Vector((0, 0.35, 1)), 0.2, 0.22, "crystal", skull)  # forehead gem
+    b.spike(at(0, 0.66, 0.5), m @ Vector((0, -0.35, -1)), 0.2, 0.12, "crystal", skull)
+    # The lower jaw, open a little, a row of teeth along the upper lip
+    chunk(b, at(0, 0.62, -0.34), (0.6, 0.6, 0.18), "bone", jaw, m, studs=0)
+    b.box(at(0, 0.66, -0.23), (0.46, 0.46, 0.04), "mouth", jaw, m)
+    for x in (-0.22, -0.08, 0.08, 0.22):
+        b.spike(at(x, 0.96, -0.2), m @ Vector((0, 0.1, -1)), 0.07, 0.13, "teeth", skull)
     b.xform = None
 
 
