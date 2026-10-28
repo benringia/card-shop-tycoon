@@ -469,6 +469,16 @@ Monsters work the same way: save a model as `assets/monsters/<Species>.rbxm` (sp
 bigger), the same script test and part cap apply, and the server and clients strip scripts the same way. Flying
 species are listed in `Wild.FLYING`. Species without a model get a part-built placeholder in their element colour.
 
+Boss models are saved under the boss id (`assets/monsters/<bossId>.rbxm`). A boss model with PetRig bone names moves
+like a creature (MonsterController passes the boss id to `CreatureVisuals.build`; `Party.CREATURE_STYLE` and
+`Party.SIGNATURE` are keyed by it). The Prism Hydra (`prismHydra`, the final boss) is a blocky remodel of the Crystal
+Titans Rainbow Hydra built by `tools/blender/build_prismHydra.py`: a fat stone body on short legs, a crown of prism
+crystals, five necks `Hydra_<n>_0..2` with crystal heads `Hydra_<n>_3` and jaws `Jaw_<n>` (45 bones, about 1,600
+triangles), one pale palette. Its heads' elements are `Config/Bosses` `heads` (head 0 the middle one): the current
+phase's head gets a PointLight and sparks on its bone, and when it falls the necks bow down one by one
+(`Bosses.HEAD_DROP`, during `DEATH_SECONDS`). Import it like the creatures (Rig Type Custom, Keep Zero Influence
+Bones), reset the MeshPart's `PivotOffset` rotation, name the model `prismHydra`.
+
 ## Originality
 
 Free and bought models are stand-ins. Check each model's licence and creator before shipping, and plan to

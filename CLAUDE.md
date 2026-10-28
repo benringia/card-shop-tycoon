@@ -13,7 +13,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   (`Party.CREATURE_MODELS` entries `{ pack = "Originals", model = "<Card>" }`), built by `tools/blender/build_<card>.py`
   on `tools/blender/voxel_kit.py` (run in Blender through the Blender MCP), sources in `assets/blender/<Card>/`
   (.blend, .fbx, palette PNG; not synced). Workflow and rules: docs/creatures.md "Original models".
-- `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, same rules.
+- `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, boss models as
+  `<bossId>.rbxm` (`prismHydra.rbxm`, built by `tools/blender/build_prismHydra.py`), same rules.
 - `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
 - `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
@@ -32,6 +33,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `PlaceKind = "Frontier"`; the main project sets it to `"Main"`). Place ids live in `Config/Places.luau`; teleports
   only work in the published game. Each Studio window connects to its own port: a main place window on 34873 boots
   as the Frontier (its Output says "Booted (Frontier)" and the Frontier spring fails to build).
+- `rojo serve dungeon.project.json` — sync the Dungeon place (port 34874; Workspace attribute `PlaceKind = "Dungeon"`).
+  In Studio the run starts for whoever is in that window; `/room <2-4>` skips to a room (4: the Prism Hydra's chamber).
 - `rojo build -o <scratch>/test.rbxl` — quick check that the project builds
 - `rojo sourcemap default.project.json -o sourcemap.json` — refresh after adding files so luau-lsp resolves requires
 - `wally install` — fetch packages after cloning or changing `wally.toml`
@@ -41,7 +44,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   the recommended Power, a typical party (best card at it, two at 60%) and one maxed Legendary with two Lv 1 cards;
   with players > 1 every row is a group of that many players against the scaled boss
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, PocketLayout, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, Dungeon, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -105,11 +108,11 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   workspace copy. New card art (Figma, `docs/card-art.md`) when the design changes.
 - Studio-only chat commands (DevService; from the Studio MCP run them with
   `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
-  `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser),
+  `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser), `/room <2-4>` (Dungeon window),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
   cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
   `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/item <id> <n>` (any Config/Items
-  item), `/boss <1-6> [fight|group]` (to boss n's arena gate; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt), `/legendarys [foil]` (a Grade S
+  item), `/boss <1-6> [fight|group]` (to boss n's arena gate; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt; boss 7 is reached through the Dungeon run), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
   max stars and Grade S, for testing fights).
 - Admin panel (Studio only): the "Admin" tile on the left opens every dev command as a button (`Config/AdminPanel`,
