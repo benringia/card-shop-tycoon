@@ -413,8 +413,11 @@ an Epic or Legendary one plays a full-screen reveal and announces it to the serv
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
 and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
 is an inventory window in the middle of the whole screen ("Bag", "1 / 20 slots" in its header): a 5x4 grid of slots (more rows if
-needed), filled ones soft blue with the item icon and an "x2" badge, the rest empty; the chosen item's details on
-the right (big icon, name, "You have 2", what it does, Where to get it / How to use it boxes). It scales down to
+needed), filled ones slate with the item icon and an outlined "x2" count, the rest empty; boss items (key fragments,
+trophies) are tinted for their boss (`Util/BossTints`: its element's colour, the Hydra's pale prism) with the boss's
+ladder number in a corner chip (`ItemRules.bossOf`), so every key looks different; the chosen item's details on the
+right in a dark panel (big icon in the same tint, name, "You have 2", What it does / Where to get it / How to use it
+boxes). Counts and boss numbers stay at least 14 px tall on screen when the window shrinks for a phone. It scales down to
 fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:

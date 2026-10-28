@@ -27,6 +27,8 @@ local Collection = require(Config:WaitForChild("Collection"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
+local Bosses = require(Config:WaitForChild("Bosses"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -34,6 +36,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local BossTints = require(ClientUtil:WaitForChild("BossTints"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
@@ -899,13 +902,29 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	SLOT_COLOR = Color3.fromRGB(46, 54, 76), -- a filled slot: lighter slate so items stand out (Midnight & Gold)
-	EMPTY_COLOR = Color3.fromRGB(28, 33, 47),
-	EMPTY_EDGE = Color3.fromRGB(48, 56, 78),
-	BADGE = Color3.fromRGB(14, 16, 24),
+	SLOT_COLOR = UIStyle.ROW, -- a filled slot: lighter slate so items stand out
+	EMPTY_COLOR = Color3.fromRGB(22, 28, 42),
+	EMPTY_EDGE = UIStyle.EDGE,
+	BADGE = UIStyle.EDGE,
 	INK = Color3.fromRGB(244, 241, 233),
 	SUBTEXT = Color3.fromRGB(150, 158, 178),
 }
+
+-- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
+local function bossMark(id: string): (Color3?, number?)
+	local index = ItemRules.bossOf(id, Bosses.LADDER)
+	if not index then
+		return nil, nil
+	end
+	return BossTints.key(Bosses.LADDER[index]), index
+end
+
+local function tintIcon(holder: Frame, color: Color3?)
+	local glyph = holder:FindFirstChild("Glyph")
+	if color and glyph and glyph:IsA("ImageLabel") then
+		glyph.ImageColor3 = color
+	end
+end
 
 local function bagLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, y: number, height: number): TextLabel
 	local label = UIKit.label(parent, text, font, size, color)
@@ -940,44 +959,47 @@ local function renderBagDetail()
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 		return
 	end
-	-- The item big on a soft circle, its name and how many you have
+	-- The item big on a dark circle (a boss item in its boss's tint), its name and how many you have
+	local tint = bossMark(selectedItem)
 	local halo = Instance.new("Frame")
 	halo.AnchorPoint = Vector2.new(0.5, 0)
-	halo.Position = UDim2.new(0.5, 0, 0, 16)
-	halo.Size = UDim2.fromOffset(104, 104)
-	halo.BackgroundColor3 = BAG.SLOT_COLOR
+	halo.Position = UDim2.new(0.5, 0, 0, 12)
+	halo.Size = UDim2.fromOffset(84, 84)
+	halo.BackgroundColor3 = UIStyle.PANEL
 	halo.ZIndex = 33
 	halo.Parent = bagDetail
-	UIKit.corner(halo, 52)
-	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(76, 76))
+	UIKit.corner(halo, 42)
+	UIKit.outline(halo, tint or UIStyle.EDGE, 3)
+	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(62, 62))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = 34
 	Icon.set(icon, info.icon)
-	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 24, BAG.INK, 128, 30)
+	tintIcon(icon, tint)
+	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, BAG.INK, 102, 26)
 	name.TextXAlignment = Enum.TextXAlignment.Center
-	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIKit.Colors.Accent, 158, 20)
+	UIKit.outlined(name, 2)
+	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIStyle.HINT, 128, 20)
 	owned.TextXAlignment = Enum.TextXAlignment.Center
-	local about = bagLabel(bagDetail, info.description, Enum.Font.Gotham, 14, BAG.INK, 188, 44)
-	about.TextXAlignment = Enum.TextXAlignment.Center
-	-- Where to get it / how to use it, as two soft boxes
-	local y = 240
-	for _, section in { { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
+	-- What it does / where to get it / how to use it, as dark boxes
+	local y = 154
+	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
 		if section.text then
 			local box = Instance.new("Frame")
 			box.Position = UDim2.fromOffset(12, y)
 			box.Size = UDim2.new(1, -24, 0, 62)
-			box.BackgroundColor3 = BAG.EMPTY_COLOR
+			box.BackgroundColor3 = UIStyle.PANEL
 			box.ZIndex = 33
 			box.Parent = bagDetail
 			UIKit.corner(box, 10)
-			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIKit.Colors.Accent, 6, 18)
+			UIKit.outline(box, UIStyle.EDGE, 2)
+			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIStyle.HINT, 6, 18)
 			heading.Position = UDim2.fromOffset(10, 6)
 			heading.Size = UDim2.new(1, -20, 0, 18)
-			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.SUBTEXT, 26, 32)
+			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.INK, 26, 32)
 			body.Position = UDim2.fromOffset(10, 26)
 			body.Size = UDim2.new(1, -20, 0, 32)
-			y += 70
+			y += 68
 		end
 	end
 end
@@ -996,25 +1018,40 @@ local function addSlot(order: number, id: string?)
 	slot.Parent = bagGrid
 	UIKit.corner(slot, 14)
 	local selected = filled and id == selectedItem
-	UIKit.outline(slot, if selected then UIKit.Colors.Accent else BAG.EMPTY_EDGE, if selected then 3 else 2)
+	UIKit.outline(slot, if selected then UIStyle.HINT else BAG.EMPTY_EDGE, if selected then 3 else 2)
 	if not id then
 		return
 	end
 	local info = Items.ITEMS[id]
-	local icon = Icon.make(slot, info.icon, UDim2.fromScale(0.68, 0.68))
+	local icon = Icon.make(slot, info.icon, UDim2.fromScale(0.62, 0.62))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.46)
 	icon.ZIndex = 33
 	Icon.set(icon, info.icon)
-	local badge = UIKit.label(slot, `x{bagItems[id]}`, Enum.Font.FredokaOne, 14, Color3.fromRGB(255, 255, 255))
+	-- Boss items: tinted for their boss, its ladder number in the corner, so every key looks different
+	-- The window shrinks to fit small screens (UIScale); counts and numbers stay at least 14 px tall on screen
+	local fit = bagOverlay:FindFirstChildOfClass("UIScale")
+	local countSize = math.max(15, math.ceil(14 / (if fit then math.max(fit.Scale, 0.1) else 1)))
+	local tint, bossNumber = bossMark(id)
+	tintIcon(icon, tint)
+	if tint and bossNumber then
+		local chip = UIKit.pill(slot, tostring(bossNumber), tint)
+		chip.Position = UDim2.fromOffset(4, 4)
+		chip.Size = UDim2.fromOffset(0, countSize + 5)
+		chip.TextSize = countSize
+		chip.ZIndex = 35
+	end
+	local badge = UIKit.label(slot, `x{bagItems[id]}`, Enum.Font.FredokaOne, countSize, Color3.fromRGB(255, 255, 255))
 	badge.AnchorPoint = Vector2.new(1, 1)
 	badge.Position = UDim2.new(1, -4, 1, -4)
-	badge.Size = UDim2.fromOffset(0, 20)
+	badge.Size = UDim2.fromOffset(0, countSize + 5)
 	badge.AutomaticSize = Enum.AutomaticSize.X
+	badge.TextWrapped = false -- wrapping at no width showed a bare "x"
 	badge.BackgroundColor3 = BAG.BADGE
 	badge.BackgroundTransparency = 0
 	badge.TextXAlignment = Enum.TextXAlignment.Center
 	badge.ZIndex = 34
+	UIKit.outlined(badge, 1.5)
 	UIKit.corner(badge, 10)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 6)
@@ -1119,12 +1156,12 @@ local function buildBag(parent: Frame)
 	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
 	bagOverlay.Position = UDim2.fromScale(0.5, 0.5)
 	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
-	bagOverlay.BackgroundColor3 = UIKit.Colors.Panel
+	bagOverlay.BackgroundColor3 = UIStyle.PANEL
 	bagOverlay.Visible = false
 	bagOverlay.ZIndex = 30
 	bagOverlay.Parent = parent
 	UIKit.corner(bagOverlay, 16)
-	UIKit.outline(bagOverlay, Color3.new(1, 1, 1), 3)
+	UIKit.outline(bagOverlay, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
 	local fit = Instance.new("UIScale")
 	fit.Parent = bagOverlay
 	local function fitWindow()
@@ -1137,7 +1174,7 @@ local function buildBag(parent: Frame)
 	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
 	fitWindow()
 
-	local header, title = UIKit.header(bagOverlay, "Bag")
+	local header, title = UIKit.header(bagOverlay, "Bag", "Bag")
 	header.ZIndex = 31
 	title.ZIndex = 32
 	title.Position = UDim2.fromOffset(62, 0)
@@ -1145,12 +1182,13 @@ local function buildBag(parent: Frame)
 	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
 	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
 	headerIcon.ZIndex = 32
-	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.fromRGB(225, 235, 255))
+	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
 	bagCount.AnchorPoint = Vector2.new(1, 0.5)
 	bagCount.Position = UDim2.new(1, -18, 0.5, 0)
 	bagCount.Size = UDim2.fromOffset(160, 24)
 	bagCount.TextXAlignment = Enum.TextXAlignment.Right
 	bagCount.ZIndex = 32
+	UIKit.outlined(bagCount, 2)
 
 	local top = UIKit.HEADER_HEIGHT + 12
 	bagGrid = Instance.new("ScrollingFrame")
@@ -1181,11 +1219,11 @@ local function buildBag(parent: Frame)
 	bagDetail.AnchorPoint = Vector2.new(1, 0)
 	bagDetail.Position = UDim2.new(1, -16, 0, top)
 	bagDetail.Size = UDim2.new(0, BAG.DETAIL_WIDTH, 1, -(top + 16))
-	bagDetail.BackgroundColor3 = Color3.new(1, 1, 1)
+	bagDetail.BackgroundColor3 = UIStyle.ROW
 	bagDetail.ZIndex = 32
 	bagDetail.Parent = bagOverlay
 	UIKit.corner(bagDetail, 14)
-	UIKit.outline(bagDetail, BAG.EMPTY_EDGE, 2)
+	UIKit.outline(bagDetail, UIStyle.EDGE, 2)
 
 	cardsTab.Activated:Connect(function()
 		showTab(false)
