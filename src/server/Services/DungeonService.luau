@@ -162,8 +162,14 @@ local function readyMembers(): { Player }
 	return fighters
 end
 
-local function start()
+-- The rooms open once everyone the teleport brought has loaded (or the wait for a no-show is over)
+local function tryStart(waited: number)
 	if run.started then
+		return
+	end
+	if not DungeonRules.readyToStart(#run.members, run.expected, waited, Dungeon.ARRIVAL_WAIT) then
+		local missing = run.expected - #run.members
+		sendAll(`Waiting for {missing} more player{if missing == 1 then "" else "s"} to load...`)
 		return
 	end
 	run.started = true
@@ -183,12 +189,10 @@ local function onArrive(player: Player)
 			return player:GetJoinData().TeleportData
 		end)
 		run.expected = DungeonRules.expectedSize(if ok then data else nil, Bosses.GROUP_MAX)
-		task.delay(Dungeon.ARRIVAL_WAIT, start)
+		task.delay(Dungeon.ARRIVAL_WAIT, tryStart, Dungeon.ARRIVAL_WAIT)
 	end
-	send(player, if run.started then nil else "Waiting for your group...")
-	if #run.members >= run.expected then
-		start()
-	end
+	send(player, nil)
+	tryStart(0)
 end
 
 -- A room's gate: everyone still in the run goes in, the ring seals, the pack appears and the fight starts

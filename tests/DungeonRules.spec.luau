@@ -63,9 +63,16 @@ return {
 		expect.equal(DungeonRules.canChangeParty(true), false, "after it")
 	end,
 
+	["readyToStart: the rooms open once everyone has loaded, or after the wait for a no-show"] = function()
+		expect.equal(DungeonRules.readyToStart(2, 3, 10, 60), false, "one still loading")
+		expect.equal(DungeonRules.readyToStart(3, 3, 1, 60), true, "all here")
+		expect.equal(DungeonRules.readyToStart(2, 3, 60, 60), true, "gave up on the third")
+		expect.equal(DungeonRules.readyToStart(0, 1, 90, 60), false, "nobody here at all")
+	end,
+
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/DungeonRules.luau")), { debugName = "DungeonRules" })()
-		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty" } do
+		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty", "readyToStart" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

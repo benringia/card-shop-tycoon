@@ -4,12 +4,12 @@
 -- before drops, and drops what helps beat the next. Plain data so Lune tests and the economy simulator can load it.
 export type Drop = { item: string, chance: number, min: number, max: number }
 export type Grant = { item: string, count: number }
--- heal below an HP fraction; enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
+-- heal below an HP fraction (every cooldown, at most `uses` times a fight); enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
 -- first (breaking it stuns the boss `breakStun` s); thunderclap: every `every` s stuns each enemy `seconds` x
 -- clamp(boss SPD / its SPD, minFactor, maxFactor); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
 -- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
 export type Mechanics = {
-	heal: { below: number, fraction: number, cooldown: number }?,
+	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
@@ -43,7 +43,7 @@ export type Boss = {
 	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
 	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
 	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
-	rainbowAura: boolean?, -- a rainbow glow on the ground round it and sparkles rising round it (RAINBOW_AURA)
+	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -95,7 +95,7 @@ local BOSSES: { [string]: Boss } = {
 		minFightSeconds = 18,
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
-		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12 } },
+		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12, uses = 3 } },
 		drops = {
 			{ item = "xpTonic", chance = 0.6, min = 1, max = 3 },
 			{ item = "starShard", chance = 0.15, min = 1, max = 1 },
@@ -250,7 +250,7 @@ local BOSSES: { [string]: Boss } = {
 			{ below = 1, element = "Tide", mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } } },
 			{ below = 0.8, element = "Volt", mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } } },
 			{ below = 0.6, element = "Shade", mechanics = { adds = { at = { 0.6 }, count = 2, hpShare = 0.04, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } } },
-			{ below = 0.4, element = "Bloom", mechanics = { heal = { below = 0.4, fraction = 0.05, cooldown = 20 } } },
+			{ below = 0.4, element = "Bloom", mechanics = { heal = { below = 0.4, fraction = 0.05, cooldown = 20, uses = 2 } } },
 			{ below = 0.2, element = "Ember", mechanics = { enrage = { below = 0.2, atkMultiplier = 1.15 } } },
 		},
 		drops = {
@@ -331,10 +331,10 @@ return {
 	DEATH_SECONDS = 4, -- a beaten boss lies there this long before it goes (its death scene)
 	HEAD_GLOW = { brightness = 3, range = 16, particles = 14 }, -- the active phase's head (bosses with heads)
 	HEAD_DROP = { gap = 0.5, seconds = 0.6, angle = 75 }, -- its death: one head after another, each over `seconds`, by `angle` degrees
-	-- A boss's rainbow aura (rainbowAura): a glowing disc on the ground under and round it (ringScale x its footprint, so
-	-- it shows past its feet), sparkles rising from the disc's rim (outside the model, never over it) and a light, all
-	-- slowly cycling through the colours (hueSeconds a cycle); it fades when the boss falls
-	RAINBOW_AURA = { ringScale = 1.25, ringTransparency = 0.68, hueSeconds = 6, sparkles = 16, lightBrightness = 1.2, lightRange = 40 },
+	-- A boss's rainbow aura (rainbowAura): the model itself glows, a coloured outline round it and a faint colour wash
+	-- over it (fillTransparency: the model always shows through) and a light, all slowly cycling through the colours
+	-- (hueSeconds a cycle); it fades when the boss falls
+	RAINBOW_AURA = { hueSeconds = 6, outlineTransparency = 0, fillTransparency = 0.82, lightBrightness = 1.2, lightRange = 40 },
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 }

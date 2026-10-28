@@ -201,6 +201,38 @@ return {
 		expect.equal(state.sides.b.fighters[2].element, "Shade", "the add is the phase's element")
 	end,
 
+	["heal: never more than its uses in a fight"] = function()
+		local state = bossWith({ heal = { below = 0.5, fraction = 0.05, cooldown = 1, uses = 2 } }, 31)
+		local boss = state.sides.b.fighters[1]
+		local heals = 0
+		for _ = 1, 300 do
+			boss.hp = 3000
+			for _, event in BattleSim.step(state, 0.1) do
+				if event.type == "heal" then
+					heals += 1
+				end
+			end
+		end
+		expect.equal(heals, 2, "two heals in 30 s, not one a second")
+	end,
+
+	["boss skills keep a gap: a shield and a thunderclap due together come apart"] = function()
+		local state = bossWith({ shield = { every = 5, fraction = 0.01, breakStun = 1 }, thunderclap = { every = 5, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } }, 32)
+		local times = {}
+		for _ = 1, 150 do
+			for _, event in BattleSim.step(state, 0.1) do
+				if event.type == "shield" or event.type == "thunderclap" then
+					table.insert(times, state.time)
+				end
+			end
+		end
+		table.sort(times)
+		expect.equal(#times >= 2, true, "both fired")
+		for index = 2, #times do
+			expect.equal(times[index] - times[index - 1] >= combat.BOSS_SKILL_GAP - 1e-6, true, `skill {index} waited the gap`)
+		end
+	end,
+
 	["shield: goes up every 20 s and absorbs damage first"] = function()
 		local state = bossWith(SHIELD, 1)
 		local _, early = runToEnd(state, 19.9)

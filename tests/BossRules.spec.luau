@@ -144,10 +144,11 @@ return {
 		expect.equal(shot.back > Bosses.INTRO_SHOT.back and shot.up > Bosses.INTRO_SHOT.up, true, "the intro camera stands further off")
 		expect.equal(hydra.rainbowAura, true, "a rainbow aura")
 		local aura = Bosses.RAINBOW_AURA
-		for _, key in { "ringScale", "ringTransparency", "hueSeconds", "sparkles", "lightBrightness", "lightRange" } do
+		for _, key in { "hueSeconds", "outlineTransparency", "fillTransparency", "lightBrightness", "lightRange" } do
 			expect.equal(typeof(aura[key]), "number", key)
 		end
-		expect.equal(aura.ringScale > 1, true, "the ring is wider than the model, never over it")
+		expect.equal(aura.fillTransparency >= 0.7, true, "a glow over the model, never hiding it")
+		expect.equal(Bosses.BOSSES.caveBroodQueen.mechanics.heal and Bosses.BOSSES.caveBroodQueen.mechanics.heal.uses ~= nil, true, "the Brood Queen's heals are limited")
 	end,
 
 	["config: the Rift Devourer drops the Hydra's fragments"] = function()

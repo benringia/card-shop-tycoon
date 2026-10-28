@@ -61,6 +61,12 @@ function DungeonRules.canChangeParty(fought: boolean): boolean
 	return not fought
 end
 
+-- Whether the run's rooms open: everyone the teleport brought has loaded, or the wait for a player who never comes
+-- (a failed teleport) is over and at least one is here
+function DungeonRules.readyToStart(arrived: number, expected: number, waited: number, maxWait: number): boolean
+	return arrived >= 1 and (arrived >= expected or waited >= maxWait)
+end
+
 -- A room's pack: `count` species names, cycling through the room's list from a seeded start (mixed elements)
 function DungeonRules.pack(room: { species: { string }, count: number, level: number }, seed: number): { string }
 	local names = {}

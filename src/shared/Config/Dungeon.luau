@@ -15,7 +15,7 @@ return {
 	-- Pack monsters' elite stats (Frontier ELITE_STAT_MULTIPLIER) times these: three rooms in a row with no healing
 	PACK_SCALE = { hp = 1, atk = 0.35 },
 
-	ARRIVAL_WAIT = 20, -- seconds the run waits for the rest of its group before it starts without them
+	ARRIVAL_WAIT = 60, -- the rooms stay shut until every player has loaded; after this long a player who never came is left behind
 	OUT_DELAY = 4, -- seconds before a player who is out goes back to the Frontier
 	ROOM_INTRO_SECONDS = 3, -- the room seals, then the pack appears after this
 

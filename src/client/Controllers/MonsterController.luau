@@ -25,7 +25,7 @@ local TAG_COLOR = Color3.fromRGB(235, 235, 235)
 local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
 type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
-type Aura = { ring: Part, sparkles: ParticleEmitter, light: PointLight, floor: number }
+type Aura = { highlight: Highlight, light: PointLight }
 type Monster = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
@@ -158,71 +158,33 @@ local function makeHeads(model: Model, elements: { string }): { Head }
 	return heads
 end
 
-local RAINBOW = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
-	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 190, 60)),
-	ColorSequenceKeypoint.new(0.4, Color3.fromRGB(120, 240, 110)),
-	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 210, 255)),
-	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(120, 110, 255)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 110, 255)),
-})
-
--- A rainbow aura round a boss (Bosses.RAINBOW_AURA): a glowing disc on the ground, wider than the model so it shows
--- past its feet, sparkles rising from the disc's rim (outside the model) and a light; MonsterController's frame loop
--- keeps it under the boss and turns its colour
+-- A rainbow aura on a boss (Bosses.RAINBOW_AURA): the model itself glows, a coloured outline round it and a faint
+-- colour wash over it (the model always shows through), and a light; MonsterController's frame loop turns the colour
 local function makeAura(body: CreatureVisuals.Body): Aura
 	local look = Bosses.RAINBOW_AURA
-	local box, size = body.model:GetBoundingBox()
-	local radius = math.max(size.X, size.Z) / 2 * look.ringScale
-	-- The floor under it (a boss never moves up or down): a ray down past the model
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { body.model, workspace:FindFirstChild("Monsters") or body.model }
-	local hit = workspace:Raycast(box.Position, Vector3.new(0, -size.Y * 2, 0), params)
-	local floor = if hit then hit.Position.Y else box.Position.Y - size.Y / 2
-	local ring = Instance.new("Part")
-	ring.Name = "RainbowAura"
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Size = Vector3.new(0.2, radius * 2, radius * 2)
-	ring.Material = Enum.Material.Neon
-	ring.Transparency = look.ringTransparency
-	ring.Anchored = true
-	ring.CanCollide = false
-	ring.CanQuery = false
-	ring.CanTouch = false
-	ring.CastShadow = false
-	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Shape = Enum.ParticleEmitterShape.Cylinder
-	sparkles.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface -- the rim only: round the boss, never over it
-	sparkles.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
-	sparkles.Color = RAINBOW
-	sparkles.LightEmission = 1
-	sparkles.Rate = look.sparkles
-	sparkles.Lifetime = NumberRange.new(2, 3)
-	sparkles.Speed = NumberRange.new(0.5, 1.5)
-	sparkles.Acceleration = Vector3.new(0, 4, 0)
-	sparkles.Size = NumberSequence.new(0.7, 0)
-	sparkles.Rotation = NumberRange.new(0, 360)
-	sparkles.RotSpeed = NumberRange.new(-90, 90)
-	sparkles.Parent = ring
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "RainbowAura"
+	highlight.Adornee = body.model
+	highlight.DepthMode = Enum.HighlightDepthMode.Occluded -- not through walls
+	highlight.OutlineTransparency = look.outlineTransparency
+	highlight.FillTransparency = look.fillTransparency
+	highlight.Parent = body.model
 	local light = Instance.new("PointLight")
 	light.Brightness = look.lightBrightness
 	light.Range = look.lightRange
-	light.Parent = ring
-	ring.Parent = body.model
-	return { ring = ring, sparkles = sparkles, light = light, floor = floor }
+	light.Parent = body.root
+	return { highlight = highlight, light = light }
 end
 
 local function stepAura(monster: Monster, now: number)
 	local aura = monster.aura :: Aura
-	local position = monster.body.cframe.Position
-	aura.ring.CFrame = CFrame.new(position.X, aura.floor + 0.12, position.Z) * CFrame.Angles(0, 0, math.rad(90))
-	local color = Color3.fromHSV((now / Bosses.RAINBOW_AURA.hueSeconds) % 1, 0.55, 1)
-	aura.ring.Color = color
+	local color = Color3.fromHSV((now / Bosses.RAINBOW_AURA.hueSeconds) % 1, 0.6, 1)
+	aura.highlight.OutlineColor = color
+	aura.highlight.FillColor = color
 	aura.light.Color = color
 	if monster.fallenAt then
-		aura.sparkles.Enabled = false
-		aura.ring.Transparency = math.min(1, aura.ring.Transparency + 0.02)
+		aura.highlight.OutlineTransparency = math.min(1, aura.highlight.OutlineTransparency + 0.02)
+		aura.highlight.FillTransparency = math.min(1, aura.highlight.FillTransparency + 0.02)
 		aura.light.Enabled = false
 	end
 end

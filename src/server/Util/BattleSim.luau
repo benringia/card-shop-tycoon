@@ -16,12 +16,12 @@ local BossRules = if game ~= nil
 
 local BattleSim = {}
 
--- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown, enrage once below one, a shield every
+-- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown (at most `uses` times), enrage once below one, a shield every
 -- few seconds (its side's shield; breaking it stuns the boss), a thunderclap that stuns every enemy (longer on slow
 -- ones), adds at HP fractions (auto-attacks hit them first; the boss takes x guard damage while any stands; the fight is
 -- won when the boss falls, adds or not). boss: stuns on it last at most BOSS_MAX_STUN seconds (not a shield break's)
 export type Mechanics = {
-	heal: { below: number, fraction: number, cooldown: number }?,
+	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
@@ -79,6 +79,8 @@ type Fighter = {
 	enraged: boolean,
 	shieldReady: number, -- boss: when its next shield goes up
 	clapReady: number, -- boss: when its next thunderclap comes
+	skillReady: number, -- boss: no shield, heal or thunderclap before this (combat.BOSS_SKILL_GAP after the last one)
+	healsUsed: number, -- boss: heals so far (this phase), against heal.uses
 	addsDone: { [number]: boolean }, -- boss: which `adds.at` thresholds have summoned
 	addsMade: number, -- boss: adds summoned so far (their ids: "add1", "add2", ...)
 	swings: number, -- targets hit per attack (a boss against a group hits several)
@@ -155,6 +157,8 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		enraged = false,
 		shieldReady = if mechanics and mechanics.shield then time + mechanics.shield.every else math.huge,
 		clapReady = if mechanics and mechanics.thunderclap then time + mechanics.thunderclap.every else math.huge,
+		skillReady = time,
+		healsUsed = 0,
 		addsDone = {},
 		addsMade = 0,
 		swings = math.max(1, input.swings or 1),
@@ -462,6 +466,7 @@ local function nextPhase(state: State, fighter: Fighter, events: { Event })
 	fighter.shieldReady = if phase.mechanics.shield then state.time + phase.mechanics.shield.every else math.huge
 	fighter.clapReady = if phase.mechanics.thunderclap then state.time + phase.mechanics.thunderclap.every else math.huge
 	fighter.healReady = state.time
+	fighter.healsUsed = 0
 	fighter.addsDone = {}
 	fighter.enraged = false
 	local side = (state.sides :: any)[fighter.side] :: Side
@@ -477,8 +482,12 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 		return
 	end
 	local share = fighter.hp / fighter.maxHp
+	-- Shields, heals and thunderclaps keep a gap between them (never back to back); heals run out after `uses`
 	local heal = mechanics.heal
-	if heal and share < heal.below and state.time >= fighter.healReady then
+	if heal and share < heal.below and state.time >= fighter.healReady and state.time >= fighter.skillReady
+		and (heal.uses == nil or fighter.healsUsed < heal.uses) then
+		fighter.healsUsed += 1
+		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		local amount = math.round(fighter.maxHp * heal.fraction)
 		fighter.hp = math.min(fighter.maxHp, fighter.hp + amount)
 		fighter.healReady = state.time + heal.cooldown
@@ -492,15 +501,17 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 	end
 	local side = (state.sides :: any)[fighter.side] :: Side
 	local shield = mechanics.shield
-	if shield and state.time >= fighter.shieldReady then
+	if shield and state.time >= fighter.shieldReady and state.time >= fighter.skillReady then
 		fighter.shieldReady = state.time + shield.every
+		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		local amount = math.round(fighter.maxHp * shield.fraction)
 		side.shield = amount
 		table.insert(events, { type = "shield", to = fighter.id, heal = amount })
 	end
 	local clap = mechanics.thunderclap
-	if clap and state.time >= fighter.clapReady then
+	if clap and state.time >= fighter.clapReady and state.time >= fighter.skillReady then
 		fighter.clapReady = state.time + clap.every
+		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		table.insert(events, { type = "thunderclap", from = fighter.id })
 		for _, enemy in standing(other(state, side)) do
 			local seconds = clap.seconds * math.clamp(fighter.spd / enemy.spd, clap.minFactor, clap.maxFactor)

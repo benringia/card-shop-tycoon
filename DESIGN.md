@@ -588,7 +588,7 @@ and rewards in `BossService`.
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s | 5 | 3 Brood Queen Key Fragments |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
 | 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
@@ -679,6 +679,9 @@ group, checked before its fragments and every time (not only the first). Below i
   is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown and soft cap
   still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
+- **Boss skills keep a gap:** a boss's shield, heal and thunderclap never come back to back (`Combat.BOSS_SKILL_GAP`
+  6 s between any two), and heals run out (`heal.uses`: the Cave Brood Queen 3, the Prism Hydra's Bloom phase 2).
+  Recommended parties now beat the Brood Queen 42% of the time (was 20%: her heals stacked).
 - **Death:** a beaten boss lies there for `DEATH_SECONDS` (4) before it goes, so clients can play its fall (the
   Prism Hydra's heads drop one by one, the outer ones first).
 - Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` and `/boss <n> group` (use that prompt).
@@ -694,8 +697,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   Hydra Key Fragments (the Rift Devourer drops them: 50% per full loot, 3 in its first clear), and a creature ready to
   fight. Then one teleport takes them into a new reserved Dungeon server (`TeleportData.runSize`). The fragments are
   taken only when the Hydra fight first starts, so a lost run costs none.
-- **The run (`DungeonService`, `Util/DungeonRules`):** the run waits for its group (up to `ARRIVAL_WAIT` 20 s), then
-  three rooms open in turn, each a sealed ring with a "Fight" gate. Its pack of elites appears (`Config/Dungeon.ROOMS`:
+- **The run (`DungeonService`, `Util/DungeonRules`):** a player joins the run once their save has loaded; the rooms
+  stay shut ("Waiting for n more players to load...") until everyone the teleport brought has loaded
+  (`DungeonRules.readyToStart`; after `ARRIVAL_WAIT` 60 s a player who never came, e.g. a failed teleport, is left
+  behind). Then three rooms open in turn, each a sealed ring with a "Fight" gate. Its pack of elites appears (`Config/Dungeon.ROOMS`:
   2 Frost Wisp/Shade Lynx at Lv 45, 2 Storm Hawk/Lava Brute at Lv 47, 3 Rift Horror/Prism Crab/Lava Brute at Lv 50;
   elite stats with ATK x0.35, `PACK_SCALE`, scaled to the group like a boss, with swings) and each monster gets a
   small HP bar. Creatures keep their HP from room to room; a creature that faints is out for the rest of the run
@@ -722,9 +727,9 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   belly, a gold collar and claws, prism crystal shards down its back, glowing gold eyes under heavy brows and a crystal
   gem on each forehead, a long snout and a long tail; all five heads share one colour (so it doesn't read as the famous
   five-coloured dragon; in game only the active phase's head glows); about 6,500 triangles. In game it is scale 7 (about
-  25 studs tall), its fighters stand 21 studs off (`ringRadius`), its intro camera further back (`introShot`), and a
-  rainbow aura (`rainbowAura`, `RAINBOW_AURA`) glows on the ground round it with sparkles rising from the glow's rim,
-  slowly cycling through the colours, never over the model. Boss models with PetRig bones now animate
+  25 studs tall), its fighters stand 21 studs off (`ringRadius`), its intro camera further back (`introShot`), and the
+  model itself glows (`rainbowAura`, `RAINBOW_AURA`: a coloured outline and a faint colour wash, a Highlight, plus a
+  light), slowly cycling through the colours; the model always shows through. Boss models with PetRig bones now animate
   like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
 - **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
