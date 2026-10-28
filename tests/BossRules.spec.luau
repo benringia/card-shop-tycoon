@@ -17,6 +17,20 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["scatter: every drop lands in the ring, none on another"] = function()
+		local spots = BossRules.scatter(7, Bosses.LOOT_SCATTER.min, Bosses.LOOT_SCATTER.max, 0.3)
+		expect.equal(#spots, 7, "one per drop")
+		for index, spot in spots do
+			local distance = math.sqrt(spot.x ^ 2 + spot.z ^ 2)
+			expect.equal(distance >= Bosses.LOOT_SCATTER.min - 1e-9 and distance <= Bosses.LOOT_SCATTER.max + 1e-9, true, `spot {index} in the ring`)
+			for other = index + 1, #spots do
+				local gap = math.sqrt((spot.x - spots[other].x) ^ 2 + (spot.z - spots[other].z) ^ 2)
+				expect.equal(gap > 1.5, true, `spots {index} and {other} apart`)
+			end
+		end
+		expect.equal(#BossRules.scatter(0, 4, 10, 0), 0, "no loot, no spots")
+	end,
+
 	["config: the Frontier bosses sit in Frontier zones"] = function()
 		expect.equal(#Bosses.LADDER, 6, "six bosses")
 		for index, id in Bosses.LADDER do
@@ -181,7 +195,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

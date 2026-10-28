@@ -619,6 +619,10 @@ and rewards in `BossService`.
   Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
   them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
   boss falls.
+- **Loot on the ground:** a win's items (drops, first-clear chest, daily bonus, trophy) pop out of the boss and scatter
+  round it (4-10 studs, `LOOT_*`), each player's own drops seen only by them (LootController). Walking over one picks it
+  up (the server checks it's yours and within 8 studs); anything left goes into the Bag after 60 s, and everything still
+  on the ground is collected when you leave or teleport. Cash and XP stay instant.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
   (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
   which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when

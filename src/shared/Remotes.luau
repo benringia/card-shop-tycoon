@@ -58,6 +58,8 @@ local NAMES = {
 	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, rewardedToday, fragments } }
 	"RequestBosses", -- client → server: () resend BossesChanged
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
+	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
+	"PickUpLoot", -- client → server: (id: string) pick up one of your boss drops
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 }
@@ -138,6 +140,8 @@ return {
 	BossesChanged = remotes.BossesChanged,
 	RequestBosses = remotes.RequestBosses,
 	BossCleared = remotes.BossCleared,
+	BossLoot = remotes.BossLoot,
+	PickUpLoot = remotes.PickUpLoot,
 	UseXpTonic = remotes.UseXpTonic,
 	FrontierTravel = remotes.FrontierTravel,
 }

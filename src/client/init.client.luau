@@ -30,6 +30,7 @@ local CreatureController = require(Controllers:WaitForChild("CreatureController"
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
 local BossBoardController = require(Controllers:WaitForChild("BossBoardController"))
+local LootController = require(Controllers:WaitForChild("LootController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
@@ -50,6 +51,7 @@ if Place.isFrontier() then
 	MonsterController.Start()
 	BattleController.Start()
 	BossBoardController.Start() -- the boss ladder (the Frontier bosses' arenas are here)
+	LootController.Start() -- boss loot on the ground
 	FrontierController.Start() -- the home button
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
@@ -82,6 +84,7 @@ else
 	MonsterController.Start()
 	BattleController.Start()
 	BossBoardController.Start() -- the boss ladder
+	LootController.Start() -- boss loot on the ground
 	ChallengeController.Start()
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio

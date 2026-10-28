@@ -780,6 +780,9 @@ local function bossLines(boss: any): { string }
 	if boss.bonus then
 		table.insert(lines, "🎁 Daily bonus!")
 	end
+	if typeof(boss.items) == "table" and #boss.items > 0 then
+		table.insert(lines, "Your loot is on the ground: walk over it to pick it up")
+	end
 	if boss.carried then
 		table.insert(lines, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
 	end

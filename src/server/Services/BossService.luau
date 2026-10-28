@@ -3,6 +3,7 @@
 -- (saved: data.bosses), the arenas' gates, the fights and their rewards. Rules (unlock, loot cooldown, soft cap,
 -- over-power) are in Util/BossRules. A boss is spawned for the one player who starts it at the gate and fought on the
 -- usual combat core (BattleService); a win's XP and cash come from there, its items from here.
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -32,6 +33,7 @@ local arenas: { [string]: WildService.BossArena } = {}
 local occupants: { [string]: WildService.Monster } = {} -- the boss being fought in each arena (one fight at a time)
 local lobbies: { [string]: { members: { Player } } } = {} -- a group forming at each gate (the first member leads)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
+local allowPickUp = RateLimiter.new(Bosses.LOOT_PICKUP_COOLDOWN)
 local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN) -- its own, so Fight then F right after both work
 local allowRequest = RateLimiter.new(1)
 local rng = Random.new()
@@ -94,10 +96,10 @@ local function partyPower(player: Player, fighterIds: { string }): number
 	return best
 end
 
--- Gives the grants and adds what was really given to `got` (merged by item)
-local function grant(player: Player, grants: { Grant }, got: { Grant })
+-- Adds the grants to `got` (merged by item): the loot that will scatter on the ground
+local function grant(_player: Player, grants: { Grant }, got: { Grant })
 	for _, entry in grants do
-		local given = ItemService.GiveItem(player, entry.item, entry.count)
+		local given = entry.count
 		if given > 0 then
 			local merged = false
 			for _, existing in got do
@@ -125,6 +127,68 @@ end
 -- and the over-power penalty; the first clear and the day's first rewarded win add their chests. A group member who
 -- helped too little (fight.contributed false) gets only the carried roll: a quarter of the chances, no fragments, no
 -- chests.
+-- Loot on the ground --------------------------------------------------------------------------------------
+
+type Drop = { item: string, count: number, position: Vector3, expiresAt: number }
+local pending: { [Player]: { [string]: Drop } } = {}
+
+-- One drop into the Bag (picked up, timed out or the player leaving)
+local function collect(player: Player, id: string)
+	local drops = pending[player]
+	local drop = if drops then drops[id] else nil
+	if not drops or not drop then
+		return
+	end
+	drops[id] = nil
+	ItemService.GiveItem(player, drop.item, drop.count)
+	Remotes.BossLoot:FireClient(player, { taken = id })
+end
+
+local function collectAll(player: Player)
+	for id in table.clone(pending[player] or {}) do
+		collect(player, id)
+	end
+end
+
+-- A win's items scatter round the boss for this player only (the server keeps them until they're collected)
+local function dropLoot(player: Player, bossId: string, items: { Grant })
+	local arena = arenas[bossId]
+	if not arena or #items == 0 then
+		return
+	end
+	local center = arena.spawn.Position
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { workspace:FindFirstChild("Creatures") or workspace, workspace:FindFirstChild("Monsters") or workspace }
+	local drops = pending[player] or {}
+	pending[player] = drops
+	local list = {}
+	local spots = BossRules.scatter(#items, Bosses.LOOT_SCATTER.min, Bosses.LOOT_SCATTER.max, rng:NextNumber() * 2 * math.pi)
+	for index, entry in items do
+		local flat = center + Vector3.new(spots[index].x, 0, spots[index].z)
+		local hit = workspace:Raycast(flat + Vector3.new(0, 20, 0), Vector3.new(0, -60, 0), params)
+		local position = if hit then hit.Position else flat
+		local id = HttpService:GenerateGUID(false)
+		drops[id] = { item = entry.item, count = entry.count, position = position, expiresAt = os.clock() + Bosses.LOOT_AUTO_SECONDS }
+		table.insert(list, { id = id, item = entry.item, count = entry.count, x = position.X, y = position.Y, z = position.Z })
+	end
+	Remotes.BossLoot:FireClient(player, { drops = list, from = { x = center.X, y = center.Y, z = center.Z } })
+end
+
+-- A pickup: only your own drop, only from close by
+local function onPickUp(player: Player, id: unknown)
+	if not allowPickUp(player) or typeof(id) ~= "string" then
+		return
+	end
+	local drop = (pending[player] or {})[id]
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+	if not drop or not root or (root.Position - drop.position).Magnitude > Bosses.LOOT_PICKUP_DISTANCE then
+		return
+	end
+	collect(player, id)
+end
+
 local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }): any
 	local bossId = monster.boss :: string
 	local boss = Bosses.BOSSES[bossId]
@@ -171,6 +235,7 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		end
 	end
 	result.lootIn = math.max(0, record.lootAt - now)
+	dropLoot(player, bossId, result.items)
 	sendBosses(player)
 	return result
 end
@@ -424,6 +489,7 @@ end
 
 local function unload(player: Player)
 	records[player] = nil
+	pending[player] = nil -- collected before the save (OnBeforeLeave)
 	-- Out of any group forming: the next member leads, the prompt shows the new count
 	for bossId, lobby in lobbies do
 		if table.find(lobby.members, player) then
@@ -450,6 +516,22 @@ function BossService.Start()
 	Remotes.RequestBosses.OnServerEvent:Connect(function(player)
 		if allowRequest(player) then
 			sendBosses(player)
+		end
+	end)
+	Remotes.PickUpLoot.OnServerEvent:Connect(onPickUp)
+	-- Leaving (or teleporting) with loot on the ground: it goes into the Bag before the save
+	DataService.OnBeforeLeave(collectAll)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			local now = os.clock()
+			for player, drops in pending do
+				for id, drop in table.clone(drops) do
+					if now >= drop.expiresAt then
+						collect(player, id)
+					end
+				end
+			end
 		end
 	end)
 end

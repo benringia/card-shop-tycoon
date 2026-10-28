@@ -127,6 +127,18 @@ function BossRules.ringSegments(radius: number, maxWidth: number): { number }
 	return angles
 end
 
+-- Where each of `count` drops lands round the boss (offsets in studs): evenly round the circle from angle `turn`,
+-- every other one on the inner and outer radius so neighbours never land on each other
+function BossRules.scatter(count: number, minRadius: number, maxRadius: number, turn: number): { { x: number, z: number } }
+	local spots = {}
+	for index = 1, count do
+		local angle = turn + (index - 1) * 2 * math.pi / count
+		local radius = if index % 2 == 1 then minRadius else maxRadius
+		table.insert(spots, { x = math.cos(angle) * radius, z = math.sin(angle) * radius })
+	end
+	return spots
+end
+
 -- The gate's group prompt: open a group, join one, or (its leader) start it now. The server sets the text everyone
 -- sees; the leader's client swaps in its own.
 function BossRules.groupPromptText(config: GroupConfig, members: number, isLeader: boolean): string

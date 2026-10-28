@@ -204,6 +204,12 @@ return {
 	BOSSES = BOSSES,
 
 	-- Farm protection (spec section 7)
+	-- Loot on the ground: each player's drops scatter round the boss (only they see them); walking over one picks it up
+	LOOT_SCATTER = { min = 4, max = 10 }, -- studs from the boss
+	LOOT_PICKUP_DISTANCE = 8, -- the server's limit for a pickup
+	LOOT_CLIENT_REACH = 5, -- the client asks this close
+	LOOT_AUTO_SECONDS = 60, -- whatever is left goes into the Bag by itself after this
+	LOOT_PICKUP_COOLDOWN = 0.1, -- seconds between pickup requests
 	LOOT_COOLDOWN = 900, -- seconds between full loot from the same boss, per player (saved Unix time)
 	SOFT_CAP_AFTER = 6, -- rewarded kills of a boss a day at full drop chances
 	SOFT_CAP_STEP = 0.75, -- each further rewarded kill's drop chances, times the one before
