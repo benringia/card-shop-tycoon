@@ -13,13 +13,23 @@ local CombatMath = if game ~= nil
 
 local BattleSim = {}
 
--- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown, enrage once below one. boss: stuns on
--- it last at most BOSS_MAX_STUN seconds
-export type Mechanics = { heal: { below: number, fraction: number, cooldown: number }?, enrage: { below: number, atkMultiplier: number }? }
+-- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown, enrage once below one, a shield every
+-- few seconds (its side's shield; breaking it stuns the boss), a thunderclap that stuns every enemy (longer on slow
+-- ones), adds at HP fractions (auto-attacks hit them first; the boss takes x guard damage while any stands; the fight is
+-- won when the boss falls, adds or not). boss: stuns on it last at most BOSS_MAX_STUN seconds (not a shield break's)
+export type Mechanics = {
+	heal: { below: number, fraction: number, cooldown: number }?,
+	enrage: { below: number, atkMultiplier: number }?,
+	shield: { every: number, fraction: number, breakStun: number }?,
+	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
+	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
+}
 export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string? }
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
 export type Event = {
-	type: string, -- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" | "leave"
+	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
+	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add)
+	type: string,
 	from: string?,
 	to: string?,
 	damage: number?,
@@ -60,6 +70,10 @@ type Fighter = {
 	boss: boolean,
 	healReady: number,
 	enraged: boolean,
+	shieldReady: number, -- boss: when its next shield goes up
+	clapReady: number, -- boss: when its next thunderclap comes
+	addsDone: { [number]: boolean }, -- boss: which `adds.at` thresholds have summoned
+	addsMade: number, -- boss: adds summoned so far (their ids: "add1", "add2", ...)
 	owner: string?, -- the player it belongs to (groups); nil when the side has one owner
 	left: boolean, -- its player left the fight: out, never targeted, not fainted
 	benched: boolean, -- fainted and swapped out: off the field, but it still rests after the fight
@@ -126,6 +140,10 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		boss = input.boss == true,
 		healReady = time,
 		enraged = false,
+		shieldReady = if input.mechanics and input.mechanics.shield then time + input.mechanics.shield.every else math.huge,
+		clapReady = if input.mechanics and input.mechanics.thunderclap then time + input.mechanics.thunderclap.every else math.huge,
+		addsDone = {},
+		addsMade = 0,
 		owner = input.owner,
 		left = false,
 		benched = false,
@@ -192,9 +210,21 @@ local function standing(side: Side): { Fighter }
 	return list
 end
 
--- Everyone attacks the standing enemy with the lowest share of its HP left (ties: list order)
-local function targetOf(state: State, fighter: Fighter): Fighter?
+-- Everyone attacks the standing enemy with the lowest share of its HP left (ties: list order). Auto-attacks go to a
+-- boss's adds first while any stand (abilities may still pick the boss).
+local function targetOf(state: State, fighter: Fighter, autoAttack: boolean?): Fighter?
 	local enemies = standing(other(state, (state.sides :: any)[fighter.side]))
+	if autoAttack then
+		local adds = {}
+		for _, enemy in enemies do
+			if not enemy.boss then
+				table.insert(adds, enemy)
+			end
+		end
+		if #adds > 0 and #adds < #enemies then
+			enemies = adds
+		end
+	end
 	local target = enemies[1]
 	for _, enemy in enemies do
 		if enemy.hp / enemy.maxHp < target.hp / target.maxHp then
@@ -290,9 +320,38 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 		target.fainted = true
 		table.insert(events, { type = "faint", to = target.id })
 		local side = (state.sides :: any)[target.side] :: Side
+		if target.boss and not state.result then
+			finish(state, other(state, side).name, events) -- the boss is down: its adds don't matter
+			return
+		end
 		autoSwap(state, side, ownerKey(target), events)
 		if #standing(side) == 0 and not state.result then
 			finish(state, other(state, side).name, events)
+		end
+	end
+end
+
+-- A boss with adds standing takes only part of the damage (adds.guard)
+local function guarded(side: Side, target: Fighter): number
+	local adds = if target.boss and target.mechanics then target.mechanics.adds else nil
+	if not adds then
+		return 1
+	end
+	for _, fighter in standing(side) do
+		if not fighter.boss then
+			return adds.guard
+		end
+	end
+	return 1
+end
+
+-- A boss's shield just broke: the boss is stunned for its breakStun (longer than the usual cap on boss stuns)
+local function shieldBroke(state: State, side: Side, events: { Event })
+	for _, fighter in side.fighters do
+		local shield = if fighter.boss and fighter.mechanics then fighter.mechanics.shield else nil
+		if shield and not fighter.fainted then
+			fighter.stunUntil = math.max(fighter.stunUntil, state.time + shield.breakStun)
+			table.insert(events, { type = "shieldBreak", to = fighter.id })
 		end
 	end
 end
@@ -305,10 +364,14 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 	end
 	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1)
 	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, from.element, target.element)
-	local damage = CombatMath.getDamage(state.combat, atk, elementMult, random(state))
 	local side = (state.sides :: any)[target.side] :: Side
+	local damage = math.round(CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target))
+	local hadShield = side.shield > 0
 	local absorbed = math.min(side.shield, damage)
 	side.shield -= absorbed
+	if hadShield and side.shield <= 0 then
+		shieldBroke(state, side, events)
+	end
 	local taken = damage - absorbed
 	table.insert(events, { type = if kind then "ability" else "attack", kind = kind, from = from.id, to = target.id, damage = taken, strength = strength })
 	from.dealt += math.min(taken, target.hp)
@@ -325,7 +388,7 @@ local function interval(state: State, fighter: Fighter): number
 end
 
 local function attack(state: State, fighter: Fighter, events: { Event })
-	local target = targetOf(state, fighter)
+	local target = targetOf(state, fighter, true)
 	if target then
 		hit(state, fighter, target, 1, events, nil)
 	end
@@ -364,6 +427,44 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 		fighter.enraged = true
 		fighter.atk *= enrage.atkMultiplier
 		table.insert(events, { type = "enrage", from = fighter.id })
+	end
+	local side = (state.sides :: any)[fighter.side] :: Side
+	local shield = mechanics.shield
+	if shield and state.time >= fighter.shieldReady then
+		fighter.shieldReady = state.time + shield.every
+		local amount = math.round(fighter.maxHp * shield.fraction)
+		side.shield = amount
+		table.insert(events, { type = "shield", to = fighter.id, heal = amount })
+	end
+	local clap = mechanics.thunderclap
+	if clap and state.time >= fighter.clapReady then
+		fighter.clapReady = state.time + clap.every
+		table.insert(events, { type = "thunderclap", from = fighter.id })
+		for _, enemy in standing(other(state, side)) do
+			local seconds = clap.seconds * math.clamp(fighter.spd / enemy.spd, clap.minFactor, clap.maxFactor)
+			enemy.stunUntil = math.max(enemy.stunUntil, state.time + seconds)
+			table.insert(events, { type = "stun", to = enemy.id, damage = seconds })
+		end
+	end
+	local adds = mechanics.adds
+	if adds then
+		for index, at in adds.at do
+			if not fighter.addsDone[index] and share < at then
+				fighter.addsDone[index] = true
+				for _ = 1, adds.count do
+					fighter.addsMade += 1
+					local add = makeFighter(state.combat, {
+						id = `add{fighter.addsMade}`,
+						element = fighter.element,
+						hp = math.round(fighter.maxHp * adds.hpShare),
+						atk = fighter.atk * adds.atkShare,
+						spd = fighter.spd,
+					}, side.name, state.time)
+					table.insert(side.fighters, add)
+					table.insert(events, { type = "spawn", from = fighter.id, to = add.id })
+				end
+			end
+		end
 	end
 end
 
