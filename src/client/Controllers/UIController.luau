@@ -1,5 +1,6 @@
 --!strict
--- Owns the main ScreenGui: the status corner (party bar, buff, cash, shards, level / XP) and toast messages.
+-- Owns the main ScreenGui: the status corner (party bar, buff, cash, level / XP) and toast messages. Star Shards
+-- show in the Bag, not here.
 -- Other controllers add their panels to UIController.GetScreenGui(), and status items to GetStatusFrame().
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,6 +16,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
+local UIStyle = require(Shared:WaitForChild("Config"):WaitForChild("UIStyle"))
 
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
@@ -24,19 +26,17 @@ local PILL_HEIGHT = 42
 local PILL_GAP = 8
 local ICON_SIZE = 48 -- the icon pokes out a little past the pill's top and bottom
 local XP_BAR_WIDTH = 140
-local CASH_COLOR = Color3.fromRGB(130, 235, 140)
-local SHARD_COLOR = Color3.fromRGB(205, 175, 255)
 -- Status sits in the bottom-right corner (the top corners hold Roblox's menu, chat and the player list). The
--- column, bottom up: level + XP (in line with the party bar), shards, cash, then the buff badge; money toasts pop
+-- column, bottom up: level + XP (in line with the party bar), cash, then the buff badge; money toasts pop
 -- in just above it. Touch screens: see TOUCH_TOP.
 local STATUS_MARGIN = 12
 -- Fixed sizes, not AutomaticSize: an auto-sized frame anchored to the right edge can lay out past the screen edge
 local STATUS_WIDTH = 250
-local STATUS_HEIGHT = 48 + 3 * 42 + 3 * 8 -- buff badge + three pills + gaps
+local STATUS_HEIGHT = 48 + 2 * 42 + 2 * 8 -- buff badge + two pills (cash, level) + gaps
 local STATUS_ROW_WIDTH = 500 -- party bar + gap + status column; spare width is empty and lets clicks through
 -- Everything in the corner shrinks with the screen's height (Hud.scaleWith, HudLayout.SCALE). On touch screens
 -- (landscape phones are short, the jump button takes the bottom right) it is one column down the right edge from
--- the top: buff, cash, shards, level, then the party bar, then the money toasts; it ends around the middle.
+-- the top: buff, cash, level, then the party bar, then the money toasts; it ends around the middle.
 local TOUCH_TOP = 8
 local TOUCH_PARTY_HEIGHT = 84 -- room for the party bar under the column
 -- Money toasts (sales): stacked above the status corner, newest at the bottom
@@ -64,10 +64,8 @@ local cashLabel: TextLabel
 local levelLabel: TextLabel
 local xpLabel: TextLabel
 local xpFill: Frame
-local shardsLabel: TextLabel
 local cashPill: Frame
 local levelBadge: Frame
-local shardsPill: Frame
 local toastLabel: TextLabel
 local toastToken = 0
 
@@ -109,7 +107,7 @@ function UIController.GetScreenGui(): ScreenGui
 	return screenGui
 end
 
--- Bottom-right column: items stack upwards, right-aligned. Buff 1, cash 2, shards 3, level 4 (bottom).
+-- Bottom-right column: items stack upwards, right-aligned. Buff 1, cash 2, level 4 (bottom).
 function UIController.GetStatusFrame(): Frame
 	return statusFrame
 end
@@ -282,14 +280,24 @@ local function addValue(pill: Frame, color: Color3): TextLabel
 	return value
 end
 
--- The status pills in the corner column: cash, Star Shards, and the level (its number on the star icon, the XP
--- bar inside the pill) at the bottom, in line with the party bar
+-- The status pills in the corner column: cash (a green candy pill with outlined white text) and the level (its
+-- number on the star icon, the XP bar inside the pill) at the bottom, in line with the party bar
 local function buildStatusPills()
 	local column = statusFrame
 
 	cashPill = makePill(column, 2, "Cash")
 	cashPill.Name = "Cash"
-	cashLabel = addValue(cashPill, CASH_COLOR)
+	cashPill.BackgroundColor3 = UIStyle.GREEN
+	cashPill.BackgroundTransparency = 0
+	local edge = cashPill:FindFirstChildOfClass("UIStroke") :: UIStroke
+	edge.Color = UIStyle.EDGE
+	edge.Thickness = UIStyle.EDGE_THICKNESS
+	local shade = Instance.new("UIGradient")
+	shade.Rotation = 90
+	shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+	shade.Parent = cashPill
+	cashLabel = addValue(cashPill, Color3.new(1, 1, 1))
+	UIKit.outlined(cashLabel, 2)
 
 	-- The level number sits on the star icon; the XP bar fills the pill
 	local levelAnchor
@@ -328,20 +336,6 @@ local function buildStatusPills()
 	local fit = Instance.new("UITextSizeConstraint")
 	fit.MaxTextSize = 14
 	fit.Parent = xpLabel
-
-	shardsPill = makePill(column, 3, "Shard")
-	shardsPill.Name = "Shards"
-	shardsLabel = addValue(shardsPill, SHARD_COLOR)
-	shardsLabel.Text = "0"
-end
-
-local function updateShards(items: unknown)
-	local count = if typeof(items) == "table" then (items :: { [string]: any }).starShard else nil
-	local text = tostring(if typeof(count) == "number" then count else 0)
-	if shardsLabel.Text ~= text then
-		Motion.bump(shardsPill)
-	end
-	shardsLabel.Text = text
 end
 
 -- The bottom-right corner (PC). On a narrow window the party bar would reach over the bottom-centre tiles (Cards,
@@ -472,7 +466,6 @@ function UIController.Start()
 	player:GetAttributeChangedSignal("Cash"):Connect(updateCash)
 	player:GetAttributeChangedSignal("XP"):Connect(updateXp)
 	player:GetAttributeChangedSignal("Level"):Connect(updateXp)
-	Remotes.ItemsChanged.OnClientEvent:Connect(updateShards)
 	Remotes.Notify.OnClientEvent:Connect(function(message: string, isError: boolean?, style: string?)
 		if typeof(message) ~= "string" then
 			return

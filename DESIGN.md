@@ -919,7 +919,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, shards, level + XP), toasts, money toasts
+    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
@@ -1109,9 +1109,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
   right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
-  party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. On touch screens (short
+  party bar), cash (a green candy pill with outlined white text), then the buff badge; money toasts pop in just
+  above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
   landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
-  the middle: buff, cash, shards, level, then the party bar, then the money toasts. Nothing sits in the middle of
+  the middle: buff, cash, level, then the party bar, then the money toasts. Nothing sits in the middle of
   the screen. The whole HUD (tiles, Manage
   tray, corner, toasts) shrinks with the screen's height (`HudLayout.SCALE`, `Hud.scaleWith`): full size from 560 px
   tall, down to 70% on short phones (tiles stay over 48 px to tap). Each icon sits over its
