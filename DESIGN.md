@@ -397,7 +397,7 @@ Roadmap (one sub-project at a time):
    2. PvP challenges and the arena (spec `2026-10-23-battles-pvp-design.md`; done).
    3. a) The Frontier (spec `2026-10-24-frontier-design.md`; done).
       b) The boss ladder: 7 bosses (3 Wild, 3 Frontier, the final one in a Dungeon place), keys from the boss
-         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phase 1, the Wild bosses, and phase 2, groups, done: 5.10).
+         before, optional groups (spec `2026-10-28-boss-ladder-design.md`; phases 1-3 done (Wild bosses, groups, Frontier bosses and Gold Seals): 5.10).
 
 **Battles part 3a: the Frontier.** A second Roblox place in the experience, shared by players from every server.
 Not one server for everyone: Roblox fills a Frontier server to the place's Max Players (Creator Hub) and opens more.
@@ -665,7 +665,7 @@ and rewards in `BossService`.
   still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
 - Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` and `/boss <n> group` (use that prompt).
-- Boss models are placeholders (Wild shapes at 2.5-3.2x). Next (spec section 10): Frontier bosses (phase 3), the Dungeon (4).
+- Boss models are placeholders (monster shapes at 2.5-3.4x). Next (spec section 10): the Dungeon and the final boss (phase 4).
 
 ---
 
