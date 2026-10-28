@@ -45,9 +45,27 @@ return {
 		expect.equal(mixed[1] ~= mixed[2], true, "two different species when there are two")
 	end,
 
+	["gateCheck: a member still loading waits, one with no creature left is out"] = function()
+		expect.equal(DungeonRules.gateCheck(false, false), "skip", "save not loaded yet: not out, just not this fight")
+		expect.equal(DungeonRules.gateCheck(true, false), "out", "loaded, nothing can fight")
+		expect.equal(DungeonRules.gateCheck(true, true), "fight", "ready")
+	end,
+
+	["leftRun: only running or leaving ends your run; a loss or a timeout keeps the creatures' HP"] = function()
+		expect.equal(DungeonRules.leftRun("run"), true, "ran or left")
+		expect.equal(DungeonRules.leftRun("timeout"), false, "the time limit")
+		expect.equal(DungeonRules.leftRun("lose"), false, "lost")
+		expect.equal(DungeonRules.leftRun("win"), false, "won")
+	end,
+
+	["canChangeParty: the party is set once the run's first fight starts"] = function()
+		expect.equal(DungeonRules.canChangeParty(false), true, "before the first fight")
+		expect.equal(DungeonRules.canChangeParty(true), false, "after it")
+	end,
+
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/DungeonRules.luau")), { debugName = "DungeonRules" })()
-		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack" } do
+		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

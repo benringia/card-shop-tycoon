@@ -21,6 +21,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossService = require(Services:WaitForChild("BossService"))
+local DataService = require(Services:WaitForChild("DataService"))
 local FrontierService = require(Services:WaitForChild("FrontierService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
@@ -144,6 +145,23 @@ local function ensureFighter(player: Player): boolean
 	return false
 end
 
+-- Who goes into the next fight: everyone still in the run who can fight; a member whose save is still loading sits
+-- it out (not out of the run), one with no creature left that can fight is out
+local function readyMembers(): { Player }
+	local fighters = {}
+	for _, member in active() do
+		local check = DungeonRules.gateCheck(PartyService.GetParty(member) ~= nil, ensureFighter(member))
+		if check == "fight" then
+			table.insert(fighters, member)
+		elseif check == "out" then
+			markOut(member, "None of your creatures can fight any more.")
+		else
+			notify(member, "Your save is still loading: you'll join the next fight.", true)
+		end
+	end
+	return fighters
+end
+
 local function start()
 	if run.started then
 		return
@@ -190,14 +208,7 @@ local function onRoomGate(player: Player, index: number)
 		notify(player, "Clear the room before this one first.", true)
 		return
 	end
-	local fighters = {}
-	for _, member in active() do
-		if ensureFighter(member) then
-			table.insert(fighters, member)
-		else
-			markOut(member, "None of your creatures can fight any more.")
-		end
-	end
+	local fighters = readyMembers()
 	if #fighters == 0 then
 		return
 	end
@@ -260,13 +271,9 @@ local function onChamberGate(player: Player, bossId: string)
 		notify(player, "Clear the three rooms first.", true)
 		return
 	end
-	local fighters = {}
-	for _, member in active() do
-		if ensureFighter(member) then
-			table.insert(fighters, member)
-		else
-			markOut(member, "None of your creatures can fight any more.")
-		end
+	local fighters = readyMembers()
+	if #fighters == 0 then
+		return
 	end
 	local ok, why = BossService.StartRun(bossId, fighters, run.hpLeft)
 	if ok then
@@ -302,11 +309,14 @@ local function onBossEnded(result: string, hpLeft: { [Player]: { [string]: numbe
 		return
 	end
 	for player in hpLeft do
-		if result ~= "lose" then
+		if DungeonRules.leftRun(result) then
 			markOut(player, "You left the fight, so you're out of the run.")
 		elseif DungeonRules.isOut(run.hpLeft[player], partyIds(player)) then
 			markOut(player, "Your whole party is down. Back to the Frontier...")
 		end
+	end
+	if result == "timeout" then
+		sendAll("Out of time! Try the Prism Hydra again with the creatures you have left.")
 	end
 end
 
@@ -330,11 +340,14 @@ local function onFightEnded(monster: WildService.Monster, result: string, hpLeft
 		openDoor(room.door)
 	end
 	for player in hpLeft do
-		if result ~= "win" and result ~= "lose" then
+		if DungeonRules.leftRun(result) then
 			markOut(player, "You left the fight, so you're out of the run.")
 		elseif DungeonRules.isOut(run.hpLeft[player], partyIds(player)) then
 			markOut(player, "Your whole party is down. Back to the Frontier...")
 		end
+	end
+	if result == "timeout" then
+		sendAll(`Out of time! Room {index} is still to clear.`)
 	end
 	if result == "win" then
 		sendAll(if run.cleared >= #Dungeon.ROOMS then "The chamber is open: the Prism Hydra awaits!" else `Room {index} cleared!`)
@@ -394,10 +407,21 @@ function DungeonService.Start()
 		markOut(player, "You left the Dungeon.")
 		FrontierService.ReturnToFrontier(player)
 	end)
-	Players.PlayerAdded:Connect(onArrive)
-	for _, player in Players:GetPlayers() do
-		onArrive(player)
-	end
+	-- A player arrives once their save has loaded (their party and creatures exist), never before
+	DataService.Register({
+		name = "DungeonService",
+		load = function(player)
+			onArrive(player)
+		end,
+		save = function() end, -- the run is never saved
+		unload = function() end,
+	})
+	PartyService.SetChangeBlocker(function(player)
+		if table.find(run.members, player) and not DungeonRules.canChangeParty(run.fought) then
+			return "Your party is set for this run."
+		end
+		return nil
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		run.out[player] = true
 		run.hpLeft[player] = nil

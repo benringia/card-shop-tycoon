@@ -140,6 +140,18 @@ return {
 		expect.equal(BattleSim.hpLeft(state, "a").p2, 500, "no owner: the whole side")
 	end,
 
+	["the time limit ends the fight as a run and marks it timed out"] = function()
+		local state = BattleSim.new(combat, { fighters = { fighter("a", "Ember", 100000, 1, 10) }, abilities = false, canRun = true },
+			{ fighters = { monster("Tide", 100000, 1, 10) }, abilities = false, canRun = false }, 3)
+		state.maxSeconds = 5
+		runToEnd(state, 10)
+		expect.equal(state.result, "run", "result")
+		expect.equal(state.timedOut, true, "timed out")
+		local ran = wild(fighter("b", "Ember", 100, 1, 10), {}, monster("Tide", 100000, 1, 1), 4)
+		BattleSim.tryRun(ran, "a")
+		expect.equal(ran.timedOut == true, false, "a real run is not a timeout")
+	end,
+
 	["phases: the boss starts as phase 1"] = function()
 		local state = phasedBoss(PHASES, 11)
 		expect.equal(state.sides.b.fighters[1].element, "Tide", "phase 1's element")

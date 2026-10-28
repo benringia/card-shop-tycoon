@@ -120,7 +120,8 @@ function BattleService.OnMemberLeft(handler: (player: Player, monster: Monster) 
 end
 
 -- BossService: every fight's end, whatever the result (it unseals the arena)
--- After a fight ends (deferred): its monster, the result ("win", "lose", "run") and every member's creatures' HP then
+-- After a fight ends (deferred): its monster, the result ("win", "lose", "run", or "timeout" when it hit the time
+-- limit) and every member's creatures' HP then
 function BattleService.OnFightEnded(handler: (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }) -> ())
 	table.insert(fightEndedHandlers, handler)
 end
@@ -571,9 +572,10 @@ local function endFight(fight: Fight, result: string)
 	if fight.ended then
 		return
 	end
+	local reported = if fight.sim.timedOut then "timeout" else result
 	task.defer(function() -- after every member is released below, so endHp is complete
 		for _, handler in fightEndedHandlers do
-			handler(fight.monster, result, fight.endHp)
+			handler(fight.monster, reported, fight.endHp)
 		end
 	end)
 	fight.ended = true

@@ -40,6 +40,27 @@ function DungeonRules.expectedSize(data: unknown, max: number): number
 	return math.min(size, max)
 end
 
+-- At a gate: a member whose save hasn't loaded yet sits this fight out ("skip", still in the run); one with no
+-- creature left that can fight is out ("out"); everyone else goes in ("fight")
+function DungeonRules.gateCheck(loaded: boolean, ready: boolean): "fight" | "skip" | "out"
+	if not loaded then
+		return "skip"
+	end
+	return if ready then "fight" else "out"
+end
+
+-- Whether a fight's result means the player left the run (ran or left; BattleService's "run"). A loss or the time
+-- limit ("timeout") doesn't: their creatures' HP carries on and only a party that is all down is out.
+function DungeonRules.leftRun(result: string): boolean
+	return result == "run"
+end
+
+-- Whether players may change their party: not once the run's first fight has started (the party wears down room by
+-- room; fresh cards from the binder would skip that)
+function DungeonRules.canChangeParty(fought: boolean): boolean
+	return not fought
+end
+
 -- A room's pack: `count` species names, cycling through the room's list from a seeded start (mixed elements)
 function DungeonRules.pack(room: { species: { string }, count: number, level: number }, seed: number): { string }
 	local names = {}
