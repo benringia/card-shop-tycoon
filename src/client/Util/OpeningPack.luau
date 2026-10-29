@@ -19,6 +19,7 @@ local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local OpeningFx = require(ClientUtil:WaitForChild("OpeningFx"))
 
 local LOOK = PackOpening.PACK_STAGE
+local SCREEN_RIGHT = -1 -- the camera looks along +Z, so a model's -X is the screen's right
 local TEAR = PackOpening.TEAR
 local STACK = PackOpening.STACK
 
@@ -148,7 +149,9 @@ local function tearLine(): (Vector3, Vector3, Vector3)
 	local pivot = if model then model:GetPivot() else rest
 	local y = height * 0.88
 	local half = height * 0.32
-	return (pivot * CFrame.new(0, y, -0.12)).Position, (pivot * CFrame.new(-half, y, -0.12)).Position, (pivot * CFrame.new(half, y, -0.12)).Position
+	local left = (pivot * CFrame.new(-half * SCREEN_RIGHT, y, -0.12)).Position
+	local right = (pivot * CFrame.new(half * SCREEN_RIGHT, y, -0.12)).Position
+	return (pivot * CFrame.new(0, y, -0.12)).Position, left, right
 end
 
 -- Follows the swipe before it tears: the strip lifts a little (0 to 1)
@@ -157,7 +160,7 @@ function OpeningPack.drag(progress: number)
 		return
 	end
 	local p = math.clamp(progress, 0, 1)
-	lid.CFrame = model:GetPivot() * lidRest * CFrame.new(0.05 * p, 0.04 * p, 0) * CFrame.Angles(0, 0, -math.rad(5 * p))
+	lid.CFrame = model:GetPivot() * lidRest * CFrame.new(0.05 * p * SCREEN_RIGHT, 0.04 * p, 0) * CFrame.Angles(0, 0, -math.rad(5 * p) * SCREEN_RIGHT)
 end
 
 -- The cinematic tear (spec 4.2); yields until the camera is back
@@ -177,7 +180,7 @@ function OpeningPack.tear()
 	local pivot = model:GetPivot()
 	if lid then
 		TweenService:Create(lid, TweenInfo.new(TEAR.PART_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			CFrame = pivot * lidRest * CFrame.new(0.08, 0.06, 0) * CFrame.Angles(0, 0, -math.rad(8)),
+			CFrame = pivot * lidRest * CFrame.new(0.08 * SCREEN_RIGHT, 0.06, 0) * CFrame.Angles(0, 0, -math.rad(8) * SCREEN_RIGHT),
 		}):Play()
 	end
 	OpeningFx.shards(right, TEAR.SPILL, false, 0.5)
@@ -187,7 +190,7 @@ function OpeningPack.tear()
 	if lid then
 		local strip = lid
 		local fly = TweenService:Create(strip, TweenInfo.new(TEAR.SNAP_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			CFrame = pivot * lidRest * CFrame.new(3.2, -2.6, -0.6) * CFrame.Angles(0.4, 0.3, -math.rad(95)),
+			CFrame = pivot * lidRest * CFrame.new(3.2 * SCREEN_RIGHT, -2.6, -0.6) * CFrame.Angles(0.4, 0.3, -math.rad(95) * SCREEN_RIGHT),
 			Transparency = 1,
 		})
 		fly.Completed:Once(function()

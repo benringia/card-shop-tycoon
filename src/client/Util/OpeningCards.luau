@@ -54,10 +54,17 @@ local OpeningCards = {}
 
 local cards: { Shown } = {}
 local bannerGui: ScreenGui? = nil
-local banner: TextLabel
+local banner: Frame -- a plate in the pull's colour (gradient) with the word on it
+local bannerText: TextLabel
 local bannerScale: UIScale
 local bannerPulse: Tween? = nil
 local results: RBXScriptConnection? = nil
+
+-- Far behind a card on the line from the camera through it: where its rays and aura go (behind the row too)
+local function behind(at: CFrame): Vector3
+	local eye = OpeningStage.home().Position
+	return eye + (at.Position - eye).Unit * FLIP.BACK_DEPTH
+end
 
 local function rarityColor(card: Card): Color3
 	return if CardFace.isFrontier(card) then CardEffects.FRONTIER.AURORA[1] else CardFace.getRarityColor(card.rarity)
@@ -214,44 +221,50 @@ local function ensureBanner()
 	screen.ResetOnSpawn = false
 	screen.DisplayOrder = 41
 	screen.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	local label = Instance.new("TextLabel")
-	label.AnchorPoint = Vector2.new(0.5, 0.5)
-	label.Position = UDim2.fromScale(0.5, 0.79)
-	label.Size = UDim2.fromScale(0.34, 0.085)
-	label.BackgroundColor3 = Color3.new(1, 1, 1)
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.Visible = false
-	label.Parent = screen
+	-- Under the shown card, as wide as it is tall times BANNER.ASPECT (so it suits any screen)
+	local plate = Instance.new("Frame")
+	plate.AnchorPoint = Vector2.new(0.5, 0.5)
+	plate.Position = UDim2.fromScale(0.5, FLIP.BANNER_Y)
+	plate.Size = UDim2.fromScale(FLIP.BANNER_HEIGHT * FLIP.BANNER_ASPECT, FLIP.BANNER_HEIGHT)
+	plate.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	plate.BackgroundColor3 = Color3.new(1, 1, 1)
+	plate.Visible = false
+	plate.Parent = screen
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0.3, 0)
-	corner.Parent = label
+	corner.Parent = plate
 	local edge = Instance.new("UIStroke")
 	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	edge.Color = Color3.fromRGB(11, 15, 26)
 	edge.Thickness = 3
-	edge.Parent = label
-	local text = Instance.new("UIStroke")
-	text.Color = Color3.fromRGB(34, 34, 34)
-	text.Thickness = 2
-	text.Parent = label
+	edge.Parent = plate
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
-	gradient.Parent = label
-	local pad = Instance.new("UIPadding")
-	pad.PaddingTop, pad.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
-	pad.Parent = label
+	gradient.Parent = plate
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.fromScale(0.88, 0.74)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Parent = plate
+	local outline = Instance.new("UIStroke")
+	outline.Color = Color3.fromRGB(34, 34, 34)
+	outline.Thickness = 2
+	outline.Parent = label
 	bannerScale = Instance.new("UIScale")
 	bannerScale.Scale = 0
-	bannerScale.Parent = label
-	banner = label
+	bannerScale.Parent = plate
+	banner = plate
+	bannerText = label
 	bannerGui = screen
 end
 
 local function showBanner(text: string, color: Color3)
 	ensureBanner()
-	banner.Text = text
+	bannerText.Text = text
 	local gradient = banner:FindFirstChildOfClass("UIGradient") :: UIGradient
 	gradient.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.35), color:Lerp(Color3.new(0, 0, 0), 0.15))
 	banner.Visible = true
@@ -391,8 +404,8 @@ function OpeningCards.flip(index: number)
 	if plan.tease > 0 then
 		OpeningStage.play("tease")
 		shown.halo.Color = color
-		TweenService:Create(shown.halo, TweenInfo.new(plan.tease, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 0.35 }):Play()
-		OpeningFx.aura(true, color, (shown.at * CFrame.new(0, 0, 0.6)).Position)
+		TweenService:Create(shown.halo, TweenInfo.new(plan.tease, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = FLIP.GLOW_TRANSPARENCY }):Play()
+		OpeningFx.aura(true, color, behind(shown.at))
 		if plan.cinematic then
 			OpeningStage.bars(true, 0.28)
 			OpeningStage.dim(1, 0.5)
@@ -413,7 +426,7 @@ function OpeningCards.flip(index: number)
 	-- The flip: a quick turn with an overshoot, landing nearer the camera (bigger)
 	local home = OpeningStage.home()
 	local scale = if plan.tease > 0 then FLIP.TEASED_SCALE else FLIP.SHOWN_SCALE
-	local landing = CFrame.new(home.Position + home.LookVector * (PackOpening.CAMERA_DISTANCE / scale) + Vector3.new(0, 0.15, 0)) * FACE_UP
+	local landing = CFrame.new(home.Position + home.LookVector * (PackOpening.CAMERA_DISTANCE / scale) + Vector3.new(0, FLIP.LANDING_UP, 0)) * FACE_UP
 	local seconds = if plan.tease > 0 then FLIP.TEASE_SECONDS else FLIP.COMMON_SECONDS
 	OpeningStage.play("flip")
 	local watch = RunService.RenderStepped:Connect(function()
@@ -435,7 +448,7 @@ function OpeningCards.flip(index: number)
 			showBanner(plan.banner, color)
 		end
 		if plan.rays then
-			OpeningFx.rays(true, color, (landing * CFrame.new(0, 0, 1.2)).Position)
+			OpeningFx.rays(true, color, behind(landing))
 		end
 		if plan.flash then
 			OpeningStage.flash(0.85, 0.5)
@@ -452,7 +465,7 @@ function OpeningCards.flip(index: number)
 		if plan.cinematic then
 			OpeningStage.dim(0.4, 0.6)
 		end
-		glintsAround(shown, 3, color, 0.3)
+		glintsAround(shown, math.max(2, math.ceil(plan.burst / 6)), color, 0.3)
 	end
 	if plan.alive or plan.holo then
 		startAlive(shown)
@@ -495,7 +508,7 @@ local function land(shown: Shown)
 	end
 	if pull.plan.alive then
 		shown.halo.Color = shown.color
-		TweenService:Create(shown.halo, TweenInfo.new(0.3), { Transparency = 0.45 }):Play()
+		TweenService:Create(shown.halo, TweenInfo.new(0.3), { Transparency = FLIP.GLOW_TRANSPARENCY }):Play()
 	end
 	if pull.isNew then
 		shown.newTag.Enabled = true

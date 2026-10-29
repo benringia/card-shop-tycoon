@@ -3,9 +3,9 @@
 -- tests load it (Config/PackOpening holds Color3s).
 return {
 	LAYOUT = {
-		rowHeight = 0.16, -- a row card's height, share of the screen height
+		rowHeight = 0.13, -- a row card's height, share of the screen height
 		rowGap = 10, -- px between row cards
-		rowBottom = 0.125, -- the row's gap to the screen's bottom (clear of the letterbox bar), share of the height
+		rowBottom = 0.12, -- the row's gap to the screen's bottom (clear of the letterbox bar), share of the height
 		maxCard = 140, -- px, the widest a lineup card gets
 		gap = 22, -- px between lineup cards
 		side = 70, -- px kept clear at each side

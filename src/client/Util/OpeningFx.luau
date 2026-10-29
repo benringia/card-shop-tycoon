@@ -201,7 +201,7 @@ end
 -- Turning light rays behind the shown card (at: the card's middle, pushed back a little by the caller)
 function OpeningFx.rays(on: boolean, color: Color3, at: Vector3?)
 	if not raysGui or not raysGui.Parent then
-		raysGui = billboard("Rays", PackFx.IMAGES.rays, 13)
+		raysGui = billboard("Rays", PackFx.IMAGES.rays, PackOpening.FLIP.RAYS_SIZE)
 	end
 	local gui = raysGui :: BillboardGui
 	setBillboard(gui, on, color, at, 0.25)
@@ -219,7 +219,7 @@ end
 -- A soft glow behind the shown card in its colour (the caller breathes it with auraScale)
 function OpeningFx.aura(on: boolean, color: Color3, at: Vector3?)
 	if not auraGui or not auraGui.Parent then
-		auraGui = billboard("Aura", PackFx.IMAGES.aura, 7)
+		auraGui = billboard("Aura", PackFx.IMAGES.aura, PackOpening.FLIP.AURA_SIZE)
 	end
 	setBillboard(auraGui :: BillboardGui, on, color, at, 0.15)
 end
@@ -227,7 +227,7 @@ end
 -- The aura's size, times its normal size (a breath)
 function OpeningFx.auraScale(scale: number)
 	if auraGui then
-		auraGui.Size = UDim2.fromScale(7 * scale, 7 * scale)
+		auraGui.Size = UDim2.fromScale(PackOpening.FLIP.AURA_SIZE * scale, PackOpening.FLIP.AURA_SIZE * scale)
 	end
 end
 

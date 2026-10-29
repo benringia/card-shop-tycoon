@@ -74,7 +74,7 @@ local function buildScene(): Folder
 	surface.Face = Enum.NormalId.Front
 	surface.LightInfluence = 0
 	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	surface.PixelsPerStud = 10
+	surface.PixelsPerStud = 4
 	surface.Parent = backdrop
 	local dark = Instance.new("Frame")
 	dark.Size = UDim2.fromScale(1, 1)
@@ -84,7 +84,7 @@ local function buildScene(): Folder
 	local glow = Instance.new("ImageLabel")
 	glow.AnchorPoint = Vector2.new(0.5, 0.5)
 	glow.Position = UDim2.fromScale(0.5, 0.5)
-	glow.Size = UDim2.fromScale(0.75, 0.75)
+	glow.Size = UDim2.fromScale(look.GLOW, look.GLOW)
 	glow.BackgroundTransparency = 1
 	glow.Image = CardDesign.IMAGES.GLOW
 	glow.ImageColor3 = look.MIDDLE

@@ -8,7 +8,6 @@ export type Plan = {
 	flash: boolean,
 	spotlight: boolean,
 	burst: number,
-	confetti: number,
 	banner: string?,
 	shards: number,
 	goldShards: boolean,
