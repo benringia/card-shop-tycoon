@@ -229,6 +229,13 @@ local function fittedSize(): (number, number)
 	return CASE_W + 2 * tabs, CASE_D
 end
 
+-- The binder's shape on screen (width / height, tabs included, leaning back TILT degrees): the rectangle the
+-- binder screen lays out for it
+function BinderDesk.aspect(): number
+	local w, h = fittedSize()
+	return w / (h * math.cos(math.rad(Desk.TILT)))
+end
+
 -- The camera that shows the binder inside `rect` (viewport pixels), looking down at it TILT degrees off straight
 local function cameraFor(rect: UiLayout.Rect): CFrame
 	local camera = workspace.CurrentCamera

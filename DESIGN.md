@@ -982,7 +982,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips
+    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 3x3 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
@@ -1208,31 +1208,33 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   price (in the band's colour): packs their real front (`Packs` art, as on the shelves), others their icon
   (`Products.icon`). On the right, your price stands out big in a dark box outlined in the band's colour, with
   small - / + buttons under it (38 px with a mouse, `UIStyle.MIN_TAP` 48 px on phones; sized on every open).
-- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
-  binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
-  plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
-  are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
-  page is the cover: full art (the pack art over the whole cover; leather in the set's colour without one), an
-  embossed border, the title (name, "34 / 35 collected") and the set's worth in outlined text over dark fades,
-  a progress bar; then page 1. Pages hold 3x3
-  pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.36 wide
-  to 1 tall) and nearly fills the screen's height (on its own full-screen layer, rising into Roblox's top bar strip,
-  with the page counter just under it) when the corner buttons stay clear; on phones (screens under 900 wide) the
-  corner buttons go compact (icons only: Cards and Bag down the left edge, Rarity guide bottom left, Filters under
-  the close button) and the book takes the full height between those slim lanes; otherwise it fits between the top
-  row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
-  page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
-  (0.35s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,
-  darkens edge-on and casts a shadow on the page underneath, then lands on the other side showing the next cards. Q/E, the
-  arrows and a swipe turn pages. Page counter pill ("2-3 / 9"); arrows with key chips
-  (Q/E one spread). Top right: Filters (F) and close. The Filters panel (search, Show
-  All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book (arrows
-  included) shrinks into the room left of it. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
-  The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
-  Hovering a pocket (mouse) shows the card's tooltip (`Util/CardTips`): art, name, set number, rarity / element /
-  best-grade pills, a 2x2 grid of icons and numbers (strongest Power, copies with any on display, best level, best
-  grade), the worth range in green with the Cash icon and "Click for details"; it sits just outside the book, level
-  with the pocket (right of it, else left, else above: `UiLayout.beside`), so it never covers a card.
+- **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
+  spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
+  client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
+  front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
+  leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
+  painted warm lamp pool, darker edges, a black leather case with a stitched border, dark pages; a chrome ring rail
+  with three rings down the spine. It looks the same at night and at every graphics quality. Built once at start,
+  shown when the binder opens; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
+  world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back. One set
+  at a time; set dividers are coloured tabs sticking out of the case's right edge with the set's name (the open
+  set's sticks out further), click one to open that set. Each page is a canvas of 3 x 3 pocket slots (18 cards a
+  spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
+  ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Only the open spread's
+  pockets are drawn; a pocket leaving it is cleared (`CardFace.clear`), stopping its effects. Spread 1's left page
+  is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
+  (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
+  The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
+  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Cards and Bag down the left edge,
+  Rarity guide bottom left, Filters under the close button), no arrows and no progress card. Top right: Filters (F)
+  and close. The Filters panel (search, Show All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens
+  on the right while the camera moves the binder into the room left of it. Bottom right: the set's progress card
+  (owned / total with a bar, value of your copies). The Bag tab shows its window over the desk. The side and bottom
+  HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a
+  tab). The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
+  strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
+  just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
+  it never covers a card.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
   every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare

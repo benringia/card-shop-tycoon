@@ -97,6 +97,22 @@ local function clear(frame: Frame)
 	end
 end
 
+-- Removes a drawn face and its spinning rim effects, leaving the frame empty (a binder pocket leaving the open
+-- spread, so its effects stop)
+function CardFace.clear(frame: Frame, stroke: UIStroke)
+	clear(frame)
+	removeAurora(stroke)
+end
+
+-- The card's art, else its element's scene, else "" (light cards on a turning binder page)
+function CardFace.artImage(card: Card): string
+	local own = CardDesign.ART_IMAGES[card.name]
+	if own and own ~= "" then
+		return own
+	end
+	return CardDesign.SCENES[card.element] or ""
+end
+
 local function newFace(frame: Frame): Frame
 	local face = Instance.new("Frame")
 	face.Name = "Face"

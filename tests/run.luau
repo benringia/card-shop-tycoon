@@ -8,7 +8,6 @@ local specs: { [string]: { [string]: () -> () } } = {
 	Migrations = require("./Migrations.spec"),
 	SaleRules = require("./SaleRules.spec"),
 	CondenseRules = require("./CondenseRules.spec"),
-	PocketLayout = require("./PocketLayout.spec"),
 	JobRules = require("./JobRules.spec"),
 	LevelMath = require("./LevelMath.spec"),
 	PartyRules = require("./PartyRules.spec"),
