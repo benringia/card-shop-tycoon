@@ -688,7 +688,9 @@ group, checked before its fragments and every time (not only the first). Below i
   a bar; a warning, not a lock); then a tinted box with what to do next (`BossRules.lockReason`: level up the shop,
   beat the boss before for n more keys with a "See it" button, level up or change the party with a "Party" button,
   go fight it, or fight again for loot); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
-  thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). **Rewards:** a
+  thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). A locked boss
+  past the "Next" one keeps its tricks a surprise ("???: reach it to find out", `BossRules.revealTricks`; the Hydra's
+  element pill reads "???" and shows no element to bring); its needs and rewards always show. **Rewards:** a
   loot pill ("Loot ready" green, or "Loot in 12:34" counting down; tooltip: loot once every 15 min, earlier wins pay
   cash and XP only); each win's drops as slots with a count badge and the chance under each, at the chance your next
   win rolls (soft cap and over-power factors included, gold when shrunk; `BossRules.chanceText` / `countText`), a
@@ -1313,7 +1315,8 @@ boss models; the ranch and Heroic tiers come after those.
   wording, compact chooser buttons, party change toast, rarity guide without spoilers. Round 2: Shop Jobs rebuilt as
   option B (with Switch job), short tooltip words, no tooltips through covering windows, livelier toasts. Round 3:
   Jobs rule chips no longer clipped (the list is padded), Boss Ladder reworked (legend, Next, To fight it checklist
-  with key fragments, what to do next, Watch out, Rewards with odds and chests, item tooltips). Next: UI project 2 (a 3D
+  with key fragments, what to do next, Watch out, Rewards with odds and chests, item tooltips; locked bosses past
+  Next keep their tricks a surprise). Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are

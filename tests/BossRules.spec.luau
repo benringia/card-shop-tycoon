@@ -331,7 +331,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "fullDropsLeft", "chanceText", "countText", "watchOut" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "fullDropsLeft", "chanceText", "countText", "watchOut", "revealTricks" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,
@@ -423,5 +423,12 @@ return {
 				expect.equal(string.find(entry.text, "[^%w%s%p]") == nil, true, `{id} {entry.kind}: plain ASCII`)
 			end
 		end
+	end,
+	["revealTricks: a boss's tricks stay a surprise until you can reach it"] = function()
+		expect.equal(BossRules.revealTricks("beaten", false), true, "beaten")
+		expect.equal(BossRules.revealTricks("ready", false), true, "open")
+		expect.equal(BossRules.revealTricks("tooWeak", false), true, "open, too weak")
+		expect.equal(BossRules.revealTricks("locked", true), true, "the next boss, even locked")
+		expect.equal(BossRules.revealTricks("locked", false), false, "locked further up")
 	end,
 }

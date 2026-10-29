@@ -430,7 +430,7 @@ local function markBadge(parent: Instance, mark: Mark): GuiObject
 	return dot
 end
 
--- One "to fight it" row: a mark, its icon (the "Icon" child), what it needs, and what you have on the right; with
+-- One "to fight it" row: a mark, its icon (the "Picture" child), what it needs, and what you have on the right; with
 -- `share`, a thin bar under it. A button, so a row can lead somewhere.
 local function needRow(parent: Instance, order: number, mark: Mark, icon: string, words: string, have: string, share: number?): TextButton
 	local line = 32
@@ -449,6 +449,7 @@ local function needRow(parent: Instance, order: number, mark: Mark, icon: string
 	badge.AnchorPoint = Vector2.new(0, 0.5)
 	badge.Position = UDim2.fromOffset(8, line / 2)
 	local picture = Icon.make(row, icon, UDim2.fromOffset(22, 22))
+	picture.Name = "Picture" -- the mark is an icon too
 	picture.AnchorPoint = Vector2.new(0, 0.5)
 	picture.Position = UDim2.fromOffset(34, line / 2)
 	picture.ZIndex = row.ZIndex + 1
@@ -573,8 +574,21 @@ local function chestRow(parent: Instance, order: number, title: string, color: C
 	end
 end
 
--- Left column: can I fight it? Name, status, where, what to bring, the checklist, what to do next, its tricks
-local function renderFight(column: ScrollingFrame, index: number, step: StepState, power: number)
+-- One "watch out" line: an icon, the trick's name in gold, what it does
+local function trickLine(column: ScrollingFrame, order: number, icon: string, name: string, words: string)
+	local line = strip(column, order, 0, 6)
+	line.AutomaticSize = Enum.AutomaticSize.Y
+	local layout = line:FindFirstChildOfClass("UIListLayout") :: UIListLayout
+	layout.VerticalAlignment = Enum.VerticalAlignment.Top
+	Icon.make(line, icon, UDim2.fromOffset(20, 20)).ZIndex = line.ZIndex + 1
+	local label = wrapped(line, 2, `<font color="#{UIStyle.HINT:ToHex()}">{name}</font> {words}`, WHITE, true)
+	label.Size = UDim2.new(1, -26, 0, 0)
+end
+
+-- Left column: can I fight it? Name, status, where, what to bring, the checklist, what to do next, its tricks.
+-- reveal false (a locked boss past the next one, BossRules.revealTricks): its tricks, and the Hydra's elements, stay
+-- a surprise
+local function renderFight(column: ScrollingFrame, index: number, step: StepState, power: number, reveal: boolean)
 	local bossId = Bosses.LADDER[index]
 	local boss = Bosses.BOSSES[bossId]
 	local state = states[bossId]
@@ -591,16 +605,19 @@ local function renderFight(column: ScrollingFrame, index: number, step: StepStat
 
 	-- Its element (the Hydra changes element with each phase), where it lives, the element that hits it harder
 	local pills = wrappingStrip(column, 3, 26, 6)
-	local element = UIKit.pill(pills, if boss.phases then "All elements" else boss.element, if boss.phases then UIStyle.PANEL else Cards.ELEMENTS[boss.element] or UIStyle.PANEL, nil, BossTints.icon(bossId))
+	local secret = boss.phases ~= nil and not reveal -- the Hydra's element changes are one of its tricks
+	local element = UIKit.pill(pills, if secret then "???" elseif boss.phases then "All elements" else boss.element, if boss.phases then UIStyle.PANEL else Cards.ELEMENTS[boss.element] or UIStyle.PANEL, nil, BossTints.icon(bossId))
 	element.LayoutOrder = 1
-	Tooltip.attach(element, if boss.phases then "It changes element as it gets hurt." else `Its element: {boss.element}`)
+	Tooltip.attach(element, if secret then "Reach it to find out." elseif boss.phases then "It changes element as it gets hurt." else `Its element: {boss.element}`)
 	local where = UIKit.pill(pills, whereText(bossId), UIStyle.PANEL, nil, "Travel")
 	where.LayoutOrder = 2
 	Tooltip.attach(where, whereTip(bossId))
-	local counters = if boss.phases then {} else BossRules.counterElements(Combat.BEATS, boss.element)
-	local bring = UIKit.pill(pills, if counters[1] then `Bring {table.concat(counters, " or ")}` else "Bring a mix", UIStyle.PANEL, UIStyle.GOOD, counters[1] or "Cards")
-	bring.LayoutOrder = 3
-	Tooltip.attach(bring, if counters[1] then `{table.concat(counters, " and ")} cards hit it {Combat.STRONG}x harder.` else "Bring cards of different elements: each part of the fight has its own.")
+	if not secret then
+		local counters = if boss.phases then {} else BossRules.counterElements(Combat.BEATS, boss.element)
+		local bring = UIKit.pill(pills, if counters[1] then `Bring {table.concat(counters, " or ")}` else "Bring a mix", UIStyle.PANEL, UIStyle.GOOD, counters[1] or "Cards")
+		bring.LayoutOrder = 3
+		Tooltip.attach(bring, if counters[1] then `{table.concat(counters, " and ")} cards hit it {Combat.STRONG}x harder.` else "Bring cards of different elements: each part of the fight has its own.")
+	end
 
 	-- The checklist: shop level, key fragments, Power
 	heading(column, 4, "TO FIGHT IT")
@@ -613,7 +630,7 @@ local function renderFight(column: ScrollingFrame, index: number, step: StepStat
 		local item = Items.ITEMS[unlock.item]
 		local opened = state ~= nil and state.unlocked
 		local keyRow = needRow(column, 6, if opened or have >= unlock.count then "ok" else "no", "KeyFragment", `{unlock.count} {item.name}s`, if opened then "Opened" else `{have}/{unlock.count}`)
-		tinted(keyRow:FindFirstChild("Icon"), BossTints.key(bossId))
+		tinted(keyRow:FindFirstChild("Picture"), BossTints.key(bossId))
 		local lines: { Line } = { item.description, if opened then "Used up: this boss is open for good." else "Used up the first time you fight it." }
 		if previous and not opened then
 			table.insert(lines, { text = `Drops from the {previous.name}. Tap to see it.`, color = UIStyle.GOOD })
@@ -650,20 +667,17 @@ local function renderFight(column: ScrollingFrame, index: number, step: StepStat
 		})
 	end
 
-	-- Its tricks, spelled out (no hovering needed)
+	-- Its tricks, spelled out (no hovering needed), or a surprise until you can reach it
 	heading(column, 9, "WATCH OUT")
 	local tricks = BossRules.watchOut(boss)
-	if #tricks == 0 then
+	if not reveal then
+		trickLine(column, 10, "Lock", "???", "Reach it to find out.")
+	elseif #tricks == 0 then
 		wrapped(column, 10, "No tricks: a good first boss.", UIKit.Colors.Subtext)
-	end
-	for order, trick in tricks do
-		local line = strip(column, 10 + order, 0, 6)
-		line.AutomaticSize = Enum.AutomaticSize.Y
-		local layout = line:FindFirstChildOfClass("UIListLayout") :: UIListLayout
-		layout.VerticalAlignment = Enum.VerticalAlignment.Top
-		Icon.make(line, TRICK_ICONS[trick.kind] or "Info", UDim2.fromOffset(20, 20)).ZIndex = line.ZIndex + 1
-		local words = wrapped(line, 2, `<font color="#{UIStyle.HINT:ToHex()}">{trick.name}:</font> {trick.text}`, WHITE, true)
-		words.Size = UDim2.new(1, -26, 0, 0)
+	else
+		for order, trick in tricks do
+			trickLine(column, 10 + order, TRICK_ICONS[trick.kind] or "Info", `{trick.name}:`, trick.text)
+		end
 	end
 end
 
@@ -753,7 +767,7 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 	end
 end
 
-local function renderDetails(index: number, step: StepState, power: number)
+local function renderDetails(index: number, step: StepState, power: number, isNext: boolean)
 	clear(details)
 	lootPill = nil
 	local phone = UIKit.isPhone()
@@ -767,7 +781,7 @@ local function renderDetails(index: number, step: StepState, power: number)
 	divider.ZIndex = details.ZIndex + 1
 	divider.Parent = details
 	local right = scroller(details, UDim2.new(0.56, 10, 0, 8), UDim2.new(0.44, -18, 1, -16), gap)
-	renderFight(left, index, step, power)
+	renderFight(left, index, step, power, BossRules.revealTricks(step, isNext))
 	renderRewards(right, index, power)
 end
 
@@ -783,7 +797,7 @@ render = function()
 		buildStep(index, stepOf(index, power), phone, index == nextIndex, power)
 	end
 	pathFill.Size = UDim2.fromScale(math.max(0, beaten - 1) / (#Bosses.LADDER - 1), 1)
-	renderDetails(selected, stepOf(selected, power), power)
+	renderDetails(selected, stepOf(selected, power), power, selected == nextIndex)
 end
 
 -- The first step still to beat that isn't locked, else the last one beaten, else the first

@@ -339,6 +339,11 @@ function BossRules.watchOut(boss: TrickBoss): { Trick }
 	return tricks
 end
 
+-- Whether the board spells out a boss's tricks: a surprise only for locked bosses past the next one to beat
+function BossRules.revealTricks(step: "beaten" | "ready" | "tooWeak" | "locked", isNext: boolean): boolean
+	return step ~= "locked" or isNext
+end
+
 -- What the board's travel button does for a boss whose arena is in bossPlace ("Wild" | "Frontier" | "Dungeon")
 -- while you are in `here` ("Main" | "Frontier" | "Dungeon"): its gate in this place, the normal travel to the other
 -- place, the Dungeon portal's directions, or nothing (inside a Dungeon run)
