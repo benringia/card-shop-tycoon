@@ -165,17 +165,15 @@ return {
 		BOX_HEIGHT = 0.9,
 		WIDTH_FILL = 0.7,
 		DEPTH_FILL = 0.5,
-		-- Pack products: each box's place holds a stack of thin packs with the pack art (Config/Packs art)
-		PACKS = { PER_STACK = 5, HEIGHT = 1.05, ASPECT = 0.65, THICKNESS = 0.05, LEAN = 10 },
-		-- UI project 3: each box's place holds an open display box (Util/PackModels) showing up to PACKS_SHOWN packs,
+		-- Pack products: each box's place holds an open display box (Util/PackModels) showing up to PACKS_SHOWN packs,
 		-- emptying as the shelf sells (ShelfStock.boxFill)
 		DISPLAY = { PACKS_SHOWN = 6 },
 		-- Card sleeves (Products stockLook "Sleeves"): retail packets in each box's place, leaning back: a white
 		-- backing card with a header tab and hang hole, a clear window showing the sleeves, a strip in the product's
 		-- colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.
-		-- Deck boxes (Products stockLook "Deck"): little upright boxes in the product's colour with the set's art
-		-- on the front (Config/Packs) and a gold lid band, leaning back a little
-		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LID = 0.16, LID_COLOR = { 235, 190, 80 }, LEAN = 4 },
+		-- Deck boxes (Products stockLook "Deck"): the 3D deck box (Util/PackModels) fitted to WIDTH x HEIGHT x DEPTH,
+		-- PER_STACK front to back, leaning back a little
+		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LEAN = 4 },
 		SLEEVES = {
 			PER_STACK = 2,
 			WIDTH = 0.62,
