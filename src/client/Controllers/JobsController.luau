@@ -54,6 +54,7 @@ local PHONE_TILE_WIDTH = 128
 local BUTTON = UIStyle.MIN_TAP
 local TIP_WIDTH = 250
 local TIP_GAP = 10
+local LIST_PAD = 4 -- the list clips outlines at its edges (the rule chips' tops)
 local TONES = { good = UIStyle.GOOD, ok = WHITE, bad = UIStyle.BAD }
 local STATUS_OK = { fill = Color3.fromRGB(16, 48, 31), text = UIStyle.GOOD }
 local STATUS_WAIT = { fill = Color3.fromRGB(58, 44, 14), text = UIStyle.HINT }
@@ -496,7 +497,7 @@ local function layout()
 	local rows = list:FindFirstChildOfClass("UIListLayout") :: UIListLayout
 	local camera = workspace.CurrentCamera
 	local screenHeight = if camera then camera.ViewportSize.Y else MAX_SIZE.Y
-	local needed = UIKit.HEADER_HEIGHT + 24 + rows.AbsoluteContentSize.Y + UIStyle.LIP
+	local needed = UIKit.HEADER_HEIGHT + 24 + rows.AbsoluteContentSize.Y + 2 * LIST_PAD + UIStyle.LIP
 	local height = math.min(needed, screenHeight * (if phone then 0.96 else 0.85))
 	panel.Size = UDim2.new(if phone then 0.97 else 0.9, 0, 0, height)
 end
@@ -520,6 +521,11 @@ function JobsController.Start()
 	end
 	local rows = list:FindFirstChildOfClass("UIListLayout") :: UIListLayout
 	rows:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(layout)
+	local listPadding = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(listPadding :: any)[side] = UDim.new(0, LIST_PAD)
+	end
+	listPadding.Parent = list
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not panel.Visible then
 			hideTip()

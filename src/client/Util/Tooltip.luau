@@ -4,6 +4,7 @@
 -- names (under it near the top edge), kept on screen (Util/UiLayout). It hides when the pointer leaves, the
 -- finger lifts, or the thing hides, goes away or gets covered. Roblox sends MouseEnter to objects under another
 -- window too (the card view's stat tiles under the party chooser), so a covered thing shows no tip.
+-- Tooltip.rich gives a gold title over a few lines (the boss ladder's items: what they do, their odds).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -137,13 +138,14 @@ local function place(target: GuiObject, tip: TextLabel)
 	tip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
-local function show(target: GuiObject, text: string, touch: boolean, point: Vector2)
+local function show(target: GuiObject, text: string, touch: boolean, point: Vector2, rich: boolean)
 	local screen = target:FindFirstAncestorOfClass("ScreenGui")
 	if not screen or not isShown(target) or covered(target, point) then
 		return
 	end
 	Tooltip.hide()
 	local tip = tipFor(screen)
+	tip.RichText = rich
 	tip.Text = text
 	tip.Visible = true
 	shownFor, shownTip, byTouch = target, tip, touch
@@ -159,11 +161,10 @@ local function show(target: GuiObject, text: string, touch: boolean, point: Vect
 	end)
 end
 
--- Shows `text` while the pointer is over `target` (or a finger is held on it)
-function Tooltip.attach(target: GuiObject, text: string)
+local function hook(target: GuiObject, text: string, rich: boolean)
 	target.MouseEnter:Connect(function()
 		if UserInputService.MouseEnabled then
-			show(target, text, false, mousePoint())
+			show(target, text, false, mousePoint(), rich)
 		end
 	end)
 	target.MouseLeave:Connect(function()
@@ -181,7 +182,7 @@ function Tooltip.attach(target: GuiObject, text: string)
 		local point = Vector2.new(input.Position.X, input.Position.Y)
 		task.delay(UIStyle.LONG_PRESS, function()
 			if pressed == press then
-				show(target, text, true, point)
+				show(target, text, true, point, rich)
 			end
 		end)
 	end)
@@ -194,6 +195,28 @@ function Tooltip.attach(target: GuiObject, text: string)
 			Tooltip.hide()
 		end
 	end)
+end
+
+-- Shows `text` while the pointer is over `target` (or a finger is held on it)
+function Tooltip.attach(target: GuiObject, text: string)
+	hook(target, text, false)
+end
+
+local function escape(text: string): string
+	return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+end
+
+-- A tip with a gold title over a few lines (an item: what it is, its odds); each line may be { text, colour }
+function Tooltip.rich(target: GuiObject, title: string, lines: { string | { text: string, color: Color3 } })
+	local parts = { `<font color="#{UIStyle.HINT:ToHex()}">{escape(title)}</font>` }
+	for _, line in lines do
+		if typeof(line) == "string" then
+			table.insert(parts, escape(line))
+		else
+			table.insert(parts, `<font color="#{line.color:ToHex()}">{escape(line.text)}</font>`)
+		end
+	end
+	hook(target, table.concat(parts, "\n"), true)
 end
 
 -- The words for a Config/UIIcons icon (Config/IconTips); nothing for an icon without an entry

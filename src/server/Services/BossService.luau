@@ -83,6 +83,7 @@ local function sendBosses(player: Player)
 			cleared = record.cleared,
 			lootIn = math.max(0, record.lootAt - now),
 			rewardedToday = BossRules.dayCounts(record, today).rewardedToday,
+			bonusReady = record.bonusDay ~= today, -- the day's first rewarded win still adds its daily chest
 			fragments = if unlock then ItemService.GetCount(player, unlock.item) else 0,
 		}
 	end

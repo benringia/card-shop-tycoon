@@ -331,7 +331,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice" } do
+		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "fullDropsLeft", "chanceText", "countText", "watchOut" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,
@@ -362,5 +362,66 @@ return {
 		expect.equal(BossRules.travelChoice("Dungeon", "Frontier"), "viaPortal", "the Hydra from the Frontier")
 		expect.equal(BossRules.travelChoice("Wild", "Dungeon"), "none", "in a run")
 		expect.equal(BossRules.travelChoice("Dungeon", "Dungeon"), "none", "in a run")
+	end,
+	["lockReason: what keeps a boss shut, shop level first"] = function()
+		local base: BossRules.Step = { cleared = false, unlocked = false, keyNeeded = 3, fragments = 3, shopLevel = 10, needLevel = 5, power = 1, recommended = 400 }
+		local function with(fields: { [string]: any }): BossRules.Step
+			local step = table.clone(base) :: any
+			for key, value in fields do
+				step[key] = value
+			end
+			return step
+		end
+		expect.isNil(BossRules.lockReason(base), "level and keys in hand")
+		expect.equal(BossRules.lockReason(with({ shopLevel = 4 })), "level", "below the shop level")
+		expect.equal(BossRules.lockReason(with({ fragments = 2 })), "keys", "short of fragments")
+		expect.equal(BossRules.lockReason(with({ shopLevel = 4, fragments = 0 })), "level", "both short: the level first")
+		expect.isNil(BossRules.lockReason(with({ unlocked = true, fragments = 0 })), "opened already, keys used")
+		expect.isNil(BossRules.lockReason(with({ cleared = true, shopLevel = 1 })), "beaten bosses are never locked")
+	end,
+	["counterElements: the elements that hit a boss harder"] = function()
+		expect.equal(table.concat(BossRules.counterElements(Combat.BEATS, "Volt"), ","), "Shade", "Shade beats Volt")
+		expect.equal(table.concat(BossRules.counterElements(Combat.BEATS, "Bloom"), ","), "Ember", "Ember beats Bloom")
+		expect.equal(#BossRules.counterElements(Combat.BEATS, "Nothing"), 0, "unknown element")
+		expect.equal(table.concat(BossRules.counterElements({ A = { "C" }, B = { "C" } }, "C"), ","), "A,B", "several, sorted")
+	end,
+	["fullDropsLeft: wins left today before the soft cap"] = function()
+		expect.equal(BossRules.fullDropsLeft(Bosses, 0), Bosses.SOFT_CAP_AFTER, "none yet")
+		expect.equal(BossRules.fullDropsLeft(Bosses, Bosses.SOFT_CAP_AFTER - 1), 1, "one left")
+		expect.equal(BossRules.fullDropsLeft(Bosses, Bosses.SOFT_CAP_AFTER + 3), 0, "past the cap")
+	end,
+	["chanceText and countText: drop odds in words"] = function()
+		expect.equal(BossRules.chanceText(0.25), "25%", "quarter")
+		expect.equal(BossRules.chanceText(0.6), "60%", "sixty")
+		expect.equal(BossRules.chanceText(0.002), "1%", "never shows 0%")
+		expect.equal(BossRules.chanceText(1), "100%", "always")
+		expect.equal(BossRules.countText(1, 1), "x1", "one")
+		expect.equal(BossRules.countText(1, 2), "x1-2", "a range")
+		expect.equal(BossRules.countText(3, 3), "x3", "fixed")
+	end,
+	["watchOut: each boss's tricks in kid words"] = function()
+		expect.equal(#BossRules.watchOut(Bosses.BOSSES.meadowWarden), 0, "the first boss has none")
+		local heal = BossRules.watchOut(Bosses.BOSSES.caveBroodQueen)
+		expect.equal(#heal, 1, "one trick")
+		expect.equal(heal[1].kind, "heal", "heal")
+		expect.equal(heal[1].name, "Heals", "heal name")
+		expect.equal(heal[1].text, "Heals 15% of its health when under 50% (3 times).", "heal words")
+		local enrage = BossRules.watchOut(Bosses.BOSSES.emberColossus)[1]
+		expect.equal(enrage.text, "Hits 1.5x harder when under 50% health.", "enrage words")
+		local shield = BossRules.watchOut(Bosses.BOSSES.frostTyrant)[1]
+		expect.equal(shield.text, "Puts up a shield every 20 s. Break it to stun it for 3 s.", "shield words")
+		local clap = BossRules.watchOut(Bosses.BOSSES.stormSovereign)[1]
+		expect.equal(clap.text, "Stuns your cards every 14 s. Faster cards shake it off sooner.", "thunderclap words")
+		local adds = BossRules.watchOut(Bosses.BOSSES.riftDevourer)[1]
+		expect.equal(adds.text, "Calls 2 Rift Horrors at 50% health. Beat them first: it's tougher while they stand.", "adds words")
+		local hydra = BossRules.watchOut(Bosses.BOSSES.prismHydra)
+		expect.equal(#hydra, 1, "the Hydra: one entry for its phases")
+		expect.equal(hydra[1].kind, "phases", "phases")
+		expect.equal(hydra[1].text, "As it gets hurt: Tide, then Volt, Shade, Bloom, Ember. Each part fights like an earlier boss.", "phase words")
+		for _, id in Bosses.LADDER do
+			for _, entry in BossRules.watchOut(Bosses.BOSSES[id]) do
+				expect.equal(string.find(entry.text, "[^%w%s%p]") == nil, true, `{id} {entry.kind}: plain ASCII`)
+			end
+		end
 	end,
 }

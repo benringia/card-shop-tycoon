@@ -675,10 +675,28 @@ group, checked before its fragments and every time (not only the first). Below i
   each a disc with the boss's icon (its element's; the Hydra a gem, `Util/BossTints`), its number and name, and a state
   from `BossRules.stepState`: beaten (gold ring, trophy), ready (green glow, check: you can start it now, key fragments
   in hand count, and your best party card's Power is enough), too weak (red ring) or locked (faded, lock: shop level or
-  fragments short). It opens on the first step still to beat. Tapping a step shows it below: name, element and where it
-  lives; your Power against the Power it needs as two bars with "You're ready!" or "Too weak", or when locked what's
-  missing as bars (shop level, keys x/N tinted for that boss) with how to get them; full loot ready or its countdown,
-  today's wins and reduced-drop notes; what it drops as icons (hover for names); and a travel button
+  fragments short). A legend under the ladder names the four badges, the path fills gold up to the last boss beaten
+  in a row, a gold "Next" tag sits on the first boss still to beat, and each step's tooltip says where it stands
+  ("built for 1500 Power", "opens at shop level 15", "needs 8 keys"). It opens on the first step still to beat.
+  Tapping a step shows it below in two columns (each scrolls when it doesn't fit, as on phones). **To fight it:** its
+  name with a status pill (Beaten / Ready / Too weak / Locked) and its title; pills for its element, where it lives
+  (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
+  tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); a checklist of what it needs, each row with a
+  check, cross or "!" mark: shop level (You: n), its key fragments (n/N tinted for that boss, "Opened" once used,
+  "No key needed" for the first; tooltip: the item, that it's used up on the first fight, and where it drops; tapping
+  the row while short shows the boss before), and Power (the Power it's built for against your best party card, with
+  a bar; a warning, not a lock); then a tinted box with what to do next (`BossRules.lockReason`: level up the shop,
+  beat the boss before for n more keys with a "See it" button, level up or change the party with a "Party" button,
+  go fight it, or fight again for loot); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
+  thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). **Rewards:** a
+  loot pill ("Loot ready" green, or "Loot in 12:34" counting down; tooltip: loot once every 15 min, earlier wins pay
+  cash and XP only); each win's drops as slots with a count badge and the chance under each, at the chance your next
+  win rolls (soft cap and over-power factors included, gold when shrunk; `BossRules.chanceText` / `countText`), a
+  fragment for a boss already opened faded with "-" (it no longer drops); the first-win chest (until beaten) and the
+  day's first-win chest as small slots (the payload's `bonusReady`; "Daily bonus collected: back tomorrow" once
+  taken); cash and XP every win; "Full drops: n more wins today" (`BossRules.fullDropsLeft`) or "Fewer drops today";
+  "Party very strong: fewer drops" above the over-power line. Item slots have rich tooltips (`Tooltip.rich`: the gold
+  name, what it does, its odds or chest). Last comes the travel button
   (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
   `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), "Go to the Frontier" / "Go home"
   (the normal Frontier travel), or for the Hydra "Enter the Dungeon portal in the Frontier". In a boss
@@ -977,7 +995,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
-    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps (beaten / ready / too weak / locked), details, Take me there
+    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
@@ -994,7 +1012,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
-    │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it)
+    │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
     │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
@@ -1067,7 +1085,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
-            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -1144,6 +1162,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   `UIStyle.LONG_PRESS` on touch. One tip per ScreenGui, over everything, above the thing (below it near the top edge,
   `UiLayout.above`); it hides when the pointer leaves, the finger lifts or the thing hides. Roblox sends MouseEnter to
   things under another window too, so a covered thing (checked with `GetGuiObjectsAtPosition`) shows no tip.
+  `Tooltip.rich(target, title, lines)` shows a gold title over a few lines (coloured lines allowed; text escaped for
+  RichText): the boss ladder's items.
 - **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
   for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
@@ -1291,7 +1311,9 @@ boss models; the ranch and Heroic tiers come after those.
   there, Bag; no Star Shard pill. Built; waiting for the user's Studio check before merge. Feedback round 1 built:
   Prices price box, Party legend and tonic badge, word tooltips, card view centring, clearer chooser and comparison
   wording, compact chooser buttons, party change toast, rarity guide without spoilers. Round 2: Shop Jobs rebuilt as
-  option B (with Switch job), short tooltip words, no tooltips through covering windows, livelier toasts. Next: UI project 2 (a 3D
+  option B (with Switch job), short tooltip words, no tooltips through covering windows, livelier toasts. Round 3:
+  Jobs rule chips no longer clipped (the list is padded), Boss Ladder reworked (legend, Next, To fight it checklist
+  with key fragments, what to do next, Watch out, Rewards with odds and chests, item tooltips). Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
