@@ -1358,6 +1358,13 @@ boss models; the ranch and Heroic tiers come after those.
   turns with drag, swipe, tap and riffle, divider tabs, hover and hold tooltips, the card lift into the card view,
   fights close it, world sound at the character). Studio at graphics level 1: worst frames 22 ms opening, 38 ms
   turning (budget 50). Waiting for the user's Studio check and the iPhone 16 Pro Max check of the published game.
+  Deferred minors from its review: a refresh between riffle turns cuts the riffle short and tab clicks mid-turn are
+  ignored; picking a card doesn't cancel pending turns; closing on a boss fight could override the boss intro
+  camera; hover rise grows down-right; the tooltip can cover the set tabs and isn't re-placed when the camera
+  moves; idle tween cost of placed faces unmeasured; tabs rebuilt every refresh; some tunables still in code
+  (hover, lift, desk size, warm batch, flick window, park offset); stale comments and small dead bits
+  (BACKDROP_COLOR, BinderSpreads.turningSide); nearby ProximityPrompts over the binder unchecked; no gamepad
+  card picking.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
