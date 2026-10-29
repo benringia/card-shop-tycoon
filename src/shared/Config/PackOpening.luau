@@ -24,7 +24,8 @@ return {
 		GLOW = 0.35, -- the glow's size, share of the backdrop
 	},
 	LIGHTS = {
-		KEY = { COLOR = Color3.fromRGB(255, 240, 220), BRIGHTNESS = 2.2, RANGE = 16, AT = Vector3.new(-3, 4, -6) },
+		-- Only the pack and deck box take these (card faces ignore light); too bright and the bloom glows round the pack
+		KEY = { COLOR = Color3.fromRGB(255, 240, 220), BRIGHTNESS = 1.4, RANGE = 16, AT = Vector3.new(-3, 4, -6) },
 		RIM = { COLOR = Color3.fromRGB(140, 190, 255), BRIGHTNESS = 1.6, RANGE = 14, AT = Vector3.new(4, 2, 3) },
 	},
 	POST = {
@@ -43,6 +44,7 @@ return {
 		BOB = 0.12,
 		BOB_SECONDS = 2.4,
 		SHEEN_EVERY = 2.4, -- a light sweep over the foil this often while it waits
+		SHEEN_BRIGHTNESS = 1.4, -- the sweeping light at its peak (4 washed the art out white under the bloom)
 		SWIPE_PIXELS = 60, -- a drag across the pack's top this long tears it (a tap tears it too)
 	},
 	-- spec 4.2: bars in, push in on the tear, the strip parts while light leaks, then the snap
@@ -89,7 +91,8 @@ return {
 		BANNER_Y = 0.7, -- the RARE! banner's middle, share of the screen height (just under the shown card)
 		BANNER_HEIGHT = 0.085, -- share of the screen height
 		BANNER_ASPECT = 4.2, -- width over height
-		GLOW_TRANSPARENCY = 0.88, -- the glow behind a teased or big card
+		GLOW_TRANSPARENCY = 0.88, -- the glow behind a teased (face-down) card
+		GLOW_FADE_SECONDS = 0.25, -- it fades once the card is face up
 		-- The rays and aura stand far behind the shown card (behind the row's far cards too), sized to look right there
 		BACK_DEPTH = 32, -- studs from the camera
 		RAYS_SIZE = 56,

@@ -457,6 +457,8 @@ function OpeningCards.flip(index: number)
 	end
 	shown.back.Enabled = false
 	shown.at = landing
+	-- the tease's glow is for the face-down card; face up, its square edge reads as a border
+	TweenService:Create(shown.halo, TweenInfo.new(FLIP.GLOW_FADE_SECONDS), { Transparency = 1 }):Play()
 	play(shown.shine, FLIP.SHINE_SECONDS, 0)
 	OpeningFx.glint((landing * CFrame.new(CARD_W * 0.42, SIZE.HEIGHT * 0.42, -0.1)).Position, 0.8)
 	if plan.tease > 0 then
@@ -530,10 +532,6 @@ local function land(shown: Shown)
 	if pull.plan.goldShards then
 		OpeningFx.burst(shown.at.Position, shown.color, 3.8)
 		OpeningFx.shards(shown.at.Position, 14, true, 0.9)
-	end
-	if pull.plan.alive then
-		shown.halo.Color = shown.color
-		TweenService:Create(shown.halo, TweenInfo.new(0.3), { Transparency = FLIP.GLOW_TRANSPARENCY }):Play()
 	end
 	if pull.isNew then
 		shown.newTag.Enabled = true

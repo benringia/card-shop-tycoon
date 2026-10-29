@@ -68,7 +68,7 @@ local function sweep()
 	local light = sheen:FindFirstChildOfClass("PointLight") :: PointLight
 	light.Brightness = 0
 	TweenService:Create(sheen, TweenInfo.new(0.9, Enum.EasingStyle.Sine), { CFrame = front * CFrame.new(1.6, -0.4, 0) }):Play()
-	local up = TweenService:Create(light, TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0, true), { Brightness = 4 })
+	local up = TweenService:Create(light, TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0, true), { Brightness = LOOK.SHEEN_BRIGHTNESS })
 	up:Play()
 end
 
