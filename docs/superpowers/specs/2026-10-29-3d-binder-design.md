@@ -61,8 +61,10 @@ Anti-goals (would make it a failure even if it technically works)
   much smaller than the near one. The camera fits the binder into the screen area the 2D corner buttons leave free
   (section 8), the way `getBookLayout` fits the 2D book today.
 - **Desk:** a wooden counter top filling the view, warm wood with visible planks.
-- **Lamp:** warm light pooled on the binder, darker toward the edges of the screen. A real light in the scene, so the
-  sleeves catch it.
+- **Lamp:** warm light pooled on the binder, darker toward the edges of the screen. Phones run at low graphics
+  quality, where real lights turn coarse and glass glints mostly vanish, so the look must not depend on them: the light
+  pool and the sleeve glints are painted (gradients, glint overlays) and look the same at every quality level; a real
+  light may add to it on top **(Claude's call)**.
 - **Binder:** black leather case with a stitched seam around the edge (as today's 2D design, `Collection.BOOK`
   colours), dark grey pages, a chrome ring rail down the middle with three rings. Pages sit around the rings.
 - Built in code from parts and materials (Roblox has Wood, Leather, Metal, Glass) **(Claude's call)**; a modelled
@@ -81,7 +83,9 @@ Anti-goals (would make it a failure even if it technically works)
 - **Spread 1** of each set is the set's cover on the left page (today's cover: the pack art, set name, "30 / 35
   collected", worth, a progress bar) and the first 9 cards on the right. Later spreads hold 18 cards. Card order,
   spreads and the page counter follow `Util/BinderSpreads` with 9 pockets a page.
-- Only the open spread needs full card faces. Pages that aren't showing need nothing drawn.
+- Only the open spread needs full card faces. Pages that aren't showing need nothing drawn, and their animated
+  effects (foil, holo, aurora tweens in `CardFace`) must not keep running **(Claude's call)**.
+- Clicking a "?" or an empty pocket turns the page like clicking the page anywhere else (as in the mockup).
 
 ## 5. Turning pages
 
@@ -118,6 +122,17 @@ Anti-goals (would make it a failure even if it technically works)
   (CardDetailController, unchanged). Closing the card view returns to the binder on the same spread. The lift must
   not delay the card view noticeably (around a third of a second).
 - Missing cards ("?") show the "Not found yet" tooltip as today and don't open the card view.
+
+## 7b. Living alongside the rest of the game (Claude's calls)
+
+- The scene is built once, the first time the binder opens, then kept hidden and reused, so later openings are
+  instant. Pressing I (the Bag) shows the Bag window over the desk like today's over the book.
+- World sounds keep playing at the character while the camera is at the stage (the audio listener stays on the
+  character), fixing today's quiet world in the card view.
+- Going to the card view moves the camera from the binder's stage to the card view's and back; the camera's field
+  of view and type are put back exactly when the binder closes.
+- If a fight starts while the binder is open (an elite or an aggro zone), the binder closes first so the fight
+  camera takes over.
 
 ## 8. Kept from today
 
@@ -165,4 +180,10 @@ All of this keeps working, in the 2D layer over the 3D scene unless noted:
   drag, fast repeated E), sets via the tabs, filters, hover tooltips, picking a card into the card view and back,
   the Bag tab, the Rarity guide, `Open(hint)` from Party and Jobs, and no world showing through. Screenshots of the
   key moments. The Device emulator (landscape phone) for section 9.
-- Done when the user has checked it in Studio and approved, then it is merged and pushed (CLAUDE.md workflow).
+- Performance (the user's answer, 2026-10-29): Claude checks in Studio Play at the lowest graphics quality, watching
+  frame time (the MicroProfiler or the Stats overlay) while opening the binder the first time, turning pages fast
+  and picking a card; any frame over budget at those moments is a bug to fix before hand-over. The user then plays
+  the published (private) game on an iPhone 16 Pro Max in landscape for feel and readability. That phone is high-end,
+  so it checks the look and the 3 x 3 cards, not mid-range speed; the low-graphics Studio check covers speed.
+- Done when the user has checked it in Studio and on the iPhone and approved, then it is merged and pushed
+  (CLAUDE.md workflow).
