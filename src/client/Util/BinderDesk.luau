@@ -108,7 +108,7 @@ local function topCanvas(part: BasePart, pixelsPerStud: number, color: Color3, l
 end
 
 -- The desk: wood with plank lines, darkened toward the edges, and a warm painted pool of lamp light over the binder
-local function buildDesk(parent: Instance)
+local function buildDesk(parent: Instance): Frame
 	local desk = makePart("Desk", Vector3.new(DESK_SIZE, 1, DESK_SIZE), centre * CFrame.new(0, -0.5 - CASE_T / 2, 0), Desk.DESK_COLOR, Enum.Material.Wood, parent)
 	local canvas = topCanvas(desk, DESK_PIXELS_PER_STUD, Desk.DESK_COLOR)
 	local planks = math.floor(DESK_SIZE / Desk.DESK_PLANK_WIDTH)
@@ -141,49 +141,99 @@ local function buildDesk(parent: Instance)
 	pool.ImageTransparency = Desk.LAMP_TRANSPARENCY
 	pool.ZIndex = 4
 	pool.Parent = canvas
+	return canvas
 end
 
 -- The leather case with a stitched border, and the chrome ring rail with three rings down the spine
-local function buildCase(parent: Instance)
+-- A dashed seam: short stitches along a line from (x0, y0) to (x1, y1) on the case's canvas (pixels)
+local function stitchLine(canvas: Frame, x0: number, y0: number, x1: number, y1: number)
+	local look = Desk.STITCH
+	local dash, gap, thick = look.dash * CASE_PIXELS_PER_STUD, look.gap * CASE_PIXELS_PER_STUD, look.thickness * CASE_PIXELS_PER_STUD
+	local length = math.max(math.abs(x1 - x0), math.abs(y1 - y0))
+	local across = x1 ~= x0
+	local count = math.floor((length + gap) / (dash + gap))
+	local start = (length - (count * (dash + gap) - gap)) / 2
+	for index = 0, count - 1 do
+		local along = start + index * (dash + gap)
+		local stitch = Instance.new("Frame")
+		stitch.BorderSizePixel = 0
+		stitch.BackgroundColor3 = BOOK.STITCH
+		stitch.BackgroundTransparency = 0.25
+		stitch.AnchorPoint = Vector2.new(if across then 0 else 0.5, if across then 0.5 else 0)
+		stitch.Position = if across then UDim2.fromOffset(x0 + along, y0) else UDim2.fromOffset(x0, y0 + along)
+		stitch.Size = if across then UDim2.fromOffset(dash, thick) else UDim2.fromOffset(thick, dash)
+		stitch.ZIndex = 3
+		stitch.Parent = canvas
+	end
+end
+
+-- The leather case (rounded, a dark edge, a dashed seam all round, a soft shadow on the desk) and the chrome ring
+-- rail with three chunky rings arching over the pages' inner edges
+local function buildCase(parent: Instance, deskCanvas: Frame)
+	-- The part only carries the drawing (its square corners would show): the case is the rounded canvas on it
 	local case = makePart("Case", flatSize(CASE_W, CASE_T, CASE_D), centre * QUARTER, BOOK.CASE, Enum.Material.Leather, parent)
-	local leather = topCanvas(case, CASE_PIXELS_PER_STUD, BOOK.CASE, true)
+	case.Transparency = 1
+	local canvas = topCanvas(case, CASE_PIXELS_PER_STUD, BOOK.CASE, true)
+	canvas.BackgroundTransparency = 1
+	local leather = Instance.new("Frame")
+	leather.Name = "Leather"
+	leather.Size = UDim2.fromScale(1, 1)
+	leather.BackgroundColor3 = BOOK.CASE
+	leather.BorderSizePixel = 0
+	leather.Parent = canvas
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, Desk.CASE_CORNER * CASE_PIXELS_PER_STUD)
+	corner.Parent = leather
 	local grain = Instance.new("UIGradient")
 	grain.Rotation = 90
 	grain.Color = ColorSequence.new(BOOK.CASE, BOOK.CASE_DARK)
 	grain.Parent = leather
-	local stitch = Instance.new("Frame")
-	stitch.AnchorPoint = Vector2.new(0.5, 0.5)
-	stitch.Position = UDim2.fromScale(0.5, 0.5)
-	stitch.Size = UDim2.new(1, -Desk.CASE_MARGIN * CASE_PIXELS_PER_STUD * 0.8, 1, -Desk.CASE_MARGIN * CASE_PIXELS_PER_STUD * 0.8)
-	stitch.BackgroundTransparency = 1
-	stitch.Parent = leather
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = stitch
-	local thread = Instance.new("UIStroke")
-	thread.Color = BOOK.STITCH
-	thread.Thickness = 2
-	thread.Transparency = 0.35
-	thread.Parent = stitch
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = BOOK.CASE_DARK
+	edge.Thickness = 4
+	edge.Parent = leather
+	local width, depth = CASE_W * CASE_PIXELS_PER_STUD, CASE_D * CASE_PIXELS_PER_STUD
+	local inset = Desk.STITCH.inset * CASE_PIXELS_PER_STUD
+	local round = Desk.CASE_CORNER * CASE_PIXELS_PER_STUD
+	stitchLine(canvas, inset + round, inset, width - inset - round, inset)
+	stitchLine(canvas, inset + round, depth - inset, width - inset - round, depth - inset)
+	stitchLine(canvas, inset, inset + round, inset, depth - inset - round)
+	stitchLine(canvas, width - inset, inset + round, width - inset, depth - inset - round)
 
-	local railHeight = PAGE_Y + PAGE_T / 2 + 0.03
-	makePart("Rail", Vector3.new(0.16, 0.06, PAGE.Y * 0.94), centre * CFrame.new(0, railHeight, 0), BOOK.CHROME[2], Enum.Material.Metal, parent)
+	-- Its soft shadow on the desk, a little toward the viewer
+	local shadow = Instance.new("ImageLabel")
+	shadow.Name = "BinderShadow"
+	shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+	shadow.Position = UDim2.new(0.5, 0, 0.5, 0.25 * DESK_PIXELS_PER_STUD)
+	shadow.Size = UDim2.fromOffset((CASE_W + 1.6) * DESK_PIXELS_PER_STUD, (CASE_D + 1.6) * DESK_PIXELS_PER_STUD)
+	shadow.BackgroundTransparency = 1
+	shadow.Image = CardDesign.IMAGES.GLOW
+	shadow.ImageColor3 = Color3.new(0, 0, 0)
+	shadow.ImageTransparency = Desk.SHADOW_TRANSPARENCY_DESK
+	shadow.ZIndex = 5
+	shadow.Parent = deskCanvas
+
+	local railHeight = PAGE_Y + PAGE_T / 2 + 0.04
+	makePart("Rail", Vector3.new(Desk.RAIL_WIDTH, 0.07, PAGE.Y * 0.94), centre * CFrame.new(0, railHeight, 0), BOOK.CHROME[2], Enum.Material.Metal, parent)
 	-- Each ring a half circle over the rail, out of short cylinders
 	local radius = Desk.RING_RADIUS
 	local segments = Desk.RING_SEGMENTS
-	local chord = 2 * radius * math.sin(math.pi / (2 * segments)) + 0.02
+	local thick = Desk.RING_THICKNESS
+	local chord = 2 * radius * math.sin(math.pi / (2 * segments)) + thick * 0.4
 	for _, z in { -PAGE.Y * 0.32, 0, PAGE.Y * 0.32 } do
 		for segment = 1, segments do
 			local angle = math.pi * (segment - 0.5) / segments
 			local mid = centre * CFrame.new(radius * math.cos(angle), railHeight + radius * math.sin(angle), z)
-			local piece = makePart("Ring", Vector3.new(chord, 0.07, 0.07), mid * CFrame.Angles(0, 0, angle + math.pi / 2), BOOK.CHROME[1], Enum.Material.Metal, parent)
+			local piece = makePart("Ring", Vector3.new(chord, thick, thick), mid * CFrame.Angles(0, 0, angle + math.pi / 2), BOOK.CHROME[1], Enum.Material.Metal, parent)
 			piece.Shape = Enum.PartType.Cylinder
-			piece.Reflectance = 0.25
+			piece.Reflectance = 0.3
 		end
 	end
 end
 
--- One page lying on the case beside the spine: a canvas with nine pocket slots and a shade along its inner edge
+-- One page lying on the case beside the spine: a canvas with its pocket slots (Config POCKETS) and a shade along its
+-- inner edge
 local function buildPage(side: Side, parent: Instance)
 	local x = (if side == "Right" then 1 else -1) * (Desk.SPINE_GAP / 2 + PAGE.X / 2)
 	local page = makePart(`{side}Page`, flatSize(PAGE.X, PAGE_T, PAGE.Y), centre * CFrame.new(x, PAGE_Y, 0) * QUARTER, BOOK.PAGE_COLOR, Enum.Material.SmoothPlastic, parent)
@@ -238,18 +288,19 @@ function BinderDesk.build()
 	end
 	local root = Instance.new("Folder")
 	root.Name = "BinderDesk"
-	buildDesk(root)
-	buildCase(root)
+	local deskCanvas = buildDesk(root)
+	buildCase(root, deskCanvas)
 	buildPage("Left", root)
 	buildPage("Right", root)
 	root.Parent = workspace
 	folder = root
 end
 
--- The width the camera fits: the case plus room for the set tabs on both sides, so the binder stays centred
-local function fittedSize(): (number, number)
+-- What the camera fits: the case and the set tabs sticking out of its right edge (width, depth), and how far right
+-- of the case's centre the middle of that is
+local function fittedSize(): (number, number, number)
 	local tabs = Desk.TAB.stickOut + Desk.TAB.openExtra
-	return CASE_W + 2 * tabs, CASE_D
+	return CASE_W + tabs, CASE_D, tabs / 2
 end
 
 -- The binder's shape on screen (width / height, tabs included, leaning back TILT degrees): the rectangle the
@@ -263,11 +314,11 @@ end
 local function cameraFor(rect: UiLayout.Rect): CFrame
 	local camera = workspace.CurrentCamera
 	local view = { w = camera.ViewportSize.X, h = camera.ViewportSize.Y }
-	local w, h = fittedSize()
+	local w, h, offset = fittedSize()
 	local distance = BinderFit.distance({ w = w, h = h }, { w = rect.w, h = rect.h }, view, Desk.FIELD_OF_VIEW, Desk.TILT)
 	local dx, dy = BinderFit.shift(rect, view, distance, Desk.FIELD_OF_VIEW)
 	local tilt = math.rad(Desk.TILT)
-	local focus = centre.Position
+	local focus = centre.Position + centre.RightVector * offset
 	local back = centre:VectorToWorldSpace(Vector3.new(0, math.cos(tilt), math.sin(tilt)))
 	local up = centre:VectorToWorldSpace(Vector3.new(0, math.sin(tilt), -math.cos(tilt)))
 	return CFrame.lookAt(focus + back * distance, focus, up) * CFrame.new(-dx, -dy, 0)

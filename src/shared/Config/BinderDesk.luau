@@ -11,14 +11,20 @@ return {
 	SPINE_GAP = 0.36, -- studs between the pages (the ring rail)
 	CASE_MARGIN = 0.22, -- studs of leather round the pages
 	PAGE_PIXELS_PER_STUD = 160, -- a page's canvas: 480 x 704 px
-	-- 3 x 3 pockets a page; pads and gap are fractions of the page
-	POCKETS = { columns = 3, rows = 3, padX = 0.05, padY = 0.04, gap = 0.03 },
+	-- 2 x 2 pockets a page, big enough to read on a phone (the user's call, 2026-10-29; 3 x 3 was too small); pads
+	-- and gap are fractions of the page
+	POCKETS = { columns = 2, rows = 2, padX = 0.06, padY = 0.04, gap = 0.04 },
 	-- Set dividers sticking out of the case's right edge (studs), top down, room for a label and a finger;
 	-- the open set's sticks out further
 	TAB = { depth = 0.82, stickOut = 0.9, openExtra = 0.15, gap = 0.12, top = 0.3 }, -- 0.82: 48+ px tall on a landscape phone
 	CASE_THICKNESS = 0.12,
-	RING_RADIUS = 0.28,
-	RING_SEGMENTS = 7,
+	CASE_CORNER = 0.2, -- studs: the leather case's rounded corners
+	STITCH = { inset = 0.1, dash = 0.13, gap = 0.08, thickness = 0.025 }, -- studs: the dashed seam round the case
+	RAIL_WIDTH = 0.24,
+	RING_RADIUS = 0.36, -- the chrome rings arch over the pages' inner edges
+	RING_THICKNESS = 0.11,
+	RING_SEGMENTS = 9,
+	SHADOW_TRANSPARENCY_DESK = 0.35, -- the binder's soft shadow on the desk
 
 	-- The desk and the painted lamp light (looks the same at every graphics quality: no real light needed)
 	DESK_COLOR = Color3.fromRGB(138, 90, 53),

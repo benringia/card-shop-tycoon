@@ -69,8 +69,8 @@ type Tile = {
 -- A pocket is the card plus a chip row under it (copies owned, best grade and level), in page-canvas pixels
 -- (a page is Desk.PAGE_PIXELS_PER_STUD px a stud, about 1.6 canvas px to a screen px on a desktop)
 local CARD_ASPECT = 0.7
-local CHIP_ROW = 32
-local CHIP_TEXT = 22
+local CHIP_ROW = 44
+local CHIP_TEXT = 32
 local POCKETS_PER_PAGE = Desk.POCKETS.columns * Desk.POCKETS.rows
 local TOOLTIP_WIDTH = 260
 local TOOLTIP_GAP = 8

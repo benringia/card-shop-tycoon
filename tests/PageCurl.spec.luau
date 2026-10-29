@@ -71,12 +71,12 @@ return {
 		equal(PageCurl.isTap(20, 0, 0.1, 10, 0.35), false, "moved")
 		equal(PageCurl.isTap(0, 0, 0.5, 10, 0.35), false, "held")
 	end,
-	["config: Config/BinderDesk pockets are 3 x 3"] = function()
+	["config: Config/BinderDesk pockets are 2 x 2 (big cards for phones, the user's call 2026-10-29)"] = function()
 		-- Config/BinderDesk holds Vector3/Color3 values, so Lune can't load it; read its text instead
 		local text = fs.readFile("src/shared/Config/BinderDesk.luau")
 		local columns, rows = string.match(text, "POCKETS = { columns = (%d+), rows = (%d+)")
-		equal(tonumber(columns), 3, "columns")
-		equal(tonumber(rows), 3, "rows")
+		equal(tonumber(columns), 2, "columns")
+		equal(tonumber(rows), 2, "rows")
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/PageCurl.luau")), { debugName = "PageCurl" })()

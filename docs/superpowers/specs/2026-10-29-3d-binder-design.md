@@ -24,7 +24,8 @@ binder; (3) cards in the world (shelf card models, bigger cards in bigger glass 
 
 Goals
 - The binder screen is a 3D scene: a desk, a lamp, an open ring binder (section 3).
-- 3 x 3 pockets per page, 18 cards a spread, in plastic sleeves that catch the lamp light (section 4).
+- 2 x 2 pockets per page, 8 cards a spread, in plastic sleeves that catch the lamp light (section 4). Changed from
+  3 x 3 by the user on 2026-10-29 after seeing it built: 3 x 3 made the cards too small for phones.
 - Real page turns: the page bends and lifts from its outer edge, travels over the rings and lands, with a shadow and
   a page sound (section 5).
 - Set dividers as coloured plastic tabs sticking out of the binder's right edge (section 6).
@@ -47,7 +48,7 @@ Anti-goals (would make it a failure even if it technically works)
 - Frame drops or a long freeze when opening the binder or turning pages on a mid-range phone.
 - Anything of the game world showing through or behind the scene (other players, customers' bubbles, the sky).
 - Losing a current feature (list in section 8).
-- Unreadable on phones: if the 3 x 3 cards can't be told apart on a landscape phone, the design has failed there.
+- Unreadable on phones: if the cards can't be told apart on a landscape phone, the design has failed there.
 
 ## 3. The scene
 
@@ -72,7 +73,8 @@ Anti-goals (would make it a failure even if it technically works)
 
 ## 4. Pages and pockets
 
-- **3 x 3 pockets per page on every screen**, 18 cards a spread (the user's pick; no phone fallback to bigger pockets,
+- **2 x 2 pockets per page on every screen**, 8 cards a spread (the user's pick, 2026-10-29, replacing 3 x 3 which
+  was too small on phones; no separate phone layout,
   see section 9).
 - Each pocket: a plastic sleeve over the card. The card face is today's (`Util/CardFace`: `render` for owned cards,
   `renderMissing` for the "?" slot with its number), so rarity rims, foil and Legendary looks stay the same. The sleeve
@@ -81,7 +83,7 @@ Anti-goals (would make it a failure even if it technically works)
 - The chips under each card stay ("Owned 3", or "x3" with "B · Lv 4 · Job · Party"), drawn small along the sleeve's
   bottom edge on the page.
 - **Spread 1** of each set is the set's cover on the left page (today's cover: the pack art, set name, "30 / 35
-  collected", worth, a progress bar) and the first 9 cards on the right. Later spreads hold 18 cards. Card order,
+  collected", worth, a progress bar) and the first 4 cards on the right. Later spreads hold 8 cards. Card order,
   spreads and the page counter follow `Util/BinderSpreads` with 9 pockets a page.
 - Only the open spread needs full card faces. Pages that aren't showing need nothing drawn, and their animated
   effects (foil, holo, aurora tweens in `CardFace`) must not keep running **(Claude's call)**.
@@ -153,7 +155,7 @@ All of this keeps working, in the 2D layer over the 3D scene unless noted:
 
 ## 9. Phones
 
-- Landscape phones show the whole spread with 3 x 3 pages, as the user picked. The binder takes the full height
+- Landscape phones show the whole spread with 2 x 2 pages, as the user picked. The binder takes the full height
   between the slim corner lanes (today's narrow layout: Cards and Bag down the left edge, Rarity guide bottom left,
   Filters under the close button; no arrows, no progress card).
 - On a phone the card names on the faces will be small; holding a finger on a card shows its tooltip, and the chips
@@ -184,6 +186,6 @@ All of this keeps working, in the 2D layer over the 3D scene unless noted:
   frame time (the MicroProfiler or the Stats overlay) while opening the binder the first time, turning pages fast
   and picking a card; any frame over budget at those moments is a bug to fix before hand-over. The user then plays
   the published (private) game on an iPhone 16 Pro Max in landscape for feel and readability. That phone is high-end,
-  so it checks the look and the 3 x 3 cards, not mid-range speed; the low-graphics Studio check covers speed.
+  so it checks the look and the cards' size, not mid-range speed; the low-graphics Studio check covers speed.
 - Done when the user has checked it in Studio and on the iPhone and approved, then it is merged and pushed
   (CLAUDE.md workflow).

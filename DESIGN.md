@@ -982,7 +982,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 3x3 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
+    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
@@ -1215,15 +1215,15 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
   front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
   leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
-  painted warm lamp pool, darker edges, a black leather case with a stitched border, dark pages (the binder's own
+  painted warm lamp pool, darker edges, a rounded black leather case with a dashed seam and a soft shadow on the desk, dark pages (the binder's own
   surfaces drawn a little brighter under the lamp, `BINDER_BRIGHTNESS`); a chrome ring rail
-  with three rings down the spine. It looks the same at night and at every graphics quality. Built once at start
+  with three chunky rings arching over the pages' inner edges; the camera fits the case and the tabs on its right (not equal room both sides), so the binder fills the room it's given. It looks the same at night and at every graphics quality. Built once at start
   and left in the world on its stage (out of sight from the ground), so opening only moves the camera; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
   world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
   following camera picks up a character that respawned meanwhile). A fight starting (an elite, an aggro zone) closes
   the binder and the card view so the fight camera takes over. The card view keeps world sound at the character too. One set
   at a time; set dividers are coloured tabs sticking out of the case's right edge with the set's name (the open
-  set's sticks out further), click one to open that set. Each page is a canvas of 3 x 3 pocket slots (18 cards a
+  set's sticks out further), click one to open that set. Each page is a canvas of 2 x 2 pocket slots (8 cards a
   spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
   ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Each card's face is built
   once and redrawn only when what it shows changes; the other cards (the open set's first, then every other set's)
@@ -1354,7 +1354,8 @@ boss models; the ranch and Heroic tiers come after those.
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
 - [ ] UI project 2, the 3D binder (spec `2026-10-29-3d-binder-design.md`, plan `2026-10-29-3d-binder.md`, branch
-  `binder-3d`): "Collector's Desk" picked from three mockups; built (desk scene, 3 x 3 sleeved pages, bending page
+  `binder-3d`): "Collector's Desk" picked from three mockups; built (desk scene, 2 x 2 sleeved pages (3 x 3 was too
+  small on phones), bending page
   turns with drag, swipe, tap and riffle, divider tabs, hover and hold tooltips, the card lift into the card view,
   fights close it, world sound at the character). Studio at graphics level 1: worst frames 22 ms opening, 38 ms
   turning (budget 50). Waiting for the user's Studio check and the iPhone 16 Pro Max check of the published game.
