@@ -102,8 +102,11 @@ ringed by three gold cards spins and bobs (`CondenserFxController`, each client,
 with light strips and a cap; no lights). The delivery spot is outside on the sidewalk, left of the doors (`Town.DELIVERY`, built in code): a
 concrete platform level with the shop floor, a charcoal mat with a yellow safety border, "📦 DELIVERIES" on its street
 face and two black bollards with yellow bands at its street corners; boxes stand on the mat, and stocker pets fetch
-them from its doorway side. Delivery boxes show their
-product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
+them from its doorway side. Delivery boxes are branded cases (the user's pick of three concepts, 2026-10-30;
+`StockService`, `Stock.CASE`): printed in the product's colour with darker bands, the product's art in a gold frame
+(its UI icon when it has no pack art), its name and an "x24" count pill on the front and back, hand holes on the ends
+and the name on the lid, all drawn on the box itself so it travels when carried (a per-product model, Products
+`boxProp`, would replace it). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). Every rack is 7 studs tall with its plates at the same three levels, so they
 line up side by side. A shelf whose model isn't a one-sided rack sets its own sides (`Shelves` `stock`): the
@@ -619,8 +622,11 @@ Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to yo
 ### 5.9 Grading Station (grade-ups)
 
 The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 10,000 packs, 5.8).
-A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`, a code-built
-cabinet with a scanner bed, a magnifier and a graded slab: `Town.GRADING_LOOK`). Press E on it: pick a card and the
+A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`), a code-built
+futuristic scan pod (the user's pick of six concepts, 2026-10-30; `Town.GRADING_LOOK`): a dark plinth with a cyan
+rim, a white body with a light band, a slot and a GRADING strip, and on top a see-through column where a gold card
+floats in a beam of light, spinning and bobbing (a Rotor moved on each client by `CondenserFxController`), under a cap
+with a hologram ring showing "S". Press E on it: pick a card and the
 copy to grade, see the next grade, its cost, which duplicates go, Power and value before -> after and the whole way to
 Grade S, then Grade Up. One step per press (C -> B -> A -> S). Duplicates are plain copies of the same card, used in
 the Condenser's order (normals weakest grade first, then foils; never levelled or starred copies, never the plain main
