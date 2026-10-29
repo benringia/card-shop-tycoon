@@ -78,8 +78,6 @@ return {
 			expect.equal(slots[name].yaw, nil, `{name}: built facing -Z`)
 			assert(town.SHELF_LOOK.HEADERS[name] ~= nil, `{name}: header words`)
 		end
-		expect.equal(slots.Showcase.yaw, 90, "Showcase: long side along its Z")
-		expect.equal(slots.Showcase.stretch, true, "Showcase stretches")
 	end,
 
 	["counter props stay behind the scan items"] = function()

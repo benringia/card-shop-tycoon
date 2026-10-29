@@ -36,7 +36,6 @@ return {
 		HookRack = { height = 0, collide = false, built = true }, -- Accessory Hook: a pegboard with hooks
 		DisplayRack = { height = 0, collide = false, built = true }, -- Big Display Rack: double-sided
 		-- stretch = fill the box on every axis (plain straight parts only); roll stands a model up (degrees about Z)
-		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z (no longer used)
 		CardCase = { height = 0, collide = false, built = true }, -- Glass Showcase / Collector Case: a tall glass case (CASE_LOOK)
 		-- delivery boxes, one per product (Products boxProp); welded to the box part, so they travel when carried
 		BoxPacks = { height = 0, collide = false },
