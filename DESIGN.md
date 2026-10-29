@@ -91,9 +91,12 @@ code-built modern shelving in one style (`Util/ShelfLayout` places the parts so 
 dark price rails, an oak slat back and a charcoal header sign ("TRADING CARDS", "ACCESSORIES"). Small Pack Rack → Shelf
 (one-sided gondola), Wall Shelf → WallShelf (the same, wider and taller), Accessory Hook → HookRack (a grey pegboard with
 chrome wire shelves and a row of hooks over each level), Big Display Rack → DisplayRack (double-sided: plates through an
-oak middle divider, a price rail and header text on both faces). Glass Showcase →
-Showcase (a glass counter; its cards lie on the velvet bed), Collector Case → the same counter recoloured
-(`propColors`: navy base, gold trim, royal blue bed), Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`: a charcoal
+oak middle divider, a price rail and header text on both faces). Glass Showcase and Collector Case → CardCase
+(code-built, `Util/CaseLook`, `Town.CASE_LOOK`: a support, a carpet bed, a frame, see-through glass and a neon strip;
+the Collector Case's strip is gold, `propColors`). Their cards stand upright in two rows, the back row a stud behind
+and raised (`Util/ShowcaseLayout.uprightSlots`, `Config/CaseLayout`), and each turns slowly and bobs over a small
+glowing pad with a beam of light in its rarity colour (`CaseSpinController`, each client, within 80 studs,
+`Showcase.SPIN`); the card's back shows when it turns away. Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`: a charcoal
 plinth with a glowing violet ring, a "✨ CONDENSER" screen and a card slot, a glass chamber in which a violet crystal
 ringed by three gold cards spins and bobs (`CondenserFxController`, each client, within 80 studs), charcoal side pillars
 with light strips and a cap; no lights). The delivery spot is outside on the sidewalk, left of the doors (`Town.DELIVERY`, built in code): a
@@ -104,8 +107,11 @@ product: a band in the product's colour with its name (or a per-product box mode
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). A shelf whose model isn't a one-sided rack sets its own levels and sides (`Shelves` `stock`): the
 Big Display Rack is double-sided, filling each level front then back, with its back rows, packs and tags facing
-the back aisle. Packs (products with `Packs` art) show as stacks of 5 thin upright packs
-with the pack art, leaning back, instead of boxes. Card Sleeves (Products `stockLook = "Sleeves"`) show as 2 retail
+the back aisle. Packs stand in open cardboard display boxes (`Util/PackModels.displayBox`: the lid folded back,
+up to 6 packs showing, front first), each box a share of the shelf's stock; as packs sell the last box empties pack
+by pack and boxes go away (`ShelfStock.boxFill`, `Town.SHELF_STOCK.DISPLAY`). Deck boxes stand as little 3D deck
+boxes with their lids (`PackModels.deckBox`). The models are Blender builds in `assets/packs` (docs/packs.md);
+without them code-built stand-ins show. Card Sleeves (Products `stockLook = "Sleeves"`) show as 2 retail
 sleeve packets per slot, leaning back: a white backing card with a header tab and hang hole, the sleeves behind a clear
 window and a strip in the product's blue; each slot takes the next colour of `SHELF_STOCK.SLEEVES.COLORS`, so a shelf
 reads as an assortment. Each stocked row has a yellow price tag with the
@@ -145,6 +151,8 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.3 Shelves & placement
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
 - Each product shelf holds a set number of product units; card cases hold single cards (see 5.6).
+- How stock shows (section 3): packs in open display boxes that empty as they sell (a Small Pack Rack's 24 packs
+  over its slots' boxes, 6 packs showing per box), deck boxes as 3D deck boxes, cards in cases upright and turning.
 - Customers can only buy what's on shelves. Empty shelves = lost sales.
 - **Remove stock** (shelf Edit menu): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
@@ -320,43 +328,65 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   cash goes to the owner, the card to the buyer's binder. The server rejects the buy if the price changed after
   the buyer saw it.
 - Card prices default to market value; +/- steps are 10% of market value, capped at 3× market.
+- Both cases show their cards upright in two rows of three, turning slowly over a pad and a beam in the card's
+  rarity colour (section 3), so a Legendary on display reads from across the shop.
 - Cards on display leave the binder while shown and come back when removed. A case can't be sold while it holds cards.
 - **No quick sell.** Cards only earn money by selling to customers or players, which keeps pulls tied to running the shop.
 - **Trading (post-MVP):** player to player trade window.
 
 ### 5.7 Pack opening feel (important)
-- A midnight stage (deep navy fading to near-black, a soft glow) with the illustrated pack floating in the middle (`Config/Packs`
-  art, the logo and crimped edges drawn in code; art in `assets/ui/packs`, made with Figma's image generator). It
-  feels premium (`Util/PackStage`, `PackOpening.AMBIENT`): long soft light rays in the pack's colour turn slowly
-  behind it, bokeh sparkles drift up the screen, a glowing pedestal pulses under it and a soft vignette darkens the
-  edges; all of it stops when the screen closes. The pack pops in, bobs, rocks a little either way and a foil shine
-  sweeps across it every couple of seconds.
-  "Swipe across the top to open": dragging over 80% of the pack's width tears the top off along the dashed line
-  (a tap, Space or T tears it by itself). The pack slides away and the cards rise out as a stack.
+- **A 3D stage** (UI project 3, spec `docs/superpowers/specs/2026-10-29-cards-in-world-and-pack-opening-design.md`):
+  client-only parts far above the world (`Util/OpeningStage`, `PackOpening.STAGE_POSITION`): a violet glow fading to
+  near-black behind, a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
+  bloom, a colour grade that dims for big pulls and a depth-of-field blur for the push-ins; letterbox bars and a
+  white flash sit on top. The world stays where it is (sound stays at the character, `Util/ListenAtCharacter`; the
+  HUD and world tags hide). The opening follows `Util/OpeningFlow` (Ready, Tearing, Stacking, Stacked, Flipping,
+  Shown, Stowing, Results; Lune-tested) and closes on a fight, death or respawn.
+- **The pack** is the 3D booster pack (`Util/PackModels`, Blender build in `assets/packs`, docs/packs.md) floating in
+  the middle, swaying and bobbing while a light glides over its foil every couple of seconds (`Util/OpeningPack`,
+  `PackOpening.PACK_STAGE`). "Swipe across the top to open" (a 60 px drag over its top; a tap, Space or T works too).
+- **The tear is a little film** (`PackOpening.TEAR`): the bars slide in and the camera pushes in on the tear line,
+  the strip parts while light leaks out of the gap and a few foil shards spill, then the snap: the strip flies off
+  to the right, a white flash, a short camera shake, the rip burst and a spray of tumbling foil shards, and the
+  camera eases back.
+- **The cards stack up** (`PackOpening.STACK`): the pack drops, the cards rise out one at a time and land face down
+  on a pile with a snap and a slight tilt, and the empty pack goes away. "Tap to flip the first card".
 - **Deck boxes** (`Config/Packs` entries with `kind = "Deck"`, opened the same way: carry a box of them, Open T):
   the First Spark Deck Box holds 5 cards, two of them Rare or better (Common, Common, Common/Rare 50/50, Rare 75 /
   Very Rare 25, and a hit slot of Rare 45 / Very Rare 25 / Epic 22 / Legendary 8, against a pack's 68/15/14/3), for
-  $9 against a pack's $3. On the stage it is a boxier box (`PackOpening.DECK`) with a dark lid, a gold band and a
-  side face, "DECK BOX · 5 CARDS"; tapping it (or Space / T) lifts the lid, the box slides away and every card
-  shows at once in the results row, with the best pull's flash and confetti. On shelves deck boxes stand as little
-  upright boxes in purple with the First Spark art and a gold lid (Products `stockLook = "Deck"`); menus show the
-  Deck Box icon.
-- Cards are revealed one at a time, big in the middle; a tap, Space, T or the round Next button slides the card off
-  to the left and shows the next ("2 / 5 · Tap for the next card" at the bottom). After the last card comes the
-  results screen: every card in a big row popping in, a yellow NEW ribbon on cards the player didn't own before
-  (binder, beasts or on display; the server checks before adding them, `Util/NewPulls`, only the first copy in a
-  pack), pills on top (Your cards · NEW x2 · pack value · Rarity guide, which opens over the results) and a
-  green Continue. The screen matches the other windows: icons from `Config/UIIcons` (no emojis), rounded pills with
-  thin edges, a translucent navy hint capsule, a round accent-blue Next button with a key chip, a soft white "N left
-  in box" pill and a soft shadow under the pack. Odds sit in the top right (hidden on the results, whose row and pills span the screen). Laid out to fit a 667x375 landscape phone below Roblox's top bar; on smaller ones (568x320) the results pills shrink to the screen's width and the card row moves down just enough that the NEW ribbons clear them.
-- Hit slot comes last. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
-  - **Tease** before the flip: the face-down card glows in its rarity colour, breathes and shakes, and the
-    stage dims (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons come out face up at once).
-  - **After the flip:** sparks burst out and a banner pops ("RARE!", "VERY RARE!"); the glow stays behind the card.
-  - **Epic and Legendary** add turning light rays, confetti and a pop (taps are ignored 0.6s so a double tap can't
-    skip it). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
-  - **Foil** adds sparks, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!", a plain foil "FOIL!").
+  $9 against a pack's $3. On the stage it is the 3D deck box: "Tap the lid to open" lifts the lid, and its cards
+  stack and flip like a pack's. On shelves deck boxes stand as 3D deck boxes; menus (Set Price, Prices, Order Stock)
+  show the 3D pack and deck box turned a little (`Util/ProductPicture`).
+- **Each tap flips the top card** (`Util/OpeningCards`, `PackOpening.FLIP`), hit slot last: it lifts and turns over
+  with a little overshoot, landing big in the middle (its back is hidden once it's past halfway). The next tap zips it
+  into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next ("Tap
+  for the next card"). Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
+  - **Tease** before the flip: the face-down card glows in its rarity colour, rises and shakes harder and harder
+    (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons flip at once). Epic and up are cinematic: the
+    bars slide in, the stage dims and the camera eases in.
+  - **The hit:** the rip burst in the rarity colour, foil shards (Rare 10 · Very Rare 16 · Epic 24 · Legendary 30,
+    gold for Legendary and Frontier), and a banner under the card ("RARE!", "VERY RARE!"); Epic and up add turning
+    light rays and an aura far behind the card and a pop (taps are ignored 0.6s so a double tap can't skip it);
+    Legendary adds a white flash. Frontier cards get the Legendary show ("FRONTIER!").
+  - **Alive:** a shown Rare-or-better card floats and tilts, a holo shine sweeps its face (gold on Legendary),
+    glints twinkle round it (about 4 a second on Rare, 7.5 gold ones on Legendary), motes rise past it, the aura
+    breathes, the rays turn and the banner pulses (`PackOpening.ALIVE`).
+  - **Foil** adds a holo shimmer on the face, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!",
+    a plain foil "FOIL!").
   - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
+- **Results** ("Tap to see your cards", `PackOpening.RESULTS`, `Util/OpeningResults`): the row's cards fly one by one
+  to a lineup in the middle (a quick arc and spin each, 0.085s apart), each landing with a shine and a ring of glints,
+  then float and twinkle. A yellow NEW ribbon marks cards the player didn't own before (binder, beasts or on display;
+  the server checks before adding them, `Util/NewPulls`, only the first copy in a pack); pills pop in on top (Your
+  cards · NEW x2 · pack value · Rarity guide) and a green Continue gives the camera back. The "N left in box" and pity
+  pills and the Odds button sit in the top corners during the opening. Laid out for a 667x375 landscape phone below
+  Roblox's top bar (`Util/OpeningLayout` sizes the 3D cards from pixels, Lune-tested).
+- **Effects** are our own, rendered in Blender (`tools/blender/build_pack_fx.py`, sheets cut by
+  `tools/textures/make_flipbooks.py`, PNGs in `assets/ui/fx`, ids in `Config/PackFx`): the rip burst (an 8x8
+  flipbook), holo and gold foil shards and four-point glints (4x4 flipbooks), plus a mote, rays, the light leak and
+  an aura (`Util/OpeningFx`). No emoji-like confetti. Counts follow the player's graphics level (a quarter at level 1,
+  all from level 6; `RevealRules.scaleCount`). Studio at graphics level 1: worst frame 42 ms as the stage shows,
+  27 ms or less through the tear, flips and results.
 - **Sounds** (`PackOpening.SOUNDS` and `VOLUMES`, free Creator Store sounds, only the opener hears them): a crinkle
   while the strip parts and a rip when it tears off, a card swipe per card stacking up, a card flick per flip; Rare
   and better get a rising tease (cut short when the card lands) and a hit (soft chimes for Rare and Very Rare, a deep
@@ -377,8 +407,8 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is a deep blue card with
   🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
-  server's plain card part (1.05 x 1.5 studs; glass counters lie them on the bed, rows 1.12 apart), with the asking
-  price in gold in the value row. To make visitors want to buy, the face glows (it ignores the
+  server's plain card part (0.84 x 1.2 studs, standing upright in two rows, `Config/CaseLayout`; the back drawn on
+  its other side), with the asking price in gold in the value row. To make visitors want to buy, the face glows (it ignores the
   room's light), a neon halo in the rarity colour sits just behind it (pulsing on Epic and up), and rarer cards
   sparkle more (`Config/CardEffects` BY_RARITY: sparkles, halo). Displayed cards cast no light of their own
   (`DISPLAY_LIGHTS = false`: under the glass it lit the whole case up); Legendary auras keep their particles. Grade S copies
@@ -803,8 +833,12 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 | First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 7 |
 | Set 2 Booster Pack | TBD | 24 | TBD | Lv 10 |
 
-Player can also open their own stock instead of selling it: packs (rip one at a time) and deck boxes (5 cards
-at once, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
+Player can also open their own stock instead of selling it: packs and deck boxes (5 cards each, flipped one at a
+time on the 3D stage, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
+
+Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs` `model` and `look`): on shelves
+(packs in open display boxes), on the opening stage and in the menus. Each pack type has a look (`look =
+"FirstSpark"`: the model's SurfaceAppearance textures), so Set 2 is a new texture on the same meshes (docs/packs.md).
 
 ---
 
@@ -939,6 +973,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
 ├── assets/props/               # town prop models (.rbxm) → ReplicatedStorage.PropModels (docs/props.md)
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
+├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
+├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py)
+├── tools/textures/             # pack textures and flipbook sheets (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -986,7 +1024,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau
     │   │   ├── CarryController.luau    # drop carried box
-    │   │   ├── PackOpeningController.luau
+    │   │   ├── PackOpeningController.luau # the 3D pack opening: OpeningFlow, taps and swipes, server results, closes on fights
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
@@ -1011,7 +1049,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CardInspectorController.luau # the 3D card you tilt and flip from the binder
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
-    │   │   └── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
+    │   │   ├── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
+    │   │   └── CaseSpinController.luau # case cards turn and bob over a pad and beam in their rarity colour (within range)
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
@@ -1027,6 +1066,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
     │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
+    │       ├── OpeningStage.luau       # the opening's 3D stage: backdrop, lights, camera, post effects, bars, flash, shake, sounds
+    │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid
+    │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
+    │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
+    │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue
+    │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
     └── shared/                 # → ReplicatedStorage
@@ -1043,7 +1088,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
-        │   ├── PackOpening.luau # reveal timings and sounds (client)
+        │   ├── PackOpening.luau # the 3D opening: stage, camera, tear, stack, flips, alive, results, sounds (client)
+        │   ├── PackOpeningLayout.luau # where the opening's cards sit on screen (plain data)
+        │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
@@ -1053,7 +1100,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
         │   ├── BinderDesk.luau # the 3D binder: stage, camera, page and pocket sizes, tabs, desk colours, page turns, the lift
-        │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
+        │   ├── Showcase.luau   # card case prices, customer card chance, the cards' spin, pad and beam
+        │   ├── CaseLayout.luau # upright case cards: size, columns, spacing, rows (plain data)
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
         │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
@@ -1090,7 +1138,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
-            ├── ShelfStock.luau    # stock boxes, pack stacks and price tags on shelves (pure, Lune-tested)
+            ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
+            ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
+            ├── CaseLook.luau      # the code-built CardCase prop: support, carpet, frame, glass, strip
+            ├── ShowcaseLayout.luau # upright case card slots in rows (pure, Lune-tested)
+            ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
+            ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text, party changes and their toasts (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -1378,6 +1431,15 @@ boss models; the ranch and Heroic tiers come after those.
   (hover, lift, desk size, warm batch, flick window, park offset); stale comments and small dead bits
   (BACKDROP_COLOR, BinderSpreads.turningSide); nearby ProximityPrompts over the binder unchecked; no gamepad
   card picking.
+- [ ] UI project 3, cards in the world and the 3D pack opening (spec
+  `2026-10-29-cards-in-world-and-pack-opening-design.md`, plan `2026-10-29-cards-in-world-and-pack-opening.md`, branch
+  `ui-project-3`): picked from concepts (shelves A: open display boxes; cases B: upright cards turning on rarity
+  beams; the rip B with cards revealed one at a time). Built: the Blender pack, deck box and display box (stand-ins
+  until the models are imported, docs/packs.md), packs in display boxes that empty as they sell, CardCase cases
+  with spinning upright cards, the 3D opening (cinematic tear, cards stacking, flips with teases and hits, a living
+  shown card, a sparkling results lineup), our own Blender effects (no confetti), sounds, and the 3D pack in menus.
+  Studio at graphics level 1: worst frame 42 ms as the stage shows, 27 ms or less through the opening, 19 ms in a
+  stocked shop (budget 50). Waiting on: the model import (Task 2) and the user's Studio and iPhone check.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
