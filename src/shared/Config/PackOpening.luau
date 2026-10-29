@@ -90,7 +90,7 @@ return {
 	},
 	-- spec 4.3: the cards stack up one at a time
 	STACK = {
-		PACK_DOWN = 1.3, -- the pack moves down this far first
+		PACK_DOWN = 2.4, -- the pack moves down this far first, its top just under the stack (1.3 left them overlapping)
 		PACK_DOWN_SECONDS = 0.3,
 		CARD_SECONDS = 0.19,
 		TILT = 3, -- degrees either way each card lands at
