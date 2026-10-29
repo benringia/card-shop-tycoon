@@ -55,4 +55,15 @@ return {
 		end
 		assert(typeof(config.ITEMS.xpTonic and config.ITEMS.xpTonic.xp) == "number", "the XP Tonic says how much XP it gives")
 	end,
+	["bossOf: fragments and trophies name their ladder step"] = function()
+		local ladder = { "meadowWarden", "caveBroodQueen", "emberColossus" }
+		local index, kind = ItemRules.bossOf("fragment_caveBroodQueen", ladder)
+		expect.equal(index, 2, "opens boss 2")
+		expect.equal(kind, "fragment", "a fragment")
+		index, kind = ItemRules.bossOf("trophy_meadowWarden", ladder)
+		expect.equal(index, 1, "boss 1's trophy")
+		expect.equal(kind, "trophy", "a trophy")
+		expect.isNil((ItemRules.bossOf("xpTonic", ladder)), "not a boss item")
+		expect.isNil((ItemRules.bossOf("fragment_unknownBoss", ladder)), "unknown boss")
+	end,
 }

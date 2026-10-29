@@ -41,6 +41,8 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BossRules = require("./BossRules.spec"),
 	CreatureCull = require("./CreatureCull.spec"),
 	AdminPanel = require("./AdminPanel.spec"),
+	UiLayout = require("./UiLayout.spec"),
+	CompareRules = require("./CompareRules.spec"),
 }
 
 local passed, failed = 0, 0

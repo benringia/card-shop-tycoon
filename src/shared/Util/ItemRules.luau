@@ -54,4 +54,18 @@ function ItemRules.take(items: Items, id: string, n: number): Items?
 	return result
 end
 
+-- Which ladder step a boss item belongs to: a fragment the boss it opens, a trophy the boss beaten (ids
+-- fragment_<bossId> and trophy_<bossId>); nil for any other item or an unknown boss
+function ItemRules.bossOf(itemId: string, ladder: { string }): (number?, ("fragment" | "trophy")?)
+	local kind, bossId = string.match(itemId, "^(%a+)_(%w+)$")
+	if kind ~= "fragment" and kind ~= "trophy" then
+		return nil, nil
+	end
+	local index = table.find(ladder, bossId :: string)
+	if not index then
+		return nil, nil
+	end
+	return index, if kind == "fragment" then "fragment" else "trophy"
+end
+
 return ItemRules

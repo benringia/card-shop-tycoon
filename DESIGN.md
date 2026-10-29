@@ -413,8 +413,11 @@ an Epic or Legendary one plays a full-screen reveal and announces it to the serv
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
 and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
 is an inventory window in the middle of the whole screen ("Bag", "1 / 20 slots" in its header): a 5x4 grid of slots (more rows if
-needed), filled ones soft blue with the item icon and an "x2" badge, the rest empty; the chosen item's details on
-the right (big icon, name, "You have 2", what it does, Where to get it / How to use it boxes). It scales down to
+needed), filled ones slate with the item icon and an outlined "x2" count, the rest empty; boss items (key fragments,
+trophies) are tinted for their boss (`Util/BossTints`: its element's colour, the Hydra's pale prism) with the boss's
+ladder number in a corner chip (`ItemRules.bossOf`), so every key looks different; the chosen item's details on the
+right in a dark panel (big icon in the same tint, name, "You have 2", What it does / Where to get it / How to use it
+boxes). Counts and boss numbers stay at least 14 px tall on screen when the window shrinks for a phone. It scales down to
 fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
@@ -473,15 +476,28 @@ Monsters sleep with no player within 100 studs. Placeholder map and monsters are
 go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/rest`, `/elite`.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
-panel (HUD) shows each slot with Summon / Unsummon and Remove. One creature is summoned at a time: the server moves
+panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
+level and star icons, its Power (big, orange), HP / ATK / SPD bars (against the best stats any card reaches,
+`CardTips.reference`), its perk (element icon and a few words), "Resting m:ss" in red after fainting, and Summon
+(gold) or the green Summoned (tap to unsummon), XP Tonic (icon with a gold badge on its top right corner showing how
+many you hold, drawn above Remove; hidden at 0 or Lv 30) and Remove (red). The summoned column glows green with a
+SUMMONED tag; the band shows "Summoned: <card>" (or "Nobody summoned") and your PvP record; an empty slot has "Add a
+card" (opens the binder). A legend along the bottom names the stat icons once (Power, Health, Attack, Attack Speed), and
+every icon without a label has a word tooltip (`Util/Tooltip`; Remove says "Remove from party"). Phones get a smaller card and slimmer bars so every
+column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
 (bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a dark tray,
 `Config/Party` BAR) shows your avatar with a PARTY tag (opens Party) and the 3 party slots as small cards: the card's
 art in its rarity rim with "Lv 4", a key chip 1 / 2 / 3; the summoned one lifts, glows blue and has an OUT tag; an empty
-one is a dashed "+"; a resting one dims with "💤 2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
-an empty one picks a card in the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
+one is a dashed "+"; a resting one dims with an hourglass over "2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
+an empty one picks a card in the binder. Hovering a card (or holding a finger on it for `UIStyle.LONG_PRESS`, which
+then doesn't summon) shows its tooltip above the bar (`CardTips.copy`): the card, name, grade, level, Power, HP / ATK
+/ SPD bars, its perk and the resting countdown, so you don't need the binder. When the party changes, a toast says
+so ("Cindercub joined your party!", "Cindercub swapped in for Ashbeak!", "Ashbeak left your party";
+`PartyRules.changes` / `changeText`, Lune-tested) and the slot a card joins pops up with a white rim
+(`Party.BAR.POP`). Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
 
 | Element | Perk | Effect | Common, 0 stars |
@@ -655,8 +671,37 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
   count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
-- **UI:** the Bosses HUD tile (K) opens the Boss Ladder: lock and fragments x/N, recommended Power vs your strongest
-  party card, full loot ready or its countdown, today's wins and reduced-drop notes, a trophy once cleared. In a boss
+- **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, red band): a path of seven steps,
+  each a disc with the boss's icon (its element's; the Hydra a gem, `Util/BossTints`), its number and name, and a state
+  from `BossRules.stepState`: beaten (gold ring, trophy), ready (green glow, check: you can start it now, key fragments
+  in hand count, and your best party card's Power is enough), too weak (red ring) or locked (faded, lock: shop level or
+  fragments short). A legend under the ladder names the four badges, the path fills gold up to the last boss beaten
+  in a row, a gold "Next" tag sits on the first boss still to beat, and each step's tooltip says where it stands
+  ("built for 1500 Power", "opens at shop level 15", "needs 8 keys"). It opens on the first step still to beat.
+  Tapping a step shows it below in two columns (each scrolls when it doesn't fit, as on phones). **To fight it:** its
+  name with a status pill (Beaten / Ready / Too weak / Locked) and its title; pills for its element, where it lives
+  (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
+  tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); a checklist of what it needs, each row with a
+  check, cross or "!" mark: shop level (You: n), its key fragments (n/N tinted for that boss, "Opened" once used,
+  "No key needed" for the first; tooltip: the item, that it's used up on the first fight, and where it drops; tapping
+  the row while short shows the boss before), and Power (the Power it's built for against your best party card, with
+  a bar; a warning, not a lock); then a tinted box with what to do next (`BossRules.lockReason`: level up the shop,
+  beat the boss before for n more keys with a "See it" button, level up or change the party with a "Party" button,
+  go fight it, or fight again for loot); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
+  thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). A locked boss
+  past the "Next" one keeps its tricks a surprise ("???: reach it to find out", `BossRules.revealTricks`; the Hydra's
+  element pill reads "???" and shows no element to bring); its needs and rewards always show. **Rewards:** a
+  loot pill ("Loot ready" green, or "Loot in 12:34" counting down; tooltip: loot once every 15 min, earlier wins pay
+  cash and XP only); each win's drops as slots with a count badge and the chance under each, at the chance your next
+  win rolls (soft cap and over-power factors included, gold when shrunk; `BossRules.chanceText` / `countText`), a
+  fragment for a boss already opened faded with "-" (it no longer drops); the first-win chest (until beaten) and the
+  day's first-win chest as small slots (the payload's `bonusReady`; "Daily bonus collected: back tomorrow" once
+  taken); cash and XP every win; "Full drops: n more wins today" (`BossRules.fullDropsLeft`) or "Fewer drops today";
+  "Party very strong: fewer drops" above the over-power line. Item slots have rich tooltips (`Tooltip.rich`: the gold
+  name, what it does, its odds or chest). Last comes the travel button
+  (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
+  `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), "Go to the Frontier" / "Go home"
+  (the normal Frontier travel), or for the Hydra "Enter the Dungeon portal in the Frontier". In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
 - **Groups (phase 2):** the gate's second prompt (F) "Start group" opens a group; others press "Join group (n/4)"
   within 15 s (`JOIN_SECONDS`), the leader (whose prompt reads "Start now (n/4)", `BossRules.groupPromptText`) can
@@ -795,7 +840,16 @@ There is no level cap: after Lv 10 each level costs 15% more XP than the step be
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
 - **Slots:** 1 at shop Lv 10; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
-  view ("Assign to job"); the **Jobs** HUD button shows each slot's card, status, XP, speed and mistakes.
+  view ("Give a job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
+  in three chips (faster cards work quicker, stronger cards make fewer mistakes, +2 XP a minute), then one row per
+  slot: the card's art (hover, or hold a finger, for its stats and perk), name, grade, level, a job chip (icon, and
+  what the job does in its tooltip), a live status pill (green working, amber idle or waiting, red after a slip;
+  updated in place, so tooltips stay up), an XP bar with "Lv 18 in 9 min" (`JobRules.minutesToNext`), Speed and
+  Mistakes in kid words with the number under ("Fast · x1.46 work speed", "Some mistakes · 11% of the time";
+  `JobRules.speedWord` / `mistakeWord`, thresholds in `Jobs.SPEED_WORDS` / `MISTAKE_WORDS`), and two buttons:
+  **Switch job** (remote `SwitchJob(slot)`: the card takes the other job without leaving its slot,
+  `JobRules.nextJob`) and Stop working. A free slot shows "+" and Pick a card (opens the binder); a locked one says
+  when it opens or offers the pass. The window is only as tall as its rows.
 - **Restocker:** carries delivered boxes from the pad to shelves that hold (or accept) that product and stocks them.
 - **Cashier:** scans and charges customers like you do; steps aside while you're at the register.
 - **SPD = speed**: (SPD / 14)^1.5, clamped ×0.4 to ×2.5, so a fresh Grade C Common scans in ~2.0 s and a fresh
@@ -919,7 +973,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, shards, level + XP), toasts, money toasts
+    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
@@ -928,12 +982,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips; card view
+    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips
+    │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
-    │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
-    │   │   ├── PartyController.luau     # Party HUD button and panel: slots, perk, Summon, Remove
+    │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
+    │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies round the plaza spring
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
@@ -942,7 +997,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
-    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder panel
+    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
@@ -957,6 +1012,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
+    │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
+    │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
+    │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
+    │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -978,6 +1037,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
+        │   ├── IconTips.luau   # the words each label-less icon's tooltip shows
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
@@ -1011,7 +1071,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
             ├── BeastRules.luau    # BeastMath bound to the game configs
             ├── CondenseRules.luau # which duplicates a star or a grade-up uses (pure, Lune-tested)
-            ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
+            ├── JobRules.luau      # job speed, mistakes and slots, their kid words, next job, minutes to a level (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
@@ -1020,14 +1080,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, pack stacks and price tags on shelves (pure, Lune-tested)
-            ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
+            ├── PartyRules.luau    # perk strength and text, party changes and their toasts (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
-            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -1084,12 +1144,28 @@ Schema history: v1 first release; v2 moved displayed cards onto `layout` entries
 their saved data.
 
 ### 10.6 UI style and HUD
-Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
-- **Style** (`Util/UIKit`, "Midnight & Gold"): deep navy-charcoal panel bodies with a soft gold rim, a dark
-  gradient header with the title and a thin gold rule under it, a red close button on the top-right corner, slate
-  cards and rows with thin edges, chunky buttons with a darker bottom lip (warm gold primary with dark text, slate
-  secondary). Text picks warm white or dark ink for the surface behind it. HUD tiles are midnight slate; the Bag,
-  hover tooltips, Shop pictures and the pack opening stage use the same palette.
+Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
+`docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
+- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`, look E "bold hybrid", chosen to suit kids, teens and
+  adults): dark slate panel bodies with a thick near-black outline and a drop lip, a coloured header band per window
+  (`UIKit.panel(parent, name, title, band)`: Party teal, binder and card detail blue, Boss ladder red, Bag orange,
+  others teal) with an outlined white title and a dark line under it, a red close button on the top-right corner,
+  slate rows, candy buttons (the colour darkening down the face to a bottom lip, a thick outline, outlined white
+  text; navy text on light colours): gold for the main action, blue (`Colors.Secondary`) for other choices, red to
+  remove or leave, each with an icon (`UIKit.iconButton`). Helpers: `outlined` (text outline), `pill` (rarity,
+  grade, element and count chips), `bar` and `statRow` (chunky green bars), `stars` (star icons, never the
+  character), `textSize` (body 15, small 13, name 22, number 23, title 28; 85% on phones). Colour rules on every
+  screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
+  green / C grey, money green with the Cash icon, Power orange with the Power icon, green good, red bad, gold for hints
+  and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
+- **Word tooltips** (`Util/Tooltip`, words in `Config/IconTips`): every icon shown without a label (stat icons,
+  Power, stars, Cash, Copies, elements, grade pills, icon-only buttons) names itself in a small dark tip with a gold
+  outline, just the name (Power, Health, Attack, Attack Speed): hover with a mouse, hold a finger on it for
+  `UIStyle.LONG_PRESS` on touch. One tip per ScreenGui, over everything, above the thing (below it near the top edge,
+  `UiLayout.above`); it hides when the pointer leaves, the finger lifts or the thing hides. Roblox sends MouseEnter to
+  things under another window too, so a covered thing (checked with `GetGuiObjectsAtPosition`) shows no tip.
+  `Tooltip.rich(target, title, lines)` shows a gold title over a few lines (coloured lines allowed; text escaped for
+  RichText): the boss ladder's items.
 - **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
   for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
@@ -1101,22 +1177,31 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
   right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
-  party bar), Star Shards, cash, then the buff badge; money toasts pop in just above. On touch screens (short
+  party bar), cash (a green candy pill with outlined white text), then the buff badge; money toasts pop in just
+  above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
   landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
-  the middle: buff, cash, shards, level, then the party bar, then the money toasts. Nothing sits in the middle of
+  the middle: buff, cash, level, then the party bar, then the money toasts. Nothing sits in the middle of
   the screen. The whole HUD (tiles, Manage
   tray, corner, toasts) shrinks with the screen's height (`HudLayout.SCALE`, `Hud.scaleWith`): full size from 560 px
   tall, down to 70% on short phones (tiles stay over 48 px to tap). Each icon sits over its
   pill's left end. **Icons** (`Config/UIIcons`, `Util/Icon`): glossy cartoon pictures for the
   HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
-  (Angry, Thinking, Happy); made as three sheets with Figma's image generator and cut by
-  `tools/ui-icons/slice_icons.py` (PNGs in `assets/ui/icons`). Every icon is kept drawn, tiny and nearly invisible,
+  (Angry, Thinking, Happy); made as four sheets with Figma's image generator and cut by
+  `tools/ui-icons/slice_icons.py <sheet> <1-4>` (PNGs in `assets/ui/icons`). Sheet 4 (the style kit) adds Power, Hp,
+  Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale, tinted per boss in code), XpTonic, GradingSeal,
+  GoldSeal, Travel, Best and Pvp; Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
-  their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row. The fight screen hides the HUD groups.
+  their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row:
+  a candy pill (gold, red for errors) with an icon in a round badge (`UIController.Notify(message, isError,
+  duration, icon)`; Info by default), popping up from below with a bounce, the icon wiggling in, a shine sweeping
+  across, a thin bar counting its time down, then fading and shrinking away; a new toast while one shows bumps it. The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
-- **Prices** rows show each product's picture beside its name and price: packs their real front (`Packs` art, as on the shelves), others their icon (`Products.icon`).
+- **Prices** rows show each product's picture beside its name, its market price and how customers feel about your
+  price (in the band's colour): packs their real front (`Packs` art, as on the shelves), others their icon
+  (`Products.icon`). On the right, your price stands out big in a dark box outlined in the band's colour, with
+  small - / + buttons under it (38 px with a mouse, `UIStyle.MIN_TAP` 48 px on phones; sized on every open).
 - **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
@@ -1138,15 +1223,42 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
   All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book (arrows
   included) shrinks into the room left of it. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
   The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
+  Hovering a pocket (mouse) shows the card's tooltip (`Util/CardTips`): art, name, set number, rarity / element /
+  best-grade pills, a 2x2 grid of icons and numbers (strongest Power, copies with any on display, best level, best
+  grade), the worth range in green with the Cash icon and "Click for details"; it sits just outside the book, level
+  with the pocket (right of it, else left, else above: `UiLayout.beside`), so it never covers a card.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
-  with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
+  with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
+  every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
   19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
-- **Card inspector** (`CardInspectorController`, `Config/Inspector`): tapping a binder card shows it as a real 3D
-  card (about 60% of the screen's height) left of centre close in front of the camera (front: the card face; back: the card back), on a solid dark
-  sheet just behind it that hides the world (and your pet); the binder's dim and always-on-top tags (customer mood bubbles) switch off while it shows. Drag to tilt (it eases back), drag far sideways or press Flip to turn it over;
-  Legendaries keep their element aura. The info panel on the right has the copies list (best first), Assign job,
-  Add to party and Back. Closing restores the camera; dying closes it too.
+- **Card view** (`CardDetailController` with `CardInspectorController`, `Config/Inspector`): tapping a binder card
+  shows it as a real 3D card (about 60% of the screen's height) close in front of the camera (front: the card face;
+  back: the card back). While it's up the camera waits at an empty stage high above the world
+  (`Inspector.STAGE_POSITION`) with a solid dark sheet behind the card, so nothing of the world (customers, your pet)
+  shows; always-on-top tags switch off too. Drag to tilt (it eases back), drag far sideways or press Flip (under the
+  card) to turn it over; Legendaries keep their element aura; a gold "BEST COPY" ribbon sits on the card while your
+  best copy is shown. The card and the info panel are centred on the screen as a pair (`UiLayout.detailPanelLeft`;
+  on narrow screens the panel keeps its right margin first), the card's right edge just left of the panel
+  (`UiLayout.inspectorCard`, both Lune-tested).
+  The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
+  and copies pills; "Your copies, best first" (grade pill, level, star icons, FOIL or count, Power with its icon,
+  value; the first wears a gold BEST ribbon, the chosen one a gold outline, with room in the list so it isn't cut off); the chosen copy's Power / HP / ATK / SPD
+  tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
+  "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
+  says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)) and Back. Phones get a slimmer band and no pills
+  row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
+  Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
+  "Who should <card> replace?" ("Pick a spot for <card>" while a slot is free) and the three slots side by side,
+  each card as big as the room allows (name, grade, level, Power, HP / ATK / SPD bars; phones skip the bars), with a
+  tinted strip saying what the swap does: "Cindercub has 180 less Power" in red, "... more Power" in green, "Free
+  spot: Cindercub goes here" (`CompareRules.swapText`); a hint and a compact Cancel at the bottom. An empty slot
+  fills straight away; a filled one opens the kid comparison (`Util/CopyCompare`) titled "Swap <card> for <card>?":
+  a big STRONGER / WEAKER badge with the sentence under it ("Cindercub has 180 less Power than Coalbit",
+  `CompareRules.powerLine`), the two cards (IN with a green border -> OUT under a dark veil), paired HP / ATK / SPD
+  bars where the longer green one wins (hover a bar for its number, an icon for its name), and one line: the element
+  icons ("replaces") and the perk it brings or that you lose; then "Swap with <card>" (gold, filling the row) or a
+  compact Back. Phones lay the comparison out in two columns. The party bar's toast confirms the change.
 - **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
   `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
   the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
@@ -1196,6 +1308,19 @@ Spec: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`.
 The core loop is complete (the shop loop, cards, jobs, party, stars, battles and the whole boss ladder). Order from
 2026-10-29: UI/UX design first (with the phone layout pass), then the town's design, then the remaining monster and
 boss models; the ranch and Heroic tiers come after those.
+- [x] UI/UX pass 1 (spec `2026-10-29-collection-screens-ui-design.md`, branch `ui-pass-1`): look E style kit, binder
+  tooltip, card view, Add to Party with the kid comparison, Party window, party bar tooltip, boss ladder with Take me
+  there, Bag; no Star Shard pill. Done: approved in Studio and merged 2026-10-29. Feedback round 1 built:
+  Prices price box, Party legend and tonic badge, word tooltips, card view centring, clearer chooser and comparison
+  wording, compact chooser buttons, party change toast, rarity guide without spoilers. Round 2: Shop Jobs rebuilt as
+  option B (with Switch job), short tooltip words, no tooltips through covering windows, livelier toasts. Round 3:
+  Jobs rule chips no longer clipped (the list is padded), Boss Ladder reworked (legend, Next, To fight it checklist
+  with key fragments, what to do next, Watch out, Rewards with odds and chests, item tooltips; locked bosses past
+  Next keep their tricks a surprise). Next: UI project 2 (a 3D
+  binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
+  project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
+- Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
+  kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
   overlap), hit markers and a short flash on the creature hit, a screen shake on big boss hits.
 - Fight bar redesign: a portrait of each creature (its model in a ViewportFrame) beside its HP, clearer HP bars

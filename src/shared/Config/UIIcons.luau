@@ -1,5 +1,5 @@
 --!strict
--- The game's UI icons (glossy cartoon style), by name. Made as three sheets with Figma's image generator and cut up
+-- The game's UI icons (glossy cartoon style), by name. Made as four sheets with Figma's image generator and cut up
 -- by tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. HUD tiles, the top bar and customer bubbles
 -- use these names; anything not listed here is drawn as text (an emoji). See DESIGN.md 10.6.
 return {
@@ -53,4 +53,21 @@ return {
 	Heart = "rbxassetid://81178736634418",
 	Star = "rbxassetid://109389918339627",
 	Gem = "rbxassetid://78526112614740",
+	-- Sheet 4 (the style kit): stats, party, items, travel. KeyFragment is pale so code can tint it per boss.
+	Power = "rbxassetid://128038471570566",
+	Hp = "rbxassetid://112373838122329",
+	Atk = "rbxassetid://98440307208346",
+	Spd = "rbxassetid://86846743760027",
+	Xp = "rbxassetid://79540428956070",
+	Copies = "rbxassetid://131332271022707",
+	Summon = "rbxassetid://132864823253293",
+	Remove = "rbxassetid://94034340722248",
+	Job = "rbxassetid://118599839064458",
+	KeyFragment = "rbxassetid://94794644631272",
+	XpTonic = "rbxassetid://125806292616128",
+	GradingSeal = "rbxassetid://76519908973343",
+	GoldSeal = "rbxassetid://96924262888584",
+	Travel = "rbxassetid://93470751784969",
+	Best = "rbxassetid://114401539679923",
+	Pvp = "rbxassetid://127011684535220",
 } :: { [string]: string }

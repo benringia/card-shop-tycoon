@@ -296,6 +296,7 @@ return {
 	GATE_PROMPT_DISTANCE = 10, -- the gate prompt shows this close
 	GATE_DISTANCE = 12, -- studs from the gate the server accepts a start (past the prompt's reach, for lag)
 	START_COOLDOWN = 2, -- seconds between start requests per player
+	TRAVEL_COOLDOWN = 3, -- seconds between the board's Take me there requests per player
 	CLEARED_TOPIC = "BossCleared", -- MessagingService topic for announceEverywhere first clears
 
 	-- Groups (spec section 5): 2-4 players, one boss scaled to the group, loot per player for those who helped

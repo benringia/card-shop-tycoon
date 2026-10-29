@@ -1,7 +1,11 @@
 --!strict
--- Party panel: your 3 party cards. Each slot shows the card (face, grade, level, stars), the perk it gives
--- while summoned, Summon / Unsummon and Remove. One card is summoned at a time: it follows you around and
--- its perk works. Cards are added from the binder card view. The server sends PartyChanged on every change.
+-- Party panel (spec 2026-10-29-collection-screens-ui-design.md 4.4): your 3 party cards side by side, no scrolling.
+-- Each column: the card, name, grade, level and stars, its Power, HP / ATK / SPD bars, the perk it gives while
+-- summoned, a resting timer after fainting, and Summon (or the green Summoned, which unsummons), XP Tonic (with how
+-- many you hold) and Remove. The summoned card's column glows green with a SUMMONED tag. The header shows who is
+-- summoned and your PvP record. A legend along the bottom names the stat icons, and every icon without a label has
+-- a word tooltip (Util/Tooltip: hover, or hold a finger on it). One card is summoned at a time: it follows you around
+-- and its perk works. Cards are added from the binder card view. The server sends PartyChanged on every change.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,17 +14,22 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
+local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
-local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
+local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -30,18 +39,22 @@ type PartyState = {
 	perk: { kind: string, value: number, text: string }?,
 }
 
-local ROW_HEIGHT = 112
-local FACE_SIZE = Vector2.new(70, 100)
-local BUTTON_WIDTH = 116
-local TONIC_WIDTH = 84
+local WHITE = Color3.new(1, 1, 1)
+local MAX_SIZE = Vector2.new(780, 500)
+local GAP = 8
+local CHIP_HEIGHT = 28
+local LEGEND_HEIGHT = 24
+local PHONE_LEGEND_HEIGHT = 20
+local LEGEND = { { "Power", "Power" }, { "Hp", "Health" }, { "Atk", "Attack" }, { "Spd", "Attack Speed" } }
 
 local PartyController = {}
 
 local panel: Frame
-local list: ScrollingFrame
-local perkLabel: TextLabel
+local columns: Frame
+local chips: Frame
+local legend: Frame
 local state: PartyState? = nil
-local hintLabels: { [string]: TextLabel } = {} -- beastId -> the row's bottom line (perk hint, or resting time)
+local restLabels: { [string]: TextLabel } = {} -- beastId -> its column's resting line
 local tonicCount = 0 -- XP Tonics held (from ItemsChanged)
 
 local function clear(container: Instance)
@@ -52,150 +65,263 @@ local function clear(container: Instance)
 	end
 end
 
-local function makeRow(order: number): Frame
-	local row = Instance.new("Frame")
-	row.LayoutOrder = order
-	row.Size = UDim2.new(1, -6, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = UIKit.Colors.Row
-	row.Parent = list
-	UIKit.corner(row, 10)
-	return row
-end
-
-local function addText(row: GuiObject, text: string, x: number, y: number, width: UDim, height: number, font: Enum.Font, size: number, color: Color3): TextLabel
-	local label = UIKit.label(row, text, font, size, color)
-	label.Position = UDim2.new(0, x, 0, y)
-	label.Size = UDim2.new(width.Scale, width.Offset, 0, height)
-	label.TextTruncate = Enum.TextTruncate.AtEnd
+local function text(parent: Instance, value: string, size: number, color: Color3, bold: boolean?): TextLabel
+	local label = UIKit.label(parent, value, if bold then Enum.Font.FredokaOne else Enum.Font.Gotham, size, color)
+	label.TextWrapped = false
+	label.Size = UDim2.fromOffset(0, size + 4)
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.ZIndex = (parent :: GuiObject).ZIndex + 1
+	if bold then
+		UIKit.outlined(label, 2)
+	end
 	return label
 end
 
-local function buildEmptyRow(slot: number)
-	local row = makeRow(slot)
-	addText(row, `Slot {slot} · empty`, 14, 12, UDim.new(1, -(BUTTON_WIDTH + 30)), 22, Enum.Font.GothamBold, 17, UIKit.Colors.Text)
-	addText(row, "Pick a card in your binder and press Add to party.", 14, 40, UDim.new(1, -(BUTTON_WIDTH + 30)), 40, Enum.Font.Gotham, 13, UIKit.Colors.Subtext).TextWrapped = true
-	local add = UIKit.button(row, "Add card", UIKit.Colors.Accent)
-	add.AnchorPoint = Vector2.new(1, 0.5)
-	add.Position = UDim2.new(1, -10, 0.5, 0)
-	add.Size = UDim2.fromOffset(BUTTON_WIDTH, 48)
-	add.TextSize = 14
-	add.Activated:Connect(function()
-		panel.Visible = false
-		BinderController.Open("Tap a card, then Add to party.")
-	end)
+local function list(parent: Instance, horizontal: boolean, gap: number): UIListLayout
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = if horizontal then Enum.FillDirection.Horizontal else Enum.FillDirection.Vertical
+	layout.VerticalAlignment = if horizontal then Enum.VerticalAlignment.Center else Enum.VerticalAlignment.Top
+	layout.Padding = UDim.new(0, gap)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = parent
+	return layout
 end
 
-local function buildCardRow(slot: number, beastId: string, summoned: boolean)
-	local row = makeRow(slot)
-	local beast = BinderController.GetBeasts()[beastId]
-	local card = if beast then Cards.ById[beast.cardId] else nil
-	if not beast or not card then
-		addText(row, `Slot {slot}`, 14, 12, UDim.new(1, -28), 22, Enum.Font.GothamBold, 17, UIKit.Colors.Text)
-		return
-	end
-	if summoned then
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = UIKit.Colors.Accent
-		stroke.Thickness = 2
-		stroke.Parent = row
-	end
-
-	local faceHolder = Instance.new("Frame")
-	faceHolder.Position = UDim2.fromOffset(8, 6)
-	faceHolder.Size = UDim2.fromOffset(FACE_SIZE.X, FACE_SIZE.Y)
-	faceHolder.BackgroundTransparency = 1
-	faceHolder.Parent = row
-	local face = Instance.new("Frame")
-	face.Size = UDim2.fromScale(1, 1)
-	face.Parent = faceHolder
-	UIKit.corner(face, 8)
-	local faceStroke = Instance.new("UIStroke")
-	faceStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	faceStroke.Parent = face
-	CardFace.render(face, faceStroke, card, beast.foil, false)
-
-	local x = FACE_SIZE.X + 18
-	local canTonic = tonicCount > 0 and beast.level < Beasts.MAX_LEVEL
-	local textWidth = UDim.new(1, -(x + BUTTON_WIDTH + 20 + (if canTonic then TONIC_WIDTH + 8 else 0)))
-	local title = `{if summoned then "Summoned · " else ""}{card.name}{if beast.foil then " FOIL" else ""}`
-	addText(row, title, x, 6, textWidth, 20, Enum.Font.GothamBold, 15, if summoned then UIKit.Colors.Accent else UIKit.Colors.Text)
-	addText(row, `{BeastRules.describeGrade(beast.grade)} · {BeastRules.describeGrowth(beast.level, beast.stars)}`, x, 28, textWidth, 16, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
-	local perkText = if perk then PartyRules.describe(perk) else "No perk"
-	addText(row, `{card.element} perk · {perkText}`, x, 48, textWidth, 36, Enum.Font.GothamBold, 13, UIKit.Colors.Text).TextWrapped = true
-	hintLabels[beastId] = addText(row, "", x, 86, textWidth, 16, Enum.Font.Gotham, 11, UIKit.Colors.Subtext)
-
-	local summon = UIKit.button(row, if summoned then "Unsummon" else "Summon", if summoned then UIKit.Colors.Row else UIKit.Colors.Accent)
-	summon.AnchorPoint = Vector2.new(1, 0)
-	summon.Position = UDim2.new(1, -10, 0, 6)
-	summon.Size = UDim2.fromOffset(BUTTON_WIDTH, 48)
-	summon.TextSize = 14
-	summon.Activated:Connect(function()
-		Remotes.Summon:FireServer(if summoned then nil else slot)
-	end)
-
-	local remove = UIKit.button(row, "Remove", UIKit.Colors.Danger)
-	remove.AnchorPoint = Vector2.new(1, 0)
-	remove.Position = UDim2.new(1, -10, 0, 58)
-	remove.Size = UDim2.fromOffset(BUTTON_WIDTH, 48)
-	remove.TextSize = 14
-	remove.Activated:Connect(function()
-		Remotes.SetPartySlot:FireServer(slot, nil)
-	end)
-
-	if canTonic then
-		local tonic = UIKit.button(row, `🧪 +XP\nTonic ({tonicCount})`, UIKit.Colors.Row)
-		tonic.AnchorPoint = Vector2.new(1, 0)
-		tonic.Position = UDim2.new(1, -(BUTTON_WIDTH + 18), 0, 6)
-		tonic.Size = UDim2.fromOffset(TONIC_WIDTH, 100)
-		tonic.TextSize = 14
-		tonic.TextWrapped = true
-		tonic.Activated:Connect(function()
-			Remotes.UseXpTonic:FireServer(beastId)
-		end)
-	end
+local function strip(parent: Instance, order: number, height: number, gap: number): Frame
+	local frame = Instance.new("Frame")
+	frame.LayoutOrder = order
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.new(1, 0, 0, height)
+	frame.ZIndex = (parent :: GuiObject).ZIndex
+	frame.Parent = parent
+	list(frame, true, gap)
+	return frame
 end
 
--- Bottom line of each card row: resting countdown after fainting, otherwise the perk hint
--- "PvP 12-5-1" from the attributes ArenaService keeps on the player
+-- "PvP 12 - 5" (and " - 1" when there are draws), from the attributes ArenaService keeps on the player
 local function describeRecord(): string
 	local player = Players.LocalPlayer
 	local function count(name: string): number
 		local value = player:GetAttribute(name)
 		return if typeof(value) == "number" then value else 0
 	end
-	return `PvP {count("PvpWins")}-{count("PvpLosses")}-{count("PvpDraws")}`
+	local draws = count("PvpDraws")
+	return `PvP {count("PvpWins")} - {count("PvpLosses")}{if draws > 0 then ` - {draws}` else ""}`
 end
 
-local function updateHints()
-	for beastId, label in hintLabels do
-		local seconds = RestTimers.GetSeconds(beastId)
-		if seconds > 0 then
-			local spring = if RestTimers.IsNearSpring() then " · Healing faster" else " · plaza spring heals faster"
-			label.Text = `😴 Resting {RestTimers.Format(seconds)} · can't fight{spring}`
-			label.TextColor3 = UIKit.Colors.Text
-		else
-			label.Text = "More stars make the perk stronger."
-			label.TextColor3 = UIKit.Colors.Subtext
+local function makeColumn(slot: number): Frame
+	local column = Instance.new("Frame")
+	column.Name = `Slot{slot}`
+	column.LayoutOrder = slot
+	column.Size = UDim2.new(1 / Party.PARTY_SIZE, -GAP * (Party.PARTY_SIZE - 1) / Party.PARTY_SIZE, 1, 0)
+	column.BackgroundColor3 = UIStyle.ROW
+	column.ZIndex = columns.ZIndex + 1
+	column.Parent = columns
+	UIKit.corner(column, 12)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 10)
+	padding.PaddingBottom = UDim.new(0, 10)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = column
+	return column
+end
+
+local function buildEmptyColumn(slot: number)
+	local column = makeColumn(slot)
+	UIKit.outline(column, UIStyle.EDGE, 2)
+	local word = text(column, `Slot {slot} is empty`, UIKit.textSize("body"), UIKit.Colors.Subtext, true)
+	word.AnchorPoint = Vector2.new(0.5, 0)
+	word.Position = UDim2.new(0.5, 0, 0.3, 0)
+	local add = UIKit.iconButton(column, "Add a card", "Cards", UIKit.Colors.Secondary)
+	add.AnchorPoint = Vector2.new(0.5, 0.5)
+	add.Position = UDim2.fromScale(0.5, 0.55)
+	add.Size = UDim2.new(1, -8, 0, 50)
+	add.TextSize = UIKit.textSize("body")
+	add.ZIndex = column.ZIndex + 1
+	add.Activated:Connect(function()
+		panel.Visible = false
+		BinderController.Open("Tap a card, then Add to party.")
+	end)
+end
+
+local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
+	local column = makeColumn(slot)
+	local beast = BinderController.GetBeasts()[beastId]
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	if not beast or not card then
+		UIKit.outline(column, UIStyle.EDGE, 2)
+		text(column, `Slot {slot}`, UIKit.textSize("body"), WHITE, true)
+		return
+	end
+	UIKit.outline(column, if summoned then UIStyle.GOOD else UIStyle.EDGE, if summoned then 4 else 2)
+	local phone = UIKit.isPhone()
+	local stack = Instance.new("Frame")
+	stack.BackgroundTransparency = 1
+	stack.Size = UDim2.new(1, 0, 1, -56)
+	stack.ZIndex = column.ZIndex
+	stack.Parent = column
+	list(stack, false, if phone then 3 else 6)
+
+	-- The card beside its name, grade, level, stars and Power
+	local artSize = if phone then Vector2.new(40, 56) else Vector2.new(72, 100)
+	local top = strip(stack, 1, artSize.Y, 8)
+	CardTips.art(top, card, beast.foil, artSize).LayoutOrder = 1
+	local info = Instance.new("Frame")
+	info.LayoutOrder = 2
+	info.BackgroundTransparency = 1
+	info.Size = UDim2.new(1, -(artSize.X + 8), 1, 0)
+	info.ZIndex = top.ZIndex
+	info.Parent = top
+	local infoList = list(info, false, 2)
+	infoList.VerticalAlignment = Enum.VerticalAlignment.Center
+	local name = text(info, card.name, UIKit.textSize(if phone then "body" else "name"), WHITE, true)
+	name.LayoutOrder = 1
+	name.AutomaticSize = Enum.AutomaticSize.None
+	name.Size = UDim2.new(1, 0, 0, UIKit.textSize(if phone then "body" else "name") + 4)
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	local meta = strip(info, 2, 20, 4)
+	local grade = UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
+	grade.Size = UDim2.fromOffset(0, 18)
+	Tooltip.attach(grade, CardTips.gradeText(beast.grade))
+	text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true).LayoutOrder = 2
+	if not phone then
+		local stars = UIKit.stars(info, beast.stars, Beasts.MAX_STARS, 14)
+		stars.LayoutOrder = 3
+		Tooltip.icon(stars, "Star")
+	end
+	local power = strip(info, 4, UIKit.textSize("number") + 4, 4)
+	local powerIcon = Icon.make(power, "Power", UDim2.fromOffset(22, 22))
+	powerIcon.ZIndex = power.ZIndex + 1
+	Tooltip.icon(powerIcon, "Power")
+	text(power, tostring(math.floor(BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))), UIKit.textSize(if phone then "body" else "number"), UIStyle.POWER, true).LayoutOrder = 2
+
+	-- HP, ATK, SPD against the strongest card's
+	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade)
+	local reference = CardTips.reference()
+	for index, stat in { { "Hp", stats.hp, reference.hp }, { "Atk", stats.atk, reference.atk }, { "Spd", stats.spd, reference.spd } } do
+		local row = UIKit.statRow(stack, stat[1] :: string, CompareRules.share(stat[2] :: number, stat[3] :: number))
+		row.LayoutOrder = 1 + index
+		local picture = row:FindFirstChild("Icon") :: Frame
+		Tooltip.icon(picture, stat[1] :: string)
+		if phone then -- short screens: slimmer rows so the perk still fits above the buttons
+			row.Size = UDim2.new(1, 0, 0, 16)
+			picture.Size = UDim2.fromOffset(16, 16)
 		end
 	end
+
+	-- The perk while summoned, then the resting line (filled by updateRest)
+	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
+	local perkLine = strip(stack, 6, if phone then 26 else 36, 5)
+	local elementIcon = Icon.make(perkLine, card.element, UDim2.fromOffset(20, 20))
+	elementIcon.ZIndex = perkLine.ZIndex + 1
+	Tooltip.icon(elementIcon, card.element)
+	local perkText = text(perkLine, if perk then PartyRules.describe(perk) else "No perk", UIKit.textSize("small"), if perk then UIStyle.HINT else UIKit.Colors.Subtext)
+	perkText.LayoutOrder = 2
+	perkText.AutomaticSize = Enum.AutomaticSize.None
+	perkText.TextWrapped = true
+	perkText.Size = UDim2.new(1, -26, 1, 0)
+	local rest = text(stack, "", UIKit.textSize("small"), UIStyle.BAD, true)
+	rest.LayoutOrder = 7
+	rest.Visible = false
+	restLabels[beastId] = rest
+
+	-- Summon / Summoned, XP Tonic, Remove
+	local buttons = Instance.new("Frame")
+	buttons.AnchorPoint = Vector2.new(0, 1)
+	buttons.Position = UDim2.fromScale(0, 1)
+	buttons.Size = UDim2.new(1, 0, 0, 48)
+	buttons.BackgroundTransparency = 1
+	buttons.ZIndex = column.ZIndex
+	buttons.Parent = column
+	list(buttons, true, 6)
+	local canTonic = tonicCount > 0 and beast.level < Beasts.MAX_LEVEL
+	local small = 48
+	local summon = UIKit.iconButton(buttons, if summoned then "Summoned" else "Summon", if summoned then "Check" else "Party", if summoned then UIStyle.GREEN else UIKit.Colors.Accent)
+	summon.LayoutOrder = 1
+	summon.Size = UDim2.new(1, -(small + 6) * (if canTonic then 2 else 1), 1, 0)
+	summon.TextSize = UIKit.textSize("body")
+	summon.ZIndex = buttons.ZIndex + 1
+	summon.Activated:Connect(function()
+		Remotes.Summon:FireServer(if summoned then nil else slot)
+	end)
+	if canTonic then
+		local tonic = UIKit.iconButton(buttons, "", "XpTonic", UIKit.Colors.Secondary)
+		tonic.LayoutOrder = 2
+		tonic.Size = UDim2.fromOffset(small, small)
+		tonic.ZIndex = buttons.ZIndex + 2 -- above Remove, so the count badge poking out isn't hidden under it
+		local tonicInfo = Items.ITEMS.xpTonic
+		Tooltip.attach(tonic, `{tonicInfo.name}: {tonicInfo.description}`)
+		-- How many you hold: a badge on the top right corner
+		local count = UIKit.pill(tonic, tostring(tonicCount), UIStyle.GOLD)
+		count.AnchorPoint = Vector2.new(1, 0)
+		count.Position = UDim2.new(1, 6, 0, -6)
+		count.Size = UDim2.fromOffset(0, 18)
+		count.ZIndex = tonic.ZIndex + 3
+		tonic.Activated:Connect(function()
+			Remotes.UseXpTonic:FireServer(beastId)
+		end)
+	end
+	local remove = UIKit.iconButton(buttons, "", "Remove", UIKit.Colors.Danger)
+	remove.LayoutOrder = 3
+	remove.Size = UDim2.fromOffset(small, small)
+	remove.ZIndex = buttons.ZIndex + 1
+	Tooltip.icon(remove, "Remove")
+	remove.Activated:Connect(function()
+		Remotes.SetPartySlot:FireServer(slot, nil)
+	end)
+
+	if summoned then
+		local tag = UIKit.pill(column, "SUMMONED", UIStyle.GREEN, nil, "Party")
+		tag.AnchorPoint = Vector2.new(0.5, 0.5)
+		tag.Position = UDim2.new(0.5, 0, 0, -10)
+		tag.ZIndex = column.ZIndex + 6
+	end
+end
+
+-- Each column's resting countdown after fainting (nothing while it's ready)
+local function updateRest()
+	for beastId, label in restLabels do
+		local seconds = RestTimers.GetSeconds(beastId)
+		label.Visible = seconds > 0
+		if seconds > 0 then
+			label.Text = `Resting {RestTimers.Format(seconds)}{if RestTimers.IsNearSpring() then " · healing faster" else ""}`
+		end
+	end
+end
+
+-- The header chips: who is summoned, and the PvP record
+local function renderChips(current: PartyState?)
+	clear(chips)
+	local summonedName = "Nobody summoned"
+	if current and current.summoned then
+		for _, entry in current.slots do
+			if entry.slot == current.summoned then
+				local beast = BinderController.GetBeasts()[entry.beastId]
+				local card = if beast then Cards.ById[beast.cardId] else nil
+				summonedName = if card then `Summoned: {card.name}` else summonedName
+			end
+		end
+	end
+	UIKit.pill(chips, summonedName, UIStyle.ROW, nil, "Party").Size = UDim2.fromOffset(0, CHIP_HEIGHT)
+	local record = UIKit.pill(chips, describeRecord(), UIStyle.ROW, nil, "Pvp")
+	record.Size = UDim2.fromOffset(0, CHIP_HEIGHT)
+	record.LayoutOrder = 2
 end
 
 local function render()
 	if not panel.Visible then
 		return
 	end
-	clear(list)
-	hintLabels = {}
+	clear(columns)
+	restLabels = {}
 	local current = state
+	renderChips(current)
 	if not current then
-		perkLabel.Text = ""
-		local wait = UIKit.label(list, "Loading...", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
-		wait.Size = UDim2.new(1, 0, 0, 30)
+		local wait = text(columns, "Loading...", UIKit.textSize("body"), UIKit.Colors.Subtext)
+		wait.LayoutOrder = 1
 		return
 	end
-	local perkText = if current.perk then `Active perk: {current.perk.text}` else "No creature summoned. Summon one to get its perk."
-	perkLabel.Text = `{perkText}  ·  {describeRecord()}`
 	local bySlot: { [number]: string } = {}
 	for _, entry in current.slots do
 		bySlot[entry.slot] = entry.beastId
@@ -203,17 +329,35 @@ local function render()
 	for slot = 1, Party.PARTY_SIZE do
 		local beastId = bySlot[slot]
 		if beastId then
-			buildCardRow(slot, beastId, current.summoned == slot)
+			buildCardColumn(slot, beastId, current.summoned == slot)
 		else
-			buildEmptyRow(slot)
+			buildEmptyColumn(slot)
 		end
 	end
-	updateHints()
+	updateRest()
+end
+
+-- Big on desktops (up to MAX_SIZE), nearly the whole screen on phones
+local function layout()
+	local phone = UIKit.isPhone()
+	panel.Size = if phone then UDim2.fromScale(0.97, 0.98) else UDim2.fromScale(0.92, 0.86)
+	local top = if phone then 10 else 18
+	local bottom = if phone then 6 else 10
+	local legendHeight = if phone then PHONE_LEGEND_HEIGHT else LEGEND_HEIGHT
+	columns.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + top)
+	columns.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + top + legendHeight + 2 * bottom))
+	legend.Position = UDim2.new(0.5, 0, 1, -bottom)
+	legend.Size = UDim2.new(1, -24, 0, legendHeight)
+	local limit = panel:FindFirstChildOfClass("UISizeConstraint")
+	if limit then
+		limit.MaxSize = MAX_SIZE
+	end
 end
 
 local function toggle()
 	panel.Visible = not panel.Visible
 	if panel.Visible then
+		layout()
 		Remotes.RequestParty:FireServer()
 		render()
 	end
@@ -226,13 +370,47 @@ end
 
 function PartyController.Start()
 	local screenGui = UIController.GetScreenGui()
-	panel, list = UIKit.panel(screenGui, "Party", "Party")
-	perkLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 14, UIKit.Colors.Accent)
-	perkLabel.Position = UDim2.fromOffset(16, 56)
-	perkLabel.Size = UDim2.new(1, -32, 0, 22)
-	perkLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	list.Position = UDim2.fromOffset(12, 84)
-	list.Size = UDim2.new(1, -24, 1, -96)
+	local scroller: ScrollingFrame
+	panel, scroller = UIKit.panel(screenGui, "Party", "Party", "Party")
+	scroller:Destroy() -- three columns, no scrolling
+	Icon.header(panel, "Party", UIKit.HEADER_HEIGHT)
+
+	chips = Instance.new("Frame")
+	chips.Name = "Chips"
+	chips.BackgroundTransparency = 1
+	chips.Position = UDim2.new(0, 150, 0, (UIKit.HEADER_HEIGHT - CHIP_HEIGHT) / 2)
+	chips.Size = UDim2.new(1, -220, 0, CHIP_HEIGHT)
+	chips.ZIndex = panel.ZIndex + 3
+	chips.Parent = panel
+	list(chips, true, 6)
+
+	columns = Instance.new("Frame")
+	columns.Name = "Columns"
+	columns.BackgroundTransparency = 1
+	columns.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + 18)
+	columns.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + 18 + 16))
+	columns.ZIndex = panel.ZIndex + 1
+	columns.Parent = panel
+	list(columns, true, GAP)
+
+	-- What the stat icons mean, once, along the bottom (each icon also has its tooltip)
+	legend = Instance.new("Frame")
+	legend.Name = "Legend"
+	legend.AnchorPoint = Vector2.new(0.5, 1)
+	legend.BackgroundTransparency = 1
+	legend.ZIndex = panel.ZIndex + 1
+	legend.Parent = panel
+	local legendList = list(legend, true, 14)
+	legendList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	for index, entry in LEGEND do
+		local item = strip(legend, index, LEGEND_HEIGHT, 4)
+		item.AutomaticSize = Enum.AutomaticSize.X
+		item.Size = UDim2.fromScale(0, 1)
+		local picture = Icon.make(item, entry[1], UDim2.fromOffset(18, 18))
+		picture.ZIndex = item.ZIndex + 1
+		Tooltip.icon(picture, entry[1])
+		text(item, entry[2], UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
+	end
 
 	Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, onClick = toggle })
 
@@ -243,12 +421,12 @@ function PartyController.Start()
 		state = payload
 		render()
 	end)
-	local sinceHints = 0
+	local sinceRest = 0
 	RunService.Heartbeat:Connect(function(dt)
-		sinceHints += dt
-		if sinceHints >= 0.5 and panel.Visible then
-			sinceHints = 0
-			updateHints()
+		sinceRest += dt
+		if sinceRest >= 0.5 and panel.Visible then
+			sinceRest = 0
+			updateRest()
 		end
 	end)
 	-- Levels and stars change perks; redraw with the new binder
@@ -262,6 +440,13 @@ function PartyController.Start()
 			render()
 		end
 	end)
+	for _, name in { "PvpWins", "PvpLosses", "PvpDraws" } do
+		Players.LocalPlayer:GetAttributeChangedSignal(name):Connect(function()
+			if panel.Visible then
+				renderChips(state)
+			end
+		end)
+	end
 	Remotes.RequestItems:FireServer() -- our own copy of the tonic count, whatever order the controllers start in
 end
 

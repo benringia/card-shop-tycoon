@@ -208,4 +208,156 @@ function BossRules.groupPromptText(config: GroupConfig, members: number, isLeade
 	return `{if isLeader then "Start now" else "Join group"} ({members}/{config.GROUP_MAX})`
 end
 
+-- One boss on the board's ladder, as the player stands now. keyNeeded: fragments that open it (0: none)
+export type Step = {
+	cleared: boolean,
+	unlocked: boolean,
+	keyNeeded: number,
+	fragments: number,
+	shopLevel: number,
+	needLevel: number,
+	power: number,
+	recommended: number,
+}
+
+-- beaten; ready (you can start it now, fragments in hand count, and your Power is enough); tooWeak (you can start
+-- it but your Power is short); locked (shop level or fragments short)
+function BossRules.stepState(step: Step): "beaten" | "ready" | "tooWeak" | "locked"
+	if step.cleared then
+		return "beaten"
+	end
+	if step.shopLevel < step.needLevel then
+		return "locked"
+	end
+	if not step.unlocked and step.fragments < step.keyNeeded then
+		return "locked"
+	end
+	return if step.power >= step.recommended then "ready" else "tooWeak"
+end
+
+-- What keeps a boss shut on the board: the shop level first, then its key fragments; nil when neither does
+function BossRules.lockReason(step: Step): ("level" | "keys")?
+	if step.cleared then
+		return nil
+	end
+	if step.shopLevel < step.needLevel then
+		return "level"
+	end
+	if not step.unlocked and step.fragments < step.keyNeeded then
+		return "keys"
+	end
+	return nil
+end
+
+-- The elements strong against `element` on the element wheel (Config/Combat BEATS), sorted
+function BossRules.counterElements(beats: { [string]: { string } }, element: string): { string }
+	local counters = {}
+	for attacker, beaten in beats do
+		if table.find(beaten, element) then
+			table.insert(counters, attacker)
+		end
+	end
+	table.sort(counters)
+	return counters
+end
+
+-- Rewarded wins left today at full drop chances (the soft cap)
+function BossRules.fullDropsLeft(config: Config, rewardedToday: number): number
+	return math.max(0, config.SOFT_CAP_AFTER - rewardedToday)
+end
+
+local function percent(share: number): string
+	return `{math.max(1, math.round(share * 100))}%`
+end
+
+-- A drop's chance as the board shows it (never 0%)
+function BossRules.chanceText(chance: number): string
+	return percent(chance)
+end
+
+function BossRules.countText(min: number, max: number): string
+	return if min == max then `x{min}` else `x{min}-{max}`
+end
+
+type Trick = { kind: string, name: string, text: string }
+type TrickBoss = {
+	mechanics: {
+		heal: { below: number, fraction: number, uses: number? }?,
+		enrage: { below: number, atkMultiplier: number }?,
+		shield: { every: number, breakStun: number }?,
+		thunderclap: { every: number }?,
+		adds: { at: { number }, count: number, species: string }?,
+	},
+	phases: { { element: string } }?,
+}
+
+-- A boss's tricks (its mechanics, or its phases) in the board's kid words, in a fixed order
+function BossRules.watchOut(boss: TrickBoss): { Trick }
+	local tricks: { Trick } = {}
+	if boss.phases then
+		local elements = {}
+		for _, phase in boss.phases do
+			table.insert(elements, phase.element)
+		end
+		local first = table.remove(elements, 1)
+		local text = `As it gets hurt: {first}, then {table.concat(elements, ", ")}. Each part fights like an earlier boss.`
+		table.insert(tricks, { kind = "phases", name = "Changes element", text = text })
+		return tricks
+	end
+	local mechanics = boss.mechanics
+	local shield = mechanics.shield
+	if shield then
+		local text = `Puts up a shield every {shield.every} s. Break it to stun it for {shield.breakStun} s.`
+		table.insert(tricks, { kind = "shield", name = "Shield", text = text })
+	end
+	local clap = mechanics.thunderclap
+	if clap then
+		local text = `Stuns your cards every {clap.every} s. Faster cards shake it off sooner.`
+		table.insert(tricks, { kind = "thunderclap", name = "Thunderclap", text = text })
+	end
+	local adds = mechanics.adds
+	if adds then
+		local shares = {}
+		for _, share in adds.at do
+			table.insert(shares, percent(share))
+		end
+		local who = if adds.count == 1 then `1 {adds.species}` else `{adds.count} {adds.species}s`
+		local text = `Calls {who} at {table.concat(shares, " and ")} health. Beat them first: it's tougher while they stand.`
+		table.insert(tricks, { kind = "adds", name = "Helpers", text = text })
+	end
+	local heal = mechanics.heal
+	if heal then
+		local times = if heal.uses then ` ({heal.uses} {if heal.uses == 1 then "time" else "times"})` else ""
+		local text = `Heals {percent(heal.fraction)} of its health when under {percent(heal.below)}{times}.`
+		table.insert(tricks, { kind = "heal", name = "Heals", text = text })
+	end
+	local enrage = mechanics.enrage
+	if enrage then
+		local text = `Hits {enrage.atkMultiplier}x harder when under {percent(enrage.below)} health.`
+		table.insert(tricks, { kind = "enrage", name = "Gets angry", text = text })
+	end
+	return tricks
+end
+
+-- Whether the board spells out a boss's tricks: a surprise only for locked bosses past the next one to beat
+function BossRules.revealTricks(step: "beaten" | "ready" | "tooWeak" | "locked", isNext: boolean): boolean
+	return step ~= "locked" or isNext
+end
+
+-- What the board's travel button does for a boss whose arena is in bossPlace ("Wild" | "Frontier" | "Dungeon")
+-- while you are in `here` ("Main" | "Frontier" | "Dungeon"): its gate in this place, the normal travel to the other
+-- place, the Dungeon portal's directions, or nothing (inside a Dungeon run)
+function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "toFrontier" | "toMain" | "viaPortal" | "none"
+	if here == "Dungeon" then
+		return "none"
+	end
+	if bossPlace == "Dungeon" then
+		return "viaPortal"
+	end
+	if (bossPlace == "Wild" and here == "Main") or (bossPlace == "Frontier" and here == "Frontier") then
+		return "gate"
+	end
+	return if bossPlace == "Frontier" then "toFrontier" else "toMain"
+end
+
 return BossRules

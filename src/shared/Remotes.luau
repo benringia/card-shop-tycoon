@@ -33,6 +33,7 @@ local NAMES = {
 	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal)
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
+	"SwitchJob", -- client → server: (slot: number) that slot's worker takes the next job (Restocker <-> Cashier)
 	"JobsChanged", -- server → owner: { slotCount, maxSlots, unlockLevel, hasPass, passId, slots = { { slot, beastId, job, status } } }
 	"RequestJobs", -- client → server: () resend JobsChanged
 	"SetPartySlot", -- client → server: (slot: number, target: beastId | { cardId, foil, grade } | nil) nil removes
@@ -60,6 +61,7 @@ local NAMES = {
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
+	"BossTravel", -- client → server: (index: number) the board's Take me there: to boss n's gate when its arena is in this place
 	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
 	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "boss" | "won" | "out", message? } the Dungeon run; client → server: () ask for it
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
@@ -118,6 +120,7 @@ return {
 	GradeUp = remotes.GradeUp,
 	AssignJob = remotes.AssignJob,
 	UnassignJob = remotes.UnassignJob,
+	SwitchJob = remotes.SwitchJob,
 	JobsChanged = remotes.JobsChanged,
 	RequestJobs = remotes.RequestJobs,
 	SetPartySlot = remotes.SetPartySlot,
@@ -145,6 +148,7 @@ return {
 	BossCleared = remotes.BossCleared,
 	BossLoot = remotes.BossLoot,
 	PickUpLoot = remotes.PickUpLoot,
+	BossTravel = remotes.BossTravel,
 	DevPanel = remotes.DevPanel,
 	DungeonRun = remotes.DungeonRun,
 	DungeonLeave = remotes.DungeonLeave,

@@ -1,0 +1,230 @@
+--!strict
+-- Word tooltips for icons and buttons shown without a label: hover with a mouse, hold a finger on touch
+-- (UIStyle.LONG_PRESS). One shared tip per ScreenGui, drawn over everything in it, centred over the thing it
+-- names (under it near the top edge), kept on screen (Util/UiLayout). It hides when the pointer leaves, the
+-- finger lifts, or the thing hides, goes away or gets covered. Roblox sends MouseEnter to objects under another
+-- window too (the card view's stat tiles under the party chooser), so a covered thing shows no tip.
+-- Tooltip.rich gives a gold title over a few lines (the boss ladder's items: what they do, their odds).
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = Shared:WaitForChild("Config")
+local UIStyle = require(Config:WaitForChild("UIStyle"))
+local IconTips = require(Config:WaitForChild("IconTips"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+
+local GAP = 6
+local MAX_WIDTH = 240
+local TIP_Z_INDEX = 1000 -- over every window in its ScreenGui
+
+local Tooltip = {}
+
+local tips: { [ScreenGui]: TextLabel } = {}
+local shownFor: GuiObject? = nil
+local shownTip: TextLabel? = nil
+local byTouch = false
+local watcher: RBXScriptConnection? = nil
+
+local function tipFor(screen: ScreenGui): TextLabel
+	local existing = tips[screen]
+	if existing and existing.Parent then
+		return existing
+	end
+	local tip = Instance.new("TextLabel")
+	tip.Name = "WordTip"
+	tip.AutomaticSize = Enum.AutomaticSize.XY
+	tip.Size = UDim2.new()
+	tip.BackgroundColor3 = UIStyle.EDGE
+	tip.Font = Enum.Font.GothamBold
+	tip.TextSize = UIStyle.TEXT.small
+	tip.TextColor3 = Color3.new(1, 1, 1)
+	tip.TextWrapped = true
+	tip.Visible = false
+	tip.ZIndex = TIP_Z_INDEX
+	tip.Parent = screen
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = Vector2.new(MAX_WIDTH, math.huge)
+	limit.Parent = tip
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = tip
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = UIStyle.HINT
+	edge.Thickness = 2
+	edge.Parent = tip
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 8)
+	padding.PaddingRight = UDim.new(0, 8)
+	padding.PaddingTop = UDim.new(0, 5)
+	padding.PaddingBottom = UDim.new(0, 5)
+	padding.Parent = tip
+	tips[screen] = tip
+	return tip
+end
+
+-- Visible on screen: every ancestor up to its ScreenGui visible, and the ScreenGui enabled
+local function isShown(target: GuiObject): boolean
+	local node: Instance? = target
+	while node do
+		if node:IsA("GuiObject") and not node.Visible then
+			return false
+		end
+		if node:IsA("ScreenGui") then
+			return node.Enabled
+		end
+		node = node.Parent
+	end
+	return false
+end
+
+-- The mouse in GUI space (below the top bar inset)
+local function mousePoint(): Vector2
+	return UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
+end
+
+local function pointerOver(target: GuiObject, point: Vector2): boolean
+	local spot, size = target.AbsolutePosition, target.AbsoluteSize
+	return point.X >= spot.X - 2 and point.X <= spot.X + size.X + 2 and point.Y >= spot.Y - 2 and point.Y <= spot.Y + size.Y + 2
+end
+
+-- Something drawn sits over the target at this point (GUI space). GetGuiObjectsAtPosition lists the top first: a
+-- drawn object before the target (or what it sits on) covers it.
+local function covered(target: GuiObject, point: Vector2): boolean
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return false
+	end
+	for _, object in playerGui:GetGuiObjectsAtPosition(point.X, point.Y) do
+		if object.Name == "WordTip" then
+			continue -- the tip itself
+		end
+		if object == target or object:IsDescendantOf(target) or target:IsDescendantOf(object) then
+			return false
+		end
+		local drawn = object.BackgroundTransparency < 1
+			or (object:IsA("ImageLabel") or object:IsA("ImageButton")) and object.ImageTransparency < 1 and object.Image ~= ""
+		if drawn and object.Visible then
+			return true
+		end
+	end
+	return false
+end
+
+function Tooltip.hide()
+	if shownTip then
+		shownTip.Visible = false
+	end
+	shownFor, shownTip = nil, nil
+	if watcher then
+		watcher:Disconnect()
+		watcher = nil
+	end
+end
+
+local function place(target: GuiObject, tip: TextLabel)
+	local screen = tip.Parent :: ScreenGui
+	local origin = screen.AbsolutePosition
+	local spot = UiLayout.above(
+		{ x = target.AbsolutePosition.X - origin.X, y = target.AbsolutePosition.Y - origin.Y, w = target.AbsoluteSize.X, h = target.AbsoluteSize.Y },
+		{ w = tip.AbsoluteSize.X, h = tip.AbsoluteSize.Y },
+		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
+		GAP
+	)
+	tip.Position = UDim2.fromOffset(spot.x, spot.y)
+end
+
+local function show(target: GuiObject, text: string, touch: boolean, point: Vector2, rich: boolean)
+	local screen = target:FindFirstAncestorOfClass("ScreenGui")
+	if not screen or not isShown(target) or covered(target, point) then
+		return
+	end
+	Tooltip.hide()
+	local tip = tipFor(screen)
+	tip.RichText = rich
+	tip.Text = text
+	tip.Visible = true
+	shownFor, shownTip, byTouch = target, tip, touch
+	place(target, tip)
+	-- MouseLeave can be missed (fast moves, a window closing under the pointer): check each frame
+	watcher = RunService.Heartbeat:Connect(function()
+		local mouse = mousePoint()
+		if not target.Parent or not isShown(target) or (not byTouch and (not pointerOver(target, mouse) or covered(target, mouse))) then
+			Tooltip.hide()
+			return
+		end
+		place(target, tip) -- it sizes itself after its text, and windows move
+	end)
+end
+
+local function hook(target: GuiObject, text: string, rich: boolean)
+	target.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			show(target, text, false, mousePoint(), rich)
+		end
+	end)
+	target.MouseLeave:Connect(function()
+		if shownFor == target and not byTouch then
+			Tooltip.hide()
+		end
+	end)
+	local pressed = 0
+	target.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		pressed += 1
+		local press = pressed
+		local point = Vector2.new(input.Position.X, input.Position.Y)
+		task.delay(UIStyle.LONG_PRESS, function()
+			if pressed == press then
+				show(target, text, true, point, rich)
+			end
+		end)
+	end)
+	target.InputEnded:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		pressed += 1 -- cancels a hold still counting
+		if shownFor == target then
+			Tooltip.hide()
+		end
+	end)
+end
+
+-- Shows `text` while the pointer is over `target` (or a finger is held on it)
+function Tooltip.attach(target: GuiObject, text: string)
+	hook(target, text, false)
+end
+
+local function escape(text: string): string
+	return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+end
+
+-- A tip with a gold title over a few lines (an item: what it is, its odds); each line may be { text, colour }
+function Tooltip.rich(target: GuiObject, title: string, lines: { string | { text: string, color: Color3 } })
+	local parts = { `<font color="#{UIStyle.HINT:ToHex()}">{escape(title)}</font>` }
+	for _, line in lines do
+		if typeof(line) == "string" then
+			table.insert(parts, escape(line))
+		else
+			table.insert(parts, `<font color="#{line.color:ToHex()}">{escape(line.text)}</font>`)
+		end
+	end
+	hook(target, table.concat(parts, "\n"), true)
+end
+
+-- The words for a Config/UIIcons icon (Config/IconTips); nothing for an icon without an entry
+function Tooltip.icon(target: GuiObject, iconName: string)
+	local text = (IconTips :: { [string]: string })[iconName]
+	if text then
+		Tooltip.attach(target, text)
+	end
+end
+
+return Tooltip

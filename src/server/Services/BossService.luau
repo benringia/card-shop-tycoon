@@ -40,6 +40,7 @@ local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowPickUp = RateLimiter.new(Bosses.LOOT_PICKUP_COOLDOWN)
 local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN) -- its own, so Fight then F right after both work
 local allowRequest = RateLimiter.new(1)
+local allowTravel = RateLimiter.new(Bosses.TRAVEL_COOLDOWN)
 local rng = Random.new()
 local runGate: ((player: Player, bossId: string) -> ())? = nil -- the Dungeon: its run starts the chamber's boss
 
@@ -82,6 +83,7 @@ local function sendBosses(player: Player)
 			cleared = record.cleared,
 			lootIn = math.max(0, record.lootAt - now),
 			rewardedToday = BossRules.dayCounts(record, today).rewardedToday,
+			bonusReady = record.bonusDay ~= today, -- the day's first rewarded win still adds its daily chest
 			fragments = if unlock then ItemService.GetCount(player, unlock.item) else 0,
 		}
 	end
@@ -601,6 +603,22 @@ local function unload(player: Player)
 	end
 end
 
+-- The board's Take me there: only to a gate in this place (BossRules.travelChoice); the Wild's travel checks (in a
+-- fight, a run, ...) still apply. Other places use their own travel (the Frontier portal), started by the client.
+local function onTravel(player: Player, raw: unknown)
+	if typeof(raw) ~= "number" or raw ~= math.floor(raw) or raw < 1 or raw > #Bosses.LADDER or not allowTravel(player) then
+		return
+	end
+	local boss = Bosses.BOSSES[Bosses.LADDER[raw]]
+	local here = if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Main"
+	local gate = BossService.GetGate(raw)
+	if BossRules.travelChoice(boss.place, here) ~= "gate" or not gate then
+		notify(player, `The {boss.name} isn't in this place.`, true)
+		return
+	end
+	WildService.TravelToWild(player, gate)
+end
+
 function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
 	arenas = WildService.BuildBossArenas(onGate, onGroup)
@@ -623,6 +641,7 @@ function BossService.Start()
 		end
 	end)
 	Remotes.PickUpLoot.OnServerEvent:Connect(onPickUp)
+	Remotes.BossTravel.OnServerEvent:Connect(onTravel)
 	if Place.isDungeon() then
 		for _, arena in arenas do
 			arena.groupPrompt.Enabled = false -- the run is the group

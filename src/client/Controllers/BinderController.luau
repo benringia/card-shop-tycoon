@@ -19,20 +19,24 @@ local TextChatService = game:GetService("TextChatService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
-local Jobs = require(Config:WaitForChild("Jobs"))
 local Packs = require(Config:WaitForChild("Packs"))
-local Party = require(Config:WaitForChild("Party"))
 local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Collection = require(Config:WaitForChild("Collection"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
+local Bosses = require(Config:WaitForChild("Bosses"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local BossTints = require(ClientUtil:WaitForChild("BossTints"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
@@ -40,7 +44,7 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
-local CardInspectorController = require(Controllers:WaitForChild("CardInspectorController"))
+local CardDetailController = require(Controllers:WaitForChild("CardDetailController"))
 
 type Card = typeof(Cards.List[1])
 type Owned = { normal: number, foil: number }
@@ -62,10 +66,6 @@ type Tile = {
 local CARD_ASPECT = 0.7
 local CHIP_ROW = 22 -- pixels
 local SMALL_POCKET = 90 -- pixels wide: smaller pockets show only the copies chip
--- The card view: the 3D card in the inspector on the left, this panel (copies list and buttons) on the right
-local DETAIL_CARD = Vector2.new(220, 314)
-local DETAIL_X = 16
-local DETAIL_WIDTH = 440
 -- 3 x 3 pockets like a real binder; short screens get fewer, bigger pockets (3 a page at least, so the
 -- card text stays readable)
 local POCKET_OPTIONS: PocketLayout.Options = {
@@ -78,20 +78,15 @@ local POCKET_OPTIONS: PocketLayout.Options = {
 	maxRows = 3,
 	minPockets = 3,
 }
-local TITLE_VALUE_ROOM = 96 -- right side of a row title kept free for the price
-local TOOLTIP_WIDTH = 230
+local TOOLTIP_WIDTH = 260
+local TOOLTIP_GAP = 8
 local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
 local PAGE_KEYS = { [Enum.KeyCode.Q] = -1, [Enum.KeyCode.E] = 1 }
 local BINDER_KEY = Enum.KeyCode.B
 local BAG_KEY = Enum.KeyCode.I -- inventory: the binder's Bag tab
 local BAG_PRIORITY_MARGIN = 100 -- above every built-in binding (the camera's I zoom included)
-local HOW_TO_SELL = "To sell, put it in a Glass Showcase (customers) or Collector Case (players): walk up, press F, then Cards."
-local BEAST_ROW_HEIGHT = 100
-local STACK_ROW_HEIGHT = 80
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
 local COVER_TEXT = Color3.fromRGB(255, 250, 240)
-local XP_BAR_COLOR = Color3.fromRGB(90, 160, 255)
-local XP_TRACK_COLOR = Color3.fromRGB(25, 25, 35)
 
 local player = Players.LocalPlayer
 
@@ -103,14 +98,6 @@ local beasts: { [string]: Beast } = {}
 local working: { [string]: string } = {} -- beastId -> job, for cards working in the shop
 local partied: { [string]: boolean } = {} -- beastId -> in the party
 local hintToast: number? = nil -- toast from BinderController.Open, hidden once a card is tapped
-local partySlots: { [number]: string } = {} -- party slot -> beastId
-local assignButton: TextButton
-local jobChooser: Frame
-local assignTarget: (string | { cardId: string, foil: boolean, grade: string })? = nil
-local partyButton: TextButton
-local partyChooser: Frame
-local partySlotButtons: { TextButton } = {}
-local partyTarget: (string | { cardId: string, foil: boolean, grade: string })? = nil
 local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
@@ -146,6 +133,8 @@ local rarityPicks: { [string]: boolean } = {} -- none picked = every rarity
 local showFilter = ALL_FILTER -- All, Owned or Missing
 local sortBy = "Set" -- Set (card number), Value, Copies or Rarity
 local bagOverlay: Frame -- the Bag tab (built in buildBag); the card tooltip stays off while it shows
+local cardsTab: TextButton -- the Cards / Bag tabs (built in buildBag)
+local bagTab: TextButton
 local pages: { Frame } = {} -- left and right page
 local pageLabel: TextLabel
 local spreadIndex = 1
@@ -167,17 +156,8 @@ local queuedSpread: number? = nil -- a redraw asked for mid-turn, done when the 
 local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
 local searchText = ""
 local tooltip: Frame
-local tooltipText: TextLabel
+local tooltipTile: Tile? = nil -- the pocket the tooltip describes
 
-local detail: Frame
-local detailInner: Frame
-local detailStroke: UIStroke
-local detailName: TextLabel
-local detailSubtitle: TextLabel
-local detailSummary: TextLabel
-local raisedList: ScrollingFrame
-local detailCard: Card? = nil
-local selectedKey: string? = nil -- the row shown on the big card (Entry.key)
 local plotConnections: { RBXScriptConnection } = {}
 local refreshQueued = false
 
@@ -305,247 +285,6 @@ local function addCardFrame(parent: Instance): (Frame, UIStroke)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = inner
 	return inner, stroke
-end
-
-local function clearRows()
-	for _, child in raisedList:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-end
-
-local function addRowText(row: GuiObject, text: string, y: number, height: number, font: Enum.Font, size: number, color: Color3): TextLabel
-	local label = UIKit.label(row, text, font, size, color)
-	label.Position = UDim2.fromOffset(10, y)
-	label.Size = UDim2.new(1, -20, 0, height)
-	label.ZIndex = 13
-	return label
-end
-
-local function makeRow(order: number, height: number, selected: boolean, onTap: () -> ()): TextButton
-	local row = Instance.new("TextButton")
-	row.LayoutOrder = order
-	row.Size = UDim2.new(1, -8, 0, height)
-	row.BackgroundColor3 = UIKit.Colors.Row
-	row.Text = ""
-	row.ZIndex = 12
-	row.Parent = raisedList
-	UIKit.corner(row, 8)
-	if selected then
-		local stroke = Instance.new("UIStroke")
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Color = UIKit.Colors.Accent
-		stroke.Thickness = 2
-		stroke.Parent = row
-	end
-	row.Activated:Connect(onTap)
-	return row
-end
-
-local refreshDetail: () -> ()
-local refreshAssignButton: (selected: Entry?) -> ()
-
-local function selectEntry(key: string)
-	selectedKey = key
-	refreshDetail()
-end
-
-local function addValueText(row: GuiObject, value: number)
-	local label = addRowText(row, string.format("$%.2f", value), 6, 20, Enum.Font.FredokaOne, 17, VALUE_COLOR)
-	label.TextXAlignment = Enum.TextXAlignment.Right
-end
-
-local function describeStats(card: Card, entry: Entry, level: number, stars: number): string
-	local stats = BeastRules.getStats(card, entry.foil, level, stars, entry.grade)
-	return `Power {entry.power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`
-end
-
--- One levelled card: grade, growth and value / stats / XP bar / what it needs for the next star
-local function addBeastRow(card: Card, entry: Entry, beast: Beast, order: number)
-	local row = makeRow(order, BEAST_ROW_HEIGHT, entry.key == selectedKey, function()
-		selectEntry(entry.key)
-	end)
-
-	local growth = BeastRules.describeGrowth(beast.level, beast.stars)
-	local job = working[beast.id]
-	local status = if job then ` · Working: {job}` elseif partied[beast.id] then " · In party" else ""
-	local title = `{if beast.foil then "FOIL · " else ""}{BeastRules.describeGrade(beast.grade)} · {growth}{status}`
-	local titleLabel = addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
-	titleLabel.Size = UDim2.new(1, -(TITLE_VALUE_ROOM + 10), 0, 20)
-	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	addValueText(row, entry.value)
-	addRowText(row, describeStats(card, entry, beast.level, beast.stars), 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-
-	-- XP bar with the numbers on it
-	local toNext = BeastRules.getXpToNext(beast.level)
-	local track = Instance.new("Frame")
-	track.Position = UDim2.fromOffset(10, 50)
-	track.Size = UDim2.new(1, -20, 0, 18)
-	track.BackgroundColor3 = XP_TRACK_COLOR
-	track.ZIndex = 13
-	track.Parent = row
-	UIKit.corner(track, 6)
-	local fill = Instance.new("Frame")
-	fill.Size = UDim2.fromScale(if toNext > 0 then math.clamp(beast.xp / toNext, 0, 1) else 1, 1)
-	fill.BackgroundColor3 = if toNext > 0 then XP_BAR_COLOR else UIKit.Colors.Accent
-	fill.ZIndex = 14
-	fill.Parent = track
-	UIKit.corner(fill, 6)
-	local xpText = UIKit.label(track, if toNext > 0 then `XP {beast.xp} / {toNext}` else "MAX LEVEL", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
-	xpText.Size = UDim2.fromScale(1, 1)
-	xpText.TextXAlignment = Enum.TextXAlignment.Center
-	xpText.TextStrokeTransparency = 0.6
-	xpText.ZIndex = 15
-
-	addRowText(row, BeastRules.describeStarProgress(beast.stars), 72, 24, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-end
-
--- Plain copies of one grade (level 1, 0 stars): how many, how strong and what they're worth
-local function addStackRow(card: Card, entry: Entry, order: number)
-	local row = makeRow(order, STACK_ROW_HEIGHT, entry.key == selectedKey, function()
-		selectEntry(entry.key)
-	end)
-	local growth = BeastRules.describeGrowth(1, BeastRules.START_STARS)
-	local title = `{if entry.foil then "FOIL · " else ""}{BeastRules.describeGrade(entry.grade)} · Owned {entry.count} · {growth}`
-	local titleLabel = addRowText(row, title, 6, 20, Enum.Font.GothamBold, 15, UIKit.Colors.Text)
-	titleLabel.Size = UDim2.new(1, -(TITLE_VALUE_ROOM + 10), 0, 20)
-	titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	addValueText(row, entry.value)
-	addRowText(row, describeStats(card, entry, 1, BeastRules.START_STARS), 28, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-	addRowText(row, BeastRules.describeStarProgress(BeastRules.START_STARS), 48, 28, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-end
-
--- "Add to party" for the selected copy, or why it can't join
-local function refreshPartyButton(selected: Entry?)
-	partyChooser.Visible = false
-	local beast = if selected then selected.beast else nil
-	local text, ready
-	if not selected then
-		text, ready = "Add to party", false
-	elseif beast and partied[beast.id] then
-		text, ready = "In party", false
-	elseif beast and working[beast.id] then
-		text, ready = "Working", false
-	else
-		text, ready = "Add to party", true
-	end
-	partyButton.Text = text
-	partyButton.BackgroundColor3 = if ready then UIKit.Colors.Accent else UIKit.Colors.Locked
-	partyButton.AutoButtonColor = ready
-	partyTarget = if not ready or not selected
-		then nil
-		elseif beast then beast.id
-		else { cardId = (detailCard :: Card).id, foil = selected.foil, grade = selected.grade }
-end
-
--- Slot buttons say which card each party slot holds now
-local function refreshPartyChooser()
-	for slot, button in partySlotButtons do
-		local beast = beasts[partySlots[slot] or ""]
-		local card = if beast then Cards.ById[beast.cardId] else nil
-		button.Text = if card then `Slot {slot}\n{card.name}` else `Slot {slot}\nempty`
-	end
-end
-
--- "Assign to job" for the selected copy, or why it can't be assigned
-refreshAssignButton = function(selected: Entry?)
-	refreshPartyButton(selected)
-	jobChooser.Visible = false
-	local slots = player:GetAttribute("JobSlots")
-	local used = player:GetAttribute("JobsUsed")
-	local slotCount = if typeof(slots) == "number" then slots else 0
-	local usedCount = if typeof(used) == "number" then used else 0
-	local beast = if selected then selected.beast else nil
-	local job = if beast then working[beast.id] else nil
-	local text, ready
-	if not selected then
-		text, ready = "Assign to job", false
-	elseif job then
-		text, ready = `Working: {job}`, false
-	elseif beast and partied[beast.id] then
-		text, ready = "In party", false
-	elseif slotCount == 0 then
-		text, ready = `Jobs at shop Lv {Jobs.UNLOCK_LEVEL}`, false
-	elseif usedCount >= slotCount then
-		text, ready = "Job slots full", false
-	else
-		text, ready = "Assign to job", true
-	end
-	assignButton.Text = text
-	assignButton.BackgroundColor3 = if ready then UIKit.Colors.Accent else UIKit.Colors.Locked
-	assignButton.AutoButtonColor = ready
-	assignTarget = if not ready or not selected
-		then nil
-		elseif beast then beast.id
-		else { cardId = (detailCard :: Card).id, foil = selected.foil, grade = selected.grade }
-end
-
-refreshDetail = function()
-	local card = detailCard
-	if not card then
-		return
-	end
-	local shown = getCount(displayed, card.id)
-	local entries = getEntries(card)
-	local onDisplay = shown.normal + shown.foil
-	if #entries + onDisplay == 0 then
-		detail.Visible = false
-		detailCard = nil
-		return
-	end
-
-	-- Keep the selection valid: if that copy left the binder, show the strongest one
-	local selected: Entry? = nil
-	for _, entry in entries do
-		if entry.key == selectedKey then
-			selected = entry
-		end
-	end
-	selected = selected or entries[1]
-	selectedKey = if selected then selected.key else nil
-
-	if selected then
-		local beast = selected.beast
-		local growth = {
-			level = if beast then beast.level else 1,
-			stars = if beast then beast.stars else BeastRules.START_STARS,
-			grade = selected.grade,
-		}
-		CardFace.render(detailInner, detailStroke, card, selected.foil, true, growth)
-		CardInspectorController.Show(card, selected.foil, growth)
-	else
-		CardFace.render(detailInner, detailStroke, card, shown.foil > 0)
-		CardInspectorController.Show(card, shown.foil > 0, nil)
-	end
-	refreshAssignButton(selected)
-
-	local owned = 0
-	for _, entry in entries do
-		owned += entry.count
-	end
-	detailName.Text = card.name
-	detailSubtitle.Text = string.format("#%02d · %s · %s", card.number, card.element, card.rarity)
-	detailSummary.Text = string.format(
-		"Owned %d%s%s",
-		owned,
-		if onDisplay > 0 then ` · {onDisplay} on display` else "",
-		if #entries > 1 then " · strongest first, tap one to view it" else ""
-	)
-
-	clearRows()
-	for index, entry in entries do
-		local beast = entry.beast
-		if beast then
-			addBeastRow(card, entry, beast, index)
-		else
-			addStackRow(card, entry, index)
-		end
-	end
-	local footer = UIKit.label(raisedList, HOW_TO_SELL, Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-	footer.LayoutOrder = #entries + 1
-	footer.Size = UDim2.new(1, -8, 0, 44)
-	footer.ZIndex = 12
 end
 
 -- Copies of this card the player has: in the binder (plain + levelled) and on display
@@ -908,7 +647,7 @@ local function refresh()
 	displayed = readDisplayedCards()
 	refreshSet()
 	applyFilter()
-	refreshDetail()
+	CardDetailController.Refresh()
 end
 
 local function openSet(set: string)
@@ -922,67 +661,67 @@ end
 
 -- Tooltip (mouse only) -------------------------------------------------------------------------------
 
-local function describeTooltip(card: Card): string
-	local lines = { card.name, `{card.rarity} · {card.element} · #{card.number}` }
+-- What the tooltip shows for a card: copies, best grade and level, strongest Power and the worth range
+local function tooltipInfo(card: Card): CardTips.CardInfo
 	local owned, onDisplay = getOwnedCounts(card.id)
-	if owned + onDisplay == 0 then
-		table.insert(lines, "Not collected yet")
-		return table.concat(lines, "\n")
-	end
-	table.insert(lines, `Owned {owned}{if onDisplay > 0 then ` · {onDisplay} on display` else ""}`)
 	local entries = getEntries(card)
-	local bestGrade = getBestGrade(card.id)
-	if bestGrade then
-		table.insert(lines, `Best grade {bestGrade}`)
-	end
 	local raised = getRaised(card.id)
-	if raised[1] then
-		table.insert(lines, `Best level Lv {raised[1].level}`)
+	local low, high = math.huge, 0
+	for _, entry in entries do
+		low = math.min(low, entry.value)
+		high = math.max(high, entry.value)
 	end
-	if entries[1] then
-		local low, high = math.huge, 0
-		for _, entry in entries do
-			low = math.min(low, entry.value)
-			high = math.max(high, entry.value)
-		end
-		table.insert(lines, `Strongest: Power {entries[1].power}`)
-		table.insert(lines, if low == high then string.format("Worth $%.2f", high) else string.format("Worth $%.2f - $%.2f", low, high))
+	return {
+		card = card,
+		owned = owned,
+		onDisplay = onDisplay,
+		bestGrade = getBestGrade(card.id),
+		bestLevel = if raised[1] then raised[1].level else nil,
+		power = if entries[1] then entries[1].power else nil,
+		worthLow = if entries[1] then low else nil,
+		worthHigh = if entries[1] then high else nil,
+	}
+end
+
+-- Level with its pocket, just outside the book (right of it, else left; else above or under the pocket), never over it
+local function placeTooltip()
+	local tile = tooltipTile
+	if not tile or not tooltip.Visible then
+		return
 	end
-	table.insert(lines, "Tap for details")
-	return table.concat(lines, "\n")
+	local screen = tooltip.Parent :: GuiObject
+	local origin = screen.AbsolutePosition
+	local button = tile.button
+	local spot = UiLayout.beside(
+		{ x = book.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = book.AbsoluteSize.X, h = button.AbsoluteSize.Y },
+		{ w = tooltip.AbsoluteSize.X, h = tooltip.AbsoluteSize.Y },
+		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
+		TOOLTIP_GAP,
+		-- no room either side of the book: above or under the pocket itself
+		{ x = button.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = button.AbsoluteSize.X, h = button.AbsoluteSize.Y }
+	)
+	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
 local function showTooltip(tile: Tile)
-	-- Pockets under the open card view still get mouse events; no tooltip through it
-	if not UserInputService.MouseEnabled or not tile.button.Parent or detail.Visible or bagOverlay.Visible then
+	-- Pockets under the open card view or the rarity guide still get mouse events; no tooltip through them
+	if not UserInputService.MouseEnabled or not tile.button.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
 		return
 	end
-	tooltipText.Text = describeTooltip(tile.card)
-	-- Beside the pocket, kept on screen
-	local screen = tooltip.Parent :: any
-	local origin: Vector2 = screen.AbsolutePosition
-	local screenSize: Vector2 = screen.AbsoluteSize
-	local button = tile.button
-	local x = button.AbsolutePosition.X - origin.X + button.AbsoluteSize.X + 8
-	if x + TOOLTIP_WIDTH > screenSize.X then
-		x = button.AbsolutePosition.X - origin.X - TOOLTIP_WIDTH - 8
-	end
-	local y = button.AbsolutePosition.Y - origin.Y
-	tooltip.Position = UDim2.fromOffset(math.max(0, x), math.clamp(y, 0, math.max(0, screenSize.Y - tooltip.AbsoluteSize.Y)))
+	tooltipTile = tile
+	CardTips.card(tooltip, tooltipInfo(tile.card))
 	tooltip.Visible = true
+	placeTooltip()
 end
 
 local function hideTooltip()
 	tooltip.Visible = false
+	tooltipTile = nil
 end
 
 local function openDetail(card: Card)
-	detailCard = card
-	local strongest = getEntries(card)[1] -- open on the strongest copy
-	selectedKey = if strongest then strongest.key else nil
-	refreshDetail()
-	detail.Visible = detailCard ~= nil
-	if detail.Visible and hintToast then
+	CardDetailController.Open(card)
+	if CardDetailController.IsOpen() and hintToast then
 		UIController.Dismiss(hintToast) -- "Tap a card, then ..." is done once a card is open
 		hintToast = nil
 	end
@@ -1095,12 +834,11 @@ local function buildTile(card: Card, parent: Instance): Tile
 	return tile
 end
 
--- Card shown large over the grid with its counts and value
--- While a card is inspected the book, backdrop and binder buttons hide so the 3D card shows
+-- The card view (CardDetailController): while a card is inspected the book, backdrop, tabs and binder buttons hide
+-- so the 3D card shows
 function setInspecting(on: boolean)
-	if not on then
-		CardInspectorController.Close()
-	end
+	cardsTab.Visible = not on
+	bagTab.Visible = not on
 	-- The 3D card needs the world undimmed
 	backdropGui.Enabled = panel.Visible and not on
 	bookHolder.Visible = not on
@@ -1113,193 +851,6 @@ function setInspecting(on: boolean)
 	if on and filtersPanel.Visible then
 		setFiltersOpen(false)
 	end
-end
-
-local function buildDetail(parent: Frame)
-	-- A panel on the right; the 3D card (CardInspectorController) sits left of it
-	detail = Instance.new("Frame")
-	detail.Name = "Detail"
-	-- Below the binder's close button (top right) so the two never overlap
-	detail.AnchorPoint = Vector2.new(1, 0)
-	detail.Position = UDim2.new(1, -16, 0, 84)
-	detail.Size = UDim2.new(0, DETAIL_WIDTH, 1, -100)
-	detail.BackgroundColor3 = UIKit.Colors.Panel
-	detail.ZIndex = 10
-	detail.Visible = false
-	detail.Active = true
-	detail.Parent = parent
-	UIKit.corner(detail, 16)
-	UIKit.outline(detail, Color3.new(1, 1, 1), 3)
-	local flip = UIKit.button(detail, "🔄 Flip", UIKit.Colors.Row)
-	flip.Name = "Flip"
-	flip.AnchorPoint = Vector2.new(1, 0)
-	flip.Position = UDim2.new(1, -12, 0, 12)
-	flip.Size = UDim2.fromOffset(96, 44)
-	flip.TextSize = 16
-	flip.ZIndex = 12
-	flip.Activated:Connect(CardInspectorController.Flip)
-	detail:GetPropertyChangedSignal("Visible"):Connect(function()
-		if not detail.Visible then
-			detailCard = nil -- so a later collection update can't reopen the 3D card on its own
-		end
-		setInspecting(detail.Visible)
-	end)
-
-	-- Card on the left, info on the right: fits short landscape phone screens
-	local cardHolder = Instance.new("Frame")
-	cardHolder.Position = UDim2.fromOffset(16, 16)
-	cardHolder.Size = UDim2.fromOffset(DETAIL_CARD.X, DETAIL_CARD.Y)
-	cardHolder.BackgroundTransparency = 1
-	cardHolder.ZIndex = 11
-	cardHolder.Visible = false -- the inspector shows the card in 3D
-	cardHolder.Parent = detail
-	detailInner, detailStroke = addCardFrame(cardHolder)
-
-	detailName = UIKit.label(detail, "", Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
-	detailName.Position = UDim2.fromOffset(DETAIL_X, 12)
-	detailName.Size = UDim2.new(1, -(DETAIL_X + 12), 0, 26)
-	detailName.ZIndex = 11
-
-	detailSubtitle = UIKit.label(detail, "", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
-	detailSubtitle.Position = UDim2.fromOffset(DETAIL_X, 38)
-	detailSubtitle.Size = UDim2.new(1, -(DETAIL_X + 12), 0, 16)
-	detailSubtitle.ZIndex = 11
-
-	detailSummary = UIKit.label(detail, "", Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
-	detailSummary.Position = UDim2.fromOffset(DETAIL_X, 56)
-	detailSummary.Size = UDim2.new(1, -(DETAIL_X + 12), 0, 28)
-	detailSummary.TextYAlignment = Enum.TextYAlignment.Top
-	detailSummary.ZIndex = 11
-
-	-- Levelled cards and plain copies; scrolls when there are many, ends above the Back button
-	raisedList = Instance.new("ScrollingFrame")
-	raisedList.Position = UDim2.fromOffset(DETAIL_X, 88)
-	raisedList.Size = UDim2.new(1, -(DETAIL_X + 4), 1, -150)
-	raisedList.BackgroundTransparency = 1
-	raisedList.BorderSizePixel = 0
-	raisedList.ScrollBarThickness = 4
-	raisedList.CanvasSize = UDim2.new()
-	raisedList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	raisedList.ZIndex = 11
-	raisedList.Parent = detail
-	local raisedLayout = Instance.new("UIListLayout")
-	raisedLayout.Padding = UDim.new(0, 6)
-	raisedLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	raisedLayout.Parent = raisedList
-
-	-- Bottom row, in thirds of the space right of the card: Assign to job, Add to party, Back
-	local function placeBottom(button: TextButton, third: number)
-		button.Position = UDim2.new(third / 3, DETAIL_X - third * (DETAIL_X / 3 + 1), 1, -56)
-		button.Size = UDim2.new(1 / 3, -(DETAIL_X / 3 + 9), 0, 48)
-		button.TextSize = 14
-		button.ZIndex = 12
-	end
-	assignButton = UIKit.button(detail, "Assign to job", UIKit.Colors.Locked)
-	placeBottom(assignButton, 0)
-	assignButton.Activated:Connect(function()
-		if assignTarget then
-			partyChooser.Visible = false
-			jobChooser.Visible = true
-		end
-	end)
-
-	partyButton = UIKit.button(detail, "Add to party", UIKit.Colors.Locked)
-	placeBottom(partyButton, 1)
-	partyButton.Activated:Connect(function()
-		if partyTarget then
-			jobChooser.Visible = false
-			refreshPartyChooser()
-			partyChooser.Visible = true
-		end
-	end)
-
-	partyChooser = Instance.new("Frame")
-	partyChooser.Name = "PartyChooser"
-	partyChooser.AnchorPoint = Vector2.new(0.5, 1)
-	partyChooser.Position = UDim2.new(0.5, 0, 1, -62)
-	partyChooser.Size = UDim2.fromOffset(330, 142)
-	partyChooser.BackgroundColor3 = UIKit.Colors.Panel
-	partyChooser.Visible = false
-	partyChooser.ZIndex = 20
-	partyChooser.Parent = detail
-	UIKit.corner(partyChooser, 12)
-	local partyStroke = Instance.new("UIStroke")
-	partyStroke.Color = UIKit.Colors.Accent
-	partyStroke.Parent = partyChooser
-	local partyTitle = UIKit.label(partyChooser, "Which party slot? A card there goes back to your binder.", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-	partyTitle.Position = UDim2.fromOffset(12, 8)
-	partyTitle.Size = UDim2.new(1, -24, 0, 22)
-	partyTitle.TextTruncate = Enum.TextTruncate.AtEnd
-	partyTitle.ZIndex = 21
-	for slot = 1, Party.PARTY_SIZE do
-		local choice = UIKit.button(partyChooser, `Slot {slot}`, UIKit.Colors.Accent)
-		choice.Position = UDim2.new((slot - 1) / Party.PARTY_SIZE, if slot == 1 then 12 else 4, 0, 36)
-		choice.Size = UDim2.new(1 / Party.PARTY_SIZE, -16, 0, 56)
-		choice.TextSize = 13
-		choice.TextWrapped = true
-		choice.ZIndex = 21
-		choice.Activated:Connect(function()
-			partyChooser.Visible = false
-			if partyTarget then
-				Remotes.SetPartySlot:FireServer(slot, partyTarget)
-			end
-		end)
-		partySlotButtons[slot] = choice
-	end
-	local partyCancel = UIKit.button(partyChooser, "Cancel", UIKit.Colors.Row)
-	partyCancel.Position = UDim2.new(0, 12, 0, 98)
-	partyCancel.Size = UDim2.new(1, -24, 0, 36)
-	partyCancel.TextSize = 14
-	partyCancel.ZIndex = 21
-	partyCancel.Activated:Connect(function()
-		partyChooser.Visible = false
-	end)
-
-	jobChooser = Instance.new("Frame")
-	jobChooser.Name = "JobChooser"
-	jobChooser.AnchorPoint = Vector2.new(0.5, 1)
-	jobChooser.Position = UDim2.new(0.5, 0, 1, -62)
-	jobChooser.Size = UDim2.fromOffset(300, 132)
-	jobChooser.BackgroundColor3 = UIKit.Colors.Panel
-	jobChooser.Visible = false
-	jobChooser.ZIndex = 20
-	jobChooser.Parent = detail
-	UIKit.corner(jobChooser, 12)
-	local chooserStroke = Instance.new("UIStroke")
-	chooserStroke.Color = UIKit.Colors.Accent
-	chooserStroke.Parent = jobChooser
-	local chooserTitle = UIKit.label(jobChooser, "Which job?", Enum.Font.GothamBold, 16, UIKit.Colors.Text)
-	chooserTitle.Position = UDim2.fromOffset(12, 8)
-	chooserTitle.Size = UDim2.new(1, -24, 0, 22)
-	chooserTitle.ZIndex = 21
-	for index, job in Jobs.JOBS do
-		local choice = UIKit.button(jobChooser, job, UIKit.Colors.Accent)
-		choice.Position = UDim2.new((index - 1) / #Jobs.JOBS, if index == 1 then 12 else 4, 0, 36)
-		choice.Size = UDim2.new(1 / #Jobs.JOBS, -16, 0, 48)
-		choice.TextSize = 15
-		choice.ZIndex = 21
-		choice.Activated:Connect(function()
-			jobChooser.Visible = false
-			if assignTarget then
-				Remotes.AssignJob:FireServer(assignTarget, job)
-			end
-		end)
-	end
-	local cancel = UIKit.button(jobChooser, "Cancel", UIKit.Colors.Row)
-	cancel.Position = UDim2.new(0, 12, 0, 90)
-	cancel.Size = UDim2.new(1, -24, 0, 34)
-	cancel.TextSize = 14
-	cancel.ZIndex = 21
-	cancel.Activated:Connect(function()
-		jobChooser.Visible = false
-	end)
-
-	local back = UIKit.button(detail, "Back", UIKit.Colors.Row)
-	placeBottom(back, 2)
-	back.Activated:Connect(function()
-		detail.Visible = false
-		detailCard = nil
-	end)
 end
 
 -- Sizes the pockets for the pages' size on screen; a layout change re-pages the binder
@@ -1344,8 +895,6 @@ local bagDetail: Frame
 local bagCount: TextLabel
 local bagItems: { [string]: number } = {}
 local selectedItem: string? = nil
-local cardsTab: TextButton
-local bagTab: TextButton
 
 local BAG = {
 	SLOTS = 20, -- slots always drawn (more appear if needed)
@@ -1355,13 +904,29 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	SLOT_COLOR = Color3.fromRGB(46, 54, 76), -- a filled slot: lighter slate so items stand out (Midnight & Gold)
-	EMPTY_COLOR = Color3.fromRGB(28, 33, 47),
-	EMPTY_EDGE = Color3.fromRGB(48, 56, 78),
-	BADGE = Color3.fromRGB(14, 16, 24),
+	SLOT_COLOR = UIStyle.ROW, -- a filled slot: lighter slate so items stand out
+	EMPTY_COLOR = Color3.fromRGB(22, 28, 42),
+	EMPTY_EDGE = UIStyle.EDGE,
+	BADGE = UIStyle.EDGE,
 	INK = Color3.fromRGB(244, 241, 233),
 	SUBTEXT = Color3.fromRGB(150, 158, 178),
 }
+
+-- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
+local function bossMark(id: string): (Color3?, number?)
+	local index = ItemRules.bossOf(id, Bosses.LADDER)
+	if not index then
+		return nil, nil
+	end
+	return BossTints.key(Bosses.LADDER[index]), index
+end
+
+local function tintIcon(holder: Frame, color: Color3?)
+	local glyph = holder:FindFirstChild("Glyph")
+	if color and glyph and glyph:IsA("ImageLabel") then
+		glyph.ImageColor3 = color
+	end
+end
 
 local function bagLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, y: number, height: number): TextLabel
 	local label = UIKit.label(parent, text, font, size, color)
@@ -1396,44 +961,47 @@ local function renderBagDetail()
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 		return
 	end
-	-- The item big on a soft circle, its name and how many you have
+	-- The item big on a dark circle (a boss item in its boss's tint), its name and how many you have
+	local tint = bossMark(selectedItem)
 	local halo = Instance.new("Frame")
 	halo.AnchorPoint = Vector2.new(0.5, 0)
-	halo.Position = UDim2.new(0.5, 0, 0, 16)
-	halo.Size = UDim2.fromOffset(104, 104)
-	halo.BackgroundColor3 = BAG.SLOT_COLOR
+	halo.Position = UDim2.new(0.5, 0, 0, 12)
+	halo.Size = UDim2.fromOffset(84, 84)
+	halo.BackgroundColor3 = UIStyle.PANEL
 	halo.ZIndex = 33
 	halo.Parent = bagDetail
-	UIKit.corner(halo, 52)
-	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(76, 76))
+	UIKit.corner(halo, 42)
+	UIKit.outline(halo, tint or UIStyle.EDGE, 3)
+	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(62, 62))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = 34
 	Icon.set(icon, info.icon)
-	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 24, BAG.INK, 128, 30)
+	tintIcon(icon, tint)
+	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, BAG.INK, 102, 26)
 	name.TextXAlignment = Enum.TextXAlignment.Center
-	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIKit.Colors.Accent, 158, 20)
+	UIKit.outlined(name, 2)
+	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIStyle.HINT, 128, 20)
 	owned.TextXAlignment = Enum.TextXAlignment.Center
-	local about = bagLabel(bagDetail, info.description, Enum.Font.Gotham, 14, BAG.INK, 188, 44)
-	about.TextXAlignment = Enum.TextXAlignment.Center
-	-- Where to get it / how to use it, as two soft boxes
-	local y = 240
-	for _, section in { { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
+	-- What it does / where to get it / how to use it, as dark boxes
+	local y = 154
+	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
 		if section.text then
 			local box = Instance.new("Frame")
 			box.Position = UDim2.fromOffset(12, y)
 			box.Size = UDim2.new(1, -24, 0, 62)
-			box.BackgroundColor3 = BAG.EMPTY_COLOR
+			box.BackgroundColor3 = UIStyle.PANEL
 			box.ZIndex = 33
 			box.Parent = bagDetail
 			UIKit.corner(box, 10)
-			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIKit.Colors.Accent, 6, 18)
+			UIKit.outline(box, UIStyle.EDGE, 2)
+			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIStyle.HINT, 6, 18)
 			heading.Position = UDim2.fromOffset(10, 6)
 			heading.Size = UDim2.new(1, -20, 0, 18)
-			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.SUBTEXT, 26, 32)
+			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.INK, 26, 32)
 			body.Position = UDim2.fromOffset(10, 26)
 			body.Size = UDim2.new(1, -20, 0, 32)
-			y += 70
+			y += 68
 		end
 	end
 end
@@ -1452,25 +1020,40 @@ local function addSlot(order: number, id: string?)
 	slot.Parent = bagGrid
 	UIKit.corner(slot, 14)
 	local selected = filled and id == selectedItem
-	UIKit.outline(slot, if selected then UIKit.Colors.Accent else BAG.EMPTY_EDGE, if selected then 3 else 2)
+	UIKit.outline(slot, if selected then UIStyle.HINT else BAG.EMPTY_EDGE, if selected then 3 else 2)
 	if not id then
 		return
 	end
 	local info = Items.ITEMS[id]
-	local icon = Icon.make(slot, info.icon, UDim2.fromScale(0.68, 0.68))
+	local icon = Icon.make(slot, info.icon, UDim2.fromScale(0.62, 0.62))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.46)
 	icon.ZIndex = 33
 	Icon.set(icon, info.icon)
-	local badge = UIKit.label(slot, `x{bagItems[id]}`, Enum.Font.FredokaOne, 14, Color3.fromRGB(255, 255, 255))
+	-- Boss items: tinted for their boss, its ladder number in the corner, so every key looks different
+	-- The window shrinks to fit small screens (UIScale); counts and numbers stay at least 14 px tall on screen
+	local fit = bagOverlay:FindFirstChildOfClass("UIScale")
+	local countSize = math.max(15, math.ceil(14 / (if fit then math.max(fit.Scale, 0.1) else 1)))
+	local tint, bossNumber = bossMark(id)
+	tintIcon(icon, tint)
+	if tint and bossNumber then
+		local chip = UIKit.pill(slot, tostring(bossNumber), tint)
+		chip.Position = UDim2.fromOffset(4, 4)
+		chip.Size = UDim2.fromOffset(0, countSize + 5)
+		chip.TextSize = countSize
+		chip.ZIndex = 35
+	end
+	local badge = UIKit.label(slot, `x{bagItems[id]}`, Enum.Font.FredokaOne, countSize, Color3.fromRGB(255, 255, 255))
 	badge.AnchorPoint = Vector2.new(1, 1)
 	badge.Position = UDim2.new(1, -4, 1, -4)
-	badge.Size = UDim2.fromOffset(0, 20)
+	badge.Size = UDim2.fromOffset(0, countSize + 5)
 	badge.AutomaticSize = Enum.AutomaticSize.X
+	badge.TextWrapped = false -- wrapping at no width showed a bare "x"
 	badge.BackgroundColor3 = BAG.BADGE
 	badge.BackgroundTransparency = 0
 	badge.TextXAlignment = Enum.TextXAlignment.Center
 	badge.ZIndex = 34
+	UIKit.outlined(badge, 1.5)
 	UIKit.corner(badge, 10)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 6)
@@ -1568,11 +1151,6 @@ local function buildBag(parent: Frame)
 	end
 	cardsTab = tab("Cards", "Cards", 16)
 	bagTab = tab("Bag", "Bag", 138)
-	-- The card view covers the whole binder, title row included: hide the tabs while it's open
-	detail:GetPropertyChangedSignal("Visible"):Connect(function()
-		cardsTab.Visible = not detail.Visible
-		bagTab.Visible = not detail.Visible
-	end)
 
 	-- The window, centred; scaled down to fit small screens
 	bagOverlay = Instance.new("Frame")
@@ -1580,12 +1158,12 @@ local function buildBag(parent: Frame)
 	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
 	bagOverlay.Position = UDim2.fromScale(0.5, 0.5)
 	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
-	bagOverlay.BackgroundColor3 = UIKit.Colors.Panel
+	bagOverlay.BackgroundColor3 = UIStyle.PANEL
 	bagOverlay.Visible = false
 	bagOverlay.ZIndex = 30
 	bagOverlay.Parent = parent
 	UIKit.corner(bagOverlay, 16)
-	UIKit.outline(bagOverlay, Color3.new(1, 1, 1), 3)
+	UIKit.outline(bagOverlay, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
 	local fit = Instance.new("UIScale")
 	fit.Parent = bagOverlay
 	local function fitWindow()
@@ -1598,7 +1176,7 @@ local function buildBag(parent: Frame)
 	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
 	fitWindow()
 
-	local header, title = UIKit.header(bagOverlay, "Bag")
+	local header, title = UIKit.header(bagOverlay, "Bag", "Bag")
 	header.ZIndex = 31
 	title.ZIndex = 32
 	title.Position = UDim2.fromOffset(62, 0)
@@ -1606,12 +1184,13 @@ local function buildBag(parent: Frame)
 	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
 	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
 	headerIcon.ZIndex = 32
-	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.fromRGB(225, 235, 255))
+	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
 	bagCount.AnchorPoint = Vector2.new(1, 0.5)
 	bagCount.Position = UDim2.new(1, -18, 0.5, 0)
 	bagCount.Size = UDim2.fromOffset(160, 24)
 	bagCount.TextXAlignment = Enum.TextXAlignment.Right
 	bagCount.ZIndex = 32
+	UIKit.outlined(bagCount, 2)
 
 	local top = UIKit.HEADER_HEIGHT + 12
 	bagGrid = Instance.new("ScrollingFrame")
@@ -1642,11 +1221,11 @@ local function buildBag(parent: Frame)
 	bagDetail.AnchorPoint = Vector2.new(1, 0)
 	bagDetail.Position = UDim2.new(1, -16, 0, top)
 	bagDetail.Size = UDim2.new(0, BAG.DETAIL_WIDTH, 1, -(top + 16))
-	bagDetail.BackgroundColor3 = Color3.new(1, 1, 1)
+	bagDetail.BackgroundColor3 = UIStyle.ROW
 	bagDetail.ZIndex = 32
 	bagDetail.Parent = bagOverlay
 	UIKit.corner(bagDetail, 14)
-	UIKit.outline(bagDetail, BAG.EMPTY_EDGE, 2)
+	UIKit.outline(bagDetail, UIStyle.EDGE, 2)
 
 	cardsTab.Activated:Connect(function()
 		showTab(false)
@@ -2404,33 +1983,52 @@ local function buildPanel(parent: Instance)
 	rarityGuideButton.Font = Enum.Font.FredokaOne
 	local guideIcon = Icon.make(rarityGuideButton, "Info", UDim2.fromOffset(26, 26))
 	guideIcon.ZIndex = rarityGuideButton.ZIndex + 1
-	rarityGuideButton.Activated:Connect(RarityGuideController.Open)
+	rarityGuideButton.Activated:Connect(function()
+		hideTooltip()
+		RarityGuideController.Open()
+	end)
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BinderTooltip"
 	tooltip.Size = UDim2.fromOffset(TOOLTIP_WIDTH, 0)
 	tooltip.AutomaticSize = Enum.AutomaticSize.Y
-	tooltip.BackgroundColor3 = UIKit.Colors.Row
+	tooltip.BackgroundColor3 = UIStyle.PANEL
 	tooltip.ZIndex = 50
 	tooltip.Visible = false
 	tooltip.Parent = parent
-	UIKit.corner(tooltip, 10)
-	UIKit.outline(tooltip, UIKit.Colors.Accent, 2)
+	UIKit.corner(tooltip, 12)
+	UIKit.outline(tooltip, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
 	local tooltipPadding = Instance.new("UIPadding")
-	tooltipPadding.PaddingTop = UDim.new(0, 8)
-	tooltipPadding.PaddingBottom = UDim.new(0, 8)
+	tooltipPadding.PaddingTop = UDim.new(0, 10)
+	tooltipPadding.PaddingBottom = UDim.new(0, 10)
 	tooltipPadding.PaddingLeft = UDim.new(0, 10)
 	tooltipPadding.PaddingRight = UDim.new(0, 10)
 	tooltipPadding.Parent = tooltip
-	tooltipText = UIKit.label(tooltip, "", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-	tooltipText.Size = UDim2.fromScale(1, 0)
-	tooltipText.AutomaticSize = Enum.AutomaticSize.Y
-	tooltipText.ZIndex = 51
+	tooltip:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTooltip) -- it sizes itself after its content
 
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card, panel))
 	end
-	buildDetail(panel)
+	CardDetailController.Build(panel, {
+		getEntries = getEntries,
+		displayedCount = function(cardId: string): number
+			local shown = getCount(displayed, cardId)
+			return shown.normal + shown.foil
+		end,
+		stacks = function(cardId: string)
+			return graded[cardId] or {}
+		end,
+		working = function()
+			return working
+		end,
+		partied = function()
+			return partied
+		end,
+		beasts = function()
+			return beasts
+		end,
+		setInspecting = setInspecting,
+	})
 	buildBag(panel) -- before the first layout: it places the Cards / Bag tabs
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	bookGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
@@ -2442,7 +2040,7 @@ local function buildPanel(parent: Instance)
 		hideTooltip()
 		Hud.setHidden("Binder", panel.Visible)
 		if not panel.Visible then
-			detail.Visible = false -- closes the inspector too
+			CardDetailController.Close() -- closes the inspector too
 		end
 		if not panel.Visible and filtersPanel.Visible then
 			filtersPanel.Visible = false
@@ -2473,8 +2071,7 @@ local function isTyping(): boolean
 end
 
 local function toggle()
-	detail.Visible = false
-	detailCard = nil
+	CardDetailController.Close()
 	panel.Visible = not panel.Visible
 	if panel.Visible then
 		refresh() -- displayed cards may have sold since last time
@@ -2571,12 +2168,13 @@ function BinderController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildPanel(screenGui)
 	buildButtons()
+	RarityGuideController.SetCollected(isCollected)
 	refresh()
 
 	-- Phones: a swipe across the open binder turns the page (left = next)
 	if Collection.BOOK.SWIPE then
 		UserInputService.TouchSwipe:Connect(function(direction)
-			if not panel.Visible or bagOverlay.Visible or detail.Visible or RarityGuideController.IsOpen() then
+			if not panel.Visible or bagOverlay.Visible or CardDetailController.IsOpen() or RarityGuideController.IsOpen() then
 				return
 			end
 			if direction == Enum.SwipeDirection.Left then
@@ -2595,7 +2193,7 @@ function BinderController.Start()
 			return
 		end
 		-- Windows over the binder (the Rarity guide) keep the keys
-		if not panel.Visible or bagOverlay.Visible or detail.Visible or isTyping() or RarityGuideController.IsOpen() then
+		if not panel.Visible or bagOverlay.Visible or CardDetailController.IsOpen() or isTyping() or RarityGuideController.IsOpen() then
 			return
 		end
 		local step = PAGE_KEYS[input.KeyCode]
@@ -2617,26 +2215,18 @@ function BinderController.Start()
 	end, false, Enum.ContextActionPriority.High.Value + BAG_PRIORITY_MARGIN, BAG_KEY)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
-	-- Job slots opening or filling up change the card view's Assign button
-	for _, name in { "JobSlots", "JobsUsed" } do
-		player:GetAttributeChangedSignal(name):Connect(function()
-			if detail.Visible then
-				refreshDetail()
-			end
-		end)
-	end
 	-- Party slot names in the "Which party slot?" chooser
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then
 			return
 		end
-		partySlots = {}
+		local slots = {}
 		for _, entry in payload.slots do
 			if typeof(entry) == "table" and typeof(entry.slot) == "number" and typeof(entry.beastId) == "string" then
-				partySlots[entry.slot] = entry.beastId
+				slots[entry.slot] = entry.beastId
 			end
 		end
-		refreshPartyChooser()
+		CardDetailController.SetPartySlots(slots)
 	end)
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
 		bagItems = if typeof(items) == "table" then items else {}
