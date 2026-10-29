@@ -1452,7 +1452,7 @@ boss models; the ranch and Heroic tiers come after those.
   (hover, lift, desk size, warm batch, flick window, park offset); stale comments and small dead bits
   (BACKDROP_COLOR, BinderSpreads.turningSide); nearby ProximityPrompts over the binder unchecked; no gamepad
   card picking.
-- [ ] UI project 3, cards in the world and the 3D pack opening (spec
+- [x] UI project 3, cards in the world and the 3D pack opening (spec
   `2026-10-29-cards-in-world-and-pack-opening-design.md`, plan `2026-10-29-cards-in-world-and-pack-opening.md`, branch
   `ui-project-3`): picked from concepts (shelves A: open display boxes; cases B: upright cards turning on rarity
   beams; the rip B with cards revealed one at a time). Built: the Blender pack, deck box and display box (imported
@@ -1461,8 +1461,16 @@ boss models; the ranch and Heroic tiers come after those.
   shown card, a sparkling results lineup), our own Blender effects (no confetti), sounds, and the 3D pack in menus.
   Studio at graphics level 1: worst frame 42 ms as the stage shows, 27 ms or less through the opening, 19 ms in a
   stocked shop (budget 50). Review fixes: an opening closed mid-animation (a fight, a death) leaves nothing behind;
-  the hint shows only before the first flip (on phones it covered the row's prices). Waiting on: the user's Studio and
-  iPhone check.
+  the hint shows only before the first flip (on phones it covered the row's prices). Done: approved by the user and
+  merged 2026-10-30. Feedback rounds: no square border on face-up cards, a softer pack light, the waiting pack
+  "charged and ready to rip" (picked from four: turns to the pointer, crackles, a tear guide), the pack drops below
+  the card stack, 3D packs on the register counter, every rack 7 studs with plates at the same levels, bigger packs on
+  shelves, branded delivery cases, sealed booster boxes on shelves, a bigger futuristic scan pod for the Grading
+  Station (picked from six) and the Condenser in its style, both with rings of floating cards. Deferred minors from
+  its review: a CardFace error while the cards build leaves the opening stuck before the first flip (a reset gets
+  out); Continue while the Rarity guide is open leaves the guide trapped until the next opening; the Odds button and
+  Rarity guide pill are 46 px tall (under 48); OpeningStage.isShown and OpeningCards.count are unused and OpeningPack
+  says "the controller raycasts" (it doesn't); a fully stocked double-sided Big Display Rack was never measured.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

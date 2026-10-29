@@ -2,7 +2,7 @@
 
 Date: 2026-10-29. Branch: `ui-project-3`. Status: approved by the user 2026-10-29, with the calls listed at the end.
 Built 2026-10-30 (plan `docs/superpowers/plans/2026-10-29-cards-in-world-and-pack-opening.md`, every task, the models
-imported into `assets/packs`). Waiting on the user's Studio and iPhone check.
+imported into `assets/packs`). Approved by the user and merged into main 2026-10-30.
 
 ## Why
 
