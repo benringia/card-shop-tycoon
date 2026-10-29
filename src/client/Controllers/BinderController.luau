@@ -27,6 +27,7 @@ local Desk = require(Config:WaitForChild("BinderDesk"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
 local PageCurl = require(Shared:WaitForChild("Util"):WaitForChild("PageCurl"))
+local BinderGesture = require(Shared:WaitForChild("Util"):WaitForChild("BinderGesture"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local Bosses = require(Config:WaitForChild("Bosses"))
@@ -278,20 +279,21 @@ local function isCollected(cardId: string): boolean
 	return owned + onDisplay > 0
 end
 
--- Draws one pocket (only called for pockets on the open spread)
-local function renderTile(tile: Tile)
+-- Draws one pocket; true when its face had to be built (it changed), false when only its chips were updated
+local function renderTile(tile: Tile): boolean
 	local cardId = tile.card.id
 	local inBinder = getCount(collection, cardId)
 	local shown = getCount(displayed, cardId)
 	local owned, onDisplay = getOwnedCounts(cardId)
 	if owned + onDisplay == 0 then
-		if tile.drawn ~= "missing" then
+		local built = tile.drawn ~= "missing"
+		if built then
 			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
 			tile.drawn = "missing"
 		end
 		tile.countLabel.Visible = false
 		tile.levelLabel.Visible = false
-		return
+		return built
 	end
 	local raised = getRaised(cardId)
 	local hasFoilBeast = false
@@ -306,7 +308,8 @@ local function renderTile(tile: Tile)
 		else { level = 1, stars = BeastRules.START_STARS, grade = bestGrade or BeastRules.DEFAULT_GRADE }
 	local foil = inBinder.foil + shown.foil > 0 or hasFoilBeast
 	local drawn = `{foil}:{growth.level}:{growth.stars}:{growth.grade}`
-	if tile.drawn ~= drawn then
+	local built = tile.drawn ~= drawn
+	if built then
 		CardFace.render(tile.inner, tile.stroke, tile.card, foil, true, growth)
 		tile.drawn = drawn
 	end
@@ -337,6 +340,7 @@ local function renderTile(tile: Tile)
 	local short = #parts > 0
 	tile.countLabel.Size = UDim2.new(if short then 0.36 else 1, 0, 0, CHIP_ROW - 3)
 	tile.countLabel.Text = if owned == 0 then "shown" elseif short then `x{owned}` else `Owned {owned}`
+	return built
 end
 
 local function passesFilter(card: Card): boolean
@@ -425,24 +429,38 @@ local function unplace(tile: Tile)
 	tile.root.Parent = nil
 end
 
--- Builds the faces of the set's cards not on the pages, a few a frame, so turning to them later only moves them
--- (building nine faces at once costs a frame of 40-60 ms on a SurfaceGui)
-local warming = false
+-- Builds the faces of the cards not on the pages, a few a frame (the open set first, then the others), so turning to
+-- them or opening another set later only moves them (building nine faces at once costs a frame of 40-70 ms on a
+-- SurfaceGui). A newer warm-up replaces a running one.
+local WARM_PER_FRAME = 2
+local warmGeneration = 0
 local function warmTiles()
-	if warming then
-		return
+	warmGeneration += 1
+	local generation = warmGeneration
+	local order = {}
+	for _, tile in tiles do
+		if tile.card.set == currentSet then
+			table.insert(order, tile)
+		end
 	end
-	warming = true
+	for _, tile in tiles do
+		if tile.card.set ~= currentSet then
+			table.insert(order, tile)
+		end
+	end
 	task.spawn(function()
-		for index, tile in visibleTiles do
-			if not tile.root.Parent then
-				renderTile(tile)
-				if index % 2 == 0 then
+		local built = 0
+		for _, tile in order do
+			if generation ~= warmGeneration then
+				return
+			end
+			if not tile.root.Parent and renderTile(tile) then
+				built += 1
+				if built % WARM_PER_FRAME == 0 then
 					RunService.Heartbeat:Wait()
 				end
 			end
 		end
-		warming = false
 	end)
 end
 
@@ -770,8 +788,14 @@ local function hideTooltip()
 end
 
 local function openDetail(card: Card)
+	-- The card view lays itself out by the camera's field of view: give it the normal one before it opens
+	BinderDesk.setInspecting(true)
 	CardDetailController.Open(card)
-	if CardDetailController.IsOpen() and hintToast then
+	if not CardDetailController.IsOpen() then
+		BinderDesk.setInspecting(false)
+		return
+	end
+	if hintToast then
 		UIController.Dismiss(hintToast) -- "Tap a card, then ..." is done once a card is open
 		hintToast = nil
 	end
@@ -1946,15 +1970,18 @@ end
 function BinderController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildPanel(screenGui)
+	PageTurner.build() -- before the first turn, so it doesn't lay out its strips mid-turn
 	buildButtons()
 	RarityGuideController.SetCollected(isCollected)
 	refresh()
 
 	-- Pointer gestures on the binder. A pointer over a card lights its pocket and shows its tooltip (a finger: hold
-	-- it there). A tap on a card lifts it out of its sleeve into the card view; a tap elsewhere on a page, on a "?" or
-	-- an empty pocket turns that way; a swipe across turns too. A press on a page's outer edge that moves toward the
-	-- spine picks the page up and drags it over.
-	local press: { at: Vector2, time: number, pick: BinderDesk.Pick?, edge: boolean?, drag: boolean, held: boolean }? = nil
+	-- it there without moving). A tap on a card lifts it out of its sleeve into the card view; a tap elsewhere on a
+	-- page, on a "?" or an empty pocket turns that way; a swipe across turns too. A press on a page's outer edge that
+	-- moves toward the spine picks the page up and drags it over. One pointer owns a press at a time (BinderGesture):
+	-- a second finger can't take over a dragged page, and a release that never came is ended on the next press.
+	local gesture = BinderGesture.new()
+	local press: { pick: BinderDesk.Pick?, edge: boolean?, drag: boolean, held: boolean }? = nil -- what the press is doing
 	local heldStep: number? = nil -- Q or E held: keep turning
 	local heldNext = 0
 	local hoverKey = ""
@@ -1963,6 +1990,10 @@ function BinderController.Start()
 	end
 	local function isPointer(input: InputObject): boolean
 		return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+	end
+	-- Each finger is its own pointer; the mouse's button and movement are one
+	local function pointerId(input: InputObject): unknown
+		return if input.UserInputType == Enum.UserInputType.Touch then input else "mouse"
 	end
 	local function pageStep(side: BinderDesk.Side): number
 		return if side == "Right" then 1 else -1
@@ -2000,10 +2031,39 @@ function BinderController.Start()
 			openDetail(tile.card)
 		end)
 	end
-	local function onPress(point: Vector2, touch: boolean)
+	-- Ends what a press was doing without acting on it: a held page falls back or finishes as it lies, a hold's
+	-- tooltip goes (a lost release, the binder closing, the window losing focus)
+	local function dropPress()
+		local pressed = press
+		press = nil
+		if pressed and pressed.drag then
+			endDrag(false)
+		end
+		if pressed and pressed.held then
+			BinderDesk.highlight(nil, nil)
+			hideTooltip()
+		end
+	end
+	local function resetInput()
+		BinderGesture.cancel(gesture)
+		dropPress()
+		heldStep = nil
+		clearHover()
+	end
+	local function onPress(input: InputObject)
+		local id = pointerId(input)
+		local point = Vector2.new(input.Position.X, input.Position.Y)
+		local accepted, stale = BinderGesture.press(gesture, id, point.X, point.Y, os.clock())
+		if not accepted then
+			return -- another finger has the binder
+		end
+		if stale then
+			dropPress() -- its release never came
+		end
 		clearHover()
 		local pick = BinderDesk.pick(point)
 		if pick and pick.kind == "tab" then
+			BinderGesture.release(gesture, id)
 			if not PageTurner.busy() and not dragging then
 				openSet(pick.set)
 			end
@@ -2014,13 +2074,13 @@ function BinderController.Start()
 			local outer = if pick.side == "Right" then pick.u >= 1 - Desk.DRAG_EDGE else pick.u <= Desk.DRAG_EDGE
 			edge = if outer then pick.side == "Right" else nil
 		end
-		local pressed = { at = point, time = os.clock(), pick = pick, edge = edge, drag = false, held = false }
+		local pressed = { pick = pick, edge = edge, drag = false, held = false }
 		press = pressed
-		-- A finger held on a card shows its tooltip until it lifts
-		if touch and pick and pick.kind == "pocket" then
+		-- A finger held still on a card shows its tooltip until it lifts (one that moves is a swipe)
+		if input.UserInputType == Enum.UserInputType.Touch and pick and pick.kind == "pocket" then
 			local tile = tileAt(pick.side, pick.index)
 			task.delay(UIStyle.LONG_PRESS, function()
-				if press == pressed and not pressed.drag and tile then
+				if press == pressed and not pressed.drag and tile and BinderGesture.canHold(gesture, id, Desk.TAP_PIXELS) then
 					pressed.held = true
 					BinderDesk.highlight(pick.side, pick.index)
 					showTooltip(tile, true)
@@ -2028,9 +2088,14 @@ function BinderController.Start()
 			end)
 		end
 	end
-	local function onMove(point: Vector2)
+	local function onMove(input: InputObject)
+		local point = Vector2.new(input.Position.X, input.Position.Y)
+		if not BinderGesture.move(gesture, pointerId(input), point.X, point.Y, Desk.TAP_PIXELS) then
+			return -- not the pointer that pressed
+		end
 		local pressed = press
-		if not pressed then
+		local owner = gesture.press
+		if not pressed or not owner then
 			return
 		end
 		if pressed.drag then
@@ -2038,7 +2103,7 @@ function BinderController.Start()
 			return
 		end
 		local forward = pressed.edge
-		local dx = point.X - pressed.at.X
+		local dx = point.X - owner.startX
 		if forward ~= nil and not pressed.held and (if forward then dx < -Desk.TAP_PIXELS else dx > Desk.TAP_PIXELS) then
 			pressed.drag = beginDrag(forward)
 			if pressed.drag then
@@ -2046,7 +2111,11 @@ function BinderController.Start()
 			end
 		end
 	end
-	local function onRelease(point: Vector2)
+	local function onRelease(input: InputObject)
+		local ended = BinderGesture.release(gesture, pointerId(input))
+		if not ended then
+			return -- not the pointer that pressed
+		end
 		local pressed = press
 		press = nil
 		if not pressed then
@@ -2057,8 +2126,8 @@ function BinderController.Start()
 			hideTooltip()
 			return
 		end
-		local dx, dy = point.X - pressed.at.X, point.Y - pressed.at.Y
-		local tapped = PageCurl.isTap(dx, dy, os.clock() - pressed.time, Desk.TAP_PIXELS, Desk.TAP_SECONDS)
+		local dx, dy = input.Position.X - ended.startX, input.Position.Y - ended.startY
+		local tapped = PageCurl.isTap(dx, dy, os.clock() - ended.at, Desk.TAP_PIXELS, Desk.TAP_SECONDS)
 		if pressed.drag then
 			endDrag(tapped)
 			return
@@ -2093,7 +2162,7 @@ function BinderController.Start()
 			return
 		end
 		if isPointer(input) then
-			onPress(Vector2.new(input.Position.X, input.Position.Y), input.UserInputType == Enum.UserInputType.Touch)
+			onPress(input)
 			return
 		end
 		local step = PAGE_KEYS[input.KeyCode]
@@ -2109,25 +2178,31 @@ function BinderController.Start()
 		if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
 			return
 		end
-		local point = Vector2.new(input.Position.X, input.Position.Y)
-		if press then
-			onMove(point)
+		if BinderGesture.active(gesture) then
+			onMove(input)
 		elseif input.UserInputType == Enum.UserInputType.MouseMovement then
 			-- Over a button or window the 3D binder isn't what's pointed at
 			if gameProcessed then
 				clearHover()
 			else
-				hover(point)
+				hover(Vector2.new(input.Position.X, input.Position.Y))
 			end
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
 		if isPointer(input) then
-			onRelease(Vector2.new(input.Position.X, input.Position.Y))
+			onRelease(input)
 		elseif PAGE_KEYS[input.KeyCode] == heldStep then
 			heldStep = nil
 		end
 	end)
+	-- Closing the binder or leaving the window ends any press or held key, so nothing carries on by itself
+	panel:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not panel.Visible then
+			resetInput()
+		end
+	end)
+	UserInputService.WindowFocusReleased:Connect(resetInput)
 	RunService.Heartbeat:Connect(function()
 		local step = heldStep
 		if step and os.clock() >= heldNext then

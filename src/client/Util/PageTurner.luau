@@ -4,6 +4,7 @@
 -- page under it, with a page sound. Each strip carries its slice of the page on both sides: the face it leaves
 -- (front, on top while it lies right) and the one it lands with (back). The page shows light cards (art and rim,
 -- BinderDesk.Lite), all built once, so a turn only swaps pictures. Parked out of view while no page turns.
+local ContentProvider = game:GetService("ContentProvider")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -169,6 +170,9 @@ function PageTurner.build()
 		turnSound.Volume = Desk.TURN_SOUND_VOLUME
 		turnSound.Parent = SoundService
 		sound = turnSound
+		task.spawn(function()
+			ContentProvider:PreloadAsync({ turnSound }) -- so the first turn isn't silent
+		end)
 	end
 	root.Parent = workspace
 	folder = root

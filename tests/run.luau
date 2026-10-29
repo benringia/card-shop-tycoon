@@ -44,6 +44,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CompareRules = require("./CompareRules.spec"),
 	PageCurl = require("./PageCurl.spec"),
 	BinderFit = require("./BinderFit.spec"),
+	BinderGesture = require("./BinderGesture.spec"),
 }
 
 local passed, failed = 0, 0

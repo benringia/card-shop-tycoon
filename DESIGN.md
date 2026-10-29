@@ -1092,6 +1092,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── PageCurl.luau      # a turning page's bend, its strips, drag-to-turn, fast-turn pacing, swipes and taps (pure, Lune-tested)
             ├── BinderFit.luau     # the 3D binder's pockets on a page and the camera fit for a screen rectangle (pure, Lune-tested)
+            ├── BinderGesture.luau # who owns a press on the 3D binder: one pointer, lost releases, holds vs swipes (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
@@ -1225,8 +1226,11 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   set's sticks out further), click one to open that set. Each page is a canvas of 3 x 3 pocket slots (18 cards a
   spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
   ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Each card's face is built
-  once and redrawn only when what it shows changes; the set's other cards are built in the background a few a
-  frame, so turning to them only moves them (building nine faces at once cost a 40-65 ms frame). Spread 1's left page
+  once and redrawn only when what it shows changes; the other cards (the open set's first, then every other set's)
+  are built in the background a few a frame, so turning to them or opening another set only moves them (building
+  nine faces at once cost a 40-70 ms frame). One pointer owns a press at a time (`Util/BinderGesture`): a second
+  finger can't take over a dragged page, a release that never came is ended by the next press, and closing the
+  binder or leaving the window ends any press or held key. Spread 1's left page
   is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
   (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
@@ -1249,7 +1253,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   page up: it follows the pointer and, let go, finishes the turn past halfway or when flicked on (else falls back).
   A collection change while a page moves is drawn once the pages stop. **Cards:** the pocket under the mouse lights
   up (a warm edge) and rises a little, with the card's tooltip; on touch, holding a finger on a card for
-  `UIStyle.LONG_PRESS` shows it until the finger lifts. Closing the binder while the card view is up closes the
+  `UIStyle.LONG_PRESS` without moving shows it until the finger lifts (one that moves is a swipe). Closing the binder while the card view is up closes the
   card view first (it gives the camera back at once, so the binder's own restore comes last). Clicking or tapping an
   owned card lifts it out of its sleeve
   toward the camera (0.3 s, `BinderDesk.lift`), then the card view opens on it (the camera moves to the card view's
