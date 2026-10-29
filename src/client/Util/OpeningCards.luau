@@ -442,6 +442,7 @@ function OpeningCards.flip(index: number)
 	play(shown.shine, FLIP.SHINE_SECONDS, 0)
 	OpeningFx.glint((landing * CFrame.new(CARD_W * 0.42, SIZE.HEIGHT * 0.42, -0.1)).Position, 0.8)
 	if plan.tease > 0 then
+		OpeningStage.fade("tease", PackOpening.TEASE_FADE_SECONDS)
 		OpeningStage.play(hitSound(plan))
 		OpeningFx.burst(landing.Position, color, if plan.goldShards then FLIP.BIG_BURST_SIZE else FLIP.BURST_SIZE)
 		if plan.banner then

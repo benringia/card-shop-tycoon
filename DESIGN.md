@@ -357,6 +357,12 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
     skip it). Legendary adds a white screen flash. Frontier cards get the Legendary show ("FRONTIER!").
   - **Foil** adds sparks, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!", a plain foil "FOIL!").
   - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
+- **Sounds** (`PackOpening.SOUNDS` and `VOLUMES`, free Creator Store sounds, only the opener hears them): a crinkle
+  while the strip parts and a rip when it tears off, a card swipe per card stacking up, a card flick per flip; Rare
+  and better get a rising tease (cut short when the card lands) and a hit (soft chimes for Rare and Very Rare, a deep
+  boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer while the card is alive; the results pop
+  per landing card and chime when the lineup is done. Most come from Roblox's licensed libraries (Pro Sound Effects,
+  APM) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
   (white Common, blue Rare, teal Very Rare, purple Epic, gold Legendary; a turning rainbow on foil, aurora on

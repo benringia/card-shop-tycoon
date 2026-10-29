@@ -40,7 +40,7 @@ local saved: { cameraType: Enum.CameraType, cframe: CFrame, fov: number }? = nil
 local render: RBXScriptConnection? = nil
 local shakeUntil, shakeAmount, shakeSeconds, nextShake = 0, 0, 1, 0
 local shakeOffset = CFrame.new()
-local sounds: { [string]: Sound } = {}
+local live: { [Sound]: string } = {} -- sounds playing now, by their SOUNDS name
 
 local function tween(instance: Instance, seconds: number, goals: { [string]: any }, style: Enum.EasingStyle?): Tween
 	local info = TweenInfo.new(seconds, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -213,6 +213,10 @@ function OpeningStage.hide()
 		render = nil
 	end
 	shakeUntil = 0
+	for sound in live do
+		sound:Destroy()
+	end
+	table.clear(live)
 	barTop.Position = UDim2.fromScale(0, 0)
 	barBottom.Position = UDim2.fromScale(0, 1)
 	flashFrame.BackgroundTransparency = 1
@@ -310,21 +314,46 @@ function OpeningStage.dim(amount: number, seconds: number)
 	tween(grade, seconds, { Brightness = post.DIM_BRIGHTNESS * amount, Contrast = post.DIM_CONTRAST * amount })
 end
 
--- Plays one of Config/PackOpening SOUNDS (nothing while its id is empty)
+local function volumeOf(name: string): number
+	return (PackOpening.VOLUMES :: any)[name] or 0.5
+end
+
+local function silence(sound: Sound)
+	live[sound] = nil
+	sound:Destroy()
+end
+
+-- Plays one of Config/PackOpening SOUNDS (nothing while its id is empty) as a one-shot of its own, so quick repeats
+-- (a card per 0.19s) overlap instead of cutting each other off. Made on the client, so only this player hears it.
 function OpeningStage.play(name: string)
 	local id = (PackOpening.SOUNDS :: any)[name]
 	if typeof(id) ~= "string" or id == "" then
 		return
 	end
-	local sound = sounds[name]
-	if not sound then
-		sound = Instance.new("Sound")
-		sound.SoundId = id
-		sound.Volume = (PackOpening.VOLUMES :: any)[name] or 0.5
-		sound.Parent = SoundService
-		sounds[name] = sound
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = volumeOf(name)
+	sound.Parent = SoundService
+	live[sound] = name
+	sound.Ended:Once(function()
+		silence(sound)
+	end)
+	sound:Play()
+end
+
+-- Fades the playing copies of a sound out over `seconds` (the tease's rise at the reveal's hit)
+function OpeningStage.fade(name: string, seconds: number)
+	for sound, playing in live do
+		if playing == name then
+			local out = TweenService:Create(sound, TweenInfo.new(seconds), { Volume = 0 })
+			out.Completed:Once(function()
+				if live[sound] then
+					silence(sound)
+				end
+			end)
+			out:Play()
+		end
 	end
-	SoundService:PlayLocalSound(sound)
 end
 
 -- The sounds to preload (ContentProvider) when the stage first shows

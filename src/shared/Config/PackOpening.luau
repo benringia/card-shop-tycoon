@@ -121,13 +121,24 @@ return {
 		PILL_SECONDS = 0.22,
 		CONTINUE_DELAY = 0.12,
 	},
-	-- Sounds (spec 5b): Creator Store ids, filled in by UI project 3 Task 11; "" plays nothing
+	-- Sounds (spec 5b): free Creator Store sounds; "" plays nothing. Pro Sound Effects and APM are Roblox's licensed
+	-- libraries, Daily Sounds made theirs from scratch; card_flip is f4ngy's on Freesound (CC BY, credited in DESIGN.md).
 	SOUNDS = {
-		crinkle = "", snap = "", stack = "", flip = "", tease = "",
-		hitRare = "", hitEpic = "", hitLegendary = "", shimmer = "", land = "", chime = "",
+		crinkle = "rbxassetid://9113248978", -- Bag Grab Quick 6 (Pro Sound Effects): crinkling while the strip parts
+		snap = "rbxassetid://9125724621", -- Paper Tear Fast Harsh Rip (Pro Sound Effects): the strip tears off
+		stack = "rbxassetid://105273485659548", -- cardswipe: each card landing on the pile
+		flip = "rbxassetid://3456145589", -- card_flip (f4ngy, Freesound)
+		tease = "rbxassetid://9120747429", -- Whooshy Magic Sucks, a synthy rise (Pro Sound Effects); cut at the hit
+		hitRare = "rbxassetid://9116394545", -- Magic Glows Soft Clusters Of Chiming Hits 1 (Pro Sound Effects)
+		hitEpic = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds)
+		hitLegendary = "rbxassetid://1844539433", -- Orchestral Hits (APM)
+		shimmer = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects): a shown card comes alive
+		land = "rbxassetid://106984966606682", -- Cartoon Pop (Daily Sounds): each lineup card landing
+		chime = "rbxassetid://9116395089", -- Magic Glows Soft Clusters Of Chiming Hits 4 (Pro Sound Effects): lineup done
 	},
 	VOLUMES = {
 		crinkle = 0.5, snap = 0.6, stack = 0.35, flip = 0.45, tease = 0.5,
 		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.35, chime = 0.5,
 	},
+	TEASE_FADE_SECONDS = 0.12, -- the tease's rise fades out this fast when the hit lands
 }
