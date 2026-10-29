@@ -12,6 +12,8 @@ export type Pack = {
 	art: string?, -- the pack's front picture (assets/ui/packs); none = a plain pack in its colour
 	-- "Deck": a deck box (its lid lifts off and every card shows at once); nil = a pack (torn open, one card at a time)
 	kind: string?,
+	model: string, -- its 3D model in ReplicatedStorage.PackModels (assets/packs): "Pack" or "DeckBox" (Util/PackModels)
+	look: string, -- which of the model's Looks it wears (one per set)
 	slots: { { Weighted } },
 }
 
@@ -21,6 +23,8 @@ local ById: { [string]: Pack } = {
 		name = "First Spark",
 		color = Color3.fromRGB(255, 140, 50),
 		art = "rbxassetid://81309929146607", -- fire phoenix (Figma image generator)
+		model = "Pack",
+		look = "FirstSpark",
 		slots = PackOdds.SLOTS.FirstSparkPack,
 	},
 	-- The First Spark Deck Box: 5 cards opened at once, two of them Rare or better ($9 against a pack's $3)
@@ -30,6 +34,8 @@ local ById: { [string]: Pack } = {
 		kind = "Deck",
 		color = Color3.fromRGB(150, 95, 210),
 		art = "rbxassetid://81309929146607", -- the First Spark phoenix, like the pack
+		model = "DeckBox",
+		look = "FirstSpark",
 		slots = PackOdds.SLOTS.DeckBox,
 	},
 }
