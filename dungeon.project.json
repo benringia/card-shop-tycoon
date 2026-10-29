@@ -15,6 +15,9 @@
       },
       "PropModels": {
         "$path": "assets/props"
+      },
+      "PackModels": {
+        "$path": "assets/packs"
       }
     },
     "ServerScriptService": {

@@ -1,8 +1,8 @@
 # UI project 3: cards in the world and the 3D pack opening
 
 Date: 2026-10-29. Branch: `ui-project-3`. Status: approved by the user 2026-10-29, with the calls listed at the end.
-Built 2026-10-30 (plan `docs/superpowers/plans/2026-10-29-cards-in-world-and-pack-opening.md`, all tasks but the
-model import, which waits on the user; stand-ins show until then). Waiting on the user's Studio and iPhone check.
+Built 2026-10-30 (plan `docs/superpowers/plans/2026-10-29-cards-in-world-and-pack-opening.md`, every task, the models
+imported into `assets/packs`). Waiting on the user's Studio and iPhone check.
 
 ## Why
 

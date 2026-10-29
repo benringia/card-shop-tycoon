@@ -1435,12 +1435,14 @@ boss models; the ranch and Heroic tiers come after those.
 - [ ] UI project 3, cards in the world and the 3D pack opening (spec
   `2026-10-29-cards-in-world-and-pack-opening-design.md`, plan `2026-10-29-cards-in-world-and-pack-opening.md`, branch
   `ui-project-3`): picked from concepts (shelves A: open display boxes; cases B: upright cards turning on rarity
-  beams; the rip B with cards revealed one at a time). Built: the Blender pack, deck box and display box (stand-ins
-  until the models are imported, docs/packs.md), packs in display boxes that empty as they sell, CardCase cases
+  beams; the rip B with cards revealed one at a time). Built: the Blender pack, deck box and display box (imported
+  into `assets/packs`, docs/packs.md), packs in display boxes that empty as they sell, CardCase cases
   with spinning upright cards, the 3D opening (cinematic tear, cards stacking, flips with teases and hits, a living
   shown card, a sparkling results lineup), our own Blender effects (no confetti), sounds, and the 3D pack in menus.
   Studio at graphics level 1: worst frame 42 ms as the stage shows, 27 ms or less through the opening, 19 ms in a
-  stocked shop (budget 50). Waiting on: the model import (Task 2) and the user's Studio and iPhone check.
+  stocked shop (budget 50). Review fixes: an opening closed mid-animation (a fight, a death) leaves nothing behind;
+  the hint shows only before the first flip (on phones it covered the row's prices). Waiting on: the user's Studio and
+  iPhone check.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

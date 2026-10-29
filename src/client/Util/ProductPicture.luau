@@ -2,6 +2,7 @@
 -- A product's picture on the left of a UIKit.row (Set Price, Prices, Order Stock): packs and deck boxes show their 3D
 -- model (Util/PackModels, the one on the shelves and the opening stage) turned a little in a ViewportFrame, other
 -- products their icon (Products icon). The row's text moves over to make room.
+local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -41,6 +42,15 @@ local function modelPicture(row: Frame, model: Model): ViewportFrame
 	camera.CFrame = CFrame.lookAt(centre.Position - Vector3.new(0, 0, distance), centre.Position)
 	camera.Parent = view
 	view.CurrentCamera = camera
+	-- The menus are built at start, before the model's meshes and maps have loaded, and the ViewportFrame doesn't
+	-- redraw when they arrive (the pictures stayed blank): load them, then put the model back in to redraw it
+	task.spawn(function()
+		ContentProvider:PreloadAsync({ model })
+		if model.Parent == view then
+			model.Parent = nil
+			model.Parent = view
+		end
+	end)
 	return view
 end
 

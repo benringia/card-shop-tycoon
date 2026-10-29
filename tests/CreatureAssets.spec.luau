@@ -6,7 +6,13 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs" }
+-- The 3D pack models (UI project 3): each file's model and the meshes the game looks up in it
+local PACK_MODELS = {
+	Pack = { "Body", "Strip", "BodyLow" },
+	DeckBox = { "Box", "Lid" },
+	DisplayBox = { "Tray", "Packs1", "Packs2", "Packs3", "Packs4", "Packs5", "Packs6" },
+}
 
 local function findScripts(roots: { any }): { string }
 	local found = {}
@@ -96,6 +102,33 @@ return {
 			end
 		end
 		assert(#bad == 0, `models with unions go in assets/place-props (Insert from File into ReplicatedStorage.PlaceProps):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
+	["assets/packs holds Pack, DeckBox and DisplayBox with their meshes and a look each"] = function()
+		local bad = {}
+		for name, parts in PACK_MODELS do
+			local path = `assets/packs/{name}.rbxm`
+			if not fs.isFile(path) then
+				table.insert(bad, `{path} missing`)
+				continue
+			end
+			local model = roblox.deserializeModel(fs.readFile(path))[1]
+			if not model or model.Name ~= name then
+				table.insert(bad, `{path}: the model should be called {name}`)
+				continue
+			end
+			for _, part in parts do
+				local mesh = model:FindFirstChild(part)
+				if not mesh or not mesh:IsA("MeshPart") then
+					table.insert(bad, `{path}: no MeshPart {part}`)
+				end
+			end
+			local looks = model:FindFirstChild("Looks")
+			if not looks or #looks:GetChildren() == 0 then
+				table.insert(bad, `{path}: no Looks folder with a look in it`)
+			end
+		end
+		assert(#bad == 0, `pack models (docs/packs.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
 	["no creature or monster model contains a script"] = function()
