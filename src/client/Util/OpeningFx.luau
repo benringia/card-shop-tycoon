@@ -30,6 +30,7 @@ local raysGui: BillboardGui? = nil
 local auraGui: BillboardGui? = nil
 local motesEmitter: ParticleEmitter? = nil
 local spin: RBXScriptConnection? = nil
+local charged: { Instance } = {} -- the waiting pack's spark holders and glow, gone when charge(false)
 
 local function folder(): Folder
 	if not fxFolder or not fxFolder.Parent then
@@ -259,6 +260,49 @@ function OpeningFx.motes(rate: number, around: CFrame?, color: Color3?)
 	e.Color = ColorSequence.new(color or Color3.fromRGB(255, 224, 138))
 	e.Rate = amount
 	e.Enabled = amount > 0
+end
+
+-- The waiting pack's charge: blue-white sparks crackling up and down both its sides and a soft glow pulsing behind it.
+-- `around` is the pack's middle, `size` its size; charge(false) ends it.
+function OpeningFx.charge(on: boolean, around: CFrame?, size: Vector3?)
+	for _, made in charged do
+		made:Destroy()
+	end
+	table.clear(charged)
+	if not on or not around or not size then
+		return
+	end
+	local look = PackOpening.PACK_STAGE.CHARGE
+	local rate = RevealRules.scaleCount(look.RATE, quality())
+	for _, side in { -1, 1 } do
+		local part = holder(around * CFrame.new(side * (size.X / 2 + 0.06), 0, -size.Z / 2), Vector3.new(0.12, size.Y * 0.9, 0.12))
+		part.Name = "Charge"
+		local e = emitter(part, "Glint")
+		e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		e.Shape = Enum.ParticleEmitterShape.Box
+		e.Lifetime = NumberRange.new(0.22, 0.4)
+		e.Speed = NumberRange.new(0.2, 0.8)
+		e.SpreadAngle = Vector2.new(180, 180)
+		e.Size = NumberSequence.new(look.SPARK_SIZE)
+		e.Rotation = NumberRange.new(0, 90)
+		e.Color = ColorSequence.new(look.COLOR)
+		e.ZOffset = 1
+		e.Rate = rate
+		e.Enabled = rate > 0
+		table.insert(charged, part)
+	end
+	local glow = billboard("ChargeGlow", PackFx.IMAGES.aura, look.GLOW_SIZE)
+	local label = glow:FindFirstChild("Image") :: ImageLabel
+	;(glow.Adornee :: BasePart).CFrame = around * CFrame.new(0, 0, size.Z / 2 + 0.3) -- just behind the pack
+	label.ImageColor3 = look.COLOR
+	label.ImageTransparency = look.GLOW_TRANSPARENCY + 0.2
+	local info = TweenInfo.new(look.GLOW_PULSE_SECONDS / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	TweenService:Create(label, info, { ImageTransparency = look.GLOW_TRANSPARENCY }):Play()
+	table.insert(charged, glow.Adornee :: BasePart)
+	-- out of the Fx folder: clear() empties it when the cards are built, while the pack still waits
+	for _, made in charged do
+		made.Parent = OpeningStage.folder()
+	end
 end
 
 function OpeningFx.clear()

@@ -46,6 +46,31 @@ return {
 		SHEEN_EVERY = 2.4, -- a light sweep over the foil this often while it waits
 		SHEEN_BRIGHTNESS = 1.4, -- the sweeping light at its peak (4 washed the art out white under the bloom)
 		SWIPE_PIXELS = 60, -- a drag across the pack's top this long tears it (a tap tears it too)
+		-- "Charged and ready to rip" (the user's pick for the waiting pack): it turns toward the pointer, crackles with
+		-- energy over a soft glow, and a glowing dashed tear line with a gliding dot shows the swipe
+		TILT_YAW = 22, -- degrees it turns toward a pointer at the screen's side
+		TILT_PITCH = 12, -- degrees it tips toward a pointer at the top or bottom
+		TILT_SPEED = 6, -- how fast it follows (per second)
+		STRAIGHTEN_SECONDS = 0.2, -- it turns back square as the tear starts
+		CHARGE = {
+			COLOR = Color3.fromRGB(150, 205, 255), -- blue-white energy
+			RATE = 7, -- sparks a second along each side (scaled by graphics level)
+			SPARK_SIZE = 0.32,
+			GLOW_SIZE = 6, -- studs, the glow behind the pack
+			GLOW_TRANSPARENCY = 0.4, -- at its brightest
+			GLOW_PULSE_SECONDS = 1.1,
+		},
+		GUIDE = {
+			DASHES = 9,
+			DASH = 0.1, -- studs long
+			THICKNESS = 0.035,
+			COLOR = Color3.fromRGB(255, 246, 225),
+			IN_FRONT = 0.16, -- studs in front of the pack's middle (clear of the foil)
+			DOT = 0.16, -- the gliding dot's size
+			SWIPE_SECONDS = 1.3, -- the dot crosses this fast
+			PAUSE_SECONDS = 0.6, -- then waits this long before the next pass
+			PULSE_SECONDS = 1.2, -- the dashes breathe this often
+		},
 	},
 	-- spec 4.2: bars in, push in on the tear, the strip parts while light leaks, then the snap
 	TEAR = {

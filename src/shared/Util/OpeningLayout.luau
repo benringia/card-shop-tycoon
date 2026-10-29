@@ -4,6 +4,7 @@
 -- height. Pure, Lune-tested; numbers in Config/PackOpeningLayout.
 export type Rect = { x: number, y: number, w: number, h: number }
 export type View = { w: number, h: number }
+export type Point = { x: number, y: number }
 export type Layout = {
 	rowHeight: number, -- a row card's height, share of the screen height
 	rowGap: number, -- px between row cards
@@ -45,6 +46,14 @@ function OpeningLayout.row(count: number, view: View, inset: number, look: Layou
 	local w = math.min(look.rowHeight * view.h / ASPECT, fitWidth(count, view, look.rowGap, look.side))
 	local y = view.h - look.rowBottom * view.h - w * ASPECT
 	return line(count, view, w, look.rowGap, math.max(inset, y))
+end
+
+-- How far the waiting pack turns toward the pointer (degrees): yaw toward its side (right positive), pitch toward
+-- above (positive), each reaching its most at the screen's edge
+function OpeningLayout.tiltToward(pointer: Point, centre: Point, view: View, maxYaw: number, maxPitch: number): (number, number)
+	local dx = math.clamp((pointer.x - centre.x) / (view.w / 2), -1, 1)
+	local dy = math.clamp((centre.y - pointer.y) / (view.h / 2), -1, 1)
+	return dx * maxYaw, dy * maxPitch
 end
 
 -- The results lineup: as big as fits (up to maxCard wide), centred under the top bar

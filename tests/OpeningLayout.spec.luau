@@ -41,4 +41,20 @@ return {
 		local depth = OpeningLayout.depthFor(400, 400, 70, 1.5)
 		near(2 * depth * math.tan(math.rad(35)), 1.5, 1e-9, "fills the height")
 	end,
+
+	["the waiting pack turns toward the pointer, up to its limits"] = function()
+		local view, centre = { w = 1000, h = 600 }, { x = 500, y = 300 }
+		local yaw, pitch = OpeningLayout.tiltToward({ x = 500, y = 300 }, centre, view, 14, 8)
+		equal(yaw, 0, "pointer on the pack: no yaw")
+		equal(pitch, 0, "pointer on the pack: no pitch")
+		yaw, pitch = OpeningLayout.tiltToward({ x = 750, y = 300 }, centre, view, 14, 8)
+		near(yaw, 7, 1e-9, "halfway to the right edge: half the yaw, turning right (positive)")
+		equal(pitch, 0, "level pointer: no pitch")
+		yaw, pitch = OpeningLayout.tiltToward({ x = 5000, y = -900 }, centre, view, 14, 8)
+		equal(yaw, 14, "far right: clamped to the most yaw")
+		equal(pitch, 8, "far above: clamped to the most pitch, tipping up (positive)")
+		yaw, pitch = OpeningLayout.tiltToward({ x = 0, y = 600 }, centre, view, 14, 8)
+		equal(yaw, -14, "left edge: full yaw the other way")
+		equal(pitch, -8, "bottom edge: tipping down")
+	end,
 }
