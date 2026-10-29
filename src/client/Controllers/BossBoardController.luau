@@ -50,6 +50,7 @@ type Line = string | { text: string, color: Color3 }
 local WHITE = Color3.new(1, 1, 1)
 local MAX_SIZE = Vector2.new(900, 600)
 local LOCKED_FADE = 0.55
+local SELECTED_SCALE = 1.08 -- the chosen step's disc, grown from its centre so it stays clear of its name
 local STEP_ORDER: { StepState } = { "beaten", "ready", "tooWeak", "locked" }
 local STEP_COLORS: { [StepState]: Color3 } = {
 	beaten = UIStyle.GOLD,
@@ -316,8 +317,8 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 	Tooltip.attach(node, stepWords(index, step, power))
 
 	local disc = Instance.new("Frame")
-	disc.AnchorPoint = Vector2.new(0.5, 0)
-	disc.Position = UDim2.fromScale(0.5, 0)
+	disc.AnchorPoint = Vector2.new(0.5, 0.5)
+	disc.Position = UDim2.new(0.5, 0, 0, discSize / 2)
 	disc.Size = UDim2.fromOffset(discSize, discSize)
 	disc.BackgroundColor3 = UIStyle.PANEL
 	disc.BackgroundTransparency = if step == "locked" then LOCKED_FADE else 0
@@ -326,7 +327,7 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 	UIKit.corner(disc, discSize)
 	UIKit.outline(disc, STEP_COLORS[step], 4)
 	local scale = Instance.new("UIScale")
-	scale.Scale = if index == selected then 1.12 else 1
+	scale.Scale = if index == selected then SELECTED_SCALE else 1
 	scale.Parent = disc
 	if step == "ready" then
 		local halo = Instance.new("Frame")
@@ -376,7 +377,7 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 
 	local name = UIKit.label(node, `{index}. {boss.name}`, Enum.Font.FredokaOne, UIKit.textSize("small") - (if phone then 2 else 0), if index == selected then UIStyle.HINT else WHITE)
 	name.AnchorPoint = Vector2.new(0.5, 0)
-	name.Position = UDim2.new(0.5, 0, 0, discSize + (if phone then 4 else 8))
+	name.Position = UDim2.new(0.5, 0, 0, discSize + (if phone then 6 else 10))
 	name.Size = UDim2.new(1, 0, 0, if phone then 24 else 34)
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextYAlignment = Enum.TextYAlignment.Top
@@ -808,7 +809,7 @@ local function layout()
 	if limit then
 		limit.MaxSize = MAX_SIZE
 	end
-	local ladderHeight = if phone then 72 else 108
+	local ladderHeight = if phone then 74 else 110
 	local ladderTop = UIKit.HEADER_HEIGHT + (if phone then 10 else 16)
 	ladder.Position = UDim2.fromOffset(12, ladderTop)
 	ladder.Size = UDim2.new(1, -24, 0, ladderHeight)
