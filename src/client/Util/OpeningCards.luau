@@ -59,6 +59,9 @@ local bannerText: TextLabel
 local bannerScale: UIScale
 local bannerPulse: Tween? = nil
 local results: RBXScriptConnection? = nil
+-- Bumped by clear(): a yielding step (stack, flip, stow, lineup, build) that wakes to a new number stops, so an
+-- opening closed mid-animation (a fight, a death) leaves nothing behind
+local session = 0
 
 -- Far behind a card on the line from the camera through it: where its rays and aura go (behind the row too)
 local function behind(at: CFrame): Vector3
@@ -201,9 +204,13 @@ end
 -- Builds every card's faces, one a frame (building a face costs; call it while the pack tears). In reveal order.
 function OpeningCards.build(pulls: { Pull })
 	OpeningCards.clear()
+	local mine = session
 	for index, pull in pulls do
 		table.insert(cards, buildCard(pull, index))
 		task.wait()
+		if session ~= mine then
+			return
+		end
 	end
 end
 
@@ -325,6 +332,7 @@ end
 function OpeningCards.stack(from: Vector3)
 	local stack = OpeningStage.root() * CFrame.new(0, 0.25, 0)
 	local layer = 0
+	local mine = session
 	for index = #cards, 1, -1 do
 		local shown = cards[index]
 		local tilt = math.rad((math.random() - 0.5) * 2 * PackOpening.STACK.TILT)
@@ -333,6 +341,9 @@ function OpeningCards.stack(from: Vector3)
 		local t = tweenPivot(shown.model, target, PackOpening.STACK.CARD_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 		OpeningStage.play("stack")
 		t.Completed:Wait()
+		if session ~= mine then
+			return
+		end
 		shown.at = target
 		OpeningStage.shake(0.02, 0.11)
 		layer += 1
@@ -401,6 +412,7 @@ function OpeningCards.flip(index: number)
 	local plan = shown.pull.plan
 	local color = shown.color
 	local raised = shown.at * CFrame.new(0, FLIP.LIFT, 0)
+	local mine = session
 	if plan.tease > 0 then
 		OpeningStage.play("tease")
 		shown.halo.Color = color
@@ -423,6 +435,9 @@ function OpeningCards.flip(index: number)
 	else
 		tweenPivot(shown.model, raised, FLIP.LIFT_SECONDS, Enum.EasingStyle.Quint, Enum.EasingDirection.Out).Completed:Wait()
 	end
+	if session ~= mine then
+		return
+	end
 	-- The flip: a quick turn with an overshoot, landing nearer the camera (bigger)
 	local home = OpeningStage.home()
 	local scale = if plan.tease > 0 then FLIP.TEASED_SCALE else FLIP.SHOWN_SCALE
@@ -437,6 +452,9 @@ function OpeningCards.flip(index: number)
 	end)
 	tweenPivot(shown.model, landing, seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out).Completed:Wait()
 	watch:Disconnect()
+	if session ~= mine then
+		return
+	end
 	shown.back.Enabled = false
 	shown.at = landing
 	play(shown.shine, FLIP.SHINE_SECONDS, 0)
@@ -460,7 +478,9 @@ function OpeningCards.flip(index: number)
 		end
 		if plan.goldShards then
 			task.delay(0.25, function()
-				OpeningFx.shards((home * CFrame.new(0, 3.2, -5)).Position, 24, true, 0.4)
+				if session == mine then
+					OpeningFx.shards((home * CFrame.new(0, 3.2, -5)).Position, 24, true, 0.4)
+				end
 			end)
 		end
 		if plan.cinematic then
@@ -493,7 +513,11 @@ function OpeningCards.stow(index: number)
 		OpeningStage.dim(0, 0.3)
 	end
 	local target = restFor(screenRects("row")[index], FACE_UP)
+	local mine = session
 	tweenPivot(shown.model, target, PackOpening.STOW.SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In).Completed:Wait()
+	if session ~= mine then
+		return
+	end
 	shown.at = target
 end
 
@@ -543,17 +567,27 @@ end
 function OpeningCards.lineup()
 	local rects = screenRects("lineup")
 	local landed = 0
+	local mine = session
 	for index, shown in cards do
 		local target = restFor(rects[index], FACE_UP)
 		fly(shown, target, if index % 2 == 0 then RESULTS.SPIN else -RESULTS.SPIN, function()
+			if session ~= mine then
+				return
+			end
 			shown.at = target
 			land(shown)
 			landed += 1
 		end)
 		task.wait(RESULTS.STAGGER)
+		if session ~= mine then
+			return
+		end
 	end
 	while landed < #cards do
 		task.wait()
+		if session ~= mine then
+			return
+		end
 	end
 	OpeningStage.play("chime")
 	local start = os.clock()
@@ -573,6 +607,7 @@ function OpeningCards.lineup()
 end
 
 function OpeningCards.clear()
+	session += 1
 	if results then
 		results:Disconnect()
 		results = nil
@@ -584,8 +619,11 @@ function OpeningCards.clear()
 		shown.model:Destroy()
 	end
 	table.clear(cards)
-	if bannerGui then
+	if bannerPulse then
+		bannerPulse:Cancel()
 		bannerPulse = nil
+	end
+	if bannerGui then
 		banner.Visible = false
 	end
 	OpeningFx.clear()

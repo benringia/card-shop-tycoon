@@ -41,10 +41,15 @@ local render: RBXScriptConnection? = nil
 local shakeUntil, shakeAmount, shakeSeconds, nextShake = 0, 0, 1, 0
 local shakeOffset = CFrame.new()
 local live: { [Sound]: string } = {} -- sounds playing now, by their SOUNDS name
+local running: { [Tween]: boolean } = {} -- the stage's tweens in flight, cancelled by hide()
 
 local function tween(instance: Instance, seconds: number, goals: { [string]: any }, style: Enum.EasingStyle?): Tween
 	local info = TweenInfo.new(seconds, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	local t = TweenService:Create(instance, info, goals)
+	running[t] = true
+	t.Completed:Once(function()
+		running[t] = nil
+	end)
 	t:Play()
 	return t
 end
@@ -213,6 +218,11 @@ function OpeningStage.hide()
 		render = nil
 	end
 	shakeUntil = 0
+	-- a dim or push still in flight would land after the resets below and carry into the next opening
+	for t in running do
+		t:Cancel()
+	end
+	table.clear(running)
 	for sound in live do
 		sound:Destroy()
 	end
@@ -303,8 +313,10 @@ end
 function OpeningStage.flash(peak: number, seconds: number)
 	flashFrame.BackgroundTransparency = 1
 	local rise = tween(flashFrame, seconds * 0.15, { BackgroundTransparency = 1 - peak }, Enum.EasingStyle.Linear)
-	rise.Completed:Once(function()
-		tween(flashFrame, seconds * 0.85, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quad)
+	rise.Completed:Once(function(state)
+		if state == Enum.PlaybackState.Completed then
+			tween(flashFrame, seconds * 0.85, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quad)
+		end
 	end)
 end
 
