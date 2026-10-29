@@ -174,6 +174,9 @@ return {
 		-- Deck boxes (Products stockLook "Deck"): the 3D deck box (Util/PackModels) fitted to WIDTH x HEIGHT x DEPTH,
 		-- PER_STACK front to back, leaning back a little
 		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LEAN = 4 },
+		-- Booster boxes (Products stockLook "Booster"): sealed booster boxes printed like the delivery case
+		-- (Util/BrandBox), PER_STACK stacked in each place
+		BOOSTERS = { PER_STACK = 2, WIDTH = 0.74, HEIGHT = 0.55, DEPTH = 0.95, PIXELS_PER_STUD = 300 },
 		SLEEVES = {
 			PER_STACK = 2,
 			WIDTH = 0.62,
@@ -213,48 +216,64 @@ return {
 		STRIP_HEIGHT = 0.1,
 	},
 
-	-- The Card Condenser (Props, code-built): a charcoal plinth with a glowing ring, a screen and a card slot; a glass
-	-- chamber with a violet crystal ringed by floating cards (the Rotor: CondenserFxController spins and bobs it on
-	-- each client); charcoal side pillars with light strips holding a cap. No lights. Studs; colours { r, g, b }.
+	-- The Card Condenser (Props, code-built), restyled to match the Grading Station's scan pod (2026-10-30): a dark
+	-- plinth with a violet rim, a white body with a light band, a card slot and a CONDENSER strip; a see-through
+	-- chamber with a glowing floor where a crystal floats ringed by three cards, with two more rings of small cards
+	-- circling the other way below it and above it; a white cap with a violet ring. The rings are Rotors that
+	-- CondenserFxController spins and bobs on each client (each ring its own speed and direction). No lights.
+	-- Studs; colours { r, g, b }.
 	CONDENSER_LOOK = {
-		BASE_RADIUS = 2.5,
-		BASE_HEIGHT = 1.4,
-		CHAMBER_RADIUS = 1.8,
+		BASE_RADIUS = 2.6,
+		PLINTH_HEIGHT = 0.5,
+		BASE_HEIGHT = 1.6, -- plinth and body together
+		BODY_RADIUS = 2.25,
+		CHAMBER_RADIUS = 1.9,
 		CHAMBER_HEIGHT = 3.6,
-		CAP_HEIGHT = 0.7,
+		CAP_HEIGHT = 0.5,
 		CORE_RADIUS = 1.05, -- the floating cards' circle round the crystal
-		BODY = { 38, 41, 48 },
-		TRIM = { 70, 74, 84 },
+		RING_RADIUS = 1.45, -- the outer card rings' circle
+		RING_RISE = 1.05, -- each outer ring this far below / above the crystal
+		RING_CARD = { 0.36, 0.5 }, -- an outer ring card: width, height
+		RING_CARDS = 5, -- cards in each outer ring
+		RING_SPIN = -0.7, -- the outer rings turn this fast against the crystal's (1 = the same)
+		SHELL = { 236, 240, 247 }, -- glossy white
+		DARK = { 28, 32, 46 },
 		GLOW = { 170, 110, 255 }, -- violet
-		GLASS = { 210, 225, 245 },
-		GLASS_TRANSPARENCY = 0.7,
-		FLOOR_TRANSPARENCY = 0.35, -- the chamber's glowing floor, softened
+		GLASS = { 225, 215, 255 },
+		GLASS_TRANSPARENCY = 0.8, -- see-through plastic, not Glass (Glass hides what's behind it)
+		FLOOR_TRANSPARENCY = 0.6, -- the chamber's glowing floor, softened (0.35 drowned the cards in violet)
 		CARD = { 255, 214, 110 },
 		SCREEN_TEXT = "✨ CONDENSER",
-		SPIN_SPEED = 40, -- degrees a second
+		SPIN_SPEED = 40, -- degrees a second (every Rotor, the Grading Station's too)
 		BOB = 0.15, -- studs up and down
 		BOB_SECONDS = 2.4,
 		FX_DISTANCE = 80, -- only spun this close to the camera
 	},
 
-	-- The Grading Station (Props, code-built): a futuristic scan pod (the user's pick, 2026-10-30). A dark plinth with
-	-- a glowing rim, a round white body with a light band, a slot and a GRADING strip at the front; on top an emitter
-	-- under a see-through column where a gold card floats in a beam of light, spinning and bobbing (a Rotor, moved by
-	-- CondenserFxController like the Condenser's core), and a cap with the grade hologram above it. No lights.
-	-- Studs; colours { r, g, b }.
+	-- The Grading Station (Props, code-built): a futuristic scan pod (the user's pick, 2026-10-30, then made bigger).
+	-- A dark plinth with a glowing rim, a round white body with a light band, a slot and a GRADING strip at the front;
+	-- on top an emitter under a see-through column where a gold card floats in a beam of light, two rings of small
+	-- cards circle it the other way below and above it, and a cap with the grade hologram above it. The card, the
+	-- hologram and the rings are Rotors (CondenserFxController spins and bobs them). No lights. Studs; colours
+	-- { r, g, b }.
 	GRADING_LOOK = {
-		PLINTH_RADIUS = 1.9,
-		PLINTH_HEIGHT = 0.5,
-		BODY_RADIUS = 1.6,
-		BODY_HEIGHT = 1.6,
-		EMITTER_RADIUS = 0.75,
-		COLUMN_RADIUS = 0.85,
-		COLUMN_HEIGHT = 2.3,
-		BEAM_RADIUS = 0.3,
-		CAP_RADIUS = 0.95,
-		CAP_HEIGHT = 0.2,
-		CARD_SIZE = { 0.55, 0.78 }, -- the floating card: width, height
-		HOLO_SIZE = 1.3, -- the grade hologram over the cap (a ring with the letter), studs across
+		PLINTH_RADIUS = 2.85,
+		PLINTH_HEIGHT = 0.7,
+		BODY_RADIUS = 2.4,
+		BODY_HEIGHT = 2.3,
+		EMITTER_RADIUS = 1.1,
+		COLUMN_RADIUS = 1.35,
+		COLUMN_HEIGHT = 3.5,
+		BEAM_RADIUS = 0.42,
+		CAP_RADIUS = 1.5,
+		CAP_HEIGHT = 0.3,
+		CARD_SIZE = { 0.75, 1.05 }, -- the floating card: width, height
+		ORBIT_RADIUS = 0.95, -- the small cards' circle round the beam
+		ORBIT_RISE = 1.0, -- each ring this far below / above the middle card
+		ORBIT_CARD = { 0.34, 0.48 },
+		ORBIT_CARDS = 4, -- cards in each ring
+		ORBIT_SPIN = -0.8, -- the rings turn this fast against the middle card (1 = the same)
+		HOLO_SIZE = 2, -- the grade hologram over the cap (a ring with the letter), studs across
 		SHELL = { 236, 240, 247 }, -- glossy white
 		DARK = { 28, 32, 46 }, -- plinth, emitter, slot and strip
 		GLOW = { 70, 230, 255 }, -- cyan light

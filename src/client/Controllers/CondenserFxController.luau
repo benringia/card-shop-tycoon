@@ -36,14 +36,19 @@ function CondenserFxController.Start()
 			return
 		end
 		local t = os.clock()
-		local bob = math.sin(t * math.pi * 2 / look.BOB_SECONDS) * look.BOB
-		local spin = CFrame.Angles(0, math.rad(t * look.SPIN_SPEED % 360), 0)
 		for rotor in rotors do
 			local machine = rotor.Parent
 			local height = rotor:GetAttribute("RotorY")
 			if machine and machine:IsA("Model") and typeof(height) == "number" then
 				local home = machine:GetPivot() * CFrame.new(0, height, 0)
 				if (home.Position - camera.CFrame.Position).Magnitude <= look.FX_DISTANCE then
+					-- Spin: times the usual speed (minus turns the other way); Phase: seconds its bob runs ahead
+					local speed = rotor:GetAttribute("Spin")
+					local phase = rotor:GetAttribute("Phase")
+					local scale = if typeof(speed) == "number" then speed else 1
+					local ahead = if typeof(phase) == "number" then phase else 0
+					local bob = math.sin((t + ahead) * math.pi * 2 / look.BOB_SECONDS) * look.BOB
+					local spin = CFrame.Angles(0, math.rad(t * look.SPIN_SPEED * scale % 360), 0)
 					rotor:PivotTo(home * CFrame.new(0, bob, 0) * spin)
 				end
 			end

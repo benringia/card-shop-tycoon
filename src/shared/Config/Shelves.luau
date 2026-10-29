@@ -95,7 +95,7 @@ local List: { Shelf } = {
 		capacity = 0,
 		cost = 5000,
 		unlockLevel = 8,
-		size = Vector3.new(6, 6, 4),
+		size = Vector3.new(6, 9, 6), -- a square spot for the round pod, made bigger (saved ones too big for their spot move over)
 		color = Color3.fromRGB(230, 185, 80),
 	},
 	{
