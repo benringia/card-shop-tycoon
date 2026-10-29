@@ -205,7 +205,7 @@ local List: { Shelf } = {
 		capacity = 48,
 		cost = 350,
 		unlockLevel = 3,
-		size = Vector3.new(8, 8, 2),
+		size = Vector3.new(8, 7, 2), -- as tall as the other racks, so plates and headers line up
 		color = Color3.fromRGB(140, 95, 60),
 	},
 	{
