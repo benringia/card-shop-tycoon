@@ -1308,9 +1308,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 The core loop is complete (the shop loop, cards, jobs, party, stars, battles and the whole boss ladder). Order from
 2026-10-29: UI/UX design first (with the phone layout pass), then the town's design, then the remaining monster and
 boss models; the ranch and Heroic tiers come after those.
-- UI/UX pass 1 (spec `2026-10-29-collection-screens-ui-design.md`, branch `ui-pass-1`): look E style kit, binder
+- [x] UI/UX pass 1 (spec `2026-10-29-collection-screens-ui-design.md`, branch `ui-pass-1`): look E style kit, binder
   tooltip, card view, Add to Party with the kid comparison, Party window, party bar tooltip, boss ladder with Take me
-  there, Bag; no Star Shard pill. Built; waiting for the user's Studio check before merge. Feedback round 1 built:
+  there, Bag; no Star Shard pill. Done: approved in Studio and merged 2026-10-29. Feedback round 1 built:
   Prices price box, Party legend and tonic badge, word tooltips, card view centring, clearer chooser and comparison
   wording, compact chooser buttons, party change toast, rarity guide without spoilers. Round 2: Shop Jobs rebuilt as
   option B (with Switch job), short tooltip words, no tooltips through covering windows, livelier toasts. Round 3:
