@@ -3,6 +3,11 @@
 -- Plain numbers only so Lune unit tests can load this file.
 return {
 	JOBS = { "Restocker", "Cashier" },
+	-- What each job does and its icon (Config/UIIcons), for the Jobs panel
+	JOB_INFO = {
+		Restocker = { icon = "Shelves", text = "Carries boxes from the delivery pad to empty shelves" },
+		Cashier = { icon = "Register", text = "Scans customers' cards at the register" },
+	},
 	UNLOCK_LEVEL = 10, -- shop level for the first job slot
 	FREE_SLOTS = 1,
 	PASS_SLOTS = 1, -- extra slots from the Extra Job Slot game pass
@@ -29,4 +34,19 @@ return {
 	-- Workers drawn with a creature model (WorkerVisualController) are at least this tall, so a cashier shows
 	-- over the counter (2.5 tall) even as a small Common
 	CREATURE_MIN_HEIGHT = 3.4,
+	-- The words the Jobs panel shows for a worker's speed and mistakes (the first entry that matches, from the top),
+	-- with a tone for their colour
+	SPEED_WORDS = {
+		{ min = 1.5, word = "Very fast", tone = "good" },
+		{ min = 1.15, word = "Fast", tone = "good" },
+		{ min = 0.85, word = "Normal speed", tone = "ok" },
+		{ min = 0.6, word = "Slow", tone = "bad" },
+		{ min = 0, word = "Very slow", tone = "bad" },
+	},
+	MISTAKE_WORDS = {
+		{ max = 0.05, word = "Almost no mistakes", tone = "good" },
+		{ max = 0.09, word = "Few mistakes", tone = "good" },
+		{ max = 0.14, word = "Some mistakes", tone = "ok" },
+		{ max = 1, word = "Lots of mistakes", tone = "bad" },
+	},
 }

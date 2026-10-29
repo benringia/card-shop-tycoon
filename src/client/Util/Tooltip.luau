@@ -2,7 +2,9 @@
 -- Word tooltips for icons and buttons shown without a label: hover with a mouse, hold a finger on touch
 -- (UIStyle.LONG_PRESS). One shared tip per ScreenGui, drawn over everything in it, centred over the thing it
 -- names (under it near the top edge), kept on screen (Util/UiLayout). It hides when the pointer leaves, the
--- finger lifts, or the thing hides or goes away.
+-- finger lifts, or the thing hides, goes away or gets covered. Roblox sends MouseEnter to objects under another
+-- window too (the card view's stat tiles under the party chooser), so a covered thing shows no tip.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -79,10 +81,37 @@ local function isShown(target: GuiObject): boolean
 	return false
 end
 
-local function pointerOver(target: GuiObject): boolean
-	local mouse = UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
+-- The mouse in GUI space (below the top bar inset)
+local function mousePoint(): Vector2
+	return UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
+end
+
+local function pointerOver(target: GuiObject, point: Vector2): boolean
 	local spot, size = target.AbsolutePosition, target.AbsoluteSize
-	return mouse.X >= spot.X - 2 and mouse.X <= spot.X + size.X + 2 and mouse.Y >= spot.Y - 2 and mouse.Y <= spot.Y + size.Y + 2
+	return point.X >= spot.X - 2 and point.X <= spot.X + size.X + 2 and point.Y >= spot.Y - 2 and point.Y <= spot.Y + size.Y + 2
+end
+
+-- Something drawn sits over the target at this point (GUI space). GetGuiObjectsAtPosition lists the top first: a
+-- drawn object before the target (or what it sits on) covers it.
+local function covered(target: GuiObject, point: Vector2): boolean
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return false
+	end
+	for _, object in playerGui:GetGuiObjectsAtPosition(point.X, point.Y) do
+		if object.Name == "WordTip" then
+			continue -- the tip itself
+		end
+		if object == target or object:IsDescendantOf(target) or target:IsDescendantOf(object) then
+			return false
+		end
+		local drawn = object.BackgroundTransparency < 1
+			or (object:IsA("ImageLabel") or object:IsA("ImageButton")) and object.ImageTransparency < 1 and object.Image ~= ""
+		if drawn and object.Visible then
+			return true
+		end
+	end
+	return false
 end
 
 function Tooltip.hide()
@@ -108,9 +137,9 @@ local function place(target: GuiObject, tip: TextLabel)
 	tip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
-local function show(target: GuiObject, text: string, touch: boolean)
+local function show(target: GuiObject, text: string, touch: boolean, point: Vector2)
 	local screen = target:FindFirstAncestorOfClass("ScreenGui")
-	if not screen or not isShown(target) then
+	if not screen or not isShown(target) or covered(target, point) then
 		return
 	end
 	Tooltip.hide()
@@ -121,7 +150,8 @@ local function show(target: GuiObject, text: string, touch: boolean)
 	place(target, tip)
 	-- MouseLeave can be missed (fast moves, a window closing under the pointer): check each frame
 	watcher = RunService.Heartbeat:Connect(function()
-		if not target.Parent or not isShown(target) or (not byTouch and not pointerOver(target)) then
+		local mouse = mousePoint()
+		if not target.Parent or not isShown(target) or (not byTouch and (not pointerOver(target, mouse) or covered(target, mouse))) then
 			Tooltip.hide()
 			return
 		end
@@ -133,7 +163,7 @@ end
 function Tooltip.attach(target: GuiObject, text: string)
 	target.MouseEnter:Connect(function()
 		if UserInputService.MouseEnabled then
-			show(target, text, false)
+			show(target, text, false, mousePoint())
 		end
 	end)
 	target.MouseLeave:Connect(function()
@@ -148,9 +178,10 @@ function Tooltip.attach(target: GuiObject, text: string)
 		end
 		pressed += 1
 		local press = pressed
+		local point = Vector2.new(input.Position.X, input.Position.Y)
 		task.delay(UIStyle.LONG_PRESS, function()
 			if pressed == press then
-				show(target, text, true)
+				show(target, text, true, point)
 			end
 		end)
 	end)

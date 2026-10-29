@@ -50,6 +50,19 @@ local SIDE_TOAST_OUTLINE = Color3.fromRGB(10, 60, 25) -- dark text outline so wh
 local SIDE_POP = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local SIDE_SETTLE = TweenInfo.new(0.6)
 local SIDE_FADE = TweenInfo.new(0.3)
+-- The main toast: a candy pill with an icon badge that pops up from below, sweeps a shine across, counts its time
+-- down in a thin bar and fades away
+local TOAST_TEXT_SIZE = 20
+local TOAST_MAX_TEXT = 460 -- px before the words wrap
+local TOAST_ICON = 36
+local TOAST_RISE_PX = 28
+local TOAST_POP = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TOAST_RISE = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TOAST_FADE_IN = TweenInfo.new(0.15)
+local TOAST_BUMP = TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TOAST_SHINE = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TOAST_OUT = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+local TOAST_WIGGLE = TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
 
 local player = Players.LocalPlayer
 
@@ -66,7 +79,18 @@ local xpLabel: TextLabel
 local xpFill: Frame
 local cashPill: Frame
 local levelBadge: Frame
-local toastLabel: TextLabel
+type Toast = {
+	root: CanvasGroup,
+	scale: UIScale,
+	body: Frame,
+	label: TextLabel,
+	badge: Frame,
+	icon: Frame,
+	shine: UIGradient,
+	timer: Frame,
+	home: UDim2,
+}
+local toast: Toast
 local toastToken = 0
 
 local function getNumber(name: string, default: number): number
@@ -118,19 +142,58 @@ function UIController.GetStatusRow(): Frame
 end
 
 
--- Returns a token for UIController.Dismiss
-function UIController.Notify(message: string, isError: boolean?, duration: number?): number
+local function hideToast()
+	local root = toast.root
+	TweenService:Create(root, TOAST_OUT, { GroupTransparency = 1 }):Play()
+	local shrink = TweenService:Create(toast.scale, TOAST_OUT, { Scale = 0.85 })
+	shrink.Completed:Once(function(state)
+		if state == Enum.PlaybackState.Completed and root.GroupTransparency > 0.99 then
+			root.Visible = false
+		end
+	end)
+	shrink:Play()
+end
+
+-- A toast over the bottom row: gold (red for errors) with an icon (Config/UIIcons name; Info, or Close for errors)
+-- that pops up and wiggles, a shine sweeping across and a bar counting its time down. A toast arriving while one
+-- shows bumps it and takes its place. Returns a token for UIController.Dismiss.
+function UIController.Notify(message: string, isError: boolean?, duration: number?, icon: string?): number
 	toastToken += 1
 	local token = toastToken
-	toastLabel.Text = message
-	toastLabel.BackgroundColor3 = if isError then UIKit.Colors.Danger else UIKit.Colors.Accent
-	toastLabel.TextColor3 = if isError then UIKit.Colors.Text else UIKit.Colors.Ink -- dark on gold
-	toastLabel.Visible = true
+	local seconds = duration or TOAST_SECONDS
+	local fill = if isError then UIStyle.RED else UIStyle.GOLD
+	toast.label.Text = message
+	toast.body.BackgroundColor3 = fill
+	toast.badge.BackgroundColor3 = fill:Lerp(Color3.new(1, 1, 1), 0.45)
+	Icon.set(toast.icon, icon or (if isError then "Close" else "Info"))
 
-	task.delay(duration or TOAST_SECONDS, function()
+	local root = toast.root
+	if root.Visible and root.GroupTransparency < 0.5 then
+		-- Already up: a quick bump for the new words
+		toast.scale.Scale = 1.08
+		TweenService:Create(toast.scale, TOAST_BUMP, { Scale = 1 }):Play()
+		root.GroupTransparency = 0
+	else
+		root.Visible = true
+		root.GroupTransparency = 1
+		root.Position = toast.home + UDim2.fromOffset(0, TOAST_RISE_PX)
+		toast.scale.Scale = 0.5
+		TweenService:Create(root, TOAST_FADE_IN, { GroupTransparency = 0 }):Play()
+		TweenService:Create(root, TOAST_RISE, { Position = toast.home }):Play()
+		TweenService:Create(toast.scale, TOAST_POP, { Scale = 1 }):Play()
+	end
+	-- The icon wiggles in, a shine sweeps across, the timer bar runs down
+	toast.icon.Rotation = -30
+	TweenService:Create(toast.icon, TOAST_WIGGLE, { Rotation = 0 }):Play()
+	toast.shine.Offset = Vector2.new(-1, 0)
+	TweenService:Create(toast.shine, TOAST_SHINE, { Offset = Vector2.new(1, 0) }):Play()
+	toast.timer.Size = UDim2.new(1, -24, 0, 4)
+	TweenService:Create(toast.timer, TweenInfo.new(seconds, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 4) }):Play()
+
+	task.delay(seconds, function()
 		-- A newer toast replaced this one, leave it showing
 		if toastToken == token then
-			toastLabel.Visible = false
+			hideToast()
 		end
 	end)
 	return token
@@ -206,8 +269,8 @@ end
 
 -- Hides a toast early (e.g. a hint once it's been followed); does nothing if a newer toast replaced it
 function UIController.Dismiss(token: number)
-	if toastToken == token then
-		toastLabel.Visible = false
+	if toastToken == token and toast.root.Visible then
+		hideToast()
 	end
 end
 
@@ -364,6 +427,124 @@ local function placeStatusRow(rowLayout: UIListLayout)
 	end
 end
 
+-- The toast's pieces (see Notify); one, reused
+local function buildToast()
+	-- Above the bottom HUD row; a canvas group so the whole toast fades as one
+	local home = UDim2.new(0.5, 0, 1, -(HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + 16))
+	local root = Instance.new("CanvasGroup")
+	root.Name = "Toast"
+	root.AnchorPoint = Vector2.new(0.5, 1)
+	root.Position = home
+	root.Size = UDim2.new()
+	root.AutomaticSize = Enum.AutomaticSize.XY
+	root.BackgroundTransparency = 1
+	root.Visible = false
+	root.ZIndex = 10
+	root.Parent = screenGui
+	local rootPadding = Instance.new("UIPadding") -- room for the outline inside the group
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(rootPadding :: any)[side] = UDim.new(0, 4)
+	end
+	rootPadding.Parent = root
+	local scale = Instance.new("UIScale")
+	scale.Parent = root
+
+	-- The candy pill: the colour darkening down the face, a thick dark outline
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.AutomaticSize = Enum.AutomaticSize.XY
+	body.Size = UDim2.new()
+	body.BackgroundColor3 = UIStyle.GOLD
+	body.ZIndex = root.ZIndex
+	body.Parent = root
+	UIKit.corner(body, 16)
+	UIKit.outline(body, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local shade = Instance.new("UIGradient")
+	shade.Rotation = 90
+	shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+	shade.Parent = body
+	local bodyPadding = Instance.new("UIPadding")
+	bodyPadding.PaddingLeft = UDim.new(0, 8)
+	bodyPadding.PaddingRight = UDim.new(0, 18)
+	bodyPadding.PaddingTop = UDim.new(0, 8)
+	bodyPadding.PaddingBottom = UDim.new(0, 12)
+	bodyPadding.Parent = body
+
+	-- A shine that sweeps across once per toast
+	local gleam = Instance.new("Frame")
+	gleam.Name = "Shine"
+	gleam.Size = UDim2.new(1, 26, 1, 20)
+	gleam.Position = UDim2.fromOffset(-8, -8)
+	gleam.BackgroundColor3 = Color3.new(1, 1, 1)
+	gleam.ZIndex = body.ZIndex + 1
+	gleam.Parent = body
+	UIKit.corner(gleam, 16)
+	local shine = Instance.new("UIGradient")
+	shine.Rotation = 20
+	shine.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.55),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	shine.Offset = Vector2.new(1, 0)
+	shine.Parent = gleam
+
+	local row = Instance.new("Frame")
+	row.Name = "Row"
+	row.AutomaticSize = Enum.AutomaticSize.XY
+	row.Size = UDim2.new()
+	row.BackgroundTransparency = 1
+	row.ZIndex = body.ZIndex + 2
+	row.Parent = body
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 10)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+
+	-- The icon in a round light badge
+	local badge = Instance.new("Frame")
+	badge.Name = "Badge"
+	badge.Size = UDim2.fromOffset(TOAST_ICON + 6, TOAST_ICON + 6)
+	badge.BackgroundColor3 = Color3.new(1, 1, 1)
+	badge.ZIndex = row.ZIndex
+	badge.Parent = row
+	UIKit.corner(badge, (TOAST_ICON + 6) / 2)
+	UIKit.outline(badge, UIStyle.EDGE, 2)
+	local icon = Icon.make(badge, "Info", UDim2.fromOffset(TOAST_ICON - 4, TOAST_ICON - 4))
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.ZIndex = badge.ZIndex + 1
+
+	local label = UIKit.label(row, "", Enum.Font.FredokaOne, TOAST_TEXT_SIZE, Color3.new(1, 1, 1))
+	label.LayoutOrder = 2
+	label.AutomaticSize = Enum.AutomaticSize.XY
+	label.Size = UDim2.new()
+	label.TextWrapped = true
+	label.ZIndex = row.ZIndex
+	UIKit.outlined(label, 2)
+	local wrap = Instance.new("UISizeConstraint")
+	wrap.MaxSize = Vector2.new(TOAST_MAX_TEXT, math.huge)
+	wrap.Parent = label
+
+	-- How long it stays: a thin light bar along the bottom that runs down
+	local timer = Instance.new("Frame")
+	timer.Name = "Timer"
+	timer.AnchorPoint = Vector2.new(0, 1)
+	timer.Position = UDim2.new(0, 12, 1, 8)
+	timer.Size = UDim2.new(1, -24, 0, 4)
+	timer.BackgroundColor3 = Color3.new(1, 1, 1)
+	timer.BackgroundTransparency = 0.35
+	timer.ZIndex = body.ZIndex + 2
+	timer.Parent = body
+	UIKit.corner(timer, 2)
+
+	toast = { root = root, scale = scale, body = body, label = label, badge = badge, icon = icon, shine = shine, timer = timer, home = home }
+end
+
 function UIController.Start()
 	screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "MainGui"
@@ -424,20 +605,7 @@ function UIController.Start()
 
 	buildStatusPills()
 
-	toastLabel = Instance.new("TextLabel")
-	toastLabel.Name = "Toast"
-	toastLabel.AnchorPoint = Vector2.new(0.5, 1)
-	-- Above the bottom HUD row
-	toastLabel.Position = UDim2.new(0.5, 0, 1, -(HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + 16))
-	toastLabel.Size = UDim2.new(0.9, 0, 0, 52)
-	toastLabel.Font = Enum.Font.GothamBold
-	toastLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	toastLabel.TextSize = 20
-	toastLabel.TextWrapped = true
-	toastLabel.Visible = false
-	toastLabel.ZIndex = 10
-	toastLabel.Parent = screenGui
-	UIKit.corner(toastLabel, 12)
+	buildToast()
 
 	sideToasts = Instance.new("Frame")
 	sideToasts.Name = "SideToasts"
@@ -457,9 +625,6 @@ function UIController.Start()
 	sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	sideLayout.Parent = sideToasts
 
-	local toastSize = Instance.new("UISizeConstraint")
-	toastSize.MaxSize = Vector2.new(480, math.huge)
-	toastSize.Parent = toastLabel
 
 	updateCash()
 	updateXp()

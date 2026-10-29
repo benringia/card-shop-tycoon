@@ -585,6 +585,28 @@ local function onUnassign(player: Player, slot: unknown)
 	freeSlot(player, slot)
 end
 
+-- The worker in this slot takes the next job without leaving the slot. A fresh worker record, so the old job's
+-- loop (which checks its own record's `alive`) stops for good.
+local function onSwitch(player: Player, slot: unknown)
+	if not allowAction(player) or typeof(slot) ~= "number" then
+		return
+	end
+	local state = states[player]
+	local worker = if state then state.slots[slot] else nil
+	local job = if worker then JobRules.nextJob(Jobs.JOBS, worker.job) else nil
+	if not state or not worker or not job then
+		return
+	end
+	stopWorker(player, worker)
+	local fresh: Worker = { slot = worker.slot, beastId = worker.beastId, job = job, alive = false, status = "Starting" }
+	state.slots[worker.slot] = fresh
+	CardService.SetWorking(player, fresh.beastId, job)
+	startWorker(player, state, fresh)
+	sendJobs(player)
+	local profile = getProfile(player, fresh)
+	notify(player, `{if profile then profile.card.name else "Your card"} is now a {job}.`, false)
+end
+
 -- Data --------------------------------------------------------------------------------------------------
 
 local function load(player: Player, data: PlayerData)
@@ -707,6 +729,7 @@ function JobService.Start()
 	DataService.Register({ name = "JobService", load = load, save = save, unload = unload })
 	Remotes.AssignJob.OnServerEvent:Connect(onAssign)
 	Remotes.UnassignJob.OnServerEvent:Connect(onUnassign)
+	Remotes.SwitchJob.OnServerEvent:Connect(onSwitch)
 	Remotes.RequestJobs.OnServerEvent:Connect(function(player)
 		if allowAction(player) then
 			sendJobs(player)

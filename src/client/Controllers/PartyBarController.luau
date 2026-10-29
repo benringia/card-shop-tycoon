@@ -471,7 +471,7 @@ local function announce()
 	pendingChanges = {}
 	announcing = false
 	if #messages > 0 then
-		UIController.Notify(table.concat(messages, "  "))
+		UIController.Notify(table.concat(messages, "  "), false, nil, "Party")
 	end
 end
 

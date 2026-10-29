@@ -59,4 +59,43 @@ function JobRules.getSavedLocks(config: { JOBS: { string } }, raw: unknown): { [
 	return locks
 end
 
+-- The job after `current` in the list (wrapping round): what Switch job turns a worker into
+function JobRules.nextJob(jobs: { string }, current: string): string?
+	local index = table.find(jobs, current)
+	if not index then
+		return nil
+	end
+	return jobs[index % #jobs + 1]
+end
+
+-- Kid words for a work speed factor, and their tone ("good", "ok", "bad")
+function JobRules.speedWord(config: { SPEED_WORDS: { { min: number, word: string, tone: string } } }, factor: number): (string, string)
+	for _, entry in config.SPEED_WORDS do
+		if factor >= entry.min then
+			return entry.word, entry.tone
+		end
+	end
+	local last = config.SPEED_WORDS[#config.SPEED_WORDS]
+	return last.word, last.tone
+end
+
+-- Kid words for a mistake chance, and their tone
+function JobRules.mistakeWord(config: { MISTAKE_WORDS: { { max: number, word: string, tone: string } } }, chance: number): (string, string)
+	for _, entry in config.MISTAKE_WORDS do
+		if chance <= entry.max then
+			return entry.word, entry.tone
+		end
+	end
+	local last = config.MISTAKE_WORDS[#config.MISTAKE_WORDS]
+	return last.word, last.tone
+end
+
+-- Whole minutes of work to the next level (nil at max level)
+function JobRules.minutesToNext(xp: number, toNext: number, perMinute: number): number?
+	if toNext <= 0 or perMinute <= 0 then
+		return nil
+	end
+	return math.max(1, math.ceil((toNext - xp) / perMinute))
+end
+
 return JobRules

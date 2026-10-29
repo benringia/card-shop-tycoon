@@ -482,8 +482,8 @@ level and star icons, its Power (big, orange), HP / ATK / SPD bars (against the 
 (gold) or the green Summoned (tap to unsummon), XP Tonic (icon with a gold badge on its top right corner showing how
 many you hold, drawn above Remove; hidden at 0 or Lv 30) and Remove (red). The summoned column glows green with a
 SUMMONED tag; the band shows "Summoned: <card>" (or "Nobody summoned") and your PvP record; an empty slot has "Add a
-card" (opens the binder). A legend along the bottom names the stat icons once (Power, Health, Attack, Speed), and
-every icon without a label has a word tooltip (`Util/Tooltip`). Phones get a smaller card and slimmer bars so every
+card" (opens the binder). A legend along the bottom names the stat icons once (Power, Health, Attack, Attack Speed), and
+every icon without a label has a word tooltip (`Util/Tooltip`; Remove says "Remove from party"). Phones get a smaller card and slimmer bars so every
 column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
@@ -820,7 +820,16 @@ There is no level cap: after Lv 10 each level costs 15% more XP than the step be
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
 - **Slots:** 1 at shop Lv 10; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
-  view ("Assign to job"); the **Jobs** HUD button shows each slot's card, status, XP, speed and mistakes.
+  view ("Give a job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
+  in three chips (faster cards work quicker, stronger cards make fewer mistakes, +2 XP a minute), then one row per
+  slot: the card's art (hover, or hold a finger, for its stats and perk), name, grade, level, a job chip (icon, and
+  what the job does in its tooltip), a live status pill (green working, amber idle or waiting, red after a slip;
+  updated in place, so tooltips stay up), an XP bar with "Lv 18 in 9 min" (`JobRules.minutesToNext`), Speed and
+  Mistakes in kid words with the number under ("Fast · x1.46 work speed", "Some mistakes · 11% of the time";
+  `JobRules.speedWord` / `mistakeWord`, thresholds in `Jobs.SPEED_WORDS` / `MISTAKE_WORDS`), and two buttons:
+  **Switch job** (remote `SwitchJob(slot)`: the card takes the other job without leaving its slot,
+  `JobRules.nextJob`) and Stop working. A free slot shows "+" and Pick a card (opens the binder); a locked one says
+  when it opens or offers the pass. The window is only as tall as its rows.
 - **Restocker:** carries delivered boxes from the pad to shelves that hold (or accept) that product and stocks them.
 - **Cashier:** scans and charges customers like you do; steps aside while you're at the register.
 - **SPD = speed**: (SPD / 14)^1.5, clamped ×0.4 to ×2.5, so a fresh Grade C Common scans in ~2.0 s and a fresh
@@ -958,7 +967,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
-    │   │   ├── JobsController.luau      # Jobs HUD button and panel: slots, status, XP, Unassign, Buy slot
+    │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
     │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies round the plaza spring
@@ -1042,7 +1051,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
             ├── BeastRules.luau    # BeastMath bound to the game configs
             ├── CondenseRules.luau # which duplicates a star or a grade-up uses (pure, Lune-tested)
-            ├── JobRules.luau      # job speed, mistakes and slots (pure, Lune-tested)
+            ├── JobRules.luau      # job speed, mistakes and slots, their kid words, next job, minutes to a level (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
@@ -1131,9 +1140,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
 - **Word tooltips** (`Util/Tooltip`, words in `Config/IconTips`): every icon shown without a label (stat icons,
   Power, stars, Cash, Copies, elements, grade pills, icon-only buttons) names itself in a small dark tip with a gold
-  outline: hover with a mouse, hold a finger on it for `UIStyle.LONG_PRESS` on touch. One tip per ScreenGui, over
-  everything, above the thing (below it near the top edge, `UiLayout.above`); it hides when the pointer leaves, the
-  finger lifts or the thing hides.
+  outline, just the name (Power, Health, Attack, Attack Speed): hover with a mouse, hold a finger on it for
+  `UIStyle.LONG_PRESS` on touch. One tip per ScreenGui, over everything, above the thing (below it near the top edge,
+  `UiLayout.above`); it hides when the pointer leaves, the finger lifts or the thing hides. Roblox sends MouseEnter to
+  things under another window too, so a covered thing (checked with `GetGuiObjectsAtPosition`) shows no tip.
 - **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
   for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
@@ -1159,7 +1169,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale, tinted per boss in code), XpTonic, GradingSeal,
   GoldSeal, Travel, Best and Pvp; Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
-  their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row. The fight screen hides the HUD groups.
+  their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row:
+  a candy pill (gold, red for errors) with an icon in a round badge (`UIController.Notify(message, isError,
+  duration, icon)`; Info by default), popping up from below with a bounce, the icon wiggling in, a shine sweeping
+  across, a thin bar counting its time down, then fading and shrinking away; a new toast while one shows bumps it. The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
@@ -1277,8 +1290,8 @@ boss models; the ranch and Heroic tiers come after those.
   tooltip, card view, Add to Party with the kid comparison, Party window, party bar tooltip, boss ladder with Take me
   there, Bag; no Star Shard pill. Built; waiting for the user's Studio check before merge. Feedback round 1 built:
   Prices price box, Party legend and tonic badge, word tooltips, card view centring, clearer chooser and comparison
-  wording, compact chooser buttons, party change toast, rarity guide without spoilers. Shop Jobs redesign: three
-  mockups shown (A worker columns, B clean rows, C job stations), waiting for the user's pick. Next: UI project 2 (a 3D
+  wording, compact chooser buttons, party change toast, rarity guide without spoilers. Round 2: Shop Jobs rebuilt as
+  option B (with Switch job), short tooltip words, no tooltips through covering windows, livelier toasts. Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are

@@ -51,4 +51,28 @@ return {
 		expect.equal(JobRules.getSlotCount(config, 10, false), 1, "free slot")
 		expect.equal(JobRules.getSlotCount(config, 12, true), 2, "with pass")
 	end,
+	["nextJob: the other job, wrapping round"] = function()
+		expect.equal(JobRules.nextJob({ "Restocker", "Cashier" }, "Restocker"), "Cashier", "next")
+		expect.equal(JobRules.nextJob({ "Restocker", "Cashier" }, "Cashier"), "Restocker", "wraps")
+		expect.isNil(JobRules.nextJob({ "Restocker", "Cashier" }, "Juggler"), "not a job")
+	end,
+	["speedWord: kid words and a tone for the work speed"] = function()
+		expect.equal((JobRules.speedWord(config, 1.7)), "Very fast", "very fast")
+		expect.equal((JobRules.speedWord(config, 1.05)), "Normal speed", "normal")
+		local word, tone = JobRules.speedWord(config, 0.45)
+		expect.equal(word, "Very slow", "very slow")
+		expect.equal(tone, "bad", "red")
+	end,
+	["mistakeWord: kid words and a tone for the mistake chance"] = function()
+		local word, tone = JobRules.mistakeWord(config, 0.03)
+		expect.equal(word, "Almost no mistakes", "strong card")
+		expect.equal(tone, "good", "green")
+		expect.equal((JobRules.mistakeWord(config, 0.11)), "Some mistakes", "middling")
+		expect.equal((JobRules.mistakeWord(config, 0.2)), "Lots of mistakes", "weak card")
+	end,
+	["minutesToNext: whole minutes of work to the next level"] = function()
+		expect.equal(JobRules.minutesToNext(31, 50, 2), 10, "9.5 rounds up")
+		expect.equal(JobRules.minutesToNext(49, 50, 2), 1, "almost there")
+		expect.isNil(JobRules.minutesToNext(0, 0, 2), "max level")
+	end,
 }

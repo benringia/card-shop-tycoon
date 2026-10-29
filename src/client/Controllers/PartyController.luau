@@ -45,7 +45,7 @@ local GAP = 8
 local CHIP_HEIGHT = 28
 local LEGEND_HEIGHT = 24
 local PHONE_LEGEND_HEIGHT = 20
-local LEGEND = { { "Power", "Power" }, { "Hp", "Health" }, { "Atk", "Attack" }, { "Spd", "Speed" } }
+local LEGEND = { { "Power", "Power" }, { "Hp", "Health" }, { "Atk", "Attack" }, { "Spd", "Attack Speed" } }
 
 local PartyController = {}
 

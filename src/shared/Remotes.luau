@@ -33,6 +33,7 @@ local NAMES = {
 	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal)
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
+	"SwitchJob", -- client → server: (slot: number) that slot's worker takes the next job (Restocker <-> Cashier)
 	"JobsChanged", -- server → owner: { slotCount, maxSlots, unlockLevel, hasPass, passId, slots = { { slot, beastId, job, status } } }
 	"RequestJobs", -- client → server: () resend JobsChanged
 	"SetPartySlot", -- client → server: (slot: number, target: beastId | { cardId, foil, grade } | nil) nil removes
@@ -119,6 +120,7 @@ return {
 	GradeUp = remotes.GradeUp,
 	AssignJob = remotes.AssignJob,
 	UnassignJob = remotes.UnassignJob,
+	SwitchJob = remotes.SwitchJob,
 	JobsChanged = remotes.JobsChanged,
 	RequestJobs = remotes.RequestJobs,
 	SetPartySlot = remotes.SetPartySlot,
