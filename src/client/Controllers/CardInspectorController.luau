@@ -2,7 +2,7 @@
 -- Card inspector: the card as a real 3D card in front of the camera. Drag to tilt it (it eases back when you
 -- let go), drag far sideways or press Flip to turn it over. Legendaries keep their element aura, foil its holo.
 -- While it's up the camera waits at an empty stage high above the world (Inspector.STAGE_POSITION), with a solid
--- dark sheet just behind the card, so nothing of the world shows (solid: a see-through sheet hides the card's
+-- dark sheet just behind the card, so nothing of the world shows (its sounds are still heard at the character) (solid: a see-through sheet hides the card's
 -- faces). The card's right edge follows the info panel (SetCardRight, UiLayout.inspectorCard); the card view
 -- (CardDetailController) puts its Flip button under it (GetCardRect).
 local GuiService = game:GetService("GuiService")
@@ -25,6 +25,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local ElementAura = require(ClientUtil:WaitForChild("ElementAura"))
 local WorldTags = require(ClientUtil:WaitForChild("WorldTags"))
+local ListenAtCharacter = require(ClientUtil:WaitForChild("ListenAtCharacter"))
 
 type Card = typeof(Cards.List[1])
 export type Growth = CardFace.Growth
@@ -262,6 +263,7 @@ function CardInspectorController.Show(card: Card, foil: boolean, growth: Growth?
 	if not backdrop then
 		buildBackdrop(camera)
 		WorldTags.hide("CardView") -- on-top tags and bubbles would show through the backdrop
+		ListenAtCharacter.hold("CardView") -- the world stays heard while the camera is at the stage
 		savedCameraType = camera.CameraType
 		savedCameraCFrame = camera.CFrame
 		camera.CameraType = Enum.CameraType.Scriptable -- the camera holds still; drags turn the card
@@ -318,6 +320,7 @@ function CardInspectorController.Close()
 		backdrop:Destroy()
 		backdrop = nil
 		WorldTags.show("CardView")
+		ListenAtCharacter.release("CardView")
 	end
 	local camera = workspace.CurrentCamera
 	if camera and savedCameraCFrame then

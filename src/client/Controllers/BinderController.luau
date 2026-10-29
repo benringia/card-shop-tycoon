@@ -2117,6 +2117,12 @@ function BinderController.Start()
 	end, false, Enum.ContextActionPriority.High.Value + BAG_PRIORITY_MARGIN, BAG_KEY)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
+	-- A fight starting (an elite, an aggro zone) closes the binder (and the card view) so the fight camera takes over
+	Remotes.BattleStarted.OnClientEvent:Connect(function()
+		if panel.Visible then
+			toggle()
+		end
+	end)
 	-- Party slot names in the "Which party slot?" chooser
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then

@@ -6,6 +6,7 @@
 -- nine pocket slots (BinderFit) that the binder fills with card faces. While shown, a Scriptable camera frames the
 -- binder inside a rectangle of the screen, world sound stays at the character and on-top world tags are off.
 -- Input is by raycast: pick() says which pocket, page or set tab is under a screen point.
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -338,6 +339,12 @@ function BinderDesk.hide()
 		camera.CFrame = before.cframe
 		camera.FieldOfView = before.fov
 		camera.CameraType = before.cameraType
+		-- Roblox doesn't move a Scriptable camera's subject to a respawned character: follow the current one
+		local character = Players.LocalPlayer.Character
+		local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+		if before.cameraType == Enum.CameraType.Custom and humanoid then
+			camera.CameraSubject = humanoid
+		end
 	end
 	saved = nil
 	ListenAtCharacter.release("Binder")

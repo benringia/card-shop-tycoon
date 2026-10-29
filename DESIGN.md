@@ -1217,7 +1217,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   painted warm lamp pool, darker edges, a black leather case with a stitched border, dark pages; a chrome ring rail
   with three rings down the spine. It looks the same at night and at every graphics quality. Built once at start,
   shown when the binder opens; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
-  world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back. One set
+  world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
+  following camera picks up a character that respawned meanwhile). A fight starting (an elite, an aggro zone) closes
+  the binder and the card view so the fight camera takes over. The card view keeps world sound at the character too. One set
   at a time; set dividers are coloured tabs sticking out of the case's right edge with the set's name (the open
   set's sticks out further), click one to open that set. Each page is a canvas of 3 x 3 pocket slots (18 cards a
   spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
