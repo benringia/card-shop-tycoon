@@ -36,7 +36,8 @@ return {
 		HookRack = { height = 0, collide = false, built = true }, -- Accessory Hook: a pegboard with hooks
 		DisplayRack = { height = 0, collide = false, built = true }, -- Big Display Rack: double-sided
 		-- stretch = fill the box on every axis (plain straight parts only); roll stands a model up (degrees about Z)
-		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z
+		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z (no longer used)
+		CardCase = { height = 0, collide = false, built = true }, -- Glass Showcase / Collector Case: a tall glass case (CASE_LOOK)
 		-- delivery boxes, one per product (Products boxProp); welded to the box part, so they travel when carried
 		BoxPacks = { height = 0, collide = false },
 		BoxSleeves = { height = 0, collide = false },
@@ -195,6 +196,23 @@ return {
 			GAP = 0.08, -- in front of the boxes
 			TILT = 6, -- degrees, hung a little crooked
 		},
+	},
+
+	-- The Glass Showcase / Collector Case (Util/CaseLook, code-built; UI project 3): a dark base with the bed on top,
+	-- corner posts and top rails, tall glass sides and lid, and a light strip along the top front edge. Part names
+	-- Support, Carpet, Frame, Glass, Strip (Shelves propColors recolour them). The bed sits at CaseLayout.UPRIGHT
+	-- bedHeight. Studs; colours { r, g, b }.
+	CASE_LOOK = {
+		SUPPORT = { 40, 44, 58 }, -- charcoal base
+		CARPET = { 70, 40, 110 }, -- violet bed
+		FRAME = { 205, 210, 220 }, -- chrome posts and rails
+		GLASS = { 210, 235, 255 },
+		GLASS_TRANSPARENCY = 0.85,
+		GLASS_REFLECTANCE = 0.15,
+		STRIP = { 70, 230, 255 }, -- cyan light strip
+		POST = 0.12, -- corner post and rail thickness
+		BED = 0.06, -- bed thickness
+		STRIP_HEIGHT = 0.1,
 	},
 
 	-- The Card Condenser (Props, code-built): a charcoal plinth with a glowing ring, a screen and a card slot; a glass

@@ -20,7 +20,7 @@ export type Shelf = {
 	color: Color3,
 	accepts: { string }?, -- product shelves only: product IDs it can hold, nil = any product
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
-	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
+	cardsUpright: boolean?, -- card cases: cards stand upright over their slots and spin (CaseLayout.UPRIGHT, CaseSpinController)
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
 	category: "Shelves" | "Cases" | "Fixtures" | "Trophies", -- the Build menu tab it's listed under
 	requiresItem: string?, -- a Config/Items id placing it takes (and selling gives back); trophies only
@@ -44,8 +44,8 @@ local List: { Shelf } = {
 	},
 	{
 		id = "GlassShowcase",
-		prop = "Showcase",
-		cardsFlat = true, -- a glass counter: its cards lie on the velvet bed under the glass
+		prop = "CardCase", -- a tall glass case (Util/CaseLook)
+		cardsUpright = true, -- its cards float upright and spin on light beams in their rarity colour
 		name = "Glass Showcase",
 		kind = "CustomerCards",
 		category = "Cases", -- Build menu tab
@@ -57,12 +57,13 @@ local List: { Shelf } = {
 	},
 	{
 		id = "CollectorCase",
-		prop = "Showcase", -- the same glass counter as the Glass Showcase, in collector colours
-		cardsFlat = true,
+		prop = "CardCase", -- the same glass case as the Glass Showcase, in collector colours
+		cardsUpright = true,
 		propColors = {
 			Support = Color3.fromRGB(38, 44, 70), -- dark navy base
 			Frame = Color3.fromRGB(212, 175, 85), -- gold trim
 			Carpet = Color3.fromRGB(40, 70, 170), -- royal blue bed
+			Strip = Color3.fromRGB(255, 205, 90), -- gold light strip
 		},
 		name = "Collector Case",
 		kind = "PlayerCards",

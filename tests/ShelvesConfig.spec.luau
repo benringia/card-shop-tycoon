@@ -60,7 +60,7 @@ return {
 		assert(props.WallShelf == "WallShelf", "WallShelf prop")
 		assert(props.AccessoryHook == "HookRack", "AccessoryHook prop")
 		assert(props.BigDisplayRack == "DisplayRack", "BigDisplayRack prop")
-		assert(props.GlassShowcase == "Showcase", "GlassShowcase prop")
+		assert(props.GlassShowcase == "CardCase", "GlassShowcase prop (the spinning-card case, UI project 3)")
 	end,
 
 	["the Card Condenser stands big enough to read as a machine"] = function()
@@ -74,11 +74,11 @@ return {
 		error("no Condenser entry")
 	end,
 
-	["the Collector Case is a glass counter in its own colours"] = function()
+	["the Collector Case is the spinning-card case in its own colours"] = function()
 		for _, entry in entries() do
 			if entry.id == "CollectorCase" then
-				assert(string.find(entry.body, 'prop = "Showcase"', 1, true), "CollectorCase uses the Showcase counter")
-				assert(string.find(entry.body, "cardsFlat = true", 1, true), "its cards lie flat")
+				assert(string.find(entry.body, 'prop = "CardCase"', 1, true), "CollectorCase uses the CardCase")
+				assert(string.find(entry.body, "cardsUpright = true", 1, true), "its cards stand up and spin")
 				for _, part in { "Support", "Frame", "Carpet" } do
 					assert(string.find(entry.body, part .. " = Color3", 1, true), `CollectorCase recolours {part}`)
 				end

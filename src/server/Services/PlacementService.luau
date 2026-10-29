@@ -14,6 +14,7 @@ local Products = require(Config:WaitForChild("Products"))
 local Packs = require(Config:WaitForChild("Packs"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local CaseLayout = require(Config:WaitForChild("CaseLayout"))
 local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
@@ -22,6 +23,7 @@ local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
+local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -409,14 +411,13 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	local rows = math.ceil(shelf.def.capacity / columns)
 	local col = (slot - 1) % columns
 	local row = (slot - 1) // columns
-	if shelf.visual and shelf.def.cardsFlat then
-		-- Lying on the bed under the glass, back row first, leaning up toward the front
-		local flat = ShowcaseConfig.FLAT
+	if shelf.visual and shelf.def.cardsUpright then
+		-- Standing on the bed in two rows, the back one raised; each client spins them (CaseSpinController)
 		local size = shelf.part.Size
-		local x = (col - (columns - 1) / 2) * flat.SPACING.X
-		local z = ((rows - 1) / 2 - row) * flat.SPACING.Y
-		local y = -size.Y / 2 + flat.BED * size.Y + ShowcaseConfig.CARD_SIZE.Z
-		return shelf.part.CFrame * CFrame.new(x, y, z) * CFrame.Angles(math.rad(90 - flat.TILT), 0, 0)
+		local spot = ShowcaseLayout.uprightSlots(shelf.def.capacity, { x = size.X, y = size.Y, z = size.Z }, CaseLayout.UPRIGHT)[slot]
+		if spot then
+			return shelf.part.CFrame * CFrame.new(spot.x, spot.y, spot.z)
+		end
 	end
 	local x = (col - (columns - 1) / 2) * ShowcaseConfig.SLOT_SPACING.X
 	local y = ((rows - 1) / 2 - row) * ShowcaseConfig.SLOT_SPACING.Y + ShowcaseConfig.SLOTS_OFFSET_Y
@@ -439,7 +440,9 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part.Name = "DisplayedCard" .. slot
 	part.Anchored = true
 	part.CanCollide = false
-	part.Size = if shelf.visual and shelf.def.cardsFlat then ShowcaseConfig.CARD_SIZE * ShowcaseConfig.FLAT.SCALE else ShowcaseConfig.CARD_SIZE
+	local upright = shelf.visual ~= nil and shelf.def.cardsUpright == true
+	local card = CaseLayout.UPRIGHT.cardSize
+	part.Size = if upright then Vector3.new(card.x, card.y, ShowcaseConfig.CARD_SIZE.Z) else ShowcaseConfig.CARD_SIZE
 	-- A plain dark card: every client draws the card face, glow and halo on it (CardEffectsController)
 	part.Color = Color3.fromRGB(30, 26, 40)
 	part.Material = Enum.Material.SmoothPlastic
@@ -451,6 +454,7 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part:SetAttribute("ShelfUid", shelf.uid)
 	part:SetAttribute("OwnerUserId", shelf.owner.UserId)
 	part:SetAttribute("ShelfKind", shelf.def.kind)
+	part:SetAttribute("Upright", if upright then true else nil)
 	local level, stars, grade = getGrowth(displayed)
 	part:SetAttribute("Grade", grade)
 	part:SetAttribute("Level", level)

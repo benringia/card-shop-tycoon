@@ -11,6 +11,7 @@ local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
 local ShelfLooks = require(Shared:WaitForChild("Util"):WaitForChild("ShelfLooks"))
+local CaseLook = require(Shared:WaitForChild("Util"):WaitForChild("CaseLook"))
 
 local Props = {}
 
@@ -287,6 +288,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
 	if ShelfLooks.isShelf(slot) then
 		ShelfLooks.draw(model, slot, size or Vector3.new(4, 7, 2))
+	elseif slot == "CardCase" then
+		CaseLook.draw(model, size or Vector3.new(6, 4, 2))
 	elseif slot == "Lamp" then
 		addPart(model, cylinder, Vector3.new(height * 0.9, 0.5, 0.5), CFrame.new(0, height * 0.45, 0) * UPRIGHT, DARK_WOOD, Enum.Material.Wood)
 		local head = addPart(model, block, Vector3.new(1.4, height * 0.1, 1.4), CFrame.new(0, height * 0.95, 0), LAMP_GLOW, Enum.Material.Neon)
