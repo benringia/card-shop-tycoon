@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
+local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
@@ -25,6 +26,7 @@ local Collection = require(Config:WaitForChild("Collection"))
 local Desk = require(Config:WaitForChild("BinderDesk"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
+local PageCurl = require(Shared:WaitForChild("Util"):WaitForChild("PageCurl"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local Bosses = require(Config:WaitForChild("Bosses"))
@@ -41,6 +43,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local BinderDesk = require(ClientUtil:WaitForChild("BinderDesk"))
+local PageTurner = require(ClientUtil:WaitForChild("PageTurner"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
 local CardDetailController = require(Controllers:WaitForChild("CardDetailController"))
@@ -120,7 +123,11 @@ local cardsTab: TextButton -- the Cards / Bag tabs (built in buildBag)
 local bagTab: TextButton
 local counter: Frame -- the page counter under the binder
 local pageLabel: TextLabel
-local spreadIndex = 1
+local spreadIndex = 1 -- the spread the pages show (or are turning from)
+local targetSpread = 1 -- where page requests lead; turns run until the pages get there
+local redrawQueued = false -- a redraw asked for mid-turn, done once the pages stop
+-- A page held by its edge and dragged across: where it goes, how far it is (0-1) and how fast it moves
+local dragging: { forward: boolean, to: number, t: number, speed: number, at: number }? = nil
 local pocketsPerPage = POCKETS_PER_PAGE
 local progressCard: Frame
 local arrowLanes: { Frame } = {}
@@ -412,35 +419,162 @@ local function unplace(tile: Tile)
 	end
 end
 
+-- Which page a placed tile is on
+local function sideOf(tile: Tile): BinderDesk.Side?
+	local slot = tile.root.Parent
+	if not slot then
+		return nil
+	end
+	local left = BinderDesk.pages()
+	return if slot.Parent == left then "Left" else "Right"
+end
+
+-- Shows one page of a spread: its tiles in the pocket slots (spread 1's left page is the cover)
+local function showSide(side: BinderDesk.Side, spread: number)
+	local left, right = getSpreadTiles(spread)
+	local list = if side == "Left" then left else right
+	local keep: { [Tile]: boolean } = {}
+	for _, tile in list do
+		keep[tile] = true
+	end
+	for _, tile in tiles do
+		if not keep[tile] and sideOf(tile) == side then
+			unplace(tile)
+		end
+	end
+	placeTiles(list, side)
+	if side == "Left" then
+		coverPage.Visible = spread == 1
+	end
+end
+
+-- A page's cards as light cards for a page in motion (PageTurner)
+local function liteFace(list: { Tile }): BinderDesk.Face
+	local face: BinderDesk.Face = {}
+	for index, tile in list do
+		local card = tile.card
+		face[index] = {
+			image = CardFace.artImage(card),
+			rim = CardFace.getRarityColor(card.rarity),
+			missing = not isCollected(card.id),
+			number = card.number,
+		}
+	end
+	return face
+end
+
 local function updatePageLabel()
 	pageLabel.Text = BinderSpreads.label(spreadIndex, BinderSpreads.pages(#visibleTiles, pocketsPerPage))
 end
 
--- Puts the tiles of a spread into the pages at once and draws them; the rest wait off the pages, blank
+-- Puts the tiles of a spread into the pages at once and draws them; the rest wait off the pages, blank. While a
+-- page turns (or is held) the redraw waits until the pages stop.
 local function showSpread(index: number)
+	if PageTurner.busy() or dragging then
+		redrawQueued = true
+		return
+	end
 	spreadIndex = math.clamp(index, 1, getSpreadCount())
-	local left, right = getSpreadTiles(spreadIndex)
-	local showing: { [Tile]: boolean } = {}
-	for _, tile in left do
-		showing[tile] = true
-	end
-	for _, tile in right do
-		showing[tile] = true
-	end
-	for _, tile in tiles do
-		if not showing[tile] then
-			unplace(tile)
-		end
-	end
-	placeTiles(left, "Left")
-	placeTiles(right, "Right")
-	coverPage.Visible = spreadIndex == 1
+	targetSpread = spreadIndex
+	showSide("Left", spreadIndex)
+	showSide("Right", spreadIndex)
 	updatePageLabel()
 end
 
--- Goes to a spread (turning pages comes with the page turner)
-local function turnTo(index: number)
-	showSpread(index)
+-- Lifts the page between the shown spread and `to` (one step away): the page under it shows `to` at once, the
+-- lifted page carries the cards it leaves and the ones it lands with. Returns which way it turns and those faces.
+local function liftPage(to: number): (boolean, BinderDesk.Face, BinderDesk.Face)
+	local forward = to > spreadIndex
+	local fromLeft, fromRight = getSpreadTiles(spreadIndex)
+	local toLeft, toRight = getSpreadTiles(to)
+	local leaving = liteFace(if forward then fromRight else fromLeft)
+	local arriving = liteFace(if forward then toLeft else toRight)
+	showSide(if forward then "Right" else "Left", to)
+	return forward, leaving, arriving
+end
+
+-- A turned page has landed: the page it landed on shows `to` too
+local function land(to: number, forward: boolean)
+	spreadIndex = to
+	showSide(if forward then "Left" else "Right", to)
+	updatePageLabel()
+end
+
+-- Turns one page at a time toward targetSpread, quicker the further there is to go (PageCurl.turnSeconds), so
+-- quick presses riffle through; a redraw asked for meanwhile happens once the pages stop
+local function pump()
+	if PageTurner.busy() or dragging then
+		return
+	end
+	targetSpread = math.clamp(targetSpread, 1, getSpreadCount())
+	if targetSpread == spreadIndex then
+		if redrawQueued then
+			redrawQueued = false
+			showSpread(spreadIndex)
+		end
+		return
+	end
+	local to = spreadIndex + (if targetSpread > spreadIndex then 1 else -1)
+	local seconds = PageCurl.turnSeconds(Desk.TURN_SECONDS, math.abs(targetSpread - spreadIndex), Desk.MAX_SPEEDUP)
+	local forward, leaving, arriving = liftPage(to)
+	PageTurner.play(forward, leaving, arriving, seconds, function()
+		land(to, forward)
+		pump()
+	end)
+end
+
+-- A page request: one spread on (1) or back (-1), never past the ends
+local function turnBy(step: number)
+	targetSpread = PageCurl.step(targetSpread, step, getSpreadCount())
+	pump()
+end
+
+-- Picks the page up by its outer edge (forward: the right page); false when there's no page that way
+local function beginDrag(forward: boolean): boolean
+	local to = spreadIndex + (if forward then 1 else -1)
+	if PageTurner.busy() or dragging or to < 1 or to > getSpreadCount() then
+		return false
+	end
+	local _, leaving, arriving = liftPage(to)
+	PageTurner.grab(forward, leaving, arriving)
+	dragging = { forward = forward, to = to, t = 0, speed = 0, at = os.clock() }
+	return true
+end
+
+-- The held page follows the pointer across the binder
+local function moveDrag(point: Vector2)
+	local drag = dragging
+	local offset = BinderDesk.spineOffset(point)
+	if not drag or not offset then
+		return
+	end
+	local t = PageCurl.dragTurn(offset, Desk.PAGE_SIZE.X, drag.forward)
+	local now = os.clock()
+	if now > drag.at then
+		drag.speed = (t - drag.t) / (now - drag.at)
+	end
+	drag.t, drag.at = t, now
+	PageTurner.pose(t)
+end
+
+-- Lets the held page go: a tap or a page past halfway (or flicked on) finishes the turn, else it falls back
+local function endDrag(tapped: boolean)
+	local drag = dragging
+	if not drag then
+		return
+	end
+	local speed = if os.clock() - drag.at < 0.1 then drag.speed else 0
+	local finish = tapped or PageCurl.finishes(drag.t, speed, Desk.FINISH_SPEED)
+	PageTurner.release(finish, function(finished)
+		dragging = nil
+		if finished then
+			land(drag.to, drag.forward)
+			targetSpread = spreadIndex
+		else
+			showSide(if drag.forward then "Right" else "Left", spreadIndex) -- the page under it as it was
+		end
+		pump()
+	end)
 end
 
 -- Lights up the Filters panel's choices
@@ -1527,7 +1661,7 @@ local function buildPanel(parent: Instance)
 		lane.Parent = panel
 		arrowLanes[index] = lane
 		arrowButton(lane, if step < 0 then "<" else ">", if step < 0 then "Q" else "E", function()
-			turnTo(spreadIndex + step)
+			turnBy(step)
 		end).Size = UDim2.fromScale(1, 1)
 	end
 
@@ -1783,18 +1917,62 @@ function BinderController.Start()
 	RarityGuideController.SetCollected(isCollected)
 	refresh()
 
-	-- Phones: a swipe across the open binder turns the page (left = next)
-	if Collection.BOOK.SWIPE then
-		UserInputService.TouchSwipe:Connect(function(direction)
-			if not panel.Visible or bagOverlay.Visible or CardDetailController.IsOpen() or RarityGuideController.IsOpen() then
-				return
+	-- Pointer gestures on the binder: a press on a page's outer edge picks the page up (drag it over, or tap to turn
+	-- it); a tap elsewhere on a page, a "?" or an empty pocket turns that way; a swipe across turns too
+	local press: { at: Vector2, time: number, pick: BinderDesk.Pick?, drag: boolean }? = nil
+	local heldStep: number? = nil -- Q or E held: keep turning
+	local heldNext = 0
+	local function interactive(): boolean
+		return panel.Visible and not bagOverlay.Visible and not CardDetailController.IsOpen() and not RarityGuideController.IsOpen()
+	end
+	local function isPointer(input: InputObject): boolean
+		return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+	end
+	local function pageStep(side: BinderDesk.Side): number
+		return if side == "Right" then 1 else -1
+	end
+	local function onPress(point: Vector2)
+		local pick = BinderDesk.pick(point)
+		if pick and pick.kind == "tab" then
+			if not PageTurner.busy() and not dragging then
+				openSet(pick.set)
 			end
-			if direction == Enum.SwipeDirection.Left then
-				turnTo(spreadIndex + 1)
-			elseif direction == Enum.SwipeDirection.Right then
-				turnTo(spreadIndex - 1)
+			return
+		end
+		local grabbed = false
+		if pick and (pick.kind == "page" or pick.kind == "pocket") then
+			local edge = if pick.side == "Right" then pick.u >= 1 - Desk.DRAG_EDGE else pick.u <= Desk.DRAG_EDGE
+			grabbed = edge and beginDrag(pick.side == "Right")
+		end
+		press = { at = point, time = os.clock(), pick = pick, drag = grabbed }
+	end
+	local function onRelease(point: Vector2)
+		local pressed = press
+		press = nil
+		if not pressed then
+			return
+		end
+		local dx, dy = point.X - pressed.at.X, point.Y - pressed.at.Y
+		local tapped = PageCurl.isTap(dx, dy, os.clock() - pressed.time, Desk.TAP_PIXELS, Desk.TAP_SECONDS)
+		if pressed.drag then
+			endDrag(tapped)
+			return
+		end
+		local pick = pressed.pick
+		if tapped and pick and pick.kind == "page" then
+			turnBy(pageStep(pick.side))
+		elseif tapped and pick and pick.kind == "pocket" then
+			local left, right = getSpreadTiles(spreadIndex)
+			local tile = (if pick.side == "Left" then left else right)[pick.index]
+			if not tile or not isCollected(tile.card.id) then
+				turnBy(pageStep(pick.side)) -- a "?" or an empty pocket turns the page
 			end
-		end)
+		elseif not tapped then
+			local step = PageCurl.swipe(dx, dy, Desk.SWIPE_PIXELS)
+			if step then
+				turnBy(step)
+			end
+		end
 	end
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then
@@ -1805,22 +1983,41 @@ function BinderController.Start()
 			return
 		end
 		-- Windows over the binder (the Rarity guide) keep the keys
-		if not panel.Visible or bagOverlay.Visible or CardDetailController.IsOpen() or isTyping() or RarityGuideController.IsOpen() then
+		if not interactive() or isTyping() then
 			return
 		end
-		-- Clicks and taps on the 3D binder: a divider tab opens its set
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			local pick = BinderDesk.pick(Vector2.new(input.Position.X, input.Position.Y))
-			if pick and pick.kind == "tab" then
-				openSet(pick.set)
-			end
+		if isPointer(input) then
+			onPress(Vector2.new(input.Position.X, input.Position.Y))
 			return
 		end
 		local step = PAGE_KEYS[input.KeyCode]
 		if step then
-			turnTo(spreadIndex + step)
+			turnBy(step)
+			heldStep, heldNext = step, os.clock() + Desk.HOLD_REPEAT * 2
 		elseif input.KeyCode == Enum.KeyCode.F then
 			setFiltersOpen(not filtersPanel.Visible)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		local pressed = press
+		if pressed and pressed.drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			moveDrag(Vector2.new(input.Position.X, input.Position.Y))
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if isPointer(input) then
+			onRelease(Vector2.new(input.Position.X, input.Position.Y))
+		elseif PAGE_KEYS[input.KeyCode] == heldStep then
+			heldStep = nil
+		end
+	end)
+	RunService.Heartbeat:Connect(function()
+		local step = heldStep
+		if step and os.clock() >= heldNext then
+			if interactive() then
+				turnBy(step)
+			end
+			heldNext = os.clock() + Desk.HOLD_REPEAT
 		end
 	end)
 	-- I opens the Bag. Roblox's camera binds I (zoom) through ContextActionService and swallows it before

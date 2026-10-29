@@ -22,10 +22,11 @@ local ListenAtCharacter = require(ClientUtil:WaitForChild("ListenAtCharacter"))
 local WorldTags = require(ClientUtil:WaitForChild("WorldTags"))
 
 export type Side = "Left" | "Right"
-export type Pick = { kind: "pocket", side: Side, index: number } | { kind: "page", side: Side, u: number } | { kind: "tab", set: string }
--- A light card (art and rim only) for pages in motion; a page face is a set cover or up to nine of them
+-- u: where across its page the point is (0 at the page's left edge, 1 at its right)
+export type Pick = { kind: "pocket", side: Side, index: number, u: number } | { kind: "page", side: Side, u: number } | { kind: "tab", set: string }
+-- A light card (art and rim only) for pages in motion; a page face is up to nine of them by pocket slot
 export type Lite = { image: string, rim: Color3, missing: boolean, number: number }
-export type Face = { cover: string?, cards: { Lite? } }
+export type Face = { [number]: Lite }
 
 local BOOK = Collection.BOOK
 local PAGE = Desk.PAGE_SIZE
@@ -409,7 +410,7 @@ function BinderDesk.pick(point: Vector2): Pick?
 			local u, v = pageUV(page, hit.Position)
 			local index = BinderFit.pocketAt(u, v, Desk.POCKETS)
 			if index then
-				return { kind = "pocket", side = side, index = index }
+				return { kind = "pocket", side = side, index = index, u = u }
 			end
 			return { kind = "page", side = side, u = u }
 		end
@@ -464,6 +465,23 @@ end
 -- turning page hinges
 function BinderDesk.spine(): (CFrame, Vector2)
 	return centre * CFrame.new(0, PAGE_Y + PAGE_T / 2, 0), PAGE
+end
+
+-- Where a screen point (GUI space) falls along the binder's width: studs from the spine, positive toward the right
+-- page (on the pages' plane, even past their edges); nil when the ray runs along the plane
+function BinderDesk.spineOffset(point: Vector2): number?
+	local camera = workspace.CurrentCamera
+	if not shown or not camera then
+		return nil
+	end
+	local ray = camera:ScreenPointToRay(point.X, point.Y)
+	local origin = centre:PointToObjectSpace(ray.Origin)
+	local direction = centre:VectorToObjectSpace(ray.Direction)
+	if math.abs(direction.Y) < 1e-6 then
+		return nil
+	end
+	local along = (PAGE_Y + PAGE_T / 2 - origin.Y) / direction.Y
+	return origin.X + direction.X * along
 end
 
 -- The card view takes the camera: give back the normal field of view (its card is sized by it); take the binder's

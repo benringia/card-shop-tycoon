@@ -1017,6 +1017,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
     │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
     │       ├── BinderDesk.luau         # the 3D binder's scene: desk, painted lamp light, case, rings, page canvases, set tabs, camera framing, picking by raycast
+    │       ├── PageTurner.luau         # the binder's turning page: bending strips with light cards on both sides, shade, shadow, page sound, drag
     │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
     │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
@@ -1231,7 +1232,17 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   on the right while the camera moves the binder into the room left of it. Bottom right: the set's progress card
   (owned / total with a bar, value of your copies). The Bag tab shows its window over the desk. The side and bottom
   HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a
-  tab). The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
+  tab). **Turning pages** (`Util/PageTurner`, `Util/PageCurl`): the turning page is a chain of 6 strips hinged at
+  the spine that bends as it goes over the rings (the outer edge leads by up to 40 degrees mid-turn, flat at both
+  ends), darkening as it stands up and casting a shadow on the page under it, about half a second a turn, with a
+  page sound ("Book Page Turn 12", `BinderDesk.TURN_SOUND_ID`). The moving page shows light cards (art and rim),
+  built once, so a turn only swaps pictures; the page under it shows the next cards at once and the full cards are
+  back as it lands. Q / E and the arrows, a tap on a page (right page forward, left page back; also on a "?" or an
+  empty pocket), a swipe across the binder, or holding Q / E (repeats every 0.18 s) turn pages; requests add up to
+  a target spread and turns get quicker the further there is to go (up to 4 times), so quick presses riffle through
+  a set and stop at its first or last spread. Pressing a page's outer 30% picks it up: it follows the pointer and,
+  let go, finishes the turn past halfway or when flicked on (else falls back); a tap there turns it. A collection
+  change while a page moves is drawn once the pages stop. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
   strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
   just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
   it never covers a card.

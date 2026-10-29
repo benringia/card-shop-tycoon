@@ -47,7 +47,6 @@ return {
 		CHROME = { Color3.fromRGB(245, 247, 252), Color3.fromRGB(150, 156, 172) },
 		INK = Color3.fromRGB(240, 242, 250), -- text on the dark pages
 		SUBTEXT = Color3.fromRGB(170, 178, 205),
-		SWIPE = true, -- phones: swipe across the book to turn pages
 	},
 	FILTERS_WIDTH = 340, -- pixels, the Filters panel on the right
 }

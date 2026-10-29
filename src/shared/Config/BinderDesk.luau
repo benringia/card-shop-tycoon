@@ -42,7 +42,7 @@ return {
 	TAP_SECONDS = 0.35,
 	TURN_SHADE = 0.55, -- how dark a page gets standing up (0 none, 1 black)
 	SHADOW_TRANSPARENCY = 0.5, -- the turning page's shadow on the page under it, at its darkest
-	TURN_SOUND_ID = "", -- a page-turn sound (rbxassetid number); "" plays none
+	TURN_SOUND_ID = "95995953662374", -- "Book Page Turn 12" (Creator Store, free, 0.7 s); "" plays none
 	TURN_SOUND_VOLUME = 0.5,
 
 	LIFT_SECONDS = 0.3, -- a picked card flying out of its sleeve toward the camera
