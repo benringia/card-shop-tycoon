@@ -43,6 +43,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	AdminPanel = require("./AdminPanel.spec"),
 	UiLayout = require("./UiLayout.spec"),
 	CompareRules = require("./CompareRules.spec"),
+	PageCurl = require("./PageCurl.spec"),
 }
 
 local passed, failed = 0, 0
