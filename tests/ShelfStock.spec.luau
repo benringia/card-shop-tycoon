@@ -131,4 +131,13 @@ return {
 		assert(look.HEIGHT <= config.BOX_HEIGHT + 1e-9, "a deck box is taller than its place")
 		assert(look.PER_STACK * look.DEPTH <= boxDepth + 1e-9, "the deck boxes don't fit front to back")
 	end,
+
+	["boxFill: full boxes show all, the last box shows its share, any stock shows a pack"] = function()
+		expect.equal(ShelfStock.boxFill(24, 24, 12, 1, 6), 6, "full")
+		expect.equal(ShelfStock.boxFill(23, 24, 12, 12, 6), 3, "half of the last box")
+		expect.equal(ShelfStock.boxFill(1, 96, 12, 1, 6), 1, "one pack still shows")
+		expect.equal(ShelfStock.boxFill(10, 24, 12, 6, 6), 0, "beyond the stocked boxes")
+		expect.equal(ShelfStock.boxFill(0, 24, 12, 1, 6), 0, "empty")
+		expect.equal(ShelfStock.boxFill(30, 24, 12, 12, 6), 6, "more than fits still shows a full box")
+	end,
 }

@@ -166,6 +166,9 @@ return {
 		DEPTH_FILL = 0.5,
 		-- Pack products: each box's place holds a stack of thin packs with the pack art (Config/Packs art)
 		PACKS = { PER_STACK = 5, HEIGHT = 1.05, ASPECT = 0.65, THICKNESS = 0.05, LEAN = 10 },
+		-- UI project 3: each box's place holds an open display box (Util/PackModels) showing up to PACKS_SHOWN packs,
+		-- emptying as the shelf sells (ShelfStock.boxFill)
+		DISPLAY = { PACKS_SHOWN = 6 },
 		-- Card sleeves (Products stockLook "Sleeves"): retail packets in each box's place, leaning back: a white
 		-- backing card with a header tab and hang hole, a clear window showing the sleeves, a strip in the product's
 		-- colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.
