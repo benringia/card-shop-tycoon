@@ -1,6 +1,6 @@
 # UI project 3: cards in the world and the 3D pack opening
 
-Date: 2026-10-29. Branch: `ui-project-3`. Status: design, for the user's approval.
+Date: 2026-10-29. Branch: `ui-project-3`. Status: approved by the user 2026-10-29, with the calls listed at the end.
 
 ## Why
 
@@ -57,7 +57,6 @@ Their decisions:
 - An "Open all" button (not in the game today; TCG Cardshop has one).
 - Card sleeves on shelves (they keep today's packets), the Frontier world reveal (`FrontierRevealController`), the
   binder and card view, the carried-box look.
-- New sounds beyond reusing today's (a sound pass can come later; see "Left to the builder").
 
 ## Anti-goals (would be a failure even if it works)
 
@@ -102,7 +101,8 @@ reused for every pack type:
   cropped so the creature fills it), the pack's logo in Fredoka ("FIRST / SPARK"), a "BOOSTER PACK" ribbon, a
   "5 CARDS" badge, a thin gold frame, tear notches at the strip line, silver ridged crimps. Back = a seam down the
   middle, the set's emblem, the set name, "5 random cards inside" and the five rarity gems. One mesh for every pack;
-  each pack type is its own texture (an id in `Config/Packs`).
+  each pack type is its own look: scripts can't swap a `SurfaceAppearance`'s maps, so the model file holds one
+  `SurfaceAppearance` per pack type and the game picks it (builder's call, from the check).
 - **Material:** foil: glossy, metallic on the seals, a little metallic on the art (Roblox: `SurfaceAppearance` with
   colour, metalness and roughness maps baked from the Blender material).
 - **Two levels of detail:** a detailed mesh (a few thousand triangles) for the opening stage and the Set Price
@@ -124,7 +124,8 @@ reused for every pack type:
   rather than staying empty.)*
 - Price tags stay where they are (the yellow tag on the shelf edge under the row's first box; still clickable for Set
   Price on your own shelves).
-- Deck boxes: the new 3D deck box, stacked two high per slot (today's `DECKS.PER_STACK = 2`).
+- Deck boxes: the new 3D deck box, two per slot front to back as today (`DECKS.PER_STACK = 2`; two high doesn't fit
+  under the racks' upper levels).
 - The sealed First Spark Booster Box product may use the display box model closed (lid down). *(My call: nice to
   have, only if it's nearly free.)*
 - Budget: a display box with its packs should cost about one draw of a few hundred triangles (merge the packs into
@@ -176,7 +177,8 @@ the pack and deck box are the new models; effects are particles, beams and the c
 - Tap (or Space / T): the top card lifts and **flips** quickly with a small overshoot, landing bigger and a little
   higher (a Common: 0.08 s lift + 0.23 s flip). A shine sweeps across the face and a glint twinkles on its corner.
 - **Rare and better tease first:** the face-down card glows in its rarity colour, rises, and shakes harder and harder;
-  an aura grows behind it. The tease length follows `Config/CardReveal` (Rare 0.5 s ... Legendary 2 s). Then a slower
+  an aura grows behind it. The tease length follows `Config/CardReveal` (Rare 0.5 s ... Legendary 2 s; the preview's
+  0.65 / 1.7 s were mockup numbers). Then a slower
   flip into a **rip burst in the rarity colour**, the banner ("RARE!", "LEGENDARY!"), rays and sparkles.
 - **Legendary and Frontier** get the cinematic again: bars in, the stage dims, the camera eases in during the tease,
   then a flash, a shake and **gold foil shards** raining down. *(My call: Epic gets the bars and dim too, shorter;
@@ -240,6 +242,18 @@ Today's `CardReveal` tiers keep driving how big each pull's show is; `confetti` 
 holo), and the tiers gain what the new show needs (cinematic on/off, burst size and tint, the alive card's glint and
 mote rates). `RevealRules.plan` stays the one place that turns rarity / foil / Frontier into a plan (Lune-tested).
 
+## 5b. Sounds
+
+The opening is silent today (every sound id in `Config/PackOpening` is empty). The user chose to add sounds in this
+project (2026-10-29): free Creator Store sounds, picked the way the binder's page turn was (`BinderDesk.TURN_SOUND_ID`),
+ids in Config, preloaded when the stage first opens. Moments:
+- the tear: a foil crinkle while the strip parts, a snap when it flies off;
+- the cards stacking up: a short card snap per card;
+- each flip: a quick card flick; Rare and better: a rising tease and a hit in the reveal (bigger for Epic, biggest for
+  Legendary and Frontier, with a short shimmer while the card is alive);
+- the results: a soft pop per card landing, then a chime when the lineup is complete.
+Volumes in Config; the user judges them in Studio and on the iPhone.
+
 ## 6. Phones and performance
 
 - Budget as the binder: Studio at graphics level 1, worst frame under 50 ms during the tear, a big flip and the
@@ -278,14 +292,13 @@ mote rates). `RevealRules.plan` stays the one place that turns rarity / foil / F
   reference: a snappy overshoot for landings, ease-out for flights).
 - How the display box merges its packs (fill-step meshes or a few parts) as long as the budget holds.
 - Rays and aura as images on a part or as beams.
-- Reusing today's pack-opening sounds at the matching moments (tear, flip, big pull); new sounds are a later pass.
 - Whether the case is code-built or a prop model.
 
-## My calls (please check)
+## My calls (approved with the doc)
 
 1. An empty display box slot shows no box (instead of an empty box).
 2. The sealed Booster Box product may use the closed display box.
 3. Epic gets a shorter cinematic (bars and dim); Very Rare stays at Rare's size.
 4. Deck boxes get the same stack-and-flip reveal (lid lifts instead of a tear), replacing "all 5 at once".
 5. The Set Price window shows the 3D pack (for pack products).
-6. No new sounds in this project.
+6. ~~No new sounds~~: the user chose to add sounds now (section 5b).
