@@ -47,6 +47,7 @@ local function buildSide(part: Part, slice: number): Side
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = Desk.PAGE_PIXELS_PER_STUD
 	gui.LightInfluence = 0
+	gui.Brightness = Desk.BINDER_BRIGHTNESS
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = part
 	local window = Instance.new("Frame")

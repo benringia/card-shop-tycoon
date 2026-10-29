@@ -25,8 +25,9 @@ return {
 	DESK_PLANK_COLOR = Color3.fromRGB(96, 60, 34), -- the lines between planks
 	DESK_PLANK_WIDTH = 1.6, -- studs
 	LAMP_COLOR = Color3.fromRGB(255, 226, 170),
-	LAMP_TRANSPARENCY = 0.55, -- the light pool at its brightest (over the binder)
-	VIGNETTE_TRANSPARENCY = 0.35, -- the screen's edges, darkest
+	LAMP_TRANSPARENCY = 0.35, -- the light pool at its brightest (over the binder)
+	VIGNETTE_TRANSPARENCY = 0.6, -- the screen's edges, darkest
+	BINDER_BRIGHTNESS = 1.3, -- the binder's own surfaces (case, pages and their cards, tabs, a turning page) lit by the lamp
 	BACKDROP_COLOR = Color3.fromRGB(22, 15, 10),
 
 	-- Turning a page: a chain of strips bending as it goes over the rings

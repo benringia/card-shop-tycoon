@@ -660,6 +660,9 @@ function CardDetailController.Close()
 		panel.Visible = false
 	end
 	currentCard = nil
+	-- Give the camera back now, not in the (deferred) Visible handler: the binder restores its own camera right after
+	-- this when it closes, and must be the last to touch it
+	CardInspectorController.Close()
 end
 
 function CardDetailController.SetPartySlots(slots: { [number]: string })

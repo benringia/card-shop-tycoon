@@ -87,13 +87,15 @@ local function flatSize(width: number, height: number, depth: number): Vector3
 	return Vector3.new(depth, height, width)
 end
 
--- A SurfaceGui on the part's top that ignores the world's light; returns its full-size root frame
-local function topCanvas(part: BasePart, pixelsPerStud: number, color: Color3): Frame
+-- A SurfaceGui on the part's top that ignores the world's light; returns its full-size root frame. lit: the binder's
+-- own surfaces, a little brighter under the lamp (BINDER_BRIGHTNESS)
+local function topCanvas(part: BasePart, pixelsPerStud: number, color: Color3, lit: boolean?): Frame
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Top
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = pixelsPerStud
 	gui.LightInfluence = 0
+	gui.Brightness = if lit then Desk.BINDER_BRIGHTNESS else 1
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = part
 	local root = Instance.new("Frame")
@@ -144,7 +146,7 @@ end
 -- The leather case with a stitched border, and the chrome ring rail with three rings down the spine
 local function buildCase(parent: Instance)
 	local case = makePart("Case", flatSize(CASE_W, CASE_T, CASE_D), centre * QUARTER, BOOK.CASE, Enum.Material.Leather, parent)
-	local leather = topCanvas(case, CASE_PIXELS_PER_STUD, BOOK.CASE)
+	local leather = topCanvas(case, CASE_PIXELS_PER_STUD, BOOK.CASE, true)
 	local grain = Instance.new("UIGradient")
 	grain.Rotation = 90
 	grain.Color = ColorSequence.new(BOOK.CASE, BOOK.CASE_DARK)
@@ -188,7 +190,7 @@ local function buildPage(side: Side, parent: Instance)
 	page.CanQuery = true
 	pageParts[side] = page
 	table.insert(pickables, page)
-	local canvas = topCanvas(page, Desk.PAGE_PIXELS_PER_STUD, BOOK.PAGE_COLOR)
+	local canvas = topCanvas(page, Desk.PAGE_PIXELS_PER_STUD, BOOK.PAGE_COLOR, true)
 	canvases[side] = canvas
 	local gutter = Instance.new("Frame")
 	gutter.Name = "Gutter"
@@ -402,7 +404,7 @@ function BinderDesk.setTabs(sets: { string }, colors: { [string]: Color3 }, curr
 		local tab = makePart(`Tab{order}`, flatSize(length, 0.03, look.depth), cframe * QUARTER, color, Enum.Material.SmoothPlastic, folder :: Folder)
 		tab.CanQuery = true
 		tab:SetAttribute("Set", set)
-		local canvas = topCanvas(tab, Desk.PAGE_PIXELS_PER_STUD, color)
+		local canvas = topCanvas(tab, Desk.PAGE_PIXELS_PER_STUD, color, true)
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0.25, 0)
 		corner.Parent = canvas
@@ -588,6 +590,7 @@ function BinderDesk.lift(side: Side, index: number, card: Lite, done: () -> ()):
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = Desk.PAGE_PIXELS_PER_STUD
 	gui.LightInfluence = 0
+	gui.Brightness = Desk.BINDER_BRIGHTNESS
 	gui.Parent = part
 	local face = Instance.new("ImageLabel")
 	face.Size = UDim2.fromScale(1, 1)
