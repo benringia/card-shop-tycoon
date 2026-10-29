@@ -189,6 +189,8 @@ is over UI (`UIKit.pointerBlocked`).
 
 ### 4.6 Register / checkout
 - Player stands at register, customer puts items on counter, player clicks/taps each item to scan, then confirms payment.
+  Packs and deck boxes lie face up on the counter as their 3D models (`Util/PackModels`, inside an invisible scan
+  target); other products are a box in the product's colour.
 - Payment: cash (make change, later feature) or card (instant). MVP = one tap to confirm total.
 - Later: hire a cashier to automate.
 
@@ -343,8 +345,12 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   HUD and world tags hide). The opening follows `Util/OpeningFlow` (Ready, Tearing, Stacking, Stacked, Flipping,
   Shown, Stowing, Results; Lune-tested) and closes on a fight, death or respawn.
 - **The pack** is the 3D booster pack (`Util/PackModels`, Blender build in `assets/packs`, docs/packs.md) floating in
-  the middle, swaying and bobbing while a light glides over its foil every couple of seconds (`Util/OpeningPack`,
-  `PackOpening.PACK_STAGE`). "Swipe across the top to open" (a 60 px drag over its top; a tap, Space or T works too).
+  the middle, bobbing while a light glides over its foil every couple of seconds (`Util/OpeningPack`,
+  `PackOpening.PACK_STAGE`). It's "charged and ready to rip" (the user's pick of four, 2026-10-30): it turns toward the
+  mouse or finger (up to 22 degrees, `OpeningLayout.tiltToward`, Lune-tested), blue-white sparks crackle along its
+  sides over a soft pulsing glow (`OpeningFx.charge`), and a glowing dashed tear line with a gliding dot shows the
+  swipe (gone on the first drag). "Swipe across the top to open" (a 60 px drag over its top; a tap, Space or T works
+  too); it squares up as the tear starts.
 - **The tear is a little film** (`PackOpening.TEAR`): the bars slide in and the camera pushes in on the tear line,
   the strip parts while light leaks out of the gap and a few foil shards spill, then the snap: the strip flies off
   to the right, a white flash, a short camera shake, the rip burst and a spray of tumbling foil shards, and the
