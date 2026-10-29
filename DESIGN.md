@@ -1356,12 +1356,15 @@ boss models; the ranch and Heroic tiers come after those.
   Next keep their tricks a surprise). Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
-- [ ] UI project 2, the 3D binder (spec `2026-10-29-3d-binder-design.md`, plan `2026-10-29-3d-binder.md`, branch
+- [x] UI project 2, the 3D binder (spec `2026-10-29-3d-binder-design.md`, plan `2026-10-29-3d-binder.md`, branch
   `binder-3d`): "Collector's Desk" picked from three mockups; built (desk scene, 2 x 2 sleeved pages (3 x 3 was too
   small on phones), bending page
   turns with drag, swipe, tap and riffle, divider tabs, hover and hold tooltips, the card lift into the card view,
   fights close it, world sound at the character). Studio at graphics level 1: worst frames 22 ms opening, 38 ms
-  turning (budget 50). Waiting for the user's Studio check and the iPhone 16 Pro Max check of the published game.
+  turning (budget 50). Done: approved by the user and merged 2026-10-29. Feedback rounds: the camera no longer stuck
+  after closing the card view, a lighter binder, 2 x 2 big cards and a bigger binder for phones, the picked card
+  lifting to the screen's middle, finer stitches, small flat tabs drawn on the case, the X closing the card view
+  first (no Back button). Next: UI project 3 (cards in the world).
   Deferred minors from its review: a refresh between riffle turns cuts the riffle short and tab clicks mid-turn are
   ignored; picking a card doesn't cancel pending turns; closing on a boss fight could override the boss intro
   camera; hover rise grows down-right; the tooltip can cover the set tabs and isn't re-placed when the camera
