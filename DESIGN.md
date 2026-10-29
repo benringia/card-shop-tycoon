@@ -1240,9 +1240,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   back as it lands. Q / E and the arrows, a tap on a page (right page forward, left page back; also on a "?" or an
   empty pocket), a swipe across the binder, or holding Q / E (repeats every 0.18 s) turn pages; requests add up to
   a target spread and turns get quicker the further there is to go (up to 4 times), so quick presses riffle through
-  a set and stop at its first or last spread. Pressing a page's outer 30% picks it up: it follows the pointer and,
-  let go, finishes the turn past halfway or when flicked on (else falls back); a tap there turns it. A collection
-  change while a page moves is drawn once the pages stop. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
+  a set and stop at its first or last spread. A press on a page's outer 30% that moves toward the spine picks the
+  page up: it follows the pointer and, let go, finishes the turn past halfway or when flicked on (else falls back).
+  A collection change while a page moves is drawn once the pages stop. **Cards:** the pocket under the mouse lights
+  up (a warm edge) and rises a little, with the card's tooltip; on touch, holding a finger on a card for
+  `UIStyle.LONG_PRESS` shows it until the finger lifts. Clicking or tapping an owned card lifts it out of its sleeve
+  toward the camera (0.3 s, `BinderDesk.lift`), then the card view opens on it (the camera moves to the card view's
+  stage at the normal field of view); closing the card view brings the binder back on the same spread. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
   strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
   just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
   it never covers a card.

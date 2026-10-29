@@ -39,6 +39,9 @@ local DESK_SIZE = 120
 local DESK_PIXELS_PER_STUD = 6
 local CASE_PIXELS_PER_STUD = 80
 local REACH = 300 -- studs a pick ray looks
+local HOVER_SCALE = 1.05 -- the pocket under the pointer rises a little
+local HOVER_EDGE = 5 -- px of light round it (page canvas pixels)
+local LIFT_ROOM = 0.45 -- how far toward the camera a picked card flies (share of the way)
 
 local BinderDesk = {}
 
@@ -54,6 +57,8 @@ local inspecting = false
 local saved: { cameraType: Enum.CameraType, cframe: CFrame, fov: number }? = nil
 local lastRect: UiLayout.Rect? = nil
 local cameraTween: Tween? = nil
+local hovered: Frame? = nil -- the highlighted pocket slot
+local lifted: Part? = nil -- a picked card on its way to the card view
 
 local function makePart(name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material, parent: Instance): Part
 	local part = Instance.new("Part")
@@ -206,6 +211,18 @@ local function buildPage(side: Side, parent: Instance)
 		slot.BackgroundTransparency = 1
 		slot.ZIndex = 2
 		slot.Parent = canvas
+		-- The hover look (highlight): a warm edge of light and a small rise, off until the pointer is over it
+		local rise = Instance.new("UIScale")
+		rise.Parent = slot
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 12)
+		corner.Parent = slot
+		local glow = Instance.new("UIStroke")
+		glow.Name = "Hover"
+		glow.Color = Desk.LAMP_COLOR
+		glow.Thickness = HOVER_EDGE
+		glow.Enabled = false
+		glow.Parent = slot
 		slots[side][index] = slot
 	end
 end
@@ -277,10 +294,38 @@ function BinderDesk.show()
 	inspecting = false
 end
 
+-- Lights up the pocket under the pointer (nil: none)
+function BinderDesk.highlight(side: Side?, index: number?)
+	local slot = if side and index then slots[side][index] else nil
+	if slot == hovered then
+		return
+	end
+	for _, frame in { hovered, slot } do
+		if frame then
+			local on = frame == slot
+			local rise = frame:FindFirstChildOfClass("UIScale") :: UIScale
+			local glow = frame:FindFirstChild("Hover") :: UIStroke
+			rise.Scale = if on then HOVER_SCALE else 1
+			glow.Enabled = on
+			frame.ZIndex = if on then 3 else 2
+		end
+	end
+	hovered = slot
+end
+
+local function dropLift()
+	if lifted then
+		lifted:Destroy()
+		lifted = nil
+	end
+end
+
 function BinderDesk.hide()
 	if not shown then
 		return
 	end
+	dropLift()
+	BinderDesk.highlight(nil, nil)
 	shown = false
 	inspecting = false
 	stopTween()
@@ -498,11 +543,69 @@ function BinderDesk.setInspecting(on: boolean)
 		camera.FieldOfView = before.fov
 		return
 	end
+	dropLift()
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.FieldOfView = Desk.FIELD_OF_VIEW
 	if lastRect then
 		camera.CFrame = cameraFor(lastRect)
 	end
+end
+
+-- A picked card slides up out of its sleeve and comes toward the camera (LIFT_SECONDS), then `done` runs (the card
+-- view opens); the card goes when the binder takes the camera back. False when a card is already on its way.
+function BinderDesk.lift(side: Side, index: number, card: Lite, done: () -> ()): boolean
+	local camera = workspace.CurrentCamera
+	if lifted or not shown or not camera or not folder then
+		return false
+	end
+	local pocket, size = BinderDesk.pocketCFrame(side, index)
+	local width = size.X
+	local height = width / 0.7
+	local up = pocket.UpVector
+	-- Lying in its pocket face up (its front, -Z, toward the sky; top toward the far edge), a little raised
+	local start = CFrame.lookAt(pocket.Position + up * 0.02, pocket.Position + up, -pocket.LookVector)
+	local eye = camera.CFrame.Position
+	local target = start.Position:Lerp(eye, LIFT_ROOM)
+	local finish = CFrame.lookAt(target, eye, camera.CFrame.UpVector)
+	local part = Instance.new("Part")
+	part.Name = "LiftedCard"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Size = Vector3.new(width, height, 0.02)
+	part.CFrame = start
+	part.Color = BOOK.CASE_DARK
+	part.Parent = folder
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = Desk.PAGE_PIXELS_PER_STUD
+	gui.LightInfluence = 0
+	gui.Parent = part
+	local face = Instance.new("ImageLabel")
+	face.Size = UDim2.fromScale(1, 1)
+	face.BackgroundColor3 = BOOK.SLEEVE
+	face.Image = card.image
+	face.ScaleType = Enum.ScaleType.Crop
+	face.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = face
+	local rim = Instance.new("UIStroke")
+	rim.Color = card.rim
+	rim.Thickness = 6
+	rim.Parent = face
+	lifted = part
+	local fly = TweenService:Create(part, TweenInfo.new(Desk.LIFT_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = finish })
+	fly.Completed:Once(function()
+		if lifted == part then
+			done()
+		end
+	end)
+	fly:Play()
+	return true
 end
 
 return BinderDesk

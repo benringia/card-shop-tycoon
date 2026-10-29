@@ -720,9 +720,10 @@ local function placeTooltip()
 	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
-local function showTooltip(tile: Tile)
-	-- Pockets under the open card view or the rarity guide still get mouse events; no tooltip through them
-	if not UserInputService.MouseEnabled or not tile.root.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
+-- touch: a finger held on the card (phones have no mouse)
+local function showTooltip(tile: Tile, touch: boolean?)
+	-- No tooltip through the open card view, the Bag or the rarity guide
+	if not (UserInputService.MouseEnabled or touch) or not tile.root.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
 		return
 	end
 	tooltipTile = tile
@@ -1917,11 +1918,14 @@ function BinderController.Start()
 	RarityGuideController.SetCollected(isCollected)
 	refresh()
 
-	-- Pointer gestures on the binder: a press on a page's outer edge picks the page up (drag it over, or tap to turn
-	-- it); a tap elsewhere on a page, a "?" or an empty pocket turns that way; a swipe across turns too
-	local press: { at: Vector2, time: number, pick: BinderDesk.Pick?, drag: boolean }? = nil
+	-- Pointer gestures on the binder. A pointer over a card lights its pocket and shows its tooltip (a finger: hold
+	-- it there). A tap on a card lifts it out of its sleeve into the card view; a tap elsewhere on a page, on a "?" or
+	-- an empty pocket turns that way; a swipe across turns too. A press on a page's outer edge that moves toward the
+	-- spine picks the page up and drags it over.
+	local press: { at: Vector2, time: number, pick: BinderDesk.Pick?, edge: boolean?, drag: boolean, held: boolean }? = nil
 	local heldStep: number? = nil -- Q or E held: keep turning
 	local heldNext = 0
+	local hoverKey = ""
 	local function interactive(): boolean
 		return panel.Visible and not bagOverlay.Visible and not CardDetailController.IsOpen() and not RarityGuideController.IsOpen()
 	end
@@ -1931,7 +1935,41 @@ function BinderController.Start()
 	local function pageStep(side: BinderDesk.Side): number
 		return if side == "Right" then 1 else -1
 	end
-	local function onPress(point: Vector2)
+	local function tileAt(side: BinderDesk.Side, index: number): Tile?
+		local left, right = getSpreadTiles(spreadIndex)
+		return (if side == "Left" then left else right)[index]
+	end
+	local function clearHover()
+		if hoverKey ~= "" then
+			hoverKey = ""
+			BinderDesk.highlight(nil, nil)
+			hideTooltip()
+		end
+	end
+	local function hover(point: Vector2)
+		local pick = if interactive() and not PageTurner.busy() then BinderDesk.pick(point) else nil
+		if pick and pick.kind == "pocket" then
+			local tile = tileAt(pick.side, pick.index)
+			if tile then
+				local key = `{pick.side}{pick.index}`
+				if key ~= hoverKey then
+					hoverKey = key
+					BinderDesk.highlight(pick.side, pick.index)
+					showTooltip(tile)
+				end
+				return
+			end
+		end
+		clearHover()
+	end
+	local function pickCard(side: BinderDesk.Side, index: number, tile: Tile)
+		clearHover()
+		BinderDesk.lift(side, index, liteFace({ tile })[1], function()
+			openDetail(tile.card)
+		end)
+	end
+	local function onPress(point: Vector2, touch: boolean)
+		clearHover()
 		local pick = BinderDesk.pick(point)
 		if pick and pick.kind == "tab" then
 			if not PageTurner.busy() and not dragging then
@@ -1939,17 +1977,52 @@ function BinderController.Start()
 			end
 			return
 		end
-		local grabbed = false
+		local edge: boolean? = nil
 		if pick and (pick.kind == "page" or pick.kind == "pocket") then
-			local edge = if pick.side == "Right" then pick.u >= 1 - Desk.DRAG_EDGE else pick.u <= Desk.DRAG_EDGE
-			grabbed = edge and beginDrag(pick.side == "Right")
+			local outer = if pick.side == "Right" then pick.u >= 1 - Desk.DRAG_EDGE else pick.u <= Desk.DRAG_EDGE
+			edge = if outer then pick.side == "Right" else nil
 		end
-		press = { at = point, time = os.clock(), pick = pick, drag = grabbed }
+		local pressed = { at = point, time = os.clock(), pick = pick, edge = edge, drag = false, held = false }
+		press = pressed
+		-- A finger held on a card shows its tooltip until it lifts
+		if touch and pick and pick.kind == "pocket" then
+			local tile = tileAt(pick.side, pick.index)
+			task.delay(UIStyle.LONG_PRESS, function()
+				if press == pressed and not pressed.drag and tile then
+					pressed.held = true
+					BinderDesk.highlight(pick.side, pick.index)
+					showTooltip(tile, true)
+				end
+			end)
+		end
+	end
+	local function onMove(point: Vector2)
+		local pressed = press
+		if not pressed then
+			return
+		end
+		if pressed.drag then
+			moveDrag(point)
+			return
+		end
+		local forward = pressed.edge
+		local dx = point.X - pressed.at.X
+		if forward ~= nil and not pressed.held and (if forward then dx < -Desk.TAP_PIXELS else dx > Desk.TAP_PIXELS) then
+			pressed.drag = beginDrag(forward)
+			if pressed.drag then
+				moveDrag(point)
+			end
+		end
 	end
 	local function onRelease(point: Vector2)
 		local pressed = press
 		press = nil
 		if not pressed then
+			return
+		end
+		if pressed.held then
+			BinderDesk.highlight(nil, nil)
+			hideTooltip()
 			return
 		end
 		local dx, dy = point.X - pressed.at.X, point.Y - pressed.at.Y
@@ -1962,9 +2035,10 @@ function BinderController.Start()
 		if tapped and pick and pick.kind == "page" then
 			turnBy(pageStep(pick.side))
 		elseif tapped and pick and pick.kind == "pocket" then
-			local left, right = getSpreadTiles(spreadIndex)
-			local tile = (if pick.side == "Left" then left else right)[pick.index]
-			if not tile or not isCollected(tile.card.id) then
+			local tile = tileAt(pick.side, pick.index)
+			if tile and isCollected(tile.card.id) and not PageTurner.busy() then
+				pickCard(pick.side, pick.index, tile)
+			elseif not tile or not isCollected(tile.card.id) then
 				turnBy(pageStep(pick.side)) -- a "?" or an empty pocket turns the page
 			end
 		elseif not tapped then
@@ -1987,21 +2061,32 @@ function BinderController.Start()
 			return
 		end
 		if isPointer(input) then
-			onPress(Vector2.new(input.Position.X, input.Position.Y))
+			onPress(Vector2.new(input.Position.X, input.Position.Y), input.UserInputType == Enum.UserInputType.Touch)
 			return
 		end
 		local step = PAGE_KEYS[input.KeyCode]
 		if step then
+			clearHover()
 			turnBy(step)
 			heldStep, heldNext = step, os.clock() + Desk.HOLD_REPEAT * 2
 		elseif input.KeyCode == Enum.KeyCode.F then
 			setFiltersOpen(not filtersPanel.Visible)
 		end
 	end)
-	UserInputService.InputChanged:Connect(function(input)
-		local pressed = press
-		if pressed and pressed.drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			moveDrag(Vector2.new(input.Position.X, input.Position.Y))
+	UserInputService.InputChanged:Connect(function(input, gameProcessed)
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		local point = Vector2.new(input.Position.X, input.Position.Y)
+		if press then
+			onMove(point)
+		elseif input.UserInputType == Enum.UserInputType.MouseMovement then
+			-- Over a button or window the 3D binder isn't what's pointed at
+			if gameProcessed then
+				clearHover()
+			else
+				hover(point)
+			end
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
