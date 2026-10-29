@@ -228,7 +228,8 @@ local function buildPage(side: Side, parent: Instance)
 	end
 end
 
--- Builds the scene once (later calls do nothing); it stays hidden until show()
+-- Builds the scene once (later calls do nothing). It stays in the world, out of everyone's sight on its stage, so
+-- its SurfaceGuis are laid out once: putting them in the world on each opening cost a 60 ms frame.
 function BinderDesk.build()
 	if folder then
 		return
@@ -239,6 +240,7 @@ function BinderDesk.build()
 	buildCase(root)
 	buildPage("Left", root)
 	buildPage("Right", root)
+	root.Parent = workspace
 	folder = root
 end
 
@@ -288,7 +290,6 @@ function BinderDesk.show()
 	if lastRect then
 		camera.CFrame = cameraFor(lastRect)
 	end
-	(folder :: Folder).Parent = workspace
 	ListenAtCharacter.hold("Binder")
 	WorldTags.hide("Binder")
 	shown = true
@@ -330,9 +331,6 @@ function BinderDesk.hide()
 	shown = false
 	inspecting = false
 	stopTween()
-	if folder then
-		folder.Parent = nil
-	end
 	local camera = workspace.CurrentCamera
 	local before = saved
 	if camera and before then

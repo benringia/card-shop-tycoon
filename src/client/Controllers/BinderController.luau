@@ -62,6 +62,7 @@ type Tile = {
 	stroke: UIStroke,
 	countLabel: TextLabel,
 	levelLabel: TextLabel, -- best grade and best levelled copy, e.g. "S · Lv 12"
+	drawn: string?, -- what its face shows (renderTile redraws only when this changes: building faces is costly)
 }
 
 -- A pocket is the card plus a chip row under it (copies owned, best grade and level), in page-canvas pixels
@@ -284,7 +285,10 @@ local function renderTile(tile: Tile)
 	local shown = getCount(displayed, cardId)
 	local owned, onDisplay = getOwnedCounts(cardId)
 	if owned + onDisplay == 0 then
-		CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
+		if tile.drawn ~= "missing" then
+			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
+			tile.drawn = "missing"
+		end
 		tile.countLabel.Visible = false
 		tile.levelLabel.Visible = false
 		return
@@ -300,7 +304,12 @@ local function renderTile(tile: Tile)
 	local growth = if strongest
 		then { level = strongest.level, stars = strongest.stars, grade = strongest.grade }
 		else { level = 1, stars = BeastRules.START_STARS, grade = bestGrade or BeastRules.DEFAULT_GRADE }
-	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, true, growth)
+	local foil = inBinder.foil + shown.foil > 0 or hasFoilBeast
+	local drawn = `{foil}:{growth.level}:{growth.stars}:{growth.grade}`
+	if tile.drawn ~= drawn then
+		CardFace.render(tile.inner, tile.stroke, tile.card, foil, true, growth)
+		tile.drawn = drawn
+	end
 	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
 	tile.countLabel.Visible = true
 	local parts = {}
@@ -411,12 +420,30 @@ local function placeTiles(list: { Tile }, side: BinderDesk.Side)
 	end
 end
 
--- Takes a tile off the pages, stopping its face's effects
+-- Takes a tile off the pages; its face stays built, so it comes back without a redraw
 local function unplace(tile: Tile)
-	if tile.root.Parent then
-		tile.root.Parent = nil
-		CardFace.clear(tile.inner, tile.stroke)
+	tile.root.Parent = nil
+end
+
+-- Builds the faces of the set's cards not on the pages, a few a frame, so turning to them later only moves them
+-- (building nine faces at once costs a frame of 40-60 ms on a SurfaceGui)
+local warming = false
+local function warmTiles()
+	if warming then
+		return
 	end
+	warming = true
+	task.spawn(function()
+		for index, tile in visibleTiles do
+			if not tile.root.Parent then
+				renderTile(tile)
+				if index % 2 == 0 then
+					RunService.Heartbeat:Wait()
+				end
+			end
+		end
+		warming = false
+	end)
 end
 
 -- Which page a placed tile is on
@@ -519,7 +546,11 @@ local function pump()
 	local forward, leaving, arriving = liftPage(to)
 	PageTurner.play(forward, leaving, arriving, seconds, function()
 		land(to, forward)
-		pump()
+		-- The next page lifts a frame later, so landing and lifting don't share one frame's work
+		task.defer(function()
+			RunService.Heartbeat:Wait()
+			pump()
+		end)
 	end)
 end
 
@@ -603,6 +634,7 @@ local function applyFilter()
 	sortTiles(visibleTiles)
 	refreshFilterButtons()
 	showSpread(spreadIndex)
+	warmTiles()
 end
 
 -- The current set's cover page, set tabs and the progress card

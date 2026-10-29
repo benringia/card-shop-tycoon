@@ -15,7 +15,7 @@ return {
 	POCKETS = { columns = 3, rows = 3, padX = 0.05, padY = 0.04, gap = 0.03 },
 	-- Set dividers sticking out of the case's right edge (studs), top down, room for a label and a finger;
 	-- the open set's sticks out further
-	TAB = { depth = 0.62, stickOut = 0.9, openExtra = 0.15, gap = 0.12, top = 0.3 },
+	TAB = { depth = 0.82, stickOut = 0.9, openExtra = 0.15, gap = 0.12, top = 0.3 }, -- 0.82: 48+ px tall on a landscape phone
 	CASE_THICKNESS = 0.12,
 	RING_RADIUS = 0.28,
 	RING_SEGMENTS = 7,
@@ -30,7 +30,7 @@ return {
 	BACKDROP_COLOR = Color3.fromRGB(22, 15, 10),
 
 	-- Turning a page: a chain of strips bending as it goes over the rings
-	STRIPS = 6,
+	STRIPS = 4, -- fewer strips: fewer SurfaceGuis to redraw each frame of a turn (6 cost a 55 ms frame at low graphics)
 	TURN_SECONDS = 0.5,
 	BEND_DEGREES = 40, -- how far the outer edge leads the spine side mid-turn
 	MAX_SPEEDUP = 4, -- turns this many times faster when many are asked for at once

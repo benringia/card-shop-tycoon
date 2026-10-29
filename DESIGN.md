@@ -1215,16 +1215,17 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
   leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
   painted warm lamp pool, darker edges, a black leather case with a stitched border, dark pages; a chrome ring rail
-  with three rings down the spine. It looks the same at night and at every graphics quality. Built once at start,
-  shown when the binder opens; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
+  with three rings down the spine. It looks the same at night and at every graphics quality. Built once at start
+  and left in the world on its stage (out of sight from the ground), so opening only moves the camera; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
   world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
   following camera picks up a character that respawned meanwhile). A fight starting (an elite, an aggro zone) closes
   the binder and the card view so the fight camera takes over. The card view keeps world sound at the character too. One set
   at a time; set dividers are coloured tabs sticking out of the case's right edge with the set's name (the open
   set's sticks out further), click one to open that set. Each page is a canvas of 3 x 3 pocket slots (18 cards a
   spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
-  ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Only the open spread's
-  pockets are drawn; a pocket leaving it is cleared (`CardFace.clear`), stopping its effects. Spread 1's left page
+  ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Each card's face is built
+  once and redrawn only when what it shows changes; the set's other cards are built in the background a few a
+  frame, so turning to them only moves them (building nine faces at once cost a 40-65 ms frame). Spread 1's left page
   is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
   (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
@@ -1234,11 +1235,12 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   on the right while the camera moves the binder into the room left of it. Bottom right: the set's progress card
   (owned / total with a bar, value of your copies). The Bag tab shows its window over the desk. The side and bottom
   HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a
-  tab). **Turning pages** (`Util/PageTurner`, `Util/PageCurl`): the turning page is a chain of 6 strips hinged at
+  tab). **Turning pages** (`Util/PageTurner`, `Util/PageCurl`): the turning page is a chain of 4 strips hinged at
   the spine that bends as it goes over the rings (the outer edge leads by up to 40 degrees mid-turn, flat at both
   ends), darkening as it stands up and casting a shadow on the page under it, about half a second a turn, with a
-  page sound ("Book Page Turn 12", `BinderDesk.TURN_SOUND_ID`). The moving page shows light cards (art and rim),
-  built once, so a turn only swaps pictures; the page under it shows the next cards at once and the full cards are
+  page sound ("Book Page Turn 12", `BinderDesk.TURN_SOUND_ID`). The moving page shows light cards (art and rim,
+  each strip only the cards across its slice), built once and parked out of view between turns, so a turn only
+  swaps pictures; the next turn of a riffle starts a frame after the last one lands; the page under it shows the next cards at once and the full cards are
   back as it lands. Q / E and the arrows, a tap on a page (right page forward, left page back; also on a "?" or an
   empty pocket), a swipe across the binder, or holding Q / E (repeats every 0.18 s) turn pages; requests add up to
   a target spread and turns get quicker the further there is to go (up to 4 times), so quick presses riffle through
@@ -1344,6 +1346,11 @@ boss models; the ranch and Heroic tiers come after those.
   Next keep their tricks a surprise). Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
+- [ ] UI project 2, the 3D binder (spec `2026-10-29-3d-binder-design.md`, plan `2026-10-29-3d-binder.md`, branch
+  `binder-3d`): "Collector's Desk" picked from three mockups; built (desk scene, 3 x 3 sleeved pages, bending page
+  turns with drag, swipe, tap and riffle, divider tabs, hover and hold tooltips, the card lift into the card view,
+  fights close it, world sound at the character). Studio at graphics level 1: worst frames 22 ms opening, 38 ms
+  turning (budget 50). Waiting for the user's Studio check and the iPhone 16 Pro Max check of the published game.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

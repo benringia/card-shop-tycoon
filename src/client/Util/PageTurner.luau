@@ -3,7 +3,7 @@
 -- that bends as it turns (PageCurl), the outer edge leading, darkening as it stands up and casting a shadow on the
 -- page under it, with a page sound. Each strip carries its slice of the page on both sides: the face it leaves
 -- (front, on top while it lies right) and the one it lands with (back). The page shows light cards (art and rim,
--- BinderDesk.Lite), all built once, so a turn only swaps pictures. Shown only while a page turns.
+-- BinderDesk.Lite), all built once, so a turn only swaps pictures. Parked out of view while no page turns.
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,12 +19,13 @@ local ClientUtil = script.Parent :: Instance
 local BinderDesk = require(ClientUtil:WaitForChild("BinderDesk"))
 
 type Slot = { frame: Frame, art: ImageLabel, rim: UIStroke, mark: TextLabel }
-type Side = { canvas: Frame, shade: Frame, slots: { Slot } }
+type Side = { canvas: Frame, shade: Frame, slots: { [number]: Slot } } -- only the slots its slice shows
 type Strip = { front: Part, back: Part, faces: { front: Side, back: Side } }
 
 local BOOK = Collection.BOOK
 local THICKNESS = 0.012
 local QUARTER = CFrame.Angles(0, -math.pi / 2, 0) -- see BinderDesk: a top-face GUI reads along the part's -Z
+local PARKED = CFrame.new(Desk.STAGE_POSITION - Vector3.new(0, 120, 0)) -- out of view under the desk while idle
 local PAGE_PIXELS = Desk.PAGE_SIZE * Desk.PAGE_PIXELS_PER_STUD
 
 local PageTurner = {}
@@ -61,8 +62,13 @@ local function buildSide(part: Part, slice: number): Side
 	canvas.BorderSizePixel = 0
 	canvas.Parent = window
 	local slots = {}
+	local sliceFrom, sliceTo = slice / Desk.STRIPS, (slice + 1) / Desk.STRIPS
 	for index = 1, Desk.POCKETS.columns * Desk.POCKETS.rows do
 		local box = BinderFit.pocketBox(index, Desk.POCKETS)
+		-- A strip shows a sixth of the page: only the cards across that slice (fewer pictures to swap a turn)
+		if box.u1 <= sliceFrom or box.u0 >= sliceTo then
+			continue
+		end
 		local frame = Instance.new("Frame")
 		frame.Position = UDim2.fromScale(box.u0, box.v0)
 		frame.Size = UDim2.fromScale(box.u1 - box.u0, box.v1 - box.v0)
@@ -120,7 +126,8 @@ local function makePart(name: string, size: Vector3, parent: Instance): Part
 	return part
 end
 
--- Builds the strips, the shadow and the sound once (later calls do nothing)
+-- Builds the strips, the shadow and the sound once (later calls do nothing). They stay in the world, parked out of
+-- view while no page turns: their SurfaceGuis are laid out once instead of on every turn.
 function PageTurner.build()
 	if folder then
 		return
@@ -162,7 +169,13 @@ function PageTurner.build()
 		turnSound.Parent = SoundService
 		sound = turnSound
 	end
+	root.Parent = workspace
 	folder = root
+	for _, strip in strips do
+		strip.front.CFrame = PARKED
+		strip.back.CFrame = PARKED
+	end
+	shadow.CFrame = PARKED
 end
 
 local function fill(side: Side, face: BinderDesk.Face)
@@ -229,15 +242,17 @@ local function show(forward: boolean, leaving: BinderDesk.Face, arriving: Binder
 		fill(strip.faces.back, if forward then arriving else leaving)
 	end
 	pose(0)
-	local root = folder :: Folder
-	root.Parent = workspace
 end
 
 local function hide()
 	stop()
 	turning = false
-	if folder then
-		folder.Parent = nil
+	for _, strip in strips do
+		strip.front.CFrame = PARKED
+		strip.back.CFrame = PARKED
+	end
+	if shadow then
+		shadow.CFrame = PARKED
 	end
 end
 
