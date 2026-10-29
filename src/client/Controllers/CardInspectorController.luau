@@ -24,6 +24,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local ElementAura = require(ClientUtil:WaitForChild("ElementAura"))
+local WorldTags = require(ClientUtil:WaitForChild("WorldTags"))
 
 type Card = typeof(Cards.List[1])
 export type Growth = CardFace.Growth
@@ -192,38 +193,6 @@ function CardInspectorController.IsOpen(): boolean
 end
 
 -- Shows this card (and copy) in the inspector, opening it if needed
--- Tags and bubbles drawn on top of everything (customer moods, pet name tags) would show through the backdrop:
--- they're switched off while the card is up, and back on when it closes
-local hiddenTags: { [BillboardGui]: boolean } = {}
-local tagWatch: RBXScriptConnection? = nil
-
-local function hideTag(item: Instance)
-	if item:IsA("BillboardGui") and item.AlwaysOnTop and item.Enabled then
-		hiddenTags[item] = true
-		item.Enabled = false
-	end
-end
-
-local function hideTags()
-	for _, item in workspace:GetDescendants() do
-		hideTag(item)
-	end
-	tagWatch = workspace.DescendantAdded:Connect(hideTag)
-end
-
-local function showTags()
-	if tagWatch then
-		tagWatch:Disconnect()
-		tagWatch = nil
-	end
-	for tag in hiddenTags do
-		if tag.Parent then
-			tag.Enabled = true
-		end
-	end
-	table.clear(hiddenTags)
-end
-
 -- A gold ribbon across the lower card face ("BEST COPY"), or none
 local function setRibbon(text: string?)
 	local old = frontFrame:FindFirstChild("Ribbon")
@@ -292,7 +261,7 @@ function CardInspectorController.Show(card: Card, foil: boolean, growth: Growth?
 	end
 	if not backdrop then
 		buildBackdrop(camera)
-		hideTags()
+		WorldTags.hide("CardView") -- on-top tags and bubbles would show through the backdrop
 		savedCameraType = camera.CameraType
 		savedCameraCFrame = camera.CFrame
 		camera.CameraType = Enum.CameraType.Scriptable -- the camera holds still; drags turn the card
@@ -348,7 +317,7 @@ function CardInspectorController.Close()
 	if backdrop then
 		backdrop:Destroy()
 		backdrop = nil
-		showTags()
+		WorldTags.show("CardView")
 	end
 	local camera = workspace.CurrentCamera
 	if camera and savedCameraCFrame then

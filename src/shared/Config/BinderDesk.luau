@@ -13,8 +13,12 @@ return {
 	PAGE_PIXELS_PER_STUD = 160, -- a page's canvas: 480 x 704 px
 	-- 3 x 3 pockets a page; pads and gap are fractions of the page
 	POCKETS = { columns = 3, rows = 3, padX = 0.05, padY = 0.04, gap = 0.03 },
-	-- Set dividers sticking out of the case's right edge (studs); the open set's sticks out further
-	TAB = { width = 0.5, height = 0.7, stickOut = 0.35, openExtra = 0.12 },
+	-- Set dividers sticking out of the case's right edge (studs), top down, room for a label and a finger;
+	-- the open set's sticks out further
+	TAB = { depth = 0.62, stickOut = 0.9, openExtra = 0.15, gap = 0.12, top = 0.3 },
+	CASE_THICKNESS = 0.12,
+	RING_RADIUS = 0.28,
+	RING_SEGMENTS = 7,
 
 	-- The desk and the painted lamp light (looks the same at every graphics quality: no real light needed)
 	DESK_COLOR = Color3.fromRGB(138, 90, 53),

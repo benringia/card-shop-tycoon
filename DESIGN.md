@@ -1016,6 +1016,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
     │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
     │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
+    │       ├── BinderDesk.luau         # the 3D binder's scene: desk, painted lamp light, case, rings, page canvases, set tabs, camera framing, picking by raycast
+    │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
+    │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -1042,6 +1045,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
+        │   ├── BinderDesk.luau # the 3D binder: stage, camera, page and pocket sizes, tabs, desk colours, page turns, the lift
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
         │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
@@ -1085,6 +1089,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
+            ├── PageCurl.luau      # a turning page's bend, its strips, drag-to-turn, fast-turn pacing, swipes and taps (pure, Lune-tested)
+            ├── BinderFit.luau     # the 3D binder's pockets on a page and the camera fit for a screen rectangle (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
