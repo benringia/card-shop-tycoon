@@ -1829,6 +1829,14 @@ local function buildPanel(parent: Instance)
 		end,
 		setInspecting = setInspecting,
 	})
+	-- The X closes the card view back to the binder, then the binder
+	UIKit.setBackStep(panel, function(): boolean
+		if not CardDetailController.IsOpen() then
+			return false
+		end
+		CardDetailController.Close()
+		return true
+	end)
 	buildBag(panel) -- before the first layout: it places the Cards / Bag tabs
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutBook)

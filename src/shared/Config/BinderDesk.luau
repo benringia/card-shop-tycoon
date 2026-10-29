@@ -14,9 +14,9 @@ return {
 	-- 2 x 2 pockets a page, big enough to read on a phone (the user's call, 2026-10-29; 3 x 3 was too small); pads
 	-- and gap are fractions of the page
 	POCKETS = { columns = 2, rows = 2, padX = 0.06, padY = 0.04, gap = 0.04 },
-	-- Set dividers sticking out of the case's right edge (studs), top down, room for a label and a finger;
-	-- the open set's sticks out further
-	TAB = { depth = 0.82, stickOut = 0.9, openExtra = 0.15, gap = 0.12, top = 0.3 }, -- 0.82: 48+ px tall on a landscape phone
+	-- Set dividers sticking out of the case's right edge (studs), top down; the open set's sticks out further. depth is
+	-- the drawn tab; a tap counts over the gaps too (depth + gap, 48+ px tall on a landscape phone)
+	TAB = { depth = 0.6, stickOut = 0.72, openExtra = 0.12, gap = 0.12, top = 0.3 },
 	CASE_THICKNESS = 0.12,
 	CASE_CORNER = 0.2, -- studs: the leather case's rounded corners
 	-- studs: the dashed seam round the case, fine and faint

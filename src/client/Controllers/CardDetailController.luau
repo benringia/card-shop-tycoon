@@ -3,7 +3,7 @@
 -- (CardInspectorController: tilt, Flip, Legendary aura, a BEST COPY ribbon while your best copy shows), and right
 -- beside it (the pair centred on the screen) a panel in the style kit: the name in a blue band with the worth, rarity / element / number / copies
 -- pills, "Your copies" best first (the first one wears a gold BEST ribbon), the chosen copy's Power, HP, ATK and SPD
--- tiles, its XP and next-star bars, and Add to party / Give a job / Back (a disabled button says why). Icons without
+-- tiles, its XP and next-star bars, and Add to party / Give a job (a disabled button says why; the binder's X closes it). Icons without
 -- a label have word tooltips (Util/Tooltip). Add to party opens a chooser: "Who should X replace?" over the three
 -- slot cards (each saying how much more or less Power X has), then the comparison for a filled slot. The binder
 -- owns the data (Source) and builds this once into its panel.
@@ -832,10 +832,10 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	buttonRow.Size = UDim2.new(1, -24, 0, 50)
 	buttonRow.ZIndex = panel.ZIndex + 1
 	buttonRow.Parent = panel
-	local function bottomButton(label: string, icon: string, color: Color3, third: number): TextButton
+	local function bottomButton(label: string, icon: string, color: Color3, half: number): TextButton
 		local button = UIKit.iconButton(buttonRow, label, icon, color)
-		button.Position = UDim2.new(third / 3, if third == 0 then 0 else 4, 0, 0)
-		button.Size = UDim2.new(1 / 3, -6, 1, 0)
+		button.Position = UDim2.new(half / 2, if half == 0 then 0 else 4, 0, 0)
+		button.Size = UDim2.new(1 / 2, -4, 1, 0)
 		button.TextSize = UIKit.textSize("body")
 		button.TextWrapped = true
 		button.ZIndex = buttonRow.ZIndex + 1
@@ -843,8 +843,6 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	end
 	partyButton = bottomButton("Add to party", "Party", UIKit.Colors.Accent, 0)
 	jobButton = bottomButton("Give a job", "Job", UIKit.Colors.Secondary, 1)
-	local back = bottomButton("Back", "Close", UIKit.Colors.Secondary, 2)
-	back.Activated:Connect(CardDetailController.Close)
 
 	-- Add to party: covers the panel; slot cards first, then the comparison for a filled slot
 	partyChooser = Instance.new("Frame")

@@ -38,7 +38,9 @@ local PAGE_T = 0.03
 local PAGE_Y = CASE_T / 2 + PAGE_T / 2 + 0.005 -- the pages' centre height above the case's centre
 local DESK_SIZE = 120
 local DESK_PIXELS_PER_STUD = 6
-local CASE_PIXELS_PER_STUD = 80
+local CASE_PIXELS_PER_STUD = 160 -- as the pages: the set tabs' names are drawn on the case too
+local TAB_ROOM = Desk.TAB.stickOut + Desk.TAB.openExtra -- the case's canvas reaches this far past its right edge
+local TAB_TUCK = 0.2 -- studs of each tab under the case's edge
 local REACH = 300 -- studs a pick ray looks
 local HOVER_SCALE = 1.05 -- the pocket under the pointer rises a little
 local HOVER_EDGE = 5 -- px of light round it (page canvas pixels)
@@ -51,6 +53,8 @@ local pageParts: { [Side]: Part } = {}
 local canvases: { [Side]: Frame } = {}
 local slots: { [Side]: { Frame } } = { Left = {}, Right = {} }
 local tabParts: { Part } = {}
+local tabFrames: { Frame } = {}
+local caseCanvas: Frame? = nil
 local pickables: { Instance } = {}
 local shown = false
 local inspecting = false
@@ -170,16 +174,21 @@ end
 -- The leather case (rounded, a dark edge, a dashed seam all round, a soft shadow on the desk) and the chrome ring
 -- rail with three chunky rings arching over the pages' inner edges
 local function buildCase(parent: Instance, deskCanvas: Frame)
-	-- The part only carries the drawing (its square corners would show): the case is the rounded canvas on it
-	local case = makePart("Case", flatSize(CASE_W, CASE_T, CASE_D), centre * QUARTER, BOOK.CASE, Enum.Material.Leather, parent)
+	-- The part only carries the drawing (its square corners would show): the case is the rounded canvas on it. It
+	-- reaches past the case's right edge for the set tabs (setTabs): a separate part's drawing there sorts behind the
+	-- desk's and vanishes once that part is see-through.
+	local size = flatSize(CASE_W + TAB_ROOM, CASE_T, CASE_D)
+	local case = makePart("Case", size, centre * CFrame.new(TAB_ROOM / 2, 0, 0) * QUARTER, BOOK.CASE, Enum.Material.Leather, parent)
 	case.Transparency = 1
 	local canvas = topCanvas(case, CASE_PIXELS_PER_STUD, BOOK.CASE, true)
 	canvas.BackgroundTransparency = 1
+	caseCanvas = canvas
 	local leather = Instance.new("Frame")
 	leather.Name = "Leather"
-	leather.Size = UDim2.fromScale(1, 1)
+	leather.Size = UDim2.fromOffset(CASE_W * CASE_PIXELS_PER_STUD, CASE_D * CASE_PIXELS_PER_STUD)
 	leather.BackgroundColor3 = BOOK.CASE
 	leather.BorderSizePixel = 0
+	leather.ZIndex = 2 -- over the tabs' inner ends
 	leather.Parent = canvas
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, Desk.CASE_CORNER * CASE_PIXELS_PER_STUD)
@@ -191,7 +200,7 @@ local function buildCase(parent: Instance, deskCanvas: Frame)
 	local edge = Instance.new("UIStroke")
 	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	edge.Color = BOOK.CASE_DARK
-	edge.Thickness = 4
+	edge.Thickness = 8
 	edge.Parent = leather
 	local width, depth = CASE_W * CASE_PIXELS_PER_STUD, CASE_D * CASE_PIXELS_PER_STUD
 	local inset = Desk.STITCH.inset * CASE_PIXELS_PER_STUD
@@ -299,8 +308,7 @@ end
 -- What the camera fits: the case and the set tabs sticking out of its right edge (width, depth), and how far right
 -- of the case's centre the middle of that is
 local function fittedSize(): (number, number, number)
-	local tabs = Desk.TAB.stickOut + Desk.TAB.openExtra
-	return CASE_W + tabs, CASE_D, tabs / 2
+	return CASE_W + TAB_ROOM, CASE_D, TAB_ROOM / 2
 end
 
 -- The binder's shape on screen (width / height, tabs included, leaning back TILT degrees): the rectangle the
@@ -438,104 +446,48 @@ function BinderDesk.slot(side: Side, index: number): Frame
 	return slots[side][index]
 end
 
--- A divider tab's look: glossy coloured plastic with a darker edge (gold for the open set), a soft shadow and the
--- set's name; the open set's (it sticks out further) also its emblem in a round badge. tuck: the share of the tab
--- hidden under the case's edge.
-local TAB_SHADOW = 6 -- px
-local function tabLook(canvas: Frame, set: string, color: Color3, open: boolean, tuck: number)
-	canvas.BackgroundTransparency = 1
-	local shadow = Instance.new("Frame")
-	shadow.Name = "Shadow"
-	shadow.Position = UDim2.fromOffset(TAB_SHADOW, TAB_SHADOW)
-	shadow.Size = UDim2.new(1, -TAB_SHADOW, 1, -TAB_SHADOW)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = 0.55
-	shadow.BorderSizePixel = 0
-	shadow.Parent = canvas
+-- A divider tab on the case's canvas, its inner end under the leather: flat plastic in the set's colour, rounded, a
+-- thin dark edge (gold for the open set) and the set's name. top: its far edge from the case's far edge (studs).
+local TAB_EDGE = 3 -- px
+local function drawTab(canvas: Frame, set: string, color: Color3, open: boolean, top: number, reach: number): Frame
+	local pixels = CASE_PIXELS_PER_STUD
 	local body = Instance.new("Frame")
-	body.Name = "Body"
-	body.Size = UDim2.new(1, -TAB_SHADOW, 1, -TAB_SHADOW)
-	body.BackgroundColor3 = Color3.new(1, 1, 1)
+	body.Name = `Tab {set}`
+	body.Position = UDim2.fromOffset((CASE_W - TAB_TUCK) * pixels, top * pixels)
+	body.Size = UDim2.fromOffset((reach + TAB_TUCK) * pixels - TAB_EDGE, Desk.TAB.depth * pixels)
+	body.BackgroundColor3 = color
 	body.BorderSizePixel = 0
-	body.ZIndex = 2
+	body.ZIndex = 1
 	body.Parent = canvas
-	for _, frame in { shadow, body } do
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0.3, 0)
-		corner.Parent = frame
-	end
-	-- Lighter at the top edge, deeper at the bottom: a moulded plastic tab
-	local shade = Instance.new("UIGradient")
-	shade.Rotation = 90
-	shade.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.28), color:Lerp(Color3.new(0, 0, 0), 0.22))
-	shade.Parent = body
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.25, 0)
+	corner.Parent = body
 	local edge = Instance.new("UIStroke")
 	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	edge.Color = if open then BOOK.STITCH else BOOK.CASE_DARK
-	edge.Thickness = if open then 6 else 4
+	edge.Thickness = TAB_EDGE
 	edge.Parent = body
-	-- A gloss along the top of the plastic
-	local gloss = Instance.new("Frame")
-	gloss.Name = "Gloss"
-	gloss.Position = UDim2.new(tuck, 6, 0, 5)
-	gloss.Size = UDim2.new(1 - tuck, -14, 0.38, 0)
-	gloss.BackgroundColor3 = Color3.new(1, 1, 1)
-	gloss.BackgroundTransparency = 0.55
-	gloss.BorderSizePixel = 0
-	gloss.ZIndex = 3
-	gloss.Parent = body
-	local glossCorner = Instance.new("UICorner")
-	glossCorner.CornerRadius = UDim.new(0.5, 0)
-	glossCorner.Parent = gloss
-	local fade = Instance.new("UIGradient")
-	fade.Rotation = 90
-	fade.Transparency = NumberSequence.new(0.2, 1)
-	fade.Parent = gloss
-	-- The open set's emblem in a light round badge, then the name
-	local badgeSize = if open then 0.36 else 0
-	local badge = Instance.new("TextLabel")
-	badge.Visible = open
-	badge.Name = "Emblem"
-	badge.AnchorPoint = Vector2.new(0, 0.5)
-	badge.Position = UDim2.new(tuck, 8, 0.5, 0)
-	badge.Size = UDim2.fromScale(badgeSize, badgeSize)
-	badge.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	badge.BackgroundColor3 = Color3.new(1, 1, 1)
-	badge.BackgroundTransparency = 0.35
-	badge.Font = Enum.Font.FredokaOne
-	badge.Text = Collection.SET_EMBLEMS[set] or ""
-	badge.TextScaled = true
-	badge.ZIndex = 4
-	badge.Parent = body
-	local round = Instance.new("UICorner")
-	round.CornerRadius = UDim.new(0.5, 0)
-	round.Parent = badge
-	local ring = Instance.new("UIStroke")
-	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	ring.Color = color:Lerp(Color3.new(0, 0, 0), 0.35)
-	ring.Thickness = 3
-	ring.Parent = badge
 	local label = Instance.new("TextLabel")
 	label.Name = "Name"
 	label.AnchorPoint = Vector2.new(1, 0.5)
-	label.Position = UDim2.new(1, -8, 0.5, 0)
-	local heightPx = Desk.TAB.depth * Desk.PAGE_PIXELS_PER_STUD -- the canvas's height (its size isn't laid out yet)
-	label.Size = UDim2.new(1 - tuck, -(16 + badgeSize * heightPx + (if open then 8 else 0)), 0.7, 0)
+	label.Position = UDim2.new(1, -10, 0.5, 0)
+	label.Size = UDim2.new(0, reach * pixels - 30, 0.72, 0) -- clear of the case's dark rim
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.Text = set
 	label.TextScaled = true
 	label.TextWrapped = true
 	label.TextColor3 = Color3.new(1, 1, 1)
-	label.ZIndex = 4
 	label.Parent = body
 	local outline = Instance.new("UIStroke")
 	outline.Color = BOOK.CASE_DARK
-	outline.Thickness = 3
+	outline.Thickness = 2
 	outline.Parent = label
+	return body
 end
 
--- The set dividers on the case's right edge, top down in `sets` order; the open one sticks out further
+-- The set dividers on the case's right edge, top down in `sets` order; the open one sticks out further. Each is drawn
+-- on the case's canvas with a see-through part over it that takes the taps, the gaps between tabs included.
 function BinderDesk.setTabs(sets: { string }, colors: { [string]: Color3 }, current: string)
 	BinderDesk.build()
 	for _, tab in tabParts do
@@ -546,19 +498,24 @@ function BinderDesk.setTabs(sets: { string }, colors: { [string]: Color3 }, curr
 		tab:Destroy()
 	end
 	table.clear(tabParts)
+	for _, frame in tabFrames do
+		frame:Destroy()
+	end
+	table.clear(tabFrames)
 	local look = Desk.TAB
 	for order, set in sets do
 		local reach = look.stickOut + (if set == current then look.openExtra else 0)
-		local z = -CASE_D / 2 + look.top + look.depth / 2 + (order - 1) * (look.depth + look.gap)
-		local length = reach + 0.2 -- tucked a little under the case's edge
-		local cframe = centre * CFrame.new(CASE_W / 2 + reach - length / 2, CASE_T / 2 - 0.02, z)
+		local top = look.top + (order - 1) * (look.depth + look.gap)
+		local z = -CASE_D / 2 + top + look.depth / 2
 		local color = colors[set] or BOOK.EDGE
-		local tab = makePart(`Tab{order}`, flatSize(length, 0.03, look.depth), cframe * QUARTER, color, Enum.Material.SmoothPlastic, folder :: Folder)
+		local cframe = centre * CFrame.new(CASE_W / 2 + reach / 2, CASE_T / 2, z)
+		local tab = makePart(`Tab{order}`, flatSize(reach, 0.03, look.depth + look.gap), cframe * QUARTER, color, Enum.Material.SmoothPlastic, folder :: Folder)
+		tab.Transparency = 1
 		tab.CanQuery = true
 		tab:SetAttribute("Set", set)
-		tabLook(topCanvas(tab, Desk.PAGE_PIXELS_PER_STUD, color, true), set, color, set == current, 0.2 / length)
 		table.insert(tabParts, tab)
 		table.insert(pickables, tab)
+		table.insert(tabFrames, drawTab(caseCanvas :: Frame, set, color, set == current, top, reach))
 	end
 end
 

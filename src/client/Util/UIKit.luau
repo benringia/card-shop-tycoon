@@ -57,6 +57,12 @@ end
 -- Main windows (UIKit.panel) open one at a time: showing one closes the others, so they never pile up.
 -- A panel with the "Overlay" attribute opens over another (the Rarity guide over the binder) and closes nothing.
 local mainPanels: { [Frame]: boolean } = {}
+-- A panel with a view inside it (the binder's card view): its X closes that view first. Returns true if it did.
+local backSteps: { [Frame]: () -> boolean } = {}
+
+function UIKit.setBackStep(frame: Frame, step: () -> boolean)
+	backSteps[frame] = step
+end
 
 local function closeOthers(frame: Frame)
 	if frame:GetAttribute("Overlay") then
@@ -401,6 +407,10 @@ function UIKit.panel(parent: Instance, name: string, title: string, band: string
 
 	local close = UIKit.closeButton(frame)
 	close.Activated:Connect(function()
+		local step = backSteps[frame]
+		if step and step() then
+			return
+		end
 		UIKit.closePanel(frame)
 	end)
 	-- Pops in whenever it's shown; hidden straight away (by code) it just resets
@@ -437,6 +447,7 @@ function UIKit.panel(parent: Instance, name: string, title: string, band: string
 	end)
 	frame.Destroying:Connect(function()
 		mainPanels[frame] = nil
+		backSteps[frame] = nil
 	end)
 	trackPanel(frame)
 	return frame, list

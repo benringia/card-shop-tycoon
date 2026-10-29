@@ -1222,9 +1222,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
   following camera picks up a character that respawned meanwhile). A fight starting (an elite, an aggro zone) closes
   the binder and the card view so the fight camera takes over. The card view keeps world sound at the character too. One set
-  at a time; set dividers are glossy plastic tabs in the set's colour sticking out of the case's right edge (lighter at
-  the top, a gloss strip, a dark edge, a soft shadow) with the set's name; the open set's sticks out further, has a
-  gold edge and its emblem in a round badge. Click one to open that set. Each page is a canvas of 2 x 2 pocket slots (8 cards a
+  at a time; set dividers are small flat tabs in the set's colour sticking out of the case's right edge (rounded, a thin dark
+  edge, the set's name; the open set's sticks out further with a gold edge); a tap counts over the gaps between them
+  too, so each takes a 48+ px finger on a phone. Click one to open that set. Each page is a canvas of 2 x 2 pocket slots (8 cards a
   spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
   ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Each card's face is built
   once and redrawn only when what it shows changes; the other cards (the open set's first, then every other set's)
@@ -1254,8 +1254,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   page up: it follows the pointer and, let go, finishes the turn past halfway or when flicked on (else falls back).
   A collection change while a page moves is drawn once the pages stop. **Cards:** the pocket under the mouse lights
   up (a warm edge) and rises a little, with the card's tooltip; on touch, holding a finger on a card for
-  `UIStyle.LONG_PRESS` without moving shows it until the finger lifts (one that moves is a swipe). Closing the binder while the card view is up closes the
-  card view first (it gives the camera back at once, so the binder's own restore comes last). Clicking or tapping an
+  `UIStyle.LONG_PRESS` without moving shows it until the finger lifts (one that moves is a swipe). The binder's X closes the card view back to the binder while it's up
+  (`UIKit.setBackStep`), and the binder itself otherwise; anything else closing the binder closes the card view
+  first (it gives the camera back at once, so the binder's own restore comes last). Clicking or tapping an
   owned card lifts it out of its sleeve
   (its pocket shows empty) to the middle of the screen (0.3 s, `BinderDesk.lift`; never straight at the camera, so a
   pocket near the screen's edge doesn't grow off it), then the card view opens on it (the camera moves to the card view's
@@ -1282,7 +1283,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   value; the first wears a gold BEST ribbon, the chosen one a gold outline, with room in the list so it isn't cut off); the chosen copy's Power / HP / ATK / SPD
   tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
   "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
-  says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)) and Back. Phones get a slimmer band and no pills
+  says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)), side by side; the binder's X closes it. Phones get a slimmer band and no pills
   row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
   Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
   "Who should <card> replace?" ("Pick a spot for <card>" while a slot is free) and the three slots side by side,
