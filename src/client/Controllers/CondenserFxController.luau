@@ -1,6 +1,7 @@
 --!strict
--- Spins and bobs the core (the Rotor: a crystal and floating cards) inside every Card Condenser in the shops, on
--- this client only, so it costs the server nothing. Props builds the machine; only ones near the camera move.
+-- Spins and bobs every Rotor in the shops (a Model named Rotor with a RotorY attribute): the Card Condenser's core (a
+-- crystal and floating cards) and the Grading Station's floating card and grade hologram, on this client only, so it
+-- costs the server nothing. Props builds the machines; only ones near the camera move.
 -- Numbers: Config/Town CONDENSER_LOOK.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")

@@ -237,20 +237,33 @@ return {
 		FX_DISTANCE = 80, -- only spun this close to the camera
 	},
 
-	-- The Grading Station (Props, code-built): a navy cabinet with gold trim and a front screen; on its top a
-	-- scanner bed where a card lies under a glowing scan bar, an arm holding a magnifier over it, and a gold
-	-- graded-card slab on a stand at the back. No lights. Studs; colours { r, g, b }.
+	-- The Grading Station (Props, code-built): a futuristic scan pod (the user's pick, 2026-10-30). A dark plinth with
+	-- a glowing rim, a round white body with a light band, a slot and a GRADING strip at the front; on top an emitter
+	-- under a see-through column where a gold card floats in a beam of light, spinning and bobbing (a Rotor, moved by
+	-- CondenserFxController like the Condenser's core), and a cap with the grade hologram above it. No lights.
+	-- Studs; colours { r, g, b }.
 	GRADING_LOOK = {
-		WIDTH = 5.6,
-		DEPTH = 3.6,
-		CABINET_HEIGHT = 3.2,
-		BODY = { 34, 40, 66 }, -- navy
-		TRIM = { 218, 176, 84 }, -- gold
-		GLOW = { 120, 220, 255 }, -- the scan light
-		BED = { 24, 26, 34 },
-		CARD = { 255, 214, 110 },
-		SLAB = { 235, 240, 250 },
-		SCREEN_TEXT = "🏅 GRADING",
+		PLINTH_RADIUS = 1.9,
+		PLINTH_HEIGHT = 0.5,
+		BODY_RADIUS = 1.6,
+		BODY_HEIGHT = 1.6,
+		EMITTER_RADIUS = 0.75,
+		COLUMN_RADIUS = 0.85,
+		COLUMN_HEIGHT = 2.3,
+		BEAM_RADIUS = 0.3,
+		CAP_RADIUS = 0.95,
+		CAP_HEIGHT = 0.2,
+		CARD_SIZE = { 0.55, 0.78 }, -- the floating card: width, height
+		HOLO_SIZE = 1.3, -- the grade hologram over the cap (a ring with the letter), studs across
+		SHELL = { 236, 240, 247 }, -- glossy white
+		DARK = { 28, 32, 46 }, -- plinth, emitter, slot and strip
+		GLOW = { 70, 230, 255 }, -- cyan light
+		CARD = { 255, 205, 90 },
+		GLASS = { 200, 230, 255 },
+		GLASS_TRANSPARENCY = 0.78, -- see-through plastic, not Glass (Glass hides what's behind it)
+		BEAM_TRANSPARENCY = 0.62,
+		SCREEN_TEXT = "GRADING",
+		HOLO_TEXT = "S", -- the top grade
 	},
 
 	-- A boss trophy (Props, code-built): a dark stone plinth with a gold band and a gem in the boss's element colour

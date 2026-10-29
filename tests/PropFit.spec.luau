@@ -68,6 +68,15 @@ return {
 		assert(look.BASE_RADIUS * 2 <= math.min(CONDENSER.x, CONDENSER.z), "the machine is wider than its spot")
 		assert(look.BASE_HEIGHT + look.CHAMBER_HEIGHT + look.CAP_HEIGHT <= CONDENSER.y, "the machine is taller than its box")
 		assert(look.CORE_RADIUS + 0.3 < look.CHAMBER_RADIUS, "the floating cards hit the glass")
+		-- The Grading Station: a scan pod (the user's pick, 2026-10-30) in its 6 x 6 x 4 spot
+		local pod = town.GRADING_LOOK
+		local GRADING = { x = 6, y = 6, z = 4 } -- Config/Shelves GradingStation size
+		assert(pod.PLINTH_RADIUS * 2 <= math.min(GRADING.x, GRADING.z), "the pod is wider than its spot")
+		assert(pod.BODY_RADIUS < pod.PLINTH_RADIUS, "the body overhangs the plinth")
+		local columnTop = pod.PLINTH_HEIGHT + pod.BODY_HEIGHT + pod.COLUMN_HEIGHT
+		assert(columnTop + pod.CAP_HEIGHT <= GRADING.y, "the pod is taller than its box")
+		assert(pod.CARD_SIZE[1] / 2 + 0.15 < pod.COLUMN_RADIUS, "the spinning card hits the glass")
+		assert(pod.CARD_SIZE[2] + 2 * look.BOB < pod.COLUMN_HEIGHT, "the bobbing card leaves the column (it moves like the Condenser's Rotor)")
 		expect.equal(town.SLOTS.Computer.yaw, nil, "the code-built desk faces -Z already")
 	end,
 

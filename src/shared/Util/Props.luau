@@ -207,55 +207,106 @@ local function buildCondenser(model: Model)
 	rotor.Parent = model
 end
 
--- The Grading Station (Town.GRADING_LOOK), bottom centre at the origin, front -Z: a cabinet with a screen, a scanner
--- bed on top with a card under a glowing scan bar, a magnifier on an arm, and a graded slab on a stand at the back
+-- The Grading Station (Town.GRADING_LOOK), bottom centre at the origin, front -Z: a futuristic scan pod. A dark
+-- plinth with a glowing rim, a white body with a light band, a slot and a GRADING strip; on top an emitter under a
+-- see-through column with a beam of light, where the Rotor (a gold card and the grade hologram over the cap) floats,
+-- spun and bobbed on each client by CondenserFxController
 local function buildGradingStation(model: Model)
 	local look = Town.GRADING_LOOK
 	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
-	local body, trim, glow = Props.color(look.BODY), Props.color(look.TRIM), Props.color(look.GLOW)
-	local top = look.CABINET_HEIGHT
-	local frontZ = -look.DEPTH / 2
-	-- Cabinet: navy body, gold trim round the top and base, a gold plinth strip
-	addPart(model, block, Vector3.new(look.WIDTH, top, look.DEPTH), CFrame.new(0, top / 2, 0), body, Enum.Material.Metal)
-	addPart(model, block, Vector3.new(look.WIDTH + 0.12, 0.18, look.DEPTH + 0.12), CFrame.new(0, top - 0.09, 0), trim, Enum.Material.Metal)
-	addPart(model, block, Vector3.new(look.WIDTH + 0.12, 0.3, look.DEPTH + 0.12), CFrame.new(0, 0.15, 0), trim, Enum.Material.Metal)
-	-- Front screen
-	local screen = addPart(model, block, Vector3.new(3.2, 1.1, 0.06), CFrame.new(0, top * 0.6, frontZ - 0.03), Color3.fromRGB(16, 18, 30), Enum.Material.SmoothPlastic)
-	screen.Name = "Screen"
+	local shell, dark, glow = Props.color(look.SHELL), Props.color(look.DARK), Props.color(look.GLOW)
+	local function disc(radius: number, height: number, y: number, color: Color3, material: Enum.Material): Part
+		return addPart(model, cylinder, Vector3.new(height, radius * 2, radius * 2), CFrame.new(0, y, 0) * UPRIGHT, color, material)
+	end
+	-- Plinth and body, each with a thin glowing ring just proud of its side
+	local plinthTop = look.PLINTH_HEIGHT
+	disc(look.PLINTH_RADIUS, look.PLINTH_HEIGHT, plinthTop / 2, dark, Enum.Material.SmoothPlastic)
+	disc(look.PLINTH_RADIUS + 0.03, 0.07, 0.06, glow, Enum.Material.Neon)
+	local bodyTop = plinthTop + look.BODY_HEIGHT
+	disc(look.BODY_RADIUS, look.BODY_HEIGHT, plinthTop + look.BODY_HEIGHT / 2, shell, Enum.Material.SmoothPlastic).Reflectance = 0.08
+	disc(look.BODY_RADIUS + 0.02, 0.08, bodyTop - 0.55, glow, Enum.Material.Neon)
+	-- Front: a card slot with a glow inside, and a dark strip with the name in light
+	local frontZ = -look.BODY_RADIUS + 0.02
+	addPart(model, block, Vector3.new(0.85, 0.12, 0.1), CFrame.new(0, bodyTop - 0.28, frontZ), dark, Enum.Material.SmoothPlastic)
+	addPart(model, block, Vector3.new(0.72, 0.04, 0.11), CFrame.new(0, bodyTop - 0.28, frontZ - 0.005), glow, Enum.Material.Neon)
+	-- the strip is flat and the body round: its middle stands just proud of the curve so the body can't hide it
+	local strip = addPart(model, block, Vector3.new(1.1, 0.36, 0.08), CFrame.new(0, plinthTop + 0.45, -look.BODY_RADIUS - 0.03), dark, Enum.Material.SmoothPlastic)
+	strip.Name = "Screen"
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
-	gui.CanvasSize = Vector2.new(400, 140)
+	gui.CanvasSize = Vector2.new(330, 108)
 	gui.LightInfluence = 0
-	gui.Parent = screen
+	gui.Parent = strip
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.TextColor3 = trim:Lerp(Color3.new(1, 1, 1), 0.35)
+	label.TextColor3 = glow
 	label.Text = look.SCREEN_TEXT
 	label.Parent = gui
-	-- Scanner bed on top, a card lying on it under a glowing scan bar held by two gold posts
-	local bedY = top + 0.12
-	addPart(model, block, Vector3.new(2.6, 0.24, 2), CFrame.new(-0.6, bedY, -0.2), Props.color(look.BED), Enum.Material.SmoothPlastic)
-	addPart(model, block, Vector3.new(0.9, 0.04, 1.25), CFrame.new(-0.6, bedY + 0.14, -0.2), Props.color(look.CARD), Enum.Material.SmoothPlastic).Name = "Card"
-	for _, side in { -1, 1 } do
-		addPart(model, block, Vector3.new(0.18, 0.9, 0.18), CFrame.new(-0.6 + side * 1.2, bedY + 0.55, -0.2), trim, Enum.Material.Metal)
-	end
-	addPart(model, block, Vector3.new(2.6, 0.16, 0.22), CFrame.new(-0.6, bedY + 1.05, -0.2), trim, Enum.Material.Metal)
-	addPart(model, block, Vector3.new(2.3, 0.06, 0.1), CFrame.new(-0.6, bedY + 0.95, -0.2), glow, Enum.Material.Neon).Name = "ScanBar"
-	-- Magnifier on an arm over the right of the bed
-	addPart(model, block, Vector3.new(0.16, 1.4, 0.16), CFrame.new(1.7, top + 0.7, 0.6), trim, Enum.Material.Metal)
-	addPart(model, block, Vector3.new(0.12, 0.12, 1.1), CFrame.new(1.7, top + 1.4, 0.1), trim, Enum.Material.Metal)
-	addPart(model, cylinder, Vector3.new(0.12, 0.9, 0.9), CFrame.new(1.7, top + 1.25, -0.45) * UPRIGHT, trim, Enum.Material.Metal)
-	local lens = addPart(model, cylinder, Vector3.new(0.06, 0.75, 0.75), CFrame.new(1.7, top + 1.25, -0.45) * UPRIGHT, Color3.fromRGB(200, 230, 255), Enum.Material.Glass)
-	lens.Transparency = 0.5
-	-- A graded slab (a card in a clear case with a gold label) on a stand at the back
-	addPart(model, block, Vector3.new(0.5, 0.5, 0.3), CFrame.new(1.4, top + 0.25, 1.3), body, Enum.Material.Metal)
-	local slab = addPart(model, block, Vector3.new(1.1, 1.6, 0.14), CFrame.new(1.4, top + 1.3, 1.3) * CFrame.Angles(math.rad(-12), 0, 0), Props.color(look.SLAB), Enum.Material.Glass)
-	slab.Transparency = 0.25
-	addPart(model, block, Vector3.new(0.85, 0.3, 0.16), CFrame.new(1.4, top + 1.85, 1.31) * CFrame.Angles(math.rad(-12), 0, 0), trim, Enum.Material.SmoothPlastic)
-	addPart(model, block, Vector3.new(0.75, 1, 0.16), CFrame.new(1.4, top + 1.15, 1.31) * CFrame.Angles(math.rad(-12), 0, 0), Props.color(look.CARD), Enum.Material.SmoothPlastic)
+	-- The emitter, the see-through column with its beam, and the cap
+	disc(look.EMITTER_RADIUS, 0.14, bodyTop + 0.07, dark, Enum.Material.SmoothPlastic)
+	disc(look.EMITTER_RADIUS + 0.04, 0.05, bodyTop + 0.12, glow, Enum.Material.Neon)
+	local columnMid = bodyTop + look.COLUMN_HEIGHT / 2
+	local column = disc(look.COLUMN_RADIUS, look.COLUMN_HEIGHT, columnMid, Props.color(look.GLASS), Enum.Material.SmoothPlastic)
+	column.Transparency = look.GLASS_TRANSPARENCY
+	column.Reflectance = 0.15
+	local beam = disc(look.BEAM_RADIUS, look.COLUMN_HEIGHT - 0.1, columnMid, glow, Enum.Material.Neon)
+	beam.Transparency = look.BEAM_TRANSPARENCY
+	local capY = bodyTop + look.COLUMN_HEIGHT + look.CAP_HEIGHT / 2
+	disc(look.CAP_RADIUS, look.CAP_HEIGHT, capY, shell, Enum.Material.SmoothPlastic)
+	disc(look.CAP_RADIUS + 0.03, 0.05, capY - look.CAP_HEIGHT / 2 - 0.02, glow, Enum.Material.Neon)
+	-- Rotor: the floating card, and the grade hologram over the cap (a billboard, so the spin doesn't turn it)
+	local rotor = Instance.new("Model")
+	rotor.Name = "Rotor"
+	rotor:SetAttribute("RotorY", columnMid)
+	local card = Instance.new("Part")
+	card.Name = "Card"
+	card.Size = Vector3.new(look.CARD_SIZE[1], look.CARD_SIZE[2], 0.03)
+	card.CFrame = CFrame.new(0, columnMid, 0)
+	card.Color = Props.color(look.CARD)
+	card.Material = Enum.Material.Neon
+	card.Parent = rotor
+	local holo = Instance.new("Part")
+	holo.Name = "Hologram"
+	holo.Size = Vector3.new(0.2, 0.2, 0.2)
+	holo.Transparency = 1
+	holo.CFrame = CFrame.new(0, capY + look.CAP_HEIGHT / 2 + look.HOLO_SIZE / 2 + 0.15, 0)
+	holo.Parent = rotor
+	local board = Instance.new("BillboardGui")
+	board.Size = UDim2.fromScale(look.HOLO_SIZE, look.HOLO_SIZE)
+	board.LightInfluence = 0
+	board.MaxDistance = 90
+	board.Parent = holo
+	local ring = Instance.new("Frame")
+	ring.Size = UDim2.fromScale(0.9, 0.9)
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.BackgroundColor3 = glow
+	ring.BackgroundTransparency = 0.85
+	ring.Parent = board
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = ring
+	local edge = Instance.new("UIStroke")
+	edge.Color = glow
+	edge.Thickness = 3
+	edge.Transparency = 0.15
+	edge.Parent = ring
+	local letter = Instance.new("TextLabel")
+	letter.BackgroundTransparency = 1
+	letter.Size = UDim2.fromScale(0.7, 0.7)
+	letter.AnchorPoint = Vector2.new(0.5, 0.5)
+	letter.Position = UDim2.fromScale(0.5, 0.5)
+	letter.Font = Enum.Font.FredokaOne
+	letter.TextScaled = true
+	letter.TextColor3 = glow:Lerp(Color3.new(1, 1, 1), 0.35)
+	letter.TextTransparency = 0.1
+	letter.Text = look.HOLO_TEXT
+	letter.Parent = ring
+	rotor.PrimaryPart = card
+	rotor.Parent = model
 end
 
 -- A boss trophy (Town.TROPHY_LOOK), bottom centre at the origin, front -Z: a stone plinth with a gold band and a
