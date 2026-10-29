@@ -359,8 +359,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   show the 3D pack and deck box turned a little (`Util/ProductPicture`).
 - **Each tap flips the top card** (`Util/OpeningCards`, `PackOpening.FLIP`), hit slot last: it lifts and turns over
   with a little overshoot, landing big in the middle (its back is hidden once it's past halfway). The next tap zips it
-  into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next ("Tap
-  for the next card"). Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
+  into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next. Only the
+  first flip has a hint ("Tap to flip the first card"); after that the bottom stays clear, since on phones a hint there
+  covers the row's prices. Every pull is celebrated by rarity (`Config/CardReveal`, `Util/RevealRules`):
   - **Tease** before the flip: the face-down card glows in its rarity colour, rises and shakes harder and harder
     (Rare 0.5s · Very Rare 0.8s · Epic 1.2s · Legendary 2s; Commons flip at once). Epic and up are cinematic: the
     bars slide in, the stage dims and the camera eases in.
@@ -374,7 +375,7 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   - **Foil** adds a holo shimmer on the face, at least a 0.6s tease and "FOIL" in front of the banner ("FOIL RARE!",
     a plain foil "FOIL!").
   - Big pulls still get the server-wide chat announcement ("Ben pulled a FOIL Solarion!").
-- **Results** ("Tap to see your cards", `PackOpening.RESULTS`, `Util/OpeningResults`): the row's cards fly one by one
+- **Results** (a tap after the last card, `PackOpening.RESULTS`, `Util/OpeningResults`): the row's cards fly one by one
   to a lineup in the middle (a quick arc and spin each, 0.085s apart), each landing with a shine and a ring of glints,
   then float and twinkle. A yellow NEW ribbon marks cards the player didn't own before (binder, beasts or on display;
   the server checks before adding them, `Util/NewPulls`, only the first copy in a pack); pills pop in on top (Your

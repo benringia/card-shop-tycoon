@@ -158,8 +158,8 @@ local function flipNext(gen: number)
 	end
 	local pull = pulls[index]
 	announce(pull)
+	-- No hint from here on: the first one taught the tap, and on phones a bottom hint covers the row's prices
 	finished(if pull.plan.spotlight then PackOpening.FLIP.SPOTLIGHT_LOCK else 0)
-	OpeningResults.hint(if index < #pulls then "Tap for the next card" else "Tap to see your cards", true)
 end
 
 local function showResults(gen: number)
