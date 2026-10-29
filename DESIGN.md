@@ -1214,7 +1214,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
   front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
   leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
-  painted warm lamp pool, darker edges, a black leather case with a stitched border, dark pages; a chrome ring rail
+  painted warm lamp pool, darker edges, a black leather case with a stitched border, dark pages (the binder's own
+  surfaces drawn a little brighter under the lamp, `BINDER_BRIGHTNESS`); a chrome ring rail
   with three rings down the spine. It looks the same at night and at every graphics quality. Built once at start
   and left in the world on its stage (out of sight from the ground), so opening only moves the camera; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
   world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
@@ -1248,7 +1249,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   page up: it follows the pointer and, let go, finishes the turn past halfway or when flicked on (else falls back).
   A collection change while a page moves is drawn once the pages stop. **Cards:** the pocket under the mouse lights
   up (a warm edge) and rises a little, with the card's tooltip; on touch, holding a finger on a card for
-  `UIStyle.LONG_PRESS` shows it until the finger lifts. Clicking or tapping an owned card lifts it out of its sleeve
+  `UIStyle.LONG_PRESS` shows it until the finger lifts. Closing the binder while the card view is up closes the
+  card view first (it gives the camera back at once, so the binder's own restore comes last). Clicking or tapping an
+  owned card lifts it out of its sleeve
   toward the camera (0.3 s, `BinderDesk.lift`), then the card view opens on it (the camera moves to the card view's
   stage at the normal field of view); closing the card view brings the binder back on the same spread. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
   strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
