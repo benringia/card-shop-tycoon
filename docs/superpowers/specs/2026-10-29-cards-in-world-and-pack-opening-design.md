@@ -136,8 +136,9 @@ reused for every pack type:
 - Both case kinds (Glass Showcase, Collector Case) change. Each of the 6 cards stands **upright, floating** over its
   slot, slowly spinning round its vertical axis (front, edge, the card back, edge, front), bobbing a little. A soft
   light beam in its **rarity colour** rises from a glowing pad under it. The price stays readable under the card.
-- **Layout inside the existing 6 x 4 x 2 footprint:** 6 spinning cards need room not to touch: two staggered rows of
-  3, the back row raised so it shows over the front. *(Builder may shrink the cards a little if they still touch.)*
+- **Layout inside the existing 6 x 4 x 2 footprint:** 6 spinning cards need room not to touch: two rows of 3 a stud
+  apart front to back, the back row raised so it shows over the front, the cards at 0.8 of today's size (a staggered
+  back row doesn't fit the 6-stud width; found while planning).
 - **The case itself:** taller glass on a dark base with a light strip along its top edge (the Glow Arcade look), in
   each kind's colours (Collector Case: navy and gold, as today's `propColors`). Code-built like the other shelves, or a
   new prop model; footprint unchanged.
