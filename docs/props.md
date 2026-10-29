@@ -17,7 +17,7 @@ shows its stand-in.
 | `Terminal` | the POS terminal at the left end of each shop's checkout counter, full depth; screen toward the cashier (+Z) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Computer` | the order computer: a code-built modern workstation (`built`: white desk on black legs, a widescreen showing ORDER STOCK, keyboard, plant, drawers, office chair); a model file would replace it; moves with it | fits 10 x 5.5 x 6 | (its own hitbox) |
-| `Condenser` | the Card Condenser: code-built (`built`, `CONDENSER_LOOK`); its Rotor model spins on each client | fills 6 x 7 x 6 | (its own hitbox) |
+| `Condenser` | the Card Condenser: code-built (`built`, `CONDENSER_LOOK`), in the scan pod's style; its Rotors (the crystal with three cards, two rings of small cards) spin on each client | fills 6 x 7 x 6 | (its own hitbox) |
 | `WallShelf` | the Wall Shelf: code-built (`built`, Util/ShelfLooks) | fills 8 x 7 x 2 | (its own hitbox) |
 | `HookRack` | the Accessory Hook: a code-built pegboard with hooks (`built`) | fills 4 x 7 x 2 | (its own hitbox) |
 | `DisplayRack` | the Big Display Rack: code-built, double-sided (`built`) | fills 8 x 7 x 4 | (its own hitbox) |

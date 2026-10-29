@@ -96,10 +96,12 @@ oak middle divider, a price rail and header text on both faces). Glass Showcase 
 the Collector Case's strip is gold, `propColors`). Their cards stand upright in two rows, the back row a stud behind
 and raised (`Util/ShowcaseLayout.uprightSlots`, `Config/CaseLayout`), and each turns slowly and bobs over a small
 glowing pad with a beam of light in its rarity colour (`CaseSpinController`, each client, within 80 studs,
-`Showcase.SPIN`); the card's back shows when it turns away. Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`: a charcoal
-plinth with a glowing violet ring, a "✨ CONDENSER" screen and a card slot, a glass chamber in which a violet crystal
-ringed by three gold cards spins and bobs (`CondenserFxController`, each client, within 80 studs), charcoal side pillars
-with light strips and a cap; no lights). The delivery spot is outside on the sidewalk, left of the doors (`Town.DELIVERY`, built in code): a
+`Showcase.SPIN`); the card's back shows when it turns away. Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`, restyled
+2026-10-30 to match the Grading Station's scan pod: a dark plinth with a violet rim, a white body with a light band, a
+glowing card slot and a "✨ CONDENSER" strip, a see-through chamber with a glowing floor in which a violet crystal
+ringed by three gold cards spins and bobs, with a ring of small cards below it and one above it turning the other
+way, out of step; a white cap with a violet ring. The rings are Rotors moved by `CondenserFxController` on each client
+within 80 studs, each with its own `Spin` and `Phase`; no lights). The delivery spot is outside on the sidewalk, left of the doors (`Town.DELIVERY`, built in code): a
 concrete platform level with the shop floor, a charcoal mat with a yellow safety border, "📦 DELIVERIES" on its street
 face and two black bollards with yellow bands at its street corners; boxes stand on the mat, and stocker pets fetch
 them from its doorway side. Delivery boxes are branded cases (the user's pick of three concepts, 2026-10-30;
@@ -117,7 +119,9 @@ by pack and boxes go away (`ShelfStock.boxFill`, `Town.SHELF_STOCK.DISPLAY`). Th
 or more on every rack (the user's "Bigger", 2026-10-30; Lune-tested), filling the level up to just under the plate
 above. Deck boxes stand as little 3D deck
 boxes with their lids (`PackModels.deckBox`). The models are Blender builds in `assets/packs` (docs/packs.md);
-without them code-built stand-ins show. Card Sleeves (Products `stockLook = "Sleeves"`) show as 2 retail
+without them code-built stand-ins show. First Spark Booster Boxes (Products `stockLook = "Booster"`) stand as 2
+sealed booster boxes per slot, stacked, printed like their delivery case (`Util/BrandBox`, `SHELF_STOCK.BOOSTERS`;
+Products `art` gives them the First Spark phoenix). Card Sleeves (Products `stockLook = "Sleeves"`) show as 2 retail
 sleeve packets per slot, leaning back: a white backing card with a header tab and hang hole, the sleeves behind a clear
 window and a strip in the product's blue; each slot takes the next colour of `SHELF_STOCK.SLEEVES.COLORS`, so a shelf
 reads as an assortment. Each stocked row has a yellow price tag with the
@@ -623,10 +627,11 @@ Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to yo
 
 The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 10,000 packs, 5.8).
 A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`), a code-built
-futuristic scan pod (the user's pick of six concepts, 2026-10-30; `Town.GRADING_LOOK`): a dark plinth with a cyan
-rim, a white body with a light band, a slot and a GRADING strip, and on top a see-through column where a gold card
-floats in a beam of light, spinning and bobbing (a Rotor moved on each client by `CondenserFxController`), under a cap
-with a hologram ring showing "S". Press E on it: pick a card and the
+futuristic scan pod (the user's pick of six concepts, 2026-10-30, then made bigger: a 6 x 6 spot, about 9 studs tall
+with its hologram; `Town.GRADING_LOOK`): a dark plinth with a cyan rim, a white body with a light band, a slot and a
+GRADING strip, and on top a see-through column where a gold card floats in a beam of light, spinning and bobbing, with
+a ring of small cards below it and one above it circling the other way (Rotors moved on each client by
+`CondenserFxController`), under a cap with a hologram ring showing "S". Press E on it: pick a card and the
 copy to grade, see the next grade, its cost, which duplicates go, Power and value before -> after and the whole way to
 Grade S, then Grade Up. One step per press (C -> B -> A -> S). Duplicates are plain copies of the same card, used in
 the Condenser's order (normals weakest grade first, then foils; never levelled or starred copies, never the plain main
