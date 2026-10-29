@@ -3,8 +3,9 @@
 -- Each column: the card, name, grade, level and stars, its Power, HP / ATK / SPD bars, the perk it gives while
 -- summoned, a resting timer after fainting, and Summon (or the green Summoned, which unsummons), XP Tonic (with how
 -- many you hold) and Remove. The summoned card's column glows green with a SUMMONED tag. The header shows who is
--- summoned and your PvP record. One card is summoned at a time: it follows you around and its perk works. Cards are
--- added from the binder card view. The server sends PartyChanged on every change.
+-- summoned and your PvP record. A legend along the bottom names the stat icons, and every icon without a label has
+-- a word tooltip (Util/Tooltip: hover, or hold a finger on it). One card is summoned at a time: it follows you around
+-- and its perk works. Cards are added from the binder card view. The server sends PartyChanged on every change.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -27,6 +29,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -40,12 +43,16 @@ local WHITE = Color3.new(1, 1, 1)
 local MAX_SIZE = Vector2.new(780, 500)
 local GAP = 8
 local CHIP_HEIGHT = 28
+local LEGEND_HEIGHT = 24
+local PHONE_LEGEND_HEIGHT = 20
+local LEGEND = { { "Power", "Power" }, { "Hp", "Health" }, { "Atk", "Attack" }, { "Spd", "Speed" } }
 
 local PartyController = {}
 
 local panel: Frame
 local columns: Frame
 local chips: Frame
+local legend: Frame
 local state: PartyState? = nil
 local restLabels: { [string]: TextLabel } = {} -- beastId -> its column's resting line
 local tonicCount = 0 -- XP Tonics held (from ItemsChanged)
@@ -174,13 +181,19 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	name.Size = UDim2.new(1, 0, 0, UIKit.textSize(if phone then "body" else "name") + 4)
 	name.TextTruncate = Enum.TextTruncate.AtEnd
 	local meta = strip(info, 2, 20, 4)
-	UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C).Size = UDim2.fromOffset(0, 18)
+	local grade = UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
+	grade.Size = UDim2.fromOffset(0, 18)
+	Tooltip.attach(grade, CardTips.gradeText(beast.grade))
 	text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true).LayoutOrder = 2
 	if not phone then
-		UIKit.stars(info, beast.stars, Beasts.MAX_STARS, 14).LayoutOrder = 3
+		local stars = UIKit.stars(info, beast.stars, Beasts.MAX_STARS, 14)
+		stars.LayoutOrder = 3
+		Tooltip.icon(stars, "Star")
 	end
 	local power = strip(info, 4, UIKit.textSize("number") + 4, 4)
-	Icon.make(power, "Power", UDim2.fromOffset(22, 22)).ZIndex = power.ZIndex + 1
+	local powerIcon = Icon.make(power, "Power", UDim2.fromOffset(22, 22))
+	powerIcon.ZIndex = power.ZIndex + 1
+	Tooltip.icon(powerIcon, "Power")
 	text(power, tostring(math.floor(BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))), UIKit.textSize(if phone then "body" else "number"), UIStyle.POWER, true).LayoutOrder = 2
 
 	-- HP, ATK, SPD against the strongest card's
@@ -189,9 +202,10 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	for index, stat in { { "Hp", stats.hp, reference.hp }, { "Atk", stats.atk, reference.atk }, { "Spd", stats.spd, reference.spd } } do
 		local row = UIKit.statRow(stack, stat[1] :: string, CompareRules.share(stat[2] :: number, stat[3] :: number))
 		row.LayoutOrder = 1 + index
+		local picture = row:FindFirstChild("Icon") :: Frame
+		Tooltip.icon(picture, stat[1] :: string)
 		if phone then -- short screens: slimmer rows so the perk still fits above the buttons
 			row.Size = UDim2.new(1, 0, 0, 16)
-			local picture = row:FindFirstChild("Icon") :: Frame
 			picture.Size = UDim2.fromOffset(16, 16)
 		end
 	end
@@ -199,7 +213,9 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	-- The perk while summoned, then the resting line (filled by updateRest)
 	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
 	local perkLine = strip(stack, 6, if phone then 26 else 36, 5)
-	Icon.make(perkLine, card.element, UDim2.fromOffset(20, 20)).ZIndex = perkLine.ZIndex + 1
+	local elementIcon = Icon.make(perkLine, card.element, UDim2.fromOffset(20, 20))
+	elementIcon.ZIndex = perkLine.ZIndex + 1
+	Tooltip.icon(elementIcon, card.element)
 	local perkText = text(perkLine, if perk then PartyRules.describe(perk) else "No perk", UIKit.textSize("small"), if perk then UIStyle.HINT else UIKit.Colors.Subtext)
 	perkText.LayoutOrder = 2
 	perkText.AutomaticSize = Enum.AutomaticSize.None
@@ -233,10 +249,13 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 		local tonic = UIKit.iconButton(buttons, "", "XpTonic", UIKit.Colors.Secondary)
 		tonic.LayoutOrder = 2
 		tonic.Size = UDim2.fromOffset(small, small)
-		tonic.ZIndex = buttons.ZIndex + 1
+		tonic.ZIndex = buttons.ZIndex + 2 -- above Remove, so the count badge poking out isn't hidden under it
+		local tonicInfo = Items.ITEMS.xpTonic
+		Tooltip.attach(tonic, `{tonicInfo.name}: {tonicInfo.description}`)
+		-- How many you hold: a badge on the top right corner
 		local count = UIKit.pill(tonic, tostring(tonicCount), UIStyle.GOLD)
-		count.AnchorPoint = Vector2.new(1, 1)
-		count.Position = UDim2.new(1, 6, 1, 4)
+		count.AnchorPoint = Vector2.new(1, 0)
+		count.Position = UDim2.new(1, 6, 0, -6)
 		count.Size = UDim2.fromOffset(0, 18)
 		count.ZIndex = tonic.ZIndex + 3
 		tonic.Activated:Connect(function()
@@ -247,6 +266,7 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	remove.LayoutOrder = 3
 	remove.Size = UDim2.fromOffset(small, small)
 	remove.ZIndex = buttons.ZIndex + 1
+	Tooltip.icon(remove, "Remove")
 	remove.Activated:Connect(function()
 		Remotes.SetPartySlot:FireServer(slot, nil)
 	end)
@@ -322,8 +342,12 @@ local function layout()
 	local phone = UIKit.isPhone()
 	panel.Size = if phone then UDim2.fromScale(0.97, 0.98) else UDim2.fromScale(0.92, 0.86)
 	local top = if phone then 10 else 18
+	local bottom = if phone then 6 else 10
+	local legendHeight = if phone then PHONE_LEGEND_HEIGHT else LEGEND_HEIGHT
 	columns.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + top)
-	columns.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + top + (if phone then 10 else 16)))
+	columns.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + top + legendHeight + 2 * bottom))
+	legend.Position = UDim2.new(0.5, 0, 1, -bottom)
+	legend.Size = UDim2.new(1, -24, 0, legendHeight)
 	local limit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
 		limit.MaxSize = MAX_SIZE
@@ -368,6 +392,25 @@ function PartyController.Start()
 	columns.ZIndex = panel.ZIndex + 1
 	columns.Parent = panel
 	list(columns, true, GAP)
+
+	-- What the stat icons mean, once, along the bottom (each icon also has its tooltip)
+	legend = Instance.new("Frame")
+	legend.Name = "Legend"
+	legend.AnchorPoint = Vector2.new(0.5, 1)
+	legend.BackgroundTransparency = 1
+	legend.ZIndex = panel.ZIndex + 1
+	legend.Parent = panel
+	local legendList = list(legend, true, 14)
+	legendList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	for index, entry in LEGEND do
+		local item = strip(legend, index, LEGEND_HEIGHT, 4)
+		item.AutomaticSize = Enum.AutomaticSize.X
+		item.Size = UDim2.fromScale(0, 1)
+		local picture = Icon.make(item, entry[1], UDim2.fromOffset(18, 18))
+		picture.ZIndex = item.ZIndex + 1
+		Tooltip.icon(picture, entry[1])
+		text(item, entry[2], UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
+	end
 
 	Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, onClick = toggle })
 

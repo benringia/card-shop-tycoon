@@ -73,6 +73,9 @@ local summoned: number? = nil
 local tip: Frame -- the hover / long-press tooltip over the bar
 local tipSlot: number? = nil -- the slot it describes
 local swallowTap: { [number]: boolean } = {} -- a long press shows the tooltip instead of summoning
+local partyKnown = false -- the first PartyChanged is the party loading, not a change to announce
+local pendingChanges: { PartyRules.Change } = {}
+local announcing = false
 
 -- Above its slot (centred, kept on screen)
 local function placeTip()
@@ -417,6 +420,61 @@ local function render()
 	end
 end
 
+local function nameOf(beastId: string?): string?
+	local beast = if beastId then BinderController.GetBeasts()[beastId] else nil
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	return if card then card.name else nil
+end
+
+-- A card joining the party: its slot pops up and settles, the rim flashing white
+local function celebrate(slot: number)
+	local view = slotViews[slot]
+	if not view then
+		return
+	end
+	local rest = if summoned == slot then BAR.LIFT else 1
+	local half = BAR.POP_SECONDS / 2
+	local up = TweenService:Create(view.lift, TweenInfo.new(half, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = rest * BAR.POP })
+	up.Completed:Once(function()
+		TweenService:Create(view.lift, TweenInfo.new(half, Enum.EasingStyle.Back), { Scale = rest }):Play()
+	end)
+	up:Play()
+	view.rimShade.Color = ColorSequence.new(WHITE)
+	task.delay(BAR.POP_SECONDS, render) -- back to its rarity colours
+end
+
+-- Toasts the party's changes ("Cindercub swapped in for Ashbeak!") once the cards' names are known: a card added
+-- from a plain copy is new to the binder until its CollectionChanged arrives, so it waits up to BAR.NAME_WAIT
+local function announce()
+	if announcing then
+		return
+	end
+	announcing = true
+	local waited = 0
+	while waited < BAR.NAME_WAIT do
+		local missing = false
+		for _, change in pendingChanges do
+			missing = missing or (change.after ~= nil and nameOf(change.after) == nil) or (change.before ~= nil and nameOf(change.before) == nil)
+		end
+		if not missing then
+			break
+		end
+		waited += task.wait(0.2)
+	end
+	local messages = {}
+	for _, change in pendingChanges do
+		table.insert(messages, PartyRules.changeText(change.kind, nameOf(change.after), nameOf(change.before)))
+		if change.after then
+			celebrate(change.slot)
+		end
+	end
+	pendingChanges = {}
+	announcing = false
+	if #messages > 0 then
+		UIController.Notify(table.concat(messages, "  "))
+	end
+end
+
 function PartyBarController.Start()
 	-- The tray: a dark rounded bar like the money pills beside it
 	local bar = Instance.new("Frame")
@@ -515,6 +573,7 @@ function PartyBarController.Start()
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then
 			return
 		end
+		local before = slots
 		slots = {}
 		for _, entry in payload.slots do
 			if typeof(entry) == "table" and typeof(entry.slot) == "number" and typeof(entry.beastId) == "string" then
@@ -523,6 +582,15 @@ function PartyBarController.Start()
 		end
 		summoned = if typeof(payload.summoned) == "number" then payload.summoned else nil
 		render()
+		if partyKnown then
+			for _, change in PartyRules.changes(before, slots, Party.PARTY_SIZE) do
+				table.insert(pendingChanges, change)
+			end
+			if #pendingChanges > 0 then
+				task.spawn(announce)
+			end
+		end
+		partyKnown = true
 		local open = tipSlot
 		if open then
 			showTip(open)

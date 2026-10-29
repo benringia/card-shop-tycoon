@@ -52,4 +52,12 @@ function UiLayout.inspectorCard(view: Size, fovDeg: number, distance: number, ca
 	return offset, { x = left, y = view.h / 2 - offsetY * pixelsPerStud - height / 2, w = width, h = height }
 end
 
+-- The card view: the 3D card (cardW) and its info panel (panelW) side by side, centred on the screen as a pair, the
+-- card never closer than margin to the left edge; when the pair doesn't fit, the panel keeps margin from the right
+-- edge first. Returns the panel's left edge.
+function UiLayout.detailPanelLeft(viewW: number, cardW: number, gap: number, panelW: number, margin: number): number
+	local centred = (viewW - (cardW + gap + panelW)) / 2 + cardW + gap
+	return math.min(math.max(centred, margin + cardW + gap), viewW - margin - panelW)
+end
+
 return UiLayout

@@ -268,6 +268,18 @@ function CardInspectorController.SetCardRight(px: number)
 	cardRight = px
 end
 
+-- How wide the card shows on screen (pixels): it sizes with the camera, wherever it sits
+function CardInspectorController.GetCardWidth(): number
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return 0
+	end
+	local view = camera.ViewportSize
+	local card = { w = Inspector.CARD_SIZE.X, h = Inspector.CARD_SIZE.Y }
+	local _, rect = UiLayout.inspectorCard({ w = view.X, h = view.Y }, camera.FieldOfView, Inspector.DISTANCE, card, Inspector.OFFSET_Y, view.X, 0)
+	return rect.w
+end
+
 -- Where the card shows on screen (GUI pixels, below the top bar inset), or nil while closed
 function CardInspectorController.GetCardRect(): UiLayout.Rect?
 	return if cardPart then cardRect else nil

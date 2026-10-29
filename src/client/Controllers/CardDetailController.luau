@@ -1,9 +1,11 @@
 --!strict
 -- The binder's card view (spec 2026-10-29-collection-screens-ui-design.md 4.2): the 3D card on the left
 -- (CardInspectorController: tilt, Flip, Legendary aura, a BEST COPY ribbon while your best copy shows), and right
--- beside it a panel in the style kit: the name in a blue band with the worth, rarity / element / number / copies
+-- beside it (the pair centred on the screen) a panel in the style kit: the name in a blue band with the worth, rarity / element / number / copies
 -- pills, "Your copies" best first (the first one wears a gold BEST ribbon), the chosen copy's Power, HP, ATK and SPD
--- tiles, its XP and next-star bars, and Add to party / Give a job / Back (a disabled button says why). The binder
+-- tiles, its XP and next-star bars, and Add to party / Give a job / Back (a disabled button says why). Icons without
+-- a label have word tooltips (Util/Tooltip). Add to party opens a chooser: "Who should X replace?" over the three
+-- slot cards (each saying how much more or less Power X has), then the comparison for a filled slot. The binder
 -- owns the data (Source) and builds this once into its panel.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,6 +22,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -29,6 +32,7 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local CopyCompare = require(ClientUtil:WaitForChild("CopyCompare"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local CardInspectorController = require(Controllers:WaitForChild("CardInspectorController"))
 
 type Card = typeof(Cards.List[1])
@@ -59,6 +63,10 @@ local PHONE_ROW_HEIGHT = 48 -- a tap target, never smaller
 local PHONE_HEADER = 44 -- phones: a slimmer band, no pills row (the card face shows rarity and element) and no list title
 local LIST_TOP = 54 -- the copies list starts under the pills and its title
 local CARD_GAP = 16 -- between the 3D card and the panel
+local LIST_PAD = 4 -- room inside the copies list for the chosen row's outline
+local CHOOSER_BUTTON = 130 -- the chooser's Cancel / Back: compact, on the right
+local SLOT_ART_MIN, SLOT_ART_MAX = 52, 150 -- the chooser's slot card heights
+local ART_ASPECT = 1.4
 
 local player = Players.LocalPlayer
 
@@ -87,6 +95,7 @@ local slotsHolder: Frame -- the three party slots, each with what swapping in wo
 local compareHolder: Frame -- the comparison against one slot's card
 local swapButton: TextButton
 local chooserCancel: TextButton
+local chooserHint: TextLabel
 local compareSlot: number? = nil
 local selectedEntry: Entry? = nil
 local partySlots: { [number]: string } = {}
@@ -148,12 +157,16 @@ local function layout()
 	if not camera or not panel then
 		return
 	end
-	local view = camera.ViewportSize
+	local screen = panel:FindFirstAncestorOfClass("ScreenGui")
+	local view = if screen then screen.AbsoluteSize else camera.ViewportSize
 	local phone = UIKit.isPhone()
 	local width = if phone then math.min(440, view.X * 0.56) else math.min(520, view.X * 0.52)
 	local right = if phone then PHONE_RIGHT else 16
 	local top = if phone then 8 else PANEL_TOP
-	panel.Position = UDim2.new(1, -right, 0, top)
+	-- The 3D card and the panel centred as a pair (wide screens had an empty half on the left)
+	local left = UiLayout.detailPanelLeft(view.X, CardInspectorController.GetCardWidth(), CARD_GAP, width, right)
+	local parentX = (panel.Parent :: GuiObject).AbsolutePosition.X - (if screen then screen.AbsolutePosition.X else 0)
+	panel.Position = UDim2.new(0, left + width - parentX, 0, top)
 	panel.Size = UDim2.new(0, width, 1, -(top + 12))
 	local band = if phone then PHONE_HEADER else UIKit.HEADER_HEIGHT
 	header.Size = UDim2.new(1, 0, 0, band)
@@ -220,7 +233,7 @@ end
 local function addCopyRow(entry: Entry, order: number, best: boolean)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
-	row.Size = UDim2.new(1, -8, 0, rowHeight)
+	row.Size = UDim2.new(1, 0, 0, rowHeight)
 	row.BackgroundColor3 = UIStyle.ROW
 	row.AutoButtonColor = true
 	row.Text = ""
@@ -241,13 +254,18 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	if best then
 		local ribbon = UIKit.pill(left, "BEST", UIStyle.GOLD, nil, "Best")
 		ribbon.LayoutOrder = 0
+		Tooltip.icon(ribbon, "Best")
 	end
-	UIKit.pill(left, entry.grade, UIStyle.GRADES[entry.grade] or UIStyle.GRADES.C).LayoutOrder = 1
+	local grade = UIKit.pill(left, entry.grade, UIStyle.GRADES[entry.grade] or UIStyle.GRADES.C)
+	grade.LayoutOrder = 1
+	Tooltip.attach(grade, CardTips.gradeText(entry.grade))
 	local growth = growthOf(entry)
 	local level = text(left, `Lv {growth.level}`, UIKit.textSize("body"), WHITE, true, true)
 	level.AutomaticSize = Enum.AutomaticSize.X
 	level.LayoutOrder = 2
-	UIKit.stars(left, growth.stars, Beasts.MAX_STARS, 14).LayoutOrder = 3
+	local stars = UIKit.stars(left, growth.stars, Beasts.MAX_STARS, 14)
+	stars.LayoutOrder = 3
+	Tooltip.icon(stars, "Star")
 	if entry.foil then
 		UIKit.pill(left, "FOIL", Color3.fromRGB(150, 110, 255)).LayoutOrder = 4
 	end
@@ -263,7 +281,9 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	powerLine.Size = UDim2.fromOffset(130, 22)
 	powerLine.ZIndex = row.ZIndex;
 	(powerLine:FindFirstChildOfClass("UIListLayout") :: UIListLayout).HorizontalAlignment = Enum.HorizontalAlignment.Right
-	Icon.make(powerLine, "Power", UDim2.fromOffset(18, 18)).ZIndex = row.ZIndex + 1
+	local powerIcon = Icon.make(powerLine, "Power", UDim2.fromOffset(18, 18))
+	powerIcon.ZIndex = row.ZIndex + 1
+	Tooltip.icon(powerIcon, "Power")
 	text(powerLine, tostring(math.floor(entry.power)), UIKit.textSize("body") + 2, UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
 	local value = text(row, money(entry.value), UIKit.textSize("small"), UIStyle.MONEY, true, true)
 	value.AnchorPoint = Vector2.new(1, 1)
@@ -284,6 +304,7 @@ local function barRow(parent: Instance, order: number, icon: string, share: numb
 	picture.AnchorPoint = Vector2.new(0, 0.5)
 	picture.Position = UDim2.fromScale(0, 0.5)
 	picture.ZIndex = line.ZIndex + 1
+	Tooltip.icon(picture, icon)
 	local track = UIKit.bar(line, share, fill)
 	track.AnchorPoint = Vector2.new(0, 0.5)
 	track.Position = UDim2.new(0, 26, 0.5, 0)
@@ -329,6 +350,7 @@ local function renderSelected(card: Card, entry: Entry?)
 		cell.Parent = tiles
 		UIKit.corner(cell, 8)
 		UIKit.outline(cell, UIStyle.EDGE, 2)
+		Tooltip.icon(cell, stat[1] :: string)
 		local picture = Icon.make(cell, stat[1] :: string, UDim2.fromOffset(20, 20))
 		picture.AnchorPoint = Vector2.new(0, 0.5)
 		picture.Position = UDim2.new(0, 5, 0.5, 0)
@@ -405,18 +427,36 @@ local function addToSlot(slot: number)
 	end
 end
 
--- The chooser's first view: three slot cards, each with what swapping in would do to Power
+-- The chooser's first view: three slot cards (card, name, grade, level, Power and stat bars), each saying how much
+-- more or less Power the card coming in has; a filled slot opens the comparison, an empty one fills straight away
 local function showSlots()
 	compareSlot = nil
 	compareHolder.Visible = false
 	slotsHolder.Visible = true
 	swapButton.Visible = false
+	chooserHint.Visible = true
 	chooserCancel.Text = "Cancel"
 	local incoming = incomingSide()
-	chooserTitle.Text = if currentCard then `Add {(currentCard :: Card).name} to your party` else "Add to your party"
+	local name = if currentCard then (currentCard :: Card).name else "this card"
+	local free, filled = false, false
+	for slot = 1, Party.PARTY_SIZE do
+		if slotSide(slot) then
+			filled = true
+		else
+			free = true
+		end
+	end
+	chooserTitle.Text = if free then `Pick a spot for {name}` else `Who should {name} replace?`
+	chooserHint.Text = if free and filled then "Tap the free spot, or a card to compare"
+		elseif filled then "Tap a card to compare before you swap"
+		else "Tap a spot"
 	clear(slotsHolder)
 	local phone = UIKit.isPhone()
-	local art = if phone then Vector2.new(40, 56) else Vector2.new(54, 76)
+	-- The card as big as the room under the details allows (phones skip the stat bars)
+	local details = if phone then 120 else 210
+	local artHeight = math.clamp(slotsHolder.AbsoluteSize.Y - details, SLOT_ART_MIN, SLOT_ART_MAX)
+	local art = Vector2.new(math.floor(artHeight / ART_ASPECT), artHeight)
+	local reference = CardTips.reference()
 	for slot = 1, Party.PARTY_SIZE do
 		local outgoing = slotSide(slot)
 		local button = Instance.new("TextButton")
@@ -429,15 +469,15 @@ local function showSlots()
 		button.Parent = slotsHolder
 		UIKit.corner(button, 10)
 		UIKit.outline(button, UIStyle.EDGE, 2)
-		-- One column, centred: the card, its name, grade and level, Power, then what the swap would do
+		-- One column, centred: the card, its name, grade and level, Power, stat bars, then what the swap would do
 		local column = Instance.new("Frame")
 		column.BackgroundTransparency = 1
-		column.Position = UDim2.fromOffset(4, 6)
-		column.Size = UDim2.new(1, -8, 1, -12)
+		column.Position = UDim2.fromOffset(8, 8)
+		column.Size = UDim2.new(1, -16, 1, -16)
 		column.ZIndex = button.ZIndex
 		column.Parent = button
 		local stack = Instance.new("UIListLayout")
-		stack.Padding = UDim.new(0, 3)
+		stack.Padding = UDim.new(0, if phone then 3 else 5)
 		stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		stack.VerticalAlignment = Enum.VerticalAlignment.Center
 		stack.SortOrder = Enum.SortOrder.LayoutOrder
@@ -451,33 +491,56 @@ local function showSlots()
 		local beast = source.beasts()[partySlots[slot] or ""]
 		if outgoing and beast then
 			CardTips.art(column, outgoing.card, outgoing.foil, art).LayoutOrder = 0
-			local name = text(column, outgoing.card.name, UIKit.textSize("body"), WHITE, true, true)
-			name.LayoutOrder = 1
-			name.TextXAlignment = Enum.TextXAlignment.Center
-			name.TextTruncate = Enum.TextTruncate.AtEnd
-			name.Size = UDim2.new(1, 0, 0, UIKit.textSize("body") + 4)
+			local cardName = text(column, outgoing.card.name, UIKit.textSize("body"), WHITE, true, true)
+			cardName.LayoutOrder = 1
+			cardName.TextXAlignment = Enum.TextXAlignment.Center
+			cardName.TextTruncate = Enum.TextTruncate.AtEnd
+			cardName.Size = UDim2.new(1, 0, 0, UIKit.textSize("body") + 4)
 			local meta = centredRow(2)
-			UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C).Size = UDim2.fromOffset(0, 18)
+			local grade = UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
+			grade.Size = UDim2.fromOffset(0, 18)
+			Tooltip.attach(grade, CardTips.gradeText(beast.grade))
 			text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true, true).AutomaticSize = Enum.AutomaticSize.X
 			local power = centredRow(3)
-			Icon.make(power, "Power", UDim2.fromOffset(16, 16)).ZIndex = power.ZIndex + 1
-			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("small"), UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
+			local powerIcon = Icon.make(power, "Power", UDim2.fromOffset(18, 18))
+			powerIcon.ZIndex = power.ZIndex + 1
+			Tooltip.icon(powerIcon, "Power")
+			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("body"), UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
+			if not phone then
+				for index, stat in { { "Hp", outgoing.stats.hp, reference.hp }, { "Atk", outgoing.stats.atk, reference.atk }, { "Spd", outgoing.stats.spd, reference.spd } } do
+					local row = UIKit.statRow(column, stat[1] :: string, CompareRules.share(stat[2] :: number, stat[3] :: number))
+					row.LayoutOrder = 3 + index
+					row.ZIndex = column.ZIndex + 1
+					Tooltip.icon(row:FindFirstChild("Icon") :: Frame, stat[1] :: string)
+				end
+			end
 		else
-			local empty = text(column, `Slot {slot} is empty`, UIKit.textSize("body"), UIKit.Colors.Subtext, true)
+			local plus = text(column, "+", art.Y / 2, UIKit.Colors.Subtext, true)
+			plus.LayoutOrder = 0
+			plus.TextXAlignment = Enum.TextXAlignment.Center
+			plus.Size = UDim2.new(1, 0, 0, art.Y / 2 + 4)
+			local empty = text(column, `Slot {slot} is free`, UIKit.textSize("body"), UIKit.Colors.Subtext, true)
 			empty.LayoutOrder = 1
-			empty.TextWrapped = true
 			empty.TextXAlignment = Enum.TextXAlignment.Center
-			empty.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("body") + 6)
+			empty.Size = UDim2.new(1, 0, 0, UIKit.textSize("body") + 4)
 		end
 		if incoming then
+			-- What swapping would do, in words, on a tinted strip at the bottom of the card
 			local outPower = if outgoing then outgoing.power else nil
-			local _, delta = CompareRules.verdict(incoming.power, outPower)
-			local good = outgoing == nil or delta >= 0
-			local swap = text(column, CompareRules.swapText(incoming.power, outPower), UIKit.textSize("small"), if good then UIStyle.GOOD else UIStyle.BAD, true, true)
-			swap.LayoutOrder = 4
+			local kind = CompareRules.verdict(incoming.power, outPower)
+			local good = outgoing == nil or kind ~= "weaker"
+			local strip = Instance.new("Frame")
+			strip.LayoutOrder = 9
+			strip.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("small") + 12)
+			strip.BackgroundColor3 = if good then UIStyle.GOOD else UIStyle.BAD
+			strip.BackgroundTransparency = 0.8
+			strip.ZIndex = column.ZIndex + 1
+			strip.Parent = column
+			UIKit.corner(strip, 8)
+			local swap = text(strip, CompareRules.swapText(incoming.card.name, incoming.power, outPower), UIKit.textSize("small"), if good then UIStyle.GOOD else UIStyle.BAD, true, true)
 			swap.TextXAlignment = Enum.TextXAlignment.Center
 			swap.TextWrapped = true
-			swap.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("small") + 4)
+			swap.Size = UDim2.fromScale(1, 1)
 		end
 		button.Activated:Connect(function()
 			if outgoing then
@@ -499,6 +562,8 @@ function CardDetailController.ShowCompare(slot: number)
 	compareSlot = slot
 	slotsHolder.Visible = false
 	compareHolder.Visible = true
+	chooserHint.Visible = false
+	chooserTitle.Text = `Swap {incoming.card.name} for {outgoing.card.name}?`
 	CopyCompare.build(compareHolder, incoming, outgoing)
 	swapButton.Text = `Swap with {outgoing.card.name}`
 	swapButton.Visible = true
@@ -546,7 +611,9 @@ function CardDetailController.Refresh()
 	UIKit.pill(pillRow, card.rarity, CardFace.getRarityColor(card.rarity)).LayoutOrder = 1
 	UIKit.pill(pillRow, card.element, Cards.ELEMENTS[card.element], nil, card.element).LayoutOrder = 2
 	UIKit.pill(pillRow, string.format("#%02d", card.number), UIStyle.ROW).LayoutOrder = 3
-	UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, UIStyle.ROW, nil, "Copies").LayoutOrder = 4
+	local copies = UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, UIStyle.ROW, nil, "Copies")
+	copies.LayoutOrder = 4
+	Tooltip.icon(copies, "Copies")
 
 	clear(copiesList)
 	for index, entry in entries do
@@ -681,6 +748,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	local cashIcon = Icon.make(header, "Cash", UDim2.fromOffset(26, 26))
 	cashIcon.AnchorPoint = Vector2.new(1, 0.5)
 	cashIcon.ZIndex = header.ZIndex + 2
+	Tooltip.icon(cashIcon, "Cash")
 	local function placeCash()
 		cashIcon.Position = UDim2.new(1, -20 - worthLabel.TextBounds.X, 0.5, 0)
 		cashIcon.Visible = worthLabel.Text ~= ""
@@ -740,6 +808,13 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	rows.Padding = UDim.new(0, 6)
 	rows.SortOrder = Enum.SortOrder.LayoutOrder
 	rows.Parent = copiesList
+	-- The chosen row's outline draws outside it: leave room so the list doesn't clip it (and the scroll bar)
+	local listPadding = Instance.new("UIPadding")
+	listPadding.PaddingTop = UDim.new(0, LIST_PAD)
+	listPadding.PaddingBottom = UDim.new(0, LIST_PAD)
+	listPadding.PaddingLeft = UDim.new(0, LIST_PAD)
+	listPadding.PaddingRight = UDim.new(0, LIST_PAD + copiesList.ScrollBarThickness + 2)
+	listPadding.Parent = copiesList
 	local function fitList()
 		copiesList.Size = UDim2.new(1, 0, 1, -(listTop + selectedBox.AbsoluteSize.Y + GAP))
 	end
@@ -809,7 +884,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	swapButton = UIKit.iconButton(partyChooser, "Swap", "Party", UIKit.Colors.Accent)
 	swapButton.AnchorPoint = Vector2.new(0, 1)
 	swapButton.Position = UDim2.new(0, 10, 1, -10)
-	swapButton.Size = UDim2.new(0.6, -14, 0, 50)
+	swapButton.Size = UDim2.new(1, -(CHOOSER_BUTTON + 30), 0, 50)
 	swapButton.TextSize = UIKit.textSize("body")
 	swapButton.TextTruncate = Enum.TextTruncate.AtEnd
 	swapButton.ZIndex = partyChooser.ZIndex + 2
@@ -821,7 +896,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	chooserCancel = UIKit.iconButton(partyChooser, "Cancel", "Close", UIKit.Colors.Secondary)
 	chooserCancel.AnchorPoint = Vector2.new(1, 1)
 	chooserCancel.Position = UDim2.new(1, -10, 1, -10)
-	chooserCancel.Size = UDim2.new(0.4, -4, 0, 50)
+	chooserCancel.Size = UDim2.fromOffset(CHOOSER_BUTTON, 50)
 	chooserCancel.TextSize = UIKit.textSize("body")
 	chooserCancel.ZIndex = partyChooser.ZIndex + 2
 	chooserCancel.Activated:Connect(function()
@@ -831,6 +906,11 @@ function CardDetailController.Build(parent: Frame, from: Source)
 			partyChooser.Visible = false
 		end
 	end)
+	chooserHint = text(partyChooser, "", UIKit.textSize("small"), UIKit.Colors.Subtext, true)
+	chooserHint.AnchorPoint = Vector2.new(0, 1)
+	chooserHint.Position = UDim2.new(0, 14, 1, -10)
+	chooserHint.Size = UDim2.new(1, -(CHOOSER_BUTTON + 40), 0, 50)
+	chooserHint.TextWrapped = true
 	jobChooser = chooser("JobChooser", "Which job?", 150)
 	choiceButtons(jobChooser, Jobs.JOBS, function(index)
 		if jobTarget then
@@ -840,8 +920,8 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	partyButton.Activated:Connect(function()
 		if partyTarget then
 			jobChooser.Visible = false
-			showSlots()
 			partyChooser.Visible = true
+			showSlots()
 		end
 	end)
 	jobButton.Activated:Connect(function()
@@ -888,6 +968,8 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	end
 	panel:GetPropertyChangedSignal("AbsolutePosition"):Connect(followPanel)
 	followPanel()
+	parent:GetPropertyChangedSignal("AbsolutePosition"):Connect(layout)
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
 	for _, name in { "JobSlots", "JobsUsed" } do
 		player:GetAttributeChangedSignal(name):Connect(CardDetailController.Refresh)
 	end

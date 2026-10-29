@@ -479,20 +479,25 @@ go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/r
 panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
 level and star icons, its Power (big, orange), HP / ATK / SPD bars (against the best stats any card reaches,
 `CardTips.reference`), its perk (element icon and a few words), "Resting m:ss" in red after fainting, and Summon
-(gold) or the green Summoned (tap to unsummon), XP Tonic (icon with how many you hold; hidden at 0 or Lv 30) and
-Remove (red). The summoned column glows green with a SUMMONED tag; the band shows "Summoned: <card>" (or "Nobody
-summoned") and your PvP record; an empty slot has "Add a card" (opens the binder). Phones get a smaller card and
-slimmer bars so every column fits. One creature is summoned at a time: the server moves
+(gold) or the green Summoned (tap to unsummon), XP Tonic (icon with a gold badge on its top right corner showing how
+many you hold, drawn above Remove; hidden at 0 or Lv 30) and Remove (red). The summoned column glows green with a
+SUMMONED tag; the band shows "Summoned: <card>" (or "Nobody summoned") and your PvP record; an empty slot has "Add a
+card" (opens the binder). A legend along the bottom names the stat icons once (Power, Health, Attack, Speed), and
+every icon without a label has a word tooltip (`Util/Tooltip`). Phones get a smaller card and slimmer bars so every
+column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
 (bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a dark tray,
 `Config/Party` BAR) shows your avatar with a PARTY tag (opens Party) and the 3 party slots as small cards: the card's
 art in its rarity rim with "Lv 4", a key chip 1 / 2 / 3; the summoned one lifts, glows blue and has an OUT tag; an empty
-one is a dashed "+"; a resting one dims with "💤 2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
+one is a dashed "+"; a resting one dims with an hourglass over "2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
 an empty one picks a card in the binder. Hovering a card (or holding a finger on it for `UIStyle.LONG_PRESS`, which
 then doesn't summon) shows its tooltip above the bar (`CardTips.copy`): the card, name, grade, level, Power, HP / ATK
-/ SPD bars, its perk and the resting countdown, so you don't need the binder. Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
+/ SPD bars, its perk and the resting countdown, so you don't need the binder. When the party changes, a toast says
+so ("Cindercub joined your party!", "Cindercub swapped in for Ashbeak!", "Ashbeak left your party";
+`PartyRules.changes` / `changeText`, Lune-tested) and the slot a card joins pops up with a white rim
+(`Party.BAR.POP`). Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
 
 | Element | Perk | Effect | Common, 0 stars |
@@ -979,7 +984,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
-    │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge, IN -> OUT cards, paired stat bars, perk line
+    │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
+    │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it)
     │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
@@ -1002,6 +1008,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
+        │   ├── IconTips.luau   # the words each label-less icon's tooltip shows
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
@@ -1044,7 +1051,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, pack stacks and price tags on shelves (pure, Lune-tested)
-            ├── PartyRules.luau    # perk strength and text (pure, Lune-tested)
+            ├── PartyRules.luau    # perk strength and text, party changes and their toasts (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1122,6 +1129,11 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
   green / C grey, money green with the Cash icon, Power orange with the Power icon, green good, red bad, gold for hints
   and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
+- **Word tooltips** (`Util/Tooltip`, words in `Config/IconTips`): every icon shown without a label (stat icons,
+  Power, stars, Cash, Copies, elements, grade pills, icon-only buttons) names itself in a small dark tip with a gold
+  outline: hover with a mouse, hold a finger on it for `UIStyle.LONG_PRESS` on touch. One tip per ScreenGui, over
+  everything, above the thing (below it near the top edge, `UiLayout.above`); it hides when the pointer leaves, the
+  finger lifts or the thing hides.
 - **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
   for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
@@ -1151,7 +1163,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
-- **Prices** rows show each product's picture beside its name and price: packs their real front (`Packs` art, as on the shelves), others their icon (`Products.icon`).
+- **Prices** rows show each product's picture beside its name, its market price and how customers feel about your
+  price (in the band's colour): packs their real front (`Packs` art, as on the shelves), others their icon
+  (`Products.icon`). On the right, your price stands out big in a dark box outlined in the band's colour, with
+  small - / + buttons under it (38 px with a mouse, `UIStyle.MIN_TAP` 48 px on phones; sized on every open).
 - **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
   binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
   plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
@@ -1178,7 +1193,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   grade), the worth range in green with the Cash icon and "Click for details"; it sits just outside the book, level
   with the pocket (right of it, else left, else above: `UiLayout.beside`), so it never covers a card.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
-  with a sample card, its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
+  with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
+  every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
   19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
 - **Card view** (`CardDetailController` with `CardInspectorController`, `Config/Inspector`): tapping a binder card
@@ -1187,21 +1203,27 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   (`Inspector.STAGE_POSITION`) with a solid dark sheet behind the card, so nothing of the world (customers, your pet)
   shows; always-on-top tags switch off too. Drag to tilt (it eases back), drag far sideways or press Flip (under the
   card) to turn it over; Legendaries keep their element aura; a gold "BEST COPY" ribbon sits on the card while your
-  best copy is shown. The card's right edge lands just left of the info panel (`UiLayout.inspectorCard`, Lune-tested).
+  best copy is shown. The card and the info panel are centred on the screen as a pair (`UiLayout.detailPanelLeft`;
+  on narrow screens the panel keeps its right margin first), the card's right edge just left of the panel
+  (`UiLayout.inspectorCard`, both Lune-tested).
   The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
   and copies pills; "Your copies, best first" (grade pill, level, star icons, FOIL or count, Power with its icon,
-  value; the first wears a gold BEST ribbon, the chosen one a gold outline); the chosen copy's Power / HP / ATK / SPD
+  value; the first wears a gold BEST ribbon, the chosen one a gold outline, with room in the list so it isn't cut off); the chosen copy's Power / HP / ATK / SPD
   tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
   "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
   says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)) and Back. Phones get a slimmer band and no pills
   row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
   Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
-  "Add <card> to your party" and the three slots side by side (card, name, grade, level, Power and "+22 if swapped"
-  in green or red, `CompareRules.swapText`); an empty slot fills straight away; a filled one opens the kid
-  comparison (`Util/CopyCompare`): a big STRONGER +22 / WEAKER -2412 badge, the two cards (IN with a green border ->
-  OUT under a dark veil), paired HP / ATK / SPD bars where the longer green one wins (hover a bar for its number),
-  and one line: the element icons ("replaces") and the perk it brings or that you lose; then "Swap with <card>"
-  (gold) or Back. Phones lay the comparison out in two columns.
+  "Who should <card> replace?" ("Pick a spot for <card>" while a slot is free) and the three slots side by side,
+  each card as big as the room allows (name, grade, level, Power, HP / ATK / SPD bars; phones skip the bars), with a
+  tinted strip saying what the swap does: "Cindercub has 180 less Power" in red, "... more Power" in green, "Free
+  spot: Cindercub goes here" (`CompareRules.swapText`); a hint and a compact Cancel at the bottom. An empty slot
+  fills straight away; a filled one opens the kid comparison (`Util/CopyCompare`) titled "Swap <card> for <card>?":
+  a big STRONGER / WEAKER badge with the sentence under it ("Cindercub has 180 less Power than Coalbit",
+  `CompareRules.powerLine`), the two cards (IN with a green border -> OUT under a dark veil), paired HP / ATK / SPD
+  bars where the longer green one wins (hover a bar for its number, an icon for its name), and one line: the element
+  icons ("replaces") and the perk it brings or that you lose; then "Swap with <card>" (gold, filling the row) or a
+  compact Back. Phones lay the comparison out in two columns. The party bar's toast confirms the change.
 - **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
   `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
   the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
@@ -1253,7 +1275,10 @@ The core loop is complete (the shop loop, cards, jobs, party, stars, battles and
 boss models; the ranch and Heroic tiers come after those.
 - UI/UX pass 1 (spec `2026-10-29-collection-screens-ui-design.md`, branch `ui-pass-1`): look E style kit, binder
   tooltip, card view, Add to Party with the kid comparison, Party window, party bar tooltip, boss ladder with Take me
-  there, Bag; no Star Shard pill. Built; waiting for the user's Studio check before merge. Next: UI project 2 (a 3D
+  there, Bag; no Star Shard pill. Built; waiting for the user's Studio check before merge. Feedback round 1 built:
+  Prices price box, Party legend and tonic badge, word tooltips, card view centring, clearer chooser and comparison
+  wording, compact chooser buttons, party change toast, rarity guide without spoilers. Shop Jobs redesign: three
+  mockups shown (A worker columns, B clean rows, C job stations), waiting for the user's pick. Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are

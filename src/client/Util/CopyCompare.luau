@@ -1,7 +1,8 @@
 --!strict
 -- The swap comparison a kid reads at a glance (spec 2026-10-29-collection-screens-ui-design.md 4.3): a big
--- STRONGER / WEAKER verdict, the two cards (IN with a green border -> OUT faded), three rows of paired bars for HP,
--- ATK and SPD where the longer green bar wins (hover a bar for its number), and one line for the element and perk.
+-- STRONGER / WEAKER verdict with the sentence under it ("Cindercub has 192 less Power than Ashbeak"), the two cards
+-- (IN with a green border -> OUT faded), three rows of paired bars for HP, ATK and SPD where the longer green bar
+-- wins (hover a bar for its number, an icon for its name), and one line for the element and perk.
 -- Rules: Util/CompareRules (Lune-tested).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -15,6 +16,7 @@ local ClientUtil = script.Parent :: Instance
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 
 type Card = typeof(Cards.List[1])
 export type Side = {
@@ -108,10 +110,10 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 	local top = if phone then column(UDim2.new(), UDim2.fromScale(0.42, 1)) else column(UDim2.new(), UDim2.fromScale(1, 1))
 	local bottom = if phone then column(UDim2.fromScale(0.42, 0), UDim2.fromScale(0.58, 1)) else top
 
-	-- The verdict badge
+	-- The verdict badge, and what it means in words
 	local kind = CompareRules.verdict(incoming.power, outgoing.power)
 	local badge = UIKit.pill(
-		hRow(top, 1, if phone then 32 else 40, 0),
+		hRow(top, 0, if phone then 32 else 40, 0),
 		CompareRules.verdictText(incoming.power, outgoing.power),
 		if kind == "stronger" then UIStyle.GREEN elseif kind == "weaker" then UIStyle.RED else SAME,
 		nil,
@@ -119,6 +121,17 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 	)
 	badge.Size = UDim2.fromOffset(0, if phone then 28 else 36)
 	badge.TextSize = UIKit.textSize(if phone then "body" else "name")
+	local because = hRow(top, 1, if phone then 2 * UIKit.textSize("small") + 6 else 22, 4)
+	local powerIcon = Icon.make(because, "Power", UDim2.fromOffset(18, 18))
+	powerIcon.ZIndex = because.ZIndex + 1
+	Tooltip.icon(powerIcon, "Power")
+	local sentence = label(because, CompareRules.powerLine(incoming.card.name, incoming.power, outgoing.power, outgoing.card.name), UIKit.textSize("small"), WHITE)
+	sentence.LayoutOrder = 2
+	if phone then -- a narrow column: the sentence wraps
+		sentence.AutomaticSize = Enum.AutomaticSize.None
+		sentence.TextWrapped = true
+		sentence.Size = UDim2.new(1, -24, 1, 0)
+	end
 
 	-- IN -> OUT
 	local artSize = if phone then Vector2.new(44, 62) else Vector2.new(62, 88)
@@ -168,18 +181,23 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 		local picture = Icon.make(row, stat[1], UDim2.fromOffset(24, 24))
 		picture.LayoutOrder = 2
 		picture.ZIndex = row.ZIndex + 1
+		Tooltip.icon(picture, stat[1])
 		halfBar(row, 3, outShare, winner == "out", false, outValue)
 	end
 
 	-- One line: the elements, then the perk
 	local line = hRow(bottom, 6, 24, 5)
-	Icon.make(line, incoming.card.element, UDim2.fromOffset(22, 22)).LayoutOrder = 1
+	local inElement = Icon.make(line, incoming.card.element, UDim2.fromOffset(22, 22))
+	inElement.LayoutOrder = 1
+	Tooltip.icon(inElement, incoming.card.element)
 	if incoming.card.element ~= outgoing.card.element then
 		local word = UIKit.label(line, "replaces", Enum.Font.Gotham, UIKit.textSize("small"), UIKit.Colors.Subtext)
 		word.LayoutOrder = 2
 		word.AutomaticSize = Enum.AutomaticSize.X
 		word.Size = UDim2.fromOffset(0, 20)
-		Icon.make(line, outgoing.card.element, UDim2.fromOffset(22, 22)).LayoutOrder = 3
+		local outElement = Icon.make(line, outgoing.card.element, UDim2.fromOffset(22, 22))
+		outElement.LayoutOrder = 3
+		Tooltip.icon(outElement, outgoing.card.element)
 	end
 	local perkText = if incoming.perk then `perk: {incoming.perk}` elseif outgoing.perk then "you lose its perk" else "no perk"
 	local perkColor = if incoming.perk then UIStyle.HINT else UIStyle.BAD

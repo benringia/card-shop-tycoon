@@ -154,6 +154,12 @@ function CardTips.art(parent: Instance, card: Card, foil: boolean, size: Vector2
 	return face(parent, card, foil, size)
 end
 
+-- A grade pill's tooltip: "Grade S: +10% stats", "Grade C: normal stats"
+function CardTips.gradeText(grade: string): string
+	local bonus = Beasts.GRADE_BONUS[grade] or 0
+	return if bonus > 0 then `Grade {grade}: +{math.round(bonus * 100)}% stats` else `Grade {grade}: normal stats`
+end
+
 -- What full stat bars mean: the best stats any card reaches (max level, max stars, Grade S, foil)
 function CardTips.reference(): Stats
 	local cached = referenceCache

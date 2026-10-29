@@ -56,4 +56,5 @@ return {
 
 	KEY_TINT_PRISM = Color3.fromRGB(235, 235, 255), -- the Hydra's key fragments (the others take their boss's element colour)
 	LONG_PRESS = 0.45, -- seconds a touch is held to show a tooltip
+	MIN_TAP = 48, -- px: the smallest button a finger gets (desktop-only buttons may be smaller)
 }

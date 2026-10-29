@@ -704,8 +704,8 @@ local function placeTooltip()
 end
 
 local function showTooltip(tile: Tile)
-	-- Pockets under the open card view still get mouse events; no tooltip through it
-	if not UserInputService.MouseEnabled or not tile.button.Parent or CardDetailController.IsOpen() or bagOverlay.Visible then
+	-- Pockets under the open card view or the rarity guide still get mouse events; no tooltip through them
+	if not UserInputService.MouseEnabled or not tile.button.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
 		return
 	end
 	tooltipTile = tile
@@ -1983,7 +1983,10 @@ local function buildPanel(parent: Instance)
 	rarityGuideButton.Font = Enum.Font.FredokaOne
 	local guideIcon = Icon.make(rarityGuideButton, "Info", UDim2.fromOffset(26, 26))
 	guideIcon.ZIndex = rarityGuideButton.ZIndex + 1
-	rarityGuideButton.Activated:Connect(RarityGuideController.Open)
+	rarityGuideButton.Activated:Connect(function()
+		hideTooltip()
+		RarityGuideController.Open()
+	end)
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BinderTooltip"
@@ -2165,6 +2168,7 @@ function BinderController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildPanel(screenGui)
 	buildButtons()
+	RarityGuideController.SetCollected(isCollected)
 	refresh()
 
 	-- Phones: a swipe across the open binder turns the page (left = next)

@@ -34,21 +34,28 @@ function CompareRules.verdict(inPower: number, outPower: number?): (Verdict, num
 	return if delta > 0 then "stronger" elseif delta < 0 then "weaker" else "same", delta
 end
 
+-- The badge word
 function CompareRules.verdictText(inPower: number, outPower: number?): string
-	local kind, delta = CompareRules.verdict(inPower, outPower)
-	if kind == "same" then
-		return "SAME POWER"
-	end
-	return if kind == "stronger" then `STRONGER +{delta}` else `WEAKER {delta}`
+	local kind = CompareRules.verdict(inPower, outPower)
+	return if kind == "stronger" then "STRONGER" elseif kind == "weaker" then "WEAKER" else "SAME POWER"
 end
 
--- The line on each party slot in the chooser
-function CompareRules.swapText(inPower: number, outPower: number?): string
-	if outPower == nil then
-		return "Empty: adds it"
+-- "Cindercub has 192 less Power" (than Ashbeak, when given)
+function CompareRules.powerLine(inName: string, inPower: number, outPower: number, outName: string?): string
+	local kind, delta = CompareRules.verdict(inPower, outPower)
+	if kind == "same" then
+		return if outName then `{inName} and {outName} have the same Power` else `{inName} has the same Power`
 	end
-	local _, delta = CompareRules.verdict(inPower, outPower)
-	return `{if delta >= 0 then "+" else ""}{delta} if swapped`
+	local than = if outName then ` than {outName}` else ""
+	return `{inName} has {math.abs(delta)} {if kind == "stronger" then "more" else "less"} Power{than}`
+end
+
+-- The line on each party slot in the chooser (outPower nil: the slot is empty)
+function CompareRules.swapText(inName: string, inPower: number, outPower: number?): string
+	if outPower == nil then
+		return `Free spot: {inName} goes here`
+	end
+	return CompareRules.powerLine(inName, inPower, outPower)
 end
 
 -- The highest HP, ATK and SPD across these cards (what full bars mean)

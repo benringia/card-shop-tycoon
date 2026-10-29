@@ -53,4 +53,13 @@ return {
 		local _, rect = UiLayout.inspectorCard({ w = 844, h = 390 }, 70, 3, { w = 1.8, h = 2.57 }, 0, 100, 8)
 		expect.near(rect.x, 8, 1, "never off the left edge")
 	end,
+	["detailPanelLeft: the 3D card and the panel centred as a pair on wide screens"] = function()
+		-- card 330 + gap 16 + panel 520 = 866 wide, centred on 1920: starts at 527, the panel after the card
+		expect.equal(UiLayout.detailPanelLeft(1920, 330, 16, 520, 16), 873, "centred pair")
+	end,
+	["detailPanelLeft: a narrow screen keeps the panel on screen first"] = function()
+		-- the pair doesn't fit: the panel sits at its right margin (the card clamps to its own left margin)
+		expect.equal(UiLayout.detailPanelLeft(800, 330, 16, 520, 16), 264, "right margin wins")
+		expect.equal(UiLayout.detailPanelLeft(750, 200, 16, 420, 76), 254, "phone: clear of the close button")
+	end,
 }

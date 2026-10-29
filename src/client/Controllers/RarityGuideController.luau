@@ -2,7 +2,8 @@
 -- Rarity guide: every rarity from most common to rarest with a sample card, its pull chance from a First
 -- Spark pack and "about 1 in N cards", then foil and grade odds, and where Frontier cards come from.
 -- The numbers come from the real configs (Util/OddsRules), so the guide can't drift from the rolls.
--- Opened from the binder; built the first time it opens.
+-- No spoilers: each sample is a card of that rarity you have collected, or the binder's "?" card until you have one
+-- (the binder lends SetCollected). Opened from the binder or the pack results; built the first time it opens.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -37,6 +38,11 @@ local GUIDE_Z_INDEX = 8 -- over the binder
 local RarityGuideController = {}
 
 local panel: Frame? = nil
+local isCollected: (cardId: string) -> boolean = function()
+	return false
+end
+-- Each sample card on the guide and the cards it can show (redrawn on every open)
+local samples: { { face: Frame, stroke: UIStroke, pool: { Card } } } = {}
 
 local function percent(chance: number): string
 	return if chance >= 0.01 then string.format("%.1f%%", chance * 100) else string.format("%.2f%%", chance * 100)
@@ -50,23 +56,34 @@ local function howOften(chance: number): string
 	return `about 1 in {OddsRules.oneIn(chance)} cards`
 end
 
-local function sampleCard(rarity: string): Card?
-	local pool = Cards.ByRarity[rarity]
-	return if pool then pool[1] else nil
+-- The first card of the pool you've collected, else the binder's "?" card for the pool's first one
+local function drawSample(sample: { face: Frame, stroke: UIStroke, pool: { Card } })
+	for _, card in sample.pool do
+		if isCollected(card.id) then
+			CardFace.render(sample.face, sample.stroke, card, false, true)
+			return
+		end
+	end
+	local first = sample.pool[1]
+	if first then
+		CardFace.renderMissing(sample.face, sample.stroke, first)
+	end
 end
 
-local function addCardFace(parent: Instance, card: Card)
+local function addCardFace(parent: Instance, pool: { Card })
 	local face = Instance.new("Frame")
 	face.Position = UDim2.fromOffset(8, 7)
 	face.Size = UDim2.fromOffset(CARD_SIZE.X, CARD_SIZE.Y)
 	face.Parent = parent
 	local stroke = Instance.new("UIStroke")
 	stroke.Parent = face
-	CardFace.render(face, stroke, card, false, true)
+	local sample = { face = face, stroke = stroke, pool = pool }
+	table.insert(samples, sample)
+	drawSample(sample)
 end
 
--- One rarity: a sample card, the name in its colour, the chance and "about 1 in N"
-local function addEntry(parent: Instance, order: number, card: Card?, name: string, color: Color3, big: string, small: string)
+-- One rarity: a sample card from `pool`, the name in its colour, the chance and "about 1 in N"
+local function addEntry(parent: Instance, order: number, pool: { Card }, name: string, color: Color3, big: string, small: string)
 	local entry = Instance.new("Frame")
 	entry.LayoutOrder = order
 	entry.Size = UDim2.new(0.5, -6, 0, ENTRY_HEIGHT)
@@ -74,9 +91,7 @@ local function addEntry(parent: Instance, order: number, card: Card?, name: stri
 	entry.Parent = parent
 	UIKit.corner(entry, 12)
 	UIKit.outline(entry)
-	if card then
-		addCardFace(entry, card)
-	end
+	addCardFace(entry, pool)
 	local x = CARD_SIZE.X + 20
 	local title = UIKit.label(entry, name, Enum.Font.FredokaOne, 22, color)
 	title.Position = UDim2.fromOffset(x, 16)
@@ -152,13 +167,12 @@ local function build(): Frame
 		for order, rarity in group.rarities do
 			local chance = odds[rarity] or 0
 			local tier = Rarities.Tiers[rarity]
-			addEntry(grid, order, sampleCard(rarity), rarity, if tier then tier.color else UIKit.Colors.Accent, percent(chance), howOften(chance))
+			addEntry(grid, order, Cards.ByRarity[rarity] or {}, rarity, if tier then tier.color else UIKit.Colors.Accent, percent(chance), howOften(chance))
 		end
 	end
 
 	local frontierGrid = addGroup(list, 10, "Frontier", "Found in the Frontier, never in packs")
-	local frontierCard = (Cards.BySet.Frontier or {})[1]
-	addEntry(frontierGrid, 1, frontierCard, "Frontier cards", CardEffects.FRONTIER.AURORA[1], "Wild drops", string.format("From Frontier monsters: %s, elites %s", percent(Frontier.CARD_CHANCE), percent(Frontier.ELITE_CARD_CHANCE)))
+	addEntry(frontierGrid, 1, Cards.BySet.Frontier or {}, "Frontier cards", CardEffects.FRONTIER.AURORA[1], "Wild drops", string.format("From Frontier monsters: %s, elites %s", percent(Frontier.CARD_CHANCE), percent(Frontier.ELITE_CARD_CHANCE)))
 
 	addLine(list, 20, string.format("✨ Foil: any card can be foil, %s of cards, worth %dx.", percent(Rarities.FOIL_CHANCE), Rarities.FOIL_MULTIPLIER))
 	local gradeParts = {}
@@ -180,6 +194,11 @@ local function build(): Frame
 	return frame
 end
 
+-- Whether you have a card yet (the binder's rule: in the binder, levelled or on display)
+function RarityGuideController.SetCollected(check: (cardId: string) -> boolean)
+	isCollected = check
+end
+
 function RarityGuideController.IsOpen(): boolean
 	return panel ~= nil and panel.Visible
 end
@@ -190,6 +209,9 @@ function RarityGuideController.Open(): Frame
 	if not frame then
 		frame = build()
 		panel = frame
+	end
+	for _, sample in samples do
+		drawSample(sample) -- cards found since the last time
 	end
 	frame.Visible = true
 	return frame

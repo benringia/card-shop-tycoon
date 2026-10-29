@@ -35,4 +35,26 @@ return {
 		assert(ember, "expected a perk")
 		expect.equal(PartyRules.describe(ember), "Hype: customers 5% more often", "ember")
 	end,
+	["changes: who joined, swapped in or left, by slot"] = function()
+		local list = PartyRules.changes({ [1] = "a", [3] = "c" }, { [1] = "b", [2] = "n" }, 3)
+		expect.equal(#list, 3, "three slots changed")
+		expect.equal(list[1].slot, 1, "slot order")
+		expect.equal(list[1].kind, "swapped", "a out, b in")
+		expect.equal(list[1].before, "a", "who left")
+		expect.equal(list[1].after, "b", "who came")
+		expect.equal(list[2].kind, "joined", "an empty slot filled")
+		expect.equal(list[2].after, "n", "the newcomer")
+		expect.isNil(list[2].before, "nobody left")
+		expect.equal(list[3].kind, "left", "a slot emptied")
+		expect.equal(list[3].before, "c", "who left")
+	end,
+	["changes: nothing when the same cards stay"] = function()
+		expect.equal(#PartyRules.changes({ [2] = "x" }, { [2] = "x" }, 3), 0, "unchanged")
+		expect.equal(#PartyRules.changes({}, {}, 3), 0, "empty party")
+	end,
+	["changeText: the toast for each change"] = function()
+		expect.equal(PartyRules.changeText("joined", "Cindercub", nil), "Cindercub joined your party!", "joined")
+		expect.equal(PartyRules.changeText("swapped", "Cindercub", "Ashbeak"), "Cindercub swapped in for Ashbeak!", "swapped")
+		expect.equal(PartyRules.changeText("left", nil, "Ashbeak"), "Ashbeak left your party", "left")
+	end,
 }

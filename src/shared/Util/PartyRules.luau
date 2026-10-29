@@ -33,4 +33,31 @@ function PartyRules.describe(perk: Perk): string
 	return `{perk.kind}: {string.format(text, math.round(perk.value * 100))}`
 end
 
+export type ChangeKind = "joined" | "swapped" | "left"
+export type Change = { slot: number, kind: ChangeKind, before: string?, after: string? }
+
+-- What changed between two parties (slot -> beastId), slot by slot: a card joined an empty slot, swapped in
+-- for another, or left
+function PartyRules.changes(before: { [number]: string }, after: { [number]: string }, size: number): { Change }
+	local list: { Change } = {}
+	for slot = 1, size do
+		local was, now = before[slot], after[slot]
+		if was ~= now then
+			local kind: ChangeKind = if was == nil then "joined" elseif now == nil then "left" else "swapped"
+			table.insert(list, { slot = slot, kind = kind, before = was, after = now })
+		end
+	end
+	return list
+end
+
+-- The toast for a change: "Cindercub swapped in for Ashbeak!"
+function PartyRules.changeText(kind: ChangeKind, inName: string?, outName: string?): string
+	if kind == "joined" then
+		return `{inName or "A card"} joined your party!`
+	elseif kind == "swapped" then
+		return `{inName or "A card"} swapped in for {outName or "a card"}!`
+	end
+	return `{outName or "A card"} left your party`
+end
+
 return PartyRules

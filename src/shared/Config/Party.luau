@@ -491,6 +491,9 @@ return {
 		GAP = 8,
 		RIM = 2.5,
 		LIFT = 1.12, -- the summoned card grows this much
+		POP = 1.35, -- a card joining the party pops up this much, then settles
+		POP_SECONDS = 0.5,
+		NAME_WAIT = 2, -- seconds the "joined your party" toast waits for a new card's name to arrive with the binder
 		TRAY = { 22, 26, 38 },
 		TRAY_TRANSPARENCY = 0.1,
 		EMPTY = { 36, 42, 58 },

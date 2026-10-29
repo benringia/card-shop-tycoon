@@ -1,6 +1,8 @@
 --!strict
--- Prices panel: set your sell price per unlocked product with +/- buttons.
--- Taps update the display instantly and are sent to the server together once tapping stops.
+-- Prices panel: set your sell price per unlocked product. Each row: the product, its market price and how
+-- customers feel about your price (in the band's colour), and on the right your price in a box outlined in that
+-- colour, with small - / + buttons under it. Taps update the display instantly and are sent to the server together
+-- once tapping stops.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local PricingConfig = require(Config:WaitForChild("Pricing"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -25,6 +28,10 @@ type Row = {
 	product: Product,
 	frame: Frame,
 	detail: TextLabel,
+	price: TextLabel,
+	priceEdge: UIStroke,
+	priceArea: Frame,
+	steps: { TextButton },
 }
 
 -- Hint colours from best to worst band, then "won't buy"
@@ -34,6 +41,9 @@ local BAND_COLORS = {
 	Color3.fromRGB(245, 150, 70),
 }
 local NEVER_COLOR = Color3.fromRGB(240, 90, 90)
+local PRICE_WIDTH = 112 -- the price box and its - / + buttons
+local PRICE_HEIGHT = 30
+local STEP_SIZE = 38 -- the - / + buttons with a mouse; phones keep UIStyle.MIN_TAP
 
 local player = Players.LocalPlayer
 
@@ -67,14 +77,28 @@ local function getBandInfo(price: number, marketPrice: number): (string, Color3)
 	return band.label, BAND_COLORS[index] or BAND_COLORS[1]
 end
 
+-- Sizes follow the screen (phones get bigger buttons), so they're set on every refresh, not once at start
+local function fitRow(row: Row)
+	local step = if UIKit.isPhone() then UIStyle.MIN_TAP else STEP_SIZE
+	row.frame.Size = UDim2.new(1, 0, 0, math.max(76, PRICE_HEIGHT + step + 16))
+	row.priceArea.Size = UDim2.fromOffset(PRICE_WIDTH, PRICE_HEIGHT + 4 + step)
+	row.price.TextSize = UIKit.textSize("name")
+	for _, button in row.steps do
+		button.Size = UDim2.new(0.5, -3, 0, step)
+	end
+end
+
 local function refreshRow(row: Row)
 	local product = row.product
 	row.frame.Visible = getLevel() >= product.unlockLevel
+	fitRow(row)
 
 	local price = getShownPrice(product)
 	local hint, color = getBandInfo(price, product.marketPrice)
-	row.detail.Text = string.format("$%.2f  (market $%.2f)\n%s", price, product.marketPrice, hint)
+	row.detail.Text = string.format("Market $%.2f\n%s", product.marketPrice, hint)
 	row.detail.TextColor3 = color
+	row.price.Text = string.format("$%.2f", price)
+	row.priceEdge.Color = color
 end
 
 local function refreshAll()
@@ -105,23 +129,44 @@ end
 local function buildRow(product: Product, parent: Instance, order: number): Row
 	local frame, plus, detail = UIKit.row(parent, order, product.name, "")
 	frame.Name = product.id
-	detail.Size = UDim2.new(1, -208, 0, 32)
 	detail.TextSize = 14
-	-- The product's picture on the left, its name and price after it
+	-- Name and market price leave room for the price on the right; the product's picture goes first
+	for _, label in frame:GetChildren() do
+		if label:IsA("TextLabel") then
+			label.Size = UDim2.new(1, -(PRICE_WIDTH + 24), 0, label.Size.Y.Offset)
+		end
+	end
 	ProductPicture.add(frame, product.id, product.icon)
-	detail.Size = UDim2.new(1, -208, 0, 32)
 
+	-- Your price, big, over the - / + buttons
+	local priceArea = Instance.new("Frame")
+	priceArea.Name = "Price"
+	priceArea.AnchorPoint = Vector2.new(1, 0.5)
+	priceArea.Position = UDim2.new(1, -10, 0.5, 0)
+	priceArea.BackgroundTransparency = 1
+	priceArea.ZIndex = frame.ZIndex + 1
+	priceArea.Parent = frame
+	local price = UIKit.label(priceArea, "", Enum.Font.FredokaOne, 22, Color3.new(1, 1, 1))
+	price.Size = UDim2.new(1, 0, 0, PRICE_HEIGHT)
+	price.TextXAlignment = Enum.TextXAlignment.Center
+	price.BackgroundColor3 = UIStyle.EDGE
+	price.BackgroundTransparency = 0
+	price.ZIndex = priceArea.ZIndex
+	UIKit.corner(price, 8)
+	UIKit.outlined(price, 2)
+	local priceEdge = UIKit.outline(price, BAND_COLORS[1], 2)
+
+	local minus = UIKit.button(priceArea, "-", UIKit.Colors.Danger)
+	plus.Parent = priceArea
 	plus.Text = "+"
-	plus.TextSize = 28
-	plus.Size = UDim2.fromOffset(52, 52)
+	for index, button in { minus, plus } do
+		button.TextSize = 24
+		button.AnchorPoint = Vector2.new(if index == 1 then 0 else 1, 1)
+		button.Position = UDim2.fromScale(if index == 1 then 0 else 1, 1)
+		button.ZIndex = priceArea.ZIndex
+	end
 
-	local minus = UIKit.button(frame, "-", UIKit.Colors.Danger)
-	minus.TextSize = 28
-	minus.AnchorPoint = Vector2.new(1, 0.5)
-	minus.Position = UDim2.new(1, -70, 0.5, 0)
-	minus.Size = UDim2.fromOffset(52, 52)
-
-	local row: Row = { product = product, frame = frame, detail = detail }
+	local row: Row = { product = product, frame = frame, detail = detail, price = price, priceEdge = priceEdge, priceArea = priceArea, steps = { minus, plus } }
 	plus.Activated:Connect(function()
 		nudge(row, 1)
 	end)
