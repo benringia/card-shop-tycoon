@@ -133,6 +133,17 @@ return {
 		assert(look.PER_STACK * look.DEPTH <= boxDepth + 1e-9, "the deck boxes don't fit front to back")
 	end,
 
+	["booster boxes stand on shelves as sealed booster boxes, stacked, that fit their place"] = function()
+		expect.equal(products.ById.FirstSparkBox.stockLook, "Booster", "First Spark Booster Box look")
+		local look = town.SHELF_STOCK.BOOSTERS
+		local config = town.SHELF_STOCK
+		local boxWidth = RACK.x / config.PER_LEVEL * config.WIDTH_FILL
+		local boxDepth = RACK.z * config.DEPTH_FILL
+		assert(look.WIDTH <= boxWidth + 1e-9, "a booster box is wider than its place")
+		assert(look.DEPTH <= boxDepth + 1e-9, "a booster box is deeper than its place")
+		assert(look.PER_STACK * look.HEIGHT <= config.BOX_HEIGHT + 1e-9, "the stack is taller than its place")
+	end,
+
 	["pack display boxes stand big on every pack rack, clear of the plate above"] = function()
 		local display = town.SHELF_STOCK.DISPLAY
 		local tray = display.TRAY

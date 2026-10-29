@@ -24,6 +24,7 @@ local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
+local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -229,6 +230,30 @@ local function fillWithDecks(box: Part, productId: string)
 	place:Destroy()
 end
 
+-- A booster box product's place holds sealed booster boxes printed like its delivery case (Util/BrandBox), stacked
+local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
+	local look = Town.SHELF_STOCK.BOOSTERS
+	local boosters = {}
+	for _, child in box:GetChildren() do
+		if child:IsA("BasePart") and child.Name == "BoosterBox" then
+			table.insert(boosters, child)
+		end
+	end
+	if #boosters ~= look.PER_STACK then
+		box:ClearAllChildren()
+		table.clear(boosters)
+	end
+	for index = 1, look.PER_STACK do
+		local booster = boosters[index]
+		if not booster then
+			booster = newDecorPart("BoosterBox", box)
+			booster.Size = Vector3.new(look.WIDTH, look.HEIGHT, look.DEPTH)
+			BrandBox.draw(booster, product, nil, look.PIXELS_PER_STUD)
+		end
+		booster.CFrame = box.CFrame * CFrame.new(0, -box.Size.Y / 2 + look.HEIGHT * (index - 0.5), 0)
+	end
+end
+
 -- A box's place filled with card sleeve packets (Town.SHELF_STOCK.SLEEVES), leaning back a little, front first:
 -- a backing card with a header tab and hang hole, the sleeves behind a clear window, a strip in the product's colour
 local function fillWithSleeves(box: Part, sleeveColor: Color3, brandColor: Color3)
@@ -392,6 +417,9 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 		elseif product.stockLook == "Sleeves" then
 			box.Transparency = 1
 			fillWithSleeves(box, rgb(sleeveColors[(index - 1) % #sleeveColors + 1]), color)
+		elseif product.stockLook == "Booster" then
+			box.Transparency = 1
+			fillWithBoosters(box, product)
 		end
 	end
 end
