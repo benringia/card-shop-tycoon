@@ -10,6 +10,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
+local Packs = require(Config:WaitForChild("Packs"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -166,39 +168,105 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	syncCarry(shop)
 end
 
--- A band in the product's colour round a plain cardboard box, with the product's name on the front and back
-local function labelBox(box: Part, product: typeof(Products.List[1]))
-	local label = StockConfig.BOX_LABEL
-	local color = Color3.fromRGB(product.color[1], product.color[2], product.color[3])
-	local function face(normal: Enum.NormalId, text: string?)
+local function rgb(values: { number }): Color3
+	return Color3.fromRGB(values[1], values[2], values[3])
+end
+
+local function caseText(parent: GuiObject, text: string, color: Color3, position: UDim2, size: UDim2): TextLabel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Position = position
+	label.Size = size
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextWrapped = true
+	label.TextColor3 = color
+	label.Text = text
+	label.Parent = parent
+	return label
+end
+
+-- A branded case printed in the product's colour (StockConfig.CASE): every side has darker bands top and bottom; the
+-- front and back show the product's art in a gold frame, its name and the count; the ends have hand holes; the lid
+-- has the name. Drawn on the box part itself, so it goes wherever the box is carried.
+local function brandCase(box: Part, product: typeof(Products.List[1]), units: number)
+	local look = StockConfig.CASE
+	local color = rgb(product.color)
+	local band = color:Lerp(Color3.new(0, 0, 0), look.DARKEN)
+	local pack = Packs.ById[product.id]
+	local art = if pack and pack.art then pack.art else (UIIcons :: any)[product.icon]
+	box.Color = color
+	box.Material = Enum.Material.SmoothPlastic
+	local function side(normal: Enum.NormalId): Frame
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = normal
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = label.PIXELS_PER_STUD
+		gui.PixelsPerStud = look.PIXELS_PER_STUD
 		gui.Parent = box
-		local band = Instance.new("Frame")
-		band.AnchorPoint = Vector2.new(0, 0.5)
-		band.Position = UDim2.fromScale(0, 0.5)
-		band.Size = UDim2.fromScale(1, label.BAND)
-		band.BackgroundColor3 = color
-		band.BorderSizePixel = 0
-		band.Parent = gui
-		if text then
-			local name = Instance.new("TextLabel")
-			name.BackgroundTransparency = 1
-			name.Size = UDim2.fromScale(1, 1)
-			name.Font = Enum.Font.FredokaOne
-			name.TextScaled = true
-			name.TextColor3 = Color3.new(1, 1, 1)
-			name.TextStrokeTransparency = 0.5
-			name.Text = text
-			name.Parent = band
+		local face = Instance.new("Frame")
+		face.Size = UDim2.fromScale(1, 1)
+		face.BackgroundColor3 = color
+		face.BorderSizePixel = 0
+		face.Parent = gui
+		local shade = Instance.new("UIGradient")
+		shade.Rotation = 90
+		shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(215, 215, 215))
+		shade.Parent = face
+		if normal ~= Enum.NormalId.Top then
+			for _, top in { true, false } do
+				local strip = Instance.new("Frame")
+				strip.AnchorPoint = Vector2.new(0, if top then 0 else 1)
+				strip.Position = UDim2.fromScale(0, if top then 0 else 1)
+				strip.Size = UDim2.fromScale(1, look.BAND)
+				strip.BackgroundColor3 = band
+				strip.BorderSizePixel = 0
+				strip.Parent = face
+			end
 		end
+		return face
 	end
-	for _, normal in label.NAMED_FACES do
-		face((Enum.NormalId :: any)[normal], product.name)
+	for _, normal in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local face = side(normal)
+		if art then
+			local picture = Instance.new("ImageLabel")
+			picture.Position = UDim2.fromScale(look.ART[1], look.ART[2])
+			picture.Size = UDim2.fromScale(look.ART[3], look.ART[4])
+			picture.BackgroundColor3 = band
+			picture.Image = art
+			picture.ScaleType = if pack then Enum.ScaleType.Crop else Enum.ScaleType.Fit
+			picture.Parent = face
+			local frame = Instance.new("UIStroke")
+			frame.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			frame.Color = rgb(look.FRAME)
+			frame.Thickness = 4
+			frame.Parent = picture
+		end
+		local right = look.ART[1] + look.ART[3] + 0.04
+		local name = caseText(face, string.upper(product.name), Color3.new(1, 1, 1), UDim2.fromScale(right, 0.15), UDim2.fromScale(0.96 - right, 0.44))
+		name.TextStrokeTransparency = 0.35
+		local pill = Instance.new("Frame")
+		pill.Position = UDim2.fromScale(right + 0.04, 0.63)
+		pill.Size = UDim2.fromScale(0.88 - right, 0.2)
+		pill.BackgroundColor3 = rgb(look.PILL)
+		pill.Parent = face
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(0.5, 0)
+		round.Parent = pill
+		caseText(pill, `x{units}`, rgb(look.FRAME), UDim2.fromScale(0.1, 0.12), UDim2.fromScale(0.8, 0.76))
 	end
-	face(Enum.NormalId.Top, nil)
+	for _, normal in { Enum.NormalId.Left, Enum.NormalId.Right } do
+		local hole = Instance.new("Frame")
+		hole.AnchorPoint = Vector2.new(0.5, 0.5)
+		hole.Position = UDim2.fromScale(0.5, 0.3)
+		hole.Size = UDim2.fromScale(0.34, 0.13)
+		hole.BackgroundColor3 = rgb(look.HANDLE)
+		hole.Parent = side(normal)
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(0.5, 0)
+		round.Parent = hole
+	end
+	local lid = side(Enum.NormalId.Top)
+	caseText(lid, string.upper(product.name), Color3.new(1, 1, 1), UDim2.fromScale(0.1, 0.3), UDim2.fromScale(0.8, 0.4)).TextStrokeTransparency = 0.35
 end
 
 -- Puts a box on the delivery pad
@@ -216,7 +284,7 @@ local function createBox(shop: Shop, productId: string, units: number)
 	if Props.weldFit(product.boxProp, box) then
 		box.Transparency = 1
 	else
-		labelBox(box, product)
+		brandCase(box, product, units)
 	end
 
 	local prompt = makePrompt(box, "Pick up", product.name)
