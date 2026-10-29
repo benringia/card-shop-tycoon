@@ -44,6 +44,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	UiLayout = require("./UiLayout.spec"),
 	CompareRules = require("./CompareRules.spec"),
 	PageCurl = require("./PageCurl.spec"),
+	BinderFit = require("./BinderFit.spec"),
 }
 
 local passed, failed = 0, 0
