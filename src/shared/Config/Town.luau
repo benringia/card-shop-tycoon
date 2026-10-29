@@ -161,12 +161,13 @@ return {
 	SHELF_STOCK = {
 		LEVELS = { 0.1, 0.37, 0.62 },
 		PER_LEVEL = 4,
-		BOX_HEIGHT = 0.9,
-		WIDTH_FILL = 0.7,
-		DEPTH_FILL = 0.5,
+		BOX_HEIGHT = 1.25,
+		WIDTH_FILL = 0.76,
+		DEPTH_FILL = 0.66,
 		-- Pack products: each box's place holds an open display box (Util/PackModels) showing up to PACKS_SHOWN packs,
-		-- emptying as the shelf sells (ShelfStock.boxFill)
-		DISPLAY = { PACKS_SHOWN = 6 },
+		-- emptying as the shelf sells (ShelfStock.boxFill). The box sizes above let it stand at MIN_SCALE or more of its
+		-- full size (TRAY: the model's width, height with the lid back, depth) on every pack rack (the user's "Bigger").
+		DISPLAY = { PACKS_SHOWN = 6, TRAY = { 0.79, 1.31, 1.38 }, MIN_SCALE = 0.95 },
 		-- Card sleeves (Products stockLook "Sleeves"): retail packets in each box's place, leaning back: a white
 		-- backing card with a header tab and hang hole, a clear window showing the sleeves, a strip in the product's
 		-- colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.

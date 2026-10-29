@@ -233,7 +233,7 @@ local List: { Shelf } = {
 		size = Vector3.new(8, 7, 4),
 		color = Color3.fromRGB(120, 80, 55),
 		-- Double-sided: shelf tops at 1.04 / 2.54 / 3.85 of 7 studs, a row each side of the middle divider
-		stock = { LEVELS = { 0.149, 0.362, 0.549 }, SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.3 },
+		stock = { SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.33 }, -- the same levels as the other racks, so plates line up
 	},
 }
 

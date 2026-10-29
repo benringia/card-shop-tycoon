@@ -105,11 +105,14 @@ face and two black bollards with yellow bands at its street corners; boxes stand
 them from its doorway side. Delivery boxes show their
 product: a band in the product's colour with its name (or a per-product box model, Products `boxProp`). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
-`Town.SHELF_STOCK`, `Products.color`). A shelf whose model isn't a one-sided rack sets its own levels and sides (`Shelves` `stock`): the
+`Town.SHELF_STOCK`, `Products.color`). Every rack is 7 studs tall with its plates at the same three levels, so they
+line up side by side. A shelf whose model isn't a one-sided rack sets its own sides (`Shelves` `stock`): the
 Big Display Rack is double-sided, filling each level front then back, with its back rows, packs and tags facing
 the back aisle. Packs stand in open cardboard display boxes (`Util/PackModels.displayBox`: the lid folded back,
 up to 6 packs showing, front first), each box a share of the shelf's stock; as packs sell the last box empties pack
-by pack and boxes go away (`ShelfStock.boxFill`, `Town.SHELF_STOCK.DISPLAY`). Deck boxes stand as little 3D deck
+by pack and boxes go away (`ShelfStock.boxFill`, `Town.SHELF_STOCK.DISPLAY`). They stand at 95% of their full size
+or more on every rack (the user's "Bigger", 2026-10-30; Lune-tested), filling the level up to just under the plate
+above. Deck boxes stand as little 3D deck
 boxes with their lids (`PackModels.deckBox`). The models are Blender builds in `assets/packs` (docs/packs.md);
 without them code-built stand-ins show. Card Sleeves (Products `stockLook = "Sleeves"`) show as 2 retail
 sleeve packets per slot, leaning back: a white backing card with a header tab and hang hole, the sleeves behind a clear
