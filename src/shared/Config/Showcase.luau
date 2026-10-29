@@ -28,7 +28,17 @@ return {
 	CASED_CARD_INSET = 0.45, -- cases drawn with a prop: cards stand this far behind the case's front face
 	CASED_CARD_RAISE = 0.25, -- and this much higher, on the cabinet's shelves
 	CARD_SIZE = Vector3.new(1.05, 1.5, 0.08), -- the card's 0.7 shape; the client draws the card face on it
-	-- Glass counters (Shelves cardsFlat, drawn with a prop): smaller cards lying on the bed, leaning up toward
-	-- the front so customers can read them. BED = height of the bed as a fraction of the case height.
-	FLAT = { SCALE = 0.62, BED = 0.74, TILT = 20, SPACING = Vector2.new(1.9, 1.12) },
+	-- Cases with upright cards (Shelves cardsUpright; layout in Config/CaseLayout): each client spins its cards
+	-- (CaseSpinController) on a glowing pad and a light beam in the card's rarity colour. Studs and seconds.
+	SPIN = {
+		SECONDS = 6, -- one full turn
+		BOB = 0.08, -- studs up and down
+		BOB_SECONDS = 2.4,
+		RANGE = 80, -- studs from the camera; further cases stand still
+		PAD = Vector3.new(0.06, 0.7, 0.7), -- a glowing disc under each card (cylinder: height, diameter)
+		PAD_TRANSPARENCY = 0.35,
+		BEAM_HEIGHT = 1.9, -- the light beam rising from the pad
+		BEAM_WIDTH = 0.75,
+		BEAM_TRANSPARENCY = 0.45, -- at its foot; it fades out to the top
+	},
 }

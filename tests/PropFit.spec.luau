@@ -68,6 +68,21 @@ return {
 		assert(look.BASE_RADIUS * 2 <= math.min(CONDENSER.x, CONDENSER.z), "the machine is wider than its spot")
 		assert(look.BASE_HEIGHT + look.CHAMBER_HEIGHT + look.CAP_HEIGHT <= CONDENSER.y, "the machine is taller than its box")
 		assert(look.CORE_RADIUS + 0.3 < look.CHAMBER_RADIUS, "the floating cards hit the glass")
+		-- Two more rings of cards circle the chamber, one below the crystal and one above
+		assert(look.RING_RADIUS + look.RING_CARD[1] / 2 + 0.1 < look.CHAMBER_RADIUS, "the card rings hit the glass")
+		assert(look.RING_RISE + look.RING_CARD[2] / 2 + look.BOB < look.CHAMBER_HEIGHT / 2, "the card rings leave the chamber")
+		-- The Grading Station: a scan pod (the user's pick, 2026-10-30), made bigger, in its 6 x 9 x 6 spot
+		local pod = town.GRADING_LOOK
+		local GRADING = { x = 6, y = 9, z = 6 } -- Config/Shelves GradingStation size
+		assert(pod.ORBIT_RADIUS - pod.ORBIT_CARD[1] / 2 > pod.CARD_SIZE[1] / 2 + 0.1, "the orbiting cards hit the middle card")
+		assert(pod.ORBIT_RADIUS + pod.ORBIT_CARD[1] / 2 + 0.1 < pod.COLUMN_RADIUS, "the orbiting cards hit the glass")
+		assert(pod.ORBIT_RISE + pod.ORBIT_CARD[2] / 2 + look.BOB < pod.COLUMN_HEIGHT / 2, "the orbiting rings leave the column")
+		assert(pod.PLINTH_RADIUS * 2 <= math.min(GRADING.x, GRADING.z), "the pod is wider than its spot")
+		assert(pod.BODY_RADIUS < pod.PLINTH_RADIUS, "the body overhangs the plinth")
+		local columnTop = pod.PLINTH_HEIGHT + pod.BODY_HEIGHT + pod.COLUMN_HEIGHT
+		assert(columnTop + pod.CAP_HEIGHT <= GRADING.y, "the pod is taller than its box")
+		assert(pod.CARD_SIZE[1] / 2 + 0.15 < pod.COLUMN_RADIUS, "the spinning card hits the glass")
+		assert(pod.CARD_SIZE[2] + 2 * look.BOB < pod.COLUMN_HEIGHT, "the bobbing card leaves the column (it moves like the Condenser's Rotor)")
 		expect.equal(town.SLOTS.Computer.yaw, nil, "the code-built desk faces -Z already")
 	end,
 
@@ -78,8 +93,6 @@ return {
 			expect.equal(slots[name].yaw, nil, `{name}: built facing -Z`)
 			assert(town.SHELF_LOOK.HEADERS[name] ~= nil, `{name}: header words`)
 		end
-		expect.equal(slots.Showcase.yaw, 90, "Showcase: long side along its Z")
-		expect.equal(slots.Showcase.stretch, true, "Showcase stretches")
 	end,
 
 	["counter props stay behind the scan items"] = function()

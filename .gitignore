@@ -9,3 +9,6 @@ ServerPackages/
 *.blend1
 *.fbm/
 __pycache__/
+
+# Fonts for the texture scripts (fetched locally; see tools/textures/make_pack_textures.py)
+tools/textures/fonts/

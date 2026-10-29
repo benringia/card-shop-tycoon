@@ -48,6 +48,17 @@ function ShelfStock.boxCount(units: number, capacity: number, slots: number): nu
 	return math.ceil(math.min(units, capacity) / capacity * slots)
 end
 
+-- Packs a display box shows (UI project 3): box `index` holds its share (capacity / slots) of the shelf's units, the
+-- earlier boxes full first; a box with any units shows at least one pack, one past the stocked boxes shows none
+function ShelfStock.boxFill(units: number, capacity: number, slots: number, index: number, shown: number): number
+	if index > ShelfStock.boxCount(units, capacity, slots) then
+		return 0
+	end
+	local perBox = capacity / slots
+	local fill = math.clamp((math.min(units, capacity) - (index - 1) * perBox) / perBox, 0, 1)
+	return math.max(1, math.ceil(fill * shown - 1e-9))
+end
+
 function ShelfStock.boxSize(shelf: Vec, config: StockConfig): Vec
 	return {
 		x = shelf.x / config.PER_LEVEL * config.WIDTH_FILL,

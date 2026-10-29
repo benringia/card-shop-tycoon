@@ -45,6 +45,10 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PageCurl = require("./PageCurl.spec"),
 	BinderFit = require("./BinderFit.spec"),
 	BinderGesture = require("./BinderGesture.spec"),
+	PackFxConfig = require("./PackFxConfig.spec"),
+	ShowcaseLayout = require("./ShowcaseLayout.spec"),
+	OpeningFlow = require("./OpeningFlow.spec"),
+	OpeningLayout = require("./OpeningLayout.spec"),
 }
 
 local passed, failed = 0, 0

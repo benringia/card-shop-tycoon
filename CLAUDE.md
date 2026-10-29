@@ -24,6 +24,14 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
   `tools/ui-icons/slice_icons.py <sheet> <1-4>` (needs Pillow). Not synced by Rojo.
+- `assets/packs` → ReplicatedStorage.PackModels: the pack, deck box and display box (`Pack.rbxm`, `DeckBox.rbxm`,
+  `DisplayBox.rbxm`, each with `Looks/<look>` SurfaceAppearances), built by `tools/blender/build_pack.py`,
+  `build_deckbox.py`, `build_displaybox.py` on `pack_kit.py`, textures by `tools/textures/make_pack_textures.py`;
+  sources in `assets/blender/Pack/`. `Util/PackModels` falls back to code-built stand-ins while they're missing
+  (docs/packs.md: rebuilding, importing, the Rojo mapping).
+- `assets/ui/fx`: the pack opening's effect sheets (rip burst, shards, glints, mote, rays, leak), rendered by
+  `tools/blender/build_pack_fx.py` and cut into flipbooks by `tools/textures/make_flipbooks.py`; ids in
+  `Config/PackFx`. Uploaded as images, not synced by Rojo.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 
@@ -45,7 +53,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   the recommended Power, a typical party (best card at it, two at 60%) and one maxed Legendary with two Lv 1 cards;
   with players > 1 every row is a group of that many players against the scaled boss
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, Dungeon, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here.
+  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, Dungeon, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 

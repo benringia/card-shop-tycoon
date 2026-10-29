@@ -1,4 +1,5 @@
 --!strict
+local fs = require("@lune/fs")
 local town = require("../src/shared/Config/Town")
 local products = require("../src/shared/Config/Products")
 local ShelfStock = require("../src/shared/Util/ShelfStock")
@@ -130,5 +131,58 @@ return {
 		assert(look.WIDTH <= boxWidth + 1e-9, "a deck box is wider than its place")
 		assert(look.HEIGHT <= config.BOX_HEIGHT + 1e-9, "a deck box is taller than its place")
 		assert(look.PER_STACK * look.DEPTH <= boxDepth + 1e-9, "the deck boxes don't fit front to back")
+	end,
+
+	["booster boxes stand on shelves as sealed booster boxes, stacked, that fit their place"] = function()
+		expect.equal(products.ById.FirstSparkBox.stockLook, "Booster", "First Spark Booster Box look")
+		local look = town.SHELF_STOCK.BOOSTERS
+		local config = town.SHELF_STOCK
+		local boxWidth = RACK.x / config.PER_LEVEL * config.WIDTH_FILL
+		local boxDepth = RACK.z * config.DEPTH_FILL
+		assert(look.WIDTH <= boxWidth + 1e-9, "a booster box is wider than its place")
+		assert(look.DEPTH <= boxDepth + 1e-9, "a booster box is deeper than its place")
+		assert(look.PER_STACK * look.HEIGHT <= config.BOX_HEIGHT + 1e-9, "the stack is taller than its place")
+	end,
+
+	["pack display boxes stand big on every pack rack, clear of the plate above"] = function()
+		local display = town.SHELF_STOCK.DISPLAY
+		local tray = display.TRAY
+		-- The Big Display Rack's own stock rows (Config/Shelves holds Vector3s, so its text is read)
+		local source = fs.readFile("src/shared/Config/Shelves.luau")
+		local row = string.match(source, 'id = "BigDisplayRack".-stock = (%b{})')
+		assert(row, "Big Display Rack stock row not found")
+		local levels: { number }? = nil
+		local levelsText = string.match(row, "LEVELS = { ([%d%., ]+) }")
+		if levelsText then
+			levels = {}
+			for value in string.gmatch(levelsText, "[%d%.]+") do
+				table.insert(levels :: { number }, tonumber(value) :: number)
+			end
+		end
+		local depth = tonumber(string.match(row, "DEPTH_FILL = ([%d%.]+)"))
+		local racks = {
+			{ name = "Small Pack Rack", size = { x = 4, y = 7, z = 2 }, override = nil },
+			{ name = "Wall Shelf", size = { x = 8, y = 7, z = 2 }, override = nil },
+			{ name = "Big Display Rack", size = { x = 8, y = 7, z = 4 }, override = { LEVELS = levels, DEPTH_FILL = depth } },
+		}
+		for _, rack in racks do
+			local config = ShelfStock.configFor(town.SHELF_STOCK, rack.override)
+			local box = ShelfStock.boxSize(rack.size, config)
+			local scale = math.min(box.x / tray[1], box.y / tray[2], box.z / tray[3])
+			assert(scale >= display.MIN_SCALE - 1e-9, `{rack.name}: display boxes show at {scale} of full size`)
+			for index = 1, #config.LEVELS - 1 do
+				local gap = (config.LEVELS[index + 1] - config.LEVELS[index]) * rack.size.y
+				assert(box.y <= gap - 0.12, `{rack.name}: level {index}'s boxes reach the plate above`)
+			end
+		end
+	end,
+
+	["boxFill: full boxes show all, the last box shows its share, any stock shows a pack"] = function()
+		expect.equal(ShelfStock.boxFill(24, 24, 12, 1, 6), 6, "full")
+		expect.equal(ShelfStock.boxFill(23, 24, 12, 12, 6), 3, "half of the last box")
+		expect.equal(ShelfStock.boxFill(1, 96, 12, 1, 6), 1, "one pack still shows")
+		expect.equal(ShelfStock.boxFill(10, 24, 12, 6, 6), 0, "beyond the stocked boxes")
+		expect.equal(ShelfStock.boxFill(0, 24, 12, 1, 6), 0, "empty")
+		expect.equal(ShelfStock.boxFill(30, 24, 12, 12, 6), 6, "more than fits still shows a full box")
 	end,
 }

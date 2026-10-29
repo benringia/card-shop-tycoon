@@ -14,6 +14,7 @@ local Products = require(Config:WaitForChild("Products"))
 local Packs = require(Config:WaitForChild("Packs"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
+local CaseLayout = require(Config:WaitForChild("CaseLayout"))
 local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
@@ -22,6 +23,9 @@ local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
+local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
+local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
+local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -156,56 +160,97 @@ local function newDecorPart(name: string, parent: Instance): Part
 	return part
 end
 
--- A box's place filled with thin upright packs showing the pack art, leaning back a little (front first)
-local function fillWithPacks(box: Part, art: string, color: Color3)
-	local look = Town.SHELF_STOCK.PACKS
-	local packs = box:GetChildren()
-	if #packs == 0 then
-		for index = 1, look.PER_STACK do
-			local pack = newDecorPart("Pack" .. index, box)
-			pack.Size = Vector3.new(look.HEIGHT * look.ASPECT, look.HEIGHT, look.THICKNESS)
-			local front = Instance.new("Decal")
-			front.Face = Enum.NormalId.Front
-			front.Texture = art
-			front.Parent = pack
-		end
-		packs = box:GetChildren()
-	end
-	local offsets = ShelfStock.stackOffsets(#packs, box.Size.Z)
-	for index, pack in packs do
-		if pack:IsA("BasePart") then
-			pack.Color = color
-			-- Standing on the box's bottom, tipped back about its foot
-			pack.CFrame = box.CFrame
-				* CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0)
-				* CFrame.Angles(math.rad(look.LEAN), 0, 0)
-				* CFrame.new(0, pack.Size.Y / 2, 0)
+-- A model fitted into a box's place: anchored, out of the way of clicks and walking, scaled by its `fit` part so it
+-- fills the place without passing it, its bottom centre on `at`
+local function placeModel(model: Model, fit: BasePart?, box: Part, at: CFrame)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.CastShadow = false
 		end
 	end
+	local size = if fit then fit.Size else model:GetExtentsSize()
+	local scale = math.min(box.Size.X / size.X, box.Size.Y / size.Y, box.Size.Z / size.Z)
+	model:ScaleTo(model:GetScale() * scale)
+	model:PivotTo(at)
+	model.Parent = box
 end
 
--- A box's place filled with little deck boxes (Town.SHELF_STOCK.DECKS), front first, leaning back a little: the
--- product's colour with the set's art on the front and a gold lid band
-local function fillWithDecks(box: Part, art: string?, color: Color3)
-	local look = Town.SHELF_STOCK.DECKS
+-- A pack product's place holds an open display box (Util/PackModels) showing `packs` packs; it's swapped only when
+-- that number changes, and follows the place when the shelf moves
+local function fillWithDisplayBox(box: Part, productId: string, packs: number)
+	local at = box.CFrame * CFrame.new(0, -box.Size.Y / 2, 0)
+	local current = box:FindFirstChild("DisplayBox")
+	if current and current:IsA("Model") and current:GetAttribute("Packs") == packs then
+		current:PivotTo(at)
+		return
+	end
 	box:ClearAllChildren()
+	local model = PackModels.displayBox(productId, packs)
+	model.Name = "DisplayBox"
+	model:SetAttribute("Packs", packs)
+	placeModel(model, model:FindFirstChild("Tray") :: BasePart?, box, at)
+end
+
+-- A deck box product's place holds 3D deck boxes (Util/PackModels) front to back, leaning back a little
+local function fillWithDecks(box: Part, productId: string)
+	local look = Town.SHELF_STOCK.DECKS
 	local offsets = ShelfStock.stackOffsets(look.PER_STACK, box.Size.Z)
-	for index = 1, look.PER_STACK do
-		local base = box.CFrame * CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0) * CFrame.Angles(math.rad(look.LEAN), 0, 0)
-		local deck = newDecorPart("Deck", box)
-		deck.Size = Vector3.new(look.WIDTH, look.HEIGHT - look.LID, look.DEPTH)
-		deck.CFrame = base * CFrame.new(0, deck.Size.Y / 2, 0)
-		deck.Color = color
-		if art then
-			local front = Instance.new("Decal")
-			front.Face = Enum.NormalId.Front
-			front.Texture = art
-			front.Parent = deck
+	local decks = {}
+	for _, child in box:GetChildren() do
+		if child:IsA("Model") and child.Name == "DeckBox" then
+			table.insert(decks, child)
 		end
-		local lid = newDecorPart("Lid", box)
-		lid.Size = Vector3.new(look.WIDTH + 0.02, look.LID, look.DEPTH + 0.02)
-		lid.CFrame = base * CFrame.new(0, look.HEIGHT - look.LID / 2, 0)
-		lid.Color = rgb(look.LID_COLOR)
+	end
+	if #decks ~= look.PER_STACK then
+		box:ClearAllChildren()
+		table.clear(decks)
+	end
+	local place = Instance.new("Part")
+	place.Size = Vector3.new(look.WIDTH, look.HEIGHT, look.DEPTH)
+	for index = 1, look.PER_STACK do
+		local at = box.CFrame * CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0) * CFrame.Angles(math.rad(look.LEAN), 0, 0)
+		local deck = decks[index]
+		if deck then
+			deck:PivotTo(at)
+		else
+			deck = PackModels.deckBox(productId)
+			deck.Name = "DeckBox"
+			local _, size = deck:GetBoundingBox()
+			local fit = Instance.new("Part")
+			fit.Size = size
+			placeModel(deck, fit, place, at)
+			deck.Parent = box
+			fit:Destroy()
+		end
+	end
+	place:Destroy()
+end
+
+-- A booster box product's place holds sealed booster boxes printed like its delivery case (Util/BrandBox), stacked
+local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
+	local look = Town.SHELF_STOCK.BOOSTERS
+	local boosters = {}
+	for _, child in box:GetChildren() do
+		if child:IsA("BasePart") and child.Name == "BoosterBox" then
+			table.insert(boosters, child)
+		end
+	end
+	if #boosters ~= look.PER_STACK then
+		box:ClearAllChildren()
+		table.clear(boosters)
+	end
+	for index = 1, look.PER_STACK do
+		local booster = boosters[index]
+		if not booster then
+			booster = newDecorPart("BoosterBox", box)
+			booster.Size = Vector3.new(look.WIDTH, look.HEIGHT, look.DEPTH)
+			BrandBox.draw(booster, product, nil, look.PIXELS_PER_STUD)
+		end
+		booster.CFrame = box.CFrame * CFrame.new(0, -box.Size.Y / 2 + look.HEIGHT * (index - 0.5), 0)
 	end
 end
 
@@ -324,7 +369,8 @@ local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
 end
 
 -- Products shelves show up to their stock slots of boxes in the product's colour, filling from the bottom level.
--- Packs show as stacks of packs with their art instead of boxes; card sleeves and deck boxes by their stockLook.
+-- Packs stand in open display boxes that empty as they sell (UI project 3); card sleeves and deck boxes by their
+-- stockLook.
 local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	if shelf.def.kind ~= "Products" then
 		return
@@ -344,7 +390,8 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 		return
 	end
 	local pack = Packs.ById[product.id]
-	local art = if pack and pack.art then pack.art else nil
+	local slotCount = ShelfStock.slotCount(config)
+	local shown = Town.SHELF_STOCK.DISPLAY.PACKS_SHOWN
 	local sleeveColors = Town.SHELF_STOCK.SLEEVES.COLORS
 	local size = ShelfStock.boxSize(toVec(shelf.def.size), config)
 	local slots = ShelfStock.slots(toVec(shelf.def.size), config)
@@ -363,13 +410,16 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 		box.CFrame = shelf.part.CFrame * CFrame.new(slot.x, slot.y, slot.z) * (if slot.back then CFrame.Angles(0, math.pi, 0) else CFrame.new())
 		if product.stockLook == "Deck" then
 			box.Transparency = 1
-			fillWithDecks(box, art, color)
-		elseif art then
+			fillWithDecks(box, product.id)
+		elseif pack then
 			box.Transparency = 1
-			fillWithPacks(box, art, color)
+			fillWithDisplayBox(box, product.id, ShelfStock.boxFill(shelf.units, shelf.def.capacity, slotCount, index, shown))
 		elseif product.stockLook == "Sleeves" then
 			box.Transparency = 1
 			fillWithSleeves(box, rgb(sleeveColors[(index - 1) % #sleeveColors + 1]), color)
+		elseif product.stockLook == "Booster" then
+			box.Transparency = 1
+			fillWithBoosters(box, product)
 		end
 	end
 end
@@ -409,14 +459,13 @@ local function getSlotCFrame(shelf: PlacedShelf, slot: number): CFrame
 	local rows = math.ceil(shelf.def.capacity / columns)
 	local col = (slot - 1) % columns
 	local row = (slot - 1) // columns
-	if shelf.visual and shelf.def.cardsFlat then
-		-- Lying on the bed under the glass, back row first, leaning up toward the front
-		local flat = ShowcaseConfig.FLAT
+	if shelf.visual and shelf.def.cardsUpright then
+		-- Standing on the bed in two rows, the back one raised; each client spins them (CaseSpinController)
 		local size = shelf.part.Size
-		local x = (col - (columns - 1) / 2) * flat.SPACING.X
-		local z = ((rows - 1) / 2 - row) * flat.SPACING.Y
-		local y = -size.Y / 2 + flat.BED * size.Y + ShowcaseConfig.CARD_SIZE.Z
-		return shelf.part.CFrame * CFrame.new(x, y, z) * CFrame.Angles(math.rad(90 - flat.TILT), 0, 0)
+		local spot = ShowcaseLayout.uprightSlots(shelf.def.capacity, { x = size.X, y = size.Y, z = size.Z }, CaseLayout.UPRIGHT)[slot]
+		if spot then
+			return shelf.part.CFrame * CFrame.new(spot.x, spot.y, spot.z)
+		end
 	end
 	local x = (col - (columns - 1) / 2) * ShowcaseConfig.SLOT_SPACING.X
 	local y = ((rows - 1) / 2 - row) * ShowcaseConfig.SLOT_SPACING.Y + ShowcaseConfig.SLOTS_OFFSET_Y
@@ -439,7 +488,9 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part.Name = "DisplayedCard" .. slot
 	part.Anchored = true
 	part.CanCollide = false
-	part.Size = if shelf.visual and shelf.def.cardsFlat then ShowcaseConfig.CARD_SIZE * ShowcaseConfig.FLAT.SCALE else ShowcaseConfig.CARD_SIZE
+	local upright = shelf.visual ~= nil and shelf.def.cardsUpright == true
+	local card = CaseLayout.UPRIGHT.cardSize
+	part.Size = if upright then Vector3.new(card.x, card.y, ShowcaseConfig.CARD_SIZE.Z) else ShowcaseConfig.CARD_SIZE
 	-- A plain dark card: every client draws the card face, glow and halo on it (CardEffectsController)
 	part.Color = Color3.fromRGB(30, 26, 40)
 	part.Material = Enum.Material.SmoothPlastic
@@ -451,6 +502,7 @@ local function buildCardPart(shelf: PlacedShelf, slot: number, displayed: Displa
 	part:SetAttribute("ShelfUid", shelf.uid)
 	part:SetAttribute("OwnerUserId", shelf.owner.UserId)
 	part:SetAttribute("ShelfKind", shelf.def.kind)
+	part:SetAttribute("Upright", if upright then true else nil)
 	local level, stars, grade = getGrowth(displayed)
 	part:SetAttribute("Grade", grade)
 	part:SetAttribute("Level", level)

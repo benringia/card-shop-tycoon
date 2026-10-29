@@ -36,7 +36,7 @@ return {
 		HookRack = { height = 0, collide = false, built = true }, -- Accessory Hook: a pegboard with hooks
 		DisplayRack = { height = 0, collide = false, built = true }, -- Big Display Rack: double-sided
 		-- stretch = fill the box on every axis (plain straight parts only); roll stands a model up (degrees about Z)
-		Showcase = { height = 0, collide = false, yaw = 90, stretch = true }, -- glass counter, long side on its Z
+		CardCase = { height = 0, collide = false, built = true }, -- Glass Showcase / Collector Case: a tall glass case (CASE_LOOK)
 		-- delivery boxes, one per product (Products boxProp); welded to the box part, so they travel when carried
 		BoxPacks = { height = 0, collide = false },
 		BoxSleeves = { height = 0, collide = false },
@@ -161,17 +161,22 @@ return {
 	SHELF_STOCK = {
 		LEVELS = { 0.1, 0.37, 0.62 },
 		PER_LEVEL = 4,
-		BOX_HEIGHT = 0.9,
-		WIDTH_FILL = 0.7,
-		DEPTH_FILL = 0.5,
-		-- Pack products: each box's place holds a stack of thin packs with the pack art (Config/Packs art)
-		PACKS = { PER_STACK = 5, HEIGHT = 1.05, ASPECT = 0.65, THICKNESS = 0.05, LEAN = 10 },
+		BOX_HEIGHT = 1.25,
+		WIDTH_FILL = 0.76,
+		DEPTH_FILL = 0.66,
+		-- Pack products: each box's place holds an open display box (Util/PackModels) showing up to PACKS_SHOWN packs,
+		-- emptying as the shelf sells (ShelfStock.boxFill). The box sizes above let it stand at MIN_SCALE or more of its
+		-- full size (TRAY: the model's width, height with the lid back, depth) on every pack rack (the user's "Bigger").
+		DISPLAY = { PACKS_SHOWN = 6, TRAY = { 0.79, 1.31, 1.38 }, MIN_SCALE = 0.95 },
 		-- Card sleeves (Products stockLook "Sleeves"): retail packets in each box's place, leaning back: a white
 		-- backing card with a header tab and hang hole, a clear window showing the sleeves, a strip in the product's
 		-- colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.
-		-- Deck boxes (Products stockLook "Deck"): little upright boxes in the product's colour with the set's art
-		-- on the front (Config/Packs) and a gold lid band, leaning back a little
-		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LID = 0.16, LID_COLOR = { 235, 190, 80 }, LEAN = 4 },
+		-- Deck boxes (Products stockLook "Deck"): the 3D deck box (Util/PackModels) fitted to WIDTH x HEIGHT x DEPTH,
+		-- PER_STACK front to back, leaning back a little
+		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LEAN = 4 },
+		-- Booster boxes (Products stockLook "Booster"): sealed booster boxes printed like the delivery case
+		-- (Util/BrandBox), PER_STACK stacked in each place
+		BOOSTERS = { PER_STACK = 2, WIDTH = 0.74, HEIGHT = 0.55, DEPTH = 0.95, PIXELS_PER_STUD = 300 },
 		SLEEVES = {
 			PER_STACK = 2,
 			WIDTH = 0.62,
@@ -194,44 +199,90 @@ return {
 		},
 	},
 
-	-- The Card Condenser (Props, code-built): a charcoal plinth with a glowing ring, a screen and a card slot; a glass
-	-- chamber with a violet crystal ringed by floating cards (the Rotor: CondenserFxController spins and bobs it on
-	-- each client); charcoal side pillars with light strips holding a cap. No lights. Studs; colours { r, g, b }.
+	-- The Glass Showcase / Collector Case (Util/CaseLook, code-built; UI project 3): a dark base with the bed on top,
+	-- corner posts and top rails, tall glass sides and lid, and a light strip along the top front edge. Part names
+	-- Support, Carpet, Frame, Glass, Strip (Shelves propColors recolour them). The bed sits at CaseLayout.UPRIGHT
+	-- bedHeight. Studs; colours { r, g, b }.
+	CASE_LOOK = {
+		SUPPORT = { 40, 44, 58 }, -- charcoal base
+		CARPET = { 70, 40, 110 }, -- violet bed
+		FRAME = { 205, 210, 220 }, -- chrome posts and rails
+		GLASS = { 210, 235, 255 },
+		GLASS_TRANSPARENCY = 0.85,
+		GLASS_REFLECTANCE = 0.15,
+		STRIP = { 70, 230, 255 }, -- cyan light strip
+		POST = 0.12, -- corner post and rail thickness
+		BED = 0.06, -- bed thickness
+		STRIP_HEIGHT = 0.1,
+	},
+
+	-- The Card Condenser (Props, code-built), restyled to match the Grading Station's scan pod (2026-10-30): a dark
+	-- plinth with a violet rim, a white body with a light band, a card slot and a CONDENSER strip; a see-through
+	-- chamber with a glowing floor where a crystal floats ringed by three cards, with two more rings of small cards
+	-- circling the other way below it and above it; a white cap with a violet ring. The rings are Rotors that
+	-- CondenserFxController spins and bobs on each client (each ring its own speed and direction). No lights.
+	-- Studs; colours { r, g, b }.
 	CONDENSER_LOOK = {
-		BASE_RADIUS = 2.5,
-		BASE_HEIGHT = 1.4,
-		CHAMBER_RADIUS = 1.8,
+		BASE_RADIUS = 2.6,
+		PLINTH_HEIGHT = 0.5,
+		BASE_HEIGHT = 1.6, -- plinth and body together
+		BODY_RADIUS = 2.25,
+		CHAMBER_RADIUS = 1.9,
 		CHAMBER_HEIGHT = 3.6,
-		CAP_HEIGHT = 0.7,
+		CAP_HEIGHT = 0.5,
 		CORE_RADIUS = 1.05, -- the floating cards' circle round the crystal
-		BODY = { 38, 41, 48 },
-		TRIM = { 70, 74, 84 },
+		RING_RADIUS = 1.45, -- the outer card rings' circle
+		RING_RISE = 1.05, -- each outer ring this far below / above the crystal
+		RING_CARD = { 0.36, 0.5 }, -- an outer ring card: width, height
+		RING_CARDS = 5, -- cards in each outer ring
+		RING_SPIN = -0.7, -- the outer rings turn this fast against the crystal's (1 = the same)
+		SHELL = { 236, 240, 247 }, -- glossy white
+		DARK = { 28, 32, 46 },
 		GLOW = { 170, 110, 255 }, -- violet
-		GLASS = { 210, 225, 245 },
-		GLASS_TRANSPARENCY = 0.7,
-		FLOOR_TRANSPARENCY = 0.35, -- the chamber's glowing floor, softened
+		GLASS = { 225, 215, 255 },
+		GLASS_TRANSPARENCY = 0.8, -- see-through plastic, not Glass (Glass hides what's behind it)
+		FLOOR_TRANSPARENCY = 0.6, -- the chamber's glowing floor, softened (0.35 drowned the cards in violet)
 		CARD = { 255, 214, 110 },
 		SCREEN_TEXT = "✨ CONDENSER",
-		SPIN_SPEED = 40, -- degrees a second
+		SPIN_SPEED = 40, -- degrees a second (every Rotor, the Grading Station's too)
 		BOB = 0.15, -- studs up and down
 		BOB_SECONDS = 2.4,
 		FX_DISTANCE = 80, -- only spun this close to the camera
 	},
 
-	-- The Grading Station (Props, code-built): a navy cabinet with gold trim and a front screen; on its top a
-	-- scanner bed where a card lies under a glowing scan bar, an arm holding a magnifier over it, and a gold
-	-- graded-card slab on a stand at the back. No lights. Studs; colours { r, g, b }.
+	-- The Grading Station (Props, code-built): a futuristic scan pod (the user's pick, 2026-10-30, then made bigger).
+	-- A dark plinth with a glowing rim, a round white body with a light band, a slot and a GRADING strip at the front;
+	-- on top an emitter under a see-through column where a gold card floats in a beam of light, two rings of small
+	-- cards circle it the other way below and above it, and a cap with the grade hologram above it. The card, the
+	-- hologram and the rings are Rotors (CondenserFxController spins and bobs them). No lights. Studs; colours
+	-- { r, g, b }.
 	GRADING_LOOK = {
-		WIDTH = 5.6,
-		DEPTH = 3.6,
-		CABINET_HEIGHT = 3.2,
-		BODY = { 34, 40, 66 }, -- navy
-		TRIM = { 218, 176, 84 }, -- gold
-		GLOW = { 120, 220, 255 }, -- the scan light
-		BED = { 24, 26, 34 },
-		CARD = { 255, 214, 110 },
-		SLAB = { 235, 240, 250 },
-		SCREEN_TEXT = "🏅 GRADING",
+		PLINTH_RADIUS = 2.85,
+		PLINTH_HEIGHT = 0.7,
+		BODY_RADIUS = 2.4,
+		BODY_HEIGHT = 2.3,
+		EMITTER_RADIUS = 1.1,
+		COLUMN_RADIUS = 1.35,
+		COLUMN_HEIGHT = 3.5,
+		BEAM_RADIUS = 0.42,
+		CAP_RADIUS = 1.5,
+		CAP_HEIGHT = 0.3,
+		CARD_SIZE = { 0.75, 1.05 }, -- the floating card: width, height
+		ORBIT_RADIUS = 0.95, -- the small cards' circle round the beam
+		ORBIT_RISE = 1.0, -- each ring this far below / above the middle card
+		ORBIT_CARD = { 0.34, 0.48 },
+		ORBIT_CARDS = 4, -- cards in each ring
+		ORBIT_SPIN = -0.8, -- the rings turn this fast against the middle card (1 = the same)
+		HOLO_SIZE = 2, -- the grade hologram over the cap (a ring with the letter), studs across
+		SHELL = { 236, 240, 247 }, -- glossy white
+		DARK = { 28, 32, 46 }, -- plinth, emitter, slot and strip
+		GLOW = { 70, 230, 255 }, -- cyan light
+		CARD = { 255, 205, 90 },
+		GLASS = { 200, 230, 255 },
+		GLASS_TRANSPARENCY = 0.78, -- see-through plastic, not Glass (Glass hides what's behind it)
+		BEAM_TRANSPARENCY = 0.62,
+		SCREEN_TEXT = "GRADING",
+		HOLO_TEXT = "S", -- the top grade
 	},
 
 	-- A boss trophy (Props, code-built): a dark stone plinth with a gold band and a gem in the boss's element colour

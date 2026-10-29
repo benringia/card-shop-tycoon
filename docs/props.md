@@ -17,12 +17,12 @@ shows its stand-in.
 | `Terminal` | the POS terminal at the left end of each shop's checkout counter, full depth; screen toward the cashier (+Z) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Computer` | the order computer: a code-built modern workstation (`built`: white desk on black legs, a widescreen showing ORDER STOCK, keyboard, plant, drawers, office chair); a model file would replace it; moves with it | fits 10 x 5.5 x 6 | (its own hitbox) |
-| `Condenser` | the Card Condenser: code-built (`built`, `CONDENSER_LOOK`); its Rotor model spins on each client | fills 6 x 7 x 6 | (its own hitbox) |
-| `WallShelf` | the Wall Shelf: code-built (`built`, Util/ShelfLooks) | fills 8 x 8 x 2 | (its own hitbox) |
+| `Condenser` | the Card Condenser: code-built (`built`, `CONDENSER_LOOK`), in the scan pod's style; its Rotors (the crystal with three cards, two rings of small cards) spin on each client | fills 6 x 7 x 6 | (its own hitbox) |
+| `WallShelf` | the Wall Shelf: code-built (`built`, Util/ShelfLooks) | fills 8 x 7 x 2 | (its own hitbox) |
 | `HookRack` | the Accessory Hook: a code-built pegboard with hooks (`built`) | fills 4 x 7 x 2 | (its own hitbox) |
 | `DisplayRack` | the Big Display Rack: code-built, double-sided (`built`) | fills 8 x 7 x 4 | (its own hitbox) |
-| `Showcase` | the Glass Showcase and the Collector Case: a glass counter; cards lie on the bed (`cardsFlat`, `Showcase.FLAT`); the Collector Case recolours its Support, Frame and Carpet parts (`propColors` in Config/Shelves) | fills 6 x 4 x 2 | (its own hitbox) |
-| `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; without a model the box gets a band in the product's colour and its name (`Stock.BOX_LABEL`) | fits 2.5 x 1.5 x 2 | no |
+| `CardCase` | the Glass Showcase and the Collector Case: code-built (`built`, Util/CaseLook, `CASE_LOOK`), a glass case whose cards stand upright and spin over rarity beams (`cardsUpright`, CaseSpinController); the Collector Case recolours its Support, Frame, Carpet and Strip parts (`propColors` in Config/Shelves) | fills 6 x 4 x 2 | (its own hitbox) |
+| `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; without a model the box is a branded case drawn on it (`Stock.CASE`: product colour, art in a gold frame, name, count pill, hand holes) | fits 2.5 x 1.5 x 2 | no |
 | `Shelf` | the Small Pack Rack: a code-built one-sided gondola (`built`) | fills 4 x 7 x 2 | (the shelf's own hitbox) |
 
 **Variants:** a slot also uses every file named after it plus a suffix starting with a capital letter or digit:

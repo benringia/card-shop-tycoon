@@ -20,7 +20,7 @@ export type Shelf = {
 	color: Color3,
 	accepts: { string }?, -- product shelves only: product IDs it can hold, nil = any product
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
-	cardsFlat: boolean?, -- card cases drawn with a prop: cards lie on the bed (Showcase.FLAT) instead of standing
+	cardsUpright: boolean?, -- card cases: cards stand upright over their slots and spin (CaseLayout.UPRIGHT, CaseSpinController)
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
 	category: "Shelves" | "Cases" | "Fixtures" | "Trophies", -- the Build menu tab it's listed under
 	requiresItem: string?, -- a Config/Items id placing it takes (and selling gives back); trophies only
@@ -44,8 +44,8 @@ local List: { Shelf } = {
 	},
 	{
 		id = "GlassShowcase",
-		prop = "Showcase",
-		cardsFlat = true, -- a glass counter: its cards lie on the velvet bed under the glass
+		prop = "CardCase", -- a tall glass case (Util/CaseLook)
+		cardsUpright = true, -- its cards float upright and spin on light beams in their rarity colour
 		name = "Glass Showcase",
 		kind = "CustomerCards",
 		category = "Cases", -- Build menu tab
@@ -57,12 +57,13 @@ local List: { Shelf } = {
 	},
 	{
 		id = "CollectorCase",
-		prop = "Showcase", -- the same glass counter as the Glass Showcase, in collector colours
-		cardsFlat = true,
+		prop = "CardCase", -- the same glass case as the Glass Showcase, in collector colours
+		cardsUpright = true,
 		propColors = {
 			Support = Color3.fromRGB(38, 44, 70), -- dark navy base
 			Frame = Color3.fromRGB(212, 175, 85), -- gold trim
 			Carpet = Color3.fromRGB(40, 70, 170), -- royal blue bed
+			Strip = Color3.fromRGB(255, 205, 90), -- gold light strip
 		},
 		name = "Collector Case",
 		kind = "PlayerCards",
@@ -94,7 +95,7 @@ local List: { Shelf } = {
 		capacity = 0,
 		cost = 5000,
 		unlockLevel = 8,
-		size = Vector3.new(6, 6, 4),
+		size = Vector3.new(6, 9, 6), -- a square spot for the round pod, made bigger (saved ones too big for their spot move over)
 		color = Color3.fromRGB(230, 185, 80),
 	},
 	{
@@ -204,7 +205,7 @@ local List: { Shelf } = {
 		capacity = 48,
 		cost = 350,
 		unlockLevel = 3,
-		size = Vector3.new(8, 8, 2),
+		size = Vector3.new(8, 7, 2), -- as tall as the other racks, so plates and headers line up
 		color = Color3.fromRGB(140, 95, 60),
 	},
 	{
@@ -232,7 +233,7 @@ local List: { Shelf } = {
 		size = Vector3.new(8, 7, 4),
 		color = Color3.fromRGB(120, 80, 55),
 		-- Double-sided: shelf tops at 1.04 / 2.54 / 3.85 of 7 studs, a row each side of the middle divider
-		stock = { LEVELS = { 0.149, 0.362, 0.549 }, SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.3 },
+		stock = { SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.33 }, -- the same levels as the other racks, so plates line up
 	},
 }
 
