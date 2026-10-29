@@ -1215,15 +1215,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
   front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
   leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
-  painted warm lamp pool, darker edges, a rounded black leather case with a dashed seam and a soft shadow on the desk, dark pages (the binder's own
+  painted warm lamp pool, darker edges, a rounded black leather case with a fine, faint dashed seam and a soft shadow on the desk, dark pages (the binder's own
   surfaces drawn a little brighter under the lamp, `BINDER_BRIGHTNESS`); a chrome ring rail
   with three chunky rings arching over the pages' inner edges; the camera fits the case and the tabs on its right (not equal room both sides), so the binder fills the room it's given. It looks the same at night and at every graphics quality. Built once at start
   and left in the world on its stage (out of sight from the ground), so opening only moves the camera; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
   world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
   following camera picks up a character that respawned meanwhile). A fight starting (an elite, an aggro zone) closes
   the binder and the card view so the fight camera takes over. The card view keeps world sound at the character too. One set
-  at a time; set dividers are coloured tabs sticking out of the case's right edge with the set's name (the open
-  set's sticks out further), click one to open that set. Each page is a canvas of 2 x 2 pocket slots (8 cards a
+  at a time; set dividers are glossy plastic tabs in the set's colour sticking out of the case's right edge (lighter at
+  the top, a gloss strip, a dark edge, a soft shadow) with the set's name; the open set's sticks out further, has a
+  gold edge and its emblem in a round badge. Click one to open that set. Each page is a canvas of 2 x 2 pocket slots (8 cards a
   spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
   ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Each card's face is built
   once and redrawn only when what it shows changes; the other cards (the open set's first, then every other set's)
@@ -1256,7 +1257,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   `UIStyle.LONG_PRESS` without moving shows it until the finger lifts (one that moves is a swipe). Closing the binder while the card view is up closes the
   card view first (it gives the camera back at once, so the binder's own restore comes last). Clicking or tapping an
   owned card lifts it out of its sleeve
-  toward the camera (0.3 s, `BinderDesk.lift`), then the card view opens on it (the camera moves to the card view's
+  (its pocket shows empty) to the middle of the screen (0.3 s, `BinderDesk.lift`; never straight at the camera, so a
+  pocket near the screen's edge doesn't grow off it), then the card view opens on it (the camera moves to the card view's
   stage at the normal field of view); closing the card view brings the binder back on the same spread. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
   strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
   just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
