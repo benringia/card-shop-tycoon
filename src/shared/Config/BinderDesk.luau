@@ -19,7 +19,8 @@ return {
 	TAB = { depth = 0.82, stickOut = 0.9, openExtra = 0.15, gap = 0.12, top = 0.3 }, -- 0.82: 48+ px tall on a landscape phone
 	CASE_THICKNESS = 0.12,
 	CASE_CORNER = 0.2, -- studs: the leather case's rounded corners
-	STITCH = { inset = 0.1, dash = 0.13, gap = 0.08, thickness = 0.025 }, -- studs: the dashed seam round the case
+	-- studs: the dashed seam round the case, fine and faint
+	STITCH = { inset = 0.1, dash = 0.1, gap = 0.07, thickness = 0.014, transparency = 0.55 },
 	RAIL_WIDTH = 0.24,
 	RING_RADIUS = 0.36, -- the chrome rings arch over the pages' inner edges
 	RING_THICKNESS = 0.11,
@@ -53,4 +54,5 @@ return {
 	TURN_SOUND_VOLUME = 0.5,
 
 	LIFT_SECONDS = 0.3, -- a picked card flying out of its sleeve toward the camera
+	LIFT_SCREEN_SHARE = 0.6, -- it ends in the middle of the screen, this share of its height (any pocket stays whole)
 }

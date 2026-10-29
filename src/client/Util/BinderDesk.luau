@@ -42,7 +42,6 @@ local CASE_PIXELS_PER_STUD = 80
 local REACH = 300 -- studs a pick ray looks
 local HOVER_SCALE = 1.05 -- the pocket under the pointer rises a little
 local HOVER_EDGE = 5 -- px of light round it (page canvas pixels)
-local LIFT_ROOM = 0.45 -- how far toward the camera a picked card flies (share of the way)
 
 local BinderDesk = {}
 
@@ -60,6 +59,7 @@ local lastRect: UiLayout.Rect? = nil
 local cameraTween: Tween? = nil
 local hovered: Frame? = nil -- the highlighted pocket slot
 local lifted: Part? = nil -- a picked card on its way to the card view
+local emptied: Frame? = nil -- the pocket it came out of, shown empty meanwhile
 
 local function makePart(name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material, parent: Instance): Part
 	local part = Instance.new("Part")
@@ -158,7 +158,7 @@ local function stitchLine(canvas: Frame, x0: number, y0: number, x1: number, y1:
 		local stitch = Instance.new("Frame")
 		stitch.BorderSizePixel = 0
 		stitch.BackgroundColor3 = BOOK.STITCH
-		stitch.BackgroundTransparency = 0.25
+		stitch.BackgroundTransparency = look.transparency
 		stitch.AnchorPoint = Vector2.new(if across then 0 else 0.5, if across then 0.5 else 0)
 		stitch.Position = if across then UDim2.fromOffset(x0 + along, y0) else UDim2.fromOffset(x0, y0 + along)
 		stitch.Size = if across then UDim2.fromOffset(dash, thick) else UDim2.fromOffset(thick, dash)
@@ -373,6 +373,10 @@ local function dropLift()
 		lifted:Destroy()
 		lifted = nil
 	end
+	if emptied then
+		emptied.Visible = true
+		emptied = nil
+	end
 end
 
 function BinderDesk.hide()
@@ -434,6 +438,103 @@ function BinderDesk.slot(side: Side, index: number): Frame
 	return slots[side][index]
 end
 
+-- A divider tab's look: glossy coloured plastic with a darker edge (gold for the open set), a soft shadow and the
+-- set's name; the open set's (it sticks out further) also its emblem in a round badge. tuck: the share of the tab
+-- hidden under the case's edge.
+local TAB_SHADOW = 6 -- px
+local function tabLook(canvas: Frame, set: string, color: Color3, open: boolean, tuck: number)
+	canvas.BackgroundTransparency = 1
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Position = UDim2.fromOffset(TAB_SHADOW, TAB_SHADOW)
+	shadow.Size = UDim2.new(1, -TAB_SHADOW, 1, -TAB_SHADOW)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = 0.55
+	shadow.BorderSizePixel = 0
+	shadow.Parent = canvas
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.Size = UDim2.new(1, -TAB_SHADOW, 1, -TAB_SHADOW)
+	body.BackgroundColor3 = Color3.new(1, 1, 1)
+	body.BorderSizePixel = 0
+	body.ZIndex = 2
+	body.Parent = canvas
+	for _, frame in { shadow, body } do
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.3, 0)
+		corner.Parent = frame
+	end
+	-- Lighter at the top edge, deeper at the bottom: a moulded plastic tab
+	local shade = Instance.new("UIGradient")
+	shade.Rotation = 90
+	shade.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.28), color:Lerp(Color3.new(0, 0, 0), 0.22))
+	shade.Parent = body
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = if open then BOOK.STITCH else BOOK.CASE_DARK
+	edge.Thickness = if open then 6 else 4
+	edge.Parent = body
+	-- A gloss along the top of the plastic
+	local gloss = Instance.new("Frame")
+	gloss.Name = "Gloss"
+	gloss.Position = UDim2.new(tuck, 6, 0, 5)
+	gloss.Size = UDim2.new(1 - tuck, -14, 0.38, 0)
+	gloss.BackgroundColor3 = Color3.new(1, 1, 1)
+	gloss.BackgroundTransparency = 0.55
+	gloss.BorderSizePixel = 0
+	gloss.ZIndex = 3
+	gloss.Parent = body
+	local glossCorner = Instance.new("UICorner")
+	glossCorner.CornerRadius = UDim.new(0.5, 0)
+	glossCorner.Parent = gloss
+	local fade = Instance.new("UIGradient")
+	fade.Rotation = 90
+	fade.Transparency = NumberSequence.new(0.2, 1)
+	fade.Parent = gloss
+	-- The open set's emblem in a light round badge, then the name
+	local badgeSize = if open then 0.36 else 0
+	local badge = Instance.new("TextLabel")
+	badge.Visible = open
+	badge.Name = "Emblem"
+	badge.AnchorPoint = Vector2.new(0, 0.5)
+	badge.Position = UDim2.new(tuck, 8, 0.5, 0)
+	badge.Size = UDim2.fromScale(badgeSize, badgeSize)
+	badge.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	badge.BackgroundColor3 = Color3.new(1, 1, 1)
+	badge.BackgroundTransparency = 0.35
+	badge.Font = Enum.Font.FredokaOne
+	badge.Text = Collection.SET_EMBLEMS[set] or ""
+	badge.TextScaled = true
+	badge.ZIndex = 4
+	badge.Parent = body
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = badge
+	local ring = Instance.new("UIStroke")
+	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ring.Color = color:Lerp(Color3.new(0, 0, 0), 0.35)
+	ring.Thickness = 3
+	ring.Parent = badge
+	local label = Instance.new("TextLabel")
+	label.Name = "Name"
+	label.AnchorPoint = Vector2.new(1, 0.5)
+	label.Position = UDim2.new(1, -8, 0.5, 0)
+	local heightPx = Desk.TAB.depth * Desk.PAGE_PIXELS_PER_STUD -- the canvas's height (its size isn't laid out yet)
+	label.Size = UDim2.new(1 - tuck, -(16 + badgeSize * heightPx + (if open then 8 else 0)), 0.7, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.Text = set
+	label.TextScaled = true
+	label.TextWrapped = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.ZIndex = 4
+	label.Parent = body
+	local outline = Instance.new("UIStroke")
+	outline.Color = BOOK.CASE_DARK
+	outline.Thickness = 3
+	outline.Parent = label
+end
+
 -- The set dividers on the case's right edge, top down in `sets` order; the open one sticks out further
 function BinderDesk.setTabs(sets: { string }, colors: { [string]: Color3 }, current: string)
 	BinderDesk.build()
@@ -455,25 +556,7 @@ function BinderDesk.setTabs(sets: { string }, colors: { [string]: Color3 }, curr
 		local tab = makePart(`Tab{order}`, flatSize(length, 0.03, look.depth), cframe * QUARTER, color, Enum.Material.SmoothPlastic, folder :: Folder)
 		tab.CanQuery = true
 		tab:SetAttribute("Set", set)
-		local canvas = topCanvas(tab, Desk.PAGE_PIXELS_PER_STUD, color, true)
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0.25, 0)
-		corner.Parent = canvas
-		local label = Instance.new("TextLabel")
-		label.AnchorPoint = Vector2.new(1, 0.5)
-		label.Position = UDim2.fromScale(1, 0.5)
-		label.Size = UDim2.new(reach / length, -8, 0.7, 0)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.Text = set
-		label.TextScaled = true
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.ZIndex = 2
-		label.Parent = canvas
-		local edge = Instance.new("UIStroke")
-		edge.Color = BOOK.CASE_DARK
-		edge.Thickness = 3
-		edge.Parent = label
+		tabLook(topCanvas(tab, Desk.PAGE_PIXELS_PER_STUD, color, true), set, color, set == current, 0.2 / length)
 		table.insert(tabParts, tab)
 		table.insert(pickables, tab)
 	end
@@ -622,8 +705,10 @@ function BinderDesk.lift(side: Side, index: number, card: Lite, done: () -> ()):
 	local up = pocket.UpVector
 	-- Lying in its pocket face up (its front, -Z, toward the sky; top toward the far edge), a little raised
 	local start = CFrame.lookAt(pocket.Position + up * 0.02, pocket.Position + up, -pocket.LookVector)
+	-- It flies to the middle of the screen (not straight at the camera: a pocket near the screen's edge would grow off it)
 	local eye = camera.CFrame.Position
-	local target = start.Position:Lerp(eye, LIFT_ROOM)
+	local away = height / (2 * math.tan(math.rad(camera.FieldOfView) / 2) * Desk.LIFT_SCREEN_SHARE)
+	local target = eye + camera.CFrame.LookVector * away
 	local finish = CFrame.lookAt(target, eye, camera.CFrame.UpVector)
 	local part = Instance.new("Part")
 	part.Name = "LiftedCard"
@@ -657,6 +742,9 @@ function BinderDesk.lift(side: Side, index: number, card: Lite, done: () -> ()):
 	rim.Thickness = 6
 	rim.Parent = face
 	lifted = part
+	-- The card has left its sleeve: its pocket shows empty until the binder takes the camera back
+	emptied = slots[side][index]
+	emptied.Visible = false
 	local fly = TweenService:Create(part, TweenInfo.new(Desk.LIFT_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = finish })
 	fly.Completed:Once(function()
 		if lifted == part then
