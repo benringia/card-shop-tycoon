@@ -1,18 +1,17 @@
 --!strict
--- Binder: a full-screen book per set (set tabs on its edge). Spread 1 is the set's cover and page 1; later
--- spreads are two pages of pockets, owned cards in colour with counts, missing ones as "?" slots. Turn pages
--- with the arrows or Q/E (A/D: first/last); Filters (F) narrow and sort the pages while the book shrinks aside.
--- Hovering a pocket with a mouse shows a tooltip.
--- Only the pockets on the open spread are drawn, so a big collection stays cheap.
+-- Binder: a real 3D ring binder lying open on a desk (Util/BinderDesk; spec 2026-10-29-3d-binder-design.md), one
+-- set at a time (divider tabs on its right edge). Spread 1 is the set's cover and page 1; later spreads are two
+-- pages of 3 x 3 pockets, owned cards in colour with counts, missing ones as "?" slots. Turn pages with the arrows
+-- or Q/E; Filters (F) narrow and sort the pages while the camera moves the binder aside.
+-- Only the pockets on the open spread are drawn (and their effects run), so a big collection stays cheap.
 -- Tap an owned card to see it large. Cards earn money only from a showcase, so the binder just
 -- shows what you have; cards on display in your cases count towards completion.
 -- The server sends the binder whenever it changes; displayed cards are read from your plot.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
-local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 
@@ -24,8 +23,11 @@ local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Collection = require(Config:WaitForChild("Collection"))
+local Desk = require(Config:WaitForChild("BinderDesk"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
+local PageCurl = require(Shared:WaitForChild("Util"):WaitForChild("PageCurl"))
+local BinderGesture = require(Shared:WaitForChild("Util"):WaitForChild("BinderGesture"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local Bosses = require(Config:WaitForChild("Bosses"))
@@ -41,7 +43,8 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
-local PocketLayout = require(ClientUtil:WaitForChild("PocketLayout"))
+local BinderDesk = require(ClientUtil:WaitForChild("BinderDesk"))
+local PageTurner = require(ClientUtil:WaitForChild("PageTurner"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
 local CardDetailController = require(Controllers:WaitForChild("CardDetailController"))
@@ -55,29 +58,20 @@ type Entry = { key: string, power: number, value: number, beast: Beast?, grade: 
 
 type Tile = {
 	card: Card,
-	button: TextButton,
+	root: Frame, -- sits in a pocket slot on a page canvas (BinderDesk); input comes from picking, not the frame
 	inner: Frame,
 	stroke: UIStroke,
 	countLabel: TextLabel,
 	levelLabel: TextLabel, -- best grade and best levelled copy, e.g. "S · Lv 12"
+	drawn: string?, -- what its face shows (renderTile redraws only when this changes: building faces is costly)
 }
 
--- A pocket is the card plus a chip row under it (copies owned, best grade and level)
+-- A pocket is the card plus a chip row under it (copies owned, best grade and level), in page-canvas pixels
+-- (a page is Desk.PAGE_PIXELS_PER_STUD px a stud, about 1.6 canvas px to a screen px on a desktop)
 local CARD_ASPECT = 0.7
-local CHIP_ROW = 22 -- pixels
-local SMALL_POCKET = 90 -- pixels wide: smaller pockets show only the copies chip
--- 3 x 3 pockets like a real binder; short screens get fewer, bigger pockets (3 a page at least, so the
--- card text stays readable)
-local POCKET_OPTIONS: PocketLayout.Options = {
-	aspect = 0.63, -- pocket width / height: a 0.7 card plus the chip row
-	gap = 6,
-	preferredColumns = 3,
-	preferredRows = 3,
-	minWidth = 90,
-	maxColumns = 5,
-	maxRows = 3,
-	minPockets = 3,
-}
+local CHIP_ROW = 44
+local CHIP_TEXT = 32
+local POCKETS_PER_PAGE = Desk.POCKETS.columns * Desk.POCKETS.rows
 local TOOLTIP_WIDTH = 260
 local TOOLTIP_GAP = 8
 local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
@@ -102,9 +96,6 @@ local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
 local currentSet = Collection.SETS[1]
-local book: Frame
-local bookHolder: Frame
-local bookScale: UIScale
 local coverPage: Frame
 local coverTitle: TextLabel
 local coverProgress: TextLabel
@@ -112,7 +103,6 @@ local coverEmblem: TextLabel
 local coverArt: ImageLabel
 local coverFill: Frame
 local coverValue: TextLabel
-local setTabs: { [string]: TextButton } = {}
 local progressName: TextLabel
 local progressCount: TextLabel
 local progressValue: TextLabel
@@ -121,8 +111,6 @@ local filtersPanel: Frame
 local setFiltersOpen: (open: boolean) -> ()
 local setInspecting: (on: boolean) -> ()
 local renderBag: () -> ()
-local buildCase: () -> ()
-local buildSpine: () -> ()
 local getSetArt: (set: string) -> string?
 local rarityGuideButton: TextButton
 local filterButton: TextButton
@@ -135,24 +123,16 @@ local sortBy = "Set" -- Set (card number), Value, Copies or Rarity
 local bagOverlay: Frame -- the Bag tab (built in buildBag); the card tooltip stays off while it shows
 local cardsTab: TextButton -- the Cards / Bag tabs (built in buildBag)
 local bagTab: TextButton
-local pages: { Frame } = {} -- left and right page
+local counter: Frame -- the page counter under the binder
 local pageLabel: TextLabel
-local spreadIndex = 1
-local pocketsPerPage = POCKET_OPTIONS.preferredColumns * POCKET_OPTIONS.preferredRows
-local pageGrids: { UIGridLayout } = {}
+local spreadIndex = 1 -- the spread the pages show (or are turning from)
+local targetSpread = 1 -- where page requests lead; turns run until the pages get there
+local redrawQueued = false -- a redraw asked for mid-turn, done once the pages stop
+-- A page held by its edge and dragged across: where it goes, how far it is (0-1) and how fast it moves
+local dragging: { forward: boolean, to: number, t: number, speed: number, at: number }? = nil
+local pocketsPerPage = POCKETS_PER_PAGE
 local progressCard: Frame
-local backdropGui: ScreenGui -- the dimmed world behind the binder (off while a card is inspected)
-local bookGui: ScreenGui -- the book's own full-screen layer, so it can rise into Roblox's top bar strip
 local arrowLanes: { Frame } = {}
--- The page turn (flipTo): a sheet lying over the turning page that carries its cards as it folds
-local flipSheet: Frame
-local flipContent: Frame
-local flipShade: Frame
-local flipLift: UIScale -- the page swelling a little as it lifts toward the viewer
-local flipShadow: Frame -- the lifted page's shadow on the page underneath
-local flipShadowFade: UIGradient
-local flipping = false
-local queuedSpread: number? = nil -- a redraw asked for mid-turn, done when the turn ends
 local visibleTiles: { Tile } = {} -- tiles that pass the search and filter, in card order
 local searchText = ""
 local tooltip: Frame
@@ -299,17 +279,21 @@ local function isCollected(cardId: string): boolean
 	return owned + onDisplay > 0
 end
 
--- Draws one pocket (only called for pockets on the open spread)
-local function renderTile(tile: Tile)
+-- Draws one pocket; true when its face had to be built (it changed), false when only its chips were updated
+local function renderTile(tile: Tile): boolean
 	local cardId = tile.card.id
 	local inBinder = getCount(collection, cardId)
 	local shown = getCount(displayed, cardId)
 	local owned, onDisplay = getOwnedCounts(cardId)
 	if owned + onDisplay == 0 then
-		CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
+		local built = tile.drawn ~= "missing"
+		if built then
+			CardFace.renderMissing(tile.inner, tile.stroke, tile.card)
+			tile.drawn = "missing"
+		end
 		tile.countLabel.Visible = false
 		tile.levelLabel.Visible = false
-		return
+		return built
 	end
 	local raised = getRaised(cardId)
 	local hasFoilBeast = false
@@ -322,7 +306,13 @@ local function renderTile(tile: Tile)
 	local growth = if strongest
 		then { level = strongest.level, stars = strongest.stars, grade = strongest.grade }
 		else { level = 1, stars = BeastRules.START_STARS, grade = bestGrade or BeastRules.DEFAULT_GRADE }
-	CardFace.render(tile.inner, tile.stroke, tile.card, inBinder.foil + shown.foil > 0 or hasFoilBeast, true, growth)
+	local foil = inBinder.foil + shown.foil > 0 or hasFoilBeast
+	local drawn = `{foil}:{growth.level}:{growth.stars}:{growth.grade}`
+	local built = tile.drawn ~= drawn
+	if built then
+		CardFace.render(tile.inner, tile.stroke, tile.card, foil, true, growth)
+		tile.drawn = drawn
+	end
 	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
 	tile.countLabel.Visible = true
 	local parts = {}
@@ -344,14 +334,13 @@ local function renderTile(tile: Tile)
 			break
 		end
 	end
-	-- Tiny pockets (small phones) keep just the count: the second chip's text would not fit
-	local roomy = (pageGrids[1] and pageGrids[1].CellSize.X.Offset or 0) >= SMALL_POCKET
 	tile.levelLabel.Text = table.concat(parts, " · ")
-	tile.levelLabel.Visible = roomy and #parts > 0
+	tile.levelLabel.Visible = #parts > 0
 	-- With chips the count shrinks to the left part of the row
-	local short = roomy and #parts > 0
+	local short = #parts > 0
 	tile.countLabel.Size = UDim2.new(if short then 0.36 else 1, 0, 0, CHIP_ROW - 3)
 	tile.countLabel.Text = if owned == 0 then "shown" elseif short then `x{owned}` else `Owned {owned}`
+	return built
 end
 
 local function passesFilter(card: Card): boolean
@@ -422,161 +411,219 @@ local function getSpreadTiles(index: number): ({ Tile }, { Tile })
 	for position = first, last do
 		local tile = visibleTiles[position]
 		local offset = position - first
-		tile.button.LayoutOrder = offset
 		table.insert(if BinderSpreads.side(index, offset, pocketsPerPage) == "Left" then left else right, tile)
 	end
 	return left, right
 end
 
-local function placeTiles(list: { Tile }, parent: Instance)
-	for _, tile in list do
-		tile.button.Parent = parent
+-- Puts a page's tiles into its pocket slots, in order, and draws them
+local function placeTiles(list: { Tile }, side: BinderDesk.Side)
+	for index, tile in list do
+		tile.root.Parent = BinderDesk.slot(side, index)
 		renderTile(tile)
 	end
 end
 
-local function getTilesOn(parent: Instance): { Tile }
-	local list = {}
+-- Takes a tile off the pages; its face stays built, so it comes back without a redraw
+local function unplace(tile: Tile)
+	tile.root.Parent = nil
+end
+
+-- Builds the faces of the cards not on the pages, a few a frame (the open set first, then the others), so turning to
+-- them or opening another set later only moves them (building nine faces at once costs a frame of 40-70 ms on a
+-- SurfaceGui). A newer warm-up replaces a running one.
+local WARM_PER_FRAME = 2
+local warmGeneration = 0
+local function warmTiles()
+	warmGeneration += 1
+	local generation = warmGeneration
+	local order = {}
 	for _, tile in tiles do
-		if tile.button.Parent == parent then
-			table.insert(list, tile)
+		if tile.card.set == currentSet then
+			table.insert(order, tile)
 		end
 	end
-	return list
+	for _, tile in tiles do
+		if tile.card.set ~= currentSet then
+			table.insert(order, tile)
+		end
+	end
+	task.spawn(function()
+		local built = 0
+		for _, tile in order do
+			if generation ~= warmGeneration then
+				return
+			end
+			if not tile.root.Parent and renderTile(tile) then
+				built += 1
+				if built % WARM_PER_FRAME == 0 then
+					RunService.Heartbeat:Wait()
+				end
+			end
+		end
+	end)
+end
+
+-- Which page a placed tile is on
+local function sideOf(tile: Tile): BinderDesk.Side?
+	local slot = tile.root.Parent
+	if not slot then
+		return nil
+	end
+	local left = BinderDesk.pages()
+	return if slot.Parent == left then "Left" else "Right"
+end
+
+-- Shows one page of a spread: its tiles in the pocket slots (spread 1's left page is the cover)
+local function showSide(side: BinderDesk.Side, spread: number)
+	local left, right = getSpreadTiles(spread)
+	local list = if side == "Left" then left else right
+	local keep: { [Tile]: boolean } = {}
+	for _, tile in list do
+		keep[tile] = true
+	end
+	for _, tile in tiles do
+		if not keep[tile] and sideOf(tile) == side then
+			unplace(tile)
+		end
+	end
+	placeTiles(list, side)
+	if side == "Left" then
+		coverPage.Visible = spread == 1
+	end
+end
+
+-- A page's cards as light cards for a page in motion (PageTurner)
+local function liteFace(list: { Tile }): BinderDesk.Face
+	local face: BinderDesk.Face = {}
+	for index, tile in list do
+		local card = tile.card
+		face[index] = {
+			image = CardFace.artImage(card),
+			rim = CardFace.getRarityColor(card.rarity),
+			missing = not isCollected(card.id),
+			number = card.number,
+		}
+	end
+	return face
 end
 
 local function updatePageLabel()
 	pageLabel.Text = BinderSpreads.label(spreadIndex, BinderSpreads.pages(#visibleTiles, pocketsPerPage))
 end
 
--- Puts the tiles of a spread into the pages at once and draws them; the rest wait off-screen
+-- Puts the tiles of a spread into the pages at once and draws them; the rest wait off the pages, blank. While a
+-- page turns (or is held) the redraw waits until the pages stop.
 local function showSpread(index: number)
-	if flipping then
-		queuedSpread = index
+	if PageTurner.busy() or dragging then
+		redrawQueued = true
 		return
 	end
 	spreadIndex = math.clamp(index, 1, getSpreadCount())
-	local left, right = getSpreadTiles(spreadIndex)
-	for _, tile in tiles do
-		tile.button.Parent = nil
-	end
-	placeTiles(left, pages[1])
-	placeTiles(right, pages[2])
-	coverPage.Visible = spreadIndex == 1
+	targetSpread = spreadIndex
+	showSide("Left", spreadIndex)
+	showSide("Right", spreadIndex)
 	updatePageLabel()
 end
 
--- Where the sheet and its shadow sit: against the spine on the given side, the cards held at the spine edge
-local function dockSheet(side: BinderSpreads.Side)
-	local onRight = side == "Right"
-	flipSheet.AnchorPoint = Vector2.new(if onRight then 0 else 1, 0.5)
-	flipSheet.Position = if onRight then UDim2.new(0.5, 10, 0.5, 0) else UDim2.new(0.5, -10, 0.5, 0)
-	flipContent.AnchorPoint = Vector2.new(if onRight then 0 else 1, 0.5)
-	flipContent.Position = UDim2.fromScale(if onRight then 0 else 1, 0.5)
-	flipShadow.AnchorPoint = flipSheet.AnchorPoint
-	flipShadow.Position = flipSheet.Position
-	-- Darkest against the page's edge, fading away from the spine
-	flipShadowFade.Rotation = if onRight then 0 else 180
+-- Lifts the page between the shown spread and `to` (one step away): the page under it shows `to` at once, the
+-- lifted page carries the cards it leaves and the ones it lands with. Returns which way it turns and those faces.
+local function liftPage(to: number): (boolean, BinderDesk.Face, BinderDesk.Face)
+	local forward = to > spreadIndex
+	local fromLeft, fromRight = getSpreadTiles(spreadIndex)
+	local toLeft, toRight = getSpreadTiles(to)
+	local leaving = liteFace(if forward then fromRight else fromLeft)
+	local arriving = liteFace(if forward then toLeft else toRight)
+	showSide(if forward then "Right" else "Left", to)
+	return forward, leaving, arriving
 end
 
--- One frame of the turn. turn: 0 (flat on its first side) to 1 (flat on the other). The page rotates about the
--- spine: seen from the front its width follows cos(angle); it swells a little as it lifts toward the viewer,
--- darkens as it turns edge-on, and its shadow stretches across the page underneath.
-local function poseSheet(turn: number, size: Vector2)
-	local look = Collection.BOOK
-	local angle = turn * math.pi
-	local lift = math.sin(angle)
-	local width = math.abs(math.cos(angle)) * size.X
-	flipSheet.Size = UDim2.fromOffset(width, size.Y)
-	flipLift.Scale = 1 + look.FLIP_LIFT * lift
-	-- Front face darkens as it turns away; the back face starts dim and brightens as it lands
-	local shade = if turn < 0.5 then look.FLIP_SHADE * lift else look.FLIP_SHADE * lift * 0.7
-	flipShade.BackgroundTransparency = 1 - shade
-	flipShadow.Size = UDim2.fromOffset(width + size.X * look.FLIP_SHADOW * lift, size.Y)
-	flipShadow.BackgroundTransparency = 1 - 0.55 * lift
+-- A turned page has landed: the page it landed on shows `to` too
+local function land(to: number, forward: boolean)
+	spreadIndex = to
+	showSide(if forward then "Left" else "Right", to)
+	updatePageLabel()
 end
 
--- Turns to a spread like a real page: the turning page (with its cards) rotates about the spine, then lands on
--- the other side showing the next cards, its back. Everything else updates at once (showSpread).
-local function flipTo(index: number)
-	if flipping then
+-- Turns one page at a time toward targetSpread, quicker the further there is to go (PageCurl.turnSeconds), so
+-- quick presses riffle through; a redraw asked for meanwhile happens once the pages stop
+local function pump()
+	if PageTurner.busy() or dragging then
 		return
 	end
-	local target = math.clamp(index, 1, getSpreadCount())
-	local side = BinderSpreads.turningSide(spreadIndex, target)
-	if not side or not panel.Visible then
-		showSpread(target)
+	targetSpread = math.clamp(targetSpread, 1, getSpreadCount())
+	if targetSpread == spreadIndex then
+		if redrawQueued then
+			redrawQueued = false
+			showSpread(spreadIndex)
+		end
 		return
 	end
-	flipping = true
-	local look = Collection.BOOK
-	local forward = side == "Right"
-	local turning = pages[if forward then 2 else 1]
-	local landing = pages[if forward then 1 else 2]
-	local newLeft, newRight = getSpreadTiles(target)
-	-- In the book's own pixels: the book is scaled down while Filters are open
-	local size = turning.AbsoluteSize / bookScale.Scale
-	flipContent.Size = UDim2.fromOffset(size.X, size.Y)
-
-	-- The sheet lifts the turning page's cards; the new cards wait underneath it
-	dockSheet(side)
-	local leaving = getTilesOn(turning)
-	for _, tile in leaving do
-		tile.button.Parent = flipContent
-	end
-	placeTiles(if forward then newRight else newLeft, turning)
-	if not forward and target == 1 then
-		coverPage.Visible = true -- the cover is under the left page that turns away
-	end
-	local arriving = if forward then newLeft else newRight
-	poseSheet(0, size)
-	flipSheet.Visible = true
-	flipShadow.Visible = true
-
-	local started = os.clock()
-	local flippedOver = false
-	local done = Instance.new("BindableEvent")
-	local connection: RBXScriptConnection
-	connection = RunService.RenderStepped:Connect(function()
-		local t = math.min(1, (os.clock() - started) / look.FLIP_SECONDS)
-		-- Ease in and out: slow lift, quick swing over the spine, soft landing
-		local turn = t * t * (3 - 2 * t)
-		if turn >= 0.5 and not flippedOver then
-			-- Edge-on at the spine: the sheet now shows its back (the next cards) on the other side
-			flippedOver = true
-			for _, tile in leaving do
-				tile.button.Parent = nil
-			end
-			dockSheet(if forward then "Left" else "Right")
-			placeTiles(arriving, flipContent)
-		end
-		poseSheet(turn, size)
-		if t >= 1 then
-			connection:Disconnect()
-			done:Fire()
-		end
+	local to = spreadIndex + (if targetSpread > spreadIndex then 1 else -1)
+	local seconds = PageCurl.turnSeconds(Desk.TURN_SECONDS, math.abs(targetSpread - spreadIndex), Desk.MAX_SPEEDUP)
+	local forward, leaving, arriving = liftPage(to)
+	PageTurner.play(forward, leaving, arriving, seconds, function()
+		land(to, forward)
+		-- The next page lifts a frame later, so landing and lifting don't share one frame's work
+		task.defer(function()
+			RunService.Heartbeat:Wait()
+			pump()
+		end)
 	end)
-	done.Event:Wait()
-	done:Destroy()
+end
 
-	for _, tile in getTilesOn(landing) do
-		tile.button.Parent = nil
+-- A page request: one spread on (1) or back (-1), never past the ends
+local function turnBy(step: number)
+	targetSpread = PageCurl.step(targetSpread, step, getSpreadCount())
+	pump()
+end
+
+-- Picks the page up by its outer edge (forward: the right page); false when there's no page that way
+local function beginDrag(forward: boolean): boolean
+	local to = spreadIndex + (if forward then 1 else -1)
+	if PageTurner.busy() or dragging or to < 1 or to > getSpreadCount() then
+		return false
 	end
-	for _, tile in arriving do
-		tile.button.Parent = landing
+	local _, leaving, arriving = liftPage(to)
+	PageTurner.grab(forward, leaving, arriving)
+	dragging = { forward = forward, to = to, t = 0, speed = 0, at = os.clock() }
+	return true
+end
+
+-- The held page follows the pointer across the binder
+local function moveDrag(point: Vector2)
+	local drag = dragging
+	local offset = BinderDesk.spineOffset(point)
+	if not drag or not offset then
+		return
 	end
-	flipSheet.Visible = false
-	flipShadow.Visible = false
-	flipLift.Scale = 1
-	spreadIndex = target
-	coverPage.Visible = target == 1
-	updatePageLabel()
-	flipping = false
-	local queued = queuedSpread
-	if queued then
-		queuedSpread = nil
-		showSpread(queued)
+	local t = PageCurl.dragTurn(offset, Desk.PAGE_SIZE.X, drag.forward)
+	local now = os.clock()
+	if now > drag.at then
+		drag.speed = (t - drag.t) / (now - drag.at)
 	end
+	drag.t, drag.at = t, now
+	PageTurner.pose(t)
+end
+
+-- Lets the held page go: a tap or a page past halfway (or flicked on) finishes the turn, else it falls back
+local function endDrag(tapped: boolean)
+	local drag = dragging
+	if not drag then
+		return
+	end
+	local speed = if os.clock() - drag.at < 0.1 then drag.speed else 0
+	local finish = tapped or PageCurl.finishes(drag.t, speed, Desk.FINISH_SPEED)
+	PageTurner.release(finish, function(finished)
+		dragging = nil
+		if finished then
+			land(drag.to, drag.forward)
+			targetSpread = spreadIndex
+		else
+			showSide(if drag.forward then "Right" else "Left", spreadIndex) -- the page under it as it was
+		end
+		pump()
+	end)
 end
 
 -- Lights up the Filters panel's choices
@@ -605,6 +652,7 @@ local function applyFilter()
 	sortTiles(visibleTiles)
 	refreshFilterButtons()
 	showSpread(spreadIndex)
+	warmTiles()
 end
 
 -- The current set's cover page, set tabs and the progress card
@@ -635,12 +683,13 @@ local function refreshSet()
 	progressValue.Text = string.format("$%.2f", value)
 	progressFill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
 	progressFill.BackgroundColor3 = color
-	for set, tab in setTabs do
-		local active = set == currentSet
-		tab.BackgroundColor3 = if active then (Collection.SET_COLORS[set] or UIKit.Colors.Accent) else UIKit.Colors.Row
-		-- The open set's tab sticks out a little further
-		tab.Size = UDim2.fromOffset(Collection.BOOK.TAB_WIDTH + (if active then 20 else 12), Collection.BOOK.TAB_HEIGHT)
+	local sets = {}
+	for _, set in Collection.SETS do
+		if Cards.BySet[set] then
+			table.insert(sets, set)
+		end
 	end
+	BinderDesk.setTabs(sets, Collection.SET_COLORS, currentSet)
 end
 
 local function refresh()
@@ -683,29 +732,48 @@ local function tooltipInfo(card: Card): CardTips.CardInfo
 	}
 end
 
--- Level with its pocket, just outside the book (right of it, else left; else above or under the pocket), never over it
+-- The pocket a placed tile sits in: its page and slot number
+local function slotOf(tile: Tile): (BinderDesk.Side?, number?)
+	local slot = tile.root.Parent
+	if not slot then
+		return nil, nil
+	end
+	local page = slot.Parent
+	local left = BinderDesk.pages()
+	local index = tonumber(string.match(slot.Name, "^Slot(%d+)$"))
+	return if page == left then "Left" else "Right", index
+end
+
+-- Level with its pocket, just outside the binder (right of it, else left; else above or under the pocket), never
+-- over it. The binder's rects are in GUI space, like the tooltip's screen.
 local function placeTooltip()
 	local tile = tooltipTile
 	if not tile or not tooltip.Visible then
 		return
 	end
+	local side, index = slotOf(tile)
+	if not side or not index then
+		return
+	end
 	local screen = tooltip.Parent :: GuiObject
 	local origin = screen.AbsolutePosition
-	local button = tile.button
+	local bookRect = BinderDesk.bookRect()
+	local pocket = BinderDesk.pocketRect(side, index)
 	local spot = UiLayout.beside(
-		{ x = book.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = book.AbsoluteSize.X, h = button.AbsoluteSize.Y },
+		{ x = bookRect.x - origin.X, y = pocket.y - origin.Y, w = bookRect.w, h = pocket.h },
 		{ w = tooltip.AbsoluteSize.X, h = tooltip.AbsoluteSize.Y },
 		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
 		TOOLTIP_GAP,
-		-- no room either side of the book: above or under the pocket itself
-		{ x = button.AbsolutePosition.X - origin.X, y = button.AbsolutePosition.Y - origin.Y, w = button.AbsoluteSize.X, h = button.AbsoluteSize.Y }
+		-- no room either side of the binder: above or under the pocket itself
+		{ x = pocket.x - origin.X, y = pocket.y - origin.Y, w = pocket.w, h = pocket.h }
 	)
 	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
-local function showTooltip(tile: Tile)
-	-- Pockets under the open card view or the rarity guide still get mouse events; no tooltip through them
-	if not UserInputService.MouseEnabled or not tile.button.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
+-- touch: a finger held on the card (phones have no mouse)
+local function showTooltip(tile: Tile, touch: boolean?)
+	-- No tooltip through the open card view, the Bag or the rarity guide
+	if not (UserInputService.MouseEnabled or touch) or not tile.root.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
 		return
 	end
 	tooltipTile = tile
@@ -720,20 +788,24 @@ local function hideTooltip()
 end
 
 local function openDetail(card: Card)
+	-- The card view lays itself out by the camera's field of view: give it the normal one before it opens
+	BinderDesk.setInspecting(true)
 	CardDetailController.Open(card)
-	if CardDetailController.IsOpen() and hintToast then
+	if not CardDetailController.IsOpen() then
+		BinderDesk.setInspecting(false)
+		return
+	end
+	if hintToast then
 		UIController.Dismiss(hintToast) -- "Tap a card, then ..." is done once a card is open
 		hintToast = nil
 	end
 end
 
-local function buildTile(card: Card, parent: Instance): Tile
-	local button = Instance.new("TextButton")
+local function buildTile(card: Card): Tile
+	local button = Instance.new("Frame")
 	button.Name = card.id
-	button.LayoutOrder = card.number
+	button.Size = UDim2.fromScale(1, 1)
 	button.BackgroundTransparency = 1
-	button.Text = ""
-	button.Parent = parent
 
 	-- The card on top, keeping its shape, in a plastic sleeve; the chips sit in the row under it
 	local holder = Instance.new("Frame")
@@ -808,11 +880,11 @@ local function buildTile(card: Card, parent: Instance): Tile
 	UIKit.corner(levelLabel, 8)
 	UIKit.outline(levelLabel, Color3.fromRGB(90, 120, 210), 1.5)
 
-	-- Chip text shrinks to fit narrow pockets ("B · Lv 4 · Job")
+	-- Chip text shrinks to fit ("B · Lv 4 · Job")
 	for _, chip in { countLabel, levelLabel } do
 		chip.TextScaled = true
 		local fit = Instance.new("UITextSizeConstraint")
-		fit.MaxTextSize = 13
+		fit.MaxTextSize = CHIP_TEXT
 		fit.Parent = chip
 		local pad = Instance.new("UIPadding")
 		pad.PaddingLeft = UDim.new(0, 3)
@@ -822,26 +894,19 @@ local function buildTile(card: Card, parent: Instance): Tile
 		pad.Parent = chip
 	end
 
-	local tile: Tile = { card = card, button = button, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
-	button.Activated:Connect(function()
-		hideTooltip()
-		openDetail(card)
-	end)
-	button.MouseEnter:Connect(function()
-		showTooltip(tile)
-	end)
-	button.MouseLeave:Connect(hideTooltip)
-	return tile
+	return { card = card, root = button, inner = inner, stroke = stroke, countLabel = countLabel, levelLabel = levelLabel }
 end
 
--- The card view (CardDetailController): while a card is inspected the book, backdrop, tabs and binder buttons hide
--- so the 3D card shows
+-- The card view (CardDetailController): while a card is inspected the tabs, binder buttons and counter hide and the
+-- camera goes to the card view's stage (BinderDesk.setInspecting)
 function setInspecting(on: boolean)
 	cardsTab.Visible = not on
 	bagTab.Visible = not on
-	-- The 3D card needs the world undimmed
-	backdropGui.Enabled = panel.Visible and not on
-	bookHolder.Visible = not on
+	counter.Visible = not on
+	for _, arrows in arrowLanes do
+		arrows.Visible = not on and panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
+	end
+	BinderDesk.setInspecting(on)
 	for _, name in { "FilterButton", "SetProgress", "RarityGuide" } do
 		local item = panel:FindFirstChild(name)
 		if item and item:IsA("GuiObject") then
@@ -850,41 +915,6 @@ function setInspecting(on: boolean)
 	end
 	if on and filtersPanel.Visible then
 		setFiltersOpen(false)
-	end
-end
-
--- Sizes the pockets for the pages' size on screen; a layout change re-pages the binder
-local function fitPockets()
-	local page = pages[1]
-	if not page then
-		return
-	end
-	-- In the book's own pixels: the book is scaled down while Filters are open
-	local scale = if bookScale then bookScale.Scale else 1
-	local layout = PocketLayout.choose(page.AbsoluteSize.X / scale, page.AbsoluteSize.Y / scale, POCKET_OPTIONS)
-	for _, grid in pageGrids do
-		grid.CellSize = UDim2.fromOffset(layout.width, layout.height)
-		grid.FillDirectionMaxCells = layout.columns
-	end
-	local perPage = layout.columns * layout.rows
-	if perPage ~= pocketsPerPage then
-		-- Keep the first card of the current spread in view
-		local firstCard = BinderSpreads.cards(spreadIndex, #visibleTiles, pocketsPerPage)
-		pocketsPerPage = perPage
-		local spread = 1
-		while spread < BinderSpreads.count(#visibleTiles, pocketsPerPage) do
-			local _, last = BinderSpreads.cards(spread, #visibleTiles, pocketsPerPage)
-			if last >= firstCard then
-				break
-			end
-			spread += 1
-		end
-		spreadIndex = spread
-		if coverPage then
-			showSpread(spreadIndex)
-		end
-	elseif coverPage then
-		showSpread(spreadIndex) -- same pockets, new size: redraw so the chips fit
 	end
 end
 
@@ -1089,9 +1119,11 @@ local function showTab(bag: boolean)
 		hideTooltip()
 	end
 	bagOverlay.Visible = bag
-	-- The book draws on its own layer, so the Bag would leave it showing around the edges; the book's corner
-	-- buttons (Filters, Rarity guide, progress) would peek out under the Bag too
-	bookGui.Enabled = panel.Visible and not bag
+	-- The Bag window shows over the desk; the binder's own buttons and counter would peek out under it
+	counter.Visible = not bag
+	for _, arrows in arrowLanes do
+		arrows.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
+	end
 	for _, name in { "FilterButton", "RarityGuide" } do
 		local item = panel:FindFirstChild(name)
 		if item and item:IsA("GuiObject") then
@@ -1290,7 +1322,7 @@ local function sectionLabel(parent: Instance, order: number, text: string)
 	label.Size = UDim2.new(1, 0, 0, 24)
 end
 
--- The Filters panel on the right: search, Show, Sort by, rarity chips. The book shrinks aside while it's open.
+-- The Filters panel on the right: search, Show, Sort by, rarity chips. The binder moves aside while it's open.
 local function buildFilters(parent: Frame)
 	filtersPanel = Instance.new("Frame")
 	filtersPanel.Name = "Filters"
@@ -1390,61 +1422,44 @@ local function buildFilters(parent: Frame)
 	end
 end
 
--- Opens or closes the Filters panel; the book shrinks and slides left to make room
--- Where the book sits: as big as its binder shape fits between the top row, bottom row and arrow lanes,
--- centred there, or (Filters open) shrunk into the room left of the Filters panel, arrows included
-local function getBookLayout(filtersOpen: boolean): (UDim2, UDim2, number)
+-- Where the binder goes on screen (viewport pixels, Roblox's top bar strip included): the biggest binder shape
+-- between a top and bottom margin and lanes either side; on phones the full height between slim lanes of compact
+-- buttons (placeCorners); between the top and bottom rows when the corners would run into it; left of the Filters
+-- panel while it's open. The camera fits the 3D binder (tabs included) into it (BinderDesk.frame).
+local function getBookRect(filtersOpen: boolean): UiLayout.Rect
 	local look = Collection.BOOK
-	-- The whole screen, top bar strip included (the book's layer ignores the inset); the rows' bands count
-	-- from below the strip, where the buttons are
-	local area = bookGui.AbsoluteSize
+	local camera = workspace.CurrentCamera
+	local area = camera.ViewportSize
 	local inset = area.Y - panel.AbsoluteSize.Y
-	-- The biggest binder shape between a top and bottom margin, and the lanes either side
-	local lane = if area.X < look.NARROW_BELOW then look.NARROW_LANE else look.SIDE_LANE
-	local function fit(top: number, bottom: number): (number, number, number)
-		local width = math.max(200, area.X - lane * 2)
+	local aspect = BinderDesk.aspect()
+	local function fit(left: number, right: number, top: number, bottom: number): UiLayout.Rect
+		local width = math.max(200, area.X - left - right)
 		local height = math.max(140, area.Y - top - bottom)
-		if width / height > look.ASPECT then
-			width = height * look.ASPECT
+		if width / height > aspect then
+			width = height * aspect
 		else
-			height = width / look.ASPECT
+			height = width / aspect
 		end
-		return width, height, top + (area.Y - top - bottom) / 2
+		return {
+			x = left + (area.X - left - right - width) / 2,
+			y = top + (area.Y - top - bottom - height) / 2,
+			w = width,
+			h = height,
+		}
 	end
-	if area.X < look.NARROW_BELOW then
-		-- Phones: the full height, between slim lanes of compact buttons (placeCorners)
-		local leftLane = look.NARROW_LEFT + look.TAB_WIDTH
-		local room = area.X - leftLane - look.NARROW_RIGHT
-		local width = math.max(200, room)
-		local height = math.max(140, area.Y - look.MARGIN - look.MARGIN_BOTTOM)
-		if width / height > look.ASPECT then
-			width = height * look.ASPECT
-		else
-			height = width / look.ASPECT
-		end
-		local centreY = look.MARGIN + (area.Y - look.MARGIN - look.MARGIN_BOTTOM) / 2
-		local size = UDim2.fromOffset(width, height)
-		if not filtersOpen then
-			return size, UDim2.fromOffset(leftLane + room / 2, centreY), 1
-		end
-		local besideFilters = area.X - Collection.FILTERS_WIDTH - 32 - look.NARROW_LEFT
-		local scale = math.min(1, besideFilters / (width + look.TAB_WIDTH))
-		return size, UDim2.fromOffset(look.NARROW_LEFT + besideFilters / 2 + look.TAB_WIDTH * scale / 2, centreY), scale
+	local narrow = area.X < look.NARROW_BELOW
+	local filters = if filtersOpen then Collection.FILTERS_WIDTH + 32 else 0
+	if narrow then
+		return fit(look.NARROW_LEFT, math.max(look.NARROW_RIGHT, filters), look.MARGIN, look.MARGIN_BOTTOM)
 	end
-	local width, height, centreY = fit(look.MARGIN, look.MARGIN_BOTTOM)
-	local left = (area.X - width) / 2 - look.TAB_WIDTH
-	local right = (area.X + width) / 2
-	if left < look.CORNER_LEFT or right > area.X - look.CORNER_RIGHT then
-		width, height, centreY = fit(look.TOP_BAND + inset, look.BOTTOM_BAND)
+	if filtersOpen then
+		return fit(look.CORNER_LEFT, filters + look.SIDE_LANE, look.TOP_BAND + inset, look.BOTTOM_BAND)
 	end
-	local size = UDim2.fromOffset(width, height)
-	if not filtersOpen then
-		return size, UDim2.new(0.5, 0, 0, centreY), 1
+	local rect = fit(look.SIDE_LANE, look.SIDE_LANE, look.MARGIN, look.MARGIN_BOTTOM)
+	if rect.x < look.CORNER_LEFT or rect.x + rect.w > area.X - look.CORNER_RIGHT then
+		rect = fit(look.SIDE_LANE, look.SIDE_LANE, look.TOP_BAND + inset, look.BOTTOM_BAND)
 	end
-	-- Between the left corner buttons (Cards, Bag) and the Filters panel
-	local room = area.X - Collection.FILTERS_WIDTH - 32 - look.CORNER_LEFT
-	local scale = math.min(1, room / (width + lane * 2))
-	return size, UDim2.fromOffset(look.CORNER_LEFT + room / 2, centreY), scale
+	return rect
 end
 
 -- The corner buttons: full size in the corners on roomy screens; compact icons in slim side lanes on phones
@@ -1471,24 +1486,32 @@ local function placeCorners(narrow: boolean)
 	filterButton.Position = if narrow then UDim2.new(1, -16, 0, 76) else UDim2.new(1, -84, 0, 16)
 end
 
+-- The page counter just under the binder and an arrow either side of it (GUI space: the rect is viewport pixels)
+local function placeAround(rect: UiLayout.Rect)
+	local inset = workspace.CurrentCamera.ViewportSize.Y - panel.AbsoluteSize.Y
+	local bottom = rect.y + rect.h - inset
+	counter.Position = UDim2.fromOffset(rect.x + rect.w / 2, bottom + 6)
+	local middle = rect.y + rect.h / 2 - inset
+	arrowLanes[1].Position = UDim2.fromOffset(rect.x - 20, middle)
+	arrowLanes[2].Position = UDim2.fromOffset(rect.x + rect.w + 20, middle)
+end
+
 local function layoutBook()
-	placeCorners(bookGui.AbsoluteSize.X < Collection.BOOK.NARROW_BELOW)
-	local size, position, scale = getBookLayout(filtersPanel.Visible)
-	bookHolder.Size = size
-	bookHolder.Position = position
-	bookScale.Scale = scale
+	placeCorners(workspace.CurrentCamera.ViewportSize.X < Collection.BOOK.NARROW_BELOW)
+	local rect = getBookRect(filtersPanel.Visible)
+	BinderDesk.frame(rect, false)
+	placeAround(rect)
 	progressCard.Visible = not (bagOverlay and bagOverlay.Visible) and panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
 	local roomy = panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
 	for _, arrows in arrowLanes do
-		arrows.Visible = roomy
+		arrows.Visible = roomy and not (bagOverlay and bagOverlay.Visible)
 	end
 end
 
 function setFiltersOpen(open: boolean)
-	local info = TweenInfo.new(Collection.BOOK.SLIDE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local _, position, scale = getBookLayout(open)
-	TweenService:Create(bookScale, info, { Scale = scale }):Play()
-	TweenService:Create(bookHolder, info, { Position = position }):Play()
+	local rect = getBookRect(open)
+	BinderDesk.frame(rect, true)
+	placeAround(rect)
 	if open then
 		filtersPanel.Visible = true
 		Motion.popIn(filtersPanel)
@@ -1497,28 +1520,6 @@ function setFiltersOpen(open: boolean)
 			filtersPanel.Visible = false
 		end)
 	end
-end
-
-local function makePage(book: Frame, isLeft: boolean): Frame
-	local page = Instance.new("Frame")
-	page.Name = if isLeft then "LeftPage" else "RightPage"
-	page.Position = if isLeft then UDim2.new(0, 14, 0, 14) else UDim2.new(0.5, 10, 0, 14)
-	page.Size = UDim2.new(0.5, -24, 1, -28)
-	page.BackgroundColor3 = Collection.BOOK.PAGE_COLOR
-	page.Parent = book
-	UIKit.corner(page, 10)
-	UIKit.outline(page, Collection.BOOK.EDGE, 1.5)
-
-	local grid = Instance.new("UIGridLayout")
-	grid.CellPadding = UDim2.fromOffset(POCKET_OPTIONS.gap, POCKET_OPTIONS.gap)
-	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	grid.VerticalAlignment = Enum.VerticalAlignment.Center
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.FillDirectionMaxCells = POCKET_OPTIONS.preferredColumns
-	grid.Parent = page
-	table.insert(pageGrids, grid)
-	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitPockets)
-	return page
 end
 
 -- The art for a set's cover: the front of the pack that sells it (none for sets without a pack)
@@ -1531,17 +1532,18 @@ function getSetArt(set: string): string?
 	return nil
 end
 
--- The set's cover over spread 1's left page: the pack art over the whole cover (leather in the set's colour when
--- there is none), dark fades behind a title band (name and progress) and the set's worth, an embossed border. It sits on the book, not in the page
--- (the page's grid would size it like a pocket).
-local function buildCover(page: Frame)
+-- The set's cover on spread 1's left page: the pack art over the whole cover (leather in the set's colour when
+-- there is none), dark fades behind a title band (name and progress) and the set's worth, an embossed border.
+-- Drawn on the left page's canvas (BinderDesk), over its pocket slots.
+local function buildCover(canvas: Frame)
 	coverPage = Instance.new("Frame")
 	coverPage.Name = "Cover"
-	coverPage.Position = page.Position
-	coverPage.Size = page.Size
+	coverPage.AnchorPoint = Vector2.new(0.5, 0.5)
+	coverPage.Position = UDim2.fromScale(0.5, 0.5)
+	coverPage.Size = UDim2.fromScale(0.92, 0.95)
 	coverPage.BackgroundColor3 = Color3.new(1, 1, 1)
-	coverPage.ZIndex = page.ZIndex + 1
-	coverPage.Parent = page.Parent
+	coverPage.ZIndex = 10
+	coverPage.Parent = canvas
 	UIKit.corner(coverPage, 10)
 	local leather = Instance.new("UIGradient")
 	leather.Name = "Leather"
@@ -1648,119 +1650,6 @@ local function buildCover(page: Frame)
 	end
 end
 
--- The sheet that turns (flipTo): page-coloured, clipping a page-sized holder for the turning cards, with a
--- shade that darkens as it folds edge-on
-local function buildFlipSheet()
-	local look = Collection.BOOK
-	flipSheet = Instance.new("Frame")
-	flipSheet.Name = "TurningPage"
-	flipSheet.BackgroundColor3 = look.PAGE_COLOR
-	flipSheet.ClipsDescendants = true
-	flipSheet.Visible = false
-	flipSheet.ZIndex = pages[1].ZIndex + 2
-	flipSheet.Parent = book
-	UIKit.corner(flipSheet, 14)
-	UIKit.outline(flipSheet, look.EDGE, 1.5)
-	flipContent = Instance.new("Frame")
-	flipContent.Name = "Cards"
-	flipContent.BackgroundTransparency = 1
-	flipContent.ZIndex = flipSheet.ZIndex
-	flipContent.Parent = flipSheet
-	local grid = pageGrids[1]:Clone()
-	grid.Parent = flipContent
-	table.insert(pageGrids, grid)
-	flipShade = Instance.new("Frame")
-	flipShade.Name = "Shade"
-	flipShade.Size = UDim2.fromScale(1, 1)
-	flipShade.BackgroundColor3 = Color3.fromRGB(20, 26, 50)
-	flipShade.BackgroundTransparency = 1
-	flipShade.BorderSizePixel = 0
-	flipShade.ZIndex = flipSheet.ZIndex + 5
-	flipShade.Parent = flipSheet
-	local shadeGlint = Instance.new("UIGradient") -- the edge nearest the spine catches the light
-	shadeGlint.Transparency = NumberSequence.new(0, 0.35)
-	shadeGlint.Parent = flipShade
-	flipLift = Instance.new("UIScale")
-	flipLift.Parent = flipSheet
-
-	flipShadow = Instance.new("Frame")
-	flipShadow.Name = "TurnShadow"
-	flipShadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	flipShadow.BorderSizePixel = 0
-	flipShadow.Visible = false
-	flipShadow.ZIndex = flipSheet.ZIndex - 1
-	flipShadow.Parent = book
-	flipShadowFade = Instance.new("UIGradient")
-	flipShadowFade.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.7, 0.4),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	flipShadowFade.Parent = flipShadow
-end
-
--- The binder's case: dark leather with a soft sheen and a stitched seam just inside its edge
-function buildCase()
-	local look = Collection.BOOK
-	book.BackgroundColor3 = Color3.new(1, 1, 1)
-	book.ZIndex = panel.ZIndex
-	book.Parent = bookHolder
-	UIKit.corner(book, 20)
-	UIKit.outline(book, look.CASE_DARK, 3)
-	local leather = Instance.new("UIGradient")
-	leather.Color = ColorSequence.new(look.CASE, look.CASE_DARK)
-	leather.Rotation = 70
-	leather.Parent = book
-	local seam = Instance.new("Frame")
-	seam.Name = "Stitching"
-	seam.Position = UDim2.fromOffset(6, 6)
-	seam.Size = UDim2.new(1, -12, 1, -12)
-	seam.BackgroundTransparency = 1
-	seam.ZIndex = book.ZIndex
-	seam.Parent = book
-	UIKit.corner(seam, 16)
-	UIKit.outline(seam, look.STITCH, 1.5).Transparency = 0.45
-end
-
--- A chrome bar down the middle with three rings over it, holding the pages
-function buildSpine()
-	local look = Collection.BOOK
-	local rail = Instance.new("Frame")
-	rail.Name = "Spine"
-	rail.AnchorPoint = Vector2.new(0.5, 0)
-	rail.Position = UDim2.new(0.5, 0, 0, 22)
-	rail.Size = UDim2.new(0, 14, 1, -44)
-	rail.BackgroundColor3 = Color3.new(1, 1, 1)
-	rail.ZIndex = book.ZIndex + 6
-	rail.Parent = book
-	UIKit.corner(rail, 7)
-	local railShine = Instance.new("UIGradient")
-	railShine.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, look.CHROME[2]),
-		ColorSequenceKeypoint.new(0.4, look.CHROME[1]),
-		ColorSequenceKeypoint.new(1, look.CHROME[2]),
-	})
-	railShine.Parent = rail
-	for _, y in { 0.2, 0.5, 0.8 } do
-		local ring = Instance.new("Frame")
-		ring.Name = "Ring"
-		ring.AnchorPoint = Vector2.new(0.5, 0.5)
-		ring.Position = UDim2.fromScale(0.5, y)
-		ring.Size = UDim2.new(0.075, 0, 0.065, 0) -- scales with the book
-		ring.BackgroundTransparency = 1
-		ring.ZIndex = book.ZIndex + 7
-		ring.Parent = book
-		local round = Instance.new("UICorner")
-		round.CornerRadius = UDim.new(0.5, 0)
-		round.Parent = ring
-		local metal = UIKit.outline(ring, Color3.new(1, 1, 1), 3)
-		local shine = Instance.new("UIGradient")
-		shine.Color = ColorSequence.new(look.CHROME[1], look.CHROME[2])
-		shine.Rotation = 90
-		shine.Parent = metal
-	end
-end
-
 -- A round arrow button beside the book, with its key chip
 local function arrowButton(parent: Instance, text: string, key: string, onClick: () -> ()): TextButton
 	local button = UIKit.button(parent, text, UIKit.Colors.Accent)
@@ -1776,39 +1665,9 @@ local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(parent, "Binder", "Binder")
 	list:Destroy() -- the binder uses pages instead of a scrolling list
-	-- Full screen, the world dimmed behind; no header (the book is the screen)
+	-- Full screen and see-through: the 3D binder on its desk fills the screen behind (BinderDesk)
 	panel.Size = UDim2.fromScale(1, 1)
 	panel.BackgroundTransparency = 1
-	-- The dimmed backdrop is its own screen that covers Roblox's top bar strip too (a normal screen starts below
-	-- it), drawn behind the binder; the buttons stay below the bar
-	backdropGui = Instance.new("ScreenGui")
-	backdropGui.Name = "BinderBackdrop"
-	backdropGui.IgnoreGuiInset = true
-	backdropGui.ResetOnSpawn = false
-	backdropGui.DisplayOrder = -1
-	backdropGui.Enabled = false
-	backdropGui.Parent = player:WaitForChild("PlayerGui")
-	local backdrop = Instance.new("Frame")
-	backdrop.Name = "Backdrop"
-	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
-	backdrop.BackgroundTransparency = Collection.BOOK.BACKDROP_TRANSPARENCY
-	backdrop.BorderSizePixel = 0
-	backdrop.Active = true -- clicks on the backdrop don't reach the world
-	backdrop.Parent = backdropGui
-	bookGui = Instance.new("ScreenGui")
-	bookGui.Name = "BinderBook"
-	bookGui.IgnoreGuiInset = true
-	bookGui.ResetOnSpawn = false
-	bookGui.DisplayOrder = -1 -- under the main screen, so its panels (Rarity guide, tooltips) open over the book
-	bookGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	bookGui.Enabled = false
-	bookGui.Parent = backdropGui.Parent
-	backdropGui.DisplayOrder = -2
-	panel:GetPropertyChangedSignal("Visible"):Connect(function()
-		backdropGui.Enabled = panel.Visible and bookHolder.Visible
-		bookGui.Enabled = panel.Visible and not bagOverlay.Visible
-	end)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
 		sizeLimit:Destroy()
@@ -1832,95 +1691,36 @@ local function buildPanel(parent: Instance)
 		close.Position = UDim2.new(1, -16, 0, 16)
 	end
 
-	-- The book: holder keeps the shape and position (it slides when Filters open), the scale shrinks it
-	bookHolder = Instance.new("Frame")
-	bookHolder.Name = "BookHolder"
-	bookHolder.AnchorPoint = Vector2.new(0.5, 0.5)
-	bookHolder.Position = UDim2.fromScale(0.5, 0.5)
-	bookHolder.Size = UDim2.fromScale(0.8, 0.8) -- layoutBook sizes it to the screen
-	bookHolder.BackgroundTransparency = 1
-	bookHolder.ZIndex = panel.ZIndex
-	bookHolder.Parent = bookGui
-	bookScale = Instance.new("UIScale")
-	bookScale.Parent = bookHolder
+	-- The pages are canvases on the 3D binder; the cover sits on the left one
+	local leftCanvas = BinderDesk.pages()
+	buildCover(leftCanvas)
 
-	book = Instance.new("Frame")
-	book.Name = "Book"
-	book.Size = UDim2.fromScale(1, 1)
-	buildCase()
-	pages = { makePage(book, true), makePage(book, false) }
-	buildCover(pages[1])
-	buildFlipSheet()
-	buildSpine()
-
-	-- Set tabs: bookmarks sticking out of the book's left edge, tucked under it
-	local tabIndex = 0
-	local look = Collection.BOOK
-	for _, set in Collection.SETS do
-		if Cards.BySet[set] then
-			local tab = UIKit.button(bookHolder, string.gsub(string.upper(set), " ", "\n"), UIKit.Colors.Row)
-			tab.Name = "SetTab" .. string.gsub(set, " ", "")
-			tab.AnchorPoint = Vector2.new(1, 0)
-			tab.Position = UDim2.new(0, 12, 0, 40 + tabIndex * (look.TAB_HEIGHT + 8))
-			tab.Size = UDim2.fromOffset(look.TAB_WIDTH + 12, look.TAB_HEIGHT)
-			tab.TextScaled = true
-			tab.TextWrapped = true
-			tab.ZIndex = book.ZIndex - 1
-			local tabPadding = tab:FindFirstChildOfClass("UIPadding")
-			if tabPadding then
-				tabPadding.PaddingLeft = UDim.new(0, 6)
-				tabPadding.PaddingRight = UDim.new(0, 18) -- the tucked-in part
-			end
-			tab.Activated:Connect(function()
-				openSet(set)
-			end)
-			setTabs[set] = tab
-			tabIndex += 1
-		end
-	end
-
-	-- Page counter on the book's bottom edge like a binder tab, an arrow either side (Q/E one spread)
-	local counter = Instance.new("Frame")
+	-- Page counter just under the binder like a binder tab, an arrow either side (Q/E one spread); placeAround
+	-- moves them with the binder
+	counter = Instance.new("Frame")
 	counter.Name = "Counter"
 	counter.AnchorPoint = Vector2.new(0.5, 0)
-	counter.Position = UDim2.new(0.5, 0, 1, 6) -- just under the book, clear of the pockets
 	counter.Size = UDim2.fromOffset(128, 36)
 	counter.BackgroundColor3 = Color3.fromRGB(20, 28, 60)
-	counter.ZIndex = book.ZIndex + 8
-	counter.Parent = bookHolder
+	counter.ZIndex = panel.ZIndex + 2
+	counter.Parent = panel
 	UIKit.corner(counter, 20)
 	pageLabel = UIKit.label(counter, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
 	pageLabel.Size = UDim2.fromScale(1, 1)
 	pageLabel.TextXAlignment = Enum.TextXAlignment.Center
 
-	local leftArrows = Instance.new("Frame")
-	leftArrows.AnchorPoint = Vector2.new(1, 0.5)
-	leftArrows.Position = UDim2.new(0, -(Collection.BOOK.TAB_WIDTH + 24), 0.5, 0) -- clear of the set tabs
-	leftArrows.Size = UDim2.fromOffset(64, 64)
-	leftArrows.BackgroundTransparency = 1
-	leftArrows.Parent = bookHolder
-	local leftList = Instance.new("UIListLayout")
-	leftList.Padding = UDim.new(0, 16)
-	leftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	leftList.Parent = leftArrows
-	table.insert(arrowLanes, leftArrows)
-	arrowButton(leftArrows, "<", "Q", function()
-		task.spawn(flipTo, spreadIndex - 1)
-	end).LayoutOrder = 1
-
-	local rightArrows = leftArrows:Clone()
-	for _, child in rightArrows:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
+	for index, step in { -1, 1 } do
+		local lane = Instance.new("Frame")
+		lane.AnchorPoint = Vector2.new(if step < 0 then 1 else 0, 0.5)
+		lane.Size = UDim2.fromOffset(64, 64)
+		lane.BackgroundTransparency = 1
+		lane.ZIndex = panel.ZIndex + 2
+		lane.Parent = panel
+		arrowLanes[index] = lane
+		arrowButton(lane, if step < 0 then "<" else ">", if step < 0 then "Q" else "E", function()
+			turnBy(step)
+		end).Size = UDim2.fromScale(1, 1)
 	end
-	rightArrows.AnchorPoint = Vector2.new(0, 0.5)
-	rightArrows.Position = UDim2.new(1, 20, 0.5, 0)
-	rightArrows.Parent = bookHolder
-	table.insert(arrowLanes, rightArrows)
-	arrowButton(rightArrows, ">", "E", function()
-		task.spawn(flipTo, spreadIndex + 1)
-	end).LayoutOrder = 1
 
 	-- Filters (F), top right next to the close button
 	filterButton = UIKit.button(panel, "", UIKit.Colors.Row)
@@ -2007,7 +1807,7 @@ local function buildPanel(parent: Instance)
 	tooltip:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTooltip) -- it sizes itself after its content
 
 	for _, card in Cards.List do
-		table.insert(tiles, buildTile(card, panel))
+		table.insert(tiles, buildTile(card))
 	end
 	CardDetailController.Build(panel, {
 		getEntries = getEntries,
@@ -2029,18 +1829,29 @@ local function buildPanel(parent: Instance)
 		end,
 		setInspecting = setInspecting,
 	})
+	-- The X closes the card view back to the binder, then the binder
+	UIKit.setBackStep(panel, function(): boolean
+		if not CardDetailController.IsOpen() then
+			return false
+		end
+		CardDetailController.Close()
+		return true
+	end)
 	buildBag(panel) -- before the first layout: it places the Cards / Bag tabs
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
-	bookGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutBook)
 	layoutBook()
-	fitPockets()
 	refreshSet()
 	applyFilter()
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		hideTooltip()
 		Hud.setHidden("Binder", panel.Visible)
-		if not panel.Visible then
+		if panel.Visible then
+			BinderDesk.show()
+			layoutBook()
+		else
 			CardDetailController.Close() -- closes the inspector too
+			BinderDesk.hide()
 		end
 		if not panel.Visible and filtersPanel.Visible then
 			filtersPanel.Visible = false
@@ -2167,22 +1978,184 @@ end
 function BinderController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildPanel(screenGui)
+	PageTurner.build() -- before the first turn, so it doesn't lay out its strips mid-turn
 	buildButtons()
 	RarityGuideController.SetCollected(isCollected)
 	refresh()
 
-	-- Phones: a swipe across the open binder turns the page (left = next)
-	if Collection.BOOK.SWIPE then
-		UserInputService.TouchSwipe:Connect(function(direction)
-			if not panel.Visible or bagOverlay.Visible or CardDetailController.IsOpen() or RarityGuideController.IsOpen() then
+	-- Pointer gestures on the binder. A pointer over a card lights its pocket and shows its tooltip (a finger: hold
+	-- it there without moving). A tap on a card lifts it out of its sleeve into the card view; a tap elsewhere on a
+	-- page, on a "?" or an empty pocket turns that way; a swipe across turns too. A press on a page's outer edge that
+	-- moves toward the spine picks the page up and drags it over. One pointer owns a press at a time (BinderGesture):
+	-- a second finger can't take over a dragged page, and a release that never came is ended on the next press.
+	local gesture = BinderGesture.new()
+	local press: { pick: BinderDesk.Pick?, edge: boolean?, drag: boolean, held: boolean }? = nil -- what the press is doing
+	local heldStep: number? = nil -- Q or E held: keep turning
+	local heldNext = 0
+	local hoverKey = ""
+	local function interactive(): boolean
+		return panel.Visible and not bagOverlay.Visible and not CardDetailController.IsOpen() and not RarityGuideController.IsOpen()
+	end
+	local function isPointer(input: InputObject): boolean
+		return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+	end
+	-- Each finger is its own pointer; the mouse's button and movement are one
+	local function pointerId(input: InputObject): unknown
+		return if input.UserInputType == Enum.UserInputType.Touch then input else "mouse"
+	end
+	local function pageStep(side: BinderDesk.Side): number
+		return if side == "Right" then 1 else -1
+	end
+	local function tileAt(side: BinderDesk.Side, index: number): Tile?
+		local left, right = getSpreadTiles(spreadIndex)
+		return (if side == "Left" then left else right)[index]
+	end
+	local function clearHover()
+		if hoverKey ~= "" then
+			hoverKey = ""
+			BinderDesk.highlight(nil, nil)
+			hideTooltip()
+		end
+	end
+	local function hover(point: Vector2)
+		local pick = if interactive() and not PageTurner.busy() then BinderDesk.pick(point) else nil
+		if pick and pick.kind == "pocket" then
+			local tile = tileAt(pick.side, pick.index)
+			if tile then
+				local key = `{pick.side}{pick.index}`
+				if key ~= hoverKey then
+					hoverKey = key
+					BinderDesk.highlight(pick.side, pick.index)
+					showTooltip(tile)
+				end
 				return
 			end
-			if direction == Enum.SwipeDirection.Left then
-				task.spawn(flipTo, spreadIndex + 1)
-			elseif direction == Enum.SwipeDirection.Right then
-				task.spawn(flipTo, spreadIndex - 1)
-			end
+		end
+		clearHover()
+	end
+	local function pickCard(side: BinderDesk.Side, index: number, tile: Tile)
+		clearHover()
+		BinderDesk.lift(side, index, liteFace({ tile })[1], function()
+			openDetail(tile.card)
 		end)
+	end
+	-- Ends what a press was doing without acting on it: a held page falls back or finishes as it lies, a hold's
+	-- tooltip goes (a lost release, the binder closing, the window losing focus)
+	local function dropPress()
+		local pressed = press
+		press = nil
+		if pressed and pressed.drag then
+			endDrag(false)
+		end
+		if pressed and pressed.held then
+			BinderDesk.highlight(nil, nil)
+			hideTooltip()
+		end
+	end
+	local function resetInput()
+		BinderGesture.cancel(gesture)
+		dropPress()
+		heldStep = nil
+		clearHover()
+	end
+	local function onPress(input: InputObject)
+		local id = pointerId(input)
+		local point = Vector2.new(input.Position.X, input.Position.Y)
+		local accepted, stale = BinderGesture.press(gesture, id, point.X, point.Y, os.clock())
+		if not accepted then
+			return -- another finger has the binder
+		end
+		if stale then
+			dropPress() -- its release never came
+		end
+		clearHover()
+		local pick = BinderDesk.pick(point)
+		if pick and pick.kind == "tab" then
+			BinderGesture.release(gesture, id)
+			if not PageTurner.busy() and not dragging then
+				openSet(pick.set)
+			end
+			return
+		end
+		local edge: boolean? = nil
+		if pick and (pick.kind == "page" or pick.kind == "pocket") then
+			local outer = if pick.side == "Right" then pick.u >= 1 - Desk.DRAG_EDGE else pick.u <= Desk.DRAG_EDGE
+			edge = if outer then pick.side == "Right" else nil
+		end
+		local pressed = { pick = pick, edge = edge, drag = false, held = false }
+		press = pressed
+		-- A finger held still on a card shows its tooltip until it lifts (one that moves is a swipe)
+		if input.UserInputType == Enum.UserInputType.Touch and pick and pick.kind == "pocket" then
+			local tile = tileAt(pick.side, pick.index)
+			task.delay(UIStyle.LONG_PRESS, function()
+				if press == pressed and not pressed.drag and tile and BinderGesture.canHold(gesture, id, Desk.TAP_PIXELS) then
+					pressed.held = true
+					BinderDesk.highlight(pick.side, pick.index)
+					showTooltip(tile, true)
+				end
+			end)
+		end
+	end
+	local function onMove(input: InputObject)
+		local point = Vector2.new(input.Position.X, input.Position.Y)
+		if not BinderGesture.move(gesture, pointerId(input), point.X, point.Y, Desk.TAP_PIXELS) then
+			return -- not the pointer that pressed
+		end
+		local pressed = press
+		local owner = gesture.press
+		if not pressed or not owner then
+			return
+		end
+		if pressed.drag then
+			moveDrag(point)
+			return
+		end
+		local forward = pressed.edge
+		local dx = point.X - owner.startX
+		if forward ~= nil and not pressed.held and (if forward then dx < -Desk.TAP_PIXELS else dx > Desk.TAP_PIXELS) then
+			pressed.drag = beginDrag(forward)
+			if pressed.drag then
+				moveDrag(point)
+			end
+		end
+	end
+	local function onRelease(input: InputObject)
+		local ended = BinderGesture.release(gesture, pointerId(input))
+		if not ended then
+			return -- not the pointer that pressed
+		end
+		local pressed = press
+		press = nil
+		if not pressed then
+			return
+		end
+		if pressed.held then
+			BinderDesk.highlight(nil, nil)
+			hideTooltip()
+			return
+		end
+		local dx, dy = input.Position.X - ended.startX, input.Position.Y - ended.startY
+		local tapped = PageCurl.isTap(dx, dy, os.clock() - ended.at, Desk.TAP_PIXELS, Desk.TAP_SECONDS)
+		if pressed.drag then
+			endDrag(tapped)
+			return
+		end
+		local pick = pressed.pick
+		if tapped and pick and pick.kind == "page" then
+			turnBy(pageStep(pick.side))
+		elseif tapped and pick and pick.kind == "pocket" then
+			local tile = tileAt(pick.side, pick.index)
+			if tile and isCollected(tile.card.id) and not PageTurner.busy() then
+				pickCard(pick.side, pick.index, tile)
+			elseif not tile or not isCollected(tile.card.id) then
+				turnBy(pageStep(pick.side)) -- a "?" or an empty pocket turns the page
+			end
+		elseif not tapped then
+			local step = PageCurl.swipe(dx, dy, Desk.SWIPE_PIXELS)
+			if step then
+				turnBy(step)
+			end
+		end
 	end
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then
@@ -2193,14 +2166,58 @@ function BinderController.Start()
 			return
 		end
 		-- Windows over the binder (the Rarity guide) keep the keys
-		if not panel.Visible or bagOverlay.Visible or CardDetailController.IsOpen() or isTyping() or RarityGuideController.IsOpen() then
+		if not interactive() or isTyping() then
+			return
+		end
+		if isPointer(input) then
+			onPress(input)
 			return
 		end
 		local step = PAGE_KEYS[input.KeyCode]
 		if step then
-			task.spawn(flipTo, spreadIndex + step)
+			clearHover()
+			turnBy(step)
+			heldStep, heldNext = step, os.clock() + Desk.HOLD_REPEAT * 2
 		elseif input.KeyCode == Enum.KeyCode.F then
 			setFiltersOpen(not filtersPanel.Visible)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input, gameProcessed)
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		if BinderGesture.active(gesture) then
+			onMove(input)
+		elseif input.UserInputType == Enum.UserInputType.MouseMovement then
+			-- Over a button or window the 3D binder isn't what's pointed at
+			if gameProcessed then
+				clearHover()
+			else
+				hover(Vector2.new(input.Position.X, input.Position.Y))
+			end
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if isPointer(input) then
+			onRelease(input)
+		elseif PAGE_KEYS[input.KeyCode] == heldStep then
+			heldStep = nil
+		end
+	end)
+	-- Closing the binder or leaving the window ends any press or held key, so nothing carries on by itself
+	panel:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not panel.Visible then
+			resetInput()
+		end
+	end)
+	UserInputService.WindowFocusReleased:Connect(resetInput)
+	RunService.Heartbeat:Connect(function()
+		local step = heldStep
+		if step and os.clock() >= heldNext then
+			if interactive() then
+				turnBy(step)
+			end
+			heldNext = os.clock() + Desk.HOLD_REPEAT
 		end
 	end)
 	-- I opens the Bag. Roblox's camera binds I (zoom) through ContextActionService and swallows it before
@@ -2215,6 +2232,12 @@ function BinderController.Start()
 	end, false, Enum.ContextActionPriority.High.Value + BAG_PRIORITY_MARGIN, BAG_KEY)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
+	-- A fight starting (an elite, an aggro zone) closes the binder (and the card view) so the fight camera takes over
+	Remotes.BattleStarted.OnClientEvent:Connect(function()
+		if panel.Visible then
+			toggle()
+		end
+	end)
 	-- Party slot names in the "Which party slot?" chooser
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then

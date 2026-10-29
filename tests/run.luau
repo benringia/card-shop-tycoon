@@ -8,7 +8,6 @@ local specs: { [string]: { [string]: () -> () } } = {
 	Migrations = require("./Migrations.spec"),
 	SaleRules = require("./SaleRules.spec"),
 	CondenseRules = require("./CondenseRules.spec"),
-	PocketLayout = require("./PocketLayout.spec"),
 	JobRules = require("./JobRules.spec"),
 	LevelMath = require("./LevelMath.spec"),
 	PartyRules = require("./PartyRules.spec"),
@@ -43,6 +42,9 @@ local specs: { [string]: { [string]: () -> () } } = {
 	AdminPanel = require("./AdminPanel.spec"),
 	UiLayout = require("./UiLayout.spec"),
 	CompareRules = require("./CompareRules.spec"),
+	PageCurl = require("./PageCurl.spec"),
+	BinderFit = require("./BinderFit.spec"),
+	BinderGesture = require("./BinderGesture.spec"),
 }
 
 local passed, failed = 0, 0

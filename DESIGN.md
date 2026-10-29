@@ -982,7 +982,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # full-screen binder book per set: cover, set tabs, Q/E page keys, page counter, Filters panel (F), set progress card; pockets (3x3, fewer on short screens) with a chip row; tooltips
+    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
@@ -1016,6 +1016,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
     │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
     │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
+    │       ├── BinderDesk.luau         # the 3D binder's scene: desk, painted lamp light, case, rings, page canvases, set tabs, camera framing, picking by raycast
+    │       ├── PageTurner.luau         # the binder's turning page: bending strips with light cards on both sides, shade, shadow, page sound, drag
+    │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
+    │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -1042,6 +1046,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
+        │   ├── BinderDesk.luau # the 3D binder: stage, camera, page and pocket sizes, tabs, desk colours, page turns, the lift
         │   ├── Showcase.luau   # card case prices, customer card chance, slot layout
         │   ├── Condenser.luau  # Card Condenser cooldown and use distance
         │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
@@ -1085,6 +1090,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
+            ├── PageCurl.luau      # a turning page's bend, its strips, drag-to-turn, fast-turn pacing, swipes and taps (pure, Lune-tested)
+            ├── BinderFit.luau     # the 3D binder's pockets on a page and the camera fit for a screen rectangle (pure, Lune-tested)
+            ├── BinderGesture.luau # who owns a press on the 3D binder: one pointer, lost releases, holds vs swipes (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
@@ -1202,31 +1210,60 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   price (in the band's colour): packs their real front (`Packs` art, as on the shelves), others their icon
   (`Products.icon`). On the right, your price stands out big in a dark box outlined in the band's colour, with
   small - / + buttons under it (38 px with a mouse, `UIStyle.MIN_TAP` 48 px on phones; sized on every open).
-- **Binder** (`Config/Collection`, `Util/BinderSpreads`): full screen over the dimmed world (the dim covers Roblox's top bar strip too), drawn like a real
-  binder: a dark leather case with a stitched seam, a chrome rail with three rings down the spine, dark pages with
-  plastic pocket sleeves (a soft glint over each card) and dark empty slots with a "?". One book per set; set tabs
-  are bookmarks sticking out of its left edge (the open set's sticks out further, in its colour). Spread 1's left
-  page is the cover: full art (the pack art over the whole cover; leather in the set's colour without one), an
-  embossed border, the title (name, "34 / 35 collected") and the set's worth in outlined text over dark fades,
-  a progress bar; then page 1. Pages hold 3x3
-  pockets when cards are at least 90 px wide, else fewer, bigger ones. The book keeps a binder's shape (1.36 wide
-  to 1 tall) and nearly fills the screen's height (on its own full-screen layer, rising into Roblox's top bar strip,
-  with the page counter just under it) when the corner buttons stay clear; on phones (screens under 900 wide) the
-  corner buttons go compact (icons only: Cards and Bag down the left edge, Rarity guide bottom left, Filters under
-  the close button) and the book takes the full height between those slim lanes; otherwise it fits between the top
-  row (Cards, Bag; Filters, close) and bottom row (Rarity guide, progress card). Screens under 900 px wide drop the
-  page arrows (swipe) and the progress card; tiny pockets show only the "Owned 3" chip. Turning a page animates
-  (0.35s, eased): the page rotates about the spine (its width follows the turn), swells a little as it lifts,
-  darkens edge-on and casts a shadow on the page underneath, then lands on the other side showing the next cards. Q/E, the
-  arrows and a swipe turn pages. Page counter pill ("2-3 / 9"); arrows with key chips
-  (Q/E one spread). Top right: Filters (F) and close. The Filters panel (search, Show
-  All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens on the right while the book (arrows
-  included) shrinks into the room left of it. Bottom right: the set's progress card (owned / total with a bar, value of your copies).
-  The side and bottom HUD hide while the binder is open. Cards / Bag tabs stay top left.
-  Hovering a pocket (mouse) shows the card's tooltip (`Util/CardTips`): art, name, set number, rarity / element /
-  best-grade pills, a 2x2 grid of icons and numbers (strongest Power, copies with any on display, best level, best
-  grade), the worth range in green with the Cash icon and "Click for details"; it sits just outside the book, level
-  with the pocket (right of it, else left, else above: `UiLayout.beside`), so it never covers a card.
+- **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
+  spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
+  client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
+  front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
+  leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
+  painted warm lamp pool, darker edges, a rounded black leather case with a fine, faint dashed seam and a soft shadow on the desk, dark pages (the binder's own
+  surfaces drawn a little brighter under the lamp, `BINDER_BRIGHTNESS`); a chrome ring rail
+  with three chunky rings arching over the pages' inner edges; the camera fits the case and the tabs on its right (not equal room both sides), so the binder fills the room it's given. It looks the same at night and at every graphics quality. Built once at start
+  and left in the world on its stage (out of sight from the ground), so opening only moves the camera; while shown, world sound stays at the character (`Util/ListenAtCharacter`) and on-top
+  world tags are off (`Util/WorldTags`); closing puts the camera, its field of view and the listener back (a
+  following camera picks up a character that respawned meanwhile). A fight starting (an elite, an aggro zone) closes
+  the binder and the card view so the fight camera takes over. The card view keeps world sound at the character too. One set
+  at a time; set dividers are small flat tabs in the set's colour sticking out of the case's right edge (rounded, a thin dark
+  edge, the set's name; the open set's sticks out further with a gold edge); a tap counts over the gaps between them
+  too, so each takes a 48+ px finger on a phone. Click one to open that set. Each page is a canvas of 2 x 2 pocket slots (8 cards a
+  spread on every screen): the card face (`CardFace`) in a plastic sleeve with a soft glint, the chip row under it
+  ("x3" with "B · Lv 4 · Job · Party", or "Owned 3"), dark "?" slots for missing cards. Each card's face is built
+  once and redrawn only when what it shows changes; the other cards (the open set's first, then every other set's)
+  are built in the background a few a frame, so turning to them or opening another set only moves them (building
+  nine faces at once cost a 40-70 ms frame). One pointer owns a press at a time (`Util/BinderGesture`): a second
+  finger can't take over a dragged page, a release that never came is ended by the next press, and closing the
+  binder or leaving the window ends any press or held key. Spread 1's left page
+  is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
+  (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
+  The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
+  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Cards and Bag down the left edge,
+  Rarity guide bottom left, Filters under the close button), no arrows and no progress card. Top right: Filters (F)
+  and close. The Filters panel (search, Show All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens
+  on the right while the camera moves the binder into the room left of it. Bottom right: the set's progress card
+  (owned / total with a bar, value of your copies). The Bag tab shows its window over the desk. The side and bottom
+  HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a
+  tab). **Turning pages** (`Util/PageTurner`, `Util/PageCurl`): the turning page is a chain of 4 strips hinged at
+  the spine that bends as it goes over the rings (the outer edge leads by up to 40 degrees mid-turn, flat at both
+  ends), darkening as it stands up and casting a shadow on the page under it, about half a second a turn, with a
+  page sound ("Book Page Turn 12", `BinderDesk.TURN_SOUND_ID`). The moving page shows light cards (art and rim,
+  each strip only the cards across its slice), built once and parked out of view between turns, so a turn only
+  swaps pictures; the next turn of a riffle starts a frame after the last one lands; the page under it shows the next cards at once and the full cards are
+  back as it lands. Q / E and the arrows, a tap on a page (right page forward, left page back; also on a "?" or an
+  empty pocket), a swipe across the binder, or holding Q / E (repeats every 0.18 s) turn pages; requests add up to
+  a target spread and turns get quicker the further there is to go (up to 4 times), so quick presses riffle through
+  a set and stop at its first or last spread. A press on a page's outer 30% that moves toward the spine picks the
+  page up: it follows the pointer and, let go, finishes the turn past halfway or when flicked on (else falls back).
+  A collection change while a page moves is drawn once the pages stop. **Cards:** the pocket under the mouse lights
+  up (a warm edge) and rises a little, with the card's tooltip; on touch, holding a finger on a card for
+  `UIStyle.LONG_PRESS` without moving shows it until the finger lifts (one that moves is a swipe). The binder's X closes the card view back to the binder while it's up
+  (`UIKit.setBackStep`), and the binder itself otherwise; anything else closing the binder closes the card view
+  first (it gives the camera back at once, so the binder's own restore comes last). Clicking or tapping an
+  owned card lifts it out of its sleeve
+  (its pocket shows empty) to the middle of the screen (0.3 s, `BinderDesk.lift`; never straight at the camera, so a
+  pocket near the screen's edge doesn't grow off it), then the card view opens on it (the camera moves to the card view's
+  stage at the normal field of view); closing the card view brings the binder back on the same spread. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
+  strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
+  just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
+  it never covers a card.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
   every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
@@ -1246,7 +1283,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   value; the first wears a gold BEST ribbon, the chosen one a gold outline, with room in the list so it isn't cut off); the chosen copy's Power / HP / ATK / SPD
   tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
   "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
-  says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)) and Back. Phones get a slimmer band and no pills
+  says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)), side by side; the binder's X closes it. Phones get a slimmer band and no pills
   row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
   Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
   "Who should <card> replace?" ("Pick a spot for <card>" while a slot is free) and the three slots side by side,
@@ -1319,6 +1356,22 @@ boss models; the ranch and Heroic tiers come after those.
   Next keep their tricks a surprise). Next: UI project 2 (a 3D
   binder with real page flipping, absorbing the book's squeezed pages, tiny labels and cut-off set tabs), then
   project 3 (cards in the world: shelf card models, bigger cards in bigger glass cases).
+- [x] UI project 2, the 3D binder (spec `2026-10-29-3d-binder-design.md`, plan `2026-10-29-3d-binder.md`, branch
+  `binder-3d`): "Collector's Desk" picked from three mockups; built (desk scene, 2 x 2 sleeved pages (3 x 3 was too
+  small on phones), bending page
+  turns with drag, swipe, tap and riffle, divider tabs, hover and hold tooltips, the card lift into the card view,
+  fights close it, world sound at the character). Studio at graphics level 1: worst frames 22 ms opening, 38 ms
+  turning (budget 50). Done: approved by the user and merged 2026-10-29. Feedback rounds: the camera no longer stuck
+  after closing the card view, a lighter binder, 2 x 2 big cards and a bigger binder for phones, the picked card
+  lifting to the screen's middle, finer stitches, small flat tabs drawn on the case, the X closing the card view
+  first (no Back button). Next: UI project 3 (cards in the world).
+  Deferred minors from its review: a refresh between riffle turns cuts the riffle short and tab clicks mid-turn are
+  ignored; picking a card doesn't cancel pending turns; closing on a boss fight could override the boss intro
+  camera; hover rise grows down-right; the tooltip can cover the set tabs and isn't re-placed when the camera
+  moves; idle tween cost of placed faces unmeasured; tabs rebuilt every refresh; some tunables still in code
+  (hover, lift, desk size, warm batch, flick window, park offset); stale comments and small dead bits
+  (BACKDROP_COLOR, BinderSpreads.turningSide); nearby ProximityPrompts over the binder unchecked; no gamepad
+  card picking.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
