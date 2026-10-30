@@ -131,6 +131,32 @@ return {
 		assert(#bad == 0, `pack models (docs/packs.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["portal models carry the parts the game dresses"] = function()
+		-- A portal's model is optional (today's frame stands in, Util/PortalLooks.slot); once saved it must hold every
+		-- part PortalBuild looks for (Frame, Opening, the effects' spots, the glowing parts), as MeshParts
+		local town = require("../src/shared/Config/Town")
+		local PortalLooks = require("../src/shared/Util/PortalLooks")
+		local bad = {}
+		for _, look in town.PORTAL_LOOKS do
+			local path = `assets/props/{look.slot}.rbxm`
+			if not fs.isFile(path) then
+				continue
+			end
+			local model = roblox.deserializeModel(fs.readFile(path))[1]
+			if not model or model.Name ~= look.slot then
+				table.insert(bad, `{path}: the model should be called {look.slot}`)
+				continue
+			end
+			for _, part in PortalLooks.parts(look) do
+				local mesh = model:FindFirstChild(part)
+				if not mesh or not mesh:IsA("MeshPart") then
+					table.insert(bad, `{path}: no MeshPart {part}`)
+				end
+			end
+		end
+		assert(#bad == 0, `portal models (docs/props.md):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["no creature or monster model contains a script"] = function()
 		local bad = {}
 		for _, folder in FOLDERS do
