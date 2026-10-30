@@ -10,12 +10,14 @@ local Config = Shared:WaitForChild("Config")
 local Scenery = require(Config:WaitForChild("Scenery"))
 local Town = require(Config:WaitForChild("Town"))
 local WildValleyConfig = require(Config:WaitForChild("WildValley"))
+local Wild = require(Config:WaitForChild("Wild"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local Props = require(SharedUtil:WaitForChild("Props"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TownTerrain = require(SharedUtil:WaitForChild("TownTerrain"))
 local LavaCracks = require(SharedUtil:WaitForChild("LavaCracks"))
+local WildValley = require(SharedUtil:WaitForChild("WildValley"))
 local TownService = require(script.Parent:WaitForChild("TownService"))
 local ServerUtil = (script.Parent :: Instance).Parent:WaitForChild("Util")
 local ScenePieces = require(ServerUtil:WaitForChild("ScenePieces"))
@@ -274,6 +276,61 @@ local function buildCalderaProps(folder: Folder)
 			volcanoSmoke = smoke.Position
 		end
 	end
+end
+
+-- The Wild valley's footbridge over the stream (WildValley.BRIDGE): an arched deck of planks along the trail, rails on
+-- posts either side; players walk over it
+local function buildBridge(folder: Instance)
+	local bridge = WildValleyConfig.BRIDGE
+	local wood, dark = Props.color(bridge.wood), Props.color(bridge.dark)
+	local steps = 8
+	for index = 0, steps - 1 do
+		local t0, t1 = index / steps, (index + 1) / steps
+		local z0 = bridge.z - bridge.length / 2 + t0 * bridge.length
+		local z1 = bridge.z - bridge.length / 2 + t1 * bridge.length
+		local y0 = math.sin(t0 * math.pi) * bridge.rise
+		local y1 = math.sin(t1 * math.pi) * bridge.rise
+		local from, to = Vector3.new(bridge.x, y0 + 0.2, z0), Vector3.new(bridge.x, y1 + 0.2, z1)
+		piece(folder, "BridgeDeck", Vector3.new(bridge.width, 0.4, (to - from).Magnitude + 0.05), CFrame.lookAt((from + to) / 2, to), if index % 2 == 0 then wood else dark, Enum.Material.WoodPlanks)
+		for _, side in { -1, 1 } do
+			local x = bridge.x + side * (bridge.width / 2 - 0.3)
+			local rail = piece(folder, "BridgeRail", Vector3.new(0.35, 0.35, (to - from).Magnitude + 0.05), CFrame.lookAt((from + to) / 2 + Vector3.new(x - bridge.x, 2.4, 0), to + Vector3.new(x - bridge.x, 2.4, 0)), dark, Enum.Material.Wood)
+			rail.CanCollide = true
+			if index % 2 == 0 then
+				piece(folder, "BridgePost", Vector3.new(0.5, 2.6, 0.5), CFrame.new(x, y0 + 1.3, z0), dark, Enum.Material.Wood)
+			end
+		end
+	end
+end
+
+-- The trail's markers (Util/WildValley.markers): small glowing stones along its edges, none under the bridge; flat
+-- and not solid, so monsters and players pass over them
+local function buildTrailMarkers(folder: Instance)
+	local look, bridge = WildValleyConfig.MARKER, WildValleyConfig.BRIDGE
+	local color = Props.color(look.color)
+	for index, point in WildValley.markers(WildValley.trail(Wild), WildValleyConfig.MARKER_SPACING) do
+		if math.abs(point.z - bridge.z) > bridge.length / 2 + 1 then
+			local side = if index % 2 == 0 then 1 else -1
+			local x = point.x + side * (WildValleyConfig.TRAIL_WIDTH / 2 - 0.6)
+			local stone = piece(folder, "TrailMarker", Vector3.new(0.35, look.size, look.size), CFrame.new(x, 0.12, point.z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+			stone.CanCollide = false
+			stone.CanQuery = false
+			stone.CanTouch = false
+			stone.CastShadow = false
+		end
+	end
+end
+
+-- The Wild valley's dressing (Config/WildValley): its props, the bridge and the trail's markers
+local function buildWildValley(folder: Folder)
+	local holder = Instance.new("Folder")
+	holder.Name = "WildValley"
+	holder.Parent = folder
+	for _, spot in WildValleyConfig.PROPS do
+		placeModel(holder, spot, spot.model)
+	end
+	buildBridge(holder)
+	buildTrailMarkers(holder)
 end
 
 local function buildCanyon(folder: Folder)
@@ -669,6 +726,7 @@ local function buildDressing()
 	buildFrost(folder)
 	buildFrozenFalls(folder)
 	buildSmallLife(folder)
+	buildWildValley(folder)
 	buildEffects(folder)
 	buildSounds(folder)
 	PlazaBuild.build(folder)

@@ -15,6 +15,10 @@ return {
 	EDGE = { { x = -72, z = 1104 }, { x = 158, z = 1104 }, { x = 158, z = 1556 }, { x = -72, z = 1556 } },
 	-- The meadow's stream: from the -x cliff down to a pond by the arrival, the trail crossing it on a bridge
 	STREAM = { from = { x = -72, z = 1170 }, to = { x = 40, z = 1128 }, width = 6, pond = { x = 42, z = 1126, radius = 8 } },
+	-- The wooden footbridge where the trail crosses the stream (code-built: deck planks, rails and posts)
+	BRIDGE = { x = 0, z = 1143, length = 16, width = 9, rise = 1.2, wood = { 138, 96, 60 }, dark = { 96, 66, 42 } },
+	-- The trail's markers: small glowing stones along its edges, alternating sides
+	MARKER = { size = 1.3, color = { 170, 255, 190 } },
 
 	-- The valley's terrain (SceneryService fills it after the town's; shapes as Config/Scenery's). The ground draws at
 	-- y 0 (filled to y -2) under the zone floors monsters stand on; the stream lies level with it; cliffs and hills close
@@ -26,8 +30,14 @@ return {
 		{ shape = "Block", x = 43, y = -5, z = 1486, size = { x = 240, y = 6, z = 148 }, material = "CrackedLava" }, -- the ridge's dark ground
 		{ shape = "Block", x = 0, y = -5, z = 1266, size = { x = 10, y = 6, z = 292 }, material = "Ground" }, -- the dirt trail
 		{ shape = "Block", x = 0, y = -5, z = 1446, size = { x = 10, y = 6, z = 68 }, material = "Basalt" }, -- the trail on the ridge
+		-- The stream and its pond: water only fills empty space, so the channel is carved first (Air), then filled, then
+		-- floored below so nobody sinks out of the world (Forest Falls' pool)
+		{ shape = "Block", x = -16, y = -4, z = 1149, yaw = 20.56, size = { x = 120, y = 8, z = 6 }, material = "Air" },
+		{ shape = "Block", x = 42, y = -4, z = 1126, yaw = 45, size = { x = 16, y = 8, z = 16 }, material = "Air" },
 		{ shape = "Block", x = -16, y = -5, z = 1149, yaw = 20.56, size = { x = 120, y = 6, z = 6 }, material = "Water" }, -- the stream
 		{ shape = "Block", x = 42, y = -5, z = 1126, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" }, -- its pond
+		{ shape = "Block", x = -16, y = -10, z = 1149, yaw = 20.56, size = { x = 124, y = 4, z = 10 }, material = "Ground" }, -- the stream's bed
+		{ shape = "Block", x = 42, y = -10, z = 1126, yaw = 45, size = { x = 20, y = 4, z = 20 }, material = "Ground" }, -- the pond's bed
 		-- Cliffs and hills beyond the edge walls
 		{ shape = "Block", x = 43, y = 6, z = 1090, size = { x = 300, y = 28, z = 24 }, material = "Grass" }, -- behind the arrival
 		{ shape = "Block", x = -86, y = 6, z = 1186, size = { x = 24, y = 28, z = 164 }, material = "Grass" }, -- the meadow's west hills

@@ -26,6 +26,7 @@ local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
+local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
@@ -33,6 +34,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local PlotService = require(Services:WaitForChild("PlotService"))
 local BloomFountain = require(Util:WaitForChild("BloomFountain"))
+local PortalBuild = require(Util:WaitForChild("PortalBuild"))
 local DungeonBuilder = require(Util:WaitForChild("DungeonBuilder"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -223,7 +225,7 @@ local function sign(parent: Instance, text: string, cframe: CFrame)
 	label.Parent = gui
 end
 
-local function portal(parent: Instance, name: string, position: Vector3, facing: Vector3, actionText: string, onTriggered: (Player) -> ())
+local function portal(parent: Instance, name: string, position: Vector3, facing: Vector3, actionText: string, onTriggered: (Player) -> ()): BasePart
 	local ring = block(parent, name, Vector3.new(1, 10, 10), CFrame.lookAt(position + Vector3.new(0, 5, 0), position + Vector3.new(0, 5, 0) + facing) * CFrame.Angles(0, math.rad(90), 0), PORTAL_COLOR, Enum.Material.Neon)
 	ring.Shape = Enum.PartType.Cylinder
 	ring.CanCollide = false
@@ -236,6 +238,7 @@ local function portal(parent: Instance, name: string, position: Vector3, facing:
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = ring
 	prompt.Triggered:Connect(onTriggered)
+	return ring
 end
 
 local function decorate(parent: Instance, center: Vector3, seed: number)
@@ -294,9 +297,18 @@ local function buildMap(): Folder
 
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
 	floorPart(block(folder, "Entrance", Vector3.new(30, 2, 24), CFrame.new(entrance - Vector3.new(0, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone))
-	portal(folder, "Return to shop", entrance + Vector3.new(0, 0, -9), Vector3.new(0, 0, 1), "Return", function(player)
+	local returnSpot = entrance + Vector3.new(0, 0, -9)
+	local returnRing = portal(folder, "Return to shop", returnSpot, Vector3.new(0, 0, 1), "Return", function(player)
 		WildService.TravelHome(player)
 	end)
+	if VALLEY then
+		-- The valley's way home is the Forest Falls root arch it came through (its prompt stays on the hidden ring)
+		returnRing.Transparency = 1
+		local arch = Props.place("PortalWild", CFrame.lookAt(returnSpot, returnSpot + Vector3.new(0, 0, 1)), folder)
+		if arch.Name == "PortalWild" and Props.hasModel("PortalWild") then
+			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
+		end
+	end
 	sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(entrance + Vector3.new(10, 4, -9)) * CFrame.Angles(0, math.pi, 0))
 
 	for index, zone in Wild.ZONES do

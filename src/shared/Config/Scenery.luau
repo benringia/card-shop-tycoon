@@ -343,6 +343,8 @@ return {
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
 		{ area = "EmberCanyon", kind = "flow", x = -184, y = 0.6, z = -28.5, size = { x = 96, z = 3 }, rate = 10 },
 		{ area = "EmberCanyon", kind = "plume", x = -335, y = 110, z = 10 }, -- PLUME, from the volcano's crater (its Fx_Smoke when the model is there)
+		{ area = "WildMeadow", kind = "fireflies", x = 0, y = 4, z = 1200, size = { x = 110, z = 110 }, rate = 10 }, -- the Wild valley's meadow
+		{ area = "WildMeadow", kind = "leaves", x = -60, y = 28, z = 1200, size = { x = 24, z = 150 }, rate = 4 },
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},
