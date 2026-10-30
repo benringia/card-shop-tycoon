@@ -53,7 +53,7 @@ FEET = [  # short roots spreading over the ground from each leg's foot: (outward
     ((1.0, -0.6), 4.5), ((1.0, 0.7), 4.0), ((0.25, -1.0), 3.2), ((0.3, 1.0), 3.0),
 ]
 OPENING = {"z": 11.0, "width": 16.0, "height": 18.0}
-TRICKLE = (9.9, -1.2, 16.4)
+TRICKLE = (11.4, -4.6, 14.5)  # just outside the right roots' front, so the trickle runs down in view
 POOL = (12.4, -2.8, 0.1)
 POOL_RADIUS = 3.0
 

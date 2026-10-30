@@ -27,9 +27,9 @@ import portal_kit  # noqa: E402
 NAME = "PortalArena"
 BONE = portal_kit.BONE
 COLORS = {
-    "obsidian_dark": (32, 22, 44),
-    "obsidian": (54, 38, 72),
-    "obsidian_light": (86, 64, 110),
+    "obsidian_dark": (18, 13, 24),
+    "obsidian": (30, 22, 40),
+    "obsidian_light": (50, 38, 64),  # dark: the town's bright sun turned the first, lighter purples bright purple
     "lava": (255, 106, 28),
     "lava_hot": (255, 186, 60),
     "marker": (255, 0, 255),
@@ -131,9 +131,10 @@ def run():
         frame,
         lava,
         build_opening(),
-        portal_kit.marker("Fx_DripA", DRIP_A, COLORS, "marker"),
-        portal_kit.marker("Fx_DripB", DRIP_B, COLORS, "marker"),
-        portal_kit.marker("Fx_Pool", POOL + Vector((0, 0, 0.3)), COLORS, "marker"),
+        # just in front of the lava ribbons, so the dripping beams show over them
+        portal_kit.marker("Fx_DripA", DRIP_A + Vector((0, -0.6, 0)), COLORS, "marker"),
+        portal_kit.marker("Fx_DripB", DRIP_B + Vector((0, -0.6, 0)), COLORS, "marker"),
+        portal_kit.marker("Fx_Pool", POOL + Vector((0, -0.6, 0.3)), COLORS, "marker"),
     ]
     return portal_kit.export(NAME, objects, COLORS)
 

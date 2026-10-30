@@ -181,8 +181,8 @@ return {
 	PORTAL_LOOKS = {
 		Wild = {
 			slot = "PortalWild",
-			vortex = { colors = { { 120, 230, 90 }, { 255, 215, 90 } }, spin = 30, transparency = 0.05 },
-			light = { color = { 140, 235, 110 }, brightness = 2, range = 24 },
+			vortex = { colors = { { 60, 200, 60 }, { 250, 185, 40 } }, spin = 30, transparency = 0.05 },
+			light = { color = { 170, 240, 140 }, brightness = 1, range = 16 },
 			glow = { Pool = { 90, 220, 210 }, Flowers = { 255, 215, 90 } },
 			effects = {
 				{ kind = "beam", from = "Fx_Trickle", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.9, speed = 1.5, color = { 120, 220, 255 } },
@@ -192,8 +192,8 @@ return {
 		},
 		Frontier = {
 			slot = "PortalFrontier",
-			vortex = { colors = { { 70, 200, 255 }, { 235, 250, 255 } }, spin = 25, transparency = 0.05 },
-			light = { color = { 110, 200, 255 }, brightness = 2, range = 24 },
+			vortex = { colors = { { 30, 130, 255 }, { 110, 210, 255 } }, spin = 25, transparency = 0.05 },
+			light = { color = { 130, 205, 255 }, brightness = 1, range = 16 },
 			glow = {},
 			effects = {
 				{ kind = "emitter", at = "Fx_Base", texture = "rbxasset://textures/particles/smoke_main.dds", rate = 3, lifetime = { 3, 4 }, speed = { 0.2, 0.6 }, size = { 4, 7 }, rise = 0.2, spin = 20, transparency = { 0.8, 1 }, colors = { { 200, 240, 255 } } },
@@ -202,8 +202,8 @@ return {
 		},
 		Arena = {
 			slot = "PortalArena",
-			vortex = { colors = { { 255, 70, 30 }, { 255, 200, 80 } }, spin = 35, transparency = 0.05 },
-			light = { color = { 255, 120, 50 }, brightness = 2, range = 24 },
+			vortex = { colors = { { 255, 50, 20 }, { 255, 150, 30 } }, spin = 35, transparency = 0.05 },
+			light = { color = { 255, 140, 70 }, brightness = 1, range = 16 },
 			glow = { Lava = { 255, 110, 30 } },
 			effects = {
 				{ kind = "beam", from = "Fx_DripA", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
@@ -216,7 +216,7 @@ return {
 	-- SPIN_RANGE: studs from the camera the vortex turns within; LABEL_GAP: the name floats this far over the model;
 	-- VORTEX_TEXTURE: assets/ui/fx/portal-vortex.png (Figma, white with alpha so the beam's colour tints it);
 	-- VORTEX_LIGHT: the vortex beam's LightEmission (part glow: readable against bright daylight scenery)
-	PORTAL_FX = { MAX_EFFECTS = 4, SPIN_RANGE = 150, LABEL_GAP = 3, VORTEX_TEXTURE = "rbxassetid://115430007071311", VORTEX_LIGHT = 0.6 },
+	PORTAL_FX = { MAX_EFFECTS = 4, SPIN_RANGE = 150, LABEL_GAP = 3, VORTEX_TEXTURE = "rbxassetid://81210648824476", VORTEX_LIGHT = 0.25 },
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)
