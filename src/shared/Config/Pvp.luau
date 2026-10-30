@@ -15,7 +15,7 @@ return {
 
 	-- The arena: one pad, far from the plots and the wild
 	ARENA_ORIGIN = { x = 0, y = 0, z = -1200 },
-	ARENA_PORTAL = { x = -104, y = 0, z = 0 }, -- plaza: the other end of the street from the wild portal
+	ARENA_PORTAL = { x = -205, y = 0, z = 0 }, -- at the end of Ember Canyon, west of town (Town.PORTAL_AREAS)
 	PAD_SIZE = 40, -- studs across
 	SPAWN_OFFSET = 14, -- each player stands this far from the pad centre, on opposite sides
 	LEASH_RADIUS = 18, -- players may roam this far from their spawn spot during a fight

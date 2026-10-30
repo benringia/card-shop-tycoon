@@ -4,7 +4,7 @@
 return {
 	-- Far from the plots (they sit around the origin); zones run along +Z from here
 	ORIGIN = { x = 0, y = 0, z = 1200 },
-	PLAZA_PORTAL = { x = 104, y = 0, z = -9 }, -- east end of the street (rows span x -84..84), beside the Frontier portal
+	PLAZA_PORTAL = { x = 185, y = 0, z = -118 }, -- by the pool at Forest Falls, at the end of its trail (Town.PORTAL_AREAS)
 	SPRING = { x = 0, y = 0, z = 0 }, -- plaza centre between the shop rows
 	SPRING_LABEL_DISTANCE = 35, -- the healing spring's name shows only this close
 	PORTAL_SIGN_HEIGHT = 17, -- portal signs float above the portal frame prop (Town.SLOTS.Portal)

@@ -70,8 +70,57 @@ return {
 		COLORS = { { 255, 150, 210 }, { 140, 210, 255 }, { 255, 230, 120 }, { 190, 150, 255 }, { 150, 240, 190 } },
 	},
 
-	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
+	-- The island inside the hedge (the Baseplate is cut to this size); the invisible walls follow WALK_EDGE
 	BOUNDS = { HALF_X = 130, HALF_Z = 110, WALL_HEIGHT = 60 },
+	-- Portal Worlds (spec 2026-10-30-town-portal-worlds-design): each portal stands in its own area at the end of a
+	-- trail from the street's end (Util/PortalTrails). Order matches TownService's portals (Wild, Frontier, Arena);
+	-- each trail's last point is that portal's spot (Wild.PLAZA_PORTAL, Places.FRONTIER_PORTAL, Pvp.ARENA_PORTAL).
+	-- surface: the trail's terrain material. sign: the signpost board's words.
+	PORTAL_AREAS = {
+		{
+			key = "Wild",
+			name = "Forest Falls",
+			effect = "Wild",
+			sign = "THE WILD",
+			surface = "Ground",
+			trail = { { x = 110, z = -20 }, { x = 130, z = -26 }, { x = 148, z = -55 }, { x = 165, z = -95 }, { x = 185, z = -118 } },
+		},
+		{
+			key = "Frontier",
+			name = "Frostpeak",
+			effect = "Frontier",
+			sign = "FRONTIER",
+			surface = "Snow",
+			trail = { { x = 110, z = 20 }, { x = 130, z = 26 }, { x = 148, z = 58 }, { x = 166, z = 100 }, { x = 182, z = 128 } },
+		},
+		{
+			key = "Arena",
+			name = "Ember Canyon",
+			effect = "Arena",
+			sign = "PVP ARENA",
+			surface = "Sand",
+			trail = { { x = -110, z = 0 }, { x = -130, z = 0 }, { x = -205, z = 0 } },
+		},
+	},
+	-- Where players can walk: the island plus the three trails and clearings (the invisible walls run along it)
+	WALK_EDGE = {
+		{ x = -130, z = -110 }, { x = 130, z = -110 }, { x = 130, z = -45 }, { x = 140, z = -60 }, { x = 150, z = -90 },
+		{ x = 150, z = -165 }, { x = 230, z = -165 }, { x = 230, z = -85 }, { x = 178, z = -80 }, { x = 158, z = -45 },
+		{ x = 140, z = -15 }, { x = 140, z = 15 }, { x = 160, z = 48 }, { x = 180, z = 85 }, { x = 235, z = 90 },
+		{ x = 235, z = 170 }, { x = 150, z = 170 }, { x = 150, z = 98 }, { x = 140, z = 62 }, { x = 130, z = 45 },
+		{ x = 130, z = 110 }, { x = -130, z = 110 }, { x = -130, z = 30 }, { x = -225, z = 30 }, { x = -225, z = -30 },
+		{ x = -130, z = -30 },
+	},
+	-- Trails: width, the hedge gap round each exit, walk lengths the user chose (studs; 16 studs/s walking)
+	TRAIL = { WIDTH = 12, HEDGE_GAP = 8, WALK_SPEED = 16, EAST_LENGTH = { 125, 140 }, ARENA_LENGTH = { 85, 100 } },
+	-- "This way" signposts: arms name PORTAL_AREAS keys and point at that trail's start
+	SIGNPOSTS = {
+		{ x = 30, z = 0, arms = { "Wild", "Frontier", "Arena" } },
+		{ x = 112, z = 0, arms = { "Wild", "Frontier" } },
+		{ x = -112, z = 12, arms = { "Arena" } },
+	},
+	PORTAL_REACH = 16, -- studs: travel remotes only work this close to their portal
+	SIGN_DISTANCE = 120, -- studs: signpost and arch words stop drawing beyond this
 	-- Each plaza portal's look: ring and glow-part colour, particle colours, and 1-3 emitters (phones).
 	-- Emitters sit on a box filling the ring. speed/lifetime/size are { min, max } or { start, end };
 	-- rise = upward pull (negative falls); colors on an emitter override the portal's.

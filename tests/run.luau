@@ -50,10 +50,16 @@ local specs: { [string]: { [string]: () -> () } } = {
 	OpeningFlow = require("./OpeningFlow.spec"),
 	OpeningLayout = require("./OpeningLayout.spec"),
 	ShopDetail = require("./ShopDetail.spec"),
+	PortalTrails = require("./PortalTrails.spec"),
 }
 
+-- `lune run tests/run <SpecName>` runs only that spec
+local only = process.args[1]
 local passed, failed = 0, 0
 for specName, tests in specs do
+	if only and specName ~= only then
+		continue
+	end
 	for testName, test in tests do
 		local ok, err = pcall(test)
 		if ok then
