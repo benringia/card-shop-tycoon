@@ -49,6 +49,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ShowcaseLayout = require("./ShowcaseLayout.spec"),
 	OpeningFlow = require("./OpeningFlow.spec"),
 	OpeningLayout = require("./OpeningLayout.spec"),
+	ShopDetail = require("./ShopDetail.spec"),
 }
 
 local passed, failed = 0, 0

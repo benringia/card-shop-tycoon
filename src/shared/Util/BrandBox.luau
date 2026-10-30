@@ -7,6 +7,7 @@
 local Config = (script.Parent :: Instance).Parent:WaitForChild("Config")
 local Packs = require(Config:WaitForChild("Packs"))
 local Products = require(Config:WaitForChild("Products"))
+local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 local Stock = require(Config:WaitForChild("Stock"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 
@@ -45,6 +46,7 @@ function BrandBox.draw(box: BasePart, product: Products.Product, count: string?,
 		gui.Face = normal
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 		gui.PixelsPerStud = pixelsPerStud or look.PIXELS_PER_STUD
+		gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
 		gui.Parent = box
 		local face = Instance.new("Frame")
 		face.Size = UDim2.fromScale(1, 1)

@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local CardEffects = require(Config:WaitForChild("CardEffects"))
+local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local ElementAura = require(ClientUtil:WaitForChild("ElementAura"))
@@ -54,6 +55,18 @@ end
 
 type Card = typeof(Cards.List[1])
 
+-- What a card shows from afar, where its full face stops drawing (ShopDetail.FULL_CARD_DISTANCE): a flat picture of
+-- its art on the front, and the card back's blue on its back and edges
+local function drawFlat(part: BasePart, card: Card)
+	local art = Instance.new("Decal")
+	art.Name = "FlatFace"
+	art.Face = Enum.NormalId.Front
+	art.Texture = CardFace.artImage(card)
+	art.Parent = part
+	local back = ShopDetail.FLAT_BACK_COLOR
+	part.Color = Color3.fromRGB(back[1], back[2], back[3])
+end
+
 -- The card face on the part's front, glowing (it ignores the room's light). Redrawn when the price or the
 -- copy's growth changes.
 local function drawFace(part: BasePart, card: Card, foil: boolean)
@@ -65,6 +78,7 @@ local function drawFace(part: BasePart, card: Card, foil: boolean)
 	gui.LightInfluence = 0
 	gui.Brightness = CardEffects.FACE_BRIGHTNESS
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.MaxDistance = ShopDetail.FULL_CARD_DISTANCE
 	gui.Parent = part
 
 	local frame = Instance.new("Frame")
@@ -221,6 +235,7 @@ local function attach(instance: Instance, isNewListing: boolean)
 	local supreme = grade == "S" and (frontier or card.rarity == "Legendary")
 	effect = boostForGrade(effect, grade, supreme)
 
+	drawFlat(instance, card)
 	drawFace(instance, card, foil)
 	addHalo(instance, effect, color)
 	addAlwaysOn(instance, effect, color, foil)
