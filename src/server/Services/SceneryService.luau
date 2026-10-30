@@ -25,7 +25,7 @@ local function material(name: string): Enum.Material
 end
 
 local function fill(terrain: Terrain, op: TownTerrain.Op)
-	local at = CFrame.new(op.x, op.y, op.z) * CFrame.Angles(0, math.rad(op.yaw or 0), 0)
+	local at = CFrame.new(op.x, op.y, op.z) * CFrame.Angles(0, math.rad(op.yaw or 0), 0) * CFrame.Angles(math.rad(op.pitch or 0), 0, 0)
 	if op.shape == "Ball" then
 		terrain:FillBall(Vector3.new(op.x, op.y, op.z), op.radius :: number, material(op.material))
 	else
@@ -100,9 +100,10 @@ local function placeModel(parent: Instance, spot: any, label: string): Model?
 	model.Name = label
 	local _, size = model:GetBoundingBox()
 	model:ScaleTo(model:GetScale() * spot.height / size.Y)
-	model:PivotTo(CFrame.new(spot.x, 0, spot.z) * CFrame.Angles(0, math.rad(spot.yaw or 0), 0))
+	local ground = spot.y or 0
+	model:PivotTo(CFrame.new(spot.x, ground, spot.z) * CFrame.Angles(0, math.rad(spot.yaw or 0), 0))
 	local box, boxSize = model:GetBoundingBox()
-	model:PivotTo(model:GetPivot() - Vector3.new(0, box.Position.Y - boxSize.Y / 2, 0))
+	model:PivotTo(model:GetPivot() - Vector3.new(0, box.Position.Y - boxSize.Y / 2 - ground, 0))
 	model.Parent = parent
 	return model
 end
@@ -111,30 +112,87 @@ local function buildTrees(folder: Folder)
 	for _, spot in Scenery.GIANT_TREES do
 		placeModel(folder, spot, "GiantTree")
 	end
-	local snow = Props.color(Scenery.SNOW_TINT)
-	for _, spot in Scenery.SNOW_PINES do
-		local model = placeModel(folder, spot, "SnowPine")
-		local leaves = if model then model:FindFirstChild("Leaves", true) else nil
-		if leaves and leaves:IsA("MeshPart") then
-			local look = leaves:FindFirstChildOfClass("SurfaceAppearance")
-			if look then
-				look:Destroy()
+	-- Pines whose leaves are frosted: the leaves' textured look swapped for plain snow in `tint`
+	local function frostedPines(list: { any }, tint: { number })
+		local color = Props.color(tint)
+		for _, spot in list do
+			local model = placeModel(folder, spot, "SnowPine")
+			local leaves = if model then model:FindFirstChild("Leaves", true) else nil
+			if leaves and leaves:IsA("MeshPart") then
+				local look = leaves:FindFirstChildOfClass("SurfaceAppearance")
+				if look then
+					look:Destroy()
+				end
+				leaves.Color = color
+				leaves.Material = Enum.Material.Snow
 			end
-			leaves.Color = snow
-			leaves.Material = Enum.Material.Snow
 		end
+	end
+	frostedPines(Scenery.SNOW_PINES, Scenery.SNOW_TINT)
+	frostedPines(Scenery.DUSTED_PINES, Scenery.DUSTED_TINT)
+end
+
+-- A saguaro: a rounded trunk, two arms that bend up at the elbow, darker ribs and a pink flower on top
+local function buildCactus(folder: Folder, spot: any)
+	local look = Scenery.CACTUS
+	local body, dark = Props.color(look.BODY), Props.color(look.DARK)
+	local model = Instance.new("Model")
+	model.Name = "Cactus"
+	local h = spot.height
+	local base = CFrame.new(spot.x, 0, spot.z) * CFrame.Angles(0, math.rad((spot.x * 37) % 360), 0)
+	local upright = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X: stand them up
+	local trunk = 1.7
+	piece(model, "Trunk", Vector3.new(h, trunk, trunk), base * CFrame.new(0, h / 2, 0) * upright, body, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+	piece(model, "Top", Vector3.new(trunk, trunk, trunk), base * CFrame.new(0, h, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	for _, side in { -1, 1 } do
+		piece(model, "Rib", Vector3.new(h * 0.92, 0.25, 0.25), base * CFrame.new(side * trunk * 0.42, h / 2, 0) * upright, dark, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+	end
+	for index, side in { 1, -1 } do
+		local armY = h * (if index == 1 then 0.5 else 0.36)
+		local rise = h * (if index == 1 then 0.32 else 0.24)
+		local out = 1.6
+		local arm = 1.05
+		piece(model, "Arm", Vector3.new(out, arm, arm), base * CFrame.new(side * (trunk / 2 + out / 2 - 0.2), armY, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		piece(model, "Elbow", Vector3.new(arm, arm, arm), base * CFrame.new(side * (trunk / 2 + out - 0.2), armY, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		piece(model, "Arm", Vector3.new(rise, arm, arm), base * CFrame.new(side * (trunk / 2 + out - 0.2), armY + rise / 2, 0) * upright, body, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		piece(model, "ArmTop", Vector3.new(arm, arm, arm), base * CFrame.new(side * (trunk / 2 + out - 0.2), armY + rise, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	end
+	piece(model, "Flower", Vector3.new(0.7, 0.7, 0.7), base * CFrame.new(0, h + trunk / 2, 0), Props.color(look.FLOWER), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	model.Parent = folder
+end
+
+-- Lava: a glowing river at the south wall's foot and a pool behind the portal, each lighting its rock
+local function buildLava(folder: Folder)
+	local lava = Scenery.LAVA
+	local color, hot = Props.color(lava.COLOR), Props.color(lava.HOT)
+	local river = lava.RIVER
+	local from = Vector3.new(river.from.x, 0.15, river.from.z)
+	local to = Vector3.new(river.to.x, 0.15, river.to.z)
+	local surface = piece(folder, "LavaRiver", Vector3.new(river.width, 0.3, (to - from).Magnitude), CFrame.lookAt((from + to) / 2, to), color, Enum.Material.Neon)
+	surface.CanCollide = false
+	surface.CastShadow = false
+	local pool = lava.POOL
+	local disc = piece(folder, "LavaPool", Vector3.new(0.3, pool.radius * 2, pool.radius * 2), CFrame.new(pool.x, 0.15, pool.z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+	disc.CanCollide = false
+	disc.CastShadow = false
+	local core = piece(folder, "LavaPoolCore", Vector3.new(0.32, pool.radius, pool.radius), CFrame.new(pool.x, 0.16, pool.z) * CFrame.Angles(0, 0, math.rad(90)), hot, Enum.Material.Neon, Enum.PartType.Cylinder)
+	core.CanCollide = false
+	core.CastShadow = false
+	for _, at in { Vector3.new(pool.x, 3, pool.z), (from + to) / 2 + Vector3.new(0, 3, 0) } do
+		local light = Instance.new("PointLight")
+		light.Color = color
+		light.Brightness = lava.GLOW.BRIGHTNESS
+		light.Range = lava.GLOW.RANGE
+		light.Shadows = false
+		light.Parent = anchorPart(folder, "LavaGlow", at)
 	end
 end
 
 local function buildCanyon(folder: Folder)
-	local green = Color3.fromRGB(96, 158, 82)
 	for _, spot in Scenery.CACTI do
-		local base = CFrame.new(spot.x, 0, spot.z)
-		local h = spot.height
-		piece(folder, "Cactus", Vector3.new(h, 1.4, 1.4), base * CFrame.new(0, h / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), green, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-		piece(folder, "Cactus", Vector3.new(h * 0.35, 0.9, 0.9), base * CFrame.new(0.9, h * 0.55, 0) * CFrame.Angles(0, 0, math.rad(90)), green, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-		piece(folder, "Cactus", Vector3.new(h * 0.3, 0.9, 0.9), base * CFrame.new(-0.9, h * 0.45, 0) * CFrame.Angles(0, 0, math.rad(90)), green, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		buildCactus(folder, spot)
 	end
+	buildLava(folder)
 	local platform = Scenery.PLATFORM
 	piece(folder, "Platform", Vector3.new(platform.height, platform.radius * 2, platform.radius * 2), CFrame.new(platform.x, platform.height / 2, platform.z) * CFrame.Angles(0, 0, math.rad(90)), Props.color(platform.color), Enum.Material.Slate, Enum.PartType.Cylinder)
 	local fire = Scenery.TORCH_FIRE
@@ -213,74 +271,169 @@ local function buildFalls(folder: Folder)
 	end
 end
 
+local function buildSnowman(folder: Folder)
+	local spot = Scenery.SNOWMAN
+	local model = Instance.new("Model")
+	model.Name = "Snowman"
+	local base = CFrame.new(spot.x, spot.y, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
+	local white = Color3.fromRGB(245, 250, 255)
+	for _, ball in { { 3.2, 1.4 }, { 2.4, 3.9 }, { 1.7, 5.8 } } do
+		piece(model, "Snow", Vector3.new(ball[1], ball[1], ball[1]), base * CFrame.new(0, ball[2], 0), white, Enum.Material.Snow, Enum.PartType.Ball)
+	end
+	piece(model, "Nose", Vector3.new(0.3, 0.3, 0.9), base * CFrame.new(0, 5.8, -1), Color3.fromRGB(255, 140, 40), Enum.Material.SmoothPlastic)
+	for _, side in { -1, 1 } do
+		piece(model, "Eye", Vector3.new(0.25, 0.25, 0.25), base * CFrame.new(side * 0.35, 6.1, -0.8), Color3.fromRGB(30, 30, 36), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		piece(model, "Arm", Vector3.new(0.2, 0.2, 2), base * CFrame.new(side * 1.8, 4.2, 0) * CFrame.Angles(0, math.rad(90), math.rad(side * 25)), Color3.fromRGB(110, 76, 50), Enum.Material.Wood)
+	end
+	piece(model, "Scarf", Vector3.new(0.6, 2.4, 2.4), base * CFrame.new(0, 5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(220, 60, 70), Enum.Material.Fabric, Enum.PartType.Cylinder)
+	model.Parent = folder
+end
+
 local function buildFrost(folder: Folder)
 	local ice = Props.color(Scenery.CRYSTAL_COLOR)
+	for _, spot in Scenery.ICICLES do
+		local icicle = piece(folder, "Icicle", Vector3.new(0.7, spot.length, 0.7), CFrame.new(spot.x, spot.y - spot.length / 2, spot.z) * CFrame.Angles(0, math.rad(45), 0), ice, Enum.Material.Ice)
+		icicle.CanCollide = false
+		icicle.Transparency = 0.1
+	end
+	buildSnowman(folder)
 	for _, spot in Scenery.CRYSTALS do
-		local crystal = piece(folder, "IceCrystal", Vector3.new(spot.height * 0.45, spot.height, spot.height * 0.45), CFrame.new(spot.x, spot.height * 0.4, spot.z) * CFrame.Angles(math.rad(12), math.rad(spot.yaw), math.rad(8)), ice, Enum.Material.Ice)
+		local crystal = piece(folder, "IceCrystal", Vector3.new(spot.height * 0.45, spot.height, spot.height * 0.45), CFrame.new(spot.x, (spot.y or 0) + spot.height * 0.4, spot.z) * CFrame.Angles(math.rad(12), math.rad(spot.yaw), math.rad(8)), ice, Enum.Material.Ice)
 		crystal.Transparency = 0.15
 	end
 end
 
+local function buildSmallLife(folder: Folder)
+	for _, spot in Scenery.AREA_PROPS do
+		placeModel(folder, spot, spot.model)
+	end
+	local garden = workspace:FindFirstChild("PlazaGarden")
+	local source = garden and (garden:FindFirstChild("GlowMushrooms") or garden:FindFirstChild("GlowMushroom"))
+	if source then
+		for _, spot in Scenery.MUSHROOMS do
+			local copy = source:Clone()
+			for _, light in copy:GetDescendants() do
+				if light:IsA("Light") then
+					light:Destroy()
+				end
+			end
+			copy:PivotTo(CFrame.new(spot.x, 0, spot.z) * CFrame.Angles(0, math.rad((spot.x * 53) % 360), 0))
+			local box, size = copy:GetBoundingBox()
+			copy:PivotTo(copy:GetPivot() - Vector3.new(0, box.Position.Y - size.Y / 2, 0))
+			copy.Parent = folder
+		end
+	end
+end
+
+-- The look of each kind of area effect (Config/Scenery EMITTERS)
+local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
+	snow = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		emitter.Lifetime = NumberRange.new(8, 12)
+		emitter.Speed = NumberRange.new(1, 2)
+		emitter.Acceleration = Vector3.new(0.4, -2.5, 0)
+		emitter.Size = NumberSequence.new(0.35)
+		emitter.EmissionDirection = Enum.NormalId.Bottom
+	end,
+	glints = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.fromRGB(220, 240, 255))
+		emitter.Lifetime = NumberRange.new(0.6, 1.2)
+		emitter.Speed = NumberRange.new(0, 0)
+		emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	end,
+	embers = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 140, 50), Color3.fromRGB(255, 70, 30))
+		emitter.Lifetime = NumberRange.new(3, 5)
+		emitter.Speed = NumberRange.new(1, 3)
+		emitter.Acceleration = Vector3.new(0, 1.5, 0)
+		emitter.Size = NumberSequence.new(0.3, 0)
+		emitter.EmissionDirection = Enum.NormalId.Top
+	end,
+	bubbles = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 90, 20))
+		emitter.Lifetime = NumberRange.new(0.8, 1.4)
+		emitter.Speed = NumberRange.new(1, 3)
+		emitter.Acceleration = Vector3.new(0, -2, 0)
+		emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(0.6, 0.9), NumberSequenceKeypoint.new(1, 0) })
+		emitter.EmissionDirection = Enum.NormalId.Top
+	end,
+	flow = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(255, 110, 30))
+		emitter.Lifetime = NumberRange.new(4, 6)
+		emitter.Speed = NumberRange.new(2, 3)
+		emitter.Size = NumberSequence.new(0.5, 0.2)
+		emitter.EmissionDirection = Enum.NormalId.Left -- downstream, toward the pool
+		emitter.SpreadAngle = Vector2.new(5, 5)
+	end,
+	fireflies = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.fromRGB(210, 255, 120))
+		emitter.Lifetime = NumberRange.new(4, 7)
+		emitter.Speed = NumberRange.new(0.3, 1)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.35), NumberSequenceKeypoint.new(0.7, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	end,
+	leaves = function(emitter)
+		emitter.Color = ColorSequence.new(Color3.fromRGB(150, 200, 90), Color3.fromRGB(230, 200, 80))
+		emitter.LightEmission = 0
+		emitter.Lifetime = NumberRange.new(8, 12)
+		emitter.Speed = NumberRange.new(1, 2)
+		emitter.Acceleration = Vector3.new(0.6, -1.6, 0.3)
+		emitter.RotSpeed = NumberRange.new(-90, 90)
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.Size = NumberSequence.new(0.45)
+		emitter.EmissionDirection = Enum.NormalId.Bottom
+	end,
+}
+
 local function buildEffects(folder: Folder)
 	for _, spec in Scenery.EMITTERS do
 		if spec.kind == "aurora" then
-			local anchor = anchorPart(folder, "Aurora", Vector3.new(spec.x, spec.y, spec.z))
-			local a = Instance.new("Attachment")
-			a.Parent = anchor
-			a.WorldPosition = Vector3.new(spec.x, spec.y, spec.z)
-			local b = Instance.new("Attachment")
-			b.Parent = anchor
-			b.WorldPosition = Vector3.new(spec.toX, spec.toY, spec.toZ)
-			local beam = Instance.new("Beam")
-			beam.Attachment0 = a
-			beam.Attachment1 = b
-			beam.Width0 = spec.width
-			beam.Width1 = spec.width * 0.7
-			beam.CurveSize0 = 30
-			beam.CurveSize1 = -25
-			beam.Segments = 16
-			beam.LightEmission = 1
-			beam.LightInfluence = 0
-			-- The falls' streaks, slow and long: ribbons flowing along the band instead of one flat sheet
-			beam.Texture = Scenery.FALLS.TEXTURE
-			beam.TextureMode = Enum.TextureMode.Wrap
-			beam.TextureLength = 40
-			beam.TextureSpeed = 0.3
-			beam.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 255, 170)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 200, 255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 120, 255)),
-			})
-			beam.Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.25, 0.55),
-				NumberSequenceKeypoint.new(0.75, 0.6),
-				NumberSequenceKeypoint.new(1, 1),
-			})
-			beam.Parent = anchor
+			local aurora = Scenery.AURORA
+			for index, curtain in aurora.CURTAINS do
+				local anchor = anchorPart(folder, "Aurora", Vector3.new(curtain.from.x, curtain.from.y, curtain.from.z))
+				-- Upright attachments hang the beam's width vertically; turned a quarter about Y, their X axis (the way
+				-- CurveSize bends the beam) points across the curtain, so it waves
+				local function hook(at: { x: number, y: number, z: number }): Attachment
+					local attachment = Instance.new("Attachment")
+					attachment.Parent = anchor
+					attachment.WorldCFrame = CFrame.new(at.x, at.y, at.z) * CFrame.Angles(0, math.rad(90), 0)
+					return attachment
+				end
+				local beam = Instance.new("Beam")
+				beam.Attachment0 = hook(curtain.from)
+				beam.Attachment1 = hook(curtain.to)
+				beam.FaceCamera = false
+				beam.Width0 = curtain.width
+				beam.Width1 = curtain.width * 0.85
+				beam.CurveSize0 = curtain.curve[1]
+				beam.CurveSize1 = curtain.curve[2]
+				beam.Segments = 24
+				beam.Texture = aurora.TEXTURE
+				beam.TextureMode = Enum.TextureMode.Wrap
+				beam.TextureLength = aurora.TEXTURE_LENGTH
+				beam.TextureSpeed = aurora.SPEED * (if index % 2 == 0 then -1 else 1)
+				beam.LightEmission = 1
+				beam.LightInfluence = 0
+				beam.ZOffset = index * 0.5
+				beam.Transparency = NumberSequence.new({
+					NumberSequenceKeypoint.new(0, 1),
+					NumberSequenceKeypoint.new(0.15, aurora.TRANSPARENCY),
+					NumberSequenceKeypoint.new(0.85, aurora.TRANSPARENCY),
+					NumberSequenceKeypoint.new(1, 1),
+				})
+				beam.Parent = anchor
+			end
 		else
 			local box = anchorPart(folder, "AreaEffect", Vector3.new(spec.x, spec.y, spec.z), Vector3.new(spec.size.x, 1, spec.size.z))
 			local emitter = Instance.new("ParticleEmitter")
 			emitter.Shape = Enum.ParticleEmitterShape.Box
 			emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+			emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 			emitter.Rate = spec.rate
 			emitter.LightEmission = 1
-			if spec.kind == "snow" then
-				emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-				emitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
-				emitter.Lifetime = NumberRange.new(8, 12)
-				emitter.Speed = NumberRange.new(1, 2)
-				emitter.Acceleration = Vector3.new(0.4, -2.5, 0)
-				emitter.Size = NumberSequence.new(0.35)
-				emitter.EmissionDirection = Enum.NormalId.Bottom
-			else
-				emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-				emitter.Color = ColorSequence.new(Color3.fromRGB(255, 140, 50), Color3.fromRGB(255, 70, 30))
-				emitter.Lifetime = NumberRange.new(3, 5)
-				emitter.Speed = NumberRange.new(1, 3)
-				emitter.Acceleration = Vector3.new(0, 1.5, 0)
-				emitter.Size = NumberSequence.new(0.3, 0)
-				emitter.EmissionDirection = Enum.NormalId.Top
+			local look = EFFECT_LOOKS[spec.kind]
+			if look then
+				look(emitter)
 			end
 			emitter.Parent = box
 		end
@@ -324,6 +477,7 @@ local function buildDressing()
 	buildCanyon(folder)
 	buildFalls(folder)
 	buildFrost(folder)
+	buildSmallLife(folder)
 	buildEffects(folder)
 	buildSounds(folder)
 	folder.Parent = workspace

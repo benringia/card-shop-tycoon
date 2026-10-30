@@ -30,6 +30,7 @@ return {
 			local last = area.trail[#area.trail]
 			expect.equal(last.x, spots[index].x, `{area.key} x`)
 			expect.equal(last.z, spots[index].z, `{area.key} z`)
+			expect.equal(last.y or 0, spots[index].y, `{area.key} ground height`)
 		end
 	end,
 

@@ -41,22 +41,55 @@ return {
 		expect.equal(TownTerrain.materialAt(OPS, 120, 60), "Grass", "open ground at the street's end is grass")
 	end,
 
-	["every trail is walkable ground at y 0"] = function()
+	["no grass grows near a shop, so none pokes through its floor"] = function()
+		local margin = scenery.PLOT_GROUND_MARGIN
+		assert(margin >= 4, "terrain blends about a cell past its fill: keep grass at least 4 studs from the walls")
+		for _, rect in PLOTS do
+			for _, spot in {
+				{ x = rect.minX - 2, z = (rect.minZ + rect.maxZ) / 2 },
+				{ x = rect.maxX + 2, z = (rect.minZ + rect.maxZ) / 2 },
+				{ x = (rect.minX + rect.maxX) / 2, z = if rect.minZ > 0 then rect.maxZ + 2 else rect.minZ - 2 },
+				{ x = rect.minX + 1, z = rect.minZ + 1 },
+				{ x = rect.maxX - 1, z = rect.maxZ - 1 },
+			} do
+				local material = TownTerrain.materialAt(OPS, spot.x, spot.z)
+				assert(material ~= "Grass", `grass at {spot.x}, {spot.z}, beside a shop`)
+			end
+		end
+	end,
+
+	["every trail is walkable ground at its height"] = function()
 		for _, area in town.PORTAL_AREAS do
 			local trail = area.trail
 			local points = {}
 			for index, p in trail do
-				table.insert(points, p)
+				table.insert(points, { x = p.x, z = p.z, y = p.y or 0 })
 				if index > 1 then
-					table.insert(points, { x = (p.x + trail[index - 1].x) / 2, z = (p.z + trail[index - 1].z) / 2 })
+					local q = trail[index - 1]
+					table.insert(points, { x = (p.x + q.x) / 2, z = (p.z + q.z) / 2, y = ((p.y or 0) + (q.y or 0)) / 2 })
 				end
 			end
 			for _, p in points do
 				local material = TownTerrain.materialAt(OPS, p.x, p.z)
 				assert(material ~= nil and material ~= "Air" and material ~= "Water", `{area.key}: {material} at {p.x}, {p.z}`)
-				expect.equal(TownTerrain.topAt(OPS, p.x, p.z), GROUND, `{area.key}: ground height at {p.x}, {p.z}`)
+				local top = TownTerrain.topAt(OPS, p.x, p.z) :: number
+				assert(math.abs(top + TownTerrain.SURFACE_LIFT - p.y) < 0.6, `{area.key}: ground at {p.x}, {p.z} draws at {top + TownTerrain.SURFACE_LIFT}, not {p.y}`)
 			end
 		end
+	end,
+
+	["Frostpeak stands on a snowy rise above the grass"] = function()
+		local frontier = town.PORTAL_AREAS[2]
+		local portal = frontier.trail[#frontier.trail]
+		assert((portal.y or 0) >= 8, "the Frontier portal stands up on the snow")
+		expect.equal(TownTerrain.materialAt(OPS, 200, 140), "Snow", "the clearing is snow")
+		expect.equal(TownTerrain.materialAt(OPS, 170, 66), "Grass", "grass below the rise")
+		for _, spot in { { x = 200, z = 140 }, { x = 225, z = 115 }, { x = 160, z = 150 } } do
+			local drawn = (TownTerrain.topAt(OPS, spot.x, spot.z) :: number) + TownTerrain.SURFACE_LIFT
+			assert(math.abs(drawn - (portal.y or 0)) < 0.6, `the clearing at {spot.x}, {spot.z} draws at {drawn}, not up on the rise`)
+		end
+		local below = (TownTerrain.topAt(OPS, 170, 66) :: number) + TownTerrain.SURFACE_LIFT
+		assert(math.abs(below) < 0.6, "the grass below the rise is at street level")
 	end,
 
 	["each trail is paved in its area's surface"] = function()
@@ -79,7 +112,7 @@ return {
 			return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 		end
 		local clear = town.TRAIL.WIDTH / 2 + 2
-		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS } do
+		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.SNOWMAN, scenery.LAVA.POOL } } do
 			for _, prop in list do
 				for _, area in town.PORTAL_AREAS do
 					local trail = area.trail
@@ -96,6 +129,15 @@ return {
 			end
 		end
 		expect.equal(PortalTrails.inside(town.WALK_EDGE, scenery.PLATFORM), true, "the Arena platform is walkable")
+		-- Nobody wades into the lava: the river and the pool lie past the walkable floor
+		local river = scenery.LAVA.RIVER
+		for _, p in { river.from, river.to, { x = (river.from.x + river.to.x) / 2, z = river.from.z } } do
+			for _, side in { -1, 1 } do
+				local edge = { x = p.x, z = p.z + side * river.width / 2 }
+				expect.equal(PortalTrails.inside(town.WALK_EDGE, edge), false, `lava at {edge.x}, {edge.z} is walkable`)
+			end
+		end
+		expect.equal(PortalTrails.inside(town.WALK_EDGE, scenery.LAVA.POOL), false, "the lava pool is walkable")
 	end,
 
 	["one flowing waterfall and effects within the caps"] = function()

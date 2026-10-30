@@ -24,9 +24,9 @@ local WORLD: TownLayout.World = {
 	gap = 24,
 	streetWidth = 96,
 	portals = {
-		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z },
-		{ x = places.FRONTIER_PORTAL.x, z = places.FRONTIER_PORTAL.z },
-		{ x = pvp.ARENA_PORTAL.x, z = pvp.ARENA_PORTAL.z },
+		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z, y = wild.PLAZA_PORTAL.y },
+		{ x = places.FRONTIER_PORTAL.x, z = places.FRONTIER_PORTAL.z, y = places.FRONTIER_PORTAL.y },
+		{ x = pvp.ARENA_PORTAL.x, z = pvp.ARENA_PORTAL.z, y = pvp.ARENA_PORTAL.y },
 	},
 	spring = { x = wild.SPRING.x, z = wild.SPRING.z },
 	springRadius = combat.SPRING_RADIUS,
@@ -190,6 +190,7 @@ return {
 		for index, frame in frames do
 			local facing = FACINGS[index]
 			expect.near(frame.yaw, math.deg(math.atan2(-facing.x, -facing.z)), 1e-9, `frame {index} yaw`)
+			expect.equal(frame.y or 0, WORLD.portals[index].y or 0, `frame {index} stands on its portal's ground`)
 		end
 	end,
 
@@ -319,7 +320,9 @@ return {
 			for point = 1, #trail - 1 do
 				expect.equal(line.points[point + 1].x, trail[point].x, `point {point} x`)
 				expect.equal(line.points[point + 1].z, trail[point].z, `point {point} z`)
+				expect.equal(line.points[point + 1].y or 0, trail[point].y or 0, `point {point} height`)
 			end
+			expect.equal(last.y or 0, trail[#trail].y or 0, "the end is level with the portal")
 			expect.near(distance(last, trail[#trail]), town.FLOOR.PATH_END_INSET, 1e-6, "stops short of the portal")
 		end
 	end,

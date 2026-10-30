@@ -36,8 +36,8 @@ local PORTAL_LABELS = {
 }
 local PORTAL_MATCH_DISTANCE = 1 -- a Portal prop at this spot belongs to that portal
 
-local function point(spot: { x: number, z: number }): TownLayout.Point
-	return { x = spot.x, z = spot.z }
+local function point(spot: { x: number, z: number, y: number? }): TownLayout.Point
+	return { x = spot.x, z = spot.z, y = spot.y }
 end
 
 local function getWorld(): TownLayout.World
@@ -182,11 +182,12 @@ local function buildGround(folder: Folder)
 			local a, b = line.points[point - 1], line.points[point]
 			-- Above the crosswalk stripes on the street; level with the trail's ground past it
 			local onStreet = math.abs(a.x) <= layout.STREET_HALF_LENGTH and math.abs(b.x) <= layout.STREET_HALF_LENGTH
-			local top = if onStreet then streetTop + MARKING_THICKNESS else floor.TRAIL_LINE_TOP
-			local from, to = Vector3.new(a.x, 0, a.z), Vector3.new(b.x, 0, b.z)
+			local lift = (if onStreet then streetTop + MARKING_THICKNESS else floor.TRAIL_LINE_TOP) + MARKING_THICKNESS / 2
+			-- Following the ground up and down (a trail point's y is the ground's height there)
+			local from = Vector3.new(a.x, (a.y or 0) + lift, a.z)
+			local to = Vector3.new(b.x, (b.y or 0) + lift, b.z)
 			local length = (to - from).Magnitude
-			local centre = (from + to) / 2
-			local strip = ground(folder, "PortalPath", Vector3.new(floor.PATH_WIDTH, MARKING_THICKNESS, length + floor.PATH_WIDTH), CFrame.lookAt(centre, to) + Vector3.new(0, top + MARKING_THICKNESS / 2, 0), look.ring, Enum.Material.Neon)
+			local strip = ground(folder, "PortalPath", Vector3.new(floor.PATH_WIDTH, MARKING_THICKNESS, length + floor.PATH_WIDTH), CFrame.lookAt((from + to) / 2, to), look.ring, Enum.Material.Neon)
 			strip.CanCollide = false
 			strip.CanQuery = false
 			strip.CastShadow = false
@@ -248,7 +249,7 @@ local function buildPortalLabels(folder: Folder)
 		anchor.CanTouch = false
 		anchor.Transparency = 1
 		anchor.Size = Vector3.new(1, 1, 1)
-		anchor.Position = Vector3.new(entry.spot.x, Town.PORTAL_LABEL_HEIGHT, entry.spot.z)
+		anchor.Position = Vector3.new(entry.spot.x, (entry.spot.y or 0) + Town.PORTAL_LABEL_HEIGHT, entry.spot.z)
 		anchor.Parent = folder
 		local board = Instance.new("BillboardGui")
 		board.Size = UDim2.fromOffset(260, 70)
@@ -283,7 +284,7 @@ end
 
 local function buildDecor(folder: Folder)
 	for _, placement in TownLayout.build(getWorld(), Town) do
-		local at = CFrame.new(placement.x, 0, placement.z) * CFrame.Angles(0, math.rad(placement.yaw), 0)
+		local at = CFrame.new(placement.x, placement.y or 0, placement.z) * CFrame.Angles(0, math.rad(placement.yaw), 0)
 		local model = Props.place(placement.slot, at, folder, placement.variant)
 		local portal = if placement.slot == "Portal" then portalAt(placement.x, placement.z) else nil
 		if portal then

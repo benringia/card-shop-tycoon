@@ -75,7 +75,7 @@ return {
 	-- Portal Worlds (spec 2026-10-30-town-portal-worlds-design): each portal stands in its own area at the end of a
 	-- trail from the street's end (Util/PortalTrails). Order matches TownService's portals (Wild, Frontier, Arena);
 	-- each trail's last point is that portal's spot (Wild.PLAZA_PORTAL, Places.FRONTIER_PORTAL, Pvp.ARENA_PORTAL).
-	-- surface: the trail's terrain material. sign: the signpost board's words.
+	-- surface: the trail's terrain material. sign: the signpost board's words. A trail point's y is the ground's height there.
 	PORTAL_AREAS = {
 		{
 			key = "Wild",
@@ -91,7 +91,8 @@ return {
 			effect = "Frontier",
 			sign = "FRONTIER",
 			surface = "Snow",
-			trail = { { x = 110, z = 20 }, { x = 130, z = 26 }, { x = 148, z = 58 }, { x = 166, z = 100 }, { x = 182, z = 128 } },
+			-- climbs onto Frostpeak's snowy rise (y: the ground's height at a point, 0 when left out)
+			trail = { { x = 110, z = 20 }, { x = 130, z = 26 }, { x = 148, z = 58 }, { x = 166, z = 100, y = 10 }, { x = 182, z = 128, y = 10 } },
 		},
 		{
 			key = "Arena",
@@ -108,8 +109,8 @@ return {
 		{ x = 150, z = -165 }, { x = 230, z = -165 }, { x = 230, z = -85 }, { x = 178, z = -80 }, { x = 158, z = -45 },
 		{ x = 140, z = -15 }, { x = 140, z = 15 }, { x = 160, z = 48 }, { x = 180, z = 85 }, { x = 235, z = 90 },
 		{ x = 235, z = 170 }, { x = 150, z = 170 }, { x = 150, z = 98 }, { x = 140, z = 62 }, { x = 130, z = 45 },
-		{ x = 130, z = 110 }, { x = -130, z = 110 }, { x = -130, z = 30 }, { x = -225, z = 30 }, { x = -225, z = -30 },
-		{ x = -130, z = -30 },
+		{ x = 130, z = 110 }, { x = -130, z = 110 }, { x = -130, z = 24 }, { x = -225, z = 24 }, { x = -225, z = -24 },
+		{ x = -130, z = -24 },
 	},
 	-- Trails: width, the hedge gap round each exit, walk lengths the user chose (studs; 16 studs/s walking)
 	TRAIL = { WIDTH = 12, HEDGE_GAP = 8, WALK_SPEED = 16, EAST_LENGTH = { 125, 140 }, ARENA_LENGTH = { 85, 100 } },

@@ -2,7 +2,7 @@
 -- The portal areas' geometry (Portal Worlds spec): trails from the street's ends to the portals, the walkable outline
 -- the town's invisible walls follow, and the reach a portal can be used from. Pure, Lune-tested; numbers and shapes in
 -- Config/Town (PORTAL_AREAS, WALK_EDGE, TRAIL). Yaws use TownLayout's convention: degrees, 0 = facing -Z.
-export type Point = { x: number, z: number }
+export type Point = { x: number, z: number, y: number? } -- y: the ground's height (0 when left out)
 export type Wall = { centre: Point, length: number, yaw: number }
 
 local PortalTrails = {}
