@@ -145,6 +145,11 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.bosses = {}
 		end
 	end,
+	-- v13: the first-visit welcome cinematic (WelcomeService). Everyone who played before it has seen the town, so it
+	-- doesn't play for them; set even if Reconcile already added false
+	[12] = function(data)
+		data.seenWelcome = true
+	end,
 }
 
 local function lowestGrade(): string

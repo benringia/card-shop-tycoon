@@ -12,10 +12,15 @@ local Places = require(Config:WaitForChild("Places"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Pvp = require(Config:WaitForChild("Pvp"))
 local Town = require(Config:WaitForChild("Town"))
+local Cycle = require(Config:WaitForChild("DayCycle"))
 local Wild = require(Config:WaitForChild("Wild"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
+local DayCycle = require(SharedUtil:WaitForChild("DayCycle"))
+local SkyLook = require(SharedUtil:WaitForChild("SkyLook"))
+local PortalTrails = require(SharedUtil:WaitForChild("PortalTrails"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
+local TrailProps = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("TrailProps"))
 
 local Props = require(SharedUtil:WaitForChild("Props"))
 
@@ -34,11 +39,16 @@ local PORTAL_LABELS = {
 }
 local PORTAL_MATCH_DISTANCE = 1 -- a Portal prop at this spot belongs to that portal
 
-local function point(spot: { x: number, z: number }): TownLayout.Point
-	return { x = spot.x, z = spot.z }
+local function point(spot: { x: number, z: number, y: number? }): TownLayout.Point
+	return { x = spot.x, z = spot.z, y = spot.y }
 end
 
 local function getWorld(): TownLayout.World
+	local exits, facings = {}, {}
+	for _, area in Town.PORTAL_AREAS do
+		table.insert(exits, PortalTrails.exitPoint(area.trail, Town.BOUNDS.HALF_X))
+		table.insert(facings, PortalTrails.facing(area.trail))
+	end
 	return {
 		plotCount = PlotConfig.COUNT,
 		perRow = PlotConfig.PER_ROW,
@@ -49,6 +59,8 @@ local function getWorld(): TownLayout.World
 		portals = { point(Wild.PLAZA_PORTAL), point(Places.FRONTIER_PORTAL), point(Pvp.ARENA_PORTAL) },
 		spring = point(Wild.SPRING),
 		springRadius = Combat.SPRING_RADIUS,
+		exits = exits,
+		facings = facings,
 	}
 end
 
@@ -66,7 +78,24 @@ local function ground(parent: Instance, name: string, size: Vector3, cframe: CFr
 	return part
 end
 
--- The town is all there is: the Baseplate shrinks to the bounds and invisible walls keep players on it
+-- The place's own spawn pad by the plaza (where players appear before their shop is theirs): invisible, nothing to trip
+-- on, no default spawn logo
+local function hideSpawnPad()
+	local pad = workspace:FindFirstChild("SpawnLocation")
+	if not pad or not pad:IsA("SpawnLocation") then
+		return
+	end
+	pad.Transparency = 1
+	pad.CanCollide = false
+	for _, child in pad:GetChildren() do
+		if child:IsA("Decal") or child:IsA("Texture") then
+			child:Destroy()
+		end
+	end
+end
+
+-- The Baseplate shrinks to the island and goes invisible (SceneryService's terrain is the ground; the Baseplate stays
+-- solid under it as a backstop); invisible walls keep players on it
 local function buildBounds(folder: Folder)
 	local bounds = Town.BOUNDS
 	local baseplate = workspace:FindFirstChild("Baseplate")
@@ -76,27 +105,22 @@ local function buildBounds(folder: Folder)
 		baseplate.Position = Vector3.new(0, top - baseplate.Size.Y / 2, 0)
 		baseplate.Color = Props.color(Town.GRASS_COLOR)
 		baseplate.Material = Enum.Material.Grass
-		baseplate.Transparency = 0
+		baseplate.Transparency = 1
 		local texture = baseplate:FindFirstChildOfClass("Texture")
 		if texture then
 			texture:Destroy() -- the default grid
 		end
 	end
-	local walls = {
-		{ size = Vector3.new(bounds.HALF_X * 2 + 2, bounds.WALL_HEIGHT, 1), x = 0, z = bounds.HALF_Z + 0.5 },
-		{ size = Vector3.new(bounds.HALF_X * 2 + 2, bounds.WALL_HEIGHT, 1), x = 0, z = -bounds.HALF_Z - 0.5 },
-		{ size = Vector3.new(1, bounds.WALL_HEIGHT, bounds.HALF_Z * 2 + 2), x = bounds.HALF_X + 0.5, z = 0 },
-		{ size = Vector3.new(1, bounds.WALL_HEIGHT, bounds.HALF_Z * 2 + 2), x = -bounds.HALF_X - 0.5, z = 0 },
-	}
-	for _, spec in walls do
+	-- One wall along each side of the walkable outline (the island plus the portal trails and clearings)
+	for _, spec in PortalTrails.walls(Town.WALK_EDGE, 1) do
 		local wall = Instance.new("Part")
 		wall.Name = "TownEdge"
 		wall.Anchored = true
 		wall.Transparency = 1
 		wall.CanQuery = false -- the camera can still look past it
 		wall.CanTouch = false
-		wall.Size = spec.size
-		wall.Position = Vector3.new(spec.x, bounds.WALL_HEIGHT / 2, spec.z)
+		wall.Size = Vector3.new(1, bounds.WALL_HEIGHT, spec.length)
+		wall.CFrame = CFrame.new(spec.centre.x, bounds.WALL_HEIGHT / 2, spec.centre.z) * CFrame.Angles(0, math.rad(spec.yaw), 0)
 		wall.Parent = folder
 	end
 end
@@ -146,6 +170,7 @@ end
 
 local function buildGround(folder: Folder)
 	buildBounds(folder)
+	hideSpawnPad()
 
 	local layout = Town.LAYOUT
 	local floor = Town.FLOOR
@@ -171,12 +196,23 @@ local function buildGround(folder: Folder)
 	disc(folder, "Plaza", layout.PLAZA_RADIUS, plazaTop, Town.PLAZA_COLOR, Enum.Material.Limestone)
 	buildPlazaRings(folder, plazaTop)
 
-	for index, path in TownLayout.portalPaths(world, Town) do
-		local look = Town.PORTAL_EFFECTS[PORTAL_LABELS[index].effect]
-		local length = math.abs(path.to.x - path.from.x)
-		-- Above the crosswalk stripes it crosses
-		local line = marking(folder, "PortalPath", Vector3.new(length, 0, floor.PATH_WIDTH), (path.from.x + path.to.x) / 2, streetTop + MARKING_THICKNESS, path.from.z, look.ring, Enum.Material.Neon)
-		line.Transparency = floor.GLOW_TRANSPARENCY
+	for index, line in TownLayout.trailLines(world, Town) do
+		local look = Town.PORTAL_EFFECTS[Town.PORTAL_AREAS[index].effect]
+		for point = 2, #line.points do
+			local a, b = line.points[point - 1], line.points[point]
+			-- Above the crosswalk stripes on the street; level with the trail's ground past it
+			local onStreet = math.abs(a.x) <= layout.STREET_HALF_LENGTH and math.abs(b.x) <= layout.STREET_HALF_LENGTH
+			local lift = (if onStreet then streetTop + MARKING_THICKNESS else floor.TRAIL_LINE_TOP) + MARKING_THICKNESS / 2
+			-- Following the ground up and down (a trail point's y is the ground's height there)
+			local from = Vector3.new(a.x, (a.y or 0) + lift, a.z)
+			local to = Vector3.new(b.x, (b.y or 0) + lift, b.z)
+			local length = (to - from).Magnitude
+			local strip = ground(folder, "PortalPath", Vector3.new(floor.PATH_WIDTH, MARKING_THICKNESS, length + floor.PATH_WIDTH), CFrame.lookAt((from + to) / 2, to), look.ring, Enum.Material.Neon)
+			strip.CanCollide = false
+			strip.CanQuery = false
+			strip.CastShadow = false
+			strip.Transparency = floor.GLOW_TRANSPARENCY
+		end
 	end
 end
 
@@ -196,6 +232,33 @@ local function addLabelText(parent: Instance, text: string, size: number, positi
 	limit.Parent = label
 end
 
+-- "This way" signposts (arms point at each trail's start) and an arch where each trail leaves the island
+local function buildWayfinding(folder: Folder)
+	local areas: { [string]: any } = {}
+	for _, area in Town.PORTAL_AREAS do
+		areas[area.key] = area
+	end
+	for _, sign in Town.SIGNPOSTS do
+		local arms = {}
+		for _, key in sign.arms do
+			local area = areas[key]
+			table.insert(arms, {
+				text = area.sign,
+				sub = Town.SIGN_SUBTEXT,
+				color = Props.color(Town.PORTAL_EFFECTS[area.effect].ring),
+				yaw = PortalTrails.armYaw(sign, area.trail[1]),
+			})
+		end
+		TrailProps.signpost(folder, CFrame.new(sign.x, 0, sign.z), arms)
+	end
+	for _, area in Town.PORTAL_AREAS do
+		local exit = PortalTrails.exitPoint(area.trail, Town.BOUNDS.HALF_X)
+		local from = Vector3.new(exit.x, 0, exit.z)
+		local direction = Vector3.new(area.trail[2].x - area.trail[1].x, 0, area.trail[2].z - area.trail[1].z).Unit
+		TrailProps.arch(folder, CFrame.lookAt(from, from + direction), area.name, Props.color(Town.PORTAL_EFFECTS[area.effect].ring), Town.TRAIL.WIDTH)
+	end
+end
+
 local function buildPortalLabels(folder: Folder)
 	for _, entry in PORTAL_LABELS do
 		local anchor = Instance.new("Part")
@@ -206,7 +269,7 @@ local function buildPortalLabels(folder: Folder)
 		anchor.CanTouch = false
 		anchor.Transparency = 1
 		anchor.Size = Vector3.new(1, 1, 1)
-		anchor.Position = Vector3.new(entry.spot.x, Town.PORTAL_LABEL_HEIGHT, entry.spot.z)
+		anchor.Position = Vector3.new(entry.spot.x, (entry.spot.y or 0) + Town.PORTAL_LABEL_HEIGHT, entry.spot.z)
 		anchor.Parent = folder
 		local board = Instance.new("BillboardGui")
 		board.Size = UDim2.fromOffset(260, 70)
@@ -241,7 +304,7 @@ end
 
 local function buildDecor(folder: Folder)
 	for _, placement in TownLayout.build(getWorld(), Town) do
-		local at = CFrame.new(placement.x, 0, placement.z) * CFrame.Angles(0, math.rad(placement.yaw), 0)
+		local at = CFrame.new(placement.x, placement.y or 0, placement.z) * CFrame.Angles(0, math.rad(placement.yaw), 0)
 		local model = Props.place(placement.slot, at, folder, placement.variant)
 		local portal = if placement.slot == "Portal" then portalAt(placement.x, placement.z) else nil
 		if portal then
@@ -331,30 +394,21 @@ local function effect(className: string, name: string): Instance
 	return created
 end
 
+-- The lighting effects the day cycle drives, the fixed afternoon look until clients take over, and the cycle's start
+-- (every client works out the time of day from it: DayCycleController)
 local function setLighting()
-	local settings = Town.LIGHTING
-	Lighting.ClockTime = settings.CLOCK_TIME
-	Lighting.Brightness = settings.BRIGHTNESS
-	Lighting.ExposureCompensation = settings.EXPOSURE
-	Lighting.Ambient = Props.color(settings.AMBIENT)
-	Lighting.OutdoorAmbient = Props.color(settings.OUTDOOR_AMBIENT)
-	Lighting.EnvironmentSpecularScale = settings.SPECULAR
+	effect("Atmosphere", "TownAtmosphere")
+	effect("BloomEffect", "TownBloom")
+	effect("ColorCorrectionEffect", "TownColor")
+	effect("SunRaysEffect", "TownSunRays")
+	Lighting.EnvironmentSpecularScale = Cycle.SPECULAR
+	SkyLook.apply(DayCycle.fixedLook(Cycle))
+	workspace:SetAttribute("DayCycleStart", workspace:GetServerTimeNow())
+end
 
-	local atmosphere = effect("Atmosphere", "TownAtmosphere") :: Atmosphere
-	atmosphere.Density = settings.ATMOSPHERE.density
-	atmosphere.Offset = settings.ATMOSPHERE.offset
-	atmosphere.Haze = settings.ATMOSPHERE.haze
-	atmosphere.Glare = settings.ATMOSPHERE.glare
-	atmosphere.Color = Props.color(settings.ATMOSPHERE.color)
-	atmosphere.Decay = Props.color(settings.ATMOSPHERE.decay)
-
-	local bloom = effect("BloomEffect", "TownBloom") :: BloomEffect
-	bloom.Intensity = settings.BLOOM.intensity
-	bloom.Size = settings.BLOOM.size
-	bloom.Threshold = settings.BLOOM.threshold
-
-	local grading = effect("ColorCorrectionEffect", "TownColor") :: ColorCorrectionEffect
-	grading.Saturation = settings.SATURATION
+-- The plot grid, portals and spring, for other services that lay things out round the town (SceneryService)
+function TownService.GetWorld(): TownLayout.World
+	return getWorld()
 end
 
 function TownService.Start()
@@ -371,6 +425,7 @@ function TownService.Start()
 	buildGround(folder)
 	buildDecor(folder)
 	buildPortalLabels(folder)
+	buildWayfinding(folder)
 	buildPortalEffects(folder)
 	folder.Parent = workspace
 	setLighting()

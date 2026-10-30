@@ -3,9 +3,9 @@
 -- portal frames. Pure: takes the plot grid, portal and spring spots and Config/Town, returns a fixed list of prop
 -- placements, so every server looks the same. TownService places them. The rest of the decoration (trees,
 -- flowers, rocks ...) is hand-placed in Studio and saved as assets/town (docs/props.md).
--- Lune-tested: a hedge rings the island; nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
+-- Lune-tested: a hedge rings the island (open where the portal trails leave it); nothing lands in a plot, in the street (except lamps, portals and the plaza), near a portal or
 -- in the spring area (except benches and flowers). (The Fence slot is still used by the plaza garden.)
-export type Point = { x: number, z: number }
+export type Point = { x: number, z: number, y: number? } -- y: the ground's height (0 when left out)
 export type World = {
 	plotCount: number,
 	perRow: number,
@@ -16,9 +16,11 @@ export type World = {
 	portals: { Point },
 	spring: Point,
 	springRadius: number,
+	exits: { Point }, -- where each portal's trail leaves the island (PortalTrails.exitPoint), same order as portals
+	facings: { Point }, -- the way each portal faces, back along its trail (PortalTrails.facing)
 }
 -- yaw in degrees, 0 = facing -Z (Roblox front). variant counts up per slot (1, 2, 3 ...).
-export type Placement = { slot: string, x: number, z: number, yaw: number, variant: number }
+export type Placement = { slot: string, x: number, z: number, yaw: number, variant: number, y: number? }
 export type Rect = { minX: number, maxX: number, minZ: number, maxZ: number }
 
 local TownLayout = {}
@@ -76,9 +78,9 @@ function TownLayout.build(world: World, town: any): { Placement }
 	local layout = town.LAYOUT
 	local placements: { Placement } = {}
 	local variants: { [string]: number } = {}
-	local function add(slot: string, x: number, z: number, yaw: number)
+	local function add(slot: string, x: number, z: number, yaw: number, y: number?)
 		variants[slot] = (variants[slot] or 0) + 1
-		table.insert(placements, { slot = slot, x = x, z = z, yaw = yaw, variant = variants[slot] })
+		table.insert(placements, { slot = slot, x = x, z = z, yaw = yaw, variant = variants[slot], y = y })
 	end
 
 	local halfStreet = world.streetWidth / 2
@@ -113,12 +115,26 @@ function TownLayout.build(world: World, town: any): { Placement }
 			place(start + index * layout.FENCE_SECTION)
 		end
 	end
+	-- No hedge where a trail leaves the island
+	local function clearOfTrails(x: number, z: number): boolean
+		for _, exit in world.exits do
+			local dx, dz = x - exit.x, z - exit.z
+			if math.sqrt(dx * dx + dz * dz) < town.TRAIL.HEDGE_GAP then
+				return false
+			end
+		end
+		return true
+	end
 	for _, side in SIDES do
 		fenceLine(edgeX, function(x)
-			add("Hedge", x, side * edgeZ, faceYaw(0, -side))
+			if clearOfTrails(x, side * edgeZ) then
+				add("Hedge", x, side * edgeZ, faceYaw(0, -side))
+			end
 		end)
 		fenceLine(edgeZ, function(z)
-			add("Hedge", side * edgeX, z, faceYaw(-side, 0))
+			if clearOfTrails(side * edgeX, z) then
+				add("Hedge", side * edgeX, z, faceYaw(-side, 0))
+			end
 		end)
 	end
 
@@ -129,10 +145,10 @@ function TownLayout.build(world: World, town: any): { Placement }
 		add("Bench", x, z, faceYaw(world.spring.x - x, world.spring.z - z))
 	end
 
-	-- Portals: a frame facing the town
-	for _, portal in world.portals do
-		local away = if portal.x >= 0 then 1 else -1
-		add("Portal", portal.x, portal.z, faceYaw(-away, 0))
+	-- Portals: a frame facing back along its trail, toward arriving players
+	for index, portal in world.portals do
+		local facing = world.facings[index]
+		add("Portal", portal.x, portal.z, faceYaw(facing.x, facing.z), portal.y)
 	end
 
 	return placements
@@ -166,20 +182,28 @@ function TownLayout.crosswalks(world: World, town: any): { Rect }
 	return stripes
 end
 
--- A straight line from the plaza's edge to each portal, level with it, stopping PATH_END_INSET short
-function TownLayout.portalPaths(world: World, town: any): { { from: Point, to: Point } }
+-- A glowing line for each portal (Town.PORTAL_AREAS): from the plaza's rim level with the trail's start, along every
+-- trail point, stopping PATH_END_INSET short of the portal
+function TownLayout.trailLines(world: World, town: any): { { points: { Point } } }
 	local radius = town.LAYOUT.PLAZA_RADIUS
-	local paths = {}
-	for _, portal in world.portals do
-		local away = if portal.x >= world.spring.x then 1 else -1
-		local dz = math.min(math.abs(portal.z - world.spring.z), radius)
-		local edgeX = world.spring.x + away * math.sqrt(radius * radius - dz * dz)
-		table.insert(paths, {
-			from = { x = edgeX, z = portal.z },
-			to = { x = portal.x - away * town.FLOOR.PATH_END_INSET, z = portal.z },
-		})
+	local lines = {}
+	for _, area in town.PORTAL_AREAS do
+		local trail = area.trail
+		local start = trail[1]
+		local away = if start.x >= world.spring.x then 1 else -1
+		local dz = math.min(math.abs(start.z - world.spring.z), radius)
+		local points: { Point } = { { x = world.spring.x + away * math.sqrt(radius * radius - dz * dz), z = start.z } }
+		for index = 1, #trail - 1 do
+			table.insert(points, { x = trail[index].x, z = trail[index].z, y = trail[index].y })
+		end
+		local last, before = trail[#trail], trail[#trail - 1]
+		local dx, dzz = before.x - last.x, before.z - last.z
+		local length = math.sqrt(dx * dx + dzz * dzz)
+		local inset = town.FLOOR.PATH_END_INSET
+		table.insert(points, { x = last.x + dx / length * inset, z = last.z + dzz / length * inset, y = last.y })
+		table.insert(lines, { points = points })
 	end
-	return paths
+	return lines
 end
 
 return TownLayout

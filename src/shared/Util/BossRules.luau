@@ -345,9 +345,10 @@ function BossRules.revealTricks(step: "beaten" | "ready" | "tooWeak" | "locked",
 end
 
 -- What the board's travel button does for a boss whose arena is in bossPlace ("Wild" | "Frontier" | "Dungeon")
--- while you are in `here` ("Main" | "Frontier" | "Dungeon"): its gate in this place, the normal travel to the other
--- place, the Dungeon portal's directions, or nothing (inside a Dungeon run)
-function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "toFrontier" | "toMain" | "viaPortal" | "none"
+-- while you are in `here` ("Main" | "Frontier" | "Dungeon"): its gate in this place, the trip home from the Frontier,
+-- directions to the Frontier portal (it stands at the end of the Frostpeak trail and the server only sends you from
+-- it), the Dungeon portal's directions, or nothing (inside a Dungeon run)
+function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "walkToFrontier" | "toMain" | "viaPortal" | "none"
 	if here == "Dungeon" then
 		return "none"
 	end
@@ -357,7 +358,7 @@ function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "toFr
 	if (bossPlace == "Wild" and here == "Main") or (bossPlace == "Frontier" and here == "Frontier") then
 		return "gate"
 	end
-	return if bossPlace == "Frontier" then "toFrontier" else "toMain"
+	return if bossPlace == "Frontier" then "walkToFrontier" else "toMain"
 end
 
 return BossRules

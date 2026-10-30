@@ -72,6 +72,7 @@ export type PlayerData = {
 	bosses: { [string]: any }, -- bossId -> BossRules.Record (BossService)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
+	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
 }
 
 export type Handler = {
@@ -103,6 +104,7 @@ local TEMPLATE: PlayerData = {
 	bosses = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
+	seenWelcome = false,
 }
 
 local DataService = {}

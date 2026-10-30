@@ -24,12 +24,13 @@ local Combat = require(Config:WaitForChild("Combat"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
-local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
+local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local PlotService = require(Services:WaitForChild("PlotService"))
+local BloomFountain = require(Util:WaitForChild("BloomFountain"))
 local DungeonBuilder = require(Util:WaitForChild("DungeonBuilder"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -54,7 +55,6 @@ export type Monster = {
 local WildService = {}
 
 local buildSpring: (folder: Instance) -> ()
-local GEM_SIZE = 2.2 -- the floating gem made over a fountain model without one
 
 local SPAWN_TAG = "WildSpawn"
 local TRAVEL_COOLDOWN = 1
@@ -111,40 +111,17 @@ local function block(parent: Instance, name: string, size: Vector3, cframe: CFra
 	return part
 end
 
--- The healing spring: the HealingSpring prop (a stone fountain stand-in until a model is added), its water
--- glowing and sparkling, its crystal turning and bobbing, a faint ring on the ground for the healing area
--- (Combat.SPRING_RADIUS) and its name. Effects go on parts named Water and Crystal, so a real model can keep them.
+-- The healing spring: the Elemental Bloom fountain (Util/BloomFountain), its water glowing and sparkling, its card
+-- crystal turning and bobbing, a faint ring on the ground for the healing area (Combat.SPRING_RADIUS) and its name.
+-- Effects go on parts named Water and Crystal.
 function buildSpring(folder: Instance)
 	local spot = vec(Wild.SPRING)
-	local model = Props.place("HealingSpring", CFrame.new(spot), folder)
-	model.Name = "HealingSpring"
-	local waters, crystal = {}, nil :: BasePart?
+	local model = BloomFountain.build(spot, folder)
+	local waters, crystal = {}, model:FindFirstChild("Crystal") :: BasePart?
 	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") then
-			part.Anchored = true
-			if part.Name == "Water" then
-				table.insert(waters, part)
-			elseif part.Name == "Crystal" then
-				crystal = part
-			end
+		if part:IsA("BasePart") and part.Name == "Water" then
+			table.insert(waters, part)
 		end
-	end
-	local _, box = model:GetBoundingBox()
-	-- No gem in the model: one floats above its top tier
-	if not crystal then
-		local gem = Instance.new("Part")
-		gem.Name = "Crystal"
-		gem.Anchored = true
-		gem.CanCollide = false
-		gem.CanQuery = false
-		gem.Size = Vector3.new(1, 1, 1) * GEM_SIZE
-		gem.Color = Color3.fromRGB(110, 210, 255)
-		gem.Material = Enum.Material.Glass
-		gem.Transparency = 0.15
-		gem.Reflectance = 0.2
-		gem.CFrame = CFrame.new(spot + Vector3.new(0, box.Y + GEM_SIZE, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(35.26))
-		gem.Parent = model
-		crystal = gem
 	end
 	-- The highest water gets the sparkles and the light
 	table.sort(waters, function(a, b)
@@ -187,7 +164,7 @@ function buildSpring(folder: Instance)
 			crystal.CFrame = CFrame.new(home.Position + Vector3.new(0, bob.Value, 0)) * CFrame.Angles(0, math.rad(spin), 0) * home.Rotation
 		end)
 		local glow = Instance.new("PointLight")
-		glow.Color = Color3.fromRGB(170, 240, 255)
+		glow.Color = crystal.Color:Lerp(Color3.new(1, 1, 1), 0.3)
 		glow.Range = 10
 		glow.Brightness = 1.5
 		glow.Parent = crystal
@@ -198,7 +175,7 @@ function buildSpring(folder: Instance)
 		drift.Speed = NumberRange.new(0.3, 0.8)
 		drift.SpreadAngle = Vector2.new(180, 180)
 		drift.Size = NumberSequence.new(0.35, 0)
-		drift.Color = ColorSequence.new(Color3.fromRGB(200, 250, 255))
+		drift.Color = ColorSequence.new(crystal.Color:Lerp(Color3.new(1, 1, 1), 0.5))
 		drift.LightEmission = 1
 		drift.Parent = crystal
 	end
@@ -346,7 +323,8 @@ local function buildPlaza()
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		-- Its floating name label comes from TownService, like the other plaza portals
-		portal(folder, "The Wild", portalSpot, Vector3.new(-1, 0, 0), "Travel", function(player)
+		local facing = PortalTrails.areaFacing(Town.PORTAL_AREAS, "Wild")
+		portal(folder, "The Wild", portalSpot, Vector3.new(facing.x, 0, facing.z), "Travel", function(player)
 			WildService.TravelToWild(player)
 		end)
 	end
@@ -811,10 +789,9 @@ function WildService.Start()
 	end
 	rayParams.FilterDescendantsInstances = { mapFolder }
 
+	-- Clients only ask to go home; going to the Wild takes walking to its portal (the prompt)
 	Remotes.WildTravel.OnServerEvent:Connect(function(player, where)
-		if where == "wild" then
-			WildService.TravelToWild(player)
-		elseif where == "home" then
+		if where == "home" then
 			WildService.TravelHome(player)
 		end
 	end)

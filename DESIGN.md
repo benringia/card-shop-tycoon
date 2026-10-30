@@ -53,20 +53,87 @@ between the two rows (x -110..110, 96 wide: shop fronts at z ±48) with a zebra 
 concrete sidewalk (8 wide, square 4-stud slabs) along each row's front, a round pale limestone plaza (radius 26, open room for
 event NPCs and event stalls) with two glowing blue rings set in it (the healing area's edge at 12 and one near the rim), a
 glowing line on the street from the plaza to each portal in that portal's colour (`Town.FLOOR`, `TownLayout.crosswalks` /
-`portalPaths`) round the healing spring (the HealingSpring prop slot, 14 tall: the free "Better Low Poly Fountain" by scene_boy,
-recoloured moonstone with glowing water, kept in the place's `PlaceProps` (copy: `assets/place-props/HealingSpring.rbxm`);
-the code adds a big turning, bobbing gem over its top, rising sparkles, a blue light, breathing water and a faint
-disc for the 12-stud healing area; a part-built stand-in is used if the model is missing). Around it, `Workspace.PlazaGarden` (hand-placed in the
+`portalPaths`) round the healing spring. The spring is the **Elemental Bloom** fountain (plaza round 2, the user's
+pick B of three fountain concepts, 2026-10-30; remodelled in Blender the same day to be bigger and much more
+colourful: `tools/blender/build_bloom_fountain.py`, sources in `assets/blender/BloomFountain/`, saved as
+`assets/props/BloomFountain.rbxm` (PropModels); `Server/Util/BloomFountain`, `Config/Plaza.FOUNTAIN`): a lotus on a
+deep teal two-step base with gold bands and lily pads (radius 7, 12.1 tall with its card), five big cupped outer
+petals, one per card element (Ember, Tide, Bloom, Volt, Shade), each in three bands from a deep shade to a bright
+tip with a glowing gem spraying an arc of glowing water (a scrolling beam) into the pool; five magenta inner petals;
+a golden card-shaped crystal floating over a gold cup. Bold mid tones only: pale ones washed out to white in the
+town's sun. Until the model is in PropModels a part-built stand-in is drawn (petals from `Util/PlazaLayout`). The
+magic: sparkles off each gem and motes in every element's colour rising from the pool (server); on each client near
+it with the extras on (`FountainFxController`, tag BloomFountain), a rune circle (`assets/ui/fx/rune-circle.png`,
+Figma) turning slowly on a dark teal inlay in the gazebo's floor, a column of light rising from the pool to the dome,
+five glowing orbs with trails circling the card, and the column and the pool's light shifting through the element
+colours; motes in the element colours rise off the gazebo's finial, so it shows over the roof from the street.
+The fountain model streams Atomic (whole), so a player who joins far away (at their plot) gets the client magic
+once it streams in, not a tagged model without its pool and card.
+WildService adds the card's turning and bobbing, rising sparkles, a light, breathing water and a faint disc for the
+12-stud healing area (the Frontier's spring is the same fountain). It replaced the free "Better Low
+Poly Fountain" by scene_boy (the old HealingSpring prop slot, its model in the place's `PlaceProps`, copy
+`assets/place-props/HealingSpring.rbxm`, no longer used). **Card Festival Square** (the user's pick C of three
+plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/PlazaBuild`, built by SceneryService):
+a gazebo with eight cream plaster columns and a stepped teal dome of roof tiles over the fountain (a warm light and
+a lantern inside, a dark teal inlay in its floor; matte mid tones, since white plastic and a shiny roof glared in the
+sun and mirrored the sky); a
+fan of five giant cards on a long stone plinth (real card art, gold edges, rims in their rarity colour: Cindercub,
+Boltlynx, Solarion in the middle, Thunderhorn, Tidecaller) in the north-west corner, facing where new players appear;
+three festival carts (the user's pick A of three stall designs; pink PACKS, blue CARDS, green SNACKS): a wooden
+box with a slatted front in its colour and white, two big spoked wheels, a handle with a prop leg, turned posts under
+a rounded striped canopy with a scalloped fringe and gold corner balls, a warm lantern at one corner, card packs and
+boxes on the counter and a chalkboard sign beside it (empty counters otherwise, ready for event NPCs); six round
+wooden cafe tables
+(a cloth under the top, a little vase of flowers) with three bistro chairs each (round seat on thin dark legs, round
+back on two posts); three townsfolk sitting at every other table (the customers' blocky look, a cup in hand; anchored
+rigs, so no physics; each client plays the sit animation and lifts their cups to sip now and then, `PlazaNpcController`,
+only near the camera with the extras on); string lights sagging from the gazebo's rim to eight lamp posts at the edge;
+five curved stone planters along the edge between the lanes (radius 25, 2 wide, grass on top; the card fan's quarter
+split where its plinth reaches the edge) holding the lamps, four trees and 32 plants (11 bushes, 21 flowers) (the town's Bush and
+Flower props, no shadows); two Cute Pets animals: a cat asleep on its side along the seat of the bench nearest the
+spawn, a "z Z z" floating over it, and a puppy running laps along the curve of the gazebo's floor outside the columns
+(`Ambient.CRITTERS`, `Wander.orbitTarget`/`orbitStep`); the four benches just outside the gazebo (13.5 studs), facing
+the fountain (the Bench slot turns the model round: its seat faces its +Z). The lanes to the shop doors and along the street stay clear (Lune-tested). It replaces the old hand-placed garden: formerly `Workspace.PlazaGarden` (hand-placed in the
 place, like TownDecor): 4 cherry trees between the benches (street and shop lanes left open), glowing spotted
 mushrooms at the basin, a ring of flowers and bushes, four round grass lawns with clover tufts (one per quarter)
 and a low wooden fence round the plaza edge (radius 21, 2 tall) with gaps at the four lanes; Creator Store pieces were stripped to parts, meshes, lights and
 particles (the cherry trees came with backdoor scripts). Butterflies (`ButterflyController`, client only,
-`Town.BUTTERFLIES`) flutter in loops round the spring, warm afternoon lighting
-with light haze, soft bloom and low wall shine (`Town.LIGHTING`; dim warm shop ceiling lights so pale walls never wash out). Portals: the Wild (104, -9) and the Frontier (104, 9) side by side at the east end of the street,
-the PvP Arena (-104, 0) at the west end, each with a floating name label and its own look (`Town.PORTAL_EFFECTS`): the Wild green
+`Town.BUTTERFLIES`) flutter in loops round the spring, at Forest Falls and at the east trails' start; the lighting is
+the day cycle (below; dim warm shop ceiling lights so pale walls never wash out). **Portal Worlds** (spec
+`2026-10-30-town-portal-worlds-design.md`): each portal stands in its own walk-to area at the end of a trail from the
+street's end (`Town.PORTAL_AREAS`, `Util/PortalTrails`): the Wild by the pool at **Forest Falls** (185, -118; south-east:
+giant trees, a waterfall of scrolling streak sheets into a turquoise pool, mossy boulders, flowers, lily pads, glowing
+mushrooms, fireflies, falling leaves), the Frontier on **Frostpeak**'s snowy rise (182, 128, 10 studs up; north-east: a
+snow-capped peak, frosted pines with lightly snowed ones on the grass below, a frozen waterfall of ice columns over a
+frozen pond, icicles, drifting snow, an aurora of hanging curtain beams), the Arena at the end of **Ember Canyon**
+(-205, 0; west: striped red sandstone walls, a lava river and pool past the walkable floor, saguaros, the portal on a
+stone platform between torch pillars, floating embers). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
+user kept the map's spots). Trails are paved terrain with the portal's glowing line along them; a wooden arch with the
+area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
+(`Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
+clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
+`SceneryService`); a grove of trees fills the hill between the east trails. Each portal has a floating name label and
+its own look (`Town.PORTAL_EFFECTS`): the Wild green
 with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
-embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Plots stand 24 studs apart. The town is
-the whole main-game world: the Baseplate is cut to x ±130, z ±110 and ringed with invisible walls (`Town.BOUNDS`). Code builds the fixed pieces (`Util/TownLayout`, same on every
+embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Travel needs the portal: the
+Wild goes through its prompt only (the WildTravel remote accepts just "home"), and the Frontier menu's choices only count
+within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
+z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
+and plain ground under and 5 studs round each shop, so no blades poke through; Roblox draws terrain 2 studs above its
+fill, `TownTerrain.SURFACE_LIFT`). **Day cycle** (`Config/DayCycle`, `Util/DayCycle`, `DayCycleController`): a 19.5-minute
+loop, the same for everyone in town in a server: morning 7 min (the longest), afternoon 5, sunset 4, a 2-minute blue night
+lit by the street, shop neon, portals and glowing mushrooms (shops stay warm and readable), dawn 1.5; each phase keeps its
+sky, haze, bloom and colours, blending into the next over 40 s while the sun creeps across. Each client works the time
+out from the server's `DayCycleStart` attribute (no network). Outside the town region (the Wild, the Arena stands, the
+boss arenas) the old afternoon look shows at once, so fights never happen at night. **Ambient life** (client only, off
+when the frame watchdog sees a slow device or the player set graphics at 3 or below: `Util/FrameWatchdog`,
+`Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and six Cute Pets animals
+run round their homes, drawn by the summoned-pet code (`TownCritterController`, `Util/Wander`): a fox at the forest edge,
+a bunny in the plaza garden, a capybara between the shops, a fawn at Forest Falls, a penguin on Frostpeak, a baby dragon
+in Ember Canyon. **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
+player's first visit, an 11 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
+as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
+and the player standing still, a Skip button (top right) from the first frame. Code builds the fixed pieces (`Util/TownLayout`, same on every
 server): modern black LED street lights (StreetLight slot, 11 tall, arm over the street) on the sidewalks at every plot gap
 and row end, 4 benches round the spring, a trimmed hedge on a concrete curb (Hedge slot) round the whole island just
 inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except street lights, portals
@@ -998,7 +1065,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain
 ├── tools/textures/             # pack textures and flipbook sheets (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
@@ -1006,7 +1073,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── Services/
     │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
     │   │   ├── PlotService.luau      # claim/release plots, modern shop shells (glass front, sliding doors, sign band, roof)
-    │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portal frames, lighting
+    │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portal frames, walls, trail lines, signs, lighting
+    │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town and in the three portal areas (Config/Scenery)
+    │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
@@ -1036,6 +1105,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded fight simulation: packs, boss mechanics and phases, carried HP (pure, Lune-tested)
     │       ├── DungeonBuilder.luau   # the Dungeon's cavern: rooms, barriers, doors, crystals, lighting
+    │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, card fan, stalls, cafe sets and townsfolk, lights, planters
+    │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
+    │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -1057,7 +1129,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
     │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
-    │   │   ├── ButterflyController.luau # client butterflies round the plaza spring
+    │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
+    │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
+    │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
+    │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
+    │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
+    │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
+    │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder); boss rigs, head glow, death
@@ -1136,7 +1214,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Dungeon.luau    # the Dungeon: rooms and packs, timings, layout, lighting
         │   ├── Items.luau      # every item: name, icon, description; stack limit
         │   ├── Bosses.luau     # boss ladder: bosses, drops, chests, farm protection, arenas
-        │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, lighting
+        │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, portal areas, trails, walk edge, signposts
+        │   ├── Scenery.luau    # terrain shapes and scenery round the town and in the portal areas (plain data)
+        │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
+        │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
+        │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
+        │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
@@ -1160,6 +1243,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
             ├── Place.luau         # which place this is; its wild-map config
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
+            ├── PortalTrails.luau  # portal trails, the walkable edge, portal reach (pure, Lune-tested)
+            ├── TownTerrain.luau   # the town's terrain as fills; ground height (pure, Lune-tested)
+            ├── DayCycle.luau      # the day cycle's phases and blended looks (pure, Lune-tested)
+            ├── SkyLook.luau       # applies a day cycle look to Lighting
+            ├── FrameWatchdog.luau # turns the extras off on slow frames (pure, Lune-tested)
+            ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
+            ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
+            ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1194,10 +1285,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v12)
+### 10.4 Player data schema (v13)
 ```lua
 {
-    version = 12,
+    version = 13,
     cash = 200,
     xp = 0,
     level = 1,
@@ -1221,6 +1312,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     bosses = {},            -- { [bossId] = { unlocked, cleared, lootAt, day, rewardedToday, bonusDay } } boss ladder (5.10)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
+    seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -1231,7 +1323,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -1396,6 +1488,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   6 summoned pets, 6 players), PC render CPU from the street: 14.7-17.5 ms and 45-53 fps before, 10.2-12.3 ms and 60 fps
   after; an empty town is 6.5-7.2 ms. Customers, workers, players and shop lights cost about 0.5 ms each; hiding far
   shops' small parts saved only about 0.5 ms, so it isn't done. The server stays light (heartbeat 0.4 ms, physics 0.8 ms).
+- Portal Worlds (measured 2026-10-30, same full-server stress test, all in one Studio session): from the street, none of
+  the new pieces 11.9 ms (level 1) / 12.8-13.1 ms (level 10), everything on 12.5-13.0 / 13.2-14.2 ms, so the whole pass
+  costs about +0.8 / +1.0 ms (budget +1.5 ms); the day cycle's lighting updates about 0.4 ms, the terrain about 0.4 ms,
+  props, animals and butterflies within noise; inside the areas 9-10 ms at 59-60 fps. Terrain memory about 53 MB
+  (graphics 50, voxels 3). Caps (Lune-tested): terrain at most `Scenery.MAX_CELLS` estimated cells, one flowing waterfall
+  (at most 4 streams, 4 falls effects), at most 4 effects per area, at most 20 butterflies, 6 animals (3 in town, one per
+  area) moved only within 120 studs, tree sway within 150 studs at 30 Hz, the frozen falls at most 60 parts; small
+  hand-placed decor (under 4 studs) casts no shadow; sign and arch words stop drawing beyond 120 studs. The 60k triangle
+  town total no longer covers the areas: the scenery reuses the town's prop meshes (scaled copies batch together) plus
+  code-built parts, so no new mesh triangles were added.
 
 ---
 
@@ -1484,6 +1586,29 @@ boss models; the ranch and Heroic tiers come after those.
   30, with a flat art picture further away (`Config/ShopDetail`, numbers in 10.5); approved by the user and merged
   2026-10-30. Next: the town's nature pass (terrain, waterfalls, big trees, tree sway, grass, butterflies, 3 Cute Pets
   animals) under the measured rules.
+- [x] Town nature pass, Portal Worlds (spec `2026-10-30-town-portal-worlds-design.md`, plan
+  `2026-10-30-town-portal-worlds.md`, branch `town-portal-worlds`): the three walk-to portal areas, trails, arches and
+  signposts, terrain and scenery, the day cycle in town, tree sway, butterflies, six animals and the first-visit welcome
+  cinematic (schema v13), measured inside the budget (10.5). Feedback rounds built: no grass in shops, Frostpeak on a
+  snowy rise, lava and saguaros, more life everywhere, an aurora of curtain beams; then the snowman removed, a frozen
+  waterfall of ice over a frozen pond, layered forest falls with splash and foam, bigger rocks; then a grove between the
+  east trails and a dressed edge on the rise, the leftover Prism Hydra copy removed from the place; then the plaza
+  redesigned as the Card Festival Square (pick C) and the spawn pad made invisible; plaza round 2: a matte gazebo, the
+  Elemental Bloom fountain (pick B), cafe tables with sitting townsfolk, edge planters, a cat and a puppy; round 3:
+  festival carts (pick A), the fountain remodelled in Blender bigger and in bold colours with its magic (rune circle,
+  light column, orbs, motes), the cat asleep on a bench, the benches facing the fountain, the fountain streaming in
+  whole. Final review fixes: the boss board shows directions to the Frontier portal instead of a travel button the
+  server now refuses, and the Forest Falls pool has a floor. Done: approved by the user and merged 2026-10-30.
+  Still open: re-measure the frame budget in a fresh Studio session now the plaza is in (if over: shrink
+  `Scenery.GROUND`, ClockTime at 1-2 Hz); the boss board's "Take me there" stays the one shortcut to Wild boss gates.
+  Deferred minors from its review: the `WildTravel` comment in Remotes still lists "wild"; SceneryService's "neither
+  holds up start" comment is half wrong; TreeSwayController rescans the scene's trees every 2 s (DescendantAdded would
+  be cheaper); DayCycleController moves the sun 10 times a second; WelcomeController freezes with WalkSpeed (a server
+  write during the cinematic can clobber it) and hides every ScreenGui instead of `Hud.setHidden`; the Skip button's
+  phone check isn't recorded; DayCycle gives NaN for a phase shorter than its blend (no config guard test) and
+  `table.clone` of a look is shallow; night grading also tints the pack opening and binder views; TownService's portal
+  effect fallback ignores `spot.y`; BuildController's `WaitForChild("OrderComputer")` warns when the plot streams in
+  late.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

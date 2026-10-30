@@ -16,12 +16,9 @@ return {
 		-- sidewalks, trimmed hedges round the island's edge
 		StreetLight = { height = 11, collide = true },
 		Hedge = { height = 3, collide = true },
-		Bench = { height = 3, collide = true },
+		Bench = { height = 3, collide = true, yaw = 180 }, -- the bench model's seat faces its +Z: turned, the plaza benches face the spring
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
-		-- The plaza's healing fountain (WildService): parts named Water glow and breathe; a floating gem (the
-		-- model's Crystal part, or one made above its top) turns over it. The model lives in PlaceProps (meshes).
-		HealingSpring = { height = 14, collide = true },
 		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
@@ -47,7 +44,7 @@ return {
 	LAYOUT = {
 		LAMP_INSET = 2, -- lamps stand this far into the street from the plot fronts
 		ROW_END_LAMP_OFFSET = 4, -- past the outer edge of each row's end plots
-		BENCH_RADIUS = 11, -- around the spring
+		BENCH_RADIUS = 13.5, -- around the spring, just outside the plaza gazebo (Config/Plaza)
 		BENCH_ANGLES = { 45, 135, 225, 315 },
 		EDGE_FENCE_INSET = 2, -- the fence round the island stands this far inside the bounds
 		FENCE_SECTION = 6.5, -- one Fence prop per section (the Fence model is 6.5 long at its 4-stud height)
@@ -57,21 +54,75 @@ return {
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
-	-- Butterflies round the healing spring (ButterflyController, client only). Studs; colours as { r, g, b }.
+	-- Butterflies (ButterflyController, client only): a flock round the healing spring and more at Forest Falls and the
+	-- east trails' start; each spot's flock loops round its centre between its radii. Studs; colours as { r, g, b }.
 	BUTTERFLIES = {
-		COUNT = 10,
+		SPOTS = {
+			{ x = 0, z = 0, count = 10, minRadius = 6.5, maxRadius = 8.5 }, -- under the plaza gazebo's dome, round the fountain
+			{ x = 190, z = -120, count = 5, minRadius = 6, maxRadius = 18 },
+			{ x = 136, z = 0, count = 3, minRadius = 3, maxRadius = 10 },
+		},
 		SIZE = 0.55, -- one wing's width
 		SPEED = 3, -- studs a second along their loop
 		FLAP_SPEED = 14,
-		MIN_RADIUS = 6,
-		MAX_RADIUS = 17,
 		MIN_HEIGHT = 2.5,
 		MAX_HEIGHT = 8,
 		COLORS = { { 255, 150, 210 }, { 140, 210, 255 }, { 255, 230, 120 }, { 190, 150, 255 }, { 150, 240, 190 } },
 	},
 
-	-- The playable area: the Baseplate is cut to this size and ringed with invisible walls
+	-- The island inside the hedge (the Baseplate is cut to this size); the invisible walls follow WALK_EDGE
 	BOUNDS = { HALF_X = 130, HALF_Z = 110, WALL_HEIGHT = 60 },
+	-- Portal Worlds (spec 2026-10-30-town-portal-worlds-design): each portal stands in its own area at the end of a
+	-- trail from the street's end (Util/PortalTrails). Order matches TownService's portals (Wild, Frontier, Arena);
+	-- each trail's last point is that portal's spot (Wild.PLAZA_PORTAL, Places.FRONTIER_PORTAL, Pvp.ARENA_PORTAL).
+	-- surface: the trail's terrain material. sign: the signpost board's words. A trail point's y is the ground's height there.
+	PORTAL_AREAS = {
+		{
+			key = "Wild",
+			name = "Forest Falls",
+			effect = "Wild",
+			sign = "THE WILD",
+			surface = "Ground",
+			trail = { { x = 110, z = -20 }, { x = 130, z = -26 }, { x = 148, z = -55 }, { x = 165, z = -95 }, { x = 185, z = -118 } },
+		},
+		{
+			key = "Frontier",
+			name = "Frostpeak",
+			effect = "Frontier",
+			sign = "FRONTIER",
+			surface = "Snow",
+			-- climbs onto Frostpeak's snowy rise (y: the ground's height at a point, 0 when left out)
+			trail = { { x = 110, z = 20 }, { x = 130, z = 26 }, { x = 148, z = 58 }, { x = 166, z = 100, y = 10 }, { x = 182, z = 128, y = 10 } },
+		},
+		{
+			key = "Arena",
+			name = "Ember Canyon",
+			effect = "Arena",
+			sign = "PVP ARENA",
+			surface = "Sand",
+			trail = { { x = -110, z = 0 }, { x = -130, z = 0 }, { x = -205, z = 0 } },
+		},
+	},
+	-- Where players can walk: the island plus the three trails and clearings (the invisible walls run along it)
+	WALK_EDGE = {
+		{ x = -130, z = -110 }, { x = 130, z = -110 }, { x = 130, z = -45 }, { x = 140, z = -60 }, { x = 150, z = -90 },
+		{ x = 150, z = -165 }, { x = 230, z = -165 }, { x = 230, z = -85 }, { x = 178, z = -80 }, { x = 158, z = -45 },
+		{ x = 140, z = -15 }, { x = 140, z = 15 }, { x = 160, z = 48 }, { x = 180, z = 85 }, { x = 235, z = 90 },
+		{ x = 235, z = 170 }, { x = 150, z = 170 }, { x = 150, z = 98 }, { x = 140, z = 62 }, { x = 130, z = 45 },
+		{ x = 130, z = 110 }, { x = -130, z = 110 }, { x = -130, z = 24 }, { x = -225, z = 24 }, { x = -225, z = -24 },
+		{ x = -130, z = -24 },
+	},
+	-- Trails: width, the hedge gap round each exit, walk lengths the user chose (studs; 16 studs/s walking)
+	TRAIL = { WIDTH = 12, HEDGE_GAP = 8, WALK_SPEED = 16, EAST_LENGTH = { 125, 140 }, ARENA_LENGTH = { 85, 100 } },
+	-- "This way" signposts: arms name PORTAL_AREAS keys and point at that trail's start
+	SIGNPOSTS = {
+		{ x = 30, z = 0, arms = { "Wild", "Frontier", "Arena" } },
+		{ x = 112, z = 0, arms = { "Wild", "Frontier" } },
+		{ x = -112, z = 12, arms = { "Arena" } },
+	},
+	PORTAL_REACH = 16, -- studs: travel remotes only work this close to their portal
+	SIGN_DISTANCE = 120, -- studs: signpost and arch words stop drawing beyond this
+	SIGN_SUBTEXT = "This way", -- under each name on a signpost arm
 	-- Each plaza portal's look: ring and glow-part colour, particle colours, and 1-3 emitters (phones).
 	-- Emitters sit on a box filling the ring. speed/lifetime/size are { min, max } or { start, end };
 	-- rise = upward pull (negative falls); colors on an emitter override the portal's.
@@ -386,19 +437,9 @@ return {
 		-- A glowing line from the plaza's edge to each portal, in that portal's ring colour (PORTAL_EFFECTS)
 		PATH_WIDTH = 0.5,
 		PATH_END_INSET = 6, -- stops this far short of the portal
+		TRAIL_LINE_TOP = 0.05, -- off the street, the line lies just above the trail's ground (terrain tops out at y 0)
 		GLOW_TRANSPARENCY = 0.15,
 	},
 
-	-- Main town only; the Frontier keeps its own lighting
-	LIGHTING = {
-		CLOCK_TIME = 15.5, -- mid-afternoon, a slightly lower sun
-		BRIGHTNESS = 1.6, -- sunlight (Roblox default 2)
-		EXPOSURE = -0.25, -- whole-scene exposure: a softer, dimmer look
-		AMBIENT = { 110, 102, 96 },
-		OUTDOOR_AMBIENT = { 120, 112, 105 },
-		ATMOSPHERE = { density = 0.25, offset = 0.1, haze = 1.2, glare = 0.2, color = { 225, 215, 200 }, decay = { 140, 160, 190 } },
-		BLOOM = { intensity = 0.25, size = 24, threshold = 2 }, -- only the brightest spots glow
-		SPECULAR = 0.35, -- how much walls and floors reflect the sky (Roblox default 1 makes bright patches)
-		SATURATION = 0.12,
-	},
+	-- The town's lighting is the day cycle now (Config/DayCycle; its afternoon is the old look)
 }

@@ -10,7 +10,9 @@ local TeleportService = game:GetService("TeleportService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Places = require(Shared:WaitForChild("Config"):WaitForChild("Places"))
+local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -57,6 +59,17 @@ local function friendFrontierServer(player: Player, friendUserId: number): strin
 	return nil
 end
 
+-- The menu's choices only count from beside the Frontier portal, so the walk there can't be skipped
+local function atPortal(player: Player): boolean
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not root or not root:IsA("BasePart") then
+		return false
+	end
+	local spot = Places.FRONTIER_PORTAL
+	return PortalTrails.near({ x = root.Position.X, z = root.Position.Z }, { x = spot.x, z = spot.z }, Town.PORTAL_REACH)
+end
+
 local function onTravel(player: Player, where: unknown, friendUserId: unknown)
 	if not allowTravel(player) then
 		return
@@ -71,6 +84,8 @@ local function onTravel(player: Player, where: unknown, friendUserId: unknown)
 	end
 	if Place.isFrontier() or Place.isDungeon() then
 		return -- Explore / Join friend are main-game choices
+	elseif not atPortal(player) then
+		tell(player, "Walk to the Frontier portal at Frostpeak to travel.")
 	elseif Places.FRONTIER_PLACE_ID == 0 then
 		tell(player, "The Frontier is coming soon!")
 	elseif where == "explore" then
@@ -116,7 +131,8 @@ function FrontierService.Start()
 	plaza.Name = "Plaza"
 	plaza.Parent = workspace
 	local spot = Places.FRONTIER_PORTAL
-	WildService.BuildPortal(plaza, "The Frontier", Vector3.new(spot.x, spot.y, spot.z), Vector3.new(-1, 0, 0), "Travel", function(player)
+	local facing = PortalTrails.areaFacing(Town.PORTAL_AREAS, "Frontier")
+	WildService.BuildPortal(plaza, "The Frontier", Vector3.new(spot.x, spot.y, spot.z), Vector3.new(facing.x, 0, facing.z), "Travel", function(player)
 		Remotes.FrontierTravel:FireClient(player, { open = true })
 	end)
 end

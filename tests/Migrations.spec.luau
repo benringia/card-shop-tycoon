@@ -115,6 +115,15 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v13: existing players have already seen the welcome"] = function()
+		local data: any = { version = 12, seenWelcome = false } -- Reconcile may add false before the migration runs
+		Migrations.run(data, 13)
+		expect.equal(data.seenWelcome, true, "no welcome cinematic for existing players")
+		local fresh: any = { version = 12 }
+		Migrations.run(fresh, 13)
+		expect.equal(fresh.seenWelcome, true, "set when missing too")
+	end,
+
 	["v12: adds an empty bosses table, keeps existing"] = function()
 		local data: any = { version = 11, pity = { legendary = 0, epic = 0, firstDone = false } }
 		Migrations.run(data, 12)
