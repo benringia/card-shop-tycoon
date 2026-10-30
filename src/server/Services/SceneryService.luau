@@ -475,20 +475,6 @@ local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
 		emitter.Size = NumberSequence.new(0.3, 0)
 		emitter.EmissionDirection = Enum.NormalId.Top
 	end,
-	-- the volcano's slow plume: big soft grey puffs rising and darkening as they fade
-	smoke = function(emitter)
-		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
-		emitter.Color = ColorSequence.new(Color3.fromRGB(120, 110, 112), Color3.fromRGB(60, 54, 58))
-		emitter.LightEmission = 0
-		emitter.Lifetime = NumberRange.new(10, 14)
-		emitter.Speed = NumberRange.new(2, 4)
-		emitter.Acceleration = Vector3.new(1.2, 2, 0)
-		emitter.Size = NumberSequence.new(20, 45)
-		emitter.Transparency = NumberSequence.new(0.5, 1)
-		emitter.RotSpeed = NumberRange.new(-10, 10)
-		emitter.Rotation = NumberRange.new(0, 360)
-		emitter.EmissionDirection = Enum.NormalId.Top
-	end,
 	bubbles = function(emitter)
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 90, 20))
 		emitter.Lifetime = NumberRange.new(0.8, 1.4)
@@ -524,6 +510,43 @@ local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
 		emitter.EmissionDirection = Enum.NormalId.Bottom
 	end,
 }
+
+-- The volcano's smoke plume (Config/Scenery PLUME): one camera-facing beam from the crater, bending with the wind
+local function buildPlume(folder: Folder, crater: Vector3)
+	local plume = Scenery.PLUME
+	local anchor = anchorPart(folder, "VolcanoPlume", crater)
+	local base = Instance.new("Attachment")
+	base.Parent = anchor
+	local top = Instance.new("Attachment")
+	top.Position = Vector3.new(0, plume.rise, plume.drift)
+	top.Parent = anchor
+	local colors = {}
+	for index, rgb in plume.colors do
+		table.insert(colors, ColorSequenceKeypoint.new((index - 1) / (#plume.colors - 1), Props.color(rgb)))
+	end
+	local fades = {}
+	for index, value in plume.transparency do
+		table.insert(fades, NumberSequenceKeypoint.new((index - 1) / (#plume.transparency - 1), value))
+	end
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = base
+	beam.Attachment1 = top
+	beam.FaceCamera = true
+	beam.Width0 = plume.width[1]
+	beam.Width1 = plume.width[2]
+	beam.Segments = 12
+	beam.CurveSize0 = plume.rise * 0.15
+	beam.CurveSize1 = -plume.rise * 0.1
+	beam.Texture = plume.texture
+	beam.TextureMode = Enum.TextureMode.Wrap
+	beam.TextureLength = plume.length
+	beam.TextureSpeed = -plume.speed
+	beam.LightEmission = 0
+	beam.LightInfluence = 0
+	beam.Color = ColorSequence.new(colors)
+	beam.Transparency = NumberSequence.new(fades)
+	beam.Parent = anchor
+end
 
 local function buildEffects(folder: Folder)
 	for _, spec in Scenery.EMITTERS do
@@ -563,9 +586,10 @@ local function buildEffects(folder: Folder)
 				})
 				beam.Parent = anchor
 			end
+		elseif spec.kind == "plume" then
+			buildPlume(folder, volcanoSmoke or Vector3.new(spec.x, spec.y, spec.z))
 		else
-			local at = if spec.kind == "smoke" and volcanoSmoke then volcanoSmoke else Vector3.new(spec.x, spec.y, spec.z)
-			local box = anchorPart(folder, "AreaEffect", at, Vector3.new(spec.size.x, 1, spec.size.z))
+			local box = anchorPart(folder, "AreaEffect", Vector3.new(spec.x, spec.y, spec.z), Vector3.new(spec.size.x, 1, spec.size.z))
 			local emitter = Instance.new("ParticleEmitter")
 			emitter.Shape = Enum.ParticleEmitterShape.Box
 			emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume

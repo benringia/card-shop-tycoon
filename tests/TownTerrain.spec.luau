@@ -145,11 +145,16 @@ return {
 		assert(volcano.height >= 100, "the volcano rises over the cliffs")
 		local smoke = 0
 		for _, emitter in scenery.EMITTERS do
-			if emitter.area == "EmberCanyon" and emitter.kind == "smoke" then
+			if emitter.area == "EmberCanyon" and emitter.kind == "plume" then
 				smoke += 1
 			end
 		end
-		expect.equal(smoke, 1, "the crater's smoke")
+		-- a beam, not particles: the client stops simulating particle emitters far from the camera, and the volcano is
+		-- 190+ studs from anywhere a player stands
+		expect.equal(smoke, 1, "the crater's smoke plume")
+		local plume = scenery.PLUME
+		assert(plume and plume.rise >= 60, "the plume rises well over the crater")
+		assert(plume.width[2] > plume.width[1], "the plume widens as it rises")
 		assert(#scenery.CHARRED_TREES >= 6 and #scenery.SHARDS >= 4, "charred trees and obsidian shards dot the caldera")
 	end,
 

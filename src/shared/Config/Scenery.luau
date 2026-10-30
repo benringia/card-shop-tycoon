@@ -166,6 +166,20 @@ return {
 		{ model = "ObsidianShards", x = -230, z = 12, height = 4, yaw = 170 },
 	},
 	VOLCANO = { model = "Volcano", x = -335, z = 10, height = 120, yaw = 0, y = -4 },
+	-- The volcano's slow smoke plume: a camera-facing beam (particles far from every player aren't simulated, so they'd
+	-- never show) from the crater, rising `rise` studs and drifting `drift` along z with the wind (sideways as seen from the
+	-- town, so the bend shows), widening, its billowing texture
+	-- (assets/ui/fx/volcano-plume.png, made in code, white with alpha) scrolling slowly up; warm at the crater, ash grey above
+	PLUME = {
+		texture = "rbxassetid://115777596202941",
+		rise = 95,
+		drift = 30,
+		width = { 22, 90 },
+		length = 90, -- studs of plume per texture tile
+		speed = 0.06,
+		colors = { { 150, 80, 55 }, { 62, 57, 62 }, { 105, 100, 104 } },
+		transparency = { 0, 0.15, 1 },
+	},
 	-- The caldera's glowing cracks (Util/LavaCracks lays them out, SceneryService snaps them onto the terrain as glowing
 	-- strips): down the canyon's three inner cliff faces (each a line in plan view, from/to, the cracks between heights
 	-- low and high) and across its floor (a box), clear of the trail and the portal. WIDTH: a strip's width range
@@ -322,7 +336,7 @@ return {
 		{ area = "EmberCanyon", kind = "embers", x = -178, y = 1, z = 0, size = { x = 90, z = 48 }, rate = 12 },
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
 		{ area = "EmberCanyon", kind = "flow", x = -184, y = 0.6, z = -28.5, size = { x = 96, z = 3 }, rate = 10 },
-		{ area = "EmberCanyon", kind = "smoke", x = -335, y = 110, z = 10, size = { x = 10, z = 10 }, rate = 2 }, -- the volcano's crater (moved onto its Fx_Smoke when the model is there)
+		{ area = "EmberCanyon", kind = "plume", x = -335, y = 110, z = 10 }, -- PLUME, from the volcano's crater (its Fx_Smoke when the model is there)
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},
