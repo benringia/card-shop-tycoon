@@ -53,10 +53,18 @@ between the two rows (x -110..110, 96 wide: shop fronts at z ±48) with a zebra 
 concrete sidewalk (8 wide, square 4-stud slabs) along each row's front, a round pale limestone plaza (radius 26, open room for
 event NPCs and event stalls) with two glowing blue rings set in it (the healing area's edge at 12 and one near the rim), a
 glowing line on the street from the plaza to each portal in that portal's colour (`Town.FLOOR`, `TownLayout.crosswalks` /
-`portalPaths`) round the healing spring (the HealingSpring prop slot, 14 tall: the free "Better Low Poly Fountain" by scene_boy,
+`portalPaths`) round the healing spring (the HealingSpring prop slot, 11 tall so its gem clears the gazebo's dome: the free "Better Low Poly Fountain" by scene_boy,
 recoloured moonstone with glowing water, kept in the place's `PlaceProps` (copy: `assets/place-props/HealingSpring.rbxm`);
 the code adds a big turning, bobbing gem over its top, rising sparkles, a blue light, breathing water and a faint
-disc for the 12-stud healing area; a part-built stand-in is used if the model is missing). Around it, `Workspace.PlazaGarden` (hand-placed in the
+disc for the 12-stud healing area; a part-built stand-in is used if the model is missing). **Card Festival Square**
+(the user's pick C of three plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/PlazaBuild`,
+built by SceneryService): a white gazebo with eight columns and a stepped turquoise dome over the fountain (a warm
+light and a lantern inside); a fan of five giant cards on a long stone plinth (real card art, gold edges, rims in
+their rarity colour: Cindercub, Boltlynx, Solarion in the middle, Thunderhorn, Tidecaller) in the north-west corner,
+facing where new players appear; three market stalls with striped awnings (empty counters, ready for event NPCs);
+six cafe tables; string lights sagging from the gazebo's rim to eight lamp posts at the edge; four potted trees; the
+four benches just outside the gazebo (13.5 studs). The lanes to the shop doors and along the street stay clear
+(Lune-tested). It replaces the old hand-placed garden: formerly `Workspace.PlazaGarden` (hand-placed in the
 place, like TownDecor): 4 cherry trees between the benches (street and shop lanes left open), glowing spotted
 mushrooms at the basin, a ring of flowers and bushes, four round grass lawns with clover tufts (one per quarter)
 and a low wooden fence round the plaza edge (radius 21, 2 tall) with gaps at the four lanes; Creator Store pieces were stripped to parts, meshes, lights and
@@ -1177,6 +1185,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
+        │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
@@ -1207,6 +1216,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FrameWatchdog.luau # turns the extras off on slow frames (pure, Lune-tested)
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
+            ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1548,8 +1558,10 @@ boss models; the ranch and Heroic tiers come after those.
   cinematic (schema v13), measured inside the budget (10.5). Feedback rounds built: no grass in shops, Frostpeak on a
   snowy rise, lava and saguaros, more life everywhere, an aurora of curtain beams; then the snowman removed, a frozen
   waterfall of ice over a frozen pond, layered forest falls with splash and foam, bigger rocks; then a grove between the
-  east trails and a dressed edge on the rise, the leftover Prism Hydra copy removed from the place. Awaiting the user's
-  check in Studio.
+  east trails and a dressed edge on the rise, the leftover Prism Hydra copy removed from the place; then the plaza
+  redesigned as the Card Festival Square (pick C) and the spawn pad made invisible. Final review fixes: the boss board
+  shows directions to the Frontier portal instead of a travel button the server now refuses, and the Forest Falls
+  pool has a floor. Awaiting the user's check in Studio.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

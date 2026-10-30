@@ -28,7 +28,7 @@ return {
 	-- the middle (the plaza's spring); y: the ground at home; height: studs tall.
 	CRITTERS = {
 		{ model = "Fox", area = "town", home = { x = 150, z = -62 }, radius = 8, height = 2.6 },
-		{ model = "Bunny", area = "town", home = { x = 0, z = 0 }, radius = 18, avoid = 9, height = 2 },
+		{ model = "Bunny", area = "town", home = { x = 180, z = 12 }, radius = 8, height = 2 }, -- the grass by the grove (the plaza is paved now)
 		{ model = "Capybara", area = "town", home = { x = -32, z = 68 }, radius = 8, height = 2.8 },
 		{ model = "Fawn", area = "ForestFalls", home = { x = 212, z = -115 }, radius = 10, height = 3.2 },
 		{ model = "Penguin", area = "Frostpeak", home = { x = 215, z = 130 }, y = 10, radius = 9, height = 2.4 },

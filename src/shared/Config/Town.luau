@@ -21,7 +21,7 @@ return {
 		Portal = { height = 14, collide = false },
 		-- The plaza's healing fountain (WildService): parts named Water glow and breathe; a floating gem (the
 		-- model's Crystal part, or one made above its top) turns over it. The model lives in PlaceProps (meshes).
-		HealingSpring = { height = 14, collide = true },
+		HealingSpring = { height = 11, collide = true }, -- 11 so its floating gem clears the plaza gazebo's dome (Config/Plaza)
 		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
@@ -47,7 +47,7 @@ return {
 	LAYOUT = {
 		LAMP_INSET = 2, -- lamps stand this far into the street from the plot fronts
 		ROW_END_LAMP_OFFSET = 4, -- past the outer edge of each row's end plots
-		BENCH_RADIUS = 11, -- around the spring
+		BENCH_RADIUS = 13.5, -- around the spring, just outside the plaza gazebo (Config/Plaza)
 		BENCH_ANGLES = { 45, 135, 225, 315 },
 		EDGE_FENCE_INSET = 2, -- the fence round the island stands this far inside the bounds
 		FENCE_SECTION = 6.5, -- one Fence prop per section (the Fence model is 6.5 long at its 4-stud height)
@@ -61,7 +61,7 @@ return {
 	-- east trails' start; each spot's flock loops round its centre between its radii. Studs; colours as { r, g, b }.
 	BUTTERFLIES = {
 		SPOTS = {
-			{ x = 0, z = 0, count = 10, minRadius = 6, maxRadius = 17 },
+			{ x = 0, z = 0, count = 10, minRadius = 6.5, maxRadius = 8.5 }, -- under the plaza gazebo's dome, round the fountain
 			{ x = 190, z = -120, count = 5, minRadius = 6, maxRadius = 18 },
 			{ x = 136, z = 0, count = 3, minRadius = 3, maxRadius = 10 },
 		},

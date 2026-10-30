@@ -15,6 +15,9 @@ local Props = require(SharedUtil:WaitForChild("Props"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TownTerrain = require(SharedUtil:WaitForChild("TownTerrain"))
 local TownService = require(script.Parent:WaitForChild("TownService"))
+local ServerUtil = (script.Parent :: Instance).Parent:WaitForChild("Util")
+local ScenePieces = require(ServerUtil:WaitForChild("ScenePieces"))
+local PlazaBuild = require(ServerUtil:WaitForChild("PlazaBuild"))
 
 local SceneryService = {}
 
@@ -61,61 +64,12 @@ local function buildTerrain()
 	end
 end
 
-local function anchorPart(parent: Instance, name: string, position: Vector3, size: Vector3?): Part
-	local part = Instance.new("Part")
-	part.Name = name
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.Transparency = 1
-	part.Size = size or Vector3.one
-	part.Position = position
-	part.Parent = parent
-	return part
-end
+local anchorPart = ScenePieces.anchor
+local piece = ScenePieces.piece
 
-local function piece(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, surface: Enum.Material, shape: Enum.PartType?): Part
-	local part = Instance.new("Part")
-	part.Name = name
-	part.Anchored = true
-	part.Shape = shape or Enum.PartType.Block
-	part.Size = size
-	part.CFrame = cframe
-	part.Color = color
-	part.Material = surface
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	part.Parent = parent
-	return part
-end
-
--- A copy of one of the town's prop models (ReplicatedStorage.PropModels), scaled to `height` and stood on the ground
+-- A scaled copy of a town prop model, standing on the drawn terrain unless the spot gives its own ground height
 local function placeModel(parent: Instance, spot: any, label: string): Model?
-	local models = ReplicatedStorage:FindFirstChild("PropModels")
-	local source = models and models:FindFirstChild(spot.model)
-	local model: Model
-	if source and source:IsA("Model") then
-		model = source:Clone()
-	elseif source and source:IsA("BasePart") then
-		-- Some props are a single mesh part (rocks, roots, lily pads): wrapped in a model so they scale the same way
-		model = Instance.new("Model")
-		local part = source:Clone()
-		part.Parent = model
-		model.PrimaryPart = part
-	else
-		warn(`[SceneryService] no prop model {spot.model}`)
-		return nil
-	end
-	model.Name = label
-	local _, size = model:GetBoundingBox()
-	model:ScaleTo(model:GetScale() * spot.height / size.Y)
-	local ground = spot.y or TownTerrain.groundAt(terrainOps, spot.x, spot.z) or 0
-	model:PivotTo(CFrame.new(spot.x, ground, spot.z) * CFrame.Angles(0, math.rad(spot.yaw or 0), 0))
-	local box, boxSize = model:GetBoundingBox()
-	model:PivotTo(model:GetPivot() - Vector3.new(0, box.Position.Y - boxSize.Y / 2 - ground, 0))
-	model.Parent = parent
-	return model
+	return ScenePieces.placeModel(parent, spot, label, spot.y or TownTerrain.groundAt(terrainOps, spot.x, spot.z) or 0)
 end
 
 local function buildTrees(folder: Folder)
@@ -558,6 +512,7 @@ local function buildDressing()
 	buildSmallLife(folder)
 	buildEffects(folder)
 	buildSounds(folder)
+	PlazaBuild.build(folder)
 	folder.Parent = workspace
 	quietSmallShadows()
 end

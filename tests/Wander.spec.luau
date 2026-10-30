@@ -17,14 +17,8 @@ local function stubRandom(seed: number)
 end
 
 return {
-	["targets stay in the home area, clear of the spring"] = function()
-		local bunny
-		for _, critter in ambient.CRITTERS do
-			if critter.model == "Bunny" then
-				bunny = critter
-			end
-		end
-		assert(bunny and bunny.avoid, "the bunny keeps clear of the spring")
+	["targets stay in the home area, clear of the middle"] = function()
+		local bunny = { home = { x = 0, z = 0 }, radius = 18, avoid = 9 } -- a home round something to keep clear of
 		local rng = stubRandom(42)
 		for _ = 1, 1000 do
 			local target = Wander.target(bunny.home, bunny.radius, bunny.avoid, rng)
