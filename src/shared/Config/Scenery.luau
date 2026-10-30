@@ -133,7 +133,8 @@ return {
 		{ x = 246, z = 82, model = "PineB", height = 29, yaw = 330 },
 	},
 	DUSTED_TINT = { 170, 205, 178 }, -- green leaves frosted pale
-	-- Ember Canyon: cacti along the walls, the Arena portal's stone platform and the torch pillars beside it
+	-- Ember Canyon: cacti along the walls and the torch pillars beside the Arena portal (its obsidian arch stands on the
+	-- sand: the round stone platform went with the portals remodel, stonework under a natural arch)
 	CACTI = {
 		{ x = -150, z = 20, height = 7 },
 		{ x = -168, z = -19, height = 6 },
@@ -143,12 +144,12 @@ return {
 		{ x = -140, z = -20, height = 5 },
 		{ x = -176, z = 18, height = 5 },
 	},
-	PLATFORM = { x = -205, z = 0, radius = 7, height = 0.8, color = { 150, 120, 105 } },
 	TORCHES = {
-		{ x = -203, z = 11, height = 7 }, -- just outside the portal frame's sides, so they show
-		{ x = -203, z = -11, height = 7 },
+		{ x = -203, z = 15, height = 7 }, -- just outside the obsidian arch's sides (Town.PORTAL_SCENERY_CLEAR), so they show
+		{ x = -203, z = -15, height = 7 },
 	},
 	TORCH_FIRE = { COLOR = { 255, 150, 60 }, RATE = 18 },
+	TORCH_STONE = { 150, 120, 105 },
 	CACTUS = { BODY = { 90, 156, 80 }, DARK = { 70, 130, 64 }, FLOWER = { 255, 120, 170 } },
 	-- Lava: a glowing river at the south wall's foot (just past the walkable floor) and a pool behind the portal
 	LAVA = {

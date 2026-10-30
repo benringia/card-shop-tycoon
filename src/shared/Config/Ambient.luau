@@ -33,7 +33,7 @@ return {
 		{ model = "Puppy", area = "plaza", home = { x = 0, z = 0 }, orbit = 10.9, maxArc = 120, y = 0.5, height = 2.2 }, -- laps on the gazebo's floor, outside the columns
 		{ model = "Fox", area = "town", home = { x = 150, z = -62 }, radius = 8, height = 2.6 },
 		{ model = "Bunny", area = "town", home = { x = 180, z = 12 }, radius = 8, height = 2 }, -- the grass by the grove (the plaza is paved now)
-		{ model = "Capybara", area = "town", home = { x = -32, z = 68 }, radius = 8, height = 2.8 },
+		{ model = "Capybara", area = "town", home = { x = -21, z = 42 }, y = 0.3, radius = 3.5, height = 2.8 }, -- on the sidewalk outside the south shops (the tall grass between them hid it), clear of the planters and Plot 5's delivery mat
 		{ model = "Fawn", area = "ForestFalls", home = { x = 212, z = -115 }, radius = 10, height = 3.2 },
 		{ model = "Penguin", area = "Frostpeak", home = { x = 215, z = 130 }, y = 10, radius = 9, height = 2.4 },
 		{ model = "BabyDragon", area = "EmberCanyon", home = { x = -180, z = 10 }, radius = 9, height = 3 },

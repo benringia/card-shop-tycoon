@@ -122,13 +122,12 @@ return {
 					end
 					local portal = trail[#trail]
 					local toPortal = math.sqrt((prop.x - portal.x) ^ 2 + (prop.z - portal.z) ^ 2)
-					assert(toPortal >= 6, `prop at {prop.x}, {prop.z} crowds the {area.key} portal`)
+					assert(toPortal >= town.PORTAL_SCENERY_CLEAR, `prop at {prop.x}, {prop.z} crowds the {area.key} portal`)
 				end
 				local inIsland = math.abs(prop.x) < town.BOUNDS.HALF_X and math.abs(prop.z) < town.BOUNDS.HALF_Z
 				assert(not inIsland, `prop at {prop.x}, {prop.z} lands among the hand-placed town decor`)
 			end
 		end
-		expect.equal(PortalTrails.inside(town.WALK_EDGE, scenery.PLATFORM), true, "the Arena platform is walkable")
 		-- Nobody wades into the lava: the river and the pool lie past the walkable floor
 		local river = scenery.LAVA.RIVER
 		for _, p in { river.from, river.to, { x = (river.from.x + river.to.x) / 2, z = river.from.z } } do

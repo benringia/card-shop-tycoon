@@ -13,6 +13,7 @@ local SHOP_SCREEN_FILES = {
 	"src/shared/Util/BrandBox.luau",
 	"src/client/Controllers/CardEffectsController.luau",
 	"src/client/Controllers/CaseSpinController.luau",
+	"src/server/Util/PortalBuild.luau", -- the portals' swirl (world GUIs everywhere follow the same rule)
 }
 
 local function number(path: string, key: string): number
