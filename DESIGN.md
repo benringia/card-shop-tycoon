@@ -1290,6 +1290,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── ModelPreload.luau  # which creature models a client downloads in the background, and in what order (pure, Lune-tested)
+            ├── CardArt.luau       # which painting a card face draws: the half-size copy when drawn small, the full one for big views (pure, Lune-tested)
             ├── PortalLooks.luau   # which model stands at a portal, its label height, the parts and effects a look needs (pure, Lune-tested)
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
@@ -1527,7 +1528,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   download call; each is drawn in a hidden viewport once downloaded so its textures finish. Measured 2026-10-31: the
   bought packs also hold 45 unused models with 619 of the 668 meshes, all preloaded before, so a new player's own cards
   waited behind them (about 196 queued requests for 6 s even from Studio's cache); now the 49 used models are drawn
-  about 8 s into the game. Card art (`CardFace`) preloads at start as before.
+  about 8 s into the game.
+- Card paintings come in two sizes (`Config/CardArt`, `Util/CardArt`): the full 680 x 1014 painting for big views and a
+  half-size copy (340 x 507, `assets/ui/card-art-small`) wherever a face is drawn no taller than that (binder pages,
+  shelves, cases, the party bar); each face picks by its drawn height. The small copies preload first at start, then the
+  full ones. Measured 2026-10-31: the full paintings took about 113 MB of the client's ~150-220 MB of textures and 6 MB
+  to download (small: 1.7 MB); drawn small they were evicted under memory pressure and reloaded, leaving binder faces
+  blank after a page turn. After flipping every binder page, textures 220 MB before, 183 MB after.
 - Town props: under 2k triangles per prop model and 60k for the whole town; models over 150 parts use the
   stand-in. Landmark exception: the three portal models up to 4k each (`portal_kit.MAX_TRIANGLES`; root arch 3,472,
   ice ring 2,168, obsidian arch 856), one portal in view at a time. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.

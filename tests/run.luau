@@ -60,6 +60,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PortalLooks = require("./PortalLooks.spec"),
 	LavaCracks = require("./LavaCracks.spec"),
 	ModelPreload = require("./ModelPreload.spec"),
+	CardArt = require("./CardArt.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec
