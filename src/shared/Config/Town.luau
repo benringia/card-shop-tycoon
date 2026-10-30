@@ -18,7 +18,11 @@ return {
 		Hedge = { height = 3, collide = true },
 		Bench = { height = 3, collide = true, yaw = 180 }, -- the bench model's seat faces its +Z: turned, the plaza benches face the spring
 		Fence = { height = 4, collide = true },
-		Portal = { height = 14, collide = false },
+		Portal = { height = 14, collide = false }, -- today's frame: stands in at a portal until its own model is saved
+		-- The portals grown from their worlds (PORTAL_LOOKS; Blender models, docs/props.md)
+		PortalWild = { height = 28, collide = false },
+		PortalFrontier = { height = 28, collide = false },
+		PortalArena = { height = 28, collide = false },
 		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
@@ -169,6 +173,48 @@ return {
 		BOLLARD_HEIGHT = 2.4,
 		TEXT = "📦 DELIVERIES",
 	},
+	-- The portals grown from their worlds (spec 2026-10-30-town-portals-design, the user's pick A), keyed like
+	-- PORTAL_AREAS' effect. Each model's parts (Util/PortalLooks.parts): Frame, Opening (the vortex fills it) and the
+	-- spots its effects use; glow: parts drawn as glowing colour. vortex: the swirl's colours (start, end), its spin
+	-- (degrees a second, client side near the camera) and transparency. effects: beams between two parts (from, to;
+	-- a scrolling texture) or emitters on a part (fields as PORTAL_EFFECTS' emitters). Server/Util/PortalBuild.
+	PORTAL_LOOKS = {
+		Wild = {
+			slot = "PortalWild",
+			vortex = { colors = { { 120, 230, 90 }, { 255, 215, 90 } }, spin = 30, transparency = 0.05 },
+			light = { color = { 140, 235, 110 }, brightness = 2, range = 24 },
+			glow = { Pool = { 90, 220, 210 }, Flowers = { 255, 215, 90 } },
+			effects = {
+				{ kind = "beam", from = "Fx_Trickle", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.9, speed = 1.5, color = { 120, 220, 255 } },
+				{ kind = "emitter", at = "Fx_Pool", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 8, lifetime = { 0.6, 1 }, speed = { 1, 2 }, size = { 0.6, 0 }, rise = -6, spin = 90, colors = { { 170, 235, 255 }, { 255, 255, 255 } } },
+				{ kind = "emitter", at = "Opening", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 16, lifetime = { 2, 3 }, speed = { 1.5, 3 }, size = { 0.9, 0 }, rise = 1, spin = 60, colors = { { 140, 235, 110 }, { 245, 215, 90 } } },
+			},
+		},
+		Frontier = {
+			slot = "PortalFrontier",
+			vortex = { colors = { { 70, 200, 255 }, { 235, 250, 255 } }, spin = 25, transparency = 0.05 },
+			light = { color = { 110, 200, 255 }, brightness = 2, range = 24 },
+			glow = {},
+			effects = {
+				{ kind = "emitter", at = "Fx_Base", texture = "rbxasset://textures/particles/smoke_main.dds", rate = 3, lifetime = { 3, 4 }, speed = { 0.2, 0.6 }, size = { 4, 7 }, rise = 0.2, spin = 20, transparency = { 0.8, 1 }, colors = { { 200, 240, 255 } } },
+				{ kind = "emitter", at = "Opening", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 14, lifetime = { 3, 4 }, speed = { 0.4, 1 }, size = { 0.7, 0.4 }, rise = -0.8, spin = 30, colors = { { 215, 245, 255 }, { 160, 205, 255 } } },
+			},
+		},
+		Arena = {
+			slot = "PortalArena",
+			vortex = { colors = { { 255, 70, 30 }, { 255, 200, 80 } }, spin = 35, transparency = 0.05 },
+			light = { color = { 255, 120, 50 }, brightness = 2, range = 24 },
+			glow = { Lava = { 255, 110, 30 } },
+			effects = {
+				{ kind = "beam", from = "Fx_DripA", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
+				{ kind = "beam", from = "Fx_DripB", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
+				{ kind = "emitter", at = "Fx_Pool", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 20, lifetime = { 1.2, 1.8 }, speed = { 3, 5 }, size = { 0.6, 0 }, rise = 3, spin = 90, colors = { { 255, 205, 90 }, { 255, 90, 40 } } },
+			},
+		},
+	},
+	-- MAX_EFFECTS: beams and emitters per portal, the vortex included (one light on top, apart from the area's own cap);
+	-- SPIN_RANGE: studs from the camera the vortex turns within; LABEL_GAP: the name floats this far over the model
+	PORTAL_FX = { MAX_EFFECTS = 4, SPIN_RANGE = 150, LABEL_GAP = 3, VORTEX_TEXTURE = "" },
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)
