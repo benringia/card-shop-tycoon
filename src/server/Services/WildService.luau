@@ -25,6 +25,7 @@ local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
+local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
 local Services = script.Parent :: Instance
@@ -280,10 +281,8 @@ local function buildMap(): Folder
 		-- Faces the way players arrive (from -Z)
 		sign(folder, `{zone.name}\nRecommended Lv {zone.recommended}+`, CFrame.new(edge + Vector3.new(12, 4, 0)) * CFrame.Angles(0, math.pi, 0))
 		decorate(folder, center, index * 97)
-		for spot = 1, Wild.MONSTERS_PER_ZONE do
-			local angle = (spot / Wild.MONSTERS_PER_ZONE) * math.pi * 2
-			local radius = Wild.ZONE_SIZE * (if spot % 2 == 0 then 0.32 else 0.18)
-			local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(center + Vector3.new(math.cos(angle) * radius, 0.5, math.sin(angle) * radius)), Color3.new(1, 1, 1))
+		for _, spot in WildValley.spawnSpots(Wild, index) do
+			local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(spot.x, center.Y + 0.5, spot.z), Color3.new(1, 1, 1))
 			point.Transparency = 1
 			point.CanCollide = false
 			point.CanQuery = false
