@@ -112,10 +112,23 @@ user kept the map's spots). Trails are paved terrain with the portal's glowing l
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
 (`Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
-`SceneryService`); a grove of trees fills the hill between the east trails. Each portal has a floating name label and
-its own look (`Town.PORTAL_EFFECTS`): the Wild green
-with rising sparkles, the Frontier icy blue with drifting snow and an aurora shimmer, the Arena red with flying
-embers; ring and frame glow tinted to match, a soft glow light, 2 emitters per portal. Travel needs the portal: the
+`SceneryService`); a grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+(portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
+models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
+`tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
+`assets/props/Portal<World>.rbxm`): at Forest Falls an arch of thick twisting roots crossing over the top, moss, vines
+with glowing flowers, a trickle of water from the right roots into a glowing pool; at Frostpeak a ring of faceted blue
+ice crystals with icicles and snow caps rising out of a blue-grey drift, frosty mist; at Ember Canyon black-purple
+obsidian shards leaning into an uneven pointed arch with lava cracks, two lava streams dripping into a molten pool and
+rising embers (on the sand between the torches: the round stone platform went). A spinning swirl in the world's colours
+fills each opening (`assets/ui/fx/portal-vortex.png`, Figma; spun on the client within 150 studs with the extras on,
+`PortalFxController`). The looks live in `Town.PORTAL_LOOKS` (vortex colours and spin, light, glowing parts, at most 4
+effects with the vortex); `Server/Util/PortalBuild` dresses a placed model from its named parts (`Frame`, `Opening`,
+`Fx_*` spots, glow parts; `Util/PortalLooks.parts`, checked by a Lune test on the saved files) and the model streams in
+whole (tag `TownPortal`). Until a portal's model is saved, today's frame stands there (`Util/PortalLooks.slot`) with its
+old look (`Town.PORTAL_EFFECTS`: ring and frame glow tinted, a soft light, 2 emitters), which also colours the trail
+arches and glowing paths. The travel rings keep their prompts, hidden behind the new models; each name label floats
+3 studs over whichever model stands. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
 Wild goes through its prompt only (the WildTravel remote accepts just "home"), and the Frontier menu's choices only count
 within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
 z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
@@ -1066,7 +1079,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py)
 ├── tools/textures/             # pack textures and flipbook sheets (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
@@ -1074,7 +1087,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── Services/
     │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
     │   │   ├── PlotService.luau      # claim/release plots, modern shop shells (glass front, sliding doors, sign band, roof)
-    │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portal frames, walls, trail lines, signs, lighting
+    │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portals, walls, trail lines, signs, lighting
     │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town and in the three portal areas (Config/Scenery)
     │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
@@ -1108,6 +1121,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── DungeonBuilder.luau   # the Dungeon's cavern: rooms, barriers, doors, crystals, lighting
     │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, card fan, stalls, cafe sets and townsfolk, lights, planters
     │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
+    │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
@@ -1136,6 +1150,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
+    │   │   ├── PortalFxController.luau # spins the town portals' vortexes near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
@@ -1252,6 +1267,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
+            ├── PortalLooks.luau   # which model stands at a portal, its label height, the parts and effects a look needs (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1482,7 +1498,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - Use CollectionService tags for shelves/interactables.
 - Stream-friendly: enable StreamingEnabled, test on low-end phone.
 - Town props: under 2k triangles per prop model and 60k for the whole town; models over 150 parts use the
-  stand-in. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
+  stand-in. Landmark exception: the three portal models up to 4k each (`portal_kit.MAX_TRIANGLES`; root arch 3,472,
+  ice ring 2,168, obsidian arch 856), one portal in view at a time. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
 - Shop screens (SurfaceGuis and BillboardGuis on shop items: card faces and backs, price tags, shelf headers, machine
   screens, box prints) always get a draw distance (`Config/ShopDetail`: 60 studs, full card faces 30; a Lune test fails
   a new one without it). Measured 2026-10-30 in a Play-mode stress test (6 shops x 30 items, 24 customers, 12 workers,
@@ -1499,6 +1516,14 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   hand-placed decor (under 4 studs) casts no shadow; sign and arch words stop drawing beyond 120 studs. The 60k triangle
   town total no longer covers the areas: the scenery reuses the town's prop meshes (scaled copies batch together) plus
   code-built parts, so no new mesh triangles were added.
+- Town portals remodel (measured 2026-10-31 in a fresh Studio session: copies of Plot1's stocked shelves in the other 5
+  plots, 5 avatar clones; render CPU from fixed cameras, the portals taken away and put back in turn at each view):
+  60 fps everywhere at levels 1 and 10; the street 9.2-9.5 ms with or without them (no change); standing at a portal
+  +0.1 to +0.2 ms (Forest Falls 7.4 → 7.6, Ember Canyon 7.3 → 7.4, Frostpeak within noise at level 10). The plaza
+  measured +1.1 ms at level 1 the day before, 60 fps held. Caps: at most 4,000 triangles per portal model, at most 4
+  effects and a light per portal (Lune-tested), the vortex spins only within 150 studs with the extras on, the models
+  stream Atomic. Comparing "on" then "off" in one pass over-read the cost (+1.6 ms on the street, where no portal is
+  in view): alternate off/on/off/on at the same camera.
 
 ---
 

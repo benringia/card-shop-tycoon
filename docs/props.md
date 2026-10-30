@@ -50,6 +50,22 @@ Body is `Plaza.FOUNTAIN_RADIUS` round. To update it:
 3. Delete the Workspace copy (the import isn't anchored, so in Play it falls apart beside the shop); Rojo syncs the
    file into PropModels. Stop and Play to see it.
 
+## The town portals (PortalWild, PortalFrontier, PortalArena)
+
+Slots of their own (`Town.SLOTS`), about 28 studs tall, placed where the portal frame stood; until a portal's file
+exists today's `Portal` frame stands in (`Util/PortalLooks.slot`). Each is built in Blender by
+`tools/blender/build_portal_<wild|frontier|arena>.py` on `portal_kit.py` (run through the Blender MCP: open an empty
+file first, then `exec(open(path).read())`; `EXPORT=0` builds without saving). They write
+`assets/blender/Portal<World>/Portal<World>.{blend,fbx}` and a palette, and print triangles (at most 4,000 each).
+Object names matter (`Util/PortalLooks.parts`, checked by `tests/CreatureAssets` on the saved files): `Frame` (the
+model, palette texture), `Opening` (a flat disc filling the arch: the game hides it and draws the vortex there),
+`Fx_*` markers (hidden: where a trickle, drip, splash or mist starts) and glow parts (`Pool`, `Flowers`, `Lava`: the
+game makes them glowing colour). The front faces -Y in Blender. Colours and effects: `Town.PORTAL_LOOKS`. To update one:
+
+1. Studio → Import 3D → the `.fbx` (default settings).
+2. Check the part names, right-click the Model → **Save to File…** → `assets/props/Portal<World>.rbxm` (over the old one).
+3. Delete the Workspace copy (unanchored: it falls apart in Play). Stop and Play to see it.
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models
