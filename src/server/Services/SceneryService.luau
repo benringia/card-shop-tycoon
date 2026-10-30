@@ -94,11 +94,19 @@ end
 local function placeModel(parent: Instance, spot: any, label: string): Model?
 	local models = ReplicatedStorage:FindFirstChild("PropModels")
 	local source = models and models:FindFirstChild(spot.model)
-	if not source or not source:IsA("Model") then
+	local model: Model
+	if source and source:IsA("Model") then
+		model = source:Clone()
+	elseif source and source:IsA("BasePart") then
+		-- Some props are a single mesh part (rocks, roots, lily pads): wrapped in a model so they scale the same way
+		model = Instance.new("Model")
+		local part = source:Clone()
+		part.Parent = model
+		model.PrimaryPart = part
+	else
 		warn(`[SceneryService] no prop model {spot.model}`)
 		return nil
 	end
-	local model = source:Clone()
 	model.Name = label
 	local _, size = model:GetBoundingBox()
 	model:ScaleTo(model:GetScale() * spot.height / size.Y)
@@ -559,8 +567,9 @@ function SceneryService.Start()
 		return
 	end
 	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
+	-- Neither holds up the server's start (the players' data loads after the services start)
 	task.spawn(buildTerrain)
-	buildDressing()
+	task.spawn(buildDressing)
 end
 
 return SceneryService
