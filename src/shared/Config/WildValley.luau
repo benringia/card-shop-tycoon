@@ -54,7 +54,25 @@ return {
 		{ shape = "Block", x = 166, y = 30, z = 1460, yaw = 40, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
 		{ shape = "Block", x = 20, y = 36, z = 1566, yaw = -20, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
 		{ shape = "Block", x = 90, y = 35, z = 1568, yaw = 30, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
+		-- Rocky relief on the gorge's cliffs (turned blocks standing out of the faces), a brow over the cave
+		{ shape = "Block", x = -72, y = 12, z = 1300, yaw = 20, size = { x = 10, y = 20, z = 14 }, material = "Limestone" },
+		{ shape = "Block", x = -72, y = 14, z = 1384, yaw = -25, size = { x = 10, y = 24, z = 16 }, material = "Limestone" },
+		{ shape = "Block", x = -75, y = 26, z = 1316, yaw = 35, size = { x = 12, y = 16, z = 12 }, material = "Limestone" },
+		{ shape = "Block", x = -75, y = 28, z = 1366, yaw = -30, size = { x = 12, y = 16, z = 12 }, material = "Limestone" },
+		{ shape = "Ball", x = -75, y = 25, z = 1340, radius = 8, material = "Limestone" },
+		{ shape = "Block", x = 159, y = 18, z = 1310, yaw = 25, size = { x = 12, y = 18, z = 14 }, material = "Limestone" },
+		{ shape = "Block", x = 159, y = 20, z = 1372, yaw = -20, size = { x = 12, y = 18, z = 14 }, material = "Limestone" },
+		-- The cave mouth carved into the gorge's west rock (applied last; CAVE dresses it)
+		{ shape = "Block", x = -74, y = 9, z = 1340, size = { x = 16, y = 18, z = 22 }, material = "Air" },
 	},
+	-- The crystal cave's mouth (the carved opening above): a dark wall on its back face (found by a ray westward from x,
+	-- once the terrain is filled), blue light inside
+	CAVE = { x = -60, z = 1340, width = 22, height = 18, inside = { 16, 18, 30 }, light = { 110, 190, 255 } },
+	-- The gorge's crystals: clusters of three (a tall one and two leaning), glowing blue
+	CRYSTAL_LOOK = { color = { 90, 180, 255 }, tip = { 190, 235, 255 }, transparency = 0.12 },
+	-- The ridge's floor cracks (Util/LavaCracks.floor: off the trail), and its vents' look
+	RIDGE_CRACKS = { SEED = 47, FLOOR = { centre = { x = 0, z = 1480 }, size = { x = 116, z = 116 }, count = 14 } },
+	VENT_LOOK = { rock = { 40, 34, 40 }, glow = { 255, 120, 30 }, radius = 3 },
 
 	-- Town prop models (PropModels), scaled to `height` on the drawn ground. zone: which mood they dress.
 	PROPS = {

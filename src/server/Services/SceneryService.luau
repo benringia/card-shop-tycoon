@@ -321,7 +321,76 @@ local function buildTrailMarkers(folder: Instance)
 	end
 end
 
--- The Wild valley's dressing (Config/WildValley): its props, the bridge and the trail's markers
+-- A cluster of glowing blue crystals in the gorge: a tall one and two smaller leaning out of its foot
+local function buildCrystalCluster(folder: Instance, spot: any)
+	local look = WildValleyConfig.CRYSTAL_LOOK
+	local color, tip = Props.color(look.color), Props.color(look.tip)
+	local base = CFrame.new(spot.x, 0, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
+	for index, shape in { { 1, 0, 0, 0 }, { 0.6, 0.9, 25, 40 }, { 0.5, -0.8, -20, 200 } } do
+		local height = spot.height * shape[1]
+		local lean = CFrame.Angles(math.rad(shape[3]), math.rad(shape[4]), 0)
+		local crystal = piece(folder, "GorgeCrystal", Vector3.new(height * 0.4, height, height * 0.4), base * CFrame.new(shape[2], 0, 0) * lean * CFrame.new(0, height * 0.42, 0) * CFrame.Angles(0, math.rad(45), 0), if index == 1 then color else tip, Enum.Material.Neon)
+		crystal.Transparency = look.transparency
+		crystal.CanCollide = index == 1
+		crystal.CastShadow = false
+	end
+end
+
+-- The crystal cave's mouth (WildValley.CAVE): the opening is carved into the rock (an Air op); a dark wall closes its
+-- back, set on the carved face a ray finds (so it runs once the terrain is filled), and a cold blue light glows inside
+local function buildCave(folder: Instance)
+	local cave = WildValleyConfig.CAVE
+	local hit = snap(Vector3.new(cave.x, cave.height / 2, cave.z), Vector3.new(-40, 0, 0))
+	if not hit then
+		return
+	end
+	local face = hit.Position.X + 0.4
+	local back = piece(folder, "CaveDark", Vector3.new(0.4, cave.height, cave.width), CFrame.new(face, cave.height / 2, cave.z), Props.color(cave.inside), Enum.Material.SmoothPlastic)
+	back.CastShadow = false
+	back.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Props.color(cave.light)
+	light.Brightness = 1.6
+	light.Range = 18
+	light.Shadows = false
+	light.Parent = anchorPart(folder, "CaveGlow", Vector3.new(face + 5, 4, cave.z))
+end
+
+-- A smoking vent on the ridge: a low basalt cone, a glowing core (its smoke is an area effect, Scenery.EMITTERS)
+local function buildVent(folder: Instance, spot: any)
+	local look = WildValleyConfig.VENT_LOOK
+	local rock, glow = Props.color(look.rock), Props.color(look.glow)
+	local upright = CFrame.Angles(0, 0, math.rad(90))
+	piece(folder, "VentBase", Vector3.new(spot.height * 0.6, look.radius * 2.4, look.radius * 2.4), CFrame.new(spot.x, spot.height * 0.3, spot.z) * upright, rock, Enum.Material.Basalt, Enum.PartType.Cylinder)
+	piece(folder, "VentRim", Vector3.new(spot.height * 0.5, look.radius * 1.5, look.radius * 1.5), CFrame.new(spot.x, spot.height * 0.75, spot.z) * upright, rock, Enum.Material.Basalt, Enum.PartType.Cylinder)
+	local core = piece(folder, "VentCore", Vector3.new(0.2, look.radius, look.radius), CFrame.new(spot.x, spot.height + 0.02, spot.z) * upright, glow, Enum.Material.Neon, Enum.PartType.Cylinder)
+	core.CanCollide = false
+	core.CastShadow = false
+end
+
+-- The ridge's glowing floor cracks (Util/LavaCracks.floor, clear of the trail), snapped onto the terrain once it's filled
+local function buildRidgeCracks(folder: Instance)
+	local ridge = WildValleyConfig.RIDGE_CRACKS
+	local holder = Instance.new("Folder")
+	holder.Name = "RidgeCracks"
+	holder.Parent = folder
+	local random = Random.new(ridge.SEED)
+	local trail = WildValley.trail(Wild)
+	local color = Props.color(Scenery.CRACKS.COLOR)
+	local floor = LavaCracks.floor(ridge.FLOOR, Scenery.CRACKS.WIDTH, trail, trail[1], WildValleyConfig.TRAIL_WIDTH / 2 + 2, 0, function(): number
+		return random:NextNumber()
+	end)
+	for _, segment in floor do
+		local a = snap(Vector3.new(segment.a.x, 20, segment.a.z), Vector3.new(0, -40, 0))
+		local b = snap(Vector3.new(segment.b.x, 20, segment.b.z), Vector3.new(0, -40, 0))
+		if a and b then
+			strip(holder, a, b, segment.width, color)
+		end
+	end
+end
+
+-- The Wild valley's dressing (Config/WildValley): props, the bridge, the trail's markers, the gorge's crystals and
+-- cave, the ridge's charred trees, obsidian shards (with the caldera's colliders) and vents
 local function buildWildValley(folder: Folder)
 	local holder = Instance.new("Folder")
 	holder.Name = "WildValley"
@@ -331,6 +400,21 @@ local function buildWildValley(folder: Folder)
 	end
 	buildBridge(holder)
 	buildTrailMarkers(holder)
+	for _, spot in WildValleyConfig.CRYSTALS do
+		buildCrystalCluster(holder, spot)
+	end
+	for _, list in { WildValleyConfig.CHARRED, WildValleyConfig.SHARDS } do
+		for _, spot in list do
+			local model = placeModel(holder, spot, spot.model)
+			if model then
+				dressCalderaProp(model)
+				calderaCollider(model, spot)
+			end
+		end
+	end
+	for _, spot in WildValleyConfig.VENTS do
+		buildVent(holder, spot)
+	end
 end
 
 local function buildCanyon(folder: Folder)
@@ -557,6 +641,20 @@ local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
 		emitter.Size = NumberSequence.new(0.3, 0)
 		emitter.EmissionDirection = Enum.NormalId.Top
 	end,
+	-- a ridge vent's slow grey smoke, rising and spreading
+	ventsmoke = function(emitter)
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Color = ColorSequence.new(Color3.fromRGB(110, 100, 104), Color3.fromRGB(70, 64, 68))
+		emitter.LightEmission = 0
+		emitter.Lifetime = NumberRange.new(4, 6)
+		emitter.Speed = NumberRange.new(2, 3.5)
+		emitter.Acceleration = Vector3.new(0.6, 1, 0)
+		emitter.Size = NumberSequence.new(2, 7)
+		emitter.Transparency = NumberSequence.new(0.35, 1)
+		emitter.RotSpeed = NumberRange.new(-20, 20)
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.EmissionDirection = Enum.NormalId.Top
+	end,
 	bubbles = function(emitter)
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 90, 20))
 		emitter.Lifetime = NumberRange.new(0.8, 1.4)
@@ -749,6 +847,8 @@ function SceneryService.Start()
 		buildTerrain()
 		local scenery = workspace:WaitForChild("Scenery")
 		buildCracks(scenery :: Folder)
+		buildRidgeCracks(scenery)
+		buildCave(scenery)
 	end)
 	task.spawn(buildDressing)
 end
