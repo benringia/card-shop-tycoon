@@ -1586,16 +1586,29 @@ boss models; the ranch and Heroic tiers come after those.
   30, with a flat art picture further away (`Config/ShopDetail`, numbers in 10.5); approved by the user and merged
   2026-10-30. Next: the town's nature pass (terrain, waterfalls, big trees, tree sway, grass, butterflies, 3 Cute Pets
   animals) under the measured rules.
-- [ ] Town nature pass, Portal Worlds (spec `2026-10-30-town-portal-worlds-design.md`, plan
+- [x] Town nature pass, Portal Worlds (spec `2026-10-30-town-portal-worlds-design.md`, plan
   `2026-10-30-town-portal-worlds.md`, branch `town-portal-worlds`): the three walk-to portal areas, trails, arches and
   signposts, terrain and scenery, the day cycle in town, tree sway, butterflies, six animals and the first-visit welcome
   cinematic (schema v13), measured inside the budget (10.5). Feedback rounds built: no grass in shops, Frostpeak on a
   snowy rise, lava and saguaros, more life everywhere, an aurora of curtain beams; then the snowman removed, a frozen
   waterfall of ice over a frozen pond, layered forest falls with splash and foam, bigger rocks; then a grove between the
   east trails and a dressed edge on the rise, the leftover Prism Hydra copy removed from the place; then the plaza
-  redesigned as the Card Festival Square (pick C) and the spawn pad made invisible. Final review fixes: the boss board
-  shows directions to the Frontier portal instead of a travel button the server now refuses, and the Forest Falls
-  pool has a floor. Awaiting the user's check in Studio.
+  redesigned as the Card Festival Square (pick C) and the spawn pad made invisible; plaza round 2: a matte gazebo, the
+  Elemental Bloom fountain (pick B), cafe tables with sitting townsfolk, edge planters, a cat and a puppy; round 3:
+  festival carts (pick A), the fountain remodelled in Blender bigger and in bold colours with its magic (rune circle,
+  light column, orbs, motes), the cat asleep on a bench, the benches facing the fountain, the fountain streaming in
+  whole. Final review fixes: the boss board shows directions to the Frontier portal instead of a travel button the
+  server now refuses, and the Forest Falls pool has a floor. Done: approved by the user and merged 2026-10-30.
+  Still open: re-measure the frame budget in a fresh Studio session now the plaza is in (if over: shrink
+  `Scenery.GROUND`, ClockTime at 1-2 Hz); the boss board's "Take me there" stays the one shortcut to Wild boss gates.
+  Deferred minors from its review: the `WildTravel` comment in Remotes still lists "wild"; SceneryService's "neither
+  holds up start" comment is half wrong; TreeSwayController rescans the scene's trees every 2 s (DescendantAdded would
+  be cheaper); DayCycleController moves the sun 10 times a second; WelcomeController freezes with WalkSpeed (a server
+  write during the cinematic can clobber it) and hides every ScreenGui instead of `Hud.setHidden`; the Skip button's
+  phone check isn't recorded; DayCycle gives NaN for a phase shorter than its blend (no config guard test) and
+  `table.clone` of a look is shallow; night grading also tints the pack opening and binder views; TownService's portal
+  effect fallback ignores `spot.y`; BuildController's `WaitForChild("OrderComputer")` warns when the plot streams in
+  late.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
