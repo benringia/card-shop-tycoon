@@ -630,8 +630,27 @@ Lune-tested).
 | Ember Ridge | 10–15 | Magma Golem (Ember), Ash Wolf (Ember) | all |
 
 About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, ×1.6 stats, ×3 rewards).
-Monsters sleep with no player within 100 studs. Placeholder map and monsters are built in code; monster models
+Monsters sleep with no player within 100 studs. Placeholder monsters are built in code; monster models
 go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/rest`, `/elite`.
+
+**The Wild valley** (main game; spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley, three moods"):
+the three zones are one walk-through valley, its land getting harder as you go. You step out beside the root-arch
+portal (`PortalWild`, the Forest Falls model, as the "Return to shop" portal; its old ring hidden, the prompt kept) and
+follow a dirt trail with small glowing markers every 12 studs (`Util/WildValley.markers`) through a sunny **meadow**
+(grass, a stream with an arched wooden bridge and a pond, town trees, bushes and flowers, fireflies and drifting
+leaves), a rocky **gorge** (warm grey limestone, tall cliffs on both sides, a dark cave mouth in the west cliff with
+glowing blue crystals at its lip and round the zone, crystal glints) and the **Ember Ridge** (basalt and cracked lava
+ground with glowing floor cracks, charred trees and obsidian shards from the caldera, two smoking vents, embers). Each
+zone's boss arena is dressed in its mood (`ARENA_LOOKS`): grass floor and wooden fence, slate floor with stone posts
+and blue crystal tips, basalt floor with lava cracks and basalt posts with ember tips; floors sit 0.15 above the
+terrain. Cliffs and hills close every side, with invisible walls along the edge. Zones, spawn spots, monsters, bosses,
+rings and barriers, travel and healing (the plaza spring) are unchanged: monsters still snap to the zone floors, now
+invisible parts at y 0 (no collisions; players walk on the terrain, which draws its ground there too). Layout:
+`Config/WildValley` (terrain ops, props, stream, bridge, cave, cracks, vents, arena looks, edge); rules in
+`Util/WildValley` (spawn spots, trail and markers, what scenery must keep clear of: the trail, the stream, every
+monster's wander circle, the rings and their paths, the arrival; Lune-tested). SceneryService fills its terrain with
+the town's and places the dressing; WildService builds the floors, edges, portal and arenas. The Frontier and the
+Dungeon keep their own maps.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
 panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
@@ -1110,7 +1129,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DataService.luau      # ProfileStore, load/save, defaults
     │   │   ├── PlotService.luau      # claim/release plots, modern shop shells (glass front, sliding doors, sign band, roof)
     │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portals, walls, trail lines, signs, lighting
-    │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town and in the three portal areas (Config/Scenery)
+    │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town, in the three portal areas (Config/Scenery) and in the Wild valley (Config/WildValley)
     │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
@@ -1125,7 +1144,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── GradingService.luau # Grading Station remote: validate, then CardService.GradeUp (cash via EconomyService)
     │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
-    │   │   ├── WildService.luau      # wild map, plaza portal, healing spring, monsters (spawn, wander, chase)
+    │   │   ├── WildService.luau      # wild map (the valley's invisible floors, edges, return portal, zone-dressed boss arenas), plaza portal, healing spring, monsters (spawn, wander, chase)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
@@ -1247,6 +1266,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
+        │   ├── WildValley.luau # the Wild valley's terrain, props, stream, bridge, cave, cracks, vents, arena looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
         │   ├── Dungeon.luau    # the Dungeon: rooms and packs, timings, layout, lighting
@@ -1293,6 +1313,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CardArt.luau       # which painting a card face draws: the half-size copy when drawn small, the full one for big views (pure, Lune-tested)
             ├── PortalLooks.luau   # which model stands at a portal, its label height, the parts and effects a look needs (pure, Lune-tested)
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
+            ├── WildValley.luau    # the Wild valley's spawn spots, trail and markers, what scenery keeps clear of, the edge test (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1569,6 +1590,15 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   effects and a light per portal (Lune-tested), the vortex spins only within 150 studs with the extras on, the models
   stream Atomic. Comparing "on" then "off" in one pass over-read the cost (+1.6 ms on the street, where no portal is
   in view): alternate off/on/off/on at the same camera.
+- Wild valley (measured 2026-10-31 in Play from fixed cameras in the meadow at the arrival, the gorge facing the cave
+  and the ridge facing its arena; the valley's dressing, ridge cracks, cave wall and arena cracks and tips taken away
+  and put back in turn): 60 fps everywhere at levels 1 and 10, the pieces within noise (render CPU, second off/on pair:
+  meadow 8.0 / 7.8 ms level 1, 8.7 / 8.9 level 10; gorge 7.8 / 6.9, 7.1 / 7.2; ridge 8.2 / 7.1, 7.4 / 7.6). Terrain
+  memory 43 MB graphics and 3.9 MB voxels in the valley, 51 / 4.1 on the town street (50 / 3 before the caldera and the
+  valley). The valley's terrain is about 37.7k estimated cells (cap `WildValley.MAX_CELLS` 40k; town plus valley within
+  `Scenery.MAX_CELLS` 180k, Lune-tested). The dressing folder holds about 250 instances (props reuse the town's meshes and the caldera's
+  models), 53 ridge and 43 arena crack strips and 22 post tips (Neon, no shadows or collisions), at most 4 area effects
+  per zone (meadow 2, gorge 1, ridge 3).
 
 ---
 
@@ -1703,6 +1733,11 @@ boss models; the ranch and Heroic tiers come after those.
   fx line); no generator committed for `volcano-plume.png`; test gaps (Arena trail by index, generated trail ops not in
   the colour test, the variant test checks only names); literals in SceneryService's crack and plume code; the volcano's
   shadow at low sun not checked.
+- [ ] Wild valley (spec `2026-10-31-wild-valley-design.md`, plan `2026-10-31-wild-valley.md`, branch `wild-valley`): the
+  Wild's three flat squares turned into one valley with three moods (the user's pick A): the root-arch return portal,
+  a meadow with a stream, bridge and pond, a limestone gorge with a crystal cave mouth, the Ember Ridge in the caldera's
+  look, a trail with glowing markers, cliffs and invisible walls all round, and each boss arena dressed by its zone.
+  Monsters, zones, bosses and travel unchanged. Measured: within noise at 60 fps.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
