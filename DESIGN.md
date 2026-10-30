@@ -1674,11 +1674,18 @@ boss models; the ranch and Heroic tiers come after those.
   IsA("BasePart"); `Town.PORTAL_SCENERY_CLEAR`'s comment doesn't match its value; the stream beams' taper, texture length
   and segments are literals; `rgb` duplicates `Props.color` and the TownPortal tag string lives in two files; the
   capybara can step off the kerb; DESIGN 10.5 doesn't record the town's triangle total with the portals.
-- [ ] Ember Canyon caldera (spec `2026-10-31-ember-caldera-design.md`, plan `2026-10-31-ember-caldera.md`, branch
+- [x] Ember Canyon caldera (spec `2026-10-31-ember-caldera-design.md`, plan `2026-10-31-ember-caldera.md`, branch
   `ember-caldera`): the desert canyon turned into a calm volcanic caldera in the portal's colours (the user's pick A):
-  basalt cliffs and cracked ground with about 220 glowing cracks, charred trees, obsidian shards, hotter lava, dark
-  torches, a quiet 120-stud volcano with a smoke plume behind the end wall (seen from the town street), two baby dragons
-  (Shadow and Golden). Measured: within noise at 60 fps. Awaiting the user's check in Studio.
+  basalt cliffs and cracked ground with about 220 glowing cracks, charred trees and obsidian shards (players can't walk
+  through them), hotter lava, dark torches, a quiet 120-stud volcano behind the end wall with its lava streaks facing the
+  town and a beam smoke plume, two baby dragons (Shadow and Golden). Measured: within noise at 60 fps. Approved by the
+  user and merged 2026-10-31. Deferred minors from its review: the plume still rises if the volcano model is missing; a
+  wall crack's ray could hit a nearer surface if the seed or counts change (re-measure); the CRACKS MAX_SEGMENTS comment
+  says strips but caps segments; floor crack tapers go under WIDTH's minimum; dead start values in buildCracks' onWall;
+  doc drift (10.5 says 10 animals, there are 9; old "one per area" comments; the plume texture missing from CLAUDE.md's
+  fx line); no generator committed for `volcano-plume.png`; test gaps (Arena trail by index, generated trail ops not in
+  the colour test, the variant test checks only names); literals in SceneryService's crack and plume code; the volcano's
+  shadow at low sun not checked.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
