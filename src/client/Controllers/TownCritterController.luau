@@ -88,6 +88,9 @@ local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
 	marker.Parent = folder
 	local model = template:Clone()
 	CreatureVisuals.strip(model)
+	if spec.variant then
+		CreatureVisuals.applyVariant(model, spec.variant)
+	end
 	model.Name = spec.model
 	local body = CreatureVisuals.build(model, marker, spec.height, false, template.Name)
 	model.Parent = folder

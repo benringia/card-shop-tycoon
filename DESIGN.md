@@ -151,11 +151,11 @@ sky, haze, bloom and colours, blending into the next over 40 s while the sun cre
 out from the server's `DayCycleStart` attribute (no network). Outside the town region (the Wild, the Arena stands, the
 boss arenas) the old afternoon look shows at once, so fights never happen at night. **Ambient life** (client only, off
 when the frame watchdog sees a slow device or the player set graphics at 3 or below: `Util/FrameWatchdog`,
-`Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and six Cute Pets animals
+`Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and Cute Pets animals
 run round their homes, drawn by the summoned-pet code (`TownCritterController`, `Util/Wander`): a fox at the forest edge,
 a bunny on the grass by the grove, a capybara on the sidewalk outside the south shops (the tall grass between
-the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, a baby dragon
-in Ember Canyon. **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
+the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, two baby dragons
+in Ember Canyon's caldera in its colours (the Cute Pets Shadow and Golden variants, `variant` in `Ambient.CRITTERS`). **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
 player's first visit, an 11 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
 as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
 and the player standing still, a Skip button (top right) from the first frame. Code builds the fixed pieces (`Util/TownLayout`, same on every
@@ -1522,8 +1522,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   costs about +0.8 / +1.0 ms (budget +1.5 ms); the day cycle's lighting updates about 0.4 ms, the terrain about 0.4 ms,
   props, animals and butterflies within noise; inside the areas 9-10 ms at 59-60 fps. Terrain memory about 53 MB
   (graphics 50, voxels 3). Caps (Lune-tested): terrain at most `Scenery.MAX_CELLS` estimated cells, one flowing waterfall
-  (at most 4 streams, 4 falls effects), at most 4 effects per area, at most 20 butterflies, 6 animals (3 in town, one per
-  area) moved only within 120 studs, tree sway within 150 studs at 30 Hz, the frozen falls at most 60 parts; small
+  (at most 4 streams, 4 falls effects), at most 4 effects per area, at most 20 butterflies, 10 animals (3 in town, 2 in the plaza,
+  one at Forest Falls and Frostpeak, 2 in Ember Canyon) moved only within 120 studs, tree sway within 150 studs at 30 Hz, the frozen falls at most 60 parts; small
   hand-placed decor (under 4 studs) casts no shadow; sign and arch words stop drawing beyond 120 studs. The 60k triangle
   town total no longer covers the areas: the scenery reuses the town's prop meshes (scaled copies batch together) plus
   code-built parts, so no new mesh triangles were added.

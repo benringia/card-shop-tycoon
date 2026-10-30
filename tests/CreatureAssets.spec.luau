@@ -131,6 +131,21 @@ return {
 		assert(#bad == 0, `pack models (docs/packs.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["every town animal's colour variant is in its Cute Pets model"] = function()
+		local ambient = require("../src/shared/Config/Ambient")
+		local bad = {}
+		for _, critter in ambient.CRITTERS do
+			if critter.variant then
+				local model = findPackModel("CutePets", critter.model)
+				local variants = model and model:FindFirstChild("Variants")
+				if not (variants and variants:FindFirstChild(critter.variant)) then
+					table.insert(bad, `{critter.model}: no variant {critter.variant}`)
+				end
+			end
+		end
+		assert(#bad == 0, `town animals (Config/Ambient CRITTERS):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["portal models carry the parts the game dresses"] = function()
 		-- A portal's model is optional (today's frame stands in, Util/PortalLooks.slot); once saved it must hold every
 		-- part PortalBuild looks for (Frame, Opening, the effects' spots, the glowing parts), as MeshParts

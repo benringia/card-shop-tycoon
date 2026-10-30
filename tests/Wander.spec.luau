@@ -77,8 +77,9 @@ return {
 		end
 		expect.equal(town, 3, "town animals")
 		expect.equal(areas.plaza, 2, "plaza animals")
-		for _, area in { "ForestFalls", "Frostpeak", "EmberCanyon" } do
+		for _, area in { "ForestFalls", "Frostpeak" } do
 			expect.equal(areas[area], 1, area)
 		end
+		expect.equal(areas.EmberCanyon, 2, "EmberCanyon (two baby dragons in the caldera)")
 	end,
 }
