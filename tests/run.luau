@@ -53,6 +53,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PortalTrails = require("./PortalTrails.spec"),
 	TownTerrain = require("./TownTerrain.spec"),
 	DayCycle = require("./DayCycle.spec"),
+	FrameWatchdog = require("./FrameWatchdog.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

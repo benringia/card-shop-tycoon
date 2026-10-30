@@ -57,14 +57,17 @@ return {
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
-	-- Butterflies round the healing spring (ButterflyController, client only). Studs; colours as { r, g, b }.
+	-- Butterflies (ButterflyController, client only): a flock round the healing spring and more at Forest Falls and the
+	-- east trails' start; each spot's flock loops round its centre between its radii. Studs; colours as { r, g, b }.
 	BUTTERFLIES = {
-		COUNT = 10,
+		SPOTS = {
+			{ x = 0, z = 0, count = 10, minRadius = 6, maxRadius = 17 },
+			{ x = 190, z = -120, count = 5, minRadius = 6, maxRadius = 18 },
+			{ x = 136, z = 0, count = 3, minRadius = 3, maxRadius = 10 },
+		},
 		SIZE = 0.55, -- one wing's width
 		SPEED = 3, -- studs a second along their loop
 		FLAP_SPEED = 14,
-		MIN_RADIUS = 6,
-		MAX_RADIUS = 17,
 		MIN_HEIGHT = 2.5,
 		MAX_HEIGHT = 8,
 		COLORS = { { 255, 150, 210 }, { 140, 210, 255 }, { 255, 230, 120 }, { 190, 150, 255 }, { 150, 240, 190 } },
