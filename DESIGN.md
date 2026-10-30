@@ -106,8 +106,19 @@ giant trees, a waterfall of scrolling streak sheets into a turquoise pool, mossy
 mushrooms, fireflies, falling leaves), the Frontier on **Frostpeak**'s snowy rise (182, 128, 10 studs up; north-east: a
 snow-capped peak, frosted pines with lightly snowed ones on the grass below, a frozen waterfall of ice columns over a
 frozen pond, icicles, drifting snow, an aurora of hanging curtain beams), the Arena at the end of **Ember Canyon**
-(-205, 0; west: striped red sandstone walls, a lava river and pool past the walkable floor, saguaros, the portal on the
-sand between torch pillars, floating embers). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
+(-205, 0; west), since 2026-10-31 a calm volcanic **caldera** in the portal's colours (caldera spec
+`2026-10-31-ember-caldera-design.md`, the user's pick A "Glowing fissures" of three): dark basalt walls with jagged rims
+and a dark cracked floor (terrain materials `Basalt` and `CrackedLava`, coloured only here), about 220 glowing orange
+cracks down the cliff faces and across the floor (`Util/LavaCracks` lays them out from `Scenery.CRACKS`, clear of the
+trail and the portal; SceneryService snaps each onto the terrain by raycast once the terrain has filled, wall cracks in
+halves so they follow its steps), charred dead trees with ember tips and black-purple obsidian shard clusters (players can't walk through them: an
+invisible collider round each trunk or base, `Scenery.CALDERA_COLLIDERS`; Blender:
+`build_charred_tree.py`, `build_obsidian_shards.py`), a hotter lava river and pool, dark torch pillars beside the
+portal, floating embers and two baby dragons; behind the end wall a quiet volcano (`build_volcano.py`, 120 studs tall at
+(-335, 10), showing over the cliffs from the trail and the town street) with glowing lava in its crater and streaks down
+its side (turned to face the canyon and the town, `VOLCANO.yaw` 270, Lune-tested against the saved model) and a slow
+smoke plume: a camera-facing beam with a billowing texture made in code (`Scenery.PLUME`,
+`assets/ui/fx/volcano-plume.png`; particles never showed, the client doesn't run emitters that far from the camera). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
 user kept the map's spots). Trails are paved terrain with the portal's glowing line along them; a wooden arch with the
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
 (`Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
@@ -151,11 +162,11 @@ sky, haze, bloom and colours, blending into the next over 40 s while the sun cre
 out from the server's `DayCycleStart` attribute (no network). Outside the town region (the Wild, the Arena stands, the
 boss arenas) the old afternoon look shows at once, so fights never happen at night. **Ambient life** (client only, off
 when the frame watchdog sees a slow device or the player set graphics at 3 or below: `Util/FrameWatchdog`,
-`Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and six Cute Pets animals
+`Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and Cute Pets animals
 run round their homes, drawn by the summoned-pet code (`TownCritterController`, `Util/Wander`): a fox at the forest edge,
 a bunny on the grass by the grove, a capybara on the sidewalk outside the south shops (the tall grass between
-the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, a baby dragon
-in Ember Canyon. **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
+the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, two baby dragons
+in Ember Canyon's caldera in its colours (the Cute Pets Shadow and Golden variants, `variant` in `Ambient.CRITTERS`). **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
 player's first visit, an 11 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
 as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
 and the player standing still, a Skip button (top right) from the first frame. Code builds the fixed pieces (`Util/TownLayout`, same on every
@@ -1279,6 +1290,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── PortalLooks.luau   # which model stands at a portal, its label height, the parts and effects a look needs (pure, Lune-tested)
+            ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1522,11 +1534,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   costs about +0.8 / +1.0 ms (budget +1.5 ms); the day cycle's lighting updates about 0.4 ms, the terrain about 0.4 ms,
   props, animals and butterflies within noise; inside the areas 9-10 ms at 59-60 fps. Terrain memory about 53 MB
   (graphics 50, voxels 3). Caps (Lune-tested): terrain at most `Scenery.MAX_CELLS` estimated cells, one flowing waterfall
-  (at most 4 streams, 4 falls effects), at most 4 effects per area, at most 20 butterflies, 6 animals (3 in town, one per
-  area) moved only within 120 studs, tree sway within 150 studs at 30 Hz, the frozen falls at most 60 parts; small
+  (at most 4 streams, 4 falls effects), at most 4 effects per area, at most 20 butterflies, 10 animals (3 in town, 2 in the plaza,
+  one at Forest Falls and Frostpeak, 2 in Ember Canyon) moved only within 120 studs, tree sway within 150 studs at 30 Hz, the frozen falls at most 60 parts; small
   hand-placed decor (under 4 studs) casts no shadow; sign and arch words stop drawing beyond 120 studs. The 60k triangle
   town total no longer covers the areas: the scenery reuses the town's prop meshes (scaled copies batch together) plus
   code-built parts, so no new mesh triangles were added.
+- Ember Canyon caldera (measured 2026-10-31, same stress setup; its new pieces taken away and put back in turn at each
+  camera): 60 fps everywhere at levels 1 and 10; the street, the street looking west at the volcano and the caldera
+  itself within noise (level 1: 8.9 / 8.9 ms in the caldera, 11.8 / 11.7 on the street). About 220 small Neon crack parts
+  (no shadows, no collisions), 8 trees (1,282 triangles each), 6 shard clusters (228), the volcano (448); the plume is
+  one beam. The canyon keeps 4 area effects (embers, bubbles, river flow, the plume).
 - Town portals remodel (measured 2026-10-31 in a fresh Studio session: copies of Plot1's stocked shelves in the other 5
   plots, 5 avatar clones; render CPU from fixed cameras, the portals taken away and put back in turn at each view):
   60 fps everywhere at levels 1 and 10; the street 9.2-9.5 ms with or without them (no change); standing at a portal
@@ -1657,6 +1674,18 @@ boss models; the ranch and Heroic tiers come after those.
   IsA("BasePart"); `Town.PORTAL_SCENERY_CLEAR`'s comment doesn't match its value; the stream beams' taper, texture length
   and segments are literals; `rgb` duplicates `Props.color` and the TownPortal tag string lives in two files; the
   capybara can step off the kerb; DESIGN 10.5 doesn't record the town's triangle total with the portals.
+- [x] Ember Canyon caldera (spec `2026-10-31-ember-caldera-design.md`, plan `2026-10-31-ember-caldera.md`, branch
+  `ember-caldera`): the desert canyon turned into a calm volcanic caldera in the portal's colours (the user's pick A):
+  basalt cliffs and cracked ground with about 220 glowing cracks, charred trees and obsidian shards (players can't walk
+  through them), hotter lava, dark torches, a quiet 120-stud volcano behind the end wall with its lava streaks facing the
+  town and a beam smoke plume, two baby dragons (Shadow and Golden). Measured: within noise at 60 fps. Approved by the
+  user and merged 2026-10-31. Deferred minors from its review: the plume still rises if the volcano model is missing; a
+  wall crack's ray could hit a nearer surface if the seed or counts change (re-measure); the CRACKS MAX_SEGMENTS comment
+  says strips but caps segments; floor crack tapers go under WIDTH's minimum; dead start values in buildCracks' onWall;
+  doc drift (10.5 says 10 animals, there are 9; old "one per area" comments; the plume texture missing from CLAUDE.md's
+  fx line); no generator committed for `volcano-plume.png`; test gaps (Arena trail by index, generated trail ops not in
+  the colour test, the variant test checks only names); literals in SceneryService's crack and plume code; the volcano's
+  shadow at low sun not checked.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

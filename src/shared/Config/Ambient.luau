@@ -26,7 +26,7 @@ return {
 	-- Animals running round their homes (TownCritterController): Cute Pets models (ReplicatedStorage.CreatureModels
 	-- .CutePets), 3 in town, 2 in the plaza and one in each portal area. radius: how far from home they wander; avoid:
 	-- kept clear in the middle; orbit: instead runs laps round a circle this far from home, along the curve, up to
-	-- maxArc degrees at a time; sleeps: lies curled on its side in one spot facing `faces`, a "z Z z" over it; y: the
+	-- maxArc degrees at a time; variant: a Cute Pets colour variant (Golden, Rainbow, Shadow); sleeps: lies curled on its side in one spot facing `faces`, a "z Z z" over it; y: the
 	-- ground at home; height: studs tall.
 	CRITTERS = {
 		{ model = "Cat", area = "plaza", home = { x = -8.16, z = 10.3 }, sleeps = true, faces = { x = -7.45, z = 11.01 }, y = 1.56, height = 2.4 }, -- asleep along the seat of the bench nearest the spawn
@@ -36,7 +36,9 @@ return {
 		{ model = "Capybara", area = "town", home = { x = -21, z = 42 }, y = 0.3, radius = 3.5, height = 2.8 }, -- on the sidewalk outside the south shops (the tall grass between them hid it), clear of the planters and Plot 5's delivery mat
 		{ model = "Fawn", area = "ForestFalls", home = { x = 212, z = -115 }, radius = 10, height = 3.2 },
 		{ model = "Penguin", area = "Frostpeak", home = { x = 215, z = 130 }, y = 10, radius = 9, height = 2.4 },
-		{ model = "BabyDragon", area = "EmberCanyon", home = { x = -180, z = 10 }, radius = 9, height = 3 },
+		-- two baby dragons in the caldera, in the Cute Pets colour variants that match it: dark like the obsidian, gold like the lava
+		{ model = "BabyDragon", variant = "Shadow", area = "EmberCanyon", home = { x = -180, z = 10 }, radius = 9, height = 3 },
+		{ model = "BabyDragon", variant = "Golden", area = "EmberCanyon", home = { x = -160, z = -12 }, radius = 7, height = 2.6 },
 	},
 	CRITTER = {
 		SPEED = 7, -- studs a second

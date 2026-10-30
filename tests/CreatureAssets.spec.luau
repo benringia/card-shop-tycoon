@@ -131,6 +131,66 @@ return {
 		assert(#bad == 0, `pack models (docs/packs.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["every town animal's colour variant is in its Cute Pets model"] = function()
+		local ambient = require("../src/shared/Config/Ambient")
+		local bad = {}
+		for _, critter in ambient.CRITTERS do
+			if critter.variant then
+				local model = findPackModel("CutePets", critter.model)
+				local variants = model and model:FindFirstChild("Variants")
+				if not (variants and variants:FindFirstChild(critter.variant)) then
+					table.insert(bad, `{critter.model}: no variant {critter.variant}`)
+				end
+			end
+		end
+		assert(#bad == 0, `town animals (Config/Ambient CRITTERS):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
+	["the caldera's props carry the parts the game dresses"] = function()
+		-- optional until saved (the canyon builds without them); once saved, every part SceneryService looks for
+		local wanted = { Volcano = { "Body", "Lava", "Fx_Smoke" }, ObsidianShards = { "Frame", "Lava" }, CharredTree = { "Frame" } }
+		local bad = {}
+		for name, parts in wanted do
+			local path = `assets/props/{name}.rbxm`
+			if not fs.isFile(path) then
+				continue
+			end
+			local model = roblox.deserializeModel(fs.readFile(path))[1]
+			if not model or model.Name ~= name then
+				table.insert(bad, `{path}: the model should be called {name}`)
+				continue
+			end
+			for _, part in parts do
+				local mesh = model:FindFirstChild(part)
+				if not mesh or not mesh:IsA("MeshPart") then
+					table.insert(bad, `{path}: no MeshPart {part}`)
+				end
+			end
+		end
+		assert(#bad == 0, `caldera props (docs/props.md):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
+	["the volcano's lava streaks face the canyon"] = function()
+		-- the saved model's lava (streaks and crater) leans to one side of its crater axis: turned by VOLCANO.yaw (placeModel
+		-- turns about y), that side must face the canyon and the town (east), or players see the streaks edge-on
+		local scenery = require("../src/shared/Config/Scenery")
+		local town = require("../src/shared/Config/Town")
+		local path = "assets/props/Volcano.rbxm"
+		if not fs.isFile(path) then
+			return
+		end
+		local model = roblox.deserializeModel(fs.readFile(path))[1]
+		local lava, axis = model:FindFirstChild("Lava"), model:FindFirstChild("Fx_Smoke")
+		local dx = lava.CFrame.Position.X - axis.CFrame.Position.X
+		local dz = lava.CFrame.Position.Z - axis.CFrame.Position.Z
+		local yaw = math.rad(scenery.VOLCANO.yaw)
+		local wx, wz = dx * math.cos(yaw) + dz * math.sin(yaw), -dx * math.sin(yaw) + dz * math.cos(yaw)
+		local arena = town.PORTAL_AREAS[3].trail[#town.PORTAL_AREAS[3].trail]
+		local tx, tz = arena.x - scenery.VOLCANO.x, arena.z - scenery.VOLCANO.z
+		local facing = (wx * tx + wz * tz) / (math.sqrt(wx * wx + wz * wz) * math.sqrt(tx * tx + tz * tz))
+		assert(facing > 0.8, `the volcano's lava faces {facing} of the way toward the canyon (VOLCANO.yaw {scenery.VOLCANO.yaw})`)
+	end,
+
 	["portal models carry the parts the game dresses"] = function()
 		-- A portal's model is optional (today's frame stands in, Util/PortalLooks.slot); once saved it must hold every
 		-- part PortalBuild looks for (Frame, Opening, the effects' spots, the glowing parts), as MeshParts

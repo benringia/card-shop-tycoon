@@ -99,6 +99,78 @@ return {
 		end
 	end,
 
+	["the canyon is a caldera"] = function()
+		-- Ember Canyon in the portal's colours (caldera spec 2026-10-31): dark basalt walls, a dark cracked floor, a
+		-- basalt trail; nothing left of the desert
+		expect.equal(TownTerrain.materialAt(OPS, -185, 32), "Basalt", "the north wall")
+		expect.equal(TownTerrain.materialAt(OPS, -185, -36), "Basalt", "the south wall")
+		expect.equal(TownTerrain.materialAt(OPS, -246, 0), "Basalt", "the end wall")
+		expect.equal(TownTerrain.materialAt(OPS, -170, 14), "CrackedLava", "the floor beside the trail")
+		expect.equal(TownTerrain.materialAt(OPS, -170, 0), "Basalt", "the trail")
+		for _, list in { scenery.GROUND, scenery.FLOORS, scenery.TERRAIN } do
+			for _, op in list do
+				assert(op.material ~= "Sand" and op.material ~= "Sandstone" and op.material ~= "Limestone", `desert {op.material} at {op.x}, {op.z}`)
+			end
+		end
+	end,
+
+	["only canyon materials change colour"] = function()
+		-- terrain colours are per material across the whole map: the caldera may recolour only what no other area uses
+		local kept = {
+			Rock = { 98, 120, 92 },
+			Slate = { 118, 128, 144 },
+			Snow = { 240, 246, 255 },
+			Glacier = { 170, 215, 245 },
+			Ground = { 120, 96, 70 },
+		}
+		for name, rgb in kept do
+			local now = scenery.MATERIAL_COLORS[name]
+			assert(now and now[1] == rgb[1] and now[2] == rgb[2] and now[3] == rgb[3], `{name} changed colour`)
+		end
+		for _, list in { scenery.GROUND, scenery.FLOORS, scenery.TERRAIN } do
+			for _, op in list do
+				if op.material == "Basalt" or op.material == "CrackedLava" then
+					assert(op.x < -130, `{op.material} outside the canyon at {op.x}, {op.z}`)
+				end
+			end
+		end
+	end,
+
+	["the volcano stands behind the canyon"] = function()
+		-- concept A's quiet volcano (caldera spec): far behind the end wall, rising over it, never crowding the portal
+		local volcano = scenery.VOLCANO
+		local portal = town.PORTAL_AREAS[3].trail[#town.PORTAL_AREAS[3].trail]
+		assert(volcano.x < -280, `the volcano at x {volcano.x} is not behind the end wall`)
+		assert(math.sqrt((volcano.x - portal.x) ^ 2 + (volcano.z - portal.z) ^ 2) > 60, "the volcano crowds the portal")
+		assert(volcano.height >= 100, "the volcano rises over the cliffs")
+		local smoke = 0
+		for _, emitter in scenery.EMITTERS do
+			if emitter.area == "EmberCanyon" and emitter.kind == "plume" then
+				smoke += 1
+			end
+		end
+		-- a beam, not particles: the client stops simulating particle emitters far from the camera, and the volcano is
+		-- 190+ studs from anywhere a player stands
+		expect.equal(smoke, 1, "the crater's smoke plume")
+		local plume = scenery.PLUME
+		assert(plume and plume.rise >= 60, "the plume rises well over the crater")
+		assert(plume.width[2] > plume.width[1], "the plume widens as it rises")
+		assert(#scenery.CHARRED_TREES >= 6 and #scenery.SHARDS >= 4, "charred trees and obsidian shards dot the caldera")
+	end,
+
+	["the caldera's trees and shards block players"] = function()
+		-- they stand inside the walkable floor (the cacti they replaced collided): each kind gets an invisible collider
+		-- round its trunk or base, sized as a share of the spot's height
+		for _, list in { scenery.CHARRED_TREES, scenery.SHARDS } do
+			for _, spot in list do
+				local collider = scenery.CALDERA_COLLIDERS[spot.model]
+				assert(collider, `{spot.model} has no collider`)
+				assert(collider.radius * spot.height >= 0.4, `{spot.model}'s collider is too thin`)
+				assert(collider.height * spot.height >= 1.5, `{spot.model}'s collider is too low to stop a player`)
+			end
+		end
+	end,
+
 	["terrain stays inside the memory budget"] = function()
 		local cells = TownTerrain.estimatedCells(OPS)
 		assert(cells <= scenery.MAX_CELLS, `{cells} cells`)
@@ -112,7 +184,7 @@ return {
 			return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 		end
 		local clear = town.TRAIL.WIDTH / 2 + 2
-		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.LAVA.POOL } } do
+		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, scenery.CHARRED_TREES, scenery.SHARDS, { scenery.LAVA.POOL } } do
 			for _, prop in list do
 				for _, area in town.PORTAL_AREAS do
 					local trail = area.trail

@@ -13,7 +13,7 @@ return {
 	FLOORS = {
 		-- Frostpeak's clearing: a snowy rise drawn at y 10 (FROST_HEIGHT), the grass below it; the trail climbs onto it
 		{ shape = "Block", x = 192.5, y = 0, z = 139, size = { x = 115, y = 16, z = 82 }, material = "Snow" },
-		{ shape = "Block", x = -182, y = -5, z = 0, size = { x = 104, y = 6, z = 64 }, material = "Sand" }, -- Ember Canyon's floor
+		{ shape = "Block", x = -182, y = -5, z = 0, size = { x = 104, y = 6, z = 64 }, material = "CrackedLava" }, -- Ember Canyon's floor: dark cracked rock
 	},
 	-- Hills, cliffs, the falls' pool, the peak and the canyon walls (applied last)
 	TERRAIN = {
@@ -29,16 +29,16 @@ return {
 		{ shape = "Ball", x = -200, y = -18, z = 95, radius = 40, material = "Grass" },
 		{ shape = "Ball", x = -200, y = -18, z = -95, radius = 40, material = "Grass" },
 		{ shape = "Ball", x = 208, y = -20, z = 0, radius = 36, material = "Grass" }, -- between the two east areas
-		-- Ember Canyon: striped walls (Sandstone and Limestone layers, stepping back as they rise) and an end wall
-		{ shape = "Block", x = -185, y = 4, z = 50, size = { x = 110, y = 24, z = 40 }, material = "Sandstone" },
-		{ shape = "Block", x = -185, y = 20, z = 52, size = { x = 110, y = 8, z = 36 }, material = "Limestone" },
-		{ shape = "Block", x = -185, y = 28, z = 54, size = { x = 110, y = 8, z = 32 }, material = "Sandstone" },
-		{ shape = "Block", x = -185, y = 4, z = -54, size = { x = 110, y = 24, z = 40 }, material = "Sandstone" }, -- 4 back: the lava runs at its foot
-		{ shape = "Block", x = -185, y = 20, z = -56, size = { x = 110, y = 8, z = 36 }, material = "Limestone" },
-		{ shape = "Block", x = -185, y = 28, z = -58, size = { x = 110, y = 8, z = 32 }, material = "Sandstone" },
+		-- Ember Canyon, a caldera (caldera spec 2026-10-31): dark basalt walls stepping back as they rise, and an end wall
+		{ shape = "Block", x = -185, y = 4, z = 50, size = { x = 110, y = 24, z = 40 }, material = "Basalt" },
+		{ shape = "Block", x = -185, y = 20, z = 52, size = { x = 110, y = 8, z = 36 }, material = "Basalt" },
+		{ shape = "Block", x = -185, y = 28, z = 54, size = { x = 110, y = 8, z = 32 }, material = "Basalt" },
+		{ shape = "Block", x = -185, y = 4, z = -54, size = { x = 110, y = 24, z = 40 }, material = "Basalt" }, -- 4 back: the lava runs at its foot
+		{ shape = "Block", x = -185, y = 20, z = -56, size = { x = 110, y = 8, z = 36 }, material = "Basalt" },
+		{ shape = "Block", x = -185, y = 28, z = -58, size = { x = 110, y = 8, z = 32 }, material = "Basalt" },
 		{ shape = "Block", x = -184, y = -5, z = -29, size = { x = 100, y = 6, z = 7 }, material = "CrackedLava" }, -- the lava river's banks
 		{ shape = "Ball", x = -236, y = -6, z = 0, radius = 11, material = "CrackedLava" }, -- round the lava pool behind the portal
-		{ shape = "Block", x = -246, y = 12, z = 0, size = { x = 24, y = 40, z = 140 }, material = "Sandstone" },
+		{ shape = "Block", x = -246, y = 12, z = 0, size = { x = 24, y = 40, z = 140 }, material = "Basalt" },
 		-- Forest Falls: a mossy cliff behind the pool, the pool, rocks round it, hills beyond
 		{ shape = "Block", x = 190, y = 12, z = -186, size = { x = 100, y = 40, z = 40 }, material = "Rock" },
 		{ shape = "Ball", x = 170, y = 30, z = -190, radius = 14, material = "Grass" },
@@ -78,17 +78,20 @@ return {
 		{ shape = "Ball", x = 190, y = 34, z = -192, radius = 13, material = "Grass" },
 		{ shape = "Ball", x = 160, y = 20, z = 182, radius = 11, material = "Slate" },
 		{ shape = "Ball", x = 232, y = 20, z = 182, radius = 11, material = "Slate" },
-		{ shape = "Ball", x = -145, y = 26, z = 44, radius = 8, material = "Sandstone" },
-		{ shape = "Ball", x = -175, y = 30, z = 46, radius = 9, material = "Sandstone" },
-		{ shape = "Ball", x = -210, y = 28, z = 44, radius = 8, material = "Sandstone" },
-		{ shape = "Ball", x = -160, y = 32, z = 64, radius = 9, material = "Sandstone" },
-		{ shape = "Ball", x = -200, y = 33, z = 62, radius = 10, material = "Sandstone" },
-		{ shape = "Ball", x = -145, y = 26, z = -48, radius = 8, material = "Sandstone" },
-		{ shape = "Ball", x = -178, y = 30, z = -50, radius = 9, material = "Sandstone" },
-		{ shape = "Ball", x = -212, y = 28, z = -48, radius = 8, material = "Sandstone" },
-		{ shape = "Ball", x = -158, y = 32, z = -68, radius = 9, material = "Sandstone" },
-		{ shape = "Ball", x = -198, y = 33, z = -66, radius = 10, material = "Sandstone" },
-		{ shape = "Ball", x = -240, y = 30, z = 0, radius = 12, material = "Sandstone" },
+		-- The caldera's rims: turned basalt blocks, so they read jagged, not rounded
+		{ shape = "Block", x = -145, y = 27, z = 44, yaw = 25, size = { x = 15, y = 12, z = 11 }, material = "Basalt" },
+		{ shape = "Block", x = -175, y = 31, z = 46, yaw = -35, size = { x = 16, y = 14, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = -210, y = 29, z = 44, yaw = 50, size = { x = 14, y = 12, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = -160, y = 33, z = 64, yaw = -15, size = { x = 17, y = 14, z = 13 }, material = "Basalt" },
+		{ shape = "Block", x = -200, y = 34, z = 62, yaw = 40, size = { x = 18, y = 15, z = 14 }, material = "Basalt" },
+		{ shape = "Block", x = -145, y = 27, z = -48, yaw = -30, size = { x = 15, y = 12, z = 11 }, material = "Basalt" },
+		{ shape = "Block", x = -178, y = 31, z = -50, yaw = 35, size = { x = 16, y = 14, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = -212, y = 29, z = -48, yaw = -50, size = { x = 14, y = 12, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = -158, y = 33, z = -68, yaw = 20, size = { x = 17, y = 14, z = 13 }, material = "Basalt" },
+		{ shape = "Block", x = -198, y = 34, z = -66, yaw = -40, size = { x = 18, y = 15, z = 14 }, material = "Basalt" },
+		{ shape = "Block", x = -240, y = 31, z = 0, yaw = 30, size = { x = 20, y = 16, z = 18 }, material = "Basalt" },
+		{ shape = "Block", x = -240, y = 33, z = -30, yaw = -25, size = { x = 16, y = 14, z = 14 }, material = "Basalt" },
+		{ shape = "Block", x = -240, y = 33, z = 30, yaw = 55, size = { x = 16, y = 14, z = 14 }, material = "Basalt" },
 	},
 	-- Giant trees: copies of the town's tree models (ReplicatedStorage.PropModels) scaled up, so they batch together.
 	-- height in studs; yaw in degrees. Outside the island, clear of the trails (Lune-tested).
@@ -133,30 +136,78 @@ return {
 		{ x = 246, z = 82, model = "PineB", height = 29, yaw = 330 },
 	},
 	DUSTED_TINT = { 170, 205, 178 }, -- green leaves frosted pale
-	-- Ember Canyon: cacti along the walls and the torch pillars beside the Arena portal (its obsidian arch stands on the
-	-- sand: the round stone platform went with the portals remodel, stonework under a natural arch)
-	CACTI = {
-		{ x = -150, z = 20, height = 7 },
-		{ x = -168, z = -19, height = 6 },
-		{ x = -190, z = 21, height = 8 },
-		{ x = -212, z = -19, height = 6 },
-		{ x = -222, z = 18, height = 7 },
-		{ x = -140, z = -20, height = 5 },
-		{ x = -176, z = 18, height = 5 },
-	},
+	-- Ember Canyon (the caldera): the torch pillars beside the Arena portal, dark basalt (its obsidian arch stands on the
+	-- ground: the round stone platform went with the portals remodel)
 	TORCHES = {
 		{ x = -203, z = 15, height = 7 }, -- just outside the obsidian arch's sides (Town.PORTAL_SCENERY_CLEAR), so they show
 		{ x = -203, z = -15, height = 7 },
 	},
 	TORCH_FIRE = { COLOR = { 255, 150, 60 }, RATE = 18 },
-	TORCH_STONE = { 150, 120, 105 },
-	CACTUS = { BODY = { 90, 156, 80 }, DARK = { 70, 130, 64 }, FLOWER = { 255, 120, 170 } },
+	TORCH_STONE = { 52, 46, 56 }, -- dark basalt, like the caldera's walls
+	-- The caldera's Blender props (assets/props; SceneryService places them, scaled to `height`, on the drawn ground): charred
+	-- dead trees where the cacti stood and along the walls, black-purple obsidian shard clusters like the portal's, and the
+	-- quiet volcano far behind the end wall (its foot sunk to y -4; its Lava glows, smoke rises from its Fx_Smoke)
+	CHARRED_TREES = {
+		{ model = "CharredTree", x = -150, z = 20, height = 11, yaw = 20 },
+		{ model = "CharredTree", x = -168, z = -19, height = 10, yaw = 140 },
+		{ model = "CharredTree", x = -190, z = 22, height = 12, yaw = 250 },
+		{ model = "CharredTree", x = -222, z = 18, height = 10, yaw = 75 },
+		{ model = "CharredTree", x = -140, z = -20, height = 9, yaw = 300 },
+		{ model = "CharredTree", x = -176, z = 24, height = 9, yaw = 190 },
+		{ model = "CharredTree", x = -212, z = -20, height = 11, yaw = 30 },
+		{ model = "CharredTree", x = -228, z = -16, height = 9, yaw = 210 },
+	},
+	SHARDS = {
+		{ model = "ObsidianShards", x = -160, z = 12, height = 4, yaw = 0 },
+		{ model = "ObsidianShards", x = -185, z = -14, height = 5, yaw = 120 },
+		{ model = "ObsidianShards", x = -198, z = 14, height = 3.5, yaw = 240 },
+		{ model = "ObsidianShards", x = -215, z = -10, height = 4.5, yaw = 60 },
+		{ model = "ObsidianShards", x = -135, z = 14, height = 3, yaw = 300 },
+		{ model = "ObsidianShards", x = -230, z = 12, height = 4, yaw = 170 },
+	},
+	VOLCANO = { model = "Volcano", x = -335, z = 10, height = 120, yaw = 270, y = -4 }, -- turned so its lava streaks (its -Z side) face the canyon and the town
+	-- The trees and shards stand in the walkable floor: an invisible collider round each trunk or base (the meshes don't
+	-- collide), its radius and height as shares of the spot's height
+	CALDERA_COLLIDERS = {
+		CharredTree = { radius = 0.09, height = 0.45 },
+		ObsidianShards = { radius = 0.4, height = 0.6 },
+	},
+	-- The volcano's slow smoke plume: a camera-facing beam (particles far from every player aren't simulated, so they'd
+	-- never show) from the crater, rising `rise` studs and drifting `drift` along z with the wind (sideways as seen from the
+	-- town, so the bend shows), widening, its billowing texture
+	-- (assets/ui/fx/volcano-plume.png, made in code, white with alpha) scrolling slowly up; warm at the crater, ash grey above
+	PLUME = {
+		texture = "rbxassetid://115777596202941",
+		rise = 95,
+		drift = 30,
+		width = { 22, 90 },
+		length = 90, -- studs of plume per texture tile
+		speed = 0.06,
+		colors = { { 150, 80, 55 }, { 62, 57, 62 }, { 105, 100, 104 } },
+		transparency = { 0, 0.15, 1 },
+	},
+	-- The caldera's glowing cracks (Util/LavaCracks lays them out, SceneryService snaps them onto the terrain as glowing
+	-- strips): down the canyon's three inner cliff faces (each a line in plan view, from/to, the cracks between heights
+	-- low and high) and across its floor (a box), clear of the trail and the portal. WIDTH: a strip's width range
+	-- (studs); MAX_SEGMENTS: all strips together.
+	CRACKS = {
+		SEED = 31,
+		WIDTH = { 0.35, 0.7 },
+		COLOR = { 255, 110, 30 },
+		MAX_SEGMENTS = 160,
+		WALLS = {
+			{ name = "North", from = { x = -136, z = 30 }, to = { x = -232, z = 30 }, low = 1, high = 22, count = 6 },
+			{ name = "South", from = { x = -136, z = -32 }, to = { x = -232, z = -32 }, low = 1, high = 22, count = 6 },
+			{ name = "End", from = { x = -234, z = -22 }, to = { x = -234, z = 22 }, low = 1, high = 22, count = 4 },
+		},
+		FLOOR = { centre = { x = -182, z = 0 }, size = { x = 96, z = 44 }, count = 10 },
+	},
 	-- Lava: a glowing river at the south wall's foot (just past the walkable floor) and a pool behind the portal
 	LAVA = {
 		RIVER = { from = { x = -136, z = -28.5 }, to = { x = -232, z = -28.5 }, width = 5.5 },
 		POOL = { x = -236, z = 0, radius = 8 },
-		COLOR = { 255, 100, 20 },
-		HOT = { 255, 200, 80 },
+		COLOR = { 255, 120, 30 }, -- hotter for the caldera
+		HOT = { 255, 210, 90 },
 		GLOW = { BRIGHTNESS = 2, RANGE = 26 },
 	},
 	-- Forest Falls: scrolling sheets of water down the cliff face into the pool, mist and splash at the bottom
@@ -291,6 +342,7 @@ return {
 		{ area = "EmberCanyon", kind = "embers", x = -178, y = 1, z = 0, size = { x = 90, z = 48 }, rate = 12 },
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
 		{ area = "EmberCanyon", kind = "flow", x = -184, y = 0.6, z = -28.5, size = { x = 96, z = 3 }, rate = 10 },
+		{ area = "EmberCanyon", kind = "plume", x = -335, y = 110, z = 10 }, -- PLUME, from the volcano's crater (its Fx_Smoke when the model is there)
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},
@@ -315,16 +367,14 @@ return {
 		{ name = "Birds", id = "rbxassetid://9112831666", x = 0, y = 18, z = 0, volume = 0.25, range = 170 }, -- Pro Sound Effects: Morning Birds 2 (loop)
 	},
 	SMALL_DECOR_SIZE = 4, -- studs: hand-placed decor parts smaller than this cast no shadow
-	-- Terrain colours (Grass takes Town.GRASS_COLOR); Sandstone and Limestone appear only in the canyon
+	-- Terrain colours (Grass takes Town.GRASS_COLOR); Basalt and CrackedLava appear only in the canyon (the caldera)
 	MATERIAL_COLORS = {
 		Rock = { 98, 120, 92 }, -- mossy: the forest's cliff
 		Slate = { 118, 128, 144 }, -- Frostpeak's cliff and peak
-		CrackedLava = { 70, 40, 34 },
-		Sandstone = { 196, 96, 62 },
-		Limestone = { 226, 146, 96 },
+		CrackedLava = { 40, 30, 32 }, -- the caldera's floor and the lava's banks
+		Basalt = { 46, 42, 50 }, -- the caldera's walls, rims and trail
 		Snow = { 240, 246, 255 },
 		Glacier = { 170, 215, 245 },
-		Sand = { 222, 170, 120 },
 		Ground = { 120, 96, 70 },
 	},
 	WATER = { COLOR = { 60, 190, 200 }, TRANSPARENCY = 0.6, REFLECTANCE = 0.3, WAVE_SIZE = 0.05, WAVE_SPEED = 6 },
