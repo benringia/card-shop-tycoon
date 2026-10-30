@@ -20,6 +20,11 @@ function PortalLooks.labelHeight(slot: string, town: any): number
 	return town.SLOTS[slot].height + town.PORTAL_FX.LABEL_GAP
 end
 
+-- The swirl's diameter: round (a stretched swirl wobbles as it turns) and inside the opening's narrower side
+function PortalLooks.vortexSize(width: number, height: number, town: any): number
+	return math.min(width, height) * town.PORTAL_FX.VORTEX_SCALE
+end
+
 -- Beams and emitters a portal draws, its vortex included
 function PortalLooks.effectCount(look: any): number
 	return #look.effects + 1

@@ -71,6 +71,14 @@ return {
 		expect.equal(#all, #arena.effects, "effects kept with every part")
 	end,
 
+	["the swirl is round and fits inside the opening"] = function()
+		local scale = town.PORTAL_FX.VORTEX_SCALE
+		assert(scale > 0.5 and scale <= 1, `VORTEX_SCALE {scale}`)
+		-- a round swirl turns about its own middle; a stretched one wobbles and swings past a narrow arch top
+		expect.equal(PortalLooks.vortexSize(15, 16.8, town), 15 * scale, "a tall opening: sized by its width")
+		expect.equal(PortalLooks.vortexSize(18, 12, town), 12 * scale, "a wide opening: sized by its height")
+	end,
+
 	["every portal area has a look"] = function()
 		for _, area in town.PORTAL_AREAS do
 			assert(town.PORTAL_LOOKS[area.effect] ~= nil, `{area.key} ({area.effect}) has no look`)

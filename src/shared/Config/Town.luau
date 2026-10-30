@@ -216,8 +216,9 @@ return {
 	-- MAX_EFFECTS: beams and emitters per portal, the vortex included (one light on top, apart from the area's own cap);
 	-- SPIN_RANGE: studs from the camera the vortex turns within; LABEL_GAP: the name floats this far over the model;
 	-- VORTEX_TEXTURE: assets/ui/fx/portal-vortex.png (Figma, white with alpha so the beam's colour tints it);
-	-- VORTEX_LIGHT: the vortex beam's LightEmission (part glow: readable against bright daylight scenery)
-	PORTAL_FX = { MAX_EFFECTS = 4, SPIN_RANGE = 150, LABEL_GAP = 3, VORTEX_TEXTURE = "rbxassetid://81210648824476", VORTEX_LIGHT = 0.25 },
+	-- VORTEX_LIGHT: the vortex beam's LightEmission (part glow: readable against bright daylight scenery);
+	-- VORTEX_SCALE: the swirl is round, this share of the opening's narrower side, so it turns about its own middle
+	PORTAL_FX = { MAX_EFFECTS = 4, SPIN_RANGE = 150, LABEL_GAP = 3, VORTEX_TEXTURE = "rbxassetid://80055203675421", VORTEX_LIGHT = 0.25, VORTEX_SCALE = 0.9 },
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)

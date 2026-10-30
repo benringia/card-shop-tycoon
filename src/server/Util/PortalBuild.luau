@@ -104,8 +104,8 @@ local function beam(spec: any, from: BasePart, to: BasePart)
 	stream.Parent = from
 end
 
--- The swirl filling the Opening: a flat beam across it on a part facing down the trail (the model's front), so the
--- client turns the part about its look axis to spin it
+-- The swirl in the Opening's middle: a round flat beam (PortalLooks.vortexSize) on a part facing down the trail (the
+-- model's front), so the client turns the part about its look axis and the swirl spins about its own middle
 local function vortex(model: Model, look: any, opening: BasePart): BasePart
 	local fx = Town.PORTAL_FX
 	local holder = Instance.new("Part")
@@ -116,18 +116,19 @@ local function vortex(model: Model, look: any, opening: BasePart): BasePart
 	holder.CFrame = CFrame.lookAt(opening.Position, opening.Position + model:GetPivot().LookVector)
 	holder.Parent = model
 	-- default orientation: the attachments' up axis is the part's Y, so the beam's width runs up the opening
+	local size = PortalLooks.vortexSize(opening.Size.X, opening.Size.Y, Town)
 	local left = Instance.new("Attachment")
-	left.Position = Vector3.new(-opening.Size.X / 2, 0, 0)
+	left.Position = Vector3.new(-size / 2, 0, 0)
 	left.Parent = holder
 	local right = Instance.new("Attachment")
-	right.Position = Vector3.new(opening.Size.X / 2, 0, 0)
+	right.Position = Vector3.new(size / 2, 0, 0)
 	right.Parent = holder
 	local swirl = Instance.new("Beam")
 	swirl.Attachment0 = left
 	swirl.Attachment1 = right
 	swirl.FaceCamera = false
-	swirl.Width0 = opening.Size.Y
-	swirl.Width1 = opening.Size.Y
+	swirl.Width0 = size
+	swirl.Width1 = size
 	swirl.Segments = 1
 	swirl.Texture = fx.VORTEX_TEXTURE
 	swirl.TextureMode = Enum.TextureMode.Stretch
