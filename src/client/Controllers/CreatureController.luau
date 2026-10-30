@@ -303,7 +303,7 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 end
 
 function CreatureController.Start()
-	-- Every creature model downloads in the background (the party bar starts its own party's first)
+	-- The creature models the game uses download in the background; the party bar asks for the player's own first
 	CreatureVisuals.preload({})
 	local folder = workspace:WaitForChild("Creatures")
 	local function watch(child: Instance)

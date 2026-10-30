@@ -1289,6 +1289,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
+            ├── ModelPreload.luau  # which creature models a client downloads in the background, and in what order (pure, Lune-tested)
             ├── PortalLooks.luau   # which model stands at a portal, its label height, the parts and effects a look needs (pure, Lune-tested)
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
@@ -1520,6 +1521,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - Max 6 plots × 4–8 NPCs. NPC movement on server, keep rigs simple.
 - Use CollectionService tags for shelves/interactables.
 - Stream-friendly: enable StreamingEnabled, test on low-end phone.
+- Creature models download in the background from the start (`CreatureVisuals.preload`, `Util/ModelPreload`): only the
+  models the game uses (each card's model, the town animals'), the player's own cards first (it waits up to
+  `Party.PRELOAD_PARTY_WAIT` seconds for them), then the other cards, then the animals, `Party.PRELOAD_BATCH` per
+  download call; each is drawn in a hidden viewport once downloaded so its textures finish. Measured 2026-10-31: the
+  bought packs also hold 45 unused models with 619 of the 668 meshes, all preloaded before, so a new player's own cards
+  waited behind them (about 196 queued requests for 6 s even from Studio's cache); now the 49 used models are drawn
+  about 8 s into the game. Card art (`CardFace`) preloads at start as before.
 - Town props: under 2k triangles per prop model and 60k for the whole town; models over 150 parts use the
   stand-in. Landmark exception: the three portal models up to 4k each (`portal_kit.MAX_TRIANGLES`; root arch 3,472,
   ice ring 2,168, obsidian arch 856), one portal in view at a time. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
