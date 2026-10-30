@@ -149,7 +149,7 @@ return {
 			return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 		end
 		local clear = town.TRAIL.WIDTH / 2 + 2
-		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.LAVA.POOL } } do
+		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.LAVA.POOL } } do
 			for _, prop in list do
 				for _, area in town.PORTAL_AREAS do
 					local trail = area.trail

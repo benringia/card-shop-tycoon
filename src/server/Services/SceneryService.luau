@@ -1,6 +1,6 @@
 --!strict
 -- The scenery round the town and in the portal areas (Portal Worlds spec), from Config/Scenery: the terrain
--- (Util/TownTerrain), giant trees and snowy pines (scaled copies of the town's prop models), the canyon's cacti
+-- (Util/TownTerrain), giant trees and snowy pines (scaled copies of the town's prop models), the caldera's glowing cracks
 -- and torches, Forest Falls' water sheets, Frostpeak's ice crystals, snow, embers and the aurora, and ambient sounds.
 -- Built once at server start. Main game only; the Frontier and the Dungeon keep their own.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +14,7 @@ local Place = require(SharedUtil:WaitForChild("Place"))
 local Props = require(SharedUtil:WaitForChild("Props"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TownTerrain = require(SharedUtil:WaitForChild("TownTerrain"))
+local LavaCracks = require(SharedUtil:WaitForChild("LavaCracks"))
 local TownService = require(script.Parent:WaitForChild("TownService"))
 local ServerUtil = (script.Parent :: Instance).Parent:WaitForChild("Util")
 local ScenePieces = require(ServerUtil:WaitForChild("ScenePieces"))
@@ -96,33 +97,80 @@ local function buildTrees(folder: Folder)
 	frostedPines(Scenery.DUSTED_PINES, Scenery.DUSTED_TINT)
 end
 
--- A saguaro: a rounded trunk, two arms that bend up at the elbow, darker ribs and a pink flower on top
-local function buildCactus(folder: Folder, spot: any)
-	local look = Scenery.CACTUS
-	local body, dark = Props.color(look.BODY), Props.color(look.DARK)
-	local model = Instance.new("Model")
-	model.Name = "Cactus"
-	local h = spot.height
-	local base = CFrame.new(spot.x, 0, spot.z) * CFrame.Angles(0, math.rad((spot.x * 37) % 360), 0)
-	local upright = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X: stand them up
-	local trunk = 1.7
-	piece(model, "Trunk", Vector3.new(h, trunk, trunk), base * CFrame.new(0, h / 2, 0) * upright, body, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-	piece(model, "Top", Vector3.new(trunk, trunk, trunk), base * CFrame.new(0, h, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-	for _, side in { -1, 1 } do
-		piece(model, "Rib", Vector3.new(h * 0.92, 0.25, 0.25), base * CFrame.new(side * trunk * 0.42, h / 2, 0) * upright, dark, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+-- The terrain under a point, by a ray (terrain only): where a crack's end sits and which way the surface faces
+local function snap(origin: Vector3, direction: Vector3): RaycastResult?
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	local hit = workspace:Raycast(origin, direction, params)
+	return if hit and hit.Instance == workspace.Terrain then hit else nil
+end
+
+-- One glowing strip between two snapped points, lifted off the surface along its normal so it never sinks in
+local function strip(folder: Instance, a: RaycastResult, b: RaycastResult, width: number, color: Color3)
+	local lift = (a.Normal + b.Normal).Unit * 0.1
+	local from, to = a.Position + lift, b.Position + lift
+	local length = (to - from).Magnitude
+	if length < 0.2 then
+		return
 	end
-	for index, side in { 1, -1 } do
-		local armY = h * (if index == 1 then 0.5 else 0.36)
-		local rise = h * (if index == 1 then 0.32 else 0.24)
-		local out = 1.6
-		local arm = 1.05
-		piece(model, "Arm", Vector3.new(out, arm, arm), base * CFrame.new(side * (trunk / 2 + out / 2 - 0.2), armY, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-		piece(model, "Elbow", Vector3.new(arm, arm, arm), base * CFrame.new(side * (trunk / 2 + out - 0.2), armY, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-		piece(model, "Arm", Vector3.new(rise, arm, arm), base * CFrame.new(side * (trunk / 2 + out - 0.2), armY + rise / 2, 0) * upright, body, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-		piece(model, "ArmTop", Vector3.new(arm, arm, arm), base * CFrame.new(side * (trunk / 2 + out - 0.2), armY + rise, 0), body, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	local normal = (a.Normal + b.Normal).Unit
+	local along = (to - from).Unit
+	local across = along:Cross(normal).Unit
+	local part = piece(folder, "Crack", Vector3.new(width, 0.2, length + width * 0.5), CFrame.fromMatrix((from + to) / 2, across, normal), color, Enum.Material.Neon)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+end
+
+-- The caldera's glowing cracks (Util/LavaCracks): down the cliff faces (a ray from the canyon's middle line toward
+-- each wall) and across the floor (a ray down); a segment whose ray finds no terrain is left out
+local function buildCracks(folder: Folder)
+	local cracks = Scenery.CRACKS
+	local holder = Instance.new("Folder")
+	holder.Name = "LavaCracks"
+	holder.Parent = folder
+	local color = Props.color(cracks.COLOR)
+	local random = Random.new(cracks.SEED)
+	local walls, floor = LavaCracks.all(cracks, Town, function(): number
+		return random:NextNumber()
+	end)
+	local centre = Vector3.new(cracks.FLOOR.centre.x, 0, cracks.FLOOR.centre.z)
+	for _, wall in cracks.WALLS do
+		local from = Vector3.new(wall.from.x, 0, wall.from.z)
+		local to = Vector3.new(wall.to.x, 0, wall.to.z)
+		local function onWall(point: LavaCracks.WallPoint): RaycastResult?
+			local spot = from:Lerp(to, point.along) + Vector3.new(0, point.y, 0)
+			-- start inside the canyon, level with the point, and look out toward the wall
+			local inside = Vector3.new(centre.X, point.y, centre.Z)
+			local out = spot - inside
+			if wall.from.x == wall.to.x then
+				inside = Vector3.new(centre.X, point.y, spot.Z)
+				out = Vector3.new(spot.X - centre.X, 0, 0)
+			else
+				inside = Vector3.new(spot.X, point.y, centre.Z)
+				out = Vector3.new(0, 0, spot.Z - centre.Z)
+			end
+			return snap(inside, out.Unit * (out.Magnitude + 16))
+		end
+		for _, segment in walls[wall.name] do
+			-- in two halves, each snapped at its own ends, so a crack follows the wall's steps instead of bridging them
+			local middle = { along = (segment.a.along + segment.b.along) / 2, y = (segment.a.y + segment.b.y) / 2 }
+			local a, m, b = onWall(segment.a), onWall(middle), onWall(segment.b)
+			if a and m and b then
+				strip(holder, a, m, segment.width, color)
+				strip(holder, m, b, segment.width, color)
+			end
+		end
 	end
-	piece(model, "Flower", Vector3.new(0.7, 0.7, 0.7), base * CFrame.new(0, h + trunk / 2, 0), Props.color(look.FLOWER), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-	model.Parent = folder
+	for _, segment in floor do
+		local a = snap(Vector3.new(segment.a.x, 20, segment.a.z), Vector3.new(0, -40, 0))
+		local b = snap(Vector3.new(segment.b.x, 20, segment.b.z), Vector3.new(0, -40, 0))
+		if a and b then
+			strip(holder, a, b, segment.width, color)
+		end
+	end
 end
 
 -- Lava: a glowing river at the south wall's foot and a pool behind the portal, each lighting its rock
@@ -153,9 +201,6 @@ local function buildLava(folder: Folder)
 end
 
 local function buildCanyon(folder: Folder)
-	for _, spot in Scenery.CACTI do
-		buildCactus(folder, spot)
-	end
 	buildLava(folder)
 	local fire = Scenery.TORCH_FIRE
 	for _, spot in Scenery.TORCHES do
@@ -520,8 +565,13 @@ function SceneryService.Start()
 		return
 	end
 	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
-	-- Neither holds up the server's start (the players' data loads after the services start)
-	task.spawn(buildTerrain)
+	-- Neither holds up the server's start (the players' data loads after the services start). The caldera's cracks
+	-- snap onto the terrain by raycast, so they wait for it to be filled.
+	task.spawn(function()
+		buildTerrain()
+		local scenery = workspace:WaitForChild("Scenery")
+		buildCracks(scenery :: Folder)
+	end)
 	task.spawn(buildDressing)
 end
 

@@ -136,24 +136,14 @@ return {
 		{ x = 246, z = 82, model = "PineB", height = 29, yaw = 330 },
 	},
 	DUSTED_TINT = { 170, 205, 178 }, -- green leaves frosted pale
-	-- Ember Canyon: cacti along the walls and the torch pillars beside the Arena portal (its obsidian arch stands on the
-	-- sand: the round stone platform went with the portals remodel, stonework under a natural arch)
-	CACTI = {
-		{ x = -150, z = 20, height = 7 },
-		{ x = -168, z = -19, height = 6 },
-		{ x = -190, z = 21, height = 8 },
-		{ x = -212, z = -19, height = 6 },
-		{ x = -222, z = 18, height = 7 },
-		{ x = -140, z = -20, height = 5 },
-		{ x = -176, z = 18, height = 5 },
-	},
+	-- Ember Canyon (the caldera): the torch pillars beside the Arena portal, dark basalt (its obsidian arch stands on the
+	-- ground: the round stone platform went with the portals remodel)
 	TORCHES = {
 		{ x = -203, z = 15, height = 7 }, -- just outside the obsidian arch's sides (Town.PORTAL_SCENERY_CLEAR), so they show
 		{ x = -203, z = -15, height = 7 },
 	},
 	TORCH_FIRE = { COLOR = { 255, 150, 60 }, RATE = 18 },
-	TORCH_STONE = { 150, 120, 105 },
-	CACTUS = { BODY = { 90, 156, 80 }, DARK = { 70, 130, 64 }, FLOWER = { 255, 120, 170 } },
+	TORCH_STONE = { 52, 46, 56 }, -- dark basalt, like the caldera's walls
 	-- The caldera's glowing cracks (Util/LavaCracks lays them out, SceneryService snaps them onto the terrain as glowing
 	-- strips): down the canyon's three inner cliff faces (each a line in plan view, from/to, the cracks between heights
 	-- low and high) and across its floor (a box), clear of the trail and the portal. WIDTH: a strip's width range
@@ -174,8 +164,8 @@ return {
 	LAVA = {
 		RIVER = { from = { x = -136, z = -28.5 }, to = { x = -232, z = -28.5 }, width = 5.5 },
 		POOL = { x = -236, z = 0, radius = 8 },
-		COLOR = { 255, 100, 20 },
-		HOT = { 255, 200, 80 },
+		COLOR = { 255, 120, 30 }, -- hotter for the caldera
+		HOT = { 255, 210, 90 },
 		GLOW = { BRIGHTNESS = 2, RANGE = 26 },
 	},
 	-- Forest Falls: scrolling sheets of water down the cliff face into the pool, mist and splash at the bottom
