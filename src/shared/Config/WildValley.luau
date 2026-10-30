@@ -16,6 +16,36 @@ return {
 	-- The meadow's stream: from the -x cliff down to a pond by the arrival, the trail crossing it on a bridge
 	STREAM = { from = { x = -72, z = 1170 }, to = { x = 40, z = 1128 }, width = 6, pond = { x = 42, z = 1126, radius = 8 } },
 
+	-- The valley's terrain (SceneryService fills it after the town's; shapes as Config/Scenery's). The ground draws at
+	-- y 0 (filled to y -2) under the zone floors monsters stand on; the stream lies level with it; cliffs and hills close
+	-- the view outside the edge walls: grassy round the meadow, warm grey limestone round the gorge (tallest on its -x side, where
+	-- the cave mouth is), basalt round the ridge.
+	TERRAIN = {
+		{ shape = "Block", x = 43, y = -5, z = 1330, size = { x = 240, y = 6, z = 464 }, material = "Grass" }, -- the valley floor
+		{ shape = "Block", x = 43, y = -5, z = 1340, size = { x = 240, y = 6, z = 144 }, material = "Limestone" }, -- the gorge's rock floor
+		{ shape = "Block", x = 43, y = -5, z = 1486, size = { x = 240, y = 6, z = 148 }, material = "CrackedLava" }, -- the ridge's dark ground
+		{ shape = "Block", x = 0, y = -5, z = 1266, size = { x = 10, y = 6, z = 292 }, material = "Ground" }, -- the dirt trail
+		{ shape = "Block", x = 0, y = -5, z = 1446, size = { x = 10, y = 6, z = 68 }, material = "Basalt" }, -- the trail on the ridge
+		{ shape = "Block", x = -16, y = -5, z = 1149, yaw = 20.56, size = { x = 120, y = 6, z = 6 }, material = "Water" }, -- the stream
+		{ shape = "Block", x = 42, y = -5, z = 1126, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" }, -- its pond
+		-- Cliffs and hills beyond the edge walls
+		{ shape = "Block", x = 43, y = 6, z = 1090, size = { x = 300, y = 28, z = 24 }, material = "Grass" }, -- behind the arrival
+		{ shape = "Block", x = -86, y = 6, z = 1186, size = { x = 24, y = 28, z = 164 }, material = "Grass" }, -- the meadow's west hills
+		{ shape = "Block", x = 170, y = 5, z = 1186, size = { x = 24, y = 26, z = 164 }, material = "Grass" }, -- the meadow's east hills
+		{ shape = "Block", x = -88, y = 12, z = 1340, size = { x = 28, y = 44, z = 144 }, material = "Limestone" }, -- the gorge's tall west cliff
+		{ shape = "Block", x = 170, y = 9, z = 1340, size = { x = 24, y = 38, z = 144 }, material = "Limestone" }, -- the gorge's east cliff
+		{ shape = "Ball", x = -82, y = 8, z = 1340, radius = 13, material = "Limestone" }, -- the rock the cave mouth is set in
+		{ shape = "Block", x = -86, y = 10, z = 1484, size = { x = 24, y = 36, z = 144 }, material = "Basalt" }, -- the ridge's west wall
+		{ shape = "Block", x = 170, y = 10, z = 1484, size = { x = 24, y = 36, z = 144 }, material = "Basalt" }, -- the ridge's east wall
+		{ shape = "Block", x = 43, y = 13, z = 1570, size = { x = 300, y = 42, z = 24 }, material = "Basalt" }, -- the ridge's far wall
+		-- Jagged basalt rims on the ridge walls (turned blocks, like the caldera's)
+		{ shape = "Block", x = -82, y = 30, z = 1440, yaw = 25, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = -84, y = 31, z = 1520, yaw = -35, size = { x = 16, y = 14, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = 166, y = 30, z = 1460, yaw = 40, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = 20, y = 36, z = 1566, yaw = -20, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = 90, y = 35, z = 1568, yaw = 30, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
+	},
+
 	-- Town prop models (PropModels), scaled to `height` on the drawn ground. zone: which mood they dress.
 	PROPS = {
 		-- Meadow (zone 1)

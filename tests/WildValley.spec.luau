@@ -76,6 +76,41 @@ return {
 		expect.equal(WildValley.inside(valley.EDGE, { x = 0, z = -100 }), false, "the town is outside")
 	end,
 
+	["the valley's terrain fits the budget and draws the zones at y 0"] = function()
+		local scenery = require("../src/shared/Config/Scenery")
+		local town = require("../src/shared/Config/Town")
+		local TownLayout = require("../src/shared/Util/TownLayout")
+		local TownTerrain = require("../src/shared/Util/TownTerrain")
+		local cells = TownTerrain.estimatedCells(valley.TERRAIN)
+		assert(cells <= valley.MAX_CELLS, `the valley's terrain is {cells} cells (budget {valley.MAX_CELLS})`)
+		local plots = TownLayout.plotRects({ plotCount = 6, perRow = 3, plotWidth = 40, plotDepth = 40, gap = 24, streetWidth = 96 } :: any)
+		local townCells = TownTerrain.estimatedCells(TownTerrain.ops(scenery, town, plots))
+		assert(townCells + cells <= scenery.MAX_CELLS, `town {townCells} + valley {cells} cells over {scenery.MAX_CELLS}`)
+		-- monsters stand on the zone floors at y 0: the terrain under every spawn spot and zone corner draws there too
+		local half = wild.ZONE_SIZE / 2 - 2
+		for index in wild.ZONES do
+			local c = WildValley.zoneCenter(wild, index)
+			for _, p in { c, { x = c.x - half, z = c.z - half }, { x = c.x + half, z = c.z + half }, table.unpack(WildValley.spawnSpots(wild, index)) } do
+				local ground = TownTerrain.groundAt(valley.TERRAIN, p.x, p.z)
+				assert(ground and math.abs(ground) < 0.01, `zone {index}: ground at {p.x}, {p.z} draws at {ground}`)
+			end
+		end
+		-- the walkable edge has ground all the way to it (no void to fall into)
+		for _, p in { { x = -70, z = 1110 }, { x = 156, z = 1110 }, { x = 156, z = 1550 }, { x = -70, z = 1550 } } do
+			assert(TownTerrain.groundAt(valley.TERRAIN, p.x, p.z) ~= nil, `no ground at the edge corner {p.x}, {p.z}`)
+		end
+		-- the stream keeps clear of every monster's wander circle
+		local stream = valley.STREAM
+		for index in wild.ZONES do
+			for _, spot in WildValley.spawnSpots(wild, index) do
+				local dx, dz = stream.to.x - stream.from.x, stream.to.z - stream.from.z
+				local t = math.clamp(((spot.x - stream.from.x) * dx + (spot.z - stream.from.z) * dz) / (dx * dx + dz * dz), 0, 1)
+				local d = math.sqrt((spot.x - (stream.from.x + dx * t)) ^ 2 + (spot.z - (stream.from.z + dz * t)) ^ 2)
+				assert(d >= wild.WANDER_RADIUS + stream.width / 2, `the stream runs {d} from a spawn spot`)
+			end
+		end
+	end,
+
 	["markers run the whole trail"] = function()
 		local trail = WildValley.trail(wild)
 		local markers = WildValley.markers(trail, valley.MARKER_SPACING)

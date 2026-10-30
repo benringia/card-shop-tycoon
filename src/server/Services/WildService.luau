@@ -18,6 +18,7 @@ local Config = Shared:WaitForChild("Config")
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier's map in the Frontier place (same shape)
 local Wild = Place.getWorld()
+local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
@@ -257,12 +258,42 @@ local function decorate(parent: Instance, center: Vector3, seed: number)
 	end
 end
 
+-- The main game's Wild is the dressed valley (Config/WildValley; its terrain and scenery come from SceneryService): the
+-- zone floors, paths and arrival pad stay as invisible floors monsters snap to (groundAt), players walk on the terrain,
+-- and walls along its edge keep them in. The Frontier keeps the plain map.
+local VALLEY = not Place.isFrontier() and not Place.isDungeon()
+local EDGE_HEIGHT = 40
+
+-- A floor monsters stand on: plain in the Frontier, invisible over the valley's terrain in the main game
+local function floorPart(part: BasePart): BasePart
+	if VALLEY then
+		part.Transparency = 1
+		part.CanCollide = false
+		part.CastShadow = false
+	end
+	return part
+end
+
+-- Invisible walls along the valley's edge (not hit by the monsters' ground ray)
+local function buildEdge(folder: Instance)
+	local edge = WildValleyConfig.EDGE
+	for index, a in edge do
+		local b = edge[index % #edge + 1]
+		local from, to = Vector3.new(a.x, EDGE_HEIGHT / 2, a.z), Vector3.new(b.x, EDGE_HEIGHT / 2, b.z)
+		local wall = block(folder, "EdgeWall", Vector3.new(2, EDGE_HEIGHT, (to - from).Magnitude), CFrame.lookAt((from + to) / 2, to), Color3.new(1, 1, 1))
+		wall.Transparency = 1
+		wall.CanQuery = false
+		wall.CanTouch = false
+		wall.CastShadow = false
+	end
+end
+
 local function buildMap(): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = "Wild"
 
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
-	block(folder, "Entrance", Vector3.new(30, 2, 24), CFrame.new(entrance - Vector3.new(0, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone)
+	floorPart(block(folder, "Entrance", Vector3.new(30, 2, 24), CFrame.new(entrance - Vector3.new(0, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone))
 	portal(folder, "Return to shop", entrance + Vector3.new(0, 0, -9), Vector3.new(0, 0, 1), "Return", function(player)
 		WildService.TravelHome(player)
 	end)
@@ -270,17 +301,19 @@ local function buildMap(): Folder
 
 	for index, zone in Wild.ZONES do
 		local center = zoneCenter(index)
-		local floor = block(folder, zone.name, Vector3.new(Wild.ZONE_SIZE, 2, Wild.ZONE_SIZE), CFrame.new(center - Vector3.new(0, 1, 0)), rgb(zone.color), Enum.Material.Grass)
+		local floor = floorPart(block(folder, zone.name, Vector3.new(Wild.ZONE_SIZE, 2, Wild.ZONE_SIZE), CFrame.new(center - Vector3.new(0, 1, 0)), rgb(zone.color), Enum.Material.Grass))
 		floor:SetAttribute("Zone", index)
 		if index > 1 then
 			-- Path from the previous zone
 			local back = center - Vector3.new(0, 1, Wild.ZONE_SIZE / 2 + Wild.ZONE_GAP / 2)
-			block(folder, "Path", Vector3.new(14, 2, Wild.ZONE_GAP + 2), CFrame.new(back), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone)
+			floorPart(block(folder, "Path", Vector3.new(14, 2, Wild.ZONE_GAP + 2), CFrame.new(back), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone))
 		end
 		local edge = center - Vector3.new(0, 0, Wild.ZONE_SIZE / 2 - 4)
 		-- Faces the way players arrive (from -Z)
 		sign(folder, `{zone.name}\nRecommended Lv {zone.recommended}+`, CFrame.new(edge + Vector3.new(12, 4, 0)) * CFrame.Angles(0, math.pi, 0))
-		decorate(folder, center, index * 97)
+		if not VALLEY then
+			decorate(folder, center, index * 97)
+		end
 		for _, spot in WildValley.spawnSpots(Wild, index) do
 			local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(spot.x, center.Y + 0.5, spot.z), Color3.new(1, 1, 1))
 			point.Transparency = 1
@@ -290,6 +323,9 @@ local function buildMap(): Folder
 			point:SetAttribute("Zone", index)
 			CollectionService:AddTag(point, SPAWN_TAG)
 		end
+	end
+	if VALLEY then
+		buildEdge(folder)
 	end
 	return folder
 end

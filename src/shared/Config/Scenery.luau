@@ -373,6 +373,7 @@ return {
 		Slate = { 118, 128, 144 }, -- Frostpeak's cliff and peak
 		CrackedLava = { 40, 30, 32 }, -- the caldera's floor and the lava's banks
 		Basalt = { 46, 42, 50 }, -- the caldera's walls, rims and trail
+		Limestone = { 112, 104, 100 }, -- the Wild gorge's warm grey rock (Config/WildValley)
 		Snow = { 240, 246, 255 },
 		Glacier = { 170, 215, 245 },
 		Ground = { 120, 96, 70 },

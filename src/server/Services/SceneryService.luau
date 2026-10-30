@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Scenery = require(Config:WaitForChild("Scenery"))
 local Town = require(Config:WaitForChild("Town"))
+local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local Props = require(SharedUtil:WaitForChild("Props"))
@@ -680,6 +681,10 @@ function SceneryService.Start()
 		return
 	end
 	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
+	-- The Wild valley (Config/WildValley), far up the map in this same place: its terrain fills with the town's
+	for _, op in WildValleyConfig.TERRAIN do
+		table.insert(terrainOps, op)
+	end
 	-- Neither holds up the server's start (the players' data loads after the services start). The caldera's cracks
 	-- snap onto the terrain by raycast, so they wait for it to be filled.
 	task.spawn(function()
