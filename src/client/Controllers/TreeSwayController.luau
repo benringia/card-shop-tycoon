@@ -25,7 +25,7 @@ local TREES = {
 	GiantTree = true,
 	SnowPine = true,
 }
-local ROOTS = { "TownDecor", "PlazaGarden", "Scenery" }
+local ROOTS = { "TownDecor", "Scenery" }
 local CANOPY_PIVOT = 0.4 -- of the canopy's height above its bottom: where it turns
 
 local TreeSwayController = {}

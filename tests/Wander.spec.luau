@@ -1,6 +1,6 @@
 --!strict
--- Ambient animals wandering round their homes (Portal Worlds spec): 3 in town, one in each portal area. Pure steps in
--- Util/Wander, homes in Config/Ambient CRITTERS.
+-- Ambient animals wandering round their homes (Portal Worlds spec): 3 in town, 2 in the plaza (one resting, one
+-- circling the fountain), one in each portal area. Pure steps in Util/Wander, homes in Config/Ambient CRITTERS.
 local ambient = require("../src/shared/Config/Ambient")
 local Wander = require("../src/shared/Util/Wander")
 local expect = require("./lib/expect")
@@ -38,7 +38,24 @@ return {
 		expect.equal(arrived, false, "still going")
 	end,
 
-	["three animals in town and one in each portal area"] = function()
+	["an animal circling the fountain stays on its circle and never cuts through the middle"] = function()
+		local rng = stubRandom(7)
+		local home, r, maxArc, inner = { x = 0, z = 0 }, 7.4, 50, 6.5
+		local angle = 0
+		for _ = 1, 500 do
+			local target, nextAngle = Wander.orbitTarget(home, r, angle, maxArc, rng)
+			expect.near(math.sqrt(target.x ^ 2 + target.z ^ 2), r, 1e-9, "on the circle")
+			local turn = math.abs(nextAngle - angle)
+			assert(turn > 0 and turn <= maxArc + 1e-9, `turned {turn} degrees`)
+			-- the straight walk between two points on the circle comes closest to the middle halfway along
+			local fromX, fromZ = math.cos(math.rad(angle)) * r, math.sin(math.rad(angle)) * r
+			local mid = math.sqrt(((fromX + target.x) / 2) ^ 2 + ((fromZ + target.z) / 2) ^ 2)
+			assert(mid >= inner, `cuts {mid} studs from the middle`)
+			angle = nextAngle
+		end
+	end,
+
+	["three animals in town, two in the plaza, one in each portal area"] = function()
 		local town, areas = 0, {}
 		for _, critter in ambient.CRITTERS do
 			if critter.area == "town" then
@@ -48,6 +65,7 @@ return {
 			end
 		end
 		expect.equal(town, 3, "town animals")
+		expect.equal(areas.plaza, 2, "plaza animals")
 		for _, area in { "ForestFalls", "Frostpeak", "EmberCanyon" } do
 			expect.equal(areas[area], 1, area)
 		end

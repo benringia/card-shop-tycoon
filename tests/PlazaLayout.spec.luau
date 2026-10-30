@@ -1,23 +1,39 @@
 --!strict
--- The Card Festival Square plaza (the user's pick C, 2026-10-30): a gazebo over the healing fountain, a fan of giant
--- cards, market stalls, cafe tables, string lights to lamp posts, potted trees. Placements in Config/Plaza, maths in
--- Util/PlazaLayout. The lanes to the shop doors and along the street stay clear; the spring stays reachable.
+-- The Card Festival Square plaza (the user's pick C, 2026-10-30): a gazebo over the healing fountain (the Elemental
+-- Bloom lotus, round 2's pick B), a fan of giant cards, market stalls, cafe tables with townsfolk sitting at some,
+-- string lights to lamp posts, four planters of bushes and flowers along the edge holding the lamps and trees.
+-- Placements in Config/Plaza, maths in Util/PlazaLayout. The lanes to the shop doors and along the street stay clear;
+-- the spring stays reachable.
 local plaza = require("../src/shared/Config/Plaza")
 local town = require("../src/shared/Config/Town")
 local combat = require("../src/shared/Config/Combat")
+local ambient = require("../src/shared/Config/Ambient")
 local PlazaLayout = require("../src/shared/Util/PlazaLayout")
 local expect = require("./lib/expect")
 
 local RIM = town.LAYOUT.PLAZA_RADIUS
 
--- Every bench as a footprint too (TownLayout places them round the spring)
+-- Every bench and the plaza's resting animals as footprints too (TownLayout places the benches round the spring)
 local function allFootprints(): { PlazaLayout.Footprint }
 	local list = PlazaLayout.footprints(plaza)
 	for _, angle in town.LAYOUT.BENCH_ANGLES do
 		local p = PlazaLayout.at(angle, town.LAYOUT.BENCH_RADIUS)
 		table.insert(list, { kind = "bench", x = p.x, z = p.z, radius = plaza.BENCH_REACH })
 	end
+	for _, critter in ambient.CRITTERS do
+		if critter.area == "plaza" and not critter.orbit then
+			table.insert(list, { kind = "resting " .. critter.model, x = critter.home.x, z = critter.home.z, radius = critter.height / 2 })
+		end
+	end
 	return list
+end
+
+-- Lamps and potted trees stand in the edge planters on purpose; planter pieces touch each other
+local function standsIn(a: PlazaLayout.Footprint, b: PlazaLayout.Footprint): boolean
+	local function pair(x: string, y: string): boolean
+		return (a.kind == x and b.kind == y) or (a.kind == y and b.kind == x)
+	end
+	return pair("planter", "lamp") or pair("planter", "potted tree") or pair("planter", "planter")
 end
 
 return {
@@ -44,7 +60,7 @@ return {
 			for j = i + 1, #list do
 				local a, b = list[i], list[j]
 				-- neighbouring giant cards overlap a little on purpose: a fan (the fan test checks each one shows)
-				if a.kind == "giant card" and b.kind == "giant card" then
+				if (a.kind == "giant card" and b.kind == "giant card") or standsIn(a, b) then
 					continue
 				end
 				local d = math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
@@ -53,10 +69,11 @@ return {
 		end
 	end,
 
-	["the dome clears the fountain's floating gem, and the spring stays reachable"] = function()
-		expect.equal(plaza.FOUNTAIN_HEIGHT, town.SLOTS.HealingSpring.height, "the fountain is the size the gazebo is built for")
-		local g = plaza.GAZEBO
-		assert(g.platform.height + g.postHeight >= plaza.FOUNTAIN_HEIGHT + plaza.GEM_RISE, "the gem pokes into the dome")
+	["the dome clears the fountain's floating card, and the spring stays reachable"] = function()
+		local g, f = plaza.GAZEBO, plaza.FOUNTAIN
+		local cardTop = f.card.y + f.card.height / 2 + f.card.bob
+		assert(cardTop <= plaza.FOUNTAIN_HEIGHT, "the card floats higher than the fountain's height")
+		assert(g.platform.height + g.postHeight >= plaza.FOUNTAIN_HEIGHT + 2, "the fountain reaches into the dome")
 		assert(g.radius - g.postSize / 2 > plaza.FOUNTAIN_RADIUS + 1, "the columns crowd the fountain")
 		local gap = 2 * math.pi * g.radius / g.posts - g.postSize
 		assert(gap >= 4, `only {gap} studs between columns`)
@@ -105,6 +122,109 @@ return {
 		for index = 2, #bulbs do
 			assert(bulbs[index].x > bulbs[index - 1].x, "in order along the string")
 		end
+	end,
+
+	["the lotus has five petals, one per card element, evenly round"] = function()
+		local petals = PlazaLayout.petals(plaza.FOUNTAIN)
+		expect.equal(#petals, 5, "five petals")
+		local seen = {}
+		for index, petal in petals do
+			seen[petal.element] = true
+			expect.near(petal.angle, (index - 1) * 72, 1e-9, `petal {index}'s angle`)
+		end
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			expect.equal(seen[element], true, element)
+		end
+	end,
+
+	["each petal leans out, its gem stays over the basin, and its water arcs into the pool"] = function()
+		local f = plaza.FOUNTAIN
+		for _, petal in PlazaLayout.petals(f) do
+			local baseR = math.sqrt(petal.base.x ^ 2 + petal.base.z ^ 2)
+			local tipR = math.sqrt(petal.tip.x ^ 2 + petal.tip.z ^ 2)
+			assert(tipR > baseR, `{petal.element} doesn't lean out`)
+			assert(petal.tip.y > petal.base.y, `{petal.element} droops`)
+			assert(tipR + f.gem / 2 <= plaza.FOUNTAIN_RADIUS + 1e-9, `{petal.element}'s gem hangs past the basin`)
+			local angle = math.deg(math.atan2(petal.tip.z, petal.tip.x)) % 360
+			expect.near(angle, petal.angle % 360, 1e-6, `{petal.element} points along its angle`)
+			local landR = math.sqrt(petal.land.x ^ 2 + petal.land.z ^ 2)
+			assert(landR < f.pool.radius, `{petal.element}'s water lands outside the pool`)
+			expect.near(petal.land.y, f.pool.y, 1e-9, "lands on the water")
+		end
+	end,
+
+	["chairs ring each table facing it, and three tables have someone sitting"] = function()
+		local t = plaza.TABLE
+		for index, angle in plaza.TABLES.angles do
+			local chairs = PlazaLayout.chairs(plaza, index)
+			expect.equal(#chairs, t.chairs, `table {index}'s chairs`)
+			local middle = PlazaLayout.at(angle, plaza.TABLES.r)
+			for _, chair in chairs do
+				local d = math.sqrt((chair.x - middle.x) ^ 2 + (chair.z - middle.z) ^ 2)
+				expect.near(d, t.chairRadius, 1e-9, "chair distance")
+				assert(d + t.chairSize / 2 <= t.reach + 1e-9, "a chair sticks out past the table's footprint")
+				-- facing: a unit vector pointing at the table's middle
+				expect.near(chair.faceX * (middle.x - chair.x) + chair.faceZ * (middle.z - chair.z), d, 1e-9, "faces the table")
+			end
+		end
+		expect.equal(#t.sitters, 3, "three townsfolk")
+		for _, sitter in t.sitters do
+			assert(plaza.TABLES.angles[sitter.table], `no table {sitter.table}`)
+			assert(sitter.chair >= 1 and sitter.chair <= t.chairs, `no chair {sitter.chair}`)
+		end
+	end,
+
+	["planters along the edge in every quarter, between the lanes, holding the lamps and trees"] = function()
+		local p = plaza.PLANTERS
+		local quarters = {}
+		for _, arc in p.arcs do
+			assert(arc[1] < arc[2], "an arc runs backwards")
+			quarters[math.floor(arc[1] / 90)] = true
+			expect.equal(math.floor(arc[1] / 90), math.floor(arc[2] / 90), "a planter crosses a lane")
+		end
+		for quarter = 0, 3 do
+			expect.equal(quarters[quarter], true, `quarter {quarter}`)
+		end
+		assert(p.r + p.width / 2 <= RIM + 1e-9, "the planters poke past the plaza's edge")
+		local function inPlanter(angle: number, r: number): boolean
+			for _, arc in p.arcs do
+				local a = angle % 360
+				if a >= arc[1] and a <= arc[2] and math.abs(r - p.r) <= p.width / 2 then
+					return true
+				end
+			end
+			return false
+		end
+		for _, angle in plaza.LAMPS.angles do
+			assert(inPlanter(angle, plaza.LAMPS.r), `the lamp at {angle} isn't in a planter`)
+		end
+		for _, tree in plaza.TREES do
+			assert(inPlanter(tree.angle, tree.r), `the tree at {tree.angle} isn't in a planter`)
+		end
+	end,
+
+	["bushes and flowers fill the planters, clear of the lamps and trees, kept light"] = function()
+		local plants = PlazaLayout.planterPlants(plaza)
+		local bushes, flowers = 0, 0
+		for _, plant in plants do
+			if plant.kind == "bush" then
+				bushes += 1
+			else
+				expect.equal(plant.kind, "flower", "kind")
+				flowers += 1
+			end
+			for _, angle in plaza.LAMPS.angles do
+				local lamp = PlazaLayout.at(angle, plaza.LAMPS.r)
+				assert(math.sqrt((plant.x - lamp.x) ^ 2 + (plant.z - lamp.z) ^ 2) >= plaza.PLANTERS.clear, "a plant on a lamp")
+			end
+			for _, tree in plaza.TREES do
+				local spot = PlazaLayout.at(tree.angle, tree.r)
+				assert(math.sqrt((plant.x - spot.x) ^ 2 + (plant.z - spot.z) ^ 2) >= plaza.PLANTERS.clear, "a plant on a tree")
+			end
+		end
+		assert(bushes >= 8, `only {bushes} bushes`)
+		assert(flowers >= 12, `only {flowers} flowers`)
+		assert(#plants <= 60, `{#plants} plants is too many`)
 	end,
 
 	["eight lamps, three stalls, six tables, four potted trees"] = function()

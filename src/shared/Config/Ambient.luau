@@ -24,9 +24,12 @@ return {
 	},
 	BUTTERFLY_RANGE = 120, -- studs: flocks further from the camera stand still
 	-- Animals running round their homes (TownCritterController): Cute Pets models (ReplicatedStorage.CreatureModels
-	-- .CutePets), 3 in town and one in each portal area. radius: how far from home they wander; avoid: kept clear in
-	-- the middle (the plaza's spring); y: the ground at home; height: studs tall.
+	-- .CutePets), 3 in town, 2 in the plaza and one in each portal area. radius: how far from home they wander (0: it
+	-- rests there, facing `faces`); avoid: kept clear in the middle; orbit: instead runs round a circle this far from
+	-- home, up to maxArc degrees at a time; y: the ground at home; height: studs tall.
 	CRITTERS = {
+		{ model = "Cat", area = "plaza", home = { x = 19.4, z = 11.2 }, radius = 0, faces = { x = 0, z = 0 }, height = 1.8 }, -- by the east planter, between a lamp and a tree
+		{ model = "Puppy", area = "plaza", home = { x = 0, z = 0 }, orbit = 7.4, maxArc = 50, y = 0.5, height = 2.2 }, -- laps round the fountain on the gazebo's floor
 		{ model = "Fox", area = "town", home = { x = 150, z = -62 }, radius = 8, height = 2.6 },
 		{ model = "Bunny", area = "town", home = { x = 180, z = 12 }, radius = 8, height = 2 }, -- the grass by the grove (the plaza is paved now)
 		{ model = "Capybara", area = "town", home = { x = -32, z = 68 }, radius = 8, height = 2.8 },

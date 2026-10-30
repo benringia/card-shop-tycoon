@@ -31,10 +31,6 @@ local CHARCOAL = Color3.fromRGB(52, 56, 64)
 local WHITE = Color3.fromRGB(244, 245, 248)
 local LED_WHITE = Color3.fromRGB(255, 246, 228)
 local HEDGE_GREEN = Color3.fromRGB(72, 132, 70)
-local SPRING_STONE = Color3.fromRGB(196, 202, 214)
-local SPRING_TRIM = Color3.fromRGB(150, 160, 182)
-local SPRING_WATER = Color3.fromRGB(90, 200, 255)
-local SPRING_CRYSTAL = Color3.fromRGB(110, 210, 255)
 
 local variantCache: { [string]: { Instance } } = {}
 
@@ -482,36 +478,6 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		screen.Name = "Screen"
 		addPart(model, block, Vector3.new(0.45, 0.1, 0.7), CFrame.new(0.75, 0.05, -0.45) * CFrame.Angles(math.rad(8), 0, 0), STEEL_BLACK, Enum.Material.SmoothPlastic)
 		addPart(model, block, Vector3.new(0.12, 0.02, 0.12), CFrame.new(0.75, 0.11, -0.65), Color3.fromRGB(90, 230, 140), Enum.Material.Neon)
-	elseif slot == "HealingSpring" then
-		-- A round stone basin with a carved rim, glowing water, a pillar and a crystal floating above it
-		local radius = 5
-		addPart(model, cylinder, Vector3.new(0.8, radius * 2 + 0.6, radius * 2 + 0.6), CFrame.new(0, 0.4, 0) * UPRIGHT, SPRING_TRIM, Enum.Material.Slate)
-		addPart(model, cylinder, Vector3.new(1.4, radius * 2, radius * 2), CFrame.new(0, 1.1, 0) * UPRIGHT, SPRING_STONE, Enum.Material.Slate)
-		-- The rim: stone blocks round the edge, every other one a little taller
-		local blocks = 16
-		for index = 1, blocks do
-			local angle = (index / blocks) * math.pi * 2
-			local tall = index % 2 == 0
-			local rim = addPart(model, block, Vector3.new(2.1, if tall then 0.9 else 0.7, 0.8), CFrame.new(0, 0, 0) * CFrame.Angles(0, angle, 0) * CFrame.new(0, 2.0 + (if tall then 0.1 else 0), -(radius - 0.3)), if tall then SPRING_STONE else SPRING_TRIM, Enum.Material.Slate)
-			rim.Name = "Rim"
-		end
-		local water = addPart(model, cylinder, Vector3.new(0.3, (radius - 0.7) * 2, (radius - 0.7) * 2), CFrame.new(0, 1.95, 0) * UPRIGHT, SPRING_WATER, Enum.Material.Neon)
-		water.Name = "Water"
-		water.Transparency = 0.25
-		water.CanCollide = false
-		-- The pillar: a tiered column in the middle
-		addPart(model, cylinder, Vector3.new(0.6, 2.4, 2.4), CFrame.new(0, 2.3, 0) * UPRIGHT, SPRING_TRIM, Enum.Material.Slate)
-		addPart(model, cylinder, Vector3.new(2.2, 1.3, 1.3), CFrame.new(0, 3.6, 0) * UPRIGHT, SPRING_STONE, Enum.Material.Slate)
-		addPart(model, cylinder, Vector3.new(0.4, 2, 2), CFrame.new(0, 4.85, 0) * UPRIGHT, SPRING_TRIM, Enum.Material.Slate)
-		local bowl = addPart(model, cylinder, Vector3.new(0.2, 1.6, 1.6), CFrame.new(0, 5.1, 0) * UPRIGHT, SPRING_WATER, Enum.Material.Neon)
-		bowl.Name = "Water"
-		bowl.CanCollide = false
-				-- The crystal: a cube stood on its corner reads as a gem as it turns
-		local crystal = addPart(model, block, Vector3.new(1.1, 1.1, 1.1), CFrame.new(0, height - 0.3, 0) * CFrame.Angles(math.rad(45), 0, math.rad(35.26)), SPRING_CRYSTAL, Enum.Material.Glass)
-		crystal.Transparency = 0.15
-		crystal.Reflectance = 0.2
-		crystal.Name = "Crystal"
-		crystal.CanCollide = false
 	elseif slot == "Portal" then
 		local width = height * 0.85
 		for _, x in { -width / 2, width / 2 } do

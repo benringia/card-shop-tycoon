@@ -1,17 +1,21 @@
 --!strict
--- The Card Festival Square (the user's pick C, 2026-10-30; placements in Config/Plaza, Util/PlazaLayout): a white
--- gazebo with a stepped turquoise dome over the healing fountain, a fan of five giant cards with real card art and gold
--- rims facing where new players appear, three market stalls with striped awnings, six cafe tables, string lights from
--- the gazebo's rim to eight lamp posts, four potted trees. Built once at server start by SceneryService; main game only.
+-- The Card Festival Square (the user's pick C, 2026-10-30; placements in Config/Plaza, Util/PlazaLayout): a cream
+-- gazebo with a stepped teal tiled dome over the healing fountain (WildService builds the fountain), a fan of five
+-- giant cards with real card art and gold rims facing where new players appear, three market stalls with striped
+-- awnings, six cafe tables with townsfolk sitting at three (PlazaNpcController makes them sip), string lights from the
+-- gazebo's rim to eight lamp posts, and curved planters of bushes and flowers along the edge holding the lamps and four
+-- trees. Built once at server start by SceneryService; main game only.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local CardDesign = require(Config:WaitForChild("CardDesign"))
+local Customers = require(Config:WaitForChild("Customers"))
 local Plaza = require(Config:WaitForChild("Plaza"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Wild = require(Config:WaitForChild("Wild"))
 local PlazaLayout = require(Shared:WaitForChild("Util"):WaitForChild("PlazaLayout"))
+local NpcMotion = require(script.Parent:WaitForChild("NpcMotion"))
 local ScenePieces = require(script.Parent:WaitForChild("ScenePieces"))
 
 local PlazaBuild = {}
@@ -44,9 +48,10 @@ local function buildGazebo(parent: Instance)
 	local model = Instance.new("Model")
 	model.Name = "Gazebo"
 	local base = centre()
-	local white, trim, gold = rgb(g.white), rgb(g.trim), rgb(g.gold)
+	local stone, trim, gold = rgb(g.stone), rgb(g.trim), rgb(g.gold)
+	local columnMaterial = (Enum.Material :: any)[g.columnMaterial]
 	local floor = g.platform.height
-	piece(model, "Platform", Vector3.new(g.platform.height, g.platform.radius * 2, g.platform.radius * 2), CFrame.new(base + Vector3.new(0, g.platform.height / 2, 0)) * UPRIGHT, white, Enum.Material.Limestone, Enum.PartType.Cylinder)
+	piece(model, "Platform", Vector3.new(g.platform.height, g.platform.radius * 2, g.platform.radius * 2), CFrame.new(base + Vector3.new(0, g.platform.height / 2, 0)) * UPRIGHT, rgb(g.platformStone), Enum.Material.Limestone, Enum.PartType.Cylinder)
 	-- A gold band round the platform's edge: a slightly wider disc just under its top, so only the rim shows
 	detail(piece(model, "PlatformEdge", Vector3.new(0.16, g.platform.radius * 2 + 0.3, g.platform.radius * 2 + 0.3), CFrame.new(base + Vector3.new(0, g.platform.height - 0.13, 0)) * UPRIGHT, gold, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
 	local top = floor + g.postHeight
@@ -55,16 +60,16 @@ local function buildGazebo(parent: Instance)
 		local angle = (index - 0.5) / g.posts * 360
 		local p = at(angle, g.radius)
 		table.insert(corners, p)
-		piece(model, "ColumnBase", Vector3.new(g.postSize * 1.5, 0.6, g.postSize * 1.5), CFrame.new(p + Vector3.new(0, floor + 0.3, 0)), trim, Enum.Material.SmoothPlastic)
-		piece(model, "Column", Vector3.new(g.postHeight - 1.2, g.postSize, g.postSize), CFrame.new(p + Vector3.new(0, floor + g.postHeight / 2, 0)) * UPRIGHT, white, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-		piece(model, "ColumnCap", Vector3.new(g.postSize * 1.5, 0.6, g.postSize * 1.5), CFrame.new(p + Vector3.new(0, top - 0.3, 0)), trim, Enum.Material.SmoothPlastic)
+		piece(model, "ColumnBase", Vector3.new(g.postSize * 1.5, 0.6, g.postSize * 1.5), CFrame.new(p + Vector3.new(0, floor + 0.3, 0)), trim, columnMaterial)
+		piece(model, "Column", Vector3.new(g.postHeight - 1.2, g.postSize, g.postSize), CFrame.new(p + Vector3.new(0, floor + g.postHeight / 2, 0)) * UPRIGHT, stone, columnMaterial, Enum.PartType.Cylinder)
+		piece(model, "ColumnCap", Vector3.new(g.postSize * 1.5, 0.6, g.postSize * 1.5), CFrame.new(p + Vector3.new(0, top - 0.3, 0)), trim, columnMaterial)
 	end
 	-- The beam round the column tops, a gold band under it
 	for index, a in corners do
 		local b = corners[index % #corners + 1]
 		local length = (b - a).Magnitude + g.postSize
 		local mid = (a + b) / 2
-		piece(model, "Ring", Vector3.new(g.postSize * 1.3, g.ring, length), CFrame.lookAt(mid, b) + Vector3.new(0, top + g.ring / 2, 0), white, Enum.Material.SmoothPlastic)
+		piece(model, "Ring", Vector3.new(g.postSize * 1.3, g.ring, length), CFrame.lookAt(mid, b) + Vector3.new(0, top + g.ring / 2, 0), stone, columnMaterial)
 		detail(piece(model, "RingBand", Vector3.new(g.postSize * 1.35, 0.18, length), CFrame.lookAt(mid, b) + Vector3.new(0, top + 0.1, 0), gold, Enum.Material.SmoothPlastic))
 	end
 	-- The dome: stepped discs, each a shade lighter going up, then a lantern and a gold finial
@@ -72,7 +77,7 @@ local function buildGazebo(parent: Instance)
 	for index, tier in g.dome do
 		local radius, height = tier[1], tier[2]
 		local shade = rgb(g.roofDark):Lerp(rgb(g.roof), (index - 1) / math.max(#g.dome - 1, 1))
-		piece(model, "Dome", Vector3.new(height, radius * 2, radius * 2), CFrame.new(base + Vector3.new(0, y + height / 2, 0)) * UPRIGHT, shade, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		piece(model, "Dome", Vector3.new(height, radius * 2, radius * 2), CFrame.new(base + Vector3.new(0, y + height / 2, 0)) * UPRIGHT, shade, (Enum.Material :: any)[g.roofMaterial], Enum.PartType.Cylinder)
 		y += height
 	end
 	local lantern = piece(model, "Lantern", Vector3.new(g.lantern, g.lantern, g.lantern), CFrame.new(base + Vector3.new(0, y + g.lantern / 2, 0)), rgb(g.light.color), Enum.Material.Neon)
@@ -198,24 +203,99 @@ local function buildStall(parent: Instance, spec: any)
 	model.Parent = parent
 end
 
-local function buildTable(parent: Instance, angle: number)
+-- A bistro chair at `chair` (from PlazaLayout.chairs): a round seat on four thin dark legs, a round back on two posts
+-- leaning back a little; returns the seat's top, facing the table
+local function buildChair(model: Model, chair: PlazaLayout.Chair): CFrame
+	local t = Plaza.TABLE
+	local seat, back = t.seat, t.back
+	local spot = centre() + Vector3.new(chair.x, 0, chair.z)
+	local frame = CFrame.lookAt(spot, spot + Vector3.new(chair.faceX, 0, chair.faceZ))
+	local wood, metal = rgb(t.wood), rgb(t.metal)
+	piece(model, "Seat", Vector3.new(seat.thickness, seat.radius * 2, seat.radius * 2), frame * CFrame.new(0, seat.height, 0) * UPRIGHT, wood, Enum.Material.Wood, Enum.PartType.Cylinder)
+	local legLength = seat.height - seat.thickness / 2
+	for _, corner in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+		local inset = seat.radius * 0.62
+		detail(piece(model, "ChairLeg", Vector3.new(legLength, t.leg, t.leg), frame * CFrame.new(corner[1] * inset, legLength / 2, corner[2] * inset) * UPRIGHT, metal, Enum.Material.Metal, Enum.PartType.Cylinder))
+	end
+	local lean = math.rad(back.lean)
+	local rise = back.y - seat.height
+	local backZ = seat.radius * 0.8
+	for _, side in { -1, 1 } do
+		local foot = Vector3.new(side * seat.radius * 0.7, seat.height, backZ)
+		local head = foot + Vector3.new(0, rise, math.tan(lean) * rise)
+		detail(piece(model, "ChairPost", Vector3.new((head - foot).Magnitude, t.leg, t.leg), frame * CFrame.lookAt((foot + head) / 2, head) * CFrame.Angles(0, math.rad(90), 0), metal, Enum.Material.Metal, Enum.PartType.Cylinder))
+	end
+	piece(model, "ChairBack", Vector3.new(0.14, back.radius * 2, back.radius * 2), frame * CFrame.new(0, back.y, backZ + math.tan(lean) * rise) * CFrame.Angles(lean, 0, 0) * CFrame.Angles(0, math.rad(90), 0), wood, Enum.Material.Wood, Enum.PartType.Cylinder)
+	return frame * CFrame.new(0, seat.height + seat.thickness / 2, 0)
+end
+
+-- A townsperson sitting on a chair (the customers' blocky look), a cup in hand; the rig is anchored at its root, so it
+-- costs no physics. Each client plays the sit animation and the sips (PlazaNpcController).
+local function buildSitter(parent: Instance, seatTop: CFrame, index: number)
+	local sitter = Plaza.SITTER
+	local description = Instance.new("HumanoidDescription")
+	local skin = Customers.SKIN_COLORS[(index * 2) % #Customers.SKIN_COLORS + 1]
+	description.HeadColor = skin
+	description.LeftArmColor = skin
+	description.RightArmColor = skin
+	description.TorsoColor = Customers.CLOTHES_COLORS[(index * 3) % #Customers.CLOTHES_COLORS + 1]
+	local legs = Customers.CLOTHES_COLORS[(index * 5 + 1) % #Customers.CLOTHES_COLORS + 1]
+	description.LeftLegColor = legs
+	description.RightLegColor = legs
+	local rig = NpcMotion.createRig(description, "Townsfolk", seatTop)
+	local humanoid = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	for _, part in rig:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.Massless = true
+		end
+	end
+	local root = rig:FindFirstChild("HumanoidRootPart") :: BasePart
+	root.Anchored = true
+	root.CFrame = seatTop * CFrame.new(0, sitter.rootHeight, sitter.back)
+	local hand = rig:FindFirstChild("RightHand") :: BasePart?
+	if hand then
+		local cup = detail(piece(rig, "Cup", Vector3.new(0.42, 0.3, 0.3), hand.CFrame, rgb(sitter.cup), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
+		cup.Anchored = false
+		cup.Massless = true
+		local weld = Instance.new("Weld")
+		weld.Part0 = hand
+		weld.Part1 = cup
+		weld.C0 = CFrame.new(0, -0.2, -0.15) * UPRIGHT
+		weld.Parent = cup
+	end
+	rig.Parent = parent
+end
+
+-- A round wooden cafe table on a dark pedestal, a cloth just under its top and a little vase of flowers, its chairs
+-- round it and townsfolk in the chairs Plaza.TABLE.sitters names
+local function buildTable(parent: Instance, townsfolk: Instance, index: number)
 	local t = Plaza.TABLE
 	local model = Instance.new("Model")
 	model.Name = "CafeTable"
-	local spot = at(angle, Plaza.TABLES.r)
-	local top = t.top
-	piece(model, "TableTop", Vector3.new(0.2, top.radius * 2, top.radius * 2), CFrame.new(spot + Vector3.new(0, top.height, 0)) * UPRIGHT, rgb(t.white), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-	piece(model, "TablePole", Vector3.new(top.height, 0.25, 0.25), CFrame.new(spot + Vector3.new(0, top.height / 2, 0)) * UPRIGHT, rgb(t.metal), Enum.Material.Metal, Enum.PartType.Cylinder)
-	detail(piece(model, "TableFoot", Vector3.new(0.15, 1.5, 1.5), CFrame.new(spot + Vector3.new(0, 0.08, 0)) * UPRIGHT, rgb(t.metal), Enum.Material.Metal, Enum.PartType.Cylinder))
-	for index = 1, t.chairs do
-		local a = math.rad(angle * 7 + index / t.chairs * 360)
-		local place = spot + Vector3.new(math.cos(a), 0, math.sin(a)) * t.chairRadius
-		local chair = CFrame.lookAt(place, Vector3.new(spot.X, 0, spot.Z))
-		piece(model, "Seat", Vector3.new(1.1, 0.25, 1.1), chair * CFrame.new(0, 1.6, 0), rgb(t.wood), Enum.Material.Wood)
-		piece(model, "ChairBack", Vector3.new(1.1, 1.3, 0.18), chair * CFrame.new(0, 2.35, 0.5), rgb(t.wood), Enum.Material.Wood)
-		detail(piece(model, "ChairLeg", Vector3.new(1.5, 0.2, 0.2), chair * CFrame.new(0, 0.75, 0) * UPRIGHT, rgb(t.metal), Enum.Material.Metal, Enum.PartType.Cylinder))
+	local spot = at(Plaza.TABLES.angles[index], Plaza.TABLES.r)
+	local top, metal = t.top, rgb(t.metal)
+	piece(model, "TableTop", Vector3.new(top.thickness, top.radius * 2, top.radius * 2), CFrame.new(spot + Vector3.new(0, top.height, 0)) * UPRIGHT, rgb(t.wood), Enum.Material.Wood, Enum.PartType.Cylinder)
+	local clothRadius = top.radius + t.cloth.overhang
+	detail(piece(model, "TableCloth", Vector3.new(t.cloth.drop, clothRadius * 2, clothRadius * 2), CFrame.new(spot + Vector3.new(0, top.height - top.thickness / 2 - t.cloth.drop / 2 + 0.04, 0)) * UPRIGHT, rgb(t.clothColor), Enum.Material.Fabric, Enum.PartType.Cylinder))
+	piece(model, "TablePole", Vector3.new(top.height, 0.28, 0.28), CFrame.new(spot + Vector3.new(0, top.height / 2, 0)) * UPRIGHT, metal, Enum.Material.Metal, Enum.PartType.Cylinder)
+	detail(piece(model, "TableFoot", Vector3.new(0.14, 1.4, 1.4), CFrame.new(spot + Vector3.new(0, 0.07, 0)) * UPRIGHT, metal, Enum.Material.Metal, Enum.PartType.Cylinder))
+	local vaseFoot = top.height + top.thickness / 2
+	detail(piece(model, "Vase", Vector3.new(t.vase.height, t.vase.radius * 2, t.vase.radius * 2), CFrame.new(spot + Vector3.new(0, vaseFoot + t.vase.height / 2, 0)) * UPRIGHT, Color3.fromRGB(170, 220, 230), Enum.Material.Glass, Enum.PartType.Cylinder))
+	detail(piece(model, "Bloom", Vector3.one * 0.42, CFrame.new(spot + Vector3.new(0, vaseFoot + t.vase.height + 0.12, 0)), rgb(t.flowers[(index - 1) % #t.flowers + 1]), Enum.Material.SmoothPlastic, Enum.PartType.Ball))
+	local seats = {}
+	for _, chair in PlazaLayout.chairs(Plaza, index) do
+		table.insert(seats, buildChair(model, chair))
 	end
 	model.Parent = parent
+	for _, sitter in t.sitters do
+		if sitter.table == index then
+			buildSitter(townsfolk, seats[sitter.chair], index)
+		end
+	end
 end
 
 -- A lamp post at the rim and a string of warm bulbs sagging from the gazebo's rim to it
@@ -263,13 +343,40 @@ local function buildLampAndLights(parent: Instance, angle: number)
 	model.Parent = parent
 end
 
-local function buildTrees(parent: Instance)
-	local planter = Plaza.PLANTER
+-- The curved stone planters along the edge, grass on top, the bushes and flowers in them and the trees standing in
+-- them (the lamps stand in them too: their posts are built by buildLampAndLights)
+local function buildPlanters(parent: Instance)
+	local planters = Plaza.PLANTERS
+	local model = Instance.new("Model")
+	model.Name = "Planters"
+	local stone, soil = rgb(planters.stone), rgb(planters.soil)
+	for _, arc in planters.arcs do
+		local count = math.max(1, math.ceil((arc[2] - arc[1]) / planters.piece))
+		local step = (arc[2] - arc[1]) / count
+		local length = 2 * (planters.r + planters.width / 2) * math.sin(math.rad(step / 2)) + 0.05
+		for index = 0, count - 1 do
+			local spot = at(arc[1] + step * (index + 0.5), planters.r)
+			local frame = CFrame.lookAt(spot, centre())
+			piece(model, "PlanterStone", Vector3.new(length, planters.height, planters.width), frame * CFrame.new(0, planters.height / 2, 0), stone, Enum.Material.Slate)
+			detail(piece(model, "PlanterGrass", Vector3.new(length, 0.12, planters.width - 0.4), frame * CFrame.new(0, planters.height + 0.02, 0), soil, Enum.Material.LeafyGrass))
+		end
+	end
+	for _, plant in PlazaLayout.planterPlants(Plaza) do
+		local placed = ScenePieces.placeModel(model, { model = plant.model, x = centre().X + plant.x, z = centre().Z + plant.z, height = plant.height, yaw = plant.yaw }, "PlanterPlant", planters.height)
+		if placed then
+			for _, part in placed:GetDescendants() do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+					part.CastShadow = false
+				end
+			end
+		end
+	end
 	for _, tree in Plaza.TREES do
 		local spot = at(tree.angle, tree.r)
-		piece(parent, "Planter", Vector3.new(planter.height, planter.radius * 2, planter.radius * 2), CFrame.new(spot + Vector3.new(0, planter.height / 2, 0)) * UPRIGHT, rgb(planter.color), Enum.Material.Slate, Enum.PartType.Cylinder)
-		ScenePieces.placeModel(parent, { model = tree.model, x = spot.X, z = spot.Z, height = tree.height, yaw = tree.angle }, "PottedTree", planter.height)
+		ScenePieces.placeModel(model, { model = tree.model, x = spot.X, z = spot.Z, height = tree.height, yaw = tree.angle }, "PlanterTree", planters.height)
 	end
+	model.Parent = parent
 end
 
 function PlazaBuild.build(parent: Instance)
@@ -280,13 +387,16 @@ function PlazaBuild.build(parent: Instance)
 	for _, stall in Plaza.STALLS do
 		buildStall(folder, stall)
 	end
-	for _, angle in Plaza.TABLES.angles do
-		buildTable(folder, angle)
+	local townsfolk = Instance.new("Folder")
+	townsfolk.Name = "Townsfolk"
+	townsfolk.Parent = folder
+	for index in Plaza.TABLES.angles do
+		buildTable(folder, townsfolk, index)
 	end
 	for _, angle in Plaza.LAMPS.angles do
 		buildLampAndLights(folder, angle)
 	end
-	buildTrees(folder)
+	buildPlanters(folder)
 	folder.Parent = parent
 end
 

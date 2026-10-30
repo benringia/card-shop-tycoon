@@ -53,18 +53,31 @@ between the two rows (x -110..110, 96 wide: shop fronts at z ±48) with a zebra 
 concrete sidewalk (8 wide, square 4-stud slabs) along each row's front, a round pale limestone plaza (radius 26, open room for
 event NPCs and event stalls) with two glowing blue rings set in it (the healing area's edge at 12 and one near the rim), a
 glowing line on the street from the plaza to each portal in that portal's colour (`Town.FLOOR`, `TownLayout.crosswalks` /
-`portalPaths`) round the healing spring (the HealingSpring prop slot, 11 tall so its gem clears the gazebo's dome: the free "Better Low Poly Fountain" by scene_boy,
-recoloured moonstone with glowing water, kept in the place's `PlaceProps` (copy: `assets/place-props/HealingSpring.rbxm`);
-the code adds a big turning, bobbing gem over its top, rising sparkles, a blue light, breathing water and a faint
-disc for the 12-stud healing area; a part-built stand-in is used if the model is missing). **Card Festival Square**
-(the user's pick C of three plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/PlazaBuild`,
-built by SceneryService): a white gazebo with eight columns and a stepped turquoise dome over the fountain (a warm
-light and a lantern inside); a fan of five giant cards on a long stone plinth (real card art, gold edges, rims in
-their rarity colour: Cindercub, Boltlynx, Solarion in the middle, Thunderhorn, Tidecaller) in the north-west corner,
-facing where new players appear; three market stalls with striped awnings (empty counters, ready for event NPCs);
-six cafe tables; string lights sagging from the gazebo's rim to eight lamp posts at the edge; four potted trees; the
-four benches just outside the gazebo (13.5 studs). The lanes to the shop doors and along the street stay clear
-(Lune-tested). It replaces the old hand-placed garden: formerly `Workspace.PlazaGarden` (hand-placed in the
+`portalPaths`) round the healing spring. The spring is the **Elemental Bloom** fountain (plaza round 2, the user's
+pick B of three fountain concepts, 2026-10-30; `Server/Util/BloomFountain`, `Config/Plaza.FOUNTAIN`, petals from
+`Util/PlazaLayout`), 11 tall with its card: a warm white stone lotus on a round step (radius 5.5), five outer petals
+leaning out 40 degrees, one per card element (Ember, Tide, Bloom, Volt, Shade), each tinted toward its element's
+colour with a glowing gem at its tip spraying an arc of glowing water (a scrolling beam) into the pool in the
+flower's heart; five blush petals rising from the water; a golden card-shaped crystal floating over a stem with a
+gold cup. WildService adds the card's turning and bobbing, rising sparkles, a light, breathing water and a faint
+disc for the 12-stud healing area (the Frontier's spring is the same fountain). It replaced the free "Better Low
+Poly Fountain" by scene_boy (the old HealingSpring prop slot, its model in the place's `PlaceProps`, copy
+`assets/place-props/HealingSpring.rbxm`, no longer used). **Card Festival Square** (the user's pick C of three
+plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/PlazaBuild`, built by SceneryService):
+a gazebo with eight cream plaster columns and a stepped teal dome of roof tiles over the fountain (a warm light and
+a lantern inside; matte mid tones, since white plastic and a shiny roof glared in the sun and mirrored the sky); a
+fan of five giant cards on a long stone plinth (real card art, gold edges, rims in their rarity colour: Cindercub,
+Boltlynx, Solarion in the middle, Thunderhorn, Tidecaller) in the north-west corner, facing where new players appear;
+three market stalls with striped awnings (empty counters, ready for event NPCs); six round wooden cafe tables
+(a cloth under the top, a little vase of flowers) with three bistro chairs each (round seat on thin dark legs, round
+back on two posts); three townsfolk sitting at every other table (the customers' blocky look, a cup in hand; anchored
+rigs, so no physics; each client plays the sit animation and lifts their cups to sip now and then, `PlazaNpcController`,
+only near the camera with the extras on); string lights sagging from the gazebo's rim to eight lamp posts at the edge;
+five curved stone planters along the edge between the lanes (radius 25, 2 wide, grass on top; the card fan's quarter
+split where its plinth reaches the edge) holding the lamps, four trees and 32 plants (11 bushes, 21 flowers) (the town's Bush and
+Flower props, no shadows); two Cute Pets animals: a cat resting by the east planter and a puppy running laps round the
+fountain on the gazebo's floor (`Ambient.CRITTERS`, `Wander.orbitTarget`); the four benches just outside the gazebo
+(13.5 studs). The lanes to the shop doors and along the street stay clear (Lune-tested). It replaces the old hand-placed garden: formerly `Workspace.PlazaGarden` (hand-placed in the
 place, like TownDecor): 4 cherry trees between the benches (street and shop lanes left open), glowing spotted
 mushrooms at the basin, a ring of flowers and bushes, four round grass lawns with clover tufts (one per quarter)
 and a low wooden fence round the plaza edge (radius 21, 2 tall) with gaps at the four lanes; Creator Store pieces were stripped to parts, meshes, lights and
@@ -1076,6 +1089,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded fight simulation: packs, boss mechanics and phases, carried HP (pure, Lune-tested)
     │       ├── DungeonBuilder.luau   # the Dungeon's cavern: rooms, barriers, doors, crystals, lighting
+    │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, card fan, stalls, cafe sets and townsfolk, lights, planters
+    │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
+    │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
@@ -1100,7 +1116,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
     │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
-    │   │   ├── TownCritterController.luau # six Cute Pets animals running round their homes
+    │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
+    │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
@@ -1216,7 +1233,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FrameWatchdog.luau # turns the extras off on slow frames (pure, Lune-tested)
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
-            ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights (pure, Lune-tested)
+            ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)

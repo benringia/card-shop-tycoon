@@ -489,7 +489,7 @@ end
 -- Small hand-placed decor (flowers, clover, mushrooms, small rocks) casts no shadow: it saves shadow work and no one
 -- misses those shadows
 local function quietSmallShadows()
-	for _, name in { "TownDecor", "PlazaGarden" } do
+	for _, name in { "TownDecor" } do
 		local root = workspace:FindFirstChild(name)
 		if root then
 			for _, part in root:GetDescendants() do

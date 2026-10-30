@@ -1,6 +1,7 @@
 --!strict
 -- An ambient animal wandering round its home (Portal Worlds spec): pick a point in the ring between `avoid` and
--- `radius` from home, walk to it without passing it, pause, pick again. Pure, Lune-tested; homes in Config/Ambient
+-- `radius` from home (or a little further round a circle, for one running laps), walk to it without passing it,
+-- pause, pick again. Pure, Lune-tested; homes in Config/Ambient
 -- CRITTERS, TownCritterController moves the animals.
 export type Point = { x: number, z: number }
 export type Rng = { NextNumber: (any, number, number) -> number }
@@ -13,6 +14,19 @@ function Wander.target(home: Point, radius: number, avoid: number?, rng: Rng): P
 	local angle = rng:NextNumber(0, math.pi * 2)
 	local distance = math.sqrt(rng:NextNumber(inner * inner, radius * radius))
 	return { x = home.x + math.cos(angle) * distance, z = home.z + math.sin(angle) * distance }
+end
+
+-- The next point for an animal running round a circle `r` studs from home (the plaza's puppy round the fountain), from
+-- where it stands at `angle` degrees: 10 to maxArc degrees on, now and then back the other way, so the straight walk
+-- there stays close to the circle. Returns the point and its angle.
+function Wander.orbitTarget(home: Point, r: number, angle: number, maxArc: number, rng: Rng): (Point, number)
+	local turn = rng:NextNumber(math.min(10, maxArc), maxArc)
+	if rng:NextNumber(0, 1) < 0.25 then
+		turn = -turn
+	end
+	local nextAngle = angle + turn
+	local a = math.rad(nextAngle)
+	return { x = home.x + math.cos(a) * r, z = home.z + math.sin(a) * r }, nextAngle
 end
 
 -- One move toward the target at `speed` studs a second; true once it's there

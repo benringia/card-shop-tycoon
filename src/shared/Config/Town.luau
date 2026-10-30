@@ -19,9 +19,6 @@ return {
 		Bench = { height = 3, collide = true },
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
-		-- The plaza's healing fountain (WildService): parts named Water glow and breathe; a floating gem (the
-		-- model's Crystal part, or one made above its top) turns over it. The model lives in PlaceProps (meshes).
-		HealingSpring = { height = 11, collide = true }, -- 11 so its floating gem clears the plaza gazebo's dome (Config/Plaza)
 		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
