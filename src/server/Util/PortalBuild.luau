@@ -104,40 +104,45 @@ local function beam(spec: any, from: BasePart, to: BasePart)
 	stream.Parent = from
 end
 
--- The swirl in the Opening's middle: a round flat beam (PortalLooks.vortexSize) on a part facing down the trail (the
--- model's front), so the client turns the part about its look axis and the swirl spins about its own middle
-local function vortex(model: Model, look: any, opening: BasePart): BasePart
+-- The swirl in the Opening's middle: one round image (PortalLooks.vortexSize) on a still, see-through part facing down the
+-- trail (the model's front), on both faces. The client turns the image in its own plane (PortalFxController): a beam
+-- turned with its part twisted out of the opening and looked like several disks tumbling.
+local function swirlFace(holder: BasePart, face: Enum.NormalId, look: any)
 	local fx = Town.PORTAL_FX
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "SwirlGui"
+	gui.Face = face
+	gui.MaxDistance = fx.VORTEX_DISTANCE
+	gui.LightInfluence = 0
+	gui.Brightness = fx.VORTEX_BRIGHTNESS
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = fx.VORTEX_PIXELS
+	gui.Parent = holder
+	local swirl = Instance.new("ImageLabel")
+	swirl.Name = "Swirl"
+	swirl.AnchorPoint = Vector2.new(0.5, 0.5)
+	swirl.Position = UDim2.fromScale(0.5, 0.5)
+	swirl.Size = UDim2.fromScale(1, 1)
+	swirl.BackgroundTransparency = 1
+	swirl.Image = fx.VORTEX_TEXTURE
+	swirl.ImageTransparency = look.vortex.transparency
+	swirl.Parent = gui
+	local tint = Instance.new("UIGradient")
+	tint.Color = ColorSequence.new(rgb(look.vortex.colors[1]), rgb(look.vortex.colors[2]))
+	tint.Parent = swirl
+end
+
+local function vortex(model: Model, look: any, opening: BasePart): BasePart
+	local size = PortalLooks.vortexSize(opening.Size.X, opening.Size.Y, Town)
 	local holder = Instance.new("Part")
 	holder.Name = "Vortex"
-	holder.Size = Vector3.one * 0.2
+	holder.Size = Vector3.new(size, size, 0.05)
 	holder.Anchored = true
 	hide(holder)
 	holder.CFrame = CFrame.lookAt(opening.Position, opening.Position + model:GetPivot().LookVector)
 	holder.Parent = model
-	-- default orientation: the attachments' up axis is the part's Y, so the beam's width runs up the opening
-	local size = PortalLooks.vortexSize(opening.Size.X, opening.Size.Y, Town)
-	local left = Instance.new("Attachment")
-	left.Position = Vector3.new(-size / 2, 0, 0)
-	left.Parent = holder
-	local right = Instance.new("Attachment")
-	right.Position = Vector3.new(size / 2, 0, 0)
-	right.Parent = holder
-	local swirl = Instance.new("Beam")
-	swirl.Attachment0 = left
-	swirl.Attachment1 = right
-	swirl.FaceCamera = false
-	swirl.Width0 = size
-	swirl.Width1 = size
-	swirl.Segments = 1
-	swirl.Texture = fx.VORTEX_TEXTURE
-	swirl.TextureMode = Enum.TextureMode.Stretch
-	swirl.TextureLength = 1
-	swirl.LightEmission = fx.VORTEX_LIGHT
-	swirl.LightInfluence = 0
-	swirl.Color = ColorSequence.new(rgb(look.vortex.colors[1]), rgb(look.vortex.colors[2]))
-	swirl.Transparency = NumberSequence.new(look.vortex.transparency)
-	swirl.Parent = holder
+	swirlFace(holder, Enum.NormalId.Front, look)
+	swirlFace(holder, Enum.NormalId.Back, look)
 	local light = Instance.new("PointLight")
 	light.Color = rgb(look.light.color)
 	light.Brightness = look.light.brightness

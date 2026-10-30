@@ -123,8 +123,10 @@ obsidian shards leaning into an uneven pointed arch with lava cracks, two lava s
 rising embers (on the sand between the torches: the round stone platform went). A round swirl in the world's colours
 turns about its own middle in each opening, 90% of the opening's narrower side (`Town.PORTAL_FX.VORTEX_SCALE`; a swirl
 filling the whole opening was stretched, wobbled and swung past the narrow arch tops; `assets/ui/fx/portal-vortex.png`,
-Figma, white with clear gaps between its arms; spun on the client within 150 studs with the extras on,
-`PortalFxController`, which looks the vortexes up every frame so a portal that streamed back in still turns).
+Figma, white with clear gaps between its arms). It is one image per face on a still, see-through part (a SurfaceGui
+drawn within 300 studs, tinted by a gradient); the client turns only the image in its own plane (ImageLabel.Rotation,
+`PortalFxController`, within 150 studs with the extras on, looking the swirls up every frame so a portal that streamed
+back in still turns). A flat beam turned with its part twisted out of the opening and read as several disks tumbling.
 Props stands a model's lowest point on the ground, but the builds sink roots, shards and the drift below their Blender
 ground: each look names a ground part and its Blender height (`PORTAL_LOOKS.ground`) and the model sinks until it
 stands there (`Util/PortalLooks.groundShift`; a Lune test checks the heights against the saved files). The looks live in `Town.PORTAL_LOOKS` (vortex colours and spin, light, glowing parts, at most 4

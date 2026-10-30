@@ -1,9 +1,10 @@
 --!strict
--- Spins each town portal's vortex on this client (spec 2026-10-30-town-portals-design; Server/Util/PortalBuild builds
--- the portals, tagged TownPortal, with a part named Vortex facing down the trail and a round swirl beam on it). The
--- swirl turns about its own middle (the part's look axis) only while the camera is within Town.PORTAL_FX.SPIN_RANGE and
--- the extras are on (Util/Extras); otherwise it stands still at rest, still showing. The vortexes are looked up every
--- frame (three portals), so a portal that streamed out and back in spins its new copy, never a stale one.
+-- Spins each town portal's swirl on this client (spec 2026-10-30-town-portals-design; Server/Util/PortalBuild builds
+-- the portals, tagged TownPortal, with a still part named Vortex in the opening carrying one round swirl image per
+-- face). Only the images turn, in their own plane (ImageLabel.Rotation), so the swirl spins about its middle and nothing
+-- tilts; a beam turned with its part twisted out of the opening. It turns only while the camera is within
+-- Town.PORTAL_FX.SPIN_RANGE and the extras are on (Util/Extras); otherwise it stands still, still showing. The swirls
+-- are looked up every frame (three portals), so a portal that streamed out and back in turns its new copy.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,11 +17,6 @@ local PortalFxController = {}
 
 local TAG = "TownPortal"
 
-type Spin = { rest: CFrame, speed: number, turning: boolean }
-
--- By vortex part; weak keys, so a part that streamed out is forgotten with it
-local spins: { [BasePart]: Spin } = setmetatable({}, { __mode = "k" }) :: any
-
 -- The look whose slot the portal model is named after (Props names a placed model after its slot)
 local function lookFor(model: Instance): any?
 	for _, look in Town.PORTAL_LOOKS do
@@ -31,21 +27,13 @@ local function lookFor(model: Instance): any?
 	return nil
 end
 
-local function spinFor(model: Instance): (BasePart?, Spin?)
-	local part = model:FindFirstChild("Vortex")
-	if not (part and part:IsA("BasePart")) then
-		return nil, nil
-	end
-	local spin = spins[part]
-	if not spin then
-		local look = lookFor(model)
-		if not look then
-			return nil, nil
+local function turn(part: BasePart, degrees: number)
+	for _, gui in part:GetChildren() do
+		local swirl = gui:IsA("SurfaceGui") and gui:FindFirstChild("Swirl")
+		if swirl and swirl:IsA("ImageLabel") then
+			swirl.Rotation = degrees
 		end
-		spin = { rest = part.CFrame, speed = look.vortex.spin, turning = false }
-		spins[part] = spin
 	end
-	return part, spin
 end
 
 function PortalFxController.Start()
@@ -54,15 +42,11 @@ function PortalFxController.Start()
 		local now = os.clock()
 		local enabled = Extras.enabled()
 		for _, model in CollectionService:GetTagged(TAG) do
-			local part, spin = spinFor(model)
-			if part and spin then
-				local turning = enabled and (spin.rest.Position - camera).Magnitude <= Town.PORTAL_FX.SPIN_RANGE
-				if turning then
-					part.CFrame = spin.rest * CFrame.Angles(0, 0, math.rad(spin.speed * now))
-				elseif spin.turning then
-					part.CFrame = spin.rest
-				end
-				spin.turning = turning
+			local part = model:FindFirstChild("Vortex")
+			local look = lookFor(model)
+			if part and part:IsA("BasePart") and look then
+				local turning = enabled and (part.Position - camera).Magnitude <= Town.PORTAL_FX.SPIN_RANGE
+				turn(part, if turning then (look.vortex.spin * now) % 360 else 0)
 			end
 		end
 	end)
