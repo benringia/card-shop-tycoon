@@ -23,4 +23,21 @@ return {
 		LOW_QUALITY = 3,
 	},
 	BUTTERFLY_RANGE = 120, -- studs: flocks further from the camera stand still
+	-- Animals running round their homes (TownCritterController): Cute Pets models (ReplicatedStorage.CreatureModels
+	-- .CutePets), 3 in town and one in each portal area. radius: how far from home they wander; avoid: kept clear in
+	-- the middle (the plaza's spring); y: the ground at home; height: studs tall.
+	CRITTERS = {
+		{ model = "Fox", area = "town", home = { x = 150, z = -62 }, radius = 8, height = 2.6 },
+		{ model = "Bunny", area = "town", home = { x = 0, z = 0 }, radius = 18, avoid = 9, height = 2 },
+		{ model = "Capybara", area = "town", home = { x = -32, z = 68 }, radius = 8, height = 2.8 },
+		{ model = "Fawn", area = "ForestFalls", home = { x = 212, z = -115 }, radius = 10, height = 3.2 },
+		{ model = "Penguin", area = "Frostpeak", home = { x = 215, z = 130 }, y = 10, radius = 9, height = 2.4 },
+		{ model = "BabyDragon", area = "EmberCanyon", home = { x = -180, z = 10 }, radius = 9, height = 3 },
+	},
+	CRITTER = {
+		SPEED = 7, -- studs a second
+		PAUSE = { 1.5, 4 }, -- seconds stood still between walks
+		RANGE = 120, -- studs from the camera: further away they're hidden and not moved
+		MAX_PARTS = 400,
+	},
 }

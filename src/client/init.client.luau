@@ -12,6 +12,7 @@ local ShelfInfoController = require(Controllers:WaitForChild("ShelfInfoControlle
 local ButterflyController = require(Controllers:WaitForChild("ButterflyController"))
 local DayCycleController = require(Controllers:WaitForChild("DayCycleController"))
 local TreeSwayController = require(Controllers:WaitForChild("TreeSwayController"))
+local TownCritterController = require(Controllers:WaitForChild("TownCritterController"))
 local CondenserFxController = require(Controllers:WaitForChild("CondenserFxController"))
 local CaseSpinController = require(Controllers:WaitForChild("CaseSpinController"))
 local WorkerVisualController = require(Controllers:WaitForChild("WorkerVisualController"))
@@ -77,6 +78,7 @@ else
 	ButterflyController.Start()
 	DayCycleController.Start()
 	TreeSwayController.Start()
+	TownCritterController.Start()
 	task.spawn(CondenserFxController.Start) -- waits for the Plots folder
 	task.spawn(CaseSpinController.Start) -- waits for the Plots folder
 	task.spawn(WorkerVisualController.Start) -- waits for the Workers folder
