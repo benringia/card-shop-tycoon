@@ -136,6 +136,23 @@ return {
 		end
 	end,
 
+	["the volcano stands behind the canyon"] = function()
+		-- concept A's quiet volcano (caldera spec): far behind the end wall, rising over it, never crowding the portal
+		local volcano = scenery.VOLCANO
+		local portal = town.PORTAL_AREAS[3].trail[#town.PORTAL_AREAS[3].trail]
+		assert(volcano.x < -280, `the volcano at x {volcano.x} is not behind the end wall`)
+		assert(math.sqrt((volcano.x - portal.x) ^ 2 + (volcano.z - portal.z) ^ 2) > 60, "the volcano crowds the portal")
+		assert(volcano.height >= 100, "the volcano rises over the cliffs")
+		local smoke = 0
+		for _, emitter in scenery.EMITTERS do
+			if emitter.area == "EmberCanyon" and emitter.kind == "smoke" then
+				smoke += 1
+			end
+		end
+		expect.equal(smoke, 1, "the crater's smoke")
+		assert(#scenery.CHARRED_TREES >= 6 and #scenery.SHARDS >= 4, "charred trees and obsidian shards dot the caldera")
+	end,
+
 	["terrain stays inside the memory budget"] = function()
 		local cells = TownTerrain.estimatedCells(OPS)
 		assert(cells <= scenery.MAX_CELLS, `{cells} cells`)
@@ -149,7 +166,7 @@ return {
 			return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 		end
 		local clear = town.TRAIL.WIDTH / 2 + 2
-		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.LAVA.POOL } } do
+		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, scenery.CHARRED_TREES, scenery.SHARDS, { scenery.LAVA.POOL } } do
 			for _, prop in list do
 				for _, area in town.PORTAL_AREAS do
 					local trail = area.trail

@@ -146,6 +146,30 @@ return {
 		assert(#bad == 0, `town animals (Config/Ambient CRITTERS):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["the caldera's props carry the parts the game dresses"] = function()
+		-- optional until saved (the canyon builds without them); once saved, every part SceneryService looks for
+		local wanted = { Volcano = { "Body", "Lava", "Fx_Smoke" }, ObsidianShards = { "Frame", "Lava" }, CharredTree = { "Frame" } }
+		local bad = {}
+		for name, parts in wanted do
+			local path = `assets/props/{name}.rbxm`
+			if not fs.isFile(path) then
+				continue
+			end
+			local model = roblox.deserializeModel(fs.readFile(path))[1]
+			if not model or model.Name ~= name then
+				table.insert(bad, `{path}: the model should be called {name}`)
+				continue
+			end
+			for _, part in parts do
+				local mesh = model:FindFirstChild(part)
+				if not mesh or not mesh:IsA("MeshPart") then
+					table.insert(bad, `{path}: no MeshPart {part}`)
+				end
+			end
+		end
+		assert(#bad == 0, `caldera props (docs/props.md):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["portal models carry the parts the game dresses"] = function()
 		-- A portal's model is optional (today's frame stands in, Util/PortalLooks.slot); once saved it must hold every
 		-- part PortalBuild looks for (Frame, Opening, the effects' spots, the glowing parts), as MeshParts

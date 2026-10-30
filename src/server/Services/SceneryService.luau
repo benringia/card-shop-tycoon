@@ -23,6 +23,7 @@ local PlazaBuild = require(ServerUtil:WaitForChild("PlazaBuild"))
 local SceneryService = {}
 
 local terrainOps: { TownTerrain.Op } = {} -- the fills, also used to stand props on the drawn ground
+local volcanoSmoke: Vector3? = nil -- the volcano's crater (its Fx_Smoke), where the canyon's smoke effect rises
 
 local OPS_PER_YIELD = 20 -- fills between waits, so a big fill never stalls the server
 
@@ -200,8 +201,59 @@ local function buildLava(folder: Folder)
 	end
 end
 
+-- A caldera prop as placed: anchored, out of the way of players, its Lava glowing and its Fx_ markers hidden
+local function dressCalderaProp(model: Model)
+	local glow = Props.color(Scenery.LAVA.COLOR)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			if part.Name == "Lava" then
+				for _, child in part:GetChildren() do
+					if child:IsA("SurfaceAppearance") then
+						child:Destroy()
+					end
+				end
+				if part:IsA("MeshPart") then
+					part.TextureID = ""
+				end
+				part.Material = Enum.Material.Neon
+				part.Color = glow
+				part.CastShadow = false
+			elseif string.sub(part.Name, 1, 3) == "Fx_" then
+				part.Transparency = 1
+				part.CastShadow = false
+			end
+		end
+	end
+end
+
+-- The caldera's Blender props (Config/Scenery CHARRED_TREES, SHARDS, VOLCANO); one not saved yet is left out (placeModel
+-- warns), and the smoke then rises from the volcano's spot in the config
+local function buildCalderaProps(folder: Folder)
+	for _, list in { Scenery.CHARRED_TREES, Scenery.SHARDS } do
+		for _, spot in list do
+			local model = placeModel(folder, spot, spot.model)
+			if model then
+				dressCalderaProp(model)
+			end
+		end
+	end
+	local volcano = placeModel(folder, Scenery.VOLCANO, "Volcano")
+	if volcano then
+		dressCalderaProp(volcano)
+		local smoke = volcano:FindFirstChild("Fx_Smoke", true)
+		if smoke and smoke:IsA("BasePart") then
+			volcanoSmoke = smoke.Position
+		end
+	end
+end
+
 local function buildCanyon(folder: Folder)
 	buildLava(folder)
+	buildCalderaProps(folder)
 	local fire = Scenery.TORCH_FIRE
 	for _, spot in Scenery.TORCHES do
 		local base = CFrame.new(spot.x, 0, spot.z)
@@ -423,6 +475,20 @@ local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
 		emitter.Size = NumberSequence.new(0.3, 0)
 		emitter.EmissionDirection = Enum.NormalId.Top
 	end,
+	-- the volcano's slow plume: big soft grey puffs rising and darkening as they fade
+	smoke = function(emitter)
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Color = ColorSequence.new(Color3.fromRGB(120, 110, 112), Color3.fromRGB(60, 54, 58))
+		emitter.LightEmission = 0
+		emitter.Lifetime = NumberRange.new(10, 14)
+		emitter.Speed = NumberRange.new(2, 4)
+		emitter.Acceleration = Vector3.new(1.2, 2, 0)
+		emitter.Size = NumberSequence.new(20, 45)
+		emitter.Transparency = NumberSequence.new(0.5, 1)
+		emitter.RotSpeed = NumberRange.new(-10, 10)
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.EmissionDirection = Enum.NormalId.Top
+	end,
 	bubbles = function(emitter)
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 90, 20))
 		emitter.Lifetime = NumberRange.new(0.8, 1.4)
@@ -498,7 +564,8 @@ local function buildEffects(folder: Folder)
 				beam.Parent = anchor
 			end
 		else
-			local box = anchorPart(folder, "AreaEffect", Vector3.new(spec.x, spec.y, spec.z), Vector3.new(spec.size.x, 1, spec.size.z))
+			local at = if spec.kind == "smoke" and volcanoSmoke then volcanoSmoke else Vector3.new(spec.x, spec.y, spec.z)
+			local box = anchorPart(folder, "AreaEffect", at, Vector3.new(spec.size.x, 1, spec.size.z))
 			local emitter = Instance.new("ParticleEmitter")
 			emitter.Shape = Enum.ParticleEmitterShape.Box
 			emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume

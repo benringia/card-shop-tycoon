@@ -144,6 +144,28 @@ return {
 	},
 	TORCH_FIRE = { COLOR = { 255, 150, 60 }, RATE = 18 },
 	TORCH_STONE = { 52, 46, 56 }, -- dark basalt, like the caldera's walls
+	-- The caldera's Blender props (assets/props; SceneryService places them, scaled to `height`, on the drawn ground): charred
+	-- dead trees where the cacti stood and along the walls, black-purple obsidian shard clusters like the portal's, and the
+	-- quiet volcano far behind the end wall (its foot sunk to y -4; its Lava glows, smoke rises from its Fx_Smoke)
+	CHARRED_TREES = {
+		{ model = "CharredTree", x = -150, z = 20, height = 11, yaw = 20 },
+		{ model = "CharredTree", x = -168, z = -19, height = 10, yaw = 140 },
+		{ model = "CharredTree", x = -190, z = 22, height = 12, yaw = 250 },
+		{ model = "CharredTree", x = -222, z = 18, height = 10, yaw = 75 },
+		{ model = "CharredTree", x = -140, z = -20, height = 9, yaw = 300 },
+		{ model = "CharredTree", x = -176, z = 24, height = 9, yaw = 190 },
+		{ model = "CharredTree", x = -212, z = -20, height = 11, yaw = 30 },
+		{ model = "CharredTree", x = -228, z = -16, height = 9, yaw = 210 },
+	},
+	SHARDS = {
+		{ model = "ObsidianShards", x = -160, z = 12, height = 4, yaw = 0 },
+		{ model = "ObsidianShards", x = -185, z = -14, height = 5, yaw = 120 },
+		{ model = "ObsidianShards", x = -198, z = 14, height = 3.5, yaw = 240 },
+		{ model = "ObsidianShards", x = -215, z = -10, height = 4.5, yaw = 60 },
+		{ model = "ObsidianShards", x = -135, z = 14, height = 3, yaw = 300 },
+		{ model = "ObsidianShards", x = -230, z = 12, height = 4, yaw = 170 },
+	},
+	VOLCANO = { model = "Volcano", x = -335, z = 10, height = 120, yaw = 0, y = -4 },
 	-- The caldera's glowing cracks (Util/LavaCracks lays them out, SceneryService snaps them onto the terrain as glowing
 	-- strips): down the canyon's three inner cliff faces (each a line in plan view, from/to, the cracks between heights
 	-- low and high) and across its floor (a box), clear of the trail and the portal. WIDTH: a strip's width range
@@ -300,6 +322,7 @@ return {
 		{ area = "EmberCanyon", kind = "embers", x = -178, y = 1, z = 0, size = { x = 90, z = 48 }, rate = 12 },
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
 		{ area = "EmberCanyon", kind = "flow", x = -184, y = 0.6, z = -28.5, size = { x = 96, z = 3 }, rate = 10 },
+		{ area = "EmberCanyon", kind = "smoke", x = -335, y = 110, z = 10, size = { x = 10, z = 10 }, rate = 2 }, -- the volcano's crater (moved onto its Fx_Smoke when the model is there)
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},
