@@ -71,6 +71,54 @@ return {
 		assert(cells <= scenery.MAX_CELLS, `{cells} cells`)
 	end,
 
+	["props stand clear of every trail and portal"] = function()
+		local PortalTrails = require("../src/shared/Util/PortalTrails")
+		local function segmentDistance(p, a, b)
+			local dx, dz = b.x - a.x, b.z - a.z
+			local t = math.clamp(((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz), 0, 1)
+			return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
+		end
+		local clear = town.TRAIL.WIDTH / 2 + 2
+		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS } do
+			for _, prop in list do
+				for _, area in town.PORTAL_AREAS do
+					local trail = area.trail
+					for index = 2, #trail do
+						local d = segmentDistance(prop, trail[index - 1], trail[index])
+						assert(d >= clear, `prop at {prop.x}, {prop.z} is {d} from the {area.key} trail`)
+					end
+					local portal = trail[#trail]
+					local toPortal = math.sqrt((prop.x - portal.x) ^ 2 + (prop.z - portal.z) ^ 2)
+					assert(toPortal >= 6, `prop at {prop.x}, {prop.z} crowds the {area.key} portal`)
+				end
+				local inIsland = math.abs(prop.x) < town.BOUNDS.HALF_X and math.abs(prop.z) < town.BOUNDS.HALF_Z
+				assert(not inIsland, `prop at {prop.x}, {prop.z} lands among the hand-placed town decor`)
+			end
+		end
+		expect.equal(PortalTrails.inside(town.WALK_EDGE, scenery.PLATFORM), true, "the Arena platform is walkable")
+	end,
+
+	["one flowing waterfall and effects within the caps"] = function()
+		expect.equal(#scenery.FALLS.BEAMS <= 3, true, "falls beams")
+		expect.equal(#scenery.FALLS.EMITTERS <= 2, true, "mist and splash")
+		local perArea: { [string]: number } = {}
+		for _, emitter in scenery.EMITTERS do
+			perArea[emitter.area] = (perArea[emitter.area] or 0) + 1
+		end
+		for area, count in perArea do
+			assert(count <= 4, `{area} has {count} effects`)
+		end
+		expect.equal(scenery.SMALL_DECOR_SIZE, 4, "small decor casts no shadow below this size")
+	end,
+
+	["every ambient sound has an id and stays quiet"] = function()
+		expect.equal(#scenery.SOUNDS >= 4, true, "falls, wind, embers, birds")
+		for _, sound in scenery.SOUNDS do
+			assert(string.match(sound.id, "^rbxassetid://%d+$"), `{sound.name} id`)
+			assert(sound.volume <= 0.6, `{sound.name} is loud`)
+		end
+	end,
+
 	["the measured surface lift"] = function()
 		expect.equal(TownTerrain.SURFACE_LIFT, 2, "fill top -2 draws the ground at 0")
 	end,
