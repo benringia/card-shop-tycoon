@@ -157,6 +157,37 @@ return {
 		assert(#bad == 0, `portal models (docs/props.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["each saved portal's ground part sits at its Blender height over what is buried"] = function()
+		-- PortalBuild sinks a portal until its ground part's bottom stands PORTAL_LOOKS.ground.bottom over the ground; that
+		-- only holds while the number matches the build: the part's bottom over the model's lowest point, less it, is
+		-- what was built below the Blender ground (0 to 3 studs)
+		local town = require("../src/shared/Config/Town")
+		local bad = {}
+		for _, look in town.PORTAL_LOOKS do
+			local path = `assets/props/{look.slot}.rbxm`
+			if not fs.isFile(path) then
+				continue
+			end
+			local model = roblox.deserializeModel(fs.readFile(path))[1]
+			local lowest = math.huge
+			for _, part in model:GetDescendants() do
+				if part:IsA("BasePart") then
+					lowest = math.min(lowest, part.CFrame.Position.Y - part.Size.Y / 2)
+				end
+			end
+			local ground = model:FindFirstChild(look.ground.part)
+			if not ground then
+				table.insert(bad, `{path}: no {look.ground.part}`)
+				continue
+			end
+			local buried = ground.CFrame.Position.Y - ground.Size.Y / 2 - lowest - look.ground.bottom
+			if buried < -0.05 or buried > 3 then
+				table.insert(bad, `{path}: {buried} studs built below the ground (ground.bottom {look.ground.bottom} doesn't match the build)`)
+			end
+		end
+		assert(#bad == 0, `portal ground heights (Config/Town PORTAL_LOOKS.ground):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["no creature or monster model contains a script"] = function()
 		local bad = {}
 		for _, folder in FOLDERS do

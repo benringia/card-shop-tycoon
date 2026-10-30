@@ -146,8 +146,21 @@ local function vortex(model: Model, look: any, opening: BasePart): BasePart
 	return holder
 end
 
+-- Sinks a placed portal model (Props stood its lowest point on the ground) until its ground part stands at its
+-- Blender height: the roots, shards and drift built below the Blender ground go back under it
+local function settle(model: Model, look: any)
+	local ground = model:FindFirstChild(look.ground.part)
+	if not (ground and ground:IsA("BasePart")) then
+		return
+	end
+	local box, size = model:GetBoundingBox()
+	local shift = PortalLooks.groundShift(ground.Position.Y - ground.Size.Y / 2, box.Position.Y - size.Y / 2, look.ground.bottom, model:GetScale())
+	model:PivotTo(model:GetPivot() + Vector3.new(0, shift, 0))
+end
+
 -- Dresses a placed portal model with its look (Config/Town PORTAL_LOOKS)
 function PortalBuild.dress(model: Model, look: any)
+	settle(model, look)
 	local missing = {}
 	for _, name in PortalLooks.parts(look) do
 		if not model:FindFirstChild(name) then

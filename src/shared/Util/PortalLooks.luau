@@ -20,6 +20,12 @@ function PortalLooks.labelHeight(slot: string, town: any): number
 	return town.SLOTS[slot].height + town.PORTAL_FX.LABEL_GAP
 end
 
+-- How far to move a placed portal model up (negative: down) so its ground part's bottom (partBottom) stands `bottom`
+-- studs (Blender, at the model's scale) over the foot it was placed on
+function PortalLooks.groundShift(partBottom: number, foot: number, bottom: number, scale: number): number
+	return foot + bottom * scale - partBottom
+end
+
 -- The swirl's diameter: round (a stretched swirl wobbles as it turns) and inside the opening's narrower side
 function PortalLooks.vortexSize(width: number, height: number, town: any): number
 	return math.min(width, height) * town.PORTAL_FX.VORTEX_SCALE

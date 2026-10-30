@@ -120,15 +120,21 @@ models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `Po
 with glowing flowers, a trickle of water from the right roots into a glowing pool; at Frostpeak a ring of faceted blue
 ice crystals with icicles and snow caps rising out of a blue-grey drift, frosty mist; at Ember Canyon black-purple
 obsidian shards leaning into an uneven pointed arch with lava cracks, two lava streams dripping into a molten pool and
-rising embers (on the sand between the torches: the round stone platform went). A spinning swirl in the world's colours
-fills each opening (`assets/ui/fx/portal-vortex.png`, Figma; spun on the client within 150 studs with the extras on,
-`PortalFxController`). The looks live in `Town.PORTAL_LOOKS` (vortex colours and spin, light, glowing parts, at most 4
+rising embers (on the sand between the torches: the round stone platform went). A round swirl in the world's colours
+turns about its own middle in each opening, 90% of the opening's narrower side (`Town.PORTAL_FX.VORTEX_SCALE`; a swirl
+filling the whole opening was stretched, wobbled and swung past the narrow arch tops; `assets/ui/fx/portal-vortex.png`,
+Figma, white with clear gaps between its arms; spun on the client within 150 studs with the extras on,
+`PortalFxController`, which looks the vortexes up every frame so a portal that streamed back in still turns).
+Props stands a model's lowest point on the ground, but the builds sink roots, shards and the drift below their Blender
+ground: each look names a ground part and its Blender height (`PORTAL_LOOKS.ground`) and the model sinks until it
+stands there (`Util/PortalLooks.groundShift`; a Lune test checks the heights against the saved files). The looks live in `Town.PORTAL_LOOKS` (vortex colours and spin, light, glowing parts, at most 4
 effects with the vortex); `Server/Util/PortalBuild` dresses a placed model from its named parts (`Frame`, `Opening`,
 `Fx_*` spots, glow parts; `Util/PortalLooks.parts`, checked by a Lune test on the saved files) and the model streams in
 whole (tag `TownPortal`). Until a portal's model is saved, today's frame stands there (`Util/PortalLooks.slot`) with its
 old look (`Town.PORTAL_EFFECTS`: ring and frame glow tinted, a soft light, 2 emitters), which also colours the trail
 arches and glowing paths. The travel rings keep their prompts, hidden behind the new models; each name label floats
-3 studs over whichever model stands. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
+3 studs over whichever model stands and shows within 80 studs (`Town.PORTAL_LABEL_DISTANCE`), so it comes into view
+down the trail before it climbs off the top of the default camera's view. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
 Wild goes through its prompt only (the WildTravel remote accepts just "home"), and the Frontier menu's choices only count
 within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
 z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street

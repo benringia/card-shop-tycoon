@@ -178,10 +178,13 @@ return {
 	-- PORTAL_AREAS' effect. Each model's parts (Util/PortalLooks.parts): Frame, Opening (the vortex fills it) and the
 	-- spots its effects use; glow: parts drawn as glowing colour. vortex: the swirl's colours (start, end), its spin
 	-- (degrees a second, client side near the camera) and transparency. effects: beams between two parts (from, to;
-	-- a scrolling texture) or emitters on a part (fields as PORTAL_EFFECTS' emitters). Server/Util/PortalBuild.
+	-- a scrolling texture) or emitters on a part (fields as PORTAL_EFFECTS' emitters). ground: a part whose bottom stands
+	-- `bottom` studs over the Blender build's ground (z 0): the model sinks until it does, burying what was built below
+	-- the ground (Props stands a model's lowest point on the ground). Server/Util/PortalBuild.
 	PORTAL_LOOKS = {
 		Wild = {
 			slot = "PortalWild",
+			ground = { part = "Fx_Pool", bottom = 0.3 },
 			vortex = { colors = { { 60, 200, 60 }, { 250, 185, 40 } }, spin = 30, transparency = 0.05 },
 			light = { color = { 170, 240, 140 }, brightness = 1, range = 16 },
 			glow = { Pool = { 90, 220, 210 }, Flowers = { 255, 215, 90 } },
@@ -193,6 +196,7 @@ return {
 		},
 		Frontier = {
 			slot = "PortalFrontier",
+			ground = { part = "Fx_Base", bottom = 1.1 },
 			vortex = { colors = { { 30, 130, 255 }, { 110, 210, 255 } }, spin = 25, transparency = 0.05 },
 			light = { color = { 130, 205, 255 }, brightness = 1, range = 16 },
 			glow = {},
@@ -203,6 +207,7 @@ return {
 		},
 		Arena = {
 			slot = "PortalArena",
+			ground = { part = "Fx_Pool", bottom = 0.28 },
 			vortex = { colors = { { 255, 50, 20 }, { 255, 150, 30 } }, spin = 35, transparency = 0.05 },
 			light = { color = { 255, 140, 70 }, brightness = 1, range = 16 },
 			glow = { Lava = { 255, 110, 30 } },
@@ -222,7 +227,7 @@ return {
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)
-	PORTAL_LABEL_DISTANCE = 40, -- shown only this close, so far labels don't pile up
+	PORTAL_LABEL_DISTANCE = 80, -- shown only this close, so far labels don't pile up (far enough out to read over a portal's top)
 
 	-- The checkout counter (front = customer side), built in code to match the shop shell (PlotService): a white
 	-- body on a charcoal plinth, a dark stone top overhanging the front, an LED strip in the shop's accent colour

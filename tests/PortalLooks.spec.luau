@@ -79,6 +79,30 @@ return {
 		expect.equal(PortalLooks.vortexSize(18, 12, town), 12 * scale, "a wide opening: sized by its height")
 	end,
 
+	["a portal sinks its buried roots back into the ground"] = function()
+		-- Props stands a model's lowest point on the ground, but the Blender builds sink roots, shards and drifts below
+		-- their ground (z 0): the ground part (a pool, the lava, the drift's marker) must sit at its Blender height
+		for _, key in LOOKS do
+			local ground = town.PORTAL_LOOKS[key].ground
+			assert(ground and table.find(PortalLooks.parts(town.PORTAL_LOOKS[key]), ground.part), `{key}'s ground part is one of its parts`)
+		end
+		-- a pool's bottom 1.3 above the foot, meant to be 0.15 above the ground, at scale 1: down 1.15
+		expect.near(PortalLooks.groundShift(1.3, 0, 0.15, 1), -1.15, 1e-6, "sink at scale 1")
+		-- the same at scale 0.9 (the model shrunk to its slot's height): the Blender height scales too
+		expect.near(PortalLooks.groundShift(1.3, 0, 0.15, 0.9), -1.165, 1e-6, "sink at scale 0.9")
+		expect.near(PortalLooks.groundShift(10.5, 10, 0.5, 1), 0, 1e-6, "already at its height: no shift")
+	end,
+
+	["a portal's name shows from down its trail"] = function()
+		-- With the default camera (about 9 studs up, the top of the view about 20 degrees over level) a name more than 20
+		-- degrees up is off screen: it must come into view far enough out to read for 15 studs of the walk
+		for _, key in LOOKS do
+			local above = PortalLooks.labelHeight(town.PORTAL_LOOKS[key].slot, town) - 9
+			local inView = above / math.tan(math.rad(20)) -- closer than this, it climbs off the top
+			assert(town.PORTAL_LABEL_DISTANCE >= inView + 15, `{key}: shown within {town.PORTAL_LABEL_DISTANCE} studs, in view only beyond {inView}`)
+		end
+	end,
+
 	["every portal area has a look"] = function()
 		for _, area in town.PORTAL_AREAS do
 			assert(town.PORTAL_LOOKS[area.effect] ~= nil, `{area.key} ({area.effect}) has no look`)
