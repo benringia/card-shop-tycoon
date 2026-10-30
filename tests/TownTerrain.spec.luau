@@ -176,6 +176,29 @@ return {
 		end
 	end,
 
+	["props stand on the drawn ground, up hills too"] = function()
+		expect.near(TownTerrain.groundAt(OPS, 150, -125) :: number, 0, 0.6, "flat forest floor")
+		local hill = TownTerrain.groundAt(OPS, 208, 0) :: number
+		assert(hill > 8, `the hill between the trails is only {hill} high`)
+		expect.near(TownTerrain.groundAt(OPS, 200, 140) :: number, scenery.FROST_HEIGHT, 0.6, "up on Frostpeak's rise")
+	end,
+
+	["the grass between the east trails and the edge of the snowy rise aren't bare"] = function()
+		local function countNear(cx: number, cz: number, radius: number): number
+			local total = 0
+			for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.AREA_PROPS } do
+				for _, prop in list do
+					if math.sqrt((prop.x - cx) ^ 2 + (prop.z - cz) ^ 2) <= radius then
+						total += 1
+					end
+				end
+			end
+			return total
+		end
+		assert(countNear(190, 5, 55) >= 10, "the grass between Forest Falls and Frostpeak is bare")
+		assert(countNear(165, 115, 30) >= 5, "the snowy rise's edge by the Frontier portal is bare")
+	end,
+
 	["the measured surface lift"] = function()
 		expect.equal(TownTerrain.SURFACE_LIFT, 2, "fill top -2 draws the ground at 0")
 	end,

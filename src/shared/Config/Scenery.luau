@@ -61,6 +61,14 @@ return {
 		{ shape = "Ball", x = 226, y = 70, z = 256, radius = 28, material = "Snow" },
 		{ shape = "Ball", x = 225, y = 92, z = 255, radius = 16, material = "Snow" },
 		{ shape = "Ball", x = 268, y = -16, z = 120, radius = 32, material = "Snow" },
+		-- Soft snow banks along the rise's front and west edges, so it doesn't end in a hard slab
+		{ shape = "Ball", x = 141, y = 4, z = 99, radius = 7, material = "Snow" },
+		{ shape = "Ball", x = 190, y = 4, z = 97, radius = 7, material = "Snow" },
+		{ shape = "Ball", x = 212, y = 4, z = 97, radius = 8, material = "Snow" },
+		{ shape = "Ball", x = 234, y = 4, z = 98, radius = 7, material = "Snow" },
+		{ shape = "Ball", x = 134, y = 4, z = 122, radius = 7, material = "Snow" },
+		{ shape = "Ball", x = 134, y = 4, z = 148, radius = 8, material = "Snow" },
+		{ shape = "Ball", x = 136, y = 4, z = 172, radius = 7, material = "Snow" },
 		-- Rounding the cliffs and canyon rims so they read as rock, not boxes
 		{ shape = "Ball", x = 150, y = 18, z = -176, radius = 11, material = "Rock" },
 		{ shape = "Ball", x = 172, y = 24, z = -174, radius = 10, material = "Rock" },
@@ -109,6 +117,9 @@ return {
 		{ x = 240, z = 160, y = 10, model = "PineB", height = 30, yaw = 225 },
 		{ x = 220, z = 150, y = 10, model = "PineB", height = 26, yaw = 100 },
 		{ x = 165, z = 155, y = 10, model = "Pine", height = 27, yaw = 200 },
+		{ x = 152, z = 108, y = 10, model = "PineA", height = 25, yaw = 280 },
+		{ x = 160, z = 120, y = 10, model = "Pine", height = 22, yaw = 30 },
+		{ x = 200, z = 108, y = 10, model = "PineB", height = 24, yaw = 160 },
 	},
 	SNOW_TINT = { 225, 236, 248 },
 	-- On the grass below the rise: pines with just a little snow, easing from the green into the snow
@@ -175,6 +186,8 @@ return {
 		{ x = 204, z = 162, y = 10, height = 5, yaw = 70 },
 		{ x = 210, z = 158, y = 10, height = 3, yaw = 140 },
 		{ x = 182, z = 160, y = 10, height = 3, yaw = 250 },
+		{ x = 146, z = 140, y = 10, height = 4, yaw = 30 },
+		{ x = 236, z = 152, y = 10, height = 3.5, yaw = 110 },
 	},
 	CRYSTAL_COLOR = { 180, 225, 255 },
 	-- Frostpeak's frozen falls, built from ice: columns of frozen water hanging from the cliff's lip down to a bulging
@@ -207,7 +220,8 @@ return {
 		{ x = 226, z = 167, y = 31, length = 4 },
 	},
 	-- Small life from the town's own prop models (scaled copies): flowers, bushes, rocks and lily pads round the falls,
-	-- a few rocks on the snow and in the canyon. Clear of the trails (Lune-tested). y: the ground they stand on.
+	-- a grove on the grass between the east trails, rocks and crystals on the snowy rise, rocks in the canyon. Clear of
+	-- the trails (Lune-tested). y: the ground they stand on (left out: the drawn ground there, up hills too).
 	AREA_PROPS = {
 		{ model = "FlowerPink", x = 160, z = -120, height = 2.6, yaw = 10 },
 		{ model = "FlowerYellow", x = 170, z = -128, height = 2.6, yaw = 80 },
@@ -231,6 +245,31 @@ return {
 		{ model = "Lilypad", x = 186, z = -154, y = 0.1, height = 0.3, yaw = 200 },
 		{ model = "RockB", x = 230, z = 120, y = 10, height = 3, yaw = 10 },
 		{ model = "RockA", x = 160, z = 130, y = 10, height = 2.5, yaw = 100 },
+		-- The grove between the east trails (on and round the hill)
+		{ model = "TreeD", x = 150, z = 0, height = 22, yaw = 10 },
+		{ model = "TreeC", x = 165, z = -25, height = 20, yaw = 80 },
+		{ model = "TreeD", x = 172, z = 20, height = 24, yaw = 150 },
+		{ model = "TreeB", x = 185, z = 45, height = 26, yaw = 220 },
+		{ model = "TreeC", x = 215, z = -35, height = 22, yaw = 290 },
+		{ model = "Pine", x = 230, z = 10, height = 28, yaw = 30 },
+		{ model = "TreeD", x = 240, z = 50, height = 24, yaw = 100 },
+		{ model = "Pine", x = 160, z = 40, height = 26, yaw = 170 },
+		{ model = "TreeA", x = 155, z = -40, height = 24, yaw = 240 },
+		{ model = "PineB", x = 200, z = -20, height = 27, yaw = 310 },
+		{ model = "BushA", x = 178, z = 0, height = 4, yaw = 0 },
+		{ model = "BushB", x = 196, z = 25, height = 5, yaw = 90 },
+		{ model = "Bush", x = 222, z = 28, height = 4.5, yaw = 180 },
+		{ model = "BushA", x = 160, z = 18, height = 4, yaw = 270 },
+		{ model = "RockD", x = 195, z = 10, height = 5, yaw = 45 },
+		{ model = "RockA", x = 170, z = -8, height = 3, yaw = 135 },
+		{ model = "FlowerYellow", x = 182, z = -12, height = 2.6, yaw = 20 },
+		{ model = "FlowerPink", x = 210, z = 14, height = 2.6, yaw = 200 },
+		{ model = "FlowerBlue", x = 168, z = 32, height = 2.6, yaw = 120 },
+		-- The snowy rise's edge by the Frontier portal
+		{ model = "RockD", x = 156, z = 112, y = 10, height = 4, yaw = 60 },
+		{ model = "RockB", x = 205, z = 120, y = 10, height = 3, yaw = 140 },
+		{ model = "RockA", x = 225, z = 140, y = 10, height = 3, yaw = 230 },
+		{ model = "RockC", x = 150, z = 128, y = 10, height = 3.5, yaw = 320 },
 		{ model = "RockC", x = -150, z = -18, height = 3, yaw = 70 },
 		{ model = "RockD", x = -200, z = 19, height = 4, yaw = 160 },
 	},

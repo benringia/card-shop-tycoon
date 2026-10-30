@@ -18,6 +18,8 @@ local TownService = require(script.Parent:WaitForChild("TownService"))
 
 local SceneryService = {}
 
+local terrainOps: { TownTerrain.Op } = {} -- the fills, also used to stand props on the drawn ground
+
 local OPS_PER_YIELD = 20 -- fills between waits, so a big fill never stalls the server
 
 local function material(name: string): Enum.Material
@@ -51,7 +53,7 @@ local function buildTerrain()
 	terrain.WaterReflectance = water.REFLECTANCE
 	terrain.WaterWaveSize = water.WAVE_SIZE
 	terrain.WaterWaveSpeed = water.WAVE_SPEED
-	for index, op in TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld())) do
+	for index, op in terrainOps do
 		fill(terrain, op)
 		if index % OPS_PER_YIELD == 0 then
 			task.wait()
@@ -100,7 +102,7 @@ local function placeModel(parent: Instance, spot: any, label: string): Model?
 	model.Name = label
 	local _, size = model:GetBoundingBox()
 	model:ScaleTo(model:GetScale() * spot.height / size.Y)
-	local ground = spot.y or 0
+	local ground = spot.y or TownTerrain.groundAt(terrainOps, spot.x, spot.z) or 0
 	model:PivotTo(CFrame.new(spot.x, ground, spot.z) * CFrame.Angles(0, math.rad(spot.yaw or 0), 0))
 	local box, boxSize = model:GetBoundingBox()
 	model:PivotTo(model:GetPivot() - Vector3.new(0, box.Position.Y - boxSize.Y / 2 - ground, 0))
@@ -556,6 +558,7 @@ function SceneryService.Start()
 	if Place.isFrontier() or Place.isDungeon() then
 		return
 	end
+	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
 	task.spawn(buildTerrain)
 	buildDressing()
 end

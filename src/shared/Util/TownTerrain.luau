@@ -169,6 +169,12 @@ function TownTerrain.materialAt(ops: { Op }, x: number, z: number): string?
 	return found
 end
 
+-- The height the ground is drawn at over (x, z), for standing props on it (nil = no terrain there)
+function TownTerrain.groundAt(ops: { Op }, x: number, z: number): number?
+	local top = TownTerrain.topAt(ops, x, z)
+	return if top then top + TownTerrain.SURFACE_LIFT else nil
+end
+
 -- A rough cell count for the memory budget (overlaps count twice, so it errs high)
 function TownTerrain.estimatedCells(ops: { Op }): number
 	local volume = 0
