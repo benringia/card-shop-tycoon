@@ -21,6 +21,8 @@ local SkyLook = require(SharedUtil:WaitForChild("SkyLook"))
 local PortalTrails = require(SharedUtil:WaitForChild("PortalTrails"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TrailProps = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("TrailProps"))
+local PortalBuild = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("PortalBuild"))
+local PortalLooks = require(SharedUtil:WaitForChild("PortalLooks"))
 
 local Props = require(SharedUtil:WaitForChild("Props"))
 
@@ -269,7 +271,8 @@ local function buildPortalLabels(folder: Folder)
 		anchor.CanTouch = false
 		anchor.Transparency = 1
 		anchor.Size = Vector3.new(1, 1, 1)
-		anchor.Position = Vector3.new(entry.spot.x, (entry.spot.y or 0) + Town.PORTAL_LABEL_HEIGHT, entry.spot.z)
+		local height = PortalLooks.labelHeight(PortalLooks.slot(entry.effect, Town, Props.hasModel), Town)
+		anchor.Position = Vector3.new(entry.spot.x, (entry.spot.y or 0) + height, entry.spot.z)
 		anchor.Parent = folder
 		local board = Instance.new("BillboardGui")
 		board.Size = UDim2.fromOffset(260, 70)
@@ -305,23 +308,16 @@ end
 local function buildDecor(folder: Folder)
 	for _, placement in TownLayout.build(getWorld(), Town) do
 		local at = CFrame.new(placement.x, placement.y or 0, placement.z) * CFrame.Angles(0, math.rad(placement.yaw), 0)
-		local model = Props.place(placement.slot, at, folder, placement.variant)
 		local portal = if placement.slot == "Portal" then portalAt(placement.x, placement.z) else nil
-		if portal then
+		-- A portal stands its own model once saved (Util/PortalLooks), else today's frame
+		local slot = if portal then PortalLooks.slot(portal.effect, Town, Props.hasModel) else placement.slot
+		local model = Props.place(slot, at, folder, if slot == placement.slot then placement.variant else nil)
+		if portal and slot == placement.slot then
 			tintGlow(model, Props.color(Town.PORTAL_EFFECTS[portal.effect].ring))
+		elseif portal then
+			PortalBuild.dress(model, Town.PORTAL_LOOKS[portal.effect])
 		end
 	end
-end
-
-local function colorSequence(colors: { { number } }): ColorSequence
-	if #colors == 1 then
-		return ColorSequence.new(Props.color(colors[1]))
-	end
-	local keys = {}
-	for index, rgb in colors do
-		table.insert(keys, ColorSequenceKeypoint.new((index - 1) / (#colors - 1), Props.color(rgb)))
-	end
-	return ColorSequence.new(keys)
 end
 
 local function findRing(name: string, spot: { x: number, z: number }): BasePart?
@@ -336,12 +332,19 @@ local function findRing(name: string, spot: { x: number, z: number }): BasePart?
 	return nil
 end
 
--- Each plaza portal: its ring tinted, a soft light, and particles rising (or drifting) out of the ring
+-- Each portal still standing today's frame: its ring tinted, a soft light, and particles rising (or drifting) out of
+-- the ring. A portal with its own model (PortalBuild dressed it) only hides the ring, which keeps its prompt.
 local function buildPortalEffects(folder: Folder)
 	for _, entry in PORTAL_LABELS do
 		local look = Town.PORTAL_EFFECTS[entry.effect]
 		local ringColor = Props.color(look.ring)
 		local ring = findRing(entry.ring, entry.spot)
+		if PortalLooks.slot(entry.effect, Town, Props.hasModel) ~= "Portal" then
+			if ring then
+				ring.Transparency = 1
+			end
+			continue
+		end
 		local anchor = Instance.new("Part")
 		anchor.Name = "PortalEffect"
 		anchor.Anchored = true
@@ -363,22 +366,7 @@ local function buildPortalEffects(folder: Folder)
 		light.Range = Town.PORTAL_GLOW.RANGE
 		light.Parent = anchor
 		for _, spec in look.emitters do
-			local emitter = Instance.new("ParticleEmitter")
-			emitter.Texture = spec.texture
-			emitter.Rate = spec.rate
-			emitter.Lifetime = NumberRange.new(spec.lifetime[1], spec.lifetime[2])
-			emitter.Speed = NumberRange.new(spec.speed[1], spec.speed[2])
-			emitter.Size = NumberSequence.new(spec.size[1], spec.size[2])
-			emitter.Transparency = if spec.transparency then NumberSequence.new(spec.transparency[1], spec.transparency[2]) else NumberSequence.new(0, 1)
-			emitter.Color = colorSequence(spec.colors or look.colors)
-			emitter.Acceleration = Vector3.new(0, spec.rise, 0)
-			emitter.RotSpeed = NumberRange.new(-spec.spin, spec.spin)
-			emitter.Rotation = NumberRange.new(0, 360)
-			emitter.SpreadAngle = Vector2.new(180, 180)
-			emitter.Shape = Enum.ParticleEmitterShape.Box
-			emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
-			emitter.LightEmission = 1
-			emitter.Parent = anchor
+			PortalBuild.emitter(spec, look.colors, anchor)
 		end
 	end
 end
