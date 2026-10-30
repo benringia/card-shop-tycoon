@@ -15,6 +15,7 @@ local TreeSwayController = require(Controllers:WaitForChild("TreeSwayController"
 local TownCritterController = require(Controllers:WaitForChild("TownCritterController"))
 local PlazaNpcController = require(Controllers:WaitForChild("PlazaNpcController"))
 local FountainFxController = require(Controllers:WaitForChild("FountainFxController"))
+local PortalFxController = require(Controllers:WaitForChild("PortalFxController"))
 local WelcomeController = require(Controllers:WaitForChild("WelcomeController"))
 local CondenserFxController = require(Controllers:WaitForChild("CondenserFxController"))
 local CaseSpinController = require(Controllers:WaitForChild("CaseSpinController"))
@@ -84,6 +85,7 @@ else
 	TownCritterController.Start()
 	PlazaNpcController.Start()
 	FountainFxController.Start()
+	PortalFxController.Start()
 	task.spawn(WelcomeController.Start) -- waits for the Plots folder
 	task.spawn(CondenserFxController.Start) -- waits for the Plots folder
 	task.spawn(CaseSpinController.Start) -- waits for the Plots folder
