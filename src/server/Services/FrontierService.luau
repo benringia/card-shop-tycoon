@@ -85,7 +85,7 @@ local function onTravel(player: Player, where: unknown, friendUserId: unknown)
 	if Place.isFrontier() or Place.isDungeon() then
 		return -- Explore / Join friend are main-game choices
 	elseif not atPortal(player) then
-		return
+		tell(player, "Walk to the Frontier portal at Frostpeak to travel.")
 	elseif Places.FRONTIER_PLACE_ID == 0 then
 		tell(player, "The Frontier is coming soon!")
 	elseif where == "explore" then

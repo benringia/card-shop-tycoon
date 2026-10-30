@@ -749,8 +749,10 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 	local choice = BossRules.travelChoice(boss.place, here())
 	if choice == "viaPortal" then
 		wrapped(column, 9, "Enter the Dungeon portal in the Frontier.", UIStyle.HINT)
+	elseif choice == "walkToFrontier" then
+		wrapped(column, 9, "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza).", UIStyle.HINT)
 	elseif choice ~= "none" then
-		local label = if choice == "gate" then "Take me there" elseif choice == "toFrontier" then "Go to the Frontier" else "Go home"
+		local label = if choice == "gate" then "Take me there" else "Go home"
 		local go = UIKit.iconButton(column, label, "Travel", if choice == "gate" then UIKit.Colors.Accent else UIKit.Colors.Secondary)
 		go.LayoutOrder = 9
 		go.Size = UDim2.new(1, -6, 0, if phone then UIStyle.MIN_TAP else 50)
@@ -760,7 +762,7 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 			if choice == "gate" then
 				Remotes.BossTravel:FireServer(index)
 			else
-				Remotes.FrontierTravel:FireServer(if choice == "toFrontier" then "explore" else "home")
+				Remotes.FrontierTravel:FireServer("home")
 			end
 			UIKit.closePanel(panel)
 		end)

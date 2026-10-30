@@ -45,6 +45,7 @@ return {
 		{ shape = "Ball", x = 210, y = 30, z = -190, radius = 14, material = "Grass" },
 		{ shape = "Block", x = 185, y = -4, z = -152, size = { x = 24, y = 8, z = 16 }, material = "Air" },
 		{ shape = "Block", x = 185, y = -5, z = -152, size = { x = 24, y = 6, z = 16 }, material = "Water" }, -- drawn level with the ground
+		{ shape = "Block", x = 185, y = -10, z = -152, size = { x = 28, y = 4, z = 20 }, material = "Rock" }, -- the pool's floor: nobody sinks out of the world
 		{ shape = "Ball", x = 170, y = -1, z = -151, radius = 4.5, material = "Rock" },
 		{ shape = "Ball", x = 200, y = -1, z = -150, radius = 5, material = "Rock" },
 		{ shape = "Ball", x = 172, y = 0, z = -160, radius = 5.5, material = "Rock" },

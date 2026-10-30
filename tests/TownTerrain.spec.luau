@@ -199,6 +199,30 @@ return {
 		assert(countNear(165, 115, 30) >= 5, "the snowy rise's edge by the Frontier portal is bare")
 	end,
 
+	["no pool leaves a hole to fall through"] = function()
+		for _, op in OPS do
+			if op.material == "Water" and op.size then
+				local bottom = op.y - op.size.y / 2
+				for _, dx in { -0.4, 0, 0.4 } do
+					for _, dz in { -0.4, 0, 0.4 } do
+						local x, z = op.x + dx * op.size.x, op.z + dz * op.size.z
+						local below = nil
+						for _, other in OPS do
+							if other.material ~= "Water" and other.material ~= "Air" and other.shape == "Block" and other.size then
+								local half = other.size.y / 2
+								local inX = math.abs(x - other.x) <= other.size.x / 2 and math.abs(z - other.z) <= other.size.z / 2
+								if inX and other.y - half <= bottom - 1 and other.y + half >= bottom then
+									below = other.material
+								end
+							end
+						end
+						assert(below, `nothing solid under the water at {x}, {z} (bottom {bottom})`)
+					end
+				end
+			end
+		end
+	end,
+
 	["the measured surface lift"] = function()
 		expect.equal(TownTerrain.SURFACE_LIFT, 2, "fill top -2 draws the ground at 0")
 	end,

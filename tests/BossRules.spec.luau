@@ -355,7 +355,8 @@ return {
 	end,
 	["travelChoice: the gate in this place, else the normal travel"] = function()
 		expect.equal(BossRules.travelChoice("Wild", "Main"), "gate", "Wild boss from the main game")
-		expect.equal(BossRules.travelChoice("Frontier", "Main"), "toFrontier", "Frontier boss from the main game")
+		-- The Frontier portal stands at the end of the Frostpeak trail now: walk there (the server only travels from it)
+		expect.equal(BossRules.travelChoice("Frontier", "Main"), "walkToFrontier", "Frontier boss from the main game")
 		expect.equal(BossRules.travelChoice("Dungeon", "Main"), "viaPortal", "the Hydra")
 		expect.equal(BossRules.travelChoice("Frontier", "Frontier"), "gate", "in the Frontier")
 		expect.equal(BossRules.travelChoice("Wild", "Frontier"), "toMain", "Wild boss from the Frontier")
