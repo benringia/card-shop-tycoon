@@ -61,9 +61,15 @@ for it.
 
 - Editing: work on a copy outside `Workspace.TownDecor` (Rojo owns that folder and resets it on sync), then
   right-click the Model → Save to File over `assets/town/TownDecor.rbxm`, delete the copy, and commit.
-- Keep out of the plots, the street, the shop fronts, the open ring round the plaza and the space in front of
-  the portals. Anchor everything; no scripts (the Lune test checks `assets/town` too, and the server strips
-  them at start).
+- Save the **Model** (`Workspace.TownDecor` → `TownDecor`), not the outer folder: saving the folder wraps the Model in
+  extra folders (it happened once, 2026-10-30, and was unwrapped with Lune).
+- Keep out of the plots, the street, the shop fronts, the open ring round the plaza, the trail mouths at both street
+  ends (Portal Worlds: `Town.PORTAL_AREAS`; five pieces were moved clear of them on 2026-10-30) and the space round
+  the arches and signposts. Anchor everything; no scripts (the Lune test checks `assets/town` too, and the server
+  strips them at start).
+- The scenery outside the island (the portal areas, the hills, the grove between the east trails) is code-built from
+  `Config/Scenery` by `SceneryService`, not hand-placed: giant trees and pines are scaled copies of the pieces in
+  `assets/props` (a single-mesh piece is wrapped in a Model), standing on the drawn terrain.
 
 ## Adding a prop
 
