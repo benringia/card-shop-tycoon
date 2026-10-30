@@ -74,7 +74,8 @@ local function ground(parent: Instance, name: string, size: Vector3, cframe: CFr
 	return part
 end
 
--- The town is all there is: the Baseplate shrinks to the bounds and invisible walls keep players on it
+-- The Baseplate shrinks to the island and goes invisible (SceneryService's terrain is the ground; the Baseplate stays
+-- solid under it as a backstop); invisible walls keep players on it
 local function buildBounds(folder: Folder)
 	local bounds = Town.BOUNDS
 	local baseplate = workspace:FindFirstChild("Baseplate")
@@ -84,7 +85,7 @@ local function buildBounds(folder: Folder)
 		baseplate.Position = Vector3.new(0, top - baseplate.Size.Y / 2, 0)
 		baseplate.Color = Props.color(Town.GRASS_COLOR)
 		baseplate.Material = Enum.Material.Grass
-		baseplate.Transparency = 0
+		baseplate.Transparency = 1
 		local texture = baseplate:FindFirstChildOfClass("Texture")
 		if texture then
 			texture:Destroy() -- the default grid
@@ -373,6 +374,11 @@ local function setLighting()
 
 	local grading = effect("ColorCorrectionEffect", "TownColor") :: ColorCorrectionEffect
 	grading.Saturation = settings.SATURATION
+end
+
+-- The plot grid, portals and spring, for other services that lay things out round the town (SceneryService)
+function TownService.GetWorld(): TownLayout.World
+	return getWorld()
 end
 
 function TownService.Start()

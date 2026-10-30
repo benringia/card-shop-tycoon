@@ -27,6 +27,7 @@ local ArenaService = require(Services:WaitForChild("ArenaService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local FrontierService = require(Services:WaitForChild("FrontierService"))
 local TownService = require(Services:WaitForChild("TownService"))
+local SceneryService = require(Services:WaitForChild("SceneryService"))
 local DevService = require(Services:WaitForChild("DevService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
@@ -89,6 +90,7 @@ else
 	BossService.Start() -- the boss ladder: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
 	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals
+	SceneryService.Start() -- terrain round the town and in the portal areas (after TownService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end
