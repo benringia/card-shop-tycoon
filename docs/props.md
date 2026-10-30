@@ -50,6 +50,16 @@ Body is `Plaza.FOUNTAIN_RADIUS` round. To update it:
 3. Delete the Workspace copy (the import isn't anchored, so in Play it falls apart beside the shop); Rojo syncs the
    file into PropModels. Stop and Play to see it.
 
+## The caldera's props (Volcano, CharredTree, ObsidianShards)
+
+Placed by SceneryService from `Config/Scenery` (`VOLCANO`, `CHARRED_TREES`, `SHARDS`), scaled to each spot's height on
+the drawn ground, anchored, no collisions; until a file is saved the canyon builds without it (a warning). Built in
+Blender by `tools/blender/build_volcano.py`, `build_charred_tree.py` and `build_obsidian_shards.py` on `portal_kit.py`
+(open an empty file first, then run the script in a separate call; `EXPORT=0` builds without saving). Names matter
+(`tests/CreatureAssets` checks the saved files): the volcano's `Body`, `Lava` (made glowing) and `Fx_Smoke` (hidden; the
+plume rises from it), the shards' `Frame` and `Lava`, the tree's `Frame`. Import, save and delete the Workspace copy as
+for the portals below.
+
 ## The town portals (PortalWild, PortalFrontier, PortalArena)
 
 Slots of their own (`Town.SLOTS`), about 28 studs tall, placed where the portal frame stood; until a portal's file

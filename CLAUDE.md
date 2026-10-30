@@ -18,7 +18,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
   The town portals (`PortalWild`, `PortalFrontier`, `PortalArena`) are built by `tools/blender/build_portal_<world>.py` on
-  `portal_kit.py` (sources in `assets/blender/Portal<World>/`); until one is saved today's `Portal` frame stands in.
+  `portal_kit.py` (sources in `assets/blender/Portal<World>/`); until one is saved today's `Portal` frame stands in. The
+  caldera's `Volcano`, `CharredTree` and `ObsidianShards` come from `build_volcano.py`, `build_charred_tree.py`,
+  `build_obsidian_shards.py` (docs/props.md).
 - `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
   into the place file's `ReplicatedStorage.PlaceProps` with Insert from File (docs/props.md).
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
