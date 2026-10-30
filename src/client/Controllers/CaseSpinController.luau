@@ -12,6 +12,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Showcase = require(Config:WaitForChild("Showcase"))
+local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
@@ -40,7 +41,8 @@ local function rarityColor(card: typeof(Cards.List[1])): Color3
 	return if tier then tier.color else Color3.new(1, 1, 1)
 end
 
--- The card back on the part's back face, glowing like the front
+-- The card back on the part's back face, glowing like the front; from afar the card's own blue shows instead
+-- (CardEffectsController)
 local function drawBack(part: BasePart)
 	local gui = Instance.new("SurfaceGui")
 	gui.Name = "CardBack"
@@ -50,6 +52,7 @@ local function drawBack(part: BasePart)
 	gui.LightInfluence = 0
 	gui.Brightness = CardEffects.FACE_BRIGHTNESS
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.MaxDistance = ShopDetail.FULL_CARD_DISTANCE
 	gui.Parent = part
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.fromScale(1, 1)

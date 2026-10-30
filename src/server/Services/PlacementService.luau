@@ -16,6 +16,7 @@ local PlacementConfig = require(Config:WaitForChild("Placement"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local CaseLayout = require(Config:WaitForChild("CaseLayout"))
 local Town = require(Config:WaitForChild("Town"))
+local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
@@ -295,6 +296,7 @@ local function newPriceTag(parent: Instance): Part
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = 100
 	gui.LightInfluence = 0
+	gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
 	gui.Parent = tag
 	local label = Instance.new("TextLabel")
 	label.Name = "Price"

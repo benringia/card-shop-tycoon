@@ -425,7 +425,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
   server's plain card part (0.84 x 1.2 studs, standing upright in two rows, `Config/CaseLayout`; the back drawn on
-  its other side), with the asking price in gold in the value row. To make visitors want to buy, the face glows (it ignores the
+  its other side), with the asking price in gold in the value row. The full face and back draw within 30 studs
+  (`Config/ShopDetail`); further away the card shows a flat picture of its art (a decal) on a card-back blue part, which
+  also shows through shop windows (the windows hide 2D screens behind them). To make visitors want to buy, the face glows (it ignores the
   room's light), a neon halo in the rarity colour sits just behind it (pulsing on Epic and up), and rarer cards
   sparkle more (`Config/CardEffects` BY_RARITY: sparkles, halo). Displayed cards cast no light of their own
   (`DISPLAY_LIGHTS = false`: under the glass it lit the whole case up); Legendary auras keep their particles. Grade S copies
@@ -1138,6 +1140,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
+        │   ├── ShopDetail.luau # how far each client draws shop screens and full card faces (plain data)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Beasts.luau     # beast stats, value and XP numbers
@@ -1387,6 +1390,12 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - Stream-friendly: enable StreamingEnabled, test on low-end phone.
 - Town props: under 2k triangles per prop model and 60k for the whole town; models over 150 parts use the
   stand-in. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
+- Shop screens (SurfaceGuis and BillboardGuis on shop items: card faces and backs, price tags, shelf headers, machine
+  screens, box prints) always get a draw distance (`Config/ShopDetail`: 60 studs, full card faces 30; a Lune test fails
+  a new one without it). Measured 2026-10-30 in a Play-mode stress test (6 shops x 30 items, 24 customers, 12 workers,
+  6 summoned pets, 6 players), PC render CPU from the street: 14.7-17.5 ms and 45-53 fps before, 10.2-12.3 ms and 60 fps
+  after; an empty town is 6.5-7.2 ms. Customers, workers, players and shop lights cost about 0.5 ms each; hiding far
+  shops' small parts saved only about 0.5 ms, so it isn't done. The server stays light (heartbeat 0.4 ms, physics 0.8 ms).
 
 ---
 
@@ -1471,6 +1480,10 @@ boss models; the ranch and Heroic tiers come after those.
   out); Continue while the Rarity guide is open leaves the guide trapped until the next opening; the Odds button and
   Rarity guide pill are 46 px tall (under 48); OpeningStage.isShown and OpeningCards.count are unused and OpeningPack
   says "the controller raycasts" (it doesn't); a fully stocked double-sided Big Display Rack was never measured.
+- [x] Full-server performance (branch `shop-perf`): shop screens stop drawing beyond 60 studs and full card faces beyond
+  30, with a flat art picture further away (`Config/ShopDetail`, numbers in 10.5); approved by the user and merged
+  2026-10-30. Next: the town's nature pass (terrain, waterfalls, big trees, tree sway, grass, butterflies, 3 Cute Pets
+  animals) under the measured rules.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

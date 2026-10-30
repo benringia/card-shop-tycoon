@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
+local ShopDetail = require(Shared:WaitForChild("Config"):WaitForChild("ShopDetail"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
 local ShelfLooks = require(Shared:WaitForChild("Util"):WaitForChild("ShelfLooks"))
@@ -166,6 +167,7 @@ local function frontStrip(model: Model, radius: number, y: number, width: number
 	gui.Face = Enum.NormalId.Front
 	gui.CanvasSize = Vector2.new(width * 300, 114)
 	gui.LightInfluence = 0
+	gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
 	gui.Parent = strip
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
@@ -439,6 +441,7 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		gui.Face = Enum.NormalId.Front
 		gui.CanvasSize = Vector2.new(340, 170)
 		gui.LightInfluence = 0
+		gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
 		gui.Parent = screen
 		local title = Instance.new("TextLabel")
 		title.BackgroundTransparency = 1

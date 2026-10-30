@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Town = require(Config:WaitForChild("Town"))
 local Shelves = require(Config:WaitForChild("Shelves"))
+local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 local Util = Shared:WaitForChild("Util")
 local ShelfStock = require(Util:WaitForChild("ShelfStock"))
 local ShelfLayout = require(Util:WaitForChild("ShelfLayout"))
@@ -64,6 +65,7 @@ local function addHeaderText(header: Part, text: string, bothFaces: boolean)
 		gui.Face = face
 		gui.CanvasSize = Vector2.new(header.Size.X * 50, header.Size.Y * 50)
 		gui.LightInfluence = 0.3
+		gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
 		gui.Parent = header
 		local label = Instance.new("TextLabel")
 		label.BackgroundTransparency = 1
