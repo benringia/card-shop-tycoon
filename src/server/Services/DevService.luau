@@ -21,6 +21,8 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local DayCycle = require(Shared:WaitForChild("Util"):WaitForChild("DayCycle"))
+local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
 local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
 local Rarities = require(Config:WaitForChild("Rarities"))
@@ -281,6 +283,18 @@ function DevService.Start()
 		DungeonService.SkipTo(room, player)
 	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
+	addCommand(folder, "time", function(player, text)
+		local phase = string.match(text, "%s+(%a+)")
+		local known = false
+		for _, entry in Cycle.PHASES do
+			known = known or entry.name == phase
+		end
+		if not known or typeof(workspace:GetAttribute("DayCycleStart")) ~= "number" then
+			Remotes.Notify:FireClient(player, "Usage (main town): /time <morning|afternoon|sunset|night|dawn>", true)
+			return
+		end
+		workspace:SetAttribute("DayCycleStart", DayCycle.startFor(Cycle, phase :: string, workspace:GetServerTimeNow()))
+	end)
 	addCommand(folder, "wild", function(player)
 		WildService.TravelToWild(player)
 	end)

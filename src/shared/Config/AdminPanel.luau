@@ -44,6 +44,16 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		title = "Town",
+		buttons = {
+			{ label = "Morning", command = "/time morning" },
+			{ label = "Afternoon", command = "/time afternoon" },
+			{ label = "Sunset", command = "/time sunset" },
+			{ label = "Night", command = "/time night" },
+			{ label = "Dawn", command = "/time dawn" },
+		},
+	},
+	{
 		title = "Dungeon (Dungeon window)",
 		buttons = {
 			{ label = "To room 2", command = "/room 2" },

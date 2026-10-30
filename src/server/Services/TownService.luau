@@ -12,9 +12,12 @@ local Places = require(Config:WaitForChild("Places"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Pvp = require(Config:WaitForChild("Pvp"))
 local Town = require(Config:WaitForChild("Town"))
+local Cycle = require(Config:WaitForChild("DayCycle"))
 local Wild = require(Config:WaitForChild("Wild"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
+local DayCycle = require(SharedUtil:WaitForChild("DayCycle"))
+local SkyLook = require(SharedUtil:WaitForChild("SkyLook"))
 local PortalTrails = require(SharedUtil:WaitForChild("PortalTrails"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TrailProps = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("TrailProps"))
@@ -374,30 +377,16 @@ local function effect(className: string, name: string): Instance
 	return created
 end
 
+-- The lighting effects the day cycle drives, the fixed afternoon look until clients take over, and the cycle's start
+-- (every client works out the time of day from it: DayCycleController)
 local function setLighting()
-	local settings = Town.LIGHTING
-	Lighting.ClockTime = settings.CLOCK_TIME
-	Lighting.Brightness = settings.BRIGHTNESS
-	Lighting.ExposureCompensation = settings.EXPOSURE
-	Lighting.Ambient = Props.color(settings.AMBIENT)
-	Lighting.OutdoorAmbient = Props.color(settings.OUTDOOR_AMBIENT)
-	Lighting.EnvironmentSpecularScale = settings.SPECULAR
-
-	local atmosphere = effect("Atmosphere", "TownAtmosphere") :: Atmosphere
-	atmosphere.Density = settings.ATMOSPHERE.density
-	atmosphere.Offset = settings.ATMOSPHERE.offset
-	atmosphere.Haze = settings.ATMOSPHERE.haze
-	atmosphere.Glare = settings.ATMOSPHERE.glare
-	atmosphere.Color = Props.color(settings.ATMOSPHERE.color)
-	atmosphere.Decay = Props.color(settings.ATMOSPHERE.decay)
-
-	local bloom = effect("BloomEffect", "TownBloom") :: BloomEffect
-	bloom.Intensity = settings.BLOOM.intensity
-	bloom.Size = settings.BLOOM.size
-	bloom.Threshold = settings.BLOOM.threshold
-
-	local grading = effect("ColorCorrectionEffect", "TownColor") :: ColorCorrectionEffect
-	grading.Saturation = settings.SATURATION
+	effect("Atmosphere", "TownAtmosphere")
+	effect("BloomEffect", "TownBloom")
+	effect("ColorCorrectionEffect", "TownColor")
+	effect("SunRaysEffect", "TownSunRays")
+	Lighting.EnvironmentSpecularScale = Cycle.SPECULAR
+	SkyLook.apply(DayCycle.fixedLook(Cycle))
+	workspace:SetAttribute("DayCycleStart", workspace:GetServerTimeNow())
 end
 
 -- The plot grid, portals and spring, for other services that lay things out round the town (SceneryService)

@@ -441,16 +441,5 @@ return {
 		GLOW_TRANSPARENCY = 0.15,
 	},
 
-	-- Main town only; the Frontier keeps its own lighting
-	LIGHTING = {
-		CLOCK_TIME = 15.5, -- mid-afternoon, a slightly lower sun
-		BRIGHTNESS = 1.6, -- sunlight (Roblox default 2)
-		EXPOSURE = -0.25, -- whole-scene exposure: a softer, dimmer look
-		AMBIENT = { 110, 102, 96 },
-		OUTDOOR_AMBIENT = { 120, 112, 105 },
-		ATMOSPHERE = { density = 0.25, offset = 0.1, haze = 1.2, glare = 0.2, color = { 225, 215, 200 }, decay = { 140, 160, 190 } },
-		BLOOM = { intensity = 0.25, size = 24, threshold = 2 }, -- only the brightest spots glow
-		SPECULAR = 0.35, -- how much walls and floors reflect the sky (Roblox default 1 makes bright patches)
-		SATURATION = 0.12,
-	},
+	-- The town's lighting is the day cycle now (Config/DayCycle; its afternoon is the old look)
 }
