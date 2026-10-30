@@ -845,6 +845,8 @@ function SceneryService.Start()
 	-- snap onto the terrain by raycast, so they wait for it to be filled.
 	task.spawn(function()
 		buildTerrain()
+		-- the Wild valley has ground now: WildService lets players travel there
+		workspace:SetAttribute(WildValleyConfig.TERRAIN_READY_ATTRIBUTE, true)
 		local scenery = workspace:WaitForChild("Scenery")
 		buildCracks(scenery :: Folder)
 		buildRidgeCracks(scenery)

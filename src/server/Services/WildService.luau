@@ -211,7 +211,7 @@ function buildSpring(folder: Instance)
 end
 
 local function sign(parent: Instance, text: string, cframe: CFrame)
-	local board = block(parent, "Sign", Vector3.new(14, 5, 0.6), cframe, Color3.fromRGB(40, 40, 50))
+	local board = block(parent, "Sign", Vector3.new(WildValleyConfig.SIGN_WIDTH, 5, 0.6), cframe, Color3.fromRGB(40, 40, 50))
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.CanvasSize = Vector2.new(560, 200)
@@ -310,7 +310,9 @@ local function buildMap(): Folder
 			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
 		end
 	end
-	sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(entrance + Vector3.new(10, 4, -9)) * CFrame.Angles(0, math.pi, 0))
+	-- In the valley beside the root arch, clear of its legs
+	local signSpot = if VALLEY then Vector3.new(WildValleyConfig.RETURN_SIGN.x, entrance.Y + 4, WildValleyConfig.RETURN_SIGN.z) else entrance + Vector3.new(10, 4, -9)
+	sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(signSpot) * CFrame.Angles(0, math.pi, 0))
 
 	for index, zone in Wild.ZONES do
 		local center = zoneCenter(index)
@@ -322,8 +324,11 @@ local function buildMap(): Folder
 			floorPart(block(folder, "Path", Vector3.new(14, 2, Wild.ZONE_GAP + 2), CFrame.new(back), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone))
 		end
 		local edge = center - Vector3.new(0, 0, Wild.ZONE_SIZE / 2 - 4)
-		-- Faces the way players arrive (from -Z)
-		sign(folder, `{zone.name}\nRecommended Lv {zone.recommended}+`, CFrame.new(edge + Vector3.new(12, 4, 0)) * CFrame.Angles(0, math.pi, 0))
+		-- Faces the way players arrive (from -Z); in the valley further out, clear of the bridge and the stream
+		local boardSpot = WildValley.zoneSign(Wild, WildValleyConfig, index)
+		local zoneSignSpot = if VALLEY then Vector3.new(boardSpot.x, center.Y + 4, boardSpot.z) else edge + Vector3.new(12, 4, 0)
+		-- (the plain map's boards are turned the other way, so arriving players see their backs; the valley's face them)
+		sign(folder, `{zone.name}\nRecommended Lv {zone.recommended}+`, CFrame.new(zoneSignSpot) * CFrame.Angles(0, if VALLEY then 0 else math.pi, 0))
 		if not VALLEY then
 			decorate(folder, center, index * 97)
 		end
@@ -703,8 +708,8 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		groupPrompt.Triggered:Connect(function(player)
 			onGroup(player, bossId)
 		end)
-		-- Faces the way players arrive (from the zone, -X)
-		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
+		-- Meant to face the way players arrive (from the zone, -X); only the valley's boards do (the others face the ring)
+		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, if look then math.rad(90) else -math.rad(90), 0))
 		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, lift, 0) -- on the floor's top (BossService puts the boss here)
 		arenas[bossId] = {
 			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center), -- where /boss puts you, outside the gate
@@ -784,6 +789,18 @@ end
 function WildService.TravelToWild(player: Player, at: CFrame?)
 	if not canTravel(player) then
 		return
+	end
+	-- The valley's terrain fills in the background at start: wait for its ground (SceneryService sets the attribute)
+	local ready = WildValleyConfig.TERRAIN_READY_ATTRIBUTE
+	if VALLEY and not workspace:GetAttribute(ready) then
+		local deadline = os.clock() + WildValleyConfig.TERRAIN_WAIT
+		while not workspace:GetAttribute(ready) and os.clock() < deadline do
+			task.wait(0.25)
+		end
+		if not workspace:GetAttribute(ready) then
+			notify(player, "The Wild is still loading. Try again in a moment.", true)
+			return
+		end
 	end
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
 	if moveCharacter(player, at or CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))) then

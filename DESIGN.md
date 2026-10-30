@@ -643,7 +643,9 @@ glowing blue crystals at its lip and round the zone, crystal glints) and the **E
 ground with glowing floor cracks, charred trees and obsidian shards from the caldera, two smoking vents, embers). Each
 zone's boss arena is dressed in its mood (`ARENA_LOOKS`): grass floor and wooden fence, slate floor with stone posts
 and blue crystal tips, basalt floor with lava cracks and basalt posts with ember tips; floors sit 0.15 above the
-terrain. Cliffs and hills close every side, with invisible walls along the edge. Zones, spawn spots, monsters, bosses,
+terrain. Zone and boss gate boards face the players walking up to them (the Frontier's still face away). Cliffs and
+hills close every side, with invisible walls along the edge (players can walk a few studs into the cave mouth);
+travel to the Wild waits until the valley's terrain has filled at server start (`WildTerrainReady`). Zones, spawn spots, monsters, bosses,
 rings and barriers, travel and healing (the plaza spring) are unchanged: monsters still snap to the zone floors, now
 invisible parts at y 0 (no collisions; players walk on the terrain, which draws its ground there too). Layout:
 `Config/WildValley` (terrain ops, props, stream, bridge, cave, cracks, vents, arena looks, edge); rules in

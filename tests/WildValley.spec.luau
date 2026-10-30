@@ -123,6 +123,64 @@ return {
 		assert(cracks.size / 2 * math.sqrt(2) < bosses.ARENA_RADIUS - 1, "the ridge arena's cracks run past its fence")
 	end,
 
+	["the name boards stand clear of the arch, the bridge, the stream, the props and the monsters"] = function()
+		local half = valley.SIGN_WIDTH / 2
+		assert(math.abs(valley.RETURN_SIGN.x) - half >= valley.ARCH_HALF_WIDTH + 1, "the return sign cuts into the root arch")
+		local boards = { { name = "return", a = { x = valley.RETURN_SIGN.x - half, z = valley.RETURN_SIGN.z }, b = { x = valley.RETURN_SIGN.x + half, z = valley.RETURN_SIGN.z } } }
+		for index in wild.ZONES do
+			local spot = WildValley.zoneSign(wild, valley, index)
+			table.insert(boards, { name = `zone {index}`, a = { x = spot.x - half, z = spot.z }, b = { x = spot.x + half, z = spot.z } })
+		end
+		local function distance(p: { x: number, z: number }, board: any): number
+			local t = math.clamp((p.x - board.a.x) / (board.b.x - board.a.x), 0, 1)
+			return math.sqrt((p.x - (board.a.x + (board.b.x - board.a.x) * t)) ^ 2 + (p.z - board.a.z) ^ 2)
+		end
+		local bridge, stream = valley.BRIDGE, valley.STREAM
+		for _, board in boards do
+			local overBridgeX = board.b.x >= bridge.x - bridge.width / 2 - 1 and board.a.x <= bridge.x + bridge.width / 2 + 1
+			local overBridgeZ = math.abs(board.a.z - bridge.z) <= bridge.length / 2 + 1
+			assert(not (overBridgeX and overBridgeZ), `the {board.name} sign stands on the bridge`)
+			for step = 0, 4 do
+				local p = { x = board.a.x + (board.b.x - board.a.x) * step / 4, z = board.a.z }
+				local dx, dz = stream.to.x - stream.from.x, stream.to.z - stream.from.z
+				local t = math.clamp(((p.x - stream.from.x) * dx + (p.z - stream.from.z) * dz) / (dx * dx + dz * dz), 0, 1)
+				local d = math.sqrt((p.x - (stream.from.x + dx * t)) ^ 2 + (p.z - (stream.from.z + dz * t)) ^ 2)
+				assert(d >= stream.width / 2 + 1, `the {board.name} sign stands in the stream`)
+			end
+			-- the pond is a square turned 45 degrees: its corners reach radius x sqrt 2
+			assert(distance(stream.pond, board) >= stream.pond.radius * math.sqrt(2) + 0.5, `the {board.name} sign stands in the pond`)
+			for _, prop in allProps() do
+				assert(distance(prop, board) >= 3, `the {board.name} sign stands in {prop.model or "a prop"} at {prop.x}, {prop.z}`)
+			end
+			for index in wild.ZONES do
+				for _, spot in WildValley.spawnSpots(wild, index) do
+					assert(distance(spot, board) >= wild.WANDER_RADIUS + 1, `monsters wander through the {board.name} sign`)
+				end
+			end
+		end
+	end,
+
+	["the edge lets players into the cave mouth but not past its carve"] = function()
+		local cave = valley.CAVE
+		assert(WildValley.inside(valley.EDGE, { x = cave.x - 17, z = cave.z }), "an invisible wall stands across the cave mouth")
+		local carve
+		for _, op in valley.TERRAIN do
+			if op.material == "Air" and op.z == cave.z then
+				carve = op
+			end
+		end
+		assert(carve, "the cave's carve")
+		local back, sides = carve.x - carve.size.x / 2, carve.size.z / 2
+		local deepest = math.huge
+		for _, p in valley.EDGE do
+			if math.abs(p.z - cave.z) <= sides then
+				deepest = math.min(deepest, p.x)
+			end
+		end
+		-- the edge wall (2 thick) stays inside the carve, in front of the cave's dark back wall
+		assert(deepest - 1 > back, `the edge reaches x {deepest}, past the cave's back at {back}`)
+	end,
+
 	["markers run the whole trail"] = function()
 		local trail = WildValley.trail(wild)
 		local markers = WildValley.markers(trail, valley.MARKER_SPACING)

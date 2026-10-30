@@ -29,6 +29,12 @@ function WildValley.arenaCenter(wild: any, bosses: any, index: number): Point
 	return { x = centre.x + wild.ZONE_SIZE / 2 + bosses.ARENA_GAP + bosses.ARENA_RADIUS, z = centre.z }
 end
 
+-- A zone's name board: at x ZONE_SIGN_X, 4 studs in from the zone's near (-z) edge where players arrive
+function WildValley.zoneSign(wild: any, valley: any, index: number): Point
+	local centre = WildValley.zoneCenter(wild, index)
+	return { x = centre.x + valley.ZONE_SIGN_X, z = centre.z - wild.ZONE_SIZE / 2 + 4 }
+end
+
 -- The trail: from the arrival down the valley's middle to the last zone's middle
 function WildValley.trail(wild: any): { Point }
 	local points: { Point } = { { x = wild.ORIGIN.x + wild.ENTRANCE_OFFSET.x, z = wild.ORIGIN.z + wild.ENTRANCE_OFFSET.z } }

@@ -11,8 +11,23 @@ return {
 	MARKER_SPACING = 12, -- studs between the trail's small glowing stones
 	-- Nothing stands here: the arrival pad and the return portal behind it
 	ARRIVAL_CLEAR = { minX = -20, maxX = 20, minZ = 1106, maxZ = 1146 },
-	-- The walkable edge (invisible walls along it): the zones, the arenas off their +x side, the arrival
-	EDGE = { { x = -72, z = 1104 }, { x = 158, z = 1104 }, { x = 158, z = 1556 }, { x = -72, z = 1556 } },
+	-- The walkable edge (invisible walls along it): the zones, the arenas off their +x side, the arrival, and a notch
+	-- into the gorge's cave mouth (players walk in up to its dark back wall)
+	EDGE = {
+		{ x = -72, z = 1104 }, { x = 158, z = 1104 }, { x = 158, z = 1556 }, { x = -72, z = 1556 },
+		{ x = -72, z = 1351 }, { x = -80, z = 1351 }, { x = -80, z = 1329 }, { x = -72, z = 1329 },
+	},
+	-- The valley's ground is terrain filled in the background at start (SceneryService): travel to the Wild waits up to
+	-- TERRAIN_WAIT seconds for this Workspace attribute, so nobody lands before there's ground to stand on
+	TERRAIN_READY_ATTRIBUTE = "WildTerrainReady",
+	TERRAIN_WAIT = 20,
+	-- The Wild's name boards (WildService; SIGN_WIDTH wide): "The Wild" beside the root arch, clear of its legs
+	-- (ARCH_HALF_WIDTH: the PortalWild model's measured half width), and each zone's board at x ZONE_SIGN_X by its near
+	-- edge (Util/WildValley.zoneSign)
+	SIGN_WIDTH = 14,
+	ARCH_HALF_WIDTH = 15.5,
+	RETURN_SIGN = { x = 24, z = 1121 },
+	ZONE_SIGN_X = 26,
 	-- The meadow's stream: from the -x cliff down to a pond by the arrival, the trail crossing it on a bridge
 	STREAM = { from = { x = -72, z = 1170 }, to = { x = 40, z = 1128 }, width = 6, pond = { x = 42, z = 1126, radius = 8 } },
 	-- The wooden footbridge where the trail crosses the stream (code-built: deck planks, rails and posts)
