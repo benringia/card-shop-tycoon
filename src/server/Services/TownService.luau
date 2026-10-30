@@ -78,6 +78,22 @@ local function ground(parent: Instance, name: string, size: Vector3, cframe: CFr
 	return part
 end
 
+-- The place's own spawn pad by the plaza (where players appear before their shop is theirs): invisible, nothing to trip
+-- on, no default spawn logo
+local function hideSpawnPad()
+	local pad = workspace:FindFirstChild("SpawnLocation")
+	if not pad or not pad:IsA("SpawnLocation") then
+		return
+	end
+	pad.Transparency = 1
+	pad.CanCollide = false
+	for _, child in pad:GetChildren() do
+		if child:IsA("Decal") or child:IsA("Texture") then
+			child:Destroy()
+		end
+	end
+end
+
 -- The Baseplate shrinks to the island and goes invisible (SceneryService's terrain is the ground; the Baseplate stays
 -- solid under it as a backstop); invisible walls keep players on it
 local function buildBounds(folder: Folder)
@@ -154,6 +170,7 @@ end
 
 local function buildGround(folder: Folder)
 	buildBounds(folder)
+	hideSpawnPad()
 
 	local layout = Town.LAYOUT
 	local floor = Town.FLOOR
