@@ -230,6 +230,29 @@ local function dressCalderaProp(model: Model)
 	end
 end
 
+-- An invisible upright cylinder that stops players at a tree's trunk or a shard cluster's base (Scenery.CALDERA_COLLIDERS)
+local function calderaCollider(model: Model, spot: any)
+	local share = Scenery.CALDERA_COLLIDERS[spot.model]
+	if not share then
+		return
+	end
+	local radius, height = share.radius * spot.height, share.height * spot.height
+	local box, size = model:GetBoundingBox()
+	local foot = box.Position.Y - size.Y / 2
+	local collider = Instance.new("Part")
+	collider.Name = "Collider"
+	collider.Shape = Enum.PartType.Cylinder
+	collider.Size = Vector3.new(height, radius * 2, radius * 2)
+	collider.CFrame = CFrame.new(spot.x, foot + height / 2, spot.z) * CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X: stand it up
+	collider.Anchored = true
+	collider.Transparency = 1
+	collider.CanCollide = true
+	collider.CanQuery = false
+	collider.CanTouch = false
+	collider.CastShadow = false
+	collider.Parent = model
+end
+
 -- The caldera's Blender props (Config/Scenery CHARRED_TREES, SHARDS, VOLCANO); one not saved yet is left out (placeModel
 -- warns), and the smoke then rises from the volcano's spot in the config
 local function buildCalderaProps(folder: Folder)
@@ -238,6 +261,7 @@ local function buildCalderaProps(folder: Folder)
 			local model = placeModel(folder, spot, spot.model)
 			if model then
 				dressCalderaProp(model)
+				calderaCollider(model, spot)
 			end
 		end
 	end

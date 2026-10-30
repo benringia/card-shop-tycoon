@@ -170,6 +170,27 @@ return {
 		assert(#bad == 0, `caldera props (docs/props.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["the volcano's lava streaks face the canyon"] = function()
+		-- the saved model's lava (streaks and crater) leans to one side of its crater axis: turned by VOLCANO.yaw (placeModel
+		-- turns about y), that side must face the canyon and the town (east), or players see the streaks edge-on
+		local scenery = require("../src/shared/Config/Scenery")
+		local town = require("../src/shared/Config/Town")
+		local path = "assets/props/Volcano.rbxm"
+		if not fs.isFile(path) then
+			return
+		end
+		local model = roblox.deserializeModel(fs.readFile(path))[1]
+		local lava, axis = model:FindFirstChild("Lava"), model:FindFirstChild("Fx_Smoke")
+		local dx = lava.CFrame.Position.X - axis.CFrame.Position.X
+		local dz = lava.CFrame.Position.Z - axis.CFrame.Position.Z
+		local yaw = math.rad(scenery.VOLCANO.yaw)
+		local wx, wz = dx * math.cos(yaw) + dz * math.sin(yaw), -dx * math.sin(yaw) + dz * math.cos(yaw)
+		local arena = town.PORTAL_AREAS[3].trail[#town.PORTAL_AREAS[3].trail]
+		local tx, tz = arena.x - scenery.VOLCANO.x, arena.z - scenery.VOLCANO.z
+		local facing = (wx * tx + wz * tz) / (math.sqrt(wx * wx + wz * wz) * math.sqrt(tx * tx + tz * tz))
+		assert(facing > 0.8, `the volcano's lava faces {facing} of the way toward the canyon (VOLCANO.yaw {scenery.VOLCANO.yaw})`)
+	end,
+
 	["portal models carry the parts the game dresses"] = function()
 		-- A portal's model is optional (today's frame stands in, Util/PortalLooks.slot); once saved it must hold every
 		-- part PortalBuild looks for (Frame, Opening, the effects' spots, the glowing parts), as MeshParts

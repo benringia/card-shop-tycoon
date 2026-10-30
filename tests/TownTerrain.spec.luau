@@ -158,6 +158,19 @@ return {
 		assert(#scenery.CHARRED_TREES >= 6 and #scenery.SHARDS >= 4, "charred trees and obsidian shards dot the caldera")
 	end,
 
+	["the caldera's trees and shards block players"] = function()
+		-- they stand inside the walkable floor (the cacti they replaced collided): each kind gets an invisible collider
+		-- round its trunk or base, sized as a share of the spot's height
+		for _, list in { scenery.CHARRED_TREES, scenery.SHARDS } do
+			for _, spot in list do
+				local collider = scenery.CALDERA_COLLIDERS[spot.model]
+				assert(collider, `{spot.model} has no collider`)
+				assert(collider.radius * spot.height >= 0.4, `{spot.model}'s collider is too thin`)
+				assert(collider.height * spot.height >= 1.5, `{spot.model}'s collider is too low to stop a player`)
+			end
+		end
+	end,
+
 	["terrain stays inside the memory budget"] = function()
 		local cells = TownTerrain.estimatedCells(OPS)
 		assert(cells <= scenery.MAX_CELLS, `{cells} cells`)

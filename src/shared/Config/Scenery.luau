@@ -165,7 +165,13 @@ return {
 		{ model = "ObsidianShards", x = -135, z = 14, height = 3, yaw = 300 },
 		{ model = "ObsidianShards", x = -230, z = 12, height = 4, yaw = 170 },
 	},
-	VOLCANO = { model = "Volcano", x = -335, z = 10, height = 120, yaw = 0, y = -4 },
+	VOLCANO = { model = "Volcano", x = -335, z = 10, height = 120, yaw = 270, y = -4 }, -- turned so its lava streaks (its -Z side) face the canyon and the town
+	-- The trees and shards stand in the walkable floor: an invisible collider round each trunk or base (the meshes don't
+	-- collide), its radius and height as shares of the spot's height
+	CALDERA_COLLIDERS = {
+		CharredTree = { radius = 0.09, height = 0.45 },
+		ObsidianShards = { radius = 0.4, height = 0.6 },
+	},
 	-- The volcano's slow smoke plume: a camera-facing beam (particles far from every player aren't simulated, so they'd
 	-- never show) from the crater, rising `rise` studs and drifting `drift` along z with the wind (sideways as seen from the
 	-- town, so the bend shows), widening, its billowing texture

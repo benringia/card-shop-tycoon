@@ -111,11 +111,13 @@ frozen pond, icicles, drifting snow, an aurora of hanging curtain beams), the Ar
 and a dark cracked floor (terrain materials `Basalt` and `CrackedLava`, coloured only here), about 220 glowing orange
 cracks down the cliff faces and across the floor (`Util/LavaCracks` lays them out from `Scenery.CRACKS`, clear of the
 trail and the portal; SceneryService snaps each onto the terrain by raycast once the terrain has filled, wall cracks in
-halves so they follow its steps), charred dead trees with ember tips and black-purple obsidian shard clusters (Blender:
+halves so they follow its steps), charred dead trees with ember tips and black-purple obsidian shard clusters (players can't walk through them: an
+invisible collider round each trunk or base, `Scenery.CALDERA_COLLIDERS`; Blender:
 `build_charred_tree.py`, `build_obsidian_shards.py`), a hotter lava river and pool, dark torch pillars beside the
 portal, floating embers and two baby dragons; behind the end wall a quiet volcano (`build_volcano.py`, 120 studs tall at
 (-335, 10), showing over the cliffs from the trail and the town street) with glowing lava in its crater and streaks down
-its side and a slow smoke plume: a camera-facing beam with a billowing texture made in code (`Scenery.PLUME`,
+its side (turned to face the canyon and the town, `VOLCANO.yaw` 270, Lune-tested against the saved model) and a slow
+smoke plume: a camera-facing beam with a billowing texture made in code (`Scenery.PLUME`,
 `assets/ui/fx/volcano-plume.png`; particles never showed, the client doesn't run emitters that far from the camera). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
 user kept the map's spots). Trails are paved terrain with the portal's glowing line along them; a wooden arch with the
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
