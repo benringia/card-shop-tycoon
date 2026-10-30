@@ -154,6 +154,22 @@ return {
 	TORCH_FIRE = { COLOR = { 255, 150, 60 }, RATE = 18 },
 	TORCH_STONE = { 150, 120, 105 },
 	CACTUS = { BODY = { 90, 156, 80 }, DARK = { 70, 130, 64 }, FLOWER = { 255, 120, 170 } },
+	-- The caldera's glowing cracks (Util/LavaCracks lays them out, SceneryService snaps them onto the terrain as glowing
+	-- strips): down the canyon's three inner cliff faces (each a line in plan view, from/to, the cracks between heights
+	-- low and high) and across its floor (a box), clear of the trail and the portal. WIDTH: a strip's width range
+	-- (studs); MAX_SEGMENTS: all strips together.
+	CRACKS = {
+		SEED = 31,
+		WIDTH = { 0.35, 0.7 },
+		COLOR = { 255, 110, 30 },
+		MAX_SEGMENTS = 160,
+		WALLS = {
+			{ name = "North", from = { x = -136, z = 30 }, to = { x = -232, z = 30 }, low = 1, high = 22, count = 6 },
+			{ name = "South", from = { x = -136, z = -32 }, to = { x = -232, z = -32 }, low = 1, high = 22, count = 6 },
+			{ name = "End", from = { x = -234, z = -22 }, to = { x = -234, z = 22 }, low = 1, high = 22, count = 4 },
+		},
+		FLOOR = { centre = { x = -182, z = 0 }, size = { x = 96, z = 44 }, count = 10 },
+	},
 	-- Lava: a glowing river at the south wall's foot (just past the walkable floor) and a pool behind the portal
 	LAVA = {
 		RIVER = { from = { x = -136, z = -28.5 }, to = { x = -232, z = -28.5 }, width = 5.5 },
