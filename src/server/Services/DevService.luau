@@ -33,6 +33,7 @@ local AdminPanel = require(Config:WaitForChild("AdminPanel"))
 
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
+local WelcomeService = require(Services:WaitForChild("WelcomeService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
@@ -283,6 +284,9 @@ function DevService.Start()
 		DungeonService.SkipTo(room, player)
 	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
+	addCommand(folder, "intro", function(player)
+		WelcomeService.Replay(player)
+	end)
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
 		local known = false
