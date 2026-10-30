@@ -104,9 +104,26 @@ local function beam(spec: any, from: BasePart, to: BasePart)
 	stream.Parent = from
 end
 
--- The swirl in the Opening's middle: one round image (PortalLooks.vortexSize) on a still, see-through part facing down the
--- trail (the model's front), on both faces. The client turns the image in its own plane (PortalFxController): a beam
--- turned with its part twisted out of the opening and looked like several disks tumbling.
+-- The swirl in the Opening's middle: three image layers per face on a still, see-through panel facing down the trail
+-- (the model's front): a glowing core (it fills the gaps between the swirl's arms), the swirl, and a smaller inner swirl.
+-- The client turns the swirls in their own plane and breathes the core (PortalFxController, PortalLooks.animate): a
+-- beam turned with its part twisted out of the opening and looked like several disks tumbling.
+local function layer(gui: SurfaceGui, name: string, image: string, size: number, z: number, transparency: number, colors: { Color3 })
+	local label = Instance.new("ImageLabel")
+	label.Name = name
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.fromScale(size, size)
+	label.BackgroundTransparency = 1
+	label.Image = image
+	label.ImageTransparency = transparency
+	label.ZIndex = z
+	label.Parent = gui
+	local tint = Instance.new("UIGradient")
+	tint.Color = if #colors == 1 then ColorSequence.new(colors[1]) else ColorSequence.new(colors[1], colors[2])
+	tint.Parent = label
+end
+
 local function swirlFace(holder: BasePart, face: Enum.NormalId, look: any)
 	local fx = Town.PORTAL_FX
 	local gui = Instance.new("SurfaceGui")
@@ -115,21 +132,14 @@ local function swirlFace(holder: BasePart, face: Enum.NormalId, look: any)
 	gui.MaxDistance = fx.VORTEX_DISTANCE
 	gui.LightInfluence = 0
 	gui.Brightness = fx.VORTEX_BRIGHTNESS
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = fx.VORTEX_PIXELS
 	gui.Parent = holder
-	local swirl = Instance.new("ImageLabel")
-	swirl.Name = "Swirl"
-	swirl.AnchorPoint = Vector2.new(0.5, 0.5)
-	swirl.Position = UDim2.fromScale(0.5, 0.5)
-	swirl.Size = UDim2.fromScale(1, 1)
-	swirl.BackgroundTransparency = 1
-	swirl.Image = fx.VORTEX_TEXTURE
-	swirl.ImageTransparency = look.vortex.transparency
-	swirl.Parent = gui
-	local tint = Instance.new("UIGradient")
-	tint.Color = ColorSequence.new(rgb(look.vortex.colors[1]), rgb(look.vortex.colors[2]))
-	tint.Parent = swirl
+	local colors = { rgb(look.vortex.colors[1]), rgb(look.vortex.colors[2]) }
+	layer(gui, "Glow", fx.GLOW_TEXTURE, 0.85, 1, fx.PULSE.glow[1], { rgb(look.vortex.core) })
+	layer(gui, "Swirl", fx.VORTEX_TEXTURE, 1, 2, look.vortex.transparency, colors)
+	layer(gui, "Inner", fx.VORTEX_TEXTURE, fx.INNER.scale, 3, fx.INNER.transparency, { colors[2], colors[1] })
 end
 
 local function vortex(model: Model, look: any, opening: BasePart): BasePart

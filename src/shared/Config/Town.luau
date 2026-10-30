@@ -185,7 +185,7 @@ return {
 		Wild = {
 			slot = "PortalWild",
 			ground = { part = "Fx_Pool", bottom = 0.3 },
-			vortex = { colors = { { 60, 200, 60 }, { 250, 185, 40 } }, spin = 30, transparency = 0.05 },
+			vortex = { colors = { { 60, 200, 60 }, { 250, 185, 40 } }, core = { 20, 110, 40 }, spin = 30, transparency = 0.05 },
 			light = { color = { 170, 240, 140 }, brightness = 1, range = 16 },
 			glow = { Pool = { 90, 220, 210 }, Flowers = { 255, 215, 90 } },
 			effects = {
@@ -197,7 +197,7 @@ return {
 		Frontier = {
 			slot = "PortalFrontier",
 			ground = { part = "Fx_Base", bottom = 1.1 },
-			vortex = { colors = { { 30, 130, 255 }, { 110, 210, 255 } }, spin = 25, transparency = 0.05 },
+			vortex = { colors = { { 30, 130, 255 }, { 110, 210, 255 } }, core = { 15, 60, 190 }, spin = 25, transparency = 0.05 },
 			light = { color = { 130, 205, 255 }, brightness = 1, range = 16 },
 			glow = {},
 			effects = {
@@ -208,7 +208,7 @@ return {
 		Arena = {
 			slot = "PortalArena",
 			ground = { part = "Fx_Pool", bottom = 0.28 },
-			vortex = { colors = { { 255, 50, 20 }, { 255, 150, 30 } }, spin = 35, transparency = 0.05 },
+			vortex = { colors = { { 255, 50, 20 }, { 255, 150, 30 } }, core = { 170, 25, 10 }, spin = 35, transparency = 0.05 },
 			light = { color = { 255, 140, 70 }, brightness = 1, range = 16 },
 			glow = { Lava = { 255, 110, 30 } },
 			effects = {
@@ -219,12 +219,28 @@ return {
 		},
 	},
 	-- MAX_EFFECTS: beams and emitters per portal, the vortex included (one light on top, apart from the area's own cap);
-	-- SPIN_RANGE: studs from the camera the vortex turns within; LABEL_GAP: the name floats this far over the model;
-	-- VORTEX_TEXTURE: assets/ui/fx/portal-vortex.png (Figma, white with alpha so the beam's colour tints it);
-	-- VORTEX_BRIGHTNESS: the swirl image's glow (its SurfaceGui Brightness; VORTEX_PIXELS its PixelsPerStud,
-	-- VORTEX_DISTANCE how far away it still draws);
-	-- VORTEX_SCALE: the swirl is round, this share of the opening's narrower side, so it turns about its own middle
-	PORTAL_FX = { MAX_EFFECTS = 4, SPIN_RANGE = 150, LABEL_GAP = 3, VORTEX_TEXTURE = "rbxassetid://80055203675421", VORTEX_BRIGHTNESS = 1.4, VORTEX_PIXELS = 24, VORTEX_DISTANCE = 300, VORTEX_SCALE = 0.9 },
+	-- SPIN_RANGE: studs from the camera the swirl turns within; LABEL_GAP: the name floats this far over the model.
+	-- The swirl: three image layers on a still panel in the opening (Server/Util/PortalBuild, PortalFxController):
+	-- a glowing core (GLOW_TEXTURE, the look's vortex.core colour) that breathes (PULSE: its transparency between
+	-- glow[1] and glow[2] over `period` seconds, the light's brightness +-`light` with it), the swirl (VORTEX_TEXTURE,
+	-- white with clear gaps, tinted by the look's vortex.colors) and a smaller inner swirl turning the other way faster
+	-- (INNER: its share of the panel, speed as a multiple of the look's spin, transparency). VORTEX_SCALE: the panel's
+	-- side as a share of the opening's larger side (the swirl's disc fades from 85% of its radius, so 1.2 covers the
+	-- opening; the overflow hides behind the frame). VORTEX_BRIGHTNESS / VORTEX_PIXELS / VORTEX_DISTANCE: the panel's
+	-- SurfaceGui Brightness, PixelsPerStud and MaxDistance.
+	PORTAL_FX = {
+		MAX_EFFECTS = 4,
+		SPIN_RANGE = 150,
+		LABEL_GAP = 3,
+		VORTEX_TEXTURE = "rbxassetid://80055203675421",
+		GLOW_TEXTURE = "rbxassetid://136118307283830",
+		VORTEX_BRIGHTNESS = 1.4,
+		VORTEX_PIXELS = 24,
+		VORTEX_DISTANCE = 300,
+		VORTEX_SCALE = 1.2,
+		INNER = { scale = 0.55, speed = -1.8, transparency = 0.3 },
+		PULSE = { period = 2.6, glow = { 0.1, 0.4 }, light = 0.3 },
+	},
 	PORTAL_GLOW = { BRIGHTNESS = 2, RANGE = 18 },
 	PORTAL_PANEL_TRANSPARENCY = 0.65, -- the frame's see-through glow panels, so the particles show through
 	PORTAL_RING_CENTRE = 5, -- height of the ring centre above the ground (WildService and ArenaService rings)

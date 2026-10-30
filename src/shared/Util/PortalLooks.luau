@@ -26,9 +26,24 @@ function PortalLooks.groundShift(partBottom: number, foot: number, bottom: numbe
 	return foot + bottom * scale - partBottom
 end
 
--- The swirl's diameter: round (a stretched swirl wobbles as it turns) and inside the opening's narrower side
+-- The swirl panel's side: round (a stretched swirl wobbles), big enough that the swirl's disc covers the opening
+-- (VORTEX_SCALE of its larger side; what spills over hides behind the frame)
 function PortalLooks.vortexSize(width: number, height: number, town: any): number
-	return math.min(width, height) * town.PORTAL_FX.VORTEX_SCALE
+	return math.max(width, height) * town.PORTAL_FX.VORTEX_SCALE
+end
+
+-- The swirl's layers at a moment (seconds): the swirl's and the inner swirl's turn (degrees, 0-360), the glowing core's
+-- transparency and the light's brightness as a share of the look's
+function PortalLooks.animate(now: number, look: any, town: any): { swirl: number, inner: number, glow: number, light: number }
+	local fx = town.PORTAL_FX
+	local wave = math.sin(now / fx.PULSE.period * math.pi * 2)
+	local low, high = fx.PULSE.glow[1], fx.PULSE.glow[2]
+	return {
+		swirl = (look.vortex.spin * now) % 360,
+		inner = (look.vortex.spin * fx.INNER.speed * now) % 360,
+		glow = (low + high) / 2 + (high - low) / 2 * wave,
+		light = 1 + fx.PULSE.light * wave,
+	}
 end
 
 -- Beams and emitters a portal draws, its vortex included

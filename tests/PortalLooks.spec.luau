@@ -71,12 +71,33 @@ return {
 		expect.equal(#all, #arena.effects, "effects kept with every part")
 	end,
 
-	["the swirl is round and fits inside the opening"] = function()
-		local scale = town.PORTAL_FX.VORTEX_SCALE
-		assert(scale > 0.5 and scale <= 1, `VORTEX_SCALE {scale}`)
-		-- a round swirl turns about its own middle; a stretched one wobbles and swings past a narrow arch top
-		expect.equal(PortalLooks.vortexSize(15, 16.8, town), 15 * scale, "a tall opening: sized by its width")
-		expect.equal(PortalLooks.vortexSize(18, 12, town), 12 * scale, "a wide opening: sized by its height")
+	["the swirl covers the whole opening"] = function()
+		local fx = town.PORTAL_FX
+		-- the swirl image's disc fades out from 85% of its radius: what shows must still reach the opening's far side
+		assert(fx.VORTEX_SCALE * 0.85 >= 1, `VORTEX_SCALE {fx.VORTEX_SCALE} leaves the opening's edge uncovered`)
+		expect.equal(PortalLooks.vortexSize(15, 16.8, town), 16.8 * fx.VORTEX_SCALE, "a tall opening: sized by its height")
+		expect.equal(PortalLooks.vortexSize(18, 12, town), 18 * fx.VORTEX_SCALE, "a wide opening: sized by its width")
+	end,
+
+	["the swirl's layers move together"] = function()
+		local fx = town.PORTAL_FX
+		local look = town.PORTAL_LOOKS.Arena
+		local at0 = PortalLooks.animate(0, look, town)
+		local at1 = PortalLooks.animate(1, look, town)
+		expect.near((at1.swirl - at0.swirl) % 360, look.vortex.spin % 360, 1e-6, "the swirl turns at the look's spin")
+		-- the inner swirl turns the other way, faster
+		expect.near((at1.inner - at0.inner) % 360, (look.vortex.spin * fx.INNER.speed) % 360, 1e-6, "the inner swirl's turn")
+		assert(fx.INNER.speed < -1, "the inner swirl turns the other way, faster")
+		assert(fx.INNER.scale > 0.3 and fx.INNER.scale < 0.8, "the inner swirl sits inside the swirl")
+		-- the glow breathes inside its range, and the light with it
+		for t = 0, fx.PULSE.period, fx.PULSE.period / 8 do
+			local at = PortalLooks.animate(t, look, town)
+			assert(at.glow >= fx.PULSE.glow[1] - 1e-9 and at.glow <= fx.PULSE.glow[2] + 1e-9, `glow transparency {at.glow} at {t}`)
+			assert(at.light >= 1 - fx.PULSE.light - 1e-9 and at.light <= 1 + fx.PULSE.light + 1e-9, `light share {at.light} at {t}`)
+		end
+		for _, angle in { at0.swirl, at0.inner, at1.swirl, at1.inner } do
+			assert(angle >= 0 and angle < 360, `angle {angle} kept in 0..360`)
+		end
 	end,
 
 	["a portal sinks its buried roots back into the ground"] = function()
