@@ -1635,6 +1635,12 @@ boss models; the ranch and Heroic tiers come after those.
   `table.clone` of a look is shallow; night grading also tints the pack opening and binder views; TownService's portal
   effect fallback ignores `spot.y`; BuildController's `WaitForChild("OrderComputer")` warns when the plot streams in
   late.
+- [ ] Town portals remodel (spec `2026-10-30-town-portals-design.md`, plan `2026-10-30-town-portals.md`, branch
+  `town-portals`): the three portals grown from their worlds (the user's pick A): a root arch at Forest Falls, an ice
+  crystal ring at Frostpeak, an obsidian arch with lava at Ember Canyon, Blender-built, a spinning swirl in each
+  opening, water, mist, lava and embers; the old frame stands in until a model is saved; Ember Canyon's stone platform
+  removed, its torches moved out. Measured: no change on the street, +0.1 to +0.2 ms at a portal. Also the capybara
+  moved onto the sidewalk outside the south shops. Awaiting the user's check in Studio.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
