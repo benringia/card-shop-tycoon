@@ -131,6 +131,37 @@ return {
 		assert(#bad == 0, `pack models (docs/packs.md):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	["every synced creature model is used"] = function()
+		-- assets/creatures replicates to every player at join: a model no card or town animal uses is download and memory
+		-- for nothing (the bought packs once held 45 such models with 93% of the meshes). Unused packs live in
+		-- assets/creature-packs-unused, not synced.
+		local party = require("../src/shared/Config/Party")
+		local ambient = require("../src/shared/Config/Ambient")
+		local used: { [string]: boolean } = {}
+		for _, entry in party.CREATURE_MODELS do
+			used[(entry.pack or "") .. "/" .. entry.model] = true
+		end
+		for _, critter in ambient.CRITTERS do
+			used["CutePets/" .. critter.model] = true
+		end
+		local bad = {}
+		for _, file in fs.readDir("assets/creatures") do
+			if string.sub(file, -5) == ".rbxm" then
+				for _, root in roblox.deserializeModel(fs.readFile(`assets/creatures/{file}`)) do
+					local pack = if root:IsA("Folder") then root.Name else ""
+					local models = if root:IsA("Folder") then root:GetChildren() else { root }
+					for _, model in models do
+						if model:IsA("Model") and not used[pack .. "/" .. model.Name] then
+							table.insert(bad, `{file}: {model.Name}`)
+						end
+					end
+				end
+			end
+		end
+		table.sort(bad)
+		assert(#bad == 0, `unused creature models synced to every player:\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["every town animal's colour variant is in its Cute Pets model"] = function()
 		local ambient = require("../src/shared/Config/Ambient")
 		local bad = {}

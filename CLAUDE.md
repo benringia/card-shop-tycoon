@@ -8,7 +8,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared
 - `ServerPackages/` (Wally, not in git) → ServerStorage.ServerPackages. ProfileStore lives there.
 - `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
-  (docs/creatures.md). Scripts inside them are destroyed on server start and stripped on clients.
+  (docs/creatures.md). Only models a card or town animal uses (Lune-tested); the bought packs' unused models are kept in
+  `assets/creature-packs-unused` (not synced). Scripts inside them are destroyed on server start and stripped on clients.
 - Original creatures (replacing the bought packs card by card) live in the pack file `assets/creatures/Originals.rbxm`
   (`Party.CREATURE_MODELS` entries `{ pack = "Originals", model = "<Card>" }`), built by `tools/blender/build_<card>.py`
   on `tools/blender/voxel_kit.py` (run in Blender through the Blender MCP), sources in `assets/blender/<Card>/`

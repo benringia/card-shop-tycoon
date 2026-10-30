@@ -1528,7 +1528,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   download call; each is drawn in a hidden viewport once downloaded so its textures finish. Measured 2026-10-31: the
   bought packs also hold 45 unused models with 619 of the 668 meshes, all preloaded before, so a new player's own cards
   waited behind them (about 196 queued requests for 6 s even from Studio's cache); now the 49 used models are drawn
-  about 8 s into the game.
+  about 8 s into the game. The unused packs were then taken out of the synced folder (`assets/creature-packs-unused`:
+  UltraPets, CrystalTitans and the full Cute Pets file; the synced Cute Pets keeps the 8 town animals), so they no longer
+  replicate at join (2.1 MB of models down to 1.4 MB); a Lune test fails if a synced creature model is unused.
 - Card paintings come in two sizes (`Config/CardArt`, `Util/CardArt`): the full 680 x 1014 painting for big views and a
   half-size copy (340 x 507, `assets/ui/card-art-small`) wherever a face is drawn no taller than that (binder pages,
   shelves, cases, the party bar); each face picks by its drawn height. The small copies preload first at start, then the
