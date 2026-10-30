@@ -1,11 +1,12 @@
 --!strict
 -- Ambient animals on this client (Portal Worlds spec): 3 Cute Pets in town, 2 in the plaza and one in each portal area,
--- each running between random points round its home (Util/Wander; or laps round a circle, or resting in one spot)
--- and pausing, drawn and animated by the same code as summoned
+-- each running between random points round its home (Util/Wander; or laps along a circle, or asleep in one spot with a
+-- "z Z z" floating over it) and pausing, drawn and animated by the same code as summoned
 -- pets (Util/CreatureVisuals follows an invisible marker this controller moves). Only animals near the camera are shown
 -- and moved, and none while the extras are off (Util/Extras). Not synced between players: they're scenery.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -26,27 +27,46 @@ type Critter = {
 	pos: Wander.Point,
 	target: Wander.Point,
 	angle: number, -- degrees round the circle, for one running laps
+	targetAngle: number,
 	facing: Vector3,
+	rest: Vector3, -- a sleeper's feet from where it lies
 	resumeAt: number,
 	shown: boolean,
 }
 
 local TownCritterController = {}
 
--- Where it heads next: further round its circle, or a fresh point round its home
+-- Where it heads next: further round its circle, or a fresh point round its home (a sleeper stays put)
 local function nextTarget(critter: Critter, random: Random)
 	local spec = critter.spec
 	if spec.orbit then
-		critter.target, critter.angle = Wander.orbitTarget(spec.home, spec.orbit, critter.angle, spec.maxArc, random)
-	else
+		critter.targetAngle = Wander.orbitTarget(critter.angle, spec.maxArc, random)
+	elseif not spec.sleeps then
 		critter.target = Wander.target(spec.home, spec.radius, spec.avoid, random)
 	end
 end
 
--- A point on its circle at `angle` degrees
-local function circlePoint(spec: any, angle: number): Wander.Point
-	local a = math.rad(angle)
-	return { x = spec.home.x + math.cos(a) * spec.orbit, z = spec.home.z + math.sin(a) * spec.orbit }
+-- A sleeper: lying on its side (CreatureVisuals' fainted pose) with a "z Z z" bobbing and fading over it
+local function fallAsleep(marker: Part, height: number)
+	marker:SetAttribute("Fainted", true)
+	local board = Instance.new("BillboardGui")
+	board.Size = UDim2.fromScale(2.2, 1.1)
+	board.StudsOffset = Vector3.new(0, height * 0.75, 0)
+	board.MaxDistance = Ambient.CRITTER.RANGE
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(235, 245, 255)
+	label.TextStrokeTransparency = 0.3
+	label.TextStrokeColor3 = Color3.fromRGB(60, 80, 140)
+	label.Text = "z Z z"
+	label.Parent = board
+	board.Parent = marker
+	local drift = TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	TweenService:Create(board, drift, { StudsOffset = Vector3.new(0.3, height * 0.75 + 0.6, 0) }):Play()
+	TweenService:Create(label, drift, { TextTransparency = 0.5, TextStrokeTransparency = 0.7 }):Play()
 end
 
 local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
@@ -72,7 +92,7 @@ local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
 	local body = CreatureVisuals.build(model, marker, spec.height, false, template.Name)
 	model.Parent = folder
 	local angle = random:NextNumber(0, 360)
-	local start = if spec.orbit then circlePoint(spec, angle) else { x = spec.home.x, z = spec.home.z }
+	local start = if spec.orbit then Wander.circlePoint(spec.home, spec.orbit, angle) else { x = spec.home.x, z = spec.home.z }
 	local facing = Vector3.new(0, 0, -1)
 	if spec.faces then
 		local toward = Vector3.new(spec.faces.x - start.x, 0, spec.faces.z - start.z)
@@ -88,10 +108,18 @@ local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
 		pos = start,
 		target = start,
 		angle = angle,
+		targetAngle = angle,
 		facing = facing,
+		rest = Vector3.zero,
 		resumeAt = 0,
 		shown = true,
 	}
+	if spec.sleeps then
+		-- It rolls toward its left: feet to the right, and up, so its body lies on the spot
+		local sleep = Ambient.CRITTER.SLEEP
+		critter.rest = CFrame.lookAt(Vector3.zero, facing).RightVector * spec.height * sleep.shift + Vector3.new(0, spec.height * sleep.lift, 0)
+		fallAsleep(marker, spec.height)
+	end
 	nextTarget(critter, random)
 	return critter
 end
@@ -124,10 +152,15 @@ function TownCritterController.Start()
 				critter.body.model.Parent = if show then folder else nil
 			end
 			if show then
-				if now >= critter.resumeAt then
+				if now >= critter.resumeAt and not critter.spec.sleeps then
 					local before = critter.pos
 					local arrived
-					critter.pos, arrived = Wander.step(before, critter.target, look.SPEED, dt)
+					if critter.spec.orbit then
+						critter.angle, arrived = Wander.orbitStep(critter.angle, critter.targetAngle, critter.spec.orbit, look.SPEED, dt)
+						critter.pos = Wander.circlePoint(critter.spec.home, critter.spec.orbit, critter.angle)
+					else
+						critter.pos, arrived = Wander.step(before, critter.target, look.SPEED, dt)
+					end
 					local moved = Vector3.new(critter.pos.x - before.x, 0, critter.pos.z - before.z)
 					if moved.Magnitude > 1e-4 then
 						critter.facing = moved.Unit
@@ -137,7 +170,7 @@ function TownCritterController.Start()
 						nextTarget(critter, random)
 					end
 				end
-				local at = Vector3.new(critter.pos.x, critter.ground, critter.pos.z)
+				local at = Vector3.new(critter.pos.x, critter.ground, critter.pos.z) + critter.rest
 				critter.marker.CFrame = CFrame.lookAt(at, at + critter.facing)
 				CreatureVisuals.step(critter.body, dt, now, camera, Party.MOTION)
 			end

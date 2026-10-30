@@ -16,7 +16,7 @@ return {
 		-- sidewalks, trimmed hedges round the island's edge
 		StreetLight = { height = 11, collide = true },
 		Hedge = { height = 3, collide = true },
-		Bench = { height = 3, collide = true },
+		Bench = { height = 3, collide = true, yaw = 180 }, -- the bench model's seat faces its +Z: turned, the plaza benches face the spring
 		Fence = { height = 4, collide = true },
 		Portal = { height = 14, collide = false },
 		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)

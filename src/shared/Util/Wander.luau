@@ -16,17 +16,31 @@ function Wander.target(home: Point, radius: number, avoid: number?, rng: Rng): P
 	return { x = home.x + math.cos(angle) * distance, z = home.z + math.sin(angle) * distance }
 end
 
--- The next point for an animal running round a circle `r` studs from home (the plaza's puppy round the fountain), from
--- where it stands at `angle` degrees: 10 to maxArc degrees on, now and then back the other way, so the straight walk
--- there stays close to the circle. Returns the point and its angle.
-function Wander.orbitTarget(home: Point, r: number, angle: number, maxArc: number, rng: Rng): (Point, number)
-	local turn = rng:NextNumber(math.min(10, maxArc), maxArc)
+-- Where an animal running laps round a circle (the plaza's puppy round the gazebo) heads next, from `angle` degrees:
+-- 30 to maxArc degrees on, a quarter of the time back the other way
+function Wander.orbitTarget(angle: number, maxArc: number, rng: Rng): number
+	local turn = rng:NextNumber(math.min(30, maxArc), maxArc)
 	if rng:NextNumber(0, 1) < 0.25 then
 		turn = -turn
 	end
-	local nextAngle = angle + turn
-	local a = math.rad(nextAngle)
-	return { x = home.x + math.cos(a) * r, z = home.z + math.sin(a) * r }, nextAngle
+	return angle + turn
+end
+
+-- One move along the circle (r studs round) toward the target angle at `speed` studs a second, never past it; true
+-- once it's there. Following the curve (not a straight line) keeps it clear of whatever stands inside the circle.
+function Wander.orbitStep(angle: number, target: number, r: number, speed: number, dt: number): (number, boolean)
+	local move = math.deg(speed * dt / r)
+	local left = target - angle
+	if math.abs(left) <= move then
+		return target, true
+	end
+	return angle + (if left > 0 then move else -move), false
+end
+
+-- The point on a circle r studs round home at `angle` degrees
+function Wander.circlePoint(home: Point, r: number, angle: number): Point
+	local a = math.rad(angle)
+	return { x = home.x + math.cos(a) * r, z = home.z + math.sin(a) * r }
 end
 
 -- One move toward the target at `speed` studs a second; true once it's there

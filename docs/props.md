@@ -36,6 +36,19 @@ code-built look the same way, with no file. The checkout counter, POS terminal (
 
 Numbers live in `Config/Town.luau` (`SLOTS`).
 
+## The healing fountain (BloomFountain)
+
+Not a slot: `Server/Util/BloomFountain` uses `PropModels.BloomFountain` when it exists and a part-built stand-in until
+then. The model is built in Blender by `tools/blender/build_bloom_fountain.py` (run it through the Blender MCP:
+`exec(open(path).read())`; it writes `assets/blender/BloomFountain/BloomFountain.{blend,fbx}` and its palette). Its
+objects must keep their names: `Body` (stone, petals, pads, cup; palette texture), `Water`, `Crystal` and
+`Gem_<Element>` for the five elements; the game recolours the last three as glowing parts and scales the model so the
+Body is `Plaza.FOUNTAIN_RADIUS` round. To update it:
+
+1. Studio → Import 3D → `BloomFountain.fbx` (default settings). It lands in Workspace as a Model.
+2. Check the part names, right-click the Model → **Save to File…** → `assets/props/BloomFountain.rbxm`.
+3. Delete the Workspace copy; Rojo syncs the file into PropModels. Stop and Play to see it.
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models

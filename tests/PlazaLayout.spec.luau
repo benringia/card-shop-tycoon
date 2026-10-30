@@ -21,7 +21,7 @@ local function allFootprints(): { PlazaLayout.Footprint }
 		table.insert(list, { kind = "bench", x = p.x, z = p.z, radius = plaza.BENCH_REACH })
 	end
 	for _, critter in ambient.CRITTERS do
-		if critter.area == "plaza" and not critter.orbit then
+		if critter.area == "plaza" and not critter.orbit and not critter.y then
 			table.insert(list, { kind = "resting " .. critter.model, x = critter.home.x, z = critter.home.z, radius = critter.height / 2 })
 		end
 	end
@@ -71,8 +71,11 @@ return {
 
 	["the dome clears the fountain's floating card, and the spring stays reachable"] = function()
 		local g, f = plaza.GAZEBO, plaza.FOUNTAIN
+		assert(f.size.height + f.card.bob <= plaza.FOUNTAIN_HEIGHT, "the model's card floats higher than the fountain's height")
 		local cardTop = f.card.y + f.card.height / 2 + f.card.bob
-		assert(cardTop <= plaza.FOUNTAIN_HEIGHT, "the card floats higher than the fountain's height")
+		assert(cardTop <= plaza.FOUNTAIN_HEIGHT, "the stand-in's card floats higher than the fountain's height")
+		assert(f.fx.pillar.height <= g.platform.height + g.postHeight, "the column of light goes through the dome")
+		assert(f.fx.orbs.radius + f.fx.orbs.size < plaza.FOUNTAIN_RADIUS, "the orbs fly out past the fountain")
 		assert(g.platform.height + g.postHeight >= plaza.FOUNTAIN_HEIGHT + 2, "the fountain reaches into the dome")
 		assert(g.radius - g.postSize / 2 > plaza.FOUNTAIN_RADIUS + 1, "the columns crowd the fountain")
 		local gap = 2 * math.pi * g.radius / g.posts - g.postSize
@@ -225,6 +228,39 @@ return {
 		assert(bushes >= 8, `only {bushes} bushes`)
 		assert(flowers >= 12, `only {flowers} flowers`)
 		assert(#plants <= 60, `{#plants} plants is too many`)
+	end,
+
+	["the puppy's laps run on the gazebo's floor, between the columns and the edge"] = function()
+		local g = plaza.GAZEBO
+		local laps = 0
+		for _, critter in ambient.CRITTERS do
+			if critter.area == "plaza" and critter.orbit then
+				laps += 1
+				local half = critter.height / 4
+				expect.equal(critter.y, g.platform.height, "on the floor")
+				assert(critter.orbit - half >= g.radius + g.postSize * 0.75, "runs into the columns")
+				assert(critter.orbit + half <= g.platform.radius, "runs off the edge")
+			end
+		end
+		expect.equal(laps, 1, "one animal running laps")
+	end,
+
+	["the cat sleeps on a bench"] = function()
+		local sleepers = 0
+		for _, critter in ambient.CRITTERS do
+			if critter.area == "plaza" and critter.sleeps then
+				sleepers += 1
+				local onBench = false
+				for _, angle in town.LAYOUT.BENCH_ANGLES do
+					local bench = PlazaLayout.at(angle, town.LAYOUT.BENCH_RADIUS)
+					if math.sqrt((bench.x - critter.home.x) ^ 2 + (bench.z - critter.home.z) ^ 2) <= plaza.BENCH_REACH then
+						onBench = true
+					end
+				end
+				assert(onBench, `the {critter.model} isn't on a bench`)
+			end
+		end
+		expect.equal(sleepers, 1, "one sleeper")
 	end,
 
 	["eight lamps, three stalls, six tables, four potted trees"] = function()

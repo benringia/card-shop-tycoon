@@ -54,30 +54,44 @@ concrete sidewalk (8 wide, square 4-stud slabs) along each row's front, a round 
 event NPCs and event stalls) with two glowing blue rings set in it (the healing area's edge at 12 and one near the rim), a
 glowing line on the street from the plaza to each portal in that portal's colour (`Town.FLOOR`, `TownLayout.crosswalks` /
 `portalPaths`) round the healing spring. The spring is the **Elemental Bloom** fountain (plaza round 2, the user's
-pick B of three fountain concepts, 2026-10-30; `Server/Util/BloomFountain`, `Config/Plaza.FOUNTAIN`, petals from
-`Util/PlazaLayout`), 11 tall with its card: a warm white stone lotus on a round step (radius 5.5), five outer petals
-leaning out 40 degrees, one per card element (Ember, Tide, Bloom, Volt, Shade), each tinted toward its element's
-colour with a glowing gem at its tip spraying an arc of glowing water (a scrolling beam) into the pool in the
-flower's heart; five blush petals rising from the water; a golden card-shaped crystal floating over a stem with a
-gold cup. WildService adds the card's turning and bobbing, rising sparkles, a light, breathing water and a faint
-disc for the 12-stud healing area (the Frontier's spring is the same fountain). It replaced the free "Better Low
+pick B of three fountain concepts, 2026-10-30; remodelled in Blender the same day to be bigger and much more
+colourful: `tools/blender/build_bloom_fountain.py`, sources in `assets/blender/BloomFountain/`, saved as
+`assets/props/BloomFountain.rbxm` (PropModels); `Server/Util/BloomFountain`, `Config/Plaza.FOUNTAIN`): a lotus on a
+deep teal two-step base with gold bands and lily pads (radius 7, 12.1 tall with its card), five big cupped outer
+petals, one per card element (Ember, Tide, Bloom, Volt, Shade), each in three bands from a deep shade to a bright
+tip with a glowing gem spraying an arc of glowing water (a scrolling beam) into the pool; five magenta inner petals;
+a golden card-shaped crystal floating over a gold cup. Bold mid tones only: pale ones washed out to white in the
+town's sun. Until the model is in PropModels a part-built stand-in is drawn (petals from `Util/PlazaLayout`). The
+magic: sparkles off each gem and motes in every element's colour rising from the pool (server); on each client near
+it with the extras on (`FountainFxController`, tag BloomFountain), a rune circle (`assets/ui/fx/rune-circle.png`,
+Figma) turning slowly on a dark teal inlay in the gazebo's floor, a column of light rising from the pool to the dome,
+five glowing orbs with trails circling the card, and the column and the pool's light shifting through the element
+colours; motes in the element colours rise off the gazebo's finial, so it shows over the roof from the street.
+WildService adds the card's turning and bobbing, rising sparkles, a light, breathing water and a faint disc for the
+12-stud healing area (the Frontier's spring is the same fountain). It replaced the free "Better Low
 Poly Fountain" by scene_boy (the old HealingSpring prop slot, its model in the place's `PlaceProps`, copy
 `assets/place-props/HealingSpring.rbxm`, no longer used). **Card Festival Square** (the user's pick C of three
 plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/PlazaBuild`, built by SceneryService):
 a gazebo with eight cream plaster columns and a stepped teal dome of roof tiles over the fountain (a warm light and
-a lantern inside; matte mid tones, since white plastic and a shiny roof glared in the sun and mirrored the sky); a
+a lantern inside, a dark teal inlay in its floor; matte mid tones, since white plastic and a shiny roof glared in the
+sun and mirrored the sky); a
 fan of five giant cards on a long stone plinth (real card art, gold edges, rims in their rarity colour: Cindercub,
 Boltlynx, Solarion in the middle, Thunderhorn, Tidecaller) in the north-west corner, facing where new players appear;
-three market stalls with striped awnings (empty counters, ready for event NPCs); six round wooden cafe tables
+three festival carts (the user's pick A of three stall designs; pink PACKS, blue CARDS, green SNACKS): a wooden
+box with a slatted front in its colour and white, two big spoked wheels, a handle with a prop leg, turned posts under
+a rounded striped canopy with a scalloped fringe and gold corner balls, a warm lantern at one corner, card packs and
+boxes on the counter and a chalkboard sign beside it (empty counters otherwise, ready for event NPCs); six round
+wooden cafe tables
 (a cloth under the top, a little vase of flowers) with three bistro chairs each (round seat on thin dark legs, round
 back on two posts); three townsfolk sitting at every other table (the customers' blocky look, a cup in hand; anchored
 rigs, so no physics; each client plays the sit animation and lifts their cups to sip now and then, `PlazaNpcController`,
 only near the camera with the extras on); string lights sagging from the gazebo's rim to eight lamp posts at the edge;
 five curved stone planters along the edge between the lanes (radius 25, 2 wide, grass on top; the card fan's quarter
 split where its plinth reaches the edge) holding the lamps, four trees and 32 plants (11 bushes, 21 flowers) (the town's Bush and
-Flower props, no shadows); two Cute Pets animals: a cat resting by the east planter and a puppy running laps round the
-fountain on the gazebo's floor (`Ambient.CRITTERS`, `Wander.orbitTarget`); the four benches just outside the gazebo
-(13.5 studs). The lanes to the shop doors and along the street stay clear (Lune-tested). It replaces the old hand-placed garden: formerly `Workspace.PlazaGarden` (hand-placed in the
+Flower props, no shadows); two Cute Pets animals: a cat asleep on its side along the seat of the bench nearest the
+spawn, a "z Z z" floating over it, and a puppy running laps along the curve of the gazebo's floor outside the columns
+(`Ambient.CRITTERS`, `Wander.orbitTarget`/`orbitStep`); the four benches just outside the gazebo (13.5 studs), facing
+the fountain (the Bench slot turns the model round: its seat faces its +Z). The lanes to the shop doors and along the street stay clear (Lune-tested). It replaces the old hand-placed garden: formerly `Workspace.PlazaGarden` (hand-placed in the
 place, like TownDecor): 4 cherry trees between the benches (street and shop lanes left open), glowing spotted
 mushrooms at the basin, a ring of flowers and bushes, four round grass lawns with clover tufts (one per quarter)
 and a low wooden fence round the plaza edge (radius 21, 2 tall) with gaps at the four lanes; Creator Store pieces were stripped to parts, meshes, lights and
@@ -1049,7 +1063,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain
 ├── tools/textures/             # pack textures and flipbook sheets (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
@@ -1118,6 +1132,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
+    │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon

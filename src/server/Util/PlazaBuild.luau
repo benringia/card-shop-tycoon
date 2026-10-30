@@ -1,8 +1,8 @@
 --!strict
 -- The Card Festival Square (the user's pick C, 2026-10-30; placements in Config/Plaza, Util/PlazaLayout): a cream
 -- gazebo with a stepped teal tiled dome over the healing fountain (WildService builds the fountain), a fan of five
--- giant cards with real card art and gold rims facing where new players appear, three market stalls with striped
--- awnings, six cafe tables with townsfolk sitting at three (PlazaNpcController makes them sip), string lights from the
+-- giant cards with real card art and gold rims facing where new players appear, three festival carts with striped
+-- canopies, six cafe tables with townsfolk sitting at three (PlazaNpcController makes them sip), string lights from the
 -- gazebo's rim to eight lamp posts, and curved planters of bushes and flowers along the edge holding the lamps and four
 -- trees. Built once at server start by SceneryService; main game only.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -52,6 +52,7 @@ local function buildGazebo(parent: Instance)
 	local columnMaterial = (Enum.Material :: any)[g.columnMaterial]
 	local floor = g.platform.height
 	piece(model, "Platform", Vector3.new(g.platform.height, g.platform.radius * 2, g.platform.radius * 2), CFrame.new(base + Vector3.new(0, g.platform.height / 2, 0)) * UPRIGHT, rgb(g.platformStone), Enum.Material.Limestone, Enum.PartType.Cylinder)
+	piece(model, "Inlay", Vector3.new(0.04, g.inlay.radius * 2, g.inlay.radius * 2), CFrame.new(base + Vector3.new(0, g.platform.height + 0.02, 0)) * UPRIGHT, rgb(g.inlay.color), Enum.Material.Slate, Enum.PartType.Cylinder)
 	-- A gold band round the platform's edge: a slightly wider disc just under its top, so only the rim shows
 	detail(piece(model, "PlatformEdge", Vector3.new(0.16, g.platform.radius * 2 + 0.3, g.platform.radius * 2 + 0.3), CFrame.new(base + Vector3.new(0, g.platform.height - 0.13, 0)) * UPRIGHT, gold, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
 	local top = floor + g.postHeight
@@ -82,7 +83,25 @@ local function buildGazebo(parent: Instance)
 	end
 	local lantern = piece(model, "Lantern", Vector3.new(g.lantern, g.lantern, g.lantern), CFrame.new(base + Vector3.new(0, y + g.lantern / 2, 0)), rgb(g.light.color), Enum.Material.Neon)
 	detail(lantern)
-	piece(model, "Finial", Vector3.new(0.9, 0.9, 0.9), CFrame.new(base + Vector3.new(0, y + g.lantern + 0.45, 0)), gold, Enum.Material.Metal, Enum.PartType.Ball)
+	local finial = piece(model, "Finial", Vector3.new(0.9, 0.9, 0.9), CFrame.new(base + Vector3.new(0, y + g.lantern + 0.45, 0)), gold, Enum.Material.Metal, Enum.PartType.Ball)
+	local elements = Plaza.FOUNTAIN.elements
+	local keys = {}
+	for index, element in elements do
+		table.insert(keys, ColorSequenceKeypoint.new((index - 1) / (#elements - 1), rgb(element.color)))
+	end
+	local beacon = Instance.new("ParticleEmitter")
+	beacon.Name = "Beacon"
+	beacon.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	beacon.Color = ColorSequence.new(keys)
+	beacon.LightEmission = 1
+	beacon.Rate = g.beacon.rate
+	beacon.Lifetime = NumberRange.new(g.beacon.lifetime[1], g.beacon.lifetime[2])
+	beacon.Speed = NumberRange.new(g.beacon.speed[1], g.beacon.speed[2])
+	beacon.SpreadAngle = Vector2.new(g.beacon.spread, g.beacon.spread)
+	beacon.Size = NumberSequence.new(g.beacon.size, 0)
+	beacon.RotSpeed = NumberRange.new(-60, 60)
+	beacon.EmissionDirection = Enum.NormalId.Top
+	beacon.Parent = finial
 	local light = Instance.new("PointLight")
 	light.Color = rgb(g.light.color)
 	light.Brightness = g.light.brightness
@@ -177,29 +196,139 @@ local function buildFan(parent: Instance)
 	model.Parent = parent
 end
 
+-- A big spoked wheel standing in the cart's XY plane at `hub` (its axle along the cart's Z): a ring of tyre blocks,
+-- spokes and a hub
+local function buildWheel(model: Model, hub: CFrame)
+	local w = Plaza.STALL.wheel
+	local wood, dark = rgb(Plaza.STALL.wood), rgb(Plaza.STALL.woodDark)
+	local chord = 2 * w.radius * math.sin(math.pi / w.segments) + 0.06
+	for index = 1, w.segments do
+		local turn = CFrame.Angles(0, 0, (index - 0.5) / w.segments * math.pi * 2)
+		piece(model, "Tyre", Vector3.new(chord, w.tire, w.thickness), hub * turn * CFrame.new(0, w.radius - w.tire / 2, 0), dark, Enum.Material.Wood)
+	end
+	for index = 1, w.spokes do
+		local turn = CFrame.Angles(0, 0, index / w.spokes * math.pi * 2)
+		detail(piece(model, "Spoke", Vector3.new(0.14, w.radius - w.tire, 0.14), hub * turn * CFrame.new(0, (w.radius - w.tire) / 2, 0), wood, Enum.Material.Wood))
+	end
+	piece(model, "Hub", Vector3.new(w.thickness * 1.8, 0.5, 0.5), hub * CFrame.Angles(0, math.rad(90), 0), rgb(Plaza.STALL.gold), Enum.Material.Metal, Enum.PartType.Cylinder)
+end
+
+-- A chalkboard on an A-frame, the stall's word on it, facing the gazebo
+local function buildEasel(model: Model, frame: CFrame, word: string)
+	local s = Plaza.STALL
+	local e = s.easel
+	local stand = frame * CFrame.new(e.x, 0, e.z)
+	local lean = CFrame.Angles(math.rad(-12), 0, 0)
+	local board = piece(model, "Chalkboard", Vector3.new(e.width, e.height, 0.08), stand * CFrame.new(0, 0.35 + e.height / 2, 0) * lean, rgb(s.slate), Enum.Material.Slate)
+	detail(piece(model, "ChalkboardFrame", Vector3.new(e.width + 0.14, e.height + 0.14, 0.06), board.CFrame * CFrame.new(0, 0, 0.05), rgb(s.wood), Enum.Material.Wood))
+	for _, side in { -1, 1 } do
+		detail(piece(model, "EaselLeg", Vector3.new(0.1, e.height + 0.5, 0.1), stand * CFrame.new(side * (e.width / 2 - 0.05), (e.height + 0.5) / 2, 0.25) * CFrame.Angles(math.rad(14), 0, 0), rgb(s.woodDark), Enum.Material.Wood))
+	end
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 60
+	gui.MaxDistance = 80
+	gui.Parent = board
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(0.9, 0.5)
+	label.Position = UDim2.fromScale(0.05, 0.25)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(250, 248, 240)
+	label.Text = word
+	label.Parent = gui
+end
+
+-- A festival cart (Plaza.STALL) facing the gazebo: -Z is its front, toward the customers
 local function buildStall(parent: Instance, spec: any)
 	local s = Plaza.STALL
 	local model = Instance.new("Model")
-	model.Name = "MarketStall"
+	model.Name = "FestivalCart"
 	local spot = at(spec.angle, spec.r)
-	local frame = CFrame.lookAt(spot, centre()) -- its counter faces the gazebo
-	local color, wood, white = rgb(spec.color), rgb(s.wood), rgb(s.stripe)
-	piece(model, "Counter", Vector3.new(s.width, s.counter - 0.3, s.depth), frame * CFrame.new(0, (s.counter - 0.3) / 2, 0), color:Lerp(Color3.new(1, 1, 1), 0.35), Enum.Material.SmoothPlastic)
-	piece(model, "CounterTop", Vector3.new(s.width + 0.4, 0.3, s.depth + 0.4), frame * CFrame.new(0, s.counter - 0.15, -0.1), wood, Enum.Material.Wood)
-	detail(piece(model, "CounterStripe", Vector3.new(s.width + 0.02, 0.3, 0.05), frame * CFrame.new(0, s.counter * 0.55, -s.depth / 2 - 0.02), color, Enum.Material.SmoothPlastic))
-	for _, x in { -s.width / 2 + 0.2, s.width / 2 - 0.2 } do
-		for _, z in { -s.depth / 2 - 0.1, s.depth / 2 + 0.6 } do
-			piece(model, "Post", Vector3.new(0.3, s.postHeight, 0.3), frame * CFrame.new(x, s.postHeight / 2, z), wood, Enum.Material.Wood)
+	local frame = CFrame.lookAt(spot, centre())
+	local color, wood, dark, white, gold = rgb(spec.color), rgb(s.wood), rgb(s.woodDark), rgb(s.stripe), rgb(s.gold)
+	local body = s.body
+	local counter = body.bottom + body.height + s.top.thickness
+	piece(model, "CartBox", Vector3.new(body.width, body.height, body.depth), frame * CFrame.new(0, body.bottom + body.height / 2, 0), wood, Enum.Material.Wood)
+	piece(model, "CartTop", Vector3.new(body.width + s.top.overhang * 2, s.top.thickness, body.depth + s.top.overhang * 2), frame * CFrame.new(0, counter - s.top.thickness / 2, 0), dark, Enum.Material.Wood)
+	-- Slats in its colour and white across the front
+	local slat = (body.width - 0.3) / s.slats
+	for index = 1, s.slats do
+		local x = -(body.width - 0.3) / 2 + (index - 0.5) * slat
+		detail(piece(model, "Slat", Vector3.new(slat - 0.06, body.height - 0.3, 0.08), frame * CFrame.new(x, body.bottom + body.height / 2, -body.depth / 2 - 0.04), if index % 2 == 1 then color else white, Enum.Material.SmoothPlastic))
+	end
+	-- Two big wheels at one end, front and back; a handle and its prop leg at the other
+	local w = s.wheel
+	for _, side in { -1, 1 } do
+		buildWheel(model, frame * CFrame.new(w.x, w.radius, side * (body.depth / 2 + w.thickness / 2 + 0.05)))
+	end
+	local h = s.handle
+	for _, side in { -1, 1 } do
+		local from = Vector3.new(-body.width / 2, h.height, side * h.spread)
+		local to = Vector3.new(-body.width / 2 - h.length, h.height + 0.25, side * h.spread)
+		detail(piece(model, "Handle", Vector3.new(0.14, 0.14, (to - from).Magnitude), frame * CFrame.lookAt((from + to) / 2, to), dark, Enum.Material.Wood))
+	end
+	detail(piece(model, "HandleGrip", Vector3.new(0.18, 0.18, h.spread * 2 + 0.2), frame * CFrame.new(-body.width / 2 - h.length, h.height + 0.25, 0), dark, Enum.Material.Wood))
+	detail(piece(model, "PropLeg", Vector3.new(0.16, h.height, 0.16), frame * CFrame.new(-body.width / 2 - h.length * 0.6, h.height / 2, 0), dark, Enum.Material.Wood))
+	-- Turned posts at the corners, gold balls on top
+	local postX, postZ = body.width / 2 - 0.2, body.depth / 2 - 0.15
+	local canopyBase = counter + s.post.height
+	for _, x in { -postX, postX } do
+		for _, z in { -postZ, postZ } do
+			piece(model, "Post", Vector3.new(s.post.height, s.post.radius * 2, s.post.radius * 2), frame * CFrame.new(x, counter + s.post.height / 2, z) * UPRIGHT, wood, Enum.Material.Wood, Enum.PartType.Cylinder)
+			detail(piece(model, "PostBead", Vector3.one * (s.post.radius * 3), frame * CFrame.new(x, counter + s.post.height * 0.5, z), dark, Enum.Material.Wood, Enum.PartType.Ball))
 		end
 	end
-	-- The striped awning tips down toward the front
-	local length = s.depth + 2.2
-	local stripeWidth = (s.width + 0.6) / s.stripes
-	for index = 1, s.stripes do
-		local x = -(s.width + 0.6) / 2 + (index - 0.5) * stripeWidth
-		local stripe = piece(model, "Awning", Vector3.new(stripeWidth, 0.15, length), frame * CFrame.new(x, s.postHeight + 0.35, -0.2) * CFrame.Angles(math.rad(s.slope), 0, 0), if index % 2 == 1 then color else white, Enum.Material.Fabric)
-		stripe.CastShadow = true
+	-- The canopy: a striped barrel arching from front to back, bands in its colour and white
+	local c = s.canopy
+	local halfDepth = body.depth / 2 + c.overhang
+	local canopyWidth = body.width + c.overhang * 2
+	local points = {}
+	for index = 0, c.segments do
+		local phi = math.pi * (1 - index / c.segments)
+		table.insert(points, Vector2.new(halfDepth * math.cos(phi), canopyBase + c.rise * math.sin(phi)))
 	end
+	for index = 1, c.segments do
+		local a, b = points[index], points[index + 1]
+		local mid = (a + b) / 2
+		local tilt = math.atan2(-(b.Y - a.Y), b.X - a.X)
+		local band = piece(model, "Canopy", Vector3.new(canopyWidth, c.thickness, (b - a).Magnitude + 0.04), frame * CFrame.new(0, mid.Y, mid.X) * CFrame.Angles(tilt, 0, 0), if index % 2 == 1 then color else white, Enum.Material.Fabric)
+		band.CastShadow = true
+	end
+	for _, x in { -canopyWidth / 2, canopyWidth / 2 } do
+		for _, z in { -halfDepth, halfDepth } do
+			detail(piece(model, "CanopyBall", Vector3.one * 0.36, frame * CFrame.new(x, canopyBase + 0.1, z), gold, Enum.Material.Metal, Enum.PartType.Ball))
+		end
+	end
+	-- The scalloped fringe along the front: a band, round flaps hanging below it
+	local f = s.fringe
+	detail(piece(model, "Valance", Vector3.new(canopyWidth, 0.3, 0.06), frame * CFrame.new(0, canopyBase - 0.1, -halfDepth - 0.02), color, Enum.Material.Fabric))
+	for index = 1, f.count do
+		local x = -canopyWidth / 2 + (index - 0.5) * canopyWidth / f.count
+		detail(piece(model, "Scallop", Vector3.new(0.05, f.radius * 2, f.radius * 2), frame * CFrame.new(x, canopyBase - 0.25, -halfDepth + 0.01) * CFrame.Angles(0, math.rad(90), 0), if index % 2 == 1 then white else color, Enum.Material.Fabric, Enum.PartType.Cylinder))
+	end
+	-- A lantern hanging at the front corner over the wheels, lit warm
+	local l = s.lantern
+	local hook = Vector3.new(postX - 0.1, canopyBase - 0.1, -halfDepth + 0.25)
+	detail(piece(model, "LanternChain", Vector3.new(0.05, l.drop, 0.05), frame * CFrame.new(hook - Vector3.new(0, l.drop / 2, 0)), dark, Enum.Material.Metal))
+	local lamp = detail(piece(model, "Lantern", Vector3.one * l.size, frame * CFrame.new(hook - Vector3.new(0, l.drop + l.size / 2, 0)), rgb(l.color), Enum.Material.Neon, Enum.PartType.Ball))
+	detail(piece(model, "LanternCap", Vector3.new(l.size * 0.9, 0.14, l.size * 0.9), lamp.CFrame * CFrame.new(0, l.size / 2, 0), dark, Enum.Material.Metal))
+	local light = Instance.new("PointLight")
+	light.Color = rgb(l.color)
+	light.Brightness = l.brightness
+	light.Range = l.range
+	light.Shadows = false
+	light.Parent = lamp
+	-- Card packs standing along the counter, a couple of boxes at the end
+	for index, packColor in s.packs do
+		local x = -body.width / 2 + 0.55 + (index - 1) * 0.5
+		detail(piece(model, "Pack", Vector3.new(0.42, 0.6, 0.08), frame * CFrame.new(x, counter + 0.3, -0.35) * CFrame.Angles(math.rad(-10), 0, 0), rgb(packColor), Enum.Material.SmoothPlastic))
+	end
+	detail(piece(model, "Box", Vector3.new(0.7, 0.45, 0.5), frame * CFrame.new(body.width / 2 - 0.6, counter + 0.225, 0.1), color:Lerp(white, 0.3), Enum.Material.Cardboard))
+	detail(piece(model, "Box", Vector3.new(0.5, 0.35, 0.4), frame * CFrame.new(body.width / 2 - 0.65, counter + 0.625, 0.1) * CFrame.Angles(0, math.rad(12), 0), gold, Enum.Material.Cardboard))
+	buildEasel(model, frame, spec.sign)
 	model.Parent = parent
 end
 

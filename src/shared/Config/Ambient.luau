@@ -24,12 +24,13 @@ return {
 	},
 	BUTTERFLY_RANGE = 120, -- studs: flocks further from the camera stand still
 	-- Animals running round their homes (TownCritterController): Cute Pets models (ReplicatedStorage.CreatureModels
-	-- .CutePets), 3 in town, 2 in the plaza and one in each portal area. radius: how far from home they wander (0: it
-	-- rests there, facing `faces`); avoid: kept clear in the middle; orbit: instead runs round a circle this far from
-	-- home, up to maxArc degrees at a time; y: the ground at home; height: studs tall.
+	-- .CutePets), 3 in town, 2 in the plaza and one in each portal area. radius: how far from home they wander; avoid:
+	-- kept clear in the middle; orbit: instead runs laps round a circle this far from home, along the curve, up to
+	-- maxArc degrees at a time; sleeps: lies curled on its side in one spot facing `faces`, a "z Z z" over it; y: the
+	-- ground at home; height: studs tall.
 	CRITTERS = {
-		{ model = "Cat", area = "plaza", home = { x = 19.4, z = 11.2 }, radius = 0, faces = { x = 0, z = 0 }, height = 1.8 }, -- by the east planter, between a lamp and a tree
-		{ model = "Puppy", area = "plaza", home = { x = 0, z = 0 }, orbit = 7.4, maxArc = 50, y = 0.5, height = 2.2 }, -- laps round the fountain on the gazebo's floor
+		{ model = "Cat", area = "plaza", home = { x = -8.16, z = 10.3 }, sleeps = true, faces = { x = -7.45, z = 11.01 }, y = 1.56, height = 2.4 }, -- asleep along the seat of the bench nearest the spawn
+		{ model = "Puppy", area = "plaza", home = { x = 0, z = 0 }, orbit = 10.9, maxArc = 120, y = 0.5, height = 2.2 }, -- laps on the gazebo's floor, outside the columns
 		{ model = "Fox", area = "town", home = { x = 150, z = -62 }, radius = 8, height = 2.6 },
 		{ model = "Bunny", area = "town", home = { x = 180, z = 12 }, radius = 8, height = 2 }, -- the grass by the grove (the plaza is paved now)
 		{ model = "Capybara", area = "town", home = { x = -32, z = 68 }, radius = 8, height = 2.8 },
@@ -42,5 +43,8 @@ return {
 		PAUSE = { 1.5, 4 }, -- seconds stood still between walks
 		RANGE = 120, -- studs from the camera: further away they're hidden and not moved
 		MAX_PARTS = 400,
+		-- A sleeper lies on its side (CreatureVisuals' fainted pose turns it about its feet): its feet move this share
+		-- of its height away from where it lies and up, so its body rests on the spot (a bench's seat)
+		SLEEP = { shift = 0.48, lift = 0.18 },
 	},
 }

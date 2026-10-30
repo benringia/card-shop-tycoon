@@ -38,21 +38,32 @@ return {
 		expect.equal(arrived, false, "still going")
 	end,
 
-	["an animal circling the fountain stays on its circle and never cuts through the middle"] = function()
+	["an animal running laps picks a turn up to maxArc, now and then the other way"] = function()
 		local rng = stubRandom(7)
-		local home, r, maxArc, inner = { x = 0, z = 0 }, 7.4, 50, 6.5
-		local angle = 0
+		local back = 0
 		for _ = 1, 500 do
-			local target, nextAngle = Wander.orbitTarget(home, r, angle, maxArc, rng)
-			expect.near(math.sqrt(target.x ^ 2 + target.z ^ 2), r, 1e-9, "on the circle")
-			local turn = math.abs(nextAngle - angle)
-			assert(turn > 0 and turn <= maxArc + 1e-9, `turned {turn} degrees`)
-			-- the straight walk between two points on the circle comes closest to the middle halfway along
-			local fromX, fromZ = math.cos(math.rad(angle)) * r, math.sin(math.rad(angle)) * r
-			local mid = math.sqrt(((fromX + target.x) / 2) ^ 2 + ((fromZ + target.z) / 2) ^ 2)
-			assert(mid >= inner, `cuts {mid} studs from the middle`)
-			angle = nextAngle
+			local target = Wander.orbitTarget(90, 120, rng)
+			local turn = target - 90
+			assert(math.abs(turn) >= 30 - 1e-9 and math.abs(turn) <= 120 + 1e-9, `turned {turn} degrees`)
+			if turn < 0 then
+				back += 1
+			end
 		end
+		assert(back > 50 and back < 250, `{back} of 500 turns went back`)
+	end,
+
+	["running laps follows the circle and stops on the target angle"] = function()
+		local angle, arrived = Wander.orbitStep(0, 90, 10, 7, 0.5)
+		expect.near(angle, math.deg(3.5 / 10), 1e-9, "moves speed x time along the circle")
+		expect.equal(arrived, false, "still going")
+		angle, arrived = Wander.orbitStep(80, 90, 10, 7, 1)
+		expect.equal(angle, 90, "lands on the target, never past it")
+		expect.equal(arrived, true, "arrived")
+		angle = Wander.orbitStep(0, -90, 10, 7, 0.5)
+		assert(angle < 0, "runs the other way for a negative turn")
+		local p = Wander.circlePoint({ x = 2, z = 3 }, 10, 90)
+		expect.near(p.x, 2, 1e-9, "x")
+		expect.near(p.z, 13, 1e-9, "on the circle")
 	end,
 
 	["three animals in town, two in the plaza, one in each portal area"] = function()
