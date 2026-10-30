@@ -32,6 +32,16 @@ function PortalTrails.facing(trail: { Point }): Point
 	return { x = (before.x - last.x) / length, z = (before.z - last.z) / length }
 end
 
+-- The facing of the area with this key (Town.PORTAL_AREAS); an unknown key faces -X, as the old street-end portals did
+function PortalTrails.areaFacing(areas: { { key: string, trail: { Point } } }, key: string): Point
+	for _, area in areas do
+		if area.key == key then
+			return PortalTrails.facing(area.trail)
+		end
+	end
+	return { x = -1, z = 0 }
+end
+
 -- Where the trail crosses the island's edge at x = +-halfX (the side it heads to)
 function PortalTrails.exitPoint(trail: { Point }, halfX: number): Point
 	for index = 2, #trail do

@@ -25,6 +25,7 @@ local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
+local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
 local Services = script.Parent :: Instance
@@ -346,7 +347,8 @@ local function buildPlaza()
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		-- Its floating name label comes from TownService, like the other plaza portals
-		portal(folder, "The Wild", portalSpot, Vector3.new(-1, 0, 0), "Travel", function(player)
+		local facing = PortalTrails.areaFacing(Town.PORTAL_AREAS, "Wild")
+		portal(folder, "The Wild", portalSpot, Vector3.new(facing.x, 0, facing.z), "Travel", function(player)
 			WildService.TravelToWild(player)
 		end)
 	end
@@ -811,10 +813,9 @@ function WildService.Start()
 	end
 	rayParams.FilterDescendantsInstances = { mapFolder }
 
+	-- Clients only ask to go home; going to the Wild takes walking to its portal (the prompt)
 	Remotes.WildTravel.OnServerEvent:Connect(function(player, where)
-		if where == "wild" then
-			WildService.TravelToWild(player)
-		elseif where == "home" then
+		if where == "home" then
 			WildService.TravelHome(player)
 		end
 	end)

@@ -87,6 +87,17 @@ return {
 		expect.near(facing.z, 0, 1e-9, "level")
 	end,
 
+	["each portal service finds its area's facing by key"] = function()
+		for _, area in town.PORTAL_AREAS do
+			local facing = PortalTrails.areaFacing(town.PORTAL_AREAS, area.key)
+			local expected = PortalTrails.facing(area.trail)
+			expect.near(facing.x, expected.x, 1e-9, `{area.key} x`)
+			expect.near(facing.z, expected.z, 1e-9, `{area.key} z`)
+		end
+		local unknown = PortalTrails.areaFacing(town.PORTAL_AREAS, "Nowhere")
+		expect.equal(unknown.x * unknown.x + unknown.z * unknown.z, 1, "an unknown key still faces somewhere")
+	end,
+
 	["a portal can only be used from close by"] = function()
 		expect.equal(PortalTrails.near({ x = 0, z = 0 }, { x = 10, z = 0 }, 16), true, "inside reach")
 		expect.equal(PortalTrails.near({ x = 0, z = 0 }, { x = 100, z = 0 }, 16), false, "from the plaza")

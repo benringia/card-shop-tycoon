@@ -12,8 +12,10 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Pvp = require(Config:WaitForChild("Pvp"))
+local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PvpRules = require(Shared:WaitForChild("Util"):WaitForChild("PvpRules"))
+local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -228,7 +230,8 @@ local function buildArena()
 	local plaza = workspace:FindFirstChild("Plaza") or Instance.new("Folder")
 	plaza.Name = "Plaza"
 	plaza.Parent = workspace
-	portal(plaza, "Arena", vec(Pvp.ARENA_PORTAL), Vector3.new(1, 0, 0), "Watch", function(player)
+	local facing = PortalTrails.areaFacing(Town.PORTAL_AREAS, "Arena")
+	portal(plaza, "Arena", vec(Pvp.ARENA_PORTAL), Vector3.new(facing.x, 0, facing.z), "Watch", function(player)
 		if not ArenaService.IsBusy(player) and not BattleService.IsFighting(player) then
 			ArenaService.TravelToStands(player)
 		end

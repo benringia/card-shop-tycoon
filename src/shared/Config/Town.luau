@@ -121,6 +121,7 @@ return {
 	},
 	PORTAL_REACH = 16, -- studs: travel remotes only work this close to their portal
 	SIGN_DISTANCE = 120, -- studs: signpost and arch words stop drawing beyond this
+	SIGN_SUBTEXT = "This way", -- under each name on a signpost arm
 	-- Each plaza portal's look: ring and glow-part colour, particle colours, and 1-3 emitters (phones).
 	-- Emitters sit on a box filling the ring. speed/lifetime/size are { min, max } or { start, end };
 	-- rise = upward pull (negative falls); colors on an emitter override the portal's.

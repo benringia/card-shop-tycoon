@@ -17,6 +17,7 @@ local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local PortalTrails = require(SharedUtil:WaitForChild("PortalTrails"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
+local TrailProps = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("TrailProps"))
 
 local Props = require(SharedUtil:WaitForChild("Props"))
 
@@ -91,21 +92,16 @@ local function buildBounds(folder: Folder)
 			texture:Destroy() -- the default grid
 		end
 	end
-	local walls = {
-		{ size = Vector3.new(bounds.HALF_X * 2 + 2, bounds.WALL_HEIGHT, 1), x = 0, z = bounds.HALF_Z + 0.5 },
-		{ size = Vector3.new(bounds.HALF_X * 2 + 2, bounds.WALL_HEIGHT, 1), x = 0, z = -bounds.HALF_Z - 0.5 },
-		{ size = Vector3.new(1, bounds.WALL_HEIGHT, bounds.HALF_Z * 2 + 2), x = bounds.HALF_X + 0.5, z = 0 },
-		{ size = Vector3.new(1, bounds.WALL_HEIGHT, bounds.HALF_Z * 2 + 2), x = -bounds.HALF_X - 0.5, z = 0 },
-	}
-	for _, spec in walls do
+	-- One wall along each side of the walkable outline (the island plus the portal trails and clearings)
+	for _, spec in PortalTrails.walls(Town.WALK_EDGE, 1) do
 		local wall = Instance.new("Part")
 		wall.Name = "TownEdge"
 		wall.Anchored = true
 		wall.Transparency = 1
 		wall.CanQuery = false -- the camera can still look past it
 		wall.CanTouch = false
-		wall.Size = spec.size
-		wall.Position = Vector3.new(spec.x, bounds.WALL_HEIGHT / 2, spec.z)
+		wall.Size = Vector3.new(1, bounds.WALL_HEIGHT, spec.length)
+		wall.CFrame = CFrame.new(spec.centre.x, bounds.WALL_HEIGHT / 2, spec.centre.z) * CFrame.Angles(0, math.rad(spec.yaw), 0)
 		wall.Parent = folder
 	end
 end
@@ -213,6 +209,33 @@ local function addLabelText(parent: Instance, text: string, size: number, positi
 	local limit = Instance.new("UITextSizeConstraint")
 	limit.MaxTextSize = size
 	limit.Parent = label
+end
+
+-- "This way" signposts (arms point at each trail's start) and an arch where each trail leaves the island
+local function buildWayfinding(folder: Folder)
+	local areas: { [string]: any } = {}
+	for _, area in Town.PORTAL_AREAS do
+		areas[area.key] = area
+	end
+	for _, sign in Town.SIGNPOSTS do
+		local arms = {}
+		for _, key in sign.arms do
+			local area = areas[key]
+			table.insert(arms, {
+				text = area.sign,
+				sub = Town.SIGN_SUBTEXT,
+				color = Props.color(Town.PORTAL_EFFECTS[area.effect].ring),
+				yaw = PortalTrails.armYaw(sign, area.trail[1]),
+			})
+		end
+		TrailProps.signpost(folder, CFrame.new(sign.x, 0, sign.z), arms)
+	end
+	for _, area in Town.PORTAL_AREAS do
+		local exit = PortalTrails.exitPoint(area.trail, Town.BOUNDS.HALF_X)
+		local from = Vector3.new(exit.x, 0, exit.z)
+		local direction = Vector3.new(area.trail[2].x - area.trail[1].x, 0, area.trail[2].z - area.trail[1].z).Unit
+		TrailProps.arch(folder, CFrame.lookAt(from, from + direction), area.name, Props.color(Town.PORTAL_EFFECTS[area.effect].ring), Town.TRAIL.WIDTH)
+	end
 end
 
 local function buildPortalLabels(folder: Folder)
@@ -395,6 +418,7 @@ function TownService.Start()
 	buildGround(folder)
 	buildDecor(folder)
 	buildPortalLabels(folder)
+	buildWayfinding(folder)
 	buildPortalEffects(folder)
 	folder.Parent = workspace
 	setLighting()
