@@ -21,6 +21,8 @@ return {
 	TELEPORT_DISTANCE = 40, -- further than this and the creature jumps next to its owner
 	MARKER_RATE = 20, -- server marker updates per second
 	MAX_MODEL_PARTS = 200, -- bigger models fall back to the placeholder
+	PRELOAD_PARTY_WAIT = 3, -- seconds the background model download waits at start for the player's own cards to go first
+	PRELOAD_BATCH = 6, -- models per background download call
 
 	-- Motion kit for static models (Util/CreatureMotion)
 	MOTION = {

@@ -10,6 +10,8 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureMotion = require(Shared:WaitForChild("Util"):WaitForChild("CreatureMotion"))
 local Party = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
+local Ambient = require(Shared:WaitForChild("Config"):WaitForChild("Ambient"))
+local ModelPreload = require(Shared:WaitForChild("Util"):WaitForChild("ModelPreload"))
 local BeastFx = require(Shared:WaitForChild("Config"):WaitForChild("BeastFx"))
 local PetRig = require(Shared:WaitForChild("Util"):WaitForChild("PetRig"))
 local PetAnimator = require((script.Parent :: Instance):WaitForChild("PetAnimator"))
@@ -70,64 +72,83 @@ function CreatureVisuals.getTemplate(folderName: string, name: string, maxParts:
 	return template
 end
 
-local warmed = false
+local warmView: ViewportFrame? = nil
+local preloadAsked: { string } = {}
+local preloadDone: { [string]: boolean } = {}
+local preloading = false
 
--- Keeps a copy of every creature model drawn in a tiny, nearly invisible viewport in a corner of the screen.
--- Roblox only finishes loading a texture once something draws it, so without this a pet's first summon showed
--- it pale until its textures arrived.
-local function warmTextures(models: Instance)
-	if warmed then
-		return
+-- Keeps a copy of a downloaded creature model drawn in a tiny, nearly invisible viewport in a corner of the screen.
+-- Roblox only finishes loading a texture once something draws it, so without this a pet's first summon showed it pale
+-- until its textures arrived. Models join it one at a time as they finish downloading.
+local function warmModel(template: Model)
+	local view = warmView
+	if not view then
+		local player = game:GetService("Players").LocalPlayer
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "CreatureCache"
+		gui.ResetOnSpawn = false
+		gui.DisplayOrder = -10
+		local frame = Instance.new("ViewportFrame")
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.fromOffset(4, 4)
+		frame.ImageTransparency = 0.98
+		frame.Parent = gui
+		local camera = Instance.new("Camera")
+		camera.CFrame = CFrame.lookAt(Vector3.new(0, 4, 30), Vector3.new(0, 1, 0))
+		camera.Parent = frame
+		frame.CurrentCamera = camera
+		gui.Parent = player:WaitForChild("PlayerGui")
+		warmView = frame
+		view = frame
 	end
-	warmed = true
-	local player = game:GetService("Players").LocalPlayer
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "CreatureCache"
-	gui.ResetOnSpawn = false
-	gui.DisplayOrder = -10
-	local view = Instance.new("ViewportFrame")
-	view.BackgroundTransparency = 1
-	view.Size = UDim2.fromOffset(4, 4)
-	view.ImageTransparency = 0.98
-	view.Parent = gui
-	local camera = Instance.new("Camera")
-	camera.CFrame = CFrame.lookAt(Vector3.new(0, 4, 30), Vector3.new(0, 1, 0))
-	camera.Parent = view
-	view.CurrentCamera = camera
-	local x = -40
-	for _, model in models:GetDescendants() do
-		if model:IsA("Model") and model:FindFirstChildWhichIsA("MeshPart") and not model.Parent:IsA("Model") then
-			local copy = model:Clone()
-			CreatureVisuals.strip(copy)
-			copy:PivotTo(CFrame.new(x, 0, 0))
-			copy.Parent = view
-			x += 4
-		end
-	end
-	gui.Parent = player:WaitForChild("PlayerGui")
+	local frame = view :: ViewportFrame
+	local copy = template:Clone()
+	CreatureVisuals.strip(copy)
+	copy:PivotTo(CFrame.new(-40 + #frame:GetChildren() * 4, 0, 0))
+	copy.Parent = frame
 end
 
--- Downloads every creature model's meshes and textures in the background as soon as the game starts, so a pet
--- appears fully drawn the first time it's summoned instead of popping in a moment later. The models this
--- player's party uses go first (cardNames), then the rest; then they stay drawn (warmTextures).
+-- Downloads, in the background, the creature models the game uses (Util/ModelPreload: a card's model or a town
+-- animal's, never the rest of the bought packs), a few at a time (Party.PRELOAD_BATCH), each drawn once downloaded (warmModel). Cards asked for
+-- here (the party bar passes the player's own; call it again for one about to show) jump ahead of what's left; at start
+-- it waits a moment (Party.PRELOAD_PARTY_WAIT) for the player's own cards so they go first.
 function CreatureVisuals.preload(cardNames: { string })
+	for _, name in cardNames do
+		table.insert(preloadAsked, name)
+	end
+	if preloading then
+		return
+	end
+	preloading = true
 	task.spawn(function()
 		local models = ReplicatedStorage:WaitForChild("CreatureModels", 30)
 		if not models then
 			return
 		end
-		warmTextures(models)
-		local first: { Instance } = {}
-		for _, name in cardNames do
-			local template = CreatureVisuals.cardTemplate(name)
-			if template then
-				table.insert(first, template)
+		local started = os.clock()
+		while #preloadAsked == 0 and os.clock() - started < Party.PRELOAD_PARTY_WAIT do
+			task.wait(0.2)
+		end
+		while true do
+			local order = ModelPreload.order(preloadAsked, Party.CREATURE_MODELS, Ambient.CRITTERS)
+			local batch = ModelPreload.nextBatch(order, preloadDone, Party.PRELOAD_BATCH)
+			if #batch == 0 then
+				break
+			end
+			local templates: { Model } = {}
+			for _, entry in batch do
+				preloadDone[entry.key] = true
+				local folder = if entry.pack then models:FindFirstChild(entry.pack) else models
+				local template = if folder then folder:FindFirstChild(entry.model) else nil
+				if template and template:IsA("Model") then
+					table.insert(templates, template)
+				end
+			end
+			pcall(ContentProvider.PreloadAsync, ContentProvider, templates)
+			for _, template in templates do
+				warmModel(template)
 			end
 		end
-		if #first > 0 then
-			ContentProvider:PreloadAsync(first)
-		end
-		ContentProvider:PreloadAsync({ models })
 	end)
 end
 

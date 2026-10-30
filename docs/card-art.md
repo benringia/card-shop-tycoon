@@ -4,7 +4,10 @@ Each card's face shows its creature painted into its element's scene: the creatu
 in-game model (colours, shape, outfit, effects) and generated with Figma's image generator
 (`gemini-3.1-flash-lite-image`, 768 x 1088 requested, 848 x 1264 returned) in the file "Card Shop Tycoon - Card
 Art". The JPEG is resized to 680 wide, kept in `assets/ui/card-art/<Card>.jpg`, uploaded to Roblox and its id
-put in `Config/CardDesign` `ART_IMAGES`. A card without one shows its element scene and emoji.
+put in `Config/CardArt` `FULL`. A half-size copy (340 x 507, PIL Lanczos, JPEG quality 86) goes in
+`assets/ui/card-art-small/<Card>.jpg`, uploaded too, its id in `Config/CardArt` `SMALL`: faces drawn no taller than
+507 pixels draw it (binder pages, shelves, cases), saving texture memory and download (a test fails if a painting has no
+small copy). A card without one shows its element scene and emoji.
 
 ## Prompt
 

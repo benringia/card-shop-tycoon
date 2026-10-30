@@ -29,6 +29,7 @@ local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
@@ -400,7 +401,7 @@ local function render()
 		view.glow.Visible = isSummoned
 		if card and beast then
 			local own = CardDesign.ART_IMAGES[card.name]
-			view.art.Image = own or CardDesign.SCENES[card.element] or ""
+			view.art.Image = CardFace.artImage(card)
 			Icon.set(view.element, card.element)
 			view.element.Visible = own == nil -- a card's own picture already shows its creature
 			view.level.Text = `Lv {beast.level}`

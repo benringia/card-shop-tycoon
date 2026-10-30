@@ -13,10 +13,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
+local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 
 type Card = typeof(Cards.List[1])
 type Box = CardDesign.Box
@@ -32,16 +34,22 @@ local AURORA = CardEffects.FRONTIER.AURORA
 
 local CardFace = {}
 
--- Fetch the art up front, so the first cards don't show without their picture
+-- Fetch the art up front, so the first cards don't show without their picture: the small copies most faces draw
+-- (Config/CardArt) first, then the full paintings the big views draw
 task.spawn(function()
 	local images = { CardDesign.IMAGES.GLOW }
 	for _, id in CardDesign.SCENES do
 		table.insert(images, id)
 	end
-	for _, id in CardDesign.ART_IMAGES do
+	for _, id in CardArtConfig.SMALL do
 		table.insert(images, id)
 	end
 	ContentProvider:PreloadAsync(images)
+	local full = {}
+	for _, id in CardArtConfig.FULL do
+		table.insert(full, id)
+	end
+	ContentProvider:PreloadAsync(full)
 end)
 
 function CardFace.getRarityColor(rarity: string): Color3
@@ -97,13 +105,34 @@ local function clear(frame: Frame)
 	end
 end
 
--- The card's art, else its element's scene, else "" (light cards on a turning binder page)
+-- The card's art (its small copy: drawn small), else its element's scene, else "" (light cards on a turning binder
+-- page, the party bar's portraits)
 function CardFace.artImage(card: Card): string
-	local own = CardDesign.ART_IMAGES[card.name]
+	local own = CardArt.pick(card.name, 0, CardArtConfig)
 	if own and own ~= "" then
 		return own
 	end
 	return CardDesign.SCENES[card.element] or ""
+end
+
+-- The card's own painting at the size its art window is drawn (Util/CardArt), kept right if that size changes
+local function ownArt(art: Frame, card: Card, name: string, zIndex: number): ImageLabel?
+	local id = CardArt.pick(card.name, art.AbsoluteSize.Y, CardArtConfig)
+	if not id or id == "" then
+		return nil
+	end
+	local picture = Instance.new("ImageLabel")
+	picture.Name = name
+	picture.BackgroundTransparency = 1
+	picture.Size = UDim2.fromScale(1, 1)
+	picture.Image = id
+	picture.ScaleType = Enum.ScaleType.Crop
+	picture.ZIndex = zIndex
+	picture.Parent = art
+	art:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		picture.Image = CardArt.pick(card.name, art.AbsoluteSize.Y, CardArtConfig) or picture.Image
+	end)
+	return picture
 end
 
 local function newFace(frame: Frame): Frame
@@ -258,9 +287,7 @@ end
 
 -- The picture: the card's own art, else its element's scene (or gradient) with the element emoji on a glow
 local function addArt(art: Frame, card: Card)
-	local own = CardDesign.ART_IMAGES[card.name]
-	if own and own ~= "" then
-		image(art, "Picture", own, 3)
+	if ownArt(art, card, "Picture", 3) then
 		return
 	end
 	local elementColor = Cards.ELEMENTS[card.element] or BACKDROP
@@ -432,9 +459,8 @@ function CardFace.renderMissing(frame: Frame, stroke: UIStroke, card: Card)
 	local rim = addRim(face, look.RIM)
 	local art = addArtWindow(face)
 	art.BackgroundColor3 = look.INSIDE
-	local own = CardDesign.ART_IMAGES[card.name]
-	if own and own ~= "" then
-		local silhouette = image(art, "Silhouette", own, 3)
+	local silhouette = ownArt(art, card, "Silhouette", 3)
+	if silhouette then
 		silhouette.ImageColor3 = BLACK
 		silhouette.ImageTransparency = 0.35
 	end
