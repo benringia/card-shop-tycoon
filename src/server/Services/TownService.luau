@@ -15,6 +15,7 @@ local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
+local PortalTrails = require(SharedUtil:WaitForChild("PortalTrails"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 
 local Props = require(SharedUtil:WaitForChild("Props"))
@@ -39,6 +40,11 @@ local function point(spot: { x: number, z: number }): TownLayout.Point
 end
 
 local function getWorld(): TownLayout.World
+	local exits, facings = {}, {}
+	for _, area in Town.PORTAL_AREAS do
+		table.insert(exits, PortalTrails.exitPoint(area.trail, Town.BOUNDS.HALF_X))
+		table.insert(facings, PortalTrails.facing(area.trail))
+	end
 	return {
 		plotCount = PlotConfig.COUNT,
 		perRow = PlotConfig.PER_ROW,
@@ -49,6 +55,8 @@ local function getWorld(): TownLayout.World
 		portals = { point(Wild.PLAZA_PORTAL), point(Places.FRONTIER_PORTAL), point(Pvp.ARENA_PORTAL) },
 		spring = point(Wild.SPRING),
 		springRadius = Combat.SPRING_RADIUS,
+		exits = exits,
+		facings = facings,
 	}
 end
 
@@ -171,12 +179,22 @@ local function buildGround(folder: Folder)
 	disc(folder, "Plaza", layout.PLAZA_RADIUS, plazaTop, Town.PLAZA_COLOR, Enum.Material.Limestone)
 	buildPlazaRings(folder, plazaTop)
 
-	for index, path in TownLayout.portalPaths(world, Town) do
-		local look = Town.PORTAL_EFFECTS[PORTAL_LABELS[index].effect]
-		local length = math.abs(path.to.x - path.from.x)
-		-- Above the crosswalk stripes it crosses
-		local line = marking(folder, "PortalPath", Vector3.new(length, 0, floor.PATH_WIDTH), (path.from.x + path.to.x) / 2, streetTop + MARKING_THICKNESS, path.from.z, look.ring, Enum.Material.Neon)
-		line.Transparency = floor.GLOW_TRANSPARENCY
+	for index, line in TownLayout.trailLines(world, Town) do
+		local look = Town.PORTAL_EFFECTS[Town.PORTAL_AREAS[index].effect]
+		for point = 2, #line.points do
+			local a, b = line.points[point - 1], line.points[point]
+			-- Above the crosswalk stripes on the street; level with the trail's ground past it
+			local onStreet = math.abs(a.x) <= layout.STREET_HALF_LENGTH and math.abs(b.x) <= layout.STREET_HALF_LENGTH
+			local top = if onStreet then streetTop + MARKING_THICKNESS else floor.TRAIL_LINE_TOP
+			local from, to = Vector3.new(a.x, 0, a.z), Vector3.new(b.x, 0, b.z)
+			local length = (to - from).Magnitude
+			local centre = (from + to) / 2
+			local strip = ground(folder, "PortalPath", Vector3.new(floor.PATH_WIDTH, MARKING_THICKNESS, length + floor.PATH_WIDTH), CFrame.lookAt(centre, to) + Vector3.new(0, top + MARKING_THICKNESS / 2, 0), look.ring, Enum.Material.Neon)
+			strip.CanCollide = false
+			strip.CanQuery = false
+			strip.CastShadow = false
+			strip.Transparency = floor.GLOW_TRANSPARENCY
+		end
 	end
 end
 

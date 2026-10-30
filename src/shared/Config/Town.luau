@@ -435,6 +435,7 @@ return {
 		-- A glowing line from the plaza's edge to each portal, in that portal's ring colour (PORTAL_EFFECTS)
 		PATH_WIDTH = 0.5,
 		PATH_END_INSET = 6, -- stops this far short of the portal
+		TRAIL_LINE_TOP = 0.05, -- off the street, the line lies just above the trail's ground (terrain tops out at y 0)
 		GLOW_TRANSPARENCY = 0.15,
 	},
 

@@ -5,7 +5,15 @@ local places = require("../src/shared/Config/Places")
 local pvp = require("../src/shared/Config/Pvp")
 local combat = require("../src/shared/Config/Combat")
 local TownLayout = require("../src/shared/Util/TownLayout")
+local PortalTrails = require("../src/shared/Util/PortalTrails")
 local expect = require("./lib/expect")
+
+-- Where each trail leaves the island and the way each portal faces (TownService fills these the same way)
+local EXITS, FACINGS = {}, {}
+for _, area in town.PORTAL_AREAS do
+	table.insert(EXITS, PortalTrails.exitPoint(area.trail, town.BOUNDS.HALF_X))
+	table.insert(FACINGS, PortalTrails.facing(area.trail))
+end
 
 -- Plot numbers copied from Config/Plots (it holds Color3 and Vector3 values, so Lune can't load it)
 local WORLD: TownLayout.World = {
@@ -22,6 +30,8 @@ local WORLD: TownLayout.World = {
 	},
 	spring = { x = wild.SPRING.x, z = wild.SPRING.z },
 	springRadius = combat.SPRING_RADIUS,
+	exits = EXITS,
+	facings = FACINGS,
 }
 
 local HALF_STREET = WORLD.streetWidth / 2
@@ -83,10 +93,12 @@ return {
 		end
 	end,
 
-	["every plaza portal stands at a street end, apart from the others"] = function()
+	["every portal stands at the end of its trail, outside the island, apart from the others"] = function()
 		for index, portal in WORLD.portals do
-			assert(math.abs(portal.z) < HALF_STREET, `portal {index} at z {portal.z} is off the street`)
-			assert(math.abs(portal.x) <= town.LAYOUT.STREET_HALF_LENGTH, `portal {index} is past the street end`)
+			local last = town.PORTAL_AREAS[index].trail[#town.PORTAL_AREAS[index].trail]
+			expect.equal(portal.x, last.x, `portal {index} x`)
+			expect.equal(portal.z, last.z, `portal {index} z`)
+			assert(math.abs(portal.x) > town.BOUNDS.HALF_X, `portal {index} is still on the island`)
 			for other = index + 1, #WORLD.portals do
 				assert(distance(portal, WORLD.portals[other]) >= 16, `portals {index} and {other} overlap`)
 			end
@@ -102,10 +114,11 @@ return {
 			assert(inside(rect.minX, rect.minZ, 0) and inside(rect.maxX, rect.maxZ, 0), "a plot pokes out")
 		end
 		for _, placement in TownLayout.build(WORLD, town) do
-			assert(inside(placement.x, placement.z, 2), `{placement.slot} at {placement.x}, {placement.z} is at or past the edge`)
-		end
-		for _, portal in WORLD.portals do
-			assert(inside(portal.x, portal.z, 8), "a portal is too close to the edge")
+			if placement.slot == "Portal" then
+				assert(PortalTrails.inside(town.WALK_EDGE, placement), `portal frame at {placement.x}, {placement.z} is off the walkable ground`)
+			else
+				assert(inside(placement.x, placement.z, 2), `{placement.slot} at {placement.x}, {placement.z} is at or past the edge`)
+			end
 		end
 	end,
 
@@ -116,7 +129,7 @@ return {
 		assert(town.LAYOUT.PLAZA_RADIUS >= 20, "plaza radius")
 	end,
 
-	["a hedge rings the whole island"] = function()
+	["a hedge rings the whole island except at the trail exits"] = function()
 		local bounds, layout = town.BOUNDS, town.LAYOUT
 		local edgeX, edgeZ = bounds.HALF_X - layout.EDGE_FENCE_INSET, bounds.HALF_Z - layout.EDGE_FENCE_INSET
 		local sides = { north = {}, south = {}, east = {}, west = {} }
@@ -142,8 +155,41 @@ return {
 			assert(along[1] - layout.FENCE_SECTION / 2 <= -half + layout.FENCE_SECTION, `{name} side starts late`)
 			assert(along[#along] + layout.FENCE_SECTION / 2 >= half - layout.FENCE_SECTION, `{name} side ends early`)
 			for index = 2, #along do
-				expect.near(along[index] - along[index - 1], layout.FENCE_SECTION, 0.01, `{name} spacing`)
+				local step = along[index] - along[index - 1]
+				if math.abs(step - layout.FENCE_SECTION) > 0.01 then
+					-- a gap is only allowed round a trail exit on this side
+					local middle = (along[index] + along[index - 1]) / 2
+					local exitHere = false
+					for _, exit in EXITS do
+						local onSide = (name == "east" and exit.x > 0) or (name == "west" and exit.x < 0)
+						if onSide and math.abs(exit.z - middle) < step / 2 then
+							exitHere = true
+						end
+					end
+					assert(exitHere, `{name} side has a gap at {middle} with no trail exit`)
+				end
 			end
+		end
+		for _, placement in TownLayout.build(WORLD, town) do
+			if placement.slot == "Hedge" then
+				for _, exit in EXITS do
+					assert(distance(placement, exit) >= town.TRAIL.HEDGE_GAP, `hedge at {placement.x}, {placement.z} blocks a trail`)
+				end
+			end
+		end
+	end,
+
+	["portal frames face back along their trail"] = function()
+		local frames = {}
+		for _, placement in TownLayout.build(WORLD, town) do
+			if placement.slot == "Portal" then
+				table.insert(frames, placement)
+			end
+		end
+		expect.equal(#frames, #WORLD.portals, "one frame per portal")
+		for index, frame in frames do
+			local facing = FACINGS[index]
+			expect.near(frame.yaw, math.deg(math.atan2(-facing.x, -facing.z)), 1e-9, `frame {index} yaw`)
 		end
 	end,
 
@@ -261,18 +307,20 @@ return {
 		assert(maxZ >= roadHalf - pitch, `ends at {maxZ}`)
 	end,
 
-	["a glowing path from the plaza edge to each portal"] = function()
-		local paths = TownLayout.portalPaths(WORLD, town)
-		expect.equal(#paths, #WORLD.portals, "one path per portal")
-		for index, path in paths do
-			local portal = WORLD.portals[index]
-			expect.equal(path.from.z, portal.z, "path starts level with its portal")
-			expect.equal(path.to.z, portal.z, "path runs straight to its portal")
-			local edge = distance(path.from, WORLD.spring)
-			assert(math.abs(edge - town.LAYOUT.PLAZA_RADIUS) < 0.01, `path starts {edge} from the spring`)
-			local gap = math.abs(portal.x - path.to.x)
-			expect.equal(gap, town.FLOOR.PATH_END_INSET, "path stops short of the portal")
-			assert(math.abs(path.to.x) > math.abs(path.from.x), "path runs outward")
+	["a glowing line runs from the plaza along each trail"] = function()
+		local lines = TownLayout.trailLines(WORLD, town)
+		expect.equal(#lines, #town.PORTAL_AREAS, "one line per portal")
+		for index, line in lines do
+			local trail = town.PORTAL_AREAS[index].trail
+			local first, last = line.points[1], line.points[#line.points]
+			expect.near(distance(first, WORLD.spring), town.LAYOUT.PLAZA_RADIUS, 1e-6, "starts on the plaza rim")
+			expect.near(first.z, trail[1].z, 1e-6, "level with the trail's start")
+			expect.equal(#line.points, #trail + 1, "the rim point, then every trail point")
+			for point = 1, #trail - 1 do
+				expect.equal(line.points[point + 1].x, trail[point].x, `point {point} x`)
+				expect.equal(line.points[point + 1].z, trail[point].z, `point {point} z`)
+			end
+			expect.near(distance(last, trail[#trail]), town.FLOOR.PATH_END_INSET, 1e-6, "stops short of the portal")
 		end
 	end,
 }
