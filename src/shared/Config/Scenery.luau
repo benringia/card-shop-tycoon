@@ -45,14 +45,15 @@ return {
 		{ shape = "Ball", x = 210, y = 30, z = -190, radius = 14, material = "Grass" },
 		{ shape = "Block", x = 185, y = -4, z = -152, size = { x = 24, y = 8, z = 16 }, material = "Air" },
 		{ shape = "Block", x = 185, y = -5, z = -152, size = { x = 24, y = 6, z = 16 }, material = "Water" }, -- drawn level with the ground
-		{ shape = "Ball", x = 171, y = -1, z = -152, radius = 2.5, material = "Rock" },
-		{ shape = "Ball", x = 199, y = -1, z = -152, radius = 2.5, material = "Rock" },
+		{ shape = "Ball", x = 170, y = -1, z = -151, radius = 4.5, material = "Rock" },
+		{ shape = "Ball", x = 200, y = -1, z = -150, radius = 5, material = "Rock" },
+		{ shape = "Ball", x = 172, y = 0, z = -160, radius = 5.5, material = "Rock" },
+		{ shape = "Ball", x = 198, y = 0, z = -161, radius = 5, material = "Rock" },
+		{ shape = "Ball", x = 178, y = -2, z = -143, radius = 3, material = "Rock" },
 		{ shape = "Ball", x = 268, y = -14, z = -110, radius = 34, material = "Grass" },
 		{ shape = "Ball", x = 262, y = -14, z = -50, radius = 30, material = "Grass" },
 		-- Frostpeak: a cliff with a frozen waterfall and its frozen pool, snow on top, the peak beyond the walls
 		{ shape = "Block", x = 196, y = 12, z = 190, size = { x = 90, y = 40, z = 40 }, material = "Slate" },
-		{ shape = "Block", x = 196, y = 12, z = 168, size = { x = 14, y = 40, z = 4 }, material = "Glacier" },
-		{ shape = "Block", x = 196, y = 5, z = 160, size = { x = 20, y = 6, z = 10 }, material = "Glacier" }, -- the frozen pool, level with the rise
 		{ shape = "Ball", x = 175, y = 30, z = 192, radius = 14, material = "Snow" },
 		{ shape = "Ball", x = 220, y = 30, z = 192, radius = 14, material = "Snow" },
 		{ shape = "Ball", x = 230, y = -10, z = 260, radius = 60, material = "Slate" },
@@ -151,15 +152,21 @@ return {
 		TOP = { x = 185, y = 33, z = -162 },
 		BOTTOM = { x = 185, y = 0.6, z = -156 },
 		TEXTURE = "rbxassetid://139671283074387", -- assets/ui/fx/waterfall-streaks.png (Figma image generator)
-		TEXTURE_LENGTH = 10,
 		COLOR = { 205, 242, 255 },
-		BEAMS = {
-			{ width0 = 12, width1 = 15, speed = 1.4, transparency = 0.05 },
-			{ width0 = 9, width1 = 12, speed = 2.3, transparency = 0.3 },
+		-- Layered streams: a wide body, a bright faster core and two thin side runs; each bulges out over the lip
+		-- (curve, studs) and scrolls at its own speed, so the water reads as depth, not one flat sheet. offset: studs
+		-- along x from the falls' middle.
+		STREAMS = {
+			{ offset = 0, width0 = 13, width1 = 16, speed = 1.4, length = 10, transparency = 0.05, curve = 3 },
+			{ offset = 0.5, width0 = 7, width1 = 10, speed = 2.5, length = 6, transparency = 0.25, curve = 4 },
+			{ offset = -7, width0 = 2.5, width1 = 4, speed = 1.9, length = 8, transparency = 0.15, curve = 2 },
+			{ offset = 7, width0 = 3, width1 = 4.5, speed = 1.7, length = 9, transparency = 0.15, curve = 2.5 },
 		},
 		EMITTERS = {
 			{ kind = "mist", x = 185, y = 1, z = -155, rate = 16 },
-			{ kind = "splash", x = 185, y = 1, z = -155.5, rate = 28 },
+			{ kind = "splash", x = 185, y = 0.8, z = -155.5, rate = 55 },
+			{ kind = "foam", x = 185, y = 0.3, z = -153, rate = 20 },
+			{ kind = "lip", x = 185, y = 32.5, z = -161.5, rate = 10 },
 		},
 	},
 	-- Frostpeak's frozen falls: ice crystals round its foot (the falls themselves are Glacier terrain)
@@ -170,7 +177,27 @@ return {
 		{ x = 182, z = 160, y = 10, height = 3, yaw = 250 },
 	},
 	CRYSTAL_COLOR = { 180, 225, 255 },
-	-- Icicles hanging from the frozen cliff's brow, and a snowman on the rise
+	-- Frostpeak's frozen falls, built from ice: columns of frozen water hanging from the cliff's lip down to a bulging
+	-- frozen mound, an icicle fringe along the lip, and a frozen pond at the foot (snowy rim, a few cracks). The same
+	-- layout on every server (a fixed random seed).
+	FROZEN_FALLS = {
+		x = 196,
+		FACE_Z = 167, -- the cliff's face draws here
+		TOP = 33,
+		BOTTOM = 10, -- the rise
+		WIDTH = 15,
+		COLUMNS = 11,
+		RADIUS = { 0.9, 1.8 },
+		SHORT_SHARE = 0.3, -- this share of the columns stop short, hanging like giant icicles
+		MOUND = 7, -- frozen splash balls at the foot
+		FRINGE = 12, -- icicles along the lip
+		SEED = 7,
+		ICE = { 205, 235, 255 },
+		DEEP = { 150, 205, 245 },
+		FROST = { 240, 250, 255 },
+		POND = { x = 196, z = 156, radius = 9, RIM = 12, CRACKS = 4, color = { 190, 228, 250 } },
+	},
+	-- Icicles hanging from the frozen cliff's brow
 	ICICLES = {
 		{ x = 168, z = 167, y = 32, length = 4 },
 		{ x = 176, z = 167, y = 33, length = 6 },
@@ -179,7 +206,6 @@ return {
 		{ x = 218, z = 167, y = 32, length = 7 },
 		{ x = 226, z = 167, y = 31, length = 4 },
 	},
-	SNOWMAN = { x = 214, z = 132, y = 10, yaw = 200 },
 	-- Small life from the town's own prop models (scaled copies): flowers, bushes, rocks and lily pads round the falls,
 	-- a few rocks on the snow and in the canyon. Clear of the trails (Lune-tested). y: the ground they stand on.
 	AREA_PROPS = {
@@ -195,9 +221,10 @@ return {
 		{ model = "BushA", x = 225, z = -125, height = 4, yaw = 120 },
 		{ model = "BushB", x = 168, z = -158, height = 5, yaw = 240 },
 		{ model = "BushA", x = 205, z = -160, height = 4, yaw = 60 },
-		{ model = "RockA", x = 174, z = -146, height = 3, yaw = 30 },
-		{ model = "RockB", x = 198, z = -145, height = 2.5, yaw = 160 },
-		{ model = "RockC", x = 210, z = -150, height = 4, yaw = 290 },
+		{ model = "RockD", x = 164, z = -147, height = 7, yaw = 30 },
+		{ model = "RockA", x = 206, z = -144, height = 6, yaw = 160 },
+		{ model = "RockC", x = 212, z = -153, height = 5, yaw = 290 },
+		{ model = "RockB", x = 194, z = -140, height = 3, yaw = 60 },
 		{ model = "RootsLarge", x = 150, z = -130, height = 3, yaw = 45 },
 		{ model = "Lilypad", x = 180, z = -150, y = 0.1, height = 0.3, yaw = 0 },
 		{ model = "LilypadA", x = 190, z = -148, y = 0.1, height = 0.3, yaw = 90 },

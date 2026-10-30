@@ -218,74 +218,142 @@ local function buildCanyon(folder: Folder)
 	end
 end
 
+-- One falls effect (Config/Scenery FALLS EMITTERS): mist, the splash, foam on the pool, spray at the lip
+local FALLS_EFFECTS: { [string]: (ParticleEmitter, Color3) -> Vector3 } = {
+	mist = function(emitter)
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Lifetime = NumberRange.new(2, 3)
+		emitter.Speed = NumberRange.new(2, 5)
+		emitter.SpreadAngle = Vector2.new(70, 70)
+		emitter.Size = NumberSequence.new(5, 11)
+		emitter.Transparency = NumberSequence.new(0.7, 1)
+		return Vector3.one
+	end,
+	splash = function(emitter, water)
+		emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		emitter.Color = ColorSequence.new(water)
+		emitter.LightEmission = 0.6
+		emitter.Lifetime = NumberRange.new(0.8, 1.3)
+		emitter.Speed = NumberRange.new(10, 16)
+		emitter.SpreadAngle = Vector2.new(50, 50)
+		emitter.Acceleration = Vector3.new(0, -40, 0)
+		emitter.Size = NumberSequence.new(1, 0)
+		return Vector3.new(10, 0.5, 2)
+	end,
+	foam = function(emitter)
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		emitter.Lifetime = NumberRange.new(1.5, 2.5)
+		emitter.Speed = NumberRange.new(0.5, 1.5)
+		emitter.SpreadAngle = Vector2.new(80, 80)
+		emitter.Size = NumberSequence.new(3, 6.5)
+		emitter.Transparency = NumberSequence.new(0.15, 1)
+		return Vector3.new(14, 0.2, 8)
+	end,
+	lip = function(emitter)
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		emitter.Lifetime = NumberRange.new(0.8, 1.2)
+		emitter.Speed = NumberRange.new(2, 4)
+		emitter.SpreadAngle = Vector2.new(30, 30)
+		emitter.Acceleration = Vector3.new(0, -6, 0)
+		emitter.Size = NumberSequence.new(1.5, 3)
+		emitter.Transparency = NumberSequence.new(0.5, 1)
+		emitter.EmissionDirection = Enum.NormalId.Back -- out from the cliff (+Z)
+		return Vector3.new(14, 0.5, 1)
+	end,
+}
+
 local function buildFalls(folder: Folder)
 	local falls = Scenery.FALLS
+	local water = Props.color(falls.COLOR)
 	local anchor = anchorPart(folder, "Falls", Vector3.new(falls.TOP.x, falls.BOTTOM.y, falls.TOP.z))
-	-- Parent first: an attachment's WorldPosition only means world space once it has a part
-	local top = Instance.new("Attachment")
-	top.Parent = anchor
-	top.WorldPosition = Vector3.new(falls.TOP.x, falls.TOP.y, falls.TOP.z)
-	local bottom = Instance.new("Attachment")
-	bottom.Parent = anchor
-	bottom.WorldPosition = Vector3.new(falls.BOTTOM.x, falls.BOTTOM.y, falls.BOTTOM.z)
-	for _, spec in falls.BEAMS do
+	-- Parent first: an attachment's WorldPosition only means world space once it has a part. Turned so its X axis (the
+	-- way CurveSize bends a beam) points out from the cliff (+Z), so each stream bulges over the lip
+	local function hook(x: number, y: number, z: number): Attachment
+		local attachment = Instance.new("Attachment")
+		attachment.Parent = anchor
+		attachment.WorldCFrame = CFrame.new(x, y, z) * CFrame.Angles(0, math.rad(-90), 0)
+		return attachment
+	end
+	for _, stream in falls.STREAMS do
 		local beam = Instance.new("Beam")
-		beam.Attachment0 = top
-		beam.Attachment1 = bottom
-		beam.Width0 = spec.width0
-		beam.Width1 = spec.width1
+		beam.Attachment0 = hook(falls.TOP.x + stream.offset, falls.TOP.y, falls.TOP.z)
+		beam.Attachment1 = hook(falls.BOTTOM.x + stream.offset * 1.15, falls.BOTTOM.y, falls.BOTTOM.z)
+		beam.Width0 = stream.width0
+		beam.Width1 = stream.width1
+		beam.CurveSize0 = stream.curve
 		beam.Texture = falls.TEXTURE
 		beam.TextureMode = Enum.TextureMode.Wrap
-		beam.TextureLength = falls.TEXTURE_LENGTH
-		beam.TextureSpeed = spec.speed
-		beam.Color = ColorSequence.new(Props.color(falls.COLOR))
+		beam.TextureLength = stream.length
+		beam.TextureSpeed = stream.speed
+		beam.Color = ColorSequence.new(water)
 		beam.LightEmission = 1 -- additive: the texture's black reads as see-through
 		beam.LightInfluence = 0
-		beam.Transparency = NumberSequence.new(spec.transparency)
+		beam.Transparency = NumberSequence.new(stream.transparency)
 		beam.FaceCamera = true
-		beam.Segments = 8
+		beam.Segments = 12
 		beam.Parent = anchor
 	end
 	for _, spec in falls.EMITTERS do
-		local at = anchorPart(folder, "FallsEffect", Vector3.new(spec.x, spec.y, spec.z))
 		local emitter = Instance.new("ParticleEmitter")
 		emitter.Rate = spec.rate
-		if spec.kind == "mist" then
-			emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
-			emitter.Lifetime = NumberRange.new(2, 3)
-			emitter.Speed = NumberRange.new(2, 5)
-			emitter.SpreadAngle = Vector2.new(70, 70)
-			emitter.Size = NumberSequence.new(5, 11)
-			emitter.Transparency = NumberSequence.new(0.7, 1)
-		else
-			emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-			emitter.Lifetime = NumberRange.new(0.6, 1)
-			emitter.Speed = NumberRange.new(8, 12)
-			emitter.SpreadAngle = Vector2.new(40, 40)
-			emitter.Acceleration = Vector3.new(0, -30, 0)
-			emitter.Size = NumberSequence.new(0.4, 0.1)
-			emitter.Color = ColorSequence.new(Props.color(falls.COLOR))
-		end
 		emitter.EmissionDirection = Enum.NormalId.Top
+		local size = FALLS_EFFECTS[spec.kind](emitter, water)
+		local at = anchorPart(folder, "FallsEffect", Vector3.new(spec.x, spec.y, spec.z), size)
+		emitter.Shape = Enum.ParticleEmitterShape.Box
 		emitter.Parent = at
 	end
 end
 
-local function buildSnowman(folder: Folder)
-	local spot = Scenery.SNOWMAN
+-- Frostpeak's frozen falls: ice columns from the cliff's lip down to a bulging frozen mound, some stopping short like
+-- giant icicles; an icicle fringe along the lip; a frozen pond at the foot with a snowy rim and a few cracks
+local function buildFrozenFalls(folder: Folder)
+	local f = Scenery.FROZEN_FALLS
 	local model = Instance.new("Model")
-	model.Name = "Snowman"
-	local base = CFrame.new(spot.x, spot.y, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
-	local white = Color3.fromRGB(245, 250, 255)
-	for _, ball in { { 3.2, 1.4 }, { 2.4, 3.9 }, { 1.7, 5.8 } } do
-		piece(model, "Snow", Vector3.new(ball[1], ball[1], ball[1]), base * CFrame.new(0, ball[2], 0), white, Enum.Material.Snow, Enum.PartType.Ball)
+	model.Name = "FrozenFalls"
+	local random = Random.new(f.SEED)
+	local ice, deep, frost = Props.color(f.ICE), Props.color(f.DEEP), Props.color(f.FROST)
+	local upright = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X: stand them up
+	local left = f.x - f.WIDTH / 2
+	for index = 1, f.COLUMNS do
+		local radius = random:NextNumber(f.RADIUS[1], f.RADIUS[2])
+		local x = left + (index - 0.5) * f.WIDTH / f.COLUMNS + random:NextNumber(-0.4, 0.4)
+		local short = random:NextNumber() < f.SHORT_SHARE
+		local bottom = if short then random:NextNumber(f.BOTTOM + 8, f.TOP - 7) else f.BOTTOM + random:NextNumber(0.5, 2)
+		local top = f.TOP - random:NextNumber(0, 1.5)
+		local z = f.FACE_Z - radius * 0.6
+		local color = if index % 3 == 0 then deep else ice
+		local column = piece(model, "IceColumn", Vector3.new(top - bottom, radius * 2, radius * 2), CFrame.new(x, (top + bottom) / 2, z) * upright, color, Enum.Material.Ice, Enum.PartType.Cylinder)
+		column.Transparency = 0.12
+		local tip = piece(model, "IceTip", Vector3.new(radius * 2, radius * 2, radius * 2), CFrame.new(x, bottom, z), color, Enum.Material.Ice, Enum.PartType.Ball)
+		tip.Transparency = 0.12
 	end
-	piece(model, "Nose", Vector3.new(0.3, 0.3, 0.9), base * CFrame.new(0, 5.8, -1), Color3.fromRGB(255, 140, 40), Enum.Material.SmoothPlastic)
-	for _, side in { -1, 1 } do
-		piece(model, "Eye", Vector3.new(0.25, 0.25, 0.25), base * CFrame.new(side * 0.35, 6.1, -0.8), Color3.fromRGB(30, 30, 36), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-		piece(model, "Arm", Vector3.new(0.2, 0.2, 2), base * CFrame.new(side * 1.8, 4.2, 0) * CFrame.Angles(0, math.rad(90), math.rad(side * 25)), Color3.fromRGB(110, 76, 50), Enum.Material.Wood)
+	for _ = 1, f.MOUND do
+		local radius = random:NextNumber(2.2, 3.4)
+		local ball = piece(model, "IceMound", Vector3.new(radius * 2, radius * 2, radius * 2), CFrame.new(left + random:NextNumber(0, f.WIDTH), f.BOTTOM + radius * 0.45, f.FACE_Z - random:NextNumber(2, 4)), if random:NextNumber() < 0.5 then ice else frost, Enum.Material.Ice, Enum.PartType.Ball)
+		ball.Transparency = 0.1
 	end
-	piece(model, "Scarf", Vector3.new(0.6, 2.4, 2.4), base * CFrame.new(0, 5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(220, 60, 70), Enum.Material.Fabric, Enum.PartType.Cylinder)
+	for index = 1, f.FRINGE do
+		local length = random:NextNumber(1.2, 3.5)
+		local x = left - 2 + (index - 0.5) * (f.WIDTH + 4) / f.FRINGE
+		local icicle = piece(model, "Icicle", Vector3.new(0.45, length, 0.45), CFrame.new(x, f.TOP - length / 2, f.FACE_Z - 0.6) * CFrame.Angles(0, math.rad(45), 0), frost, Enum.Material.Ice)
+		icicle.CanCollide = false
+	end
+	local pond = f.POND
+	local surface = piece(model, "FrozenPond", Vector3.new(0.25, pond.radius * 2, pond.radius * 2), CFrame.new(pond.x, f.BOTTOM + 0.12, pond.z) * upright, Props.color(pond.color), Enum.Material.Ice, Enum.PartType.Cylinder)
+	surface.Reflectance = 0.15
+	for index = 1, pond.RIM do
+		local angle = (index / pond.RIM) * math.pi * 2 + random:NextNumber(-0.15, 0.15)
+		local radius = random:NextNumber(1.1, 1.6)
+		piece(model, "PondRim", Vector3.new(radius * 2, radius * 1.2, radius * 2), CFrame.new(pond.x + math.cos(angle) * pond.radius, f.BOTTOM + radius * 0.3, pond.z + math.sin(angle) * pond.radius), frost, Enum.Material.Snow, Enum.PartType.Ball)
+	end
+	for _ = 1, pond.CRACKS do
+		local angle = random:NextNumber(0, 360)
+		local at = random:NextNumber(0, pond.radius * 0.55)
+		local crack = piece(model, "Crack", Vector3.new(0.12, 0.04, random:NextNumber(3, 5)), CFrame.new(pond.x + math.cos(math.rad(angle)) * at, f.BOTTOM + 0.27, pond.z + math.sin(math.rad(angle)) * at) * CFrame.Angles(0, math.rad(random:NextNumber(0, 180)), 0), frost, Enum.Material.SmoothPlastic)
+		crack.CanCollide = false
+	end
 	model.Parent = folder
 end
 
@@ -296,7 +364,6 @@ local function buildFrost(folder: Folder)
 		icicle.CanCollide = false
 		icicle.Transparency = 0.1
 	end
-	buildSnowman(folder)
 	for _, spot in Scenery.CRYSTALS do
 		local crystal = piece(folder, "IceCrystal", Vector3.new(spot.height * 0.45, spot.height, spot.height * 0.45), CFrame.new(spot.x, (spot.y or 0) + spot.height * 0.4, spot.z) * CFrame.Angles(math.rad(12), math.rad(spot.yaw), math.rad(8)), ice, Enum.Material.Ice)
 		crystal.Transparency = 0.15
@@ -477,6 +544,7 @@ local function buildDressing()
 	buildCanyon(folder)
 	buildFalls(folder)
 	buildFrost(folder)
+	buildFrozenFalls(folder)
 	buildSmallLife(folder)
 	buildEffects(folder)
 	buildSounds(folder)

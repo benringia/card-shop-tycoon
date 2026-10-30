@@ -112,7 +112,7 @@ return {
 			return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 		end
 		local clear = town.TRAIL.WIDTH / 2 + 2
-		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.SNOWMAN, scenery.LAVA.POOL } } do
+		for _, list in { scenery.GIANT_TREES, scenery.SNOW_PINES, scenery.DUSTED_PINES, scenery.CACTI, scenery.TORCHES, scenery.CRYSTALS, scenery.AREA_PROPS, scenery.MUSHROOMS, { scenery.LAVA.POOL } } do
 			for _, prop in list do
 				for _, area in town.PORTAL_AREAS do
 					local trail = area.trail
@@ -141,8 +141,8 @@ return {
 	end,
 
 	["one flowing waterfall and effects within the caps"] = function()
-		expect.equal(#scenery.FALLS.BEAMS <= 3, true, "falls beams")
-		expect.equal(#scenery.FALLS.EMITTERS <= 2, true, "mist and splash")
+		expect.equal(#scenery.FALLS.STREAMS <= 4, true, "falls streams")
+		expect.equal(#scenery.FALLS.EMITTERS <= 4, true, "mist, splash, foam and lip spray")
 		local perArea: { [string]: number } = {}
 		for _, emitter in scenery.EMITTERS do
 			perArea[emitter.area] = (perArea[emitter.area] or 0) + 1
@@ -151,6 +151,21 @@ return {
 			assert(count <= 4, `{area} has {count} effects`)
 		end
 		expect.equal(scenery.SMALL_DECOR_SIZE, 4, "small decor casts no shadow below this size")
+	end,
+
+	["the frozen falls stay a modest number of parts, with a walkable frozen pond at their foot"] = function()
+		local PortalTrails = require("../src/shared/Util/PortalTrails")
+		local frozen = scenery.FROZEN_FALLS
+		-- each column has a rounded tip; the pond itself is one more part
+		assert(frozen.COLUMNS * 2 + frozen.MOUND + frozen.FRINGE + frozen.POND.RIM + frozen.POND.CRACKS + 1 <= 60, "too many parts")
+		expect.equal(PortalTrails.inside(town.WALK_EDGE, frozen.POND), true, "players can walk onto the pond")
+		local portal = town.PORTAL_AREAS[2].trail[#town.PORTAL_AREAS[2].trail]
+		local gap = math.sqrt((frozen.POND.x - portal.x) ^ 2 + (frozen.POND.z - portal.z) ^ 2)
+		assert(gap > frozen.POND.radius + 6, "the pond crowds the Frontier portal")
+		expect.equal(scenery.SNOWMAN, nil, "the snowman is gone (user feedback)")
+		for _, op in scenery.TERRAIN do
+			assert(op.material ~= "Glacier", "the frozen falls are built from ice parts now, not a terrain slab")
+		end
 	end,
 
 	["every ambient sound has an id and stays quiet"] = function()
