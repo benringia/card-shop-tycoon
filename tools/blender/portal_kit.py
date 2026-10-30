@@ -69,6 +69,14 @@ def crystal(b, base, direction, radius, length, color, sides=6, tip=0.3, tip_col
         b._face([r1[k], r1[k2], apex], tip_color or color)
 
 
+def ribbon(b, a, c, width, color, thickness=0.18):
+    """A flat strip from a to c, its broad side facing the front (-Y): lava cracks and streams on a face."""
+    a, c = Vector(a), Vector(c)
+    along = c - a
+    rot = along.to_track_quat("Z", "Y").to_matrix()
+    b.box((a + c) / 2, (width, thickness, along.length), color, BONE, rot)
+
+
 def disc(b, centre, radius, color, normal=(0, 0, 1), sides=12, radius_y=None):
     """A flat round (an ellipse with radius_y across its second axis) facing along normal."""
     c, n = Vector(centre), Vector(normal).normalized()
