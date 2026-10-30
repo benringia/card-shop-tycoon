@@ -129,7 +129,8 @@ boss arenas) the old afternoon look shows at once, so fights never happen at nig
 when the frame watchdog sees a slow device or the player set graphics at 3 or below: `Util/FrameWatchdog`,
 `Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and six Cute Pets animals
 run round their homes, drawn by the summoned-pet code (`TownCritterController`, `Util/Wander`): a fox at the forest edge,
-a bunny in the plaza garden, a capybara between the shops, a fawn at Forest Falls, a penguin on Frostpeak, a baby dragon
+a bunny on the grass by the grove, a capybara on the sidewalk outside the south shops (the tall grass between
+the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, a baby dragon
 in Ember Canyon. **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
 player's first visit, an 11 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
 as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
