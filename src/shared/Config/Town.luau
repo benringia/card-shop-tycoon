@@ -103,7 +103,7 @@ return {
 			name = "Ember Canyon",
 			effect = "Arena",
 			sign = "PVP ARENA",
-			surface = "Sand",
+			surface = "Basalt", -- the caldera's dark trail
 			trail = { { x = -110, z = 0 }, { x = -130, z = 0 }, { x = -205, z = 0 } },
 		},
 	},

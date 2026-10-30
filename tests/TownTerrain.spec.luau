@@ -99,6 +99,43 @@ return {
 		end
 	end,
 
+	["the canyon is a caldera"] = function()
+		-- Ember Canyon in the portal's colours (caldera spec 2026-10-31): dark basalt walls, a dark cracked floor, a
+		-- basalt trail; nothing left of the desert
+		expect.equal(TownTerrain.materialAt(OPS, -185, 32), "Basalt", "the north wall")
+		expect.equal(TownTerrain.materialAt(OPS, -185, -36), "Basalt", "the south wall")
+		expect.equal(TownTerrain.materialAt(OPS, -246, 0), "Basalt", "the end wall")
+		expect.equal(TownTerrain.materialAt(OPS, -170, 14), "CrackedLava", "the floor beside the trail")
+		expect.equal(TownTerrain.materialAt(OPS, -170, 0), "Basalt", "the trail")
+		for _, list in { scenery.GROUND, scenery.FLOORS, scenery.TERRAIN } do
+			for _, op in list do
+				assert(op.material ~= "Sand" and op.material ~= "Sandstone" and op.material ~= "Limestone", `desert {op.material} at {op.x}, {op.z}`)
+			end
+		end
+	end,
+
+	["only canyon materials change colour"] = function()
+		-- terrain colours are per material across the whole map: the caldera may recolour only what no other area uses
+		local kept = {
+			Rock = { 98, 120, 92 },
+			Slate = { 118, 128, 144 },
+			Snow = { 240, 246, 255 },
+			Glacier = { 170, 215, 245 },
+			Ground = { 120, 96, 70 },
+		}
+		for name, rgb in kept do
+			local now = scenery.MATERIAL_COLORS[name]
+			assert(now and now[1] == rgb[1] and now[2] == rgb[2] and now[3] == rgb[3], `{name} changed colour`)
+		end
+		for _, list in { scenery.GROUND, scenery.FLOORS, scenery.TERRAIN } do
+			for _, op in list do
+				if op.material == "Basalt" or op.material == "CrackedLava" then
+					assert(op.x < -130, `{op.material} outside the canyon at {op.x}, {op.z}`)
+				end
+			end
+		end
+	end,
+
 	["terrain stays inside the memory budget"] = function()
 		local cells = TownTerrain.estimatedCells(OPS)
 		assert(cells <= scenery.MAX_CELLS, `{cells} cells`)
