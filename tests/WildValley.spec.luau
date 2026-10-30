@@ -111,6 +111,18 @@ return {
 		end
 	end,
 
+	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
+		expect.equal(#valley.ARENA_LOOKS, #wild.ZONES, "one arena look per zone")
+		for index, look in valley.ARENA_LOOKS do
+			assert(look.floorMaterial and look.pathMaterial and look.postMaterial, `zone {index}'s arena look is missing a material`)
+		end
+		assert(valley.ARENA_LIFT > 0 and valley.ARENA_LIFT < 0.5, "the arena floor sits just above the terrain")
+		local cracks = valley.ARENA_LOOKS[3].cracks
+		assert(cracks and cracks.count > 0, "the ridge arena has lava cracks")
+		-- the crack box's corners stay inside the fence posts (posts at ARENA_RADIUS - 0.6)
+		assert(cracks.size / 2 * math.sqrt(2) < bosses.ARENA_RADIUS - 1, "the ridge arena's cracks run past its fence")
+	end,
+
 	["markers run the whole trail"] = function()
 		local trail = WildValley.trail(wild)
 		local markers = WildValley.markers(trail, valley.MARKER_SPACING)

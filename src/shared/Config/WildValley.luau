@@ -73,6 +73,16 @@ return {
 	-- The ridge's floor cracks (Util/LavaCracks.floor: off the trail), and its vents' look
 	RIDGE_CRACKS = { SEED = 47, FLOOR = { centre = { x = 0, z = 1480 }, size = { x = 116, z = 116 }, count = 14 } },
 	VENT_LOOK = { rock = { 40, 34, 40 }, glow = { 255, 120, 30 }, radius = 3 },
+	-- Each zone's boss arena dressed in its mood (WildService.BuildBossArenas; rings, barriers and gates unchanged): the
+	-- floor disc and path (lifted LIFT studs over the terrain so they don't flicker against it) and the fence posts, every
+	-- other one capped with a glowing tip; the ridge's floor also gets glowing cracks (Util/LavaCracks.floor in a box `size`
+	-- wide round the ring's middle, clear of the gate)
+	ARENA_LIFT = 0.15,
+	ARENA_LOOKS = {
+		{ floor = { 96, 150, 70 }, floorMaterial = "Grass", path = { 128, 100, 70 }, pathMaterial = "Ground", post = { 110, 78, 50 }, postMaterial = "Wood", postSize = 1.2, postHeight = 5 },
+		{ floor = { 112, 104, 100 }, floorMaterial = "Slate", path = { 128, 120, 116 }, pathMaterial = "Slate", post = { 100, 96, 100 }, postMaterial = "Slate", postSize = 1.6, postHeight = 6, tip = { 110, 200, 255 } },
+		{ floor = { 46, 42, 50 }, floorMaterial = "Basalt", path = { 60, 54, 62 }, pathMaterial = "Basalt", post = { 52, 46, 56 }, postMaterial = "Basalt", postSize = 1.6, postHeight = 6, tip = { 255, 120, 30 }, cracks = { seed = 53, count = 12, size = 46, width = { 0.4, 0.8 } } },
+	},
 
 	-- Town prop models (PropModels), scaled to `height` on the drawn ground. zone: which mood they dress.
 	PROPS = {

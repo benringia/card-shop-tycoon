@@ -28,6 +28,7 @@ local Town = require(Config:WaitForChild("Town"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
+local LavaCracks = require(Shared:WaitForChild("Util"):WaitForChild("LavaCracks"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
 local Services = script.Parent :: Instance
@@ -624,15 +625,43 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 			else zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
 		local radius = Bosses.ARENA_RADIUS
 		-- Cylinders run along X: lay the disc flat
-		local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(70, 66, 80), Enum.Material.Slate)
+		-- The valley dresses each Wild arena in its zone's look (WildValley.ARENA_LOOKS), lifted off the terrain
+		local look = if here == "Wild" and VALLEY then WildValleyConfig.ARENA_LOOKS[boss.zone] else nil
+		local lift = if look then WildValleyConfig.ARENA_LIFT else 0
+		local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1 - lift, 0)) * CFrame.Angles(0, 0, math.rad(90)), if look then rgb(look.floor) else Color3.fromRGB(70, 66, 80), if look then (Enum.Material :: any)[look.floorMaterial] else Enum.Material.Slate)
 		floor.Shape = Enum.PartType.Cylinder
-		block(folder, "Path", Vector3.new(Bosses.ARENA_GAP + 4, 2, 14), CFrame.new(center - Vector3.new(radius + Bosses.ARENA_GAP / 2, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone)
+		block(folder, "Path", Vector3.new(Bosses.ARENA_GAP + 4, 2, 14), CFrame.new(center - Vector3.new(radius + Bosses.ARENA_GAP / 2, 1 - lift, 0)), if look then rgb(look.path) else Color3.fromRGB(150, 140, 120), if look then (Enum.Material :: any)[look.pathMaterial] else Enum.Material.Cobblestone)
+		if look and look.cracks then
+			-- glowing cracks across the ridge arena's floor, none in front of the gate
+			local cracks = look.cracks
+			local random = Random.new(cracks.seed)
+			local gate = { { x = center.X - radius, z = center.Z }, { x = center.X - radius + 10, z = center.Z } }
+			local box = { centre = { x = center.X, z = center.Z }, size = { x = cracks.size, z = cracks.size }, count = cracks.count }
+			local top = lift + 0.03
+			for _, segment in LavaCracks.floor(box, cracks.width, gate, gate[1], 5, 0, function(): number
+				return random:NextNumber()
+			end) do
+				local a, b = Vector3.new(segment.a.x, top, segment.a.z), Vector3.new(segment.b.x, top, segment.b.z)
+				local crack = block(folder, "Crack", Vector3.new(segment.width, 0.05, (b - a).Magnitude + segment.width * 0.5), CFrame.lookAt((a + b) / 2, b), rgb(look.tip), Enum.Material.Neon)
+				crack.CanCollide = false
+				crack.CanQuery = false
+				crack.CastShadow = false
+			end
+		end
 		-- Fence posts all round, open toward the zone (-X)
 		for step = 0, 23 do
 			local angle = step / 24 * math.pi * 2
 			local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
 			if direction.X > -0.95 then
-				block(folder, "Fence", Vector3.new(1.2, 5, 1.2), CFrame.new(center + direction * (radius - 0.6) + Vector3.new(0, 2.5, 0)), Color3.fromRGB(90, 70, 50), Enum.Material.Wood)
+				local postSize, postHeight = if look then look.postSize else 1.2, if look then look.postHeight else 5
+				local post = center + direction * (radius - 0.6)
+				block(folder, "Fence", Vector3.new(postSize, postHeight, postSize), CFrame.new(post + Vector3.new(0, postHeight / 2, 0)), if look then rgb(look.post) else Color3.fromRGB(90, 70, 50), if look then (Enum.Material :: any)[look.postMaterial] else Enum.Material.Wood)
+				if look and look.tip and step % 2 == 0 then
+					local tip = block(folder, "FenceTip", Vector3.new(postSize * 0.6, postSize * 1.1, postSize * 0.6), CFrame.new(post + Vector3.new(0, postHeight + postSize * 0.45, 0)) * CFrame.Angles(0, math.rad(45), 0), rgb(look.tip), Enum.Material.Neon)
+					tip.CanCollide = false
+					tip.CanQuery = false
+					tip.CastShadow = false
+				end
 			end
 		end
 		-- The barrier: down (invisible, no collision) until BossService seals the ring for a fight
@@ -676,7 +705,7 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		end)
 		-- Faces the way players arrive (from the zone, -X)
 		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
-		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, 0, 0)
+		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, lift, 0) -- on the floor's top (BossService puts the boss here)
 		arenas[bossId] = {
 			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center), -- where /boss puts you, outside the gate
 			gatePosition = gate.Position, -- what the server measures a start from (the prompt's part)
