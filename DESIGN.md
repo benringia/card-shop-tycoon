@@ -106,8 +106,8 @@ giant trees, a waterfall of scrolling streak sheets into a turquoise pool, mossy
 mushrooms, fireflies, falling leaves), the Frontier on **Frostpeak**'s snowy rise (182, 128, 10 studs up; north-east: a
 snow-capped peak, frosted pines with lightly snowed ones on the grass below, a frozen waterfall of ice columns over a
 frozen pond, icicles, drifting snow, an aurora of hanging curtain beams), the Arena at the end of **Ember Canyon**
-(-205, 0; west: striped red sandstone walls, a lava river and pool past the walkable floor, saguaros, the portal on a
-stone platform between torch pillars, floating embers). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
+(-205, 0; west: striped red sandstone walls, a lava river and pool past the walkable floor, saguaros, the portal on the
+sand between torch pillars, floating embers). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
 user kept the map's spots). Trails are paved terrain with the portal's glowing line along them; a wooden arch with the
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
 (`Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and

@@ -125,6 +125,7 @@ return {
 		{ x = -112, z = 12, arms = { "Arena" } },
 	},
 	PORTAL_REACH = 16, -- studs: travel remotes only work this close to their portal
+	PORTAL_SCENERY_CLEAR = 13, -- studs: area scenery keeps this far from a portal (half the widest portal model plus 2)
 	SIGN_DISTANCE = 120, -- studs: signpost and arch words stop drawing beyond this
 	SIGN_SUBTEXT = "This way", -- under each name on a signpost arm
 	-- Each plaza portal's look: ring and glow-part colour, particle colours, and 1-3 emitters (phones).

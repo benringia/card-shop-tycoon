@@ -1,6 +1,6 @@
 --!strict
 -- The scenery round the town and in the portal areas (Portal Worlds spec), from Config/Scenery: the terrain
--- (Util/TownTerrain), giant trees and snowy pines (scaled copies of the town's prop models), the canyon's cacti, platform
+-- (Util/TownTerrain), giant trees and snowy pines (scaled copies of the town's prop models), the canyon's cacti
 -- and torches, Forest Falls' water sheets, Frostpeak's ice crystals, snow, embers and the aurora, and ambient sounds.
 -- Built once at server start. Main game only; the Frontier and the Dungeon keep their own.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -157,12 +157,10 @@ local function buildCanyon(folder: Folder)
 		buildCactus(folder, spot)
 	end
 	buildLava(folder)
-	local platform = Scenery.PLATFORM
-	piece(folder, "Platform", Vector3.new(platform.height, platform.radius * 2, platform.radius * 2), CFrame.new(platform.x, platform.height / 2, platform.z) * CFrame.Angles(0, 0, math.rad(90)), Props.color(platform.color), Enum.Material.Slate, Enum.PartType.Cylinder)
 	local fire = Scenery.TORCH_FIRE
 	for _, spot in Scenery.TORCHES do
 		local base = CFrame.new(spot.x, 0, spot.z)
-		piece(folder, "TorchPillar", Vector3.new(1.6, spot.height, 1.6), base * CFrame.new(0, spot.height / 2, 0), Props.color(platform.color), Enum.Material.Slate)
+		piece(folder, "TorchPillar", Vector3.new(1.6, spot.height, 1.6), base * CFrame.new(0, spot.height / 2, 0), Props.color(Scenery.TORCH_STONE), Enum.Material.Slate)
 		local bowl = piece(folder, "TorchBowl", Vector3.new(0.6, 2.2, 2.2), base * CFrame.new(0, spot.height + 0.3, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(60, 50, 45), Enum.Material.Metal, Enum.PartType.Cylinder)
 		local flame = Instance.new("ParticleEmitter")
 		flame.Texture = "rbxasset://textures/particles/fire_main.dds"
