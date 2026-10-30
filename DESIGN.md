@@ -67,6 +67,8 @@ it with the extras on (`FountainFxController`, tag BloomFountain), a rune circle
 Figma) turning slowly on a dark teal inlay in the gazebo's floor, a column of light rising from the pool to the dome,
 five glowing orbs with trails circling the card, and the column and the pool's light shifting through the element
 colours; motes in the element colours rise off the gazebo's finial, so it shows over the roof from the street.
+The fountain model streams Atomic (whole), so a player who joins far away (at their plot) gets the client magic
+once it streams in, not a tagged model without its pool and card.
 WildService adds the card's turning and bobbing, rising sparkles, a light, breathing water and a faint disc for the
 12-stud healing area (the Frontier's spring is the same fountain). It replaced the free "Better Low
 Poly Fountain" by scene_boy (the old HealingSpring prop slot, its model in the place's `PlaceProps`, copy

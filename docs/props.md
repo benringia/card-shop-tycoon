@@ -47,7 +47,8 @@ Body is `Plaza.FOUNTAIN_RADIUS` round. To update it:
 
 1. Studio → Import 3D → `BloomFountain.fbx` (default settings). It lands in Workspace as a Model.
 2. Check the part names, right-click the Model → **Save to File…** → `assets/props/BloomFountain.rbxm`.
-3. Delete the Workspace copy; Rojo syncs the file into PropModels. Stop and Play to see it.
+3. Delete the Workspace copy (the import isn't anchored, so in Play it falls apart beside the shop); Rojo syncs the
+   file into PropModels. Stop and Play to see it.
 
 ## Models with unions (PlaceProps)
 

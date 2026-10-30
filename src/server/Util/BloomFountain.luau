@@ -250,6 +250,8 @@ end
 function BloomFountain.build(at: Vector3, parent: Instance): Model
 	local model = fromModel(at) or standIn(at)
 	model.Name = "HealingSpring"
+	-- Streams in whole, so FountainFxController never meets the tagged model before its Water and Crystal
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	dress(model)
 	CollectionService:AddTag(model, "BloomFountain")
 	model.Parent = parent
