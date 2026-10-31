@@ -44,7 +44,7 @@ return {
 	FX = {
 		sparks = {
 			texture = "rbxasset://textures/particles/sparkles_main.dds", color = { 255, 230, 90 }, lightEmission = 1,
-			size = { 0.25, 0 }, transparency = { 0, 1 }, lifetime = { 0.15, 0.3 }, rate = 12, speed = { 2, 4 }, spread = 180,
+			size = { 0.45, 0 }, transparency = { 0, 1 }, lifetime = { 0.15, 0.3 }, rate = 18, speed = { 2, 4 }, spread = 180,
 			rise = 0,
 		},
 		smoke = {
