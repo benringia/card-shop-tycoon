@@ -193,6 +193,91 @@ def remesh_bake(source, name, voxel=0.006, target_tris=10000, texture_size=1024)
     return low
 
 
+def _fill_triangle(grid, a, b, c):
+    """Sets the texels of `grid` (rows from v = 0) whose centres fall inside the UV triangle a, b, c."""
+    import numpy as np
+
+    height, width = grid.shape
+    xs = [p[0] * width for p in (a, b, c)]
+    ys = [p[1] * height for p in (a, b, c)]
+    x0, x1 = max(0, int(min(xs))), min(width - 1, int(max(xs)) + 1)
+    y0, y1 = max(0, int(min(ys))), min(height - 1, int(max(ys)) + 1)
+    if x1 < x0 or y1 < y0:
+        return
+    px, py = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+    (ax, bx, cx), (ay, by, cy) = xs, ys
+    area = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay)
+    if abs(area) < 1e-9:
+        return
+    w0 = ((bx - px) * (cy - py) - (cx - px) * (by - py)) / area
+    w1 = ((cx - px) * (ay - py) - (ax - px) * (cy - py)) / area
+    inside = (w0 >= -1e-6) & (w1 >= -1e-6) & (1 - w0 - w1 >= -1e-6)
+    grid[y0:y1 + 1, x0:x1 + 1] |= inside
+
+
+def glow_mask(mesh, name, rules, grow=1, region=None):
+    """Writes assets/blender/<name>/<name>_glow.png: an emissive mask for the game (white where the model glows, black
+    elsewhere) the same size as `mesh`'s colour map, from the map's own colours. A texel glows when it matches any rule,
+    a dict {"hue": (lo, hi) degrees (lo > hi wraps through red), "sat": (lo, hi), "val": (lo, hi)} on 0-1 HSV, and (with
+    `region`, a function of a face's world-space centre) only on faces in that part of the body, for a colour that also
+    appears where it mustn't glow (the Mossling's tusks are as cream as its mushrooms). The mask is then grown by `grow`
+    texels so the glow reaches the painted edge. Uploaded and set as the SurfaceAppearance's EmissiveMaskContent in
+    Studio (a plugin-only property). Returns the path."""
+    import numpy as np
+
+    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
+                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    width, height = image.size
+    rgb = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)[:, :, :3]
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    top, low = rgb.max(axis=2), rgb.min(axis=2)
+    spread = top - low
+    sat = np.where(top > 0, spread / np.maximum(top, 1e-6), 0)
+    hue = np.zeros_like(top)
+    coloured = spread > 1e-6
+    red = coloured & (top == r)
+    green = coloured & ~red & (top == g)
+    blue = coloured & ~red & ~green
+    hue[red] = ((g - b)[red] / spread[red]) % 6
+    hue[green] = (b - r)[green] / spread[green] + 2
+    hue[blue] = (r - g)[blue] / spread[blue] + 4
+    hue *= 60
+    mask = np.zeros_like(top, dtype=bool)
+    for rule in rules:
+        lo, hi = rule["hue"]
+        in_hue = (hue >= lo) & (hue <= hi) if lo <= hi else (hue >= lo) | (hue <= hi)
+        mask |= (in_hue & (sat >= rule["sat"][0]) & (sat <= rule["sat"][1])
+                 & (top >= rule["val"][0]) & (top <= rule["val"][1]))
+    if region is not None:
+        allowed = np.zeros_like(mask)
+        uv = mesh.data.uv_layers.active.data
+        for poly in mesh.data.polygons:
+            if not region(mesh.matrix_world @ poly.center):
+                continue
+            corners = [uv[i].uv for i in poly.loop_indices]
+            for k in range(1, len(corners) - 1):
+                _fill_triangle(allowed, corners[0], corners[k], corners[k + 1])
+        mask &= allowed
+    for _ in range(grow):
+        grown = mask.copy()
+        grown[1:, :] |= mask[:-1, :]
+        grown[:-1, :] |= mask[1:, :]
+        grown[:, 1:] |= mask[:, :-1]
+        grown[:, :-1] |= mask[:, 1:]
+        mask = grown
+    out = np.ones((height, width, 4), dtype=np.float32)
+    out[..., :3] = mask[..., None]
+    result = bpy.data.images.new(name + "_glow", width, height, alpha=False)
+    result.pixels[:] = out.ravel()
+    path = os.path.join(REPO, "assets", "blender", name, f"{name}_glow.png")
+    result.filepath_raw = path
+    result.file_format = "PNG"
+    result.save()
+    bpy.data.images.remove(result)
+    print("glow mask:", int(mask.sum()), "of", width * height, "texels ->", path)
+    return path
+
+
 def paint_patch(mesh, color, cells=64):
     """Paints a small patch of `color` (RGB 0..1) into a corner of the colour map no UV uses and returns its UV, so
     pieces added by hand (bolt()) take that colour without a second material. Run after optimize()."""
