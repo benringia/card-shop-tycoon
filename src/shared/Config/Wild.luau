@@ -18,14 +18,19 @@ return {
 		{ name = "Ember Ridge", minLevel = 10, maxLevel = 15, recommended = 10, species = { "Magma Golem", "Ash Wolf" }, aggro = true, color = { 150, 80, 55 } },
 	},
 
-	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1)
+	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). height: studs tall (elites ELITE_SIZE
+	-- times that; the user's pick B of a to-scale lineup); glow: the emissive strength of the model's glow mask
+	-- (Util/MonsterLooks; the golem's lava pulses from low to high and back every `seconds`)
 	SPECIES = {
-		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime" },
-		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab" },
-		["Cave Bat"] = { element = "Shade", hp = 150, atk = 6, spd = 12, shape = "bat" },
-		["Spark Beetle"] = { element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle" },
-		["Magma Golem"] = { element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem" },
-		["Ash Wolf"] = { element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf" },
+		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime", height = 2.5, glow = { strength = 2 } },
+		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab", height = 2, glow = { strength = 2 } },
+		["Cave Bat"] = { element = "Shade", hp = 150, atk = 6, spd = 12, shape = "bat", height = 3, glow = { strength = 2 } },
+		["Spark Beetle"] = { element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle", height = 2.5, glow = { strength = 2 } },
+		["Magma Golem"] = {
+			element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem", height = 6.5,
+			glow = { strength = 2.5, pulse = { low = 1.2, high = 3, seconds = 2.5 } },
+		},
+		["Ash Wolf"] = { element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 } },
 	},
 	FLYING = { "Cave Bat" },
 	MONSTER_GROWTH = 0.12,

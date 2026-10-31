@@ -3,8 +3,9 @@
 -- workspace.Monsters (attributes MonsterId, Species, Level, Elite, Element, Fighting); here each marker gets a
 -- model (ReplicatedStorage.MonsterModels[Species], or a placeholder shape in its element colour), the same
 -- motion as summoned creatures (CreatureVisuals) and a name tag. Elites are bigger with a gold tag; bosses (attribute
--- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag; a boss model with PetRig bones
--- moves them (Util/PetAnimator), and one with heads (Config/Bosses heads: the Prism Hydra) lights the head of its
+-- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag. Each species has its own height
+-- (Util/MonsterLooks); a model with PetRig bones moves them (Util/PetAnimator, styled by species, a boss by its id),
+-- its glow mask shines at the species' glow strength (the golem's lava pulsing), and a boss with heads (Config/Bosses heads: the Prism Hydra) lights the head of its
 -- current phase (marker attribute Phase) and drops its heads one by one when it falls.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,6 +17,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 -- The server wild map in the main game, the Frontier in the Frontier place
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
+local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 
 local MonsterController = {}
@@ -34,6 +36,8 @@ type Monster = {
 	heads: { Head }, -- a boss with heads: one per Hydra_<n>_3 bone, n = index - 1
 	fallenAt: number?, -- os.clock() its death began (heads dropping)
 	aura: Aura?, -- a boss with a rainbow aura
+	glows: { SurfaceAppearance }, -- the model's SurfaceAppearances with a glow mask
+	glow: MonsterLooks.Glow?, -- the species' glow (Config/Wild SPECIES)
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -266,6 +270,17 @@ local function remove(marker: BasePart)
 	monster.body.model:Destroy()
 end
 
+-- The glow mask's strength now (a pulsing glow is set every frame, a steady one once)
+local function setGlow(monster: Monster, now: number)
+	local strength = MonsterLooks.glowStrength(monster.glow, now)
+	if not strength then
+		return
+	end
+	for _, appearance in monster.glows do
+		appearance.EmissiveStrength = strength
+	end
+end
+
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
@@ -286,9 +301,18 @@ local function add(marker: BasePart)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`
 
 	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
-	local height = Wild.MONSTER_HEIGHT * (if boss then boss.scale elseif elite then Wild.ELITE_SIZE else 1)
-	-- A boss model's bones move like a creature's (its PetRig names; Party style keyed by the boss id)
-	local body = CreatureVisuals.build(model, marker, height, flying, if boss and template then bossId :: string else nil)
+	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil)
+	-- A model's bones move like a creature's (its PetRig names; Party style keyed by species, a boss by its id)
+	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
+	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)
+	body.fxColor = color
+	local glows: { SurfaceAppearance } = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("SurfaceAppearance") and descendant.EmissiveMaskContent.SourceType ~= Enum.ContentSourceType.None then
+			table.insert(glows, descendant)
+		end
+	end
+	local glow: MonsterLooks.Glow? = if boss then nil else (Wild.SPECIES[species] :: any).glow
 	local monster: Monster = {
 		marker = marker,
 		body = body,
@@ -297,7 +321,10 @@ local function add(marker: BasePart)
 		heads = if boss and boss.heads and template then makeHeads(model, boss.heads) else {},
 		fallenAt = nil,
 		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
+		glows = glows,
+		glow = glow,
 	}
+	setGlow(monster, os.clock())
 	if monster.aura and boss and boss.auroraFlame then
 		monster.aura.flames = makeFlames(model, body.root)
 	end
@@ -359,6 +386,9 @@ function MonsterController.Start()
 			end
 			if monster.aura then
 				stepAura(monster, now)
+			end
+			if monster.glow and monster.glow.pulse then
+				setGlow(monster, now)
 			end
 		end
 	end)
