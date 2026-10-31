@@ -3,6 +3,7 @@
 -- ELITE_SIZE times that), its bones moved by its own style once it has a model, and its glow (the golem's lava pulsing).
 local wild = require("../src/shared/Config/Wild")
 local frontier = require("../src/shared/Config/Frontier")
+local party = require("../src/shared/Config/Party")
 local MonsterLooks = require("../src/shared/Util/MonsterLooks")
 local expect = require("./lib/expect")
 
@@ -50,5 +51,23 @@ return {
 			assert(entry.glow and entry.glow.strength > 0, species .. " has no glow")
 		end
 		assert((wild.SPECIES["Magma Golem"] :: any).glow.pulse, "the golem's lava doesn't pulse")
+	end,
+
+	["every wild species moves in its own style with known fidgets"] = function()
+		local known = {}
+		for _, list in { party.PET_ANIM.FIDGETS, party.PET_ANIM.BODY_FIDGETS, party.PET_ANIM.TITAN_FIDGETS } do
+			for _, kind in list do
+				known[kind] = true
+			end
+		end
+		for species in wild.SPECIES do
+			local style = (party.CREATURE_STYLE :: any)[species]
+			assert(style and style.fidgets, species .. " has no style")
+			for _, kind in style.fidgets do
+				assert(known[kind], species .. ": unknown fidget " .. kind)
+			end
+		end
+		expect.equal((party.SIGNATURE :: any)["Ash Wolf"].fidget, "wildroar", "the wolf roars")
+		expect.equal((party.SIGNATURE :: any)["Magma Golem"].fidget, "stomp", "the golem stomps")
 	end,
 }
