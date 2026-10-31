@@ -19,6 +19,7 @@ local Party = require(Config:WaitForChild("Party"))
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
+local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 
 local MonsterController = {}
 
@@ -38,6 +39,7 @@ type Monster = {
 	aura: Aura?, -- a boss with a rainbow aura
 	glows: { SurfaceAppearance }, -- the model's SurfaceAppearances with a glow mask
 	glow: MonsterLooks.Glow?, -- the species' glow (Config/Wild SPECIES)
+	fx: { ParticleEmitter }, -- sparks or smoke on its Fx_ bones (Config/Wild SPECIES fx), on only near the camera
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -270,6 +272,40 @@ local function remove(marker: BasePart)
 	monster.body.model:Destroy()
 end
 
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- A species' small effect on each of its model's Fx_ bones (a Bone is an Attachment, so it emits from there), off
+-- until the camera comes near
+local function makeFx(model: Model, fx: any): { ParticleEmitter }
+	local emitters = {}
+	local look = Wild.FX[fx.kind]
+	if not look then
+		return emitters
+	end
+	for _, name in fx.bones do
+		local bone = model:FindFirstChild(name, true)
+		if bone and bone:IsA("Bone") then
+			local emitter = Instance.new("ParticleEmitter")
+			emitter.Texture = look.texture
+			emitter.Color = ColorSequence.new(rgb(look.color))
+			emitter.LightEmission = look.lightEmission
+			emitter.Size = NumberSequence.new(look.size[1], look.size[2])
+			emitter.Transparency = NumberSequence.new(look.transparency[1], look.transparency[2])
+			emitter.Lifetime = NumberRange.new(look.lifetime[1], look.lifetime[2])
+			emitter.Rate = look.rate
+			emitter.Speed = NumberRange.new(look.speed[1], look.speed[2])
+			emitter.SpreadAngle = Vector2.new(look.spread, look.spread)
+			emitter.Acceleration = Vector3.new(0, look.rise, 0)
+			emitter.Enabled = false
+			emitter.Parent = bone
+			table.insert(emitters, emitter)
+		end
+	end
+	return emitters
+end
+
 -- The glow mask's strength now (a pulsing glow is set every frame, a steady one once)
 local function setGlow(monster: Monster, now: number)
 	local strength = MonsterLooks.glowStrength(monster.glow, now)
@@ -313,6 +349,7 @@ local function add(marker: BasePart)
 		end
 	end
 	local glow: MonsterLooks.Glow? = if boss then nil else (Wild.SPECIES[species] :: any).glow
+	local fxSpec = if boss or not template then nil else (Wild.SPECIES[species] :: any).fx
 	local monster: Monster = {
 		marker = marker,
 		body = body,
@@ -323,6 +360,7 @@ local function add(marker: BasePart)
 		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
 		glows = glows,
 		glow = glow,
+		fx = if fxSpec then makeFx(model, fxSpec) else {},
 	}
 	setGlow(monster, os.clock())
 	if monster.aura and boss and boss.auroraFlame then
@@ -379,6 +417,7 @@ function MonsterController.Start()
 		local now = os.clock()
 		local camera = workspace.CurrentCamera
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
+		local extras = Extras.enabled()
 		for _, monster in monsters do
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
 			if monster.fallenAt then
@@ -389,6 +428,14 @@ function MonsterController.Start()
 			end
 			if monster.glow and monster.glow.pulse then
 				setGlow(monster, now)
+			end
+			if #monster.fx > 0 then
+				local near = extras and (monster.marker.Position - origin).Magnitude <= Wild.FX_RANGE
+				if monster.fx[1].Enabled ~= near then
+					for _, emitter in monster.fx do
+						emitter.Enabled = near
+					end
+				end
 			end
 		end
 	end)

@@ -70,4 +70,7 @@ return {
 	MAX_MODEL_PARTS = 200,
 	MONSTER_HEIGHT = 3.5,
 	ELITE_SIZE = 1.35,
+	-- The monsters' small effects (Config/Wild FX): no Frontier species has one yet
+	FX_RANGE = 60,
+	FX = {},
 }

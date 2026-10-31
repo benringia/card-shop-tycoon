@@ -25,12 +25,33 @@ return {
 		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime", height = 2.5, glow = { strength = 2 } },
 		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab", height = 2, glow = { strength = 2 } },
 		["Cave Bat"] = { element = "Shade", hp = 150, atk = 6, spd = 12, shape = "bat", height = 3, glow = { strength = 2 } },
-		["Spark Beetle"] = { element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle", height = 2.5, glow = { strength = 2 } },
+		["Spark Beetle"] = {
+			element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle", height = 2.5, glow = { strength = 2 },
+			fx = { kind = "sparks", bones = { "Fx_PincerLeft", "Fx_PincerRight" } }, -- crackling at the pincer tips
+		},
 		["Magma Golem"] = {
 			element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem", height = 6.5,
 			glow = { strength = 2.5, pulse = { low = 1.2, high = 3, seconds = 2.5 } },
 		},
-		["Ash Wolf"] = { element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 } },
+		["Ash Wolf"] = {
+			element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 },
+			fx = { kind = "smoke", bones = { "Fx_Tail" } }, -- a wisp of smoke from the tail tip
+		},
+	},
+	-- The monsters' small effects (SPECIES fx), on zero-influence Fx_ bones of their models: only within FX_RANGE studs
+	-- of the camera and with the extras on (Util/Extras). Sizes in studs; colours { r, g, b }
+	FX_RANGE = 60,
+	FX = {
+		sparks = {
+			texture = "rbxasset://textures/particles/sparkles_main.dds", color = { 255, 230, 90 }, lightEmission = 1,
+			size = { 0.25, 0 }, transparency = { 0, 1 }, lifetime = { 0.15, 0.3 }, rate = 12, speed = { 2, 4 }, spread = 180,
+			rise = 0,
+		},
+		smoke = {
+			texture = "rbxasset://textures/particles/smoke_main.dds", color = { 85, 82, 80 }, lightEmission = 0,
+			size = { 0.4, 1.2 }, transparency = { 0.45, 1 }, lifetime = { 1.2, 2 }, rate = 4, speed = { 0.4, 0.9 }, spread = 25,
+			rise = 1.5,
+		},
 	},
 	FLYING = { "Cave Bat" },
 	MONSTER_GROWTH = 0.12,

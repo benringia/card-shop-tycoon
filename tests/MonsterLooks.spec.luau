@@ -70,4 +70,17 @@ return {
 		expect.equal((party.SIGNATURE :: any)["Ash Wolf"].fidget, "wildroar", "the wolf roars")
 		expect.equal((party.SIGNATURE :: any)["Magma Golem"].fidget, "stomp", "the golem stomps")
 	end,
+
+	["the beetle sparks at its pincers and the wolf smokes at its tail"] = function()
+		local beetle = (wild.SPECIES["Spark Beetle"] :: any).fx
+		local wolf = (wild.SPECIES["Ash Wolf"] :: any).fx
+		expect.equal(beetle.kind, "sparks", "beetle")
+		expect.equal(#beetle.bones, 2, "both pincers")
+		expect.equal(wolf.kind, "smoke", "wolf")
+		assert(wild.FX_RANGE > 0, "effects have a range")
+		for _, kind in { "sparks", "smoke" } do
+			local look = (wild :: any).FX[kind]
+			assert(look and look.rate > 0 and look.lifetime[1] > 0, kind .. " has no emitter numbers")
+		end
+	end,
 }
