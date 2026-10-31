@@ -1,6 +1,6 @@
 # The Wild valley, round 2: a winding valley, boss portals, crowds
 
-Status: draft for the user's approval (2026-10-31). Round 1 (`2026-10-31-wild-valley-design.md`) is built on branch
+Status: approved by the user 2026-10-31. Round 1 (`2026-10-31-wild-valley-design.md`) is built on branch
 `wild-valley` and was never merged; the user judged it in Studio and asked for this round instead. This round
 supersedes round 1's layout, boss arenas and signs; round 1's moods, props, effects and rules stay. Concept pictures
 are in the brainstorm companion (`wild-v2-concepts.html`).
