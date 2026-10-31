@@ -186,6 +186,23 @@ return {
 		end
 	end,
 
+	["every biome has 24 spawn spots well inside it, clear, on gentle ground"] = function()
+		for index, biome in valley.BIOMES do
+			local spots = WildValley.zoneSpots(valley, index)
+			expect.equal(#spots, valley.POPULATION.MAX, `biome {index} spots`)
+			for _, p in spots do
+				expect.equal(WildValley.zoneAt(valley, p), index, `{p.x}, {p.z} in biome {index}`)
+				assert(WildValley.clearOf(p, valley), `{p.x}, {p.z} isn't clear`)
+				local here = TownTerrain.groundAt(OPS, p.x, p.z) :: number
+				assert(math.abs(here - biome.ground) <= 6, `{p.x}, {p.z} draws at {here}`)
+				for _, d in { { 4, 0 }, { -4, 0 }, { 0, 4 }, { 0, -4 } } do
+					local there = TownTerrain.groundAt(OPS, p.x + d[1], p.z + d[2]) :: number
+					assert(math.abs(there - here) <= 2, `steep ground at {p.x}, {p.z}`)
+				end
+			end
+		end
+	end,
+
 	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
 		expect.equal(#valley.ARENA_LOOKS, #wild.ZONES, "one arena look per zone")
 		for index, look in valley.ARENA_LOOKS do

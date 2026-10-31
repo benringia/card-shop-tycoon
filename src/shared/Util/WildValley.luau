@@ -108,6 +108,63 @@ function WildValley.clearOf(point: Point, valley: any): (boolean, string?)
 	return true, nil
 end
 
+-- A biome's monster spawn spots (POPULATION.MAX of them): a grid SPOT_SPACING apart over its outline, kept SPOT_MARGIN
+-- from the outline's edges, clear of the trail, stream, arrival, portals and boards, SPOT_PROP_CLEAR from every prop and
+-- off the hills (so a monster's home is on gentle ground), then picked evenly from what's left
+function WildValley.zoneSpots(valley: any, index: number): { Point }
+	local outline = valley.BIOMES[index].outline
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	for _, p in outline do
+		minX, maxX, minZ, maxZ = math.min(minX, p.x), math.max(maxX, p.x), math.min(minZ, p.z), math.max(maxZ, p.z)
+	end
+	local props: { any } = {}
+	for _, name in { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS" } do
+		for _, prop in valley[name] do
+			table.insert(props, prop)
+		end
+	end
+	local function suits(p: Point): boolean
+		if not WildValley.inside(outline, p) or not WildValley.clearOf(p, valley) then
+			return false
+		end
+		for i = 1, #outline do
+			if segmentDistance(p, outline[i], outline[i % #outline + 1]) < valley.SPOT_MARGIN then
+				return false
+			end
+		end
+		for _, prop in props do
+			if math.sqrt((p.x - prop.x) ^ 2 + (p.z - prop.z) ^ 2) < valley.SPOT_PROP_CLEAR then
+				return false
+			end
+		end
+		for _, hill in valley.HILLS do
+			if math.sqrt((p.x - hill.x) ^ 2 + (p.z - hill.z) ^ 2) < hill.radius + 2 then
+				return false
+			end
+		end
+		return true
+	end
+	local candidates: { Point } = {}
+	local z = minZ
+	while z <= maxZ do
+		local x = minX
+		while x <= maxX do
+			local p = { x = x, z = z }
+			if suits(p) then
+				table.insert(candidates, p)
+			end
+			x += valley.SPOT_SPACING
+		end
+		z += valley.SPOT_SPACING
+	end
+	local count = valley.POPULATION.MAX
+	local spots: { Point } = {}
+	for k = 1, math.min(count, #candidates) do
+		table.insert(spots, candidates[math.floor((k - 1) * #candidates / count) + 1])
+	end
+	return spots
+end
+
 -- Whether a monster may take a step from ground at fromY to ground at toY (no climbing cliffs or dropping off shelves)
 function WildValley.canStep(fromY: number, toY: number, maxStep: number): boolean
 	return math.abs(toY - fromY) <= maxStep

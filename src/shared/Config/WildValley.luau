@@ -13,6 +13,14 @@ return {
 	MAX_STEP = 1.5, -- studs a monster may climb or drop in one step (0.1 s at chase speed 11 moves 1.1 studs)
 	PORTAL_CLEAR = 30, -- studs round a boss portal kept free of scenery and spawn spots
 	BOARD_CLEAR = 6, -- studs round a trailhead board
+	-- Monsters per biome (Util/WildPopulation): QUIET while few play there, PER_PLAYER more for each player in it past
+	-- FREE_PLAYERS, up to MAX; respawn seconds { min, max } while quiet and while busy (wanting more than QUIET); checked
+	-- every CHECK_SECONDS
+	POPULATION = { QUIET = 8, PER_PLAYER = 2, FREE_PLAYERS = 3, MAX = 24, RESPAWN_QUIET = { 20, 40 }, RESPAWN_BUSY = { 10, 20 }, CHECK_SECONDS = 2 },
+	-- Spawn spots (Util/WildValley.zoneSpots): a grid this far apart, kept this far from a biome's edges and from props
+	SPOT_SPACING = 18,
+	SPOT_MARGIN = 20,
+	SPOT_PROP_CLEAR = 6,
 	-- Nothing stands here: the arrival pad and the return portal behind it
 	ARRIVAL_CLEAR = { minX = -20, maxX = 20, minZ = 1106, maxZ = 1146 },
 	-- The biomes, indexed like Config/Wild ZONES: middle, ground height, walkable outline, the boss portal (facing

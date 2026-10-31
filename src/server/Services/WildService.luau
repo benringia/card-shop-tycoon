@@ -29,6 +29,7 @@ local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTra
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
 local TownTerrain = require(Shared:WaitForChild("Util"):WaitForChild("TownTerrain"))
+local WildPopulation = require(Shared:WaitForChild("Util"):WaitForChild("WildPopulation"))
 local LavaCracks = require(Shared:WaitForChild("Util"):WaitForChild("LavaCracks"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
@@ -268,7 +269,9 @@ end
 -- and walls along its edge keep them in. The Frontier keeps the plain map.
 local VALLEY = not Place.isFrontier() and not Place.isDungeon()
 local EDGE_HEIGHT = 40
-local INTERIM_SPOT_RADIUS = 30 -- the valley's spawn ring round each biome's middle until the crowd-sized spots
+local valleySpots: { [number]: { BasePart } } = {} -- each biome's spawn spots (WildValley.zoneSpots)
+local pending: { [number]: number } = {} -- each biome's monsters waiting to respawn
+local phantomPlayers = 0 -- Studio only (/crowd): counted in every biome on top of the real players
 -- The valley's terrain as SceneryService fills it: where its ground draws, for things placed before it's filled
 local valleyOps = if VALLEY then WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) else {}
 
@@ -277,7 +280,7 @@ local function valleyGround(x: number, z: number): number
 end
 
 -- A monster spawn spot (an invisible tagged part)
-local function addSpawnPoint(folder: Instance, zoneIndex: number, position: Vector3)
+local function addSpawnPoint(folder: Instance, zoneIndex: number, position: Vector3): BasePart
 	local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1))
 	point.Transparency = 1
 	point.CanCollide = false
@@ -285,6 +288,7 @@ local function addSpawnPoint(folder: Instance, zoneIndex: number, position: Vect
 	point.CanTouch = false
 	point:SetAttribute("Zone", zoneIndex)
 	CollectionService:AddTag(point, SPAWN_TAG)
+	return point
 end
 
 -- A floor monsters stand on: plain in the Frontier, invisible over the valley's terrain in the main game
@@ -335,13 +339,11 @@ local function buildMap(): Folder
 
 	for index, zone in Wild.ZONES do
 		if VALLEY then
-			-- The valley's biomes are terrain (Config/WildValley): no floor parts, the spawn spots on the modelled ground
-			local biome = WildValleyConfig.BIOMES[index]
-			for spot = 1, Wild.MONSTERS_PER_ZONE do
-				local angle = spot / Wild.MONSTERS_PER_ZONE * math.pi * 2
-				local x = biome.centre.x + math.cos(angle) * INTERIM_SPOT_RADIUS
-				local z = biome.centre.z + math.sin(angle) * INTERIM_SPOT_RADIUS
-				addSpawnPoint(folder, index, Vector3.new(x, valleyGround(x, z), z))
+			-- The valley's biomes are terrain (Config/WildValley): no floor parts; enough spawn spots for a crowd, on the
+			-- modelled ground (the population check fills them, WildPopulation)
+			valleySpots[index] = {}
+			for _, spot in WildValley.zoneSpots(WildValleyConfig, index) do
+				table.insert(valleySpots[index], addSpawnPoint(folder, index, Vector3.new(spot.x, valleyGround(spot.x, spot.z), spot.z)))
 			end
 			continue
 		end
@@ -559,6 +561,57 @@ local function updateMonster(monster: Monster, dt: number, now: number)
 	end
 end
 
+-- The valley's crowd-sized monsters (Util/WildPopulation): each biome wants more monsters the more players are in it;
+-- the missing ones come back after a respawn wait on a free spot, and a crowd leaving removes nothing
+
+-- The spots of a biome a living monster holds
+local function takenSpots(zone: number): { [number]: boolean }
+	local taken = {}
+	local spots = valleySpots[zone] or {}
+	for _, monster in monsters do
+		local at = if monster.alive and monster.zone == zone and monster.spawnPoint then table.find(spots, monster.spawnPoint) else nil
+		if at then
+			taken[at] = true
+		end
+	end
+	return taken
+end
+
+local function spawnOnFreeSpot(zone: number)
+	local spots = valleySpots[zone] or {}
+	local free = WildPopulation.freeSpots(#spots, takenSpots(zone))
+	if #free > 0 then
+		spawnAt(spots[free[rng:NextInteger(1, #free)]])
+	end
+end
+
+local function updatePopulation()
+	local cfg = WildValleyConfig.POPULATION
+	local players: { [number]: number } = {}
+	for player in inWild do
+		local root = getRoot(player)
+		local zone = if root then WildValley.zoneAt(WildValleyConfig, { x = root.Position.X, z = root.Position.Z }) else nil
+		if zone then
+			players[zone] = (players[zone] or 0) + 1
+		end
+	end
+	for zone in Wild.ZONES do
+		local target = WildPopulation.target(cfg, (players[zone] or 0) + phantomPlayers)
+		local alive = 0
+		for _ in takenSpots(zone) do
+			alive += 1
+		end
+		local range = WildPopulation.respawnRange(cfg, target)
+		for _ = 1, WildPopulation.deficit(target, alive, pending[zone] or 0) do
+			pending[zone] = (pending[zone] or 0) + 1
+			task.delay(rng:NextNumber(range[1], range[2]), function()
+				pending[zone] -= 1
+				spawnOnFreeSpot(zone)
+			end)
+		end
+	end
+end
+
 -- API ----------------------------------------------------------------------------------------------------
 
 function WildService.GetMonster(id: string): Monster?
@@ -588,7 +641,7 @@ function WildService.Defeat(monster: Monster)
 	monsters[monster.id] = nil
 	monster.marker:Destroy()
 	local point = monster.spawnPoint
-	if point then
+	if point and not VALLEY then -- the valley's come back through the population check
 		task.delay(rng:NextNumber(Wild.RESPAWN_MIN, Wild.RESPAWN_MAX), spawnAt, point)
 	end
 end
@@ -612,6 +665,13 @@ end
 -- A glowing ring with a prompt (FrontierService uses it for the Frontier portal)
 function WildService.BuildPortal(parent: Instance, name: string, position: Vector3, facing: Vector3, actionText: string, onTriggered: (Player) -> ())
 	portal(parent, name, position, facing, actionText, onTriggered)
+end
+
+-- Studio only (/crowd): players counted in every valley biome on top of the real ones, to test a crowd alone
+function WildService.SetPhantomPlayers(count: number)
+	if RunService:IsStudio() then
+		phantomPlayers = math.max(0, math.floor(count))
+	end
 end
 
 function WildService.IsInWild(player: Player): boolean
@@ -907,9 +967,24 @@ function WildService.Start()
 		mapFolder = buildMap()
 		mapFolder.Parent = workspace
 		buildPlaza()
-		for _, point in CollectionService:GetTagged(SPAWN_TAG) do
-			if point:IsA("BasePart") then
-				spawnAt(point)
+		if VALLEY then
+			-- each biome starts quiet; the population check adds more as players come
+			for zone in Wild.ZONES do
+				for _ = 1, WildValleyConfig.POPULATION.QUIET do
+					spawnOnFreeSpot(zone)
+				end
+			end
+			task.spawn(function()
+				while true do
+					task.wait(WildValleyConfig.POPULATION.CHECK_SECONDS)
+					updatePopulation()
+				end
+			end)
+		else
+			for _, point in CollectionService:GetTagged(SPAWN_TAG) do
+				if point:IsA("BasePart") then
+					spawnAt(point)
+				end
 			end
 		end
 	end
