@@ -68,17 +68,13 @@ return {
 	-- TERRAIN_WAIT seconds for this Workspace attribute, so nobody lands before there's ground to stand on
 	TERRAIN_READY_ATTRIBUTE = "WildTerrainReady",
 	TERRAIN_WAIT = 20,
-	-- The Wild's name boards (WildService; SIGN_WIDTH wide): "The Wild" beside the root arch, clear of its legs
-	-- (ARCH_HALF_WIDTH: the PortalWild model's measured half width), and each zone's board at x ZONE_SIGN_X by its near
-	-- edge (Util/WildValley.zoneSign)
+	-- The Wild's plain name boards (WildService's sign: the Frontier's, and "The Wild" here until its trailhead board)
 	SIGN_WIDTH = 14,
-	ARCH_HALF_WIDTH = 15.5,
 	RETURN_SIGN = { x = 24, z = 1121 },
-	ZONE_SIGN_X = 26,
-	-- The meadow's stream: from the -x cliff down to a pond by the arrival, the trail crossing it on a bridge
-	STREAM = { from = { x = -72, z = 1170 }, to = { x = 40, z = 1128 }, width = 6, pond = { x = 42, z = 1126, radius = 8 } },
+	-- The meadow's stream: out of the east hills, across the trail under a bridge, into a pond west of it
+	STREAM = { from = { x = 98, z = 1185 }, to = { x = -60, z = 1148 }, width = 6, pond = { x = -60, z = 1148, radius = 8 } },
 	-- The wooden footbridge where the trail crosses the stream (code-built: deck planks, rails and posts)
-	BRIDGE = { x = 0, z = 1143, length = 16, width = 9, rise = 1.2, wood = { 138, 96, 60 }, dark = { 96, 66, 42 } },
+	BRIDGE = { x = 0, z = 1162, length = 16, width = 9, rise = 1.2, wood = { 138, 96, 60 }, dark = { 96, 66, 42 } },
 	-- The trail's markers: small glowing stones along its edges, alternating sides
 	MARKER = { size = 1.3, color = { 170, 255, 190 } },
 
@@ -138,21 +134,21 @@ return {
 	-- Cut and filled after the trail: the meadow's stream and pond (water only fills empty space, so the channel is
 	-- carved first, then filled, then floored below so nobody sinks out of the world) and the gorge's cave mouth
 	CARVES = {
-		{ shape = "Block", x = -16, y = -4, z = 1149, yaw = 20.56, size = { x = 120, y = 8, z = 6 }, material = "Air" },
-		{ shape = "Block", x = 42, y = -4, z = 1126, yaw = 45, size = { x = 16, y = 8, z = 16 }, material = "Air" },
-		{ shape = "Block", x = -16, y = -5, z = 1149, yaw = 20.56, size = { x = 120, y = 6, z = 6 }, material = "Water" },
-		{ shape = "Block", x = 42, y = -5, z = 1126, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" },
-		{ shape = "Block", x = -16, y = -10, z = 1149, yaw = 20.56, size = { x = 124, y = 4, z = 10 }, material = "Ground" },
-		{ shape = "Block", x = 42, y = -10, z = 1126, yaw = 45, size = { x = 20, y = 4, z = 20 }, material = "Ground" },
-		{ shape = "Block", x = -454, y = 24, z = 1420, size = { x = 18, y = 18, z = 22 }, material = "Air" }, -- the cave mouth
+		{ shape = "Block", x = 19, y = -4, z = 1166.5, yaw = -13.18, size = { x = 162, y = 8, z = 6 }, material = "Air" },
+		{ shape = "Block", x = -60, y = -4, z = 1148, yaw = 45, size = { x = 16, y = 8, z = 16 }, material = "Air" },
+		{ shape = "Block", x = 19, y = -5, z = 1166.5, yaw = -13.18, size = { x = 162, y = 6, z = 6 }, material = "Water" }, -- the stream
+		{ shape = "Block", x = -60, y = -5, z = 1148, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" }, -- its pond
+		{ shape = "Block", x = 19, y = -10, z = 1166.5, yaw = -13.18, size = { x = 166, y = 4, z = 10 }, material = "Ground" },
+		{ shape = "Block", x = -60, y = -10, z = 1148, yaw = 45, size = { x = 20, y = 4, z = 20 }, material = "Ground" },
+		{ shape = "Block", x = -454, y = 22, z = 1420, size = { x = 18, y = 18, z = 22 }, material = "Air" }, -- the cave mouth (from just under the gorge's floor, so it walks in level)
 	},
-	-- The crystal cave's mouth (the carved opening above): a dark wall on its back face (found by a ray westward from x,
-	-- once the terrain is filled), blue light inside
-	CAVE = { x = -60, z = 1340, width = 22, height = 18, inside = { 16, 18, 30 }, light = { 110, 190, 255 } },
+	-- The crystal cave's mouth in the gorge's west cliff (the carved opening above, its floor at y): a dark wall on its
+	-- back face (found by a ray westward from x, once the terrain is filled), blue light inside
+	CAVE = { x = -436, y = 15, z = 1420, width = 22, height = 18, inside = { 16, 18, 30 }, light = { 110, 190, 255 } },
 	-- The gorge's crystals: clusters of three (a tall one and two leaning), glowing blue
 	CRYSTAL_LOOK = { color = { 90, 180, 255 }, tip = { 190, 235, 255 }, transparency = 0.12 },
 	-- The ridge's floor cracks (Util/LavaCracks.floor: off the trail), and its vents' look
-	RIDGE_CRACKS = { SEED = 47, FLOOR = { centre = { x = 0, z = 1480 }, size = { x = 116, z = 116 }, count = 14 } },
+	RIDGE_CRACKS = { SEED = 47, FLOOR = { centre = { x = -55, z = 1680 }, size = { x = 250, z = 200 }, count = 26 } },
 	VENT_LOOK = { rock = { 40, 34, 40 }, glow = { 255, 120, 30 }, radius = 3 },
 	-- Each zone's boss arena dressed in its mood (WildService.BuildBossArenas; rings, barriers and gates unchanged): the
 	-- floor disc and path (lifted LIFT studs over the terrain so they don't flicker against it) and the fence posts, every
@@ -165,67 +161,85 @@ return {
 		{ floor = { 46, 42, 50 }, floorMaterial = "Basalt", path = { 60, 54, 62 }, pathMaterial = "Basalt", post = { 52, 46, 56 }, postMaterial = "Basalt", postSize = 1.6, postHeight = 6, tip = { 255, 120, 30 }, cracks = { seed = 53, count = 12, size = 46, width = { 0.4, 0.8 } } },
 	},
 
-	-- Town prop models (PropModels), scaled to `height` on the drawn ground. zone: which mood they dress.
+	-- Town prop models (PropModels), scaled to `height` on the drawn ground (y: a ground height of its own)
 	PROPS = {
-		-- Meadow (zone 1)
-		{ model = "TreeA", x = -48, z = 1248, height = 22, yaw = 20 },
-		{ model = "TreeB", x = 48, z = 1248, height = 20, yaw = 140 },
-		{ model = "TreeC", x = -50, z = 1228, height = 18, yaw = 250 },
-		{ model = "TreeD", x = -28, z = 1250, height = 20, yaw = 75 },
-		{ model = "PineA", x = 50, z = 1228, height = 19, yaw = 10 },
-		{ model = "TreeB", x = -66, z = 1150, height = 21, yaw = 300 },
-		{ model = "TreeC", x = -66, z = 1190, height = 19, yaw = 30 },
-		{ model = "TreeA", x = -66, z = 1230, height = 23, yaw = 200 },
-		{ model = "TreeD", x = -40, z = 1270, height = 20, yaw = 120 },
-		{ model = "Bush", x = 28, z = 1250, height = 3, yaw = 0 },
-		{ model = "BushA", x = 50, z = 1172, height = 3, yaw = 90 },
-		{ model = "BushB", x = -60, z = 1262, height = 2.6, yaw = 180 },
-		{ model = "FlowerPink", x = 48, z = 1152, height = 2.4, yaw = 30 },
-		{ model = "FlowerYellow", x = -50, z = 1172, height = 2.4, yaw = 80 },
-		{ model = "FlowerBlue", x = 28, z = 1150, height = 2.4, yaw = 140 },
-		{ model = "FlowerWhite", x = -48, z = 1152, height = 2.4, yaw = 200 },
-		{ model = "RockC", x = 40, z = 1270, height = 3, yaw = 60 },
-		-- Gorge (zone 2)
-		{ model = "RockA", x = -48, z = 1292, height = 5, yaw = 20 },
-		{ model = "RockB", x = 48, z = 1292, height = 4, yaw = 110 },
-		{ model = "RockC", x = -50, z = 1312, height = 6, yaw = 200 },
-		{ model = "RockD", x = 50, z = 1312, height = 4, yaw = 290 },
-		{ model = "Rock", x = -48, z = 1388, height = 6, yaw = 40 },
-		{ model = "RockA", x = 48, z = 1388, height = 5, yaw = 160 },
-		{ model = "RockB", x = -28, z = 1390, height = 4, yaw = 250 },
-		{ model = "RockC", x = 28, z = 1390, height = 4, yaw = 330 },
-		{ model = "RockD", x = -40, z = 1410, height = 5, yaw = 70 },
+		-- The meadow (biome 1): trees round its edges and in clumps, bushes, flowers and rocks
+		{ model = "TreeA", x = -60, z = 1120, height = 22, yaw = 20 },
+		{ model = "TreeB", x = 60, z = 1125, height = 20, yaw = 140 },
+		{ model = "TreeC", x = -120, z = 1130, height = 19, yaw = 250 },
+		{ model = "PineA", x = 85, z = 1150, height = 19, yaw = 10 },
+		{ model = "TreeD", x = -180, z = 1135, height = 20, yaw = 75 },
+		{ model = "TreeA", x = -185, z = 1225, height = 23, yaw = 200 },
+		{ model = "TreeB", x = -110, z = 1210, height = 21, yaw = 300 },
+		{ model = "TreeC", x = -30, z = 1270, height = 18, yaw = 30 },
+		{ model = "TreeD", x = 30, z = 1295, height = 20, yaw = 120 },
+		{ model = "PineB", x = 80, z = 1260, height = 21, yaw = 60 },
+		{ model = "TreeA", x = -80, z = 1300, height = 22, yaw = 160 },
+		{ model = "PineA", x = -195, z = 1170, height = 20, yaw = 220 },
+		{ model = "TreeB", x = 40, z = 1230, height = 20, yaw = 90 },
+		{ model = "Bush", x = -30, z = 1195, height = 3, yaw = 0 },
+		{ model = "BushA", x = 40, z = 1150, height = 3, yaw = 90 },
+		{ model = "BushB", x = 25, z = 1210, height = 2.6, yaw = 180 },
+		{ model = "Bush", x = -150, z = 1240, height = 3, yaw = 45 },
+		{ model = "BushA", x = -100, z = 1290, height = 3, yaw = 270 },
+		{ model = "FlowerPink", x = -20, z = 1225, height = 2.4, yaw = 30 },
+		{ model = "FlowerYellow", x = 30, z = 1180, height = 2.4, yaw = 80 },
+		{ model = "FlowerBlue", x = -130, z = 1180, height = 2.4, yaw = 140 },
+		{ model = "FlowerWhite", x = 70, z = 1140, height = 2.4, yaw = 200 },
+		{ model = "FlowerPink", x = -160, z = 1150, height = 2.4, yaw = 260 },
+		{ model = "RockC", x = -90, z = 1125, height = 3, yaw = 60 },
+		{ model = "RockB", x = 75, z = 1245, height = 3.5, yaw = 200 },
+		-- The gorge (biome 2): rocks over its limestone floor
+		{ model = "RockA", x = -280, z = 1330, height = 5, yaw = 20 },
+		{ model = "RockB", x = -380, z = 1340, height = 4, yaw = 110 },
+		{ model = "RockC", x = -405, z = 1365, height = 6, yaw = 200 },
+		{ model = "RockD", x = -260, z = 1420, height = 4, yaw = 290 },
+		{ model = "Rock", x = -380, z = 1460, height = 6, yaw = 40 },
+		{ model = "RockA", x = -270, z = 1480, height = 5, yaw = 160 },
+		{ model = "RockB", x = -410, z = 1515, height = 4, yaw = 250 },
+		{ model = "RockC", x = -345, z = 1310, height = 4, yaw = 330 },
+		{ model = "RockD", x = -250, z = 1390, height = 5, yaw = 70 },
+		{ model = "Rock", x = -430, z = 1460, height = 5, yaw = 120 },
 	},
-	-- Blue crystal clusters in the gorge (code-built like Frostpeak's ice crystals), and at the cave's lip
+	-- Past the ridge's far cliff: the caldera's volcano (dressed like the canyon's: anchored, its lava glowing), its foot
+	-- hidden behind the cliff, its lava streaks (its -Z side) toward the ridge
+	VOLCANO = { model = "Volcano", x = -55, z = 1890, y = 20, height = 90, yaw = 0 },
+	-- Blue crystal clusters in the gorge (code-built like Frostpeak's ice crystals), two at the cave's lip
 	CRYSTALS = {
-		{ x = -50, z = 1368, height = 5, yaw = 20 },
-		{ x = -28, z = 1290, height = 4, yaw = 80 },
-		{ x = 28, z = 1290, height = 4, yaw = 150 },
-		{ x = 50, z = 1368, height = 4, yaw = 230 },
-		{ x = -68, z = 1328, height = 6, yaw = 300 },
-		{ x = -68, z = 1352, height = 5, yaw = 10 },
+		{ x = -440, z = 1405, height = 6, yaw = 300 },
+		{ x = -440, z = 1436, height = 5, yaw = 10 },
+		{ x = -280, z = 1440, height = 5, yaw = 20 },
+		{ x = -360, z = 1380, height = 4, yaw = 80 },
+		{ x = -395, z = 1480, height = 5, yaw = 150 },
+		{ x = -250, z = 1350, height = 4, yaw = 230 },
+		{ x = -320, z = 1530, height = 4, yaw = 100 },
+		{ x = -410, z = 1330, height = 4, yaw = 190 },
 	},
-	-- The ridge: the caldera's charred trees and obsidian shards (Blender props), and two smoking vents
+	-- The ridge (biome 3): the caldera's charred trees and obsidian shards (Blender props), and three smoking vents
 	CHARRED = {
-		{ model = "CharredTree", x = -48, z = 1432, height = 11, yaw = 20 },
-		{ model = "CharredTree", x = 48, z = 1432, height = 10, yaw = 140 },
-		{ model = "CharredTree", x = -50, z = 1508, height = 12, yaw = 250 },
-		{ model = "CharredTree", x = 50, z = 1508, height = 10, yaw = 75 },
-		{ model = "CharredTree", x = -28, z = 1530, height = 9, yaw = 300 },
-		{ model = "CharredTree", x = 28, z = 1530, height = 10, yaw = 190 },
-		{ model = "CharredTree", x = -66, z = 1450, height = 11, yaw = 30 },
-		{ model = "CharredTree", x = -66, z = 1500, height = 10, yaw = 210 },
+		{ model = "CharredTree", x = -150, z = 1700, height = 11, yaw = 20 },
+		{ model = "CharredTree", x = -60, z = 1620, height = 10, yaw = 140 },
+		{ model = "CharredTree", x = 20, z = 1610, height = 12, yaw = 250 },
+		{ model = "CharredTree", x = 70, z = 1700, height = 10, yaw = 75 },
+		{ model = "CharredTree", x = -100, z = 1780, height = 9, yaw = 300 },
+		{ model = "CharredTree", x = -180, z = 1740, height = 10, yaw = 190 },
+		{ model = "CharredTree", x = -40, z = 1600, height = 11, yaw = 30 },
+		{ model = "CharredTree", x = 90, z = 1630, height = 10, yaw = 210 },
+		{ model = "CharredTree", x = 30, z = 1785, height = 11, yaw = 110 },
+		{ model = "CharredTree", x = -140, z = 1610, height = 9, yaw = 330 },
 	},
 	SHARDS = {
-		{ model = "ObsidianShards", x = -50, z = 1452, height = 4, yaw = 0 },
-		{ model = "ObsidianShards", x = 50, z = 1452, height = 4, yaw = 120 },
-		{ model = "ObsidianShards", x = -28, z = 1430, height = 3.5, yaw = 240 },
-		{ model = "ObsidianShards", x = 28, z = 1430, height = 4, yaw = 60 },
-		{ model = "ObsidianShards", x = -48, z = 1528, height = 4.5, yaw = 300 },
-		{ model = "ObsidianShards", x = 48, z = 1528, height = 3.5, yaw = 170 },
+		{ model = "ObsidianShards", x = -90, z = 1700, height = 4, yaw = 0 },
+		{ model = "ObsidianShards", x = 10, z = 1650, height = 4, yaw = 120 },
+		{ model = "ObsidianShards", x = -160, z = 1770, height = 3.5, yaw = 240 },
+		{ model = "ObsidianShards", x = 50, z = 1720, height = 4, yaw = 60 },
+		{ model = "ObsidianShards", x = -200, z = 1690, height = 4.5, yaw = 300 },
+		{ model = "ObsidianShards", x = -70, z = 1760, height = 3.5, yaw = 170 },
+		{ model = "ObsidianShards", x = 80, z = 1590, height = 4, yaw = 90 },
 	},
 	VENTS = {
-		{ x = -56, z = 1500, height = 4 },
-		{ x = 56, z = 1456, height = 3.5 },
+		{ x = -110, z = 1690, height = 4 },
+		{ x = 40, z = 1610, height = 3.5 },
+		{ x = -30, z = 1740, height = 4 },
 	},
 }

@@ -343,12 +343,13 @@ return {
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
 		{ area = "EmberCanyon", kind = "flow", x = -184, y = 0.6, z = -28.5, size = { x = 96, z = 3 }, rate = 10 },
 		{ area = "EmberCanyon", kind = "plume", x = -335, y = 110, z = 10 }, -- PLUME, from the volcano's crater (its Fx_Smoke when the model is there)
-		{ area = "WildMeadow", kind = "fireflies", x = 0, y = 4, z = 1200, size = { x = 110, z = 110 }, rate = 10 }, -- the Wild valley's meadow
-		{ area = "WildMeadow", kind = "leaves", x = -60, y = 28, z = 1200, size = { x = 24, z = 150 }, rate = 4 },
-		{ area = "WildGorge", kind = "glints", x = -40, y = 3, z = 1340, size = { x = 60, z = 120 }, rate = 8 },
-		{ area = "WildRidge", kind = "embers", x = 0, y = 1, z = 1480, size = { x = 116, z = 116 }, rate = 14 },
-		{ area = "WildRidge", kind = "ventsmoke", x = -56, y = 4, z = 1500, size = { x = 3, z = 3 }, rate = 3 },
-		{ area = "WildRidge", kind = "ventsmoke", x = 56, y = 3.5, z = 1456, size = { x = 3, z = 3 }, rate = 3 },
+		{ area = "WildMeadow", kind = "fireflies", x = -50, y = 4, z = 1212, size = { x = 200, z = 170 }, rate = 10 }, -- the Wild valley's meadow
+		{ area = "WildMeadow", kind = "leaves", x = -150, y = 28, z = 1180, size = { x = 60, z = 120 }, rate = 4 },
+		{ area = "WildGorge", kind = "glints", x = -360, y = 18, z = 1420, size = { x = 120, z = 200 }, rate = 8 },
+		{ area = "WildRidge", kind = "embers", x = -55, y = 36, z = 1680, size = { x = 220, z = 180 }, rate = 14 },
+		{ area = "WildRidge", kind = "ventsmoke", x = -110, y = 39, z = 1690, size = { x = 3, z = 3 }, rate = 3 }, -- one per WildValley.VENTS, on its rim
+		{ area = "WildRidge", kind = "ventsmoke", x = 40, y = 38.5, z = 1610, size = { x = 3, z = 3 }, rate = 3 },
+		{ area = "WildRidge", kind = "ventsmoke", x = -30, y = 39, z = 1740, size = { x = 3, z = 3 }, rate = 3 },
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},

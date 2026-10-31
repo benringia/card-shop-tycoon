@@ -11,6 +11,22 @@ local expect = require("./lib/expect")
 
 local OPS = WildValley.terrainOps(valley, TownTerrain.trailSegment)
 
+local function allProps(): { any }
+	local list = {}
+	for _, name in { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS" } do
+		for _, prop in valley[name] do
+			table.insert(list, prop)
+		end
+	end
+	return list
+end
+
+local function distanceToSegment(p: any, a: any, b: any): number
+	local dx, dz = b.x - a.x, b.z - a.z
+	local t = math.clamp(((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz), 0, 1)
+	return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
+end
+
 return {
 	["spawn spots match today's ring"] = function()
 		local spots = WildValley.spawnSpots(wild, 1)
@@ -111,6 +127,63 @@ return {
 		expect.equal(valley.SURFACE_LIFT, TownTerrain.SURFACE_LIFT, "the valley's ramps use the terrain's surface lift")
 		local cells = TownTerrain.estimatedCells(OPS)
 		assert(cells <= valley.MAX_CELLS, `{cells} cells (budget {valley.MAX_CELLS})`)
+	end,
+
+	["props stay off the trail, the stream, the portals, the boards and the arrival, in their own biome"] = function()
+		for _, prop in allProps() do
+			local ok, why = WildValley.clearOf(prop, valley)
+			assert(ok, `{prop.model or "prop"} at {prop.x}, {prop.z}: {why}`)
+		end
+		for _, list in { { valley.CRYSTALS, 2 }, { valley.CHARRED, 3 }, { valley.SHARDS, 3 }, { valley.VENTS, 3 } } do
+			for _, prop in list[1] do
+				expect.equal(WildValley.zoneAt(valley, prop), list[2], `{prop.x}, {prop.z} dresses biome {list[2]}`)
+			end
+		end
+	end,
+
+	["the bridge carries the trail over the stream"] = function()
+		local s, b = valley.STREAM, valley.BRIDGE
+		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")
+		assert(distanceToSegment(b, s.from, s.to) <= s.width / 2, "the bridge's middle isn't over the stream")
+	end,
+
+	["the edge lets players into the cave mouth but not past its carve"] = function()
+		local cave = valley.CAVE
+		assert(WildValley.inside(valley.EDGE, { x = cave.x - 13, z = cave.z }), "an invisible wall stands across the cave mouth")
+		local carve
+		for _, op in valley.CARVES do
+			if op.material == "Air" and op.z == cave.z then
+				carve = op
+			end
+		end
+		assert(carve, "the cave's carve")
+		local back, sides = carve.x - carve.size.x / 2, carve.size.z / 2
+		local deepest = math.huge
+		for _, p in valley.EDGE do
+			if math.abs(p.z - cave.z) <= sides then
+				deepest = math.min(deepest, p.x)
+			end
+		end
+		-- the edge wall (2 thick) stays inside the carve, in front of the cave's dark back wall
+		assert(deepest - 1 > back, `the edge reaches x {deepest}, past the cave's back at {back}`)
+		expect.equal(WildValley.zoneAt(valley, cave), 2, "the cave is in the gorge")
+		expect.equal(cave.y, valley.BIOMES[2].ground, "the cave mouth opens at the gorge's floor")
+	end,
+
+	["the valley's effects stand in their biomes, at most 4 a biome"] = function()
+		local scenery = require("../src/shared/Config/Scenery")
+		local count = {}
+		for _, e in scenery.EMITTERS do
+			local biome = ({ WildMeadow = 1, WildGorge = 2, WildRidge = 3 })[e.area]
+			if biome then
+				count[biome] = (count[biome] or 0) + 1
+				expect.equal(WildValley.zoneAt(valley, e), biome, `{e.kind} at {e.x}, {e.z}`)
+				assert(math.abs(e.y - valley.BIOMES[biome].ground) <= 30, `{e.kind} floats at {e.y}`)
+			end
+		end
+		for biome, n in count do
+			assert(n <= 4, `biome {biome} has {n} effects`)
+		end
 	end,
 
 	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
