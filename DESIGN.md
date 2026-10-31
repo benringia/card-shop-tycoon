@@ -1768,13 +1768,22 @@ boss models; the ranch and Heroic tiers come after those.
   fx line); no generator committed for `volcano-plume.png`; test gaps (Arena trail by index, generated trail ops not in
   the colour test, the variant test checks only names); literals in SceneryService's crack and plume code; the volcano's
   shadow at low sun not checked.
-- [ ] Wild valley (specs `2026-10-31-wild-valley-design.md` and `2026-10-31-wild-valley-v2-design.md`, plans
+- [x] Wild valley (specs `2026-10-31-wild-valley-design.md` and `2026-10-31-wild-valley-v2-design.md`, plans
   `2026-10-31-wild-valley.md` and `2026-10-31-wild-valley-v2.md`, branch `wild-valley`): the Wild's three flat squares
   turned into one winding valley (round 1: the moods, the root-arch return portal, the stream, cave and ridge; round 2,
   after the user judged round 1 in Studio: an S-shaped trail through three biomes at three heights with passes and
   hills, boss portals sending each fight to one of 4 arena copies, monsters growing with the players in a zone (8 to
   24), wooden trailhead signs and arrow posts). The plaza signpost moved into the planter by the spawn, and the town's
-  animals show from the start of a visit. Measured: 60 fps everywhere; terrain cap raised to 230k cells.
+  animals show from the start of a visit. Measured: 60 fps everywhere; terrain cap raised to 230k cells. Approved by
+  the user and merged 2026-11-01. Deferred minors from its reviews: respawns queued during a crowd still land after it
+  leaves; Return says "Finish the fight first." during the boss's 4 s death scene; onGroup doesn't check `entering`,
+  which is one boolean per player; the turned gorge and ridge floors stick out past the cliffs (seen zoomed out); no
+  "opening the arena" notice while a copy streams in (up to 10 s); an elite refused at a pass wall can stand stranded;
+  the return arch has no fallback if PortalWild is missing; some numbers left in WildService/SceneryService (wall
+  thickness, gate clearance, crack lift, bridge/marker/cave light/vent sizes); copied numbers without a tie-in test
+  (stream ops vs STREAM, BRIDGE.z vs the crossing, ventsmoke emitters vs VENTS); no test that WildValley's prop names
+  exist in assets/props; EdgeWall's CanQuery false is moot while CanCollide is on; nits (PROPS comment mentions a zone
+  field, PortalFxController's header says three portals, no bridge post at the far end).
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
