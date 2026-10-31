@@ -76,9 +76,17 @@ return {
 	-- TERRAIN_WAIT seconds for this Workspace attribute, so nobody lands before there's ground to stand on
 	TERRAIN_READY_ATTRIBUTE = "WildTerrainReady",
 	TERRAIN_WAIT = 20,
-	-- The Wild's plain name boards (WildService's sign: the Frontier's, and "The Wild" here until its trailhead board)
+	-- The Frontier's plain name boards (WildService's sign)
 	SIGN_WIDTH = 14,
-	RETURN_SIGN = { x = 24, z = 1121 },
+	-- The valley's wooden signs (Server/Util/TrailProps, like the town's), each turned to face the trail: "The Wild"
+	-- trailhead by the arrival, clear of the root arch's legs (each biome's board is in BIOMES), and an arrow post at each
+	-- bend naming the way on (a zone: its name and colour) and the way back to the portal home
+	RETURN_SIGN = { x = 18, z = 1134 },
+	BOARD_FACE_BACK = 25, -- studs back along the trail (toward the arrival) a board turns to face (WildValley.backAlongTrail)
+	ARROWS = {
+		{ x = -165, z = 1245, arms = { { zone = 2, toward = { x = -240, z = 1320 } }, { text = "SHOP", toward = { x = 0, z = 1130 } } } },
+		{ x = -310, z = 1535, arms = { { zone = 3, toward = { x = -195, z = 1605 } }, { text = "SHOP", toward = { x = -320, z = 1480 } } } },
+	},
 	-- The meadow's stream: out of the east hills, across the trail under a bridge, into a pond west of it
 	STREAM = { from = { x = 98, z = 1185 }, to = { x = -60, z = 1148 }, width = 6, pond = { x = -60, z = 1148, radius = 8 } },
 	-- The wooden footbridge where the trail crosses the stream (code-built: deck planks, rails and posts)

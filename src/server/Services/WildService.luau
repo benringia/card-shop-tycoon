@@ -38,6 +38,7 @@ local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local PlotService = require(Services:WaitForChild("PlotService"))
 local BloomFountain = require(Util:WaitForChild("BloomFountain"))
 local PortalBuild = require(Util:WaitForChild("PortalBuild"))
+local TrailProps = require(Util:WaitForChild("TrailProps"))
 local DungeonBuilder = require(Util:WaitForChild("DungeonBuilder"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -279,6 +280,34 @@ local function valleyGround(x: number, z: number): number
 	return TownTerrain.groundAt(valleyOps, x, z) or 0
 end
 
+-- The valley's wooden signs (Server/Util/TrailProps, like the town's), each on the drawn ground facing back down the
+-- trail the way players come:
+-- "The Wild" by the arrival, each biome's trailhead board (its name and monster levels) and an arrow post at each bend
+local function buildValleySigns(folder: Instance)
+	local function facingTrail(spot: { x: number, z: number }): CFrame
+		local toward = WildValley.backAlongTrail(WildValleyConfig, spot, WildValleyConfig.BOARD_FACE_BACK)
+		return CFrame.new(spot.x, valleyGround(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(PortalTrails.armYaw(spot, toward)), 0)
+	end
+	TrailProps.trailhead(folder, facingTrail(WildValleyConfig.RETURN_SIGN), "THE WILD", nil)
+	for index, zone in Wild.ZONES do
+		TrailProps.trailhead(folder, facingTrail(WildValleyConfig.BIOMES[index].board), string.upper(zone.name), `Lv {zone.minLevel}-{zone.maxLevel}`)
+	end
+	local homeColor = Props.color(Town.PORTAL_EFFECTS.Wild.ring)
+	for _, post in WildValleyConfig.ARROWS do
+		local arms: { TrailProps.Arm } = {}
+		for _, arm in post.arms do
+			local zone = if arm.zone then Wild.ZONES[arm.zone] else nil
+			table.insert(arms, {
+				text = if zone then string.upper(zone.name) else arm.text,
+				sub = Town.SIGN_SUBTEXT,
+				color = if zone then rgb(zone.color) else homeColor,
+				yaw = PortalTrails.armYaw(post, arm.toward),
+			})
+		end
+		TrailProps.signpost(folder, CFrame.new(post.x, valleyGround(post.x, post.z), post.z), arms)
+	end
+end
+
 -- A monster spawn spot (an invisible tagged part)
 local function addSpawnPoint(folder: Instance, zoneIndex: number, position: Vector3): BasePart
 	local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1))
@@ -333,9 +362,11 @@ local function buildMap(): Folder
 			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
 		end
 	end
-	-- In the valley beside the root arch, clear of its legs
-	local signSpot = if VALLEY then Vector3.new(WildValleyConfig.RETURN_SIGN.x, entrance.Y + 4, WildValleyConfig.RETURN_SIGN.z) else entrance + Vector3.new(10, 4, -9)
-	sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(signSpot) * CFrame.Angles(0, math.pi, 0))
+	if VALLEY then
+		buildValleySigns(folder)
+	else
+		sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(entrance + Vector3.new(10, 4, -9)) * CFrame.Angles(0, math.pi, 0))
+	end
 
 	for index, zone in Wild.ZONES do
 		if VALLEY then

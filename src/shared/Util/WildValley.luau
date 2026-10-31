@@ -78,6 +78,35 @@ local function segmentDistance(p: Point, a: Point, b: Point): number
 	return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 end
 
+-- The trail point `distance` studs back toward the arrival from the trail point nearest a spot (never past the
+-- arrival): what a board beside the trail turns to face, so players walking up read it head on
+function WildValley.backAlongTrail(valley: any, point: Point, distance: number): Point
+	local trail = WildValley.trail(valley)
+	local nearestIndex, nearestT, bestDistance = 2, 0, math.huge
+	for index = 2, #trail do
+		local a, b = trail[index - 1], trail[index]
+		local dx, dz = b.x - a.x, b.z - a.z
+		local t = math.clamp(((point.x - a.x) * dx + (point.z - a.z) * dz) / (dx * dx + dz * dz), 0, 1)
+		local d = math.sqrt((point.x - (a.x + dx * t)) ^ 2 + (point.z - (a.z + dz * t)) ^ 2)
+		if d < bestDistance then
+			nearestIndex, nearestT, bestDistance = index, t, d
+		end
+	end
+	local index, t, left = nearestIndex, nearestT, distance
+	while true do
+		local a, b = trail[index - 1], trail[index]
+		local length = math.sqrt((b.x - a.x) ^ 2 + (b.z - a.z) ^ 2)
+		local available = t * length
+		if left <= available or index == 2 then
+			local along = math.max(0, available - left) / length
+			return { x = a.x + (b.x - a.x) * along, z = a.z + (b.z - a.z) * along }
+		end
+		left -= available
+		index -= 1
+		t = 1
+	end
+end
+
 -- Whether scenery may stand at a spot; false and why when not
 function WildValley.clearOf(point: Point, valley: any): (boolean, string?)
 	local trail = WildValley.trail(valley)

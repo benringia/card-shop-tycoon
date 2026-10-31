@@ -203,6 +203,38 @@ return {
 		end
 	end,
 
+	["the boards and arrow posts stand beside the trail, not on it, inside the edge"] = function()
+		local spots = { valley.RETURN_SIGN }
+		for _, biome in valley.BIOMES do
+			table.insert(spots, biome.board)
+		end
+		for _, post in valley.ARROWS do
+			table.insert(spots, post)
+			assert(#post.arms >= 2, "an arrow post names the way on and the way back")
+		end
+		for _, s in spots do
+			local nearest = math.huge
+			local trail = WildValley.trail(valley)
+			for i = 2, #trail do
+				nearest = math.min(nearest, distanceToSegment(s, trail[i - 1], trail[i]))
+			end
+			assert(nearest >= valley.TRAIL_WIDTH / 2 + 2 and nearest <= 20, `{s.x}, {s.z} is {nearest} from the trail`)
+			assert(WildValley.inside(valley.EDGE, s), `{s.x}, {s.z} is outside the edge`)
+			assert(distanceToSegment(s, valley.STREAM.from, valley.STREAM.to) >= valley.STREAM.width / 2 + 3, `{s.x}, {s.z} stands in the stream`)
+		end
+	end,
+
+	["a board turns toward the trail where players come from"] = function()
+		local t5, t6 = valley.TRAIL[5], valley.TRAIL[6]
+		local back = WildValley.backAlongTrail(valley, { x = t6.x, z = t6.z }, 10)
+		local length = math.sqrt((t6.x - t5.x) ^ 2 + (t6.z - t5.z) ^ 2)
+		expect.near(back.x, t6.x + (t5.x - t6.x) * 10 / length, 1e-6, "10 studs back down the first pass (x)")
+		expect.near(back.z, t6.z + (t5.z - t6.z) * 10 / length, 1e-6, "10 studs back down the first pass (z)")
+		local start = WildValley.backAlongTrail(valley, { x = 10, z = 1135 }, valley.BOARD_FACE_BACK)
+		expect.near(start.x, valley.TRAIL[1].x, 1e-6, "never past the arrival (x)")
+		expect.near(start.z, valley.TRAIL[1].z, 1e-6, "never past the arrival (z)")
+	end,
+
 	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
 		expect.equal(#valley.ARENA_LOOKS, #wild.ZONES, "one arena look per zone")
 		for index, look in valley.ARENA_LOOKS do

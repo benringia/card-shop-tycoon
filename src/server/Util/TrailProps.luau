@@ -16,6 +16,8 @@ local LANTERN_COLOR = Color3.fromRGB(255, 200, 120)
 local POST_HEIGHT = 7.5
 local ARM = { LENGTH = 4.2, HEIGHT = 1.1, THICKNESS = 0.25, TOP = 6.4, STEP = 1.4 }
 local ARCH = { HEIGHT = 9, POST = 0.9, BOARD_HEIGHT = 1.8 }
+-- A trailhead (the Wild valley's boards): posts HEIGHT tall, a board WIDTH x BOARD hanging DROP under the crossbar
+local TRAILHEAD = { HEIGHT = 8, POST = 0.8, WIDTH = 9, BOARD = 3.4, DROP = 0.8, TEXT = Color3.fromRGB(96, 58, 26) }
 
 local function piece(model: Model, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material): Part
 	local part = Instance.new("Part")
@@ -81,6 +83,25 @@ function TrailProps.signpost(parent: Instance, at: CFrame, arms: { Arm }): Model
 		piece(model, "Tip", Vector3.new(side, side, ARM.THICKNESS), turn * CFrame.new(ARM.LENGTH + 0.3, 0, 0) * CFrame.Angles(0, 0, math.rad(45)), BOARD_COLOR, Enum.Material.Wood)
 		words(board, arm.text, arm.sub, arm.color)
 	end
+	model.Parent = parent
+	return model
+end
+
+-- A trailhead: two log posts and a crossbar with a plank board hanging under it, a name and an optional smaller line on
+-- both faces; `at` stands on the ground between the posts, the board square to its Z
+function TrailProps.trailhead(parent: Instance, at: CFrame, title: string, sub: string?): Model
+	local model = Instance.new("Model")
+	model.Name = "Trailhead"
+	local half = TRAILHEAD.WIDTH / 2 + TRAILHEAD.POST
+	for _, side in { -1, 1 } do
+		piece(model, "Post", Vector3.new(TRAILHEAD.POST, TRAILHEAD.HEIGHT, TRAILHEAD.POST), at * CFrame.new(side * half, TRAILHEAD.HEIGHT / 2, 0), POST_COLOR, Enum.Material.Wood)
+		local rope = piece(model, "Rope", Vector3.new(0.15, TRAILHEAD.DROP, 0.15), at * CFrame.new(side * (TRAILHEAD.WIDTH / 2 - 1), TRAILHEAD.HEIGHT - TRAILHEAD.DROP / 2, 0), POST_COLOR, Enum.Material.Fabric)
+		rope.CanCollide = false
+	end
+	piece(model, "Crossbar", Vector3.new(half * 2 + TRAILHEAD.POST * 2, 0.6, TRAILHEAD.POST + 0.1), at * CFrame.new(0, TRAILHEAD.HEIGHT + 0.3, 0), POST_COLOR, Enum.Material.Wood)
+	local board = piece(model, "Board", Vector3.new(TRAILHEAD.WIDTH, TRAILHEAD.BOARD, 0.35), at * CFrame.new(0, TRAILHEAD.HEIGHT - TRAILHEAD.DROP - TRAILHEAD.BOARD / 2, 0), BOARD_COLOR, Enum.Material.WoodPlanks)
+	board.CanCollide = false
+	words(board, title, sub, TRAILHEAD.TEXT)
 	model.Parent = parent
 	return model
 end
