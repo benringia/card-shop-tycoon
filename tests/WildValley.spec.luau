@@ -267,6 +267,16 @@ return {
 		end
 	end,
 
+	["town and valley terrain fit the measured budget"] = function()
+		local scenery = require("../src/shared/Config/Scenery")
+		local town = require("../src/shared/Config/Town")
+		local TownLayout = require("../src/shared/Util/TownLayout")
+		local plots = TownLayout.plotRects({ plotCount = 6, perRow = 3, plotWidth = 40, plotDepth = 40, gap = 24, streetWidth = 96 } :: any)
+		local townCells = TownTerrain.estimatedCells(TownTerrain.ops(scenery, town, plots))
+		local cells = TownTerrain.estimatedCells(OPS)
+		assert(townCells + cells <= scenery.MAX_CELLS, `town {townCells} + valley {cells} cells over {scenery.MAX_CELLS}`)
+	end,
+
 	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
 		expect.equal(#valley.ARENA_LOOKS, #wild.ZONES, "one arena look per zone")
 		for index, look in valley.ARENA_LOOKS do

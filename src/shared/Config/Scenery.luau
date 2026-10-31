@@ -387,5 +387,5 @@ return {
 	},
 	WATER = { COLOR = { 60, 190, 200 }, TRANSPARENCY = 0.6, REFLECTANCE = 0.3, WAVE_SIZE = 0.05, WAVE_SPEED = 6 },
 	PLOT_GROUND_MARGIN = 5, -- studs of plain ground round each shop, so no grass blades poke through its floor
-	MAX_CELLS = 180000, -- estimated 4-stud cells (memory: the spike's oversized fill cost +80 MB)
+	MAX_CELLS = 230000, -- estimated 4-stud cells, town plus the Wild valley (memory: the spike's oversized fill cost +80 MB; raised from 180k for the round 2 valley after measuring 2026-10-31: 60 fps at levels 1 and 10, terrain 45-47 MB graphics in the valley and 51 on the street, voxels 4.1 -> 5.4-6.0 MB)
 }

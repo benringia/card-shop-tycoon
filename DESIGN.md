@@ -634,26 +634,47 @@ About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite
 Monsters sleep with no player within 100 studs. Placeholder monsters are built in code; monster models
 go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/rest`, `/elite`.
 
-**The Wild valley** (main game; spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley, three moods"):
-the three zones are one walk-through valley, its land getting harder as you go. You step out beside the root-arch
-portal (`PortalWild`, the Forest Falls model, as the "Return to shop" portal; its old ring hidden, the prompt kept) and
-follow a dirt trail with small glowing markers every 12 studs (`Util/WildValley.markers`) through a sunny **meadow**
-(grass, a stream with an arched wooden bridge and a pond, town trees, bushes and flowers, fireflies and drifting
-leaves), a rocky **gorge** (warm grey limestone, tall cliffs on both sides, a dark cave mouth in the west cliff with
-glowing blue crystals at its lip and round the zone, crystal glints) and the **Ember Ridge** (basalt and cracked lava
-ground with glowing floor cracks, charred trees and obsidian shards from the caldera, two smoking vents, embers). Each
-zone's boss arena is dressed in its mood (`ARENA_LOOKS`): grass floor and wooden fence, slate floor with stone posts
-and blue crystal tips, basalt floor with lava cracks and basalt posts with ember tips; floors sit 0.15 above the
-terrain. Zone and boss gate boards face the players walking up to them (the Frontier's still face away). Cliffs and
-hills close every side, with invisible walls along the edge (players can walk a few studs into the cave mouth);
-travel to the Wild waits until the valley's terrain has filled at server start (`WildTerrainReady`). Zones, spawn spots, monsters, bosses,
-rings and barriers, travel and healing (the plaza spring) are unchanged: monsters still snap to the zone floors, now
-invisible parts at y 0 (no collisions; players walk on the terrain, which draws its ground there too). Layout:
-`Config/WildValley` (terrain ops, props, stream, bridge, cave, cracks, vents, arena looks, edge); rules in
-`Util/WildValley` (spawn spots, trail and markers, what scenery must keep clear of: the trail, the stream, every
-monster's wander circle, the rings and their paths, the arrival; Lune-tested). SceneryService fills its terrain with
-the town's and places the dressing; WildService builds the floors, edges, portal and arenas. The Frontier and the
-Dungeon keep their own maps.
+**The Wild valley** (main game; round 1 spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley,
+three moods"; round 2 spec `2026-10-31-wild-valley-v2-design.md`, the user's picks A "Winding valley", boss portals and
+sign style A "Wooden trailheads"): the three zones are one walk-through valley, its land climbing as you go. You step
+out beside the root-arch portal (`PortalWild`, the Forest Falls model, as the "Return to shop" portal; its old ring
+hidden, the prompt kept) and follow one S-shaped trail with small glowing markers every 12 studs
+(`Util/WildValley.markers`) through three biomes, each over 200 studs across, at three heights round a hollow central
+mass that hides each from the last: a sunny **meadow** at ground level (rolling mounds, a stream out of the east hills
+under an arched wooden bridge into a pond, town trees, bushes and flowers, fireflies and drifting leaves); a right turn
+and a climb through a pass to the **gorge** 15 studs up (warm grey limestone, tall cliffs, low shelves, a dark cave mouth
+in its west cliff that players walk into, blue crystals round it and the gorge, crystal glints); a left turn and a
+climb to the **Ember Ridge** 35 studs up (cracked lava ground with 26 glowing floor cracks, charred trees and obsidian
+shards from the caldera, three smoking vents, embers, and the caldera's volcano past its far cliff, anchored and
+glowing like the canyon's). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
+either end). Signs are wood like the town's (`Server/Util/TrailProps.trailhead`): "THE WILD" by the arrival, a
+trailhead at each biome's entrance (MEADOW Lv 1-5, CAVES Lv 5-10, EMBER RIDGE Lv 10-15), each turned to face back
+down the trail the way players come, and an arrow post at each bend pointing on and back to the SHOP. **Monsters by
+crowd** (`Util/WildPopulation`): each biome has 24 spawn spots on gentle ground well inside it
+(`WildValley.zoneSpots`); it keeps 8 monsters while quiet and 2 more for each player in it past the first 3, up to 24,
+respawning in 10-20 s while it wants more than 8 (20-40 s quiet); a crowd leaving removes nothing, the extras just
+aren't respawned (checked every 2 s; Studio's `/crowd <n>` counts extra players). Monsters stand on the terrain (the
+ground ray hits terrain, not water) and never step up or down more than 1.5 studs, so they keep off cliffs, shelves
+and the stream. **Boss portals:** each zone's boss has a portal in its biome (the obsidian arch, 20 studs, with a purple
+swirl and purple-glowing lava, `Town.PORTAL_LOOKS.Boss`, and a trailhead board with its name and recommended Power)
+with the usual Fight and Start group prompts. A fight goes to one of 4 copies of the boss's arena far from the valley
+(`Bosses.ARENA_COPIES`; `WildValley.ARENA_FIELD`, x 1600-5200, z 1200-3600): the copy is held while it streams in on the
+fighters' devices, everyone is checked again, then they're moved in and the ring seals. Each copy keeps its zone's
+look (`ARENA_LOOKS`: grass floor and wooden fence, slate floor with stone posts and blue crystal tips, basalt floor
+with lava cracks and basalt posts with ember tips; floors 0.15 above the terrain) on a terrain clearing ringed with
+its zone's props, with a root-arch portal home outside its gate. Return sends a fighter back to the boss's portal once
+the fight is over; anyone still there is sent back 60 s after it ends (`ARENA_LINGER`), loot they haven't picked up
+going into their Bag first. A copy takes a new fight once its boss is gone and its fighters have left it (left the
+game, respawned at their shop or gone home). Solo fights never wait behind a forming group while a copy is free; when
+all 4 are busy the gate says so. Cliffs and hills close every side, with invisible walls along the edge; travel to the
+Wild waits until the valley's terrain has filled at server start (`WildTerrainReady`). Layout: `Config/WildValley`
+(biomes with their outlines, heights, portal and board spots, the trail with heights, passes, hills, terrain fills
+and carves, props, stream, bridge, cave, cracks, vents, volcano, population, spawn spot rules, signs, arena field and
+looks, edge); rules in `Util/WildValley` (the trail and markers, which biome a spot is in, what scenery keeps clear of,
+spawn spots, the terrain fills, arena copy spots, how far a monster may step) and `Util/WildPopulation`, Lune-tested.
+SceneryService fills its terrain with the town's and places the dressing on the drawn ground; WildService builds the
+spawn spots, signs, edges, return portal, boss portals and arena copies and runs the population check; BossService
+hands fights to free copies. The Frontier and the Dungeon keep their own maps and single rings.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
 panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
@@ -812,7 +833,8 @@ group, checked before its fragments and every time (not only the first). Below i
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
   key's fragments are used the first time only. The boss is spawned for you (or your group), stands still, and always goes when
   the fight ends (win, loss or run). One fight per arena: while someone fights there, the gate tells others to wait (or to join a
-  group, below). The ring (radius 36) seals while a fight runs: the members are moved just inside the gate and a
+  group, below). In the main game's Wild valley the gate is a portal in the zone instead and each fight gets its own
+  arena copy far away (up to 4 per boss at once; see "The Wild valley" above). The ring (radius 36) seals while a fight runs: the members are moved just inside the gate and a
   see-through wall rises all round (`BARRIER_*`), dropping when the fight ends for any reason. Anyone else inside the ring when it seals, and a group member who
   leaves a fight that goes on, is moved out through the gate. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
   studs, stuns on a boss last at most 1 s.
@@ -1147,15 +1169,15 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── GradingService.luau # Grading Station remote: validate, then CardService.GradeUp (cash via EconomyService)
     │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
-    │   │   ├── WildService.luau      # wild map (the valley's invisible floors, edges, return portal, zone-dressed boss arenas), plaza portal, healing spring, monsters (spawn, wander, chase)
+    │   │   ├── WildService.luau      # wild map (the valley's spawn spots, wooden signs, edges, return portal, boss portals and arena copies), plaza portal, healing spring, monsters (spawn, wander, chase, the valley's crowd-sized population)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
-    │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates, keys, boss wins' items (farm protection)
+    │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
     │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home (Dungeon: back to the Frontier)
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
     │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, rooms, carried HP, out, the chamber, the way back)
-    │   │   ├── DevService.luau       # Studio-only test chat commands
+    │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
@@ -1269,7 +1291,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
-        │   ├── WildValley.luau # the Wild valley's terrain, props, stream, bridge, cave, cracks, vents, arena looks, edge (plain data)
+        │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
         │   ├── Dungeon.luau    # the Dungeon: rooms and packs, timings, layout, lighting
@@ -1316,7 +1338,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CardArt.luau       # which painting a card face draws: the half-size copy when drawn small, the full one for big views (pure, Lune-tested)
             ├── PortalLooks.luau   # which model stands at a portal, its label height, the parts and effects a look needs (pure, Lune-tested)
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
-            ├── WildValley.luau    # the Wild valley's spawn spots, trail and markers, what scenery keeps clear of, the edge test (pure, Lune-tested)
+            ├── WildValley.luau    # the Wild valley's trail and markers, biome lookup, what scenery keeps clear of, spawn spots, terrain fills, arena copy spots, monster steps (pure, Lune-tested)
+            ├── WildPopulation.luau # how many monsters a valley biome keeps for its players, respawn times (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1602,6 +1625,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   `Scenery.MAX_CELLS` 180k, Lune-tested). The dressing folder holds about 250 instances (props reuse the town's meshes and the caldera's
   models), 53 ridge and 43 arena crack strips and 22 post tips (Neon, no shadows or collisions), at most 4 area effects
   per zone (meadow 2, gorge 1, ridge 3).
+- Wild valley round 2 (measured 2026-10-31 in Play from fixed cameras at the arrival, the gorge from its entrance, the
+  ridge from its pass, a crowded meadow (24 monsters, `/crowd 11`), the meadow's boss portal and a gorge arena copy, plus
+  the town street): 60 fps everywhere at levels 1 and 10; render CPU 7.6 / 8.5 ms at the arrival (level 1 / 10), gorge
+  7.0 / 7.5, ridge 7.1 / 7.8, crowded meadow 7.1 / 7.9, boss portal 7.7 / 8.2, arena copy 6.8 / 7.1, street 8.4 / 9.5.
+  Terrain memory 45-47 MB graphics in the valley (43 in round 1), 38 in an arena copy, 51 on the street; voxels 5.4-6.0
+  MB (4.1 before). The valley's terrain with its 12 arena clearings is about 86.5k estimated cells (cap
+  `WildValley.MAX_CELLS` 90k); town plus valley about 225.5k, so `Scenery.MAX_CELLS` rose from 180k to 230k.
 
 ---
 
@@ -1736,11 +1766,13 @@ boss models; the ranch and Heroic tiers come after those.
   fx line); no generator committed for `volcano-plume.png`; test gaps (Arena trail by index, generated trail ops not in
   the colour test, the variant test checks only names); literals in SceneryService's crack and plume code; the volcano's
   shadow at low sun not checked.
-- [ ] Wild valley (spec `2026-10-31-wild-valley-design.md`, plan `2026-10-31-wild-valley.md`, branch `wild-valley`): the
-  Wild's three flat squares turned into one valley with three moods (the user's pick A): the root-arch return portal,
-  a meadow with a stream, bridge and pond, a limestone gorge with a crystal cave mouth, the Ember Ridge in the caldera's
-  look, a trail with glowing markers, cliffs and invisible walls all round, and each boss arena dressed by its zone.
-  Monsters, zones, bosses and travel unchanged. Measured: within noise at 60 fps.
+- [ ] Wild valley (specs `2026-10-31-wild-valley-design.md` and `2026-10-31-wild-valley-v2-design.md`, plans
+  `2026-10-31-wild-valley.md` and `2026-10-31-wild-valley-v2.md`, branch `wild-valley`): the Wild's three flat squares
+  turned into one winding valley (round 1: the moods, the root-arch return portal, the stream, cave and ridge; round 2,
+  after the user judged round 1 in Studio: an S-shaped trail through three biomes at three heights with passes and
+  hills, boss portals sending each fight to one of 4 arena copies, monsters growing with the players in a zone (8 to
+  24), wooden trailhead signs and arrow posts). The plaza signpost moved into the planter by the spawn, and the town's
+  animals show from the start of a visit. Measured: 60 fps everywhere; terrain cap raised to 230k cells.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
