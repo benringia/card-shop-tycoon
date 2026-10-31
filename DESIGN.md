@@ -139,7 +139,8 @@ frame): a glowing core in a deep shade (`portal-glow.png`, made in code) that fi
 (`portal-vortex.png`, Figma, white with clear gaps between its arms, tinted by a gradient) and a smaller inner swirl
 turning the other way, faster; the portal's light breathes with the core. The client turns the images in their own
 plane (ImageLabel.Rotation; `PortalFxController`, `Util/PortalLooks.animate`, within 150 studs with the extras on,
-looking the panels up every frame). A flat beam turned with its part twisted out of the opening and read as several
+looking the panels up every frame; each portal wears the look `PortalBuild.dress` stamps on it as the `PortalLook`
+attribute, since the Boss and Arena looks share one model and boss portals are renamed). A flat beam turned with its part twisted out of the opening and read as several
 disks tumbling; a swirl filling the opening as a stretched beam wobbled and swung past the arch tops.
 Props stands a model's lowest point on the ground, but the builds sink roots, shards and the drift below their Blender
 ground: each look names a ground part and its Blender height (`PORTAL_LOOKS.ground`) and the model sinks until it
@@ -1217,7 +1218,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
-    │   │   ├── PortalFxController.luau # spins the town portals' vortexes near the camera (client only)
+    │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon

@@ -6,6 +6,7 @@ local town = require("../src/shared/Config/Town")
 local TownLayout = require("../src/shared/Util/TownLayout")
 local PortalLooks = require("../src/shared/Util/PortalLooks")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
 
 local LOOKS = { "Wild", "Frontier", "Arena" }
 
@@ -128,5 +129,18 @@ return {
 		for _, area in town.PORTAL_AREAS do
 			assert(town.PORTAL_LOOKS[area.effect] ~= nil, `{area.key} ({area.effect}) has no look`)
 		end
+	end,
+
+	["a portal's look travels with it, not with its name"] = function()
+		-- The Boss and Arena looks share the PortalArena model and the boss portal is renamed, so the client reads the
+		-- look key PortalBuild.dress stamps on the model (attribute PortalLook) instead of matching the model's name
+		expect.equal(PortalLooks.keyOf(town.PORTAL_LOOKS, town.PORTAL_LOOKS.Boss), "Boss", "the boss look")
+		expect.equal(PortalLooks.keyOf(town.PORTAL_LOOKS, town.PORTAL_LOOKS.Arena), "Arena", "the arena look on the same model")
+		expect.equal(PortalLooks.keyOf(town.PORTAL_LOOKS, {}), nil, "a look that isn't in the config")
+		local build = fs.readFile("src/server/Util/PortalBuild.luau")
+		assert(string.find(build, 'SetAttribute("PortalLook"', 1, true), "PortalBuild.dress stamps the look key")
+		local fx = fs.readFile("src/client/Controllers/PortalFxController.luau")
+		assert(string.find(fx, 'GetAttribute("PortalLook")', 1, true), "the swirl animator reads the look key")
+		assert(not string.find(fx, "model.Name", 1, true), "the swirl animator never goes by the model's name")
 	end,
 }

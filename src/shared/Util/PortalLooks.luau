@@ -6,6 +6,17 @@ local PortalLooks = {}
 
 local FALLBACK_SLOT = "Portal" -- today's frame, standing in until a portal's own model is saved
 
+-- The PORTAL_LOOKS key of a look table (PortalBuild.dress stamps it on the model as the PortalLook attribute, which the
+-- client's swirl animator reads: model names can't tell the Boss and Arena looks apart, and boss portals are renamed)
+function PortalLooks.keyOf(looks: { [string]: any }, look: any): string?
+	for key, candidate in looks do
+		if candidate == look then
+			return key
+		end
+	end
+	return nil
+end
+
 -- The slot standing at a portal: its own model once saved (hasModel: Props.hasModel), else today's frame
 function PortalLooks.slot(look: string, town: any, hasModel: (slot: string) -> boolean): string
 	local entry = town.PORTAL_LOOKS[look]

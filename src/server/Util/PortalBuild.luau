@@ -209,6 +209,7 @@ function PortalBuild.dress(model: Model, look: any)
 			PortalBuild.emitter(spec, look.vortex.colors, model:FindFirstChild(spec.at) :: BasePart)
 		end
 	end
+	model:SetAttribute("PortalLook", PortalLooks.keyOf(Town.PORTAL_LOOKS, look))
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	CollectionService:AddTag(model, TAG)
 end
