@@ -34,7 +34,7 @@ local function flat(x: number, z: number, sizeX: number, sizeZ: number, material
 end
 
 -- One trail segment, paved in `material`: flat at its height, or a slab tilted from a's height up (or down) to b's
-local function trailSegment(a: { x: number, z: number, y: number? }, b: { x: number, z: number, y: number? }, width: number, material: string): Op
+function TownTerrain.trailSegment(a: { x: number, z: number, y: number? }, b: { x: number, z: number, y: number? }, width: number, material: string): Op
 	local dx, dz = b.x - a.x, b.z - a.z
 	local run = math.sqrt(dx * dx + dz * dz)
 	local yaw = math.deg(math.atan2(-dx, -dz))
@@ -87,7 +87,7 @@ function TownTerrain.ops(scenery: any, town: any, plots: { Rect }): { Op }
 	for _, area in town.PORTAL_AREAS do
 		local trail = area.trail
 		for index = 2, #trail do
-			table.insert(ops, trailSegment(trail[index - 1], trail[index], width, area.surface))
+			table.insert(ops, TownTerrain.trailSegment(trail[index - 1], trail[index], width, area.surface))
 		end
 	end
 	copy(scenery.TERRAIN, ops)

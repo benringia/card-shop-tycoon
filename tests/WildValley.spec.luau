@@ -1,23 +1,15 @@
 --!strict
--- The Wild as one valley with three moods (spec 2026-10-31-wild-valley-design, the user's pick A): the valley's layout
--- (Config/WildValley) and its rules (Util/WildValley). Zones, spawn points, arenas and travel are unchanged, so the
--- scenery has to keep out of their way: clear of the trail, of every monster's wander circle, of the arenas and their
--- paths and of the arrival; the edge walls close round everything players can reach.
+-- The Wild valley (round 2, spec 2026-10-31-wild-valley-v2-design, the user's layout A "Winding valley"): one S-shaped
+-- trail through three biomes at three heights (Config/WildValley), its rules in Util/WildValley, the ground modelled by
+-- TownTerrain.groundAt over the valley's fills. The Frontier keeps today's zone grid (its spawn ring is pinned here too).
 local wild = require("../src/shared/Config/Wild")
 local bosses = require("../src/shared/Config/Bosses")
 local valley = require("../src/shared/Config/WildValley")
 local WildValley = require("../src/shared/Util/WildValley")
+local TownTerrain = require("../src/shared/Util/TownTerrain")
 local expect = require("./lib/expect")
 
-local function allProps(): { any }
-	local list = {}
-	for _, name in { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS" } do
-		for _, prop in valley[name] do
-			table.insert(list, prop)
-		end
-	end
-	return list
-end
+local OPS = WildValley.terrainOps(valley, TownTerrain.trailSegment)
 
 return {
 	["spawn spots match today's ring"] = function()
@@ -31,84 +23,94 @@ return {
 		expect.near(WildValley.zoneCenter(wild, 2).z - centre.z, wild.ZONE_SIZE + wild.ZONE_GAP, 1e-9, "zones in a row along z")
 	end,
 
-	["props stay clear of spawn spots and their wander"] = function()
-		for _, prop in allProps() do
-			for index in wild.ZONES do
-				for _, spot in WildValley.spawnSpots(wild, index) do
-					local d = math.sqrt((prop.x - spot.x) ^ 2 + (prop.z - spot.z) ^ 2)
-					assert(d >= wild.WANDER_RADIUS + 2, `{prop.model or "prop"} at {prop.x}, {prop.z} is {d} from a spawn spot`)
-				end
+	["each biome is at least 200 studs across and stands at its height"] = function()
+		local heights = { 0, 15, 35 }
+		for index, biome in valley.BIOMES do
+			expect.equal(biome.ground, heights[index], `biome {index} height`)
+			local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+			for _, p in biome.outline do
+				minX, maxX, minZ, maxZ = math.min(minX, p.x), math.max(maxX, p.x), math.min(minZ, p.z), math.max(maxZ, p.z)
+			end
+			assert(math.max(maxX - minX, maxZ - minZ) >= 200, `biome {index} is {maxX - minX} x {maxZ - minZ}`)
+			local ground = TownTerrain.groundAt(OPS, biome.centre.x, biome.centre.z)
+			assert(ground and math.abs(ground - biome.ground) <= 1, `biome {index} centre draws at {ground}`)
+			expect.equal(WildValley.zoneAt(valley, biome.centre), index, `biome {index} centre`)
+		end
+		expect.equal(WildValley.zoneAt(valley, { x = 0, z = 0 }), nil, "the town is no biome")
+	end,
+
+	["the trail turns right into the gorge, then left onto the ridge"] = function()
+		-- facing +z, right is -x: in (x, z) a right turn has a positive cross product
+		local function turn(a: any, b: any): (number, number)
+			local cross = a.x * b.z - a.z * b.x
+			local cos = (a.x * b.x + a.z * b.z) / (math.sqrt(a.x ^ 2 + a.z ^ 2) * math.sqrt(b.x ^ 2 + b.z ^ 2))
+			return cross, math.deg(math.acos(cos))
+		end
+		local m, g, r = valley.BIOMES[1].centre, valley.BIOMES[2].centre, valley.BIOMES[3].centre
+		local cross1, angle1 = turn({ x = 0, z = 1 }, { x = g.x - m.x, z = g.z - m.z })
+		assert(cross1 > 0 and angle1 >= 45, `into the gorge: cross {cross1}, {angle1} degrees`)
+		local cross2, angle2 = turn({ x = g.x - m.x, z = g.z - m.z }, { x = r.x - g.x, z = r.z - g.z })
+		assert(cross2 < 0 and angle2 >= 45, `onto the ridge: cross {cross2}, {angle2} degrees`)
+	end,
+
+	["the ridge can't be seen from the arrival"] = function()
+		local from = valley.TRAIL[1]
+		local to = valley.BIOMES[3].centre
+		local blocked = false
+		for step = 1, 99 do
+			local t = step / 100
+			local x, z = from.x + (to.x - from.x) * t, from.z + (to.z - from.z) * t
+			local sight = (from.y + 5) + ((valley.BIOMES[3].ground + 5) - (from.y + 5)) * t
+			local top = TownTerrain.topAt(OPS, x, z)
+			blocked = blocked or (top ~= nil and top > sight)
+		end
+		assert(blocked, "a straight look from the arrival reaches the ridge")
+	end,
+
+	["the trail climbs gently, with no step, and stays inside the edge"] = function()
+		local trail = WildValley.trail(valley)
+		for index = 2, #trail do
+			local a, b = trail[index - 1], trail[index]
+			local length = math.sqrt((b.x - a.x) ^ 2 + (b.z - a.z) ^ 2)
+			local last = TownTerrain.groundAt(OPS, a.x, a.z) :: number
+			for step = 1, math.floor(length / 2) do
+				local t = step * 2 / length
+				local x, z = a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t
+				local ground = TownTerrain.groundAt(OPS, x, z) :: number
+				assert(math.abs(ground - last) <= 2 * math.tan(math.rad(25)), `a step at {x}, {z}: {last} to {ground}`)
+				assert(WildValley.inside(valley.EDGE, { x = x, z = z }), `the trail leaves the edge at {x}, {z}`)
+				last = ground
 			end
 		end
 	end,
 
-	["props stay off the trail, the stream, the arenas and the arrival"] = function()
-		for _, prop in allProps() do
-			local ok, why = WildValley.clearOf(prop, valley, wild, bosses)
-			assert(ok, `{prop.model or "prop"} at {prop.x}, {prop.z}: {why}`)
-		end
-		-- the rule itself: on the trail, in a ring, on an arena path and in the arrival are all refused
-		local centre = WildValley.zoneCenter(wild, 1)
-		local arena = WildValley.arenaCenter(wild, bosses, 1)
-		expect.equal((WildValley.clearOf({ x = centre.x, z = centre.z - 20 }, valley, wild, bosses)), false, "on the trail")
-		expect.equal((WildValley.clearOf({ x = arena.x, z = arena.z }, valley, wild, bosses)), false, "in a boss ring")
-		expect.equal((WildValley.clearOf({ x = wild.ZONE_SIZE / 2 + 4, z = centre.z }, valley, wild, bosses)), false, "on an arena path")
-		local arrival = valley.ARRIVAL_CLEAR
-		expect.equal((WildValley.clearOf({ x = arrival.minX + 1, z = arrival.minZ + 1 }, valley, wild, bosses)), false, "in the arrival")
+	["monsters refuse a step up or down past the limit"] = function()
+		expect.equal(WildValley.canStep(0, 1.5, valley.MAX_STEP), true, "a gentle rise")
+		expect.equal(WildValley.canStep(15, 0, valley.MAX_STEP), false, "off a shelf")
+		expect.equal(WildValley.canStep(0, -5, valley.MAX_STEP), false, "into the stream bed (water is ignored)")
 	end,
 
-	["the edge closes round the zones, paths, arenas and arrival"] = function()
-		local half = wild.ZONE_SIZE / 2
-		for index in wild.ZONES do
-			local c = WildValley.zoneCenter(wild, index)
-			for _, corner in { { -half, -half }, { half, -half }, { -half, half }, { half, half } } do
-				local p = { x = c.x + corner[1], z = c.z + corner[2] }
-				assert(WildValley.inside(valley.EDGE, p), `zone {index} corner {p.x}, {p.z} is outside the edge`)
+	["the edge closes round the biomes, the trail and the arrival; the town is outside"] = function()
+		for index, biome in valley.BIOMES do
+			for _, p in biome.outline do
+				local dx, dz = biome.centre.x - p.x, biome.centre.z - p.z
+				local length = math.sqrt(dx * dx + dz * dz)
+				local inset = { x = p.x + dx / length * 3, z = p.z + dz / length * 3 }
+				expect.equal(WildValley.inside(valley.EDGE, inset), true, `biome {index}'s corner {p.x}, {p.z}`)
 			end
-			local arena = WildValley.arenaCenter(wild, bosses, index)
-			local far = { x = arena.x + bosses.ARENA_RADIUS + 1, z = arena.z }
-			assert(WildValley.inside(valley.EDGE, far), `arena {index}'s far side is outside the edge`)
 		end
-		local arrival = valley.ARRIVAL_CLEAR
-		for _, p in { { x = arrival.minX, z = arrival.minZ }, { x = arrival.maxX, z = arrival.maxZ } } do
-			assert(WildValley.inside(valley.EDGE, p), `the arrival corner {p.x}, {p.z} is outside the edge`)
+		for _, p in valley.TRAIL do
+			expect.equal(WildValley.inside(valley.EDGE, p), true, `trail point {p.x}, {p.z}`)
 		end
-		expect.equal(WildValley.inside(valley.EDGE, { x = 0, z = -100 }), false, "the town is outside")
+		expect.equal(WildValley.inside(valley.EDGE, valley.TRAIL[1]), true, "the arrival")
+		expect.equal(WildValley.inside(valley.EDGE, { x = 0, z = 0 }), false, "the town is outside")
+		expect.equal(WildValley.inside(valley.EDGE, { x = 0, z = 1000 }), false, "the town's side of the valley is outside")
 	end,
 
-	["the valley's terrain fits the budget and draws the zones at y 0"] = function()
-		local scenery = require("../src/shared/Config/Scenery")
-		local town = require("../src/shared/Config/Town")
-		local TownLayout = require("../src/shared/Util/TownLayout")
-		local TownTerrain = require("../src/shared/Util/TownTerrain")
-		local cells = TownTerrain.estimatedCells(valley.TERRAIN)
-		assert(cells <= valley.MAX_CELLS, `the valley's terrain is {cells} cells (budget {valley.MAX_CELLS})`)
-		local plots = TownLayout.plotRects({ plotCount = 6, perRow = 3, plotWidth = 40, plotDepth = 40, gap = 24, streetWidth = 96 } :: any)
-		local townCells = TownTerrain.estimatedCells(TownTerrain.ops(scenery, town, plots))
-		assert(townCells + cells <= scenery.MAX_CELLS, `town {townCells} + valley {cells} cells over {scenery.MAX_CELLS}`)
-		-- monsters stand on the zone floors at y 0: the terrain under every spawn spot and zone corner draws there too
-		local half = wild.ZONE_SIZE / 2 - 2
-		for index in wild.ZONES do
-			local c = WildValley.zoneCenter(wild, index)
-			for _, p in { c, { x = c.x - half, z = c.z - half }, { x = c.x + half, z = c.z + half }, table.unpack(WildValley.spawnSpots(wild, index)) } do
-				local ground = TownTerrain.groundAt(valley.TERRAIN, p.x, p.z)
-				assert(ground and math.abs(ground) < 0.01, `zone {index}: ground at {p.x}, {p.z} draws at {ground}`)
-			end
-		end
-		-- the walkable edge has ground all the way to it (no void to fall into)
-		for _, p in { { x = -70, z = 1110 }, { x = 156, z = 1110 }, { x = 156, z = 1550 }, { x = -70, z = 1550 } } do
-			assert(TownTerrain.groundAt(valley.TERRAIN, p.x, p.z) ~= nil, `no ground at the edge corner {p.x}, {p.z}`)
-		end
-		-- the stream keeps clear of every monster's wander circle
-		local stream = valley.STREAM
-		for index in wild.ZONES do
-			for _, spot in WildValley.spawnSpots(wild, index) do
-				local dx, dz = stream.to.x - stream.from.x, stream.to.z - stream.from.z
-				local t = math.clamp(((spot.x - stream.from.x) * dx + (spot.z - stream.from.z) * dz) / (dx * dx + dz * dz), 0, 1)
-				local d = math.sqrt((spot.x - (stream.from.x + dx * t)) ^ 2 + (spot.z - (stream.from.z + dz * t)) ^ 2)
-				assert(d >= wild.WANDER_RADIUS + stream.width / 2, `the stream runs {d} from a spawn spot`)
-			end
-		end
+	["the valley's terrain fits its budget"] = function()
+		expect.equal(valley.SURFACE_LIFT, TownTerrain.SURFACE_LIFT, "the valley's ramps use the terrain's surface lift")
+		local cells = TownTerrain.estimatedCells(OPS)
+		assert(cells <= valley.MAX_CELLS, `{cells} cells (budget {valley.MAX_CELLS})`)
 	end,
 
 	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
@@ -123,66 +125,8 @@ return {
 		assert(cracks.size / 2 * math.sqrt(2) < bosses.ARENA_RADIUS - 1, "the ridge arena's cracks run past its fence")
 	end,
 
-	["the name boards stand clear of the arch, the bridge, the stream, the props and the monsters"] = function()
-		local half = valley.SIGN_WIDTH / 2
-		assert(math.abs(valley.RETURN_SIGN.x) - half >= valley.ARCH_HALF_WIDTH + 1, "the return sign cuts into the root arch")
-		local boards = { { name = "return", a = { x = valley.RETURN_SIGN.x - half, z = valley.RETURN_SIGN.z }, b = { x = valley.RETURN_SIGN.x + half, z = valley.RETURN_SIGN.z } } }
-		for index in wild.ZONES do
-			local spot = WildValley.zoneSign(wild, valley, index)
-			table.insert(boards, { name = `zone {index}`, a = { x = spot.x - half, z = spot.z }, b = { x = spot.x + half, z = spot.z } })
-		end
-		local function distance(p: { x: number, z: number }, board: any): number
-			local t = math.clamp((p.x - board.a.x) / (board.b.x - board.a.x), 0, 1)
-			return math.sqrt((p.x - (board.a.x + (board.b.x - board.a.x) * t)) ^ 2 + (p.z - board.a.z) ^ 2)
-		end
-		local bridge, stream = valley.BRIDGE, valley.STREAM
-		for _, board in boards do
-			local overBridgeX = board.b.x >= bridge.x - bridge.width / 2 - 1 and board.a.x <= bridge.x + bridge.width / 2 + 1
-			local overBridgeZ = math.abs(board.a.z - bridge.z) <= bridge.length / 2 + 1
-			assert(not (overBridgeX and overBridgeZ), `the {board.name} sign stands on the bridge`)
-			for step = 0, 4 do
-				local p = { x = board.a.x + (board.b.x - board.a.x) * step / 4, z = board.a.z }
-				local dx, dz = stream.to.x - stream.from.x, stream.to.z - stream.from.z
-				local t = math.clamp(((p.x - stream.from.x) * dx + (p.z - stream.from.z) * dz) / (dx * dx + dz * dz), 0, 1)
-				local d = math.sqrt((p.x - (stream.from.x + dx * t)) ^ 2 + (p.z - (stream.from.z + dz * t)) ^ 2)
-				assert(d >= stream.width / 2 + 1, `the {board.name} sign stands in the stream`)
-			end
-			-- the pond is a square turned 45 degrees: its corners reach radius x sqrt 2
-			assert(distance(stream.pond, board) >= stream.pond.radius * math.sqrt(2) + 0.5, `the {board.name} sign stands in the pond`)
-			for _, prop in allProps() do
-				assert(distance(prop, board) >= 3, `the {board.name} sign stands in {prop.model or "a prop"} at {prop.x}, {prop.z}`)
-			end
-			for index in wild.ZONES do
-				for _, spot in WildValley.spawnSpots(wild, index) do
-					assert(distance(spot, board) >= wild.WANDER_RADIUS + 1, `monsters wander through the {board.name} sign`)
-				end
-			end
-		end
-	end,
-
-	["the edge lets players into the cave mouth but not past its carve"] = function()
-		local cave = valley.CAVE
-		assert(WildValley.inside(valley.EDGE, { x = cave.x - 17, z = cave.z }), "an invisible wall stands across the cave mouth")
-		local carve
-		for _, op in valley.TERRAIN do
-			if op.material == "Air" and op.z == cave.z then
-				carve = op
-			end
-		end
-		assert(carve, "the cave's carve")
-		local back, sides = carve.x - carve.size.x / 2, carve.size.z / 2
-		local deepest = math.huge
-		for _, p in valley.EDGE do
-			if math.abs(p.z - cave.z) <= sides then
-				deepest = math.min(deepest, p.x)
-			end
-		end
-		-- the edge wall (2 thick) stays inside the carve, in front of the cave's dark back wall
-		assert(deepest - 1 > back, `the edge reaches x {deepest}, past the cave's back at {back}`)
-	end,
-
 	["markers run the whole trail"] = function()
-		local trail = WildValley.trail(wild)
+		local trail = WildValley.trail(valley)
 		local markers = WildValley.markers(trail, valley.MARKER_SPACING)
 		assert(#markers >= 3, "markers")
 		local first, last = trail[1], trail[#trail]
@@ -190,10 +134,10 @@ return {
 			return math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
 		end
 		assert(dist(markers[1], first) <= valley.MARKER_SPACING, "the first marker is by the arrival")
-		assert(dist(markers[#markers], last) <= valley.MARKER_SPACING, "the last marker is by the ridge's middle")
+		assert(dist(markers[#markers], last) <= valley.MARKER_SPACING, "the last marker is by the trail's end")
 		for index = 2, #markers do
 			assert(dist(markers[index], markers[index - 1]) <= valley.MARKER_SPACING + 1e-9, "a gap in the markers")
 		end
-		expect.near(last.z, WildValley.zoneCenter(wild, #wild.ZONES).z, 1e-9, "the trail ends at the last zone's middle")
+		expect.equal(WildValley.zoneAt(valley, last), #valley.BIOMES, "the trail ends on the ridge")
 	end,
 }

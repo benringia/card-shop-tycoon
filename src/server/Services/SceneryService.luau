@@ -10,7 +10,6 @@ local Config = Shared:WaitForChild("Config")
 local Scenery = require(Config:WaitForChild("Scenery"))
 local Town = require(Config:WaitForChild("Town"))
 local WildValleyConfig = require(Config:WaitForChild("WildValley"))
-local Wild = require(Config:WaitForChild("Wild"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local Props = require(SharedUtil:WaitForChild("Props"))
@@ -308,7 +307,7 @@ end
 local function buildTrailMarkers(folder: Instance)
 	local look, bridge = WildValleyConfig.MARKER, WildValleyConfig.BRIDGE
 	local color = Props.color(look.color)
-	for index, point in WildValley.markers(WildValley.trail(Wild), WildValleyConfig.MARKER_SPACING) do
+	for index, point in WildValley.markers(WildValley.trail(WildValleyConfig), WildValleyConfig.MARKER_SPACING) do
 		if math.abs(point.z - bridge.z) > bridge.length / 2 + 1 then
 			local side = if index % 2 == 0 then 1 else -1
 			local x = point.x + side * (WildValleyConfig.TRAIL_WIDTH / 2 - 0.6)
@@ -375,7 +374,7 @@ local function buildRidgeCracks(folder: Instance)
 	holder.Name = "RidgeCracks"
 	holder.Parent = folder
 	local random = Random.new(ridge.SEED)
-	local trail = WildValley.trail(Wild)
+	local trail = WildValley.trail(WildValleyConfig)
 	local color = Props.color(Scenery.CRACKS.COLOR)
 	local floor = LavaCracks.floor(ridge.FLOOR, Scenery.CRACKS.WIDTH, trail, trail[1], WildValleyConfig.TRAIL_WIDTH / 2 + 2, 0, function(): number
 		return random:NextNumber()
@@ -838,7 +837,7 @@ function SceneryService.Start()
 	end
 	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
 	-- The Wild valley (Config/WildValley), far up the map in this same place: its terrain fills with the town's
-	for _, op in WildValleyConfig.TERRAIN do
+	for _, op in WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) do
 		table.insert(terrainOps, op)
 	end
 	-- Neither holds up the server's start (the players' data loads after the services start). The caldera's cracks

@@ -1,21 +1,68 @@
 --!strict
--- The Wild as one valley with three moods (spec 2026-10-31-wild-valley-design, the user's pick A): the main game's Wild
--- (Config/Wild: zones in a row along +z from ORIGIN, boss arenas off their +x side) dressed as a sunny meadow, a rocky
--- gorge with a crystal cave and a volcanic ridge. World coordinates (the Wild sits at z 1100-1560); zone centres
--- (0, 1200), (0, 1340), (0, 1480). Plain data, Lune-tested with Util/WildValley: scenery stays clear of the trail, every
--- monster's wander circle, the arenas and their paths, the stream and the arrival; EDGE closes the map. Main game only:
--- the Frontier builds its own Wild without this.
+-- The Wild valley (round 2, spec 2026-10-31-wild-valley-v2-design, the user's layout A "Winding valley"): the main
+-- game's Wild as one S-shaped trail through three biomes at three heights: the meadow (ground y 0), a right turn and a
+-- climb into the limestone gorge (y 15), a left turn and a climb onto the Ember Ridge (y 35), round a central mass that
+-- hides each biome from the last. World coordinates (the valley sits at x -470..124, z 1080..1824). Plain data,
+-- Lune-tested with Util/WildValley (the ground modelled by TownTerrain.groundAt over WildValley.terrainOps). Main game
+-- only: the Frontier builds its own Wild without this.
 return {
-	MAX_CELLS = 40000, -- the valley's terrain (estimated 4-stud cells), inside Scenery.MAX_CELLS with the town's
-	TRAIL_WIDTH = 10, -- studs: the dirt trail from the arrival down the valley's middle (x 0)
+	MAX_CELLS = 90000, -- the valley's terrain with the boss arena clearings (estimated 4-stud cells)
+	SURFACE_LIFT = 2, -- TownTerrain.SURFACE_LIFT: terrain draws this far above a fill's top (Lune-tested equal)
+	TRAIL_WIDTH = 10,
 	MARKER_SPACING = 12, -- studs between the trail's small glowing stones
+	MAX_STEP = 1.5, -- studs a monster may climb or drop in one step (0.1 s at chase speed 11 moves 1.1 studs)
+	PORTAL_CLEAR = 30, -- studs round a boss portal kept free of scenery and spawn spots
+	BOARD_CLEAR = 6, -- studs round a trailhead board
 	-- Nothing stands here: the arrival pad and the return portal behind it
 	ARRIVAL_CLEAR = { minX = -20, maxX = 20, minZ = 1106, maxZ = 1146 },
-	-- The walkable edge (invisible walls along it): the zones, the arenas off their +x side, the arrival, and a notch
-	-- into the gorge's cave mouth (players walk in up to its dark back wall)
+	-- The biomes, indexed like Config/Wild ZONES: middle, ground height, walkable outline, the boss portal (facing
+	-- `faces`, by the trail) and the trailhead board where the trail comes in
+	BIOMES = {
+		{ centre = { x = -50, z = 1212 }, ground = 0, -- the meadow
+			outline = { { x = -190, z = 1104 }, { x = 90, z = 1104 }, { x = 100, z = 1160 }, { x = 95, z = 1290 }, { x = 40, z = 1322 }, { x = -120, z = 1322 }, { x = -205, z = 1290 }, { x = -205, z = 1160 } },
+			portal = { x = -150, z = 1300, faces = { x = -165, z = 1262 } }, board = { x = 12, z = 1152 } },
+		{ centre = { x = -330, z = 1420 }, ground = 15, -- the gorge
+			outline = { { x = -250, z = 1300 }, { x = -330, z = 1290 }, { x = -430, z = 1310 }, { x = -445, z = 1400 }, { x = -440, z = 1500 }, { x = -400, z = 1548 }, { x = -290, z = 1552 }, { x = -220, z = 1530 }, { x = -215, z = 1420 }, { x = -225, z = 1330 } },
+			portal = { x = -365, z = 1520, faces = { x = -310, z = 1505 } }, board = { x = -232, z = 1334 } },
+		{ centre = { x = -55, z = 1680 }, ground = 35, -- the ridge
+			outline = { { x = -215, z = 1575 }, { x = -120, z = 1560 }, { x = 40, z = 1562 }, { x = 100, z = 1600 }, { x = 100, z = 1760 }, { x = 40, z = 1800 }, { x = -140, z = 1800 }, { x = -200, z = 1760 }, { x = -215, z = 1650 } },
+			portal = { x = 0, z = 1725, faces = { x = -40, z = 1690 } }, board = { x = -190, z = 1625 } },
+	},
+	-- The trail: x, z and the ground's height (y) at each point. The meadow, a right turn and a climb, the gorge, a left
+	-- turn and a climb, the ridge
+	TRAIL = {
+		{ x = 0, z = 1130, y = 0 }, { x = 0, z = 1185, y = 0 }, { x = -60, z = 1235, y = 0 }, { x = -140, z = 1255, y = 0 },
+		{ x = -190, z = 1275, y = 0 }, { x = -240, z = 1320, y = 15 }, { x = -310, z = 1390, y = 15 }, { x = -320, z = 1480, y = 15 },
+		{ x = -290, z = 1545, y = 15 }, { x = -195, z = 1605, y = 35 }, { x = -120, z = 1650, y = 35 }, { x = -40, z = 1690, y = 35 },
+	},
+	TRAIL_MATERIAL = { "Ground", "Ground", "Basalt" }, -- a dirt trail through the meadow and the gorge, basalt on the ridge
+	BIOME_FLOOR = { "Grass", "Limestone", "CrackedLava" },
+	BIOME_CLIFF = { "Grass", "Limestone", "Basalt" },
+	-- Where the trail climbs (WildValley.terrainOps): a ramp `width` wide and `depth` deep in the upper biome's floor,
+	-- and a wall `wall` thick on each side rising `wallHeight` above the upper ground
+	PASS = { width = 44, depth = 24, wall = 12, wallHeight = 12 },
+	-- Gentle mounds: buried balls whose tops stand `height` above their biome's ground
+	HILLS = {
+		{ x = 60, z = 1200, radius = 16, height = 4, material = "Grass" },
+		{ x = 55, z = 1285, radius = 16, height = 4, material = "Grass" },
+		{ x = -95, z = 1165, radius = 16, height = 4, material = "Grass" },
+		{ x = -165, z = 1195, radius = 16, height = 4, material = "Grass" },
+		{ x = -40, z = 1300, radius = 16, height = 4, material = "Grass" },
+		{ x = -120, z = 1725, radius = 16, height = 4, material = "CrackedLava" },
+		{ x = 45, z = 1660, radius = 16, height = 4, material = "CrackedLava" },
+		{ x = -20, z = 1775, radius = 16, height = 4, material = "CrackedLava" },
+		{ x = 60, z = 1760, radius = 16, height = 4, material = "CrackedLava" },
+	},
+	-- The walkable edge (invisible walls along it): the three biomes, the two climbing passes along the trail, and a
+	-- notch into the gorge's cave mouth (players walk in up to its dark back wall)
 	EDGE = {
-		{ x = -72, z = 1104 }, { x = 158, z = 1104 }, { x = 158, z = 1556 }, { x = -72, z = 1556 },
-		{ x = -72, z = 1351 }, { x = -80, z = 1351 }, { x = -80, z = 1329 }, { x = -72, z = 1329 },
+		{ x = 94, z = 1100 }, { x = 104, z = 1160 }, { x = 99, z = 1292 }, { x = 42, z = 1326 }, { x = -120, z = 1326 },
+		{ x = -185, z = 1298 }, { x = -222, z = 1333 }, { x = -212, z = 1420 }, { x = -218, z = 1532 }, { x = -257, z = 1542 },
+		{ x = -207, z = 1572 }, { x = -120, z = 1557 }, { x = 40, z = 1559 }, { x = 103, z = 1598 }, { x = 103, z = 1762 },
+		{ x = 41, z = 1803 }, { x = -141, z = 1803 }, { x = -203, z = 1762 }, { x = -218, z = 1650 }, { x = -218, z = 1614 },
+		{ x = -311, z = 1555 }, { x = -401, z = 1551 }, { x = -443, z = 1501 }, { x = -446.5, z = 1431 }, { x = -454, z = 1431 },
+		{ x = -454, z = 1409 }, { x = -447, z = 1409 }, { x = -448, z = 1400 }, { x = -433, z = 1307 }, { x = -330, z = 1287 },
+		{ x = -245, z = 1298 }, { x = -208, z = 1264 }, { x = -208, z = 1160 }, { x = -192, z = 1100 },
 	},
 	-- The valley's ground is terrain filled in the background at start (SceneryService): travel to the Wild waits up to
 	-- TERRAIN_WAIT seconds for this Workspace attribute, so nobody lands before there's ground to stand on
@@ -35,50 +82,69 @@ return {
 	-- The trail's markers: small glowing stones along its edges, alternating sides
 	MARKER = { size = 1.3, color = { 170, 255, 190 } },
 
-	-- The valley's terrain (SceneryService fills it after the town's; shapes as Config/Scenery's). The ground draws at
-	-- y 0 (filled to y -2) under the zone floors monsters stand on; the stream lies level with it; cliffs and hills close
-	-- the view outside the edge walls: grassy round the meadow, warm grey limestone round the gorge (tallest on its -x side, where
-	-- the cave mouth is), basalt round the ridge.
+	-- The valley's terrain (shapes as Config/Scenery's; WildValley.terrainOps adds the hills, the passes, the trail and
+	-- CARVES). Each floor is filled to its ground - 2 (it draws at its ground); the gorge's and the ridge's floors are
+	-- turned so they start exactly where their pass's ramp tops out. Hills and cliffs close every side; a hollow central
+	-- mass (three walls and a roof, topping out at y 47) stands between the meadow, the gorge and the ridge.
 	TERRAIN = {
-		{ shape = "Block", x = 43, y = -5, z = 1330, size = { x = 240, y = 6, z = 464 }, material = "Grass" }, -- the valley floor
-		{ shape = "Block", x = 43, y = -5, z = 1340, size = { x = 240, y = 6, z = 144 }, material = "Limestone" }, -- the gorge's rock floor
-		{ shape = "Block", x = 43, y = -5, z = 1486, size = { x = 240, y = 6, z = 148 }, material = "CrackedLava" }, -- the ridge's dark ground
-		{ shape = "Block", x = 0, y = -5, z = 1266, size = { x = 10, y = 6, z = 292 }, material = "Ground" }, -- the dirt trail
-		{ shape = "Block", x = 0, y = -5, z = 1446, size = { x = 10, y = 6, z = 68 }, material = "Basalt" }, -- the trail on the ridge
-		-- The stream and its pond: water only fills empty space, so the channel is carved first (Air), then filled, then
-		-- floored below so nobody sinks out of the world (Forest Falls' pool)
+		{ shape = "Block", x = -55.5, y = -4, z = 1212.5, size = { x = 319, y = 4, z = 235 }, material = "Grass" }, -- the meadow's floor
+		{ shape = "Block", x = -45.5, y = 8, z = 1092, size = { x = 339, y = 28, z = 24 }, material = "Grass" }, -- the hills behind the arrival
+		{ shape = "Block", x = -220, y = 8, z = 1183, size = { x = 30, y = 28, z = 158 }, material = "Grass" }, -- the meadow's west hills
+		{ shape = "Block", x = 112, y = 8, z = 1213, size = { x = 24, y = 28, z = 218 }, material = "Grass" }, -- the meadow's east hills
+		{ shape = "Ball", x = 60, y = 8, z = 1094, radius = 12, material = "Grass" },
+		{ shape = "Ball", x = -120, y = 10, z = 1095, radius = 14, material = "Grass" },
+		{ shape = "Ball", x = -222, y = 12, z = 1150, radius = 12, material = "Grass" },
+		{ shape = "Ball", x = 115, y = 10, z = 1250, radius = 12, material = "Grass" },
+		-- The central mass: grassy toward the meadow, limestone toward the gorge, basalt toward the ridge; its roof mossy
+		-- on the meadow's half and basalt on the ridge's (seen over the walls from each)
+		{ shape = "Block", x = -52.5, y = 20.5, z = 1332, size = { x = 305, y = 53, z = 20 }, material = "Grass" },
+		{ shape = "Block", x = -205, y = 28, z = 1440, size = { x = 20, y = 38, z = 196 }, material = "Limestone" },
+		{ shape = "Block", x = -57.5, y = 37, z = 1548, size = { x = 315, y = 20, z = 20 }, material = "Basalt" },
+		{ shape = "Block", x = -57.5, y = 45, z = 1381, size = { x = 315, y = 4, z = 118 }, material = "Rock" },
+		{ shape = "Block", x = -57.5, y = 45, z = 1499, size = { x = 315, y = 4, z = 118 }, material = "Basalt" },
+		{ shape = "Ball", x = -150, y = 30, z = 1330, radius = 12, material = "Grass" },
+		{ shape = "Ball", x = 20, y = 28, z = 1328, radius = 14, material = "Grass" },
+		{ shape = "Ball", x = -212, y = 32, z = 1400, radius = 10, material = "Limestone" },
+		{ shape = "Ball", x = -213, y = 34, z = 1490, radius = 12, material = "Limestone" },
+		{ shape = "Ball", x = -100, y = 46, z = 1557, radius = 12, material = "Basalt" },
+		{ shape = "Ball", x = 40, y = 46, z = 1556, radius = 10, material = "Basalt" },
+		{ shape = "Ball", x = -50, y = 44, z = 1440, radius = 14, material = "Rock" },
+		{ shape = "Ball", x = -140, y = 43, z = 1390, radius = 10, material = "Rock" },
+		{ shape = "Ball", x = 40, y = 43, z = 1480, radius = 11, material = "Basalt" },
+		-- The gorge: its floor (turned along the first pass), tall limestone cliffs west and north, a hill south, low shelves
+		{ shape = "Block", x = -346.85, y = 11, z = 1432.99, yaw = 131.99, size = { x = 325, y = 4, z = 310 }, material = "Limestone" },
+		{ shape = "Block", x = -457.5, y = 30.5, z = 1420, size = { x = 25, y = 43, z = 280 }, material = "Limestone" },
+		{ shape = "Block", x = -389, y = 30.5, z = 1565, size = { x = 162, y = 43, z = 24 }, material = "Limestone" },
+		{ shape = "Block", x = -364, y = 13, z = 1277, size = { x = 212, y = 38, z = 26 }, material = "Limestone" },
+		{ shape = "Block", x = -233.7, y = 28, z = 1540.6, yaw = 17.46, size = { x = 41, y = 38, z = 12 }, material = "Limestone" }, -- closes the north-east corner up to the second pass's wall
+		{ shape = "Block", x = -435, y = 12.5, z = 1360, size = { x = 20, y = 7, z = 60 }, material = "Limestone" },
+		{ shape = "Block", x = -436, y = 13, z = 1470, size = { x = 18, y = 8, z = 44 }, material = "Limestone" },
+		{ shape = "Block", x = -350, y = 12.5, z = 1545, size = { x = 60, y = 7, z = 16 }, material = "Limestone" },
+		{ shape = "Ball", x = -450, y = 40, z = 1330, radius = 12, material = "Limestone" },
+		{ shape = "Ball", x = -448, y = 44, z = 1500, radius = 10, material = "Limestone" },
+		{ shape = "Ball", x = -420, y = 45, z = 1562, radius = 12, material = "Limestone" },
+		{ shape = "Ball", x = -300, y = 30, z = 1275, radius = 12, material = "Limestone" },
+		-- The ridge: its cracked-lava floor (turned along the second pass), basalt cliffs all round, jagged rims
+		{ shape = "Block", x = -43.31, y = 31, z = 1683.07, yaw = -122.28, size = { x = 310, y = 4, z = 340 }, material = "CrackedLava" },
+		{ shape = "Block", x = -58, y = 45.5, z = 1812, size = { x = 364, y = 33, z = 24 }, material = "Basalt" },
+		{ shape = "Block", x = 112, y = 44.5, z = 1679, size = { x = 24, y = 31, z = 242 }, material = "Basalt" },
+		{ shape = "Block", x = -227.5, y = 34.5, z = 1720, size = { x = 25, y = 51, z = 160 }, material = "Basalt" },
+		{ shape = "Block", x = -176.7, y = 44.5, z = 1790, yaw = -33.7, size = { x = 76, y = 31, z = 24 }, material = "Basalt" },
+		{ shape = "Block", x = -100, y = 64, z = 1810, yaw = 25, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = 60, y = 63, z = 1812, yaw = -35, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = 112, y = 62, z = 1640, yaw = 40, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
+		{ shape = "Block", x = -228, y = 62, z = 1700, yaw = -20, size = { x = 16, y = 14, z = 12 }, material = "Basalt" },
+	},
+	-- Cut and filled after the trail: the meadow's stream and pond (water only fills empty space, so the channel is
+	-- carved first, then filled, then floored below so nobody sinks out of the world) and the gorge's cave mouth
+	CARVES = {
 		{ shape = "Block", x = -16, y = -4, z = 1149, yaw = 20.56, size = { x = 120, y = 8, z = 6 }, material = "Air" },
 		{ shape = "Block", x = 42, y = -4, z = 1126, yaw = 45, size = { x = 16, y = 8, z = 16 }, material = "Air" },
-		{ shape = "Block", x = -16, y = -5, z = 1149, yaw = 20.56, size = { x = 120, y = 6, z = 6 }, material = "Water" }, -- the stream
-		{ shape = "Block", x = 42, y = -5, z = 1126, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" }, -- its pond
-		{ shape = "Block", x = -16, y = -10, z = 1149, yaw = 20.56, size = { x = 124, y = 4, z = 10 }, material = "Ground" }, -- the stream's bed
-		{ shape = "Block", x = 42, y = -10, z = 1126, yaw = 45, size = { x = 20, y = 4, z = 20 }, material = "Ground" }, -- the pond's bed
-		-- Cliffs and hills beyond the edge walls
-		{ shape = "Block", x = 43, y = 6, z = 1090, size = { x = 300, y = 28, z = 24 }, material = "Grass" }, -- behind the arrival
-		{ shape = "Block", x = -86, y = 6, z = 1186, size = { x = 24, y = 28, z = 164 }, material = "Grass" }, -- the meadow's west hills
-		{ shape = "Block", x = 170, y = 5, z = 1186, size = { x = 24, y = 26, z = 164 }, material = "Grass" }, -- the meadow's east hills
-		{ shape = "Block", x = -88, y = 12, z = 1340, size = { x = 28, y = 44, z = 144 }, material = "Limestone" }, -- the gorge's tall west cliff
-		{ shape = "Block", x = 170, y = 9, z = 1340, size = { x = 24, y = 38, z = 144 }, material = "Limestone" }, -- the gorge's east cliff
-		{ shape = "Ball", x = -82, y = 8, z = 1340, radius = 13, material = "Limestone" }, -- the rock the cave mouth is set in
-		{ shape = "Block", x = -86, y = 10, z = 1484, size = { x = 24, y = 36, z = 144 }, material = "Basalt" }, -- the ridge's west wall
-		{ shape = "Block", x = 170, y = 10, z = 1484, size = { x = 24, y = 36, z = 144 }, material = "Basalt" }, -- the ridge's east wall
-		{ shape = "Block", x = 43, y = 13, z = 1570, size = { x = 300, y = 42, z = 24 }, material = "Basalt" }, -- the ridge's far wall
-		-- Jagged basalt rims on the ridge walls (turned blocks, like the caldera's)
-		{ shape = "Block", x = -82, y = 30, z = 1440, yaw = 25, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
-		{ shape = "Block", x = -84, y = 31, z = 1520, yaw = -35, size = { x = 16, y = 14, z = 12 }, material = "Basalt" },
-		{ shape = "Block", x = 166, y = 30, z = 1460, yaw = 40, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
-		{ shape = "Block", x = 20, y = 36, z = 1566, yaw = -20, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
-		{ shape = "Block", x = 90, y = 35, z = 1568, yaw = 30, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
-		-- Rocky relief on the gorge's cliffs (turned blocks standing out of the faces), a brow over the cave
-		{ shape = "Block", x = -72, y = 12, z = 1300, yaw = 20, size = { x = 10, y = 20, z = 14 }, material = "Limestone" },
-		{ shape = "Block", x = -72, y = 14, z = 1384, yaw = -25, size = { x = 10, y = 24, z = 16 }, material = "Limestone" },
-		{ shape = "Block", x = -75, y = 26, z = 1316, yaw = 35, size = { x = 12, y = 16, z = 12 }, material = "Limestone" },
-		{ shape = "Block", x = -75, y = 28, z = 1366, yaw = -30, size = { x = 12, y = 16, z = 12 }, material = "Limestone" },
-		{ shape = "Ball", x = -75, y = 25, z = 1340, radius = 8, material = "Limestone" },
-		{ shape = "Block", x = 159, y = 18, z = 1310, yaw = 25, size = { x = 12, y = 18, z = 14 }, material = "Limestone" },
-		{ shape = "Block", x = 159, y = 20, z = 1372, yaw = -20, size = { x = 12, y = 18, z = 14 }, material = "Limestone" },
-		-- The cave mouth carved into the gorge's west rock (applied last; CAVE dresses it)
-		{ shape = "Block", x = -74, y = 9, z = 1340, size = { x = 16, y = 18, z = 22 }, material = "Air" },
+		{ shape = "Block", x = -16, y = -5, z = 1149, yaw = 20.56, size = { x = 120, y = 6, z = 6 }, material = "Water" },
+		{ shape = "Block", x = 42, y = -5, z = 1126, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" },
+		{ shape = "Block", x = -16, y = -10, z = 1149, yaw = 20.56, size = { x = 124, y = 4, z = 10 }, material = "Ground" },
+		{ shape = "Block", x = 42, y = -10, z = 1126, yaw = 45, size = { x = 20, y = 4, z = 20 }, material = "Ground" },
+		{ shape = "Block", x = -454, y = 24, z = 1420, size = { x = 18, y = 18, z = 22 }, material = "Air" }, -- the cave mouth
 	},
 	-- The crystal cave's mouth (the carved opening above): a dark wall on its back face (found by a ray westward from x,
 	-- once the terrain is filled), blue light inside

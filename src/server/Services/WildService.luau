@@ -28,6 +28,7 @@ local Town = require(Config:WaitForChild("Town"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
+local TownTerrain = require(Shared:WaitForChild("Util"):WaitForChild("TownTerrain"))
 local LavaCracks = require(Shared:WaitForChild("Util"):WaitForChild("LavaCracks"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
@@ -267,6 +268,24 @@ end
 -- and walls along its edge keep them in. The Frontier keeps the plain map.
 local VALLEY = not Place.isFrontier() and not Place.isDungeon()
 local EDGE_HEIGHT = 40
+local INTERIM_SPOT_RADIUS = 30 -- the valley's spawn ring round each biome's middle until the crowd-sized spots
+-- The valley's terrain as SceneryService fills it: where its ground draws, for things placed before it's filled
+local valleyOps = if VALLEY then WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) else {}
+
+local function valleyGround(x: number, z: number): number
+	return TownTerrain.groundAt(valleyOps, x, z) or 0
+end
+
+-- A monster spawn spot (an invisible tagged part)
+local function addSpawnPoint(folder: Instance, zoneIndex: number, position: Vector3)
+	local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1))
+	point.Transparency = 1
+	point.CanCollide = false
+	point.CanQuery = false
+	point.CanTouch = false
+	point:SetAttribute("Zone", zoneIndex)
+	CollectionService:AddTag(point, SPAWN_TAG)
+end
 
 -- A floor monsters stand on: plain in the Frontier, invisible over the valley's terrain in the main game
 local function floorPart(part: BasePart): BasePart
@@ -315,6 +334,17 @@ local function buildMap(): Folder
 	sign(folder, if Place.isFrontier() then "The Frontier" else "The Wild", CFrame.new(signSpot) * CFrame.Angles(0, math.pi, 0))
 
 	for index, zone in Wild.ZONES do
+		if VALLEY then
+			-- The valley's biomes are terrain (Config/WildValley): no floor parts, the spawn spots on the modelled ground
+			local biome = WildValleyConfig.BIOMES[index]
+			for spot = 1, Wild.MONSTERS_PER_ZONE do
+				local angle = spot / Wild.MONSTERS_PER_ZONE * math.pi * 2
+				local x = biome.centre.x + math.cos(angle) * INTERIM_SPOT_RADIUS
+				local z = biome.centre.z + math.sin(angle) * INTERIM_SPOT_RADIUS
+				addSpawnPoint(folder, index, Vector3.new(x, valleyGround(x, z), z))
+			end
+			continue
+		end
 		local center = zoneCenter(index)
 		local floor = floorPart(block(folder, zone.name, Vector3.new(Wild.ZONE_SIZE, 2, Wild.ZONE_SIZE), CFrame.new(center - Vector3.new(0, 1, 0)), rgb(zone.color), Enum.Material.Grass))
 		floor:SetAttribute("Zone", index)
@@ -324,22 +354,11 @@ local function buildMap(): Folder
 			floorPart(block(folder, "Path", Vector3.new(14, 2, Wild.ZONE_GAP + 2), CFrame.new(back), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone))
 		end
 		local edge = center - Vector3.new(0, 0, Wild.ZONE_SIZE / 2 - 4)
-		-- Faces the way players arrive (from -Z); in the valley further out, clear of the bridge and the stream
-		local boardSpot = WildValley.zoneSign(Wild, WildValleyConfig, index)
-		local zoneSignSpot = if VALLEY then Vector3.new(boardSpot.x, center.Y + 4, boardSpot.z) else edge + Vector3.new(12, 4, 0)
-		-- (the plain map's boards are turned the other way, so arriving players see their backs; the valley's face them)
-		sign(folder, `{zone.name}\nRecommended Lv {zone.recommended}+`, CFrame.new(zoneSignSpot) * CFrame.Angles(0, if VALLEY then 0 else math.pi, 0))
-		if not VALLEY then
-			decorate(folder, center, index * 97)
-		end
+		-- (the plain map's boards are turned so arriving players see their backs)
+		sign(folder, `{zone.name}\nRecommended Lv {zone.recommended}+`, CFrame.new(edge + Vector3.new(12, 4, 0)) * CFrame.Angles(0, math.pi, 0))
+		decorate(folder, center, index * 97)
 		for _, spot in WildValley.spawnSpots(Wild, index) do
-			local point = block(folder, "WildSpawn", Vector3.new(1, 1, 1), CFrame.new(spot.x, center.Y + 0.5, spot.z), Color3.new(1, 1, 1))
-			point.Transparency = 1
-			point.CanCollide = false
-			point.CanQuery = false
-			point.CanTouch = false
-			point:SetAttribute("Zone", index)
-			CollectionService:AddTag(point, SPAWN_TAG)
+			addSpawnPoint(folder, index, Vector3.new(spot.x, center.Y + 0.5, spot.z))
 		end
 	end
 	if VALLEY then
@@ -469,6 +488,10 @@ local function moveToward(monster: Monster, target: Vector3, speed: number, dt: 
 	end
 	local stepLength = math.min(distance, speed * dt)
 	local nextPosition = groundAt(position + flat.Unit * stepLength)
+	if VALLEY and not WildValley.canStep(position.Y, nextPosition.Y, WildValleyConfig.MAX_STEP) then
+		monster.wanderTarget = nil -- a cliff, a shelf or the stream: pick somewhere else
+		return true
+	end
 	monster.marker.CFrame = CFrame.lookAt(nextPosition, nextPosition + flat.Unit)
 	return stepLength >= distance
 end
@@ -602,9 +625,19 @@ end
 -- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id)
 function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?): Monster?
 	local zone = 1
-	for index in Wild.ZONES do
-		if (position - zoneCenter(index)).Magnitude < (position - zoneCenter(zone)).Magnitude then
-			zone = index
+	local inBiome = if VALLEY then WildValley.zoneAt(WildValleyConfig, { x = position.X, z = position.Z }) else nil
+	if inBiome then
+		zone = inBiome
+	else
+		-- the nearest zone's middle (the valley's biomes, or the Frontier's grid)
+		local function middle(index: number): Vector3
+			local biome = if VALLEY then WildValleyConfig.BIOMES[index] else nil
+			return if biome then Vector3.new(biome.centre.x, position.Y, biome.centre.z) else zoneCenter(index)
+		end
+		for index in Wild.ZONES do
+			if (position - middle(index)).Magnitude < (position - middle(zone)).Magnitude then
+				zone = index
+			end
 		end
 	end
 	return createMonster(species, level, elite, zone, position, nil, boss)
@@ -880,7 +913,9 @@ function WildService.Start()
 			end
 		end
 	end
-	rayParams.FilterDescendantsInstances = { mapFolder }
+	-- The valley's monsters stand on its terrain (not on its water); elsewhere on the map's floor parts
+	rayParams.FilterDescendantsInstances = if VALLEY then { mapFolder, workspace.Terrain } else { mapFolder }
+	rayParams.IgnoreWater = VALLEY
 
 	-- Clients only ask to go home; going to the Wild takes walking to its portal (the prompt)
 	Remotes.WildTravel.OnServerEvent:Connect(function(player, where)
