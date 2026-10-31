@@ -270,7 +270,6 @@ end
 -- zone floors, paths and arrival pad stay as invisible floors monsters snap to (groundAt), players walk on the terrain,
 -- and walls along its edge keep them in. The Frontier keeps the plain map.
 local VALLEY = not Place.isFrontier() and not Place.isDungeon()
-local EDGE_HEIGHT = 40
 local valleySpots: { [number]: { BasePart } } = {} -- each biome's spawn spots (WildValley.zoneSpots)
 local pending: { [number]: number } = {} -- each biome's monsters waiting to respawn
 local phantomPlayers = 0 -- Studio only (/crowd): counted in every biome on top of the real players
@@ -331,13 +330,13 @@ local function floorPart(part: BasePart): BasePart
 	return part
 end
 
--- Invisible walls along the valley's edge (not hit by the monsters' ground ray)
-local function buildEdge(folder: Instance)
-	local edge = WildValleyConfig.EDGE
-	for index, a in edge do
-		local b = edge[index % #edge + 1]
-		local from, to = Vector3.new(a.x, EDGE_HEIGHT / 2, a.z), Vector3.new(b.x, EDGE_HEIGHT / 2, b.z)
-		local wall = block(folder, "EdgeWall", Vector3.new(2, EDGE_HEIGHT, (to - from).Magnitude), CFrame.lookAt((from + to) / 2, to), Color3.new(1, 1, 1))
+-- Invisible walls along a closed outline, from y `bottom` to `top` (the valley's edge, round each arena copy)
+local function buildWalls(folder: Instance, outline: { WildValley.Point }, bottom: number, top: number)
+	local middle, height = (bottom + top) / 2, top - bottom
+	for index, a in outline do
+		local b = outline[index % #outline + 1]
+		local from, to = Vector3.new(a.x, middle, a.z), Vector3.new(b.x, middle, b.z)
+		local wall = block(folder, "EdgeWall", Vector3.new(2, height, (to - from).Magnitude), CFrame.lookAt((from + to) / 2, to), Color3.new(1, 1, 1))
 		wall.Transparency = 1
 		wall.CanQuery = false
 		wall.CanTouch = false
@@ -396,7 +395,7 @@ local function buildMap(): Folder
 		end
 	end
 	if VALLEY then
-		buildEdge(folder)
+		buildWalls(folder, WildValleyConfig.EDGE, WildValleyConfig.EDGE_WALL.bottom, WildValleyConfig.EDGE_WALL.top)
 	end
 	return folder
 end
@@ -453,9 +452,10 @@ local function setMarker(monster: Monster)
 	marker:SetAttribute("Boss", monster.boss)
 end
 
-local function groundAt(position: Vector3): Vector3
+-- The ground under a spot (from 6 above to 14 below), and whether any was found there
+local function groundAt(position: Vector3): (Vector3, boolean)
 	local hit = workspace:Raycast(position + Vector3.new(0, 6, 0), Vector3.new(0, -20, 0), rayParams)
-	return if hit then hit.Position else position
+	return if hit then hit.Position else position, hit ~= nil
 end
 
 local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?, boss: string?): Monster?
@@ -521,9 +521,9 @@ local function moveToward(monster: Monster, target: Vector3, speed: number, dt: 
 		return true
 	end
 	local stepLength = math.min(distance, speed * dt)
-	local nextPosition = groundAt(position + flat.Unit * stepLength)
-	if VALLEY and not WildValley.canStep(position.Y, nextPosition.Y, WildValleyConfig.MAX_STEP) then
-		monster.wanderTarget = nil -- a cliff, a shelf or the stream: pick somewhere else
+	local nextPosition, found = groundAt(position + flat.Unit * stepLength)
+	if VALLEY and not WildValley.canStep(position.Y, if found then nextPosition.Y else nil, WildValleyConfig.MAX_STEP) then
+		monster.wanderTarget = nil -- a cliff, a shelf, the stream or no ground at all: pick somewhere else
 		return true
 	end
 	monster.marker.CFrame = CFrame.lookAt(nextPosition, nextPosition + flat.Unit)
@@ -902,6 +902,7 @@ local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGa
 			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
 		end
 		ringProps(holder, boss.zone, center, copy * 31 + boss.zone)
+		buildWalls(holder, WildValley.arenaEdge(WildValleyConfig, boss.zone, copy), center.Y - 5, center.Y + 40)
 		table.insert(copies, { spawn = bossAt, barrier = barrier, inside = inside, center = center, exit = gate, remote = true })
 	end
 	return { gate = gate, gatePosition = gatePart.Position, groupPrompt = groupPrompt, copies = copies }

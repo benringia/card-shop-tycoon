@@ -203,9 +203,18 @@ function BossRules.soloBlockedByLobby(copies: number): boolean
 	return copies <= 1
 end
 
--- Whether a player still holds an arena copy: still in the game and near it (respawning sends them to their shop)
-function BossRules.stillInCopy(inGame: boolean, distance: number, radius: number): boolean
-	return inGame and distance <= radius + 30
+-- Whether a player still holds an arena copy: still in the game and on its clearing (`hold`: studs from its middle
+-- that reach the clearing's corners; respawning sends them to their shop)
+function BossRules.stillInCopy(inGame: boolean, distance: number, hold: number): boolean
+	return inGame and distance <= hold
+end
+
+-- Calls `each` for every item of `list` as it is now, even when `each` takes items out of it (sending fighters back
+-- removes them from the copy's list)
+function BossRules.forEachOf(list: { any }, each: (any) -> ())
+	for _, item in table.clone(list) do
+		each(item)
+	end
 end
 
 -- Whether a spot (offset from the arena's centre) is inside its sealed ring, wall line included

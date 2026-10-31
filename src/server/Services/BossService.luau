@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a remote arena copy streams in within its STREAM_TIMEOUT
+local WildValleyConfig = require(Config:WaitForChild("WildValley")) -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -348,16 +349,19 @@ local function whyNotMember(player: Player, bossId: string, reach: number): stri
 	return BattleService.WhyNotFight(player)
 end
 
--- Who still holds a remote arena copy: its fighters still in the game and near it (one who respawned at their shop
--- or left no longer does)
+-- Who still holds a remote arena copy: its fighters still in the game and on its clearing. One who left it any other
+-- way (respawned at their shop, the Shop button, a fall) no longer does, and the loot they left lying goes into their
+-- Bag (they can't get back to it)
 local function copyFighters(bossId: string, index: number): { Player }
 	local copy = arenas[bossId].copies[index]
 	local held = {}
 	for _, player in (fighters[bossId] or {})[index] or {} do
 		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 		local distance = if root then (root.Position - copy.center).Magnitude else math.huge
-		if BossRules.stillInCopy(player.Parent ~= nil, distance, Bosses.ARENA_RADIUS) then
+		if BossRules.stillInCopy(player.Parent ~= nil, distance, WildValleyConfig.ARENA_HOLD) then
 			table.insert(held, player)
+		elseif player.Parent then
+			collectAll(player)
 		end
 	end
 	fighters[bossId] = fighters[bossId] or {}
@@ -536,15 +540,23 @@ local function onGate(player: Player, bossId: string)
 	end
 end
 
--- Out of a remote arena copy and back to the boss's portal, whatever loot is still lying going into the Bag first
+-- Out of a remote arena copy and back to the boss's portal, whatever loot is still lying going into the Bag first.
+-- Never yields (it runs inside a fight's leave): the move, which streams the portal in first, has its own thread, and
+-- nobody dead or gone is moved (a dead player respawns at their shop)
 local function sendBack(player: Player, bossId: string, index: number)
 	local held = (fighters[bossId] or {})[index]
 	local at = if held then table.find(held, player) else nil
 	if at then
 		table.remove(held :: { Player }, at)
 	end
+	if not player.Parent then
+		return
+	end
 	collectAll(player)
-	WildService.MoveInWild(player, arenas[bossId].copies[index].exit)
+	local humanoid = if player.Character then player.Character:FindFirstChildOfClass("Humanoid") else nil
+	if humanoid and humanoid.Health > 0 then
+		task.spawn(WildService.MoveInWild, player, arenas[bossId].copies[index].exit)
+	end
 end
 
 -- A remote copy's Return portal: home to the boss's portal once the fight there is over
@@ -783,9 +795,9 @@ function BossService.Start()
 				if (occupants[bossId] or {})[index] ~= monster then
 					return -- another fight has the copy now
 				end
-				for _, player in copyFighters(bossId, index) do
+				BossRules.forEachOf(copyFighters(bossId, index), function(player: Player)
 					sendBack(player, bossId, index)
-				end
+				end)
 			end)
 		end
 	end)

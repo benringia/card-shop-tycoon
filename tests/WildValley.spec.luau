@@ -104,6 +104,25 @@ return {
 		expect.equal(WildValley.canStep(0, 1.5, valley.MAX_STEP), true, "a gentle rise")
 		expect.equal(WildValley.canStep(15, 0, valley.MAX_STEP), false, "off a shelf")
 		expect.equal(WildValley.canStep(0, -5, valley.MAX_STEP), false, "into the stream bed (water is ignored)")
+		expect.equal(WildValley.canStep(0, nil, valley.MAX_STEP), false, "no ground found (a drop or inside a cliff)")
+	end,
+
+	["each arena copy is walled in round its clearing, its ring and its way home inside"] = function()
+		local clearing = valley.ARENA_CLEARING
+		assert(valley.ARENA_HOLD >= clearing.size / 2 * math.sqrt(2), "a player in a clearing's corner still holds the copy")
+		for zone = 1, 3 do
+			for copy = 1, bosses.ARENA_COPIES do
+				local c = WildValley.arenaCopyCenter(valley, zone, copy)
+				local edge = WildValley.arenaEdge(valley, zone, copy)
+				expect.equal(WildValley.inside(edge, c), true, `copy {zone}/{copy}'s middle`)
+				local home = { x = c.x - (bosses.ARENA_RADIUS + bosses.ARENA_GAP + 6), z = c.z }
+				expect.equal(WildValley.inside(edge, home), true, `copy {zone}/{copy}'s way home`)
+				for _, p in edge do
+					assert(math.abs(p.x - c.x) <= clearing.size / 2 and math.abs(p.z - c.z) <= clearing.size / 2, "the wall stands on the clearing")
+					assert(math.sqrt((p.x - c.x) ^ 2 + (p.z - c.z) ^ 2) <= valley.ARENA_HOLD, "the walls keep players where they hold the copy")
+				end
+			end
+		end
 	end,
 
 	["the edge closes round the biomes, the trail and the arrival; the town is outside"] = function()
@@ -121,6 +140,15 @@ return {
 		expect.equal(WildValley.inside(valley.EDGE, valley.TRAIL[1]), true, "the arrival")
 		expect.equal(WildValley.inside(valley.EDGE, { x = 0, z = 0 }), false, "the town is outside")
 		expect.equal(WildValley.inside(valley.EDGE, { x = 0, z = 1000 }), false, "the town's side of the valley is outside")
+	end,
+
+	["the invisible walls rise well above every biome's ground"] = function()
+		local lowest, highest = math.huge, -math.huge
+		for _, biome in valley.BIOMES do
+			lowest, highest = math.min(lowest, biome.ground), math.max(highest, biome.ground)
+		end
+		assert(valley.EDGE_WALL.bottom <= lowest - 5, "the walls reach under the lowest floor")
+		assert(valley.EDGE_WALL.top >= highest + 30, `the walls stand only {valley.EDGE_WALL.top - highest} studs above the ridge`)
 	end,
 
 	["the valley's terrain fits its budget"] = function()

@@ -664,9 +664,10 @@ look (`ARENA_LOOKS`: grass floor and wooden fence, slate floor with stone posts 
 with lava cracks and basalt posts with ember tips; floors 0.15 above the terrain) on a terrain clearing ringed with
 its zone's props, with a root-arch portal home outside its gate. Return sends a fighter back to the boss's portal once
 the fight is over; anyone still there is sent back 60 s after it ends (`ARENA_LINGER`), loot they haven't picked up
-going into their Bag first. A copy takes a new fight once its boss is gone and its fighters have left it (left the
+going into their Bag first (also when they leave a copy any other way: the Shop button, a respawn). Invisible
+walls close each copy's clearing (`WildValley.arenaEdge`). A copy takes a new fight once its boss is gone and its fighters have left it (left the
 game, respawned at their shop or gone home). Solo fights never wait behind a forming group while a copy is free; when
-all 4 are busy the gate says so. Cliffs and hills close every side, with invisible walls along the edge; travel to the
+all 4 are busy the gate says so. Cliffs and hills close every side, with invisible walls along the edge (y -10 to 80, `EDGE_WALL`); travel to the
 Wild waits until the valley's terrain has filled at server start (`WildTerrainReady`). Layout: `Config/WildValley`
 (biomes with their outlines, heights, portal and board spots, the trail with heights, passes, hills, terrain fills
 and carves, props, stream, bridge, cave, cracks, vents, volcano, population, spawn spot rules, signs, arena field and

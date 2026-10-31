@@ -450,9 +450,31 @@ return {
 	end,
 
 	["someone who left the game or the copy no longer holds it"] = function()
-		expect.equal(BossRules.stillInCopy(true, 20, 36), true, "inside")
-		expect.equal(BossRules.stillInCopy(false, 0, 36), false, "left the game")
-		expect.equal(BossRules.stillInCopy(true, 500, 36), false, "respawned at their shop")
+		expect.equal(BossRules.stillInCopy(true, 20, 90), true, "in the ring")
+		expect.equal(BossRules.stillInCopy(true, 85, 90), true, "in a corner of the clearing")
+		expect.equal(BossRules.stillInCopy(true, 95, 90), false, "past the clearing")
+		expect.equal(BossRules.stillInCopy(false, 0, 90), false, "left the game")
+		expect.equal(BossRules.stillInCopy(true, 500, 90), false, "respawned at their shop")
+	end,
+
+	["sending everyone back reaches every fighter, though each one sent leaves the list"] = function()
+		local list = { "A", "B", "C", "D" }
+		local sent = {}
+		BossRules.forEachOf(list, function(player)
+			table.insert(sent, player)
+			table.remove(list, table.find(list, player) :: number)
+		end)
+		expect.equal(#sent, 4, "all four sent back")
+		expect.equal(sent[2], "B", "the second isn't skipped")
+		expect.equal(sent[4], "D", "nor the fourth")
+	end,
+
+	["sending a fighter back never waits on streaming (it runs inside a fight's leave)"] = function()
+		local source = fs.readFile("src/server/Services/BossService.luau")
+		local body = string.match(source, "local function sendBack%(.-\nend\n")
+		assert(body, "sendBack")
+		assert(string.find(body, "task.spawn(WildService.MoveInWild", 1, true), "sendBack moves the player in its own thread")
+		assert(not string.find(body, "\n%s*WildService.MoveInWild%("), "sendBack calls MoveInWild directly (it streams, so it yields)")
 	end,
 
 	["each Wild boss has its arena copies"] = function()

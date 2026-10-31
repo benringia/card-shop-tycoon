@@ -194,9 +194,10 @@ function WildValley.zoneSpots(valley: any, index: number): { Point }
 	return spots
 end
 
--- Whether a monster may take a step from ground at fromY to ground at toY (no climbing cliffs or dropping off shelves)
-function WildValley.canStep(fromY: number, toY: number, maxStep: number): boolean
-	return math.abs(toY - fromY) <= maxStep
+-- Whether a monster may take a step from ground at fromY to ground at toY (no climbing cliffs or dropping off shelves;
+-- nil: no ground found there, a long drop or inside a cliff)
+function WildValley.canStep(fromY: number, toY: number?, maxStep: number): boolean
+	return toY ~= nil and math.abs(toY - fromY) <= maxStep
 end
 
 -- A slab tilted from a's ground to b's, exactly as long as the run: no overhang past either end, so no step where it
@@ -308,6 +309,18 @@ end
 function WildValley.arenaCopyCenter(valley: any, zone: number, copy: number): Point
 	local field = valley.ARENA_FIELD
 	return { x = field.x + (copy - 1) * field.spacing, z = field.z + (zone - 1) * field.spacing }
+end
+
+-- The invisible walls round an arena copy: a square 2 studs inside its clearing's edge, so nobody walks off it
+function WildValley.arenaEdge(valley: any, zone: number, copy: number): { Point }
+	local centre = WildValley.arenaCopyCenter(valley, zone, copy)
+	local half = valley.ARENA_CLEARING.size / 2 - 2
+	return {
+		{ x = centre.x - half, z = centre.z - half },
+		{ x = centre.x + half, z = centre.z - half },
+		{ x = centre.x + half, z = centre.z + half },
+		{ x = centre.x - half, z = centre.z + half },
+	}
 end
 
 -- An arena copy's ground: a terrain clearing drawing at ARENA_FIELD.y in its zone's material

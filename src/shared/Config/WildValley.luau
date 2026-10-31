@@ -61,8 +61,10 @@ return {
 		{ x = -20, z = 1775, radius = 16, height = 4, material = "CrackedLava" },
 		{ x = 60, z = 1760, radius = 16, height = 4, material = "CrackedLava" },
 	},
-	-- The walkable edge (invisible walls along it): the three biomes, the two climbing passes along the trail, and a
-	-- notch into the gorge's cave mouth (players walk in up to its dark back wall)
+	-- The walkable edge (invisible walls along it, from y EDGE_WALL.bottom to top: under the meadow, well above the
+	-- ridge): the three biomes, the two climbing passes along the trail, and a notch into the gorge's cave mouth
+	-- (players walk in up to its dark back wall)
+	EDGE_WALL = { bottom = -10, top = 80 },
 	EDGE = {
 		{ x = 94, z = 1100 }, { x = 104, z = 1160 }, { x = 99, z = 1292 }, { x = 42, z = 1326 }, { x = -120, z = 1326 },
 		{ x = -185, z = 1298 }, { x = -222, z = 1333 }, { x = -212, z = 1420 }, { x = -218, z = 1532 }, { x = -257, z = 1542 },
@@ -177,6 +179,9 @@ return {
 	ARENA_FIELD = { x = 1600, z = 1200, y = 0, spacing = 1200 },
 	ARENA_CLEARING = { size = 124, ring = 62, materials = { "Grass", "Limestone", "Basalt" }, props = { { "TreeA", "TreeB", "PineA" }, { "RockA", "RockB", "RockD" }, { "CharredTree" } }, count = 12, height = { 16, 22 } },
 	ARENA_COPIES_FOR_TERRAIN = 4,
+	-- Studs from a copy's middle a fighter still holds it (BossRules.stillInCopy): out to its clearing's corners,
+	-- which invisible walls close (WildValley.arenaEdge)
+	ARENA_HOLD = 90,
 	-- Each zone's boss arena dressed in its mood (WildService.BuildBossArenas; rings and barriers as before): the
 	-- floor disc and path (lifted LIFT studs over the terrain so they don't flicker against it) and the fence posts, every
 	-- other one capped with a glowing tip; the ridge's floor also gets glowing cracks (Util/LavaCracks.floor in a box `size`
