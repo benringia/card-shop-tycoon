@@ -161,7 +161,8 @@ lit by the street, shop neon, portals and glowing mushrooms (shops stay warm and
 sky, haze, bloom and colours, blending into the next over 40 s while the sun creeps across. Each client works the time
 out from the server's `DayCycleStart` attribute (no network). Outside the town region (the Wild, the Arena stands, the
 boss arenas) the old afternoon look shows at once, so fights never happen at night. **Ambient life** (client only, off
-when the frame watchdog sees a slow device or the player set graphics at 3 or below: `Util/FrameWatchdog`,
+when the frame watchdog sees a slow device, after the first 15 s so the join's loading doesn't count, or the player
+set graphics at 3 or below; a sleeper's "z Z z" hides with it: `Util/FrameWatchdog`,
 `Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and Cute Pets animals
 run round their homes, drawn by the summoned-pet code (`TownCritterController`, `Util/Wander`): a fox at the forest edge,
 a bunny on the grass by the grove, a capybara on the sidewalk outside the south shops (the tall grass between
