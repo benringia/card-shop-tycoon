@@ -470,7 +470,8 @@ return {
 	end,
 
 	["sending a fighter back never waits on streaming (it runs inside a fight's leave)"] = function()
-		local source = fs.readFile("src/server/Services/BossService.luau")
+		-- Line endings depend on the checkout (core.autocrlf), so match against LF only
+		local source = (string.gsub(fs.readFile("src/server/Services/BossService.luau"), "\r", ""))
 		local body = string.match(source, "local function sendBack%(.-\nend\n")
 		assert(body, "sendBack")
 		assert(string.find(body, "task.spawn(WildService.MoveInWild", 1, true), "sendBack moves the player in its own thread")
