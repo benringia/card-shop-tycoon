@@ -528,10 +528,11 @@ def _ramp(value, zero, one):
 
 
 def _leg_of(p, params, deform):
-    """The leg prefix nearest this vertex on its side ("0_Left_", "1_Right_", ...), or None without legs there."""
+    """The leg prefix nearest this vertex on its side ("0_Left_", "1_Right_", ...), or None without legs there. Up to four
+    pairs, front to back (the Wild's six-legged crab and beetle)."""
     side = "Left_" if p.x > params.mid_x else "Right_"
     best, best_distance = None, None
-    for pair in ("0_", "1_"):
+    for pair in ("0_", "1_", "2_", "3_"):
         upper = deform.get(pair + side + "Limb_0")
         if upper:
             d = _flat_distance(p, *upper)
