@@ -120,7 +120,7 @@ return {
 	TRAIL = { WIDTH = 12, HEDGE_GAP = 8, WALK_SPEED = 16, EAST_LENGTH = { 125, 140 }, ARENA_LENGTH = { 85, 100 } },
 	-- "This way" signposts: arms name PORTAL_AREAS keys and point at that trail's start
 	SIGNPOSTS = {
-		{ x = 30, z = 0, arms = { "Wild", "Frontier", "Arena" } },
+		{ x = -23.9, z = -7.3, arms = { "Wild", "Frontier", "Arena" } }, -- in the planter on the plaza rim by the spawn (the user's pick A, 2026-10-31; it stood on the road)
 		{ x = 112, z = 0, arms = { "Wild", "Frontier" } },
 		{ x = -112, z = 12, arms = { "Arena" } },
 	},

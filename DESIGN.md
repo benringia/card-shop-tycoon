@@ -121,7 +121,7 @@ smoke plume: a camera-facing beam with a billowing texture made in code (`Scener
 `assets/ui/fx/volcano-plume.png`; particles never showed, the client doesn't run emitters that far from the camera). Walks: about 8-9 s to the east portals, 6 s to the Arena (the
 user kept the map's spots). Trails are paved terrain with the portal's glowing line along them; a wooden arch with the
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
-(`Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
+(one in the planter on the plaza rim beside the spawn, one at each street end; `Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
 `SceneryService`); a grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender

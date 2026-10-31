@@ -269,4 +269,30 @@ return {
 		expect.equal(#plaza.TABLES.angles, 6, "tables")
 		expect.equal(#plaza.TREES, 4, "potted trees")
 	end,
+	["the plaza's signpost stands in a planter beside the spawn, clear of the lamps and trees"] = function()
+		local sign = town.SIGNPOSTS[1]
+		expect.equal(#sign.arms, 3, "the plaza's signpost names all three portals")
+		local planters = plaza.PLANTERS
+		local r = math.sqrt(sign.x ^ 2 + sign.z ^ 2)
+		assert(math.abs(r - planters.r) <= planters.width / 2, `{r} studs out, the planters are at {planters.r}`)
+		local angle = math.deg(math.atan2(sign.z, sign.x)) % 360
+		local inArc = false
+		for _, arc in planters.arcs do
+			inArc = inArc or (angle >= arc[1] and angle <= arc[2])
+		end
+		assert(inArc, `{angle} degrees is between the planters`)
+		for _, lampAngle in plaza.LAMPS.angles do
+			local lamp = PlazaLayout.at(lampAngle, plaza.LAMPS.r)
+			local gap = math.sqrt((lamp.x - sign.x) ^ 2 + (lamp.z - sign.z) ^ 2)
+			assert(gap >= 2, `{gap} studs from the lamp at {lampAngle}`)
+		end
+		for _, tree in plaza.TREES do
+			local spot = PlazaLayout.at(tree.angle, tree.r)
+			local gap = math.sqrt((spot.x - sign.x) ^ 2 + (spot.z - sign.z) ^ 2)
+			assert(gap >= 3, `{gap} studs from a potted tree`)
+		end
+		local spawn = plaza.SPAWN
+		local gap = math.sqrt((spawn.x - sign.x) ^ 2 + (spawn.z - sign.z) ^ 2)
+		assert(gap <= 12, `{gap} studs from the spawn`)
+	end,
 }
