@@ -39,6 +39,7 @@ local PlotService = require(Services:WaitForChild("PlotService"))
 local BloomFountain = require(Util:WaitForChild("BloomFountain"))
 local PortalBuild = require(Util:WaitForChild("PortalBuild"))
 local TrailProps = require(Util:WaitForChild("TrailProps"))
+local ScenePieces = require(Util:WaitForChild("ScenePieces"))
 local DungeonBuilder = require(Util:WaitForChild("DungeonBuilder"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -713,13 +714,13 @@ function WildService.GetSpringPosition(): Vector3
 	return vec(Wild.SPRING)
 end
 
--- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id)
-function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?): Monster?
-	local zone = 1
-	local inBiome = if VALLEY then WildValley.zoneAt(WildValleyConfig, { x = position.X, z = position.Z }) else nil
+-- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id and the zone they belong to)
+function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?, zoneIndex: number?): Monster?
+	local zone = zoneIndex or 1
+	local inBiome = if VALLEY and not zoneIndex then WildValley.zoneAt(WildValleyConfig, { x = position.X, z = position.Z }) else nil
 	if inBiome then
 		zone = inBiome
-	else
+	elseif not zoneIndex then
 		-- the nearest zone's middle (the valley's biomes, or the Frontier's grid)
 		local function middle(index: number): Vector3
 			local biome = if VALLEY then WildValleyConfig.BIOMES[index] else nil
@@ -734,11 +735,181 @@ function WildService.SpawnAt(position: Vector3, species: string, level: number, 
 	return createMonster(species, level, elite, zone, position, nil, boss)
 end
 
-export type BossArena = { gate: CFrame, gatePosition: Vector3, spawn: CFrame, groupPrompt: ProximityPrompt, barrier: { BasePart }, inside: CFrame, center: Vector3 }
+-- Where a boss fight happens: its ring's spots, and where players go when they leave it (remote: a copy far from the
+-- valley, reached and left by moving the player, streamed in first)
+export type ArenaCopy = { spawn: CFrame, barrier: { BasePart }, inside: CFrame, center: Vector3, exit: CFrame, remote: boolean }
+export type BossArena = { gate: CFrame, gatePosition: Vector3, groupPrompt: ProximityPrompt, copies: { ArenaCopy } }
 
--- Main game: a fenced ring beside each boss's zone with a gate (server prompts "Fight boss" -> onGate, "Start group" ->
--- onGroup; BossService changes the group prompt's text) and a sign. Returns where each gate and boss stand, by boss id.
-function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> ()): { [string]: BossArena }
+-- One fenced ring at `center`: its floor and path (dressed in `look`, lifted `lift` off the ground; nil: the plain slate
+-- ring), the ridge look's lava cracks, fence posts open toward -X, and the barrier (down until BossService seals it).
+-- Returns where the boss stands, the barrier, where members stand when it seals, and the gate's spot.
+local function buildRing(folder: Instance, boss: any, center: Vector3, look: any?, lift: number): (CFrame, { BasePart }, CFrame, Vector3)
+	local radius = Bosses.ARENA_RADIUS
+	-- Cylinders run along X: lay the disc flat
+	local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1 - lift, 0)) * CFrame.Angles(0, 0, math.rad(90)), if look then rgb(look.floor) else Color3.fromRGB(70, 66, 80), if look then (Enum.Material :: any)[look.floorMaterial] else Enum.Material.Slate)
+	floor.Shape = Enum.PartType.Cylinder
+	block(folder, "Path", Vector3.new(Bosses.ARENA_GAP + 4, 2, 14), CFrame.new(center - Vector3.new(radius + Bosses.ARENA_GAP / 2, 1 - lift, 0)), if look then rgb(look.path) else Color3.fromRGB(150, 140, 120), if look then (Enum.Material :: any)[look.pathMaterial] else Enum.Material.Cobblestone)
+	if look and look.cracks then
+		-- glowing cracks across the ridge arena's floor, none in front of the gate
+		local cracks = look.cracks
+		local random = Random.new(cracks.seed)
+		local gate = { { x = center.X - radius, z = center.Z }, { x = center.X - radius + 10, z = center.Z } }
+		local box = { centre = { x = center.X, z = center.Z }, size = { x = cracks.size, z = cracks.size }, count = cracks.count }
+		local top = center.Y + lift + 0.03
+		for _, segment in LavaCracks.floor(box, cracks.width, gate, gate[1], 5, 0, function(): number
+			return random:NextNumber()
+		end) do
+			local a, b = Vector3.new(segment.a.x, top, segment.a.z), Vector3.new(segment.b.x, top, segment.b.z)
+			local crack = block(folder, "Crack", Vector3.new(segment.width, 0.05, (b - a).Magnitude + segment.width * 0.5), CFrame.lookAt((a + b) / 2, b), rgb(look.tip), Enum.Material.Neon)
+			crack.CanCollide = false
+			crack.CanQuery = false
+			crack.CastShadow = false
+		end
+	end
+	-- Fence posts all round, open toward the gate (-X)
+	for step = 0, 23 do
+		local angle = step / 24 * math.pi * 2
+		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		if direction.X > -0.95 then
+			local postSize, postHeight = if look then look.postSize else 1.2, if look then look.postHeight else 5
+			local post = center + direction * (radius - 0.6)
+			block(folder, "Fence", Vector3.new(postSize, postHeight, postSize), CFrame.new(post + Vector3.new(0, postHeight / 2, 0)), if look then rgb(look.post) else Color3.fromRGB(90, 70, 50), if look then (Enum.Material :: any)[look.postMaterial] else Enum.Material.Wood)
+			if look and look.tip and step % 2 == 0 then
+				local tip = block(folder, "FenceTip", Vector3.new(postSize * 0.6, postSize * 1.1, postSize * 0.6), CFrame.new(post + Vector3.new(0, postHeight + postSize * 0.45, 0)) * CFrame.Angles(0, math.rad(45), 0), rgb(look.tip), Enum.Material.Neon)
+				tip.CanCollide = false
+				tip.CanQuery = false
+				tip.CastShadow = false
+			end
+		end
+	end
+	-- The barrier: down (invisible, no collision) until BossService seals the ring for a fight
+	local barrier: { BasePart } = {}
+	for _, angle in BossRules.ringSegments(radius + 0.5, Bosses.BARRIER_SEGMENT) do
+		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local spot = center + direction * (radius + 0.5) + Vector3.new(0, Bosses.BARRIER_HEIGHT / 2, 0)
+		local wall = block(folder, "Barrier", Vector3.new(Bosses.BARRIER_SEGMENT + 0.5, Bosses.BARRIER_HEIGHT, 1), CFrame.lookAt(spot, spot + direction), Color3.fromRGB(170, 120, 255), Enum.Material.ForceField)
+		wall.Transparency = 1
+		wall.CanCollide = false
+		wall.CanQuery = false
+		table.insert(barrier, wall)
+	end
+	local gateSpot = center - Vector3.new(radius - 2, 0, 0)
+	local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, lift, 0) -- on the floor's top (BossService puts the boss here)
+	return CFrame.lookAt(bossSpot, gateSpot), barrier, CFrame.lookAt(gateSpot + Vector3.new(Bosses.INSIDE_STEP, 3, 0), bossSpot + Vector3.new(0, 3, 0)), gateSpot
+end
+
+-- The Fight and Start group prompts on a gate's part (server prompts: onGate, onGroup; BossService changes the group
+-- prompt's text). Returns the group prompt.
+local function gatePrompts(part: BasePart, boss: any, bossId: string, onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> ()): ProximityPrompt
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Fight boss"
+	prompt.ObjectText = `{boss.name} · Power {boss.recommended}`
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = part
+	prompt.Triggered:Connect(function(player)
+		onGate(player, bossId)
+	end)
+	local groupPrompt = Instance.new("ProximityPrompt")
+	groupPrompt.Name = "GroupPrompt"
+	groupPrompt.ActionText = "Start group"
+	groupPrompt.ObjectText = `{boss.name} · 2-{Bosses.GROUP_MAX} players`
+	groupPrompt.HoldDuration = 0
+	groupPrompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
+	groupPrompt.RequiresLineOfSight = false
+	groupPrompt.KeyboardKeyCode = Enum.KeyCode.F
+	groupPrompt.UIOffset = Vector2.new(0, Bosses.GROUP_PROMPT_OFFSET)
+	groupPrompt.Parent = part
+	CollectionService:AddTag(groupPrompt, "BossGroupPrompt")
+	groupPrompt.Triggered:Connect(function(player)
+		onGroup(player, bossId)
+	end)
+	return groupPrompt
+end
+
+-- A valley arena copy's surroundings: its zone's props round the clearing, the gate's side (-X) left open for the path
+-- and the way home
+local function ringProps(folder: Instance, zone: number, center: Vector3, seed: number)
+	local clearing = WildValleyConfig.ARENA_CLEARING
+	local names = clearing.props[zone]
+	local random = Random.new(seed)
+	for step = 0, clearing.count - 1 do
+		local angle = (step + 0.5) / clearing.count * math.pi * 2
+		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		if direction.X > -0.9 then
+			local spot = center + direction * clearing.ring
+			local model = ScenePieces.placeModel(folder, {
+				model = names[random:NextInteger(1, #names)],
+				x = spot.X,
+				z = spot.Z,
+				height = random:NextNumber(clearing.height[1], clearing.height[2]),
+				yaw = random:NextNumber(0, 360),
+			}, "ArenaProp", center.Y)
+			for _, part in if model then model:GetDescendants() else {} do
+				if part:IsA("BasePart") then
+					part.Anchored = true -- the caldera's Blender props aren't saved anchored
+				end
+			end
+		end
+	end
+end
+
+-- The valley's boss (round 2 spec): a portal at its biome's `portal` spot (the obsidian arch with the Boss look) with the
+-- gate prompts and a trailhead board, and ARENA_COPIES copies of its ring far away (WildValley.arenaCopyCenter), each
+-- with a root-arch portal home outside its gate (its Return prompt: onReturn)
+local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> (), onReturn: (player: Player, bossId: string, copy: number) -> ()): BossArena
+	local spot = WildValleyConfig.BIOMES[boss.zone].portal
+	local ground = valleyGround(spot.x, spot.z)
+	local base = Vector3.new(spot.x, ground, spot.z)
+	local facing = Vector3.new(spot.faces.x - spot.x, 0, spot.faces.z - spot.z).Unit
+	local look = WildValleyConfig.BOSS_PORTAL
+	local model = Props.place(look.model, CFrame.lookAt(base, base + facing), folder)
+	if model.Name == look.model and Props.hasModel(look.model) then
+		model:ScaleTo(model:GetScale() * look.height / Town.SLOTS[look.model].height)
+		local box, size = model:GetBoundingBox()
+		model:PivotTo(model:GetPivot() + Vector3.new(0, ground - (box.Position.Y - size.Y / 2), 0)) -- back on the ground
+		PortalBuild.dress(model, Town.PORTAL_LOOKS.Boss)
+	end
+	model.Name = `BossPortal {boss.name}`
+	-- The gate: an invisible part in the opening carrying the prompts (what the server measures a start from)
+	local gatePart = block(folder, "BossGate", Vector3.new(10, 8, 2), CFrame.lookAt(base + Vector3.new(0, 4, 0), base + Vector3.new(0, 4, 0) + facing), PORTAL_COLOR)
+	gatePart.Transparency = 1
+	gatePart.CanCollide = false
+	gatePart.CanQuery = false
+	local groupPrompt = gatePrompts(gatePart, boss, bossId, onGate, onGroup)
+	local right = facing:Cross(Vector3.yAxis)
+	local boardSpot = base + right * (look.height * 0.6)
+	local boardAt = Vector3.new(boardSpot.X, valleyGround(boardSpot.X, boardSpot.Z), boardSpot.Z)
+	TrailProps.trailhead(folder, CFrame.lookAt(boardAt, boardAt + facing), string.upper(boss.name), `Power {boss.recommended}`)
+	local gateSpot = base + facing * 8
+	local gate = CFrame.lookAt(Vector3.new(gateSpot.X, valleyGround(gateSpot.X, gateSpot.Z), gateSpot.Z), Vector3.new(base.X, valleyGround(gateSpot.X, gateSpot.Z), base.Z))
+	local copies: { ArenaCopy } = {}
+	for copy = 1, Bosses.ARENA_COPIES do
+		local point = WildValley.arenaCopyCenter(WildValleyConfig, boss.zone, copy)
+		local center = Vector3.new(point.x, WildValleyConfig.ARENA_FIELD.y, point.z)
+		local holder = Instance.new("Folder")
+		holder.Name = `{boss.name} {copy}`
+		holder.Parent = folder
+		local bossAt, barrier, inside = buildRing(holder, boss, center, WildValleyConfig.ARENA_LOOKS[boss.zone], WildValleyConfig.ARENA_LIFT)
+		local homeSpot = center - Vector3.new(Bosses.ARENA_RADIUS + Bosses.ARENA_GAP + 6, 0, 0)
+		local ring = portal(holder, "Return to the Wild", homeSpot, Vector3.new(1, 0, 0), "Return", function(player)
+			onReturn(player, bossId, copy)
+		end)
+		ring.Transparency = 1 -- the root arch stands round it (its prompt stays on the ring)
+		local arch = Props.place("PortalWild", CFrame.lookAt(homeSpot, homeSpot + Vector3.new(1, 0, 0)), holder)
+		if arch.Name == "PortalWild" and Props.hasModel("PortalWild") then
+			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
+		end
+		ringProps(holder, boss.zone, center, copy * 31 + boss.zone)
+		table.insert(copies, { spawn = bossAt, barrier = barrier, inside = inside, center = center, exit = gate, remote = true })
+	end
+	return { gate = gate, gatePosition = gatePart.Position, groupPrompt = groupPrompt, copies = copies }
+end
+
+-- Every boss of this place: the valley's behind portals (buildBossPortal); elsewhere a fenced ring beside its zone (the
+-- Dungeon's in its chamber) with a gate and a sign. Returns each boss's gate and arena copies, by boss id.
+function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> (), onReturn: (player: Player, bossId: string, copy: number) -> ()): { [string]: BossArena }
 	local arenas: { [string]: BossArena } = {}
 	local folder = Instance.new("Folder")
 	folder.Name = "BossArenas"
@@ -749,100 +920,25 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		if boss.place ~= here then
 			continue -- its arena is in another place
 		end
-		-- The Dungeon's boss: its chamber at the cavern's end; the others beside their zone
+		if here == "Wild" and VALLEY then
+			arenas[bossId] = buildBossPortal(folder, boss, bossId, onGate, onGroup, onReturn)
+			continue
+		end
 		local center = if here == "Dungeon" then vec(Dungeon.CHAMBER)
 			else zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
-		local radius = Bosses.ARENA_RADIUS
-		-- Cylinders run along X: lay the disc flat
-		-- The valley dresses each Wild arena in its zone's look (WildValley.ARENA_LOOKS), lifted off the terrain
-		local look = if here == "Wild" and VALLEY then WildValleyConfig.ARENA_LOOKS[boss.zone] else nil
-		local lift = if look then WildValleyConfig.ARENA_LIFT else 0
-		local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1 - lift, 0)) * CFrame.Angles(0, 0, math.rad(90)), if look then rgb(look.floor) else Color3.fromRGB(70, 66, 80), if look then (Enum.Material :: any)[look.floorMaterial] else Enum.Material.Slate)
-		floor.Shape = Enum.PartType.Cylinder
-		block(folder, "Path", Vector3.new(Bosses.ARENA_GAP + 4, 2, 14), CFrame.new(center - Vector3.new(radius + Bosses.ARENA_GAP / 2, 1 - lift, 0)), if look then rgb(look.path) else Color3.fromRGB(150, 140, 120), if look then (Enum.Material :: any)[look.pathMaterial] else Enum.Material.Cobblestone)
-		if look and look.cracks then
-			-- glowing cracks across the ridge arena's floor, none in front of the gate
-			local cracks = look.cracks
-			local random = Random.new(cracks.seed)
-			local gate = { { x = center.X - radius, z = center.Z }, { x = center.X - radius + 10, z = center.Z } }
-			local box = { centre = { x = center.X, z = center.Z }, size = { x = cracks.size, z = cracks.size }, count = cracks.count }
-			local top = lift + 0.03
-			for _, segment in LavaCracks.floor(box, cracks.width, gate, gate[1], 5, 0, function(): number
-				return random:NextNumber()
-			end) do
-				local a, b = Vector3.new(segment.a.x, top, segment.a.z), Vector3.new(segment.b.x, top, segment.b.z)
-				local crack = block(folder, "Crack", Vector3.new(segment.width, 0.05, (b - a).Magnitude + segment.width * 0.5), CFrame.lookAt((a + b) / 2, b), rgb(look.tip), Enum.Material.Neon)
-				crack.CanCollide = false
-				crack.CanQuery = false
-				crack.CastShadow = false
-			end
-		end
-		-- Fence posts all round, open toward the zone (-X)
-		for step = 0, 23 do
-			local angle = step / 24 * math.pi * 2
-			local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			if direction.X > -0.95 then
-				local postSize, postHeight = if look then look.postSize else 1.2, if look then look.postHeight else 5
-				local post = center + direction * (radius - 0.6)
-				block(folder, "Fence", Vector3.new(postSize, postHeight, postSize), CFrame.new(post + Vector3.new(0, postHeight / 2, 0)), if look then rgb(look.post) else Color3.fromRGB(90, 70, 50), if look then (Enum.Material :: any)[look.postMaterial] else Enum.Material.Wood)
-				if look and look.tip and step % 2 == 0 then
-					local tip = block(folder, "FenceTip", Vector3.new(postSize * 0.6, postSize * 1.1, postSize * 0.6), CFrame.new(post + Vector3.new(0, postHeight + postSize * 0.45, 0)) * CFrame.Angles(0, math.rad(45), 0), rgb(look.tip), Enum.Material.Neon)
-					tip.CanCollide = false
-					tip.CanQuery = false
-					tip.CastShadow = false
-				end
-			end
-		end
-		-- The barrier: down (invisible, no collision) until BossService seals the ring for a fight
-		local barrier: { BasePart } = {}
-		for _, angle in BossRules.ringSegments(radius + 0.5, Bosses.BARRIER_SEGMENT) do
-			local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			local spot = center + direction * (radius + 0.5) + Vector3.new(0, Bosses.BARRIER_HEIGHT / 2, 0)
-			local wall = block(folder, "Barrier", Vector3.new(Bosses.BARRIER_SEGMENT + 0.5, Bosses.BARRIER_HEIGHT, 1), CFrame.lookAt(spot, spot + direction), Color3.fromRGB(170, 120, 255), Enum.Material.ForceField)
-			wall.Transparency = 1
-			wall.CanCollide = false
-			wall.CanQuery = false
-			table.insert(barrier, wall)
-		end
-		local gateSpot = center - Vector3.new(radius - 2, 0, 0)
-		local gate = block(folder, "BossGate", Vector3.new(1, 9, 12), CFrame.new(gateSpot + Vector3.new(0, 4.5, 0)), PORTAL_COLOR, Enum.Material.Neon)
-		gate.CanCollide = false
-		gate.Transparency = 0.6
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Fight boss"
-		prompt.ObjectText = `{boss.name} · Power {boss.recommended}`
-		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
-		prompt.RequiresLineOfSight = false
-		prompt.Parent = gate
-		prompt.Triggered:Connect(function(player)
-			onGate(player, bossId)
-		end)
-		local groupPrompt = Instance.new("ProximityPrompt")
-		groupPrompt.Name = "GroupPrompt"
-		groupPrompt.ActionText = "Start group"
-		groupPrompt.ObjectText = `{boss.name} · 2-{Bosses.GROUP_MAX} players`
-		groupPrompt.HoldDuration = 0
-		groupPrompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
-		groupPrompt.RequiresLineOfSight = false
-		groupPrompt.KeyboardKeyCode = Enum.KeyCode.F
-		groupPrompt.UIOffset = Vector2.new(0, Bosses.GROUP_PROMPT_OFFSET)
-		groupPrompt.Parent = gate
-		CollectionService:AddTag(groupPrompt, "BossGroupPrompt")
-		groupPrompt.Triggered:Connect(function(player)
-			onGroup(player, bossId)
-		end)
-		-- Meant to face the way players arrive (from the zone, -X); only the valley's boards do (the others face the ring)
-		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, if look then math.rad(90) else -math.rad(90), 0))
-		local bossSpot = center + Vector3.new(Bosses.BOSS_SPOT, lift, 0) -- on the floor's top (BossService puts the boss here)
+		local bossAt, barrier, inside, gateSpot = buildRing(folder, boss, center, nil, 0)
+		local gatePart = block(folder, "BossGate", Vector3.new(1, 9, 12), CFrame.new(gateSpot + Vector3.new(0, 4.5, 0)), PORTAL_COLOR, Enum.Material.Neon)
+		gatePart.CanCollide = false
+		gatePart.Transparency = 0.6
+		local groupPrompt = gatePrompts(gatePart, boss, bossId, onGate, onGroup)
+		-- (these boards face the ring, so players walking up from the zone see their backs)
+		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
+		local gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center) -- where /boss puts you, outside the gate
 		arenas[bossId] = {
-			gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center), -- where /boss puts you, outside the gate
-			gatePosition = gate.Position, -- what the server measures a start from (the prompt's part)
+			gate = gate,
+			gatePosition = gatePart.Position,
 			groupPrompt = groupPrompt,
-			spawn = CFrame.lookAt(bossSpot, gateSpot),
-			barrier = barrier,
-			center = center,
-			inside = CFrame.lookAt(gateSpot + Vector3.new(Bosses.INSIDE_STEP, 3, 0), bossSpot + Vector3.new(0, 3, 0)), -- where members stand when it seals
+			copies = { { spawn = bossAt, barrier = barrier, inside = inside, center = center, exit = gate, remote = false } },
 		}
 	end
 	return arenas
@@ -862,18 +958,22 @@ local function canTravel(player: Player): boolean
 	return true
 end
 
--- StreamingEnabled: the client only has parts near it. Load the arrival area on their device first, or the
--- character lands before the floor exists there and falls through the world.
-local function moveCharacter(player: Player, cframe: CFrame): boolean
-	if not player.Character or not getRoot(player) then
-		return false
-	end
+-- StreamingEnabled: the client only has parts near it. Loads the area round a spot on their device (waits up to
+-- Wild.STREAM_TIMEOUT), or a character moved there lands before the floor exists and falls through the world.
+local function prestream(player: Player, position: Vector3)
 	local ok, err = pcall(function()
-		player:RequestStreamAroundAsync(cframe.Position, Wild.STREAM_TIMEOUT)
+		player:RequestStreamAroundAsync(position, Wild.STREAM_TIMEOUT)
 	end)
 	if not ok then
 		warn(`[WildService] streaming around the destination failed: {err}`)
 	end
+end
+
+local function moveCharacter(player: Player, cframe: CFrame): boolean
+	if not player.Character or not getRoot(player) then
+		return false
+	end
+	prestream(player, cframe.Position)
 	local character = player.Character
 	if not character or not getRoot(player) then
 		return false -- left or died while it loaded
@@ -906,6 +1006,21 @@ function WildService.MoveTo(player: Player, cframe: CFrame): boolean
 		inWild[player] = nil
 		Remotes.WildTravel:FireClient(player, "home")
 	end
+	return true
+end
+
+-- Loads a spot round a player before they're moved there (an arena copy, while their fight is set up); yields
+function WildService.Prestream(player: Player, position: Vector3)
+	prestream(player, position)
+end
+
+-- Moves a player somewhere else in the wild (into or out of an arena copy), streaming the spot in first; they stay in
+-- the wild. False if they have no character.
+function WildService.MoveInWild(player: Player, cframe: CFrame): boolean
+	if not moveCharacter(player, cframe) then
+		return false
+	end
+	inWild[player] = true
 	return true
 end
 

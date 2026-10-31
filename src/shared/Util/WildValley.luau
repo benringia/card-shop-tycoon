@@ -294,7 +294,30 @@ function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: num
 	for _, op in valley.CARVES do
 		table.insert(ops, op)
 	end
+	for zone in valley.BIOMES do
+		for copy = 1, valley.ARENA_COPIES_FOR_TERRAIN do
+			for _, op in WildValley.arenaClearingOps(valley, zone, copy) do
+				table.insert(ops, op)
+			end
+		end
+	end
 	return ops
+end
+
+-- Where copy `copy` of zone `zone`'s boss arena stands (far from the valley, each out of sight of the others)
+function WildValley.arenaCopyCenter(valley: any, zone: number, copy: number): Point
+	local field = valley.ARENA_FIELD
+	return { x = field.x + (copy - 1) * field.spacing, z = field.z + (zone - 1) * field.spacing }
+end
+
+-- An arena copy's ground: a terrain clearing drawing at ARENA_FIELD.y in its zone's material
+function WildValley.arenaClearingOps(valley: any, zone: number, copy: number): { any }
+	local centre = WildValley.arenaCopyCenter(valley, zone, copy)
+	local clearing = valley.ARENA_CLEARING
+	local top = valley.ARENA_FIELD.y - valley.SURFACE_LIFT
+	return {
+		{ shape = "Block", x = centre.x, y = top - 2, z = centre.z, size = { x = clearing.size, y = 4, z = clearing.size }, material = clearing.materials[zone] },
+	}
 end
 
 return WildValley

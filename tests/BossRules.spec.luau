@@ -432,4 +432,31 @@ return {
 		expect.equal(BossRules.revealTricks("locked", true), true, "the next boss, even locked")
 		expect.equal(BossRules.revealTricks("locked", false), false, "locked further up")
 	end,
+	["a remote arena copy is free once its boss is gone and its fighters have left"] = function()
+		expect.equal(BossRules.copyFree(nil, 0), true, "never used")
+		expect.equal(BossRules.copyFree({ alive = true }, 0), false, "a fight on")
+		expect.equal(BossRules.copyFree({ alive = false }, 2), false, "fighters still picking up loot")
+		expect.equal(BossRules.copyFree({ alive = false }, 0), true, "done and empty")
+	end,
+
+	["the first free copy is picked; none when all are busy"] = function()
+		expect.equal(BossRules.pickCopy({ false, true, true, false }), 2, "copy 2")
+		expect.equal(BossRules.pickCopy({ false, false, false, false }), nil, "all busy")
+	end,
+
+	["a forming group blocks solo fights only where there's a single arena"] = function()
+		expect.equal(BossRules.soloBlockedByLobby(1), true, "the Frontier's ring")
+		expect.equal(BossRules.soloBlockedByLobby(4), false, "the valley's copies")
+	end,
+
+	["someone who left the game or the copy no longer holds it"] = function()
+		expect.equal(BossRules.stillInCopy(true, 20, 36), true, "inside")
+		expect.equal(BossRules.stillInCopy(false, 0, 36), false, "left the game")
+		expect.equal(BossRules.stillInCopy(true, 500, 36), false, "respawned at their shop")
+	end,
+
+	["each Wild boss has its arena copies"] = function()
+		expect.equal(Bosses.ARENA_COPIES, 4, "up to 4 fights per boss at once")
+		assert(Bosses.ARENA_LINGER > 0 and Bosses.ARENA_LINGER <= 120, "time to pick up loot, then back")
+	end,
 }

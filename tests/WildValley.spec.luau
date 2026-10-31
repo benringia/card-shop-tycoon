@@ -235,6 +235,38 @@ return {
 		expect.near(start.z, valley.TRAIL[1].z, 1e-6, "never past the arrival (z)")
 	end,
 
+	["arena copies stand apart, far from the valley, each on its clearing"] = function()
+		expect.equal(valley.ARENA_COPIES_FOR_TERRAIN, bosses.ARENA_COPIES, "terrain and Bosses agree")
+		local centres = {}
+		for zone = 1, 3 do
+			for copy = 1, bosses.ARENA_COPIES do
+				local c = WildValley.arenaCopyCenter(valley, zone, copy)
+				for _, other in centres do
+					assert(math.sqrt((c.x - other.x) ^ 2 + (c.z - other.z) ^ 2) >= valley.ARENA_FIELD.spacing, "two copies too close")
+				end
+				assert(not WildValley.inside(valley.EDGE, c) and c.x - 100 >= 1000, `copy {zone}/{copy} near the valley`)
+				local ground = TownTerrain.groundAt(OPS, c.x, c.z)
+				assert(ground and math.abs(ground - valley.ARENA_FIELD.y) <= 0.01, `copy {zone}/{copy} has no ground`)
+				table.insert(centres, c)
+			end
+		end
+	end,
+
+	["each boss portal stands beside its biome's trail on gentle ground, its gate spot inside the edge"] = function()
+		for index, biome in valley.BIOMES do
+			local p = biome.portal
+			expect.equal(WildValley.zoneAt(valley, p), index, `portal {index} in its biome`)
+			local here = TownTerrain.groundAt(OPS, p.x, p.z) :: number
+			assert(math.abs(here - biome.ground) <= 3, `portal {index} draws at {here}`)
+			local dx, dz = p.faces.x - p.x, p.faces.z - p.z
+			local length = math.sqrt(dx * dx + dz * dz)
+			local gate = { x = p.x + dx / length * 8, z = p.z + dz / length * 8 }
+			assert(WildValley.inside(valley.EDGE, gate), `portal {index}'s gate spot is outside the edge`)
+			local there = TownTerrain.groundAt(OPS, gate.x, gate.z) :: number
+			assert(math.abs(there - here) <= 1.5, `portal {index}'s gate spot draws at {there}, the portal at {here}`)
+		end
+	end,
+
 	["each zone's arena has a look and the ridge's cracks stay inside its ring"] = function()
 		expect.equal(#valley.ARENA_LOOKS, #wild.ZONES, "one arena look per zone")
 		for index, look in valley.ARENA_LOOKS do

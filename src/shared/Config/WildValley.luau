@@ -166,7 +166,18 @@ return {
 	-- The ridge's floor cracks (Util/LavaCracks.floor: off the trail), and its vents' look
 	RIDGE_CRACKS = { SEED = 47, FLOOR = { centre = { x = -55, z = 1680 }, size = { x = 250, z = 200 }, count = 26 } },
 	VENT_LOOK = { rock = { 40, 34, 40 }, glow = { 255, 120, 30 }, radius = 3 },
-	-- Each zone's boss arena dressed in its mood (WildService.BuildBossArenas; rings, barriers and gates unchanged): the
+	-- The boss portals (WildService.BuildBossArenas; each at its biome's `portal`): the obsidian arch HEIGHT tall with
+	-- the purple Boss look (Config/Town PORTAL_LOOKS), a trailhead board with the boss's name beside it. Each fight
+	-- goes to its own copy of the boss's arena (Config/Bosses ARENA_COPIES), far from the valley: copy c of zone z's
+	-- boss at ARENA_FIELD x + (c - 1) * spacing, z + (z - 1) * spacing, on a terrain clearing `size` wide in the zone's
+	-- material (Slate terrain is Frostpeak's ice blue map-wide, so the gorge's is Limestone) with `count` of its props
+	-- round it `ring` studs out, `height` { min, max } tall, and a root-arch portal home outside its gate.
+	-- ARENA_COPIES_FOR_TERRAIN mirrors Bosses.ARENA_COPIES for WildValley.terrainOps (Lune-tested equal).
+	BOSS_PORTAL = { model = "PortalArena", height = 20 },
+	ARENA_FIELD = { x = 1600, z = 1200, y = 0, spacing = 1200 },
+	ARENA_CLEARING = { size = 124, ring = 62, materials = { "Grass", "Limestone", "Basalt" }, props = { { "TreeA", "TreeB", "PineA" }, { "RockA", "RockB", "RockD" }, { "CharredTree" } }, count = 12, height = { 16, 22 } },
+	ARENA_COPIES_FOR_TERRAIN = 4,
+	-- Each zone's boss arena dressed in its mood (WildService.BuildBossArenas; rings and barriers as before): the
 	-- floor disc and path (lifted LIFT studs over the terrain so they don't flicker against it) and the fence posts, every
 	-- other one capped with a glowing tip; the ridge's floor also gets glowing cracks (Util/LavaCracks.floor in a box `size`
 	-- wide round the ring's middle, clear of the gate)
