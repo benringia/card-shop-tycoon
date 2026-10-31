@@ -21,6 +21,7 @@ return {
 		SMOOTH_SECONDS = 0.25,
 		MAX_FRAME = 1,
 		LOW_QUALITY = 3,
+		WARMUP_SECONDS = 15, -- frames after joining are ignored this long: the join's loading hitches hid the animals for 25-50 s
 	},
 	BUTTERFLY_RANGE = 120, -- studs: flocks further from the camera stand still
 	-- Animals running round their homes (TownCritterController): Cute Pets models (ReplicatedStorage.CreatureModels

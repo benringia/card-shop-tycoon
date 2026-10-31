@@ -11,6 +11,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
+local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a remote arena copy streams in within its STREAM_TIMEOUT
+local WildValleyConfig = require(Config:WaitForChild("WildValley")) -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -34,7 +36,10 @@ local BossService = {}
 
 local records: { [Player]: { [string]: BossRules.Record } } = {} -- loaded players only
 local arenas: { [string]: WildService.BossArena } = {}
-local occupants: { [string]: WildService.Monster } = {} -- the boss being fought in each arena (one fight at a time)
+local occupants: { [string]: { [number]: WildService.Monster } } = {} -- the boss being fought in each arena copy
+local fighters: { [string]: { [number]: { Player } } } = {} -- who fought in each remote copy (they hold it until they leave)
+local reserved: { [string]: { [number]: boolean } } = {} -- remote copies being loaded for a fight about to start
+local entering: { [Player]: boolean } = {} -- players whose fight is being set up
 local lobbies: { [string]: { members: { Player } } } = {} -- a group forming at each gate (the first member leads)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowPickUp = RateLimiter.new(Bosses.LOOT_PICKUP_COOLDOWN)
@@ -151,13 +156,39 @@ local function collect(player: Player, id: string)
 	Remotes.BossLoot:FireClient(player, { taken = id })
 end
 
+-- Everything still lying for a player goes into their Bag (before they're sent out of an arena copy)
+local function collectAll(player: Player)
+	local ids = {}
+	for id in pending[player] or {} do
+		table.insert(ids, id)
+	end
+	for _, id in ids do
+		collect(player, id)
+	end
+end
+
+-- The arena copy a boss is (or was) fought in, and its index
+local function copyOf(monster: WildService.Monster): (WildService.ArenaCopy?, number?)
+	local bossId = monster.boss
+	local arena = if bossId then arenas[bossId] else nil
+	if not arena or not bossId then
+		return nil, nil
+	end
+	for index, copy in arena.copies do
+		if (occupants[bossId] or {})[index] == monster then
+			return copy, index
+		end
+	end
+	return nil, nil
+end
+
 -- A win's items scatter round the boss for this player only (the server keeps them until they're collected)
-local function dropLoot(player: Player, bossId: string, items: { Grant })
-	local arena = arenas[bossId]
-	if not arena or #items == 0 then
+local function dropLoot(player: Player, monster: WildService.Monster, items: { Grant })
+	local copy = copyOf(monster)
+	if not copy or #items == 0 then
 		return
 	end
-	local center = arena.spawn.Position
+	local center = copy.spawn.Position
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	-- Only the ground: never a creature, a monster or a player standing there
@@ -282,7 +313,7 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		end
 	end
 	result.lootIn = math.max(0, record.lootAt - now)
-	dropLoot(player, bossId, result.items)
+	dropLoot(player, monster, result.items)
 	sendBosses(player)
 	return result
 end
@@ -318,73 +349,115 @@ local function whyNotMember(player: Player, bossId: string, reach: number): stri
 	return BattleService.WhyNotFight(player)
 end
 
--- Why the arena can't take this player now: someone else's fight, or a group forming that they're not in
+-- Who still holds a remote arena copy: its fighters still in the game and on its clearing. One who left it any other
+-- way (respawned at their shop, the Shop button, a fall) no longer does, and the loot they left lying goes into their
+-- Bag (they can't get back to it)
+local function copyFighters(bossId: string, index: number): { Player }
+	local copy = arenas[bossId].copies[index]
+	local held = {}
+	for _, player in (fighters[bossId] or {})[index] or {} do
+		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+		local distance = if root then (root.Position - copy.center).Magnitude else math.huge
+		if BossRules.stillInCopy(player.Parent ~= nil, distance, WildValleyConfig.ARENA_HOLD) then
+			table.insert(held, player)
+		elseif player.Parent then
+			collectAll(player)
+		end
+	end
+	fighters[bossId] = fighters[bossId] or {}
+	fighters[bossId][index] = held
+	return held
+end
+
+-- Which of a boss's arena copies can take a new fight
+local function freeCopies(bossId: string): { boolean }
+	local free = {}
+	for index, copy in arenas[bossId].copies do
+		local loading = (reserved[bossId] or {})[index] == true
+		local held = if copy.remote then #copyFighters(bossId, index) else 0
+		free[index] = not loading and BossRules.copyFree((occupants[bossId] or {})[index], held)
+	end
+	return free
+end
+
+-- Why the arena can't take this player now: every copy busy, or a group forming that they're not in (only where the
+-- boss has a single arena)
 local function whyArenaBusy(player: Player, bossId: string): string?
 	local boss = Bosses.BOSSES[bossId]
-	local occupant = occupants[bossId]
-	if occupant and occupant.alive then
-		return `Someone is fighting the {boss.name}. Wait for them to finish.`
+	local copies = #arenas[bossId].copies
+	if not BossRules.pickCopy(freeCopies(bossId)) then
+		return if copies > 1 then `All the {boss.name}'s arenas are busy. Try again in a moment.` else `Someone is fighting the {boss.name}. Wait for them to finish.`
 	end
 	local lobby = lobbies[bossId]
-	if lobby and not table.find(lobby.members, player) then
+	if lobby and not table.find(lobby.members, player) and BossRules.soloBlockedByLobby(copies) then
 		return `A group is forming at the {boss.name}: join it (F) or wait.`
 	end
 	return nil
 end
 
--- One boss for these players (the first leads), scaled to the group; keys are taken only once it really starts.
--- No yields: the key counts and the fight start in one step.
--- Out through the gate: a player who isn't (or is no longer) in the fight never stays behind the sealed wall
-local function moveOut(player: Player, arena: WildService.BossArena)
+-- Out of an arena copy: through the ring's gate, or (a remote copy) back to the boss's portal in the valley, its spot
+-- streamed in first. A player who isn't (or is no longer) in the fight never stays behind the sealed wall.
+local function moveOut(player: Player, copy: WildService.ArenaCopy)
+	if copy.remote then
+		task.spawn(WildService.MoveInWild, player, copy.exit)
+		return
+	end
 	local character = player.Character
 	if character then
-		character:PivotTo(arena.gate)
+		character:PivotTo(copy.exit)
 	end
 end
 
 -- Everyone inside the ring who isn't one of `members` (someone waiting at the gate) goes out before it seals
-local function clearRing(arena: WildService.BossArena, members: { Player })
+local function clearRing(copy: WildService.ArenaCopy, members: { Player })
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
 		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-		local offset = if root then root.Position - arena.center else nil
+		local offset = if root then root.Position - copy.center else nil
 		if offset and not table.find(members, player) and BossRules.insideRing(offset.X, offset.Z, Bosses.ARENA_RADIUS) then
-			moveOut(player, arena)
+			moveOut(player, copy)
 		end
 	end
 end
 
-local function setBarrier(arena: WildService.BossArena, up: boolean)
-	for _, wall in arena.barrier do
+local function setBarrier(copy: WildService.ArenaCopy, up: boolean)
+	for _, wall in copy.barrier do
 		wall.CanCollide = up
 		wall.Transparency = if up then Bosses.BARRIER_TRANSPARENCY else 1
 	end
 end
 
-local function startBoss(bossId: string, players: { Player }, options: BattleService.RunOptions?): (boolean, string?)
+-- One boss for these players (the first leads) in arena copy `index`, scaled to the group; keys are taken only once
+-- it really starts. No yields: the key counts and the fight start in one step.
+local function startBoss(bossId: string, players: { Player }, index: number, options: BattleService.RunOptions?): (boolean, string?)
 	local boss = Bosses.BOSSES[bossId]
-	local arena = arenas[bossId]
-	local monster = WildService.SpawnAt(arena.spawn.Position, boss.name, boss.level, false, bossId)
+	local copy = arenas[bossId].copies[index]
+	local monster = WildService.SpawnAt(copy.spawn.Position, boss.name, boss.level, false, bossId, boss.zone)
 	if not monster then
 		return false, "The boss couldn't start. Try again."
 	end
-	monster.marker.CFrame = arena.spawn
+	monster.marker.CFrame = copy.spawn
 	local started, why = BattleService.StartGroupFight(players, monster, options)
 	if not started then
 		WildService.Defeat(monster)
 		return false, why or "The boss couldn't start. Try again."
 	end
-	occupants[bossId] = monster -- free again once it's defeated or despawned (alive = false)
+	occupants[bossId] = occupants[bossId] or {}
+	occupants[bossId][index] = monster -- free again once it's beaten or gone (alive = false) and its fighters have left
+	if copy.remote then
+		fighters[bossId] = fighters[bossId] or {}
+		fighters[bossId][index] = table.clone(players)
+	end
 	-- Everyone in, then the ring seals until the fight ends (BattleService.OnFightEnded)
-	for index, player in players do
+	for slot, player in players do
 		local character = player.Character
 		if character then
-			local sideways = (index - (#players + 1) / 2) * Bosses.INSIDE_STEP
-			character:PivotTo(arena.inside * CFrame.new(sideways, 0, 0))
+			local sideways = (slot - (#players + 1) / 2) * Bosses.INSIDE_STEP
+			character:PivotTo(copy.inside * CFrame.new(sideways, 0, 0))
 		end
 	end
-	clearRing(arena, players)
-	setBarrier(arena, true)
+	clearRing(copy, players)
+	setBarrier(copy, true)
 	local unlock = boss.unlock
 	for _, player in players do
 		local record = BossService.GetRecord(player, bossId)
@@ -398,13 +471,57 @@ local function startBoss(bossId: string, players: { Player }, options: BattleSer
 	return true, nil
 end
 
+-- A free arena copy for these players: a remote one is held for them and streamed in on their devices first (they
+-- wait at the portal, WildConfig.STREAM_TIMEOUT at most), then each is checked again (within `reach` of the gate) and
+-- the fight starts in one step. Nobody is moved if nobody is left.
+local function enterCopy(bossId: string, players: { Player }, reach: number, options: BattleService.RunOptions?): (boolean, string?)
+	local index = BossRules.pickCopy(freeCopies(bossId))
+	if not index then
+		return false, whyArenaBusy(players[1], bossId)
+	end
+	local copy = arenas[bossId].copies[index]
+	if copy.remote then
+		reserved[bossId] = reserved[bossId] or {}
+		reserved[bossId][index] = true
+		local waiting = #players
+		for _, player in players do
+			entering[player] = true
+			task.spawn(function()
+				WildService.Prestream(player, copy.inside.Position)
+				waiting -= 1
+			end)
+		end
+		local deadline = os.clock() + WildConfig.STREAM_TIMEOUT
+		while waiting > 0 and os.clock() < deadline do
+			task.wait(0.1)
+		end
+		reserved[bossId][index] = nil
+		for _, player in players do
+			entering[player] = nil
+		end
+	end
+	local ready: { Player } = {}
+	for _, player in players do
+		local reason = whyNotMember(player, bossId, reach)
+		if not reason then
+			table.insert(ready, player)
+		elseif player.Parent then
+			notify(player, reason, true)
+		end
+	end
+	if #ready == 0 then
+		return false, nil
+	end
+	return startBoss(bossId, ready, index, options)
+end
+
 -- The Fight prompt: the boss for this player alone (the Dungeon: its run decides who fights)
 local function onGate(player: Player, bossId: string)
 	if runGate then
 		runGate(player, bossId)
 		return
 	end
-	if not allowStart(player) or not Bosses.BOSSES[bossId] or not arenas[bossId] then
+	if not allowStart(player) or not Bosses.BOSSES[bossId] or not arenas[bossId] or entering[player] then
 		return
 	end
 	local lobby = lobbies[bossId]
@@ -417,10 +534,42 @@ local function onGate(player: Player, bossId: string)
 		notify(player, reason, true)
 		return
 	end
-	local started, why = startBoss(bossId, { player })
-	if not started then
-		notify(player, why or "The boss couldn't start. Try again.", true)
+	local started, why = enterCopy(bossId, { player }, Bosses.GATE_DISTANCE)
+	if not started and why then
+		notify(player, why, true)
 	end
+end
+
+-- Out of a remote arena copy and back to the boss's portal, whatever loot is still lying going into the Bag first.
+-- Never yields (it runs inside a fight's leave): the move, which streams the portal in first, has its own thread, and
+-- nobody dead or gone is moved (a dead player respawns at their shop)
+local function sendBack(player: Player, bossId: string, index: number)
+	local held = (fighters[bossId] or {})[index]
+	local at = if held then table.find(held, player) else nil
+	if at then
+		table.remove(held :: { Player }, at)
+	end
+	if not player.Parent then
+		return
+	end
+	collectAll(player)
+	local humanoid = if player.Character then player.Character:FindFirstChildOfClass("Humanoid") else nil
+	if humanoid and humanoid.Health > 0 then
+		task.spawn(WildService.MoveInWild, player, arenas[bossId].copies[index].exit)
+	end
+end
+
+-- A remote copy's Return portal: home to the boss's portal once the fight there is over
+local function onReturn(player: Player, bossId: string, index: number)
+	if not allowTravel(player) or not arenas[bossId] or not arenas[bossId].copies[index] then
+		return
+	end
+	local occupant = (occupants[bossId] or {})[index]
+	if occupant and occupant.alive and table.find((fighters[bossId] or {})[index] or {}, player) then
+		notify(player, "Finish the fight first.", true)
+		return
+	end
+	sendBack(player, bossId, index)
 end
 
 -- Players who left the game are dropped from a forming group (the next member leads); an empty group closes
@@ -473,10 +622,10 @@ local function closeLobby(bossId: string)
 	if #ready == 0 then
 		return
 	end
-	local started, why = startBoss(bossId, ready)
-	if not started then
+	local started, why = enterCopy(bossId, ready, Bosses.GATE_DISTANCE * 2)
+	if not started and why then
 		for _, player in ready do
-			notify(player, why or "The boss couldn't start. Try again.", true)
+			notify(player, why, true)
 		end
 	end
 end
@@ -549,7 +698,7 @@ function BossService.StartRun(bossId: string, players: { Player }, hpLeft: { [Pl
 			return false, if #players > 1 then `{player.DisplayName}: {reason}` else reason
 		end
 	end
-	return startBoss(bossId, players, { hpLeft = hpLeft, run = true })
+	return startBoss(bossId, players, BossRules.pickCopy(freeCopies(bossId)) or 1, { hpLeft = hpLeft, run = true })
 end
 
 -- The Dungeon: its arena's prompts go to the run (DungeonService) instead of starting a fight here
@@ -621,18 +770,35 @@ end
 
 function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
-	arenas = WildService.BuildBossArenas(onGate, onGroup)
+	arenas = WildService.BuildBossArenas(onGate, onGroup, onReturn)
 	BattleService.SetBossRewards(onBossWin)
 	BattleService.OnMemberLeft(function(player, monster)
-		local arena = if monster.boss then arenas[monster.boss] else nil
-		if arena then
-			moveOut(player, arena)
+		local copy, index = copyOf(monster)
+		if copy and index then
+			if copy.remote then
+				sendBack(player, monster.boss :: string, index)
+			else
+				moveOut(player, copy)
+			end
 		end
 	end)
 	BattleService.OnFightEnded(function(monster)
-		local arena = if monster.boss then arenas[monster.boss] else nil
-		if arena and BossRules.shouldUnseal(monster, occupants[monster.boss :: string]) then
-			setBarrier(arena, false)
+		local copy, index = copyOf(monster)
+		local bossId = monster.boss :: string
+		if not copy or not index or not BossRules.shouldUnseal(monster, (occupants[bossId] or {})[index]) then
+			return
+		end
+		setBarrier(copy, false)
+		if copy.remote then
+			-- time to pick up the loot, then whoever is still there goes back to the portal (loot into the Bag)
+			task.delay(Bosses.ARENA_LINGER, function()
+				if (occupants[bossId] or {})[index] ~= monster then
+					return -- another fight has the copy now
+				end
+				BossRules.forEachOf(copyFighters(bossId, index), function(player: Player)
+					sendBack(player, bossId, index)
+				end)
+			end)
 		end
 	end)
 	Remotes.RequestBosses.OnServerEvent:Connect(function(player)

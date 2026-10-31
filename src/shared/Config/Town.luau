@@ -120,7 +120,7 @@ return {
 	TRAIL = { WIDTH = 12, HEDGE_GAP = 8, WALK_SPEED = 16, EAST_LENGTH = { 125, 140 }, ARENA_LENGTH = { 85, 100 } },
 	-- "This way" signposts: arms name PORTAL_AREAS keys and point at that trail's start
 	SIGNPOSTS = {
-		{ x = 30, z = 0, arms = { "Wild", "Frontier", "Arena" } },
+		{ x = -23.9, z = -7.3, arms = { "Wild", "Frontier", "Arena" } }, -- in the planter on the plaza rim by the spawn (the user's pick A, 2026-10-31; it stood on the road)
 		{ x = 112, z = 0, arms = { "Wild", "Frontier" } },
 		{ x = -112, z = 12, arms = { "Arena" } },
 	},
@@ -215,6 +215,19 @@ return {
 				{ kind = "beam", from = "Fx_DripA", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
 				{ kind = "beam", from = "Fx_DripB", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
 				{ kind = "emitter", at = "Fx_Pool", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 20, lifetime = { 1.2, 1.8 }, speed = { 3, 5 }, size = { 0.6, 0 }, rise = 3, spin = 90, colors = { { 255, 205, 90 }, { 255, 90, 40 } } },
+			},
+		},
+		-- The Wild valley's boss portals (WildService): the obsidian arch with a purple swirl, its lava glowing purple
+		Boss = {
+			slot = "PortalArena",
+			ground = { part = "Fx_Pool", bottom = 0.28 },
+			vortex = { colors = { { 150, 70, 255 }, { 230, 130, 255 } }, core = { 70, 20, 150 }, spin = 35, transparency = 0.05 },
+			light = { color = { 190, 140, 255 }, brightness = 1, range = 16 },
+			glow = { Lava = { 170, 90, 255 } },
+			effects = {
+				{ kind = "beam", from = "Fx_DripA", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 190, 120, 255 } },
+				{ kind = "beam", from = "Fx_DripB", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 190, 120, 255 } },
+				{ kind = "emitter", at = "Fx_Pool", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 20, lifetime = { 1.2, 1.8 }, speed = { 3, 5 }, size = { 0.6, 0 }, rise = 3, spin = 90, colors = { { 220, 170, 255 }, { 150, 70, 255 } } },
 			},
 		},
 	},

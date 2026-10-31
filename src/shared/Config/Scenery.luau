@@ -343,6 +343,13 @@ return {
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
 		{ area = "EmberCanyon", kind = "flow", x = -184, y = 0.6, z = -28.5, size = { x = 96, z = 3 }, rate = 10 },
 		{ area = "EmberCanyon", kind = "plume", x = -335, y = 110, z = 10 }, -- PLUME, from the volcano's crater (its Fx_Smoke when the model is there)
+		{ area = "WildMeadow", kind = "fireflies", x = -50, y = 4, z = 1212, size = { x = 200, z = 170 }, rate = 10 }, -- the Wild valley's meadow
+		{ area = "WildMeadow", kind = "leaves", x = -150, y = 28, z = 1180, size = { x = 60, z = 120 }, rate = 4 },
+		{ area = "WildGorge", kind = "glints", x = -360, y = 18, z = 1420, size = { x = 120, z = 200 }, rate = 8 },
+		{ area = "WildRidge", kind = "embers", x = -55, y = 36, z = 1680, size = { x = 220, z = 180 }, rate = 14 },
+		{ area = "WildRidge", kind = "ventsmoke", x = -110, y = 39, z = 1690, size = { x = 3, z = 3 }, rate = 3 }, -- one per WildValley.VENTS, on its rim
+		{ area = "WildRidge", kind = "ventsmoke", x = 40, y = 38.5, z = 1610, size = { x = 3, z = 3 }, rate = 3 },
+		{ area = "WildRidge", kind = "ventsmoke", x = -30, y = 39, z = 1740, size = { x = 3, z = 3 }, rate = 3 },
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},
@@ -373,11 +380,12 @@ return {
 		Slate = { 118, 128, 144 }, -- Frostpeak's cliff and peak
 		CrackedLava = { 40, 30, 32 }, -- the caldera's floor and the lava's banks
 		Basalt = { 46, 42, 50 }, -- the caldera's walls, rims and trail
+		Limestone = { 112, 104, 100 }, -- the Wild gorge's warm grey rock (Config/WildValley)
 		Snow = { 240, 246, 255 },
 		Glacier = { 170, 215, 245 },
 		Ground = { 120, 96, 70 },
 	},
 	WATER = { COLOR = { 60, 190, 200 }, TRANSPARENCY = 0.6, REFLECTANCE = 0.3, WAVE_SIZE = 0.05, WAVE_SPEED = 6 },
 	PLOT_GROUND_MARGIN = 5, -- studs of plain ground round each shop, so no grass blades poke through its floor
-	MAX_CELLS = 180000, -- estimated 4-stud cells (memory: the spike's oversized fill cost +80 MB)
+	MAX_CELLS = 230000, -- estimated 4-stud cells, town plus the Wild valley (memory: the spike's oversized fill cost +80 MB; raised from 180k for the round 2 valley after measuring 2026-10-31: 60 fps at levels 1 and 10, terrain 45-47 MB graphics in the valley and 51 on the street, voxels 4.1 -> 5.4-6.0 MB)
 }

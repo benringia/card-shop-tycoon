@@ -7,7 +7,8 @@
 -- /frontierdrop (a Star Shard and a random Frontier card), /raritypack [foil] (one card of each rarity, to
 -- see every pack reveal), /legendarys [foil] (a Grade S copy of every Legendary), /item <id> <amount> (any item),
 -- /boss <n> [fight|group] (to boss n's arena gate; with fight or group, use that gate prompt there),
--- /maxcard <name or number> [foil] (one copy at max level, max stars and Grade S).
+-- /maxcard <name or number> [foil] (one copy at max level, max stars and Grade S), /crowd <0-60> (players counted in
+-- every Wild valley biome on top of the real ones, to see its monsters grow).
 -- Does nothing outside Studio, so live players never get these commands.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -159,6 +160,7 @@ local MAX_GIVE_CARDS = 500 -- per /givecard, so a typo can't flood the save
 
 -- "/givecard 30 70": 70 plain copies of card #30, each rolling its grade like a pack pull
 local MAX_GIVE_ITEMS = 999 -- per /item
+local MAX_CROWD = 60 -- /crowd: a full server
 
 -- "/item gradingSeal 5": items for testing (any Config/Items id)
 local function giveItems(player: Player, text: string)
@@ -302,6 +304,15 @@ function DevService.Start()
 	addCommand(folder, "wild", function(player)
 		WildService.TravelToWild(player)
 	end)
+	addCommand(folder, "crowd", function(player, text)
+		local count = tonumber(string.match(text, "%s+(%d+)") or "")
+		if not count or count > MAX_CROWD then
+			Remotes.Notify:FireClient(player, `Usage: /crowd <0-{MAX_CROWD}> (players counted in every Wild biome)`, true)
+			return
+		end
+		WildService.SetPhantomPlayers(count)
+		Remotes.Notify:FireClient(player, `The Wild counts {count} extra players in every biome.`, false)
+	end)
 	addCommand(folder, "rest", function(player)
 		BattleService.ClearResting(player)
 	end)
@@ -349,7 +360,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>")
 end
 
 return DevService

@@ -18,14 +18,11 @@ local PortalFxController = {}
 
 local TAG = "TownPortal"
 
--- The look whose slot the portal model is named after (Props names a placed model after its slot)
+-- The look PortalBuild.dress stamped on the model (its PORTAL_LOOKS key): the Boss and Arena looks share one model,
+-- and boss portals are renamed after the boss, so the model's name can't say which look it wears
 local function lookFor(model: Instance): any?
-	for _, look in Town.PORTAL_LOOKS do
-		if look.slot == model.Name then
-			return look
-		end
-	end
-	return nil
+	local key = model:GetAttribute("PortalLook")
+	return if type(key) == "string" then Town.PORTAL_LOOKS[key] else nil
 end
 
 local function pose(part: BasePart, look: any, swirl: number, inner: number, glow: number, light: number)

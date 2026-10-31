@@ -182,6 +182,41 @@ function BossRules.ringSegments(radius: number, maxWidth: number): { number }
 	return angles
 end
 
+-- Arena copies (the Wild valley's boss portals): a copy takes a new fight once its boss is gone and the players who
+-- fought there have left it (the Frontier's single ring tracks no players, so it frees with its boss as before)
+function BossRules.copyFree(occupant: { alive: boolean }?, members: number): boolean
+	return (occupant == nil or not occupant.alive) and members == 0
+end
+
+-- The first free copy (nil: all busy)
+function BossRules.pickCopy(free: { boolean }): number?
+	for index, isFree in free do
+		if isFree then
+			return index
+		end
+	end
+	return nil
+end
+
+-- Whether a group forming at a gate keeps solo fighters out: only where the boss has a single arena
+function BossRules.soloBlockedByLobby(copies: number): boolean
+	return copies <= 1
+end
+
+-- Whether a player still holds an arena copy: still in the game and on its clearing (`hold`: studs from its middle
+-- that reach the clearing's corners; respawning sends them to their shop)
+function BossRules.stillInCopy(inGame: boolean, distance: number, hold: number): boolean
+	return inGame and distance <= hold
+end
+
+-- Calls `each` for every item of `list` as it is now, even when `each` takes items out of it (sending fighters back
+-- removes them from the copy's list)
+function BossRules.forEachOf(list: { any }, each: (any) -> ())
+	for _, item in table.clone(list) do
+		each(item)
+	end
+end
+
 -- Whether a spot (offset from the arena's centre) is inside its sealed ring, wall line included
 function BossRules.insideRing(dx: number, dz: number, radius: number): boolean
 	return dx * dx + dz * dz <= (radius + 1) ^ 2

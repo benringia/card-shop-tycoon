@@ -9,12 +9,14 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Scenery = require(Config:WaitForChild("Scenery"))
 local Town = require(Config:WaitForChild("Town"))
+local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local Props = require(SharedUtil:WaitForChild("Props"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TownTerrain = require(SharedUtil:WaitForChild("TownTerrain"))
 local LavaCracks = require(SharedUtil:WaitForChild("LavaCracks"))
+local WildValley = require(SharedUtil:WaitForChild("WildValley"))
 local TownService = require(script.Parent:WaitForChild("TownService"))
 local ServerUtil = (script.Parent :: Instance).Parent:WaitForChild("Util")
 local ScenePieces = require(ServerUtil:WaitForChild("ScenePieces"))
@@ -275,6 +277,157 @@ local function buildCalderaProps(folder: Folder)
 	end
 end
 
+-- The Wild valley's footbridge over the stream (WildValley.BRIDGE): an arched deck of planks along the trail, rails on
+-- posts either side; players walk over it
+-- Where the terrain draws its ground over (x, z) (Config/Scenery and Config/WildValley's fills)
+local function groundAt(x: number, z: number): number
+	return TownTerrain.groundAt(terrainOps, x, z) or 0
+end
+
+local function buildBridge(folder: Instance)
+	local bridge = WildValleyConfig.BRIDGE
+	local wood, dark = Props.color(bridge.wood), Props.color(bridge.dark)
+	local base = groundAt(bridge.x, bridge.z - bridge.length / 2) -- the bank it starts from
+	local steps = 8
+	for index = 0, steps - 1 do
+		local t0, t1 = index / steps, (index + 1) / steps
+		local z0 = bridge.z - bridge.length / 2 + t0 * bridge.length
+		local z1 = bridge.z - bridge.length / 2 + t1 * bridge.length
+		local y0 = base + math.sin(t0 * math.pi) * bridge.rise
+		local y1 = base + math.sin(t1 * math.pi) * bridge.rise
+		local from, to = Vector3.new(bridge.x, y0 + 0.2, z0), Vector3.new(bridge.x, y1 + 0.2, z1)
+		piece(folder, "BridgeDeck", Vector3.new(bridge.width, 0.4, (to - from).Magnitude + 0.05), CFrame.lookAt((from + to) / 2, to), if index % 2 == 0 then wood else dark, Enum.Material.WoodPlanks)
+		for _, side in { -1, 1 } do
+			local x = bridge.x + side * (bridge.width / 2 - 0.3)
+			local rail = piece(folder, "BridgeRail", Vector3.new(0.35, 0.35, (to - from).Magnitude + 0.05), CFrame.lookAt((from + to) / 2 + Vector3.new(x - bridge.x, 2.4, 0), to + Vector3.new(x - bridge.x, 2.4, 0)), dark, Enum.Material.Wood)
+			rail.CanCollide = true
+			if index % 2 == 0 then
+				piece(folder, "BridgePost", Vector3.new(0.5, 2.6, 0.5), CFrame.new(x, y0 + 1.3, z0), dark, Enum.Material.Wood)
+			end
+		end
+	end
+end
+
+-- The trail's markers (Util/WildValley.markers): small glowing stones along its edges, none under the bridge; flat
+-- and not solid, so monsters and players pass over them
+local function buildTrailMarkers(folder: Instance)
+	local look, bridge = WildValleyConfig.MARKER, WildValleyConfig.BRIDGE
+	local color = Props.color(look.color)
+	for index, point in WildValley.markers(WildValley.trail(WildValleyConfig), WildValleyConfig.MARKER_SPACING) do
+		if math.abs(point.z - bridge.z) > bridge.length / 2 + 1 then
+			local side = if index % 2 == 0 then 1 else -1
+			local x = point.x + side * (WildValleyConfig.TRAIL_WIDTH / 2 - 0.6)
+			local stone = piece(folder, "TrailMarker", Vector3.new(0.35, look.size, look.size), CFrame.new(x, groundAt(x, point.z) + 0.12, point.z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+			stone.CanCollide = false
+			stone.CanQuery = false
+			stone.CanTouch = false
+			stone.CastShadow = false
+		end
+	end
+end
+
+-- A cluster of glowing blue crystals in the gorge: a tall one and two smaller leaning out of its foot
+local function buildCrystalCluster(folder: Instance, spot: any)
+	local look = WildValleyConfig.CRYSTAL_LOOK
+	local color, tip = Props.color(look.color), Props.color(look.tip)
+	local base = CFrame.new(spot.x, groundAt(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
+	for index, shape in { { 1, 0, 0, 0 }, { 0.6, 0.9, 25, 40 }, { 0.5, -0.8, -20, 200 } } do
+		local height = spot.height * shape[1]
+		local lean = CFrame.Angles(math.rad(shape[3]), math.rad(shape[4]), 0)
+		local crystal = piece(folder, "GorgeCrystal", Vector3.new(height * 0.4, height, height * 0.4), base * CFrame.new(shape[2], 0, 0) * lean * CFrame.new(0, height * 0.42, 0) * CFrame.Angles(0, math.rad(45), 0), if index == 1 then color else tip, Enum.Material.Neon)
+		crystal.Transparency = look.transparency
+		crystal.CanCollide = index == 1
+		crystal.CastShadow = false
+	end
+end
+
+-- The crystal cave's mouth (WildValley.CAVE): the opening is carved into the rock (an Air op); a dark wall closes its
+-- back, set on the carved face a ray finds (so it runs once the terrain is filled), and a cold blue light glows inside
+local function buildCave(folder: Instance)
+	local cave = WildValleyConfig.CAVE
+	local hit = snap(Vector3.new(cave.x, cave.y + cave.height / 2, cave.z), Vector3.new(-40, 0, 0))
+	if not hit then
+		return
+	end
+	local face = hit.Position.X + 0.4
+	local back = piece(folder, "CaveDark", Vector3.new(0.4, cave.height, cave.width), CFrame.new(face, cave.y + cave.height / 2, cave.z), Props.color(cave.inside), Enum.Material.SmoothPlastic)
+	back.CastShadow = false
+	back.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Props.color(cave.light)
+	light.Brightness = 1.6
+	light.Range = 18
+	light.Shadows = false
+	light.Parent = anchorPart(folder, "CaveGlow", Vector3.new(face + 5, cave.y + 4, cave.z))
+end
+
+-- A smoking vent on the ridge: a low basalt cone, a glowing core (its smoke is an area effect, Scenery.EMITTERS)
+local function buildVent(folder: Instance, spot: any)
+	local look = WildValleyConfig.VENT_LOOK
+	local rock, glow = Props.color(look.rock), Props.color(look.glow)
+	local upright = CFrame.Angles(0, 0, math.rad(90))
+	local ground = groundAt(spot.x, spot.z)
+	piece(folder, "VentBase", Vector3.new(spot.height * 0.6, look.radius * 2.4, look.radius * 2.4), CFrame.new(spot.x, ground + spot.height * 0.3, spot.z) * upright, rock, Enum.Material.Basalt, Enum.PartType.Cylinder)
+	piece(folder, "VentRim", Vector3.new(spot.height * 0.5, look.radius * 1.5, look.radius * 1.5), CFrame.new(spot.x, ground + spot.height * 0.75, spot.z) * upright, rock, Enum.Material.Basalt, Enum.PartType.Cylinder)
+	local core = piece(folder, "VentCore", Vector3.new(0.2, look.radius, look.radius), CFrame.new(spot.x, ground + spot.height + 0.02, spot.z) * upright, glow, Enum.Material.Neon, Enum.PartType.Cylinder)
+	core.CanCollide = false
+	core.CastShadow = false
+end
+
+-- The ridge's glowing floor cracks (Util/LavaCracks.floor, clear of the trail), snapped onto the terrain once it's filled
+local function buildRidgeCracks(folder: Instance)
+	local ridge = WildValleyConfig.RIDGE_CRACKS
+	local holder = Instance.new("Folder")
+	holder.Name = "RidgeCracks"
+	holder.Parent = folder
+	local random = Random.new(ridge.SEED)
+	local trail = WildValley.trail(WildValleyConfig)
+	local color = Props.color(Scenery.CRACKS.COLOR)
+	local floor = LavaCracks.floor(ridge.FLOOR, Scenery.CRACKS.WIDTH, trail, trail[1], WildValleyConfig.TRAIL_WIDTH / 2 + 2, 0, function(): number
+		return random:NextNumber()
+	end)
+	for _, segment in floor do
+		local a = snap(Vector3.new(segment.a.x, groundAt(segment.a.x, segment.a.z) + 20, segment.a.z), Vector3.new(0, -40, 0))
+		local b = snap(Vector3.new(segment.b.x, groundAt(segment.b.x, segment.b.z) + 20, segment.b.z), Vector3.new(0, -40, 0))
+		if a and b then
+			strip(holder, a, b, segment.width, color)
+		end
+	end
+end
+
+-- The Wild valley's dressing (Config/WildValley), each piece on the drawn ground: props, the bridge, the trail's markers,
+-- the gorge's crystals, the ridge's charred trees, obsidian shards (with the caldera's colliders) and vents, and the
+-- volcano past the ridge (the cave and the ridge's cracks wait for the terrain: Start)
+local function buildWildValley(folder: Folder)
+	local holder = Instance.new("Folder")
+	holder.Name = "WildValley"
+	holder.Parent = folder
+	for _, spot in WildValleyConfig.PROPS do
+		placeModel(holder, spot, spot.model)
+	end
+	buildBridge(holder)
+	buildTrailMarkers(holder)
+	for _, spot in WildValleyConfig.CRYSTALS do
+		buildCrystalCluster(holder, spot)
+	end
+	for _, list in { WildValleyConfig.CHARRED, WildValleyConfig.SHARDS } do
+		for _, spot in list do
+			local model = placeModel(holder, spot, spot.model)
+			if model then
+				dressCalderaProp(model)
+				calderaCollider(model, spot)
+			end
+		end
+	end
+	for _, spot in WildValleyConfig.VENTS do
+		buildVent(holder, spot)
+	end
+	local volcano = placeModel(holder, WildValleyConfig.VOLCANO, "Volcano")
+	if volcano then
+		dressCalderaProp(volcano)
+	end
+end
+
 local function buildCanyon(folder: Folder)
 	buildLava(folder)
 	buildCalderaProps(folder)
@@ -499,6 +652,20 @@ local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
 		emitter.Size = NumberSequence.new(0.3, 0)
 		emitter.EmissionDirection = Enum.NormalId.Top
 	end,
+	-- a ridge vent's slow grey smoke, rising and spreading
+	ventsmoke = function(emitter)
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Color = ColorSequence.new(Color3.fromRGB(110, 100, 104), Color3.fromRGB(70, 64, 68))
+		emitter.LightEmission = 0
+		emitter.Lifetime = NumberRange.new(4, 6)
+		emitter.Speed = NumberRange.new(2, 3.5)
+		emitter.Acceleration = Vector3.new(0.6, 1, 0)
+		emitter.Size = NumberSequence.new(2, 7)
+		emitter.Transparency = NumberSequence.new(0.35, 1)
+		emitter.RotSpeed = NumberRange.new(-20, 20)
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.EmissionDirection = Enum.NormalId.Top
+	end,
 	bubbles = function(emitter)
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 90, 20))
 		emitter.Lifetime = NumberRange.new(0.8, 1.4)
@@ -668,6 +835,7 @@ local function buildDressing()
 	buildFrost(folder)
 	buildFrozenFalls(folder)
 	buildSmallLife(folder)
+	buildWildValley(folder)
 	buildEffects(folder)
 	buildSounds(folder)
 	PlazaBuild.build(folder)
@@ -680,12 +848,20 @@ function SceneryService.Start()
 		return
 	end
 	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
+	-- The Wild valley (Config/WildValley), far up the map in this same place: its terrain fills with the town's
+	for _, op in WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) do
+		table.insert(terrainOps, op)
+	end
 	-- Neither holds up the server's start (the players' data loads after the services start). The caldera's cracks
 	-- snap onto the terrain by raycast, so they wait for it to be filled.
 	task.spawn(function()
 		buildTerrain()
+		-- the Wild valley has ground now: WildService lets players travel there
+		workspace:SetAttribute(WildValleyConfig.TERRAIN_READY_ATTRIBUTE, true)
 		local scenery = workspace:WaitForChild("Scenery")
 		buildCracks(scenery :: Folder)
+		buildRidgeCracks(scenery)
+		buildCave(scenery)
 	end)
 	task.spawn(buildDressing)
 end

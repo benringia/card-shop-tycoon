@@ -432,4 +432,53 @@ return {
 		expect.equal(BossRules.revealTricks("locked", true), true, "the next boss, even locked")
 		expect.equal(BossRules.revealTricks("locked", false), false, "locked further up")
 	end,
+	["a remote arena copy is free once its boss is gone and its fighters have left"] = function()
+		expect.equal(BossRules.copyFree(nil, 0), true, "never used")
+		expect.equal(BossRules.copyFree({ alive = true }, 0), false, "a fight on")
+		expect.equal(BossRules.copyFree({ alive = false }, 2), false, "fighters still picking up loot")
+		expect.equal(BossRules.copyFree({ alive = false }, 0), true, "done and empty")
+	end,
+
+	["the first free copy is picked; none when all are busy"] = function()
+		expect.equal(BossRules.pickCopy({ false, true, true, false }), 2, "copy 2")
+		expect.equal(BossRules.pickCopy({ false, false, false, false }), nil, "all busy")
+	end,
+
+	["a forming group blocks solo fights only where there's a single arena"] = function()
+		expect.equal(BossRules.soloBlockedByLobby(1), true, "the Frontier's ring")
+		expect.equal(BossRules.soloBlockedByLobby(4), false, "the valley's copies")
+	end,
+
+	["someone who left the game or the copy no longer holds it"] = function()
+		expect.equal(BossRules.stillInCopy(true, 20, 90), true, "in the ring")
+		expect.equal(BossRules.stillInCopy(true, 85, 90), true, "in a corner of the clearing")
+		expect.equal(BossRules.stillInCopy(true, 95, 90), false, "past the clearing")
+		expect.equal(BossRules.stillInCopy(false, 0, 90), false, "left the game")
+		expect.equal(BossRules.stillInCopy(true, 500, 90), false, "respawned at their shop")
+	end,
+
+	["sending everyone back reaches every fighter, though each one sent leaves the list"] = function()
+		local list = { "A", "B", "C", "D" }
+		local sent = {}
+		BossRules.forEachOf(list, function(player)
+			table.insert(sent, player)
+			table.remove(list, table.find(list, player) :: number)
+		end)
+		expect.equal(#sent, 4, "all four sent back")
+		expect.equal(sent[2], "B", "the second isn't skipped")
+		expect.equal(sent[4], "D", "nor the fourth")
+	end,
+
+	["sending a fighter back never waits on streaming (it runs inside a fight's leave)"] = function()
+		local source = fs.readFile("src/server/Services/BossService.luau")
+		local body = string.match(source, "local function sendBack%(.-\nend\n")
+		assert(body, "sendBack")
+		assert(string.find(body, "task.spawn(WildService.MoveInWild", 1, true), "sendBack moves the player in its own thread")
+		assert(not string.find(body, "\n%s*WildService.MoveInWild%("), "sendBack calls MoveInWild directly (it streams, so it yields)")
+	end,
+
+	["each Wild boss has its arena copies"] = function()
+		expect.equal(Bosses.ARENA_COPIES, 4, "up to 4 fights per boss at once")
+		assert(Bosses.ARENA_LINGER > 0 and Bosses.ARENA_LINGER <= 120, "time to pick up loot, then back")
+	end,
 }

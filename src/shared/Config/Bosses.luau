@@ -344,4 +344,9 @@ return {
 	AURORA_FLAME = { bones = { "Spine_0", "Spine_1", "Pelvis" }, height = 0.5, rate = 12, sizeStart = 8, sizeEnd = 2.5, lifetimeMin = 1, lifetimeMax = 1.6, rise = 10, transparency = 0.3 },
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
+	-- The Wild valley's boss portals (WildService, round 2 spec): each fight gets its own copy of the boss's arena, up to
+	-- ARENA_COPIES at once; after a copy's fight ends, whoever is still in it is sent back ARENA_LINGER seconds later
+	-- (loot they haven't picked up goes into their Bag first)
+	ARENA_COPIES = 4,
+	ARENA_LINGER = 60,
 }

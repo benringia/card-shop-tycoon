@@ -30,6 +30,7 @@ type Critter = {
 	targetAngle: number,
 	facing: Vector3,
 	rest: Vector3, -- a sleeper's feet from where it lies
+	snore: BillboardGui?, -- a sleeper's "z Z z", shown and hidden with its model
 	resumeAt: number,
 	shown: boolean,
 }
@@ -47,7 +48,7 @@ local function nextTarget(critter: Critter, random: Random)
 end
 
 -- A sleeper: lying on its side (CreatureVisuals' fainted pose) with a "z Z z" bobbing and fading over it
-local function fallAsleep(marker: Part, height: number)
+local function fallAsleep(marker: Part, height: number): BillboardGui
 	marker:SetAttribute("Fainted", true)
 	local board = Instance.new("BillboardGui")
 	board.Size = UDim2.fromScale(2.2, 1.1)
@@ -67,6 +68,7 @@ local function fallAsleep(marker: Part, height: number)
 	local drift = TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 	TweenService:Create(board, drift, { StudsOffset = Vector3.new(0.3, height * 0.75 + 0.6, 0) }):Play()
 	TweenService:Create(label, drift, { TextTransparency = 0.5, TextStrokeTransparency = 0.7 }):Play()
+	return board
 end
 
 local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
@@ -114,6 +116,7 @@ local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
 		targetAngle = angle,
 		facing = facing,
 		rest = Vector3.zero,
+		snore = nil,
 		resumeAt = 0,
 		shown = true,
 	}
@@ -121,7 +124,7 @@ local function spawnCritter(folder: Folder, spec: any, random: Random): Critter?
 		-- It rolls toward its left: feet to the right, and up, so its body lies on the spot
 		local sleep = Ambient.CRITTER.SLEEP
 		critter.rest = CFrame.lookAt(Vector3.zero, facing).RightVector * spec.height * sleep.shift + Vector3.new(0, spec.height * sleep.lift, 0)
-		fallAsleep(marker, spec.height)
+		critter.snore = fallAsleep(marker, spec.height)
 	end
 	nextTarget(critter, random)
 	return critter
@@ -153,6 +156,9 @@ function TownCritterController.Start()
 			if show ~= critter.shown then
 				critter.shown = show
 				critter.body.model.Parent = if show then folder else nil
+				if critter.snore then
+					critter.snore.Enabled = show
+				end
 			end
 			if show then
 				if now >= critter.resumeAt and not critter.spec.sleeps then

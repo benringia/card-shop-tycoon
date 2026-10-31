@@ -76,6 +76,11 @@ game makes them glowing colour). The front faces -Y in Blender. Colours and effe
 2. Check the part names, right-click the Model → **Save to File…** → `assets/props/Portal<World>.rbxm` (over the old one).
 3. Delete the Workspace copy (unanchored: it falls apart in Play). Stop and Play to see it.
 
+The Wild valley reuses two of them (WildService): each boss portal is `PortalArena` scaled to 20 studs
+(`WildValley.BOSS_PORTAL`) with the purple `Boss` look (`Town.PORTAL_LOOKS.Boss`: swirl, light and its `Lava` glowing
+purple), and each arena copy's way home, like the valley's arrival, is `PortalWild` with its own look. The valley's
+volcano is the caldera's `Volcano` (`WildValley.VOLCANO`), dressed like the canyon's: anchored, its `Lava` glowing.
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models
