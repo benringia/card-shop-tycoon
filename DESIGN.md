@@ -1814,6 +1814,15 @@ boss models; the ranch and Heroic tiers come after those.
   (stream ops vs STREAM, BRIDGE.z vs the crossing, ventsmoke emitters vs VENTS); no test that WildValley's prop names
   exist in assets/props; EdgeWall's CanQuery false is moot while CanCollide is on; nits (PROPS comment mentions a zone
   field, PortalFxController's header says three portals, no bridge post at the far end).
+- [x] Wild monster models (spec `2026-11-01-wild-monster-models-design.md`, plan `2026-11-01-wild-monster-models.md`,
+  branch `wild-monsters`): the six wild monsters' placeholders replaced by rigged models in style B "wild-touched", each
+  design picked by the user from concepts (Mossling boulder beast, Puddle Crab barnacle brute, Cave Bat gargoyle, Spark
+  Beetle stag spark, Magma Golem cairn cyclops, Ash Wolf cinder mane), made with Meshy image to 3D and our rig scripts;
+  heights by species, steady glow masks, sparks and smoke on effect bones, the wolf's roar and the golem's stomp. The
+  meadow pair raised a stud and the terrain grass cut short (GrassLength 0.3); the golem's lava pulse dropped after
+  measuring (any changing SurfaceAppearance strength cost about 6 ms of render CPU). Measured: 60 fps everywhere.
+  Approved by the user and merged 2026-11-01. Deferred minors: the wolf's wildroar has no FIDGET_SECONDS entry (2 s
+  default); PetRig.spec's source-text check is brittle; a Puddle Crab spawn spot at the pond's edge stood underwater.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
