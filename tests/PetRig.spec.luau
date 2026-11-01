@@ -1029,4 +1029,17 @@ return {
 		local source = fs.readFile("src/client/Util/CreatureVisuals.luau")
 		assert(string.find(source, '"wildroar"', 1, true), "CreatureVisuals plays the shockwave for a wild roar")
 	end,
+
+	-- The Meadow Warden's signature (spec 2026-11-01-wild-bosses-arenas-design): the stomp's pose, its effect as it lands
+	["rootslam: the stomp's pose, its effect as it lands"] = function()
+		expect.equal(PetRig.cue(CFG, "rootslam", 0.5), false, "not mid-air")
+		expect.equal(PetRig.cue(CFG, "rootslam", 0.95), true, "as it lands")
+		for _, progress in { 0.2, 0.5, 0.8 } do
+			local slam = PetRig.body(CFG, "rootslam", progress, 1)
+			local stomp = PetRig.body(CFG, "stomp", progress, 1)
+			expect.near(slam.lift, stomp.lift, 1e-9, "lift")
+			expect.near(slam.pitch, stomp.pitch, 1e-9, "pitch")
+		end
+		assert(CFG.FIDGET_SECONDS.rootslam, "rootslam has a length")
+	end,
 }

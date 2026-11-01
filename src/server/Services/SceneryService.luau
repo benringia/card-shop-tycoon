@@ -10,6 +10,7 @@ local Config = Shared:WaitForChild("Config")
 local Scenery = require(Config:WaitForChild("Scenery"))
 local Town = require(Config:WaitForChild("Town"))
 local WildValleyConfig = require(Config:WaitForChild("WildValley"))
+local Bosses = require(Config:WaitForChild("Bosses"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local Props = require(SharedUtil:WaitForChild("Props"))
@@ -630,6 +631,15 @@ end
 
 -- The look of each kind of area effect (Config/Scenery EMITTERS)
 local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
+	ash = function(emitter) -- grey flakes drifting down over the Ember Colossus's lava field
+		emitter.Color = ColorSequence.new(Color3.fromRGB(120, 112, 108), Color3.fromRGB(70, 66, 64))
+		emitter.LightEmission = 0
+		emitter.Lifetime = NumberRange.new(9, 14)
+		emitter.Speed = NumberRange.new(0.5, 1.5)
+		emitter.Acceleration = Vector3.new(0.6, -1.6, 0.3)
+		emitter.Size = NumberSequence.new(0.3)
+		emitter.EmissionDirection = Enum.NormalId.Bottom
+	end,
 	snow = function(emitter)
 		emitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
 		emitter.Lifetime = NumberRange.new(8, 12)
@@ -739,6 +749,22 @@ local function buildPlume(folder: Folder, crater: Vector3)
 	beam.Parent = anchor
 end
 
+-- A box of particles over an area (Scenery's effect kinds: EFFECT_LOOKS), `size` wide
+local function areaEffect(folder: Instance, kind: string, rate: number, at: Vector3, size: Vector3)
+	local box = anchorPart(folder, "AreaEffect", at, size)
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Shape = Enum.ParticleEmitterShape.Box
+	emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Rate = rate
+	emitter.LightEmission = 1
+	local look = EFFECT_LOOKS[kind]
+	if look then
+		look(emitter)
+	end
+	emitter.Parent = box
+end
+
 local function buildEffects(folder: Folder)
 	for _, spec in Scenery.EMITTERS do
 		if spec.kind == "aurora" then
@@ -780,18 +806,39 @@ local function buildEffects(folder: Folder)
 		elseif spec.kind == "plume" then
 			buildPlume(folder, volcanoSmoke or Vector3.new(spec.x, spec.y, spec.z))
 		else
-			local box = anchorPart(folder, "AreaEffect", Vector3.new(spec.x, spec.y, spec.z), Vector3.new(spec.size.x, 1, spec.size.z))
-			local emitter = Instance.new("ParticleEmitter")
-			emitter.Shape = Enum.ParticleEmitterShape.Box
-			emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
-			emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-			emitter.Rate = spec.rate
-			emitter.LightEmission = 1
-			local look = EFFECT_LOOKS[spec.kind]
-			if look then
-				look(emitter)
+			areaEffect(folder, spec.kind, spec.rate, Vector3.new(spec.x, spec.y, spec.z), Vector3.new(spec.size.x, 1, spec.size.z))
+		end
+	end
+end
+
+-- Each Wild boss arena copy's area effects and crystals (Config/WildValley ARENA_DRESSING; WildService builds the rest of
+-- the copy, spec 2026-11-01-wild-bosses-arenas-design)
+local function buildArenaEffects(folder: Folder)
+	for _, boss in Bosses.BOSSES do
+		local dressing = if boss.place == "Wild" then WildValleyConfig.ARENA_DRESSING[boss.zone] else nil
+		if dressing then
+			for copy = 1, Bosses.ARENA_COPIES do
+				local centre = WildValley.arenaCopyCenter(WildValleyConfig, boss.zone, copy)
+				local y = WildValleyConfig.ARENA_FIELD.y
+				for _, effect in dressing.effects do
+					areaEffect(folder, effect.kind, effect.rate, Vector3.new(centre.x, y + effect.y, centre.z), Vector3.new(effect.size, 1, effect.size))
+				end
+				local crystals = dressing.crystals
+				if crystals then
+					local random = Random.new(copy * 17 + boss.zone)
+					local rng = function(): number
+						return random:NextNumber()
+					end
+					for _, spot in WildValley.arenaSpots(WildValleyConfig, boss.ringRadius or Bosses.RING_RADIUS, crystals.count, crystals.radius, rng) do
+						buildCrystalCluster(folder, {
+							x = centre.x + spot.x,
+							z = centre.z + spot.z,
+							height = crystals.height[1] + (crystals.height[2] - crystals.height[1]) * rng(),
+							yaw = spot.yaw,
+						})
+					end
+				end
 			end
-			emitter.Parent = box
 		end
 	end
 end
@@ -837,6 +884,7 @@ local function buildDressing()
 	buildSmallLife(folder)
 	buildWildValley(folder)
 	buildEffects(folder)
+	buildArenaEffects(folder)
 	buildSounds(folder)
 	PlazaBuild.build(folder)
 	folder.Parent = workspace

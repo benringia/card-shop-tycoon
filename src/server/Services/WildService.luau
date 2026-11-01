@@ -491,6 +491,9 @@ local function createMonster(species: string, level: number, elite: boolean, zon
 	}
 	marker.Name = `Monster_{monster.id}`
 	setMarker(monster)
+	if boss then
+		marker:SetAttribute("SpawnedAt", workspace:GetServerTimeNow()) -- clients time its intro roar from this (Util/BossMoments)
+	end
 	marker.Parent = monstersFolder
 	monsters[monster.id] = monster
 	return monster
@@ -828,36 +831,98 @@ local function gatePrompts(part: BasePart, boss: any, bossId: string, onGate: (p
 	return groupPrompt
 end
 
--- A valley arena copy's surroundings: its zone's props round the clearing, the gate's side (-X) left open for the path
--- and the way home
-local function ringProps(folder: Instance, zone: number, center: Vector3, seed: number)
-	local clearing = WildValleyConfig.ARENA_CLEARING
-	local names = clearing.props[zone]
-	local random = Random.new(seed)
-	for step = 0, clearing.count - 1 do
-		local angle = (step + 0.5) / clearing.count * math.pi * 2
-		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		if direction.X > -0.9 then
-			local spot = center + direction * clearing.ring
-			local model = ScenePieces.placeModel(folder, {
-				model = names[random:NextInteger(1, #names)],
-				x = spot.X,
-				z = spot.Z,
-				height = random:NextNumber(clearing.height[1], clearing.height[2]),
-				yaw = random:NextNumber(0, 360),
-			}, "ArenaProp", center.Y)
-			for _, part in if model then model:GetDescendants() else {} do
-				if part:IsA("BasePart") then
-					part.Anchored = true -- the caldera's Blender props aren't saved anchored
+-- A Blender prop placed for an arena: anchored (the caldera's props aren't saved anchored), small ones without shadows,
+-- its Lava parts glowing like the ridge's vents; the roof and the backdrop never collide (players stand inside the dome)
+local function arenaPiece(folder: Instance, spot: any, label: string, ground: number)
+	local model = ScenePieces.placeModel(folder, spot, label, ground)
+	local solid = label ~= "ArenaRoof" and label ~= "ArenaBackdrop"
+	for _, part in if model then model:GetDescendants() else {} do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = part.CanCollide and solid
+			part.CanQuery = part.CanQuery and solid
+			if spot.height < 4 then
+				part.CastShadow = false
+			end
+			if part.Name == "Lava" then
+				for _, child in part:GetChildren() do
+					if child:IsA("SurfaceAppearance") then
+						child:Destroy()
+					end
 				end
+				if part:IsA("MeshPart") then
+					part.TextureID = ""
+				end
+				part.Material = Enum.Material.Neon
+				part.Color = Props.color(WildValleyConfig.VENT_LOOK.glow)
+				part.CastShadow = false
 			end
 		end
 	end
 end
 
+-- A valley arena copy as a place of its own (Config/WildValley ARENA_DRESSING, spec 2026-11-01-wild-bosses-arenas-design):
+-- its walls and inner pieces (Util/WildValley.arenaDressing, the same layout every start), its roof or backdrop, and
+-- its looping ambient sound at the centre. Its area effects and crystals come from SceneryService
+local function dressArena(folder: Instance, boss: any, center: Vector3, copy: number)
+	local dressing = WildValleyConfig.ARENA_DRESSING[boss.zone]
+	local random = Random.new(copy * 31 + boss.zone)
+	local rng = function(): number
+		return random:NextNumber()
+	end
+	for _, piece in WildValley.arenaDressing(WildValleyConfig, boss.ringRadius or Bosses.RING_RADIUS, boss.zone, rng) do
+		arenaPiece(folder, {
+			model = piece.model,
+			x = center.X + piece.x,
+			z = center.Z + piece.z,
+			height = piece.height,
+			yaw = piece.yaw,
+		}, if piece.wall then "ArenaWall" else "ArenaProp", center.Y + (piece.y or 0))
+	end
+	local roof = dressing.roof
+	if roof then
+		-- its rim sinks below the floor so no gap shows at the foot of its walls
+		arenaPiece(folder, { model = roof.model, x = center.X, z = center.Z, height = roof.height, yaw = 0 }, "ArenaRoof", center.Y - roof.sink)
+	end
+	local backdrop = dressing.backdrop
+	if backdrop then
+		arenaPiece(folder, { model = backdrop.model, x = center.X + backdrop.distance, z = center.Z, height = backdrop.height, yaw = 270 }, "ArenaBackdrop", center.Y - 10)
+	end
+	local anchor = Instance.new("Part")
+	anchor.Name = "ArenaSound"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.Position = center + Vector3.new(0, 6, 0)
+	anchor.Parent = folder
+	local sound = Instance.new("Sound")
+	sound.SoundId = dressing.sound.id
+	sound.Volume = dressing.sound.volume
+	sound.Looped = true
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMaxDistance = dressing.sound.range
+	sound.Parent = anchor
+	sound:Play()
+end
+
+-- The flat ground under an arena copy past its clearing (Util/WildValley.arenaApron), coloured to match the clearing's
+-- terrain: only seen from above, so nothing stands on it or hits it
+local function buildApron(folder: Instance, zone: number, copy: number)
+	local apron = WildValley.arenaApron(WildValleyConfig, zone, copy)
+	local material = (Enum.Material :: any)[apron.material]
+	local part = block(folder, "ArenaApron", Vector3.new(apron.size, apron.thickness, apron.size), CFrame.new(apron.x, apron.y, apron.z), rgb(apron.color), material)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+end
+
 -- The valley's boss (round 2 spec): a portal at its biome's `portal` spot (the obsidian arch with the Boss look) with the
 -- gate prompts and a trailhead board, and ARENA_COPIES copies of its ring far away (WildValley.arenaCopyCenter), each
--- with a root-arch portal home outside its gate (its Return prompt: onReturn)
+-- dressed as its zone's arena with its way home inside its walls (its Return prompt: onReturn)
 local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> (), onReturn: (player: Player, bossId: string, copy: number) -> ()): BossArena
 	local spot = WildValleyConfig.BIOMES[boss.zone].portal
 	local ground = valleyGround(spot.x, spot.z)
@@ -892,16 +957,19 @@ local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGa
 		holder.Name = `{boss.name} {copy}`
 		holder.Parent = folder
 		local bossAt, barrier, inside = buildRing(holder, boss, center, WildValleyConfig.ARENA_LOOKS[boss.zone], WildValleyConfig.ARENA_LIFT)
-		local homeSpot = center - Vector3.new(Bosses.ARENA_RADIUS + Bosses.ARENA_GAP + 6, 0, 0)
+		local home = WildValleyConfig.ARENA_HOME
+		local homeSpot = center - Vector3.new(home.distance, 0, 0) -- inside the arena's walls
 		local ring = portal(holder, "Return to the Wild", homeSpot, Vector3.new(1, 0, 0), "Return", function(player)
 			onReturn(player, bossId, copy)
 		end)
-		ring.Transparency = 1 -- the root arch stands round it (its prompt stays on the ring)
-		local arch = Props.place("PortalWild", CFrame.lookAt(homeSpot, homeSpot + Vector3.new(1, 0, 0)), holder)
-		if arch.Name == "PortalWild" and Props.hasModel("PortalWild") then
-			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
+		ring.Transparency = 1 -- the zone's portal stands round it (its prompt stays on the ring)
+		local way = home[boss.zone]
+		local arch = Props.place(way.model, CFrame.lookAt(homeSpot, homeSpot + Vector3.new(1, 0, 0)), holder)
+		if arch.Name == way.model and Props.hasModel(way.model) then
+			PortalBuild.dress(arch, (Town.PORTAL_LOOKS :: any)[way.look])
 		end
-		ringProps(holder, boss.zone, center, copy * 31 + boss.zone)
+		dressArena(holder, boss, center, copy)
+		buildApron(holder, boss.zone, copy)
 		buildWalls(holder, WildValley.arenaEdge(WildValleyConfig, boss.zone, copy), center.Y - 5, center.Y + 40)
 		table.insert(copies, { spawn = bossAt, barrier = barrier, inside = inside, center = center, exit = gate, remote = true })
 	end

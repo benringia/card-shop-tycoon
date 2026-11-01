@@ -220,6 +220,15 @@ function PetAnimator.flapLift(rig: Rig): number
 	return if rig.flying then PetRig.flapLift(Party.PET_ANIM, rig.flapPhase) else 0
 end
 
+-- Starts this fidget now (a boss's intro roar), whatever was playing; its effect cues afresh
+function PetAnimator.play(rig: Rig, kind: string, now: number)
+	rig.fidget = kind
+	rig.cued = false
+	rig.fidgetStart = now
+	rig.fidgetLength = Party.PET_ANIM.FIDGET_SECONDS[kind] or 2
+	rig.side = 1
+end
+
 -- One frame: walking blends in with speed; standing, the next fidget starts when it's due
 function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, walked: number)
 	local cfg = Party.PET_ANIM

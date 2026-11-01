@@ -26,6 +26,75 @@ return {
 		expect.near(MonsterLooks.height(wild, "Mossling", true, 2.5), wild.MONSTER_HEIGHT * 2.5, 1e-9, "elite flag ignored")
 	end,
 
+	["the Wild bosses are huge (size B), the final boss still the biggest"] = function()
+		local bosses = require("../src/shared/Config/Bosses").BOSSES
+		local expected = { meadowWarden = 17, caveBroodQueen = 16, emberColossus = 17 }
+		for id, height in expected do
+			local boss = (bosses :: any)[id]
+			expect.near(MonsterLooks.height(wild, boss.name, false, boss.scale, boss.height), height, 1e-9, id)
+		end
+		local hydra = (bosses :: any).prismHydra
+		local hydraHeight = MonsterLooks.height(frontier, hydra.name, false, hydra.scale, hydra.height)
+		expect.near(hydraHeight, frontier.MONSTER_HEIGHT * 7, 1e-9, "the Hydra as before")
+		for id, height in expected do
+			assert(height < hydraHeight, id .. " outgrows the final boss")
+		end
+	end,
+
+	-- On the lava field's dark basalt the Colossus's dark plates blended in (the user): its lava glows brighter than its
+	-- saved mask's 2.5 (set once, steady) and a warm light on it lights the ground round it
+	["the Colossus stands out of the dark lava field"] = function()
+		local colossus = (require("../src/shared/Config/Bosses").BOSSES :: any).emberColossus
+		assert(colossus.glow and colossus.glow.strength > 2.5, "its lava glows no brighter than its saved mask")
+		for key in colossus.glow do
+			assert(key == "strength", "glows don't animate: " .. key)
+		end
+		local light = colossus.light
+		assert(light and light.brightness > 0 and light.range >= 20 and #light.color == 3, "no light on it")
+	end,
+
+	["bosses without a height keep their scale (Frontier bosses unchanged)"] = function()
+		local bosses = require("../src/shared/Config/Bosses").BOSSES
+		for _, id in { "frostTyrant", "stormSovereign", "riftDevourer" } do
+			local boss = (bosses :: any)[id]
+			expect.equal(boss.height, nil, id)
+			expect.near(MonsterLooks.height(frontier, boss.name, false, boss.scale, nil), frontier.MONSTER_HEIGHT * boss.scale, 1e-9, id)
+		end
+	end,
+
+	["fighters stand clear of the big bosses and inside the fence"] = function()
+		local Bosses = require("../src/shared/Config/Bosses")
+		for _, id in { "meadowWarden", "caveBroodQueen", "emberColossus" } do
+			local boss = (Bosses.BOSSES :: any)[id]
+			assert(boss.ringRadius and boss.ringRadius > Bosses.RING_RADIUS, id .. " needs more room than the default ring")
+			assert(boss.ringRadius <= Bosses.ARENA_RADIUS - 8, id .. "'s fighters would stand at the fence")
+			assert(boss.introShot and boss.introShot.back > Bosses.INTRO_SHOT.back, id .. " needs a wider intro shot")
+		end
+	end,
+
+	-- A boss's model downloaded only when its fight began (its mesh alone took about 8 s in Studio, its textures after
+	-- that), so its intro showed an empty ring: a place's boss and monster models download in the background, bosses
+	-- first in ladder order
+	["a place preloads its bosses' models first, then its monsters'"] = function()
+		local bosses = require("../src/shared/Config/Bosses")
+		local order = MonsterLooks.preloadOrder(wild, bosses, "Wild")
+		expect.equal(order[1], "meadowWarden", "the first boss")
+		expect.equal(order[2], "caveBroodQueen", "the second")
+		expect.equal(order[3], "emberColossus", "the third")
+		local seen = {}
+		for _, name in order do
+			assert(not seen[name], name .. " twice")
+			seen[name] = true
+		end
+		for species in wild.SPECIES do
+			assert(seen[species], species .. " is not preloaded")
+		end
+		expect.equal(seen.frostTyrant, nil, "the Frontier's bosses load in the Frontier")
+		local there = MonsterLooks.preloadOrder(frontier, bosses, "Frontier")
+		expect.equal(there[1], "frostTyrant", "the Frontier's first boss")
+		expect.equal(table.find(there, "meadowWarden"), nil, "no Wild boss there")
+	end,
+
 	["bones move by species, bosses by their id, nothing without a model"] = function()
 		expect.equal(MonsterLooks.styleKey("Ash Wolf", nil, true), "Ash Wolf", "monster")
 		expect.equal(MonsterLooks.styleKey("Ash Wolf", nil, false), nil, "placeholder")
@@ -70,6 +139,30 @@ return {
 		end
 		expect.equal((party.SIGNATURE :: any)["Ash Wolf"].fidget, "wildroar", "the wolf roars")
 		expect.equal((party.SIGNATURE :: any)["Magma Golem"].fidget, "stomp", "the golem stomps")
+	end,
+
+	-- The Wild bosses (spec 2026-11-01-wild-bosses-arenas-design): styled by boss id; only the Warden has a random
+	-- signature (the Brood Queen's flare and the Colossus's vents come from the fight)
+	["the Wild bosses move in their own styles, only the Warden slams at random"] = function()
+		local known = {}
+		for _, list in { party.PET_ANIM.FIDGETS, party.PET_ANIM.BODY_FIDGETS, party.PET_ANIM.TITAN_FIDGETS } do
+			for _, kind in list do
+				known[kind] = true
+			end
+		end
+		for _, id in { "meadowWarden", "caveBroodQueen", "emberColossus" } do
+			local style = (party.CREATURE_STYLE :: any)[id]
+			assert(style and style.fidgets, id .. " has no style")
+			for _, kind in style.fidgets do
+				assert(known[kind], id .. ": unknown fidget " .. kind)
+			end
+		end
+		expect.equal((party.SIGNATURE :: any).meadowWarden.fidget, "rootslam", "the Warden slams its roots")
+		expect.equal((party.SIGNATURE :: any).caveBroodQueen, nil, "a random flare would read as a heal")
+		expect.equal((party.SIGNATURE :: any).emberColossus, nil, "its vents come with the enrage")
+		-- Its stubby legs join a low belly: the rig holds clean up to about 17 degrees of swing (LEG_SWING 28 x 0.6)
+		local colossus = (party.CREATURE_STYLE :: any).emberColossus
+		assert(colossus.legSwing and colossus.legSwing <= 0.6, "the Colossus plods with short swings")
 	end,
 
 	["the beetle sparks at its pincers and the wolf smokes at its tail"] = function()

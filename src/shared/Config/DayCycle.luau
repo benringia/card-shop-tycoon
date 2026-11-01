@@ -94,4 +94,47 @@ return {
 	TOWN_REGION = { HALF_X = 320, HALF_Z = 300 }, -- studs round the plaza: the town and its three portal areas
 	UPDATE_HZ = 10, -- each client updates the lighting this often
 	SPECULAR = 0.35, -- how much walls and floors reflect the sky (Roblox default 1 makes bright patches)
+	-- The Wild bosses' arenas (by zone; spec 2026-11-01-wild-bosses-arenas-design), each its painting's look while you're
+	-- in one of its copies (Util/WildValley.arenaZoneAt), never night; the haze hides what lies past its walls
+	ARENA_LOOKS = {
+		{ -- the Warden's grove: a sunny afternoon, warm light through the trees
+			clockTime = 14.5,
+			brightness = 1.8,
+			exposure = -0.15,
+			ambient = { 110, 108, 92 },
+			outdoorAmbient = { 125, 122, 100 },
+			atmosphere = { density = 0.38, offset = 0.15, haze = 1.6, glare = 0.4, color = { 215, 225, 195 }, decay = { 150, 175, 140 } },
+			bloom = { intensity = 0.35, size = 26, threshold = 1.8 },
+			saturation = 0.18,
+			contrast = 0.03,
+			tint = { 255, 250, 235 },
+			sunRays = { intensity = 0.15, spread = 0.6 },
+		},
+		{ -- the Broodmother's hollow: dim and cold under its rock roof
+			clockTime = 15.5,
+			brightness = 0.6,
+			exposure = -0.5,
+			ambient = { 55, 50, 75 },
+			outdoorAmbient = { 60, 55, 85 },
+			atmosphere = { density = 0.5, offset = 0, haze = 2.2, glare = 0, color = { 70, 60, 100 }, decay = { 40, 35, 70 } },
+			bloom = { intensity = 0.4, size = 28, threshold = 1.5 },
+			saturation = 0.05,
+			contrast = 0.1,
+			tint = { 205, 200, 255 },
+			sunRays = { intensity = 0, spread = 0 },
+		},
+		{ -- the Behemoth's lava field: a red-orange haze, ash in the air (brightened: the user found it too dark)
+			clockTime = 16.4,
+			brightness = 2.2,
+			exposure = 0.15,
+			ambient = { 150, 105, 90 },
+			outdoorAmbient = { 180, 125, 105 },
+			atmosphere = { density = 0.42, offset = 0.1, haze = 2.3, glare = 0.6, color = { 255, 140, 90 }, decay = { 115, 72, 70 } },
+			bloom = { intensity = 0.55, size = 30, threshold = 1.4 },
+			saturation = 0.2,
+			contrast = 0.12,
+			tint = { 255, 215, 190 },
+			sunRays = { intensity = 0.08, spread = 0.5 },
+		},
+	},
 }

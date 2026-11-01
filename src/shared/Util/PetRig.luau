@@ -290,8 +290,8 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 		return progress >= 0.45 -- the tail is curled up over its back: the orb charges and strikes
 	elseif kind == "backflip" then
 		return progress >= 0.1 -- taking off
-	elseif kind == "stomp" then
-		return progress >= 0.95 -- as it lands
+	elseif kind == "stomp" or kind == "rootslam" then
+		return progress >= 0.95 -- as it lands (rootslam: the Meadow Warden's roots hit the ground)
 	elseif kind == "hiccup" then
 		return progress >= cfg.HICCUP_BEATS[1] -- the first hiccup (SignatureFx times the other puffs)
 	elseif kind == "zaphop" then
@@ -367,7 +367,7 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 			lift = cfg.ROAR_LIFT * (1 - q) ^ 2
 			roll = math.rad(3) * math.sin(q * TAU * 8) * (1 - q)
 		end
-	elseif kind == "stomp" then
+	elseif kind == "stomp" or kind == "rootslam" then
 		-- Up, then a fast slam
 		lift = cfg.STOMP_HEIGHT * (if p < 0.6 then math.sin(p / 0.6 * math.pi / 2) else math.cos((p - 0.6) / 0.4 * math.pi / 2) ^ 3)
 		pitch = math.rad(6) * envelope(p)

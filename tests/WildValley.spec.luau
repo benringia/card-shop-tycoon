@@ -7,7 +7,37 @@ local bosses = require("../src/shared/Config/Bosses")
 local valley = require("../src/shared/Config/WildValley")
 local WildValley = require("../src/shared/Util/WildValley")
 local TownTerrain = require("../src/shared/Util/TownTerrain")
+local town = require("../src/shared/Config/Town")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
+
+-- A seeded 0..1 random (Lune has no Random): the game passes Random.new(seed):NextNumber
+local function lcg(seed: number): () -> number
+	local state = seed
+	return function(): number
+		state = (state * 1103515245 + 12345) % 2147483648
+		return state / 2147483648
+	end
+end
+
+-- The Wild boss whose arena is at the end of this zone
+local function bossOf(zone: number): any
+	for _, boss in bosses.BOSSES do
+		if (boss :: any).place == "Wild" and boss.zone == zone then
+			return boss
+		end
+	end
+	error(`no Wild boss in zone {zone}`)
+end
+
+-- An inner piece's rules (spec 2026-11-01-wild-bosses-arenas-design): clear of the fight, the path and the way home
+local function checkClear(x: number, z: number, ringRadius: number, label: string)
+	local distance = math.sqrt(x * x + z * z)
+	assert(distance > ringRadius + 4 and distance > bosses.ARENA_RADIUS + 2, label .. " stands in the fight")
+	assert(not (x < -bosses.ARENA_RADIUS and math.abs(z) < 8), label .. " blocks the path home")
+	local home = valley.ARENA_HOME.distance
+	assert(math.sqrt((x + home) ^ 2 + z * z) >= 8, label .. " crowds the way home")
+end
 
 local OPS = WildValley.terrainOps(valley, TownTerrain.trailSegment)
 
@@ -109,20 +139,86 @@ return {
 
 	["each arena copy is walled in round its clearing, its ring and its way home inside"] = function()
 		local clearing = valley.ARENA_CLEARING
-		assert(valley.ARENA_HOLD >= clearing.size / 2 * math.sqrt(2), "a player in a clearing's corner still holds the copy")
 		for zone = 1, 3 do
+			local half = clearing.size[zone] / 2
+			assert(valley.ARENA_HOLD >= half * math.sqrt(2), `zone {zone}: a player in a clearing's corner still holds the copy`)
 			for copy = 1, bosses.ARENA_COPIES do
 				local c = WildValley.arenaCopyCenter(valley, zone, copy)
 				local edge = WildValley.arenaEdge(valley, zone, copy)
 				expect.equal(WildValley.inside(edge, c), true, `copy {zone}/{copy}'s middle`)
-				local home = { x = c.x - (bosses.ARENA_RADIUS + bosses.ARENA_GAP + 6), z = c.z }
+				local home = { x = c.x - valley.ARENA_HOME.distance, z = c.z }
 				expect.equal(WildValley.inside(edge, home), true, `copy {zone}/{copy}'s way home`)
 				for _, p in edge do
-					assert(math.abs(p.x - c.x) <= clearing.size / 2 and math.abs(p.z - c.z) <= clearing.size / 2, "the wall stands on the clearing")
+					assert(math.abs(p.x - c.x) <= half and math.abs(p.z - c.z) <= half, "the wall stands on the clearing")
 					assert(math.sqrt((p.x - c.x) ^ 2 + (p.z - c.z) ^ 2) <= valley.ARENA_HOLD, "the walls keep players where they hold the copy")
 				end
 			end
 		end
+	end,
+
+	-- Looked at straight down from the camera's full zoom (128 studs), a copy's ground must not end in empty sky: a flat
+	-- part runs on past the walls into the haze (a part: terrain that wide is about 86k more cells), just under the
+	-- clearing's terrain, while the invisible walls stay round the clearing
+	["an arena copy's ground runs on past its walls, its play area stays the clearing"] = function()
+		local clearing = valley.ARENA_CLEARING
+		for zone = 1, 3 do
+			local c = WildValley.arenaCopyCenter(valley, zone, 1)
+			local apron = WildValley.arenaApron(valley, zone, 1)
+			assert(apron.size >= 360 and apron.size > clearing.size[zone] + 150, `zone {zone}: its ground ends in view from above`)
+			assert(apron.size < valley.ARENA_FIELD.spacing, `zone {zone}: copies' grounds would overlap`)
+			expect.equal(apron.x, c.x, `zone {zone}: centred on its copy`)
+			expect.equal(apron.material, clearing.materials[zone], `zone {zone}: in its clearing's material`)
+			-- a part's material draws lighter or duller than terrain's, so each zone's colour is matched by eye
+			assert(type(apron.color) == "table" and #apron.color == 3, `zone {zone}: no colour matched to its terrain`)
+			-- just under the drawn ground (terrain draws SURFACE_LIFT above its fill), so no step shows at the clearing's edge
+			local ground = TownTerrain.groundAt(OPS, c.x, c.z) :: number
+			local apronTop = apron.y + apron.thickness / 2
+			assert(apronTop < ground and apronTop >= ground - 1, `zone {zone}: its top at {apronTop}, the drawn ground at {ground}`)
+		end
+	end,
+
+	-- The walls are separate pieces with gaps, and the hollow's roof doesn't collide: a square of invisible walls round
+	-- the clearing let a player walk out between two stalagmites into the open sky past the dome. The invisible walls
+	-- ring each arena just inside its innermost wall row instead, its fight and its way home inside
+	["the invisible walls ring each arena inside its wall row"] = function()
+		for zone = 1, 3 do
+			local inner = math.huge
+			for _, row in valley.ARENA_DRESSING[zone].walls do
+				inner = math.min(inner, row.radius)
+			end
+			for copy = 1, bosses.ARENA_COPIES do
+				local c = WildValley.arenaCopyCenter(valley, zone, copy)
+				local edge = WildValley.arenaEdge(valley, zone, copy)
+				assert(#edge >= 16, `zone {zone}: {#edge} sides`)
+				for _, p in edge do
+					expect.near(math.sqrt((p.x - c.x) ^ 2 + (p.z - c.z) ^ 2), inner - valley.ARENA_EDGE_INSET, 1e-6, `zone {zone}: off the ring`)
+				end
+				local home = valley.ARENA_HOME.distance
+				expect.equal(WildValley.inside(edge, { x = c.x - home - 2, z = c.z }), true, `zone {zone}: its way home outside`)
+				expect.equal(WildValley.inside(edge, { x = c.x, z = c.z + bosses.ARENA_RADIUS + 2 }), true, `zone {zone}: its fence outside`)
+				expect.equal(WildValley.inside(edge, { x = c.x + inner, z = c.z }), false, `zone {zone}: reaches its walls`)
+			end
+		end
+	end,
+
+	-- The hollow's roof is a dome (rig of build_arena_props.py cave_dome): a hung piece's top meets the ceiling over it,
+	-- never inside the rock or above the roof
+	["the hollow's cocoons hang from its ceiling"] = function()
+		local hung = 0
+		for seed = 1, 4 do
+			for _, piece in WildValley.arenaDressing(valley, bossOf(2).ringRadius, 2, lcg(seed)) do
+				if piece.model == "Cocoon" then
+					hung += 1
+					local r = math.sqrt(piece.x ^ 2 + piece.z ^ 2)
+					local ceiling = WildValley.ceilingAt(valley, 2, r) :: number
+					local top = (piece.y or 0) + piece.height
+					assert(top <= ceiling + 1e-9 and top >= ceiling - 1.5, `a cocoon at r {r}: top {top}, ceiling {ceiling}`)
+					assert((piece.y or 0) >= 8, `a cocoon at r {r} hangs at head height`)
+				end
+			end
+		end
+		assert(hung > 0, "no cocoons")
+		expect.equal(WildValley.ceilingAt(valley, 1, 10), nil, "the grove has no roof")
 	end,
 
 	["the edge closes round the biomes, the trail and the arrival; the town is outside"] = function()
@@ -331,5 +427,101 @@ return {
 			assert(dist(markers[index], markers[index - 1]) <= valley.MARKER_SPACING + 1e-9, "a gap in the markers")
 		end
 		expect.equal(WildValley.zoneAt(valley, last), #valley.BIOMES, "the trail ends on the ridge")
+	end,
+
+	-- Each arena shows its own sky while you're in one of its copies (spec 2026-11-01-wild-bosses-arenas-design)
+	["an arena copy knows its zone, nowhere else is an arena"] = function()
+		for zone = 1, #valley.BIOMES do
+			for copy = 1, bosses.ARENA_COPIES do
+				local centre = WildValley.arenaCopyCenter(valley, zone, copy)
+				expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, centre.x, centre.z), zone, `zone {zone} copy {copy}`)
+				expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, centre.x + 60, centre.z - 60), zone, "near its corner")
+				expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, centre.x + valley.ARENA_HOLD + 10, centre.z), nil, "past it")
+			end
+		end
+		expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, 0, 1130), nil, "the valley's arrival")
+		expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, 0, 0), nil, "the town's plaza")
+	end,
+
+	["each arena is walled all round, its pieces clear of the fight, the path and the way home"] = function()
+		for zone = 1, #valley.BIOMES do
+			local dressing = valley.ARENA_DRESSING[zone]
+			local ringRadius = bossOf(zone).ringRadius
+			local walls, inner = 0, 0
+			for _, row in dressing.walls do
+				assert(2 * math.pi * row.radius / row.count <= 14, `zone {zone}: a gap in its walls`)
+				assert(row.radius + 4 <= valley.ARENA_CLEARING.size[zone] / 2, `zone {zone}: a wall off its ground`)
+				walls += row.count
+			end
+			for _, group in dressing.inner do
+				inner += group.count
+			end
+			for seed = 1, 4 do
+				local pieces = WildValley.arenaDressing(valley, ringRadius, zone, lcg(seed))
+				local again = WildValley.arenaDressing(valley, ringRadius, zone, lcg(seed))
+				expect.equal(#pieces, walls + inner, `zone {zone}: every piece placed`)
+				expect.equal(pieces[#pieces].x, again[#again].x, "the same seed, the same layout")
+				for index, piece in pieces do
+					assert(type(piece.model) == "string" and piece.height > 0, "a piece without a model or size")
+					if not piece.wall then
+						checkClear(piece.x, piece.z, ringRadius, `zone {zone} piece {index}`)
+					end
+				end
+			end
+			for _, spot in WildValley.arenaSpots(valley, ringRadius, 10, { 40, 54 }, lcg(7)) do
+				checkClear(spot.x, spot.z, ringRadius, `zone {zone} spot`)
+			end
+			expect.equal(dressing.roof ~= nil, zone == 2, `zone {zone}: only the hollow has a roof`)
+			expect.equal(dressing.backdrop ~= nil, zone == 3, `zone {zone}: only the lava field has a backdrop`)
+			assert(string.match(dressing.sound.id, "^rbxassetid://%d+$"), `zone {zone} has no ambient sound`)
+			assert(dressing.sound.range > 0 and dressing.sound.range < valley.ARENA_FIELD.spacing / 2, `zone {zone}'s sound reaches the next copy`)
+		end
+	end,
+
+	-- The user found the hollow and the lava field too tight with their walls 56-57 studs out: they stand well back now
+	["the hollow and the lava field stand their walls well back from the fight"] = function()
+		for _, zone in { 2, 3 } do
+			for _, row in valley.ARENA_DRESSING[zone].walls do
+				assert(row.radius >= 72, `zone {zone}: walls {row.radius} studs out`)
+			end
+		end
+	end,
+
+	["the arenas' fence radius agrees with Bosses"] = function()
+		expect.equal(valley.ARENA_FENCE, bosses.ARENA_RADIUS, "WildValley and Bosses agree")
+	end,
+
+	["each arena's way home is in its zone's look, inside its walls"] = function()
+		local home = valley.ARENA_HOME
+		expect.equal(#home, 3, "one per Wild zone")
+		for zone = 1, #home do
+			local spot = home[zone]
+			assert(fs.isFile(`assets/props/{spot.model}.rbxm`), `zone {zone}: no {spot.model} model`)
+			assert((town.PORTAL_LOOKS :: any)[spot.look], `zone {zone}: no {spot.look} portal look`)
+			local innerWall = math.huge
+			for _, row in valley.ARENA_DRESSING[zone].walls do
+				innerWall = math.min(innerWall, row.radius)
+			end
+			assert(home.distance >= bosses.ARENA_RADIUS + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
+		end
+	end,
+
+	["every model an arena is built from is a saved prop"] = function()
+		for zone, dressing in valley.ARENA_DRESSING do
+			local names = {}
+			for _, group in { dressing.walls, dressing.inner } do
+				for _, row in group do
+					for _, name in row.models do
+						table.insert(names, name)
+					end
+				end
+			end
+			for _, extra in { dressing.roof, dressing.backdrop } do
+				table.insert(names, extra.model)
+			end
+			for _, name in names do
+				assert(fs.isFile(`assets/props/{name}.rbxm`), `zone {zone}: no assets/props/{name}.rbxm`)
+			end
+		end
 	end,
 }

@@ -511,7 +511,46 @@ camera with the extras on.
 
 Boss models are saved under the boss id (`assets/monsters/<bossId>.rbxm`). A boss model with PetRig bone names moves
 like a creature (MonsterController passes the boss id to `CreatureVisuals.build`; `Party.CREATURE_STYLE` and
-`Party.SIGNATURE` are keyed by it). The Prism Hydra (`prismHydra`, the final boss) is a blocky remodel of the Crystal
+`Party.SIGNATURE` are keyed by it).
+
+### Wild bosses
+
+The three Wild bosses (spec `2026-11-01-wild-bosses-arenas-design.md`) were made like the wild monsters, from the
+user's picks: a concept painted in its arena (`<Folder>_concept.png`), then a clean turnaround sheet the user approved
+(`<Folder>_sheet.png`: character only, neutral pose, no ground), Meshy image to 3D from the sheet, and a rig script.
+Each is about 7,600 triangles; Blender sources in `assets/blender/MeadowWarden/`, `CaveBroodQueen/`, `EmberColossus/`.
+
+- **Meadow Warden** (`meadowWarden`, `rig_meadowwarden.py`): the tree-trunk and boulder giant. The first generation was
+  with Meshy's T-pose mode and came out with four arms; the user approved one more generation without it. Collapse
+  decimation shredded this dense mesh (1.76M triangles) into
+  shards and smeared its texture, so it uses `rig_kit.remesh_bake` (voxel remesh, colours baked across). A biped:
+  `Pelvis`, `Spine_0..1`, `Neck`, `Head_0`, three-segment arms `Arm_<Side>_0..2` and legs `0_<Side>_Limb_0..2`. Glow:
+  the green eyes only (a region round the face, as the stone beside them is as green).
+- **Cave Brood Queen** (`caveBroodQueen`, `rig_cavebroodqueen.py`): the bat-winged spider. Four pairs of two-segment
+  legs (`0..3_<Side>_Limb_0..1`, the eight-leg wave), wings `Wing_<Side>_0..1`, `Pelvis` (the sac), `Spine_0` (the
+  thorax), `Head_0`, `Jaw_0` (the fangs; a leg-like palp Meshy added by them rides it). Three weight passes after
+  `skin()`: the back pair is fused along the sac's underside, so it swings from where it comes out behind and
+  `sac_stays` hands the sac's surface back to `Pelvis` (a stride pulled it into a point); `wings_on_wings` fades the
+  wing bones out below the wing roots, behind the waist and across the midline (a spread wing lifted the knees and the
+  other wing). `Fx_Sac` (zero influence) sits at the sac's centre for the heal flare. Glow: the eyes and the egg sac,
+  not the fangs or the wings' pale highlights.
+- **Ember Colossus** (`emberColossus`, `rig_embercolossus.py`): the lava rhino. A quadruped with three-segment legs,
+  `Neck`, `Head_0` and `Jaw_0` (vertices under the mouth's slit handed over with `rig_kit.reweight`). Its stubby legs
+  join a low belly, so the leg pivots sit low (z 0.36), the weights blend wide and its style keeps `legSwing` at 0.6:
+  longer swings stretch the belly. `Fx_Vent_0..2` (zero influence) along the back ridge carry the enrage burst and
+  smoke. Glow: the lava seams, eyes and mouth, not the horns (as orange).
+
+Each script scales the raw mesh to 1 m (`scale_to_metre`: Meshy made them 10 cm to 1.7 m tall), reduces it, builds the
+rig, skins, exports the FBX and writes the glow mask. Before running one, save a raw copy of the .blend: the scripts
+save the file, so a bad reduction is otherwise baked in (re-requesting a finished Meshy job by its handle re-imports it
+for free). Test poses with world-space rotations (bone-local test rotations hid tearing) and measure edge stretch.
+
+In Studio: Import 3D (Rig Type Custom, Keep Zero Influence Bones), upload the glow mask, reset the MeshPart's
+`PivotOffset` rotation, give it a SurfaceAppearance (AlphaMode Overlay, `ColorMapContent` = its TextureID,
+`EmissiveMaskContent` = the mask, `EmissiveStrength` 2, the Colossus 2.5; the game lights it once at a boss's `glow`
+strength when it has one, the Colossus 4), name
+the model after the boss id and save it. Sizes, rings and moments: DESIGN 5.10. A moment effect that starts inside
+the body (the flare at the sac's centre) needs `zOffset` in `Bosses.MOMENT_FX` or the opaque mesh hides it. The Prism Hydra (`prismHydra`, the final boss) is a blocky remodel of the Crystal
 Titans Rainbow Hydra built by `tools/blender/build_prismHydra.py` in a faceted low-poly "studded" style (`chunk()`:
 `round_box` with one flat bevel plus small raised square studs scattered over its faces): a heavy dark indigo brute
 with cream horns, muzzles and belly, a gold collar and claws, prism crystal shards down its back, five thick necks

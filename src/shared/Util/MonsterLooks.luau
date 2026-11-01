@@ -4,8 +4,12 @@
 -- and when its small effects run. Pure, Lune-tested; MonsterController draws with it.
 local MonsterLooks = {}
 
--- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE)
-function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?): number
+-- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE). A boss: its own height
+-- when it has one (Config/Bosses height), else MONSTER_HEIGHT times its scale
+function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?, bossHeight: number?): number
+	if bossHeight then
+		return bossHeight
+	end
 	if bossScale then
 		return world.MONSTER_HEIGHT * bossScale
 	end
@@ -20,6 +24,27 @@ function MonsterLooks.styleKey(species: string, bossId: string?, hasModel: boole
 		return nil
 	end
 	return bossId or species
+end
+
+-- The models (MonsterModels names) a place downloads in the background: its bosses' ids in ladder order (a fight's
+-- intro shows its boss at once), then its world's species by name. bosses: Config/Bosses; place: "Wild" |
+-- "Frontier" | "Dungeon"
+function MonsterLooks.preloadOrder(world: any, bosses: any, place: string): { string }
+	local order = {}
+	for _, id in bosses.LADDER do
+		if bosses.BOSSES[id].place == place then
+			table.insert(order, id)
+		end
+	end
+	local species = {}
+	for name in world.SPECIES do
+		table.insert(species, name)
+	end
+	table.sort(species)
+	for _, name in species do
+		table.insert(order, name)
+	end
+	return order
 end
 
 -- Whether a monster's small effects (sparks, smoke) run: within range of the camera, with the extras

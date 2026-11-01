@@ -381,6 +381,12 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			spawnAdd(fight, event.to, markers, addMonsters)
 		elseif event.type == "phase" and event.kind then
 			fight.monster.marker:SetAttribute("Phase", event.kind) -- everyone near sees that head light up
+		elseif event.type == "heal" and event.to == MONSTER_ID then
+			-- The boss's heal count and its enrage, for the moments on its model (Config/Bosses moments)
+			local marker = fight.monster.marker
+			marker:SetAttribute("Heals", (tonumber(marker:GetAttribute("Heals")) or 0) + 1)
+		elseif event.type == "enrage" then
+			fight.monster.marker:SetAttribute("Enraged", true)
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
 		end

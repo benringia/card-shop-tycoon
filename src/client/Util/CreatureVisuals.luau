@@ -152,6 +152,15 @@ function CreatureVisuals.preload(cardNames: { string })
 	end)
 end
 
+-- Downloads these models in one call (MonsterController's monsters and bosses), then draws each in the hidden viewport
+-- so its textures finish loading too. Yields until they're downloaded
+function CreatureVisuals.preloadTemplates(templates: { Model })
+	pcall(ContentProvider.PreloadAsync, ContentProvider, templates)
+	for _, template in templates do
+		warmModel(template)
+	end
+end
+
 -- The element aura (Util/BeastAura): fire on its bones, lightning, ground flames, at a tier (Legendary, S, A)
 function CreatureVisuals.addBeastFx(body: Body, element: string, tier: string)
 	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size, tier)
@@ -551,9 +560,12 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 			PetAnimator.step(pet, dt, now, body.speed >= motion.WALK_SPEED_MIN, body.walked)
 			-- A signature idle's effect: the big roars get the shockwave too
 			local cue = PetAnimator.takeCue(pet, now)
-			if cue == "stomp" then
+			if cue == "stomp" or cue == "rootslam" then
 				local _, size = body.model:GetBoundingBox()
 				groundRing(body.cframe.Position, Color3.fromRGB(190, 180, 165), math.max(size.X, size.Z) * 0.9, false)
+				if cue == "rootslam" then
+					SignatureFx.play(cue, body.model, body.size) -- leaves and petals burst off the Warden
+				end
 			elseif cue then
 				if cue == "voidroar" or cue == "thunderroar" or cue == "stormroar" or cue == "riftroar" or cue == "wildroar" then
 					roarFx(body)

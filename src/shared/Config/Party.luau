@@ -23,6 +23,7 @@ return {
 	MAX_MODEL_PARTS = 200, -- bigger models fall back to the placeholder
 	PRELOAD_PARTY_WAIT = 3, -- seconds the background model download waits at start for the player's own cards to go first
 	PRELOAD_BATCH = 6, -- models per background download call
+	MONSTER_PRELOAD_WAIT = 5, -- seconds after start before this place's boss and monster models download (MonsterController)
 
 	-- Motion kit for static models (Util/CreatureMotion)
 	MOTION = {
@@ -118,6 +119,9 @@ return {
 		-- Wild monsters (keyed by species; Util/MonsterLooks): the wolf roars (the plain wildroar), the golem stomps
 		["Ash Wolf"] = { fidget = "wildroar", chance = 0.3 },
 		["Magma Golem"] = { fidget = "stomp", chance = 0.3 },
+		-- The Wild bosses (keyed by boss id, spec 2026-11-01-wild-bosses-arenas-design): only the Warden has a random
+		-- one; the Brood Queen's flare and the Colossus's vents come from the fight (Config/Bosses moments)
+		meadowWarden = { fidget = "rootslam", chance = 0.3 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "hornstorm", chance = 0.35 },
 		Infernox = { fidget = "firebreath", chance = 0.35 },
@@ -145,6 +149,10 @@ return {
 		["Spark Beetle"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs, two tripods
 		["Magma Golem"] = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.4 }, -- lumbers on two legs
 		["Ash Wolf"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4 }, -- a fast prowl
+		-- The Wild bosses (keyed by boss id, spec 2026-11-01-wild-bosses-arenas-design)
+		meadowWarden = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.4, legSwing = 0.6, sway = 1.6 }, -- two heavy legs, long arms dragging
+		caveBroodQueen = { fidgets = { "look", "tilt", "shake" }, bounce = 0.1 }, -- eight legs in a wave
+		emberColossus = { fidgets = { "look", "sniff", "shake", "stomp" }, bounce = 0.2, stride = 1.3, legSwing = 0.6 }, -- a heavy four-legged plod on stubby legs (its rig holds clean up to this swing)
 		Stormjack = { fidgets = { "look", "sniff", "shake", "stomp", "hop", "wag" }, tailSpeed = 1.2, tailAmount = 0.7, bounce = 0.8 }, -- a stocky ram, stubby tail flicking
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
@@ -310,7 +318,7 @@ return {
 		FIDGET_GAP = { 2.5, 6 },
 		FIDGET_SECONDS = {
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
-			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1,
+			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1, rootslam = 1.6,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
 			groom = 3, shellcrack = 3, roll = 1.4, eclipse = 4, backflip = 1.3, sunburst = 3.2, tailstrike = 2.6,
 			hiccup = 2.4, zaphop = 1.6, sporepuff = 2.4, petaltwirl = 1.6, shadowloop = 1.6, emberflap = 1.8, shypeek = 2.8, buzzzap = 2, ghostfloat = 3, flameswoop = 2.2, tidecall = 2.4, thorncharge = 2.2, abysschomp = 2, thundercall = 2.4, riftroar = 3, lavaslam = 3, blessing = 3.2, hornstorm = 2.4, mantaroll = 2.2, owlturn = 2.6, emberglow = 2.6, staticshock = 2.2, watershake = 2, mothdust = 2.6, mistwave = 2.2, vinebloom = 2.6, frostpounce = 2.2, galedive = 2,

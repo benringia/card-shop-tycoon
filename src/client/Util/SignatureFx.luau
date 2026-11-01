@@ -1371,8 +1371,31 @@ local function tailstrike(model: Model, size: number)
 end
 
 -- The effect of a signature idle (Party.SIGNATURE), from the creature's current pose; size: its size multiplier
+-- The Meadow Warden's root slam (spec 2026-11-01-wild-bosses-arenas-design): leaves and petals burst off the ground
+-- round its feet with a puff of earth as its roots hit
+local function rootslam(model: Model, size: number)
+	local feet = model:GetPivot().Position
+	for i = 1, 16 do
+		local angle = i / 16 * math.pi * 2
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local piece = fxPart(Vector3.new(0.3, 0.04, 0.2) * size, if i % 2 == 0 then LEAF else PETAL_COLORS[(i % 3) + 1], false)
+		piece.CFrame = CFrame.new(feet + out * 0.6 * size + Vector3.new(0, 0.2 * size, 0))
+		piece.Parent = workspace
+		local goal = CFrame.new(feet + out * 3 * size + Vector3.new(0, (1.5 + rng:NextNumber(0, 1)) * size, 0))
+			* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), 0)
+		local fly = TweenService:Create(piece, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = goal, Transparency = 1 })
+		fly.Completed:Once(function()
+			piece:Destroy()
+		end)
+		fly:Play()
+	end
+	burst(CFrame.lookAt(feet, feet + Vector3.yAxis), SMOKE, ColorSequence.new(Color3.fromRGB(150, 130, 100)), 12, 0.8 * size, 3 * size, 0.9)
+end
+
 function SignatureFx.play(kind: string, model: Model, size: number)
-	if kind == "butterfly" then
+	if kind == "rootslam" then
+		rootslam(model, size)
+	elseif kind == "butterfly" then
 		butterfly(model, size)
 	elseif kind == "thunderroar" then
 		thunder(model, size)
