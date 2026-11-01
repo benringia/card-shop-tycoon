@@ -311,6 +311,20 @@ function WildValley.arenaCopyCenter(valley: any, zone: number, copy: number): Po
 	return { x = field.x + (copy - 1) * field.spacing, z = field.z + (zone - 1) * field.spacing }
 end
 
+-- The zone whose boss arena copy (any of `copies`) holds this spot, within ARENA_HOLD of its centre on both axes; nil
+-- anywhere else (each arena shows its own sky inside, spec 2026-11-01-wild-bosses-arenas-design)
+function WildValley.arenaZoneAt(valley: any, copies: number, x: number, z: number): number?
+	for zone = 1, #valley.BIOMES do
+		for copy = 1, copies do
+			local centre = WildValley.arenaCopyCenter(valley, zone, copy)
+			if math.abs(x - centre.x) <= valley.ARENA_HOLD and math.abs(z - centre.z) <= valley.ARENA_HOLD then
+				return zone
+			end
+		end
+	end
+	return nil
+end
+
 -- The invisible walls round an arena copy: a square 2 studs inside its clearing's edge, so nobody walks off it
 function WildValley.arenaEdge(valley: any, zone: number, copy: number): { Point }
 	local centre = WildValley.arenaCopyCenter(valley, zone, copy)

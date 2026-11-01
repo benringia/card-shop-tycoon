@@ -332,4 +332,18 @@ return {
 		end
 		expect.equal(WildValley.zoneAt(valley, last), #valley.BIOMES, "the trail ends on the ridge")
 	end,
+
+	-- Each arena shows its own sky while you're in one of its copies (spec 2026-11-01-wild-bosses-arenas-design)
+	["an arena copy knows its zone, nowhere else is an arena"] = function()
+		for zone = 1, #valley.BIOMES do
+			for copy = 1, bosses.ARENA_COPIES do
+				local centre = WildValley.arenaCopyCenter(valley, zone, copy)
+				expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, centre.x, centre.z), zone, `zone {zone} copy {copy}`)
+				expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, centre.x + 60, centre.z - 60), zone, "near its corner")
+				expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, centre.x + valley.ARENA_HOLD + 10, centre.z), nil, "past it")
+			end
+		end
+		expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, 0, 1130), nil, "the valley's arrival")
+		expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, 0, 0), nil, "the town's plaza")
+	end,
 }

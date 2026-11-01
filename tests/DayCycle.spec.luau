@@ -120,4 +120,23 @@ return {
 		expect.equal(DayCycle.fixedLook(cycle).clockTime, 15.5, "afternoon")
 		expect.equal(cycle.FIXED, "afternoon", "fixed phase")
 	end,
+
+	-- The boss arenas' own looks (spec 2026-11-01-wild-bosses-arenas-design): the grove, the hollow, the lava field
+	["each boss arena has a complete look of its own, hazy enough to hide past its walls"] = function()
+		local fixed = DayCycle.fixedLook(cycle) :: any
+		local looks = (cycle :: any).ARENA_LOOKS
+		expect.equal(#looks, 3, "one per Wild zone")
+		for zone, look in looks do
+			for key, value in fixed do
+				assert(look[key] ~= nil, `arena {zone} look has no {key}`)
+				if type(value) == "table" and not value[1] then
+					for inner in value do
+						assert(look[key][inner] ~= nil, `arena {zone} look has no {key}.{inner}`)
+					end
+				end
+			end
+			assert(look.atmosphere.density >= 0.35, `arena {zone}'s haze is too thin to hide past its walls`)
+		end
+		assert(looks[2].brightness < fixed.brightness, "the hollow is dim")
+	end,
 }
