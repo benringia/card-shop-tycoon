@@ -4,8 +4,12 @@
 -- and when its small effects run. Pure, Lune-tested; MonsterController draws with it.
 local MonsterLooks = {}
 
--- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE)
-function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?): number
+-- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE). A boss: its own height
+-- when it has one (Config/Bosses height), else MONSTER_HEIGHT times its scale
+function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?, bossHeight: number?): number
+	if bossHeight then
+		return bossHeight
+	end
 	if bossScale then
 		return world.MONSTER_HEIGHT * bossScale
 	end

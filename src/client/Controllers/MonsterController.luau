@@ -334,7 +334,7 @@ local function add(marker: BasePart)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`
 
 	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
-	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil)
+	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil, if boss then boss.height else nil)
 	-- A model's bones move like a creature's (its PetRig names; Party style keyed by species, a boss by its id)
 	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
 	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)

@@ -25,6 +25,7 @@ export type Boss = {
 	zone: number, -- ZONES index in that place's world (Config/Wild or Config/Frontier): its arena is at the end of it
 	shape: string, -- a Wild placeholder shape until its model exists
 	scale: number, -- placeholder size, times the monster height
+	height: number?, -- studs tall; wins over scale (the Wild bosses' models, size B)
 	element: string,
 	level: number,
 	hp: number,
@@ -60,6 +61,9 @@ local BOSSES: { [string]: Boss } = {
 		zone = 1,
 		shape = "slime",
 		scale = 2.5,
+		height = 17, -- the Elder Warden (spec 2026-11-01-wild-bosses-arenas-design, the user's size B "Huge")
+		ringRadius = 15,
+		introShot = { back = 34, up = 16 },
 		element = "Bloom",
 		level = 6,
 		hp = 1800,
@@ -86,6 +90,9 @@ local BOSSES: { [string]: Boss } = {
 		zone = 2,
 		shape = "bat",
 		scale = 2.8,
+		height = 12, -- the Broodmother, about 24 studs across her legs
+		ringRadius = 16,
+		introShot = { back = 34, up = 16 },
 		element = "Shade",
 		level = 11,
 		hp = 3900,
@@ -114,6 +121,9 @@ local BOSSES: { [string]: Boss } = {
 		zone = 3,
 		shape = "golem",
 		scale = 3.2,
+		height = 17, -- the Magma Behemoth, about 28 studs long
+		ringRadius = 18,
+		introShot = { back = 40, up = 18 },
 		element = "Ember",
 		level = 16,
 		hp = 7200,

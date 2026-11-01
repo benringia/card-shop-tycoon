@@ -26,6 +26,40 @@ return {
 		expect.near(MonsterLooks.height(wild, "Mossling", true, 2.5), wild.MONSTER_HEIGHT * 2.5, 1e-9, "elite flag ignored")
 	end,
 
+	["the Wild bosses are huge (size B), the final boss still the biggest"] = function()
+		local bosses = require("../src/shared/Config/Bosses").BOSSES
+		local expected = { meadowWarden = 17, caveBroodQueen = 12, emberColossus = 17 }
+		for id, height in expected do
+			local boss = (bosses :: any)[id]
+			expect.near(MonsterLooks.height(wild, boss.name, false, boss.scale, boss.height), height, 1e-9, id)
+		end
+		local hydra = (bosses :: any).prismHydra
+		local hydraHeight = MonsterLooks.height(frontier, hydra.name, false, hydra.scale, hydra.height)
+		expect.near(hydraHeight, frontier.MONSTER_HEIGHT * 7, 1e-9, "the Hydra as before")
+		for id, height in expected do
+			assert(height < hydraHeight, id .. " outgrows the final boss")
+		end
+	end,
+
+	["bosses without a height keep their scale (Frontier bosses unchanged)"] = function()
+		local bosses = require("../src/shared/Config/Bosses").BOSSES
+		for _, id in { "frostTyrant", "stormSovereign", "riftDevourer" } do
+			local boss = (bosses :: any)[id]
+			expect.equal(boss.height, nil, id)
+			expect.near(MonsterLooks.height(frontier, boss.name, false, boss.scale, nil), frontier.MONSTER_HEIGHT * boss.scale, 1e-9, id)
+		end
+	end,
+
+	["fighters stand clear of the big bosses and inside the fence"] = function()
+		local Bosses = require("../src/shared/Config/Bosses")
+		for _, id in { "meadowWarden", "caveBroodQueen", "emberColossus" } do
+			local boss = (Bosses.BOSSES :: any)[id]
+			assert(boss.ringRadius and boss.ringRadius > Bosses.RING_RADIUS, id .. " needs more room than the default ring")
+			assert(boss.ringRadius <= Bosses.ARENA_RADIUS - 8, id .. "'s fighters would stand at the fence")
+			assert(boss.introShot and boss.introShot.back > Bosses.INTRO_SHOT.back, id .. " needs a wider intro shot")
+		end
+	end,
+
 	["bones move by species, bosses by their id, nothing without a model"] = function()
 		expect.equal(MonsterLooks.styleKey("Ash Wolf", nil, true), "Ash Wolf", "monster")
 		expect.equal(MonsterLooks.styleKey("Ash Wolf", nil, false), nil, "placeholder")
