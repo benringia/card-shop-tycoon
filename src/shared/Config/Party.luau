@@ -151,7 +151,7 @@ return {
 		-- The Wild bosses (keyed by boss id, spec 2026-11-01-wild-bosses-arenas-design)
 		meadowWarden = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.4, legSwing = 0.6, sway = 1.6 }, -- two heavy legs, long arms dragging
 		caveBroodQueen = { fidgets = { "look", "tilt", "shake" }, bounce = 0.1 }, -- eight legs in a wave
-		emberColossus = { fidgets = { "look", "sniff", "shake", "stomp" }, bounce = 0.2, stride = 1.3 }, -- a heavy four-legged plod
+		emberColossus = { fidgets = { "look", "sniff", "shake", "stomp" }, bounce = 0.2, stride = 1.3, legSwing = 0.6 }, -- a heavy four-legged plod on stubby legs (its rig holds clean up to this swing)
 		Stormjack = { fidgets = { "look", "sniff", "shake", "stomp", "hop", "wag" }, tailSpeed = 1.2, tailAmount = 0.7, bounce = 0.8 }, -- a stocky ram, stubby tail flicking
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },

@@ -125,6 +125,9 @@ return {
 		expect.equal((party.SIGNATURE :: any).meadowWarden.fidget, "rootslam", "the Warden slams its roots")
 		expect.equal((party.SIGNATURE :: any).caveBroodQueen, nil, "a random flare would read as a heal")
 		expect.equal((party.SIGNATURE :: any).emberColossus, nil, "its vents come with the enrage")
+		-- Its stubby legs join a low belly: the rig holds clean up to about 17 degrees of swing (LEG_SWING 28 x 0.6)
+		local colossus = (party.CREATURE_STYLE :: any).emberColossus
+		assert(colossus.legSwing and colossus.legSwing <= 0.6, "the Colossus plods with short swings")
 	end,
 
 	["the beetle sparks at its pincers and the wolf smokes at its tail"] = function()
