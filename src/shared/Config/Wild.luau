@@ -20,8 +20,8 @@ return {
 
 	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). height: studs tall (elites ELITE_SIZE
 	-- times that; the user's pick B of a to-scale lineup, the meadow pair raised a stud to stand out of the grass, which
-	-- is also cut shorter: Terrain GrassLength, a Studio-only property); glow: the emissive strength of the model's glow
-	-- mask (Util/MonsterLooks; the golem's lava pulses from low to high and back every `seconds`)
+	-- is also cut shorter: Terrain GrassLength, a Studio-only property); glow: the steady emissive strength of the
+	-- model's glow mask (a changing strength costs about 6.6 ms of render CPU a frame, so none pulses)
 	SPECIES = {
 		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime", height = 3.5, glow = { strength = 2 } },
 		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab", height = 3, glow = { strength = 2 } },
@@ -31,8 +31,7 @@ return {
 			fx = { kind = "sparks", bones = { "Fx_PincerLeft", "Fx_PincerRight" } }, -- crackling at the pincer tips
 		},
 		["Magma Golem"] = {
-			element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem", height = 6.5,
-			glow = { strength = 2.5, pulse = { low = 1.2, high = 3, seconds = 2.5 } },
+			element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem", height = 6.5, glow = { strength = 2.5 },
 		},
 		["Ash Wolf"] = {
 			element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 },

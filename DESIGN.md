@@ -646,11 +646,12 @@ meadow grass, which is also cut short: Terrain GrassLength 0.3, a Studio-only pr
 Beetle 2.5, Ash Wolf 4, Magma Golem 6.5. Their bones move like the cards' originals, by species (`Party.CREATURE_STYLE`:
 the crab's and the beetle's six legs walk in tripods, the golem lumbers on two legs), the wolf roars
 (`wildroar`, the plain shockwave) and the golem stomps (`Party.SIGNATURE`). Each model's glow mask (the
-SurfaceAppearance's EmissiveMask) lights its markings at the species' `glow.strength`; the golem's lava pulses (1.2 to
-3 and back every 2.5 s) only within 60 studs of the camera (`Wild.FX_RANGE`) with the extras on and holds 2.5
-otherwise, because every change of a SurfaceAppearance's strength costs render CPU (10.5). Small effects ride
-zero-influence `Fx_` bones under the same rule (`Util/MonsterLooks.effectsOn`, looks in `Wild.FX`): sparks at the
-beetle's pincer tips, a smoke wisp from the wolf's tail. A species without a model (the Frontier's) keeps its
+SurfaceAppearance's EmissiveMask) lights its markings at the species' steady `glow.strength` (the golem 2.5, the rest
+2), set once: the spec's pulsing lava was dropped because a SurfaceAppearance whose strength keeps changing costs about
+6.6 ms of render CPU a frame, even one golem (10.5; a Lune test keeps every glow to one strength). Small effects ride
+zero-influence `Fx_` bones within 60 studs of the camera with the extras on (`Wild.FX_RANGE`,
+`Util/MonsterLooks.effectsOn`, looks in `Wild.FX`): sparks at the beetle's pincer tips, a smoke wisp from the wolf's
+tail. A species without a model (the Frontier's) keeps its
 code-built placeholder.
 
 **The Wild valley** (main game; round 1 spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley,
@@ -1360,7 +1361,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
             ├── WildValley.luau    # the Wild valley's trail and markers, biome lookup, what scenery keeps clear of, spawn spots, terrain fills, arena copy spots, monster steps (pure, Lune-tested)
             ├── WildPopulation.luau # how many monsters a valley biome keeps for its players, respawn times (pure, Lune-tested)
-            ├── MonsterLooks.luau  # a wild monster's height, which style moves its bones, its glow strength now (pure, Lune-tested)
+            ├── MonsterLooks.luau  # a wild monster's height, which style moves its bones, when its effects run (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1653,13 +1654,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Terrain memory 45-47 MB graphics in the valley (43 in round 1), 38 in an arena copy, 51 on the street; voxels 5.4-6.0
   MB (4.1 before). The valley's terrain with its 12 arena clearings is about 86.5k estimated cells (cap
   `WildValley.MAX_CELLS` 90k); town plus valley about 225.5k, so `Scenery.MAX_CELLS` rose from 180k to 230k.
-- Wild monster models (measured 2026-11-01 in Play from fixed cameras at round 2's views): before the fix 60 fps at
-  the arrival, gorge and ridge (render CPU 8.9 / 9.8, 9.0 / 9.5 and 8.7 / 9.0 ms at levels 1 / 10) but 57 fps in the
-  crowded meadow (12.8 / 13.8 ms, 73 monsters across the valley with `/crowd 11`). Taking the models away saved 6.7 ms,
-  as much with the camera on the sky; static or moving clones cost nothing. The cost was the golems' glow pulse: each
-  SurfaceAppearance whose EmissiveStrength keeps changing costs about 0.45 ms a frame (12 golems 5.5 ms; written 10 or 5
-  times a second still 4.3 / 2 ms). With the pulse only within `Wild.FX_RANGE` the 72 crowded monsters (14 golems) cost
-  nothing measurable (6.3 / 6.4 ms with them, 6.5 / 6.0 without, Studio capped at 15 fps).
+- Wild monster models (measured 2026-11-01 in Play from fixed cameras at round 2's views): with the golems' lava
+  pulsing, 60 fps at the arrival, gorge and ridge (render CPU 8.9 / 9.8, 9.0 / 9.5 and 8.7 / 9.0 ms at levels 1 / 10)
+  but 57 fps in the crowded meadow (12.8 / 13.8 ms, 73 monsters across the valley with `/crowd 11`). Taking the models
+  away saved 6.7 ms, as much with the camera on the sky; static or moving clones cost nothing. The cost was the pulse:
+  changing a SurfaceAppearance's EmissiveStrength (or EmissiveTint) every frame costs about 6 ms of render CPU whether
+  one golem pulses or twelve (one near the camera 6.6 ms, 12 off screen 5.5 ms; written 10 or 5 times a second still
+  4.3 / 2 ms on average, in spikes). Pulsing only within `Wild.FX_RANGE` still cost 6.5 ms on the crowded ridge with
+  golems in view, so the glow is steady. With it: 60 fps everywhere at levels 1 and 10; render CPU arrival 6.5 / 7.4,
+  gorge 6.4 / 7.0, ridge 6.4 / 6.5, crowded meadow 6.7 / 7.3 (72 monsters), crowded ridge with 4 golems in view
+  7.4 / 7.9.
 
 ---
 

@@ -500,10 +500,9 @@ rules' hue, saturation and value ranges white on black (optionally only faces in
 glow: the Mossling's eyes and mushrooms, the crab's barnacles, the bat's violet cracks, the beetle's crystals, the
 golem's lava and the wolf's ember cracks. In Studio the MeshPart gets a SurfaceAppearance with `ColorMapContent` = the
 colour map and `EmissiveMaskContent` = the mask (both plugin-only to write, so set in Studio and saved in the rbxm);
-the game sets `EmissiveStrength` from the species' `glow` (`Util/MonsterLooks.glowStrength`). A pulsing glow (the
-golem's lava) changes only within `Wild.FX_RANGE` of the camera with the extras on (`MonsterLooks.effectsOn`): every
-change of a SurfaceAppearance's strength costs render CPU (12 pulsing golems took 5.5 ms a frame, DESIGN 10.5), even a
-few times a second.
+the game sets `EmissiveStrength` once from the species' `glow.strength` (MonsterController). Never animate it: a
+SurfaceAppearance whose strength or tint keeps changing costs about 6 ms of render CPU a frame, even a single one and
+even a few times a second (DESIGN 10.5); a Lune test keeps every species' glow to one strength.
 
 **Effect bones.** Zero-influence bones named `Fx_<Spot>` (`Fx_PincerLeft`, `Fx_PincerRight`, `Fx_Tail`) are left out
 of skinning (the importer keeps them with Keep Zero Influence Bones) and carry the species' small effect

@@ -1,10 +1,8 @@
 --!strict
 -- How a wild monster looks (spec 2026-11-01-wild-monster-models-design): its height (each species its own, elites
 -- ELITE_SIZE times that, bosses by their scale), which style moves its bones (only a monster with a model has bones),
--- and how strongly its glow shines (the golem's lava pulses). Pure, Lune-tested; MonsterController draws with it.
+-- and when its small effects run. Pure, Lune-tested; MonsterController draws with it.
 local MonsterLooks = {}
-
-export type Glow = { strength: number, pulse: { low: number, high: number, seconds: number }? }
 
 -- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE)
 function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?): number
@@ -24,24 +22,10 @@ function MonsterLooks.styleKey(species: string, bossId: string?, hasModel: boole
 	return bossId or species
 end
 
--- Whether a monster's small effects (sparks, smoke) and its glow pulse run: within range of the camera, with the extras
+-- Whether a monster's small effects (sparks, smoke) run: within range of the camera, with the extras
 -- on (Util/Extras turns them off on a struggling device)
 function MonsterLooks.effectsOn(distance: number, range: number, extras: boolean): boolean
 	return extras and distance <= range
-end
-
--- The emissive strength at this moment: steady, or pulsing from low (at 0) to high (half a cycle) and back. Only near
--- the camera (Wild.FX_RANGE): every change to a SurfaceAppearance's strength costs render CPU, so far away it holds
--- steady
-function MonsterLooks.glowStrength(glow: Glow?, now: number, near: boolean): number?
-	if not glow then
-		return nil
-	end
-	local pulse = glow.pulse
-	if not pulse or not near then
-		return glow.strength
-	end
-	return pulse.low + (pulse.high - pulse.low) * (0.5 - 0.5 * math.cos(2 * math.pi * now / pulse.seconds))
 end
 
 return MonsterLooks

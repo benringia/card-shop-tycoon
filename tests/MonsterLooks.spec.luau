@@ -1,6 +1,7 @@
 --!strict
 -- The Wild monster models (spec 2026-11-01-wild-monster-models-design): each species drawn at its own height (elites
--- ELITE_SIZE times that), its bones moved by its own style once it has a model, and its glow (the golem's lava pulsing).
+-- ELITE_SIZE times that), its bones moved by its own style once it has a model, a steady glow and effects near the
+-- camera.
 local wild = require("../src/shared/Config/Wild")
 local frontier = require("../src/shared/Config/Frontier")
 local party = require("../src/shared/Config/Party")
@@ -32,43 +33,25 @@ return {
 		expect.equal(MonsterLooks.styleKey("Mossling", "meadowWarden", false), nil, "boss placeholder")
 	end,
 
-	["glow: none, steady, or a pulse that stays in its range"] = function()
-		expect.equal(MonsterLooks.glowStrength(nil, 3, true), nil, "no glow")
-		expect.equal(MonsterLooks.glowStrength({ strength = 2 }, 3, true), 2, "steady")
-		local pulse = { strength = 2, pulse = { low = 1.2, high = 3, seconds = 2.5 } }
-		expect.near(MonsterLooks.glowStrength(pulse, 0, true) :: number, 1.2, 1e-9, "low at the start")
-		expect.near(MonsterLooks.glowStrength(pulse, 1.25, true) :: number, 3, 1e-9, "high halfway")
-		for step = 0, 50 do
-			local value = MonsterLooks.glowStrength(pulse, step * 0.1, true) :: number
-			assert(value >= 1.2 - 1e-9 and value <= 3 + 1e-9, "pulse out of range")
-		end
-	end,
-
-	-- Every change to a SurfaceAppearance's EmissiveStrength costs render CPU (12 pulsing golems: 5.5 ms a frame,
-	-- measured 2026-11-01), so only golems near the camera pulse
-	["far from the camera a pulse holds its steady strength"] = function()
-		local pulse = { strength = 2.5, pulse = { low = 1.2, high = 3, seconds = 2.5 } }
-		for step = 0, 10 do
-			expect.equal(MonsterLooks.glowStrength(pulse, step * 0.37, false), 2.5, "far")
-		end
-		expect.equal(MonsterLooks.glowStrength({ strength = 2 }, 3, false), 2, "steady glow far away")
-	end,
-
-	-- The extras go off on a struggling device (Util/Extras, the frame watchdog): no sparks, smoke or pulsing lava then
-	["effects and the lava pulse run only near the camera with the extras on"] = function()
+	-- The extras go off on a struggling device (Util/Extras, the frame watchdog): no sparks or smoke then
+	["effects run only near the camera with the extras on"] = function()
 		expect.equal(MonsterLooks.effectsOn(30, 60, true), true, "near")
 		expect.equal(MonsterLooks.effectsOn(60, 60, true), true, "at the edge")
 		expect.equal(MonsterLooks.effectsOn(61, 60, true), false, "far")
 		expect.equal(MonsterLooks.effectsOn(30, 60, false), false, "extras off")
 	end,
 
-	["every wild species has a height and the golem's lava pulses"] = function()
+	-- A SurfaceAppearance whose EmissiveStrength keeps changing costs about 6.6 ms of render CPU a frame, even one golem
+	-- near the camera (measured 2026-11-01), so glows hold one strength
+	["every wild species has a height and a steady glow"] = function()
 		for species, info in wild.SPECIES do
 			local entry = info :: any
 			assert(type(entry.height) == "number" and entry.height > 0, species .. " has no height")
 			assert(entry.glow and entry.glow.strength > 0, species .. " has no glow")
+			for key in entry.glow do
+				assert(key == "strength", species .. "'s glow has " .. key .. ": glows don't animate")
+			end
 		end
-		assert((wild.SPECIES["Magma Golem"] :: any).glow.pulse, "the golem's lava doesn't pulse")
 	end,
 
 	["every wild species moves in its own style with known fidgets"] = function()

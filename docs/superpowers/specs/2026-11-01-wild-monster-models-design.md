@@ -68,9 +68,10 @@ stripes (Fizzlebug), the crab is blue not red, the bat is not round or purple (G
    - Magma Golem: a lumbering two-legged walk with swinging arms (`stride`, `legSwing`, `sway`); signature idle: a
      stomp (an existing kind).
 3. The glow: the parts listed above glow in their element's colour (green, cyan, violet, yellow, orange), day and
-   night. The golem's lava pulses slowly. *Claude's call:* the Mossling's and the golem's approved faces keep their dark
-   pupils (the golem's concept had a slit pupil; the user approved both models as rendered); their eyes glow around the
-   pupil. The other four already have glowing eyes without pupils.
+   night. The golem's lava pulses slowly (*amended 2026-11-01:* dropped, the lava glows steady; animating a
+   SurfaceAppearance's strength cost about 6 ms of render CPU a frame, DESIGN 10.5). *Claude's call:* the Mossling's
+   and the golem's approved faces keep their dark pupils (the golem's concept had a slit pupil; the user approved both
+   models as rendered); their eyes glow around the pupil. The other four already have glowing eyes without pupils.
 4. Two small effects: sparks crackling between the Spark Beetle's pincer tips, and a wisp of smoke from the Ash Wolf's
    tail tip. Like the portal swirls, they run only near the camera and with the extras on (`Util/Extras`).
 5. The valley still runs at 60 fps where it was measured (DESIGN 10.5), including the crowded meadow with `/crowd 11`
