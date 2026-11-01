@@ -161,7 +161,8 @@ loop, the same for everyone in town in a server: morning 7 min (the longest), af
 lit by the street, shop neon, portals and glowing mushrooms (shops stay warm and readable), dawn 1.5; each phase keeps its
 sky, haze, bloom and colours, blending into the next over 40 s while the sun creeps across. Each client works the time
 out from the server's `DayCycleStart` attribute (no network). Outside the town region (the Wild, the Arena stands, the
-boss arenas) the old afternoon look shows at once, so fights never happen at night. **Ambient life** (client only, off
+boss arenas) the old afternoon look shows at once, so fights never happen at night; the Wild valley's three boss arenas
+each show their own look instead (`DayCycle.ARENA_LOOKS`, 5.8 "The Wild valley"), none of them night. **Ambient life** (client only, off
 when the frame watchdog sees a slow device, after the first 15 s so the join's loading doesn't count, or the player
 set graphics at 3 or below; a sleeper's "z Z z" hides with it: `Util/FrameWatchdog`,
 `Client/Util/Extras`, `Config/Ambient`): trees near the camera sway (`TreeSwayController`), and Cute Pets animals
@@ -681,8 +682,21 @@ with the usual Fight and Start group prompts. A fight goes to one of 4 copies of
 (`Bosses.ARENA_COPIES`; `WildValley.ARENA_FIELD`, x 1600-5200, z 1200-3600): the copy is held while it streams in on the
 fighters' devices, everyone is checked again, then they're moved in and the ring seals. Each copy keeps its zone's
 look (`ARENA_LOOKS`: grass floor and wooden fence, slate floor with stone posts and blue crystal tips, basalt floor
-with lava cracks and basalt posts with ember tips; floors 0.15 above the terrain) on a terrain clearing ringed with
-its zone's props, with a root-arch portal home outside its gate. Return sends a fighter back to the boss's portal once
+with lava cracks and basalt posts with ember tips; floors 0.15 above the terrain) on a terrain clearing, and is dressed
+as a place of its own round its boss (`WildValley.ARENA_DRESSING`, laid out by `Util/WildValley.arenaDressing` from a
+seed, the same every start; spec `2026-11-01-wild-bosses-arenas-design.md`): rows of wall pieces all round and inner
+pieces between the fence and the walls, clear of the fight, the path and the way home. **The Warden's grove:** mossy
+standing stones (14-20 studs) inside a ring of giant old trees (36-46), flowers, bushes and roots, fireflies and
+drifting leaves, a sunny afternoon. **The Broodmother's hollow:** stalagmites and rocks all round under a rock dome
+(`CaveDome`, 46 tall), webs, bones, cocoons hanging 28 studs up and 8 blue crystals, glints and low mist, dim and cold.
+**The Behemoth's lava field:** basalt cliffs with glowing lava cracks (30-40 studs) all round, charred trees and
+obsidian shards, the caldera's volcano 150 studs behind (130 tall), embers and falling ash under a red-orange haze. Each
+arena's sky is its own (`DayCycle.ARENA_LOOKS`: time of day, light, haze, bloom and colour), applied on the client
+while the player is in one of its copies (`WildValley.arenaZoneAt`), never night. Each loops its own ambient sound at
+its centre (heard out to 90 studs: "Jungle Dawn 1", "Water Cave Trickle Thin Into Small Puddles 5", "Fireplace Constant
+Burning Flame 4"), under the boss drone. The way home stands inside the walls on the -X side, 46 studs out
+(`ARENA_HOME`), in its zone's look: the root arch (`PortalWild`), the ice-blue crystal ring (`PortalFrontier`), the
+obsidian arch with the canyon's lava (`PortalArena`). Return sends a fighter back to the boss's portal once
 the fight is over; anyone still there is sent back 60 s after it ends (`ARENA_LINGER`), loot they haven't picked up
 going into their Bag first (also when they leave a copy any other way: the Shop button, a respawn). Invisible
 walls close each copy's clearing (`WildValley.arenaEdge`). Under each copy a flat ground part 360 studs wide, coloured
@@ -863,7 +877,8 @@ group, checked before its fragments and every time (not only the first). Below i
   leaves a fight that goes on, is moved out through the gate. Boss fights may last 420 s (`Combat.BOSS_MAX_FIGHT_SECONDS`), the leash is 42
   studs, stuns on a boss last at most 1 s.
 - **Intro:** a boss fight opens with 6 s of drama (`INTRO_*`): the camera flies to the boss, its name and title show
-  (e.g. "Guardian of the Meadow"), it roars (camera shake), then 3, 2, 1, FIGHT. Nothing moves and no button works
+  (e.g. "Guardian of the Meadow"), it roars (camera shake; the three Wild bosses also rear into a roar pose with their
+  own sound from the model, `moments.roar` at `ROAR_VOLUME` 0.8), then 3, 2, 1, FIGHT. Nothing moves and no button works
   until then. A low ambient drone plays through the fight ("Tension Repeat Drones 22", `MUSIC_ID`, volume 0.1: a bed under the
   attack and skill sounds to come); heals and enrages shake the camera.
 - **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
@@ -960,7 +975,26 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Death:** a beaten boss lies there for `DEATH_SECONDS` (4) before it goes, so clients can play its fall (the
   Prism Hydra's heads drop one by one, the outer ones first).
 - Studio: `/item <id> <n>`, `/boss <n>` (to boss n's gate), `/boss <n> fight` and `/boss <n> group` (use that prompt).
-- Boss models are placeholders (monster shapes at 2.5-3.4x) except the Prism Hydra (below).
+- **The Wild bosses' models** (spec `2026-11-01-wild-bosses-arenas-design.md`; the user picked each design and size B
+  "Huge"): Meshy image to 3D from the picked concept, about 7,600 triangles, rigged by our own scripts
+  (`tools/blender/rig_meadowwarden.py`, `rig_cavebroodqueen.py`, `rig_embercolossus.py`; docs/creatures.md "Wild
+  bosses"), saved as `assets/monsters/<bossId>.rbxm` with a steady glow mask (strength 2, the Colossus 2.5).
+  Heights in studs (`Bosses` `height`, `Util/MonsterLooks.height`), the Prism Hydra still the biggest at 24.5:
+  - **Meadow Warden** ("Elder Warden"), 17 tall: a hunched giant of hollow tree trunk and grey boulders, a stone face
+    with glowing green eyes, antler boughs and a moss beard. It lumbers on two legs with long arms swaying and slams
+    its roots now and then (`rootslam`, its `Party.SIGNATURE`).
+  - **Cave Brood Queen** ("Broodmother"), 16 tall and about 21 across her legs (12 came out 16 across, smaller on
+    screen than the others): a violet bat-winged spider with glowing lilac eyes and a lavender egg sac. Her eight legs
+    walk in a wave and her wings spread for the roar; when her heal fires the egg sac flares (violet sparkles from
+    `Fx_Sac`, drawn 6 studs toward the camera so the opaque sac doesn't hide them), never at random.
+  - **Ember Colossus** ("Magma Behemoth"), 17 tall and about 28 long: a basalt-plated lava rhino with glowing seams,
+    eyes and mouth. It plods on four stubby legs (short swings: its rig holds clean up to `legSwing` 0.6) with a jaw
+    that opens; when it enrages its three back vents burst with fire, then smoke while it stays enraged.
+  Fighters stand 15 / 18 / 18 studs out (`ringRadius`) and the intro camera sits further back (`introShot`). Moments
+  come from the boss marker's attributes (`SpawnedAt`, `Heals`, `Enraged`; `Util/BossMoments`, Lune-tested), so a
+  player who streams in mid-fight sees the state, never a replay; their effects are particles on zero-influence `Fx_`
+  bones (`Bosses.MOMENT_FX`, never an animated SurfaceAppearance). The Frontier bosses 4-6 are still placeholders
+  (monster shapes at 2.5-3.4x); the Prism Hydra has its own model (below).
 
 #### The Dungeon and the Prism Hydra (phase 4)
 
@@ -1164,12 +1198,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
-├── assets/monsters/            # wild monster models (.rbxm; Meshy image to 3D, rigged by tools/blender/rig_<species>.py) → ReplicatedStorage.MonsterModels
+├── assets/monsters/            # wild monster and boss models (.rbxm; Meshy image to 3D, rigged by tools/blender/rig_<species or boss>.py; bosses by id) → ReplicatedStorage.MonsterModels
 ├── assets/props/               # town prop models (.rbxm) → ReplicatedStorage.PropModels (docs/props.md)
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py)
 ├── tools/textures/             # pack textures and flipbook sheets (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
@@ -1384,6 +1418,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
+            ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -1667,6 +1702,12 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   golems in view, so the glow is steady. With it: 60 fps everywhere at levels 1 and 10; render CPU arrival 6.5 / 7.4,
   gorge 6.4 / 7.0, ridge 6.4 / 6.5, crowded meadow 6.7 / 7.3 (72 monsters), crowded ridge with 4 golems in view
   7.4 / 7.9.
+- Wild bosses and their arenas (measured 2026-11-02 in Play from fixed cameras, each arena copy with its boss fight
+  running): 60 fps everywhere at levels 1 and 10; render CPU the Warden's grove 7.1 / 7.1 ms, the Broodmother's hollow
+  6.6 / 7.2, the Behemoth's lava field 7.0 / 7.6 (a bare arena copy was 6.8 / 7.1), the valley's arrival 7.4 / 8.4, the
+  town street 8.4 / 9.3. Terrain on the street unchanged (voxels 5.5 MB, graphics 51 MB): walls, the cave's roof, the
+  backdrop and the ground part past each clearing are meshes and parts, not terrain. Boss glows hold one strength
+  (2, 2.5 for the Colossus); their moments are particles.
 
 ---
 

@@ -78,8 +78,23 @@ game makes them glowing colour). The front faces -Y in Blender. Colours and effe
 
 The Wild valley reuses two of them (WildService): each boss portal is `PortalArena` scaled to 20 studs
 (`WildValley.BOSS_PORTAL`) with the purple `Boss` look (`Town.PORTAL_LOOKS.Boss`: swirl, light and its `Lava` glowing
-purple), and each arena copy's way home, like the valley's arrival, is `PortalWild` with its own look. The valley's
-volcano is the caldera's `Volcano` (`WildValley.VOLCANO`), dressed like the canyon's: anchored, its `Lava` glowing.
+purple). The valley's arrival is `PortalWild`; each boss arena copy's way home is in its zone's look
+(`WildValley.ARENA_HOME`): `PortalWild` in the grove, `PortalFrontier` (the ice-blue crystal ring) in the hollow,
+`PortalArena` with the canyon's lava on the lava field. The valley's volcano is the caldera's `Volcano`
+(`WildValley.VOLCANO`), dressed like the canyon's: anchored, its `Lava` glowing; the lava field's backdrop is the same
+model.
+
+## The Wild boss arenas' props (StandingStone, Stalagmite, Web, Cocoon, Bones, CaveDome, LavaCliff)
+
+Built in Blender by `tools/blender/build_arena_props.py` on `voxel_kit.py` and `portal_kit.py`, in the caldera props'
+smooth look (run through the Blender MCP; `PROPS="A,B"` builds only those, `EXPORT=0` builds without saving). Each is
+its own `assets/blender/<Name>/<Name>.{blend,fbx}`: a `Frame` with the palette texture and, for the lava cliff, `Lava`
+(the cracks, which the game turns glowing). Import with default settings, save as `assets/props/<Name>.rbxm` unchanged
+and delete the Workspace copy: WildService (`arenaPiece`) anchors each piece where it places it, turns off shadows on
+small ones and collisions on the roof and the backdrop, and makes `Lava` parts glow. The arenas' layouts are
+`WildValley.ARENA_DRESSING` (walls, inner pieces, roof or backdrop, by zone); a Lune test checks every model they name
+has a saved file. Under each copy a flat ground part runs on past the walls (`WildValley.arenaApron`, colours by zone in
+`ARENA_CLEARING.apronColors`, matched by eye: a part's material draws lighter or duller than the same terrain's).
 
 ## Models with unions (PlaceProps)
 
