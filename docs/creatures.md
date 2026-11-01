@@ -67,7 +67,7 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   name with .R. A pack listed in `Party.FLYING_PACKS` flies too. Flying creatures: legs tucked, the body rising and dipping with each wingbeat
   (`FLAP_SECONDS`, `FLAP_LIFT`), only look, tilt, spin and wag fidgets. `Party.FLYING` only applies to cards drawn
   with their own model or the placeholder.
-- Creatures without bones (placeholders, static models, wild monsters) get whole-body fidgets while standing:
+- Creatures without bones (placeholders, static models, placeholder monsters) get whole-body fidgets while standing:
   hop, spin, shake, look around, bounce (`PET_ANIM.BODY_FIDGETS`, `PetRig.body`). Bones are found by name
   (`Pet_<Model>_<Role>`); odd ones are renamed in `Party.PET_BONE_ALIASES`. No upload or animation ownership is
   needed. The pack has no eye, eyelid or wing bones, so pets can't blink and wings stay still. Walking, the tail
@@ -465,9 +465,49 @@ at most 31 outlines on screen, so the rarest and nearest creatures get them firs
 ## Wild monsters
 
 Monsters work the same way: save a model as `assets/monsters/<Species>.rbxm` (species names are in
-`Config/Wild.luau`, e.g. `Mossling`, `Cave Bat`). It is scaled to `MONSTER_HEIGHT` (elites `ELITE_SIZE` times
-bigger), the same script test and part cap apply, and the server and clients strip scripts the same way. Flying
-species are listed in `Wild.FLYING`. Species without a model get a part-built placeholder in their element colour.
+`Config/Wild.luau`, e.g. `Mossling`, `Cave Bat`). It is scaled to its species' `height` in `Wild.SPECIES` (studs; a
+species without one, like the Frontier's, uses the world's `MONSTER_HEIGHT`), elites `ELITE_SIZE` times bigger
+(`Util/MonsterLooks.height`); the same script test and part cap apply, and the server and clients strip scripts the
+same way. Flying species are listed in `Wild.FLYING`. Species without a model get a part-built placeholder in their
+element colour. A model with PetRig bone names moves by its species' `Party.CREATURE_STYLE` and `Party.SIGNATURE`
+(MonsterController passes the species as the style key once a model exists).
+
+### How the six wild monsters were made
+
+The user picked each design from concept pictures (style B "wild-touched": wilder than the cards, never like a card),
+then each became a model the same way as the Meshy originals, but from the picture (image to 3D):
+
+1. Cut the concept out of its background (no shadows, halos, smoke or lightning arcs: Meshy models anything left in)
+   and save it as `assets/blender/<Folder>/<Folder>_concept.png`.
+2. Generate image to 3D in Blender through the Blender MCP; the raw mesh is `<Folder>_Src` in `<Folder>.blend`.
+3. Run `tools/blender/rig_<species>.py` (`rig_mossling.py`, `rig_puddlecrab.py`, `rig_cavebat.py`,
+   `rig_sparkbeetle.py`, `rig_magmagolem.py`, `rig_ashwolf.py`): it scales the mesh to rig_kit's metre defaults where
+   Meshy made it far off (the beetle x10, the golem x0.5), reduces it (`rig_kit.optimize`; `remesh_bake` where collapse decimation shards a dense mesh, as on the crab), builds
+   the bones, skins, exports `<Folder>.fbx` and writes the glow mask `<Folder>_glow.png`. Delete `*_Src` and purge
+   orphans before saving the .blend.
+4. Import the FBX in Studio (Rig Type Custom, Keep Zero Influence Bones), reset the MeshPart's `PivotOffset` rotation,
+   upload the glow mask (the import uploads the colour map as the MeshPart's TextureID), give the MeshPart a
+   SurfaceAppearance (below) and save the model as `assets/monsters/<Species>.rbxm`.
+
+Bones follow PetRig's names: legs `<pair>_<Side>_Limb_<n>` (pairs 0..3; the crab's three pairs ripple in a wave, the
+beetle's walk as two tripods, pair 0 alone is two-legged like the golem), `Arm_<Side>_<n>`, `Wing_<Side>_<n>`,
+`Tail_<n>`, `Jaw_0`. Parts that must move in one piece with their parent (the crab's claws `Claw_<Side>_<n>`, the
+beetle's pincers `Pincer_<Side>_0`) get a bone with no PetRig role, so it stays rigid. The wolf has no ear bones (they
+dragged its mane).
+
+**Glow masks.** `rig_kit.glow_mask(mesh, name, rules, grow, region)` paints the UV islands whose colour falls in the
+rules' hue, saturation and value ranges white on black (optionally only faces inside a region), so only the markings
+glow: the Mossling's eyes and mushrooms, the crab's barnacles, the bat's violet cracks, the beetle's crystals, the
+golem's lava and the wolf's ember cracks. In Studio the MeshPart gets a SurfaceAppearance with `ColorMapContent` = the
+colour map and `EmissiveMaskContent` = the mask (both plugin-only to write, so set in Studio and saved in the rbxm);
+the game sets `EmissiveStrength` from the species' `glow` (`Util/MonsterLooks.glowStrength`). A pulsing glow (the
+golem's lava) changes only within `Wild.FX_RANGE` of the camera: every change of a SurfaceAppearance's strength costs
+render CPU (12 pulsing golems took 5.5 ms a frame, DESIGN 10.5), even a few times a second.
+
+**Effect bones.** Zero-influence bones named `Fx_<Spot>` (`Fx_PincerLeft`, `Fx_PincerRight`, `Fx_Tail`) are left out
+of skinning (the importer keeps them with Keep Zero Influence Bones) and carry the species' small effect
+(`Wild.SPECIES` fx, looks in `Wild.FX`): ParticleEmitters parented to the bones, on only within `Wild.FX_RANGE` of the
+camera with the extras on.
 
 Boss models are saved under the boss id (`assets/monsters/<bossId>.rbxm`). A boss model with PetRig bone names moves
 like a creature (MonsterController passes the boss id to `CreatureVisuals.build`; `Party.CREATURE_STYLE` and

@@ -24,13 +24,15 @@ function MonsterLooks.styleKey(species: string, bossId: string?, hasModel: boole
 	return bossId or species
 end
 
--- The emissive strength at this moment: steady, or pulsing from low (at 0) to high (half a cycle) and back
-function MonsterLooks.glowStrength(glow: Glow?, now: number): number?
+-- The emissive strength at this moment: steady, or pulsing from low (at 0) to high (half a cycle) and back. Only near
+-- the camera (Wild.FX_RANGE): every change to a SurfaceAppearance's strength costs render CPU, so far away it holds
+-- steady
+function MonsterLooks.glowStrength(glow: Glow?, now: number, near: boolean): number?
 	if not glow then
 		return nil
 	end
 	local pulse = glow.pulse
-	if not pulse then
+	if not pulse or not near then
 		return glow.strength
 	end
 	return pulse.low + (pulse.high - pulse.low) * (0.5 - 0.5 * math.cos(2 * math.pi * now / pulse.seconds))

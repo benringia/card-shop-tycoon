@@ -33,15 +33,25 @@ return {
 	end,
 
 	["glow: none, steady, or a pulse that stays in its range"] = function()
-		expect.equal(MonsterLooks.glowStrength(nil, 3), nil, "no glow")
-		expect.equal(MonsterLooks.glowStrength({ strength = 2 }, 3), 2, "steady")
+		expect.equal(MonsterLooks.glowStrength(nil, 3, true), nil, "no glow")
+		expect.equal(MonsterLooks.glowStrength({ strength = 2 }, 3, true), 2, "steady")
 		local pulse = { strength = 2, pulse = { low = 1.2, high = 3, seconds = 2.5 } }
-		expect.near(MonsterLooks.glowStrength(pulse, 0) :: number, 1.2, 1e-9, "low at the start")
-		expect.near(MonsterLooks.glowStrength(pulse, 1.25) :: number, 3, 1e-9, "high halfway")
+		expect.near(MonsterLooks.glowStrength(pulse, 0, true) :: number, 1.2, 1e-9, "low at the start")
+		expect.near(MonsterLooks.glowStrength(pulse, 1.25, true) :: number, 3, 1e-9, "high halfway")
 		for step = 0, 50 do
-			local value = MonsterLooks.glowStrength(pulse, step * 0.1) :: number
+			local value = MonsterLooks.glowStrength(pulse, step * 0.1, true) :: number
 			assert(value >= 1.2 - 1e-9 and value <= 3 + 1e-9, "pulse out of range")
 		end
+	end,
+
+	-- Every change to a SurfaceAppearance's EmissiveStrength costs render CPU (12 pulsing golems: 5.5 ms a frame,
+	-- measured 2026-11-01), so only golems near the camera pulse
+	["far from the camera a pulse holds its steady strength"] = function()
+		local pulse = { strength = 2.5, pulse = { low = 1.2, high = 3, seconds = 2.5 } }
+		for step = 0, 10 do
+			expect.equal(MonsterLooks.glowStrength(pulse, step * 0.37, false), 2.5, "far")
+		end
+		expect.equal(MonsterLooks.glowStrength({ strength = 2 }, 3, false), 2, "steady glow far away")
 	end,
 
 	["every wild species has a height and the golem's lava pulses"] = function()

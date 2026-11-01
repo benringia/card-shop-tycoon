@@ -39,6 +39,7 @@ type Monster = {
 	aura: Aura?, -- a boss with a rainbow aura
 	glows: { SurfaceAppearance }, -- the model's SurfaceAppearances with a glow mask
 	glow: MonsterLooks.Glow?, -- the species' glow (Config/Wild SPECIES)
+	glowStrength: number?, -- the strength last written to its glows
 	fx: { ParticleEmitter }, -- sparks or smoke on its Fx_ bones (Config/Wild SPECIES fx), on only near the camera
 }
 
@@ -306,12 +307,14 @@ local function makeFx(model: Model, fx: any): { ParticleEmitter }
 	return emitters
 end
 
--- The glow mask's strength now (a pulsing glow is set every frame, a steady one once)
-local function setGlow(monster: Monster, now: number)
-	local strength = MonsterLooks.glowStrength(monster.glow, now)
-	if not strength then
+-- The glow mask's strength now (a pulsing glow is set every frame near the camera, a steady one once). Written only
+-- when it changes: each change costs render CPU
+local function setGlow(monster: Monster, now: number, near: boolean)
+	local strength = MonsterLooks.glowStrength(monster.glow, now, near)
+	if not strength or strength == monster.glowStrength then
 		return
 	end
+	monster.glowStrength = strength
 	for _, appearance in monster.glows do
 		appearance.EmissiveStrength = strength
 	end
@@ -362,7 +365,7 @@ local function add(marker: BasePart)
 		glow = glow,
 		fx = if fxSpec then makeFx(model, fxSpec) else {},
 	}
-	setGlow(monster, os.clock())
+	setGlow(monster, os.clock(), false)
 	if monster.aura and boss and boss.auroraFlame then
 		monster.aura.flames = makeFlames(model, body.root)
 	end
@@ -426,11 +429,12 @@ function MonsterController.Start()
 			if monster.aura then
 				stepAura(monster, now)
 			end
+			local inRange = (monster.marker.Position - origin).Magnitude <= Wild.FX_RANGE
 			if monster.glow and monster.glow.pulse then
-				setGlow(monster, now)
+				setGlow(monster, now, inRange)
 			end
 			if #monster.fx > 0 then
-				local near = extras and (monster.marker.Position - origin).Magnitude <= Wild.FX_RANGE
+				local near = extras and inRange
 				if monster.fx[1].Enabled ~= near then
 					for _, emitter in monster.fx do
 						emitter.Enabled = near
