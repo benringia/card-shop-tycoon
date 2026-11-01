@@ -1,6 +1,7 @@
 --!strict
 -- Procedural bone animation for rigged pack pets (Cute Pets: Root, Pelvis, Spine, Neck, Head, legs as
--- <pair>_<Side>_Limb_<segment> with pair 0 front and 1 hind, Tail_0..3, Ear_<Side>_<n>, Wing_<Side>_<n>;
+-- <pair>_<Side>_Limb_<segment> with pair 0 front and 1 hind; pairs 2 and 3 for six and eight legs, odd pairs out of
+-- step with even ones; Tail_0..3, Ear_<Side>_<n>, Wing_<Side>_<n>;
 -- other rigs are named this way by Util/RigGuess and Party.WINGS). Pure, Lune-tested:
 -- turns time, walk phase and an idle fidget into angles per bone role, in model space (x = pitch forward/back,
 -- y = yaw left/right, z = roll). Util/PetAnimator applies them to the bones on the client. Numbers:
@@ -114,10 +115,11 @@ function PetRig.swimSpeed(cfg: any, moving: number): number
 	return TAU / cfg.SWIM_SECONDS * (1 + (cfg.SWIM_FAST - 1) * math.clamp(moving, 0, 1))
 end
 
--- Where a leg is in the walk cycle: trot (front-left with hind-right) or, on two legs, left then right
+-- Where a leg is in the walk cycle: trot (front-left with hind-right) or, on two legs, left then right. Many-legged rigs
+-- (the Wild's crab and beetle) alternate pair by pair: odd pairs step opposite the even ones (six legs: two tripods)
 local function legOffset(role: Role, biped: boolean): number
 	local offset = if role.side == "Left" then 0 else math.pi
-	if not biped and role.pair == 1 then
+	if not biped and role.pair % 2 == 1 then
 		offset += math.pi
 	end
 	return offset
@@ -261,7 +263,8 @@ local function hiccupPulse(cfg: any, progress: number): number
 	return pulse
 end
 
-local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, riftroar = true }
+-- wildroar: the plain roar for rigged Wild monsters (head, neck and jaw, the plain shockwave; no card effects)
+local ROARS = { roar = true, voidroar = true, thunderroar = true, stormroar = true, firebreath = true, sneeze = true, riftroar = true, wildroar = true }
 
 export type Body = { lift: number, yaw: number, roll: number, pitch: number, forward: number }
 

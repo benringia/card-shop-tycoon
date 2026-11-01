@@ -2,6 +2,7 @@
 local party = require("../src/shared/Config/Party")
 local PetRig = require("../src/shared/Util/PetRig")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
 
 local CFG = party.PET_ANIM
 
@@ -997,5 +998,35 @@ return {
 		expect.near(PetRig.body(CFG, "stomp", 1, 1).lift, 0, 1e-6, "ends down")
 		assert(PetRig.body(CFG, "stomp", 0.3, 1).lift > 0.2, "doesn't rise")
 		assert(#CFG.TITAN_FIDGETS >= 3, "too few titan fidgets")
+	end,
+
+	["eight legs walk in a wave: odd pairs step opposite the even ones"] = function()
+		local state = { phase = 0, moving = 1, flying = false } :: any
+		local function lift(name: string): number
+			return PetRig.footLift(CFG, PetRig.role(name) :: PetRig.Role, false, state)
+		end
+		assert(lift("0_Left_Limb_0") > 0 and lift("2_Left_Limb_0") > 0, "even left pairs step together")
+		expect.equal(lift("1_Left_Limb_0"), 0, "pair 1 opposite")
+		expect.equal(lift("3_Left_Limb_0"), 0, "pair 3 opposite")
+		assert(lift("3_Right_Limb_0") > 0, "the right side mirrors")
+	end,
+
+	["six legs keep the insect tripod"] = function()
+		local state = { phase = 0, moving = 1, flying = false } :: any
+		local function lift(name: string): number
+			return PetRig.footLift(CFG, PetRig.role(name) :: PetRig.Role, false, state)
+		end
+		assert(lift("0_Left_Limb_0") > 0 and lift("1_Right_Limb_0") > 0 and lift("2_Left_Limb_0") > 0, "tripod A")
+		expect.equal(lift("0_Right_Limb_0") + lift("1_Left_Limb_0") + lift("2_Right_Limb_0"), 0, "tripod B waits")
+	end,
+
+	["a wild roar rears, lunges and opens the jaw; plain roar stays as it was"] = function()
+		assert(PetRig.cue(CFG, "wildroar", CFG.ROAR_BURST) and not PetRig.cue(CFG, "wildroar", 0.1), "cues with the lunge")
+		assert(PetRig.body(CFG, "wildroar", CFG.ROAR_BURST * 0.9, 1, true).pitch > 0, "rears back first")
+		local WOLF = { "Pelvis", "Spine_0", "Neck", "Head_0", "Jaw_0", "0_Left_Limb_0", "0_Right_Limb_0", "1_Left_Limb_0", "1_Right_Limb_0", "Tail_0" }
+		assert(poseAt(WOLF, { time = 0, phase = 0, moving = 0, fidget = "wildroar", fidgetProgress = 0.5 } :: any)["jaw:0"].x < -math.rad(10), "jaw opens")
+		expect.equal(PetRig.cue(CFG, "roar", 0.9), false, "plain roar still never cues (the Prism Hydra)")
+		local source = fs.readFile("src/client/Util/CreatureVisuals.luau")
+		assert(string.find(source, '"wildroar"', 1, true), "CreatureVisuals plays the shockwave for a wild roar")
 	end,
 }

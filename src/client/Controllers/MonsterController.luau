@@ -3,8 +3,9 @@
 -- workspace.Monsters (attributes MonsterId, Species, Level, Elite, Element, Fighting); here each marker gets a
 -- model (ReplicatedStorage.MonsterModels[Species], or a placeholder shape in its element colour), the same
 -- motion as summoned creatures (CreatureVisuals) and a name tag. Elites are bigger with a gold tag; bosses (attribute
--- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag; a boss model with PetRig bones
--- moves them (Util/PetAnimator), and one with heads (Config/Bosses heads: the Prism Hydra) lights the head of its
+-- Boss, a Config/Bosses id) are drawn from their config at its scale with a red tag. Each species has its own height
+-- (Util/MonsterLooks); a model with PetRig bones moves them (Util/PetAnimator, styled by species, a boss by its id),
+-- its glow mask shines at the species' steady glow strength, and a boss with heads (Config/Bosses heads: the Prism Hydra) lights the head of its
 -- current phase (marker attribute Phase) and drops its heads one by one when it falls.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,7 +17,9 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 -- The server wild map in the main game, the Frontier in the Frontier place
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
+local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
+local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 
 local MonsterController = {}
 
@@ -34,6 +37,7 @@ type Monster = {
 	heads: { Head }, -- a boss with heads: one per Hydra_<n>_3 bone, n = index - 1
 	fallenAt: number?, -- os.clock() its death began (heads dropping)
 	aura: Aura?, -- a boss with a rainbow aura
+	fx: { ParticleEmitter }, -- sparks or smoke on its Fx_ bones (Config/Wild SPECIES fx), on only near the camera
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -266,6 +270,50 @@ local function remove(marker: BasePart)
 	monster.body.model:Destroy()
 end
 
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- A species' small effect on each of its model's Fx_ bones (a Bone is an Attachment, so it emits from there), off
+-- until the camera comes near
+local function makeFx(model: Model, fx: any): { ParticleEmitter }
+	local emitters = {}
+	local look = Wild.FX[fx.kind]
+	if not look then
+		return emitters
+	end
+	for _, name in fx.bones do
+		local bone = model:FindFirstChild(name, true)
+		if bone and bone:IsA("Bone") then
+			local emitter = Instance.new("ParticleEmitter")
+			emitter.Texture = look.texture
+			emitter.Color = ColorSequence.new(rgb(look.color))
+			emitter.LightEmission = look.lightEmission
+			emitter.Size = NumberSequence.new(look.size[1], look.size[2])
+			emitter.Transparency = NumberSequence.new(look.transparency[1], look.transparency[2])
+			emitter.Lifetime = NumberRange.new(look.lifetime[1], look.lifetime[2])
+			emitter.Rate = look.rate
+			emitter.Speed = NumberRange.new(look.speed[1], look.speed[2])
+			emitter.SpreadAngle = Vector2.new(look.spread, look.spread)
+			emitter.Acceleration = Vector3.new(0, look.rise, 0)
+			emitter.Enabled = false
+			emitter.Parent = bone
+			table.insert(emitters, emitter)
+		end
+	end
+	return emitters
+end
+
+-- Lights the model's glow masks once: a SurfaceAppearance whose strength keeps changing costs about 6.6 ms of render
+-- CPU a frame, so glows stay steady
+local function lightGlow(model: Model, strength: number)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("SurfaceAppearance") and descendant.EmissiveMaskContent.SourceType ~= Enum.ContentSourceType.None then
+			descendant.EmissiveStrength = strength
+		end
+	end
+end
+
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
@@ -286,9 +334,16 @@ local function add(marker: BasePart)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`
 
 	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
-	local height = Wild.MONSTER_HEIGHT * (if boss then boss.scale elseif elite then Wild.ELITE_SIZE else 1)
-	-- A boss model's bones move like a creature's (its PetRig names; Party style keyed by the boss id)
-	local body = CreatureVisuals.build(model, marker, height, flying, if boss and template then bossId :: string else nil)
+	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil)
+	-- A model's bones move like a creature's (its PetRig names; Party style keyed by species, a boss by its id)
+	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
+	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)
+	body.fxColor = color
+	local glow = if boss then nil else (Wild.SPECIES[species] :: any).glow
+	if glow then
+		lightGlow(model, glow.strength)
+	end
+	local fxSpec = if boss or not template then nil else (Wild.SPECIES[species] :: any).fx
 	local monster: Monster = {
 		marker = marker,
 		body = body,
@@ -297,6 +352,7 @@ local function add(marker: BasePart)
 		heads = if boss and boss.heads and template then makeHeads(model, boss.heads) else {},
 		fallenAt = nil,
 		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
+		fx = if fxSpec then makeFx(model, fxSpec) else {},
 	}
 	if monster.aura and boss and boss.auroraFlame then
 		monster.aura.flames = makeFlames(model, body.root)
@@ -352,6 +408,7 @@ function MonsterController.Start()
 		local now = os.clock()
 		local camera = workspace.CurrentCamera
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
+		local extras = Extras.enabled()
 		for _, monster in monsters do
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
 			if monster.fallenAt then
@@ -359,6 +416,14 @@ function MonsterController.Start()
 			end
 			if monster.aura then
 				stepAura(monster, now)
+			end
+			if #monster.fx > 0 then
+				local near = MonsterLooks.effectsOn((monster.marker.Position - origin).Magnitude, Wild.FX_RANGE, extras)
+				if monster.fx[1].Enabled ~= near then
+					for _, emitter in monster.fx do
+						emitter.Enabled = near
+					end
+				end
 			end
 		end
 	end)

@@ -632,8 +632,27 @@ Lune-tested).
 | Ember Ridge | 10–15 | Magma Golem (Ember), Ash Wolf (Ember) | all |
 
 About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, ×1.6 stats, ×3 rewards).
-Monsters sleep with no player within 100 studs. Placeholder monsters are built in code; monster models
-go in `assets/monsters/<Species>.rbxm` (docs/creatures.md). Studio: `/wild`, `/rest`, `/elite`.
+Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
+
+**Wild monster models** (spec `2026-11-01-wild-monster-models-design.md`, the user's style B "wild-touched", each
+design picked from concepts and kept unlike the cards): each species has its own rigged model in
+`assets/monsters/<Species>.rbxm`, made with Meshy image to 3D from the picked concept and skinned by our own rig
+scripts (docs/creatures.md "Wild monsters"). The Mossling is a mossy boulder beast with glowing mushrooms, the Puddle
+Crab a barnacle-crusted brute on six legs, the Cave Bat a stone gargoyle with violet cracks, the Spark Beetle a copper
+stag beetle with yellow crystals, the Magma Golem a boulder cyclops dripping lava and the Ash Wolf a charcoal wolf with
+an ash-white mane and ember cracks. Heights by species (`Wild.SPECIES` height in studs, elites 1.35x,
+`Util/MonsterLooks.height`): Mossling 3.5 and Puddle Crab 3 (a stud above the to-scale pick B so they stand out of the
+meadow grass, which is also cut short: Terrain GrassLength 0.3, a Studio-only property of the place), Cave Bat 3, Spark
+Beetle 2.5, Ash Wolf 4, Magma Golem 6.5. Their bones move like the cards' originals, by species (`Party.CREATURE_STYLE`:
+the crab's and the beetle's six legs walk in tripods, the golem lumbers on two legs), the wolf roars
+(`wildroar`, the plain shockwave) and the golem stomps (`Party.SIGNATURE`). Each model's glow mask (the
+SurfaceAppearance's EmissiveMask) lights its markings at the species' steady `glow.strength` (the golem 2.5, the rest
+2), set once: the spec's pulsing lava was dropped because a SurfaceAppearance whose strength keeps changing costs about
+6.6 ms of render CPU a frame, even one golem (10.5; a Lune test keeps every glow to one strength). Small effects ride
+zero-influence `Fx_` bones within 60 studs of the camera with the extras on (`Wild.FX_RANGE`,
+`Util/MonsterLooks.effectsOn`, looks in `Wild.FX`): sparks at the beetle's pincer tips, a smoke wisp from the wolf's
+tail. A species without a model (the Frontier's) keeps its
+code-built placeholder.
 
 **The Wild valley** (main game; round 1 spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley,
 three moods"; round 2 spec `2026-10-31-wild-valley-v2-design.md`, the user's picks A "Winding valley", boss portals and
@@ -1142,7 +1161,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── wally.toml
 ├── tests/                      # Lune unit tests for pure modules: lune run tests/run
 ├── assets/creatures/           # creature models (.rbxm) → ReplicatedStorage.CreatureModels (docs/creatures.md)
-├── assets/monsters/            # wild monster models (.rbxm) → ReplicatedStorage.MonsterModels
+├── assets/monsters/            # wild monster models (.rbxm; Meshy image to 3D, rigged by tools/blender/rig_<species>.py) → ReplicatedStorage.MonsterModels
 ├── assets/props/               # town prop models (.rbxm) → ReplicatedStorage.PropModels (docs/props.md)
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
@@ -1222,7 +1241,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
-    │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder); boss rigs, head glow, death
+    │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
@@ -1342,6 +1361,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
             ├── WildValley.luau    # the Wild valley's trail and markers, biome lookup, what scenery keeps clear of, spawn spots, terrain fills, arena copy spots, monster steps (pure, Lune-tested)
             ├── WildPopulation.luau # how many monsters a valley biome keeps for its players, respawn times (pure, Lune-tested)
+            ├── MonsterLooks.luau  # a wild monster's height, which style moves its bones, when its effects run (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1634,6 +1654,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Terrain memory 45-47 MB graphics in the valley (43 in round 1), 38 in an arena copy, 51 on the street; voxels 5.4-6.0
   MB (4.1 before). The valley's terrain with its 12 arena clearings is about 86.5k estimated cells (cap
   `WildValley.MAX_CELLS` 90k); town plus valley about 225.5k, so `Scenery.MAX_CELLS` rose from 180k to 230k.
+- Wild monster models (measured 2026-11-01 in Play from fixed cameras at round 2's views): with the golems' lava
+  pulsing, 60 fps at the arrival, gorge and ridge (render CPU 8.9 / 9.8, 9.0 / 9.5 and 8.7 / 9.0 ms at levels 1 / 10)
+  but 57 fps in the crowded meadow (12.8 / 13.8 ms, 73 monsters across the valley with `/crowd 11`). Taking the models
+  away saved 6.7 ms, as much with the camera on the sky; static or moving clones cost nothing. The cost was the pulse:
+  changing a SurfaceAppearance's EmissiveStrength (or EmissiveTint) every frame costs about 6 ms of render CPU whether
+  one golem pulses or twelve (one near the camera 6.6 ms, 12 off screen 5.5 ms; written 10 or 5 times a second still
+  4.3 / 2 ms on average, in spikes). Pulsing only within `Wild.FX_RANGE` still cost 6.5 ms on the crowded ridge with
+  golems in view, so the glow is steady. With it: 60 fps everywhere at levels 1 and 10; render CPU arrival 6.5 / 7.4,
+  gorge 6.4 / 7.0, ridge 6.4 / 6.5, crowded meadow 6.7 / 7.3 (72 monsters), crowded ridge with 4 golems in view
+  7.4 / 7.9.
 
 ---
 
@@ -1784,6 +1814,15 @@ boss models; the ranch and Heroic tiers come after those.
   (stream ops vs STREAM, BRIDGE.z vs the crossing, ventsmoke emitters vs VENTS); no test that WildValley's prop names
   exist in assets/props; EdgeWall's CanQuery false is moot while CanCollide is on; nits (PROPS comment mentions a zone
   field, PortalFxController's header says three portals, no bridge post at the far end).
+- [x] Wild monster models (spec `2026-11-01-wild-monster-models-design.md`, plan `2026-11-01-wild-monster-models.md`,
+  branch `wild-monsters`): the six wild monsters' placeholders replaced by rigged models in style B "wild-touched", each
+  design picked by the user from concepts (Mossling boulder beast, Puddle Crab barnacle brute, Cave Bat gargoyle, Spark
+  Beetle stag spark, Magma Golem cairn cyclops, Ash Wolf cinder mane), made with Meshy image to 3D and our rig scripts;
+  heights by species, steady glow masks, sparks and smoke on effect bones, the wolf's roar and the golem's stomp. The
+  meadow pair raised a stud and the terrain grass cut short (GrassLength 0.3); the golem's lava pulse dropped after
+  measuring (any changing SurfaceAppearance strength cost about 6 ms of render CPU). Measured: 60 fps everywhere.
+  Approved by the user and merged 2026-11-01. Deferred minors: the wolf's wildroar has no FIDGET_SECONDS entry (2 s
+  default); PetRig.spec's source-text check is brittle; a Puddle Crab spawn spot at the pond's edge stood underwater.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

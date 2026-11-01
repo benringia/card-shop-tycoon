@@ -18,14 +18,40 @@ return {
 		{ name = "Ember Ridge", minLevel = 10, maxLevel = 15, recommended = 10, species = { "Magma Golem", "Ash Wolf" }, aggro = true, color = { 150, 80, 55 } },
 	},
 
-	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1)
+	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). height: studs tall (elites ELITE_SIZE
+	-- times that; the user's pick B of a to-scale lineup, the meadow pair raised a stud to stand out of the grass, which
+	-- is also cut shorter: Terrain GrassLength, a Studio-only property); glow: the steady emissive strength of the
+	-- model's glow mask (a changing strength costs about 6.6 ms of render CPU a frame, so none pulses)
 	SPECIES = {
-		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime" },
-		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab" },
-		["Cave Bat"] = { element = "Shade", hp = 150, atk = 6, spd = 12, shape = "bat" },
-		["Spark Beetle"] = { element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle" },
-		["Magma Golem"] = { element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem" },
-		["Ash Wolf"] = { element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf" },
+		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime", height = 3.5, glow = { strength = 2 } },
+		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab", height = 3, glow = { strength = 2 } },
+		["Cave Bat"] = { element = "Shade", hp = 150, atk = 6, spd = 12, shape = "bat", height = 3, glow = { strength = 2 } },
+		["Spark Beetle"] = {
+			element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle", height = 2.5, glow = { strength = 2 },
+			fx = { kind = "sparks", bones = { "Fx_PincerLeft", "Fx_PincerRight" } }, -- crackling at the pincer tips
+		},
+		["Magma Golem"] = {
+			element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem", height = 6.5, glow = { strength = 2.5 },
+		},
+		["Ash Wolf"] = {
+			element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 },
+			fx = { kind = "smoke", bones = { "Fx_Tail" } }, -- a wisp of smoke from the tail tip
+		},
+	},
+	-- The monsters' small effects (SPECIES fx), on zero-influence Fx_ bones of their models: only within FX_RANGE studs
+	-- of the camera and with the extras on (Util/Extras). Sizes in studs; colours { r, g, b }
+	FX_RANGE = 60,
+	FX = {
+		sparks = {
+			texture = "rbxasset://textures/particles/sparkles_main.dds", color = { 255, 230, 90 }, lightEmission = 1,
+			size = { 0.45, 0 }, transparency = { 0, 1 }, lifetime = { 0.15, 0.3 }, rate = 18, speed = { 2, 4 }, spread = 180,
+			rise = 0,
+		},
+		smoke = {
+			texture = "rbxasset://textures/particles/smoke_main.dds", color = { 85, 82, 80 }, lightEmission = 0,
+			size = { 0.4, 1.2 }, transparency = { 0.45, 1 }, lifetime = { 1.2, 2 }, rate = 4, speed = { 0.4, 0.9 }, spread = 25,
+			rise = 1.5,
+		},
 	},
 	FLYING = { "Cave Bat" },
 	MONSTER_GROWTH = 0.12,

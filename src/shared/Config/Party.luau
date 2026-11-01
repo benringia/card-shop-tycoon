@@ -115,6 +115,9 @@ return {
 		Nightowl = { fidget = "owlturn", chance = 0.35 },
 		Voidmaw = { fidget = "voidroar", chance = 0.35 },
 		prismHydra = { fidget = "roar", chance = 0.3 }, -- the final boss (its model is saved under its boss id)
+		-- Wild monsters (keyed by species; Util/MonsterLooks): the wolf roars (the plain wildroar), the golem stomps
+		["Ash Wolf"] = { fidget = "wildroar", chance = 0.3 },
+		["Magma Golem"] = { fidget = "stomp", chance = 0.3 },
 		Boltlynx = { fidget = "thunderroar", chance = 0.35 },
 		Stormjack = { fidget = "hornstorm", chance = 0.35 },
 		Infernox = { fidget = "firebreath", chance = 0.35 },
@@ -135,6 +138,13 @@ return {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
 		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.4, stride = 1.2 }, -- a huge prowling dragon
 		prismHydra = { fidgets = { "look", "shake", "stomp" }, tailSpeed = 0.3, tailAmount = 0.5, bounce = 0.2, stride = 0.9 }, -- the final boss: heavy, slow
+		-- Wild monsters (keyed by species, spec 2026-11-01-wild-monster-models-design)
+		Mossling = { fidgets = { "look", "sniff", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.5, bounce = 0.3, stride = 1.1 }, -- a heavy, slow plod
+		["Puddle Crab"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs walking in tripods
+		["Cave Bat"] = { fidgets = { "look", "tilt", "spin" } }, -- flies, wings beating
+		["Spark Beetle"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs, two tripods
+		["Magma Golem"] = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.4 }, -- lumbers on two legs
+		["Ash Wolf"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4 }, -- a fast prowl
 		Stormjack = { fidgets = { "look", "sniff", "shake", "stomp", "hop", "wag" }, tailSpeed = 1.2, tailAmount = 0.7, bounce = 0.8 }, -- a stocky ram, stubby tail flicking
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },
