@@ -491,6 +491,9 @@ local function createMonster(species: string, level: number, elite: boolean, zon
 	}
 	marker.Name = `Monster_{monster.id}`
 	setMarker(monster)
+	if boss then
+		marker:SetAttribute("SpawnedAt", workspace:GetServerTimeNow()) -- clients time its intro roar from this (Util/BossMoments)
+	end
 	marker.Parent = monstersFolder
 	monsters[monster.id] = monster
 	return monster

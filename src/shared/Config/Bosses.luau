@@ -46,6 +46,9 @@ export type Boss = {
 	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
 	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
 	auroraFlame: boolean?, -- soft aurora-coloured flames rise off its back (AURORA_FLAME)
+	-- Its model's moments (the Wild bosses, Util/BossMoments): a roar sound at the intro's roar, an effect on its Fx_
+	-- bones when a heal fires (marker attribute Heals), and when it enrages (Enraged) a burst plus a plume that lasts
+	moments: { roar: string, heal: { bones: { string }, fx: string }?, enrage: { bones: { string }, burst: string, lasting: string }? }?,
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -64,6 +67,7 @@ local BOSSES: { [string]: Boss } = {
 		height = 17, -- the Elder Warden (spec 2026-11-01-wild-bosses-arenas-design, the user's size B "Huge")
 		ringRadius = 15,
 		introShot = { back = 34, up = 16 },
+		moments = { roar = "rbxassetid://9114630281" }, -- Pro Sound Effects: Goliath Vocal Deep Growling Voice 46
 		element = "Bloom",
 		level = 6,
 		hp = 1800,
@@ -93,6 +97,10 @@ local BOSSES: { [string]: Boss } = {
 		height = 12, -- the Broodmother, about 24 studs across her legs
 		ringRadius = 16,
 		introShot = { back = 34, up = 16 },
+		moments = {
+			roar = "rbxassetid://9113982931", -- Pro Sound Effects: Creature Mix Spider Footsteps Hiss Screech 2
+			heal = { bones = { "Fx_Sac" }, fx = "broodFlare" }, -- her egg sac flares as she heals
+		},
 		element = "Shade",
 		level = 11,
 		hp = 3900,
@@ -124,6 +132,10 @@ local BOSSES: { [string]: Boss } = {
 		height = 17, -- the Magma Behemoth, about 28 studs long
 		ringRadius = 18,
 		introShot = { back = 40, up = 18 },
+		moments = {
+			roar = "rbxassetid://9116290951", -- Pro Sound Effects: Lion Growls 7 (huge bellows, pitched down)
+			enrage = { bones = { "Fx_Vent_0", "Fx_Vent_1", "Fx_Vent_2" }, burst = "ventBurst", lasting = "ventSmoke" },
+		},
 		element = "Ember",
 		level = 16,
 		hp = 7200,
@@ -328,6 +340,26 @@ return {
 	INTRO_CAMERA_SECONDS = 3,
 	INTRO_SHOT = { back = 24, up = 12 }, -- studs in front of the boss and above (over the creatures), looking at it
 	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
+	ROAR_VOLUME = 0.8, -- a boss's roar sound (its moments.roar) at that moment, from its model
+	-- The bosses' moment effects (moments.heal / enrage), ParticleEmitters on their Fx_ bones, numbers as Config/Wild FX;
+	-- `burst` emits that many at once (a one-off), else `rate` per second while it lasts. Sizes in studs at the boss's size
+	MOMENT_FX = {
+		broodFlare = {
+			texture = "rbxasset://textures/particles/sparkles_main.dds", color = { 190, 120, 255 }, lightEmission = 1,
+			size = { 1.6, 0 }, transparency = { 0, 1 }, lifetime = { 0.6, 1.1 }, burst = 40, speed = { 6, 12 }, spread = 180,
+			rise = 0,
+		},
+		ventBurst = {
+			texture = "rbxasset://textures/particles/fire_main.dds", color = { 255, 140, 40 }, lightEmission = 1,
+			size = { 1.4, 0.4 }, transparency = { 0, 1 }, lifetime = { 0.6, 1.2 }, burst = 30, speed = { 8, 14 }, spread = 30,
+			rise = 4,
+		},
+		ventSmoke = {
+			texture = "rbxasset://textures/particles/smoke_main.dds", color = { 70, 64, 62 }, lightEmission = 0,
+			size = { 1.5, 4 }, transparency = { 0.4, 1 }, lifetime = { 2, 3.5 }, rate = 5, speed = { 2, 4 }, spread = 20,
+			rise = 3,
+		},
+	},
 	PHASE_SHAKE = { seconds = 0.3, studs = 0.4 }, -- heal, enrage and the other boss moments
 	MUSIC_ID = "1843821342", -- boss ambience: "Tension Repeat Drones 22" (APM, free in the Creator Store); "" plays none
 	MUSIC_VOLUME = 0.1, -- a low drone under the attack and skill sounds, just enough that the fight isn't silent

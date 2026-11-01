@@ -106,6 +106,27 @@ return {
 		expect.equal((party.SIGNATURE :: any)["Magma Golem"].fidget, "stomp", "the golem stomps")
 	end,
 
+	-- The Wild bosses (spec 2026-11-01-wild-bosses-arenas-design): styled by boss id; only the Warden has a random
+	-- signature (the Brood Queen's flare and the Colossus's vents come from the fight)
+	["the Wild bosses move in their own styles, only the Warden slams at random"] = function()
+		local known = {}
+		for _, list in { party.PET_ANIM.FIDGETS, party.PET_ANIM.BODY_FIDGETS, party.PET_ANIM.TITAN_FIDGETS } do
+			for _, kind in list do
+				known[kind] = true
+			end
+		end
+		for _, id in { "meadowWarden", "caveBroodQueen", "emberColossus" } do
+			local style = (party.CREATURE_STYLE :: any)[id]
+			assert(style and style.fidgets, id .. " has no style")
+			for _, kind in style.fidgets do
+				assert(known[kind], id .. ": unknown fidget " .. kind)
+			end
+		end
+		expect.equal((party.SIGNATURE :: any).meadowWarden.fidget, "rootslam", "the Warden slams its roots")
+		expect.equal((party.SIGNATURE :: any).caveBroodQueen, nil, "a random flare would read as a heal")
+		expect.equal((party.SIGNATURE :: any).emberColossus, nil, "its vents come with the enrage")
+	end,
+
 	["the beetle sparks at its pincers and the wolf smokes at its tail"] = function()
 		local beetle = (wild.SPECIES["Spark Beetle"] :: any).fx
 		local wolf = (wild.SPECIES["Ash Wolf"] :: any).fx
