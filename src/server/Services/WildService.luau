@@ -831,13 +831,30 @@ local function gatePrompts(part: BasePart, boss: any, bossId: string, onGate: (p
 	return groupPrompt
 end
 
--- A Blender prop placed for an arena: anchored (the caldera's props aren't saved anchored), small ones without shadows
+-- A Blender prop placed for an arena: anchored (the caldera's props aren't saved anchored), small ones without shadows,
+-- its Lava parts glowing like the ridge's vents; the roof and the backdrop never collide (players stand inside the dome)
 local function arenaPiece(folder: Instance, spot: any, label: string, ground: number)
 	local model = ScenePieces.placeModel(folder, spot, label, ground)
+	local solid = label ~= "ArenaRoof" and label ~= "ArenaBackdrop"
 	for _, part in if model then model:GetDescendants() else {} do
 		if part:IsA("BasePart") then
 			part.Anchored = true
+			part.CanCollide = part.CanCollide and solid
+			part.CanQuery = part.CanQuery and solid
 			if spot.height < 4 then
+				part.CastShadow = false
+			end
+			if part.Name == "Lava" then
+				for _, child in part:GetChildren() do
+					if child:IsA("SurfaceAppearance") then
+						child:Destroy()
+					end
+				end
+				if part:IsA("MeshPart") then
+					part.TextureID = ""
+				end
+				part.Material = Enum.Material.Neon
+				part.Color = Props.color(WildValleyConfig.VENT_LOOK.glow)
 				part.CastShadow = false
 			end
 		end
