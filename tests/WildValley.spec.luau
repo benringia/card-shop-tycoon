@@ -155,6 +155,28 @@ return {
 		end
 	end,
 
+	-- Looked at straight down from the camera's full zoom (128 studs), a copy's ground must not end in empty sky: a flat
+	-- part runs on past the walls into the haze (a part: terrain that wide is about 86k more cells), just under the
+	-- clearing's terrain, while the invisible walls stay round the clearing
+	["an arena copy's ground runs on past its walls, its play area stays the clearing"] = function()
+		local clearing = valley.ARENA_CLEARING
+		for zone = 1, 3 do
+			local c = WildValley.arenaCopyCenter(valley, zone, 1)
+			local apron = WildValley.arenaApron(valley, zone, 1)
+			assert(apron.size >= 360, `zone {zone}: its ground ends in view from above`)
+			assert(apron.size < valley.ARENA_FIELD.spacing, `zone {zone}: copies' grounds would overlap`)
+			expect.equal(apron.x, c.x, `zone {zone}: centred on its copy`)
+			expect.equal(apron.material, clearing.materials[zone], `zone {zone}: in its clearing's material`)
+			-- a part's material draws lighter or duller than terrain's, so each zone's colour is matched by eye
+			assert(type(apron.color) == "table" and #apron.color == 3, `zone {zone}: no colour matched to its terrain`)
+			local terrainTop = TownTerrain.topAt(OPS, c.x, c.z) :: number
+			local apronTop = apron.y + apron.thickness / 2
+			assert(apronTop < terrainTop and apronTop >= terrainTop - 1, `zone {zone}: its top at {apronTop}, the terrain's at {terrainTop}`)
+			local edge = WildValley.arenaEdge(valley, zone, 1)
+			expect.near(math.abs(edge[1].x - c.x), clearing.size / 2 - 2, 1e-9, `zone {zone}: the invisible walls moved`)
+		end
+	end,
+
 	["the edge closes round the biomes, the trail and the arrival; the town is outside"] = function()
 		for index, biome in valley.BIOMES do
 			for _, p in biome.outline do
@@ -428,6 +450,25 @@ return {
 				innerWall = math.min(innerWall, row.radius)
 			end
 			assert(home.distance >= bosses.ARENA_RADIUS + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
+		end
+	end,
+
+	["every model an arena is built from is a saved prop"] = function()
+		for zone, dressing in valley.ARENA_DRESSING do
+			local names = {}
+			for _, group in { dressing.walls, dressing.inner } do
+				for _, row in group do
+					for _, name in row.models do
+						table.insert(names, name)
+					end
+				end
+			end
+			for _, extra in { dressing.roof, dressing.backdrop } do
+				table.insert(names, extra.model)
+			end
+			for _, name in names do
+				assert(fs.isFile(`assets/props/{name}.rbxm`), `zone {zone}: no assets/props/{name}.rbxm`)
+			end
 		end
 	end,
 }

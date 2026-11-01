@@ -415,4 +415,22 @@ function WildValley.arenaClearingOps(valley: any, zone: number, copy: number): {
 	}
 end
 
+-- The flat ground part under an arena copy, `ground` wide: past the clearing it runs on into the haze, so a camera
+-- looking straight down from full zoom never sees the clearing's edge. Its top sits `sink` under the terrain's (the
+-- clearing covers it); `y` is its centre
+function WildValley.arenaApron(valley: any, zone: number, copy: number): { x: number, y: number, z: number, size: number, thickness: number, material: string, color: { number } }
+	local centre = WildValley.arenaCopyCenter(valley, zone, copy)
+	local clearing = valley.ARENA_CLEARING
+	local top = valley.ARENA_FIELD.y - valley.SURFACE_LIFT - clearing.sink
+	return {
+		x = centre.x,
+		y = top - clearing.thickness / 2,
+		z = centre.z,
+		size = clearing.ground,
+		thickness = clearing.thickness,
+		material = clearing.materials[zone],
+		color = clearing.apronColors[zone],
+	}
+end
+
 return WildValley

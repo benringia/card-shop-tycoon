@@ -46,4 +46,12 @@ return {
 		expect.equal(#colossus.enrage.bones, 3, "three vents")
 		assert((Bosses :: any).ROAR_VOLUME > 0, "the roar is heard")
 	end,
+
+	-- Fx_Sac sits at the egg sac's centre and the sac is opaque, so the sparkles would fade before they leave it: they
+	-- draw toward the camera by more than the sac's radius (0.31 of her height, rig_cavebroodqueen.py)
+	["the Brood Queen's flare draws in front of her egg sac"] = function()
+		local flare = (Bosses :: any).MOMENT_FX.broodFlare
+		local queen = Bosses.BOSSES.caveBroodQueen :: any
+		assert(flare.zOffset and flare.zOffset > 0.31 * queen.height, "the sac hides the flare")
+	end,
 }

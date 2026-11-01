@@ -94,8 +94,8 @@ local BOSSES: { [string]: Boss } = {
 		zone = 2,
 		shape = "bat",
 		scale = 2.8,
-		height = 12, -- the Broodmother, about 24 studs across her legs
-		ringRadius = 16,
+		height = 16, -- the Broodmother, about 21 studs across her legs (her raised wings set her height)
+		ringRadius = 18,
 		introShot = { back = 34, up = 16 },
 		moments = {
 			roar = "rbxassetid://9113982931", -- Pro Sound Effects: Creature Mix Spider Footsteps Hiss Screech 2
@@ -342,12 +342,13 @@ return {
 	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
 	ROAR_VOLUME = 0.8, -- a boss's roar sound (its moments.roar) at that moment, from its model
 	-- The bosses' moment effects (moments.heal / enrage), ParticleEmitters on their Fx_ bones, numbers as Config/Wild FX;
-	-- `burst` emits that many at once (a one-off), else `rate` per second while it lasts. Sizes in studs at the boss's size
+	-- `burst` emits that many at once (a one-off), else `rate` per second while it lasts. Sizes in studs at the boss's size;
+	-- `zOffset` draws them that many studs toward the camera (an effect that starts inside the model)
 	MOMENT_FX = {
 		broodFlare = {
 			texture = "rbxasset://textures/particles/sparkles_main.dds", color = { 190, 120, 255 }, lightEmission = 1,
 			size = { 1.6, 0 }, transparency = { 0, 1 }, lifetime = { 0.6, 1.1 }, burst = 40, speed = { 6, 12 }, spread = 180,
-			rise = 0,
+			rise = 0, zOffset = 6, -- from the egg sac's centre, out past its surface
 		},
 		ventBurst = {
 			texture = "rbxasset://textures/particles/fire_main.dds", color = { 255, 140, 40 }, lightEmission = 1,

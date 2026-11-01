@@ -908,6 +908,18 @@ local function dressArena(folder: Instance, boss: any, center: Vector3, copy: nu
 	sound:Play()
 end
 
+-- The flat ground under an arena copy past its clearing (Util/WildValley.arenaApron), coloured to match the clearing's
+-- terrain: only seen from above, so nothing stands on it or hits it
+local function buildApron(folder: Instance, zone: number, copy: number)
+	local apron = WildValley.arenaApron(WildValleyConfig, zone, copy)
+	local material = (Enum.Material :: any)[apron.material]
+	local part = block(folder, "ArenaApron", Vector3.new(apron.size, apron.thickness, apron.size), CFrame.new(apron.x, apron.y, apron.z), rgb(apron.color), material)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+end
+
 -- The valley's boss (round 2 spec): a portal at its biome's `portal` spot (the obsidian arch with the Boss look) with the
 -- gate prompts and a trailhead board, and ARENA_COPIES copies of its ring far away (WildValley.arenaCopyCenter), each
 -- dressed as its zone's arena with its way home inside its walls (its Return prompt: onReturn)
@@ -957,6 +969,7 @@ local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGa
 			PortalBuild.dress(arch, (Town.PORTAL_LOOKS :: any)[way.look])
 		end
 		dressArena(holder, boss, center, copy)
+		buildApron(holder, boss.zone, copy)
 		buildWalls(holder, WildValley.arenaEdge(WildValleyConfig, boss.zone, copy), center.Y - 5, center.Y + 40)
 		table.insert(copies, { spawn = bossAt, barrier = barrier, inside = inside, center = center, exit = gate, remote = true })
 	end

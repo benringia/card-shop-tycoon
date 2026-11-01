@@ -173,11 +173,22 @@ return {
 	-- goes to its own copy of the boss's arena (Config/Bosses ARENA_COPIES), far from the valley: copy c of zone z's
 	-- boss at ARENA_FIELD x + (c - 1) * spacing, z + (z - 1) * spacing, on a terrain clearing `size` wide in the zone's
 	-- material (Slate terrain is Frostpeak's ice blue map-wide, so the gorge's is Limestone), dressed by ARENA_DRESSING
-	-- with its way home (ARENA_HOME) inside its walls.
+	-- with its way home (ARENA_HOME) inside its walls. Under it a flat part `ground` wide (top `sink` under the terrain's,
+	-- `thickness` thick; a part, as terrain that wide is about 86k more cells) runs on past the walls, so a camera
+	-- looking straight down from full zoom sees ground fading into the haze, not the clearing's edge (Util/WildValley
+	-- .arenaApron); the play area stays the clearing.
 	-- ARENA_COPIES_FOR_TERRAIN mirrors Bosses.ARENA_COPIES for WildValley.terrainOps (Lune-tested equal).
 	BOSS_PORTAL = { model = "PortalArena", height = 20 },
 	ARENA_FIELD = { x = 1600, z = 1200, y = 0, spacing = 1200 },
-	ARENA_CLEARING = { size = 124, materials = { "Grass", "Limestone", "Basalt" } },
+	ARENA_CLEARING = {
+		size = 124,
+		ground = 360,
+		sink = 0.5,
+		thickness = 2,
+		materials = { "Grass", "Limestone", "Basalt" },
+		-- the ground part's colours, matched by eye to each clearing's terrain under its arena's light (2026-11-02)
+		apronColors = { { 78, 150, 66 }, { 115, 109, 86 }, { 75, 74, 74 } },
+	},
 	ARENA_COPIES_FOR_TERRAIN = 4,
 	-- Studs from a copy's middle a fighter still holds it (BossRules.stillInCopy): out to its clearing's corners,
 	-- which invisible walls close (WildValley.arenaEdge)

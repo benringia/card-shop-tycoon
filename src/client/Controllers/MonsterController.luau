@@ -296,6 +296,7 @@ local function emitters(model: Model, bones: { string }, look: any): { ParticleE
 			emitter.Speed = NumberRange.new(look.speed[1], look.speed[2])
 			emitter.SpreadAngle = Vector2.new(look.spread, look.spread)
 			emitter.Acceleration = Vector3.new(0, look.rise, 0)
+			emitter.ZOffset = look.zOffset or 0
 			emitter.Enabled = false
 			emitter.Parent = bone
 			table.insert(made, emitter)

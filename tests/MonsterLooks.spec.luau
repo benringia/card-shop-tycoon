@@ -28,7 +28,7 @@ return {
 
 	["the Wild bosses are huge (size B), the final boss still the biggest"] = function()
 		local bosses = require("../src/shared/Config/Bosses").BOSSES
-		local expected = { meadowWarden = 17, caveBroodQueen = 12, emberColossus = 17 }
+		local expected = { meadowWarden = 17, caveBroodQueen = 16, emberColossus = 17 }
 		for id, height in expected do
 			local boss = (bosses :: any)[id]
 			expect.near(MonsterLooks.height(wild, boss.name, false, boss.scale, boss.height), height, 1e-9, id)
