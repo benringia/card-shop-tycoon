@@ -1887,6 +1887,19 @@ boss models; the ranch and Heroic tiers come after those.
   measuring (any changing SurfaceAppearance strength cost about 6 ms of render CPU). Measured: 60 fps everywhere.
   Approved by the user and merged 2026-11-01. Deferred minors: the wolf's wildroar has no FIDGET_SECONDS entry (2 s
   default); PetRig.spec's source-text check is brittle; a Puddle Crab spawn spot at the pond's edge stood underwater.
+- [x] Wild bosses and their arenas (spec `2026-11-01-wild-bosses-arenas-design.md`, plan
+  `2026-11-01-wild-bosses-arenas.md`, branch `wild-bosses`): the Meadow Warden ("Elder Warden"), Cave Brood Queen
+  ("Broodmother") and Ember Colossus ("Magma Behemoth") as rigged Meshy models picked by the user, size B (17 / 16 / 17
+  tall), their moments (roars, the Brood Queen's heal flare, the Colossus's enrage vents, the Warden's root slam); each
+  arena a place of its own (the grove, the hollow under its dome, the lava field with the volcano), its own sky, sound
+  and way home, a ground part under each copy, invisible walls ringing it inside its walls; boss and monster models
+  preloaded in the background. Tuned after the user's checks (the Brood Queen 12 -> 16 tall and her screech quieter,
+  the hollow and the lava field widened, the lava field brightened, the Colossus lit). Measured: 60 fps everywhere;
+  terrain caps 95k / 235k. Approved by the user and merged 2026-11-02. Deferred minors: a few arena numbers still in
+  WildService (shadow cut-off, backdrop sink and yaw, sound anchor height); arena ambient sounds set no
+  RollOffMinDistance; inner pieces and crystals can overlap (separate rngs); wildroar still has no FIDGET_SECONDS entry
+  (the bosses' roars run 2.2-2.8 s); BossMoments.anchors returns the config's own bones table; the dome isn't
+  double-sided (a camera past it sees inside); the lava field's ambient is the town's fire loop.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
