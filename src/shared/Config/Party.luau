@@ -23,6 +23,7 @@ return {
 	MAX_MODEL_PARTS = 200, -- bigger models fall back to the placeholder
 	PRELOAD_PARTY_WAIT = 3, -- seconds the background model download waits at start for the player's own cards to go first
 	PRELOAD_BATCH = 6, -- models per background download call
+	MONSTER_PRELOAD_WAIT = 5, -- seconds after start before this place's boss and monster models download (MonsterController)
 
 	-- Motion kit for static models (Util/CreatureMotion)
 	MOTION = {

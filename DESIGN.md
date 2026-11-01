@@ -1407,7 +1407,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── LavaCracks.luau    # the caldera's branching glowing cracks on its cliff faces and floor (pure, Lune-tested)
             ├── WildValley.luau    # the Wild valley's trail and markers, biome lookup, what scenery keeps clear of, spawn spots, terrain fills, arena copy spots, monster steps (pure, Lune-tested)
             ├── WildPopulation.luau # how many monsters a valley biome keeps for its players, respawn times (pure, Lune-tested)
-            ├── MonsterLooks.luau  # a wild monster's height, which style moves its bones, when its effects run (pure, Lune-tested)
+            ├── MonsterLooks.luau  # a wild monster's height, which style moves its bones, when its effects run, which monster and boss models a place preloads (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -1647,6 +1647,12 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   about 8 s into the game. The unused packs were then taken out of the synced folder (`assets/creature-packs-unused`:
   UltraPets, CrystalTitans and the full Cute Pets file; the synced Cute Pets keeps the 8 town animals), so they no longer
   replicate at join (2.1 MB of models down to 1.4 MB); a Lune test fails if a synced creature model is unused.
+- Monster and boss models download in the background too, `Party.MONSTER_PRELOAD_WAIT` (5) seconds after start
+  (MonsterController, `MonsterLooks.preloadOrder`: the place's bosses in ladder order, then its species), drawn in the
+  same hidden viewport (`CreatureVisuals.preloadTemplates`). Measured 2026-11-02: before, a boss's model downloaded only
+  when its fight began; the Colossus's mesh took 7.8 s in Studio and its textures came after it, so its intro showed an
+  empty ring. Now all three Wild bosses and the six monsters are in about 12 s after joining and a boss shows the moment
+  its fight starts; the street's render CPU with the viewport's 59 models is within noise of it hidden.
 - Card paintings come in two sizes (`Config/CardArt`, `Util/CardArt`): the full 680 x 1014 painting for big views and a
   half-size copy (340 x 507, `assets/ui/card-art-small`) wherever a face is drawn no taller than that (binder pages,
   shelves, cases, the party bar); each face picks by its drawn height. The small copies preload first at start, then the

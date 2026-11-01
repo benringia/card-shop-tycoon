@@ -152,6 +152,15 @@ function CreatureVisuals.preload(cardNames: { string })
 	end)
 end
 
+-- Downloads these models in one call (MonsterController's monsters and bosses), then draws each in the hidden viewport
+-- so its textures finish loading too. Yields until they're downloaded
+function CreatureVisuals.preloadTemplates(templates: { Model })
+	pcall(ContentProvider.PreloadAsync, ContentProvider, templates)
+	for _, template in templates do
+		warmModel(template)
+	end
+end
+
 -- The element aura (Util/BeastAura): fire on its bones, lightning, ground flames, at a tier (Legendary, S, A)
 function CreatureVisuals.addBeastFx(body: Body, element: string, tier: string)
 	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size, tier)

@@ -72,6 +72,29 @@ return {
 		end
 	end,
 
+	-- A boss's model downloaded only when its fight began (its mesh alone took about 8 s in Studio, its textures after
+	-- that), so its intro showed an empty ring: a place's boss and monster models download in the background, bosses
+	-- first in ladder order
+	["a place preloads its bosses' models first, then its monsters'"] = function()
+		local bosses = require("../src/shared/Config/Bosses")
+		local order = MonsterLooks.preloadOrder(wild, bosses, "Wild")
+		expect.equal(order[1], "meadowWarden", "the first boss")
+		expect.equal(order[2], "caveBroodQueen", "the second")
+		expect.equal(order[3], "emberColossus", "the third")
+		local seen = {}
+		for _, name in order do
+			assert(not seen[name], name .. " twice")
+			seen[name] = true
+		end
+		for species in wild.SPECIES do
+			assert(seen[species], species .. " is not preloaded")
+		end
+		expect.equal(seen.frostTyrant, nil, "the Frontier's bosses load in the Frontier")
+		local there = MonsterLooks.preloadOrder(frontier, bosses, "Frontier")
+		expect.equal(there[1], "frostTyrant", "the Frontier's first boss")
+		expect.equal(table.find(there, "meadowWarden"), nil, "no Wild boss there")
+	end,
+
 	["bones move by species, bosses by their id, nothing without a model"] = function()
 		expect.equal(MonsterLooks.styleKey("Ash Wolf", nil, true), "Ash Wolf", "monster")
 		expect.equal(MonsterLooks.styleKey("Ash Wolf", nil, false), nil, "placeholder")

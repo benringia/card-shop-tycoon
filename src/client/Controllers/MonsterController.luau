@@ -15,8 +15,9 @@ local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place
-local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
+local Wild = Place.getWorld()
 local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 local BossMoments = require(Shared:WaitForChild("Util"):WaitForChild("BossMoments"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
@@ -466,7 +467,33 @@ local function add(marker: BasePart)
 	monsters[marker] = monster
 end
 
+-- Downloads this place's boss and monster models in the background (MonsterLooks.preloadOrder: bosses first), a few at a
+-- time, once the player's own cards have started: otherwise a boss's model was fetched only when its fight began, and
+-- its intro showed an empty ring for several seconds
+local function preloadModels()
+	task.wait(Party.MONSTER_PRELOAD_WAIT)
+	if not ReplicatedStorage:WaitForChild("MonsterModels", 30) then
+		return
+	end
+	local place = if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Wild"
+	local batch: { Model } = {}
+	for _, name in MonsterLooks.preloadOrder(Wild, Bosses, place) do
+		local template = CreatureVisuals.getTemplate("MonsterModels", name, Wild.MAX_MODEL_PARTS)
+		if template then
+			table.insert(batch, template)
+		end
+		if #batch >= Party.PRELOAD_BATCH then
+			CreatureVisuals.preloadTemplates(batch)
+			batch = {}
+		end
+	end
+	if #batch > 0 then
+		CreatureVisuals.preloadTemplates(batch)
+	end
+end
+
 function MonsterController.Start()
+	task.spawn(preloadModels)
 	local folder = workspace:WaitForChild("Monsters")
 	local function watch(child: Instance)
 		if not child:IsA("BasePart") then
