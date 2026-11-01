@@ -325,6 +325,74 @@ function WildValley.arenaZoneAt(valley: any, copies: number, x: number, z: numbe
 	return nil
 end
 
+local function between(rng: () -> number, low: number, high: number): number
+	return low + (high - low) * rng()
+end
+
+local function pick(rng: () -> number, list: { string }): string
+	return list[math.min(#list, math.floor(rng() * #list) + 1)]
+end
+
+-- Spots for an arena's inner pieces (offsets from its centre): between radius[1] and radius[2], clear of the fight (its
+-- ring and the fence, ARENA_FENCE), the path out on -X and the way home (ARENA_HOME); rejection sampling, so a few may
+-- be dropped when the rules leave no room. `rng` returns 0..1 (Random.new(seed):NextNumber in game)
+function WildValley.arenaSpots(valley: any, ringRadius: number, count: number, radius: { number }, rng: () -> number): { { x: number, z: number, yaw: number } }
+	local fence = valley.ARENA_FENCE
+	local home = valley.ARENA_HOME.distance
+	local spots = {}
+	local tries = 0
+	while #spots < count and tries < count * 40 do
+		tries += 1
+		local angle = between(rng, 0, math.pi * 2)
+		local distance = between(rng, radius[1], radius[2])
+		local x, z = math.cos(angle) * distance, math.sin(angle) * distance
+		local clear = distance > ringRadius + 4 and distance > fence + 2
+			and not (x < -fence and math.abs(z) < 8)
+			and math.sqrt((x + home) ^ 2 + z * z) >= 8
+		if clear then
+			table.insert(spots, { x = x, z = z, yaw = between(rng, 0, 360) })
+		end
+	end
+	return spots
+end
+
+-- An arena's pieces (Config/WildValley ARENA_DRESSING, offsets from its centre): its wall rows evenly round it with a
+-- small jitter (`wall` true), then its inner groups on arenaSpots. The same rng sequence gives the same layout
+function WildValley.arenaDressing(valley: any, ringRadius: number, zone: number, rng: () -> number): { { model: string, x: number, z: number, height: number, yaw: number, y: number?, wall: boolean } }
+	local dressing = valley.ARENA_DRESSING[zone]
+	local pieces = {}
+	for _, row in dressing.walls do
+		local step = math.pi * 2 / row.count
+		local offset = between(rng, 0, step)
+		for index = 0, row.count - 1 do
+			local angle = offset + index * step + between(rng, -0.15, 0.15) * step
+			local distance = row.radius + between(rng, -1, 1)
+			table.insert(pieces, {
+				model = pick(rng, row.models),
+				x = math.cos(angle) * distance,
+				z = math.sin(angle) * distance,
+				height = between(rng, row.height[1], row.height[2]),
+				yaw = between(rng, 0, 360),
+				wall = true,
+			})
+		end
+	end
+	for _, spec in dressing.inner do
+		for _, spot in WildValley.arenaSpots(valley, ringRadius, spec.count, spec.radius, rng) do
+			table.insert(pieces, {
+				model = pick(rng, spec.models),
+				x = spot.x,
+				z = spot.z,
+				height = between(rng, spec.height[1], spec.height[2]),
+				yaw = spot.yaw,
+				y = spec.y,
+				wall = false,
+			})
+		end
+	end
+	return pieces
+end
+
 -- The invisible walls round an arena copy: a square 2 studs inside its clearing's edge, so nobody walks off it
 function WildValley.arenaEdge(valley: any, zone: number, copy: number): { Point }
 	local centre = WildValley.arenaCopyCenter(valley, zone, copy)

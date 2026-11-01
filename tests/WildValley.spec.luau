@@ -7,7 +7,37 @@ local bosses = require("../src/shared/Config/Bosses")
 local valley = require("../src/shared/Config/WildValley")
 local WildValley = require("../src/shared/Util/WildValley")
 local TownTerrain = require("../src/shared/Util/TownTerrain")
+local town = require("../src/shared/Config/Town")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
+
+-- A seeded 0..1 random (Lune has no Random): the game passes Random.new(seed):NextNumber
+local function lcg(seed: number): () -> number
+	local state = seed
+	return function(): number
+		state = (state * 1103515245 + 12345) % 2147483648
+		return state / 2147483648
+	end
+end
+
+-- The Wild boss whose arena is at the end of this zone
+local function bossOf(zone: number): any
+	for _, boss in bosses.BOSSES do
+		if (boss :: any).place == "Wild" and boss.zone == zone then
+			return boss
+		end
+	end
+	error(`no Wild boss in zone {zone}`)
+end
+
+-- An inner piece's rules (spec 2026-11-01-wild-bosses-arenas-design): clear of the fight, the path and the way home
+local function checkClear(x: number, z: number, ringRadius: number, label: string)
+	local distance = math.sqrt(x * x + z * z)
+	assert(distance > ringRadius + 4 and distance > bosses.ARENA_RADIUS + 2, label .. " stands in the fight")
+	assert(not (x < -bosses.ARENA_RADIUS and math.abs(z) < 8), label .. " blocks the path home")
+	local home = valley.ARENA_HOME.distance
+	assert(math.sqrt((x + home) ^ 2 + z * z) >= 8, label .. " crowds the way home")
+end
 
 local OPS = WildValley.terrainOps(valley, TownTerrain.trailSegment)
 
@@ -345,5 +375,59 @@ return {
 		end
 		expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, 0, 1130), nil, "the valley's arrival")
 		expect.equal(WildValley.arenaZoneAt(valley, bosses.ARENA_COPIES, 0, 0), nil, "the town's plaza")
+	end,
+
+	["each arena is walled all round, its pieces clear of the fight, the path and the way home"] = function()
+		for zone = 1, #valley.BIOMES do
+			local dressing = valley.ARENA_DRESSING[zone]
+			local ringRadius = bossOf(zone).ringRadius
+			local walls, inner = 0, 0
+			for _, row in dressing.walls do
+				assert(2 * math.pi * row.radius / row.count <= 14, `zone {zone}: a gap in its walls`)
+				assert(row.radius + 4 <= valley.ARENA_CLEARING.size / 2, `zone {zone}: a wall off its ground`)
+				walls += row.count
+			end
+			for _, group in dressing.inner do
+				inner += group.count
+			end
+			for seed = 1, 4 do
+				local pieces = WildValley.arenaDressing(valley, ringRadius, zone, lcg(seed))
+				local again = WildValley.arenaDressing(valley, ringRadius, zone, lcg(seed))
+				expect.equal(#pieces, walls + inner, `zone {zone}: every piece placed`)
+				expect.equal(pieces[#pieces].x, again[#again].x, "the same seed, the same layout")
+				for index, piece in pieces do
+					assert(type(piece.model) == "string" and piece.height > 0, "a piece without a model or size")
+					if not piece.wall then
+						checkClear(piece.x, piece.z, ringRadius, `zone {zone} piece {index}`)
+					end
+				end
+			end
+			for _, spot in WildValley.arenaSpots(valley, ringRadius, 10, { 40, 54 }, lcg(7)) do
+				checkClear(spot.x, spot.z, ringRadius, `zone {zone} spot`)
+			end
+			expect.equal(dressing.roof ~= nil, zone == 2, `zone {zone}: only the hollow has a roof`)
+			expect.equal(dressing.backdrop ~= nil, zone == 3, `zone {zone}: only the lava field has a backdrop`)
+			assert(string.match(dressing.sound.id, "^rbxassetid://%d+$"), `zone {zone} has no ambient sound`)
+			assert(dressing.sound.range > 0 and dressing.sound.range < valley.ARENA_FIELD.spacing / 2, `zone {zone}'s sound reaches the next copy`)
+		end
+	end,
+
+	["the arenas' fence radius agrees with Bosses"] = function()
+		expect.equal(valley.ARENA_FENCE, bosses.ARENA_RADIUS, "WildValley and Bosses agree")
+	end,
+
+	["each arena's way home is in its zone's look, inside its walls"] = function()
+		local home = valley.ARENA_HOME
+		expect.equal(#home, 3, "one per Wild zone")
+		for zone = 1, #home do
+			local spot = home[zone]
+			assert(fs.isFile(`assets/props/{spot.model}.rbxm`), `zone {zone}: no {spot.model} model`)
+			assert((town.PORTAL_LOOKS :: any)[spot.look], `zone {zone}: no {spot.look} portal look`)
+			local innerWall = math.huge
+			for _, row in valley.ARENA_DRESSING[zone].walls do
+				innerWall = math.min(innerWall, row.radius)
+			end
+			assert(home.distance >= bosses.ARENA_RADIUS + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
+		end
 	end,
 }

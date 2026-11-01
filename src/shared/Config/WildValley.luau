@@ -172,12 +172,12 @@ return {
 	-- the purple Boss look (Config/Town PORTAL_LOOKS), a trailhead board with the boss's name beside it. Each fight
 	-- goes to its own copy of the boss's arena (Config/Bosses ARENA_COPIES), far from the valley: copy c of zone z's
 	-- boss at ARENA_FIELD x + (c - 1) * spacing, z + (z - 1) * spacing, on a terrain clearing `size` wide in the zone's
-	-- material (Slate terrain is Frostpeak's ice blue map-wide, so the gorge's is Limestone) with `count` of its props
-	-- round it `ring` studs out, `height` { min, max } tall, and a root-arch portal home outside its gate.
+	-- material (Slate terrain is Frostpeak's ice blue map-wide, so the gorge's is Limestone), dressed by ARENA_DRESSING
+	-- with its way home (ARENA_HOME) inside its walls.
 	-- ARENA_COPIES_FOR_TERRAIN mirrors Bosses.ARENA_COPIES for WildValley.terrainOps (Lune-tested equal).
 	BOSS_PORTAL = { model = "PortalArena", height = 20 },
 	ARENA_FIELD = { x = 1600, z = 1200, y = 0, spacing = 1200 },
-	ARENA_CLEARING = { size = 124, ring = 62, materials = { "Grass", "Limestone", "Basalt" }, props = { { "TreeA", "TreeB", "PineA" }, { "RockA", "RockB", "RockD" }, { "CharredTree" } }, count = 12, height = { 16, 22 } },
+	ARENA_CLEARING = { size = 124, materials = { "Grass", "Limestone", "Basalt" } },
 	ARENA_COPIES_FOR_TERRAIN = 4,
 	-- Studs from a copy's middle a fighter still holds it (BossRules.stillInCopy): out to its clearing's corners,
 	-- which invisible walls close (WildValley.arenaEdge)
@@ -191,6 +191,62 @@ return {
 		{ floor = { 96, 150, 70 }, floorMaterial = "Grass", path = { 128, 100, 70 }, pathMaterial = "Ground", post = { 110, 78, 50 }, postMaterial = "Wood", postSize = 1.2, postHeight = 5 },
 		{ floor = { 112, 104, 100 }, floorMaterial = "Slate", path = { 128, 120, 116 }, pathMaterial = "Slate", post = { 100, 96, 100 }, postMaterial = "Slate", postSize = 1.6, postHeight = 6, tip = { 110, 200, 255 } },
 		{ floor = { 46, 42, 50 }, floorMaterial = "Basalt", path = { 60, 54, 62 }, pathMaterial = "Basalt", post = { 52, 46, 56 }, postMaterial = "Basalt", postSize = 1.6, postHeight = 6, tip = { 255, 120, 30 }, cracks = { seed = 53, count = 12, size = 46, width = { 0.4, 0.8 } } },
+	},
+	-- Each Wild boss's arena as a place of its own (spec 2026-11-01-wild-bosses-arenas-design; Util/WildValley.arenaDressing
+	-- lays it out from a seed, offsets from the copy's centre): rows of wall pieces all round (`radius`, `count`, its
+	-- models, `height` { min, max } studs) that close it in, groups of inner pieces scattered between the fence and the
+	-- walls (clear of the fight, the path and the way home; `y` lifts a hung one off the ground), a roof or a backdrop
+	-- model, code-built crystals, the area effects round it (Scenery's effect kinds, a box `size` wide at `y`), and its
+	-- looping ambient sound at the centre (heard out to `range`). Model names are PropModels (assets/props).
+	ARENA_DRESSING = {
+		{ -- the Warden's grove: mossy standing stones, then giant old trees, flowers and roots, fireflies and leaves
+			walls = {
+				{ radius = 53, count = 26, models = { "StandingStone" }, height = { 14, 20 } },
+				{ radius = 58, count = 27, models = { "TreeA", "TreeB", "TreeC" }, height = { 36, 46 } },
+			},
+			inner = {
+				{ models = { "FlowerPink", "FlowerWhite", "FlowerYellow" }, count = 24, radius = { 40, 50 }, height = { 1.5, 2.5 } },
+				{ models = { "Bush", "BushA", "RootsLarge" }, count = 10, radius = { 42, 50 }, height = { 3, 5 } },
+			},
+			effects = { { kind = "fireflies", rate = 8, y = 6, size = 100 }, { kind = "leaves", rate = 3, y = 30, size = 110 } },
+			sound = { id = "rbxassetid://9112806424", volume = 0.4, range = 90 }, -- Pro Sound Effects: Jungle Dawn 1 (loop)
+		},
+		{ -- the Broodmother's hollow: a rock dome over stalagmites, webs, hanging cocoons, bones and violet-blue crystals
+			walls = {
+				{ radius = 56, count = 26, models = { "Stalagmite", "RockA", "RockB" }, height = { 16, 28 } },
+			},
+			inner = {
+				{ models = { "Bones" }, count = 6, radius = { 40, 52 }, height = { 4, 7 } },
+				{ models = { "Web" }, count = 6, radius = { 46, 54 }, height = { 8, 12 } },
+				{ models = { "Cocoon" }, count = 8, radius = { 40, 54 }, height = { 4, 6 }, y = 28 },
+			},
+			roof = { model = "CaveDome", height = 46 },
+			crystals = { count = 8, radius = { 42, 54 }, height = { 4, 7 } },
+			effects = { { kind = "glints", rate = 4, y = 4, size = 100 }, { kind = "mist", rate = 2, y = 2, size = 100 } },
+			sound = { id = "rbxassetid://9120505297", volume = 0.5, range = 90 }, -- Pro Sound Effects: Water Cave Trickle Thin Into Small Puddles 5
+		},
+		{ -- the Behemoth's lava field: basalt cliffs all round, charred trees and obsidian shards, the volcano behind
+			walls = {
+				{ radius = 57, count = 26, models = { "LavaCliff" }, height = { 30, 40 } },
+			},
+			inner = {
+				{ models = { "CharredTree" }, count = 7, radius = { 42, 52 }, height = { 12, 18 } },
+				{ models = { "ObsidianShards" }, count = 8, radius = { 40, 54 }, height = { 4, 8 } },
+			},
+			backdrop = { model = "Volcano", distance = 150, height = 130 },
+			effects = { { kind = "embers", rate = 10, y = 4, size = 100 }, { kind = "ash", rate = 6, y = 40, size = 120 } },
+			sound = { id = "rbxassetid://9112780462", volume = 0.45, range = 90 }, -- Pro Sound Effects: Fireplace Constant Burning Flame 4
+		},
+	},
+	-- Mirrors Bosses.ARENA_RADIUS (the fence round the fight; Lune-tested equal) for Util/WildValley.arenaSpots
+	ARENA_FENCE = 36,
+	-- Each arena's way home on its -X side, `distance` studs from the centre (inside its walls), in its zone's look: the
+	-- meadow's root arch, the ice-blue crystal ring for the caves, the obsidian arch with the canyon's lava for the ridge
+	ARENA_HOME = {
+		distance = 46,
+		{ model = "PortalWild", look = "Wild" },
+		{ model = "PortalFrontier", look = "Frontier" },
+		{ model = "PortalArena", look = "Arena" },
 	},
 
 	-- Town prop models (PropModels), scaled to `height` on the drawn ground (y: a ground height of its own)
