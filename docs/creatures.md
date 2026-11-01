@@ -489,8 +489,8 @@ then each became a model the same way as the Meshy originals, but from the pictu
    upload the glow mask (the import uploads the colour map as the MeshPart's TextureID), give the MeshPart a
    SurfaceAppearance (below) and save the model as `assets/monsters/<Species>.rbxm`.
 
-Bones follow PetRig's names: legs `<pair>_<Side>_Limb_<n>` (pairs 0..3; the crab's three pairs ripple in a wave, the
-beetle's walk as two tripods, pair 0 alone is two-legged like the golem), `Arm_<Side>_<n>`, `Wing_<Side>_<n>`,
+Bones follow PetRig's names: legs `<pair>_<Side>_Limb_<n>` (pairs 0..3, odd pairs out of step with even
+ones: the crab's and the beetle's three pairs walk as two tripods, pair 0 alone is two-legged like the golem), `Arm_<Side>_<n>`, `Wing_<Side>_<n>`,
 `Tail_<n>`, `Jaw_0`. Parts that must move in one piece with their parent (the crab's claws `Claw_<Side>_<n>`, the
 beetle's pincers `Pincer_<Side>_0`) get a bone with no PetRig role, so it stays rigid. The wolf has no ear bones (they
 dragged its mane).
@@ -501,8 +501,9 @@ glow: the Mossling's eyes and mushrooms, the crab's barnacles, the bat's violet 
 golem's lava and the wolf's ember cracks. In Studio the MeshPart gets a SurfaceAppearance with `ColorMapContent` = the
 colour map and `EmissiveMaskContent` = the mask (both plugin-only to write, so set in Studio and saved in the rbxm);
 the game sets `EmissiveStrength` from the species' `glow` (`Util/MonsterLooks.glowStrength`). A pulsing glow (the
-golem's lava) changes only within `Wild.FX_RANGE` of the camera: every change of a SurfaceAppearance's strength costs
-render CPU (12 pulsing golems took 5.5 ms a frame, DESIGN 10.5), even a few times a second.
+golem's lava) changes only within `Wild.FX_RANGE` of the camera with the extras on (`MonsterLooks.effectsOn`): every
+change of a SurfaceAppearance's strength costs render CPU (12 pulsing golems took 5.5 ms a frame, DESIGN 10.5), even a
+few times a second.
 
 **Effect bones.** Zero-influence bones named `Fx_<Spot>` (`Fx_PincerLeft`, `Fx_PincerRight`, `Fx_Tail`) are left out
 of skinning (the importer keeps them with Keep Zero Influence Bones) and carry the species' small effect

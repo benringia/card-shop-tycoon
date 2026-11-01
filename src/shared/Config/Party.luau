@@ -140,7 +140,7 @@ return {
 		prismHydra = { fidgets = { "look", "shake", "stomp" }, tailSpeed = 0.3, tailAmount = 0.5, bounce = 0.2, stride = 0.9 }, -- the final boss: heavy, slow
 		-- Wild monsters (keyed by species, spec 2026-11-01-wild-monster-models-design)
 		Mossling = { fidgets = { "look", "sniff", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.5, bounce = 0.3, stride = 1.1 }, -- a heavy, slow plod
-		["Puddle Crab"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- eight legs in a wave
+		["Puddle Crab"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs walking in tripods
 		["Cave Bat"] = { fidgets = { "look", "tilt", "spin" } }, -- flies, wings beating
 		["Spark Beetle"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs, two tripods
 		["Magma Golem"] = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.4 }, -- lumbers on two legs

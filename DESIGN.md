@@ -644,13 +644,14 @@ an ash-white mane and ember cracks. Heights by species (`Wild.SPECIES` height in
 `Util/MonsterLooks.height`): Mossling 3.5 and Puddle Crab 3 (a stud above the to-scale pick B so they stand out of the
 meadow grass, which is also cut short: Terrain GrassLength 0.3, a Studio-only property of the place), Cave Bat 3, Spark
 Beetle 2.5, Ash Wolf 4, Magma Golem 6.5. Their bones move like the cards' originals, by species (`Party.CREATURE_STYLE`:
-the crab's legs ripple in a wave, the beetle walks in tripods, the golem lumbers on two legs), the wolf roars
+the crab's and the beetle's six legs walk in tripods, the golem lumbers on two legs), the wolf roars
 (`wildroar`, the plain shockwave) and the golem stomps (`Party.SIGNATURE`). Each model's glow mask (the
 SurfaceAppearance's EmissiveMask) lights its markings at the species' `glow.strength`; the golem's lava pulses (1.2 to
-3 and back every 2.5 s) only within 60 studs of the camera (`Wild.FX_RANGE`) and holds 2.5 further away, because every
-change of a SurfaceAppearance's strength costs render CPU (10.5). Small effects ride zero-influence `Fx_` bones within
-the same range with the extras on (`Wild.FX`): sparks at the beetle's pincer tips, a smoke wisp from the wolf's tail. A
-species without a model (the Frontier's) keeps its code-built placeholder.
+3 and back every 2.5 s) only within 60 studs of the camera (`Wild.FX_RANGE`) with the extras on and holds 2.5
+otherwise, because every change of a SurfaceAppearance's strength costs render CPU (10.5). Small effects ride
+zero-influence `Fx_` bones under the same rule (`Util/MonsterLooks.effectsOn`, looks in `Wild.FX`): sparks at the
+beetle's pincer tips, a smoke wisp from the wolf's tail. A species without a model (the Frontier's) keeps its
+code-built placeholder.
 
 **The Wild valley** (main game; round 1 spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley,
 three moods"; round 2 spec `2026-10-31-wild-valley-v2-design.md`, the user's picks A "Winding valley", boss portals and

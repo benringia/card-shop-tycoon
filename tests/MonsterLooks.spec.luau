@@ -54,6 +54,14 @@ return {
 		expect.equal(MonsterLooks.glowStrength({ strength = 2 }, 3, false), 2, "steady glow far away")
 	end,
 
+	-- The extras go off on a struggling device (Util/Extras, the frame watchdog): no sparks, smoke or pulsing lava then
+	["effects and the lava pulse run only near the camera with the extras on"] = function()
+		expect.equal(MonsterLooks.effectsOn(30, 60, true), true, "near")
+		expect.equal(MonsterLooks.effectsOn(60, 60, true), true, "at the edge")
+		expect.equal(MonsterLooks.effectsOn(61, 60, true), false, "far")
+		expect.equal(MonsterLooks.effectsOn(30, 60, false), false, "extras off")
+	end,
+
 	["every wild species has a height and the golem's lava pulses"] = function()
 		for species, info in wild.SPECIES do
 			local entry = info :: any

@@ -429,12 +429,11 @@ function MonsterController.Start()
 			if monster.aura then
 				stepAura(monster, now)
 			end
-			local inRange = (monster.marker.Position - origin).Magnitude <= Wild.FX_RANGE
+			local near = MonsterLooks.effectsOn((monster.marker.Position - origin).Magnitude, Wild.FX_RANGE, extras)
 			if monster.glow and monster.glow.pulse then
-				setGlow(monster, now, inRange)
+				setGlow(monster, now, near)
 			end
 			if #monster.fx > 0 then
-				local near = extras and inRange
 				if monster.fx[1].Enabled ~= near then
 					for _, emitter in monster.fx do
 						emitter.Enabled = near

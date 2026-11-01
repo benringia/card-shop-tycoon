@@ -24,6 +24,12 @@ function MonsterLooks.styleKey(species: string, bossId: string?, hasModel: boole
 	return bossId or species
 end
 
+-- Whether a monster's small effects (sparks, smoke) and its glow pulse run: within range of the camera, with the extras
+-- on (Util/Extras turns them off on a struggling device)
+function MonsterLooks.effectsOn(distance: number, range: number, extras: boolean): boolean
+	return extras and distance <= range
+end
+
 -- The emissive strength at this moment: steady, or pulsing from low (at 0) to high (half a cycle) and back. Only near
 -- the camera (Wild.FX_RANGE): every change to a SurfaceAppearance's strength costs render CPU, so far away it holds
 -- steady
