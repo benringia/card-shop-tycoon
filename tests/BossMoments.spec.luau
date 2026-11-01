@@ -47,6 +47,13 @@ return {
 		assert((Bosses :: any).ROAR_VOLUME > 0, "the roar is heard")
 	end,
 
+	-- Her screech (a hiss and screech sound) came out far louder than the other roars at the same volume (the user)
+	["the Brood Queen's screech plays quieter than the other roars"] = function()
+		local queen = (Bosses.BOSSES.caveBroodQueen :: any).moments
+		assert(queen.roarVolume and queen.roarVolume < (Bosses :: any).ROAR_VOLUME, "her screech plays at the roars' volume")
+		assert(queen.roarVolume > 0, "her screech is silent")
+	end,
+
 	-- Fx_Sac sits at the egg sac's centre and the sac is opaque, so the sparkles would fade before they leave it: they
 	-- draw toward the camera by more than the sac's radius (0.31 of her height, rig_cavebroodqueen.py)
 	["the Brood Queen's flare draws in front of her egg sac"] = function()

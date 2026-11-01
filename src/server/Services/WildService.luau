@@ -882,7 +882,7 @@ local function dressArena(folder: Instance, boss: any, center: Vector3, copy: nu
 	local roof = dressing.roof
 	if roof then
 		-- its rim sinks below the floor so no gap shows at the foot of its walls
-		arenaPiece(folder, { model = roof.model, x = center.X, z = center.Z, height = roof.height, yaw = 0 }, "ArenaRoof", center.Y - 2)
+		arenaPiece(folder, { model = roof.model, x = center.X, z = center.Z, height = roof.height, yaw = 0 }, "ArenaRoof", center.Y - roof.sink)
 	end
 	local backdrop = dressing.backdrop
 	if backdrop then

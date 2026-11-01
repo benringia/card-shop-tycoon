@@ -547,7 +547,8 @@ for free). Test poses with world-space rotations (bone-local test rotations hid 
 
 In Studio: Import 3D (Rig Type Custom, Keep Zero Influence Bones), upload the glow mask, reset the MeshPart's
 `PivotOffset` rotation, give it a SurfaceAppearance (AlphaMode Overlay, `ColorMapContent` = its TextureID,
-`EmissiveMaskContent` = the mask, `EmissiveStrength` 2, the Colossus 2.5: the game doesn't set a boss's strength), name
+`EmissiveMaskContent` = the mask, `EmissiveStrength` 2, the Colossus 2.5; the game lights it once at a boss's `glow`
+strength when it has one, the Colossus 4), name
 the model after the boss id and save it. Sizes, rings and moments: DESIGN 5.10. A moment effect that starts inside
 the body (the flare at the sac's centre) needs `zOffset` in `Bosses.MOMENT_FX` or the opaque mesh hides it. The Prism Hydra (`prismHydra`, the final boss) is a blocky remodel of the Crystal
 Titans Rainbow Hydra built by `tools/blender/build_prismHydra.py` in a faceted low-poly "studded" style (`chunk()`:

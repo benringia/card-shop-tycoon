@@ -6,7 +6,7 @@
 -- Lune-tested with Util/WildValley (the ground modelled by TownTerrain.groundAt over WildValley.terrainOps). Main game
 -- only: the Frontier builds its own Wild without this.
 return {
-	MAX_CELLS = 90000, -- the valley's terrain with the boss arena clearings (estimated 4-stud cells)
+	MAX_CELLS = 95000, -- the valley's terrain with the boss arena clearings (estimated 4-stud cells; 90k -> 95k for the wider hollow and lava field clearings, measured 2026-11-02: terrain memory unchanged, 60 fps)
 	SURFACE_LIFT = 2, -- TownTerrain.SURFACE_LIFT: terrain draws this far above a fill's top (Lune-tested equal)
 	TRAIL_WIDTH = 10,
 	MARKER_SPACING = 12, -- studs between the trail's small glowing stones
@@ -171,7 +171,7 @@ return {
 	-- The boss portals (WildService.BuildBossArenas; each at its biome's `portal`): the obsidian arch HEIGHT tall with
 	-- the purple Boss look (Config/Town PORTAL_LOOKS), a trailhead board with the boss's name beside it. Each fight
 	-- goes to its own copy of the boss's arena (Config/Bosses ARENA_COPIES), far from the valley: copy c of zone z's
-	-- boss at ARENA_FIELD x + (c - 1) * spacing, z + (z - 1) * spacing, on a terrain clearing `size` wide in the zone's
+	-- boss at ARENA_FIELD x + (c - 1) * spacing, z + (z - 1) * spacing, on a terrain clearing `size[zone]` wide in the zone's
 	-- material (Slate terrain is Frostpeak's ice blue map-wide, so the gorge's is Limestone), dressed by ARENA_DRESSING
 	-- with its way home (ARENA_HOME) inside its walls. Under it a flat part `ground` wide (top `sink` under the terrain's,
 	-- `thickness` thick; a part, as terrain that wide is about 86k more cells) runs on past the walls, so a camera
@@ -181,7 +181,7 @@ return {
 	BOSS_PORTAL = { model = "PortalArena", height = 20 },
 	ARENA_FIELD = { x = 1600, z = 1200, y = 0, spacing = 1200 },
 	ARENA_CLEARING = {
-		size = 124,
+		size = { 124, 164, 164 }, -- the hollow and the lava field wider: the user found them tight with walls at 56-57
 		ground = 360,
 		sink = 0.5,
 		thickness = 2,
@@ -192,7 +192,11 @@ return {
 	ARENA_COPIES_FOR_TERRAIN = 4,
 	-- Studs from a copy's middle a fighter still holds it (BossRules.stillInCopy): out to its clearing's corners,
 	-- which invisible walls close (WildValley.arenaEdge)
-	ARENA_HOLD = 90,
+	ARENA_HOLD = 120,
+	-- The invisible walls round each arena copy (WildValley.arenaEdge): a ring of ARENA_EDGE_SIDES walls this far inside
+	-- its innermost wall row, so nobody walks out between the pieces (the hollow's roof doesn't collide)
+	ARENA_EDGE_INSET = 4,
+	ARENA_EDGE_SIDES = 24,
 	-- Each zone's boss arena dressed in its mood (WildService.BuildBossArenas; rings and barriers as before): the
 	-- floor disc and path (lifted LIFT studs over the terrain so they don't flicker against it) and the fence posts, every
 	-- other one capped with a glowing tip; the ridge's floor also gets glowing cracks (Util/LavaCracks.floor in a box `size`
@@ -224,28 +228,36 @@ return {
 		},
 		{ -- the Broodmother's hollow: a rock dome over stalagmites, webs, hanging cocoons, bones and violet-blue crystals
 			walls = {
-				{ radius = 56, count = 26, models = { "Stalagmite", "RockA", "RockB" }, height = { 16, 28 } },
+				{ radius = 74, count = 34, models = { "Stalagmite", "RockA", "RockB" }, height = { 16, 28 } },
 			},
 			inner = {
-				{ models = { "Bones" }, count = 6, radius = { 40, 52 }, height = { 4, 7 } },
-				{ models = { "Web" }, count = 6, radius = { 46, 54 }, height = { 8, 12 } },
-				{ models = { "Cocoon" }, count = 8, radius = { 40, 54 }, height = { 4, 6 }, y = 28 },
+				{ models = { "Bones" }, count = 8, radius = { 42, 68 }, height = { 4, 7 } },
+				{ models = { "Web" }, count = 8, radius = { 50, 70 }, height = { 8, 12 } },
+				{ models = { "Cocoon" }, count = 10, radius = { 42, 68 }, height = { 4, 6 }, hang = true }, -- from the ceiling
 			},
-			roof = { model = "CaveDome", height = 46 },
-			crystals = { count = 8, radius = { 42, 54 }, height = { 4, 7 } },
-			effects = { { kind = "glints", rate = 4, y = 4, size = 100 }, { kind = "mist", rate = 2, y = 2, size = 100 } },
+			-- about 170 across, past the walls, its rim `sink` under the floor. `profile` is the dome's shape in Blender units
+			-- (build_arena_props.py cave_dome: an ellipsoid `radius` wide and `rise` tall round z `base`, cut at `rim`; the
+			-- saved model's top at `top`), its random dents allowed for by `squeeze` and `sag` (WildValley.ceilingAt)
+			roof = {
+				model = "CaveDome",
+				height = 64,
+				sink = 2,
+				profile = { radius = 66, rise = 50, base = -4, rim = -6, top = 45, squeeze = 0.95, sag = 0.95 },
+			},
+			crystals = { count = 10, radius = { 44, 70 }, height = { 4, 7 } },
+			effects = { { kind = "glints", rate = 5, y = 4, size = 140 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
 			sound = { id = "rbxassetid://9120505297", volume = 0.5, range = 90 }, -- Pro Sound Effects: Water Cave Trickle Thin Into Small Puddles 5
 		},
 		{ -- the Behemoth's lava field: basalt cliffs all round, charred trees and obsidian shards, the volcano behind
 			walls = {
-				{ radius = 57, count = 26, models = { "LavaCliff" }, height = { 30, 40 } },
+				{ radius = 74, count = 34, models = { "LavaCliff" }, height = { 30, 40 } },
 			},
 			inner = {
-				{ models = { "CharredTree" }, count = 7, radius = { 42, 52 }, height = { 12, 18 } },
-				{ models = { "ObsidianShards" }, count = 8, radius = { 40, 54 }, height = { 4, 8 } },
+				{ models = { "CharredTree" }, count = 10, radius = { 44, 68 }, height = { 12, 18 } },
+				{ models = { "ObsidianShards" }, count = 11, radius = { 42, 70 }, height = { 4, 8 } },
 			},
-			backdrop = { model = "Volcano", distance = 150, height = 130 },
-			effects = { { kind = "embers", rate = 10, y = 4, size = 100 }, { kind = "ash", rate = 6, y = 40, size = 120 } },
+			backdrop = { model = "Volcano", distance = 180, height = 130 },
+			effects = { { kind = "embers", rate = 12, y = 4, size = 140 }, { kind = "ash", rate = 8, y = 40, size = 160 } },
 			sound = { id = "rbxassetid://9112780462", volume = 0.45, range = 90 }, -- Pro Sound Effects: Fireplace Constant Burning Flame 4
 		},
 	},

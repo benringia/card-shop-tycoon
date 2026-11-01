@@ -379,13 +379,17 @@ function WildValley.arenaDressing(valley: any, ringRadius: number, zone: number,
 	end
 	for _, spec in dressing.inner do
 		for _, spot in WildValley.arenaSpots(valley, ringRadius, spec.count, spec.radius, rng) do
+			local model = pick(rng, spec.models)
+			local height = between(rng, spec.height[1], spec.height[2])
+			-- a hung piece's top meets the ceiling over it
+			local ceiling = if spec.hang then WildValley.ceilingAt(valley, zone, math.sqrt(spot.x ^ 2 + spot.z ^ 2)) else nil
 			table.insert(pieces, {
-				model = pick(rng, spec.models),
+				model = model,
 				x = spot.x,
 				z = spot.z,
-				height = between(rng, spec.height[1], spec.height[2]),
+				height = height,
 				yaw = spot.yaw,
-				y = spec.y,
+				y = if ceiling then ceiling - height else spec.y,
 				wall = false,
 			})
 		end
@@ -393,16 +397,35 @@ function WildValley.arenaDressing(valley: any, ringRadius: number, zone: number,
 	return pieces
 end
 
--- The invisible walls round an arena copy: a square 2 studs inside its clearing's edge, so nobody walks off it
+-- The invisible walls round an arena copy: a ring ARENA_EDGE_INSET inside its innermost wall row, so nobody walks out
+-- between the wall pieces (or off its clearing)
 function WildValley.arenaEdge(valley: any, zone: number, copy: number): { Point }
 	local centre = WildValley.arenaCopyCenter(valley, zone, copy)
-	local half = valley.ARENA_CLEARING.size / 2 - 2
-	return {
-		{ x = centre.x - half, z = centre.z - half },
-		{ x = centre.x + half, z = centre.z - half },
-		{ x = centre.x + half, z = centre.z + half },
-		{ x = centre.x - half, z = centre.z + half },
-	}
+	local inner = math.huge
+	for _, row in valley.ARENA_DRESSING[zone].walls do
+		inner = math.min(inner, row.radius)
+	end
+	local radius = inner - valley.ARENA_EDGE_INSET
+	local points = {}
+	for index = 0, valley.ARENA_EDGE_SIDES - 1 do
+		local angle = index / valley.ARENA_EDGE_SIDES * math.pi * 2
+		table.insert(points, { x = centre.x + math.cos(angle) * radius, z = centre.z + math.sin(angle) * radius })
+	end
+	return points
+end
+
+-- How high an arena's roof is over the floor `r` studs from its centre (Config/WildValley roof profile: the dome's
+-- ellipsoid scaled to the roof's height, a little low and narrow for its random dents); nil without a roof
+function WildValley.ceilingAt(valley: any, zone: number, r: number): number?
+	local roof = valley.ARENA_DRESSING[zone].roof
+	if not roof then
+		return nil
+	end
+	local shape = roof.profile
+	local scale = roof.height / (shape.top - shape.rim)
+	local reach = shape.radius * shape.squeeze * scale
+	local over = math.max(0, 1 - (r / reach) ^ 2)
+	return -roof.sink + scale * (shape.base - shape.rim + shape.sag * shape.rise * math.sqrt(over))
 end
 
 -- An arena copy's ground: a terrain clearing drawing at ARENA_FIELD.y in its zone's material
@@ -411,7 +434,7 @@ function WildValley.arenaClearingOps(valley: any, zone: number, copy: number): {
 	local clearing = valley.ARENA_CLEARING
 	local top = valley.ARENA_FIELD.y - valley.SURFACE_LIFT
 	return {
-		{ shape = "Block", x = centre.x, y = top - 2, z = centre.z, size = { x = clearing.size, y = 4, z = clearing.size }, material = clearing.materials[zone] },
+		{ shape = "Block", x = centre.x, y = top - 2, z = centre.z, size = { x = clearing.size[zone], y = 4, z = clearing.size[zone] }, material = clearing.materials[zone] },
 	}
 end
 
@@ -421,7 +444,7 @@ end
 function WildValley.arenaApron(valley: any, zone: number, copy: number): { x: number, y: number, z: number, size: number, thickness: number, material: string, color: { number } }
 	local centre = WildValley.arenaCopyCenter(valley, zone, copy)
 	local clearing = valley.ARENA_CLEARING
-	local top = valley.ARENA_FIELD.y - valley.SURFACE_LIFT - clearing.sink
+	local top = valley.ARENA_FIELD.y - clearing.sink -- the drawn ground is the fill's top plus SURFACE_LIFT
 	return {
 		x = centre.x,
 		y = top - clearing.thickness / 2,

@@ -41,6 +41,18 @@ return {
 		end
 	end,
 
+	-- On the lava field's dark basalt the Colossus's dark plates blended in (the user): its lava glows brighter than its
+	-- saved mask's 2.5 (set once, steady) and a warm light on it lights the ground round it
+	["the Colossus stands out of the dark lava field"] = function()
+		local colossus = (require("../src/shared/Config/Bosses").BOSSES :: any).emberColossus
+		assert(colossus.glow and colossus.glow.strength > 2.5, "its lava glows no brighter than its saved mask")
+		for key in colossus.glow do
+			assert(key == "strength", "glows don't animate: " .. key)
+		end
+		local light = colossus.light
+		assert(light and light.brightness > 0 and light.range >= 20 and #light.color == 3, "no light on it")
+	end,
+
 	["bosses without a height keep their scale (Frontier bosses unchanged)"] = function()
 		local bosses = require("../src/shared/Config/Bosses").BOSSES
 		for _, id in { "frostTyrant", "stormSovereign", "riftDevourer" } do

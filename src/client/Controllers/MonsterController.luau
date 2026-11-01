@@ -344,7 +344,7 @@ local function startMoments(monster: Monster, moments: any)
 			end
 			local sound = Instance.new("Sound")
 			sound.SoundId = moments.roar
-			sound.Volume = Bosses.ROAR_VOLUME
+			sound.Volume = moments.roarVolume or Bosses.ROAR_VOLUME
 			sound.Parent = body.root
 			sound.Ended:Once(function()
 				sound:Destroy()
@@ -414,9 +414,17 @@ local function add(marker: BasePart)
 	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
 	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)
 	body.fxColor = color
-	local glow = if boss then nil else (Wild.SPECIES[species] :: any).glow
-	if glow then
+	local glow = if boss then boss.glow else (Wild.SPECIES[species] :: any).glow
+	if glow and template then
 		lightGlow(model, glow.strength)
+	end
+	if boss and boss.light and template then
+		local light = Instance.new("PointLight")
+		light.Color = rgb(boss.light.color)
+		light.Brightness = boss.light.brightness
+		light.Range = boss.light.range
+		light.Shadows = false
+		light.Parent = body.root
 	end
 	local fxSpec = if boss or not template then nil else (Wild.SPECIES[species] :: any).fx
 	local monster: Monster = {

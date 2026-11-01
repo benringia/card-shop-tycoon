@@ -46,9 +46,14 @@ export type Boss = {
 	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
 	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
 	auroraFlame: boolean?, -- soft aurora-coloured flames rise off its back (AURORA_FLAME)
-	-- Its model's moments (the Wild bosses, Util/BossMoments): a roar sound at the intro's roar, an effect on its Fx_
-	-- bones when a heal fires (marker attribute Heals), and when it enrages (Enraged) a burst plus a plume that lasts
-	moments: { roar: string, heal: { bones: { string }, fx: string }?, enrage: { bones: { string }, burst: string, lasting: string }? }?,
+	-- Its model's moments (the Wild bosses, Util/BossMoments): a roar sound at the intro's roar (at `roarVolume`, nil:
+	-- ROAR_VOLUME), an effect on its Fx_ bones when a heal fires (marker attribute Heals), and when it enrages (Enraged) a
+	-- burst plus a plume that lasts
+	moments: { roar: string, roarVolume: number?, heal: { bones: { string }, fx: string }?, enrage: { bones: { string }, burst: string, lasting: string }? }?,
+	-- Its model's glow masks lit at this strength, set once (nil: as saved in its SurfaceAppearance), and a PointLight on
+	-- it (colour { r, g, b }), so a dark model stands out of a dark arena
+	glow: { strength: number }?,
+	light: { color: { number }, brightness: number, range: number }?,
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
@@ -99,6 +104,7 @@ local BOSSES: { [string]: Boss } = {
 		introShot = { back = 34, up = 16 },
 		moments = {
 			roar = "rbxassetid://9113982931", -- Pro Sound Effects: Creature Mix Spider Footsteps Hiss Screech 2
+			roarVolume = 0.3, -- far louder than the other roars at the same volume
 			heal = { bones = { "Fx_Sac" }, fx = "broodFlare" }, -- her egg sac flares as she heals
 		},
 		element = "Shade",
@@ -136,6 +142,9 @@ local BOSSES: { [string]: Boss } = {
 			roar = "rbxassetid://9116290951", -- Pro Sound Effects: Lion Growls 7 (huge bellows, pitched down)
 			enrage = { bones = { "Fx_Vent_0", "Fx_Vent_1", "Fx_Vent_2" }, burst = "ventBurst", lasting = "ventSmoke" },
 		},
+		-- its dark basalt plates blended into the lava field's dark ground: brighter lava and a warm light on it
+		glow = { strength = 4 },
+		light = { color = { 255, 140, 60 }, brightness = 2, range = 26 },
 		element = "Ember",
 		level = 16,
 		hp = 7200,
