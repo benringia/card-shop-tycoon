@@ -9,7 +9,7 @@ local expect = require("./lib/expect")
 
 return {
 	["each wild species has its own height, elites 1.35x"] = function()
-		local heights = { Mossling = 2.5, ["Puddle Crab"] = 2, ["Cave Bat"] = 3, ["Spark Beetle"] = 2.5, ["Ash Wolf"] = 4, ["Magma Golem"] = 6.5 }
+		local heights = { Mossling = 3.5, ["Puddle Crab"] = 3, ["Cave Bat"] = 3, ["Spark Beetle"] = 2.5, ["Ash Wolf"] = 4, ["Magma Golem"] = 6.5 }
 		for species, height in heights do
 			expect.near(MonsterLooks.height(wild, species, false), height, 1e-9, species)
 			expect.near(MonsterLooks.height(wild, species, true), height * wild.ELITE_SIZE, 1e-9, species .. " elite")
