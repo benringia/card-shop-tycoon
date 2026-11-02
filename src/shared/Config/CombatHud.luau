@@ -12,15 +12,47 @@ return {
 	SLANT_EDGE = "rbxassetid://112893972215694",
 	PANEL_COLOR = rgb(20, 16, 30), -- the dark face of every button
 	PANEL_TRANSPARENCY = 0.15,
+	-- name: shown under the button in the first NAME_FIGHTS boss fights (the pet and signature buttons show the
+	-- creature's move instead); tip: the tooltip (hover on PC, hold on a phone), titled with that name
 	BUTTONS = {
-		attack = { color = rgb(255, 179, 71), icon = "Attack", emoji = "⚔️", key = "Click" },
-		dodge = { color = rgb(77, 163, 255), icon = "Dodge", emoji = "💨", key = "Shift" },
-		skill = { color = rgb(167, 139, 250), icon = "SpinSkill", emoji = "🌀", key = "E" },
-		pet = { color = rgb(74, 222, 128), icon = "Paw", emoji = "🐾", key = "R" },
-		signature = { color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = nil },
-		swap = { color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1-3" },
-		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil },
+		attack = {
+			color = rgb(255, 179, 71), icon = "Attack", emoji = "⚔️", key = "Click", name = "ATTACK",
+			tip = "Swing your sword. Tap again quickly for a 3-hit combo.",
+		},
+		dodge = {
+			color = rgb(77, 163, 255), icon = "Dodge", emoji = "💨", key = "Shift", name = "DODGE",
+			tip = "Dash out of the way. Nothing can hit you while you dash. Use it when the ground glows!",
+		},
+		skill = {
+			color = rgb(167, 139, 250), icon = "SpinSkill", emoji = "🌀", key = "E", name = "SPIN",
+			tip = "A spinning slash that hits everything around you.",
+		},
+		pet = {
+			color = rgb(74, 222, 128), icon = "Paw", emoji = "🐾", key = "R", name = "PET MOVE",
+			tip = "Your creature's special move.", -- PET_TIPS says what each element's does
+		},
+		signature = {
+			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = nil, name = "SUPER MOVE",
+			tip = "Your creature's super move. Save it for a big moment!",
+		},
+		swap = {
+			color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1-3", name = "SWAP",
+			tip = "Send in another creature from your party.",
+		},
+		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil, name = "RUN", tip = "Leave the fight." },
 	},
+	-- The pet button's tooltip by the creature's element (its ability, Config/Combat ABILITIES)
+	PET_TIPS = {
+		Ember = "Your creature throws a big fireball at the boss.",
+		Tide = "A healing wave for your creature.",
+		Bloom = "Vines wrap the boss and slow it down.",
+		Volt = "Your creature attacks super fast for a few hits.",
+		Shade = "A curse that makes the boss hit weaker for a while.",
+	},
+	NAME_FIGHTS = 3, -- boss fights that show the buttons' names (saved per player: swordFights)
+	TIP_HOLD = 0.4, -- seconds a phone tap is held to show the tooltip (that press doesn't act)
+	TIP_HOVER = 0.25, -- seconds the mouse rests on a button before its tooltip shows
+	TIP_WIDTH = 230,
 	COOLDOWN_SHADE = 0.45, -- transparency of the dark drain over a button cooling down
 	READY_FLASH = 0.25, -- seconds a button glows when it's ready again
 	PRELOAD_WAIT = 6, -- seconds after joining before the fight's art, sounds and moves download (Util/CombatAssets)

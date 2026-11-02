@@ -74,6 +74,7 @@ export type PlayerData = {
 	purchases: { [string]: boolean },
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
+	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
 }
 
 export type Handler = {
@@ -107,6 +108,7 @@ local TEMPLATE: PlayerData = {
 	purchases = {},
 	seenWelcome = false,
 	seenSword = false,
+	swordFights = 0,
 }
 
 local DataService = {}

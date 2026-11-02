@@ -54,6 +54,26 @@ function SwordRules.inRadius(px: number, pz: number, tx: number, tz: number, tar
 	return math.sqrt(dx * dx + dz * dz) - targetRadius <= radius
 end
 
+-- Does a cut from (px, pz) facing (lookX, lookZ) hit any of these targets? (the client plays the hit sound at once)
+function SwordRules.anyInReach(px: number, pz: number, lookX: number, lookZ: number, targets: { Target }, cut: Cut): boolean
+	for _, target in targets do
+		if SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Does the skill from (px, pz) hit any of these targets?
+function SwordRules.anyInRadius(px: number, pz: number, targets: { Target }, radius: number): boolean
+	for _, target in targets do
+		if SwordRules.inRadius(px, pz, target.x, target.z, target.radius, radius) then
+			return true
+		end
+	end
+	return false
+end
+
 -- Soft aim: the target whose edge is nearest, within `range` and within `angleDegrees` of the facing (nil if none)
 function SwordRules.aimTarget(px: number, pz: number, lookX: number, lookZ: number, targets: { Target }, range: number, angleDegrees: number): string?
 	local best: string? = nil

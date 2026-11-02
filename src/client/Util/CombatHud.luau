@@ -10,6 +10,7 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
@@ -30,6 +31,9 @@ export type View = {
 	creatureId: string,
 	creatureName: string,
 	creatureArt: string?, -- its card's painting, for the badge
+	creatureElement: string, -- for the pet button's tooltip (Config/CombatHud PET_TIPS)
+	petMove: string, -- its element ability's name ("Vine Snare"), for the pet button's name and tooltip
+	signatureMove: string?, -- its signature's name, when it has one
 	creatureHp: number,
 	creatureMax: number,
 	hasSignature: boolean,
@@ -51,7 +55,7 @@ export type Hud = {
 	destroy: () -> (),
 }
 
-type Button = { frame: ImageButton, drain: Frame, shade: ImageLabel, seconds: TextLabel, readyAt: number, total: number }
+type Button = { frame: ImageButton, drain: Frame, shade: ImageLabel, seconds: TextLabel, label: TextLabel, readyAt: number, total: number }
 
 local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
 local PORTRAIT_BACK = Color3.fromRGB(42, 29, 51) -- behind the headshot and the card while they load
@@ -61,8 +65,9 @@ local function color(rgb: { number }): Color3
 end
 
 -- A slanted panel: a dark face shading into the button's colour at its far corner, neon edges, the icon, a cooldown
--- drain with its seconds, and (PC) its key on a chip
-local function makeButton(parent: Instance, name: string, onPress: () -> ()): Button
+-- drain with its seconds, (PC) its key on a chip, and its name below it (placed by the HUD). Resting the mouse on it,
+-- or holding a finger on it, shows its tooltip (`showTip`); a press held long enough for the tooltip doesn't act.
+local function makeButton(parent: Instance, name: string, onPress: () -> (), showTip: (name: string, show: boolean) -> ()): Button
 	local spec = CombatHudConfig.BUTTONS[name]
 	local tint = color(spec.color)
 	local panel = color(CombatHudConfig.PANEL_COLOR)
@@ -148,8 +153,60 @@ local function makeButton(parent: Instance, name: string, onPress: () -> ()): Bu
 		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 4), UDim.new(0, 4)
 		pad.Parent = chip
 	end
-	frame.Activated:Connect(onPress)
-	return { frame = frame, drain = drain, shade = shade, seconds = seconds, readyAt = 0, total = 1 }
+	local label = UIKit.label(parent, spec.name, Enum.Font.FredokaOne, 13, Color3.new(1, 1, 1):Lerp(tint, 0.55))
+	label.Name = `{name}Name`
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.Visible = false
+	UIKit.outlined(label)
+
+	local suppress = false -- this press showed the tooltip: don't act on it
+	local holdToken, hoverToken = 0, 0
+	frame.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		suppress = false
+		holdToken += 1
+		local token = holdToken
+		task.delay(CombatHudConfig.TIP_HOLD, function()
+			if holdToken == token then
+				suppress = true
+				showTip(name, true)
+			end
+		end)
+	end)
+	frame.InputEnded:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			holdToken += 1
+			showTip(name, false)
+		end
+	end)
+	frame.MouseEnter:Connect(function()
+		if UserInputService:GetLastInputType() == Enum.UserInputType.Touch then
+			return -- phones fire this on a tap too: their tooltip is the hold
+		end
+		hoverToken += 1
+		local token = hoverToken
+		task.delay(CombatHudConfig.TIP_HOVER, function()
+			if hoverToken == token then
+				showTip(name, true)
+			end
+		end)
+	end)
+	frame.MouseLeave:Connect(function()
+		hoverToken += 1
+		showTip(name, false)
+	end)
+	frame.Activated:Connect(function()
+		if suppress then
+			suppress = false
+			return
+		end
+		onPress()
+	end)
+	return { frame = frame, drain = drain, shade = shade, seconds = seconds, label = label, readyAt = 0, total = 1 }
 end
 
 -- One HP line: a label over a slanted bar `height` pixels tall
@@ -227,7 +284,8 @@ local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIS
 	return ring, shading, glow, badge
 end
 
-function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
+-- showNames: name the buttons (the player's first boss fights; the server decides)
+function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boolean): Hud
 	local root = Instance.new("Frame")
 	root.Name = "CombatHud"
 	root.BackgroundTransparency = 1
@@ -335,22 +393,99 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
 		swap = onSwap,
 		run = callbacks.run,
 	}
-	for _, name in BUTTON_ORDER do
-		buttons[name] = makeButton(root, name, presses[name])
+	-- The tooltip: the button's name in its colour, then what it does, just above the button
+	local tip = Instance.new("Frame")
+	tip.Name = "ButtonTip"
+	tip.AnchorPoint = Vector2.new(0.5, 1)
+	tip.Size = UDim2.fromOffset(CombatHudConfig.TIP_WIDTH, 0)
+	tip.AutomaticSize = Enum.AutomaticSize.Y
+	tip.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+	tip.BackgroundTransparency = 0.05
+	tip.Visible = false
+	tip.ZIndex = 20
+	tip.Parent = root
+	UIKit.corner(tip, 10)
+	local tipEdge = Instance.new("UIStroke")
+	tipEdge.Thickness = 2
+	tipEdge.Parent = tip
+	local tipPad = Instance.new("UIPadding")
+	tipPad.PaddingTop, tipPad.PaddingBottom = UDim.new(0, 8), UDim.new(0, 9)
+	tipPad.PaddingLeft, tipPad.PaddingRight = UDim.new(0, 11), UDim.new(0, 11)
+	tipPad.Parent = tip
+	local tipList = Instance.new("UIListLayout")
+	tipList.SortOrder = Enum.SortOrder.LayoutOrder
+	tipList.Padding = UDim.new(0, 3)
+	tipList.Parent = tip
+	local tipTitle = UIKit.label(tip, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
+	tipTitle.LayoutOrder = 1
+	tipTitle.Size = UDim2.new(1, 0, 0, 20)
+	tipTitle.ZIndex = 21
+	local tipBody = UIKit.label(tip, "", Enum.Font.GothamBold, 14, Color3.new(1, 1, 1))
+	tipBody.LayoutOrder = 2
+	tipBody.Size = UDim2.new(1, 0, 0, 0)
+	tipBody.AutomaticSize = Enum.AutomaticSize.Y
+	tipBody.TextWrapped = true
+	tipBody.ZIndex = 21
+	local tipFor: string? = nil
+
+	-- What a button is called right now: the pet and signature buttons are named after the creature's moves
+	local function moveName(name: string): string
+		local view = latest
+		if name == "pet" and view then
+			return view.petMove
+		elseif name == "signature" and view and view.signatureMove then
+			return view.signatureMove
+		end
+		return CombatHudConfig.BUTTONS[name].name
 	end
 
-	-- Laid out in the HUD's own frame (the screen below Roblox's top bar), so nothing hangs off its bottom
+	local function onTip(name: string, show: boolean)
+		if not show then
+			if tipFor == name then
+				tip.Visible = false
+				tipFor = nil
+			end
+			return
+		end
+		local spec = CombatHudConfig.BUTTONS[name]
+		local anchor = buttons[name].frame
+		local title = moveName(name)
+		if title == spec.name then
+			title = string.sub(title, 1, 1) .. string.lower(string.sub(title, 2)) -- "PET MOVE" -> "Pet move"
+		end
+		tipTitle.Text = title
+		tipTitle.TextColor3 = color(spec.color)
+		local view = latest
+		tipBody.Text = if name == "pet" and view then CombatHudConfig.PET_TIPS[view.creatureElement] or spec.tip else spec.tip
+		tipEdge.Color = color(spec.color)
+		local half = CombatHudConfig.TIP_WIDTH / 2 + 8
+		local x = anchor.AbsolutePosition.X - root.AbsolutePosition.X + anchor.AbsoluteSize.X / 2
+		tip.Position = UDim2.fromOffset(math.clamp(x, half, root.AbsoluteSize.X - half), anchor.AbsolutePosition.Y - root.AbsolutePosition.Y - 8)
+		tip.Visible = true
+		tipFor = name
+	end
+
+	for _, name in BUTTON_ORDER do
+		buttons[name] = makeButton(root, name, presses[name], onTip)
+	end
+
+	-- Laid out in the HUD's own frame (the screen below Roblox's top bar), so nothing hangs off its bottom; each name
+	-- just under its button
 	local function relayout()
 		local size = root.AbsoluteSize
 		if size.X <= 0 or size.Y <= 0 then
 			return
 		end
 		local rects = UiLayout.combatButtons({ w = size.X, h = size.Y }) :: any
+		local nameSize = math.clamp(math.round(rects.attack.h * 0.13), 11, 16)
 		for name, button in buttons do
 			local r = rects[name]
 			button.frame.Position = UDim2.fromOffset(r.x, r.y)
 			button.frame.Size = UDim2.fromOffset(r.w, r.h)
 			button.shade.Size = UDim2.fromOffset(r.w, r.h)
+			button.label.Position = UDim2.fromOffset(r.x + r.w / 2, r.y + r.h + 1)
+			button.label.Size = UDim2.fromOffset(0, nameSize + 2)
+			button.label.TextSize = nameSize
 		end
 	end
 	relayout()
@@ -414,6 +549,13 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
 			creatureBar.set(view.creatureHp, view.creatureMax)
 		end
 		buttons.signature.frame.Visible = view.hasSignature
+		for name, button in buttons do
+			button.label.Text = string.upper(moveName(name))
+			button.label.Visible = showNames and button.frame.Visible
+		end
+		if tipFor then
+			onTip(tipFor, true) -- a swap renames the pet's move under an open tooltip
+		end
 		for _, name in { "attack", "dodge", "skill" } do
 			buttons[name].frame.ImageTransparency = if beaten then 0.6 else CombatHudConfig.PANEL_TRANSPARENCY
 		end

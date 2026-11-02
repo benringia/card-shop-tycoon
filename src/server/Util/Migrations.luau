@@ -156,6 +156,15 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.seenSword = false
 		end
 	end,
+	-- v15: boss fights fought with the sword HUD (SwordService), so its buttons show their names for the first few.
+	-- Everyone starts at 0; a saved whole count stays, anything else starts over
+	[14] = function(data)
+		local count = data.swordFights
+		local whole = typeof(count) == "number" and count >= 0 and count < math.huge and count == math.floor(count)
+		if not whole then
+			data.swordFights = 0
+		end
+	end,
 }
 
 local function lowestGrade(): string

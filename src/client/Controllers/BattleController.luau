@@ -588,6 +588,11 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		creatureHp = if creature then creature.hp else 0,
 		creatureMax = if creature then creature.maxHp else 1,
 		hasSignature = creature ~= nil and creature.signature ~= nil,
+		creatureElement = if creature then creature.element else "",
+		petMove = if creature and Combat.ABILITIES[creature.element] then Combat.ABILITIES[creature.element].name else "Pet move",
+		signatureMove = if creature and creature.signature and Combat.SIGNATURES[creature.signature]
+			then Combat.SIGNATURES[creature.signature].name
+			else nil,
 		reserves = reserves,
 	})
 	if creature then
@@ -765,7 +770,9 @@ local function swordHit(event: any)
 		end
 		local strength = if event.kind == "Skill" then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
 		shake(strength.seconds, strength.studs)
-		SwordController.PlaySound("hit")
+		if not SwordController.HitSoundJustPlayed() then
+			SwordController.PlaySound("hit") -- your reach check missed it: the server's hit still sounds
+		end
 	end
 end
 
@@ -1167,7 +1174,7 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 end
 
 -- A boss fight: the combat HUD instead of the bar, and your sword on
-local function startCombat()
+local function startCombat(showNames: boolean)
 	local hud = CombatHud.new(screenGui, {
 		attack = SwordController.Attack,
 		dodge = SwordController.Dodge,
@@ -1182,7 +1189,7 @@ local function startCombat()
 		run = function()
 			Remotes.RunFight:FireServer()
 		end,
-	})
+	}, showNames)
 	combatHud = hud
 	SwordController.SetCombat(true, swordTargets, hud.setCooldown)
 	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
@@ -1238,7 +1245,7 @@ local function onStarted(payload: any)
 	end
 	stopCombat()
 	if boss then
-		startCombat()
+		startCombat(payload.buttonNames == true)
 	end
 	bossBar.Visible = boss ~= nil
 	bossHp.reset(1, 1) -- a new boss starts full, no ghost from the last fight

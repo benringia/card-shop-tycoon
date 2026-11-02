@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local CombatHud = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -26,6 +27,7 @@ local REQUEST_COOLDOWN = 1 -- seconds between SwordState / SwordSeen requests
 local HIDDEN_ATTRIBUTE = "SwordHidTransparency" -- a hidden back accessory's own transparency, to put back
 
 local seen: { [Player]: boolean } = {} -- loaded players: closed the first-sword popup
+local fightCounts: { [Player]: number } = {} -- loaded players: boss fights fought with the sword HUD
 local sheathTokens: { [Player]: number } = {}
 local allowRequest = RateLimiter.new(REQUEST_COOLDOWN)
 local allowSeen = RateLimiter.new(REQUEST_COOLDOWN)
@@ -61,6 +63,20 @@ function SwordService.Touch(player: Player)
 			character:SetAttribute("SwordDrawn", nil)
 		end
 	end)
+end
+
+-- A boss fight starts for this player: one more fought with the sword HUD (saved, capped)
+function SwordService.CountFight(player: Player)
+	local count = fightCounts[player]
+	if count then
+		fightCounts[player] = math.min(count + 1, CombatHud.NAME_FIGHTS + 1)
+	end
+end
+
+-- Whether this fight's HUD shows the buttons' names: the player's first NAME_FIGHTS boss fights
+function SwordService.ShowButtonNames(player: Player): boolean
+	local count = fightCounts[player]
+	return count ~= nil and count <= CombatHud.NAME_FIGHTS
 end
 
 -- Boss fights: back accessories go invisible (their own transparency is kept to put back)
@@ -138,6 +154,8 @@ end
 
 local function load(player: Player, data: PlayerData)
 	seen[player] = data.seenSword == true
+	local count = data.swordFights
+	fightCounts[player] = if typeof(count) == "number" and count >= 0 and count < math.huge then math.floor(count) else 0
 	setSwordAttribute(player)
 	sendState(player)
 end
@@ -147,10 +165,15 @@ local function save(player: Player, data: PlayerData)
 	if value ~= nil then
 		data.seenSword = value
 	end
+	local count = fightCounts[player]
+	if count ~= nil then
+		data.swordFights = count
+	end
 end
 
 local function unload(player: Player)
 	seen[player] = nil
+	fightCounts[player] = nil
 	sheathTokens[player] = nil
 end
 

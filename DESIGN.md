@@ -945,7 +945,13 @@ group, checked before its fragments and every time (not only the first). Below i
   in boss fights (the dodge replaces it). Attacks turn you softly toward the boss; the camera stays free; the server
   checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
   slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
-  (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`).
+  (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`),
+  each kept loaded on your character and replayed; the hit sound plays the moment the blade lands when your own reach
+  check connects (the server's hit arrives a round trip later and only sounds if that check missed,
+  `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
+  counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
+  mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
+  the pet move's by element (`CombatHud.PET_TIPS`).
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
@@ -1516,10 +1522,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v14)
+### 10.4 Player data schema (v15)
 ```lua
 {
-    version = 14,
+    version = 15,
     cash = 200,
     xp = 0,
     level = 1,
@@ -1545,6 +1551,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
+    swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -1555,7 +1562,7 @@ Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomput
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

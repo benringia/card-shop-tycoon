@@ -115,6 +115,21 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v15: swordFights starts at 0 so everyone sees the button names for 3 boss fights"] = function()
+		local data: any = { version = 14 }
+		Migrations.run(data, 15)
+		expect.equal(data.swordFights, 0)
+		expect.equal(data.version, 15)
+		local kept: any = { version = 14, swordFights = 2 }
+		Migrations.run(kept, 15)
+		expect.equal(kept.swordFights, 2, "a saved count stays")
+		for _, bad in { "3", -1, 0 / 0, math.huge, 1.5 } do
+			local junk: any = { version = 14, swordFights = bad }
+			Migrations.run(junk, 15)
+			expect.equal(junk.swordFights, 0, `junk {bad} becomes 0`)
+		end
+	end,
+
 	["v14: seenSword starts false so existing players see the sword popup once"] = function()
 		local data: any = { version = 13 }
 		Migrations.run(data, 14)

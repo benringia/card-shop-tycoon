@@ -39,6 +39,8 @@ local predictedUntil = 0 -- os.clock: your sword shows drawn until then, ahead o
 local snapToHand = false -- the next draw of yours goes straight into the hand (an attack doesn't wait for the draw move)
 local mine: SwordAnims.Set? = nil -- your character's sword moves
 local popup: Frame? = nil
+local sounds: { [string]: Sound } = {} -- your sword's sounds by moment, kept loaded on your root part
+local hitSoundAt = 0 -- os.clock: when your own reach check last played the hit sound
 
 -- Boss fights only
 local combatTargets: (() -> { SwordRules.Target })? = nil -- the boss and its adds, for soft aim
@@ -48,6 +50,24 @@ local skillReadyAt, dodgeReadyAt = 0, 0
 local jumpLock: RBXScriptConnection? = nil
 local kneeling = false -- your knocked-down pose is on
 local jumpBefore: number? = nil
+
+-- Your sword's sound for a moment, made once on your root part and kept (so it's loaded when it plays)
+local function soundFor(key: string, root: BasePart, id: string): Sound
+	local sound = sounds[key]
+	if sound and sound.Parent == root and sound.SoundId == id then
+		return sound
+	end
+	if sound then
+		sound:Destroy()
+	end
+	local made = Instance.new("Sound")
+	made.Name = `Sword_{key}`
+	made.SoundId = id
+	made.Volume = (Swords.SOUND_VOLUMES :: any)[key] or Swords.SOUND_VOLUME
+	made.Parent = root
+	sounds[key] = made
+	return made
+end
 
 -- A plain sword from parts, the same size as the real model, for while WeaponModels has no model yet
 local function standIn(): Model
@@ -281,6 +301,16 @@ local function watchCharacter(character: Model)
 			mine = SwordAnims.load(humanoid, Swords.STARTER)
 			kneeling = false
 		end
+		-- Every sound ready on the new root part before the first swing
+		local root = character:WaitForChild("HumanoidRootPart", 10)
+		local sword = Swords.SWORDS[Swords.STARTER]
+		if root and root:IsA("BasePart") and sword then
+			for key, id in sword.sounds do
+				if id ~= "" then
+					soundFor(key, root, id)
+				end
+			end
+		end
 		-- The server clearing Downed (you got up, or the fight ended) always stands you up
 		character:GetAttributeChangedSignal("Downed"):Connect(function()
 			if not character:GetAttribute("Downed") then
@@ -320,7 +350,8 @@ function SwordController.DrawNow()
 	end)
 end
 
--- One of your sword's sounds (Config/Swords sounds; silent while its id is empty)
+-- One of your sword's sounds (Config/Swords sounds; silent while its id is empty). Each stays on your root part,
+-- loaded, and replays from the start: a new Sound per swing could start late while it loaded.
 function SwordController.PlaySound(key: string)
 	local character = player.Character
 	local swordId = if character then character:GetAttribute("Sword") else nil
@@ -330,14 +361,14 @@ function SwordController.PlaySound(key: string)
 	if not id or id == "" or not root then
 		return
 	end
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
-	sound.Volume = (Swords.SOUND_VOLUMES :: any)[key] or Swords.SOUND_VOLUME
-	sound.Parent = root
-	sound.Ended:Once(function()
-		sound:Destroy()
-	end)
+	local sound = soundFor(key, root :: BasePart, id)
+	sound.TimePosition = 0
 	sound:Play()
+end
+
+-- Whether the hit sound just played from your own reach check (BattleController skips the server's late copy)
+function SwordController.HitSoundJustPlayed(): boolean
+	return os.clock() - hitSoundAt < Swords.HIT_SOUND_WINDOW
 end
 
 -- The trail along your blade for one swing
@@ -440,6 +471,19 @@ function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules
 	end
 end
 
+-- The hit sound the moment the blade lands, when your own reach check says it connects: the server's hit comes a
+-- round trip later
+local function predictHit(connects: (root: BasePart, targets: { SwordRules.Target }) -> boolean)
+	local _, root = ownParts()
+	if not root or not combatTargets then
+		return
+	end
+	if connects(root, combatTargets()) then
+		hitSoundAt = os.clock()
+		SwordController.PlaySound("hit")
+	end
+end
+
 -- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target
 function SwordController.Attack()
 	local character, root = ownParts()
@@ -462,6 +506,11 @@ function SwordController.Attack()
 		end
 		swingTrail()
 		SwordController.PlaySound(`swing{index}`)
+		local cut = sword.combo[index]
+		task.delay(cut.hitAt, predictHit, function(at: BasePart, targets: { SwordRules.Target }): boolean
+			local look = at.CFrame.LookVector
+			return SwordRules.anyInReach(at.Position.X, at.Position.Z, look.X, look.Z, targets, cut)
+		end)
 	end)
 end
 
@@ -483,6 +532,9 @@ function SwordController.Skill()
 	end
 	swingTrail()
 	SwordController.PlaySound("swing3")
+	task.delay(sword.skill.hitAt, predictHit, function(at: BasePart, targets: { SwordRules.Target }): boolean
+		return SwordRules.anyInRadius(at.Position.X, at.Position.Z, targets, sword.skill.radius)
+	end)
 end
 
 -- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images

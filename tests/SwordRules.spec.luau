@@ -66,6 +66,24 @@ return {
 		expect.isNil(SwordRules.aimTarget(0, 0, 0, -1, {}, 14, 75))
 	end,
 
+	["a cut connects if any target is in its reach (the hit sound plays at once)"] = function()
+		local targets = {
+			{ id = "b:m", x = 0, z = -20, radius = 9 },
+			{ id = "b:add1", x = 0, z = 9, radius = 3 },
+		}
+		expect.equal(SwordRules.anyInReach(0, 0, 0, -1, targets, COMBO[1]), false, "the boss's edge 11 studs ahead, the add behind")
+		expect.equal(SwordRules.anyInReach(0, -3, 0, -1, targets, COMBO[1]), true, "the boss's edge 8 studs ahead")
+		expect.equal(SwordRules.anyInReach(0, 0, 0, -1, { targets[2] }, COMBO[1]), false, "the add is behind you")
+		expect.equal(SwordRules.anyInReach(0, 0, 0, -1, {}, COMBO[1]), false)
+	end,
+
+	["the skill connects if any target is within its radius"] = function()
+		local targets = { { id = "b:m", x = 0, z = 15, radius = 5 }, { id = "b:add1", x = 30, z = 0, radius = 3 } }
+		expect.equal(SwordRules.anyInRadius(0, 0, targets, 11), true)
+		expect.equal(SwordRules.anyInRadius(0, 0, { targets[2] }, 11), false)
+		expect.equal(SwordRules.anyInRadius(0, 0, {}, 11), false)
+	end,
+
 	["the starter combo out-damages a reference creature by 1.0-1.6x"] = function()
 		local ratio = SwordRules.comboPowerPerSecond(COMBO) / (1 / 2) -- a SPD 10 creature: 1 ATK every 2 s
 		expect.equal(ratio >= 1 and ratio <= 1.6, true, `ratio {ratio}`)

@@ -975,6 +975,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		CardService.SetFighting(player, member.leaderId, true)
 		if boss then
 			SwordService.SetBackHidden(player, true)
+			SwordService.CountFight(player)
 		end
 		local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
 		if humanoid then
@@ -1025,6 +1026,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			boss = monster.boss,
 			intro = if boss then Bosses.INTRO_SECONDS else nil,
 			names = names,
+			buttonNames = SwordService.ShowButtonNames(player), -- the HUD names its buttons (first boss fights)
 			allies = allies,
 			group = #members > 1,
 			foes = foes,

@@ -79,5 +79,6 @@ return {
 	RELEASE_SECONDS = 0.25, -- into the put-away, the sword is back on the back (the sheath move's Release marker)
 	POPUP_TURN = 0.8, -- radians a second the sword turns in the first-sword popup
 	SOUND_VOLUME = 0.5, -- the sword's sounds (a few play over each other in a combo)
+	HIT_SOUND_WINDOW = 0.6, -- seconds: after your own reach check plays the hit sound, the server's hit plays none
 	SOUND_VOLUMES = { ring = 0.3, hit = 0.6 }, -- exceptions: the ring chime softer, a landed hit louder
 }
