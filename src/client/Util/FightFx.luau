@@ -200,6 +200,22 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		hitSound(view.element, spot)
 	end
 
+	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event)
+	local function onSpecial(event: any)
+		local spec = AttackFx.SPECIALS[event.kind]
+		local marker = resolve.marker(event.from)
+		local view = if marker then resolve.creature(marker) else nil
+		if not spec or not marker or not view or not FightFxRules.budget(active, Extras.enabled(), AttackFx) then
+			return
+		end
+		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
+		local target = targetPosition(event.to, caster)
+		resolve.pose(marker, "cast")
+		ElementFx.sound(AttackFx.SPECIAL_SOUND, caster)
+		hitSound(view.element, target)
+		ElementFx.special(spec.style, caster, target, color(spec.color), spec.seconds or 0)
+	end
+
 	local function onEvents(events: { any })
 		if not alive then
 			return
@@ -212,6 +228,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				onCharge(event)
 			elseif event.type == "attack" and not event.kind and not event.dodged then
 				onAttack(event)
+			elseif event.type == "ability" and event.kind and AttackFx.SPECIALS[event.kind] then
+				onSpecial(event)
 			end
 		end
 	end

@@ -14,4 +14,9 @@ function FightFxRules.kindFor(element: string, cfg: any): string?
 	return if entry then entry.kind else nil
 end
 
+-- Whether a Pet button move or super move (its kind: "Fireball", "Inferno", ...) has an effect (AttackFx.SPECIALS)
+function FightFxRules.hasEffect(kind: string, cfg: any): boolean
+	return cfg.SPECIALS[kind] ~= nil
+end
+
 return FightFxRules

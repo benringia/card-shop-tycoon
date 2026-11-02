@@ -34,6 +34,22 @@ return {
 	ARC = { Ember = 6, Tide = 0 }, -- studs a projectile rises at its midpoint
 	BURST = 26, -- particles in an impact
 	DASH = { combo = 0.7, zip = 0.6 }, -- share of the way to its target a creature dashes for a combo or a zip
+	-- Pet button moves and super moves (Config/Combat ABILITIES and SIGNATURES kinds): each lands with its event, its
+	-- effect at once (style, colour, how long a lasting one stays, seconds)
+	SPECIALS = {
+		Fireball = { style = "bigball", color = rgb(255, 122, 58) },
+		Wave = { style = "wave", color = rgb(74, 168, 255) },
+		Snare = { style = "snare", color = rgb(74, 222, 128), seconds = 4 },
+		Overcharge = { style = "aura", color = rgb(250, 204, 21), seconds = 3 },
+		Curse = { style = "mist", color = rgb(167, 139, 250), seconds = 5 },
+		Inferno = { style = "inferno", color = rgb(255, 90, 26), seconds = 6 },
+		TidalShield = { style = "shield", color = rgb(96, 196, 255), seconds = 4 },
+		Stampede = { style = "stampede", color = rgb(250, 204, 21) },
+		Eclipse = { style = "eclipse", color = rgb(167, 139, 250), seconds = 3 },
+		Supernova = { style = "nova", color = rgb(255, 209, 102) },
+		Devour = { style = "devour", color = rgb(139, 92, 246) },
+	},
+	SPECIAL_SOUND = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1 (with the element's hit sound)
 	-- Creatures circle their fight spot: this far (studs, times the creature's size), this fast (turns a second), with
 	-- darts out to `dart` studs more
 	ORBIT = { radius = 4, speed = 0.15, dart = 1.5 },

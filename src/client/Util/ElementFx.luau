@@ -189,4 +189,122 @@ function ElementFx.slash(at: Vector3, from: Vector3, color: Color3, style: strin
 	end
 end
 
+-- A shape of light that fades out after `seconds` (lasting effects: pillars, bubbles, rings)
+local function lasting(shape: Enum.PartType, size: Vector3, color: Color3, at: CFrame, seconds: number, transparency: number): Part
+	local piece = part(size, color, at.Position)
+	piece.Shape = shape
+	piece.CFrame = at
+	piece.Transparency = transparency
+	task.delay(math.max(0, seconds - 0.4), function()
+		if piece.Parent then
+			TweenService:Create(piece, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+		end
+	end)
+	Debris:AddItem(piece, seconds + 0.1)
+	return piece
+end
+
+-- Sparks rising round `at` for `seconds` (fire, mist, an aura)
+local function haze(at: Vector3, color: Color3, seconds: number, speed: number, size: number, rate: number)
+	local holder = part(Vector3.new(0.2, 0.2, 0.2), color, at)
+	holder.Transparency = 1
+	local sparks = emitter(holder, color, speed, 0.9, size)
+	sparks.Shape = Enum.ParticleEmitterShape.Sphere
+	sparks.Rate = rate
+	task.delay(seconds, function()
+		sparks.Rate = 0
+	end)
+	Debris:AddItem(holder, seconds + 1)
+end
+
+-- A Pet button move or super move (Config/AttackFx SPECIALS), all landing now: `style` picks the look; `caster` and
+-- `target` are positions (the target is the caster for moves on itself); `seconds` for the lasting ones
+function ElementFx.special(style: string, caster: Vector3, target: Vector3, color: Color3, seconds: number)
+	local ground = target - Vector3.new(0, 2, 0)
+	if style == "bigball" then
+		ElementFx.bolt(caster, target, color, 0.2)
+		ElementFx.burst(target, color, 1.8)
+		local ring = part(Vector3.new(0.3, 2, 2), color, ground)
+		ring.Shape = Enum.PartType.Cylinder
+		ring.CFrame = CFrame.new(ground) * CFrame.Angles(0, 0, math.rad(90))
+		TweenService:Create(ring, TweenInfo.new(0.5), { Size = Vector3.new(0.3, 16, 16), Transparency = 1 }):Play()
+		Debris:AddItem(ring, 0.6)
+	elseif style == "wave" then
+		local base = caster - Vector3.new(0, 2, 0)
+		local wave = part(Vector3.new(1, 1, 1), color, base)
+		wave.Shape = Enum.PartType.Ball
+		wave.Material = Enum.Material.Glass
+		wave.Transparency = 0.4
+		TweenService:Create(wave, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(9, 7, 9) }):Play()
+		task.delay(0.45, function()
+			TweenService:Create(wave, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+		end)
+		Debris:AddItem(wave, 0.9)
+		ElementFx.burst(caster, color, 1.2)
+	elseif style == "snare" then
+		for index = 1, 5 do
+			local angle = index / 5 * math.pi * 2
+			local root = ground + Vector3.new(math.cos(angle) * 2.5, 0, math.sin(angle) * 2.5)
+			local vine = lasting(Enum.PartType.Block, Vector3.new(0.4, 0.2, 0.4), color, CFrame.new(root), seconds, 0)
+			TweenService:Create(vine, TweenInfo.new(0.35, Enum.EasingStyle.Back), {
+				Size = Vector3.new(0.4, 6, 0.4),
+				CFrame = CFrame.new(root + Vector3.new(0, 3, 0)) * CFrame.Angles(0, angle, math.rad(18)),
+			}):Play()
+		end
+	elseif style == "aura" then
+		haze(caster, color, seconds, 4, 0.7, 30)
+		for step = 0, 2 do
+			task.delay(step * 0.4, function()
+				ElementFx.bolt(caster + Vector3.new(0, 3, 0), caster - Vector3.new(0, 1, 0), color, 0.15)
+			end)
+		end
+	elseif style == "mist" then
+		haze(target, color, seconds, 1.5, 2.5, 18)
+	elseif style == "inferno" then
+		local pillar = lasting(Enum.PartType.Cylinder, Vector3.new(14, 4, 4), color, CFrame.new(ground + Vector3.new(0, 7, 0)) * CFrame.Angles(0, 0, math.rad(90)), seconds, 0.45)
+		pillar.Material = Enum.Material.Neon
+		haze(target, color, seconds, 8, 1.2, 40)
+	elseif style == "shield" then
+		local bubble = lasting(Enum.PartType.Ball, Vector3.new(11, 11, 11), color, CFrame.new(caster), seconds, 0.2)
+		bubble.Material = Enum.Material.ForceField
+	elseif style == "stampede" then
+		ElementFx.bolt(caster, target, color, 0.3)
+		ElementFx.bolt(caster + Vector3.new(0, 1, 0), target + Vector3.new(0, 1, 0), color, 0.3)
+		ElementFx.burst(target, color, 1.5)
+	elseif style == "eclipse" then
+		lasting(Enum.PartType.Ball, Vector3.new(6, 6, 6), Color3.fromRGB(20, 10, 40), CFrame.new(caster + Vector3.new(0, 16, 0)), seconds, 0)
+		local halo = lasting(Enum.PartType.Ball, Vector3.new(7.5, 7.5, 7.5), color, CFrame.new(caster + Vector3.new(0, 16, 0)), seconds, 0.6)
+		halo.Material = Enum.Material.Neon
+		local ring = lasting(Enum.PartType.Cylinder, Vector3.new(0.2, 7, 7), color, CFrame.new(caster - Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, math.rad(90)), seconds, 0.3)
+		ring.Material = Enum.Material.Neon
+	elseif style == "nova" then
+		local star = part(Vector3.new(1, 1, 1), color, target + Vector3.new(0, 10, 0))
+		star.Shape = Enum.PartType.Ball
+		TweenService:Create(star, TweenInfo.new(0.25), { Size = Vector3.new(5, 5, 5), CFrame = CFrame.new(target) }):Play()
+		task.delay(0.25, function()
+			star:Destroy()
+			ElementFx.burst(target, color, 2.5)
+		end)
+	elseif style == "devour" then
+		for side = -1, 1, 2 do
+			local jaw = part(Vector3.new(6, 1.2, 3), Color3.fromRGB(40, 20, 70), target + Vector3.new(0, side * 4, 0))
+			TweenService:Create(jaw, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(target + Vector3.new(0, side * 0.6, 0)) }):Play()
+			task.delay(0.35, function()
+				TweenService:Create(jaw, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+			end)
+			Debris:AddItem(jaw, 0.7)
+		end
+		task.delay(0.2, function()
+			ElementFx.burst(target, color, 1.2)
+			for step = 0, 2 do
+				task.delay(step * 0.12, function()
+					ElementFx.projectile(target, function()
+						return caster
+					end, Color3.fromRGB(74, 222, 128), 0.4, 2, function() end)
+				end)
+			end
+		end)
+	end
+end
+
 return ElementFx

@@ -1,6 +1,7 @@
 --!strict
 local FightFxRules = require("../src/shared/Util/FightFxRules")
 local AttackFx = require("../src/shared/Config/AttackFx")
+local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 
 return {
@@ -26,5 +27,15 @@ return {
 			expect.equal(sounds ~= nil and typeof(sounds.hit) == "string", true, element)
 		end
 		expect.equal(typeof(AttackFx.SOUNDS.charge), "string")
+	end,
+
+	["every Pet button move and super move has its effect"] = function()
+		for element, ability in Combat.ABILITIES do
+			expect.equal(FightFxRules.hasEffect(ability.kind, AttackFx), true, `{element} {ability.kind}`)
+		end
+		for name, signature in Combat.SIGNATURES do
+			expect.equal(FightFxRules.hasEffect(signature.kind, AttackFx), true, `{name} {signature.kind}`)
+		end
+		expect.equal(FightFxRules.hasEffect("Nothing", AttackFx), false)
 	end,
 }

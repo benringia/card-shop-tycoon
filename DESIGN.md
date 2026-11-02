@@ -983,6 +983,12 @@ group, checked before its fragments and every time (not only the first). Below i
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
   once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
   Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
+  Pet button moves and super moves (`AttackFx.SPECIALS`, `ElementFx.special`) land at once with their `ability`
+  event: Fireball a blast and a fire ring on the ground, Wave a swelling water dome, Snare five vines round the target
+  (4 s), Overcharge a crackling aura on the caster (3 s), Curse a purple mist (5 s); the super moves Inferno a fire
+  pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
+  the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
+  nothing (`FightFxRules.hasEffect`).
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
