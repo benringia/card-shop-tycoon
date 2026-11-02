@@ -17,6 +17,30 @@ local CombatPreload = require(Shared:WaitForChild("Util"):WaitForChild("CombatPr
 
 local CombatAssets = {}
 
+local RETRIES = 3 -- more tries for images whose download failed (a fresh upload can fail while Roblox processes it)
+local RETRY_WAIT = 5
+
+-- Downloads the images that aren't in yet, trying again a few times: a failed preload is never retried by itself, and
+-- a particle drawn with a missing texture shows nothing (a fight's first fireballs looked small)
+function CombatAssets.ensure(images: { string })
+	task.spawn(function()
+		for _ = 1, RETRIES do
+			local missing: { string } = {}
+			for _, id in images do
+				local ok, status = pcall(ContentProvider.GetAssetFetchStatus, ContentProvider, id)
+				if not ok or status ~= Enum.AssetFetchStatus.Success then
+					table.insert(missing, id)
+				end
+			end
+			if #missing == 0 then
+				return
+			end
+			pcall(ContentProvider.PreloadAsync, ContentProvider, missing)
+			task.wait(RETRY_WAIT)
+		end
+	end)
+end
+
 function CombatAssets.preload()
 	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx)
 	local cache = Instance.new("ScreenGui")
@@ -52,6 +76,16 @@ function CombatAssets.preload()
 	if not ok then
 		warn("[CombatAssets] preload failed:", err)
 	end
+	CombatAssets.ensure(ids.images)
+end
+
+-- The attack effects' textures (Config/AttackFx TEXTURES), checked again as a fight starts
+function CombatAssets.ensureAttackFx()
+	local images = {}
+	for _, id in AttackFx.TEXTURES do
+		table.insert(images, id)
+	end
+	CombatAssets.ensure(images)
 end
 
 return CombatAssets

@@ -247,8 +247,10 @@ end
 function ElementFx.projectile(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, arc: number, onArrive: (Vector3) -> (), o: any?)
 	local opts = o or {}
 	local s = opts.scale or 1
-	local ball = part(Vector3.one * 0.2, color, from)
-	ball.Transparency = 1
+	-- A small white-hot core: the comet reads as one even before its glow textures are in
+	local ball = part(Vector3.one * 0.55 * s, color:Lerp(WHITE, 0.7), from)
+	ball.Shape = Enum.PartType.Ball
+	ball.Transparency = 0.15
 	local emitters: { ParticleEmitter } = {}
 	local function keep(e: ParticleEmitter, rate: number)
 		e.Rate = detail(rate)
@@ -306,6 +308,7 @@ function ElementFx.projectile(from: Vector3, target: () -> Vector3, color: Color
 				e.Rate = 0
 			end
 			trail.Enabled = false
+			ball.Transparency = 1
 			Debris:AddItem(ball, 0.6)
 			onArrive(goal)
 		end

@@ -43,6 +43,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local FightFx = require(ClientUtil:WaitForChild("FightFx"))
+local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local Swords = require(Config:WaitForChild("Swords"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
@@ -833,8 +834,10 @@ local function swordHit(event: any)
 	end
 end
 
--- The attack pictures for this fight (Util/FightFx): creatures charge, then their element's attack lands with the hit
+-- The attack pictures for this fight (Util/FightFx): creatures charge, then their element's attack lands with the hit.
+-- Their textures are checked again first, in case the loading screen's download failed
 local function newFightFx(): FightFx.Dispatcher
+	CombatAssets.ensureAttackFx()
 	return FightFx.new({
 		marker = markerFor,
 		creature = CreatureController.GetFightView,
