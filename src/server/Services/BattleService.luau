@@ -108,7 +108,7 @@ local allowDodge = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
-local fightEndedHandlers: { (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }) -> () } = {}
+local fightEndedHandlers: { (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }, stillIn: { Player }) -> () } = {}
 local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
@@ -140,8 +140,8 @@ end
 
 -- BossService: every fight's end, whatever the result (it unseals the arena)
 -- After a fight ends (deferred): its monster, the result ("win", "lose", "run", or "timeout" when it hit the time
--- limit) and every member's creatures' HP then
-function BattleService.OnFightEnded(handler: (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }) -> ())
+-- limit), every member's creatures' HP then (members who left earlier included) and the players still in it at the end
+function BattleService.OnFightEnded(handler: (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }, stillIn: { Player }) -> ())
 	table.insert(fightEndedHandlers, handler)
 end
 
@@ -709,9 +709,13 @@ local function endFight(fight: Fight, result: string)
 		return
 	end
 	local reported = if fight.sim.timedOut then "timeout" else result
+	local stillIn = {}
+	for player in fight.members do
+		table.insert(stillIn, player)
+	end
 	task.defer(function() -- after every member is released below, so endHp is complete
 		for _, handler in fightEndedHandlers do
-			handler(fight.monster, reported, fight.endHp)
+			handler(fight.monster, reported, fight.endHp, stillIn)
 		end
 	end)
 	fight.ended = true

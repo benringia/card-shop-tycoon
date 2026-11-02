@@ -770,16 +770,16 @@ local function onTravel(player: Player, raw: unknown)
 end
 
 -- A lost boss fight: after LOSS_COUNTDOWN ("Teleporting back to town in 3, 2, 1") everyone who was still in it goes
--- home (BossRules.lossHome); they no longer hold a remote copy, so its loot linger doesn't move them back. The
--- Dungeon's run handles its own losers.
-local function sendLosersHome(monster: WildService.Monster, hpLeft: { [Player]: { [string]: number } })
+-- home (BossRules.lossHome); they no longer hold a remote copy, so its loot linger doesn't move them back. Members who
+-- left earlier already went back to the gate and are left alone. The Dungeon's run handles its own losers.
+local function sendLosersHome(monster: WildService.Monster, losers: { Player })
 	local home = BossRules.lossHome(if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Main")
 	if home == "dungeon" then
 		return
 	end
 	local _, index = copyOf(monster)
 	local held = if index then (fighters[monster.boss :: string] or {})[index] else nil
-	for player in hpLeft do
+	for _, player in losers do
 		local at = if held then table.find(held, player) else nil
 		if at then
 			table.remove(held :: { Player }, at)
@@ -807,9 +807,9 @@ function BossService.Start()
 			end
 		end
 	end)
-	BattleService.OnFightEnded(function(monster, result, hpLeft)
+	BattleService.OnFightEnded(function(monster, result, _, stillIn)
 		if result == "lose" and monster.boss then
-			sendLosersHome(monster, hpLeft)
+			sendLosersHome(monster, stillIn)
 		end
 		local copy, index = copyOf(monster)
 		local bossId = monster.boss :: string
