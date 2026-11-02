@@ -54,6 +54,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Dawn", command = "/time dawn" },
 			{ label = "Replay intro", command = "/intro" },
 			{ label = "Sword popup again", command = "/swordpopup" },
+			{ label = "Button names again (3 fights)", command = "/buttonnames" },
 		},
 	},
 	{

@@ -79,6 +79,13 @@ function SwordService.ShowButtonNames(player: Player): boolean
 	return count ~= nil and count <= CombatHud.NAME_FIGHTS
 end
 
+-- Studio's /buttonnames: the next boss fights show the buttons' names again
+function SwordService.ResetFights(player: Player)
+	if fightCounts[player] ~= nil then
+		fightCounts[player] = 0
+	end
+end
+
 -- Boss fights: back accessories go invisible (their own transparency is kept to put back)
 function SwordService.SetBackHidden(player: Player, hidden: boolean)
 	local character = player.Character

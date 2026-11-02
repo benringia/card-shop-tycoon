@@ -293,6 +293,9 @@ function DevService.Start()
 	addCommand(folder, "swordpopup", function(player)
 		SwordService.ResetPopup(player)
 	end)
+	addCommand(folder, "buttonnames", function(player)
+		SwordService.ResetFights(player)
+	end)
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
 		local known = false
@@ -367,7 +370,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames")
 end
 
 return DevService
