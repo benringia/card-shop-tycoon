@@ -65,6 +65,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	WildPopulation = require("./WildPopulation.spec"),
 	MonsterLooks = require("./MonsterLooks.spec"),
 	BossMoments = require("./BossMoments.spec"),
+	SwordsConfig = require("./SwordsConfig.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

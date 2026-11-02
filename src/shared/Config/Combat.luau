@@ -61,9 +61,23 @@ return {
 	RUN_RETRY_SECONDS = 3,
 
 	-- Fainted cards rest; the plaza spring speeds it up
-	REST_SECONDS = 180,
+	REST_SECONDS = 300,
 	SPRING_RADIUS = 12,
 	SPRING_SPEED = 3,
+
+	-- The player in boss fights (spec 2026-11-02-you-in-the-fight-design): a sword beside one summoned creature
+	PLAYER_HP = 100, -- everyone's; boss hits on players are shares of it (Config/Bosses playerAttacks)
+	DOWN_SECONDS = 5, -- at 0 HP you're down this long, then back up while one of your creatures stands
+	GET_UP_SHARE = 0.5, -- of your HP back when you get up
+	PLAYER_TARGET_SHARE = 1 / 3, -- of a boss's swings go at a player (a quick hit) instead of a creature
+	QUICK_WARNING = 0.5, -- seconds the boss flashes before a quick hit lands
+	HIT_GRACE = 0.15, -- seconds the server lands hits on players after clients show them (a late dodge still counts)
+	DODGE_SECONDS = 0.35, -- untouchable after a dodge
+	DODGE_COOLDOWN = 1,
+	DODGE_STUDS = 12, -- the dash's length
+	LOSS_COUNTDOWN = 3, -- "Teleporting back to town in 3, 2, 1"
+	SWORD_ACTION_COOLDOWN = 0.08, -- remote rate limit on Attack, Skill and Dodge taps
+	SWORD_IDLE_ATK = 10, -- the sword's ATK when none of your creatures has been on the field (never in practice)
 
 	-- World
 	FIGHT_RANGE = 12, -- studs from player to monster to start

@@ -604,7 +604,7 @@ ability (8 s cooldown) and the 6 Epic/Legendary cards a signature ability (15 s)
 Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
 (`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
 Win: XP `12 × level^1.3` (×3 elite) split evenly across all 3 party cards, $0.40 × level, 5% (elite 20%) chance of a
-card of the zone's elements. Lose: nothing is lost, but fainted cards rest 3 minutes (3x faster standing at the
+card of the zone's elements. Lose: nothing is lost, but fainted cards rest 5 minutes (`Combat.REST_SECONDS`, 3 before the player joined boss fights) (3x faster standing at the
 healing spring in the plaza centre). A fight still going after 2 minutes ends as a run. Numbers:
 `Config/Combat.luau`, `Config/Wild.luau`; maths in `Util/CombatMath`, fights in `server/Util/BattleSim` (both
 Lune-tested).

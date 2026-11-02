@@ -18,6 +18,10 @@ export type Mechanics = {
 -- One phase of a boss that has them: active while its HP share is under `below` (the first has below = 1); it
 -- switches the boss's element and mechanics. Phases only go forward (a heal never takes one back).
 export type BossPhase = { below: number, element: string, mechanics: Mechanics }
+-- Its attacks on players (spec 2026-11-02-you-in-the-fight-design), stronger up the ladder: a big attack every `every`
+-- s (a closing ring on each player, `warning` s to step out or dodge, `big` of their HP; with `doubleChance` a second
+-- ring on one of them), and quick hits of `quick` of their HP on the swings that go at a player
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number? }
 export type Boss = {
 	name: string,
 	title: string, -- under its name on the intro card
@@ -35,6 +39,7 @@ export type Boss = {
 	shopLevel: number, -- the shop level a player needs to fight it (every member of a group), on top of its fragments
 	groupAtkStep: number?, -- its own ATK step per extra player in a group (nil: GROUP_ATK_STEP)
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
+	playerAttacks: PlayerAttacks,
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
 	mechanics: Mechanics, -- always on (a boss with phases keeps {} here: its phases bring theirs)
@@ -81,6 +86,7 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 200,
 		shopLevel = 3,
 		minFightSeconds = 12,
+		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10 },
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
 		drops = {
@@ -115,6 +121,7 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 350,
 		shopLevel = 5,
 		minFightSeconds = 18,
+		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12 },
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
 		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12, uses = 3 } },
@@ -153,6 +160,7 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 650,
 		shopLevel = 8,
 		minFightSeconds = 25,
+		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14 },
 		unlock = { item = "fragment_emberColossus", count = 5 },
 		fragment = "fragment_frostTyrant",
 		mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } },
@@ -183,6 +191,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 12,
 		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 60,
+		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15 },
 		unlock = { item = "fragment_frostTyrant", count = 5 },
 		fragment = "fragment_stormSovereign",
 		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
@@ -212,6 +221,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 15,
 		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 70,
+		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17 },
 		unlock = { item = "fragment_stormSovereign", count = 8 },
 		fragment = "fragment_riftDevourer",
 		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } },
@@ -240,6 +250,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 18,
 		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
 		minFightSeconds = 80,
+		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18 },
 		unlock = { item = "fragment_riftDevourer", count = 8 },
 		fragment = "fragment_prismHydra",
 		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
@@ -274,6 +285,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 22,
 		groupAtkStep = 0.25,
 		minFightSeconds = 120,
+		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35 },
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
 		clearTitle = "Dungeon Conqueror",
@@ -329,6 +341,14 @@ return {
 	START_COOLDOWN = 2, -- seconds between start requests per player
 	TRAVEL_COOLDOWN = 3, -- seconds between the board's Take me there requests per player
 	CLEARED_TOPIC = "BossCleared", -- MessagingService topic for announceEverywhere first clears
+
+	-- The player in the fight: the big attacks' ring shapes (a slam under a player, a swipe from the boss toward one)
+	-- and how big the boss and its adds are to a sword
+	RING_SLAM_RADIUS = 7, -- studs
+	RING_SWIPE_EXTRA = 8, -- a swipe reaches the boss's ring radius plus this
+	RING_SWIPE_HALF_ANGLE = 35, -- degrees either side of the line to its target
+	HIT_RADIUS_SHARE = 0.6, -- a boss's sword-hit radius: its ring radius times this
+	ADD_HIT_RADIUS = 3,
 
 	-- Groups (spec section 5): 2-4 players, one boss scaled to the group, loot per player for those who helped
 	GROUP_MAX = 4,
