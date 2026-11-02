@@ -7,7 +7,8 @@
 export type Cut = { power: number, hitAt: number, length: number, reach: number, arc: number }
 export type Skill = { power: number, hitAt: number, length: number, radius: number, cooldown: number }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
--- sounds: asset ids by moment ("" plays nothing)
+-- sounds: asset ids by moment ("" plays nothing); slash: its hits' slash arc (colour { r, g, b }, size; Config/SwordFx
+-- SLASH, Util/HitFx), plain on the starter, bolder on the Forge's swords
 export type Sword = {
 	name: string,
 	power: number,
@@ -17,6 +18,7 @@ export type Sword = {
 	skill: Skill,
 	animations: { [string]: string },
 	sounds: { [string]: string },
+	slash: { color: { number }, scale: number },
 }
 
 local SWORDS: { [string]: Sword } = {
@@ -25,6 +27,7 @@ local SWORDS: { [string]: Sword } = {
 		power = 1,
 		element = nil,
 		model = "StarterSword",
+		slash = { color = { 207, 230, 255 }, scale = 1 }, -- pale steel
 		combo = {
 			{ power = 0.35, hitAt = 0.28, length = 0.56, reach = 9, arc = 70 }, -- crouched wind-up, a stepping cut down across the body
 			{ power = 0.35, hitAt = 0.2, length = 0.5, reach = 9, arc = 90 }, -- a sideways sweep

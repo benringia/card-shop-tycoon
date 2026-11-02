@@ -1,12 +1,14 @@
 --!strict
--- Hit feel for the player's fight (spec 2026-11-02-you-in-the-fight-design): sparks where a sword hit lands and a
--- quick glow over what was hit (Config/SwordFx). Hit-stop, shake and the damage numbers are the callers' (SwordAnims,
+-- Hit feel for the player's fight (spec 2026-11-02-you-in-the-fight-design): sparks where a sword hit lands, a
+-- quick glow over what was hit, and the sword's slash arc with a small flash (Config/SwordFx SLASH, its colour and size
+-- from Config/Swords: plain steel on the starter). Hit-stop, shake and the damage numbers are the callers' (SwordAnims,
 -- BattleController).
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
+local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 
 local HitFx = {}
 
@@ -40,6 +42,28 @@ function HitFx.sparks(position: Vector3)
 	holder.Parent = workspace
 	emitter:Emit(SwordFx.SPARKS)
 	Debris:AddItem(holder, 1)
+end
+
+-- Each cut's arc, turned the way its swing goes: a cut down across the body, a sideways sweep, an overhead slam
+local CUT_ANGLES = { -40, 90, 0 }
+
+-- A sword cut landing at `at`: its slash arc (bigger on the combo's last cut) and a small white flash. slash: the
+-- sword's look (Config/Swords slash); index: the cut (1-3, or 0 when not known)
+function HitFx.cut(at: Vector3, slash: { color: { number }, scale: number }, index: number, last: boolean)
+	local cfg = SwordFx.SLASH
+	local size = cfg.size * slash.scale * (if last then cfg.finisher else 1)
+	local angle = CUT_ANGLES[index] or -40
+	ElementFx.arc(at, color(slash.color), size, angle, if index == 2 then -220 else 220)
+	ElementFx.flare(at, Color3.new(1, 1, 1), cfg.flash * slash.scale * (if last then cfg.finisher else 1))
+end
+
+-- The sword skill's spin landing round `center` (your feet): a wide arc and a ring on the ground
+function HitFx.spin(center: Vector3, slash: { color: { number }, scale: number })
+	local cfg = SwordFx.SLASH
+	local tint = color(slash.color)
+	ElementFx.arc(center + Vector3.new(0, cfg.up, 0), tint, cfg.size * cfg.skill * slash.scale, 90, 300)
+	ElementFx.ring(center - Vector3.new(0, 2.5, 0), tint, cfg.skillRing * slash.scale, 0.35)
+	ElementFx.flare(center + Vector3.new(0, cfg.up, 0), Color3.new(1, 1, 1), cfg.flash * cfg.skill * slash.scale)
 end
 
 -- A glow over a model (or part) fading from `strongest` (fill transparency) to nothing over `seconds`

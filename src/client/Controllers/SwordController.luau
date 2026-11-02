@@ -23,6 +23,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local AfterImage = require(ClientUtil:WaitForChild("AfterImage"))
+local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -479,14 +480,24 @@ end
 
 -- The hit sound the moment the blade lands, when your own reach check says it connects: the server's hit comes a
 -- round trip later
-local function predictHit(connects: (root: BasePart, targets: { SwordRules.Target }) -> boolean)
-	local _, root = ownParts()
+-- move: the cut (1-3) or "skill"; its slash arc plays where your blade lands, at once (the server's hit follows)
+local function predictHit(connects: (root: BasePart, targets: { SwordRules.Target }) -> boolean, move: number | string, last: boolean)
+	local character, root = ownParts()
 	if not root or not combatTargets then
 		return
 	end
 	if connects(root, combatTargets()) then
 		hitSoundAt = os.clock()
 		SwordController.PlaySound("hit")
+		local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+		if sword then
+			local cfg = SwordFx.SLASH
+			if move == "skill" then
+				HitFx.spin(root.Position, sword.slash)
+			else
+				HitFx.cut(root.Position + root.CFrame.LookVector * cfg.ahead + Vector3.new(0, cfg.up, 0), sword.slash, move :: number, last)
+			end
+		end
 	end
 end
 
@@ -516,7 +527,7 @@ function SwordController.Attack()
 		task.delay(cut.hitAt, predictHit, function(at: BasePart, targets: { SwordRules.Target }): boolean
 			local look = at.CFrame.LookVector
 			return SwordRules.anyInReach(at.Position.X, at.Position.Z, look.X, look.Z, targets, cut)
-		end)
+		end, index, index == #sword.combo)
 	end)
 end
 
@@ -541,7 +552,7 @@ function SwordController.Skill()
 	SwordController.PlaySound("swing3")
 	task.delay(sword.skill.hitAt, predictHit, function(at: BasePart, targets: { SwordRules.Target }): boolean
 		return SwordRules.anyInRadius(at.Position.X, at.Position.Z, targets, sword.skill.radius)
-	end)
+	end, "skill", false)
 end
 
 -- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images

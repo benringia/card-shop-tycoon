@@ -26,6 +26,10 @@ return {
 	SPARK_COLOR = rgb(255, 236, 170),
 	SHAKE = { cut = { seconds = 0.08, studs = 0.12 }, skill = { seconds = 0.18, studs = 0.3 }, hurt = { seconds = 0.15, studs = 0.25 } },
 
+	-- A sword hit's slash arc (Util/HitFx.cut; its colour and size are the sword's, Config/Swords slash): `size` studs,
+	-- this far in front of you (`ahead`), the combo's last cut and the skill bigger; the skill adds a ring at your feet
+	SLASH = { size = 4.2, ahead = 4, up = 1.2, finisher = 1.25, skill = 1.7, skillRing = 11, flash = 1.6 },
+
 	-- The slash trail on your blade while a cut or the skill swings
 	TRAIL_SECONDS = 0.35,
 	TRAIL_LIFETIME = 0.16,

@@ -70,4 +70,13 @@ return {
 			expect.equal(sword.skill.hitAt > 0 and sword.skill.hitAt < sword.skill.length, true, `{sword.name} skill`)
 		end
 	end,
+	["every sword has its slash look, the starter a plain steel one"] = function()
+		for id, sword in Swords.SWORDS do
+			expect.equal(sword.slash ~= nil and #sword.slash.color == 3, true, `{id} colour`)
+			expect.equal(sword.slash.scale > 0, true, `{id} size`)
+		end
+		local starter = Swords.SWORDS.starterSword.slash
+		expect.equal(starter.scale, 1, "the starter is the base size")
+		expect.equal(starter.color[3] >= starter.color[1], true, "a cool steel colour, no element")
+	end,
 }
