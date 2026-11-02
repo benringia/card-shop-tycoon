@@ -88,7 +88,8 @@ pipeline:
 - `Util/MonsterMoves` picks the clip for each fight event (charge or quick-hit warning: `windup` over the warning;
   a hit: `strike`; a ring: `specialWindup` timed to its warning; the ring's hit: `specialRelease`); `Util/FightFx`
   plays it through `MonsterController.PlayClip` and draws the boss's effects (`Config/AttackFx` BOSS).
-- Bosses keyed so far: `meadowWarden` (`tools/blender/anim_<boss>.py`). The Prism Hydra waits for its remodel.
+- Bosses keyed so far: `meadowWarden`, `caveBroodQueen`, `emberColossus` (`tools/blender/anim_<boss>.py`). The Prism
+  Hydra waits for its remodel.
 - Adding the `MonsterAnimations` mapping needs a `rojo serve` restart (all three project files have it).
 
 ## The sword model

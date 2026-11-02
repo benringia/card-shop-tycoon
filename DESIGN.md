@@ -995,8 +995,12 @@ group, checked before its fragments and every time (not only the first). Below i
   impact there, the `specialWindup` over a ring's warning with sparks in its colour pulling in, then the
   `specialRelease` as the ring lands, with its effect over the ring (`Config/AttackFx` BOSS, `ElementFx.bossStrike`,
   `ElementFx.bossRelease`). One move at a time: a group hit is one strike, nothing interrupts the special. Meadow
-  Warden: branch swipe (leafy slash, dust) and root slam (roots burst up across the ring, green shockwave). Sounds:
-  Pro Sound Effects. The Prism Hydra keeps its roar until its remodel.
+  Warden: branch swipe (leafy slash, dust) and root slam (roots burst up across the ring, green shockwave). Cave Brood
+  Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
+  up, then lunges; strands spray across the cone and stick). Ember Colossus: horn gore (sits back, head low, then
+  tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
+  shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
+  remodel.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
