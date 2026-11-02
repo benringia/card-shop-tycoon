@@ -47,6 +47,7 @@ local NAMES = {
 	"RunFight", -- client → server: ()
 	"BattleStarted", -- server → client: { monsterId, species, level, elite, element, names = { [beastId] = name }, snapshot }
 	"BattleEvent", -- server → client: { events = { Event }, snapshot } (BattleSim)
+	"ArenaWatch", -- server → client: a PvP fight for players watching from the stands: { events, markers? } or { ended = true }
 	"BattleEnded", -- server → client: { result, rested = { beastId }, xpEach?, cash?, card? = { cardId, foil, grade }, partyIds? }
 	"RestChanged", -- server → client: { entries = { { beastId, seconds } }, nearSpring: boolean }
 	"Challenge", -- client → server: (targetUserId: number, bet: number) PvP challenge

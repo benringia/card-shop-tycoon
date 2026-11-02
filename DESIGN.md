@@ -591,7 +591,9 @@ queue first come, first served; leaving the queue refunds both). After a 3-2-1 c
 out), same combat rules as the wild, no call-in and no Run; you can roam your half of the pad. Winner takes both
 bets; the 2-minute limit is a draw (both refunded); leaving or resetting mid-fight forfeits. No XP, drops or resting
 from PvP. 10 s after the result both go home. Anyone can watch from the stands (plaza "Arena" portal, `/arena`);
-creatures in a fight show floating HP bars. Wins-losses-draws are saved and shown in the Party panel. A declined
+creatures in a fight show floating HP bars, and players within 60 studs of the arena (`Pvp.WATCH_RADIUS`) see the
+creatures' charges and attacks like the fighters (`Remotes.ArenaWatch`, `ArenaWatchController` on `Util/FightFx`; no
+HUD). Wins-losses-draws are saved and shown in the Party panel. A declined
 challenge blocks that pair for 30 s; 10 s cooldown between challenges. Numbers: `Config/Pvp.luau`; bet and record
 rules in `Util/PvpRules` (Lune-tested). The fight engine (`BattleSim`) runs two sides of fighters: wild fights are
 the party vs a one-monster side.

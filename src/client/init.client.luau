@@ -42,6 +42,7 @@ local BossBoardController = require(Controllers:WaitForChild("BossBoardControlle
 local LootController = require(Controllers:WaitForChild("LootController"))
 local AdminPanelController = require(Controllers:WaitForChild("AdminPanelController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
+local ArenaWatchController = require(Controllers:WaitForChild("ArenaWatchController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
@@ -116,6 +117,7 @@ else
 	LootController.Start() -- boss loot on the ground
 	AdminPanelController.Start() -- Studio only: the dev commands as buttons
 	ChallengeController.Start()
+	ArenaWatchController.Start() -- PvP from the stands: the fight's attacks
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 	TitleController.Start() -- titles over names (Dungeon Conqueror)

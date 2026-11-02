@@ -50,6 +50,7 @@ type Fight = {
 	sim: BattleSim.State,
 	sides: { a: FightSide, b: FightSide },
 	markers: { [string]: BasePart }, -- sim id -> marker
+	watchers: { [Player]: boolean }, -- players near the arena already sent this fight's markers (ArenaWatch)
 	extras: { BasePart }, -- every marker made for this fight (not the summoned ones), for clean-up
 	spots: { [string]: CFrame }, -- sim id -> where it stands
 	sinceSnapshot: number,
@@ -460,6 +461,25 @@ local function updateHp(current: Fight, id: string)
 	end
 end
 
+-- Players near the arena who aren't fighting see the attacks too (no HUD): its events, and its markers the first time
+local function sendToWatchers(current: Fight, events: { BattleSim.Event })
+	if #events == 0 then
+		return
+	end
+	for _, player in Players:GetPlayers() do
+		if player == current.sides.a.player or player == current.sides.b.player then
+			continue
+		end
+		local character = player.Character
+		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+		if root and root:IsA("BasePart") and (root.Position - ARENA).Magnitude <= Pvp.WATCH_RADIUS then
+			local first = not current.watchers[player]
+			current.watchers[player] = true
+			Remotes.ArenaWatch:FireClient(player, { events = events, markers = if first then current.markers else nil })
+		end
+	end
+end
+
 local function broadcast(current: Fight, events: { BattleSim.Event })
 	local snapshot = BattleSim.snapshot(current.sim)
 	for _, side in { current.sides.a, current.sides.b } do
@@ -467,6 +487,7 @@ local function broadcast(current: Fight, events: { BattleSim.Event })
 			Remotes.BattleEvent:FireClient(side.player, { events = events, snapshot = snapshot })
 		end
 	end
+	sendToWatchers(current, events)
 end
 
 local function handleEvents(current: Fight, events: { BattleSim.Event })
@@ -519,6 +540,11 @@ endFight = function(current: Fight)
 	current.ended = true
 	if fight == current then
 		fight = nil
+	end
+	for player in current.watchers do
+		if inGame(player) then
+			Remotes.ArenaWatch:FireClient(player, { ended = true })
+		end
 	end
 	cleanUp(current)
 
@@ -665,6 +691,7 @@ local function startMatch(match: Match): boolean
 		match = match,
 		sim = BattleSim.new(Combat, { fighters = inputsA, abilities = true, canRun = false }, { fighters = inputsB, abilities = true, canRun = false }, rng:NextInteger(1, 2 ^ 30)),
 		markers = {},
+		watchers = {},
 		extras = {},
 		spots = {},
 		sinceSnapshot = 0,
