@@ -63,9 +63,11 @@ end
 -- The boss-fight controls (spec 2026-11-02-you-in-the-fight-design, layout A): a big Attack bottom-right (where the
 -- jump button was: there's no jumping in boss fights), Dodge left of it, the sword Skill above Dodge, Pet skill above
 -- Attack with the creature's Signature above it, and small Swap and Run buttons along the bottom, all clear of the
--- thumbstick (bottom-left). Sizes follow the screen's height; every button is at least 48 px.
+-- thumbstick (bottom-left). Sizes follow the screen's height; every button is at least 48 px. With a mouse
+-- (`noAttack`: a click attacks, owner 2026-11-03) there's no Attack button: the Pet button takes its corner and Dodge
+-- and Skill move up beside it.
 export type CombatButtons = { attack: Rect, dodge: Rect, skill: Rect, pet: Rect, signature: Rect, swap: Rect, run: Rect }
-function UiLayout.combatButtons(view: Size): CombatButtons
+function UiLayout.combatButtons(view: Size, noAttack: boolean?): CombatButtons
 	local u = math.clamp(view.h * 0.17, 52, 110)
 	local function dim(k: number): number
 		return math.max(48, k * u)
@@ -74,12 +76,14 @@ function UiLayout.combatButtons(view: Size): CombatButtons
 	local gap = 0.25 * u
 	local attack = { w = dim(1.7), h = dim(1.45), x = 0, y = 0 }
 	attack.x, attack.y = view.w - margin - attack.w, view.h - margin * 1.2 - attack.h
-	local dodge = { w = dim(1.05), h = dim(0.95), x = 0, y = 0 }
-	dodge.x, dodge.y = attack.x - gap - dodge.w, view.h - margin - dodge.h
-	local skill = { w = dim(1.1), h = dim(1), x = 0, y = 0 }
-	skill.x, skill.y = attack.x - gap - skill.w, dodge.y - gap - skill.h
 	local pet = { w = dim(1.1), h = dim(1), x = 0, y = 0 }
-	pet.x, pet.y = view.w - margin - pet.w, attack.y - 0.3 * u - pet.h
+	pet.x = view.w - margin - pet.w
+	pet.y = if noAttack then view.h - margin - pet.h else attack.y - 0.3 * u - pet.h
+	local column = if noAttack then pet.x else attack.x -- Dodge and Skill stand left of this
+	local dodge = { w = dim(1.05), h = dim(0.95), x = 0, y = 0 }
+	dodge.x, dodge.y = column - gap - dodge.w, view.h - margin - dodge.h
+	local skill = { w = dim(1.1), h = dim(1), x = 0, y = 0 }
+	skill.x, skill.y = column - gap - skill.w, dodge.y - gap - skill.h
 	local signature = { w = dim(0.85), h = dim(0.8), x = 0, y = 0 }
 	signature.x, signature.y = pet.x + (pet.w - signature.w) / 2, pet.y - gap - signature.h
 	local run = { w = dim(0.75), h = dim(0.75), x = 0, y = 0 }

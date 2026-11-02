@@ -20,6 +20,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Announcements = require(Config:WaitForChild("Announcements"))
+local AttackFx = require(Config:WaitForChild("AttackFx"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
@@ -31,6 +32,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
+local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Swords = require(Config:WaitForChild("Swords"))
@@ -76,7 +78,10 @@ type Fight = {
 	size: number, -- members at the start (a boss is scaled to it)
 	monster: Monster,
 	sim: BattleSim.State,
-	spots: { [string]: CFrame }, -- where each fighter stands in the ring, by sim id ("a:<beastId>", "b:m"; "extra:<owner>")
+	spots: { [string]: CFrame }, -- where each fighter stands in the ring, by sim id ("a:<beastId>", "b:m")
+	-- Each creature's place on the ring ("a:<beastId>"; "extra:<owner>" for a call-in), which a swap takes over: a
+	-- ranged creature stands further back from it (standSpot)
+	ringSpots: { [string]: CFrame },
 	center: Vector3, -- the ring; players may roam within the leash of it
 	sinceSnapshot: number,
 	ended: boolean,
@@ -303,6 +308,17 @@ local function place(fight: Fight, id: string, cframe: CFrame)
 	end
 end
 
+-- Where a creature stands for its ring spot: further back when it attacks from range (a projectile or a bolt,
+-- FightFxRules.isRanged; owner 2026-11-03), so its shots fly across the gap. A ring spot faces the foe, so back is +Z.
+local function standSpot(ringSpot: CFrame, player: Player, beastId: string): CFrame
+	local beast = CardService.GetBeast(player, beastId)
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	if card and FightFxRules.isRanged(card.element, AttackFx) then
+		return ringSpot * CFrame.new(0, 0, Combat.RANGED_BACK)
+	end
+	return ringSpot
+end
+
 -- A quick step toward the target and back, so attacks read in the world
 local function lunge(fight: Fight, from: string, to: string)
 	local home, targetSpot = fight.spots[from], fight.spots[to]
@@ -358,10 +374,12 @@ local function enterField(fight: Fight, event: BattleSim.Event, markers: { [stri
 	end
 	local player = member.player
 	local beastId = string.sub(id, 3)
-	local spot = (if event.to then fight.spots[event.to] else nil) or fight.spots[`extra:{member.owner}`]
+	local ringSpot = (if event.to then fight.ringSpots[event.to] else nil) or fight.ringSpots[`extra:{member.owner}`]
 	if event.to then
 		leaveField(member, string.sub(event.to, 3))
 	end
+	local spot = standSpot(ringSpot, player, beastId)
+	fight.ringSpots[id] = ringSpot
 	fight.spots[id] = spot
 	member.fought[beastId] = true
 	CardService.SetFighting(player, beastId, true)
@@ -950,6 +968,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	local direction = if toPlayer.Magnitude > 0.1 then toPlayer.Unit else Vector3.new(0, 0, -1)
 	local radius = if boss then boss.ringRadius or Bosses.RING_RADIUS else Combat.RING_RADIUS
 	local spots: { [string]: CFrame } = { [MONSTER_ID] = CFrame.lookAt(center, center + direction) }
+	local ringSpots: { [string]: CFrame } = {}
 	local step = Bosses.GROUP_SPACING / radius
 	for index, member in members do
 		local angle = (index - (#members + 1) / 2) * step
@@ -957,8 +976,10 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local spot = center + facing * radius
 		local right = Vector3.new(-facing.Z, 0, facing.X)
 		local extra = spot + right * Combat.EXTRA_SIDE
-		spots[partyId(member.leaderId)] = CFrame.lookAt(spot, spot - facing)
-		spots[`extra:{member.owner}`] = CFrame.lookAt(extra, extra - facing)
+		local leader = partyId(member.leaderId)
+		ringSpots[leader] = CFrame.lookAt(spot, spot - facing)
+		ringSpots[`extra:{member.owner}`] = CFrame.lookAt(extra, extra - facing)
+		spots[leader] = standSpot(ringSpots[leader], member.player, member.leaderId)
 	end
 	local fight: Fight = {
 		members = {},
@@ -966,6 +987,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		monster = monster,
 		sim = sim,
 		spots = spots,
+		ringSpots = ringSpots,
 		center = center,
 		sinceSnapshot = 0,
 		ended = false,

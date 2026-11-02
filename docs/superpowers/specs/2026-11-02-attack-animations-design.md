@@ -79,7 +79,7 @@ don't use creature positions). It pauses to charge.
 | Ember | a fireball that arcs to the target and bursts | Fireball: a big charged fireball, bigger burst |
 | Tide | a water blast that splashes | Wave: a water wave washing over your creature (it heals) |
 | Bloom | a 3-hit vine whip | Vine Snare: vines wrap the target (it's slowed) |
-| Volt | a lightning zip to the target and back | Overcharge: a crackling aura, then rapid zips |
+| Volt | a lightning bolt shot from where it stands (owner 2026-11-03; first built as a zip there and back) | Overcharge: a crackling aura, then rapid zips |
 | Shade | a 3-hit shadow-claw combo | Curse: dark mist swirls on the target (it hits weaker) |
 
 Epic and Legendary **signatures** get their own effect per signature kind (`Combat.SIGNATURES` kinds: Inferno,

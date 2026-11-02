@@ -38,13 +38,13 @@ return {
 	end,
 
 	["every element has a known attack kind"] = function()
-		local known = { projectile = true, combo = true, zip = true }
+		local known = { projectile = true, combo = true, bolt = true }
 		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
 			local entry = AttackFx.ELEMENT[element]
 			expect.equal(entry ~= nil and known[entry.kind] == true, true, element)
 		end
 		expect.equal(AttackFx.ELEMENT.Ember.kind, "projectile")
 		expect.equal(AttackFx.ELEMENT.Bloom.kind, "combo")
-		expect.equal(AttackFx.ELEMENT.Volt.kind, "zip")
+		expect.equal(AttackFx.ELEMENT.Volt.kind, "bolt") -- shot from where it stands (the owner's mockup), no dash
 	end,
 }

@@ -86,6 +86,27 @@ return {
 			expect.equal(rects.attack.x > view.w / 2 and rects.attack.y > view.h / 2, true, "Attack sits bottom-right")
 		end
 	end,
+	["combat buttons with a mouse: no Attack, the Pet button in its corner, Dodge and Skill beside it"] = function()
+		for _, view in { { w = 1920, h = 1080 }, { w = 1280, h = 720 }, { w = 844, h = 390 } } do
+			local rects = UiLayout.combatButtons(view, true)
+			local names = { "dodge", "skill", "pet", "signature", "swap", "run" }
+			for i, a in names do
+				local r = (rects :: any)[a] :: UiLayout.Rect
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{a} at {view.w}x{view.h}: on screen`)
+				for j = i + 1, #names do
+					local r1, r2 = r, (rects :: any)[names[j]]
+					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
+					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+				end
+			end
+			local full = UiLayout.combatButtons(view)
+			expect.near(rects.pet.x + rects.pet.w, full.attack.x + full.attack.w, 1e-6, "the Pet button's right edge is Attack's")
+			expect.equal(rects.pet.y + rects.pet.h > full.attack.y + full.attack.h - 1, true, "the Pet button sits at the bottom")
+			expect.equal(rects.dodge.x + rects.dodge.w < rects.pet.x, true, "Dodge left of the Pet button")
+			expect.equal(rects.dodge.x > full.dodge.x, true, "Dodge moves toward the corner")
+			expect.near(rects.skill.x, rects.dodge.x + rects.dodge.w - rects.skill.w, 1e-6, "Skill above Dodge, right-aligned")
+		end
+	end,
 	["wild fight buttons: the Pet button big, all on screen, no overlaps, clear of the thumbstick"] = function()
 		for _, view in { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 1920, h = 1080 }, { w = 1280, h = 720 } } do
 			local rects = UiLayout.wildButtons(view)

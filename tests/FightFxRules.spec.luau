@@ -23,6 +23,16 @@ return {
 		expect.isNil(FightFxRules.kindFor("Plasma", AttackFx), "an unknown element has none")
 	end,
 
+	["projectile and bolt attackers fight from range, combo ones up close"] = function()
+		expect.equal(FightFxRules.isRanged("Ember", AttackFx), true, "Ember throws fireballs")
+		expect.equal(FightFxRules.isRanged("Tide", AttackFx), true, "Tide throws water")
+		expect.equal(FightFxRules.isRanged("Volt", AttackFx), true, "Volt shoots a bolt")
+		expect.equal(FightFxRules.isRanged("Bloom", AttackFx), false, "Bloom lashes up close")
+		expect.equal(FightFxRules.isRanged("Shade", AttackFx), false, "Shade claws up close")
+		expect.equal(FightFxRules.isRanged("Plasma", AttackFx), false, "an unknown element stands close")
+		expect.equal(Combat.RANGED_BACK > 0, true, "ranged creatures stand further back")
+	end,
+
 	["every element attack has its sounds"] = function()
 		for element in AttackFx.ELEMENT do
 			local sounds = AttackFx.SOUNDS[element]

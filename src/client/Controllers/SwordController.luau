@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
@@ -630,7 +631,9 @@ local function showPopup(swordId: string)
 	name.LayoutOrder = 2
 	name.Size = UDim2.new(1, 0, 0, 34)
 	name.TextXAlignment = Enum.TextXAlignment.Center
-	local info = UIKit.label(list, "It's on your back now. Fight beside your creature in boss fights: tap Attack to swing, Dodge to roll out of the rings.", Enum.Font.GothamMedium, UIKit.textSize("body"), UIKit.Colors.Subtext)
+	-- With a mouse there's no Attack button (a click attacks)
+	local how = if UserInputService.MouseEnabled then "click to swing, Shift to dodge" else "tap Attack to swing, Dodge to roll out of the way"
+	local info = UIKit.label(list, `It's on your back now. Fight beside your creature against bosses and wild monsters: {how}.`, Enum.Font.GothamMedium, UIKit.textSize("body"), UIKit.Colors.Subtext)
 	info.LayoutOrder = 3
 	info.Size = UDim2.new(1, 0, 0, 60)
 	info.TextWrapped = true

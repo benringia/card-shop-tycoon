@@ -984,8 +984,11 @@ group, checked before its fragments and every time (not only the first). Below i
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
-  `UiLayout.combatButtons`): Attack (Click), Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
-  Signature (Epic and Legendary cards), small Swap (1-3) and Run. Top-left your headshot in a bevelled ring with
+  `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
+  Signature (Epic and Legendary cards), small Swap (1-3) and Run. With a mouse a click attacks and there's no Attack
+  button (owner 2026-11-03: phones, tablets and devices without a mouse keep it); the Pet button takes its corner and
+  Dodge and Skill move up beside it (`UiLayout.combatButtons(view, noAttack)`), and the first-sword popup says "click
+  to swing, Shift to dodge" instead of "tap Attack". Top-left your headshot in a bevelled ring with
   your creature's card on a badge, beside your HP and your creature's in slanted neon bars (`Util/HpBar`, ticks every
   20%); the boss's HP is the same bar across the top, red. A hit drops the fill at once and leaves a ghost of the
   lost HP (red on yours, pale gold on the boss's) that holds 0.35 s, then drains in 0.45 s, with a white flash; a heal
@@ -1008,7 +1011,12 @@ group, checked before its fragments and every time (not only the first). Below i
   studs, a lap about every 7 s, darts) and stop to charge: a crouch and a glow in their element colour with sparks
   pulling in. Then the element's attack (`Config/AttackFx`, `Util/FightFx`, pieces in `Util/ElementFx`, poses `charge`,
   `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
-  3-hit vine lash, Volt a lightning zip there and back, Shade a dash in and 3 claw slashes. Each lands with the
+  3-hit vine lash, Volt a flickering lightning bolt shot from where it stands (the owner's mockup: flares at both
+  ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after), Shade a dash in and 3 claw
+  slashes. Ranged attackers (a projectile or a bolt: Ember, Tide, Volt, `FightFxRules.isRanged`) stand
+  `Combat.RANGED_BACK` 7 studs further back from the foe than their ring spot (owner 2026-11-03, "ranged, not
+  melee": 13 studs from a wild monster, 22-28 from a boss), set on the server (`BattleService` `standSpot`; a swap or
+  call-in takes over the ring spot, `ringSpots`); Bloom and Shade stay close. Each lands with the
   sim's `attack` event and its damage number (`Util/AttackTiming`); the final hit waits for that event, so a charge
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
   once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound

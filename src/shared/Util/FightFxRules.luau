@@ -8,10 +8,17 @@ function FightFxRules.budget(active: number, extras: boolean, cfg: any): boolean
 	return active < (if extras then cfg.MAX_ACTIVE else cfg.MAX_ACTIVE_LOW)
 end
 
--- "projectile" | "combo" | "zip" for an element, nil for one without an attack
+-- "projectile" | "combo" | "bolt" for an element, nil for one without an attack
 function FightFxRules.kindFor(element: string, cfg: any): string?
 	local entry = cfg.ELEMENT[element]
 	return if entry then entry.kind else nil
+end
+
+-- Whether an element's creatures attack from range (a projectile or a bolt): they stand further back in a fight
+-- (Combat.RANGED_BACK); combo attackers stay up close
+function FightFxRules.isRanged(element: string, cfg: any): boolean
+	local kind = FightFxRules.kindFor(element, cfg)
+	return kind == "projectile" or kind == "bolt"
 end
 
 -- How big a creature's basic attack looks for its grade (AttackFx.GRADE; C for no grade or an unknown one)

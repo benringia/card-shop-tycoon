@@ -1,7 +1,8 @@
 --!strict
 -- The boss-fight HUD (spec 2026-11-02-you-in-the-fight-design): top-left your headshot in a ring (your creature's
 -- card on a badge) beside your HP and your creature's in slanted neon bars (Util/HpBar), and the
--- controls in "anime slash" panels (Config/CombatHud) placed by UiLayout.combatButtons: Attack, Dodge, sword Skill,
+-- controls in "anime slash" panels (Config/CombatHud) placed by UiLayout.combatButtons: Attack (not with a mouse: a
+-- click attacks), Dodge, sword Skill,
 -- Pet skill (and the creature's Signature when it has one), Swap (pops out your rested cards when there's more than
 -- one) and Run. Each button drains top-down while it cools down, with the seconds left. BattleController builds one
 -- per boss fight and feeds it the fight's snapshots; SwordController reports the sword's own cooldowns. When you're
@@ -304,6 +305,9 @@ end
 function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boolean, wild: boolean?, sword: boolean?): Hud
 	local armed = sword ~= false
 	local creatureOnly = wild == true and not armed -- no player in the fight: the creature takes the ring
+	-- With a mouse a click attacks (owner 2026-11-03): no Attack button, the others move into its corner. Phones,
+	-- tablets and other devices without a mouse keep it.
+	local clicks = UserInputService.MouseEnabled
 	local root = Instance.new("Frame")
 	root.Name = "CombatHud"
 	root.BackgroundTransparency = 1
@@ -535,7 +539,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	end
 
 	for _, name in (if creatureOnly then WILD_ORDER else BUTTON_ORDER) do
-		buttons[name] = makeButton(root, name, presses[name], onTip)
+		if name ~= "attack" or not clicks then
+			buttons[name] = makeButton(root, name, presses[name], onTip)
+		end
 	end
 
 	-- Laid out in the HUD's own frame (the screen below Roblox's top bar), so nothing hangs off its bottom; each name
@@ -545,7 +551,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		if size.X <= 0 or size.Y <= 0 then
 			return
 		end
-		local rects = (if creatureOnly then UiLayout.wildButtons({ w = size.X, h = size.Y }) else UiLayout.combatButtons({ w = size.X, h = size.Y })) :: any
+		local rects = (if creatureOnly then UiLayout.wildButtons({ w = size.X, h = size.Y }) else UiLayout.combatButtons({ w = size.X, h = size.Y }, clicks)) :: any
 		local nameSize = math.clamp(math.round((rects.attack or rects.pet).h * 0.13), 11, 16)
 		for name, button in buttons do
 			local r = rects[name]

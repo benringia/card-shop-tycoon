@@ -1,7 +1,7 @@
 --!strict
 -- Turns fight events into attack pictures (spec 2026-11-02-attack-animations-design): a creature's "charge" makes it
 -- stop, crouch and glow, then lets its element's attack go (Config/AttackFx: a projectile, a 3-hit combo or a
--- lightning zip) so the hit lands with the sim's "attack" event and its damage number. The final hit waits for that
+-- lightning bolt) so the hit lands with the sim's "attack" event and its damage number. The final hit waits for that
 -- event: a charge whose attack never comes (a stun, a faint, a swap) fades without one (Util/AttackTiming). An attack
 -- that arrives with no charge strikes at once. Effects are capped (Util/FightFxRules). The fight controller and PvP
 -- spectators each make one, passing how to reach the creatures.
@@ -108,7 +108,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		elseif view.element == "Tide" then
 			ElementFx.pillar(ground, tint:Lerp(Color3.new(1, 1, 1), 0.3), 9 * s, 0.4, "glow")
 		elseif view.element == "Volt" then
-			ElementFx.skyStrike(at, tint, s * 0.6)
+			task.delay(AttackFx.BOLT.skyDelay, function()
+				ElementFx.skyStrike(at, tint, s * 0.6)
+			end)
 		end
 	end
 
@@ -225,28 +227,25 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					end)
 				end
 			end)
-		elseif kind == "zip" then
-			local zipIn = math.max(0, lead - 0.25)
-			task.delay(zipIn, function()
+		elseif kind == "bolt" then
+			-- Shot from where it stands (the owner's mockup): it holds and glows, then the bolt flickers across as the hit
+			-- lands
+			task.delay(lead, function()
 				if not alive then
 					return
 				end
 				entry.stopGlow()
-				local toward = targetPosition(entry.to, view.root.Position)
-				resolve.dash(marker, toward, AttackFx.DASH.zip, 0.45)
-				resolve.pose(marker, "strike")
-				task.delay(lead - zipIn, function()
-					whenAttacked(entry, function()
-						local spot = targetPosition(entry.to, toward)
-						local from = view.root.Position + Vector3.new(0, 1, 0)
-						ElementFx.bolt(from, spot, tint, 0.2, s)
-						-- Forked side bolts: one at grade A, two at S
-						for fork = 1, tier.extra do
-							local up = Vector3.new(0, if fork == 1 then 2.5 else -1.5, 0) * s
-							ElementFx.bolt(from + up * 0.5, spot + up, tint:Lerp(Color3.new(1, 1, 1), 0.4), 0.2, s * 0.65)
-						end
-						impact(view, tier, spot, tint, false)
-					end)
+				whenAttacked(entry, function()
+					resolve.pose(marker, "cast")
+					local spot = targetPosition(entry.to, view.root.Position)
+					local from = view.root.Position + Vector3.new(0, view.height * 0.5, 0)
+					ElementFx.bolt(from, spot, tint, AttackFx.BOLT.seconds, s)
+					-- Forked side bolts: one at grade A, two at S
+					for fork = 1, tier.extra do
+						local up = Vector3.new(0, if fork == 1 then 2.5 else -1.5, 0) * s
+						ElementFx.bolt(from + up * 0.5, spot + up, tint:Lerp(Color3.new(1, 1, 1), 0.4), AttackFx.BOLT.seconds, s * 0.65)
+					end
+					impact(view, tier, spot, tint, false)
 				end)
 			end)
 		end

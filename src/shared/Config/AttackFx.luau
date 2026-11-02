@@ -10,12 +10,13 @@ return {
 	FLIGHT = { Ember = 0.35, Tide = 0.25 }, -- seconds a projectile flies (elements that throw one)
 	COMBO = { count = 3, window = 0.45 }, -- a combo's hits over this many seconds, the last with the damage
 	EXTRA_SHOT_GAP = 0.08, -- seconds between a grade A / S Ember's extra fireballs (they land together)
-	-- Each element's normal attack: a thrown projectile, a 3-hit combo up close, or a lightning zip there and back
+	-- Each element's normal attack: a thrown projectile, a 3-hit combo up close, or a lightning bolt shot from where it
+	-- stands (the owner's mockup; projectile and bolt attackers stand back, Combat.RANGED_BACK)
 	ELEMENT = {
 		Ember = { kind = "projectile", color = rgb(255, 122, 58) },
 		Tide = { kind = "projectile", color = rgb(74, 168, 255) },
 		Bloom = { kind = "combo", color = rgb(74, 222, 128) },
-		Volt = { kind = "zip", color = rgb(250, 204, 21) },
+		Volt = { kind = "bolt", color = rgb(250, 204, 21) },
 		Shade = { kind = "combo", color = rgb(167, 139, 250) },
 	},
 	MAX_ACTIVE = 12, -- effects playing at once (more are skipped; the damage numbers still show)
@@ -40,7 +41,10 @@ return {
 	PROJECTILE_SIZE = 1.2, -- studs
 	ARC = { Ember = 6, Tide = 0 }, -- studs a projectile rises at its midpoint
 	BURST = 26, -- particles in an impact
-	DASH = { combo = 0.7, zip = 0.6 }, -- share of the way to its target a creature dashes for a combo or a zip
+	DASH = { combo = 0.7 }, -- share of the way to its target a creature dashes for a combo
+	-- A Volt bolt: how long it flickers (seconds; the mockup's six flickers), and at grade S the strike from the sky
+	-- this long after it
+	BOLT = { seconds = 0.27, skyDelay = 0.14 },
 	-- Pet button moves and super moves (Config/Combat ABILITIES and SIGNATURES kinds): each lands with its event, its
 	-- effect at once (style, colour, how long a lasting one stays, seconds)
 	SPECIALS = {
