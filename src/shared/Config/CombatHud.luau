@@ -17,15 +17,15 @@ return {
 	BUTTONS = {
 		attack = {
 			color = rgb(255, 179, 71), icon = "Attack", emoji = "⚔️", key = "Click", name = "ATTACK",
-			tip = "Swing your sword. Tap again quickly for a 3-hit combo.",
+			tip = "Swing your sword.",
 		},
 		dodge = {
 			color = rgb(77, 163, 255), icon = "Dodge", emoji = "💨", key = "Shift", name = "DODGE",
-			tip = "Dash out of the way. Nothing can hit you while you dash. Use it when the ground glows!",
+			tip = "Dash out of the way.",
 		},
 		skill = {
 			color = rgb(167, 139, 250), icon = "SpinSkill", emoji = "🌀", key = "E", name = "SPIN",
-			tip = "A spinning slash that hits everything around you.",
+			tip = "Spin and hit everything around you.",
 		},
 		pet = {
 			color = rgb(74, 222, 128), icon = "Paw", emoji = "🐾", key = "R", name = "PET MOVE",
@@ -33,21 +33,21 @@ return {
 		},
 		signature = {
 			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = nil, name = "SUPER MOVE",
-			tip = "Your creature's super move. Save it for a big moment!",
+			tip = "Your creature's super move.",
 		},
 		swap = {
 			color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1-3", name = "SWAP",
-			tip = "Send in another creature from your party.",
+			tip = "Switch to another creature.",
 		},
 		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil, name = "RUN", tip = "Leave the fight." },
 	},
 	-- The pet button's tooltip by the creature's element (its ability, Config/Combat ABILITIES)
 	PET_TIPS = {
-		Ember = "Your creature throws a big fireball at the boss.",
-		Tide = "A healing wave for your creature.",
-		Bloom = "Vines wrap the boss and slow it down.",
-		Volt = "Your creature attacks super fast for a few hits.",
-		Shade = "A curse that makes the boss hit weaker for a while.",
+		Ember = "Throw a fireball.",
+		Tide = "Heal your creature.",
+		Bloom = "Slow the boss down.",
+		Volt = "Attack super fast.",
+		Shade = "Make the boss hit weaker.",
 	},
 	NAME_FIGHTS = 3, -- boss fights that show the buttons' names (saved per player: swordFights)
 	TIP_HOLD = 0.4, -- seconds a phone tap is held to show the tooltip (that press doesn't act)

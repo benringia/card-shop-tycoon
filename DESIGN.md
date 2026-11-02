@@ -951,7 +951,7 @@ group, checked before its fragments and every time (not only the first). Below i
   `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
   mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
-  the pet move's by element (`CombatHud.PET_TIPS`).
+  in one short line (the pet move's by element, `CombatHud.PET_TIPS`).
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
