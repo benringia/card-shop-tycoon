@@ -60,4 +60,52 @@ function UiLayout.detailPanelLeft(viewW: number, cardW: number, gap: number, pan
 	return math.min(math.max(centred, margin + cardW + gap), viewW - margin - panelW)
 end
 
+-- The boss-fight controls (spec 2026-11-02-you-in-the-fight-design, layout A): a big Attack bottom-right (where the
+-- jump button was: there's no jumping in boss fights), Dodge left of it, the sword Skill above Dodge, Pet skill above
+-- Attack with the creature's Signature above it, and small Swap and Run buttons along the bottom, all clear of the
+-- thumbstick (bottom-left). Sizes follow the screen's height; every button is at least 48 px. With a mouse
+-- (`noAttack`: a click attacks, owner 2026-11-03) there's no Attack button: the Pet button takes its corner and Dodge
+-- and Skill move up beside it.
+export type CombatButtons = { attack: Rect, dodge: Rect, skill: Rect, pet: Rect, signature: Rect, swap: Rect, run: Rect }
+function UiLayout.combatButtons(view: Size, noAttack: boolean?): CombatButtons
+	local u = math.clamp(view.h * 0.17, 52, 110)
+	local function dim(k: number): number
+		return math.max(48, k * u)
+	end
+	local margin = 0.35 * u
+	local gap = 0.25 * u
+	local attack = { w = dim(1.7), h = dim(1.45), x = 0, y = 0 }
+	attack.x, attack.y = view.w - margin - attack.w, view.h - margin * 1.2 - attack.h
+	local pet = { w = dim(1.1), h = dim(1), x = 0, y = 0 }
+	pet.x = view.w - margin - pet.w
+	pet.y = if noAttack then view.h - margin - pet.h else attack.y - 0.3 * u - pet.h
+	local column = if noAttack then pet.x else attack.x -- Dodge and Skill stand left of this
+	local dodge = { w = dim(1.05), h = dim(0.95), x = 0, y = 0 }
+	dodge.x, dodge.y = column - gap - dodge.w, view.h - margin - dodge.h
+	local skill = { w = dim(1.1), h = dim(1), x = 0, y = 0 }
+	skill.x, skill.y = column - gap - skill.w, dodge.y - gap - skill.h
+	local signature = { w = dim(0.85), h = dim(0.8), x = 0, y = 0 }
+	signature.x, signature.y = pet.x + (pet.w - signature.w) / 2, pet.y - gap - signature.h
+	local run = { w = dim(0.75), h = dim(0.75), x = 0, y = 0 }
+	run.x, run.y = dodge.x - 0.4 * u - run.w, view.h - margin - run.h
+	local swap = { w = run.w, h = run.h, x = run.x - 0.2 * u - run.w, y = run.y }
+	return { attack = attack, dodge = dodge, skill = skill, pet = pet, signature = signature, swap = swap, run = run }
+end
+
+-- A wild monster fight's controls (owner 2026-11-03, layout A: the boss HUD's look without the sword): the Pet button
+-- big in Attack's place, the Signature above it, Run left of it and Call in (the Swap button) left of Run, sized like
+-- the boss buttons
+export type WildButtons = { pet: Rect, signature: Rect, swap: Rect, run: Rect }
+
+function UiLayout.wildButtons(view: Size): WildButtons
+	local boss = UiLayout.combatButtons(view)
+	local u = math.clamp(view.h * 0.17, 52, 110)
+	local gap = 0.25 * u
+	local pet = boss.attack
+	local signature = { w = boss.pet.w, h = boss.pet.h, x = pet.x + (pet.w - boss.pet.w) / 2, y = boss.pet.y }
+	local run = { w = boss.dodge.w, h = boss.dodge.h, x = pet.x - gap - boss.dodge.w, y = boss.dodge.y }
+	local swap = { w = boss.dodge.w, h = boss.dodge.h, x = run.x - gap - boss.dodge.w, y = run.y }
+	return { pet = pet, signature = signature, swap = swap, run = run }
+end
+
 return UiLayout

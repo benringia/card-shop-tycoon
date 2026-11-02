@@ -65,6 +65,20 @@ local specs: { [string]: { [string]: () -> () } } = {
 	WildPopulation = require("./WildPopulation.spec"),
 	MonsterLooks = require("./MonsterLooks.spec"),
 	BossMoments = require("./BossMoments.spec"),
+	SwordsConfig = require("./SwordsConfig.spec"),
+	SwordRules = require("./SwordRules.spec"),
+	RingRules = require("./RingRules.spec"),
+	HpBarRules = require("./HpBarRules.spec"),
+	CombatPreload = require("./CombatPreload.spec"),
+	LoadingRules = require("./LoadingRules.spec"),
+	AttackTiming = require("./AttackTiming.spec"),
+	FightMotion = require("./FightMotion.spec"),
+	FightFxRules = require("./FightFxRules.spec"),
+	MonsterMoves = require("./MonsterMoves.spec"),
+	ShakeRules = require("./ShakeRules.spec"),
+	DamagePop = require("./DamagePop.spec"),
+	VictoryRules = require("./VictoryRules.spec"),
+	MarkerNames = require("./MarkerNames.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

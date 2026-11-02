@@ -2,6 +2,7 @@
 -- Client entry point. Starts each controller; UIController first since others build on its ScreenGui.
 local Controllers = script:WaitForChild("Controllers")
 
+local LoadingController = require(Controllers:WaitForChild("LoadingController"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local OrderController = require(Controllers:WaitForChild("OrderController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
@@ -41,15 +42,19 @@ local BossBoardController = require(Controllers:WaitForChild("BossBoardControlle
 local LootController = require(Controllers:WaitForChild("LootController"))
 local AdminPanelController = require(Controllers:WaitForChild("AdminPanelController"))
 local ChallengeController = require(Controllers:WaitForChild("ChallengeController"))
+local ArenaWatchController = require(Controllers:WaitForChild("ArenaWatchController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
+local SwordController = require(Controllers:WaitForChild("SwordController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
+
+LoadingController.Start() -- the loading screen's steps (ReplicatedFirst shows it from the first frame)
 
 if Place.isFrontier() or Place.isDungeon() then
 	-- The Frontier and Dungeon places: no shop, so only the binder, party, creatures and fights
@@ -68,6 +73,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	SwordController.Start() -- swords on characters, the first-sword popup
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
 	end
@@ -111,7 +117,9 @@ else
 	LootController.Start() -- boss loot on the ground
 	AdminPanelController.Start() -- Studio only: the dev commands as buttons
 	ChallengeController.Start()
+	ArenaWatchController.Start() -- PvP from the stands: the fight's attacks
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	SwordController.Start() -- swords on characters, the first-sword popup
 end

@@ -18,6 +18,12 @@ export type Mechanics = {
 -- One phase of a boss that has them: active while its HP share is under `below` (the first has below = 1); it
 -- switches the boss's element and mechanics. Phases only go forward (a heal never takes one back).
 export type BossPhase = { below: number, element: string, mechanics: Mechanics }
+-- Its attacks on players (spec 2026-11-02-you-in-the-fight-design), stronger up the ladder: a big attack every `every`
+-- s (a closing ring on each player, `warning` s to step out or dodge, `big` of their HP; with `doubleChance` a second
+-- ring on one of them), and quick hits of `quick` of their HP on the swings that go at a player. `shape`: every ring's
+-- ("slam" | "swipe"); `debuff`: what a landed ring leaves on the player (a DEBUFFS kind, or "byPhase": its current
+-- element's, DEBUFF_BY_ELEMENT)
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string? }
 export type Boss = {
 	name: string,
 	title: string, -- under its name on the intro card
@@ -35,6 +41,7 @@ export type Boss = {
 	shopLevel: number, -- the shop level a player needs to fight it (every member of a group), on top of its fragments
 	groupAtkStep: number?, -- its own ATK step per extra player in a group (nil: GROUP_ATK_STEP)
 	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
+	playerAttacks: PlayerAttacks,
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
 	mechanics: Mechanics, -- always on (a boss with phases keeps {} here: its phases bring theirs)
@@ -75,12 +82,14 @@ local BOSSES: { [string]: Boss } = {
 		moments = { roar = "rbxassetid://9114630281" }, -- Pro Sound Effects: Goliath Vocal Deep Growling Voice 46
 		element = "Bloom",
 		level = 6,
-		hp = 1800,
-		atk = 11,
+		hp = 1300,
+		atk = 7,
 		spd = 8,
 		recommended = 200,
 		shopLevel = 3,
 		minFightSeconds = 12,
+		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10, shape = "slam", debuff = "Entangled" }, -- root slam
+		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
 		drops = {
@@ -109,12 +118,14 @@ local BOSSES: { [string]: Boss } = {
 		},
 		element = "Shade",
 		level = 11,
-		hp = 3900,
-		atk = 16,
+		hp = 2600,
+		atk = 10,
 		spd = 12,
 		recommended = 350,
 		shopLevel = 5,
 		minFightSeconds = 18,
+		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12, shape = "swipe", debuff = "Poison" }, -- web spit
+		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
 		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12, uses = 3 } },
@@ -147,12 +158,14 @@ local BOSSES: { [string]: Boss } = {
 		light = { color = { 255, 140, 60 }, brightness = 2, range = 26 },
 		element = "Ember",
 		level = 16,
-		hp = 7200,
-		atk = 22,
+		hp = 6300,
+		atk = 29,
 		spd = 9,
 		recommended = 650,
 		shopLevel = 8,
 		minFightSeconds = 25,
+		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14, shape = "slam", debuff = "Burn" }, -- lava slam
+		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_emberColossus", count = 5 },
 		fragment = "fragment_frostTyrant",
 		mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } },
@@ -176,13 +189,14 @@ local BOSSES: { [string]: Boss } = {
 		scale = 3.0,
 		element = "Tide",
 		level = 22,
-		hp = 11500,
-		atk = 27,
+		hp = 14900,
+		atk = 46,
 		spd = 9,
 		recommended = 1100,
 		shopLevel = 12,
-		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
+		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 60,
+		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15, shape = "slam", debuff = "Chilled" },
 		unlock = { item = "fragment_frostTyrant", count = 5 },
 		fragment = "fragment_stormSovereign",
 		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
@@ -205,13 +219,14 @@ local BOSSES: { [string]: Boss } = {
 		scale = 3.2,
 		element = "Volt",
 		level = 32,
-		hp = 14500,
-		atk = 26,
+		hp = 28000,
+		atk = 43,
 		spd = 14,
 		recommended = 1500,
 		shopLevel = 15,
-		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
+		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 70,
+		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17, shape = "slam", debuff = "Shocked" },
 		unlock = { item = "fragment_stormSovereign", count = 8 },
 		fragment = "fragment_riftDevourer",
 		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } },
@@ -233,13 +248,14 @@ local BOSSES: { [string]: Boss } = {
 		scale = 3.4,
 		element = "Shade",
 		level = 45,
-		hp = 23000,
-		atk = 26,
+		hp = 34000,
+		atk = 66,
 		spd = 10,
 		recommended = 1900,
 		shopLevel = 18,
-		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
+		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 80,
+		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18, shape = "swipe", debuff = "Weakened" },
 		unlock = { item = "fragment_riftDevourer", count = 8 },
 		fragment = "fragment_prismHydra",
 		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
@@ -267,13 +283,14 @@ local BOSSES: { [string]: Boss } = {
 		auroraFlame = true,
 		element = "Tide", -- phase 1's
 		level = 55,
-		hp = 40000,
-		atk = 23,
+		hp = 60000,
+		atk = 33,
 		spd = 11,
 		recommended = 2400,
 		shopLevel = 22,
-		groupAtkStep = 0.25,
+		groupAtkStep = 0.3,
 		minFightSeconds = 120,
+		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe", debuff = "byPhase" }, -- prism beam
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
 		clearTitle = "Dungeon Conqueror",
@@ -330,11 +347,33 @@ return {
 	TRAVEL_COOLDOWN = 3, -- seconds between the board's Take me there requests per player
 	CLEARED_TOPIC = "BossCleared", -- MessagingService topic for announceEverywhere first clears
 
+	-- The player in the fight: the big attacks' ring shapes (a slam under a player, a swipe from the boss toward one)
+	-- and how big the boss and its adds are to a sword
+	-- What a boss's landed ring leaves on a player for `seconds` (spec 2026-11-02-attack-animations-design; a new hit
+	-- refreshes it, never stacks; going down, leaving or the fight ending clears it): `slow` takes that share off their
+	-- walk speed, `perSecond` of their max HP each second, `dodgeCooldown` times the dodge's recharge, `sword` times
+	-- their sword's damage; Shocked stops sword and dodge (a stun: at most 1 s)
+	DEBUFFS = {
+		Entangled = { seconds = 2, slow = 0.6 },
+		Poison = { seconds = 4, perSecond = 0.02 },
+		Burn = { seconds = 3, perSecond = 0.035 },
+		Chilled = { seconds = 3, slow = 0.3, dodgeCooldown = 1.5 },
+		Shocked = { seconds = 0.5 },
+		Weakened = { seconds = 4, sword = 0.7 },
+	},
+	-- A "byPhase" boss's debuff by its current element (Shade has no debuff of its own: Poison)
+	DEBUFF_BY_ELEMENT = { Bloom = "Entangled", Shade = "Poison", Ember = "Burn", Tide = "Chilled", Volt = "Shocked" },
+	RING_SLAM_RADIUS = 7, -- studs
+	RING_SWIPE_EXTRA = 8, -- a swipe reaches the boss's ring radius plus this
+	RING_SWIPE_HALF_ANGLE = 35, -- degrees either side of the line to its target
+	HIT_RADIUS_SHARE = 0.6, -- a boss's sword-hit radius: its ring radius times this
+	ADD_HIT_RADIUS = 3,
+
 	-- Groups (spec section 5): 2-4 players, one boss scaled to the group, loot per player for those who helped
 	GROUP_MAX = 4,
 	JOIN_SECONDS = 15, -- others join this long after the leader opens a group at the gate
 	GROUP_HP_STEP = 0.8, -- boss HP x (1 + this x (players - 1))
-	GROUP_ATK_STEP = 0.15, -- boss ATK x (1 + this x (players - 1))
+	GROUP_ATK_STEP = 0.15, -- ATK x (1 + this x (players - 1)): Dungeon room packs, and bosses without their own
 	GROUP_SWINGS_STEP = 1, -- extra creatures the boss hits per attack, per extra player (so a group isn't a free win)
 	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
 	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took

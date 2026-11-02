@@ -17,6 +17,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DataService = require(Services:WaitForChild("DataService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -33,10 +34,13 @@ local function teleport(player: Player, placeId: number, options: TeleportOption
 		tell(player, "Teleports only work in the published game.")
 		return
 	end
+	-- The save closes first, so the next place loads it at once (DataService.Reclaim reopens it if this fails)
+	DataService.HandOff(player)
 	local ok, err = pcall(function()
 		TeleportService:TeleportAsync(placeId, { player }, options)
 	end)
 	if not ok then
+		DataService.Reclaim(player)
 		warn(`[FrontierService] teleport failed for {player.Name}: {err}`)
 		tell(player, "The teleport didn't work. Try again in a moment.")
 	end

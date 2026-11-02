@@ -7,12 +7,25 @@
 -- its HP (a fainted one stays benched); when all of an owner's creatures faint, their healthiest reserve comes in.
 -- Pure (only CombatMath and BossRules; no Roblox APIs) so tests/ run it in Lune. Seeded, so the same seed and inputs replay
 -- the same fight. Fighter ids are prefixed by side ("a:<id>", "b:<id>") in events and snapshots.
+-- Boss fights also put each player on side A as a player fighter ("a:@<owner>", spec 2026-11-02-you-in-the-fight):
+-- it never auto-attacks and nothing targets it as a creature; its sword hits (swordHit) use its owner's creature's ATK;
+-- at 0 HP it goes down instead of fainting and gets back up after DOWN_SECONDS while one of its owner's creatures
+-- stands (else it's out for the fight). Thunderclaps, Wave and Tidal Shield leave it alone. A boss with playerAttacks
+-- hits players two ways: some of its swings become quick hits on a player (a warning, then the hit), and every few
+-- seconds a big attack puts a closing ring on each player (State.ringCheck says who stepped out). Both land
+-- HIT_GRACE after clients show them, so a last-moment dodge still counts. A landed ring leaves the boss's debuff on the
+-- player (Config/Bosses DEBUFFS; spec 2026-11-02-attack-animations-design): Poison and Burn tick each second, Shocked
+-- stops sword and dodge, Weakened cuts sword damage, Chilled slows the dodge's recharge (the walk slows are the
+-- server's). A new hit refreshes it; going down, leaving or the fight ending clears it.
 local CombatMath = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CombatMath")) :: any
 	else require("../../shared/Util/CombatMath") :: any
 local BossRules = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BossRules")) :: any
 	else require("../../shared/Util/BossRules") :: any
+local Bosses = if game ~= nil
+	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Bosses")) :: any
+	else require("../../shared/Config/Bosses") :: any
 
 local BattleSim = {}
 
@@ -29,13 +42,30 @@ export type Mechanics = {
 }
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
 export type Phase = { below: number, element: string, mechanics: Mechanics }
+-- A boss's attacks on players (Config/Bosses playerAttacks)
+-- shape: every ring this boss draws ("slam" | "swipe"); without it each ring is a coin flip. debuff: what a landed ring
+-- leaves on the player (a Config/Bosses DEBUFFS kind, or "byPhase": its current element's)
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string? }
+-- What State.ringCheck is asked when a ring lands: its id (from the "ring" event), its target and shape
+export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number? }
-export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number? }
+-- player: a player fighter (boss fights; its owner's player in the fight)
+-- A fight perk (Config/Party FIGHT_PERKS): its kind ("Hype", "Calm", "Express", "Hustle", "Haggle") and value
+export type Perk = { kind: string, value: number }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
+-- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
+-- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
+export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
 	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
-	-- "phase" (from: the boss, kind: its new element, damage: the phase's number)
+	-- "phase" (from: the boss, kind: its new element, damage: the phase's number) | "down" | "getUp" (heal: HP back) |
+	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter) | "telegraph" (kind "quick": a quick
+	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe": a big attack's ring `ring` on `to`, lands in
+	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe" (and "Poison" | "Burn" each
+	-- second of those debuffs, with no `from`) | "debuff" (to: a player fighter, kind: its DEBUFFS kind, seconds) |
+	-- "charge" (from: a fighter
+	-- whose auto-attack lands in `seconds`, to: its likely target; clients wind up and fire their effects to land with it)
 	type: string,
 	from: string?,
 	to: string?,
@@ -46,11 +76,16 @@ export type Event = {
 	kind: string?,
 	ok: boolean?,
 	result: string?,
+	ring: number?,
+	seconds: number?,
+	crit: boolean?, -- a Haggle critical hit (double damage)
 }
 
 type Fighter = {
 	id: string, -- prefixed: "a:<id>"
 	rawId: string,
+	perk: Perk?,
+	chargedFor: number, -- the nextAttack its charge event was sent for
 	side: string,
 	element: string,
 	maxHp: number,
@@ -92,7 +127,19 @@ type Fighter = {
 	dealt: number, -- damage it did
 	taken: number, -- damage it took
 	burnBy: Fighter?, -- who set its burn (credited with the burn damage)
+	player: boolean, -- a player fighter
+	down: boolean, -- player fighter: at 0 HP, kneeling (not targeted, can't act)
+	downUntil: number, -- player fighter: when it gets back up (if one of its owner's creatures stands)
+	out: boolean, -- player fighter: down for good (no creature of its owner was left when it would get up)
+	dodgeReady: number, -- player fighter: its next dodge
+	playerAttacks: PlayerAttacks?, -- boss: its attacks on players
+	bigReady: number, -- boss: its next big attack
+	debuff: Debuff?, -- player fighter: a boss's debuff on it
 }
+
+-- A boss's debuff on a player fighter: its kind (Config/Bosses DEBUFFS), until when, its next damage tick, and the boss
+-- (credited with the damage)
+type Debuff = { kind: string, untilTime: number, tick: number, by: Fighter }
 
 type Side = {
 	name: string,
@@ -105,6 +152,9 @@ type Side = {
 	runReadyAt: number,
 	swapSeconds: number?, -- boss fights: seconds between one owner's swaps (nil: no swaps)
 	swapReadyAt: { [string]: number }, -- by owner
+	callIn: boolean, -- false: no call-in window (boss fights)
+	lastAtk: { [string]: number }, -- by owner: the ATK of their last creature on the field (their sword's damage)
+	creaturesDecide: boolean, -- lost once no creature stands (SideInput.creaturesDecide)
 }
 
 export type State = {
@@ -115,7 +165,13 @@ export type State = {
 	result: string?, -- "a" | "b" | "draw" | "run"
 	maxSeconds: number?, -- this fight's time limit (bosses get longer); combat.MAX_FIGHT_SECONDS when nil
 	timedOut: boolean?, -- it ended at the time limit (its result is "run" or "draw")
+	pending: { Pending }, -- hits on players waiting to land
+	ringCount: number, -- rings so far (their ids)
+	ringCheck: ((ring: RingInfo) -> boolean)?, -- is the ring's target inside it as it lands (nil: always)
 }
+
+-- A boss's hit on a player, warned of and landing at `at`
+type Pending = { kind: string, at: number, target: Fighter, from: Fighter, damage: number, ring: number?, shape: string? }
 
 -- Small deterministic generator (LCG) so fights replay identically in Lune and Roblox
 local function random(state: State): number
@@ -129,6 +185,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 	return {
 		id = `{side}:{input.id}`,
 		rawId = input.id,
+		perk = input.perk,
 		side = side,
 		element = if first then first.element else input.element,
 		maxHp = input.hp,
@@ -137,7 +194,8 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		spd = input.spd,
 		signature = input.signature,
 		elite = input.elite == true,
-		nextAttack = time + CombatMath.getAttackInterval(combat, input.spd),
+		nextAttack = if input.player then math.huge else time + CombatMath.getAttackInterval(combat, input.spd),
+		chargedFor = -1,
 		abilityReady = time,
 		signatureReady = time,
 		overcharge = 0,
@@ -170,13 +228,26 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		dealt = 0,
 		taken = 0,
 		burnBy = nil,
+		player = input.player == true,
+		down = false,
+		downUntil = 0,
+		out = false,
+		dodgeReady = 0,
+		playerAttacks = input.playerAttacks,
+		bigReady = if input.playerAttacks then time + input.playerAttacks.every else math.huge,
+		debuff = nil,
 	}
 end
 
 local function makeSide(combat: any, input: SideInput, name: string): Side
 	local fighters, reserves = {}, {}
+	local lastAtk: { [string]: number } = {}
 	for _, fighter in input.fighters do
 		table.insert(fighters, makeFighter(combat, fighter, name, 0))
+		local key = fighter.owner or ""
+		if not fighter.player and not lastAtk[key] then
+			lastAtk[key] = fighter.atk
+		end
 	end
 	for _, fighter in input.reserves or {} do
 		table.insert(reserves, makeFighter(combat, fighter, name, 0))
@@ -192,6 +263,9 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		runReadyAt = 0,
 		swapSeconds = input.swapSeconds,
 		swapReadyAt = {},
+		callIn = input.callIn ~= false,
+		lastAtk = lastAtk,
+		creaturesDecide = input.creaturesDecide == true,
 	}
 end
 
@@ -202,6 +276,8 @@ function BattleSim.new(combat: any, sideA: SideInput, sideB: SideInput, seed: nu
 		seed = math.floor(math.abs(seed)) % 2147483648,
 		sides = { a = makeSide(combat, sideA, "a"), b = makeSide(combat, sideB, "b") },
 		result = nil,
+		pending = {},
+		ringCount = 0,
 	}
 end
 
@@ -223,7 +299,18 @@ end
 local function standing(side: Side): { Fighter }
 	local list = {}
 	for _, fighter in side.fighters do
-		if not fighter.fainted and not fighter.left then
+		if not fighter.fainted and not fighter.left and not fighter.down then
+			table.insert(list, fighter)
+		end
+	end
+	return list
+end
+
+-- Standing creatures only (player fighters are never a creature's target)
+local function standingCreatures(side: Side): { Fighter }
+	local list = {}
+	for _, fighter in standing(side) do
+		if not fighter.player then
 			table.insert(list, fighter)
 		end
 	end
@@ -233,7 +320,7 @@ end
 -- Everyone attacks the standing enemy with the lowest share of its HP left (ties: list order). Auto-attacks go to a
 -- boss's adds first while any stand (abilities may still pick the boss).
 local function targetOf(state: State, fighter: Fighter, autoAttack: boolean?): Fighter?
-	local enemies = standing(other(state, (state.sides :: any)[fighter.side]))
+	local enemies = standingCreatures(other(state, (state.sides :: any)[fighter.side]))
 	if autoAttack then
 		local adds = {}
 		for _, enemy in enemies do
@@ -256,6 +343,9 @@ end
 
 local function finish(state: State, result: string, events: { Event })
 	state.result = result
+	for _, fighter in state.sides.a.fighters do
+		fighter.debuff = nil
+	end
 	table.insert(events, { type = "end", result = result })
 end
 
@@ -263,11 +353,27 @@ local function ownerKey(fighter: Fighter): string
 	return fighter.owner or ""
 end
 
+-- A fighter's fight perk of this kind (0 if none): a creature's own; a player's is their first standing creature's
+local function perkOf(state: State, fighter: Fighter, kind: string): number
+	local source: Fighter? = fighter
+	if fighter.player then
+		source = nil
+		for _, creature in standingCreatures((state.sides :: any)[fighter.side]) do
+			if ownerKey(creature) == ownerKey(fighter) then
+				source = creature
+				break
+			end
+		end
+	end
+	local perk = if source then source.perk else nil
+	return if perk and perk.kind == kind then perk.value else 0
+end
+
 -- One owner's creatures on the field (fainted ones too, until benched)
 local function onField(side: Side, key: string): { Fighter }
 	local list = {}
 	for _, fighter in side.fighters do
-		if ownerKey(fighter) == key and not fighter.left and not fighter.benched then
+		if ownerKey(fighter) == key and not fighter.left and not fighter.benched and not fighter.player then
 			table.insert(list, fighter)
 		end
 	end
@@ -333,7 +439,85 @@ local function autoSwap(state: State, side: Side, key: string, events: { Event }
 	return true
 end
 
+-- A player fighter at 0 HP goes down (never fainted); with nobody left standing its side loses
+local function hurtPlayer(state: State, target: Fighter, amount: number, events: { Event })
+	target.taken += math.min(amount, target.hp)
+	target.hp = math.max(0, target.hp - amount)
+	if target.hp > 0 or target.down then
+		return
+	end
+	target.down = true
+	target.debuff = nil
+	target.downUntil = state.time + state.combat.DOWN_SECONDS
+	table.insert(events, { type = "down", to = target.id })
+	local side = (state.sides :: any)[target.side] :: Side
+	if #standing(side) == 0 and not state.result then
+		finish(state, other(state, side).name, events)
+	end
+end
+
+-- The debuff a player fighter has now: its kind and Config/Bosses DEBUFFS entry (nil when none)
+local function debuffOn(state: State, fighter: Fighter): (string?, any)
+	local debuff = fighter.debuff
+	if not debuff or state.time >= debuff.untilTime then
+		return nil, nil
+	end
+	return debuff.kind, Bosses.DEBUFFS[debuff.kind]
+end
+
+-- A ring from `from` landed on `target`: its debuff (playerAttacks.debuff, "byPhase": its current element's). The same
+-- kind again only lasts longer (its damage keeps its one tick a second); another replaces it
+local function giveDebuff(state: State, from: Fighter, target: Fighter, events: { Event })
+	local attacks = from.playerAttacks
+	local kind = if attacks then attacks.debuff else nil
+	if kind == "byPhase" then
+		kind = Bosses.DEBUFF_BY_ELEMENT[from.element]
+	end
+	local spec = if kind then Bosses.DEBUFFS[kind] else nil
+	if not kind or not spec or target.down or target.left then
+		return
+	end
+	local current = target.debuff
+	if current and current.kind == kind and state.time < current.untilTime then
+		current.untilTime = state.time + spec.seconds
+		current.by = from
+	else
+		target.debuff = { kind = kind, untilTime = state.time + spec.seconds, tick = state.time + 1, by = from }
+	end
+	table.insert(events, { type = "debuff", to = target.id, kind = kind, seconds = spec.seconds })
+end
+
+-- A player fighter's debuff this step: Poison and Burn take their share each second it covered; it ends on time, or
+-- when the player is down or gone
+local function tickDebuff(state: State, fighter: Fighter, events: { Event })
+	local debuff = fighter.debuff
+	if not debuff then
+		return
+	end
+	if fighter.down or fighter.left then
+		fighter.debuff = nil
+		return
+	end
+	local spec = Bosses.DEBUFFS[debuff.kind]
+	if spec and spec.perSecond then
+		while fighter.debuff == debuff and debuff.tick <= math.min(state.time, debuff.untilTime) + 1e-9 do
+			debuff.tick += 1
+			local damage = math.max(1, math.round(spec.perSecond * fighter.maxHp))
+			table.insert(events, { type = "attack", kind = debuff.kind, to = fighter.id, damage = damage })
+			debuff.by.dealt += math.min(damage, fighter.hp)
+			hurtPlayer(state, fighter, damage, events)
+		end
+	end
+	if fighter.debuff == debuff and state.time >= debuff.untilTime then
+		fighter.debuff = nil
+	end
+end
+
 local function takeDamage(state: State, target: Fighter, amount: number, events: { Event })
+	if target.player then
+		hurtPlayer(state, target, amount, events)
+		return
+	end
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
 	if target.hp <= 0 and not target.fainted then
@@ -345,7 +529,8 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 			return
 		end
 		autoSwap(state, side, ownerKey(target), events)
-		if #standing(side) == 0 and not state.result then
+		local beaten = #standing(side) == 0 or (side.creaturesDecide and #standingCreatures(side) == 0)
+		if beaten and not state.result then
 			finish(state, other(state, side).name, events)
 		end
 	end
@@ -377,15 +562,24 @@ local function shieldBroke(state: State, side: Side, events: { Event })
 end
 
 -- One hit from `from` on `target`: element, curse, dodge and the target side's shield all apply
-local function hit(state: State, from: Fighter, target: Fighter, multiplier: number, events: { Event }, kind: string?): number
+-- asAttack: the event is an "attack" even with a kind (sword hits)
+local function hit(state: State, from: Fighter, target: Fighter, multiplier: number, events: { Event }, kind: string?, asAttack: boolean?): number
+	local eventType = if kind and not asAttack then "ability" else "attack"
 	if state.time < target.dodgeUntil then
-		table.insert(events, { type = if kind then "ability" else "attack", kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
+		table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
 		return 0
 	end
-	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1)
+	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype"))
 	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, from.element, target.element)
 	local side = (state.sides :: any)[target.side] :: Side
-	local damage = math.round(CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target))
+	local raw = CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target)
+	-- Haggle rolls only when there's a chance, so fights without it draw the same randoms as before
+	local critChance = perkOf(state, from, "Haggle")
+	local crit = critChance > 0 and random(state) < critChance
+	if crit then
+		raw *= 2
+	end
+	local damage = math.round(raw * (1 - perkOf(state, target, "Calm")))
 	local hadShield = side.shield > 0
 	local absorbed = math.min(side.shield, damage)
 	side.shield -= absorbed
@@ -393,32 +587,72 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 		shieldBroke(state, side, events)
 	end
 	local taken = damage - absorbed
-	table.insert(events, { type = if kind then "ability" else "attack", kind = kind, from = from.id, to = target.id, damage = taken, strength = strength })
+	table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = taken, strength = strength, crit = if crit then true else nil })
 	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events)
 	return taken
 end
 
 local function interval(state: State, fighter: Fighter): number
-	local value = CombatMath.getAttackInterval(state.combat, fighter.spd)
+	local value = CombatMath.getAttackInterval(state.combat, fighter.spd) / (1 + perkOf(state, fighter, "Hustle"))
 	if state.time < fighter.slowUntil then
 		value /= 1 - fighter.slow
 	end
 	return value
 end
 
--- One attack: the usual target, then (a boss against a group) the next most hurt standing enemies, each once
-local function attack(state: State, fighter: Fighter, events: { Event })
-	local target = targetOf(state, fighter, true)
-	if not target then
-		return
+-- A boss with playerAttacks: this swing goes at an up player not yet swung at this attack (PLAYER_TARGET_SHARE of the
+-- time, every time when no creature stands) as a quick hit: warned now, landing after QUICK_WARNING + HIT_GRACE.
+-- False (and no random drawn) when it doesn't, so fights without players replay exactly as before.
+local function swingAtPlayer(state: State, fighter: Fighter, enemySide: Side, swungAt: { [Fighter]: boolean }, events: { Event }): boolean
+	local attacks = fighter.playerAttacks
+	if not attacks then
+		return false
 	end
-	hit(state, fighter, target, 1, events, nil)
+	local players = {}
+	for _, enemy in standing(enemySide) do
+		if enemy.player and not swungAt[enemy] then
+			table.insert(players, enemy)
+		end
+	end
+	if #players == 0 then
+		return false
+	end
+	local combat = state.combat
+	if #standingCreatures(enemySide) > 0 and random(state) >= combat.PLAYER_TARGET_SHARE then
+		return false
+	end
+	local target = players[math.min(#players, 1 + math.floor(random(state) * #players))]
+	swungAt[target] = true
+	table.insert(state.pending, {
+		kind = "Quick",
+		at = state.time + combat.QUICK_WARNING + combat.HIT_GRACE,
+		target = target,
+		from = fighter,
+		damage = math.round(attacks.quick * target.maxHp),
+	})
+	table.insert(events, { type = "telegraph", kind = "quick", from = fighter.id, to = target.id, seconds = combat.QUICK_WARNING })
+	return true
+end
+
+-- One attack: the usual target, then (a boss against a group) the next most hurt standing creatures, each once; a
+-- boss with playerAttacks may send any of these swings at a player instead
+local function attack(state: State, fighter: Fighter, events: { Event })
+	local enemySide = other(state, (state.sides :: any)[fighter.side])
+	local swungAt: { [Fighter]: boolean } = {}
+	local target: Fighter? = nil
+	if not swingAtPlayer(state, fighter, enemySide, swungAt, events) then
+		target = targetOf(state, fighter, true)
+		if not target then
+			return
+		end
+		hit(state, fighter, target, 1, events, nil)
+	end
 	if fighter.swings <= 1 then
 		return
 	end
 	local others = {}
-	for _, enemy in standing(other(state, (state.sides :: any)[fighter.side])) do
+	for _, enemy in standingCreatures(enemySide) do
 		if enemy ~= target then
 			table.insert(others, enemy)
 		end
@@ -426,12 +660,110 @@ local function attack(state: State, fighter: Fighter, events: { Event })
 	table.sort(others, function(a, b)
 		return a.hp / a.maxHp < b.hp / b.maxHp
 	end)
-	for index = 1, math.min(fighter.swings - 1, #others) do
+	local nextOther = 1
+	for _ = 1, fighter.swings - 1 do
 		if state.result then
 			return
 		end
-		hit(state, fighter, others[index], 1, events, nil)
+		if not swingAtPlayer(state, fighter, enemySide, swungAt, events) and others[nextOther] then
+			hit(state, fighter, others[nextOther], 1, events, nil)
+			nextOther += 1
+		end
 	end
+end
+
+-- Its next auto-attack is due within CHARGE_LEAD: tell clients once, so they wind up and land their effects with it
+-- (no random drawn: the likely target comes from targetOf). A fighter stunned through it isn't charged.
+local function charge(state: State, fighter: Fighter, events: { Event })
+	local lead = state.combat.CHARGE_LEAD
+	if not lead or fighter.player or fighter.chargedFor == fighter.nextAttack or fighter.stunUntil >= fighter.nextAttack then
+		return
+	end
+	if state.combat.CHARGE_SHARE then
+		lead = math.min(lead, interval(state, fighter) * state.combat.CHARGE_SHARE)
+	end
+	local left = fighter.nextAttack - state.time
+	if left > lead then
+		return
+	end
+	fighter.chargedFor = fighter.nextAttack
+	local target = targetOf(state, fighter, true)
+	table.insert(events, { type = "charge", from = fighter.id, to = if target then target.id else nil, seconds = math.max(0, left) })
+end
+
+-- Every `every` seconds a boss with playerAttacks starts a big attack: a ring (a slam or a swipe) on each up player,
+-- and with `doubleChance` one more on one of them, each landing after `warning` + HIT_GRACE
+local function bigAttack(state: State, fighter: Fighter, events: { Event })
+	local attacks = fighter.playerAttacks
+	if not attacks or fighter.fainted or state.time < fighter.bigReady then
+		return
+	end
+	fighter.bigReady = state.time + attacks.every
+	local players = {}
+	for _, enemy in standing(other(state, (state.sides :: any)[fighter.side])) do
+		if enemy.player then
+			table.insert(players, enemy)
+		end
+	end
+	local function ring(target: Fighter)
+		state.ringCount += 1
+		-- The coin is always tossed, so a boss with its own shape draws the same randoms as before
+		local roll = random(state)
+		local shape = attacks.shape or (if roll < 0.5 then "slam" else "swipe")
+		table.insert(state.pending, {
+			kind = if shape == "slam" then "Slam" else "Swipe",
+			at = state.time + attacks.warning + state.combat.HIT_GRACE,
+			target = target,
+			from = fighter,
+			damage = math.round(attacks.big * target.maxHp),
+			ring = state.ringCount,
+			shape = shape,
+		})
+		table.insert(events, { type = "ring", kind = shape, from = fighter.id, to = target.id, seconds = attacks.warning, ring = state.ringCount })
+	end
+	for _, player in players do
+		ring(player)
+	end
+	if #players > 0 and attacks.doubleChance and random(state) < attacks.doubleChance then
+		ring(players[math.min(#players, 1 + math.floor(random(state) * #players))])
+	end
+end
+
+-- Hits on players whose time has come: missed when the player is dodging or (a ring) stepped out; dropped when the
+-- player is down, out or gone
+local function landPending(state: State, events: { Event })
+	if #state.pending == 0 then
+		return
+	end
+	local waiting = {}
+	for _, pending in state.pending do
+		if state.time < pending.at then
+			table.insert(waiting, pending)
+			continue
+		end
+		local target = pending.target
+		if state.result or target.down or target.left then
+			continue
+		end
+		-- A dodge counts if its window still covered the moment clients showed the hit (HIT_GRACE before it lands),
+		-- give or take a step: the server only sees time move a tick at a time
+		local missed = state.time - state.combat.HIT_GRACE - 1 / state.combat.TICK_RATE < target.dodgeUntil
+		if not missed and pending.ring and state.ringCheck then
+			missed = not state.ringCheck({ id = pending.ring, target = target.id, shape = pending.shape :: string })
+		end
+		if missed then
+			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = 0, dodged = true })
+		else
+			local damage = math.round(pending.damage * (1 - perkOf(state, target, "Calm")))
+			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = damage })
+			pending.from.dealt += math.min(damage, target.hp)
+			hurtPlayer(state, target, damage, events)
+			if pending.ring then
+				giveDebuff(state, pending.from, target, events)
+			end
+		end
+	end
+	state.pending = waiting
 end
 
 -- One burn per second of Inferno; a long frame catches up on every tick it covered
@@ -513,7 +845,7 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 		fighter.clapReady = state.time + clap.every
 		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
 		table.insert(events, { type = "thunderclap", from = fighter.id })
-		for _, enemy in standing(other(state, side)) do
+		for _, enemy in standingCreatures(other(state, side)) do
 			local seconds = clap.seconds * math.clamp(fighter.spd / enemy.spd, clap.minFactor, clap.maxFactor)
 			enemy.stunUntil = math.max(enemy.stunUntil, state.time + seconds)
 			table.insert(events, { type = "stun", to = enemy.id, damage = seconds })
@@ -541,6 +873,25 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
+-- A down player fighter's time is up: back up with GET_UP_SHARE of its HP while one of its owner's creatures stands,
+-- else out for the rest of the fight
+local function getUp(state: State, side: Side, fighter: Fighter, events: { Event })
+	if not fighter.player or not fighter.down or fighter.out or fighter.left or state.time < fighter.downUntil then
+		return
+	end
+	local key = ownerKey(fighter)
+	for _, creature in standingCreatures(side) do
+		if ownerKey(creature) == key then
+			fighter.down = false
+			fighter.hp = math.round(fighter.maxHp * state.combat.GET_UP_SHARE)
+			table.insert(events, { type = "getUp", to = fighter.id, heal = fighter.hp })
+			return
+		end
+	end
+	fighter.out = true
+	table.insert(events, { type = "out", to = fighter.id })
+end
+
 function BattleSim.step(state: State, dt: number): { Event }
 	local events: { Event } = {}
 	if state.result then
@@ -548,11 +899,15 @@ function BattleSim.step(state: State, dt: number): { Event }
 	end
 	state.time += dt
 	local combat = state.combat
+	landPending(state, events)
 
 	for _, side in { state.sides.a, state.sides.b } do
 		for _, fighter in side.fighters do
+			tickDebuff(state, fighter, events)
 			burn(state, fighter, events)
 			bossMechanics(state, fighter, events)
+			getUp(state, side, fighter, events)
+			bigAttack(state, fighter, events)
 		end
 	end
 
@@ -561,6 +916,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 			if state.result then
 				return events
 			end
+			charge(state, fighter, events)
 			if state.time >= fighter.nextAttack then
 				if state.time >= fighter.stunUntil then
 					attack(state, fighter, events)
@@ -591,7 +947,7 @@ function BattleSim.callIn(state: State, id: string, owner: string?): (boolean, s
 		for _, fighter in side.reserves do
 			if fighter.id == id and (owner == nil or fighter.owner == owner) then
 				local key = fighter.owner or ""
-				if side.calledBy[key] or state.time > state.combat.CALL_IN_SECONDS then
+				if not side.callIn or side.calledBy[key] or state.time > state.combat.CALL_IN_SECONDS then
 					return false, "closed"
 				end
 				side.calledBy[key] = true
@@ -631,7 +987,7 @@ function BattleSim.swap(state: State, id: string, owner: string?): ({ Event }?, 
 		return nil, "missing"
 	end
 	local key = ownerKey(incoming)
-	if not side.calledBy[key] and state.time <= state.combat.CALL_IN_SECONDS then
+	if side.callIn and not side.calledBy[key] and state.time <= state.combat.CALL_IN_SECONDS then
 		BattleSim.callIn(state, id, owner)
 		return { { type = "callin", from = id } }, nil
 	end
@@ -657,6 +1013,7 @@ function BattleSim.withdraw(state: State, owner: string): { Event }
 		for _, fighter in side.fighters do
 			if fighter.owner == owner and not fighter.left then
 				fighter.left = true
+				fighter.debuff = nil
 				had = true
 				table.insert(events, { type = "leave", from = fighter.id })
 			end
@@ -682,6 +1039,18 @@ end
 
 -- One owner's share of side A's fight so far (the boss loot's contribution rule). Players who left don't count: the
 -- shares are of what the ones still in it did.
+-- An owner's fight perk of this kind right now: their first standing creature's (0 if none). The server shortens the
+-- sword skill's cooldown with Express.
+function BattleSim.perkOf(state: State, owner: string, kind: string): number
+	for _, creature in standingCreatures(state.sides.a) do
+		if ownerKey(creature) == owner then
+			local perk = creature.perk
+			return if perk and perk.kind == kind then perk.value else 0
+		end
+	end
+	return 0
+end
+
 function BattleSim.contribution(state: State, owner: string): { dealt: number, taken: number, totalDealt: number, totalTaken: number }
 	local result = { dealt = 0, taken = 0, totalDealt = 0, totalTaken = 0 }
 	for _, fighter in state.sides.a.fighters do
@@ -708,7 +1077,7 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 	elseif kind == "Wave" then
 		-- Heals the user's own creatures (in a group, not the other players': stacked Waves would out-heal any boss)
 		local healed = 0
-		for _, ally in standing(side) do
+		for _, ally in standingCreatures(side) do
 			if ally.owner ~= fighter.owner then
 				continue
 			end
@@ -779,7 +1148,7 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		elseif state.time < fighter.abilityReady then
 			return nil, "cooldown"
 		end
-		fighter.abilityReady = state.time + combat.ABILITY_COOLDOWN
+		fighter.abilityReady = state.time + combat.ABILITY_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
 	elseif which == "signature" then
 		ability = if fighter.signature then combat.SIGNATURES[fighter.signature] else nil
 		if not ability then
@@ -787,13 +1156,91 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		elseif state.time < fighter.signatureReady then
 			return nil, "cooldown"
 		end
-		fighter.signatureReady = state.time + combat.SIGNATURE_COOLDOWN
+		fighter.signatureReady = state.time + combat.SIGNATURE_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
 	else
 		return nil, "none"
 	end
 	local events: { Event } = {}
 	applyAbility(state, fighter, side, ability, events)
 	return events, nil
+end
+
+-- An owner's player fighter, if it's still in the fight
+local function playerOf(state: State, owner: string): Fighter?
+	local fighter = find(state, `a:@{owner}`)
+	return if fighter and fighter.player and not fighter.left then fighter else nil
+end
+
+-- The ATK an owner's sword hits with: their first standing creature's (remembered), else the last one's
+local function creatureAtk(state: State, side: Side, key: string): number
+	for _, creature in standingCreatures(side) do
+		if ownerKey(creature) == key then
+			side.lastAtk[key] = creature.atk
+			return creature.atk
+		end
+	end
+	return side.lastAtk[key] or state.combat.SWORD_IDLE_ATK
+end
+
+-- One sword hit (a cut, or the skill) from `owner`'s player fighter on a standing side-B fighter: their creature's ATK
+-- x `power`, neutral element, through the usual hit (a boss's adds guard and its side's shield apply). kind: "Sword"
+-- or "Skill". The server checks reach and timing first (SwordRules).
+function BattleSim.swordHit(state: State, owner: string, targetId: string, power: number, kind: string): ({ Event }?, string?)
+	if state.result then
+		return nil, "ended"
+	end
+	local fighter = playerOf(state, owner)
+	if not fighter then
+		return nil, "missing"
+	elseif fighter.down then
+		return nil, "down"
+	end
+	local debuff, spec = debuffOn(state, fighter)
+	if debuff == "Shocked" then
+		return nil, "stunned"
+	end
+	local target, targetSide = find(state, targetId)
+	if not target or targetSide ~= state.sides.b or target.fainted or target.left then
+		return nil, "target"
+	end
+	local side = (state.sides :: any)[fighter.side] :: Side
+	fighter.atk = creatureAtk(state, side, ownerKey(fighter))
+	local events: { Event } = {}
+	hit(state, fighter, target, power * (if spec and spec.sword then spec.sword else 1), events, kind, true)
+	return events, nil
+end
+
+-- A dodge: `owner`'s player fighter can't be hit for DODGE_SECONDS (the dash itself is the client's), then waits
+-- DODGE_COOLDOWN before the next
+function BattleSim.dodge(state: State, owner: string): ({ Event }?, string?)
+	if state.result then
+		return nil, "ended"
+	end
+	local fighter = playerOf(state, owner)
+	if not fighter then
+		return nil, "missing"
+	elseif fighter.down then
+		return nil, "down"
+	elseif fighter.dodgeReady - state.time > 1 / state.combat.TICK_RATE + 1e-6 then
+		return nil, "cooldown" -- a tick of slack: the request can arrive up to a step after the sim's last time
+	end
+	local debuff, spec = debuffOn(state, fighter)
+	if debuff == "Shocked" then
+		return nil, "stunned"
+	end
+	fighter.dodgeUntil = state.time + state.combat.DODGE_SECONDS
+	fighter.dodgeReady = state.time + state.combat.DODGE_COOLDOWN * (if spec and spec.dodgeCooldown then spec.dodgeCooldown else 1)
+	return { { type = "dodge", from = fighter.id } }, nil
+end
+
+-- Lune tests and the balance tool only: damage a player fighter directly (the path a boss's hits on players take)
+function BattleSim._hurtPlayer(state: State, id: string, amount: number): { Event }
+	local events: { Event } = {}
+	local fighter = find(state, id)
+	if fighter and fighter.player and not fighter.down and not fighter.left and not state.result then
+		hurtPlayer(state, fighter, amount, events)
+	end
+	return events
 end
 
 function BattleSim.getRunChance(state: State, sideName: string): number
@@ -857,7 +1304,7 @@ function BattleSim.hpLeft(state: State, sideName: string, owner: string?): { [st
 	end
 	for _, list in { side.fighters, side.reserves } do
 		for _, fighter in list do
-			if owner == nil or fighter.owner == owner then
+			if not fighter.player and (owner == nil or fighter.owner == owner) then
 				out[fighter.rawId] = if fighter.fainted then 0 else fighter.hp
 			end
 		end
@@ -870,7 +1317,7 @@ function BattleSim.getFainted(state: State, sideName: string): { string }
 	local list = {}
 	local side = (state.sides :: any)[sideName] :: Side?
 	for _, fighter in if side then side.fighters else {} do
-		if fighter.fainted then
+		if fighter.fainted and not fighter.player then
 			table.insert(list, fighter.rawId)
 		end
 	end
@@ -897,12 +1344,17 @@ function BattleSim.snapshot(state: State): any
 				element = fighter.element,
 				elite = fighter.elite,
 				abilityIn = math.max(0, fighter.abilityReady - state.time),
+				perk = fighter.perk, -- its fight perk (the HUD chip)
 				signature = fighter.signature,
 				signatureIn = math.max(0, fighter.signatureReady - state.time),
 				fainted = fighter.fainted,
 				owner = fighter.owner,
 				left = fighter.left,
 				benched = fighter.benched,
+				player = fighter.player,
+				down = fighter.down,
+				downIn = if fighter.down and not fighter.out then math.max(0, fighter.downUntil - state.time) else 0,
+				out = fighter.out,
 			})
 		end
 		local reserves = {}

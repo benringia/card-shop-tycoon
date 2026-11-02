@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local TeleportService = game:GetService("TeleportService")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local DataConfig = require(Config:WaitForChild("Data"))
@@ -73,6 +74,8 @@ export type PlayerData = {
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
+	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
+	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
 }
 
 export type Handler = {
@@ -105,6 +108,8 @@ local TEMPLATE: PlayerData = {
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 	seenWelcome = false,
+	seenSword = false,
+	swordFights = 0,
 }
 
 local DataService = {}
@@ -119,6 +124,7 @@ local store = ProfileStore.New(DataConfig.STORE_NAME, TEMPLATE)
 local handlers: { Handler } = {}
 local beforeLeaveCallbacks: { (player: Player) -> () } = {}
 local profiles: { [Player]: any } = {}
+local handedOff: { [Player]: boolean } = {} -- saved and closed for a teleport that hasn't left yet (DataService.HandOff)
 
 -- Runs one handler step; a bug in one service must not stop the others saving
 local function runHandler(handler: Handler, step: string, fn: () -> ())
@@ -150,17 +156,43 @@ local function isInGame(player: Player): boolean
 	return player.Parent == Players
 end
 
+-- Keeps this player's open profile: live state is copied in on every save. A session that ends while it's still this
+-- player's (another server took it) kicks them; this server ending it (leaving, a teleport's hand-off) clears
+-- profiles first, so it doesn't.
+local function attach(player: Player, profile: any)
+	profile.OnSessionEnd:Connect(function()
+		if profiles[player] ~= profile then
+			return
+		end
+		profiles[player] = nil
+		if isInGame(player) then
+			player:Kick(DataConfig.SESSION_ENDED_MESSAGE)
+		end
+	end)
+	-- Autosaves and the final save copy live state into the profile first
+	profile.OnSave:Connect(function()
+		if profiles[player] == profile then
+			collect(player, profile.Data)
+		end
+	end)
+	profiles[player] = profile
+end
+
+local function startSession(player: Player): any
+	return store:StartSessionAsync(DataConfig.KEY_PREFIX .. player.UserId, {
+		Cancel = function()
+			return not isInGame(player)
+		end,
+	})
+end
+
 local function onPlayerAdded(player: Player)
 	-- Claim first so the player spawns in their shop while the profile loads
 	if not Place.isFrontier() and not Place.isDungeon() then -- the Frontier and Dungeon places have no plots
 		PlotService.Claim(player)
 	end
 
-	local profile = store:StartSessionAsync(DataConfig.KEY_PREFIX .. player.UserId, {
-		Cancel = function()
-			return not isInGame(player)
-		end,
-	})
+	local profile = startSession(player)
 	if not profile then
 		if isInGame(player) then
 			player:Kick(DataConfig.LOAD_FAILED_MESSAGE)
@@ -176,36 +208,28 @@ local function onPlayerAdded(player: Player)
 	Migrations.run(profile.Data, DataConfig.SCHEMA_VERSION, rollGrade)
 	profile:Reconcile() -- fills in fields added to TEMPLATE since this profile was created
 
-	profile.OnSessionEnd:Connect(function()
-		profiles[player] = nil
-		if isInGame(player) then
-			player:Kick(DataConfig.SESSION_ENDED_MESSAGE)
-		end
-	end)
-	-- Autosaves and the final save copy live state into the profile first
-	profile.OnSave:Connect(function()
-		if profiles[player] == profile then
-			collect(player, profile.Data)
-		end
-	end)
-
-	profiles[player] = profile
+	attach(player, profile)
 	for _, handler in handlers do
 		runHandler(handler, "load", function()
 			handler.load(player, profile.Data)
 		end)
 	end
+	player:SetAttribute("DataLoaded", true) -- the loading screen's save step (LoadingController)
 end
 
-local function onPlayerRemoving(player: Player)
-	-- e.g. customers put picked-up stock and cards back, so they're on shelves when we save
+local function beforeLeave(player: Player)
 	for _, callback in beforeLeaveCallbacks do
 		local ok, err = pcall(callback, player)
 		if not ok then
 			warn(`[DataService] before-leave callback failed: {err}`)
 		end
 	end
+end
 
+local function onPlayerRemoving(player: Player)
+	-- e.g. customers put picked-up stock and cards back, so they're on shelves when we save
+	beforeLeave(player)
+	handedOff[player] = nil
 	local profile = profiles[player]
 	if profile then
 		collect(player, profile.Data)
@@ -228,6 +252,44 @@ function DataService.OnBeforeLeave(callback: (player: Player) -> ())
 	table.insert(beforeLeaveCallbacks, callback)
 end
 
+-- A teleport is about to take this player to another place: save and close their session now, so the next place loads
+-- it at once instead of waiting for this server to let go after they've left. Their live state stays here; changes in
+-- the moment before they leave aren't saved. Reclaim reopens it if the teleport fails.
+function DataService.HandOff(player: Player)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	beforeLeave(player)
+	collect(player, profile.Data)
+	profiles[player] = nil
+	handedOff[player] = true
+	profile:EndSession()
+end
+
+-- The teleport failed: open the session again. The services still hold the live state, so nothing reloads; the next
+-- save writes it.
+function DataService.Reclaim(player: Player)
+	if not handedOff[player] then
+		return
+	end
+	handedOff[player] = nil
+	task.spawn(function()
+		local profile = startSession(player)
+		if not profile then
+			if isInGame(player) then
+				player:Kick(DataConfig.LOAD_FAILED_MESSAGE)
+			end
+			return
+		end
+		if not isInGame(player) then
+			profile:EndSession()
+			return
+		end
+		attach(player, profile)
+	end)
+end
+
 -- Lifetime counters (DESIGN stats). Written straight into the profile.
 function DataService.AddStat(player: Player, stat: "packsOpened" | "customersServed" | "totalEarned", amount: number)
 	local profile = profiles[player]
@@ -239,6 +301,10 @@ function DataService.AddStat(player: Player, stat: "packsOpened" | "customersSer
 end
 
 function DataService.Start()
+	-- A teleport that fails after its hand-off (any place sending players on): open their session again
+	TeleportService.TeleportInitFailed:Connect(function(player)
+		DataService.Reclaim(player)
+	end)
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
 	for _, player in Players:GetPlayers() do

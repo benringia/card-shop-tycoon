@@ -15,6 +15,7 @@ return {
 
 	-- The arena: one pad, far from the plots and the wild
 	ARENA_ORIGIN = { x = 0, y = 0, z = -1200 },
+	WATCH_RADIUS = 60, -- studs from the arena's centre: players this close see the fight's attacks (Remotes.ArenaWatch)
 	ARENA_PORTAL = { x = -205, y = 0, z = 0 }, -- at the end of Ember Canyon, west of town (Town.PORTAL_AREAS)
 	PAD_SIZE = 40, -- studs across
 	SPAWN_OFFSET = 14, -- each player stands this far from the pad centre, on opposite sides

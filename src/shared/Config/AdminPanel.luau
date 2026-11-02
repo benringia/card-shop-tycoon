@@ -37,6 +37,7 @@ AdminPanel.SECTIONS = {
 		title = "Fights and places",
 		buttons = {
 			{ label = "Wake resting cards", command = "/rest" },
+			{ label = "Tire the party (keep summoned)", command = "/tire" },
 			{ label = "Elite next to me", command = "/elite" },
 			{ label = "Go to the Wild", command = "/wild" },
 			{ label = "Go to the arena", command = "/arena" },
@@ -52,6 +53,8 @@ AdminPanel.SECTIONS = {
 			{ label = "Night", command = "/time night" },
 			{ label = "Dawn", command = "/time dawn" },
 			{ label = "Replay intro", command = "/intro" },
+			{ label = "Sword popup again", command = "/swordpopup" },
+			{ label = "Button names again (3 fights)", command = "/buttonnames" },
 		},
 	},
 	{

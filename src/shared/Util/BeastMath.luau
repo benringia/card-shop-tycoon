@@ -128,6 +128,15 @@ function BeastMath.getXpToNext(config: BeastConfig, level: number): number
 	return math.round(config.XP_BASE * level ^ config.XP_EXPONENT)
 end
 
+-- How far `xp` is toward the next level (0-1; full at max level), for XP bars
+function BeastMath.levelProgress(config: BeastConfig, level: number, xp: number): number
+	local need = BeastMath.getXpToNext(config, level)
+	if need <= 0 then
+		return 1
+	end
+	return math.clamp(xp / need, 0, 1)
+end
+
 -- Duplicates needed for the next star, or nil if there is no next star
 function BeastMath.getCondenseCost(config: BeastConfig, stars: number): number?
 	if stars < 0 or stars >= config.MAX_STARS then

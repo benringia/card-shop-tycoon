@@ -5,7 +5,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 
 ## Stack
 - Roblox, Luau, synced with Rojo (`default.project.json`)
-- `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared
+- `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared,
+  `src/first` → ReplicatedFirst.LoadingScreen (the loading screen, in all three project files)
 - `ServerPackages/` (Wally, not in git) → ServerStorage.ServerPackages. ProfileStore lives there.
 - `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
   (docs/creatures.md). Only models a card or town animal uses (Lune-tested); the bought packs' unused models are kept in
@@ -39,6 +40,20 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/ui/fx`: the pack opening's effect sheets (rip burst, shards, glints, mote, rays, leak), rendered by
   `tools/blender/build_pack_fx.py` and cut into flipbooks by `tools/textures/make_flipbooks.py`; ids in
   `Config/PackFx`. Uploaded as images, not synced by Rojo.
+- `assets/weapons` → ReplicatedStorage.WeaponModels: sword models (`StarterSword.rbxm`, built by
+  `tools/blender/build_starter_sword.py`, imported in Studio, finished by `lune run tools/weapons/finish_sword`: the FBX
+  importer drops colours and turns pivots). `assets/animations` → ReplicatedStorage.SwordAnimations: the sword moves as
+  KeyframeSequences (`<Sword>/<move>.rbxm`), keyed in Blender by `tools/blender/anim_<sword>.py` on `anim_kit.py`,
+  converted by `lune run tools/anim/build_kfs`; published ids go in `Config/Swords` (docs/animations.md).
+  `assets/monster-animations` → ReplicatedStorage.MonsterAnimations: monster and boss attack clips
+  (`<model>/<clip>.rbxm`), keyed on their bone rigs by `tools/blender/anim_<model>.py` on `anim_bone_kit.py`, built by
+  `lune run tools/anim/build_bone_clips <model>`, played client-side by `Util/ClipPlayer` (docs/animations.md "Bone
+  rigs"; no upload).
+  `assets/ui/combat`: the boss-fight HUD's slanted buttons, HP bars and red hit flash and the closing rings
+  (`tools/textures/make_slant_buttons.py`, `make_hp_bars.py`, `make_ring_textures.py`), uploaded as images, not synced.
+  `assets/ui/fx-attack`: the fight effects' white textures (glow, streak, bolt, slash, shard...), made by
+  `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced. Particle
+  textures must be square; a beam runs a texture's height along its length (the bolt is upright).
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
 
@@ -56,11 +71,18 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `wally install` — fetch packages after cloning or changing `wally.toml`
 - `lune run tools/economy/sim [players]` — economy simulator: hours to first Epic, first Legendary and a Grade S
   Legendary with 1 star, from the real odds, pity, grading costs and shop profit (Monte Carlo)
-- `lune run tools/balance/bosses [fights] [players]` — boss balance: win rates per boss for parties at 0.8x / 1x / 1.3x
-  the recommended Power, a typical party (best card at it, two at 60%) and one maxed Legendary with two Lv 1 cards;
-  with players > 1 every row is a group of that many players against the scaled boss
+- `lune run tools/balance/bosses [fights] [players] [boss]` — boss balance: win rates per boss for parties at 0.8x / 1x /
+  1.3x the recommended Power, a typical party (best card at it, two at 60%) and one maxed Legendary with two Lv 1 cards,
+  each for a player who stands still and one who fights well with the sword (targets: well 85% at 1x / 50% at 0.8x,
+  still 60% / 15%); with players > 1 every row is a group of that many players against the scaled boss. Every creature
+  fights with its fight perk; `NO_PERKS=1` in front runs without them, to compare (`NO_DEBUFFS=1`: without the
+  bosses' ring debuffs)
+- `lune run tools/balance/wild [fights] [wild|frontier|both]` — wild monster balance: win rate and fight length per
+  species at its zone's lowest, middle and highest level, normal and elite, against the card nearest the zone boss's
+  recommended Power, three ways: no sword yet, standing still, fighting well (targets: normal about 12.5 s, well ~90%,
+  still ~75%, the Meadow ~75% with no sword; elite 25-35 s, well ~65%)
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, ShopDetail: every shop screen sets a draw distance, PortalTrails,
+  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, ShopDetail: every shop screen sets a draw distance, PortalTrails,
   TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
@@ -127,12 +149,12 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser), `/room <2-4>` (Dungeon window),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
-  cards), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
+  cards), `/tire` (rest every party card but the summoned one, to lose a boss fight), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
   `/raritypack [foil]` (a pack with one card of each rarity, to see every reveal), `/item <id> <n>` (any Config/Items
   item), `/boss <1-6> [fight|group]` (to boss n's gate: in the main game's Wild valley its portal, in the Frontier its ring; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt; boss 7 is reached through the Dungeon run), `/crowd <0-60>` (players counted in every Wild valley biome on top of the real ones, to see its monsters grow), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
   max stars and Grade S, for testing fights), `/time <morning|afternoon|sunset|night|dawn>` (jump the town's day cycle),
-  `/intro` (replay the first-visit welcome cinematic).
+  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights).
 - Admin panel (Studio only): the "Admin" tile on the left opens every dev command as a button (`Config/AdminPanel`,
   `AdminPanelController`, remote `DevPanel` handled only in Studio), plus +1/+10 of every item and Go/Fight/Group per boss.
 - Multiplayer: Test tab → Local Server, 2 players.

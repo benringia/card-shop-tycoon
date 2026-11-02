@@ -12,3 +12,11 @@ __pycache__/
 
 # Fonts for the texture scripts (fetched locally; see tools/textures/make_pack_textures.py)
 tools/textures/fonts/
+
+# Playwright MCP browser scratch (screenshots and page dumps)
+.playwright-mcp/
+# Leftovers from making models: preview-build palettes, and concept sheets before processing (the processed
+# <Name>_sheet.png is kept)
+assets/blender/*_prev/
+assets/blender/*/*_sheet_raw.png
+assets/blender/*/*_sheet_preview.jpg

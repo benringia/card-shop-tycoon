@@ -276,7 +276,13 @@ end
 -- Whether a fidget's effect (Util/SignatureFx) is due this far through it: the butterfly as the hand comes up,
 -- a signature roar's shockwave (or fire breath) with the lunge. Callers fire it once.
 function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
-	if kind == "butterfly" then
+	if kind == "strike" then
+		return progress >= 0.4 -- the lunge's peak: the hit
+	elseif kind == "combo" then
+		return progress >= 1 / 6 -- the first lunge (FightFx times the other two)
+	elseif kind == "cast" then
+		return progress >= 0.6 -- thrown
+	elseif kind == "butterfly" then
 		return progress >= cfg.BUTTERFLY_CUE
 	elseif kind == "shellcrack" then
 		return progress >= 0.25 -- the first tap
@@ -381,6 +387,26 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 			lift = cfg.ZAPHOP_HEIGHT * math.sin((p - 0.25) / 0.5 * math.pi)
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
+		end
+	elseif kind == "charge" then
+		-- Crouch and draw back over the first third, then hold it (the attack's charge)
+		local held = math.sin(math.min(1, p / 0.35) * math.pi / 2)
+		lift = -cfg.CHARGE_CROUCH * held
+		forward = -cfg.CHARGE_DRAW * held
+	elseif kind == "strike" then
+		-- A fast lunge peaking at 0.4 (the hit), easing back to its place
+		forward = cfg.STRIKE_LUNGE * (if p < 0.4 then math.sin(p / 0.4 * math.pi / 2) else math.cos((p - 0.4) / 0.6 * math.pi / 2))
+	elseif kind == "combo" then
+		-- Three quick lunges, one per third
+		forward = cfg.COMBO_LUNGE * math.abs(math.sin(p * 3 * math.pi))
+	elseif kind == "cast" then
+		-- Rear up (to 0.5), then throw forward and settle
+		if p < 0.5 then
+			pitch = math.rad(cfg.CAST_PITCH) * math.sin(p / 0.5 * math.pi / 2)
+		else
+			local q = (p - 0.5) / 0.5
+			pitch = math.rad(cfg.CAST_PITCH) * math.cos(q * math.pi) * (1 - q)
+			forward = cfg.CAST_LUNGE * math.sin(q * math.pi)
 		end
 	elseif kind == "abysschomp" then
 		-- Drawing back (to 0.35), a fast lunge snapping at 0.5, then easing back to its place

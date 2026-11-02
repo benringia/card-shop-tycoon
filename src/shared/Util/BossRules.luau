@@ -396,4 +396,21 @@ function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "walk
 	return if bossPlace == "Frontier" then "walkToFrontier" else "toMain"
 end
 
+-- Where a lost boss fight sends you (spec 2026-11-02-you-in-the-fight-design), by place: the main game's plaza spring,
+-- the Frontier's entrance spring, or (the Dungeon) out of the run as DungeonService already does
+function BossRules.lossHome(place: string): "spring" | "frontierSpring" | "dungeon"
+	if place == "Frontier" then
+		return "frontierSpring"
+	elseif place == "Dungeon" then
+		return "dungeon"
+	end
+	return "spring"
+end
+
+-- The loss screen's countdown line, `secondsLeft` before the move ("... in 3", "... in 2", "... in 1")
+function BossRules.countdownText(secondsLeft: number): string
+	local whole = math.ceil(secondsLeft - 1e-9)
+	return if whole >= 1 then `Teleporting back to town in {whole}` else "Teleporting back to town..."
+end
+
 return BossRules

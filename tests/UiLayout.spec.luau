@@ -62,4 +62,72 @@ return {
 		expect.equal(UiLayout.detailPanelLeft(800, 330, 16, 520, 16), 264, "right margin wins")
 		expect.equal(UiLayout.detailPanelLeft(750, 200, 16, 420, 76), 254, "phone: clear of the close button")
 	end,
+	["combat buttons: big enough, on screen, never overlapping, clear of the thumbstick"] = function()
+		for _, view in { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 1920, h = 1080 }, { w = 1280, h = 720 } } do
+			local rects = UiLayout.combatButtons(view)
+			local names = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
+			for _, name in names do
+				local r = (rects :: any)[name] :: UiLayout.Rect
+				local where = `{name} at {view.w}x{view.h}`
+				expect.equal(r.w >= 48 and r.h >= 48, true, `{where}: tap target`)
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{where}: on screen`)
+				-- Roblox's thumbstick lives in the bottom-left: the left 40% of the lower half
+				local inStick = r.x < view.w * 0.4 and r.y + r.h > view.h * 0.5
+				expect.equal(inStick, false, `{where}: clear of the thumbstick`)
+			end
+			for i, a in names do
+				for j = i + 1, #names do
+					local r1, r2 = (rects :: any)[a], (rects :: any)[names[j]]
+					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
+					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+				end
+			end
+			expect.equal(rects.attack.w > rects.dodge.w and rects.attack.w > rects.skill.w, true, "Attack is the biggest")
+			expect.equal(rects.attack.x > view.w / 2 and rects.attack.y > view.h / 2, true, "Attack sits bottom-right")
+		end
+	end,
+	["combat buttons with a mouse: no Attack, the Pet button in its corner, Dodge and Skill beside it"] = function()
+		for _, view in { { w = 1920, h = 1080 }, { w = 1280, h = 720 }, { w = 844, h = 390 } } do
+			local rects = UiLayout.combatButtons(view, true)
+			local names = { "dodge", "skill", "pet", "signature", "swap", "run" }
+			for i, a in names do
+				local r = (rects :: any)[a] :: UiLayout.Rect
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{a} at {view.w}x{view.h}: on screen`)
+				for j = i + 1, #names do
+					local r1, r2 = r, (rects :: any)[names[j]]
+					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
+					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+				end
+			end
+			local full = UiLayout.combatButtons(view)
+			expect.near(rects.pet.x + rects.pet.w, full.attack.x + full.attack.w, 1e-6, "the Pet button's right edge is Attack's")
+			expect.equal(rects.pet.y + rects.pet.h > full.attack.y + full.attack.h - 1, true, "the Pet button sits at the bottom")
+			expect.equal(rects.dodge.x + rects.dodge.w < rects.pet.x, true, "Dodge left of the Pet button")
+			expect.equal(rects.dodge.x > full.dodge.x, true, "Dodge moves toward the corner")
+			expect.near(rects.skill.x, rects.dodge.x + rects.dodge.w - rects.skill.w, 1e-6, "Skill above Dodge, right-aligned")
+		end
+	end,
+	["wild fight buttons: the Pet button big, all on screen, no overlaps, clear of the thumbstick"] = function()
+		for _, view in { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 1920, h = 1080 }, { w = 1280, h = 720 } } do
+			local rects = UiLayout.wildButtons(view)
+			local names = { "pet", "signature", "swap", "run" }
+			for _, name in names do
+				local r = (rects :: any)[name] :: UiLayout.Rect
+				local where = `{name} at {view.w}x{view.h}`
+				expect.equal(r.w >= 48 and r.h >= 48, true, `{where}: tap target`)
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{where}: on screen`)
+				local inStick = r.x < view.w * 0.4 and r.y + r.h > view.h * 0.5
+				expect.equal(inStick, false, `{where}: clear of the thumbstick`)
+			end
+			for i, a in names do
+				for j = i + 1, #names do
+					local r1, r2 = (rects :: any)[a], (rects :: any)[names[j]]
+					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
+					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+				end
+			end
+			expect.equal(rects.pet.w > rects.run.w and rects.pet.w > rects.swap.w, true, "the Pet button is the biggest")
+			expect.equal(rects.pet.x > view.w / 2 and rects.pet.y > view.h / 2, true, "it sits bottom-right")
+		end
+	end,
 }

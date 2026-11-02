@@ -47,6 +47,7 @@ local NAMES = {
 	"RunFight", -- client → server: ()
 	"BattleStarted", -- server → client: { monsterId, species, level, elite, element, names = { [beastId] = name }, snapshot }
 	"BattleEvent", -- server → client: { events = { Event }, snapshot } (BattleSim)
+	"ArenaWatch", -- server → client: a PvP fight for players watching from the stands: { events, markers? } or { ended = true }
 	"BattleEnded", -- server → client: { result, rested = { beastId }, xpEach?, cash?, card? = { cardId, foil, grade }, partyIds? }
 	"RestChanged", -- server → client: { entries = { { beastId, seconds } }, nearSpring: boolean }
 	"Challenge", -- client → server: (targetUserId: number, bet: number) PvP challenge
@@ -68,6 +69,11 @@ local NAMES = {
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped
+	"SwordState", -- server → client: { sword: string?, popup: boolean } your sword and whether to show the first-sword popup; client → server: () ask
+	"SwordSeen", -- client → server: () the first-sword popup was closed
+	"SwordAttack", -- client → server: () an Attack tap in a boss fight (the server picks the cut and checks reach)
+	"SwordSkill", -- client → server: () the sword skill in a boss fight
+	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
 }
 
 local isServer = RunService:IsServer()
@@ -135,6 +141,7 @@ return {
 	RunFight = remotes.RunFight,
 	BattleStarted = remotes.BattleStarted,
 	BattleEvent = remotes.BattleEvent,
+	ArenaWatch = remotes.ArenaWatch,
 	BattleEnded = remotes.BattleEnded,
 	RestChanged = remotes.RestChanged,
 	Challenge = remotes.Challenge,
@@ -156,4 +163,9 @@ return {
 	UseXpTonic = remotes.UseXpTonic,
 	FrontierTravel = remotes.FrontierTravel,
 	WelcomeSeen = remotes.WelcomeSeen,
+	SwordState = remotes.SwordState,
+	SwordSeen = remotes.SwordSeen,
+	SwordAttack = remotes.SwordAttack,
+	SwordSkill = remotes.SwordSkill,
+	Dodge = remotes.Dodge,
 }

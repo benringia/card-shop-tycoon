@@ -1133,6 +1133,17 @@ function WildService.GetDungeonLayout(): DungeonBuilder.DungeonLayout?
 	return dungeonLayout
 end
 
+-- A lost boss fight's way home (spec 2026-11-02-you-in-the-fight-design): beside this place's spring, where resting
+-- cards wake 3x faster. The main game's is the plaza's (out of the wild); the Frontier's is at its entrance.
+function WildService.SendToSpring(player: Player): boolean
+	local spring = vec(Wild.SPRING)
+	local spot = CFrame.lookAt(spring + Vector3.new(8, 0, 0), spring)
+	if Place.isFrontier() then
+		return WildService.MoveInWild(player, spot)
+	end
+	return WildService.MoveTo(player, spot)
+end
+
 function WildService.SetHomeHandler(handler: (player: Player) -> ())
 	homeHandler = handler
 end

@@ -225,4 +225,10 @@ return {
 		assert(bad, "expected a card")
 		expect.equal(bad.grade, "C", "defaulted")
 	end,
+	["level progress: the share of the way to the next level, full at max"] = function()
+		expect.equal(BeastMath.levelProgress(config, 1, 0), 0)
+		expect.near(BeastMath.levelProgress(config, 1, 25), 0.5, 1e-9, "25 of 50")
+		expect.equal(BeastMath.levelProgress(config, config.MAX_LEVEL, 0), 1, "max level: full")
+		expect.equal(BeastMath.levelProgress(config, 1, 999), 1, "never past full")
+	end,
 }

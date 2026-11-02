@@ -1,6 +1,7 @@
 --!strict
 local BattleSim = require("../src/server/Util/BattleSim")
 local combat = require("../src/shared/Config/Combat")
+local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 local CombatMath = require("../src/shared/Util/CombatMath")
 
@@ -38,6 +39,17 @@ local function runToEnd(state: any, maxSeconds: number?): (string?, { any })
 	return state.result, all
 end
 
+-- Steps the fight for this long (0.1 s steps); every event with the fight time it came at
+local function timedEvents(state: any, seconds: number): { { time: number, event: any } }
+	local all = {}
+	for _ = 1, math.round(seconds / 0.1) do
+		for _, event in BattleSim.step(state, 0.1) do
+			table.insert(all, { time = state.time, event = event })
+		end
+	end
+	return all
+end
+
 local function count(events: { any }, predicate: (any) -> boolean): number
 	local n = 0
 	for _, event in events do
@@ -52,6 +64,13 @@ end
 local function owned(id: string, owner: string, hp: number?)
 	local input: any = fighter(id, "Ember", hp or 500, 20, 10)
 	input.owner = owner
+	return input
+end
+
+-- An owner's creature with a fight perk
+local function perked(kind: string, value: number): any
+	local input = owned("p1", "1")
+	input.perk = { kind = kind, value = value }
 	return input
 end
 
@@ -114,6 +133,59 @@ local function firstOf(events: { any }, kind: string): any
 	for _, event in events do
 		if event.type == kind then
 			return event
+		end
+	end
+	return nil
+end
+
+-- The player in boss fights (spec 2026-11-02-you-in-the-fight-design): an owner's player fighter beside their creature
+local function playerInput(owner: string): any
+	return { id = `@{owner}`, player = true, owner = owner, element = "None", hp = combat.PLAYER_HP, atk = 0, spd = 10 }
+end
+
+-- One player's creature and player fighter, a reserve, swaps on and no call-in, against a huge boss of this ATK
+local function bossFightWithPlayer(seed: number, foeAtk: number, mechanics: any?, playerAttacks: any?, fighters: { any }?, reserves: { any }?): any
+	return BattleSim.new(combat, {
+		fighters = fighters or { owned("p1", "1"), playerInput("1") },
+		reserves = reserves or { owned("r1", "1") },
+		abilities = true,
+		canRun = true,
+		swapSeconds = 10,
+		callIn = false,
+	}, {
+		fighters = { { id = "m", element = "Bloom", hp = 100000, atk = foeAtk, spd = 10, boss = true, mechanics = mechanics or {}, playerAttacks = playerAttacks } },
+		abilities = false,
+		canRun = false,
+	}, seed)
+end
+
+-- Steps the fight for this long (0.1 s steps); returns every event
+local function runFor(state: any, seconds: number): { any }
+	local all = {}
+	for _ = 1, math.round(seconds / 0.1) do
+		for _, event in BattleSim.step(state, 0.1) do
+			table.insert(all, event)
+		end
+	end
+	return all
+end
+
+local function viewOf(state: any, id: string): any
+	for _, view in BattleSim.snapshot(state).sides.a.fighters do
+		if view.id == id then
+			return view
+		end
+	end
+	return nil
+end
+
+-- Steps one 0.1 s step at a time until `predicate(event)` matches; returns the time of that step (nil after `limit` s)
+local function stepUntil(state: any, predicate: (any) -> boolean, limit: number): number?
+	for _ = 1, math.round(limit / 0.1) do
+		for _, event in BattleSim.step(state, 0.1) do
+			if predicate(event) then
+				return state.time
+			end
 		end
 	end
 	return nil
@@ -836,5 +908,692 @@ return {
 		local one = BattleSim.contribution(state, "1")
 		expect.equal(one.totalDealt, one.dealt, "only those still in count toward the total dealt")
 		expect.equal(one.totalTaken, one.taken, "only those still in count toward the total taken")
+	end,
+	-- The player fighter (Task 3 of the you-in-the-fight plan)
+	["boss auto-attacks never pick the player"] = function()
+		local state = bossFightWithPlayer(1, 30)
+		local events = runFor(state, 20)
+		expect.equal(count(events, function(e)
+			return e.type == "attack" and e.to == "a:@1"
+		end), 0)
+		expect.equal(viewOf(state, "a:@1").player, true)
+	end,
+
+	["no call-in when callIn is false"] = function()
+		local state = bossFightWithPlayer(2, 1)
+		expect.equal(BattleSim.callIn(state, "a:r1", "1"), false)
+		local events = BattleSim.swap(state, "a:r1", "1") :: { any }
+		expect.equal(events[1].type, "swap", "a swap, never a call-in")
+		expect.equal(events[1].to, "a:p1", "the creature goes out, never the player")
+	end,
+
+	["sword hits use the creature's ATK and count as the player's damage"] = function()
+		local state = bossFightWithPlayer(3, 1)
+		local events = BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword") :: { any }
+		expect.equal(events[1].type, "attack")
+		expect.equal(events[1].kind, "Sword")
+		expect.equal(events[1].from, "a:@1")
+		expect.near(events[1].damage, 10, 1.01) -- owned() ATK 20 x 0.5, +-10% spread, no element
+		expect.equal(BattleSim.contribution(state, "1").dealt, events[1].damage)
+		local _, why = BattleSim.swordHit(state, "1", "b:nobody", 0.5, "Sword")
+		expect.equal(why, "target")
+		local _, missing = BattleSim.swordHit(state, "9", "b:m", 0.5, "Sword")
+		expect.equal(missing, "missing")
+	end,
+
+	["a down player gets up at half HP while a creature stands"] = function()
+		local state = bossFightWithPlayer(4, 1)
+		local events = BattleSim._hurtPlayer(state, "a:@1", 100)
+		expect.equal(count(events, function(e)
+			return e.type == "down" and e.to == "a:@1"
+		end), 1)
+		expect.equal(viewOf(state, "a:@1").down, true)
+		expect.near(viewOf(state, "a:@1").downIn, 5, 1e-9)
+		local _, why = BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword")
+		expect.equal(why, "down", "no sword while down")
+		local later = runFor(state, 5.1)
+		local view = viewOf(state, "a:@1")
+		expect.equal(view.down, false)
+		expect.equal(view.hp, 50)
+		expect.equal(count(later, function(e)
+			return e.type == "getUp" and e.to == "a:@1"
+		end), 1)
+	end,
+
+	["down with no creature left ends the fight"] = function()
+		local state = bossFightWithPlayer(5, 100000) -- each creature faints on the boss's first hit on it
+		BattleSim._hurtPlayer(state, "a:@1", 100)
+		runFor(state, 6) -- p1 faints at 2 s, r1 swaps in and faints at 4 s: nobody standing
+		expect.equal(state.result, "b")
+	end,
+
+	["a player alone keeps fighting"] = function()
+		local state = bossFightWithPlayer(6, 100000)
+		runFor(state, 6)
+		expect.isNil(state.result)
+		expect.equal(viewOf(state, "a:@1").down, false)
+	end,
+
+	["a player out in a group stays out while the others fight on"] = function()
+		local state = bossFightWithPlayer(7, 50, nil, nil, { owned("p1", "1", 1), playerInput("1"), owned("p2", "2", 1000000), playerInput("2") }, {})
+		BattleSim._hurtPlayer(state, "a:@1", 100)
+		local events = runFor(state, 7)
+		expect.isNil(state.result)
+		expect.equal(count(events, function(e)
+			return e.type == "out" and e.to == "a:@1"
+		end), 1)
+		expect.equal(viewOf(state, "a:@1").out, true)
+		expect.equal(viewOf(state, "a:@1").down, true)
+	end,
+
+	["withdraw takes the player fighter out too"] = function()
+		local state = bossFightWithPlayer(8, 1, nil, nil, { owned("p1", "1"), playerInput("1"), owned("p2", "2"), playerInput("2") }, {})
+		local events = BattleSim.withdraw(state, "1")
+		expect.equal(count(events, function(e)
+			return e.type == "leave" and e.from == "a:@1"
+		end), 1)
+		expect.equal(viewOf(state, "a:@1").left, true)
+		expect.isNil(state.result)
+	end,
+
+	["hpLeft and getFainted ignore the player"] = function()
+		local state = bossFightWithPlayer(9, 100000, nil, nil, nil, {})
+		BattleSim._hurtPlayer(state, "a:@1", 100)
+		runFor(state, 2.1)
+		expect.isNil(BattleSim.hpLeft(state, "a", "1")["@1"])
+		local fainted = BattleSim.getFainted(state, "a")
+		expect.equal(#fainted, 1)
+		expect.equal(fainted[1], "p1")
+	end,
+
+	["dodge has a cooldown and fails while down"] = function()
+		local state = bossFightWithPlayer(10, 1)
+		local events = BattleSim.dodge(state, "1") :: { any }
+		expect.equal(events[1].type, "dodge")
+		expect.equal(events[1].from, "a:@1")
+		local _, again = BattleSim.dodge(state, "1")
+		expect.equal(again, "cooldown")
+		runFor(state, 1.1)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true, "ready again after the cooldown")
+		BattleSim._hurtPlayer(state, "a:@1", 100)
+		runFor(state, 1.1)
+		local _, down = BattleSim.dodge(state, "1")
+		expect.equal(down, "down")
+	end,
+
+	["thunderclap, Wave and Tidal Shield leave the player alone"] = function()
+		local clap = bossFightWithPlayer(11, 1, { thunderclap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } })
+		local events = runFor(clap, 5)
+		expect.equal(count(events, function(e)
+			return e.type == "stun" and e.to == "a:@1"
+		end), 0)
+		expect.equal(count(events, function(e)
+			return e.type == "stun"
+		end) > 0, true, "the creature is still stunned")
+
+		local tide: any = fighter("p1", "Tide", 500, 20, 10)
+		tide.owner = "1"
+		local wave = bossFightWithPlayer(12, 1, nil, nil, { tide, playerInput("1") })
+		BattleSim._hurtPlayer(wave, "a:@1", 30)
+		BattleSim.useAbility(wave, "a:p1", "element", "1")
+		expect.equal(viewOf(wave, "a:@1").hp, 70, "Wave heals creatures only")
+
+		local shielded = bossFightWithPlayer(13, 1)
+		shielded.sides.a.shield = 1000
+		BattleSim._hurtPlayer(shielded, "a:@1", 30)
+		expect.equal(viewOf(shielded, "a:@1").hp, 70, "the side's shield doesn't cover the player")
+		expect.equal(shielded.sides.a.shield, 1000)
+	end,
+	-- Boss attacks on players (Task 4 of the you-in-the-fight plan)
+	["about a third of boss swings go at the player"] = function()
+		local state = bossFightWithPlayer(21, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.001 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local events = runFor(state, 2000)
+		local atPlayer = count(events, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end)
+		local atCreature = count(events, function(e)
+			return e.type == "attack" and e.from == "b:m" and e.to == "a:p1"
+		end)
+		local share = atPlayer / (atPlayer + atCreature)
+		expect.equal(share >= 0.28 and share <= 0.39, true, `share {share}`)
+		expect.equal(viewOf(state, "a:@1").hp, 100, "quick hits this small round to 0")
+	end,
+
+	["a quick hit lands after the warning and grace"] = function()
+		local state = bossFightWithPlayer(22, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local warned = stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60) :: number
+		local landed = stepUntil(state, function(e)
+			return e.type == "attack" and e.kind == "Quick" and e.to == "a:@1"
+		end, 5) :: number
+		expect.near(landed - warned, combat.QUICK_WARNING + combat.HIT_GRACE, 0.1)
+		expect.equal(viewOf(state, "a:@1").hp, 90)
+	end,
+
+	["a dodge inside the grace still avoids the hit"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local warned = stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60) :: number
+		while state.time < warned + combat.QUICK_WARNING + 0.05 do
+			BattleSim.step(state, 0.1)
+		end
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		local dodged = false
+		for _, event in runFor(state, 0.5) do
+			if event.type == "attack" and event.kind == "Quick" and event.to == "a:@1" then
+				dodged = event.dodged == true
+			end
+		end
+		expect.equal(dodged, true)
+		expect.equal(viewOf(state, "a:@1").hp, 100)
+	end,
+
+	["a dodge 0.2 s into the warning avoids the hit (its dash covers the moment the hit shows)"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local warned = stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60) :: number
+		while state.time < warned + 0.2 - 1e-9 do
+			BattleSim.step(state, 0.1)
+		end
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		local dodged = false
+		for _, event in runFor(state, 0.8) do
+			if event.type == "attack" and event.kind == "Quick" and event.to == "a:@1" then
+				dodged = event.dodged == true
+			end
+		end
+		expect.equal(dodged, true)
+	end,
+
+	["a dodge whose dash ends well before the hit shows doesn't count"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		local dodged = nil
+		for _, event in runFor(state, 0.8) do
+			if event.type == "attack" and event.kind == "Quick" and event.to == "a:@1" then
+				dodged = event.dodged == true
+			end
+		end
+		expect.equal(dodged, false)
+	end,
+
+	["a dodge a second after the last is accepted whatever the step phase"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(state, 7)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		-- The next request arrives a real second later, but the server's last step can be one tick behind it
+		local start = state.time
+		while state.time < start + combat.DODGE_COOLDOWN - 1 / combat.TICK_RATE - 1e-9 do
+			BattleSim.step(state, 0.1)
+		end
+		local events, why = BattleSim.dodge(state, "1")
+		expect.equal(events ~= nil, true, `one tick early still counts ({why}, at {state.time - start})`)
+	end,
+
+	["big attacks come every interval with one ring per up player"] = function()
+		local attacks = { every = 10, warning = 1, big = 0.01, quick = 0 }
+		local state = bossFightWithPlayer(24, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1"), owned("p2", "2", 1e9), playerInput("2") }, {})
+		local function rings(events: { any }): number
+			return count(events, function(e)
+				return e.type == "ring"
+			end)
+		end
+		expect.equal(rings(runFor(state, 9.8)), 0, "nothing before the first interval")
+		local first = runFor(state, 0.5)
+		expect.equal(rings(first), 2, "one ring per player")
+		expect.equal(count(first, function(e)
+			return e.type == "ring" and e.to == "a:@1"
+		end), 1)
+		expect.equal(rings(runFor(state, 10)), 2, "again one interval later")
+	end,
+
+	["ringCheck false means the ring misses"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.5, quick = 0 }
+		local missed = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		missed.ringCheck = function()
+			return false
+		end
+		local events = runFor(missed, 3.4)
+		expect.equal(count(events, function(e)
+			return (e.kind == "Slam" or e.kind == "Swipe") and e.dodged == true
+		end), 1)
+		expect.equal(viewOf(missed, "a:@1").hp, 100)
+
+		local hit = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(hit, 3.4)
+		expect.equal(viewOf(hit, "a:@1").hp, 50, "no ringCheck: always inside")
+	end,
+
+	["the Hydra's double chance adds a second ring sometimes"] = function()
+		local attacks = { every = 1, warning = 0.5, big = 0, quick = 0, doubleChance = 0.35 }
+		local state = bossFightWithPlayer(26, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1"), owned("p2", "2", 1e9), playerInput("2") }, {})
+		state.maxSeconds = 3000 -- enough attacks for a steady share (the default limit ends it at 120 s)
+		local twos, threes = 0, 0
+		for _ = 1, 20000 do
+			local n = count(BattleSim.step(state, 0.1), function(e)
+				return e.type == "ring"
+			end)
+			if n == 2 then
+				twos += 1
+			elseif n == 3 then
+				threes += 1
+			end
+		end
+		expect.equal(twos > 0 and threes > 0, true, `{twos} attacks of 2 rings, {threes} of 3`)
+		local share = threes / (twos + threes)
+		expect.equal(share > 0.2 and share < 0.5, true, `double share {share}`)
+	end,
+
+	["pending hits never land after the end"] = function()
+		local state = bossFightWithPlayer(27, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { owned("p1", "1", 1e9), playerInput("1") })
+		state.sides.b.fighters[1].hp = 1
+		stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60)
+		BattleSim.swordHit(state, "1", "b:m", 1, "Sword")
+		expect.equal(state.result, "a")
+		local events = runFor(state, 2)
+		expect.equal(count(events, function(e)
+			return e.to == "a:@1"
+		end), 0)
+		expect.equal(viewOf(state, "a:@1").hp, 100)
+	end,
+
+	["every swing goes at players when no creature stands"] = function()
+		local state = bossFightWithPlayer(28, 100, nil, { every = 1e9, warning = 1, big = 0, quick = 0.001 }, { owned("p1", "1", 1), playerInput("1") }, {})
+		stepUntil(state, function(e)
+			return e.type == "faint" and e.to == "a:p1"
+		end, 10)
+		local events = runFor(state, 20)
+		expect.equal(count(events, function(e)
+			return e.type == "attack" and e.from == "b:m" and e.to ~= "a:@1"
+		end), 0)
+		expect.equal(count(events, function(e)
+			return e.type == "telegraph"
+		end) >= 8, true)
+		expect.isNil(state.result, "the player fights on alone")
+	end,
+
+	["a boss without playerAttacks never rings"] = function()
+		local state = bossFightWithPlayer(29, 1)
+		local events = runFor(state, 30)
+		expect.equal(count(events, function(e)
+			return e.type == "ring" or e.type == "telegraph"
+		end), 0)
+	end,
+
+	-- Fight perks (Config/Party FIGHT_PERKS): the creature fighting for an owner gives its perk to it and its player
+	["Hype: the sword and the creature hit harder"] = function()
+		local plain = bossFightWithPlayer(3, 1)
+		local hyped = bossFightWithPlayer(3, 1, nil, nil, { perked("Hype", 0.5), playerInput("1") })
+		local a = (BattleSim.swordHit(plain, "1", "b:m", 0.5, "Sword") :: { any })[1].damage
+		local b = (BattleSim.swordHit(hyped, "1", "b:m", 0.5, "Sword") :: { any })[1].damage
+		expect.near(b, a * 1.5, 1)
+		local function firstCreatureHit(state: any): number
+			for _ = 1, 100 do
+				for _, e in BattleSim.step(state, 0.1) do
+					if e.type == "attack" and e.from == "a:p1" then
+						return e.damage
+					end
+				end
+			end
+			return -1
+		end
+		expect.near(firstCreatureHit(hyped), firstCreatureHit(plain) * 1.5, 1.01)
+	end,
+
+	["Calm: you and your creature take less damage"] = function()
+		local quick = { every = 1e9, warning = 1, big = 0, quick = 0.1 }
+		local creature = perked("Calm", 0.5)
+		creature.hp = 1e9
+		local state = bossFightWithPlayer(22, 1, nil, quick, { creature, playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "attack" and e.kind == "Quick" and e.to == "a:@1"
+		end, 60)
+		expect.equal(viewOf(state, "a:@1").hp, 95, "a 10 HP quick hit lands as 5")
+		local function firstHitOnCreature(input: any): number
+			local fight = bossFightWithPlayer(5, 50, nil, nil, { input, playerInput("1") })
+			for _ = 1, 200 do
+				for _, e in BattleSim.step(fight, 0.1) do
+					if e.type == "attack" and e.to == "a:p1" and not e.kind then
+						return e.damage
+					end
+				end
+			end
+			return -1
+		end
+		expect.near(firstHitOnCreature(perked("Calm", 0.5)), firstHitOnCreature(owned("p1", "1")) * 0.5, 1.01)
+	end,
+
+	["Haggle: a crit doubles the damage and says so"] = function()
+		local plain = bossFightWithPlayer(3, 1)
+		local lucky = bossFightWithPlayer(3, 1, nil, nil, { perked("Haggle", 1), playerInput("1") })
+		local a = (BattleSim.swordHit(plain, "1", "b:m", 0.5, "Sword") :: { any })[1]
+		local b = (BattleSim.swordHit(lucky, "1", "b:m", 0.5, "Sword") :: { any })[1]
+		expect.near(b.damage, a.damage * 2, 1)
+		expect.equal(b.crit, true)
+		expect.isNil(a.crit, "no perk, no crit")
+	end,
+
+	["Hustle: the creature attacks faster"] = function()
+		local function attacks(input: any): number
+			local state = bossFightWithPlayer(7, 0, nil, nil, { input, playerInput("1") })
+			return count(runFor(state, 20), function(e)
+				return e.type == "attack" and e.from == "a:p1"
+			end)
+		end
+		local plain, fast = attacks(owned("p1", "1")), attacks(perked("Hustle", 1))
+		expect.equal(fast >= plain * 2 - 1 and fast <= plain * 2 + 1, true, `{plain} -> {fast}`)
+	end,
+
+	["Express: the creature's ability recharges faster"] = function()
+		local state = bossFightWithPlayer(9, 0, nil, nil, { perked("Express", 0.5), playerInput("1") })
+		BattleSim.useAbility(state, "a:p1", "element", "1")
+		expect.near(viewOf(state, "a:p1").abilityIn, combat.ABILITY_COOLDOWN * 0.5, 0.01)
+	end,
+
+	["the player's perk is their creature on the field's"] = function()
+		local state = bossFightWithPlayer(11, 0, nil, nil, { perked("Express", 0.3), playerInput("1") })
+		expect.near(BattleSim.perkOf(state, "1", "Express"), 0.3, 1e-9)
+		expect.equal(BattleSim.perkOf(state, "1", "Hype"), 0, "another kind")
+		expect.equal(BattleSim.perkOf(state, "9", "Express"), 0, "nobody")
+		BattleSim.swap(state, "a:r1", "1")
+		expect.equal(BattleSim.perkOf(state, "1", "Express"), 0, "the reserve swapped in has none")
+	end,
+
+	-- Charges (attack animations spec): a charge event a moment before each auto-attack, changing nothing else
+	["every auto-attack is charged first, once"] = function()
+		local state = wild(fighter("a", "Ember", 100000, 10, 10), {}, monster("Bloom", 100000, 1, 10), 41)
+		local timed = timedEvents(state, 20)
+		local lastCharge: { [string]: number } = {}
+		local attacks = 0
+		for _, entry in timed do
+			local e = entry.event
+			if e.type == "charge" then
+				expect.equal(lastCharge[e.from], nil, `{e.from} charged twice before attacking`)
+				lastCharge[e.from] = entry.time
+			elseif e.type == "attack" and not e.kind and e.from then
+				local at = lastCharge[e.from]
+				expect.equal(at ~= nil, true, `{e.from} attacked uncharged at {entry.time}`)
+				expect.equal(entry.time - (at :: number) <= combat.CHARGE_LEAD + 0.1 + 1e-6, true, "charged too early")
+				lastCharge[e.from] = nil
+				attacks += 1
+			end
+		end
+		expect.equal(attacks > 10, true, "both sides attacked")
+	end,
+
+	["charges change nothing: same results and damage as with charges off"] = function()
+		local function run(cfg: any): { string }
+			local state = BattleSim.new(cfg, side({ fighter("a", "Ember", 400, 30, 12) }), side({ monster("Tide", 400, 25, 9) }), 77)
+			local _, events = runToEnd(state, 120)
+			local list = {}
+			for _, e in events do
+				if e.type ~= "charge" then
+					table.insert(list, `{e.type}|{e.from}|{e.to}|{e.damage}|{e.result}`)
+				end
+			end
+			return list
+		end
+		local off = table.clone(combat) :: any
+		off.CHARGE_LEAD = nil
+		local with, without = run(combat), run(off)
+		expect.equal(#with, #without)
+		expect.equal(table.concat(with, ";"), table.concat(without, ";"))
+	end,
+
+	["overcharge's short gaps still charge, with the time left"] = function()
+		local state = wild(fighter("a", "Volt", 100000, 10, 31), {}, monster("Shade", 100000, 1, 10), 42) -- 1 s apart, 0.5 overcharged
+		runFor(state, 1)
+		BattleSim.useAbility(state, "a:a", "element")
+		local timed = timedEvents(state, 4)
+		local charges, attacks = 0, 0
+		for _, entry in timed do
+			local e = entry.event
+			if e.from == "a:a" and e.type == "charge" then
+				charges += 1
+				expect.equal(e.seconds >= 0 and e.seconds <= combat.CHARGE_LEAD + 1e-9, true, `seconds {e.seconds}`)
+			elseif e.from == "a:a" and e.type == "attack" and not e.kind then
+				attacks += 1
+			end
+		end
+		expect.equal(attacks >= 5, true, `overcharged attacks: {attacks}`)
+		expect.equal(math.abs(charges - attacks) <= 1, true, `{charges} charges for {attacks} attacks`)
+	end,
+
+	["a charge is always followed by its attack (a stunned fighter isn't charged)"] = function()
+		local state = wild(fighter("a", "Ember", 100000, 10, 10), {}, monster("Bloom", 100000, 1, 10), 43)
+		state.sides.a.fighters[1].stunUntil = 5
+		local timed = timedEvents(state, 12)
+		for index, entry in timed do
+			local e = entry.event
+			if e.type == "charge" and e.from == "a:a" and entry.time + e.seconds + 0.15 <= 12 then -- its attack is in the window
+				local found = false
+				for later = index + 1, #timed do
+					local next = timed[later]
+					if next.time > entry.time + e.seconds + 0.15 then
+						break
+					end
+					if next.event.type == "attack" and next.event.from == "a:a" and not next.event.kind then
+						found = true
+						break
+					end
+				end
+				expect.equal(found, true, `orphan charge at {entry.time}`)
+			end
+		end
+	end,
+
+	-- One ring shape per boss (attack animations spec)
+	["a boss's rings all take its shape"] = function()
+		local attacks = { every = 3, warning = 1, big = 0.05, quick = 0.02, shape = "swipe" }
+		local state = bossFightWithPlayer(31, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		local events = runFor(state, 30)
+		local rings = 0
+		for _, e in events do
+			if e.type == "ring" then
+				rings += 1
+				expect.equal(e.kind, "swipe")
+			end
+		end
+		expect.equal(rings >= 5, true, `rings {rings}`)
+	end,
+
+	["a fixed shape draws the same randoms"] = function()
+		local function run(shape: string?): string
+			local attacks = { every = 3, warning = 1, big = 0.05, quick = 0.02, shape = shape }
+			local state = bossFightWithPlayer(32, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+			local list = {}
+			for _, e in runFor(state, 30) do
+				local kind = if e.type == "ring" or e.kind == "Slam" or e.kind == "Swipe" then "ring" else tostring(e.kind)
+				table.insert(list, `{e.type}|{kind}|{e.from}|{e.to}|{e.damage}`)
+			end
+			return table.concat(list, ";")
+		end
+		expect.equal(run("slam"), run(nil))
+		expect.equal(run("swipe"), run(nil))
+	end,
+
+	-- Boss debuffs (spec 2026-11-02-attack-animations-design): a ring hit leaves the boss's debuff on the player
+	["a ring hit gives the boss's debuff, a miss doesn't"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.1, quick = 0, debuff = "Poison" }
+		local hit = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		local debuff = firstOf(runFor(hit, 3.4), "debuff")
+		assert(debuff, "a debuff event")
+		expect.equal(debuff.kind, "Poison")
+		expect.equal(debuff.to, "a:@1")
+		expect.equal(debuff.seconds, Bosses.DEBUFFS.Poison.seconds)
+
+		local missed = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		missed.ringCheck = function()
+			return false
+		end
+		expect.equal(firstOf(runFor(missed, 3.4), "debuff"), nil, "stepped out of the ring")
+
+		local quick = bossFightWithPlayer(25, 1, nil, { every = 1000, warning = 1, big = 0, quick = 0.05, debuff = "Poison" }, { owned("p1", "1", 1e9), playerInput("1") })
+		local events = runFor(quick, 20)
+		expect.equal(count(events, function(e)
+			return e.kind == "Quick" and not e.dodged
+		end) > 0, true, "quick hits landed")
+		expect.equal(firstOf(events, "debuff"), nil, "quick hits never debuff")
+	end,
+
+	["poison ticks then ends"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.1, quick = 0, debuff = "Poison" }
+		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(state, 3.4)
+		state.sides.b.fighters[1].bigReady = math.huge -- just the one ring
+		local events = runFor(state, 6)
+		local ticks = count(events, function(e)
+			return e.type == "attack" and e.kind == "Poison" and e.to == "a:@1"
+		end)
+		expect.equal(ticks, Bosses.DEBUFFS.Poison.seconds, "one a second")
+		local each = math.max(1, math.round(Bosses.DEBUFFS.Poison.perSecond * combat.PLAYER_HP))
+		expect.equal(viewOf(state, "a:@1").hp, combat.PLAYER_HP - 10 - ticks * each)
+	end,
+
+	["a new hit refreshes, doesn't stack"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "Burn" }
+		local state = bossFightWithPlayer(27, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		local timed = timedEvents(state, 12)
+		local last = -math.huge
+		local burns, debuffs = 0, 0
+		for _, entry in timed do
+			if entry.event.type == "attack" and entry.event.kind == "Burn" then
+				burns += 1
+				expect.equal(entry.time - last > 0.95, true, "at most one burn a second")
+				last = entry.time
+			elseif entry.event.type == "debuff" then
+				debuffs += 1
+			end
+		end
+		expect.equal(debuffs >= 4, true, "every ring hit sends it again")
+		expect.equal(burns >= 7, true, "kept burning while refreshed")
+	end,
+
+	["Shocked blocks sword and dodge for its seconds"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "Shocked" }
+		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "debuff"
+		end, 5)
+		local _, sword = BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword")
+		expect.equal(sword, "stunned")
+		local _, dodge = BattleSim.dodge(state, "1")
+		expect.equal(dodge, "stunned")
+		runFor(state, Bosses.DEBUFFS.Shocked.seconds + 0.1)
+		expect.equal(BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword") ~= nil, true, "free again")
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+	end,
+
+	["Weakened sword hits do less"] = function()
+		local function swordAfterHit(debuff: string?): number
+			local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = debuff }
+			local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+			runFor(state, 3.4)
+			return (BattleSim.swordHit(state, "1", "b:m", 1, "Sword") :: { any })[1].damage
+		end
+		local plain, weak = swordAfterHit(nil), swordAfterHit("Weakened")
+		expect.near(weak, plain * Bosses.DEBUFFS.Weakened.sword, 1)
+	end,
+
+	["Chilled slows the dodge recharge"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "Chilled" }
+		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "debuff"
+		end, 5)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		runFor(state, combat.DODGE_COOLDOWN + 0.1)
+		local _, why = BattleSim.dodge(state, "1")
+		expect.equal(why, "cooldown", "not ready at the usual cooldown")
+		runFor(state, combat.DODGE_COOLDOWN * (Bosses.DEBUFFS.Chilled.dodgeCooldown - 1))
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true, "ready after the longer one")
+	end,
+
+	["a boss with byPhase gives its current element's debuff"] = function()
+		local function kindFor(element: string): string?
+			local state = BattleSim.new(combat, { fighters = { owned("p1", "1", 1e9), playerInput("1") }, reserves = {}, abilities = true, canRun = true, swapSeconds = 10, callIn = false }, {
+				fighters = { { id = "m", element = element, hp = 100000, atk = 1, spd = 10, boss = true, mechanics = {}, playerAttacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "byPhase" } } },
+				abilities = false,
+				canRun = false,
+			}, 25)
+			local debuff = firstOf(runFor(state, 3.4), "debuff")
+			return if debuff then debuff.kind else nil
+		end
+		expect.equal(kindFor("Shade"), Bosses.DEBUFF_BY_ELEMENT.Shade)
+		expect.equal(kindFor("Ember"), "Burn")
+		expect.equal(kindFor("Bloom"), "Entangled")
+	end,
+
+	["going down or leaving clears it"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "Poison" }
+		local down = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(down, 3.4)
+		down.sides.b.fighters[1].bigReady = math.huge
+		BattleSim._hurtPlayer(down, "a:@1", 1000)
+		expect.equal(count(runFor(down, 4), function(e)
+			return e.kind == "Poison"
+		end), 0, "no poison on a downed player")
+
+		local group = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1"), owned("p2", "2", 1e9), playerInput("2") }, {})
+		runFor(group, 3.4)
+		group.sides.b.fighters[1].bigReady = math.huge
+		BattleSim.withdraw(group, "1")
+		expect.equal(count(runFor(group, 4), function(e)
+			return e.kind == "Poison" and e.to == "a:@1"
+		end), 0, "none on a player who left")
+	end,
+
+	["no debuff config: no debuff"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.1, quick = 0 }
+		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		expect.equal(firstOf(runFor(state, 8), "debuff"), nil)
+	end,
+
+	["every boss's debuff is known and every stun lasts at most 1 s"] = function()
+		expect.equal(Bosses.DEBUFFS.Shocked.seconds <= 1, true)
+		for id, boss in Bosses.BOSSES do
+			local kind = boss.playerAttacks.debuff
+			expect.equal(kind == "byPhase" or Bosses.DEBUFFS[kind] ~= nil, true, id)
+		end
+		for element, kind in Bosses.DEBUFF_BY_ELEMENT do
+			expect.equal(Bosses.DEBUFFS[kind] ~= nil, true, element)
+		end
+		expect.equal(Bosses.BOSSES.meadowWarden.playerAttacks.debuff, "Entangled")
+		expect.equal(Bosses.BOSSES.prismHydra.playerAttacks.debuff, "byPhase")
+	end,
+	["a fast attacker charges for part of its gap, not the whole lead"] = function()
+		local state = wild(fighter("a", "Volt", 100000, 10, 69), {}, monster("Shade", 100000, 1, 10), 44)
+		local gap = CombatMathInterval(69)
+		local charges = 0
+		for _, entry in timedEvents(state, 6) do
+			local e = entry.event
+			if e.from == "a:a" and e.type == "charge" then
+				charges += 1
+				expect.equal(e.seconds <= gap * combat.CHARGE_SHARE + 0.1 + 1e-9, true, `seconds {e.seconds} for a {gap} s gap`)
+			end
+		end
+		expect.equal(charges >= 8, true, `charges {charges}`)
+	end,
+	["creaturesDecide: the side loses once its creatures faint, even with its player up"] = function()
+		local function play(decide: boolean?): string?
+			local state = BattleSim.new(combat, {
+				fighters = { owned("p1", "1", 20), playerInput("1") },
+				abilities = false,
+				canRun = false,
+				creaturesDecide = decide,
+			}, { fighters = { monster("Bloom", 100000, 50, 10) }, abilities = false, canRun = false }, 5)
+			runFor(state, 10)
+			return state.result
+		end
+		expect.equal(play(true), "b", "lost when the creature fainted")
+		expect.equal(play(nil), nil, "a boss fight goes on with the player up")
 	end,
 }

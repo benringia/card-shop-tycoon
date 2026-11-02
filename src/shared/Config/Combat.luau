@@ -9,12 +9,16 @@ return {
 	BOSS_MAX_STUN = 1, -- seconds: stuns on a boss last at most this long
 	BOSS_SKILL_GAP = 6, -- seconds between any two of a boss's skills (shield, heal, thunderclap): never back to back
 
-	-- Attacks: interval = clamp(ATTACK_BASE * SPD_REFERENCE / SPD, ATTACK_MIN, ATTACK_MAX)
+	-- Attacks: interval = clamp(ATTACK_BASE * (SPD_REFERENCE / SPD) ^ ATTACK_CURVE, ATTACK_MIN, ATTACK_MAX): a gentle curve
+	-- so every SPD a card reaches still speeds it up (SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s)
 	ATTACK_BASE = 2,
 	SPD_REFERENCE = 10,
-	ATTACK_MIN = 0.8,
+	ATTACK_CURVE = 0.62,
+	ATTACK_MIN = 0.55,
 	ATTACK_MAX = 2.5,
 	DAMAGE_SPREAD = 0.1, -- +-10%
+	CHARGE_LEAD = 0.6, -- seconds before an auto-attack lands that clients hear of it (a "charge" event: wind-up, effects)
+	CHARGE_SHARE = 0.75, -- a fast attacker charges at most this share of its gap between attacks (not charging nonstop)
 
 	-- Element wheel: each element is strong against the ones listed
 	STRONG = 1.5,
@@ -61,14 +65,31 @@ return {
 	RUN_RETRY_SECONDS = 3,
 
 	-- Fainted cards rest; the plaza spring speeds it up
-	REST_SECONDS = 180,
+	REST_SECONDS = 300,
 	SPRING_RADIUS = 12,
 	SPRING_SPEED = 3,
+
+	-- The player in boss fights (spec 2026-11-02-you-in-the-fight-design): a sword beside one summoned creature
+	PLAYER_HP = 100, -- everyone's; boss hits on players are shares of it (Config/Bosses playerAttacks)
+	DOWN_SECONDS = 5, -- at 0 HP you're down this long, then back up while one of your creatures stands
+	GET_UP_SHARE = 0.5, -- of your HP back when you get up
+	PLAYER_TARGET_SHARE = 1 / 3, -- of a boss's swings go at a player (a quick hit) instead of a creature
+	QUICK_WARNING = 0.5, -- seconds the boss flashes before a quick hit lands
+	HIT_GRACE = 0.15, -- seconds the server lands hits on players after clients show them (a late dodge still counts)
+	DODGE_SECONDS = 0.35, -- untouchable after a dodge
+	DODGE_COOLDOWN = 1,
+	DODGE_STUDS = 12, -- the dash's length
+	LOSS_COUNTDOWN = 3, -- "Teleporting back to town in 3, 2, 1"
+	SWORD_ACTION_COOLDOWN = 0.08, -- remote rate limit on Attack, Skill and Dodge taps
+	SWORD_IDLE_ATK = 10, -- the sword's ATK when none of your creatures has been on the field (never in practice)
 
 	-- World
 	FIGHT_RANGE = 12, -- studs from player to monster to start
 	RING_RADIUS = 6, -- fighters stand this far from the ring centre
 	EXTRA_SIDE = 3, -- a called-in creature stands this far to its leader's right
+	-- A creature that attacks from range (AttackFx: a projectile or a bolt) stands this much further back from its foe
+	-- than its ring spot (owner 2026-11-03: "ranged, not melee"); combo attackers stay on the spot
+	RANGED_BACK = 7,
 	LEASH_RADIUS = 25, -- players may roam this far from the ring during a fight
 	LUNGE_STUDS = 1.5,
 	ACTION_COOLDOWN = 0.25, -- remote rate limit

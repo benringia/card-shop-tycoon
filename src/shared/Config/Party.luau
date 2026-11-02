@@ -13,6 +13,15 @@ return {
 	},
 	RARITY_MULTIPLIER = { Common = 1, Rare = 1.5, ["Very Rare"] = 2, Epic = 2.5, Legendary = 3 },
 	STAR_BONUS = 0.10, -- each star adds this share of the perk
+	-- The same perk in monster and boss fights (not PvP), from the creature fighting for you: its value for a Common
+	-- at 0 stars, grown by RARITY_MULTIPLIER and STAR_BONUS as above (Util/PartyRules.getFightPerk, BattleSim)
+	FIGHT_PERKS = {
+		Hype = 0.06, -- your sword and your creature hit harder
+		Calm = 0.05, -- you and your creature take less damage
+		Express = 0.08, -- the sword skill, element ability and signature recharge faster
+		Hustle = 0.05, -- your creature attacks faster
+		Haggle = 0.06, -- chance for a critical hit (double damage) from your sword and your creature
+	},
 
 	-- Creature size, as a multiple of CREATURE_HEIGHT
 	SIZE_BY_RARITY = { Common = 0.7, Rare = 0.85, ["Very Rare"] = 1, Epic = 1.5, Legendary = 1.4 },
@@ -317,6 +326,7 @@ return {
 		FLY_FIDGETS = { "look", "tilt", "spin", "wag" },
 		FIDGET_GAP = { 2.5, 6 },
 		FIDGET_SECONDS = {
+			charge = 0.6, strike = 0.5, combo = 0.6, cast = 0.6,
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1, rootslam = 1.6,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
@@ -372,6 +382,14 @@ return {
 		THUNDER_REAR = 32,
 		THUNDER_LIFT = 0.35,
 		-- Abyssal Koi's abyss chomp: how far it draws back and lunges forward (studs at size 1)
+		-- Fight attack poses (FightFx): charge crouches and draws back (held), strike lunges, combo lunges three times,
+		-- cast rears up then throws (studs at size 1, degrees)
+		CHARGE_CROUCH = 0.25,
+		CHARGE_DRAW = 0.35,
+		STRIKE_LUNGE = 1.4,
+		COMBO_LUNGE = 0.9,
+		CAST_PITCH = 18,
+		CAST_LUNGE = 0.6,
 		CHOMP_DRAW = 0.4,
 		CHOMP_LUNGE = 1.6,
 		-- Briarhorn's thorn charge: how far its head goes down (degrees) and how far it lunges forward (studs at size 1)
@@ -486,6 +504,7 @@ return {
 	KEYFRAME_ANIM = {
 		WALK_FROM = 0.5, RUN_FROM = 4, RUN_FULL = 6.5, WALK_SPEED = 3, RUN_SPEED = 6.5, BLEND_SECONDS = 0.25,
 		AMPLIFY = { 1, 2, 1.6 }, -- idle, walk, run
+		ONE_SHOT_BLEND = 0.15, -- seconds a one-shot attack clip blends in and out (Util/ClipPlayer)
 	},
 
 	-- Glow by rarity: point light brightness and range, sparkles per second, outline, pulsing aura

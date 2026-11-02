@@ -591,7 +591,9 @@ queue first come, first served; leaving the queue refunds both). After a 3-2-1 c
 out), same combat rules as the wild, no call-in and no Run; you can roam your half of the pad. Winner takes both
 bets; the 2-minute limit is a draw (both refunded); leaving or resetting mid-fight forfeits. No XP, drops or resting
 from PvP. 10 s after the result both go home. Anyone can watch from the stands (plaza "Arena" portal, `/arena`);
-creatures in a fight show floating HP bars. Wins-losses-draws are saved and shown in the Party panel. A declined
+creatures in a fight show floating HP bars, and players within 60 studs of the arena (`Pvp.WATCH_RADIUS`) see the
+creatures' charges and attacks like the fighters (`Remotes.ArenaWatch`, `ArenaWatchController` on `Util/FightFx`; no
+HUD). Wins-losses-draws are saved and shown in the Party panel. A declined
 challenge blocks that pair for 30 s; 10 s cooldown between challenges. Numbers: `Config/Pvp.luau`; bet and record
 rules in `Util/PvpRules` (Lune-tested). The fight engine (`BattleSim`) runs two sides of fighters: wild fights are
 the party vs a one-monster side.
@@ -599,12 +601,12 @@ the party vs a one-monster side.
 **Battles part 1: wild fights.** A portal at the end of the plaza street moves you to the wild map (same server, far
 from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
 summoned creature fights (it must be rested); in the first 5 s you may call in one more party card (max 2 of yours
-vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD: Common ~2 s, Legendary ~1 s); each has an element
+vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD, `2 x (10 / SPD)^0.62` between 0.55 and 2.5 s: SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s, so every bit of SPD counts; a fast attacker charges for at most 75% of its gap); each has an element
 ability (8 s cooldown) and the 6 Epic/Legendary cards a signature ability (15 s). Element wheel: Ember > Bloom >
 Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
 (`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
 Win: XP `12 × level^1.3` (×3 elite) split evenly across all 3 party cards, $0.40 × level, 5% (elite 20%) chance of a
-card of the zone's elements. Lose: nothing is lost, but fainted cards rest 3 minutes (3x faster standing at the
+card of the zone's elements. Lose: nothing is lost, but fainted cards rest 5 minutes (`Combat.REST_SECONDS`, 3 before the player joined boss fights) (3x faster standing at the
 healing spring in the plaza centre). A fight still going after 2 minutes ends as a run. Numbers:
 `Config/Combat.luau`, `Config/Wild.luau`; maths in `Util/CombatMath`, fights in `server/Util/BattleSim` (both
 Lune-tested).
@@ -632,8 +634,38 @@ Lune-tested).
 | Caves | 5–10 | Cave Bat (Shade), Spark Beetle (Volt) | elites only |
 | Ember Ridge | 10–15 | Magma Golem (Ember), Ash Wolf (Ember) | all |
 
-About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, ×1.6 stats, ×3 rewards).
-Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
+About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, 1.35x size, about twice
+the HP, ×3 rewards). Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
+
+**You in wild fights** (owner 2026-11-03): with a sword (the free starter at shop level 3) you fight normal monsters
+and elites beside your creature, as in boss fights: Attack, Dodge, the sword's skill, the Pet button and Run. The
+monster turns a third of its swings on you while a creature of yours stands and sends quick hits at you (8% of your HP,
+elites 12%, `Wild.PLAYER_QUICK` / `ELITE_PLAYER_QUICK`, `CombatMath.getMonsterAttacks`; dodge them; no rings outside
+boss fights). The fight is still lost once your creatures faint (`creaturesDecide` in `BattleSim`): you going down
+only stops your sword, and you get up again while a creature stands. Without a sword yet the fight is the creature's
+alone, as before. Dungeon rooms stay creature-only (only the Hydra's chamber puts you in). Monster HP and ATK were
+retuned for it with `lune run tools/balance/wild [fights] [wild|frontier|both]` (the card at the monster's level whose
+Power is nearest the zone boss's recommended Power; no sword / standing still / fighting well): a normal monster at its
+zone's middle level takes about 12.5 s fought well (won 85-100%) and is won about 75% standing still; the Meadow comes
+before the sword, so its pair is tuned for the creature alone (Mossling 79%, Puddle Crab 66%). Elites take 25-35 s and
+are won about 65% fought well (55-77% by species), so a call-in helps. A wild fight is lost once the creatures faint,
+so a longer fight needs softer hits: elites have about twice the HP and hit a little softer than their species
+(`ELITE_HP_MULTIPLIER` / `ELITE_ATK_MULTIPLIER` Wild 2.1 / 0.8, the Meadow pair its own 2.5 / 1.2 and 2.5 / 1.0 as
+`eliteHp` / `eliteAtk`; Frontier 2.3 / 0.6), still harder than elites were before. Base stats at level 1 (HP / ATK):
+
+| Zone | Species |
+|---|---|
+| Meadow | Mossling 175 / 6, Puddle Crab 179 / 6.1 |
+| Caves | Cave Bat 260 / 8.4, Spark Beetle 258 / 10.1 |
+| Ember Ridge | Magma Golem 444 / 17, Ash Wolf 445 / 10.9 |
+| Frostwood | Frost Wisp 670 / 19.9, Shade Lynx 706 / 19.4 |
+| Stormpeak | Storm Hawk 797 / 19.3, Lava Brute 826 / 24 |
+| The Rift | Rift Horror 801 / 20.7, Prism Crab 753 / 22.3 |
+
+Rewards per win are unchanged, so the pace moves earnings per minute (a middle-level normal monster plus about 8 s
+walking, creature alone before → fought well now): the Meadow 25-28 s → 12.5 s (about +60%), the Caves 13-15 s →
+12.5 s (level), Ember Ridge 9-12 s → 12.5 s (about -15%), the Frontier 4-6 s → 12.5 s (about -40%; standing still
+about -60%). The shop's earnings and the pack loop (`tools/economy/sim`) don't count monster fights.
 
 **Wild monster models** (spec `2026-11-01-wild-monster-models-design.md`, the user's style B "wild-touched", each
 design picked from concepts and kept unlike the cards): each species has its own rigged model in
@@ -755,6 +787,22 @@ only, read live:
 Perk = base × rarity (Common 1, Rare 1.5, Very Rare 2, Epic 2.5, Legendary 3) × (1 + 0.10 × stars).
 Numbers live in `Config/Party.luau`.
 
+**Fight perks** (`Party.FIGHT_PERKS`, `PartyRules.getFightPerk`, `BattleSim`): in monster and boss fights (not PvP) the
+same perk also works in the fight, from the creature fighting for you right now (swap and it changes), same growth
+rule:
+
+| Perk | In fights | Common, 0 stars | Legendary, 5 stars |
+|---|---|---|---|
+| Hype | your sword and your creature hit harder | 6% | 27% |
+| Calm | you and your creature take less damage | 5% | 23% |
+| Express | sword skill, element ability and signature recharge faster | 8% | 36% |
+| Hustle | your creature attacks faster | 5% | 23% |
+| Haggle | chance of a critical hit (double damage, "CRIT" number) on your sword and creature | 6% | 27% |
+
+The combat HUD shows it as a chip under your creature's bar (and a toast on a swap); the Party panel, the party bar's
+card tooltip and the buff badge's tooltip add a "Fights:" line. The boss balance tool gives every party its perks and
+the bosses were retuned so the targets below still hold.
+
 Plain copies stack by card, foil and grade; a copy becomes an individual card (keeping its grade) the first time it gains XP or a star.
 
 **Grades** (spec `2026-10-20-card-grades-design.md`): every pulled card rolls a grade on the server, fixed forever.
@@ -851,13 +899,13 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 23000 / 26 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 40000 / 23 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 3 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -899,15 +947,185 @@ group, checked before its fragments and every time (not only the first). Below i
   ground when you leave or teleport is gone. Drops land on the ground only, never on a player or creature standing
   there. Cash and XP stay instant. The first-clear chest (fragments,
   trophy) goes straight into the Bag: it's one-time and the clear is saved at once.
-- **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
-  (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
-  which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when
-  none of yours is standing; when all of yours faint, your healthiest rested card comes in by itself, and you lose
-  only when none is left. A swapped-out summoned creature is hidden until it comes back. Because a player now brings
-  all three party cards, boss HP went up x1.5 and ATK about x1.2 (`BattleSim.swap`, Lune-tested).
-- **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
-  buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
-  about 126 px solo (`layoutBar` in BattleController).
+- **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card for your summoned
+  creature (only one of yours fights: boss fights have no call-in, `SideInput.callIn = false`); it goes back to the
+  bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when none of yours is standing;
+  when yours faints, your healthiest rested card comes in by itself. A swapped-out summoned creature is hidden until it
+  comes back (`BattleSim.swap`, Lune-tested).
+- **The player in the fight** (spec 2026-11-02-you-in-the-fight-design): in every boss fight (the Wild's, the
+  Frontier's and the Prism Hydra) each player fights beside their one creature as a player fighter (`a:@<UserId>`,
+  100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 3, `Config/Swords`, `SwordService`) hits through remotes
+  `SwordAttack` (the server picks the combo's next cut with `SwordRules.nextCut` and hits whatever is in reach at its
+  strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 1 s cooldown; the
+  dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
+  third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
+  big attack: a closing orange ring (`SwordFx.RING_COLOR`, the owner's pick) on each player, a slam under them or a
+  swipe from the boss toward them, one shape per boss (`playerAttacks.shape`: Meadow Warden, Ember Colossus, Frost
+  Tyrant and Storm Sovereign slam; Cave Brood Queen, Rift Devourer and Prism Hydra swipe; the sim still tosses its old
+  coin so fights draw the same randoms) (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
+  (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
+  player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
+  creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're
+  down and none of your creatures can fight: "Teleporting back to town in 3, 2, 1" (`Combat.LOSS_COUNTDOWN`,
+  `BossRules.countdownText`), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
+  spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
+  kneeling, until the fight ends, and a win counts for them too.
+- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 3 (`Swords.UNLOCK_SHOP_LEVEL`,
+  when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
+  (`seenSword`). It rests on the back everywhere, 1.4x bigger there so it and the looks the shop will sell later stand
+  out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
+  (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
+  starter combo: a stepping cut, a sideways sweep, a leaping slam (power 0.35 / 0.35 / 0.6, a tap within 0.9 s of a
+  cut's end carries on); skill: a spinning slash all round (radius 11, 8 s). Every sword gets its own combo and skill
+  (Forge swords, project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15
+  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`);
+  the HUD's art, the sword's sounds, its moves and model download behind the loading screen (`Util/CombatAssets`, ids listed
+  by `Util/CombatPreload`), so the first fight starts ready; players wear the standard body
+  everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
+  backpacks) hide.
+  Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
+  `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
+  Signature (Epic and Legendary cards), small Swap (1-3) and Run. With a mouse a click attacks and there's no Attack
+  button (owner 2026-11-03: phones, tablets and devices without a mouse keep it); the Pet button takes its corner and
+  Dodge and Skill move up beside it (`UiLayout.combatButtons(view, noAttack)`), and the first-sword popup says "click
+  to swing, Shift to dodge" instead of "tap Attack". Top-left your headshot in a bevelled ring with
+  your creature's card on a badge, beside your HP and your creature's in slanted neon bars (`Util/HpBar`, ticks every
+  20%); the boss's HP is the same bar across the top, red. A hit drops the fill at once and leaves a ghost of the
+  lost HP (red on yours, pale gold on the boss's) that holds 0.35 s, then drains in 0.45 s, with a white flash; a heal
+  moves a pale lead ahead and the fill rises to it. When you're hit the portrait shakes with a red ring and the
+  screen's edges flash red for 0.55 s, stronger for a bigger share of your HP; below 30% HP they keep pulsing
+  (`Util/HpBarRules`, numbers in `Config/CombatHud`). Jumping is off
+  in boss fights (the dodge replaces it). Attacks turn you softly toward the boss; the camera stays free; the server
+  checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
+  slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
+  (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`),
+  each kept loaded on your character and replayed; the hit sound plays the moment the blade lands when your own reach
+  check connects (the server's hit arrives a round trip later and only sounds if that check missed,
+  `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
+  counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
+  mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
+  in one short line (the pet move's by element, `CombatHud.PET_TIPS`).
+- **Creature attacks** (spec `2026-11-02-attack-animations-design.md`): in every fight the sim sends a `charge` event
+  0.6 s (`Combat.CHARGE_LEAD`) before each auto-attack lands (it draws no random: fights and the balance numbers are
+  unchanged). Creatures circle their fight spot (marker attribute `InFight`, `Util/FightMotion`, `AttackFx.ORBIT`: 4
+  studs, a lap about every 7 s, darts) and stop to charge: a crouch and a glow in their element colour with sparks
+  pulling in. Then the element's attack (`Config/AttackFx`, `Util/FightFx`, pieces in `Util/ElementFx`, poses `charge`,
+  `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
+  3-hit vine lash, Volt a flickering lightning bolt shot from where it stands (the owner's mockup: flares at both
+  ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after), Shade a dash in and 3 claw
+  slashes. Ranged attackers (a projectile or a bolt: Ember, Tide, Volt, `FightFxRules.isRanged`) stand
+  `Combat.RANGED_BACK` 7 studs further back from the foe than their ring spot (owner 2026-11-03, "ranged, not
+  melee": 13 studs from a wild monster, 22-28 from a boss), set on the server (`BattleService` `standSpot`; a swap or
+  call-in takes over the ring spot, `ringSpots`); Bloom and Shade stay close. A creature that joins mid-fight (a
+  swap, a call-in, a PvP extra) gets a marker made that moment, which a remote delivers as nil, so fight payloads
+  also send each marker's name (`markerNames`, `Util/MarkerNames`) and the client finds it in `workspace.Creatures`
+  (until 2026-11-03 such a creature had no attack effects). Each lands with the
+  sim's `attack` event and its damage number (`Util/AttackTiming`); the final hit waits for that event, so a charge
+  whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
+  once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
+  Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
+  Pet button moves and super moves (`AttackFx.SPECIALS`, `ElementFx.special`) land at once with their `ability`
+  event: Fireball a blast and a fire ring on the ground, Wave a swelling water dome, Snare five vines round the target
+  (4 s), Overcharge a crackling aura on the caster (3 s), Curse a purple mist (5 s); the super moves Inferno a fire
+  pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
+  the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
+  nothing (`FightFxRules.hasEffect`).
+- **Boss moves** (same spec): a boss with keyed clips has four (`ReplicatedStorage.MonsterAnimations/<boss
+  id>`, docs/animations.md "Bone rigs") played by `Util/MonsterMoves`: a `windup` before each hit (0.6 s before a
+  creature hit, over the 0.5 s warning before a quick hit on a player, no glow), the `strike` as it lands with an
+  impact there, the `specialWindup` over a ring's warning with sparks in its colour pulling in, then the
+  `specialRelease` as the ring lands, with its effect over the ring (`Config/AttackFx` BOSS, `ElementFx.monsterStrike`,
+  `ElementFx.bossRelease`). One move at a time: a group hit is one strike, nothing interrupts the special. Meadow
+  Warden: branch swipe (leafy slash, dust) and root slam (big roots, taller than a player, burst up across the ring and curl outward, one thick one in the middle; green shockwave). Cave Brood
+  Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
+  up, then lunges; made big 2026-11-03 at the owner's ask: from her fangs, half her height up, a burst and 12 thick
+  strands land across the whole cone with 7-stud splats, and a fan of web, 7 spokes and 4 cross threads, sticks over
+  the cone for 1.4 s; `ElementFx.bossRelease` takes the boss's height). Ember Colossus: horn gore (sits back, head low, then
+  tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
+  shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
+  remodel.
+- **Wild monster attacks** (same spec): each valley species has a keyed `windup` and `strike`
+  (`tools/blender/anim_wild.py`, `MonsterAnimations/<species>`), played the same way as a boss's normal attack, with
+  its impact (`Config/AttackFx` MONSTER, `ElementFx.monsterStrike`): Mossling a headbutt (green burst, dust), Puddle
+  Crab a pincer snap (splash, two slashes), Cave Bat a dive (claw slashes, dark burst), Spark Beetle a horn charge
+  (a bolt from its pincers), Ash Wolf a lunging bite (fang slashes, embers), Magma Golem a ground punch (fiery burst,
+  rock dust, a ground ring).
+- **Boss debuffs** (same spec): a ring that lands on a player leaves its boss's debuff (`Config/Bosses` DEBUFFS,
+  `playerAttacks.debuff`, `BattleSim`): Meadow Warden Entangled (2 s, walk 60% slower), Cave Brood Queen Poison (4 s,
+  2% of max HP a second), Ember Colossus Burn (3 s, 3.5% a second), Frost Tyrant Chilled (3 s, walk 30% slower, the
+  dodge recharges 1.5x slower), Storm Sovereign Shocked (0.5 s, no sword or dodge; stuns never pass 1 s), Rift
+  Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
+  Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
+  stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
+- **Effect quality** (same spec, "Quality bar", owner 2026-11-03): every fight effect is drawn from a texture kit in the
+  owner's reference look (`tools/textures/make_attack_fx.py` -> `assets/ui/fx-attack`, ids in `AttackFx.TEXTURES`:
+  glow, flare, comet streak, spark, shockwave ring, lightning, crescent slash, crystal shard, starburst, flame, smoke),
+  white and tinted, a coloured layer under a white core (`Util/ElementFx`: comets with trails and flames or spiral
+  rings, lightning beams, crystal eruptions, fire and water pillars). The combat preload fetches them with every
+  attack sound (`CombatPreload.collect`, a beam is a blank slab until its texture is in). A creature's basic attack
+  grows with its grade (`AttackFx.GRADE`, `FightFxRules.tier`): C base, B +25% and more sparks, A +55% plus one extra
+  (Ember a second fireball, Tide a second ring spiral, Volt a forked bolt, Bloom/Shade a fourth slash), S +100% plus
+  the big extras (Ember three fireballs and a fire pillar, Tide a water column, Volt two forked bolts and a strike from
+  the sky, Bloom/Shade five slashes ending in an X, gold sparkles in trails, a boom sound layer). Pet button and super
+  moves, bosses and wild monsters use the new look at a fixed size. Screen shake (`Util/ScreenFx`, `Util/ShakeRules`,
+  `AttackFx.SHAKE`): every hit adds to one 0-1 shake that dies down, the camera rattling by its square, less the
+  further the hit is from you; your own creature's hits light, a boss slam beside you heavy. Screen flashes
+  (`AttackFx.FLASH`): your creature's S-grade hits and your Pet button moves in their colour, a boss slam near you
+  white. Sounds play at a slightly random pitch. Damage numbers pop (`Util/DamagePop`, `AttackFx.NUMBERS`): they burst
+  in bigger than their size and settle, rise, drift a little sideways and fade; crits are bigger, last longer and
+  wiggle; a Poison or Burn tick is small, in its colour, with no flinch or shake. Low graphics: fewer particles.
+- **Sword hit effects** (owner 2026-11-03, "not too much, it's a starter sword"): each cut that connects draws a thin
+  slash arc in the sword's colour where your blade lands, turned the way the cut swings, with a small white flash; the
+  combo's last cut a little bigger; the skill a wide arc and a ring at your feet (`HitFx.cut` / `HitFx.spin`,
+  `SwordFx.SLASH`). The arc's colour and size are the sword's (`Swords.slash`): pale steel at size 1 on the starter, so
+  the Forge's swords can be bolder. Your own arcs play the moment your reach check connects; other players' (and yours
+  the check missed) play at the target when the server's hit arrives. No element colour, no screen flash.
+- **End screen** (owner 2026-11-03, design B "banner and loot strip"; `Util/VictoryScreen`, `Util/VictoryRules`,
+  `Config/Victory`), boss fights only: normal monster fights (wild, elites, Dungeon rooms) end with a toast instead
+  (`Util/FightToast`, `VictoryRules.toast`, `Victory.TOAST`): a dark pill slides down at the top, "Mossling defeated"
+  with +cash and +XP pills (green edge; gold with a "New card! Petalpaw · Grade B" or Star Shard line and a chime),
+  "Your party fainted" with when it's rested (red), "Got away safely" (grey), gone after 2.6 s. The boss screen: a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
+  CONQUERED!" on the first Hydra clear) with "<foe> defeated · m:ss" under it; a row of reward tiles popping in one by
+  one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
+  new card, a first-clear chest item and the bonus glow gold, with a chime); the notes (loot on the ground, carried,
+  reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
+  up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss is "DEFEATED" in red,
+  a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
+  itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down. Its
+  sounds are fetched on the loading screen and kept loaded, and the silent start of the fanfare and the level-up
+  shimmer is skipped (`Victory.START_AT`), so they land with the moment.
+- **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
+  with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
+  well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
+  rings stepped out of; drawn per fight). Targets for a party at the recommended Power (solo): fights well wins about
+  85% at 1x and 50% at 0.8x; stands still about 60% at 1x and 15% at 0.8x, taking about twice as long. Heals (later)
+  add on top. The fights are nearly deterministic (the element match-up decides most of them), so rows land on steps
+  of 20%; boss 1 stays easier for players who fight (it's the first). New HP / ATK: Meadow Warden 1440 / 7, Cave Brood
+  Queen 2340 / 10, Ember Colossus 7200 / 26, Frost Tyrant 13800 / 43, Storm Sovereign 23200 / 31, Rift Devourer
+  27600 / 57, Prism Hydra 48000 / 23. Then retuned again for fight perks (every row's party with its perks): Cave
+  Brood Queen 2430 / 10, Ember Colossus 7400 / 29, Frost Tyrant 14900 / 46, Storm Sovereign 22600 / 40, Rift Devourer
+  27000 / 66, Prism Hydra 50000 / 27 (the Warden unchanged: Common perks are small). The Hydra stays easier for
+  players who fight well (about 96% at 1x): its parties are all starred Legendaries with strong perks, and more HP
+  only pushed the still runs past the time limit. Boss debuffs (2026-11-02) left HP / ATK as they were: with them every
+  row moved by a few points at most (solo and in pairs; the biggest, Ember Colossus still at 0.8x 40% to 29%, toward
+  its target). `NO_DEBUFFS=1` runs the tool without them; the walk slows aren't modelled. Attack pace by SPD
+  (2026-11-03, owner): the old pace (20 / SPD, floor 0.8 s) capped almost every creature above SPD 25, so a Lv 20
+  Common attacked as often as a Lv 30 Legendary; the new curve slows mid creatures a little and speeds top ones up, and
+  bosses were retuned to keep the targets (solo, still / well at 0.8x | 1x): Meadow Warden HP 1300 (7/60 | 100/100),
+  Cave Brood Queen HP 2600 (23/60 | 60/90), Ember Colossus HP 6300 (6/60 | 60/86), Frost Tyrant unchanged (0/63 |
+  49/91), Storm Sovereign 28000 / ATK 43 (20/60 | 60/90), Rift Devourer HP 34000 (23/60 | 58/82), Prism Hydra
+  60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
+- **Wild fight HUD** (owner 2026-11-03, layout A: the boss fight's look without the sword): the monster's name and HP
+  in the top bar (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
+  ring with its HP top left (a called-in one's bar under it, the perk chip), and the slanted buttons bottom right
+  (`CombatHud.new(..., wild, sword)`, `UiLayout.wildButtons`): with a sword, the boss fight's buttons (Attack, Dodge,
+  the skill, the Pet button) and your HP bar on top with your creature's and a called-in one's under it; without one
+  yet, the Pet button big where Attack is in boss fights (the first of your creatures on the field that's ready acts;
+  R on PC) and the Super move above it when one has it. Both add Run with its chance ("RUN 90%", a cooldown after a
+  failed try) and Call in showing the card it brings ("CALL IN 3S", only while the window is open; 1-3 on PC). PvP
+  keeps the bar below.
+- **Fight bar** (PvP): kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
+  buttons), Bring in / Run below (`layoutBar` in BattleController).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
@@ -958,12 +1176,14 @@ group, checked before its fragments and every time (not only the first). Below i
   press again to start at once, it starts by itself when full (4). The Fight and group prompts have separate limiters.
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
-  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`;
-  the Frontier bosses use their own `groupAtkStep`, 0.35 / 0.35 / 0.5, because Legendary parties shrug off the
-  default), and it hits one more creature per attack per extra player (`GROUP_SWINGS_STEP`, never more targets than
-  players) so a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
-  whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]`: at the recommended
-  Power a 2-4 player group wins, a typical party (best card at it, two at 60%) 60-80%, boss 6 with 4 players 80%.
+  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.08 (n - 1)) (`BossRules.groupStats`;
+  each boss's own `groupAtkStep`: 0.08 for the Wild bosses, 0.1 the Frontier's, 0.3 the Prism Hydra; Dungeon room packs
+  keep `GROUP_ATK_STEP` 0.15), and it swings once more per attack per
+  extra player (`GROUP_SWINGS_STEP`, never more targets than players; each swing may go at a player as a quick hit) so
+  a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
+  whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]` (the player in the fight):
+  at the recommended Power a group that fights wins nearly always; 2 players who stand still win about as often as one
+  (40-80%), 4 who stand still less on the Frontier bosses (about 20-30%).
   Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
   others fight on, and the fight ends when nobody is left standing: a loss if a fainted member is still in it, else a
   run. Leaders stand 7 studs apart on the ring (`GROUP_SPACING`), each call-in 3 studs to its own leader's right
@@ -1020,7 +1240,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (`DungeonRules.readyToStart`; after `ARRIVAL_WAIT` 60 s a player who never came, e.g. a failed teleport, is left
   behind). Then three rooms open in turn, each a sealed ring with a "Fight" gate. Its pack of elites appears (`Config/Dungeon.ROOMS`:
   2 Frost Wisp/Shade Lynx at Lv 45, 2 Storm Hawk/Lava Brute at Lv 47, 3 Rift Horror/Prism Crab/Lava Brute at Lv 50;
-  elite stats with ATK x0.35, `PACK_SCALE`, scaled to the group like a boss, with swings) and each monster gets a
+  elite stats times `PACK_SCALE` HP x0.21 / ATK x0.33, which keeps the rooms as they were before the Frontier's
+  2026-11-03 retune, scaled to the group like a boss, with swings; the rooms stay creature-only) and each monster gets a
   small HP bar. Creatures keep their HP from room to room; a creature that faints is out for the rest of the run
   (even once its normal rest is over); no spring, no healing. A room win pays the pack's elite XP and cash, no cards
   or items, and opens the door on. A player whose whole party is down (they stay in the fight until it ends), who runs
@@ -1212,8 +1433,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py)
-├── tools/textures/             # pack textures and flipbook sheets (Pillow)
+├── assets/ui/combat/           # the boss-fight HUD's slanted button, HP bar, hit flash and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
+├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
+├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
+├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels (docs/animations.md "The sword model")
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py)
+├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
+├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model (Lune)
+├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -1238,6 +1465,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
     │   │   ├── WildService.luau      # wild map (the valley's spawn spots, wooden signs, edges, return portal, boss portals and arena copies), plaza portal, healing spring, monsters (spawn, wander, chase, the valley's crowd-sized population)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
+    │   │   ├── SwordService.luau     # the sword: unlock, drawn/sheathed, standard body, back accessories hidden in boss fights (BattleService handles the attack/skill/dodge remotes)
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
@@ -1257,9 +1485,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       └── RateLimiter.luau      # per-player remote cooldowns
+    ├── first/                  # → ReplicatedFirst.LoadingScreen (runs before anything else loads)
+    │   ├── Show.client.luau    # the loading screen from the first frame (or the one a teleport brought), fades when done
+    │   └── LoadingGui.luau     # builds, animates, updates and fades the "card fan" loading screen
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
+    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, creature, fight gear), the teleport screen
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -1291,6 +1523,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
@@ -1323,7 +1556,20 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue
     │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
-    │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
+    │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
+    │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
+    │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
+    │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
+    │       ├── HitFx.luau              # sword hit feel: sparks, flash, the slash arc (cut / spin)
+    │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
+    │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
+    │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
+    │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
+    │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
+    │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
+    │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
         ├── Config/
         │   ├── Cards.luau      # Set 1 card list
@@ -1356,7 +1602,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
-        │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
+        │   ├── Combat.luau     # attack timing, charge lead, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
+        │   ├── AttackFx.luau   # attack effects: each element's attack kind and colour, flight, combo, orbit, budget, sounds
+        │   ├── Victory.luau    # the fight end screen: timings, sizes, colours by result, sounds
+        │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
+        │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
+        │   ├── SwordFx.luau    # rings, hit feel, slash trail, wind-up glow, loss countdown look (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
@@ -1416,7 +1667,15 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ShowcaseLayout.luau # upright case card slots in rows (pure, Lune-tested)
             ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
-            ├── PartyRules.luau    # perk strength and text, party changes and their toasts (pure, Lune-tested)
+            ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
+            ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
+            ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
+            ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
+            ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
+            ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
+            ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)
+            ├── DamagePop.luau     # how a damage number pops, settles, rises and fades by style (pure, Lune-tested)
+            ├── VictoryRules.luau  # the end screen's reward tiles, notes and subtitle from a fight summary (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1426,7 +1685,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderGesture.luau # who owns a press on the 3D binder: one pointer, lost releases, holds vs swipes (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
-            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
+            ├── SwordRules.luau    # the combo's next cut, reach and arc, aiming, combo damage per second (pure, Lune-tested)
+            ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
+            ├── HpBarRules.luau    # HP bar ghost and heal timing, the red edge flash and low-HP pulse, the portrait shake (pure, Lune-tested)
+            ├── CombatPreload.luau # every image, sound and animation id the boss fight needs, from its configs (pure, Lune-tested)
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
@@ -1443,10 +1706,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v13)
+### 10.4 Player data schema (v15)
 ```lua
 {
-    version = 13,
+    version = 15,
     cash = 200,
     xp = 0,
     level = 1,
@@ -1471,6 +1734,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     purchases = {},         -- processed dev product receipt IDs (for idempotency)
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
+    seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
+    swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -1480,11 +1745,31 @@ separate unopened-packs inventory; unsold stock is saved as `boxes` rather than 
 Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomputed from XP, and saved shelves
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
+DataService sets the player attribute `DataLoaded` once every service has loaded (the loading screen's save step).
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players). A service that didn't load for a player (e.g. no free plot) never overwrites
+**Teleport hand-off** (`DataService.HandOff` / `Reclaim`): before a teleport to or from the Frontier or the Dungeon
+(`FrontierService`, `DungeonGateService`), the player's live state is saved and their session closed, so the next
+place loads it at once; before, the session only closed after they'd left, and the next place waited on its lock
+(measured up to 12 s). The services keep the live state; if the teleport fails (`TeleportAsync` errors or
+`TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
+they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
+
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
+- **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
+  Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
+  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Waking up your creature...",
+  "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
+  your own cards' paintings (small copies from the first `CollectionChanged`, kept drawn tiny in a hidden
+  `CardArtCache` for the session, cards you get later too: Roblox only gets an image ready once something draws it,
+  and preloading by id reports failures for pictures that draw fine; so binder pages show every face as they turn),
+  the summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
+  the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
+  still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
+  screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
+  first-visit welcome cinematic starts when it fades.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`, look E "bold hybrid", chosen to suit kids, teens and

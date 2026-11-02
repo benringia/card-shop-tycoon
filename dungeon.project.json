@@ -3,6 +3,11 @@
   "servePort": 34874,
   "tree": {
     "$className": "DataModel",
+    "ReplicatedFirst": {
+      "LoadingScreen": {
+        "$path": "src/first"
+      }
+    },
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
@@ -18,6 +23,15 @@
       },
       "PackModels": {
         "$path": "assets/packs"
+      },
+      "SwordAnimations": {
+        "$path": "assets/animations"
+      },
+      "MonsterAnimations": {
+        "$path": "assets/monster-animations"
+      },
+      "WeaponModels": {
+        "$path": "assets/weapons"
       }
     },
     "ServerScriptService": {

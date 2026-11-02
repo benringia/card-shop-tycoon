@@ -22,6 +22,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
+local DataService = require(Services:WaitForChild("DataService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
@@ -85,12 +86,17 @@ local function teleport(players: { Player })
 	local options = Instance.new("TeleportOptions")
 	options.ShouldReserveServer = true
 	options:SetTeleportData({ runSize = #players })
+	-- Each save closes first, so the Dungeon loads them at once (DataService.Reclaim reopens them if this fails)
+	for _, player in players do
+		DataService.HandOff(player)
+	end
 	local ok, err = pcall(function()
 		TeleportService:TeleportAsync(Places.DUNGEON_PLACE_ID, players, options)
 	end)
 	if not ok then
 		warn(`[DungeonGateService] teleport failed: {err}`)
 		for _, player in players do
+			DataService.Reclaim(player)
 			notify(player, "The teleport didn't work. Try again in a moment.", true)
 		end
 	end

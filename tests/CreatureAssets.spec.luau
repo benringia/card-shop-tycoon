@@ -6,7 +6,7 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs", "assets/weapons" }
 -- The 3D pack models (UI project 3): each file's model and the meshes the game looks up in it
 local PACK_MODELS = {
 	Pack = { "Body", "Strip", "BodyLow" },
@@ -76,6 +76,25 @@ return {
 		local script = roblox.Instance.new("Script")
 		script.Parent = folder
 		assert(#findScripts({ model }) == 1, "nested script not found")
+	end,
+
+	["the weapon folder is scanned too, and the starter sword is finished"] = function()
+		assert(table.find(FOLDERS, "assets/weapons"), "assets/weapons is not in FOLDERS")
+		local roots = roblox.deserializeModel(fs.readFile("assets/weapons/StarterSword.rbxm"))
+		local model = roots[1]
+		assert(model and model:IsA("Model") and model.Name == "StarterSword", "StarterSword.rbxm holds the StarterSword model")
+		for _, name in { "Blade", "Guard", "Grip", "Pommel" } do
+			assert(model:FindFirstChild(name), `the sword has its {name}`)
+		end
+		assert(model.PrimaryPart and model.PrimaryPart.Name == "Grip", "the grip is its PrimaryPart (lune run tools/weapons/finish_sword)")
+		-- The importer turns each mesh's pivot: the game reads the grip's frame from the pivot, so it must be straight
+		for _, part in model:GetDescendants() do
+			if part:IsA("BasePart") then
+				local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.PivotOffset:GetComponents()
+				local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+				assert(straight, `{part.Name}'s PivotOffset is turned (lune run tools/weapons/finish_sword)`)
+			end
+		end
 	end,
 
 	["the prop folder is scanned too"] = function()

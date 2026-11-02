@@ -5,12 +5,17 @@
 -- heals or enrages, and the loot on the end screen. In a group fight the bar shows your own creatures with their
 -- buttons, a row with the other players' creatures and HP, and Run becomes Leave. The server decides everything; this only shows it and
 -- sends intents (StartFight, CallIn, UseAbility, RunFight, WildTravel).
+-- Boss fights put you in the fight (spec 2026-11-02-you-in-the-fight-design): the bar gives way to the combat HUD
+-- (Util/CombatHud: your HP and your creature's, Attack / Dodge / Skill / Pet / Swap / Run) and SwordController runs
+-- the sword; on PC Click attacks, Shift dodges, E is the sword skill, R the pet skill, 1-3 swap in a rested card.
+local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -20,14 +25,36 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
+local CardArtConfig = require(Config:WaitForChild("CardArt"))
+local CombatHudConfig = require(Config:WaitForChild("CombatHud"))
+local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 -- The server wild map in the main game, the Frontier in the Frontier place
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
+local HpBar = require(ClientUtil:WaitForChild("HpBar"))
+local HitFx = require(ClientUtil:WaitForChild("HitFx"))
+local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local MonsterController = require(Controllers:WaitForChild("MonsterController"))
+local CreatureController = require(Controllers:WaitForChild("CreatureController"))
+local FightFx = require(ClientUtil:WaitForChild("FightFx"))
+local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
+local SwordController = require(Controllers:WaitForChild("SwordController"))
+local Swords = require(Config:WaitForChild("Swords"))
+local SwordFx = require(Config:WaitForChild("SwordFx"))
+local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
+local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
+local AttackFx = require(Config:WaitForChild("AttackFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
+local FightToast = require(ClientUtil:WaitForChild("FightToast"))
+local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
+local Victory = require(Config:WaitForChild("Victory"))
 
 local player = Players.LocalPlayer
 
@@ -38,17 +65,18 @@ local BOSS_BAR_PHONE_MARGIN = 190 -- phones: the boss bar keeps this clear on ea
 local BANNER_SECONDS = 1.4
 local MONSTER_ID = "b:m" -- the monster's sim id (side B, as the server names it)
 local INTRO_FLY = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local END_SCREEN_HEIGHT = 150
-local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
 local HP_COLOR = Color3.fromRGB(90, 210, 110)
 local MONSTER_HP_COLOR = Color3.fromRGB(220, 80, 70)
 local TRACK_COLOR = Color3.fromRGB(25, 25, 35)
 local ELITE_COLOR = Color3.fromRGB(255, 205, 60)
 local STRONG_COLOR = Color3.fromRGB(255, 150, 40)
+local CRIT_COLOR = Color3.fromRGB(199, 155, 255) -- a Haggle critical hit
 local WEAK_COLOR = Color3.fromRGB(170, 170, 180)
 local HEAL_COLOR = Color3.fromRGB(120, 230, 120)
 local SHIELD_COLOR = Color3.fromRGB(150, 210, 255)
-local NUMBER_RISE = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local POISON_COLOR = Color3.fromRGB(140, 230, 90)
+local BURN_COLOR = Color3.fromRGB(255, 140, 50)
+local NUMBER_LIFT = 4 -- studs over a fighter a damage number starts
 -- HUD hidden while fighting so nothing gets tapped by mistake
 local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" }
 
@@ -65,7 +93,7 @@ local INFO_SHARE = 0.4 -- of a creature's card: name and HP; the rest is buttons
 type Snapshot = {
 	time: number,
 	monster: { hp: number, maxHp: number, element: string, elite: boolean },
-	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean } },
+	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean, perk: { kind: string, value: number }? } },
 	reserves: { string },
 	callInFor: number,
 	swaps: boolean, -- boss fights: reserves may be brought in any time (a swap)
@@ -76,6 +104,7 @@ type Snapshot = {
 	allies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean, left: boolean? } }, -- group fights
 	adds: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } }, -- a boss's adds
 	bossShield: number, -- HP the boss's shield still absorbs
+	me: any?, -- boss fights: your player fighter (hp, maxHp, down, out)
 }
 
 type FighterView = {
@@ -104,14 +133,11 @@ local conquered: Frame? = nil -- the full-screen "DUNGEON CONQUERED"
 local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
-local endScreen: Frame
 local countdownLabel: TextLabel -- arena: 3, 2, 1, FIGHT!
 local countdownToken = 0
-local endTitle: TextLabel
-local endBody: TextLabel
 local bossBar: Frame -- boss fights: name and HP across the top of the screen
 local bossName: TextLabel
-local bossHpFill: Frame
+local bossHp: HpBar.Bar -- the slanted neon bar, its ghost pale gold
 local bossHpText: TextLabel
 local addsRow: Frame -- boss fights: its adds' HP, under the boss bar
 local addBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
@@ -124,6 +150,7 @@ local introToken = 0
 local bossMusic: Sound? = nil
 
 local fighting = false
+local fightFx: FightFx.Dispatcher? = nil -- this fight's attack pictures
 local fightNames: { [string]: string } = {}
 local mySide = "a" -- which side of the fight is mine ("a" in the wild)
 local markers: { [string]: BasePart } = {} -- sim fighter id -> its marker part, from the server
@@ -135,6 +162,12 @@ local fighterKey = "" -- the fighter ids the bar was built for (a swap changes t
 local reserveKey = "" -- the reserve ids the call-in buttons were built for
 local hiddenHud: { GuiObject } = {}
 local prompts: { [BasePart]: ProximityPrompt } = {}
+local combatHud: CombatHud.Hud? = nil -- boss and wild fights: the controls and HP instead of the bar (PvP keeps the bar)
+local combatWild = false -- the combat HUD is a wild monster fight's
+local combatSword = false -- the player fights in it with their sword (boss fights; wild ones once they have one)
+local foeElite = false -- this fight's monster is an elite (bigger: a bigger sword target)
+local COMBAT_ACTION = "BossCombat"
+local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
 
 local function elementIcon(element: string): string
 	local perk = Party.PERKS[element]
@@ -210,17 +243,21 @@ local function toView(raw: any): Snapshot
 	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
 	local adds = {}
 	for _, fighter in enemy.fighters do
-		if fighter.id ~= MONSTER_ID and bossId then
-			table.insert(adds, fighter)
+		if fighter.id ~= MONSTER_ID and (bossId or combatWild) then
+			table.insert(adds, fighter) -- a boss's adds, or a Dungeon room's other monsters
 		end
 	end
 	-- Group fights: side A holds everyone's creatures (each tagged with its owner); yours get buttons, the others go in
 	-- the ally row. Untagged fighters (PvP) are all yours.
 	local myOwner = tostring(player.UserId)
 	local own, allies = {}, {}
+	local me = nil
 	for _, fighter in mine.fighters do
 		local owner = (fighter :: any).owner
-		if not (fighter :: any).benched then -- fainted and swapped out
+		if (fighter :: any).player then
+			me = if owner == myOwner then fighter else me
+			continue -- boss fights: the players themselves (yours shows on the combat HUD)
+		elseif not (fighter :: any).benched then -- fainted and swapped out
 			table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
 		end
 	end
@@ -244,6 +281,7 @@ local function toView(raw: any): Snapshot
 		runIn = mine.runIn,
 		runChance = mine.runChance,
 		enemies = enemy.fighters,
+		me = me,
 	}
 end
 
@@ -277,44 +315,100 @@ local function addMonsterMarkers(list: unknown)
 	end
 end
 
-local function addMarkers(list: unknown)
-	if typeof(list) ~= "table" then
+-- A marker made the moment its creature joined (a swap, a call-in) arrives as nil: find it by its name (Util/MarkerNames)
+local function addMarkers(list: unknown, names: unknown)
+	if typeof(list) == "table" then
+		for id, marker in list :: { [any]: any } do
+			if typeof(id) == "string" and typeof(marker) == "Instance" and marker:IsA("BasePart") then
+				markers[id] = marker
+			end
+		end
+	end
+	local folder = workspace:FindFirstChild("Creatures")
+	if typeof(names) ~= "table" or not folder then
 		return
 	end
-	for id, marker in list :: { [any]: any } do
-		if typeof(id) == "string" and typeof(marker) == "Instance" and marker:IsA("BasePart") then
-			markers[id] = marker
+	for id, name in names :: { [any]: any } do
+		if typeof(id) == "string" and typeof(name) == "string" and not markerFor(id) then
+			task.spawn(function()
+				local marker = folder:WaitForChild(name, 3)
+				if marker and marker:IsA("BasePart") then
+					markers[id] = marker
+				end
+			end)
 		end
 	end
 end
 
--- A number that floats up over a fighter and fades
-local function floatText(id: string, text: string, color: Color3)
+-- Damage numbers pop (Util/DamagePop, AttackFx.NUMBERS): each bursts in big and settles, rises, drifts a little to one
+-- side so numbers landing together don't sit on each other, and fades; one loop moves them all
+type FloatingNumber = { gui: BillboardGui, label: TextLabel, stroke: UIStroke, scale: UIScale, style: string, born: number, drift: number }
+local floating: { FloatingNumber } = {}
+local floatingBound = false
+
+local function stepNumbers()
+	local now = os.clock()
+	local keep = {}
+	for _, number in floating do
+		local t = now - number.born
+		if t >= DamagePop.life(number.style, AttackFx.NUMBERS) then
+			number.gui:Destroy()
+			continue
+		end
+		local pose = DamagePop.at(t, number.style, AttackFx.NUMBERS)
+		local progress = t / DamagePop.life(number.style, AttackFx.NUMBERS)
+		number.gui.StudsOffset = Vector3.new(number.drift * progress, NUMBER_LIFT + pose.rise, 0)
+		number.scale.Scale = pose.scale
+		number.label.Rotation = pose.rotation
+		number.label.TextTransparency = 1 - pose.alpha
+		number.stroke.Transparency = 1 - pose.alpha
+		table.insert(keep, number)
+	end
+	floating = keep
+end
+
+-- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "weak" | "heal" | "tick"; big: a crit)
+local function floatText(id: string, text: string, color: Color3, big: boolean?, style: string?)
 	local marker = markerFor(id)
 	if not marker then
 		return
 	end
+	local kind = style or (if big then "crit" else "normal")
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(140, 36)
-	gui.StudsOffset = Vector3.new(0, 4, 0)
+	gui.Size = if kind == "crit" then UDim2.fromOffset(220, 58) else UDim2.fromOffset(150, 40)
+	gui.StudsOffset = Vector3.new(0, NUMBER_LIFT, 0)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Adornee = marker
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
+	label.AnchorPoint = Vector2.new(0.5, 0.5) -- pops from its middle
+	label.Position = UDim2.fromScale(0.5, 0.5)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0.3
+	label.TextColor3 = Color3.new(1, 1, 1)
 	label.Text = text
 	label.Parent = gui
+	-- White on top shading into the colour, with a thick dark outline: reads on any background
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.65), color)
+	gradient.Rotation = 90
+	gradient.Parent = label
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = if kind == "crit" then 3 else 2.2
+	stroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.8)
+	stroke.Parent = label
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0
+	scale.Parent = label
 	gui.Parent = player:WaitForChild("PlayerGui") -- a BillboardGui inside another ScreenGui never draws
-	TweenService:Create(gui, NUMBER_RISE, { StudsOffset = Vector3.new(0, 7, 0) }):Play()
-	TweenService:Create(label, NUMBER_RISE, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
-	task.delay(NUMBER_RISE.Time, function()
-		gui:Destroy()
-	end)
+	local drift = AttackFx.NUMBERS.DRIFT
+	table.insert(floating, { gui = gui, label = label, stroke = stroke, scale = scale, style = kind, born = os.clock(), drift = (math.random() * 2 - 1) * drift })
+	if not floatingBound then
+		floatingBound = true
+		RunService.RenderStepped:Connect(stepNumbers)
+	end
 end
 
 -- Fight bar -----------------------------------------------------------------------------------------------
@@ -520,7 +614,7 @@ local function buildAdds(snapshot: Snapshot)
 		holder.Size = UDim2.new(1 / math.max(#snapshot.adds, 1), -6, 1, 0)
 		holder.BackgroundTransparency = 1
 		holder.Parent = addsRow
-		local name = UIKit.label(holder, `{elementIcon(add.element)} Spawn`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		local name = UIKit.label(holder, `{elementIcon(add.element)} {if bossId then "Spawn" else fightNames[add.id] or "Monster"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
 		name.Size = UDim2.new(1, 0, 0, 13)
 		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
 		track.Position = UDim2.fromOffset(0, 14)
@@ -528,6 +622,88 @@ local function buildAdds(snapshot: Snapshot)
 		text.TextSize = 10
 		addBars[add.id] = { fill = fill, text = text, frame = holder }
 	end
+end
+
+-- Your creature on the field (the first one standing)
+local function myCreature(snapshot: Snapshot): any?
+	for _, fighter in snapshot.fighters do
+		if not fighter.fainted then
+			return fighter
+		end
+	end
+	return snapshot.fighters[1]
+end
+
+-- Wild fights: a second creature of yours standing on the field (a called-in one)
+local function secondCreature(snapshot: Snapshot, lead: any?): any?
+	for _, fighter in snapshot.fighters do
+		if fighter ~= lead and not fighter.fainted then
+			return fighter
+		end
+	end
+	return nil
+end
+
+-- The combat HUD's picture of a snapshot, and the pet skill, signature and swap cooldowns
+local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
+	local me = snapshot.me
+	local creature = myCreature(snapshot)
+	local second = if combatWild then secondCreature(snapshot, creature) else nil
+	local reserves = {}
+	for _, id in snapshot.reserves do
+		local name = fightNames[id]
+		table.insert(reserves, { id = id, name = name or "Card", hp = 0, maxHp = 0, art = if name then CardArt.pick(name, 80, CardArtConfig) else nil })
+	end
+	hud.update({
+		playerHp = if me then me.hp elseif combatSword then 0 else 1,
+		playerMax = if me then me.maxHp elseif combatSword then Combat.PLAYER_HP else 1,
+		down = me ~= nil and me.down == true,
+		out = me ~= nil and me.out == true,
+		creatureId = if creature then creature.id else "",
+		creatureName = if creature then fightNames[creature.id] or "Creature" else "Creature",
+		creatureArt = if creature and fightNames[creature.id]
+			then CardArt.pick(fightNames[creature.id], CombatHudConfig.PORTRAIT.SIZE, CardArtConfig)
+			else nil,
+		creatureHp = if creature then creature.hp else 0,
+		creatureMax = if creature then creature.maxHp else 1,
+		hasSignature = creature ~= nil and creature.signature ~= nil,
+		creatureElement = if creature then creature.element else "",
+		perkText = if creature and creature.perk and Party.PERKS[creature.element]
+			then `{Party.PERKS[creature.element].icon} {creature.perk.kind}: {PartyRules.describeFight(creature.perk)}`
+			else nil,
+		perkColor = if creature then Cards.ELEMENTS[creature.element] else nil,
+		petMove = if creature and Combat.ABILITIES[creature.element] then Combat.ABILITIES[creature.element].name else "Pet move",
+		signatureMove = if creature and creature.signature and Combat.SIGNATURES[creature.signature]
+			then Combat.SIGNATURES[creature.signature].name
+			else nil,
+		reserves = reserves,
+		secondName = if second then fightNames[second.id] or "Creature" else nil,
+		secondHp = if second then second.hp else nil,
+		secondMax = if second then second.maxHp else nil,
+		callInFor = if combatWild then snapshot.callInFor else nil,
+		runChance = if combatWild then snapshot.runChance else nil,
+	})
+	if combatWild then
+		-- The Pet button acts for whichever creature on the field is ready first (usePet), so its wait is the soonest
+		local soonest, soonestSignature = math.huge, math.huge
+		for _, fighter in snapshot.fighters do
+			if not fighter.fainted then
+				soonest = math.min(soonest, fighter.abilityIn)
+				soonestSignature = math.min(soonestSignature, if fighter.signature then fighter.signatureIn else math.huge)
+			end
+		end
+		hud.setCooldown("pet", latestAt + (if soonest < math.huge then soonest else 0), Combat.ABILITY_COOLDOWN)
+		hud.setCooldown("signature", latestAt + (if soonestSignature < math.huge then soonestSignature else 0), Combat.SIGNATURE_COOLDOWN)
+		hud.setCooldown("run", latestAt + snapshot.runIn, Combat.RUN_RETRY_SECONDS)
+		return
+	end
+	local express = if creature and creature.perk and creature.perk.kind == "Express" then creature.perk.value else 0
+	SwordController.SetSkillScale(1 - express) -- Express: the sword skill recharges faster too
+	if creature then
+		hud.setCooldown("pet", latestAt + creature.abilityIn, Combat.ABILITY_COOLDOWN * (1 - express))
+		hud.setCooldown("signature", latestAt + creature.signatureIn, Combat.SIGNATURE_COOLDOWN * (1 - express))
+	end
+	hud.setCooldown("swap", latestAt + snapshot.swapIn, Combat.BOSS_SWAP_SECONDS)
 end
 
 local function applySnapshot(snapshot: Snapshot)
@@ -541,8 +717,9 @@ local function applySnapshot(snapshot: Snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
-	if bossId then
-		setBar(bossHpFill, bossHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+	if bossId or combatWild then
+		bossHp.set(snapshot.monster.hp, snapshot.monster.maxHp)
+		bossHpText.Text = `{math.max(0, math.round(snapshot.monster.hp))} / {math.round(snapshot.monster.maxHp)}`
 		if snapshot.bossShield > 0 then
 			bossHpText.Text ..= ` + {math.round(snapshot.bossShield)} shield`
 		end
@@ -594,6 +771,9 @@ local function applySnapshot(snapshot: Snapshot)
 		end
 	end
 	refreshTimers()
+	if combatHud then
+		updateHud(combatHud, snapshot)
+	end
 end
 
 -- Camera shake (the roar, boss moments): a small random offset on top of the camera every frame for a moment
@@ -640,7 +820,7 @@ local function setHudHidden(hidden: boolean)
 		end
 		-- Close any open panel (binder, party...) so the fight bar is on top
 		for _, child in screenGui:GetChildren() do
-			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= endScreen and child ~= bossBar then
+			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= bossBar then
 				child.Visible = false
 			end
 		end
@@ -674,15 +854,116 @@ local function banner(text: string, color: Color3)
 	end)
 end
 
+local PLAYER_DAMAGE_COLOR = Color3.fromRGB(Swords.PLAYER_DAMAGE_COLOR[1], Swords.PLAYER_DAMAGE_COLOR[2], Swords.PLAYER_DAMAGE_COLOR[3])
+
+-- A player's sword hit: their numbers in gold, sparks and a flash on what they hit; yours also freezes your swing a
+-- moment (hit-stop) and shakes the camera, harder for the skill
+local function swordHit(event: any)
+	local marker = markerFor(event.to)
+	local mine = event.from == `a:@{player.UserId}`
+	if marker then
+		HitFx.sparks(marker.Position + Vector3.new(0, 3, 0))
+		-- Your own cuts drew their arc as they swung (SwordController); everyone else's, and yours the reach check
+		-- missed, draw it here
+		if not mine or not SwordController.HitSoundJustPlayed() then
+			local attacker = Players:GetPlayerByUserId(tonumber(string.sub(event.from or "", 4)) or 0)
+			local character = if attacker then attacker.Character else nil
+			local sword = Swords.SWORDS[(if character then character:GetAttribute("Sword") else nil) :: string] or Swords.SWORDS.starterSword
+			HitFx.cut(marker.Position + Vector3.new(0, 3, 0), sword.slash, 0, event.kind == "Skill")
+		end
+		local model = MonsterController.GetModel(marker)
+		if model then
+			HitFx.flash(model, Color3.new(1, 1, 1), SwordFx.FLASH_SECONDS, 0.35)
+		end
+	end
+	if event.from == `a:@{player.UserId}` then
+		local anims = SwordController.GetAnims()
+		if anims then
+			anims.hitStop(SwordFx.HIT_STOP_SECONDS)
+		end
+		local strength = if event.kind == "Skill" then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
+		shake(strength.seconds, strength.studs)
+		if not SwordController.HitSoundJustPlayed() then
+			SwordController.PlaySound("hit") -- your reach check missed it: the server's hit still sounds
+		end
+	end
+end
+
+-- The attack pictures for this fight (Util/FightFx): creatures charge, then their element's attack lands with the hit.
+-- Their textures are checked again first, in case the loading screen's download failed
+local function newFightFx(): FightFx.Dispatcher
+	CombatAssets.ensureAttackFx()
+	return FightFx.new({
+		marker = markerFor,
+		creature = CreatureController.GetFightView,
+		setCharging = CreatureController.SetCharging,
+		pose = CreatureController.Pose,
+		dash = CreatureController.Dash,
+		monster = MonsterController.GetFightView,
+		playClip = MonsterController.PlayClip,
+	})
+end
+
 local function onEvents(events: { any })
+	if fightFx then
+		-- Pictures only: a broken effect must never stop the damage numbers and HUD below
+		local ok, err = pcall(fightFx.onEvents, events)
+		if not ok then
+			warn("[BattleController] fight effect failed:", err)
+		end
+	end
+	local me = `a:@{player.UserId}`
 	for _, event in events do
-		if event.type == "attack" and event.to then
+		if event.type == "attack" and event.to and typeof(event.from) == "string" and string.sub(event.from, 1, 3) == "a:@" then
+			if event.crit then
+				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
+			else
+				floatText(event.to, `-{event.damage}`, PLAYER_DAMAGE_COLOR)
+			end
+			swordHit(event)
+		elseif event.type == "attack" and event.to == me and (event.kind == "Poison" or event.kind == "Burn") then
+			-- A debuff's damage each second: its own colour, no flinch or shake
+			floatText(event.to, `-{event.damage}`, if event.kind == "Poison" then POISON_COLOR else BURN_COLOR, false, "tick")
+		elseif event.type == "attack" and event.to == me and not event.dodged then
+			-- A boss hit you
+			floatText(event.to, `-{event.damage}`, UIKit.Colors.Danger, false, "strong")
+			shake(SwordFx.SHAKE.hurt.seconds, SwordFx.SHAKE.hurt.studs)
+			local anims = SwordController.GetAnims()
+			if anims then
+				anims.play("flinch")
+			end
+		elseif event.type == "ring" and typeof(event.x) == "number" then
+			RingFx.show({
+				shape = event.kind,
+				x = event.x,
+				y = event.y,
+				z = event.z,
+				dirX = event.dirX,
+				dirZ = event.dirZ,
+				radius = event.radius,
+				length = event.length,
+				halfAngle = event.halfAngle,
+				warning = event.seconds or 1,
+			})
+			if event.to == me then
+				SwordController.PlaySound("ring")
+			end
+		elseif event.type == "down" and event.to == me then
+			SwordController.Kneel()
+			banner("Down!", UIKit.Colors.Danger)
+		elseif event.type == "getUp" and event.to == me then
+			SwordController.GetUp()
+		elseif event.type == "out" and event.to == me then
+			banner("You're out: watching", UIKit.Colors.Danger)
+		elseif event.type == "attack" and event.to then
 			if event.dodged then
-				floatText(event.to, "Dodge", WEAK_COLOR)
+				floatText(event.to, "Dodge", WEAK_COLOR, false, "weak")
+			elseif event.crit then
+				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
 			elseif event.strength == "strong" then
-				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR)
+				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR, false, "strong")
 			elseif event.strength == "weak" then
-				floatText(event.to, `-{event.damage}`, WEAK_COLOR)
+				floatText(event.to, `-{event.damage}`, WEAK_COLOR, false, "weak")
 			else
 				floatText(event.to, `-{event.damage}`, Color3.new(1, 1, 1))
 			end
@@ -698,10 +979,10 @@ local function onEvents(events: { any })
 				floatText(event.from, name or event.kind or "", ELITE_COLOR)
 			end
 			if event.damage and event.to then
-				floatText(event.to, `-{event.damage}`, if event.strength == "strong" then STRONG_COLOR else Color3.new(1, 1, 1))
+				floatText(event.to, `-{event.damage}`, if event.strength == "strong" then STRONG_COLOR else Color3.new(1, 1, 1), false, "strong")
 			end
 			if event.heal and event.from then
-				floatText(event.from, `+{event.heal}`, HEAL_COLOR)
+				floatText(event.from, `+{event.heal}`, HEAL_COLOR, false, "heal")
 			end
 		elseif event.type == "run" and event.ok == false and event.kind == "failed" then
 			UIController.Notify("Couldn't get away!", true, 1.5)
@@ -709,7 +990,7 @@ local function onEvents(events: { any })
 			floatText(event.from, "Joined!", HEAL_COLOR)
 		elseif event.type == "heal" then
 			if event.to and event.heal then
-				floatText(event.to, `+{event.heal}`, HEAL_COLOR)
+				floatText(event.to, `+{event.heal}`, HEAL_COLOR, false, "heal")
 			end
 			banner("Healing!", HEAL_COLOR)
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
@@ -746,77 +1027,27 @@ end
 local function showPvpEnd(summary: any)
 	local outcome = summary.outcome
 	local cash = if typeof(summary.cash) == "number" then summary.cash else 0
-	if outcome == "win" then
-		endTitle.Text = if summary.forfeit then "Opponent left · you win!" else "You win!"
-		endTitle.TextColor3 = HEAL_COLOR
-	elseif outcome == "lose" then
-		endTitle.Text = "You lose"
-		endTitle.TextColor3 = UIKit.Colors.Danger
-	else
-		endTitle.Text = "Draw"
-		endTitle.TextColor3 = UIKit.Colors.Text
-	end
+	local title = if outcome == "win" then (if summary.forfeit then "Opponent left · you win!" else "You win!")
+		elseif outcome == "lose" then "You lose"
+		else "Draw"
 	local money = if cash > 0 then `+${cash}` elseif cash < 0 then `-${-cash}` elseif outcome == "draw" then "Bets returned" else "Friendly match"
 	local opponent = if typeof(summary.opponentName) == "string" then ` vs {summary.opponentName}` else ""
 	local seconds = if typeof(summary.returnIn) == "number" then summary.returnIn else 10
-	endScreen.Visible = true
+	VictoryScreen.show({
+		kind = if outcome == "win" then "win" elseif outcome == "lose" then "lose" else "run",
+		title = title,
+		subtitle = `{money}{opponent}`,
+		seconds = seconds,
+	})
 	task.spawn(function()
 		for left = seconds, 1, -1 do
 			if fighting then
 				return -- a new fight started
 			end
-			endBody.Text = `{money}{opponent}\nGoing home in {left}...`
+			VictoryScreen.setNotes({ `Going home in {left}...` })
 			task.wait(1)
 		end
-		if not fighting then
-			endScreen.Visible = false
-		end
 	end)
-end
-
--- "12:34"
-local function clock(seconds: number): string
-	return string.format("%d:%02d", seconds // 60, seconds % 60)
-end
-
--- What a boss win gave (summary.boss from BossService)
-local function bossLines(boss: any): { string }
-	local lines = {}
-	if boss.firstClear then
-		table.insert(lines, "🏆 First clear! The chest went into your Bag:")
-	end
-	local listed = {}
-	for _, entry in (if typeof(boss.chest) == "table" then boss.chest else {}) do
-		table.insert(listed, entry)
-	end
-	for _, entry in (if typeof(boss.items) == "table" then boss.items else {}) do
-		table.insert(listed, entry)
-	end
-	for _, entry in listed do
-		local item = Items.ITEMS[entry.item]
-		if item then
-			local icon = if string.match(item.icon, "^%a") then "" else `{item.icon} ` -- emoji icons only
-			table.insert(lines, `{icon}+{entry.count} {item.name}`)
-		end
-	end
-	if boss.bonus then
-		table.insert(lines, "🎁 Daily bonus!")
-	end
-	if typeof(boss.items) == "table" and #boss.items > 0 then
-		table.insert(lines, "Your loot is on the ground: walk over it to pick it up")
-	end
-	if boss.carried then
-		table.insert(lines, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
-	end
-	if boss.flagged then
-		table.insert(lines, "Too fast for drops this time")
-	elseif boss.reduced then
-		table.insert(lines, "Reduced drops (many wins today or a much stronger party)")
-	end
-	if typeof(boss.lootIn) == "number" and boss.lootIn > 0 then
-		table.insert(lines, `Full loot again in {clock(boss.lootIn)}`)
-	end
-	return lines
 end
 
 -- Clearing the Dungeon for the first time: the whole screen says so for a few seconds
@@ -869,57 +1100,72 @@ local function showConquered()
 	end)
 end
 
-local function showEnd(summary: any)
-	endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT)
+-- When a beaten party is back: "resting 5:00 · the plaza spring heals faster" (the Dungeon: out for the run)
+local function restLine(): string
+	local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+	local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
+	return if place.isDungeon() then "Fainted creatures are out for the rest of this run"
+		else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
+end
+
+-- The fight's end: a boss's big screen (Util/VictoryScreen: title, rewards and party XP; a loss or a run in red or
+-- grey), a toast for everything else (Util/FightToast; owner 2026-11-03), PvP its own
+local function showEnd(summary: any, wasBoss: boolean)
 	if summary.mode == "pvp" then
 		showPvpEnd(summary)
+		return
+	end
+	if not wasBoss then
+		FightToast.show(VictoryRules.toast(summary, Cards.ById, if summary.result == "lose" then restLine() else nil))
 		return
 	end
 	local result = summary.result
 	if result == "win" then
 		local firstConquest = typeof(summary.boss) == "table" and summary.boss.firstClear == true and summary.boss.bossId == Dungeon.BOSS
-		endTitle.Text = if firstConquest then "Dungeon conquered!" else "Victory!"
-		endTitle.TextColor3 = if firstConquest then CONQUERED_COLOR else HEAL_COLOR
 		if firstConquest then
 			showConquered()
 		end
-		local names = {}
-		for _, beastId in (if typeof(summary.partyIds) == "table" then summary.partyIds else {}) do
-			table.insert(names, fightNames[`a:{beastId}`] or "card")
-		end
-		local lines = { `+{summary.xpEach or 0} XP each: {table.concat(names, ", ")}`, string.format("+$%.2f", summary.cash or 0) }
-		if typeof(summary.shards) == "number" and summary.shards > 0 then
-			table.insert(lines, `✨ +{summary.shards} Star Shard{if summary.shards == 1 then "" else "s"}`)
-		end
-		if typeof(summary.card) == "table" and Cards.ById[summary.card.cardId] then
-			local found = Cards.ById[summary.card.cardId]
-			table.insert(lines, if found.set == "Frontier" then `✨ FRONTIER CARD: {found.name}!` else `🎴 New card: {found.name} (grade {summary.card.grade})`)
-		end
-		if typeof(summary.boss) == "table" then
-			for _, line in bossLines(summary.boss) do
-				table.insert(lines, line)
+		local party = {}
+		for _, entry in (if typeof(summary.party) == "table" then summary.party else {}) do
+			local card = Cards.ById[entry.cardId]
+			if card then
+				table.insert(party, {
+					name = card.name,
+					art = CardArt.pick(card.name, Victory.PORTRAIT, CardArtConfig),
+					from = tonumber(entry.from) or 0,
+					to = tonumber(entry.to) or 0,
+					levelUp = entry.levelUp == true,
+				})
 			end
 		end
-		endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT + math.max(0, #lines - 3) * END_LINE_HEIGHT)
-		endBody.Text = table.concat(lines, "\n")
-	elseif result == "lose" then
-		endTitle.Text = "Your party fainted"
-		endTitle.TextColor3 = UIKit.Colors.Danger
-		local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
-		local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
-		endBody.Text = if place.isDungeon() then "Fainted creatures are out for the rest of this run"
-			else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
-	else
-		endTitle.Text = "Got away safely"
-		endTitle.TextColor3 = UIKit.Colors.Text
-		endBody.Text = if typeof(summary.rested) == "table" and #summary.rested > 0 then "Fainted cards are resting." else ""
-	end
-	endScreen.Visible = true
-	task.delay(Combat.END_SCREEN_SECONDS, function()
-		if not fighting then
-			endScreen.Visible = false
+		local notes = VictoryRules.notes(summary.boss)
+		if typeof(summary.boss) == "table" and summary.boss.firstClear then
+			table.insert(notes, 1, "First clear! The chest went into your Bag")
 		end
-	end)
+		VictoryScreen.show({
+			kind = if firstConquest then "conquered" else "win",
+			title = if firstConquest then "DUNGEON CONQUERED!" else "VICTORY!",
+			subtitle = VictoryRules.subtitle(summary.foe, summary.seconds),
+			tiles = VictoryRules.tiles(summary, Items, Cards.ById),
+			notes = notes,
+			party = party,
+		})
+	elseif result == "lose" then
+		VictoryScreen.show({
+			kind = "lose",
+			title = "DEFEATED",
+			subtitle = "Your party fainted",
+			notes = { restLine() },
+			seconds = Combat.END_SCREEN_SECONDS,
+		})
+	else
+		VictoryScreen.show({
+			kind = "run",
+			title = "Got away safely",
+			notes = if typeof(summary.rested) == "table" and #summary.rested > 0 then { "Fainted cards are resting." } else {},
+			seconds = Combat.END_SCREEN_SECONDS,
+		})
+	end
 end
 
 -- Big numbers in the middle of the screen before an arena fight starts
@@ -954,6 +1200,9 @@ local function playIntro(boss: any, seconds: number)
 	local camera = workspace.CurrentCamera
 	local marker = markerFor(MONSTER_ID) -- found by onStarted, which waits a moment for a just-spawned boss
 	bar.Visible = false
+	if combatHud then
+		combatHud.setVisible(false)
+	end
 	bossBar.Visible = false
 	introName.Text = `{elementIcon(boss.element)} {boss.name}`
 	introTitle.Text = boss.title
@@ -978,10 +1227,114 @@ local function playIntro(boss: any, seconds: number)
 		if camera then
 			camera.CameraType = Enum.CameraType.Custom
 		end
-		bar.Visible = true
+		bar.Visible = combatHud == nil
+		if combatHud then
+			combatHud.setVisible(true)
+		end
 		bossBar.Visible = true
 		showCountdown(seconds - Bosses.INTRO_CAMERA_SECONDS)
 	end)
+end
+
+-- Who your sword can hit: the boss and its adds, with their sizes (soft aim; the server checks the real hits)
+local function swordTargets(): { any }
+	local list = {}
+	local boss = if bossId then Bosses.BOSSES[bossId] else nil
+	for id, marker in markers do
+		if string.sub(id, 1, 2) == "b:" and marker.Parent then
+			local radius = if id == MONSTER_ID and boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE
+				elseif id == MONSTER_ID and foeElite then Bosses.ADD_HIT_RADIUS * Wild.ELITE_SIZE
+				else Bosses.ADD_HIT_RADIUS
+			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius })
+		end
+	end
+	return list
+end
+
+local function usePet(which: string)
+	local snapshot = latest
+	local creature = if snapshot then myCreature(snapshot) else nil
+	if combatWild and snapshot then
+		-- Wild fights can have a called-in creature on the field too: the first one ready acts
+		local elapsed = os.clock() - latestAt
+		for _, fighter in snapshot.fighters do
+			local wait = if which == "signature" then fighter.signatureIn else fighter.abilityIn
+			if not fighter.fainted and (which ~= "signature" or fighter.signature) and wait - elapsed <= 0.05 then
+				creature = fighter
+				break
+			end
+		end
+	end
+	if creature and not creature.fainted then
+		Remotes.UseAbility:FireServer(creature.id, which)
+	end
+end
+
+local function swapTo(id: string)
+	Remotes.CallIn:FireServer(id)
+end
+
+-- PC keys while the combat HUD is up (above the party bar's 1-3)
+local function onCombatKey(_: string, state: Enum.UserInputState, input: InputObject): Enum.ContextActionResult
+	if state ~= Enum.UserInputState.Begin or not combatHud or introCard.Visible then
+		return Enum.ContextActionResult.Pass
+	end
+	local key = input.KeyCode
+	if not combatSword and (key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.E) then
+		return Enum.ContextActionResult.Pass -- no sword in this fight yet
+	elseif key == Enum.KeyCode.LeftShift then
+		SwordController.Dodge()
+	elseif key == Enum.KeyCode.E then
+		SwordController.Skill()
+	elseif key == Enum.KeyCode.R then
+		usePet("element")
+	else
+		local slot = table.find({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }, key)
+		local id = if slot and latest then latest.reserves[slot] else nil
+		if id then
+			swapTo(id)
+		end
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+-- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD, its buttons
+-- always named, the sword on once the player has one (`sword`)
+local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
+	combatWild = wild == true
+	combatSword = sword ~= false
+	local hud = CombatHud.new(screenGui, {
+		attack = SwordController.Attack,
+		dodge = SwordController.Dodge,
+		skill = SwordController.Skill,
+		pet = function()
+			usePet("element")
+		end,
+		signature = function()
+			usePet("signature")
+		end,
+		swap = swapTo,
+		run = function()
+			Remotes.RunFight:FireServer()
+		end,
+	}, showNames, wild, combatSword)
+	combatHud = hud
+	if combatSword then
+		SwordController.SetCombat(true, swordTargets, hud.setCooldown)
+	end
+	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
+end
+
+local function stopCombat()
+	local hud = combatHud
+	combatHud = nil
+	if hud then
+		hud.destroy()
+		if combatSword then
+			SwordController.SetCombat(false)
+		end
+		ContextActionService:UnbindAction(COMBAT_ACTION)
+	end
 end
 
 local function onStarted(payload: any)
@@ -991,7 +1344,11 @@ local function onStarted(payload: any)
 	fighting = true
 	mySide = if payload.side == "b" then "b" else "a"
 	markers = {}
-	addMarkers(payload.markers)
+	addMarkers(payload.markers, payload.markerNames)
+	if fightFx then
+		fightFx.destroy()
+	end
+	fightFx = newFightFx()
 	fightNames = if typeof(payload.names) == "table" then payload.names else {}
 	for id, species in (if typeof(payload.foes) == "table" then payload.foes else {}) do
 		if typeof(id) == "string" and typeof(species) == "string" then
@@ -1004,7 +1361,7 @@ local function onStarted(payload: any)
 	allyBars = {}
 	clear(allyRow)
 	local view = toView(payload.snapshot)
-	endScreen.Visible = false
+	VictoryScreen.hide()
 	local species = if typeof(payload.species) == "string" then payload.species else "Monster"
 	mode = if payload.mode == "pvp" then "pvp" else "wild"
 	if mode == "pvp" then
@@ -1022,7 +1379,19 @@ local function onStarted(payload: any)
 		monsterName.TextColor3 = UIKit.Colors.Danger
 		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
 	end
-	bossBar.Visible = boss ~= nil
+	stopCombat()
+	combatWild = false
+	combatSword = false
+	foeElite = payload.elite == true
+	if boss then
+		startCombat(payload.buttonNames == true)
+	elseif mode == "wild" then
+		startCombat(true, true, payload.sword == true)
+		bossName.Text = monsterName.Text
+	end
+	bossName.TextColor3 = if boss then UIKit.Colors.Danger elseif payload.elite then ELITE_COLOR else Color3.new(1, 1, 1)
+	bossBar.Visible = boss ~= nil or combatWild
+	bossHp.reset(view.monster.hp, view.monster.maxHp) -- a new foe starts at its own HP, no ghost from the last fight
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
 	packFight = mode == "wild" and boss == nil and #view.enemies > 1
@@ -1042,7 +1411,7 @@ local function onStarted(payload: any)
 	buildCallIns(view)
 	applySnapshot(view)
 	setHudHidden(true)
-	bar.Visible = true
+	bar.Visible = combatHud == nil
 	for _, prompt in prompts do
 		prompt.Enabled = false
 	end
@@ -1062,8 +1431,33 @@ local function onStarted(payload: any)
 	end
 end
 
+-- A lost boss fight: "Teleporting back to town in 3", "... 2", "... 1" (the server moves you home)
+local function showLossCountdown(seconds: number)
+	countdownToken += 1
+	local token = countdownToken
+	task.spawn(function()
+		for left = seconds, 1, -1 do
+			if countdownToken ~= token then
+				return
+			end
+			countdownLabel.Text = BossRules.countdownText(left)
+			countdownLabel.TextColor3 = Color3.new(1, 1, 1)
+			countdownLabel.Visible = true
+			task.wait(1)
+		end
+		if countdownToken == token then
+			countdownLabel.Visible = false
+		end
+	end)
+end
+
 local function onEnded(summary: any)
 	fighting = false
+	local wasBoss = bossId ~= nil
+	if fightFx then
+		fightFx.destroy()
+		fightFx = nil
+	end
 	-- A fight can end during the intro (a player left): give the camera back
 	if introCard.Visible then
 		introToken += 1
@@ -1074,6 +1468,7 @@ local function onEnded(summary: any)
 		end
 	end
 	stopMusic()
+	stopCombat()
 	bar.Visible = false
 	bossBar.Visible = false
 	bossId = nil
@@ -1083,7 +1478,10 @@ local function onEnded(summary: any)
 		prompt.Enabled = marker:GetAttribute("Fighting") ~= true
 	end
 	if typeof(summary) == "table" then
-		showEnd(summary)
+		showEnd(summary, wasBoss)
+		if typeof(summary.countdown) == "number" and summary.countdown > 0 then
+			showLossCountdown(summary.countdown)
+		end
 	end
 end
 
@@ -1202,7 +1600,13 @@ local function build()
 	countdownLabel.Name = "FightCountdown"
 	countdownLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	countdownLabel.Position = UDim2.fromScale(0.5, 0.38)
-	countdownLabel.Size = UDim2.fromOffset(400, 120)
+	-- One line across the screen, shrinking to fit: "3" stays big, "Teleporting back to town in 3" fits a phone
+	countdownLabel.Size = UDim2.new(0.9, 0, 0, 120)
+	countdownLabel.TextWrapped = false
+	countdownLabel.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 96
+	fit.Parent = countdownLabel
 	countdownLabel.TextXAlignment = Enum.TextXAlignment.Center
 	countdownLabel.TextStrokeTransparency = 0.2
 	countdownLabel.Visible = false
@@ -1229,11 +1633,15 @@ local function build()
 	bossName.Size = UDim2.new(1, -24, 0, 18)
 	bossName.TextXAlignment = Enum.TextXAlignment.Center
 	bossName.TextTruncate = Enum.TextTruncate.AtEnd
-	local bossTrack, bossFill, bossText = makeBar(bossBar, 18, MONSTER_HP_COLOR)
-	bossTrack.Position = UDim2.fromOffset(12, 23)
-	bossTrack.Size = UDim2.new(1, -24, 0, 18)
-	bossHpFill, bossHpText = bossFill, bossText
-	bossHpText.TextSize = 14
+	local barSpec = CombatHudConfig.HP_BAR
+	bossHp = HpBar.new(bossBar, barSpec.HEIGHT, barSpec.BOSS, barSpec.BOSS_GHOST)
+	bossHp.frame.Position = UDim2.fromOffset(16, 22)
+	bossHp.frame.Size = UDim2.new(1, -32, 0, barSpec.HEIGHT)
+	bossHpText = UIKit.label(bossHp.frame, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
+	bossHpText.Size = UDim2.fromScale(1, 1)
+	bossHpText.TextXAlignment = Enum.TextXAlignment.Center
+	bossHpText.TextStrokeTransparency = 0.5
+	bossHpText.ZIndex = bossHp.topZIndex
 
 	addsRow = Instance.new("Frame")
 	addsRow.Name = "BossAdds"
@@ -1249,27 +1657,6 @@ local function build()
 	addsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	addsLayout.Parent = addsRow
 
-	endScreen = Instance.new("Frame")
-	endScreen.Name = "FightEnd"
-	endScreen.AnchorPoint = Vector2.new(0.5, 0.5)
-	endScreen.Position = UDim2.fromScale(0.5, 0.4)
-	endScreen.Size = UDim2.fromOffset(360, 150)
-	endScreen.BackgroundColor3 = UIKit.Colors.Panel
-	endScreen.BackgroundTransparency = 0.05
-	endScreen.Visible = false
-	endScreen.ZIndex = UIKit.PANEL_Z_INDEX + 1
-	endScreen.Parent = screenGui
-	UIKit.corner(endScreen, 14)
-	endTitle = UIKit.label(endScreen, "", Enum.Font.FredokaOne, 28, UIKit.Colors.Text)
-	endTitle.Position = UDim2.fromOffset(12, 12)
-	endTitle.Size = UDim2.new(1, -24, 0, 34)
-	endTitle.TextXAlignment = Enum.TextXAlignment.Center
-	endBody = UIKit.label(endScreen, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	endBody.Position = UDim2.fromOffset(12, 54)
-	endBody.Size = UDim2.new(1, -24, 1, -64)
-	endBody.TextWrapped = true
-	endBody.TextYAlignment = Enum.TextYAlignment.Top
-	endBody.TextXAlignment = Enum.TextXAlignment.Center
 
 	-- Back to your shop while in the wild: top centre (the left HUD stack has no room left on phones)
 	shopButton = UIKit.button(screenGui, "🏠 Shop", UIKit.Colors.Row)
@@ -1313,14 +1700,23 @@ local function build()
 	end)
 end
 
+-- Click attacks in boss fights (not over a button or while typing)
+local function onClick(input: InputObject, processed: boolean)
+	if processed or not combatHud or not combatSword or introCard.Visible or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+		return
+	end
+	SwordController.Attack()
+end
+
 function BattleController.Start()
 	build()
+	UserInputService.InputBegan:Connect(onClick)
 	Remotes.BattleStarted.OnClientEvent:Connect(onStarted)
 	Remotes.BattleEvent.OnClientEvent:Connect(function(payload)
 		if not fighting or typeof(payload) ~= "table" then
 			return
 		end
-		addMarkers(payload.markers)
+		addMarkers(payload.markers, payload.markerNames)
 		addMonsterMarkers(payload.addMonsters)
 		addAllies(payload.allies)
 		if typeof(payload.events) == "table" then

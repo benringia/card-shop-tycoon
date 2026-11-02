@@ -21,6 +21,7 @@ local CondenserService = require(Services:WaitForChild("CondenserService"))
 local GradingService = require(Services:WaitForChild("GradingService"))
 local JobService = require(Services:WaitForChild("JobService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
+local SwordService = require(Services:WaitForChild("SwordService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local ArenaService = require(Services:WaitForChild("ArenaService"))
@@ -43,6 +44,7 @@ if Place.isDungeon() then
 	ItemService.Start()
 	JobService.StartLocksOnly() -- before PartyService: cards with a shop job stay out of the party
 	PartyService.Start()
+	SwordService.Start() -- the standard body and the sword (before BattleService, which uses it)
 	WildService.Start() -- the Dungeon's monsters (no wild map)
 	BattleService.Start()
 	BossService.Start() -- the Prism Hydra's chamber
@@ -59,6 +61,7 @@ elseif Place.isFrontier() then
 	ItemService.Start()
 	JobService.StartLocksOnly() -- before PartyService: cards with a shop job stay out of the party
 	PartyService.Start()
+	SwordService.Start() -- the standard body and the sword (before BattleService, which uses it)
 	WildService.Start() -- the Frontier map, its spring and monsters
 	BattleService.Start()
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
@@ -85,6 +88,7 @@ else
 	GradingService.Start()
 	JobService.Start() -- after CardService, PlacementService and StockService: it loads after them
 	PartyService.Start() -- after JobService: party loading checks which cards are working
+	SwordService.Start() -- the standard body and the sword (before BattleService, which uses it)
 	WildService.Start() -- wild map, plaza portal, spring and monsters
 	BattleService.Start() -- after PartyService: unloads first, so a fight ends before the party unloads
 	ArenaService.Start() -- PvP: after BattleService and PartyService (it uses both)

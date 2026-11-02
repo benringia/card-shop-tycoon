@@ -29,6 +29,7 @@ local STRIPPED = { "LuaSourceContainer", "ProximityPrompt", "ClickDetector", "So
 
 export type Body = {
 	marker: BasePart,
+	offset: CFrame?, -- drawn this far off its marker (a fight's moving about, CreatureController)
 	model: Model,
 	root: BasePart,
 	baseScale: number,
@@ -468,6 +469,8 @@ local function roarFx(body: Body)
 	task.delay(1.2, holder.Destroy, holder)
 end
 
+local ATTACK_POSES = { charge = true, strike = true, combo = true, cast = true } -- fight poses keep going while it moves
+
 local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 	local idle = body.idle
 	local anim = Party.PET_ANIM
@@ -475,7 +478,7 @@ local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 		idle.kind = nil
 		idle.nextAt = now + idle.random:NextNumber(anim.FIDGET_GAP[1], anim.FIDGET_GAP[2])
 	end
-	if walking then
+	if walking and not (idle.kind and ATTACK_POSES[idle.kind]) then
 		-- Walking cancels a fidget; the next waits until it stops
 		idle.kind = nil
 		idle.nextAt = math.max(idle.nextAt, now + 1)
@@ -504,8 +507,22 @@ local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 end
 
 -- One frame: follow the marker smoothly, then pose (motion kit or animations), or lie down when fainted
+-- A fight pose now (Party.PET_ANIM charge, strike, combo, cast): on its bones, or the whole body for one without
+function CreatureVisuals.pose(body: Body, kind: string, now: number)
+	if body.pet then
+		PetAnimator.play(body.pet, kind, now)
+		return
+	end
+	local idle = body.idle
+	idle.kind = kind
+	idle.fired = false
+	idle.start = now
+	idle.length = Party.PET_ANIM.FIDGET_SECONDS[kind] or 0.6
+	idle.side = 1
+end
+
 function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vector3, motion: any)
-	local target = body.marker.CFrame
+	local target = if body.offset then body.marker.CFrame * body.offset else body.marker.CFrame
 	local previous = body.cframe.Position
 	if (target.Position - previous).Magnitude > TELEPORT_DISTANCE then
 		body.cframe = target

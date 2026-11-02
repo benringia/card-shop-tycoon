@@ -482,4 +482,33 @@ return {
 		expect.equal(Bosses.ARENA_COPIES, 4, "up to 4 fights per boss at once")
 		assert(Bosses.ARENA_LINGER > 0 and Bosses.ARENA_LINGER <= 120, "time to pick up loot, then back")
 	end,
+	["a lost boss fight sends you home for the place you're in"] = function()
+		expect.equal(BossRules.lossHome("Main"), "spring", "the plaza spring")
+		expect.equal(BossRules.lossHome("Frontier"), "frontierSpring", "the Frontier's entrance spring")
+		expect.equal(BossRules.lossHome("Dungeon"), "dungeon", "out of the run, as today")
+	end,
+
+	["the loss countdown reads Teleporting back to town in n"] = function()
+		expect.equal(BossRules.countdownText(3), "Teleporting back to town in 3")
+		expect.equal(BossRules.countdownText(1), "Teleporting back to town in 1")
+		expect.equal(BossRules.countdownText(1.4), "Teleporting back to town in 2", "partial seconds round up")
+		expect.equal(BossRules.countdownText(0), "Teleporting back to town...")
+	end,
+
+	["each boss has its one ring shape (attack animations spec)"] = function()
+		local shapes = {
+			meadowWarden = "slam",
+			caveBroodQueen = "swipe",
+			emberColossus = "slam",
+			frostTyrant = "slam",
+			stormSovereign = "slam",
+			riftDevourer = "swipe",
+			prismHydra = "swipe",
+		}
+		for id, boss in Bosses.BOSSES do
+			if boss.playerAttacks then
+				expect.equal(boss.playerAttacks.shape, shapes[id], id)
+			end
+		end
+	end,
 }

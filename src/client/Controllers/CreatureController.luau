@@ -5,6 +5,7 @@
 -- Idle/Walk animations, a rarity glow and a name tag. Everything is local: nothing here replicates.
 -- Only your own creatures and the nearest others get a model (Util/CreatureCull, Party.CULL): the rest wait as
 -- markers until they come near, so a full server doesn't animate every pet.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,6 +14,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
+local AttackFx = require(Config:WaitForChild("AttackFx"))
+local FightMotion = require(Shared:WaitForChild("Util"):WaitForChild("FightMotion"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local CreatureCull = require(Shared:WaitForChild("Util"):WaitForChild("CreatureCull"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
@@ -24,6 +27,11 @@ local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 type Creature = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
+	clock: FightMotion.Clock, -- its moving about in a fight
+	seed: number,
+	chargingUntil: number, -- os.clock: holds still to charge an attack until then
+	dash: { start: number, seconds: number, toward: Vector3, share: number }?, -- an attack's dash in and back
+	element: string,
 	foil: boolean,
 	rarity: string,
 	outline: boolean,
@@ -216,6 +224,11 @@ local function add(marker: BasePart)
 	local creature: Creature = {
 		marker = marker,
 		body = body,
+		clock = FightMotion.newClock(),
+		seed = (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name,
+		chargingUntil = 0,
+		dash = nil,
+		element = card.element,
 		foil = marker:GetAttribute("Foil") == true,
 		rarity = card.rarity,
 		outline = false,
@@ -237,6 +250,13 @@ local function add(marker: BasePart)
 		updateHpBar(creature)
 	end))
 	creatures[marker] = creature
+	if marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId and Players.LocalPlayer:GetAttribute("CreatureReady") ~= true then
+		-- Your own creature, the first time: the loading screen waits until its model has downloaded
+		task.spawn(function()
+			pcall(ContentProvider.PreloadAsync, ContentProvider, { model })
+			Players.LocalPlayer:SetAttribute("CreatureReady", true)
+		end)
+	end
 end
 
 -- Roblox draws at most 31 outlines: give them to the rarest creatures, nearest first
@@ -291,6 +311,29 @@ local function refreshCull()
 end
 
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
+	-- In a fight it circles its spot (the same path on every client) and stops to charge
+	if creature.marker:GetAttribute("InFight") == true then
+		local t = FightMotion.advance(creature.clock, now, now < creature.chargingUntil)
+		local scale = creature.height / Party.CREATURE_HEIGHT
+		local x, z = FightMotion.offset(creature.seed, t, AttackFx.ORBIT)
+		local offset = Vector3.new(x * scale, 0, z * scale)
+		-- An attack's dash: out toward its target and back, the circling fading out meanwhile
+		local dash = creature.dash
+		if dash then
+			local p = (now - dash.start) / dash.seconds
+			if p >= 1 then
+				creature.dash = nil
+			else
+				local out = math.sin(math.clamp(p, 0, 1) * math.pi)
+				local toward = dash.toward - creature.marker.Position
+				local local3 = creature.marker.CFrame:VectorToObjectSpace(Vector3.new(toward.X, 0, toward.Z) * dash.share)
+				offset = offset * (1 - out) + local3 * out
+			end
+		end
+		creature.body.offset = CFrame.new(offset)
+	else
+		creature.body.offset = nil
+	end
 	CreatureVisuals.step(creature.body, dt, now, origin, Party.MOTION)
 	if creature.highlight and creature.highlight.Enabled then
 		if creature.foil then
@@ -299,6 +342,47 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 		if (Party.GLOW[creature.rarity] or Party.GLOW.Common).pulse then
 			creature.highlight.OutlineTransparency = 0.35 + 0.35 * math.sin(now * 3)
 		end
+	end
+end
+
+-- What the fight effects need of the creature drawn on this marker (nil if none is drawn)
+-- grade: its card copy's (its attacks grow with it, AttackFx.GRADE); mine: it's the local player's
+function CreatureController.GetFightView(marker: BasePart): { root: BasePart, element: string, height: number, grade: string?, mine: boolean }?
+	local creature = creatures[marker]
+	if not creature then
+		return nil
+	end
+	local grade = marker:GetAttribute("Grade")
+	return {
+		root = creature.body.root,
+		element = creature.element,
+		height = creature.height,
+		grade = if typeof(grade) == "string" then grade else nil,
+		mine = marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId,
+	}
+end
+
+-- A fight pose on the creature drawn on this marker (charge, strike, combo, cast)
+function CreatureController.Pose(marker: BasePart, kind: string)
+	local creature = creatures[marker]
+	if creature then
+		CreatureVisuals.pose(creature.body, kind, os.clock())
+	end
+end
+
+-- An attack's dash: the creature runs `share` of the way toward `toward` and back over `seconds`
+function CreatureController.Dash(marker: BasePart, toward: Vector3, share: number, seconds: number)
+	local creature = creatures[marker]
+	if creature then
+		creature.dash = { start = os.clock(), seconds = math.max(seconds, 0.05), toward = toward, share = share }
+	end
+end
+
+-- A fight's attack charge (FightFx): the creature drawn on this marker holds still for `seconds`
+function CreatureController.SetCharging(marker: BasePart, seconds: number)
+	local creature = creatures[marker]
+	if creature then
+		creature.chargingUntil = math.max(creature.chargingUntil, os.clock() + seconds)
 	end
 end
 

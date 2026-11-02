@@ -6,6 +6,7 @@ local CombatMath = {}
 type Combat = {
 	ATTACK_BASE: number,
 	SPD_REFERENCE: number,
+	ATTACK_CURVE: number,
 	ATTACK_MIN: number,
 	ATTACK_MAX: number,
 	DAMAGE_SPREAD: number,
@@ -22,7 +23,8 @@ type Combat = {
 type Wild = {
 	SPECIES: { [string]: { element: string, hp: number, atk: number, spd: number } },
 	MONSTER_GROWTH: number,
-	ELITE_STAT_MULTIPLIER: number,
+	ELITE_HP_MULTIPLIER: number,
+	ELITE_ATK_MULTIPLIER: number,
 	ELITE_REWARD_MULTIPLIER: number,
 	XP_BASE: number,
 	XP_EXPONENT: number,
@@ -35,7 +37,7 @@ function CombatMath.getAttackInterval(combat: Combat, spd: number): number
 	if spd <= 0 then
 		return combat.ATTACK_MAX
 	end
-	return math.clamp(combat.ATTACK_BASE * combat.SPD_REFERENCE / spd, combat.ATTACK_MIN, combat.ATTACK_MAX)
+	return math.clamp(combat.ATTACK_BASE * (combat.SPD_REFERENCE / spd) ^ combat.ATTACK_CURVE, combat.ATTACK_MIN, combat.ATTACK_MAX)
 end
 
 local function beats(combat: Combat, a: string, b: string): boolean
@@ -74,16 +76,25 @@ function CombatMath.splitXp(total: number, count: number): number
 	return math.max(1, math.floor(total / count))
 end
 
+-- A wild monster's attacks on the player fighting beside their creature (BattleSim playerAttacks): quick hits only
+-- (PLAYER_QUICK of the player's HP, elites ELITE_PLAYER_QUICK), on the share of its swings Combat PLAYER_TARGET_SHARE
+-- picks; no rings (`every` never comes)
+function CombatMath.getMonsterAttacks(wild: any, elite: boolean): { every: number, warning: number, big: number, quick: number }
+	return { every = math.huge, warning = 1, big = 0, quick = if elite then wild.ELITE_PLAYER_QUICK else wild.PLAYER_QUICK }
+end
+
 function CombatMath.getMonsterStats(wild: Wild, species: string, level: number, elite: boolean): { hp: number, atk: number, spd: number }?
 	local base = wild.SPECIES[species]
 	if not base then
 		return nil
 	end
 	local growth = 1 + wild.MONSTER_GROWTH * (math.max(1, level) - 1)
-	local boost = if elite then wild.ELITE_STAT_MULTIPLIER else 1
+	-- An elite: its species' own multipliers (eliteHp / eliteAtk) or the world's
+	local hpBoost = if elite then base.eliteHp or wild.ELITE_HP_MULTIPLIER else 1
+	local atkBoost = if elite then base.eliteAtk or wild.ELITE_ATK_MULTIPLIER else 1
 	return {
-		hp = math.round(base.hp * growth * boost),
-		atk = math.round(base.atk * growth * boost),
+		hp = math.round(base.hp * growth * hpBoost),
+		atk = math.round(base.atk * growth * atkBoost),
 		spd = math.round(base.spd * (if elite then 1.1 else 1)),
 	}
 end

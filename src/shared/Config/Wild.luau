@@ -21,20 +21,23 @@ return {
 	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). height: studs tall (elites ELITE_SIZE
 	-- times that; the user's pick B of a to-scale lineup, the meadow pair raised a stud to stand out of the grass, which
 	-- is also cut shorter: Terrain GrassLength, a Studio-only property); glow: the steady emissive strength of the
-	-- model's glow mask (a changing strength costs about 6.6 ms of render CPU a frame, so none pulses)
+	-- model's glow mask (a changing strength costs about 6.6 ms of render CPU a frame, so none pulses).
+	-- HP and ATK tuned with `lune run tools/balance/wild` (owner 2026-11-03, the player fights beside their creature):
+	-- about 12.5 s fought well at the zone's middle level, won about 75% standing still. The Meadow comes before the
+	-- sword (shop level 3), so its pair is tuned for the creature alone (about 70-80%), and its elites set their own
 	SPECIES = {
-		Mossling = { element = "Bloom", hp = 170, atk = 5, spd = 8, shape = "slime", height = 3.5, glow = { strength = 2 } },
-		["Puddle Crab"] = { element = "Tide", hp = 200, atk = 4, spd = 7, shape = "crab", height = 3, glow = { strength = 2 } },
-		["Cave Bat"] = { element = "Shade", hp = 150, atk = 6, spd = 12, shape = "bat", height = 3, glow = { strength = 2 } },
+		Mossling = { element = "Bloom", hp = 175, atk = 6, eliteHp = 2.5, eliteAtk = 1.2, spd = 8, shape = "slime", height = 3.5, glow = { strength = 2 } },
+		["Puddle Crab"] = { element = "Tide", hp = 179, atk = 6.1, eliteHp = 2.5, eliteAtk = 1, spd = 7, shape = "crab", height = 3, glow = { strength = 2 } },
+		["Cave Bat"] = { element = "Shade", hp = 260, atk = 8.4, spd = 12, shape = "bat", height = 3, glow = { strength = 2 } },
 		["Spark Beetle"] = {
-			element = "Volt", hp = 180, atk = 6, spd = 10, shape = "beetle", height = 2.5, glow = { strength = 2 },
+			element = "Volt", hp = 258, atk = 10.1, spd = 10, shape = "beetle", height = 2.5, glow = { strength = 2 },
 			fx = { kind = "sparks", bones = { "Fx_PincerLeft", "Fx_PincerRight" } }, -- crackling at the pincer tips
 		},
 		["Magma Golem"] = {
-			element = "Ember", hp = 260, atk = 7, spd = 6, shape = "golem", height = 6.5, glow = { strength = 2.5 },
+			element = "Ember", hp = 444, atk = 17, spd = 6, shape = "golem", height = 6.5, glow = { strength = 2.5 },
 		},
 		["Ash Wolf"] = {
-			element = "Ember", hp = 190, atk = 8, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 },
+			element = "Ember", hp = 445, atk = 10.9, spd = 13, shape = "wolf", height = 4, glow = { strength = 2 },
 			fx = { kind = "smoke", bones = { "Fx_Tail" } }, -- a wisp of smoke from the tail tip
 		},
 	},
@@ -60,7 +63,17 @@ return {
 	RESPAWN_MIN = 20,
 	RESPAWN_MAX = 40,
 	ELITE_CHANCE = 0.1,
-	ELITE_STAT_MULTIPLIER = 1.6,
+	-- An elite's HP and ATK are its species' times these, unless the species sets its own eliteHp / eliteAtk (bigger;
+	-- SPD x1.1). Tuned with `lune run tools/balance/wild` (owner 2026-11-03): about 25-35 s, won about 65% fighting well.
+	-- A wild fight is lost once your creatures faint, so a longer fight needs softer hits: an elite has about twice the
+	-- HP and hits a little softer than its species (still harder than elites before the player joined), while its quick
+	-- hits on the player hit harder (ELITE_PLAYER_QUICK)
+	ELITE_HP_MULTIPLIER = 2.1,
+	ELITE_ATK_MULTIPLIER = 0.8,
+	-- With a sword the player fights beside their creature (owner 2026-11-03): a monster's quick hits on them take this
+	-- share of the player's HP (CombatMath.getMonsterAttacks); no rings outside boss fights
+	PLAYER_QUICK = 0.08,
+	ELITE_PLAYER_QUICK = 0.12,
 	ELITE_REWARD_MULTIPLIER = 3,
 
 	-- Movement
