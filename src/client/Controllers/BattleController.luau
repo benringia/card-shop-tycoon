@@ -5,12 +5,17 @@
 -- heals or enrages, and the loot on the end screen. In a group fight the bar shows your own creatures with their
 -- buttons, a row with the other players' creatures and HP, and Run becomes Leave. The server decides everything; this only shows it and
 -- sends intents (StartFight, CallIn, UseAbility, RunFight, WildTravel).
+-- Boss fights put you in the fight (spec 2026-11-02-you-in-the-fight-design): the bar gives way to the combat HUD
+-- (Util/CombatHud: your HP and your creature's, Attack / Dodge / Skill / Pet / Swap / Run) and SwordController runs
+-- the sword; on PC Click attacks, Shift dodges, E is the sword skill, R the pet skill, 1-3 swap in a rested card.
+local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -26,7 +31,9 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local SwordController = require(Controllers:WaitForChild("SwordController"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local player = Players.LocalPlayer
@@ -76,6 +83,7 @@ type Snapshot = {
 	allies: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean, left: boolean? } }, -- group fights
 	adds: { { id: string, hp: number, maxHp: number, element: string, fainted: boolean } }, -- a boss's adds
 	bossShield: number, -- HP the boss's shield still absorbs
+	me: any?, -- boss fights: your player fighter (hp, maxHp, down, out)
 }
 
 type FighterView = {
@@ -135,6 +143,9 @@ local fighterKey = "" -- the fighter ids the bar was built for (a swap changes t
 local reserveKey = "" -- the reserve ids the call-in buttons were built for
 local hiddenHud: { GuiObject } = {}
 local prompts: { [BasePart]: ProximityPrompt } = {}
+local combatHud: CombatHud.Hud? = nil -- boss fights: the controls and your HP instead of the bar
+local COMBAT_ACTION = "BossCombat"
+local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
 
 local function elementIcon(element: string): string
 	local perk = Party.PERKS[element]
@@ -218,10 +229,12 @@ local function toView(raw: any): Snapshot
 	-- the ally row. Untagged fighters (PvP) are all yours.
 	local myOwner = tostring(player.UserId)
 	local own, allies = {}, {}
+	local me = nil
 	for _, fighter in mine.fighters do
 		local owner = (fighter :: any).owner
 		if (fighter :: any).player then
-			continue -- boss fights: the players themselves (their HP shows on the combat HUD)
+			me = if owner == myOwner then fighter else me
+			continue -- boss fights: the players themselves (yours shows on the combat HUD)
 		elseif not (fighter :: any).benched then -- fainted and swapped out
 			table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
 		end
@@ -246,6 +259,7 @@ local function toView(raw: any): Snapshot
 		runIn = mine.runIn,
 		runChance = mine.runChance,
 		enemies = enemy.fighters,
+		me = me,
 	}
 end
 
@@ -532,6 +546,42 @@ local function buildAdds(snapshot: Snapshot)
 	end
 end
 
+-- Your creature on the field (the first one standing)
+local function myCreature(snapshot: Snapshot): any?
+	for _, fighter in snapshot.fighters do
+		if not fighter.fainted then
+			return fighter
+		end
+	end
+	return snapshot.fighters[1]
+end
+
+-- The combat HUD's picture of a snapshot, and the pet skill, signature and swap cooldowns
+local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
+	local me = snapshot.me
+	local creature = myCreature(snapshot)
+	local reserves = {}
+	for _, id in snapshot.reserves do
+		table.insert(reserves, { id = id, name = fightNames[id] or "Card", hp = 0, maxHp = 0 })
+	end
+	hud.update({
+		playerHp = if me then me.hp else 0,
+		playerMax = if me then me.maxHp else Combat.PLAYER_HP,
+		down = me ~= nil and me.down == true,
+		out = me ~= nil and me.out == true,
+		creatureName = if creature then fightNames[creature.id] or "Creature" else "Creature",
+		creatureHp = if creature then creature.hp else 0,
+		creatureMax = if creature then creature.maxHp else 1,
+		hasSignature = creature ~= nil and creature.signature ~= nil,
+		reserves = reserves,
+	})
+	if creature then
+		hud.setCooldown("pet", latestAt + creature.abilityIn, Combat.ABILITY_COOLDOWN)
+		hud.setCooldown("signature", latestAt + creature.signatureIn, Combat.SIGNATURE_COOLDOWN)
+	end
+	hud.setCooldown("swap", latestAt + snapshot.swapIn, Combat.BOSS_SWAP_SECONDS)
+end
+
 local function applySnapshot(snapshot: Snapshot)
 	if idsOf(snapshot.fighters) ~= fighterKey then
 		buildFighters(snapshot)
@@ -596,6 +646,9 @@ local function applySnapshot(snapshot: Snapshot)
 		end
 	end
 	refreshTimers()
+	if combatHud then
+		updateHud(combatHud, snapshot)
+	end
 end
 
 -- Camera shake (the roar, boss moments): a small random offset on top of the camera every frame for a moment
@@ -956,6 +1009,9 @@ local function playIntro(boss: any, seconds: number)
 	local camera = workspace.CurrentCamera
 	local marker = markerFor(MONSTER_ID) -- found by onStarted, which waits a moment for a just-spawned boss
 	bar.Visible = false
+	if combatHud then
+		combatHud.setVisible(false)
+	end
 	bossBar.Visible = false
 	introName.Text = `{elementIcon(boss.element)} {boss.name}`
 	introTitle.Text = boss.title
@@ -980,10 +1036,91 @@ local function playIntro(boss: any, seconds: number)
 		if camera then
 			camera.CameraType = Enum.CameraType.Custom
 		end
-		bar.Visible = true
+		bar.Visible = combatHud == nil
+		if combatHud then
+			combatHud.setVisible(true)
+		end
 		bossBar.Visible = true
 		showCountdown(seconds - Bosses.INTRO_CAMERA_SECONDS)
 	end)
+end
+
+-- Who your sword can hit: the boss and its adds, with their sizes (soft aim; the server checks the real hits)
+local function swordTargets(): { any }
+	local list = {}
+	local boss = if bossId then Bosses.BOSSES[bossId] else nil
+	for id, marker in markers do
+		if string.sub(id, 1, 2) == "b:" and marker.Parent then
+			local radius = if id == MONSTER_ID and boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE else Bosses.ADD_HIT_RADIUS
+			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius })
+		end
+	end
+	return list
+end
+
+local function usePet(which: string)
+	local creature = if latest then myCreature(latest) else nil
+	if creature and not creature.fainted then
+		Remotes.UseAbility:FireServer(creature.id, which)
+	end
+end
+
+local function swapTo(id: string)
+	Remotes.CallIn:FireServer(id)
+end
+
+-- PC keys while the combat HUD is up (above the party bar's 1-3)
+local function onCombatKey(_: string, state: Enum.UserInputState, input: InputObject): Enum.ContextActionResult
+	if state ~= Enum.UserInputState.Begin or not combatHud or introCard.Visible then
+		return Enum.ContextActionResult.Pass
+	end
+	local key = input.KeyCode
+	if key == Enum.KeyCode.LeftShift then
+		SwordController.Dodge()
+	elseif key == Enum.KeyCode.E then
+		SwordController.Skill()
+	elseif key == Enum.KeyCode.R then
+		usePet("element")
+	else
+		local slot = table.find({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }, key)
+		local id = if slot and latest then latest.reserves[slot] else nil
+		if id then
+			swapTo(id)
+		end
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+-- A boss fight: the combat HUD instead of the bar, and your sword on
+local function startCombat()
+	local hud = CombatHud.new(screenGui, {
+		attack = SwordController.Attack,
+		dodge = SwordController.Dodge,
+		skill = SwordController.Skill,
+		pet = function()
+			usePet("element")
+		end,
+		signature = function()
+			usePet("signature")
+		end,
+		swap = swapTo,
+		run = function()
+			Remotes.RunFight:FireServer()
+		end,
+	})
+	combatHud = hud
+	SwordController.SetCombat(true, swordTargets, hud.setCooldown)
+	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
+end
+
+local function stopCombat()
+	local hud = combatHud
+	combatHud = nil
+	if hud then
+		hud.destroy()
+		SwordController.SetCombat(false)
+		ContextActionService:UnbindAction(COMBAT_ACTION)
+	end
 end
 
 local function onStarted(payload: any)
@@ -1024,6 +1161,10 @@ local function onStarted(payload: any)
 		monsterName.TextColor3 = UIKit.Colors.Danger
 		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
 	end
+	stopCombat()
+	if boss then
+		startCombat()
+	end
 	bossBar.Visible = boss ~= nil
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
@@ -1044,7 +1185,7 @@ local function onStarted(payload: any)
 	buildCallIns(view)
 	applySnapshot(view)
 	setHudHidden(true)
-	bar.Visible = true
+	bar.Visible = combatHud == nil
 	for _, prompt in prompts do
 		prompt.Enabled = false
 	end
@@ -1076,6 +1217,7 @@ local function onEnded(summary: any)
 		end
 	end
 	stopMusic()
+	stopCombat()
 	bar.Visible = false
 	bossBar.Visible = false
 	bossId = nil
@@ -1315,8 +1457,17 @@ local function build()
 	end)
 end
 
+-- Click attacks in boss fights (not over a button or while typing)
+local function onClick(input: InputObject, processed: boolean)
+	if processed or not combatHud or introCard.Visible or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+		return
+	end
+	SwordController.Attack()
+end
+
 function BattleController.Start()
 	build()
+	UserInputService.InputBegan:Connect(onClick)
 	Remotes.BattleStarted.OnClientEvent:Connect(onStarted)
 	Remotes.BattleEvent.OnClientEvent:Connect(function(payload)
 		if not fighting or typeof(payload) ~= "table" then

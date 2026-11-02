@@ -62,4 +62,28 @@ return {
 		expect.equal(UiLayout.detailPanelLeft(800, 330, 16, 520, 16), 264, "right margin wins")
 		expect.equal(UiLayout.detailPanelLeft(750, 200, 16, 420, 76), 254, "phone: clear of the close button")
 	end,
+	["combat buttons: big enough, on screen, never overlapping, clear of the thumbstick"] = function()
+		for _, view in { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 1920, h = 1080 }, { w = 1280, h = 720 } } do
+			local rects = UiLayout.combatButtons(view)
+			local names = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
+			for _, name in names do
+				local r = (rects :: any)[name] :: UiLayout.Rect
+				local where = `{name} at {view.w}x{view.h}`
+				expect.equal(r.w >= 48 and r.h >= 48, true, `{where}: tap target`)
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{where}: on screen`)
+				-- Roblox's thumbstick lives in the bottom-left: the left 40% of the lower half
+				local inStick = r.x < view.w * 0.4 and r.y + r.h > view.h * 0.5
+				expect.equal(inStick, false, `{where}: clear of the thumbstick`)
+			end
+			for i, a in names do
+				for j = i + 1, #names do
+					local r1, r2 = (rects :: any)[a], (rects :: any)[names[j]]
+					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
+					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+				end
+			end
+			expect.equal(rects.attack.w > rects.dodge.w and rects.attack.w > rects.skill.w, true, "Attack is the biggest")
+			expect.equal(rects.attack.x > view.w / 2 and rects.attack.y > view.h / 2, true, "Attack sits bottom-right")
+		end
+	end,
 }

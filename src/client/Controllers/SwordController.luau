@@ -4,16 +4,23 @@
 -- hand while SwordDrawn. The model comes from ReplicatedStorage.WeaponModels (its origin the grip's centre, the
 -- blade along +Y; a code-built stand-in until it's saved). Your own draw and put-away play their moves and move the
 -- sword at the Grab / Release moment; others' swords move that long after their attribute changes.
+-- In boss fights (BattleController calls SetCombat) it also runs your sword: Attack (soft aim, the combo's next cut
+-- as the server will pick it), Skill, Dodge (a dash with after-images) on their own cooldowns, and no jumping (the
+-- dodge replaces it; Roblox's touch jump button hides itself at jump height 0). Shift Lock moves to Ctrl so Shift
+-- can dodge.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local AfterImage = require(ClientUtil:WaitForChild("AfterImage"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -27,8 +34,17 @@ type View = { swordId: string, model: Model, handle: BasePart, weld: Weld, grip:
 
 local views: { [Model]: View } = {}
 local predictedUntil = 0 -- os.clock: your sword shows drawn until then, ahead of the server's SwordDrawn (an attack)
+local snapToHand = false -- the next draw of yours goes straight into the hand (an attack doesn't wait for the draw move)
 local mine: SwordAnims.Set? = nil -- your character's sword moves
 local popup: Frame? = nil
+
+-- Boss fights only
+local combatTargets: (() -> { SwordRules.Target })? = nil -- the boss and its adds, for soft aim
+local onCooldown: ((name: string, readyAt: number, total: number) -> ())? = nil -- the HUD's drains
+local lastCut: SwordRules.LastCut? = nil
+local skillReadyAt, dodgeReadyAt = 0, 0
+local jumpLock: RBXScriptConnection? = nil
+local jumpBefore: number? = nil
 
 -- A plain sword from parts, the same size as the real model, for while WeaponModels has no model yet
 local function standIn(): Model
@@ -152,6 +168,14 @@ local function refresh(character: Model)
 	view.token += 1
 	local token = view.token
 	local own = character == player.Character
+	if own and drawn and snapToHand then
+		snapToHand = false
+		place(view, character, true) -- an attack: straight into the hand, the cut is the move
+		if mine then
+			mine.play("ready", 1, 0.2)
+		end
+		return
+	end
 	if own and mine then
 		mine.play(if drawn then "draw" else "sheath")
 		if drawn then
@@ -208,12 +232,151 @@ function SwordController.DrawNow()
 		return
 	end
 	predictedUntil = os.clock() + Swords.SHEATH_SECONDS
+	snapToHand = true
 	refresh(character)
+	snapToHand = false
 	task.delay(Swords.SHEATH_SECONDS + 0.05, function()
 		if player.Character == character then
 			refresh(character)
 		end
 	end)
+end
+
+local function ownParts(): (Model?, BasePart?, Humanoid?)
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	if not character or not root or not root:IsA("BasePart") or not humanoid or character:GetAttribute("Downed") then
+		return nil, nil, nil
+	end
+	return character, root, humanoid
+end
+
+-- Turn to the nearest target in front of you, if one is close (SwordRules.aimTarget)
+local function softAim(root: BasePart)
+	if not combatTargets then
+		return
+	end
+	local targets = combatTargets()
+	local look = root.CFrame.LookVector
+	local id = SwordRules.aimTarget(root.Position.X, root.Position.Z, look.X, look.Z, targets, Swords.SOFT_AIM_RANGE, Swords.SOFT_AIM_ANGLE)
+	for _, target in targets do
+		if target.id == id then
+			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(target.x, root.Position.Y, target.z))
+		end
+	end
+end
+
+-- Boss fights: start or stop running your sword. targets: the boss and its adds now; cooldown: the HUD's drains.
+function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules.Target })?, cooldown: ((name: string, readyAt: number, total: number) -> ())?)
+	combatTargets = if active then targets else nil
+	onCooldown = if active then cooldown else nil
+	lastCut = nil
+	if jumpLock then
+		jumpLock:Disconnect()
+		jumpLock = nil
+	end
+	local character = player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	if not humanoid then
+		return
+	end
+	if active then
+		jumpBefore = if humanoid.JumpHeight > 0 then humanoid.JumpHeight else jumpBefore
+		humanoid.JumpHeight = 0
+		-- The server puts it back when you get up: keep it at 0 for the fight
+		jumpLock = humanoid:GetPropertyChangedSignal("JumpHeight"):Connect(function()
+			if humanoid.JumpHeight ~= 0 then
+				jumpBefore = humanoid.JumpHeight
+				humanoid.JumpHeight = 0
+			end
+		end)
+	elseif jumpBefore then
+		humanoid.JumpHeight = jumpBefore
+	end
+end
+
+-- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target
+function SwordController.Attack()
+	local character, root = ownParts()
+	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+	if not character or not root or not sword then
+		return
+	end
+	local now = os.clock()
+	local index, startAt = SwordRules.nextCut(sword.combo, lastCut, now, Swords.COMBO_RESET)
+	if not index or not startAt then
+		return
+	end
+	lastCut = { index = index, startedAt = startAt }
+	SwordController.DrawNow()
+	Remotes.SwordAttack:FireServer()
+	task.delay(startAt - now, function()
+		softAim(root)
+		if mine then
+			mine.play(`cut{index}`)
+		end
+	end)
+end
+
+-- The sword skill: a spin that hits everything round you, on its cooldown
+function SwordController.Skill()
+	local character, root = ownParts()
+	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+	if not character or not root or not sword or os.clock() < skillReadyAt then
+		return
+	end
+	skillReadyAt = os.clock() + sword.skill.cooldown
+	if onCooldown then
+		onCooldown("skill", skillReadyAt, sword.skill.cooldown)
+	end
+	SwordController.DrawNow()
+	Remotes.SwordSkill:FireServer()
+	if mine then
+		mine.play("skill")
+	end
+end
+
+-- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images
+function SwordController.Dodge()
+	local character, root, humanoid = ownParts()
+	if not character or not root or not humanoid or os.clock() < dodgeReadyAt then
+		return
+	end
+	dodgeReadyAt = os.clock() + Combat.DODGE_COOLDOWN
+	if onCooldown then
+		onCooldown("dodge", dodgeReadyAt, Combat.DODGE_COOLDOWN)
+	end
+	Remotes.Dodge:FireServer()
+	local move = Vector3.new(humanoid.MoveDirection.X, 0, humanoid.MoveDirection.Z)
+	local direction = if move.Magnitude > 0.1 then move.Unit else -Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+	local speed = Combat.DODGE_STUDS / Combat.DODGE_SECONDS
+	if mine then
+		mine.play("dodge")
+	end
+	AfterImage.spawn(character, 4, Combat.DODGE_SECONDS + 0.15)
+	-- Pushed, not moved: walls (the arena's barrier) still stop the dash
+	local ends = os.clock() + Combat.DODGE_SECONDS
+	local dash: RBXScriptConnection
+	dash = RunService.Heartbeat:Connect(function()
+		if os.clock() >= ends or not root.Parent then
+			dash:Disconnect()
+			return
+		end
+		root.AssemblyLinearVelocity = direction * speed + Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+	end)
+end
+
+-- Shift dodges in boss fights, so Shift Lock moves to Ctrl (Roblox's camera reads its keys from this value)
+local function moveShiftLock()
+	local scripts = player:WaitForChild("PlayerScripts", 10)
+	local module = if scripts then scripts:WaitForChild("PlayerModule", 10) else nil
+	local camera = if module then module:WaitForChild("CameraModule", 10) else nil
+	local lock = if camera then camera:WaitForChild("MouseLockController", 10) else nil
+	local keys = if lock then lock:WaitForChild("BoundKeys", 10) else nil
+	if keys and keys:IsA("StringValue") then
+		keys.Value = "LeftControl,RightControl"
+	end
 end
 
 -- "You got your first sword!": the sword turning in a window, closed with Got it (saved by the server)
@@ -282,6 +445,7 @@ function SwordController.Start()
 		end
 	end)
 	Remotes.SwordState:FireServer()
+	task.spawn(moveShiftLock)
 	Players.PlayerAdded:Connect(watchPlayer)
 	for _, other in Players:GetPlayers() do
 		watchPlayer(other)
