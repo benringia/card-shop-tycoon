@@ -3,12 +3,20 @@
 local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Swords = require("../src/shared/Config/Swords")
+local SwordFx = require("../src/shared/Config/SwordFx")
 local expect = require("./lib/expect")
 
 local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge", "flinch", "down", "getUp", "ready", "run" }
 local SOUNDS = { "swing1", "swing2", "swing3", "hit", "draw", "dodge", "ring", "down", "getUp" }
 
 return {
+	["drawing the sword gleams: a short flare at the blade's tip"] = function()
+		local gleam = SwordFx.GLEAM
+		expect.equal(gleam.seconds > 0 and gleam.seconds <= 0.5, true, "a short gleam")
+		expect.equal(gleam.brightness > 0 and gleam.range > 0 and gleam.size > 0, true, "it shows")
+		expect.equal(#gleam.color, 3)
+	end,
+
 	["rest takes five minutes"] = function()
 		expect.equal(Combat.REST_SECONDS, 300)
 	end,

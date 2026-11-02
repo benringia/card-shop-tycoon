@@ -11,6 +11,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
@@ -197,6 +198,37 @@ local function refresh(character: Model)
 	if view.inHand == drawn then
 		return
 	end
+	-- Your draw gleams: a flash of light and a glint at the blade's tip
+	local function gleam()
+		local tip = if view.trail then view.trail.Attachment1 else nil
+		if not tip then
+			return
+		end
+		local spec = SwordFx.GLEAM
+		local tint = Color3.fromRGB(spec.color[1], spec.color[2], spec.color[3])
+		local light = Instance.new("PointLight")
+		light.Color, light.Range, light.Brightness = tint, spec.range, spec.brightness
+		light.Parent = tip
+		TweenService:Create(light, TweenInfo.new(spec.seconds), { Brightness = 0 }):Play()
+		local glint = Instance.new("ParticleEmitter")
+		glint.Enabled = false
+		glint.Color = ColorSequence.new(tint)
+		glint.LightEmission = 1
+		glint.Lifetime = NumberRange.new(spec.seconds)
+		glint.Speed = NumberRange.new(0)
+		glint.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.4, spec.size),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		glint.RotSpeed = NumberRange.new(180)
+		glint.Parent = tip
+		glint:Emit(1)
+		task.delay(spec.seconds * 2, function()
+			light:Destroy()
+			glint:Destroy()
+		end)
+	end
 	-- Draw or put away: the move plays (yours here; others' replicate) and the sword changes place at its moment
 	view.token += 1
 	local token = view.token
@@ -208,6 +240,7 @@ local function refresh(character: Model)
 			mine.play("ready", 1, 0.2)
 		end
 		SwordController.PlaySound("draw")
+		gleam()
 		return
 	end
 	if own and mine then
@@ -221,6 +254,9 @@ local function refresh(character: Model)
 	task.delay(if drawn then Swords.GRAB_SECONDS else Swords.RELEASE_SECONDS, function()
 		if views[character] == view and view.token == token then
 			place(view, character, drawn)
+			if own and drawn then
+				gleam()
+			end
 		end
 	end)
 end

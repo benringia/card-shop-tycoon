@@ -31,6 +31,8 @@ return {
 	TRAIL_LIFETIME = 0.16,
 	TRAIL_COLOR = rgb(210, 235, 255),
 	TRAIL_BLADE = { base = 0.8, tip = 4.3 }, -- studs up the blade from the grip
+	-- Drawing your sword: a flash of light and a glint at the blade's tip
+	GLEAM = { seconds = 0.3, brightness = 4, range = 8, size = 2.2, color = rgb(255, 250, 225) },
 
 	-- The boss winding up: a quick hit flashes it red; a big attack rears it back (its roar pose) with an orange glow
 	WINDUP_QUICK_COLOR = rgb(255, 70, 70),
