@@ -2,6 +2,7 @@
 local FightFxRules = require("../src/shared/Util/FightFxRules")
 local AttackFx = require("../src/shared/Config/AttackFx")
 local Combat = require("../src/shared/Config/Combat")
+local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 
 return {
@@ -37,5 +38,18 @@ return {
 			expect.equal(FightFxRules.hasEffect(signature.kind, AttackFx), true, `{name} {signature.kind}`)
 		end
 		expect.equal(FightFxRules.hasEffect("Nothing", AttackFx), false)
+	end,
+
+	["every boss move effect is a real boss's, with its looks and sounds"] = function()
+		local styles = { strike = { leaves = true, fangs = true, embers = true }, release = { roots = true, web = true, lava = true } }
+		for bossId, moves in AttackFx.BOSS do
+			expect.equal(Bosses.BOSSES[bossId] ~= nil, true, bossId)
+			expect.equal(styles.strike[moves.strike], true, `{bossId} strike`)
+			expect.equal(styles.release[moves.release], true, `{bossId} release`)
+			expect.equal(#moves.color, 3, bossId)
+			expect.equal(string.match(moves.sounds.strike, "^rbxassetid://%d+$") ~= nil, true, `{bossId} strike sound`)
+			expect.equal(string.match(moves.sounds.release, "^rbxassetid://%d+$") ~= nil, true, `{bossId} release sound`)
+		end
+		expect.equal(AttackFx.BOSS.prismHydra, nil, "no Hydra until its remodel")
 	end,
 }

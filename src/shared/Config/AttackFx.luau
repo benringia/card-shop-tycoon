@@ -53,4 +53,37 @@ return {
 	-- Creatures circle their fight spot: this far (studs, times the creature's size), this fast (turns a second), with
 	-- darts out to `dart` studs more
 	ORBIT = { radius = 4, speed = 0.15, dart = 1.5 },
+	-- Bosses' moves (keyed clips in ReplicatedStorage.MonsterAnimations/<boss id>, Util/MonsterMoves): `strike` the
+	-- effect where a normal attack lands, `release` where a ring's attack lands, `color` both and the particles pulling
+	-- in while it winds up a ring; Pro Sound Effects for each. No Prism Hydra yet (it will be remodelled).
+	BOSS = {
+		meadowWarden = {
+			strike = "leaves", -- a branch swipe: a leafy slash and dust
+			release = "roots", -- the root slam: roots burst out across the ring with a green shockwave
+			color = rgb(110, 214, 92),
+			sounds = {
+				strike = "rbxassetid://9120717850", -- Whoosh Fast Swish By 4 (foliage crackle)
+				release = "rbxassetid://9125366799", -- Avalanche Crashing 5
+			},
+		},
+		caveBroodQueen = {
+			strike = "fangs", -- a fang stab: two slashes and a poison splash
+			release = "web", -- the web spit: strands spray across the cone and stick
+			color = rgb(182, 132, 255),
+			sounds = {
+				strike = "rbxassetid://9125466994", -- Creature Bite Pterodactyl Crunch Flying Bug 7
+				release = "rbxassetid://9120628908", -- Web Shoot Juicy Releases Spurts 2
+			},
+		},
+		emberColossus = {
+			strike = "embers", -- a horn gore: a fiery burst and rock dust
+			release = "lava", -- the lava slam: a fire shockwave, glowing cracks and molten rocks thrown up
+			color = rgb(255, 112, 32),
+			sounds = {
+				strike = "rbxassetid://9117330384", -- Pick Impacts 1 (heavy dirt and rock hits)
+				release = "rbxassetid://9113216700", -- Avalanche Crashing 3
+			},
+		},
+	},
+	BOSS_CHARGE_SCALE = 3, -- a boss's ring wind-up particles, this many times a creature's
 }

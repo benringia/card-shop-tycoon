@@ -5,8 +5,10 @@
 -- own axes; here each becomes the bone's Transform from its rest pose:
 --   T = R0⁻¹ · Dparent⁻¹ · Dbone · R0   (R0: the bone's rest rotation in the model)
 -- and is blended over whatever the procedural motion (Util/PetAnimator) set this frame, in and out over
--- KEYFRAME_ANIM.ONE_SHOT_BLEND (Util/KeyframeTiming). Markers (Hit) call back as the clip passes them. Step it after
--- the procedural motion each frame.
+-- KEYFRAME_ANIM.ONE_SHOT_BLEND (Util/KeyframeTiming). A wind-up can hold its last pose until the move after it starts,
+-- and a clip started while another shows begins at that one's weight, so a strike chained onto a held wind-up doesn't
+-- dip back to the procedural pose in between. Markers (Hit) call back as the clip passes them. Step it after the
+-- procedural motion each frame.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -21,12 +23,21 @@ export type Clip = {
 	poses: { [string]: { CFrame } },
 	markers: { { name: string, time: number } },
 }
-type Playing = { clip: Clip, t: number, speed: number, fired: { [number]: boolean }, onMarker: ((name: string) -> ())? }
+type Playing = {
+	clip: Clip,
+	t: number,
+	speed: number,
+	from: number, -- the weight showing when it started
+	hold: number, -- seconds it keeps its last pose after its end
+	fired: { [number]: boolean },
+	onMarker: ((name: string) -> ())?,
+}
 export type Player = {
 	bones: { [string]: Bone },
 	parentOf: { [string]: string }, -- a bone's parent bone, if any
 	rest: { [string]: CFrame }, -- each bone's rest rotation in the model
 	playing: Playing?,
+	weight: number, -- how much of the clip showed last frame
 }
 
 local cache: { [KeyframeSequence]: Clip } = {}
@@ -91,12 +102,13 @@ function ClipPlayer.attach(model: Model): Player
 	for _, bone in bones do
 		restOf(bone)
 	end
-	return { bones = bones, parentOf = parentOf, rest = rest, playing = nil }
+	return { bones = bones, parentOf = parentOf, rest = rest, playing = nil, weight = 0 }
 end
 
--- Starts a clip now (replacing one playing) at `speed` times its pace
-function ClipPlayer.play(player: Player, clip: Clip, speed: number?, onMarker: ((name: string) -> ())?)
-	player.playing = { clip = clip, t = 0, speed = speed or 1, fired = {}, onMarker = onMarker }
+-- Starts a clip now (replacing one playing) at `speed` times its pace, holding its last pose `hold` seconds
+function ClipPlayer.play(player: Player, clip: Clip, speed: number?, onMarker: ((name: string) -> ())?, hold: number?)
+	local from = if player.playing then player.weight else 0
+	player.playing = { clip = clip, t = 0, speed = speed or 1, from = from, hold = hold or 0, fired = {}, onMarker = onMarker }
 end
 
 function ClipPlayer.isPlaying(player: Player): boolean
@@ -129,17 +141,21 @@ function ClipPlayer.step(player: Player, dt: number, scale: number)
 			end
 		end
 	end
-	if playing.t >= clip.length then
+	local blend = Party.KEYFRAME_ANIM.ONE_SHOT_BLEND
+	if playing.t >= KeyframeTiming.oneShotEnd(clip.length, blend, playing.hold) then
 		player.playing = nil
+		player.weight = 0
 		return
 	end
-	local weight = KeyframeTiming.oneShotWeight(playing.t, clip.length, Party.KEYFRAME_ANIM.ONE_SHOT_BLEND)
+	local weight = KeyframeTiming.oneShotWeight(playing.t, clip.length, blend, playing.from, playing.hold)
+	player.weight = weight
+	local t = math.min(playing.t, clip.length)
 	for name, bone in player.bones do
-		local delta = sample(clip, name, playing.t)
+		local delta = sample(clip, name, t)
 		local rest = player.rest[name]
 		if delta and rest then
 			local parentName = player.parentOf[name]
-			local parentDelta = if parentName then sample(clip, parentName, playing.t) else nil
+			local parentDelta = if parentName then sample(clip, parentName, t) else nil
 			local turn = (parentDelta or CFrame.identity).Rotation:Inverse() * delta.Rotation
 			local r0 = rest.Rotation
 			local transform = r0:Inverse() * turn * r0

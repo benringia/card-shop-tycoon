@@ -27,7 +27,7 @@ local function folder(): Folder
 end
 
 -- The ground under a point (characters and monsters ignored), else 3 studs under it (a character's root height)
-local function groundY(x: number, y: number, z: number): number
+function RingFx.groundY(x: number, y: number, z: number): number
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	local ignore: { Instance } = { folder() }
@@ -91,7 +91,7 @@ end
 
 function RingFx.show(ring: Ring)
 	local swipe = ring.shape == "swipe"
-	local y = groundY(ring.x, ring.y, ring.z) + SwordFx.RING_LIFT
+	local y = RingFx.groundY(ring.x, ring.y, ring.z) + SwordFx.RING_LIFT
 	local place = placer(ring, y)
 	local outline, outlineDecal = flat(if swipe then SwordFx.CONE_OUTLINE else SwordFx.RING_OUTLINE, SwordFx.RING_OUTLINE_TRANSPARENCY)
 	local glow, glowDecal = flat(if swipe then SwordFx.CONE_GLOW else SwordFx.RING_GLOW, 1)

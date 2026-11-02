@@ -307,4 +307,173 @@ function ElementFx.special(style: string, caster: Vector3, target: Vector3, colo
 	end
 end
 
+local DUST = Color3.fromRGB(160, 138, 108)
+local ROOT = Color3.fromRGB(78, 54, 34)
+local MOSS = Color3.fromRGB(96, 170, 64)
+local WEB = Color3.fromRGB(236, 232, 245)
+local MOLTEN = Color3.fromRGB(255, 196, 64)
+local CRACK = Color3.fromRGB(255, 72, 18)
+
+-- Sparks pulling in to `at` from a sphere `radius` round it, and a light building, over `seconds` (a boss winding up
+-- a ring); returns a stop (also stops by itself)
+function ElementFx.gather(at: Vector3, color: Color3, seconds: number, radius: number): () -> ()
+	local shell = part(Vector3.one * radius * 2, color, at)
+	shell.Shape = Enum.PartType.Ball
+	shell.Transparency = 1
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = radius * 2
+	light.Brightness = 0
+	light.Parent = shell
+	TweenService:Create(light, TweenInfo.new(math.max(seconds, 0.05)), { Brightness = AttackFx.CHARGE_LIGHT }):Play()
+	local sparks = emitter(shell, color, -radius * 1.2, 0.7, 0.4 * radius / 3)
+	sparks.Shape = Enum.ParticleEmitterShape.Sphere
+	sparks.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	sparks.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+	sparks.SpreadAngle = Vector2.new(0, 0)
+	sparks.Rate = 70
+	local stopped = false
+	local function stop()
+		if stopped then
+			return
+		end
+		stopped = true
+		shell:Destroy()
+	end
+	task.delay(seconds + 0.3, stop)
+	return stop
+end
+
+-- A flat ring on the ground at `center` spreading out to `radius` and fading
+local function shockwave(center: Vector3, color: Color3, radius: number, seconds: number)
+	local wave = part(Vector3.new(0.3, 2, 2), color, center)
+	wave.Shape = Enum.PartType.Cylinder
+	wave.CFrame = CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90))
+	wave.Transparency = 0.2
+	TweenService:Create(wave, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.3, radius * 2, radius * 2),
+		Transparency = 1,
+	}):Play()
+	Debris:AddItem(wave, seconds + 0.05)
+end
+
+-- A random point on the ground within `radius` of `center`
+local function scatter(center: Vector3, radius: number): Vector3
+	local angle = math.random() * math.pi * 2
+	local distance = radius * math.sqrt(math.random())
+	return center + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+end
+
+-- A boss's normal attack landing at `at`, swung from `from` (Config/AttackFx BOSS strike)
+function ElementFx.bossStrike(style: string, at: Vector3, from: Vector3, color: Color3)
+	if style == "leaves" then
+		ElementFx.slash(at, from, color, "vine", 2)
+		ElementFx.burst(at, color, 1.2)
+		ElementFx.burst(at - Vector3.new(0, 1.5, 0), DUST, 0.9)
+	elseif style == "fangs" then
+		ElementFx.slash(at, from, color, "claw", 1)
+		ElementFx.slash(at, from, color, "claw", 3)
+		ElementFx.burst(at, Color3.fromRGB(150, 230, 90), 1.0) -- poison
+	elseif style == "embers" then
+		ElementFx.burst(at, color, 1.6)
+		ElementFx.burst(at - Vector3.new(0, 1.5, 0), DUST, 1.0)
+		shockwave(at - Vector3.new(0, 2.5, 0), color, 5, 0.35)
+	end
+end
+
+-- A boss's ring attack landing (Config/AttackFx BOSS release): a slam on the ground at `ground` (its centre) over
+-- `radius`; a swipe from `ground` (the boss's spot) along `direction` for `length`, `halfAngle` degrees either side
+function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, direction: Vector3, length: number, halfAngle: number, color: Color3)
+	if style == "roots" then
+		shockwave(ground + Vector3.new(0, 0.2, 0), color, radius, 0.5)
+		ElementFx.burst(ground + Vector3.new(0, 1, 0), color, 1.6)
+		-- Each root is three segments, thinner and bending further as they go, built under the ground and pushed up
+		-- through it, then pulled back down
+		for _ = 1, 7 do
+			local spot = scatter(ground, radius * 0.9)
+			local bend = math.rad(math.random(14, 24))
+			local frame = CFrame.new(spot) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+			local segments: { Part } = {}
+			local rise = 0
+			for index, thickness in { 1.1, 0.75, 0.45 } do
+				local span = 2.2 - index * 0.35
+				frame = frame * CFrame.Angles(bend, 0, 0)
+				local piece = part(Vector3.new(thickness, span, thickness), if index == 3 then MOSS else ROOT, spot)
+				piece.Material = if index == 3 then Enum.Material.Grass else Enum.Material.Wood
+				piece.CFrame = frame * CFrame.new(0, span / 2, 0)
+				frame = frame * CFrame.new(0, span, 0)
+				rise += span
+				table.insert(segments, piece)
+			end
+			for _, piece in segments do
+				local up = piece.CFrame
+				piece.CFrame = up - Vector3.new(0, rise, 0)
+				TweenService:Create(piece, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = up }):Play()
+				task.delay(0.95, function()
+					TweenService:Create(piece, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = up - Vector3.new(0, rise, 0) }):Play()
+				end)
+				Debris:AddItem(piece, 1.4)
+			end
+			ElementFx.burst(spot + Vector3.new(0, 0.5, 0), DUST, 0.5)
+		end
+	elseif style == "web" then
+		local flat = Vector3.new(direction.X, 0, direction.Z)
+		local forward = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(0, 0, -1)
+		local mouth = ground + Vector3.new(0, 3, 0) + forward * 3
+		ElementFx.burst(mouth, color, 1.2)
+		for index = 1, 9 do
+			local angle = math.rad(-halfAngle + 2 * halfAngle * (index - 1) / 8 + math.random(-4, 4))
+			local way = CFrame.fromAxisAngle(Vector3.yAxis, angle):VectorToWorldSpace(forward)
+			local finish = ground + way * length * (0.55 + math.random() * 0.45) + Vector3.new(0, 0.3, 0)
+			local strand = part(Vector3.new(0.35, 0.35, 0.2), WEB, mouth)
+			strand.Material = Enum.Material.SmoothPlastic
+			strand.CFrame = CFrame.lookAt(mouth, finish)
+			local distance = (finish - mouth).Magnitude
+			TweenService:Create(strand, TweenInfo.new(0.22), {
+				Size = Vector3.new(0.35, 0.35, distance),
+				CFrame = CFrame.lookAt((mouth + finish) / 2, finish),
+			}):Play()
+			task.delay(0.22, function()
+				local splat = part(Vector3.new(0.15, 1, 1), WEB, finish)
+				splat.Shape = Enum.PartType.Cylinder
+				splat.Material = Enum.Material.SmoothPlastic
+				splat.CFrame = CFrame.new(finish) * CFrame.Angles(0, 0, math.rad(90))
+				TweenService:Create(splat, TweenInfo.new(0.15), { Size = Vector3.new(0.15, 4.5, 4.5) }):Play()
+				task.delay(1.4, function()
+					TweenService:Create(splat, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+					TweenService:Create(strand, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				end)
+				Debris:AddItem(splat, 2)
+			end)
+			Debris:AddItem(strand, 2.2)
+		end
+	elseif style == "lava" then
+		shockwave(ground + Vector3.new(0, 0.2, 0), color, radius, 0.45)
+		ElementFx.burst(ground + Vector3.new(0, 1, 0), color, 2)
+		for index = 1, 8 do
+			local angle = index / 8 * math.pi * 2 + math.random() * 0.3
+			local reach = radius * (0.6 + math.random() * 0.4)
+			local tip = ground + Vector3.new(math.cos(angle) * reach, 0.1, math.sin(angle) * reach)
+			local crack = part(Vector3.new(0.5, 0.12, 0.2), CRACK, ground)
+			crack.CFrame = CFrame.lookAt(ground + Vector3.new(0, 0.1, 0), tip)
+			TweenService:Create(crack, TweenInfo.new(0.2), {
+				Size = Vector3.new(0.5, 0.12, reach),
+				CFrame = CFrame.lookAt((ground + tip) / 2 + Vector3.new(0, 0.1, 0), tip),
+			}):Play()
+			task.delay(0.8, function()
+				TweenService:Create(crack, TweenInfo.new(0.6), { Transparency = 1 }):Play()
+			end)
+			Debris:AddItem(crack, 1.5)
+		end
+		for _ = 1, 6 do
+			local landing = scatter(ground, radius)
+			ElementFx.projectile(ground + Vector3.new(0, 0.5, 0), function()
+				return landing
+			end, MOLTEN, 0.55, 5 + math.random() * 3, function(at)
+				ElementFx.burst(at, color, 0.5)
+			end)
+		end
+	end
+end
+
 return ElementFx

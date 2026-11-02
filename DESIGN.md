@@ -989,6 +989,14 @@ group, checked before its fragments and every time (not only the first). Below i
   pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
   the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
   nothing (`FightFxRules.hasEffect`).
+- **Boss moves** (same spec): a boss with keyed clips has four (`ReplicatedStorage.MonsterAnimations/<boss
+  id>`, docs/animations.md "Bone rigs") played by `Util/MonsterMoves`: a `windup` before each hit (0.6 s before a
+  creature hit, over the 0.5 s warning before a quick hit on a player, no glow), the `strike` as it lands with an
+  impact there, the `specialWindup` over a ring's warning with sparks in its colour pulling in, then the
+  `specialRelease` as the ring lands, with its effect over the ring (`Config/AttackFx` BOSS, `ElementFx.bossStrike`,
+  `ElementFx.bossRelease`). One move at a time: a group hit is one strike, nothing interrupts the special. Meadow
+  Warden: branch swipe (leafy slash, dust) and root slam (roots burst up across the ring, green shockwave). Sounds:
+  Pro Sound Effects. The Prism Hydra keeps its roar until its remodel.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
@@ -1545,6 +1553,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
+            ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits

@@ -23,6 +23,7 @@ local BossMoments = require(Shared:WaitForChild("Util"):WaitForChild("BossMoment
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 local PetAnimator = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("PetAnimator"))
+local ClipPlayer = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("ClipPlayer"))
 
 local MonsterController = {}
 local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
@@ -45,6 +46,12 @@ type Monster = {
 	fx: { ParticleEmitter }, -- sparks or smoke on its Fx_ bones (Config/Wild SPECIES fx), on only near the camera
 	lasting: { ParticleEmitter }, -- a boss's plume while it is enraged (Config/Bosses moments.enrage)
 	enraged: boolean, -- its marker's Enraged attribute
+	key: string, -- its boss id, else its species: its model and attack clips are saved under this
+	element: string,
+	height: number,
+	clips: { [string]: ClipPlayer.Clip }, -- its attack clips (ReplicatedStorage.MonsterAnimations/<key>), if any
+	lengths: { [string]: number }, -- each clip's length in seconds
+	clipPlayer: ClipPlayer.Player?,
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -392,6 +399,22 @@ local function lightGlow(model: Model, strength: number)
 	end
 end
 
+-- Its attack clips (ReplicatedStorage.MonsterAnimations/<key>, Util/ClipPlayer), on a model with them
+local function loadClips(model: Model, key: string): ({ [string]: ClipPlayer.Clip }, ClipPlayer.Player?)
+	local clips = {}
+	local folder = ReplicatedStorage:FindFirstChild("MonsterAnimations")
+	local set = if folder then folder:FindFirstChild(key) else nil
+	if not set then
+		return clips, nil
+	end
+	for _, item in set:GetChildren() do
+		if item:IsA("KeyframeSequence") then
+			clips[item.Name] = ClipPlayer.clip(item)
+		end
+	end
+	return clips, if next(clips) then ClipPlayer.attach(model) else nil
+end
+
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
@@ -430,6 +453,12 @@ local function add(marker: BasePart)
 		light.Parent = body.root
 	end
 	local fxSpec = if boss or not template then nil else (Wild.SPECIES[species] :: any).fx
+	local key = if boss then bossId :: string else species
+	local clips, clipPlayer = loadClips(model, key)
+	local lengths = {}
+	for name, clip in clips do
+		lengths[name] = clip.length
+	end
 	local monster: Monster = {
 		marker = marker,
 		body = body,
@@ -441,6 +470,12 @@ local function add(marker: BasePart)
 		fx = if fxSpec then makeFx(model, fxSpec) else {},
 		lasting = {},
 		enraged = false,
+		key = key,
+		element = info.element,
+		height = height,
+		clips = clips,
+		lengths = lengths,
+		clipPlayer = clipPlayer,
 	}
 	if boss and boss.moments then
 		startMoments(monster, boss.moments)
@@ -458,13 +493,14 @@ local function add(marker: BasePart)
 	updateTag(monster)
 	lightHeads(monster)
 	-- A boss winding up an attack on a player (BattleService): a quick hit flashes it red; a big attack rears it back
-	-- (its roar pose) with an orange glow, for the warning's length
+	-- (its roar pose, unless it has its own special wind-up clip, which Util/FightFx plays) with an orange glow, for
+	-- the warning's length
 	table.insert(monster.connections, marker:GetAttributeChangedSignal("WindUps"):Connect(function()
 		local seconds = tonumber(marker:GetAttribute("WindUp")) or 0.5
 		local big = marker:GetAttribute("WindUpKind") == "big"
 		local tint = if big then SwordFx.WINDUP_BIG_COLOR else SwordFx.WINDUP_QUICK_COLOR
 		HitFx.flash(body.model, Color3.fromRGB(tint[1], tint[2], tint[3]), seconds, SwordFx.WINDUP_FILL)
-		if big and body.pet then
+		if big and body.pet and not clips.specialWindup then
 			PetAnimator.play(body.pet, "wildroar", os.clock())
 		end
 	end))
@@ -511,6 +547,25 @@ function MonsterController.GetModel(marker: BasePart): Model?
 	return if monster then monster.body.model else nil
 end
 
+-- A monster's or boss's body for fight effects (Util/FightFx): where it is, how tall, its boss id or species and the
+-- attack clips it has (name -> seconds)
+function MonsterController.GetFightView(marker: BasePart): { root: BasePart, height: number, key: string, lengths: { [string]: number } }?
+	local monster = monsters[marker]
+	if not monster then
+		return nil
+	end
+	return { root = monster.body.root, height = monster.height, key = monster.key, lengths = monster.lengths }
+end
+
+-- Plays one of its attack clips at `speed`, holding its last pose `hold` seconds (Util/ClipPlayer)
+function MonsterController.PlayClip(marker: BasePart, name: string, speed: number, hold: number)
+	local monster = monsters[marker]
+	local clip = if monster then monster.clips[name] else nil
+	if monster and clip and monster.clipPlayer then
+		ClipPlayer.play(monster.clipPlayer, clip, speed, nil, hold)
+	end
+end
+
 function MonsterController.Start()
 	task.spawn(preloadModels)
 	local folder = workspace:WaitForChild("Monsters")
@@ -545,6 +600,10 @@ function MonsterController.Start()
 		local extras = Extras.enabled()
 		for _, monster in monsters do
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
+			local clipPlayer = monster.clipPlayer
+			if clipPlayer and clipPlayer.playing and (monster.body.cframe.Position - origin).Magnitude <= Party.PET_ANIM.DISTANCE then
+				ClipPlayer.step(clipPlayer, dt, monster.body.model:GetScale())
+			end
 			if monster.fallenAt then
 				dropHeads(monster, now)
 			end

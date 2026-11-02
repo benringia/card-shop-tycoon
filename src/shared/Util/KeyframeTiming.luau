@@ -37,13 +37,30 @@ function KeyframeTiming.weights(cfg: any, speed: number): (number, number, numbe
 end
 
 -- How much a one-shot clip (an attack) shows `t` seconds in: up from 0 over `blend`, held, back to 0 over its last
--- `blend` (a clip shorter than two blends peaks at its middle); 0 before it starts and once it's over
-function KeyframeTiming.oneShotWeight(t: number, length: number, blend: number): number
-	if t <= 0 or t >= length then
+-- `blend` (a clip shorter than two blends peaks at its middle); 0 before it starts and once it's over.
+-- `from`: the weight a clip it follows was showing (a strike chained onto a held wind-up starts there, with no dip).
+-- `hold`: seconds it keeps its last pose at full weight after its end (a wind-up waiting for its strike), then blends out
+function KeyframeTiming.oneShotWeight(t: number, length: number, blend: number, from: number?, hold: number?): number
+	local start = from or 0
+	local held = hold or 0
+	if t < 0 or t >= KeyframeTiming.oneShotEnd(length, blend, held) or (t == 0 and start <= 0) then
 		return 0
 	end
 	local ramp = math.max(math.min(blend, length / 2), 1e-6)
-	return math.min(1, t / ramp, (length - t) / ramp)
+	local blendIn = start + (1 - start) * math.min(1, t / ramp)
+	if held <= 0 then
+		return math.min(blendIn, (length - t) / ramp)
+	end
+	return math.min(blendIn, 1 - math.max(0, t - length - held) / ramp)
+end
+
+-- When a one-shot (KeyframeTiming.oneShotWeight) is over: at its length, or a held one after its hold and blend out
+function KeyframeTiming.oneShotEnd(length: number, blend: number, hold: number?): number
+	local held = hold or 0
+	if held <= 0 then
+		return length
+	end
+	return length + held + math.max(math.min(blend, length / 2), 1e-6)
 end
 
 return KeyframeTiming

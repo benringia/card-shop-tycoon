@@ -65,4 +65,20 @@ return {
 		expect.equal(KeyframeTiming.oneShotWeight(-1, 1, 0.15), 0, "not started")
 		expect.near(KeyframeTiming.oneShotWeight(0.1, 0.2, 0.15), 1, 1e-9, "a clip shorter than two blends peaks at its middle")
 	end,
+
+	["a chained clip starts from the weight already showing"] = function()
+		expect.equal(KeyframeTiming.oneShotWeight(0, 1, 0.2, 1), 1, "a wind-up held at full: no dip")
+		expect.near(KeyframeTiming.oneShotWeight(0.1, 1, 0.2, 0.5), 0.75, 1e-9, "half way from 0.5 to 1")
+		expect.near(KeyframeTiming.oneShotWeight(0.1, 1, 0.2, 0), 0.5, 1e-9, "from 0 like any one-shot")
+		expect.near(KeyframeTiming.oneShotWeight(0.9, 1, 0.2, 1), 0.5, 1e-9, "still blends out at its end")
+	end,
+
+	["a held clip keeps its last pose, then blends out"] = function()
+		expect.equal(KeyframeTiming.oneShotWeight(0.95, 1, 0.2, 0, 0.5), 1, "no blend out before the hold")
+		expect.equal(KeyframeTiming.oneShotWeight(1.3, 1, 0.2, 0, 0.5), 1, "held")
+		expect.near(KeyframeTiming.oneShotWeight(1.6, 1, 0.2, 0, 0.5), 0.5, 1e-9, "blending out after the hold")
+		expect.equal(KeyframeTiming.oneShotWeight(1.7, 1, 0.2, 0, 0.5), 0, "over")
+		expect.near(KeyframeTiming.oneShotEnd(1, 0.2, 0.5), 1.7, 1e-9)
+		expect.equal(KeyframeTiming.oneShotEnd(1, 0.2, 0), 1, "no hold: over at its length")
+	end,
 }

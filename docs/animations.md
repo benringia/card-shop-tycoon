@@ -83,7 +83,12 @@ pipeline:
 - Clips per model: `windup`, `strike` (all), `specialWindup`, `specialRelease` (bosses), marker `Hit` on the strike.
 - They play on the client with no upload and no animation ownership (bones are set every frame), blended over the
   procedural motion (`Util/PetAnimator`) for `Party.KEYFRAME_ANIM.ONE_SHOT_BLEND` in and out
-  (`KeyframeTiming.oneShotWeight`).
+  (`KeyframeTiming.oneShotWeight`). A wind-up holds its last pose a moment for its hit, and the strike that follows
+  starts at the wind-up's weight, so they chain with no dip: key the strike's first frame as the wind-up's last pose.
+- `Util/MonsterMoves` picks the clip for each fight event (charge or quick-hit warning: `windup` over the warning;
+  a hit: `strike`; a ring: `specialWindup` timed to its warning; the ring's hit: `specialRelease`); `Util/FightFx`
+  plays it through `MonsterController.PlayClip` and draws the boss's effects (`Config/AttackFx` BOSS).
+- Bosses keyed so far: `meadowWarden` (`tools/blender/anim_<boss>.py`). The Prism Hydra waits for its remodel.
 - Adding the `MonsterAnimations` mapping needs a `rojo serve` restart (all three project files have it).
 
 ## The sword model

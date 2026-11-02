@@ -5,14 +5,20 @@
 -- event: a charge whose attack never comes (a stun, a faint, a swap) fades without one (Util/AttackTiming). An attack
 -- that arrives with no charge strikes at once. Effects are capped (Util/FightFxRules). The fight controller and PvP
 -- spectators each make one, passing how to reach the creatures.
+-- Bosses (Config/AttackFx BOSS) play their keyed clips (Util/MonsterMoves picks which): a wind-up before each hit, the
+-- strike with an impact where it lands, the special wind-up with sparks pulling in over a ring's warning, then the
+-- release with its effect over the ring. Their effects always play: there is one boss, and they show where it hit.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
+local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local AttackTiming = require(Shared:WaitForChild("Util"):WaitForChild("AttackTiming"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
+local MonsterMoves = require(Shared:WaitForChild("Util"):WaitForChild("MonsterMoves"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
 
 local FightFx = {}
 
@@ -23,7 +29,12 @@ export type Resolve = {
 	setCharging: (marker: BasePart, seconds: number) -> (),
 	pose: (marker: BasePart, kind: string) -> (),
 	dash: (marker: BasePart, toward: Vector3, share: number, seconds: number) -> (),
+	-- The boss or monster drawn on a marker, and playing its clips (nil: no monsters here, PvP)
+	monster: ((marker: BasePart) -> MonsterView?)?,
+	playClip: ((marker: BasePart, name: string, speed: number, hold: number) -> ())?,
 }
+-- key: its boss id or species; lengths: its attack clips (name -> seconds)
+export type MonsterView = { root: BasePart, height: number, key: string, lengths: { [string]: number } }
 export type Dispatcher = { onEvents: (events: { any }) -> (), destroy: () -> () }
 
 type Pending = {
@@ -216,12 +227,87 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		ElementFx.special(spec.style, caster, target, color(spec.color), spec.seconds or 0)
 	end
 
+	local moves: { [BasePart]: MonsterMoves.State } = {}
+	local rings: { [string]: any } = {} -- each player's latest ring (by sim id): where its hit lands
+	local gathering: { [BasePart]: () -> () } = {} -- a boss's sparks pulling in for a ring
+	local strikeSoundAt = 0
+	local moveCfg = { CHARGE_GRACE = AttackFx.CHARGE_GRACE, HIT_GRACE = Combat.HIT_GRACE }
+
+	local function monsterOf(id: string): (BasePart?, MonsterView?)
+		local lookup = resolve.monster
+		local marker = if lookup then resolve.marker(id) else nil
+		return marker, if lookup and marker then lookup(marker) else nil
+	end
+
+	local function stopGathering(marker: BasePart)
+		local stop = gathering[marker]
+		if stop then
+			gathering[marker] = nil
+			stop()
+		end
+	end
+
+	-- A boss's move: its clip (MonsterMoves) and, for a boss with looks (AttackFx.BOSS), the effect
+	local function onMonster(event: any, marker: BasePart, view: MonsterView)
+		local state = moves[marker]
+		if not state then
+			state = MonsterMoves.new()
+			moves[marker] = state
+		end
+		local move = MonsterMoves.decide(state, event, os.clock(), view.lengths, moveCfg)
+		if move and resolve.playClip then
+			resolve.playClip(marker, move.clip, move.speed, move.hold)
+		end
+		local spec = AttackFx.BOSS[view.key]
+		if not spec then
+			return
+		end
+		local tint = color(spec.color)
+		local slam = event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe")
+		if event.type == "ring" then
+			if typeof(event.to) == "string" and typeof(event.x) == "number" then
+				rings[event.to] = event
+			end
+			if move then
+				stopGathering(marker)
+				local middle = view.root.Position + Vector3.new(0, view.height * 0.5, 0)
+				local seconds = (tonumber(event.seconds) or 1) + Combat.HIT_GRACE
+				gathering[marker] = ElementFx.gather(middle, tint, seconds, view.height * 0.6)
+			end
+		elseif slam then
+			stopGathering(marker)
+			if move then
+				ElementFx.sound(spec.sounds.release, view.root.Position)
+			end
+			local ring = if typeof(event.to) == "string" then rings[event.to] else nil
+			if ring then
+				rings[event.to] = nil
+				local ground = Vector3.new(ring.x, RingFx.groundY(ring.x, ring.y, ring.z), ring.z)
+				local direction = Vector3.new(tonumber(ring.dirX) or 0, 0, tonumber(ring.dirZ) or -1)
+				ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint)
+			end
+		elseif event.type == "attack" and not event.dodged then
+			local spot = targetPosition(event.to, view.root.Position)
+			ElementFx.bossStrike(spec.strike, spot, view.root.Position, tint)
+			local now = os.clock()
+			if now - strikeSoundAt > 0.2 then -- a group hit in one moment sounds once
+				strikeSoundAt = now
+				ElementFx.sound(spec.sounds.strike, spot)
+			end
+		end
+	end
+
 	local function onEvents(events: { any })
 		if not alive then
 			return
 		end
 		for _, event in events do
 			if typeof(event) ~= "table" or typeof(event.from) ~= "string" then
+				continue
+			end
+			local monster, monsterView = monsterOf(event.from)
+			if monster and monsterView then
+				onMonster(event, monster, monsterView)
 				continue
 			end
 			if event.type == "charge" then
@@ -240,6 +326,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			entry.stopGlow()
 		end
 		pending = {}
+		for marker in gathering do
+			stopGathering(marker)
+		end
 	end
 
 	return { onEvents = onEvents, destroy = destroy }
