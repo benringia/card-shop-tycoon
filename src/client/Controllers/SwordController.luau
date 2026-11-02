@@ -46,6 +46,7 @@ local onCooldown: ((name: string, readyAt: number, total: number) -> ())? = nil 
 local lastCut: SwordRules.LastCut? = nil
 local skillReadyAt, dodgeReadyAt = 0, 0
 local jumpLock: RBXScriptConnection? = nil
+local kneeling = false -- your knocked-down pose is on
 local jumpBefore: number? = nil
 
 -- A plain sword from parts, the same size as the real model, for while WeaponModels has no model yet
@@ -278,7 +279,14 @@ local function watchCharacter(character: Model)
 		local humanoid = character:WaitForChild("Humanoid", 10)
 		if humanoid and humanoid:IsA("Humanoid") then
 			mine = SwordAnims.load(humanoid, Swords.STARTER)
+			kneeling = false
 		end
+		-- The server clearing Downed (you got up, or the fight ended) always stands you up
+		character:GetAttributeChangedSignal("Downed"):Connect(function()
+			if not character:GetAttribute("Downed") then
+				SwordController.GetUp()
+			end
+		end)
 	end
 end
 
@@ -345,8 +353,14 @@ local function swingTrail()
 	end)
 end
 
--- Knocked down (held kneeling, the down move's Hold marker) and back up
+-- Knocked down (the "down" event): the down move held at its Hold marker until GetUp, which the getUp event, the
+-- server clearing Downed or the fight ending (SetCombat false) calls, whichever comes first. A loss lands in the same
+-- step you go down, so its Downed attribute can clear before the event arrives; the fight's end stands you up then.
 function SwordController.Kneel()
+	if kneeling then
+		return
+	end
+	kneeling = true
 	local set = mine
 	local track = if set then set.play("down") else nil
 	if track then
@@ -358,6 +372,10 @@ function SwordController.Kneel()
 end
 
 function SwordController.GetUp()
+	if not kneeling then
+		return
+	end
+	kneeling = false
 	if mine then
 		mine.stop("down", 0.1)
 		mine.play("getUp")
@@ -395,6 +413,9 @@ function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules
 	combatTargets = if active then targets else nil
 	onCooldown = if active then cooldown else nil
 	lastCut = nil
+	if not active then
+		SwordController.GetUp()
+	end
 	if jumpLock then
 		jumpLock:Disconnect()
 		jumpLock = nil
