@@ -920,6 +920,23 @@ group, checked before its fragments and every time (not only the first). Below i
   `BossRules.countdownText`), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
   kneeling, until the fight ends, and a win counts for them too.
+- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 3 (`Swords.UNLOCK_SHOP_LEVEL`,
+  when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
+  (`seenSword`). It rests on the back everywhere, 1.4x bigger there so it and the looks the shop will sell later stand
+  out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
+  (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
+  starter combo: a stepping cut, a sideways sweep, a leaping slam (power 0.35 / 0.35 / 0.6, a tap within 0.9 s of a
+  cut's end carries on); skill: a spinning slash all round (radius 11, 8 s). Every sword gets its own combo and skill
+  (Forge swords, project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15
+  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md); in boss fights players wear the
+  standard body (their own head, face, hair and accessories kept), and back accessories (capes, wings, backpacks) hide.
+  Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
+  `UiLayout.combatButtons`): Attack (Click), Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
+  Signature (Epic and Legendary cards), small Swap (1-3) and Run; your HP and your creature's top-left. Jumping is off
+  in boss fights (the dodge replaces it). Attacks turn you softly toward the boss; the camera stays free; the server
+  checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
+  slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
+  (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`).
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
@@ -1237,8 +1254,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py)
-├── tools/textures/             # pack textures and flipbook sheets (Pillow)
+├── assets/ui/combat/           # the boss-fight HUD's slanted button and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
+├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
+├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels (docs/animations.md "The sword model")
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py)
+├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm (Lune)
+├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model (Lune)
+├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -1263,6 +1285,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
     │   │   ├── WildService.luau      # wild map (the valley's spawn spots, wooden signs, edges, return portal, boss portals and arena copies), plaza portal, healing spring, monsters (spawn, wander, chase, the valley's crowd-sized population)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
+    │   │   ├── SwordService.luau     # the sword: unlock, drawn/sheathed, standard body, back accessories hidden in boss fights, attack/skill/dodge remotes
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
@@ -1316,6 +1339,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
@@ -1348,7 +1372,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue
     │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
-    │       └── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
+    │       ├── CombatHud.luau          # the boss-fight HUD: slanted buttons with icons, cooldowns and key chips, your HP and your creature's
+    │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
+    │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
+    │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
         ├── Config/
         │   ├── Cards.luau      # Set 1 card list
@@ -1381,7 +1410,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
-        │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring
+        │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
+        │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
+        │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys and colours (plain data)
+        │   ├── SwordFx.luau    # rings, hit feel, slash trail, wind-up glow, loss countdown look (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
@@ -1451,7 +1483,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderGesture.luau # who owns a press on the 3D binder: one pointer, lost releases, holds vs swipes (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
-            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
+            ├── SwordRules.luau    # the combo's next cut, reach and arc, aiming, combo damage per second (pure, Lune-tested)
+            ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
