@@ -80,8 +80,8 @@ local BOSSES: { [string]: Boss } = {
 		moments = { roar = "rbxassetid://9114630281" }, -- Pro Sound Effects: Goliath Vocal Deep Growling Voice 46
 		element = "Bloom",
 		level = 6,
-		hp = 1800,
-		atk = 11,
+		hp = 1440,
+		atk = 7,
 		spd = 8,
 		recommended = 200,
 		shopLevel = 3,
@@ -115,8 +115,8 @@ local BOSSES: { [string]: Boss } = {
 		},
 		element = "Shade",
 		level = 11,
-		hp = 3900,
-		atk = 16,
+		hp = 2340,
+		atk = 10,
 		spd = 12,
 		recommended = 350,
 		shopLevel = 5,
@@ -155,7 +155,7 @@ local BOSSES: { [string]: Boss } = {
 		element = "Ember",
 		level = 16,
 		hp = 7200,
-		atk = 22,
+		atk = 26,
 		spd = 9,
 		recommended = 650,
 		shopLevel = 8,
@@ -184,12 +184,12 @@ local BOSSES: { [string]: Boss } = {
 		scale = 3.0,
 		element = "Tide",
 		level = 22,
-		hp = 11500,
-		atk = 27,
+		hp = 13800,
+		atk = 43,
 		spd = 9,
 		recommended = 1100,
 		shopLevel = 12,
-		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
+		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 60,
 		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15 },
 		unlock = { item = "fragment_frostTyrant", count = 5 },
@@ -214,12 +214,12 @@ local BOSSES: { [string]: Boss } = {
 		scale = 3.2,
 		element = "Volt",
 		level = 32,
-		hp = 14500,
-		atk = 26,
+		hp = 23200,
+		atk = 31,
 		spd = 14,
 		recommended = 1500,
 		shopLevel = 15,
-		groupAtkStep = 0.35, -- Legendary parties shrug off the default group ATK step
+		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 70,
 		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17 },
 		unlock = { item = "fragment_stormSovereign", count = 8 },
@@ -243,12 +243,12 @@ local BOSSES: { [string]: Boss } = {
 		scale = 3.4,
 		element = "Shade",
 		level = 45,
-		hp = 23000,
-		atk = 26,
+		hp = 27600,
+		atk = 57,
 		spd = 10,
 		recommended = 1900,
 		shopLevel = 18,
-		groupAtkStep = 0.5, -- Legendary parties shrug off the default group ATK step
+		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 80,
 		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18 },
 		unlock = { item = "fragment_riftDevourer", count = 8 },
@@ -278,12 +278,12 @@ local BOSSES: { [string]: Boss } = {
 		auroraFlame = true,
 		element = "Tide", -- phase 1's
 		level = 55,
-		hp = 40000,
+		hp = 48000,
 		atk = 23,
 		spd = 11,
 		recommended = 2400,
 		shopLevel = 22,
-		groupAtkStep = 0.25,
+		groupAtkStep = 0.3,
 		minFightSeconds = 120,
 		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35 },
 		unlock = { item = "fragment_prismHydra", count = 10 },
@@ -354,7 +354,7 @@ return {
 	GROUP_MAX = 4,
 	JOIN_SECONDS = 15, -- others join this long after the leader opens a group at the gate
 	GROUP_HP_STEP = 0.8, -- boss HP x (1 + this x (players - 1))
-	GROUP_ATK_STEP = 0.15, -- boss ATK x (1 + this x (players - 1))
+	GROUP_ATK_STEP = 0.08, -- boss ATK x (1 + this x (players - 1))
 	GROUP_SWINGS_STEP = 1, -- extra creatures the boss hits per attack, per extra player (so a group isn't a free win)
 	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
 	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took

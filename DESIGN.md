@@ -899,12 +899,20 @@ group, checked before its fragments and every time (not only the first). Below i
   ground when you leave or teleport is gone. Drops land on the ground only, never on a player or creature standing
   there. Cash and XP stay instant. The first-clear chest (fragments,
   trophy) goes straight into the Bag: it's one-time and the clear is saved at once.
-- **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card. In the first 5 s
-  (call-in unused) it joins beside yours; after that it swaps in for your most hurt creature (or a fainted one),
-  which goes back to the bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when
-  none of yours is standing; when all of yours faint, your healthiest rested card comes in by itself, and you lose
-  only when none is left. A swapped-out summoned creature is hidden until it comes back. Because a player now brings
-  all three party cards, boss HP went up x1.5 and ATK about x1.2 (`BattleSim.swap`, Lune-tested).
+- **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card for your summoned
+  creature (only one of yours fights: boss fights have no call-in, `SideInput.callIn = false`); it goes back to the
+  bench with its HP. Swaps wait 8 s between them (`Combat.BOSS_SWAP_SECONDS`), except when none of yours is standing;
+  when yours faints, your healthiest rested card comes in by itself. A swapped-out summoned creature is hidden until it
+  comes back (`BattleSim.swap`, Lune-tested).
+- **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
+  with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
+  well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
+  rings stepped out of; drawn per fight). Targets for a party at the recommended Power (solo): fights well wins about
+  85% at 1x and 50% at 0.8x; stands still about 60% at 1x and 15% at 0.8x, taking about twice as long. Heals (later)
+  add on top. The fights are nearly deterministic (the element match-up decides most of them), so rows land on steps
+  of 20%; boss 1 stays easier for players who fight (it's the first). New HP / ATK: Meadow Warden 1440 / 7, Cave Brood
+  Queen 2340 / 10, Ember Colossus 7200 / 26, Frost Tyrant 13800 / 43, Storm Sovereign 23200 / 31, Rift Devourer
+  27600 / 57, Prism Hydra 48000 / 23.
 - **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
   about 126 px solo (`layoutBar` in BattleController).
@@ -958,12 +966,13 @@ group, checked before its fragments and every time (not only the first). Below i
   press again to start at once, it starts by itself when full (4). The Fight and group prompts have separate limiters.
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
-  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.15 (n - 1)) (`BossRules.groupStats`;
-  the Frontier bosses use their own `groupAtkStep`, 0.35 / 0.35 / 0.5, because Legendary parties shrug off the
-  default), and it hits one more creature per attack per extra player (`GROUP_SWINGS_STEP`, never more targets than
-  players) so a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
-  whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]`: at the recommended
-  Power a 2-4 player group wins, a typical party (best card at it, two at 60%) 60-80%, boss 6 with 4 players 80%.
+  member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.08 (n - 1)) (`BossRules.groupStats`;
+  the Frontier bosses use their own `groupAtkStep` 0.1, the Prism Hydra 0.3), and it swings once more per attack per
+  extra player (`GROUP_SWINGS_STEP`, never more targets than players; each swing may go at a player as a quick hit) so
+  a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
+  whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]` (the player in the fight):
+  at the recommended Power a group that fights wins nearly always; 2 players who stand still win about as often as one
+  (40-80%), 4 who stand still less on the Frontier bosses (about 20-30%).
   Each player fights with their own creatures (their own call-in and abilities); Run is Leave: they step out, the
   others fight on, and the fight ends when nobody is left standing: a loss if a fainted member is still in it, else a
   run. Leaders stand 7 studs apart on the ring (`GROUP_SPACING`), each call-in 3 studs to its own leader's right
