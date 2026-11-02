@@ -141,6 +141,7 @@ return {
 	RunFight = remotes.RunFight,
 	BattleStarted = remotes.BattleStarted,
 	BattleEvent = remotes.BattleEvent,
+	ArenaWatch = remotes.ArenaWatch,
 	BattleEnded = remotes.BattleEnded,
 	RestChanged = remotes.RestChanged,
 	Challenge = remotes.Challenge,

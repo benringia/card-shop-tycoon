@@ -189,4 +189,22 @@ return {
 		table.sort(problems)
 		assert(#problems == 0, `local functions used before they exist:\n    {table.concat(problems, "\n    ")}`)
 	end,
+
+	-- Remotes lists each name once in NAMES and again in the table it returns; a name missing from the second is nil
+	-- wherever it's used
+	["every remote in Remotes is exported"] = function()
+		local source = fs.readFile("src/shared/Remotes.luau")
+		local names = string.match(source, "local NAMES = {(.-)\n}")
+		assert(names, "NAMES list not found")
+		local exported = string.match(source, "\nreturn {(.-)\n}")
+		assert(exported, "return table not found")
+		local missing = {}
+		for line in string.gmatch(names, "[^\n]+") do
+			local name = string.match(line, '^%s*"([%w_]+)"')
+			if name and not string.find(exported, `\n%s*{name} = remotes%.{name},`) then
+				table.insert(missing, name)
+			end
+		end
+		assert(#missing == 0, `remotes not exported: {table.concat(missing, ", ")}`)
+	end,
 }
