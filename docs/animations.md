@@ -63,7 +63,8 @@ The starter sword is built in Blender by `tools/blender/build_starter_sword.py` 
 
 1. Import `StarterSword.fbx` in Studio (3D Importer, Rig Type None). The model's pivot lands on the grip's centre.
 2. Right-click the model → Save to File → `assets/weapons/StarterSword.rbxm`.
-3. `lune run tools/weapons/finish_sword`: the importer drops the Blender colours, so this sets them by part name and
+3. `lune run tools/weapons/finish_sword`: the importer drops the Blender colours and turns each mesh's PivotOffset, so
+   this sets the colours by part name, straightens the pivots and
    makes Grip the PrimaryPart (`tests/CreatureAssets.spec` checks it, and that no script is inside).
 4. Rojo syncs `assets/weapons` to `ReplicatedStorage.WeaponModels` (restart `rojo serve` after adding the mapping).
 

@@ -87,6 +87,14 @@ return {
 			assert(model:FindFirstChild(name), `the sword has its {name}`)
 		end
 		assert(model.PrimaryPart and model.PrimaryPart.Name == "Grip", "the grip is its PrimaryPart (lune run tools/weapons/finish_sword)")
+		-- The importer turns each mesh's pivot: the game reads the grip's frame from the pivot, so it must be straight
+		for _, part in model:GetDescendants() do
+			if part:IsA("BasePart") then
+				local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.PivotOffset:GetComponents()
+				local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+				assert(straight, `{part.Name}'s PivotOffset is turned (lune run tools/weapons/finish_sword)`)
+			end
+		end
 	end,
 
 	["the prop folder is scanned too"] = function()
