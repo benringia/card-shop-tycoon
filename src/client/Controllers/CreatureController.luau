@@ -5,6 +5,7 @@
 -- Idle/Walk animations, a rarity glow and a name tag. Everything is local: nothing here replicates.
 -- Only your own creatures and the nearest others get a model (Util/CreatureCull, Party.CULL): the rest wait as
 -- markers until they come near, so a full server doesn't animate every pet.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -237,6 +238,13 @@ local function add(marker: BasePart)
 		updateHpBar(creature)
 	end))
 	creatures[marker] = creature
+	if marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId and Players.LocalPlayer:GetAttribute("CreatureReady") ~= true then
+		-- Your own creature, the first time: the loading screen waits until its model has downloaded
+		task.spawn(function()
+			pcall(ContentProvider.PreloadAsync, ContentProvider, { model })
+			Players.LocalPlayer:SetAttribute("CreatureReady", true)
+		end)
+	end
 end
 
 -- Roblox draws at most 31 outlines: give them to the rarest creatures, nearest first

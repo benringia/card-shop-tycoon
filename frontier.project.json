@@ -3,6 +3,11 @@
   "servePort": 34873,
   "tree": {
     "$className": "DataModel",
+    "ReplicatedFirst": {
+      "LoadingScreen": {
+        "$path": "src/first"
+      }
+    },
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"

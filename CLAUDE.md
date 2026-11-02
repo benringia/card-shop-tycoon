@@ -5,7 +5,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 
 ## Stack
 - Roblox, Luau, synced with Rojo (`default.project.json`)
-- `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared
+- `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared,
+  `src/first` → ReplicatedFirst.LoadingScreen (the loading screen, in all three project files)
 - `ServerPackages/` (Wally, not in git) → ServerStorage.ServerPackages. ProfileStore lives there.
 - `assets/creatures` → ReplicatedStorage.CreatureModels: creature models saved as `<CardName>.rbxm`
   (docs/creatures.md). Only models a card or town animal uses (Lune-tested); the bought packs' unused models are kept in
@@ -69,7 +70,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   still 60% / 15%); with players > 1 every row is a group of that many players against the scaled boss. Every creature
   fights with its fight perk; `NO_PERKS=1` in front runs without them, to compare
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, RingRules, HpBarRules, CombatPreload, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, ShopDetail: every shop screen sets a draw distance, PortalTrails,
+  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, RingRules, HpBarRules, CombatPreload, LoadingRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, ShopDetail: every shop screen sets a draw distance, PortalTrails,
   TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.

@@ -1,7 +1,8 @@
 --!strict
--- Downloads the boss fight's art, sounds, moves and sword models a few seconds after joining (Util/CombatPreload lists
--- the ids), so the first fight's HUD isn't blank and its first swing isn't silent. Images stay drawn, tiny and nearly
--- invisible in a corner (like Util/Icon): Roblox only finishes loading an image once something draws it.
+-- Downloads the boss fight's art, sounds, moves and sword models while the loading screen is up (LoadingController;
+-- Util/CombatPreload lists the ids), so the first fight's HUD isn't blank and its first swing isn't silent. Images
+-- stay drawn, tiny and nearly invisible in a corner (like Util/Icon): Roblox only finishes loading an image once
+-- something draws it.
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

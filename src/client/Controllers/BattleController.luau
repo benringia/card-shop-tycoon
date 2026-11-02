@@ -37,7 +37,6 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
 local HpBar = require(ClientUtil:WaitForChild("HpBar"))
-local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -1591,7 +1590,6 @@ end
 
 function BattleController.Start()
 	build()
-	task.delay(CombatHudConfig.PRELOAD_WAIT, CombatAssets.preload)
 	UserInputService.InputBegan:Connect(onClick)
 	Remotes.BattleStarted.OnClientEvent:Connect(onStarted)
 	Remotes.BattleEvent.OnClientEvent:Connect(function(payload)

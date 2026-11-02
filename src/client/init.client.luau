@@ -2,6 +2,7 @@
 -- Client entry point. Starts each controller; UIController first since others build on its ScreenGui.
 local Controllers = script:WaitForChild("Controllers")
 
+local LoadingController = require(Controllers:WaitForChild("LoadingController"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local OrderController = require(Controllers:WaitForChild("OrderController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
@@ -51,6 +52,8 @@ local SwordController = require(Controllers:WaitForChild("SwordController"))
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
+
+LoadingController.Start() -- the loading screen's steps (ReplicatedFirst shows it from the first frame)
 
 if Place.isFrontier() or Place.isDungeon() then
 	-- The Frontier and Dungeon places: no shop, so only the binder, party, creatures and fights

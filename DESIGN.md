@@ -945,7 +945,7 @@ group, checked before its fragments and every time (not only the first). Below i
   cut's end carries on); skill: a spinning slash all round (radius 11, 8 s). Every sword gets its own combo and skill
   (Forge swords, project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15
   body and exported as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`);
-  the HUD's art, the sword's sounds, its moves and model download 6 s after joining (`Util/CombatAssets`, ids listed
+  the HUD's art, the sword's sounds, its moves and model download behind the loading screen (`Util/CombatAssets`, ids listed
   by `Util/CombatPreload`), so the first fight starts ready; players wear the standard body
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
   backpacks) hide.
@@ -1341,9 +1341,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       └── RateLimiter.luau      # per-player remote cooldowns
+    ├── first/                  # → ReplicatedFirst.LoadingScreen (runs before anything else loads)
+    │   ├── Show.client.luau    # the loading screen from the first frame (or the one a teleport brought), fades when done
+    │   └── LoadingGui.luau     # builds, animates, updates and fades the "card fan" loading screen
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
+    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, creature, fight gear), the teleport screen
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -1412,7 +1416,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── CombatHud.luau          # the boss-fight HUD: slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
-    │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models after joining
+    │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
     │       └── AfterImage.luau         # the dodge's fading copies of the character
@@ -1511,7 +1515,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ShowcaseLayout.luau # upright case card slots in rows (pure, Lune-tested)
             ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
-            ├── PartyRules.luau    # perk strength and text, party changes and their toasts (pure, Lune-tested)
+            ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
+            ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1581,11 +1586,28 @@ separate unopened-packs inventory; unsold stock is saved as `boxes` rather than 
 Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomputed from XP, and saved shelves
 that no longer fit are skipped (cards from a skipped case go back to the binder).
 When a player leaves, customers put picked-up stock and cards back before the save.
+DataService sets the player attribute `DataLoaded` once every service has loaded (the loading screen's save step).
+
+**Teleport hand-off** (`DataService.HandOff` / `Reclaim`): before a teleport to or from the Frontier or the Dungeon
+(`FrontierService`, `DungeonGateService`), the player's live state is saved and their session closed, so the next
+place loads it at once; before, the session only closed after they'd left, and the next place waited on its lock
+(measured up to 12 s). The services keep the live state; if the teleport fails (`TeleportAsync` errors or
+`TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
+they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
 Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
+- **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
+  Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
+  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Waking up your creature...",
+  "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`), the
+  summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
+  the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
+  still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
+  screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
+  first-visit welcome cinematic starts when it fades.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`, look E "bold hybrid", chosen to suit kids, teens and

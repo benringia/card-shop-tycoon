@@ -2,6 +2,11 @@
   "name": "card-shop-tycoon",
   "tree": {
     "$className": "DataModel",
+    "ReplicatedFirst": {
+      "LoadingScreen": {
+        "$path": "src/first"
+      }
+    },
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
