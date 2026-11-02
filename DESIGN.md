@@ -995,7 +995,7 @@ group, checked before its fragments and every time (not only the first). Below i
   impact there, the `specialWindup` over a ring's warning with sparks in its colour pulling in, then the
   `specialRelease` as the ring lands, with its effect over the ring (`Config/AttackFx` BOSS, `ElementFx.monsterStrike`,
   `ElementFx.bossRelease`). One move at a time: a group hit is one strike, nothing interrupts the special. Meadow
-  Warden: branch swipe (leafy slash, dust) and root slam (roots burst up across the ring, green shockwave). Cave Brood
+  Warden: branch swipe (leafy slash, dust) and root slam (big roots, taller than a player, burst up across the ring and curl outward, one thick one in the middle; green shockwave). Cave Brood
   Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
   up, then lunges; strands spray across the cone and stick). Ember Colossus: horn gore (sits back, head low, then
   tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire

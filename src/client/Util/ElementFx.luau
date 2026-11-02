@@ -646,19 +646,21 @@ end
 function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, direction: Vector3, length: number, halfAngle: number, color: Color3)
 	if style == "roots" then
 		ElementFx.eruption(ground, color, radius, 10)
-		-- Each root is three segments, thinner and bending further as they go, built under the ground and pushed up
-		-- through it, then pulled back down
-		for _ = 1, detail(7) do
-			local spot = scatter(ground, radius * 0.9)
-			local bend = math.rad(math.random(14, 24))
-			local frame = CFrame.new(spot) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+		-- Big roots burst up through the ground and curl outward: one thick one in the middle, a ring of them round it,
+		-- each four segments, thinner and bending further as they go, with a mossy tip, pulled back down after a moment
+		local function root(spot: Vector3, outward: Vector3, size: number)
+			local flat = Vector3.new(outward.X, 0, outward.Z)
+			local away = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+			local frame = CFrame.lookAt(spot, spot - away) -- facing the centre, so bending "back" curls it outward
+			local bend = math.rad(math.random(10, 18))
 			local segments: { Part } = {}
 			local rise = 0
-			for index, thickness in { 1.1, 0.75, 0.45 } do
-				local span = 2.2 - index * 0.35
-				frame = frame * CFrame.Angles(bend, 0, 0)
-				local piece = part(Vector3.new(thickness, span, thickness), if index == 3 then MOSS else ROOT, spot)
-				piece.Material = if index == 3 then Enum.Material.Grass else Enum.Material.Wood
+			for index, thickness in { 2.4, 1.8, 1.25, 0.75 } do
+				local span = (4.4 - index * 0.6) * size
+				frame = frame * CFrame.Angles(-bend * (if index == 1 then 0.3 else 1), 0, 0)
+				local tip = index == 4
+				local piece = part(Vector3.new(thickness * size, span, thickness * size), if tip then MOSS else ROOT, spot)
+				piece.Material = if tip then Enum.Material.Grass else Enum.Material.Wood
 				piece.CFrame = frame * CFrame.new(0, span / 2, 0)
 				frame = frame * CFrame.new(0, span, 0)
 				rise += span
@@ -667,12 +669,20 @@ function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, d
 			for _, piece in segments do
 				local up = piece.CFrame
 				piece.CFrame = up - Vector3.new(0, rise, 0)
-				TweenService:Create(piece, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = up }):Play()
-				task.delay(0.95, function()
-					TweenService:Create(piece, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = up - Vector3.new(0, rise, 0) }):Play()
+				TweenService:Create(piece, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = up }):Play()
+				task.delay(1.1, function()
+					TweenService:Create(piece, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = up - Vector3.new(0, rise, 0) }):Play()
 				end)
-				Debris:AddItem(piece, 1.4)
+				Debris:AddItem(piece, 1.6)
 			end
+			sparks(spot + Vector3.new(0, 1, 0), DUST, 10 * size, 22, 1.4 * size, 30)
+		end
+		root(ground, Vector3.zero, 1.35)
+		local count = detail(8)
+		for index = 1, count do
+			local angle = index / count * math.pi * 2 + math.random() * 0.4
+			local away = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			root(ground + away * radius * (0.45 + math.random() * 0.4), away, 0.85 + math.random() * 0.3)
 		end
 	elseif style == "web" then
 		local flat = Vector3.new(direction.X, 0, direction.Z)
