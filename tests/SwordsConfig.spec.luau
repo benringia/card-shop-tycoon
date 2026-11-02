@@ -17,6 +17,13 @@ return {
 		expect.equal(#gleam.color, 3)
 	end,
 
+	["the group retune leaves Dungeon room packs alone"] = function()
+		expect.equal(Bosses.GROUP_ATK_STEP, 0.15, "rooms scale with the old step")
+		for _, bossId in { "meadowWarden", "caveBroodQueen", "emberColossus" } do
+			expect.equal(Bosses.BOSSES[bossId].groupAtkStep, 0.08, `{bossId} keeps its retuned step`)
+		end
+	end,
+
 	["rest takes five minutes"] = function()
 		expect.equal(Combat.REST_SECONDS, 300)
 	end,

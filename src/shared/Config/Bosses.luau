@@ -87,6 +87,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 3,
 		minFightSeconds = 12,
 		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10 },
+		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
 		drops = {
@@ -122,6 +123,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 5,
 		minFightSeconds = 18,
 		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12 },
+		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
 		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12, uses = 3 } },
@@ -161,6 +163,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 8,
 		minFightSeconds = 25,
 		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14 },
+		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_emberColossus", count = 5 },
 		fragment = "fragment_frostTyrant",
 		mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } },
@@ -354,7 +357,7 @@ return {
 	GROUP_MAX = 4,
 	JOIN_SECONDS = 15, -- others join this long after the leader opens a group at the gate
 	GROUP_HP_STEP = 0.8, -- boss HP x (1 + this x (players - 1))
-	GROUP_ATK_STEP = 0.08, -- boss ATK x (1 + this x (players - 1))
+	GROUP_ATK_STEP = 0.15, -- ATK x (1 + this x (players - 1)): Dungeon room packs, and bosses without their own
 	GROUP_SWINGS_STEP = 1, -- extra creatures the boss hits per attack, per extra player (so a group isn't a free win)
 	CONTRIBUTION_DAMAGE = 0.10, -- full loot needs this share of the group's damage...
 	CONTRIBUTION_TANK = 0.15, -- ...or this share of the hits the group took

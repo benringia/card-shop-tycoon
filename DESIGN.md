@@ -928,8 +928,9 @@ group, checked before its fragments and every time (not only the first). Below i
   starter combo: a stepping cut, a sideways sweep, a leaping slam (power 0.35 / 0.35 / 0.6, a tap within 0.9 s of a
   cut's end carries on); skill: a spinning slash all round (radius 11, 8 s). Every sword gets its own combo and skill
   (Forge swords, project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15
-  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md); in boss fights players wear the
-  standard body (their own head, face, hair and accessories kept), and back accessories (capes, wings, backpacks) hide.
+  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md); players wear the standard body
+  everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
+  backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
   `UiLayout.combatButtons`): Attack (Click), Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
   Signature (Epic and Legendary cards), small Swap (1-3) and Run; your HP and your creature's top-left. Jumping is off
@@ -1000,7 +1001,8 @@ group, checked before its fragments and every time (not only the first). Below i
   Every member needs the boss open or its fragments (taken only if the fight starts) and a rested summoned creature,
   and must still be near the gate when it starts (others are left out with a message; if the leader is gone the next
   member leads). One boss for the group: HP x (1 + 0.8 (n - 1)), ATK x (1 + 0.08 (n - 1)) (`BossRules.groupStats`;
-  the Frontier bosses use their own `groupAtkStep` 0.1, the Prism Hydra 0.3), and it swings once more per attack per
+  each boss's own `groupAtkStep`: 0.08 for the Wild bosses, 0.1 the Frontier's, 0.3 the Prism Hydra; Dungeon room packs
+  keep `GROUP_ATK_STEP` 0.15), and it swings once more per attack per
   extra player (`GROUP_SWINGS_STEP`, never more targets than players; each swing may go at a player as a quick hit) so
   a group can't hide behind spare bodies. Wave heals only its user's own creatures (stacked Waves from a
   whole group out-healed any boss). Tuned with `lune run tools/balance/bosses [fights] [players]` (the player in the fight):
@@ -1285,7 +1287,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
     │   │   ├── WildService.luau      # wild map (the valley's spawn spots, wooden signs, edges, return portal, boss portals and arena copies), plaza portal, healing spring, monsters (spawn, wander, chase, the valley's crowd-sized population)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
-    │   │   ├── SwordService.luau     # the sword: unlock, drawn/sheathed, standard body, back accessories hidden in boss fights, attack/skill/dodge remotes
+    │   │   ├── SwordService.luau     # the sword: unlock, drawn/sheathed, standard body, back accessories hidden in boss fights (BattleService handles the attack/skill/dodge remotes)
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
@@ -1505,7 +1507,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ### 10.4 Player data schema (v14)
 ```lua
 {
-    version = 13,
+    version = 14,
     cash = 200,
     xp = 0,
     level = 1,
