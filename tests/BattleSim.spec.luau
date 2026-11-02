@@ -38,6 +38,17 @@ local function runToEnd(state: any, maxSeconds: number?): (string?, { any })
 	return state.result, all
 end
 
+-- Steps the fight for this long (0.1 s steps); every event with the fight time it came at
+local function timedEvents(state: any, seconds: number): { { time: number, event: any } }
+	local all = {}
+	for _ = 1, math.round(seconds / 0.1) do
+		for _, event in BattleSim.step(state, 0.1) do
+			table.insert(all, { time = state.time, event = event })
+		end
+	end
+	return all
+end
+
 local function count(events: { any }, predicate: (any) -> boolean): number
 	local n = 0
 	for _, event in events do
@@ -1293,5 +1304,88 @@ return {
 		expect.equal(BattleSim.perkOf(state, "9", "Express"), 0, "nobody")
 		BattleSim.swap(state, "a:r1", "1")
 		expect.equal(BattleSim.perkOf(state, "1", "Express"), 0, "the reserve swapped in has none")
+	end,
+
+	-- Charges (attack animations spec): a charge event a moment before each auto-attack, changing nothing else
+	["every auto-attack is charged first, once"] = function()
+		local state = wild(fighter("a", "Ember", 100000, 10, 10), {}, monster("Bloom", 100000, 1, 10), 41)
+		local timed = timedEvents(state, 20)
+		local lastCharge: { [string]: number } = {}
+		local attacks = 0
+		for _, entry in timed do
+			local e = entry.event
+			if e.type == "charge" then
+				expect.equal(lastCharge[e.from], nil, `{e.from} charged twice before attacking`)
+				lastCharge[e.from] = entry.time
+			elseif e.type == "attack" and not e.kind and e.from then
+				local at = lastCharge[e.from]
+				expect.equal(at ~= nil, true, `{e.from} attacked uncharged at {entry.time}`)
+				expect.equal(entry.time - (at :: number) <= combat.CHARGE_LEAD + 0.1 + 1e-6, true, "charged too early")
+				lastCharge[e.from] = nil
+				attacks += 1
+			end
+		end
+		expect.equal(attacks > 10, true, "both sides attacked")
+	end,
+
+	["charges change nothing: same results and damage as with charges off"] = function()
+		local function run(cfg: any): { string }
+			local state = BattleSim.new(cfg, side({ fighter("a", "Ember", 400, 30, 12) }), side({ monster("Tide", 400, 25, 9) }), 77)
+			local _, events = runToEnd(state, 120)
+			local list = {}
+			for _, e in events do
+				if e.type ~= "charge" then
+					table.insert(list, `{e.type}|{e.from}|{e.to}|{e.damage}|{e.result}`)
+				end
+			end
+			return list
+		end
+		local off = table.clone(combat) :: any
+		off.CHARGE_LEAD = nil
+		local with, without = run(combat), run(off)
+		expect.equal(#with, #without)
+		expect.equal(table.concat(with, ";"), table.concat(without, ";"))
+	end,
+
+	["overcharge's short gaps still charge, with the time left"] = function()
+		local state = wild(fighter("a", "Volt", 100000, 10, 20), {}, monster("Shade", 100000, 1, 10), 42) -- 1 s apart, 0.5 overcharged
+		runFor(state, 1)
+		BattleSim.useAbility(state, "a:a", "element")
+		local timed = timedEvents(state, 4)
+		local charges, attacks = 0, 0
+		for _, entry in timed do
+			local e = entry.event
+			if e.from == "a:a" and e.type == "charge" then
+				charges += 1
+				expect.equal(e.seconds >= 0 and e.seconds <= combat.CHARGE_LEAD + 1e-9, true, `seconds {e.seconds}`)
+			elseif e.from == "a:a" and e.type == "attack" and not e.kind then
+				attacks += 1
+			end
+		end
+		expect.equal(attacks >= 5, true, `overcharged attacks: {attacks}`)
+		expect.equal(math.abs(charges - attacks) <= 1, true, `{charges} charges for {attacks} attacks`)
+	end,
+
+	["a charge is always followed by its attack (a stunned fighter isn't charged)"] = function()
+		local state = wild(fighter("a", "Ember", 100000, 10, 10), {}, monster("Bloom", 100000, 1, 10), 43)
+		state.sides.a.fighters[1].stunUntil = 5
+		local timed = timedEvents(state, 12)
+		for index, entry in timed do
+			local e = entry.event
+			if e.type == "charge" and e.from == "a:a" and entry.time + e.seconds + 0.15 <= 12 then -- its attack is in the window
+				local found = false
+				for later = index + 1, #timed do
+					local next = timed[later]
+					if next.time > entry.time + e.seconds + 0.15 then
+						break
+					end
+					if next.event.type == "attack" and next.event.from == "a:a" and not next.event.kind then
+						found = true
+						break
+					end
+				end
+				expect.equal(found, true, `orphan charge at {entry.time}`)
+			end
+		end
 	end,
 }

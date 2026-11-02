@@ -53,7 +53,8 @@ export type Event = {
 	-- "phase" (from: the boss, kind: its new element, damage: the phase's number) | "down" | "getUp" (heal: HP back) |
 	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter) | "telegraph" (kind "quick": a quick
 	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe": a big attack's ring `ring` on `to`, lands in
-	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe"
+	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe" | "charge" (from: a fighter
+	-- whose auto-attack lands in `seconds`, to: its likely target; clients wind up and fire their effects to land with it)
 	type: string,
 	from: string?,
 	to: string?,
@@ -73,6 +74,7 @@ type Fighter = {
 	id: string, -- prefixed: "a:<id>"
 	rawId: string,
 	perk: Perk?,
+	chargedFor: number, -- the nextAttack its charge event was sent for
 	side: string,
 	element: string,
 	maxHp: number,
@@ -176,6 +178,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		signature = input.signature,
 		elite = input.elite == true,
 		nextAttack = if input.player then math.huge else time + CombatMath.getAttackInterval(combat, input.spd),
+		chargedFor = -1,
 		abilityReady = time,
 		signatureReady = time,
 		overcharge = 0,
@@ -588,6 +591,22 @@ local function attack(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
+-- Its next auto-attack is due within CHARGE_LEAD: tell clients once, so they wind up and land their effects with it
+-- (no random drawn: the likely target comes from targetOf). A fighter stunned through it isn't charged.
+local function charge(state: State, fighter: Fighter, events: { Event })
+	local lead = state.combat.CHARGE_LEAD
+	if not lead or fighter.player or fighter.chargedFor == fighter.nextAttack or fighter.stunUntil >= fighter.nextAttack then
+		return
+	end
+	local left = fighter.nextAttack - state.time
+	if left > lead then
+		return
+	end
+	fighter.chargedFor = fighter.nextAttack
+	local target = targetOf(state, fighter, true)
+	table.insert(events, { type = "charge", from = fighter.id, to = if target then target.id else nil, seconds = math.max(0, left) })
+end
+
 -- Every `every` seconds a boss with playerAttacks starts a big attack: a ring (a slam or a swipe) on each up player,
 -- and with `doubleChance` one more on one of them, each landing after `warning` + HIT_GRACE
 local function bigAttack(state: State, fighter: Fighter, events: { Event })
@@ -807,6 +826,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 			if state.result then
 				return events
 			end
+			charge(state, fighter, events)
 			if state.time >= fighter.nextAttack then
 				if state.time >= fighter.stunUntil then
 					attack(state, fighter, events)

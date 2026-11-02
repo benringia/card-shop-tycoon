@@ -15,6 +15,7 @@ return {
 	ATTACK_MIN = 0.8,
 	ATTACK_MAX = 2.5,
 	DAMAGE_SPREAD = 0.1, -- +-10%
+	CHARGE_LEAD = 0.6, -- seconds before an auto-attack lands that clients hear of it (a "charge" event: wind-up, effects)
 
 	-- Element wheel: each element is strong against the ones listed
 	STRONG = 1.5,
