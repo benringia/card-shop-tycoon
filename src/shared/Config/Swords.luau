@@ -68,4 +68,12 @@ return {
 	SOFT_AIM_RANGE = 14, -- attacking turns you toward a target whose edge is this close...
 	SOFT_AIM_ANGLE = 75, -- ...and within this many degrees of where you face
 	PLAYER_DAMAGE_COLOR = { 255, 214, 92 }, -- your hits' numbers (your creature's stay white)
+	-- Where a sword sits (its model's origin is the grip's centre, the blade along +Y): in the right hand, in the hand's
+	-- space (the grip the animations were keyed with), and on the back, in the UpperTorso's space (the handle up over
+	-- the right shoulder, the blade down to the left hip)
+	HAND_GRIP = { y = -0.18, angleX = -140 },
+	BACK_GRIP = { x = 0.55, y = 0.9, z = 0.62, angleZ = 150 },
+	GRAB_SECONDS = 0.16, -- into the draw, the hand reaches the sword (the draw move's Grab marker)
+	RELEASE_SECONDS = 0.25, -- into the put-away, the sword is back on the back (the sheath move's Release marker)
+	POPUP_TURN = 0.8, -- radians a second the sword turns in the first-sword popup
 }

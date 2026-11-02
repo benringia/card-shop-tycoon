@@ -45,6 +45,7 @@ local FrontierController = require(Controllers:WaitForChild("FrontierController"
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
+local SwordController = require(Controllers:WaitForChild("SwordController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
@@ -68,6 +69,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	SwordController.Start() -- swords on characters, the first-sword popup
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
 	end
@@ -114,4 +116,5 @@ else
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	SwordController.Start() -- swords on characters, the first-sword popup
 end
