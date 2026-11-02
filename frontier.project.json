@@ -21,6 +21,9 @@
       },
       "SwordAnimations": {
         "$path": "assets/animations"
+      },
+      "WeaponModels": {
+        "$path": "assets/weapons"
       }
     },
     "ServerScriptService": {

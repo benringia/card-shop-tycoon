@@ -55,3 +55,17 @@ leaves them alone.
 
 Timing: a cut's `Hit` marker and `Config/Swords` `hitAt` must agree (the server lands damage at `hitAt`). If a move's
 timing changes, change both, and keep `tests/SwordRules.spec`'s combo power check green.
+
+## The sword model
+
+The starter sword is built in Blender by `tools/blender/build_starter_sword.py` (sources in
+`assets/blender/StarterSword/`): Blade, Guard, Grip and Pommel around the grip's centre (the origin), the blade up.
+
+1. Import `StarterSword.fbx` in Studio (3D Importer, Rig Type None). The model's pivot lands on the grip's centre.
+2. Right-click the model → Save to File → `assets/weapons/StarterSword.rbxm`.
+3. `lune run tools/weapons/finish_sword`: the importer drops the Blender colours, so this sets them by part name and
+   makes Grip the PrimaryPart (`tests/CreatureAssets.spec` checks it, and that no script is inside).
+4. Rojo syncs `assets/weapons` to `ReplicatedStorage.WeaponModels` (restart `rojo serve` after adding the mapping).
+
+The game (`SwordController`) welds the model by its grip: in the right hand at `Swords.HAND_GRIP`, on the back at
+`Swords.BACK_GRIP`, `Swords.BACK_SCALE` times bigger there. Until a model exists it draws a code-built stand-in.

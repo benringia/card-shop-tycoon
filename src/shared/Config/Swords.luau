@@ -72,7 +72,8 @@ return {
 	-- space (the grip the animations were keyed with), and on the back, in the UpperTorso's space (the handle up over
 	-- the right shoulder, the blade down to the left hip)
 	HAND_GRIP = { y = -0.18, angleX = -140 },
-	BACK_GRIP = { x = 0.55, y = 0.9, z = 0.62, angleZ = 150 },
+	BACK_GRIP = { x = 0.65, y = 1.15, z = 0.68, angleZ = 150 },
+	BACK_SCALE = 1.4, -- the sword is this much bigger on the back, so it (and the looks the shop will sell) stands out
 	GRAB_SECONDS = 0.16, -- into the draw, the hand reaches the sword (the draw move's Grab marker)
 	RELEASE_SECONDS = 0.25, -- into the put-away, the sword is back on the back (the sheath move's Release marker)
 	POPUP_TURN = 0.8, -- radians a second the sword turns in the first-sword popup

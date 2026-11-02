@@ -86,8 +86,18 @@ local function makeModel(swordId: string): (Model, BasePart, CFrame)
 			item:Destroy() -- bought or imported models can carry scripts: none may run
 		end
 	end
-	local handle = model.PrimaryPart or model:FindFirstChild("Handle") or model:FindFirstChildWhichIsA("BasePart", true)
+	local handle = model.PrimaryPart or model:FindFirstChild("Handle") or model:FindFirstChild("Grip") or model:FindFirstChildWhichIsA("BasePart", true)
 	assert(handle and handle:IsA("BasePart"), "a sword model needs a part")
+	-- Where the hand holds it: its Grip attachment, else the model's pivot (an imported model's: the grip's centre,
+	-- blade up). Made an attachment either way, so scaling the model (bigger on the back) moves it too.
+	local attachment = handle:FindFirstChild("Grip")
+	if not attachment or not attachment:IsA("Attachment") then
+		local made = Instance.new("Attachment")
+		made.Name = "Grip"
+		made.CFrame = handle.CFrame:ToObjectSpace(model:GetPivot())
+		made.Parent = handle
+		attachment = made
+	end
 	for _, item in model:GetDescendants() do
 		if item:IsA("BasePart") then
 			item.Anchored = false
@@ -107,15 +117,20 @@ local function makeModel(swordId: string): (Model, BasePart, CFrame)
 			end
 		end
 	end
-	local attachment = handle:FindFirstChild("Grip")
-	local grip = if attachment and attachment:IsA("Attachment") then attachment.CFrame else CFrame.identity
+	local grip = (attachment :: Attachment).CFrame
 	model.PrimaryPart = handle
 	handle.PivotOffset = grip -- PivotTo moves it by its grip, blade up
 	return model, handle, grip
 end
 
--- Into the right hand, or onto the back
+-- Into the right hand, or onto the back (bigger there: BACK_SCALE, so the sword, and any look on it, shows)
 local function place(view: View, character: Model, inHand: boolean)
+	local scale = if inHand then 1 else Swords.BACK_SCALE
+	if math.abs(view.model:GetScale() - scale) > 1e-3 then
+		view.model:ScaleTo(scale)
+	end
+	local attachment = view.handle:FindFirstChild("Grip")
+	view.grip = if attachment and attachment:IsA("Attachment") then attachment.CFrame else view.grip
 	local hand = character:FindFirstChild("RightHand")
 	local torso = character:FindFirstChild("UpperTorso")
 	local hold, back = Swords.HAND_GRIP, Swords.BACK_GRIP
