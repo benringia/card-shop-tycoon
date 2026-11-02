@@ -17,6 +17,9 @@
       },
       "PackModels": {
         "$path": "assets/packs"
+      },
+      "SwordAnimations": {
+        "$path": "assets/animations"
       }
     },
     "ServerScriptService": {
