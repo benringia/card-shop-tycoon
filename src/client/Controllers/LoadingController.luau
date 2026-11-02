@@ -1,11 +1,10 @@
 --!strict
 -- Drives the loading screen (ReplicatedFirst/LoadingScreen, Config/LoadingScreen): tracks the character, the save (the
--- server's DataLoaded attribute) and your own cards' paintings (downloaded here, so the binder opens with every face
--- drawn), the summoned creature (CreatureController's CreatureReady, or no creature summoned)
+-- server's DataLoaded attribute) and your own cards' paintings (kept drawn here, tiny, so binder pages show every face
+-- the moment they turn), the summoned creature (CreatureController's CreatureReady, or no creature summoned)
 -- and the fight gear (Util/CombatAssets, downloaded now), and writes the step to LocalPlayer attributes the screen
 -- follows (LoadingText, LoadingShare, LoadingNote, LoadingDone). Also hands TeleportService a copy of the screen, so
 -- teleports to and from the Frontier and the Dungeon show it too.
-local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,28 +31,68 @@ local LoadingController = {}
 local gearReady = false
 local artReady = false
 local artStarted = false
+local artCache: ScreenGui? = nil
+local artLabels: { [string]: ImageLabel } = {}
 local nothingSummoned = false -- the party says no creature is summoned: nothing to wait for
 
--- Your cards' small paintings (the binder, shelves and cases draw them) and the face backdrops, downloaded once the
--- server first sends the collection
+-- One picture kept drawn for the session, tiny and nearly invisible in a corner (like Util/Icon): Roblox only gets an
+-- image ready once something draws it (preloading it by id isn't enough), and a face turned onto a page then shows it
+-- at once
+local function keepDrawn(image: string): ImageLabel
+	local existing = artLabels[image]
+	if existing then
+		return existing
+	end
+	if not artCache then
+		local cache = Instance.new("ScreenGui")
+		cache.Name = "CardArtCache"
+		cache.ResetOnSpawn = false
+		cache.DisplayOrder = -10
+		cache.Parent = player:WaitForChild("PlayerGui")
+		artCache = cache
+	end
+	local label = Instance.new("ImageLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromOffset(2, 2)
+	label.Image = image
+	label.ImageTransparency = 0.98
+	label.Parent = artCache
+	artLabels[image] = label
+	return label
+end
+
+-- Your cards' small paintings (the binder, shelves and cases draw them) and the face backdrops, kept drawn from the
+-- first collection the server sends (and any card you get later); the loading screen waits until they're ready
 local function preloadArt(payload: any)
+	local labels = { keepDrawn(CardDesign.IMAGES.GLOW) }
+	for _, id in CardDesign.SCENES do
+		table.insert(labels, keepDrawn(id))
+	end
+	for _, cardId in LoadingRules.ownedCardIds(payload) do
+		local card = Cards.ById[cardId]
+		local art = if card then CardArt.SMALL[card.name] or CardArt.FULL[card.name] else nil
+		if art and art ~= "" then
+			table.insert(labels, keepDrawn(art))
+		end
+	end
 	if artStarted then
 		return
 	end
 	artStarted = true
 	task.spawn(function()
-		local images = { CardDesign.IMAGES.GLOW }
-		for _, id in CardDesign.SCENES do
-			table.insert(images, id)
-		end
-		for _, cardId in LoadingRules.ownedCardIds(payload) do
-			local card = Cards.ById[cardId]
-			local art = if card then CardArt.SMALL[card.name] or CardArt.FULL[card.name] else nil
-			if art and art ~= "" then
-				table.insert(images, art)
+		while os.clock() - started < LoadingScreen.MAX_SECONDS do
+			local pending = false
+			for _, label in labels do
+				if not label.IsLoaded then
+					pending = true
+					break
+				end
 			end
+			if not pending then
+				break
+			end
+			task.wait(0.1)
 		end
-		pcall(ContentProvider.PreloadAsync, ContentProvider, images)
 		artReady = true
 	end)
 end

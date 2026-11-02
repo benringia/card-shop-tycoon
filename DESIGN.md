@@ -1603,8 +1603,10 @@ their saved data.
   Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
   shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Waking up your creature...",
   "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
-  your own cards' paintings (small copies, from the first `CollectionChanged`, so the binder opens with every face
-  drawn), the summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
+  your own cards' paintings (small copies from the first `CollectionChanged`, kept drawn tiny in a hidden
+  `CardArtCache` for the session, cards you get later too: Roblox only gets an image ready once something draws it,
+  and preloading by id reports failures for pictures that draw fine; so binder pages show every face as they turn),
+  the summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
   the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
