@@ -13,13 +13,19 @@
 -- stands (else it's out for the fight). Thunderclaps, Wave and Tidal Shield leave it alone. A boss with playerAttacks
 -- hits players two ways: some of its swings become quick hits on a player (a warning, then the hit), and every few
 -- seconds a big attack puts a closing ring on each player (State.ringCheck says who stepped out). Both land
--- HIT_GRACE after clients show them, so a last-moment dodge still counts.
+-- HIT_GRACE after clients show them, so a last-moment dodge still counts. A landed ring leaves the boss's debuff on the
+-- player (Config/Bosses DEBUFFS; spec 2026-11-02-attack-animations-design): Poison and Burn tick each second, Shocked
+-- stops sword and dodge, Weakened cuts sword damage, Chilled slows the dodge's recharge (the walk slows are the
+-- server's). A new hit refreshes it; going down, leaving or the fight ending clears it.
 local CombatMath = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CombatMath")) :: any
 	else require("../../shared/Util/CombatMath") :: any
 local BossRules = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BossRules")) :: any
 	else require("../../shared/Util/BossRules") :: any
+local Bosses = if game ~= nil
+	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Bosses")) :: any
+	else require("../../shared/Config/Bosses") :: any
 
 local BattleSim = {}
 
@@ -37,8 +43,9 @@ export type Mechanics = {
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
 export type Phase = { below: number, element: string, mechanics: Mechanics }
 -- A boss's attacks on players (Config/Bosses playerAttacks)
--- shape: every ring this boss draws ("slam" | "swipe"); without it each ring is a coin flip
-export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string? }
+-- shape: every ring this boss draws ("slam" | "swipe"); without it each ring is a coin flip. debuff: what a landed ring
+-- leaves on the player (a Config/Bosses DEBUFFS kind, or "byPhase": its current element's)
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string? }
 -- What State.ringCheck is asked when a ring lands: its id (from the "ring" event), its target and shape
 export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
@@ -54,7 +61,9 @@ export type Event = {
 	-- "phase" (from: the boss, kind: its new element, damage: the phase's number) | "down" | "getUp" (heal: HP back) |
 	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter) | "telegraph" (kind "quick": a quick
 	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe": a big attack's ring `ring` on `to`, lands in
-	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe" | "charge" (from: a fighter
+	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe" (and "Poison" | "Burn" each
+	-- second of those debuffs, with no `from`) | "debuff" (to: a player fighter, kind: its DEBUFFS kind, seconds) |
+	-- "charge" (from: a fighter
 	-- whose auto-attack lands in `seconds`, to: its likely target; clients wind up and fire their effects to land with it)
 	type: string,
 	from: string?,
@@ -124,7 +133,12 @@ type Fighter = {
 	dodgeReady: number, -- player fighter: its next dodge
 	playerAttacks: PlayerAttacks?, -- boss: its attacks on players
 	bigReady: number, -- boss: its next big attack
+	debuff: Debuff?, -- player fighter: a boss's debuff on it
 }
+
+-- A boss's debuff on a player fighter: its kind (Config/Bosses DEBUFFS), until when, its next damage tick, and the boss
+-- (credited with the damage)
+type Debuff = { kind: string, untilTime: number, tick: number, by: Fighter }
 
 type Side = {
 	name: string,
@@ -219,6 +233,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		dodgeReady = 0,
 		playerAttacks = input.playerAttacks,
 		bigReady = if input.playerAttacks then time + input.playerAttacks.every else math.huge,
+		debuff = nil,
 	}
 end
 
@@ -325,6 +340,9 @@ end
 
 local function finish(state: State, result: string, events: { Event })
 	state.result = result
+	for _, fighter in state.sides.a.fighters do
+		fighter.debuff = nil
+	end
 	table.insert(events, { type = "end", result = result })
 end
 
@@ -426,11 +444,69 @@ local function hurtPlayer(state: State, target: Fighter, amount: number, events:
 		return
 	end
 	target.down = true
+	target.debuff = nil
 	target.downUntil = state.time + state.combat.DOWN_SECONDS
 	table.insert(events, { type = "down", to = target.id })
 	local side = (state.sides :: any)[target.side] :: Side
 	if #standing(side) == 0 and not state.result then
 		finish(state, other(state, side).name, events)
+	end
+end
+
+-- The debuff a player fighter has now: its kind and Config/Bosses DEBUFFS entry (nil when none)
+local function debuffOn(state: State, fighter: Fighter): (string?, any)
+	local debuff = fighter.debuff
+	if not debuff or state.time >= debuff.untilTime then
+		return nil, nil
+	end
+	return debuff.kind, Bosses.DEBUFFS[debuff.kind]
+end
+
+-- A ring from `from` landed on `target`: its debuff (playerAttacks.debuff, "byPhase": its current element's). The same
+-- kind again only lasts longer (its damage keeps its one tick a second); another replaces it
+local function giveDebuff(state: State, from: Fighter, target: Fighter, events: { Event })
+	local attacks = from.playerAttacks
+	local kind = if attacks then attacks.debuff else nil
+	if kind == "byPhase" then
+		kind = Bosses.DEBUFF_BY_ELEMENT[from.element]
+	end
+	local spec = if kind then Bosses.DEBUFFS[kind] else nil
+	if not kind or not spec or target.down or target.left then
+		return
+	end
+	local current = target.debuff
+	if current and current.kind == kind and state.time < current.untilTime then
+		current.untilTime = state.time + spec.seconds
+		current.by = from
+	else
+		target.debuff = { kind = kind, untilTime = state.time + spec.seconds, tick = state.time + 1, by = from }
+	end
+	table.insert(events, { type = "debuff", to = target.id, kind = kind, seconds = spec.seconds })
+end
+
+-- A player fighter's debuff this step: Poison and Burn take their share each second it covered; it ends on time, or
+-- when the player is down or gone
+local function tickDebuff(state: State, fighter: Fighter, events: { Event })
+	local debuff = fighter.debuff
+	if not debuff then
+		return
+	end
+	if fighter.down or fighter.left then
+		fighter.debuff = nil
+		return
+	end
+	local spec = Bosses.DEBUFFS[debuff.kind]
+	if spec and spec.perSecond then
+		while fighter.debuff == debuff and debuff.tick <= math.min(state.time, debuff.untilTime) + 1e-9 do
+			debuff.tick += 1
+			local damage = math.max(1, math.round(spec.perSecond * fighter.maxHp))
+			table.insert(events, { type = "attack", kind = debuff.kind, to = fighter.id, damage = damage })
+			debuff.by.dealt += math.min(damage, fighter.hp)
+			hurtPlayer(state, fighter, damage, events)
+		end
+	end
+	if fighter.debuff == debuff and state.time >= debuff.untilTime then
+		fighter.debuff = nil
 	end
 end
 
@@ -675,6 +751,9 @@ local function landPending(state: State, events: { Event })
 			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = damage })
 			pending.from.dealt += math.min(damage, target.hp)
 			hurtPlayer(state, target, damage, events)
+			if pending.ring then
+				giveDebuff(state, pending.from, target, events)
+			end
 		end
 	end
 	state.pending = waiting
@@ -817,6 +896,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 
 	for _, side in { state.sides.a, state.sides.b } do
 		for _, fighter in side.fighters do
+			tickDebuff(state, fighter, events)
 			burn(state, fighter, events)
 			bossMechanics(state, fighter, events)
 			getUp(state, side, fighter, events)
@@ -926,6 +1006,7 @@ function BattleSim.withdraw(state: State, owner: string): { Event }
 		for _, fighter in side.fighters do
 			if fighter.owner == owner and not fighter.left then
 				fighter.left = true
+				fighter.debuff = nil
 				had = true
 				table.insert(events, { type = "leave", from = fighter.id })
 			end
@@ -1107,6 +1188,10 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	elseif fighter.down then
 		return nil, "down"
 	end
+	local debuff, spec = debuffOn(state, fighter)
+	if debuff == "Shocked" then
+		return nil, "stunned"
+	end
 	local target, targetSide = find(state, targetId)
 	if not target or targetSide ~= state.sides.b or target.fainted or target.left then
 		return nil, "target"
@@ -1114,7 +1199,7 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	local side = (state.sides :: any)[fighter.side] :: Side
 	fighter.atk = creatureAtk(state, side, ownerKey(fighter))
 	local events: { Event } = {}
-	hit(state, fighter, target, power, events, kind, true)
+	hit(state, fighter, target, power * (if spec and spec.sword then spec.sword else 1), events, kind, true)
 	return events, nil
 end
 
@@ -1132,8 +1217,12 @@ function BattleSim.dodge(state: State, owner: string): ({ Event }?, string?)
 	elseif fighter.dodgeReady - state.time > 1 / state.combat.TICK_RATE + 1e-6 then
 		return nil, "cooldown" -- a tick of slack: the request can arrive up to a step after the sim's last time
 	end
+	local debuff, spec = debuffOn(state, fighter)
+	if debuff == "Shocked" then
+		return nil, "stunned"
+	end
 	fighter.dodgeUntil = state.time + state.combat.DODGE_SECONDS
-	fighter.dodgeReady = state.time + state.combat.DODGE_COOLDOWN
+	fighter.dodgeReady = state.time + state.combat.DODGE_COOLDOWN * (if spec and spec.dodgeCooldown then spec.dodgeCooldown else 1)
 	return { { type = "dodge", from = fighter.id } }, nil
 end
 

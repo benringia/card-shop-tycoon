@@ -1007,6 +1007,13 @@ group, checked before its fragments and every time (not only the first). Below i
   Crab a pincer snap (splash, two slashes), Cave Bat a dive (claw slashes, dark burst), Spark Beetle a horn charge
   (a bolt from its pincers), Ash Wolf a lunging bite (fang slashes, embers), Magma Golem a ground punch (fiery burst,
   rock dust, a ground ring).
+- **Boss debuffs** (same spec): a ring that lands on a player leaves its boss's debuff (`Config/Bosses` DEBUFFS,
+  `playerAttacks.debuff`, `BattleSim`): Meadow Warden Entangled (2 s, walk 60% slower), Cave Brood Queen Poison (4 s,
+  2% of max HP a second), Ember Colossus Burn (3 s, 3.5% a second), Frost Tyrant Chilled (3 s, walk 30% slower, the
+  dodge recharges 1.5x slower), Storm Sovereign Shocked (0.5 s, no sword or dodge; stuns never pass 1 s), Rift
+  Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
+  Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
+  stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
