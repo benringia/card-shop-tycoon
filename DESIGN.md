@@ -1602,8 +1602,9 @@ their saved data.
 - **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
   Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
   shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Waking up your creature...",
-  "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`), the
-  summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
+  "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
+  your own cards' paintings (small copies, from the first `CollectionChanged`, so the binder opens with every face
+  drawn), the summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
   the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The

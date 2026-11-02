@@ -6,8 +6,8 @@ local expect = require("./lib/expect")
 
 local cfg = LoadingScreen
 
-local function status(character: boolean, data: boolean, creature: boolean, gear: boolean): LoadingRules.Status
-	return { character = character, data = data, creature = creature, gear = gear }
+local function status(character: boolean, data: boolean, creature: boolean, gear: boolean, art: boolean?): LoadingRules.Status
+	return { character = character, data = data, art = if art == nil then data else art, creature = creature, gear = gear }
 end
 
 return {
@@ -67,5 +67,23 @@ return {
 		for _, name in cfg.FAN_CARDS do
 			expect.equal(typeof(CardArt.SMALL[name]), "string", name)
 		end
+	end,
+
+	["the cards step also waits for your cards' paintings, but only a slow save gets the note"] = function()
+		local step = LoadingRules.progress(status(true, true, true, true, false), 1, cfg)
+		expect.equal(step, 2, "save in, paintings still downloading")
+		local _, _, _, slow = LoadingRules.progress(status(true, true, false, false, false), cfg.SLOW_SECONDS + 1, cfg)
+		expect.equal(slow, false, "the save isn't what's slow")
+	end,
+
+	["the card ids you own: stacks and individual cards, once each"] = function()
+		local ids = LoadingRules.ownedCardIds({
+			stacks = { c1 = { C = { normal = 2, foil = 0 } }, c2 = {} },
+			beasts = { b1 = { cardId = "c2" }, b2 = { cardId = "c3" }, b3 = { cardId = 7 } },
+		})
+		table.sort(ids)
+		expect.equal(table.concat(ids, ","), "c1,c2,c3")
+		expect.equal(#LoadingRules.ownedCardIds({}), 0)
+		expect.equal(#LoadingRules.ownedCardIds("junk" :: any), 0)
 	end,
 }
