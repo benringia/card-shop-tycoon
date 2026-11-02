@@ -65,7 +65,13 @@ return {
 		local high = CombatMath.getMonsterStats(wild, "Mossling", 5, false) :: any
 		local elite = CombatMath.getMonsterStats(wild, "Mossling", 1, true) :: any
 		assert(high.hp > low.hp and high.atk > low.atk, "grows")
-		expect.equal(elite.hp, math.round(low.hp * wild.ELITE_STAT_MULTIPLIER), "elite hp")
+		local mossling = wild.SPECIES.Mossling
+		expect.near(elite.hp, low.hp * (mossling.eliteHp or wild.ELITE_HP_MULTIPLIER), 1, "elite hp")
+		expect.near(elite.atk, low.atk * (mossling.eliteAtk or wild.ELITE_ATK_MULTIPLIER), 1, "elite atk")
+		local custom = { SPECIES = { X = { hp = 100, atk = 10, spd = 10, eliteHp = 3, eliteAtk = 2 } }, MONSTER_GROWTH = 0, ELITE_HP_MULTIPLIER = 1.5, ELITE_ATK_MULTIPLIER = 1.5 }
+		local x = CombatMath.getMonsterStats(custom :: any, "X", 1, true) :: any
+		expect.equal(x.hp, 300, "a species' own elite HP")
+		expect.equal(x.atk, 20, "a species' own elite ATK")
 		expect.isNil(CombatMath.getMonsterStats(wild, "Nope", 1, false), "unknown")
 	end,
 
@@ -96,6 +102,16 @@ return {
 			local interval = CombatMath.getAttackInterval(combat, spd)
 			expect.equal(interval < previous, true, `SPD {spd}`)
 			previous = interval
+		end
+	end,
+	["wild monsters' quick hits on the player: a share of their HP, elites harder, never a ring"] = function()
+		for _, world in { wild, require("../src/shared/Config/Frontier") } do
+			local normal = CombatMath.getMonsterAttacks(world, false)
+			local elite = CombatMath.getMonsterAttacks(world, true)
+			expect.equal(normal.quick > 0 and normal.quick < 0.5, true, "a share of the player's HP")
+			expect.equal(elite.quick > normal.quick, true, "elites hit harder")
+			expect.equal(normal.big, 0, "no ring damage")
+			expect.equal(normal.every, math.huge, "no rings at all")
 		end
 	end,
 }

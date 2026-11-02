@@ -1582,4 +1582,18 @@ return {
 		end
 		expect.equal(charges >= 8, true, `charges {charges}`)
 	end,
+	["creaturesDecide: the side loses once its creatures faint, even with its player up"] = function()
+		local function play(decide: boolean?): string?
+			local state = BattleSim.new(combat, {
+				fighters = { owned("p1", "1", 20), playerInput("1") },
+				abilities = false,
+				canRun = false,
+				creaturesDecide = decide,
+			}, { fighters = { monster("Bloom", 100000, 50, 10) }, abilities = false, canRun = false }, 5)
+			runFor(state, 10)
+			return state.result
+		end
+		expect.equal(play(true), "b", "lost when the creature fainted")
+		expect.equal(play(nil), nil, "a boss fight goes on with the player up")
+	end,
 }

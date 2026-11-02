@@ -53,8 +53,9 @@ export type RingInfo = { id: number, target: string, shape: string }
 -- A fight perk (Config/Party FIGHT_PERKS): its kind ("Hype", "Calm", "Express", "Hustle", "Haggle") and value
 export type Perk = { kind: string, value: number }
 export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
--- callIn: false closes the call-in window (boss fights: only swaps)
-export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean? }
+-- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
+-- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
+export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
 	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
@@ -153,6 +154,7 @@ type Side = {
 	swapReadyAt: { [string]: number }, -- by owner
 	callIn: boolean, -- false: no call-in window (boss fights)
 	lastAtk: { [string]: number }, -- by owner: the ATK of their last creature on the field (their sword's damage)
+	creaturesDecide: boolean, -- lost once no creature stands (SideInput.creaturesDecide)
 }
 
 export type State = {
@@ -263,6 +265,7 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		swapReadyAt = {},
 		callIn = input.callIn ~= false,
 		lastAtk = lastAtk,
+		creaturesDecide = input.creaturesDecide == true,
 	}
 end
 
@@ -526,7 +529,8 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 			return
 		end
 		autoSwap(state, side, ownerKey(target), events)
-		if #standing(side) == 0 and not state.result then
+		local beaten = #standing(side) == 0 or (side.creaturesDecide and #standingCreatures(side) == 0)
+		if beaten and not state.result then
 			finish(state, other(state, side).name, events)
 		end
 	end

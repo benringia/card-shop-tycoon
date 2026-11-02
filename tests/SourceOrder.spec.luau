@@ -207,4 +207,21 @@ return {
 		end
 		assert(#missing == 0, `remotes not exported: {table.concat(missing, ", ")}`)
 	end,
+	-- Luau refuses to load a file where a line starts with "(" right after a line ending in ")": it could be one call
+	-- (f(x)(y)) or two statements, and the whole module fails ("Ambiguous syntax"), taking its requirers down with it
+	["no line starts with ( right after a line ending in )"] = function()
+		local files = {}
+		listFiles("src", files)
+		local problems = {}
+		for _, path in files do
+			local lines = codeLines(fs.readFile(path))
+			for index = 2, #lines do
+				local previous = string.match(lines[index - 1], "^(.-)%s*$")
+				if string.match(lines[index], "^%s*%(") and string.sub(previous, -1) == ")" then
+					table.insert(problems, `{path}:{index}`)
+				end
+			end
+		end
+		assert(#problems == 0, `ambiguous lines:\n    {table.concat(problems, "\n    ")}`)
+	end,
 }

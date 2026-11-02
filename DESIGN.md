@@ -634,8 +634,38 @@ Lune-tested).
 | Caves | 5–10 | Cave Bat (Shade), Spark Beetle (Volt) | elites only |
 | Ember Ridge | 10–15 | Magma Golem (Ember), Ash Wolf (Ember) | all |
 
-About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, ×1.6 stats, ×3 rewards).
-Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
+About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, 1.35x size, about twice
+the HP, ×3 rewards). Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
+
+**You in wild fights** (owner 2026-11-03): with a sword (the free starter at shop level 3) you fight normal monsters
+and elites beside your creature, as in boss fights: Attack, Dodge, the sword's skill, the Pet button and Run. The
+monster turns a third of its swings on you while a creature of yours stands and sends quick hits at you (8% of your HP,
+elites 12%, `Wild.PLAYER_QUICK` / `ELITE_PLAYER_QUICK`, `CombatMath.getMonsterAttacks`; dodge them; no rings outside
+boss fights). The fight is still lost once your creatures faint (`creaturesDecide` in `BattleSim`): you going down
+only stops your sword, and you get up again while a creature stands. Without a sword yet the fight is the creature's
+alone, as before. Dungeon rooms stay creature-only (only the Hydra's chamber puts you in). Monster HP and ATK were
+retuned for it with `lune run tools/balance/wild [fights] [wild|frontier|both]` (the card at the monster's level whose
+Power is nearest the zone boss's recommended Power; no sword / standing still / fighting well): a normal monster at its
+zone's middle level takes about 12.5 s fought well (won 85-100%) and is won about 75% standing still; the Meadow comes
+before the sword, so its pair is tuned for the creature alone (Mossling 79%, Puddle Crab 66%). Elites take 25-35 s and
+are won about 65% fought well (55-77% by species), so a call-in helps. A wild fight is lost once the creatures faint,
+so a longer fight needs softer hits: elites have about twice the HP and hit a little softer than their species
+(`ELITE_HP_MULTIPLIER` / `ELITE_ATK_MULTIPLIER` Wild 2.1 / 0.8, the Meadow pair its own 2.5 / 1.2 and 2.5 / 1.0 as
+`eliteHp` / `eliteAtk`; Frontier 2.3 / 0.6), still harder than elites were before. Base stats at level 1 (HP / ATK):
+
+| Zone | Species |
+|---|---|
+| Meadow | Mossling 175 / 6, Puddle Crab 179 / 6.1 |
+| Caves | Cave Bat 260 / 8.4, Spark Beetle 258 / 10.1 |
+| Ember Ridge | Magma Golem 444 / 17, Ash Wolf 445 / 10.9 |
+| Frostwood | Frost Wisp 670 / 19.9, Shade Lynx 706 / 19.4 |
+| Stormpeak | Storm Hawk 797 / 19.3, Lava Brute 826 / 24 |
+| The Rift | Rift Horror 801 / 20.7, Prism Crab 753 / 22.3 |
+
+Rewards per win are unchanged, so the pace moves earnings per minute (a middle-level normal monster plus about 8 s
+walking, creature alone before → fought well now): the Meadow 25-28 s → 12.5 s (about +60%), the Caves 13-15 s →
+12.5 s (level), Ember Ridge 9-12 s → 12.5 s (about -15%), the Frontier 4-6 s → 12.5 s (about -40%; standing still
+about -60%). The shop's earnings and the pack loop (`tools/economy/sim`) don't count monster fights.
 
 **Wild monster models** (spec `2026-11-01-wild-monster-models-design.md`, the user's style B "wild-touched", each
 design picked from concepts and kept unlike the cards): each species has its own rigged model in
@@ -1075,10 +1105,12 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Wild fight HUD** (owner 2026-11-03, layout A: the boss fight's look without the sword): the monster's name and HP
   in the top bar (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
   ring with its HP top left (a called-in one's bar under it, the perk chip), and the slanted buttons bottom right
-  (`CombatHud.new(..., wild)`, `UiLayout.wildButtons`): the Pet button big where Attack is in boss fights (the first of
-  your creatures on the field that's ready acts; R on PC), the Super move above it when one has it, Run with its chance
-  ("RUN 90%", a cooldown after a failed try) and Call in showing the card it brings ("CALL IN 3S", only while the
-  window is open; 1-3 on PC). PvP keeps the bar below.
+  (`CombatHud.new(..., wild, sword)`, `UiLayout.wildButtons`): with a sword, the boss fight's buttons (Attack, Dodge,
+  the skill, the Pet button) and your HP bar on top with your creature's and a called-in one's under it; without one
+  yet, the Pet button big where Attack is in boss fights (the first of your creatures on the field that's ready acts;
+  R on PC) and the Super move above it when one has it. Both add Run with its chance ("RUN 90%", a cooldown after a
+  failed try) and Call in showing the card it brings ("CALL IN 3S", only while the window is open; 1-3 on PC). PvP
+  keeps the bar below.
 - **Fight bar** (PvP): kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below (`layoutBar` in BattleController).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
@@ -1195,7 +1227,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (`DungeonRules.readyToStart`; after `ARRIVAL_WAIT` 60 s a player who never came, e.g. a failed teleport, is left
   behind). Then three rooms open in turn, each a sealed ring with a "Fight" gate. Its pack of elites appears (`Config/Dungeon.ROOMS`:
   2 Frost Wisp/Shade Lynx at Lv 45, 2 Storm Hawk/Lava Brute at Lv 47, 3 Rift Horror/Prism Crab/Lava Brute at Lv 50;
-  elite stats with ATK x0.35, `PACK_SCALE`, scaled to the group like a boss, with swings) and each monster gets a
+  elite stats times `PACK_SCALE` HP x0.21 / ATK x0.33, which keeps the rooms as they were before the Frontier's
+  2026-11-03 retune, scaled to the group like a boss, with swings; the rooms stay creature-only) and each monster gets a
   small HP bar. Creatures keep their HP from room to room; a creature that faints is out for the rest of the run
   (even once its normal rest is over); no spring, no healing. A room win pays the pack's elite XP and cash, no cards
   or items, and opens the door on. A player whose whole party is down (they stay in the fight until it ends), who runs

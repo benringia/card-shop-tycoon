@@ -858,6 +858,12 @@ local function packInput(id: string, monster: Monster, size: number): BattleSim.
 	return { id = id, element = monster.element, hp = hp, atk = atk, spd = stats.spd, elite = monster.elite, swings = swings }
 end
 
+-- Whether a player fights beside their creature: always against a boss, and against a wild monster once they have
+-- a sword (owner 2026-11-03; a Dungeon room's pack stays the creatures' fight)
+local function fightsWithSword(player: Player, boss: boolean, run: boolean): boolean
+	return boss or (not run and SwordService.GetSword(player) ~= nil)
+end
+
 -- Players (the first leads) against one monster (and a Dungeon room's pack). Every check is done by the caller.
 local function startFight(players: { Player }, monster: Monster, options: RunOptions?): boolean
 	local boss = if monster.boss then Bosses.BOSSES[monster.boss] else nil
@@ -890,7 +896,8 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			phases = if boss then boss.phases else nil,
 			boss = boss ~= nil,
 			swings = swings,
-			playerAttacks = if boss then boss.playerAttacks else nil,
+			-- A wild monster's quick hits on a player who fights with a sword (no rings outside boss fights)
+			playerAttacks = if boss then boss.playerAttacks else CombatMath.getMonsterAttacks(Wild, monster.elite),
 		})
 	end
 	local pack = if options and options.pack then options.pack else {}
@@ -913,7 +920,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
 		table.insert(leaders, leaderInput)
-		if boss then
+		if fightsWithSword(player, boss ~= nil, run) then
 			-- The player fights beside their creature (never a creature's target; down instead of fainting)
 			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10 })
 		end
@@ -930,7 +937,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = 0 })
 	end
 	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights
-	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil }
+	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil, creaturesDecide = not boss and not run }
 	local sim = BattleSim.new(Combat, sideA, { fighters = foes, abilities = false, canRun = false }, rng:NextInteger(1, 2 ^ 30))
 	if boss or run then
 		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
@@ -1050,6 +1057,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			intro = if boss then Bosses.INTRO_SECONDS else nil,
 			names = names,
 			buttonNames = SwordService.ShowButtonNames(player), -- the HUD names its buttons (first boss fights)
+			sword = fightsWithSword(player, boss ~= nil, run), -- the player is in the fight: the HUD's sword buttons
 			allies = allies,
 			group = #members > 1,
 			foes = foes,
@@ -1180,17 +1188,18 @@ local function onRun(player: Player)
 	end
 end
 
--- A member's boss fight they can swing in now (past the intro, still in it), or nil
+-- A member's fight they can swing in now (they fight in it: a boss, or a wild monster with a sword; past the intro,
+-- still in it), or nil
 local function swordFight(player: Player): (Fight?, Member?)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
-	if not fight or not member or not fight.monster.boss or fight.ended or inIntro(fight) then
+	if not fight or not member or fight.ended or inIntro(fight) or not BattleSim.getFighter(fight.sim, `a:@{member.owner}`) then
 		return nil, nil
 	end
 	return fight, member
 end
 
--- Who a sword can hit: the boss and its adds still standing, with their sizes on the ground plane
+-- Who a sword can hit: the boss and its adds (or a wild monster) still standing, with their sizes on the ground plane
 local function swordTargets(fight: Fight): { SwordRules.Target }
 	local list: { SwordRules.Target } = {}
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
@@ -1200,7 +1209,9 @@ local function swordTargets(fight: Fight): { SwordRules.Target }
 			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius })
 		end
 	end
-	add(MONSTER_ID, fight.monster.marker, (if boss then boss.ringRadius or Bosses.RING_RADIUS else Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE)
+	local radius = if boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE
+		else Bosses.ADD_HIT_RADIUS * (if fight.monster.elite then Wild.ELITE_SIZE else 1)
+	add(MONSTER_ID, fight.monster.marker, radius)
 	for id, monster in fight.adds do
 		add(id, monster.marker, Bosses.ADD_HIT_RADIUS)
 	end

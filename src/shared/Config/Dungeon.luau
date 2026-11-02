@@ -12,8 +12,10 @@ return {
 		{ species = { "Rift Horror", "Prism Crab", "Lava Brute" }, count = 3, level = 50 },
 	},
 
-	-- Pack monsters' elite stats (Frontier ELITE_STAT_MULTIPLIER) times these: three rooms in a row with no healing
-	PACK_SCALE = { hp = 1, atk = 0.35 },
+	-- Pack monsters' elite stats (Frontier ELITE_HP_MULTIPLIER / ELITE_ATK_MULTIPLIER) times these: three rooms in a row
+	-- with no healing. Rescaled when the Frontier's monsters were retuned for the player's sword (2026-11-03) so the rooms
+	-- stay as they were (`lune run tools/balance/bosses 200 1 7`: the Hydra reached every time with 78-89% HP left)
+	PACK_SCALE = { hp = 0.21, atk = 0.33 },
 
 	ARRIVAL_WAIT = 60, -- the rooms stay shut until every player has loaded; after this long a player who never came is left behind
 	OUT_DELAY = 4, -- seconds before a player who is out goes back to the Frontier

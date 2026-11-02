@@ -164,7 +164,9 @@ local reserveKey = "" -- the reserve ids the call-in buttons were built for
 local hiddenHud: { GuiObject } = {}
 local prompts: { [BasePart]: ProximityPrompt } = {}
 local combatHud: CombatHud.Hud? = nil -- boss and wild fights: the controls and HP instead of the bar (PvP keeps the bar)
-local combatWild = false -- the combat HUD is a wild monster fight's (no sword)
+local combatWild = false -- the combat HUD is a wild monster fight's
+local combatSword = false -- the player fights in it with their sword (boss fights; wild ones once they have one)
+local foeElite = false -- this fight's monster is an elite (bigger: a bigger sword target)
 local COMBAT_ACTION = "BossCombat"
 local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
 
@@ -640,8 +642,8 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		table.insert(reserves, { id = id, name = name or "Card", hp = 0, maxHp = 0, art = if name then CardArt.pick(name, 80, CardArtConfig) else nil })
 	end
 	hud.update({
-		playerHp = if combatWild then 1 elseif me then me.hp else 0,
-		playerMax = if combatWild then 1 elseif me then me.maxHp else Combat.PLAYER_HP,
+		playerHp = if me then me.hp elseif combatSword then 0 else 1,
+		playerMax = if me then me.maxHp elseif combatSword then Combat.PLAYER_HP else 1,
 		down = me ~= nil and me.down == true,
 		out = me ~= nil and me.out == true,
 		creatureId = if creature then creature.id else "",
@@ -1227,7 +1229,9 @@ local function swordTargets(): { any }
 	local boss = if bossId then Bosses.BOSSES[bossId] else nil
 	for id, marker in markers do
 		if string.sub(id, 1, 2) == "b:" and marker.Parent then
-			local radius = if id == MONSTER_ID and boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE else Bosses.ADD_HIT_RADIUS
+			local radius = if id == MONSTER_ID and boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE
+				elseif id == MONSTER_ID and foeElite then Bosses.ADD_HIT_RADIUS * Wild.ELITE_SIZE
+				else Bosses.ADD_HIT_RADIUS
 			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius })
 		end
 	end
@@ -1263,8 +1267,8 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 		return Enum.ContextActionResult.Pass
 	end
 	local key = input.KeyCode
-	if combatWild and (key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.E) then
-		return Enum.ContextActionResult.Pass -- no sword in a wild fight
+	if not combatSword and (key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.E) then
+		return Enum.ContextActionResult.Pass -- no sword in this fight yet
 	elseif key == Enum.KeyCode.LeftShift then
 		SwordController.Dodge()
 	elseif key == Enum.KeyCode.E then
@@ -1281,10 +1285,11 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 	return Enum.ContextActionResult.Sink
 end
 
--- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD without the
--- sword, its buttons always named
-local function startCombat(showNames: boolean, wild: boolean?)
+-- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD, its buttons
+-- always named, the sword on once the player has one (`sword`)
+local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 	combatWild = wild == true
+	combatSword = sword ~= false
 	local hud = CombatHud.new(screenGui, {
 		attack = SwordController.Attack,
 		dodge = SwordController.Dodge,
@@ -1299,9 +1304,9 @@ local function startCombat(showNames: boolean, wild: boolean?)
 		run = function()
 			Remotes.RunFight:FireServer()
 		end,
-	}, showNames, wild)
+	}, showNames, wild, combatSword)
 	combatHud = hud
-	if not wild then
+	if combatSword then
 		SwordController.SetCombat(true, swordTargets, hud.setCooldown)
 	end
 	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
@@ -1312,7 +1317,7 @@ local function stopCombat()
 	combatHud = nil
 	if hud then
 		hud.destroy()
-		if not combatWild then
+		if combatSword then
 			SwordController.SetCombat(false)
 		end
 		ContextActionService:UnbindAction(COMBAT_ACTION)
@@ -1363,10 +1368,12 @@ local function onStarted(payload: any)
 	end
 	stopCombat()
 	combatWild = false
+	combatSword = false
+	foeElite = payload.elite == true
 	if boss then
 		startCombat(payload.buttonNames == true)
 	elseif mode == "wild" then
-		startCombat(true, true)
+		startCombat(true, true, payload.sword == true)
 		bossName.Text = monsterName.Text
 	end
 	bossName.TextColor3 = if boss then UIKit.Colors.Danger elseif payload.elite then ELITE_COLOR else Color3.new(1, 1, 1)
@@ -1676,7 +1683,7 @@ end
 
 -- Click attacks in boss fights (not over a button or while typing)
 local function onClick(input: InputObject, processed: boolean)
-	if processed or not combatHud or combatWild or introCard.Visible or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+	if processed or not combatHud or not combatSword or introCard.Visible or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 		return
 	end
 	SwordController.Attack()

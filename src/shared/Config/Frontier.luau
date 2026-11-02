@@ -19,14 +19,16 @@ return {
 		{ name = "The Rift", minLevel = 35, maxLevel = 50, recommended = 35, species = { "Rift Horror", "Prism Crab" }, aggro = true, color = { 70, 40, 90 }, elements = { "Ember", "Tide", "Bloom", "Volt", "Shade" } },
 	},
 
-	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1)
+	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). HP and ATK tuned with
+	-- `lune run tools/balance/wild` (owner 2026-11-03): about 12.5 s fought well at the zone's middle level, won about 75%
+	-- standing still
 	SPECIES = {
-		["Frost Wisp"] = { element = "Tide", hp = 190, atk = 6, spd = 11, shape = "slime" },
-		["Shade Lynx"] = { element = "Shade", hp = 200, atk = 7, spd = 14, shape = "wolf" },
-		["Storm Hawk"] = { element = "Volt", hp = 180, atk = 7, spd = 15, shape = "bat" },
-		["Lava Brute"] = { element = "Ember", hp = 280, atk = 8, spd = 7, shape = "golem" },
-		["Rift Horror"] = { element = "Shade", hp = 240, atk = 9, spd = 12, shape = "beetle" },
-		["Prism Crab"] = { element = "Bloom", hp = 260, atk = 8, spd = 9, shape = "crab" },
+		["Frost Wisp"] = { element = "Tide", hp = 670, atk = 19.9, spd = 11, shape = "slime" },
+		["Shade Lynx"] = { element = "Shade", hp = 706, atk = 19.4, spd = 14, shape = "wolf" },
+		["Storm Hawk"] = { element = "Volt", hp = 797, atk = 19.3, spd = 15, shape = "bat" },
+		["Lava Brute"] = { element = "Ember", hp = 826, atk = 24, spd = 7, shape = "golem" },
+		["Rift Horror"] = { element = "Shade", hp = 801, atk = 20.7, spd = 12, shape = "beetle" },
+		["Prism Crab"] = { element = "Bloom", hp = 753, atk = 22.3, spd = 9, shape = "crab" },
 	},
 	FLYING = { "Storm Hawk" },
 	MONSTER_GROWTH = 0.12,
@@ -35,7 +37,17 @@ return {
 	RESPAWN_MIN = 20,
 	RESPAWN_MAX = 40,
 	ELITE_CHANCE = 1 / 6,
-	ELITE_STAT_MULTIPLIER = 1.6,
+	-- An elite's HP and ATK are its species' times these, unless the species sets its own eliteHp / eliteAtk (bigger;
+	-- SPD x1.1). Tuned with `lune run tools/balance/wild` (owner 2026-11-03): about 25-35 s, won about 65% fighting well.
+	-- A wild fight is lost once your creatures faint, so a longer fight needs softer hits: an elite has about twice the
+	-- HP and hits a little softer than its species (still harder than elites before the player joined), while its quick
+	-- hits on the player hit harder (ELITE_PLAYER_QUICK)
+	ELITE_HP_MULTIPLIER = 2.3,
+	ELITE_ATK_MULTIPLIER = 0.6,
+	-- With a sword the player fights beside their creature (owner 2026-11-03): a monster's quick hits on them take this
+	-- share of the player's HP (CombatMath.getMonsterAttacks); no rings outside boss fights
+	PLAYER_QUICK = 0.08,
+	ELITE_PLAYER_QUICK = 0.12,
 	ELITE_REWARD_MULTIPLIER = 3,
 
 	-- Movement
