@@ -928,7 +928,9 @@ group, checked before its fragments and every time (not only the first). Below i
   starter combo: a stepping cut, a sideways sweep, a leaping slam (power 0.35 / 0.35 / 0.6, a tap within 0.9 s of a
   cut's end carries on); skill: a spinning slash all round (radius 11, 8 s). Every sword gets its own combo and skill
   (Forge swords, project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15
-  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md); players wear the standard body
+  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`);
+  the HUD's art, the sword's sounds, its moves and model download 6 s after joining (`Util/CombatAssets`, ids listed
+  by `Util/CombatPreload`), so the first fight starts ready; players wear the standard body
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
@@ -1384,6 +1386,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── CombatHud.luau          # the boss-fight HUD: slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
+    │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models after joining
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
     │       └── AfterImage.luau         # the dodge's fading copies of the character
@@ -1496,6 +1499,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── SwordRules.luau    # the combo's next cut, reach and arc, aiming, combo damage per second (pure, Lune-tested)
             ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
             ├── HpBarRules.luau    # HP bar ghost and heal timing, the red edge flash and low-HP pulse, the portrait shake (pure, Lune-tested)
+            ├── CombatPreload.luau # every image, sound and animation id the boss fight needs, from its configs (pure, Lune-tested)
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
