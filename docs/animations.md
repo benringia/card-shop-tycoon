@@ -89,7 +89,9 @@ pipeline:
   a hit: `strike`; a ring: `specialWindup` timed to its warning; the ring's hit: `specialRelease`); `Util/FightFx`
   plays it through `MonsterController.PlayClip` and draws the boss's effects (`Config/AttackFx` BOSS).
 - Bosses keyed so far: `meadowWarden`, `caveBroodQueen`, `emberColossus` (`tools/blender/anim_<boss>.py`). The Prism
-  Hydra waits for its remodel.
+  Hydra waits for its remodel. The six valley species' `windup` and `strike` are all in `tools/blender/anim_wild.py`
+  (exported under the game's species name, "Ash Wolf"; `lune run tools/anim/build_bone_clips "Ash Wolf"`).
+  `anim_bone_kit.key_pose` keys a whole pose parents first, straight from the rig.
 - Adding the `MonsterAnimations` mapping needs a `rojo serve` restart (all three project files have it).
 
 ## The sword model

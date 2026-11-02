@@ -993,7 +993,7 @@ group, checked before its fragments and every time (not only the first). Below i
   id>`, docs/animations.md "Bone rigs") played by `Util/MonsterMoves`: a `windup` before each hit (0.6 s before a
   creature hit, over the 0.5 s warning before a quick hit on a player, no glow), the `strike` as it lands with an
   impact there, the `specialWindup` over a ring's warning with sparks in its colour pulling in, then the
-  `specialRelease` as the ring lands, with its effect over the ring (`Config/AttackFx` BOSS, `ElementFx.bossStrike`,
+  `specialRelease` as the ring lands, with its effect over the ring (`Config/AttackFx` BOSS, `ElementFx.monsterStrike`,
   `ElementFx.bossRelease`). One move at a time: a group hit is one strike, nothing interrupts the special. Meadow
   Warden: branch swipe (leafy slash, dust) and root slam (roots burst up across the ring, green shockwave). Cave Brood
   Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
@@ -1001,6 +1001,12 @@ group, checked before its fragments and every time (not only the first). Below i
   tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
   shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
   remodel.
+- **Wild monster attacks** (same spec): each valley species has a keyed `windup` and `strike`
+  (`tools/blender/anim_wild.py`, `MonsterAnimations/<species>`), played the same way as a boss's normal attack, with
+  its impact (`Config/AttackFx` MONSTER, `ElementFx.monsterStrike`): Mossling a headbutt (green burst, dust), Puddle
+  Crab a pincer snap (splash, two slashes), Cave Bat a dive (claw slashes, dark burst), Spark Beetle a horn charge
+  (a bolt from its pincers), Ash Wolf a lunging bite (fang slashes, embers), Magma Golem a ground punch (fiery burst,
+  rock dust, a ground ring).
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of

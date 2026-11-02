@@ -3,6 +3,7 @@ local FightFxRules = require("../src/shared/Util/FightFxRules")
 local AttackFx = require("../src/shared/Config/AttackFx")
 local Combat = require("../src/shared/Config/Combat")
 local Bosses = require("../src/shared/Config/Bosses")
+local Wild = require("../src/shared/Config/Wild")
 local expect = require("./lib/expect")
 
 return {
@@ -51,5 +52,22 @@ return {
 			expect.equal(string.match(moves.sounds.release, "^rbxassetid://%d+$") ~= nil, true, `{bossId} release sound`)
 		end
 		expect.equal(AttackFx.BOSS.prismHydra, nil, "no Hydra until its remodel")
+	end,
+
+	["every wild monster's attack look is a real species', with its sound"] = function()
+		local styles = { bite = true, dive = true, embers = true, headbutt = true, snap = true, spark = true }
+		local count = 0
+		for species, moves in AttackFx.MONSTER do
+			count += 1
+			expect.equal(Wild.SPECIES[species] ~= nil, true, species)
+			expect.equal(styles[moves.strike], true, `{species} strike`)
+			expect.equal(#moves.color, 3, species)
+			expect.equal(string.match(moves.sounds.strike, "^rbxassetid://%d+$") ~= nil, true, `{species} sound`)
+		end
+		local wild = 0
+		for _ in Wild.SPECIES do
+			wild += 1
+		end
+		expect.equal(count, wild, "every species has one")
 	end,
 }

@@ -85,5 +85,38 @@ return {
 			},
 		},
 	},
-	BOSS_CHARGE_SCALE = 3, -- a boss's ring wind-up particles, this many times a creature's
+	-- Wild monsters' normal attacks (keyed clips in ReplicatedStorage.MonsterAnimations/<species>, the same flow as a
+	-- boss's): `strike` the effect where it lands
+	MONSTER = {
+		Mossling = {
+			strike = "headbutt", -- a green burst, dust and a little ground ring
+			color = rgb(120, 200, 96),
+			sounds = { strike = "rbxassetid://9118588165" }, -- Rock Drop On Concrete Drops Breaks 10
+		},
+		["Puddle Crab"] = {
+			strike = "snap", -- a splash and two pincer slashes
+			color = rgb(80, 196, 255),
+			sounds = { strike = "rbxassetid://9125703162" }, -- Mud Puddle Splash 19
+		},
+		["Cave Bat"] = {
+			strike = "dive", -- three claw slashes and a dark burst
+			color = rgb(170, 120, 255),
+			sounds = { strike = "rbxassetid://9114375469" }, -- Fast Pass By Airy Whooshes Windy 4
+		},
+		["Spark Beetle"] = {
+			strike = "spark", -- a lightning bolt from its pincers and a burst
+			color = rgb(250, 214, 60),
+			sounds = { strike = "rbxassetid://9114277757" }, -- Electric Zaps 12
+		},
+		["Ash Wolf"] = {
+			strike = "bite", -- fang slashes top and bottom, ember sparks
+			color = rgb(255, 130, 50),
+			sounds = { strike = "rbxassetid://9125466994" }, -- Creature Bite Pterodactyl Crunch Flying Bug 7
+		},
+		["Magma Golem"] = {
+			strike = "embers", -- a ground punch: a fiery burst, rock dust, a ground ring
+			color = rgb(255, 112, 32),
+			sounds = { strike = "rbxassetid://9119037874" }, -- Shale Break 15
+		},
+	},
 }

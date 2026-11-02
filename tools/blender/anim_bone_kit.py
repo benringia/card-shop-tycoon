@@ -66,6 +66,19 @@ def key_turn(rig, name, frame, degrees=(0, 0, 0), offset=None):
     pb.keyframe_insert("location", frame=frame)
 
 
+def key_pose(rig, frame, pose):
+    """Keys every deform bone at `frame`, parents first: `pose` maps a bone to Euler degrees, or (degrees, offset) for
+    the top bone; bones it leaves out go back to rest."""
+    def depth(bone):
+        return 0 if not bone.parent else 1 + depth(bone.parent)
+    for bone in sorted((b for b in rig.data.bones if b.use_deform), key=depth):
+        value = pose.get(bone.name, (0, 0, 0))
+        if isinstance(value, tuple) and len(value) == 2 and isinstance(value[0], tuple):
+            key_turn(rig, bone.name, frame, value[0], value[1])
+        else:
+            key_turn(rig, bone.name, frame, value)
+
+
 def export_clip(rig, name, frame_start, frame_end, json_dir, markers=None):
     """Writes <json_dir>/<name>.json: each frame (30 a second) every deform bone's model-space rotation (Roblox axes,
     quaternion x y z w) and the top deform bone's offset from rest (Roblox axes, model units); markers by time."""

@@ -5,9 +5,10 @@
 -- event: a charge whose attack never comes (a stun, a faint, a swap) fades without one (Util/AttackTiming). An attack
 -- that arrives with no charge strikes at once. Effects are capped (Util/FightFxRules). The fight controller and PvP
 -- spectators each make one, passing how to reach the creatures.
--- Bosses (Config/AttackFx BOSS) play their keyed clips (Util/MonsterMoves picks which): a wind-up before each hit, the
--- strike with an impact where it lands, the special wind-up with sparks pulling in over a ring's warning, then the
--- release with its effect over the ring. Their effects always play: there is one boss, and they show where it hit.
+-- Bosses and wild monsters (Config/AttackFx BOSS, MONSTER) play their keyed clips (Util/MonsterMoves picks which): a
+-- wind-up before each hit, the strike with an impact where it lands; a boss also the special wind-up with sparks
+-- pulling in over a ring's warning, then the release with its effect over the ring. Their effects always play: one
+-- monster per fight, and they show where it hit.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -247,7 +248,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 	end
 
-	-- A boss's move: its clip (MonsterMoves) and, for a boss with looks (AttackFx.BOSS), the effect
+	-- A boss's or wild monster's move: its clip (MonsterMoves) and, with looks (AttackFx BOSS or MONSTER), the effect
 	local function onMonster(event: any, marker: BasePart, view: MonsterView)
 		local state = moves[marker]
 		if not state then
@@ -258,7 +259,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if move and resolve.playClip then
 			resolve.playClip(marker, move.clip, move.speed, move.hold)
 		end
-		local spec = AttackFx.BOSS[view.key]
+		local spec = AttackFx.BOSS[view.key] or AttackFx.MONSTER[view.key]
 		if not spec then
 			return
 		end
@@ -288,7 +289,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			end
 		elseif event.type == "attack" and not event.dodged then
 			local spot = targetPosition(event.to, view.root.Position)
-			ElementFx.bossStrike(spec.strike, spot, view.root.Position, tint)
+			ElementFx.monsterStrike(spec.strike, spot, view.root.Position, tint)
 			local now = os.clock()
 			if now - strikeSoundAt > 0.2 then -- a group hit in one moment sounds once
 				strikeSoundAt = now

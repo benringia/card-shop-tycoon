@@ -364,8 +364,8 @@ local function scatter(center: Vector3, radius: number): Vector3
 	return center + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
 end
 
--- A boss's normal attack landing at `at`, swung from `from` (Config/AttackFx BOSS strike)
-function ElementFx.bossStrike(style: string, at: Vector3, from: Vector3, color: Color3)
+-- A boss's or wild monster's normal attack landing at `at`, from `from` (Config/AttackFx BOSS and MONSTER strike)
+function ElementFx.monsterStrike(style: string, at: Vector3, from: Vector3, color: Color3)
 	if style == "leaves" then
 		ElementFx.slash(at, from, color, "vine", 2)
 		ElementFx.burst(at, color, 1.2)
@@ -378,6 +378,26 @@ function ElementFx.bossStrike(style: string, at: Vector3, from: Vector3, color: 
 		ElementFx.burst(at, color, 1.6)
 		ElementFx.burst(at - Vector3.new(0, 1.5, 0), DUST, 1.0)
 		shockwave(at - Vector3.new(0, 2.5, 0), color, 5, 0.35)
+	elseif style == "bite" then
+		ElementFx.slash(at + Vector3.new(0, 0.6, 0), from, WEB, "claw", 1)
+		ElementFx.slash(at - Vector3.new(0, 0.6, 0), from, WEB, "claw", 3)
+		ElementFx.burst(at, color, 0.9)
+	elseif style == "dive" then
+		for index = 1, 3 do
+			ElementFx.slash(at, from, color, "claw", index)
+		end
+		ElementFx.burst(at, Color3.fromRGB(60, 30, 90), 0.8)
+	elseif style == "headbutt" then
+		ElementFx.burst(at, color, 0.9)
+		ElementFx.burst(at - Vector3.new(0, 1.5, 0), DUST, 0.7)
+		shockwave(at - Vector3.new(0, 2.5, 0), color, 3, 0.3)
+	elseif style == "snap" then
+		ElementFx.slash(at, from, color, "claw", 1)
+		ElementFx.slash(at, from, color, "claw", 2)
+		ElementFx.burst(at, color, 1.0) -- the splash
+	elseif style == "spark" then
+		ElementFx.bolt(from + Vector3.new(0, 1, 0), at, color, 0.2)
+		ElementFx.burst(at, color, 0.9)
 	end
 end
 
