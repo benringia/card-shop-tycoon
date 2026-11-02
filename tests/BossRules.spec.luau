@@ -494,4 +494,21 @@ return {
 		expect.equal(BossRules.countdownText(1.4), "Teleporting back to town in 2", "partial seconds round up")
 		expect.equal(BossRules.countdownText(0), "Teleporting back to town...")
 	end,
+
+	["each boss has its one ring shape (attack animations spec)"] = function()
+		local shapes = {
+			meadowWarden = "slam",
+			caveBroodQueen = "swipe",
+			emberColossus = "slam",
+			frostTyrant = "slam",
+			stormSovereign = "slam",
+			riftDevourer = "swipe",
+			prismHydra = "swipe",
+		}
+		for id, boss in Bosses.BOSSES do
+			if boss.playerAttacks then
+				expect.equal(boss.playerAttacks.shape, shapes[id], id)
+			end
+		end
+	end,
 }

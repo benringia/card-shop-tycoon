@@ -1388,4 +1388,34 @@ return {
 			end
 		end
 	end,
+
+	-- One ring shape per boss (attack animations spec)
+	["a boss's rings all take its shape"] = function()
+		local attacks = { every = 3, warning = 1, big = 0.05, quick = 0.02, shape = "swipe" }
+		local state = bossFightWithPlayer(31, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		local events = runFor(state, 30)
+		local rings = 0
+		for _, e in events do
+			if e.type == "ring" then
+				rings += 1
+				expect.equal(e.kind, "swipe")
+			end
+		end
+		expect.equal(rings >= 5, true, `rings {rings}`)
+	end,
+
+	["a fixed shape draws the same randoms"] = function()
+		local function run(shape: string?): string
+			local attacks = { every = 3, warning = 1, big = 0.05, quick = 0.02, shape = shape }
+			local state = bossFightWithPlayer(32, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+			local list = {}
+			for _, e in runFor(state, 30) do
+				local kind = if e.type == "ring" or e.kind == "Slam" or e.kind == "Swipe" then "ring" else tostring(e.kind)
+				table.insert(list, `{e.type}|{kind}|{e.from}|{e.to}|{e.damage}`)
+			end
+			return table.concat(list, ";")
+		end
+		expect.equal(run("slam"), run(nil))
+		expect.equal(run("swipe"), run(nil))
+	end,
 }

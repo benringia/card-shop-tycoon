@@ -37,7 +37,8 @@ export type Mechanics = {
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
 export type Phase = { below: number, element: string, mechanics: Mechanics }
 -- A boss's attacks on players (Config/Bosses playerAttacks)
-export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number? }
+-- shape: every ring this boss draws ("slam" | "swipe"); without it each ring is a coin flip
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string? }
 -- What State.ringCheck is asked when a ring lands: its id (from the "ring" event), its target and shape
 export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
@@ -623,7 +624,9 @@ local function bigAttack(state: State, fighter: Fighter, events: { Event })
 	end
 	local function ring(target: Fighter)
 		state.ringCount += 1
-		local shape = if random(state) < 0.5 then "slam" else "swipe"
+		-- The coin is always tossed, so a boss with its own shape draws the same randoms as before
+		local roll = random(state)
+		local shape = attacks.shape or (if roll < 0.5 then "slam" else "swipe")
 		table.insert(state.pending, {
 			kind = if shape == "slam" then "Slam" else "Swipe",
 			at = state.time + attacks.warning + state.combat.HIT_GRACE,

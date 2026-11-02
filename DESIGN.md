@@ -929,8 +929,10 @@ group, checked before its fragments and every time (not only the first). Below i
   strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 1 s cooldown; the
   dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
   third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
-  big attack: a closing ring on each player, a slam under them or a swipe from the boss toward them
-  (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
+  big attack: a closing orange ring (`SwordFx.RING_COLOR`, the owner's pick) on each player, a slam under them or a
+  swipe from the boss toward them, one shape per boss (`playerAttacks.shape`: Meadow Warden, Ember Colossus, Frost
+  Tyrant and Storm Sovereign slam; Cave Brood Queen, Rift Devourer and Prism Hydra swipe; the sim still tosses its old
+  coin so fights draw the same randoms) (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
   creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're

@@ -86,7 +86,7 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 200,
 		shopLevel = 3,
 		minFightSeconds = 12,
-		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10 },
+		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10, shape = "slam" }, -- root slam
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
@@ -122,7 +122,7 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 350,
 		shopLevel = 5,
 		minFightSeconds = 18,
-		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12 },
+		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12, shape = "swipe" }, -- web spit
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
@@ -162,7 +162,7 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 650,
 		shopLevel = 8,
 		minFightSeconds = 25,
-		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14 },
+		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14, shape = "slam" }, -- lava slam
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_emberColossus", count = 5 },
 		fragment = "fragment_frostTyrant",
@@ -194,7 +194,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 12,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 60,
-		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15 },
+		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15, shape = "slam" },
 		unlock = { item = "fragment_frostTyrant", count = 5 },
 		fragment = "fragment_stormSovereign",
 		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
@@ -224,7 +224,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 15,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 70,
-		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17 },
+		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17, shape = "slam" },
 		unlock = { item = "fragment_stormSovereign", count = 8 },
 		fragment = "fragment_riftDevourer",
 		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } },
@@ -253,7 +253,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 18,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 80,
-		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18 },
+		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18, shape = "swipe" },
 		unlock = { item = "fragment_riftDevourer", count = 8 },
 		fragment = "fragment_prismHydra",
 		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
@@ -288,7 +288,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 22,
 		groupAtkStep = 0.3,
 		minFightSeconds = 120,
-		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35 },
+		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe" }, -- prism beam
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
 		clearTitle = "Dungeon Conqueror",

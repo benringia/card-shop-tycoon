@@ -13,7 +13,7 @@ return {
 	CONE_OUTLINE = "rbxassetid://113532760508849",
 	CONE_GLOW = "rbxassetid://124524147480952",
 	RING_FIT = { outline = 1.024, glow = 1.09 }, -- the textures' margins: a texture this many times the area fits it
-	RING_COLOR = rgb(255, 255, 255),
+	RING_COLOR = rgb(255, 122, 26), -- orange (owner's pick from the mockup): stands out on every arena floor
 	RING_OUTLINE_TRANSPARENCY = 0.25,
 	RING_LIFT = 0.15, -- studs above the ground (no z-fighting)
 	RING_FLASH_SECONDS = 0.3, -- the white flash as it lands, fading out
