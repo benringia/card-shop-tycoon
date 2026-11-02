@@ -30,6 +30,8 @@ type Creature = {
 	clock: FightMotion.Clock, -- its moving about in a fight
 	seed: number,
 	chargingUntil: number, -- os.clock: holds still to charge an attack until then
+	dash: { start: number, seconds: number, toward: Vector3, share: number }?, -- an attack's dash in and back
+	element: string,
 	foil: boolean,
 	rarity: string,
 	outline: boolean,
@@ -225,6 +227,8 @@ local function add(marker: BasePart)
 		clock = FightMotion.newClock(),
 		seed = (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name,
 		chargingUntil = 0,
+		dash = nil,
+		element = card.element,
 		foil = marker:GetAttribute("Foil") == true,
 		rarity = card.rarity,
 		outline = false,
@@ -312,7 +316,21 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 		local t = FightMotion.advance(creature.clock, now, now < creature.chargingUntil)
 		local scale = creature.height / Party.CREATURE_HEIGHT
 		local x, z = FightMotion.offset(creature.seed, t, AttackFx.ORBIT)
-		creature.body.offset = CFrame.new(x * scale, 0, z * scale)
+		local offset = Vector3.new(x * scale, 0, z * scale)
+		-- An attack's dash: out toward its target and back, the circling fading out meanwhile
+		local dash = creature.dash
+		if dash then
+			local p = (now - dash.start) / dash.seconds
+			if p >= 1 then
+				creature.dash = nil
+			else
+				local out = math.sin(math.clamp(p, 0, 1) * math.pi)
+				local toward = dash.toward - creature.marker.Position
+				local local3 = creature.marker.CFrame:VectorToObjectSpace(Vector3.new(toward.X, 0, toward.Z) * dash.share)
+				offset = offset * (1 - out) + local3 * out
+			end
+		end
+		creature.body.offset = CFrame.new(offset)
 	else
 		creature.body.offset = nil
 	end
@@ -324,6 +342,31 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 		if (Party.GLOW[creature.rarity] or Party.GLOW.Common).pulse then
 			creature.highlight.OutlineTransparency = 0.35 + 0.35 * math.sin(now * 3)
 		end
+	end
+end
+
+-- What the fight effects need of the creature drawn on this marker (nil if none is drawn)
+function CreatureController.GetFightView(marker: BasePart): { root: BasePart, element: string, height: number }?
+	local creature = creatures[marker]
+	if not creature then
+		return nil
+	end
+	return { root = creature.body.root, element = creature.element, height = creature.height }
+end
+
+-- A fight pose on the creature drawn on this marker (charge, strike, combo, cast)
+function CreatureController.Pose(marker: BasePart, kind: string)
+	local creature = creatures[marker]
+	if creature then
+		CreatureVisuals.pose(creature.body, kind, os.clock())
+	end
+end
+
+-- An attack's dash: the creature runs `share` of the way toward `toward` and back over `seconds`
+function CreatureController.Dash(marker: BasePart, toward: Vector3, share: number, seconds: number)
+	local creature = creatures[marker]
+	if creature then
+		creature.dash = { start = os.clock(), seconds = math.max(seconds, 0.05), toward = toward, share = share }
 	end
 end
 

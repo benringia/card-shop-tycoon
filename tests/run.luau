@@ -73,6 +73,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	LoadingRules = require("./LoadingRules.spec"),
 	AttackTiming = require("./AttackTiming.spec"),
 	FightMotion = require("./FightMotion.spec"),
+	FightFxRules = require("./FightFxRules.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

@@ -968,6 +968,17 @@ group, checked before its fragments and every time (not only the first). Below i
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
   mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
   in one short line (the pet move's by element, `CombatHud.PET_TIPS`).
+- **Creature attacks** (spec `2026-11-02-attack-animations-design.md`): in every fight the sim sends a `charge` event
+  0.6 s (`Combat.CHARGE_LEAD`) before each auto-attack lands (it draws no random: fights and the balance numbers are
+  unchanged). Creatures circle their fight spot (marker attribute `InFight`, `Util/FightMotion`, `AttackFx.ORBIT`: 4
+  studs, a lap about every 7 s, darts) and stop to charge: a crouch and a glow in their element colour with sparks
+  pulling in. Then the element's attack (`Config/AttackFx`, `Util/FightFx`, pieces in `Util/ElementFx`, poses `charge`,
+  `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
+  3-hit vine lash, Volt a lightning zip there and back, Shade a dash in and 3 claw slashes. Each lands with the
+  sim's `attack` event and its damage number (`Util/AttackTiming`); the final hit waits for that event, so a charge
+  whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
+  once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
+  Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
@@ -1419,6 +1430,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
+    │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
+    │       ├── ElementFx.luau          # the pieces of fight effects: charge glow, projectile, burst, bolt, slash, sound
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
         ├── Config/
@@ -1452,7 +1465,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
-        │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
+        │   ├── Combat.luau     # attack timing, charge lead, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
+        │   ├── AttackFx.luau   # attack effects: each element's attack kind and colour, flight, combo, orbit, budget, sounds
         │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel, slash trail, wind-up glow, loss countdown look (plain data)
@@ -1517,6 +1531,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
             ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
+            ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
+            ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
+            ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)

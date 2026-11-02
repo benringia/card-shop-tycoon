@@ -41,6 +41,8 @@ local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
+local CreatureController = require(Controllers:WaitForChild("CreatureController"))
+local FightFx = require(ClientUtil:WaitForChild("FightFx"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local Swords = require(Config:WaitForChild("Swords"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
@@ -144,6 +146,7 @@ local introToken = 0
 local bossMusic: Sound? = nil
 
 local fighting = false
+local fightFx: FightFx.Dispatcher? = nil -- this fight's attack pictures
 local fightNames: { [string]: string } = {}
 local mySide = "a" -- which side of the fight is mine ("a" in the wild)
 local markers: { [string]: BasePart } = {} -- sim fighter id -> its marker part, from the server
@@ -783,7 +786,25 @@ local function swordHit(event: any)
 	end
 end
 
+-- The attack pictures for this fight (Util/FightFx): creatures charge, then their element's attack lands with the hit
+local function newFightFx(): FightFx.Dispatcher
+	return FightFx.new({
+		marker = markerFor,
+		creature = CreatureController.GetFightView,
+		setCharging = CreatureController.SetCharging,
+		pose = CreatureController.Pose,
+		dash = CreatureController.Dash,
+	})
+end
+
 local function onEvents(events: { any })
+	if fightFx then
+		-- Pictures only: a broken effect must never stop the damage numbers and HUD below
+		local ok, err = pcall(fightFx.onEvents, events)
+		if not ok then
+			warn("[BattleController] fight effect failed:", err)
+		end
+	end
 	local me = `a:@{player.UserId}`
 	for _, event in events do
 		if event.type == "attack" and event.to and typeof(event.from) == "string" and string.sub(event.from, 1, 3) == "a:@" then
@@ -1226,6 +1247,10 @@ local function onStarted(payload: any)
 	mySide = if payload.side == "b" then "b" else "a"
 	markers = {}
 	addMarkers(payload.markers)
+	if fightFx then
+		fightFx.destroy()
+	end
+	fightFx = newFightFx()
 	fightNames = if typeof(payload.names) == "table" then payload.names else {}
 	for id, species in (if typeof(payload.foes) == "table" then payload.foes else {}) do
 		if typeof(id) == "string" and typeof(species) == "string" then
@@ -1323,6 +1348,10 @@ end
 
 local function onEnded(summary: any)
 	fighting = false
+	if fightFx then
+		fightFx.destroy()
+		fightFx = nil
+	end
 	-- A fight can end during the intro (a player left): give the camera back
 	if introCard.Visible then
 		introToken += 1
