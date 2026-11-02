@@ -1042,4 +1042,55 @@ return {
 		end
 		assert(CFG.FIDGET_SECONDS.rootslam, "rootslam has a length")
 	end,
+
+	-- Fight attack poses (attack animations spec)
+	["fight: charge crouches and draws back, held"] = function()
+		local early = PetRig.body(CFG, "charge", 0.1, 1, true)
+		local held = PetRig.body(CFG, "charge", 0.8, 1, true)
+		local late = PetRig.body(CFG, "charge", 1, 1, true)
+		expect.equal(held.forward < 0 and held.lift < 0, true, "crouched and drawn back")
+		expect.equal(early.forward > held.forward, true, "it eases in")
+		expect.near(late.forward, held.forward, 1e-6, "held to the end")
+	end,
+
+	["fight: strike lunges forward at its cue, then back"] = function()
+		local cueAt = 0
+		for step = 0, 100 do
+			if PetRig.cue(CFG, "strike", step / 100) then
+				cueAt = step / 100
+				break
+			end
+		end
+		expect.equal(cueAt > 0 and cueAt < 1, true, "it cues")
+		expect.equal(PetRig.body(CFG, "strike", cueAt, 1, true).forward > CFG.STRIKE_LUNGE * 0.9, true, "lunged at the cue")
+		expect.near(PetRig.body(CFG, "strike", 1, 1, true).forward, 0, 1e-6, "back in place")
+	end,
+
+	["fight: a combo lunges three times"] = function()
+		local peaks, last, rising = 0, 0, false
+		for step = 0, 300 do
+			local f = PetRig.body(CFG, "combo", step / 300, 1, true).forward
+			if f < last and rising then
+				peaks += 1
+			end
+			rising = f > last
+			last = f
+		end
+		expect.equal(peaks, 3)
+		expect.equal(PetRig.cue(CFG, "combo", 0.2), true)
+		expect.equal(PetRig.cue(CFG, "combo", 0.1), false)
+	end,
+
+	["fight: cast rears up, then throws with a cue"] = function()
+		expect.equal(PetRig.body(CFG, "cast", 0.3, 1, true).pitch > 0, true, "reared up")
+		expect.equal(PetRig.cue(CFG, "cast", 0.55), false)
+		expect.equal(PetRig.cue(CFG, "cast", 0.65), true)
+		expect.equal(PetRig.body(CFG, "cast", 0.7, 1, true).forward > 0, true, "thrown forward")
+	end,
+
+	["fight: every attack pose has its length"] = function()
+		for _, kind in { "charge", "strike", "combo", "cast" } do
+			expect.equal(typeof(CFG.FIDGET_SECONDS[kind]), "number", kind)
+		end
+	end,
 }
