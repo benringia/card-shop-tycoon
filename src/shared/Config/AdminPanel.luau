@@ -37,6 +37,7 @@ AdminPanel.SECTIONS = {
 		title = "Fights and places",
 		buttons = {
 			{ label = "Wake resting cards", command = "/rest" },
+			{ label = "Tire the party (keep summoned)", command = "/tire" },
 			{ label = "Elite next to me", command = "/elite" },
 			{ label = "Go to the Wild", command = "/wild" },
 			{ label = "Go to the arena", command = "/arena" },

@@ -320,6 +320,9 @@ function DevService.Start()
 	addCommand(folder, "rest", function(player)
 		BattleService.ClearResting(player)
 	end)
+	addCommand(folder, "tire", function(player)
+		BattleService.TireParty(player)
+	end)
 	addCommand(folder, "elite", spawnElite)
 	addCommand(folder, "frontierdrop", function(player)
 		ItemService.GiveItem(player, "starShard", 1)
@@ -364,7 +367,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup")
 end
 
 return DevService

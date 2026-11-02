@@ -178,6 +178,21 @@ function BattleService.ClearResting(player: Player)
 	end
 end
 
+-- DevService's /tire: every party card but the summoned one rests, so a boss fight can be lost in Studio
+function BattleService.TireParty(player: Player)
+	local entries = resting[player]
+	local party = PartyService.GetParty(player)
+	if not entries or not party then
+		return
+	end
+	for slot, beastId in party.slots do
+		if slot ~= party.summoned then
+			entries[beastId] = os.time() + Combat.REST_SECONDS
+		end
+	end
+	sendResting(player)
+end
+
 -- Fighters ------------------------------------------------------------------------------------------------
 
 local function fighterInput(beast: Beast): BattleSim.FighterInput
