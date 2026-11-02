@@ -220,7 +220,9 @@ local function toView(raw: any): Snapshot
 	local own, allies = {}, {}
 	for _, fighter in mine.fighters do
 		local owner = (fighter :: any).owner
-		if not (fighter :: any).benched then -- fainted and swapped out
+		if (fighter :: any).player then
+			continue -- boss fights: the players themselves (their HP shows on the combat HUD)
+		elseif not (fighter :: any).benched then -- fainted and swapped out
 			table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
 		end
 	end

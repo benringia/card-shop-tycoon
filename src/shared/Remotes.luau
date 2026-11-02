@@ -70,6 +70,9 @@ local NAMES = {
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped
 	"SwordState", -- server → client: { sword: string?, popup: boolean } your sword and whether to show the first-sword popup; client → server: () ask
 	"SwordSeen", -- client → server: () the first-sword popup was closed
+	"SwordAttack", -- client → server: () an Attack tap in a boss fight (the server picks the cut and checks reach)
+	"SwordSkill", -- client → server: () the sword skill in a boss fight
+	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
 }
 
 local isServer = RunService:IsServer()
@@ -160,4 +163,7 @@ return {
 	WelcomeSeen = remotes.WelcomeSeen,
 	SwordState = remotes.SwordState,
 	SwordSeen = remotes.SwordSeen,
+	SwordAttack = remotes.SwordAttack,
+	SwordSkill = remotes.SwordSkill,
+	Dodge = remotes.Dodge,
 }

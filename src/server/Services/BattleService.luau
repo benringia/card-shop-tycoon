@@ -8,6 +8,11 @@
 -- calling in and using abilities only on their own creatures, leaving on their own, and paid on their own.
 -- The Dungeon (DungeonService, BossService.StartRun) starts run fights: RunOptions bring a room's pack of monsters and
 -- the HP each creature has left from earlier rooms; every fight reports each member's HP when it ends.
+-- Boss fights put the players in the fight too (spec 2026-11-02-you-in-the-fight-design): each member gets a player
+-- fighter ("a:@<UserId>") beside their one summoned creature (no call-in), swings their sword (SwordAttack, SwordSkill:
+-- timing and reach checked with SwordRules, hits through BattleSim.swordHit), dodges (Dodge) and is hit by the boss's
+-- quick hits and closing rings (each ring's shape is placed here and checked with RingRules as it lands). A player
+-- at 0 HP kneels (character attribute Downed) until they get back up.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -26,6 +31,9 @@ local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Swords = require(Config:WaitForChild("Swords"))
+local RingRules = require(Shared:WaitForChild("Util"):WaitForChild("RingRules"))
+local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -35,6 +43,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
+local SwordService = require(Services:WaitForChild("SwordService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -52,7 +61,13 @@ type Member = {
 	partyIds: { string }, -- all their party cards: they share the XP
 	died: RBXScriptConnection?,
 	leashWarnedAt: number,
+	lastCut: SwordRules.LastCut?, -- boss fights: their sword's last cut (os.clock times)
+	skillReady: number, -- boss fights: os.clock when their sword skill is ready again
 }
+
+-- A big attack's ring as placed when it started (studs on the ground plane): a slam's centre, or a swipe's origin
+-- (the boss), direction and length
+type Ring = { shape: string, x: number, y: number, z: number, dirX: number, dirZ: number, radius: number, length: number, halfAngle: number }
 
 type Fight = {
 	members: { [Player]: Member }, -- still in the fight
@@ -67,6 +82,7 @@ type Fight = {
 	adds: { [string]: Monster }, -- a boss's adds and a room's pack, by sim id ("b:add1"..., "b:p1"...)
 	run: boolean, -- a Dungeon run fight: rewards without items, Run leaves the run
 	endHp: { [Player]: { [string]: number } }, -- each member's creatures' HP when they left the fight (its end or earlier)
+	rings: { [number]: Ring }, -- boss fights: rings still to land, by id
 }
 
 -- The Dungeon: a room's pack (`monster` is its first, `pack` the others) and the HP left from earlier rooms
@@ -86,6 +102,9 @@ local allowAbility = RateLimiter.new(Combat.ACTION_COOLDOWN / 2)
 local allowCallIn = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowRun = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowStart = RateLimiter.new(1)
+local allowSwordAttack = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
+local allowSwordSkill = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
+local allowDodge = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
 local rng = Random.new()
 local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wild fights mid-PvP
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
@@ -215,9 +234,22 @@ local function memberOf(fight: Fight, id: string): Member?
 	return nil
 end
 
+-- The member a player fighter ("a:@<owner>") belongs to
+local function memberByOwner(fight: Fight, owner: string): Member?
+	for _, member in fight.members do
+		if member.owner == owner then
+			return member
+		end
+	end
+	return nil
+end
+
 local function markerFor(fight: Fight, id: string): BasePart?
 	if id == MONSTER_ID then
 		return fight.monster.marker
+	elseif string.sub(id, 1, 3) == "a:@" then
+		local member = memberByOwner(fight, string.sub(id, 4))
+		return if member then getRoot(member.player) else nil
 	end
 	local add = fight.adds[id]
 	if add then
@@ -361,6 +393,76 @@ local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart 
 	addMonsters[id] = monster.id -- clients find the marker by name when it arrives after this message
 end
 
+-- A big attack started: where its ring is (a slam under its target, a swipe from the boss toward them); the event is
+-- sent with the shape so clients draw the same ring
+local function recordRing(fight: Fight, event: BattleSim.Event)
+	local member = memberByOwner(fight, string.sub(event.to or "", 4))
+	local root = if member then getRoot(member.player) else nil
+	local boss = Bosses.BOSSES[fight.monster.boss or ""]
+	local from = fight.monster.marker.Position
+	local at = if root then root.Position else from
+	local ring: Ring = { shape = event.kind or "slam", x = at.X, y = at.Y, z = at.Z, dirX = 0, dirZ = -1, radius = Bosses.RING_SLAM_RADIUS, length = 0, halfAngle = 0 }
+	if ring.shape == "swipe" then
+		local look = fight.monster.marker.CFrame.LookVector
+		local toward = Vector3.new(at.X - from.X, 0, at.Z - from.Z)
+		local direction = if toward.Magnitude > 0.1 then toward.Unit else Vector3.new(look.X, 0, look.Z).Unit
+		ring.x, ring.y, ring.z = from.X, at.Y, from.Z
+		ring.dirX, ring.dirZ = direction.X, direction.Z
+		ring.length = (if boss then boss.ringRadius or Bosses.RING_RADIUS else Bosses.RING_RADIUS) + Bosses.RING_SWIPE_EXTRA
+		ring.halfAngle = Bosses.RING_SWIPE_HALF_ANGLE
+	end
+	fight.rings[event.ring :: number] = ring
+	local view = event :: any
+	for key, value in ring do
+		view[key] = value
+	end
+end
+
+-- BattleSim asks as a ring lands: is its target inside it now? (No character: they can't have stepped out.)
+local function ringInside(fight: Fight, info: BattleSim.RingInfo): boolean
+	local ring = fight.rings[info.id]
+	fight.rings[info.id] = nil
+	local member = memberByOwner(fight, string.sub(info.target, 4))
+	local root = if member then getRoot(member.player) else nil
+	if not ring or not root then
+		return true
+	end
+	local at = root.Position
+	if ring.shape == "slam" then
+		return RingRules.inSlam(ring.x, ring.z, ring.radius, at.X, at.Z)
+	end
+	return RingRules.inSwipe(ring.x, ring.z, ring.dirX, ring.dirZ, ring.length, ring.halfAngle, at.X, at.Z)
+end
+
+-- The boss winds up (a quick hit or a big attack): every client poses it for `seconds` (MonsterController)
+local function windUp(fight: Fight, seconds: number?)
+	local marker = fight.monster.marker
+	marker:SetAttribute("WindUp", seconds or 0)
+	marker:SetAttribute("WindUps", (tonumber(marker:GetAttribute("WindUps")) or 0) + 1)
+end
+
+-- A member's player kneels (down) or stands again: they can't walk or jump while down
+local function setDowned(member: Member, down: boolean)
+	local character = member.player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	if not character or not humanoid then
+		return
+	end
+	character:SetAttribute("Downed", if down then true else nil)
+	local before = humanoid:GetAttribute("WalkSpeedBefore")
+	if down and before == nil then
+		humanoid:SetAttribute("WalkSpeedBefore", humanoid.WalkSpeed)
+		humanoid:SetAttribute("JumpHeightBefore", humanoid.JumpHeight)
+		humanoid.WalkSpeed = 0
+		humanoid.JumpHeight = 0
+	elseif not down and typeof(before) == "number" then
+		humanoid.WalkSpeed = before
+		humanoid.JumpHeight = tonumber(humanoid:GetAttribute("JumpHeightBefore")) or humanoid.JumpHeight
+		humanoid:SetAttribute("WalkSpeedBefore", nil)
+		humanoid:SetAttribute("JumpHeightBefore", nil)
+	end
+end
+
 local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	local markers: { [string]: BasePart } = {}
 	local allies: { [string]: string } = {}
@@ -389,6 +491,16 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			fight.monster.marker:SetAttribute("Enraged", true)
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
+		elseif event.type == "ring" and event.ring then
+			recordRing(fight, event)
+			windUp(fight, event.seconds)
+		elseif event.type == "telegraph" then
+			windUp(fight, event.seconds)
+		elseif (event.type == "down" or event.type == "getUp") and event.to then
+			local member = memberByOwner(fight, string.sub(event.to, 4))
+			if member then
+				setDowned(member, event.type == "down")
+			end
 		end
 	end
 	if #events > 0 then
@@ -549,6 +661,8 @@ local function release(fight: Fight, member: Member): { string }
 	end
 	PartyService.SetHold(player, nil)
 	PartyService.SetLocked(player, false)
+	setDowned(member, false)
+	SwordService.SetBackHidden(player, false)
 	local leaderMarker = PartyService.GetMarker(player)
 	if leaderMarker then
 		leaderMarker:SetAttribute("Fainted", nil)
@@ -730,6 +844,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			phases = if boss then boss.phases else nil,
 			boss = boss ~= nil,
 			swings = swings,
+			playerAttacks = if boss then boss.playerAttacks else nil,
 		})
 	end
 	local pack = if options and options.pack then options.pack else {}
@@ -752,6 +867,10 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
 		table.insert(leaders, leaderInput)
+		if boss then
+			-- The player fights beside their creature (never a creature's target; down instead of fainting)
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10 })
+		end
 		for _, beastId in partyIds do
 			local beast = CardService.GetBeast(player, beastId)
 			-- In a run, a card that fainted in an earlier room stays out even once it has rested
@@ -762,10 +881,10 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 				table.insert(reserves, input)
 			end
 		end
-		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0 })
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = 0 })
 	end
-	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them)
-	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil }
+	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights
+	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil }
 	local sim = BattleSim.new(Combat, sideA, { fighters = foes, abilities = false, canRun = false }, rng:NextInteger(1, 2 ^ 30))
 	if boss or run then
 		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
@@ -801,7 +920,13 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		adds = {},
 		run = run,
 		endHp = {},
+		rings = {},
 	}
+	if boss then
+		sim.ringCheck = function(info: BattleSim.RingInfo): boolean
+			return ringInside(fight, info)
+		end
+	end
 	running[fight] = true
 	if boss and boss.phases then
 		monster.marker:SetAttribute("Phase", boss.phases[1].element)
@@ -825,6 +950,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		PartyService.SetLocked(player, true)
 		PartyService.SetHold(player, spots[partyId(member.leaderId)])
 		CardService.SetFighting(player, member.leaderId, true)
+		if boss then
+			SwordService.SetBackHidden(player, true)
+		end
 		local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			member.died = humanoid.Died:Connect(function()
@@ -843,6 +971,10 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local marker = PartyService.GetMarker(member.player)
 		if marker then
 			markers[partyId(member.leaderId)] = marker
+		end
+		local playerRoot = if boss then getRoot(member.player) else nil
+		if playerRoot then
+			markers[`a:@{member.owner}`] = playerRoot -- damage numbers over the player
 		end
 	end
 	for _, member in members do
@@ -1000,6 +1132,104 @@ local function onRun(player: Player)
 	end
 end
 
+-- A member's boss fight they can swing in now (past the intro, still in it), or nil
+local function swordFight(player: Player): (Fight?, Member?)
+	local fight = fights[player]
+	local member = if fight then fight.members[player] else nil
+	if not fight or not member or not fight.monster.boss or fight.ended or inIntro(fight) then
+		return nil, nil
+	end
+	return fight, member
+end
+
+-- Who a sword can hit: the boss and its adds still standing, with their sizes on the ground plane
+local function swordTargets(fight: Fight): { SwordRules.Target }
+	local list: { SwordRules.Target } = {}
+	local boss = Bosses.BOSSES[fight.monster.boss or ""]
+	local function add(id: string, marker: BasePart, radius: number)
+		local fighter = BattleSim.getFighter(fight.sim, id)
+		if fighter and not fighter.fainted then
+			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius })
+		end
+	end
+	add(MONSTER_ID, fight.monster.marker, (if boss then boss.ringRadius or Bosses.RING_RADIUS else Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE)
+	for id, monster in fight.adds do
+		add(id, monster.marker, Bosses.ADD_HIT_RADIUS)
+	end
+	return list
+end
+
+-- A cut or the skill lands: every target `reaches` says is hit (from where the player stands and faces now) takes it
+local function strike(fight: Fight, member: Member, power: number, kind: string, reaches: (px: number, pz: number, lookX: number, lookZ: number, target: SwordRules.Target) -> boolean)
+	local root = getRoot(member.player)
+	if fight.ended or fight.members[member.player] ~= member or not root then
+		return
+	end
+	local look = root.CFrame.LookVector
+	local events: { BattleSim.Event } = {}
+	for _, target in swordTargets(fight) do
+		if reaches(root.Position.X, root.Position.Z, look.X, look.Z, target) then
+			for _, event in BattleSim.swordHit(fight.sim, member.owner, target.id, power, kind) or {} do
+				table.insert(events, event)
+			end
+		end
+	end
+	if #events > 0 then
+		handleEvents(fight, events)
+		if fight.sim.result then
+			endFight(fight, outcomeOf(fight.sim.result))
+		end
+	end
+end
+
+-- An Attack tap: the next cut of the combo (SwordRules.nextCut), landing at its strike frame
+local function onSwordAttack(player: Player)
+	local fight, member = swordFight(player)
+	local swordId = SwordService.GetSword(player)
+	if not allowSwordAttack(player) or not fight or not member or not swordId then
+		return
+	end
+	local sword = Swords.SWORDS[swordId]
+	local now = os.clock()
+	local index, startAt = SwordRules.nextCut(sword.combo, member.lastCut, now, Swords.COMBO_RESET)
+	if not index or not startAt then
+		return
+	end
+	member.lastCut = { index = index, startedAt = startAt }
+	SwordService.Touch(player)
+	local cut = sword.combo[index]
+	task.delay(startAt - now + cut.hitAt, strike, fight, member, cut.power * sword.power, "Sword", function(px, pz, lookX, lookZ, target)
+		return SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc)
+	end)
+end
+
+-- The sword skill: everything round you, on its own cooldown
+local function onSwordSkill(player: Player)
+	local fight, member = swordFight(player)
+	local swordId = SwordService.GetSword(player)
+	if not allowSwordSkill(player) or not fight or not member or not swordId or os.clock() < member.skillReady then
+		return
+	end
+	local skill = Swords.SWORDS[swordId].skill
+	member.skillReady = os.clock() + skill.cooldown
+	SwordService.Touch(player)
+	task.delay(skill.hitAt, strike, fight, member, skill.power * Swords.SWORDS[swordId].power, "Skill", function(px, pz, _lookX, _lookZ, target)
+		return SwordRules.inRadius(px, pz, target.x, target.z, target.radius, skill.radius)
+	end)
+end
+
+-- A dodge: untouchable for a moment (the sim decides; the dash itself is the client's)
+local function onDodge(player: Player)
+	local fight, member = swordFight(player)
+	if not allowDodge(player) or not fight or not member then
+		return
+	end
+	local events = BattleSim.dodge(fight.sim, member.owner)
+	if events then
+		handleEvents(fight, events)
+	end
+end
+
 -- Loop ----------------------------------------------------------------------------------------------------
 
 -- A member who can't go on: their character or summoned creature is gone
@@ -1139,6 +1369,9 @@ function BattleService.Start()
 	Remotes.CallIn.OnServerEvent:Connect(onCallIn)
 	Remotes.UseAbility.OnServerEvent:Connect(onUseAbility)
 	Remotes.RunFight.OnServerEvent:Connect(onRun)
+	Remotes.SwordAttack.OnServerEvent:Connect(onSwordAttack)
+	Remotes.SwordSkill.OnServerEvent:Connect(onSwordSkill)
+	Remotes.Dodge.OnServerEvent:Connect(onDodge)
 
 	WildService.AddTravelBlocker(function(player)
 		return if fights[player] then "You can't travel during a fight." else nil
