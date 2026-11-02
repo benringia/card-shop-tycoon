@@ -933,7 +933,13 @@ group, checked before its fragments and every time (not only the first). Below i
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
   `UiLayout.combatButtons`): Attack (Click), Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
-  Signature (Epic and Legendary cards), small Swap (1-3) and Run; your HP and your creature's top-left. Jumping is off
+  Signature (Epic and Legendary cards), small Swap (1-3) and Run. Top-left your headshot in a bevelled ring with
+  your creature's card on a badge, beside your HP and your creature's in slanted neon bars (`Util/HpBar`, ticks every
+  20%); the boss's HP is the same bar across the top, red. A hit drops the fill at once and leaves a ghost of the
+  lost HP (red on yours, pale gold on the boss's) that holds 0.35 s, then drains in 0.45 s, with a white flash; a heal
+  moves a pale lead ahead and the fill rises to it. When you're hit the portrait shakes with a red ring and the
+  screen's edges flash red for 0.55 s, stronger for a bigger share of your HP; below 30% HP they keep pulsing
+  (`Util/HpBarRules`, numbers in `Config/CombatHud`). Jumping is off
   in boss fights (the dodge replaces it). Attacks turn you softly toward the boss; the camera stays free; the server
   checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
   slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
@@ -1256,7 +1262,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/town/                # hand-placed town scenery (TownDecor.rbxm) → Workspace.TownDecor
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
-├── assets/ui/combat/           # the boss-fight HUD's slanted button and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
+├── assets/ui/combat/           # the boss-fight HUD's slanted button, HP bar, hit flash and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
 ├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
 ├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels (docs/animations.md "The sword model")
 ├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py)
@@ -1376,7 +1382,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
-    │       ├── CombatHud.luau          # the boss-fight HUD: slanted buttons with icons, cooldowns and key chips, your HP and your creature's
+    │       ├── CombatHud.luau          # the boss-fight HUD: slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
+    │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
     │       └── AfterImage.luau         # the dodge's fading copies of the character
@@ -1414,7 +1421,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
         │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
-        │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys and colours (plain data)
+        │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel, slash trail, wind-up glow, loss countdown look (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
@@ -1488,6 +1495,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
             ├── SwordRules.luau    # the combo's next cut, reach and arc, aiming, combo damage per second (pure, Lune-tested)
             ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
+            ├── HpBarRules.luau    # HP bar ghost and heal timing, the red edge flash and low-HP pulse, the portrait shake (pure, Lune-tested)
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)

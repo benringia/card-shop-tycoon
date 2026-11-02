@@ -1,16 +1,22 @@
 --!strict
--- The boss-fight HUD (spec 2026-11-02-you-in-the-fight-design): your HP and your creature's top-left, and the
+-- The boss-fight HUD (spec 2026-11-02-you-in-the-fight-design): top-left your headshot in a ring (your creature's
+-- card on a badge) beside your HP and your creature's in slanted neon bars (Util/HpBar), and the
 -- controls in "anime slash" panels (Config/CombatHud) placed by UiLayout.combatButtons: Attack, Dodge, sword Skill,
 -- Pet skill (and the creature's Signature when it has one), Swap (pops out your rested cards when there's more than
 -- one) and Run. Each button drains top-down while it cools down, with the seconds left. BattleController builds one
--- per boss fight and feeds it the fight's snapshots; SwordController reports the sword's own cooldowns.
+-- per boss fight and feeds it the fight's snapshots; SwordController reports the sword's own cooldowns. When you're
+-- hit the portrait shakes with a red ring and the screen's edges flash red (pulsing below 30% HP: Util/HpBarRules).
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
+local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local HpBar = require((script.Parent :: Instance):WaitForChild("HpBar"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 
 local CombatHud = {}
@@ -21,7 +27,9 @@ export type View = {
 	playerMax: number,
 	down: boolean,
 	out: boolean,
+	creatureId: string,
 	creatureName: string,
+	creatureArt: string?, -- its card's painting, for the badge
 	creatureHp: number,
 	creatureMax: number,
 	hasSignature: boolean,
@@ -46,6 +54,7 @@ export type Hud = {
 type Button = { frame: ImageButton, drain: Frame, shade: ImageLabel, seconds: TextLabel, readyAt: number, total: number }
 
 local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
+local PORTRAIT_BACK = Color3.fromRGB(42, 29, 51) -- behind the headshot and the card while they load
 
 local function color(rgb: { number }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
@@ -143,19 +152,79 @@ local function makeButton(parent: Instance, name: string, onPress: () -> ()): Bu
 	return { frame = frame, drain = drain, shade = shade, seconds = seconds, readyAt = 0, total = 1 }
 end
 
--- One HP line: a label over a bar
-local function statusRow(parent: Instance, order: number, fill: Color3): (TextLabel, Frame)
+-- One HP line: a label over a slanted bar `height` pixels tall
+local function statusRow(parent: Instance, order: number, height: number, look: HpBar.Look): (TextLabel, HpBar.Bar)
 	local row = Instance.new("Frame")
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, 0, 0, 34)
+	row.Size = UDim2.new(1, 0, 0, 18 + height)
 	row.LayoutOrder = order
 	row.Parent = parent
-	local label = UIKit.label(row, "", Enum.Font.GothamBold, UIKit.textSize("small"), Color3.new(1, 1, 1))
+	local label = UIKit.label(row, "", Enum.Font.FredokaOne, UIKit.textSize("small"), Color3.new(1, 1, 1))
 	label.Size = UDim2.new(1, 0, 0, 16)
 	UIKit.outlined(label)
-	local track, inside = UIKit.bar(row, 1, fill)
-	track.Position = UDim2.fromOffset(0, 18)
-	return label, inside
+	local bar = HpBar.new(row, height, look, CombatHudConfig.HP_BAR.GHOST)
+	bar.frame.Position = UDim2.fromOffset(0, 18)
+	bar.frame.Size = UDim2.new(1, -height * CombatHudConfig.HP_BAR.SLANT, 0, height)
+	return label, bar
+end
+
+local function ringColors(colors: { { number } }): ColorSequence
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color(colors[1])),
+		ColorSequenceKeypoint.new(0.5, color(colors[2])),
+		ColorSequenceKeypoint.new(1, color(colors[3])),
+	})
+end
+
+-- Your headshot in a bevelled ring, your creature's card on a badge at its corner. Returns the ring (it shakes), its
+-- shading, its hurt glow and the badge.
+local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIStroke, ImageLabel)
+	local spec = CombatHudConfig.PORTRAIT
+	local holder = Instance.new("Frame")
+	holder.Name = "Portrait"
+	holder.BackgroundTransparency = 1
+	holder.Position = UDim2.new(0, 0, 0.5, -size / 2)
+	holder.Size = UDim2.fromOffset(size, size)
+	holder.Parent = parent
+	local ring = Instance.new("Frame")
+	ring.Name = "Ring"
+	ring.BackgroundColor3 = Color3.new(1, 1, 1)
+	ring.Size = UDim2.fromScale(1, 1)
+	ring.Parent = holder
+	UIKit.corner(ring, size)
+	local shading = Instance.new("UIGradient")
+	shading.Rotation = 45
+	shading.Color = ringColors(spec.RING_COLORS)
+	shading.Parent = ring
+	local glow = Instance.new("UIStroke")
+	glow.Color = color(spec.HURT_COLORS[2])
+	glow.Thickness = 3
+	glow.Transparency = 1
+	glow.Parent = ring
+	local face = Instance.new("ImageLabel")
+	face.Name = "Headshot"
+	face.BackgroundColor3 = PORTRAIT_BACK
+	face.Image = `rbxthumb://type=AvatarHeadShot&id={(Players.LocalPlayer :: Player).UserId}&w=150&h=150`
+	face.Position = UDim2.fromOffset(spec.RING, spec.RING)
+	face.Size = UDim2.new(1, -2 * spec.RING, 1, -2 * spec.RING)
+	face.Parent = ring
+	UIKit.corner(face, size)
+	local badgeSize = math.round(size * spec.BADGE)
+	local badge = Instance.new("ImageLabel")
+	badge.Name = "CreatureBadge"
+	badge.BackgroundColor3 = PORTRAIT_BACK
+	badge.ScaleType = Enum.ScaleType.Crop
+	badge.AnchorPoint = Vector2.new(1, 1)
+	badge.Position = UDim2.new(1, math.round(badgeSize * 0.3), 1, math.round(badgeSize * 0.18))
+	badge.Size = UDim2.fromOffset(badgeSize, badgeSize)
+	badge.Visible = false
+	badge.Parent = ring
+	UIKit.corner(badge, badgeSize)
+	local edge = Instance.new("UIStroke")
+	edge.Color = color(CombatHudConfig.HP_BAR.CREATURE.edge)
+	edge.Thickness = 2.5
+	edge.Parent = badge
+	return ring, shading, glow, badge
 end
 
 function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
@@ -165,21 +234,49 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
 	root.Size = UDim2.fromScale(1, 1)
 	root.Parent = parent
 
+	-- The red edges: the whole screen, the top bar too (MainGui starts below it)
+	local inset = GuiService:GetGuiInset()
+	local vignette = Instance.new("ImageLabel")
+	vignette.Name = "HitFlash"
+	vignette.BackgroundTransparency = 1
+	vignette.Image = CombatHudConfig.HIT_FLASH.IMAGE
+	vignette.ImageColor3 = color(CombatHudConfig.HIT_FLASH.COLOR)
+	vignette.ImageTransparency = 1
+	vignette.Position = UDim2.fromOffset(0, -inset.Y)
+	vignette.Size = UDim2.new(1, 0, 1, inset.Y)
+	vignette.ZIndex = 0
+	vignette.Visible = false
+	vignette.Parent = root
+
+	local portraitSize = if UIKit.isPhone() then CombatHudConfig.PORTRAIT.PHONE_SIZE else CombatHudConfig.PORTRAIT.SIZE
+	local barSpec = CombatHudConfig.HP_BAR
 	local status = Instance.new("Frame")
 	status.Name = "Status"
 	status.BackgroundTransparency = 1
 	status.Position = UDim2.fromOffset(12, 8)
-	status.Size = UDim2.new(CombatHudConfig.STATUS_WIDTH, 0, 0, 76)
+	status.Size = UDim2.new(CombatHudConfig.STATUS_WIDTH, 0, 0, math.max(portraitSize, 2 * 18 + barSpec.HEIGHT + barSpec.SMALL_HEIGHT + 6))
 	status.Parent = root
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(CombatHudConfig.STATUS_MAX_WIDTH, 120)
 	limit.Parent = status
+	local ring, ringShading, ringGlow, badge = portrait(status, portraitSize)
+	local rows = Instance.new("Frame")
+	rows.Name = "Rows"
+	rows.BackgroundTransparency = 1
+	rows.Position = UDim2.fromOffset(portraitSize + 16, 0)
+	rows.Size = UDim2.new(1, -(portraitSize + 16), 1, 0)
+	rows.Parent = status
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Padding = UDim.new(0, 6)
-	layout.Parent = status
-	local playerLabel, playerFill = statusRow(status, 1, color(CombatHudConfig.PLAYER_HP_COLOR))
-	local creatureLabel, creatureFill = statusRow(status, 2, color(CombatHudConfig.CREATURE_HP_COLOR))
+	layout.Parent = rows
+	local playerLabel, playerBar = statusRow(rows, 1, barSpec.HEIGHT, barSpec.PLAYER)
+	local creatureLabel, creatureBar = statusRow(rows, 2, barSpec.SMALL_HEIGHT, barSpec.CREATURE)
+	local lastPlayerHp: number? = nil
+	local creatureId: string? = nil
+	local hitAt, hitPeak = -math.huge, 0
+	local wasHurt = false
 
 	local latest: View? = nil
 	local picker: Frame? = nil
@@ -266,8 +363,27 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
 		end
 	end
 
+	-- The red edges (a hit's flash or the low-HP pulse), the portrait's shake and its red ring
+	local function feedback(now: number)
+		local view = latest
+		local share = if view and view.playerMax > 0 then view.playerHp / view.playerMax else 1
+		local beaten = view ~= nil and (view.down or view.out)
+		local alpha = HpBarRules.edgeAlpha(now, hitAt, hitPeak, share, beaten, CombatHudConfig)
+		vignette.Visible = alpha > 0.005
+		vignette.ImageTransparency = 1 - alpha
+		local x, y = HpBarRules.shake(now, hitAt, CombatHudConfig)
+		ring.Position = UDim2.fromOffset(x, y)
+		local hurt = now - hitAt < CombatHudConfig.PORTRAIT.HURT_SECONDS
+		if hurt ~= wasHurt then
+			wasHurt = hurt
+			ringShading.Color = ringColors(if hurt then CombatHudConfig.PORTRAIT.HURT_COLORS else CombatHudConfig.PORTRAIT.RING_COLORS)
+			ringGlow.Transparency = if hurt then 0.1 else 1
+		end
+	end
+
 	local ticker = RunService.RenderStepped:Connect(function()
 		local now = os.clock()
+		feedback(now)
 		for _, button in buttons do
 			local left = button.readyAt - now
 			local share = math.clamp(left / button.total, 0, 1)
@@ -281,9 +397,22 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
 		local beaten = view.down or view.out
 		playerLabel.Text = if view.out then "You · OUT (watching)" elseif view.down then "You · DOWN" else `You · {math.round(view.playerHp)} / {view.playerMax}`
 		playerLabel.TextColor3 = if beaten then color(CombatHudConfig.DOWN_COLOR) else Color3.new(1, 1, 1)
-		playerFill.Size = UDim2.fromScale(if view.playerMax > 0 then math.clamp(view.playerHp / view.playerMax, 0, 1) else 0, 1)
+		if lastPlayerHp and view.playerHp < lastPlayerHp then
+			hitAt = os.clock()
+			hitPeak = HpBarRules.flashPeak(lastPlayerHp - view.playerHp, view.playerMax, CombatHudConfig)
+		end
+		lastPlayerHp = view.playerHp
+		playerBar.set(view.playerHp, view.playerMax)
 		creatureLabel.Text = `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
-		creatureFill.Size = UDim2.fromScale(if view.creatureMax > 0 then math.clamp(view.creatureHp / view.creatureMax, 0, 1) else 0, 1)
+		if view.creatureId ~= creatureId then
+			-- A new creature (a swap): its own HP at once, no ghost from the last one's
+			creatureId = view.creatureId
+			creatureBar.reset(view.creatureHp, view.creatureMax)
+			badge.Image = view.creatureArt or ""
+			badge.Visible = view.creatureArt ~= nil
+		else
+			creatureBar.set(view.creatureHp, view.creatureMax)
+		end
 		buttons.signature.frame.Visible = view.hasSignature
 		for _, name in { "attack", "dodge", "skill" } do
 			buttons[name].frame.ImageTransparency = if beaten then 0.6 else CombatHudConfig.PANEL_TRANSPARENCY
@@ -295,6 +424,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks): Hud
 
 	local function destroy()
 		ticker:Disconnect()
+		playerBar.destroy()
+		creatureBar.destroy()
 		if resized then
 			resized:Disconnect()
 		end

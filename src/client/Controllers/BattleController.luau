@@ -25,6 +25,9 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
+local CardArtConfig = require(Config:WaitForChild("CardArt"))
+local CombatHudConfig = require(Config:WaitForChild("CombatHud"))
+local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 -- The server wild map in the main game, the Frontier in the Frontier place
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -32,6 +35,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
+local HpBar = require(ClientUtil:WaitForChild("HpBar"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -125,7 +129,7 @@ local endTitle: TextLabel
 local endBody: TextLabel
 local bossBar: Frame -- boss fights: name and HP across the top of the screen
 local bossName: TextLabel
-local bossHpFill: Frame
+local bossHp: HpBar.Bar -- the slanted neon bar, its ghost pale gold
 local bossHpText: TextLabel
 local addsRow: Frame -- boss fights: its adds' HP, under the boss bar
 local addBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
@@ -575,7 +579,11 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		playerMax = if me then me.maxHp else Combat.PLAYER_HP,
 		down = me ~= nil and me.down == true,
 		out = me ~= nil and me.out == true,
+		creatureId = if creature then creature.id else "",
 		creatureName = if creature then fightNames[creature.id] or "Creature" else "Creature",
+		creatureArt = if creature and fightNames[creature.id]
+			then CardArt.pick(fightNames[creature.id], CombatHudConfig.PORTRAIT.SIZE, CardArtConfig)
+			else nil,
 		creatureHp = if creature then creature.hp else 0,
 		creatureMax = if creature then creature.maxHp else 1,
 		hasSignature = creature ~= nil and creature.signature ~= nil,
@@ -600,7 +608,8 @@ local function applySnapshot(snapshot: Snapshot)
 	latest, latestAt = snapshot, os.clock()
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
 	if bossId then
-		setBar(bossHpFill, bossHpText, snapshot.monster.hp, snapshot.monster.maxHp)
+		bossHp.set(snapshot.monster.hp, snapshot.monster.maxHp)
+		bossHpText.Text = `{math.max(0, math.round(snapshot.monster.hp))} / {math.round(snapshot.monster.maxHp)}`
 		if snapshot.bossShield > 0 then
 			bossHpText.Text ..= ` + {math.round(snapshot.bossShield)} shield`
 		end
@@ -1231,6 +1240,7 @@ local function onStarted(payload: any)
 		startCombat()
 	end
 	bossBar.Visible = boss ~= nil
+	bossHp.reset(1, 1) -- a new boss starts full, no ghost from the last fight
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
 	packFight = mode == "wild" and boss == nil and #view.enemies > 1
@@ -1461,11 +1471,15 @@ local function build()
 	bossName.Size = UDim2.new(1, -24, 0, 18)
 	bossName.TextXAlignment = Enum.TextXAlignment.Center
 	bossName.TextTruncate = Enum.TextTruncate.AtEnd
-	local bossTrack, bossFill, bossText = makeBar(bossBar, 18, MONSTER_HP_COLOR)
-	bossTrack.Position = UDim2.fromOffset(12, 23)
-	bossTrack.Size = UDim2.new(1, -24, 0, 18)
-	bossHpFill, bossHpText = bossFill, bossText
-	bossHpText.TextSize = 14
+	local barSpec = CombatHudConfig.HP_BAR
+	bossHp = HpBar.new(bossBar, barSpec.HEIGHT, barSpec.BOSS, barSpec.BOSS_GHOST)
+	bossHp.frame.Position = UDim2.fromOffset(16, 22)
+	bossHp.frame.Size = UDim2.new(1, -32, 0, barSpec.HEIGHT)
+	bossHpText = UIKit.label(bossHp.frame, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
+	bossHpText.Size = UDim2.fromScale(1, 1)
+	bossHpText.TextXAlignment = Enum.TextXAlignment.Center
+	bossHpText.TextStrokeTransparency = 0.5
+	bossHpText.ZIndex = bossHp.topZIndex
 
 	addsRow = Instance.new("Frame")
 	addsRow.Name = "BossAdds"
