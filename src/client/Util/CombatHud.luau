@@ -6,6 +6,9 @@
 -- one) and Run. Each button drains top-down while it cools down, with the seconds left. BattleController builds one
 -- per boss fight and feeds it the fight's snapshots; SwordController reports the sword's own cooldowns. When you're
 -- hit the portrait shakes with a red ring and the screen's edges flash red (pulsing below 30% HP: Util/HpBarRules).
+-- Wild monster fights use the same HUD without the sword (owner 2026-11-03, `wild`): your creature in the ring with its
+-- HP (a called-in one's under it), the Pet button big where Attack was, Call in (the Swap button, while the call-in
+-- window is open) and Run with its chance (UiLayout.wildButtons).
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,7 +26,7 @@ local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 
 local CombatHud = {}
 
-export type Reserve = { id: string, name: string, hp: number, maxHp: number }
+export type Reserve = { id: string, name: string, hp: number, maxHp: number, art: string? }
 export type View = {
 	playerHp: number,
 	playerMax: number,
@@ -41,6 +44,12 @@ export type View = {
 	creatureMax: number,
 	hasSignature: boolean,
 	reserves: { Reserve },
+	-- Wild fights: a called-in creature on the field too, the call-in window's seconds left, the run chance
+	secondName: string?,
+	secondHp: number?,
+	secondMax: number?,
+	callInFor: number?,
+	runChance: number?,
 }
 export type Callbacks = {
 	attack: () -> (),
@@ -61,6 +70,7 @@ export type Hud = {
 type Button = { frame: ImageButton, drain: Frame, shade: ImageLabel, seconds: TextLabel, label: TextLabel, readyAt: number, total: number }
 
 local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
+local WILD_ORDER = { "pet", "signature", "swap", "run" }
 local PORTRAIT_BACK = Color3.fromRGB(42, 29, 51) -- behind the headshot and the card while they load
 local CHIP_POP = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
@@ -239,7 +249,7 @@ end
 
 -- Your headshot in a bevelled ring, your creature's card on a badge at its corner. Returns the ring (it shakes), its
 -- shading, its hurt glow and the badge.
-local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIStroke, ImageLabel)
+local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIStroke, ImageLabel, ImageLabel)
 	local spec = CombatHudConfig.PORTRAIT
 	local holder = Instance.new("Frame")
 	holder.Name = "Portrait"
@@ -285,11 +295,11 @@ local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIS
 	edge.Color = color(CombatHudConfig.HP_BAR.CREATURE.edge)
 	edge.Thickness = 2.5
 	edge.Parent = badge
-	return ring, shading, glow, badge
+	return ring, shading, glow, badge, face
 end
 
--- showNames: name the buttons (the player's first boss fights; the server decides)
-function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boolean): Hud
+-- showNames: name the buttons (the player's first boss fights; the server decides); wild: a wild monster fight's HUD
+function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boolean, wild: boolean?): Hud
 	local root = Instance.new("Frame")
 	root.Name = "CombatHud"
 	root.BackgroundTransparency = 1
@@ -321,7 +331,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(CombatHudConfig.STATUS_MAX_WIDTH, 120)
 	limit.Parent = status
-	local ring, ringShading, ringGlow, badge = portrait(status, portraitSize)
+	local ring, ringShading, ringGlow, badge, face = portrait(status, portraitSize)
 	local rows = Instance.new("Frame")
 	rows.Name = "Rows"
 	rows.BackgroundTransparency = 1
@@ -479,6 +489,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			return view.petMove
 		elseif name == "signature" and view and view.signatureMove then
 			return view.signatureMove
+		elseif wild and name == "swap" then
+			return if view and view.callInFor then `Call in {math.max(0, math.ceil(view.callInFor))}s` else "Call in"
+		elseif wild and name == "run" and view and view.runChance then
+			return `Run {math.round(view.runChance * 100)}%`
 		end
 		return CombatHudConfig.BUTTONS[name].name
 	end
@@ -509,7 +523,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tipFor = name
 	end
 
-	for _, name in BUTTON_ORDER do
+	for _, name in (if wild then WILD_ORDER else BUTTON_ORDER) do
 		buttons[name] = makeButton(root, name, presses[name], onTip)
 	end
 
@@ -520,8 +534,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		if size.X <= 0 or size.Y <= 0 then
 			return
 		end
-		local rects = UiLayout.combatButtons({ w = size.X, h = size.Y }) :: any
-		local nameSize = math.clamp(math.round(rects.attack.h * 0.13), 11, 16)
+		local rects = (if wild then UiLayout.wildButtons({ w = size.X, h = size.Y }) else UiLayout.combatButtons({ w = size.X, h = size.Y })) :: any
+		local nameSize = math.clamp(math.round((rects.attack or rects.pet).h * 0.13), 11, 16)
 		for name, button in buttons do
 			local r = rects[name]
 			button.frame.Position = UDim2.fromOffset(r.x, r.y)
@@ -571,24 +585,57 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end)
 
+	-- Wild fights: your creature takes the top row (and the ring), a called-in one the second
+	local function updateWild(view: View)
+		playerLabel.Text = `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
+		if view.creatureId ~= creatureId then
+			playerBar.reset(view.creatureHp, view.creatureMax)
+			face.Image = view.creatureArt or ""
+		else
+			playerBar.set(view.creatureHp, view.creatureMax)
+		end
+		local second = view.secondName ~= nil
+		creatureLabel.Parent.Visible = second
+		if second then
+			creatureLabel.Text = `{view.secondName} · {math.round(view.secondHp or 0)} / {math.round(view.secondMax or 1)}`
+			creatureBar.set(view.secondHp or 0, view.secondMax or 1)
+		end
+		buttons.swap.frame.Visible = (view.callInFor or 0) > 0 and #view.reserves > 0
+		-- Call in shows the card it brings (the first one; more open the picker)
+		local icon = buttons.swap.frame:FindFirstChild("Icon")
+		local art = if view.reserves[1] then view.reserves[1].art else nil
+		if icon and icon:IsA("ImageLabel") and art then
+			icon.Image = art
+			icon.ImageColor3 = Color3.new(1, 1, 1)
+			icon.ScaleType = Enum.ScaleType.Crop
+			icon.Size = UDim2.fromScale(0.72, 0.72)
+		end
+	end
+
 	local function update(view: View)
 		latest = view
 		local beaten = view.down or view.out
-		playerLabel.Text = if view.out then "You · OUT (watching)" elseif view.down then "You · DOWN" else `You · {math.round(view.playerHp)} / {view.playerMax}`
-		playerLabel.TextColor3 = if beaten then color(CombatHudConfig.DOWN_COLOR) else Color3.new(1, 1, 1)
-		if lastPlayerHp and view.playerHp < lastPlayerHp then
-			hitAt = os.clock()
-			hitPeak = HpBarRules.flashPeak(lastPlayerHp - view.playerHp, view.playerMax, CombatHudConfig)
+		if wild then
+			updateWild(view)
+		else
+			playerLabel.Text = if view.out then "You · OUT (watching)" elseif view.down then "You · DOWN" else `You · {math.round(view.playerHp)} / {view.playerMax}`
+			playerLabel.TextColor3 = if beaten then color(CombatHudConfig.DOWN_COLOR) else Color3.new(1, 1, 1)
+			if lastPlayerHp and view.playerHp < lastPlayerHp then
+				hitAt = os.clock()
+				hitPeak = HpBarRules.flashPeak(lastPlayerHp - view.playerHp, view.playerMax, CombatHudConfig)
+			end
+			lastPlayerHp = view.playerHp
+			playerBar.set(view.playerHp, view.playerMax)
+			creatureLabel.Text = `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
 		end
-		lastPlayerHp = view.playerHp
-		playerBar.set(view.playerHp, view.playerMax)
-		creatureLabel.Text = `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
 		if view.creatureId ~= creatureId then
 			-- A new creature (a swap): its own HP at once, no ghost from the last one's
 			creatureId = view.creatureId
-			creatureBar.reset(view.creatureHp, view.creatureMax)
-			badge.Image = view.creatureArt or ""
-			badge.Visible = view.creatureArt ~= nil
+			if not wild then
+				creatureBar.reset(view.creatureHp, view.creatureMax)
+				badge.Image = view.creatureArt or ""
+				badge.Visible = view.creatureArt ~= nil
+			end
 			local perkColor = view.perkColor or Color3.new(1, 1, 1)
 			chip.Text = view.perkText or ""
 			chip.Visible = view.perkText ~= nil
@@ -608,7 +655,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 				end)
 			end
 			swapped = true
-		else
+		elseif not wild then
 			creatureBar.set(view.creatureHp, view.creatureMax)
 		end
 		buttons.signature.frame.Visible = view.hasSignature
@@ -620,7 +667,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			onTip(tipFor, true) -- a swap renames the pet's move under an open tooltip
 		end
 		for _, name in { "attack", "dodge", "skill" } do
-			buttons[name].frame.ImageTransparency = if beaten then 0.6 else CombatHudConfig.PANEL_TRANSPARENCY
+			local button = buttons[name]
+			if button then
+				button.frame.ImageTransparency = if beaten then 0.6 else CombatHudConfig.PANEL_TRANSPARENCY
+			end
 		end
 		if #view.reserves == 0 then
 			closePicker()

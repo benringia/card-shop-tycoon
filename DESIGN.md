@@ -1038,7 +1038,10 @@ group, checked before its fragments and every time (not only the first). Below i
   the Forge's swords can be bolder. Your own arcs play the moment your reach check connects; other players' (and yours
   the check missed) play at the target when the server's hit arrives. No element colour, no screen flash.
 - **End screen** (owner 2026-11-03, design B "banner and loot strip"; `Util/VictoryScreen`, `Util/VictoryRules`,
-  `Config/Victory`): a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
+  `Config/Victory`), boss fights only: normal monster fights (wild, elites, Dungeon rooms) end with a toast instead
+  (`Util/FightToast`, `VictoryRules.toast`, `Victory.TOAST`): a dark pill slides down at the top, "Mossling defeated"
+  with +cash and +XP pills (green edge; gold with a "New card! Petalpaw · Grade B" or Star Shard line and a chime),
+  "Your party fainted" with when it's rested (red), "Got away safely" (grey), gone after 2.6 s. The boss screen: a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
   CONQUERED!" on the first Hydra clear) with "<foe> defeated · m:ss" under it; a row of reward tiles popping in one by
   one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
   new card, a first-clear chest item and the bonus glow gold, with a chime); the notes (loot on the ground, carried,
@@ -1069,9 +1072,15 @@ group, checked before its fragments and every time (not only the first). Below i
   Cave Brood Queen HP 2600 (23/60 | 60/90), Ember Colossus HP 6300 (6/60 | 60/86), Frost Tyrant unchanged (0/63 |
   49/91), Storm Sovereign 28000 / ATK 43 (20/60 | 60/90), Rift Devourer HP 34000 (23/60 | 58/82), Prism Hydra
   60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
-- **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
-  buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
-  about 126 px solo (`layoutBar` in BattleController).
+- **Wild fight HUD** (owner 2026-11-03, layout A: the boss fight's look without the sword): the monster's name and HP
+  in the top bar (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
+  ring with its HP top left (a called-in one's bar under it, the perk chip), and the slanted buttons bottom right
+  (`CombatHud.new(..., wild)`, `UiLayout.wildButtons`): the Pet button big where Attack is in boss fights (the first of
+  your creatures on the field that's ready acts; R on PC), the Super move above it when one has it, Run with its chance
+  ("RUN 90%", a cooldown after a failed try) and Call in showing the card it brings ("CALL IN 3S", only while the
+  window is open; 1-3 on PC). PvP keeps the bar below.
+- **Fight bar** (PvP): kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
+  buttons), Bring in / Run below (`layoutBar` in BattleController).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
   (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
   rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
@@ -1503,12 +1512,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
-    │       ├── CombatHud.luau          # the boss-fight HUD: slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
+    │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, the slash arc (cut / spin)
-    │       ├── VictoryScreen.luau      # the fight end screen: glowing title, reward tiles, notes, party XP bars
+    │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
+    │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
     │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes

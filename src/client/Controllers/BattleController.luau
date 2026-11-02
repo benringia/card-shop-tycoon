@@ -53,6 +53,7 @@ local AttackFx = require(Config:WaitForChild("AttackFx"))
 local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
+local FightToast = require(ClientUtil:WaitForChild("FightToast"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
 local Victory = require(Config:WaitForChild("Victory"))
 
@@ -162,7 +163,8 @@ local fighterKey = "" -- the fighter ids the bar was built for (a swap changes t
 local reserveKey = "" -- the reserve ids the call-in buttons were built for
 local hiddenHud: { GuiObject } = {}
 local prompts: { [BasePart]: ProximityPrompt } = {}
-local combatHud: CombatHud.Hud? = nil -- boss fights: the controls and your HP instead of the bar
+local combatHud: CombatHud.Hud? = nil -- boss and wild fights: the controls and HP instead of the bar (PvP keeps the bar)
+local combatWild = false -- the combat HUD is a wild monster fight's (no sword)
 local COMBAT_ACTION = "BossCombat"
 local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
 
@@ -240,8 +242,8 @@ local function toView(raw: any): Snapshot
 	local foe = enemy.fighters[1] or { hp = 0, maxHp = 1, element = "", elite = false }
 	local adds = {}
 	for _, fighter in enemy.fighters do
-		if fighter.id ~= MONSTER_ID and bossId then
-			table.insert(adds, fighter)
+		if fighter.id ~= MONSTER_ID and (bossId or combatWild) then
+			table.insert(adds, fighter) -- a boss's adds, or a Dungeon room's other monsters
 		end
 	end
 	-- Group fights: side A holds everyone's creatures (each tagged with its owner); yours get buttons, the others go in
@@ -597,7 +599,7 @@ local function buildAdds(snapshot: Snapshot)
 		holder.Size = UDim2.new(1 / math.max(#snapshot.adds, 1), -6, 1, 0)
 		holder.BackgroundTransparency = 1
 		holder.Parent = addsRow
-		local name = UIKit.label(holder, `{elementIcon(add.element)} Spawn`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		local name = UIKit.label(holder, `{elementIcon(add.element)} {if bossId then "Spawn" else fightNames[add.id] or "Monster"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
 		name.Size = UDim2.new(1, 0, 0, 13)
 		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
 		track.Position = UDim2.fromOffset(0, 14)
@@ -617,17 +619,29 @@ local function myCreature(snapshot: Snapshot): any?
 	return snapshot.fighters[1]
 end
 
+-- Wild fights: a second creature of yours standing on the field (a called-in one)
+local function secondCreature(snapshot: Snapshot, lead: any?): any?
+	for _, fighter in snapshot.fighters do
+		if fighter ~= lead and not fighter.fainted then
+			return fighter
+		end
+	end
+	return nil
+end
+
 -- The combat HUD's picture of a snapshot, and the pet skill, signature and swap cooldowns
 local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 	local me = snapshot.me
 	local creature = myCreature(snapshot)
+	local second = if combatWild then secondCreature(snapshot, creature) else nil
 	local reserves = {}
 	for _, id in snapshot.reserves do
-		table.insert(reserves, { id = id, name = fightNames[id] or "Card", hp = 0, maxHp = 0 })
+		local name = fightNames[id]
+		table.insert(reserves, { id = id, name = name or "Card", hp = 0, maxHp = 0, art = if name then CardArt.pick(name, 80, CardArtConfig) else nil })
 	end
 	hud.update({
-		playerHp = if me then me.hp else 0,
-		playerMax = if me then me.maxHp else Combat.PLAYER_HP,
+		playerHp = if combatWild then 1 elseif me then me.hp else 0,
+		playerMax = if combatWild then 1 elseif me then me.maxHp else Combat.PLAYER_HP,
 		down = me ~= nil and me.down == true,
 		out = me ~= nil and me.out == true,
 		creatureId = if creature then creature.id else "",
@@ -648,7 +662,26 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 			then Combat.SIGNATURES[creature.signature].name
 			else nil,
 		reserves = reserves,
+		secondName = if second then fightNames[second.id] or "Creature" else nil,
+		secondHp = if second then second.hp else nil,
+		secondMax = if second then second.maxHp else nil,
+		callInFor = if combatWild then snapshot.callInFor else nil,
+		runChance = if combatWild then snapshot.runChance else nil,
 	})
+	if combatWild then
+		-- The Pet button acts for whichever creature on the field is ready first (usePet), so its wait is the soonest
+		local soonest, soonestSignature = math.huge, math.huge
+		for _, fighter in snapshot.fighters do
+			if not fighter.fainted then
+				soonest = math.min(soonest, fighter.abilityIn)
+				soonestSignature = math.min(soonestSignature, if fighter.signature then fighter.signatureIn else math.huge)
+			end
+		end
+		hud.setCooldown("pet", latestAt + (if soonest < math.huge then soonest else 0), Combat.ABILITY_COOLDOWN)
+		hud.setCooldown("signature", latestAt + (if soonestSignature < math.huge then soonestSignature else 0), Combat.SIGNATURE_COOLDOWN)
+		hud.setCooldown("run", latestAt + snapshot.runIn, Combat.RUN_RETRY_SECONDS)
+		return
+	end
 	local express = if creature and creature.perk and creature.perk.kind == "Express" then creature.perk.value else 0
 	SwordController.SetSkillScale(1 - express) -- Express: the sword skill recharges faster too
 	if creature then
@@ -669,7 +702,7 @@ local function applySnapshot(snapshot: Snapshot)
 	end
 	latest, latestAt = snapshot, os.clock()
 	setBar(monsterHpFill, monsterHpText, snapshot.monster.hp, snapshot.monster.maxHp)
-	if bossId then
+	if bossId or combatWild then
 		bossHp.set(snapshot.monster.hp, snapshot.monster.maxHp)
 		bossHpText.Text = `{math.max(0, math.round(snapshot.monster.hp))} / {math.round(snapshot.monster.maxHp)}`
 		if snapshot.bossShield > 0 then
@@ -1052,10 +1085,23 @@ local function showConquered()
 	end)
 end
 
--- The fight's end (Util/VictoryScreen): a win's title, rewards and party XP; a loss or a run in red or grey
-local function showEnd(summary: any)
+-- When a beaten party is back: "resting 5:00 · the plaza spring heals faster" (the Dungeon: out for the run)
+local function restLine(): string
+	local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+	local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
+	return if place.isDungeon() then "Fainted creatures are out for the rest of this run"
+		else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
+end
+
+-- The fight's end: a boss's big screen (Util/VictoryScreen: title, rewards and party XP; a loss or a run in red or
+-- grey), a toast for everything else (Util/FightToast; owner 2026-11-03), PvP its own
+local function showEnd(summary: any, wasBoss: boolean)
 	if summary.mode == "pvp" then
 		showPvpEnd(summary)
+		return
+	end
+	if not wasBoss then
+		FightToast.show(VictoryRules.toast(summary, Cards.ById, if summary.result == "lose" then restLine() else nil))
 		return
 	end
 	local result = summary.result
@@ -1090,14 +1136,11 @@ local function showEnd(summary: any)
 			party = party,
 		})
 	elseif result == "lose" then
-		local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
-		local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
 		VictoryScreen.show({
 			kind = "lose",
 			title = "DEFEATED",
 			subtitle = "Your party fainted",
-			notes = { if place.isDungeon() then "Fainted creatures are out for the rest of this run"
-				else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster` },
+			notes = { restLine() },
 			seconds = Combat.END_SCREEN_SECONDS,
 		})
 	else
@@ -1192,7 +1235,19 @@ local function swordTargets(): { any }
 end
 
 local function usePet(which: string)
-	local creature = if latest then myCreature(latest) else nil
+	local snapshot = latest
+	local creature = if snapshot then myCreature(snapshot) else nil
+	if combatWild and snapshot then
+		-- Wild fights can have a called-in creature on the field too: the first one ready acts
+		local elapsed = os.clock() - latestAt
+		for _, fighter in snapshot.fighters do
+			local wait = if which == "signature" then fighter.signatureIn else fighter.abilityIn
+			if not fighter.fainted and (which ~= "signature" or fighter.signature) and wait - elapsed <= 0.05 then
+				creature = fighter
+				break
+			end
+		end
+	end
 	if creature and not creature.fainted then
 		Remotes.UseAbility:FireServer(creature.id, which)
 	end
@@ -1208,7 +1263,9 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 		return Enum.ContextActionResult.Pass
 	end
 	local key = input.KeyCode
-	if key == Enum.KeyCode.LeftShift then
+	if combatWild and (key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.E) then
+		return Enum.ContextActionResult.Pass -- no sword in a wild fight
+	elseif key == Enum.KeyCode.LeftShift then
 		SwordController.Dodge()
 	elseif key == Enum.KeyCode.E then
 		SwordController.Skill()
@@ -1224,8 +1281,10 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 	return Enum.ContextActionResult.Sink
 end
 
--- A boss fight: the combat HUD instead of the bar, and your sword on
-local function startCombat(showNames: boolean)
+-- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD without the
+-- sword, its buttons always named
+local function startCombat(showNames: boolean, wild: boolean?)
+	combatWild = wild == true
 	local hud = CombatHud.new(screenGui, {
 		attack = SwordController.Attack,
 		dodge = SwordController.Dodge,
@@ -1240,9 +1299,11 @@ local function startCombat(showNames: boolean)
 		run = function()
 			Remotes.RunFight:FireServer()
 		end,
-	}, showNames)
+	}, showNames, wild)
 	combatHud = hud
-	SwordController.SetCombat(true, swordTargets, hud.setCooldown)
+	if not wild then
+		SwordController.SetCombat(true, swordTargets, hud.setCooldown)
+	end
 	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
 end
 
@@ -1251,7 +1312,9 @@ local function stopCombat()
 	combatHud = nil
 	if hud then
 		hud.destroy()
-		SwordController.SetCombat(false)
+		if not combatWild then
+			SwordController.SetCombat(false)
+		end
 		ContextActionService:UnbindAction(COMBAT_ACTION)
 	end
 end
@@ -1299,11 +1362,16 @@ local function onStarted(payload: any)
 		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
 	end
 	stopCombat()
+	combatWild = false
 	if boss then
 		startCombat(payload.buttonNames == true)
+	elseif mode == "wild" then
+		startCombat(true, true)
+		bossName.Text = monsterName.Text
 	end
-	bossBar.Visible = boss ~= nil
-	bossHp.reset(1, 1) -- a new boss starts full, no ghost from the last fight
+	bossName.TextColor3 = if boss then UIKit.Colors.Danger elseif payload.elite then ELITE_COLOR else Color3.new(1, 1, 1)
+	bossBar.Visible = boss ~= nil or combatWild
+	bossHp.reset(view.monster.hp, view.monster.maxHp) -- a new foe starts at its own HP, no ghost from the last fight
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
 	packFight = mode == "wild" and boss == nil and #view.enemies > 1
@@ -1365,6 +1433,7 @@ end
 
 local function onEnded(summary: any)
 	fighting = false
+	local wasBoss = bossId ~= nil
 	if fightFx then
 		fightFx.destroy()
 		fightFx = nil
@@ -1389,7 +1458,7 @@ local function onEnded(summary: any)
 		prompt.Enabled = marker:GetAttribute("Fighting") ~= true
 	end
 	if typeof(summary) == "table" then
-		showEnd(summary)
+		showEnd(summary, wasBoss)
 		if typeof(summary.countdown) == "number" and summary.countdown > 0 then
 			showLossCountdown(summary.countdown)
 		end
@@ -1607,7 +1676,7 @@ end
 
 -- Click attacks in boss fights (not over a button or while typing)
 local function onClick(input: InputObject, processed: boolean)
-	if processed or not combatHud or introCard.Visible or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+	if processed or not combatHud or combatWild or introCard.Visible or input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 		return
 	end
 	SwordController.Attack()

@@ -88,4 +88,20 @@ function UiLayout.combatButtons(view: Size): CombatButtons
 	return { attack = attack, dodge = dodge, skill = skill, pet = pet, signature = signature, swap = swap, run = run }
 end
 
+-- A wild monster fight's controls (owner 2026-11-03, layout A: the boss HUD's look without the sword): the Pet button
+-- big in Attack's place, the Signature above it, Run left of it and Call in (the Swap button) left of Run, sized like
+-- the boss buttons
+export type WildButtons = { pet: Rect, signature: Rect, swap: Rect, run: Rect }
+
+function UiLayout.wildButtons(view: Size): WildButtons
+	local boss = UiLayout.combatButtons(view)
+	local u = math.clamp(view.h * 0.17, 52, 110)
+	local gap = 0.25 * u
+	local pet = boss.attack
+	local signature = { w = boss.pet.w, h = boss.pet.h, x = pet.x + (pet.w - boss.pet.w) / 2, y = boss.pet.y }
+	local run = { w = boss.dodge.w, h = boss.dodge.h, x = pet.x - gap - boss.dodge.w, y = boss.dodge.y }
+	local swap = { w = boss.dodge.w, h = boss.dodge.h, x = run.x - gap - boss.dodge.w, y = run.y }
+	return { pet = pet, signature = signature, swap = swap, run = run }
+end
+
 return UiLayout

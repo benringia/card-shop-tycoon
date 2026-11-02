@@ -65,4 +65,31 @@ return {
 		expect.equal(VictoryRules.subtitle("Meadow Warden", 84), "Meadow Warden defeated · 1:24")
 		expect.equal(VictoryRules.subtitle(nil, nil), "Fight won")
 	end,
+	["a normal monster's win is a toast: who fell, cash and XP"] = function()
+		local toast = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 12.4, xpEach = 38 }, {})
+		expect.equal(toast.kind, "win")
+		expect.equal(toast.title, "Mossling defeated")
+		expect.equal(#toast.pills, 2)
+		expect.equal(toast.pills[1].icon, "Cash")
+		expect.equal(toast.pills[1].text, "+$12.40")
+		expect.equal(toast.pills[2].icon, "Xp")
+		expect.equal(toast.pills[2].text, "+38 XP")
+		expect.equal(toast.line, nil)
+	end,
+
+	["a card drop or shards add a gold line"] = function()
+		local toast = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 1, xpEach = 1, card = { cardId = "c1", grade = "B" }, shards = 1 }, { c1 = { name = "Petalpaw" } })
+		expect.equal(toast.kind, "rare")
+		expect.equal(toast.line, "New card! Petalpaw · Grade B · +1 Star Shard")
+	end,
+
+	["losing or running away are toasts too"] = function()
+		local lose = VictoryRules.toast({ result = "lose" }, {}, "resting 5:00")
+		expect.equal(lose.kind, "lose")
+		expect.equal(lose.title, "Your party fainted")
+		expect.equal(lose.line, "resting 5:00")
+		local run = VictoryRules.toast({ result = "run" }, {})
+		expect.equal(run.kind, "run")
+		expect.equal(run.title, "Got away safely")
+	end,
 }

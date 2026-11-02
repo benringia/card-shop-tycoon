@@ -86,4 +86,27 @@ return {
 			expect.equal(rects.attack.x > view.w / 2 and rects.attack.y > view.h / 2, true, "Attack sits bottom-right")
 		end
 	end,
+	["wild fight buttons: the Pet button big, all on screen, no overlaps, clear of the thumbstick"] = function()
+		for _, view in { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 1920, h = 1080 }, { w = 1280, h = 720 } } do
+			local rects = UiLayout.wildButtons(view)
+			local names = { "pet", "signature", "swap", "run" }
+			for _, name in names do
+				local r = (rects :: any)[name] :: UiLayout.Rect
+				local where = `{name} at {view.w}x{view.h}`
+				expect.equal(r.w >= 48 and r.h >= 48, true, `{where}: tap target`)
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{where}: on screen`)
+				local inStick = r.x < view.w * 0.4 and r.y + r.h > view.h * 0.5
+				expect.equal(inStick, false, `{where}: clear of the thumbstick`)
+			end
+			for i, a in names do
+				for j = i + 1, #names do
+					local r1, r2 = (rects :: any)[a], (rects :: any)[names[j]]
+					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
+					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+				end
+			end
+			expect.equal(rects.pet.w > rects.run.w and rects.pet.w > rects.swap.w, true, "the Pet button is the biggest")
+			expect.equal(rects.pet.x > view.w / 2 and rects.pet.y > view.h / 2, true, "it sits bottom-right")
+		end
+	end,
 }

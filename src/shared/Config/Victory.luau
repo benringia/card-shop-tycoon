@@ -37,4 +37,11 @@ return {
 	VOLUME = 0.5,
 	-- Seconds of silence at the start of a sound's file, skipped so it lands with the moment (measured in Studio)
 	START_AT = { win = 0.3, levelUp = 0.38 },
+	-- Normal monsters get a toast instead (Util/FightToast): slides down at the top, edge colour by kind, gone after
+	-- `seconds`; a soft pop as it lands (the chime for a card or shards)
+	TOAST = {
+		seconds = 2.6,
+		top = 64, -- px under the top bar, clear of the Shop button
+		edge = { win = rgb(62, 224, 138), rare = rgb(255, 207, 74), lose = rgb(224, 71, 58), run = rgb(154, 150, 168) },
+	},
 }
