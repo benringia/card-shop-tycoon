@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
+local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 
@@ -79,11 +80,23 @@ local function makeButton(parent: Instance, name: string, onPress: () -> ()): Bu
 	edge.Size = UDim2.fromScale(1, 1)
 	edge.ZIndex = 2
 	edge.Parent = frame
-	local icon = Instance.new("TextLabel")
+	-- Its drawn icon (white line art, tinted a touch toward the button's colour), or its emoji if there's none
+	local image = UIIcons[spec.icon]
+	local icon: GuiObject
+	if image then
+		local picture = Instance.new("ImageLabel")
+		picture.Image = image
+		picture.ImageColor3 = Color3.new(1, 1, 1):Lerp(tint, 0.25)
+		picture.ScaleType = Enum.ScaleType.Fit
+		icon = picture
+	else
+		local text = Instance.new("TextLabel")
+		text.Text = spec.emoji
+		text.TextScaled = true
+		icon = text
+	end
 	icon.Name = "Icon"
 	icon.BackgroundTransparency = 1
-	icon.Text = spec.icon
-	icon.TextScaled = true
 	icon.Size = UDim2.fromScale(0.5, 0.5)
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)

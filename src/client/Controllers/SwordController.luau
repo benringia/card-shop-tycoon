@@ -288,6 +288,7 @@ function SwordController.PlaySound(key: string)
 	end
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
+	sound.Volume = (Swords.SOUND_VOLUMES :: any)[key] or Swords.SOUND_VOLUME
 	sound.Parent = root
 	sound.Ended:Once(function()
 		sound:Destroy()

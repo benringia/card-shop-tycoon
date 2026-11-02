@@ -45,16 +45,17 @@ local SWORDS: { [string]: Sword } = {
 			ready = "",
 			run = "",
 		},
+		-- Pro Sound Effects (Roblox's licensed library)
 		sounds = {
-			swing1 = "",
-			swing2 = "",
-			swing3 = "",
-			hit = "",
-			draw = "",
-			dodge = "",
-			ring = "",
-			down = "",
-			getUp = "",
+			swing1 = "rbxassetid://9119750447", -- Sword Swishes 9: fast airy swipe
+			swing2 = "rbxassetid://9119749812", -- Sword Swishes 4: sharp swipe
+			swing3 = "rbxassetid://9119749263", -- Sword Swish 5: swing with a metal shing (the slam, the skill)
+			hit = "rbxassetid://9119746598", -- Sword Hit 1: a slice with a metal ring
+			draw = "rbxassetid://9119744642", -- Sword Draw Clang 29: unsheathing
+			dodge = "rbxassetid://9126013644", -- Swish Sharp 13: the dash
+			ring = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1: a ring appears under you
+			down = "rbxassetid://9113473249", -- Body Fall 31: knocked down
+			getUp = "rbxassetid://9126013811", -- Swish Sharp 17: back up
 		},
 	},
 }
@@ -77,4 +78,6 @@ return {
 	GRAB_SECONDS = 0.16, -- into the draw, the hand reaches the sword (the draw move's Grab marker)
 	RELEASE_SECONDS = 0.25, -- into the put-away, the sword is back on the back (the sheath move's Release marker)
 	POPUP_TURN = 0.8, -- radians a second the sword turns in the first-sword popup
+	SOUND_VOLUME = 0.5, -- the sword's sounds (a few play over each other in a combo)
+	SOUND_VOLUMES = { ring = 0.3, hit = 0.6 }, -- exceptions: the ring chime softer, a landed hit louder
 }

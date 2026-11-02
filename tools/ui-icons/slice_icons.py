@@ -1,7 +1,7 @@
 """Cuts the UI icon sheet (a 4x4 grid on a magenta background, made with Figma's image generator) into separate
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
-Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-4, default 1]
+Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-5, default 1]
 """
 import os
 import sys
@@ -32,6 +32,13 @@ SHEETS = {
         "Xp", "Copies", "Summon", "Remove",
         "Job", "KeyFragment", "XpTonic", "GradingSeal",
         "GoldSeal", "Travel", "Best", "Pvp",
+    ],
+    # The boss-fight HUD (white line icons for the slanted panels) and spares for heals and the Forge
+    5: [
+        "Attack", "Dodge", "SpinSkill", "Paw",
+        "Sparkle", "Swap", "Run", "Shield",
+        "Potion", "Food", "Heal", "Sword",
+        "Forge", "Skull", "Target", "Bolt",
     ],
 }
 GRID = 4

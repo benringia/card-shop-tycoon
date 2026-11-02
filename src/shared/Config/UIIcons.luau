@@ -1,7 +1,8 @@
 --!strict
--- The game's UI icons (glossy cartoon style), by name. Made as four sheets with Figma's image generator and cut up
--- by tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. HUD tiles, the top bar and customer bubbles
--- use these names; anything not listed here is drawn as text (an emoji). See DESIGN.md 10.6.
+-- The game's UI icons, by name. Made as five sheets with Figma's image generator and cut up by
+-- tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. Sheets 1-4 are glossy cartoon icons, sheet 5 white
+-- line art. HUD tiles, the top bar and customer bubbles use these names; anything not listed here is drawn as text (an
+-- emoji). See DESIGN.md 10.6.
 return {
 	Cash = "rbxassetid://116750244422885",
 	Shard = "rbxassetid://122664780125158",
@@ -70,4 +71,22 @@ return {
 	Travel = "rbxassetid://93470751784969",
 	Best = "rbxassetid://114401539679923",
 	Pvp = "rbxassetid://127011684535220",
+	-- Sheet 5: white line icons for the boss-fight HUD's slanted panels (Config/CombatHud), and spares for heals and
+	-- the Forge
+	Attack = "rbxassetid://78906091136812",
+	Dodge = "rbxassetid://104854282079703",
+	SpinSkill = "rbxassetid://109096062504328",
+	Paw = "rbxassetid://127023045019616",
+	Sparkle = "rbxassetid://90976268345911",
+	Swap = "rbxassetid://122501337503529",
+	Run = "rbxassetid://135739533775600",
+	Shield = "rbxassetid://130974484459834",
+	Potion = "rbxassetid://138506132840172",
+	Food = "rbxassetid://102144855905943",
+	Heal = "rbxassetid://106635115543755",
+	Sword = "rbxassetid://130209844855530",
+	Forge = "rbxassetid://105311036056335",
+	Skull = "rbxassetid://132753062323343",
+	Target = "rbxassetid://108873595886586",
+	Bolt = "rbxassetid://76880717046930",
 } :: { [string]: string }
