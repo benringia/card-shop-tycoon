@@ -36,14 +36,29 @@ local gui: ScreenGui? = nil
 local current = 0 -- bumped per show, so an old show's timers leave a new one alone
 local notesLabel: TextLabel? = nil
 
+-- One loaded Sound per id, made when this module loads (the loading screen fetched them too: Util/CombatAssets), so
+-- the fanfare plays the moment the screen opens; each play is a copy, so quick tile pops can overlap
+local templates: { [string]: Sound } = {}
+for key, id in Victory.SOUNDS do
+	if id ~= "" then
+		local sound = Instance.new("Sound")
+		sound.Name = `Victory_{key}`
+		sound.SoundId = id
+		sound.Volume = Victory.VOLUME
+		sound:SetAttribute("StartAt", Victory.START_AT[key] or 0)
+		sound.Parent = SoundService
+		templates[id] = sound
+	end
+end
+
 local function play(id: string)
-	if id == "" then
+	local template = templates[id]
+	if not template then
 		return
 	end
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
-	sound.Volume = Victory.VOLUME
+	local sound = template:Clone()
 	sound.Parent = SoundService
+	sound.TimePosition = tonumber(template:GetAttribute("StartAt")) or 0
 	sound:Play()
 	sound.Ended:Once(function()
 		sound:Destroy()

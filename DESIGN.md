@@ -1045,7 +1045,9 @@ group, checked before its fragments and every time (not only the first). Below i
   reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
   up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss is "DEFEATED" in red,
   a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
-  itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down.
+  itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down. Its
+  sounds are fetched on the loading screen and kept loaded, and the silent start of the fanfare and the level-up
+  shimmer is skipped (`Victory.START_AT`), so they land with the moment.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of

@@ -13,6 +13,7 @@ local CombatHudConfig = require(Config:WaitForChild("CombatHud"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
 local Swords = require(Config:WaitForChild("Swords"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
+local Victory = require(Config:WaitForChild("Victory"))
 local CombatPreload = require(Shared:WaitForChild("Util"):WaitForChild("CombatPreload"))
 
 local CombatAssets = {}
@@ -42,7 +43,7 @@ function CombatAssets.ensure(images: { string })
 end
 
 function CombatAssets.preload()
-	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx)
+	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory)
 	local cache = Instance.new("ScreenGui")
 	cache.Name = "CombatCache"
 	cache.ResetOnSpawn = false

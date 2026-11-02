@@ -4,6 +4,7 @@ local CombatHud = require("../src/shared/Config/CombatHud")
 local SwordFx = require("../src/shared/Config/SwordFx")
 local Swords = require("../src/shared/Config/Swords")
 local AttackFx = require("../src/shared/Config/AttackFx")
+local Victory = require("../src/shared/Config/Victory")
 local expect = require("./lib/expect")
 
 local function has(list: { string }, id: string): boolean
@@ -58,5 +59,11 @@ return {
 		expect.equal(has(ids.sounds, AttackFx.BOSS.meadowWarden.sounds.release), true, "a boss's")
 		expect.equal(has(ids.sounds, AttackFx.MONSTER.Mossling.sounds.strike), true, "a monster's")
 		expect.equal(has(ids.images, AttackFx.SOUNDS.charge), false, "sounds aren't images")
+	end,
+	["the end screen's sounds are fetched ahead, so the fanfare plays on time"] = function()
+		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords, AttackFx, Victory)
+		for moment, id in Victory.SOUNDS do
+			expect.equal(has(ids.sounds, id), true, moment)
+		end
 	end,
 }

@@ -35,4 +35,6 @@ return {
 		levelUp = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects)
 	},
 	VOLUME = 0.5,
+	-- Seconds of silence at the start of a sound's file, skipped so it lands with the moment (measured in Studio)
+	START_AT = { win = 0.3, levelUp = 0.38 },
 }
