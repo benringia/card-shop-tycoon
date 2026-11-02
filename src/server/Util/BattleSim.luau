@@ -42,7 +42,9 @@ export type PlayerAttacks = { every: number, warning: number, big: number, quick
 export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
 -- player: a player fighter (boss fights; its owner's player in the fight)
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks? }
+-- A fight perk (Config/Party FIGHT_PERKS): its kind ("Hype", "Calm", "Express", "Hustle", "Haggle") and value
+export type Perk = { kind: string, value: number }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
 -- callIn: false closes the call-in window (boss fights: only swaps)
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean? }
 export type Event = {
@@ -64,11 +66,13 @@ export type Event = {
 	result: string?,
 	ring: number?,
 	seconds: number?,
+	crit: boolean?, -- a Haggle critical hit (double damage)
 }
 
 type Fighter = {
 	id: string, -- prefixed: "a:<id>"
 	rawId: string,
+	perk: Perk?,
 	side: string,
 	element: string,
 	maxHp: number,
@@ -162,6 +166,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 	return {
 		id = `{side}:{input.id}`,
 		rawId = input.id,
+		perk = input.perk,
 		side = side,
 		element = if first then first.element else input.element,
 		maxHp = input.hp,
@@ -323,6 +328,22 @@ local function ownerKey(fighter: Fighter): string
 	return fighter.owner or ""
 end
 
+-- A fighter's fight perk of this kind (0 if none): a creature's own; a player's is their first standing creature's
+local function perkOf(state: State, fighter: Fighter, kind: string): number
+	local source: Fighter? = fighter
+	if fighter.player then
+		source = nil
+		for _, creature in standingCreatures((state.sides :: any)[fighter.side]) do
+			if ownerKey(creature) == ownerKey(fighter) then
+				source = creature
+				break
+			end
+		end
+	end
+	local perk = if source then source.perk else nil
+	return if perk and perk.kind == kind then perk.value else 0
+end
+
 -- One owner's creatures on the field (fainted ones too, until benched)
 local function onField(side: Side, key: string): { Fighter }
 	local list = {}
@@ -464,10 +485,17 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 		table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
 		return 0
 	end
-	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1)
+	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype"))
 	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, from.element, target.element)
 	local side = (state.sides :: any)[target.side] :: Side
-	local damage = math.round(CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target))
+	local raw = CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target)
+	-- Haggle rolls only when there's a chance, so fights without it draw the same randoms as before
+	local critChance = perkOf(state, from, "Haggle")
+	local crit = critChance > 0 and random(state) < critChance
+	if crit then
+		raw *= 2
+	end
+	local damage = math.round(raw * (1 - perkOf(state, target, "Calm")))
 	local hadShield = side.shield > 0
 	local absorbed = math.min(side.shield, damage)
 	side.shield -= absorbed
@@ -475,14 +503,14 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 		shieldBroke(state, side, events)
 	end
 	local taken = damage - absorbed
-	table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = taken, strength = strength })
+	table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = taken, strength = strength, crit = if crit then true else nil })
 	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events)
 	return taken
 end
 
 local function interval(state: State, fighter: Fighter): number
-	local value = CombatMath.getAttackInterval(state.combat, fighter.spd)
+	local value = CombatMath.getAttackInterval(state.combat, fighter.spd) / (1 + perkOf(state, fighter, "Hustle"))
 	if state.time < fighter.slowUntil then
 		value /= 1 - fighter.slow
 	end
@@ -621,9 +649,10 @@ local function landPending(state: State, events: { Event })
 		if missed then
 			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = 0, dodged = true })
 		else
-			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = pending.damage })
-			pending.from.dealt += math.min(pending.damage, target.hp)
-			hurtPlayer(state, target, pending.damage, events)
+			local damage = math.round(pending.damage * (1 - perkOf(state, target, "Calm")))
+			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = damage })
+			pending.from.dealt += math.min(damage, target.hp)
+			hurtPlayer(state, target, damage, events)
 		end
 	end
 	state.pending = waiting
@@ -899,6 +928,18 @@ end
 
 -- One owner's share of side A's fight so far (the boss loot's contribution rule). Players who left don't count: the
 -- shares are of what the ones still in it did.
+-- An owner's fight perk of this kind right now: their first standing creature's (0 if none). The server shortens the
+-- sword skill's cooldown with Express.
+function BattleSim.perkOf(state: State, owner: string, kind: string): number
+	for _, creature in standingCreatures(state.sides.a) do
+		if ownerKey(creature) == owner then
+			local perk = creature.perk
+			return if perk and perk.kind == kind then perk.value else 0
+		end
+	end
+	return 0
+end
+
 function BattleSim.contribution(state: State, owner: string): { dealt: number, taken: number, totalDealt: number, totalTaken: number }
 	local result = { dealt = 0, taken = 0, totalDealt = 0, totalTaken = 0 }
 	for _, fighter in state.sides.a.fighters do
@@ -996,7 +1037,7 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		elseif state.time < fighter.abilityReady then
 			return nil, "cooldown"
 		end
-		fighter.abilityReady = state.time + combat.ABILITY_COOLDOWN
+		fighter.abilityReady = state.time + combat.ABILITY_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
 	elseif which == "signature" then
 		ability = if fighter.signature then combat.SIGNATURES[fighter.signature] else nil
 		if not ability then
@@ -1004,7 +1045,7 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		elseif state.time < fighter.signatureReady then
 			return nil, "cooldown"
 		end
-		fighter.signatureReady = state.time + combat.SIGNATURE_COOLDOWN
+		fighter.signatureReady = state.time + combat.SIGNATURE_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
 	else
 		return nil, "none"
 	end
@@ -1184,6 +1225,7 @@ function BattleSim.snapshot(state: State): any
 				element = fighter.element,
 				elite = fighter.elite,
 				abilityIn = math.max(0, fighter.abilityReady - state.time),
+				perk = fighter.perk, -- its fight perk (the HUD chip)
 				signature = fighter.signature,
 				signatureIn = math.max(0, fighter.signatureReady - state.time),
 				fainted = fighter.fainted,

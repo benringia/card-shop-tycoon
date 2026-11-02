@@ -41,6 +41,7 @@ export type CopyInfo = {
 	stats: Stats,
 	reference: Stats,
 	perk: string?,
+	fightPerk: string?, -- the same perk in monster and boss fights ("hits 6% harder")
 	restSeconds: number?,
 }
 
@@ -296,9 +297,12 @@ function CardTips.copy(holder: Frame, info: CopyInfo)
 	UIKit.statRow(bars, "Spd", CompareRules.share(info.stats.spd, info.reference.spd)).LayoutOrder = 3
 
 	iconText(content, 3, card.element, info.perk or "No perk", UIKit.Colors.Text, "small")
+	if info.fightPerk then
+		iconText(content, 4, "Sword", `Fights: {info.fightPerk}`, UIKit.Colors.Text, "small")
+	end
 	local rest = info.restSeconds
 	if rest and rest > 0 then
-		iconText(content, 4, "Hourglass", `Resting {string.format("%d:%02d", rest // 60, rest % 60)}`, UIStyle.BAD, "small")
+		iconText(content, 5, "Hourglass", `Resting {string.format("%d:%02d", rest // 60, rest % 60)}`, UIStyle.BAD, "small")
 	end
 end
 

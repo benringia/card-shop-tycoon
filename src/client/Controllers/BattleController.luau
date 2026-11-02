@@ -28,6 +28,7 @@ local Party = require(Config:WaitForChild("Party"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local CombatHudConfig = require(Config:WaitForChild("CombatHud"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 -- The server wild map in the main game, the Frontier in the Frontier place
 local Wild = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getWorld()
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -63,6 +64,7 @@ local MONSTER_HP_COLOR = Color3.fromRGB(220, 80, 70)
 local TRACK_COLOR = Color3.fromRGB(25, 25, 35)
 local ELITE_COLOR = Color3.fromRGB(255, 205, 60)
 local STRONG_COLOR = Color3.fromRGB(255, 150, 40)
+local CRIT_COLOR = Color3.fromRGB(199, 155, 255) -- a Haggle critical hit
 local WEAK_COLOR = Color3.fromRGB(170, 170, 180)
 local HEAL_COLOR = Color3.fromRGB(120, 230, 120)
 local SHIELD_COLOR = Color3.fromRGB(150, 210, 255)
@@ -83,7 +85,7 @@ local INFO_SHARE = 0.4 -- of a creature's card: name and HP; the rest is buttons
 type Snapshot = {
 	time: number,
 	monster: { hp: number, maxHp: number, element: string, elite: boolean },
-	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean } },
+	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean, perk: { kind: string, value: number }? } },
 	reserves: { string },
 	callInFor: number,
 	swaps: boolean, -- boss fights: reserves may be brought in any time (a swap)
@@ -315,14 +317,14 @@ local function addMarkers(list: unknown)
 	end
 end
 
--- A number that floats up over a fighter and fades
-local function floatText(id: string, text: string, color: Color3)
+-- A number that floats up over a fighter and fades (big: a critical hit's)
+local function floatText(id: string, text: string, color: Color3, big: boolean?)
 	local marker = markerFor(id)
 	if not marker then
 		return
 	end
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(140, 36)
+	gui.Size = if big then UDim2.fromOffset(210, 54) else UDim2.fromOffset(140, 36)
 	gui.StudsOffset = Vector3.new(0, 4, 0)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
@@ -589,15 +591,21 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		creatureMax = if creature then creature.maxHp else 1,
 		hasSignature = creature ~= nil and creature.signature ~= nil,
 		creatureElement = if creature then creature.element else "",
+		perkText = if creature and creature.perk and Party.PERKS[creature.element]
+			then `{Party.PERKS[creature.element].icon} {creature.perk.kind}: {PartyRules.describeFight(creature.perk)}`
+			else nil,
+		perkColor = if creature then Cards.ELEMENTS[creature.element] else nil,
 		petMove = if creature and Combat.ABILITIES[creature.element] then Combat.ABILITIES[creature.element].name else "Pet move",
 		signatureMove = if creature and creature.signature and Combat.SIGNATURES[creature.signature]
 			then Combat.SIGNATURES[creature.signature].name
 			else nil,
 		reserves = reserves,
 	})
+	local express = if creature and creature.perk and creature.perk.kind == "Express" then creature.perk.value else 0
+	SwordController.SetSkillScale(1 - express) -- Express: the sword skill recharges faster too
 	if creature then
-		hud.setCooldown("pet", latestAt + creature.abilityIn, Combat.ABILITY_COOLDOWN)
-		hud.setCooldown("signature", latestAt + creature.signatureIn, Combat.SIGNATURE_COOLDOWN)
+		hud.setCooldown("pet", latestAt + creature.abilityIn, Combat.ABILITY_COOLDOWN * (1 - express))
+		hud.setCooldown("signature", latestAt + creature.signatureIn, Combat.SIGNATURE_COOLDOWN * (1 - express))
 	end
 	hud.setCooldown("swap", latestAt + snapshot.swapIn, Combat.BOSS_SWAP_SECONDS)
 end
@@ -780,7 +788,11 @@ local function onEvents(events: { any })
 	local me = `a:@{player.UserId}`
 	for _, event in events do
 		if event.type == "attack" and event.to and typeof(event.from) == "string" and string.sub(event.from, 1, 3) == "a:@" then
-			floatText(event.to, `-{event.damage}`, PLAYER_DAMAGE_COLOR)
+			if event.crit then
+				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
+			else
+				floatText(event.to, `-{event.damage}`, PLAYER_DAMAGE_COLOR)
+			end
 			swordHit(event)
 		elseif event.type == "attack" and event.to == me and not event.dodged then
 			-- A boss hit you
@@ -816,6 +828,8 @@ local function onEvents(events: { any })
 		elseif event.type == "attack" and event.to then
 			if event.dodged then
 				floatText(event.to, "Dodge", WEAK_COLOR)
+			elseif event.crit then
+				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
 			elseif event.strength == "strong" then
 				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR)
 			elseif event.strength == "weak" then

@@ -9,6 +9,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -51,7 +52,9 @@ local function describeSource(): string
 	if not beast or not card then
 		return "From your summoned party creature."
 	end
-	return `From {card.name} ({BeastRules.describeGrowth(beast.level, beast.stars)}), your summoned party creature. More stars make it stronger. Change it in Party.`
+	local fight = PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars)
+	local fightLine = if fight then `In fights: {PartyRules.describeFight(fight)}. ` else ""
+	return `{fightLine}From {card.name} ({BeastRules.describeGrowth(beast.level, beast.stars)}), your summoned party creature. More stars make it stronger. Change it in Party.`
 end
 
 local function showTooltip(visible: boolean)

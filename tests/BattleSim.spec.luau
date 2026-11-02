@@ -55,6 +55,13 @@ local function owned(id: string, owner: string, hp: number?)
 	return input
 end
 
+-- An owner's creature with a fight perk
+local function perked(kind: string, value: number): any
+	local input = owned("p1", "1")
+	input.perk = { kind = kind, value = value }
+	return input
+end
+
 local function group(seed: number): any
 	return BattleSim.new(combat, {
 		fighters = { owned("p1", "1"), owned("p2", "2") },
@@ -1207,5 +1214,84 @@ return {
 		expect.equal(count(events, function(e)
 			return e.type == "ring" or e.type == "telegraph"
 		end), 0)
+	end,
+
+	-- Fight perks (Config/Party FIGHT_PERKS): the creature fighting for an owner gives its perk to it and its player
+	["Hype: the sword and the creature hit harder"] = function()
+		local plain = bossFightWithPlayer(3, 1)
+		local hyped = bossFightWithPlayer(3, 1, nil, nil, { perked("Hype", 0.5), playerInput("1") })
+		local a = (BattleSim.swordHit(plain, "1", "b:m", 0.5, "Sword") :: { any })[1].damage
+		local b = (BattleSim.swordHit(hyped, "1", "b:m", 0.5, "Sword") :: { any })[1].damage
+		expect.near(b, a * 1.5, 1)
+		local function firstCreatureHit(state: any): number
+			for _ = 1, 100 do
+				for _, e in BattleSim.step(state, 0.1) do
+					if e.type == "attack" and e.from == "a:p1" then
+						return e.damage
+					end
+				end
+			end
+			return -1
+		end
+		expect.near(firstCreatureHit(hyped), firstCreatureHit(plain) * 1.5, 1.01)
+	end,
+
+	["Calm: you and your creature take less damage"] = function()
+		local quick = { every = 1e9, warning = 1, big = 0, quick = 0.1 }
+		local creature = perked("Calm", 0.5)
+		creature.hp = 1e9
+		local state = bossFightWithPlayer(22, 1, nil, quick, { creature, playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "attack" and e.kind == "Quick" and e.to == "a:@1"
+		end, 60)
+		expect.equal(viewOf(state, "a:@1").hp, 95, "a 10 HP quick hit lands as 5")
+		local function firstHitOnCreature(input: any): number
+			local fight = bossFightWithPlayer(5, 50, nil, nil, { input, playerInput("1") })
+			for _ = 1, 200 do
+				for _, e in BattleSim.step(fight, 0.1) do
+					if e.type == "attack" and e.to == "a:p1" and not e.kind then
+						return e.damage
+					end
+				end
+			end
+			return -1
+		end
+		expect.near(firstHitOnCreature(perked("Calm", 0.5)), firstHitOnCreature(owned("p1", "1")) * 0.5, 1.01)
+	end,
+
+	["Haggle: a crit doubles the damage and says so"] = function()
+		local plain = bossFightWithPlayer(3, 1)
+		local lucky = bossFightWithPlayer(3, 1, nil, nil, { perked("Haggle", 1), playerInput("1") })
+		local a = (BattleSim.swordHit(plain, "1", "b:m", 0.5, "Sword") :: { any })[1]
+		local b = (BattleSim.swordHit(lucky, "1", "b:m", 0.5, "Sword") :: { any })[1]
+		expect.near(b.damage, a.damage * 2, 1)
+		expect.equal(b.crit, true)
+		expect.isNil(a.crit, "no perk, no crit")
+	end,
+
+	["Hustle: the creature attacks faster"] = function()
+		local function attacks(input: any): number
+			local state = bossFightWithPlayer(7, 0, nil, nil, { input, playerInput("1") })
+			return count(runFor(state, 20), function(e)
+				return e.type == "attack" and e.from == "a:p1"
+			end)
+		end
+		local plain, fast = attacks(owned("p1", "1")), attacks(perked("Hustle", 1))
+		expect.equal(fast >= plain * 2 - 1 and fast <= plain * 2 + 1, true, `{plain} -> {fast}`)
+	end,
+
+	["Express: the creature's ability recharges faster"] = function()
+		local state = bossFightWithPlayer(9, 0, nil, nil, { perked("Express", 0.5), playerInput("1") })
+		BattleSim.useAbility(state, "a:p1", "element", "1")
+		expect.near(viewOf(state, "a:p1").abilityIn, combat.ABILITY_COOLDOWN * 0.5, 0.01)
+	end,
+
+	["the player's perk is their creature on the field's"] = function()
+		local state = bossFightWithPlayer(11, 0, nil, nil, { perked("Express", 0.3), playerInput("1") })
+		expect.near(BattleSim.perkOf(state, "1", "Express"), 0.3, 1e-9)
+		expect.equal(BattleSim.perkOf(state, "1", "Hype"), 0, "another kind")
+		expect.equal(BattleSim.perkOf(state, "9", "Express"), 0, "nobody")
+		BattleSim.swap(state, "a:r1", "1")
+		expect.equal(BattleSim.perkOf(state, "1", "Express"), 0, "the reserve swapped in has none")
 	end,
 }

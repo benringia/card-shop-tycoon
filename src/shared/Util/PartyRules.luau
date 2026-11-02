@@ -8,6 +8,7 @@ type Config = {
 	PERKS: { [string]: { kind: string, base: number } },
 	RARITY_MULTIPLIER: { [string]: number },
 	STAR_BONUS: number,
+	FIGHT_PERKS: { [string]: number }?,
 }
 
 local TEXT = {
@@ -25,6 +26,30 @@ function PartyRules.getPerk(config: Config, element: string, rarity: string, sta
 	end
 	local multiplier = config.RARITY_MULTIPLIER[rarity] or 1
 	return { kind = perk.kind, value = perk.base * multiplier * (1 + config.STAR_BONUS * math.max(0, stars)) }
+end
+
+-- The perk in monster and boss fights: the element's kind with its fight value, grown like the shop one
+function PartyRules.getFightPerk(config: Config, element: string, rarity: string, stars: number): Perk?
+	local perk = config.PERKS[element]
+	local base = if perk and config.FIGHT_PERKS then config.FIGHT_PERKS[perk.kind] else nil
+	if not perk or not base then
+		return nil
+	end
+	local multiplier = config.RARITY_MULTIPLIER[rarity] or 1
+	return { kind = perk.kind, value = base * multiplier * (1 + config.STAR_BONUS * math.max(0, stars)) }
+end
+
+local FIGHT_TEXT = {
+	Hype = "hits %d%% harder",
+	Calm = "takes %d%% less damage",
+	Express = "skills recharge %d%% faster",
+	Hustle = "creature attacks %d%% faster",
+	Haggle = "%d%% chance to crit",
+}
+
+-- "hits 6% harder"
+function PartyRules.describeFight(perk: Perk): string
+	return string.format(FIGHT_TEXT[perk.kind] or "%d%%", math.round(perk.value * 100))
 end
 
 -- "Hype: customers 5% more often"

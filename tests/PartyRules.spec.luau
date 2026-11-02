@@ -27,6 +27,34 @@ return {
 		assert(shade, "expected a perk")
 		expect.near(shade.value, 0.05, 1e-9, "rarity x1")
 	end,
+	["fight perk: the element's kind with its fight value, rarity and stars as in the shop"] = function()
+		expect.equal(config.FIGHT_PERKS.Hype, 0.06)
+		expect.equal(config.FIGHT_PERKS.Calm, 0.05)
+		expect.equal(config.FIGHT_PERKS.Express, 0.08)
+		expect.equal(config.FIGHT_PERKS.Hustle, 0.05)
+		expect.equal(config.FIGHT_PERKS.Haggle, 0.06)
+		local hype = PartyRules.getFightPerk(config, "Ember", "Common", 0) :: any
+		expect.equal(hype.kind, "Hype")
+		expect.near(hype.value, 0.06, 1e-9)
+		local haggle = PartyRules.getFightPerk(config, "Shade", "Legendary", 5) :: any
+		expect.equal(haggle.kind, "Haggle")
+		expect.near(haggle.value, 0.27, 1e-9, "0.06 x 3 x 1.5")
+		local calm = PartyRules.getFightPerk(config, "Tide", "Legendary", 5) :: any
+		expect.near(calm.value, 0.225, 1e-9)
+		expect.isNil(PartyRules.getFightPerk(config, "Plasma", "Common", 0), "no element, no perk")
+	end,
+
+	["describe a fight perk"] = function()
+		local function text(element: string): string
+			return PartyRules.describeFight(PartyRules.getFightPerk(config, element, "Common", 0) :: any)
+		end
+		expect.equal(text("Ember"), "hits 6% harder")
+		expect.equal(text("Tide"), "takes 5% less damage")
+		expect.equal(text("Bloom"), "skills recharge 8% faster")
+		expect.equal(text("Volt"), "creature attacks 5% faster")
+		expect.equal(text("Shade"), "6% chance to crit")
+	end,
+
 	["describe"] = function()
 		local bloom = PartyRules.getPerk(config, "Bloom", "Rare", 0)
 		assert(bloom, "expected a perk")

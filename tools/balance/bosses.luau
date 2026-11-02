@@ -16,6 +16,8 @@
 --   best+2   the best card at the recommended Power, two at 60% of it (a typical party the board calls "ready")
 --   maxed+2  one maxed Legendary (Lv 30, 5 stars, Grade S) and two Lv 1 Commons (a typical "one carry" party)
 --   3 maxed  (the Dungeon's boss only) three maxed Legendaries
+-- Every creature fights with its fight perk (Config/Party FIGHT_PERKS, from its element, rarity and stars), so the five
+-- elements' perks average out over the runs. NO_PERKS=1 runs without them, to compare.
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
 -- has left (fainted ones stay out), as in a real run; its rows also print the party's HP share left before the boss.
 local process = require("@lune/process")
@@ -26,14 +28,17 @@ local Bosses = require("../../src/shared/Config/Bosses")
 local Combat = require("../../src/shared/Config/Combat")
 local Dungeon = require("../../src/shared/Config/Dungeon")
 local Frontier = require("../../src/shared/Config/Frontier")
+local Party = require("../../src/shared/Config/Party")
 local Swords = require("../../src/shared/Config/Swords")
 local BossRules = require("../../src/shared/Util/BossRules")
 local CombatMath = require("../../src/shared/Util/CombatMath")
 local DungeonRules = require("../../src/shared/Util/DungeonRules")
+local PartyRules = require("../../src/shared/Util/PartyRules")
 
 local FIGHTS = tonumber(process.args[1] or "") or 200
 local PLAYERS = tonumber(process.args[2] or "") or 1
 local ONLY = tonumber(process.args[3] or "")
+local PERKS = process.env.NO_PERKS == nil
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 local DT = 0.1
 local SWORD_UPTIME = { 0.55, 0.9 }
@@ -79,7 +84,8 @@ end
 
 local function fighter(id: string, card: Card, element: string, owner: string): any
 	local s = stats(card, element)
-	return { id = id, element = element, hp = s.hp, atk = s.atk, spd = s.spd, owner = owner }
+	local perk = if PERKS then PartyRules.getFightPerk(Party, element, card.rarity, card.stars) else nil
+	return { id = id, element = element, hp = s.hp, atk = s.atk, spd = s.spd, owner = owner, perk = perk }
 end
 
 -- Every player brings the same party; the leader has the tested element (shifted per player), the others the next two.
@@ -172,7 +178,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 				end
 				if state.time >= (skillReady[owner] or 0) then
 					if BattleSim.swordHit(state, owner, target.id, SWORD.skill.power * SWORD.power, "Skill") then
-						skillReady[owner] = state.time + SWORD.skill.cooldown
+						skillReady[owner] = state.time + SWORD.skill.cooldown * (1 - BattleSim.perkOf(state, owner, "Express"))
 						nextCut[owner] = math.max(nextCut[owner] or 0, state.time + SWORD.skill.length)
 					end
 				elseif state.time >= (nextCut[owner] or 0) then
@@ -282,7 +288,7 @@ end
 
 local maxed: Card = { rarity = "Legendary", level = Beasts.MAX_LEVEL, stars = Beasts.MAX_STARS, grade = Beasts.GRADES[#Beasts.GRADES] }
 local junk: Card = { rarity = "Common", level = 1, stars = 0, grade = "C" }
-print(`{FIGHTS} fights per row, {PLAYERS} player(s) each with the row's party; maxed Legendary Power {math.round(power(maxed))}`)
+print(`{FIGHTS} fights per row, {PLAYERS} player(s) each with the row's party; maxed Legendary Power {math.round(power(maxed))}; fight perks {if PERKS then "on" else "off"}`)
 for index, id in Bosses.LADDER do
 	if ONLY and index ~= ONLY then
 		continue

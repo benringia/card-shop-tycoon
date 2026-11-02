@@ -755,6 +755,22 @@ only, read live:
 Perk = base × rarity (Common 1, Rare 1.5, Very Rare 2, Epic 2.5, Legendary 3) × (1 + 0.10 × stars).
 Numbers live in `Config/Party.luau`.
 
+**Fight perks** (`Party.FIGHT_PERKS`, `PartyRules.getFightPerk`, `BattleSim`): in monster and boss fights (not PvP) the
+same perk also works in the fight, from the creature fighting for you right now (swap and it changes), same growth
+rule:
+
+| Perk | In fights | Common, 0 stars | Legendary, 5 stars |
+|---|---|---|---|
+| Hype | your sword and your creature hit harder | 6% | 27% |
+| Calm | you and your creature take less damage | 5% | 23% |
+| Express | sword skill, element ability and signature recharge faster | 8% | 36% |
+| Hustle | your creature attacks faster | 5% | 23% |
+| Haggle | chance of a critical hit (double damage, "CRIT" number) on your sword and creature | 6% | 27% |
+
+The combat HUD shows it as a chip under your creature's bar (and a toast on a swap); the Party panel, the party bar's
+card tooltip and the buff badge's tooltip add a "Fights:" line. The boss balance tool gives every party its perks and
+the bosses were retuned so the targets below still hold.
+
 Plain copies stack by card, foil and grade; a copy becomes an individual card (keeping its grade) the first time it gains XP or a star.
 
 **Grades** (spec `2026-10-20-card-grades-design.md`): every pulled card rolls a grade on the server, fixed forever.
@@ -851,13 +867,13 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1800 / 11 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 3900 / 16 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7200 / 22 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 11500 / 27 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 14500 / 26 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 23000 / 26 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 40000 / 23 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1440 / 7 / 8 | 200 | - | 3 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 2430 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7400 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 22600 / 40 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 27000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 50000 / 27 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -960,7 +976,11 @@ group, checked before its fragments and every time (not only the first). Below i
   add on top. The fights are nearly deterministic (the element match-up decides most of them), so rows land on steps
   of 20%; boss 1 stays easier for players who fight (it's the first). New HP / ATK: Meadow Warden 1440 / 7, Cave Brood
   Queen 2340 / 10, Ember Colossus 7200 / 26, Frost Tyrant 13800 / 43, Storm Sovereign 23200 / 31, Rift Devourer
-  27600 / 57, Prism Hydra 48000 / 23.
+  27600 / 57, Prism Hydra 48000 / 23. Then retuned again for fight perks (every row's party with its perks): Cave
+  Brood Queen 2430 / 10, Ember Colossus 7400 / 29, Frost Tyrant 14900 / 46, Storm Sovereign 22600 / 40, Rift Devourer
+  27000 / 66, Prism Hydra 50000 / 27 (the Warden unchanged: Common perks are small). The Hydra stays easier for
+  players who fight well (about 96% at 1x): its parties are all starred Legendaries with strong perks, and more HP
+  only pushed the still runs past the time limit.
 - **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
   about 126 px solo (`layoutBar` in BattleController).

@@ -106,6 +106,7 @@ local function fillTip(slot: number): boolean
 		return false
 	end
 	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
+	local fightPerk = PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars)
 	CardTips.copy(tip, {
 		card = card,
 		foil = beast.foil,
@@ -116,6 +117,7 @@ local function fillTip(slot: number): boolean
 		stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade),
 		reference = CardTips.reference(),
 		perk = if perk then PartyRules.describe(perk) else nil,
+		fightPerk = if fightPerk then PartyRules.describeFight(fightPerk) else nil,
 		restSeconds = RestTimers.GetSeconds(beastId),
 	})
 	return true

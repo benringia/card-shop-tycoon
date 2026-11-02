@@ -10,6 +10,7 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -34,6 +35,8 @@ export type View = {
 	creatureElement: string, -- for the pet button's tooltip (Config/CombatHud PET_TIPS)
 	petMove: string, -- its element ability's name ("Vine Snare"), for the pet button's name and tooltip
 	signatureMove: string?, -- its signature's name, when it has one
+	perkText: string?, -- its fight perk working now ("🔥 Hype: hits 23% harder"), for the chip under its bar
+	perkColor: Color3?, -- its element's colour
 	creatureHp: number,
 	creatureMax: number,
 	hasSignature: boolean,
@@ -59,6 +62,7 @@ type Button = { frame: ImageButton, drain: Frame, shade: ImageLabel, seconds: Te
 
 local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
 local PORTRAIT_BACK = Color3.fromRGB(42, 29, 51) -- behind the headshot and the card while they load
+local CHIP_POP = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
 local function color(rgb: { number }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
@@ -312,7 +316,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	status.Name = "Status"
 	status.BackgroundTransparency = 1
 	status.Position = UDim2.fromOffset(12, 8)
-	status.Size = UDim2.new(CombatHudConfig.STATUS_WIDTH, 0, 0, math.max(portraitSize, 2 * 18 + barSpec.HEIGHT + barSpec.SMALL_HEIGHT + 6))
+	status.Size = UDim2.new(CombatHudConfig.STATUS_WIDTH, 0, 0, math.max(portraitSize, 2 * 18 + barSpec.HEIGHT + barSpec.SMALL_HEIGHT + 12 + CombatHudConfig.PERK_CHIP_HEIGHT))
 	status.Parent = root
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(CombatHudConfig.STATUS_MAX_WIDTH, 120)
@@ -331,10 +335,50 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	layout.Parent = rows
 	local playerLabel, playerBar = statusRow(rows, 1, barSpec.HEIGHT, barSpec.PLAYER)
 	local creatureLabel, creatureBar = statusRow(rows, 2, barSpec.SMALL_HEIGHT, barSpec.CREATURE)
+	-- The creature's fight perk working now: a chip in its element's colour under its bar (pops in on a swap)
+	local chipSize = CombatHudConfig.PERK_CHIP_HEIGHT
+	local chip = UIKit.label(rows, "", Enum.Font.FredokaOne, chipSize - 8, Color3.new(1, 1, 1))
+	chip.Name = "PerkChip"
+	chip.LayoutOrder = 3
+	chip.Size = UDim2.fromOffset(0, chipSize)
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+	chip.BackgroundTransparency = 0.15
+	chip.Visible = false
+	UIKit.corner(chip, chipSize)
+	local chipPad = Instance.new("UIPadding")
+	chipPad.PaddingLeft, chipPad.PaddingRight = UDim.new(0, 8), UDim.new(0, 9)
+	chipPad.Parent = chip
+	local chipEdge = Instance.new("UIStroke")
+	chipEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	chipEdge.Thickness = 1.5
+	chipEdge.Parent = chip
+	local chipScale = Instance.new("UIScale")
+	chipScale.Parent = chip
+	-- A swap's toast: the new creature's perk, just under the top-left status for a moment
+	local toast = UIKit.label(root, "", Enum.Font.FredokaOne, 18, Color3.new(1, 1, 1))
+	toast.Name = "PerkToast"
+	toast.AnchorPoint = Vector2.new(0.5, 0)
+	toast.Position = UDim2.new(0.5, 0, 0, status.Size.Y.Offset + 16) -- clear of the status on narrow phones
+	toast.Size = UDim2.fromOffset(0, 34)
+	toast.AutomaticSize = Enum.AutomaticSize.X
+	toast.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+	toast.BackgroundTransparency = 0.1
+	toast.Visible = false
+	UIKit.corner(toast, 10)
+	local toastPad = Instance.new("UIPadding")
+	toastPad.PaddingLeft, toastPad.PaddingRight = UDim.new(0, 14), UDim.new(0, 14)
+	toastPad.Parent = toast
+	local toastEdge = Instance.new("UIStroke")
+	toastEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	toastEdge.Thickness = 1.5
+	toastEdge.Parent = toast
+	local toastToken = 0
 	local lastPlayerHp: number? = nil
 	local creatureId: string? = nil
 	local hitAt, hitPeak = -math.huge, 0
 	local wasHurt = false
+	local swapped = false -- the first creature isn't a swap: no toast for it
 
 	local latest: View? = nil
 	local picker: Frame? = nil
@@ -545,6 +589,25 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			creatureBar.reset(view.creatureHp, view.creatureMax)
 			badge.Image = view.creatureArt or ""
 			badge.Visible = view.creatureArt ~= nil
+			local perkColor = view.perkColor or Color3.new(1, 1, 1)
+			chip.Text = view.perkText or ""
+			chip.Visible = view.perkText ~= nil
+			chipEdge.Color = perkColor
+			chipScale.Scale = 0.5
+			TweenService:Create(chipScale, CHIP_POP, { Scale = 1 }):Play()
+			if view.perkText and swapped then
+				toastToken += 1
+				local token = toastToken
+				toast.Text = view.perkText
+				toastEdge.Color = perkColor
+				toast.Visible = true
+				task.delay(CombatHudConfig.PERK_TOAST_SECONDS, function()
+					if toastToken == token then
+						toast.Visible = false
+					end
+				end)
+			end
+			swapped = true
 		else
 			creatureBar.set(view.creatureHp, view.creatureMax)
 		end

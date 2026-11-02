@@ -13,6 +13,15 @@ return {
 	},
 	RARITY_MULTIPLIER = { Common = 1, Rare = 1.5, ["Very Rare"] = 2, Epic = 2.5, Legendary = 3 },
 	STAR_BONUS = 0.10, -- each star adds this share of the perk
+	-- The same perk in monster and boss fights (not PvP), from the creature fighting for you: its value for a Common
+	-- at 0 stars, grown by RARITY_MULTIPLIER and STAR_BONUS as above (Util/PartyRules.getFightPerk, BattleSim)
+	FIGHT_PERKS = {
+		Hype = 0.06, -- your sword and your creature hit harder
+		Calm = 0.05, -- you and your creature take less damage
+		Express = 0.08, -- the sword skill, element ability and signature recharge faster
+		Hustle = 0.05, -- your creature attacks faster
+		Haggle = 0.06, -- chance for a critical hit (double damage) from your sword and your creature
+	},
 
 	-- Creature size, as a multiple of CREATURE_HEIGHT
 	SIZE_BY_RARITY = { Common = 0.7, Rare = 0.85, ["Very Rare"] = 1, Epic = 1.5, Legendary = 1.4 },

@@ -55,6 +55,8 @@ return {
 	TIP_WIDTH = 230,
 	COOLDOWN_SHADE = 0.45, -- transparency of the dark drain over a button cooling down
 	READY_FLASH = 0.25, -- seconds a button glows when it's ready again
+	PERK_CHIP_HEIGHT = 20, -- pixels: the fight perk chip under your creature's bar
+	PERK_TOAST_SECONDS = 1.8, -- a swap shows the new creature's perk this long
 	PRELOAD_WAIT = 6, -- seconds after joining before the fight's art, sounds and moves download (Util/CombatAssets)
 	-- Top-left: your headshot in a ring with your creature's card on a badge, then your HP and your creature's
 	STATUS_WIDTH = 0.32, -- of the screen's width

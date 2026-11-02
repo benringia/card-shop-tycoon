@@ -212,11 +212,16 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 
 	-- The perk while summoned, then the resting line (filled by updateRest)
 	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
-	local perkLine = strip(stack, 6, if phone then 26 else 36, 5)
+	local fightPerk = PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars)
+	local perkLine = strip(stack, 6, if phone then 34 else 44, 5)
 	local elementIcon = Icon.make(perkLine, card.element, UDim2.fromOffset(20, 20))
 	elementIcon.ZIndex = perkLine.ZIndex + 1
 	Tooltip.icon(elementIcon, card.element)
-	local perkText = text(perkLine, if perk then PartyRules.describe(perk) else "No perk", UIKit.textSize("small"), if perk then UIStyle.HINT else UIKit.Colors.Subtext)
+	local perkWords = if perk then PartyRules.describe(perk) else "No perk"
+	if fightPerk then
+		perkWords ..= `\nFights: {PartyRules.describeFight(fightPerk)}`
+	end
+	local perkText = text(perkLine, perkWords, UIKit.textSize("small"), if perk then UIStyle.HINT else UIKit.Colors.Subtext)
 	perkText.LayoutOrder = 2
 	perkText.AutomaticSize = Enum.AutomaticSize.None
 	perkText.TextWrapped = true

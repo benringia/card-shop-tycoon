@@ -23,6 +23,7 @@ local Announcements = require(Config:WaitForChild("Announcements"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
+local Party = require(Config:WaitForChild("Party"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
 local Wild = Place.getWorld()
@@ -30,6 +31,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
+local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Swords = require(Config:WaitForChild("Swords"))
 local RingRules = require(Shared:WaitForChild("Util"):WaitForChild("RingRules"))
@@ -195,7 +197,8 @@ end
 
 -- Fighters ------------------------------------------------------------------------------------------------
 
-local function fighterInput(beast: Beast): BattleSim.FighterInput
+-- withPerk: its fight perk too (monster and boss fights; PvP fights without)
+local function fighterInput(beast: Beast, withPerk: boolean?): BattleSim.FighterInput
 	local card = Cards.ById[beast.cardId]
 	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade)
 	return {
@@ -205,10 +208,11 @@ local function fighterInput(beast: Beast): BattleSim.FighterInput
 		atk = stats.atk,
 		spd = stats.spd,
 		signature = if Combat.SIGNATURES[card.name] then card.name else nil,
+		perk = if withPerk then PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars) else nil,
 	}
 end
 
--- A card as a fighter: its stats now, and its signature ability if it has one (ArenaService uses it too)
+-- A card as a fighter: its stats now, and its signature ability if it has one (ArenaService uses it too: no perk)
 function BattleService.FighterInput(beast: Beast): BattleSim.FighterInput
 	return fighterInput(beast)
 end
@@ -886,7 +890,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local owner = tostring(player.UserId)
 		local partyIds = getPartyIds(player)
 		local left = if hpLeft then hpLeft[player] or {} else {}
-		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast)
+		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast, true)
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
 		table.insert(leaders, leaderInput)
@@ -898,7 +902,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			local beast = CardService.GetBeast(player, beastId)
 			-- In a run, a card that fainted in an earlier room stays out even once it has rested
 			if beast and beastId ~= leaderId and not isResting(player, beastId) and DungeonRules.canFight(left, beastId) then
-				local input = fighterInput(beast)
+				local input = fighterInput(beast, true)
 				input.owner = owner
 				input.hpNow = left[beastId]
 				table.insert(reserves, input)
@@ -1236,7 +1240,7 @@ local function onSwordSkill(player: Player)
 		return
 	end
 	local skill = Swords.SWORDS[swordId].skill
-	member.skillReady = os.clock() + skill.cooldown
+	member.skillReady = os.clock() + skill.cooldown * (1 - BattleSim.perkOf(fight.sim, member.owner, "Express"))
 	SwordService.Touch(player)
 	task.delay(skill.hitAt, strike, fight, member, skill.power * Swords.SWORDS[swordId].power, "Skill", function(px, pz, _lookX, _lookZ, target)
 		return SwordRules.inRadius(px, pz, target.x, target.z, target.radius, skill.radius)

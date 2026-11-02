@@ -41,6 +41,7 @@ local mine: SwordAnims.Set? = nil -- your character's sword moves
 local popup: Frame? = nil
 local sounds: { [string]: Sound } = {} -- your sword's sounds by moment, kept loaded on your root part
 local hitSoundAt = 0 -- os.clock: when your own reach check last played the hit sound
+local skillScale = 1 -- the sword skill's cooldown share: an Express creature shortens it (the server does the same)
 
 -- Boss fights only
 local combatTargets: (() -> { SwordRules.Target })? = nil -- the boss and its adds, for soft aim
@@ -366,6 +367,11 @@ function SwordController.PlaySound(key: string)
 	sound:Play()
 end
 
+-- Boss fights: the share of the sword skill's cooldown it takes now (1 - an Express creature's perk)
+function SwordController.SetSkillScale(scale: number)
+	skillScale = math.clamp(scale, 0.1, 1)
+end
+
 -- Whether the hit sound just played from your own reach check (BattleController skips the server's late copy)
 function SwordController.HitSoundJustPlayed(): boolean
 	return os.clock() - hitSoundAt < Swords.HIT_SOUND_WINDOW
@@ -521,9 +527,10 @@ function SwordController.Skill()
 	if not character or not root or not sword or os.clock() < skillReadyAt then
 		return
 	end
-	skillReadyAt = os.clock() + sword.skill.cooldown
+	local cooldown = sword.skill.cooldown * skillScale
+	skillReadyAt = os.clock() + cooldown
 	if onCooldown then
-		onCooldown("skill", skillReadyAt, sword.skill.cooldown)
+		onCooldown("skill", skillReadyAt, cooldown)
 	end
 	SwordController.DrawNow()
 	Remotes.SwordSkill:FireServer()
