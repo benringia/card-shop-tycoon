@@ -434,10 +434,11 @@ local function ringInside(fight: Fight, info: BattleSim.RingInfo): boolean
 	return RingRules.inSwipe(ring.x, ring.z, ring.dirX, ring.dirZ, ring.length, ring.halfAngle, at.X, at.Z)
 end
 
--- The boss winds up (a quick hit or a big attack): every client poses it for `seconds` (MonsterController)
-local function windUp(fight: Fight, seconds: number?)
+-- The boss winds up (kind "quick" or "big"): every client poses it for `seconds` (MonsterController)
+local function windUp(fight: Fight, seconds: number?, kind: string)
 	local marker = fight.monster.marker
 	marker:SetAttribute("WindUp", seconds or 0)
+	marker:SetAttribute("WindUpKind", kind)
 	marker:SetAttribute("WindUps", (tonumber(marker:GetAttribute("WindUps")) or 0) + 1)
 end
 
@@ -493,9 +494,9 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			enterField(fight, event, markers, allies)
 		elseif event.type == "ring" and event.ring then
 			recordRing(fight, event)
-			windUp(fight, event.seconds)
+			windUp(fight, event.seconds, "big")
 		elseif event.type == "telegraph" then
-			windUp(fight, event.seconds)
+			windUp(fight, event.seconds, "quick")
 		elseif (event.type == "down" or event.type == "getUp") and event.to then
 			local member = memberByOwner(fight, string.sub(event.to, 4))
 			if member then

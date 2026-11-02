@@ -32,8 +32,14 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
+local HitFx = require(ClientUtil:WaitForChild("HitFx"))
+local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
+local Swords = require(Config:WaitForChild("Swords"))
+local SwordFx = require(Config:WaitForChild("SwordFx"))
+local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local player = Players.LocalPlayer
@@ -729,9 +735,68 @@ local function banner(text: string, color: Color3)
 	end)
 end
 
+local PLAYER_DAMAGE_COLOR = Color3.fromRGB(Swords.PLAYER_DAMAGE_COLOR[1], Swords.PLAYER_DAMAGE_COLOR[2], Swords.PLAYER_DAMAGE_COLOR[3])
+
+-- A player's sword hit: their numbers in gold, sparks and a flash on what they hit; yours also freezes your swing a
+-- moment (hit-stop) and shakes the camera, harder for the skill
+local function swordHit(event: any)
+	local marker = markerFor(event.to)
+	if marker then
+		HitFx.sparks(marker.Position + Vector3.new(0, 3, 0))
+		local model = MonsterController.GetModel(marker)
+		if model then
+			HitFx.flash(model, Color3.new(1, 1, 1), SwordFx.FLASH_SECONDS, 0.35)
+		end
+	end
+	if event.from == `a:@{player.UserId}` then
+		local anims = SwordController.GetAnims()
+		if anims then
+			anims.hitStop(SwordFx.HIT_STOP_SECONDS)
+		end
+		local strength = if event.kind == "Skill" then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
+		shake(strength.seconds, strength.studs)
+		SwordController.PlaySound("hit")
+	end
+end
+
 local function onEvents(events: { any })
+	local me = `a:@{player.UserId}`
 	for _, event in events do
-		if event.type == "attack" and event.to then
+		if event.type == "attack" and event.to and typeof(event.from) == "string" and string.sub(event.from, 1, 3) == "a:@" then
+			floatText(event.to, `-{event.damage}`, PLAYER_DAMAGE_COLOR)
+			swordHit(event)
+		elseif event.type == "attack" and event.to == me and not event.dodged then
+			-- A boss hit you
+			floatText(event.to, `-{event.damage}`, UIKit.Colors.Danger)
+			shake(SwordFx.SHAKE.hurt.seconds, SwordFx.SHAKE.hurt.studs)
+			local anims = SwordController.GetAnims()
+			if anims then
+				anims.play("flinch")
+			end
+		elseif event.type == "ring" and typeof(event.x) == "number" then
+			RingFx.show({
+				shape = event.kind,
+				x = event.x,
+				y = event.y,
+				z = event.z,
+				dirX = event.dirX,
+				dirZ = event.dirZ,
+				radius = event.radius,
+				length = event.length,
+				halfAngle = event.halfAngle,
+				warning = event.seconds or 1,
+			})
+			if event.to == me then
+				SwordController.PlaySound("ring")
+			end
+		elseif event.type == "down" and event.to == me then
+			SwordController.Kneel()
+			banner("Down!", UIKit.Colors.Danger)
+		elseif event.type == "getUp" and event.to == me then
+			SwordController.GetUp()
+		elseif event.type == "out" and event.to == me then
+			banner("You're out: watching", UIKit.Colors.Danger)
+		elseif event.type == "attack" and event.to then
 			if event.dodged then
 				floatText(event.to, "Dodge", WEAK_COLOR)
 			elseif event.strength == "strong" then
@@ -1205,6 +1270,26 @@ local function onStarted(payload: any)
 	end
 end
 
+-- A lost boss fight: "Teleporting back to town in 3", "... 2", "... 1" (the server moves you home)
+local function showLossCountdown(seconds: number)
+	countdownToken += 1
+	local token = countdownToken
+	task.spawn(function()
+		for left = seconds, 1, -1 do
+			if countdownToken ~= token then
+				return
+			end
+			countdownLabel.Text = BossRules.countdownText(left)
+			countdownLabel.TextColor3 = Color3.new(1, 1, 1)
+			countdownLabel.Visible = true
+			task.wait(1)
+		end
+		if countdownToken == token then
+			countdownLabel.Visible = false
+		end
+	end)
+end
+
 local function onEnded(summary: any)
 	fighting = false
 	-- A fight can end during the intro (a player left): give the camera back
@@ -1228,6 +1313,9 @@ local function onEnded(summary: any)
 	end
 	if typeof(summary) == "table" then
 		showEnd(summary)
+		if typeof(summary.countdown) == "number" and summary.countdown > 0 then
+			showLossCountdown(summary.countdown)
+		end
 	end
 end
 

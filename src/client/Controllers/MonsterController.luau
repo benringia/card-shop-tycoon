@@ -25,6 +25,8 @@ local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForC
 local PetAnimator = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("PetAnimator"))
 
 local MonsterController = {}
+local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
+local HitFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HitFx"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
@@ -455,6 +457,17 @@ local function add(marker: BasePart)
 	end
 	updateTag(monster)
 	lightHeads(monster)
+	-- A boss winding up an attack on a player (BattleService): a quick hit flashes it red; a big attack rears it back
+	-- (its roar pose) with an orange glow, for the warning's length
+	table.insert(monster.connections, marker:GetAttributeChangedSignal("WindUps"):Connect(function()
+		local seconds = tonumber(marker:GetAttribute("WindUp")) or 0.5
+		local big = marker:GetAttribute("WindUpKind") == "big"
+		local tint = if big then SwordFx.WINDUP_BIG_COLOR else SwordFx.WINDUP_QUICK_COLOR
+		HitFx.flash(body.model, Color3.fromRGB(tint[1], tint[2], tint[3]), seconds, SwordFx.WINDUP_FILL)
+		if big and body.pet then
+			PetAnimator.play(body.pet, "wildroar", os.clock())
+		end
+	end))
 	table.insert(monster.connections, marker.AttributeChanged:Connect(function()
 		updateTag(monster)
 		if #monster.heads > 0 or monster.aura then
@@ -490,6 +503,12 @@ local function preloadModels()
 	if #batch > 0 then
 		CreatureVisuals.preloadTemplates(batch)
 	end
+end
+
+-- A monster's model on this client (sword hits flash it), if it has one
+function MonsterController.GetModel(marker: BasePart): Model?
+	local monster = monsters[marker]
+	return if monster then monster.body.model else nil
 end
 
 function MonsterController.Start()

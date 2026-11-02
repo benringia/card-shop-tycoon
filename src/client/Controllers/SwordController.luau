@@ -15,6 +15,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local SwordFx = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -30,7 +31,7 @@ local player = Players.LocalPlayer
 local SwordController = {}
 
 -- One character's sword
-type View = { swordId: string, model: Model, handle: BasePart, weld: Weld, grip: CFrame, inHand: boolean, token: number }
+type View = { swordId: string, model: Model, handle: BasePart, weld: Weld, grip: CFrame, inHand: boolean, token: number, trail: Trail? }
 
 local views: { [Model]: View } = {}
 local predictedUntil = 0 -- os.clock: your sword shows drawn until then, ahead of the server's SwordDrawn (an attack)
@@ -155,7 +156,24 @@ local function refresh(character: Model)
 		local weld = Instance.new("Weld")
 		weld.Part1 = handle
 		weld.Parent = handle
-		local fresh: View = { swordId = swordId, model = model, handle = handle, weld = weld, grip = grip, inHand = drawn, token = 0 }
+		local fresh: View = { swordId = swordId, model = model, handle = handle, weld = weld, grip = grip, inHand = drawn, token = 0, trail = nil }
+		if character == player.Character then
+			-- The slash trail along your blade, on while a cut or the skill swings
+			local blade = SwordFx.TRAIL_BLADE
+			local base, tip = Instance.new("Attachment"), Instance.new("Attachment")
+			base.CFrame, tip.CFrame = grip * CFrame.new(0, blade.base, 0), grip * CFrame.new(0, blade.tip, 0)
+			base.Parent, tip.Parent = handle, handle
+			local trail = Instance.new("Trail")
+			trail.Attachment0, trail.Attachment1 = base, tip
+			trail.Lifetime = SwordFx.TRAIL_LIFETIME
+			trail.Color = ColorSequence.new(Color3.fromRGB(SwordFx.TRAIL_COLOR[1], SwordFx.TRAIL_COLOR[2], SwordFx.TRAIL_COLOR[3]))
+			trail.Transparency = NumberSequence.new(0.2, 1)
+			trail.LightEmission = 1
+			trail.FaceCamera = true
+			trail.Enabled = false
+			trail.Parent = handle
+			fresh.trail = trail
+		end
 		views[character] = fresh
 		place(fresh, character, drawn)
 		model.Parent = character
@@ -174,6 +192,7 @@ local function refresh(character: Model)
 		if mine then
 			mine.play("ready", 1, 0.2)
 		end
+		SwordController.PlaySound("draw")
 		return
 	end
 	if own and mine then
@@ -240,6 +259,58 @@ function SwordController.DrawNow()
 			refresh(character)
 		end
 	end)
+end
+
+-- One of your sword's sounds (Config/Swords sounds; silent while its id is empty)
+function SwordController.PlaySound(key: string)
+	local character = player.Character
+	local swordId = if character then character:GetAttribute("Sword") else nil
+	local sword = if typeof(swordId) == "string" then Swords.SWORDS[swordId] else Swords.SWORDS[Swords.STARTER]
+	local id = if sword then sword.sounds[key] else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not id or id == "" or not root then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Parent = root
+	sound.Ended:Once(function()
+		sound:Destroy()
+	end)
+	sound:Play()
+end
+
+-- The trail along your blade for one swing
+local function swingTrail()
+	local view = if player.Character then views[player.Character] else nil
+	local trail = if view then view.trail else nil
+	if not trail then
+		return
+	end
+	trail.Enabled = true
+	task.delay(SwordFx.TRAIL_SECONDS, function()
+		trail.Enabled = false
+	end)
+end
+
+-- Knocked down (held kneeling, the down move's Hold marker) and back up
+function SwordController.Kneel()
+	local set = mine
+	local track = if set then set.play("down") else nil
+	if track then
+		track:GetMarkerReachedSignal("Hold"):Once(function()
+			track:AdjustSpeed(0)
+		end)
+	end
+	SwordController.PlaySound("down")
+end
+
+function SwordController.GetUp()
+	if mine then
+		mine.stop("down", 0.1)
+		mine.play("getUp")
+	end
+	SwordController.PlaySound("getUp")
 end
 
 local function ownParts(): (Model?, BasePart?, Humanoid?)
@@ -316,6 +387,8 @@ function SwordController.Attack()
 		if mine then
 			mine.play(`cut{index}`)
 		end
+		swingTrail()
+		SwordController.PlaySound(`swing{index}`)
 	end)
 end
 
@@ -335,6 +408,8 @@ function SwordController.Skill()
 	if mine then
 		mine.play("skill")
 	end
+	swingTrail()
+	SwordController.PlaySound("swing3")
 end
 
 -- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images
@@ -348,6 +423,7 @@ function SwordController.Dodge()
 		onCooldown("dodge", dodgeReadyAt, Combat.DODGE_COOLDOWN)
 	end
 	Remotes.Dodge:FireServer()
+	SwordController.PlaySound("dodge")
 	local move = Vector3.new(humanoid.MoveDirection.X, 0, humanoid.MoveDirection.Z)
 	local direction = if move.Magnitude > 0.1 then move.Unit else -Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 	local speed = Combat.DODGE_STUDS / Combat.DODGE_SECONDS
