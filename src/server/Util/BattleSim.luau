@@ -675,6 +675,9 @@ local function charge(state: State, fighter: Fighter, events: { Event })
 	if not lead or fighter.player or fighter.chargedFor == fighter.nextAttack or fighter.stunUntil >= fighter.nextAttack then
 		return
 	end
+	if state.combat.CHARGE_SHARE then
+		lead = math.min(lead, interval(state, fighter) * state.combat.CHARGE_SHARE)
+	end
 	local left = fighter.nextAttack - state.time
 	if left > lead then
 		return

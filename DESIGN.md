@@ -601,7 +601,7 @@ the party vs a one-monster side.
 **Battles part 1: wild fights.** A portal at the end of the plaza street moves you to the wild map (same server, far
 from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
 summoned creature fights (it must be rested); in the first 5 s you may call in one more party card (max 2 of yours
-vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD: Common ~2 s, Legendary ~1 s); each has an element
+vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD, `2 x (10 / SPD)^0.62` between 0.55 and 2.5 s: SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s, so every bit of SPD counts; a fast attacker charges for at most 75% of its gap); each has an element
 ability (8 s cooldown) and the 6 Epic/Legendary cards a signature ability (15 s). Element wheel: Ember > Bloom >
 Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
 (`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
@@ -869,13 +869,13 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1440 / 7 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 2430 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 7400 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 3 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 22600 / 40 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 27000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 50000 / 27 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -1045,7 +1045,13 @@ group, checked before its fragments and every time (not only the first). Below i
   players who fight well (about 96% at 1x): its parties are all starred Legendaries with strong perks, and more HP
   only pushed the still runs past the time limit. Boss debuffs (2026-11-02) left HP / ATK as they were: with them every
   row moved by a few points at most (solo and in pairs; the biggest, Ember Colossus still at 0.8x 40% to 29%, toward
-  its target). `NO_DEBUFFS=1` runs the tool without them; the walk slows aren't modelled.
+  its target). `NO_DEBUFFS=1` runs the tool without them; the walk slows aren't modelled. Attack pace by SPD
+  (2026-11-03, owner): the old pace (20 / SPD, floor 0.8 s) capped almost every creature above SPD 25, so a Lv 20
+  Common attacked as often as a Lv 30 Legendary; the new curve slows mid creatures a little and speeds top ones up, and
+  bosses were retuned to keep the targets (solo, still / well at 0.8x | 1x): Meadow Warden HP 1300 (7/60 | 100/100),
+  Cave Brood Queen HP 2600 (23/60 | 60/90), Ember Colossus HP 6300 (6/60 | 60/86), Frost Tyrant unchanged (0/63 |
+  49/91), Storm Sovereign 28000 / ATK 43 (20/60 | 60/90), Rift Devourer HP 34000 (23/60 | 58/82), Prism Hydra
+  60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
 - **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
   about 126 px solo (`layoutBar` in BattleController).

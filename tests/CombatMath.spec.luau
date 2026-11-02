@@ -28,7 +28,9 @@ return {
 
 	["attack interval: faster with SPD, clamped"] = function()
 		expect.near(CombatMath.getAttackInterval(combat, 10), 2, 1e-9, "Common SPD 10")
-		expect.near(CombatMath.getAttackInterval(combat, 20), 1, 1e-9, "Legendary SPD 20")
+		expect.near(CombatMath.getAttackInterval(combat, 27), 1.08, 0.01, "a Lv 30 Common")
+		expect.near(CombatMath.getAttackInterval(combat, 47), 0.77, 0.01, "a Lv 30 Epic")
+		expect.near(CombatMath.getAttackInterval(combat, 69), 0.6, 0.01, "a Lv 30 Legendary Volt")
 		expect.equal(CombatMath.getAttackInterval(combat, 1000), combat.ATTACK_MIN, "min")
 		expect.equal(CombatMath.getAttackInterval(combat, 1), combat.ATTACK_MAX, "max")
 		expect.equal(CombatMath.getAttackInterval(combat, 0), combat.ATTACK_MAX, "zero SPD")
@@ -85,6 +87,15 @@ return {
 		end
 		for name, species in wild.SPECIES do
 			assert(table.find(ELEMENTS, species.element), `{name}: element {species.element}`)
+		end
+	end,
+
+	["every bit of SPD a card can reach still speeds it up"] = function()
+		local previous = math.huge
+		for spd = 10, 70, 5 do
+			local interval = CombatMath.getAttackInterval(combat, spd)
+			expect.equal(interval < previous, true, `SPD {spd}`)
+			previous = interval
 		end
 	end,
 }

@@ -6,6 +6,7 @@ local CombatMath = {}
 type Combat = {
 	ATTACK_BASE: number,
 	SPD_REFERENCE: number,
+	ATTACK_CURVE: number,
 	ATTACK_MIN: number,
 	ATTACK_MAX: number,
 	DAMAGE_SPREAD: number,
@@ -35,7 +36,7 @@ function CombatMath.getAttackInterval(combat: Combat, spd: number): number
 	if spd <= 0 then
 		return combat.ATTACK_MAX
 	end
-	return math.clamp(combat.ATTACK_BASE * combat.SPD_REFERENCE / spd, combat.ATTACK_MIN, combat.ATTACK_MAX)
+	return math.clamp(combat.ATTACK_BASE * (combat.SPD_REFERENCE / spd) ^ combat.ATTACK_CURVE, combat.ATTACK_MIN, combat.ATTACK_MAX)
 end
 
 local function beats(combat: Combat, a: string, b: string): boolean

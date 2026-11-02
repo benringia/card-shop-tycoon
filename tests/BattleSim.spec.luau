@@ -1349,7 +1349,7 @@ return {
 	end,
 
 	["overcharge's short gaps still charge, with the time left"] = function()
-		local state = wild(fighter("a", "Volt", 100000, 10, 20), {}, monster("Shade", 100000, 1, 10), 42) -- 1 s apart, 0.5 overcharged
+		local state = wild(fighter("a", "Volt", 100000, 10, 31), {}, monster("Shade", 100000, 1, 10), 42) -- 1 s apart, 0.5 overcharged
 		runFor(state, 1)
 		BattleSim.useAbility(state, "a:a", "element")
 		local timed = timedEvents(state, 4)
@@ -1568,5 +1568,18 @@ return {
 		end
 		expect.equal(Bosses.BOSSES.meadowWarden.playerAttacks.debuff, "Entangled")
 		expect.equal(Bosses.BOSSES.prismHydra.playerAttacks.debuff, "byPhase")
+	end,
+	["a fast attacker charges for part of its gap, not the whole lead"] = function()
+		local state = wild(fighter("a", "Volt", 100000, 10, 69), {}, monster("Shade", 100000, 1, 10), 44)
+		local gap = CombatMathInterval(69)
+		local charges = 0
+		for _, entry in timedEvents(state, 6) do
+			local e = entry.event
+			if e.from == "a:a" and e.type == "charge" then
+				charges += 1
+				expect.equal(e.seconds <= gap * combat.CHARGE_SHARE + 0.1 + 1e-9, true, `seconds {e.seconds} for a {gap} s gap`)
+			end
+		end
+		expect.equal(charges >= 8, true, `charges {charges}`)
 	end,
 }
