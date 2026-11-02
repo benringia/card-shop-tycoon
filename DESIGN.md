@@ -915,7 +915,11 @@ group, checked before its fragments and every time (not only the first). Below i
   (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
-  creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players.
+  creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're
+  down and none of your creatures can fight: "Teleporting back to town in 3, 2, 1" (`Combat.LOSS_COUNTDOWN`,
+  `BossRules.countdownText`), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
+  spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
+  kneeling, until the fight ends, and a win counts for them too.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of

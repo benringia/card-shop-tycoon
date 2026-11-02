@@ -715,6 +715,9 @@ local function endFight(fight: Fight, result: string)
 	end
 	for player, member in table.clone(fight.members) do
 		local summary: any = { result = result, rested = release(fight, member) }
+		if result == "lose" and fight.monster.boss then
+			summary.countdown = Combat.LOSS_COUNTDOWN -- "Teleporting back to town in 3, 2, 1" (BossService moves them)
+		end
 		if result == "win" and player.Parent then
 			local paid = payOut(fight, member)
 			summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss

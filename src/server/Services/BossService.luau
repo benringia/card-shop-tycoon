@@ -19,6 +19,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local Combat = require(Config:WaitForChild("Combat"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -768,6 +769,30 @@ local function onTravel(player: Player, raw: unknown)
 	WildService.TravelToWild(player, gate)
 end
 
+-- A lost boss fight: after LOSS_COUNTDOWN ("Teleporting back to town in 3, 2, 1") everyone who was still in it goes
+-- home (BossRules.lossHome); they no longer hold a remote copy, so its loot linger doesn't move them back. The
+-- Dungeon's run handles its own losers.
+local function sendLosersHome(monster: WildService.Monster, hpLeft: { [Player]: { [string]: number } })
+	local home = BossRules.lossHome(if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Main")
+	if home == "dungeon" then
+		return
+	end
+	local _, index = copyOf(monster)
+	local held = if index then (fighters[monster.boss :: string] or {})[index] else nil
+	for player in hpLeft do
+		local at = if held then table.find(held, player) else nil
+		if at then
+			table.remove(held :: { Player }, at)
+		end
+		task.delay(Combat.LOSS_COUNTDOWN, function()
+			local humanoid = if player.Parent and player.Character then player.Character:FindFirstChildOfClass("Humanoid") else nil
+			if humanoid and humanoid.Health > 0 then
+				WildService.SendToSpring(player)
+			end
+		end)
+	end
+end
+
 function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
 	arenas = WildService.BuildBossArenas(onGate, onGroup, onReturn)
@@ -782,7 +807,10 @@ function BossService.Start()
 			end
 		end
 	end)
-	BattleService.OnFightEnded(function(monster)
+	BattleService.OnFightEnded(function(monster, result, hpLeft)
+		if result == "lose" and monster.boss then
+			sendLosersHome(monster, hpLeft)
+		end
 		local copy, index = copyOf(monster)
 		local bossId = monster.boss :: string
 		if not copy or not index or not BossRules.shouldUnseal(monster, (occupants[bossId] or {})[index]) then
