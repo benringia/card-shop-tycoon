@@ -588,6 +588,27 @@ local function packOf(fight: Fight): { Monster }
 	return pack
 end
 
+-- `each` XP to every party card; for the victory screen, each card's way to its next level before and after
+local function giveXp(player: Player, partyIds: { string }, each: number): { any }
+	local party = {}
+	for _, beastId in partyIds do
+		local before = CardService.GetBeast(player, beastId)
+		local level, from = if before then before.level else 1, if before then BeastRules.levelProgress(before.level, before.xp) else 0
+		local after = CardService.AddXP(player, beastId, each)
+		if after then
+			table.insert(party, {
+				id = beastId,
+				cardId = after.cardId,
+				level = after.level,
+				levelUp = after.level > level,
+				from = from,
+				to = BeastRules.levelProgress(after.level, after.xp),
+			})
+		end
+	end
+	return party
+end
+
 -- One member's win: their own party's XP and cash; a boss's items through BossService (their contribution decides)
 local function payOut(fight: Fight, member: Member): any
 	local player, monster = member.player, fight.monster
@@ -596,9 +617,7 @@ local function payOut(fight: Fight, member: Member): any
 		-- Bosses: their own XP and cash, every win; items only through BossService's farm-protected rules
 		local boss = Bosses.BOSSES[bossId]
 		local xpEach = CombatMath.splitXp(boss.xp, #member.partyIds)
-		for _, beastId in member.partyIds do
-			CardService.AddXP(player, beastId, xpEach)
-		end
+		local party = giveXp(player, member.partyIds, xpEach)
 		EconomyService.AddCash(player, boss.cash)
 		-- The cards that really fought (resting ones in the party never did): the over-power check weighs these
 		local fighterIds = {}
@@ -608,7 +627,7 @@ local function payOut(fight: Fight, member: Member): any
 		local share = BattleSim.contribution(fight.sim, member.owner)
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
 		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, fighterIds = fighterIds, contributed = contributed }) else nil
-		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot }
+		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot, party = party }
 	end
 	if fight.run then
 		-- A Dungeon room: the elite XP and cash of every monster in the pack, no cards or items
@@ -619,17 +638,13 @@ local function payOut(fight: Fight, member: Member): any
 			cash += paid.cash
 		end
 		local xpEach = CombatMath.splitXp(xp, #member.partyIds)
-		for _, beastId in member.partyIds do
-			CardService.AddXP(player, beastId, xpEach)
-		end
+		local party = giveXp(player, member.partyIds, xpEach)
 		EconomyService.AddCash(player, cash)
-		return { xpEach = xpEach, cash = cash, shards = 0 }
+		return { xpEach = xpEach, cash = cash, shards = 0, party = party }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
 	local each = CombatMath.splitXp(rewards.xp, #member.partyIds)
-	for _, beastId in member.partyIds do
-		CardService.AddXP(player, beastId, each)
-	end
+	local party = giveXp(player, member.partyIds, each)
 	EconomyService.AddCash(player, rewards.cash)
 	local dropped = nil
 	if rng:NextNumber() < rewards.dropChance then
@@ -663,7 +678,7 @@ local function payOut(fight: Fight, member: Member): any
 			end
 		end
 	end
-	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards }
+	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards, party = party }
 end
 
 -- Ending --------------------------------------------------------------------------------------------------
@@ -746,6 +761,10 @@ local function endFight(fight: Fight, result: string)
 			local paid = payOut(fight, member)
 			summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
 			summary.partyIds = member.partyIds
+			summary.party = paid.party -- each card's XP bar before and after (the victory screen)
+			summary.seconds = fight.sim.time
+			local boss = Bosses.BOSSES[fight.monster.boss or ""]
+			summary.foe = if boss then boss.name else fight.monster.species
 		end
 		if player.Parent then
 			Remotes.BattleEnded:FireClient(player, summary)

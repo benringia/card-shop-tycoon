@@ -1031,6 +1031,21 @@ group, checked before its fragments and every time (not only the first). Below i
   white. Sounds play at a slightly random pitch. Damage numbers pop (`Util/DamagePop`, `AttackFx.NUMBERS`): they burst
   in bigger than their size and settle, rise, drift a little sideways and fade; crits are bigger, last longer and
   wiggle; a Poison or Burn tick is small, in its colour, with no flinch or shake. Low graphics: fewer particles.
+- **Sword hit effects** (owner 2026-11-03, "not too much, it's a starter sword"): each cut that connects draws a thin
+  slash arc in the sword's colour where your blade lands, turned the way the cut swings, with a small white flash; the
+  combo's last cut a little bigger; the skill a wide arc and a ring at your feet (`HitFx.cut` / `HitFx.spin`,
+  `SwordFx.SLASH`). The arc's colour and size are the sword's (`Swords.slash`): pale steel at size 1 on the starter, so
+  the Forge's swords can be bolder. Your own arcs play the moment your reach check connects; other players' (and yours
+  the check missed) play at the target when the server's hit arrives. No element colour, no screen flash.
+- **End screen** (owner 2026-11-03, design B "banner and loot strip"; `Util/VictoryScreen`, `Util/VictoryRules`,
+  `Config/Victory`): a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
+  CONQUERED!" on the first Hydra clear) with "<foe> defeated · m:ss" under it; a row of reward tiles popping in one by
+  one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
+  new card, a first-clear chest item and the bonus glow gold, with a chime); the notes (loot on the ground, carried,
+  reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
+  up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss is "DEFEATED" in red,
+  a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
+  itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
@@ -1490,7 +1505,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
-    │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
+    │       ├── HitFx.luau              # sword hit feel: sparks, flash, the slash arc (cut / spin)
+    │       ├── VictoryScreen.luau      # the fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
     │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
@@ -1530,6 +1546,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, charge lead, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
         │   ├── AttackFx.luau   # attack effects: each element's attack kind and colour, flight, combo, orbit, budget, sounds
+        │   ├── Victory.luau    # the fight end screen: timings, sizes, colours by result, sounds
         │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel, slash trail, wind-up glow, loss countdown look (plain data)
@@ -1600,6 +1617,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
             ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)
             ├── DamagePop.luau     # how a damage number pops, settles, rises and fades by style (pure, Lune-tested)
+            ├── VictoryRules.luau  # the end screen's reward tiles, notes and subtitle from a fight summary (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)

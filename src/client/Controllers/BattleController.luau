@@ -52,6 +52,9 @@ local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
+local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
+local Victory = require(Config:WaitForChild("Victory"))
 
 local player = Players.LocalPlayer
 
@@ -62,8 +65,6 @@ local BOSS_BAR_PHONE_MARGIN = 190 -- phones: the boss bar keeps this clear on ea
 local BANNER_SECONDS = 1.4
 local MONSTER_ID = "b:m" -- the monster's sim id (side B, as the server names it)
 local INTRO_FLY = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local END_SCREEN_HEIGHT = 150
-local END_LINE_HEIGHT = 18 -- the end screen grows by this per line past the third (boss loot)
 local HP_COLOR = Color3.fromRGB(90, 210, 110)
 local MONSTER_HP_COLOR = Color3.fromRGB(220, 80, 70)
 local TRACK_COLOR = Color3.fromRGB(25, 25, 35)
@@ -132,11 +133,8 @@ local conquered: Frame? = nil -- the full-screen "DUNGEON CONQUERED"
 local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
-local endScreen: Frame
 local countdownLabel: TextLabel -- arena: 3, 2, 1, FIGHT!
 local countdownToken = 0
-local endTitle: TextLabel
-local endBody: TextLabel
 local bossBar: Frame -- boss fights: name and HP across the top of the screen
 local bossName: TextLabel
 local bossHp: HpBar.Bar -- the slanted neon bar, its ghost pale gold
@@ -774,7 +772,7 @@ local function setHudHidden(hidden: boolean)
 		end
 		-- Close any open panel (binder, party...) so the fight bar is on top
 		for _, child in screenGui:GetChildren() do
-			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= endScreen and child ~= bossBar then
+			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= bossBar then
 				child.Visible = false
 			end
 		end
@@ -814,8 +812,17 @@ local PLAYER_DAMAGE_COLOR = Color3.fromRGB(Swords.PLAYER_DAMAGE_COLOR[1], Swords
 -- moment (hit-stop) and shakes the camera, harder for the skill
 local function swordHit(event: any)
 	local marker = markerFor(event.to)
+	local mine = event.from == `a:@{player.UserId}`
 	if marker then
 		HitFx.sparks(marker.Position + Vector3.new(0, 3, 0))
+		-- Your own cuts drew their arc as they swung (SwordController); everyone else's, and yours the reach check
+		-- missed, draw it here
+		if not mine or not SwordController.HitSoundJustPlayed() then
+			local attacker = Players:GetPlayerByUserId(tonumber(string.sub(event.from or "", 4)) or 0)
+			local character = if attacker then attacker.Character else nil
+			local sword = Swords.SWORDS[(if character then character:GetAttribute("Sword") else nil) :: string] or Swords.SWORDS.starterSword
+			HitFx.cut(marker.Position + Vector3.new(0, 3, 0), sword.slash, 0, event.kind == "Skill")
+		end
 		local model = MonsterController.GetModel(marker)
 		if model then
 			HitFx.flash(model, Color3.new(1, 1, 1), SwordFx.FLASH_SECONDS, 0.35)
@@ -972,77 +979,27 @@ end
 local function showPvpEnd(summary: any)
 	local outcome = summary.outcome
 	local cash = if typeof(summary.cash) == "number" then summary.cash else 0
-	if outcome == "win" then
-		endTitle.Text = if summary.forfeit then "Opponent left · you win!" else "You win!"
-		endTitle.TextColor3 = HEAL_COLOR
-	elseif outcome == "lose" then
-		endTitle.Text = "You lose"
-		endTitle.TextColor3 = UIKit.Colors.Danger
-	else
-		endTitle.Text = "Draw"
-		endTitle.TextColor3 = UIKit.Colors.Text
-	end
+	local title = if outcome == "win" then (if summary.forfeit then "Opponent left · you win!" else "You win!")
+		elseif outcome == "lose" then "You lose"
+		else "Draw"
 	local money = if cash > 0 then `+${cash}` elseif cash < 0 then `-${-cash}` elseif outcome == "draw" then "Bets returned" else "Friendly match"
 	local opponent = if typeof(summary.opponentName) == "string" then ` vs {summary.opponentName}` else ""
 	local seconds = if typeof(summary.returnIn) == "number" then summary.returnIn else 10
-	endScreen.Visible = true
+	VictoryScreen.show({
+		kind = if outcome == "win" then "win" elseif outcome == "lose" then "lose" else "run",
+		title = title,
+		subtitle = `{money}{opponent}`,
+		seconds = seconds,
+	})
 	task.spawn(function()
 		for left = seconds, 1, -1 do
 			if fighting then
 				return -- a new fight started
 			end
-			endBody.Text = `{money}{opponent}\nGoing home in {left}...`
+			VictoryScreen.setNotes({ `Going home in {left}...` })
 			task.wait(1)
 		end
-		if not fighting then
-			endScreen.Visible = false
-		end
 	end)
-end
-
--- "12:34"
-local function clock(seconds: number): string
-	return string.format("%d:%02d", seconds // 60, seconds % 60)
-end
-
--- What a boss win gave (summary.boss from BossService)
-local function bossLines(boss: any): { string }
-	local lines = {}
-	if boss.firstClear then
-		table.insert(lines, "🏆 First clear! The chest went into your Bag:")
-	end
-	local listed = {}
-	for _, entry in (if typeof(boss.chest) == "table" then boss.chest else {}) do
-		table.insert(listed, entry)
-	end
-	for _, entry in (if typeof(boss.items) == "table" then boss.items else {}) do
-		table.insert(listed, entry)
-	end
-	for _, entry in listed do
-		local item = Items.ITEMS[entry.item]
-		if item then
-			local icon = if string.match(item.icon, "^%a") then "" else `{item.icon} ` -- emoji icons only
-			table.insert(lines, `{icon}+{entry.count} {item.name}`)
-		end
-	end
-	if boss.bonus then
-		table.insert(lines, "🎁 Daily bonus!")
-	end
-	if typeof(boss.items) == "table" and #boss.items > 0 then
-		table.insert(lines, "Your loot is on the ground: walk over it to pick it up")
-	end
-	if boss.carried then
-		table.insert(lines, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
-	end
-	if boss.flagged then
-		table.insert(lines, "Too fast for drops this time")
-	elseif boss.reduced then
-		table.insert(lines, "Reduced drops (many wins today or a much stronger party)")
-	end
-	if typeof(boss.lootIn) == "number" and boss.lootIn > 0 then
-		table.insert(lines, `Full loot again in {clock(boss.lootIn)}`)
-	end
-	return lines
 end
 
 -- Clearing the Dungeon for the first time: the whole screen says so for a few seconds
@@ -1095,8 +1052,8 @@ local function showConquered()
 	end)
 end
 
+-- The fight's end (Util/VictoryScreen): a win's title, rewards and party XP; a loss or a run in red or grey
 local function showEnd(summary: any)
-	endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT)
 	if summary.mode == "pvp" then
 		showPvpEnd(summary)
 		return
@@ -1104,48 +1061,53 @@ local function showEnd(summary: any)
 	local result = summary.result
 	if result == "win" then
 		local firstConquest = typeof(summary.boss) == "table" and summary.boss.firstClear == true and summary.boss.bossId == Dungeon.BOSS
-		endTitle.Text = if firstConquest then "Dungeon conquered!" else "Victory!"
-		endTitle.TextColor3 = if firstConquest then CONQUERED_COLOR else HEAL_COLOR
 		if firstConquest then
 			showConquered()
 		end
-		local names = {}
-		for _, beastId in (if typeof(summary.partyIds) == "table" then summary.partyIds else {}) do
-			table.insert(names, fightNames[`a:{beastId}`] or "card")
-		end
-		local lines = { `+{summary.xpEach or 0} XP each: {table.concat(names, ", ")}`, string.format("+$%.2f", summary.cash or 0) }
-		if typeof(summary.shards) == "number" and summary.shards > 0 then
-			table.insert(lines, `✨ +{summary.shards} Star Shard{if summary.shards == 1 then "" else "s"}`)
-		end
-		if typeof(summary.card) == "table" and Cards.ById[summary.card.cardId] then
-			local found = Cards.ById[summary.card.cardId]
-			table.insert(lines, if found.set == "Frontier" then `✨ FRONTIER CARD: {found.name}!` else `🎴 New card: {found.name} (grade {summary.card.grade})`)
-		end
-		if typeof(summary.boss) == "table" then
-			for _, line in bossLines(summary.boss) do
-				table.insert(lines, line)
+		local party = {}
+		for _, entry in (if typeof(summary.party) == "table" then summary.party else {}) do
+			local card = Cards.ById[entry.cardId]
+			if card then
+				table.insert(party, {
+					name = card.name,
+					art = CardArt.pick(card.name, Victory.PORTRAIT, CardArtConfig),
+					from = tonumber(entry.from) or 0,
+					to = tonumber(entry.to) or 0,
+					levelUp = entry.levelUp == true,
+				})
 			end
 		end
-		endScreen.Size = UDim2.fromOffset(360, END_SCREEN_HEIGHT + math.max(0, #lines - 3) * END_LINE_HEIGHT)
-		endBody.Text = table.concat(lines, "\n")
+		local notes = VictoryRules.notes(summary.boss)
+		if typeof(summary.boss) == "table" and summary.boss.firstClear then
+			table.insert(notes, 1, "First clear! The chest went into your Bag")
+		end
+		VictoryScreen.show({
+			kind = if firstConquest then "conquered" else "win",
+			title = if firstConquest then "DUNGEON CONQUERED!" else "VICTORY!",
+			subtitle = VictoryRules.subtitle(summary.foe, summary.seconds),
+			tiles = VictoryRules.tiles(summary, Items, Cards.ById),
+			notes = notes,
+			party = party,
+		})
 	elseif result == "lose" then
-		endTitle.Text = "Your party fainted"
-		endTitle.TextColor3 = UIKit.Colors.Danger
 		local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 		local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
-		endBody.Text = if place.isDungeon() then "Fainted creatures are out for the rest of this run"
-			else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
+		VictoryScreen.show({
+			kind = "lose",
+			title = "DEFEATED",
+			subtitle = "Your party fainted",
+			notes = { if place.isDungeon() then "Fainted creatures are out for the rest of this run"
+				else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster` },
+			seconds = Combat.END_SCREEN_SECONDS,
+		})
 	else
-		endTitle.Text = "Got away safely"
-		endTitle.TextColor3 = UIKit.Colors.Text
-		endBody.Text = if typeof(summary.rested) == "table" and #summary.rested > 0 then "Fainted cards are resting." else ""
+		VictoryScreen.show({
+			kind = "run",
+			title = "Got away safely",
+			notes = if typeof(summary.rested) == "table" and #summary.rested > 0 then { "Fainted cards are resting." } else {},
+			seconds = Combat.END_SCREEN_SECONDS,
+		})
 	end
-	endScreen.Visible = true
-	task.delay(Combat.END_SCREEN_SECONDS, function()
-		if not fighting then
-			endScreen.Visible = false
-		end
-	end)
 end
 
 -- Big numbers in the middle of the screen before an arena fight starts
@@ -1318,7 +1280,7 @@ local function onStarted(payload: any)
 	allyBars = {}
 	clear(allyRow)
 	local view = toView(payload.snapshot)
-	endScreen.Visible = false
+	VictoryScreen.hide()
 	local species = if typeof(payload.species) == "string" then payload.species else "Monster"
 	mode = if payload.mode == "pvp" then "pvp" else "wild"
 	if mode == "pvp" then
@@ -1600,27 +1562,6 @@ local function build()
 	addsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	addsLayout.Parent = addsRow
 
-	endScreen = Instance.new("Frame")
-	endScreen.Name = "FightEnd"
-	endScreen.AnchorPoint = Vector2.new(0.5, 0.5)
-	endScreen.Position = UDim2.fromScale(0.5, 0.4)
-	endScreen.Size = UDim2.fromOffset(360, 150)
-	endScreen.BackgroundColor3 = UIKit.Colors.Panel
-	endScreen.BackgroundTransparency = 0.05
-	endScreen.Visible = false
-	endScreen.ZIndex = UIKit.PANEL_Z_INDEX + 1
-	endScreen.Parent = screenGui
-	UIKit.corner(endScreen, 14)
-	endTitle = UIKit.label(endScreen, "", Enum.Font.FredokaOne, 28, UIKit.Colors.Text)
-	endTitle.Position = UDim2.fromOffset(12, 12)
-	endTitle.Size = UDim2.new(1, -24, 0, 34)
-	endTitle.TextXAlignment = Enum.TextXAlignment.Center
-	endBody = UIKit.label(endScreen, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	endBody.Position = UDim2.fromOffset(12, 54)
-	endBody.Size = UDim2.new(1, -24, 1, -64)
-	endBody.TextWrapped = true
-	endBody.TextYAlignment = Enum.TextYAlignment.Top
-	endBody.TextXAlignment = Enum.TextXAlignment.Center
 
 	-- Back to your shop while in the wild: top centre (the left HUD stack has no room left on phones)
 	shopButton = UIKit.button(screenGui, "🏠 Shop", UIKit.Colors.Row)

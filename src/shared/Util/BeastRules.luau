@@ -29,6 +29,11 @@ function BeastRules.getStats(card: Card, foil: boolean, level: number, stars: nu
 	return BeastMath.getStats(Beasts, card.rarity, card.element, foil, level, stars, grade or Beasts.DEFAULT_GRADE)
 end
 
+-- How far a copy is toward its next level (0-1, full at max level): the victory screen's XP bars
+function BeastRules.levelProgress(level: number, xp: number): number
+	return BeastMath.levelProgress(Beasts, level, xp)
+end
+
 function BeastRules.getPower(card: Card, foil: boolean, level: number, stars: number, grade: string?): number
 	return BeastMath.getPower(Beasts, BeastRules.getStats(card, foil, level, stars, grade))
 end
