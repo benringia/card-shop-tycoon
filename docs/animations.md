@@ -56,6 +56,36 @@ leaves them alone.
 Timing: a cut's `Hit` marker and `Config/Swords` `hitAt` must agree (the server lands damage at `hitAt`). If a move's
 timing changes, change both, and keep `tests/SwordRules.spec`'s combo power check green.
 
+## Bone rigs (monster and boss attacks)
+
+Monsters and bosses are skinned meshes with bones (`tools/blender/rig_kit.py`, one `rig_<model>.py` each), not R15
+bodies. Their attack clips (spec `docs/superpowers/specs/2026-11-02-attack-animations-design.md`) use their own
+pipeline:
+
+| What | Where |
+|---|---|
+| Keying helpers and export | `tools/blender/anim_bone_kit.py` |
+| A model's clips (one script per model) | `tools/blender/anim_<model>.py` |
+| Exported clips (JSON, not synced) | `assets/blender/Animations/<model>/<clip>.json` |
+| JSON → KeyframeSequence `.rbxm` | `lune run tools/anim/build_bone_clips <model>` |
+| KeyframeSequences (synced to `ReplicatedStorage.MonsterAnimations/<model>`) | `assets/monster-animations/<model>/<clip>.rbxm` |
+| Playing them | `src/client/Util/ClipPlayer.luau` |
+
+- **Model space, not bone space.** `rig_kit` builds bones from head/tail points, so every bone has its own axes, and
+  Roblox's FBX importer turns them again. So clips store each deform bone's rotation in MODEL space (Roblox axes) per
+  frame, plus the top bone's offset; `ClipPlayer` turns that into `Bone.Transform` from the bone's rest pose in Roblox:
+  `T = R0⁻¹ · Dparent⁻¹ · Dbone · R0`. The KeyframeSequence's attribute `Space = "Model"` marks it.
+- Axes: Blender x/y/z → Roblox -x/z/y (`M`, as the sword kit), checked on the Meadow Warden's bones in Studio. Offsets
+  are in model-file units; `ClipPlayer` scales them with the model.
+- Keying: `key_turn(rig, bone, frame, (x, y, z))` turns a bone about its head by Euler degrees in ARMATURE axes (X the
+  model's left, Y its back, Z up) after its parent's pose: an arm hanging down swings forward with a negative X turn.
+  Key parents before children and in time order.
+- Clips per model: `windup`, `strike` (all), `specialWindup`, `specialRelease` (bosses), marker `Hit` on the strike.
+- They play on the client with no upload and no animation ownership (bones are set every frame), blended over the
+  procedural motion (`Util/PetAnimator`) for `Party.KEYFRAME_ANIM.ONE_SHOT_BLEND` in and out
+  (`KeyframeTiming.oneShotWeight`).
+- Adding the `MonsterAnimations` mapping needs a `rojo serve` restart (all three project files have it).
+
 ## The sword model
 
 The starter sword is built in Blender by `tools/blender/build_starter_sword.py` (sources in

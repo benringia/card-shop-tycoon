@@ -53,4 +53,16 @@ return {
 		local _, _, run = KeyframeTiming.weights(cfg, 20)
 		expect.near(run, 1, 1e-9, "fast is all run")
 	end,
+
+	["a one-shot clip blends in, holds, then blends out"] = function()
+		expect.equal(KeyframeTiming.oneShotWeight(0, 1, 0.15), 0)
+		expect.near(KeyframeTiming.oneShotWeight(0.075, 1, 0.15), 0.5, 1e-9)
+		expect.equal(KeyframeTiming.oneShotWeight(0.15, 1, 0.15), 1)
+		expect.equal(KeyframeTiming.oneShotWeight(0.5, 1, 0.15), 1)
+		expect.near(KeyframeTiming.oneShotWeight(0.925, 1, 0.15), 0.5, 1e-9)
+		expect.equal(KeyframeTiming.oneShotWeight(1, 1, 0.15), 0)
+		expect.equal(KeyframeTiming.oneShotWeight(2, 1, 0.15), 0, "over")
+		expect.equal(KeyframeTiming.oneShotWeight(-1, 1, 0.15), 0, "not started")
+		expect.near(KeyframeTiming.oneShotWeight(0.1, 0.2, 0.15), 1, 1e-9, "a clip shorter than two blends peaks at its middle")
+	end,
 }

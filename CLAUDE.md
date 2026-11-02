@@ -45,6 +45,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   importer drops colours and turns pivots). `assets/animations` → ReplicatedStorage.SwordAnimations: the sword moves as
   KeyframeSequences (`<Sword>/<move>.rbxm`), keyed in Blender by `tools/blender/anim_<sword>.py` on `anim_kit.py`,
   converted by `lune run tools/anim/build_kfs`; published ids go in `Config/Swords` (docs/animations.md).
+  `assets/monster-animations` → ReplicatedStorage.MonsterAnimations: monster and boss attack clips
+  (`<model>/<clip>.rbxm`), keyed on their bone rigs by `tools/blender/anim_<model>.py` on `anim_bone_kit.py`, built by
+  `lune run tools/anim/build_bone_clips <model>`, played client-side by `Util/ClipPlayer` (docs/animations.md "Bone
+  rigs"; no upload).
   `assets/ui/combat`: the boss-fight HUD's slanted buttons, HP bars and red hit flash and the closing rings
   (`tools/textures/make_slant_buttons.py`, `make_hp_bars.py`, `make_ring_textures.py`), uploaded as images, not synced.
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.

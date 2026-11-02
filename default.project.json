@@ -26,6 +26,9 @@
       "SwordAnimations": {
         "$path": "assets/animations"
       },
+      "MonsterAnimations": {
+        "$path": "assets/monster-animations"
+      },
       "WeaponModels": {
         "$path": "assets/weapons"
       }

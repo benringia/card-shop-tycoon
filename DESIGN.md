@@ -1307,9 +1307,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
 ├── assets/ui/combat/           # the boss-fight HUD's slanted button, HP bar, hit flash and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
 ├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
+├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
 ├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels (docs/animations.md "The sword model")
 ├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py)
-├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm (Lune)
+├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model (Lune)
 ├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings (Pillow)
 └── src/
@@ -1436,6 +1437,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
     │       ├── ElementFx.luau          # the pieces of fight effects: charge glow, projectile, burst, bolt, slash, sound
+    │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
         ├── Config/

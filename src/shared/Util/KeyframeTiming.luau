@@ -36,4 +36,14 @@ function KeyframeTiming.weights(cfg: any, speed: number): (number, number, numbe
 	return 0, 1 - run, run
 end
 
+-- How much a one-shot clip (an attack) shows `t` seconds in: up from 0 over `blend`, held, back to 0 over its last
+-- `blend` (a clip shorter than two blends peaks at its middle); 0 before it starts and once it's over
+function KeyframeTiming.oneShotWeight(t: number, length: number, blend: number): number
+	if t <= 0 or t >= length then
+		return 0
+	end
+	local ramp = math.max(math.min(blend, length / 2), 1e-6)
+	return math.min(1, t / ramp, (length - t) / ramp)
+end
+
 return KeyframeTiming

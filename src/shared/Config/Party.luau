@@ -504,6 +504,7 @@ return {
 	KEYFRAME_ANIM = {
 		WALK_FROM = 0.5, RUN_FROM = 4, RUN_FULL = 6.5, WALK_SPEED = 3, RUN_SPEED = 6.5, BLEND_SECONDS = 0.25,
 		AMPLIFY = { 1, 2, 1.6 }, -- idle, walk, run
+		ONE_SHOT_BLEND = 0.15, -- seconds a one-shot attack clip blends in and out (Util/ClipPlayer)
 	},
 
 	-- Glow by rarity: point light brightness and range, sparkles per second, outline, pulsing aura
