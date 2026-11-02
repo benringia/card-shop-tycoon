@@ -14,6 +14,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
+local AttackFx = require(Config:WaitForChild("AttackFx"))
+local FightMotion = require(Shared:WaitForChild("Util"):WaitForChild("FightMotion"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local CreatureCull = require(Shared:WaitForChild("Util"):WaitForChild("CreatureCull"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
@@ -25,6 +27,9 @@ local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 type Creature = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
+	clock: FightMotion.Clock, -- its moving about in a fight
+	seed: number,
+	chargingUntil: number, -- os.clock: holds still to charge an attack until then
 	foil: boolean,
 	rarity: string,
 	outline: boolean,
@@ -217,6 +222,9 @@ local function add(marker: BasePart)
 	local creature: Creature = {
 		marker = marker,
 		body = body,
+		clock = FightMotion.newClock(),
+		seed = (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name,
+		chargingUntil = 0,
 		foil = marker:GetAttribute("Foil") == true,
 		rarity = card.rarity,
 		outline = false,
@@ -299,6 +307,15 @@ local function refreshCull()
 end
 
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
+	-- In a fight it circles its spot (the same path on every client) and stops to charge
+	if creature.marker:GetAttribute("InFight") == true then
+		local t = FightMotion.advance(creature.clock, now, now < creature.chargingUntil)
+		local scale = creature.height / Party.CREATURE_HEIGHT
+		local x, z = FightMotion.offset(creature.seed, t, AttackFx.ORBIT)
+		creature.body.offset = CFrame.new(x * scale, 0, z * scale)
+	else
+		creature.body.offset = nil
+	end
 	CreatureVisuals.step(creature.body, dt, now, origin, Party.MOTION)
 	if creature.highlight and creature.highlight.Enabled then
 		if creature.foil then
@@ -307,6 +324,14 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 		if (Party.GLOW[creature.rarity] or Party.GLOW.Common).pulse then
 			creature.highlight.OutlineTransparency = 0.35 + 0.35 * math.sin(now * 3)
 		end
+	end
+end
+
+-- A fight's attack charge (FightFx): the creature drawn on this marker holds still for `seconds`
+function CreatureController.SetCharging(marker: BasePart, seconds: number)
+	local creature = creatures[marker]
+	if creature then
+		creature.chargingUntil = math.max(creature.chargingUntil, os.clock() + seconds)
 	end
 end
 

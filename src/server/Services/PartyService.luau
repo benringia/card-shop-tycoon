@@ -91,8 +91,11 @@ function PartyService.SetHold(player: Player, cframe: CFrame?)
 	local state = states[player]
 	if state then
 		state.hold = cframe
-		if cframe and state.marker then
-			state.marker.CFrame = cframe
+		if state.marker then
+			state.marker:SetAttribute("InFight", if cframe then true else nil) -- clients move it about (FightMotion)
+			if cframe then
+				state.marker.CFrame = cframe
+			end
 		end
 	end
 end

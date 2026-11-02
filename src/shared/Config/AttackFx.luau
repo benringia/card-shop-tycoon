@@ -19,5 +19,5 @@ return {
 	},
 	-- Creatures circle their fight spot: this far (studs, times the creature's size), this fast (turns a second), with
 	-- darts out to `dart` studs more
-	ORBIT = { radius = 4, speed = 0.8, dart = 1.5 },
+	ORBIT = { radius = 4, speed = 0.15, dart = 1.5 },
 }

@@ -29,6 +29,7 @@ local STRIPPED = { "LuaSourceContainer", "ProximityPrompt", "ClickDetector", "So
 
 export type Body = {
 	marker: BasePart,
+	offset: CFrame?, -- drawn this far off its marker (a fight's moving about, CreatureController)
 	model: Model,
 	root: BasePart,
 	baseScale: number,
@@ -505,7 +506,7 @@ end
 
 -- One frame: follow the marker smoothly, then pose (motion kit or animations), or lie down when fainted
 function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vector3, motion: any)
-	local target = body.marker.CFrame
+	local target = if body.offset then body.marker.CFrame * body.offset else body.marker.CFrame
 	local previous = body.cframe.Position
 	if (target.Position - previous).Magnitude > TELEPORT_DISTANCE then
 		body.cframe = target
