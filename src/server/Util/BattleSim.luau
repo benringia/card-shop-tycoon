@@ -612,7 +612,9 @@ local function landPending(state: State, events: { Event })
 		if state.result or target.down or target.left then
 			continue
 		end
-		local missed = state.time < target.dodgeUntil
+		-- A dodge counts if its window still covered the moment clients showed the hit (HIT_GRACE before it lands),
+		-- give or take a step: the server only sees time move a tick at a time
+		local missed = state.time - state.combat.HIT_GRACE - 1 / state.combat.TICK_RATE < target.dodgeUntil
 		if not missed and pending.ring and state.ringCheck then
 			missed = not state.ringCheck({ id = pending.ring, target = target.id, shape = pending.shape :: string })
 		end
@@ -1063,8 +1065,8 @@ function BattleSim.dodge(state: State, owner: string): ({ Event }?, string?)
 		return nil, "missing"
 	elseif fighter.down then
 		return nil, "down"
-	elseif state.time < fighter.dodgeReady then
-		return nil, "cooldown"
+	elseif fighter.dodgeReady - state.time > 1 / state.combat.TICK_RATE + 1e-6 then
+		return nil, "cooldown" -- a tick of slack: the request can arrive up to a step after the sim's last time
 	end
 	fighter.dodgeUntil = state.time + state.combat.DODGE_SECONDS
 	fighter.dodgeReady = state.time + state.combat.DODGE_COOLDOWN

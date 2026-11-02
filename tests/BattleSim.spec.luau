@@ -1071,6 +1071,52 @@ return {
 		expect.equal(viewOf(state, "a:@1").hp, 100)
 	end,
 
+	["a dodge 0.2 s into the warning avoids the hit (its dash covers the moment the hit shows)"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local warned = stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60) :: number
+		while state.time < warned + 0.2 - 1e-9 do
+			BattleSim.step(state, 0.1)
+		end
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		local dodged = false
+		for _, event in runFor(state, 0.8) do
+			if event.type == "attack" and event.kind == "Quick" and event.to == "a:@1" then
+				dodged = event.dodged == true
+			end
+		end
+		expect.equal(dodged, true)
+	end,
+
+	["a dodge whose dash ends well before the hit shows doesn't count"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		local dodged = nil
+		for _, event in runFor(state, 0.8) do
+			if event.type == "attack" and event.kind == "Quick" and event.to == "a:@1" then
+				dodged = event.dodged == true
+			end
+		end
+		expect.equal(dodged, false)
+	end,
+
+	["a dodge a second after the last is accepted whatever the step phase"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(state, 7)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		-- The next request arrives a real second later, but the server's last step can be one tick behind it
+		local start = state.time
+		while state.time < start + combat.DODGE_COOLDOWN - 1 / combat.TICK_RATE - 1e-9 do
+			BattleSim.step(state, 0.1)
+		end
+		local events, why = BattleSim.dodge(state, "1")
+		expect.equal(events ~= nil, true, `one tick early still counts ({why}, at {state.time - start})`)
+	end,
+
 	["big attacks come every interval with one ring per up player"] = function()
 		local attacks = { every = 10, warning = 1, big = 0.01, quick = 0 }
 		local state = bossFightWithPlayer(24, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1"), owned("p2", "2", 1e9), playerInput("2") }, {})
