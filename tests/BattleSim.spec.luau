@@ -160,6 +160,18 @@ local function viewOf(state: any, id: string): any
 	return nil
 end
 
+-- Steps one 0.1 s step at a time until `predicate(event)` matches; returns the time of that step (nil after `limit` s)
+local function stepUntil(state: any, predicate: (any) -> boolean, limit: number): number?
+	for _ = 1, math.round(limit / 0.1) do
+		for _, event in BattleSim.step(state, 0.1) do
+			if predicate(event) then
+				return state.time
+			end
+		end
+	end
+	return nil
+end
+
 return {
 	["hpNow: a fighter starts hurt but keeps its max HP"] = function()
 		local state = BattleSim.new(combat, { fighters = { { id = "x", element = "Ember", hp = 100, atk = 5, spd = 10, hpNow = 40 } }, abilities = false, canRun = false },
@@ -1012,5 +1024,142 @@ return {
 		BattleSim._hurtPlayer(shielded, "a:@1", 30)
 		expect.equal(viewOf(shielded, "a:@1").hp, 70, "the side's shield doesn't cover the player")
 		expect.equal(shielded.sides.a.shield, 1000)
+	end,
+	-- Boss attacks on players (Task 4 of the you-in-the-fight plan)
+	["about a third of boss swings go at the player"] = function()
+		local state = bossFightWithPlayer(21, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.001 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local events = runFor(state, 2000)
+		local atPlayer = count(events, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end)
+		local atCreature = count(events, function(e)
+			return e.type == "attack" and e.from == "b:m" and e.to == "a:p1"
+		end)
+		local share = atPlayer / (atPlayer + atCreature)
+		expect.equal(share >= 0.28 and share <= 0.39, true, `share {share}`)
+		expect.equal(viewOf(state, "a:@1").hp, 100, "quick hits this small round to 0")
+	end,
+
+	["a quick hit lands after the warning and grace"] = function()
+		local state = bossFightWithPlayer(22, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local warned = stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60) :: number
+		local landed = stepUntil(state, function(e)
+			return e.type == "attack" and e.kind == "Quick" and e.to == "a:@1"
+		end, 5) :: number
+		expect.near(landed - warned, combat.QUICK_WARNING + combat.HIT_GRACE, 0.1)
+		expect.equal(viewOf(state, "a:@1").hp, 90)
+	end,
+
+	["a dodge inside the grace still avoids the hit"] = function()
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local warned = stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60) :: number
+		while state.time < warned + combat.QUICK_WARNING + 0.05 do
+			BattleSim.step(state, 0.1)
+		end
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true)
+		local dodged = false
+		for _, event in runFor(state, 0.5) do
+			if event.type == "attack" and event.kind == "Quick" and event.to == "a:@1" then
+				dodged = event.dodged == true
+			end
+		end
+		expect.equal(dodged, true)
+		expect.equal(viewOf(state, "a:@1").hp, 100)
+	end,
+
+	["big attacks come every interval with one ring per up player"] = function()
+		local attacks = { every = 10, warning = 1, big = 0.01, quick = 0 }
+		local state = bossFightWithPlayer(24, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1"), owned("p2", "2", 1e9), playerInput("2") }, {})
+		local function rings(events: { any }): number
+			return count(events, function(e)
+				return e.type == "ring"
+			end)
+		end
+		expect.equal(rings(runFor(state, 9.8)), 0, "nothing before the first interval")
+		local first = runFor(state, 0.5)
+		expect.equal(rings(first), 2, "one ring per player")
+		expect.equal(count(first, function(e)
+			return e.type == "ring" and e.to == "a:@1"
+		end), 1)
+		expect.equal(rings(runFor(state, 10)), 2, "again one interval later")
+	end,
+
+	["ringCheck false means the ring misses"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.5, quick = 0 }
+		local missed = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		missed.ringCheck = function()
+			return false
+		end
+		local events = runFor(missed, 3.4)
+		expect.equal(count(events, function(e)
+			return (e.kind == "Slam" or e.kind == "Swipe") and e.dodged == true
+		end), 1)
+		expect.equal(viewOf(missed, "a:@1").hp, 100)
+
+		local hit = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(hit, 3.4)
+		expect.equal(viewOf(hit, "a:@1").hp, 50, "no ringCheck: always inside")
+	end,
+
+	["the Hydra's double chance adds a second ring sometimes"] = function()
+		local attacks = { every = 1, warning = 0.5, big = 0, quick = 0, doubleChance = 0.35 }
+		local state = bossFightWithPlayer(26, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1"), owned("p2", "2", 1e9), playerInput("2") }, {})
+		state.maxSeconds = 3000 -- enough attacks for a steady share (the default limit ends it at 120 s)
+		local twos, threes = 0, 0
+		for _ = 1, 20000 do
+			local n = count(BattleSim.step(state, 0.1), function(e)
+				return e.type == "ring"
+			end)
+			if n == 2 then
+				twos += 1
+			elseif n == 3 then
+				threes += 1
+			end
+		end
+		expect.equal(twos > 0 and threes > 0, true, `{twos} attacks of 2 rings, {threes} of 3`)
+		local share = threes / (twos + threes)
+		expect.equal(share > 0.2 and share < 0.5, true, `double share {share}`)
+	end,
+
+	["pending hits never land after the end"] = function()
+		local state = bossFightWithPlayer(27, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { owned("p1", "1", 1e9), playerInput("1") })
+		state.sides.b.fighters[1].hp = 1
+		stepUntil(state, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end, 60)
+		BattleSim.swordHit(state, "1", "b:m", 1, "Sword")
+		expect.equal(state.result, "a")
+		local events = runFor(state, 2)
+		expect.equal(count(events, function(e)
+			return e.to == "a:@1"
+		end), 0)
+		expect.equal(viewOf(state, "a:@1").hp, 100)
+	end,
+
+	["every swing goes at players when no creature stands"] = function()
+		local state = bossFightWithPlayer(28, 100, nil, { every = 1e9, warning = 1, big = 0, quick = 0.001 }, { owned("p1", "1", 1), playerInput("1") }, {})
+		stepUntil(state, function(e)
+			return e.type == "faint" and e.to == "a:p1"
+		end, 10)
+		local events = runFor(state, 20)
+		expect.equal(count(events, function(e)
+			return e.type == "attack" and e.from == "b:m" and e.to ~= "a:@1"
+		end), 0)
+		expect.equal(count(events, function(e)
+			return e.type == "telegraph"
+		end) >= 8, true)
+		expect.isNil(state.result, "the player fights on alone")
+	end,
+
+	["a boss without playerAttacks never rings"] = function()
+		local state = bossFightWithPlayer(29, 1)
+		local events = runFor(state, 30)
+		expect.equal(count(events, function(e)
+			return e.type == "ring" or e.type == "telegraph"
+		end), 0)
 	end,
 }

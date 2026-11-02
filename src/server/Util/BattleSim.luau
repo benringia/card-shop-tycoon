@@ -10,7 +10,10 @@
 -- Boss fights also put each player on side A as a player fighter ("a:@<owner>", spec 2026-11-02-you-in-the-fight):
 -- it never auto-attacks and nothing targets it as a creature; its sword hits (swordHit) use its owner's creature's ATK;
 -- at 0 HP it goes down instead of fainting and gets back up after DOWN_SECONDS while one of its owner's creatures
--- stands (else it's out for the fight). Thunderclaps, Wave and Tidal Shield leave it alone.
+-- stands (else it's out for the fight). Thunderclaps, Wave and Tidal Shield leave it alone. A boss with playerAttacks
+-- hits players two ways: some of its swings become quick hits on a player (a warning, then the hit), and every few
+-- seconds a big attack puts a closing ring on each player (State.ringCheck says who stepped out). Both land
+-- HIT_GRACE after clients show them, so a last-moment dodge still counts.
 local CombatMath = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CombatMath")) :: any
 	else require("../../shared/Util/CombatMath") :: any
@@ -33,16 +36,22 @@ export type Mechanics = {
 }
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
 export type Phase = { below: number, element: string, mechanics: Mechanics }
+-- A boss's attacks on players (Config/Bosses playerAttacks)
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number? }
+-- What State.ringCheck is asked when a ring lands: its id (from the "ring" event), its target and shape
+export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
 -- player: a player fighter (boss fights; its owner's player in the fight)
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks? }
 -- callIn: false closes the call-in window (boss fights: only swaps)
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
 	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
 	-- "phase" (from: the boss, kind: its new element, damage: the phase's number) | "down" | "getUp" (heal: HP back) |
-	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter)
+	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter) | "telegraph" (kind "quick": a quick
+	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe": a big attack's ring `ring` on `to`, lands in
+	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe"
 	type: string,
 	from: string?,
 	to: string?,
@@ -53,6 +62,8 @@ export type Event = {
 	kind: string?,
 	ok: boolean?,
 	result: string?,
+	ring: number?,
+	seconds: number?,
 }
 
 type Fighter = {
@@ -104,6 +115,8 @@ type Fighter = {
 	downUntil: number, -- player fighter: when it gets back up (if one of its owner's creatures stands)
 	out: boolean, -- player fighter: down for good (no creature of its owner was left when it would get up)
 	dodgeReady: number, -- player fighter: its next dodge
+	playerAttacks: PlayerAttacks?, -- boss: its attacks on players
+	bigReady: number, -- boss: its next big attack
 }
 
 type Side = {
@@ -129,7 +142,13 @@ export type State = {
 	result: string?, -- "a" | "b" | "draw" | "run"
 	maxSeconds: number?, -- this fight's time limit (bosses get longer); combat.MAX_FIGHT_SECONDS when nil
 	timedOut: boolean?, -- it ended at the time limit (its result is "run" or "draw")
+	pending: { Pending }, -- hits on players waiting to land
+	ringCount: number, -- rings so far (their ids)
+	ringCheck: ((ring: RingInfo) -> boolean)?, -- is the ring's target inside it as it lands (nil: always)
 }
+
+-- A boss's hit on a player, warned of and landing at `at`
+type Pending = { kind: string, at: number, target: Fighter, from: Fighter, damage: number, ring: number?, shape: string? }
 
 -- Small deterministic generator (LCG) so fights replay identically in Lune and Roblox
 local function random(state: State): number
@@ -189,6 +208,8 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		downUntil = 0,
 		out = false,
 		dodgeReady = 0,
+		playerAttacks = input.playerAttacks,
+		bigReady = if input.playerAttacks then time + input.playerAttacks.every else math.huge,
 	}
 end
 
@@ -228,6 +249,8 @@ function BattleSim.new(combat: any, sideA: SideInput, sideB: SideInput, seed: nu
 		seed = math.floor(math.abs(seed)) % 2147483648,
 		sides = { a = makeSide(combat, sideA, "a"), b = makeSide(combat, sideB, "b") },
 		result = nil,
+		pending = {},
+		ringCount = 0,
 	}
 end
 
@@ -466,18 +489,58 @@ local function interval(state: State, fighter: Fighter): number
 	return value
 end
 
--- One attack: the usual target, then (a boss against a group) the next most hurt standing enemies, each once
-local function attack(state: State, fighter: Fighter, events: { Event })
-	local target = targetOf(state, fighter, true)
-	if not target then
-		return
+-- A boss with playerAttacks: this swing goes at an up player not yet swung at this attack (PLAYER_TARGET_SHARE of the
+-- time, every time when no creature stands) as a quick hit: warned now, landing after QUICK_WARNING + HIT_GRACE.
+-- False (and no random drawn) when it doesn't, so fights without players replay exactly as before.
+local function swingAtPlayer(state: State, fighter: Fighter, enemySide: Side, swungAt: { [Fighter]: boolean }, events: { Event }): boolean
+	local attacks = fighter.playerAttacks
+	if not attacks then
+		return false
 	end
-	hit(state, fighter, target, 1, events, nil)
+	local players = {}
+	for _, enemy in standing(enemySide) do
+		if enemy.player and not swungAt[enemy] then
+			table.insert(players, enemy)
+		end
+	end
+	if #players == 0 then
+		return false
+	end
+	local combat = state.combat
+	if #standingCreatures(enemySide) > 0 and random(state) >= combat.PLAYER_TARGET_SHARE then
+		return false
+	end
+	local target = players[math.min(#players, 1 + math.floor(random(state) * #players))]
+	swungAt[target] = true
+	table.insert(state.pending, {
+		kind = "Quick",
+		at = state.time + combat.QUICK_WARNING + combat.HIT_GRACE,
+		target = target,
+		from = fighter,
+		damage = math.round(attacks.quick * target.maxHp),
+	})
+	table.insert(events, { type = "telegraph", kind = "quick", from = fighter.id, to = target.id, seconds = combat.QUICK_WARNING })
+	return true
+end
+
+-- One attack: the usual target, then (a boss against a group) the next most hurt standing creatures, each once; a
+-- boss with playerAttacks may send any of these swings at a player instead
+local function attack(state: State, fighter: Fighter, events: { Event })
+	local enemySide = other(state, (state.sides :: any)[fighter.side])
+	local swungAt: { [Fighter]: boolean } = {}
+	local target: Fighter? = nil
+	if not swingAtPlayer(state, fighter, enemySide, swungAt, events) then
+		target = targetOf(state, fighter, true)
+		if not target then
+			return
+		end
+		hit(state, fighter, target, 1, events, nil)
+	end
 	if fighter.swings <= 1 then
 		return
 	end
 	local others = {}
-	for _, enemy in standing(other(state, (state.sides :: any)[fighter.side])) do
+	for _, enemy in standingCreatures(enemySide) do
 		if enemy ~= target then
 			table.insert(others, enemy)
 		end
@@ -485,12 +548,83 @@ local function attack(state: State, fighter: Fighter, events: { Event })
 	table.sort(others, function(a, b)
 		return a.hp / a.maxHp < b.hp / b.maxHp
 	end)
-	for index = 1, math.min(fighter.swings - 1, #others) do
+	local nextOther = 1
+	for _ = 1, fighter.swings - 1 do
 		if state.result then
 			return
 		end
-		hit(state, fighter, others[index], 1, events, nil)
+		if not swingAtPlayer(state, fighter, enemySide, swungAt, events) and others[nextOther] then
+			hit(state, fighter, others[nextOther], 1, events, nil)
+			nextOther += 1
+		end
 	end
+end
+
+-- Every `every` seconds a boss with playerAttacks starts a big attack: a ring (a slam or a swipe) on each up player,
+-- and with `doubleChance` one more on one of them, each landing after `warning` + HIT_GRACE
+local function bigAttack(state: State, fighter: Fighter, events: { Event })
+	local attacks = fighter.playerAttacks
+	if not attacks or fighter.fainted or state.time < fighter.bigReady then
+		return
+	end
+	fighter.bigReady = state.time + attacks.every
+	local players = {}
+	for _, enemy in standing(other(state, (state.sides :: any)[fighter.side])) do
+		if enemy.player then
+			table.insert(players, enemy)
+		end
+	end
+	local function ring(target: Fighter)
+		state.ringCount += 1
+		local shape = if random(state) < 0.5 then "slam" else "swipe"
+		table.insert(state.pending, {
+			kind = if shape == "slam" then "Slam" else "Swipe",
+			at = state.time + attacks.warning + state.combat.HIT_GRACE,
+			target = target,
+			from = fighter,
+			damage = math.round(attacks.big * target.maxHp),
+			ring = state.ringCount,
+			shape = shape,
+		})
+		table.insert(events, { type = "ring", kind = shape, from = fighter.id, to = target.id, seconds = attacks.warning, ring = state.ringCount })
+	end
+	for _, player in players do
+		ring(player)
+	end
+	if #players > 0 and attacks.doubleChance and random(state) < attacks.doubleChance then
+		ring(players[math.min(#players, 1 + math.floor(random(state) * #players))])
+	end
+end
+
+-- Hits on players whose time has come: missed when the player is dodging or (a ring) stepped out; dropped when the
+-- player is down, out or gone
+local function landPending(state: State, events: { Event })
+	if #state.pending == 0 then
+		return
+	end
+	local waiting = {}
+	for _, pending in state.pending do
+		if state.time < pending.at then
+			table.insert(waiting, pending)
+			continue
+		end
+		local target = pending.target
+		if state.result or target.down or target.left then
+			continue
+		end
+		local missed = state.time < target.dodgeUntil
+		if not missed and pending.ring and state.ringCheck then
+			missed = not state.ringCheck({ id = pending.ring, target = target.id, shape = pending.shape :: string })
+		end
+		if missed then
+			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = 0, dodged = true })
+		else
+			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = pending.damage })
+			pending.from.dealt += math.min(pending.damage, target.hp)
+			hurtPlayer(state, target, pending.damage, events)
+		end
+	end
+	state.pending = waiting
 end
 
 -- One burn per second of Inferno; a long frame catches up on every tick it covered
@@ -626,12 +760,14 @@ function BattleSim.step(state: State, dt: number): { Event }
 	end
 	state.time += dt
 	local combat = state.combat
+	landPending(state, events)
 
 	for _, side in { state.sides.a, state.sides.b } do
 		for _, fighter in side.fighters do
 			burn(state, fighter, events)
 			bossMechanics(state, fighter, events)
 			getUp(state, side, fighter, events)
+			bigAttack(state, fighter, events)
 		end
 	end
 
