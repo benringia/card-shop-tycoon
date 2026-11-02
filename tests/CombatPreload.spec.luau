@@ -3,6 +3,7 @@ local CombatPreload = require("../src/shared/Util/CombatPreload")
 local CombatHud = require("../src/shared/Config/CombatHud")
 local SwordFx = require("../src/shared/Config/SwordFx")
 local Swords = require("../src/shared/Config/Swords")
+local AttackFx = require("../src/shared/Config/AttackFx")
 local expect = require("./lib/expect")
 
 local function has(list: { string }, id: string): boolean
@@ -45,5 +46,17 @@ return {
 				seen[id] = true
 			end
 		end
+	end,
+
+	["the attack effects' textures and sounds are fetched ahead too"] = function()
+		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords, AttackFx)
+		for name, id in AttackFx.TEXTURES do
+			expect.equal(has(ids.images, id), true, name)
+		end
+		expect.equal(has(ids.sounds, AttackFx.SOUNDS.charge), true, "charge")
+		expect.equal(has(ids.sounds, AttackFx.SOUNDS.boom), true, "boom")
+		expect.equal(has(ids.sounds, AttackFx.BOSS.meadowWarden.sounds.release), true, "a boss's")
+		expect.equal(has(ids.sounds, AttackFx.MONSTER.Mossling.sounds.strike), true, "a monster's")
+		expect.equal(has(ids.images, AttackFx.SOUNDS.charge), false, "sounds aren't images")
 	end,
 }

@@ -9,6 +9,7 @@ return {
 	CHARGE_GRACE = 0.3, -- seconds a charge waits past its due time for its attack, then fades
 	FLIGHT = { Ember = 0.35, Tide = 0.25 }, -- seconds a projectile flies (elements that throw one)
 	COMBO = { count = 3, window = 0.45 }, -- a combo's hits over this many seconds, the last with the damage
+	EXTRA_SHOT_GAP = 0.08, -- seconds between a grade A / S Ember's extra fireballs (they land together)
 	-- Each element's normal attack: a thrown projectile, a 3-hit combo up close, or a lightning zip there and back
 	ELEMENT = {
 		Ember = { kind = "projectile", color = rgb(255, 122, 58) },
@@ -27,6 +28,12 @@ return {
 		Bloom = { hit = "rbxassetid://9113612888" }, -- Buggy Whip Quick Swish Crack 11
 		Volt = { hit = "rbxassetid://9114277757" }, -- Electric Zaps 12
 		Shade = { hit = "rbxassetid://9119749812" }, -- Sword Swishes 4
+		-- The boom layer on big hits (grade S extras): per element, else `boom`
+		boom = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2
+		big = {
+			Ember = "rbxassetid://9114438917", -- Fire Sheet 3 (erupt and burn)
+			Tide = "rbxassetid://9120607089", -- Water Surge 3 (waves crash)
+		},
 	},
 	VOLUME = 0.45,
 	CHARGE_LIGHT = 3, -- a charging creature's glow (PointLight brightness at full charge)
@@ -84,6 +91,64 @@ return {
 				release = "rbxassetid://9113216700", -- Avalanche Crashing 3
 			},
 		},
+	},
+	-- The effects' textures (tools/textures/make_attack_fx.py, the owner's reference look): white, tinted per use, a
+	-- coloured layer under a white core
+	TEXTURES = {
+		glow = "rbxassetid://111832033900052",
+		flare = "rbxassetid://83939810863438",
+		streak = "rbxassetid://72806596201777",
+		spark = "rbxassetid://110131144237409",
+		ring = "rbxassetid://130539210208283",
+		bolt = "rbxassetid://118502374622454", -- upright: a beam runs a texture's height along its length
+		slash = "rbxassetid://108229178074942",
+		shard = "rbxassetid://128916396596028",
+		impact = "rbxassetid://134340523336604",
+		flame = "rbxassetid://103269035765808",
+		smoke = "rbxassetid://73731160930304",
+	},
+	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
+	-- S: the big ones; Util/FightFx)
+	GRADE = {
+		C = { scale = 1, sparks = 1, extra = 0, shake = 1 },
+		B = { scale = 1.25, sparks = 1.4, extra = 0, shake = 1.2 },
+		A = { scale = 1.55, sparks = 1.8, extra = 1, shake = 1.45 },
+		S = { scale = 2, sparks = 2.4, extra = 2, shake = 1.9 },
+	},
+	-- Camera shake (Util/ScreenFx, Util/ShakeRules): each hit adds to a 0-1 shake that dies down at DECAY a second; the
+	-- camera moves up to MAX_STUDS times the shake squared. Amounts per hit; hits away from you shake less, from NEAR
+	-- to FAR studs off
+	SHAKE = {
+		MAX_STUDS = 1.4,
+		DECAY = 1.8,
+		NEAR = 14,
+		FAR = 70,
+		creatureHit = 0.12, -- times the grade's shake
+		creatureFinisher = 0.2, -- a combo's last hit, an S extra
+		special = 0.3, -- a Pet button move or super move
+		bossStrike = 0.3,
+		bossSlam = 0.75,
+		hurt = 0.45, -- a boss's hit on you
+	},
+	-- Screen flashes (Util/ScreenFx): colour (nil: the attack's), how strong (1 - transparency) and how long
+	FLASH = {
+		gradeS = { strength = 0.22, seconds = 0.16 },
+		special = { strength = 0.18, seconds = 0.2 },
+		bossSlam = { color = rgb(255, 255, 255), strength = 0.4, seconds = 0.22 },
+	},
+	-- Damage numbers (Util/DamagePop): each style bursts from `start` to `peak` size over `pop` seconds, settles back to
+	-- 1 over `settle`, rises `rise` studs over its `life` and fades over the last `fade` of it; a crit wiggles `wiggle`
+	-- degrees as it settles
+	NUMBERS = {
+		settle = 0.14,
+		fade = 0.35,
+		normal = { start = 0.4, peak = 1.5, pop = 0.09, life = 0.9, rise = 3 },
+		crit = { start = 0.4, peak = 2.1, pop = 0.1, life = 1.25, rise = 3.6, wiggle = 14 },
+		strong = { start = 0.4, peak = 1.75, pop = 0.09, life = 1, rise = 3.3 },
+		weak = { start = 0.5, peak = 1.2, pop = 0.08, life = 0.75, rise = 2.4 },
+		heal = { start = 0.4, peak = 1.4, pop = 0.1, life = 1, rise = 3.2 },
+		tick = { start = 0.6, peak = 1.15, pop = 0.06, life = 0.7, rise = 2 },
+		DRIFT = 1.2, -- studs a number drifts sideways (random each way), so numbers landing together don't overlap
 	},
 	-- Wild monsters' normal attacks (keyed clips in ReplicatedStorage.MonsterAnimations/<species>, the same flow as a
 	-- boss's): `strike` the effect where it lands

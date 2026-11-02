@@ -333,6 +333,29 @@
 - [ ] **Step 2:** Retune the boss HP/ATK and debuff values until the targets hold: well 85% at 1x / 50% at 0.8x; still 60% / 15%. Check 2 players (`lune run tools/balance/bosses 100 2`).
 - [ ] **Step 3:** Commit, with DESIGN updated (boss table HP/ATK, debuff table, balance note) and CLAUDE.md if the tool changed.
 
+### Task 16: High-quality effects (owner's quality bar, spec "Quality bar")
+
+**Files:**
+- Create: `tools/textures/make_attack_fx.py` (done in the mockup), `assets/ui/fx-attack/*.png` (uploaded; ids in
+  `Config/AttackFx` TEXTURES), `src/shared/Util/ShakeRules.luau`, `src/shared/Util/DamagePop.luau`,
+  `src/client/Util/ScreenFx.luau`
+- Modify: `src/shared/Config/AttackFx.luau` (TEXTURES, GRADE tiers, SHAKE, FLASH, layered SOUNDS),
+  `src/shared/Util/FightFxRules.luau` (`tier(grade, cfg)`), `src/client/Util/ElementFx.luau` (textured emitters, beams),
+  `src/client/Util/FightFx.luau` (grade extras, shake, flash, sounds), `src/client/Controllers/CreatureController.luau`
+  (the view's grade), `src/client/Controllers/BattleController.luau` (ScreenFx, damage numbers)
+- Tests: `tests/ShakeRules.spec.luau`, `tests/DamagePop.spec.luau`, `tests/FightFxRules.spec.luau`
+
+**Interfaces:**
+- `FightFxRules.tier(grade: string?, cfg) -> { scale, sparks, extra, shake }`: C/B/A/S from `AttackFx.GRADE`, C for
+  anything else.
+- `ShakeRules.add(trauma, amount) -> number` (capped at 1), `decay(trauma, dt, rate)`, `offset(trauma, maxStuds)` (the
+  squared trauma times max), `falloff(strength, distance, near, far)` (full inside near, none past far).
+- `DamagePop.at(t, style) -> { scale, rise, alpha, rotation }` and `DamagePop.life(style)`; styles normal, crit,
+  strong, weak, heal, tick.
+- `ScreenFx.shake(amount)`, `ScreenFx.shakeAt(amount, position)`, `ScreenFx.flash(color, strength, seconds)`.
+- [ ] Step 1: failing tests for the pure modules; Step 2: implement; Step 3: upload textures, rebuild ElementFx and
+  FightFx, damage numbers; Step 4: Studio check per element at each grade (`/maxcard`), screenshots; Step 5: commit.
+
 ### Task 15: Docs and wrap-up
 
 - [ ] Update DESIGN.md (fights, file tree, Config files, 10.6 HUD), CLAUDE.md (new mapping, tools, test list), docs/animations.md, the memory file `combat-week-design.md`, and the Obsidian vault (`Sword combat.md` or a new `Attack effects.md`, Decisions log, Lessons learned).

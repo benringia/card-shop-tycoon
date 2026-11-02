@@ -70,4 +70,20 @@ return {
 		end
 		expect.equal(count, wild, "every species has one")
 	end,
+
+	["a creature's grade sets how big its attack looks"] = function()
+		local c, b, a, s = FightFxRules.tier("C", AttackFx), FightFxRules.tier("B", AttackFx), FightFxRules.tier("A", AttackFx), FightFxRules.tier("S", AttackFx)
+		expect.equal(c.scale, 1)
+		expect.equal(c.extra, 0)
+		expect.near(b.scale, 1.25, 1e-9)
+		expect.equal(b.extra, 0)
+		expect.near(a.scale, 1.55, 1e-9)
+		expect.equal(a.extra, 1)
+		expect.near(s.scale, 2, 1e-9)
+		expect.equal(s.extra, 2)
+		expect.equal(c.sparks < b.sparks and b.sparks < a.sparks and a.sparks < s.sparks, true, "more sparks each grade")
+		expect.equal(c.shake < b.shake and b.shake < a.shake and a.shake < s.shake, true, "more shake each grade")
+		expect.equal(FightFxRules.tier(nil, AttackFx), c, "no grade: C")
+		expect.equal(FightFxRules.tier("Z", AttackFx), c, "unknown: C")
+	end,
 }

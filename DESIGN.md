@@ -1014,6 +1014,23 @@ group, checked before its fragments and every time (not only the first). Below i
   Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
   Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
   stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
+- **Effect quality** (same spec, "Quality bar", owner 2026-11-03): every fight effect is drawn from a texture kit in the
+  owner's reference look (`tools/textures/make_attack_fx.py` -> `assets/ui/fx-attack`, ids in `AttackFx.TEXTURES`:
+  glow, flare, comet streak, spark, shockwave ring, lightning, crescent slash, crystal shard, starburst, flame, smoke),
+  white and tinted, a coloured layer under a white core (`Util/ElementFx`: comets with trails and flames or spiral
+  rings, lightning beams, crystal eruptions, fire and water pillars). The combat preload fetches them with every
+  attack sound (`CombatPreload.collect`, a beam is a blank slab until its texture is in). A creature's basic attack
+  grows with its grade (`AttackFx.GRADE`, `FightFxRules.tier`): C base, B +25% and more sparks, A +55% plus one extra
+  (Ember a second fireball, Tide a second ring spiral, Volt a forked bolt, Bloom/Shade a fourth slash), S +100% plus
+  the big extras (Ember three fireballs and a fire pillar, Tide a water column, Volt two forked bolts and a strike from
+  the sky, Bloom/Shade five slashes ending in an X, gold sparkles in trails, a boom sound layer). Pet button and super
+  moves, bosses and wild monsters use the new look at a fixed size. Screen shake (`Util/ScreenFx`, `Util/ShakeRules`,
+  `AttackFx.SHAKE`): every hit adds to one 0-1 shake that dies down, the camera rattling by its square, less the
+  further the hit is from you; your own creature's hits light, a boss slam beside you heavy. Screen flashes
+  (`AttackFx.FLASH`): your creature's S-grade hits and your Pet button moves in their colour, a boss slam near you
+  white. Sounds play at a slightly random pitch. Damage numbers pop (`Util/DamagePop`, `AttackFx.NUMBERS`): they burst
+  in bigger than their size and settle, rise, drift a little sideways and fade; crits are bigger, last longer and
+  wiggle; a Poison or Burn tick is small, in its colour, with no flinch or shake. Low graphics: fewer particles.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
   with `lune run tools/balance/bosses`, which now plays each row twice: a player who stands still and one who fights
   well (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged, 80-97% of
@@ -1469,7 +1486,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword hit feel: sparks, flash, hit-stop, shake
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
-    │       ├── ElementFx.luau          # the pieces of fight effects: charge glow, projectile, burst, bolt, slash, sound
+    │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
+    │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
     │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
@@ -1574,6 +1592,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
+            ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)
+            ├── DamagePop.luau     # how a damage number pops, settles, rises and fades by style (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)

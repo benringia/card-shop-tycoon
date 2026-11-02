@@ -12,12 +12,13 @@ local Config = Shared:WaitForChild("Config")
 local CombatHudConfig = require(Config:WaitForChild("CombatHud"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
 local Swords = require(Config:WaitForChild("Swords"))
+local AttackFx = require(Config:WaitForChild("AttackFx"))
 local CombatPreload = require(Shared:WaitForChild("Util"):WaitForChild("CombatPreload"))
 
 local CombatAssets = {}
 
 function CombatAssets.preload()
-	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords)
+	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx)
 	local cache = Instance.new("ScreenGui")
 	cache.Name = "CombatCache"
 	cache.ResetOnSpawn = false

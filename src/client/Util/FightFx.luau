@@ -20,10 +20,13 @@ local MonsterMoves = require(Shared:WaitForChild("Util"):WaitForChild("MonsterMo
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
+local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 
 local FightFx = {}
 
-export type View = { root: BasePart, element: string, height: number }
+-- grade: its card copy's (the attack grows with it); mine: the local player's creature
+export type View = { root: BasePart, element: string, height: number, grade: string?, mine: boolean }
+type Tier = { scale: number, sparks: number, extra: number, shake: number }
 export type Resolve = {
 	marker: (id: string) -> BasePart?, -- a fighter's marker by sim id
 	creature: (marker: BasePart) -> View?, -- the creature drawn on it (nil: a monster or boss, not handled here)
@@ -83,6 +86,32 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		ElementFx.sound(if sounds then sounds.hit else nil, at)
 	end
 
+	-- A creature's hit landing at `at`: the impact at its grade's size, its sound, shake on your own creature's hits,
+	-- and at grade S the boom layer, a flash on your screen and the element's big extra
+	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean)
+		local s = tier.scale
+		ElementFx.burst(at, tint, s * (if finisher then 1.15 else 1))
+		hitSound(view.element, at)
+		if view.mine then
+			ScreenFx.shakeAt((if finisher or tier.extra >= 2 then AttackFx.SHAKE.creatureFinisher else AttackFx.SHAKE.creatureHit) * tier.shake, at)
+		end
+		if tier.extra < 2 then
+			return
+		end
+		ElementFx.sound(AttackFx.SOUNDS.big[view.element] or AttackFx.SOUNDS.boom, at, 0.8)
+		if view.mine then
+			ScreenFx.flash(tint, AttackFx.FLASH.gradeS.strength, AttackFx.FLASH.gradeS.seconds)
+		end
+		local ground = at - Vector3.new(0, 2, 0)
+		if view.element == "Ember" then
+			ElementFx.pillar(ground, tint, 9 * s, 0.4, "flame")
+		elseif view.element == "Tide" then
+			ElementFx.pillar(ground, tint:Lerp(Color3.new(1, 1, 1), 0.3), 9 * s, 0.4, "glow")
+		elseif view.element == "Volt" then
+			ElementFx.skyStrike(at, tint, s * 0.6)
+		end
+	end
+
 	local function onCharge(event: any)
 		local marker = resolve.marker(event.from)
 		local view = if marker then resolve.creature(marker) else nil
@@ -90,6 +119,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if not marker or not view or not kind or not FightFxRules.budget(active, Extras.enabled(), AttackFx) then
 			return
 		end
+		local tier = FightFxRules.tier(view.grade, AttackFx)
+		local s = tier.scale
 		local lead = math.max(0, tonumber(event.seconds) or 0)
 		local tint = color(AttackFx.ELEMENT[view.element].color)
 		local entry: Pending = {
@@ -100,7 +131,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			element = view.element,
 			attacked = false,
 			waiters = {},
-			stopGlow = ElementFx.chargeGlow(view.root, tint, lead),
+			stopGlow = ElementFx.chargeGlow(view.root, tint, lead, s),
 		}
 		active += 1
 		pending[event.from] = entry
@@ -125,18 +156,38 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local sounds = AttackFx.SOUNDS[view.element]
 				ElementFx.sound(if sounds then sounds.release else nil, view.root.Position)
 				local from = view.root.Position + Vector3.new(0, view.height * 0.5, 0)
-				ElementFx.projectile(from, function()
-					return targetPosition(entry.to, from)
-				end, tint, schedule.impactIn - schedule.releaseIn, AttackFx.ARC[view.element] or 0, function(at)
-					whenAttacked(entry, function()
-						ElementFx.burst(at, tint)
-						hitSound(view.element, at)
+				local flight = schedule.impactIn - schedule.releaseIn
+				local ember = view.element == "Ember"
+				local opts = { scale = s, flames = ember, rings = if view.element == "Tide" then 1 + tier.extra else 0, sparkle = tier.extra >= 2 }
+				-- Ember throws one more fireball a grade A, two more at S, a little after and to the sides, all landing together
+				local shots = if ember then 1 + tier.extra else 1
+				for shot = 1, shots do
+					local wait = (shot - 1) * AttackFx.EXTRA_SHOT_GAP
+					local side = if shot == 1 then 0 elseif shot % 2 == 0 then 1 else -1
+					task.delay(wait, function()
+						local offset = Vector3.new(0, 0, 0)
+						ElementFx.projectile(from, function()
+							local goal = targetPosition(entry.to, from)
+							local flat = Vector3.new(goal.X - from.X, 0, goal.Z - from.Z)
+							if side ~= 0 and flat.Magnitude > 0.1 then
+								offset = flat.Unit:Cross(Vector3.yAxis) * side * 1.5 * s
+							end
+							return goal + offset
+						end, tint, math.max(0.1, flight - wait), (AttackFx.ARC[view.element] or 0) + (shot - 1) * 2, function(at)
+							if shot == 1 then
+								whenAttacked(entry, function()
+									impact(view, tier, at, tint, false)
+								end)
+							else
+								ElementFx.burst(at, tint, s * 0.6)
+							end
+						end, if shot == 1 then opts else { scale = s * 0.75, flames = ember, sparkle = opts.sparkle })
 					end)
-				end)
+				end
 			end)
 		elseif kind == "combo" then
 			local window = AttackFx.COMBO.window
-			local times = AttackTiming.comboTimes(AttackFx.COMBO.count, window)
+			local times = AttackTiming.comboTimes(AttackFx.COMBO.count + tier.extra, window)
 			local startIn = math.max(0, lead - window)
 			task.delay(startIn, function()
 				if not alive then
@@ -151,10 +202,19 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					task.delay(at, function()
 						local function slash()
 							local spot = targetPosition(entry.to, toward)
-							ElementFx.slash(spot, view.root.Position, tint, style, index)
-							hitSound(view.element, spot)
-							if index == #times then
-								ElementFx.burst(spot, tint, 0.7)
+							ElementFx.slash(spot, view.root.Position, tint, style, index, s)
+							if index < #times then
+								hitSound(view.element, spot)
+								if view.mine then
+									ScreenFx.shakeAt(AttackFx.SHAKE.creatureHit * 0.5 * tier.shake, spot)
+								end
+								return
+							end
+							impact(view, tier, spot, tint, true)
+							if tier.extra >= 2 then
+								-- The finishing X
+								ElementFx.slash(spot, view.root.Position, Color3.new(1, 1, 1), style, 1, s * 1.5, 45)
+								ElementFx.slash(spot, view.root.Position, tint, style, 2, s * 1.5, -45)
 							end
 						end
 						if index == #times then
@@ -178,9 +238,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				task.delay(lead - zipIn, function()
 					whenAttacked(entry, function()
 						local spot = targetPosition(entry.to, toward)
-						ElementFx.bolt(view.root.Position + Vector3.new(0, 1, 0), spot, tint, 0.2)
-						ElementFx.burst(spot, tint, 0.8)
-						hitSound(view.element, spot)
+						local from = view.root.Position + Vector3.new(0, 1, 0)
+						ElementFx.bolt(from, spot, tint, 0.2, s)
+						-- Forked side bolts: one at grade A, two at S
+						for fork = 1, tier.extra do
+							local up = Vector3.new(0, if fork == 1 then 2.5 else -1.5, 0) * s
+							ElementFx.bolt(from + up * 0.5, spot + up, tint:Lerp(Color3.new(1, 1, 1), 0.4), 0.2, s * 0.65)
+						end
+						impact(view, tier, spot, tint, false)
 					end)
 				end)
 			end)
@@ -208,11 +273,13 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local tint = color(AttackFx.ELEMENT[view.element].color)
 		local spot = targetPosition(event.to, view.root.Position)
 		resolve.pose(marker, "strike")
-		ElementFx.burst(spot, tint, 0.7)
+		local tier = FightFxRules.tier(view.grade, AttackFx)
+		ElementFx.burst(spot, tint, 0.7 * tier.scale)
 		hitSound(view.element, spot)
 	end
 
-	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event)
+	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event), a
+	-- shake near it and a flash on your screen when it's your creature's
 	local function onSpecial(event: any)
 		local spec = AttackFx.SPECIALS[event.kind]
 		local marker = resolve.marker(event.from)
@@ -222,10 +289,16 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
 		local target = targetPosition(event.to, caster)
+		local tint = color(spec.color)
 		resolve.pose(marker, "cast")
 		ElementFx.sound(AttackFx.SPECIAL_SOUND, caster)
 		hitSound(view.element, target)
-		ElementFx.special(spec.style, caster, target, color(spec.color), spec.seconds or 0)
+		ElementFx.sound(AttackFx.SOUNDS.big[view.element] or AttackFx.SOUNDS.boom, target, 0.6)
+		ElementFx.special(spec.style, caster, target, tint, spec.seconds or 0)
+		ScreenFx.shakeAt(AttackFx.SHAKE.special, target)
+		if view.mine then
+			ScreenFx.flash(tint, AttackFx.FLASH.special.strength, AttackFx.FLASH.special.seconds)
+		end
 	end
 
 	local moves: { [BasePart]: MonsterMoves.State } = {}
@@ -286,10 +359,17 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local ground = Vector3.new(ring.x, RingFx.groundY(ring.x, ring.y, ring.z), ring.z)
 				local direction = Vector3.new(tonumber(ring.dirX) or 0, 0, tonumber(ring.dirZ) or -1)
 				ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint)
+				ElementFx.sound(AttackFx.SOUNDS.boom, ground, 0.7)
+				ScreenFx.shakeAt(AttackFx.SHAKE.bossSlam, ground)
+				local flash = AttackFx.FLASH.bossSlam
+				if ScreenFx.distance(ground) <= AttackFx.SHAKE.NEAR then
+					ScreenFx.flash(color(flash.color), flash.strength, flash.seconds)
+				end
 			end
 		elseif event.type == "attack" and not event.dodged then
 			local spot = targetPosition(event.to, view.root.Position)
 			ElementFx.monsterStrike(spec.strike, spot, view.root.Position, tint)
+			ScreenFx.shakeAt(AttackFx.SHAKE.bossStrike, spot)
 			local now = os.clock()
 			if now - strikeSoundAt > 0.2 then -- a group hit in one moment sounds once
 				strikeSoundAt = now

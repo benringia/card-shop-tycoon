@@ -14,6 +14,11 @@ function FightFxRules.kindFor(element: string, cfg: any): string?
 	return if entry then entry.kind else nil
 end
 
+-- How big a creature's basic attack looks for its grade (AttackFx.GRADE; C for no grade or an unknown one)
+function FightFxRules.tier(grade: string?, cfg: any): { scale: number, sparks: number, extra: number, shake: number }
+	return (if grade then cfg.GRADE[grade] else nil) or cfg.GRADE.C
+end
+
 -- Whether a Pet button move or super move (its kind: "Fireball", "Inferno", ...) has an effect (AttackFx.SPECIALS)
 function FightFxRules.hasEffect(kind: string, cfg: any): boolean
 	return cfg.SPECIALS[kind] ~= nil

@@ -346,12 +346,20 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 end
 
 -- What the fight effects need of the creature drawn on this marker (nil if none is drawn)
-function CreatureController.GetFightView(marker: BasePart): { root: BasePart, element: string, height: number }?
+-- grade: its card copy's (its attacks grow with it, AttackFx.GRADE); mine: it's the local player's
+function CreatureController.GetFightView(marker: BasePart): { root: BasePart, element: string, height: number, grade: string?, mine: boolean }?
 	local creature = creatures[marker]
 	if not creature then
 		return nil
 	end
-	return { root = creature.body.root, element = creature.element, height = creature.height }
+	local grade = marker:GetAttribute("Grade")
+	return {
+		root = creature.body.root,
+		element = creature.element,
+		height = creature.height,
+		grade = if typeof(grade) == "string" then grade else nil,
+		mine = marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId,
+	}
 end
 
 -- A fight pose on the creature drawn on this marker (charge, strike, combo, cast)

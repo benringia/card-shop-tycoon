@@ -47,6 +47,9 @@ local SwordController = require(Controllers:WaitForChild("SwordController"))
 local Swords = require(Config:WaitForChild("Swords"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
+local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
+local AttackFx = require(Config:WaitForChild("AttackFx"))
+local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local player = Players.LocalPlayer
@@ -69,7 +72,9 @@ local CRIT_COLOR = Color3.fromRGB(199, 155, 255) -- a Haggle critical hit
 local WEAK_COLOR = Color3.fromRGB(170, 170, 180)
 local HEAL_COLOR = Color3.fromRGB(120, 230, 120)
 local SHIELD_COLOR = Color3.fromRGB(150, 210, 255)
-local NUMBER_RISE = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local POISON_COLOR = Color3.fromRGB(140, 230, 90)
+local BURN_COLOR = Color3.fromRGB(255, 140, 50)
+local NUMBER_LIFT = 4 -- studs over a fighter a damage number starts
 -- HUD hidden while fighting so nothing gets tapped by mistake
 local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" }
 
@@ -319,33 +324,75 @@ local function addMarkers(list: unknown)
 	end
 end
 
--- A number that floats up over a fighter and fades (big: a critical hit's)
-local function floatText(id: string, text: string, color: Color3, big: boolean?)
+-- Damage numbers pop (Util/DamagePop, AttackFx.NUMBERS): each bursts in big and settles, rises, drifts a little to one
+-- side so numbers landing together don't sit on each other, and fades; one loop moves them all
+type FloatingNumber = { gui: BillboardGui, label: TextLabel, stroke: UIStroke, scale: UIScale, style: string, born: number, drift: number }
+local floating: { FloatingNumber } = {}
+local floatingBound = false
+
+local function stepNumbers()
+	local now = os.clock()
+	local keep = {}
+	for _, number in floating do
+		local t = now - number.born
+		if t >= DamagePop.life(number.style, AttackFx.NUMBERS) then
+			number.gui:Destroy()
+			continue
+		end
+		local pose = DamagePop.at(t, number.style, AttackFx.NUMBERS)
+		local progress = t / DamagePop.life(number.style, AttackFx.NUMBERS)
+		number.gui.StudsOffset = Vector3.new(number.drift * progress, NUMBER_LIFT + pose.rise, 0)
+		number.scale.Scale = pose.scale
+		number.label.Rotation = pose.rotation
+		number.label.TextTransparency = 1 - pose.alpha
+		number.stroke.Transparency = 1 - pose.alpha
+		table.insert(keep, number)
+	end
+	floating = keep
+end
+
+-- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "weak" | "heal" | "tick"; big: a crit)
+local function floatText(id: string, text: string, color: Color3, big: boolean?, style: string?)
 	local marker = markerFor(id)
 	if not marker then
 		return
 	end
+	local kind = style or (if big then "crit" else "normal")
 	local gui = Instance.new("BillboardGui")
-	gui.Size = if big then UDim2.fromOffset(210, 54) else UDim2.fromOffset(140, 36)
-	gui.StudsOffset = Vector3.new(0, 4, 0)
+	gui.Size = if kind == "crit" then UDim2.fromOffset(220, 58) else UDim2.fromOffset(150, 40)
+	gui.StudsOffset = Vector3.new(0, NUMBER_LIFT, 0)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Adornee = marker
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
+	label.AnchorPoint = Vector2.new(0.5, 0.5) -- pops from its middle
+	label.Position = UDim2.fromScale(0.5, 0.5)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0.3
+	label.TextColor3 = Color3.new(1, 1, 1)
 	label.Text = text
 	label.Parent = gui
+	-- White on top shading into the colour, with a thick dark outline: reads on any background
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.65), color)
+	gradient.Rotation = 90
+	gradient.Parent = label
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = if kind == "crit" then 3 else 2.2
+	stroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.8)
+	stroke.Parent = label
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0
+	scale.Parent = label
 	gui.Parent = player:WaitForChild("PlayerGui") -- a BillboardGui inside another ScreenGui never draws
-	TweenService:Create(gui, NUMBER_RISE, { StudsOffset = Vector3.new(0, 7, 0) }):Play()
-	TweenService:Create(label, NUMBER_RISE, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
-	task.delay(NUMBER_RISE.Time, function()
-		gui:Destroy()
-	end)
+	local drift = AttackFx.NUMBERS.DRIFT
+	table.insert(floating, { gui = gui, label = label, stroke = stroke, scale = scale, style = kind, born = os.clock(), drift = (math.random() * 2 - 1) * drift })
+	if not floatingBound then
+		floatingBound = true
+		RunService.RenderStepped:Connect(stepNumbers)
+	end
 end
 
 -- Fight bar -----------------------------------------------------------------------------------------------
@@ -816,9 +863,12 @@ local function onEvents(events: { any })
 				floatText(event.to, `-{event.damage}`, PLAYER_DAMAGE_COLOR)
 			end
 			swordHit(event)
+		elseif event.type == "attack" and event.to == me and (event.kind == "Poison" or event.kind == "Burn") then
+			-- A debuff's damage each second: its own colour, no flinch or shake
+			floatText(event.to, `-{event.damage}`, if event.kind == "Poison" then POISON_COLOR else BURN_COLOR, false, "tick")
 		elseif event.type == "attack" and event.to == me and not event.dodged then
 			-- A boss hit you
-			floatText(event.to, `-{event.damage}`, UIKit.Colors.Danger)
+			floatText(event.to, `-{event.damage}`, UIKit.Colors.Danger, false, "strong")
 			shake(SwordFx.SHAKE.hurt.seconds, SwordFx.SHAKE.hurt.studs)
 			local anims = SwordController.GetAnims()
 			if anims then
@@ -849,13 +899,13 @@ local function onEvents(events: { any })
 			banner("You're out: watching", UIKit.Colors.Danger)
 		elseif event.type == "attack" and event.to then
 			if event.dodged then
-				floatText(event.to, "Dodge", WEAK_COLOR)
+				floatText(event.to, "Dodge", WEAK_COLOR, false, "weak")
 			elseif event.crit then
 				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
 			elseif event.strength == "strong" then
-				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR)
+				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR, false, "strong")
 			elseif event.strength == "weak" then
-				floatText(event.to, `-{event.damage}`, WEAK_COLOR)
+				floatText(event.to, `-{event.damage}`, WEAK_COLOR, false, "weak")
 			else
 				floatText(event.to, `-{event.damage}`, Color3.new(1, 1, 1))
 			end
@@ -871,10 +921,10 @@ local function onEvents(events: { any })
 				floatText(event.from, name or event.kind or "", ELITE_COLOR)
 			end
 			if event.damage and event.to then
-				floatText(event.to, `-{event.damage}`, if event.strength == "strong" then STRONG_COLOR else Color3.new(1, 1, 1))
+				floatText(event.to, `-{event.damage}`, if event.strength == "strong" then STRONG_COLOR else Color3.new(1, 1, 1), false, "strong")
 			end
 			if event.heal and event.from then
-				floatText(event.from, `+{event.heal}`, HEAL_COLOR)
+				floatText(event.from, `+{event.heal}`, HEAL_COLOR, false, "heal")
 			end
 		elseif event.type == "run" and event.ok == false and event.kind == "failed" then
 			UIController.Notify("Couldn't get away!", true, 1.5)
@@ -882,7 +932,7 @@ local function onEvents(events: { any })
 			floatText(event.from, "Joined!", HEAL_COLOR)
 		elseif event.type == "heal" then
 			if event.to and event.heal then
-				floatText(event.to, `+{event.heal}`, HEAL_COLOR)
+				floatText(event.to, `+{event.heal}`, HEAL_COLOR, false, "heal")
 			end
 			banner("Healing!", HEAL_COLOR)
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)

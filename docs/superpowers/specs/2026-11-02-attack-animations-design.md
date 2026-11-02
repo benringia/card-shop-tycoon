@@ -210,3 +210,23 @@ visual decisions), and ends with a Studio check the owner judges.
 - The bone-rig export details and file layout of the new animation pipeline.
 - Sounds for creature, boss and monster attacks (from Pro Sound Effects).
 - Exact debuff numbers after the balance retune.
+
+## Quality bar (owner, 2026-11-03)
+
+After seeing the first effects in game the owner asked for high quality, exaggerated, noticeable effects, with their
+reference picture (glowing comet streaks, spiral rings, lightning, crystal bursts out of the ground) and screen shake,
+sound and screen flashes. Approved in two mockups (`attack-fx-hq.html`, `attack-fx-grades.html`):
+
+- Effects are built from a texture kit in that style (hot white cores in coloured glow): glow, flare, comet streak,
+  spark, shockwave ring, lightning, crescent slash, crystal shard, impact starburst, flame, smoke
+  (`tools/textures/make_attack_fx.py`, white textures the game tints, a coloured layer under a white core).
+- A creature's basic attack grows with its grade: C the base, B +25% and more sparks, A +55% and one extra (Ember a
+  second fireball, Tide a second ring spiral, Volt a forked side bolt, Bloom/Shade a fourth slash), S +100% and the big
+  extras (Ember three fireballs and a fire pillar, Tide a water column, Volt two extra bolts and a strike from the sky,
+  Bloom/Shade five slashes ending in an X, gold sparkles in the trails). Pet button and super moves, bosses and wild
+  monsters get the new look at a fixed size.
+- Screen shake scaled to the hit and to how close it is to you (your creature's hits light, a boss slam beside you
+  heavy); screen flashes on big impacts (white on S-grade hits and boss slams near you, red when you're hit).
+- Layered sounds: a release whoosh, the impact, and a boom layer on big hits, at a slightly random pitch.
+- Damage numbers pop: they burst in bigger and settle, rise and drift, fade out; criticals bigger with a wiggle.
+- Low graphics: fewer particles, the same shapes.
