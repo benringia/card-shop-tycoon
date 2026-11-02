@@ -35,6 +35,7 @@ local AdminPanel = require(Config:WaitForChild("AdminPanel"))
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
+local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
@@ -289,6 +290,9 @@ function DevService.Start()
 	addCommand(folder, "intro", function(player)
 		WelcomeService.Replay(player)
 	end)
+	addCommand(folder, "swordpopup", function(player)
+		SwordService.ResetPopup(player)
+	end)
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
 		local known = false
@@ -360,7 +364,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup")
 end
 
 return DevService

@@ -115,6 +115,19 @@ return {
 		expect.equal(kept.party.summoned, 1, "kept summon")
 	end,
 
+	["v14: seenSword starts false so existing players see the sword popup once"] = function()
+		local data: any = { version = 13 }
+		Migrations.run(data, 14)
+		expect.equal(data.seenSword, false)
+		expect.equal(data.version, 14)
+		local kept: any = { version = 13, seenSword = true } -- Reconcile can't add true, but a bad value is replaced
+		Migrations.run(kept, 14)
+		expect.equal(kept.seenSword, true, "a saved true stays")
+		local junk: any = { version = 13, seenSword = "yes" }
+		Migrations.run(junk, 14)
+		expect.equal(junk.seenSword, false, "junk becomes false")
+	end,
+
 	["v13: existing players have already seen the welcome"] = function()
 		local data: any = { version = 12, seenWelcome = false } -- Reconcile may add false before the migration runs
 		Migrations.run(data, 13)

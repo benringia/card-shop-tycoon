@@ -68,6 +68,8 @@ local NAMES = {
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped
+	"SwordState", -- server → client: { sword: string?, popup: boolean } your sword and whether to show the first-sword popup; client → server: () ask
+	"SwordSeen", -- client → server: () the first-sword popup was closed
 }
 
 local isServer = RunService:IsServer()
@@ -156,4 +158,6 @@ return {
 	UseXpTonic = remotes.UseXpTonic,
 	FrontierTravel = remotes.FrontierTravel,
 	WelcomeSeen = remotes.WelcomeSeen,
+	SwordState = remotes.SwordState,
+	SwordSeen = remotes.SwordSeen,
 }

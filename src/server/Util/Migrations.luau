@@ -150,6 +150,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 	[12] = function(data)
 		data.seenWelcome = true
 	end,
+	-- v14: the first-sword popup (SwordService). Everyone, old players too, sees it once; a bad value starts over
+	[13] = function(data)
+		if typeof(data.seenSword) ~= "boolean" then
+			data.seenSword = false
+		end
+	end,
 }
 
 local function lowestGrade(): string

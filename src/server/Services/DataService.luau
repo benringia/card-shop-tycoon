@@ -73,6 +73,7 @@ export type PlayerData = {
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	purchases: { [string]: boolean },
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
+	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
 }
 
 export type Handler = {
@@ -105,6 +106,7 @@ local TEMPLATE: PlayerData = {
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	purchases = {},
 	seenWelcome = false,
+	seenSword = false,
 }
 
 local DataService = {}
