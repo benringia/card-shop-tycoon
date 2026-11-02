@@ -1016,7 +1016,10 @@ group, checked before its fragments and every time (not only the first). Below i
   slashes. Ranged attackers (a projectile or a bolt: Ember, Tide, Volt, `FightFxRules.isRanged`) stand
   `Combat.RANGED_BACK` 7 studs further back from the foe than their ring spot (owner 2026-11-03, "ranged, not
   melee": 13 studs from a wild monster, 22-28 from a boss), set on the server (`BattleService` `standSpot`; a swap or
-  call-in takes over the ring spot, `ringSpots`); Bloom and Shade stay close. Each lands with the
+  call-in takes over the ring spot, `ringSpots`); Bloom and Shade stay close. A creature that joins mid-fight (a
+  swap, a call-in, a PvP extra) gets a marker made that moment, which a remote delivers as nil, so fight payloads
+  also send each marker's name (`markerNames`, `Util/MarkerNames`) and the client finds it in `workspace.Creatures`
+  (until 2026-11-03 such a creature had no attack effects). Each lands with the
   sim's `attack` event and its damage number (`Util/AttackTiming`); the final hit waits for that event, so a charge
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
   once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
@@ -1035,7 +1038,9 @@ group, checked before its fragments and every time (not only the first). Below i
   `ElementFx.bossRelease`). One move at a time: a group hit is one strike, nothing interrupts the special. Meadow
   Warden: branch swipe (leafy slash, dust) and root slam (big roots, taller than a player, burst up across the ring and curl outward, one thick one in the middle; green shockwave). Cave Brood
   Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
-  up, then lunges; strands spray across the cone and stick). Ember Colossus: horn gore (sits back, head low, then
+  up, then lunges; made big 2026-11-03 at the owner's ask: from her fangs, half her height up, a burst and 12 thick
+  strands land across the whole cone with 7-stud splats, and a fan of web, 7 spokes and 4 cross threads, sticks over
+  the cone for 1.4 s; `ElementFx.bossRelease` takes the boss's height). Ember Colossus: horn gore (sits back, head low, then
   tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
   shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
   remodel.

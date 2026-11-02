@@ -357,7 +357,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				rings[event.to] = nil
 				local ground = Vector3.new(ring.x, RingFx.groundY(ring.x, ring.y, ring.z), ring.z)
 				local direction = Vector3.new(tonumber(ring.dirX) or 0, 0, tonumber(ring.dirZ) or -1)
-				ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint)
+				ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint, view.height)
 				ElementFx.sound(AttackFx.SOUNDS.boom, ground, 0.7)
 				ScreenFx.shakeAt(AttackFx.SHAKE.bossSlam, ground)
 				local flash = AttackFx.FLASH.bossSlam

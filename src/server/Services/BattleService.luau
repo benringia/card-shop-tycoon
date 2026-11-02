@@ -33,6 +33,7 @@ local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
+local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerNames"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Swords = require(Config:WaitForChild("Swords"))
@@ -544,7 +545,8 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	if #events > 0 then
 		fight.sinceSnapshot = 0
 		-- New creatures' markers, so clients can float numbers over them; the others see whose they are
-		broadcast(fight, { events = events, markers = markers, allies = allies, addMonsters = addMonsters, snapshot = snapshot(fight) })
+		-- A marker made this moment arrives as nil: its name lets the client find it (Util/MarkerNames)
+		broadcast(fight, { events = events, markers = markers, markerNames = MarkerNames.of(markers), allies = allies, addMonsters = addMonsters, snapshot = snapshot(fight) })
 	end
 end
 
@@ -1085,6 +1087,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			foes = foes,
 			side = "a",
 			markers = markers,
+			markerNames = MarkerNames.of(markers),
 			snapshot = snapshot(fight),
 		})
 	end

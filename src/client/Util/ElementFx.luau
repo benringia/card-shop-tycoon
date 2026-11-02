@@ -658,7 +658,7 @@ end
 
 -- A boss's ring attack landing (Config/AttackFx BOSS release): a slam on the ground at `ground` (its centre) over
 -- `radius`; a swipe from `ground` (the boss's spot) along `direction` for `length`, `halfAngle` degrees either side
-function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, direction: Vector3, length: number, halfAngle: number, color: Color3)
+function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, direction: Vector3, length: number, halfAngle: number, color: Color3, height: number?)
 	if style == "roots" then
 		ElementFx.eruption(ground, color, radius, 10)
 		-- Big roots burst up through the ground and curl outward: one thick one in the middle, a ring of them round it,
@@ -700,38 +700,66 @@ function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, d
 			root(ground + away * radius * (0.45 + math.random() * 0.4), away, 0.85 + math.random() * 0.3)
 		end
 	elseif style == "web" then
+		-- The web spit, big (owner 2026-11-03): from her fangs (half her height up) a thick spray of strands lands across
+		-- the whole cone with wide splats, and a fan of web, spokes and cross threads, sticks over it, then fades
 		local flat = Vector3.new(direction.X, 0, direction.Z)
 		local forward = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(0, 0, -1)
-		local mouth = ground + Vector3.new(0, 3, 0) + forward * 3
-		ElementFx.burst(mouth, color, 1.4)
-		for index = 1, 9 do
-			local angle = math.rad(-halfAngle + 2 * halfAngle * (index - 1) / 8 + math.random(-4, 4))
-			local way = CFrame.fromAxisAngle(Vector3.yAxis, angle):VectorToWorldSpace(forward)
-			local finish = ground + way * length * (0.55 + math.random() * 0.45) + Vector3.new(0, 0.3, 0)
-			local strand = part(Vector3.new(0.35, 0.35, 0.2), WEB, mouth)
-			strand.Material = Enum.Material.SmoothPlastic
-			strand.CFrame = CFrame.lookAt(mouth, finish)
-			local distance = (finish - mouth).Magnitude
-			TweenService:Create(strand, TweenInfo.new(0.22), {
-				Size = Vector3.new(0.35, 0.35, distance),
-				CFrame = CFrame.lookAt((mouth + finish) / 2, finish),
-			}):Play()
-			task.delay(0.22, function()
+		local tall = height or 6
+		local mouth = ground + Vector3.new(0, tall * 0.5, 0) + forward * tall * 0.3
+		local floor = ground + Vector3.new(0, 0.3, 0)
+		local hold = 1.4
+		ElementFx.burst(mouth, color, 3)
+		sparks(mouth, WEB, detail(30), 30, 1.2, 20)
+		local function way(degrees: number): Vector3
+			return CFrame.fromAxisAngle(Vector3.yAxis, math.rad(degrees)):VectorToWorldSpace(forward)
+		end
+		-- A thread that shoots from `a` to `b` after `after` seconds, holds, then fades
+		local function thread(a: Vector3, b: Vector3, thickness: number, after: number)
+			task.delay(after, function()
+				local piece = part(Vector3.new(thickness, thickness, 0.2), WEB, a)
+				piece.Material = Enum.Material.SmoothPlastic
+				piece.CFrame = CFrame.lookAt(a, b)
+				TweenService:Create(piece, TweenInfo.new(0.18), {
+					Size = Vector3.new(thickness, thickness, (b - a).Magnitude),
+					CFrame = CFrame.lookAt((a + b) / 2, b),
+				}):Play()
+				task.delay(hold - after, function()
+					TweenService:Create(piece, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				end)
+				Debris:AddItem(piece, hold - after + 0.6)
+			end)
+		end
+		-- The fan: spokes out from her to the cone's edge, then the cross threads between them, nearest first
+		local spokes = 7
+		local apex = floor + forward * 2
+		local angles = {}
+		for index = 1, spokes do
+			angles[index] = -halfAngle + 2 * halfAngle * (index - 1) / (spokes - 1)
+			thread(apex, floor + way(angles[index]) * length, 0.45, 0.05)
+		end
+		for step, share in { 0.3, 0.5, 0.7, 0.9 } do
+			for index = 1, spokes - 1 do
+				thread(floor + way(angles[index]) * length * share, floor + way(angles[index + 1]) * length * share, 0.3, 0.15 + step * 0.05)
+			end
+		end
+		-- The spray: thick strands from her mouth, each landing with a wide splat
+		for _ = 1, detail(12) do
+			local finish = floor + way(halfAngle * (math.random() * 2 - 1)) * length * (0.35 + math.random() * 0.65)
+			thread(mouth, finish, 0.75, 0)
+			task.delay(0.18, function()
 				local splat = part(Vector3.new(0.15, 1, 1), WEB, finish)
 				splat.Shape = Enum.PartType.Cylinder
 				splat.Material = Enum.Material.SmoothPlastic
 				splat.CFrame = CFrame.new(finish) * CFrame.Angles(0, 0, math.rad(90))
-				TweenService:Create(splat, TweenInfo.new(0.15), { Size = Vector3.new(0.15, 4.5, 4.5) }):Play()
-				flashSprite(finish + Vector3.new(0, 0.5, 0), "impact", color, 1.5, 4, 0.25)
-				task.delay(1.4, function()
+				TweenService:Create(splat, TweenInfo.new(0.15), { Size = Vector3.new(0.15, 7, 7) }):Play()
+				flashSprite(finish + Vector3.new(0, 0.5, 0), "impact", color, 2.5, 7, 0.3)
+				task.delay(hold - 0.18, function()
 					TweenService:Create(splat, TweenInfo.new(0.5), { Transparency = 1 }):Play()
-					TweenService:Create(strand, TweenInfo.new(0.5), { Transparency = 1 }):Play()
 				end)
-				Debris:AddItem(splat, 2)
+				Debris:AddItem(splat, hold + 0.5)
 			end)
-			Debris:AddItem(strand, 2.2)
 		end
-		shockwave(ground + forward * length * 0.6, color, length * 0.5, 0.45)
+		shockwave(floor + forward * length * 0.55, color, length * 0.75, 0.5)
 	elseif style == "lava" then
 		ElementFx.eruption(ground, color, radius, 14)
 		ElementFx.pillar(ground, color, 8, 0.35, "flame")

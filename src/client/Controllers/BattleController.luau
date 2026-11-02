@@ -50,7 +50,6 @@ local SwordFx = require(Config:WaitForChild("SwordFx"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
-local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local FightToast = require(ClientUtil:WaitForChild("FightToast"))
@@ -316,13 +315,27 @@ local function addMonsterMarkers(list: unknown)
 	end
 end
 
-local function addMarkers(list: unknown)
-	if typeof(list) ~= "table" then
+-- A marker made the moment its creature joined (a swap, a call-in) arrives as nil: find it by its name (Util/MarkerNames)
+local function addMarkers(list: unknown, names: unknown)
+	if typeof(list) == "table" then
+		for id, marker in list :: { [any]: any } do
+			if typeof(id) == "string" and typeof(marker) == "Instance" and marker:IsA("BasePart") then
+				markers[id] = marker
+			end
+		end
+	end
+	local folder = workspace:FindFirstChild("Creatures")
+	if typeof(names) ~= "table" or not folder then
 		return
 	end
-	for id, marker in list :: { [any]: any } do
-		if typeof(id) == "string" and typeof(marker) == "Instance" and marker:IsA("BasePart") then
-			markers[id] = marker
+	for id, name in names :: { [any]: any } do
+		if typeof(id) == "string" and typeof(name) == "string" and not markerFor(id) then
+			task.spawn(function()
+				local marker = folder:WaitForChild(name, 3)
+				if marker and marker:IsA("BasePart") then
+					markers[id] = marker
+				end
+			end)
 		end
 	end
 end
@@ -1331,7 +1344,7 @@ local function onStarted(payload: any)
 	fighting = true
 	mySide = if payload.side == "b" then "b" else "a"
 	markers = {}
-	addMarkers(payload.markers)
+	addMarkers(payload.markers, payload.markerNames)
 	if fightFx then
 		fightFx.destroy()
 	end
@@ -1587,7 +1600,13 @@ local function build()
 	countdownLabel.Name = "FightCountdown"
 	countdownLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	countdownLabel.Position = UDim2.fromScale(0.5, 0.38)
-	countdownLabel.Size = UDim2.fromOffset(400, 120)
+	-- One line across the screen, shrinking to fit: "3" stays big, "Teleporting back to town in 3" fits a phone
+	countdownLabel.Size = UDim2.new(0.9, 0, 0, 120)
+	countdownLabel.TextWrapped = false
+	countdownLabel.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 96
+	fit.Parent = countdownLabel
 	countdownLabel.TextXAlignment = Enum.TextXAlignment.Center
 	countdownLabel.TextStrokeTransparency = 0.2
 	countdownLabel.Visible = false
@@ -1697,7 +1716,7 @@ function BattleController.Start()
 		if not fighting or typeof(payload) ~= "table" then
 			return
 		end
-		addMarkers(payload.markers)
+		addMarkers(payload.markers, payload.markerNames)
 		addMonsterMarkers(payload.addMonsters)
 		addAllies(payload.allies)
 		if typeof(payload.events) == "table" then

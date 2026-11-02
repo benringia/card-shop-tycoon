@@ -47,6 +47,20 @@ function ArenaWatchController.Start()
 				end
 			end
 		end
+		-- A marker made at the match's start can arrive as nil: find it by its name (Util/MarkerNames)
+		local folder = workspace:FindFirstChild("Creatures")
+		if typeof(payload.markerNames) == "table" and folder then
+			for id, name in payload.markerNames do
+				if typeof(id) == "string" and typeof(name) == "string" and not markers[id] then
+					task.spawn(function()
+						local marker = folder:WaitForChild(name, 3)
+						if marker and marker:IsA("BasePart") then
+							markers[id] = marker
+						end
+					end)
+				end
+			end
+		end
 		if not dispatcher then
 			dispatcher = FightFx.new({
 				marker = markerFor,

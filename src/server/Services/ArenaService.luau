@@ -16,6 +16,7 @@ local Town = require(Config:WaitForChild("Town"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PvpRules = require(Shared:WaitForChild("Util"):WaitForChild("PvpRules"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
+local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerNames"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -475,7 +476,8 @@ local function sendToWatchers(current: Fight, events: { BattleSim.Event })
 		if root and root:IsA("BasePart") and (root.Position - ARENA).Magnitude <= Pvp.WATCH_RADIUS then
 			local first = not current.watchers[player]
 			current.watchers[player] = true
-			Remotes.ArenaWatch:FireClient(player, { events = events, markers = if first then current.markers else nil })
+			local markers = if first then current.markers else nil
+			Remotes.ArenaWatch:FireClient(player, { events = events, markers = markers, markerNames = MarkerNames.of(markers) })
 		end
 	end
 end
@@ -763,6 +765,7 @@ runMatch = function(current: Fight, a: Player, b: Player, spawnA: CFrame, spawnB
 			opponentName = other.DisplayName,
 			bet = match.bet,
 			markers = current.markers,
+			markerNames = MarkerNames.of(current.markers), -- markers made just now arrive as nil (Util/MarkerNames)
 			snapshot = snapshot,
 			startsIn = Pvp.COUNTDOWN_SECONDS,
 		})
