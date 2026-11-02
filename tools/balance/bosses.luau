@@ -18,6 +18,8 @@
 --   3 maxed  (the Dungeon's boss only) three maxed Legendaries
 -- Every creature fights with its fight perk (Config/Party FIGHT_PERKS, from its element, rarity and stars), so the five
 -- elements' perks average out over the runs. NO_PERKS=1 runs without them, to compare.
+-- A boss's landed rings leave its debuff (Config/Bosses DEBUFFS, through the sim: Poison and Burn ticks, Shocked, Weakened,
+-- Chilled); NO_DEBUFFS=1 runs without them, to compare. Walk slows (Entangled, Chilled) aren't modelled.
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
 -- has left (fainted ones stay out), as in a real run; its rows also print the party's HP share left before the boss.
 local process = require("@lune/process")
@@ -39,6 +41,7 @@ local FIGHTS = tonumber(process.args[1] or "") or 200
 local PLAYERS = tonumber(process.args[2] or "") or 1
 local ONLY = tonumber(process.args[3] or "")
 local PERKS = process.env.NO_PERKS == nil
+local DEBUFFS = process.env.NO_DEBUFFS == nil
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 local DT = 0.1
 local SWORD_UPTIME = { 0.55, 0.9 }
@@ -242,6 +245,16 @@ local function runRooms(players: { { any } }, seed: number): (boolean, { [string
 end
 
 -- (won, seconds, HP share left before the boss)
+-- A boss's attacks on players, without its debuff under NO_DEBUFFS
+local function attacksOf(boss: any): any
+	if DEBUFFS then
+		return boss.playerAttacks
+	end
+	local copy = table.clone(boss.playerAttacks)
+	copy.debuff = nil
+	return copy
+end
+
 local function fight(bossId: string, party: { Card }, element: string, seed: number, mode: string): (boolean, number, number)
 	local boss = Bosses.BOSSES[bossId]
 	local players = parties(party, element)
@@ -256,7 +269,7 @@ local function fight(bossId: string, party: { Card }, element: string, seed: num
 	local share = hpShare(players, hpLeft)
 	local hp, atk, swings = BossRules.groupStats(Bosses, boss.hp, boss.atk, PLAYERS, boss.groupAtkStep)
 	local won, time = battle(players, {
-		{ id = "m", element = boss.element, hp = hp, atk = atk, spd = boss.spd, boss = true, mechanics = boss.mechanics, phases = boss.phases, swings = swings, playerAttacks = boss.playerAttacks },
+		{ id = "m", element = boss.element, hp = hp, atk = atk, spd = boss.spd, boss = true, mechanics = boss.mechanics, phases = boss.phases, swings = swings, playerAttacks = attacksOf(boss) },
 	}, hpLeft, seed, mode)
 	return won, time, share
 end

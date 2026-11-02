@@ -1026,7 +1026,9 @@ group, checked before its fragments and every time (not only the first). Below i
   Brood Queen 2430 / 10, Ember Colossus 7400 / 29, Frost Tyrant 14900 / 46, Storm Sovereign 22600 / 40, Rift Devourer
   27000 / 66, Prism Hydra 50000 / 27 (the Warden unchanged: Common perks are small). The Hydra stays easier for
   players who fight well (about 96% at 1x): its parties are all starred Legendaries with strong perks, and more HP
-  only pushed the still runs past the time limit.
+  only pushed the still runs past the time limit. Boss debuffs (2026-11-02) left HP / ATK as they were: with them every
+  row moved by a few points at most (solo and in pairs; the biggest, Ember Colossus still at 0.8x 40% to 29%, toward
+  its target). `NO_DEBUFFS=1` runs the tool without them; the walk slows aren't modelled.
 - **Fight bar:** kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below; in boss fights the bottom bar drops its title (the slim top bar shows the boss),
   about 126 px solo (`layoutBar` in BattleController).
