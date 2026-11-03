@@ -845,6 +845,111 @@ function UIKit.iconButton(parent: Instance, text: string, icon: string, color: C
 	return button
 end
 
+-- A segmented switch (round 3, the binder's Filters): one pale pill holding `values` side by side, the chosen one
+-- butter with a white edge, the rest plum on the pale pill. `onPick` runs on a tap; the returned function shows a value
+-- as chosen (so the caller's own state stays the truth). Built for a cream window.
+function UIKit.segmented(parent: Instance, values: { string }, onPick: (string) -> ()): (Frame, (string) -> ())
+	local look = BabyColors.SEGMENTED
+	local palette = UIKit.colorsFor(parent)
+	local bar = Instance.new("Frame")
+	bar.Name = "Segmented"
+	bar.Size = UDim2.new(1, 0, 0, look.height)
+	bar.BackgroundColor3 = palette.slotEmpty
+	bar.Parent = parent
+	UIKit.corner(bar, look.height / 2)
+	UIKit.outline(bar, palette.rowEdge, 2)
+	local padding = Instance.new("UIPadding")
+	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		(padding :: any)[side] = UDim.new(0, look.padding)
+	end
+	padding.Parent = bar
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.Padding = UDim.new(0, look.padding)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = bar
+	local parts: { [string]: TextButton } = {}
+	for index, value in values do
+		local part = Instance.new("TextButton")
+		part.Name = value
+		part.LayoutOrder = index
+		part.Size = UDim2.new(1 / #values, -look.padding * (#values - 1) / #values, 1, 0)
+		part.AutoButtonColor = false
+		part.BackgroundColor3 = UIStyle.BABY.butter.fill
+		part.BackgroundTransparency = 1
+		part.Font = Enum.Font.FredokaOne
+		part.TextSize = look.textSize
+		part.Text = value
+		part.TextColor3 = palette.inkSoft
+		part.Parent = bar
+		UIKit.corner(part, (look.height - look.padding * 2) / 2)
+		local edge = UIKit.outline(part, Color3.new(1, 1, 1), 2)
+		edge.Enabled = false
+		part.Activated:Connect(function()
+			onPick(value)
+		end)
+		parts[value] = part
+	end
+	local function choose(chosen: string)
+		for value, part in parts do
+			local on = value == chosen
+			part.BackgroundTransparency = if on then 0 else 1
+			part.TextColor3 = if on then UIStyle.BABY_INK else palette.inkSoft
+			local edge = part:FindFirstChildOfClass("UIStroke")
+			if edge then
+				edge.Enabled = on
+			end
+		end
+	end
+	return bar, choose
+end
+
+-- A small white tag with a coloured dot before its text (round 3, the Filters' rarity picks); the returned function
+-- fills it with its colour (white text) when on. Built for a cream window.
+function UIKit.dotTag(parent: Instance, text: string, color: Color3): (TextButton, (boolean) -> ())
+	local look = BabyColors.DOT_TAG
+	local palette = UIKit.colorsFor(parent)
+	local tag = Instance.new("TextButton")
+	tag.Name = text
+	tag.AutomaticSize = Enum.AutomaticSize.X
+	tag.Size = UDim2.fromOffset(0, look.height)
+	tag.AutoButtonColor = false
+	tag.BackgroundColor3 = palette.row
+	tag.Font = Enum.Font.FredokaOne
+	tag.TextSize = look.textSize
+	tag.Text = text
+	tag.TextColor3 = palette.ink
+	tag.Parent = parent
+	UIKit.corner(tag, look.height / 2)
+	local edge = UIKit.outline(tag, palette.rowEdge, 2)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, look.dot + 14)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = tag
+	local dot = Instance.new("Frame")
+	dot.Name = "Dot"
+	dot.AnchorPoint = Vector2.new(0, 0.5)
+	dot.Position = UDim2.new(0, -(look.dot + 6), 0.5, 0)
+	dot.Size = UDim2.fromOffset(look.dot, look.dot)
+	dot.BackgroundColor3 = color
+	dot.Parent = tag
+	UIKit.corner(dot, look.dot / 2)
+	local ring = UIKit.outline(dot, Color3.new(1, 1, 1), 2)
+	local textEdge = UIKit.outlined(tag, 1)
+	textEdge.Transparency = 0.5
+	local function set(on: boolean)
+		tag.BackgroundColor3 = if on then color else palette.row
+		tag.TextColor3 = if on then Color3.new(1, 1, 1) else palette.ink
+		textEdge.Enabled = on
+		edge.Color = if on then Color3.new(1, 1, 1) else palette.rowEdge
+		edge.Thickness = if on then 3 else 2
+		dot.BackgroundColor3 = if on then Color3.new(1, 1, 1) else color
+		ring.Color = if on then color else Color3.new(1, 1, 1)
+	end
+	set(false)
+	return tag, set
+end
+
 -- A rounded chip (rarity, grade, element, counts) that sizes to its text; an optional icon before the text.
 -- Text is navy on light fills and outlined white on dark ones unless textColor is given.
 function UIKit.pill(parent: Instance, text: string, fill: Color3, textColor: Color3?, icon: string?): TextLabel

@@ -114,9 +114,12 @@ local renderBag: () -> ()
 local getSetArt: (set: string) -> string?
 local rarityGuideButton: TextButton
 local filterButton: TextButton
-local showButtons: { [string]: TextButton } = {}
-local sortButtons: { [string]: TextButton } = {}
-local rarityChips: { [string]: TextButton } = {}
+-- The Filters window's switches (round 3, "tidy column"): each shows the current choice; set in buildFilters
+local chooseShow: (string) -> () = function() end
+local chooseSort: (string) -> () = function() end
+local rarityTags: { [string]: (boolean) -> () } = {}
+local filterCount: TextLabel? = nil -- "32 of 35 cards"
+local filterSearch: TextBox? = nil
 local rarityPicks: { [string]: boolean } = {} -- none picked = every rarity
 local showFilter = ALL_FILTER -- All, Owned or Missing
 local sortBy = "Set" -- Set (card number), Value, Copies or Rarity
@@ -628,16 +631,14 @@ end
 
 -- Lights up the Filters panel's choices
 local function refreshFilterButtons()
-	for value, button in showButtons do
-		button.BackgroundColor3 = if value == showFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	chooseShow(showFilter)
+	chooseSort(sortBy)
+	for rarity, set in rarityTags do
+		set(rarityPicks[rarity] == true)
 	end
-	for value, button in sortButtons do
-		button.BackgroundColor3 = if value == sortBy then UIKit.Colors.Accent else UIKit.Colors.Row
-	end
-	for rarity, chip in rarityChips do
-		local tier = Rarities.Tiers[rarity]
-		local color = if tier then tier.color else UIKit.Colors.Accent
-		chip.BackgroundColor3 = if rarityPicks[rarity] then color else UIKit.Colors.Row
+	local count = filterCount
+	if count then
+		count.Text = `{#visibleTiles} of {#tiles} cards`
 	end
 end
 
@@ -1287,117 +1288,136 @@ local function addKeyChip(button: GuiObject, key: string)
 	UIKit.outline(chip, Color3.new(1, 1, 1), 1.5)
 end
 
-local function choiceRow(parent: Instance, order: number, values: { string }, onPick: (string) -> ()): { [string]: TextButton }
-	local row = Instance.new("Frame")
-	row.LayoutOrder = order
-	row.Size = UDim2.new(1, 0, 0, 44)
-	row.BackgroundTransparency = 1
-	row.Parent = parent
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Padding = UDim.new(0, 6)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = row
-	local buttons: { [string]: TextButton } = {}
-	for index, value in values do
-		local button = UIKit.button(row, value, UIKit.Colors.Row)
-		button.LayoutOrder = index
-		button.Size = UDim2.new(1 / #values, -6, 1, 0)
-		button.TextSize = 15
-		button.Activated:Connect(function()
-			onPick(value)
-		end)
-		buttons[value] = button
-	end
-	return buttons
-end
-
+-- A small heading in the Filters window ("SHOW", "SORT BY", "RARITY")
 local function sectionLabel(parent: Instance, order: number, text: string)
-	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
+	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, Collection.FILTERS.heading, UIKit.colorsFor(parent).hint)
 	label.LayoutOrder = order
-	label.Size = UDim2.new(1, 0, 0, 24)
+	label.Size = UDim2.new(1, 0, 0, Collection.FILTERS.heading + 6)
+	label.TextYAlignment = Enum.TextYAlignment.Bottom
 end
 
--- The Filters panel on the right: search, Show, Sort by, rarity chips. The binder moves aside while it's open.
+-- Back to every card: All, by set, every rarity, no search
+local function clearFilters()
+	showFilter = ALL_FILTER
+	sortBy = "Set"
+	rarityPicks = {}
+	searchText = ""
+	local search = filterSearch
+	if search then
+		search.Text = ""
+	end
+	spreadIndex = 1
+	applyFilter()
+end
+
+-- The Filters window on the right (owner 2026-11-03, round 3 pick A "tidy column"): a cotton candy window with the
+-- search box, SHOW and SORT BY as two segmented switches, the rarities as small dot tags, and at the bottom how many
+-- cards match and Clear all. The binder moves aside while it's open.
 local function buildFilters(parent: Frame)
+	local look = Collection.FILTERS
 	filtersPanel = Instance.new("Frame")
 	filtersPanel.Name = "Filters"
 	-- Between the close / Filters buttons (top right) and the set progress card (bottom right)
 	filtersPanel.AnchorPoint = Vector2.new(1, 0)
-	filtersPanel.Position = UDim2.new(1, -16, 0, 84)
-	filtersPanel.Size = UDim2.new(0, Collection.FILTERS_WIDTH, 1, -(84 + 100))
-	filtersPanel.BackgroundColor3 = UIKit.Colors.Panel
+	filtersPanel.Position = UDim2.new(1, -16, 0, look.top)
+	filtersPanel.Size = UDim2.new(0, Collection.FILTERS_WIDTH, 1, -(look.top + 100))
 	filtersPanel.Visible = false
 	filtersPanel.ZIndex = 6
 	filtersPanel.Parent = parent
-	UIKit.corner(filtersPanel, 16)
-	UIKit.outline(filtersPanel, Color3.new(1, 1, 1), 3)
-	UIKit.header(filtersPanel, "Filters")
+	UIKit.creamWindow(filtersPanel)
+	local palette = UIKit.colorsFor(filtersPanel)
+	local header, title = UIKit.header(filtersPanel, "Filters", "Bag") -- the pink band
+	local headerIcon = Icon.make(header, "Search", UDim2.fromOffset(30, 30))
+	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
+	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
+	headerIcon.ZIndex = header.ZIndex + 2
+	title.Position += UDim2.fromOffset(36, 0)
 	local close = UIKit.closeButton(filtersPanel)
 	close.Activated:Connect(function()
 		setFiltersOpen(false)
 	end)
 
+	-- Room inside every edge, so outlines and glows never get cut off
 	local body = Instance.new("ScrollingFrame")
-	body.Position = UDim2.fromOffset(14, UIKit.HEADER_HEIGHT + 10)
-	body.Size = UDim2.new(1, -28, 1, -(UIKit.HEADER_HEIGHT + 20))
+	body.Position = UDim2.fromOffset(look.inset, UIKit.HEADER_HEIGHT + look.inset)
+	body.Size = UDim2.new(1, -look.inset * 2, 1, -(UIKit.HEADER_HEIGHT + look.inset * 2 + look.footer))
 	body.BackgroundTransparency = 1
 	body.BorderSizePixel = 0
 	body.ScrollBarThickness = 4
+	body.ScrollBarImageColor3 = palette.hint
 	body.CanvasSize = UDim2.new()
 	body.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	body.ZIndex = filtersPanel.ZIndex
 	body.Parent = filtersPanel
+	local room = Instance.new("UIPadding")
+	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		(room :: any)[side] = UDim.new(0, look.edge)
+	end
+	room.PaddingRight = UDim.new(0, look.edge + 6) -- and the scroll bar
+	room.Parent = body
 	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 8)
+	list.Padding = UDim.new(0, look.gap)
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Parent = body
 
 	local search = Instance.new("TextBox")
 	search.Name = "Search"
 	search.LayoutOrder = 1
-	search.Size = UDim2.new(1, 0, 0, 44)
-	search.BackgroundColor3 = UIKit.Colors.Row
+	search.Size = UDim2.new(1, 0, 0, look.search)
+	search.BackgroundColor3 = palette.row
 	search.ClearTextOnFocus = false
-	search.PlaceholderText = "🔍 Search name or #"
+	search.PlaceholderText = "Search name or #"
 	search.Text = ""
 	search.Font = Enum.Font.GothamBold
-	search.TextSize = 15
-	search.TextColor3 = UIKit.Colors.Text
-	search.PlaceholderColor3 = UIKit.Colors.Subtext
+	search.TextSize = 14
+	search.TextXAlignment = Enum.TextXAlignment.Left
+	search.TextColor3 = palette.ink
+	search.PlaceholderColor3 = palette.inkSoft
 	search.Parent = body
-	UIKit.corner(search, 12)
-	UIKit.outline(search)
+	UIKit.corner(search, look.search / 2)
+	UIKit.outline(search, palette.rowEdge, 2)
+	local searchPad = Instance.new("UIPadding")
+	searchPad.PaddingLeft = UDim.new(0, 38)
+	searchPad.Parent = search
+	local glass = Icon.make(search, "Search", UDim2.fromOffset(20, 20))
+	glass.AnchorPoint = Vector2.new(0, 0.5)
+	glass.Position = UDim2.new(0, -28, 0.5, 0)
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		searchText = search.Text
 		spreadIndex = 1
 		applyFilter()
 	end)
+	filterSearch = search
 
-	sectionLabel(body, 2, "Show")
-	showButtons = choiceRow(body, 3, { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }, function(value)
+	sectionLabel(body, 2, "SHOW")
+	local show
+	show, chooseShow = UIKit.segmented(body, { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }, function(value)
 		showFilter = value
 		spreadIndex = 1
 		applyFilter()
 	end)
-	sectionLabel(body, 4, "Sort by")
-	sortButtons = choiceRow(body, 5, { "Set", "Value", "Copies", "Rarity" }, function(value)
+	show.LayoutOrder = 3
+	sectionLabel(body, 4, "SORT BY")
+	local sort
+	sort, chooseSort = UIKit.segmented(body, { "Set", "Value", "Copies", "Rarity" }, function(value)
 		sortBy = value
 		spreadIndex = 1
 		applyFilter()
 	end)
-	sectionLabel(body, 6, "Rarity")
+	sort.LayoutOrder = 5
+	sectionLabel(body, 6, "RARITY")
 	local chips = Instance.new("Frame")
 	chips.LayoutOrder = 7
 	chips.Size = UDim2.new(1, 0, 0, 0)
 	chips.AutomaticSize = Enum.AutomaticSize.Y
 	chips.BackgroundTransparency = 1
 	chips.Parent = body
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.new(0.5, -4, 0, 40)
-	grid.CellPadding = UDim2.fromOffset(8, 8)
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = chips
+	local flow = Instance.new("UIListLayout")
+	flow.FillDirection = Enum.FillDirection.Horizontal
+	flow.Wraps = true
+	flow.Padding = UDim.new(0, look.gap)
+	flow.SortOrder = Enum.SortOrder.LayoutOrder
+	flow.Parent = chips
 	local rarities: { string } = {}
 	for name in Rarities.Tiers do
 		table.insert(rarities, name)
@@ -1406,16 +1426,42 @@ local function buildFilters(parent: Frame)
 		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
 	end)
 	for index, rarity in rarities do
-		local chip = UIKit.button(chips, rarity, UIKit.Colors.Row)
-		chip.LayoutOrder = index
-		chip.TextSize = 15
-		chip.Activated:Connect(function()
+		local tag, set = UIKit.dotTag(chips, rarity, Rarities.Tiers[rarity].color)
+		tag.LayoutOrder = index
+		tag.Activated:Connect(function()
 			rarityPicks[rarity] = if rarityPicks[rarity] then nil else true
 			spreadIndex = 1
 			applyFilter()
 		end)
-		rarityChips[rarity] = chip
+		rarityTags[rarity] = set
 	end
+
+	-- How many cards match, and Clear all
+	local foot = Instance.new("Frame")
+	foot.Name = "Footer"
+	foot.BackgroundTransparency = 1
+	foot.AnchorPoint = Vector2.new(0, 1)
+	foot.Position = UDim2.new(0, look.inset + look.edge, 1, -look.inset)
+	foot.Size = UDim2.new(1, -(look.inset + look.edge) * 2, 0, look.footer)
+	foot.ZIndex = filtersPanel.ZIndex
+	foot.Parent = filtersPanel
+	local count = UIKit.label(foot, "", Enum.Font.GothamBold, 13, palette.inkSoft)
+	count.Size = UDim2.new(0.6, 0, 1, 0)
+	count.TextYAlignment = Enum.TextYAlignment.Center
+	filterCount = count
+	local clear = Instance.new("TextButton")
+	clear.Name = "ClearAll"
+	clear.AnchorPoint = Vector2.new(1, 0.5)
+	clear.Position = UDim2.new(1, 0, 0.5, 0)
+	clear.Size = UDim2.new(0.4, 0, 0, UIStyle.MIN_TAP)
+	clear.BackgroundTransparency = 1
+	clear.Font = Enum.Font.FredokaOne
+	clear.TextSize = 15
+	clear.Text = "Clear all"
+	clear.TextXAlignment = Enum.TextXAlignment.Right
+	clear.TextColor3 = UIStyle.BABY.pink.deep
+	clear.Parent = foot
+	clear.Activated:Connect(clearFilters)
 end
 
 -- Where the binder goes on screen (viewport pixels, Roblox's top bar strip included): the biggest binder shape
