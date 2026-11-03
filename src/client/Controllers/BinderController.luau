@@ -23,6 +23,7 @@ local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Collection = require(Config:WaitForChild("Collection"))
+local BabyColors = require(Config:WaitForChild("BabyColors"))
 local Desk = require(Config:WaitForChild("BinderDesk"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
@@ -637,7 +638,7 @@ local function refreshFilterButtons()
 	end
 	local count = filterCount
 	if count then
-		count.Text = `{#visibleTiles} of {#tiles} cards`
+		count.Text = `{#visibleTiles} of {#(Cards.BySet[currentSet] or {})} cards` -- the open set's, not every set's
 	end
 end
 
@@ -1211,7 +1212,7 @@ end
 local function sectionLabel(parent: Instance, order: number, text: string)
 	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, Collection.FILTERS.heading, UIKit.colorsFor(parent).hint)
 	label.LayoutOrder = order
-	label.Size = UDim2.new(1, 0, 0, Collection.FILTERS.heading + 6)
+	label.Size = UDim2.new(1, 0, 0, Collection.FILTERS.headingRow)
 	label.TextYAlignment = Enum.TextYAlignment.Bottom
 end
 
@@ -1238,11 +1239,19 @@ local function buildFilters(parent: Frame)
 	filtersPanel.Name = "Filters"
 	-- Between the close / Filters buttons (top right) and the set progress card (bottom right)
 	filtersPanel.AnchorPoint = Vector2.new(1, 0)
-	filtersPanel.Position = UDim2.new(1, -16, 0, look.top)
-	filtersPanel.Size = UDim2.new(0, Collection.FILTERS_WIDTH, 1, -(look.top + 100))
 	filtersPanel.Visible = false
-	filtersPanel.ZIndex = 6
+	filtersPanel.ZIndex = look.zIndex -- over the binder's close and magnifier when it takes the full height
 	filtersPanel.Parent = parent
+	-- As tall as its content: under the binder's corner buttons where it fits, else from near the top (over them),
+	-- scrolling on a landscape phone (UiLayout.filtersFrame)
+	local bodyHeight = UiLayout.filtersBody(look, BabyColors.SEGMENTED.hit, BabyColors.DOT_TAG.hit)
+	local function placeFilters()
+		local top, height = UiLayout.filtersFrame(parent.AbsoluteSize.Y, look, bodyHeight)
+		filtersPanel.Position = UDim2.new(1, -16, 0, top)
+		filtersPanel.Size = UDim2.fromOffset(Collection.FILTERS_WIDTH, height)
+	end
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeFilters)
+	placeFilters()
 	UIKit.creamWindow(filtersPanel)
 	local palette = UIKit.colorsFor(filtersPanel)
 	local header, title = UIKit.header(filtersPanel, "Filters", "Bag") -- the pink band

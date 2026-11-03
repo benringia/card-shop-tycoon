@@ -130,4 +130,26 @@ return {
 			expect.equal(rects.pet.x > view.w / 2 and rects.pet.y > view.h / 2, true, "it sits bottom-right")
 		end
 	end,
+
+	["the binder's Filters window fits its content, and the screen"] = function()
+		local look = require("../src/shared/Config/FiltersLayout")
+		local baby = require("../src/shared/Config/BabyColors")
+		local chrome = look.header + look.inset * 2 + look.footer
+		local body = UiLayout.filtersBody(look, baby.SEGMENTED.hit, baby.DOT_TAG.hit)
+		-- what Studio measured on 2026-11-04: 354 px of pieces, gaps and edge room
+		local rows = baby.DOT_TAG.hit * look.rarityRows + look.gap * (look.rarityRows - 1) -- the tag rows wrap with a gap
+		local drawn = look.search + look.headingRow * 3 + baby.SEGMENTED.hit * 2 + rows
+		expect.equal(body, drawn + look.gap * 6 + look.edge * 2, "the search box, headings, switches and every rarity row")
+		local top, size = UiLayout.filtersFrame(1080, look, body)
+		expect.equal(top, look.top, "a tall screen: under the binder's close and magnifier")
+		expect.equal(size, body + chrome, "as tall as its content, not stretched down the screen")
+		top, size = UiLayout.filtersFrame(625, look, body)
+		expect.equal(top, look.shortTop, "a short screen: from the top, over the corner buttons")
+		expect.equal(size, body + chrome, "still showing everything without scrolling")
+		for _, height in { 330, 340, 370 } do
+			top, size = UiLayout.filtersFrame(height, look, body)
+			expect.equal(top + size + look.shortBottom <= height, true, `a landscape phone {height} px tall: on screen`)
+			expect.equal(size > chrome, true, `a landscape phone {height} px tall: a body to scroll`)
+		end
+	end,
 }

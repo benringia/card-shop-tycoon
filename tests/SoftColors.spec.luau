@@ -54,6 +54,13 @@ return {
 		expect.equal(look.corner >= 14, true, "round like the mockup's buttons")
 	end,
 
+	["the Filters' switches and tags have finger-sized tap areas, drawn smaller inside"] = function()
+		local seg, tag = BabyColors.SEGMENTED, BabyColors.DOT_TAG
+		expect.equal(seg.hit >= 48, true, "a segment's tap area")
+		expect.equal(tag.hit >= 48, true, "a dot tag's tap area")
+		expect.equal(seg.height <= seg.hit and tag.height <= tag.hit, true, "what's drawn fits inside it")
+	end,
+
 	["deepOf gives a named colour's deep shade, else the fill darkened by 35%"] = function()
 		local sky = BabyColors.COLORS.sky
 		local deep = SoftColors.deepOf(sky.fill, BabyColors.COLORS)

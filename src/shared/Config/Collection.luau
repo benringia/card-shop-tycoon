@@ -49,8 +49,5 @@ return {
 		SUBTEXT = Color3.fromRGB(170, 178, 205),
 	},
 	FILTERS_WIDTH = 340, -- pixels, the Filters panel on the right
-	-- Inside it (round 3, "tidy column"): px. Its body sits `inset` in from the window's edges with `edge` more room
-	-- inside (outlines and glows never cut off); `gap` between pieces; the search box and footer heights; heading text
-	FILTERS = { inset = 10, edge = 6, gap = 8, search = 40, footer = 40, heading = 12, top = 140 }, -- top: below the binder's close
-	-- and magnifier, so the two round close buttons never sit on each other
+	FILTERS = require((script.Parent :: Instance):WaitForChild("FiltersLayout")), -- its insides and height (plain data)
 }

@@ -47,10 +47,11 @@ return {
 		hoverScale = 1.04,
 		rowHoverScale = 1.015,
 	},
-	-- A segmented switch (UIKit.segmented: the binder's Filters, round 3): px tall, inner padding, text size; and a dot
-	-- tag (UIKit.dotTag: the rarity picks): px tall, its dot's size, text size
-	SEGMENTED = { height = 40, padding = 4, textSize = 14 },
-	DOT_TAG = { height = 32, dot = 14, textSize = 13 },
+	-- A segmented switch (UIKit.segmented: the binder's Filters, round 3): the pill drawn `height` px tall inside a
+	-- `hit` px tap row, inner padding, text size; and a dot tag (UIKit.dotTag: the rarity picks): drawn `height` px tall
+	-- inside a `hit` px tap area, its dot's size, text size. Taps stay finger-sized (48 px) on phones.
+	SEGMENTED = { height = 40, hit = 48, padding = 4, textSize = 14 },
+	DOT_TAG = { height = 32, hit = 48, dot = 14, textSize = 13 },
 	-- The soft glow under a window instead of the dark shadow: its colour (a COLORS name), drop (px), see-through share
 	WINDOW_GLOW = { color = "lilac", drop = 10, transparency = 0.35 },
 }

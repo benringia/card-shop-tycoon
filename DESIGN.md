@@ -1976,7 +1976,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
 - **Prices** (owner 2026-11-03, round 3 pick A "slim rows"; `Pricing.ROWS`): one slim white row per product with its
   picture (packs their real front, others their icon), its name, "Market $x" and a small tag in the price band's
-  colour ("Rarely buy", "Won't buy"), and on the right one pale stepper pill: a round pink - and butter + (drawn 30 px
+  colour, its short form (the bands' `tag`, 10 characters at most so it never runs under the stepper: "Always buy",
+  "Sometimes", "Rarely buy", "Won't buy"; `tests/PricingConfig`), and on the right one pale stepper pill: a round pink - and butter + (drawn 30 px
   inside 48 px tap areas) either side of your price. A shelf's Set Price window uses the same row.
 - **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
   spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
@@ -2005,11 +2006,14 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
   screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Rarity guide bottom left, Filters
   under the close button), no arrows and no progress card. Top right: Filters (F) and close. The **Filters window**
-  (owner 2026-11-03, round 3 pick A "tidy column"; `Collection.FILTERS`) opens on the right under those buttons while
-  the camera moves the binder into the room left of it: a cotton candy window with a pink band, the search box, SHOW
-  (All / Owned / Missing) and SORT BY (Set / Value / Copies / Rarity) as two segmented switches (`UIKit.segmented`),
-  the rarities as small dot tags that fill with their colour when picked (`UIKit.dotTag`), and at the bottom how many
-  cards match ("32 of 35 cards") and Clear all. Bottom right: the set's progress card (owned / total with a bar, value
+  (owner 2026-11-03, round 3 pick A "tidy column"; `Collection.FILTERS`, plain data in `Config/FiltersLayout`) opens
+  on the right while the camera moves the binder into the room left of it: a cotton candy window with a pink band,
+  the search box, SHOW (All / Owned / Missing) and SORT BY (Set / Value / Copies / Rarity) as two segmented switches
+  (`UIKit.segmented`), the rarities as small dot tags that fill with their colour when picked (`UIKit.dotTag`; both
+  drawn smaller inside 48 px tap areas, `BabyColors.SEGMENTED` / `DOT_TAG` `hit`), and at the bottom how many of the
+  open set's cards match ("32 of 35 cards") and Clear all. It is as tall as its content (`UiLayout.filtersBody`):
+  under the close and Filters buttons where it fits above the progress card, else from near the top over them (its
+  own close in their corner), the body scrolling on a landscape phone (`UiLayout.filtersFrame`). Bottom right: the set's progress card (owned / total with a bar, value
   of your copies). **The Bag** (round 3) is its own window over the town, opened by the Bag tile or I (one window at a
   time: it closes the binder); the binder has no Cards / Bag tabs. The side and bottom
   HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a

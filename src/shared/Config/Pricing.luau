@@ -9,11 +9,12 @@ return {
 	SET_COOLDOWN = 0.2, -- seconds between price updates per player
 	CLIENT_SEND_DELAY = 0.4, -- client waits this long after the last tap before sending
 
-	-- Price ÷ market price → chance a customer buys. Checked in order; above the last band nobody buys.
+	-- Price ÷ market price → chance a customer buys. Checked in order; above the last band nobody buys. `tag` is the
+	-- short form the Prices window shows under a row's name (10 characters at most: tests/PricingConfig).
 	BUY_BANDS = {
-		{ maxRatio = 1.0, chance = 0.95, label = "Almost always buy" },
-		{ maxRatio = 1.2, chance = 0.5, label = "Sometimes buy" },
-		{ maxRatio = 1.5, chance = 0.15, label = "Rarely buy" },
+		{ maxRatio = 1.0, chance = 0.95, label = "Almost always buy", tag = "Always buy" },
+		{ maxRatio = 1.2, chance = 0.5, label = "Sometimes buy", tag = "Sometimes" },
+		{ maxRatio = 1.5, chance = 0.15, label = "Rarely buy", tag = "Rarely buy" },
 	},
 	NEVER_LABEL = "Won't buy, and get annoyed",
 	NEVER_TAG = "Won't buy", -- the same, short enough for the Prices window's tag

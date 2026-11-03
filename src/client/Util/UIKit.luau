@@ -846,80 +846,111 @@ function UIKit.iconButton(parent: Instance, text: string, icon: string, color: C
 end
 
 -- A segmented switch (round 3, the binder's Filters): one pale pill holding `values` side by side, the chosen one
--- butter with a white edge, the rest plum on the pale pill. `onPick` runs on a tap; the returned function shows a value
--- as chosen (so the caller's own state stays the truth). Built for a cream window.
+-- butter with a white edge, the rest plum on the pale pill. Each part's tap area is the full SEGMENTED.hit row
+-- (finger-sized), the pill drawn smaller inside it. `onPick` runs on a tap; the returned function shows a value as
+-- chosen (so the caller's own state stays the truth). Built for a cream window.
 function UIKit.segmented(parent: Instance, values: { string }, onPick: (string) -> ()): (Frame, (string) -> ())
 	local look = BabyColors.SEGMENTED
 	local palette = UIKit.colorsFor(parent)
 	local bar = Instance.new("Frame")
 	bar.Name = "Segmented"
-	bar.Size = UDim2.new(1, 0, 0, look.height)
-	bar.BackgroundColor3 = palette.slotEmpty
+	bar.BackgroundTransparency = 1
+	bar.Size = UDim2.new(1, 0, 0, look.hit)
 	bar.Parent = parent
-	UIKit.corner(bar, look.height / 2)
-	UIKit.outline(bar, palette.rowEdge, 2)
-	local padding = Instance.new("UIPadding")
-	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
-		(padding :: any)[side] = UDim.new(0, look.padding)
-	end
-	padding.Parent = bar
-	local row = Instance.new("UIListLayout")
-	row.FillDirection = Enum.FillDirection.Horizontal
-	row.Padding = UDim.new(0, look.padding)
-	row.SortOrder = Enum.SortOrder.LayoutOrder
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.AnchorPoint = Vector2.new(0, 0.5)
+	track.Position = UDim2.fromScale(0, 0.5)
+	track.Size = UDim2.new(1, 0, 0, look.height)
+	track.BackgroundColor3 = palette.slotEmpty
+	track.ZIndex = 0
+	track.Parent = bar
+	UIKit.corner(track, look.height / 2)
+	UIKit.outline(track, palette.rowEdge, 2)
+	local row = Instance.new("Frame")
+	row.Name = "Parts"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromScale(1, 1)
+	row.ZIndex = 1
 	row.Parent = bar
-	local parts: { [string]: TextButton } = {}
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, look.padding)
+	padding.PaddingRight = UDim.new(0, look.padding)
+	padding.Parent = row
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, look.padding)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local inner = look.height - look.padding * 2
+	local parts: { [string]: { pill: Frame, edge: UIStroke, label: TextLabel } } = {}
 	for index, value in values do
 		local part = Instance.new("TextButton")
 		part.Name = value
 		part.LayoutOrder = index
 		part.Size = UDim2.new(1 / #values, -look.padding * (#values - 1) / #values, 1, 0)
 		part.AutoButtonColor = false
-		part.BackgroundColor3 = UIStyle.BABY.butter.fill
 		part.BackgroundTransparency = 1
-		part.Font = Enum.Font.FredokaOne
-		part.TextSize = look.textSize
-		part.Text = value
-		part.TextColor3 = palette.inkSoft
-		part.Parent = bar
-		UIKit.corner(part, (look.height - look.padding * 2) / 2)
-		local edge = UIKit.outline(part, Color3.new(1, 1, 1), 2)
+		part.Text = ""
+		part.Parent = row
+		local pill = Instance.new("Frame")
+		pill.Name = "Pill"
+		pill.AnchorPoint = Vector2.new(0.5, 0.5)
+		pill.Position = UDim2.fromScale(0.5, 0.5)
+		pill.Size = UDim2.new(1, 0, 0, inner)
+		pill.BackgroundColor3 = UIStyle.BABY.butter.fill
+		pill.BackgroundTransparency = 1
+		pill.ZIndex = 1
+		pill.Parent = part
+		UIKit.corner(pill, inner / 2)
+		local edge = UIKit.outline(pill, Color3.new(1, 1, 1), 2)
 		edge.Enabled = false
+		local label = UIKit.label(part, value, Enum.Font.FredokaOne, look.textSize, palette.inkSoft)
+		label.Size = UDim2.fromScale(1, 1)
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		label.ZIndex = 2
 		part.Activated:Connect(function()
 			onPick(value)
 		end)
-		parts[value] = part
+		parts[value] = { pill = pill, edge = edge, label = label }
 	end
 	local function choose(chosen: string)
 		for value, part in parts do
 			local on = value == chosen
-			part.BackgroundTransparency = if on then 0 else 1
-			part.TextColor3 = if on then UIStyle.BABY_INK else palette.inkSoft
-			local edge = part:FindFirstChildOfClass("UIStroke")
-			if edge then
-				edge.Enabled = on
-			end
+			part.pill.BackgroundTransparency = if on then 0 else 1
+			part.edge.Enabled = on
+			part.label.TextColor3 = if on then UIStyle.BABY_INK else palette.inkSoft
 		end
 	end
 	return bar, choose
 end
 
--- A small white tag with a coloured dot before its text (round 3, the Filters' rarity picks); the returned function
--- fills it with its colour (white text) when on. Built for a cream window.
+-- A small white tag with a coloured dot before its text (round 3, the Filters' rarity picks) drawn DOT_TAG.height
+-- tall inside a DOT_TAG.hit tap area; the returned function fills it with its colour (white text) when on. Built for a
+-- cream window.
 function UIKit.dotTag(parent: Instance, text: string, color: Color3): (TextButton, (boolean) -> ())
 	local look = BabyColors.DOT_TAG
 	local palette = UIKit.colorsFor(parent)
-	local tag = Instance.new("TextButton")
-	tag.Name = text
+	local hit = Instance.new("TextButton")
+	hit.Name = text
+	hit.AutomaticSize = Enum.AutomaticSize.X
+	hit.Size = UDim2.fromOffset(0, look.hit)
+	hit.AutoButtonColor = false
+	hit.BackgroundTransparency = 1
+	hit.Text = ""
+	hit.Parent = parent
+	local tag = Instance.new("TextLabel")
+	tag.Name = "Face"
+	tag.AnchorPoint = Vector2.new(0, 0.5)
+	tag.Position = UDim2.fromScale(0, 0.5)
 	tag.AutomaticSize = Enum.AutomaticSize.X
 	tag.Size = UDim2.fromOffset(0, look.height)
-	tag.AutoButtonColor = false
 	tag.BackgroundColor3 = palette.row
 	tag.Font = Enum.Font.FredokaOne
 	tag.TextSize = look.textSize
 	tag.Text = text
 	tag.TextColor3 = palette.ink
-	tag.Parent = parent
+	tag.Parent = hit
 	UIKit.corner(tag, look.height / 2)
 	local edge = UIKit.outline(tag, palette.rowEdge, 2)
 	local padding = Instance.new("UIPadding")
@@ -947,7 +978,7 @@ function UIKit.dotTag(parent: Instance, text: string, color: Color3): (TextButto
 		ring.Color = if on then color else Color3.new(1, 1, 1)
 	end
 	set(false)
-	return tag, set
+	return hit, set
 end
 
 -- A rounded chip (rarity, grade, element, counts) that sizes to its text; an optional icon before the text.

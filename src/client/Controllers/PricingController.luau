@@ -63,13 +63,14 @@ local function getLevel(): number
 	return if typeof(level) == "number" then level else 1
 end
 
+-- The row's short tag and its colour for a price (the bands' `tag`, PricingConfig.NEVER_TAG above the last band)
 local function getBandInfo(price: number, marketPrice: number): (string, Color3)
 	local band = PriceRules.getBand(price, marketPrice)
 	if not band then
-		return PricingConfig.NEVER_LABEL, palette.bad
+		return PricingConfig.NEVER_TAG, palette.bad
 	end
 	local index = table.find(PricingConfig.BUY_BANDS, band) or 1
-	return band.label, bandColor(index)
+	return band.tag, bandColor(index)
 end
 
 local function refreshRow(row: Row)
@@ -78,7 +79,7 @@ local function refreshRow(row: Row)
 	local price = getShownPrice(product)
 	local hint, color = getBandInfo(price, product.marketPrice)
 	row.market.Text = string.format("Market $%.2f", product.marketPrice)
-	row.tag.Text = if hint == PricingConfig.NEVER_LABEL then PricingConfig.NEVER_TAG else hint
+	row.tag.Text = hint
 	row.tag.BackgroundColor3 = color
 	row.price.Text = string.format("$%.2f", price)
 end

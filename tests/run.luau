@@ -50,6 +50,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	OpeningFlow = require("./OpeningFlow.spec"),
 	OpeningLayout = require("./OpeningLayout.spec"),
 	ShopDetail = require("./ShopDetail.spec"),
+	PricingConfig = require("./PricingConfig.spec"),
 	PortalTrails = require("./PortalTrails.spec"),
 	TownTerrain = require("./TownTerrain.spec"),
 	DayCycle = require("./DayCycle.spec"),

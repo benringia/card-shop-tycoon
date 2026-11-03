@@ -84,7 +84,7 @@ local POISON_COLOR = Color3.fromRGB(140, 230, 90)
 local BURN_COLOR = Color3.fromRGB(255, 140, 50)
 local NUMBER_LIFT = 4 -- studs over a fighter a damage number starts
 -- HUD hidden while fighting so nothing gets tapped by mistake
-local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ShopButton" }
+local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ReturnToTown" } -- the Wild's pill sits in its holder
 
 local BattleController = {}
 

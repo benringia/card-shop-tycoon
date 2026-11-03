@@ -108,4 +108,39 @@ function UiLayout.wildButtons(view: Size): WildButtons
 	return { pet = pet, signature = signature, swap = swap, run = run }
 end
 
+export type FiltersLook = {
+	top: number,
+	bottom: number,
+	shortTop: number,
+	shortBottom: number,
+	header: number,
+	inset: number,
+	footer: number,
+	edge: number,
+	gap: number,
+	search: number,
+	headingRow: number,
+	rarityRows: number,
+}
+
+-- The Filters body's content height (Config/FiltersLayout): the search box, the SHOW / SORT BY / RARITY headings,
+-- the two segmented switches (`segmentHit` px tap rows) and the rarity tags' rows (`tagHit` px each, wrapping with a
+-- gap between them), a gap between each piece and the edge room above and below
+function UiLayout.filtersBody(look: FiltersLook, segmentHit: number, tagHit: number): number
+	local rows = tagHit * look.rarityRows + look.gap * (look.rarityRows - 1)
+	local pieces = look.search + look.headingRow * 3 + segmentHit * 2 + rows
+	return pieces + look.gap * 6 + look.edge * 2
+end
+
+-- The binder's Filters window on a screen `height` px tall: its top and height, as tall as its content (`body`, from
+-- filtersBody, plus the header and footer). Under the binder's corner buttons, above the set progress card, where it
+-- fits there; else from near the top (over those buttons), as much of it as the screen holds (the body scrolls).
+function UiLayout.filtersFrame(height: number, look: FiltersLook, body: number): (number, number)
+	local want = body + look.header + look.inset * 2 + look.footer
+	if height - look.top - look.bottom >= want then
+		return look.top, want
+	end
+	return look.shortTop, math.min(want, height - look.shortTop - look.shortBottom)
+end
+
 return UiLayout
