@@ -47,22 +47,14 @@ type StepState = "beaten" | "ready" | "tooWeak" | "locked"
 type Mark = "ok" | "no" | "warn"
 type Line = string | { text: string, color: Color3 }
 
-local WHITE = Color3.new(1, 1, 1)
 local MAX_SIZE = Vector2.new(900, 600)
 local LOCKED_FADE = 0.55
 local SELECTED_SCALE = 1.08 -- the chosen step's disc, grown from its centre so it stays clear of its name
 local STEP_ORDER: { StepState } = { "beaten", "ready", "tooWeak", "locked" }
-local STEP_COLORS: { [StepState]: Color3 } = {
-	beaten = UIStyle.GOLD,
-	ready = UIStyle.GOOD,
-	tooWeak = UIStyle.BAD,
-	locked = UIStyle.EDGE,
-}
 local STEP_BADGES: { [StepState]: string? } = { beaten = "Trophy", ready = "Check", locked = "Lock" }
 local STEP_WORDS: { [StepState]: string } = { beaten = "Beaten", ready = "Ready", tooWeak = "Too weak", locked = "Locked" }
 local STATUS_ICONS: { [StepState]: string } = { beaten = "Trophy", ready = "Check", tooWeak = "Power", locked = "Lock" }
 local STATUS_FILLS: { [StepState]: Color3 } = { beaten = UIStyle.GOLD, ready = UIStyle.GREEN, tooWeak = UIStyle.RED, locked = UIStyle.PANEL }
-local MARK_COLORS: { [Mark]: Color3 } = { ok = UIStyle.GOOD, no = UIStyle.BAD, warn = UIStyle.HINT }
 local TRICK_ICONS: { [string]: string } = { phases = "Gem", shield = "Lock", thunderclap = "Volt", adds = "Customer", heal = "Heart", enrage = "Angry" }
 local DROP_SIZE = 46
 local PHONE_DROP_SIZE = 38
@@ -71,6 +63,9 @@ local CHEST_SIZE = 32
 local BossBoardController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
+local stepColors: { [StepState]: Color3 } -- a step's ring: gold beaten, green ready, red too weak, grey locked (Start)
+local markColors: { [Mark]: Color3 } -- a checklist row's mark and value (Start)
 local ladder: Frame
 local path: Frame -- the line the steps sit on
 local pathFill: Frame -- the part of it you've climbed
@@ -157,8 +152,8 @@ local function text(parent: Instance, value: string, size: number, color: Color3
 	label.AutomaticSize = Enum.AutomaticSize.X
 	label.Size = UDim2.fromOffset(0, size + 4)
 	label.ZIndex = (parent :: GuiObject).ZIndex + 1
-	if bold then
-		UIKit.outlined(label, 2)
+	if bold and UIKit.themeOf(parent) ~= "cream" then
+		UIKit.outlined(label, 2) -- outlined light text on dark windows; cream windows' brown text needs none
 	end
 	return label
 end
@@ -176,7 +171,7 @@ local function wrapped(parent: Instance, order: number, value: string, color: Co
 end
 
 local function heading(parent: Instance, order: number, value: string): TextLabel
-	local label = text(parent, value, UIKit.textSize("small"), UIStyle.HINT, true)
+	local label = text(parent, value, UIKit.textSize("small"), palette.hint, true)
 	label.LayoutOrder = order
 	return label
 end
@@ -320,12 +315,12 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 	disc.AnchorPoint = Vector2.new(0.5, 0.5)
 	disc.Position = UDim2.new(0.5, 0, 0, discSize / 2)
 	disc.Size = UDim2.fromOffset(discSize, discSize)
-	disc.BackgroundColor3 = UIStyle.PANEL
+	disc.BackgroundColor3 = palette.row
 	disc.BackgroundTransparency = if step == "locked" then LOCKED_FADE else 0
 	disc.ZIndex = node.ZIndex + 1
 	disc.Parent = node
 	UIKit.corner(disc, discSize)
-	UIKit.outline(disc, STEP_COLORS[step], 4)
+	UIKit.outline(disc, stepColors[step], 4)
 	local scale = Instance.new("UIScale")
 	scale.Scale = if index == selected then SELECTED_SCALE else 1
 	scale.Parent = disc
@@ -334,7 +329,7 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 		halo.AnchorPoint = Vector2.new(0.5, 0.5)
 		halo.Position = UDim2.fromScale(0.5, 0.5)
 		halo.Size = UDim2.new(1, 14, 1, 14)
-		halo.BackgroundColor3 = UIStyle.GOOD
+		halo.BackgroundColor3 = palette.good
 		halo.BackgroundTransparency = 0.7
 		halo.ZIndex = disc.ZIndex - 1
 		halo.Parent = disc
@@ -355,11 +350,11 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 		badge.AnchorPoint = Vector2.new(1, 1)
 		badge.Position = UDim2.new(1, 4, 1, 4)
 		badge.Size = UDim2.fromOffset(badgeSize, badgeSize)
-		badge.BackgroundColor3 = UIStyle.EDGE
+		badge.BackgroundColor3 = palette.row
 		badge.ZIndex = disc.ZIndex + 2
 		badge.Parent = disc
 		UIKit.corner(badge, badgeSize)
-		UIKit.outline(badge, STEP_COLORS[step], 2)
+		UIKit.outline(badge, stepColors[step], 2)
 		local mark = Icon.make(badge, badgeIcon, UDim2.fromScale(0.8, 0.8))
 		mark.AnchorPoint = Vector2.new(0.5, 0.5)
 		mark.Position = UDim2.fromScale(0.5, 0.5)
@@ -375,7 +370,7 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 		tag.ZIndex = disc.ZIndex + 4
 	end
 
-	local name = UIKit.label(node, `{index}. {boss.name}`, Enum.Font.FredokaOne, UIKit.textSize("small") - (if phone then 2 else 0), if index == selected then UIStyle.HINT else WHITE)
+	local name = UIKit.label(node, `{index}. {boss.name}`, Enum.Font.FredokaOne, UIKit.textSize("small") - (if phone then 2 else 0), if index == selected then palette.hint else palette.ink)
 	name.AnchorPoint = Vector2.new(0.5, 0)
 	name.Position = UDim2.new(0.5, 0, 0, discSize + (if phone then 6 else 10))
 	name.Size = UDim2.new(1, 0, 0, if phone then 24 else 34)
@@ -383,7 +378,6 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 	name.TextYAlignment = Enum.TextYAlignment.Top
 	name.TextWrapped = true
 	name.ZIndex = node.ZIndex + 1
-	UIKit.outlined(name, 1.5)
 end
 
 -- The badges' meanings, once, under the ladder
@@ -396,11 +390,11 @@ local function buildLegend()
 		entry.Size = UDim2.fromOffset(0, size)
 		local disc = Instance.new("Frame")
 		disc.Size = UDim2.fromOffset(size, size)
-		disc.BackgroundColor3 = UIStyle.PANEL
+		disc.BackgroundColor3 = palette.row
 		disc.ZIndex = entry.ZIndex + 1
 		disc.Parent = entry
 		UIKit.corner(disc, size)
-		UIKit.outline(disc, STEP_COLORS[step], 2)
+		UIKit.outline(disc, stepColors[step], 2)
 		local badge = STEP_BADGES[step]
 		if badge then
 			local mark = Icon.make(disc, badge, UDim2.fromScale(0.8, 0.8))
@@ -408,7 +402,7 @@ local function buildLegend()
 			mark.Position = UDim2.fromScale(0.5, 0.5)
 			mark.ZIndex = disc.ZIndex + 1
 		end
-		text(entry, STEP_WORDS[step], UIKit.textSize("small") - (if phone then 2 else 0), WHITE, true).LayoutOrder = 2
+		text(entry, STEP_WORDS[step], UIKit.textSize("small") - (if phone then 2 else 0), palette.ink, true).LayoutOrder = 2
 	end
 end
 
@@ -426,7 +420,7 @@ local function markBadge(parent: Instance, mark: Mark): GuiObject
 	dot.TextXAlignment = Enum.TextXAlignment.Center
 	dot.ZIndex = (parent :: GuiObject).ZIndex + 1
 	UIKit.corner(dot, 10)
-	UIKit.outline(dot, UIStyle.EDGE, 2)
+	UIKit.outline(dot, palette.rowEdge, 2)
 	return dot
 end
 
@@ -440,11 +434,11 @@ local function needRow(parent: Instance, order: number, mark: Mark, icon: string
 	row.Text = ""
 	row.AutoButtonColor = false
 	row.Size = UDim2.new(1, -6, 0, if share then line + 12 else line)
-	row.BackgroundColor3 = UIStyle.PANEL
+	row.BackgroundColor3 = palette.row
 	row.ZIndex = (parent :: GuiObject).ZIndex + 1
 	row.Parent = parent
 	UIKit.corner(row, 10)
-	UIKit.outline(row, UIStyle.EDGE, 2)
+	UIKit.outline(row, palette.rowEdge, 2)
 	local badge = markBadge(row, mark)
 	badge.AnchorPoint = Vector2.new(0, 0.5)
 	badge.Position = UDim2.fromOffset(8, line / 2)
@@ -453,14 +447,14 @@ local function needRow(parent: Instance, order: number, mark: Mark, icon: string
 	picture.AnchorPoint = Vector2.new(0, 0.5)
 	picture.Position = UDim2.fromOffset(34, line / 2)
 	picture.ZIndex = row.ZIndex + 1
-	local label = text(row, words, UIKit.textSize("small"), WHITE, true)
+	local label = text(row, words, UIKit.textSize("small"), palette.ink, true)
 	label.AnchorPoint = Vector2.new(0, 0.5)
 	label.Position = UDim2.fromOffset(62, line / 2)
-	local value = text(row, have, UIKit.textSize("small"), MARK_COLORS[mark], true)
+	local value = text(row, have, UIKit.textSize("small"), markColors[mark], true)
 	value.AnchorPoint = Vector2.new(1, 0.5)
 	value.Position = UDim2.new(1, -10, 0, line / 2)
 	if share then
-		local track = UIKit.bar(row, share, if mark == "ok" then nil else MARK_COLORS[mark])
+		local track = UIKit.bar(row, share, if mark == "ok" then nil else markColors[mark])
 		track.Position = UDim2.fromOffset(34, line + 1)
 		track.Size = UDim2.new(1, -44, 0, 7)
 	end
@@ -474,7 +468,7 @@ local function nextStep(parent: Instance, order: number, words: string, color: C
 	box.LayoutOrder = order
 	box.AutomaticSize = Enum.AutomaticSize.Y
 	box.Size = UDim2.new(1, -6, 0, 0)
-	box.BackgroundColor3 = color:Lerp(UIStyle.PANEL, 0.78)
+	box.BackgroundColor3 = color:Lerp(palette.row, 0.85) -- a light tint of its colour
 	box.ZIndex = (parent :: GuiObject).ZIndex + 1
 	box.Parent = parent
 	UIKit.corner(box, 10)
@@ -491,7 +485,7 @@ local function nextStep(parent: Instance, order: number, words: string, color: C
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = box
 	local buttonWidth = if action then 104 else 0
-	local label = wrapped(box, 1, words, WHITE)
+	local label = wrapped(box, 1, words, palette.ink)
 	label.Size = UDim2.new(1, -(buttonWidth + (if action then 8 else 0)), 0, 0)
 	if action then
 		local button = UIKit.iconButton(box, action.label, action.icon, UIKit.Colors.Secondary)
@@ -509,12 +503,12 @@ local function itemCell(parent: Instance, order: number, itemId: string, size: n
 	local cell = Instance.new("Frame")
 	cell.LayoutOrder = order
 	cell.Size = UDim2.fromOffset(size, size)
-	cell.BackgroundColor3 = UIStyle.PANEL
+	cell.BackgroundColor3 = palette.row
 	cell.BackgroundTransparency = if faded then 0.5 else 0
 	cell.ZIndex = (parent :: GuiObject).ZIndex + 1
 	cell.Parent = parent
 	UIKit.corner(cell, 10)
-	UIKit.outline(cell, UIStyle.EDGE, 2)
+	UIKit.outline(cell, palette.rowEdge, 2)
 	local picture = Icon.make(cell, item.icon, UDim2.fromScale(0.7, 0.7))
 	picture.AnchorPoint = Vector2.new(0.5, 0.5)
 	picture.Position = UDim2.fromScale(0.5, 0.45)
@@ -527,7 +521,7 @@ local function itemCell(parent: Instance, order: number, itemId: string, size: n
 	if faded and glyph and glyph:IsA("ImageLabel") then
 		glyph.ImageTransparency = LOCKED_FADE
 	end
-	local badge = text(cell, count, math.max(11, math.floor(size / 3.6)), WHITE, true)
+	local badge = text(cell, count, math.max(11, math.floor(size / 3.6)), palette.ink, true)
 	badge.AnchorPoint = Vector2.new(1, 1)
 	badge.Position = UDim2.new(1, -2, 1, 0)
 	badge.ZIndex = cell.ZIndex + 2
@@ -558,18 +552,19 @@ local function dropCell(parent: Instance, order: number, drop: Bosses.Drop, fact
 		then { text = "That boss is open: this won't drop any more.", color = UIKit.Colors.Subtext }
 		else { text = `{chance} chance a win · {count}`, color = if factor < 1 then UIStyle.HINT else UIStyle.GOOD }
 	itemCell(holder, 1, drop.item, size, count, { item.description, odds }, opened)
-	local label = text(holder, if opened then "-" else chance, UIKit.textSize("small") - 1, if factor < 1 then UIStyle.HINT else UIStyle.GOOD, true)
+	local label = text(holder, if opened then "-" else chance, UIKit.textSize("small") - 1, if factor < 1 then palette.hint else palette.good, true)
 	label.LayoutOrder = 2
 end
 
--- A chest's items in a row after its title (the first win, the day's first win)
-local function chestRow(parent: Instance, order: number, title: string, color: Color3, grants: { Bosses.Grant }, when: string)
+-- A chest's items in a row after its title (the first win, the day's first win): the title in `color` on the window,
+-- the tooltip's line in `tipColor` (tooltips stay dark)
+local function chestRow(parent: Instance, order: number, title: string, color: Color3, tipColor: Color3, grants: { Bosses.Grant }, when: string)
 	local row = wrappingStrip(parent, order, CHEST_SIZE, 6)
 	text(row, title, UIKit.textSize("small"), color, true).LayoutOrder = 0
 	for index, grant in grants do
 		local item = Items.ITEMS[grant.item]
 		if item then
-			itemCell(row, index, grant.item, CHEST_SIZE, `x{grant.count}`, { item.description, { text = `{when} · x{grant.count}`, color = color } })
+			itemCell(row, index, grant.item, CHEST_SIZE, `x{grant.count}`, { item.description, { text = `{when} · x{grant.count}`, color = tipColor } })
 		end
 	end
 end
@@ -581,7 +576,7 @@ local function trickLine(column: ScrollingFrame, order: number, icon: string, na
 	local layout = line:FindFirstChildOfClass("UIListLayout") :: UIListLayout
 	layout.VerticalAlignment = Enum.VerticalAlignment.Top
 	Icon.make(line, icon, UDim2.fromOffset(20, 20)).ZIndex = line.ZIndex + 1
-	local label = wrapped(line, 2, `<font color="#{UIStyle.HINT:ToHex()}">{name}</font> {words}`, WHITE, true)
+	local label = wrapped(line, 2, `<font color="#{palette.hint:ToHex()}">{name}</font> {words}`, palette.ink, true)
 	label.Size = UDim2.new(1, -26, 0, 0)
 end
 
@@ -596,7 +591,7 @@ local function renderFight(column: ScrollingFrame, index: number, step: StepStat
 	local previous = Bosses.BOSSES[Bosses.LADDER[index - 1] or ""]
 
 	local top = strip(column, 1, 32, 8)
-	text(top, boss.name, UIKit.textSize("name"), WHITE, true).LayoutOrder = 1
+	text(top, boss.name, UIKit.textSize("name"), palette.ink, true).LayoutOrder = 1
 	local status = UIKit.pill(top, STEP_WORDS[step], STATUS_FILLS[step], nil, STATUS_ICONS[step])
 	status.LayoutOrder = 2
 	status.Size = UDim2.fromOffset(0, 26)
@@ -652,13 +647,13 @@ local function renderFight(column: ScrollingFrame, index: number, step: StepStat
 	if step == "beaten" then
 		nextStep(column, 8, "Beaten! Fight it again for more loot.", UIStyle.GOLD, nil)
 	elseif step == "ready" then
-		nextStep(column, 8, "You're ready! Go to its arena and press Fight.", UIStyle.GOOD, nil)
+		nextStep(column, 8, "You're ready! Go to its arena and press Fight.", palette.good, nil)
 	elseif step == "tooWeak" then
-		nextStep(column, 8, "Too weak for now: level up your cards or put stronger ones in your party.", UIStyle.BAD, { label = "Party", icon = "Party", run = PartyController.Toggle })
+		nextStep(column, 8, "Too weak for now: level up your cards or put stronger ones in your party.", palette.bad, { label = "Party", icon = "Party", run = PartyController.Toggle })
 	elseif reason == "level" then
-		nextStep(column, 8, `Reach shop level {need}: sell cards to level up.`, UIStyle.BAD, nil)
+		nextStep(column, 8, `Reach shop level {need}: sell cards to level up.`, palette.bad, nil)
 	elseif unlock and previous then
-		nextStep(column, 8, `Beat the {previous.name} to collect {unlock.count - have} more keys.`, UIStyle.BAD, {
+		nextStep(column, 8, `Beat the {previous.name} to collect {unlock.count - have} more keys.`, palette.bad, {
 			label = "See it",
 			icon = "Next",
 			run = function()
@@ -713,22 +708,22 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 	end
 
 	if not (state and state.cleared) then
-		chestRow(column, 4, "First win", UIStyle.HINT, boss.firstClear, "Once, on your first win")
+		chestRow(column, 4, "First win", palette.hint, UIStyle.HINT, boss.firstClear, "Once, on your first win")
 	end
 	if not state or state.bonusReady then
-		chestRow(column, 5, "First win today", UIStyle.GOOD, boss.dailyBonus, "Your first win each day")
+		chestRow(column, 5, "First win today", palette.good, UIStyle.GOOD, boss.dailyBonus, "Your first win each day")
 	else
 		iconLine(column, 5, "Gift", "Daily bonus collected: back tomorrow", UIKit.Colors.Subtext)
 	end
 
 	local pay = strip(column, 6, 24, 6)
 	Icon.make(pay, "Cash", UDim2.fromOffset(22, 22)).ZIndex = pay.ZIndex + 1
-	local cash = text(pay, `{boss.cash}`, UIKit.textSize("small"), UIStyle.MONEY, true)
+	local cash = text(pay, `{boss.cash}`, UIKit.textSize("small"), palette.good, true)
 	cash.LayoutOrder = 2
 	local xpIcon = Icon.make(pay, "Xp", UDim2.fromOffset(22, 22))
 	xpIcon.LayoutOrder = 3
 	xpIcon.ZIndex = pay.ZIndex + 1
-	local xp = text(pay, `{boss.xp} XP`, UIKit.textSize("small"), UIStyle.XP, true)
+	local xp = text(pay, `{boss.xp} XP`, UIKit.textSize("small"), palette.ink, true) -- the light XP blue doesn't read on cream
 	xp.LayoutOrder = 4
 	local every = text(pay, "every win", UIKit.textSize("small"), UIKit.Colors.Subtext)
 	every.LayoutOrder = 5
@@ -736,21 +731,21 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 
 	if state then
 		local left = BossRules.fullDropsLeft(Bosses, state.rewardedToday)
-		local line = iconLine(column, 7, "Trophy", if left > 0 then `Full drops: {left} more {if left == 1 then "win" else "wins"} today` else "Fewer drops today: full again tomorrow", if left > 0 then WHITE else UIStyle.HINT)
+		local line = iconLine(column, 7, "Trophy", if left > 0 then `Full drops: {left} more {if left == 1 then "win" else "wins"} today` else "Fewer drops today: full again tomorrow", if left > 0 then palette.ink else palette.hint)
 		Tooltip.attach(line, `After {Bosses.SOFT_CAP_AFTER} loot wins in a day, drops get rarer. Every day starts fresh.`)
 	end
 	local threshold = math.floor(boss.recommended * Bosses.OVERPOWER_RATIO)
 	if power > threshold then
-		local line = iconLine(column, 8, "Power", "Party very strong: fewer drops", UIStyle.HINT)
+		local line = iconLine(column, 8, "Power", "Party very strong: fewer drops", palette.hint)
 		Tooltip.attach(line, `Over {threshold} Power this boss drops less. Climb to the next boss, or fight it with weaker cards.`)
 	end
 
 	-- Take me there (its gate here), or the normal travel to its place
 	local choice = BossRules.travelChoice(boss.place, here())
 	if choice == "viaPortal" then
-		wrapped(column, 9, "Enter the Dungeon portal in the Frontier.", UIStyle.HINT)
+		wrapped(column, 9, "Enter the Dungeon portal in the Frontier.", palette.hint)
 	elseif choice == "walkToFrontier" then
-		wrapped(column, 9, "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza).", UIStyle.HINT)
+		wrapped(column, 9, "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza).", palette.hint)
 	elseif choice ~= "none" then
 		local label = if choice == "gate" then "Take me there" else "Go home"
 		local go = UIKit.iconButton(column, label, "Travel", if choice == "gate" then UIKit.Colors.Accent else UIKit.Colors.Secondary)
@@ -778,7 +773,7 @@ local function renderDetails(index: number, step: StepState, power: number, isNe
 	local divider = Instance.new("Frame")
 	divider.Position = UDim2.new(0.56, -1, 0, 12)
 	divider.Size = UDim2.new(0, 2, 1, -24)
-	divider.BackgroundColor3 = UIStyle.EDGE
+	divider.BackgroundColor3 = palette.rowEdge
 	divider.BorderSizePixel = 0
 	divider.ZIndex = details.ZIndex + 1
 	divider.Parent = details
@@ -875,6 +870,9 @@ function BossBoardController.Start()
 	local screenGui = UIController.GetScreenGui()
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(screenGui, "Bosses", "Boss Ladder", "Bosses")
+	palette = UIKit.colorsFor(panel)
+	stepColors = { beaten = UIStyle.GOLD, ready = palette.good, tooWeak = palette.bad, locked = UIKit.Colors.Locked }
+	markColors = { ok = palette.good, no = palette.bad, warn = palette.hint }
 	list:Destroy() -- the ladder and one boss's details, laid out here
 	Icon.header(panel, "Trophy", UIKit.HEADER_HEIGHT)
 
@@ -922,11 +920,11 @@ function BossBoardController.Start()
 
 	details = Instance.new("Frame")
 	details.Name = "Details"
-	details.BackgroundColor3 = UIStyle.ROW
+	details.BackgroundColor3 = palette.slotEmpty -- a deeper cream (no big white slab); its rows and slots are white
 	details.ZIndex = panel.ZIndex + 1
 	details.Parent = panel
 	UIKit.corner(details, 14)
-	UIKit.outline(details, UIStyle.EDGE, 2)
+	UIKit.outline(details, palette.rowEdge, 2)
 
 	Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, onClick = toggle })
 
