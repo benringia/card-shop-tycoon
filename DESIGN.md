@@ -1665,6 +1665,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
         │   ├── IconTips.luau   # the words each label-less icon's tooltip shows
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
+        │   ├── CreamTheme.luau # the cream windows' colours, outlines, corners, header bands (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
@@ -1757,6 +1758,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
             ├── XpPaws.luau        # the level pill's paw prints: each one's fill from XP progress (pure, Lune-tested)
             ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
+            ├── ContrastRules.luau # WCAG contrast of two colours, for the cream theme's text (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1853,16 +1855,30 @@ their saved data.
   first-visit welcome cinematic starts when it fades.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
-- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`, look E "bold hybrid", chosen to suit kids, teens and
-  adults): dark slate panel bodies with a thick near-black outline and a drop lip, a coloured header band per window
-  (`UIKit.panel(parent, name, title, band)`: Party teal, binder and card detail blue, Boss ladder red, Bag orange,
-  others teal) with an outlined white title and a dark line under it, a red close button on the top-right corner,
-  slate rows, candy buttons (the colour darkening down the face to a bottom lip, a thick outline, outlined white
-  text; navy text on light colours): gold for the main action, blue (`Colors.Secondary`) for other choices, red to
-  remove or leave, each with an icon (`UIKit.iconButton`). Helpers: `outlined` (text outline), `pill` (rarity,
-  grade, element and count chips), `bar` and `statRow` (chunky green bars), `stars` (star icons, never the
-  character), `textSize` (body 15, small 13, name 22, number 23, title 28; 85% on phones). Colour rules on every
-  screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
+- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows wear the **cream & candy** look (owner
+  2026-11-03, pick A of two, to match the creature pals HUD; spec `docs/superpowers/specs/2026-11-03-cream-windows-design.md`;
+  before it, look E "bold hybrid"). `UIKit.panel(parent, name, title, band, theme?)` builds a cream window by default: a
+  soft top-to-bottom cream body (`Config/CreamTheme`, plain data, turned into Color3s as `UIStyle.CREAM`) with a thick
+  white outline, round corners and a soft shadow under it, a header band in the colour of the window's HUD button
+  (Party lilac, Shop and Shelf mint, Prices and Set Price sky, Jobs pink, Bag coral, the card case, picker and card
+  detail blue, Boss Ladder purple, every other window sky) with its icon and an outlined white title, and a round red
+  close button with a white outline. Inside: white rows, slots and stat cards with a soft cream edge; empty slots and
+  detail panes a deeper cream (no big white slabs); brown text, a lighter brown for secondary text, a dark amber for
+  hints and small headings, and deep green, red and orange for good, bad and Power (the bright ones read about 2:1 on
+  cream; `tests/ContrastRules` checks every text colour reaches 4.5:1 on every cream surface); the chosen thing a gold
+  ring. Candy buttons (the colour darkening down the face to a bottom lip, white text with a soft outline, navy text on
+  light colours) wear a 3 px white outline: gold for the main action, blue (`Colors.Secondary`) for other choices, red
+  to remove or leave, each with an icon (`UIKit.iconButton`). Pills and chips keep their colours with white outlines;
+  rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail, small
+  confirm boxes, the arena challenge popups) call `UIKit.creamWindow(frame)`. The window's `Theme` attribute tells the
+  pieces built inside it which look to take: `UIKit.themeOf(instance)` and `UIKit.colorsFor(instance)` (a palette:
+  panel, row, rowEdge, slotEmpty, ink, inkSoft, hint, good, bad, power, track, outline); `Colors.Text` / `Subtext`
+  labels and `UIKit.outline` pick by it. **Dark** (theme "dark", the look E tokens: slate bodies with a thick near-black
+  outline and a drop lip, slate rows, outlined white text): the binder (its book, pages, desk, tabs and buttons), every
+  fight screen, tooltips, the pack opening and the loading screen. Helpers: `outlined` (text outline), `pill` (rarity,
+  grade, element and count chips), `bar` and `statRow` (chunky green bars on cream or dark tracks), `stars` (star
+  icons, never the character), `textSize` (body 15, small 13, name 22, number 23, title 28; 85% on phones). Colour
+  rules on every screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
   green / C grey, money green with the Cash icon, Power orange with the Power icon, green good, red bad, gold for hints
   and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
 - **Word tooltips** (`Util/Tooltip`, words in `Config/IconTips`): every icon shown without a label (stat icons,
