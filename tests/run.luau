@@ -13,6 +13,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	LevelRemap = require("./LevelRemap.spec"),
 	LevelUpRules = require("./LevelUpRules.spec"),
 	BinderCovers = require("./BinderCovers.spec"),
+	OrderRules = require("./OrderRules.spec"),
 	PartyRules = require("./PartyRules.spec"),
 	CreatureMotion = require("./CreatureMotion.spec"),
 	CreatureAssets = require("./CreatureAssets.spec"),

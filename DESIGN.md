@@ -1176,9 +1176,10 @@ group, checked before its fragments and every time (not only the first). Below i
   marker's name is free): it flashes, shrinks away and a light flies back into its owner; a boss fight's benched leader
   does the same. A faint: a white flash, it tips over (`CreatureVisuals`, eased), dizzy stars circle its head for
   1.3 s, then it fades in a puff, and pops back when it's no longer fainted. Sounds (owner 2026-11-04,
-  `Party.SUMMON_SOUNDS`, Pro Sound Effects), played where it stands at a steady pitch: one soft bell ding as it pops up
-  (PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 4" at 0.82 speed, volume 0.16; the owner found the first chime
-  cluster loud and busy and asked for "subtle, premium"), a quiet airy whoosh as it flies back into you (volume 0.18).
+  `Party.SUMMON_SOUNDS`, Pro Sound Effects), played where it stands at a steady pitch: the owner's picks of 2026-11-04
+  from the options (`/summonsound`, `/unsummonsound`): a quiet twinkle as it pops up (PSE "Magic Glows Soft Clusters Of
+  Chiming Hits 4", volume 0.1) and a soft magic fade as it flies back into you (PSE "Pulsing Tone Smooth Mid Range Synth
+  Tone 3", volume 0.1).
 - **Pet voice** (owner 2026-11-04 "an occasional chirp"; `Util/PetVoice`, `Party.VOICE`): your own summoned creature
   says hello 0.5 s after it pops up, then chirps every 18-40 s while it's out and about (not in a fight, fainted,
   swapped out or leaving) with an 8% squash-bounce. Small creatures chirp (PSE "Parakeet Chirps 8", "Mouse Vocal 3",
@@ -2003,6 +2004,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   colour, its short form (the bands' `tag`, 10 characters at most so it never runs under the stepper: "Always buy",
   "Sometimes", "Rarely buy", "Won't buy"; `tests/PricingConfig`), and on the right one pale stepper pill: a round pink - and butter + (drawn 30 px
   inside 48 px tap areas) either side of your price. A shelf's Set Price window uses the same row.
+- **Order Stock** (owner 2026-11-04, round 4 pick A; spec `2026-11-04-round4-design` section 4): the same slim white rows
+  as Prices (`Pricing.ROWS`): picture, name, "Box of 24" and a mint "sells ~$3.00" tag, and one mint button with the
+  box price (tap it to order). It greys out with "Need $48" when you can't afford the box and shows the lock and
+  "Lv 11" while locked (`Util/OrderRules`, Lune-tested); the server re-checks both.
 - **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
   spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
   client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
