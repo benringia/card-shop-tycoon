@@ -1,7 +1,8 @@
 --!strict
 -- Gentle background music in the town (owner 2026-11-04; Config/Music TOWN, Util/MusicRules), playing along with the
--- scenery's birds, wind and waterfall: two soft underscores take turns with a little quiet between them, fading out
+-- scenery's birds, wind and waterfall: the picked tracks take turns with a little quiet between them, fading out
 -- when you leave the town (the Wild valley, a boss arena) and back in when you return. Started in the main place only.
+-- In Studio, "/music <n> [volume]" (DevService) sets the player's TownMusicPreview attribute: that option loops instead.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -21,9 +22,18 @@ function TownMusicController.Start()
 	sound.Name = "TownMusic"
 	sound.Volume = 0
 	sound.Parent = SoundService
+	local player = Players.LocalPlayer
 	local track = 0
 	local inTown = false
 	local fade: Tween? = nil
+
+	-- Studio's music preview: the option it picked (nil: the normal tracks) and its volume
+	local function preview(): (number?, number?)
+		local index = player:GetAttribute("TownMusicPreview")
+		local volume = player:GetAttribute("TownMusicPreviewVolume")
+		local valid = typeof(index) == "number" and CFG.options[index] ~= nil
+		return if valid then index else nil, if typeof(volume) == "number" then volume else nil
+	end
 
 	local function fadeTo(volume: number)
 		if fade then
@@ -34,8 +44,17 @@ function TownMusicController.Start()
 		tween:Play()
 	end
 
+	local function wanted(): number
+		local _, volume = preview()
+		return if inTown then volume or CFG.volume else 0
+	end
+
 	local function playNext()
+		if preview() then
+			return -- the preview loops on its own
+		end
 		track = MusicRules.nextTrack(track, #CFG.tracks)
+		sound.Looped = false
 		sound.SoundId = CFG.tracks[track]
 		sound.TimePosition = 0
 		sound:Play()
@@ -43,6 +62,23 @@ function TownMusicController.Start()
 
 	sound.Ended:Connect(function()
 		task.delay(CFG.gap, playNext)
+	end)
+
+	local function onPreview()
+		local index = preview()
+		if index then
+			sound.Looped = true
+			sound.SoundId = CFG.options[index].id
+			sound.TimePosition = 0
+			sound:Play()
+		else
+			playNext()
+		end
+		fadeTo(wanted())
+	end
+	player:GetAttributeChangedSignal("TownMusicPreview"):Connect(onPreview)
+	player:GetAttributeChangedSignal("TownMusicPreviewVolume"):Connect(function()
+		fadeTo(wanted())
 	end)
 
 	task.spawn(function()
@@ -53,7 +89,7 @@ function TownMusicController.Start()
 				and MusicRules.inTown(root.Position.X, root.Position.Z, Town.BOUNDS, CFG.margin)
 			if here ~= inTown then
 				inTown = here
-				fadeTo(if here then CFG.volume else 0)
+				fadeTo(wanted())
 			end
 			task.wait(CFG.checkEvery)
 		end

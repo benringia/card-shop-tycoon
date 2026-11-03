@@ -154,7 +154,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   item), `/boss <1-6> [fight|group]` (to boss n's gate: in the main game's Wild valley its portal, in the Frontier its ring; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt; boss 7 is reached through the Dungeon run), `/crowd <0-60>` (players counted in every Wild valley biome on top of the real ones, to see its monsters grow), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
   max stars and Grade S, for testing fights), `/time <morning|afternoon|sunset|night|dawn>` (jump the town's day cycle),
-  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights).
+  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights), `/music <n> [volume]` (loop town music option n
+  from `Music.TOWN.options` over the ambience; `/music 0` for the normal tracks).
 - Admin panel (Studio only): the "Admin" tile on the left opens every dev command as a button (`Config/AdminPanel`,
   `AdminPanelController`, remote `DevPanel` handled only in Studio), plus +1/+10 of every item and Go/Fight/Group per boss.
 - Multiplayer: Test tab → Local Server, 2 players.

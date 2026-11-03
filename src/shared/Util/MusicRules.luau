@@ -13,4 +13,15 @@ function MusicRules.nextTrack(current: number, count: number): number
 	return current % count + 1
 end
 
+-- Studio's "/music <n> [volume]": the option to hear (0: back to the normal tracks; nil: not a valid number) and a
+-- volume kept within 0-1 (nil: the configured one)
+function MusicRules.parsePreview(text: string, count: number): (number?, number?)
+	local index = tonumber(string.match(text, "^%S+%s+(%d+)") or "")
+	if not index or index > count then
+		return nil, nil
+	end
+	local volume = tonumber(string.match(text, "^%S+%s+%d+%s+([%d%.]+)") or "")
+	return index, if volume then math.clamp(volume, 0, 1) else nil
+end
+
 return MusicRules

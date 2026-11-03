@@ -31,6 +31,8 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local AdminPanel = require(Config:WaitForChild("AdminPanel"))
+local Music = require(Config:WaitForChild("Music"))
+local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
@@ -298,6 +300,19 @@ function DevService.Start()
 	addCommand(folder, "buttonnames", function(player)
 		SwordService.ResetFights(player)
 	end)
+	-- Hear one of the town music options over the ambience (TownMusicController plays it while the attribute is set)
+	addCommand(folder, "music", function(player, text)
+		local options = Music.TOWN.options
+		local index, volume = MusicRules.parsePreview(text, #options)
+		if not index then
+			Remotes.Notify:FireClient(player, `Usage: /music <1-{#options}> [volume], /music 0 for the normal tracks`, true)
+			return
+		end
+		player:SetAttribute("TownMusicPreview", if index > 0 then index else nil)
+		player:SetAttribute("TownMusicPreviewVolume", volume)
+		local line = if index > 0 then `Music {index}: {options[index].name} at volume {volume or Music.TOWN.volume}` else "Town music: back to the normal tracks"
+		Remotes.Notify:FireClient(player, line, false)
+	end)
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
 		local known = false
@@ -372,7 +387,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume]")
 end
 
 return DevService

@@ -125,10 +125,13 @@ area's name stands where each trail leaves the island (gaps in the hedge), and "
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
 **Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `TownMusicController`, `Config/Music`,
-`Util/MusicRules`): two soft APM underscores, "Lakefront Days" in its ukulele and acoustic guitar underscore versions
-(Roblox-licensed, no lead melody), take turns at volume 0.12 with 6 s of quiet between them; it fades out over 3 s when
-you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild valley, a boss arena) and back in when you return.
-Main place only. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+`Util/MusicRules`): soft APM pieces (Roblox-licensed) take turns at volume 0.05 with 6 s of quiet between them; it fades
+out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild valley, a boss arena) and back
+in when you return. Main place only. The first pick ("Lakefront Days" underscores at 0.12) overpowered the ambience, so
+the owner is choosing from `Music.TOWN.options` (White Owl bells and piano, Wistful Wonderings guitar and harmonium,
+Soft Tranquility sparse, Drifting Into Dreamland underscore, Lakefront Days): in Studio `/music <n> [volume]` (or the
+admin panel's Music buttons) loops option n over the ambience, `/music 0` goes back; meanwhile White Owl and Wistful
+Wonderings play. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
 models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
 `tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
