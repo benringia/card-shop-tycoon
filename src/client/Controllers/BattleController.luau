@@ -1823,13 +1823,25 @@ local function build()
 	addsLayout.Parent = addsRow
 
 
-	-- Back to your shop while in the wild: top centre (the left HUD stack has no room left on phones)
-	shopButton = UIKit.button(screenGui, "🏠 Shop", UIKit.Colors.Row)
+	-- Back to your shop while in the wild: top centre (the left HUD stack has no room left on phones). A sky cotton
+	-- candy pill (owner 2026-11-03, round 3): its holder opts into the soft buttons, as the binder's screen does
+	local homeHolder = Instance.new("Frame")
+	homeHolder.Name = "ReturnToTown"
+	homeHolder.BackgroundTransparency = 1
+	homeHolder.AnchorPoint = Vector2.new(0.5, 0)
+	homeHolder.Position = UDim2.new(0.5, 0, 0, 8)
+	homeHolder.Size = UDim2.fromOffset(Combat.HOME_BUTTON.width, Combat.HOME_BUTTON.height)
+	homeHolder:SetAttribute("SoftButtons", true)
+	homeHolder.Parent = screenGui
+	shopButton = UIKit.iconButton(homeHolder, "Return to town", "Travel", UIKit.Colors.Secondary)
 	shopButton.Name = "ShopButton"
-	shopButton.AnchorPoint = Vector2.new(0.5, 0)
-	shopButton.Position = UDim2.new(0.5, 0, 0, 8)
-	shopButton.Size = UDim2.fromOffset(120, 48)
-	shopButton.TextSize = 17
+	shopButton.Size = UDim2.fromScale(1, 1)
+	shopButton.Font = Enum.Font.FredokaOne
+	shopButton.TextSize = Combat.HOME_BUTTON.textSize
+	local round = shopButton:FindFirstChildOfClass("UICorner")
+	if round then
+		round.CornerRadius = UDim.new(0.5, 0) -- a pill
+	end
 	shopButton.Visible = false
 	shopButton.Activated:Connect(function()
 		Remotes.WildTravel:FireServer("home")

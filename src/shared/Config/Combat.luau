@@ -69,6 +69,8 @@ return {
 
 	-- Fainted cards rest; the plaza spring speeds it up
 	REST_SECONDS = 300,
+	-- The Wild's "Return to town" pill, top centre (owner 2026-11-03, round 3): px
+	HOME_BUTTON = { width = 210, height = 48, textSize = 17 },
 	SPRING_RADIUS = 12,
 	SPRING_SPEED = 3,
 
