@@ -11,6 +11,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	JobRules = require("./JobRules.spec"),
 	LevelMath = require("./LevelMath.spec"),
 	LevelRemap = require("./LevelRemap.spec"),
+	LevelUpRules = require("./LevelUpRules.spec"),
 	PartyRules = require("./PartyRules.spec"),
 	CreatureMotion = require("./CreatureMotion.spec"),
 	CreatureAssets = require("./CreatureAssets.spec"),

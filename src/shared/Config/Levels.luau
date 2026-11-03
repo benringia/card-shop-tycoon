@@ -13,4 +13,5 @@ return {
 	REWARD_CASH_PER_LEVEL = 10, -- $10 x the new level: $20 at Lv 2, $1,000 at Lv 100
 	PACK_EVERY = 10, -- a pack on every 10th level
 	PACK_ITEM = "sparkPack", -- the Bag item it gives (Config/Items)
+	PACK_OPEN_COOLDOWN = 1, -- seconds between opening Bag packs (the server's rate limit)
 }

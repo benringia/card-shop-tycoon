@@ -16,6 +16,7 @@ AdminPanel.SECTIONS = {
 			{ label = "+1,000 XP", command = "/xp 1000" },
 			{ label = "+50,000 XP", command = "/xp 50000" },
 			{ label = "Set level", command = "/level %s", placeholder = "shop level" },
+			{ label = "Set XP (down too)", command = "/setxp %s", placeholder = "total XP" },
 		},
 	},
 	{

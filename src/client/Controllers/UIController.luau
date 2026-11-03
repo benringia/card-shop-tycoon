@@ -10,6 +10,8 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
+local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
+local Levels = require(Shared:WaitForChild("Config"):WaitForChild("Levels"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
@@ -312,9 +314,11 @@ local function showLevelUps()
 	while #levelUpQueue > 0 do
 		local level = table.remove(levelUpQueue, 1) :: number
 		local unlocks = LevelRules.getUnlocks(level)
-		local message = if #unlocks > 0
-			then `Level {level}! Unlocked: {table.concat(unlocks, ", ")}`
-			else `Level {level}!`
+		-- "Level 7! +$70 · Unlocked: Deck Box" (the reward is paid on the server, Util/LevelUpRules)
+		local message = `Level {level}! {LevelUpRules.rewardText(Levels, level)}`
+		if #unlocks > 0 then
+			message ..= ` · Unlocked: {table.concat(unlocks, ", ")}`
+		end
 		UIController.Notify(message, false, LEVEL_UP_TOAST_SECONDS)
 		task.wait(LEVEL_UP_TOAST_SECONDS)
 	end

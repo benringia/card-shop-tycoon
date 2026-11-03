@@ -298,6 +298,7 @@ local function openRarityGuide()
 end
 
 local function onPackOpened(productId: string, results: { PullResult }, newFlags: { boolean }?)
+	local fromRip = waitingForServer -- otherwise a Bag pack (Config/Items `open`; LevelUpService)
 	waitingForServer = false
 	local pack = Packs.ById[productId]
 	if not pack or typeof(results) ~= "table" or flow ~= nil then
@@ -325,6 +326,9 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	flow = OpeningFlow.new(#pulls)
 	built = false
 	refreshRipButton()
+	if not fromRip and player:GetAttribute("CarryProductId") == nil then
+		OpeningResults.box("From your Bag") -- not "Box empty": no box was carried
+	end
 	OpeningStage.show()
 	if not soundsLoaded then
 		soundsLoaded = true

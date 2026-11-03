@@ -34,6 +34,7 @@ local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -1008,7 +1009,24 @@ local function renderBagDetail()
 	owned.TextXAlignment = Enum.TextXAlignment.Center
 	-- What it does / where to get it / how to use it, as cream boxes
 	local y = 154
-	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
+	-- A pack item (Config/Items `open`, the level-up packs): Open it here. The server checks and rolls it; only the main
+	-- game has the pack opening, so elsewhere the button isn't offered.
+	local openId = selectedItem
+	if info.open and (bagItems[openId] or 0) > 0 and not Place.isFrontier() and not Place.isDungeon() then
+		local open = UIKit.button(bagDetail, "Open", UIKit.Colors.Accent)
+		open.AnchorPoint = Vector2.new(0.5, 0)
+		open.Position = UDim2.new(0.5, 0, 0, y)
+		open.Size = UDim2.fromOffset(160, 48)
+		open.ZIndex = 34
+		open.Activated:Connect(function()
+			Remotes.OpenBagPack:FireServer(openId)
+			bagOverlay.Visible = false -- out of the way of the pack opening
+		end)
+		y += 58
+	end
+	-- With the Open button there, "How to use it" (tap Open) would only repeat it, and there's no room for it
+	local howTo = if y > 154 then nil else info.use
+	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = howTo } } do
 		if section.text then
 			local box = Instance.new("Frame")
 			box.Position = UDim2.fromOffset(12, y)

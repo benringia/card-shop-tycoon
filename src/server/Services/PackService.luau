@@ -204,6 +204,20 @@ local function onRip(player: Player)
 	deliverPack(player, productId, results)
 end
 
+-- A pack from the Bag (LevelUpService, after it took the item): the same roll, pity and stat as ripping one from a
+-- carried box. Returns false (nothing rolled) for a product that isn't a pack.
+function PackService.OpenItemPack(player: Player, productId: string): boolean
+	local pack = Packs.ById[productId]
+	if not pack then
+		return false
+	end
+	DataService.AddStat(player, "packsOpened", 1)
+	local results = rollPack(pack)
+	applyPity(player, results)
+	deliverPack(player, productId, results)
+	return true
+end
+
 -- Studio testing only (called by DevService): a normal roll with a foil legendary in the hit slot
 function PackService.OpenTestPack(player: Player)
 	local productId = "FirstSparkPack"

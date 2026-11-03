@@ -1204,7 +1204,7 @@ group, checked before its fragments and every time (not only the first). Below i
   player can still climb.
 - **Items:** XP Tonic (400 card XP, used from the Party panel, never on a Lv 30 card), Grading Seal (one missing
   duplicate at the Grading Station, at most half a step, so never on a 1-duplicate step; the toggle says when they
-  can't help), Star Shards, fragments, trophies.
+  can't help), Star Shards, fragments, trophies, First Spark Packs (shop level rewards, opened from the Bag).
 - **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
   count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
@@ -1401,6 +1401,14 @@ Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20)
 | 26 / 34 / 43 / 57 | 67,810 / 128,770 / 224,780 / 436,890 | bosses 4 / 5 / 6 / 7 |
 | 100 | 1,629,210 | the cap |
 
+**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $10 × the new level
+(EconomyService, in `AddXP`; $20 at Lv 2, $1,000 at Lv 100), and every 10th level gives a First Spark Pack, a Bag item
+(`Items.sparkPack`, `open = "FirstSparkPack"`) given by `LevelUpService`. A sale that crosses several levels pays every
+one. The toast reads "Level 7! +$70 · Unlocked: Deck Box". In the Bag a pack item has an Open button (main game only):
+the remote `OpenBagPack` (rate-limited, refused mid-fight) takes one and rolls a normal pack with pity
+(`PackService.OpenItemPack`), and the usual pack opening plays ("From your Bag" in its corner). Studio: `/setxp <n>`
+sets the XP total, down as well as up (no rewards), to test level-ups on a grown save.
+
 ### 7.3 Upgrades (one-off purchases)
 
 | Upgrade | Effect | Cost |
@@ -1550,6 +1558,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
     │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, rooms, carried HP, out, the chamber, the way back)
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
+    │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack)
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
@@ -1790,6 +1799,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
+            ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 

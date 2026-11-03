@@ -1,5 +1,5 @@
 --!strict
--- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /testpack,
+-- Studio-only chat commands for testing: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /testpack,
 -- /beastxp <amount> (XP for your best levelled card, or your rarest plain card),
 -- /givecard <number> <amount> (plain copies of card #number, each with a rolled grade, for the Condenser),
 -- /jobslot (toggle owning the Extra Job Slot pass), /wild (travel to the wild map), /rest (wake resting cards),
@@ -262,6 +262,14 @@ function DevService.Start()
 	addCommand(folder, "cash", withAmount(EconomyService.AddCash))
 	addCommand(folder, "xp", withAmount(EconomyService.AddXP))
 	addCommand(folder, "level", withAmount(jumpToLevel))
+	addCommand(folder, "setxp", function(player, text)
+		local xp = tonumber(string.match(text, "%s+(%S+)") or "")
+		if not xp or xp ~= xp or xp < 0 or xp == math.huge then
+			Remotes.Notify:FireClient(player, "Usage: /setxp <total XP, 0 or more> (sets it, down too; no rewards)", true)
+			return
+		end
+		EconomyService.SetXPForTesting(player, xp)
+	end)
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
 	addCommand(folder, "givecard", giveCards)
 	addCommand(folder, "item", giveItems)
@@ -408,7 +416,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume], /summonsound <n>, /unsummonsound <n>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume], /summonsound <n>, /unsummonsound <n>")
 end
 
 return DevService

@@ -5,6 +5,14 @@ local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 
 return {
+	["only pack items open"] = function()
+		expect.equal(ItemRules.openablePack(config, "sparkPack"), "FirstSparkPack", "the level-up pack")
+		for _, bad in { "xpTonic", "nope", 42, nil } do
+			expect.isNil(ItemRules.openablePack(config, bad), `not openable: {tostring(bad)}`)
+		end
+		expect.isNil(ItemRules.openablePack(config, nil), "nil")
+	end,
+
 	["sanitize: unknown ids, bad counts dropped; whole numbers; capped"] = function()
 		local items = ItemRules.sanitize(config, { starShard = 4.9, mystery = 3, [5] = 1 })
 		expect.equal(items.starShard, 4, "floored")

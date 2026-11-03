@@ -153,7 +153,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   folder over `assets/creatures/Originals.rbxm`; Claude checks every model is in the synced pack before deleting the
   workspace copy. New card art (Figma, `docs/card-art.md`) when the design changes.
 - Studio-only chat commands (DevService; from the Studio MCP run them with
-  `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
+  `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/setxp <n>` (XP total, down too), `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser), `/room <2-4>` (Dungeon window),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
   cards), `/tire` (rest every party card but the summoned one, to lose a boss fight), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
