@@ -159,7 +159,8 @@ old look (`Town.PORTAL_EFFECTS`: ring and frame glow tinted, a soft light, 2 emi
 arches and glowing paths. The travel rings keep their prompts, hidden behind the new models; each name label floats
 3 studs over whichever model stands and shows within 80 studs (`Town.PORTAL_LABEL_DISTANCE`), so it comes into view
 down the trail before it climbs off the top of the default camera's view. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
-Wild goes through its prompt only (the WildTravel remote accepts just "home"), and the Frontier menu's choices only count
+Wild goes through its prompt only (the WildTravel remote accepts just "home", sent by the Wild's sky "Return to town"
+pill top centre; owner 2026-11-03, round 3, `Combat.HOME_BUTTON`), and the Frontier menu's choices only count
 within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
 z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
 and plain ground under and 5 studs round each shop, so no blades poke through; Roblox draws terrain 2 studs above its
@@ -1569,7 +1570,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau # the 3D pack opening: OpeningFlow, taps and swipes, server results, closes on fights
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
+    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
     │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
@@ -1591,7 +1592,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
-    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
@@ -1758,7 +1759,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── SummonMotion.luau  # a summon's pop, an unsummon's shrink, a faint's tip-over, fresh stamps (pure, Lune-tested)
             ├── PetVoice.luau      # your creature's chirp: voice, timing, pitch by size, bounce, when it may (pure, Lune-tested)
             ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
-            ├── XpPaws.luau        # the level pill's paw prints: each one's fill from XP progress (pure, Lune-tested)
+            ├── XpPill.luau        # the level pill's XP text ("99,800 XP", "/ 226,000") and its count-up (pure, Lune-tested)
+            ├── SparkPath.luau     # the XP sparks' curved flight and how many fly (pure, Lune-tested)
             ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
             ├── ContrastRules.luau # WCAG contrast and hue of colours, for the window theme's text (pure, Lune-tested)
             ├── SoftColors.luau    # a soft button's text colour and deep outline from its fill (pure, Lune-tested)
@@ -1889,7 +1891,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   palette: panel, row, rowEdge, slotEmpty, ink, inkSoft, hint, good, bad, power, fair, track, outline); `Colors.Text` /
   `Subtext` labels and `UIKit.outline` pick by it. **Dark** (theme "dark", the look E tokens: slate bodies with a thick
   near-black outline and a drop lip, slate rows, outlined white text, candy buttons with a dark bottom lip): the
-  binder's book and chrome (its buttons are soft: the close, magnifier, page arrows, Cards / Bag tabs, Rarity guide and
+  binder's book and chrome (its buttons are soft: the close, magnifier, page arrows, Rarity guide and
   the filters panel's buttons; the open tab and chosen filters butter, the rest sky), every fight screen, tooltips,
   the pack opening, the loading screen, the welcome cinematic, the Dungeon's run HUD and the placement bar. Helpers:
   `outlined` (text outline), `pill` (rarity, grade, element and count chips), `bar` and `statRow` (chunky green bars on
@@ -1925,9 +1927,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   sky, Bloom mint, Volt butter, Shade lilac; avatar pick b) with its deep shade showing under it, a thin white ring, the
   picture sunk in and a shine on top, the slot number outlined in the element colour, the summoned one bigger and
   higher (`Party.BAR` RIM, RIM_BASE, SINK, SHINE);
-  cash a green pill under a big gold coin; the level a white pill with the gold star and five paw prints that fill
-  orange with XP, each gradually, with the numbers right under them ("90k / 226k", "MAX" at the top; `Util/XpPaws`,
-  owner 2026-11-03: in view, not in a tooltip); the buff a white chip in the perk's colour. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
+  cash a green pill under a big gold coin; the level a white pill with the gold star, the XP into the level big and
+  exact ("99,800 XP", "MAX" at the top) with the level's total small after it ("/ 226,000") and a thin lilac-to-sky
+  bar under them, the number counting up when it changes (owner 2026-11-03, round 3 pick B; `Util/XpPill`,
+  `HudLayout.XP_PILL`); the buff a white chip in the perk's colour. **XP sparks** (owner 2026-11-03: into the party
+  portraits, where a monster win's XP goes; `Util/SparkPath`, `Party.BAR.SPARKS`): after a won wild fight, glowing
+  lilac sparks fly on a curve from where the monster stood into each portrait whose creature got XP, then "+N XP"
+  pops over it and its level chip bumps (a level up celebrates); skipped while a window covers the HUD. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
   under a mouse a tile gently squashes, stretches a little as it hops up 5 px, rebounds and settles 3% bigger and 4 px
   higher, about 0.45 s (owner 2026-11-03: a subtler bounce; tiles 20 px apart); a press squashes it flat (touch too) and springs back; any newer hover, leave, press or a
   release anywhere cancels what's running, and the hovered tile draws over its neighbours (`tests/SquishRules` checks a
@@ -1946,7 +1952,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
-  right-aligned column, bottom up: level (number on a star icon, paw prints filling with XP inside the pill, in line
+  right-aligned column, bottom up: level (number on a star icon, the XP and a thin bar inside the pill, in line
   with the party bar), cash (a green pill with a gold coin and outlined white text), then the buff badge; money toasts pop in just
   above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
   landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
@@ -1968,10 +1974,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
-- **Prices** rows show each product's picture beside its name, its market price and how customers feel about your
-  price (in the band's colour): packs their real front (`Packs` art, as on the shelves), others their icon
-  (`Products.icon`). On the right, your price stands out big in a dark box outlined in the band's colour, with
-  small - / + buttons under it (38 px with a mouse, `UIStyle.MIN_TAP` 48 px on phones; sized on every open).
+- **Prices** (owner 2026-11-03, round 3 pick A "slim rows"; `Pricing.ROWS`): one slim white row per product with its
+  picture (packs their real front, others their icon), its name, "Market $x" and a small tag in the price band's
+  colour ("Rarely buy", "Won't buy"), and on the right one pale stepper pill: a round pink - and butter + (drawn 30 px
+  inside 48 px tap areas) either side of your price. A shelf's Set Price window uses the same row.
 - **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
   spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
   client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
@@ -1997,11 +2003,15 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
   (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
-  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Cards and Bag down the left edge,
-  Rarity guide bottom left, Filters under the close button), no arrows and no progress card. Top right: Filters (F)
-  and close. The Filters panel (search, Show All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens
-  on the right while the camera moves the binder into the room left of it. Bottom right: the set's progress card
-  (owned / total with a bar, value of your copies). The Bag tab shows its window over the desk. The side and bottom
+  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Rarity guide bottom left, Filters
+  under the close button), no arrows and no progress card. Top right: Filters (F) and close. The **Filters window**
+  (owner 2026-11-03, round 3 pick A "tidy column"; `Collection.FILTERS`) opens on the right under those buttons while
+  the camera moves the binder into the room left of it: a cotton candy window with a pink band, the search box, SHOW
+  (All / Owned / Missing) and SORT BY (Set / Value / Copies / Rarity) as two segmented switches (`UIKit.segmented`),
+  the rarities as small dot tags that fill with their colour when picked (`UIKit.dotTag`), and at the bottom how many
+  cards match ("32 of 35 cards") and Clear all. Bottom right: the set's progress card (owned / total with a bar, value
+  of your copies). **The Bag** (round 3) is its own window over the town, opened by the Bag tile or I (one window at a
+  time: it closes the binder); the binder has no Cards / Bag tabs. The side and bottom
   HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a
   tab). **Turning pages** (`Util/PageTurner`, `Util/PageCurl`): the turning page is a chain of 4 strips hinged at
   the spine that bends as it goes over the rings (the outer edge leads by up to 40 degrees mid-turn, flat at both
