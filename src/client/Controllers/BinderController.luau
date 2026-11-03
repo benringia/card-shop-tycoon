@@ -935,7 +935,6 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	TAB_INK = Color3.fromRGB(244, 241, 233), -- the binder's Cards / Bag tab names (dark binder chrome)
 }
 
 -- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
@@ -1074,7 +1073,7 @@ local function addSlot(order: number, id: string?)
 	badge.Size = UDim2.fromOffset(0, countSize + 5)
 	badge.AutomaticSize = Enum.AutomaticSize.X
 	badge.TextWrapped = false -- wrapping at no width showed a bare "x"
-	badge.BackgroundColor3 = bagPalette.ink -- a brown chip with white text
+	badge.BackgroundColor3 = UIStyle.BABY.lilac.deep -- a lilac chip with white text (cotton candy count chips)
 	badge.BackgroundTransparency = 0
 	badge.TextXAlignment = Enum.TextXAlignment.Center
 	badge.ZIndex = 34
@@ -1134,7 +1133,7 @@ local function showTab(bag: boolean)
 	for button, open in { [cardsTab] = not bag, [bagTab] = bag } do
 		local name = button:FindFirstChild("Name", true) :: TextLabel?
 		if name then
-			name.TextColor3 = if open then Color3.new(1, 1, 1) else BAG.TAB_INK
+			name.TextColor3 = UIStyle.BABY_INK -- plum on the open tab's butter and on the others' white
 		end
 	end
 	if bag then
@@ -1167,7 +1166,7 @@ local function buildBag(parent: Frame)
 		local picture = Icon.make(row, icon, UDim2.fromOffset(28, 28))
 		picture.LayoutOrder = 1
 		picture.ZIndex = 13
-		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, BAG.TAB_INK)
+		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, UIStyle.BABY_INK)
 		name.Name = "Name"
 		name.LayoutOrder = 2
 		name.Size = UDim2.fromScale(0, 1)
@@ -1658,7 +1657,10 @@ end
 
 local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
-	panel, list = UIKit.panel(parent, "Binder", "Binder", nil, "dark") -- the binder keeps its dark look (spec 2026-11-03-cream-windows-design)
+	-- The binder keeps its dark look (spec 2026-11-03-cream-windows-design), but its screen's buttons take the cotton
+	-- candy look (spec 2026-11-03-cotton-candy-ui-design): the close button, the magnifier, the arrows, the tabs, the
+	-- Rarity guide, the filters' buttons
+	panel, list = UIKit.panel(parent, "Binder", "Binder", nil, "dark", true)
 	list:Destroy() -- the binder uses pages instead of a scrolling list
 	-- Full screen and see-through: the 3D binder on its desk fills the screen behind (BinderDesk)
 	panel.Size = UDim2.fromScale(1, 1)
