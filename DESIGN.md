@@ -771,10 +771,12 @@ column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
-(bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a dark tray,
-`Config/Party` BAR) shows your avatar with a PARTY tag (opens Party) and the 3 party slots as small cards: the card's
-art in its rarity rim with "Lv 4", a key chip 1 / 2 / 3; the summoned one lifts, glows blue and has an OUT tag; an empty
-one is a dashed "+"; a resting one dims with an hourglass over "2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
+(bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a cream
+cushion, `Config/Party` BAR, see "Creature pals HUD" in 10.6) shows a "Party" pill (opens Party, as does tapping the
+cushion) and the 3 party slots as round portraits: the card's art in a white ring with "Lv 4" in a white pill under it,
+a key chip 1 / 2 / 3; the summoned one is bigger with an orange ring, an orange glow and an OUT tag; an empty one is a
+faint ring with a "+"; a resting one dims with an hourglass over "2:41". Each sits in a 70 px tap area (48 px at the
+smallest HUD scale). Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
 an empty one picks a card in the binder. Hovering a card (or holding a finger on it for `UIStyle.LONG_PRESS`, which
 then doesn't summon) shows its tooltip above the bar (`CardTips.copy`): the card, name, grade, level, Power, HP / ATK
 / SPD bars, its perk and the resting countdown, so you don't need the binder. When the party changes, a toast says
@@ -1626,6 +1628,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
     │       ├── SummonFx.luau           # a creature popping up (pillar, chime), going back to you (whoosh), fainting (dizzy stars)
     │       ├── HealFx.luau             # your creature at the healing spring: "+ Healing" pill, floating plus signs, green light
+    │       ├── HudMascotView.luau      # the mascot peeking over the party cushion: breathes, blinks, ducks on a summon, chirps on a tap
     │       ├── DefeatScreen.luau       # a lost boss fight: grey world, the fight's numbers, a tip, the countdown to town
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
@@ -1688,6 +1691,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, portal areas, trails, walk edge, signposts
         │   ├── Scenery.luau    # terrain shapes and scenery round the town and in the portal areas (plain data)
         │   ├── Music.luau      # the town music's tracks, volume, fades and edge (plain data)
+        │   ├── HudMascot.luau  # the creature peeking over the party bar: pictures, sizes, eyes, voice, timing (plain data)
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
@@ -1751,6 +1755,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── SummonMotion.luau  # a summon's pop, an unsummon's shrink, a faint's tip-over, fresh stamps (pure, Lune-tested)
             ├── PetVoice.luau      # your creature's chirp: voice, timing, pitch by size, bounce, when it may (pure, Lune-tested)
             ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
+            ├── XpPaws.luau        # the level pill's paw prints: each one's fill from XP progress (pure, Lune-tested)
+            ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1872,13 +1878,29 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held; number pills bump when they change.
-- **HUD** (`Util/Hud`, `Config/HudLayout`): a midnight **Manage** tile on the left middle slides out a tray of tiles to
-  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; tiles at the bottom centre (Cards B, Bag I) with key
+- **Creature pals HUD** (owner 2026-11-03, pick C of three mockups; spec
+  `docs/superpowers/specs/2026-11-03-hud-creature-pals-design.md`): the always-on HUD grows out of the core loop.
+  Tiles are chunky rounded squares, each in its own soft gradient (`HudLayout.CANDY`) with a thick white outline, a soft
+  shadow and the key letter in a white circle: Cards blue and Bag coral with little round ears, Bosses purple with
+  small white horns, Manage yellow (darker while its tray is open), Admin grey, Rip and Drop orange; the Manage tray's
+  tiles mint, sky, pink and lilac by their order (`CANDY_FAN`). The party bar is a cream cushion with round portraits;
+  cash a green pill under a big gold coin; the level a white pill with the gold star and five paw prints that fill
+  orange with XP, each gradually (`Util/XpPaws`; the exact numbers in its tooltip, `Tooltip.attachLive`); the buff a
+  white chip in the perk's colour. **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
+  Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
+  cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
+  (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,
+  unsummon or swap and pops back up (carrying on from where it is if you swap again), and a tap makes it bounce and
+  chirp. It sits over the left end because on touch screens the level pill sits above the right end. Everything about
+  it is in its config so another creature can replace it (the owner plans one based on their own pet): see
+  `docs/hud-mascot.md`.
+- **HUD** (`Util/Hud`, `Config/HudLayout`): a **Manage** tile on the left middle slides out a tray of tiles to
+  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; tiles at the bottom centre (Cards B, Bag I, Bosses K) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
-  right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
-  party bar), cash (a green candy pill with outlined white text), then the buff badge; money toasts pop in just
+  right-aligned column, bottom up: level (number on a star icon, paw prints filling with XP inside the pill, in line
+  with the party bar), cash (a green pill with a gold coin and outlined white text), then the buff badge; money toasts pop in just
   above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
   landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
   the middle: buff, cash, level, then the party bar, then the money toasts. Nothing sits in the middle of
