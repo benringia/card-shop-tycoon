@@ -23,7 +23,6 @@ export type TileSpec = {
 	key: string?,
 	group: Group,
 	order: number,
-	color: Color3?,
 	onClick: () -> (),
 }
 export type FanSpec = { id: string, icon: string, label: string, order: number, onClick: () -> () }
@@ -63,31 +62,116 @@ local function iconAndLabel(button: GuiButton, icon: string, label: string, icon
 	end)
 end
 
+-- The key letter in a small white circle on the tile's bottom-right corner
 local function addKeyChip(button: GuiButton, key: string)
 	local chip = Instance.new("TextLabel")
 	chip.Name = "Key"
-	chip.AnchorPoint = Vector2.new(1, 1)
-	chip.Position = UDim2.new(1, 10, 1, 10) -- just off the corner, clear of the label
-	chip.Size = UDim2.fromOffset(24, 24)
-	chip.BackgroundColor3 = HudLayout.KEY_CHIP
+	chip.AnchorPoint = Vector2.new(0.5, 0.5)
+	chip.Position = UDim2.new(1, -4, 1, -4)
+	chip.Size = UDim2.fromOffset(HudLayout.KEY_SIZE, HudLayout.KEY_SIZE)
+	chip.BackgroundColor3 = Color3.new(1, 1, 1)
 	chip.Font = Enum.Font.FredokaOne
 	chip.Text = key
 	chip.TextSize = 14
-	chip.TextColor3 = Color3.new(1, 1, 1)
-	chip.ZIndex = button.ZIndex + 2
+	chip.TextColor3 = HudLayout.KEY_CHIP
+	chip.ZIndex = 5
 	chip.Parent = button
-	UIKit.corner(chip, 6)
-	UIKit.outline(chip, Color3.new(1, 1, 1), 1.5)
+	UIKit.corner(chip, HudLayout.KEY_SIZE / 2)
 end
 
--- A blue (or given colour) square with a soft top-to-bottom gradient, icon above the label
-local function makeTile(parent: Instance, spec: TileSpec): TextButton
-	local color = spec.color or (if spec.group == "Context" then HudLayout.CONTEXT else HudLayout.TILE)
-	local tile = UIKit.button(parent, "", color)
+type Candy = { top: Color3, bottom: Color3, topper: string? }
+
+local function gradientOf(candy: Candy, shade: number): ColorSequence
+	local black = Color3.new(0, 0, 0)
+	return ColorSequence.new(candy.top:Lerp(black, shade), candy.bottom:Lerp(black, shade))
+end
+
+-- A rounded piece of the tile (its face, shadow or an ear), `z` among the tile's children
+local function piece(parent: Instance, name: string, z: number): Frame
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.BorderSizePixel = 0
+	frame.ZIndex = z
+	frame.Parent = parent
+	return frame
+end
+
+-- Two little ears (round, in the tile's colour, white-outlined) or two small white horns poking out of the top edge,
+-- drawn under the face so only their tops show
+local function addTopper(tile: GuiButton, candy: Candy)
+	local width = HudLayout.TILE_SIZE.X
+	for _, side in { 0, 1 } do
+		if candy.topper == "ears" then
+			local size = width * HudLayout.EAR
+			local ear = piece(tile, "Ear", 2)
+			ear.AnchorPoint = Vector2.new(side, 0)
+			ear.Position = UDim2.new(side, if side == 0 then width * 0.06 else -width * 0.06, 0, -size * 0.45)
+			ear.Size = UDim2.fromOffset(size, size)
+			ear.BackgroundColor3 = candy.top
+			UIKit.corner(ear, size / 2)
+			UIKit.outline(ear, Color3.new(1, 1, 1), HudLayout.OUTLINE)
+		elseif candy.topper == "horns" then
+			local size = width * HudLayout.HORN
+			local horn = piece(tile, "Horn", 2)
+			horn.AnchorPoint = Vector2.new(0.5, 0.5)
+			horn.Position = UDim2.new(side, if side == 0 then width * 0.2 else -width * 0.2, 0, 0)
+			horn.Size = UDim2.fromOffset(size, size)
+			horn.Rotation = 45
+			horn.BackgroundColor3 = Color3.new(1, 1, 1)
+			UIKit.corner(horn, 3)
+		end
+	end
+end
+
+-- A tile in the creature pals look (spec 2026-11-03-hud-creature-pals-design): a transparent button holding a soft
+-- shadow, the gradient face with its thick white outline, ears or horns, then the icon above the label and the key
+-- circle. `candy` is the tile's colours (HudLayout.CANDY / CANDY_FAN).
+local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextButton
+	local width = HudLayout.TILE_SIZE.X
+	local tile = Instance.new("TextButton")
 	tile.Name = spec.id
 	tile.LayoutOrder = spec.order
-	tile.Size = UDim2.fromOffset(HudLayout.TILE_SIZE.X, HudLayout.TILE_SIZE.Y)
+	tile.Size = UDim2.fromOffset(width, HudLayout.TILE_SIZE.Y)
+	tile.BackgroundTransparency = 1
+	tile.AutoButtonColor = false
+	tile.Text = ""
+	tile.TextColor3 = Color3.new(1, 1, 1)
+	tile.Parent = parent
+	Motion.press(tile)
+
+	local shadow = piece(tile, "Shadow", 1)
+	shadow.Position = UDim2.fromOffset(0, HudLayout.SHADOW.offset)
+	shadow.Size = UDim2.fromScale(1, 1)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = HudLayout.SHADOW.transparency
+	UIKit.corner(shadow, width * HudLayout.CORNER)
+	addTopper(tile, candy)
+	local face = piece(tile, "Face", 3)
+	face.Size = UDim2.fromScale(1, 1)
+	face.BackgroundColor3 = Color3.new(1, 1, 1)
+	UIKit.corner(face, width * HudLayout.CORNER)
+	local fill = Instance.new("UIGradient")
+	fill.Name = "Fill"
+	fill.Rotation = 90
+	fill.Color = gradientOf(candy, 0)
+	fill.Parent = face
+	UIKit.outline(face, Color3.new(1, 1, 1), HudLayout.OUTLINE)
+
 	iconAndLabel(tile, spec.icon, spec.label, 0.5)
+	for _, name in { "Icon", "Label" } do
+		local child = tile:FindFirstChild(name)
+		if child and child:IsA("GuiObject") then
+			child.ZIndex = 4
+		end
+	end
+	local label = tile:FindFirstChild("Label")
+	if label and label:IsA("TextLabel") then
+		local edge = Instance.new("UIStroke")
+		edge.Color = Color3.new(0, 0, 0)
+		edge.Transparency = 0.65 -- readable on the light yellow too
+		edge.Thickness = 1.5
+		edge.Parent = label
+	end
 	if spec.key then
 		addKeyChip(tile, spec.key)
 	end
@@ -110,7 +194,11 @@ local function setFan(open: boolean)
 	if tile then
 		local icon = tile:FindFirstChild("Icon") :: Frame?
 		local label = tile:FindFirstChild("Label") :: TextLabel?
-		tile.BackgroundColor3 = if open then HudLayout.TILE_DARK else HudLayout.TILE
+		local face = tile:FindFirstChild("Face")
+		local fill = if face then face:FindFirstChild("Fill") else nil
+		if fill and fill:IsA("UIGradient") then
+			fill.Color = gradientOf(HudLayout.CANDY.Manage, if open then HudLayout.CANDY_OPEN_SHADE else 0)
+		end
 		if icon then
 			Icon.set(icon, if open then "Close" else "Manage")
 		end
@@ -157,7 +245,7 @@ local function ensureManageTile()
 		onClick = function()
 			setFan(not fanOpen)
 		end,
-	})
+	}, HudLayout.CANDY.Manage)
 end
 
 -- How big the HUD draws on this screen (HudLayout.SCALE): 1 on roomy screens, smaller on short ones, at least min
@@ -254,7 +342,7 @@ end
 
 function Hud.tile(spec: TileSpec): TextButton
 	local parent = if spec.group == "Side" then side else bottom
-	local tile = makeTile(parent, spec)
+	local tile = makeTile(parent, spec, HudLayout.CANDY[spec.id] or HudLayout.CANDY.Manage)
 	tiles[spec.id] = tile
 	return tile
 end
@@ -272,7 +360,7 @@ function Hud.fanButton(spec: FanSpec): TextButton
 			setFan(false)
 			spec.onClick()
 		end,
-	})
+	}, HudLayout.CANDY_FAN[(math.max(spec.order, 1) - 1) % #HudLayout.CANDY_FAN + 1])
 	button.ZIndex = fan.ZIndex + 1
 	table.insert(fanButtons, { order = spec.order, button = button })
 	return button
