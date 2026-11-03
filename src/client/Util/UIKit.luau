@@ -36,6 +36,71 @@ UIKit.Colors = {
 	HeaderBottom = Color3.fromRGB(26, 30, 46),
 }
 
+-- Cream windows (spec 2026-11-03-cream-windows-design): UIKit.panel builds them by default and marks the frame's
+-- Theme attribute; the pieces built inside (header, rows, buttons, pills, bars, outlines, auto text) read it
+local CREAM = UIStyle.CREAM
+
+export type Palette = {
+	panel: Color3, -- the window body
+	row: Color3, -- rows, slots, stat cards
+	rowEdge: Color3, -- their outline
+	slotEmpty: Color3,
+	ink: Color3, -- text on the window
+	inkSoft: Color3, -- secondary text
+	hint: Color3, -- hints and small headings
+	track: Color3, -- bar tracks
+	outline: Color3, -- buttons', pills' and chips' outlines
+	outlineThickness: number,
+}
+
+local DARK_PALETTE: Palette = {
+	panel = UIKit.Colors.Panel,
+	row = UIKit.Colors.Row,
+	rowEdge = UIStyle.EDGE,
+	slotEmpty = UIKit.Colors.Row,
+	ink = UIKit.Colors.Text,
+	inkSoft = UIKit.Colors.Subtext,
+	hint = UIStyle.HINT,
+	track = UIStyle.EDGE,
+	outline = UIStyle.EDGE,
+	outlineThickness = 2,
+}
+
+local CREAM_PALETTE: Palette = {
+	panel = CREAM.BODY_BOTTOM,
+	row = CREAM.ROW,
+	rowEdge = CREAM.ROW_EDGE,
+	slotEmpty = CREAM.SLOT_EMPTY,
+	ink = CREAM.INK,
+	inkSoft = CREAM.INK_SOFT,
+	hint = CREAM.HINT,
+	track = CREAM.TRACK,
+	outline = CREAM.OUTLINE,
+	outlineThickness = CREAM.BUTTON_OUTLINE,
+}
+
+-- The look of the window `instance` sits in: "cream" (UIKit.panel's default) or "dark" (the binder, the fight screens,
+-- anything outside a window)
+function UIKit.themeOf(instance: Instance): "cream" | "dark"
+	local current: Instance? = instance
+	while current do
+		local theme = current:GetAttribute("Theme")
+		if theme == "cream" or theme == "dark" then
+			return theme
+		end
+		if current:IsA("LayerCollector") then
+			break
+		end
+		current = current.Parent
+	end
+	return "dark"
+end
+
+-- The colours for things built inside `instance`'s window (dark windows get today's tokens, unchanged)
+function UIKit.colorsFor(instance: Instance): Palette
+	return if UIKit.themeOf(instance) == "cream" then CREAM_PALETTE else DARK_PALETTE
+end
+
 UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another one (card picker) goes higher
 UIKit.HEADER_HEIGHT = 60
 
@@ -172,6 +237,9 @@ end
 function UIKit.textColorFor(instance: Instance, soft: boolean?): Color3
 	local surface = surfaceBehind(instance)
 	if surface and UIKit.isLight(surface.BackgroundColor3) then
+		if UIKit.themeOf(instance) == "cream" then
+			return if soft then CREAM.INK_SOFT else CREAM.INK
+		end
 		return if soft then UIKit.Colors.InkSoft else UIKit.Colors.Ink
 	end
 	return if soft then UIKit.Colors.Subtext else UIKit.Colors.Text
@@ -186,7 +254,7 @@ end
 function UIKit.outline(parent: GuiObject, color: Color3?, thickness: number?): UIStroke
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = color or UIKit.Colors.Outline
+	stroke.Color = color or UIKit.colorsFor(parent).rowEdge -- dark windows: Colors.Outline; cream: the soft cream edge
 	stroke.Thickness = thickness or 2
 	stroke.Parent = parent
 	return stroke
@@ -270,8 +338,12 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	padding.PaddingBottom = UDim.new(0, 4) -- keep the text on the face, above the lip
 	padding.Parent = button
 
-	UIKit.outline(button, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local cream = UIKit.themeOf(parent) == "cream"
+	UIKit.outline(button, if cream then CREAM.OUTLINE else UIStyle.EDGE, if cream then CREAM.BUTTON_OUTLINE else UIStyle.EDGE_THICKNESS)
 	local textEdge = UIKit.outlined(button)
+	if cream then
+		textEdge.Transparency = 0.35 -- a softer text outline in cream windows
+	end
 	local autoText: Color3? = nil -- the text colour this button last picked for itself
 	local function restyle()
 		local light = UIKit.isLight(button.BackgroundColor3)
@@ -302,13 +374,22 @@ function UIKit.closeButton(parent: GuiObject): TextButton
 	close.Font = Enum.Font.FredokaOne
 	close.TextSize = 26
 	close.ZIndex = parent.ZIndex + 3
+	if UIKit.themeOf(parent) == "cream" then
+		local round = close:FindFirstChildOfClass("UICorner")
+		if round then
+			round.CornerRadius = UDim.new(0.5, 0) -- a red circle with a white outline
+		end
+	end
 	return close
 end
 
 -- The coloured band across the top of a panel (Config/UIStyle HEADERS: Party, Cards, Bosses, Bag, Default), with
 -- the outlined title in it and a dark line under it
 function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, TextLabel)
-	local colors = UIStyle.HEADERS[band or "Default"] or UIStyle.HEADERS.Default
+	local cream = UIKit.themeOf(parent) == "cream"
+	local bands = if cream then CREAM.HEADERS else UIStyle.HEADERS
+	local colors = bands[band or "Default"] or bands.Default
+	local corner = if cream then CREAM.CORNER else PANEL_CORNER
 	local header = Instance.new("Frame")
 	header.Name = "Header"
 	header.Size = UDim2.new(1, 0, 0, UIKit.HEADER_HEIGHT)
@@ -316,7 +397,7 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	header.BorderSizePixel = 0
 	header.ZIndex = parent.ZIndex
 	header.Parent = parent
-	UIKit.corner(header, PANEL_CORNER - 2)
+	UIKit.corner(header, corner - 2)
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
 	gradient.Color = ColorSequence.new(colors.top, colors.bottom)
@@ -326,7 +407,7 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	squareBottom.Name = "SquareBottom"
 	squareBottom.AnchorPoint = Vector2.new(0, 1)
 	squareBottom.Position = UDim2.fromScale(0, 1)
-	squareBottom.Size = UDim2.new(1, 0, 0, PANEL_CORNER)
+	squareBottom.Size = UDim2.new(1, 0, 0, corner)
 	squareBottom.BackgroundColor3 = Color3.new(1, 1, 1)
 	squareBottom.BorderSizePixel = 0
 	squareBottom.ZIndex = header.ZIndex
@@ -334,13 +415,13 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	local bottomGradient = gradient:Clone()
 	bottomGradient.Color = ColorSequence.new(colors.bottom)
 	bottomGradient.Parent = squareBottom
-	-- A dark line where the band meets the body
+	-- A line where the band meets the body: dark, or white in a cream window
 	local rule = Instance.new("Frame")
 	rule.Name = "Rule"
 	rule.AnchorPoint = Vector2.new(0, 1)
 	rule.Position = UDim2.fromScale(0, 1)
 	rule.Size = UDim2.new(1, 0, 0, UIStyle.EDGE_THICKNESS)
-	rule.BackgroundColor3 = UIStyle.EDGE
+	rule.BackgroundColor3 = if cream then CREAM.OUTLINE else UIStyle.EDGE
 	rule.BorderSizePixel = 0
 	rule.ZIndex = header.ZIndex + 1
 	rule.Parent = header
@@ -366,29 +447,53 @@ function UIKit.closePanel(frame: GuiObject)
 end
 
 -- Centred modal panel: a coloured header band (`band`: a Config/UIStyle HEADERS name) with the title, red close
--- button, dark body with a scrolling list. The frame itself is the dark edge colour and a "Body" child paints the
--- slate face LIP pixels short of the bottom, so the edge shows there as a drop lip under a thick outline.
--- Starts hidden. The title label is named "Title" (inside the header) for callers that change it.
-function UIKit.panel(parent: Instance, name: string, title: string, band: string?): (Frame, ScrollingFrame)
+-- button and a scrolling list. `theme` "cream" (the default; spec 2026-11-03-cream-windows-design): a cream body with a
+-- thick white outline and a soft shadow under it, the band in the window's HUD button colour (UIStyle.CREAM). "dark"
+-- (the binder): the frame is the dark edge colour and a "Body" child paints the slate face LIP pixels short of the
+-- bottom, so the edge shows there as a drop lip under a thick outline. The frame's Theme attribute tells the pieces
+-- built inside which look to take. Starts hidden. The title label is named "Title" for callers that change it.
+function UIKit.panel(parent: Instance, name: string, title: string, band: string?, theme: ("cream" | "dark")?): (Frame, ScrollingFrame)
+	local look = theme or "cream"
+	local cream = look == "cream"
 	local frame = Instance.new("Frame")
 	frame.Name = name
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	frame.Size = UDim2.fromScale(0.92, 0.7)
-	frame.BackgroundColor3 = UIStyle.EDGE
+	frame.BackgroundColor3 = if cream then CREAM.BODY_BOTTOM else UIStyle.EDGE
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
+	frame:SetAttribute("Theme", look)
 	frame.Parent = parent
-	UIKit.corner(frame, PANEL_CORNER)
-	local edge = UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	UIKit.corner(frame, if cream then CREAM.CORNER else PANEL_CORNER)
+	local edge = if cream
+		then UIKit.outline(frame, CREAM.OUTLINE, CREAM.OUTLINE_THICKNESS)
+		else UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
 	local body = Instance.new("Frame")
 	body.Name = "Body"
-	body.Size = UDim2.new(1, 0, 1, -UIStyle.LIP)
-	body.BackgroundColor3 = UIKit.Colors.Panel
+	body.Size = if cream then UDim2.fromScale(1, 1) else UDim2.new(1, 0, 1, -UIStyle.LIP)
+	body.BackgroundColor3 = if cream then Color3.new(1, 1, 1) else UIKit.Colors.Panel
 	body.BorderSizePixel = 0
 	body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
 	body.Parent = frame
-	UIKit.corner(body, PANEL_CORNER)
+	UIKit.corner(body, if cream then CREAM.CORNER else PANEL_CORNER)
+	if cream then
+		local fill = Instance.new("UIGradient")
+		fill.Rotation = 90
+		fill.Color = ColorSequence.new(CREAM.BODY_TOP, CREAM.BODY_BOTTOM)
+		fill.Parent = body
+		-- A soft shadow peeking out under the window instead of the dark lip
+		local shadow = Instance.new("Frame")
+		shadow.Name = "Shadow"
+		shadow.Position = UDim2.fromOffset(0, CREAM.SHADOW.offset)
+		shadow.Size = UDim2.fromScale(1, 1)
+		shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+		shadow.BackgroundTransparency = CREAM.SHADOW.transparency
+		shadow.BorderSizePixel = 0
+		shadow.ZIndex = -1
+		shadow.Parent = frame
+		UIKit.corner(shadow, CREAM.CORNER)
+	end
 	-- A see-through panel (the binder: its book is its own screen) shows neither face nor edge
 	frame:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
 		body.BackgroundTransparency = frame.BackgroundTransparency
@@ -458,7 +563,7 @@ function UIKit.row(parent: Instance, order: number, title: string, detail: strin
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = order
 	frame.Size = UDim2.new(1, 0, 0, 76)
-	frame.BackgroundColor3 = UIKit.Colors.Row
+	frame.BackgroundColor3 = UIKit.colorsFor(parent).row
 	frame.Parent = parent
 	UIKit.corner(frame, 12)
 	UIKit.outline(frame)
@@ -519,7 +624,7 @@ function UIKit.pill(parent: Instance, text: string, fill: Color3, textColor: Col
 	pill.TextColor3 = textColor or (if UIKit.isLight(fill) then UIKit.Colors.Ink else Color3.new(1, 1, 1))
 	pill.Parent = parent
 	UIKit.corner(pill, 12)
-	UIKit.outline(pill, UIStyle.EDGE, 2)
+	UIKit.outline(pill, UIKit.colorsFor(parent).outline, 2)
 	if not textColor and not UIKit.isLight(fill) then
 		UIKit.outlined(pill, 1.5)
 	end
@@ -542,12 +647,13 @@ function UIKit.bar(parent: Instance, share: number, fill: Color3?): (Frame, Fram
 	local track = Instance.new("Frame")
 	track.Name = "Bar"
 	track.Size = UDim2.new(1, 0, 0, if UIKit.isPhone() then UIStyle.BAR.phoneHeight else UIStyle.BAR.height)
-	track.BackgroundColor3 = UIStyle.EDGE
+	local palette = UIKit.colorsFor(parent)
+	track.BackgroundColor3 = palette.track
 	track.BorderSizePixel = 0
 	track.ClipsDescendants = true
 	track.Parent = parent
 	UIKit.corner(track, 999)
-	UIKit.outline(track, UIStyle.EDGE, 2)
+	UIKit.outline(track, palette.rowEdge, 2)
 	local inside = Instance.new("Frame")
 	inside.Name = "Fill"
 	inside.Size = UDim2.fromScale(math.clamp(share, 0, 1), 1)

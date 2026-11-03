@@ -1663,7 +1663,7 @@ end
 
 local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
-	panel, list = UIKit.panel(parent, "Binder", "Binder")
+	panel, list = UIKit.panel(parent, "Binder", "Binder", nil, "dark") -- the binder keeps its dark look (spec 2026-11-03-cream-windows-design)
 	list:Destroy() -- the binder uses pages instead of a scrolling list
 	-- Full screen and see-through: the 3D binder on its desk fills the screen behind (BinderDesk)
 	panel.Size = UDim2.fromScale(1, 1)
