@@ -1606,7 +1606,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
-    │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
+    │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
@@ -1873,8 +1873,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   things under another window too, so a covered thing (checked with `GetGuiObjectsAtPosition`) shows no tip.
   `Tooltip.rich(target, title, lines)` shows a gold title over a few lines (coloured lines allowed; text escaped for
   RichText): the boss ladder's items.
-- **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
-  for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
+- **Font** (`Util/FontStyle`, `Config/UIFonts`): FredokaOne for titles, buttons and numbers everywhere (screens,
+  card faces, tags), Montserrat Bold for body text (owner 2026-11-03, pick 4 of 4 font pairs: cute round titles, a crisp
+  premium body; it was Nunito Bold). Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held; number pills bump when they change.
@@ -1885,8 +1886,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   small white horns, Manage yellow (darker while its tray is open), Admin grey, Rip and Drop orange; the Manage tray's
   tiles mint, sky, pink and lilac by their order (`CANDY_FAN`). The party bar is a cream cushion with round portraits;
   cash a green pill under a big gold coin; the level a white pill with the gold star and five paw prints that fill
-  orange with XP, each gradually (`Util/XpPaws`; the exact numbers in its tooltip, `Tooltip.attachLive`); the buff a
-  white chip in the perk's colour. **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
+  orange with XP, each gradually, with the numbers right under them ("90k / 226k", "MAX" at the top; `Util/XpPaws`,
+  owner 2026-11-03: in view, not in a tooltip); the buff a white chip in the perk's colour. **Hover** (owner 2026-11-03,
+  pick 1 of 3, `HudLayout.HOVER`): under a mouse a tile springs up off its shadow with a soft overshoot, grows 7%, its
+  shadow drops and its ears perk outwards (horns tilt); the Party pill springs up too. **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
   Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
   cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
   (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,

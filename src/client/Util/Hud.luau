@@ -6,6 +6,8 @@
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
 -- Numbers: Config/HudLayout. Motion: Util/Motion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
@@ -64,7 +66,7 @@ local function iconAndLabel(button: GuiButton, icon: string, label: string, icon
 end
 
 -- The key letter in a small white circle on the tile's bottom-right corner
-local function addKeyChip(button: GuiButton, key: string)
+local function addKeyChip(button: GuiObject, key: string)
 	local chip = Instance.new("TextLabel")
 	chip.Name = "Key"
 	chip.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -99,12 +101,13 @@ end
 
 -- Two little ears (round, in the tile's colour, white-outlined) or two small white horns poking out of the top edge,
 -- drawn under the face so only their tops show
-local function addTopper(tile: GuiButton, candy: Candy)
+local function addTopper(tile: GuiObject, candy: Candy)
 	local width = HudLayout.TILE_SIZE.X
 	for _, side in { 0, 1 } do
 		if candy.topper == "ears" then
 			local size = width * HudLayout.EAR
 			local ear = piece(tile, "Ear", 2)
+			ear:SetAttribute("Side", side)
 			ear.AnchorPoint = Vector2.new(side, 0)
 			ear.Position = UDim2.new(side, if side == 0 then width * 0.06 else -width * 0.06, 0, -size * 0.45)
 			ear.Size = UDim2.fromOffset(size, size)
@@ -114,6 +117,7 @@ local function addTopper(tile: GuiButton, candy: Candy)
 		elseif candy.topper == "horns" then
 			local size = width * HudLayout.HORN
 			local horn = piece(tile, "Horn", 2)
+			horn:SetAttribute("Side", side)
 			horn.AnchorPoint = Vector2.new(0.5, 0.5)
 			horn.Position = UDim2.new(side, if side == 0 then width * 0.2 else -width * 0.2, 0, 0)
 			horn.Size = UDim2.fromOffset(size, size)
@@ -146,8 +150,14 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
 	shadow.BackgroundTransparency = HudLayout.SHADOW.transparency
 	UIKit.corner(shadow, width * HudLayout.CORNER)
-	addTopper(tile, candy)
-	local face = piece(tile, "Face", 3)
+	-- Everything but the shadow sits in a body that lifts off it on hover
+	local body = piece(tile, "Body", 2)
+	body.BackgroundTransparency = 1
+	body.AnchorPoint = Vector2.new(0.5, 0.5)
+	body.Position = UDim2.fromScale(0.5, 0.5)
+	body.Size = UDim2.fromScale(1, 1)
+	addTopper(body, candy)
+	local face = piece(body, "Face", 3)
 	face.Size = UDim2.fromScale(1, 1)
 	face.BackgroundColor3 = Color3.new(1, 1, 1)
 	UIKit.corner(face, width * HudLayout.CORNER)
@@ -163,9 +173,10 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 		local child = tile:FindFirstChild(name)
 		if child and child:IsA("GuiObject") then
 			child.ZIndex = 4
+			child.Parent = body
 		end
 	end
-	local label = tile:FindFirstChild("Label")
+	local label = body:FindFirstChild("Label")
 	if label and label:IsA("TextLabel") then
 		local edge = Instance.new("UIStroke")
 		edge.Color = Color3.new(0, 0, 0)
@@ -174,9 +185,39 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 		edge.Parent = label
 	end
 	if spec.key then
-		addKeyChip(tile, spec.key)
+		addKeyChip(body, spec.key)
 	end
 	tile.Activated:Connect(spec.onClick)
+
+	-- Bouncy hover (owner 2026-11-03, pick 1 of 3; HudLayout.HOVER): the body springs up with a soft overshoot off its
+	-- shadow, which grows, and the ears perk outwards. Mouse only (phones keep the press squash).
+	local hover = HudLayout.HOVER
+	local grow = Instance.new("UIScale")
+	grow.Parent = body
+	local spring = TweenInfo.new(hover.seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local settle = TweenInfo.new(hover.seconds * 0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local function setHover(on: boolean)
+		local info = if on then spring else settle
+		TweenService:Create(body, info, { Position = UDim2.new(0.5, 0, 0.5, if on then -hover.lift else 0) }):Play()
+		TweenService:Create(grow, info, { Scale = if on then hover.scale else 1 }):Play()
+		TweenService:Create(shadow, info, { Position = UDim2.fromOffset(0, if on then hover.shadow else HudLayout.SHADOW.offset) }):Play()
+		for _, part in body:GetChildren() do
+			local side = part:GetAttribute("Side")
+			if part:IsA("GuiObject") and typeof(side) == "number" then
+				local base = if part.Name == "Horn" then 45 else 0
+				local tilt = if side == 0 then -hover.ear else hover.ear
+				TweenService:Create(part, info, { Rotation = if on then base + tilt else base }):Play()
+			end
+		end
+	end
+	tile.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			setHover(true)
+		end
+	end)
+	tile.MouseLeave:Connect(function()
+		setHover(false)
+	end)
 	if spec.group == "Context" then
 		tile.Visible = false
 		tile:GetPropertyChangedSignal("Visible"):Connect(function()
@@ -193,9 +234,9 @@ local function setFan(open: boolean)
 	fanOpen = open
 	local tile = manageTile
 	if tile then
-		local icon = tile:FindFirstChild("Icon") :: Frame?
-		local label = tile:FindFirstChild("Label") :: TextLabel?
-		local face = tile:FindFirstChild("Face")
+		local icon = tile:FindFirstChild("Icon", true) :: Frame?
+		local label = tile:FindFirstChild("Label", true) :: TextLabel?
+		local face = tile:FindFirstChild("Face", true)
 		local fill = if face then face:FindFirstChild("Fill") else nil
 		if fill and fill:IsA("UIGradient") then
 			fill.Color = gradientOf(HudLayout.CANDY.Manage, if open then HudLayout.CANDY_OPEN_SHADE else 0)
@@ -369,7 +410,7 @@ end
 
 function Hud.setLabel(id: string, text: string)
 	local tile = tiles[id]
-	local label = if tile then tile:FindFirstChild("Label") else nil
+	local label = if tile then tile:FindFirstChild("Label", true) else nil
 	if label and label:IsA("TextLabel") then
 		label.Text = text
 	end

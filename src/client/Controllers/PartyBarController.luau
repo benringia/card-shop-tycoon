@@ -544,6 +544,18 @@ function PartyBarController.Start()
 	UIKit.outline(partyPill, EMPTY_EDGE, 1.5)
 	Motion.press(partyButton)
 	partyButton.Activated:Connect(PartyController.Toggle)
+	local pillGrow = Instance.new("UIScale")
+	pillGrow.Parent = partyPill
+	local hoverIn = TweenInfo.new(BAR.PILL_HOVER.seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local hoverOut = TweenInfo.new(BAR.PILL_HOVER.seconds * 0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	partyButton.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			TweenService:Create(pillGrow, hoverIn, { Scale = BAR.PILL_HOVER.scale }):Play()
+		end
+	end)
+	partyButton.MouseLeave:Connect(function()
+		TweenService:Create(pillGrow, hoverOut, { Scale = 1 }):Play()
+	end)
 
 	-- The mascot peeks over the cushion and ducks when the summoned creature changes
 	HudMascotView.mount(seat)

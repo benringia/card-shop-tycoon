@@ -602,5 +602,6 @@ return {
 		TEXT = { 107, 74, 42 }, -- brown words on cream (levels, Party, the "+")
 		OUT = { 255, 138, 58 }, -- the summoned portrait's ring, glow and tag
 		PARTY_PILL = { 52, 28 }, -- the "Party" pill, drawn inside its HIT-sized tap area
+		PILL_HOVER = { scale = 1.1, seconds = 0.3 }, -- it springs up under a mouse, like the HUD tiles
 	},
 }

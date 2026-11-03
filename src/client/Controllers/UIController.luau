@@ -18,7 +18,6 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
 local XpPaws = require(Shared:WaitForChild("Util"):WaitForChild("XpPaws"))
-local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local UIStyle = require(Shared:WaitForChild("Config"):WaitForChild("UIStyle"))
 
 local TOAST_SECONDS = 2.5
@@ -77,7 +76,7 @@ local sideToastOrder = 0
 local cashLabel: TextLabel
 local levelLabel: TextLabel
 local pawFills: { Frame } = {} -- each paw's coloured copy, clipped to its share of the level's XP
-local xpText = "Loading your shop..." -- the level pill's tooltip (the exact numbers)
+local xpLabel: TextLabel -- the XP numbers under the paws ("90k / 226k")
 local cashPill: Frame
 local levelBadge: Frame
 type Toast = {
@@ -113,7 +112,7 @@ end
 local function updateXp()
 	if typeof(player:GetAttribute("XP")) ~= "number" then
 		levelLabel.Text = ""
-		xpText = "Loading your shop..."
+		xpLabel.Text = "Loading..."
 		for _, fill in pawFills do
 			fill.Size = UDim2.fromScale(0, 1)
 		end
@@ -126,7 +125,7 @@ local function updateXp()
 	end
 	levelLabel.Text = level
 	local into, span = LevelRules.getProgress(xp)
-	xpText = `XP {into} / {span}`
+	xpLabel.Text = XpPaws.label(into, span)
 	for index, share in XpPaws.fills(into, span, #pawFills) do
 		pawFills[index].Size = UDim2.fromScale(share, 1)
 	end
@@ -349,8 +348,8 @@ local function addValue(pill: Frame, color: Color3): TextLabel
 end
 
 -- The status pills in the corner column (spec 2026-11-03-hud-creature-pals-design): cash in a green pill with a big
--- gold coin, and the level on a gold star in a white pill whose paw prints fill with XP (the exact numbers in its
--- tooltip), at the bottom, in line with the party bar
+-- gold coin, and the level on a gold star in a white pill whose paw prints fill with XP, the numbers under them
+-- (owner 2026-11-03: in view, not in a tooltip), at the bottom, in line with the party bar
 local function buildStatusPills()
 	local column = statusFrame
 
@@ -386,13 +385,31 @@ local function buildStatusPills()
 	levelEdge.Thickness = 2
 	levelEdge.Parent = levelLabel
 
+	-- Paws on top, the numbers under them
 	local size = HudLayout.PAW_SIZE
+	local rowWidth = HudLayout.PAWS * size + (HudLayout.PAWS - 1) * 4
+	local xp = Instance.new("Frame")
+	xp.Name = "Xp"
+	xp.LayoutOrder = 2
+	xp.BackgroundTransparency = 1
+	xp.Size = UDim2.fromOffset(rowWidth, size + 1 + HudLayout.XP_TEXT)
+	xp.Parent = levelBadge
+	local stack = Instance.new("UIListLayout")
+	stack.Padding = UDim.new(0, 1)
+	stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	stack.SortOrder = Enum.SortOrder.LayoutOrder
+	stack.Parent = xp
 	local paws = Instance.new("Frame")
 	paws.Name = "Paws"
-	paws.LayoutOrder = 2
+	paws.LayoutOrder = 1
 	paws.BackgroundTransparency = 1
-	paws.Size = UDim2.fromOffset(HudLayout.PAWS * size + (HudLayout.PAWS - 1) * 4, size)
-	paws.Parent = levelBadge
+	paws.Size = UDim2.fromOffset(rowWidth, size)
+	paws.Parent = xp
+	xpLabel = UIKit.label(xp, "", Enum.Font.FredokaOne, HudLayout.XP_TEXT, HudLayout.XP_TEXT_COLOR)
+	xpLabel.Name = "Numbers"
+	xpLabel.LayoutOrder = 2
+	xpLabel.Size = UDim2.fromOffset(rowWidth, HudLayout.XP_TEXT)
+	xpLabel.TextXAlignment = Enum.TextXAlignment.Center
 	local pawRow = Instance.new("UIListLayout")
 	pawRow.FillDirection = Enum.FillDirection.Horizontal
 	pawRow.Padding = UDim.new(0, 4)
@@ -427,9 +444,6 @@ local function buildStatusPills()
 		full.Parent = clip
 		table.insert(pawFills, clip)
 	end
-	Tooltip.attachLive(levelBadge, function()
-		return xpText
-	end)
 end
 
 -- The bottom-right corner (PC). On a narrow window the party bar would reach over the bottom-centre tiles (Cards,
