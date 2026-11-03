@@ -652,7 +652,7 @@ local function giveXp(player: Player, partyIds: { string }, each: number): { any
 	for _, beastId in partyIds do
 		local before = CardService.GetBeast(player, beastId)
 		local level, from = if before then before.level else 1, if before then BeastRules.levelProgress(before.level, before.xp) else 0
-		local after = CardService.AddXP(player, beastId, each)
+		local after = CardService.AddXP(player, beastId, each, "fight")
 		if after then
 			table.insert(party, {
 				id = beastId,

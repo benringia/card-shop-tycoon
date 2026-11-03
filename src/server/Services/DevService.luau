@@ -26,6 +26,7 @@ local DayCycle = require(Shared:WaitForChild("Util"):WaitForChild("DayCycle"))
 local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
 local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
+local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
@@ -42,6 +43,7 @@ local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
+local LevelUpService = require(Services:WaitForChild("LevelUpService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
@@ -342,6 +344,48 @@ function DevService.Start()
 	end
 	addCommand(folder, "summonsound", soundPick("summonsound", "summon", "SummonSoundPick"))
 	addCommand(folder, "unsummonsound", soundPick("unsummonsound", "unsummon", "UnsummonSoundPick"))
+	-- The level-up pillar (Config/LevelUpFx): the effect alone (no XP, no rewards), and its sound options
+	addCommand(folder, "levelfx", function(player, text)
+		local asked = tonumber(string.match(text, "%s+(%d+)") or "")
+		local current = player:GetAttribute("Level")
+		local level = asked or (if typeof(current) == "number" then current else 2)
+		LevelUpService.PreviewShop(player, math.clamp(math.floor(level), 2, Levels.MAX_LEVEL))
+	end)
+	addCommand(folder, "beastlevelfx", function(player)
+		for _, marker in workspace:GetDescendants() do
+			local beastId = marker:GetAttribute("BeastId")
+			if marker:IsA("BasePart") and marker:GetAttribute("OwnerUserId") == player.UserId and typeof(beastId) == "string" then
+				local beast = CardService.GetBeast(player, beastId)
+				local card = if beast then Cards.ById[beast.cardId] else nil
+				if beast and card then
+					LevelUpService.PreviewCreature(player, beastId, beast.level, card.element)
+					return
+				end
+			end
+		end
+		Remotes.Notify:FireClient(player, "Summon a creature first.", true)
+	end)
+	addCommand(folder, "levelsound", function(player, text)
+		local moment, rest = string.match(text, "^%S+%s+(%a+)(.*)$")
+		local options = if moment then LevelUpFx.SOUNDS.options[moment] else nil
+		local index, volume = nil, nil
+		if options then
+			index, volume = MusicRules.parsePreview("/x" .. rest, #options)
+		end
+		if not options or not index or not moment then
+			Remotes.Notify:FireClient(player, "Usage: /levelsound <rise|beam|chime|fanfare> <1-3> [volume], <n> 0 for the normal one", true)
+			return
+		end
+		local attribute = "LevelSoundPick_" .. moment
+		player:SetAttribute(attribute, if index > 0 then index else nil)
+		player:SetAttribute(attribute .. "Volume", volume)
+		local line = if index > 0 then `{moment} sound {index}: {options[index].name}` else `{moment} sound: back to the normal one`
+		Remotes.Notify:FireClient(player, line, false)
+		if index > 0 then
+			local current = player:GetAttribute("Level")
+			LevelUpService.PreviewShop(player, if moment == "fanfare" then 10 elseif typeof(current) == "number" then math.max(2, current) else 2)
+		end
+	end)
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
 		local known = false
@@ -416,7 +460,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume], /summonsound <n>, /unsummonsound <n>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <moment> <n>")
 end
 
 return DevService

@@ -147,6 +147,7 @@ end
 local function setMarkerAttributes(marker: BasePart, player: Player, beast: CardService.Beast)
 	local card = Cards.ById[beast.cardId]
 	marker:SetAttribute("OwnerUserId", player.UserId)
+	marker:SetAttribute("BeastId", beast.id) -- the level-up pillar finds the creature by it (LevelUpController)
 	marker:SetAttribute("CardId", card.id)
 	marker:SetAttribute("CardName", card.name)
 	marker:SetAttribute("Element", card.element)

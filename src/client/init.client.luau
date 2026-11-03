@@ -21,6 +21,7 @@ local WelcomeController = require(Controllers:WaitForChild("WelcomeController"))
 local CondenserFxController = require(Controllers:WaitForChild("CondenserFxController"))
 local CaseSpinController = require(Controllers:WaitForChild("CaseSpinController"))
 local WorkerVisualController = require(Controllers:WaitForChild("WorkerVisualController"))
+local LevelUpController = require(Controllers:WaitForChild("LevelUpController"))
 local RegisterController = require(Controllers:WaitForChild("RegisterController"))
 local CarryController = require(Controllers:WaitForChild("CarryController"))
 local PackOpeningController = require(Controllers:WaitForChild("PackOpeningController"))
@@ -75,6 +76,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
+	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
 	end
@@ -124,4 +126,5 @@ else
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
+	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 end

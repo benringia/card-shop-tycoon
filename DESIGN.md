@@ -1416,6 +1416,22 @@ the remote `OpenBagPack` (rate-limited, refused mid-fight) takes one and rolls a
 (`PackService.OpenItemPack`), and the usual pack opening plays ("From your Bag" in its corner). Studio: `/setxp <n>`
 sets the XP total, down as well as up (no rewards), to test level-ups on a grown save.
 
+**Level-up effect** (owner 2026-11-04: the light pillar, "pillar and spinning circle is enough"; spec section 9;
+`Util/LevelUpFx`, `LevelUpController`, `Config/LevelUpFx`): a rune circle (Blender-rendered, `assets/ui/fx-levelup`)
+spins open on the ground, at 0.4 s a pillar of light (a white core in a gold glow, motes rising) shoots up and the one
+levelling up lights for a moment, at 1.0 s a star badge pops with the number rolling up and a candy "LEVEL UP!" under it,
+and from 1.5 s the beam thins and the circle fades (3 s in all). Every 10th level the pillar runs pink, butter, mint,
+sky and lilac, the circle is two-toned and a pack flies out with "+1 pack". A creature that levels up (`CardService.
+OnBeastLevelUp`) gets a smaller pillar in its element's colour and a "Lv 19 -> 20" chip on its drawn model (summoned or
+a shop worker; markers and worker rigs carry `BeastId`); your own after a won fight starts when its XP sparks land on
+the portrait. The server sends `LevelUpFx` to everyone; others within 60 studs of their camera see it and hear it
+quieter. A shop level-up never plays mid-fight (a glowing circle underfoot reads as "dodge"): `LevelUpService` holds it
+until the fight (or PvP) ends and merges several into one; the cash, the pack and the toast come at once. Sounds
+(Pro Sound Effects, APM Music, three options each to try): a sparkling whoosh as the circle opens, an angel-sparkle
+burst as the beam hits, a bell as the badge pops, a short fanfare on 10th levels; a creature plays the whoosh and the
+bell, quieter and higher. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelsound <rise|beam|chime|fanfare> <n>`
+(and the admin panel). Measured: about 59 fps during the effect against 60 without it.
+
 ### 7.3 Upgrades (one-off purchases)
 
 | Upgrade | Effect | Cost |
@@ -1565,7 +1581,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
     │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, rooms, carried HP, out, the chamber, the way back)
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
-    │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack)
+    │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
@@ -1617,6 +1633,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
@@ -1651,6 +1668,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── LevelUpFx.luau          # the level-up light pillar: rune circle, beams, motes, light, star badge, sounds
     │       ├── SummonFx.luau           # a creature popping up (pillar, chime), going back to you (whoosh), fainting (dizzy stars)
     │       ├── HealFx.luau             # your creature at the healing spring: "+ Healing" pill, floating plus signs, green light
     │       ├── HudMascotView.luau      # the mascot peeking over the party cushion: breathes, blinks, ducks on a summon, chirps on a tap
@@ -1684,6 +1702,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # the 3D opening: stage, camera, tear, stack, flips, alive, results, sounds (client)
         │   ├── PackOpeningLayout.luau # where the opening's cards sit on screen (plain data)
+        │   ├── LevelUpFx.luau  # the level-up pillar's textures, timing, sizes, colours, sound options (plain data)
         │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)

@@ -15,6 +15,7 @@ return {
 		mote = "rbxassetid://94350825263791", -- a soft four-point sparkle
 	},
 	RANGE = 60, -- studs: other players closer than this to your camera see and hear your level-up
+	HOLD_CHECK_SECONDS = 0.5, -- how often the server sends shop level-ups that waited for a fight to end
 	-- Seconds from the start: the circle opens at 0, the pillar shoots up at `beam`, the badge pops at `badge`, the
 	-- beam thins and the circle fades from `fade`, everything is gone at `done`
 	TIMING = { beam = 0.4, badge = 1.0, fade = 1.5, done = 3 },

@@ -478,6 +478,17 @@ function CreatureController.GetFightView(marker: BasePart): { root: BasePart, el
 	}
 end
 
+-- The drawn creature whose card is `beastId` (the marker's BeastId attribute): its root and height, for the level-up
+-- pillar; nil when it isn't drawn here (not summoned, or streamed out)
+function CreatureController.GetRootForBeast(beastId: string): (BasePart?, number?)
+	for marker, creature in creatures do
+		if marker:GetAttribute("BeastId") == beastId and creature.body.root.Parent then
+			return creature.body.root, creature.height
+		end
+	end
+	return nil, nil
+end
+
 -- A fight pose on the creature drawn on this marker (charge, strike, combo, cast)
 function CreatureController.Pose(marker: BasePart, kind: string)
 	local creature = creatures[marker]
