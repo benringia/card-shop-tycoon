@@ -591,7 +591,16 @@ return {
 		PORTRAIT = 48, -- a party portrait's size
 		PORTRAIT_OUT = 56, -- the summoned one
 		HIT = 70, -- a portrait's (and the Party pill's) tap area: 48 px even at the smallest HUD scale (0.7)
-		RIM = 4, -- the white ring round a portrait
+		-- The portrait's 3D rim (owner 2026-11-03, avatar pick b; spec 2026-11-03-cotton-candy-ui-design): a rim in the
+		-- creature's element colour (Config/BabyColors ELEMENTS) RIM px wide, its deep shade showing RIM_BASE px under it,
+		-- a thin white ring (INNER_RING px) round the picture, a dark fade over the picture's top SINK share (sunk in), a
+		-- shine across the top (a share of the portrait wide and tall, from TOP down, see-through). The summoned one also
+		-- sits RIM_BASE px higher.
+		RIM = 5,
+		RIM_BASE = 4,
+		INNER_RING = 2,
+		SINK = { depth = 0.45, transparency = 0.55 },
+		SHINE = { width = 0.62, height = 0.24, top = -0.02, transparency = 0.68 },
 		POP = 1.35, -- a card joining the party pops up this much, then settles
 		POP_SECONDS = 0.5,
 		NAME_WAIT = 2, -- seconds the "joined your party" toast waits for a new card's name to arrive with the binder

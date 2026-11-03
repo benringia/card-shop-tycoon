@@ -18,6 +18,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
+local BabyColors = require(Config:WaitForChild("BabyColors"))
 local HudMascot = require(Config:WaitForChild("HudMascot"))
 local HudMascotRules = require(Shared:WaitForChild("Util"):WaitForChild("HudMascotRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -43,8 +44,11 @@ type SlotView = {
 	hit: TextButton, -- the tap area round the portrait (Party.BAR.HIT)
 	button: Frame, -- the round portrait
 	lift: UIScale,
-	rim: UIStroke,
+	rim: Frame, -- the element-coloured rim (light to full colour)
 	rimShade: UIGradient,
+	base: Frame, -- the rim's deep shade showing under it
+	shine: Frame,
+	chipEdge: UIStroke, -- the slot number chip's outline, in the element colour
 	art: ImageLabel,
 	element: Frame,
 	level: TextLabel,
@@ -161,7 +165,7 @@ local function useSlot(slot: number)
 	end
 end
 
-local function keyChip(parent: GuiObject, key: string)
+local function keyChip(parent: GuiObject, key: string): UIStroke
 	local chip = UIKit.label(parent, key, Enum.Font.FredokaOne, 12, WHITE)
 	chip.Name = "Key"
 	-- Bottom-left corner, clear of the OUT tag on top and the level chip in the middle
@@ -174,7 +178,21 @@ local function keyChip(parent: GuiObject, key: string)
 	chip.BackgroundTransparency = 0
 	chip.ZIndex = 8
 	UIKit.corner(chip, 9)
-	UIKit.outline(chip, BROWN, 1)
+	return UIKit.outline(chip, BROWN, 1.5)
+end
+
+-- A round piece of the portrait, `grow` px bigger than it all round, `z` among the portrait's pieces
+local function disc(parent: GuiObject, name: string, grow: number, z: number): Frame
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.Size = UDim2.new(1, grow * 2, 1, grow * 2)
+	frame.BorderSizePixel = 0
+	frame.ZIndex = z
+	frame.Parent = parent
+	UIKit.corner(frame, (BAR.PORTRAIT + grow * 2) / 2)
+	return frame
 end
 
 local function makeSlot(parent: Instance, slot: number): SlotView
@@ -227,14 +245,47 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	element.SizeConstraint = Enum.SizeConstraint.RelativeXX
 	element.ZIndex = 3
 
-	local rim = Instance.new("UIStroke")
-	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rim.Color = WHITE
-	rim.Thickness = BAR.RIM
-	rim.Parent = button
+	-- The 3D rim (Party.BAR RIM): its deep shade dropped under it, the rim itself, a white ring round the picture, the
+	-- picture sunk in (dark at its top) and a shine across the top
+	local base = disc(button, "Base", BAR.RIM, 0)
+	base.Position = UDim2.new(0.5, 0, 0.5, BAR.RIM_BASE)
+	local rim = disc(button, "Rim", BAR.RIM, 1)
+	rim.BackgroundColor3 = WHITE
 	local rimShade = Instance.new("UIGradient")
 	rimShade.Rotation = 90
 	rimShade.Parent = rim
+	local ring = Instance.new("UIStroke")
+	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ring.Color = WHITE
+	ring.Thickness = BAR.INNER_RING
+	ring.Parent = art
+	local sink = Instance.new("Frame")
+	sink.Name = "Sink"
+	sink.Size = UDim2.fromScale(1, 1)
+	sink.BackgroundColor3 = Color3.new(0, 0, 0)
+	sink.BorderSizePixel = 0
+	sink.ZIndex = art.ZIndex
+	sink.Parent = art
+	UIKit.corner(sink, BAR.PORTRAIT / 2)
+	local fade = Instance.new("UIGradient")
+	fade.Rotation = 90
+	fade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, BAR.SINK.transparency),
+		NumberSequenceKeypoint.new(BAR.SINK.depth, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	fade.Parent = sink
+	local shine = Instance.new("Frame")
+	shine.Name = "Shine"
+	shine.AnchorPoint = Vector2.new(0.5, 0)
+	shine.Position = UDim2.fromScale(0.5, BAR.SHINE.top)
+	shine.Size = UDim2.fromScale(BAR.SHINE.width, BAR.SHINE.height)
+	shine.BackgroundColor3 = WHITE
+	shine.BackgroundTransparency = BAR.SHINE.transparency
+	shine.BorderSizePixel = 0
+	shine.ZIndex = 4
+	shine.Parent = button
+	UIKit.corner(shine, BAR.PORTRAIT)
 
 	-- The level in a white pill under the portrait
 	local level = UIKit.label(button, "", Enum.Font.FredokaOne, 10, BROWN)
@@ -304,7 +355,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	rest.ZIndex = 7
 	UIKit.outlined(rest, 1.5)
 
-	keyChip(button, tostring(slot))
+	local chipEdge = keyChip(button, tostring(slot))
 	hit.Activated:Connect(function()
 		if swallowTap[slot] then
 			swallowTap[slot] = nil
@@ -353,6 +404,9 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 		lift = lift,
 		rim = rim,
 		rimShade = rimShade,
+		base = base,
+		shine = shine,
+		chipEdge = chipEdge,
 		art = art,
 		element = element,
 		level = level,
@@ -409,10 +463,22 @@ local function render()
 		else
 			view.button.BackgroundColor3 = EMPTY
 		end
-		-- A white ring; the summoned one orange
-		view.rimShade.Color = if isSummoned then ColorSequence.new(OUT_COLOR:Lerp(WHITE, 0.3), OUT_COLOR) else ColorSequence.new(WHITE)
-		view.rim.Transparency = if card then 0 else 1
+		-- The rim in the creature's element colour (Config/BabyColors ELEMENTS); the summoned one bigger and higher
+		local shades = if card then UIStyle.BABY[BabyColors.ELEMENTS[card.element] or "white"] else nil
+		view.rim.Visible = shades ~= nil
+		view.base.Visible = shades ~= nil
+		view.shine.Visible = shades ~= nil
+		if shades then
+			view.rimShade.Color = ColorSequence.new(shades.light, shades.fill)
+			view.base.BackgroundColor3 = shades.deep
+			view.chipEdge.Color = shades.fill
+		else
+			view.chipEdge.Color = BROWN
+		end
 		TweenService:Create(view.lift, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = if isSummoned then LIFT else 1 }):Play()
+		TweenService:Create(view.button, TweenInfo.new(0.15, Enum.EasingStyle.Back), {
+			Position = UDim2.new(0.5, 0, 0.5, if isSummoned then -BAR.RIM_BASE else 0),
+		}):Play()
 	end
 end
 
@@ -436,7 +502,7 @@ local function celebrate(slot: number)
 	end)
 	up:Play()
 	view.rimShade.Color = ColorSequence.new(UIKit.Colors.Accent)
-	task.delay(BAR.POP_SECONDS, render) -- back to its white ring
+	task.delay(BAR.POP_SECONDS, render) -- back to its element rim
 end
 
 -- Toasts the party's changes ("Cindercub swapped in for Ashbeak!") once the cards' names are known: a card added
