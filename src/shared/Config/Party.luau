@@ -518,6 +518,12 @@ return {
 	SPARKLES_PER_STAR = 1,
 	GRADE_S_SPARKLES = 2,
 	MAX_OUTLINES = 31, -- Roblox draws at most 31 Highlights on a screen
+	-- A creature appearing, leaving and fainting (owner 2026-11-04; Util/SummonFx, Util/SummonMotion): a summon pops in
+	-- out of a ring and pillar of light over `pop` seconds when it was stamped (SummonedAt) at most `window` seconds ago;
+	-- an unsummon shrinks it away and a light flies back into its owner over `unsummon` seconds (the server waits that
+	-- long before removing it); a faint flashes, tips it over in `tip` seconds, spins dizzy stars for `stars` seconds,
+	-- then it fades in a puff over `fade` seconds (and comes back when the fight is over)
+	SUMMON_FX = { window = 1.5, pop = 0.4, pillar = 9, unsummon = 0.45, tip = 0.3, stars = 1.3, fade = 0.4 },
 	-- Each client draws your own creatures plus the nearest others (Util/CreatureCull), so a full server stays light
 	CULL = { drawDistance = 140, hideDistance = 170, maxDrawn = 30 }, -- studs from the camera; creatures
 	CULL_INTERVAL = 0.5, -- seconds between checks

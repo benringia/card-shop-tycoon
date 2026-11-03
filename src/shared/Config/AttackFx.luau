@@ -92,6 +92,9 @@ return {
 		emberColossus = {
 			strike = "embers", -- a horn gore: a fiery burst and rock dust
 			release = "lava", -- the lava slam: a fire shockwave, glowing cracks and molten rocks thrown up
+			-- owner 2026-11-04: a huge fireball heaved off its back lands with the slam (scale: ElementFx.projectile's;
+			-- arc: studs it rises at the midpoint)
+			meteor = { scale = 7, arc = 28 },
 			color = rgb(255, 112, 32),
 			sounds = {
 				strike = "rbxassetid://9117330384", -- Pick Impacts 1 (heavy dirt and rock hits)

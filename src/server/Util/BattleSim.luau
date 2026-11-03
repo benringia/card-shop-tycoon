@@ -166,12 +166,15 @@ export type State = {
 	maxSeconds: number?, -- this fight's time limit (bosses get longer); combat.MAX_FIGHT_SECONDS when nil
 	timedOut: boolean?, -- it ended at the time limit (its result is "run" or "draw")
 	pending: { Pending }, -- hits on players waiting to land
+	casts: { Cast }, -- special moves winding up (combat.ABILITY_WINDUP), fired as their time comes
 	ringCount: number, -- rings so far (their ids)
 	ringCheck: ((ring: RingInfo) -> boolean)?, -- is the ring's target inside it as it lands (nil: always)
 }
 
 -- A boss's hit on a player, warned of and landing at `at`
 type Pending = { kind: string, at: number, target: Fighter, from: Fighter, damage: number, ring: number?, shape: string? }
+-- A Pet button move or super move winding up: it fires at `at` unless its caster has fainted or left by then
+type Cast = { fighter: Fighter, side: Side, ability: any, at: number }
 
 -- Small deterministic generator (LCG) so fights replay identically in Lune and Roblox
 local function random(state: State): number
@@ -277,6 +280,7 @@ function BattleSim.new(combat: any, sideA: SideInput, sideB: SideInput, seed: nu
 		sides = { a = makeSide(combat, sideA, "a"), b = makeSide(combat, sideB, "b") },
 		result = nil,
 		pending = {},
+		casts = {},
 		ringCount = 0,
 	}
 end
@@ -892,6 +896,9 @@ local function getUp(state: State, side: Side, fighter: Fighter, events: { Event
 	table.insert(events, { type = "out", to = fighter.id })
 end
 
+-- Fires the special moves whose wind-up is over (defined with useAbility, below applyAbility)
+local releaseCasts: (state: State, events: { Event }) -> ()
+
 function BattleSim.step(state: State, dt: number): { Event }
 	local events: { Event } = {}
 	if state.result then
@@ -900,6 +907,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 	state.time += dt
 	local combat = state.combat
 	landPending(state, events)
+	releaseCasts(state, events)
 
 	for _, side in { state.sides.a, state.sides.b } do
 		for _, fighter in side.fighters do
@@ -1051,6 +1059,20 @@ function BattleSim.perkOf(state: State, owner: string, kind: string): number
 	return 0
 end
 
+-- What each of `owner`'s fighters dealt, by sim id (its player's sword hits under "a:@<owner>"), the ones swapped out
+-- too: the defeat screen's numbers
+function BattleSim.damageBy(state: State, owner: string): { [string]: number }
+	local out = {}
+	for _, list in { state.sides.a.fighters, state.sides.a.reserves } do
+		for _, fighter in list do
+			if fighter.owner == owner and fighter.dealt > 0 then
+				out[fighter.id] = fighter.dealt
+			end
+		end
+	end
+	return out
+end
+
 function BattleSim.contribution(state: State, owner: string): { dealt: number, taken: number, totalDealt: number, totalTaken: number }
 	local result = { dealt = 0, taken = 0, totalDealt = 0, totalTaken = 0 }
 	for _, fighter in state.sides.a.fighters do
@@ -1129,6 +1151,21 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 	end
 end
 
+releaseCasts = function(state: State, events: { Event })
+	if #state.casts == 0 then
+		return
+	end
+	local waiting = {}
+	for _, cast in state.casts do
+		if state.time < cast.at then
+			table.insert(waiting, cast)
+		elseif not state.result and not cast.fighter.fainted and not cast.fighter.left then
+			applyAbility(state, cast.fighter, cast.side, cast.ability, events)
+		end
+	end
+	state.casts = waiting
+end
+
 function BattleSim.useAbility(state: State, id: string, which: string, owner: string?): ({ Event }?, string?)
 	if state.result then
 		return nil, "ended"
@@ -1161,7 +1198,14 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		return nil, "none"
 	end
 	local events: { Event } = {}
-	applyAbility(state, fighter, side, ability, events)
+	-- It winds up first (owner 2026-11-04: everyone sees it coming): a "cast" now, the move when the wind-up ends
+	local windup = combat.ABILITY_WINDUP or 0
+	if windup <= 0 then
+		applyAbility(state, fighter, side, ability, events)
+		return events, nil
+	end
+	table.insert(state.casts, { fighter = fighter, side = side, ability = ability, at = state.time + windup })
+	table.insert(events, { type = "cast", from = fighter.id, kind = ability.kind, seconds = windup })
 	return events, nil
 end
 

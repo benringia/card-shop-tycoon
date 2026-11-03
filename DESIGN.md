@@ -966,8 +966,8 @@ group, checked before its fragments and every time (not only the first). Below i
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
   creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're
-  down and none of your creatures can fight: "Teleporting back to town in 3, 2, 1" (`Combat.LOSS_COUNTDOWN`,
-  `BossRules.countdownText`), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
+  down and none of your creatures can fight: the defeat screen counts down `Combat.LOSS_COUNTDOWN` 5 s (tap it to go
+  at once, remote `SkipDefeat`; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
   kneeling, until the fight ends, and a win counts for them too.
 - **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 3 (`Swords.UNLOCK_SHOP_LEVEL`,
@@ -994,7 +994,10 @@ group, checked before its fragments and every time (not only the first). Below i
   Dodge and Skill move up beside it (`UiLayout.combatButtons(view, noAttack)`), and the first-sword popup says "click
   to swing, Shift to dodge" instead of "tap Attack". Top-left your headshot in a bevelled ring with
   your creature's card on a badge, beside your HP and your creature's in slanted neon bars (`Util/HpBar`, ticks every
-  20%); the boss's HP is the same bar across the top, red. A hit drops the fill at once and leaves a ghost of the
+  20%); the boss's HP is a plate across the top (owner 2026-11-04, design A: gold-edged, the boss's element in a
+  gold ring, its name big with its title and level under it, the bar with the HP number on the right; `TOP_BAR` in
+  `Config/CombatHud`), a normal monster's a slim red bar with its name and level over it (an elite's gold with an
+  ELITE tag; `HpBar.setLook`). A hit drops the fill at once and leaves a ghost of the
   lost HP (red on yours, pale gold on the boss's) that holds 0.35 s, then drains in 0.45 s, with a white flash; a heal
   moves a pale lead ahead and the fill rises to it. When you're hit the portrait shakes with a red ring and the
   screen's edges flash red for 0.55 s, stronger for a bigger share of your HP; below 30% HP they keep pulsing
@@ -1030,7 +1033,11 @@ group, checked before its fragments and every time (not only the first). Below i
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
   once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
   Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
-  Pet button moves and super moves (`AttackFx.SPECIALS`, `ElementFx.special`) land at once with their `ability`
+  Pet button moves and super moves wind up first (owner 2026-11-04, design A): the press spends the cooldown and the
+  sim sends a `cast` event, then fires the move `Combat.ABILITY_WINDUP` 0.5 s later unless the caster has fainted or
+  left (`BattleSim` casts); meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
+  it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
+  everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
   event: Fireball a blast and a fire ring on the ground, Wave a swelling water dome, Snare five vines round the target
   (4 s), Overcharge a crackling aura on the caster (3 s), Curse a purple mist (5 s); the super moves Inferno a fire
   pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
@@ -1050,7 +1057,9 @@ group, checked before its fragments and every time (not only the first). Below i
   and 1.6x as wide, 47 studs and 56 degrees, `Bosses` hugeSwipe, `RingRules.swipeSize`, the warning, the web and the hit
   check all that size). Ember Colossus: horn gore (sits back, head low, then
   tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
-  shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
+  shockwave, glowing cracks, molten rocks; owner 2026-11-04, design A "meteor slam": as its ring appears a huge
+  fireball is heaved off its back and arcs high to land with the slam, `AttackFx.BOSS` meteor, and the eruption is
+  bigger: wider, a tall fire pillar, a burst and a shockwave ring). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
   remodel.
 - **Wild monster attacks** (same spec): each valley species has a keyed `windup` and `strike`
   (`tools/blender/anim_wild.py`, `MonsterAnimations/<species>`), played the same way as a boss's normal attack, with
@@ -1109,8 +1118,8 @@ group, checked before its fragments and every time (not only the first). Below i
   one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
   new card, a first-clear chest item and the bonus glow gold, with a chime); the notes (loot on the ground, carried,
   reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
-  up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss is "DEFEATED" in red,
-  a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
+  up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss has its own screen
+  (below), a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
   itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down. Its
   sounds are fetched on the loading screen and kept loaded, and the silent start of the fanfare and the level-up
   shimmer is skipped (`Victory.START_AT`), so they land with the moment.
@@ -1135,8 +1144,24 @@ group, checked before its fragments and every time (not only the first). Below i
   Cave Brood Queen HP 2600 (23/60 | 60/90), Ember Colossus HP 6300 (6/60 | 60/86), Frost Tyrant unchanged (0/63 |
   49/91), Storm Sovereign 28000 / ATK 43 (20/60 | 60/90), Rift Devourer HP 34000 (23/60 | 58/82), Prism Hydra
   60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
+- **Defeat screen** (owner 2026-11-04, design A "Defeated card"; `Util/DefeatScreen`, `Util/DefeatRules`,
+  `Config/Defeat`), a lost boss fight: the world goes grey with a red edge (a ColorCorrectionEffect and the hit-flash
+  vignette) and a soft sad sting plays (APM "Depths of Grief Sting B", Roblox-licensed); "DEFEATED" drops in with
+  "<boss> won · m:ss" under it, then a card with the fight's numbers the server sends (`summary.defeat`,
+  `BattleSim.damageBy`): your sword's damage, each of your creatures' (the top 3), the boss's HP left as a bar, rings
+  dodged of those aimed at you (counted per member); a tip (the boss's own, `Defeat.TIPS`); and a ring of 24 dots going
+  out one by one around the seconds left, "Back to town · tap to go now" (remote `SkipDefeat`, BossService sends you at
+  once; the countdown sends you anyway).
+- **Summon, unsummon, faint** (owner 2026-11-04: light pillar, back into you, dizzy stars; `Util/SummonFx`,
+  `Util/SummonMotion`, `Party.SUMMON_FX`): a summon (or a call-in, or a creature swapped back in) stamps `SummonedAt` on
+  its marker and clients that see it fresh (within 1.5 s, not one streaming in later) draw a ring and a pillar of light
+  in its element colour as it pops up out of them with a bounce and sparkles. An unsummon, a swap or the end of a
+  call-in flags the marker `Unsummon` and removes it 0.45 s later (`PartyService.Dismiss`; renamed at once so the next
+  marker's name is free): it flashes, shrinks away and a light flies back into its owner; a boss fight's benched leader
+  does the same. A faint: a white flash, it tips over (`CreatureVisuals`, eased), dizzy stars circle its head for
+  1.3 s, then it fades in a puff, and pops back when it's no longer fainted.
 - **Wild fight HUD** (owner 2026-11-03, layout A: the boss fight's look without the sword): the monster's name and HP
-  in the top bar (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
+  in the slim bar at the top (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
   ring with its HP top left (a called-in one's bar under it, the perk chip), and the slanted buttons bottom right
   (`CombatHud.new(..., wild, sword)`, `UiLayout.wildButtons`): with a sword, the boss fight's buttons (Attack, Dodge,
   the skill, the Pet button) and your HP bar on top with your creature's and a called-in one's under it; without one

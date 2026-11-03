@@ -407,10 +407,4 @@ function BossRules.lossHome(place: string): "spring" | "frontierSpring" | "dunge
 	return "spring"
 end
 
--- The loss screen's countdown line, `secondsLeft` before the move ("... in 3", "... in 2", "... in 1")
-function BossRules.countdownText(secondsLeft: number): string
-	local whole = math.ceil(secondsLeft - 1e-9)
-	return if whole >= 1 then `Teleporting back to town in {whole}` else "Teleporting back to town..."
-end
-
 return BossRules

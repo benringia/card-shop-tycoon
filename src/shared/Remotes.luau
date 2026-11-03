@@ -45,6 +45,7 @@ local NAMES = {
 	"CallIn", -- client → server: (beastId: string) second party card joins, first seconds only
 	"UseAbility", -- client → server: (fighterId: string, which: "element" | "signature")
 	"RunFight", -- client → server: ()
+	"SkipDefeat", -- client → server: () a lost boss fight's player goes home now instead of after the countdown
 	"BattleStarted", -- server → client: { monsterId, species, level, elite, element, names = { [beastId] = name }, snapshot }
 	"BattleEvent", -- server → client: { events = { Event }, snapshot } (BattleSim)
 	"ArenaWatch", -- server → client: a PvP fight for players watching from the stands: { events, markers? } or { ended = true }
@@ -139,6 +140,7 @@ return {
 	CallIn = remotes.CallIn,
 	UseAbility = remotes.UseAbility,
 	RunFight = remotes.RunFight,
+	SkipDefeat = remotes.SkipDefeat,
 	BattleStarted = remotes.BattleStarted,
 	BattleEvent = remotes.BattleEvent,
 	ArenaWatch = remotes.ArenaWatch,

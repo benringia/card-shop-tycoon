@@ -19,6 +19,8 @@ local FightMotion = require(Shared:WaitForChild("Util"):WaitForChild("FightMotio
 local Rarities = require(Config:WaitForChild("Rarities"))
 local CreatureCull = require(Shared:WaitForChild("Util"):WaitForChild("CreatureCull"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
+local SummonFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SummonFx"))
+local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 
 local CreatureController = {}
 
@@ -192,8 +194,8 @@ local function remove(marker: BasePart)
 end
 
 local function add(marker: BasePart)
-	if creatures[marker] or not marker:GetAttribute("CardId") then
-		return
+	if creatures[marker] or not marker:GetAttribute("CardId") or marker:GetAttribute("Unsummon") == true then
+		return -- one already leaving isn't drawn again
 	end
 	local card = Cards.ById[marker:GetAttribute("CardId") :: string]
 	if not card then
@@ -250,6 +252,28 @@ local function add(marker: BasePart)
 		updateHpBar(creature)
 	end))
 	creatures[marker] = creature
+	-- Appearing, leaving and fainting (Util/SummonFx): a fresh summon pops in (not one streaming in later), an unsummon
+	-- shrinks back into its owner, a faint spins stars then fades (one already fainted when it came into view is just
+	-- gone) and comes back when it isn't any more
+	local color = Cards.ELEMENTS[card.element] or Color3.new(1, 1, 1)
+	local summonedAt = marker:GetAttribute("SummonedAt")
+	if SummonMotion.fresh(if typeof(summonedAt) == "number" then summonedAt else nil, workspace:GetServerTimeNow(), Party.SUMMON_FX.window) then
+		SummonFx.summon(body, color)
+	end
+	if marker:GetAttribute("Fainted") == true then
+		SummonFx.faint(body, true)
+	end
+	table.insert(creature.connections, marker:GetAttributeChangedSignal("Unsummon"):Connect(function()
+		local owner = Players:GetPlayerByUserId(tonumber(marker:GetAttribute("OwnerUserId")) or 0)
+		SummonFx.unsummon(body, color, if owner then owner.Character else nil)
+	end))
+	table.insert(creature.connections, marker:GetAttributeChangedSignal("Fainted"):Connect(function()
+		if marker:GetAttribute("Fainted") == true then
+			SummonFx.faint(body)
+		else
+			SummonFx.revive(body)
+		end
+	end))
 	if marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId and Players.LocalPlayer:GetAttribute("CreatureReady") ~= true then
 		-- Your own creature, the first time: the loading screen waits until its model has downloaded
 		task.spawn(function()
@@ -397,7 +421,17 @@ function CreatureController.Start()
 		nextKey += 1
 		known[child] = tostring(nextKey)
 		refreshCull()
-		child:GetAttributeChangedSignal("Benched"):Connect(refreshCull)
+		-- Swapped out of a boss fight: it shrinks back into its owner first, then it's hidden
+		child:GetAttributeChangedSignal("Benched"):Connect(function()
+			local creature = creatures[child]
+			if child:GetAttribute("Benched") == true and creature then
+				local owner = Players:GetPlayerByUserId(tonumber(child:GetAttribute("OwnerUserId")) or 0)
+				SummonFx.unsummon(creature.body, Cards.ELEMENTS[creature.element] or Color3.new(1, 1, 1), if owner then owner.Character else nil)
+				task.delay(Party.SUMMON_FX.unsummon, refreshCull)
+			else
+				refreshCull()
+			end
+		end)
 		if not creatures[child] then
 			-- Attributes can arrive a moment after the part: try again when the card id shows up
 			local connection: RBXScriptConnection

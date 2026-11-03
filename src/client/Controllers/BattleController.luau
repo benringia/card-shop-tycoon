@@ -48,13 +48,15 @@ local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local Swords = require(Config:WaitForChild("Swords"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
-local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
+local DefeatScreen = require(ClientUtil:WaitForChild("DefeatScreen"))
+local DefeatRules = require(Shared:WaitForChild("Util"):WaitForChild("DefeatRules"))
+local Defeat = require(Config:WaitForChild("Defeat"))
 local FightToast = require(ClientUtil:WaitForChild("FightToast"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
 local Victory = require(Config:WaitForChild("Victory"))
@@ -138,9 +140,17 @@ local actionRow: Frame
 local runButton: TextButton
 local countdownLabel: TextLabel -- arena: 3, 2, 1, FIGHT!
 local countdownToken = 0
-local bossBar: Frame -- boss fights: name and HP across the top of the screen
+-- The foe's bar across the top (owner 2026-11-04, design A): a boss's plate or a monster's slim bar; each fight points
+-- bossBar, bossName, bossHp and bossHpText at the one it uses
+type TopBar = { frame: Frame, name: TextLabel, hp: HpBar.Bar, text: TextLabel }
+local plate: TopBar
+local slim: TopBar
+local plateCrest: TextLabel -- the boss's element in the plate's ring (a phase change swaps it)
+local plateTitle: TextLabel
+local slimTag: TextLabel -- ELITE
+local bossBar: Frame
 local bossName: TextLabel
-local bossHp: HpBar.Bar -- the slanted neon bar, its ghost pale gold
+local bossHp: HpBar.Bar
 local bossHpText: TextLabel
 local addsRow: Frame -- boss fights: its adds' HP, under the boss bar
 local addBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
@@ -1047,9 +1057,8 @@ local function onEvents(events: { any })
 			-- The final boss changes element (the server lights that head on its model)
 			banner(`{elementIcon(event.kind)} {event.kind} phase!`, Cards.ELEMENTS[event.kind] or Color3.new(1, 1, 1))
 			shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
-			local boss = if bossId then Bosses.BOSSES[bossId] else nil
-			if boss then
-				bossName.Text = `{elementIcon(event.kind)} {boss.name} · Lv {boss.level}`
+			if bossId then
+				plateCrest.Text = elementIcon(event.kind)
 			end
 		end
 	end
@@ -1183,12 +1192,24 @@ local function showEnd(summary: any, wasBoss: boolean)
 			party = party,
 		})
 	elseif result == "lose" then
-		VictoryScreen.show({
-			kind = "lose",
-			title = "DEFEATED",
-			subtitle = "Your party fainted",
-			notes = { restLine() },
-			seconds = Combat.END_SCREEN_SECONDS,
+		-- The defeat screen (owner 2026-11-04, design A): the fight's numbers, a tip, the countdown to town (tap: now)
+		local defeat = if typeof(summary.defeat) == "table" then summary.defeat else {}
+		local countdown = tonumber(summary.countdown)
+		VictoryScreen.hide()
+		countdownToken += 1 -- the "Down!" banner from going down would show through the card
+		countdownLabel.Visible = false
+		DefeatScreen.show({
+			subtitle = DefeatRules.subtitle(defeat.foe, tonumber(defeat.seconds)),
+			rows = if typeof(defeat.stats) == "table" then DefeatRules.rows(defeat.stats, Cards.ById, Defeat) else {},
+			tip = if typeof(defeat.tip) == "string" then defeat.tip else restLine(),
+			seconds = countdown or Combat.END_SCREEN_SECONDS,
+			art = function(cardId: string): string?
+				local card = Cards.ById[cardId]
+				return if card then CardArt.pick(card.name, Victory.PORTRAIT, CardArtConfig) else nil
+			end,
+			onSkip = if countdown then function()
+				Remotes.SkipDefeat:FireServer()
+			end else nil,
 		})
 	else
 		VictoryScreen.show({
@@ -1414,10 +1435,24 @@ local function onStarted(payload: any)
 	end
 	local boss = if mode == "wild" and typeof(payload.boss) == "string" then Bosses.BOSSES[payload.boss] else nil
 	bossId = if boss then payload.boss else nil
+	-- The top bar: the plate for a boss, the slim bar for a monster (an elite's gold with its tag)
+	local topBar = if boss then plate else slim
+	local otherBar = if boss then slim else plate
+	otherBar.frame.Visible = false
+	bossBar, bossName, bossHp, bossHpText = topBar.frame, topBar.name, topBar.hp, topBar.text
+	addsRow.Parent = bossBar
+	local topSpec = CombatHudConfig.TOP_BAR
 	if boss then
 		monsterName.Text = `BOSS {elementIcon(boss.element)} {boss.name}`
 		monsterName.TextColor3 = UIKit.Colors.Danger
-		bossName.Text = `{elementIcon(boss.element)} {boss.name} · Lv {boss.level}`
+		plateCrest.Text = elementIcon(boss.element)
+		bossName.Text = boss.name
+		plateTitle.Text = `{string.upper(boss.title)} · LV {boss.level}`
+	else
+		bossName.Text = `{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
+		bossName.TextColor3 = if payload.elite then ELITE_COLOR else Color3.new(1, 1, 1)
+		slimTag.Visible = payload.elite == true
+		slim.hp.setLook(if payload.elite then CombatHudConfig.HP_BAR.ELITE else CombatHudConfig.HP_BAR.MONSTER)
 	end
 	stopCombat()
 	combatWild = false
@@ -1427,13 +1462,13 @@ local function onStarted(payload: any)
 		startCombat(payload.buttonNames == true)
 	elseif mode == "wild" then
 		startCombat(true, true, payload.sword == true)
-		bossName.Text = monsterName.Text
 	end
-	bossName.TextColor3 = if boss then UIKit.Colors.Danger elseif payload.elite then ELITE_COLOR else Color3.new(1, 1, 1)
 	bossBar.Visible = boss ~= nil or combatWild
 	bossHp.reset(view.monster.hp, view.monster.maxHp) -- a new foe starts at its own HP, no ghost from the last fight
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
-	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, 46) else UDim2.new(0.6, 0, 0, 46)
+	local height = if boss then (if UIKit.isPhone() then topSpec.PLATE_PHONE_HEIGHT else topSpec.PLATE_HEIGHT) else topSpec.SLIM_NAME + topSpec.SLIM_BAR + 10
+	bossBar.Size = if UIKit.isPhone() then UDim2.new(1, -BOSS_BAR_PHONE_MARGIN * 2, 0, height)
+		else UDim2.new(if boss then 0.6 else topSpec.SLIM_WIDTH, 0, 0, height)
 	packFight = mode == "wild" and boss == nil and #view.enemies > 1
 	monsterTrack.Visible = mode == "wild" and boss == nil and not packFight -- a boss's HP is the bar at the top
 	enemyRow.Visible = mode == "pvp" or packFight
@@ -1471,26 +1506,6 @@ local function onStarted(payload: any)
 	end
 end
 
--- A lost boss fight: "Teleporting back to town in 3", "... 2", "... 1" (the server moves you home)
-local function showLossCountdown(seconds: number)
-	countdownToken += 1
-	local token = countdownToken
-	task.spawn(function()
-		for left = seconds, 1, -1 do
-			if countdownToken ~= token then
-				return
-			end
-			countdownLabel.Text = BossRules.countdownText(left)
-			countdownLabel.TextColor3 = Color3.new(1, 1, 1)
-			countdownLabel.Visible = true
-			task.wait(1)
-		end
-		if countdownToken == token then
-			countdownLabel.Visible = false
-		end
-	end)
-end
-
 local function onEnded(summary: any)
 	fighting = false
 	local wasBoss = bossId ~= nil
@@ -1520,9 +1535,6 @@ local function onEnded(summary: any)
 	end
 	if typeof(summary) == "table" then
 		showEnd(summary, wasBoss)
-		if typeof(summary.countdown) == "number" and summary.countdown > 0 then
-			showLossCountdown(summary.countdown)
-		end
 	end
 end
 
@@ -1654,35 +1666,128 @@ local function build()
 	countdownLabel.ZIndex = UIKit.PANEL_Z_INDEX + 2
 	Instance.new("UIScale").Parent = countdownLabel
 
-	-- Boss HP at the very top: up in the Roblox top bar's row, between its buttons (placed when a fight starts)
-	bossBar = Instance.new("Frame")
-	bossBar.Name = "BossBar"
-	bossBar.AnchorPoint = Vector2.new(0.5, 0)
-	bossBar.Position = UDim2.new(0.5, 0, 0, 4)
-	bossBar.Size = UDim2.new(0.6, 0, 0, 46)
-	bossBar.BackgroundColor3 = UIKit.Colors.Panel
-	bossBar.BackgroundTransparency = 0.1
-	bossBar.Visible = false
-	bossBar.ZIndex = UIKit.PANEL_Z_INDEX + 1
-	bossBar.Parent = screenGui
-	UIKit.corner(bossBar, 12)
-	local bossWidth = Instance.new("UISizeConstraint")
-	bossWidth.MaxSize = Vector2.new(BOSS_BAR_MAX_WIDTH, math.huge)
-	bossWidth.Parent = bossBar
-	bossName = UIKit.label(bossBar, "", Enum.Font.FredokaOne, 16, UIKit.Colors.Danger)
-	bossName.Position = UDim2.fromOffset(12, 3)
-	bossName.Size = UDim2.new(1, -24, 0, 18)
-	bossName.TextXAlignment = Enum.TextXAlignment.Center
-	bossName.TextTruncate = Enum.TextTruncate.AtEnd
+	-- The foe's bar at the very top, up in the Roblox top bar's row between its buttons (placed when a fight starts).
+	-- Bosses: a gold-edged plate with the element crest, the name big with its title and level under it, and the bar
+	-- with the HP number. Monsters: a slim bar with name and level over it, gold with an ELITE tag for an elite.
 	local barSpec = CombatHudConfig.HP_BAR
-	bossHp = HpBar.new(bossBar, barSpec.HEIGHT, barSpec.BOSS, barSpec.BOSS_GHOST)
-	bossHp.frame.Position = UDim2.fromOffset(16, 22)
-	bossHp.frame.Size = UDim2.new(1, -32, 0, barSpec.HEIGHT)
-	bossHpText = UIKit.label(bossHp.frame, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	bossHpText.Size = UDim2.fromScale(1, 1)
-	bossHpText.TextXAlignment = Enum.TextXAlignment.Center
-	bossHpText.TextStrokeTransparency = 0.5
-	bossHpText.ZIndex = bossHp.topZIndex
+	local topSpec = CombatHudConfig.TOP_BAR
+	local phone = UIKit.isPhone()
+	local function rgb(values: { number }): Color3
+		return Color3.fromRGB(values[1], values[2], values[3])
+	end
+	local function holder(name: string): Frame
+		local frame = Instance.new("Frame")
+		frame.Name = name
+		frame.AnchorPoint = Vector2.new(0.5, 0)
+		frame.BackgroundTransparency = 1
+		frame.Visible = false
+		frame.ZIndex = UIKit.PANEL_Z_INDEX + 1
+		frame.Parent = screenGui
+		local width = Instance.new("UISizeConstraint")
+		width.MaxSize = Vector2.new(if name == "BossPlate" then BOSS_BAR_MAX_WIDTH else topSpec.SLIM_MAX_WIDTH, math.huge)
+		width.Parent = frame
+		return frame
+	end
+	-- A row of labels centred at the top of `parent`
+	local function centredRow(parent: Frame, height: number, gap: number): Frame
+		local row = Instance.new("Frame")
+		row.BackgroundTransparency = 1
+		row.AnchorPoint = Vector2.new(0.5, 0)
+		row.Size = UDim2.fromOffset(0, height)
+		row.AutomaticSize = Enum.AutomaticSize.X
+		row.ZIndex = parent.ZIndex
+		row.Parent = parent
+		local list = Instance.new("UIListLayout")
+		list.FillDirection = Enum.FillDirection.Horizontal
+		list.VerticalAlignment = Enum.VerticalAlignment.Center
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Padding = UDim.new(0, gap)
+		list.Parent = row
+		return row
+	end
+
+	local plateFrame = holder("BossPlate")
+	plateFrame.BackgroundColor3 = rgb(CombatHudConfig.PANEL_COLOR)
+	plateFrame.BackgroundTransparency = 0.12
+	UIKit.corner(plateFrame, 12)
+	local plateEdge = Instance.new("UIStroke")
+	plateEdge.Color = rgb(topSpec.GOLD)
+	plateEdge.Thickness = 2
+	plateEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	plateEdge.Parent = plateFrame
+	local crestSize = if phone then 32 else topSpec.CREST
+	local heading = centredRow(plateFrame, crestSize, 8)
+	heading.Position = UDim2.new(0.5, 0, 0, 5)
+	plateCrest = UIKit.label(heading, "", Enum.Font.GothamBold, math.round(crestSize * 0.55), Color3.new(1, 1, 1))
+	plateCrest.LayoutOrder = 1
+	plateCrest.Size = UDim2.fromOffset(crestSize, crestSize)
+	plateCrest.TextXAlignment = Enum.TextXAlignment.Center
+	plateCrest.BackgroundColor3 = rgb(topSpec.CREST_BACK)
+	plateCrest.BackgroundTransparency = 0
+	UIKit.corner(plateCrest, crestSize)
+	local crestEdge = Instance.new("UIStroke")
+	crestEdge.Color = rgb(topSpec.GOLD)
+	crestEdge.Thickness = 2
+	crestEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	crestEdge.Parent = plateCrest
+	local words = Instance.new("Frame")
+	words.LayoutOrder = 2
+	words.BackgroundTransparency = 1
+	words.AutomaticSize = Enum.AutomaticSize.XY
+	words.ZIndex = plateFrame.ZIndex
+	words.Parent = heading
+	local wordsList = Instance.new("UIListLayout")
+	wordsList.SortOrder = Enum.SortOrder.LayoutOrder
+	wordsList.Parent = words
+	local nameSize = if phone then 18 else topSpec.NAME_SIZE
+	local titleSize = if phone then 10 else topSpec.TITLE_SIZE
+	local plateName = UIKit.label(words, "", Enum.Font.FredokaOne, nameSize, rgb(topSpec.NAME_COLOR))
+	plateName.LayoutOrder = 1
+	plateName.TextWrapped = false
+	plateName.Size = UDim2.fromOffset(0, nameSize + 2)
+	plateName.AutomaticSize = Enum.AutomaticSize.X
+	plateName.TextStrokeTransparency = 0.4
+	plateTitle = UIKit.label(words, "", Enum.Font.GothamBold, titleSize, rgb(topSpec.TITLE_COLOR))
+	plateTitle.LayoutOrder = 2
+	plateTitle.TextWrapped = false
+	plateTitle.Size = UDim2.fromOffset(0, titleSize + 2)
+	plateTitle.AutomaticSize = Enum.AutomaticSize.X
+	local plateHp = HpBar.new(plateFrame, barSpec.HEIGHT, barSpec.BOSS_PLATE, barSpec.BOSS_GHOST)
+	plateHp.frame.AnchorPoint = Vector2.new(0, 1)
+	plateHp.frame.Position = UDim2.new(0, 16, 1, -8)
+	plateHp.frame.Size = UDim2.new(1, -32, 0, barSpec.HEIGHT)
+	local plateText = UIKit.label(plateHp.frame, "", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+	plateText.Size = UDim2.new(1, -14, 1, 0)
+	plateText.TextXAlignment = Enum.TextXAlignment.Right
+	plateText.TextStrokeTransparency = 0.5
+	plateText.ZIndex = plateHp.topZIndex
+	plate = { frame = plateFrame, name = plateName, hp = plateHp, text = plateText }
+
+	local slimFrame = holder("MonsterBar")
+	local slimHeading = centredRow(slimFrame, topSpec.SLIM_NAME + 2, 5)
+	slimHeading.Position = UDim2.new(0.5, 0, 0, 0)
+	slimTag = UIKit.label(slimHeading, "ELITE", Enum.Font.FredokaOne, 11, Color3.fromRGB(58, 42, 0))
+	slimTag.LayoutOrder = 1
+	slimTag.TextWrapped = false
+	slimTag.TextXAlignment = Enum.TextXAlignment.Center
+	slimTag.Size = UDim2.fromOffset(40, 15)
+	slimTag.BackgroundColor3 = rgb(topSpec.ELITE_TAG)
+	slimTag.BackgroundTransparency = 0
+	slimTag.Visible = false
+	UIKit.corner(slimTag, 4)
+	local slimName = UIKit.label(slimHeading, "", Enum.Font.FredokaOne, topSpec.SLIM_NAME, Color3.new(1, 1, 1))
+	slimName.LayoutOrder = 2
+	slimName.TextWrapped = false
+	slimName.Size = UDim2.fromOffset(0, topSpec.SLIM_NAME + 2)
+	slimName.AutomaticSize = Enum.AutomaticSize.X
+	slimName.TextStrokeTransparency = 0.3
+	local slimHp = HpBar.new(slimFrame, topSpec.SLIM_BAR, barSpec.MONSTER, barSpec.GHOST)
+	slimHp.frame.Position = UDim2.fromOffset(0, topSpec.SLIM_NAME + 6)
+	slimHp.frame.Size = UDim2.new(1, 0, 0, topSpec.SLIM_BAR)
+	local slimText = UIKit.label(slimHp.frame, "", Enum.Font.GothamBold, 10, UIKit.Colors.Text)
+	slimText.Visible = false -- the slim bar shows no number
+	slim = { frame = slimFrame, name = slimName, hp = slimHp, text = slimText }
+	bossBar, bossName, bossHp, bossHpText = plateFrame, plateName, plateHp, plateText -- until a fight picks one
 
 	addsRow = Instance.new("Frame")
 	addsRow.Name = "BossAdds"

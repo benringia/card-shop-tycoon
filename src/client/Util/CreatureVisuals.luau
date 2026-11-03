@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureMotion = require(Shared:WaitForChild("Util"):WaitForChild("CreatureMotion"))
+local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 local Party = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
 local Ambient = require(Shared:WaitForChild("Config"):WaitForChild("Ambient"))
 local ModelPreload = require(Shared:WaitForChild("Util"):WaitForChild("ModelPreload"))
@@ -47,6 +48,8 @@ export type Body = {
 	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random, fired: boolean },
 	fxColor: Color3, -- roar shockwaves and sparks (the card's element colour)
 	aura: BeastAura.Aura?, -- Legendaries and grade S/A copies: element fire, lightning, footstep dust (addBeastFx)
+	grow: number?, -- popping in or shrinking away (Util/SummonFx): drawn at this share of its size
+	faintedAt: number?, -- os.clock when it fainted: it tips over from then (Util/SummonMotion.faintRoll)
 }
 
 function CreatureVisuals.countParts(model: Instance): number
@@ -536,10 +539,18 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 	end
 	body.frame += 1
 
+	local grow = body.grow
+	if grow then
+		body.model:ScaleTo(body.baseScale * grow)
+	end
+	-- Fainted: it tips over onto its side (then Util/SummonFx fades it out)
 	if body.marker:GetAttribute("Fainted") == true then
-		body.model:PivotTo(body.cframe * CFrame.Angles(0, 0, FAINT_ROLL))
+		body.faintedAt = body.faintedAt or now
+		local roll = SummonMotion.faintRoll(now - (body.faintedAt :: number), Party.SUMMON_FX.tip, FAINT_ROLL)
+		body.model:PivotTo(body.cframe * CFrame.Angles(0, 0, roll))
 		return
 	end
+	body.faintedAt = nil
 
 	local near = (body.cframe.Position - origin).Magnitude <= NEAR_DISTANCE
 	if body.aura then
@@ -605,7 +616,7 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		body.model:PivotTo(body.cframe * CFrame.new(0, pose.offsetY + extra.lift * body.size, -extra.forward * body.size) * CFrame.Angles(0, extra.yaw, 0) * CFrame.Angles(-pose.pitch, 0, pose.roll + extra.roll))
 		-- Model:ScaleTo is uniform: breathing grows and shrinks a little, every other frame, only up close
 		if near and body.frame % 2 == 0 then
-			body.model:ScaleTo(body.baseScale * pose.scaleY)
+			body.model:ScaleTo(body.baseScale * pose.scaleY * (grow or 1))
 		end
 	end
 end

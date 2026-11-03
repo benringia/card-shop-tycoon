@@ -488,13 +488,6 @@ return {
 		expect.equal(BossRules.lossHome("Dungeon"), "dungeon", "out of the run, as today")
 	end,
 
-	["the loss countdown reads Teleporting back to town in n"] = function()
-		expect.equal(BossRules.countdownText(3), "Teleporting back to town in 3")
-		expect.equal(BossRules.countdownText(1), "Teleporting back to town in 1")
-		expect.equal(BossRules.countdownText(1.4), "Teleporting back to town in 2", "partial seconds round up")
-		expect.equal(BossRules.countdownText(0), "Teleporting back to town...")
-	end,
-
 	["each boss has its one ring shape (attack animations spec)"] = function()
 		local shapes = {
 			meadowWarden = "slam",

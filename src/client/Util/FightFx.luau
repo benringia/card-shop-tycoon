@@ -56,6 +56,14 @@ local function color(rgb: { number }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
+-- Each special move's name by its kind (Combat ABILITIES and SIGNATURES), for its callout
+local MOVE_NAMES: { [string]: string } = {}
+for _, list in { Combat.ABILITIES, Combat.SIGNATURES } do
+	for _, ability in list do
+		MOVE_NAMES[ability.kind] = ability.name
+	end
+end
+
 function FightFx.new(resolve: Resolve): Dispatcher
 	local pending: { [string]: Pending } = {}
 	local active = 0
@@ -277,6 +285,26 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		hitSound(view.element, spot)
 	end
 
+	-- A Pet button move or super move winding up (Combat.ABILITY_WINDUP, owner 2026-11-04 design A): the creature
+	-- holds still in a big glow, a ring in the move's colour spins under it and the move's name pops above it; the move
+	-- itself lands with its "ability" event. Always shown (it's the cue everyone watches for).
+	local function onCast(event: any)
+		local spec = AttackFx.SPECIALS[event.kind]
+		local marker = resolve.marker(event.from)
+		local view = if marker then resolve.creature(marker) else nil
+		if not spec or not marker or not view then
+			return
+		end
+		local seconds = math.max(0.1, tonumber(event.seconds) or 0.5)
+		local tint = color(spec.color)
+		resolve.setCharging(marker, seconds)
+		resolve.pose(marker, "charge")
+		ElementFx.chargeGlow(view.root, tint, seconds, 1.7)
+		ElementFx.castRing(view.root.Position - Vector3.new(0, view.height * 0.45, 0), tint, math.max(2, view.height * 0.8), seconds)
+		ElementFx.callout(view.root, view.height * 0.6, `{string.upper(MOVE_NAMES[event.kind] or event.kind)}!`, tint, seconds)
+		ElementFx.sound(AttackFx.SOUNDS.charge, view.root.Position)
+	end
+
 	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event), a
 	-- shake near it and a flash on your screen when it's your creature's
 	local function onSpecial(event: any)
@@ -347,6 +375,17 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local seconds = (tonumber(event.seconds) or 1) + Combat.HIT_GRACE
 				gathering[marker] = ElementFx.gather(middle, tint, seconds, view.height * 0.6)
 			end
+			-- A meteor heaved off the boss's back, arcing high to land on the ring with the slam (AttackFx BOSS meteor;
+			-- the Ember Colossus, owner 2026-11-04)
+			local meteor = spec.meteor
+			if meteor and typeof(event.x) == "number" then
+				local seconds = (tonumber(event.seconds) or 1) + Combat.HIT_GRACE
+				local from = view.root.Position + Vector3.new(0, view.height * 0.9, 0)
+				local ground = Vector3.new(event.x, RingFx.groundY(event.x, event.y, event.z), event.z)
+				ElementFx.projectile(from, function()
+					return ground
+				end, tint, seconds, meteor.arc, function() end, { scale = meteor.scale, flames = true })
+			end
 		elseif slam then
 			stopGathering(marker)
 			if move then
@@ -392,6 +431,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			end
 			if event.type == "charge" then
 				onCharge(event)
+			elseif event.type == "cast" then
+				onCast(event)
 			elseif event.type == "attack" and not event.kind and not event.dodged then
 				onAttack(event)
 			elseif event.type == "ability" and event.kind and AttackFx.SPECIALS[event.kind] then

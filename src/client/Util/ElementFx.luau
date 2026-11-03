@@ -387,6 +387,73 @@ function ElementFx.ring(center: Vector3, color: Color3, radius: number, seconds:
 	shockwave(center, color, radius, seconds)
 end
 
+-- A special move winding up (owner 2026-11-04, design A): a ring in its colour spinning flat on the ground at `at`,
+-- growing a little over `seconds`, a white one inside turning the other way, and a light
+function ElementFx.castRing(at: Vector3, color: Color3, radius: number, seconds: number)
+	local anchor = holder(at + Vector3.new(0, 0.25, 0), seconds + 0.4)
+	local flat = { size = { radius * 1.3, radius * 2.2 }, life = seconds + 0.15, speed = 0.01, orientation = Enum.ParticleOrientation.VelocityPerpendicular, spin = { 220, 300 }, fade = 0.75 }
+	emitter(anchor, "ring", color, flat):Emit(1)
+	local inner = table.clone(flat)
+	inner.size = { radius * 0.8, radius * 1.5 }
+	inner.spin = { -300, -220 }
+	inner.brightness = 2.2
+	emitter(anchor, "ring", WHITE, inner):Emit(1)
+	light(anchor, color, radius * 4, 2, seconds + 0.2)
+end
+
+-- A move's name popping up over `root` ("FIREBALL!") on a plate in its colour, `height` studs up, for `seconds`, then
+-- rising away
+function ElementFx.callout(root: BasePart, height: number, text: string, color: Color3, seconds: number)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "MoveCallout"
+	gui.Size = UDim2.fromOffset(240, 44)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, height + 1.6, 0)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = 160
+	gui.Adornee = root
+	gui.Parent = root
+	local plate = Instance.new("TextLabel")
+	plate.AnchorPoint = Vector2.new(0.5, 0.5)
+	plate.Position = UDim2.fromScale(0.5, 0.5)
+	plate.Size = UDim2.new(0, 0, 1, -6)
+	plate.AutomaticSize = Enum.AutomaticSize.X
+	plate.BackgroundColor3 = color
+	plate.Text = text
+	plate.Font = Enum.Font.FredokaOne
+	plate.TextSize = 24
+	plate.TextColor3 = WHITE
+	plate.TextStrokeTransparency = 0.35
+	plate.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 7)
+	corner.Parent = plate
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 14), UDim.new(0, 14)
+	pad.Parent = plate
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = WHITE
+	edge.Transparency = 0.35
+	edge.Thickness = 2
+	edge.Parent = plate
+	local shine = Instance.new("UIGradient")
+	shine.Rotation = 90
+	shine.Color = ColorSequence.new(color:Lerp(WHITE, 0.35), color:Lerp(Color3.new(0, 0, 0), 0.15))
+	shine.Parent = plate
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0
+	scale.Parent = plate
+	TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(seconds, function()
+		local away = TweenInfo.new(0.35)
+		TweenService:Create(gui, away, { StudsOffsetWorldSpace = gui.StudsOffsetWorldSpace + Vector3.new(0, 1.2, 0) }):Play()
+		TweenService:Create(plate, away, { TextTransparency = 1, TextStrokeTransparency = 1, BackgroundTransparency = 1 }):Play()
+		TweenService:Create(edge, away, { Transparency = 1 }):Play()
+		Debris:AddItem(gui, 0.4)
+	end)
+end
+
 -- Lightning from the sky onto `at` (a grade S Volt's extra)
 function ElementFx.skyStrike(at: Vector3, color: Color3, scale: number?)
 	local s = scale or 1
@@ -769,8 +836,11 @@ function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, d
 		end
 		shockwave(floor + forward * length * 0.55, color, length * 0.75, 0.5)
 	elseif style == "lava" then
-		ElementFx.eruption(ground, color, radius, 14)
-		ElementFx.pillar(ground, color, 8, 0.35, "flame")
+		-- Bigger since the meteor lands here (owner 2026-11-04): a wide eruption, a tall fire pillar, a burst and a ring
+		ElementFx.eruption(ground, color, radius * 1.3, 22)
+		ElementFx.pillar(ground, color, 18, 0.5, "flame")
+		ElementFx.burst(ground + Vector3.new(0, 2, 0), color, 3)
+		shockwave(ground, color, radius * 1.8, 0.5)
 		for index = 1, 8 do
 			local angle = index / 8 * math.pi * 2 + math.random() * 0.3
 			local reach = radius * (0.6 + math.random() * 0.4)

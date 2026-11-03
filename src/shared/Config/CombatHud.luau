@@ -100,6 +100,29 @@ return {
 		GHOST = { top = rgb(255, 138, 122), bottom = rgb(224, 54, 42) }, -- red: the HP you just lost
 		BOSS_GHOST = { top = rgb(255, 244, 201), bottom = rgb(255, 213, 106) }, -- pale gold reads on a red bar
 		HEAL_LEAD = { top = rgb(184, 255, 212), bottom = rgb(184, 255, 212) },
+		-- The top bar (owner 2026-11-04, design A): a boss's in a gold-edged plate, a normal monster's slim and red,
+		-- an elite's gold
+		BOSS_PLATE = { edge = rgb(232, 176, 74), top = rgb(255, 122, 90), bottom = rgb(200, 40, 30) },
+		MONSTER = { edge = rgb(224, 90, 79), top = rgb(255, 106, 90), bottom = rgb(200, 40, 30) },
+		ELITE = { edge = rgb(255, 211, 74), top = rgb(255, 224, 138), bottom = rgb(232, 160, 26) },
+	},
+	-- The boss plate: a crest with the boss's element, its name big with its title and level under it, the bar with
+	-- the HP number; the plate edged in gold. The slim monster bar: name and level over a thin bar, ELITE tag for an elite.
+	TOP_BAR = {
+		PLATE_HEIGHT = 74, -- pixels (phones: PLATE_PHONE_HEIGHT)
+		PLATE_PHONE_HEIGHT = 62,
+		CREST = 40, -- pixels, the element crest's ring (phones 32)
+		NAME_SIZE = 24, -- phones 18
+		TITLE_SIZE = 12, -- phones 10
+		GOLD = rgb(232, 176, 74),
+		NAME_COLOR = rgb(255, 226, 160),
+		TITLE_COLOR = rgb(243, 217, 168),
+		CREST_BACK = rgb(58, 20, 20),
+		SLIM_WIDTH = 0.34, -- of the screen (phones 0.5), at most SLIM_MAX_WIDTH pixels
+		SLIM_MAX_WIDTH = 380,
+		SLIM_BAR = 12, -- pixels
+		SLIM_NAME = 15,
+		ELITE_TAG = rgb(255, 211, 74),
 	},
 	PORTRAIT = {
 		SIZE = 66, -- pixels, the ring's outside (phones: PHONE_SIZE)
