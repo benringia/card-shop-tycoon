@@ -40,7 +40,7 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume > 0 and town.volume <= 0.08, true, "well under the birds and the wind (owner: it overpowered them at 0.12)")
+		expect.equal(town.volume > 0 and town.volume <= 0.04, true, "well under the birds and the wind (owner: 0.12 overpowered them, 0.05 still loud)")
 		expect.equal(#town.options >= 3, true, "options for the owner to pick from (/music <n> in Studio)")
 		for _, option in town.options do
 			expect.equal(string.match(option.id, "^rbxassetid://%d+$") ~= nil and #option.name > 0, true, option.name)

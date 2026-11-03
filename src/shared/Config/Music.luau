@@ -8,8 +8,7 @@ return {
 		-- What plays: the owner's pick from `options` (Studio: "/music <n> [volume]" plays option n over the ambience,
 		-- "/music 0" goes back to these)
 		tracks = {
-			"rbxassetid://9048757009", -- "White Owl - Alt3, BellsPno": bells and piano only, 138 s
-			"rbxassetid://9043424638", -- "Wistful Wonderings (b)": acoustic guitars and harmonium, no whistle, 158 s
+			"rbxassetid://83889171451910", -- "Drifting Into Dreamland - Underscore", 169 s (the owner's pick, 2026-11-04)
 		},
 		-- Soft APM pieces to choose from (owner 2026-11-04: the first pick overpowered the ambience)
 		options = {
@@ -19,7 +18,7 @@ return {
 			{ name = "Drifting Into Dreamland (underscore)", id = "rbxassetid://83889171451910" },
 			{ name = "Lakefront Days (ukulele underscore, the first pick)", id = "rbxassetid://9038622066" },
 		},
-		volume = 0.05, -- was 0.12: the owner found it overpowering the birds, wind and waterfall
+		volume = 0.03, -- the owner: 0.12 overpowered the birds, wind and waterfall; 0.05 still a little loud
 		fade = 3, -- seconds to fade in or out
 		gap = 6, -- seconds of quiet between tracks
 		margin = 40, -- studs past the island's edge that still count as town
