@@ -34,13 +34,6 @@ type Row = {
 	steps: { TextButton },
 }
 
--- Hint colours from best to worst band, then "won't buy"
-local BAND_COLORS = {
-	Color3.fromRGB(110, 220, 130),
-	Color3.fromRGB(240, 210, 90),
-	Color3.fromRGB(245, 150, 70),
-}
-local NEVER_COLOR = Color3.fromRGB(240, 90, 90)
 local PRICE_WIDTH = 112 -- the price box and its - / + buttons
 local PRICE_HEIGHT = 30
 local STEP_SIZE = 38 -- the - / + buttons with a mouse; phones keep UIStyle.MIN_TAP
@@ -50,6 +43,13 @@ local player = Players.LocalPlayer
 local PricingController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
+
+-- Hint colours from best to worst band (deep enough to read on the cream window); "won't buy" is palette.bad
+local function bandColor(index: number): Color3
+	local colors = { palette.good, palette.hint, palette.power }
+	return colors[index] or colors[1]
+end
 local rows: { Row } = {}
 local pending: { [string]: number } = {}
 local sendToken = 0
@@ -71,10 +71,10 @@ end
 local function getBandInfo(price: number, marketPrice: number): (string, Color3)
 	local band = PriceRules.getBand(price, marketPrice)
 	if not band then
-		return PricingConfig.NEVER_LABEL, NEVER_COLOR
+		return PricingConfig.NEVER_LABEL, palette.bad
 	end
 	local index = table.find(PricingConfig.BUY_BANDS, band) or 1
-	return band.label, BAND_COLORS[index] or BAND_COLORS[1]
+	return band.label, bandColor(index)
 end
 
 -- Sizes follow the screen (phones get bigger buttons), so they're set on every refresh, not once at start
@@ -146,15 +146,14 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	priceArea.BackgroundTransparency = 1
 	priceArea.ZIndex = frame.ZIndex + 1
 	priceArea.Parent = frame
-	local price = UIKit.label(priceArea, "", Enum.Font.FredokaOne, 22, Color3.new(1, 1, 1))
+	local price = UIKit.label(priceArea, "", Enum.Font.FredokaOne, 22, palette.ink)
 	price.Size = UDim2.new(1, 0, 0, PRICE_HEIGHT)
 	price.TextXAlignment = Enum.TextXAlignment.Center
-	price.BackgroundColor3 = UIStyle.EDGE
+	price.BackgroundColor3 = palette.row
 	price.BackgroundTransparency = 0
 	price.ZIndex = priceArea.ZIndex
 	UIKit.corner(price, 8)
-	UIKit.outlined(price, 2)
-	local priceEdge = UIKit.outline(price, BAND_COLORS[1], 2)
+	local priceEdge = UIKit.outline(price, bandColor(1), 2)
 
 	local minus = UIKit.button(priceArea, "-", UIKit.Colors.Danger)
 	plus.Parent = priceArea
@@ -210,7 +209,8 @@ end
 function PricingController.Start()
 	local screenGui = UIController.GetScreenGui()
 	local list: ScrollingFrame
-	panel, list = UIKit.panel(screenGui, "PricesMenu", "Prices")
+	panel, list = UIKit.panel(screenGui, "PricesMenu", "Prices", "Prices")
+	palette = UIKit.colorsFor(panel)
 	Icon.header(panel, "Prices", UIKit.HEADER_HEIGHT)
 	for index, product in Products.List do
 		table.insert(rows, buildRow(product, list, index))

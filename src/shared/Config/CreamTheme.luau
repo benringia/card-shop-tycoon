@@ -13,6 +13,10 @@ return {
 	ink = { 107, 74, 42 }, -- body text and numbers
 	inkSoft = { 124, 90, 58 }, -- secondary text (still 4.5:1 on the body)
 	hint = { 150, 80, 12 }, -- hints and small headings: a dark amber that reads on white and cream
+	-- Meaning colours deep enough to read on cream (the dark windows' bright ones don't)
+	good = { 22, 112, 52 }, -- fast, ready, better
+	bad = { 176, 40, 40 }, -- resting, mistakes, not enough
+	power = { 160, 74, 8 }, -- Power numbers
 	track = { 242, 227, 207 }, -- bar tracks
 	outline = { 255, 255, 255 },
 	outlineThickness = 4, -- the window's outline (px)

@@ -48,6 +48,9 @@ export type Palette = {
 	ink: Color3, -- text on the window
 	inkSoft: Color3, -- secondary text
 	hint: Color3, -- hints and small headings
+	good: Color3, -- fast, ready, better
+	bad: Color3, -- resting, mistakes, not enough
+	power: Color3, -- Power numbers
 	track: Color3, -- bar tracks
 	outline: Color3, -- buttons', pills' and chips' outlines
 	outlineThickness: number,
@@ -61,6 +64,9 @@ local DARK_PALETTE: Palette = {
 	ink = UIKit.Colors.Text,
 	inkSoft = UIKit.Colors.Subtext,
 	hint = UIStyle.HINT,
+	good = UIStyle.GOOD,
+	bad = UIStyle.BAD,
+	power = UIStyle.POWER,
 	track = UIStyle.EDGE,
 	outline = UIStyle.EDGE,
 	outlineThickness = 2,
@@ -74,6 +80,9 @@ local CREAM_PALETTE: Palette = {
 	ink = CREAM.INK,
 	inkSoft = CREAM.INK_SOFT,
 	hint = CREAM.HINT,
+	good = CREAM.GOOD,
+	bad = CREAM.BAD,
+	power = CREAM.POWER,
 	track = CREAM.TRACK,
 	outline = CREAM.OUTLINE,
 	outlineThickness = CREAM.BUTTON_OUTLINE,

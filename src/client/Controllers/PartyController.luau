@@ -39,7 +39,6 @@ type PartyState = {
 	perk: { kind: string, value: number, text: string }?,
 }
 
-local WHITE = Color3.new(1, 1, 1)
 local MAX_SIZE = Vector2.new(780, 500)
 local GAP = 8
 local CHIP_HEIGHT = 28
@@ -50,6 +49,7 @@ local LEGEND = { { "Power", "Power" }, { "Hp", "Health" }, { "Atk", "Attack" }, 
 local PartyController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local columns: Frame
 local chips: Frame
 local legend: Frame
@@ -71,8 +71,8 @@ local function text(parent: Instance, value: string, size: number, color: Color3
 	label.Size = UDim2.fromOffset(0, size + 4)
 	label.AutomaticSize = Enum.AutomaticSize.X
 	label.ZIndex = (parent :: GuiObject).ZIndex + 1
-	if bold then
-		UIKit.outlined(label, 2)
+	if bold and UIKit.themeOf(parent) ~= "cream" then
+		UIKit.outlined(label, 2) -- outlined light text on dark windows; cream windows' brown text needs none
 	end
 	return label
 end
@@ -114,7 +114,7 @@ local function makeColumn(slot: number): Frame
 	column.Name = `Slot{slot}`
 	column.LayoutOrder = slot
 	column.Size = UDim2.new(1 / Party.PARTY_SIZE, -GAP * (Party.PARTY_SIZE - 1) / Party.PARTY_SIZE, 1, 0)
-	column.BackgroundColor3 = UIStyle.ROW
+	column.BackgroundColor3 = palette.row
 	column.ZIndex = columns.ZIndex + 1
 	column.Parent = columns
 	UIKit.corner(column, 12)
@@ -129,7 +129,7 @@ end
 
 local function buildEmptyColumn(slot: number)
 	local column = makeColumn(slot)
-	UIKit.outline(column, UIStyle.EDGE, 2)
+	UIKit.outline(column, palette.rowEdge, 2)
 	local word = text(column, `Slot {slot} is empty`, UIKit.textSize("body"), UIKit.Colors.Subtext, true)
 	word.AnchorPoint = Vector2.new(0.5, 0)
 	word.Position = UDim2.new(0.5, 0, 0.3, 0)
@@ -150,11 +150,11 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	local beast = BinderController.GetBeasts()[beastId]
 	local card = if beast then Cards.ById[beast.cardId] else nil
 	if not beast or not card then
-		UIKit.outline(column, UIStyle.EDGE, 2)
-		text(column, `Slot {slot}`, UIKit.textSize("body"), WHITE, true)
+		UIKit.outline(column, palette.rowEdge, 2)
+		text(column, `Slot {slot}`, UIKit.textSize("body"), palette.ink, true)
 		return
 	end
-	UIKit.outline(column, if summoned then UIStyle.GOOD else UIStyle.EDGE, if summoned then 4 else 2)
+	UIKit.outline(column, if summoned then palette.good else palette.rowEdge, if summoned then 4 else 2)
 	local phone = UIKit.isPhone()
 	local stack = Instance.new("Frame")
 	stack.BackgroundTransparency = 1
@@ -175,7 +175,7 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	info.Parent = top
 	local infoList = list(info, false, 2)
 	infoList.VerticalAlignment = Enum.VerticalAlignment.Center
-	local name = text(info, card.name, UIKit.textSize(if phone then "body" else "name"), WHITE, true)
+	local name = text(info, card.name, UIKit.textSize(if phone then "body" else "name"), palette.ink, true)
 	name.LayoutOrder = 1
 	name.AutomaticSize = Enum.AutomaticSize.None
 	name.Size = UDim2.new(1, 0, 0, UIKit.textSize(if phone then "body" else "name") + 4)
@@ -184,7 +184,7 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	local grade = UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
 	grade.Size = UDim2.fromOffset(0, 18)
 	Tooltip.attach(grade, CardTips.gradeText(beast.grade))
-	text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true).LayoutOrder = 2
+	text(meta, `Lv {beast.level}`, UIKit.textSize("small"), palette.ink, true).LayoutOrder = 2
 	if not phone then
 		local stars = UIKit.stars(info, beast.stars, Beasts.MAX_STARS, 14)
 		stars.LayoutOrder = 3
@@ -194,7 +194,7 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	local powerIcon = Icon.make(power, "Power", UDim2.fromOffset(22, 22))
 	powerIcon.ZIndex = power.ZIndex + 1
 	Tooltip.icon(powerIcon, "Power")
-	text(power, tostring(math.floor(BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))), UIKit.textSize(if phone then "body" else "number"), UIStyle.POWER, true).LayoutOrder = 2
+	text(power, tostring(math.floor(BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))), UIKit.textSize(if phone then "body" else "number"), palette.power, true).LayoutOrder = 2
 
 	-- HP, ATK, SPD against the strongest card's
 	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade)
@@ -221,12 +221,12 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	if fightPerk then
 		perkWords ..= `\nFights: {PartyRules.describeFight(fightPerk)}`
 	end
-	local perkText = text(perkLine, perkWords, UIKit.textSize("small"), if perk then UIStyle.HINT else UIKit.Colors.Subtext)
+	local perkText = text(perkLine, perkWords, UIKit.textSize("small"), if perk then palette.hint else UIKit.Colors.Subtext)
 	perkText.LayoutOrder = 2
 	perkText.AutomaticSize = Enum.AutomaticSize.None
 	perkText.TextWrapped = true
 	perkText.Size = UDim2.new(1, -26, 1, 0)
-	local rest = text(stack, "", UIKit.textSize("small"), UIStyle.BAD, true)
+	local rest = text(stack, "", UIKit.textSize("small"), palette.bad, true)
 	rest.LayoutOrder = 7
 	rest.Visible = false
 	restLabels[beastId] = rest
@@ -308,8 +308,8 @@ local function renderChips(current: PartyState?)
 			end
 		end
 	end
-	UIKit.pill(chips, summonedName, UIStyle.ROW, nil, "Party").Size = UDim2.fromOffset(0, CHIP_HEIGHT)
-	local record = UIKit.pill(chips, describeRecord(), UIStyle.ROW, nil, "Pvp")
+	UIKit.pill(chips, summonedName, palette.row, nil, "Party").Size = UDim2.fromOffset(0, CHIP_HEIGHT)
+	local record = UIKit.pill(chips, describeRecord(), palette.row, nil, "Pvp")
 	record.Size = UDim2.fromOffset(0, CHIP_HEIGHT)
 	record.LayoutOrder = 2
 end
@@ -386,6 +386,7 @@ function PartyController.Start()
 	local screenGui = UIController.GetScreenGui()
 	local scroller: ScrollingFrame
 	panel, scroller = UIKit.panel(screenGui, "Party", "Party", "Party")
+	palette = UIKit.colorsFor(panel)
 	scroller:Destroy() -- three columns, no scrolling
 	Icon.header(panel, "Party", UIKit.HEADER_HEIGHT)
 

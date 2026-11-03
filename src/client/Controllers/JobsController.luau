@@ -43,7 +43,6 @@ type JobsState = {
 	slots: { SlotInfo },
 }
 
-local WHITE = Color3.new(1, 1, 1)
 local MAX_SIZE = Vector2.new(760, 560)
 local ROW_HEIGHT = 120
 local FREE_ROW_HEIGHT = 80
@@ -55,10 +54,6 @@ local BUTTON = UIStyle.MIN_TAP
 local TIP_WIDTH = 250
 local TIP_GAP = 10
 local LIST_PAD = 4 -- the list clips outlines at its edges (the rule chips' tops)
-local TONES = { good = UIStyle.GOOD, ok = WHITE, bad = UIStyle.BAD }
-local STATUS_OK = { fill = Color3.fromRGB(16, 48, 31), text = UIStyle.GOOD }
-local STATUS_WAIT = { fill = Color3.fromRGB(58, 44, 14), text = UIStyle.HINT }
-local STATUS_OOPS = { fill = Color3.fromRGB(64, 20, 24), text = UIStyle.BAD }
 local PICK_HINT = "Tap a card, then Give a job."
 
 local player = Players.LocalPlayer
@@ -66,6 +61,7 @@ local player = Players.LocalPlayer
 local JobsController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local list: ScrollingFrame
 local tip: Frame -- the card tooltip
 local state: JobsState? = nil
@@ -86,8 +82,8 @@ local function text(parent: Instance, value: string, size: number, color: Color3
 	label.Size = UDim2.fromOffset(0, size + 4)
 	label.AutomaticSize = Enum.AutomaticSize.X
 	label.ZIndex = (parent :: GuiObject).ZIndex + 1
-	if bold then
-		UIKit.outlined(label, 2)
+	if bold and UIKit.themeOf(parent) ~= "cream" then
+		UIKit.outlined(label, 2) -- outlined light text on dark windows; cream windows' brown text needs none
 	end
 	return label
 end
@@ -113,7 +109,7 @@ local function makeRow(order: number, height: number): Frame
 	local row = Instance.new("Frame")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -10, 0, height)
-	row.BackgroundColor3 = UIStyle.ROW
+	row.BackgroundColor3 = palette.row
 	row.ZIndex = list.ZIndex + 1
 	row.Parent = list
 	UIKit.corner(row, 12)
@@ -131,7 +127,7 @@ local function buildRules()
 		{ "Power", "Stronger cards make fewer mistakes" },
 		{ "Xp", `+{Jobs.XP_PER_MINUTE} XP a minute while you play` },
 	} do
-		local chip = UIKit.pill(rules, rule[2], UIStyle.PANEL, nil, rule[1])
+		local chip = UIKit.pill(rules, rule[2], palette.slotEmpty, nil, rule[1])
 		chip.LayoutOrder = index
 		chip.Size = UDim2.fromOffset(0, 30)
 		chip.ZIndex = rules.ZIndex + 1
@@ -197,21 +193,31 @@ local function hookTip(art: GuiObject, card: Card, beast: { foil: boolean, grade
 	end)
 end
 
+-- A tone's text colour: good and bad in the palette's readable green and red, anything else plain ink
+local function toneColor(tone: string): Color3
+	return if tone == "good" then palette.good elseif tone == "bad" then palette.bad else palette.ink
+end
+
+-- The live status chip's look: a light tint of its colour behind text in that colour
+local function statusLook(color: Color3): { fill: Color3, text: Color3 }
+	return { fill = color:Lerp(Color3.new(1, 1, 1), 0.85), text = color }
+end
+
 -- A tile: icon, the kid word in its tone's colour, the number under it (phones: the word only)
 local function statTile(parent: Instance, order: number, icon: string, word: string, tone: string, detail: string, phone: boolean): Frame
 	local tile = Instance.new("Frame")
 	tile.LayoutOrder = order
 	tile.Size = UDim2.new(1, 0, 0.5, -3)
-	tile.BackgroundColor3 = UIStyle.PANEL
+	tile.BackgroundColor3 = palette.slotEmpty
 	tile.ZIndex = (parent :: GuiObject).ZIndex + 1
 	tile.Parent = parent
 	UIKit.corner(tile, 10)
-	UIKit.outline(tile, UIStyle.EDGE, 2)
+	UIKit.outline(tile, palette.rowEdge, 2)
 	local picture = Icon.make(tile, icon, UDim2.fromOffset(22, 22))
 	picture.AnchorPoint = Vector2.new(0, 0.5)
 	picture.Position = UDim2.new(0, 7, 0.5, 0)
 	picture.ZIndex = tile.ZIndex + 1
-	local wordLabel = text(tile, word, UIKit.textSize("small"), TONES[tone] or WHITE, true)
+	local wordLabel = text(tile, word, UIKit.textSize("small"), toneColor(tone), true)
 	wordLabel.AutomaticSize = Enum.AutomaticSize.None
 	wordLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	wordLabel.Position = UDim2.new(0, 34, 0, if phone then 0 else 4)
@@ -230,9 +236,9 @@ local function statusPill(parent: Instance, order: number, status: string): Fram
 	if old then
 		old:Destroy()
 	end
-	local look = if string.find(status, "^Idle") or string.find(status, "^Waiting") or status == "Starting" then STATUS_WAIT
-		elseif string.find(status, "Dropped") or string.find(status, "Mis%-scan") then STATUS_OOPS
-		else STATUS_OK
+	local look = if string.find(status, "^Idle") or string.find(status, "^Waiting") or status == "Starting" then statusLook(palette.hint)
+		elseif string.find(status, "Dropped") or string.find(status, "Mis%-scan") then statusLook(palette.bad)
+		else statusLook(palette.good)
 	local pill = Instance.new("Frame")
 	pill.Name = "Status"
 	pill.LayoutOrder = order
@@ -242,7 +248,7 @@ local function statusPill(parent: Instance, order: number, status: string): Fram
 	pill.ZIndex = (parent :: GuiObject).ZIndex + 1
 	pill.Parent = parent
 	UIKit.corner(pill, 10)
-	UIKit.outline(pill, UIStyle.EDGE, 2)
+	UIKit.outline(pill, palette.rowEdge, 2)
 	local padding = Instance.new("UIPadding")
 	padding.PaddingLeft = UDim.new(0, 8)
 	padding.PaddingRight = UDim.new(0, 10)
@@ -266,11 +272,11 @@ end
 local function buildWorkerRow(slot: number, info: SlotInfo)
 	local phone = UIKit.isPhone()
 	local row = makeRow(slot, ROW_HEIGHT)
-	UIKit.outline(row, UIStyle.EDGE, 2)
+	UIKit.outline(row, palette.rowEdge, 2)
 	local beast = BinderController.GetBeasts()[info.beastId]
 	local card = if beast then Cards.ById[beast.cardId] else nil
 	if not beast or not card then
-		local loading = text(row, `Slot {slot} · {info.job}`, UIKit.textSize("body"), WHITE, true)
+		local loading = text(row, `Slot {slot} · {info.job}`, UIKit.textSize("body"), palette.ink, true)
 		loading.Position = UDim2.fromOffset(14, 12)
 		return
 	end
@@ -345,17 +351,17 @@ local function buildWorkerRow(slot: number, info: SlotInfo)
 	stack.Parent = middle
 
 	local title = strip(middle, 1, 26, 6)
-	local name = text(title, card.name, UIKit.textSize(if phone then "body" else "name"), WHITE, true)
+	local name = text(title, card.name, UIKit.textSize(if phone then "body" else "name"), palette.ink, true)
 	name.LayoutOrder = 1
 	local grade = UIKit.pill(title, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
 	grade.LayoutOrder = 2
 	grade.Size = UDim2.fromOffset(0, 20)
 	Tooltip.attach(grade, CardTips.gradeText(beast.grade))
-	text(title, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true).LayoutOrder = 3
+	text(title, `Lv {beast.level}`, UIKit.textSize("small"), palette.ink, true).LayoutOrder = 3
 
 	local jobLine = strip(middle, 2, 26, 6)
 	local jobInfo = Jobs.JOB_INFO[info.job]
-	local jobChip = UIKit.pill(jobLine, info.job, UIStyle.PANEL, nil, if jobInfo then jobInfo.icon else "Jobs")
+	local jobChip = UIKit.pill(jobLine, info.job, palette.slotEmpty, nil, if jobInfo then jobInfo.icon else "Jobs")
 	jobChip.LayoutOrder = 1
 	jobChip.Size = UDim2.fromOffset(0, 24)
 	if jobInfo then
@@ -379,7 +385,7 @@ local function buildWorkerRow(slot: number, info: SlotInfo)
 	track.AnchorPoint = Vector2.new(0, 0.5)
 	track.Position = UDim2.new(0, 26, 0.5, 0)
 	track.Size = UDim2.new(1, -(26 + (if phone then 92 else 118)), 0, track.Size.Y.Offset)
-	local xpText = text(xpLine, if minutes then `Lv {beast.level + 1} in {minutes} min` else "MAX LEVEL", UIKit.textSize("small"), if minutes then WHITE else UIStyle.HINT)
+	local xpText = text(xpLine, if minutes then `Lv {beast.level + 1} in {minutes} min` else "MAX LEVEL", UIKit.textSize("small"), if minutes then palette.ink else palette.hint)
 	xpText.AnchorPoint = Vector2.new(1, 0.5)
 	xpText.Position = UDim2.fromScale(1, 0.5)
 end
@@ -387,7 +393,7 @@ end
 -- A free slot: a "+" box, what to do, and Pick a card (opens the binder)
 local function buildFreeRow(slot: number)
 	local row = makeRow(slot, FREE_ROW_HEIGHT)
-	local edge = UIKit.outline(row, UIKit.Colors.Subtext, 3)
+	local edge = UIKit.outline(row, palette.inkSoft, 3)
 	edge.Transparency = 0.5
 	local plus = text(row, "+", 34, UIKit.Colors.Subtext, true)
 	plus.AutomaticSize = Enum.AutomaticSize.None
@@ -395,10 +401,10 @@ local function buildFreeRow(slot: number)
 	plus.Position = UDim2.new(0, 12, 0.5, 0)
 	plus.Size = UDim2.fromOffset(60, 56)
 	plus.TextXAlignment = Enum.TextXAlignment.Center
-	plus.BackgroundColor3 = UIStyle.PANEL
+	plus.BackgroundColor3 = palette.slotEmpty
 	plus.BackgroundTransparency = 0
 	UIKit.corner(plus, 10)
-	local title = text(row, `Slot {slot} is free`, UIKit.textSize("body") + 2, WHITE, true)
+	local title = text(row, `Slot {slot} is free`, UIKit.textSize("body") + 2, palette.ink, true)
 	title.Position = UDim2.fromOffset(86, 14)
 	local hint = text(row, "Pick a card from your binder to work here", UIKit.textSize("small"), UIKit.Colors.Subtext)
 	hint.Position = UDim2.fromOffset(86, 42)
@@ -417,8 +423,8 @@ end
 -- A slot you can't use yet: before the unlock level, or the pass slot
 local function buildLockedRow(slot: number, current: JobsState)
 	local row = makeRow(slot, FREE_ROW_HEIGHT)
-	UIKit.outline(row, UIStyle.EDGE, 2)
-	row.BackgroundColor3 = UIStyle.PANEL
+	UIKit.outline(row, palette.rowEdge, 2)
+	row.BackgroundColor3 = palette.slotEmpty
 	local lock = Icon.make(row, "Lock", UDim2.fromOffset(40, 40))
 	lock.AnchorPoint = Vector2.new(0, 0.5)
 	lock.Position = UDim2.new(0, 22, 0.5, 0)
@@ -426,7 +432,7 @@ local function buildLockedRow(slot: number, current: JobsState)
 	local needsPass = slot > Jobs.FREE_SLOTS
 	local level = player:GetAttribute("Level")
 	local early = not needsPass or (typeof(level) == "number" and level < current.unlockLevel)
-	local title = text(row, `Slot {slot}`, UIKit.textSize("body") + 2, WHITE, true)
+	local title = text(row, `Slot {slot}`, UIKit.textSize("body") + 2, palette.ink, true)
 	title.Position = UDim2.fromOffset(86, 14)
 	local detail = text(row, if early then `Opens at shop level {current.unlockLevel}` else "Extra Job Slot pass: one more card working in your shop", UIKit.textSize("small"), UIKit.Colors.Subtext)
 	detail.Position = UDim2.fromOffset(86, 42)
@@ -513,7 +519,8 @@ end
 
 function JobsController.Start()
 	local screenGui = UIController.GetScreenGui()
-	panel, list = UIKit.panel(screenGui, "Jobs", "Shop Jobs")
+	panel, list = UIKit.panel(screenGui, "Jobs", "Shop Jobs", "Jobs")
+	palette = UIKit.colorsFor(panel)
 	Icon.header(panel, "Jobs", UIKit.HEADER_HEIGHT)
 	local limit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then

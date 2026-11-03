@@ -16,6 +16,9 @@ return {
 			expect.equal(ContrastRules.ratio(t.ink, surface) >= 4.5, true, "body text")
 			expect.equal(ContrastRules.ratio(t.inkSoft, surface) >= 4.5, true, "secondary text")
 			expect.equal(ContrastRules.ratio(t.hint, surface) >= 4.5, true, "hints")
+			expect.equal(ContrastRules.ratio(t.good, surface) >= 4.5, true, "good news (fast, ready)")
+			expect.equal(ContrastRules.ratio(t.bad, surface) >= 4.5, true, "bad news (resting, mistakes)")
+			expect.equal(ContrastRules.ratio(t.power, surface) >= 4.5, true, "Power numbers")
 		end
 	end,
 
