@@ -18,7 +18,7 @@ return {
 			{ name = "Drifting Into Dreamland (underscore)", id = "rbxassetid://83889171451910" },
 			{ name = "Lakefront Days (ukulele underscore, the first pick)", id = "rbxassetid://9038622066" },
 		},
-		volume = 0.03, -- the owner: 0.12 overpowered the birds, wind and waterfall; 0.05 still a little loud
+		volume = 0.02, -- the owner: 0.12 overpowered the birds, wind and waterfall; 0.05 and 0.03 still a little loud
 		fade = 3, -- seconds to fade in or out
 		gap = 6, -- seconds of quiet between tracks
 		margin = 40, -- studs past the island's edge that still count as town

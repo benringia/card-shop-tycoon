@@ -6,6 +6,7 @@
 -- longer fainted. CreatureController calls these on the marker's SummonedAt stamp and its Unsummon / Fainted flags.
 -- A summon dings softly and an unsummon whooshes where the creature is (Party.SUMMON_SOUNDS).
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -86,6 +87,22 @@ local function play(spec: { id: string, volume: number, pitch: number }, at: Vec
 	Debris:AddItem(anchor, 4)
 end
 
+type Sound = { id: string, volume: number, pitch: number }
+
+-- The summon or unsummon sound: the configured one, or (Studio) the option picked with /summonsound or /unsummonsound
+-- (DevService sets the player's SummonSoundPick / UnsummonSoundPick attributes, and a volume beside them)
+local function chosen(kind: string): Sound
+	local player = Players.LocalPlayer
+	local attribute = if kind == "summon" then "SummonSoundPick" else "UnsummonSoundPick"
+	local pick = if player then player:GetAttribute(attribute) else nil
+	local option = if typeof(pick) == "number" then SOUNDS.options[kind][pick] else nil
+	if not option then
+		return SOUNDS[kind]
+	end
+	local volume = player:GetAttribute(attribute .. "Volume")
+	return { id = option.id, volume = if typeof(volume) == "number" then volume else option.volume, pitch = option.pitch }
+end
+
 local function ground(body: Body): Vector3
 	return body.cframe.Position
 end
@@ -93,7 +110,7 @@ end
 -- Summoned: the ring and pillar, then it pops up out of them
 function SummonFx.summon(body: Body, color: Color3)
 	local at = ground(body)
-	play(SOUNDS.summon, at)
+	play(chosen("summon"), at)
 	ElementFx.ring(at + Vector3.new(0, 0.2, 0), color, 2.6, CFG.pop + 0.2)
 	ElementFx.pillar(at, color:Lerp(WHITE, 0.35), CFG.pillar, CFG.pop + 0.25, "glow")
 	body.grow = SummonMotion.popScale(0, CFG.pop)
@@ -110,7 +127,7 @@ end
 -- Unsummoned: it shrinks into a flash and a light flies back into `owner` (its owner's character, if there)
 function SummonFx.unsummon(body: Body, color: Color3, owner: Model?)
 	local from = body.root.Position
-	play(SOUNDS.unsummon, from)
+	play(chosen("unsummon"), from)
 	flash(body.model, WHITE, 0.6, CFG.unsummon)
 	animate(CFG.unsummon, function(t)
 		body.grow = SummonMotion.shrinkScale(t, CFG.unsummon)
@@ -191,6 +208,23 @@ function SummonFx.revive(body: Body)
 	end, function()
 		body.grow = nil
 	end)
+end
+
+-- Studio: a sound picked with /summonsound or /unsummonsound plays once at your character so you can hear it
+-- (DevService stamps SoundPreview with "summon" or "unsummon" and the time)
+do
+	local player = Players.LocalPlayer
+	if player then
+		player:GetAttributeChangedSignal("SoundPreview"):Connect(function()
+			local stamp = player:GetAttribute("SoundPreview")
+			local kind = if typeof(stamp) == "string" then string.match(stamp, "^(%a+)|") else nil
+			local character = player.Character
+			local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+			if (kind == "summon" or kind == "unsummon") and root and root:IsA("BasePart") then
+				play(chosen(kind), root.Position)
+			end
+		end)
+	end
 end
 
 return SummonFx

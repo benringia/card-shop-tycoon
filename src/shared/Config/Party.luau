@@ -531,6 +531,24 @@ return {
 		summon = { id = "rbxassetid://9126073001", volume = 0.16, pitch = 0.82 }, -- "Synth Sparkle Tone High Pitch Bell Tone Ding 4", warmed down
 		unsummon = { id = "rbxassetid://9116400132", volume = 0.18, pitch = 1 }, -- "Magic Movement Airy Whips Swooshes 24"
 		range = 60,
+		-- Sounds for the owner to choose from (2026-11-03): in Studio "/summonsound <n> [volume]" and
+		-- "/unsummonsound <n> [volume]" (or the admin panel) play option n and use it for your summons until "<cmd> 0"
+		options = {
+			summon = {
+				{ name = "Soft bell ding (now)", id = "rbxassetid://9126073001", volume = 0.16, pitch = 0.82 }, -- PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 4"
+				{ name = "Long bell ring", id = "rbxassetid://9126073318", volume = 0.14, pitch = 0.9 }, -- PSE "... Bell Tone Ding 1"
+				{ name = "Echo sparkle ping", id = "rbxassetid://9126076030", volume = 0.14, pitch = 0.85 }, -- PSE "Synth Sparkle Tone High Pitch Tone Burst Ping 4"
+				{ name = "Airy magic swell", id = "rbxassetid://9117964708", volume = 0.12, pitch = 1 }, -- PSE "Pulsing Tone Smooth Mid Range Synth Tone 10"
+				{ name = "Quiet twinkle cluster", id = "rbxassetid://9116395089", volume = 0.1, pitch = 1 }, -- PSE "Magic Glows Soft Clusters Of Chiming Hits 4"
+			},
+			unsummon = {
+				{ name = "Airy whoosh (now)", id = "rbxassetid://9116400132", volume = 0.18, pitch = 1 }, -- PSE "Magic Movement Airy Whips Swooshes 24"
+				{ name = "Short soft whoosh", id = "rbxassetid://9116401003", volume = 0.18, pitch = 1 }, -- PSE "... Swooshes 37"
+				{ name = "Quick swish", id = "rbxassetid://9116401192", volume = 0.18, pitch = 1 }, -- PSE "... Swooshes 38"
+				{ name = "Shimmer pass", id = "rbxassetid://9125646918", volume = 0.14, pitch = 1 }, -- PSE "Magic Whooshes Pass Bys Metallic Shimmering 7"
+				{ name = "Soft magic fade", id = "rbxassetid://9117962385", volume = 0.1, pitch = 1 }, -- PSE "Pulsing Tone Smooth Mid Range Synth Tone 3"
+			},
+		},
 	},
 	-- Your summoned creature's voice (Util/PetVoice, owner 2026-11-04 "an occasional chirp"): small creatures chirp,
 	-- Epics and Legendaries huff; pitched lower the bigger they are; only you hear your own, nearby. It says hello

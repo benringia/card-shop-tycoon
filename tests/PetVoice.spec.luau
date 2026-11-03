@@ -69,6 +69,16 @@ return {
 			local sound = Party.SUMMON_SOUNDS[key]
 			expect.equal(string.match(sound.id, "^rbxassetid://%d+$") ~= nil, true, key)
 			expect.equal(sound.volume > 0 and sound.volume <= 1, true, key)
+			-- Options for the owner to hear in Studio (/summonsound <n>, /unsummonsound <n>), the current one among them
+			local options = Party.SUMMON_SOUNDS.options[key]
+			expect.equal(#options >= 3, true, `{key} options`)
+			local found = false
+			for _, option in options do
+				expect.equal(string.match(option.id, "^rbxassetid://%d+$") ~= nil and #option.name > 0, true, option.name)
+				expect.equal(option.volume > 0 and option.volume <= 0.3 and option.pitch > 0, true, `{option.name}: quiet`)
+				found = found or option.id == sound.id
+			end
+			expect.equal(found, true, `the current {key} sound is one of the options`)
 		end
 	end,
 }

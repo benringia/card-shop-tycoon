@@ -32,6 +32,7 @@ local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local AdminPanel = require(Config:WaitForChild("AdminPanel"))
 local Music = require(Config:WaitForChild("Music"))
+local Party = require(Config:WaitForChild("Party"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 
 local Services = script.Parent :: Instance
@@ -313,6 +314,26 @@ function DevService.Start()
 		local line = if index > 0 then `Music {index}: {options[index].name} at volume {volume or Music.TOWN.volume}` else "Town music: back to the normal tracks"
 		Remotes.Notify:FireClient(player, line, false)
 	end)
+	-- Hear a summon or unsummon sound option; it's used for your summons until "<command> 0" (SummonFx reads the picks)
+	local function soundPick(command: string, kind: string, attribute: string): CommandHandler
+		return function(player, text)
+			local options = Party.SUMMON_SOUNDS.options[kind]
+			local index, volume = MusicRules.parsePreview(text, #options)
+			if not index then
+				Remotes.Notify:FireClient(player, `Usage: /{command} <1-{#options}> [volume], /{command} 0 for the normal one`, true)
+				return
+			end
+			player:SetAttribute(attribute, if index > 0 then index else nil)
+			player:SetAttribute(attribute .. "Volume", volume)
+			if index > 0 then
+				player:SetAttribute("SoundPreview", `{kind}|{os.clock()}`)
+			end
+			local line = if index > 0 then `{kind} sound {index}: {options[index].name}` else `{kind} sound: back to the normal one`
+			Remotes.Notify:FireClient(player, line, false)
+		end
+	end
+	addCommand(folder, "summonsound", soundPick("summonsound", "summon", "SummonSoundPick"))
+	addCommand(folder, "unsummonsound", soundPick("unsummonsound", "unsummon", "UnsummonSoundPick"))
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
 		local known = false
@@ -387,7 +408,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume], /summonsound <n>, /unsummonsound <n>")
 end
 
 return DevService
