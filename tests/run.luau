@@ -85,6 +85,8 @@ local specs: { [string]: { [string]: () -> () } } = {
 	DefeatRules = require("./DefeatRules.spec"),
 	PetVoice = require("./PetVoice.spec"),
 	MusicRules = require("./MusicRules.spec"),
+	XpPaws = require("./XpPaws.spec"),
+	HudMascotRules = require("./HudMascotRules.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec
