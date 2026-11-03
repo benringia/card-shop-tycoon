@@ -32,7 +32,6 @@ local CASE_BUYERS = {
 }
 
 -- Build menu tabs (Config/Shelves `category`); Decor has nothing yet and says so
-local TAB_TEXT = Color3.fromRGB(150, 158, 178) -- a closed tab (UIKit Subtext); the open one is dark on gold
 local BUILD_TABS = {
 	{ name = "Shelves", icon = "Shelves" },
 	{ name = "Cases", icon = "Cases" },
@@ -40,7 +39,7 @@ local BUILD_TABS = {
 	{ name = "Trophies", icon = "🏆" },
 	{ name = "Decor", icon = "Decor" },
 }
-local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110, PICTURE_COLOR = Color3.fromRGB(52, 60, 82) } -- a lighter slate stage for the 3D picture
+local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110 }
 
 type ShopRow = {
 	def: ShelfDef,
@@ -60,6 +59,7 @@ local player = Players.LocalPlayer
 local BuildController = {}
 
 local shopPanel: Frame
+local palette: UIKit.Palette -- the cream windows' colours (UIKit.colorsFor), set when the Shop is built
 local shopRows: { ShopRow } = {}
 local editPanel: Frame
 local editTitle: TextLabel
@@ -96,15 +96,15 @@ local function refreshShopRows()
 		if item then
 			local owned = items[item] or 0
 			row.button.Text = if owned > 0 then `Place ({owned})` else "🔒 Beat it"
-			row.button.BackgroundColor3 = if owned > 0 then UIKit.Colors.Row else UIKit.Colors.Locked
-			row.button.TextColor3 = if owned > 0 then UIKit.Colors.Success else Color3.new(1, 1, 1)
+			row.button.BackgroundColor3 = if owned > 0 then palette.slotEmpty else UIKit.Colors.Locked
+			row.button.TextColor3 = if owned > 0 then palette.good else Color3.new(1, 1, 1)
 			continue
 		end
 		local locked = isLocked(row.def)
 		local short = not locked and cash < row.def.cost
 		row.button.Text = if locked then `🔒 Lv {row.def.unlockLevel}` else string.format("$%d", row.def.cost)
-		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked else UIKit.Colors.Row
-		row.button.TextColor3 = if locked then Color3.new(1, 1, 1) elseif short then UIKit.Colors.Danger else UIKit.Colors.Success
+		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked else palette.slotEmpty
+		row.button.TextColor3 = if locked then Color3.new(1, 1, 1) elseif short then palette.bad else palette.good
 	end
 end
 
@@ -137,7 +137,7 @@ local function addPreview(parent: GuiObject, def: ShelfDef)
 	view.Name = "Preview"
 	view.Position = UDim2.fromOffset(8, 8)
 	view.Size = UDim2.new(1, -16, 0, BUILD_TILE.PICTURE)
-	view.BackgroundColor3 = BUILD_TILE.PICTURE_COLOR
+	view.BackgroundColor3 = palette.slotEmpty -- a soft cream stage for the 3D picture
 	view.Ambient = Color3.fromRGB(200, 200, 200)
 	view.LightColor = Color3.new(1, 1, 1)
 	view.LightDirection = Vector3.new(-1, -1, -1)
@@ -183,7 +183,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	local tile = Instance.new("Frame")
 	tile.Name = def.id
 	tile.LayoutOrder = order
-	tile.BackgroundColor3 = UIKit.Colors.Row
+	tile.BackgroundColor3 = palette.row
 	tile.Parent = parent
 	UIKit.corner(tile, 14)
 	UIKit.outline(tile)
@@ -202,7 +202,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
 	info.Size = UDim2.new(1, -20, 0, 18)
-	local button = UIKit.button(tile, "", UIKit.Colors.Row)
+	local button = UIKit.button(tile, "", palette.slotEmpty)
 	button.AnchorPoint = Vector2.new(0.5, 1)
 	button.Position = UDim2.new(0.5, 0, 1, -8)
 	button.Size = UDim2.new(1, -16, 0, 48)
@@ -217,7 +217,8 @@ end
 -- The Build panel: category tabs and a grid of tiles, each with a 3D picture of the model
 local function buildShopPanel(parent: Instance)
 	local list: ScrollingFrame
-	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Shop")
+	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Shop", "Shop")
+	palette = UIKit.colorsFor(shopPanel)
 	Icon.header(shopPanel, "Shop", UIKit.HEADER_HEIGHT)
 	shopPanel.Size = UDim2.fromScale(0.9, 0.85)
 	local limit = shopPanel:FindFirstChildOfClass("UISizeConstraint")
@@ -256,10 +257,10 @@ local function buildShopPanel(parent: Instance)
 	local tabButtons: { [string]: TextButton } = {}
 	local function showCategory(category: string)
 		for name, button in tabButtons do
-			button.BackgroundColor3 = if name == category then UIKit.Colors.Accent else UIKit.Colors.Row
+			button.BackgroundColor3 = if name == category then UIKit.Colors.Accent else palette.row
 			local label = button:FindFirstChild("Name", true) :: TextLabel?
 			if label then
-				label.TextColor3 = if name == category then UIKit.Colors.Ink else TAB_TEXT
+				label.TextColor3 = if name == category then UIKit.Colors.Ink else palette.inkSoft -- the open tab: dark on gold
 			end
 		end
 		local any = false
@@ -272,7 +273,7 @@ local function buildShopPanel(parent: Instance)
 		list.CanvasPosition = Vector2.zero
 	end
 	for index, tab in BUILD_TABS do
-		local button = UIKit.button(tabs, "", UIKit.Colors.Row)
+		local button = UIKit.button(tabs, "", palette.row)
 		button.Name = "Tab" .. tab.name
 		button.LayoutOrder = index
 		button.Size = UDim2.new(1 / #BUILD_TABS, -8, 1, 0)
@@ -295,7 +296,7 @@ local function buildShopPanel(parent: Instance)
 		local tabIcon = Icon.make(row, tab.icon, UDim2.fromOffset(28, 28))
 		tabIcon.LayoutOrder = 1
 		tabIcon.ZIndex = row.ZIndex
-		local name = UIKit.label(row, tab.name, Enum.Font.FredokaOne, 17, TAB_TEXT)
+		local name = UIKit.label(row, tab.name, Enum.Font.FredokaOne, 17, palette.inkSoft)
 		name.Name = "Name"
 		name.LayoutOrder = 2
 		name.Size = UDim2.fromScale(0, 1)
@@ -402,7 +403,7 @@ end
 
 local function buildEditPanel(parent: Instance)
 	local list: ScrollingFrame
-	editPanel, list = UIKit.panel(parent, "ShelfMenu", "Shelf")
+	editPanel, list = UIKit.panel(parent, "ShelfMenu", "Shelf", "Shop")
 	editTitle = editPanel:FindFirstChild("Title") :: TextLabel
 
 	local cardsButton: TextButton

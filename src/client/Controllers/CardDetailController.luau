@@ -53,7 +53,6 @@ export type Source = {
 	setInspecting: (on: boolean) -> (), -- the binder hides its book, tabs and buttons while the card is up
 }
 
-local WHITE = Color3.new(1, 1, 1)
 local HOW_TO_SELL = "To sell: put it in a Glass Showcase or Collector Case (walk up, F, then Cards)."
 local PANEL_TOP = 84 -- below the binder's close button
 local PHONE_RIGHT = 76 -- phones: the binder's close button keeps the top right corner
@@ -74,6 +73,7 @@ local CardDetailController = {}
 
 local source: Source
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Build
 local header: Frame
 local body: Frame
 local copiesTitle: TextLabel
@@ -117,8 +117,8 @@ local function text(parent: Instance, value: string, size: number, color: Color3
 	label.TextWrapped = false
 	label.Size = UDim2.fromOffset(0, size + 4)
 	label.ZIndex = (parent :: GuiObject).ZIndex + 1
-	if outlined then
-		UIKit.outlined(label, 2)
+	if outlined and UIKit.themeOf(parent) ~= "cream" then
+		UIKit.outlined(label, 2) -- outlined light text on dark windows; cream windows' brown text needs none
 	end
 	return label
 end
@@ -234,13 +234,13 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, 0, 0, rowHeight)
-	row.BackgroundColor3 = UIStyle.ROW
+	row.BackgroundColor3 = palette.row
 	row.AutoButtonColor = true
 	row.Text = ""
 	row.ZIndex = copiesList.ZIndex + 1
 	row.Parent = copiesList
 	UIKit.corner(row, 10)
-	local edge = UIKit.outline(row, if entry.key == selectedKey then UIStyle.HINT else UIStyle.EDGE, if entry.key == selectedKey then 3 else 2)
+	local edge = UIKit.outline(row, if entry.key == selectedKey then UIStyle.GOLD else palette.rowEdge, if entry.key == selectedKey then 3 else 2) -- the chosen one: a gold ring
 	edge.Name = "Edge"
 	row.Activated:Connect(function()
 		selectedKey = entry.key
@@ -260,7 +260,7 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	grade.LayoutOrder = 1
 	Tooltip.attach(grade, CardTips.gradeText(entry.grade))
 	local growth = growthOf(entry)
-	local level = text(left, `Lv {growth.level}`, UIKit.textSize("body"), WHITE, true, true)
+	local level = text(left, `Lv {growth.level}`, UIKit.textSize("body"), palette.ink, true, true)
 	level.AutomaticSize = Enum.AutomaticSize.X
 	level.LayoutOrder = 2
 	local stars = UIKit.stars(left, growth.stars, Beasts.MAX_STARS, 14)
@@ -284,8 +284,8 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	local powerIcon = Icon.make(powerLine, "Power", UDim2.fromOffset(18, 18))
 	powerIcon.ZIndex = row.ZIndex + 1
 	Tooltip.icon(powerIcon, "Power")
-	text(powerLine, tostring(math.floor(entry.power)), UIKit.textSize("body") + 2, UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
-	local value = text(row, money(entry.value), UIKit.textSize("small"), UIStyle.MONEY, true, true)
+	text(powerLine, tostring(math.floor(entry.power)), UIKit.textSize("body") + 2, palette.power, true, true).AutomaticSize = Enum.AutomaticSize.X
+	local value = text(row, money(entry.value), UIKit.textSize("small"), palette.good, true, true)
 	value.AnchorPoint = Vector2.new(1, 1)
 	value.Position = UDim2.new(1, -12, 1, -6)
 	value.Size = UDim2.fromOffset(110, 18)
@@ -338,18 +338,18 @@ local function renderSelected(card: Card, entry: Entry?)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = tiles
 	for index, stat in {
-		{ "Power", math.floor(entry.power), UIStyle.POWER },
-		{ "Hp", stats.hp, WHITE },
-		{ "Atk", stats.atk, WHITE },
-		{ "Spd", stats.spd, WHITE },
+		{ "Power", math.floor(entry.power), palette.power },
+		{ "Hp", stats.hp, palette.ink },
+		{ "Atk", stats.atk, palette.ink },
+		{ "Spd", stats.spd, palette.ink },
 	} do
 		local cell = Instance.new("Frame")
 		cell.LayoutOrder = index
-		cell.BackgroundColor3 = UIStyle.PANEL
+		cell.BackgroundColor3 = palette.slotEmpty
 		cell.ZIndex = tiles.ZIndex + 1
 		cell.Parent = tiles
 		UIKit.corner(cell, 8)
-		UIKit.outline(cell, UIStyle.EDGE, 2)
+		UIKit.outline(cell, palette.rowEdge, 2)
 		Tooltip.icon(cell, stat[1] :: string)
 		local picture = Icon.make(cell, stat[1] :: string, UDim2.fromOffset(20, 20))
 		picture.AnchorPoint = Vector2.new(0, 0.5)
@@ -365,9 +365,9 @@ local function renderSelected(card: Card, entry: Entry?)
 	local toNext = BeastRules.getXpToNext(growth.level)
 	if toNext > 0 then
 		local xp = if beast then beast.xp else 0
-		barRow(selectedBox, 2, "Xp", xp / toNext, UIStyle.XP, `Lv {growth.level} -> {growth.level + 1}: {xp}/{toNext}`, WHITE)
+		barRow(selectedBox, 2, "Xp", xp / toNext, UIStyle.XP, `Lv {growth.level} -> {growth.level + 1}: {xp}/{toNext}`, palette.ink)
 	else
-		barRow(selectedBox, 2, "Xp", 1, UIStyle.GOLD, "MAX LEVEL", UIStyle.HINT)
+		barRow(selectedBox, 2, "Xp", 1, UIStyle.GOLD, "MAX LEVEL", palette.hint)
 	end
 
 	local cost = BeastRules.getCondenseCost(growth.stars)
@@ -375,9 +375,9 @@ local function renderSelected(card: Card, entry: Entry?)
 		local main = { beast = beast ~= nil, foil = entry.foil, grade = entry.grade, stars = growth.stars }
 		local have = CondenseRules.countDuplicates(source.stacks(card.id), main)
 		local short = have < cost
-		barRow(selectedBox, 3, "Star", math.min(have / cost, 1), UIStyle.GOLD, `Next star: {have}/{cost} copies`, if short then UIStyle.BAD else UIStyle.GOOD)
+		barRow(selectedBox, 3, "Star", math.min(have / cost, 1), UIStyle.GOLD, `Next star: {have}/{cost} copies`, if short then palette.bad else palette.good)
 	else
-		barRow(selectedBox, 3, "Star", 1, UIStyle.GOLD, "Max stars", UIStyle.HINT)
+		barRow(selectedBox, 3, "Star", 1, UIStyle.GOLD, "Max stars", palette.hint)
 	end
 
 	local job = if beast then source.working()[beast.id] else nil
@@ -386,7 +386,7 @@ local function renderSelected(card: Card, entry: Entry?)
 		local line = hList(selectedBox, 22, 6)
 		line.LayoutOrder = 4
 		Icon.make(line, if job then "Job" else "Party", UDim2.fromOffset(20, 20)).ZIndex = line.ZIndex + 1
-		text(line, busy, UIKit.textSize("small"), UIStyle.HINT, true, true).AutomaticSize = Enum.AutomaticSize.X
+		text(line, busy, UIKit.textSize("small"), palette.hint, true, true).AutomaticSize = Enum.AutomaticSize.X
 	end
 end
 
@@ -462,13 +462,13 @@ local function showSlots()
 		local button = Instance.new("TextButton")
 		button.LayoutOrder = slot
 		button.Size = UDim2.new(1 / Party.PARTY_SIZE, -4, 1, 0)
-		button.BackgroundColor3 = UIStyle.ROW
+		button.BackgroundColor3 = palette.row
 		button.Text = ""
 		button.AutoButtonColor = true
 		button.ZIndex = slotsHolder.ZIndex + 1
 		button.Parent = slotsHolder
 		UIKit.corner(button, 10)
-		UIKit.outline(button, UIStyle.EDGE, 2)
+		UIKit.outline(button, palette.rowEdge, 2)
 		-- One column, centred: the card, its name, grade and level, Power, stat bars, then what the swap would do
 		local column = Instance.new("Frame")
 		column.BackgroundTransparency = 1
@@ -491,7 +491,7 @@ local function showSlots()
 		local beast = source.beasts()[partySlots[slot] or ""]
 		if outgoing and beast then
 			CardTips.art(column, outgoing.card, outgoing.foil, art).LayoutOrder = 0
-			local cardName = text(column, outgoing.card.name, UIKit.textSize("body"), WHITE, true, true)
+			local cardName = text(column, outgoing.card.name, UIKit.textSize("body"), palette.ink, true, true)
 			cardName.LayoutOrder = 1
 			cardName.TextXAlignment = Enum.TextXAlignment.Center
 			cardName.TextTruncate = Enum.TextTruncate.AtEnd
@@ -500,12 +500,12 @@ local function showSlots()
 			local grade = UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
 			grade.Size = UDim2.fromOffset(0, 18)
 			Tooltip.attach(grade, CardTips.gradeText(beast.grade))
-			text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true, true).AutomaticSize = Enum.AutomaticSize.X
+			text(meta, `Lv {beast.level}`, UIKit.textSize("small"), palette.ink, true, true).AutomaticSize = Enum.AutomaticSize.X
 			local power = centredRow(3)
 			local powerIcon = Icon.make(power, "Power", UDim2.fromOffset(18, 18))
 			powerIcon.ZIndex = power.ZIndex + 1
 			Tooltip.icon(powerIcon, "Power")
-			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("body"), UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
+			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("body"), palette.power, true, true).AutomaticSize = Enum.AutomaticSize.X
 			if not phone then
 				for index, stat in { { "Hp", outgoing.stats.hp, reference.hp }, { "Atk", outgoing.stats.atk, reference.atk }, { "Spd", outgoing.stats.spd, reference.spd } } do
 					local row = UIKit.statRow(column, stat[1] :: string, CompareRules.share(stat[2] :: number, stat[3] :: number))
@@ -532,12 +532,12 @@ local function showSlots()
 			local strip = Instance.new("Frame")
 			strip.LayoutOrder = 9
 			strip.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("small") + 12)
-			strip.BackgroundColor3 = if good then UIStyle.GOOD else UIStyle.BAD
+			strip.BackgroundColor3 = if good then palette.good else palette.bad
 			strip.BackgroundTransparency = 0.8
 			strip.ZIndex = column.ZIndex + 1
 			strip.Parent = column
 			UIKit.corner(strip, 8)
-			local swap = text(strip, CompareRules.swapText(incoming.card.name, incoming.power, outPower), UIKit.textSize("small"), if good then UIStyle.GOOD else UIStyle.BAD, true, true)
+			local swap = text(strip, CompareRules.swapText(incoming.card.name, incoming.power, outPower), UIKit.textSize("small"), if good then palette.good else palette.bad, true, true)
 			swap.TextXAlignment = Enum.TextXAlignment.Center
 			swap.TextWrapped = true
 			swap.Size = UDim2.fromScale(1, 1)
@@ -610,8 +610,8 @@ function CardDetailController.Refresh()
 	clear(pillRow)
 	UIKit.pill(pillRow, card.rarity, CardFace.getRarityColor(card.rarity)).LayoutOrder = 1
 	UIKit.pill(pillRow, card.element, Cards.ELEMENTS[card.element], nil, card.element).LayoutOrder = 2
-	UIKit.pill(pillRow, string.format("#%02d", card.number), UIStyle.ROW).LayoutOrder = 3
-	local copies = UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, UIStyle.ROW, nil, "Copies")
+	UIKit.pill(pillRow, string.format("#%02d", card.number), palette.row).LayoutOrder = 3
+	local copies = UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, palette.row, nil, "Copies")
 	copies.LayoutOrder = 4
 	Tooltip.icon(copies, "Copies")
 
@@ -683,13 +683,13 @@ local function chooser(name: string, title: string, height: number): Frame
 	frame.AnchorPoint = Vector2.new(0.5, 1)
 	frame.Position = UDim2.new(0.5, 0, 1, -66)
 	frame.Size = UDim2.new(1, -24, 0, height)
-	frame.BackgroundColor3 = UIStyle.PANEL
+	frame.BackgroundColor3 = palette.panel
 	frame.Visible = false
 	frame.ZIndex = panel.ZIndex + 10
 	frame.Parent = panel
 	UIKit.corner(frame, 12)
-	UIKit.outline(frame, UIStyle.HINT, UIStyle.EDGE_THICKNESS)
-	local label = text(frame, title, UIKit.textSize("body"), WHITE, true, true)
+	UIKit.outline(frame, UIStyle.GOLD, UIStyle.EDGE_THICKNESS)
+	local label = text(frame, title, UIKit.textSize("body"), palette.ink, true, true)
 	label.Position = UDim2.fromOffset(12, 8)
 	label.Size = UDim2.new(1, -24, 0, 22)
 	label.TextTruncate = Enum.TextTruncate.AtEnd
@@ -729,20 +729,20 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	panel = Instance.new("Frame")
 	panel.Name = "CardDetail"
 	panel.AnchorPoint = Vector2.new(1, 0)
-	panel.BackgroundColor3 = UIStyle.PANEL
 	panel.ZIndex = 10
 	panel.Visible = false
 	panel.Active = true
 	panel.Parent = parent
-	UIKit.corner(panel, 16)
-	UIKit.outline(panel, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	UIKit.creamWindow(panel) -- the window turns cream; the big 3D card beside it keeps its look
+	palette = UIKit.colorsFor(panel)
 
 	header, nameLabel = UIKit.header(panel, "", "Cards")
 	header.ZIndex = panel.ZIndex + 1
 	nameLabel.ZIndex = header.ZIndex + 1
 	nameLabel.Size = UDim2.new(0.6, -18, 1, 0)
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	worthLabel = text(header, "", UIKit.textSize("body") + 2, UIStyle.MONEY, true, true)
+	worthLabel = text(header, "", UIKit.textSize("body") + 2, UIStyle.MONEY, true)
+	UIKit.outlined(worthLabel, 2) -- header text keeps its dark outline on the band
 	worthLabel.AnchorPoint = Vector2.new(1, 0)
 	worthLabel.Position = UDim2.new(1, -14, 0, 0)
 	worthLabel.Size = UDim2.new(0.4, -40, 1, 0)
@@ -781,11 +781,11 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	selectedBox.Position = UDim2.fromScale(0, 1)
 	selectedBox.Size = UDim2.new(1, 0, 0, 0)
 	selectedBox.AutomaticSize = Enum.AutomaticSize.Y
-	selectedBox.BackgroundColor3 = UIStyle.ROW
+	selectedBox.BackgroundColor3 = palette.row
 	selectedBox.ZIndex = body.ZIndex + 1
 	selectedBox.Parent = body
 	UIKit.corner(selectedBox, 10)
-	UIKit.outline(selectedBox, UIStyle.EDGE, 2)
+	UIKit.outline(selectedBox, palette.rowEdge, 2)
 	local boxPadding = Instance.new("UIPadding")
 	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
 		(boxPadding :: any)[side] = UDim.new(0, 8)
@@ -802,7 +802,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	copiesList.BackgroundTransparency = 1
 	copiesList.BorderSizePixel = 0
 	copiesList.ScrollBarThickness = 5
-	copiesList.ScrollBarImageColor3 = UIStyle.HINT
+	copiesList.ScrollBarImageColor3 = palette.hint
 	copiesList.CanvasSize = UDim2.new()
 	copiesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	copiesList.ZIndex = body.ZIndex + 1
@@ -850,14 +850,14 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	partyChooser.AnchorPoint = Vector2.new(0.5, 0.5)
 	partyChooser.Position = UDim2.fromScale(0.5, 0.5)
 	partyChooser.Size = UDim2.new(1, -12, 1, -12)
-	partyChooser.BackgroundColor3 = UIStyle.PANEL
+	partyChooser.BackgroundColor3 = palette.panel
 	partyChooser.Active = true
 	partyChooser.Visible = false
 	partyChooser.ZIndex = panel.ZIndex + 10
 	partyChooser.Parent = panel
 	UIKit.corner(partyChooser, 14)
-	UIKit.outline(partyChooser, UIStyle.HINT, UIStyle.EDGE_THICKNESS)
-	chooserTitle = text(partyChooser, "", UIKit.textSize("name"), WHITE, true, true)
+	UIKit.outline(partyChooser, UIStyle.GOLD, UIStyle.EDGE_THICKNESS)
+	chooserTitle = text(partyChooser, "", UIKit.textSize("name"), palette.ink, true, true)
 	chooserTitle.Position = UDim2.fromOffset(14, 8)
 	chooserTitle.Size = UDim2.new(1, -28, 0, 30)
 	chooserTitle.TextTruncate = Enum.TextTruncate.AtEnd

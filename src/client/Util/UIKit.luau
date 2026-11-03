@@ -455,6 +455,40 @@ function UIKit.closePanel(frame: GuiObject)
 	end)
 end
 
+-- Paints `frame` as a cream window (spec 2026-11-03-cream-windows-design) and marks it Theme "cream" so the pieces
+-- built inside it take the look: a cream gradient face (the "Face" child, under every other child), a thick white
+-- outline and a soft shadow peeking out under it instead of the dark drop lip. UIKit.panel's windows use it, and the
+-- windows built their own way (the Bag, the card detail). Returns the face and the outline.
+function UIKit.creamWindow(frame: Frame): (Frame, UIStroke)
+	frame:SetAttribute("Theme", "cream")
+	frame.BackgroundColor3 = CREAM.BODY_BOTTOM
+	UIKit.corner(frame, CREAM.CORNER)
+	local edge = UIKit.outline(frame, CREAM.OUTLINE, CREAM.OUTLINE_THICKNESS)
+	local face = Instance.new("Frame")
+	face.Name = "Face"
+	face.Size = UDim2.fromScale(1, 1)
+	face.BackgroundColor3 = Color3.new(1, 1, 1)
+	face.BorderSizePixel = 0
+	face.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
+	face.Parent = frame
+	UIKit.corner(face, CREAM.CORNER)
+	local fill = Instance.new("UIGradient")
+	fill.Rotation = 90
+	fill.Color = ColorSequence.new(CREAM.BODY_TOP, CREAM.BODY_BOTTOM)
+	fill.Parent = face
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Position = UDim2.fromOffset(0, CREAM.SHADOW.offset)
+	shadow.Size = UDim2.fromScale(1, 1)
+	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+	shadow.BackgroundTransparency = CREAM.SHADOW.transparency
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = -1
+	shadow.Parent = frame
+	UIKit.corner(shadow, CREAM.CORNER)
+	return face, edge
+end
+
 -- Centred modal panel: a coloured header band (`band`: a Config/UIStyle HEADERS name) with the title, red close
 -- button and a scrolling list. `theme` "cream" (the default; spec 2026-11-03-cream-windows-design): a cream body with a
 -- thick white outline and a soft shadow under it, the band in the window's HUD button colour (UIStyle.CREAM). "dark"
@@ -469,39 +503,25 @@ function UIKit.panel(parent: Instance, name: string, title: string, band: string
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	frame.Size = UDim2.fromScale(0.92, 0.7)
-	frame.BackgroundColor3 = if cream then CREAM.BODY_BOTTOM else UIStyle.EDGE
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame:SetAttribute("Theme", look)
 	frame.Parent = parent
-	UIKit.corner(frame, if cream then CREAM.CORNER else PANEL_CORNER)
-	local edge = if cream
-		then UIKit.outline(frame, CREAM.OUTLINE, CREAM.OUTLINE_THICKNESS)
-		else UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
-	local body = Instance.new("Frame")
-	body.Name = "Body"
-	body.Size = if cream then UDim2.fromScale(1, 1) else UDim2.new(1, 0, 1, -UIStyle.LIP)
-	body.BackgroundColor3 = if cream then Color3.new(1, 1, 1) else UIKit.Colors.Panel
-	body.BorderSizePixel = 0
-	body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
-	body.Parent = frame
-	UIKit.corner(body, if cream then CREAM.CORNER else PANEL_CORNER)
+	local body: Frame, edge: UIStroke
 	if cream then
-		local fill = Instance.new("UIGradient")
-		fill.Rotation = 90
-		fill.Color = ColorSequence.new(CREAM.BODY_TOP, CREAM.BODY_BOTTOM)
-		fill.Parent = body
-		-- A soft shadow peeking out under the window instead of the dark lip
-		local shadow = Instance.new("Frame")
-		shadow.Name = "Shadow"
-		shadow.Position = UDim2.fromOffset(0, CREAM.SHADOW.offset)
-		shadow.Size = UDim2.fromScale(1, 1)
-		shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-		shadow.BackgroundTransparency = CREAM.SHADOW.transparency
-		shadow.BorderSizePixel = 0
-		shadow.ZIndex = -1
-		shadow.Parent = frame
-		UIKit.corner(shadow, CREAM.CORNER)
+		body, edge = UIKit.creamWindow(frame)
+	else
+		frame.BackgroundColor3 = UIStyle.EDGE
+		UIKit.corner(frame, PANEL_CORNER)
+		edge = UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+		body = Instance.new("Frame")
+		body.Name = "Body"
+		body.Size = UDim2.new(1, 0, 1, -UIStyle.LIP)
+		body.BackgroundColor3 = UIKit.Colors.Panel
+		body.BorderSizePixel = 0
+		body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
+		body.Parent = frame
+		UIKit.corner(body, PANEL_CORNER)
 	end
 	-- A see-through panel (the binder: its book is its own screen) shows neither face nor edge
 	frame:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()

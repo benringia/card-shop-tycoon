@@ -923,6 +923,7 @@ end
 local bagGrid: ScrollingFrame
 local bagDetail: Frame
 local bagCount: TextLabel
+local bagPalette: UIKit.Palette -- the Bag window's cream colours (UIKit.colorsFor), set in buildBag
 local bagItems: { [string]: number } = {}
 local selectedItem: string? = nil
 
@@ -934,12 +935,7 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	SLOT_COLOR = UIStyle.ROW, -- a filled slot: lighter slate so items stand out
-	EMPTY_COLOR = Color3.fromRGB(22, 28, 42),
-	EMPTY_EDGE = UIStyle.EDGE,
-	BADGE = UIStyle.EDGE,
-	INK = Color3.fromRGB(244, 241, 233),
-	SUBTEXT = Color3.fromRGB(150, 158, 178),
+	TAB_INK = Color3.fromRGB(244, 241, 233), -- the binder's Cards / Bag tab names (dark binder chrome)
 }
 
 -- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
@@ -987,48 +983,47 @@ local function renderBagDetail()
 	end
 	local info = if selectedItem then Items.ITEMS[selectedItem] else nil
 	if not info or not selectedItem then
-		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, BAG.SUBTEXT, 24, 60)
+		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, bagPalette.inkSoft, 24, 60)
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 		return
 	end
-	-- The item big on a dark circle (a boss item in its boss's tint), its name and how many you have
+	-- The item big on a cream circle (a boss item ringed in its boss's tint), its name and how many you have
 	local tint = bossMark(selectedItem)
 	local halo = Instance.new("Frame")
 	halo.AnchorPoint = Vector2.new(0.5, 0)
 	halo.Position = UDim2.new(0.5, 0, 0, 12)
 	halo.Size = UDim2.fromOffset(84, 84)
-	halo.BackgroundColor3 = UIStyle.PANEL
+	halo.BackgroundColor3 = bagPalette.slotEmpty
 	halo.ZIndex = 33
 	halo.Parent = bagDetail
 	UIKit.corner(halo, 42)
-	UIKit.outline(halo, tint or UIStyle.EDGE, 3)
+	UIKit.outline(halo, tint or bagPalette.rowEdge, 3)
 	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(62, 62))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = 34
 	Icon.set(icon, info.icon)
 	tintIcon(icon, tint)
-	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, BAG.INK, 102, 26)
+	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, bagPalette.ink, 102, 26)
 	name.TextXAlignment = Enum.TextXAlignment.Center
-	UIKit.outlined(name, 2)
-	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIStyle.HINT, 128, 20)
+	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, bagPalette.hint, 128, 20)
 	owned.TextXAlignment = Enum.TextXAlignment.Center
-	-- What it does / where to get it / how to use it, as dark boxes
+	-- What it does / where to get it / how to use it, as cream boxes
 	local y = 154
 	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
 		if section.text then
 			local box = Instance.new("Frame")
 			box.Position = UDim2.fromOffset(12, y)
 			box.Size = UDim2.new(1, -24, 0, 62)
-			box.BackgroundColor3 = UIStyle.PANEL
+			box.BackgroundColor3 = bagPalette.slotEmpty
 			box.ZIndex = 33
 			box.Parent = bagDetail
 			UIKit.corner(box, 10)
-			UIKit.outline(box, UIStyle.EDGE, 2)
-			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIStyle.HINT, 6, 18)
+			UIKit.outline(box, bagPalette.rowEdge, 2)
+			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, bagPalette.hint, 6, 18)
 			heading.Position = UDim2.fromOffset(10, 6)
 			heading.Size = UDim2.new(1, -20, 0, 18)
-			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.INK, 26, 32)
+			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, bagPalette.ink, 26, 32)
 			body.Position = UDim2.fromOffset(10, 26)
 			body.Size = UDim2.new(1, -20, 0, 32)
 			y += 68
@@ -1045,12 +1040,12 @@ local function addSlot(order: number, id: string?)
 	slot.LayoutOrder = order
 	slot.AutoButtonColor = filled
 	slot.Active = filled
-	slot.BackgroundColor3 = if filled then BAG.SLOT_COLOR else BAG.EMPTY_COLOR
+	slot.BackgroundColor3 = if filled then bagPalette.row else bagPalette.slotEmpty
 	slot.ZIndex = 32
 	slot.Parent = bagGrid
 	UIKit.corner(slot, 14)
 	local selected = filled and id == selectedItem
-	UIKit.outline(slot, if selected then UIStyle.HINT else BAG.EMPTY_EDGE, if selected then 3 else 2)
+	UIKit.outline(slot, if selected then UIStyle.GOLD else bagPalette.rowEdge, if selected then 3 else 2) -- the chosen one: a gold ring
 	if not id then
 		return
 	end
@@ -1079,7 +1074,7 @@ local function addSlot(order: number, id: string?)
 	badge.Size = UDim2.fromOffset(0, countSize + 5)
 	badge.AutomaticSize = Enum.AutomaticSize.X
 	badge.TextWrapped = false -- wrapping at no width showed a bare "x"
-	badge.BackgroundColor3 = BAG.BADGE
+	badge.BackgroundColor3 = bagPalette.ink -- a brown chip with white text
 	badge.BackgroundTransparency = 0
 	badge.TextXAlignment = Enum.TextXAlignment.Center
 	badge.ZIndex = 34
@@ -1139,7 +1134,7 @@ local function showTab(bag: boolean)
 	for button, open in { [cardsTab] = not bag, [bagTab] = bag } do
 		local name = button:FindFirstChild("Name", true) :: TextLabel?
 		if name then
-			name.TextColor3 = if open then Color3.new(1, 1, 1) else BAG.INK
+			name.TextColor3 = if open then Color3.new(1, 1, 1) else BAG.TAB_INK
 		end
 	end
 	if bag then
@@ -1172,7 +1167,7 @@ local function buildBag(parent: Frame)
 		local picture = Icon.make(row, icon, UDim2.fromOffset(28, 28))
 		picture.LayoutOrder = 1
 		picture.ZIndex = 13
-		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, BAG.INK)
+		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, BAG.TAB_INK)
 		name.Name = "Name"
 		name.LayoutOrder = 2
 		name.Size = UDim2.fromScale(0, 1)
@@ -1184,18 +1179,18 @@ local function buildBag(parent: Frame)
 	cardsTab = tab("Cards", "Cards", 16)
 	bagTab = tab("Bag", "Bag", 138)
 
-	-- The window, centred; scaled down to fit small screens
+	-- The window, centred; scaled down to fit small screens. Only the Bag window is cream: the binder around it keeps
+	-- its dark look (spec 2026-11-03-cream-windows-design)
 	bagOverlay = Instance.new("Frame")
 	bagOverlay.Name = "Bag"
 	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
 	bagOverlay.Position = UDim2.fromScale(0.5, 0.5)
 	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
-	bagOverlay.BackgroundColor3 = UIStyle.PANEL
 	bagOverlay.Visible = false
 	bagOverlay.ZIndex = 30
 	bagOverlay.Parent = parent
-	UIKit.corner(bagOverlay, 16)
-	UIKit.outline(bagOverlay, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	UIKit.creamWindow(bagOverlay)
+	bagPalette = UIKit.colorsFor(bagOverlay)
 	local fit = Instance.new("UIScale")
 	fit.Parent = bagOverlay
 	local function fitWindow()
@@ -1253,11 +1248,11 @@ local function buildBag(parent: Frame)
 	bagDetail.AnchorPoint = Vector2.new(1, 0)
 	bagDetail.Position = UDim2.new(1, -16, 0, top)
 	bagDetail.Size = UDim2.new(0, BAG.DETAIL_WIDTH, 1, -(top + 16))
-	bagDetail.BackgroundColor3 = UIStyle.ROW
+	bagDetail.BackgroundColor3 = bagPalette.row
 	bagDetail.ZIndex = 32
 	bagDetail.Parent = bagOverlay
 	UIKit.corner(bagDetail, 14)
-	UIKit.outline(bagDetail, UIStyle.EDGE, 2)
+	UIKit.outline(bagDetail, bagPalette.rowEdge, 2)
 
 	cardsTab.Activated:Connect(function()
 		showTab(false)
