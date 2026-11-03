@@ -27,4 +27,8 @@ return {
 	},
 	-- Each element's colour on a party portrait's rim
 	ELEMENTS = { Ember = "peach", Tide = "sky", Bloom = "mint", Volt = "butter", Shade = "lilac" },
+	-- The soft glow (tools/ui-art/make_soft_glow.py, assets/ui/soft/Glow.png): a blurred rounded square with the square
+	-- cut out, SIZE px; the square sits MARGIN px in with a CORNER px radius. UIKit.glow 9-slices it at MARGIN + CORNER
+	-- and scales the slices so the hole's corner matches the thing it glows round.
+	GLOW = { image = "rbxassetid://110423921326900", size = 128, margin = 32, corner = 24 },
 }
