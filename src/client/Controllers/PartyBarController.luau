@@ -31,6 +31,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
+local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
@@ -545,6 +546,10 @@ function PartyBarController.Start()
 	UIKit.outline(partyPill, EMPTY_EDGE, 1.5)
 	Motion.press(partyButton)
 	partyButton.Activated:Connect(PartyController.Toggle)
+
+	-- The mascot peeks over the cushion and ducks when the summoned creature changes
+	HudMascotView.mount(seat)
+	PartyBarController.Summoned:Connect(HudMascotView.duck)
 
 	tip = Instance.new("Frame")
 	tip.Name = "PartyTip"
