@@ -42,8 +42,9 @@ local CASE_PIXELS_PER_STUD = 160 -- as the pages: the set tabs' names are drawn 
 local TAB_ROOM = Desk.TAB.stickOut + Desk.TAB.openExtra -- the case's canvas reaches this far past its right edge
 local TAB_TUCK = 0.2 -- studs of each tab under the case's edge
 local REACH = 300 -- studs a pick ray looks
-local HOVER_SCALE = 1.05 -- the pocket under the pointer rises a little
-local HOVER_EDGE = 5 -- px of light round it (page canvas pixels)
+-- The pocket under the pointer lifts a little: up with a small overshoot, down quickly (Config/BinderDesk HOVER)
+local HOVER_IN = TweenInfo.new(Desk.HOVER.inSeconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local HOVER_OUT = TweenInfo.new(Desk.HOVER.outSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local BinderDesk = {}
 
@@ -62,6 +63,7 @@ local saved: { cameraType: Enum.CameraType, cframe: CFrame, fov: number }? = nil
 local lastRect: UiLayout.Rect? = nil
 local cameraTween: Tween? = nil
 local hovered: Frame? = nil -- the highlighted pocket slot
+local hoverTweens: { [Frame]: Tween } = {} -- each pocket's running lift
 local lifted: Part? = nil -- a picked card on its way to the card view
 local emptied: Frame? = nil -- the pocket it came out of, shown empty meanwhile
 
@@ -273,18 +275,12 @@ local function buildPage(side: Side, parent: Instance)
 		slot.BackgroundTransparency = 1
 		slot.ZIndex = 2
 		slot.Parent = canvas
-		-- The hover look (highlight): a warm edge of light and a small rise, off until the pointer is over it
+		-- The hover look (highlight): a small lift, no border
 		local rise = Instance.new("UIScale")
 		rise.Parent = slot
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = slot
-		local glow = Instance.new("UIStroke")
-		glow.Name = "Hover"
-		glow.Color = Desk.LAMP_COLOR
-		glow.Thickness = HOVER_EDGE
-		glow.Enabled = false
-		glow.Parent = slot
 		slots[side][index] = slot
 	end
 end
@@ -367,9 +363,14 @@ function BinderDesk.highlight(side: Side?, index: number?)
 		if frame then
 			local on = frame == slot
 			local rise = frame:FindFirstChildOfClass("UIScale") :: UIScale
-			local glow = frame:FindFirstChild("Hover") :: UIStroke
-			rise.Scale = if on then HOVER_SCALE else 1
-			glow.Enabled = on
+			-- One tween per pocket, the newest replacing the last, so a fast sweep never leaves one up
+			local running = hoverTweens[frame]
+			if running then
+				running:Cancel()
+			end
+			local tween = TweenService:Create(rise, if on then HOVER_IN else HOVER_OUT, { Scale = if on then Desk.HOVER.scale else 1 })
+			hoverTweens[frame] = tween
+			tween:Play()
 			frame.ZIndex = if on then 3 else 2
 		end
 	end

@@ -211,3 +211,5 @@ The other 38 follow the same template with descriptions read off each model's re
 (the tinted ones described in their tint: Zappit lemon-yellow and Wispurr lavender FairyRabbit, Magmaw fire-orange
 Salamander, Voidmaw violet Hydra...). Redo one that comes out off-model (Ashbeak first came out a white owl, Voltkit on
 four legs: say "made of dark charcoal-grey stone blocks", "standing upright on two legs like a person").
+
+Binder set covers (not card art) follow the same steps: 680 wide in `assets/ui/covers/`, ids in `Config/BinderCovers`.

@@ -18,11 +18,11 @@ local TextChatService = game:GetService("TextChatService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
-local Packs = require(Config:WaitForChild("Packs"))
 local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Collection = require(Config:WaitForChild("Collection"))
+local BinderCovers = require(Config:WaitForChild("BinderCovers"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
 local Desk = require(Config:WaitForChild("BinderDesk"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -82,7 +82,6 @@ local BINDER_KEY = Enum.KeyCode.B
 local BAG_KEY = Enum.KeyCode.I -- inventory: the Bag window
 local BAG_PRIORITY_MARGIN = 100 -- above every built-in binding (the camera's I zoom included)
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
-local COVER_TEXT = Color3.fromRGB(255, 250, 240)
 
 local player = Players.LocalPlayer
 
@@ -99,11 +98,10 @@ local tiles: { Tile } = {}
 local panel: Frame
 local currentSet = Collection.SETS[1]
 local coverPage: Frame
-local coverTitle: TextLabel
 local coverProgress: TextLabel
-local coverEmblem: TextLabel
 local coverArt: ImageLabel
-local coverFill: Frame
+local coverLogo: Frame
+local coverLogoSet: string? = nil -- the set the logo is drawn for
 local coverValue: TextLabel
 local progressName: TextLabel
 local progressCount: TextLabel
@@ -114,6 +112,13 @@ local setFiltersOpen: (open: boolean) -> ()
 local setInspecting: (on: boolean) -> ()
 local renderBag: () -> ()
 local getSetArt: (set: string) -> string?
+local drawCoverLogo: (lines: { string }, fill: { { number } }, drop: { number }) -> ()
+local COVER_LINE = 0.11 -- one line of the cover's logo, as a share of the cover's height
+-- 105607.4 -> "105,607" (the cover's worth, whole dollars)
+local function wholeDollars(value: number): string
+	local text = tostring(math.floor(math.max(0, value)))
+	return (string.gsub(string.reverse((string.gsub(string.reverse(text), "(%d%d%d)", "%1,"))), "^,", ""))
+end
 local rarityGuideButton: TextButton
 local filterButton: TextButton
 -- The Filters window's switches (round 3, "tidy column"): each shows the current choice; set in buildFilters
@@ -674,12 +679,17 @@ local function refreshSet()
 	local leather = coverPage:FindFirstChild("Leather") :: UIGradient
 	leather.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.12), color:Lerp(Color3.new(0, 0, 0), 0.35))
 	coverArt.Image = art or ""
-	coverEmblem.Visible = art == nil
-	coverTitle.Text = string.upper(currentSet)
-	coverProgress.Text = `{owned} / {total} collected`
-	coverFill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
-	coverValue.Text = string.format("Worth $%.2f", value)
-	coverEmblem.Text = Collection.SET_EMBLEMS[currentSet] or "✨"
+	if coverLogoSet ~= currentSet then
+		coverLogoSet = currentSet
+		local cover = BinderCovers.SETS[currentSet]
+		if cover then
+			drawCoverLogo(cover.lines, cover.fill, cover.drop)
+		else
+			drawCoverLogo({ string.upper(currentSet) }, { { 255, 255, 255 }, { 255, 240, 220 }, { 255, 225, 190 } }, { 60, 40, 30 })
+		end
+	end
+	coverProgress.Text = `{owned} / {total}`
+	coverValue.Text = `Worth ${wholeDollars(value)}`
 	progressName.Text = currentSet
 	progressCount.Text = `📖 {owned} / {total}`
 	progressValue.Text = string.format("$%.2f", value)
@@ -1502,18 +1512,119 @@ function setFiltersOpen(open: boolean)
 	end
 end
 
--- The art for a set's cover: the front of the pack that sells it (none for sets without a pack)
+-- The art for a set's cover: its creature-free painting (Config/BinderCovers; spec 2026-11-04-round4-design section 1)
 function getSetArt(set: string): string?
-	for _, pack in Packs.ById do
-		if pack.name == set and pack.art and pack.kind ~= "Deck" then
-			return pack.art
-		end
-	end
-	return nil
+	local cover = BinderCovers.SETS[set]
+	return if cover then cover.art else nil
 end
 
--- The set's cover on spread 1's left page: the pack art over the whole cover (leather in the set's colour when
--- there is none), dark fades behind a title band (name and progress) and the set's worth, an embossed border.
+-- One label of the cover's text, scaled to its box
+local function coverLabel(parent: Instance, text: string, color: Color3, zIndex: number): TextLabel
+	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, 40, color)
+	label.Size = UDim2.fromScale(1, 1)
+	label.TextScaled = true -- (setting TextWrapped false afterwards would turn TextScaled off again)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.ZIndex = zIndex
+	return label
+end
+
+-- The set's name as a candy logo, one line per `lines` entry: a shadow copy in the drop colour a little lower, a thick
+-- white outline copy, and the fill on top (a top-to-bottom gradient of the three fill colours). Outlines scale with
+-- the cover.
+function drawCoverLogo(lines: { string }, fill: { { number } }, drop: { number })
+	for _, child in coverLogo:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	local function rgb(value: { number }): Color3
+		return Color3.fromRGB(value[1], value[2], value[3])
+	end
+	local base = coverArt.ZIndex + 3
+	-- Every line is the same height whatever the count (a one-line name isn't blown up); the star pill sits under it
+	coverLogo.Size = UDim2.fromScale(0.84, COVER_LINE * #lines)
+	local pill = coverProgress.Parent :: Frame
+	pill.Position = UDim2.fromScale(0.5, coverLogo.Position.Y.Scale + COVER_LINE * #lines + 0.02)
+	for index, text in lines do
+		local line = Instance.new("Frame")
+		line.Name = "Line" .. index
+		line.BackgroundTransparency = 1
+		line.Position = UDim2.fromScale(0, (index - 1) / #lines)
+		line.Size = UDim2.fromScale(1, 1 / #lines)
+		line.ZIndex = base
+		line.Parent = coverLogo
+		local shadow = coverLabel(line, text, rgb(drop), base)
+		shadow.Name = "Drop"
+		shadow.Position = UDim2.fromScale(0, 0.07)
+		local outline = coverLabel(line, text, Color3.new(1, 1, 1), base + 1)
+		outline.Name = "Outline"
+		local face = coverLabel(line, text, Color3.new(1, 1, 1), base + 2)
+		face.Name = "Fill"
+		local gradient = Instance.new("UIGradient")
+		gradient.Rotation = 90
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, rgb(fill[1])),
+			ColorSequenceKeypoint.new(0.55, rgb(fill[2])),
+			ColorSequenceKeypoint.new(1, rgb(fill[3])),
+		})
+		gradient.Parent = face
+		local strokes: { UIStroke } = {}
+		for _, label in { shadow, outline } do
+			local stroke = Instance.new("UIStroke")
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+			stroke.LineJoinMode = Enum.LineJoinMode.Round
+			stroke.Color = label.TextColor3
+			stroke.Parent = label
+			table.insert(strokes, stroke)
+		end
+		local function fit()
+			for _, stroke in strokes do
+				stroke.Thickness = math.max(2, line.AbsoluteSize.Y * 0.09)
+			end
+		end
+		line:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+		fit()
+	end
+end
+
+-- A white pill on the cover (the star progress, the worth): `icon` (a Config/UIIcons name) before the text
+local function coverPill(name: string, position: UDim2, width: number, icon: string?): TextLabel
+	local pill = Instance.new("Frame")
+	pill.Name = name
+	pill.AnchorPoint = Vector2.new(0.5, 0)
+	pill.Position = position
+	pill.Size = UDim2.fromScale(width, 0.062)
+	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	pill.ZIndex = coverArt.ZIndex + 3
+	pill.Parent = coverPage
+	UIKit.corner(pill, 999)
+	local edge = Instance.new("UIStroke")
+	edge.Color = Color3.new(0, 0, 0)
+	edge.Transparency = 0.8
+	edge.Thickness = 2
+	edge.Parent = pill
+	local textLeft = 0.08
+	if icon then
+		local mark = Icon.make(pill, icon, UDim2.fromScale(0.7, 0.7))
+		mark.AnchorPoint = Vector2.new(0, 0.5)
+		mark.Position = UDim2.fromScale(0.07, 0.5)
+		mark.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		mark.ZIndex = pill.ZIndex + 1
+		Icon.set(mark, icon)
+		textLeft = 0.24
+	end
+	local text = UIKit.label(pill, "", Enum.Font.FredokaOne, 20, UIStyle.CREAM.INK)
+	text.Position = UDim2.fromScale(textLeft, 0.14)
+	text.Size = UDim2.fromScale(1 - textLeft - 0.08, 0.72)
+	text.TextScaled = true
+	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.ZIndex = pill.ZIndex + 1
+	return text
+end
+
+-- The set's cover on spread 1's left page (spec 2026-11-04-round4-design section 1): the set's painting over the whole
+-- cover (leather in the set's colour when there is none), dark fades at the top and bottom, a thin white frame, the
+-- candy logo, a white star pill (owned / total) under it and the worth in a white pill at the bottom.
 -- Drawn on the left page's canvas (BinderDesk), over its pocket slots.
 local function buildCover(canvas: Frame)
 	coverPage = Instance.new("Frame")
@@ -1529,7 +1640,7 @@ local function buildCover(canvas: Frame)
 	leather.Name = "Leather"
 	leather.Rotation = 60
 	leather.Parent = coverPage
-	-- Full art: the pack art fills the cover, under everything else
+	-- Full art: the painting fills the cover, under everything else
 	coverArt = Instance.new("ImageLabel")
 	coverArt.Name = "Art"
 	coverArt.Size = UDim2.fromScale(1, 1)
@@ -1538,16 +1649,8 @@ local function buildCover(canvas: Frame)
 	coverArt.ZIndex = coverPage.ZIndex + 1
 	coverArt.Parent = coverPage
 	UIKit.corner(coverArt, 10)
-	coverEmblem = UIKit.label(coverArt, "", Enum.Font.FredokaOne, 80, COVER_TEXT)
-	coverEmblem.AnchorPoint = Vector2.new(0.5, 0.5)
-	coverEmblem.Position = UDim2.fromScale(0.5, 0.55)
-	coverEmblem.Size = UDim2.fromScale(0.5, 0.5)
-	coverEmblem.SizeConstraint = Enum.SizeConstraint.RelativeXX
-	coverEmblem.TextScaled = true
-	coverEmblem.TextXAlignment = Enum.TextXAlignment.Center
-	coverEmblem.ZIndex = coverArt.ZIndex + 1
-	-- Dark fades into the art behind the title and the worth, so the text reads on any picture
-	for _, fade in { { name = "TopFade", y = 0, h = 0.4, rotation = 90 }, { name = "BottomFade", y = 0.7, h = 0.3, rotation = -90 } } do
+	-- Dark fades into the art behind the logo and the worth, so they read on any picture
+	for _, fade in { { name = "TopFade", y = 0, h = 0.42, rotation = 90, from = 0.3 }, { name = "BottomFade", y = 0.72, h = 0.28, rotation = -90, from = 0.4 } } do
 		local strip = Instance.new("Frame")
 		strip.Name = fade.name
 		strip.Position = UDim2.fromScale(0, fade.y)
@@ -1560,7 +1663,7 @@ local function buildCover(canvas: Frame)
 		local gradient = Instance.new("UIGradient")
 		gradient.Rotation = fade.rotation
 		gradient.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.25),
+			NumberSequenceKeypoint.new(0, fade.from),
 			NumberSequenceKeypoint.new(1, 1),
 		})
 		gradient.Parent = strip
@@ -1568,66 +1671,24 @@ local function buildCover(canvas: Frame)
 
 	local emboss = Instance.new("Frame")
 	emboss.Name = "Emboss"
-	emboss.Position = UDim2.fromScale(0.05, 0.035)
-	emboss.Size = UDim2.fromScale(0.9, 0.93)
+	emboss.Position = UDim2.fromScale(0.035, 0.025)
+	emboss.Size = UDim2.fromScale(0.93, 0.95)
 	emboss.BackgroundTransparency = 1
 	emboss.ZIndex = coverArt.ZIndex + 2
 	emboss.Parent = coverPage
 	UIKit.corner(emboss, 10)
-	UIKit.outline(emboss, Color3.new(1, 1, 1), 2).Transparency = 0.6
+	UIKit.outline(emboss, Color3.new(1, 1, 1), 2).Transparency = 0.5
 
-	local band = Instance.new("Frame")
-	band.Name = "TitleBand"
-	band.Position = UDim2.fromScale(0.05, 0.1)
-	band.Size = UDim2.fromScale(0.9, 0.2)
-	band.BackgroundColor3 = Color3.new(0, 0, 0)
-	band.BackgroundTransparency = 1
-	band.BorderSizePixel = 0
-	band.ZIndex = coverArt.ZIndex + 2
-	band.Parent = coverPage
-	-- Warm off-white: plain white would be taken as UIKit's auto colour and turn navy on the cover's base
-	coverTitle = UIKit.label(band, "", Enum.Font.FredokaOne, 40, COVER_TEXT)
-	coverTitle.Position = UDim2.fromScale(0.05, 0.06)
-	coverTitle.Size = UDim2.fromScale(0.9, 0.5)
-	coverTitle.TextScaled = true
-	coverTitle.TextXAlignment = Enum.TextXAlignment.Center
-	coverTitle.ZIndex = band.ZIndex + 1
-	coverProgress = UIKit.label(band, "", Enum.Font.FredokaOne, 24, Color3.fromRGB(255, 230, 200))
-	coverProgress.Position = UDim2.fromScale(0.05, 0.6)
-	coverProgress.Size = UDim2.fromScale(0.9, 0.32)
-	coverProgress.TextScaled = true
-	coverProgress.TextXAlignment = Enum.TextXAlignment.Center
-	coverProgress.ZIndex = band.ZIndex + 1
-
-	local track = Instance.new("Frame")
-	track.Name = "Progress"
-	track.Position = UDim2.fromScale(0.18, 0.85)
-	track.Size = UDim2.fromScale(0.64, 0.025)
-	track.BackgroundColor3 = Color3.new(0, 0, 0)
-	track.BackgroundTransparency = 0.5
-	track.ZIndex = coverArt.ZIndex + 2
-	track.Parent = coverPage
-	UIKit.corner(track, 6)
-	coverFill = Instance.new("Frame")
-	coverFill.Size = UDim2.fromScale(0, 1)
-	coverFill.BackgroundColor3 = Color3.fromRGB(255, 230, 160)
-	coverFill.ZIndex = track.ZIndex + 1
-	coverFill.Parent = track
-	UIKit.corner(coverFill, 6)
-	coverValue = UIKit.label(coverPage, "", Enum.Font.FredokaOne, 24, COVER_TEXT)
-	coverValue.Position = UDim2.fromScale(0.1, 0.885)
-	coverValue.Size = UDim2.fromScale(0.8, 0.055)
-	coverValue.TextScaled = true
-	coverValue.TextXAlignment = Enum.TextXAlignment.Center
-	coverValue.ZIndex = coverArt.ZIndex + 2
-	-- A dark outline keeps the cover text readable over bright art
-	for _, label in { coverTitle, coverProgress, coverValue } do
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(40, 20, 10)
-		stroke.Thickness = 2
-		stroke.Transparency = 0.25
-		stroke.Parent = label
-	end
+	coverLogo = Instance.new("Frame")
+	coverLogo.Name = "Logo"
+	coverLogo.AnchorPoint = Vector2.new(0.5, 0)
+	coverLogo.Position = UDim2.fromScale(0.5, 0.045)
+	coverLogo.Size = UDim2.fromScale(0.84, COVER_LINE * 2)
+	coverLogo.BackgroundTransparency = 1
+	coverLogo.ZIndex = coverArt.ZIndex + 3
+	coverLogo.Parent = coverPage
+	coverProgress = coverPill("Progress", UDim2.fromScale(0.5, 0.285), 0.4, "Star")
+	coverValue = coverPill("Worth", UDim2.fromScale(0.5, 0.9), 0.66)
 end
 
 -- A round arrow button beside the book, with its key chip

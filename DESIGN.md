@@ -2019,8 +2019,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   nine faces at once cost a 40-70 ms frame). One pointer owns a press at a time (`Util/BinderGesture`): a second
   finger can't take over a dragged page, a release that never came is ended by the next press, and closing the
   binder or leaving the window ends any press or held key. Spread 1's left page
-  is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
-  (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
+  is the cover (owner 2026-11-04, spec `2026-11-04-round4-design` section 1): a painting of the set's place with no
+  creature on it, so new players discover them in packs (`Config/BinderCovers`, sources in `assets/ui/covers/`; First
+  Spark the spark and the five element orbs over a hilltop, Frontier a frosty ridge under a purple rift), dark fades
+  top and bottom, a thin white frame, the set's name as a chunky candy logo (a shadow copy, a thick white outline copy
+  and a three-colour gradient fill; every line the same height), a white star pill "35 / 35" under it and "Worth
+  $105,607" in a white pill at the bottom; then page 1. The pocket under the pointer lifts to 1.05 in 0.14 s with a
+  small overshoot and settles in 0.1 s (`BinderDesk.HOVER`, one tween per pocket), with no border.
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
   screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Rarity guide bottom left, Filters
   under the close button), no arrows and no progress card. Top right: Filters (F) and close. The **Filters window**

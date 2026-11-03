@@ -26,6 +26,8 @@ return {
 	RING_THICKNESS = 0.11,
 	RING_SEGMENTS = 9,
 	SHADOW_TRANSPARENCY_DESK = 0.35, -- the binder's soft shadow on the desk
+	-- The pocket under the pointer lifts, snappy but smooth, with no border (owner 2026-11-04, spec round4 section 2)
+	HOVER = { scale = 1.05, inSeconds = 0.14, outSeconds = 0.1 },
 
 	-- The desk and the painted lamp light (looks the same at every graphics quality: no real light needed)
 	DESK_COLOR = Color3.fromRGB(138, 90, 53),
