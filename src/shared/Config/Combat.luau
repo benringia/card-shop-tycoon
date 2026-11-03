@@ -80,7 +80,7 @@ return {
 	QUICK_WARNING = 0.5, -- seconds the boss flashes before a quick hit lands
 	HIT_GRACE = 0.15, -- seconds the server lands hits on players after clients show them (a late dodge still counts)
 	DODGE_SECONDS = 0.35, -- untouchable after a dodge
-	DODGE_COOLDOWN = 1,
+	DODGE_COOLDOWN = 2.5, -- owner 2026-11-04 (option A, was 1): one dodge per ring still, but mashing it stops working
 	DODGE_STUDS = 12, -- the dash's length
 	-- A dash that would end inside a boss or monster goes on through it to this far past its edge, up to DODGE_MAX_STUDS
 	-- (SwordRules.dashLength; owner 2026-11-04)

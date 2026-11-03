@@ -4,7 +4,7 @@
 -- and sparkles. Unsummon: it shrinks into a flash and a light flies back into its owner. Faint: a white flash, it tips
 -- over (CreatureVisuals), dizzy stars circle its head, then it fades in a puff; it comes back (revive) when it's no
 -- longer fainted. CreatureController calls these on the marker's SummonedAt stamp and its Unsummon / Fainted flags.
--- A summon chimes and an unsummon whooshes where the creature is (Party.SUMMON_SOUNDS).
+-- A summon dings softly and an unsummon whooshes where the creature is (Party.SUMMON_SOUNDS).
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -69,6 +69,23 @@ local function flash(model: Model, color: Color3, strength: number, seconds: num
 	Debris:AddItem(glow, seconds + 0.05)
 end
 
+-- A summon or unsummon sound where the creature is: quiet and always at its set pitch (no random wobble, which made the
+-- first chime sound busy)
+local function play(spec: { id: string, volume: number, pitch: number }, at: Vector3)
+	local anchor = Instance.new("Attachment")
+	anchor.Position = at -- Terrain sits at the origin, so this is the world position
+	anchor.Parent = workspace.Terrain
+	local sound = Instance.new("Sound")
+	sound.SoundId = spec.id
+	sound.Volume = spec.volume
+	sound.PlaybackSpeed = spec.pitch
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMaxDistance = SOUNDS.range
+	sound.Parent = anchor
+	sound:Play()
+	Debris:AddItem(anchor, 4)
+end
+
 local function ground(body: Body): Vector3
 	return body.cframe.Position
 end
@@ -76,7 +93,7 @@ end
 -- Summoned: the ring and pillar, then it pops up out of them
 function SummonFx.summon(body: Body, color: Color3)
 	local at = ground(body)
-	ElementFx.sound(SOUNDS.summon.id, at, SOUNDS.summon.volume)
+	play(SOUNDS.summon, at)
 	ElementFx.ring(at + Vector3.new(0, 0.2, 0), color, 2.6, CFG.pop + 0.2)
 	ElementFx.pillar(at, color:Lerp(WHITE, 0.35), CFG.pillar, CFG.pop + 0.25, "glow")
 	body.grow = SummonMotion.popScale(0, CFG.pop)
@@ -93,7 +110,7 @@ end
 -- Unsummoned: it shrinks into a flash and a light flies back into `owner` (its owner's character, if there)
 function SummonFx.unsummon(body: Body, color: Color3, owner: Model?)
 	local from = body.root.Position
-	ElementFx.sound(SOUNDS.unsummon.id, from, SOUNDS.unsummon.volume)
+	play(SOUNDS.unsummon, from)
 	flash(body.model, WHITE, 0.6, CFG.unsummon)
 	animate(CFG.unsummon, function(t)
 		body.grow = SummonMotion.shrinkScale(t, CFG.unsummon)

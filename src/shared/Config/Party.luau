@@ -524,11 +524,13 @@ return {
 	-- long before removing it); a faint flashes, tips it over in `tip` seconds, spins dizzy stars for `stars` seconds,
 	-- then it fades in a puff over `fade` seconds (and comes back when the fight is over)
 	SUMMON_FX = { window = 1.5, pop = 0.4, pillar = 9, unsummon = 0.45, tip = 0.3, stars = 1.3, fade = 0.4 },
-	-- Their sounds (owner 2026-11-04; Pro Sound Effects, Roblox-licensed), played where the creature is: a soft chime as it
-	-- pops up, an airy whoosh as it flies back into you
+	-- Their sounds (owner 2026-11-04; Pro Sound Effects, Roblox-licensed), played where the creature is, at a steady pitch:
+	-- one soft bell ding as it pops up (the owner found the first chime cluster loud and busy: "subtle, premium"), a
+	-- quiet airy whoosh as it flies back into you. Volume is the Sound's own; range in studs.
 	SUMMON_SOUNDS = {
-		summon = { id = "rbxassetid://9116394876", volume = 0.9 }, -- "Magic Glows Soft Clusters Of Chiming Hits 2"
-		unsummon = { id = "rbxassetid://9116400132", volume = 0.8 }, -- "Magic Movement Airy Whips Swooshes 24"
+		summon = { id = "rbxassetid://9126073001", volume = 0.16, pitch = 0.82 }, -- "Synth Sparkle Tone High Pitch Bell Tone Ding 4", warmed down
+		unsummon = { id = "rbxassetid://9116400132", volume = 0.18, pitch = 1 }, -- "Magic Movement Airy Whips Swooshes 24"
+		range = 60,
 	},
 	-- Your summoned creature's voice (Util/PetVoice, owner 2026-11-04 "an occasional chirp"): small creatures chirp,
 	-- Epics and Legendaries huff; pitched lower the bigger they are; only you hear your own, nearby. It says hello

@@ -123,7 +123,12 @@ user kept the map's spots). Trails are paved terrain with the portal's glowing l
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
 (one in the planter on the plaza rim beside the spawn, one at each street end; `Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
-`SceneryService`); a grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+`SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
+**Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `TownMusicController`, `Config/Music`,
+`Util/MusicRules`): two soft APM underscores, "Lakefront Days" in its ukulele and acoustic guitar underscore versions
+(Roblox-licensed, no lead melody), take turns at volume 0.12 with 6 s of quiet between them; it fades out over 3 s when
+you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild valley, a boss arena) and back in when you return.
+Main place only. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
 models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
 `tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
@@ -956,7 +961,7 @@ group, checked before its fragments and every time (not only the first). Below i
   Frontier's and the Prism Hydra) each player fights beside their one creature as a player fighter (`a:@<UserId>`,
   100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 3, `Config/Swords`, `SwordService`) hits through remotes
   `SwordAttack` (the server picks the combo's next cut with `SwordRules.nextCut` and hits whatever is in reach at its
-  strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 1 s cooldown; the
+  strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
   dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
   third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
   big attack: a closing orange ring (`SwordFx.RING_COLOR`, the owner's pick) on each player, a slam under them or a
@@ -1160,8 +1165,9 @@ group, checked before its fragments and every time (not only the first). Below i
   marker's name is free): it flashes, shrinks away and a light flies back into its owner; a boss fight's benched leader
   does the same. A faint: a white flash, it tips over (`CreatureVisuals`, eased), dizzy stars circle its head for
   1.3 s, then it fades in a puff, and pops back when it's no longer fainted. Sounds (owner 2026-11-04,
-  `Party.SUMMON_SOUNDS`, Pro Sound Effects): a soft chime as it pops up, an airy whoosh as it flies back into you, both
-  played where it stands.
+  `Party.SUMMON_SOUNDS`, Pro Sound Effects), played where it stands at a steady pitch: one soft bell ding as it pops up
+  (PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 4" at 0.82 speed, volume 0.16; the owner found the first chime
+  cluster loud and busy and asked for "subtle, premium"), a quiet airy whoosh as it flies back into you (volume 0.18).
 - **Pet voice** (owner 2026-11-04 "an occasional chirp"; `Util/PetVoice`, `Party.VOICE`): your own summoned creature
   says hello 0.5 s after it pops up, then chirps every 18-40 s while it's out and about (not in a fight, fainted,
   swapped out or leaving) with an 8% squash-bounce. Small creatures chirp (PSE "Parakeet Chirps 8", "Mouse Vocal 3",
@@ -1569,6 +1575,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
+    │   │   ├── TownMusicController.luau # gentle town music, fading out when you leave the island
     │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
@@ -1678,6 +1685,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Bosses.luau     # boss ladder: bosses, drops, chests, farm protection, arenas
         │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, portal areas, trails, walk edge, signposts
         │   ├── Scenery.luau    # terrain shapes and scenery round the town and in the portal areas (plain data)
+        │   ├── Music.luau      # the town music's tracks, volume, fades and edge (plain data)
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
@@ -1740,6 +1748,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── DefeatRules.luau   # the defeat screen's rows, subtitle and tip (pure, Lune-tested)
             ├── SummonMotion.luau  # a summon's pop, an unsummon's shrink, a faint's tip-over, fresh stamps (pure, Lune-tested)
             ├── PetVoice.luau      # your creature's chirp: voice, timing, pitch by size, bounce, when it may (pure, Lune-tested)
+            ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)

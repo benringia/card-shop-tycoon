@@ -48,6 +48,7 @@ local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevea
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
+local TownMusicController = require(Controllers:WaitForChild("TownMusicController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
@@ -87,6 +88,7 @@ else
 	ShelfInfoController.Start()
 	ButterflyController.Start()
 	DayCycleController.Start()
+	TownMusicController.Start() -- gentle music in the town, under the birds and the wind
 	TreeSwayController.Start()
 	TownCritterController.Start()
 	PlazaNpcController.Start()
