@@ -57,6 +57,17 @@ return {
 	READY_FLASH = 0.25, -- seconds a button glows when it's ready again
 	PERK_CHIP_HEIGHT = 20, -- pixels: the fight perk chip under your creature's bar
 	PERK_TOAST_SECONDS = 1.8, -- a swap shows the new creature's perk this long
+	-- A boss's debuff on you (Config/Bosses DEBUFFS; the owner's approved look): a chip under the perk chip with the
+	-- seconds left and a draining bar, a badge on your portrait, an effect on your character (Util/DebuffFx)
+	DEBUFFS = {
+		Entangled = { emoji = "🌿", name = "Tangled", color = { 63, 174, 74 } },
+		Poison = { emoji = "🧪", name = "Poisoned", color = { 139, 230, 90 } },
+		Burn = { emoji = "🔥", name = "Burning", color = { 255, 122, 26 } },
+		Chilled = { emoji = "❄️", name = "Chilled", color = { 124, 200, 255 } },
+		Shocked = { emoji = "⚡", name = "Shocked", color = { 255, 225, 74 } },
+		Weakened = { emoji = "💔", name = "Weak", color = { 167, 123, 255 } },
+	},
+	DEBUFF_BADGE = 28, -- pixels: the badge on the portrait's corner
 	-- Top-left: your headshot in a ring with your creature's card on a badge, then your HP and your creature's
 	STATUS_WIDTH = 0.32, -- of the screen's width
 	STATUS_MAX_WIDTH = 340,

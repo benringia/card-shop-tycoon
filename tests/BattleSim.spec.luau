@@ -1444,6 +1444,15 @@ return {
 		expect.equal(firstOf(events, "debuff"), nil, "quick hits never debuff")
 	end,
 
+	["a swipe ring gives its debuff like a slam"] = function()
+		for _, shape in { "swipe", "slam" } do
+			local attacks = { every = 2, warning = 1, big = 0.1, quick = 0, shape = shape, debuff = "Poison" }
+			local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+			local debuff = firstOf(runFor(state, 3.4), "debuff")
+			expect.equal(debuff ~= nil and debuff.kind, "Poison", shape)
+		end
+	end,
+
 	["poison ticks then ends"] = function()
 		local attacks = { every = 2, warning = 1, big = 0.1, quick = 0, debuff = "Poison" }
 		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
@@ -1475,6 +1484,25 @@ return {
 		end
 		expect.equal(debuffs >= 4, true, "every ring hit sends it again")
 		expect.equal(burns >= 7, true, "kept burning while refreshed")
+	end,
+
+	["playerDebuff says the player's debuff and its seconds left, nothing once it ends"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "Entangled" }
+		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		expect.isNil(BattleSim.playerDebuff(state, "1"), "none before a ring lands")
+		stepUntil(state, function(e)
+			return e.type == "debuff"
+		end, 5)
+		state.sides.b.fighters[1].bigReady = math.huge -- just the one ring
+		local kind, left = BattleSim.playerDebuff(state, "1")
+		expect.equal(kind, "Entangled")
+		expect.near(left :: number, Bosses.DEBUFFS.Entangled.seconds, 0.15, "the full time just after it lands")
+		runFor(state, 1)
+		local _, later = BattleSim.playerDebuff(state, "1")
+		expect.near(later :: number, Bosses.DEBUFFS.Entangled.seconds - 1, 0.15, "counts down")
+		runFor(state, Bosses.DEBUFFS.Entangled.seconds)
+		expect.isNil(BattleSim.playerDebuff(state, "1"), "gone once it ends")
+		expect.isNil(BattleSim.playerDebuff(state, "2"), "a player not in the fight has none")
 	end,
 
 	["Shocked blocks sword and dodge for its seconds"] = function()

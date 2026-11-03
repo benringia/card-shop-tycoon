@@ -31,6 +31,7 @@ local Wild = Place.getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
+local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerNames"))
@@ -68,6 +69,8 @@ type Member = {
 	leashWarnedAt: number,
 	lastCut: SwordRules.LastCut?, -- boss fights: their sword's last cut (os.clock times)
 	skillReady: number, -- boss fights: os.clock when their sword skill is ready again
+	down: boolean, -- their player fighter is down (can't walk or jump)
+	slow: number?, -- a boss's debuff slows their walking by this share (Config/Bosses DEBUFFS slow)
 }
 
 -- A big attack's ring as placed when it started (studs on the ground plane): a slam's centre, or a swipe's origin
@@ -480,25 +483,43 @@ local function windUp(fight: Fight, seconds: number?, kind: string)
 	marker:SetAttribute("WindUps", (tonumber(marker:GetAttribute("WindUps")) or 0) + 1)
 end
 
--- A member's player kneels (down) or stands again: they can't walk or jump while down
-local function setDowned(member: Member, down: boolean)
+-- A member's walking from member.down and member.slow: kneeling with no walking or jumping while down, slowed while a
+-- boss's debuff slows them (Util/DebuffRules), else back to the speed and jump they had before (kept in WalkSpeedBefore
+-- and JumpHeightBefore while either holds)
+local function updateMovement(member: Member)
 	local character = member.player.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
 	if not character or not humanoid then
 		return
 	end
-	character:SetAttribute("Downed", if down then true else nil)
+	character:SetAttribute("Downed", if member.down then true else nil)
+	local held = member.down or member.slow ~= nil
 	local before = humanoid:GetAttribute("WalkSpeedBefore")
-	if down and before == nil then
-		humanoid:SetAttribute("WalkSpeedBefore", humanoid.WalkSpeed)
-		humanoid:SetAttribute("JumpHeightBefore", humanoid.JumpHeight)
-		humanoid.WalkSpeed = 0
-		humanoid.JumpHeight = 0
-	elseif not down and typeof(before) == "number" then
+	if held then
+		if typeof(before) ~= "number" then
+			before = humanoid.WalkSpeed
+			humanoid:SetAttribute("WalkSpeedBefore", humanoid.WalkSpeed)
+			humanoid:SetAttribute("JumpHeightBefore", humanoid.JumpHeight)
+		end
+		humanoid.WalkSpeed = DebuffRules.walkSpeed(before :: number, member.down, member.slow)
+		humanoid.JumpHeight = if member.down then 0 else tonumber(humanoid:GetAttribute("JumpHeightBefore")) or humanoid.JumpHeight
+	elseif typeof(before) == "number" then
 		humanoid.WalkSpeed = before
 		humanoid.JumpHeight = tonumber(humanoid:GetAttribute("JumpHeightBefore")) or humanoid.JumpHeight
 		humanoid:SetAttribute("WalkSpeedBefore", nil)
 		humanoid:SetAttribute("JumpHeightBefore", nil)
+	end
+end
+
+-- Each step: a boss's debuff that slows (Tangled, Chilled) slows the member's walking while the sim says it holds, so
+-- a refresh, a different debuff, going down and running out all follow the sim
+local function followDebuff(fight: Fight, member: Member)
+	local kind = BattleSim.playerDebuff(fight.sim, member.owner)
+	local spec = if kind then Bosses.DEBUFFS[kind] else nil
+	local slow = if spec and spec.slow then spec.slow else nil
+	if slow ~= member.slow then
+		member.slow = slow
+		updateMovement(member)
 	end
 end
 
@@ -538,7 +559,8 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 		elseif (event.type == "down" or event.type == "getUp") and event.to then
 			local member = memberByOwner(fight, string.sub(event.to, 4))
 			if member then
-				setDowned(member, event.type == "down")
+				member.down = event.type == "down"
+				updateMovement(member)
 			end
 		end
 	end
@@ -716,7 +738,8 @@ local function release(fight: Fight, member: Member): { string }
 	end
 	PartyService.SetHold(player, nil)
 	PartyService.SetLocked(player, false)
-	setDowned(member, false)
+	member.down, member.slow = false, nil
+	updateMovement(member)
 	SwordService.SetBackHidden(player, false)
 	local leaderMarker = PartyService.GetMarker(player)
 	if leaderMarker then
@@ -954,7 +977,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 				table.insert(reserves, input)
 			end
 		end
-		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = 0 })
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = 0, down = false, slow = nil })
 	end
 	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights
 	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil, creaturesDecide = not boss and not run }
@@ -1364,6 +1387,9 @@ local function stepFights(dt: number)
 			continue -- the intro: nothing moves yet
 		end
 		handleEvents(fight, BattleSim.step(fight.sim, dt))
+		for _, member in fight.members do
+			followDebuff(fight, member)
+		end
 		if fight.sim.result then
 			endFight(fight, outcomeOf(fight.sim.result))
 		else

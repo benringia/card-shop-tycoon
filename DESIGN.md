@@ -1057,6 +1057,18 @@ group, checked before its fragments and every time (not only the first). Below i
   Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
   Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
   stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
+  Shown (owner-approved look, 2026-11-03): a chip on its own row under the perk chip ("🌿 Tangled 1.6": emoji, name,
+  tenths left over a bar draining in its colour; boss fights only, the row keeps its place so the bars don't jump), the
+  emoji in a small ring on your portrait's top-right (`CombatHud.setDebuff`, looks in `Config/CombatHud` DEBUFFS,
+  countdown in `Util/DebuffRules`), and an effect on the character that everyone in the fight sees (`Util/DebuffFx`):
+  Tangled vine bands round the lower legs, Poisoned green bubbles rising, Burning small flames, Chilled ice crystals at
+  the feet and a blue tint, Shocked yellow sparks, Weak a purple haze; each Poison or Burn tick flashes the character in
+  its colour and floats its number (no flinch or shake). The walk slows are the server's: each step it reads the
+  player's debuff from the sim (`BattleSim.playerDebuff`) and sets WalkSpeed to the speed before times 1 - slow
+  (`BattleService` `updateMovement`, which also kneels a downed player; the speed before is kept in the humanoid's
+  WalkSpeedBefore while either holds), so a refresh, another debuff, going down, running out, running away and the
+  fight ending all put walking back. The Queen's web spit is a swipe: it reaches her ring radius plus 8 studs, so a
+  player standing further back takes no hit and no Poison.
 - **Effect quality** (same spec, "Quality bar", owner 2026-11-03): every fight effect is drawn from a texture kit in the
   owner's reference look (`tools/textures/make_attack_fx.py` -> `assets/ui/fx-attack`, ids in `AttackFx.TEXTURES`:
   glow, flare, comet streak, spark, shockwave ring, lightning, crescent slash, crystal shard, starburst, flame, smoke),

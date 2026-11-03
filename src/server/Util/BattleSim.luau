@@ -1294,6 +1294,17 @@ function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: nu
 	return if fighter then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted } else nil
 end
 
+-- The boss debuff on `owner`'s player fighter now: its kind and seconds left (nil when none). The server slows their
+-- walking from it each step.
+function BattleSim.playerDebuff(state: State, owner: string): (string?, number?)
+	local fighter = find(state, `a:@{owner}`)
+	local kind = if fighter then debuffOn(state, fighter) else nil
+	if not fighter or not kind then
+		return nil, nil
+	end
+	return kind, (fighter.debuff :: Debuff).untilTime - state.time
+end
+
 -- Every fighter's HP on a side, on the field or in reserve (fainted = 0), by unprefixed id; only `owner`'s when given
 -- (the Dungeon carries these into the next room)
 function BattleSim.hpLeft(state: State, sideName: string, owner: string?): { [string]: number }

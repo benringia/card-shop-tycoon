@@ -42,6 +42,7 @@ local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
+local DebuffFx = require(ClientUtil:WaitForChild("DebuffFx"))
 local FightFx = require(ClientUtil:WaitForChild("FightFx"))
 local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
@@ -904,6 +905,34 @@ local function newFightFx(): FightFx.Dispatcher
 	})
 end
 
+-- A boss's debuff on a player in the fight (Util/DebuffFx): its effect on their character, and on yours the HUD's chip
+-- and badge; going down takes it off; a Poison or Burn tick flashes them
+local function showDebuff(event: any, me: string)
+	local id = event.to
+	if typeof(id) ~= "string" or string.sub(id, 1, 3) ~= "a:@" then
+		return
+	end
+	local who = Players:GetPlayerByUserId(tonumber(string.sub(id, 4)) or 0)
+	local character = if who then who.Character else nil
+	if event.type == "debuff" and typeof(event.kind) == "string" and typeof(event.seconds) == "number" then
+		if character then
+			DebuffFx.show(character, event.kind, event.seconds)
+		end
+		if id == me and combatHud then
+			combatHud.setDebuff(event.kind, event.seconds)
+		end
+	elseif event.type == "down" then
+		if character then
+			DebuffFx.clear(character)
+		end
+		if id == me and combatHud then
+			combatHud.setDebuff(nil)
+		end
+	elseif event.type == "attack" and (event.kind == "Poison" or event.kind == "Burn") and character then
+		DebuffFx.flash(character, event.kind)
+	end
+end
+
 local function onEvents(events: { any })
 	if fightFx then
 		-- Pictures only: a broken effect must never stop the damage numbers and HUD below
@@ -914,6 +943,7 @@ local function onEvents(events: { any })
 	end
 	local me = `a:@{player.UserId}`
 	for _, event in events do
+		showDebuff(event, me)
 		if event.type == "attack" and event.to and typeof(event.from) == "string" and string.sub(event.from, 1, 3) == "a:@" then
 			if event.crit then
 				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
@@ -1458,6 +1488,7 @@ local function onEnded(summary: any)
 		fightFx.destroy()
 		fightFx = nil
 	end
+	DebuffFx.clearAll()
 	-- A fight can end during the intro (a player left): give the camera back
 	if introCard.Visible then
 		introToken += 1

@@ -21,6 +21,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
+local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local HpBar = require((script.Parent :: Instance):WaitForChild("HpBar"))
@@ -66,6 +67,7 @@ export type Hud = {
 	update: (view: View) -> (),
 	setCooldown: (name: string, readyAt: number, total: number) -> (),
 	setVisible: (visible: boolean) -> (),
+	setDebuff: (kind: string?, seconds: number?) -> (), -- a boss's debuff on you for `seconds` (nil: none)
 	destroy: () -> (),
 }
 
@@ -297,7 +299,23 @@ local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIS
 	edge.Color = color(CombatHudConfig.HP_BAR.CREATURE.edge)
 	edge.Thickness = 2.5
 	edge.Parent = badge
-	return ring, shading, glow, badge, face
+	-- A boss's debuff on you: its emoji in a small ring on the top-right (set by the HUD's setDebuff)
+	local debuffSize = CombatHudConfig.DEBUFF_BADGE
+	local debuffBadge = UIKit.label(ring, "", Enum.Font.GothamBold, math.round(debuffSize * 0.55), Color3.new(1, 1, 1))
+	debuffBadge.Name = "DebuffBadge"
+	debuffBadge.TextXAlignment = Enum.TextXAlignment.Center
+	debuffBadge.BackgroundColor3 = PORTRAIT_BACK
+	debuffBadge.BackgroundTransparency = 0.05
+	debuffBadge.AnchorPoint = Vector2.new(1, 0)
+	debuffBadge.Position = UDim2.new(1, math.round(debuffSize * 0.25), 0, -math.round(debuffSize * 0.25))
+	debuffBadge.Size = UDim2.fromOffset(debuffSize, debuffSize)
+	debuffBadge.Visible = false
+	UIKit.corner(debuffBadge, debuffSize)
+	local debuffEdge = Instance.new("UIStroke")
+	debuffEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	debuffEdge.Thickness = 2
+	debuffEdge.Parent = debuffBadge
+	return ring, shading, glow, badge, face, debuffBadge, debuffEdge
 end
 
 -- showNames: name the buttons (the player's first boss fights; the server decides); wild: a wild monster fight's HUD;
@@ -335,12 +353,13 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	status.BackgroundTransparency = 1
 	status.Position = UDim2.fromOffset(12, 8)
 	local thirdRow = if wild and armed then 18 + barSpec.SMALL_HEIGHT + 6 else 0 -- a called-in creature's HP
-	status.Size = UDim2.new(CombatHudConfig.STATUS_WIDTH, 0, 0, math.max(portraitSize, 2 * 18 + barSpec.HEIGHT + barSpec.SMALL_HEIGHT + 12 + CombatHudConfig.PERK_CHIP_HEIGHT + thirdRow))
+	local debuffRow = if wild then 0 else CombatHudConfig.PERK_CHIP_HEIGHT + 6 -- boss fights: a debuff's chip
+	status.Size = UDim2.new(CombatHudConfig.STATUS_WIDTH, 0, 0, math.max(portraitSize, 2 * 18 + barSpec.HEIGHT + barSpec.SMALL_HEIGHT + 12 + CombatHudConfig.PERK_CHIP_HEIGHT + thirdRow + debuffRow))
 	status.Parent = root
 	local limit = Instance.new("UISizeConstraint")
-	limit.MaxSize = Vector2.new(CombatHudConfig.STATUS_MAX_WIDTH, 120 + thirdRow)
+	limit.MaxSize = Vector2.new(CombatHudConfig.STATUS_MAX_WIDTH, 120 + thirdRow + debuffRow)
 	limit.Parent = status
-	local ring, ringShading, ringGlow, badge, face = portrait(status, portraitSize)
+	local ring, ringShading, ringGlow, badge, face, debuffBadge, debuffBadgeEdge = portrait(status, portraitSize)
 	local rows = Instance.new("Frame")
 	rows.Name = "Rows"
 	rows.BackgroundTransparency = 1
@@ -380,6 +399,65 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	chipEdge.Parent = chip
 	local chipScale = Instance.new("UIScale")
 	chipScale.Parent = chip
+	-- A boss's debuff on you (the owner's approved look): a chip on its own row under the perk chip, its emoji and name
+	-- with the tenths left over a bar draining in its colour. Boss fights only; the row keeps its place, so the bars
+	-- above don't jump when it shows.
+	local debuffChip: Frame?, debuffName: TextLabel?, debuffSecs: TextLabel?, debuffDrain: Frame?, debuffChipEdge: UIStroke?, debuffScale: UIScale?
+	if not wild then
+		local row = Instance.new("Frame")
+		row.Name = "DebuffRow"
+		row.BackgroundTransparency = 1
+		row.LayoutOrder = 5
+		row.Size = UDim2.new(1, 0, 0, chipSize)
+		row.Parent = rows
+		local frame = Instance.new("Frame")
+		frame.Name = "DebuffChip"
+		frame.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+		frame.BackgroundTransparency = 0.12
+		frame.Size = UDim2.fromOffset(0, chipSize)
+		frame.AutomaticSize = Enum.AutomaticSize.X
+		frame.Visible = false
+		frame.Parent = row
+		UIKit.corner(frame, chipSize)
+		local content = Instance.new("Frame")
+		content.BackgroundTransparency = 1
+		content.Size = UDim2.fromOffset(0, chipSize)
+		content.AutomaticSize = Enum.AutomaticSize.X
+		content.Parent = frame
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+		pad.Parent = content
+		local list = Instance.new("UIListLayout")
+		list.FillDirection = Enum.FillDirection.Horizontal
+		list.VerticalAlignment = Enum.VerticalAlignment.Center
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Padding = UDim.new(0, 5)
+		list.Parent = content
+		local name = UIKit.label(content, "", Enum.Font.FredokaOne, chipSize - 8, Color3.new(1, 1, 1))
+		name.LayoutOrder = 1
+		name.TextWrapped = false
+		name.Size = UDim2.fromOffset(0, chipSize)
+		name.AutomaticSize = Enum.AutomaticSize.X
+		local secs = UIKit.label(content, "", Enum.Font.FredokaOne, chipSize - 8, Color3.new(1, 1, 1))
+		secs.LayoutOrder = 2
+		secs.TextTransparency = 0.15
+		secs.TextXAlignment = Enum.TextXAlignment.Right
+		secs.Size = UDim2.fromOffset(24, chipSize) -- fixed: the chip doesn't wobble as the digits change
+		local drain = Instance.new("Frame")
+		drain.Name = "Drain"
+		drain.BorderSizePixel = 0
+		drain.AnchorPoint = Vector2.new(0, 1)
+		drain.Position = UDim2.fromScale(0, 1)
+		drain.Size = UDim2.new(1, 0, 0, 3)
+		drain.Parent = frame
+		local edge = Instance.new("UIStroke")
+		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		edge.Thickness = 1.5
+		edge.Parent = frame
+		local scale = Instance.new("UIScale")
+		scale.Parent = frame
+		debuffChip, debuffName, debuffSecs, debuffDrain, debuffChipEdge, debuffScale = frame, name, secs, drain, edge, scale
+	end
 	-- A swap's toast: the new creature's perk, just under the top-left status for a moment
 	local toast = UIKit.label(root, "", Enum.Font.FredokaOne, 18, Color3.new(1, 1, 1))
 	toast.Name = "PerkToast"
@@ -591,9 +669,48 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
+	-- A boss's debuff on you for `seconds`, or none: the portrait's badge and (boss fights) the chip; a new kind pops in
+	local debuffKind: string?, debuffUntil, debuffTotal = nil, 0, 1
+	local function setDebuff(kind: string?, seconds: number?)
+		local look = if kind then CombatHudConfig.DEBUFFS[kind] else nil
+		if not look or not seconds or seconds <= 0 then
+			debuffKind = nil
+			debuffBadge.Visible = false
+			if debuffChip then
+				debuffChip.Visible = false
+			end
+			return
+		end
+		local fresh = kind ~= debuffKind
+		debuffKind, debuffUntil, debuffTotal = kind, os.clock() + seconds, seconds
+		local tint = color(look.color)
+		debuffBadge.Text = look.emoji
+		debuffBadgeEdge.Color = tint
+		debuffBadge.Visible = true
+		if debuffChip and debuffName and debuffDrain and debuffChipEdge and debuffScale then
+			debuffName.Text = `{look.emoji} {look.name}`
+			debuffChipEdge.Color = tint
+			debuffDrain.BackgroundColor3 = tint
+			debuffChip.Visible = true
+			if fresh then
+				debuffScale.Scale = 0.5
+				TweenService:Create(debuffScale, CHIP_POP, { Scale = 1 }):Play()
+			end
+		end
+	end
+
 	local ticker = RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		feedback(now)
+		if debuffKind then
+			local left = debuffUntil - now
+			if left <= 0 then
+				setDebuff(nil)
+			elseif debuffSecs and debuffDrain then
+				debuffSecs.Text = DebuffRules.countdown(left)
+				debuffDrain.Size = UDim2.new(left / debuffTotal, 0, 0, 3)
+			end
+		end
 		for _, button in buttons do
 			local left = button.readyAt - now
 			local share = math.clamp(left / button.total, 0, 1)
@@ -729,7 +846,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
-	return { update = update, setCooldown = setCooldown, setVisible = setVisible, destroy = destroy }
+	return { update = update, setCooldown = setCooldown, setVisible = setVisible, setDebuff = setDebuff, destroy = destroy }
 end
 
 return CombatHud

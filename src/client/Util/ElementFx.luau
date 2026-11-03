@@ -172,6 +172,12 @@ local function light(parent: Instance, color: Color3, rangeStuds: number, bright
 end
 
 -- A positional sound at `at` (a slightly random pitch, so repeats don't drone), removed once played
+-- A particle emitter with one of the attack textures (AttackFx.TEXTURES), for effects built elsewhere (Util/DebuffFx).
+-- Rate 0: set a rate or Emit
+function ElementFx.emitter(parent: Instance, texture: string, color: Color3, o: any): ParticleEmitter
+	return emitter(parent, texture, color, o)
+end
+
 function ElementFx.sound(id: string?, at: Vector3, volume: number?)
 	if not id or id == "" then
 		return

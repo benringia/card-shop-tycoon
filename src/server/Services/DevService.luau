@@ -270,12 +270,14 @@ function DevService.Start()
 			Remotes.Notify:FireClient(player, `That boss is in the {elsewhere.place}.`, true)
 		elseif not gate then
 			Remotes.Notify:FireClient(player, `Usage: /boss <1-{#Bosses.LADDER}> [fight|group]`, true)
-		elseif string.find(text, "fight") then
-			BossService.UseGate(player, index)
-		elseif string.find(text, "group") then
-			BossService.UseGate(player, index, true)
 		else
+			-- To the gate first: its prompts only work up close
 			WildService.TravelToWild(player, gate)
+			local use = if string.find(text, "fight") then "fight" elseif string.find(text, "group") then "group" else nil
+			if use then
+				task.wait(0.5) -- the move settles before the gate checks the distance
+				BossService.UseGate(player, index, use == "group")
+			end
 		end
 	end)
 	addCommand(folder, "room", function(player, text)
