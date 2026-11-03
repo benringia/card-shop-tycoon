@@ -4,6 +4,7 @@
 -- stuck half-scaled. Numbers: Config/UIMotion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local UIMotion = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIMotion"))
 
@@ -11,6 +12,8 @@ local Motion = {}
 
 local running: { [GuiObject]: Tween } = setmetatable({}, { __mode = "k" }) :: any
 local closing: { [GuiObject]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- popping out: presses leave it alone
+local hoverScales: { [GuiObject]: number } = setmetatable({}, { __mode = "k" }) :: any -- Motion.hover's size
+local hovering: { [GuiObject]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- under a mouse now
 
 local function getScale(gui: GuiObject): UIScale
 	local scale = gui:FindFirstChild("MotionScale")
@@ -86,19 +89,41 @@ function Motion.press(button: GuiButton, squishy: boolean?)
 		if closing[button] or getScale(button).Scale >= 1 then
 			return
 		end
+		-- Back to its hover size while the mouse is still on it (Motion.hover), else full size
+		local rest = if hovering[button] then hoverScales[button] or 1 else 1
 		if not squishy then
-			play(button, 1, releaseInfo)
+			play(button, rest, releaseInfo)
 			return
 		end
-		play(button, UIMotion.RELEASE_OVERSHOOT, bounceInfo).Completed:Once(function(state)
+		play(button, rest * UIMotion.RELEASE_OVERSHOOT, bounceInfo).Completed:Once(function(state)
 			if state == Enum.PlaybackState.Completed then
-				play(button, 1, settleInfo)
+				play(button, rest, settleInfo)
 			end
 		end)
 	end
 	button.MouseButton1Up:Connect(release)
 	button.MouseLeave:Connect(release)
 	button.Activated:Connect(release)
+end
+
+-- Grows a little under a mouse and settles back when it leaves (the soft look's hover instead of Roblox's grey one;
+-- spec 2026-11-03-cotton-candy-ui-design). Touch has no hover.
+function Motion.hover(button: GuiButton, scale: number)
+	hoverScales[button] = scale
+	local info = TweenInfo.new(UIMotion.HOVER_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	button.MouseEnter:Connect(function()
+		if not UserInputService.MouseEnabled or closing[button] then
+			return
+		end
+		hovering[button] = true
+		play(button, scale, info)
+	end)
+	button.MouseLeave:Connect(function()
+		hovering[button] = nil
+		if not closing[button] then
+			play(button, 1, info)
+		end
+	end)
 end
 
 -- A quick grow-and-settle, for a number that just changed

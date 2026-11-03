@@ -5,7 +5,7 @@
 return {
 	TILE = {
 		size = 84, -- px, square
-		gap = 10, -- between tiles in a row (and the Manage tray)
+		gap = 20, -- between tiles in a row (and the Manage tray); the owner found 10 too close together
 		corner = 0.3, -- corner radius, a share of the tile's width
 		outline = 4, -- white outline (px)
 		keySize = 24, -- the key letter's white circle (px)
@@ -21,16 +21,17 @@ return {
 	COLORS = { Manage = "butter", Cards = "sky", Bag = "pink", Bosses = "lilac", Admin = "greyLilac", Rip = "peach", Drop = "peach" },
 	FAN = { "mint", "peach", "sky", "lilac" },
 	-- The hover, mouse only: each step tweens the tile's body to x wide, y tall (shares of its size, from its bottom
-	-- centre) and lift px up, in order; a squash, a stretch as it hops, a little rebound, the settle. Leaving springs it
-	-- back to rest in `release` s. A press squashes it flat (on touch too) and springs back the same way.
+	-- centre) and lift px up, in order; a gentle squash, a small stretch as it hops, a little rebound, the settle (the
+	-- owner asked for a subtler bounce). Leaving springs it back to rest in `release` s. A press squashes it (on touch
+	-- too) and springs back the same way.
 	SQUISH = {
 		steps = {
-			{ seconds = 0.1, x = 1.08, y = 0.86, lift = -1 },
-			{ seconds = 0.13, x = 0.95, y = 1.1, lift = 9 },
-			{ seconds = 0.11, x = 1.03, y = 0.98, lift = 5 },
-			{ seconds = 0.11, x = 1.06, y = 1.06, lift = 6 },
+			{ seconds = 0.09, x = 1.04, y = 0.95, lift = 0 },
+			{ seconds = 0.12, x = 0.98, y = 1.05, lift = 5 },
+			{ seconds = 0.11, x = 1.02, y = 0.99, lift = 3 },
+			{ seconds = 0.11, x = 1.03, y = 1.03, lift = 4 },
 		},
-		release = 0.28,
-		press = { seconds = 0.06, x = 1.08, y = 0.82 },
+		release = 0.24,
+		press = { seconds = 0.06, x = 1.05, y = 0.9 },
 	},
 }

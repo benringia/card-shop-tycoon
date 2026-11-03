@@ -18,6 +18,8 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
 local XpPaws = require(Shared:WaitForChild("Util"):WaitForChild("XpPaws"))
+local SquishRules = require(Shared:WaitForChild("Util"):WaitForChild("SquishRules"))
+local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 local UIStyle = require(Shared:WaitForChild("Config"):WaitForChild("UIStyle"))
 
 local TOAST_SECONDS = 2.5
@@ -464,7 +466,8 @@ local function placeStatusRow(rowLayout: UIListLayout)
 	local rowLeft = width - STATUS_MARGIN - rowLayout.AbsoluteContentSize.X
 	local scale = Hud.scaleFor()
 	if rowLeft < tilesRight + STATUS_MARGIN then
-		bottom = math.max(bottom, HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y * scale + PILL_GAP)
+		-- Clear of the tiles' popped-out icons, hovered too (SquishRules.rowTop)
+		bottom = math.max(bottom, SquishRules.rowTop(SoftHud.TILE, SoftHud.SQUISH, HudLayout.BOTTOM_MARGIN, scale) + PILL_GAP)
 	end
 	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
 	if sideToasts then
@@ -475,7 +478,7 @@ end
 -- The toast's pieces (see Notify); one, reused
 local function buildToast()
 	-- Above the bottom HUD row; a canvas group so the whole toast fades as one
-	local home = UDim2.new(0.5, 0, 1, -(HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + 16))
+	local home = UDim2.new(0.5, 0, 1, -(SquishRules.rowTop(SoftHud.TILE, SoftHud.SQUISH, HudLayout.BOTTOM_MARGIN, 1) + 8)) -- over the icons
 	local root = Instance.new("CanvasGroup")
 	root.Name = "Toast"
 	root.AnchorPoint = Vector2.new(0.5, 1)

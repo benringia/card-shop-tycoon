@@ -43,6 +43,17 @@ return {
 		end
 	end,
 
+	["neutral buttons are a baby colour too, never white (owner: no white glossy buttons)"] = function()
+		for _, role in { "Row", "Panel", "Neutral" } do
+			local name = BabyColors.ROLES[role]
+			expect.equal(name ~= nil and name ~= "white", true, role)
+		end
+		local look = BabyColors.SOFT_BUTTON
+		expect.equal(look.shineHeight == nil, true, "no glossy band along the top")
+		expect.equal(look.glowTransparency <= 0.3, true, "a glow you can see, like the mockup's")
+		expect.equal(look.corner >= 14, true, "round like the mockup's buttons")
+	end,
+
 	["deepOf gives a named colour's deep shade, else the fill darkened by 35%"] = function()
 		local sky = BabyColors.COLORS.sky
 		local deep = SoftColors.deepOf(sky.fill, BabyColors.COLORS)

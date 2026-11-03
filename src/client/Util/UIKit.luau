@@ -154,6 +154,9 @@ function UIKit.softFill(color: Color3): Color3
 			return UIStyle.BABY[name].fill
 		end
 	end
+	if color == CREAM.ROW or color == CREAM.SLOT_EMPTY then
+		return UIStyle.BABY[BabyColors.ROLES.Neutral].fill -- the window's white row or pale slot passed as a fill
+	end
 	return color
 end
 
@@ -394,27 +397,61 @@ end
 
 -- A candy button: its colour darkening down the face to a darker lip along the bottom (a gradient, so it follows
 -- colour changes), a thick dark outline, and outlined white text (navy on light colours). Text set by hand stays as set.
+-- A label drawn on a soft button's colour (a tab's name) takes the same text as the button would: plum on light fills,
+-- white with a soft deep outline on bright ones. The outline is the label's "SoftEdge" stroke, made the first time.
+function UIKit.softText(label: TextLabel, fill: Color3)
+	local look = BabyColors.SOFT_BUTTON.textOutline
+	local rgb = toRgb(UIKit.softFill(fill))
+	local edge = label:FindFirstChild("SoftEdge") :: UIStroke?
+	if not edge then
+		local stroke = Instance.new("UIStroke")
+		stroke.Name = "SoftEdge"
+		stroke.Thickness = look.thickness
+		stroke.Transparency = look.transparency
+		stroke.Parent = label
+		edge = stroke
+	end
+	local light = SoftColors.textOn(rgb, BabyColors.LIGHT_LUMA) == "ink"
+	label.TextColor3 = if light then UIStyle.BABY_INK else Color3.new(1, 1, 1)
+	local stroke = edge :: UIStroke
+	stroke.Color = fromRgb(SoftColors.deepOf(rgb, BabyColors.COLORS))
+	stroke.Enabled = not light
+end
+
+-- No grey hover in the soft look (owner 2026-11-03): Roblox's automatic darkening stays off, even when a controller
+-- turns it back on to show a button can be used, and a mouse makes the button grow a little instead
+local function noGreyHover(button: GuiButton, hoverScale: number)
+	if button:GetAttribute("SoftHover") then
+		return
+	end
+	button:SetAttribute("SoftHover", true)
+	button.AutoButtonColor = false
+	button:GetPropertyChangedSignal("AutoButtonColor"):Connect(function()
+		if button.AutoButtonColor then
+			button.AutoButtonColor = false
+		end
+	end)
+	Motion.hover(button, hoverScale)
+end
+
 -- The cotton candy look on a new button (spec 2026-11-03-cotton-candy-ui-design): a flat baby colour (a named kit
 -- colour becomes its baby fill, now and whenever a controller sets one later), a white outline, a soft glow in its own
 -- colour, a faint lighter band along the top, plum text on light fills and white text outlined in the deep shade on
 -- bright ones (a text colour a controller set itself is kept), and a squishy press. No dark lip.
 local function softButton(button: TextButton): TextButton
 	local look = BabyColors.SOFT_BUTTON
+	noGreyHover(button, look.hoverScale)
 	Motion.press(button, true)
+	local round = button:FindFirstChildOfClass("UICorner")
+	if round then
+		round.CornerRadius = UDim.new(0, look.corner)
+	end
 	UIKit.outline(button, CREAM.OUTLINE, look.outline)
 	-- Callers pad the text (iconButton makes room for its picture), like on the candy buttons
 	local padding = Instance.new("UIPadding")
 	padding.Parent = button
 	UIKit.glow(button, button.BackgroundColor3, look.corner, look.glowDrop, look.glowTransparency)
-	local shine = Instance.new("Frame")
-	shine.Name = "Shine"
-	shine.AnchorPoint = Vector2.new(0.5, 0)
-	shine.BackgroundColor3 = Color3.new(1, 1, 1)
-	shine.BackgroundTransparency = look.shineTransparency
-	shine.BorderSizePixel = 0
-	shine.Parent = button
-	UIKit.corner(shine, look.shineHeight)
-	-- The padding moves children too: keep the glow and the shine on the whole button whatever it is
+	-- The padding moves children too: keep the glow on the whole button whatever it is
 	local function refit()
 		local left, right = padding.PaddingLeft.Offset, padding.PaddingRight.Offset
 		local top, bottom = padding.PaddingTop.Offset, padding.PaddingBottom.Offset
@@ -425,8 +462,6 @@ local function softButton(button: TextButton): TextButton
 			glow.Size = UDim2.new(1, spread * 2 + left + right, 1, spread * 2 + top + bottom)
 			glow.Position = UDim2.new(0.5, (right - left) / 2, 0.5, (if typeof(drop) == "number" then drop else 0) + (bottom - top) / 2)
 		end
-		shine.Size = UDim2.new(1, -look.corner * 2 + left + right, 0, look.shineHeight)
-		shine.Position = UDim2.new(0.5, (right - left) / 2, 0, look.shineInset - top)
 	end
 	refit()
 	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
@@ -437,13 +472,15 @@ local function softButton(button: TextButton): TextButton
 			task.defer(refit) -- a new glow (the round close button's) fits the padding too
 		end
 	end)
-	local textEdge = UIKit.outlined(button)
+	local textEdge = UIKit.outlined(button, look.textOutline.thickness)
+	textEdge.Transparency = look.textOutline.transparency -- a soft outline, like the mockup's light text shadow
 	local autoText: Color3? = nil -- the text colour this button last picked for itself
 	local function restyle()
 		local fill = UIKit.softFill(button.BackgroundColor3)
 		if fill ~= button.BackgroundColor3 then
-			button.BackgroundColor3 = fill -- fires this again with the baby colour
-			return
+			-- A named kit colour becomes its baby fill. Carry on: on the first call the change listener isn't connected
+			-- yet (returning here left the text in Roblox's default navy); later calls run again harmlessly.
+			button.BackgroundColor3 = fill
 		end
 		local rgb = toRgb(fill)
 		local glow = button:FindFirstChild("Glow")
@@ -616,6 +653,16 @@ end
 -- windows built their own way (the Bag, the card detail). Returns the face and the outline.
 function UIKit.creamWindow(frame: Frame): (Frame, UIStroke)
 	frame:SetAttribute("Theme", "cream")
+	-- Rows, slots and other buttons built in the window lose Roblox's grey hover and grow a little instead
+	local function soften(child: Instance)
+		if child:IsA("GuiButton") then
+			noGreyHover(child, BabyColors.SOFT_BUTTON.rowHoverScale)
+		end
+	end
+	for _, child in frame:GetDescendants() do
+		soften(child)
+	end
+	frame.DescendantAdded:Connect(soften)
 	frame.BackgroundColor3 = CREAM.BODY_BOTTOM
 	UIKit.corner(frame, CREAM.CORNER)
 	local edge = UIKit.outline(frame, CREAM.OUTLINE, CREAM.OUTLINE_THICKNESS)

@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Shelves = require(Config:WaitForChild("Shelves"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 
@@ -96,15 +97,14 @@ local function refreshShopRows()
 		if item then
 			local owned = items[item] or 0
 			row.button.Text = if owned > 0 then `Place ({owned})` else "🔒 Beat it"
-			row.button.BackgroundColor3 = if owned > 0 then palette.slotEmpty else UIKit.Colors.Locked
-			row.button.TextColor3 = if owned > 0 then palette.good else Color3.new(1, 1, 1)
+			row.button.BackgroundColor3 = if owned > 0 then UIKit.Colors.Success else UIKit.Colors.Locked -- mint or grey-lilac
 			continue
 		end
 		local locked = isLocked(row.def)
 		local short = not locked and cash < row.def.cost
 		row.button.Text = if locked then `🔒 Lv {row.def.unlockLevel}` else string.format("$%d", row.def.cost)
-		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked else palette.slotEmpty
-		row.button.TextColor3 = if locked then Color3.new(1, 1, 1) elseif short then palette.bad else palette.good
+		-- Soft buttons (UIKit): mint when you can buy it, pink when you're short, grey-lilac while locked
+		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked elseif short then UIKit.Colors.Danger else UIKit.Colors.Success
 	end
 end
 
@@ -202,7 +202,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
 	info.Size = UDim2.new(1, -20, 0, 18)
-	local button = UIKit.button(tile, "", palette.slotEmpty)
+	local button = UIKit.button(tile, "", UIKit.Colors.Success)
 	button.AnchorPoint = Vector2.new(0.5, 1)
 	button.Position = UDim2.new(0.5, 0, 1, -8)
 	button.Size = UDim2.new(1, -16, 0, 48)
@@ -260,7 +260,7 @@ local function buildShopPanel(parent: Instance)
 			button.BackgroundColor3 = if name == category then UIKit.Colors.Accent else palette.row
 			local label = button:FindFirstChild("Name", true) :: TextLabel?
 			if label then
-				label.TextColor3 = if name == category then UIKit.Colors.Ink else palette.inkSoft -- the open tab: dark on gold
+				UIKit.softText(label, button.BackgroundColor3) -- plum on the open tab's butter, white on the others' sky
 			end
 		end
 		local any = false
@@ -296,7 +296,7 @@ local function buildShopPanel(parent: Instance)
 		local tabIcon = Icon.make(row, tab.icon, UDim2.fromOffset(28, 28))
 		tabIcon.LayoutOrder = 1
 		tabIcon.ZIndex = row.ZIndex
-		local name = UIKit.label(row, tab.name, Enum.Font.FredokaOne, 17, palette.inkSoft)
+		local name = UIKit.label(row, tab.name, Enum.Font.FredokaOne, 17, UIStyle.BABY_INK)
 		name.Name = "Name"
 		name.LayoutOrder = 2
 		name.Size = UDim2.fromScale(0, 1)

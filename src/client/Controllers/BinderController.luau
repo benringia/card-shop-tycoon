@@ -1133,7 +1133,7 @@ local function showTab(bag: boolean)
 	for button, open in { [cardsTab] = not bag, [bagTab] = bag } do
 		local name = button:FindFirstChild("Name", true) :: TextLabel?
 		if name then
-			name.TextColor3 = UIStyle.BABY_INK -- plum on the open tab's butter and on the others' white
+			UIKit.softText(name, button.BackgroundColor3) -- plum on the open tab's butter, white on the other's sky
 		end
 	end
 	if bag then

@@ -46,6 +46,7 @@ local screen: ScreenGui
 local scaled: { { scale: UIScale, min: number } } = {}
 local TILE = SoftHud.TILE
 local SQUISH = SoftHud.SQUISH
+local resets: { () -> () } = {} -- each tile's way back to rest (Hud.setHidden: hidden rows get no MouseLeave)
 
 -- The key letter in a small white circle on the tile's bottom-right corner
 local function addKeyChip(button: GuiObject, key: string)
@@ -207,11 +208,13 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 			baseZ = nil
 		end
 	end
+	local running: Tween? = nil
 	local function pose(x: number, y: number, lift: number, seconds: number, style: Enum.EasingStyle): Tween
 		local tween = TweenService:Create(body, TweenInfo.new(seconds, style, Enum.EasingDirection.Out), {
 			Size = UDim2.fromScale(x, y),
 			Position = UDim2.new(0.5, 0, 1, -lift),
 		})
+		running = tween
 		tween:Play()
 		return tween
 	end
@@ -280,13 +283,23 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 			release()
 		end
 	end)
+	-- Hidden mid-motion (Drop and Rip hide right after a click; the binder hides the whole HUD): back to rest at once,
+	-- the running tween cancelled so it can't finish into a hovered pose while nobody sees it
+	local function rest()
+		hovered, pressed = false, false
+		token += 1
+		local tween = running
+		if tween then
+			tween:Cancel()
+		end
+		body.Size = UDim2.fromScale(1, 1)
+		body.Position = UDim2.fromScale(0.5, 1)
+		drop()
+	end
+	table.insert(resets, rest)
 	tile:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not tile.Visible then
-			hovered, pressed = false, false
-			token += 1
-			body.Size = UDim2.fromScale(1, 1)
-			body.Position = UDim2.fromScale(0.5, 1)
-			drop()
+			rest()
 		end
 	end)
 	if spec.group == "Context" then
@@ -500,6 +513,11 @@ function Hud.setHidden(reason: string, hidden: boolean)
 	bottom.Visible = show
 	for _, object in hideWithHud do
 		object.Visible = show
+	end
+	if not show then
+		for _, rest in resets do
+			rest()
+		end
 	end
 	if not show and fanOpen then
 		setFan(false)

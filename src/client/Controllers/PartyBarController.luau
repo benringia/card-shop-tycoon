@@ -608,7 +608,9 @@ function PartyBarController.Start()
 	partyPill.BackgroundTransparency = 0
 	UIKit.corner(partyPill, BAR.PARTY_PILL[2] / 2)
 	UIKit.outline(partyPill, EMPTY_EDGE, 1.5)
-	Motion.press(partyButton)
+	-- The cotton candy motion (spec 2026-11-03-cotton-candy-ui-design): the squishy press, and a small hop under a
+	-- mouse (it grows a little and lifts BAR.PILL_HOVER.lift px)
+	Motion.press(partyButton, true)
 	partyButton.Activated:Connect(PartyController.Toggle)
 	local pillGrow = Instance.new("UIScale")
 	pillGrow.Parent = partyPill
@@ -617,10 +619,12 @@ function PartyBarController.Start()
 	partyButton.MouseEnter:Connect(function()
 		if UserInputService.MouseEnabled then
 			TweenService:Create(pillGrow, hoverIn, { Scale = BAR.PILL_HOVER.scale }):Play()
+			TweenService:Create(partyPill, hoverIn, { Position = UDim2.new(0.5, 0, 0.5, -BAR.PILL_HOVER.lift) }):Play()
 		end
 	end)
 	partyButton.MouseLeave:Connect(function()
 		TweenService:Create(pillGrow, hoverOut, { Scale = 1 }):Play()
+		TweenService:Create(partyPill, hoverOut, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
 	end)
 
 	-- The mascot peeks over the cushion and ducks when the summoned creature changes

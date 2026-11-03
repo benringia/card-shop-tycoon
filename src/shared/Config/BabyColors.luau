@@ -22,8 +22,11 @@ return {
 		Danger = "pink", -- remove or leave
 		Success = "mint", -- summoned, confirm
 		Locked = "greyLilac", -- can't be used now
-		Row = "white", -- neutral
-		Panel = "white",
+		-- Neutral buttons (Colors.Row, Colors.Panel, and the window's own white row and pale slot colours passed as a
+		-- button's fill) are sky like the mockup's, never white (owner 2026-11-03: no white glossy buttons)
+		Row = "sky",
+		Panel = "sky",
+		Neutral = "sky",
 	},
 	-- Each element's colour on a party portrait's rim
 	ELEMENTS = { Ember = "peach", Tide = "sky", Bloom = "mint", Volt = "butter", Shade = "lilac" },
@@ -31,17 +34,19 @@ return {
 	-- cut out, SIZE px; the square sits MARGIN px in with a CORNER px radius. UIKit.glow 9-slices it at MARGIN + CORNER
 	-- and scales the slices so the hole's corner matches the thing it glows round.
 	GLOW = { image = "rbxassetid://110423921326900", size = 128, margin = 32, corner = 24 },
-	-- A soft button (UIKit.button in a themed window or the binder): its white outline and corner (px), its glow's drop
-	-- (px) and see-through share, and the lighter band along its top (px from the top, px tall, see-through share)
+	-- A soft button (UIKit.button in a themed window or the binder), like the mockup's (owner 2026-11-03: exactly like
+	-- it, no gloss, no grey hover): its white outline and corner (px), a glow you can see dropped under it (px, see-through
+	-- share), a soft outline round white text (px, see-through share), and how much it grows under a mouse (a row in a
+	-- window grows a little less)
 	SOFT_BUTTON = {
 		outline = 3,
-		corner = 12,
-		glowDrop = 4,
-		glowTransparency = 0.45,
-		shineInset = 3,
-		shineHeight = 3,
-		shineTransparency = 0.6,
+		corner = 16,
+		glowDrop = 6,
+		glowTransparency = 0.2,
+		textOutline = { thickness = 1, transparency = 0.4 },
+		hoverScale = 1.04,
+		rowHoverScale = 1.015,
 	},
 	-- The soft glow under a window instead of the dark shadow: its colour (a COLORS name), drop (px), see-through share
-	WINDOW_GLOW = { color = "lilac", drop = 8, transparency = 0.55 },
+	WINDOW_GLOW = { color = "lilac", drop = 10, transparency = 0.35 },
 }

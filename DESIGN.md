@@ -1873,13 +1873,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   and deep green, red, orange and mustard for good, bad, Power and fair prices (`tests/ContrastRules` checks every
   text colour reaches 4.5:1 on every window surface); the chosen thing a gold ring. **Soft buttons** (`UIKit.button`
   wherever `UIKit.isSoft` says: inside a themed window, or under `SoftButtons`, which the binder's screen sets): a flat
-  baby colour, a 3 px white outline, a soft glow of the same colour (one script-made picture, `assets/ui/soft/Glow.png`
-  from `tools/ui-art/make_soft_glow.py`, 9-sliced and tinted by `UIKit.glow`), a faint lighter band along the top and
+  baby colour, a 3 px white outline, round corners, a soft glow of the same colour you can see (one script-made picture,
+  `assets/ui/soft/Glow.png` from `tools/ui-art/make_soft_glow.py`, 9-sliced and tinted by `UIKit.glow`), no gloss and
   no dark lip; white labels outlined in the colour's deep shade, plum text on butter and white (`Util/SoftColors`,
   `tests/SoftColors`: every deep shade reads white at 3:1). The kit's named colours map to baby colours automatically
   (`BabyColors.ROLES`, `UIKit.softFill`): the main action butter, other choices sky, remove or leave pink, summoned or
-  confirm mint, can't-use-now grey-lilac, neutral white with plum text, also when a controller sets one later. A press
-  dips the button and bounces it past full size before it settles. Pills and chips keep their colours with white
+  confirm mint, can't-use-now grey-lilac, neutral sky (never white; owner 2026-11-03: no white glossy buttons), also
+  when a controller sets one later. No grey hover anywhere in the soft look (Roblox's `AutoButtonColor` stays off, on
+  every button and row in a themed window too): a mouse makes a button grow a little (`Motion.hover`). A press dips the
+  button and bounces it past full size before it settles. The Shop's price buttons are mint (can buy), pink (short)
+  or grey-lilac (locked); tab names are plum on the open tab's butter and white on the others' sky (`UIKit.softText`). Pills and chips keep their colours with white
   outlines; rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail,
   small confirm boxes, the arena challenge popups) call `UIKit.creamWindow(frame)`. The window's `Theme` attribute
   tells the pieces built inside which look to take: `UIKit.themeOf(instance)` and `UIKit.colorsFor(instance)` (a
@@ -1887,7 +1890,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   `Subtext` labels and `UIKit.outline` pick by it. **Dark** (theme "dark", the look E tokens: slate bodies with a thick
   near-black outline and a drop lip, slate rows, outlined white text, candy buttons with a dark bottom lip): the
   binder's book and chrome (its buttons are soft: the close, magnifier, page arrows, Cards / Bag tabs, Rarity guide and
-  the filters panel's buttons; the open tab and chosen filters butter, the rest white), every fight screen, tooltips,
+  the filters panel's buttons; the open tab and chosen filters butter, the rest sky), every fight screen, tooltips,
   the pack opening, the loading screen, the welcome cinematic, the Dungeon's run HUD and the placement bar. Helpers:
   `outlined` (text outline), `pill` (rarity, grade, element and count chips), `bar` and `statRow` (chunky green bars on
   pale or dark tracks), `stars` (star icons, never the character), `textSize` (body 15, small 13, name 22, number 23,
@@ -1925,10 +1928,12 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   cash a green pill under a big gold coin; the level a white pill with the gold star and five paw prints that fill
   orange with XP, each gradually, with the numbers right under them ("90k / 226k", "MAX" at the top; `Util/XpPaws`,
   owner 2026-11-03: in view, not in a tooltip); the buff a white chip in the perk's colour. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
-  under a mouse a tile squashes wide and short, stretches as it hops up, rebounds and settles 6% bigger and a little
-  higher, about 0.45 s; a press squashes it flat (touch too) and springs back; any newer hover, leave, press or a
+  under a mouse a tile gently squashes, stretches a little as it hops up 5 px, rebounds and settles 3% bigger and 4 px
+  higher, about 0.45 s (owner 2026-11-03: a subtler bounce; tiles 20 px apart); a press squashes it flat (touch too) and springs back; any newer hover, leave, press or a
   release anywhere cancels what's running, and the hovered tile draws over its neighbours (`tests/SquishRules` checks a
-  tile at its widest, key chip and all, stays inside the gap); the Party pill springs up too. **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
+  tile at its widest, key chip and all, stays inside the gap); the Party pill squishes on a press and hops a little under
+  a mouse. Anything stacked over the tile row (the status corner on a narrow PC screen, the toast) sits above its
+  popped-out icons at their highest hover (`SquishRules.rowTop`). **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
   Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
   cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
   (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,
