@@ -185,8 +185,10 @@ function ElementFx.sound(id: string?, at: Vector3, volume: number?)
 	local anchor = holder(at, 4)
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
-	sound.Volume = AttackFx.VOLUME * (volume or 1)
-	sound.PlaybackSpeed = 0.92 + math.random() * 0.16
+	-- A little different every time (pitch and loudness), so repeated hits don't sound like one clip on a loop
+	local vary = AttackFx.VARY
+	sound.Volume = AttackFx.VOLUME * (volume or 1) * (vary.volume[1] + math.random() * (vary.volume[2] - vary.volume[1]))
+	sound.PlaybackSpeed = vary.pitch[1] + math.random() * (vary.pitch[2] - vary.pitch[1])
 	sound.RollOffMaxDistance = 140
 	sound.Parent = anchor
 	sound:Play()

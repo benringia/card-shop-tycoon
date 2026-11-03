@@ -366,6 +366,9 @@ function SwordController.PlaySound(key: string)
 	end
 	local sound = soundFor(key, root :: BasePart, id)
 	sound.TimePosition = 0
+	-- A different pitch each time (owner 2026-11-04: the same swing and hit over and over got tiring)
+	local pitch = Swords.SOUND_PITCH
+	sound.PlaybackSpeed = pitch[1] + math.random() * (pitch[2] - pitch[1])
 	sound:Play()
 end
 
@@ -570,20 +573,30 @@ function SwordController.Dodge()
 	SwordController.PlaySound("dodge")
 	local move = Vector3.new(humanoid.MoveDirection.X, 0, humanoid.MoveDirection.Z)
 	local direction = if move.Magnitude > 0.1 then move.Unit else -Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
-	local speed = Combat.DODGE_STUDS / Combat.DODGE_SECONDS
+	-- Through foes: a dash that would end inside a boss or monster carries on out of it (SwordRules.dashLength)
+	local length = SwordRules.dashLength(root.Position.X, root.Position.Z, direction.X, direction.Z, if combatTargets then combatTargets() else {}, Combat.DODGE_STUDS, Combat.DODGE_PASS_MARGIN, Combat.DODGE_MAX_STUDS)
+	local speed = length / Combat.DODGE_SECONDS
 	if mine then
 		mine.play("dodge")
 	end
 	AfterImage.spawn(character, 4, Combat.DODGE_SECONDS + 0.15)
-	-- Pushed, not moved: walls (the arena's barrier) still stop the dash
-	local ends = os.clock() + Combat.DODGE_SECONDS
-	local dash: RBXScriptConnection
-	dash = RunService.Heartbeat:Connect(function()
-		if os.clock() >= ends or not root.Parent then
-			dash:Disconnect()
-			return
-		end
-		root.AssemblyLinearVelocity = direction * speed + Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+	-- Pushed by a velocity constraint in the ground plane (gravity stays free; walls, the arena's barrier, still stop
+	-- it): setting the velocity each frame lost half the dash to the character's own braking
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "DodgeAttachment"
+	attachment.Parent = root
+	local push = Instance.new("LinearVelocity")
+	push.Attachment0 = attachment
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	push.PrimaryTangentAxis = Vector3.xAxis
+	push.SecondaryTangentAxis = Vector3.zAxis
+	push.PlaneVelocity = Vector2.new(direction.X * speed, direction.Z * speed)
+	push.MaxForce = Combat.DODGE_FORCE
+	push.Parent = root
+	task.delay(Combat.DODGE_SECONDS, function()
+		push:Destroy()
+		attachment:Destroy()
 	end)
 end
 

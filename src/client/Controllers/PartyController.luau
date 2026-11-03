@@ -373,6 +373,15 @@ function PartyController.Toggle()
 	toggle()
 end
 
+-- The party's cards by slot (1-3), as the party bar numbers them: the fight's 1-3 keys (BattleController)
+function PartyController.GetSlots(): { [number]: string }
+	local out = {}
+	for _, entry in (if state then state.slots else {}) do
+		out[entry.slot] = entry.beastId
+	end
+	return out
+end
+
 function PartyController.Start()
 	local screenGui = UIController.GetScreenGui()
 	local scroller: ScrollingFrame

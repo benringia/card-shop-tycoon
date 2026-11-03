@@ -50,6 +50,8 @@ export type Boss = {
 	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
 	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
 	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
+	-- Sometimes a swipe comes huge: this chance, its length and half angle times these (RingRules.swipeSize)
+	hugeSwipe: { chance: number, length: number, halfAngle: number }?,
 	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
 	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
 	auroraFlame: boolean?, -- soft aurora-coloured flames rise off its back (AURORA_FLAME)
@@ -125,6 +127,7 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 5,
 		minFightSeconds = 18,
 		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12, shape = "swipe", debuff = "Poison" }, -- web spit
+		hugeSwipe = { chance = 0.35, length = 1.8, halfAngle = 1.6 }, -- owner 2026-11-04: the web sometimes huge (47 studs, 56 deg)
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",

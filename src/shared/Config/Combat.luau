@@ -79,6 +79,11 @@ return {
 	DODGE_SECONDS = 0.35, -- untouchable after a dodge
 	DODGE_COOLDOWN = 1,
 	DODGE_STUDS = 12, -- the dash's length
+	-- A dash that would end inside a boss or monster goes on through it to this far past its edge, up to DODGE_MAX_STUDS
+	-- (SwordRules.dashLength; owner 2026-11-04)
+	DODGE_PASS_MARGIN = 1.5,
+	DODGE_MAX_STUDS = 26,
+	DODGE_FORCE = 200000, -- the dash's push (a LinearVelocity in the ground plane): enough to hold its speed
 	LOSS_COUNTDOWN = 3, -- "Teleporting back to town in 3, 2, 1"
 	SWORD_ACTION_COOLDOWN = 0.08, -- remote rate limit on Attack, Skill and Dodge taps
 	SWORD_IDLE_ATK = 10, -- the sword's ATK when none of your creatures has been on the field (never in practice)

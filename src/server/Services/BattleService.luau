@@ -449,8 +449,9 @@ local function recordRing(fight: Fight, event: BattleSim.Event)
 		local direction = if toward.Magnitude > 0.1 then toward.Unit else Vector3.new(look.X, 0, look.Z).Unit
 		ring.x, ring.y, ring.z = from.X, at.Y, from.Z
 		ring.dirX, ring.dirZ = direction.X, direction.Z
-		ring.length = (if boss then boss.ringRadius or Bosses.RING_RADIUS else Bosses.RING_RADIUS) + Bosses.RING_SWIPE_EXTRA
-		ring.halfAngle = Bosses.RING_SWIPE_HALF_ANGLE
+		-- Sometimes huge (a boss's hugeSwipe): the warning, the effect and the hit check all use this size
+		local length = (if boss then boss.ringRadius or Bosses.RING_RADIUS else Bosses.RING_RADIUS) + Bosses.RING_SWIPE_EXTRA
+		ring.length, ring.halfAngle = RingRules.swipeSize(length, Bosses.RING_SWIPE_HALF_ANGLE, if boss then boss.hugeSwipe else nil, rng:NextNumber())
 	end
 	fight.rings[event.ring :: number] = ring
 	local view = event :: any

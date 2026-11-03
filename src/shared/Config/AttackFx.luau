@@ -37,6 +37,9 @@ return {
 		},
 	},
 	VOLUME = 0.45,
+	-- Each play picks its pitch (PlaybackSpeed) and loudness share from these ranges (owner 2026-11-04: no sound the same
+	-- over and over)
+	VARY = { pitch = { 0.85, 1.15 }, volume = { 0.82, 1 } },
 	CHARGE_LIGHT = 3, -- a charging creature's glow (PointLight brightness at full charge)
 	PROJECTILE_SIZE = 1.2, -- studs
 	ARC = { Ember = 6, Tide = 0 }, -- studs a projectile rises at its midpoint

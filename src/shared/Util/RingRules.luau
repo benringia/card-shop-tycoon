@@ -34,4 +34,13 @@ function RingRules.closingScale(elapsed: number, warning: number): number
 	return RingRules.START_SCALE - (RingRules.START_SCALE - 1) * t
 end
 
+-- A swipe's length and half angle: the normal ones, or with the boss's `huge` (chance, length and halfAngle factors)
+-- when `roll` (0-1) comes under its chance. Returns the length, the half angle and whether it's huge.
+function RingRules.swipeSize(length: number, halfAngle: number, huge: { chance: number, length: number, halfAngle: number }?, roll: number): (number, number, boolean)
+	if huge and roll < huge.chance then
+		return length * huge.length, halfAngle * huge.halfAngle, true
+	end
+	return length, halfAngle, false
+end
+
 return RingRules

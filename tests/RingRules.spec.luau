@@ -24,4 +24,18 @@ return {
 		expect.equal(RingRules.closingScale(2, 1.2), 1)
 		expect.equal(RingRules.closingScale(-1, 1.2), 1.9)
 	end,
+
+	-- The Brood Queen's web spit (owner 2026-11-04): sometimes huge, sometimes normal
+	["a swipe is sometimes huge: its chance, its length and angle times the boss's factors"] = function()
+		local huge = { chance = 0.35, length = 1.8, halfAngle = 1.6 }
+		local length, angle, big = RingRules.swipeSize(26, 35, huge, 0.2)
+		expect.near(length, 46.8, 1e-9)
+		expect.near(angle, 56, 1e-9)
+		expect.equal(big, true)
+		local normalLength, normalAngle, normal = RingRules.swipeSize(26, 35, huge, 0.5)
+		expect.equal(normalLength, 26)
+		expect.equal(normalAngle, 35)
+		expect.equal(normal, false)
+		expect.equal(RingRules.swipeSize(26, 35, nil, 0), 26, "a boss without it never swipes huge")
+	end,
 }

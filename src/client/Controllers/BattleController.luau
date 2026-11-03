@@ -52,6 +52,8 @@ local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local PartyController = require(Controllers:WaitForChild("PartyController"))
+local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local FightToast = require(ClientUtil:WaitForChild("FightToast"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
@@ -1319,10 +1321,18 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 	elseif key == Enum.KeyCode.R then
 		usePet("element")
 	else
+		-- 1-3: the party slot as the party bar numbers it (not the reserves' order), and a word when it can't come in
 		local slot = table.find({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }, key)
-		local id = if slot and latest then latest.reserves[slot] else nil
-		if id then
-			swapTo(id)
+		if slot and latest then
+			local swapLeft = latestAt + latest.swapIn - os.clock()
+			local action, value = SwapKeys.pick(PartyController.GetSlots()[slot], latest.reserves, latest.fighters, latest.swaps, swapLeft)
+			if action == "swap" then
+				swapTo(value)
+			elseif action == "cooling" then
+				UIController.Notify(`Swap ready in {math.ceil(value)}s`, true, 1.2)
+			elseif action == "resting" then
+				UIController.Notify("That creature is resting.", true, 1.2)
+			end
 		end
 	end
 	return Enum.ContextActionResult.Sink

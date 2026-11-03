@@ -138,7 +138,7 @@ opening's larger side so the swirl's fading disc covers it (`Town.PORTAL_FX.VORT
 frame): a glowing core in a deep shade (`portal-glow.png`, made in code) that fills the gaps and breathes, the swirl
 (`portal-vortex.png`, Figma, white with clear gaps between its arms, tinted by a gradient) and a smaller inner swirl
 turning the other way, faster; the portal's light breathes with the core. The client turns the images in their own
-plane (ImageLabel.Rotation; `PortalFxController`, `Util/PortalLooks.animate`, within 150 studs with the extras on,
+plane (ImageLabel.Rotation; `PortalFxController`, `Util/PortalLooks.animate`, within 150 studs unless the player picked low graphics (not the frame watchdog: arriving somewhere new hitched it off and froze the swirl you walked up to, fixed 2026-11-04),
 looking the panels up every frame; each portal wears the look `PortalBuild.dress` stamps on it as the `PortalLook`
 attribute, since the Boss and Arena looks share one model and boss portals are renamed). A flat beam turned with its part twisted out of the opening and read as several
 disks tumbling; a swirl filling the opening as a stretched beam wobbled and swung past the arch tops.
@@ -985,7 +985,11 @@ group, checked before its fragments and every time (not only the first). Below i
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
   `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
-  Signature (Epic and Legendary cards), small Swap (1-3) and Run. With a mouse a click attacks and there's no Attack
+  Signature (Epic and Legendary cards), small Swap (1-3: the party slot as the party bar numbers it, `Util/SwapKeys`;
+  while swaps cool down the button drains and a key says "Swap ready in 4s", a resting card says so; 2026-11-04) and
+  Run. The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
+  lost half of it to the character's braking), and one that would end inside a boss or monster carries on through it
+  to 1.5 studs past its edge, up to 26 studs (`SwordRules.dashLength`, owner 2026-11-04). With a mouse a click attacks and there's no Attack
   button (owner 2026-11-03: phones, tablets and devices without a mouse keep it); the Pet button takes its corner and
   Dodge and Skill move up beside it (`UiLayout.combatButtons(view, noAttack)`), and the first-sword popup says "click
   to swing, Shift to dodge" instead of "tap Attack". Top-left your headshot in a bevelled ring with
@@ -999,7 +1003,9 @@ group, checked before its fragments and every time (not only the first). Below i
   checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
   slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
   (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`),
-  each kept loaded on your character and replayed; the hit sound plays the moment the blade lands when your own reach
+  each kept loaded on your character and replayed at a pitch picked from `Swords.SOUND_PITCH` (0.88-1.12) each time, and
+  the fight effects' sounds at a pitch and loudness from `AttackFx.VARY` (owner 2026-11-04: nothing the same over and
+  over); the hit sound plays the moment the blade lands when your own reach
   check connects (the server's hit arrives a round trip later and only sounds if that check missed,
   `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
@@ -1040,7 +1046,9 @@ group, checked before its fragments and every time (not only the first). Below i
   Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
   up, then lunges; made big 2026-11-03 at the owner's ask: from her fangs, half her height up, a burst and 12 thick
   strands land across the whole cone with 7-stud splats, and a fan of web, 7 spokes and 4 cross threads, sticks over
-  the cone for 1.4 s; `ElementFx.bossRelease` takes the boss's height). Ember Colossus: horn gore (sits back, head low, then
+  the cone for 1.4 s; `ElementFx.bossRelease` takes the boss's height; 2026-11-04: 35% of webs come huge, 1.8x as long
+  and 1.6x as wide, 47 studs and 56 degrees, `Bosses` hugeSwipe, `RingRules.swipeSize`, the warning, the web and the hit
+  check all that size). Ember Colossus: horn gore (sits back, head low, then
   tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
   shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
   remodel.
