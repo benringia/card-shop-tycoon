@@ -58,6 +58,11 @@ local waitingForServer = false
 local soundsLoaded = false
 local pressStart: Vector2? = nil -- a press on the pack that may become a swipe
 
+-- Tells the Bag whether a pack may open now (OpeningFlow.isBusy): a pack on the stage or a rip on its way
+local function publishBusy()
+	player:SetAttribute("PackOpeningBusy", OpeningFlow.isBusy(flow ~= nil, waitingForServer))
+end
+
 local function buildOddsText(pack: Pack): string
 	local lines = { `{pack.name} pack odds` }
 	for index, slot in pack.slots do
@@ -111,9 +116,11 @@ local function onRip()
 		return
 	end
 	waitingForServer = true
+	publishBusy()
 	Remotes.RipPack:FireServer()
 	task.delay(RIP_WAIT_SECONDS, function()
 		waitingForServer = false
+		publishBusy()
 	end)
 end
 
@@ -128,6 +135,7 @@ end
 local function close()
 	generation += 1
 	flow = nil
+	publishBusy()
 	opened = nil
 	pressStart = nil
 	ContextActionService:UnbindAction(ADVANCE_ACTION)
@@ -300,6 +308,7 @@ end
 local function onPackOpened(productId: string, results: { PullResult }, newFlags: { boolean }?)
 	local fromRip = waitingForServer -- otherwise a Bag pack (Config/Items `open`; LevelUpService)
 	waitingForServer = false
+	publishBusy()
 	local pack = Packs.ById[productId]
 	if not pack or typeof(results) ~= "table" or flow ~= nil then
 		return
@@ -324,6 +333,7 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	local gen = generation
 	opened = pack
 	flow = OpeningFlow.new(#pulls)
+	publishBusy()
 	built = false
 	refreshRipButton()
 	if not fromRip and player:GetAttribute("CarryProductId") == nil then

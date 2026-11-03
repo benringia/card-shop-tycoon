@@ -14,6 +14,12 @@ local function with(state: State, phase: Phase, index: number?, lockedUntil: num
 	return { phase = phase, index = index or state.index, count = state.count, lockedUntil = lockedUntil or state.lockedUntil }
 end
 
+-- Whether the pack opening is in use: a pack on the stage, or a rip waiting for the server's roll (a Bag pack must wait
+-- then, or its PackOpened would be taken for the rip's, or dropped while a pack is shown)
+function OpeningFlow.isBusy(flowActive: boolean, waitingForServer: boolean): boolean
+	return flowActive or waitingForServer
+end
+
 function OpeningFlow.new(count: number): State
 	return { phase = "Ready", index = 0, count = count, lockedUntil = 0 }
 end

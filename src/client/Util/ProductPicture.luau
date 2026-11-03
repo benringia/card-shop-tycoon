@@ -33,21 +33,34 @@ local function redraw(view: ViewportFrame, model: Model)
 	end
 end
 
--- Redraws the picture a frame after any window it sits in opens (a hidden ViewportFrame doesn't draw its model)
+-- Redraws the picture a frame after any window it sits in opens (a hidden ViewportFrame doesn't draw its model). When
+-- the picture goes (a shelf's Set Price row is rebuilt on every open) its watchers go and it's forgotten, so nothing
+-- piles up on the windows that stay.
 function watchWindow(view: ViewportFrame, model: Model)
+	local connections: { RBXScriptConnection } = {}
 	local item: Instance? = view.Parent
 	while item and item:IsA("GuiObject") do
 		local holder = item :: GuiObject
-		holder:GetPropertyChangedSignal("Visible"):Connect(function()
+		table.insert(connections, holder:GetPropertyChangedSignal("Visible"):Connect(function()
 			if holder.Visible then
 				task.defer(function()
 					RunService.RenderStepped:Wait()
 					redraw(view, model)
 				end)
 			end
-		end)
+		end))
 		item = item.Parent
 	end
+	view.Destroying:Once(function()
+		for _, connection in connections do
+			connection:Disconnect()
+		end
+		for index = #pictures, 1, -1 do
+			if pictures[index].view == view then
+				table.remove(pictures, index)
+			end
+		end
+	end)
 end
 
 -- The model framed in a ViewportFrame: a camera in front of it (models face -Z) far enough back that it fits both ways

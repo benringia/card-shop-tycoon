@@ -48,4 +48,19 @@ return {
 		expect.equal(both.from, 4, "merged from")
 		expect.equal(both.to, 7, "merged to")
 	end,
+
+	["a held level-up waits out the boss fight's end screen"] = function()
+		local fx = require("../src/shared/Config/LevelUpFx")
+		expect.equal(LevelUpRules.freeAt(fx, 100, true, "win"), 100 + fx.AFTER_BOSS.win, "victory screen")
+		expect.equal(LevelUpRules.freeAt(fx, 100, true, "lose"), 100 + fx.AFTER_BOSS.lose, "defeat countdown and the trip home")
+		expect.equal(LevelUpRules.freeAt(fx, 100, false, "win"), 100, "a wild fight: at once")
+		expect.equal(LevelUpRules.freeAt(fx, 100, true, "run"), 100, "a boss fight that ran: no end screen")
+		expect.equal(LevelUpRules.freeAt(fx, 100, true, "timeout"), 100 + fx.AFTER_BOSS.lose, "a timed-out boss fight ends on the defeat screen")
+	end,
+
+	["Bag packs don't open in any fight"] = function()
+		expect.equal(LevelUpRules.openBlocked(true, false), "Open it after the fight.", "a monster or boss fight")
+		expect.equal(LevelUpRules.openBlocked(false, true), "Open it after the fight.", "PvP in the arena")
+		expect.isNil(LevelUpRules.openBlocked(false, false), "free")
+	end,
 }

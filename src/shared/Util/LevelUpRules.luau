@@ -42,4 +42,26 @@ function LevelUpRules.merge(pending: Pending?, from: number, to: number): Pendin
 	return { from = math.min(pending.from, from), to = math.max(pending.to, to) }
 end
 
+-- When a shop level-up held during a fight may play (os.clock): a boss fight's end screen first (the victory screen, or
+-- the defeat countdown and the trip home; Config/LevelUpFx AFTER_BOSS), anything else at once
+function LevelUpRules.freeAt(cfg: { AFTER_BOSS: { win: number, lose: number } }, now: number, boss: boolean, result: string): number
+	if not boss then
+		return now
+	end
+	if result == "win" then
+		return now + cfg.AFTER_BOSS.win
+	elseif result == "run" then
+		return now -- ran away: no end screen
+	end
+	return now + cfg.AFTER_BOSS.lose -- lost or timed out: the defeat screen
+end
+
+-- Why a Bag pack can't be opened now (the pack opening takes over the camera): in a fight, or in PvP; nil when free
+function LevelUpRules.openBlocked(fighting: boolean, inArena: boolean): string?
+	if fighting or inArena then
+		return "Open it after the fight."
+	end
+	return nil
+end
+
 return LevelUpRules

@@ -16,6 +16,9 @@ return {
 	},
 	RANGE = 60, -- studs: other players closer than this to your camera see and hear your level-up
 	HOLD_CHECK_SECONDS = 0.5, -- how often the server sends shop level-ups that waited for a fight to end
+	-- After a boss fight a held level-up also waits out its end screen: the victory screen (Config/Victory SECONDS), or
+	-- the defeat countdown (Combat.LOSS_COUNTDOWN) and the trip home
+	AFTER_BOSS = { win = 6, lose = 8 },
 	-- Seconds from the start: the circle opens at 0, the pillar shoots up at `beam`, the badge pops at `badge`, the
 	-- beam thins and the circle fades from `fade`, everything is gone at `done`
 	TIMING = { beam = 0.4, badge = 1.0, fade = 1.5, done = 3 },

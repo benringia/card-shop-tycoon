@@ -30,6 +30,8 @@ local LevelUpService = {}
 
 local allowOpen = RateLimiter.new(Levels.PACK_OPEN_COOLDOWN)
 local held: { [Player]: LevelUpRules.Pending } = {} -- shop level-ups waiting for their player's fight to end
+local freeAt: { [Player]: number } = {} -- os.clock a boss fight's end screen is over (LevelUpRules.freeAt)
+local seenFighting: { [Player]: number } = {} -- os.clock the release loop last saw them in a fight
 -- PackService runs only in the main game; required there in Start
 local PackService: { OpenItemPack: (player: Player, productId: string) -> boolean }? = nil
 -- PvP fights run in ArenaService (main game only), outside BattleService's fights
@@ -48,18 +50,38 @@ local function onLevelUp(player: Player, from: number, to: number)
 	held[player] = LevelUpRules.merge(held[player], from, to)
 end
 
--- Sends the held shop level-ups of everyone no longer fighting
+local function inAnyFight(player: Player): boolean
+	return BattleService.IsFighting(player) or (ArenaService ~= nil and ArenaService.IsBusy(player))
+end
+
+-- Sends the held shop level-ups of everyone back in the world: out of the fight for a whole check (the fight-ended
+-- handlers run deferred, after the fight is cleared) and past a boss fight's end screen
 local function releaseHeld()
 	while true do
 		task.wait(LevelUpFx.HOLD_CHECK_SECONDS)
+		local now = os.clock()
 		for player, levels in held do
 			if not player.Parent then
 				held[player] = nil
-			elseif not BattleService.IsFighting(player) and not (ArenaService and ArenaService.IsBusy(player)) then
+			elseif inAnyFight(player) then
+				seenFighting[player] = now
+			elseif now - (seenFighting[player] or 0) >= LevelUpFx.HOLD_CHECK_SECONDS and now >= (freeAt[player] or 0) then
 				held[player] = nil
 				sendShop(player, levels)
 			end
 		end
+	end
+end
+
+-- A boss fight's members get its end screen (the victory screen, or the defeat countdown) before a held level-up plays
+local function onFightEnded(monster: any, result: string, hpLeft: { [Player]: any }, stillIn: { Player })
+	local boss = monster.boss ~= nil
+	local at = LevelUpRules.freeAt(LevelUpFx, os.clock(), boss, result)
+	for player in hpLeft do
+		freeAt[player] = at
+	end
+	for _, player in stillIn do
+		freeAt[player] = at
 	end
 end
 
@@ -94,8 +116,9 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	if not productId then
 		return
 	end
-	if BattleService.IsFighting(player) then
-		Remotes.Notify:FireClient(player, "Open it after the fight.", true)
+	local blocked = LevelUpRules.openBlocked(BattleService.IsFighting(player), ArenaService ~= nil and ArenaService.IsBusy(player))
+	if blocked then
+		Remotes.Notify:FireClient(player, blocked, true)
 		return
 	end
 	if not ItemService.TakeItem(player, itemId :: string, 1) then
@@ -109,8 +132,11 @@ end
 function LevelUpService.Start()
 	EconomyService.OnLevelUp(onLevelUp)
 	CardService.OnBeastLevelUp(onBeastLevelUp)
+	BattleService.OnFightEnded(onFightEnded)
 	Players.PlayerRemoving:Connect(function(player)
 		held[player] = nil
+		freeAt[player] = nil
+		seenFighting[player] = nil
 	end)
 	task.spawn(releaseHeld)
 	if not Place.isFrontier() and not Place.isDungeon() then

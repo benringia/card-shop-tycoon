@@ -1426,7 +1426,7 @@ OnBeastLevelUp`) gets a smaller pillar in its element's colour and a "Lv 19 -> 2
 a shop worker; markers and worker rigs carry `BeastId`); your own after a won fight starts when its XP sparks land on
 the portrait. The server sends `LevelUpFx` to everyone; others within 60 studs of their camera see it and hear it
 quieter. A shop level-up never plays mid-fight (a glowing circle underfoot reads as "dodge"): `LevelUpService` holds it
-until the fight (or PvP) ends and merges several into one; the cash, the pack and the toast come at once. Sounds
+until the fight (or PvP) ends, and after a boss fight its end screen too (the victory screen 6 s, the defeat countdown and the trip home 8 s, `LevelUpFx.AFTER_BOSS`), and merges several into one; the cash, the pack and the toast come at once. Bag packs don't open in a fight or PvP, nor while a pack is on the stage or a rip is on its way. Sounds
 (Pro Sound Effects, APM Music, three options each to try): a sparkling whoosh as the circle opens, an angel-sparkle
 burst as the beam hits, a bell as the badge pops, a short fanfare on 10th levels; a creature plays the whoosh and the
 bell, quieter and higher. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelsound <rise|beam|chime|fanfare> <n>`

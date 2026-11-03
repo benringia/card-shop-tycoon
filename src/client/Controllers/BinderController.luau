@@ -1029,6 +1029,10 @@ local function renderBagDetail()
 		open.Size = UDim2.fromOffset(160, 48)
 		open.ZIndex = 34
 		open.Activated:Connect(function()
+			if player:GetAttribute("PackOpeningBusy") == true then
+				UIController.Notify("Finish this pack first.", true)
+				return
+			end
 			Remotes.OpenBagPack:FireServer(openId)
 			bagOverlay.Visible = false -- out of the way of the pack opening
 		end)
