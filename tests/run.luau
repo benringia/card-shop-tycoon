@@ -10,6 +10,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CondenseRules = require("./CondenseRules.spec"),
 	JobRules = require("./JobRules.spec"),
 	LevelMath = require("./LevelMath.spec"),
+	LevelRemap = require("./LevelRemap.spec"),
 	PartyRules = require("./PartyRules.spec"),
 	CreatureMotion = require("./CreatureMotion.spec"),
 	CreatureAssets = require("./CreatureAssets.spec"),

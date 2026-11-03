@@ -4,7 +4,7 @@
 -- SPD sets work speed, Power sets how often it makes a (time-only) mistake (Util/JobRules).
 -- Workers share the owner's boxes (StockService) and checkouts (RegisterService) through their worker
 -- APIs, so cash, XP, stats and saves are exactly as if the owner did the work.
--- Slots: 1 at shop level 10, +1 with the Extra Job Slot pass (MonetizationService). Saved as data.jobs.
+-- Slots: 1 at shop level Jobs.UNLOCK_LEVEL (20), +1 with the Extra Job Slot pass (MonetizationService). Saved as data.jobs.
 -- Workers earn XP each minute and only run while the owner is online.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

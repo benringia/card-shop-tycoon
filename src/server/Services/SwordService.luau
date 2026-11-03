@@ -1,7 +1,7 @@
 --!strict
 -- The player's sword and look (spec 2026-11-02-you-in-the-fight-design). Everyone gets the standard body (torso, arms
 -- and legs at standard scale, their own head, face, hair and accessories kept), so the sword animations fit every
--- avatar. From shop level 3 the character carries the starter sword (character attribute Sword; SwordDrawn while
+-- avatar. From shop level Swords.UNLOCK_SHOP_LEVEL (4) the character carries the starter sword (character attribute Sword; SwordDrawn while
 -- attacking, back on the back SHEATH_SECONDS later); clients draw it. The first time, a popup says so: saved as
 -- data.seenSword once the client closes it (Remotes.SwordState / SwordSeen). Boss fights hide back accessories
 -- (capes, wings, backpacks) that would clash with the sword on the back.

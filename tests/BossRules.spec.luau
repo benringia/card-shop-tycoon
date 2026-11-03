@@ -97,7 +97,7 @@ return {
 		local hydra = Bosses.BOSSES.prismHydra
 		expect.equal(Bosses.LADDER[7], "prismHydra", "last on the ladder")
 		expect.equal(hydra.place, "Dungeon", "its place")
-		expect.equal(hydra.shopLevel, 22, "shop level")
+		expect.equal(hydra.shopLevel, 57, "shop level")
 		expect.equal(hydra.unlock and hydra.unlock.count, 10, "10 fragments")
 		local phases = hydra.phases :: { any }
 		expect.equal(#phases, 5, "five phases")

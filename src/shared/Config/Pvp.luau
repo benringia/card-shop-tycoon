@@ -6,7 +6,7 @@ return {
 	CHALLENGE_SECONDS = 15, -- the target has this long to answer
 	CHALLENGE_COOLDOWN = 10, -- seconds between challenges from one player
 	DECLINE_BLOCK_SECONDS = 30, -- after a decline, that pair can't challenge again for this long
-	CAP_PER_LEVEL = 50, -- bet cap = this x the lower shop level (and never more than either player's cash)
+	CAP_PER_LEVEL = 25, -- bet cap = this x the lower shop level (and never more than either player's cash)
 	BET_STEP = 5,
 	BET_PRESETS = { 0, 10, 25, 50 }, -- 0 = Friendly
 	RETURN_SECONDS = 10, -- after the result, both go home

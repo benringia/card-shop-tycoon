@@ -66,7 +66,7 @@ local SWORDS: { [string]: Sword } = {
 return {
 	STARTER = "starterSword",
 	SWORDS = SWORDS,
-	UNLOCK_SHOP_LEVEL = 3, -- everyone gets the starter sword here (when boss 1 opens)
+	UNLOCK_SHOP_LEVEL = 4, -- everyone gets the starter sword here (when boss 1 opens)
 	SHEATH_SECONDS = 4, -- the sword goes back on your back after this long without attacking
 	COMBO_RESET = 0.9, -- a tap this long after a cut ends still continues the combo; later starts it again
 	SOFT_AIM_RANGE = 14, -- attacking turns you toward a target whose edge is this close...

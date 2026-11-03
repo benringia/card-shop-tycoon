@@ -47,9 +47,9 @@ return {
 		expect.near(JobRules.getMistakeChance(config, 327.5), 0.115, 1e-9, "middle")
 	end,
 	["slots by level and pass"] = function()
-		expect.equal(JobRules.getSlotCount(config, 9, true), 0, "locked below Lv 10")
-		expect.equal(JobRules.getSlotCount(config, 10, false), 1, "free slot")
-		expect.equal(JobRules.getSlotCount(config, 12, true), 2, "with pass")
+		expect.equal(JobRules.getSlotCount(config, config.UNLOCK_LEVEL - 1, true), 0, "locked below the unlock level")
+		expect.equal(JobRules.getSlotCount(config, config.UNLOCK_LEVEL, false), 1, "free slot")
+		expect.equal(JobRules.getSlotCount(config, config.UNLOCK_LEVEL + 2, true), 2, "with pass")
 	end,
 	["nextJob: the other job, wrapping round"] = function()
 		expect.equal(JobRules.nextJob({ "Restocker", "Cashier" }, "Restocker"), "Cashier", "next")

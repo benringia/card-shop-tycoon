@@ -5,7 +5,7 @@ local expect = require("./lib/expect")
 
 return {
 	["bet cap: lower cash, lower shop level x CAP_PER_LEVEL, floored to the step"] = function()
-		expect.equal(PvpRules.getBetCap(config, 1000, 300, 4, 9), 200, "50 x level 4")
+		expect.equal(PvpRules.getBetCap(config, 1000, 300, 4, 9), config.CAP_PER_LEVEL * 4, "CAP_PER_LEVEL x level 4")
 		expect.equal(PvpRules.getBetCap(config, 1000, 133, 9, 9), 130, "cash, floored to 5")
 		expect.equal(PvpRules.getBetCap(config, 0, 500, 5, 5), 0, "no cash")
 		expect.equal(PvpRules.getBetCap(config, -20, 500, 5, 5), 0, "never negative")

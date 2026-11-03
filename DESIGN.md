@@ -286,11 +286,11 @@ is over UI (`UIKit.pointerBlocked`).
 | Small Pack Rack | 24 packs | $100 | Start |
 | Glass Showcase | 6 single cards, NPC customers buy | $250 | Start |
 | Collector Case | 6 single cards, other players buy | $300 | Start |
-| Card Condenser | machine: combine duplicates for +1 star (5.8) | $500 | Shop Lv 4 |
-| Grading Station | machine: duplicates and cash for +1 grade (5.9) | $5,000 | Shop Lv 8 |
-| Wall Shelf | 48 packs | $350 | Shop Lv 3 |
-| Accessory Hook | 20 accessories | $250 | Shop Lv 5 |
-| Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
+| Card Condenser | machine: combine duplicates for +1 star (5.8) | $500 | Shop Lv 5 |
+| Grading Station | machine: duplicates and cash for +1 grade (5.9) | $5,000 | Shop Lv 14 |
+| Wall Shelf | 48 packs | $350 | Shop Lv 4 |
+| Accessory Hook | 20 accessories | $250 | Shop Lv 7 |
+| Big Display Rack | 96 packs | $1,200 | Shop Lv 9 |
 
 ### 4.4 Pricing
 - Each product has a **market price** (shown in UI). Player sets their sell price per product type.
@@ -593,7 +593,7 @@ up to half of a star's cost. One codebase, two places: `frontier.project.json` s
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
 
 **Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
-min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
+min(both players' cash, $25 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
 accept. Both bets are then held by the server and the match goes to the arena (one pad, far from the shops; others
 queue first come, first served; leaving the queue refunds both). After a 3-2-1 countdown, full parties fight (cards resting from the wild sit
 out), same combat rules as the wild, no call-in and no Run; you can roam your half of the pad. Winner takes both
@@ -645,7 +645,7 @@ Lune-tested).
 About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, 1.35x size, about twice
 the HP, ×3 rewards). Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
 
-**You in wild fights** (owner 2026-11-03): with a sword (the free starter at shop level 3) you fight normal monsters
+**You in wild fights** (owner 2026-11-03): with a sword (the free starter at shop level 4) you fight normal monsters
 and elites beside your creature, as in boss fights: Attack, Dodge, the sword's skill, the Pet button and Run. The
 monster turns a third of its swings on you while a creature of yours stands and sends quick hits at you (8% of your HP,
 elites 12%, `Wild.PLAYER_QUICK` / `ELITE_PLAYER_QUICK`, `CombatMath.getMonsterAttacks`; dodge them; no rings outside
@@ -858,7 +858,7 @@ Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 
 `STAR_VALUE` for 0–5 stars = `{ 1, 6, 15, 30, 50, 80 }` (roughly the duplicates condensed plus a bonus).
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
-Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 4, $500; no level gate,
+Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 5, $500; no level gate,
 levels raise stats only). Press E on it, pick a card and its main copy, see the cost and before -> after, then Condense.
 Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
 weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
@@ -875,7 +875,7 @@ Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to yo
 ### 5.9 Grading Station (grade-ups)
 
 The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 10,000 packs, 5.8).
-A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`), a code-built
+A machine bought in the build menu (Fixtures, shop Lv 14, $5,000; `Config/Shelves` kind `Grading`), a code-built
 futuristic scan pod (the user's pick of six concepts, 2026-10-30, then made bigger: a 6 x 6 spot, about 9 studs tall
 with its hologram; `Town.GRADING_LOOK`): a dark plinth with a cyan rim, a white body with a light band, a slot and a
 GRADING strip, and on top a see-through column where a gold card floats in a beam of light, spinning and bobbing, with
@@ -909,13 +909,13 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 4 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 26 | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -964,7 +964,7 @@ group, checked before its fragments and every time (not only the first). Below i
   comes back (`BattleSim.swap`, Lune-tested).
 - **The player in the fight** (spec 2026-11-02-you-in-the-fight-design): in every boss fight (the Wild's, the
   Frontier's and the Prism Hydra) each player fights beside their one creature as a player fighter (`a:@<UserId>`,
-  100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 3, `Config/Swords`, `SwordService`) hits through remotes
+  100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 4, `Config/Swords`, `SwordService`) hits through remotes
   `SwordAttack` (the server picks the combo's next cut with `SwordRules.nextCut` and hits whatever is in reach at its
   strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
   dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
@@ -980,7 +980,7 @@ group, checked before its fragments and every time (not only the first). Below i
   skipped; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
   kneeling, until the fight ends, and a win counts for them too.
-- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 3 (`Swords.UNLOCK_SHOP_LEVEL`,
+- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 4 (`Swords.UNLOCK_SHOP_LEVEL`,
   when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
   (`seenSword`). It rests on the back everywhere, 1.4x bigger there so it and the looks the shop will sell later stand
   out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
@@ -1214,7 +1214,7 @@ group, checked before its fragments and every time (not only the first). Below i
   in hand count, and your best party card's Power is enough), too weak (red ring) or locked (faded, lock: shop level or
   fragments short). A legend under the ladder names the four badges, the path fills gold up to the last boss beaten
   in a row, a gold "Next" tag sits on the first boss still to beat, and each step's tooltip says where it stands
-  ("built for 1500 Power", "opens at shop level 15", "needs 8 keys"). It opens on the first step still to beat.
+  ("built for 1500 Power", "opens at shop level 34", "needs 8 keys"). It opens on the first step still to beat.
   Tapping a step shows it below in two columns (each scrolls when it doesn't fit, as on phones). **To fight it:** its
   name with a status pill (Beaten / Ready / Too weak / Locked) and its title; pills for its element, where it lives
   (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
@@ -1300,7 +1300,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 - **The place:** a third place (id 79143483483478, `Config/Places.DUNGEON_PLACE_ID`; `dungeon.project.json`, port
   34874, `PlaceKind = "Dungeon"`, `Place.isDungeon`). No plots, no shop. One run per reserved server.
 - **Getting in:** the Frontier's Dungeon portal (`DungeonGateService`): "Enter" alone or "Start group" / "Join
-  group" (2-4, 15 s, the leader starts early, like boss gates). Every member needs shop level 22, the Hydra open or 10
+  group" (2-4, 15 s, the leader starts early, like boss gates). Every member needs shop level 57, the Hydra open or 10
   Hydra Key Fragments (the Rift Devourer drops them: 50% per full loot, 3 in its first clear), and a creature ready to
   fight. Then one teleport takes them into a new reserved Dungeon server (`TeleportData.runSize`). The fragments are
   taken only when the Hydra fight first starts, so a lost run costs none.
@@ -1342,7 +1342,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (green into cyan into violet) rise off its back (`auroraFlame`, `AURORA_FLAME`: a few see-through flames per back
   bone, started on top of the back, never from inside the body). Boss models with PetRig bones now animate
   like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
-- **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
+- **Time to reach it:** shop level 57 is 436,890 total shop XP (`Util/LevelMath`): about 9 h to level 20, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
 - Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
@@ -1355,10 +1355,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 | Product | Wholesale (box) | Units | Market price / unit | Unlock |
 |---|---|---|---|---|
 | First Spark Booster Pack | $48 / box | 24 | $3.00 | Start |
-| Card Sleeves | $30 / box | 20 | $2.50 | Lv 2 |
-| Deck Box | $60 / box | 10 | $9.00 | Lv 5 |
-| First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 7 |
-| Set 2 Booster Pack | TBD | 24 | TBD | Lv 10 |
+| Card Sleeves | $30 / box | 20 | $2.50 | Lv 3 |
+| Deck Box | $60 / box | 10 | $9.00 | Lv 7 |
+| First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 11 |
+| Set 2 Booster Pack | TBD | 24 | TBD | Lv 20 |
 
 Player can also open their own stock instead of selling it: packs and deck boxes (5 cards each, flipped one at a
 time on the 3D stage, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
@@ -1377,21 +1377,29 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1)
 
+Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
+`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 40, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
+Every unlock sits at the new level whose XP is nearest what it needed before (Lv 20 ≈ 36,000 XP, where shop jobs
+open; `tests/LevelRemap.spec`), so the pace is the same with about twice as many level-ups. Lv 100 (1,629,210 XP) is
+the cap: XP keeps counting, the level doesn't, and the HUD's XP pill shows MAX. A packs-only shop earns about 30 XP
+a minute, so Lv 2 comes about 1.5 minutes after the first sale (it unlocks nothing; a level-up and its reward).
+Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20), with no back-pay of rewards.
+
 | Lv | XP needed | Unlocks |
 |---|---|---|
 | 1 | 0 | Base |
-| 2 | 150 | Card Sleeves |
-| 3 | 500 | Wall Shelf |
-| 4 | 1,200 | Card Condenser |
-| 5 | 2,500 | Accessory Hook, Deck Box, Expansion 1 |
-| 6 | 5,000 | Big Display Rack |
-| 7 | 9,000 | Sealed Booster Box |
-| 8 | 15,000 | Grading Station |
-| 9 | 24,000 | Expansion 2 |
-| 10 | 36,000 | Shop jobs (first slot), Set 2 |
-
-There is no level cap: after Lv 10 each level costs 15% more XP than the step before it
-(`Levels.XP_GROWTH`; Lv 11 = 49,800, Lv 12 = 65,670). Maths in `Util/LevelMath.luau` (Lune-tested).
+| 2 | 40 | - |
+| 3 | 200 | Card Sleeves |
+| 4 | 510 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
+| 5 | 980 | Card Condenser |
+| 7 | 2,510 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
+| 9 | 4,880 | Big Display Rack |
+| 11 | 8,170 | Sealed Booster Box |
+| 14 | 14,970 | Grading Station, boss 3 |
+| 17 | 24,190 | Expansion 2 |
+| 20 | 35,970 | Shop jobs (first slot), Set 2 |
+| 26 / 34 / 43 / 57 | 67,810 / 128,770 / 224,780 / 436,890 | bosses 4 / 5 / 6 / 7 |
+| 100 | 1,629,210 | the cap |
 
 ### 7.3 Upgrades (one-off purchases)
 
@@ -1406,7 +1414,7 @@ There is no level cap: after Lv 10 each level costs 15% more XP than the step be
 
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
-- **Slots:** 1 at shop Lv 10; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
+- **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
   view ("Give a job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
   in three chips (faster cards work quicker, stronger cards make fewer mistakes, +2 XP a minute), then one row per
   slot: the card's art (hover, or hold a finger, for its stats and perk), name, grade, level, a job chip (icon, and
@@ -1431,8 +1439,8 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
 
 ### 7.5 Tuning goals
 - First upgrade within ~3 minutes.
-- Shop Lv 5 in about 1–1.5 hours of play.
-- Lv 10 in about 8–10 hours.
+- Shop Lv 7 in about 1–1.5 hours of play.
+- Lv 20 in about 8–10 hours.
 - These are targets. Tune after playtesting, keep numbers in config files so it's easy.
 
 ---
@@ -2359,4 +2367,4 @@ boss models; the ranch and Heroic tiers come after those.
 - Heroic tiers for the Dungeon (not decided): clearing it opens a harder tier with better drops, each clear the next,
   a leaderboard of the highest tier and the fastest clear.
 - The ranch (its own project, after the Dungeon): a place just for showing creatures off, unlocked early in the main
-  game (about shop level 10); clearing the Dungeon adds a special Legendary habitat there.
+  game (about shop level 20); clearing the Dungeon adds a special Legendary habitat there.

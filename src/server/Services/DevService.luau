@@ -91,7 +91,7 @@ local function withAmount(apply: (player: Player, amount: number) -> ...any): Co
 end
 
 local function jumpToLevel(player: Player, level: number)
-	if level < 1 or level > Levels.LEVEL_LIMIT then
+	if level < 1 or level > Levels.MAX_LEVEL then
 		return
 	end
 	local required = LevelRules.getRequiredXp(level)
