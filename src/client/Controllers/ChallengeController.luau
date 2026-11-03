@@ -23,6 +23,7 @@ local POPUP_SIZE = Vector2.new(340, 230)
 local ChallengeController = {}
 
 local sendPopup: Frame
+local palette: UIKit.Palette -- the cream popups' colours (UIKit.colorsFor), set in popup
 local sendTitle: TextLabel
 local sendPower: TextLabel
 local betLabel: TextLabel
@@ -73,14 +74,11 @@ local function popup(name: string): Frame
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.45)
 	frame.Size = UDim2.fromOffset(POPUP_SIZE.X, POPUP_SIZE.Y)
-	frame.BackgroundColor3 = UIKit.Colors.Panel
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX + 2
 	frame.Parent = UIController.GetScreenGui()
-	UIKit.corner(frame, 14)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = UIKit.Colors.Accent
-	stroke.Parent = frame
+	UIKit.creamWindow(frame)
+	palette = UIKit.colorsFor(frame)
 	UIKit.hideTouchControlsWhileVisible(frame)
 	return frame
 end
@@ -120,7 +118,7 @@ local function buildSend()
 	sendPopup.Size = UDim2.fromOffset(POPUP_SIZE.X, 286)
 	sendTitle = text(sendPopup, 10, 26, Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
 	sendPower = text(sendPopup, 38, 18, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
-	betLabel = text(sendPopup, 60, 22, Enum.Font.GothamBold, 16, UIKit.Colors.Accent)
+	betLabel = text(sendPopup, 60, 22, Enum.Font.GothamBold, 16, palette.hint)
 
 	-- Presets: Friendly, $10, $25, $50, Max
 	local presets = {}
@@ -130,16 +128,16 @@ local function buildSend()
 	table.insert(presets, { label = "Max", amount = math.huge })
 	local count = #presets
 	for index, preset in presets do
-		button(sendPopup, preset.label, UIKit.Colors.Row, UDim.new((index - 1) / count, if index == 1 then 12 else 3), 88, UDim.new(1 / count, -9), function()
+		button(sendPopup, preset.label, palette.row, UDim.new((index - 1) / count, if index == 1 then 12 else 3), 88, UDim.new(1 / count, -9), function()
 			bet = if preset.amount == math.huge then (if target then getCap(target) else 0) else preset.amount
 			refreshBet()
 		end)
 	end
-	button(sendPopup, "-", UIKit.Colors.Row, UDim.new(0, 12), 142, UDim.new(0.5, -18), function()
+	button(sendPopup, "-", palette.row, UDim.new(0, 12), 142, UDim.new(0.5, -18), function()
 		bet = math.max(0, bet - Pvp.BET_STEP)
 		refreshBet()
 	end)
-	button(sendPopup, "+", UIKit.Colors.Row, UDim.new(0.5, 6), 142, UDim.new(0.5, -18), function()
+	button(sendPopup, "+", palette.row, UDim.new(0.5, 6), 142, UDim.new(0.5, -18), function()
 		bet += Pvp.BET_STEP
 		refreshBet()
 	end)
@@ -165,7 +163,7 @@ local function buildIncoming()
 	incomingPopup = popup("ChallengeIncoming")
 	incomingTitle = text(incomingPopup, 12, 28, Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
 	incomingBody = text(incomingPopup, 46, 60, Enum.Font.GothamBold, 14, UIKit.Colors.Subtext)
-	incomingTimer = text(incomingPopup, 110, 20, Enum.Font.GothamBold, 13, UIKit.Colors.Accent)
+	incomingTimer = text(incomingPopup, 110, 20, Enum.Font.GothamBold, 13, palette.hint)
 	button(incomingPopup, "Accept", UIKit.Colors.Accent, UDim.new(0, 12), 168, UDim.new(0.5, -18), function()
 		respond(true)
 	end)

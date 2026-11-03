@@ -35,8 +35,7 @@ local MAIN_ROW_HEIGHT = 48 -- tap target minimum
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
-local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
-local READY_COLOR = Color3.fromRGB(60, 200, 110)
+local READY_FILL = Color3.fromRGB(60, 200, 110) -- the READY chip on a row
 local SUBTITLE_TEXT = "Combine duplicates into one card for +1 star."
 local FILTER_CHIP_WIDTH = 84
 local ALL_FILTER, READY_FILTER, RAISING_FILTER = "All", "Ready", "Raising"
@@ -47,6 +46,7 @@ local player = Players.LocalPlayer
 local CondenserController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local subtitle: TextLabel
 local list: ScrollingFrame
 local pane: ScrollingFrame
@@ -303,7 +303,7 @@ local function renderPane(card: Card?)
 	local shardText = if not hasShards then "✨ No Star Shards (they drop in the Frontier)"
 		elseif useShards then `✨ Using Star Shards (you have {shardCount})`
 		else `✨ Use Star Shards (you have {shardCount})`
-	local shardButton = UIKit.button(pane, shardText, if useShards and hasShards then UIKit.Colors.Accent else UIKit.Colors.Row)
+	local shardButton = UIKit.button(pane, shardText, if useShards and hasShards then UIKit.Colors.Accent else palette.row)
 	shardButton.Position = UDim2.fromOffset(8, y)
 	shardButton.Size = UDim2.new(1, -16, 0, 48)
 	shardButton.TextSize = 14
@@ -325,7 +325,7 @@ local function renderPane(card: Card?)
 		local row = Instance.new("TextButton")
 		row.Position = UDim2.fromOffset(8, y)
 		row.Size = UDim2.new(1, -16, 0, MAIN_ROW_HEIGHT)
-		row.BackgroundColor3 = UIKit.Colors.Row
+		row.BackgroundColor3 = palette.row
 		row.Text = ""
 		row.Parent = pane
 		UIKit.corner(row, 8)
@@ -341,7 +341,7 @@ local function renderPane(card: Card?)
 			title ..= ` · x{candidate.count}`
 		end
 		addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, VALUE_COLOR)
+		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
 		power.TextXAlignment = Enum.TextXAlignment.Right
 		row.Activated:Connect(function()
 			mainKey = candidate.key
@@ -368,7 +368,7 @@ local function buildCardRow(card: Card, order: number)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -6, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = UIKit.Colors.Row
+	row.BackgroundColor3 = palette.row
 	row.Text = ""
 	row.Parent = list
 	UIKit.corner(row, 8)
@@ -394,7 +394,7 @@ local function buildCardRow(card: Card, order: number)
 		local cost = BeastRules.getCondenseCost(strongest.stars)
 		status ..= if takes and cost then ` · next star: {cost} duplicates` elseif reason == "max" then " · max stars" else ` · {describeReason(reason)}`
 	end
-	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then READY_COLOR else UIKit.Colors.Subtext)
+	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then palette.good else UIKit.Colors.Subtext)
 
 	-- Can take a star right now: green chip on the row
 	if ready then
@@ -403,7 +403,7 @@ local function buildCardRow(card: Card, order: number)
 		chip.Position = UDim2.new(1, -8, 0, 8)
 		chip.Size = UDim2.fromOffset(68, 20)
 		chip.TextXAlignment = Enum.TextXAlignment.Center
-		chip.BackgroundColor3 = READY_COLOR
+		chip.BackgroundColor3 = READY_FILL
 		chip.BackgroundTransparency = 0
 		UIKit.corner(chip, 6)
 	end
@@ -431,7 +431,7 @@ render = function()
 		end
 	end
 	for filter, button in filterButtons do
-		button.BackgroundColor3 = if filter == activeFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+		button.BackgroundColor3 = if filter == activeFilter then UIKit.Colors.Accent else palette.row
 	end
 	local readyCount = 0
 	local ready: { [string]: boolean } = {}
@@ -454,7 +454,7 @@ render = function()
 	subtitle.Text = if readyCount > 0
 		then `{readyCount} {if readyCount == 1 then "card" else "cards"} ready to condense · {SUBTITLE_TEXT}`
 		else SUBTITLE_TEXT
-	subtitle.TextColor3 = if readyCount > 0 then READY_COLOR else UIKit.Colors.Subtext
+	subtitle.TextColor3 = if readyCount > 0 then palette.good else palette.inkSoft
 	local selected: Card? = nil
 	for _, card in cards do
 		if card.id == selectedCardId then
@@ -509,6 +509,7 @@ end
 function CondenserController.Start()
 	local screenGui = UIController.GetScreenGui()
 	panel, list = UIKit.panel(screenGui, "Condenser", "Card Condenser")
+	palette = UIKit.colorsFor(panel)
 	panel.Size = UDim2.fromScale(0.94, 0.86)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
@@ -522,16 +523,17 @@ function CondenserController.Start()
 	search.Name = "Search"
 	search.Position = UDim2.fromOffset(16, 82)
 	search.Size = UDim2.fromOffset(180, 34)
-	search.BackgroundColor3 = UIKit.Colors.Row
+	search.BackgroundColor3 = palette.row
 	search.ClearTextOnFocus = false
 	search.PlaceholderText = "Search name or #"
 	search.Text = ""
 	search.Font = Enum.Font.Gotham
 	search.TextSize = 14
-	search.TextColor3 = UIKit.Colors.Text
-	search.PlaceholderColor3 = UIKit.Colors.Subtext
+	search.TextColor3 = palette.ink
+	search.PlaceholderColor3 = palette.inkSoft
 	search.Parent = panel
 	UIKit.corner(search, 8)
+	UIKit.outline(search, palette.rowEdge, 2)
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		searchText = search.Text
 		render()
@@ -565,13 +567,16 @@ function CondenserController.Start()
 		table.insert(filters, name)
 	end
 	for index, filter in filters do
-		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
+		local chip = UIKit.button(chips, filter, palette.row)
 		chip.LayoutOrder = index
 		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 34)
 		chip.TextSize = 13
+		-- A rarity's chip wears its colour as the ring (its colour as text doesn't read on white)
 		local tier = Rarities.Tiers[filter]
-		if tier then
-			chip.TextColor3 = tier.color
+		for _, ring in chip:GetChildren() do
+			if tier and ring:IsA("UIStroke") and ring.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
+				ring.Color = tier.color
+			end
 		end
 		chip.Activated:Connect(function()
 			activeFilter = filter
@@ -587,8 +592,8 @@ function CondenserController.Start()
 	pane.Name = "Details"
 	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, LIST_TOP)
 	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -(LIST_TOP + 12))
-	pane.BackgroundColor3 = UIKit.Colors.Row
-	pane.BackgroundTransparency = 0.4
+	pane.BackgroundColor3 = palette.slotEmpty -- a deeper cream; its rows are white
+	pane.BackgroundTransparency = 0
 	pane.BorderSizePixel = 0
 	pane.ScrollBarThickness = 4
 	pane.CanvasSize = UDim2.new()

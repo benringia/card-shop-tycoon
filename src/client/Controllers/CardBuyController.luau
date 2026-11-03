@@ -29,19 +29,14 @@ local LIST_WIDTH_SCALE = 0.55 -- listings share of the panel width; details pane
 local ROW_HEIGHT = 64
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(120, 171)
-local PRICE_COLOR = Color3.fromRGB(120, 230, 120)
 local DISTANCE_CHECK_SECONDS = 0.5
-local DEAL_COLORS = {
-	Good = Color3.fromRGB(110, 220, 130),
-	Fair = Color3.fromRGB(240, 210, 90),
-	Pricey = Color3.fromRGB(245, 150, 70),
-}
 
 local player = Players.LocalPlayer
 
 local CardBuyController = {}
 
 local browsePanel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set when it's built
 local browseList: ScrollingFrame
 local browseTitle: TextLabel
 local browseSubtitle: TextLabel
@@ -110,11 +105,11 @@ end
 local function getDeal(price: number, market: number): (string, Color3)
 	local ratio = if market > 0 then price / market else math.huge
 	if ratio <= ShowcaseConfig.GOOD_DEAL_MAX_RATIO + 1e-6 then
-		return "Good deal", DEAL_COLORS.Good
+		return "Good deal", palette.good
 	elseif ratio <= ShowcaseConfig.FAIR_DEAL_MAX_RATIO + 1e-6 then
-		return "Fair", DEAL_COLORS.Fair
+		return "Fair", palette.hint
 	end
-	return "Pricey", DEAL_COLORS.Pricey
+	return "Pricey", palette.power -- a deep orange
 end
 
 -- showValue = false on browse tiles: the asking price sits right under the card instead
@@ -234,7 +229,7 @@ local function renderPane(part: BasePart?)
 	info.TextYAlignment = Enum.TextYAlignment.Top
 
 	local y = DETAIL_FACE_SIZE.Y + 16
-	local priceLine = UIKit.label(pane, string.format("Price  $%.2f", price), Enum.Font.FredokaOne, 22, PRICE_COLOR)
+	local priceLine = UIKit.label(pane, string.format("Price  $%.2f", price), Enum.Font.FredokaOne, 22, palette.good)
 	priceLine.Position = UDim2.fromOffset(10, y)
 	priceLine.Size = UDim2.new(1, -20, 0, 28)
 	y += 30
@@ -283,7 +278,7 @@ local function buildRow(part: BasePart, order: number)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -6, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = UIKit.Colors.Row
+	row.BackgroundColor3 = palette.row
 	row.Text = ""
 	row.Parent = browseList
 	UIKit.corner(row, 8)
@@ -307,7 +302,7 @@ local function buildRow(part: BasePart, order: number)
 	addRowLabel(row, name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + 104), 0, 20), Enum.Font.GothamBold, 15, UIKit.Colors.Text)
 	addRowLabel(row, describeKind(part), UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 104), 0, 18), Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 
-	local priceLabel = addRowLabel(row, string.format("$%.2f", price), UDim2.new(1, -100, 0, 6), UDim2.fromOffset(90, 24), Enum.Font.FredokaOne, 19, PRICE_COLOR)
+	local priceLabel = addRowLabel(row, string.format("$%.2f", price), UDim2.new(1, -100, 0, 6), UDim2.fromOffset(90, 24), Enum.Font.FredokaOne, 19, palette.good)
 	priceLabel.TextXAlignment = Enum.TextXAlignment.Right
 	local tagText, tagColor
 	if isBuyable(part) then
@@ -322,10 +317,10 @@ local function buildRow(part: BasePart, order: number)
 		selectedPart = part
 		render()
 	end)
-	-- Hover only brightens the row; selecting takes a click, so passing over rows never changes the choice
+	-- Hover only tints the row; selecting takes a click, so passing over rows never changes the choice
 	local base = row.BackgroundColor3
 	row.MouseEnter:Connect(function()
-		row.BackgroundColor3 = base:Lerp(Color3.new(1, 1, 1), 0.08)
+		row.BackgroundColor3 = palette.slotEmpty
 	end)
 	row.MouseLeave:Connect(function()
 		row.BackgroundColor3 = base
@@ -453,7 +448,8 @@ end
 -- UI construction --------------------------------------------------------------------------------
 
 local function buildBrowsePanel(parent: Instance)
-	browsePanel, browseList = UIKit.panel(parent, "BrowseCase", "Cards")
+	browsePanel, browseList = UIKit.panel(parent, "BrowseCase", "Cards", "Cards")
+	palette = UIKit.colorsFor(browsePanel)
 	browsePanel.Size = UDim2.fromScale(0.94, 0.86)
 	local sizeLimit = browsePanel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
@@ -473,8 +469,8 @@ local function buildBrowsePanel(parent: Instance)
 	pane.Name = "Details"
 	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 84)
 	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -96)
-	pane.BackgroundColor3 = UIKit.Colors.Row
-	pane.BackgroundTransparency = 0.4
+	pane.BackgroundColor3 = palette.slotEmpty -- a deeper cream
+	pane.BackgroundTransparency = 0
 	pane.BorderSizePixel = 0
 	pane.ScrollBarThickness = 4
 	pane.CanvasSize = UDim2.new()
@@ -498,11 +494,10 @@ local function buildConfirm(parent: Instance)
 	confirm.AnchorPoint = Vector2.new(0.5, 0.5)
 	confirm.Position = UDim2.fromScale(0.5, 0.5)
 	confirm.Size = UDim2.fromOffset(320, 170)
-	confirm.BackgroundColor3 = UIKit.Colors.Panel
 	confirm.Visible = false
 	confirm.ZIndex = 20
 	confirm.Parent = parent
-	UIKit.corner(confirm, 14)
+	UIKit.creamWindow(confirm) -- a small cream window like the one it opens from
 
 	confirmText = UIKit.label(confirm, "", Enum.Font.GothamBold, 18, UIKit.Colors.Text)
 	confirmText.TextXAlignment = Enum.TextXAlignment.Center
@@ -514,7 +509,7 @@ local function buildConfirm(parent: Instance)
 	buy.Size = UDim2.new(0.5, -24, 0, 52)
 	buy.Activated:Connect(onConfirmBuy)
 
-	local cancel = UIKit.button(confirm, "Cancel", UIKit.Colors.Row)
+	local cancel = UIKit.button(confirm, "Cancel", UIKit.Colors.Secondary)
 	cancel.AnchorPoint = Vector2.new(1, 0)
 	cancel.Position = UDim2.new(1, -16, 1, -68)
 	cancel.Size = UDim2.new(0.5, -24, 0, 52)
