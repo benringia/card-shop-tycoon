@@ -1,8 +1,9 @@
 --!strict
--- Quick party bar in the bottom-right corner, left of the cash: a dark tray with your avatar ("PARTY", opens the
--- Party panel), then your 3 party slots as small cards. A filled slot shows the card's art in its rarity rim with
--- its level; the summoned one lifts and glows with an OUT tag; an empty one is a dashed "+" (picks a card in the
--- binder). Tap a slot, or press 1 / 2 / 3, to summon it (again to unsummon). Cards resting after a fight dim and show
+-- Quick party bar in the bottom-right corner, left of the cash (spec 2026-11-03-hud-creature-pals-design): a cream
+-- cushion with a "Party" pill (opens the Party panel, as does tapping the cushion) and your 3 party slots as round
+-- portraits in white rings with their level under them; the summoned one is bigger with an orange ring, glow and OUT
+-- tag; an empty one is a faint ring with a "+" (picks a card in the binder). The mascot peeks over the cushion
+-- (Util/HudMascotView), so the bar keeps headroom above it. Tap a slot, or press 1 / 2 / 3, to summon it (again to unsummon). Cards resting after a fight dim and show
 -- an hourglass and "2:41". Hovering a card (or holding a finger on it) shows its tooltip above the bar: Power, HP / ATK / SPD
 -- bars, perk and rest (Util/CardTips), so you don't need the binder. Numbers: Config/Party BAR.
 local ContextActionService = game:GetService("ContextActionService")
@@ -18,6 +19,8 @@ local Cards = require(Config:WaitForChild("Cards"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
+local HudMascot = require(Config:WaitForChild("HudMascot"))
+local HudMascotRules = require(Shared:WaitForChild("Util"):WaitForChild("HudMascotRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
@@ -27,6 +30,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
@@ -36,7 +40,8 @@ local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 
 type SlotView = {
-	button: TextButton,
+	hit: TextButton, -- the tap area round the portrait (Party.BAR.HIT)
+	button: Frame, -- the round portrait
 	lift: UIScale,
 	rim: UIStroke,
 	rimShade: UIGradient,
@@ -54,9 +59,12 @@ local BAR = Party.BAR
 local function rgb(color: { number }): Color3
 	return Color3.fromRGB(color[1], color[2], color[3])
 end
-local SLOT_SIZE = UDim2.fromOffset(BAR.SLOT[1], BAR.SLOT[2])
+local SLOT_SIZE = UDim2.fromOffset(BAR.PORTRAIT, BAR.PORTRAIT)
+local LIFT = BAR.PORTRAIT_OUT / BAR.PORTRAIT -- the summoned portrait's scale
 local EMPTY = rgb(BAR.EMPTY)
 local EMPTY_EDGE = rgb(BAR.EMPTY_EDGE)
+local BROWN = rgb(BAR.TEXT)
+local OUT_COLOR = rgb(BAR.OUT)
 local WHITE = Color3.new(1, 1, 1)
 local INK = Color3.fromRGB(20, 28, 60)
 local SUMMON_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
@@ -77,6 +85,11 @@ local swallowTap: { [number]: boolean } = {} -- a long press shows the tooltip i
 local partyKnown = false -- the first PartyChanged is the party loading, not a change to announce
 local pendingChanges: { PartyRules.Change } = {}
 local announcing = false
+local cushion: Frame -- the cream cushion the slots sit on (the mascot sits on it too)
+local summonedChanged = Instance.new("BindableEvent")
+
+-- Fires when the summoned slot changes (a summon, an unsummon or a swap): the mascot ducks
+PartyBarController.Summoned = summonedChanged.Event
 
 -- Above its slot (centred, kept on screen)
 local function placeTip()
@@ -157,24 +170,32 @@ local function keyChip(parent: GuiObject, key: string)
 	chip.Position = UDim2.new(0, 1, 1, -1)
 	chip.Size = UDim2.fromOffset(17, 17)
 	chip.TextXAlignment = Enum.TextXAlignment.Center
-	chip.BackgroundColor3 = INK
+	chip.TextColor3 = INK
+	chip.BackgroundColor3 = WHITE
 	chip.BackgroundTransparency = 0
 	chip.ZIndex = 8
-	UIKit.corner(chip, 5)
-	UIKit.outline(chip, WHITE, 1.5)
+	UIKit.corner(chip, 9)
+	UIKit.outline(chip, BROWN, 1)
 end
 
 local function makeSlot(parent: Instance, slot: number): SlotView
-	local button = Instance.new("TextButton")
-	button.Name = `Slot{slot}`
-	button.LayoutOrder = slot
-	button.Text = ""
+	-- A tap area big enough for a finger at the smallest HUD scale, the portrait drawn in its middle
+	local hit = Instance.new("TextButton")
+	hit.Name = `Slot{slot}`
+	hit.LayoutOrder = slot
+	hit.Text = ""
+	hit.BackgroundTransparency = 1
+	hit.Size = UDim2.fromOffset(BAR.HIT, BAR.HIT)
+	hit.Parent = parent
+	local button = Instance.new("Frame")
+	button.Name = "Portrait"
+	button.AnchorPoint = Vector2.new(0.5, 0.5)
+	button.Position = UDim2.fromScale(0.5, 0.5)
 	button.Size = SLOT_SIZE
 	button.BackgroundColor3 = EMPTY
-	button.AutoButtonColor = false
 	button.ClipsDescendants = false
-	button.Parent = parent
-	UIKit.corner(button, 8)
+	button.Parent = hit
+	UIKit.corner(button, BAR.PORTRAIT / 2)
 	local lift = Instance.new("UIScale")
 	lift.Parent = button
 
@@ -184,9 +205,9 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	glow.BackgroundTransparency = 1
 	glow.AnchorPoint = Vector2.new(0.5, 0.5)
 	glow.Position = UDim2.fromScale(0.5, 0.5)
-	glow.Size = UDim2.fromScale(2.2, 1.9)
+	glow.Size = UDim2.fromScale(2, 2)
 	glow.Image = CardDesign.IMAGES.GLOW
-	glow.ImageColor3 = UIKit.Colors.Accent
+	glow.ImageColor3 = OUT_COLOR
 	glow.ImageTransparency = 0.25
 	glow.ZIndex = 0
 	glow.Visible = false
@@ -200,7 +221,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	art.ScaleType = Enum.ScaleType.Crop
 	art.ZIndex = 2
 	art.Parent = button
-	UIKit.corner(art, 8)
+	UIKit.corner(art, BAR.PORTRAIT / 2)
 	local element = Icon.make(button, "Ember", UDim2.fromScale(0.62, 0.62))
 	element.AnchorPoint = Vector2.new(0.5, 0.5)
 	element.Position = UDim2.fromScale(0.5, 0.46)
@@ -216,16 +237,17 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	rimShade.Rotation = 90
 	rimShade.Parent = rim
 
-	local level = UIKit.label(button, "", Enum.Font.FredokaOne, 10, WHITE)
+	-- The level in a white pill under the portrait
+	local level = UIKit.label(button, "", Enum.Font.FredokaOne, 10, BROWN)
 	level.Name = "Level"
-	level.AnchorPoint = Vector2.new(1, 1)
-	level.Position = UDim2.new(1, -2, 1, -2)
+	level.AnchorPoint = Vector2.new(0.5, 0.5)
+	level.Position = UDim2.new(0.5, 0, 1, 2)
 	level.Size = UDim2.fromOffset(0, 14)
 	level.AutomaticSize = Enum.AutomaticSize.X
 	level.TextWrapped = false
 	level.TextXAlignment = Enum.TextXAlignment.Center
-	level.BackgroundColor3 = INK
-	level.BackgroundTransparency = 0.15
+	level.BackgroundColor3 = WHITE
+	level.BackgroundTransparency = 0
 	level.ZIndex = 5
 	UIKit.corner(level, 8)
 	local levelPad = Instance.new("UIPadding")
@@ -233,51 +255,27 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	levelPad.PaddingRight = UDim.new(0, 4)
 	levelPad.Parent = level
 
-	-- Empty: a dashed outline (short white bars round the edge) and a "+"
+	-- Empty: a faint ring with a "+"
 	local empty = Instance.new("Frame")
 	empty.Name = "Empty"
 	empty.BackgroundTransparency = 1
 	empty.Size = UDim2.fromScale(1, 1)
 	empty.ZIndex = 2
 	empty.Parent = button
-	for index = 0, 5 do
-		for _, side in { "Left", "Right" } do
-			local dash = Instance.new("Frame")
-			dash.BorderSizePixel = 0
-			dash.BackgroundColor3 = WHITE
-			dash.BackgroundTransparency = 0.45
-			dash.AnchorPoint = Vector2.new(0.5, 0)
-			dash.Position = UDim2.new(if side == "Left" then 0 else 1, 0, (index + 0.2) / 6, 0)
-			dash.Size = UDim2.new(0, 2, 1 / 12, 0)
-			dash.ZIndex = 2
-			dash.Parent = empty
-		end
-	end
-	for index = 0, 3 do
-		for _, side in { "Top", "Bottom" } do
-			local dash = Instance.new("Frame")
-			dash.BorderSizePixel = 0
-			dash.BackgroundColor3 = WHITE
-			dash.BackgroundTransparency = 0.45
-			dash.AnchorPoint = Vector2.new(0, 0.5)
-			dash.Position = UDim2.new((index + 0.2) / 4, 0, if side == "Top" then 0 else 1, 0)
-			dash.Size = UDim2.new(1 / 8, 0, 0, 2)
-			dash.ZIndex = 2
-			dash.Parent = empty
-		end
-	end
-	local plus = UIKit.label(empty, "+", Enum.Font.FredokaOne, 26, Color3.fromRGB(190, 200, 230))
+	UIKit.corner(empty, BAR.PORTRAIT / 2)
+	UIKit.outline(empty, EMPTY_EDGE, 2)
+	local plus = UIKit.label(empty, "+", Enum.Font.FredokaOne, 26, EMPTY_EDGE:Lerp(BROWN, 0.4))
 	plus.Size = UDim2.fromScale(1, 1)
 	plus.TextXAlignment = Enum.TextXAlignment.Center
 	plus.ZIndex = 3
 
-	local outTag = UIKit.label(button, "OUT", Enum.Font.FredokaOne, 11, UIKit.Colors.Ink)
+	local outTag = UIKit.label(button, "OUT", Enum.Font.FredokaOne, 11, WHITE)
 	outTag.Name = "Out"
 	outTag.AnchorPoint = Vector2.new(0.5, 0.5)
-	outTag.Position = UDim2.new(0.5, 0, 0, 0)
+	outTag.Position = UDim2.new(0.5, 0, 0, -2)
 	outTag.Size = UDim2.fromOffset(32, 15)
 	outTag.TextXAlignment = Enum.TextXAlignment.Center
-	outTag.BackgroundColor3 = UIKit.Colors.Accent
+	outTag.BackgroundColor3 = OUT_COLOR
 	outTag.BackgroundTransparency = 0
 	outTag.ZIndex = 7
 	outTag.Visible = false
@@ -292,7 +290,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	shade.ZIndex = 6
 	shade.Visible = false
 	shade.Parent = button
-	UIKit.corner(shade, 8)
+	UIKit.corner(shade, BAR.PORTRAIT / 2)
 	-- Resting: an hourglass over the time left (icons, not emoji)
 	local hourglass = Icon.make(shade, "Hourglass", UDim2.fromScale(0.5, 0.5))
 	hourglass.AnchorPoint = Vector2.new(0.5, 0)
@@ -308,7 +306,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	UIKit.outlined(rest, 1.5)
 
 	keyChip(button, tostring(slot))
-	button.Activated:Connect(function()
+	hit.Activated:Connect(function()
 		if swallowTap[slot] then
 			swallowTap[slot] = nil
 			return
@@ -316,18 +314,18 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 		useSlot(slot)
 	end)
 	-- Mouse: hover for the tooltip. Touch: hold a finger on the card (the tap then doesn't summon)
-	button.MouseEnter:Connect(function()
+	hit.MouseEnter:Connect(function()
 		if UserInputService.MouseEnabled then
 			showTip(slot)
 		end
 	end)
-	button.MouseLeave:Connect(function()
+	hit.MouseLeave:Connect(function()
 		if tipSlot == slot then
 			hideTip()
 		end
 	end)
 	local pressed = 0
-	button.InputBegan:Connect(function(input)
+	hit.InputBegan:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Touch then
 			return
 		end
@@ -341,7 +339,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 			end
 		end)
 	end)
-	button.InputEnded:Connect(function(input)
+	hit.InputEnded:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.Touch then
 			return
 		end
@@ -351,6 +349,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 		end
 	end)
 	return {
+		hit = hit,
 		button = button,
 		lift = lift,
 		rim = rim,
@@ -407,19 +406,14 @@ local function render()
 			Icon.set(view.element, card.element)
 			view.element.Visible = own == nil -- a card's own picture already shows its creature
 			view.level.Text = `Lv {beast.level}`
-			local colors = CardDesign.RIMS[card.rarity] or CardDesign.RIMS.Common
-			view.rimShade.Color = ColorSequence.new(colors[1], colors[2])
 			view.button.BackgroundColor3 = Cards.ELEMENTS[card.element] or EMPTY
 		else
-			view.rimShade.Color = ColorSequence.new(EMPTY_EDGE)
 			view.button.BackgroundColor3 = EMPTY
 		end
-		view.rim.Thickness = if isSummoned then BAR.RIM + 1 else BAR.RIM
-		if isSummoned then
-			view.rimShade.Color = ColorSequence.new(UIKit.Colors.Accent:Lerp(WHITE, 0.4), UIKit.Colors.Accent)
-		end
+		-- A white ring; the summoned one orange
+		view.rimShade.Color = if isSummoned then ColorSequence.new(OUT_COLOR:Lerp(WHITE, 0.3), OUT_COLOR) else ColorSequence.new(WHITE)
 		view.rim.Transparency = if card then 0 else 1
-		TweenService:Create(view.lift, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = if isSummoned then BAR.LIFT else 1 }):Play()
+		TweenService:Create(view.lift, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = if isSummoned then LIFT else 1 }):Play()
 	end
 end
 
@@ -435,15 +429,15 @@ local function celebrate(slot: number)
 	if not view then
 		return
 	end
-	local rest = if summoned == slot then BAR.LIFT else 1
+	local rest = if summoned == slot then LIFT else 1
 	local half = BAR.POP_SECONDS / 2
 	local up = TweenService:Create(view.lift, TweenInfo.new(half, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = rest * BAR.POP })
 	up.Completed:Once(function()
 		TweenService:Create(view.lift, TweenInfo.new(half, Enum.EasingStyle.Back), { Scale = rest }):Play()
 	end)
 	up:Play()
-	view.rimShade.Color = ColorSequence.new(WHITE)
-	task.delay(BAR.POP_SECONDS, render) -- back to its rarity colours
+	view.rimShade.Color = ColorSequence.new(UIKit.Colors.Accent)
+	task.delay(BAR.POP_SECONDS, render) -- back to its white ring
 end
 
 -- Toasts the party's changes ("Cindercub swapped in for Ashbeak!") once the cards' names are known: a card added
@@ -478,64 +472,79 @@ local function announce()
 	end
 end
 
+-- The cushion the party sits on (the mascot sits on it too)
+function PartyBarController.GetCushion(): Frame
+	return cushion
+end
+
 function PartyBarController.Start()
-	-- The tray: a dark rounded bar like the money pills beside it
+	-- The bar: room above for the mascot's head (none until it has a picture), then the cushion
 	local bar = Instance.new("Frame")
 	bar.Name = "PartyBar"
 	bar.LayoutOrder = 0 -- left of the buff / cash / XP column
 	bar.Size = UDim2.new()
 	bar.AutomaticSize = Enum.AutomaticSize.XY
-	bar.BackgroundColor3 = rgb(BAR.TRAY)
-	bar.BackgroundTransparency = BAR.TRAY_TRANSPARENCY
+	bar.BackgroundTransparency = 1
 	bar.Parent = UIController.GetStatusRow()
-	UIKit.corner(bar, 16)
-	UIKit.outline(bar, UIKit.Colors.Outline, 2)
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 8)
-	pad.PaddingRight = UDim.new(0, 10)
-	pad.PaddingTop = UDim.new(0, 10)
-	pad.PaddingBottom = UDim.new(0, 8)
-	pad.Parent = bar
+	local headroom = Instance.new("UIPadding")
+	headroom.PaddingTop = UDim.new(0, HudMascotRules.headroom(HudMascot))
+	headroom.Parent = bar
+
+	-- The cushion: cream, a white outline, a darker base line along its bottom; tapping it opens the Party panel
+	local pad = BAR.CUSHION
+	local seat = Instance.new("TextButton")
+	seat.Name = "Cushion"
+	seat.Text = ""
+	seat.AutoButtonColor = false
+	seat.Size = UDim2.new()
+	seat.AutomaticSize = Enum.AutomaticSize.XY
+	seat.BackgroundColor3 = WHITE
+	seat.Parent = bar
+	UIKit.corner(seat, 22)
+	UIKit.outline(seat, WHITE, BAR.OUTLINE)
+	local fill = Instance.new("UIGradient")
+	fill.Rotation = 90
+	fill.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, rgb(pad.top)),
+		ColorSequenceKeypoint.new(0.86, rgb(pad.bottom)),
+		ColorSequenceKeypoint.new(0.861, rgb(pad.base)),
+		ColorSequenceKeypoint.new(1, rgb(pad.base)),
+	})
+	fill.Parent = seat
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 6)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.PaddingTop = UDim.new(0, 2)
+	padding.PaddingBottom = UDim.new(0, 6)
+	padding.Parent = seat
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, BAR.GAP)
+	layout.Padding = UDim.new(0, 0) -- the tap areas already space the portraits
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = bar
+	layout.Parent = seat
+	seat.Activated:Connect(PartyController.Toggle)
+	cushion = seat
 
-	-- Your avatar with a PARTY tag: opens the Party panel
-	local avatar = Instance.new("TextButton")
-	avatar.Name = "Avatar"
-	avatar.LayoutOrder = 0
-	avatar.Text = ""
-	avatar.Size = UDim2.fromOffset(BAR.AVATAR, BAR.AVATAR)
-	avatar.BackgroundColor3 = EMPTY
-	avatar.Parent = bar
-	UIKit.corner(avatar, BAR.AVATAR / 2)
-	UIKit.outline(avatar, UIKit.Colors.Accent, 3)
-	local headshot = Instance.new("ImageLabel")
-	headshot.Size = UDim2.fromScale(1, 1)
-	headshot.BackgroundTransparency = 1
-	headshot.Parent = avatar
-	UIKit.corner(headshot, BAR.AVATAR / 2)
-	local tag = UIKit.label(avatar, "PARTY", Enum.Font.FredokaOne, 10, UIKit.Colors.Ink)
-	tag.AnchorPoint = Vector2.new(0.5, 0.5)
-	tag.Position = UDim2.new(0.5, 0, 1, 0)
-	tag.Size = UDim2.fromOffset(44, 16)
-	tag.TextXAlignment = Enum.TextXAlignment.Center
-	tag.BackgroundColor3 = UIKit.Colors.Accent
-	tag.BackgroundTransparency = 0
-	tag.ZIndex = 3
-	UIKit.corner(tag, 8)
-	task.spawn(function()
-		local ok, image = pcall(function()
-			return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
-		end)
-		if ok then
-			headshot.Image = image
-		end
-	end)
-	avatar.Activated:Connect(PartyController.Toggle)
+	-- The "Party" pill at the cushion's left end (a 48 px tall tap area round it): opens the Party panel
+	local partyButton = Instance.new("TextButton")
+	partyButton.Name = "Party"
+	partyButton.LayoutOrder = 0
+	partyButton.Text = ""
+	partyButton.BackgroundTransparency = 1
+	partyButton.Size = UDim2.fromOffset(BAR.HIT, BAR.HIT)
+	partyButton.Parent = seat
+	local partyPill = UIKit.label(partyButton, "Party", Enum.Font.FredokaOne, 14, BROWN)
+	partyPill.AnchorPoint = Vector2.new(0.5, 0.5)
+	partyPill.Position = UDim2.fromScale(0.5, 0.5)
+	partyPill.Size = UDim2.fromOffset(BAR.PARTY_PILL[1], BAR.PARTY_PILL[2])
+	partyPill.TextXAlignment = Enum.TextXAlignment.Center
+	partyPill.BackgroundColor3 = WHITE
+	partyPill.BackgroundTransparency = 0
+	UIKit.corner(partyPill, BAR.PARTY_PILL[2] / 2)
+	UIKit.outline(partyPill, EMPTY_EDGE, 1.5)
+	Motion.press(partyButton)
+	partyButton.Activated:Connect(PartyController.Toggle)
 
 	tip = Instance.new("Frame")
 	tip.Name = "PartyTip"
@@ -555,7 +564,7 @@ function PartyBarController.Start()
 	tip:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTip) -- it sizes itself after its content
 
 	for slot = 1, Party.PARTY_SIZE do
-		slotViews[slot] = makeSlot(bar, slot)
+		slotViews[slot] = makeSlot(cushion, slot)
 	end
 	render()
 
@@ -583,8 +592,12 @@ function PartyBarController.Start()
 				slots[entry.slot] = entry.beastId
 			end
 		end
+		local wasSummoned = summoned
 		summoned = if typeof(payload.summoned) == "number" then payload.summoned else nil
 		render()
+		if partyKnown and summoned ~= wasSummoned then
+			summonedChanged:Fire()
+		end
 		if partyKnown then
 			for _, change in PartyRules.changes(before, slots, Party.PARTY_SIZE) do
 				table.insert(pendingChanges, change)

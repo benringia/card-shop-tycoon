@@ -567,18 +567,22 @@ return {
 	ACTION_COOLDOWN = 0.5,
 
 	-- The quick party bar in the bottom-right corner (PartyBarController). Pixels; colours as { r, g, b }.
+	-- The creature pals look (spec 2026-11-03-hud-creature-pals-design): a cream cushion with round portraits in white
+	-- rings, the summoned one bigger with an orange ring; the mascot peeks over its top (Config/HudMascot)
 	BAR = {
-		AVATAR = 54,
-		SLOT = { 48, 66 }, -- a party card, width and height
-		GAP = 8,
-		RIM = 2.5,
-		LIFT = 1.12, -- the summoned card grows this much
+		PORTRAIT = 48, -- a party portrait's size
+		PORTRAIT_OUT = 56, -- the summoned one
+		HIT = 70, -- a portrait's (and the Party pill's) tap area: 48 px even at the smallest HUD scale (0.7)
+		RIM = 4, -- the white ring round a portrait
 		POP = 1.35, -- a card joining the party pops up this much, then settles
 		POP_SECONDS = 0.5,
 		NAME_WAIT = 2, -- seconds the "joined your party" toast waits for a new card's name to arrive with the binder
-		TRAY = { 22, 26, 38 },
-		TRAY_TRANSPARENCY = 0.1,
-		EMPTY = { 36, 42, 58 },
-		EMPTY_EDGE = { 70, 78, 100 },
+		CUSHION = { top = { 255, 246, 234 }, bottom = { 246, 223, 196 }, base = { 233, 201, 162 } },
+		OUTLINE = 4, -- the cushion's white outline
+		EMPTY = { 238, 220, 196 }, -- an empty slot's fill
+		EMPTY_EDGE = { 214, 188, 156 }, -- its faint ring
+		TEXT = { 107, 74, 42 }, -- brown words on cream (levels, Party, the "+")
+		OUT = { 255, 138, 58 }, -- the summoned portrait's ring, glow and tag
+		PARTY_PILL = { 52, 28 }, -- the "Party" pill, drawn inside its HIT-sized tap area
 	},
 }
