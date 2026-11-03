@@ -87,7 +87,7 @@ return {
 	DODGE_PASS_MARGIN = 1.5,
 	DODGE_MAX_STUDS = 26,
 	DODGE_FORCE = 200000, -- the dash's push (a LinearVelocity in the ground plane): enough to hold its speed
-	LOSS_COUNTDOWN = 5, -- seconds a lost boss fight's defeat screen shows before town (owner 2026-11-04; tap to go now)
+	LOSS_COUNTDOWN = 5, -- seconds a lost boss fight's defeat screen shows before town (owner 2026-11-04; it can't be skipped)
 	SWORD_ACTION_COOLDOWN = 0.08, -- remote rate limit on Attack, Skill and Dodge taps
 	SWORD_IDLE_ATK = 10, -- the sword's ATK when none of your creatures has been on the field (never in practice)
 

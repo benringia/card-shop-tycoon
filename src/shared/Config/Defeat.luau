@@ -1,15 +1,16 @@
 --!strict
 -- The defeat screen (owner 2026-11-04, design A "Defeated card"; Util/DefeatScreen, Util/DefeatRules): the world goes
--- grey with a red edge and a soft sad sting plays; "DEFEATED" drops in, then a card with the fight's numbers (your
+-- grey with a red edge and a quiet piano sting plays; "DEFEATED" drops in, then a card with the fight's numbers (your
 -- sword, each creature, the boss's HP left, rings dodged), a tip, and a countdown ring to town (Combat.LOSS_COUNTDOWN;
--- tap to go now). Plain data (Lune-tested).
+-- it can't be skipped). Plain data (Lune-tested).
 local function rgb(r: number, g: number, b: number): { number }
 	return { r, g, b }
 end
 
 return {
-	MUSIC = "rbxassetid://9044413402", -- APM "Depths of Grief Sting B" (Roblox-licensed): sad strings, a mournful end
-	MUSIC_VOLUME = 0.4,
+	-- APM "Moonlight Tides (sting)" (Roblox-licensed): a pensive piano phrase, 4 s, kept quiet (owner 2026-11-04: subtle)
+	MUSIC = "rbxassetid://9045742074",
+	MUSIC_VOLUME = 0.22,
 	MUSIC_FADE = 0.8, -- seconds it fades out when the screen closes
 	-- The world behind it (a ColorCorrectionEffect): saturation, brightness and tint, faded in over `fade` seconds
 	GREY = { saturation = -0.85, brightness = -0.08, tint = rgb(255, 214, 214), fade = 0.5 },

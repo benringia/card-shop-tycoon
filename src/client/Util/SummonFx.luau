@@ -4,6 +4,7 @@
 -- and sparkles. Unsummon: it shrinks into a flash and a light flies back into its owner. Faint: a white flash, it tips
 -- over (CreatureVisuals), dizzy stars circle its head, then it fades in a puff; it comes back (revive) when it's no
 -- longer fainted. CreatureController calls these on the marker's SummonedAt stamp and its Unsummon / Fainted flags.
+-- A summon chimes and an unsummon whooshes where the creature is (Party.SUMMON_SOUNDS).
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +20,7 @@ local SummonFx = {}
 type Body = { model: Model, root: BasePart, cframe: CFrame, grow: number?, faintedAt: number? }
 
 local CFG = Party.SUMMON_FX
+local SOUNDS = Party.SUMMON_SOUNDS
 local WHITE = Color3.new(1, 1, 1)
 local DUST = Color3.fromRGB(200, 196, 190)
 local STARS = { "⭐", "💫", "⭐" }
@@ -74,6 +76,7 @@ end
 -- Summoned: the ring and pillar, then it pops up out of them
 function SummonFx.summon(body: Body, color: Color3)
 	local at = ground(body)
+	ElementFx.sound(SOUNDS.summon.id, at, SOUNDS.summon.volume)
 	ElementFx.ring(at + Vector3.new(0, 0.2, 0), color, 2.6, CFG.pop + 0.2)
 	ElementFx.pillar(at, color:Lerp(WHITE, 0.35), CFG.pillar, CFG.pop + 0.25, "glow")
 	body.grow = SummonMotion.popScale(0, CFG.pop)
@@ -90,6 +93,7 @@ end
 -- Unsummoned: it shrinks into a flash and a light flies back into `owner` (its owner's character, if there)
 function SummonFx.unsummon(body: Body, color: Color3, owner: Model?)
 	local from = body.root.Position
+	ElementFx.sound(SOUNDS.unsummon.id, from, SOUNDS.unsummon.volume)
 	flash(body.model, WHITE, 0.6, CFG.unsummon)
 	animate(CFG.unsummon, function(t)
 		body.grow = SummonMotion.shrinkScale(t, CFG.unsummon)

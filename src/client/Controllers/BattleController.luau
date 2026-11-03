@@ -1192,9 +1192,8 @@ local function showEnd(summary: any, wasBoss: boolean)
 			party = party,
 		})
 	elseif result == "lose" then
-		-- The defeat screen (owner 2026-11-04, design A): the fight's numbers, a tip, the countdown to town (tap: now)
+		-- The defeat screen (owner 2026-11-04, design A): the fight's numbers, a tip, the whole countdown to town
 		local defeat = if typeof(summary.defeat) == "table" then summary.defeat else {}
-		local countdown = tonumber(summary.countdown)
 		VictoryScreen.hide()
 		countdownToken += 1 -- the "Down!" banner from going down would show through the card
 		countdownLabel.Visible = false
@@ -1202,14 +1201,11 @@ local function showEnd(summary: any, wasBoss: boolean)
 			subtitle = DefeatRules.subtitle(defeat.foe, tonumber(defeat.seconds)),
 			rows = if typeof(defeat.stats) == "table" then DefeatRules.rows(defeat.stats, Cards.ById, Defeat) else {},
 			tip = if typeof(defeat.tip) == "string" then defeat.tip else restLine(),
-			seconds = countdown or Combat.END_SCREEN_SECONDS,
+			seconds = tonumber(summary.countdown) or Combat.END_SCREEN_SECONDS,
 			art = function(cardId: string): string?
 				local card = Cards.ById[cardId]
 				return if card then CardArt.pick(card.name, Victory.PORTRAIT, CardArtConfig) else nil
 			end,
-			onSkip = if countdown then function()
-				Remotes.SkipDefeat:FireServer()
-			end else nil,
 		})
 	else
 		VictoryScreen.show({

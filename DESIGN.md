@@ -966,8 +966,8 @@ group, checked before its fragments and every time (not only the first). Below i
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
   creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're
-  down and none of your creatures can fight: the defeat screen counts down `Combat.LOSS_COUNTDOWN` 5 s (tap it to go
-  at once, remote `SkipDefeat`; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
+  down and none of your creatures can fight: the defeat screen counts down `Combat.LOSS_COUNTDOWN` 5 s (it can't be
+  skipped; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
   kneeling, until the fight ends, and a win counts for them too.
 - **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 3 (`Swords.UNLOCK_SHOP_LEVEL`,
@@ -1146,12 +1146,12 @@ group, checked before its fragments and every time (not only the first). Below i
   60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
 - **Defeat screen** (owner 2026-11-04, design A "Defeated card"; `Util/DefeatScreen`, `Util/DefeatRules`,
   `Config/Defeat`), a lost boss fight: the world goes grey with a red edge (a ColorCorrectionEffect and the hit-flash
-  vignette) and a soft sad sting plays (APM "Depths of Grief Sting B", Roblox-licensed); "DEFEATED" drops in with
+  vignette) and a quiet piano sting plays (APM "Moonlight Tides (sting)", Roblox-licensed, volume 0.22); "DEFEATED" drops in with
   "<boss> won · m:ss" under it, then a card with the fight's numbers the server sends (`summary.defeat`,
   `BattleSim.damageBy`): your sword's damage, each of your creatures' (the top 3), the boss's HP left as a bar, rings
   dodged of those aimed at you (counted per member); a tip (the boss's own, `Defeat.TIPS`); and a ring of 24 dots going
-  out one by one around the seconds left, "Back to town · tap to go now" (remote `SkipDefeat`, BossService sends you at
-  once; the countdown sends you anyway).
+  out one by one around the seconds left, "Back to town". It can't be skipped (owner 2026-11-04); a clear button over the
+  screen swallows taps meanwhile.
 - **Summon, unsummon, faint** (owner 2026-11-04: light pillar, back into you, dizzy stars; `Util/SummonFx`,
   `Util/SummonMotion`, `Party.SUMMON_FX`): a summon (or a call-in, or a creature swapped back in) stamps `SummonedAt` on
   its marker and clients that see it fresh (within 1.5 s, not one streaming in later) draw a ring and a pillar of light
@@ -1159,7 +1159,20 @@ group, checked before its fragments and every time (not only the first). Below i
   call-in flags the marker `Unsummon` and removes it 0.45 s later (`PartyService.Dismiss`; renamed at once so the next
   marker's name is free): it flashes, shrinks away and a light flies back into its owner; a boss fight's benched leader
   does the same. A faint: a white flash, it tips over (`CreatureVisuals`, eased), dizzy stars circle its head for
-  1.3 s, then it fades in a puff, and pops back when it's no longer fainted.
+  1.3 s, then it fades in a puff, and pops back when it's no longer fainted. Sounds (owner 2026-11-04,
+  `Party.SUMMON_SOUNDS`, Pro Sound Effects): a soft chime as it pops up, an airy whoosh as it flies back into you, both
+  played where it stands.
+- **Pet voice** (owner 2026-11-04 "an occasional chirp"; `Util/PetVoice`, `Party.VOICE`): your own summoned creature
+  says hello 0.5 s after it pops up, then chirps every 18-40 s while it's out and about (not in a fight, fainted,
+  swapped out or leaving) with an 8% squash-bounce. Small creatures chirp (PSE "Parakeet Chirps 8", "Mouse Vocal 3",
+  one per creature), Epics and Legendaries give a low huff (PSE "Creature Vocal Spider Hiss Exhale 1"); pitched lower
+  the bigger it is ((3 / height) ^ 0.45, kept within 0.55-1.3, +-8%), volume 0.3, heard within 45 studs. Only you hear
+  your own (client-side).
+- **Healing at the spring** (owner 2026-11-04; `Util/HealFx`, `Party.HEAL_FX`): while you stand in the spring's
+  12-stud area (`RestChanged.nearSpring`, from the server's spring tick) your summoned creature, out and about, shows
+  a green "+ Healing" pill above its name tag, green plus signs floating up off it, rising green sparkles, a green light
+  breathing on it and a ring rippling at its feet every 1.6 s; resting cards' timers on the party bar turn green with a
+  "+". It stops when you step away.
 - **Wild fight HUD** (owner 2026-11-03, layout A: the boss fight's look without the sword): the monster's name and HP
   in the slim bar at the top (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
   ring with its HP top left (a called-in one's bar under it, the perk chip), and the slanted buttons bottom right
@@ -1602,6 +1615,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── SummonFx.luau           # a creature popping up (pillar, chime), going back to you (whoosh), fainting (dizzy stars)
+    │       ├── HealFx.luau             # your creature at the healing spring: "+ Healing" pill, floating plus signs, green light
+    │       ├── DefeatScreen.luau       # a lost boss fight: grey world, the fight's numbers, a tip, the countdown to town
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
@@ -1721,6 +1737,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)
             ├── DamagePop.luau     # how a damage number pops, settles, rises and fades by style (pure, Lune-tested)
             ├── VictoryRules.luau  # the end screen's reward tiles, notes and subtitle from a fight summary (pure, Lune-tested)
+            ├── DefeatRules.luau   # the defeat screen's rows, subtitle and tip (pure, Lune-tested)
+            ├── SummonMotion.luau  # a summon's pop, an unsummon's shrink, a faint's tip-over, fresh stamps (pure, Lune-tested)
+            ├── PetVoice.luau      # your creature's chirp: voice, timing, pitch by size, bounce, when it may (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)

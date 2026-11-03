@@ -6,6 +6,7 @@
 -- Only your own creatures and the nearest others get a model (Util/CreatureCull, Party.CULL): the rest wait as
 -- markers until they come near, so a full server doesn't animate every pet.
 local ContentProvider = game:GetService("ContentProvider")
+local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -21,6 +22,9 @@ local CreatureCull = require(Shared:WaitForChild("Util"):WaitForChild("CreatureC
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 local SummonFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SummonFx"))
 local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
+local PetVoice = require(Shared:WaitForChild("Util"):WaitForChild("PetVoice"))
+local HealFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HealFx"))
+local RestTimers = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RestTimers"))
 
 local CreatureController = {}
 
@@ -44,6 +48,10 @@ type Creature = {
 	hpFill: Frame?,
 	height: number,
 	connections: { RBXScriptConnection },
+	voice: string?, -- your own creature's chirp (Util/PetVoice); nil on everyone else's
+	nextChirp: number, -- os.clock of its next chirp
+	chirpStart: number?, -- os.clock its chirp's little bounce began
+	healStop: (() -> ())?, -- stops its spring healing effect (Util/HealFx)
 }
 
 local creatures: { [BasePart]: Creature } = {} -- the drawn ones
@@ -190,7 +198,79 @@ local function remove(marker: BasePart)
 	for _, connection in creature.connections do
 		connection:Disconnect()
 	end
+	if creature.healStop then
+		creature.healStop()
+	end
 	creature.body.model:Destroy()
+end
+
+-- Your own creature's state for PetVoice.isFree (out and about: it chirps, and heals at the spring)
+local function freeState(creature: Creature): PetVoice.State
+	local marker = creature.marker
+	return {
+		mine = creature.voice ~= nil,
+		inFight = marker:GetAttribute("InFight") == true,
+		fainted = marker:GetAttribute("Fainted") == true,
+		benched = marker:GetAttribute("Benched") == true,
+		leaving = marker:GetAttribute("Unsummon") == true,
+	}
+end
+
+-- A chirp (owner 2026-11-04): its own voice, pitched for its size, from where it stands, and a little bounce
+local function chirp(creature: Creature, now: number)
+	local cfg = Party.VOICE
+	local sound = Instance.new("Sound")
+	sound.SoundId = creature.voice :: string
+	sound.Volume = cfg.volume
+	sound.PlaybackSpeed = PetVoice.pitch(creature.height, Party.CREATURE_HEIGHT, math.random(), cfg)
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMaxDistance = cfg.range
+	sound.Parent = creature.body.root
+	sound:Play()
+	Debris:AddItem(sound, 4)
+	if creature.body.grow == nil then
+		creature.chirpStart = now -- not while it's popping in or shrinking away (Util/SummonFx owns its size then)
+	end
+end
+
+-- Every frame for your own creature: the next chirp when it's due, and the bounce of the last one
+local function voiceStep(creature: Creature, now: number)
+	local cfg = Party.VOICE
+	if now >= creature.nextChirp then
+		creature.nextChirp = now + PetVoice.nextChirp(math.random(), cfg)
+		if PetVoice.isFree(freeState(creature)) then
+			chirp(creature, now)
+		end
+	end
+	local started = creature.chirpStart
+	if not started then
+		return
+	end
+	if creature.marker:GetAttribute("Unsummon") == true or creature.marker:GetAttribute("Fainted") == true then
+		creature.chirpStart = nil -- Util/SummonFx owns its size now
+		return
+	end
+	local t = now - started
+	if t < cfg.bounceSeconds then
+		creature.body.grow = PetVoice.bounce(t, cfg.bounceSeconds, cfg)
+	elseif creature.body.grow ~= 1 then
+		creature.body.grow = 1 -- one frame at exactly full size before letting go
+	else
+		creature.body.grow = nil
+		creature.chirpStart = nil
+	end
+end
+
+-- Your creature at the healing spring (owner 2026-11-04): the heal effect while you stand there (RestTimers.IsNearSpring,
+-- from the server) and it's out and about
+local function updateHealing(creature: Creature)
+	local want = creature.voice ~= nil and RestTimers.IsNearSpring() and PetVoice.isFree(freeState(creature))
+	if want and not creature.healStop then
+		creature.healStop = HealFx.start(creature.body, creature.height)
+	elseif not want and creature.healStop then
+		creature.healStop()
+		creature.healStop = nil
+	end
 end
 
 local function add(marker: BasePart)
@@ -241,6 +321,12 @@ local function add(marker: BasePart)
 		hpFill = nil,
 		height = height + (if flying then Party.MOTION.HOVER_HEIGHT else 0),
 		connections = {},
+		voice = if marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId
+			then PetVoice.voice(card.rarity, (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name, Party.VOICE)
+			else nil,
+		nextChirp = os.clock() + PetVoice.nextChirp(math.random(), Party.VOICE),
+		chirpStart = nil,
+		healStop = nil,
 	}
 	local grade = marker:GetAttribute("Grade")
 	local stars = marker:GetAttribute("Stars")
@@ -250,6 +336,7 @@ local function add(marker: BasePart)
 	table.insert(creature.connections, marker.AttributeChanged:Connect(function()
 		updateTag(creature)
 		updateHpBar(creature)
+		updateHealing(creature)
 	end))
 	creatures[marker] = creature
 	-- Appearing, leaving and fainting (Util/SummonFx): a fresh summon pops in (not one streaming in later), an unsummon
@@ -259,6 +346,7 @@ local function add(marker: BasePart)
 	local summonedAt = marker:GetAttribute("SummonedAt")
 	if SummonMotion.fresh(if typeof(summonedAt) == "number" then summonedAt else nil, workspace:GetServerTimeNow(), Party.SUMMON_FX.window) then
 		SummonFx.summon(body, color)
+		creature.nextChirp = os.clock() + Party.VOICE.hello -- your creature says hello as it lands
 	end
 	if marker:GetAttribute("Fainted") == true then
 		SummonFx.faint(body, true)
@@ -281,6 +369,7 @@ local function add(marker: BasePart)
 			Players.LocalPlayer:SetAttribute("CreatureReady", true)
 		end)
 	end
+	updateHealing(creature)
 end
 
 -- Roblox draws at most 31 outlines: give them to the rarest creatures, nearest first
@@ -357,6 +446,9 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 		creature.body.offset = CFrame.new(offset)
 	else
 		creature.body.offset = nil
+	end
+	if creature.voice then
+		voiceStep(creature, now)
 	end
 	CreatureVisuals.step(creature.body, dt, now, origin, Party.MOTION)
 	if creature.highlight and creature.highlight.Enabled then
@@ -442,6 +534,12 @@ function CreatureController.Start()
 		end
 	end
 	folder.ChildAdded:Connect(watch)
+	-- Stepping up to or away from the healing spring
+	RestTimers.Changed:Connect(function()
+		for _, creature in creatures do
+			updateHealing(creature)
+		end
+	end)
 	folder.ChildRemoved:Connect(function(child)
 		if child:IsA("BasePart") then
 			known[child] = nil

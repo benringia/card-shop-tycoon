@@ -771,16 +771,9 @@ end
 
 -- A lost boss fight: after LOSS_COUNTDOWN ("Teleporting back to town in 3, 2, 1") everyone who was still in it goes
 -- home (BossRules.lossHome); they no longer hold a remote copy, so its loot linger doesn't move them back. Members who
--- left earlier already went back to the gate and are left alone. The Dungeon's run handles its own losers.
--- Losers waiting out their defeat screen (Combat.LOSS_COUNTDOWN) before going home; tapping it sends them at once
-local goingHome: { [Player]: boolean } = {}
-local allowSkip = RateLimiter.new(1)
-
+-- left earlier already went back to the gate and are left alone. The Dungeon's run handles its own losers. The defeat
+-- screen can't be skipped (owner 2026-11-04): everyone sees the whole countdown.
 local function sendHome(player: Player)
-	if not goingHome[player] then
-		return -- already sent (the tap or the countdown, whichever came first)
-	end
-	goingHome[player] = nil
 	local humanoid = if player.Parent and player.Character then player.Character:FindFirstChildOfClass("Humanoid") else nil
 	if humanoid and humanoid.Health > 0 then
 		WildService.SendToSpring(player)
@@ -799,15 +792,7 @@ local function sendLosersHome(monster: WildService.Monster, losers: { Player })
 		if at then
 			table.remove(held :: { Player }, at)
 		end
-		goingHome[player] = true
 		task.delay(Combat.LOSS_COUNTDOWN, sendHome, player)
-	end
-end
-
--- A lost boss fight's player tapped their defeat screen: home now, not after the countdown
-local function onSkipDefeat(player: Player)
-	if allowSkip(player) then
-		sendHome(player)
 	end
 end
 
@@ -815,7 +800,6 @@ function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
 	arenas = WildService.BuildBossArenas(onGate, onGroup, onReturn)
 	BattleService.SetBossRewards(onBossWin)
-	Remotes.SkipDefeat.OnServerEvent:Connect(onSkipDefeat)
 	BattleService.OnMemberLeft(function(player, monster)
 		local copy, index = copyOf(monster)
 		if copy and index then

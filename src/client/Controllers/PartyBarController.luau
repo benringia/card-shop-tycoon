@@ -604,7 +604,9 @@ function PartyBarController.Start()
 		task.defer(render)
 	end)
 
-	-- Resting countdowns
+	-- Resting countdowns: green with a "+" while you stand at the healing spring (it heals them faster)
+	local heal = Party.HEAL_FX.color
+	local healGreen = Color3.fromRGB(heal[1], heal[2], heal[3])
 	local sinceRest = 0
 	RunService.Heartbeat:Connect(function(dt)
 		sinceRest += dt
@@ -612,11 +614,13 @@ function PartyBarController.Start()
 			return
 		end
 		sinceRest = 0
+		local healing = RestTimers.IsNearSpring()
 		for slot, view in slotViews do
 			local seconds = if slots[slot] then RestTimers.GetSeconds(slots[slot]) else 0
 			view.shade.Visible = seconds > 0
 			if seconds > 0 then
-				view.rest.Text = RestTimers.Format(seconds)
+				view.rest.Text = if healing then `+{RestTimers.Format(seconds)}` else RestTimers.Format(seconds)
+				view.rest.TextColor3 = if healing then healGreen else WHITE
 			end
 		end
 		local open = tipSlot

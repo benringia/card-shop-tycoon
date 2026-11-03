@@ -2,7 +2,7 @@
 -- The defeat screen for a lost boss fight (owner 2026-11-04, design A "Defeated card"; looks in Config/Defeat, words from
 -- Util/DefeatRules): the world goes grey with a red edge and a soft sad sting plays; "DEFEATED" drops in, then a card
 -- with the fight's numbers (your sword, each creature, the boss's HP left, rings dodged), a tip, and a countdown ring
--- of dots going out one by one until the server sends you to town. Tapping anywhere goes now (onSkip).
+-- of dots going out one by one until the server sends you to town. It can't be skipped (owner 2026-11-04).
 local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -25,7 +25,6 @@ export type Show = {
 	tip: string?,
 	seconds: number, -- until town
 	art: (cardId: string) -> string?, -- a creature row's portrait
-	onSkip: (() -> ())?, -- tapping goes to town now (nil: no tap)
 }
 
 local DOTS = 24
@@ -134,19 +133,13 @@ function DefeatScreen.show(data: Show)
 	edge.Parent = gui
 	TweenService:Create(edge, TweenInfo.new(g.fade), { ImageTransparency = 1 - Defeat.EDGE_STRENGTH }):Play()
 
-	-- Tap anywhere: town now
-	local tap = Instance.new("TextButton")
-	tap.BackgroundTransparency = 1
-	tap.Text = ""
-	tap.Size = UDim2.fromScale(1, 1)
-	tap.Parent = gui
-	if data.onSkip then
-		local skip = data.onSkip
-		tap.Activated:Connect(function()
-			skip()
-			DefeatScreen.hide()
-		end)
-	end
+	-- Swallows taps so nothing behind the screen (HUD tiles, prompts) can be pressed while it counts down
+	local blocker = Instance.new("TextButton")
+	blocker.BackgroundTransparency = 1
+	blocker.Text = ""
+	blocker.AutoButtonColor = false
+	blocker.Size = UDim2.fromScale(1, 1)
+	blocker.Parent = gui
 
 	local column = Instance.new("Frame")
 	column.BackgroundTransparency = 1
@@ -244,7 +237,7 @@ function DefeatScreen.show(data: Show)
 	local number = UIKit.label(ring, "", Enum.Font.FredokaOne, 16, WHITE)
 	number.Size = UDim2.fromScale(1, 1)
 	number.TextXAlignment = Enum.TextXAlignment.Center
-	local back = UIKit.label(footer, if data.onSkip then "Back to town · tap to go now" else "Back to town", Enum.Font.FredokaOne, 16, WHITE)
+	local back = UIKit.label(footer, "Back to town", Enum.Font.FredokaOne, 16, WHITE)
 	back.AnchorPoint = Vector2.new(0, 0.5)
 	back.Position = UDim2.new(0.5, -32, 0.5, 0)
 	back.Size = UDim2.new(0.6, 0, 1, 0)

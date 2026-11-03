@@ -524,6 +524,41 @@ return {
 	-- long before removing it); a faint flashes, tips it over in `tip` seconds, spins dizzy stars for `stars` seconds,
 	-- then it fades in a puff over `fade` seconds (and comes back when the fight is over)
 	SUMMON_FX = { window = 1.5, pop = 0.4, pillar = 9, unsummon = 0.45, tip = 0.3, stars = 1.3, fade = 0.4 },
+	-- Their sounds (owner 2026-11-04; Pro Sound Effects, Roblox-licensed), played where the creature is: a soft chime as it
+	-- pops up, an airy whoosh as it flies back into you
+	SUMMON_SOUNDS = {
+		summon = { id = "rbxassetid://9116394876", volume = 0.9 }, -- "Magic Glows Soft Clusters Of Chiming Hits 2"
+		unsummon = { id = "rbxassetid://9116400132", volume = 0.8 }, -- "Magic Movement Airy Whips Swooshes 24"
+	},
+	-- Your summoned creature's voice (Util/PetVoice, owner 2026-11-04 "an occasional chirp"): small creatures chirp,
+	-- Epics and Legendaries huff; pitched lower the bigger they are; only you hear your own, nearby. It says hello
+	-- `hello` seconds after popping up.
+	VOICE = {
+		small = { "rbxassetid://9117237144", "rbxassetid://9117010372" }, -- PSE "Parakeet Chirps 8", "Mouse Vocal 3"
+		big = { "rbxassetid://9113989919" }, -- PSE "Creature Vocal Spider Hiss Exhale 1", pitched down: a big beast's huff
+		bigRarities = { Epic = true, Legendary = true },
+		every = { 18, 40 }, -- seconds between chirps
+		volume = 0.3,
+		range = 45, -- studs it carries (RollOffMaxDistance)
+		pitch = { min = 0.55, max = 1.3, vary = 0.08, power = 0.45 },
+		bounce = 0.08,
+		bounceSeconds = 0.3,
+		hello = 0.5,
+	},
+	-- Your summoned creature while you stand at the healing spring (Util/HealFx, owner 2026-11-04): a "+ Healing" pill over
+	-- its name, green plus signs float up off it, sparkles rise, a green light breathes on it, a ring ripples at its feet.
+	-- Seconds, studs; colour { r, g, b }.
+	HEAL_FX = {
+		color = { 90, 235, 120 },
+		plusEvery = 0.22,
+		plusLife = 1.2,
+		plusSize = 64, -- pixels, give or take a quarter
+		plusRise = 2.6,
+		sparkleRate = 10,
+		light = 2.5, -- PointLight brightness at the top of a breath
+		pulse = 1.4, -- seconds per breath
+		ringEvery = 1.6,
+	},
 	-- Each client draws your own creatures plus the nearest others (Util/CreatureCull), so a full server stays light
 	CULL = { drawDistance = 140, hideDistance = 170, maxDrawn = 30 }, -- studs from the camera; creatures
 	CULL_INTERVAL = 0.5, -- seconds between checks
