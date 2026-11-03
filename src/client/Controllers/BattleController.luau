@@ -52,6 +52,7 @@ local DamagePop = require(Shared:WaitForChild("Util"):WaitForChild("DamagePop"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
+local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local DefeatScreen = require(ClientUtil:WaitForChild("DefeatScreen"))
@@ -1151,13 +1152,25 @@ end
 
 -- The fight's end: a boss's big screen (Util/VictoryScreen: title, rewards and party XP; a loss or a run in red or
 -- grey), a toast for everything else (Util/FightToast; owner 2026-11-03), PvP its own
-local function showEnd(summary: any, wasBoss: boolean)
+local function showEnd(summary: any, wasBoss: boolean, monsterAt: Vector2?)
 	if summary.mode == "pvp" then
 		showPvpEnd(summary)
 		return
 	end
 	if not wasBoss then
 		FightToast.show(VictoryRules.toast(summary, Cards.ById, if summary.result == "lose" then restLine() else nil))
+		-- A won monster fight: XP sparks fly from the monster into the creatures that got it (round 3)
+		local xp = tonumber(summary.xpEach) or 0
+		if summary.result == "win" and xp > 0 and typeof(summary.party) == "table" then
+			local gains = {}
+			for _, entry in summary.party do
+				if typeof(entry) == "table" and typeof(entry.id) == "string" then
+					table.insert(gains, { id = entry.id, levelUp = entry.levelUp == true })
+				end
+			end
+			local screen = UIController.GetScreenGui().AbsoluteSize
+			PartyBarController.ShowXpGains(monsterAt or Vector2.new(screen.X / 2, screen.Y / 2), gains, xp)
+		end
 		return
 	end
 	local result = summary.result
@@ -1505,6 +1518,16 @@ end
 local function onEnded(summary: any)
 	fighting = false
 	local wasBoss = bossId ~= nil
+	-- Where the monster stood on screen, for the XP sparks (taken before the fight's markers go)
+	local monsterAt: Vector2? = nil
+	local marker = markerFor(MONSTER_ID)
+	local camera = workspace.CurrentCamera
+	if marker and camera then
+		local point, visible = camera:WorldToScreenPoint(marker.Position)
+		if visible then
+			monsterAt = Vector2.new(point.X, point.Y)
+		end
+	end
 	if fightFx then
 		fightFx.destroy()
 		fightFx = nil
@@ -1530,7 +1553,7 @@ local function onEnded(summary: any)
 		prompt.Enabled = marker:GetAttribute("Fighting") ~= true
 	end
 	if typeof(summary) == "table" then
-		showEnd(summary, wasBoss)
+		showEnd(summary, wasBoss, monsterAt)
 	end
 end
 

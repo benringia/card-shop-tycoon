@@ -24,6 +24,7 @@ local HudMascotRules = require(Shared:WaitForChild("Util"):WaitForChild("HudMasc
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local SparkPath = require(Shared:WaitForChild("Util"):WaitForChild("SparkPath"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -534,6 +535,92 @@ local function announce()
 	announcing = false
 	if #messages > 0 then
 		UIController.Notify(table.concat(messages, "  "), false, nil, "Party")
+	end
+end
+
+export type XpGain = { id: string, levelUp: boolean? }
+
+-- After a won monster fight (spec 2026-11-03-windows-round3-design): glowing sparks fly from `from` (where the
+-- monster was, GUI pixels) into each portrait whose creature is in `gains`, then "+xp XP" pops over it and its level
+-- chip bumps (bigger on a level up). Skipped while a window covers the HUD or the bar is hidden.
+function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: number)
+	local look = BAR.SPARKS
+	local screen = UIController.GetScreenGui()
+	if not cushion or not cushion.Visible or UIKit.anyPanelOpen() or xp <= 0 then
+		return
+	end
+	local origin = screen.AbsolutePosition
+	local color = rgb(look.color)
+	for _, gain in gains do
+		local slot: number? = nil
+		for index, beastId in slots do
+			if beastId == gain.id then
+				slot = index
+			end
+		end
+		local view = if slot then slotViews[slot] else nil
+		if not view then
+			continue -- swapped out mid-fight: no portrait to fly to
+		end
+		local target = view.button.AbsolutePosition + view.button.AbsoluteSize / 2 - origin
+		local count = SparkPath.count(xp, look.min, look.max)
+		for index = 1, count do
+			task.delay((index - 1) * look.stagger, function()
+				local spark = Instance.new("ImageLabel")
+				spark.Name = "XpSpark"
+				spark.BackgroundTransparency = 1
+				spark.Image = CardDesign.IMAGES.GLOW
+				spark.ImageColor3 = color
+				spark.AnchorPoint = Vector2.new(0.5, 0.5)
+				spark.Size = UDim2.fromOffset(look.size, look.size)
+				spark.ZIndex = 20
+				spark.Parent = screen
+				local jitter = (index - (count + 1) / 2) * 18
+				local started = os.clock()
+				local connection: RBXScriptConnection
+				connection = RunService.RenderStepped:Connect(function()
+					local t = math.min((os.clock() - started) / look.seconds, 1)
+					local eased = t * t * (3 - 2 * t)
+					local x, y = SparkPath.point(from.X + jitter, from.Y, target.X, target.Y, look.lift + jitter, eased)
+					spark.Position = UDim2.fromOffset(x, y)
+					spark.ImageTransparency = if t > 0.85 then (t - 0.85) / 0.15 else 0
+					if t >= 1 then
+						connection:Disconnect()
+						spark:Destroy()
+					end
+				end)
+			end)
+		end
+		-- Landed: "+xp XP" over the portrait and a bump on its level chip
+		task.delay((count - 1) * look.stagger + look.seconds, function()
+			if not view.button.Parent then
+				return
+			end
+			Motion.bump(view.level)
+			if gain.levelUp then
+				celebrate(slot :: number)
+			end
+			local pop = UIKit.label(screen, `+{xp} XP`, Enum.Font.FredokaOne, look.popText, WHITE)
+			pop.AnchorPoint = Vector2.new(0.5, 1)
+			pop.Position = UDim2.fromOffset(target.X, target.Y - view.button.AbsoluteSize.Y / 2)
+			pop.Size = UDim2.fromOffset(120, look.popText + 4)
+			pop.TextXAlignment = Enum.TextXAlignment.Center
+			pop.TextWrapped = false
+			pop.ZIndex = 21
+			local edge = Instance.new("UIStroke")
+			edge.Color = UIStyle.BABY.lilac.deep
+			edge.Thickness = 2
+			edge.Parent = pop
+			local info = TweenInfo.new(look.popSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			TweenService:Create(pop, info, {
+				Position = UDim2.fromOffset(target.X, target.Y - view.button.AbsoluteSize.Y / 2 - look.popRise),
+				TextTransparency = 1,
+			}):Play()
+			TweenService:Create(edge, info, { Transparency = 1 }):Play()
+			task.delay(look.popSeconds, function()
+				pop:Destroy()
+			end)
+		end)
 	end
 end
 

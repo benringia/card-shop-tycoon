@@ -612,5 +612,20 @@ return {
 		OUT = { 255, 138, 58 }, -- the summoned portrait's ring, glow and tag
 		PARTY_PILL = { 52, 28 }, -- the "Party" pill, drawn inside its HIT-sized tap area
 		PILL_HOVER = { scale = 1.05, lift = 3, seconds = 0.3 }, -- a small hop under a mouse, like the HUD tiles
+		-- The XP sparks after a monster win (spec 2026-11-03-windows-round3-design, Util/SparkPath): min to max sparks per
+		-- portrait (more for more XP), each `seconds` on a curve bowed `lift` px up, `stagger` s apart, `size` px, lilac;
+		-- then "+N XP" pops over the portrait (`popText` px), rising `popRise` px over `popSeconds`
+		SPARKS = {
+			min = 3,
+			max = 6,
+			seconds = 0.9,
+			stagger = 0.07,
+			lift = 140,
+			size = 22,
+			color = { 180, 139, 255 },
+			popText = 16,
+			popRise = 26,
+			popSeconds = 1.2,
+		},
 	},
 }

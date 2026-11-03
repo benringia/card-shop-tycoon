@@ -86,6 +86,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PetVoice = require("./PetVoice.spec"),
 	MusicRules = require("./MusicRules.spec"),
 	XpPill = require("./XpPill.spec"),
+	SparkPath = require("./SparkPath.spec"),
 	HudMascotRules = require("./HudMascotRules.spec"),
 	ContrastRules = require("./ContrastRules.spec"),
 	SoftColors = require("./SoftColors.spec"),
