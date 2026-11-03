@@ -19,6 +19,13 @@ for name, colors in CreamTheme.headers do
 	creamHeaders[name] = band(rgb(colors.top), rgb(colors.bottom))
 end
 
+-- The cotton candy baby colours (Config/BabyColors, spec 2026-11-03-cotton-candy-ui-design) as Color3s
+local BabyColors = require((script.Parent :: Instance):WaitForChild("BabyColors"))
+local baby = {}
+for name, shades in BabyColors.COLORS do
+	baby[name] = { fill = rgb(shades.fill), light = rgb(shades.light), deep = rgb(shades.deep) }
+end
+
 return {
 	PANEL = Color3.fromRGB(27, 34, 51), -- window body
 	ROW = Color3.fromRGB(36, 45, 66), -- rows, tiles and stat cards on a window
@@ -91,4 +98,6 @@ return {
 		SHADOW = CreamTheme.shadow,
 		HEADERS = creamHeaders,
 	},
+	BABY = baby, -- { [name] = { fill, light, deep } }: pink, mint, sky, lilac, butter, peach, greyLilac, white
+	BABY_INK = rgb(BabyColors.INK),
 }

@@ -12,6 +12,9 @@ return {
 
 	["the cream theme's text reads on its surfaces"] = function()
 		local t = CreamTheme
+		-- The cotton candy surfaces (owner 2026-11-03, spec 2026-11-03-cotton-candy-ui-design)
+		expect.equal(table.concat(t.bodyTop, ","), "255,248,253", "milky pink at the top")
+		expect.equal(table.concat(t.slotEmpty, ","), "244,230,250", "pale lilac empty slots")
 		for _, surface in { t.bodyTop, t.bodyBottom, t.row, t.slotEmpty } do
 			expect.equal(ContrastRules.ratio(t.ink, surface) >= 4.5, true, "body text")
 			expect.equal(ContrastRules.ratio(t.inkSoft, surface) >= 4.5, true, "secondary text")
