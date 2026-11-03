@@ -138,7 +138,10 @@ local function place(target: GuiObject, tip: TextLabel)
 	tip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
 
-local function show(target: GuiObject, text: string, touch: boolean, point: Vector2, rich: boolean)
+type Text = string | () -> string
+
+local function show(target: GuiObject, source: Text, touch: boolean, point: Vector2, rich: boolean)
+	local text = if typeof(source) == "function" then source() else source
 	local screen = target:FindFirstAncestorOfClass("ScreenGui")
 	if not screen or not isShown(target) or covered(target, point) then
 		return
@@ -161,7 +164,7 @@ local function show(target: GuiObject, text: string, touch: boolean, point: Vect
 	end)
 end
 
-local function hook(target: GuiObject, text: string, rich: boolean)
+local function hook(target: GuiObject, text: Text, rich: boolean)
 	target.MouseEnter:Connect(function()
 		if UserInputService.MouseEnabled then
 			show(target, text, false, mousePoint(), rich)
@@ -200,6 +203,11 @@ end
 -- Shows `text` while the pointer is over `target` (or a finger is held on it)
 function Tooltip.attach(target: GuiObject, text: string)
 	hook(target, text, false)
+end
+
+-- Like attach, but the text is read from `getText` each time the tip shows (numbers that change)
+function Tooltip.attachLive(target: GuiObject, getText: () -> string)
+	hook(target, getText, false)
 end
 
 local function escape(text: string): string

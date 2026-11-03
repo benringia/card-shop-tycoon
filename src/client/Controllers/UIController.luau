@@ -16,16 +16,17 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
+local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
+local XpPaws = require(Shared:WaitForChild("Util"):WaitForChild("XpPaws"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local UIStyle = require(Shared:WaitForChild("Config"):WaitForChild("UIStyle"))
 
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
-local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
 local PILL_COLOR = Color3.fromRGB(22, 26, 38)
 local PILL_HEIGHT = 42
 local PILL_GAP = 8
-local ICON_SIZE = 48 -- the icon pokes out a little past the pill's top and bottom
-local XP_BAR_WIDTH = 140
+local ICON_SIZE = HudLayout.STATUS_ICON -- the coin and the star poke out past the pill's top and bottom
 -- Status sits in the bottom-right corner (the top corners hold Roblox's menu, chat and the player list). The
 -- column, bottom up: level + XP (in line with the party bar), cash, then the buff badge; money toasts pop
 -- in just above it. Touch screens: see TOUCH_TOP.
@@ -75,8 +76,8 @@ local sideToasts: Frame
 local sideToastOrder = 0
 local cashLabel: TextLabel
 local levelLabel: TextLabel
-local xpLabel: TextLabel
-local xpFill: Frame
+local pawFills: { Frame } = {} -- each paw's coloured copy, clipped to its share of the level's XP
+local xpText = "Loading your shop..." -- the level pill's tooltip (the exact numbers)
 local cashPill: Frame
 local levelBadge: Frame
 type Toast = {
@@ -112,8 +113,10 @@ end
 local function updateXp()
 	if typeof(player:GetAttribute("XP")) ~= "number" then
 		levelLabel.Text = ""
-		xpLabel.Text = "Loading your shop..."
-		xpFill.Size = UDim2.fromScale(0, 1)
+		xpText = "Loading your shop..."
+		for _, fill in pawFills do
+			fill.Size = UDim2.fromScale(0, 1)
+		end
 		return
 	end
 	local xp = getNumber("XP", 0)
@@ -123,8 +126,10 @@ local function updateXp()
 	end
 	levelLabel.Text = level
 	local into, span = LevelRules.getProgress(xp)
-	xpLabel.Text = `XP {into} / {span}`
-	xpFill.Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1)
+	xpText = `XP {into} / {span}`
+	for index, share in XpPaws.fills(into, span, #pawFills) do
+		pawFills[index].Size = UDim2.fromScale(share, 1)
+	end
 end
 
 function UIController.GetScreenGui(): ScreenGui
@@ -343,29 +348,34 @@ local function addValue(pill: Frame, color: Color3): TextLabel
 	return value
 end
 
--- The status pills in the corner column: cash (a green candy pill with outlined white text) and the level (its
--- number on the star icon, the XP bar inside the pill) at the bottom, in line with the party bar
+-- The status pills in the corner column (spec 2026-11-03-hud-creature-pals-design): cash in a green pill with a big
+-- gold coin, and the level on a gold star in a white pill whose paw prints fill with XP (the exact numbers in its
+-- tooltip), at the bottom, in line with the party bar
 local function buildStatusPills()
 	local column = statusFrame
 
-	cashPill = makePill(column, 2, "Cash")
+	cashPill = makePill(column, 2, "Coin")
 	cashPill.Name = "Cash"
-	cashPill.BackgroundColor3 = UIStyle.GREEN
+	cashPill.BackgroundColor3 = Color3.new(1, 1, 1)
 	cashPill.BackgroundTransparency = 0
 	local edge = cashPill:FindFirstChildOfClass("UIStroke") :: UIStroke
-	edge.Color = UIStyle.EDGE
-	edge.Thickness = UIStyle.EDGE_THICKNESS
+	edge.Color = Color3.new(1, 1, 1)
+	edge.Thickness = HudLayout.OUTLINE
 	local shade = Instance.new("UIGradient")
 	shade.Rotation = 90
-	shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+	shade.Color = ColorSequence.new(HudLayout.CASH.top, HudLayout.CASH.bottom)
 	shade.Parent = cashPill
 	cashLabel = addValue(cashPill, Color3.new(1, 1, 1))
 	UIKit.outlined(cashLabel, 2)
 
-	-- The level number sits on the star icon; the XP bar fills the pill
+	-- The level number sits on the star; paw prints fill the white pill
 	local levelAnchor
 	levelBadge, levelAnchor = makePill(column, 4, "Level")
 	levelBadge.Name = "Level"
+	levelBadge.BackgroundColor3 = Color3.new(1, 1, 1)
+	levelBadge.BackgroundTransparency = 0
+	local levelStroke = levelBadge:FindFirstChildOfClass("UIStroke") :: UIStroke
+	levelStroke.Color = HudLayout.PILL_EDGE
 	levelLabel = UIKit.label(levelAnchor:FindFirstChild("Icon") :: Frame, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
 	levelLabel.Size = UDim2.fromScale(1, 0.9)
 	levelLabel.Position = UDim2.fromScale(0, 0.08)
@@ -375,30 +385,51 @@ local function buildStatusPills()
 	levelEdge.Color = Color3.fromRGB(120, 70, 0)
 	levelEdge.Thickness = 2
 	levelEdge.Parent = levelLabel
-	local xpBar = Instance.new("Frame")
-	xpBar.Name = "XP"
-	xpBar.LayoutOrder = 2
-	xpBar.Size = UDim2.fromOffset(XP_BAR_WIDTH, 22)
-	xpBar.BackgroundColor3 = Color3.fromRGB(42, 48, 66)
-	xpBar.ClipsDescendants = true
-	xpBar.Parent = levelBadge
-	UIKit.corner(xpBar, 11)
-	xpFill = Instance.new("Frame")
-	xpFill.Name = "Fill"
-	xpFill.BackgroundColor3 = XP_FILL_COLOR
-	xpFill.BorderSizePixel = 0
-	xpFill.Size = UDim2.fromScale(0, 1)
-	xpFill.Parent = xpBar
-	UIKit.corner(xpFill, 11)
-	xpLabel = UIKit.label(xpBar, "", Enum.Font.FredokaOne, 13, Color3.new(1, 1, 1))
-	xpLabel.Position = UDim2.fromScale(0.05, 0.12)
-	xpLabel.Size = UDim2.fromScale(0.9, 0.76)
-	xpLabel.TextScaled = true
-	xpLabel.TextXAlignment = Enum.TextXAlignment.Center
-	xpLabel.ZIndex = 2
-	local fit = Instance.new("UITextSizeConstraint")
-	fit.MaxTextSize = 14
-	fit.Parent = xpLabel
+
+	local size = HudLayout.PAW_SIZE
+	local paws = Instance.new("Frame")
+	paws.Name = "Paws"
+	paws.LayoutOrder = 2
+	paws.BackgroundTransparency = 1
+	paws.Size = UDim2.fromOffset(HudLayout.PAWS * size + (HudLayout.PAWS - 1) * 4, size)
+	paws.Parent = levelBadge
+	local pawRow = Instance.new("UIListLayout")
+	pawRow.FillDirection = Enum.FillDirection.Horizontal
+	pawRow.Padding = UDim.new(0, 4)
+	pawRow.SortOrder = Enum.SortOrder.LayoutOrder
+	pawRow.Parent = paws
+	for index = 1, HudLayout.PAWS do
+		local slot = Instance.new("Frame")
+		slot.LayoutOrder = index
+		slot.BackgroundTransparency = 1
+		slot.Size = UDim2.fromOffset(size, size)
+		slot.Parent = paws
+		local empty = Instance.new("ImageLabel")
+		empty.BackgroundTransparency = 1
+		empty.Size = UDim2.fromScale(1, 1)
+		empty.Image = UIIcons.Paw
+		empty.ImageColor3 = HudLayout.PAW_OFF
+		empty.ImageTransparency = HudLayout.PAW_OFF_TRANSPARENCY
+		empty.Parent = slot
+		local clip = Instance.new("Frame")
+		clip.Name = "Fill"
+		clip.BackgroundTransparency = 1
+		clip.ClipsDescendants = true
+		clip.Size = UDim2.fromScale(0, 1)
+		clip.ZIndex = 2
+		clip.Parent = slot
+		local full = Instance.new("ImageLabel")
+		full.BackgroundTransparency = 1
+		full.Size = UDim2.fromOffset(size, size) -- its own size, so the clip cuts it instead of squashing it
+		full.Image = UIIcons.Paw
+		full.ImageColor3 = HudLayout.PAW_ON
+		full.ZIndex = 2
+		full.Parent = clip
+		table.insert(pawFills, clip)
+	end
+	Tooltip.attachLive(levelBadge, function()
+		return xpText
+	end)
 end
 
 -- The bottom-right corner (PC). On a narrow window the party bar would reach over the bottom-centre tiles (Cards,

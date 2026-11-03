@@ -36,6 +36,16 @@ return {
 	EAR = 0.26, -- ear size, a share of the tile's width
 	HORN = 0.24,
 	KEY_SIZE = 24,
+	-- The status corner in the same look: a green cash pill with a gold coin, a white level pill with a gold star and
+	-- paw prints that fill with XP (Util/XpPaws), a white buff chip
+	CASH = { top = Color3.fromRGB(142, 224, 154), bottom = Color3.fromRGB(63, 179, 90) },
+	PILL_EDGE = Color3.fromRGB(236, 224, 208), -- the white pills' soft edge
+	PAWS = 5,
+	PAW_SIZE = 22,
+	PAW_ON = Color3.fromRGB(255, 154, 58), -- a filled paw's tint (the icon is white with a dark outline)
+	PAW_OFF = Color3.fromRGB(205, 196, 186), -- an empty paw's tint
+	PAW_OFF_TRANSPARENCY = 0.55,
+	STATUS_ICON = 54, -- the coin and the star, bigger than their pills
 	-- The whole HUD shrinks with the screen's height on small screens (landscape phones): 1 at REFERENCE_HEIGHT
 	-- and up, never below MIN (tiles stay over 48 px to tap)
 	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7 },
