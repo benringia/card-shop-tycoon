@@ -935,6 +935,8 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
+	TAB_WIDTH = 116, -- the Cards / Bag tabs in the binder's corner (px)
+	TAB_GAP = 18, -- between them, room for their soft glows (owner 2026-11-03: too close together)
 }
 
 -- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
@@ -1147,7 +1149,7 @@ local function buildBag(parent: Frame)
 	local function tab(icon: string, text: string, x: number): TextButton
 		local button = UIKit.button(parent, "", UIKit.Colors.Row)
 		button.Position = UDim2.fromOffset(x, 10)
-		button.Size = UDim2.fromOffset(116, 48)
+		button.Size = UDim2.fromOffset(BAG.TAB_WIDTH, 48)
 		button.ZIndex = 12
 		local row = Instance.new("Frame")
 		row.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1176,7 +1178,7 @@ local function buildBag(parent: Frame)
 		return button
 	end
 	cardsTab = tab("Cards", "Cards", 16)
-	bagTab = tab("Bag", "Bag", 138)
+	bagTab = tab("Bag", "Bag", 16 + BAG.TAB_WIDTH + BAG.TAB_GAP)
 
 	-- The window, centred; scaled down to fit small screens. Only the Bag window is cream: the binder around it keeps
 	-- its dark look (spec 2026-11-03-cream-windows-design)

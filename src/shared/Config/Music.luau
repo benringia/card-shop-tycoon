@@ -18,10 +18,12 @@ return {
 			{ name = "Drifting Into Dreamland (underscore)", id = "rbxassetid://83889171451910" },
 			{ name = "Lakefront Days (ukulele underscore, the first pick)", id = "rbxassetid://9038622066" },
 		},
-		volume = 0.013, -- the owner: 0.12 overpowered the birds, wind and waterfall; 0.05, 0.03 and 0.02 still loud
-		-- A CompressorSoundEffect on the music: the track swells in its later parts (owner 2026-11-03: "too loud,
-		-- specially on later parts"), so anything over the threshold is squashed by the ratio. Threshold in dB.
-		compressor = { threshold = -40, ratio = 6, attack = 0.05, release = 0.6 },
+		volume = 0.022, -- the owner: 0.12 overpowered the birds, wind and waterfall, 0.05 and 0.03 loud, 0.013 hard to hear
+		-- A CompressorSoundEffect on the music as a limiter: the track swells in its later parts (owner 2026-11-03: "too
+		-- loud, specially on later parts"; then "hard to hear, but never louder on the loudest part"), so above the
+		-- threshold it barely grows (ratio 20). The quiet parts come up with the volume (about +4.6 dB from 0.013); the
+		-- loudest stay at or under where they were at 0.013 with the old threshold -40 dB and ratio 6. Threshold in dB.
+		compressor = { threshold = -42, ratio = 20, attack = 0.02, release = 0.5 },
 		fade = 3, -- seconds to fade in or out
 		gap = 6, -- seconds of quiet between tracks
 		margin = 40, -- studs past the island's edge that still count as town

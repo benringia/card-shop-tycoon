@@ -40,11 +40,11 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume > 0 and town.volume <= 0.015, true, "well under the birds and the wind (owner: 0.12 overpowered them, 0.05, 0.03 and 0.02 still loud)")
+		expect.equal(town.volume > 0.013 and town.volume <= 0.03, true, "louder than 0.013 (owner: hard to hear) but under 0.05 (still loud)")
 		local squash = town.compressor
 		expect.equal(squash ~= nil, true, "a compressor evens out the louder parts (owner: too loud in the later parts)")
 		expect.equal(squash.threshold < 0 and squash.threshold >= -60, true, "threshold in dB, -60 to 0")
-		expect.equal(squash.ratio > 1 and squash.ratio <= 50, true, "ratio above 1 squashes the loud parts")
+		expect.equal(squash.ratio >= 15 and squash.ratio <= 50, true, "a limiter: the loudest parts never get louder (owner)")
 		expect.equal(squash.attack > 0 and squash.release > 0, true)
 		expect.equal(#town.options >= 3, true, "options for the owner to pick from (/music <n> in Studio)")
 		for _, option in town.options do
