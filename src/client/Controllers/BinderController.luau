@@ -77,7 +77,7 @@ local TOOLTIP_GAP = 8
 local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
 local PAGE_KEYS = { [Enum.KeyCode.Q] = -1, [Enum.KeyCode.E] = 1 }
 local BINDER_KEY = Enum.KeyCode.B
-local BAG_KEY = Enum.KeyCode.I -- inventory: the binder's Bag tab
+local BAG_KEY = Enum.KeyCode.I -- inventory: the Bag window
 local BAG_PRIORITY_MARGIN = 100 -- above every built-in binding (the camera's I zoom included)
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
 local COVER_TEXT = Color3.fromRGB(255, 250, 240)
@@ -123,9 +123,8 @@ local filterSearch: TextBox? = nil
 local rarityPicks: { [string]: boolean } = {} -- none picked = every rarity
 local showFilter = ALL_FILTER -- All, Owned or Missing
 local sortBy = "Set" -- Set (card number), Value, Copies or Rarity
-local bagOverlay: Frame -- the Bag tab (built in buildBag); the card tooltip stays off while it shows
-local cardsTab: TextButton -- the Cards / Bag tabs (built in buildBag)
-local bagTab: TextButton
+local bagOverlay: Frame -- the Bag window (built in buildBag; its own window since round 3)
+local bagFit: UIScale -- shrinks the Bag's content to fit small screens
 local counter: Frame -- the page counter under the binder
 local pageLabel: TextLabel
 local spreadIndex = 1 -- the spread the pages show (or are turning from)
@@ -901,8 +900,6 @@ end
 -- The card view (CardDetailController): while a card is inspected the tabs, binder buttons and counter hide and the
 -- camera goes to the card view's stage (BinderDesk.setInspecting)
 function setInspecting(on: boolean)
-	cardsTab.Visible = not on
-	bagTab.Visible = not on
 	counter.Visible = not on
 	for _, arrows in arrowLanes do
 		arrows.Visible = not on and panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
@@ -936,8 +933,6 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	TAB_WIDTH = 116, -- the Cards / Bag tabs in the binder's corner (px)
-	TAB_GAP = 18, -- between them, room for their soft glows (owner 2026-11-03: too close together)
 }
 
 -- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
@@ -1059,8 +1054,7 @@ local function addSlot(order: number, id: string?)
 	Icon.set(icon, info.icon)
 	-- Boss items: tinted for their boss, its ladder number in the corner, so every key looks different
 	-- The window shrinks to fit small screens (UIScale); counts and numbers stay at least 14 px tall on screen
-	local fit = bagOverlay:FindFirstChildOfClass("UIScale")
-	local countSize = math.max(15, math.ceil(14 / (if fit then math.max(fit.Scale, 0.1) else 1)))
+	local countSize = math.max(15, math.ceil(14 / math.max(bagFit.Scale, 0.1)))
 	local tint, bossNumber = bossMark(id)
 	tintIcon(icon, tint)
 	if tint and bossNumber then
@@ -1111,117 +1105,54 @@ function renderBag()
 	renderBagDetail()
 end
 
-local function showTab(bag: boolean)
-	if bag then
-		hideTooltip()
+-- The Bag (owner 2026-11-03, round 3): its own window over the town, like the others (one at a time: opening it
+-- closes the binder), built with UIKit.panel; its content (the slots and the chosen item's details) sits under the
+-- header in a frame that shrinks to fit small screens
+local function buildBag(screen: Instance)
+	local list: ScrollingFrame
+	bagOverlay, list = UIKit.panel(screen, "Bag", "Bag", "Bag")
+	list:Destroy()
+	local limit = bagOverlay:FindFirstChildOfClass("UISizeConstraint")
+	if limit then
+		limit:Destroy()
 	end
-	bagOverlay.Visible = bag
-	-- The Bag window shows over the desk; the binder's own buttons and counter would peek out under it
-	counter.Visible = not bag
-	for _, arrows in arrowLanes do
-		arrows.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
-	end
-	for _, name in { "FilterButton", "RarityGuide" } do
-		local item = panel:FindFirstChild(name)
-		if item and item:IsA("GuiObject") then
-			item.Visible = not bag
-		end
-	end
-	if bag and filtersPanel.Visible then
-		setFiltersOpen(false)
-	end
-	progressCard.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
-	cardsTab.BackgroundColor3 = if bag then UIKit.Colors.Row else UIKit.Colors.Accent
-	bagTab.BackgroundColor3 = if bag then UIKit.Colors.Accent else UIKit.Colors.Row
-	for button, open in { [cardsTab] = not bag, [bagTab] = bag } do
-		local name = button:FindFirstChild("Name", true) :: TextLabel?
-		if name then
-			UIKit.softText(name, button.BackgroundColor3) -- plum on the open tab's butter, white on the other's sky
-		end
-	end
-	if bag then
-		renderBag()
-	end
-end
-
-local function buildBag(parent: Frame)
-	-- Two tabs in the header, next to the title
-	-- An icon and a name side by side, centred on the tab (the name turns white on the open tab: showTab)
-	local function tab(icon: string, text: string, x: number): TextButton
-		local button = UIKit.button(parent, "", UIKit.Colors.Row)
-		button.Position = UDim2.fromOffset(x, 10)
-		button.Size = UDim2.fromOffset(BAG.TAB_WIDTH, 48)
-		button.ZIndex = 12
-		local row = Instance.new("Frame")
-		row.AnchorPoint = Vector2.new(0.5, 0.5)
-		row.Position = UDim2.fromScale(0.5, 0.45)
-		row.Size = UDim2.fromScale(0, 1)
-		row.AutomaticSize = Enum.AutomaticSize.X
-		row.BackgroundTransparency = 1
-		row.ZIndex = 13
-		row.Parent = button
-		local list = Instance.new("UIListLayout")
-		list.FillDirection = Enum.FillDirection.Horizontal
-		list.VerticalAlignment = Enum.VerticalAlignment.Center
-		list.Padding = UDim.new(0, 6)
-		list.SortOrder = Enum.SortOrder.LayoutOrder
-		list.Parent = row
-		local picture = Icon.make(row, icon, UDim2.fromOffset(28, 28))
-		picture.LayoutOrder = 1
-		picture.ZIndex = 13
-		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, UIStyle.BABY_INK)
-		name.Name = "Name"
-		name.LayoutOrder = 2
-		name.Size = UDim2.fromScale(0, 1)
-		name.AutomaticSize = Enum.AutomaticSize.X
-		name.TextWrapped = false
-		name.ZIndex = 13
-		return button
-	end
-	cardsTab = tab("Cards", "Cards", 16)
-	bagTab = tab("Bag", "Bag", 16 + BAG.TAB_WIDTH + BAG.TAB_GAP)
-
-	-- The window, centred; scaled down to fit small screens. Only the Bag window is cream: the binder around it keeps
-	-- its dark look (spec 2026-11-03-cream-windows-design)
-	bagOverlay = Instance.new("Frame")
-	bagOverlay.Name = "Bag"
-	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
-	bagOverlay.Position = UDim2.fromScale(0.5, 0.5)
-	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
-	bagOverlay.Visible = false
-	bagOverlay.ZIndex = 30
-	bagOverlay.Parent = parent
-	UIKit.creamWindow(bagOverlay)
+	Icon.header(bagOverlay, "Bag", UIKit.HEADER_HEIGHT)
 	bagPalette = UIKit.colorsFor(bagOverlay)
-	local fit = Instance.new("UIScale")
-	fit.Parent = bagOverlay
-	local function fitWindow()
-		local room = parent.AbsoluteSize
-		fit.Scale = math.min(1, (room.X - 24) / BAG.WINDOW.X, (room.Y - 84) / BAG.WINDOW.Y)
-		-- The middle of the whole screen: this screen starts below Roblox's top bar strip
-		local inset = GuiService:GetGuiInset().Y
-		bagOverlay.Position = UDim2.new(0.5, 0, 0.5, -inset / 2)
-	end
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
-	fitWindow()
-
-	local header, title = UIKit.header(bagOverlay, "Bag", "Bag")
-	header.ZIndex = 31
-	title.ZIndex = 32
-	title.Position = UDim2.fromOffset(62, 0)
-	local headerIcon = Icon.make(header, "Bag", UDim2.fromOffset(40, 40))
-	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
-	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
-	headerIcon.ZIndex = 32
+	local header = bagOverlay:FindFirstChild("Header") :: Frame
 	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
 	bagCount.AnchorPoint = Vector2.new(1, 0.5)
-	bagCount.Position = UDim2.new(1, -18, 0.5, 0)
+	bagCount.Position = UDim2.new(1, -64, 0.5, 0) -- clear of the round close button
 	bagCount.Size = UDim2.fromOffset(160, 24)
 	bagCount.TextXAlignment = Enum.TextXAlignment.Right
-	bagCount.ZIndex = 32
+	bagCount.ZIndex = header.ZIndex + 2
 	UIKit.outlined(bagCount, 2)
 
-	local top = UIKit.HEADER_HEIGHT + 12
+	local inner = Vector2.new(BAG.WINDOW.X, BAG.WINDOW.Y - UIKit.HEADER_HEIGHT)
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.BackgroundTransparency = 1
+	content.Position = UDim2.fromOffset(0, UIKit.HEADER_HEIGHT)
+	content.Size = UDim2.fromOffset(inner.X, inner.Y)
+	content.ZIndex = bagOverlay.ZIndex + 1
+	content.Parent = bagOverlay
+	bagFit = Instance.new("UIScale")
+	bagFit.Parent = content
+	local function fitWindow()
+		local room = (screen :: GuiBase2d).AbsoluteSize
+		local scale = math.min(1, (room.X - 24) / BAG.WINDOW.X, (room.Y - 84) / BAG.WINDOW.Y)
+		bagFit.Scale = scale
+		bagOverlay.Size = UDim2.fromOffset(inner.X * scale, UIKit.HEADER_HEIGHT + inner.Y * scale)
+	end
+	screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
+	fitWindow()
+	bagOverlay:GetPropertyChangedSignal("Visible"):Connect(function()
+		if bagOverlay.Visible then
+			hideTooltip()
+			renderBag()
+		end
+	end)
+
+	local top = 12
 	bagGrid = Instance.new("ScrollingFrame")
 	bagGrid.Name = "Slots"
 	bagGrid.Position = UDim2.fromOffset(16 - BAG.EDGE, top - BAG.EDGE)
@@ -1232,7 +1163,7 @@ local function buildBag(parent: Frame)
 	bagGrid.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	bagGrid.CanvasSize = UDim2.new()
 	bagGrid.ZIndex = 31
-	bagGrid.Parent = bagOverlay
+	bagGrid.Parent = content
 	local grid = Instance.new("UIGridLayout")
 	grid.CellSize = UDim2.fromOffset(BAG.SLOT, BAG.SLOT)
 	grid.CellPadding = UDim2.fromOffset(BAG.GAP, BAG.GAP)
@@ -1252,22 +1183,10 @@ local function buildBag(parent: Frame)
 	bagDetail.Size = UDim2.new(0, BAG.DETAIL_WIDTH, 1, -(top + 16))
 	bagDetail.BackgroundColor3 = bagPalette.row
 	bagDetail.ZIndex = 32
-	bagDetail.Parent = bagOverlay
+	bagDetail.Parent = content
 	UIKit.corner(bagDetail, 14)
 	UIKit.outline(bagDetail, bagPalette.rowEdge, 2)
 
-	cardsTab.Activated:Connect(function()
-		showTab(false)
-	end)
-	bagTab.Activated:Connect(function()
-		showTab(true)
-	end)
-	parent:GetPropertyChangedSignal("Visible"):Connect(function()
-		if not parent.Visible then
-			showTab(false)
-		end
-	end)
-	showTab(false)
 end
 
 -- A small dark key hint on a button's corner ("Q", "E")
@@ -1506,14 +1425,6 @@ end
 
 -- The corner buttons: full size in the corners on roomy screens; compact icons in slim side lanes on phones
 local function placeCorners(narrow: boolean)
-	for index, tab in { cardsTab, bagTab } do
-		tab.Position = if narrow then UDim2.fromOffset(12, 10 + (index - 1) * 56) else UDim2.fromOffset(16 + (index - 1) * 122, 10)
-		tab.Size = if narrow then UDim2.fromOffset(64, 48) else UDim2.fromOffset(116, 48)
-		local name = tab:FindFirstChild("Name", true)
-		if name and name:IsA("GuiObject") then
-			name.Visible = not narrow
-		end
-	end
 	rarityGuideButton.Size = if narrow then UDim2.fromOffset(64, 48) else UDim2.fromOffset(170, 44)
 	rarityGuideButton.Text = if narrow then "" else "Rarity guide"
 	local guidePad = rarityGuideButton:FindFirstChildOfClass("UIPadding")
@@ -1882,7 +1793,7 @@ local function buildPanel(parent: Instance)
 		CardDetailController.Close()
 		return true
 	end)
-	buildBag(panel) -- before the first layout: it places the Cards / Bag tabs
+	buildBag(panel.Parent :: Instance) -- the Bag's own window, on the same screen
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutBook)
 	layoutBook()
@@ -1934,16 +1845,9 @@ local function toggle()
 	end
 end
 
--- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
+-- Inventory: open or close the Bag window (opening it closes the binder: one window at a time)
 local function toggleBag()
-	if panel.Visible and bagOverlay.Visible then
-		toggle()
-	else
-		if not panel.Visible then
-			toggle()
-		end
-		showTab(true)
-	end
+	bagOverlay.Visible = not bagOverlay.Visible
 end
 
 -- Bottom-centre tiles: Cards (the binder) and Bag
