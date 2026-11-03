@@ -10,7 +10,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local PricingConfig = require(Config:WaitForChild("Pricing"))
-local UIStyle = require(Config:WaitForChild("UIStyle"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -27,16 +26,12 @@ type Product = typeof(Products.List[1])
 type Row = {
 	product: Product,
 	frame: Frame,
-	detail: TextLabel,
+	market: TextLabel,
+	tag: TextLabel,
 	price: TextLabel,
-	priceEdge: UIStroke,
-	priceArea: Frame,
-	steps: { TextButton },
 }
 
-local PRICE_WIDTH = 112 -- the price box and its - / + buttons
-local PRICE_HEIGHT = 30
-local STEP_SIZE = 38 -- the - / + buttons with a mouse; phones keep UIStyle.MIN_TAP
+local LOOK = PricingConfig.ROWS
 
 local player = Players.LocalPlayer
 
@@ -77,28 +72,15 @@ local function getBandInfo(price: number, marketPrice: number): (string, Color3)
 	return band.label, bandColor(index)
 end
 
--- Sizes follow the screen (phones get bigger buttons), so they're set on every refresh, not once at start
-local function fitRow(row: Row)
-	local step = if UIKit.isPhone() then UIStyle.MIN_TAP else STEP_SIZE
-	row.frame.Size = UDim2.new(1, 0, 0, math.max(76, PRICE_HEIGHT + step + 16))
-	row.priceArea.Size = UDim2.fromOffset(PRICE_WIDTH, PRICE_HEIGHT + 4 + step)
-	row.price.TextSize = UIKit.textSize("name")
-	for _, button in row.steps do
-		button.Size = UDim2.new(0.5, -3, 0, step)
-	end
-end
-
 local function refreshRow(row: Row)
 	local product = row.product
 	row.frame.Visible = getLevel() >= product.unlockLevel
-	fitRow(row)
-
 	local price = getShownPrice(product)
 	local hint, color = getBandInfo(price, product.marketPrice)
-	row.detail.Text = string.format("Market $%.2f\n%s", product.marketPrice, hint)
-	row.detail.TextColor3 = color
+	row.market.Text = string.format("Market $%.2f", product.marketPrice)
+	row.tag.Text = if hint == PricingConfig.NEVER_LABEL then PricingConfig.NEVER_TAG else hint
+	row.tag.BackgroundColor3 = color
 	row.price.Text = string.format("$%.2f", price)
-	row.priceEdge.Color = color
 end
 
 local function refreshAll()
@@ -126,52 +108,96 @@ local function nudge(row: Row, direction: number)
 	task.delay(PricingConfig.CLIENT_SEND_DELAY, flush, token)
 end
 
+-- One round - or + on the stepper: a small soft button drawn ROUND across inside a HIT-sized tap area (phones still
+-- get a finger-sized target), both pressing it
+local function stepButton(parent: Instance, text: string, color: Color3, onPress: () -> ()): TextButton
+	local hit = Instance.new("TextButton")
+	hit.Name = if text == "+" then "Plus" else "Minus"
+	hit.Text = ""
+	hit.BackgroundTransparency = 1
+	hit.Size = UDim2.fromOffset(LOOK.HIT, LOOK.HIT)
+	hit.Parent = parent
+	local round = UIKit.button(hit, text, color)
+	round.AnchorPoint = Vector2.new(0.5, 0.5)
+	round.Position = UDim2.fromScale(0.5, 0.5)
+	round.Size = UDim2.fromOffset(LOOK.ROUND, LOOK.ROUND)
+	round.Font = Enum.Font.FredokaOne
+	round.TextSize = 18
+	local corner = round:FindFirstChildOfClass("UICorner")
+	if corner then
+		corner.CornerRadius = UDim.new(0.5, 0)
+	end
+	hit.Activated:Connect(onPress)
+	round.Activated:Connect(onPress)
+	return hit
+end
+
+-- A slim row (owner 2026-11-03, round 3 pick A): the product's picture, its name, "Market $x" and a small tag in the
+-- price band's colour ("Rarely buy"), and on the right one stepper pill: - , the price, +
 local function buildRow(product: Product, parent: Instance, order: number): Row
-	local frame, plus, detail = UIKit.row(parent, order, product.name, "")
+	local frame = Instance.new("Frame")
 	frame.Name = product.id
-	detail.TextSize = 14
-	-- Name and market price leave room for the price on the right; the product's picture goes first
-	for _, label in frame:GetChildren() do
-		if label:IsA("TextLabel") then
-			label.Size = UDim2.new(1, -(PRICE_WIDTH + 24), 0, label.Size.Y.Offset)
-		end
-	end
-	ProductPicture.add(frame, product.id, product.icon)
+	frame.LayoutOrder = order
+	frame.Size = UDim2.new(1, 0, 0, LOOK.ROW_HEIGHT)
+	frame.BackgroundColor3 = palette.row
+	frame.Parent = parent
+	UIKit.corner(frame, 16)
+	UIKit.outline(frame, palette.rowEdge, 2)
+	local textLeft = 12
+	local textRight = LOOK.STEPPER + 20
+	local name = UIKit.label(frame, product.name, Enum.Font.FredokaOne, LOOK.NAME_TEXT, palette.ink)
+	name.Position = UDim2.fromOffset(textLeft, 10)
+	name.Size = UDim2.new(1, -(textLeft + textRight), 0, LOOK.NAME_TEXT + 4)
+	name.TextWrapped = false
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	local meta = Instance.new("Frame")
+	meta.Name = "Meta"
+	meta.BackgroundTransparency = 1
+	-- ProductPicture moves the row's own labels right of the picture; the market line is a frame, so it starts there
+	meta.Position = UDim2.fromOffset(textLeft + ProductPicture.WIDTH, 12 + LOOK.NAME_TEXT + 4)
+	meta.Size = UDim2.new(1, -(textLeft + ProductPicture.WIDTH + textRight), 0, LOOK.TAG_HEIGHT)
+	meta.Parent = frame
+	local line = Instance.new("UIListLayout")
+	line.FillDirection = Enum.FillDirection.Horizontal
+	line.VerticalAlignment = Enum.VerticalAlignment.Center
+	line.Padding = UDim.new(0, 6)
+	line.SortOrder = Enum.SortOrder.LayoutOrder
+	line.Parent = meta
+	local market = UIKit.label(meta, "", Enum.Font.GothamBold, LOOK.META_TEXT, palette.inkSoft)
+	market.LayoutOrder = 1
+	market.TextWrapped = false
+	market.AutomaticSize = Enum.AutomaticSize.X
+	market.Size = UDim2.fromOffset(0, LOOK.TAG_HEIGHT)
+	local tag = UIKit.pill(meta, "", palette.good, Color3.new(1, 1, 1))
+	tag.LayoutOrder = 2
+	tag.Size = UDim2.fromOffset(0, LOOK.TAG_HEIGHT)
+	tag.TextSize = LOOK.META_TEXT - 1
+	ProductPicture.add(frame, product.id, product.icon) -- moves the name and market line right of the picture
 
-	-- Your price, big, over the - / + buttons
-	local priceArea = Instance.new("Frame")
-	priceArea.Name = "Price"
-	priceArea.AnchorPoint = Vector2.new(1, 0.5)
-	priceArea.Position = UDim2.new(1, -10, 0.5, 0)
-	priceArea.BackgroundTransparency = 1
-	priceArea.ZIndex = frame.ZIndex + 1
-	priceArea.Parent = frame
-	local price = UIKit.label(priceArea, "", Enum.Font.FredokaOne, 22, palette.ink)
-	price.Size = UDim2.new(1, 0, 0, PRICE_HEIGHT)
+	-- The stepper: a pale pill with the round - and + either side of the price
+	local stepper = Instance.new("Frame")
+	stepper.Name = "Price"
+	stepper.AnchorPoint = Vector2.new(1, 0.5)
+	stepper.Position = UDim2.new(1, -10, 0.5, 0)
+	stepper.Size = UDim2.fromOffset(LOOK.STEPPER, LOOK.STEPPER_HEIGHT)
+	stepper.BackgroundColor3 = palette.slotEmpty
+	stepper.Parent = frame
+	UIKit.corner(stepper, LOOK.STEPPER_HEIGHT / 2)
+	UIKit.outline(stepper, palette.rowEdge, 2)
+	local price = UIKit.label(stepper, "", Enum.Font.FredokaOne, LOOK.PRICE_TEXT, palette.ink)
+	price.Size = UDim2.fromScale(1, 1)
 	price.TextXAlignment = Enum.TextXAlignment.Center
-	price.BackgroundColor3 = palette.row
-	price.BackgroundTransparency = 0
-	price.ZIndex = priceArea.ZIndex
-	UIKit.corner(price, 8)
-	local priceEdge = UIKit.outline(price, bandColor(1), 2)
-
-	local minus = UIKit.button(priceArea, "-", UIKit.Colors.Danger)
-	plus.Parent = priceArea
-	plus.Text = "+"
-	for index, button in { minus, plus } do
-		button.TextSize = 24
-		button.AnchorPoint = Vector2.new(if index == 1 then 0 else 1, 1)
-		button.Position = UDim2.fromScale(if index == 1 then 0 else 1, 1)
-		button.ZIndex = priceArea.ZIndex
-	end
-
-	local row: Row = { product = product, frame = frame, detail = detail, price = price, priceEdge = priceEdge, priceArea = priceArea, steps = { minus, plus } }
-	plus.Activated:Connect(function()
-		nudge(row, 1)
-	end)
-	minus.Activated:Connect(function()
+	local row: Row = { product = product, frame = frame, market = market, tag = tag, price = price }
+	local minus = stepButton(stepper, "-", UIKit.Colors.Danger, function()
 		nudge(row, -1)
 	end)
+	minus.AnchorPoint = Vector2.new(0, 0.5)
+	minus.Position = UDim2.new(0, -(LOOK.HIT - LOOK.STEPPER_HEIGHT) / 2, 0.5, 0)
+	local plus = stepButton(stepper, "+", UIKit.Colors.Accent, function()
+		nudge(row, 1)
+	end)
+	plus.AnchorPoint = Vector2.new(1, 0.5)
+	plus.Position = UDim2.new(1, (LOOK.HIT - LOOK.STEPPER_HEIGHT) / 2, 0.5, 0)
 	return row
 end
 

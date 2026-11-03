@@ -16,4 +16,8 @@ return {
 		{ maxRatio = 1.5, chance = 0.15, label = "Rarely buy" },
 	},
 	NEVER_LABEL = "Won't buy, and get annoyed",
+	NEVER_TAG = "Won't buy", -- the same, short enough for the Prices window's tag
+	-- The Prices window's slim rows (owner 2026-11-03, round 3 pick A): px. A row ROW_HEIGHT tall; on the right one
+	-- stepper pill STEPPER wide with round - and + buttons ROUND across inside HIT-sized tap areas, the price between
+	ROWS = { ROW_HEIGHT = 64, STEPPER = 148, STEPPER_HEIGHT = 40, ROUND = 30, HIT = 48, PRICE_TEXT = 16, NAME_TEXT = 15, META_TEXT = 12, TAG_HEIGHT = 18 },
 }
