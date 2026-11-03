@@ -22,6 +22,13 @@ function TownMusicController.Start()
 	sound.Name = "TownMusic"
 	sound.Volume = 0
 	sound.Parent = SoundService
+	-- Evens out the track's louder parts (Config/Music TOWN compressor)
+	local squash = Instance.new("CompressorSoundEffect")
+	squash.Threshold = CFG.compressor.threshold
+	squash.Ratio = CFG.compressor.ratio
+	squash.Attack = CFG.compressor.attack
+	squash.Release = CFG.compressor.release
+	squash.Parent = sound
 	local player = Players.LocalPlayer
 	local track = 0
 	local inTown = false
