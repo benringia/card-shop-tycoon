@@ -53,6 +53,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   rigs"; no upload).
   `assets/ui/combat`: the boss-fight HUD's slanted buttons, HP bars and red hit flash and the closing rings
   (`tools/textures/make_slant_buttons.py`, `make_hp_bars.py`, `make_ring_textures.py`), uploaded as images, not synced.
+  `assets/ui/fx-levelup`: the level-up pillar's rune circle, beam and mote (white with alpha), rendered by
+  `tools/blender/build_levelup_fx.py` (source `assets/blender/LevelUpFx/`) and finished by
+  `tools/textures/make_levelup_fx.py`; uploaded as images, ids in `Config/LevelUpFx` IMAGES, not synced.
   `assets/ui/fx-attack`: the fight effects' white textures (glow, streak, bolt, slash, shard...), made by
   `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced. Particle
   textures must be square; a beam runs a texture's height along its length (the bolt is upright).
