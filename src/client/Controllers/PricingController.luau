@@ -47,7 +47,7 @@ local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), se
 
 -- Hint colours from best to worst band (deep enough to read on the cream window); "won't buy" is palette.bad
 local function bandColor(index: number): Color3
-	local colors = { palette.good, palette.hint, palette.power }
+	local colors = { palette.good, palette.fair, palette.power }
 	return colors[index] or colors[1]
 end
 local rows: { Row } = {}

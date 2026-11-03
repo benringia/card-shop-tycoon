@@ -82,6 +82,7 @@ return {
 		GOOD = rgb(CreamTheme.good),
 		BAD = rgb(CreamTheme.bad),
 		POWER = rgb(CreamTheme.power),
+		FAIR = rgb(CreamTheme.fair),
 		TRACK = rgb(CreamTheme.track),
 		OUTLINE = rgb(CreamTheme.outline),
 		OUTLINE_THICKNESS = CreamTheme.outlineThickness,

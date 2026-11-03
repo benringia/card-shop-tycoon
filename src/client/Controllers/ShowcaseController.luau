@@ -243,7 +243,7 @@ local function getMarketColor(listing: Listing): Color3
 	-- At or under market sells easily; up to NEAR_MARKET_RATIO is fair; above that is pricey
 	return if ratio <= 1 + 1e-6
 		then palette.good
-		elseif ratio <= NEAR_MARKET_RATIO then palette.hint
+		elseif ratio <= NEAR_MARKET_RATIO then palette.fair
 		else palette.bad
 end
 

@@ -19,6 +19,29 @@ return {
 			expect.equal(ContrastRules.ratio(t.good, surface) >= 4.5, true, "good news (fast, ready)")
 			expect.equal(ContrastRules.ratio(t.bad, surface) >= 4.5, true, "bad news (resting, mistakes)")
 			expect.equal(ContrastRules.ratio(t.power, surface) >= 4.5, true, "Power numbers")
+			expect.equal(ContrastRules.ratio(t.fair, surface) >= 4.5, true, "fair prices")
+		end
+	end,
+
+	["hue is the colour wheel angle: red 0, yellow 60, green 120, blue 240"] = function()
+		expect.near(ContrastRules.hue({ 255, 0, 0 }), 0, 1e-9)
+		expect.near(ContrastRules.hue({ 255, 255, 0 }), 60, 1e-9)
+		expect.near(ContrastRules.hue({ 0, 128, 0 }), 120, 1e-9)
+		expect.near(ContrastRules.hue({ 0, 0, 255 }), 240, 1e-9)
+		expect.near(ContrastRules.hue({ 255, 0, 128 }), 360 - 30.1176, 1e-3, "magenta-red wraps below 360")
+	end,
+
+	["the price bands differ at a glance: good, fair, pricey, bad at least 20 degrees apart in hue"] = function()
+		local t = CreamTheme
+		local bands = { good = t.good, fair = t.fair, pricey = t.power, bad = t.bad }
+		for nameA, a in bands do
+			for nameB, b in bands do
+				if nameA < nameB then
+					local apart = math.abs(ContrastRules.hue(a) - ContrastRules.hue(b))
+					apart = math.min(apart, 360 - apart)
+					expect.equal(apart >= 20, true, `{nameA} and {nameB} are {math.floor(apart)} degrees apart`)
+				end
+			end
 		end
 	end,
 

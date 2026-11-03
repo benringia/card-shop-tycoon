@@ -50,7 +50,8 @@ export type Palette = {
 	hint: Color3, -- hints and small headings
 	good: Color3, -- fast, ready, better
 	bad: Color3, -- resting, mistakes, not enough
-	power: Color3, -- Power numbers
+	power: Color3, -- Power numbers; the "pricey" price band
+	fair: Color3, -- the "fair" price band, between good and pricey
 	track: Color3, -- bar tracks
 	outline: Color3, -- buttons', pills' and chips' outlines
 	outlineThickness: number,
@@ -67,6 +68,7 @@ local DARK_PALETTE: Palette = {
 	good = UIStyle.GOOD,
 	bad = UIStyle.BAD,
 	power = UIStyle.POWER,
+	fair = UIStyle.HINT,
 	track = UIStyle.EDGE,
 	outline = UIStyle.EDGE,
 	outlineThickness = 2,
@@ -83,6 +85,7 @@ local CREAM_PALETTE: Palette = {
 	good = CREAM.GOOD,
 	bad = CREAM.BAD,
 	power = CREAM.POWER,
+	fair = CREAM.FAIR,
 	track = CREAM.TRACK,
 	outline = CREAM.OUTLINE,
 	outlineThickness = CREAM.BUTTON_OUTLINE,

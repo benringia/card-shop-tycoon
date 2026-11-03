@@ -107,7 +107,7 @@ local function getDeal(price: number, market: number): (string, Color3)
 	if ratio <= ShowcaseConfig.GOOD_DEAL_MAX_RATIO + 1e-6 then
 		return "Good deal", palette.good
 	elseif ratio <= ShowcaseConfig.FAIR_DEAL_MAX_RATIO + 1e-6 then
-		return "Fair", palette.hint
+		return "Fair", palette.fair
 	end
 	return "Pricey", palette.power -- a deep orange
 end

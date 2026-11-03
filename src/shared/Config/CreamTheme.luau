@@ -16,7 +16,8 @@ return {
 	-- Meaning colours deep enough to read on cream (the dark windows' bright ones don't)
 	good = { 22, 112, 52 }, -- fast, ready, better
 	bad = { 176, 40, 40 }, -- resting, mistakes, not enough
-	power = { 160, 74, 8 }, -- Power numbers
+	power = { 160, 74, 8 }, -- Power numbers; also "pricey" and "rarely buy" (the price bands: good, fair, power, bad)
+	fair = { 112, 96, 0 }, -- "fair" and "sometimes buy": a dark mustard, its own hue between the green and the orange
 	track = { 242, 227, 207 }, -- bar tracks
 	outline = { 255, 255, 255 },
 	outlineThickness = 4, -- the window's outline (px)

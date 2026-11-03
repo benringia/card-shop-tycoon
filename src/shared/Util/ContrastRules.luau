@@ -20,4 +20,17 @@ function ContrastRules.ratio(a: { number }, b: { number }): number
 	return (light + 0.05) / (dark + 0.05)
 end
 
+-- The colour's angle on the colour wheel, 0-360 (red 0, yellow 60, green 120, blue 240): colours that mean different
+-- things must sit far enough apart to tell at a glance, even when they're all dark enough to read
+function ContrastRules.hue(rgb: { number }): number
+	local r, g, b = rgb[1] / 255, rgb[2] / 255, rgb[3] / 255
+	local high, low = math.max(r, g, b), math.min(r, g, b)
+	local span = high - low
+	if span == 0 then
+		return 0 -- a grey has no hue
+	end
+	local angle = if high == r then ((g - b) / span) % 6 elseif high == g then (b - r) / span + 2 else (r - g) / span + 4
+	return angle * 60
+end
+
 return ContrastRules
