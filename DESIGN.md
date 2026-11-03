@@ -859,7 +859,13 @@ Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
 Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 5, $500; no level gate,
-levels raise stats only). Press E on it, pick a card and its main copy, see the cost and before -> after, then Condense.
+levels raise stats only). Press E on it: the window is "tidy two panes" (owner's pick A, spec `2026-11-04-round4-design`
+section 3): a sky band with the Condenser icon and "N ready", one toolbar (search, then All / Ready / Raising; Raising
+is everything not ready), the cards as slim rows (a Ready tag, "x21 · 4 copies for the next star" or "3 of 4 copies"
+and a thin bar, `CondenseRules.rowLine`), and the chosen card on the right: its stars, Power and Value before -> after,
+"Keeps Grade S · Lv 14 · uses 4 Grade C" with Change (the copies to keep), one big Condense +1 star and a small Star
+Shards toggle (off: Ready counts copies only and Condense never spends shards). Buttons sit 12 px in from the pane's
+edges and grow from their centre, so nothing is cut off on hover.
 Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
 weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
 own card. One star per press. Duplicates per star (`STAR_COSTS`):
@@ -1590,7 +1596,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
-    │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
+    │   │   ├── CondenserController.luau # Card Condenser panel (tidy two panes): toolbar, slim rows, the card's before -> after, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
     │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
     │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove

@@ -199,4 +199,22 @@ return {
 		assert(without, "a plan")
 		expect.equal(without.seals, 0, "no seals given")
 	end,
+
+	["row line when ready"] = function()
+		local text, share = CondenseRules.rowLine(21, 4, 4, true)
+		expect.equal(text, "x21 · 4 copies for the next star", "text")
+		expect.equal(share, 1, "bar full")
+	end,
+
+	["row line while raising"] = function()
+		local text, share = CondenseRules.rowLine(3, 3, 4, false)
+		expect.equal(text, "3 of 4 copies", "text")
+		expect.equal(share, 0.75, "bar")
+	end,
+
+	["row line at max stars"] = function()
+		local text, share = CondenseRules.rowLine(5, 0, 0, false)
+		expect.equal(text, "Max stars", "text")
+		expect.equal(share, 1, "bar full")
+	end,
 }

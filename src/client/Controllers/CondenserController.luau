@@ -1,8 +1,9 @@
 --!strict
--- Card Condenser panel, marketplace style: cards you can condense on the left; on the right, choose the
--- main copy and see the next star's cost, exactly which duplicates go, and Power and value before ->
--- after. Condense asks the server, which re-checks everything; the binder sync redraws the panel.
--- Opened from your own Condenser's prompt; closes when you walk away.
+-- Card Condenser panel, "tidy two panes" (owner's pick A, spec 2026-11-04-round4-design section 3): a toolbar (search
+-- and All / Ready / Raising), the cards you can condense on the left as slim rows (a Ready tag, copies toward the next
+-- star), and on the right the chosen card: its stars, Power and Value before -> after, which copy it keeps (Change
+-- picks another), one big Condense and a small Star Shards toggle. Condense asks the server, which re-checks
+-- everything; the binder sync redraws the panel. Opened from your own Condenser's prompt; closes when you walk away.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,7 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
-local Rarities = require(Config:WaitForChild("Rarities"))
+local BabyColors = require(Config:WaitForChild("BabyColors"))
 local CondenserConfig = require(Config:WaitForChild("Condenser"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
@@ -20,6 +21,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -28,18 +30,23 @@ type Beast = { id: string, cardId: string, foil: boolean, level: number, xp: num
 -- One copy that can be the main card: a levelled card, or a stack of plain copies (one grade, foil or not)
 type Candidate = { key: string, beast: Beast?, foil: boolean, grade: string, level: number, stars: number, count: number, power: number }
 
-local PANEL_MAX_SIZE = Vector2.new(820, 520)
+local PANEL_MAX_SIZE = Vector2.new(820, 540)
 local LIST_WIDTH_SCALE = 0.5
-local ROW_HEIGHT = 64
+local ROW_HEIGHT = 66
 local MAIN_ROW_HEIGHT = 48 -- tap target minimum
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
-local READY_FILL = Color3.fromRGB(60, 200, 110) -- the READY chip on a row
-local SUBTITLE_TEXT = "Combine duplicates into one card for +1 star."
-local FILTER_CHIP_WIDTH = 84
 local ALL_FILTER, READY_FILTER, RAISING_FILTER = "All", "Ready", "Raising"
-local LIST_TOP = 124 -- below the subtitle and the search/filter row
+local TOOLBAR_TOP = UIKit.HEADER_HEIGHT + 8
+local SEARCH_WIDTH = 200
+local SEARCH_HEIGHT = 40
+local LIST_TOP = TOOLBAR_TOP + BabyColors.SEGMENTED.hit + 8
+local EDGE = 12 -- px either side of the pane's buttons: room for their hover grow, so nothing is cut off
+local CONDENSE_HEIGHT = 52
+local SHARDS_WIDTH = 250
+local STAR_SIZE = 20
+local BAR_HEIGHT = 6
 
 local player = Players.LocalPlayer
 
@@ -47,15 +54,16 @@ local CondenserController = {}
 
 local panel: Frame
 local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
-local subtitle: TextLabel
+local readyBadge: TextLabel -- "2 ready" in the band
 local list: ScrollingFrame
 local pane: ScrollingFrame
+local setFilter: (string) -> () = function() end
 local machine: BasePart? = nil
 local selectedCardId: string? = nil
 local searchText = ""
-local activeFilter = ALL_FILTER -- All, Ready, Raising or a rarity name
-local filterButtons: { [string]: TextButton } = {}
+local activeFilter = ALL_FILTER -- All, Ready (can take a star now) or Raising (in the list, not ready yet)
 local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
+local choosingMain = false -- Change: the copies to keep show in place of the buttons
 local inFlight = false -- a Condense request is waiting for the server; the button stays locked
 local useShards = false -- Star Shards fill missing duplicates (up to half a star's cost)
 local shardCount = 0 -- from ItemsChanged
@@ -128,15 +136,23 @@ local function getCandidates(card: Card): { Candidate }
 	return candidates
 end
 
+local function asMain(main: Candidate): CondenseRules.Main
+	return { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars }
+end
+
 local function getPlan(card: Card, main: Candidate): ({ CondenseRules.Take }?, string?, number)
 	local byGrade = BinderController.GetGradedStacks()[card.id] or {}
 	local shards = if useShards then shardCount else nil
-	return CondenseRules.plan(Beasts, byGrade, { beast = main.beast ~= nil, foil = main.foil, grade = main.grade, stars = main.stars }, shards)
+	return CondenseRules.plan(Beasts, byGrade, asMain(main), shards)
 end
 
--- Whether the default main copy of this card can take a star right now
--- Search by name or number, then the chip: Ready (can take a star now), Raising (has a levelled or
--- starred copy) or one rarity
+-- Whether the default main copy of this card can take a star right now (Star Shards count only while the toggle is on)
+local function isReady(card: Card): boolean
+	local main = getCandidates(card)[1]
+	return main ~= nil and (getPlan(card, main)) ~= nil
+end
+
+-- Search by name or number, then the switch: All, Ready (can take a star now) or Raising (the rest)
 local function passesFilter(card: Card): boolean
 	if searchText ~= "" then
 		local query = string.lower(searchText)
@@ -145,22 +161,12 @@ local function passesFilter(card: Card): boolean
 			return false
 		end
 	end
-	if activeFilter == RAISING_FILTER then
-		for _, beast in BinderController.GetBeasts() do
-			if beast.cardId == card.id then
-				return true
-			end
-		end
-		return false
-	elseif activeFilter ~= ALL_FILTER and activeFilter ~= READY_FILTER then
-		return card.rarity == activeFilter
+	if activeFilter == READY_FILTER then
+		return isReady(card)
+	elseif activeFilter == RAISING_FILTER then
+		return not isReady(card)
 	end
 	return true
-end
-
-local function isReady(card: Card): boolean
-	local main = getCandidates(card)[1]
-	return main ~= nil and (getPlan(card, main)) ~= nil
 end
 
 -- Cards you're raising (any levelled or starred copy, even with no duplicates yet, so you can see what
@@ -201,14 +207,103 @@ end
 
 local render: () -> ()
 
+-- 1100 -> "1,100"
+local function commas(value: number): string
+	local text = tostring(math.floor(math.max(0, value)))
+	return (string.gsub(string.reverse((string.gsub(string.reverse(text), "(%d%d%d)", "%1,"))), "^,", ""))
+end
+
+-- 2277 -> "$2,277.00"
+local function money(value: number): string
+	local total = math.round(math.max(0, value) * 100) -- in cents, so 2.999 is $3.00
+	return string.format("$%s.%02d", commas(total // 100), total % 100)
+end
+
 -- Right side ------------------------------------------------------------------------------------------
+
+-- A row of stars: the ones it has, the one Condense adds (faint) and the rest (fainter)
+local function starRow(parent: Instance, position: UDim2, stars: number, adding: boolean)
+	local row = Instance.new("Frame")
+	row.Name = "Stars"
+	row.BackgroundTransparency = 1
+	row.Position = position
+	row.Size = UDim2.fromOffset(BeastRules.MAX_STARS * (STAR_SIZE + 3), STAR_SIZE)
+	row.Parent = parent
+	for index = 1, BeastRules.MAX_STARS do
+		local star = Icon.make(row, "Star", UDim2.fromOffset(STAR_SIZE, STAR_SIZE))
+		star.Position = UDim2.fromOffset((index - 1) * (STAR_SIZE + 3), 0)
+		Icon.set(star, "Star")
+		local glyph = star:FindFirstChild("Glyph")
+		if glyph and glyph:IsA("ImageLabel") then
+			glyph.ImageTransparency = if index <= stars then 0 elseif adding and index == stars + 1 then 0.45 else 0.8
+		end
+	end
+end
+
+-- "Power  957 > 1,100" with the after value in green (the Next icon as the arrow; arrows don't draw in these fonts)
+local function compareRow(parent: Instance, position: UDim2, name: string, before: string, after: string)
+	local row = Instance.new("Frame")
+	row.Name = name
+	row.BackgroundTransparency = 1
+	row.Position = position
+	row.Size = UDim2.new(1, -(position.X.Offset + EDGE), 0, 22)
+	row.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local function piece(order: number, text: string, font: Enum.Font, color: Color3)
+		local label = UIKit.label(row, text, font, 14, color)
+		label.LayoutOrder = order
+		label.TextWrapped = false
+		label.AutomaticSize = Enum.AutomaticSize.X
+		label.Size = UDim2.fromOffset(0, 22)
+	end
+	piece(1, name, Enum.Font.GothamBold, palette.inkSoft)
+	piece(2, before, Enum.Font.FredokaOne, palette.ink)
+	local arrow = Icon.make(row, "Next", UDim2.fromOffset(14, 14))
+	arrow.LayoutOrder = 3
+	Icon.set(arrow, "Next")
+	piece(4, after, Enum.Font.FredokaOne, palette.good)
+end
+
+-- The copies that could be kept (Change): today's rows, the chosen one ringed
+local function mainChoices(candidates: { Candidate }, chosen: Candidate, y: number): number
+	for _, candidate in candidates do
+		local row = Instance.new("TextButton")
+		row.AnchorPoint = Vector2.new(0.5, 0) -- grows evenly under the mouse (the grow follows the anchor)
+		row.Position = UDim2.new(0.5, 0, 0, y)
+		row.Size = UDim2.new(1, -2 * EDGE, 0, MAIN_ROW_HEIGHT)
+		row.BackgroundColor3 = palette.row
+		row.Text = ""
+		row.Parent = pane
+		UIKit.corner(row, 10)
+		UIKit.outline(row, if candidate.key == chosen.key then UIKit.Colors.Accent else palette.rowEdge, 2)
+		local title = `{if candidate.foil then "FOIL · " else ""}{BeastRules.describeGrade(candidate.grade)} · {BeastRules.describeGrowth(candidate.level, candidate.stars)}`
+		if not candidate.beast then
+			title ..= ` · x{candidate.count}`
+		end
+		addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, palette.ink)
+		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
+		power.TextXAlignment = Enum.TextXAlignment.Right
+		row.Activated:Connect(function()
+			mainKey = candidate.key
+			choosingMain = false
+			render()
+		end)
+		y += MAIN_ROW_HEIGHT + 6
+	end
+	return y
+end
 
 local function renderPane(card: Card?)
 	clear(pane)
 	if not card then
-		local hint = UIKit.label(pane, "Get two or more copies of a card to condense it. Pick a card on the left.", Enum.Font.GothamBold, 14, UIKit.Colors.Subtext)
-		hint.Position = UDim2.fromOffset(10, 10)
-		hint.Size = UDim2.new(1, -20, 0, 60)
+		local hint = UIKit.label(pane, "Get two or more copies of a card to condense it. Pick a card on the left.", Enum.Font.GothamBold, 14, palette.inkSoft)
+		hint.Position = UDim2.fromOffset(EDGE, 10)
+		hint.Size = UDim2.new(1, -2 * EDGE, 0, 60)
 		return
 	end
 	local candidates = getCandidates(card)
@@ -233,39 +328,78 @@ local function renderPane(card: Card?)
 	end
 	local chosen = main :: Candidate
 
-	-- The main copy, large, and its next star
+	-- The main copy, large, beside its name, its stars before and after and what a star does
 	local faceHolder = Instance.new("Frame")
-	faceHolder.Position = UDim2.fromOffset(8, 8)
+	faceHolder.Position = UDim2.fromOffset(EDGE, 10)
 	faceHolder.Size = UDim2.fromOffset(DETAIL_FACE_SIZE.X, DETAIL_FACE_SIZE.Y)
 	faceHolder.BackgroundTransparency = 1
 	faceHolder.Parent = pane
 	makeFace(faceHolder, card, chosen.foil, true, { level = chosen.level, stars = chosen.stars, grade = chosen.grade })
 
 	local takes, reason, shardsUsed = getPlan(card, chosen)
+	local atMax = chosen.stars >= BeastRules.MAX_STARS
 	local nextStars = math.min(chosen.stars + 1, BeastRules.MAX_STARS)
 	local powerAfter = BeastRules.getPower(card, chosen.foil, chosen.level, nextStars, chosen.grade)
 	local valueNow = BeastRules.getValue(card, chosen.foil, chosen.level, chosen.stars, chosen.grade)
 	local valueAfter = BeastRules.getValue(card, chosen.foil, chosen.level, nextStars, chosen.grade)
-	local lines = {
-		`{card.name}{if chosen.foil then " (FOIL)" else ""}`,
-		`{BeastRules.describeGrade(chosen.grade)} · {BeastRules.describeGrowth(chosen.level, chosen.stars)}`,
-		`Stars {chosen.stars}/{BeastRules.MAX_STARS} -> {nextStars}/{BeastRules.MAX_STARS}`,
-		`Power {chosen.power} -> {powerAfter}`,
-		string.format("Value $%.2f -> $%.2f", valueNow, valueAfter),
-		if takes then describeTakes(takes) .. (if shardsUsed > 0 then ` + {shardsUsed} Star Shard{if shardsUsed == 1 then "" else "s"}` else "") else describeReason(reason),
-	}
-	local info = UIKit.label(pane, table.concat(lines, "\n"), Enum.Font.GothamBold, 12, UIKit.Colors.Text)
-	info.Position = UDim2.fromOffset(DETAIL_FACE_SIZE.X + 16, 8)
-	info.Size = UDim2.new(1, -(DETAIL_FACE_SIZE.X + 22), 0, DETAIL_FACE_SIZE.Y)
-	info.TextYAlignment = Enum.TextYAlignment.Top
+	local x = EDGE + DETAIL_FACE_SIZE.X + 12
+	addLabel(pane, `{card.name}{if chosen.foil then " (FOIL)" else ""}`, UDim2.fromOffset(x, 10), UDim2.new(1, -(x + EDGE), 0, 24), Enum.Font.FredokaOne, 18, palette.ink)
+	starRow(pane, UDim2.fromOffset(x, 40), chosen.stars, not atMax)
+	local starWords = if atMax then "Max stars" else `{chosen.stars} -> {nextStars} star{if nextStars == 1 then "" else "s"}`
+	addLabel(pane, starWords, UDim2.fromOffset(x, 64), UDim2.new(1, -(x + EDGE), 0, 18), Enum.Font.GothamBold, 12, palette.inkSoft)
+	if not atMax then
+		compareRow(pane, UDim2.fromOffset(x, 88), "Power", commas(chosen.power), commas(powerAfter))
+		compareRow(pane, UDim2.fromOffset(x, 114), "Value", money(valueNow), money(valueAfter))
+	end
 
-	local y = DETAIL_FACE_SIZE.Y + 16
+	-- Which copy it keeps and what it uses, with Change when there's another copy to keep
+	local y = 10 + DETAIL_FACE_SIZE.Y + 10
+	local keeps = Instance.new("Frame")
+	keeps.Name = "Keeps"
+	keeps.Position = UDim2.fromOffset(EDGE, y)
+	keeps.Size = UDim2.new(1, -2 * EDGE, 0, 48)
+	keeps.BackgroundColor3 = palette.row
+	keeps.Parent = pane
+	UIKit.corner(keeps, 10)
+	UIKit.outline(keeps, palette.rowEdge, 2)
+	local uses = if takes
+		then string.gsub(describeTakes(takes), "^Uses", "uses") .. (if shardsUsed > 0 then ` + {shardsUsed} Star Shard{if shardsUsed == 1 then "" else "s"}` else "")
+		else nil
+	local keepText = `Keeps {BeastRules.describeGrade(chosen.grade)} · Lv {chosen.level}{if uses then " · " .. uses else ""}`
+	local canChange = #candidates > 1
+	local keepLabel = addLabel(keeps, keepText, UDim2.fromOffset(10, 0), UDim2.new(1, if canChange then -92 else -20, 1, 0), Enum.Font.GothamBold, 13, palette.ink)
+	keepLabel.TextWrapped = true
+	if canChange then
+		local change = Instance.new("TextButton")
+		change.Name = "Change"
+		change.AnchorPoint = Vector2.new(1, 0.5)
+		change.Position = UDim2.new(1, -4, 0.5, 0)
+		change.Size = UDim2.fromOffset(80, 48)
+		change.BackgroundTransparency = 1
+		change.Font = Enum.Font.FredokaOne
+		change.TextSize = 15
+		change.Text = if choosingMain then "Done" else "Change"
+		change.TextColor3 = palette.hint
+		change.Parent = keeps
+		change.Activated:Connect(function()
+			choosingMain = not choosingMain
+			render()
+		end)
+	end
+	y += 48 + 10
+
+	if choosingMain then
+		mainChoices(candidates, chosen, y)
+		return
+	end
+
 	local canCondense = takes ~= nil and not inFlight
 	local buttonText = if inFlight then "Condensing..." elseif takes then "Condense +1 star" else describeReason(reason)
 	local condense = UIKit.button(pane, buttonText, if canCondense then UIKit.Colors.Accent else UIKit.Colors.Locked)
-	condense.Position = UDim2.fromOffset(8, y)
-	condense.Size = UDim2.new(1, -16, 0, 48)
-	condense.TextSize = 16
+	condense.AnchorPoint = Vector2.new(0.5, 0) -- grows evenly under the mouse, inside the pane's EDGE
+	condense.Position = UDim2.new(0.5, 0, 0, y)
+	condense.Size = UDim2.new(1, -2 * EDGE, 0, CONDENSE_HEIGHT)
+	condense.TextSize = 17
 	condense.AutoButtonColor = canCondense
 	condense.Activated:Connect(function()
 		local part = machine
@@ -296,59 +430,32 @@ local function renderPane(card: Card?)
 		end
 		render()
 	end)
-	y += 58
+	y += CONDENSE_HEIGHT + 10
 
-	-- Star Shards toggle: they fill in for missing duplicates (never more than half a star)
+	-- Star Shards toggle: they fill in for missing duplicates (never more than half a star); off, Condense never
+	-- spends them and Ready counts copies only
 	local hasShards = shardCount > 0
-	local shardText = if not hasShards then "✨ No Star Shards (they drop in the Frontier)"
-		elseif useShards then `✨ Using Star Shards (you have {shardCount})`
-		else `✨ Use Star Shards (you have {shardCount})`
-	local shardButton = UIKit.button(pane, shardText, if useShards and hasShards then UIKit.Colors.Accent else palette.row)
-	shardButton.Position = UDim2.fromOffset(8, y)
-	shardButton.Size = UDim2.new(1, -16, 0, 48)
-	shardButton.TextSize = 14
-	shardButton.AutoButtonColor = hasShards
-	shardButton.Activated:Connect(function()
+	local shardText = if not hasShards then "No Star Shards yet"
+		elseif useShards then `Using Star Shards ({shardCount})`
+		else `Use Star Shards ({shardCount})`
+	local shards = UIKit.button(pane, shardText, if not hasShards then UIKit.Colors.Locked elseif useShards then UIKit.Colors.Success else UIKit.Colors.Secondary)
+	shards.AnchorPoint = Vector2.new(0.5, 0)
+	shards.Position = UDim2.new(0.5, 0, 0, y)
+	shards.Size = UDim2.fromOffset(SHARDS_WIDTH, 48)
+	shards.TextSize = 14
+	shards.AutoButtonColor = hasShards
+	shards.Activated:Connect(function()
 		if hasShards then
 			useShards = not useShards
 			render()
 		end
 	end)
-	y += 58
-
-	-- Choose the main copy
-	local heading = UIKit.label(pane, "Main copy (keeps its grade and level)", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
-	heading.Position = UDim2.fromOffset(10, y)
-	heading.Size = UDim2.new(1, -20, 0, 18)
-	y += 22
-	for _, candidate in candidates do
-		local row = Instance.new("TextButton")
-		row.Position = UDim2.fromOffset(8, y)
-		row.Size = UDim2.new(1, -16, 0, MAIN_ROW_HEIGHT)
-		row.BackgroundColor3 = palette.row
-		row.Text = ""
-		row.Parent = pane
-		UIKit.corner(row, 8)
-		if candidate.key == chosen.key then
-			local stroke = Instance.new("UIStroke")
-			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			stroke.Color = UIKit.Colors.Accent
-			stroke.Thickness = 2
-			stroke.Parent = row
-		end
-		local title = `{if candidate.foil then "FOIL · " else ""}{BeastRules.describeGrade(candidate.grade)} · {BeastRules.describeGrowth(candidate.level, candidate.stars)}`
-		if not candidate.beast then
-			title ..= ` · x{candidate.count}`
-		end
-		addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
-		power.TextXAlignment = Enum.TextXAlignment.Right
-		row.Activated:Connect(function()
-			mainKey = candidate.key
-			render()
-		end)
-		y += MAIN_ROW_HEIGHT + 6
-	end
+	y += 48 + EDGE
+	local bottom = Instance.new("Frame") -- keeps room under the last button for its hover grow
+	bottom.BackgroundTransparency = 1
+	bottom.Position = UDim2.fromOffset(0, y)
+	bottom.Size = UDim2.fromOffset(1, 1)
+	bottom.Parent = pane
 end
 
 -- Left side -------------------------------------------------------------------------------------------
@@ -356,62 +463,61 @@ end
 local function buildCardRow(card: Card, order: number)
 	local candidates = getCandidates(card)
 	local strongest = candidates[1]
-	local owned = 0
+	local plain = 0
 	for _, candidate in candidates do
-		owned += candidate.count
+		if not candidate.beast then
+			plain += candidate.count
+		end
 	end
-	local takes: { CondenseRules.Take }?, reason: string? = nil, nil
-	if strongest then
-		takes, reason = getPlan(card, strongest)
-	end
-	local ready = takes ~= nil
+	local ready = isReady(card)
+	local need = if strongest then BeastRules.getCondenseCost(strongest.stars) or 0 else 0
+	local have = if strongest then CondenseRules.countDuplicates(BinderController.GetGradedStacks()[card.id] or {}, asMain(strongest), Beasts) else 0
+	local line, share = CondenseRules.rowLine(plain, have, need, ready)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
-	row.Size = UDim2.new(1, -6, 0, ROW_HEIGHT)
+	row.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
 	row.BackgroundColor3 = palette.row
 	row.Text = ""
 	row.Parent = list
-	UIKit.corner(row, 8)
-	if card.id == selectedCardId then
-		local stroke = Instance.new("UIStroke")
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Color = UIKit.Colors.Accent
-		stroke.Thickness = 2
-		stroke.Parent = row
-	end
+	UIKit.corner(row, 12)
+	local selected = card.id == selectedCardId
+	UIKit.outline(row, if selected then UIKit.Colors.Accent else palette.rowEdge, if selected then 3 else 2)
 	local thumbnail = Instance.new("Frame")
-	thumbnail.Position = UDim2.fromOffset(6, 4)
+	thumbnail.Position = UDim2.fromOffset(8, 5)
 	thumbnail.Size = UDim2.fromOffset(THUMBNAIL_SIZE.X, THUMBNAIL_SIZE.Y)
 	thumbnail.BackgroundTransparency = 1
 	thumbnail.Parent = row
 	makeFace(thumbnail, card, strongest ~= nil and strongest.foil, false)
 
-	local textX = THUMBNAIL_SIZE.X + 14
-	local nameRoom = if ready then 84 else 8 -- leave room for the READY chip
-	addLabel(row, card.name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + nameRoom), 0, 20), Enum.Font.GothamBold, 15, UIKit.Colors.Text)
-	local status = `Owned {owned}`
-	if strongest then
-		local cost = BeastRules.getCondenseCost(strongest.stars)
-		status ..= if takes and cost then ` · next star: {cost} duplicates` elseif reason == "max" then " · max stars" else ` · {describeReason(reason)}`
-	end
-	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then palette.good else UIKit.Colors.Subtext)
-
-	-- Can take a star right now: green chip on the row
+	local textX = THUMBNAIL_SIZE.X + 18
+	local nameRoom = if ready then 74 else 10 -- room for the Ready tag
+	addLabel(row, card.name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + nameRoom), 0, 20), Enum.Font.FredokaOne, 16, palette.ink)
 	if ready then
-		local chip = UIKit.label(row, "READY", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
-		chip.AnchorPoint = Vector2.new(1, 0)
-		chip.Position = UDim2.new(1, -8, 0, 8)
-		chip.Size = UDim2.fromOffset(68, 20)
-		chip.TextXAlignment = Enum.TextXAlignment.Center
-		chip.BackgroundColor3 = READY_FILL
-		chip.BackgroundTransparency = 0
-		UIKit.corner(chip, 6)
+		local tag = UIKit.pill(row, "Ready", palette.good, Color3.new(1, 1, 1))
+		tag.AnchorPoint = Vector2.new(1, 0)
+		tag.Position = UDim2.new(1, -10, 0, 8)
+		tag.Size = UDim2.fromOffset(58, 22)
+		tag.TextSize = 12
 	end
+	addLabel(row, line, UDim2.fromOffset(textX, 30), UDim2.new(1, -(textX + 10), 0, 16), Enum.Font.GothamBold, 12, palette.inkSoft)
+	local track = Instance.new("Frame")
+	track.Name = "Copies"
+	track.Position = UDim2.fromOffset(textX, 50)
+	track.Size = UDim2.new(1, -(textX + 12), 0, BAR_HEIGHT)
+	track.BackgroundColor3 = palette.track
+	track.Parent = row
+	UIKit.corner(track, BAR_HEIGHT / 2)
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(share, 1)
+	fill.BackgroundColor3 = palette.good
+	fill.Parent = track
+	UIKit.corner(fill, BAR_HEIGHT / 2)
 
 	row.Activated:Connect(function()
 		if selectedCardId ~= card.id then
 			selectedCardId = card.id
 			mainKey = nil
+			choosingMain = false
 			awaitingNewCard = nil
 		end
 		render()
@@ -423,22 +529,21 @@ render = function()
 		return
 	end
 	clear(list)
-	-- Ready cards first (keeping rarest-first order inside each group)
-	local cards: { Card } = {}
-	for _, card in getCondensableCards() do
-		if passesFilter(card) and (activeFilter ~= READY_FILTER or isReady(card)) then
-			table.insert(cards, card)
-		end
-	end
-	for filter, button in filterButtons do
-		button.BackgroundColor3 = if filter == activeFilter then UIKit.Colors.Accent else palette.row
-	end
+	setFilter(activeFilter) -- the switch shows the current choice (UIKit.segmented leaves that to us)
+	local all = getCondensableCards()
 	local readyCount = 0
 	local ready: { [string]: boolean } = {}
-	for _, card in cards do
+	for _, card in all do
 		if isReady(card) then
 			ready[card.id] = true
 			readyCount += 1
+		end
+	end
+	-- Ready cards first (keeping rarest-first order inside each group)
+	local cards: { Card } = {}
+	for _, card in all do
+		if passesFilter(card) then
+			table.insert(cards, card)
 		end
 	end
 	local position: { [string]: number } = {}
@@ -451,10 +556,8 @@ render = function()
 		end
 		return position[a.id] < position[b.id]
 	end)
-	subtitle.Text = if readyCount > 0
-		then `{readyCount} {if readyCount == 1 then "card" else "cards"} ready to condense · {SUBTITLE_TEXT}`
-		else SUBTITLE_TEXT
-	subtitle.TextColor3 = if readyCount > 0 then palette.good else palette.inkSoft
+	readyBadge.Text = `{readyCount} ready`
+	readyBadge.Visible = readyCount > 0
 	local selected: Card? = nil
 	for _, card in cards do
 		if card.id == selectedCardId then
@@ -469,7 +572,7 @@ render = function()
 	if #cards == 0 then
 		local filtering = searchText ~= "" or activeFilter ~= ALL_FILTER
 		local message = if filtering then "No cards match." else "No duplicates yet. Rip more packs!"
-		local empty = UIKit.label(list, message, Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
+		local empty = UIKit.label(list, message, Enum.Font.GothamBold, 15, palette.inkSoft)
 		empty.Size = UDim2.new(1, -10, 0, 40)
 	end
 	renderPane(selected)
@@ -485,6 +588,7 @@ function CondenserController.Open(part: BasePart)
 	machine = part
 	selectedCardId = nil
 	mainKey = nil
+	choosingMain = false
 	awaitingNewCard = nil
 	inFlight = false
 	panel.Visible = true
@@ -515,14 +619,20 @@ function CondenserController.Start()
 	if sizeLimit then
 		sizeLimit.MaxSize = PANEL_MAX_SIZE
 	end
-	subtitle = UIKit.label(panel, SUBTITLE_TEXT, Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
-	subtitle.Position = UDim2.fromOffset(16, 56)
-	subtitle.Size = UDim2.new(1, -32, 0, 22)
-	-- Search by name or #number, then filter chips (they scroll sideways on narrow screens)
+	Icon.header(panel, "Condenser", UIKit.HEADER_HEIGHT)
+	local header = panel:FindFirstChild("Header", true) :: Frame
+	readyBadge = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
+	readyBadge.AnchorPoint = Vector2.new(1, 0.5)
+	readyBadge.Position = UDim2.new(1, -64, 0.5, 0) -- clear of the round close button
+	readyBadge.Size = UDim2.fromOffset(110, 24)
+	readyBadge.TextXAlignment = Enum.TextXAlignment.Right
+	readyBadge.ZIndex = header.ZIndex + 2
+
+	-- The toolbar: search by name or #number, then All / Ready / Raising
 	local search = Instance.new("TextBox")
 	search.Name = "Search"
-	search.Position = UDim2.fromOffset(16, 82)
-	search.Size = UDim2.fromOffset(180, 34)
+	search.Position = UDim2.fromOffset(16, TOOLBAR_TOP + (BabyColors.SEGMENTED.hit - SEARCH_HEIGHT) / 2)
+	search.Size = UDim2.fromOffset(SEARCH_WIDTH, SEARCH_HEIGHT)
 	search.BackgroundColor3 = palette.row
 	search.ClearTextOnFocus = false
 	search.PlaceholderText = "Search name or #"
@@ -532,61 +642,38 @@ function CondenserController.Start()
 	search.TextColor3 = palette.ink
 	search.PlaceholderColor3 = palette.inkSoft
 	search.Parent = panel
-	UIKit.corner(search, 8)
+	UIKit.corner(search, SEARCH_HEIGHT / 2)
 	UIKit.outline(search, palette.rowEdge, 2)
+	local searchPadding = Instance.new("UIPadding")
+	searchPadding.PaddingLeft = UDim.new(0, 14)
+	searchPadding.PaddingRight = UDim.new(0, 14)
+	searchPadding.Parent = search
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		searchText = search.Text
 		render()
 	end)
-
-	local chips = Instance.new("ScrollingFrame")
-	chips.Name = "Filters"
-	chips.Position = UDim2.fromOffset(206, 80)
-	chips.Size = UDim2.new(1, -218, 0, 40)
-	chips.BackgroundTransparency = 1
-	chips.BorderSizePixel = 0
-	chips.ScrollBarThickness = 3
-	chips.ScrollingDirection = Enum.ScrollingDirection.X
-	chips.CanvasSize = UDim2.new()
-	chips.AutomaticCanvasSize = Enum.AutomaticSize.X
-	chips.Parent = panel
-	local chipLayout = Instance.new("UIListLayout")
-	chipLayout.FillDirection = Enum.FillDirection.Horizontal
-	chipLayout.Padding = UDim.new(0, 6)
-	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	chipLayout.Parent = chips
-	local filters = { ALL_FILTER, READY_FILTER, RAISING_FILTER }
-	local rarities: { string } = {}
-	for name in Rarities.Tiers do
-		table.insert(rarities, name)
-	end
-	table.sort(rarities, function(a, b)
-		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
+	local switchHolder = Instance.new("Frame")
+	switchHolder.Name = "Show"
+	switchHolder.BackgroundTransparency = 1
+	switchHolder.Position = UDim2.fromOffset(16 + SEARCH_WIDTH + 10, TOOLBAR_TOP)
+	switchHolder.Size = UDim2.new(1, -(16 + SEARCH_WIDTH + 10 + 16), 0, BabyColors.SEGMENTED.hit)
+	switchHolder.Parent = panel
+	local _, pick = UIKit.segmented(switchHolder, { ALL_FILTER, READY_FILTER, RAISING_FILTER }, function(value)
+		activeFilter = value
+		render()
 	end)
-	for _, name in rarities do
-		table.insert(filters, name)
-	end
-	for index, filter in filters do
-		local chip = UIKit.button(chips, filter, palette.row)
-		chip.LayoutOrder = index
-		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 34)
-		chip.TextSize = 13
-		-- A rarity's chip wears its colour as the ring (its colour as text doesn't read on white)
-		local tier = Rarities.Tiers[filter]
-		for _, ring in chip:GetChildren() do
-			if tier and ring:IsA("UIStroke") and ring.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
-				ring.Color = tier.color
-			end
-		end
-		chip.Activated:Connect(function()
-			activeFilter = filter
-			render()
-		end)
-		filterButtons[filter] = chip
-	end
+	setFilter = pick
+	setFilter(activeFilter)
 
 	list.Position = UDim2.fromOffset(12, LIST_TOP)
 	list.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -(LIST_TOP + 12))
+	-- Room round the rows for the chosen row's ring and a row growing under the mouse (nothing cut off)
+	local listPadding = Instance.new("UIPadding")
+	listPadding.PaddingLeft = UDim.new(0, 6)
+	listPadding.PaddingRight = UDim.new(0, EDGE + 6) -- a row grows to the right (its anchor is top-left in the list)
+	listPadding.PaddingTop = UDim.new(0, 6)
+	listPadding.PaddingBottom = UDim.new(0, 6)
+	listPadding.Parent = list
 
 	pane = Instance.new("ScrollingFrame")
 	pane.Name = "Details"
@@ -599,7 +686,7 @@ function CondenserController.Start()
 	pane.CanvasSize = UDim2.new()
 	pane.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	pane.Parent = panel
-	UIKit.corner(pane, 10)
+	UIKit.corner(pane, 12)
 
 	-- Condensing changes the binder; redraw with the new counts and stars
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
