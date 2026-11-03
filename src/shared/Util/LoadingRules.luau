@@ -3,11 +3,12 @@
 -- whether a slow save gets its note. Pure (callers pass the config in), so tests/ can run it in Lune.
 local LoadingRules = {}
 
--- art: your own cards' paintings have downloaded (the binder opens with every face drawn)
-export type Status = { character: boolean, data: boolean, art: boolean, creature: boolean, gear: boolean }
+-- art: your own cards' paintings have downloaded (the binder opens with every face drawn); shop: the product models,
+-- icons, pack fronts, covers and effect textures a first window shows (round 4: nothing pops in after the screen)
+export type Status = { character: boolean, data: boolean, art: boolean, shop: boolean, creature: boolean, gear: boolean }
 
 -- Each step and what it waits for: the cards step is the save and your cards' paintings
-local ORDER = { { "character" }, { "data", "art" }, { "creature" }, { "gear" } }
+local ORDER = { { "character" }, { "data", "art" }, { "shop" }, { "creature" }, { "gear" } }
 
 -- (step 1-4, or 5 once all are done; the bar's share; done: all done or out of time; slow: the save still loading
 -- after SLOW_SECONDS). The bar follows the first step not done, so a later one finishing early doesn't jump it ahead.
@@ -27,6 +28,17 @@ function LoadingRules.progress(status: Status, elapsed: number, cfg: any): (numb
 	local done = step > #ORDER or elapsed >= cfg.MAX_SECONDS
 	local slow = not status.data and elapsed >= cfg.SLOW_SECONDS
 	return step, (step - 1) / #ORDER, done, slow
+end
+
+-- Whether every fetch has finished one way or another (Enum.AssetFetchStatus names): a failed or timed-out asset
+-- counts as done, so one bad id can't hold the screen for MAX_SECONDS on every join
+function LoadingRules.settled(statuses: { string }): boolean
+	for _, status in statuses do
+		if status ~= "Success" and status ~= "Failure" and status ~= "TimedOut" then
+			return false
+		end
+	end
+	return true
 end
 
 -- The card ids in a CollectionChanged payload: its plain stacks' and its individual cards', each once

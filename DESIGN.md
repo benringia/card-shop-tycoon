@@ -1600,7 +1600,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, creature, fight gear), the teleport screen
+    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear), the teleport screen
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -1893,16 +1893,21 @@ their saved data.
 ### 10.6 UI style and HUD
 - **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
   Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
-  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Waking up your creature...",
+  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Stocking the shelves...", "Waking up your creature...",
   "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
   your own cards' paintings (small copies from the first `CollectionChanged`, kept drawn tiny in a hidden
   `CardArtCache` for the session, cards you get later too: Roblox only gets an image ready once something draws it,
   and preloading by id reports failures for pictures that draw fine; so binder pages show every face as they turn),
-  the summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
+  the shop's first pictures (round 4: the `PackModels` folder with every look, every UI icon, the pack fronts, the mascot
+  stickers, the binder covers and the level-up textures, images kept drawn; a failed or timed-out fetch counts as done,
+  `LoadingRules.settled`, and the step can never hold the screen), the summoned creature's model downloaded
+  (`CreatureReady`, set by CreatureController; none summoned counts as done) and
   the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
-  first-visit welcome cinematic starts when it fades.
+  first-visit welcome cinematic starts when it fades. Product pictures (`Util/ProductPicture`, a 3D model in a
+  ViewportFrame) redraw once their model has loaded, again when the shop step is done and each time their window opens:
+  a ViewportFrame doesn't redraw by itself when maps arrive, nor while its window is hidden (the round 4 grey pictures).
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**

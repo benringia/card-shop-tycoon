@@ -2,9 +2,12 @@
 -- Drives the loading screen (ReplicatedFirst/LoadingScreen, Config/LoadingScreen): tracks the character, the save (the
 -- server's DataLoaded attribute) and your own cards' paintings (kept drawn here, tiny, so binder pages show every face
 -- the moment they turn), the summoned creature (CreatureController's CreatureReady, or no creature summoned)
--- and the fight gear (Util/CombatAssets, downloaded now), and writes the step to LocalPlayer attributes the screen
+-- and the fight gear (Util/CombatAssets, downloaded now), plus the shop's first pictures (round 4: the product models
+-- with their maps, every UI icon, pack fronts, the mascot stickers, binder covers and level-up textures; a failed one
+-- counts as done), and writes the step to LocalPlayer attributes the screen
 -- follows (LoadingText, LoadingShare, LoadingNote, LoadingDone). Also hands TeleportService a copy of the screen, so
 -- teleports to and from the Frontier and the Dungeon show it too.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,12 +19,18 @@ local CardArt = require(Config:WaitForChild("CardArt"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Cards = require(Config:WaitForChild("Cards"))
 local LoadingScreen = require(Config:WaitForChild("LoadingScreen"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
+local Packs = require(Config:WaitForChild("Packs"))
+local HudMascot = require(Config:WaitForChild("HudMascot"))
+local BinderCovers = require(Config:WaitForChild("BinderCovers"))
+local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
 local LoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("LoadingRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
+local ProductPicture = require(ClientUtil:WaitForChild("ProductPicture"))
 
 local player = Players.LocalPlayer
 local started = os.clock()
@@ -29,6 +38,7 @@ local started = os.clock()
 local LoadingController = {}
 
 local gearReady = false
+local shopReady = false
 local artReady = false
 local artStarted = false
 local artCache: ScreenGui? = nil
@@ -97,6 +107,60 @@ local function preloadArt(payload: any)
 	end)
 end
 
+-- The shop's first pictures: the pack, deck box and display box models (meshes and every look's maps), every UI icon,
+-- the pack fronts, the mascot stickers, the binder covers and the level-up textures. Images are kept drawn (a picture
+-- is only ready once something draws it); PreloadAsync reports each fetch, and a failed or timed-out one counts as
+-- done (LoadingRules.settled). Then every product picture redraws.
+local function preloadShop()
+	local items: { any } = {}
+	-- The whole folder: its meshes and every look's SurfaceAppearance (game scripts can't read a SurfaceAppearance's
+	-- maps, but preloading the instance fetches them)
+	local packModels = ReplicatedStorage:FindFirstChild("PackModels")
+	if packModels then
+		table.insert(items, packModels)
+	end
+	local images: { string } = {}
+	for _, id in UIIcons do
+		table.insert(images, id)
+	end
+	for _, pack in Packs.ById do
+		if pack.art then
+			table.insert(images, pack.art)
+		end
+	end
+	for _, id in HudMascot.images do
+		table.insert(images, id)
+	end
+	for _, cover in BinderCovers.SETS do
+		table.insert(images, cover.art)
+	end
+	for _, id in LevelUpFx.IMAGES do
+		table.insert(images, id)
+	end
+	for _, image in images do
+		if typeof(image) == "string" and string.sub(image, 1, 13) == "rbxassetid://" then
+			table.insert(items, keepDrawn(image))
+		end
+	end
+	local statuses: { [string]: string } = {}
+	ContentProvider:PreloadAsync(items, function(content: string, status: Enum.AssetFetchStatus)
+		statuses[content] = status.Name
+	end)
+	-- PreloadAsync returns once each fetch has finished; wait out any that hasn't (to MAX_SECONDS)
+	while os.clock() - started < LoadingScreen.MAX_SECONDS do
+		local list: { string } = {}
+		for _, status in statuses do
+			table.insert(list, status)
+		end
+		if LoadingRules.settled(list) then
+			break
+		end
+		task.wait(0.1)
+	end
+	shopReady = true
+	ProductPicture.redrawAll()
+end
+
 -- A copy of the screen at its first step for teleports (the next place's loading screen carries it on)
 local function setTeleportScreen()
 	local folder = ReplicatedFirst:FindFirstChild("LoadingScreen")
@@ -133,6 +197,14 @@ function LoadingController.Start()
 		gearReady = true
 	end)
 	task.spawn(function()
+		-- Whatever goes wrong, the step finishes: nothing may hold the screen for MAX_SECONDS
+		local ok, err = pcall(preloadShop)
+		if not ok then
+			warn("[LoadingController] shop pictures:", err)
+		end
+		shopReady = true
+	end)
+	task.spawn(function()
 		local kind = workspace:GetAttribute("PlaceKind")
 		local placeKind = if typeof(kind) == "string" then kind else "Main"
 		while true do
@@ -140,6 +212,7 @@ function LoadingController.Start()
 				character = game:IsLoaded() and player.Character ~= nil,
 				data = player:GetAttribute("DataLoaded") == true,
 				art = artReady,
+				shop = shopReady,
 				creature = player:GetAttribute("CreatureReady") == true or nothingSummoned,
 				gear = gearReady,
 			}

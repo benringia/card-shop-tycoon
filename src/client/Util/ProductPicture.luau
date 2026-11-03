@@ -3,6 +3,7 @@
 -- model (Util/PackModels, the one on the shelves and the opening stage) turned a little in a ViewportFrame, other
 -- products their icon (Products icon). The row's text moves over to make room.
 local ContentProvider = game:GetService("ContentProvider")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -19,7 +20,35 @@ local MARGIN = 1.06 -- the model fills the picture but for this much air
 
 local ProductPicture = {}
 
+local pictures: { { view: ViewportFrame, model: Model } } = {} -- every picture built, to redraw once all has loaded
+local watchWindow: (view: ViewportFrame, model: Model) -> ()
+
 ProductPicture.WIDTH = 66 -- how far the row's text moves right
+
+-- Puts the model back into its ViewportFrame so the picture is drawn again with what has loaded
+local function redraw(view: ViewportFrame, model: Model)
+	if model.Parent == view then
+		model.Parent = nil
+		model.Parent = view
+	end
+end
+
+-- Redraws the picture a frame after any window it sits in opens (a hidden ViewportFrame doesn't draw its model)
+function watchWindow(view: ViewportFrame, model: Model)
+	local item: Instance? = view.Parent
+	while item and item:IsA("GuiObject") do
+		local holder = item :: GuiObject
+		holder:GetPropertyChangedSignal("Visible"):Connect(function()
+			if holder.Visible then
+				task.defer(function()
+					RunService.RenderStepped:Wait()
+					redraw(view, model)
+				end)
+			end
+		end)
+		item = item.Parent
+	end
+end
 
 -- The model framed in a ViewportFrame: a camera in front of it (models face -Z) far enough back that it fits both ways
 local function modelPicture(row: Frame, model: Model): ViewportFrame
@@ -42,16 +71,28 @@ local function modelPicture(row: Frame, model: Model): ViewportFrame
 	camera.CFrame = CFrame.lookAt(centre.Position - Vector3.new(0, 0, distance), centre.Position)
 	camera.Parent = view
 	view.CurrentCamera = camera
-	-- The menus are built at start, before the model's meshes and maps have loaded, and the ViewportFrame doesn't
-	-- redraw when they arrive (the pictures stayed blank): load them, then put the model back in to redraw it
+	-- The menus are built at start, before the model's meshes and maps have loaded, and a ViewportFrame doesn't redraw
+	-- when they arrive; nor does a model put back in while its window is hidden (round 4: the pictures stayed grey
+	-- after the loading screen). So the model is put back in once it has loaded and again each time its window opens.
+	table.insert(pictures, { view = view, model = model })
 	task.spawn(function()
 		ContentProvider:PreloadAsync({ model })
-		if model.Parent == view then
-			model.Parent = nil
-			model.Parent = view
-		end
+		redraw(view, model)
 	end)
+	watchWindow(view, model)
 	return view
+end
+
+-- Puts every picture's model back into its ViewportFrame, so it redraws with whatever has loaded since
+function ProductPicture.redrawAll()
+	for index = #pictures, 1, -1 do
+		local picture = pictures[index]
+		if not picture.view.Parent then
+			table.remove(pictures, index)
+		else
+			redraw(picture.view, picture.model)
+		end
+	end
 end
 
 function ProductPicture.add(row: Frame, productId: string, iconName: string): GuiObject
