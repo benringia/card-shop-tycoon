@@ -25,6 +25,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local SparkPath = require(Shared:WaitForChild("Util"):WaitForChild("SparkPath"))
+local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -82,6 +83,8 @@ local PartyBarController = {}
 
 local slotViews: { SlotView } = {}
 local slots: { [number]: string } = {} -- party slot -> beastId
+local heldLevel: { [string]: number } = {} -- beastId -> the level its chip keeps while XP sparks fly to it
+local landedHandlers: { (beastId: string) -> () } = {}
 local summoned: number? = nil
 local tip: Frame -- the hover / long-press tooltip over the bar
 local tipSlot: number? = nil -- the slot it describes
@@ -459,7 +462,7 @@ local function render()
 			view.art.Image = CardFace.artImage(card)
 			Icon.set(view.element, card.element)
 			view.element.Visible = own == nil -- a card's own picture already shows its creature
-			view.level.Text = `Lv {beast.level}`
+			view.level.Text = `Lv {heldLevel[beast.id] or beast.level}`
 			view.button.BackgroundColor3 = Cards.ELEMENTS[card.element] or EMPTY
 		else
 			view.button.BackgroundColor3 = EMPTY
@@ -538,17 +541,63 @@ local function announce()
 	end
 end
 
-export type XpGain = { id: string, levelUp: boolean? }
+-- from / to: the creature's level before and after the fight (the chip rolls between them as the sparks land)
+export type XpGain = { id: string, levelUp: boolean?, from: number?, to: number? }
+
+-- Called once per gain when its sparks land, or at once when there are no sparks to watch (LevelUpController starts
+-- the creature's level-up pillar then, spec 2026-11-04-round4-design section 9)
+function PartyBarController.OnLanded(handler: (beastId: string) -> ())
+	table.insert(landedHandlers, handler)
+end
+
+local function landed(beastId: string)
+	for _, handler in landedHandlers do
+		task.spawn(handler, beastId)
+	end
+end
+
+-- The level chip counts up from the held level to the creature's new one (round 4), then shows the real level
+local function rollLevel(view: any, beastId: string, toLevel: number)
+	local fromLevel = heldLevel[beastId]
+	heldLevel[beastId] = nil
+	if not fromLevel or fromLevel >= toLevel then
+		render()
+		return
+	end
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = math.min((os.clock() - started) / BAR.SPARKS.levelRoll, 1)
+		if view.level.Parent then
+			view.level.Text = `Lv {XpPill.countUp(fromLevel, toLevel, t)}`
+		end
+		if t >= 1 then
+			connection:Disconnect()
+			render()
+		end
+	end)
+end
 
 -- After a won monster fight (spec 2026-11-03-windows-round3-design): glowing sparks fly from `from` (where the
 -- monster was, GUI pixels) into each portrait whose creature is in `gains`, then "+xp XP" pops over it and its level
--- chip bumps (bigger on a level up). Skipped while a window covers the HUD or the bar is hidden.
+-- chip bumps (bigger on a level up) and, on a level up, counts up from the old level (round 4). Skipped while a window
+-- covers the HUD or the bar is hidden.
 function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: number)
 	local look = BAR.SPARKS
 	local screen = UIController.GetScreenGui()
 	if not cushion or not cushion.Visible or UIKit.anyPanelOpen() or xp <= 0 then
+		for _, gain in gains do
+			landed(gain.id)
+		end
 		return
 	end
+	-- Each levelled-up creature's chip keeps its old level while the sparks fly
+	for _, gain in gains do
+		if gain.levelUp and gain.from then
+			heldLevel[gain.id] = gain.from
+		end
+	end
+	render()
 	local origin = screen.AbsolutePosition
 	local color = rgb(look.color)
 	for _, gain in gains do
@@ -560,6 +609,8 @@ function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: nu
 		end
 		local view = if slot then slotViews[slot] else nil
 		if not view then
+			heldLevel[gain.id] = nil
+			landed(gain.id)
 			continue -- swapped out mid-fight: no portrait to fly to
 		end
 		local target = view.button.AbsolutePosition + view.button.AbsoluteSize / 2 - origin
@@ -593,13 +644,16 @@ function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: nu
 		end
 		-- Landed: "+xp XP" over the portrait and a bump on its level chip
 		task.delay((count - 1) * look.stagger + look.seconds, function()
+			landed(gain.id)
 			if not view.button.Parent then
+				heldLevel[gain.id] = nil
 				return
 			end
 			Motion.bump(view.level)
 			if gain.levelUp then
 				celebrate(slot :: number)
 			end
+			rollLevel(view, gain.id, gain.to or 0)
 			local pop = UIKit.label(screen, `+{xp} XP`, Enum.Font.FredokaOne, look.popText, WHITE)
 			pop.AnchorPoint = Vector2.new(0.5, 1)
 			pop.Position = UDim2.fromOffset(target.X, target.Y - view.button.AbsoluteSize.Y / 2)

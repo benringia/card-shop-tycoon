@@ -1958,7 +1958,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   `HudLayout.XP_PILL`); the buff a white chip in the perk's colour. **XP sparks** (owner 2026-11-03: into the party
   portraits, where a monster win's XP goes; `Util/SparkPath`, `Party.BAR.SPARKS`): after a won wild fight, glowing
   lilac sparks fly on a curve from where the monster stood into each portrait whose creature got XP, then "+N XP"
-  pops over it and its level chip bumps (a level up celebrates); skipped while a window covers the HUD. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
+  pops over it and its level chip bumps (a level up celebrates, and the chip keeps the old level while the sparks fly, then counts up to the new one in 0.4 s: round 4, `BAR.SPARKS.levelRoll`, the server sends each card's `fromLevel`); skipped while a window covers the HUD. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
   under a mouse a tile gently squashes, stretches a little as it hops up 5 px, rebounds and settles 3% bigger and 4 px
   higher, about 0.45 s (owner 2026-11-03: a subtler bounce; tiles 20 px apart); a press squashes it flat (touch too) and springs back; any newer hover, leave, press or a
   release anywhere cancels what's running, and the hovered tile draws over its neighbours (`tests/SquishRules` checks a

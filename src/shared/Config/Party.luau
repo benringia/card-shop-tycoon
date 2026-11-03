@@ -626,6 +626,7 @@ return {
 			popText = 16,
 			popRise = 26,
 			popSeconds = 1.2,
+			levelRoll = 0.4, -- seconds the level chip counts up from the old level once the sparks land
 		},
 	},
 }

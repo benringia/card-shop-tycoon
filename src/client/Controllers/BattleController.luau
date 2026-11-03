@@ -1165,7 +1165,12 @@ local function showEnd(summary: any, wasBoss: boolean, monsterAt: Vector2?)
 			local gains = {}
 			for _, entry in summary.party do
 				if typeof(entry) == "table" and typeof(entry.id) == "string" then
-					table.insert(gains, { id = entry.id, levelUp = entry.levelUp == true })
+					table.insert(gains, {
+						id = entry.id,
+						levelUp = entry.levelUp == true,
+						from = tonumber(entry.fromLevel),
+						to = tonumber(entry.level),
+					})
 				end
 			end
 			local screen = UIController.GetScreenGui().AbsoluteSize

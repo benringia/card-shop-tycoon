@@ -658,6 +658,7 @@ local function giveXp(player: Player, partyIds: { string }, each: number): { any
 				id = beastId,
 				cardId = after.cardId,
 				level = after.level,
+				fromLevel = level, -- the portrait's level chip rolls from this one as the sparks land
 				levelUp = after.level > level,
 				from = from,
 				to = BeastRules.levelProgress(after.level, after.xp),
