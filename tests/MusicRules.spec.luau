@@ -40,7 +40,11 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume > 0.013 and town.volume <= 0.03, true, "louder than 0.013 (owner: hard to hear) but under 0.05 (still loud)")
+		expect.equal(town.volume > 0.022 and town.volume <= 0.06, true, "louder than 0.022 (owner: still too low)")
+		-- The loudest part never louder (owner): the limiter's ceiling (volume in dB plus threshold) stays at or under
+		-- where it was at volume 0.022 with threshold -42 dB
+		local ceiling = 20 * math.log10(town.volume) + town.compressor.threshold
+		expect.equal(ceiling <= 20 * math.log10(0.022) - 42 + 0.01, true, `ceiling {ceiling} dB`)
 		local squash = town.compressor
 		expect.equal(squash ~= nil, true, "a compressor evens out the louder parts (owner: too loud in the later parts)")
 		expect.equal(squash.threshold < 0 and squash.threshold >= -60, true, "threshold in dB, -60 to 0")

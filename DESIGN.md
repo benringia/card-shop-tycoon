@@ -125,7 +125,7 @@ area's name stands where each trail leaves the island (gaps in the hedge), and "
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
 **Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `TownMusicController`, `Config/Music`,
-`Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.022 through a limiter (`compressor`, ratio 20: the track swells in its later parts; owner 2026-11-03: louder, but the loudest part never louder), with 6 s of
+`Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.045 through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; owner 2026-11-03: louder, but the loudest part never louder, so volume and threshold move together), with 6 s of
 quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
 valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
 (`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
