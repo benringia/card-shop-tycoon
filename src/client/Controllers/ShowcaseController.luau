@@ -147,7 +147,7 @@ local function passesFilter(card: Card, foil: boolean): boolean
 end
 
 local STEP_BUTTON_WIDTH = 80
-local STEP_BUTTON_COLOR = Color3.fromRGB(70, 110, 190)
+local STEP_BUTTON_COLOR = UIKit.Colors.Secondary -- other choices (sky in the cotton candy look)
 
 local function flush(token: number)
 	local part = casePart

@@ -13,6 +13,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local UIStyle = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIStyle"))
 local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
+local BabyColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("BabyColors"))
+local SoftColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("SoftColors"))
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
 
@@ -111,6 +113,73 @@ end
 -- The colours for things built inside `instance`'s window (dark windows get today's tokens, unchanged)
 function UIKit.colorsFor(instance: Instance): Palette
 	return if UIKit.themeOf(instance) == "cream" then CREAM_PALETTE else DARK_PALETTE
+end
+
+-- The cotton candy buttons (spec 2026-11-03-cotton-candy-ui-design): soft inside a themed ("cream") window or under
+-- anything marked SoftButtons (the binder's screen); everything else (fights, the pack opening) keeps the candy lip
+function UIKit.isSoft(instance: Instance): boolean
+	local current: Instance? = instance
+	while current do
+		if current:GetAttribute("SoftButtons") == true then
+			return true
+		end
+		local theme = current:GetAttribute("Theme")
+		if theme == "cream" then
+			return true
+		elseif theme == "dark" then
+			return false
+		end
+		if current:IsA("LayerCollector") then
+			break
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function toRgb(color: Color3): { number }
+	return { math.floor(color.R * 255 + 0.5), math.floor(color.G * 255 + 0.5), math.floor(color.B * 255 + 0.5) }
+end
+
+local function fromRgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- A named kit colour (Colors.Accent, Secondary, Danger, Success, Locked, Row, Panel) to its baby fill
+-- (Config/BabyColors ROLES); any other colour is kept
+function UIKit.softFill(color: Color3): Color3
+	for role, name in BabyColors.ROLES do
+		local token = (UIKit.Colors :: any)[role]
+		if token == color then
+			return UIStyle.BABY[name].fill
+		end
+	end
+	return color
+end
+
+-- The soft glow (Config/BabyColors GLOW) round `parent`, whose corners are `corner` px round: `color`, dropped `drop` px,
+-- `transparency` see-through. Drawn over the parent, but its middle is clear, so only the glow outside shows.
+function UIKit.glow(parent: GuiObject, color: Color3, corner: number, drop: number, transparency: number): ImageLabel
+	local look = BabyColors.GLOW
+	local scale = math.max(corner, 1) / look.corner
+	local spread = look.margin * scale
+	local inset = look.margin + look.corner
+	local glow = Instance.new("ImageLabel")
+	glow.Name = "Glow"
+	glow.BackgroundTransparency = 1
+	glow.Image = look.image
+	glow.ImageColor3 = color
+	glow.ImageTransparency = transparency
+	glow.ScaleType = Enum.ScaleType.Slice
+	glow.SliceCenter = Rect.new(inset, inset, look.size - inset, look.size - inset)
+	glow.SliceScale = scale
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.new(0.5, 0, 0.5, drop)
+	glow.Size = UDim2.new(1, spread * 2, 1, spread * 2)
+	glow.ZIndex = 0
+	glow:SetAttribute("Drop", drop)
+	glow.Parent = parent
+	return glow
 end
 
 UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another one (card picker) goes higher
@@ -325,6 +394,79 @@ end
 
 -- A candy button: its colour darkening down the face to a darker lip along the bottom (a gradient, so it follows
 -- colour changes), a thick dark outline, and outlined white text (navy on light colours). Text set by hand stays as set.
+-- The cotton candy look on a new button (spec 2026-11-03-cotton-candy-ui-design): a flat baby colour (a named kit
+-- colour becomes its baby fill, now and whenever a controller sets one later), a white outline, a soft glow in its own
+-- colour, a faint lighter band along the top, plum text on light fills and white text outlined in the deep shade on
+-- bright ones (a text colour a controller set itself is kept), and a squishy press. No dark lip.
+local function softButton(button: TextButton): TextButton
+	local look = BabyColors.SOFT_BUTTON
+	Motion.press(button, true)
+	UIKit.outline(button, CREAM.OUTLINE, look.outline)
+	-- Callers pad the text (iconButton makes room for its picture), like on the candy buttons
+	local padding = Instance.new("UIPadding")
+	padding.Parent = button
+	UIKit.glow(button, button.BackgroundColor3, look.corner, look.glowDrop, look.glowTransparency)
+	local shine = Instance.new("Frame")
+	shine.Name = "Shine"
+	shine.AnchorPoint = Vector2.new(0.5, 0)
+	shine.BackgroundColor3 = Color3.new(1, 1, 1)
+	shine.BackgroundTransparency = look.shineTransparency
+	shine.BorderSizePixel = 0
+	shine.Parent = button
+	UIKit.corner(shine, look.shineHeight)
+	-- The padding moves children too: keep the glow and the shine on the whole button whatever it is
+	local function refit()
+		local left, right = padding.PaddingLeft.Offset, padding.PaddingRight.Offset
+		local top, bottom = padding.PaddingTop.Offset, padding.PaddingBottom.Offset
+		local glow = button:FindFirstChild("Glow")
+		if glow and glow:IsA("ImageLabel") then
+			local spread = BabyColors.GLOW.margin * glow.SliceScale
+			local drop = glow:GetAttribute("Drop")
+			glow.Size = UDim2.new(1, spread * 2 + left + right, 1, spread * 2 + top + bottom)
+			glow.Position = UDim2.new(0.5, (right - left) / 2, 0.5, (if typeof(drop) == "number" then drop else 0) + (bottom - top) / 2)
+		end
+		shine.Size = UDim2.new(1, -look.corner * 2 + left + right, 0, look.shineHeight)
+		shine.Position = UDim2.new(0.5, (right - left) / 2, 0, look.shineInset - top)
+	end
+	refit()
+	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		padding:GetPropertyChangedSignal(side):Connect(refit)
+	end
+	button.ChildAdded:Connect(function(child)
+		if child.Name == "Glow" then
+			task.defer(refit) -- a new glow (the round close button's) fits the padding too
+		end
+	end)
+	local textEdge = UIKit.outlined(button)
+	local autoText: Color3? = nil -- the text colour this button last picked for itself
+	local function restyle()
+		local fill = UIKit.softFill(button.BackgroundColor3)
+		if fill ~= button.BackgroundColor3 then
+			button.BackgroundColor3 = fill -- fires this again with the baby colour
+			return
+		end
+		local rgb = toRgb(fill)
+		local glow = button:FindFirstChild("Glow")
+		if glow and glow:IsA("ImageLabel") then
+			glow.ImageColor3 = fill
+		end
+		textEdge.Color = fromRgb(SoftColors.deepOf(rgb, BabyColors.COLORS))
+		local pick = if SoftColors.textOn(rgb, BabyColors.LIGHT_LUMA) == "ink" then UIStyle.BABY_INK else Color3.new(1, 1, 1)
+		if autoText == nil or button.TextColor3 == autoText then
+			button.TextColor3 = pick
+		end
+		autoText = pick
+	end
+	local function outlineText()
+		textEdge.Enabled = UIKit.isLight(button.TextColor3) -- white text gets the deep outline; plum text none
+	end
+	restyle()
+	outlineText()
+	button:GetPropertyChangedSignal("BackgroundColor3"):Connect(restyle)
+	button:GetPropertyChangedSignal("TextColor3"):Connect(outlineText)
+	return button
+end
+
 function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	local button = Instance.new("TextButton")
 	button.BackgroundColor3 = color
@@ -334,6 +476,9 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	button.Text = text
 	button.Parent = parent
 	UIKit.corner(button, 12)
+	if UIKit.isSoft(parent) then
+		return softButton(button)
+	end
 	Motion.press(button)
 
 	local lip = Instance.new("UIGradient")
@@ -386,11 +531,18 @@ function UIKit.closeButton(parent: GuiObject): TextButton
 	close.Font = Enum.Font.FredokaOne
 	close.TextSize = 26
 	close.ZIndex = parent.ZIndex + 3
-	if UIKit.themeOf(parent) == "cream" then
+	if UIKit.isSoft(parent) then
 		local round = close:FindFirstChildOfClass("UICorner")
 		if round then
-			round.CornerRadius = UDim.new(0.5, 0) -- a red circle with a white outline
+			round.CornerRadius = UDim.new(0.5, 0) -- a pink circle with a white outline
 		end
+		-- Its glow follows the circle, not a button's rounded square
+		local old = close:FindFirstChild("Glow")
+		if old then
+			old:Destroy()
+		end
+		local look = BabyColors.SOFT_BUTTON
+		UIKit.glow(close, close.BackgroundColor3, 26, look.glowDrop, look.glowTransparency)
 	end
 	return close
 end
@@ -479,16 +631,10 @@ function UIKit.creamWindow(frame: Frame): (Frame, UIStroke)
 	fill.Rotation = 90
 	fill.Color = ColorSequence.new(CREAM.BODY_TOP, CREAM.BODY_BOTTOM)
 	fill.Parent = face
-	local shadow = Instance.new("Frame")
-	shadow.Name = "Shadow"
-	shadow.Position = UDim2.fromOffset(0, CREAM.SHADOW.offset)
-	shadow.Size = UDim2.fromScale(1, 1)
-	shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-	shadow.BackgroundTransparency = CREAM.SHADOW.transparency
-	shadow.BorderSizePixel = 0
-	shadow.ZIndex = -1
-	shadow.Parent = frame
-	UIKit.corner(shadow, CREAM.CORNER)
+	-- A soft lilac glow round the window instead of a dark shadow (spec 2026-11-03-cotton-candy-ui-design)
+	local look = BabyColors.WINDOW_GLOW
+	local glow = UIKit.glow(frame, UIStyle.BABY[look.color].fill, CREAM.CORNER, look.drop, look.transparency)
+	glow.ZIndex = -1
 	return face, edge
 end
 
@@ -498,7 +644,14 @@ end
 -- (the binder): the frame is the dark edge colour and a "Body" child paints the slate face LIP pixels short of the
 -- bottom, so the edge shows there as a drop lip under a thick outline. The frame's Theme attribute tells the pieces
 -- built inside which look to take. Starts hidden. The title label is named "Title" for callers that change it.
-function UIKit.panel(parent: Instance, name: string, title: string, band: string?, theme: ("cream" | "dark")?): (Frame, ScrollingFrame)
+function UIKit.panel(
+	parent: Instance,
+	name: string,
+	title: string,
+	band: string?,
+	theme: ("cream" | "dark")?,
+	softButtons: boolean? -- a dark panel whose buttons still take the cotton candy look (the binder's screen)
+): (Frame, ScrollingFrame)
 	local look = theme or "cream"
 	local cream = look == "cream"
 	local frame = Instance.new("Frame")
@@ -509,6 +662,9 @@ function UIKit.panel(parent: Instance, name: string, title: string, band: string
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame:SetAttribute("Theme", look)
+	if softButtons then
+		frame:SetAttribute("SoftButtons", true)
+	end
 	frame.Parent = parent
 	local body: Frame, edge: UIStroke
 	if cream then

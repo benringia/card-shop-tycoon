@@ -70,19 +70,31 @@ function Motion.reset(gui: GuiObject)
 	end
 end
 
--- Squashes while held, springs back on release
-function Motion.press(button: GuiButton)
+-- Squashes while held, springs back on release. `squishy` (the cotton candy buttons, spec
+-- 2026-11-03-cotton-candy-ui-design): a deeper dip, and the release bounces past full size before it settles.
+function Motion.press(button: GuiButton, squishy: boolean?)
 	local pressInfo = TweenInfo.new(UIMotion.PRESS_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local releaseInfo = TweenInfo.new(UIMotion.PRESS_SECONDS * 2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local bounceInfo = TweenInfo.new(UIMotion.SQUISH_BOUNCE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local settleInfo = TweenInfo.new(UIMotion.SQUISH_SETTLE_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 	button.MouseButton1Down:Connect(function()
 		if not closing[button] then
-			play(button, UIMotion.PRESS_SCALE, pressInfo)
+			play(button, if squishy then UIMotion.SQUISH_PRESS else UIMotion.PRESS_SCALE, pressInfo)
 		end
 	end)
 	local function release()
-		if not closing[button] and getScale(button).Scale < 1 then
-			play(button, 1, releaseInfo)
+		if closing[button] or getScale(button).Scale >= 1 then
+			return
 		end
+		if not squishy then
+			play(button, 1, releaseInfo)
+			return
+		end
+		play(button, UIMotion.RELEASE_OVERSHOOT, bounceInfo).Completed:Once(function(state)
+			if state == Enum.PlaybackState.Completed then
+				play(button, 1, settleInfo)
+			end
+		end)
 	end
 	button.MouseButton1Up:Connect(release)
 	button.MouseLeave:Connect(release)

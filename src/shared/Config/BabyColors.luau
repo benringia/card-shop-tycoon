@@ -31,4 +31,17 @@ return {
 	-- cut out, SIZE px; the square sits MARGIN px in with a CORNER px radius. UIKit.glow 9-slices it at MARGIN + CORNER
 	-- and scales the slices so the hole's corner matches the thing it glows round.
 	GLOW = { image = "rbxassetid://110423921326900", size = 128, margin = 32, corner = 24 },
+	-- A soft button (UIKit.button in a themed window or the binder): its white outline and corner (px), its glow's drop
+	-- (px) and see-through share, and the lighter band along its top (px from the top, px tall, see-through share)
+	SOFT_BUTTON = {
+		outline = 3,
+		corner = 12,
+		glowDrop = 4,
+		glowTransparency = 0.45,
+		shineInset = 3,
+		shineHeight = 3,
+		shineTransparency = 0.6,
+	},
+	-- The soft glow under a window instead of the dark shadow: its colour (a COLORS name), drop (px), see-through share
+	WINDOW_GLOW = { color = "lilac", drop = 8, transparency = 0.55 },
 }
