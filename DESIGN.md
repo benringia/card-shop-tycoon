@@ -1665,7 +1665,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
         │   ├── IconTips.luau   # the words each label-less icon's tooltip shows
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
-        │   ├── CreamTheme.luau # the cream windows' colours, outlines, corners, header bands (plain data)
+        │   ├── CreamTheme.luau # the windows' colours (cotton candy now), outlines, corners, header bands (plain data)
+        │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
+        │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
@@ -1758,7 +1760,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
             ├── XpPaws.luau        # the level pill's paw prints: each one's fill from XP progress (pure, Lune-tested)
             ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
-            ├── ContrastRules.luau # WCAG contrast of two colours, for the cream theme's text (pure, Lune-tested)
+            ├── ContrastRules.luau # WCAG contrast and hue of colours, for the window theme's text (pure, Lune-tested)
+            ├── SoftColors.luau    # a soft button's text colour and deep outline from its fill (pure, Lune-tested)
+            ├── SquishRules.luau   # the HUD tiles' hover: length, widest, fits the gap (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1855,29 +1859,39 @@ their saved data.
   first-visit welcome cinematic starts when it fades.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
-- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows wear the **cream & candy** look (owner
-  2026-11-03, pick A of two, to match the creature pals HUD; spec `docs/superpowers/specs/2026-11-03-cream-windows-design.md`;
-  before it, look E "bold hybrid"). `UIKit.panel(parent, name, title, band, theme?)` builds a cream window by default: a
-  soft top-to-bottom cream body (`Config/CreamTheme`, plain data, turned into Color3s as `UIStyle.CREAM`) with a thick
-  white outline, round corners and a soft shadow under it, a header band in the colour of the window's HUD button
-  (Party lilac, Shop and Shelf mint, Prices and Set Price sky, Jobs pink, Bag coral, the card case, picker and card
-  detail blue, Boss Ladder purple, every other window sky) with its icon and an outlined white title, and a round red
-  close button with a white outline. Inside: white rows, slots and stat cards with a soft cream edge; empty slots and
-  detail panes a deeper cream (no big white slabs); brown text, a lighter brown for secondary text, a dark amber for
-  hints and small headings, and deep green, red and orange for good, bad and Power (the bright ones read about 2:1 on
-  cream; `tests/ContrastRules` checks every text colour reaches 4.5:1 on every cream surface); the chosen thing a gold
-  ring. Candy buttons (the colour darkening down the face to a bottom lip, white text with a soft outline, navy text on
-  light colours) wear a 3 px white outline: gold for the main action, blue (`Colors.Secondary`) for other choices, red
-  to remove or leave, each with an icon (`UIKit.iconButton`). Pills and chips keep their colours with white outlines;
-  rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail, small
-  confirm boxes, the arena challenge popups) call `UIKit.creamWindow(frame)`. The window's `Theme` attribute tells the
-  pieces built inside it which look to take: `UIKit.themeOf(instance)` and `UIKit.colorsFor(instance)` (a palette:
-  panel, row, rowEdge, slotEmpty, ink, inkSoft, hint, good, bad, power, track, outline); `Colors.Text` / `Subtext`
-  labels and `UIKit.outline` pick by it. **Dark** (theme "dark", the look E tokens: slate bodies with a thick near-black
-  outline and a drop lip, slate rows, outlined white text): the binder (its book, pages, desk, tabs and buttons), every
-  fight screen, tooltips, the pack opening and the loading screen. Helpers: `outlined` (text outline), `pill` (rarity,
-  grade, element and count chips), `bar` and `statRow` (chunky green bars on cream or dark tracks), `stars` (star
-  icons, never the character), `textSize` (body 15, small 13, name 22, number 23, title 28; 85% on phones). Colour
+- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**
+  look (owner 2026-11-03, look A of three; spec `docs/superpowers/specs/2026-11-03-cotton-candy-ui-design.md`; before
+  it the cream & candy look, `2026-11-03-cream-windows-design.md`, and before that look E "bold hybrid"). Six baby
+  colours that pop (`Config/BabyColors`: bubblegum pink, mint, sky, lilac, butter, peach, plus grey-lilac and white),
+  each with a light and a deep shade (`UIStyle.BABY`); plum ink. `UIKit.panel(parent, name, title, band, theme?,
+  softButtons?)` builds a themed window by default (the code still calls the theme "cream"; `Config/CreamTheme`): a
+  milky pink-lavender body with a thick white outline, round corners and a soft lilac glow under it, a header band in
+  the baby colour of the window's HUD button (Bag pink, Cards and the card windows sky, Bosses and Party lilac, Shop
+  and Shelf mint, Prices and Set Price peach, Jobs sky, every other window sky), and a round pink close button with a
+  white outline. Inside: white rows, slots and stat cards with a soft lilac edge; empty slots and detail panes a pale
+  lilac (no big white slabs); plum text, a lighter plum for secondary text, a dark amber for hints and small headings,
+  and deep green, red, orange and mustard for good, bad, Power and fair prices (`tests/ContrastRules` checks every
+  text colour reaches 4.5:1 on every window surface); the chosen thing a gold ring. **Soft buttons** (`UIKit.button`
+  wherever `UIKit.isSoft` says: inside a themed window, or under `SoftButtons`, which the binder's screen sets): a flat
+  baby colour, a 3 px white outline, a soft glow of the same colour (one script-made picture, `assets/ui/soft/Glow.png`
+  from `tools/ui-art/make_soft_glow.py`, 9-sliced and tinted by `UIKit.glow`), a faint lighter band along the top and
+  no dark lip; white labels outlined in the colour's deep shade, plum text on butter and white (`Util/SoftColors`,
+  `tests/SoftColors`: every deep shade reads white at 3:1). The kit's named colours map to baby colours automatically
+  (`BabyColors.ROLES`, `UIKit.softFill`): the main action butter, other choices sky, remove or leave pink, summoned or
+  confirm mint, can't-use-now grey-lilac, neutral white with plum text, also when a controller sets one later. A press
+  dips the button and bounces it past full size before it settles. Pills and chips keep their colours with white
+  outlines; rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail,
+  small confirm boxes, the arena challenge popups) call `UIKit.creamWindow(frame)`. The window's `Theme` attribute
+  tells the pieces built inside which look to take: `UIKit.themeOf(instance)` and `UIKit.colorsFor(instance)` (a
+  palette: panel, row, rowEdge, slotEmpty, ink, inkSoft, hint, good, bad, power, fair, track, outline); `Colors.Text` /
+  `Subtext` labels and `UIKit.outline` pick by it. **Dark** (theme "dark", the look E tokens: slate bodies with a thick
+  near-black outline and a drop lip, slate rows, outlined white text, candy buttons with a dark bottom lip): the
+  binder's book and chrome (its buttons are soft: the close, magnifier, page arrows, Cards / Bag tabs, Rarity guide and
+  the filters panel's buttons; the open tab and chosen filters butter, the rest white), every fight screen, tooltips,
+  the pack opening, the loading screen, the welcome cinematic, the Dungeon's run HUD and the placement bar. Helpers:
+  `outlined` (text outline), `pill` (rarity, grade, element and count chips), `bar` and `statRow` (chunky green bars on
+  pale or dark tracks), `stars` (star icons, never the character), `textSize` (body 15, small 13, name 22, number 23,
+  title 28; 85% on phones). Colour
   rules on every screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
   green / C grey, money green with the Cash icon, Power orange with the Power icon, green good, red bad, gold for hints
   and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
@@ -1894,18 +1908,27 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   premium body; it was Nunito Bold). Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
-  button shrinks them away; buttons squash while held; number pills bump when they change.
+  button shrinks them away; buttons squash while held (soft buttons dip to 0.9 and bounce to 1.05 before settling);
+  number pills bump when they change.
 - **Creature pals HUD** (owner 2026-11-03, pick C of three mockups; spec
   `docs/superpowers/specs/2026-11-03-hud-creature-pals-design.md`): the always-on HUD grows out of the core loop.
-  Tiles are chunky rounded squares, each in its own soft gradient (`HudLayout.CANDY`) with a thick white outline, a soft
-  shadow and the key letter in a white circle: Cards blue and Bag coral with little round ears, Bosses purple with
-  small white horns, Manage yellow (darker while its tray is open), Admin grey, Rip and Drop orange; the Manage tray's
-  tiles mint, sky, pink and lilac by their order (`CANDY_FAN`). The party bar is a cream cushion with round portraits;
+  **Tiles** (owner 2026-11-03, cotton candy tile pick 1 "squircle, the icon pops out"; `Config/SoftHud`): one clean
+  rounded square per tile in its baby colour (a gradient from the light shade to the full colour), a thick white
+  outline, a soft glow of its own colour, the icon big and over the top edge with a faded shadow under it, the label
+  white outlined in the deep shade and the key letter in a white circle: Manage butter (deeper while its tray is open),
+  Cards sky, Bag pink, Bosses lilac, Admin grey-lilac, Rip and Drop peach; the Manage tray's tiles mint, peach, sky and
+  lilac by their order. The left column leaves room for each icon over its tile (`HudLayout.SIDE_GAP`). The party bar
+  is a cream cushion with round portraits, each in a thick rim in its creature's element colour (Ember peach, Tide
+  sky, Bloom mint, Volt butter, Shade lilac; avatar pick b) with its deep shade showing under it, a thin white ring, the
+  picture sunk in and a shine on top, the slot number outlined in the element colour, the summoned one bigger and
+  higher (`Party.BAR` RIM, RIM_BASE, SINK, SHINE);
   cash a green pill under a big gold coin; the level a white pill with the gold star and five paw prints that fill
   orange with XP, each gradually, with the numbers right under them ("90k / 226k", "MAX" at the top; `Util/XpPaws`,
-  owner 2026-11-03: in view, not in a tooltip); the buff a white chip in the perk's colour. **Hover** (owner 2026-11-03,
-  pick 1 of 3, `HudLayout.HOVER`): under a mouse a tile springs up off its shadow with a soft overshoot, grows 7%, its
-  shadow drops and its ears perk outwards (horns tilt); the Party pill springs up too. **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
+  owner 2026-11-03: in view, not in a tooltip); the buff a white chip in the perk's colour. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
+  under a mouse a tile squashes wide and short, stretches as it hops up, rebounds and settles 6% bigger and a little
+  higher, about 0.45 s; a press squashes it flat (touch too) and springs back; any newer hover, leave, press or a
+  release anywhere cancels what's running, and the hovered tile draws over its neighbours (`tests/SquishRules` checks a
+  tile at its widest, key chip and all, stays inside the gap); the Party pill springs up too. **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
   Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
   cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
   (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,
