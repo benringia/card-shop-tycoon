@@ -286,7 +286,17 @@ local function refresh(character: Model)
 end
 
 local function watchCharacter(character: Model)
+	-- The body arrives after CharacterAdded: a sword placed before its UpperTorso exists hangs on nothing and falls out
+	-- of the world (the owner's sword vanished from their back), so wait for the torso first
+	character:WaitForChild("UpperTorso", Swords.BODY_WAIT)
 	refresh(character)
+	-- A body part replaced later (a new body applied) leaves the weld on a part that's gone: put the sword on the new one
+	character.ChildAdded:Connect(function(child)
+		local view = views[character]
+		if view and (child.Name == "UpperTorso" or child.Name == "RightHand") then
+			place(view, character, view.inHand)
+		end
+	end)
 	character:GetAttributeChangedSignal("Sword"):Connect(function()
 		refresh(character)
 	end)
