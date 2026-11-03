@@ -41,6 +41,11 @@ return {
 		expect.equal(HudMascotRules.bounce(1, CFG), 1)
 	end,
 
+	["a duck goes far enough that a breathing, bouncing sticker still hides"] = function()
+		local cfg = { breath = { scale = 0.03 }, tap = { scale = 0.12 } }
+		expect.near(HudMascotRules.duckTravel(100, cfg :: any), 115, 1e-9)
+	end,
+
 	["no picture means no headroom"] = function()
 		expect.equal(HudMascotRules.headroom(CFG), 40)
 		expect.equal(HudMascotRules.headroom({ headroom = 40, images = { peek = "", tail = "" } } :: any), 0)
@@ -56,5 +61,10 @@ return {
 		end
 		expect.equal(m.blink.every[1] > 0 and m.blink.every[2] >= m.blink.every[1], true)
 		expect.equal(m.voice.volume > 0 and m.voice.volume <= 0.5, true, "quiet")
+		-- Everything about this creature is config, so another one needs no code (spec goal, docs/hud-mascot.md)
+		expect.equal(m.tapArea.w >= 48 / 0.7 and m.tapArea.h >= 48 / 0.7, true, "a finger-sized tap area at the smallest HUD scale (0.7)")
+		expect.equal(typeof(m.tail.angle) == "number" and typeof(m.tail.at[1]) == "number" and typeof(m.tail.at[2]) == "number", true, "the tail's angle and spot")
+		expect.equal(#m.crease == 3, true, "the closed eye's line colour")
+		expect.equal(m.tilt.period > 0 and m.tilt.degrees > 0 and m.clipPad >= 0, true, "the breathing tilt and room round the sticker")
 	end,
 }

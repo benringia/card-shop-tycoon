@@ -781,7 +781,7 @@ an empty one picks a card in the binder. Hovering a card (or holding a finger on
 then doesn't summon) shows its tooltip above the bar (`CardTips.copy`): the card, name, grade, level, Power, HP / ATK
 / SPD bars, its perk and the resting countdown, so you don't need the binder. When the party changes, a toast says
 so ("Cindercub joined your party!", "Cindercub swapped in for Ashbeak!", "Ashbeak left your party";
-`PartyRules.changes` / `changeText`, Lune-tested) and the slot a card joins pops up with a white rim
+`PartyRules.changes` / `changeText`, Lune-tested) and the slot a card joins pops up with its ring flashing gold
 (`Party.BAR.POP`). Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
 
@@ -1587,7 +1587,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
-    │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
+    │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)

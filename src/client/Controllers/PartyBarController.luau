@@ -7,7 +7,6 @@
 -- an hourglass and "2:41". Hovering a card (or holding a finger on it) shows its tooltip above the bar: Power, HP / ATK / SPD
 -- bars, perk and rest (Util/CardTips), so you don't need the binder. Numbers: Config/Party BAR.
 local ContextActionService = game:GetService("ContextActionService")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -73,7 +72,6 @@ local SUMMON_ACTION = "PartySummon"
 local TIP_GAP = 10
 local TIP_WIDTH = 250
 
-local player = Players.LocalPlayer
 
 local PartyBarController = {}
 

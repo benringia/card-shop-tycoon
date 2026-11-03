@@ -1,7 +1,8 @@
 --!strict
 -- The HUD layout, in one place: controllers register their buttons here instead of positioning them.
---   Side:    blue icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
---   Bottom:  blue icon tiles in a centred row (Cards, Bag); Context tiles (orange) join the row while visible.
+--   Side:    candy icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
+--   Bottom:  candy icon tiles in a centred row (Cards, Bag, Bosses); Context tiles (orange) join the row while visible.
+-- Each tile in the creature pals look (HudLayout.CANDY; spec 2026-11-03-hud-creature-pals-design).
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
 -- Numbers: Config/HudLayout. Motion: Util/Motion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -347,7 +348,7 @@ function Hud.tile(spec: TileSpec): TextButton
 	return tile
 end
 
--- A blue tile in the Manage tray; tapping it also folds the tray away
+-- A tile in the Manage tray (HudLayout.CANDY_FAN colours by its order); tapping it also folds the tray away
 function Hud.fanButton(spec: FanSpec): TextButton
 	ensureManageTile()
 	local button = makeTile(fan, {

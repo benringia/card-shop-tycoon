@@ -25,8 +25,12 @@ Today it's Cindercub. Everything about it is in `src/shared/Config/HudMascot.lua
 - `size`: keep each picture's own width-to-height shape (the peek sticker about 72 px wide).
 - `eyes`: each eye's box on the peek picture as shares of its width and height (find the dark eye pixels with
   Pillow, as done for Cindercub), for blinking.
-- `lid`: the fur colour right round the eyes.
+- `lid`: the fur colour right round the eyes; `crease`: the line drawn across a closed eye.
+- `tail.at`, `tail.angle`: where the tail's bottom sits (pixels from the cushion's left end, down from its top edge)
+  and how it leans; `tail.period`, `tail.degrees`: its sway.
 - `voice`: its chirp when tapped (a Roblox-licensed Pro Sound Effects or APM sound), quiet.
-- `headroom`, `offset`: only if the new sticker is much taller or needs to sit elsewhere.
+- `tapArea`: keep it at least 69 px each way (48 px at the smallest HUD scale) and covering the paws.
+- `headroom`, `offset`, `clipPad`: only if the new sticker is much taller, needs to sit elsewhere, or gets cut off
+  while breathing.
 
 Run `lune run tests/run HudMascotRules` (it checks the ids and eye boxes), then look at it in Studio on PC and a phone.

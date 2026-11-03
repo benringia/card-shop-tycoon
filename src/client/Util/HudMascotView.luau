@@ -19,7 +19,7 @@ local HudMascotView = {}
 local CFG = HudMascot
 local body: Frame? = nil -- the sticker's frame inside the clip: breathes, and slides down to duck
 local bounceScale: UIScale? = nil
-local clipHeight = 0
+local duckDistance = 0 -- pixels a full duck moves the sticker down
 local duckStart: number? = nil
 local duckConnection: RBXScriptConnection? = nil
 local bounceConnection: RBXScriptConnection? = nil
@@ -50,7 +50,7 @@ local function makeLids(peek: ImageLabel): { Frame }
 		round.Parent = lid
 		local crease = Instance.new("Frame")
 		crease.BorderSizePixel = 0
-		crease.BackgroundColor3 = Color3.fromRGB(60, 24, 16)
+		crease.BackgroundColor3 = rgb(CFG.crease)
 		crease.AnchorPoint = Vector2.new(0.5, 0.5)
 		crease.Position = UDim2.fromScale(0.5, 0.6)
 		crease.Size = UDim2.new(0.8, 0, 0, 2)
@@ -115,7 +115,8 @@ function HudMascotView.mount(cushion: GuiObject)
 		return
 	end
 	local width, height = CFG.size.peek[1], CFG.size.peek[2]
-	clipHeight = height
+	local pad = CFG.clipPad
+	duckDistance = HudMascotRules.duckTravel(height, CFG)
 	cushion.ZIndex = 2
 
 	local tail = Instance.new("ImageLabel")
@@ -123,22 +124,23 @@ function HudMascotView.mount(cushion: GuiObject)
 	tail.BackgroundTransparency = 1
 	tail.Image = CFG.images.tail
 	tail.AnchorPoint = Vector2.new(0.5, 1)
-	tail.Position = UDim2.fromOffset(CFG.offset.left + 4, CFG.offset.overlap)
+	tail.Position = UDim2.fromOffset(CFG.tail.at[1], CFG.tail.at[2])
 	tail.Size = UDim2.fromOffset(CFG.size.tail[1], CFG.size.tail[2])
-	tail.Rotation = -30
+	tail.Rotation = CFG.tail.angle
 	tail.ZIndex = 1 -- behind the cushion, poking up past its edge
 	tail.Visible = CFG.images.tail ~= ""
 	tail.Parent = host
-	loop(tail, CFG.tail.period / 2, { Rotation = -30 + CFG.tail.degrees })
+	loop(tail, CFG.tail.period / 2, { Rotation = CFG.tail.angle + CFG.tail.degrees })
 
-	-- The clip: its bottom edge `overlap` px into the cushion, so a duck slides the sticker out of sight
+	-- The clip: its bottom edge `overlap` px into the cushion, so a duck slides the sticker out of sight; `pad` px of room
+	-- round the sticker so breathing and bouncing never get cut off
 	local clip = Instance.new("Frame")
 	clip.Name = "Mascot"
 	clip.BackgroundTransparency = 1
 	clip.ClipsDescendants = true
 	clip.AnchorPoint = Vector2.new(0, 1)
-	clip.Position = UDim2.fromOffset(CFG.offset.left, CFG.offset.overlap)
-	clip.Size = UDim2.fromOffset(width, height)
+	clip.Position = UDim2.fromOffset(CFG.offset.left - pad, CFG.offset.overlap)
+	clip.Size = UDim2.fromOffset(width + pad * 2, height + pad)
 	clip.ZIndex = 3
 	clip.Parent = host
 
@@ -147,7 +149,7 @@ function HudMascotView.mount(cushion: GuiObject)
 	frame.BackgroundTransparency = 1
 	frame.AnchorPoint = Vector2.new(0.5, 1)
 	frame.Position = UDim2.fromScale(0.5, 1)
-	frame.Size = UDim2.fromScale(1, 1)
+	frame.Size = UDim2.fromOffset(width, height)
 	frame.ZIndex = 3
 	frame.Parent = clip
 	local breath = Instance.new("UIScale")
@@ -162,21 +164,26 @@ function HudMascotView.mount(cushion: GuiObject)
 	peek.AnchorPoint = Vector2.new(0.5, 1)
 	peek.Position = UDim2.fromScale(0.5, 1)
 	peek.Size = UDim2.fromScale(1, 1)
+	peek.Rotation = -CFG.tilt.degrees
 	peek.ZIndex = 4
 	peek.Parent = frame
+	loop(peek, CFG.tilt.period / 2, { Rotation = CFG.tilt.degrees })
 	local scale = Instance.new("UIScale")
 	scale.Parent = peek
 	bounceScale = scale
 	blinkLoop(makeLids(peek))
 
-	-- Taps on its head (not the paws, which sit over the cushion's Party pill area)
+	-- Its tap area: on the bar (not in the clip), finger-sized at any HUD scale and over its paws, so a tap on the cub
+	-- never reaches the Party pill underneath
 	local tap = Instance.new("TextButton")
-	tap.Name = "Tap"
+	tap.Name = "MascotTap"
 	tap.Text = ""
 	tap.BackgroundTransparency = 1
-	tap.Size = UDim2.fromScale(1, 0.8)
+	tap.AnchorPoint = Vector2.new(0, 1)
+	tap.Position = UDim2.fromOffset(CFG.offset.left, CFG.offset.overlap)
+	tap.Size = UDim2.fromOffset(CFG.tapArea.w, CFG.tapArea.h)
 	tap.ZIndex = 6
-	tap.Parent = clip
+	tap.Parent = host
 	tap.Activated:Connect(bounce)
 end
 
@@ -198,7 +205,7 @@ function HudMascotView.duck()
 			return
 		end
 		local t = os.clock() - start
-		frame.Position = UDim2.new(0.5, 0, 1, HudMascotRules.duckShare(t, CFG) * clipHeight)
+		frame.Position = UDim2.new(0.5, 0, 1, HudMascotRules.duckShare(t, CFG) * duckDistance)
 		local duck = CFG.duck
 		if t >= duck.down + duck.hold + duck.up then
 			frame.Position = UDim2.fromScale(0.5, 1)

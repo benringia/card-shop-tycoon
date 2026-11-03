@@ -46,6 +46,12 @@ function HudMascotRules.bounce(t: number, cfg: any): number
 	return 1 + tap.scale * math.sin(math.pi * t / tap.seconds)
 end
 
+-- How far a duck moves the sticker down (its `height` in pixels): past its own height by its breathing and bounce
+-- swells, so no ear tip shows at the bottom of a duck
+function HudMascotRules.duckTravel(height: number, cfg: any): number
+	return height * (1 + cfg.breath.scale + cfg.tap.scale)
+end
+
 -- Pixels the party bar keeps free above the cushion for the mascot's head (none until it has a picture)
 function HudMascotRules.headroom(cfg: any): number
 	return if cfg.images.peek ~= "" then cfg.headroom else 0
