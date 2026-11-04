@@ -346,6 +346,8 @@ return {
 		{ area = "WildMeadow", kind = "fireflies", x = -50, y = 4, z = 1212, size = { x = 200, z = 170 }, rate = 10 }, -- the Wild valley's meadow
 		{ area = "WildMeadow", kind = "leaves", x = -150, y = 28, z = 1180, size = { x = 60, z = 120 }, rate = 4 },
 		{ area = "WildGorge", kind = "glints", x = -360, y = 18, z = 1420, size = { x = 120, z = 200 }, rate = 8 },
+		{ area = "WildGorge", kind = "fireflies", x = -340, y = 19, z = 1430, size = { x = 150, z = 200 }, rate = 8 }, -- the glow mushroom hollow
+		{ area = "WildGorge", kind = "groundmist", x = -340, y = 16, z = 1430, size = { x = 150, z = 200 }, rate = 3 },
 		{ area = "WildRidge", kind = "embers", x = -55, y = 36, z = 1680, size = { x = 220, z = 180 }, rate = 14 },
 		{ area = "WildRidge", kind = "ventsmoke", x = -110, y = 39, z = 1690, size = { x = 3, z = 3 }, rate = 3 }, -- one per WildValley.VENTS, on its rim
 		{ area = "WildRidge", kind = "ventsmoke", x = 40, y = 38.5, z = 1610, size = { x = 3, z = 3 }, rate = 3 },

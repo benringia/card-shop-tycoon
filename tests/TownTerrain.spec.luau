@@ -23,6 +23,18 @@ local OPS = TownTerrain.ops(scenery, town, PLOTS)
 local GROUND = -TownTerrain.SURFACE_LIFT -- the fill top that draws the ground at y 0
 
 return {
+	-- A ledge jutting over the ground (spec 2026-11-04-valley-scenery-design: the Caves' rock shelf) is drawn but
+	-- isn't ground: props, crystals and spawn spots under it stand on the floor
+	["an overhang doesn't lift the ground under it"] = function()
+		local ops = {
+			{ shape = "Block", x = 0, y = -2, z = 0, size = { x = 40, y = 4, z = 40 }, material = "Limestone" },
+			{ shape = "Block", x = 0, y = 20, z = 0, size = { x = 10, y = 6, z = 10 }, material = "Limestone", overhang = true },
+		}
+		expect.equal(TownTerrain.topAt(ops, 0, 0), 0, "the floor under the ledge")
+		expect.equal(TownTerrain.groundAt(ops, 0, 0), TownTerrain.SURFACE_LIFT)
+		expect.equal(TownTerrain.topAt(ops, 15, 0), 0, "the floor beside it")
+	end,
+
 	["nothing in the island rises above the ground parts"] = function()
 		for x = -128, 128, 4 do
 			for z = -108, 108, 4 do

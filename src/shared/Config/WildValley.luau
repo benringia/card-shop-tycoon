@@ -138,6 +138,9 @@ return {
 		{ shape = "Ball", x = -448, y = 44, z = 1500, radius = 10, material = "Limestone" },
 		{ shape = "Ball", x = -420, y = 45, z = 1562, radius = 12, material = "Limestone" },
 		{ shape = "Ball", x = -300, y = 30, z = 1275, radius = 12, material = "Limestone" },
+		-- the rock shelf jutting from the west cliff over the cave mouth and the biggest mushrooms (an overhang: drawn,
+		-- but nothing stands on it, so the ground under it stays the gorge's floor)
+		{ shape = "Block", x = -437.5, y = 40, z = 1420, size = { x = 35, y = 6, z = 70 }, material = "Limestone", overhang = true },
 		-- The ridge: its cracked-lava floor (turned along the second pass), basalt cliffs all round, jagged rims
 		{ shape = "Block", x = -43.31, y = 31, z = 1683.07, yaw = -122.28, size = { x = 310, y = 4, z = 340 }, material = "CrackedLava" },
 		{ shape = "Block", x = -58, y = 45.5, z = 1812, size = { x = 364, y = 33, z = 24 }, material = "Basalt" },
@@ -277,10 +280,76 @@ return {
 	-- own `clear` for a big piece). A spot: `model` (PropModels; none for code-built ones), x, z, `height`, `yaw`, and
 	-- for glowing pieces `glow` (a GLOW colour)
 	PROP_LISTS = { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS", "MUSHROOMS", "TUFTS", "RUINS", "MOSS_ROCKS", "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON" },
-	-- The Caves' glow mushroom hollow (owner's pick C): glowing mushrooms, glowing plant and flower tufts, mossy rocks
-	MUSHROOMS = {},
-	TUFTS = {},
-	MOSS_ROCKS = {},
+	-- The Caves' glow mushroom hollow (owner's pick C): glowing mushrooms (the four biggest under the rock shelf by the
+	-- cave mouth are the landmark; `clear` keeps spawn spots off them), glowing plant and flower tufts in patches along the
+	-- trail, mossy rocks (today's rocks, same places)
+	MUSHROOMS = {
+		-- the landmark: the four biggest under the rock shelf, either side of the cave mouth
+		{ model = "GlowMushroomTall", x = -428, z = 1386, height = 18, yaw = 20, glow = "teal", clear = 9 },
+		{ model = "GlowMushroomTall", x = -427, z = 1458, height = 17, yaw = 200, glow = "purple", clear = 9 },
+		{ model = "GlowMushroomTall", x = -412, z = 1374, height = 14, yaw = 80, glow = "purple", clear = 7 },
+		{ model = "GlowMushroomTall", x = -410, z = 1470, height = 15, yaw = 290, glow = "teal", clear = 8 },
+		-- clusters round the gorge
+		{ model = "GlowMushroomCluster", x = -300, z = 1335, height = 8, yaw = 40, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -372, z = 1318, height = 9, yaw = 120, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -262, z = 1468, height = 8, yaw = 250, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -398, z = 1530, height = 7, yaw = 330, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -238, z = 1405, height = 7, yaw = 160, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -352, z = 1440, height = 6, yaw = 60, glow = "teal" },
+		-- small ones near the trail and the clusters
+		{ model = "GlowMushroomSmall", x = -290, z = 1352, height = 3, yaw = 10, glow = "teal" },
+		{ model = "GlowMushroomSmall", x = -333, z = 1420, height = 3, yaw = 140, glow = "purple" },
+		{ model = "GlowMushroomSmall", x = -300, z = 1470, height = 2.5, yaw = 220, glow = "teal" },
+		{ model = "GlowMushroomSmall", x = -280, z = 1520, height = 3, yaw = 300, glow = "purple" },
+		{ model = "GlowMushroomSmall", x = -415, z = 1342, height = 3.5, yaw = 70, glow = "teal" },
+		{ model = "GlowMushroomSmall", x = -386, z = 1488, height = 3, yaw = 190, glow = "purple" },
+		{ model = "GlowMushroomSmall", x = -255, z = 1376, height = 2.5, yaw = 250, glow = "teal" },
+		{ model = "GlowMushroomSmall", x = -436, z = 1470, height = 3, yaw = 30, glow = "teal" },
+	},
+	TUFTS = {
+		{ model = "GlowTuft", x = -251.1, z = 1348.2, height = 2.2, yaw = 300, glow = "blue" },
+		{ model = "GlowFlowers", x = -255.1, z = 1350.6, height = 2.1, yaw = 320, glow = "blue" },
+		{ model = "GlowTuft", x = -254.6, z = 1347.4, height = 2.4, yaw = 0, glow = "blue" },
+		{ model = "GlowFlowers", x = -291.3, z = 1357.5, height = 1.7, yaw = 140, glow = "teal" },
+		{ model = "GlowTuft", x = -294.9, z = 1359.1, height = 2.0, yaw = 260, glow = "teal" },
+		{ model = "GlowFlowers", x = -293.8, z = 1356.6, height = 1.9, yaw = 310, glow = "teal" },
+		{ model = "GlowTuft", x = -298.5, z = 1405.0, height = 2.5, yaw = 10, glow = "purple" },
+		{ model = "GlowFlowers", x = -301.1, z = 1407.0, height = 1.7, yaw = 10, glow = "purple" },
+		{ model = "GlowTuft", x = -301.6, z = 1403.0, height = 1.9, yaw = 310, glow = "purple" },
+		{ model = "GlowFlowers", x = -322.9, z = 1424.2, height = 2.1, yaw = 150, glow = "blue" },
+		{ model = "GlowTuft", x = -325.2, z = 1426.2, height = 2.3, yaw = 40, glow = "blue" },
+		{ model = "GlowFlowers", x = -326.3, z = 1423.5, height = 2.4, yaw = 120, glow = "blue" },
+		{ model = "GlowTuft", x = -303.9, z = 1446.8, height = 2.1, yaw = 180, glow = "teal" },
+		{ model = "GlowFlowers", x = -306.0, z = 1448.7, height = 2.0, yaw = 310, glow = "teal" },
+		{ model = "GlowTuft", x = -306.0, z = 1446.0, height = 1.7, yaw = 310, glow = "teal" },
+		{ model = "GlowFlowers", x = -328.2, z = 1464.8, height = 2.2, yaw = 330, glow = "purple" },
+		{ model = "GlowTuft", x = -330.0, z = 1467.2, height = 2.2, yaw = 70, glow = "purple" },
+		{ model = "GlowFlowers", x = -330.4, z = 1464.3, height = 1.9, yaw = 210, glow = "purple" },
+		{ model = "GlowTuft", x = -299.0, z = 1494.6, height = 1.9, yaw = 60, glow = "blue" },
+		{ model = "GlowFlowers", x = -301.6, z = 1497.3, height = 1.8, yaw = 270, glow = "blue" },
+		{ model = "GlowTuft", x = -302.3, z = 1493.1, height = 2.3, yaw = 150, glow = "blue" },
+		{ model = "GlowFlowers", x = -309.4, z = 1523.4, height = 2.6, yaw = 0, glow = "teal" },
+		{ model = "GlowTuft", x = -313.4, z = 1524.9, height = 2.0, yaw = 150, glow = "teal" },
+		{ model = "GlowFlowers", x = -312.3, z = 1522.1, height = 2.2, yaw = 280, glow = "teal" },
+		{ model = "GlowTuft", x = -293.0, z = 1391.3, height = 2.1, yaw = 180, glow = "purple" },
+		{ model = "GlowFlowers", x = -295.5, z = 1392.3, height = 1.9, yaw = 260, glow = "purple" },
+		{ model = "GlowTuft", x = -296.4, z = 1389.5, height = 2.5, yaw = 90, glow = "purple" },
+		{ model = "GlowFlowers", x = -328.7, z = 1477.8, height = 2.1, yaw = 160, glow = "blue" },
+		{ model = "GlowTuft", x = -331.2, z = 1479.0, height = 2.5, yaw = 300, glow = "blue" },
+		{ model = "GlowFlowers", x = -331.9, z = 1476.1, height = 2.4, yaw = 90, glow = "blue" },
+	},
+	MOSS_ROCKS = {
+		{ model = "MossRockA", x = -280, z = 1330, height = 5, yaw = 20 },
+		{ model = "MossRockB", x = -380, z = 1340, height = 4, yaw = 110 },
+		{ model = "MossRockA", x = -405, z = 1365, height = 6, yaw = 200 },
+		{ model = "MossRockB", x = -260, z = 1420, height = 4, yaw = 290 },
+		{ model = "MossRockA", x = -380, z = 1460, height = 6, yaw = 40 },
+		{ model = "MossRockB", x = -270, z = 1480, height = 5, yaw = 160 },
+		{ model = "MossRockA", x = -410, z = 1515, height = 4, yaw = 250 },
+		{ model = "MossRockB", x = -345, z = 1310, height = 4, yaw = 330 },
+		{ model = "MossRockA", x = -250, z = 1390, height = 5, yaw = 70 },
+		{ model = "MossRockB", x = -430, z = 1460, height = 5, yaw = 120 },
+	},
 	-- The Meadow's ancient ruins (owner's pick B): arches, pillars, walls; a circle of standing stones as its landmark
 	-- (WildValley.ring: `count` stones round x, z) and red-and-white mushroom rings
 	RUINS = {},
@@ -343,17 +412,6 @@ return {
 		{ model = "FlowerPink", x = -160, z = 1150, height = 2.4, yaw = 260 },
 		{ model = "RockC", x = -90, z = 1125, height = 3, yaw = 60 },
 		{ model = "RockB", x = 75, z = 1245, height = 3.5, yaw = 200 },
-		-- The gorge (biome 2): rocks over its limestone floor
-		{ model = "RockA", x = -280, z = 1330, height = 5, yaw = 20 },
-		{ model = "RockB", x = -380, z = 1340, height = 4, yaw = 110 },
-		{ model = "RockC", x = -405, z = 1365, height = 6, yaw = 200 },
-		{ model = "RockD", x = -260, z = 1420, height = 4, yaw = 290 },
-		{ model = "Rock", x = -380, z = 1460, height = 6, yaw = 40 },
-		{ model = "RockA", x = -270, z = 1480, height = 5, yaw = 160 },
-		{ model = "RockB", x = -410, z = 1515, height = 4, yaw = 250 },
-		{ model = "RockC", x = -345, z = 1310, height = 4, yaw = 330 },
-		{ model = "RockD", x = -250, z = 1390, height = 5, yaw = 70 },
-		{ model = "Rock", x = -430, z = 1460, height = 5, yaw = 120 },
 	},
 	-- Past the ridge's far cliff: the caldera's volcano (dressed like the canyon's: anchored, its lava glowing), its foot
 	-- hidden behind the cliff, its lava streaks (its -Z side) toward the ridge

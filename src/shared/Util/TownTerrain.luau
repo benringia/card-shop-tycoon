@@ -13,6 +13,7 @@ export type Op = {
 	size: { x: number, y: number, z: number }?,
 	radius: number?,
 	material: string,
+	overhang: boolean?, -- a ledge over the ground: drawn, but not ground (topAt skips it)
 }
 export type Rect = { minX: number, maxX: number, minZ: number, maxZ: number }
 
@@ -145,7 +146,7 @@ end
 function TownTerrain.topAt(ops: { Op }, x: number, z: number): number?
 	local top = nil
 	for _, op in ops do
-		if op.material ~= "Air" and overColumn(op, x, z) then
+		if op.material ~= "Air" and not op.overhang and overColumn(op, x, z) then
 			local here = topOf(op, x, z)
 			top = if top then math.max(top, here) else here
 		end

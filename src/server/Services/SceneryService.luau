@@ -700,6 +700,21 @@ end
 
 -- The look of each kind of area effect (Config/Scenery EMITTERS)
 local EFFECT_LOOKS: { [string]: (ParticleEmitter) -> () } = {
+	groundmist = function(emitter) -- soft pale-blue puffs drifting low over the Caves' floor
+		emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		emitter.Color = ColorSequence.new(Color3.fromRGB(170, 200, 235))
+		emitter.LightEmission = 0.2
+		emitter.Lifetime = NumberRange.new(6, 9)
+		emitter.Speed = NumberRange.new(0.2, 0.6)
+		emitter.SpreadAngle = Vector2.new(80, 80)
+		emitter.RotSpeed = NumberRange.new(-8, 8)
+		emitter.Size = NumberSequence.new(4, 7)
+		emitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 0.85),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+	end,
 	ash = function(emitter) -- grey flakes drifting down over the Ember Colossus's lava field
 		emitter.Color = ColorSequence.new(Color3.fromRGB(120, 112, 108), Color3.fromRGB(70, 66, 64))
 		emitter.LightEmission = 0
