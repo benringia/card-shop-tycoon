@@ -54,14 +54,14 @@ return {
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while
 	-- you're in it, in place of the boss fights' drone (Bosses.MUSIC_ID, kept for the Frontier and the Dungeon). Each
 	-- loops through the leveler. The valley plays only solo piano or acoustic guitar (owner 2026-11-04, after the
-	-- orchestral picks: "acoustic guitars or piano only"), very quiet (0.003), the first option until the owner picks;
+	-- orchestral picks: "acoustic guitars or piano only"), very quiet, the owner's pick of each by ear with its volume;
 	-- the arenas keep the owner's battle picks. Each area also plays a Pro Sound Effects ambient loop under its music
 	-- (0.05; the lava 0.02), crossfading the same way (the arenas have theirs in Config/WildValley ARENA_DRESSING).
 	WILD = {
 		areas = {
 			{
 				key = "meadow", -- light, bright adventure
-				tracks = { "rbxassetid://1842176339" }, -- Butterflies (the first option)
+				tracks = { "rbxassetid://1838420686" }, -- Woodland Walk (the owner's pick, option 3)
 				compressor = LEVELER,
 				-- Field Birds Tweeting 1: cicadas, birds, insects buzzing by, light tree movement (PlaybackLoudness ignores
 				-- Volume, so what you hear ~ loudness x volume: this loop reads ~11, the music ~90-150); the first pick, Birds
@@ -72,11 +72,11 @@ return {
 					option("Running Through The Fields (solo piano)", "137990447184466"),
 					option("Woodland Walk (classical solo guitar)", "1838420686"),
 				},
-				volume = 0.003,
+				volume = 0.005,
 			},
 			{
 				key = "gorge", -- the caves: mysterious, echoey
-				tracks = { "rbxassetid://1843514537" }, -- Secret Waterfall (the first option)
+				tracks = { "rbxassetid://1842181702" }, -- Calm Waters (the owner's pick, option 2)
 				compressor = LEVELER,
 				ambient = { id = "rbxassetid://9120505513", volume = 0.05 }, -- Water Cave Trickle Very Thin 3: drips, echo
 				options = {
@@ -84,11 +84,11 @@ return {
 					option("Calm Waters (slow, sparse; solo guitar)", "1842181702"),
 					option("Air Currents (floating; classical solo guitar)", "1842276365"),
 				},
-				volume = 0.003,
+				volume = 0.01,
 			},
 			{
 				key = "ridge", -- Ember Ridge: foreboding, volcanic
-				tracks = { "rbxassetid://9046646008" }, -- Moonlight Sonata (the first option)
+				tracks = { "rbxassetid://1842276088" }, -- Hombre Solo (the owner's pick, option 3)
 				compressor = LEVELER,
 				ambient = { id = "rbxassetid://9112823197", volume = 0.02 }, -- Lava Rumble 1: bubbling lava (0.3...0.05 too loud)
 				options = {
@@ -96,7 +96,7 @@ return {
 					option("Live Piano Stories 04 (drama, mysterious; solo piano)", "127337767677606"),
 					option("Hombre Solo (intense, Spanish; solo guitar)", "1842276088"),
 				},
-				volume = 0.003,
+				volume = 0.005,
 			},
 		},
 		arenas = {

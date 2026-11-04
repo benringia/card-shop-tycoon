@@ -79,9 +79,9 @@ return {
 	["the owner's picks play, each Wild one through a leveler, the valley's areas with their ambience"] = function()
 		expect.equal(Music.TOWN.tracks[1], "rbxassetid://9048757009", "the town: White Owl")
 		local picks = {
-			meadow = { "rbxassetid://1842176339", 0.003 }, -- Butterflies (solo guitar)
-			gorge = { "rbxassetid://1843514537", 0.003 }, -- Secret Waterfall (solo piano)
-			ridge = { "rbxassetid://9046646008", 0.003 }, -- Moonlight Sonata (solo piano)
+			meadow = { "rbxassetid://1838420686", 0.005 }, -- Woodland Walk (classical solo guitar)
+			gorge = { "rbxassetid://1842181702", 0.01 }, -- Calm Waters (solo guitar)
+			ridge = { "rbxassetid://1842276088", 0.005 }, -- Hombre Solo (solo guitar)
 			warden = { "rbxassetid://1845205138", 0.1 }, -- Forest Chase
 			brood = { "rbxassetid://1841360723", 0.13 }, -- Creepy Crawlers
 			colossus = { "rbxassetid://96625587462633", 0.1 }, -- Giant's Grave
@@ -107,7 +107,11 @@ return {
 				local name = string.lower(option.name)
 				expect.equal(string.find(name, "solo piano", 1, true) ~= nil or string.find(name, "solo guitar", 1, true) ~= nil, true, `{area.key}: {option.name} is piano or guitar only`)
 			end
-			expect.equal(area.tracks[1], area.options[1].id, `{area.key} plays its first option`)
+			local picked = false
+			for _, option in area.options do
+				picked = picked or option.id == area.tracks[1]
+			end
+			expect.equal(picked, true, `{area.key} plays one of its options`)
 		end
 		local meadow = MusicRules.find(Music, "meadow").ambient
 		expect.equal(meadow.id, "rbxassetid://9112779471", "the Meadow: Field Birds Tweeting 1")

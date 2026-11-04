@@ -138,11 +138,10 @@ town; on a pass between two areas the last keeps playing; `MusicRules.place`), c
 sound; the Wild bosses' fights no longer play the drone (`Bosses.MUSIC_ID`, kept for the Frontier and the Dungeon).
 Each place has three options (`/music <place> <n> [volume]` or the admin panel's Wild music buttons try them; places
 meadow, gorge, ridge, warden, brood, colossus). The valley plays only solo piano or acoustic guitar (owner 2026-11-04,
-after hearing orchestral picks: "acoustic guitars or piano only"), very quiet at 0.003; until the owner picks, each
-area's first option plays: the Meadow "Butterflies" (summery solo guitar; or "Running Through The Fields", solo piano,
-or "Woodland Walk", classical guitar), the Caves "Secret Waterfall" (introspective solo piano; or "Calm Waters" or "Air
-Currents", guitar), Ember Ridge Beethoven's "Moonlight Sonata" (solo piano; or "Live Piano Stories 04", piano, or
-"Hombre Solo", intense Spanish guitar). The arenas keep the owner's battle picks: the Meadow Warden's "Forest Chase" at
+after hearing orchestral picks: "acoustic guitars or piano only"), very quiet; the owner picked by ear: the Meadow
+"Woodland Walk" (classical solo guitar) at 0.005, the Caves "Calm Waters" (slow, sparse solo guitar) at 0.01, Ember
+Ridge "Hombre Solo" (intense Spanish solo guitar) at 0.005 (the other options: "Butterflies", "Running Through The
+Fields"; "Secret Waterfall", "Air Currents"; "Moonlight Sonata", "Live Piano Stories 04"). The arenas keep the owner's battle picks: the Meadow Warden's "Forest Chase" at
 0.1, the Cave Brood Queen's "Creepy Crawlers" at 0.13, the Ember Colossus' "Giant's Grave" at 0.1. Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
 the average the owner heard and cuts the peaks; the town's limiter would crush these). Each area also has a Pro Sound
 Effects ambient loop under its music at 0.05 (the owner's number; Ember Ridge's louder lava at 0.02), crossfading the
@@ -2529,8 +2528,8 @@ boss models; the ranch and Heroic tiers come after those.
   boss toward the arena wall wasn't checked in Studio.
 - [ ] Wild music (branch `wild-music`): a piece for each of the valley's three areas (with an ambient loop) and a
   battle piece in each Wild boss arena, crossfading as you move, each through a leveler (`Music.WILD`,
-  `MusicController`); the arenas' picks and every volume are in, the town plays White Owl; the valley switched to solo
-  piano or guitar, waiting for the owner's pick of each area.
+  `MusicController`); the arenas' picks and every volume are in, the town plays White Owl; the valley plays the owner's solo
+  guitar picks. Waiting for the owner's listen.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
