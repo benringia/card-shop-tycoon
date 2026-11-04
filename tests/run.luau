@@ -73,6 +73,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	WildPopulation = require("./WildPopulation.spec"),
 	MonsterLooks = require("./MonsterLooks.spec"),
 	BossMoments = require("./BossMoments.spec"),
+	MoveFx = require("./MoveFx.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),
 	SwordRules = require("./SwordRules.spec"),
 	SwordArcRules = require("./SwordArcRules.spec"),
