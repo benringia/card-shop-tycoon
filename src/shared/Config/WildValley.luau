@@ -49,6 +49,27 @@ return {
 	-- Where the trail climbs (WildValley.terrainOps): a ramp `width` wide and `depth` deep in the upper biome's floor,
 	-- and a wall `wall` thick on each side rising `wallHeight` above the upper ground
 	PASS = { width = 44, depth = 24, wall = 12, wallHeight = 12 },
+	-- Low grass patches on the Caves' floor (the owner 2026-11-05: "short grass patches too ... not as much as the
+	-- meadow"): terrain Grass, where Roblox draws its grass blades, as flat domes standing GRASS_PATCH_RISE above the
+	-- floor, two or three overlapping per patch; about a tenth of the floor (Lune-tested)
+	GRASS_PATCH_RISE = 1.2, -- terrain cells are 4 studs: a lower dome only greens their middles
+	GRASS_PATCHES = {
+		{ x = -300, z = 1345, radius = 7 },
+		{ x = -306, z = 1353, radius = 5 },
+		{ x = -372, z = 1330, radius = 8 },
+		{ x = -381, z = 1322, radius = 6 },
+		{ x = -262, z = 1460, radius = 7 },
+		{ x = -254, z = 1470, radius = 5 },
+		{ x = -352, z = 1452, radius = 8 },
+		{ x = -344, z = 1461, radius = 6 },
+		{ x = -400, z = 1500, radius = 7 },
+		{ x = -410, z = 1492, radius = 5 },
+		{ x = -240, z = 1410, radius = 6 },
+		{ x = -403, z = 1388, radius = 7 },
+		{ x = -330, z = 1510, radius = 6 },
+		{ x = -285, z = 1500, radius = 6 },
+		{ x = -395, z = 1445, radius = 6 },
+	},
 	-- Gentle mounds: buried balls whose tops stand `height` above their biome's ground
 	HILLS = {
 		{ x = 60, z = 1200, radius = 16, height = 4, material = "Grass" },

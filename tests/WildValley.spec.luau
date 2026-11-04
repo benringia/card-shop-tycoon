@@ -493,6 +493,28 @@ return {
 		expect.equal(math.sqrt((path.to.x - circle.x) ^ 2 + (path.to.z - circle.z) ^ 2) <= 20, true, "ends at the ruins")
 	end,
 
+	-- The owner (2026-11-05): "in caves. can we have some short grass patches too? but not as much as the meadow"
+	["the Caves get a few low grass patches, far less than the Meadow"] = function()
+		local patches = valley.GRASS_PATCHES
+		expect.equal(#patches > 0, true, "some patches")
+		local outline = valley.BIOMES[2].outline
+		local area = 0
+		for i = 1, #outline do
+			local a, b = outline[i], outline[i % #outline + 1]
+			area += a.x * b.z - b.x * a.z
+		end
+		area = math.abs(area) / 2
+		local grass = 0
+		for _, patch in patches do
+			expect.equal(WildValley.zoneAt(valley, patch), 2, `patch at {patch.x}, {patch.z} is in the Caves`)
+			assert(WildValley.clearOf(patch, valley), `patch at {patch.x}, {patch.z} is clear`)
+			local top = TownTerrain.groundAt(OPS, patch.x, patch.z) :: number
+			assert(math.abs(top - valley.BIOMES[2].ground) <= 1.5, `patch at {patch.x}, {patch.z} lies flat ({top})`)
+			grass += math.pi * patch.radius ^ 2
+		end
+		assert(grass / area <= 0.12, `grass covers {grass / area} of the Caves`)
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")

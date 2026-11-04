@@ -365,6 +365,10 @@ function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: num
 		local ground = valley.BIOMES[WildValley.zoneAt(valley, hill) or 1].ground
 		table.insert(ops, { shape = "Ball", x = hill.x, y = ground - valley.SURFACE_LIFT + hill.height - hill.radius, z = hill.z, radius = hill.radius, material = hill.material })
 	end
+	for _, patch in valley.GRASS_PATCHES or {} do
+		local ground = valley.BIOMES[WildValley.zoneAt(valley, patch) or 2].ground
+		table.insert(ops, { shape = "Ball", x = patch.x, y = ground - valley.SURFACE_LIFT + valley.GRASS_PATCH_RISE - patch.radius, z = patch.z, radius = patch.radius, material = "Grass" })
+	end
 	local trail = valley.TRAIL
 	local width = valley.TRAIL_WIDTH
 	local function climbs(index: number): boolean
