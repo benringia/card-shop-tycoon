@@ -75,6 +75,32 @@ return {
 		expect.isNil(MusicRules.place(Music, nil, nil, false, nil))
 	end,
 
+	-- The owner's picks by ear (2026-11-04): the town's White Owl, and a track, volume and leveler for each Wild place
+	["the owner's picks play, each Wild one through a leveler, the valley's areas with their ambience"] = function()
+		expect.equal(Music.TOWN.tracks[1], "rbxassetid://9048757009", "the town: White Owl")
+		local picks = {
+			meadow = { "rbxassetid://1841593944", 0.2 }, -- Enchanted Kingdom
+			gorge = { "rbxassetid://1841594242", 0.2 }, -- Lair of the Wizard
+			ridge = { "rbxassetid://1835286723", 0.17 }, -- Foreboding Volcano
+			warden = { "rbxassetid://1845205138", 0.17 }, -- Forest Chase
+			brood = { "rbxassetid://1841360723", 0.2 }, -- Creepy Crawlers
+			colossus = { "rbxassetid://96625587462633", 0.16 }, -- Giant's Grave
+		}
+		for key, pick in picks do
+			local place = MusicRules.find(Music, key)
+			expect.equal(place.tracks[1], pick[1], `{key} track`)
+			expect.equal(place.volume, pick[2], `{key} volume`)
+			local leveler = place.compressor
+			expect.equal(leveler ~= nil, true, `{key} has a leveler`)
+			expect.equal(leveler.threshold < 0 and leveler.ratio > 1 and leveler.makeup > 0, true, `{key} leveler evens it out and gives the level back`)
+		end
+		for _, area in Music.WILD.areas do
+			local ambient = area.ambient
+			expect.equal(ambient ~= nil and string.match(ambient.id, "^rbxassetid://%d+$") ~= nil, true, `{area.key} ambience`)
+			expect.equal(ambient.volume > 0 and ambient.volume <= 0.5, true, `{area.key} ambience volume`)
+		end
+	end,
+
 	["each place's music is found by its key"] = function()
 		expect.equal(MusicRules.find(Music, "town"), Music.TOWN)
 		expect.equal(MusicRules.find(Music, "gorge"), Music.WILD.areas[2])

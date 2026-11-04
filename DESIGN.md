@@ -125,7 +125,8 @@ area's name stands where each trail leaves the island (gaps in the hedge), and "
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
 **Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `MusicController`, `Config/Music`,
-`Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.21 (the owner's number, 2026-11-04, after 0.045 and 0.07 were too low) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
+`Util/MusicRules`): APM "White Owl" (bells and piano, Roblox-licensed; the owner's pick 2026-11-04, after "Drifting
+Into Dreamland - Underscore") at volume 0.21 (the owner's number, 2026-11-04, after 0.045 and 0.07 were too low) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
 quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
 valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
 (`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
@@ -135,9 +136,14 @@ valley and in every boss arena; `Music.WILD`, the same controller): each of the 
 piece and each boss arena its own battle piece while you're in it (an arena first, then the area you're in, then the
 town; on a pass between two areas the last keeps playing; `MusicRules.place`), crossfading over 2.5 s on a second
 sound; the Wild bosses' fights no longer play the drone (`Bosses.MUSIC_ID`, kept for the Frontier and the Dungeon).
-The owner picks each from three options by ear (`/music <place> <n> [volume]` or the admin panel's Wild music
-buttons; places meadow, gorge, ridge, warden, brood, colossus); until then the first option plays, at 0.2 in the
-valley and 0.25 in the arenas. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+The owner picked each by ear from three options (2026-11-04; `/music <place> <n> [volume]` or the admin panel's
+Wild music buttons still try the others; places meadow, gorge, ridge, warden, brood, colossus): the Meadow "Enchanted
+Kingdom" at 0.2, the Caves "Lair of the Wizard" at 0.2, Ember Ridge "Foreboding Volcano" at 0.17; the Meadow Warden's
+arena "Forest Chase" at 0.17, the Cave Brood Queen's "Creepy Crawlers" at 0.2, the Ember Colossus' "Giant's Grave" at
+0.16. Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
+the average the owner heard and cuts the peaks; the town's limiter would crush these). Each area also has a Pro Sound
+Effects ambient loop under its music, crossfading the same way: singing birds and light wind in the Meadow (0.3),
+cave drips in the Caves (0.35), bubbling lava in Ember Ridge (0.3); the arenas keep their own (`ARENA_DRESSING`). A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
 models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
 `tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
@@ -2515,9 +2521,9 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
-- [ ] Wild music (branch `wild-music`): a piece for each of the valley's three areas and a battle piece in each Wild
-  boss arena, crossfading as you move (`Music.WILD`, `MusicController`); the owner picks each from three APM options
-  with `/music <place> <n> [volume]`.
+- [ ] Wild music (branch `wild-music`): a piece for each of the valley's three areas (with an ambient loop) and a
+  battle piece in each Wild boss arena, crossfading as you move, each through a leveler (`Music.WILD`,
+  `MusicController`); the owner's picks and volumes are in, the town plays White Owl. Waiting for the owner's listen.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
