@@ -747,7 +747,18 @@ props"), placed from `Config/WildValley` (`MUSHROOMS`, `TUFTS`, `MOSS_ROCKS`, `R
 anchored, out of the camera's way, each `Glow` part Neon in its spot's colour (`GLOW`), invisible colliders on the big
 pieces (`COLLIDERS`, `spread` for arches, walls and the skeleton). Spawn spots keep 6 studs from every piece, or a big
 piece's own `clear`. The rock shelf is a terrain `overhang`: drawn, but ground lookups skip it, so what stands under it
-stands on the floor. Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
+stands on the floor. **Round 2, natural edges** (spec `2026-11-05-valley-natural-design.md`; the owner after round 1:
+"it looks like its inside a box ... the meadows ... random stuffs"; picks from a web reference board, then concepts
+Meadow B, Caves A, Ridge A): every wall gets a rolling skyline of terrain lumps (`SKYLINES`, `WildValley.skylineOps`,
+seeded; paid for by trimming the walls' hidden backs, `MAX_CELLS` 95k to 105k after measuring); past the walls stand
+`BACKDROP` pieces (giant trees and big town trees round the Meadow, tree-sized glow mushrooms on the Caves' walls, ember
+and charred trees on the Ridge's hills; no colliders, streamed as whole models) and ten far mountain range pieces
+(`MOUNTAINS`: snowy round the Meadow and the Caves, dark jagged round the Ridge; always loaded, no shadows); the Meadow
+is composed (every ruin on a hill round the stone circle, a footpath up through its north arch, `PATHS`; a bigger pond;
+giant trees framing the trail, `GIANT_TREES`); the Caves' look gets fog and its crystal cave a mossy face; Ember Ridge
+gets its own smoky orange look (`DayCycle.AREA_LOOKS[3]`) and lava streams down the volcano (`VOLCANO_LAVA`,
+`WildValley.lavaRays` cast onto it); the area looks snap after a teleport (`DayCycle.jumped`); Roblox clouds over the
+whole place, town included (`Scenery.CLOUDS`). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
 either end). Signs are wood like the town's (`Server/Util/TrailProps.trailhead`): "THE WILD" by the arrival, a
 trailhead at each biome's entrance (MEADOW Lv 1-5, CAVES Lv 5-10, EMBER RIDGE Lv 10-15), each turned to face back
 down the trail the way players come, and an arrow post at each bend pointing on and back to the SHOP. **Monsters by
@@ -2549,9 +2560,10 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
-- [ ] Valley scenery (branch `valley-scenery`): the Meadow's ancient ruins, the Caves' glow mushroom hollow with its
-  darker look, Ember Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`). Waiting for the owner's import
-  of the fifteen models and Studio check.
+- [ ] Valley scenery (branch `valley-scenery`): round 1, the Meadow's ancient ruins, the Caves' glow mushroom hollow
+  with its darker look, Ember Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural
+  edges, backdrops, far mountains, the composed Meadow, the Ridge's sky, lava streams, clouds (spec
+  `2026-11-05-valley-natural-design.md`). Waiting for the owner's import of the five round 2 models and Studio check.
 - [x] Wild music: a piece for each of the valley's three areas (the owner's solo guitar picks, very quiet, each with
   an ambient loop) and a battle piece in each Wild boss arena, crossfading as you move, each through a leveler
   (`Music.WILD`, `MusicController`); the town plays White Owl. Approved by the owner 2026-11-04.

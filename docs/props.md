@@ -111,6 +111,16 @@ delete the Workspace copy: SceneryService (`dressValleyProp`) anchors each piece
 on its parts, makes `Glow` Neon in the spot's `glow` colour (`Config/WildValley GLOW`), drops shadows from small ones
 and adds the invisible colliders in `COLLIDERS`. Positions are `Config/WildValley`'s scenery lists.
 
+## Valley backdrop props (GiantTreeA/B/C, MountainSnow, MountainDark)
+
+Round 2 of the Wild valley (spec 2026-11-05-valley-natural-design): three giant ancient trees (green, autumn, pink
+blossom) and two far mountain range pieces (snowy, dark jagged), built by `tools/blender/build_valley_backdrop.py` in the
+same way as the valley scenery props above (background Blender, `PROPS=`, `EXPORT=0`, under 4000 triangles each; render
+previews with `MODULE=build_valley_backdrop` on `render_valley_props.py`, one model per run if EEVEE crashes). Each is
+one `Frame`. Import and save as `assets/props/<Name>.rbxm`. SceneryService places the giant trees framing the trail
+from `GIANT_TREES` (dressed with colliders) and every backdrop piece from `BACKDROP` / `MOUNTAINS` (`buildBackdrop`: no
+colliders, backdrop streamed `Atomic`, mountains `Persistent` and shadowless at their own `y`).
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models
