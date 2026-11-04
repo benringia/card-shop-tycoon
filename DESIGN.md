@@ -2527,10 +2527,9 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
-- [ ] Wild music (branch `wild-music`): a piece for each of the valley's three areas (with an ambient loop) and a
-  battle piece in each Wild boss arena, crossfading as you move, each through a leveler (`Music.WILD`,
-  `MusicController`); the arenas' picks and every volume are in, the town plays White Owl; the valley plays the owner's solo
-  guitar picks. Waiting for the owner's listen.
+- [x] Wild music: a piece for each of the valley's three areas (the owner's solo guitar picks, very quiet, each with
+  an ambient loop) and a battle piece in each Wild boss arena, crossfading as you move, each through a leveler
+  (`Music.WILD`, `MusicController`); the town plays White Owl. Approved by the owner 2026-11-04.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
