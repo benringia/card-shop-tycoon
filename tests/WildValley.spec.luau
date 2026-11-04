@@ -42,13 +42,7 @@ end
 local OPS = WildValley.terrainOps(valley, TownTerrain.trailSegment)
 
 local function allProps(): { any }
-	local list = {}
-	for _, name in { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS" } do
-		for _, prop in valley[name] do
-			table.insert(list, prop)
-		end
-	end
-	return list
+	return WildValley.scenery(valley)
 end
 
 local function distanceToSegment(p: any, a: any, b: any): number
@@ -258,9 +252,58 @@ return {
 			local ok, why = WildValley.clearOf(prop, valley)
 			assert(ok, `{prop.model or "prop"} at {prop.x}, {prop.z}: {why}`)
 		end
-		for _, list in { { valley.CRYSTALS, 2 }, { valley.CHARRED, 3 }, { valley.SHARDS, 3 }, { valley.VENTS, 3 } } do
+		local lists = {
+			{ valley.CRYSTALS, 2 }, { valley.MUSHROOMS, 2 }, { valley.TUFTS, 2 }, { valley.MOSS_ROCKS, 2 },
+			{ valley.RUINS, 1 },
+			{ valley.CHARRED, 3 }, { valley.SHARDS, 3 }, { valley.VENTS, 3 }, { valley.EMBER_TREES, 3 }, { valley.EMBER_CRYSTALS, 3 }, { valley.SKELETON, 3 },
+		}
+		local circle = valley.STONE_CIRCLE
+		table.insert(lists, { WildValley.ring(circle, circle.radius, circle.count, circle), 1 })
+		for _, ring in valley.MUSHROOM_RINGS do
+			table.insert(lists, { WildValley.ring(ring, ring.radius, ring.count, ring), 1 })
+		end
+		for _, list in lists do
 			for _, prop in list[1] do
 				expect.equal(WildValley.zoneAt(valley, prop), list[2], `{prop.x}, {prop.z} dresses biome {list[2]}`)
+			end
+		end
+	end,
+
+	["a ring spreads its pieces evenly round its centre, each facing in"] = function()
+		local spots = WildValley.ring({ x = 0, z = 0 }, 10, 4, { model = "Toadstool", height = 1 })
+		expect.equal(#spots, 4)
+		for index, spot in spots do
+			expect.near(math.sqrt(spot.x ^ 2 + spot.z ^ 2), 10, 1e-6, `spot {index} on the circle`)
+			expect.equal(spot.model, "Toadstool")
+			expect.equal(spot.height, 1)
+			local nextSpot = spots[index % 4 + 1]
+			expect.near(spot.x * nextSpot.x + spot.z * nextSpot.z, 0, 1e-6, `spots {index} and {index % 4 + 1} are 90 degrees apart`)
+			-- facing in: the spot's front (-Z turned by yaw, as Roblox props face) points at the centre
+			local yaw = math.rad(spot.yaw)
+			local frontX, frontZ = -math.sin(yaw), -math.cos(yaw)
+			expect.near(frontX * -spot.x / 10 + frontZ * -spot.z / 10, 1, 1e-6, `spot {index} faces the centre`)
+		end
+	end,
+
+	["the valley's scenery is every list plus the circle and the rings"] = function()
+		local total = valley.STONE_CIRCLE.count
+		for _, name in valley.PROP_LISTS do
+			total += #valley[name]
+		end
+		for _, ring in valley.MUSHROOM_RINGS do
+			total += ring.count
+		end
+		expect.equal(#WildValley.scenery(valley), total)
+	end,
+
+	["big pieces keep spawn spots their own distance away"] = function()
+		for _, prop in WildValley.scenery(valley) do
+			if prop.clear then
+				local zone = WildValley.zoneAt(valley, prop)
+				for _, spot in WildValley.zoneSpots(valley, zone :: number) do
+					local d = math.sqrt((spot.x - prop.x) ^ 2 + (spot.z - prop.z) ^ 2)
+					assert(d >= prop.clear, `spawn spot {spot.x}, {spot.z} is {d} from {prop.model} (needs {prop.clear})`)
+				end
 			end
 		end
 	end,

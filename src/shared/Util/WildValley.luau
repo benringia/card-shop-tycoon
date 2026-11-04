@@ -137,8 +137,47 @@ function WildValley.clearOf(point: Point, valley: any): (boolean, string?)
 	return true, nil
 end
 
+-- `count` pieces evenly round a circle (spec 2026-11-04-valley-scenery-design: the Meadow's standing stones and
+-- mushroom rings), each a copy of `template` (less its circle fields) at its place on the circle, turned to face the
+-- centre (props face -Z, so a piece at angle a turns 90 - a degrees, plus the template's own yaw)
+function WildValley.ring(centre: Point, radius: number, count: number, template: any): { any }
+	local spots = {}
+	for index = 1, count do
+		local angle = (index - 1) / count * math.pi * 2
+		local spot = table.clone(template)
+		spot.radius, spot.count = nil, nil
+		spot.x = centre.x + math.cos(angle) * radius
+		spot.z = centre.z + math.sin(angle) * radius
+		spot.yaw = (template.yaw or 0) + 90 - math.deg(angle)
+		table.insert(spots, spot)
+	end
+	return spots
+end
+
+-- Every piece of the valley's scenery: each spot of each PROP_LISTS list, then the stone circle's stones and the
+-- mushroom rings' toadstools
+function WildValley.scenery(valley: any): { any }
+	local all = {}
+	for _, name in valley.PROP_LISTS do
+		for _, spot in valley[name] do
+			table.insert(all, spot)
+		end
+	end
+	local circle = valley.STONE_CIRCLE
+	for _, spot in WildValley.ring(circle, circle.radius, circle.count, circle) do
+		table.insert(all, spot)
+	end
+	for _, ring in valley.MUSHROOM_RINGS do
+		for _, spot in WildValley.ring(ring, ring.radius, ring.count, ring) do
+			table.insert(all, spot)
+		end
+	end
+	return all
+end
+
 -- A biome's monster spawn spots (POPULATION.MAX of them): a grid SPOT_SPACING apart over its outline, kept SPOT_MARGIN
--- from the outline's edges, clear of the trail, stream, arrival, portals and boards, SPOT_PROP_CLEAR from every prop and
+-- from the outline's edges, clear of the trail, stream, arrival, portals and boards, SPOT_PROP_CLEAR from every piece of
+-- scenery (or the piece's own `clear`, when bigger) and
 -- off the hills (so a monster's home is on gentle ground), then picked evenly from what's left
 function WildValley.zoneSpots(valley: any, index: number): { Point }
 	local outline = valley.BIOMES[index].outline
@@ -146,12 +185,7 @@ function WildValley.zoneSpots(valley: any, index: number): { Point }
 	for _, p in outline do
 		minX, maxX, minZ, maxZ = math.min(minX, p.x), math.max(maxX, p.x), math.min(minZ, p.z), math.max(maxZ, p.z)
 	end
-	local props: { any } = {}
-	for _, name in { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS" } do
-		for _, prop in valley[name] do
-			table.insert(props, prop)
-		end
-	end
+	local props = WildValley.scenery(valley)
 	local function suits(p: Point): boolean
 		if not WildValley.inside(outline, p) or not WildValley.clearOf(p, valley) then
 			return false
@@ -162,7 +196,7 @@ function WildValley.zoneSpots(valley: any, index: number): { Point }
 			end
 		end
 		for _, prop in props do
-			if math.sqrt((p.x - prop.x) ^ 2 + (p.z - prop.z) ^ 2) < valley.SPOT_PROP_CLEAR then
+			if math.sqrt((p.x - prop.x) ^ 2 + (p.z - prop.z) ^ 2) < math.max(prop.clear or 0, valley.SPOT_PROP_CLEAR) then
 				return false
 			end
 		end

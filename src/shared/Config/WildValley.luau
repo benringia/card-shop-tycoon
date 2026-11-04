@@ -272,6 +272,27 @@ return {
 		{ model = "PortalArena", look = "Arena" },
 	},
 
+	-- The valley's scenery lists (Util/WildValley.scenery, spec 2026-11-04-valley-scenery-design): every spot in them is
+	-- kept off the trail and the rest (WildValley.clearOf) and away from monster spawn spots (SPOT_PROP_CLEAR, or a spot's
+	-- own `clear` for a big piece). A spot: `model` (PropModels; none for code-built ones), x, z, `height`, `yaw`, and
+	-- for glowing pieces `glow` (a GLOW colour)
+	PROP_LISTS = { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS", "MUSHROOMS", "TUFTS", "RUINS", "MOSS_ROCKS", "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON" },
+	-- The Caves' glow mushroom hollow (owner's pick C): glowing mushrooms, glowing plant and flower tufts, mossy rocks
+	MUSHROOMS = {},
+	TUFTS = {},
+	MOSS_ROCKS = {},
+	-- The Meadow's ancient ruins (owner's pick B): arches, pillars, walls; a circle of standing stones as its landmark
+	-- (WildValley.ring: `count` stones round x, z) and red-and-white mushroom rings
+	RUINS = {},
+	STONE_CIRCLE = { x = -130, z = 1195, radius = 13, count = 9, model = "StandingStone", height = 9 },
+	MUSHROOM_RINGS = {
+		{ x = -60, z = 1190, radius = 3, count = 8, model = "Toadstool", height = 1.4 },
+		{ x = -5, z = 1300, radius = 3, count = 8, model = "Toadstool", height = 1.4 },
+	},
+	-- Ember Ridge's ember forest (owner's pick B): ember-crowned trees, red and orange crystal clusters, a dragon skeleton
+	EMBER_TREES = {},
+	EMBER_CRYSTALS = {},
+	SKELETON = {},
 	-- Town prop models (PropModels), scaled to `height` on the drawn ground (y: a ground height of its own)
 	PROPS = {
 		-- The meadow (biome 1): trees round its edges and in clumps, bushes, flowers and rocks
