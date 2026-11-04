@@ -124,13 +124,20 @@ area's name stands where each trail leaves the island (gaps in the hedge), and "
 (one in the planter on the plaza rim beside the spawn, one at each street end; `Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
-**Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `TownMusicController`, `Config/Music`,
+**Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `MusicController`, `Config/Music`,
 `Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.21 (the owner's number, 2026-11-04, after 0.045 and 0.07 were too low) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
 quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
 valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
 (`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
 buttons loop option n over the ambience, `/music 0` goes back); the first pick ("Lakefront Days" at 0.12) overpowered
-the ambience and 0.05 was still a little loud. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+the ambience and 0.05 was still a little loud. **Wild music** (owner 2026-11-04: "finalize the wilds", music in the
+valley and in every boss arena; `Music.WILD`, the same controller): each of the valley's three areas has its own APM
+piece and each boss arena its own battle piece while you're in it (an arena first, then the area you're in, then the
+town; on a pass between two areas the last keeps playing; `MusicRules.place`), crossfading over 2.5 s on a second
+sound; the Wild bosses' fights no longer play the drone (`Bosses.MUSIC_ID`, kept for the Frontier and the Dungeon).
+The owner picks each from three options by ear (`/music <place> <n> [volume]` or the admin panel's Wild music
+buttons; places meadow, gorge, ridge, warden, brood, colossus); until then the first option plays, at 0.2 in the
+valley and 0.25 in the arenas. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
 models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
 `tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
@@ -1687,7 +1694,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
-    │   │   ├── TownMusicController.luau # gentle town music, fading out when you leave the island
+    │   │   ├── MusicController.luau     # music where you are: the town, the Wild valley's areas, its boss arenas (crossfades)
     │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
@@ -2508,6 +2515,9 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
+- [ ] Wild music (branch `wild-music`): a piece for each of the valley's three areas and a battle piece in each Wild
+  boss arena, crossfading as you move (`Music.WILD`, `MusicController`); the owner picks each from three APM options
+  with `/music <place> <n> [volume]`.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
