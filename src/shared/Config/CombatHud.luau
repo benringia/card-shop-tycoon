@@ -24,8 +24,8 @@ return {
 			tip = "Dash out of the way.",
 		},
 		skill = {
-			color = rgb(167, 139, 250), icon = "SpinSkill", emoji = "🌀", key = "E", name = "SPIN",
-			tip = "Spin and hit everything around you.",
+			color = rgb(167, 139, 250), icon = "DashSkill", emoji = "⚡", key = "E", name = "DASH",
+			tip = "Dash through and slash everything in your path.",
 		},
 		pet = {
 			color = rgb(74, 222, 128), icon = "Paw", emoji = "🐾", key = "R", name = "PET MOVE",

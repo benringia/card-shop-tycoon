@@ -75,7 +75,8 @@ return {
 	-- the Forge
 	Attack = "rbxassetid://78906091136812",
 	Dodge = "rbxassetid://104854282079703",
-	SpinSkill = "rbxassetid://109096062504328",
+	SpinSkill = "rbxassetid://109096062504328", -- a spare since the dash slash (kept for the Forge's swords)
+	DashSkill = "rbxassetid://75416269570120", -- the dash slash (sword-moves round; a single icon, slice_icons single)
 	Paw = "rbxassetid://127023045019616",
 	Sparkle = "rbxassetid://90976268345911",
 	Swap = "rbxassetid://122501337503529",
