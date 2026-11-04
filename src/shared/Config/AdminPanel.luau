@@ -70,6 +70,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Ridge 1: Moonlight Sonata (piano)", command = "/music ridge 1" },
 			{ label = "Ridge 2: Live Piano Stories 04 (piano)", command = "/music ridge 2" },
 			{ label = "Ridge 3: Hombre Solo (guitar)", command = "/music ridge 3" },
+			{ label = "Ridge 4: Air Currents (guitar)", command = "/music ridge 4" },
 			{ label = "Warden 1: Forest Chase", command = "/music warden 1" },
 			{ label = "Warden 2: Battle Of Wonderland", command = "/music warden 2" },
 			{ label = "Warden 3: Combat Of Giants", command = "/music warden 3" },

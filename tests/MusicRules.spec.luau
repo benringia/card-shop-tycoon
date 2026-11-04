@@ -81,7 +81,7 @@ return {
 		local picks = {
 			meadow = { "rbxassetid://1838420686", 0.005 }, -- Woodland Walk (classical solo guitar)
 			gorge = { "rbxassetid://1842181702", 0.01 }, -- Calm Waters (solo guitar)
-			ridge = { "rbxassetid://1842276088", 0.005 }, -- Hombre Solo (solo guitar)
+			ridge = { "rbxassetid://1842276365", 0.005 }, -- Air Currents (classical solo guitar)
 			warden = { "rbxassetid://1845205138", 0.1 }, -- Forest Chase
 			brood = { "rbxassetid://1841360723", 0.13 }, -- Creepy Crawlers
 			colossus = { "rbxassetid://96625587462633", 0.1 }, -- Giant's Grave
@@ -115,9 +115,9 @@ return {
 		end
 		local meadow = MusicRules.find(Music, "meadow").ambient
 		expect.equal(meadow.id, "rbxassetid://9112779471", "the Meadow: Field Birds Tweeting 1")
-		expect.equal(meadow.volume, 0.05, "the Meadow's field loop")
+		expect.equal(meadow.volume, 0.03, "the Meadow's field loop")
 		for _, area in Music.WILD.areas do
-			local wanted = if area.key == "ridge" then 0.02 else 0.05 -- the lava rumble is a much louder loop
+			local wanted = ({ meadow = 0.03, gorge = 0.05, ridge = 0.002 })[area.key] -- the lava rumble is a much louder loop
 			expect.equal(area.ambient.volume, wanted, `{area.key} ambience (owner 2026-11-04)`)
 		end
 	end,

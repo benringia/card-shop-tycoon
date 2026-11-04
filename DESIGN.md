@@ -140,12 +140,13 @@ Each place has three options (`/music <place> <n> [volume]` or the admin panel's
 meadow, gorge, ridge, warden, brood, colossus). The valley plays only solo piano or acoustic guitar (owner 2026-11-04,
 after hearing orchestral picks: "acoustic guitars or piano only"), very quiet; the owner picked by ear: the Meadow
 "Woodland Walk" (classical solo guitar) at 0.005, the Caves "Calm Waters" (slow, sparse solo guitar) at 0.01, Ember
-Ridge "Hombre Solo" (intense Spanish solo guitar) at 0.005 (the other options: "Butterflies", "Running Through The
-Fields"; "Secret Waterfall", "Air Currents"; "Moonlight Sonata", "Live Piano Stories 04"). The arenas keep the owner's battle picks: the Meadow Warden's "Forest Chase" at
+Ridge "Air Currents" (floating classical solo guitar, after "Hombre Solo") at 0.005 (the other options: "Butterflies",
+"Running Through The Fields"; "Secret Waterfall", "Air Currents"; "Moonlight Sonata", "Live Piano Stories 04", "Hombre
+Solo"). The arenas keep the owner's battle picks: the Meadow Warden's "Forest Chase" at
 0.1, the Cave Brood Queen's "Creepy Crawlers" at 0.13, the Ember Colossus' "Giant's Grave" at 0.1. Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
 the average the owner heard and cuts the peaks; the town's limiter would crush these). Each area also has a Pro Sound
-Effects ambient loop under its music at 0.05 (the owner's number; Ember Ridge's louder lava at 0.02), crossfading the
-same way: a field of cicadas, birds and insects in the Meadow
+Effects ambient loop under its music (turned down by the owner: the Meadow 0.03, the Caves 0.05, Ember Ridge's much
+louder lava 0.002), crossfading the same way: a field of cicadas, birds and insects in the Meadow
 ("Field Birds Tweeting 1"; the first, "Birds Peaceful 2", was lost under the music: `PlaybackLoudness` ignores
 `Volume`, so what you hear is about loudness x volume),
 cave drips in the Caves, bubbling lava in Ember Ridge; the arenas keep their own (`ARENA_DRESSING`). A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**

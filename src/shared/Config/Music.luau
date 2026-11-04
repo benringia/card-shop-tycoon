@@ -56,7 +56,7 @@ return {
 	-- loops through the leveler. The valley plays only solo piano or acoustic guitar (owner 2026-11-04, after the
 	-- orchestral picks: "acoustic guitars or piano only"), very quiet, the owner's pick of each by ear with its volume;
 	-- the arenas keep the owner's battle picks. Each area also plays a Pro Sound Effects ambient loop under its music
-	-- (0.05; the lava 0.02), crossfading the same way (the arenas have theirs in Config/WildValley ARENA_DRESSING).
+	-- (turned down by the owner: the Meadow 0.03, the Caves 0.05, the lava 0.002), crossfading the same way (the arenas have theirs in Config/WildValley ARENA_DRESSING).
 	WILD = {
 		areas = {
 			{
@@ -66,7 +66,7 @@ return {
 				-- Field Birds Tweeting 1: cicadas, birds, insects buzzing by, light tree movement (PlaybackLoudness ignores
 				-- Volume, so what you hear ~ loudness x volume: this loop reads ~11, the music ~90-150); the first pick, Birds
 				-- Peaceful 2 (~4.6 x 0.3 against ~98 x 0.1), was lost under the music.
-				ambient = { id = "rbxassetid://9112779471", volume = 0.05 },
+				ambient = { id = "rbxassetid://9112779471", volume = 0.03 },
 				options = {
 					option("Butterflies (uplifting, summery; solo guitar)", "1842176339"),
 					option("Running Through The Fields (solo piano)", "137990447184466"),
@@ -88,13 +88,14 @@ return {
 			},
 			{
 				key = "ridge", -- Ember Ridge: foreboding, volcanic
-				tracks = { "rbxassetid://1842276088" }, -- Hombre Solo (the owner's pick, option 3)
+				tracks = { "rbxassetid://1842276365" }, -- Air Currents (the owner's pick, option 4; Hombre Solo before)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9112823197", volume = 0.02 }, -- Lava Rumble 1: bubbling lava (0.3...0.05 too loud)
+				ambient = { id = "rbxassetid://9112823197", volume = 0.002 }, -- Lava Rumble 1: bubbling lava (~105 x 0.002, under the guitar)
 				options = {
 					option("Moonlight Sonata (Beethoven; solo piano)", "9046646008"),
 					option("Live Piano Stories 04 (drama, mysterious; solo piano)", "127337767677606"),
 					option("Hombre Solo (intense, Spanish; solo guitar)", "1842276088"),
+					option("Air Currents (floating; classical solo guitar)", "1842276365"),
 				},
 				volume = 0.005,
 			},
