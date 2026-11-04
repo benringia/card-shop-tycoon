@@ -32,6 +32,9 @@ return {
 	-- Hits
 	-- Your swing freezes this long on a hit (hit-stop; sword-moves round): a cut, and the finisher or the dash slash
 	HIT_STOP = { cut = 0.08, big = 0.12 },
+	-- The finisher's hang (Swords cut `hang`): your camera eases in by `degrees` of field of view, then back in `back`
+	-- seconds as the slam lands
+	HANG_ZOOM = { degrees = 7, back = 0.12 },
 	FADE = { strike = 0.04 }, -- seconds a cut or the skill blends in (Util/SwordAnims): snappy, no mushy start
 	FLASH_SECONDS = 0.12, -- what you hit flashes white this long
 	SPARKS = 14, -- sparks per sword hit
@@ -48,8 +51,8 @@ return {
 		cut1 = { tilt = 40, yaw = 0, radius = 4.2, start = -10, sweep = 150, up = 0.8, ahead = 0.6, from = 0.15, wipe = 0.1, fade = 0.2, width = 2.8 },
 		-- the backhand: low on the left, rising out to the right
 		cut2 = { tilt = 25, yaw = 0, radius = 4.2, start = 190, sweep = -170, up = 0.5, ahead = 0.6, from = 0.12, wipe = 0.1, fade = 0.2, width = 2.8 },
-		-- the finisher: upright, from over your head down into the ground in front
-		cut3 = { tilt = 90, yaw = 0, radius = 4.4, start = -20, sweep = 170, up = 1.2, ahead = 1, from = 0.3, wipe = 0.12, fade = 0.28, width = 3.4 },
+		-- the finisher: upright, from over your head down into the ground in front, as the fall from the hang starts
+		cut3 = { tilt = 90, yaw = 0, radius = 4.4, start = -20, sweep = 170, up = 1.2, ahead = 1, from = 0.56, wipe = 0.12, fade = 0.28, width = 3.4 },
 		-- the dash slash's draw: flat, from your left round to your right, as the dash ends
 		skill = { tilt = 0, yaw = 0, radius = 5, start = 175, sweep = -170, up = 0.2, ahead = 0, from = 0.42, wipe = 0.1, fade = 0.3, width = 3.4 },
 	},

@@ -20,6 +20,7 @@ JSON_DIR = os.path.join(REPO, "assets", "blender", "Animations", "StarterSword")
 VIEWS = {
     "default": {"front": ((9.0, -14.0, 5.6), (0, -1.5, 2.5)), "side": ((16.0, -1.5, 4.6), (0, -1.5, 2.5))},
     "skill": {"front": ((13.0, -24.0, 7.5), (0, -5.0, 2.5)), "side": ((24.0, -5.0, 5.0), (0, -5.0, 2.5))},
+    "cut3": {"front": ((14.0, -21.0, 9.0), (0, -2.0, 4.6)), "side": ((26.0, -2.0, 7.5), (0, -2.0, 4.6))},  # the big jump
 }
 LEAD, TAIL = 12, 24  # preview frames of standing still before and after, so the loop reads
 

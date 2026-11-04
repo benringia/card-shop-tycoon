@@ -1000,7 +1000,9 @@ group, checked before its fragments and every time (not only the first). Below i
   out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
   (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
   starter combo and skill are the sword moves round's (below). Every sword gets its own combo and skill (Forge swords,
-  project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15 body and exported
+  project 2, also their own look and effects). Weapons come in families (owner 2026-11-04: sword, spear, scythe, maybe
+  later a hammer or dual blades), each with its own moves, reach and feel, trading reach for speed so none is simply
+  better; rarity works inside each family (rarer: more effects and better numbers). Not built yet. Its 12 moves are keyed in Blender on the standard R15 body and exported
   as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`; the round's four
   new moves play unpublished in Studio until the owner saves them);
   the HUD's art, the sword's sounds, its moves and model download behind the loading screen (`Util/CombatAssets`, ids listed
@@ -1044,19 +1046,21 @@ group, checked before its fragments and every time (not only the first). Below i
   background Blender by `run_sword_moves.py`; docs/animations.md "Natural motion"):
   - **Cut 1, forehand:** coiled high, a snapped diagonal cut down across. 0.60 s, strike 0.217 s, power 0.298.
   - **Cut 2, backhand:** from low on the left, a rising sweep out to the right. 0.58 s, strike 0.183 s, power 0.298.
-  - **Cut 3, finisher**, both hands on the hilt (an IK grip): a crouch, a spinning leap, a two-handed slam. 0.88 s,
-    strike 0.40 s, power 0.51.
+  - **Cut 3, finisher**, both hands on the hilt (an IK grip; owner 2026-11-04: a big jump with a hang, a cool-down
+    finish): a deep crouch, a spinning leap about 5 studs up, a slow-motion hang at the top (0.31-0.56 s, in the keys;
+    `Swords` `hang`) while your camera eases in 7 degrees (`SwordFx.HANG_ZOOM`), a hard fall into a slam that stabs the
+    sword into the ground, then kneeling over it head bowed before standing. 1.25 s, strike 0.70 s, power 0.776.
   - **Skill, the dash slash** (replaces the spin): a draw stance, a 9-stud dash that goes through foes like the dodge
     (`SwordRules.dashLength`, at most 20 studs), the cut lines and the damage at 0.62 s on every foe whose edge is
     within 2 studs of the path. 1.0 s, power 0.9, 8 s cooldown.
   - **Chaining:** a tap during a cut queues the next at its cancel point (cut 1 0.34 s, cut 2 0.32 s;
     `SwordRules.nextCut`), so the recovery only plays when you stop. The damage a second is measured on that chained
-    cycle (0.34 + 0.32 + 0.88 s) and kept what it was (within 2 %, tests/SwordsConfig); both balance sims chain on the
+    cycle (0.34 + 0.32 + 1.25 s) and kept what it was (within 2 %, tests/SwordsConfig); both balance sims chain on the
     cancel points and their targets hold. A chained cut ends the one before (they'd blend at the same priority), a
     dodge, a knock-down or the fight's end cancels a cut queued for its cancel point (its lunge, arc and hold never
     come), and no cut starts while the dash slash plays (`Util/SwingGate`, Lune-tested). The server still lands a
     queued cut a dodge cancelled on screen (a known gap, final review).
-  - **Lunges:** each cut carries you forward for real (1.1 / 0.8 / 2.6 studs, `Swords` `lunge`), stopping 1 stud short
+  - **Lunges:** each cut carries you forward for real (1.1 / 0.8 / 3.0 studs, `Swords` `lunge`), stopping 1 stud short
     of a foe's edge (`SwordRules.lungeLength`, `Swords.LUNGE_STOP`) and planting you at the end (no slide). The moves
     are exported in place; the game moves you, one push at a time shared with the dodge.
   - **Walking is held** from a cut's start to its cancel point and through the dash slash (and you don't auto-turn), by

@@ -86,33 +86,52 @@ def _cut2(rig, f):
     _feet(f, 0.58, 0.8, 0.8)
 
 
+# The finisher's air poses: the sword raised two-handed overhead (the waist and neck lean forward: in these angles a
+# positive x tips the body back)
+RAISED = {"W": (-18, 0, 0), "N": (-10, 0, 0), "RS": (172, 0, -22), "RE": (40, 0, 0), "RW": (22, 0, 0), "LS": (172, 0, 22), "LE": (40, 0, 0)}
+HANG = {"W": (-30, 0, 0), "N": (-16, 0, 0), "RS": (178, 0, -18), "RE": (30, 0, 0), "RW": (30, 0, 0), "LS": (178, 0, 18), "LE": (30, 0, 0)}
+# Landing: kneeling over the sword stabbed point-down into the ground in front, both hands on the hilt, head bowed
+STAB = {"RS": (60, 0, -12), "RE": (20, 0, 0), "RW": (-75, 0, 0), "LS": (60, 0, 12), "LE": (24, 0, 0)}
+
+
 def _cut3(rig, f):
-    """Finisher: a deep crouch, a high leap with a full spin while the sword rises two-handed over the head, a falling
-    slam into the ground as you land, the impact held."""
+    """Finisher (owner 2026-11-04): a deep crouch, a big leap (about 5 studs up) with a spin while the sword rises
+    two-handed overhead, a slow-motion hang at the top still turning, a hard fall into a slam that stabs the sword into
+    the ground, then kneeling over it head bowed (the cool-down) before standing. The hang's slow motion is in the keys,
+    so the Hit marker stays where the server lands the hit (Config/Swords hitAt 0.70; the arms trail the landing)."""
     _pose(rig, f, 0, READY, 0)
-    _pose(rig, f, 0.12, {"R": (0, 25, 0), "W": (25, 30, 0), "N": (0, -20, 0), "RS": (35, 0, -10), "RE": (85, 0, 0), "RW": (20, 0, 0), "LS": (35, 0, 15), "LE": (80, 0, 0)}, -0.85)
-    _pose(rig, f, 0.17, {"R": (0, 28, 0), "W": (28, 32, 0), "N": (0, -22, 0), "RS": (32, 0, -10), "RE": (88, 0, 0), "RW": (22, 0, 0), "LS": (32, 0, 15), "LE": (82, 0, 0)}, -0.9, kit.SNAP)
-    spin = [(0.20, -60, 0.6), (0.24, -150, 1.2), (0.28, -240, 1.45), (0.32, -330, 1.3), (0.34, -360, 1.15)]
-    for t, yaw, lift in spin:
-        raised = {"R": (0, yaw, 0), "W": (-18, 0, 0), "N": (-10, 0, 0), "RS": (172, 0, -22), "RE": (40, 0, 0), "RW": (22, 0, 0), "LS": (172, 0, 22), "LE": (40, 0, 0)}
-        _pose(rig, f, t, raised, lift, kit.HOLD if t < 0.34 else ("EXPO", "EASE_IN"))
+    _pose(rig, f, 0.12, {"R": (0, 25, 0), "W": (32, 30, 0), "N": (0, -20, 0), "RS": (35, 0, -10), "RE": (85, 0, 0), "RW": (20, 0, 0), "LS": (35, 0, 15), "LE": (80, 0, 0)}, -1.05)
+    _pose(rig, f, 0.17, {"R": (0, 28, 0), "W": (35, 32, 0), "N": (0, -22, 0), "RS": (32, 0, -10), "RE": (88, 0, 0), "RW": (22, 0, 0), "LS": (32, 0, 15), "LE": (82, 0, 0)}, -1.1, kit.SNAP)
+    # (time, spin, lift, pose, ease, forward travel): the launch, then the hang, slow and steady
+    air = [
+        (0.22, -100, 2.2, RAISED, kit.HOLD, 0.6),
+        (0.27, -210, 4.0, RAISED, kit.HOLD, 1.0),
+        (0.31, -275, 4.7, HANG, kit.HOLD, 1.3),
+        (0.44, -305, 4.95, HANG, kit.HOLD, 1.65),
+        (0.56, -330, 4.8, HANG, ("EXPO", "EASE_IN"), 2.0),
+    ]
+    for t, yaw, lift, pose, ease, travel in air:
+        _pose(rig, f, t, dict(pose, R=(0, yaw, 0)), lift, ease)
         a = math.radians(yaw)
-        travel = 2.2 * (t - 0.17) / 0.17
+        tuck = 0.55 if t < 0.5 else 0.35  # knees up in the air, reaching down for the landing
         for side, sx in (("Right", -0.5), ("Left", 0.5)):
-            _foot(side, f, t, (sx * math.cos(a), -travel + sx * math.sin(a), FOOT_Z + lift * 0.8), kit.HOLD)
-    _pose(rig, f, 0.40, {"R": (0, -360, 0), "W": (48, 0, 0), "N": (16, 0, 0), "RS": (28, 0, -20), "RE": (0, 0, 0), "RW": (-60, 0, 0), "LS": (28, 0, 20), "LE": (5, 0, 0)}, -0.75, kit.SNAP)
-    _pose(rig, f, 0.62, {"R": (0, -360, 0), "W": (44, 0, 0), "N": (14, 0, 0), "RS": (30, 0, -20), "RE": (4, 0, 0), "RW": (-56, 0, 0), "LS": (30, 0, 20), "LE": (8, 0, 0)}, -0.72)
-    _pose(rig, f, 0.88, dict(READY, R=(0, -360, 0)), 0)
-    kit.two_hands(rig, lambda t: kit.frame_at(f, t), 0.02, 0.12, 0.66, 0.80)
+            _foot(side, f, t, (sx * math.cos(a), -travel + sx * math.sin(a), FOOT_Z + lift - tuck - 0.2), kit.HOLD)
+    _pose(rig, f, 0.66, dict(STAB, R=(0, -360, 0), W=(-15, 0, 0), N=(-20, 0, 0)), -1.25, kit.SNAP)
+    _pose(rig, f, 0.82, dict(STAB, R=(0, -360, 0), W=(-22, 0, 0), N=(-38, 0, 0)), -1.35)
+    _pose(rig, f, 1.02, dict(STAB, R=(0, -360, 0), W=(-24, 0, 0), N=(-40, 0, 0)), -1.33)
+    _pose(rig, f, 1.25, dict(READY, R=(0, -360, 0)), 0)
+    kit.two_hands(rig, lambda t: kit.frame_at(f, t), 0.02, 0.12, 1.04, 1.16)
     _root(rig, f, 0, 0)
     _root(rig, f, 0.17, -0.2, kit.HOLD)
-    _root(rig, f, 0.40, 2.6, kit.SNAP)
+    _root(rig, f, 0.31, 1.3, kit.HOLD)
+    _root(rig, f, 0.56, 2.0, ("EXPO", "EASE_IN"))
+    _root(rig, f, 0.66, 3.0, kit.SNAP)
     _feet(f, 0, 0, 0)
     _feet(f, 0.12, 0.6, -0.5)
     _feet(f, 0.17, 0.6, -0.5, kit.HOLD)
-    _feet(f, 0.40, 3.4, 2.2, kit.SNAP)
-    _feet(f, 0.62, 3.4, 2.2)
-    _feet(f, 0.88, 2.6, 2.6)
+    _feet(f, 0.66, 4.0, 2.1, kit.SNAP)
+    _feet(f, 1.02, 4.0, 2.1)
+    _feet(f, 1.25, 3.0, 3.0)
 
 
 def _skill(rig, f):
@@ -141,7 +160,7 @@ def _skill(rig, f):
     _feet(f, 1.0, 9.0, 9.0)
 
 
-MOVES = {"cut1": (_cut1, 0.60), "cut2": (_cut2, 0.58), "cut3": (_cut3, 0.88), "skill": (_skill, 1.0)}
+MOVES = {"cut1": (_cut1, 0.60), "cut2": (_cut2, 0.58), "cut3": (_cut3, 1.25), "skill": (_skill, 1.0)}
 VIEWS = {
     "default": {"front": ((9.0, -14.0, 5.6), (0, -1.5, 2.5)), "side": ((16.0, -1.5, 4.6), (0, -1.5, 2.5))},
     "skill": {"front": ((13.0, -24.0, 7.5), (0, -5.0, 2.5)), "side": ((24.0, -5.0, 5.0), (0, -5.0, 2.5))},
@@ -257,7 +276,7 @@ def _run(rig, f):
 MOVES = {
     "cut1": (_cut1, 0.60, False, [{"name": "Hit", "t": 0.217}], False, "Action"),
     "cut2": (_cut2, 0.58, False, [{"name": "Hit", "t": 0.183}], False, "Action"),
-    "cut3": (_cut3, 0.88, False, [{"name": "Hit", "t": 0.40}], False, "Action"),
+    "cut3": (_cut3, 1.25, False, [{"name": "Hit", "t": 0.70}], False, "Action"),
     "skill": (_skill, 1.0, False, [{"name": "Hit", "t": 0.62}], False, "Action"),
     "dodge": (_dodge, 0.35, False, [], False, "Action"),
     "flinch": (_flinch, 0.30, False, [], False, "Action"),

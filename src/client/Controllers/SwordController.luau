@@ -660,6 +660,20 @@ local function facing(root: BasePart): Vector3
 	return if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
 end
 
+-- A finisher's hang (Swords cut `hang`): your camera eases in a little over `seconds`, then back as the fall starts,
+-- whatever happened meanwhile (a dodge mid-hang still gets the view back)
+local function hangZoom(seconds: number)
+	local camera = workspace.CurrentCamera
+	local zoom = SwordFx.HANG_ZOOM
+	local before = camera.FieldOfView
+	local easeIn = TweenService:Create(camera, TweenInfo.new(seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { FieldOfView = before - zoom.degrees })
+	easeIn:Play()
+	task.delay(seconds, function()
+		easeIn:Cancel()
+		TweenService:Create(camera, TweenInfo.new(zoom.back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = before }):Play()
+	end)
+end
+
 -- Is this swing still the one playing (no newer cut, skill or dodge, still in the fight, still standing)?
 local function stillSwinging(token: number): boolean
 	return SwingGate.live(gate, token) and combatTargets ~= nil and not kneeling
@@ -716,6 +730,14 @@ function SwordController.Attack()
 				local _, feetRoot, feetHumanoid = ownParts()
 				if feetRoot and feetHumanoid and stillSwinging(token) then
 					HitFx.dust(feetRoot.Position - Vector3.new(0, feetHumanoid.HipHeight + feetRoot.Size.Y / 2, 0))
+				end
+			end)
+		end
+		local hang = cut.hang
+		if hang then
+			task.delay(hang.from, function()
+				if stillSwinging(token) then
+					hangZoom(hang.to - hang.from)
 				end
 			end)
 		end

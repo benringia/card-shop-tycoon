@@ -7,7 +7,10 @@
 -- the target's edge; `arc` is the cone in front of you it hits (degrees). `lunge`: how far the cut carries you forward
 -- for real, and when (the animations are exported in place; SwordController moves you, stopping short of a foe).
 export type Lunge = { studs: number, from: number, to: number }
-export type Cut = { power: number, hitAt: number, cancelAt: number?, length: number, reach: number, arc: number, lunge: Lunge? }
+-- `hang`: the slow-motion stretch at the top of a jump (in the animation's keys), when your camera eases in
+-- (SwordFx.HANG_ZOOM)
+export type Hang = { from: number, to: number }
+export type Cut = { power: number, hitAt: number, cancelAt: number?, length: number, reach: number, arc: number, lunge: Lunge?, hang: Hang? }
 -- The skill (the dash slash, sword-moves round): `dash` moves you `studs` forward from `from` to `to` (through foes
 -- like the dodge, never past `maxStuds`); at `hitAt` the cut lines appear and every foe whose edge is within `width` / 2
 -- of the path is hit (the server clamps the path to maxStuds + slack)
@@ -42,8 +45,18 @@ local SWORDS: { [string]: Sword } = {
 			{ power = 0.298, hitAt = 0.217, cancelAt = 0.34, length = 0.60, reach = 9, arc = 80, lunge = { studs = 1.1, from = 0.167, to = 0.25 } },
 			-- the backhand: from low on the left, a rising sweep out to the right
 			{ power = 0.298, hitAt = 0.183, cancelAt = 0.32, length = 0.58, reach = 9, arc = 100, lunge = { studs = 0.8, from = 0.133, to = 0.22 } },
-			-- the finisher: both hands, a spinning leap into a slam
-			{ power = 0.51, hitAt = 0.40, length = 0.88, reach = 10, arc = 70, lunge = { studs = 2.6, from = 0.17, to = 0.40 } },
+			-- the finisher: both hands, a big spinning leap (about 5 studs up) that hangs in slow motion at the top, a
+			-- slam that stabs the sword into the ground, then kneeling over it head bowed (owner 2026-11-04); slower,
+			-- so it hits harder (the damage a second stays)
+			{
+				power = 0.776,
+				hitAt = 0.70,
+				length = 1.25,
+				reach = 10,
+				arc = 70,
+				lunge = { studs = 3.0, from = 0.17, to = 0.66 },
+				hang = { from = 0.31, to = 0.56 },
+			},
 		},
 		-- the dash slash: a draw stance, a 9-stud dash, the cut lines (and the damage) at 0.62 s
 		skill = {

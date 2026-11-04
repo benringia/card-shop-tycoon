@@ -69,12 +69,13 @@ The four moves made this way (`anim_starter_sword.NATURAL`; the game's side is i
 |---|---|---|---|---|
 | `cut1` forehand, a snapped diagonal cut down across | 0.60 s | 0.217 s | 0.34 s | 1.1 studs, 0.167-0.25 s |
 | `cut2` backhand, a rising sweep from low left | 0.58 s | 0.183 s | 0.32 s | 0.8 studs, 0.133-0.22 s |
-| `cut3` finisher, both hands: crouch, spinning leap, slam | 0.88 s | 0.40 s | (its end) | 2.6 studs, 0.17-0.40 s |
+| `cut3` finisher, both hands: crouch, a 5-stud spinning leap, a slow-motion hang (0.31-0.56 s), a slam stabbing the sword into the ground, kneeling head bowed | 1.25 s | 0.70 s | (its end) | 3.0 studs, 0.17-0.66 s |
 | `skill` the dash slash: draw stance, dash, frozen follow-through | 1.0 s | 0.62 s (the cut lines) | (its end) | the dash: 9 studs, 0.30-0.42 s |
 
 Export them (and previews) with
 `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/run_sword_moves.py -- [--preview <dir>] [move ...]`,
-then `lune run tools/anim/build_kfs`. The cancel points and lunges live only in `Config/Swords` (the next cut may start
+then `lune run tools/anim/build_kfs`. In these angles a positive x tips the waist or the head **back** (a head
+"facing the sky"); lean forward and bow with negative x. The cancel points and lunges live only in `Config/Swords` (the next cut may start
 at the cancel point; `SwordController` moves the character); keep them in step with the keys' follow-through and root
 travel.
 

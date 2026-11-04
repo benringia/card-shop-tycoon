@@ -117,9 +117,22 @@ return {
 		local starter = Swords.SWORDS.starterSword
 		expect.equal(starter.combo[1].hitAt, 0.217, "the forehand's Hit marker")
 		expect.equal(starter.combo[2].hitAt, 0.183, "the backhand's Hit marker")
-		expect.equal(starter.combo[3].hitAt, 0.40, "the finisher's Hit marker")
+		expect.equal(starter.combo[3].hitAt, 0.70, "the finisher's Hit marker (after the big jump, owner 2026-11-04)")
 		expect.equal(starter.skill.hitAt, 0.62, "the dash slash's cut lines")
 		expect.equal(Swords.LUNGE_STOP > 0, true)
+	end,
+
+	-- The finisher's big jump (owner 2026-11-04): a slow-motion hang at the top of the leap, between the launch and the
+	-- slam, while your camera eases in a little
+	["the finisher hangs at the top of its jump before the slam"] = function()
+		local finisher = Swords.SWORDS.starterSword.combo[3]
+		local hang = finisher.hang
+		expect.equal(hang ~= nil, true, "the finisher has a hang")
+		local lunge = finisher.lunge :: Swords.Lunge
+		expect.equal(lunge.from < hang.from and hang.from < hang.to and hang.to < finisher.hitAt, true, "launch, hang, slam")
+		expect.equal(finisher.hitAt < finisher.length, true)
+		local zoom = SwordFx.HANG_ZOOM
+		expect.equal(zoom.degrees > 0 and zoom.degrees <= 12 and zoom.back > 0, true, "a little zoom, eased back")
 	end,
 
 	["the starter combo's damage a second is today's, within 2 % (chained on cancel points)"] = function()
