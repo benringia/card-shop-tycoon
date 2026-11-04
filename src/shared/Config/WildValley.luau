@@ -376,9 +376,38 @@ return {
 		{ x = -5, z = 1300, radius = 3, count = 8, model = "Toadstool", height = 1.4 },
 	},
 	-- Ember Ridge's ember forest (owner's pick B): ember-crowned trees, red and orange crystal clusters, a dragon skeleton
-	EMBER_TREES = {},
-	EMBER_CRYSTALS = {},
-	SKELETON = {},
+	EMBER_TREES = {
+		-- three groves: west of the trail as you come onto the ridge, by the north-east hill, by the east hill
+		{ model = "EmberTree", x = -178, z = 1672, height = 18, yaw = 20, glow = "ember" },
+		{ model = "EmberTree", x = -165, z = 1690, height = 16, yaw = 140, glow = "ember" },
+		{ model = "EmberTree", x = -185, z = 1695, height = 15, yaw = 250, glow = "ember" },
+		{ model = "EmberTree", x = -160, z = 1665, height = 14, yaw = 310, glow = "ember" },
+		{ model = "EmberTree", x = 30, z = 1765, height = 19, yaw = 60, glow = "ember" },
+		{ model = "EmberTree", x = 50, z = 1750, height = 17, yaw = 180, glow = "ember" },
+		{ model = "EmberTree", x = 60, z = 1772, height = 15, yaw = 290, glow = "ember" },
+		{ model = "EmberTree", x = 15, z = 1752, height = 14, yaw = 100, glow = "ember" },
+		{ model = "EmberTree", x = 55, z = 1625, height = 20, yaw = 220, glow = "ember" },
+		{ model = "EmberTree", x = 72, z = 1645, height = 16, yaw = 340, glow = "ember" },
+		{ model = "EmberTree", x = 48, z = 1655, height = 15, yaw = 90, glow = "ember" },
+		{ model = "EmberTree", x = 80, z = 1620, height = 14, yaw = 160, glow = "ember" },
+	},
+	EMBER_CRYSTALS = {
+		{ x = -90, z = 1620, height = 4, yaw = 30 },
+		{ x = -30, z = 1640, height = 5, yaw = 120 },
+		{ x = 10, z = 1680, height = 4, yaw = 200 },
+		{ x = -60, z = 1760, height = 5, yaw = 300 },
+		{ x = -120, z = 1765, height = 4, yaw = 60 },
+		{ x = 85, z = 1700, height = 3, yaw = 150 },
+		{ x = -200, z = 1660, height = 4, yaw = 240 },
+		{ x = -75, z = 1715, height = 6, yaw = 330 },
+		{ x = 20, z = 1790, height = 4, yaw = 90 },
+		{ x = -165, z = 1770, height = 5, yaw = 180 },
+	},
+	-- the landmark: half buried in the ash west of the middle, seen across the ridge from the second pass's top; about
+	-- 40 long at this height (`clear` keeps spawn spots off it)
+	SKELETON = {
+		{ model = "DragonSkeleton", x = -150, z = 1735, height = 11, yaw = 200, glow = "ember", clear = 22 },
+	},
 	-- The glowing parts' colours (a model's `Glow` part turns Neon in its spot's `glow`; teal when it names none)
 	GLOW = {
 		teal = { 80, 235, 215 },
@@ -485,16 +514,10 @@ return {
 	},
 	-- The ridge (biome 3): the caldera's charred trees and obsidian shards (Blender props), and three smoking vents
 	CHARRED = {
-		{ model = "CharredTree", x = -150, z = 1700, height = 11, yaw = 20 },
 		{ model = "CharredTree", x = -60, z = 1620, height = 10, yaw = 140 },
-		{ model = "CharredTree", x = 20, z = 1610, height = 12, yaw = 250 },
 		{ model = "CharredTree", x = 70, z = 1700, height = 10, yaw = 75 },
 		{ model = "CharredTree", x = -100, z = 1780, height = 9, yaw = 300 },
-		{ model = "CharredTree", x = -180, z = 1740, height = 10, yaw = 190 },
-		{ model = "CharredTree", x = -40, z = 1600, height = 11, yaw = 30 },
 		{ model = "CharredTree", x = 90, z = 1630, height = 10, yaw = 210 },
-		{ model = "CharredTree", x = 30, z = 1785, height = 11, yaw = 110 },
-		{ model = "CharredTree", x = -140, z = 1610, height = 9, yaw = 330 },
 	},
 	SHARDS = {
 		{ model = "ObsidianShards", x = -90, z = 1700, height = 4, yaw = 0 },
