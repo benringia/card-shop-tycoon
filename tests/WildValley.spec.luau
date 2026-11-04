@@ -421,6 +421,30 @@ return {
 		end
 	end,
 
+	-- Round 2: lava streams down the volcano, cast onto its face from rays aimed at its axis
+	["lava rays run down the volcano's face toward its axis"] = function()
+		local volcano = { x = -55, z = 1890, y = 20, height = 90 }
+		local rays = WildValley.lavaRays(volcano, { angle = 20, wobble = 6, from = 0.85, to = 0.45 }, 8, 1)
+		expect.equal(#rays, 9)
+		expect.near(rays[1].origin.y, 20 + 90 * 0.85, 1e-9, "starts near the top")
+		expect.near(rays[9].origin.y, 20 + 90 * 0.45, 1e-9, "ends lower down")
+		for index, ray in rays do
+			if index > 1 then
+				expect.equal(ray.origin.y < rays[index - 1].origin.y, true, "each lower than the last")
+			end
+			expect.equal(ray.direction.y, 0, "level")
+			-- the ray's line passes through the axis: the cross product of its direction and (axis - origin) is ~0
+			local ax, az = volcano.x - ray.origin.x, volcano.z - ray.origin.z
+			local dx, dz = ray.direction.x, ray.direction.z
+			local miss = math.abs(dx * az - dz * ax) / math.sqrt(dx * dx + dz * dz)
+			expect.near(miss, 0, 0.01, `ray {index} aims at the axis`)
+			expect.equal(dx * ax + dz * az > 0, true, `ray {index} points inward`)
+		end
+		-- angle 0 faces -Z (the ridge): its first ray starts on the -Z side of the axis
+		local front = WildValley.lavaRays(volcano, { angle = 0, wobble = 0, from = 0.8, to = 0.5 }, 2, 1)[1]
+		expect.equal(front.origin.z < volcano.z, true, "the ridge's side")
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")

@@ -331,6 +331,25 @@ function WildValley.skylineOps(valley: any): { any }
 	return ops
 end
 
+-- One lava stream down the volcano (round 2, spec 2026-11-05-valley-natural-design): `steps + 1` level rays aimed at
+-- its axis from `reach * height` out, at heights from share `from` down to `to` of its height; angle 0 faces -Z (the
+-- ridge), positive toward +X, the stream swaying `wobble` degrees as it runs down. SceneryService casts them onto the
+-- volcano's surface and joins the hits with glowing strips.
+function WildValley.lavaRays(volcano: any, stream: any, steps: number, reach: number): { { origin: { x: number, y: number, z: number }, direction: { x: number, y: number, z: number } } }
+	local rays = {}
+	local out = reach * volcano.height
+	for index = 0, steps do
+		local share = stream.from + (stream.to - stream.from) * index / steps
+		local angle = math.rad(stream.angle + stream.wobble * math.sin(index * 1.3))
+		local outX, outZ = math.sin(angle), -math.cos(angle)
+		table.insert(rays, {
+			origin = { x = volcano.x + outX * out, y = volcano.y + volcano.height * share, z = volcano.z + outZ * out },
+			direction = { x = -outX * out * 2, y = 0, z = -outZ * out * 2 },
+		})
+	end
+	return rays
+end
+
 -- The valley's terrain fills in order: Config/WildValley's TERRAIN, the walls' skylines (skylineOps), the hills, the trail (a pass where it climbs: a
 -- wide ramp in the upper biome's floor, walls each side and the trail on it; elsewhere `segment`, TownTerrain's trail
 -- slab, started and ended half its width short of a climb so it never pokes up beside the ramp), then CARVES

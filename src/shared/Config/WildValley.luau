@@ -535,6 +535,21 @@ return {
 	-- Past the ridge's far cliff: the caldera's volcano (dressed like the canyon's: anchored, its lava glowing), its foot
 	-- hidden behind the cliff, its lava streaks (its -Z side) toward the ridge
 	VOLCANO = { model = "Volcano", x = -55, z = 1890, y = 20, height = 90, yaw = 0 },
+	-- Round 2 (the owner's pick "burnt hills to the volcano"): glowing lava streams down the volcano's ridge-facing side
+	-- (WildValley.lavaRays cast onto its surface, joined by strips `width` wide), from near the crater to where the
+	-- ridge's far wall hides it
+	VOLCANO_LAVA = {
+		steps = 8,
+		reach = 1,
+		width = 3.5,
+		streams = {
+			{ angle = -55, wobble = 6, from = 0.86, to = 0.5 },
+			{ angle = -25, wobble = 5, from = 0.9, to = 0.45 },
+			{ angle = 12, wobble = 7, from = 0.88, to = 0.42 },
+			{ angle = 38, wobble = 5, from = 0.85, to = 0.5 },
+			{ angle = 66, wobble = 6, from = 0.82, to = 0.55 },
+		},
+	},
 	-- Blue crystal clusters in the gorge (code-built like Frostpeak's ice crystals), two at the cave's lip
 	CRYSTALS = {
 		{ x = -440, z = 1405, height = 6, yaw = 300 },

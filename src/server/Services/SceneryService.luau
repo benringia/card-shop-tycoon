@@ -501,6 +501,45 @@ local function buildWildValley(folder: Folder)
 	end
 end
 
+-- The valley volcano's lava streams (Config/WildValley VOLCANO_LAVA, WildValley.lavaRays): each stream's rays cast onto
+-- the volcano's surface and the hits joined by glowing strips. Runs once the Scenery folder is in the world (rays need
+-- it there); the volcano's parts take rays only for the moment (dressCalderaProp turned them off)
+local function buildVolcanoLava(scenery: Instance)
+	local holder = scenery:FindFirstChild("WildValley")
+	local volcano = holder and holder:FindFirstChild("Volcano")
+	if not volcano then
+		return
+	end
+	local parts = {}
+	for _, part in volcano:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.CanQuery = true
+			table.insert(parts, part)
+		end
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { volcano }
+	local lava = WildValleyConfig.VOLCANO_LAVA
+	local color = Props.color(Scenery.LAVA.COLOR)
+	local streams = Instance.new("Folder")
+	streams.Name = "VolcanoLava"
+	streams.Parent = holder
+	for _, stream in lava.streams do
+		local last: RaycastResult? = nil
+		for _, ray in WildValley.lavaRays(WildValleyConfig.VOLCANO, stream, lava.steps, lava.reach) do
+			local hit = workspace:Raycast(Vector3.new(ray.origin.x, ray.origin.y, ray.origin.z), Vector3.new(ray.direction.x, ray.direction.y, ray.direction.z), params)
+			if hit and last then
+				strip(streams, last, hit, lava.width, color)
+			end
+			last = hit
+		end
+	end
+	for _, part in parts do
+		part.CanQuery = false
+	end
+end
+
 local function buildCanyon(folder: Folder)
 	buildLava(folder)
 	buildCalderaProps(folder)
@@ -997,6 +1036,7 @@ function SceneryService.Start()
 		buildCracks(scenery :: Folder)
 		buildRidgeCracks(scenery)
 		buildCave(scenery)
+		buildVolcanoLava(scenery)
 	end)
 	task.spawn(buildDressing)
 end
