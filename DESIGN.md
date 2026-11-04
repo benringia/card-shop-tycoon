@@ -138,11 +138,12 @@ town; on a pass between two areas the last keeps playing; `MusicRules.place`), c
 sound; the Wild bosses' fights no longer play the drone (`Bosses.MUSIC_ID`, kept for the Frontier and the Dungeon).
 The owner picked each by ear from three options (2026-11-04; `/music <place> <n> [volume]` or the admin panel's
 Wild music buttons still try the others; places meadow, gorge, ridge, warden, brood, colossus): the Meadow "Enchanted
-Kingdom", the Caves "Lair of the Wizard" and Ember Ridge "Foreboding Volcano" at 0.02; the Meadow Warden's arena
+Kingdom", the Caves "Lair of the Wizard" and Ember Ridge "Foreboding Volcano" at 0.01; the Meadow Warden's arena
 "Forest Chase" at 0.1, the Cave Brood Queen's "Creepy Crawlers" at 0.13, the Ember Colossus' "Giant's Grave" at 0.1
-(turned down three times after the owner's listens). Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
+(turned down four times after the owner's listens). Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
 the average the owner heard and cuts the peaks; the town's limiter would crush these). Each area also has a Pro Sound
-Effects ambient loop under its music at 0.05 (the owner's number), crossfading the same way: a field of cicadas, birds and insects in the Meadow
+Effects ambient loop under its music at 0.05 (the owner's number; Ember Ridge's louder lava at 0.02), crossfading the
+same way: a field of cicadas, birds and insects in the Meadow
 ("Field Birds Tweeting 1"; the first, "Birds Peaceful 2", was lost under the music: `PlaybackLoudness` ignores
 `Volume`, so what you hear is about loudness x volume),
 cave drips in the Caves, bubbling lava in Ember Ridge; the arenas keep their own (`ARENA_DRESSING`). A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**

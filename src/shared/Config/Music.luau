@@ -53,8 +53,8 @@ return {
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while
 	-- you're in it, in place of the boss fights' drone (Bosses.MUSIC_ID, kept for the Frontier and the Dungeon). The
-	-- owner picked each by ear (2026-11-04) from its options, with its volume (turned down three times after listening:
-	-- the valley's music to 0.02, its ambience to 0.05), through the leveler; each loops. Each area also plays a Pro
+	-- owner picked each by ear (2026-11-04) from its options, with its volume (turned down four times after listening:
+	-- the valley's music to 0.01, its ambience to 0.05, the lava's 0.02), through the leveler; each loops. Each area also plays a Pro
 	-- Sound Effects ambient loop under its music, crossfading the same way (the arenas have theirs
 	-- in Config/WildValley ARENA_DRESSING).
 	WILD = {
@@ -72,7 +72,7 @@ return {
 					option("Pastures Green (English pastoral orchestra)", "130182237855242"),
 					option("Fancytale (fantasy adventure)", "1848093905"),
 				},
-				volume = 0.02,
+				volume = 0.01,
 			},
 			{
 				key = "gorge", -- the caves: mysterious, echoey
@@ -84,19 +84,19 @@ return {
 					option("Curious Shadows (dark fantasy)", "1843503016"),
 					option("Lair of the Wizard (magical fantasy)", "1841594242"),
 				},
-				volume = 0.02,
+				volume = 0.01,
 			},
 			{
 				key = "ridge", -- Ember Ridge: foreboding, volcanic
 				tracks = { "rbxassetid://1835286723" }, -- Foreboding Volcano (the owner's pick)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9112823197", volume = 0.05 }, -- Lava Rumble 1: bubbling lava (0.3...0.12 too loud)
+				ambient = { id = "rbxassetid://9112823197", volume = 0.02 }, -- Lava Rumble 1: bubbling lava (0.3...0.05 too loud)
 				options = {
 					option("Foreboding Volcano (orchestral landscape)", "1835286723"),
 					option("Under The Volcano", "9038165770"),
 					option("Mythic Mountain (dark fantasy, no percussion)", "1843501727"),
 				},
-				volume = 0.02,
+				volume = 0.01,
 			},
 		},
 		arenas = {
