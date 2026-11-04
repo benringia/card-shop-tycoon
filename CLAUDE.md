@@ -67,6 +67,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `tools/textures/make_levelup_fx.py`; uploaded as images, ids in `Config/LevelUpFx` IMAGES, not synced.
   `assets/ui/fx-attack`: the fight effects' white textures (glow, streak, bolt, slash, shard...), made by
   `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced.
+  `assets/ui/fx-moves`: the Pet button moves' textures (raindrop, vine, bark, rune, sigil), made by
+  `tools/textures/make_move_fx.py`, uploaded as images (ids in `Config/MoveFx` TEXTURES), not synced.
   `assets/ui/fx-sword`: the sword effects' white textures (crescent, burst flipbook, line, star), made by
   `tools/textures/make_sword_fx.py`, uploaded as images (ids in `Config/SwordFx` TEXTURES), not synced. Particle
   textures must be square; a beam runs a texture's height along its length (the bolt is upright).

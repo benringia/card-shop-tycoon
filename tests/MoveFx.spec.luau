@@ -122,6 +122,31 @@ return {
 		expect.near(((last - a) / (2 * math.pi)) % 1, 0.5, 1e-9, "1.5 turns up the target")
 	end,
 
+	["every finished move has its sounds and textures"] = function()
+		local wanted = {
+			Rain = { "cast", "loop", "tick", "layer" },
+			Snare = { "burst", "wrap", "creak", "layer" },
+			Overcharge = { "cast", "hum", "zap", "thunder" },
+			Curse = { "swell", "hex", "drone", "layer" },
+		}
+		for move, keys in wanted do
+			for _, key in keys do
+				assert(type(MoveFx.SOUNDS[move][key]) == "string", `{move} has its {key} sound`)
+			end
+		end
+		for _, key in { "raindrop", "vine", "bark", "rune", "sigil" } do
+			assert(type(MoveFx.TEXTURES[key]) == "string", `texture {key}`)
+		end
+	end,
+
+	-- The four finished moves draw their own looks (Util/MoveFx), not ElementFx.special's old styles
+	["the finished moves are drawn by MoveFx"] = function()
+		local AttackFx = require("../src/shared/Config/AttackFx")
+		for _, kind in { "Rain", "Snare", "Overcharge", "Curse" } do
+			expect.equal(AttackFx.SPECIALS[kind].style, "move", `{kind}`)
+		end
+	end,
+
 	["every texture and sound is an asset id"] = function()
 		assetIds(MoveFx.TEXTURES, "TEXTURES")
 		assetIds(MoveFx.SOUNDS, "SOUNDS")

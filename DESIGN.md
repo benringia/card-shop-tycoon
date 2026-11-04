@@ -1155,8 +1155,20 @@ group, checked before its fragments and every time (not only the first). Below i
   left (`BattleSim` casts); meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
   it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
   everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
-  event: Fireball a blast and a fire ring on the ground, Wave a swelling water dome, Snare five vines round the target
-  (4 s), Overcharge a crackling aura on the caster (3 s), Curse a purple mist (5 s); the super moves Inferno a fire
+  event: Fireball a blast and a fire ring on the ground; the other four Pet button moves are finished (spec
+  `2026-11-05-pet-moves-design.md`; the owner: "the higher the creature grade the better the skill must look and feel"):
+  each is drawn by `Util/MoveFx` from `Config/MoveFx`, a look per grade C, B, A, S (every grade a step up, Lune-tested;
+  `Util/MoveFxRules` plays C for a creature with no grade and caps at B with the low-graphics switch off), its own
+  Roblox-licensed sounds, and the creature's wind-up and cast pose growing with grade (`PetRig.body` amount). Healing
+  Rain: a cartoon cloud over each creature it heals with rain falling on it (beams with a scrolling drop texture), a
+  glow, a rising "+N" each tick (gold at S); ripples (B), healing motes (A), rising water rings and a rainbow (S). Vine
+  Snare: vines (C, B) or thorny roots (A, S) climbing round the target on helices for its 4 s, then withering; leaves,
+  thorns, dirt, a glowing crack and flowers by grade. Overcharge: three orbs circling the caster, one spent with each
+  fast attack (the sim's `orb` field; a missed one fizzles on an `orbs` event), arcs between them (A), a bolt with
+  each hit (A) or a thunderbolt and flash (S). Curse: a seven-point rune circle under the caster as it casts, then a
+  hex (B), shadow chains (A), a dripping eye sigil over the target, a dark aura and smoke, the target darkened, for its
+  5 s. Studio: `/movefx <rain|vine|orbs|curse> [C|B|A|S] [big]` and the admin panel's "Pet moves" buttons play any of
+  them on your summoned creature against a dummy. The super moves Inferno a fire
   pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
   the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
   nothing (`FightFxRules.hasEffect`).
@@ -2577,6 +2589,8 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
+- [ ] Pet moves round (branch `pet-moves`, spec `2026-11-05-pet-moves-design.md`): Healing Rain (heals over time),
+  Vine Snare, Overcharge and Curse finished, each better with grade. Waiting for the owner's Studio check.
 - [x] Valley scenery: round 1, the Meadow's ancient ruins, the Caves' glow mushroom hollow with its darker look, Ember
   Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural edges, backdrops, far mountains,
   the composed Meadow, the Ridge's sky, lava streams, clouds, the Caves' grass patches, pieces settled onto the terrain
