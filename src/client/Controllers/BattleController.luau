@@ -870,35 +870,49 @@ end
 
 local PLAYER_DAMAGE_COLOR = Color3.fromRGB(Swords.PLAYER_DAMAGE_COLOR[1], Swords.PLAYER_DAMAGE_COLOR[2], Swords.PLAYER_DAMAGE_COLOR[3])
 
--- A player's sword hit: their numbers in gold, sparks and a flash on what they hit; yours also freezes your swing a
--- moment (hit-stop) and shakes the camera, harder for the skill
+-- A player's sword hit: their numbers in gold, sparks, a star burst (a ring too on a big one: the dash slash, or your
+-- finisher) and a flash on what they hit, and the dash slash's cut lines; yours also freezes your swing a moment
+-- (hit-stop) and shakes the camera, longer and harder for the finisher and the skill
 local function swordHit(event: any)
 	local marker = markerFor(event.to)
 	local mine = event.from == `a:@{player.UserId}`
+	local big = if mine then SwordController.IsBigHit(event.kind) else event.kind == "Skill"
 	if marker then
 		HitFx.sparks(marker.Position + Vector3.new(0, 3, 0))
-		-- Your own cuts drew their arc as they swung (SwordController); everyone else's, and yours the reach check
-		-- missed, draw it here
-		if not mine or not SwordController.HitSoundJustPlayed() then
-			local attacker = Players:GetPlayerByUserId(tonumber(string.sub(event.from or "", 4)) or 0)
-			local character = if attacker then attacker.Character else nil
-			local sword = Swords.SWORDS[(if character then character:GetAttribute("Sword") else nil) :: string] or Swords.SWORDS.starterSword
-			HitFx.cut(marker.Position + Vector3.new(0, 3, 0), sword.slash, 0, event.kind == "Skill")
+		local attacker = Players:GetPlayerByUserId(tonumber(string.sub(event.from or "", 4)) or 0)
+		local character = if attacker then attacker.Character else nil
+		local sword = Swords.SWORDS[(if character then character:GetAttribute("Sword") else nil) :: string] or Swords.SWORDS.starterSword
+		local tint = Color3.fromRGB(sword.slash.color[1], sword.slash.color[2], sword.slash.color[3])
+		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+		local at = (if root then SwordController.HitPoint(event.to, root.Position) else nil) or marker.Position + Vector3.new(0, 3, 0)
+		-- Your own cuts burst as the blade landed (SwordController's reach check); everyone else's, every dash slash
+		-- (on each foe it reached) and yours the reach check missed burst here
+		if not mine or event.kind == "Skill" or not SwordController.HitSoundJustPlayed() then
+			local burst = SwordFx.BURST
+			HitFx.burst(at, (if big then burst.big else burst.size) * sword.slash.scale, tint)
+			if big then
+				HitFx.ring(at, SwordFx.RING.size * sword.slash.scale, tint)
+			end
+		end
+		if event.kind == "Skill" then
+			HitFx.cutLines(at, sword.slash.scale, tint)
 		end
 		local model = MonsterController.GetModel(marker)
 		if model then
 			HitFx.flash(model, Color3.new(1, 1, 1), SwordFx.FLASH_SECONDS, 0.35)
 		end
 	end
-	if event.from == `a:@{player.UserId}` then
+	if mine then
+		-- The freeze already played when your own reach check connected (SwordController); a hit it missed freezes now
 		local anims = SwordController.GetAnims()
-		if anims then
-			anims.hitStop(SwordFx.HIT_STOP_SECONDS)
+		if anims and not SwordController.HitSoundJustPlayed() then
+			anims.hitStop(if big then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
 		end
-		local strength = if event.kind == "Skill" then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
+		-- The finisher and the dash slash shake harder (sword-moves round)
+		local strength = if big then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
 		shake(strength.seconds, strength.studs)
 		if not SwordController.HitSoundJustPlayed() then
-			SwordController.PlaySound("hit") -- your reach check missed it: the server's hit still sounds
+			SwordController.PlayHit(big) -- your reach check missed it: the server's hit still sounds
 		end
 	end
 end

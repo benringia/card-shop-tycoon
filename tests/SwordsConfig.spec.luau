@@ -4,12 +4,40 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Swords = require("../src/shared/Config/Swords")
 local SwordFx = require("../src/shared/Config/SwordFx")
+local SwordRules = require("../src/shared/Util/SwordRules")
 local expect = require("./lib/expect")
 
 local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge", "flinch", "down", "getUp", "ready", "run" }
 local SOUNDS = { "swing1", "swing2", "swing3", "hit", "draw", "dodge", "ring", "down", "getUp" }
 
 return {
+	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
+	["the sword effects' textures are uploaded images"] = function()
+		for _, key in { "crescent", "burst", "line", "star" } do
+			local id = (SwordFx.TEXTURES :: any)[key]
+			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `TEXTURES.{key}: {id}`)
+		end
+	end,
+
+	-- Every swing's candy sparkle arc (Util/HitFx.swingArc): one Beam per arc, so a sweep of at most 180 degrees; it
+	-- wipes inside its move and shows before the strike lands
+	["every cut and the skill have a swing arc that wipes in before the strike"] = function()
+		local starter = Swords.SWORDS.starterSword
+		local moves: { [string]: { hitAt: number, length: number } } = { skill = starter.skill }
+		for index, cut in starter.combo do
+			moves[`cut{index}`] = cut
+		end
+		for key, move in moves do
+			local arc = SwordFx.ARCS[key]
+			expect.equal(arc ~= nil, true, `{key} has an arc`)
+			expect.equal(math.abs(arc.sweep) > 0 and math.abs(arc.sweep) <= 180, true, `{key} sweep {arc.sweep}`)
+			expect.equal(arc.radius > 0 and arc.width > 0 and arc.wipe > 0 and arc.fade > 0, true, `{key} sizes`)
+			expect.equal(arc.from >= 0 and arc.from <= move.hitAt and arc.from + arc.wipe <= move.length, true, `{key} timing`)
+		end
+		expect.equal(SwordFx.ARC_CORE > 0 and SwordFx.ARC_CORE < 1, true, "the white core is narrower")
+		expect.equal(SwordFx.BURST.big > SwordFx.BURST.size, true, "big hits burst bigger")
+	end,
+
 	["drawing the sword gleams: a short flare at the blade's tip"] = function()
 		local gleam = SwordFx.GLEAM
 		expect.equal(gleam.seconds > 0 and gleam.seconds <= 0.5, true, "a short gleam")
@@ -62,6 +90,44 @@ return {
 		expect.equal(Swords.UNLOCK_SHOP_LEVEL, Bosses.BOSSES[Bosses.LADDER[1]].shopLevel, "the sword comes when boss 1 opens")
 	end,
 
+	-- The sword's sound cues (owner 2026-11-04: a whoosh as the finisher jumps, better slash sounds overall): each move
+	-- plays its layered sounds at set moments, every cue is a sound the sword has, inside its move, and the cuts' swish
+	-- comes with the swing, not at the tap
+	["every move's sound cues play the sword's own sounds, inside the move"] = function()
+		for _, sword in Swords.SWORDS do
+			local lengths: { [string]: number } = { skill = sword.skill.length }
+			for index, cut in sword.combo do
+				lengths[`cut{index}`] = cut.length
+			end
+			for move, length in lengths do
+				local cues = sword.cues[move]
+				expect.equal(cues ~= nil and #cues > 0, true, `{sword.name} {move} has sound cues`)
+				for _, cue in cues do
+					local id = sword.sounds[cue.key]
+					expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{move} cue {cue.key}`)
+					expect.equal(cue.at >= 0 and cue.at < length, true, `{move} cue {cue.key} at {cue.at}`)
+				end
+			end
+		end
+	end,
+
+	["the finisher whooshes as it jumps and lands with a slam"] = function()
+		local sword = Swords.SWORDS.starterSword
+		local finisher = sword.combo[3]
+		local hang = finisher.hang :: Swords.Hang
+		local found: { [string]: number } = {}
+		for _, cue in sword.cues.cut3 do
+			found[cue.key] = cue.at
+		end
+		expect.equal(found.jump ~= nil and found.jump < hang.from, true, "the jump's whoosh comes with the launch")
+		expect.equal(found.slam ~= nil and math.abs(found.slam - finisher.hitAt) <= 0.06, true, "the slam lands with the hit")
+		for index = 1, 2 do
+			for _, cue in sword.cues[`cut{index}`] do
+				expect.equal(cue.at <= sword.combo[index].hitAt, true, `cut {index}'s {cue.key} before its strike`)
+			end
+		end
+	end,
+
 	["each cut lands inside its own length"] = function()
 		for _, sword in Swords.SWORDS do
 			for index, cut in sword.combo do
@@ -70,6 +136,49 @@ return {
 			expect.equal(sword.skill.hitAt > 0 and sword.skill.hitAt < sword.skill.length, true, `{sword.name} skill`)
 		end
 	end,
+	-- The sword-moves round (spec 2026-11-04-sword-moves-design)
+	["each cut strikes, then reaches its cancel point, inside its length; lunges and the dash come before the strike"] = function()
+		for _, sword in Swords.SWORDS do
+			for index, cut in sword.combo do
+				local cancel = cut.cancelAt or cut.length
+				expect.equal(cut.hitAt < cancel and cancel <= cut.length, true, `{sword.name} cut {index} cancel point`)
+				if cut.lunge then
+					expect.equal(cut.lunge.from < cut.lunge.to and cut.lunge.from <= cut.hitAt and cut.lunge.to <= cut.length, true, `{sword.name} cut {index} lunge`)
+					expect.equal(cut.lunge.studs > 0 and cut.lunge.studs <= 4, true, `{sword.name} cut {index} lunge length`)
+				end
+			end
+			local dash = sword.skill.dash
+			expect.equal(dash ~= nil, true, `{sword.name} skill dash`)
+			expect.equal(dash.from < dash.to and dash.to <= sword.skill.hitAt, true, `{sword.name} dash before the cut lines`)
+			expect.equal(dash.studs <= dash.maxStuds and dash.width > 0 and dash.slack > 0, true, `{sword.name} dash numbers`)
+		end
+		local starter = Swords.SWORDS.starterSword
+		expect.equal(starter.combo[1].hitAt, 0.217, "the forehand's Hit marker")
+		expect.equal(starter.combo[2].hitAt, 0.183, "the backhand's Hit marker")
+		expect.equal(starter.combo[3].hitAt, 0.70, "the finisher's Hit marker (after the big jump, owner 2026-11-04)")
+		expect.equal(starter.skill.hitAt, 0.62, "the dash slash's cut lines")
+		expect.equal(Swords.LUNGE_STOP > 0, true)
+	end,
+
+	-- The finisher's big jump (owner 2026-11-04): a slow-motion hang at the top of the leap, between the launch and the
+	-- slam, while your camera eases in a little
+	["the finisher hangs at the top of its jump before the slam"] = function()
+		local finisher = Swords.SWORDS.starterSword.combo[3]
+		local hang = finisher.hang
+		expect.equal(hang ~= nil, true, "the finisher has a hang")
+		local lunge = finisher.lunge :: Swords.Lunge
+		expect.equal(lunge.from < hang.from and hang.from < hang.to and hang.to < finisher.hitAt, true, "launch, hang, slam")
+		expect.equal(finisher.hitAt < finisher.length, true)
+		local zoom = SwordFx.HANG_ZOOM
+		expect.equal(zoom.degrees > 0 and zoom.degrees <= 12 and zoom.back > 0, true, "a little zoom, eased back")
+	end,
+
+	["the starter combo's damage a second is today's, within 2 % (chained on cancel points)"] = function()
+		local today = 1.30 / 1.81 -- 0.35 + 0.35 + 0.6 over 0.56 + 0.5 + 0.75 s (round before the sword-moves round)
+		local now = SwordRules.comboPowerPerSecond(Swords.SWORDS.starterSword.combo)
+		expect.equal(math.abs(now - today) / today <= 0.02, true, `{now} vs {today}`)
+	end,
+
 	["every sword has its slash look, the starter a plain steel one"] = function()
 		for id, sword in Swords.SWORDS do
 			expect.equal(sword.slash ~= nil and #sword.slash.color == 3, true, `{id} colour`)

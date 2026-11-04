@@ -24,9 +24,11 @@ return {
 
 	["every sword's sounds and published moves are preloaded"] = function()
 		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords)
+		local published = 0
 		for _, sword in Swords.SWORDS do
 			for move, id in sword.animations do
 				if id ~= "" then
+					published += 1
 					expect.equal(has(ids.animations, id), true, move)
 				end
 			end
@@ -34,7 +36,9 @@ return {
 				expect.equal(has(ids.sounds, id), true, moment)
 			end
 		end
-		expect.equal(#ids.animations >= 12, true, "the starter sword's 12 moves")
+		-- every published move (a move waiting to be published, its id empty, plays from its KeyframeSequence in Studio)
+		expect.equal(#ids.animations, published, "every published move, once")
+		expect.equal(published >= 12, true, "all 12 of the starter sword's moves, published (the sword-moves round's too)")
 	end,
 
 	["no empty or repeated ids"] = function()

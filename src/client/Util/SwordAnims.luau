@@ -7,7 +7,9 @@ local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Swords = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Swords"))
+local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
+local Swords = require(Config:WaitForChild("Swords"))
+local SwordFx = require(Config:WaitForChild("SwordFx"))
 
 local SwordAnims = {}
 
@@ -18,8 +20,9 @@ export type Set = {
 	hitStop: (seconds: number) -> (),
 }
 
--- Moves a hit freezes for a moment (hit-stop)
+-- Moves a hit freezes for a moment (hit-stop); they blend in fast (SwordFx.FADE.strike)
 local STRIKES = { "cut1", "cut2", "cut3", "skill" }
+local IS_STRIKE = { cut1 = true, cut2 = true, cut3 = true, skill = true }
 
 -- The animation id for a move: its published id, or (Studio) a temporary one from its KeyframeSequence
 local function idFor(sword: Swords.Sword, key: string): string?
@@ -63,19 +66,28 @@ function SwordAnims.load(humanoid: Humanoid, swordId: string): Set
 		return tracks[key]
 	end
 
-	local function play(key: string, speed: number?, fade: number?): AnimationTrack?
-		local loaded = track(key)
-		if loaded then
-			loaded:Play(fade or 0.05, 1, speed or 1)
-		end
-		return loaded
-	end
-
 	local function stop(key: string, fade: number?)
 		local loaded = tracks[key]
 		if loaded and loaded.IsPlaying then
 			loaded:Stop(fade or 0.15)
 		end
+	end
+
+	-- A strike or the dodge ends whatever strike was playing (they share a priority: left playing, a chained cut would
+	-- blend half-and-half with the one before and show half its swing)
+	local function play(key: string, speed: number?, fade: number?): AnimationTrack?
+		if IS_STRIKE[key] or key == "dodge" then
+			for _, other in STRIKES do
+				if other ~= key then
+					stop(other, SwordFx.FADE.strike)
+				end
+			end
+		end
+		local loaded = track(key)
+		if loaded then
+			loaded:Play(fade or (if IS_STRIKE[key] then SwordFx.FADE.strike else 0.05), 1, speed or 1)
+		end
+		return loaded
 	end
 
 	-- Every playing strike freezes for `seconds`, then carries on

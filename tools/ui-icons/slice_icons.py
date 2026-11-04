@@ -2,6 +2,7 @@
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
 Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-5, default 1]
+       python tools/ui-icons/slice_icons.py <icon.png> single <Name>   (one icon on magenta, e.g. DashSkill)
 """
 import os
 import sys
@@ -112,5 +113,15 @@ def main(path: str, sheet: int):
     print(f"saved {len(names)} icons to {os.path.abspath(OUT_DIR)}")
 
 
+def single(path: str, name: str):
+    os.makedirs(OUT_DIR, exist_ok=True)
+    out = os.path.join(OUT_DIR, f"{name}.png")
+    square(key_out(Image.open(path))).save(out)
+    print(f"saved {os.path.abspath(out)}")
+
+
 if __name__ == "__main__":
-    main(sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 1)
+    if len(sys.argv) > 3 and sys.argv[2] == "single":
+        single(sys.argv[1], sys.argv[3])
+    else:
+        main(sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 1)

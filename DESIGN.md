@@ -978,7 +978,9 @@ group, checked before its fragments and every time (not only the first). Below i
   Frontier's and the Prism Hydra) each player fights beside their one creature as a player fighter (`a:@<UserId>`,
   100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 4, `Config/Swords`, `SwordService`) hits through remotes
   `SwordAttack` (the server picks the combo's next cut with `SwordRules.nextCut` and hits whatever is in reach at its
-  strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
+  strike frame), `SwordSkill` (the dash slash, 8 s cooldown: every foe along the path from where they started to where
+  they are when its cut lines appear, the path clamped to the dash's longest plus 3 studs, `SwordRules.clampPath` /
+  `inDashPath`) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
   dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
   third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
   big attack: a closing orange ring (`SwordFx.RING_COLOR`, the owner's pick) on each player, a slam under them or a
@@ -997,10 +999,12 @@ group, checked before its fragments and every time (not only the first). Below i
   (`seenSword`). It rests on the back everywhere, 1.4x bigger there so it and the looks the shop will sell later stand
   out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
   (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
-  starter combo: a stepping cut, a sideways sweep, a leaping slam (power 0.35 / 0.35 / 0.6, a tap within 0.9 s of a
-  cut's end carries on); skill: a spinning slash all round (radius 11, 8 s). Every sword gets its own combo and skill
-  (Forge swords, project 2, also their own look and effects). Its 12 moves are keyed in Blender on the standard R15
-  body and exported as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`);
+  starter combo and skill are the sword moves round's (below). Every sword gets its own combo and skill (Forge swords,
+  project 2, also their own look and effects). Weapons come in families (owner 2026-11-04: sword, spear, scythe, maybe
+  later a hammer or dual blades), each with its own moves, reach and feel, trading reach for speed so none is simply
+  better; rarity works inside each family (rarer: more effects and better numbers). Not built yet. Its 12 moves are keyed in Blender on the standard R15 body and exported
+  as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`; the round's four
+  new moves play unpublished in Studio until the owner saves them);
   the HUD's art, the sword's sounds, its moves and model download behind the loading screen (`Util/CombatAssets`, ids listed
   by `Util/CombatPreload`), so the first fight starts ready; players wear the standard body
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
@@ -1025,7 +1029,7 @@ group, checked before its fragments and every time (not only the first). Below i
   screen's edges flash red for 0.55 s, stronger for a bigger share of your HP; below 30% HP they keep pulsing
   (`Util/HpBarRules`, numbers in `Config/CombatHud`). Jumping is off
   in boss fights (the dodge replaces it). Attacks turn you softly toward the boss; the camera stays free; the server
-  checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
+  checks every hit. Feel (`Config/SwordFx`): hit-stop (below), a white flash on what you hit, sparks, camera shake, a
   slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
   (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`),
   each kept loaded on your character and replayed at a pitch picked from `Swords.SOUND_PITCH` (0.88-1.12) each time, and
@@ -1036,6 +1040,43 @@ group, checked before its fragments and every time (not only the first). Below i
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
   mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
   in one short line (the pet move's by element, `CombatHud.PET_TIPS`).
+- **Sword moves round** (spec `2026-11-04-sword-moves-design.md`, plan `2026-11-04-sword-moves.md`; owner: "satisfying,
+  smooth, dramatic, anime-ish, hack and slash, not Roblox-stiff"): four new Steel Sword moves keyed with per-key easing,
+  joint overlap and 60 fps export (`tools/blender/anim_kit.py`, `anim_starter_sword.py`, exported in place in a
+  background Blender by `run_sword_moves.py`; docs/animations.md "Natural motion"):
+  - **Cut 1, forehand:** coiled high, a snapped diagonal cut down across. 0.60 s, strike 0.217 s, power 0.298.
+  - **Cut 2, backhand:** from low on the left, a rising sweep out to the right. 0.58 s, strike 0.183 s, power 0.298.
+  - **Cut 3, finisher**, both hands on the hilt (an IK grip; owner 2026-11-04: a big jump with a hang, a cool-down
+    finish): a deep crouch, a spinning leap about 5 studs up, a slow-motion hang at the top (0.31-0.56 s, in the keys;
+    `Swords` `hang`) while your camera eases in 7 degrees (`SwordFx.HANG_ZOOM`), a hard fall into a slam that stabs the
+    sword into the ground, then kneeling over it head bowed before standing. 1.25 s, strike 0.70 s, power 0.776.
+  - **Skill, the dash slash** (replaces the spin): a draw stance, a 9-stud dash that goes through foes like the dodge
+    (`SwordRules.dashLength`, at most 20 studs), the cut lines and the damage at 0.62 s on every foe whose edge is
+    within 2 studs of the path. 1.0 s, power 0.9, 8 s cooldown.
+  - **Chaining:** a tap during a cut queues the next at its cancel point (cut 1 0.34 s, cut 2 0.32 s;
+    `SwordRules.nextCut`), so the recovery only plays when you stop. The damage a second is measured on that chained
+    cycle (0.34 + 0.32 + 1.25 s) and kept what it was (within 2 %, tests/SwordsConfig); both balance sims chain on the
+    cancel points and their targets hold. A chained cut ends the one before (they'd blend at the same priority), a
+    dodge, a knock-down or the fight's end cancels a cut queued for its cancel point (its lunge, arc and hold never
+    come), and no cut starts while the dash slash plays (`Util/SwingGate`, Lune-tested). The server still lands a
+    queued cut a dodge cancelled on screen (a known gap, final review).
+  - **Lunges:** each cut carries you forward for real (1.1 / 0.8 / 3.0 studs, `Swords` `lunge`), stopping 1 stud short
+    of a foe's edge (`SwordRules.lungeLength`, `Swords.LUNGE_STOP`) and planting you at the end (no slide). The moves
+    are exported in place; the game moves you, one push at a time shared with the dodge.
+  - **Walking is held** from a cut's start to its cancel point and through the dash slash (and you don't auto-turn), by
+    setting the humanoid's move back to nothing after Roblox's controls each frame (this game has no PlayerModule). A
+    dodge, a knock-down, the fight's end or a new character gives it back; a dodge mid-swing goes the way you're
+    pushing.
+  - **Hit-stop:** 0.08 s on a cut, 0.12 s on the finisher and the dash slash (`SwordFx.HIT_STOP`), played the moment
+    your own reach check connects; those two also shake harder. Strikes blend in over 0.04 s (`SwordFx.FADE`).
+  - **The skill button** says DASH with a dash slash icon (`DashSkill`; tip "Dash through and slash everything in your
+    path.").
+  - **Sounds** (owner 2026-11-04: a whoosh as the finisher jumps, fuller slashes; all Pro Sound Effects): each move
+    plays its sounds layered at set moments (`Swords` `cues`, stopped by a dodge): a cut's swish with an air layer at
+    the snap (not the tap); the finisher a rising whoosh as it leaps, its swish on the fall, a hard whoosh-impact on
+    the slam and a dirt hit as the sword stabs the ground; the dash slash a drawing shing, the dash's whoosh and a
+    searing slice with the cut lines. Every hit is the blade's slice with a thud under it, big hits (the finisher, the
+    dash slash) a beefy burst on top. Layers play quieter than the swish (`Swords.SOUND_VOLUMES`).
 - **Creature attacks** (spec `2026-11-02-attack-animations-design.md`): in every fight the sim sends a `charge` event
   0.6 s (`Combat.CHARGE_LEAD`) before each auto-attack lands (it draws no random: fights and the balance numbers are
   unchanged). Creatures circle their fight spot (marker attribute `InFight`, `Util/FightMotion`, `AttackFx.ORBIT`: 4
@@ -1125,12 +1166,20 @@ group, checked before its fragments and every time (not only the first). Below i
   white. Sounds play at a slightly random pitch. Damage numbers pop (`Util/DamagePop`, `AttackFx.NUMBERS`): they burst
   in bigger than their size and settle, rise, drift a little sideways and fade; crits are bigger, last longer and
   wiggle; a Poison or Burn tick is small, in its colour, with no flinch or shake. Low graphics: fewer particles.
-- **Sword hit effects** (owner 2026-11-03, "not too much, it's a starter sword"): each cut that connects draws a thin
-  slash arc in the sword's colour where your blade lands, turned the way the cut swings, with a small white flash; the
-  combo's last cut a little bigger; the skill a wide arc and a ring at your feet (`HitFx.cut` / `HitFx.spin`,
-  `SwordFx.SLASH`). The arc's colour and size are the sword's (`Swords.slash`): pale steel at size 1 on the starter, so
-  the Forge's swords can be bolder. Your own arcs play the moment your reach check connects; other players' (and yours
-  the check missed) play at the target when the server's hit arrives. No element colour, no screen flash.
+- **Sword effects** (sword moves round, owner's picks 2026-11-04: candy sparkle arcs, star bursts and a ring on big
+  hits; `Util/HitFx`, `Config/SwordFx`, textures by `tools/textures/make_sword_fx.py` in `assets/ui/fx-sword`):
+  - **Candy sparkle arc** on every swing, hit or not: a crescent Beam bent into a circular arc in the swing's plane
+    (`SwordFx.ARCS` per cut and the skill: diagonal down, rising, upright, flat; `Util/SwordArcRules`), in the sword's
+    slash colour (`Swords.slash`, pale steel on the starter) with a white core, wiped along the way the swing goes,
+    shedding small stars, then fading.
+  - **Hits:** a spiky star burst (a 4 x 4 flipbook) on the foe's side facing you, bigger on the finisher and the dash
+    slash, which also snap out a ring facing you (flat rings stay the boss's); the white flash on what you hit and the
+    sparks as before. Your own cut hits burst the moment your reach check connects; other players' hits, every dash
+    slash and yours the check missed burst when the server's hit arrives.
+  - **Dash slash:** after-images along the dash and two crossing cut lines on each foe hit, a beat after you pass.
+  - **The finisher's landing** puffs a small dust ring at your feet.
+  - Your swing effects are yours (on your screen, under the camera); others see your moves and your hits' bursts. The
+    effects clean themselves up (a stress test of 6 foes hit every 0.1 s held 58 fps with nothing left after).
 - **End screen** (owner 2026-11-03, design B "banner and loot strip"; `Util/VictoryScreen`, `Util/VictoryRules`,
   `Config/Victory`), boss fights only: normal monster fights (wild, elites, Dungeon rooms) end with a toast instead
   (`Util/FightToast`, `VictoryRules.toast`, `Victory.TOAST`): a dark pill slides down at the top, "Mossling defeated"
@@ -1559,13 +1608,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/packs/               # pack, deck box and display box models (.rbxm) → ReplicatedStorage.PackModels (docs/packs.md)
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
 ├── assets/ui/combat/           # the boss-fight HUD's slanted button, HP bar, hit flash and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
+├── assets/ui/fx-sword/         # the sword effects' textures (crescent, burst flipbook, line, star), made by tools/textures/make_sword_fx.py, uploaded as images (SwordFx.TEXTURES)
 ├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
 ├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
 ├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels (docs/animations.md "The sword model")
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model (Lune)
-├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings (Pillow)
+├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings, the sword effects (make_sword_fx.py) (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
     │   ├── init.server.luau    # boots services
@@ -1695,7 +1745,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
-    │       ├── HitFx.luau              # sword hit feel: sparks, flash, the slash arc (cut / spin)
+    │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, star bursts, rings, cut lines, dust
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
@@ -1745,7 +1795,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Victory.luau    # the fight end screen: timings, sizes, colours by result, sounds
         │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
-        │   ├── SwordFx.luau    # rings, hit feel, slash trail, wind-up glow, loss countdown look (plain data)
+        │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
@@ -1838,7 +1888,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
-            ├── SwordRules.luau    # the combo's next cut, reach and arc, aiming, combo damage per second (pure, Lune-tested)
+            ├── SwordRules.luau    # the combo's next cut (cancel points), reach and arc, aiming, lunges, the dash and its path, combo damage per second (pure, Lune-tested)
+            ├── SwordArcRules.luau # the swing arcs' curve, points, wipe and the hit burst's spot (pure, Lune-tested)
+            ├── SwingGate.luau     # which of your sword actions is still live: tokens, the dash slash's lock, the last cut that struck (pure, Lune-tested)
             ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
             ├── HpBarRules.luau    # HP bar ghost and heal timing, the red edge flash and low-HP pulse, the portrait shake (pure, Lune-tested)
             ├── CombatPreload.luau # every image, sound and animation id the boss fight needs, from its configs (pure, Lune-tested)
@@ -2448,6 +2500,14 @@ boss models; the ranch and Heroic tiers come after those.
   for sparks that don't come; other players' level-up sounds don't follow them; the toast's "+$1000" has no comma;
   "Stocking the shelves..." shows in the Frontier and Dungeon too; the phone layouts of the round 5 windows weren't
   checked in the emulator.
+- [x] Sword moves round (spec `2026-11-04-sword-moves-design.md`, plan `2026-11-04-sword-moves.md`, branch
+  `sword-moves`): four new moves (forehand, backhand, a two-handed finisher with a big jump, a slow-motion hang and a
+  cool-down kneel, the dash slash), chained cuts, real lunges, walking held mid-swing, candy sparkle arcs, star bursts,
+  rings, cut lines, dust, layered sword sounds, the DASH button; all four moves published. Approved by the owner
+  2026-11-04. Deferred minors: the hit-sound window spans two chained cuts (a missed-then-landed cut can be silent);
+  your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
+  end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
+  boss toward the arena wall wasn't checked in Studio.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't

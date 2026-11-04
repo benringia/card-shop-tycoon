@@ -372,16 +372,6 @@ function ElementFx.bolt(from: Vector3, to: Vector3, color: Color3, seconds: numb
 	light(anchor, color, 12 * s, 2, seconds + 0.2)
 end
 
--- One crescent of light at `at`, `size` studs, turned `rotation` degrees and spinning `spin` (a sword's slash arc)
-function ElementFx.arc(at: Vector3, color: Color3, size: number, rotation: number, spin: number)
-	flashSprite(at, "slash", color, size * 0.7, size, 0.2, { rotation = rotation, spin = spin, fade = 0.3 })
-end
-
--- A quick starburst of light at `at` (a sword hit's flash), no sparks or ring
-function ElementFx.flare(at: Vector3, color: Color3, size: number)
-	flashSprite(at, "impact", color, size * 0.6, size, 0.14, { core = false })
-end
-
 -- A flat ring on the ground at `center` spreading to `radius` over `seconds`
 function ElementFx.ring(center: Vector3, color: Color3, radius: number, seconds: number)
 	shockwave(center, color, radius, seconds)

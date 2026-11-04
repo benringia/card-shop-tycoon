@@ -9,6 +9,7 @@ KeyframeSequences. Spec: `docs/superpowers/specs/2026-11-02-you-in-the-fight-des
 |---|---|
 | Rig, keying helpers, preview renders, per-frame export | `tools/blender/anim_kit.py` |
 | The starter sword's 12 moves (one function each, timed to `Config/Swords`) | `tools/blender/anim_starter_sword.py` |
+| Background export and 60 fps MP4 previews of the sword moves | `tools/blender/run_sword_moves.py` |
 | Exported moves (JSON, not synced) | `assets/blender/Animations/<Sword>/<move>.json` |
 | JSON → KeyframeSequence `.rbxm` | `tools/anim/build_kfs.luau` |
 | KeyframeSequences (synced to `ReplicatedStorage.SwordAnimations`) | `assets/animations/<Sword>/<move>.rbxm` |
@@ -42,19 +43,58 @@ joint's offset too: `T_r = M · (Fp⁻¹ · Fc) · M` with `F = pose_bone.matrix
 Keyframe per sample (linear easing) with a Pose per moved joint; a joint's parents are added at weight 0 when the move
 leaves them alone.
 
+## Natural motion (the sword moves, spec 2026-11-04-sword-moves-design)
+
+Moves that feel anime / hack-and-slash rather than stiff use three helpers in `anim_kit`:
+
+- **Per-key easing:** `key_pose(..., ease=SOFT|SNAP|HOLD)`, `key_root(..., ease=...)`, `key_foot(..., ease=...)` record how
+  each curve leaves that key; `apply_eases(rig)` writes them once the move is keyed. SOFT (sine in-out) for wind-ups and
+  recoveries, SNAP (exponential ease-out) into and out of a strike (a 3-frame swing that settles), HOLD (linear) through
+  a spin. Keys without an ease keep Blender's default curve, so the older moves export exactly as before.
+- **Overlap:** `key_pose(..., lag=LAG_SWORD)`: the hips lead, then the chest (1 frame), head (2), shoulder (1), elbow (2),
+  wrist (3), the free arm 2-4: a whip instead of every joint moving together.
+- **Two hands:** `two_hands(rig, F, on, full, release, off)`: the left forearm's IK reaches the sword's handle under the
+  right hand (an empty on the RightHand bone), its influence keyed in and out.
+
+Export these at every frame (`export_move(..., step=1)`, 60 a second) and **in place** (`in_place=True`): the root's
+travel stays keyed (it drives the preview and `Config/Swords` lunges) but is left out of the animation, because the
+game moves the character for real. `render_video(path, first, last, cam, target)` writes a 60 fps MP4 preview.
+
+Blender runs these in the **background** (`blender.exe -b --factory-startup --python <script>`), never in the owner's
+open file: `build()` empties the scene.
+
+The four moves made this way (`anim_starter_sword.NATURAL`; the game's side is in DESIGN.md "Sword moves round"):
+
+| Move | Length | `Hit` | Cancel point | Lunge (the game's) |
+|---|---|---|---|---|
+| `cut1` forehand, a snapped diagonal cut down across | 0.60 s | 0.217 s | 0.34 s | 1.1 studs, 0.167-0.25 s |
+| `cut2` backhand, a rising sweep from low left | 0.58 s | 0.183 s | 0.32 s | 0.8 studs, 0.133-0.22 s |
+| `cut3` finisher, both hands: crouch, a 5-stud spinning leap, a slow-motion hang (0.31-0.56 s), a slam stabbing the sword into the ground, kneeling head bowed | 1.25 s | 0.70 s | (its end) | 3.0 studs, 0.17-0.66 s |
+| `skill` the dash slash: draw stance, dash, frozen follow-through | 1.0 s | 0.62 s (the cut lines) | (its end) | the dash: 9 studs, 0.30-0.42 s |
+
+Export them (and previews) with
+`"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/run_sword_moves.py -- [--preview <dir>] [move ...]`,
+then `lune run tools/anim/build_kfs`. In these angles a positive x tips the waist or the head **back** (a head
+"facing the sky"); lean forward and bow with negative x. The cancel points and lunges live only in `Config/Swords` (the next cut may start
+at the cancel point; `SwordController` moves the character); keep them in step with the keys' follow-through and root
+travel.
+
 ## Making or changing moves
 
-1. In Blender (through the Blender MCP), with `tools/blender` on `sys.path`:
+1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through
+   the Blender MCP in a scratch file, never the owner's open one:
    `import anim_starter_sword as moves; moves.make("cut2", json_dir, render_dir)` (`make_all` for every move).
 2. Show the front and side previews (GIFs at real speed) and get the look approved.
 3. `lune run tools/anim/build_kfs` → `assets/animations/StarterSword/*.rbxm` (Rojo syncs them).
 4. Studio plays them right away (`SwordAnims` registers a move that has no id yet).
 5. Publish: in Studio select each KeyframeSequence under `ReplicatedStorage.SwordAnimations.<Sword>`, right-click →
    Save to Roblox, owned by whoever owns the published game (or it won't play there). Put the ids in
-   `Config/Swords` (`"rbxassetid://<id>"`).
+   `Config/Swords` (`"rbxassetid://<id>"`). The sword moves round's `cut1`, `cut2`, `cut3` and `skill` are still `""`
+   (Studio only) until the owner does this; the branch merges after.
 
 Timing: a cut's `Hit` marker and `Config/Swords` `hitAt` must agree (the server lands damage at `hitAt`). If a move's
-timing changes, change both, and keep `tests/SwordRules.spec`'s combo power check green.
+timing changes, change both, and keep `tests/SwordRules.spec`'s combo power check and `tests/SwordsConfig.spec`'s
+damage-a-second check (the chained cycle within 2 % of before) green; re-run both balance sims.
 
 ## Bone rigs (monster and boss attacks)
 

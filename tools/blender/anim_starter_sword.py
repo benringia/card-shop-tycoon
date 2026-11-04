@@ -4,7 +4,7 @@ In Blender (through the Blender MCP), with tools/blender on sys.path:
     import anim_starter_sword as moves
     moves.make("cut1", json_dir, render_dir)   # or moves.make_all(json_dir, render_dir)
 Each move builds a fresh rig, keys it, exports assets/blender/Animations/StarterSword/<move>.json and renders front and side frames
-for the GIF previews. Times are seconds; each cut's "Hit" marker is its strike frame and matches Config/Swords
+for the GIF previews (the sword moves: tools/blender/run_sword_moves.py, 60 fps MP4 previews, in the background). Times are seconds; each cut's "Hit" marker is its strike frame and matches Config/Swords
 (hitAt, length), which the server's damage timing uses.
 
 Pose keys: R hips, W waist, N neck, RS/RE/RW and LS/LE/LW the arms, as Roblox CFrame.Angles degrees (x raises an arm
@@ -21,93 +21,151 @@ READY = kit.READY
 FOOT_Z = kit.FOOT_Z
 
 
+# The sword moves (spec 2026-11-04-sword-moves-design, approved previews `sword-v3.html`): eased keys and the LAG_SWORD
+# overlap, exported in place at 60 fps (the game moves the character: Config/Swords lunges and the skill's dash)
+NATURAL = ("cut1", "cut2", "cut3", "skill")
+
+
+def _pose(rig, f, t, p, lift, ease=kit.SOFT):
+    kit.key_pose(rig, kit.frame_at(f, t), p, lift, ease, kit.LAG_SWORD)
+
+
+def _root(rig, f, t, forward, ease=kit.SOFT):
+    kit.key_root(rig, kit.frame_at(f, t), forward, 0.0, ease)
+
+
+def _foot(side, f, t, pos, ease=kit.SOFT):
+    kit.key_foot(side, kit.frame_at(f, t), pos, ease)
+
+
+def _feet(f, t, right, left, ease=kit.SOFT):
+    _foot("Right", f, t, (-0.5, -right, FOOT_Z), ease)
+    _foot("Left", f, t, (0.5, -left, FOOT_Z), ease)
+
+
 def _cut1(rig, f):
-    """A diagonal cut from high right down across to the left hip, stepping in on the right foot and back."""
-    F = lambda t: kit.frame_at(f, t)
-    kit.key_pose(rig, F(0), READY)
-    kit.key_pose(rig, F(0.08), {"W": (0, -20, 0), "R": (0, -8, 0), "N": (0, 17, 0), "RS": (95, 0, 30), "RE": (70, 0, 0), "RW": (15, 0, 0), "LS": (15, 0, -15), "LE": (35, 0, 0)}, -0.15)
-    kit.key_pose(rig, F(0.16), {"W": (0, -38, 0), "R": (0, -15, 0), "N": (0, 32, 0), "RS": (155, 0, 40), "RE": (45, 0, 0), "RW": (15, 0, 0), "LS": (30, 0, -25), "LE": (35, 0, 0)}, -0.2)
-    kit.key_pose(rig, F(0.24), {"W": (5, 28, 0), "R": (0, 10, 0), "N": (0, -22, 0), "RS": (28, -20, -30), "RE": (10, 0, 0), "RW": (-30, 0, 0), "LS": (-20, 0, -35), "LE": (25, 0, 0)}, -0.45)
-    kit.key_pose(rig, F(0.32), {"W": (8, 38, 0), "R": (0, 14, 0), "N": (0, -30, 0), "RS": (12, -28, -38), "RE": (18, 0, 0), "RW": (-40, 0, 0), "LS": (-28, 0, -38), "LE": (25, 0, 0)}, -0.4)
-    kit.key_pose(rig, F(0.42), {"W": (4, 30, 0), "R": (0, 10, 0), "N": (0, -24, 0), "RS": (20, -22, -30), "RE": (25, 0, 0), "RW": (-25, 0, 0), "LS": (-20, 0, -30), "LE": (25, 0, 0)}, -0.2)
-    kit.key_pose(rig, F(0.56), READY, 0)
-    for t, forward in ((0, 0), (0.08, 0), (0.24, 0.9), (0.42, 0.9), (0.56, 0)):
-        kit.key_root(rig, F(t), forward)
-    kit.plant_feet(F(0))
-    kit.key_foot("Right", F(0.08), (-0.5, 0, FOOT_Z))
-    kit.key_foot("Right", F(0.16), (-0.45, -0.9, 0.6))
-    kit.key_foot("Right", F(0.24), (-0.45, -1.6, FOOT_Z))
-    kit.key_foot("Right", F(0.42), (-0.45, -1.6, FOOT_Z))
-    kit.key_foot("Right", F(0.50), (-0.5, -0.7, 0.45))
-    kit.key_foot("Left", F(0.42), (0.5, 0, FOOT_Z))
-    kit.plant_feet(F(0.56))
+    """Forehand: coil right with the sword cocked high and the left hand aimed at the target, snap a diagonal cut down
+    across to the left while lunging in, overshoot, settle."""
+    _pose(rig, f, 0, READY, 0)
+    _pose(rig, f, 0.10, {"R": (0, -20, 0), "W": (-6, -30, 0), "N": (0, 35, 0), "RS": (150, 0, 55), "RE": (75, 0, 0), "RW": (25, 0, 0), "LS": (70, 0, -20), "LE": (15, 0, 0)}, -0.3)
+    _pose(rig, f, 0.167, {"R": (0, -24, 0), "W": (-8, -36, 0), "N": (0, 40, 0), "RS": (158, 0, 58), "RE": (80, 0, 0), "RW": (30, 0, 0), "LS": (75, 0, -22), "LE": (10, 0, 0)}, -0.32, kit.SNAP)
+    _pose(rig, f, 0.217, {"R": (0, 22, 0), "W": (14, 38, 0), "N": (0, -20, 0), "RS": (25, -30, -40), "RE": (5, 0, 0), "RW": (-20, 0, 0), "LS": (-35, 0, -55), "LE": (20, 0, 0)}, -0.55, kit.SNAP)
+    _pose(rig, f, 0.317, {"R": (0, 28, 0), "W": (18, 48, 0), "N": (0, -26, 0), "RS": (5, -40, -50), "RE": (12, 0, 0), "RW": (-30, 0, 0), "LS": (-40, 0, -62), "LE": (25, 0, 0)}, -0.58)
+    _pose(rig, f, 0.45, {"R": (0, 15, 0), "W": (8, 25, 0), "N": (0, -12, 0), "RS": (30, -15, -15), "RE": (35, 0, 0), "RW": (-10, 0, 0), "LS": (-10, 0, -30), "LE": (25, 0, 0)}, -0.25)
+    _pose(rig, f, 0.60, READY, 0)
+    _root(rig, f, 0, 0)
+    _root(rig, f, 0.167, -0.15, kit.SNAP)
+    _root(rig, f, 0.25, 1.1)
+    _feet(f, 0, 0, 0)
+    _feet(f, 0.10, 0.3, -0.2)
+    _foot("Right", f, 0.167, (-0.5, 0.1, 0.35), kit.SNAP)
+    _foot("Right", f, 0.22, (-0.55, -1.6, FOOT_Z))
+    _foot("Left", f, 0.167, (0.5, 0.2, FOOT_Z))
+    _foot("Left", f, 0.45, (0.5, -0.4, FOOT_Z))
+    _feet(f, 0.60, 1.1, 1.1)
 
 
 def _cut2(rig, f):
-    """A flat sweep from the right side across to the left at chest height, turning the hips into it."""
-    F = lambda t: kit.frame_at(f, t)
-    kit.key_pose(rig, F(0), READY)
-    kit.key_pose(rig, F(0.07), {"W": (0, -35, 0), "R": (0, -12, 0), "N": (0, 25, 0), "RS": (0, -15, 88), "RE": (25, 0, 0), "RW": (0, 20, 0), "LS": (20, 0, -20), "LE": (45, 0, 0)}, -0.2)
-    kit.key_pose(rig, F(0.15), {"W": (0, -5, 0), "R": (0, 0, 0), "N": (0, 5, 0), "RS": (0, 70, 90), "RE": (10, 0, 0), "RW": (0, 0, 0), "LS": (0, 0, -30), "LE": (35, 0, 0)}, -0.3)
-    kit.key_pose(rig, F(0.20), {"W": (0, 28, 0), "R": (0, 10, 0), "N": (0, -18, 0), "RS": (0, 115, 88), "RE": (8, 0, 0), "RW": (0, -20, 0), "LS": (-15, 0, -40), "LE": (25, 0, 0)}, -0.32)
-    kit.key_pose(rig, F(0.30), {"W": (0, 40, 0), "R": (0, 14, 0), "N": (0, -26, 0), "RS": (0, 150, 80), "RE": (25, 0, 0), "RW": (0, -30, 0), "LS": (-22, 0, -42), "LE": (25, 0, 0)}, -0.25)
-    kit.key_pose(rig, F(0.50), READY, 0)
-    for t, forward in ((0, 0), (0.07, 0), (0.18, 0.5), (0.32, 0.5), (0.50, 0)):
-        kit.key_root(rig, F(t), forward)
-    kit.plant_feet(F(0))
-    kit.key_foot("Right", F(0.07), (-0.5, 0, FOOT_Z))
-    kit.key_foot("Right", F(0.13), (-0.55, -0.5, 0.45))
-    kit.key_foot("Right", F(0.18), (-0.6, -0.9, FOOT_Z))
-    kit.key_foot("Right", F(0.36), (-0.6, -0.9, FOOT_Z))
-    kit.key_foot("Left", F(0.36), (0.5, 0, FOOT_Z))
-    kit.plant_feet(F(0.50))
+    """Backhand: wound low across to the left (where the forehand ended), a rising sweep out to the right with the body
+    lifting onto its toes, overshoot, settle."""
+    _pose(rig, f, 0, READY, 0)
+    _pose(rig, f, 0.08, {"R": (0, 25, 0), "W": (10, 40, 0), "N": (0, -30, 0), "RS": (10, 140, 70), "RE": (40, 0, 0), "RW": (0, -35, 0), "LS": (-20, 0, -45), "LE": (30, 0, 0)}, -0.45)
+    _pose(rig, f, 0.133, {"R": (0, 28, 0), "W": (12, 44, 0), "N": (0, -32, 0), "RS": (5, 148, 68), "RE": (42, 0, 0), "RW": (0, -38, 0), "LS": (-22, 0, -48), "LE": (30, 0, 0)}, -0.47, kit.SNAP)
+    _pose(rig, f, 0.183, {"R": (0, -20, 0), "W": (-10, -38, 0), "N": (0, 25, 0), "RS": (35, -20, 105), "RE": (5, 0, 0), "RW": (0, 30, 0), "LS": (40, 0, -30), "LE": (35, 0, 0)}, -0.2, kit.SNAP)
+    _pose(rig, f, 0.283, {"R": (0, -26, 0), "W": (-14, -48, 0), "N": (0, 30, 0), "RS": (50, -35, 110), "RE": (12, 0, 0), "RW": (0, 38, 0), "LS": (45, 0, -28), "LE": (40, 0, 0)}, -0.1)
+    _pose(rig, f, 0.43, {"R": (0, -10, 0), "W": (-4, -20, 0), "N": (0, 10, 0), "RS": (35, -5, 45), "RE": (40, 0, 0), "RW": (0, 10, 0), "LS": (20, 0, -18), "LE": (35, 0, 0)}, -0.15)
+    _pose(rig, f, 0.58, READY, 0)
+    _root(rig, f, 0, 0)
+    _root(rig, f, 0.133, 0, kit.SNAP)
+    _root(rig, f, 0.22, 0.8)
+    _feet(f, 0, 0, 0)
+    _foot("Left", f, 0.133, (0.5, -0.1, 0.35), kit.SNAP)
+    _foot("Left", f, 0.19, (0.65, -1.3, FOOT_Z))
+    _foot("Right", f, 0.19, (-0.5, -0.2, FOOT_Z))
+    _foot("Right", f, 0.43, (-0.5, -0.6, FOOT_Z))
+    _feet(f, 0.58, 0.8, 0.8)
+
+
+# The finisher's air poses: the sword raised two-handed overhead (the waist and neck lean forward: in these angles a
+# positive x tips the body back)
+RAISED = {"W": (-18, 0, 0), "N": (-10, 0, 0), "RS": (172, 0, -22), "RE": (40, 0, 0), "RW": (22, 0, 0), "LS": (172, 0, 22), "LE": (40, 0, 0)}
+HANG = {"W": (-30, 0, 0), "N": (-16, 0, 0), "RS": (178, 0, -18), "RE": (30, 0, 0), "RW": (30, 0, 0), "LS": (178, 0, 18), "LE": (30, 0, 0)}
+# Landing: kneeling over the sword stabbed point-down into the ground in front, both hands on the hilt, head bowed
+STAB = {"RS": (60, 0, -12), "RE": (20, 0, 0), "RW": (-75, 0, 0), "LS": (60, 0, 12), "LE": (24, 0, 0)}
 
 
 def _cut3(rig, f):
-    """A leaping two-handed overhead slam: crouch, jump in with the sword raised, slam it down, rise."""
-    F = lambda t: kit.frame_at(f, t)
-    kit.key_pose(rig, F(0), READY)
-    kit.key_pose(rig, F(0.10), {"W": (18, 0, 0), "N": (-10, 0, 0), "RS": (40, 0, 20), "RE": (75, 0, 0), "LS": (35, 0, -15), "LE": (70, 0, 0)}, -0.7)
-    kit.key_pose(rig, F(0.22), {"W": (-14, 0, 0), "N": (-8, 0, 0), "RS": (172, 0, 12), "RE": (22, 0, 0), "RW": (10, 0, 0), "LS": (172, 0, -12), "LE": (22, 0, 0)}, 0.9)
-    kit.key_pose(rig, F(0.35), {"W": (38, 0, 0), "N": (12, 0, 0), "RS": (42, 0, 6), "RE": (5, 0, 0), "RW": (-30, 0, 0), "LS": (46, 0, -6), "LE": (8, 0, 0)}, -0.55)
-    kit.key_pose(rig, F(0.50), {"W": (34, 0, 0), "N": (10, 0, 0), "RS": (38, 0, 6), "RE": (8, 0, 0), "RW": (-25, 0, 0), "LS": (42, 0, -6), "LE": (10, 0, 0)}, -0.5)
-    kit.key_pose(rig, F(0.75), READY, 0)
-    for t, forward in ((0, 0), (0.10, 0), (0.35, 1.3), (0.55, 1.3), (0.75, 0)):
-        kit.key_root(rig, F(t), forward)
-    kit.plant_feet(F(0))
-    kit.plant_feet(F(0.10))
-    kit.key_foot("Right", F(0.22), (-0.5, -0.8, 0.9))
-    kit.key_foot("Left", F(0.22), (0.5, -0.6, 0.9))
-    kit.plant_feet(F(0.35), 1.6, 1.0)
-    kit.plant_feet(F(0.55), 1.6, 1.0)
-    kit.key_foot("Right", F(0.66), (-0.5, -0.8, 0.45))
-    kit.plant_feet(F(0.75))
+    """Finisher (owner 2026-11-04): a deep crouch, a big leap (about 5 studs up) with a spin while the sword rises
+    two-handed overhead, a slow-motion hang at the top still turning, a hard fall into a slam that stabs the sword into
+    the ground, then kneeling over it head bowed (the cool-down) before standing. The hang's slow motion is in the keys,
+    so the Hit marker stays where the server lands the hit (Config/Swords hitAt 0.70; the arms trail the landing)."""
+    _pose(rig, f, 0, READY, 0)
+    _pose(rig, f, 0.12, {"R": (0, 25, 0), "W": (32, 30, 0), "N": (0, -20, 0), "RS": (35, 0, -10), "RE": (85, 0, 0), "RW": (20, 0, 0), "LS": (35, 0, 15), "LE": (80, 0, 0)}, -1.05)
+    _pose(rig, f, 0.17, {"R": (0, 28, 0), "W": (35, 32, 0), "N": (0, -22, 0), "RS": (32, 0, -10), "RE": (88, 0, 0), "RW": (22, 0, 0), "LS": (32, 0, 15), "LE": (82, 0, 0)}, -1.1, kit.SNAP)
+    # (time, spin, lift, pose, ease, forward travel): the launch, then the hang, slow and steady
+    air = [
+        (0.22, -100, 2.2, RAISED, kit.HOLD, 0.6),
+        (0.27, -210, 4.0, RAISED, kit.HOLD, 1.0),
+        (0.31, -275, 4.7, HANG, kit.HOLD, 1.3),
+        (0.44, -305, 4.95, HANG, kit.HOLD, 1.65),
+        (0.56, -330, 4.8, HANG, ("EXPO", "EASE_IN"), 2.0),
+    ]
+    for t, yaw, lift, pose, ease, travel in air:
+        _pose(rig, f, t, dict(pose, R=(0, yaw, 0)), lift, ease)
+        a = math.radians(yaw)
+        tuck = 0.55 if t < 0.5 else 0.35  # knees up in the air, reaching down for the landing
+        for side, sx in (("Right", -0.5), ("Left", 0.5)):
+            _foot(side, f, t, (sx * math.cos(a), -travel + sx * math.sin(a), FOOT_Z + lift - tuck - 0.2), kit.HOLD)
+    _pose(rig, f, 0.66, dict(STAB, R=(0, -360, 0), W=(-15, 0, 0), N=(-20, 0, 0)), -1.25, kit.SNAP)
+    _pose(rig, f, 0.82, dict(STAB, R=(0, -360, 0), W=(-22, 0, 0), N=(-38, 0, 0)), -1.35)
+    _pose(rig, f, 1.02, dict(STAB, R=(0, -360, 0), W=(-24, 0, 0), N=(-40, 0, 0)), -1.33)
+    _pose(rig, f, 1.25, dict(READY, R=(0, -360, 0)), 0)
+    kit.two_hands(rig, lambda t: kit.frame_at(f, t), 0.02, 0.12, 1.04, 1.16)
+    _root(rig, f, 0, 0)
+    _root(rig, f, 0.17, -0.2, kit.HOLD)
+    _root(rig, f, 0.31, 1.3, kit.HOLD)
+    _root(rig, f, 0.56, 2.0, ("EXPO", "EASE_IN"))
+    _root(rig, f, 0.66, 3.0, kit.SNAP)
+    _feet(f, 0, 0, 0)
+    _feet(f, 0.12, 0.6, -0.5)
+    _feet(f, 0.17, 0.6, -0.5, kit.HOLD)
+    _feet(f, 0.66, 4.0, 2.1, kit.SNAP)
+    _feet(f, 1.02, 4.0, 2.1)
+    _feet(f, 1.25, 3.0, 3.0)
 
 
 def _skill(rig, f):
-    """A spinning slash: the sword held out to the right, one full turn on the spot with a small hop."""
-    F = lambda t: kit.frame_at(f, t)
-    arm = {"RS": (0, -5, 92), "RE": (5, 0, 0), "RW": (0, 15, 0), "LS": (10, 0, -55), "LE": (20, 0, 0)}
-    kit.key_pose(rig, F(0), READY)
-    windup = dict(arm, W=(0, -30, 0), N=(0, 20, 0), R=(0, 0, 0))
-    kit.key_pose(rig, F(0.10), windup, -0.35)
-    # the turn: 45 degrees a key so the hips (and the feet round them) follow a circle
-    spin = [(0.10, 0), (0.15, -45), (0.20, -90), (0.25, -135), (0.30, -180), (0.35, -225), (0.40, -270), (0.45, -315), (0.50, -360)]
-    for t, yaw in spin:
-        lift = 0.25 if 0.2 <= t <= 0.4 else -0.2
-        kit.key_pose(rig, F(t), dict(arm, R=(0, yaw, 0), W=(0, 10, 0)), lift)
-        a = math.radians(yaw)
-        for side, sx in (("Right", -0.5), ("Left", 0.5)):
-            x = sx * math.cos(a)
-            y = sx * math.sin(a)
-            z = FOOT_Z + (0.35 if 0.2 <= t <= 0.4 else 0)
-            kit.key_foot(side, F(t), (x, y, z))
-    kit.key_pose(rig, F(0.62), dict(arm, R=(0, -360, 0), W=(0, 20, 0)), -0.25)
-    kit.key_pose(rig, F(0.80), dict(READY, R=(0, -360, 0)), 0)
-    kit.key_root(rig, F(0), 0)
-    kit.plant_feet(F(0))
-    kit.plant_feet(F(0.62))
-    kit.plant_feet(F(0.80))
+    """Dash slash: a deep draw stance with the sword at the left hip, a charged hold, a dash forward drawing it in one
+    cut, the low follow-through frozen while the cut lines appear behind, a flick back up."""
+    stance = {"R": (0, 30, 0), "W": (20, 35, 0), "N": (0, -35, 0), "RS": (25, 0, -50), "RE": (70, 0, 0), "RW": (0, -35, 0), "LS": (20, 0, -10), "LE": (75, 0, 0)}
+    finish = {"R": (0, -25, 0), "W": (30, -40, 0), "N": (5, 35, 0), "RS": (0, -40, 100), "RE": (0, 0, 0), "RW": (0, 25, 0), "LS": (-30, 0, -70), "LE": (15, 0, 0)}
+    _pose(rig, f, 0, READY, 0)
+    _pose(rig, f, 0.15, stance, -0.85)
+    _pose(rig, f, 0.32, dict(stance, W=(22, 37, 0)), -0.9, kit.SNAP)
+    _pose(rig, f, 0.36, {"R": (0, 0, 0), "W": (40, 0, 0), "N": (-10, 0, 0), "RS": (10, 50, 90), "RE": (10, 0, 0), "RW": (0, 0, 0), "LS": (-10, 0, -40), "LE": (30, 0, 0)}, -0.95, kit.SNAP)
+    _pose(rig, f, 0.40, finish, -1.0, kit.SNAP)
+    _pose(rig, f, 0.72, dict(finish, W=(32, -42, 0)), -1.02)
+    _pose(rig, f, 0.86, {"W": (5, 0, 0), "RS": (60, 0, 50), "RE": (60, 0, 0), "RW": (20, 0, 0), "LS": (10, 0, -15), "LE": (30, 0, 0)}, -0.4)
+    _pose(rig, f, 1.0, READY, 0)
+    _root(rig, f, 0, 0)
+    _root(rig, f, 0.32, 0, kit.SNAP)
+    _root(rig, f, 0.40, 9.0)
+    _feet(f, 0, 0, 0)
+    _feet(f, 0.15, 1.0, -0.8)
+    _feet(f, 0.32, 1.0, -0.8, kit.SNAP)
+    _foot("Right", f, 0.36, (-0.5, -5.5, 0.4), kit.SNAP)
+    _foot("Left", f, 0.36, (0.5, -4.0, 0.5), kit.SNAP)
+    _feet(f, 0.40, 10.3, 8.0)
+    _feet(f, 0.72, 10.3, 8.0)
+    _feet(f, 1.0, 9.0, 9.0)
+
+
+MOVES = {"cut1": (_cut1, 0.60), "cut2": (_cut2, 0.58), "cut3": (_cut3, 1.25), "skill": (_skill, 1.0)}
+VIEWS = {
+    "default": {"front": ((9.0, -14.0, 5.6), (0, -1.5, 2.5)), "side": ((16.0, -1.5, 4.6), (0, -1.5, 2.5))},
+    "skill": {"front": ((13.0, -24.0, 7.5), (0, -5.0, 2.5)), "side": ((24.0, -5.0, 5.0), (0, -5.0, 2.5))},
+}
+LEAD, TAIL = 12, 24  # frames of standing still before and after, so the loop reads
 
 
 def _dodge(rig, f):
@@ -216,10 +274,10 @@ def _run(rig, f):
 
 # name -> (keying function, length in seconds, loop, markers, upper body only, priority)
 MOVES = {
-    "cut1": (_cut1, 0.56, False, [{"name": "Hit", "t": 0.28}], False, "Action"),
-    "cut2": (_cut2, 0.50, False, [{"name": "Hit", "t": 0.20}], False, "Action"),
-    "cut3": (_cut3, 0.75, False, [{"name": "Hit", "t": 0.35}], False, "Action"),
-    "skill": (_skill, 0.80, False, [{"name": "Hit", "t": 0.30}], False, "Action"),
+    "cut1": (_cut1, 0.60, False, [{"name": "Hit", "t": 0.217}], False, "Action"),
+    "cut2": (_cut2, 0.58, False, [{"name": "Hit", "t": 0.183}], False, "Action"),
+    "cut3": (_cut3, 1.25, False, [{"name": "Hit", "t": 0.70}], False, "Action"),
+    "skill": (_skill, 1.0, False, [{"name": "Hit", "t": 0.62}], False, "Action"),
     "dodge": (_dodge, 0.35, False, [], False, "Action"),
     "flinch": (_flinch, 0.30, False, [], False, "Action"),
     "down": (_down, 0.60, False, [{"name": "Hold", "t": 0.58}], False, "Action"),
@@ -240,9 +298,13 @@ def make(name, json_dir, render_dir=None):
     rig = kit.build()
     first = 1
     fn(rig, first)
+    natural = name in NATURAL
+    if natural:
+        kit.apply_eases(rig)
     last = kit.frame_at(first, length)
     kit.bpy.context.scene.frame_start, kit.bpy.context.scene.frame_end = first, last
-    count = kit.export_move(rig, os.path.join(json_dir, name + ".json"), name, first, last, loop, kit.UPPER_BODY if upper else None, markers, priority)
+    count = kit.export_move(rig, os.path.join(json_dir, name + ".json"), name, first, last, loop, kit.UPPER_BODY if upper else None, markers, priority,
+                            in_place=natural, step=1 if natural else None)
     if render_dir:
         frames = list(range(first, last + 1, kit.EXPORT_STEP))
         kit.render_frames(os.path.join(render_dir, name, "front"), frames, *FRONT)

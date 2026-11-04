@@ -51,7 +51,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `tools/blender/build_starter_sword.py`, imported in Studio, finished by `lune run tools/weapons/finish_sword`: the FBX
   importer drops colours and turns pivots). `assets/animations` → ReplicatedStorage.SwordAnimations: the sword moves as
   KeyframeSequences (`<Sword>/<move>.rbxm`), keyed in Blender by `tools/blender/anim_<sword>.py` on `anim_kit.py`,
-  converted by `lune run tools/anim/build_kfs`; published ids go in `Config/Swords` (docs/animations.md).
+  converted by `lune run tools/anim/build_kfs` (the sword moves exported in a background Blender by
+  `tools/blender/run_sword_moves.py`); published ids go in `Config/Swords` (docs/animations.md).
   `assets/monster-animations` → ReplicatedStorage.MonsterAnimations: monster and boss attack clips
   (`<model>/<clip>.rbxm`), keyed on their bone rigs by `tools/blender/anim_<model>.py` on `anim_bone_kit.py`, built by
   `lune run tools/anim/build_bone_clips <model>`, played client-side by `Util/ClipPlayer` (docs/animations.md "Bone
@@ -62,7 +63,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `tools/blender/build_levelup_fx.py` (source `assets/blender/LevelUpFx/`) and finished by
   `tools/textures/make_levelup_fx.py`; uploaded as images, ids in `Config/LevelUpFx` IMAGES, not synced.
   `assets/ui/fx-attack`: the fight effects' white textures (glow, streak, bolt, slash, shard...), made by
-  `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced. Particle
+  `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced.
+  `assets/ui/fx-sword`: the sword effects' white textures (crescent, burst flipbook, line, star), made by
+  `tools/textures/make_sword_fx.py`, uploaded as images (ids in `Config/SwordFx` TEXTURES), not synced. Particle
   textures must be square; a beam runs a texture's height along its length (the bolt is upright).
 - Files use `.luau`. `init.server.luau` / `init.client.luau` are entry points and set service start order.
 - Tools via Rokit (`rokit.toml`): rojo, wally. Published (private) as "Cardshop Simulator" on GitHub `benringia/card-shop-tycoon`.
@@ -92,7 +95,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   recommended Power, three ways: no sword yet, standing still, fighting well (targets: normal about 12.5 s, well ~90%,
   still ~75%, the Meadow ~75% with no sword; elite 25-35 s, well ~65%)
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, DebuffRules, SwapKeys, SummonMotion, DefeatRules, PetVoice, MusicRules, XpPill, SparkPath, HudMascotRules, ContrastRules, SoftColors, SquishRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, LevelRemap, LevelUpRules, BinderCovers, OrderRules, LevelUpFxConfig, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, HoverRules, ProductPictureRules, ShopDetail: every shop screen sets a draw distance, PortalTrails,
+  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, SwordArcRules, SwingGate, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, DebuffRules, SwapKeys, SummonMotion, DefeatRules, PetVoice, MusicRules, XpPill, SparkPath, HudMascotRules, ContrastRules, SoftColors, SquishRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, LevelRemap, LevelUpRules, BinderCovers, OrderRules, LevelUpFxConfig, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, HoverRules, ProductPictureRules, ShopDetail: every shop screen sets a draw distance, PortalTrails,
   TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
