@@ -42,6 +42,18 @@ return {
 		expect.equal(spot.y, 148, "below the top-row pocket")
 		expect.equal(spot.x, 420, "centred on the pocket")
 	end,
+	-- Round 5 (spec section 2): the binder anchors its tooltip on the hovered pocket, so it sits beside that card
+	["beside: anchored on a pocket it sits right of that card, over the book"] = function()
+		local pocket = { x = 300, y = 120, w = 90, h = 126 }
+		local spot = UiLayout.beside(pocket, { w = 260, h = 200 }, { w = 1200, h = 700 }, 8, pocket)
+		expect.equal(spot.x, 398)
+		expect.equal(spot.y, 120)
+	end,
+	["beside: a pocket near the right edge puts it on the card's left, never over the card"] = function()
+		local pocket = { x = 1000, y = 120, w = 90, h = 126 }
+		local spot = UiLayout.beside(pocket, { w = 260, h = 200 }, { w = 1200, h = 700 }, 8, pocket)
+		expect.equal(spot.x, 1000 - 8 - 260)
+	end,
 	["inspectorCard: the card's right edge lands on the panel"] = function()
 		local offset, rect = UiLayout.inspectorCard({ w = 1000, h = 500 }, 70, 3, { w = 1.8, h = 2.57 }, 0, 480, 8)
 		expect.near(offset, -1.068, 0.01, "studs left of centre")
@@ -128,6 +140,28 @@ return {
 			end
 			expect.equal(rects.pet.w > rects.run.w and rects.pet.w > rects.swap.w, true, "the Pet button is the biggest")
 			expect.equal(rects.pet.x > view.w / 2 and rects.pet.y > view.h / 2, true, "it sits bottom-right")
+		end
+	end,
+
+	["the binder's Filters window fits its content, and the screen"] = function()
+		local look = require("../src/shared/Config/FiltersLayout")
+		local baby = require("../src/shared/Config/BabyColors")
+		local chrome = look.header + look.inset * 2 + look.footer
+		local body = UiLayout.filtersBody(look, baby.SEGMENTED.hit, baby.DOT_TAG.hit)
+		-- what Studio measured on 2026-11-04: 354 px of pieces, gaps and edge room
+		local rows = baby.DOT_TAG.hit * look.rarityRows + look.gap * (look.rarityRows - 1) -- the tag rows wrap with a gap
+		local drawn = look.search + look.headingRow * 3 + baby.SEGMENTED.hit * 2 + rows
+		expect.equal(body, drawn + look.gap * 6 + look.edge * 2, "the search box, headings, switches and every rarity row")
+		local top, size = UiLayout.filtersFrame(1080, look, body)
+		expect.equal(top, look.top, "a tall screen: under the binder's close and magnifier")
+		expect.equal(size, body + chrome, "as tall as its content, not stretched down the screen")
+		top, size = UiLayout.filtersFrame(625, look, body)
+		expect.equal(top, look.shortTop, "a short screen: from the top, over the corner buttons")
+		expect.equal(size, body + chrome, "still showing everything without scrolling")
+		for _, height in { 330, 340, 370 } do
+			top, size = UiLayout.filtersFrame(height, look, body)
+			expect.equal(top + size + look.shortBottom <= height, true, `a landscape phone {height} px tall: on screen`)
+			expect.equal(size > chrome, true, `a landscape phone {height} px tall: a body to scroll`)
 		end
 	end,
 }

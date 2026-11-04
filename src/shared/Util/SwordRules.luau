@@ -89,6 +89,32 @@ function SwordRules.aimTarget(px: number, pz: number, lookX: number, lookZ: numb
 	return best
 end
 
+-- A dodge's length from (px, pz) along the unit direction (dirX, dirZ): `base`, or, when it would end inside a foe's
+-- footprint, on to that foe's far side plus `margin` (and out of one just behind it), never past `maxLength`. The dash
+-- goes through bosses and monsters instead of leaving you standing in them (owner 2026-11-04).
+function SwordRules.dashLength(px: number, pz: number, dirX: number, dirZ: number, targets: { Target }, base: number, margin: number, maxLength: number): number
+	local length = base
+	for _ = 1, #targets do
+		local moved = false
+		for _, target in targets do
+			local dx, dz = target.x - px, target.z - pz
+			local along = dx * dirX + dz * dirZ
+			local side = math.abs(dx * dirZ - dz * dirX)
+			if side < target.radius then
+				local half = math.sqrt(target.radius * target.radius - side * side)
+				if length > along - half and length < along + half then
+					length = along + half + margin
+					moved = true
+				end
+			end
+		end
+		if not moved or length >= maxLength then
+			break
+		end
+	end
+	return math.min(length, maxLength)
+end
+
 -- The combo's power per second when tapped without a break (times the creature's ATK, that's its damage per second)
 function SwordRules.comboPowerPerSecond(combo: { Cut }): number
 	local power, seconds = 0, 0

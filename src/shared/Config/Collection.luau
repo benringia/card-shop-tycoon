@@ -49,4 +49,5 @@ return {
 		SUBTEXT = Color3.fromRGB(170, 178, 205),
 	},
 	FILTERS_WIDTH = 340, -- pixels, the Filters panel on the right
+	FILTERS = require((script.Parent :: Instance):WaitForChild("FiltersLayout")), -- its insides and height (plain data)
 }

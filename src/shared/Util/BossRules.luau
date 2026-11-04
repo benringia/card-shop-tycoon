@@ -284,6 +284,37 @@ function BossRules.lockReason(step: Step): ("level" | "keys")?
 	return nil
 end
 
+-- The Boss Ladder footer's next step (round 5, spec 2026-11-04-round5-design section 5): beaten, ready and too weak say
+-- so; a locked boss asks for the shop level first, then the keys the boss before drops; "none" when neither applies
+function BossRules.nextStep(
+	step: "beaten" | "ready" | "tooWeak" | "locked",
+	reason: ("level" | "keys")?,
+	keysFromPrevious: boolean
+): "beaten" | "ready" | "tooWeak" | "level" | "keys" | "none"
+	if step ~= "locked" then
+		return step
+	end
+	if reason == "level" then
+		return "level"
+	end
+	return if keysFromPrevious then "keys" else "none"
+end
+
+-- The Boss Ladder's detail pane (round 5): on a phone the pills scroll with the left column and the travel hint goes in
+-- the Rewards column, so the two columns keep room beside the banner and the footer
+function BossRules.detailsLayout(phone: boolean): { pillsInColumn: boolean, hintInRewards: boolean }
+	return { pillsInColumn = phone, hintInRewards = phone }
+end
+
+-- The Boss Ladder banner's colour (a Config/BabyColors COLORS name): the baby colour of the boss's element, pink for a
+-- boss that changes element (the Prism Hydra), lilac when it has none
+function BossRules.bannerColor(elements: { [string]: string }, boss: { element: string?, phases: any? }): string
+	if boss.phases then
+		return "pink"
+	end
+	return if boss.element and elements[boss.element] then elements[boss.element] else "lilac"
+end
+
 -- The elements strong against `element` on the element wheel (Config/Combat BEATS), sorted
 function BossRules.counterElements(beats: { [string]: { string } }, element: string): { string }
 	local counters = {}
@@ -405,12 +436,6 @@ function BossRules.lossHome(place: string): "spring" | "frontierSpring" | "dunge
 		return "dungeon"
 	end
 	return "spring"
-end
-
--- The loss screen's countdown line, `secondsLeft` before the move ("... in 3", "... in 2", "... in 1")
-function BossRules.countdownText(secondsLeft: number): string
-	local whole = math.ceil(secondsLeft - 1e-9)
-	return if whole >= 1 then `Teleporting back to town in {whole}` else "Teleporting back to town..."
 end
 
 return BossRules

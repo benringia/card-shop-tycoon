@@ -79,6 +79,26 @@ function JobRules.speedWord(config: { SPEED_WORDS: { { min: number, word: string
 	return last.word, last.tone
 end
 
+-- The Assign job picker's tiles (round 5, spec 2026-11-04-round5-design section 4): one per job in order, with its
+-- icon and words from JOB_INFO, and this copy's speed word and tone (speed comes from SPD, so it's the same for every job)
+export type AssignTile = { job: string, icon: string, text: string, word: string, tone: string }
+function JobRules.assignTiles(
+	config: Config & {
+		JOBS: { string },
+		JOB_INFO: { [string]: { icon: string, text: string } },
+		SPEED_WORDS: { { min: number, word: string, tone: string } },
+	},
+	spd: number
+): { AssignTile }
+	local word, tone = JobRules.speedWord(config, JobRules.getSpeedFactor(config, spd))
+	local tiles: { AssignTile } = {}
+	for _, job in config.JOBS do
+		local info = config.JOB_INFO[job]
+		table.insert(tiles, { job = job, icon = info.icon, text = info.text, word = word, tone = tone })
+	end
+	return tiles
+end
+
 -- Kid words for a mistake chance, and their tone
 function JobRules.mistakeWord(config: { MISTAKE_WORDS: { { max: number, word: string, tone: string } } }, chance: number): (string, string)
 	for _, entry in config.MISTAKE_WORDS do

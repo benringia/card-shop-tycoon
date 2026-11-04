@@ -66,7 +66,7 @@ local SWORDS: { [string]: Sword } = {
 return {
 	STARTER = "starterSword",
 	SWORDS = SWORDS,
-	UNLOCK_SHOP_LEVEL = 3, -- everyone gets the starter sword here (when boss 1 opens)
+	UNLOCK_SHOP_LEVEL = 4, -- everyone gets the starter sword here (when boss 1 opens)
 	SHEATH_SECONDS = 4, -- the sword goes back on your back after this long without attacking
 	COMBO_RESET = 0.9, -- a tap this long after a cut ends still continues the combo; later starts it again
 	SOFT_AIM_RANGE = 14, -- attacking turns you toward a target whose edge is this close...
@@ -78,10 +78,12 @@ return {
 	HAND_GRIP = { y = -0.18, angleX = -140 },
 	BACK_GRIP = { x = 0.65, y = 1.15, z = 0.68, angleZ = 150 },
 	BACK_SCALE = 1.4, -- the sword is this much bigger on the back, so it (and the looks the shop will sell) stands out
+	BODY_WAIT = 10, -- seconds a new character's sword waits for its UpperTorso to arrive before going on it
 	GRAB_SECONDS = 0.16, -- into the draw, the hand reaches the sword (the draw move's Grab marker)
 	RELEASE_SECONDS = 0.25, -- into the put-away, the sword is back on the back (the sheath move's Release marker)
 	POPUP_TURN = 0.8, -- radians a second the sword turns in the first-sword popup
 	SOUND_VOLUME = 0.5, -- the sword's sounds (a few play over each other in a combo)
 	HIT_SOUND_WINDOW = 0.6, -- seconds: after your own reach check plays the hit sound, the server's hit plays none
+	SOUND_PITCH = { 0.88, 1.12 }, -- each sword sound plays at a pitch picked from this range (no clip on a loop)
 	SOUND_VOLUMES = { ring = 0.3, hit = 0.6 }, -- exceptions: the ring chime softer, a landed hit louder
 }

@@ -1,5 +1,5 @@
 --!strict
--- XP → level maths shared by EconomyService and the HUD (the maths itself is Util/LevelMath; no level cap).
+-- XP → level maths shared by EconomyService and the HUD (the maths itself is Util/LevelMath; levels 1 to Levels.MAX_LEVEL).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")

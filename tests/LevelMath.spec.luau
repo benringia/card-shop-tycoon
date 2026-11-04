@@ -1,33 +1,57 @@
 --!strict
+-- Shop levels 1-100 (spec 2026-11-04-round4-design section 8): total XP = BASE_XP x (level - 1) ^ POWER, rounded.
 local LevelMath = require("../src/shared/Util/LevelMath")
 local config = require("../src/shared/Config/Levels")
 local expect = require("./lib/expect")
 
+local function required(level: number): number
+	return LevelMath.getRequiredXp(config, level)
+end
+
 return {
-	["table levels unchanged"] = function()
-		expect.equal(LevelMath.getRequiredXp(config, 1), 0, "Lv 1")
-		expect.equal(LevelMath.getRequiredXp(config, 2), 150, "Lv 2")
-		expect.equal(LevelMath.getRequiredXp(config, 10), 36000, "Lv 10")
+	["Lv 1 is free and Lv 2 is 40"] = function()
+		expect.equal(required(1), 0, "Lv 1")
+		expect.equal(required(2), 40, "Lv 2")
+		expect.equal(required(3), 200, "Lv 3")
 	end,
 
-	["levels keep going past the table"] = function()
-		-- last table step is 12000 (24000 -> 36000); each later step is 15% bigger
-		expect.equal(LevelMath.getRequiredXp(config, 11), 36000 + 13800, "Lv 11")
-		expect.equal(LevelMath.getRequiredXp(config, 12), 36000 + 13800 + 15870, "Lv 12")
+	["Lv 20 keeps today's jobs XP"] = function()
+		local xp = required(20)
+		assert(math.abs(xp - 36000) <= 360, `Lv 20 needs {xp}, want about 36,000`)
 	end,
 
-	["level for xp, no cap"] = function()
+	["every step is bigger than the last"] = function()
+		for level = 2, 99 do
+			local step = required(level + 1) - required(level)
+			local before = required(level) - required(level - 1)
+			assert(step > before, `Lv {level} -> {level + 1} step {step} is not bigger than {before}`)
+		end
+	end,
+
+	["Lv 100 is the cap"] = function()
+		expect.equal(config.MAX_LEVEL, 100, "MAX_LEVEL")
+		expect.equal(LevelMath.getLevelForXp(config, required(100)), 100, "exactly Lv 100")
+		expect.equal(LevelMath.getLevelForXp(config, 1e12), 100, "huge xp stops at 100")
+		local top = required(100)
+		assert(top >= 1600000 and top <= 1660000, `Lv 100 needs {top}, want about 1.63M`)
+	end,
+
+	["level for xp"] = function()
 		expect.equal(LevelMath.getLevelForXp(config, 0), 1, "start")
-		expect.equal(LevelMath.getLevelForXp(config, 36000), 10, "Lv 10")
-		expect.equal(LevelMath.getLevelForXp(config, 49799), 10, "just under 11")
-		expect.equal(LevelMath.getLevelForXp(config, 49800), 11, "Lv 11")
-		assert(LevelMath.getLevelForXp(config, 1e9) > 50, "huge xp keeps levelling")
+		expect.equal(LevelMath.getLevelForXp(config, 39), 1, "just under Lv 2")
+		expect.equal(LevelMath.getLevelForXp(config, 40), 2, "Lv 2")
+		expect.equal(LevelMath.getLevelForXp(config, required(20) - 1), 19, "just under Lv 20")
 	end,
 
-	["progress always has a next level"] = function()
-		local into, span = LevelMath.getProgress(config, 40000)
-		expect.equal(into, 4000, "into Lv 10")
-		expect.equal(span, 13800, "Lv 10 -> 11")
+	["progress at the cap has no span"] = function()
+		local _, span = LevelMath.getProgress(config, 1e9)
+		expect.equal(span, 0, "span at Lv 100")
+	end,
+
+	["progress mid-level"] = function()
+		local into, span = LevelMath.getProgress(config, required(5) + 10)
+		expect.equal(into, 10, "into Lv 5")
+		expect.equal(span, required(6) - required(5), "Lv 5 -> 6")
 	end,
 
 	["bad xp is level 1"] = function()

@@ -147,6 +147,7 @@ end
 local function setMarkerAttributes(marker: BasePart, player: Player, beast: CardService.Beast)
 	local card = Cards.ById[beast.cardId]
 	marker:SetAttribute("OwnerUserId", player.UserId)
+	marker:SetAttribute("BeastId", beast.id) -- the level-up pillar finds the creature by it (LevelUpController)
 	marker:SetAttribute("CardId", card.id)
 	marker:SetAttribute("CardName", card.name)
 	marker:SetAttribute("Element", card.element)
@@ -179,7 +180,7 @@ local function newMarker(name: string, cframe: CFrame): Part
 	return marker
 end
 
--- An extra creature for one of the player's cards (a fight call-in); the caller destroys it
+-- An extra creature for one of the player's cards (a fight call-in); the caller dismisses it (PartyService.Dismiss)
 function PartyService.CreateMarker(player: Player, beastId: string, cframe: CFrame): BasePart?
 	local beast = CardService.GetBeast(player, beastId)
 	if not beast then
@@ -187,14 +188,26 @@ function PartyService.CreateMarker(player: Player, beastId: string, cframe: CFra
 	end
 	local marker = newMarker(`Creature_{player.UserId}_{beastId}`, cframe)
 	setMarkerAttributes(marker, player, beast)
+	marker:SetAttribute("SummonedAt", workspace:GetServerTimeNow()) -- clients pop it in (Util/SummonFx)
 	marker.Parent = creaturesFolder
 	return marker
+end
+
+-- A creature leaving the world (an unsummon, a swap, the end of a fight's call-in): clients shrink it away and fly a
+-- light back to its owner (Util/SummonFx), so the marker goes after Party.SUMMON_FX.unsummon seconds. It's renamed at
+-- once, so a new marker of the same name (the next summon) isn't mistaken for it.
+function PartyService.Dismiss(marker: BasePart)
+	marker:SetAttribute("Unsummon", true)
+	marker.Name ..= "_leaving"
+	task.delay(Party.SUMMON_FX.unsummon, function()
+		marker:Destroy()
+	end)
 end
 
 local function despawn(player: Player)
 	local state = states[player]
 	if state and state.marker then
-		state.marker:Destroy()
+		PartyService.Dismiss(state.marker)
 		state.marker = nil
 	end
 end
@@ -209,6 +222,7 @@ local function spawnMarker(player: Player)
 	local marker = newMarker(`Creature_{player.UserId}`, if root then root.CFrame else CFrame.new(0, -500, 0))
 	state.marker = marker
 	refreshMarker(player)
+	marker:SetAttribute("SummonedAt", workspace:GetServerTimeNow()) -- clients pop it in (Util/SummonFx)
 	marker.Parent = creaturesFolder
 end
 

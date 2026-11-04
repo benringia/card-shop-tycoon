@@ -44,6 +44,7 @@ type Inventory = {
 local CardService = {}
 
 local inventories: { [Player]: Inventory } = {}
+local beastLevelUpHandlers: { (player: Player, beast: Beast, from: number, to: number, source: string?) -> () } = {}
 local allowRequest = RateLimiter.new(Collection.REQUEST_COOLDOWN)
 
 local function sync(player: Player)
@@ -189,9 +190,14 @@ function CardService.GiveCard(player: Player, cardId: string, foil: boolean, gra
 	end
 end
 
+-- Called after a beast's level rose (from, to) through AddXP; `source` is what the caller passed ("fight" after a fight)
+function CardService.OnBeastLevelUp(handler: (player: Player, beast: Beast, from: number, to: number, source: string?) -> ())
+	table.insert(beastLevelUpHandlers, handler)
+end
+
 -- The only way beasts gain XP. A plain-card target splits one copy off its stack into a new beast.
--- Returns the beast, or nil if the player doesn't have the target.
-function CardService.AddXP(player: Player, target: XpTarget, amount: number): Beast?
+-- Returns the beast, or nil if the player doesn't have the target. `source` ("fight") goes to OnBeastLevelUp.
+function CardService.AddXP(player: Player, target: XpTarget, amount: number, source: string?): Beast?
 	local inventory = inventories[player]
 	if not inventory then
 		return nil
@@ -215,8 +221,15 @@ function CardService.AddXP(player: Player, target: XpTarget, amount: number): Be
 	if not beast then
 		return nil
 	end
+	local before = beast.level
 	beast.level, beast.xp = BeastRules.applyXp(beast.level, beast.xp, amount)
 	sync(player)
+	if beast.level > before then
+		local levelled = beast
+		for _, handler in beastLevelUpHandlers do
+			task.spawn(handler, player, levelled, before, levelled.level, source)
+		end
+	end
 	return beast
 end
 

@@ -50,6 +50,8 @@ export type Boss = {
 	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
 	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
 	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
+	-- Sometimes a swipe comes huge: this chance, its length and half angle times these (RingRules.swipeSize)
+	hugeSwipe: { chance: number, length: number, halfAngle: number }?,
 	introShot: { back: number, up: number }?, -- its intro camera (nil: INTRO_SHOT); further off for a huge model
 	rainbowAura: boolean?, -- the model glows in slowly changing rainbow colours (RAINBOW_AURA)
 	auroraFlame: boolean?, -- soft aurora-coloured flames rise off its back (AURORA_FLAME)
@@ -86,7 +88,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 7,
 		spd = 8,
 		recommended = 200,
-		shopLevel = 3,
+		shopLevel = 4,
 		minFightSeconds = 12,
 		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10, shape = "slam", debuff = "Entangled" }, -- root slam
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
@@ -122,9 +124,10 @@ local BOSSES: { [string]: Boss } = {
 		atk = 10,
 		spd = 12,
 		recommended = 350,
-		shopLevel = 5,
+		shopLevel = 7,
 		minFightSeconds = 18,
 		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12, shape = "swipe", debuff = "Poison" }, -- web spit
+		hugeSwipe = { chance = 0.35, length = 1.8, halfAngle = 1.6 }, -- owner 2026-11-04: the web sometimes huge (47 studs, 56 deg)
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_caveBroodQueen", count = 3 },
 		fragment = "fragment_emberColossus",
@@ -162,7 +165,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 29,
 		spd = 9,
 		recommended = 650,
-		shopLevel = 8,
+		shopLevel = 14,
 		minFightSeconds = 25,
 		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14, shape = "slam", debuff = "Burn" }, -- lava slam
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
@@ -193,7 +196,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 46,
 		spd = 9,
 		recommended = 1100,
-		shopLevel = 12,
+		shopLevel = 26,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 60,
 		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15, shape = "slam", debuff = "Chilled" },
@@ -223,7 +226,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 43,
 		spd = 14,
 		recommended = 1500,
-		shopLevel = 15,
+		shopLevel = 34,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 70,
 		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17, shape = "slam", debuff = "Shocked" },
@@ -252,7 +255,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 66,
 		spd = 10,
 		recommended = 1900,
-		shopLevel = 18,
+		shopLevel = 43,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 80,
 		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18, shape = "swipe", debuff = "Weakened" },
@@ -287,7 +290,7 @@ local BOSSES: { [string]: Boss } = {
 		atk = 33,
 		spd = 11,
 		recommended = 2400,
-		shopLevel = 22,
+		shopLevel = 57,
 		groupAtkStep = 0.3,
 		minFightSeconds = 120,
 		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe", debuff = "byPhase" }, -- prism beam

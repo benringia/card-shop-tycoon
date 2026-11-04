@@ -6,32 +6,46 @@ local expect = require("./lib/expect")
 
 local cfg = LoadingScreen
 
-local function status(character: boolean, data: boolean, creature: boolean, gear: boolean, art: boolean?): LoadingRules.Status
-	return { character = character, data = data, art = if art == nil then data else art, creature = creature, gear = gear }
+-- shop: the product models, icons and other first pictures (round 4); ready unless a test says otherwise
+local function status(character: boolean, data: boolean, creature: boolean, gear: boolean, art: boolean?, shop: boolean?): LoadingRules.Status
+	return { character = character, data = data, art = if art == nil then data else art, shop = if shop == nil then true else shop, creature = creature, gear = gear }
 end
 
 return {
-	["the steps tick off in order: character, save, creature, fight gear"] = function()
+	["the steps tick off in order: character, save, shop pictures, creature, fight gear"] = function()
 		local step, share, done = LoadingRules.progress(status(false, false, false, false), 0, cfg)
 		expect.equal(step, 1)
 		expect.equal(share, 0)
 		expect.equal(done, false)
 		step, share = LoadingRules.progress(status(true, false, false, false), 1, cfg)
 		expect.equal(step, 2)
-		expect.equal(share, 0.25)
+		expect.equal(share, 0.2)
 		step, share = LoadingRules.progress(status(true, true, true, false), 2, cfg)
-		expect.equal(step, 4)
-		expect.equal(share, 0.75)
+		expect.equal(step, 5)
+		expect.equal(share, 0.8)
 		step, share, done = LoadingRules.progress(status(true, true, true, true), 3, cfg)
-		expect.equal(step, 5, "all done")
+		expect.equal(step, 6, "all done")
 		expect.equal(share, 1)
 		expect.equal(done, true)
+	end,
+
+	["the shop step waits for the first pictures"] = function()
+		local step, _, done = LoadingRules.progress(status(true, true, true, true, true, false), 2, cfg)
+		expect.equal(step, 3, "everything else is in: the shop pictures still loading")
+		expect.equal(done, false)
+	end,
+
+	["failed assets count as settled"] = function()
+		expect.equal(LoadingRules.settled({ "Success", "Failure", "TimedOut" }), true, "failed or timed out: nothing more to wait for")
+		expect.equal(LoadingRules.settled({ "Success", "Loading" }), false, "still loading")
+		expect.equal(LoadingRules.settled({ "None" }), false, "not asked for yet")
+		expect.equal(LoadingRules.settled({}), true, "nothing to load")
 	end,
 
 	["a later step done early doesn't jump the bar ahead"] = function()
 		local step, share = LoadingRules.progress(status(true, false, true, true), 1, cfg)
 		expect.equal(step, 2, "still loading the save")
-		expect.equal(share, 0.25)
+		expect.equal(share, 0.2)
 	end,
 
 	["a slow save gets its note after SLOW_SECONDS"] = function()
@@ -52,13 +66,13 @@ return {
 	end,
 
 	["every step has its words, the first one per place"] = function()
-		expect.equal(#cfg.STEPS, 4)
+		expect.equal(#cfg.STEPS, 5)
 		for _, kind in { "Main", "Frontier", "Dungeon" } do
 			expect.equal(typeof(LoadingRules.stepText(1, kind, cfg)), "string", kind)
 		end
 		expect.equal(LoadingRules.stepText(1, "Main", cfg), cfg.FIRST_STEP.Main)
 		expect.equal(LoadingRules.stepText(3, "Main", cfg), cfg.STEPS[3])
-		expect.equal(LoadingRules.stepText(5, "Main", cfg), cfg.READY)
+		expect.equal(LoadingRules.stepText(6, "Main", cfg), cfg.READY)
 		expect.equal(LoadingRules.stepText(1, "Elsewhere", cfg), cfg.STEPS[1], "an unknown place: the plain first step")
 	end,
 

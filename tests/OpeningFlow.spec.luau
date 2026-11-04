@@ -54,4 +54,10 @@ return {
 		local s = OpeningFlow.done(OpeningFlow.done(select(1, OpeningFlow.tap(OpeningFlow.new(0), 0)), 1), 2)
 		equal(s.phase, "Results", "nothing to flip")
 	end,
+
+	["busy while a pack is on the stage or one is on its way"] = function()
+		equal(OpeningFlow.isBusy(true, false), true, "a pack on the stage")
+		equal(OpeningFlow.isBusy(false, true), true, "a rip waiting for the server")
+		equal(OpeningFlow.isBusy(false, false), false, "free: a Bag pack may open")
+	end,
 }

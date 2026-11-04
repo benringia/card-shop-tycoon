@@ -67,6 +67,8 @@ local NAMES = {
 	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "boss" | "won" | "out", message? } the Dungeon run; client → server: () ask for it
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
+	"OpenBagPack", -- client → server: (itemId: string) open one pack item from the Bag (LevelUpService; main game)
+	"LevelUpFx", -- server → clients: { kind = "shop", userId, from, to } or { kind = "creature", userId, beastId, element, from, to, fromFight }
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped
 	"SwordState", -- server → client: { sword: string?, popup: boolean } your sword and whether to show the first-sword popup; client → server: () ask
@@ -161,6 +163,8 @@ return {
 	DungeonRun = remotes.DungeonRun,
 	DungeonLeave = remotes.DungeonLeave,
 	UseXpTonic = remotes.UseXpTonic,
+	OpenBagPack = remotes.OpenBagPack,
+	LevelUpFx = remotes.LevelUpFx,
 	FrontierTravel = remotes.FrontierTravel,
 	WelcomeSeen = remotes.WelcomeSeen,
 	SwordState = remotes.SwordState,

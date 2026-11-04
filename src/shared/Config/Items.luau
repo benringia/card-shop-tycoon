@@ -55,6 +55,15 @@ return {
 			source = "Rift Devourer (boss)",
 			use = "Opens the Prism Hydra the first time you fight it",
 		},
+		-- Shop level rewards (Config/Levels PACK_ITEM): opened from the Bag (remote OpenBagPack, LevelUpService)
+		sparkPack = {
+			name = "First Spark Pack",
+			icon = "BoosterPack",
+			description = "A First Spark booster pack, ready to open.",
+			source = "Shop level rewards (every 10th level)",
+			use = "Bag: tap Open",
+			open = "FirstSparkPack", -- the Config/Packs product it opens
+		},
 		goldSeal = {
 			name = "Gold Seal",
 			icon = "GoldSeal",

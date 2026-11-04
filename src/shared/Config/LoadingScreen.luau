@@ -16,9 +16,10 @@ return {
 	CARD_EDGE = rgb(255, 210, 122),
 	BAR_COLOR = rgb(255, 210, 122),
 	NOTE_COLOR = rgb(255, 210, 122),
-	-- Steps in order: the character, the save, the summoned creature, the fight gear (art, sounds, moves)
+	-- Steps in order: the character, the save, the shop's pictures (product models, icons, covers), the summoned
+	-- creature, the fight gear (art, sounds, moves)
 	FIRST_STEP = { Main = "Opening your shop...", Frontier = "Opening the Frontier...", Dungeon = "Opening the Dungeon..." },
-	STEPS = { "Getting everything ready...", "Loading your cards...", "Waking up your creature...", "Getting the fight gear ready..." },
+	STEPS = { "Getting everything ready...", "Loading your cards...", "Stocking the shelves...", "Waking up your creature...", "Getting the fight gear ready..." },
 	READY = "Ready!",
 	SLOW_SECONDS = 6, -- the save still loading after this: say why
 	SLOW_NOTE = "Your save is still closing on another server, almost there!",

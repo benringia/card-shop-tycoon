@@ -24,6 +24,7 @@ local ROW_HEIGHT = 48
 local BOX_SHARE = 0.55 -- of a row with a text box: the box; the rest is its button
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set when it's built
 local list: ScrollingFrame
 local order = 0
 
@@ -39,7 +40,7 @@ local function send(command: string?)
 end
 
 local function heading(text: string)
-	local label = UIKit.label(list, text, Enum.Font.FredokaOne, 18, UIKit.Colors.Accent)
+	local label = UIKit.label(list, text, Enum.Font.FredokaOne, 18, palette.hint)
 	label.LayoutOrder = nextOrder()
 	label.Size = UDim2.new(1, 0, 0, 26)
 end
@@ -56,7 +57,7 @@ local function buttonRow(entries: { { label: string, command: string } })
 	layout.Padding = UDim.new(0, 6)
 	layout.Parent = row
 	for _, entry in entries do
-		local button = UIKit.button(row, entry.label, UIKit.Colors.Row)
+		local button = UIKit.button(row, entry.label, palette.row)
 		button.Size = UDim2.new(1 / #entries, -6, 1, 0)
 		button.TextSize = 14
 		button.TextWrapped = true
@@ -75,14 +76,14 @@ local function inputRow(entry: AdminPanel.Button)
 	row.Parent = list
 	local box = Instance.new("TextBox")
 	box.Size = UDim2.new(BOX_SHARE, -6, 1, 0)
-	box.BackgroundColor3 = UIKit.Colors.Row
+	box.BackgroundColor3 = palette.row
 	box.ClearTextOnFocus = false
 	box.PlaceholderText = entry.placeholder or ""
 	box.Text = ""
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 14
-	box.TextColor3 = UIKit.Colors.Text
-	box.PlaceholderColor3 = UIKit.Colors.Subtext
+	box.TextColor3 = palette.ink
+	box.PlaceholderColor3 = palette.inkSoft
 	box.Parent = row
 	UIKit.corner(box, 10)
 	UIKit.outline(box)
@@ -158,6 +159,7 @@ function AdminPanelController.Start()
 		return -- testing tools: nothing in the live game
 	end
 	panel, list = UIKit.panel(UIController.GetScreenGui(), "AdminPanel", "🛠 Admin (Studio)")
+	palette = UIKit.colorsFor(panel)
 	build()
 	Hud.tile({ id = "Admin", icon = "🛠", label = "Admin", group = "Side", order = 90, onClick = toggle })
 end

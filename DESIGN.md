@@ -123,7 +123,14 @@ user kept the map's spots). Trails are paved terrain with the portal's glowing l
 area's name stands where each trail leaves the island (gaps in the hedge), and "This way" signposts point the way
 (one in the planter on the plaza rim beside the spawn, one at each street end; `Town.SIGNPOSTS`, `Server/Util/TrailProps`). The invisible walls follow `Town.WALK_EDGE` (the island plus the trails and
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
-`SceneryService`); a grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+`SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
+**Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `TownMusicController`, `Config/Music`,
+`Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.21 (the owner's number, 2026-11-04, after 0.045 and 0.07 were too low) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
+quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
+valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
+(`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
+buttons loop option n over the ambience, `/music 0` goes back); the first pick ("Lakefront Days" at 0.12) overpowered
+the ambience and 0.05 was still a little loud. A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
 models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
 `tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
@@ -138,7 +145,7 @@ opening's larger side so the swirl's fading disc covers it (`Town.PORTAL_FX.VORT
 frame): a glowing core in a deep shade (`portal-glow.png`, made in code) that fills the gaps and breathes, the swirl
 (`portal-vortex.png`, Figma, white with clear gaps between its arms, tinted by a gradient) and a smaller inner swirl
 turning the other way, faster; the portal's light breathes with the core. The client turns the images in their own
-plane (ImageLabel.Rotation; `PortalFxController`, `Util/PortalLooks.animate`, within 150 studs with the extras on,
+plane (ImageLabel.Rotation; `PortalFxController`, `Util/PortalLooks.animate`, within 150 studs unless the player picked low graphics (not the frame watchdog: arriving somewhere new hitched it off and froze the swirl you walked up to, fixed 2026-11-04),
 looking the panels up every frame; each portal wears the look `PortalBuild.dress` stamps on it as the `PortalLook`
 attribute, since the Boss and Arena looks share one model and boss portals are renamed). A flat beam turned with its part twisted out of the opening and read as several
 disks tumbling; a swirl filling the opening as a stretched beam wobbled and swung past the arch tops.
@@ -152,7 +159,8 @@ old look (`Town.PORTAL_EFFECTS`: ring and frame glow tinted, a soft light, 2 emi
 arches and glowing paths. The travel rings keep their prompts, hidden behind the new models; each name label floats
 3 studs over whichever model stands and shows within 80 studs (`Town.PORTAL_LABEL_DISTANCE`), so it comes into view
 down the trail before it climbs off the top of the default camera's view. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
-Wild goes through its prompt only (the WildTravel remote accepts just "home"), and the Frontier menu's choices only count
+Wild goes through its prompt only (the WildTravel remote accepts just "home", sent by the Wild's sky "Return to town"
+pill top centre; owner 2026-11-03, round 3, `Combat.HOME_BUTTON`), and the Frontier menu's choices only count
 within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
 z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
 and plain ground under and 5 studs round each shop, so no blades poke through; Roblox draws terrain 2 studs above its
@@ -278,11 +286,11 @@ is over UI (`UIKit.pointerBlocked`).
 | Small Pack Rack | 24 packs | $100 | Start |
 | Glass Showcase | 6 single cards, NPC customers buy | $250 | Start |
 | Collector Case | 6 single cards, other players buy | $300 | Start |
-| Card Condenser | machine: combine duplicates for +1 star (5.8) | $500 | Shop Lv 4 |
-| Grading Station | machine: duplicates and cash for +1 grade (5.9) | $5,000 | Shop Lv 8 |
-| Wall Shelf | 48 packs | $350 | Shop Lv 3 |
-| Accessory Hook | 20 accessories | $250 | Shop Lv 5 |
-| Big Display Rack | 96 packs | $1,200 | Shop Lv 6 |
+| Card Condenser | machine: combine duplicates for +1 star (5.8) | $500 | Shop Lv 5 |
+| Grading Station | machine: duplicates and cash for +1 grade (5.9) | $5,000 | Shop Lv 14 |
+| Wall Shelf | 48 packs | $350 | Shop Lv 4 |
+| Accessory Hook | 20 accessories | $250 | Shop Lv 7 |
+| Big Display Rack | 96 packs | $1,200 | Shop Lv 9 |
 
 ### 4.4 Pricing
 - Each product has a **market price** (shown in UI). Player sets their sell price per product type.
@@ -478,7 +486,13 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   Very Rare 25, and a hit slot of Rare 45 / Very Rare 25 / Epic 22 / Legendary 8, against a pack's 68/15/14/3), for
   $9 against a pack's $3. On the stage it is the 3D deck box: "Tap the lid to open" lifts the lid, and its cards
   stack and flip like a pack's. On shelves deck boxes stand as 3D deck boxes; menus (Set Price, Prices, Order Stock)
-  show the 3D pack and deck box turned a little (`Util/ProductPicture`).
+  show a sharp picture of the real pack and deck box (round 5, owner pick A: the 3D models rendered big in Studio, cut
+  out by `tools/ui-art/cut_product_picture.py` and uploaded; `Config/ProductPictures`, `Util/ProductPictureRules`), fitted
+  in 56 px with 4 px of air so nothing touches the row's edge; a pack look with no picture yet shows the drawn
+  BoosterPack / DeckBox icon (`Util/ProductPicture`), which also shows under a picture until its download succeeds
+  (the label itself is preloaded: an image id preloaded as a string reports Failure, and `IsLoaded` never fires a
+  change). The old live 3D picture was soft and clipped. Order Stock and Prices pad their list (`Pricing.ROWS.LIST_PAD`,
+  `UIKit.padList`) so the rows' outlines and the buttons' glow aren't cut at its edges.
 - **Each tap flips the top card** (`Util/OpeningCards`, `PackOpening.FLIP`), hit slot last: it lifts and turns over
   with a little overshoot, landing big in the middle (its back is hidden once it's past halfway). The next tap zips it
   into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next. Only the
@@ -585,7 +599,7 @@ up to half of a star's cost. One codebase, two places: `frontier.project.json` s
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
 
 **Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
-min(both players' cash, $50 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
+min(both players' cash, $25 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
 accept. Both bets are then held by the server and the match goes to the arena (one pad, far from the shops; others
 queue first come, first served; leaving the queue refunds both). After a 3-2-1 countdown, full parties fight (cards resting from the wild sit
 out), same combat rules as the wild, no call-in and no Run; you can roam your half of the pad. Winner takes both
@@ -637,7 +651,7 @@ Lune-tested).
 About 8 monsters per zone, respawning 20–40 s after a win; 1 in 10 is an elite (gold tag, 1.35x size, about twice
 the HP, ×3 rewards). Monsters sleep with no player within 100 studs. Studio: `/wild`, `/rest`, `/elite`.
 
-**You in wild fights** (owner 2026-11-03): with a sword (the free starter at shop level 3) you fight normal monsters
+**You in wild fights** (owner 2026-11-03): with a sword (the free starter at shop level 4) you fight normal monsters
 and elites beside your creature, as in boss fights: Attack, Dodge, the sword's skill, the Pet button and Run. The
 monster turns a third of its swings on you while a creature of yours stands and sends quick hits at you (8% of your HP,
 elites 12%, `Wild.PLAYER_QUICK` / `ELITE_PLAYER_QUICK`, `CombatMath.getMonsterAttacks`; dodge them; no rings outside
@@ -764,15 +778,17 @@ column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
-(bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a dark tray,
-`Config/Party` BAR) shows your avatar with a PARTY tag (opens Party) and the 3 party slots as small cards: the card's
-art in its rarity rim with "Lv 4", a key chip 1 / 2 / 3; the summoned one lifts, glows blue and has an OUT tag; an empty
-one is a dashed "+"; a resting one dims with an hourglass over "2:41". Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
+(bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a cream
+cushion, `Config/Party` BAR, see "Creature pals HUD" in 10.6) shows a "Party" pill (opens Party, as does tapping the
+cushion) and the 3 party slots as round portraits: the card's art in a white ring with "Lv 4" in a white pill under it,
+a key chip 1 / 2 / 3; the summoned one is bigger with an orange ring, an orange glow and an OUT tag; an empty one is a
+faint ring with a "+"; a resting one dims with an hourglass over "2:41". Each sits in a 70 px tap area (48 px at the
+smallest HUD scale). Tap a slot or press 1 / 2 / 3 to summon it, again to unsummon;
 an empty one picks a card in the binder. Hovering a card (or holding a finger on it for `UIStyle.LONG_PRESS`, which
 then doesn't summon) shows its tooltip above the bar (`CardTips.copy`): the card, name, grade, level, Power, HP / ATK
 / SPD bars, its perk and the resting countdown, so you don't need the binder. When the party changes, a toast says
 so ("Cindercub joined your party!", "Cindercub swapped in for Ashbeak!", "Ashbeak left your party";
-`PartyRules.changes` / `changeText`, Lune-tested) and the slot a card joins pops up with a white rim
+`PartyRules.changes` / `changeText`, Lune-tested) and the slot a card joins pops up with its ring flashing gold
 (`Party.BAR.POP`). Empty Party and Jobs slots have Add card / Assign buttons that open the binder. Perks, from the summoned card
 only, read live:
 
@@ -848,8 +864,14 @@ Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 
 `STAR_VALUE` for 0–5 stars = `{ 1, 6, 15, 30, 50, 80 }` (roughly the duplicates condensed plus a bonus).
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
-Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 4, $500; no level gate,
-levels raise stats only). Press E on it, pick a card and its main copy, see the cost and before -> after, then Condense.
+Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 5, $500; no level gate,
+levels raise stats only). Press E on it: the window is "tidy two panes" (owner's pick A, spec `2026-11-04-round4-design`
+section 3): a sky band with the Condenser icon and "N ready", one toolbar (search, then All / Ready / Raising; Raising
+is everything not ready), the cards as slim rows (a Ready tag, "x21 · 4 copies for the next star" or "3 of 4 copies"
+and a thin bar, `CondenseRules.rowLine`), and the chosen card on the right: its stars, Power and Value before -> after,
+"Keeps Grade S · Lv 14 · uses 4 Grade C" with Change (the copies to keep), one big Condense +1 star and a small Star
+Shards toggle (off: Ready counts copies only and Condense never spends shards). Buttons sit 12 px in from the pane's
+edges and centre-anchored; hover never grows anything (round 5), so nothing is cut off.
 Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
 weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
 own card. One star per press. Duplicates per star (`STAR_COSTS`):
@@ -865,7 +887,7 @@ Numbers live in `Config/Beasts.luau`. Studio: `/beastxp <amount>` gives XP to yo
 ### 5.9 Grading Station (grade-ups)
 
 The sure, slow path to Grade S next to the lucky pull (a Grade S Legendary pulls about 1 in 10,000 packs, 5.8).
-A machine bought in the build menu (Fixtures, shop Lv 8, $5,000; `Config/Shelves` kind `Grading`), a code-built
+A machine bought in the build menu (Fixtures, shop Lv 14, $5,000; `Config/Shelves` kind `Grading`), a code-built
 futuristic scan pod (the user's pick of six concepts, 2026-10-30, then made bigger: a 6 x 6 spot, about 9 studs tall
 with its hologram; `Town.GRADING_LOOK`): a dark plinth with a cyan rim, a white body with a light band, a slot and a
 GRADING strip, and on top a see-through column where a gold card floats in a beam of light, spinning and bobbing, with
@@ -899,13 +921,13 @@ and rewards in `BossService`.
 
 | # | Boss | Arena | Element | Lv | HP / ATK / SPD | Recommended Power | Mechanic | Shop Lv | Opens with |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 3 | open |
-| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 5 | 3 Brood Queen Key Fragments |
-| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 8 | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 12 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 15 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 18 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 22 | 10 Hydra Key Fragments |
+| 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 4 | open |
+| 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
+| 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 26 | 5 Frost Tyrant Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -954,9 +976,9 @@ group, checked before its fragments and every time (not only the first). Below i
   comes back (`BattleSim.swap`, Lune-tested).
 - **The player in the fight** (spec 2026-11-02-you-in-the-fight-design): in every boss fight (the Wild's, the
   Frontier's and the Prism Hydra) each player fights beside their one creature as a player fighter (`a:@<UserId>`,
-  100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 3, `Config/Swords`, `SwordService`) hits through remotes
+  100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 4, `Config/Swords`, `SwordService`) hits through remotes
   `SwordAttack` (the server picks the combo's next cut with `SwordRules.nextCut` and hits whatever is in reach at its
-  strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 1 s cooldown; the
+  strike frame), `SwordSkill` (everything round them, 8 s cooldown) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
   dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
   third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
   big attack: a closing orange ring (`SwordFx.RING_COLOR`, the owner's pick) on each player, a slam under them or a
@@ -966,11 +988,11 @@ group, checked before its fragments and every time (not only the first). Below i
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
   creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're
-  down and none of your creatures can fight: "Teleporting back to town in 3, 2, 1" (`Combat.LOSS_COUNTDOWN`,
-  `BossRules.countdownText`), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
+  down and none of your creatures can fight: the defeat screen counts down `Combat.LOSS_COUNTDOWN` 5 s (it can't be
+  skipped; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
   kneeling, until the fight ends, and a win counts for them too.
-- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 3 (`Swords.UNLOCK_SHOP_LEVEL`,
+- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 4 (`Swords.UNLOCK_SHOP_LEVEL`,
   when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
   (`seenSword`). It rests on the back everywhere, 1.4x bigger there so it and the looks the shop will sell later stand
   out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
@@ -985,12 +1007,19 @@ group, checked before its fragments and every time (not only the first). Below i
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
   `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
-  Signature (Epic and Legendary cards), small Swap (1-3) and Run. With a mouse a click attacks and there's no Attack
+  Signature (Epic and Legendary cards), small Swap (1-3: the party slot as the party bar numbers it, `Util/SwapKeys`;
+  while swaps cool down the button drains and a key says "Swap ready in 4s", a resting card says so; 2026-11-04) and
+  Run. The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
+  lost half of it to the character's braking), and one that would end inside a boss or monster carries on through it
+  to 1.5 studs past its edge, up to 26 studs (`SwordRules.dashLength`, owner 2026-11-04). With a mouse a click attacks and there's no Attack
   button (owner 2026-11-03: phones, tablets and devices without a mouse keep it); the Pet button takes its corner and
   Dodge and Skill move up beside it (`UiLayout.combatButtons(view, noAttack)`), and the first-sword popup says "click
   to swing, Shift to dodge" instead of "tap Attack". Top-left your headshot in a bevelled ring with
   your creature's card on a badge, beside your HP and your creature's in slanted neon bars (`Util/HpBar`, ticks every
-  20%); the boss's HP is the same bar across the top, red. A hit drops the fill at once and leaves a ghost of the
+  20%); the boss's HP is a plate across the top (owner 2026-11-04, design A: gold-edged, the boss's element in a
+  gold ring, its name big with its title and level under it, the bar with the HP number on the right; `TOP_BAR` in
+  `Config/CombatHud`), a normal monster's a slim red bar with its name and level over it (an elite's gold with an
+  ELITE tag; `HpBar.setLook`). A hit drops the fill at once and leaves a ghost of the
   lost HP (red on yours, pale gold on the boss's) that holds 0.35 s, then drains in 0.45 s, with a white flash; a heal
   moves a pale lead ahead and the fill rises to it. When you're hit the portrait shakes with a red ring and the
   screen's edges flash red for 0.55 s, stronger for a bigger share of your HP; below 30% HP they keep pulsing
@@ -999,7 +1028,9 @@ group, checked before its fragments and every time (not only the first). Below i
   checks every hit. Feel (`Config/SwordFx`): hit-stop 0.06 s, a white flash on what you hit, sparks, camera shake, a
   slash trail on the blade, damage numbers, dodge after-images, closing rings (look B) and the boss's wind-up glow
   (orange for a big attack, red for a quick hit). Sounds: Roblox-licensed Pro Sound Effects (`Swords` `sounds`),
-  each kept loaded on your character and replayed; the hit sound plays the moment the blade lands when your own reach
+  each kept loaded on your character and replayed at a pitch picked from `Swords.SOUND_PITCH` (0.88-1.12) each time, and
+  the fight effects' sounds at a pitch and loudness from `AttackFx.VARY` (owner 2026-11-04: nothing the same over and
+  over); the hit sound plays the moment the blade lands when your own reach
   check connects (the server's hit arrives a round trip later and only sounds if that check missed,
   `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
@@ -1024,7 +1055,11 @@ group, checked before its fragments and every time (not only the first). Below i
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
   once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
   Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
-  Pet button moves and super moves (`AttackFx.SPECIALS`, `ElementFx.special`) land at once with their `ability`
+  Pet button moves and super moves wind up first (owner 2026-11-04, design A): the press spends the cooldown and the
+  sim sends a `cast` event, then fires the move `Combat.ABILITY_WINDUP` 0.5 s later unless the caster has fainted or
+  left (`BattleSim` casts); meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
+  it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
+  everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
   event: Fireball a blast and a fire ring on the ground, Wave a swelling water dome, Snare five vines round the target
   (4 s), Overcharge a crackling aura on the caster (3 s), Curse a purple mist (5 s); the super moves Inferno a fire
   pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
@@ -1040,9 +1075,13 @@ group, checked before its fragments and every time (not only the first). Below i
   Queen: fang stab (front legs raised, then driven down; claw slashes, poison splash) and web spit (rears with wings
   up, then lunges; made big 2026-11-03 at the owner's ask: from her fangs, half her height up, a burst and 12 thick
   strands land across the whole cone with 7-stud splats, and a fan of web, 7 spokes and 4 cross threads, sticks over
-  the cone for 1.4 s; `ElementFx.bossRelease` takes the boss's height). Ember Colossus: horn gore (sits back, head low, then
+  the cone for 1.4 s; `ElementFx.bossRelease` takes the boss's height; 2026-11-04: 35% of webs come huge, 1.8x as long
+  and 1.6x as wide, 47 studs and 56 degrees, `Bosses` hugeSwipe, `RingRules.swipeSize`, the warning, the web and the hit
+  check all that size). Ember Colossus: horn gore (sits back, head low, then
   tosses its horn; fiery burst, rock dust) and lava slam (rears on its hind legs roaring, then crashes down; fire
-  shockwave, glowing cracks, molten rocks). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
+  shockwave, glowing cracks, molten rocks; owner 2026-11-04, design A "meteor slam": as its ring appears a huge
+  fireball is heaved off its back and arcs high to land with the slam, `AttackFx.BOSS` meteor, and the eruption is
+  bigger: wider, a tall fire pillar, a burst and a shockwave ring). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
   remodel.
 - **Wild monster attacks** (same spec): each valley species has a keyed `windup` and `strike`
   (`tools/blender/anim_wild.py`, `MonsterAnimations/<species>`), played the same way as a boss's normal attack, with
@@ -1057,6 +1096,18 @@ group, checked before its fragments and every time (not only the first). Below i
   Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
   Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
   stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
+  Shown (owner-approved look, 2026-11-03): a chip on its own row under the perk chip ("🌿 Tangled 1.6": emoji, name,
+  tenths left over a bar draining in its colour; boss fights only, the row keeps its place so the bars don't jump), the
+  emoji in a small ring on your portrait's top-right (`CombatHud.setDebuff`, looks in `Config/CombatHud` DEBUFFS,
+  countdown in `Util/DebuffRules`), and an effect on the character that everyone in the fight sees (`Util/DebuffFx`):
+  Tangled vine bands round the lower legs, Poisoned green bubbles rising, Burning small flames, Chilled ice crystals at
+  the feet and a blue tint, Shocked yellow sparks, Weak a purple haze; each Poison or Burn tick flashes the character in
+  its colour and floats its number (no flinch or shake). The walk slows are the server's: each step it reads the
+  player's debuff from the sim (`BattleSim.playerDebuff`) and sets WalkSpeed to the speed before times 1 - slow
+  (`BattleService` `updateMovement`, which also kneels a downed player; the speed before is kept in the humanoid's
+  WalkSpeedBefore while either holds), so a refresh, another debuff, going down, running out, running away and the
+  fight ending all put walking back. The Queen's web spit is a swipe: it reaches her ring radius plus 8 studs, so a
+  player standing further back takes no hit and no Poison.
 - **Effect quality** (same spec, "Quality bar", owner 2026-11-03): every fight effect is drawn from a texture kit in the
   owner's reference look (`tools/textures/make_attack_fx.py` -> `assets/ui/fx-attack`, ids in `AttackFx.TEXTURES`:
   glow, flare, comet streak, spark, shockwave ring, lightning, crescent slash, crystal shard, starburst, flame, smoke),
@@ -1089,8 +1140,8 @@ group, checked before its fragments and every time (not only the first). Below i
   one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
   new card, a first-clear chest item and the bonus glow gold, with a chime); the notes (loot on the ground, carried,
   reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
-  up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss is "DEFEATED" in red,
-  a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
+  up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss has its own screen
+  (below), a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
   itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down. Its
   sounds are fetched on the loading screen and kept loaded, and the silent start of the fanfare and the level-up
   shimmer is skipped (`Victory.START_AT`), so they land with the moment.
@@ -1115,8 +1166,39 @@ group, checked before its fragments and every time (not only the first). Below i
   Cave Brood Queen HP 2600 (23/60 | 60/90), Ember Colossus HP 6300 (6/60 | 60/86), Frost Tyrant unchanged (0/63 |
   49/91), Storm Sovereign 28000 / ATK 43 (20/60 | 60/90), Rift Devourer HP 34000 (23/60 | 58/82), Prism Hydra
   60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
+- **Defeat screen** (owner 2026-11-04, design A "Defeated card"; `Util/DefeatScreen`, `Util/DefeatRules`,
+  `Config/Defeat`), a lost boss fight: the world goes grey with a red edge (a ColorCorrectionEffect and the hit-flash
+  vignette) and a quiet piano sting plays (APM "Moonlight Tides (sting)", Roblox-licensed, volume 0.22); "DEFEATED" drops in with
+  "<boss> won · m:ss" under it, then a card with the fight's numbers the server sends (`summary.defeat`,
+  `BattleSim.damageBy`): your sword's damage, each of your creatures' (the top 3), the boss's HP left as a bar, rings
+  dodged of those aimed at you (counted per member); a tip (the boss's own, `Defeat.TIPS`); and a ring of 24 dots going
+  out one by one around the seconds left, "Back to town". It can't be skipped (owner 2026-11-04); a clear button over the
+  screen swallows taps meanwhile.
+- **Summon, unsummon, faint** (owner 2026-11-04: light pillar, back into you, dizzy stars; `Util/SummonFx`,
+  `Util/SummonMotion`, `Party.SUMMON_FX`): a summon (or a call-in, or a creature swapped back in) stamps `SummonedAt` on
+  its marker and clients that see it fresh (within 1.5 s, not one streaming in later) draw a ring and a pillar of light
+  in its element colour as it pops up out of them with a bounce and sparkles. An unsummon, a swap or the end of a
+  call-in flags the marker `Unsummon` and removes it 0.45 s later (`PartyService.Dismiss`; renamed at once so the next
+  marker's name is free): it flashes, shrinks away and a light flies back into its owner; a boss fight's benched leader
+  does the same. A faint: a white flash, it tips over (`CreatureVisuals`, eased), dizzy stars circle its head for
+  1.3 s, then it fades in a puff, and pops back when it's no longer fainted. Sounds (owner 2026-11-04,
+  `Party.SUMMON_SOUNDS`, Pro Sound Effects), played where it stands at a steady pitch: the owner's picks of 2026-11-04
+  from the options (`/summonsound`, `/unsummonsound`): a quiet twinkle as it pops up (PSE "Magic Glows Soft Clusters Of
+  Chiming Hits 4", volume 0.1) and a soft magic fade as it flies back into you (PSE "Pulsing Tone Smooth Mid Range Synth
+  Tone 3", volume 0.1).
+- **Pet voice** (owner 2026-11-04 "an occasional chirp"; `Util/PetVoice`, `Party.VOICE`): your own summoned creature
+  says hello 0.5 s after it pops up, then chirps every 18-40 s while it's out and about (not in a fight, fainted,
+  swapped out or leaving) with an 8% squash-bounce. Small creatures chirp (PSE "Parakeet Chirps 8", "Mouse Vocal 3",
+  one per creature), Epics and Legendaries give a low huff (PSE "Creature Vocal Spider Hiss Exhale 1"); pitched lower
+  the bigger it is ((3 / height) ^ 0.45, kept within 0.55-1.3, +-8%), volume 0.3, heard within 45 studs. Only you hear
+  your own (client-side).
+- **Healing at the spring** (owner 2026-11-04; `Util/HealFx`, `Party.HEAL_FX`): while you stand in the spring's
+  12-stud area (`RestChanged.nearSpring`, from the server's spring tick) your summoned creature, out and about, shows
+  a green "+ Healing" pill above its name tag, green plus signs floating up off it, rising green sparkles, a green light
+  breathing on it and a ring rippling at its feet every 1.6 s; resting cards' timers on the party bar turn green with a
+  "+". It stops when you step away.
 - **Wild fight HUD** (owner 2026-11-03, layout A: the boss fight's look without the sword): the monster's name and HP
-  in the top bar (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
+  in the slim bar at the top (gold for an elite; a Dungeon room's other monsters as small bars under it), your creature's portrait
   ring with its HP top left (a called-in one's bar under it, the perk chip), and the slanted buttons bottom right
   (`CombatHud.new(..., wild, sword)`, `UiLayout.wildButtons`): with a sword, the boss fight's buttons (Attack, Dodge,
   the skill, the Pet button) and your HP bar on top with your creature's and a called-in one's under it; without one
@@ -1135,27 +1217,30 @@ group, checked before its fragments and every time (not only the first). Below i
   player can still climb.
 - **Items:** XP Tonic (400 card XP, used from the Party panel, never on a Lv 30 card), Grading Seal (one missing
   duplicate at the Grading Station, at most half a step, so never on a 1-duplicate step; the toggle says when they
-  can't help), Star Shards, fragments, trophies.
+  can't help), Star Shards, fragments, trophies, First Spark Packs (shop level rewards, opened from the Bag).
 - **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
   count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
-- **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, red band): a path of seven steps,
-  each a disc with the boss's icon (its element's; the Hydra a gem, `Util/BossTints`), its number and name, and a state
-  from `BossRules.stepState`: beaten (gold ring, trophy), ready (green glow, check: you can start it now, key fragments
-  in hand count, and your best party card's Power is enough), too weak (red ring) or locked (faded, lock: shop level or
-  fragments short). A legend under the ladder names the four badges, the path fills gold up to the last boss beaten
-  in a row, a gold "Next" tag sits on the first boss still to beat, and each step's tooltip says where it stands
-  ("built for 1500 Power", "opens at shop level 15", "needs 8 keys"). It opens on the first step still to beat.
-  Tapping a step shows it below in two columns (each scrolls when it doesn't fit, as on phones). **To fight it:** its
-  name with a status pill (Beaten / Ready / Too weak / Locked) and its title; pills for its element, where it lives
+- **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, lilac band; round 5, owner pick A
+  "List and detail, like the Condenser", spec 2026-11-04-round5-design section 5). **Left:** the seven bosses top to
+  bottom (270 px; phones 168 px, rows 48 px tall), one row each: a disc with the boss's icon (its element's; the Hydra
+  a gem, `Util/BossTints`) in the ring of its state from `BossRules.stepState`: beaten (gold), ready (green: you can
+  start it now, key fragments in hand count, and your best party card's Power is enough), too weak (red) or locked
+  (faded grey: shop level or fragments short); "N. Name"; a status chip in words (Beaten / Ready / Too weak / Locked;
+  phones: the state's small badge on the disc instead); a gold "Next" tag on the first boss still to beat; the chosen
+  row's gold ring. Each row's tooltip says where it stands ("built for 1500 Power", "opens at shop level 34", "needs
+  8 keys"). The old legend and climb path are gone (the chips say it). It opens on the first boss still to beat.
+  **Right:** the chosen boss. A **banner** in its element's baby colour (`BossRules.bannerColor`: Bloom mint, Tide sky,
+  Ember peach, Volt butter, Shade lilac, the Hydra pink; plum text on butter, white outlined in the deep shade on the
+  rest) with a big white disc and its icon, its name, title, status chip and "Next"; under it pills for its element,
+  where it lives (phones: the pills scroll at the top of the left column and the way to its place sits at the end of
+  the Rewards column, `BossRules.detailsLayout`, so the columns keep their room)
   (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
-  tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); a checklist of what it needs, each row with a
+  tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); then two columns, each scrolling when it doesn't fit. **To fight it:** a checklist of what it needs, each row with a
   check, cross or "!" mark: shop level (You: n), its key fragments (n/N tinted for that boss, "Opened" once used,
   "No key needed" for the first; tooltip: the item, that it's used up on the first fight, and where it drops; tapping
   the row while short shows the boss before), and Power (the Power it's built for against your best party card, with
-  a bar; a warning, not a lock); then a tinted box with what to do next (`BossRules.lockReason`: level up the shop,
-  beat the boss before for n more keys with a "See it" button, level up or change the party with a "Party" button,
-  go fight it, or fight again for loot); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
+  a bar; a warning, not a lock); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
   thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). A locked boss
   past the "Next" one keeps its tricks a surprise ("???: reach it to find out", `BossRules.revealTricks`; the Hydra's
   element pill reads "???" and shows no element to bring); its needs and rewards always show. **Rewards:** a
@@ -1166,8 +1251,10 @@ group, checked before its fragments and every time (not only the first). Below i
   day's first-win chest as small slots (the payload's `bonusReady`; "Daily bonus collected: back tomorrow" once
   taken); cash and XP every win; "Full drops: n more wins today" (`BossRules.fullDropsLeft`) or "Fewer drops today";
   "Party very strong: fewer drops" above the over-power line. Item slots have rich tooltips (`Tooltip.rich`: the gold
-  name, what it does, its odds or chest). Last comes the travel button
-  (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
+  name, what it does, its odds or chest). **Footer**, always in view: what to do next on a light tint of its colour
+  (`BossRules.nextStep` from `BossRules.lockReason`: level up the shop, beat the boss before for n more keys with a
+  "See it" button, level up or change the party with a "Party" button, go fight it, or fight again for loot) and the
+  travel button (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
   `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), "Go to the Frontier" / "Go home"
   (the normal Frontier travel), or for the Hydra "Enter the Dungeon portal in the Frontier". In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
@@ -1231,7 +1318,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 - **The place:** a third place (id 79143483483478, `Config/Places.DUNGEON_PLACE_ID`; `dungeon.project.json`, port
   34874, `PlaceKind = "Dungeon"`, `Place.isDungeon`). No plots, no shop. One run per reserved server.
 - **Getting in:** the Frontier's Dungeon portal (`DungeonGateService`): "Enter" alone or "Start group" / "Join
-  group" (2-4, 15 s, the leader starts early, like boss gates). Every member needs shop level 22, the Hydra open or 10
+  group" (2-4, 15 s, the leader starts early, like boss gates). Every member needs shop level 57, the Hydra open or 10
   Hydra Key Fragments (the Rift Devourer drops them: 50% per full loot, 3 in its first clear), and a creature ready to
   fight. Then one teleport takes them into a new reserved Dungeon server (`TeleportData.runSize`). The fragments are
   taken only when the Hydra fight first starts, so a lost run costs none.
@@ -1273,7 +1360,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (green into cyan into violet) rise off its back (`auroraFlame`, `AURORA_FLAME`: a few see-through flames per back
   bone, started on top of the back, never from inside the body). Boss models with PetRig bones now animate
   like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
-- **Time to reach it:** shop level 22 is 436,223 total shop XP (`Util/LevelMath`): about 9 h to level 10, then roughly
+- **Time to reach it:** shop level 57 is 436,890 total shop XP (`Util/LevelMath`): about 9 h to level 20, then roughly
   12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
 - Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
@@ -1286,10 +1373,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 | Product | Wholesale (box) | Units | Market price / unit | Unlock |
 |---|---|---|---|---|
 | First Spark Booster Pack | $48 / box | 24 | $3.00 | Start |
-| Card Sleeves | $30 / box | 20 | $2.50 | Lv 2 |
-| Deck Box | $60 / box | 10 | $9.00 | Lv 5 |
-| First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 7 |
-| Set 2 Booster Pack | TBD | 24 | TBD | Lv 10 |
+| Card Sleeves | $30 / box | 20 | $2.50 | Lv 3 |
+| Deck Box | $60 / box | 10 | $9.00 | Lv 7 |
+| First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 11 |
+| Set 2 Booster Pack | TBD | 24 | TBD | Lv 20 |
 
 Player can also open their own stock instead of selling it: packs and deck boxes (5 cards each, flipped one at a
 time on the 3D stage, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
@@ -1308,21 +1395,56 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1)
 
+Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
+`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 40, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
+Every unlock sits at the new level whose XP is nearest what it needed before (Lv 20 ≈ 36,000 XP, where shop jobs
+open; `tests/LevelRemap.spec`), so the pace is the same with about twice as many level-ups. Lv 100 (1,629,210 XP) is
+the cap: XP keeps counting, the level doesn't, and the HUD's XP pill shows MAX. A packs-only shop earns about 30 XP
+a minute, so Lv 2 comes about 1.5 minutes after the first sale (it unlocks nothing; a level-up and its reward).
+Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20), with no back-pay of rewards.
+
 | Lv | XP needed | Unlocks |
 |---|---|---|
 | 1 | 0 | Base |
-| 2 | 150 | Card Sleeves |
-| 3 | 500 | Wall Shelf |
-| 4 | 1,200 | Card Condenser |
-| 5 | 2,500 | Accessory Hook, Deck Box, Expansion 1 |
-| 6 | 5,000 | Big Display Rack |
-| 7 | 9,000 | Sealed Booster Box |
-| 8 | 15,000 | Grading Station |
-| 9 | 24,000 | Expansion 2 |
-| 10 | 36,000 | Shop jobs (first slot), Set 2 |
+| 2 | 40 | - |
+| 3 | 200 | Card Sleeves |
+| 4 | 510 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
+| 5 | 980 | Card Condenser |
+| 7 | 2,510 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
+| 9 | 4,880 | Big Display Rack |
+| 11 | 8,170 | Sealed Booster Box |
+| 14 | 14,970 | Grading Station, boss 3 |
+| 17 | 24,190 | Expansion 2 |
+| 20 | 35,970 | Shop jobs (first slot), Set 2 |
+| 26 / 34 / 43 / 57 | 67,810 / 128,770 / 224,780 / 436,890 | bosses 4 / 5 / 6 / 7 |
+| 100 | 1,629,210 | the cap |
 
-There is no level cap: after Lv 10 each level costs 15% more XP than the step before it
-(`Levels.XP_GROWTH`; Lv 11 = 49,800, Lv 12 = 65,670). Maths in `Util/LevelMath.luau` (Lune-tested).
+**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $10 × the new level
+(EconomyService, in `AddXP`; $20 at Lv 2, $1,000 at Lv 100), and every 10th level gives a First Spark Pack, a Bag item
+(`Items.sparkPack`, `open = "FirstSparkPack"`) given by `LevelUpService`. A sale that crosses several levels pays every
+one. The toast reads "Level 7! +$70 · Unlocked: Deck Box". In the Bag a pack item has an Open button (main game only):
+the remote `OpenBagPack` (rate-limited, refused mid-fight) takes one and rolls a normal pack with pity
+(`PackService.OpenItemPack`), and the usual pack opening plays ("From your Bag" in its corner). Studio: `/setxp <n>`
+sets the XP total, down as well as up (no rewards), to test level-ups on a grown save.
+
+**Level-up effect** (owner 2026-11-04: the light pillar, "pillar and spinning circle is enough"; spec section 9;
+`Util/LevelUpFx`, `LevelUpController`, `Config/LevelUpFx`): a rune circle (Blender-rendered, `assets/ui/fx-levelup`)
+spins open on the ground, at 0.4 s a pillar of light (a white core in a gold glow, motes rising) shoots up and the one
+levelling up lights for a moment, at 1.0 s a star badge pops with the number rolling up and a candy "LEVEL UP!" under it,
+and from 1.5 s the beam thins and the circle fades (3 s in all). Every 10th level the pillar runs pink, butter, mint,
+sky and lilac, the circle is two-toned and a pack flies out with "+1 pack". A creature that levels up (`CardService.
+OnBeastLevelUp`) gets a smaller pillar in its element's colour and a "Lv 19 -> 20" chip on its drawn model (summoned or
+a shop worker; markers and worker rigs carry `BeastId`); your own after a won fight starts when its XP sparks land on
+the portrait. The server sends `LevelUpFx` to everyone; others within 60 studs of their camera see it and hear it
+quieter. A shop level-up never plays mid-fight (a glowing circle underfoot reads as "dodge"): `LevelUpService` holds it
+until the fight (or PvP) ends, and after a boss fight its end screen too (the victory screen 6 s, the defeat countdown and the trip home 8 s, `LevelUpFx.AFTER_BOSS`), and merges several into one; the cash, the pack and the toast come at once. Bag packs don't open in a fight or PvP, nor while a pack is on the stage or a rip is on its way. Sounds
+(round 5, owner: round 4's four stacked sounds were "too loud, too much"; Pro Sound Effects, APM Music): **one soft
+sound** as the badge pops, and on a 10th shop level a short sting with it, from one of three sets (`LevelUpFx.SOUNDS.sets`,
+`LevelUpRules.soundSet`): 1 soft sparkle ping (the default) with the "All It Takes" sting, 2 bright bell ding with the
+same sting, 3 twirling chime with the "Spinning Around" link; about half round 4's volume (sound 0.06-0.07, sting
+0.1-0.12, never over 0.15). A creature plays its set's sound, quieter and higher. They're preloaded on the loading
+screen. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelsound <1-3> [volume]` (picks a set and plays it once; 0
+for the default) and the admin panel's "Level sound" buttons. Measured: about 59 fps during the effect against 60 without it.
 
 ### 7.3 Upgrades (one-off purchases)
 
@@ -1337,8 +1459,11 @@ There is no level cap: after Lv 10 each level costs 15% more XP than the step be
 
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
-- **Slots:** 1 at shop Lv 10; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
-  view ("Give a job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
+- **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
+  view ("Assign job"): the **Assign job** picker (round 5, owner pick A "Two big tiles", `JobRules.assignTiles`) covers
+  the panel under its band with the Job icon, "Assign job" and "Job slots: used / total", one big tile per job side by
+  side (its picture, Restocker: Shelves, Cashier: Register; its name; what it does; "Works: <word>", this copy's speed
+  word in its colour, as the Jobs window says it) that assigns on a tap, and a full-width pink Cancel. The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
   in three chips (faster cards work quicker, stronger cards make fewer mistakes, +2 XP a minute), then one row per
   slot: the card's art (hover, or hold a finger, for its stats and perk), name, grade, level, a job chip (icon, and
   what the job does in its tooltip), a live status pill (green working, amber idle or waiting, red after a slip;
@@ -1362,8 +1487,8 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
 
 ### 7.5 Tuning goals
 - First upgrade within ~3 minutes.
-- Shop Lv 5 in about 1–1.5 hours of play.
-- Lv 10 in about 8–10 hours.
+- Shop Lv 7 in about 1–1.5 hours of play.
+- Lv 20 in about 8–10 hours.
 - These are targets. Tune after playtesting, keep numbers in config files so it's easy.
 
 ---
@@ -1473,6 +1598,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
     │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, rooms, carried HP, out, the chamber, the way back)
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
+    │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
@@ -1491,7 +1617,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, creature, fight gear), the teleport screen
+    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear), the teleport screen
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -1501,16 +1627,17 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau # the 3D pack opening: OpeningFlow, taps and swipes, server results, closes on fights
     │   │   ├── AnnouncementController.luau # big-pull chat messages
-    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters panel (F), set progress card, tooltips, Bag tab
+    │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
-    │   │   ├── CondenserController.luau # Card Condenser panel: pick card + main copy, preview, Condense
+    │   │   ├── CondenserController.luau # Card Condenser panel (tidy two panes): toolbar, slim rows, the card's before -> after, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
     │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
     │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
+    │   │   ├── TownMusicController.luau # gentle town music, fading out when you leave the island
     │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
@@ -1518,13 +1645,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
-    │   │   ├── PartyBarController.luau  # bottom-right party tray: your avatar + 3 party cards, tap or 1/2/3 to summon
+    │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
-    │   │   ├── BattleController.luau    # Fight prompts, Shop button in the wild, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
-    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
+    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
@@ -1537,7 +1665,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
-    │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Nunito)
+    │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
@@ -1554,9 +1682,14 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
     │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
     │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue
-    │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
+    │       ├── ProductPicture.luau     # a product's picture in menu rows: the pack / deck box picture, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
+    │       ├── LevelUpFx.luau          # the level-up light pillar: rune circle, beams, motes, light, star badge, sounds
+    │       ├── SummonFx.luau           # a creature popping up (pillar, chime), going back to you (whoosh), fainting (dizzy stars)
+    │       ├── HealFx.luau             # your creature at the healing spring: "+ Healing" pill, floating plus signs, green light
+    │       ├── HudMascotView.luau      # the mascot peeking over the party cushion: breathes, blinks, ducks on a summon, chirps on a tap
+    │       ├── DefeatScreen.luau       # a lost boss fight: grey world, the fight's numbers, a tip, the countdown to town
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
@@ -1581,17 +1714,22 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Stock.luau      # delivery, carrying
         │   ├── Placement.luau  # grid, placement rules
         │   ├── Pricing.luau    # price limits, customer buy bands
+        │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # the 3D opening: stage, camera, tear, stack, flips, alive, results, sounds (client)
         │   ├── PackOpeningLayout.luau # where the opening's cards sit on screen (plain data)
+        │   ├── LevelUpFx.luau  # the level-up pillar's textures, timing, sizes, colours, sound options (plain data)
         │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
         │   ├── IconTips.luau   # the words each label-less icon's tooltip shows
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
+        │   ├── CreamTheme.luau # the windows' colours (cotton candy now), outlines, corners, header bands (plain data)
+        │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
+        │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
@@ -1617,6 +1755,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Bosses.luau     # boss ladder: bosses, drops, chests, farm protection, arenas
         │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, portal areas, trails, walk edge, signposts
         │   ├── Scenery.luau    # terrain shapes and scenery round the town and in the portal areas (plain data)
+        │   ├── Music.luau      # the town music's tracks, volume, fades and edge (plain data)
+        │   ├── HudMascot.luau  # the creature peeking over the party bar: pictures, sizes, eyes, voice, timing (plain data)
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
@@ -1663,6 +1803,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
+            ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
             ├── CaseLook.luau      # the code-built CardCase prop: support, carpet, frame, glass, strip
             ├── ShowcaseLayout.luau # upright case card slots in rows (pure, Lune-tested)
             ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
@@ -1676,6 +1817,17 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)
             ├── DamagePop.luau     # how a damage number pops, settles, rises and fades by style (pure, Lune-tested)
             ├── VictoryRules.luau  # the end screen's reward tiles, notes and subtitle from a fight summary (pure, Lune-tested)
+            ├── DefeatRules.luau   # the defeat screen's rows, subtitle and tip (pure, Lune-tested)
+            ├── SummonMotion.luau  # a summon's pop, an unsummon's shrink, a faint's tip-over, fresh stamps (pure, Lune-tested)
+            ├── PetVoice.luau      # your creature's chirp: voice, timing, pitch by size, bounce, when it may (pure, Lune-tested)
+            ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
+            ├── XpPill.luau        # the level pill's XP text ("99,800 XP", "/ 226,000") and its count-up (pure, Lune-tested)
+            ├── SparkPath.luau     # the XP sparks' curved flight and how many fly (pure, Lune-tested)
+            ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
+            ├── ContrastRules.luau # WCAG contrast and hue of colours, for the window theme's text (pure, Lune-tested)
+            ├── SoftColors.luau    # a soft button's text colour and deep outline from its fill (pure, Lune-tested)
+            ├── HoverRules.luau    # what a mouse over a window's button does: glow, lilac edge or nothing (pure, Lune-tested)
+            ├── SquishRules.luau   # the HUD tiles' hover: length, widest, fits the gap (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
@@ -1693,6 +1845,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
+            ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -1760,28 +1913,67 @@ their saved data.
 ### 10.6 UI style and HUD
 - **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
   Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
-  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Waking up your creature...",
+  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Stocking the shelves...", "Waking up your creature...",
   "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
   your own cards' paintings (small copies from the first `CollectionChanged`, kept drawn tiny in a hidden
   `CardArtCache` for the session, cards you get later too: Roblox only gets an image ready once something draws it,
   and preloading by id reports failures for pictures that draw fine; so binder pages show every face as they turn),
-  the summoned creature's model downloaded (`CreatureReady`, set by CreatureController; none summoned counts as done) and
+  the shop's first pictures (round 4: the `PackModels` folder with every look, every UI icon, the pack fronts, the mascot
+  stickers, the binder covers and the level-up textures, images kept drawn; a failed or timed-out fetch counts as done,
+  `LoadingRules.settled`, and the step can never hold the screen), the summoned creature's model downloaded
+  (`CreatureReady`, set by CreatureController; none summoned counts as done) and
   the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
-  first-visit welcome cinematic starts when it fades.
+  first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
+  (`Config/ProductPictures`, uploaded images since round 5) with the other images.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
-- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`, look E "bold hybrid", chosen to suit kids, teens and
-  adults): dark slate panel bodies with a thick near-black outline and a drop lip, a coloured header band per window
-  (`UIKit.panel(parent, name, title, band)`: Party teal, binder and card detail blue, Boss ladder red, Bag orange,
-  others teal) with an outlined white title and a dark line under it, a red close button on the top-right corner,
-  slate rows, candy buttons (the colour darkening down the face to a bottom lip, a thick outline, outlined white
-  text; navy text on light colours): gold for the main action, blue (`Colors.Secondary`) for other choices, red to
-  remove or leave, each with an icon (`UIKit.iconButton`). Helpers: `outlined` (text outline), `pill` (rarity,
-  grade, element and count chips), `bar` and `statRow` (chunky green bars), `stars` (star icons, never the
-  character), `textSize` (body 15, small 13, name 22, number 23, title 28; 85% on phones). Colour rules on every
-  screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
+- **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**
+  look (owner 2026-11-03, look A of three; spec `docs/superpowers/specs/2026-11-03-cotton-candy-ui-design.md`; before
+  it the cream & candy look, `2026-11-03-cream-windows-design.md`, and before that look E "bold hybrid"). Six baby
+  colours that pop (`Config/BabyColors`: bubblegum pink, mint, sky, lilac, butter, peach, plus grey-lilac and white),
+  each with a light and a deep shade (`UIStyle.BABY`); plum ink. `UIKit.panel(parent, name, title, band, theme?,
+  softButtons?)` builds a themed window by default (the code still calls the theme "cream"; `Config/CreamTheme`): a
+  milky pink-lavender body with a thick white outline, round corners and a soft lilac glow under it, a header band in
+  the baby colour of the window's HUD button (Bag pink, Cards and the card windows sky, Bosses and Party lilac, Shop
+  and Shelf mint, Prices and Set Price peach, Jobs sky, every other window sky), and a round pink close button with a
+  white outline. Inside: white rows, slots and stat cards with a soft lilac edge; empty slots and detail panes a pale
+  lilac (no big white slabs); plum text, a lighter plum for secondary text, a dark amber for hints and small headings,
+  and deep green, red, orange and mustard for good, bad, Power and fair prices (`tests/ContrastRules` checks every
+  text colour reaches 4.5:1 on every window surface); the chosen thing a gold ring. **Soft buttons** (`UIKit.button`
+  wherever `UIKit.isSoft` says: inside a themed window, or under `SoftButtons`, which the binder's screen sets): a flat
+  baby colour, a 3 px white outline, round corners, a soft glow of the same colour you can see (one script-made picture,
+  `assets/ui/soft/Glow.png` from `tools/ui-art/make_soft_glow.py`, 9-sliced and tinted by `UIKit.glow`), no gloss and
+  no dark lip; white labels outlined in the colour's deep shade, plum text on butter and white (`Util/SoftColors`,
+  `tests/SoftColors`: every deep shade reads white at 3:1). The kit's named colours map to baby colours automatically
+  (`BabyColors.ROLES`, `UIKit.softFill`): the main action butter, other choices sky, remove or leave pink, summoned or
+  confirm mint, can't-use-now grey-lilac, neutral sky (never white; owner 2026-11-03: no white glossy buttons), also
+  when a controller sets one later. No grey hover anywhere in the soft look (Roblox's `AutoButtonColor` stays off, on
+  every button and row in a themed window too). **Hover** (round 5, owner pick A "Soft glow", spec
+  2026-11-04-round5-design section 1; `UIKit` `noGreyHover`, `Util/HoverRules`, `Config/BabyColors.HOVER`): nothing changes
+  size, so nothing in a list or row moves and no text jumps a size (the old grow made the Condenser text pop and pushed
+  the Boss Ladder's bosses). A soft button's own glow brightens and spreads 4 px, a white sheen (15 %) lifts its
+  colour and its white outline turns to its own deep shade; a row, tile or slot gets a lilac edge (a lilac copy of the
+  soft glow round it, never over its gold ring) and a lavender tint (owner 2026-11-04: the first, fainter values were
+  "unnoticeable" on white rows and pale slots; `tests/HoverRules` pins them visible); 0.15 s in, 0.12 s out, no overshoot. Invisible click areas and greyed-out buttons don't
+  light up, and neither does a button that lays out its own children (its list or grid layout would stack the hover's
+  pieces in with them: build such content in an inner frame). The pieces are the hover's own children (HoverSheen, HoverEdge, HoverTint), so a controller recolouring a
+  button mid-hover is never undone. A press is a small quick squish (0.96) and straight back. The Shop's price buttons are mint (can buy), pink (short)
+  or grey-lilac (locked); tab names are plum on the open tab's butter and white on the others' sky (`UIKit.softText`). Pills and chips keep their colours with white
+  outlines; rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail,
+  small confirm boxes, the arena challenge popups) call `UIKit.creamWindow(frame)`. The window's `Theme` attribute
+  tells the pieces built inside which look to take: `UIKit.themeOf(instance)` and `UIKit.colorsFor(instance)` (a
+  palette: panel, row, rowEdge, slotEmpty, ink, inkSoft, hint, good, bad, power, fair, track, outline); `Colors.Text` /
+  `Subtext` labels and `UIKit.outline` pick by it. **Dark** (theme "dark", the look E tokens: slate bodies with a thick
+  near-black outline and a drop lip, slate rows, outlined white text, candy buttons with a dark bottom lip): the
+  binder's book and chrome (its buttons are soft: the close, magnifier, page arrows, Rarity guide and
+  the filters panel's buttons; the open tab and chosen filters butter, the rest sky), every fight screen, tooltips,
+  the pack opening, the loading screen, the welcome cinematic, the Dungeon's run HUD and the placement bar. Helpers:
+  `outlined` (text outline), `pill` (rarity, grade, element and count chips), `bar` and `statRow` (chunky green bars on
+  pale or dark tracks), `stars` (star icons, never the character), `textSize` (body 15, small 13, name 22, number 23,
+  title 28; 85% on phones). Colour
+  rules on every screen: rarity from `Config/Rarities`, elements from `Cards.ELEMENTS` with their icons, grades S gold / A blue / B
   green / C grey, money green with the Cash icon, Power orange with the Power icon, green good, red bad, gold for hints
   and the selected thing. Kid-friendly: a verdict, a picture or a bar first, numbers second, few words.
 - **Word tooltips** (`Util/Tooltip`, words in `Config/IconTips`): every icon shown without a label (stat icons,
@@ -1792,18 +1984,52 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   things under another window too, so a covered thing (checked with `GetGuiObjectsAtPosition`) shows no tip.
   `Tooltip.rich(target, title, lines)` shows a gold title over a few lines (coloured lines allowed; text escaped for
   RichText): the boss ladder's items.
-- **Font** (`Util/FontStyle`, `Config/UIFonts`): rounded fonts everywhere (screens, card faces, tags): FredokaOne
-  for titles, buttons and numbers, Nunito Bold for body text. Code still names Gotham; FontStyle switches each
+- **Font** (`Util/FontStyle`, `Config/UIFonts`): FredokaOne for titles, buttons and numbers everywhere (screens,
+  card faces, tags), Montserrat Bold for body text (owner 2026-11-03, pick 4 of 4 font pairs: cute round titles, a crisp
+  premium body; it was Nunito Bold). Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
-  button shrinks them away; buttons squash while held; number pills bump when they change.
-- **HUD** (`Util/Hud`, `Config/HudLayout`): a midnight **Manage** tile on the left middle slides out a tray of tiles to
-  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; tiles at the bottom centre (Cards B, Bag I) with key
+  button shrinks them away; buttons squash while held (soft buttons dip to 0.96 and come straight back, no bounce);
+  number pills bump when they change.
+- **Creature pals HUD** (owner 2026-11-03, pick C of three mockups; spec
+  `docs/superpowers/specs/2026-11-03-hud-creature-pals-design.md`): the always-on HUD grows out of the core loop.
+  **Tiles** (owner 2026-11-03, cotton candy tile pick 1 "squircle, the icon pops out"; `Config/SoftHud`): one clean
+  rounded square per tile in its baby colour (a gradient from the light shade to the full colour), a thick white
+  outline, a soft glow of its own colour, the icon big and over the top edge with a faded shadow under it, the label
+  white outlined in the deep shade and the key letter in a white circle: Manage butter (deeper while its tray is open),
+  Cards sky, Bag pink, Bosses lilac, Admin grey-lilac, Rip and Drop peach; the Manage tray's tiles mint, peach, sky and
+  lilac by their order. The left column leaves room for each icon over its tile (`HudLayout.SIDE_GAP`). The party bar
+  is a cream cushion with round portraits, each in a thick rim in its creature's element colour (Ember peach, Tide
+  sky, Bloom mint, Volt butter, Shade lilac; avatar pick b) with its deep shade showing under it, a thin white ring, the
+  picture sunk in and a shine on top, the slot number outlined in the element colour, the summoned one bigger and
+  higher (`Party.BAR` RIM, RIM_BASE, SINK, SHINE);
+  cash a green pill under a big gold coin; the level a white pill with the gold star, the XP into the level big and
+  exact ("99,800 XP", "MAX" at the top) with the level's total small after it ("/ 226,000") and a thin lilac-to-sky
+  bar under them, the number counting up when it changes (owner 2026-11-03, round 3 pick B; `Util/XpPill`,
+  `HudLayout.XP_PILL`); the buff a white chip in the perk's colour. **XP sparks** (owner 2026-11-03: into the party
+  portraits, where a monster win's XP goes; `Util/SparkPath`, `Party.BAR.SPARKS`): after a won wild fight, glowing
+  lilac sparks fly on a curve from where the monster stood into each portrait whose creature got XP, then "+N XP"
+  pops over it and its level chip bumps (a level up celebrates, and the chip keeps the old level while the sparks fly, then counts up to the new one in 0.4 s: round 4, `BAR.SPARKS.levelRoll`, the server sends each card's `fromLevel`); skipped while a window covers the HUD. **Hover** (`SoftHud.SQUISH`, `Util/SquishRules`):
+  under a mouse a tile gently squashes, stretches a little as it hops up 5 px, rebounds and settles 3% bigger and 4 px
+  higher, about 0.45 s (owner 2026-11-03: a subtler bounce; tiles 20 px apart); a press squashes it flat (touch too) and springs back; any newer hover, leave, press or a
+  release anywhere cancels what's running, and the hovered tile draws over its neighbours (`tests/SquishRules` checks a
+  tile at its widest, key chip and all, stays inside the gap); the Party pill squishes on a press and hops a little under
+  a mouse. Anything stacked over the tile row (the status corner on a narrow PC screen, the toast) sits above its
+  popped-out icons at their highest hover (`SquishRules.rowTop`). **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
+  Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
+  cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
+  (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,
+  unsummon or swap and pops back up (carrying on from where it is if you swap again), and a tap makes it bounce and
+  chirp. It sits over the left end because on touch screens the level pill sits above the right end. Everything about
+  it is in its config so another creature can replace it (the owner plans one based on their own pet): see
+  `docs/hud-mascot.md`.
+- **HUD** (`Util/Hud`, `Config/HudLayout`): a **Manage** tile on the left middle slides out a tray of tiles to
+  its right (Shop, Prices, Jobs, Party), popping in one by one, and turns into Close; tiles at the bottom centre (Cards B, Bag I, Bosses K) with key
   chips; orange context tiles join that row while usable (Drop G while carrying, Rip T while carrying packs).
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
-  right-aligned column, bottom up: level (number on a star icon, the XP bar inside the pill, in line with the
-  party bar), cash (a green candy pill with outlined white text), then the buff badge; money toasts pop in just
+  right-aligned column, bottom up: level (number on a star icon, the XP and a thin bar inside the pill, in line
+  with the party bar), cash (a green pill with a gold coin and outlined white text), then the buff badge; money toasts pop in just
   above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
   landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
   the middle: buff, cash, level, then the party bar, then the money toasts. Nothing sits in the middle of
@@ -1824,10 +2050,15 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
-- **Prices** rows show each product's picture beside its name, its market price and how customers feel about your
-  price (in the band's colour): packs their real front (`Packs` art, as on the shelves), others their icon
-  (`Products.icon`). On the right, your price stands out big in a dark box outlined in the band's colour, with
-  small - / + buttons under it (38 px with a mouse, `UIStyle.MIN_TAP` 48 px on phones; sized on every open).
+- **Prices** (owner 2026-11-03, round 3 pick A "slim rows"; `Pricing.ROWS`): one slim white row per product with its
+  picture (packs their real front, others their icon), its name, "Market $x" and a small tag in the price band's
+  colour, its short form (the bands' `tag`, 10 characters at most so it never runs under the stepper: "Always buy",
+  "Sometimes", "Rarely buy", "Won't buy"; `tests/PricingConfig`), and on the right one pale stepper pill: a round pink - and butter + (drawn 30 px
+  inside 48 px tap areas) either side of your price. A shelf's Set Price window uses the same row.
+- **Order Stock** (owner 2026-11-04, round 4 pick A; spec `2026-11-04-round4-design` section 4): the same slim white rows
+  as Prices (`Pricing.ROWS`): picture, name, "Box of 24" and a mint "sells ~$3.00" tag, and one mint button with the
+  box price (tap it to order). It greys out with "Need $48" when you can't afford the box and shows the lock and
+  "Lv 11" while locked (`Util/OrderRules`, Lune-tested); the server re-checks both.
 - **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
   spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
   client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
@@ -1850,14 +2081,26 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   nine faces at once cost a 40-70 ms frame). One pointer owns a press at a time (`Util/BinderGesture`): a second
   finger can't take over a dragged page, a release that never came is ended by the next press, and closing the
   binder or leaving the window ends any press or held key. Spread 1's left page
-  is the cover: full art (the pack art; leather in the set's colour without one), an embossed border, the title
-  (name, "34 / 35 collected") and the set's worth in outlined text over dark fades, a progress bar; then page 1.
+  is the cover (owner 2026-11-04, spec `2026-11-04-round4-design` section 1): a painting of the set's place with no
+  creature on it, so new players discover them in packs (`Config/BinderCovers`, sources in `assets/ui/covers/`; First
+  Spark the spark and the five element orbs over a hilltop, Frontier a frosty ridge under a purple rift), dark fades
+  top and bottom, a thin white frame, the set's name as a chunky candy logo (a shadow copy, a thick white outline copy
+  and a three-colour gradient fill; every line the same height), a white star pill "35 / 35" under it and "Worth
+  $105,607" in a white pill at the bottom; then page 1. The pocket under the pointer lifts to 1.05 in 0.14 s with a
+  small overshoot and settles in 0.1 s (`BinderDesk.HOVER`, one tween per pocket), with no border.
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
-  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Cards and Bag down the left edge,
-  Rarity guide bottom left, Filters under the close button), no arrows and no progress card. Top right: Filters (F)
-  and close. The Filters panel (search, Show All/Owned/Missing, Sort by Set/Value/Copies/Rarity, rarity chips) opens
-  on the right while the camera moves the binder into the room left of it. Bottom right: the set's progress card
-  (owned / total with a bar, value of your copies). The Bag tab shows its window over the desk. The side and bottom
+  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Rarity guide bottom left, Filters
+  under the close button), no arrows and no progress card. Top right: Filters (F) and close. The **Filters window**
+  (owner 2026-11-03, round 3 pick A "tidy column"; `Collection.FILTERS`, plain data in `Config/FiltersLayout`) opens
+  on the right while the camera moves the binder into the room left of it: a cotton candy window with a pink band,
+  the search box, SHOW (All / Owned / Missing) and SORT BY (Set / Value / Copies / Rarity) as two segmented switches
+  (`UIKit.segmented`), the rarities as small dot tags that fill with their colour when picked (`UIKit.dotTag`; both
+  drawn smaller inside 48 px tap areas, `BabyColors.SEGMENTED` / `DOT_TAG` `hit`), and at the bottom how many of the
+  open set's cards match ("32 of 35 cards") and Clear all. It is as tall as its content (`UiLayout.filtersBody`):
+  under the close and Filters buttons where it fits above the progress card, else from near the top over them (its
+  own close in their corner), the body scrolling on a landscape phone (`UiLayout.filtersFrame`). Bottom right: the set's progress card (owned / total with a bar, value
+  of your copies). **The Bag** (round 3) is its own window over the town, opened by the Bag tile or I (one window at a
+  time: it closes the binder); the binder has no Cards / Bag tabs. The side and bottom
   HUD hide while the binder is open. Clicks reach the binder by raycast (`BinderDesk.pick`: a pocket, its page or a
   tab). **Turning pages** (`Util/PageTurner`, `Util/PageCurl`): the turning page is a chain of 4 strips hinged at
   the spine that bends as it goes over the rings (the outer edge leads by up to 40 degrees mid-turn, flat at both
@@ -1880,8 +2123,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   pocket near the screen's edge doesn't grow off it), then the card view opens on it (the camera moves to the card view's
   stage at the normal field of view); closing the card view brings the binder back on the same spread. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
   strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
-  just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
-  it never covers a card.
+  beside the hovered card (round 5, owner 2026-11-04: right of its pocket, else left, else above or under it;
+  `UiLayout.beside` anchored on the pocket's screen rect), so it never covers that card; it may cover its neighbours.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
   every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
@@ -1897,10 +2140,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   on narrow screens the panel keeps its right margin first), the card's right edge just left of the panel
   (`UiLayout.inspectorCard`, both Lune-tested).
   The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
-  and copies pills; "Your copies, best first" (grade pill, level, star icons, FOIL or count, Power with its icon,
-  value; the first wears a gold BEST ribbon, the chosen one a gold outline, with room in the list so it isn't cut off); the chosen copy's Power / HP / ATK / SPD
-  tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
-  "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
+  and copies pills; then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
+  "THIS COPY", the chosen copy's grade pill, level, star icons, FOIL and its worth on one line, its Power / HP / ATK /
+  SPD tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
+  and "In your party" or "Working: <job>"; under it "ALL COPIES, BEST FIRST" (every copy: grade pill, level, star
+  icons, FOIL or count, Power with its icon, value; the first wears a gold BEST ribbon, the chosen one a gold outline,
+  with room in the list so it isn't cut off), filling the rest and scrolling; buttons with icons: Add to party (gold),
+  Assign job (blue; opens the Assign job picker; when it can't, it
   says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)), side by side; the binder's X closes it. Phones get a slimmer band and no pills
   row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
   Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
@@ -2185,6 +2431,23 @@ boss models; the ranch and Heroic tiers come after those.
   RollOffMinDistance; inner pieces and crystals can overlap (separate rngs); wildroar still has no FIDGET_SECONDS entry
   (the bosses' roars run 2.2-2.8 s); BossMoments.anchors returns the config's own bones table; the dome isn't
   double-sided (a camera past it sees inside); the lava field's ambient is the town's fire loop.
+- [x] Fight polish and boss debuffs (on the way to the HUD branch): the bosses' ring debuffs (HUD chip and badge,
+  effects on the character, server walk slows), special-move wind-ups, the boss plate, the meteor slam, summon effects,
+  the unskippable defeat screen, varied fight sounds. Merged with the branch below on 2026-11-04.
+- [x] HUD and windows makeover (branch `hud-creature-pals`; specs `2026-11-03-hud-creature-pals-design.md`,
+  `2026-11-03-cream-windows-design.md`, `2026-11-03-cotton-candy-ui-design.md`, `2026-11-03-windows-round3-design.md`,
+  `2026-11-04-round4-design.md`, `2026-11-04-round5-design.md`): the creature pals HUD (mascot, candy tiles, element-rim
+  portraits, XP pill and sparks), cotton candy windows everywhere but the fights, round 3 (Filters column, Prices slim
+  rows, the Bag window, Return to town, sword on the back), round 4 (shop levels 1-100 with rewards, the level-up light
+  pillar, creature-free binder covers, Condenser two panes, Order Stock rows, summon sounds, the loading screen waiting
+  for pictures) and round 5 (calm, visible hovers, the binder tooltip by its card, "This copy" first, Assign job, the
+  Boss Ladder list and banner, sharp pack pictures, one soft level-up sound, town music 0.21). Approved by the owner
+  and merged 2026-11-04. Deferred minors: the lilac edge is cut straight at the ends of scrolling lists and may tint a
+  chosen row's gold ring; the Assign job picker isn't redrawn if the copy changes under it; picking a level sound set
+  never previews its sting; "This copy" can crowd on small phones; a creature's level-up after a boss fight waits 4 s
+  for sparks that don't come; other players' level-up sounds don't follow them; the toast's "+$1000" has no comma;
+  "Stocking the shelves..." shows in the Frontier and Dungeon too; the phone layouts of the round 5 windows weren't
+  checked in the emulator.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
@@ -2201,4 +2464,4 @@ boss models; the ranch and Heroic tiers come after those.
 - Heroic tiers for the Dungeon (not decided): clearing it opens a harder tier with better drops, each clear the next,
   a leaderboard of the highest tier and the fastest clear.
 - The ranch (its own project, after the Dungeon): a place just for showing creatures off, unlocked early in the main
-  game (about shop level 10); clearing the Dungeon adds a special Legendary habitat there.
+  game (about shop level 20); clearing the Dungeon adds a special Legendary habitat there.

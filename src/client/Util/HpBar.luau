@@ -19,6 +19,7 @@ export type Bar = {
 	topZIndex: number, -- for anything drawn over the bar (its numbers)
 	set: (hp: number, maxHp: number) -> (),
 	reset: (hp: number, maxHp: number) -> (), -- jump there with no ghost (a new creature)
+	setLook: (look: Look) -> (), -- recolour the edge and fill (a monster bar turning gold for an elite)
 	destroy: () -> (),
 }
 
@@ -97,7 +98,7 @@ function HpBar.new(parent: Instance, height: number, look: Look, ghost: Shade): 
 	local ghostImage = fillImage("Ghost", base + 3)
 	local ghostShade = gradient(ghostImage, ghost)
 	local fill = fillImage("Fill", base + 4)
-	gradient(fill, look)
+	local fillShade = gradient(fill, look)
 	-- A shine along the top of the whole well, filled or not
 	local gloss = fillImage("Gloss", base + 5)
 	local shine = Instance.new("UIGradient")
@@ -177,6 +178,11 @@ function HpBar.new(parent: Instance, height: number, look: Look, ghost: Shade): 
 		render(os.clock())
 	end
 
+	local function setLook(new: Look)
+		edge.ImageColor3 = color(new.edge)
+		fillShade.Color = ColorSequence.new(color(new.top), color(new.bottom))
+	end
+
 	local function destroy()
 		if ticker then
 			ticker:Disconnect()
@@ -186,7 +192,7 @@ function HpBar.new(parent: Instance, height: number, look: Look, ghost: Shade): 
 	end
 
 	render(os.clock())
-	return { frame = frame, topZIndex = base + 7, set = set, reset = reset, destroy = destroy }
+	return { frame = frame, topZIndex = base + 7, set = set, reset = reset, setLook = setLook, destroy = destroy }
 end
 
 return HpBar

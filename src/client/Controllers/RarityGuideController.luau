@@ -87,7 +87,7 @@ local function addEntry(parent: Instance, order: number, pool: { Card }, name: s
 	local entry = Instance.new("Frame")
 	entry.LayoutOrder = order
 	entry.Size = UDim2.new(0.5, -6, 0, ENTRY_HEIGHT)
-	entry.BackgroundColor3 = UIKit.Colors.Row
+	entry.BackgroundColor3 = UIKit.colorsFor(parent).row
 	entry.Parent = parent
 	UIKit.corner(entry, 12)
 	UIKit.outline(entry)
@@ -96,6 +96,7 @@ local function addEntry(parent: Instance, order: number, pool: { Card }, name: s
 	local title = UIKit.label(entry, name, Enum.Font.FredokaOne, 22, color)
 	title.Position = UDim2.fromOffset(x, 16)
 	title.Size = UDim2.new(1, -(x + 8), 0, 28)
+	UIKit.outlined(title, 1.5) -- the rarity's own colour, outlined so the light ones read on white
 	local chance = UIKit.label(entry, big, Enum.Font.FredokaOne, 30, UIKit.Colors.Text)
 	chance.Position = UDim2.fromOffset(x, 50)
 	chance.Size = UDim2.new(1, -(x + 8), 0, 38)
@@ -110,7 +111,7 @@ local function addGroup(list: Instance, order: number, title: string, note: stri
 	group.LayoutOrder = order
 	group.Size = UDim2.new(1, -8, 0, 0)
 	group.AutomaticSize = Enum.AutomaticSize.Y
-	group.BackgroundColor3 = Color3.fromRGB(232, 240, 252)
+	group.BackgroundColor3 = UIKit.colorsFor(list).slotEmpty
 	group.Parent = list
 	UIKit.corner(group, 14)
 	UIKit.outline(group)

@@ -7,12 +7,17 @@
 -- made with Colors.Text / Colors.Subtext turn navy when the surface behind them is light.
 -- Sizes follow mobile-first rules: tap targets at least 48px.
 local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local UIStyle = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIStyle"))
 local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
+local BabyColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("BabyColors"))
+local SoftColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("SoftColors"))
+local HoverRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("HoverRules"))
+local UIMotion = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIMotion"))
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
 
@@ -35,6 +40,153 @@ UIKit.Colors = {
 	HeaderTop = Color3.fromRGB(38, 44, 66),
 	HeaderBottom = Color3.fromRGB(26, 30, 46),
 }
+
+-- Cream windows (spec 2026-11-03-cream-windows-design): UIKit.panel builds them by default and marks the frame's
+-- Theme attribute; the pieces built inside (header, rows, buttons, pills, bars, outlines, auto text) read it
+local CREAM = UIStyle.CREAM
+
+export type Palette = {
+	panel: Color3, -- the window body
+	row: Color3, -- rows, slots, stat cards
+	rowEdge: Color3, -- their outline
+	slotEmpty: Color3,
+	ink: Color3, -- text on the window
+	inkSoft: Color3, -- secondary text
+	hint: Color3, -- hints and small headings
+	good: Color3, -- fast, ready, better
+	bad: Color3, -- resting, mistakes, not enough
+	power: Color3, -- Power numbers; the "pricey" price band
+	fair: Color3, -- the "fair" price band, between good and pricey
+	track: Color3, -- bar tracks
+	outline: Color3, -- buttons', pills' and chips' outlines
+	outlineThickness: number,
+}
+
+local DARK_PALETTE: Palette = {
+	panel = UIKit.Colors.Panel,
+	row = UIKit.Colors.Row,
+	rowEdge = UIStyle.EDGE,
+	slotEmpty = UIKit.Colors.Row,
+	ink = UIKit.Colors.Text,
+	inkSoft = UIKit.Colors.Subtext,
+	hint = UIStyle.HINT,
+	good = UIStyle.GOOD,
+	bad = UIStyle.BAD,
+	power = UIStyle.POWER,
+	fair = UIStyle.HINT,
+	track = UIStyle.EDGE,
+	outline = UIStyle.EDGE,
+	outlineThickness = 2,
+}
+
+local CREAM_PALETTE: Palette = {
+	panel = CREAM.BODY_BOTTOM,
+	row = CREAM.ROW,
+	rowEdge = CREAM.ROW_EDGE,
+	slotEmpty = CREAM.SLOT_EMPTY,
+	ink = CREAM.INK,
+	inkSoft = CREAM.INK_SOFT,
+	hint = CREAM.HINT,
+	good = CREAM.GOOD,
+	bad = CREAM.BAD,
+	power = CREAM.POWER,
+	fair = CREAM.FAIR,
+	track = CREAM.TRACK,
+	outline = CREAM.OUTLINE,
+	outlineThickness = CREAM.BUTTON_OUTLINE,
+}
+
+-- The look of the window `instance` sits in: "cream" (UIKit.panel's default) or "dark" (the binder, the fight screens,
+-- anything outside a window)
+function UIKit.themeOf(instance: Instance): "cream" | "dark"
+	local current: Instance? = instance
+	while current do
+		local theme = current:GetAttribute("Theme")
+		if theme == "cream" or theme == "dark" then
+			return theme
+		end
+		if current:IsA("LayerCollector") then
+			break
+		end
+		current = current.Parent
+	end
+	return "dark"
+end
+
+-- The colours for things built inside `instance`'s window (dark windows get today's tokens, unchanged)
+function UIKit.colorsFor(instance: Instance): Palette
+	return if UIKit.themeOf(instance) == "cream" then CREAM_PALETTE else DARK_PALETTE
+end
+
+-- The cotton candy buttons (spec 2026-11-03-cotton-candy-ui-design): soft inside a themed ("cream") window or under
+-- anything marked SoftButtons (the binder's screen); everything else (fights, the pack opening) keeps the candy lip
+function UIKit.isSoft(instance: Instance): boolean
+	local current: Instance? = instance
+	while current do
+		if current:GetAttribute("SoftButtons") == true then
+			return true
+		end
+		local theme = current:GetAttribute("Theme")
+		if theme == "cream" then
+			return true
+		elseif theme == "dark" then
+			return false
+		end
+		if current:IsA("LayerCollector") then
+			break
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function toRgb(color: Color3): { number }
+	return { math.floor(color.R * 255 + 0.5), math.floor(color.G * 255 + 0.5), math.floor(color.B * 255 + 0.5) }
+end
+
+local function fromRgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- A named kit colour (Colors.Accent, Secondary, Danger, Success, Locked, Row, Panel) to its baby fill
+-- (Config/BabyColors ROLES); any other colour is kept
+function UIKit.softFill(color: Color3): Color3
+	for role, name in BabyColors.ROLES do
+		local token = (UIKit.Colors :: any)[role]
+		if token == color then
+			return UIStyle.BABY[name].fill
+		end
+	end
+	if color == CREAM.ROW or color == CREAM.SLOT_EMPTY then
+		return UIStyle.BABY[BabyColors.ROLES.Neutral].fill -- the window's white row or pale slot passed as a fill
+	end
+	return color
+end
+
+-- The soft glow (Config/BabyColors GLOW) round `parent`, whose corners are `corner` px round: `color`, dropped `drop` px,
+-- `transparency` see-through. Drawn over the parent, but its middle is clear, so only the glow outside shows.
+function UIKit.glow(parent: GuiObject, color: Color3, corner: number, drop: number, transparency: number): ImageLabel
+	local look = BabyColors.GLOW
+	local scale = math.max(corner, 1) / look.corner
+	local spread = look.margin * scale
+	local inset = look.margin + look.corner
+	local glow = Instance.new("ImageLabel")
+	glow.Name = "Glow"
+	glow.BackgroundTransparency = 1
+	glow.Image = look.image
+	glow.ImageColor3 = color
+	glow.ImageTransparency = transparency
+	glow.ScaleType = Enum.ScaleType.Slice
+	glow.SliceCenter = Rect.new(inset, inset, look.size - inset, look.size - inset)
+	glow.SliceScale = scale
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.new(0.5, 0, 0.5, drop)
+	glow.Size = UDim2.new(1, spread * 2, 1, spread * 2)
+	glow.ZIndex = 0
+	glow:SetAttribute("Drop", drop)
+	glow.Parent = parent
+	return glow
+end
 
 UIKit.PANEL_Z_INDEX = 4 -- panels draw over the HUD; a panel opened from another one (card picker) goes higher
 UIKit.HEADER_HEIGHT = 60
@@ -172,6 +324,9 @@ end
 function UIKit.textColorFor(instance: Instance, soft: boolean?): Color3
 	local surface = surfaceBehind(instance)
 	if surface and UIKit.isLight(surface.BackgroundColor3) then
+		if UIKit.themeOf(instance) == "cream" then
+			return if soft then CREAM.INK_SOFT else CREAM.INK
+		end
 		return if soft then UIKit.Colors.InkSoft else UIKit.Colors.Ink
 	end
 	return if soft then UIKit.Colors.Subtext else UIKit.Colors.Text
@@ -186,7 +341,7 @@ end
 function UIKit.outline(parent: GuiObject, color: Color3?, thickness: number?): UIStroke
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = color or UIKit.Colors.Outline
+	stroke.Color = color or UIKit.colorsFor(parent).rowEdge -- dark windows: Colors.Outline; cream: the soft cream edge
 	stroke.Thickness = thickness or 2
 	stroke.Parent = parent
 	return stroke
@@ -245,6 +400,272 @@ end
 
 -- A candy button: its colour darkening down the face to a darker lip along the bottom (a gradient, so it follows
 -- colour changes), a thick dark outline, and outlined white text (navy on light colours). Text set by hand stays as set.
+-- A label drawn on a soft button's colour (a tab's name) takes the same text as the button would: plum on light fills,
+-- white with a soft deep outline on bright ones. The outline is the label's "SoftEdge" stroke, made the first time.
+function UIKit.softText(label: TextLabel, fill: Color3)
+	local look = BabyColors.SOFT_BUTTON.textOutline
+	local rgb = toRgb(UIKit.softFill(fill))
+	local edge = label:FindFirstChild("SoftEdge") :: UIStroke?
+	if not edge then
+		local stroke = Instance.new("UIStroke")
+		stroke.Name = "SoftEdge"
+		stroke.Thickness = look.thickness
+		stroke.Transparency = look.transparency
+		stroke.Parent = label
+		edge = stroke
+	end
+	local light = SoftColors.textOn(rgb, BabyColors.LIGHT_LUMA) == "ink"
+	label.TextColor3 = if light then UIStyle.BABY_INK else Color3.new(1, 1, 1)
+	local stroke = edge :: UIStroke
+	stroke.Color = fromRgb(SoftColors.deepOf(rgb, BabyColors.COLORS))
+	stroke.Enabled = not light
+end
+
+-- The mouse-over look (spec 2026-11-04-round5-design section 1, look A "Soft glow"; Config/BabyColors HOVER): nothing
+-- changes size, so nothing in a layout moves and no text jumps a size. Every piece lives in the hover's own children
+-- (HoverSheen, HoverEdge, HoverTint) and the soft glow UIKit made, never in a property a controller sets.
+local HOVER = BabyColors.HOVER
+local hoverSoft: { [GuiButton]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- a soft button (else a row)
+local hoverTweens: { [GuiButton]: { Tween } } = setmetatable({}, { __mode = "k" }) :: any
+
+-- Drawn in the disabled colour (a controller greying it out): it doesn't light up
+local function isLocked(button: GuiButton): boolean
+	local color = button.BackgroundColor3
+	return color == UIKit.Colors.Locked or color == UIKit.softFill(UIKit.Colors.Locked)
+end
+
+-- The button's padding (a soft button pads its text; children move with it), to keep a hover piece on the whole button
+local function paddingOf(button: GuiButton): (number, number, number, number)
+	local padding = button:FindFirstChildOfClass("UIPadding")
+	if not padding then
+		return 0, 0, 0, 0
+	end
+	return padding.PaddingLeft.Offset, padding.PaddingRight.Offset, padding.PaddingTop.Offset, padding.PaddingBottom.Offset
+end
+
+-- Centres `piece` on the whole button, `grow` px bigger on every side (negative: inset), whatever its padding
+local function fitOver(piece: GuiObject, button: GuiButton, grow: number)
+	local left, right, top, bottom = paddingOf(button)
+	piece.AnchorPoint = Vector2.new(0.5, 0.5)
+	piece.Size = UDim2.new(1, grow * 2 + left + right, 1, grow * 2 + top + bottom)
+	piece.Position = UDim2.new(0.5, (right - left) / 2, 0.5, (bottom - top) / 2)
+end
+
+local function cornerOf(button: GuiButton): UDim
+	local round = button:FindFirstChildOfClass("UICorner")
+	return if round then round.CornerRadius else UDim.new(0, 0)
+end
+
+-- The button's corner in px (a round one's scale counts against its short side), for the glow's slices
+local function cornerPx(button: GuiButton): number
+	local corner = cornerOf(button)
+	return corner.Offset + corner.Scale * math.min(button.AbsoluteSize.X, button.AbsoluteSize.Y)
+end
+
+-- A plain hover layer over the button's face and under its other children, with the button's corner (a round button's
+-- stays round)
+local function hoverLayer(button: GuiButton, name: string, color: Color3, inset: number): Frame
+	local existing = button:FindFirstChild(name)
+	if existing and existing:IsA("Frame") then
+		return existing
+	end
+	local layer = Instance.new("Frame")
+	layer.Name = name
+	layer.BackgroundColor3 = color
+	layer.BackgroundTransparency = 1
+	layer.BorderSizePixel = 0
+	layer.ZIndex = 0
+	layer.Parent = button
+	local corner = cornerOf(button)
+	local scale, offset = HoverRules.insetCorner(corner.Scale, corner.Offset, inset)
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(scale, offset)
+	round.Parent = layer
+	return layer
+end
+
+-- A row's lilac edge: a lilac copy of the soft glow (its cut-out centre never covers the row or its gold ring)
+local function hoverEdge(button: GuiButton): ImageLabel
+	local existing = button:FindFirstChild("HoverEdge")
+	if existing and existing:IsA("ImageLabel") then
+		return existing
+	end
+	local edge = UIKit.glow(button, fromRgb(HOVER.edge), cornerPx(button), 0, 1)
+	edge.Name = "HoverEdge" -- not "Glow": the soft button's glow refit and the glow hover leave it alone
+	return edge
+end
+
+-- Lights the button up (or puts it back): a soft button's glow brightens and spreads and a faint sheen lifts its
+-- colour; a row, tile or slot gets the lilac edge and a light tint. Decided now (HoverRules), so a greyed-out button
+-- stays dark.
+local function setHover(button: GuiButton, on: boolean)
+	for _, tween in hoverTweens[button] or {} do
+		tween:Cancel()
+	end
+	local tweens: { Tween } = {}
+	hoverTweens[button] = tweens
+	local soft = hoverSoft[button] == true
+	local laysOut = button:FindFirstChildWhichIsA("UIGridStyleLayout") ~= nil
+	local kind = if on then HoverRules.kind(soft, button.BackgroundTransparency, isLocked(button), laysOut) else "none"
+	local info = TweenInfo.new(if on then UIMotion.HOVER_SECONDS else UIMotion.HOVER_OUT_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local function tweenTo(item: Instance, goal: { [string]: any })
+		local tween = TweenService:Create(item, info, goal)
+		table.insert(tweens, tween)
+		tween:Play()
+	end
+	if soft then
+		local lit = kind == "glow"
+		local glow = button:FindFirstChild("Glow")
+		if glow and glow:IsA("ImageLabel") then
+			local rest = glow:GetAttribute("RestTransparency")
+			local restSlice = glow:GetAttribute("RestSlice")
+			if typeof(rest) ~= "number" or typeof(restSlice) ~= "number" then
+				rest = glow.ImageTransparency
+				restSlice = glow.SliceScale
+				glow:SetAttribute("RestTransparency", rest)
+				glow:SetAttribute("RestSlice", restSlice)
+			end
+			-- Spread glowGrow px out with the cut-out centre where it is: the slices grow by as much as the size, so the
+			-- glow's inner edge stays on the button's (a scale moved it out and left a gap on wide buttons)
+			local look = BabyColors.GLOW
+			local grow = if lit then HOVER.glowGrow else 0
+			local slice = (restSlice :: number) + grow / (look.margin + look.corner)
+			local left, right, top, bottom = paddingOf(button)
+			local spread = look.margin * (restSlice :: number) + grow
+			tweenTo(glow, {
+				ImageTransparency = if lit then HOVER.glowTransparency else rest,
+				SliceScale = slice,
+				Size = UDim2.new(1, spread * 2 + left + right, 1, spread * 2 + top + bottom),
+			})
+		end
+		-- Its outline (UIKit's white one) turns to the button's own deep shade, so the hover reads on white rows too
+		for _, stroke in button:GetChildren() do
+			if stroke:IsA("UIStroke") and stroke.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
+				local restColor = stroke:GetAttribute("RestColor")
+				if typeof(restColor) ~= "Color3" then
+					restColor = stroke.Color
+					stroke:SetAttribute("RestColor", restColor)
+				end
+				local deep = fromRgb(SoftColors.deepOf(toRgb(button.BackgroundColor3), BabyColors.COLORS))
+				tweenTo(stroke, { Color = if lit and HOVER.buttonOutline == "deep" then deep else restColor })
+			end
+		end
+		local sheen = if lit then hoverLayer(button, "HoverSheen", Color3.new(1, 1, 1), 0) else button:FindFirstChild("HoverSheen")
+		if sheen and sheen:IsA("Frame") then
+			fitOver(sheen, button, 0)
+			tweenTo(sheen, { BackgroundTransparency = if lit then HOVER.sheen else 1 })
+		end
+		return
+	end
+	local lit = kind == "edge"
+	local edge = if lit then hoverEdge(button) else button:FindFirstChild("HoverEdge")
+	if edge and edge:IsA("ImageLabel") then
+		fitOver(edge, button, BabyColors.GLOW.margin * edge.SliceScale)
+		tweenTo(edge, { ImageTransparency = if lit then HOVER.edgeGlow else 1 })
+	end
+	local tint = if lit then hoverLayer(button, "HoverTint", fromRgb(HOVER.tintColor), HOVER.tintInset) else button:FindFirstChild("HoverTint")
+	if tint and tint:IsA("Frame") then
+		fitOver(tint, button, -HOVER.tintInset)
+		tweenTo(tint, { BackgroundTransparency = if lit then HOVER.tint else 1 })
+	end
+end
+
+-- No grey hover in the soft look (owner 2026-11-03): Roblox's automatic darkening stays off, even when a controller
+-- turns it back on to show a button can be used, and a mouse lights the button up instead (setHover). `soft`: a
+-- cotton candy button (glow); a window's rows and slots are not (lilac edge). A button a window softened first and
+-- softButton styles after becomes soft.
+local function noGreyHover(button: GuiButton, soft: boolean)
+	hoverSoft[button] = soft or hoverSoft[button] == true
+	if button:GetAttribute("SoftHover") then
+		return
+	end
+	button:SetAttribute("SoftHover", true)
+	button.AutoButtonColor = false
+	button:GetPropertyChangedSignal("AutoButtonColor"):Connect(function()
+		if button.AutoButtonColor then
+			button.AutoButtonColor = false
+		end
+	end)
+	button.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			setHover(button, true)
+		end
+	end)
+	button.MouseLeave:Connect(function()
+		setHover(button, false)
+	end)
+end
+
+-- The cotton candy look on a new button (spec 2026-11-03-cotton-candy-ui-design): a flat baby colour (a named kit
+-- colour becomes its baby fill, now and whenever a controller sets one later), a white outline, a soft glow in its own
+-- colour, a faint lighter band along the top, plum text on light fills and white text outlined in the deep shade on
+-- bright ones (a text colour a controller set itself is kept), and a squishy press. No dark lip.
+local function softButton(button: TextButton): TextButton
+	local look = BabyColors.SOFT_BUTTON
+	noGreyHover(button, true)
+	Motion.press(button, true)
+	local round = button:FindFirstChildOfClass("UICorner")
+	if round then
+		round.CornerRadius = UDim.new(0, look.corner)
+	end
+	UIKit.outline(button, CREAM.OUTLINE, look.outline)
+	-- Callers pad the text (iconButton makes room for its picture), like on the candy buttons
+	local padding = Instance.new("UIPadding")
+	padding.Parent = button
+	UIKit.glow(button, button.BackgroundColor3, look.corner, look.glowDrop, look.glowTransparency)
+	-- The padding moves children too: keep the glow on the whole button whatever it is
+	local function refit()
+		local left, right = padding.PaddingLeft.Offset, padding.PaddingRight.Offset
+		local top, bottom = padding.PaddingTop.Offset, padding.PaddingBottom.Offset
+		local glow = button:FindFirstChild("Glow")
+		if glow and glow:IsA("ImageLabel") then
+			local spread = BabyColors.GLOW.margin * glow.SliceScale
+			local drop = glow:GetAttribute("Drop")
+			glow.Size = UDim2.new(1, spread * 2 + left + right, 1, spread * 2 + top + bottom)
+			glow.Position = UDim2.new(0.5, (right - left) / 2, 0.5, (if typeof(drop) == "number" then drop else 0) + (bottom - top) / 2)
+		end
+	end
+	refit()
+	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		padding:GetPropertyChangedSignal(side):Connect(refit)
+	end
+	button.ChildAdded:Connect(function(child)
+		if child.Name == "Glow" then
+			task.defer(refit) -- a new glow (the round close button's) fits the padding too
+		end
+	end)
+	local textEdge = UIKit.outlined(button, look.textOutline.thickness)
+	textEdge.Transparency = look.textOutline.transparency -- a soft outline, like the mockup's light text shadow
+	local autoText: Color3? = nil -- the text colour this button last picked for itself
+	local function restyle()
+		local fill = UIKit.softFill(button.BackgroundColor3)
+		if fill ~= button.BackgroundColor3 then
+			-- A named kit colour becomes its baby fill. Carry on: on the first call the change listener isn't connected
+			-- yet (returning here left the text in Roblox's default navy); later calls run again harmlessly.
+			button.BackgroundColor3 = fill
+		end
+		local rgb = toRgb(fill)
+		local glow = button:FindFirstChild("Glow")
+		if glow and glow:IsA("ImageLabel") then
+			glow.ImageColor3 = fill
+		end
+		textEdge.Color = fromRgb(SoftColors.deepOf(rgb, BabyColors.COLORS))
+		local pick = if SoftColors.textOn(rgb, BabyColors.LIGHT_LUMA) == "ink" then UIStyle.BABY_INK else Color3.new(1, 1, 1)
+		if autoText == nil or button.TextColor3 == autoText then
+			button.TextColor3 = pick
+		end
+		autoText = pick
+	end
+	local function outlineText()
+		textEdge.Enabled = UIKit.isLight(button.TextColor3) -- white text gets the deep outline; plum text none
+	end
+	restyle()
+	outlineText()
+	button:GetPropertyChangedSignal("BackgroundColor3"):Connect(restyle)
+	button:GetPropertyChangedSignal("TextColor3"):Connect(outlineText)
+	return button
+end
+
 function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	local button = Instance.new("TextButton")
 	button.BackgroundColor3 = color
@@ -254,6 +675,9 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	button.Text = text
 	button.Parent = parent
 	UIKit.corner(button, 12)
+	if UIKit.isSoft(parent) then
+		return softButton(button)
+	end
 	Motion.press(button)
 
 	local lip = Instance.new("UIGradient")
@@ -270,8 +694,12 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	padding.PaddingBottom = UDim.new(0, 4) -- keep the text on the face, above the lip
 	padding.Parent = button
 
-	UIKit.outline(button, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local cream = UIKit.themeOf(parent) == "cream"
+	UIKit.outline(button, if cream then CREAM.OUTLINE else UIStyle.EDGE, if cream then CREAM.BUTTON_OUTLINE else UIStyle.EDGE_THICKNESS)
 	local textEdge = UIKit.outlined(button)
+	if cream then
+		textEdge.Transparency = 0.35 -- a softer text outline in cream windows
+	end
 	local autoText: Color3? = nil -- the text colour this button last picked for itself
 	local function restyle()
 		local light = UIKit.isLight(button.BackgroundColor3)
@@ -302,13 +730,29 @@ function UIKit.closeButton(parent: GuiObject): TextButton
 	close.Font = Enum.Font.FredokaOne
 	close.TextSize = 26
 	close.ZIndex = parent.ZIndex + 3
+	if UIKit.isSoft(parent) then
+		local round = close:FindFirstChildOfClass("UICorner")
+		if round then
+			round.CornerRadius = UDim.new(0.5, 0) -- a pink circle with a white outline
+		end
+		-- Its glow follows the circle, not a button's rounded square
+		local old = close:FindFirstChild("Glow")
+		if old then
+			old:Destroy()
+		end
+		local look = BabyColors.SOFT_BUTTON
+		UIKit.glow(close, close.BackgroundColor3, 26, look.glowDrop, look.glowTransparency)
+	end
 	return close
 end
 
 -- The coloured band across the top of a panel (Config/UIStyle HEADERS: Party, Cards, Bosses, Bag, Default), with
 -- the outlined title in it and a dark line under it
 function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, TextLabel)
-	local colors = UIStyle.HEADERS[band or "Default"] or UIStyle.HEADERS.Default
+	local cream = UIKit.themeOf(parent) == "cream"
+	local bands = if cream then CREAM.HEADERS else UIStyle.HEADERS
+	local colors = bands[band or "Default"] or bands.Default
+	local corner = if cream then CREAM.CORNER else PANEL_CORNER
 	local header = Instance.new("Frame")
 	header.Name = "Header"
 	header.Size = UDim2.new(1, 0, 0, UIKit.HEADER_HEIGHT)
@@ -316,7 +760,7 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	header.BorderSizePixel = 0
 	header.ZIndex = parent.ZIndex
 	header.Parent = parent
-	UIKit.corner(header, PANEL_CORNER - 2)
+	UIKit.corner(header, corner - 2)
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
 	gradient.Color = ColorSequence.new(colors.top, colors.bottom)
@@ -326,7 +770,7 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	squareBottom.Name = "SquareBottom"
 	squareBottom.AnchorPoint = Vector2.new(0, 1)
 	squareBottom.Position = UDim2.fromScale(0, 1)
-	squareBottom.Size = UDim2.new(1, 0, 0, PANEL_CORNER)
+	squareBottom.Size = UDim2.new(1, 0, 0, corner)
 	squareBottom.BackgroundColor3 = Color3.new(1, 1, 1)
 	squareBottom.BorderSizePixel = 0
 	squareBottom.ZIndex = header.ZIndex
@@ -334,13 +778,13 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	local bottomGradient = gradient:Clone()
 	bottomGradient.Color = ColorSequence.new(colors.bottom)
 	bottomGradient.Parent = squareBottom
-	-- A dark line where the band meets the body
+	-- A line where the band meets the body: dark, or white in a cream window
 	local rule = Instance.new("Frame")
 	rule.Name = "Rule"
 	rule.AnchorPoint = Vector2.new(0, 1)
 	rule.Position = UDim2.fromScale(0, 1)
 	rule.Size = UDim2.new(1, 0, 0, UIStyle.EDGE_THICKNESS)
-	rule.BackgroundColor3 = UIStyle.EDGE
+	rule.BackgroundColor3 = if cream then CREAM.OUTLINE else UIStyle.EDGE
 	rule.BorderSizePixel = 0
 	rule.ZIndex = header.ZIndex + 1
 	rule.Parent = header
@@ -355,6 +799,16 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	return header, titleLabel
 end
 
+-- Room inside a list for what draws past its rows (their outlines, their buttons' glow), which the list would clip
+function UIKit.padList(list: ScrollingFrame, pad: { side: number, right: number, top: number, bottom: number })
+	local padding = list:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, pad.side)
+	padding.PaddingRight = UDim.new(0, pad.right)
+	padding.PaddingTop = UDim.new(0, pad.top)
+	padding.PaddingBottom = UDim.new(0, pad.bottom)
+	padding.Parent = list
+end
+
 -- Closes a panel with a quick shrink (a panel shown again meanwhile stays open)
 function UIKit.closePanel(frame: GuiObject)
 	if not frame.Visible then
@@ -365,30 +819,88 @@ function UIKit.closePanel(frame: GuiObject)
 	end)
 end
 
+-- Paints `frame` as a cream window (spec 2026-11-03-cream-windows-design) and marks it Theme "cream" so the pieces
+-- built inside it take the look: a cream gradient face (the "Face" child, under every other child), a thick white
+-- outline and a soft shadow peeking out under it instead of the dark drop lip. UIKit.panel's windows use it, and the
+-- windows built their own way (the Bag, the card detail). Returns the face and the outline.
+function UIKit.creamWindow(frame: Frame): (Frame, UIStroke)
+	frame:SetAttribute("Theme", "cream")
+	-- Rows, slots and other buttons built in the window lose Roblox's grey hover and get the lilac edge instead
+	local function soften(child: Instance)
+		if child:IsA("GuiButton") then
+			noGreyHover(child, false)
+		end
+	end
+	for _, child in frame:GetDescendants() do
+		soften(child)
+	end
+	frame.DescendantAdded:Connect(soften)
+	frame.BackgroundColor3 = CREAM.BODY_BOTTOM
+	UIKit.corner(frame, CREAM.CORNER)
+	local edge = UIKit.outline(frame, CREAM.OUTLINE, CREAM.OUTLINE_THICKNESS)
+	local face = Instance.new("Frame")
+	face.Name = "Face"
+	face.Size = UDim2.fromScale(1, 1)
+	face.BackgroundColor3 = Color3.new(1, 1, 1)
+	face.BorderSizePixel = 0
+	face.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
+	face.Parent = frame
+	UIKit.corner(face, CREAM.CORNER)
+	local fill = Instance.new("UIGradient")
+	fill.Rotation = 90
+	fill.Color = ColorSequence.new(CREAM.BODY_TOP, CREAM.BODY_BOTTOM)
+	fill.Parent = face
+	-- A soft lilac glow round the window instead of a dark shadow (spec 2026-11-03-cotton-candy-ui-design)
+	local look = BabyColors.WINDOW_GLOW
+	local glow = UIKit.glow(frame, UIStyle.BABY[look.color].fill, CREAM.CORNER, look.drop, look.transparency)
+	glow.ZIndex = -1
+	return face, edge
+end
+
 -- Centred modal panel: a coloured header band (`band`: a Config/UIStyle HEADERS name) with the title, red close
--- button, dark body with a scrolling list. The frame itself is the dark edge colour and a "Body" child paints the
--- slate face LIP pixels short of the bottom, so the edge shows there as a drop lip under a thick outline.
--- Starts hidden. The title label is named "Title" (inside the header) for callers that change it.
-function UIKit.panel(parent: Instance, name: string, title: string, band: string?): (Frame, ScrollingFrame)
+-- button and a scrolling list. `theme` "cream" (the default; spec 2026-11-03-cream-windows-design): a cream body with a
+-- thick white outline and a soft shadow under it, the band in the window's HUD button colour (UIStyle.CREAM). "dark"
+-- (the binder): the frame is the dark edge colour and a "Body" child paints the slate face LIP pixels short of the
+-- bottom, so the edge shows there as a drop lip under a thick outline. The frame's Theme attribute tells the pieces
+-- built inside which look to take. Starts hidden. The title label is named "Title" for callers that change it.
+function UIKit.panel(
+	parent: Instance,
+	name: string,
+	title: string,
+	band: string?,
+	theme: ("cream" | "dark")?,
+	softButtons: boolean? -- a dark panel whose buttons still take the cotton candy look (the binder's screen)
+): (Frame, ScrollingFrame)
+	local look = theme or "cream"
+	local cream = look == "cream"
 	local frame = Instance.new("Frame")
 	frame.Name = name
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
 	frame.Size = UDim2.fromScale(0.92, 0.7)
-	frame.BackgroundColor3 = UIStyle.EDGE
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
+	frame:SetAttribute("Theme", look)
+	if softButtons then
+		frame:SetAttribute("SoftButtons", true)
+	end
 	frame.Parent = parent
-	UIKit.corner(frame, PANEL_CORNER)
-	local edge = UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
-	local body = Instance.new("Frame")
-	body.Name = "Body"
-	body.Size = UDim2.new(1, 0, 1, -UIStyle.LIP)
-	body.BackgroundColor3 = UIKit.Colors.Panel
-	body.BorderSizePixel = 0
-	body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
-	body.Parent = frame
-	UIKit.corner(body, PANEL_CORNER)
+	local body: Frame, edge: UIStroke
+	if cream then
+		body, edge = UIKit.creamWindow(frame)
+	else
+		frame.BackgroundColor3 = UIStyle.EDGE
+		UIKit.corner(frame, PANEL_CORNER)
+		edge = UIKit.outline(frame, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+		body = Instance.new("Frame")
+		body.Name = "Body"
+		body.Size = UDim2.new(1, 0, 1, -UIStyle.LIP)
+		body.BackgroundColor3 = UIKit.Colors.Panel
+		body.BorderSizePixel = 0
+		body.ZIndex = 0 -- under every other child (Sibling ZIndexBehavior)
+		body.Parent = frame
+		UIKit.corner(body, PANEL_CORNER)
+	end
 	-- A see-through panel (the binder: its book is its own screen) shows neither face nor edge
 	frame:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
 		body.BackgroundTransparency = frame.BackgroundTransparency
@@ -458,7 +970,7 @@ function UIKit.row(parent: Instance, order: number, title: string, detail: strin
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = order
 	frame.Size = UDim2.new(1, 0, 0, 76)
-	frame.BackgroundColor3 = UIKit.Colors.Row
+	frame.BackgroundColor3 = UIKit.colorsFor(parent).row
 	frame.Parent = parent
 	UIKit.corner(frame, 12)
 	UIKit.outline(frame)
@@ -505,6 +1017,142 @@ function UIKit.iconButton(parent: Instance, text: string, icon: string, color: C
 	return button
 end
 
+-- A segmented switch (round 3, the binder's Filters): one pale pill holding `values` side by side, the chosen one
+-- butter with a white edge, the rest plum on the pale pill. Each part's tap area is the full SEGMENTED.hit row
+-- (finger-sized), the pill drawn smaller inside it. `onPick` runs on a tap; the returned function shows a value as
+-- chosen (so the caller's own state stays the truth). Built for a cream window.
+function UIKit.segmented(parent: Instance, values: { string }, onPick: (string) -> ()): (Frame, (string) -> ())
+	local look = BabyColors.SEGMENTED
+	local palette = UIKit.colorsFor(parent)
+	local bar = Instance.new("Frame")
+	bar.Name = "Segmented"
+	bar.BackgroundTransparency = 1
+	bar.Size = UDim2.new(1, 0, 0, look.hit)
+	bar.Parent = parent
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.AnchorPoint = Vector2.new(0, 0.5)
+	track.Position = UDim2.fromScale(0, 0.5)
+	track.Size = UDim2.new(1, 0, 0, look.height)
+	track.BackgroundColor3 = palette.slotEmpty
+	track.ZIndex = 0
+	track.Parent = bar
+	UIKit.corner(track, look.height / 2)
+	UIKit.outline(track, palette.rowEdge, 2)
+	local row = Instance.new("Frame")
+	row.Name = "Parts"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromScale(1, 1)
+	row.ZIndex = 1
+	row.Parent = bar
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, look.padding)
+	padding.PaddingRight = UDim.new(0, look.padding)
+	padding.Parent = row
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, look.padding)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local inner = look.height - look.padding * 2
+	local parts: { [string]: { pill: Frame, edge: UIStroke, label: TextLabel } } = {}
+	for index, value in values do
+		local part = Instance.new("TextButton")
+		part.Name = value
+		part.LayoutOrder = index
+		part.Size = UDim2.new(1 / #values, -look.padding * (#values - 1) / #values, 1, 0)
+		part.AutoButtonColor = false
+		part.BackgroundTransparency = 1
+		part.Text = ""
+		part.Parent = row
+		local pill = Instance.new("Frame")
+		pill.Name = "Pill"
+		pill.AnchorPoint = Vector2.new(0.5, 0.5)
+		pill.Position = UDim2.fromScale(0.5, 0.5)
+		pill.Size = UDim2.new(1, 0, 0, inner)
+		pill.BackgroundColor3 = UIStyle.BABY.butter.fill
+		pill.BackgroundTransparency = 1
+		pill.ZIndex = 1
+		pill.Parent = part
+		UIKit.corner(pill, inner / 2)
+		local edge = UIKit.outline(pill, Color3.new(1, 1, 1), 2)
+		edge.Enabled = false
+		local label = UIKit.label(part, value, Enum.Font.FredokaOne, look.textSize, palette.inkSoft)
+		label.Size = UDim2.fromScale(1, 1)
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		label.ZIndex = 2
+		part.Activated:Connect(function()
+			onPick(value)
+		end)
+		parts[value] = { pill = pill, edge = edge, label = label }
+	end
+	local function choose(chosen: string)
+		for value, part in parts do
+			local on = value == chosen
+			part.pill.BackgroundTransparency = if on then 0 else 1
+			part.edge.Enabled = on
+			part.label.TextColor3 = if on then UIStyle.BABY_INK else palette.inkSoft
+		end
+	end
+	return bar, choose
+end
+
+-- A small white tag with a coloured dot before its text (round 3, the Filters' rarity picks) drawn DOT_TAG.height
+-- tall inside a DOT_TAG.hit tap area; the returned function fills it with its colour (white text) when on. Built for a
+-- cream window.
+function UIKit.dotTag(parent: Instance, text: string, color: Color3): (TextButton, (boolean) -> ())
+	local look = BabyColors.DOT_TAG
+	local palette = UIKit.colorsFor(parent)
+	local hit = Instance.new("TextButton")
+	hit.Name = text
+	hit.AutomaticSize = Enum.AutomaticSize.X
+	hit.Size = UDim2.fromOffset(0, look.hit)
+	hit.AutoButtonColor = false
+	hit.BackgroundTransparency = 1
+	hit.Text = ""
+	hit.Parent = parent
+	local tag = Instance.new("TextLabel")
+	tag.Name = "Face"
+	tag.AnchorPoint = Vector2.new(0, 0.5)
+	tag.Position = UDim2.fromScale(0, 0.5)
+	tag.AutomaticSize = Enum.AutomaticSize.X
+	tag.Size = UDim2.fromOffset(0, look.height)
+	tag.BackgroundColor3 = palette.row
+	tag.Font = Enum.Font.FredokaOne
+	tag.TextSize = look.textSize
+	tag.Text = text
+	tag.TextColor3 = palette.ink
+	tag.Parent = hit
+	UIKit.corner(tag, look.height / 2)
+	local edge = UIKit.outline(tag, palette.rowEdge, 2)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, look.dot + 14)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = tag
+	local dot = Instance.new("Frame")
+	dot.Name = "Dot"
+	dot.AnchorPoint = Vector2.new(0, 0.5)
+	dot.Position = UDim2.new(0, -(look.dot + 6), 0.5, 0)
+	dot.Size = UDim2.fromOffset(look.dot, look.dot)
+	dot.BackgroundColor3 = color
+	dot.Parent = tag
+	UIKit.corner(dot, look.dot / 2)
+	local ring = UIKit.outline(dot, Color3.new(1, 1, 1), 2)
+	local textEdge = UIKit.outlined(tag, 1)
+	textEdge.Transparency = 0.5
+	local function set(on: boolean)
+		tag.BackgroundColor3 = if on then color else palette.row
+		tag.TextColor3 = if on then Color3.new(1, 1, 1) else palette.ink
+		textEdge.Enabled = on
+		edge.Color = if on then Color3.new(1, 1, 1) else palette.rowEdge
+		edge.Thickness = if on then 3 else 2
+		dot.BackgroundColor3 = if on then Color3.new(1, 1, 1) else color
+		ring.Color = if on then color else Color3.new(1, 1, 1)
+	end
+	set(false)
+	return hit, set
+end
+
 -- A rounded chip (rarity, grade, element, counts) that sizes to its text; an optional icon before the text.
 -- Text is navy on light fills and outlined white on dark ones unless textColor is given.
 function UIKit.pill(parent: Instance, text: string, fill: Color3, textColor: Color3?, icon: string?): TextLabel
@@ -519,7 +1167,7 @@ function UIKit.pill(parent: Instance, text: string, fill: Color3, textColor: Col
 	pill.TextColor3 = textColor or (if UIKit.isLight(fill) then UIKit.Colors.Ink else Color3.new(1, 1, 1))
 	pill.Parent = parent
 	UIKit.corner(pill, 12)
-	UIKit.outline(pill, UIStyle.EDGE, 2)
+	UIKit.outline(pill, UIKit.colorsFor(parent).outline, 2)
 	if not textColor and not UIKit.isLight(fill) then
 		UIKit.outlined(pill, 1.5)
 	end
@@ -542,12 +1190,13 @@ function UIKit.bar(parent: Instance, share: number, fill: Color3?): (Frame, Fram
 	local track = Instance.new("Frame")
 	track.Name = "Bar"
 	track.Size = UDim2.new(1, 0, 0, if UIKit.isPhone() then UIStyle.BAR.phoneHeight else UIStyle.BAR.height)
-	track.BackgroundColor3 = UIStyle.EDGE
+	local palette = UIKit.colorsFor(parent)
+	track.BackgroundColor3 = palette.track
 	track.BorderSizePixel = 0
 	track.ClipsDescendants = true
 	track.Parent = parent
 	UIKit.corner(track, 999)
-	UIKit.outline(track, UIStyle.EDGE, 2)
+	UIKit.outline(track, palette.rowEdge, 2)
 	local inside = Instance.new("Frame")
 	inside.Name = "Fill"
 	inside.Size = UDim2.fromScale(math.clamp(share, 0, 1), 1)

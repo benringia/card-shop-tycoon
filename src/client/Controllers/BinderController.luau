@@ -18,11 +18,12 @@ local TextChatService = game:GetService("TextChatService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
-local Packs = require(Config:WaitForChild("Packs"))
 local Items = require(Config:WaitForChild("Items"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Collection = require(Config:WaitForChild("Collection"))
+local BinderCovers = require(Config:WaitForChild("BinderCovers"))
+local BabyColors = require(Config:WaitForChild("BabyColors"))
 local Desk = require(Config:WaitForChild("BinderDesk"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BinderSpreads = require(Shared:WaitForChild("Util"):WaitForChild("BinderSpreads"))
@@ -33,6 +34,7 @@ local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -77,10 +79,9 @@ local TOOLTIP_GAP = 8
 local ALL_FILTER, OWNED_FILTER, MISSING_FILTER = "All", "Owned", "Missing"
 local PAGE_KEYS = { [Enum.KeyCode.Q] = -1, [Enum.KeyCode.E] = 1 }
 local BINDER_KEY = Enum.KeyCode.B
-local BAG_KEY = Enum.KeyCode.I -- inventory: the binder's Bag tab
+local BAG_KEY = Enum.KeyCode.I -- inventory: the Bag window
 local BAG_PRIORITY_MARGIN = 100 -- above every built-in binding (the camera's I zoom included)
 local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
-local COVER_TEXT = Color3.fromRGB(255, 250, 240)
 
 local player = Players.LocalPlayer
 
@@ -97,11 +98,10 @@ local tiles: { Tile } = {}
 local panel: Frame
 local currentSet = Collection.SETS[1]
 local coverPage: Frame
-local coverTitle: TextLabel
 local coverProgress: TextLabel
-local coverEmblem: TextLabel
 local coverArt: ImageLabel
-local coverFill: Frame
+local coverLogo: Frame
+local coverLogoSet: string? = nil -- the set the logo is drawn for
 local coverValue: TextLabel
 local progressName: TextLabel
 local progressCount: TextLabel
@@ -112,17 +112,26 @@ local setFiltersOpen: (open: boolean) -> ()
 local setInspecting: (on: boolean) -> ()
 local renderBag: () -> ()
 local getSetArt: (set: string) -> string?
+local drawCoverLogo: (lines: { string }, fill: { { number } }, drop: { number }) -> ()
+local COVER_LINE = 0.11 -- one line of the cover's logo, as a share of the cover's height
+-- 105607.4 -> "105,607" (the cover's worth, whole dollars)
+local function wholeDollars(value: number): string
+	local text = tostring(math.floor(math.max(0, value)))
+	return (string.gsub(string.reverse((string.gsub(string.reverse(text), "(%d%d%d)", "%1,"))), "^,", ""))
+end
 local rarityGuideButton: TextButton
 local filterButton: TextButton
-local showButtons: { [string]: TextButton } = {}
-local sortButtons: { [string]: TextButton } = {}
-local rarityChips: { [string]: TextButton } = {}
+-- The Filters window's switches (round 3, "tidy column"): each shows the current choice; set in buildFilters
+local chooseShow: (string) -> () = function() end
+local chooseSort: (string) -> () = function() end
+local rarityTags: { [string]: (boolean) -> () } = {}
+local filterCount: TextLabel? = nil -- "32 of 35 cards"
+local filterSearch: TextBox? = nil
 local rarityPicks: { [string]: boolean } = {} -- none picked = every rarity
 local showFilter = ALL_FILTER -- All, Owned or Missing
 local sortBy = "Set" -- Set (card number), Value, Copies or Rarity
-local bagOverlay: Frame -- the Bag tab (built in buildBag); the card tooltip stays off while it shows
-local cardsTab: TextButton -- the Cards / Bag tabs (built in buildBag)
-local bagTab: TextButton
+local bagOverlay: Frame -- the Bag window (built in buildBag; its own window since round 3)
+local bagFit: UIScale -- shrinks the Bag's content to fit small screens
 local counter: Frame -- the page counter under the binder
 local pageLabel: TextLabel
 local spreadIndex = 1 -- the spread the pages show (or are turning from)
@@ -628,16 +637,14 @@ end
 
 -- Lights up the Filters panel's choices
 local function refreshFilterButtons()
-	for value, button in showButtons do
-		button.BackgroundColor3 = if value == showFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+	chooseShow(showFilter)
+	chooseSort(sortBy)
+	for rarity, set in rarityTags do
+		set(rarityPicks[rarity] == true)
 	end
-	for value, button in sortButtons do
-		button.BackgroundColor3 = if value == sortBy then UIKit.Colors.Accent else UIKit.Colors.Row
-	end
-	for rarity, chip in rarityChips do
-		local tier = Rarities.Tiers[rarity]
-		local color = if tier then tier.color else UIKit.Colors.Accent
-		chip.BackgroundColor3 = if rarityPicks[rarity] then color else UIKit.Colors.Row
+	local count = filterCount
+	if count then
+		count.Text = `{#visibleTiles} of {#(Cards.BySet[currentSet] or {})} cards` -- the open set's, not every set's
 	end
 end
 
@@ -672,12 +679,17 @@ local function refreshSet()
 	local leather = coverPage:FindFirstChild("Leather") :: UIGradient
 	leather.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.12), color:Lerp(Color3.new(0, 0, 0), 0.35))
 	coverArt.Image = art or ""
-	coverEmblem.Visible = art == nil
-	coverTitle.Text = string.upper(currentSet)
-	coverProgress.Text = `{owned} / {total} collected`
-	coverFill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
-	coverValue.Text = string.format("Worth $%.2f", value)
-	coverEmblem.Text = Collection.SET_EMBLEMS[currentSet] or "✨"
+	if coverLogoSet ~= currentSet then
+		coverLogoSet = currentSet
+		local cover = BinderCovers.SETS[currentSet]
+		if cover then
+			drawCoverLogo(cover.lines, cover.fill, cover.drop)
+		else
+			drawCoverLogo({ string.upper(currentSet) }, { { 255, 255, 255 }, { 255, 240, 220 }, { 255, 225, 190 } }, { 60, 40, 30 })
+		end
+	end
+	coverProgress.Text = `{owned} / {total}`
+	coverValue.Text = `Worth ${wholeDollars(value)}`
 	progressName.Text = currentSet
 	progressCount.Text = `📖 {owned} / {total}`
 	progressValue.Text = string.format("$%.2f", value)
@@ -744,8 +756,9 @@ local function slotOf(tile: Tile): (BinderDesk.Side?, number?)
 	return if page == left then "Left" else "Right", index
 end
 
--- Level with its pocket, just outside the binder (right of it, else left; else above or under the pocket), never
--- over it. The binder's rects are in GUI space, like the tooltip's screen.
+-- Beside the hovered card (round 5, spec section 2): right of its pocket, else left of it, else above or under it;
+-- never over that card, though it may cover its neighbours. The binder's rects are in GUI space, like the tooltip's
+-- screen.
 local function placeTooltip()
 	local tile = tooltipTile
 	if not tile or not tooltip.Visible then
@@ -757,15 +770,14 @@ local function placeTooltip()
 	end
 	local screen = tooltip.Parent :: GuiObject
 	local origin = screen.AbsolutePosition
-	local bookRect = BinderDesk.bookRect()
 	local pocket = BinderDesk.pocketRect(side, index)
+	local anchor = { x = pocket.x - origin.X, y = pocket.y - origin.Y, w = pocket.w, h = pocket.h }
 	local spot = UiLayout.beside(
-		{ x = bookRect.x - origin.X, y = pocket.y - origin.Y, w = bookRect.w, h = pocket.h },
+		anchor,
 		{ w = tooltip.AbsoluteSize.X, h = tooltip.AbsoluteSize.Y },
 		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
 		TOOLTIP_GAP,
-		-- no room either side of the binder: above or under the pocket itself
-		{ x = pocket.x - origin.X, y = pocket.y - origin.Y, w = pocket.w, h = pocket.h }
+		anchor
 	)
 	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
@@ -900,8 +912,6 @@ end
 -- The card view (CardDetailController): while a card is inspected the tabs, binder buttons and counter hide and the
 -- camera goes to the card view's stage (BinderDesk.setInspecting)
 function setInspecting(on: boolean)
-	cardsTab.Visible = not on
-	bagTab.Visible = not on
 	counter.Visible = not on
 	for _, arrows in arrowLanes do
 		arrows.Visible = not on and panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
@@ -923,6 +933,7 @@ end
 local bagGrid: ScrollingFrame
 local bagDetail: Frame
 local bagCount: TextLabel
+local bagPalette: UIKit.Palette -- the Bag window's cream colours (UIKit.colorsFor), set in buildBag
 local bagItems: { [string]: number } = {}
 local selectedItem: string? = nil
 
@@ -934,12 +945,6 @@ local BAG = {
 	EDGE = 4, -- padding round the grid so an outline isn't clipped
 	DETAIL_WIDTH = 280,
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
-	SLOT_COLOR = UIStyle.ROW, -- a filled slot: lighter slate so items stand out
-	EMPTY_COLOR = Color3.fromRGB(22, 28, 42),
-	EMPTY_EDGE = UIStyle.EDGE,
-	BADGE = UIStyle.EDGE,
-	INK = Color3.fromRGB(244, 241, 233),
-	SUBTEXT = Color3.fromRGB(150, 158, 178),
 }
 
 -- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
@@ -987,48 +992,68 @@ local function renderBagDetail()
 	end
 	local info = if selectedItem then Items.ITEMS[selectedItem] else nil
 	if not info or not selectedItem then
-		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, BAG.SUBTEXT, 24, 60)
+		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, bagPalette.inkSoft, 24, 60)
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 		return
 	end
-	-- The item big on a dark circle (a boss item in its boss's tint), its name and how many you have
+	-- The item big on a cream circle (a boss item ringed in its boss's tint), its name and how many you have
 	local tint = bossMark(selectedItem)
 	local halo = Instance.new("Frame")
 	halo.AnchorPoint = Vector2.new(0.5, 0)
 	halo.Position = UDim2.new(0.5, 0, 0, 12)
 	halo.Size = UDim2.fromOffset(84, 84)
-	halo.BackgroundColor3 = UIStyle.PANEL
+	halo.BackgroundColor3 = bagPalette.slotEmpty
 	halo.ZIndex = 33
 	halo.Parent = bagDetail
 	UIKit.corner(halo, 42)
-	UIKit.outline(halo, tint or UIStyle.EDGE, 3)
+	UIKit.outline(halo, tint or bagPalette.rowEdge, 3)
 	local icon = Icon.make(halo, info.icon, UDim2.fromOffset(62, 62))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = 34
 	Icon.set(icon, info.icon)
 	tintIcon(icon, tint)
-	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, BAG.INK, 102, 26)
+	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, bagPalette.ink, 102, 26)
 	name.TextXAlignment = Enum.TextXAlignment.Center
-	UIKit.outlined(name, 2)
-	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, UIStyle.HINT, 128, 20)
+	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, bagPalette.hint, 128, 20)
 	owned.TextXAlignment = Enum.TextXAlignment.Center
-	-- What it does / where to get it / how to use it, as dark boxes
+	-- What it does / where to get it / how to use it, as cream boxes
 	local y = 154
-	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = info.use } } do
+	-- A pack item (Config/Items `open`, the level-up packs): Open it here. The server checks and rolls it; only the main
+	-- game has the pack opening, so elsewhere the button isn't offered.
+	local openId = selectedItem
+	if info.open and (bagItems[openId] or 0) > 0 and not Place.isFrontier() and not Place.isDungeon() then
+		local open = UIKit.button(bagDetail, "Open", UIKit.Colors.Accent)
+		open.AnchorPoint = Vector2.new(0.5, 0)
+		open.Position = UDim2.new(0.5, 0, 0, y)
+		open.Size = UDim2.fromOffset(160, 48)
+		open.ZIndex = 34
+		open.Activated:Connect(function()
+			if player:GetAttribute("PackOpeningBusy") == true then
+				UIController.Notify("Finish this pack first.", true)
+				return
+			end
+			Remotes.OpenBagPack:FireServer(openId)
+			bagOverlay.Visible = false -- out of the way of the pack opening
+		end)
+		y += 58
+	end
+	-- With the Open button there, "How to use it" (tap Open) would only repeat it, and there's no room for it
+	local howTo = if y > 154 then nil else info.use
+	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = howTo } } do
 		if section.text then
 			local box = Instance.new("Frame")
 			box.Position = UDim2.fromOffset(12, y)
 			box.Size = UDim2.new(1, -24, 0, 62)
-			box.BackgroundColor3 = UIStyle.PANEL
+			box.BackgroundColor3 = bagPalette.slotEmpty
 			box.ZIndex = 33
 			box.Parent = bagDetail
 			UIKit.corner(box, 10)
-			UIKit.outline(box, UIStyle.EDGE, 2)
-			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, UIStyle.HINT, 6, 18)
+			UIKit.outline(box, bagPalette.rowEdge, 2)
+			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, bagPalette.hint, 6, 18)
 			heading.Position = UDim2.fromOffset(10, 6)
 			heading.Size = UDim2.new(1, -20, 0, 18)
-			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, BAG.INK, 26, 32)
+			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, bagPalette.ink, 26, 32)
 			body.Position = UDim2.fromOffset(10, 26)
 			body.Size = UDim2.new(1, -20, 0, 32)
 			y += 68
@@ -1045,12 +1070,12 @@ local function addSlot(order: number, id: string?)
 	slot.LayoutOrder = order
 	slot.AutoButtonColor = filled
 	slot.Active = filled
-	slot.BackgroundColor3 = if filled then BAG.SLOT_COLOR else BAG.EMPTY_COLOR
+	slot.BackgroundColor3 = if filled then bagPalette.row else bagPalette.slotEmpty
 	slot.ZIndex = 32
 	slot.Parent = bagGrid
 	UIKit.corner(slot, 14)
 	local selected = filled and id == selectedItem
-	UIKit.outline(slot, if selected then UIStyle.HINT else BAG.EMPTY_EDGE, if selected then 3 else 2)
+	UIKit.outline(slot, if selected then UIStyle.GOLD else bagPalette.rowEdge, if selected then 3 else 2) -- the chosen one: a gold ring
 	if not id then
 		return
 	end
@@ -1062,8 +1087,7 @@ local function addSlot(order: number, id: string?)
 	Icon.set(icon, info.icon)
 	-- Boss items: tinted for their boss, its ladder number in the corner, so every key looks different
 	-- The window shrinks to fit small screens (UIScale); counts and numbers stay at least 14 px tall on screen
-	local fit = bagOverlay:FindFirstChildOfClass("UIScale")
-	local countSize = math.max(15, math.ceil(14 / (if fit then math.max(fit.Scale, 0.1) else 1)))
+	local countSize = math.max(15, math.ceil(14 / math.max(bagFit.Scale, 0.1)))
 	local tint, bossNumber = bossMark(id)
 	tintIcon(icon, tint)
 	if tint and bossNumber then
@@ -1079,7 +1103,7 @@ local function addSlot(order: number, id: string?)
 	badge.Size = UDim2.fromOffset(0, countSize + 5)
 	badge.AutomaticSize = Enum.AutomaticSize.X
 	badge.TextWrapped = false -- wrapping at no width showed a bare "x"
-	badge.BackgroundColor3 = BAG.BADGE
+	badge.BackgroundColor3 = UIStyle.BABY.lilac.deep -- a lilac chip with white text (cotton candy count chips)
 	badge.BackgroundTransparency = 0
 	badge.TextXAlignment = Enum.TextXAlignment.Center
 	badge.ZIndex = 34
@@ -1114,117 +1138,54 @@ function renderBag()
 	renderBagDetail()
 end
 
-local function showTab(bag: boolean)
-	if bag then
-		hideTooltip()
+-- The Bag (owner 2026-11-03, round 3): its own window over the town, like the others (one at a time: opening it
+-- closes the binder), built with UIKit.panel; its content (the slots and the chosen item's details) sits under the
+-- header in a frame that shrinks to fit small screens
+local function buildBag(screen: Instance)
+	local list: ScrollingFrame
+	bagOverlay, list = UIKit.panel(screen, "Bag", "Bag", "Bag")
+	list:Destroy()
+	local limit = bagOverlay:FindFirstChildOfClass("UISizeConstraint")
+	if limit then
+		limit:Destroy()
 	end
-	bagOverlay.Visible = bag
-	-- The Bag window shows over the desk; the binder's own buttons and counter would peek out under it
-	counter.Visible = not bag
-	for _, arrows in arrowLanes do
-		arrows.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.NARROW_BELOW
-	end
-	for _, name in { "FilterButton", "RarityGuide" } do
-		local item = panel:FindFirstChild(name)
-		if item and item:IsA("GuiObject") then
-			item.Visible = not bag
-		end
-	end
-	if bag and filtersPanel.Visible then
-		setFiltersOpen(false)
-	end
-	progressCard.Visible = not bag and panel.AbsoluteSize.X >= Collection.BOOK.PROGRESS_FROM
-	cardsTab.BackgroundColor3 = if bag then UIKit.Colors.Row else UIKit.Colors.Accent
-	bagTab.BackgroundColor3 = if bag then UIKit.Colors.Accent else UIKit.Colors.Row
-	for button, open in { [cardsTab] = not bag, [bagTab] = bag } do
-		local name = button:FindFirstChild("Name", true) :: TextLabel?
-		if name then
-			name.TextColor3 = if open then Color3.new(1, 1, 1) else BAG.INK
-		end
-	end
-	if bag then
-		renderBag()
-	end
-end
-
-local function buildBag(parent: Frame)
-	-- Two tabs in the header, next to the title
-	-- An icon and a name side by side, centred on the tab (the name turns white on the open tab: showTab)
-	local function tab(icon: string, text: string, x: number): TextButton
-		local button = UIKit.button(parent, "", UIKit.Colors.Row)
-		button.Position = UDim2.fromOffset(x, 10)
-		button.Size = UDim2.fromOffset(116, 48)
-		button.ZIndex = 12
-		local row = Instance.new("Frame")
-		row.AnchorPoint = Vector2.new(0.5, 0.5)
-		row.Position = UDim2.fromScale(0.5, 0.45)
-		row.Size = UDim2.fromScale(0, 1)
-		row.AutomaticSize = Enum.AutomaticSize.X
-		row.BackgroundTransparency = 1
-		row.ZIndex = 13
-		row.Parent = button
-		local list = Instance.new("UIListLayout")
-		list.FillDirection = Enum.FillDirection.Horizontal
-		list.VerticalAlignment = Enum.VerticalAlignment.Center
-		list.Padding = UDim.new(0, 6)
-		list.SortOrder = Enum.SortOrder.LayoutOrder
-		list.Parent = row
-		local picture = Icon.make(row, icon, UDim2.fromOffset(28, 28))
-		picture.LayoutOrder = 1
-		picture.ZIndex = 13
-		local name = UIKit.label(row, text, Enum.Font.FredokaOne, 16, BAG.INK)
-		name.Name = "Name"
-		name.LayoutOrder = 2
-		name.Size = UDim2.fromScale(0, 1)
-		name.AutomaticSize = Enum.AutomaticSize.X
-		name.TextWrapped = false
-		name.ZIndex = 13
-		return button
-	end
-	cardsTab = tab("Cards", "Cards", 16)
-	bagTab = tab("Bag", "Bag", 138)
-
-	-- The window, centred; scaled down to fit small screens
-	bagOverlay = Instance.new("Frame")
-	bagOverlay.Name = "Bag"
-	bagOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
-	bagOverlay.Position = UDim2.fromScale(0.5, 0.5)
-	bagOverlay.Size = UDim2.fromOffset(BAG.WINDOW.X, BAG.WINDOW.Y)
-	bagOverlay.BackgroundColor3 = UIStyle.PANEL
-	bagOverlay.Visible = false
-	bagOverlay.ZIndex = 30
-	bagOverlay.Parent = parent
-	UIKit.corner(bagOverlay, 16)
-	UIKit.outline(bagOverlay, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
-	local fit = Instance.new("UIScale")
-	fit.Parent = bagOverlay
-	local function fitWindow()
-		local room = parent.AbsoluteSize
-		fit.Scale = math.min(1, (room.X - 24) / BAG.WINDOW.X, (room.Y - 84) / BAG.WINDOW.Y)
-		-- The middle of the whole screen: this screen starts below Roblox's top bar strip
-		local inset = GuiService:GetGuiInset().Y
-		bagOverlay.Position = UDim2.new(0.5, 0, 0.5, -inset / 2)
-	end
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
-	fitWindow()
-
-	local header, title = UIKit.header(bagOverlay, "Bag", "Bag")
-	header.ZIndex = 31
-	title.ZIndex = 32
-	title.Position = UDim2.fromOffset(62, 0)
-	local headerIcon = Icon.make(header, "Bag", UDim2.fromOffset(40, 40))
-	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
-	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
-	headerIcon.ZIndex = 32
+	Icon.header(bagOverlay, "Bag", UIKit.HEADER_HEIGHT)
+	bagPalette = UIKit.colorsFor(bagOverlay)
+	local header = bagOverlay:FindFirstChild("Header") :: Frame
 	bagCount = UIKit.label(header, "", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
 	bagCount.AnchorPoint = Vector2.new(1, 0.5)
-	bagCount.Position = UDim2.new(1, -18, 0.5, 0)
+	bagCount.Position = UDim2.new(1, -64, 0.5, 0) -- clear of the round close button
 	bagCount.Size = UDim2.fromOffset(160, 24)
 	bagCount.TextXAlignment = Enum.TextXAlignment.Right
-	bagCount.ZIndex = 32
+	bagCount.ZIndex = header.ZIndex + 2
 	UIKit.outlined(bagCount, 2)
 
-	local top = UIKit.HEADER_HEIGHT + 12
+	local inner = Vector2.new(BAG.WINDOW.X, BAG.WINDOW.Y - UIKit.HEADER_HEIGHT)
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.BackgroundTransparency = 1
+	content.Position = UDim2.fromOffset(0, UIKit.HEADER_HEIGHT)
+	content.Size = UDim2.fromOffset(inner.X, inner.Y)
+	content.ZIndex = bagOverlay.ZIndex + 1
+	content.Parent = bagOverlay
+	bagFit = Instance.new("UIScale")
+	bagFit.Parent = content
+	local function fitWindow()
+		local room = (screen :: GuiBase2d).AbsoluteSize
+		local scale = math.min(1, (room.X - 24) / BAG.WINDOW.X, (room.Y - 84) / BAG.WINDOW.Y)
+		bagFit.Scale = scale
+		bagOverlay.Size = UDim2.fromOffset(inner.X * scale, UIKit.HEADER_HEIGHT + inner.Y * scale)
+	end
+	screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWindow)
+	fitWindow()
+	bagOverlay:GetPropertyChangedSignal("Visible"):Connect(function()
+		if bagOverlay.Visible then
+			hideTooltip()
+			renderBag()
+		end
+	end)
+
+	local top = 12
 	bagGrid = Instance.new("ScrollingFrame")
 	bagGrid.Name = "Slots"
 	bagGrid.Position = UDim2.fromOffset(16 - BAG.EDGE, top - BAG.EDGE)
@@ -1235,7 +1196,7 @@ local function buildBag(parent: Frame)
 	bagGrid.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	bagGrid.CanvasSize = UDim2.new()
 	bagGrid.ZIndex = 31
-	bagGrid.Parent = bagOverlay
+	bagGrid.Parent = content
 	local grid = Instance.new("UIGridLayout")
 	grid.CellSize = UDim2.fromOffset(BAG.SLOT, BAG.SLOT)
 	grid.CellPadding = UDim2.fromOffset(BAG.GAP, BAG.GAP)
@@ -1253,24 +1214,12 @@ local function buildBag(parent: Frame)
 	bagDetail.AnchorPoint = Vector2.new(1, 0)
 	bagDetail.Position = UDim2.new(1, -16, 0, top)
 	bagDetail.Size = UDim2.new(0, BAG.DETAIL_WIDTH, 1, -(top + 16))
-	bagDetail.BackgroundColor3 = UIStyle.ROW
+	bagDetail.BackgroundColor3 = bagPalette.row
 	bagDetail.ZIndex = 32
-	bagDetail.Parent = bagOverlay
+	bagDetail.Parent = content
 	UIKit.corner(bagDetail, 14)
-	UIKit.outline(bagDetail, UIStyle.EDGE, 2)
+	UIKit.outline(bagDetail, bagPalette.rowEdge, 2)
 
-	cardsTab.Activated:Connect(function()
-		showTab(false)
-	end)
-	bagTab.Activated:Connect(function()
-		showTab(true)
-	end)
-	parent:GetPropertyChangedSignal("Visible"):Connect(function()
-		if not parent.Visible then
-			showTab(false)
-		end
-	end)
-	showTab(false)
 end
 
 -- A small dark key hint on a button's corner ("Q", "E")
@@ -1291,117 +1240,144 @@ local function addKeyChip(button: GuiObject, key: string)
 	UIKit.outline(chip, Color3.new(1, 1, 1), 1.5)
 end
 
-local function choiceRow(parent: Instance, order: number, values: { string }, onPick: (string) -> ()): { [string]: TextButton }
-	local row = Instance.new("Frame")
-	row.LayoutOrder = order
-	row.Size = UDim2.new(1, 0, 0, 44)
-	row.BackgroundTransparency = 1
-	row.Parent = parent
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Padding = UDim.new(0, 6)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = row
-	local buttons: { [string]: TextButton } = {}
-	for index, value in values do
-		local button = UIKit.button(row, value, UIKit.Colors.Row)
-		button.LayoutOrder = index
-		button.Size = UDim2.new(1 / #values, -6, 1, 0)
-		button.TextSize = 15
-		button.Activated:Connect(function()
-			onPick(value)
-		end)
-		buttons[value] = button
-	end
-	return buttons
-end
-
+-- A small heading in the Filters window ("SHOW", "SORT BY", "RARITY")
 local function sectionLabel(parent: Instance, order: number, text: string)
-	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, 18, UIKit.Colors.Text)
+	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, Collection.FILTERS.heading, UIKit.colorsFor(parent).hint)
 	label.LayoutOrder = order
-	label.Size = UDim2.new(1, 0, 0, 24)
+	label.Size = UDim2.new(1, 0, 0, Collection.FILTERS.headingRow)
+	label.TextYAlignment = Enum.TextYAlignment.Bottom
 end
 
--- The Filters panel on the right: search, Show, Sort by, rarity chips. The binder moves aside while it's open.
+-- Back to every card: All, by set, every rarity, no search
+local function clearFilters()
+	showFilter = ALL_FILTER
+	sortBy = "Set"
+	rarityPicks = {}
+	searchText = ""
+	local search = filterSearch
+	if search then
+		search.Text = ""
+	end
+	spreadIndex = 1
+	applyFilter()
+end
+
+-- The Filters window on the right (owner 2026-11-03, round 3 pick A "tidy column"): a cotton candy window with the
+-- search box, SHOW and SORT BY as two segmented switches, the rarities as small dot tags, and at the bottom how many
+-- cards match and Clear all. The binder moves aside while it's open.
 local function buildFilters(parent: Frame)
+	local look = Collection.FILTERS
 	filtersPanel = Instance.new("Frame")
 	filtersPanel.Name = "Filters"
 	-- Between the close / Filters buttons (top right) and the set progress card (bottom right)
 	filtersPanel.AnchorPoint = Vector2.new(1, 0)
-	filtersPanel.Position = UDim2.new(1, -16, 0, 84)
-	filtersPanel.Size = UDim2.new(0, Collection.FILTERS_WIDTH, 1, -(84 + 100))
-	filtersPanel.BackgroundColor3 = UIKit.Colors.Panel
 	filtersPanel.Visible = false
-	filtersPanel.ZIndex = 6
+	filtersPanel.ZIndex = look.zIndex -- over the binder's close and magnifier when it takes the full height
 	filtersPanel.Parent = parent
-	UIKit.corner(filtersPanel, 16)
-	UIKit.outline(filtersPanel, Color3.new(1, 1, 1), 3)
-	UIKit.header(filtersPanel, "Filters")
+	-- As tall as its content: under the binder's corner buttons where it fits, else from near the top (over them),
+	-- scrolling on a landscape phone (UiLayout.filtersFrame)
+	local bodyHeight = UiLayout.filtersBody(look, BabyColors.SEGMENTED.hit, BabyColors.DOT_TAG.hit)
+	local function placeFilters()
+		local top, height = UiLayout.filtersFrame(parent.AbsoluteSize.Y, look, bodyHeight)
+		filtersPanel.Position = UDim2.new(1, -16, 0, top)
+		filtersPanel.Size = UDim2.fromOffset(Collection.FILTERS_WIDTH, height)
+	end
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeFilters)
+	placeFilters()
+	UIKit.creamWindow(filtersPanel)
+	local palette = UIKit.colorsFor(filtersPanel)
+	local header, title = UIKit.header(filtersPanel, "Filters", "Bag") -- the pink band
+	local headerIcon = Icon.make(header, "Search", UDim2.fromOffset(30, 30))
+	headerIcon.AnchorPoint = Vector2.new(0, 0.5)
+	headerIcon.Position = UDim2.new(0, 14, 0.5, 0)
+	headerIcon.ZIndex = header.ZIndex + 2
+	title.Position += UDim2.fromOffset(36, 0)
 	local close = UIKit.closeButton(filtersPanel)
 	close.Activated:Connect(function()
 		setFiltersOpen(false)
 	end)
 
+	-- Room inside every edge, so outlines and glows never get cut off
 	local body = Instance.new("ScrollingFrame")
-	body.Position = UDim2.fromOffset(14, UIKit.HEADER_HEIGHT + 10)
-	body.Size = UDim2.new(1, -28, 1, -(UIKit.HEADER_HEIGHT + 20))
+	body.Position = UDim2.fromOffset(look.inset, UIKit.HEADER_HEIGHT + look.inset)
+	body.Size = UDim2.new(1, -look.inset * 2, 1, -(UIKit.HEADER_HEIGHT + look.inset * 2 + look.footer))
 	body.BackgroundTransparency = 1
 	body.BorderSizePixel = 0
 	body.ScrollBarThickness = 4
+	body.ScrollBarImageColor3 = palette.hint
 	body.CanvasSize = UDim2.new()
 	body.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	body.ZIndex = filtersPanel.ZIndex
 	body.Parent = filtersPanel
+	local room = Instance.new("UIPadding")
+	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
+		(room :: any)[side] = UDim.new(0, look.edge)
+	end
+	room.PaddingRight = UDim.new(0, look.edge + 6) -- and the scroll bar
+	room.Parent = body
 	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 8)
+	list.Padding = UDim.new(0, look.gap)
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Parent = body
 
 	local search = Instance.new("TextBox")
 	search.Name = "Search"
 	search.LayoutOrder = 1
-	search.Size = UDim2.new(1, 0, 0, 44)
-	search.BackgroundColor3 = UIKit.Colors.Row
+	search.Size = UDim2.new(1, 0, 0, look.search)
+	search.BackgroundColor3 = palette.row
 	search.ClearTextOnFocus = false
-	search.PlaceholderText = "🔍 Search name or #"
+	search.PlaceholderText = "Search name or #"
 	search.Text = ""
 	search.Font = Enum.Font.GothamBold
-	search.TextSize = 15
-	search.TextColor3 = UIKit.Colors.Text
-	search.PlaceholderColor3 = UIKit.Colors.Subtext
+	search.TextSize = 14
+	search.TextXAlignment = Enum.TextXAlignment.Left
+	search.TextColor3 = palette.ink
+	search.PlaceholderColor3 = palette.inkSoft
 	search.Parent = body
-	UIKit.corner(search, 12)
-	UIKit.outline(search)
+	UIKit.corner(search, look.search / 2)
+	UIKit.outline(search, palette.rowEdge, 2)
+	local searchPad = Instance.new("UIPadding")
+	searchPad.PaddingLeft = UDim.new(0, 38)
+	searchPad.Parent = search
+	local glass = Icon.make(search, "Search", UDim2.fromOffset(20, 20))
+	glass.AnchorPoint = Vector2.new(0, 0.5)
+	glass.Position = UDim2.new(0, -28, 0.5, 0)
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		searchText = search.Text
 		spreadIndex = 1
 		applyFilter()
 	end)
+	filterSearch = search
 
-	sectionLabel(body, 2, "Show")
-	showButtons = choiceRow(body, 3, { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }, function(value)
+	sectionLabel(body, 2, "SHOW")
+	local show
+	show, chooseShow = UIKit.segmented(body, { ALL_FILTER, OWNED_FILTER, MISSING_FILTER }, function(value)
 		showFilter = value
 		spreadIndex = 1
 		applyFilter()
 	end)
-	sectionLabel(body, 4, "Sort by")
-	sortButtons = choiceRow(body, 5, { "Set", "Value", "Copies", "Rarity" }, function(value)
+	show.LayoutOrder = 3
+	sectionLabel(body, 4, "SORT BY")
+	local sort
+	sort, chooseSort = UIKit.segmented(body, { "Set", "Value", "Copies", "Rarity" }, function(value)
 		sortBy = value
 		spreadIndex = 1
 		applyFilter()
 	end)
-	sectionLabel(body, 6, "Rarity")
+	sort.LayoutOrder = 5
+	sectionLabel(body, 6, "RARITY")
 	local chips = Instance.new("Frame")
 	chips.LayoutOrder = 7
 	chips.Size = UDim2.new(1, 0, 0, 0)
 	chips.AutomaticSize = Enum.AutomaticSize.Y
 	chips.BackgroundTransparency = 1
 	chips.Parent = body
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.new(0.5, -4, 0, 40)
-	grid.CellPadding = UDim2.fromOffset(8, 8)
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = chips
+	local flow = Instance.new("UIListLayout")
+	flow.FillDirection = Enum.FillDirection.Horizontal
+	flow.Wraps = true
+	flow.Padding = UDim.new(0, look.gap)
+	flow.SortOrder = Enum.SortOrder.LayoutOrder
+	flow.Parent = chips
 	local rarities: { string } = {}
 	for name in Rarities.Tiers do
 		table.insert(rarities, name)
@@ -1410,16 +1386,42 @@ local function buildFilters(parent: Frame)
 		return Rarities.Tiers[a].order < Rarities.Tiers[b].order
 	end)
 	for index, rarity in rarities do
-		local chip = UIKit.button(chips, rarity, UIKit.Colors.Row)
-		chip.LayoutOrder = index
-		chip.TextSize = 15
-		chip.Activated:Connect(function()
+		local tag, set = UIKit.dotTag(chips, rarity, Rarities.Tiers[rarity].color)
+		tag.LayoutOrder = index
+		tag.Activated:Connect(function()
 			rarityPicks[rarity] = if rarityPicks[rarity] then nil else true
 			spreadIndex = 1
 			applyFilter()
 		end)
-		rarityChips[rarity] = chip
+		rarityTags[rarity] = set
 	end
+
+	-- How many cards match, and Clear all
+	local foot = Instance.new("Frame")
+	foot.Name = "Footer"
+	foot.BackgroundTransparency = 1
+	foot.AnchorPoint = Vector2.new(0, 1)
+	foot.Position = UDim2.new(0, look.inset + look.edge, 1, -look.inset)
+	foot.Size = UDim2.new(1, -(look.inset + look.edge) * 2, 0, look.footer)
+	foot.ZIndex = filtersPanel.ZIndex
+	foot.Parent = filtersPanel
+	local count = UIKit.label(foot, "", Enum.Font.GothamBold, 13, palette.inkSoft)
+	count.Size = UDim2.new(0.6, 0, 1, 0)
+	count.TextYAlignment = Enum.TextYAlignment.Center
+	filterCount = count
+	local clear = Instance.new("TextButton")
+	clear.Name = "ClearAll"
+	clear.AnchorPoint = Vector2.new(1, 0.5)
+	clear.Position = UDim2.new(1, 0, 0.5, 0)
+	clear.Size = UDim2.new(0.4, 0, 0, UIStyle.MIN_TAP)
+	clear.BackgroundTransparency = 1
+	clear.Font = Enum.Font.FredokaOne
+	clear.TextSize = 15
+	clear.Text = "Clear all"
+	clear.TextXAlignment = Enum.TextXAlignment.Right
+	clear.TextColor3 = UIStyle.BABY.pink.deep
+	clear.Parent = foot
+	clear.Activated:Connect(clearFilters)
 end
 
 -- Where the binder goes on screen (viewport pixels, Roblox's top bar strip included): the biggest binder shape
@@ -1464,14 +1466,6 @@ end
 
 -- The corner buttons: full size in the corners on roomy screens; compact icons in slim side lanes on phones
 local function placeCorners(narrow: boolean)
-	for index, tab in { cardsTab, bagTab } do
-		tab.Position = if narrow then UDim2.fromOffset(12, 10 + (index - 1) * 56) else UDim2.fromOffset(16 + (index - 1) * 122, 10)
-		tab.Size = if narrow then UDim2.fromOffset(64, 48) else UDim2.fromOffset(116, 48)
-		local name = tab:FindFirstChild("Name", true)
-		if name and name:IsA("GuiObject") then
-			name.Visible = not narrow
-		end
-	end
 	rarityGuideButton.Size = if narrow then UDim2.fromOffset(64, 48) else UDim2.fromOffset(170, 44)
 	rarityGuideButton.Text = if narrow then "" else "Rarity guide"
 	local guidePad = rarityGuideButton:FindFirstChildOfClass("UIPadding")
@@ -1522,18 +1516,119 @@ function setFiltersOpen(open: boolean)
 	end
 end
 
--- The art for a set's cover: the front of the pack that sells it (none for sets without a pack)
+-- The art for a set's cover: its creature-free painting (Config/BinderCovers; spec 2026-11-04-round4-design section 1)
 function getSetArt(set: string): string?
-	for _, pack in Packs.ById do
-		if pack.name == set and pack.art and pack.kind ~= "Deck" then
-			return pack.art
-		end
-	end
-	return nil
+	local cover = BinderCovers.SETS[set]
+	return if cover then cover.art else nil
 end
 
--- The set's cover on spread 1's left page: the pack art over the whole cover (leather in the set's colour when
--- there is none), dark fades behind a title band (name and progress) and the set's worth, an embossed border.
+-- One label of the cover's text, scaled to its box
+local function coverLabel(parent: Instance, text: string, color: Color3, zIndex: number): TextLabel
+	local label = UIKit.label(parent, text, Enum.Font.FredokaOne, 40, color)
+	label.Size = UDim2.fromScale(1, 1)
+	label.TextScaled = true -- (setting TextWrapped false afterwards would turn TextScaled off again)
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.ZIndex = zIndex
+	return label
+end
+
+-- The set's name as a candy logo, one line per `lines` entry: a shadow copy in the drop colour a little lower, a thick
+-- white outline copy, and the fill on top (a top-to-bottom gradient of the three fill colours). Outlines scale with
+-- the cover.
+function drawCoverLogo(lines: { string }, fill: { { number } }, drop: { number })
+	for _, child in coverLogo:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	local function rgb(value: { number }): Color3
+		return Color3.fromRGB(value[1], value[2], value[3])
+	end
+	local base = coverArt.ZIndex + 3
+	-- Every line is the same height whatever the count (a one-line name isn't blown up); the star pill sits under it
+	coverLogo.Size = UDim2.fromScale(0.84, COVER_LINE * #lines)
+	local pill = coverProgress.Parent :: Frame
+	pill.Position = UDim2.fromScale(0.5, coverLogo.Position.Y.Scale + COVER_LINE * #lines + 0.02)
+	for index, text in lines do
+		local line = Instance.new("Frame")
+		line.Name = "Line" .. index
+		line.BackgroundTransparency = 1
+		line.Position = UDim2.fromScale(0, (index - 1) / #lines)
+		line.Size = UDim2.fromScale(1, 1 / #lines)
+		line.ZIndex = base
+		line.Parent = coverLogo
+		local shadow = coverLabel(line, text, rgb(drop), base)
+		shadow.Name = "Drop"
+		shadow.Position = UDim2.fromScale(0, 0.07)
+		local outline = coverLabel(line, text, Color3.new(1, 1, 1), base + 1)
+		outline.Name = "Outline"
+		local face = coverLabel(line, text, Color3.new(1, 1, 1), base + 2)
+		face.Name = "Fill"
+		local gradient = Instance.new("UIGradient")
+		gradient.Rotation = 90
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, rgb(fill[1])),
+			ColorSequenceKeypoint.new(0.55, rgb(fill[2])),
+			ColorSequenceKeypoint.new(1, rgb(fill[3])),
+		})
+		gradient.Parent = face
+		local strokes: { UIStroke } = {}
+		for _, label in { shadow, outline } do
+			local stroke = Instance.new("UIStroke")
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+			stroke.LineJoinMode = Enum.LineJoinMode.Round
+			stroke.Color = label.TextColor3
+			stroke.Parent = label
+			table.insert(strokes, stroke)
+		end
+		local function fit()
+			for _, stroke in strokes do
+				stroke.Thickness = math.max(2, line.AbsoluteSize.Y * 0.09)
+			end
+		end
+		line:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+		fit()
+	end
+end
+
+-- A white pill on the cover (the star progress, the worth): `icon` (a Config/UIIcons name) before the text
+local function coverPill(name: string, position: UDim2, width: number, icon: string?): TextLabel
+	local pill = Instance.new("Frame")
+	pill.Name = name
+	pill.AnchorPoint = Vector2.new(0.5, 0)
+	pill.Position = position
+	pill.Size = UDim2.fromScale(width, 0.062)
+	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	pill.ZIndex = coverArt.ZIndex + 3
+	pill.Parent = coverPage
+	UIKit.corner(pill, 999)
+	local edge = Instance.new("UIStroke")
+	edge.Color = Color3.new(0, 0, 0)
+	edge.Transparency = 0.8
+	edge.Thickness = 2
+	edge.Parent = pill
+	local textLeft = 0.08
+	if icon then
+		local mark = Icon.make(pill, icon, UDim2.fromScale(0.7, 0.7))
+		mark.AnchorPoint = Vector2.new(0, 0.5)
+		mark.Position = UDim2.fromScale(0.07, 0.5)
+		mark.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		mark.ZIndex = pill.ZIndex + 1
+		Icon.set(mark, icon)
+		textLeft = 0.24
+	end
+	local text = UIKit.label(pill, "", Enum.Font.FredokaOne, 20, UIStyle.CREAM.INK)
+	text.Position = UDim2.fromScale(textLeft, 0.14)
+	text.Size = UDim2.fromScale(1 - textLeft - 0.08, 0.72)
+	text.TextScaled = true
+	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.ZIndex = pill.ZIndex + 1
+	return text
+end
+
+-- The set's cover on spread 1's left page (spec 2026-11-04-round4-design section 1): the set's painting over the whole
+-- cover (leather in the set's colour when there is none), dark fades at the top and bottom, a thin white frame, the
+-- candy logo, a white star pill (owned / total) under it and the worth in a white pill at the bottom.
 -- Drawn on the left page's canvas (BinderDesk), over its pocket slots.
 local function buildCover(canvas: Frame)
 	coverPage = Instance.new("Frame")
@@ -1549,7 +1644,7 @@ local function buildCover(canvas: Frame)
 	leather.Name = "Leather"
 	leather.Rotation = 60
 	leather.Parent = coverPage
-	-- Full art: the pack art fills the cover, under everything else
+	-- Full art: the painting fills the cover, under everything else
 	coverArt = Instance.new("ImageLabel")
 	coverArt.Name = "Art"
 	coverArt.Size = UDim2.fromScale(1, 1)
@@ -1558,16 +1653,8 @@ local function buildCover(canvas: Frame)
 	coverArt.ZIndex = coverPage.ZIndex + 1
 	coverArt.Parent = coverPage
 	UIKit.corner(coverArt, 10)
-	coverEmblem = UIKit.label(coverArt, "", Enum.Font.FredokaOne, 80, COVER_TEXT)
-	coverEmblem.AnchorPoint = Vector2.new(0.5, 0.5)
-	coverEmblem.Position = UDim2.fromScale(0.5, 0.55)
-	coverEmblem.Size = UDim2.fromScale(0.5, 0.5)
-	coverEmblem.SizeConstraint = Enum.SizeConstraint.RelativeXX
-	coverEmblem.TextScaled = true
-	coverEmblem.TextXAlignment = Enum.TextXAlignment.Center
-	coverEmblem.ZIndex = coverArt.ZIndex + 1
-	-- Dark fades into the art behind the title and the worth, so the text reads on any picture
-	for _, fade in { { name = "TopFade", y = 0, h = 0.4, rotation = 90 }, { name = "BottomFade", y = 0.7, h = 0.3, rotation = -90 } } do
+	-- Dark fades into the art behind the logo and the worth, so they read on any picture
+	for _, fade in { { name = "TopFade", y = 0, h = 0.42, rotation = 90, from = 0.3 }, { name = "BottomFade", y = 0.72, h = 0.28, rotation = -90, from = 0.4 } } do
 		local strip = Instance.new("Frame")
 		strip.Name = fade.name
 		strip.Position = UDim2.fromScale(0, fade.y)
@@ -1580,7 +1667,7 @@ local function buildCover(canvas: Frame)
 		local gradient = Instance.new("UIGradient")
 		gradient.Rotation = fade.rotation
 		gradient.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.25),
+			NumberSequenceKeypoint.new(0, fade.from),
 			NumberSequenceKeypoint.new(1, 1),
 		})
 		gradient.Parent = strip
@@ -1588,66 +1675,24 @@ local function buildCover(canvas: Frame)
 
 	local emboss = Instance.new("Frame")
 	emboss.Name = "Emboss"
-	emboss.Position = UDim2.fromScale(0.05, 0.035)
-	emboss.Size = UDim2.fromScale(0.9, 0.93)
+	emboss.Position = UDim2.fromScale(0.035, 0.025)
+	emboss.Size = UDim2.fromScale(0.93, 0.95)
 	emboss.BackgroundTransparency = 1
 	emboss.ZIndex = coverArt.ZIndex + 2
 	emboss.Parent = coverPage
 	UIKit.corner(emboss, 10)
-	UIKit.outline(emboss, Color3.new(1, 1, 1), 2).Transparency = 0.6
+	UIKit.outline(emboss, Color3.new(1, 1, 1), 2).Transparency = 0.5
 
-	local band = Instance.new("Frame")
-	band.Name = "TitleBand"
-	band.Position = UDim2.fromScale(0.05, 0.1)
-	band.Size = UDim2.fromScale(0.9, 0.2)
-	band.BackgroundColor3 = Color3.new(0, 0, 0)
-	band.BackgroundTransparency = 1
-	band.BorderSizePixel = 0
-	band.ZIndex = coverArt.ZIndex + 2
-	band.Parent = coverPage
-	-- Warm off-white: plain white would be taken as UIKit's auto colour and turn navy on the cover's base
-	coverTitle = UIKit.label(band, "", Enum.Font.FredokaOne, 40, COVER_TEXT)
-	coverTitle.Position = UDim2.fromScale(0.05, 0.06)
-	coverTitle.Size = UDim2.fromScale(0.9, 0.5)
-	coverTitle.TextScaled = true
-	coverTitle.TextXAlignment = Enum.TextXAlignment.Center
-	coverTitle.ZIndex = band.ZIndex + 1
-	coverProgress = UIKit.label(band, "", Enum.Font.FredokaOne, 24, Color3.fromRGB(255, 230, 200))
-	coverProgress.Position = UDim2.fromScale(0.05, 0.6)
-	coverProgress.Size = UDim2.fromScale(0.9, 0.32)
-	coverProgress.TextScaled = true
-	coverProgress.TextXAlignment = Enum.TextXAlignment.Center
-	coverProgress.ZIndex = band.ZIndex + 1
-
-	local track = Instance.new("Frame")
-	track.Name = "Progress"
-	track.Position = UDim2.fromScale(0.18, 0.85)
-	track.Size = UDim2.fromScale(0.64, 0.025)
-	track.BackgroundColor3 = Color3.new(0, 0, 0)
-	track.BackgroundTransparency = 0.5
-	track.ZIndex = coverArt.ZIndex + 2
-	track.Parent = coverPage
-	UIKit.corner(track, 6)
-	coverFill = Instance.new("Frame")
-	coverFill.Size = UDim2.fromScale(0, 1)
-	coverFill.BackgroundColor3 = Color3.fromRGB(255, 230, 160)
-	coverFill.ZIndex = track.ZIndex + 1
-	coverFill.Parent = track
-	UIKit.corner(coverFill, 6)
-	coverValue = UIKit.label(coverPage, "", Enum.Font.FredokaOne, 24, COVER_TEXT)
-	coverValue.Position = UDim2.fromScale(0.1, 0.885)
-	coverValue.Size = UDim2.fromScale(0.8, 0.055)
-	coverValue.TextScaled = true
-	coverValue.TextXAlignment = Enum.TextXAlignment.Center
-	coverValue.ZIndex = coverArt.ZIndex + 2
-	-- A dark outline keeps the cover text readable over bright art
-	for _, label in { coverTitle, coverProgress, coverValue } do
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(40, 20, 10)
-		stroke.Thickness = 2
-		stroke.Transparency = 0.25
-		stroke.Parent = label
-	end
+	coverLogo = Instance.new("Frame")
+	coverLogo.Name = "Logo"
+	coverLogo.AnchorPoint = Vector2.new(0.5, 0)
+	coverLogo.Position = UDim2.fromScale(0.5, 0.045)
+	coverLogo.Size = UDim2.fromScale(0.84, COVER_LINE * 2)
+	coverLogo.BackgroundTransparency = 1
+	coverLogo.ZIndex = coverArt.ZIndex + 3
+	coverLogo.Parent = coverPage
+	coverProgress = coverPill("Progress", UDim2.fromScale(0.5, 0.285), 0.4, "Star")
+	coverValue = coverPill("Worth", UDim2.fromScale(0.5, 0.9), 0.66)
 end
 
 -- A round arrow button beside the book, with its key chip
@@ -1663,7 +1708,10 @@ end
 
 local function buildPanel(parent: Instance)
 	local list: ScrollingFrame
-	panel, list = UIKit.panel(parent, "Binder", "Binder")
+	-- The binder keeps its dark look (spec 2026-11-03-cream-windows-design), but its screen's buttons take the cotton
+	-- candy look (spec 2026-11-03-cotton-candy-ui-design): the close button, the magnifier, the arrows, the tabs, the
+	-- Rarity guide, the filters' buttons
+	panel, list = UIKit.panel(parent, "Binder", "Binder", nil, "dark", true)
 	list:Destroy() -- the binder uses pages instead of a scrolling list
 	-- Full screen and see-through: the 3D binder on its desk fills the screen behind (BinderDesk)
 	panel.Size = UDim2.fromScale(1, 1)
@@ -1837,7 +1885,7 @@ local function buildPanel(parent: Instance)
 		CardDetailController.Close()
 		return true
 	end)
-	buildBag(panel) -- before the first layout: it places the Cards / Bag tabs
+	buildBag(panel.Parent :: Instance) -- the Bag's own window, on the same screen
 	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutBook)
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutBook)
 	layoutBook()
@@ -1889,16 +1937,9 @@ local function toggle()
 	end
 end
 
--- Inventory: open the binder on the Bag tab, or close it if the Bag is already showing
+-- Inventory: open or close the Bag window (opening it closes the binder: one window at a time)
 local function toggleBag()
-	if panel.Visible and bagOverlay.Visible then
-		toggle()
-	else
-		if not panel.Visible then
-			toggle()
-		end
-		showTab(true)
-	end
+	bagOverlay.Visible = not bagOverlay.Visible
 end
 
 -- Bottom-centre tiles: Cards (the binder) and Bag

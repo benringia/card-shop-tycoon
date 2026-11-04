@@ -37,6 +37,9 @@ return {
 		},
 	},
 	VOLUME = 0.45,
+	-- Each play picks its pitch (PlaybackSpeed) and loudness share from these ranges (owner 2026-11-04: no sound the same
+	-- over and over)
+	VARY = { pitch = { 0.85, 1.15 }, volume = { 0.82, 1 } },
 	CHARGE_LIGHT = 3, -- a charging creature's glow (PointLight brightness at full charge)
 	PROJECTILE_SIZE = 1.2, -- studs
 	ARC = { Ember = 6, Tide = 0 }, -- studs a projectile rises at its midpoint
@@ -89,6 +92,9 @@ return {
 		emberColossus = {
 			strike = "embers", -- a horn gore: a fiery burst and rock dust
 			release = "lava", -- the lava slam: a fire shockwave, glowing cracks and molten rocks thrown up
+			-- owner 2026-11-04: a huge fireball heaved off its back lands with the slam (scale: ElementFx.projectile's;
+			-- arc: studs it rises at the midpoint)
+			meteor = { scale = 7, arc = 28 },
 			color = rgb(255, 112, 32),
 			sounds = {
 				strike = "rbxassetid://9117330384", -- Pick Impacts 1 (heavy dirt and rock hits)

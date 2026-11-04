@@ -771,7 +771,15 @@ end
 
 -- A lost boss fight: after LOSS_COUNTDOWN ("Teleporting back to town in 3, 2, 1") everyone who was still in it goes
 -- home (BossRules.lossHome); they no longer hold a remote copy, so its loot linger doesn't move them back. Members who
--- left earlier already went back to the gate and are left alone. The Dungeon's run handles its own losers.
+-- left earlier already went back to the gate and are left alone. The Dungeon's run handles its own losers. The defeat
+-- screen can't be skipped (owner 2026-11-04): everyone sees the whole countdown.
+local function sendHome(player: Player)
+	local humanoid = if player.Parent and player.Character then player.Character:FindFirstChildOfClass("Humanoid") else nil
+	if humanoid and humanoid.Health > 0 then
+		WildService.SendToSpring(player)
+	end
+end
+
 local function sendLosersHome(monster: WildService.Monster, losers: { Player })
 	local home = BossRules.lossHome(if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Main")
 	if home == "dungeon" then
@@ -784,12 +792,7 @@ local function sendLosersHome(monster: WildService.Monster, losers: { Player })
 		if at then
 			table.remove(held :: { Player }, at)
 		end
-		task.delay(Combat.LOSS_COUNTDOWN, function()
-			local humanoid = if player.Parent and player.Character then player.Character:FindFirstChildOfClass("Humanoid") else nil
-			if humanoid and humanoid.Health > 0 then
-				WildService.SendToSpring(player)
-			end
-		end)
+		task.delay(Combat.LOSS_COUNTDOWN, sendHome, player)
 	end
 end
 

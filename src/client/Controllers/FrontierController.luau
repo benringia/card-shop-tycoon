@@ -81,7 +81,7 @@ local function openMenu()
 			note(4, "No friends in the Frontier right now.")
 		end
 		for index, friend in friends do
-			addButton(3 + index, `Join {friend.name}`, UIKit.Colors.Row, function()
+			addButton(3 + index, `Join {friend.name}`, UIKit.Colors.Secondary, function()
 				panel.Visible = false
 				Remotes.FrontierTravel:FireServer("friend", friend.userId)
 			end)

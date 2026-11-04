@@ -24,7 +24,7 @@ return {
 	-- model's glow mask (a changing strength costs about 6.6 ms of render CPU a frame, so none pulses).
 	-- HP and ATK tuned with `lune run tools/balance/wild` (owner 2026-11-03, the player fights beside their creature):
 	-- about 12.5 s fought well at the zone's middle level, won about 75% standing still. The Meadow comes before the
-	-- sword (shop level 3), so its pair is tuned for the creature alone (about 70-80%), and its elites set their own
+	-- sword (shop level 4), so its pair is tuned for the creature alone (about 70-80%), and its elites set their own
 	SPECIES = {
 		Mossling = { element = "Bloom", hp = 175, atk = 6, eliteHp = 2.5, eliteAtk = 1.2, spd = 8, shape = "slime", height = 3.5, glow = { strength = 2 } },
 		["Puddle Crab"] = { element = "Tide", hp = 179, atk = 6.1, eliteHp = 2.5, eliteAtk = 1, spd = 7, shape = "crab", height = 3, glow = { strength = 2 } },

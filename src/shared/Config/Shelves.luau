@@ -82,7 +82,7 @@ local List: { Shelf } = {
 		category = "Fixtures", -- Build menu tab
 		capacity = 0,
 		cost = 500,
-		unlockLevel = 4,
+		unlockLevel = 5,
 		size = Vector3.new(6, 7, 6), -- big enough to read as a machine (saved ones too big for their spot move over)
 		color = Color3.fromRGB(90, 200, 220),
 	},
@@ -94,7 +94,7 @@ local List: { Shelf } = {
 		category = "Fixtures", -- Build menu tab
 		capacity = 0,
 		cost = 5000,
-		unlockLevel = 8,
+		unlockLevel = 14,
 		size = Vector3.new(6, 9, 6), -- a square spot for the round pod, made bigger (saved ones too big for their spot move over)
 		color = Color3.fromRGB(230, 185, 80),
 	},
@@ -204,7 +204,7 @@ local List: { Shelf } = {
 		category = "Shelves", -- Build menu tab
 		capacity = 48,
 		cost = 350,
-		unlockLevel = 3,
+		unlockLevel = 4,
 		size = Vector3.new(8, 7, 2), -- as tall as the other racks, so plates and headers line up
 		color = Color3.fromRGB(140, 95, 60),
 	},
@@ -216,7 +216,7 @@ local List: { Shelf } = {
 		category = "Shelves", -- Build menu tab
 		capacity = 20,
 		cost = 250,
-		unlockLevel = 5,
+		unlockLevel = 7,
 		size = Vector3.new(4, 7, 2),
 		color = Color3.fromRGB(110, 110, 125),
 		accepts = { "CardSleeves", "DeckBox" },
@@ -229,7 +229,7 @@ local List: { Shelf } = {
 		category = "Shelves", -- Build menu tab
 		capacity = 96,
 		cost = 1200,
-		unlockLevel = 6,
+		unlockLevel = 9,
 		size = Vector3.new(8, 7, 4),
 		color = Color3.fromRGB(120, 80, 55),
 		-- Double-sided: shelf tops at 1.04 / 2.54 / 3.85 of 7 studs, a row each side of the middle divider

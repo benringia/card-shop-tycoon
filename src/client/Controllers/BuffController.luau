@@ -80,6 +80,7 @@ local function update(newPerk: Perk?, newSource: string?)
 	end
 	local icon, color = getPerkLook(newPerk.kind)
 	pill.Text = `{icon} +{math.round(newPerk.value * 100)}%`
+	pill.TextColor3 = color:Lerp(Color3.new(0, 0, 0), 0.25) -- the perk's colour, a touch darker to read on white
 	pillStroke.Color = color
 	badge.Visible = true
 	if tooltip.Visible then
@@ -107,14 +108,14 @@ function BuffController.Start()
 	badge.Visible = false
 	badge.Parent = UIController.GetStatusFrame()
 
-	pill = UIKit.label(badge, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
+	pill = UIKit.label(badge, "", Enum.Font.FredokaOne, 14, UIKit.Colors.Text)
 	pill.AnchorPoint = Vector2.new(0, 0.5)
 	pill.Position = UDim2.fromScale(0, 0.5)
 	pill.Size = UDim2.fromOffset(0, 28)
 	pill.AutomaticSize = Enum.AutomaticSize.X
 	pill.TextXAlignment = Enum.TextXAlignment.Center
-	pill.BackgroundColor3 = UIKit.Colors.Panel
-	pill.BackgroundTransparency = 0.35
+	pill.BackgroundColor3 = Color3.new(1, 1, 1) -- the creature pals look: a small white chip (spec 2026-11-03)
+	pill.BackgroundTransparency = 0
 	UIKit.corner(pill, 14)
 	local padding = Instance.new("UIPadding")
 	padding.PaddingLeft = UDim.new(0, 10)

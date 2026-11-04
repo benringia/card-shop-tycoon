@@ -33,6 +33,9 @@ return {
 
 	-- Element abilities: one per fighter, by its element
 	ABILITY_COOLDOWN = 8,
+	-- A Pet button move or super move winds up this long before it fires (owner 2026-11-04, design A: the creature
+	-- lifts and glows, a ring spins under it and the move's name pops above it, so everyone sees it coming)
+	ABILITY_WINDUP = 0.5,
 	ABILITIES = {
 		Ember = { kind = "Fireball", name = "Fireball", power = 2.5 },
 		Tide = { kind = "Wave", name = "Wave", heal = 0.25 },
@@ -66,6 +69,8 @@ return {
 
 	-- Fainted cards rest; the plaza spring speeds it up
 	REST_SECONDS = 300,
+	-- The Wild's "Return to town" pill, top centre (owner 2026-11-03, round 3): px
+	HOME_BUTTON = { width = 210, height = 48, textSize = 17 },
 	SPRING_RADIUS = 12,
 	SPRING_SPEED = 3,
 
@@ -77,9 +82,14 @@ return {
 	QUICK_WARNING = 0.5, -- seconds the boss flashes before a quick hit lands
 	HIT_GRACE = 0.15, -- seconds the server lands hits on players after clients show them (a late dodge still counts)
 	DODGE_SECONDS = 0.35, -- untouchable after a dodge
-	DODGE_COOLDOWN = 1,
+	DODGE_COOLDOWN = 2.5, -- owner 2026-11-04 (option A, was 1): one dodge per ring still, but mashing it stops working
 	DODGE_STUDS = 12, -- the dash's length
-	LOSS_COUNTDOWN = 3, -- "Teleporting back to town in 3, 2, 1"
+	-- A dash that would end inside a boss or monster goes on through it to this far past its edge, up to DODGE_MAX_STUDS
+	-- (SwordRules.dashLength; owner 2026-11-04)
+	DODGE_PASS_MARGIN = 1.5,
+	DODGE_MAX_STUDS = 26,
+	DODGE_FORCE = 200000, -- the dash's push (a LinearVelocity in the ground plane): enough to hold its speed
+	LOSS_COUNTDOWN = 5, -- seconds a lost boss fight's defeat screen shows before town (owner 2026-11-04; it can't be skipped)
 	SWORD_ACTION_COOLDOWN = 0.08, -- remote rate limit on Attack, Skill and Dodge taps
 	SWORD_IDLE_ATK = 10, -- the sword's ATK when none of your creatures has been on the field (never in practice)
 

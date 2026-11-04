@@ -1,7 +1,7 @@
 --!strict
 -- Rounded fonts everywhere: screens, card faces, name tags. Code across the game still sets Gotham for text;
 -- every text object that appears is switched here: bold Gotham to the title font (FredokaOne), plain Gotham to
--- the body font (Nunito). Fonts: Config/UIFonts.
+-- the body font (Montserrat). Fonts: Config/UIFonts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

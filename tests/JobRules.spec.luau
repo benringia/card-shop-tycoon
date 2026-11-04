@@ -47,9 +47,9 @@ return {
 		expect.near(JobRules.getMistakeChance(config, 327.5), 0.115, 1e-9, "middle")
 	end,
 	["slots by level and pass"] = function()
-		expect.equal(JobRules.getSlotCount(config, 9, true), 0, "locked below Lv 10")
-		expect.equal(JobRules.getSlotCount(config, 10, false), 1, "free slot")
-		expect.equal(JobRules.getSlotCount(config, 12, true), 2, "with pass")
+		expect.equal(JobRules.getSlotCount(config, config.UNLOCK_LEVEL - 1, true), 0, "locked below the unlock level")
+		expect.equal(JobRules.getSlotCount(config, config.UNLOCK_LEVEL, false), 1, "free slot")
+		expect.equal(JobRules.getSlotCount(config, config.UNLOCK_LEVEL + 2, true), 2, "with pass")
 	end,
 	["nextJob: the other job, wrapping round"] = function()
 		expect.equal(JobRules.nextJob({ "Restocker", "Cashier" }, "Restocker"), "Cashier", "next")
@@ -74,5 +74,27 @@ return {
 		expect.equal(JobRules.minutesToNext(31, 50, 2), 10, "9.5 rounds up")
 		expect.equal(JobRules.minutesToNext(49, 50, 2), 1, "almost there")
 		expect.isNil(JobRules.minutesToNext(0, 0, 2), "max level")
+	end,
+
+	-- Round 5: the card view's button is "Assign job"; no screen may still tell players to press "Give a job"
+	["no screen still says Give a job"] = function()
+		local fs = require("@lune/fs")
+		for _, path in { "src/client/Controllers/JobsController.luau", "src/client/Controllers/CardDetailController.luau" } do
+			expect.equal(string.find(fs.readFile(path), "Give a job", 1, true), nil, path)
+		end
+	end,
+
+	-- Round 5 (spec section 4): the Assign job picker's tiles
+	["Assign job: a tile per job in order, with its icon, words and this copy's speed"] = function()
+		local tiles = JobRules.assignTiles(config, 10)
+		expect.equal(#tiles, #config.JOBS)
+		expect.equal(tiles[1].job, "Restocker")
+		expect.equal(tiles[1].icon, "Shelves")
+		expect.equal(tiles[2].job, "Cashier")
+		expect.equal(tiles[2].icon, "Register")
+		expect.equal(tiles[2].text, config.JOB_INFO.Cashier.text)
+		local word, tone = JobRules.speedWord(config, JobRules.getSpeedFactor(config, 10))
+		expect.equal(tiles[1].word, word)
+		expect.equal(tiles[1].tone, tone)
 	end,
 }

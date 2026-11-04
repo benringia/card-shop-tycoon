@@ -2,8 +2,9 @@
 -- The binder's card view (spec 2026-10-29-collection-screens-ui-design.md 4.2): the 3D card on the left
 -- (CardInspectorController: tilt, Flip, Legendary aura, a BEST COPY ribbon while your best copy shows), and right
 -- beside it (the pair centred on the screen) a panel in the style kit: the name in a blue band with the worth, rarity / element / number / copies
--- pills, "Your copies" best first (the first one wears a gold BEST ribbon), the chosen copy's Power, HP, ATK and SPD
--- tiles, its XP and next-star bars, and Add to party / Give a job (a disabled button says why; the binder's X closes it). Icons without
+-- pills, then "This copy" first (round 5, owner pick A: the chosen copy's grade, level, stars and worth over its Power,
+-- HP, ATK and SPD tiles and its XP and next-star bars, in a gold box), "All copies, best first" under it (the first one
+-- wears a gold BEST ribbon), and Add to party / Assign job (a disabled button says why; the binder's X closes it). Icons without
 -- a label have word tooltips (Util/Tooltip). Add to party opens a chooser: "Who should X replace?" over the three
 -- slot cards (each saying how much more or less Power X has), then the comparison for a filled slot. The binder
 -- owns the data (Source) and builds this once into its panel.
@@ -19,6 +20,7 @@ local Jobs = require(Config:WaitForChild("Jobs"))
 local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
@@ -53,7 +55,6 @@ export type Source = {
 	setInspecting: (on: boolean) -> (), -- the binder hides its book, tabs and buttons while the card is up
 }
 
-local WHITE = Color3.new(1, 1, 1)
 local HOW_TO_SELL = "To sell: put it in a Glass Showcase or Collector Case (walk up, F, then Cards)."
 local PANEL_TOP = 84 -- below the binder's close button
 local PHONE_RIGHT = 76 -- phones: the binder's close button keeps the top right corner
@@ -61,7 +62,8 @@ local GAP = 8
 local ROW_HEIGHT = 52
 local PHONE_ROW_HEIGHT = 48 -- a tap target, never smaller
 local PHONE_HEADER = 44 -- phones: a slimmer band, no pills row (the card face shows rarity and element) and no list title
-local LIST_TOP = 54 -- the copies list starts under the pills and its title
+local BOX_TOP = 32 -- the chosen copy's box starts under the pills (phones: no pills, at the top)
+local TITLE_HEIGHT = 18 -- "ALL COPIES, BEST FIRST" over the copies list
 local CARD_GAP = 16 -- between the 3D card and the panel
 local LIST_PAD = 4 -- room inside the copies list for the chosen row's outline
 local CHOOSER_BUTTON = 130 -- the chooser's Cancel / Back: compact, on the right
@@ -74,11 +76,12 @@ local CardDetailController = {}
 
 local source: Source
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Build
 local header: Frame
 local body: Frame
 local copiesTitle: TextLabel
 local rowHeight = ROW_HEIGHT
-local listTop = LIST_TOP
+local listTop = BOX_TOP
 local nameLabel: TextLabel
 local worthLabel: TextLabel
 local pillRow: Frame
@@ -89,7 +92,7 @@ local partyButton: TextButton
 local jobButton: TextButton
 local flipButton: TextButton
 local partyChooser: Frame
-local jobChooser: Frame
+local jobChooser: Frame -- Assign job (showJobPicker)
 local chooserTitle: TextLabel
 local slotsHolder: Frame -- the three party slots, each with what swapping in would do
 local compareHolder: Frame -- the comparison against one slot's card
@@ -117,8 +120,8 @@ local function text(parent: Instance, value: string, size: number, color: Color3
 	label.TextWrapped = false
 	label.Size = UDim2.fromOffset(0, size + 4)
 	label.ZIndex = (parent :: GuiObject).ZIndex + 1
-	if outlined then
-		UIKit.outlined(label, 2)
+	if outlined and UIKit.themeOf(parent) ~= "cream" then
+		UIKit.outlined(label, 2) -- outlined light text on dark windows; cream windows' brown text needs none
 	end
 	return label
 end
@@ -152,6 +155,18 @@ local function growthOf(entry: Entry): CardFace.Growth
 end
 
 -- Panel on the right, as wide as the screen allows; the 3D card's right edge goes just left of it
+-- "This copy" sits at the top of the body (under the pills on desktop); the copies list's title and the list fill what's
+-- left under it, and the list scrolls
+local function placeList()
+	local boxTop = if UIKit.isPhone() then 0 else BOX_TOP
+	selectedBox.Position = UDim2.fromOffset(0, boxTop)
+	local below = boxTop + selectedBox.AbsoluteSize.Y + GAP
+	copiesTitle.Position = UDim2.fromOffset(0, below)
+	listTop = if copiesTitle.Visible then below + TITLE_HEIGHT + 2 else below
+	copiesList.Position = UDim2.fromOffset(0, listTop)
+	copiesList.Size = UDim2.new(1, 0, 1, -listTop)
+end
+
 local function layout()
 	local camera = workspace.CurrentCamera
 	if not camera or not panel then
@@ -174,10 +189,8 @@ local function layout()
 	body.Size = UDim2.new(1, -24, 1, -(band + GAP + 66))
 	pillRow.Visible = not phone
 	copiesTitle.Visible = not phone
-	listTop = if phone then 0 else LIST_TOP
 	rowHeight = if phone then PHONE_ROW_HEIGHT else ROW_HEIGHT
-	copiesList.Position = UDim2.fromOffset(0, listTop)
-	copiesList.Size = UDim2.new(1, 0, 1, -(listTop + selectedBox.AbsoluteSize.Y + GAP))
+	placeList()
 end
 
 -- The disabled look for a button that can't be used now (its text says why)
@@ -194,7 +207,7 @@ local function targetOf(entry: Entry): Target
 	return { cardId = (currentCard :: Card).id, foil = entry.foil, grade = entry.grade }
 end
 
--- Add to party / Give a job for the chosen copy, or why not (an open chooser stays open: Refresh redraws it)
+-- Add to party / Assign job for the chosen copy, or why not (an open chooser stays open: Refresh redraws it)
 local function refreshButtons(selected: Entry?)
 	local beast = if selected then selected.beast else nil
 	local job = if beast then source.working()[beast.id] else nil
@@ -214,7 +227,7 @@ local function refreshButtons(selected: Entry?)
 	local used = player:GetAttribute("JobsUsed")
 	local slotCount = if typeof(slots) == "number" then slots else 0
 	local usedCount = if typeof(used) == "number" then used else 0
-	local jobText, jobReady = "Give a job", selected ~= nil
+	local jobText, jobReady = "Assign job", selected ~= nil
 	if job then
 		jobText, jobReady = `Working: {job}`, false
 	elseif inParty then
@@ -234,13 +247,13 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, 0, 0, rowHeight)
-	row.BackgroundColor3 = UIStyle.ROW
+	row.BackgroundColor3 = palette.row
 	row.AutoButtonColor = true
 	row.Text = ""
 	row.ZIndex = copiesList.ZIndex + 1
 	row.Parent = copiesList
 	UIKit.corner(row, 10)
-	local edge = UIKit.outline(row, if entry.key == selectedKey then UIStyle.HINT else UIStyle.EDGE, if entry.key == selectedKey then 3 else 2)
+	local edge = UIKit.outline(row, if entry.key == selectedKey then UIStyle.GOLD else palette.rowEdge, if entry.key == selectedKey then 3 else 2) -- the chosen one: a gold ring
 	edge.Name = "Edge"
 	row.Activated:Connect(function()
 		selectedKey = entry.key
@@ -260,7 +273,7 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	grade.LayoutOrder = 1
 	Tooltip.attach(grade, CardTips.gradeText(entry.grade))
 	local growth = growthOf(entry)
-	local level = text(left, `Lv {growth.level}`, UIKit.textSize("body"), WHITE, true, true)
+	local level = text(left, `Lv {growth.level}`, UIKit.textSize("body"), palette.ink, true, true)
 	level.AutomaticSize = Enum.AutomaticSize.X
 	level.LayoutOrder = 2
 	local stars = UIKit.stars(left, growth.stars, Beasts.MAX_STARS, 14)
@@ -284,8 +297,8 @@ local function addCopyRow(entry: Entry, order: number, best: boolean)
 	local powerIcon = Icon.make(powerLine, "Power", UDim2.fromOffset(18, 18))
 	powerIcon.ZIndex = row.ZIndex + 1
 	Tooltip.icon(powerIcon, "Power")
-	text(powerLine, tostring(math.floor(entry.power)), UIKit.textSize("body") + 2, UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
-	local value = text(row, money(entry.value), UIKit.textSize("small"), UIStyle.MONEY, true, true)
+	text(powerLine, tostring(math.floor(entry.power)), UIKit.textSize("body") + 2, palette.power, true, true).AutomaticSize = Enum.AutomaticSize.X
+	local value = text(row, money(entry.value), UIKit.textSize("small"), palette.good, true, true)
 	value.AnchorPoint = Vector2.new(1, 1)
 	value.Position = UDim2.new(1, -12, 1, -6)
 	value.Size = UDim2.fromOffset(110, 18)
@@ -315,7 +328,8 @@ local function barRow(parent: Instance, order: number, icon: string, share: numb
 	label.TextTruncate = Enum.TextTruncate.AtEnd
 end
 
--- The chosen copy: four stat tiles, XP and next-star bars, and whether it's busy
+-- The chosen copy ("This copy"): its grade, level, stars and worth, four stat tiles, XP and next-star bars, and whether
+-- it's busy
 local function renderSelected(card: Card, entry: Entry?)
 	clear(selectedBox)
 	if not entry then
@@ -325,6 +339,36 @@ local function renderSelected(card: Card, entry: Entry?)
 	end
 	local growth = growthOf(entry)
 	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, entry.grade)
+
+	-- The top line: heading, grade, level, stars and foil on the left, the copy's worth on the right
+	local line = Instance.new("Frame")
+	line.LayoutOrder = 0
+	line.BackgroundTransparency = 1
+	line.Size = UDim2.new(1, 0, 0, 24)
+	line.ZIndex = selectedBox.ZIndex
+	line.Parent = selectedBox
+	local top = hList(line, 24, 6)
+	top.Size = UDim2.new(1, -116, 1, 0)
+	local heading = text(top, "THIS COPY", UIKit.textSize("small"), palette.hint, true)
+	heading.AutomaticSize = Enum.AutomaticSize.X
+	heading.LayoutOrder = 1
+	local grade = UIKit.pill(top, entry.grade, UIStyle.GRADES[entry.grade] or UIStyle.GRADES.C)
+	grade.LayoutOrder = 2
+	Tooltip.attach(grade, CardTips.gradeText(entry.grade))
+	local level = text(top, `Lv {growth.level}`, UIKit.textSize("body"), palette.ink, true, true)
+	level.AutomaticSize = Enum.AutomaticSize.X
+	level.LayoutOrder = 3
+	local stars = UIKit.stars(top, growth.stars, Beasts.MAX_STARS, 14)
+	stars.LayoutOrder = 4
+	Tooltip.icon(stars, "Star")
+	if entry.foil then
+		UIKit.pill(top, "FOIL", Color3.fromRGB(150, 110, 255)).LayoutOrder = 5
+	end
+	local worth = text(line, money(entry.value), UIKit.textSize("small"), palette.good, true, true)
+	worth.AnchorPoint = Vector2.new(1, 0)
+	worth.Position = UDim2.new(1, 0, 0, 0)
+	worth.Size = UDim2.fromOffset(110, 24)
+	worth.TextXAlignment = Enum.TextXAlignment.Right
 
 	local tiles = Instance.new("Frame")
 	tiles.LayoutOrder = 1
@@ -338,18 +382,18 @@ local function renderSelected(card: Card, entry: Entry?)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = tiles
 	for index, stat in {
-		{ "Power", math.floor(entry.power), UIStyle.POWER },
-		{ "Hp", stats.hp, WHITE },
-		{ "Atk", stats.atk, WHITE },
-		{ "Spd", stats.spd, WHITE },
+		{ "Power", math.floor(entry.power), palette.power },
+		{ "Hp", stats.hp, palette.ink },
+		{ "Atk", stats.atk, palette.ink },
+		{ "Spd", stats.spd, palette.ink },
 	} do
 		local cell = Instance.new("Frame")
 		cell.LayoutOrder = index
-		cell.BackgroundColor3 = UIStyle.PANEL
+		cell.BackgroundColor3 = palette.slotEmpty
 		cell.ZIndex = tiles.ZIndex + 1
 		cell.Parent = tiles
 		UIKit.corner(cell, 8)
-		UIKit.outline(cell, UIStyle.EDGE, 2)
+		UIKit.outline(cell, palette.rowEdge, 2)
 		Tooltip.icon(cell, stat[1] :: string)
 		local picture = Icon.make(cell, stat[1] :: string, UDim2.fromOffset(20, 20))
 		picture.AnchorPoint = Vector2.new(0, 0.5)
@@ -365,9 +409,9 @@ local function renderSelected(card: Card, entry: Entry?)
 	local toNext = BeastRules.getXpToNext(growth.level)
 	if toNext > 0 then
 		local xp = if beast then beast.xp else 0
-		barRow(selectedBox, 2, "Xp", xp / toNext, UIStyle.XP, `Lv {growth.level} -> {growth.level + 1}: {xp}/{toNext}`, WHITE)
+		barRow(selectedBox, 2, "Xp", xp / toNext, UIStyle.XP, `Lv {growth.level} -> {growth.level + 1}: {xp}/{toNext}`, palette.ink)
 	else
-		barRow(selectedBox, 2, "Xp", 1, UIStyle.GOLD, "MAX LEVEL", UIStyle.HINT)
+		barRow(selectedBox, 2, "Xp", 1, UIStyle.GOLD, "MAX LEVEL", palette.hint)
 	end
 
 	local cost = BeastRules.getCondenseCost(growth.stars)
@@ -375,9 +419,9 @@ local function renderSelected(card: Card, entry: Entry?)
 		local main = { beast = beast ~= nil, foil = entry.foil, grade = entry.grade, stars = growth.stars }
 		local have = CondenseRules.countDuplicates(source.stacks(card.id), main)
 		local short = have < cost
-		barRow(selectedBox, 3, "Star", math.min(have / cost, 1), UIStyle.GOLD, `Next star: {have}/{cost} copies`, if short then UIStyle.BAD else UIStyle.GOOD)
+		barRow(selectedBox, 3, "Star", math.min(have / cost, 1), UIStyle.GOLD, `Next star: {have}/{cost} copies`, if short then palette.bad else palette.good)
 	else
-		barRow(selectedBox, 3, "Star", 1, UIStyle.GOLD, "Max stars", UIStyle.HINT)
+		barRow(selectedBox, 3, "Star", 1, UIStyle.GOLD, "Max stars", palette.hint)
 	end
 
 	local job = if beast then source.working()[beast.id] else nil
@@ -386,7 +430,7 @@ local function renderSelected(card: Card, entry: Entry?)
 		local line = hList(selectedBox, 22, 6)
 		line.LayoutOrder = 4
 		Icon.make(line, if job then "Job" else "Party", UDim2.fromOffset(20, 20)).ZIndex = line.ZIndex + 1
-		text(line, busy, UIKit.textSize("small"), UIStyle.HINT, true, true).AutomaticSize = Enum.AutomaticSize.X
+		text(line, busy, UIKit.textSize("small"), palette.hint, true, true).AutomaticSize = Enum.AutomaticSize.X
 	end
 end
 
@@ -462,13 +506,13 @@ local function showSlots()
 		local button = Instance.new("TextButton")
 		button.LayoutOrder = slot
 		button.Size = UDim2.new(1 / Party.PARTY_SIZE, -4, 1, 0)
-		button.BackgroundColor3 = UIStyle.ROW
+		button.BackgroundColor3 = palette.row
 		button.Text = ""
 		button.AutoButtonColor = true
 		button.ZIndex = slotsHolder.ZIndex + 1
 		button.Parent = slotsHolder
 		UIKit.corner(button, 10)
-		UIKit.outline(button, UIStyle.EDGE, 2)
+		UIKit.outline(button, palette.rowEdge, 2)
 		-- One column, centred: the card, its name, grade and level, Power, stat bars, then what the swap would do
 		local column = Instance.new("Frame")
 		column.BackgroundTransparency = 1
@@ -491,7 +535,7 @@ local function showSlots()
 		local beast = source.beasts()[partySlots[slot] or ""]
 		if outgoing and beast then
 			CardTips.art(column, outgoing.card, outgoing.foil, art).LayoutOrder = 0
-			local cardName = text(column, outgoing.card.name, UIKit.textSize("body"), WHITE, true, true)
+			local cardName = text(column, outgoing.card.name, UIKit.textSize("body"), palette.ink, true, true)
 			cardName.LayoutOrder = 1
 			cardName.TextXAlignment = Enum.TextXAlignment.Center
 			cardName.TextTruncate = Enum.TextTruncate.AtEnd
@@ -500,12 +544,12 @@ local function showSlots()
 			local grade = UIKit.pill(meta, beast.grade, UIStyle.GRADES[beast.grade] or UIStyle.GRADES.C)
 			grade.Size = UDim2.fromOffset(0, 18)
 			Tooltip.attach(grade, CardTips.gradeText(beast.grade))
-			text(meta, `Lv {beast.level}`, UIKit.textSize("small"), WHITE, true, true).AutomaticSize = Enum.AutomaticSize.X
+			text(meta, `Lv {beast.level}`, UIKit.textSize("small"), palette.ink, true, true).AutomaticSize = Enum.AutomaticSize.X
 			local power = centredRow(3)
 			local powerIcon = Icon.make(power, "Power", UDim2.fromOffset(18, 18))
 			powerIcon.ZIndex = power.ZIndex + 1
 			Tooltip.icon(powerIcon, "Power")
-			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("body"), UIStyle.POWER, true, true).AutomaticSize = Enum.AutomaticSize.X
+			text(power, tostring(math.floor(outgoing.power)), UIKit.textSize("body"), palette.power, true, true).AutomaticSize = Enum.AutomaticSize.X
 			if not phone then
 				for index, stat in { { "Hp", outgoing.stats.hp, reference.hp }, { "Atk", outgoing.stats.atk, reference.atk }, { "Spd", outgoing.stats.spd, reference.spd } } do
 					local row = UIKit.statRow(column, stat[1] :: string, CompareRules.share(stat[2] :: number, stat[3] :: number))
@@ -532,12 +576,12 @@ local function showSlots()
 			local strip = Instance.new("Frame")
 			strip.LayoutOrder = 9
 			strip.Size = UDim2.new(1, 0, 0, 2 * UIKit.textSize("small") + 12)
-			strip.BackgroundColor3 = if good then UIStyle.GOOD else UIStyle.BAD
+			strip.BackgroundColor3 = if good then palette.good else palette.bad
 			strip.BackgroundTransparency = 0.8
 			strip.ZIndex = column.ZIndex + 1
 			strip.Parent = column
 			UIKit.corner(strip, 8)
-			local swap = text(strip, CompareRules.swapText(incoming.card.name, incoming.power, outPower), UIKit.textSize("small"), if good then UIStyle.GOOD else UIStyle.BAD, true, true)
+			local swap = text(strip, CompareRules.swapText(incoming.card.name, incoming.power, outPower), UIKit.textSize("small"), if good then palette.good else palette.bad, true, true)
 			swap.TextXAlignment = Enum.TextXAlignment.Center
 			swap.TextWrapped = true
 			swap.Size = UDim2.fromScale(1, 1)
@@ -610,8 +654,8 @@ function CardDetailController.Refresh()
 	clear(pillRow)
 	UIKit.pill(pillRow, card.rarity, CardFace.getRarityColor(card.rarity)).LayoutOrder = 1
 	UIKit.pill(pillRow, card.element, Cards.ELEMENTS[card.element], nil, card.element).LayoutOrder = 2
-	UIKit.pill(pillRow, string.format("#%02d", card.number), UIStyle.ROW).LayoutOrder = 3
-	local copies = UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, UIStyle.ROW, nil, "Copies")
+	UIKit.pill(pillRow, string.format("#%02d", card.number), palette.row).LayoutOrder = 3
+	local copies = UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, palette.row, nil, "Copies")
 	copies.LayoutOrder = 4
 	Tooltip.icon(copies, "Copies")
 
@@ -676,51 +720,116 @@ function CardDetailController.SetPartySlots(slots: { [number]: string })
 	end
 end
 
--- A small window over the panel's button row (party slot or job)
-local function chooser(name: string, title: string, height: number): Frame
-	local frame = Instance.new("Frame")
-	frame.Name = name
-	frame.AnchorPoint = Vector2.new(0.5, 1)
-	frame.Position = UDim2.new(0.5, 0, 1, -66)
-	frame.Size = UDim2.new(1, -24, 0, height)
-	frame.BackgroundColor3 = UIStyle.PANEL
-	frame.Visible = false
-	frame.ZIndex = panel.ZIndex + 10
-	frame.Parent = panel
-	UIKit.corner(frame, 12)
-	UIKit.outline(frame, UIStyle.HINT, UIStyle.EDGE_THICKNESS)
-	local label = text(frame, title, UIKit.textSize("body"), WHITE, true, true)
-	label.Position = UDim2.fromOffset(12, 8)
-	label.Size = UDim2.new(1, -24, 0, 22)
-	label.TextTruncate = Enum.TextTruncate.AtEnd
-	return frame
+-- A job's speed word in its tone's colour, like the Jobs panel's: good green, bad red, anything else plain ink
+local function toneColor(tone: string): Color3
+	return if tone == "good" then palette.good elseif tone == "bad" then palette.bad else palette.ink
 end
 
--- A row of equal buttons across a chooser
-local function choiceButtons(frame: Frame, labels: { string }, onPick: (index: number) -> ()): { TextButton }
-	local buttons = {}
-	for index, label in labels do
-		local button = UIKit.button(frame, label, UIKit.Colors.Accent)
-		button.Position = UDim2.new((index - 1) / #labels, if index == 1 then 12 else 4, 0, 38)
-		button.Size = UDim2.new(1 / #labels, -16, 0, 52)
-		button.TextSize = UIKit.textSize("small")
-		button.TextWrapped = true
-		button.ZIndex = frame.ZIndex + 1
-		button.Activated:Connect(function()
-			frame.Visible = false
-			onPick(index)
-		end)
-		table.insert(buttons, button)
+-- One job in the Assign job picker: its picture, name, what it does and how fast this copy works it (the window's rows
+-- hover with the lilac edge: UIKit creamWindow)
+local function jobTile(parent: Instance, order: number, tile: JobRules.AssignTile)
+	local button = Instance.new("TextButton")
+	button.Name = tile.job
+	button.LayoutOrder = order
+	button.Size = UDim2.new(0.5, -5, 1, 0)
+	button.BackgroundColor3 = palette.row
+	button.Text = ""
+	button.ZIndex = (parent :: GuiObject).ZIndex + 1
+	button.Parent = parent
+	UIKit.corner(button, 16)
+	UIKit.outline(button, palette.rowEdge, 3)
+	-- The content stacks in an inner frame: a layout on the button itself would stack the hover's pieces in too
+	local content = Instance.new("Frame")
+	content.BackgroundTransparency = 1
+	content.Position = UDim2.fromOffset(8, 0)
+	content.Size = UDim2.new(1, -16, 1, 0)
+	content.ZIndex = button.ZIndex + 1
+	content.Parent = button
+	local stack = Instance.new("UIListLayout")
+	stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	stack.VerticalAlignment = Enum.VerticalAlignment.Center
+	stack.Padding = UDim.new(0, 3)
+	stack.SortOrder = Enum.SortOrder.LayoutOrder
+	stack.Parent = content
+	local picture = Icon.make(content, tile.icon, UDim2.fromOffset(56, 56))
+	picture.LayoutOrder = 1
+	picture.ZIndex = content.ZIndex + 1
+	local name = text(content, tile.job, UIKit.textSize("name"), palette.ink, true)
+	name.LayoutOrder = 2
+	name.Size = UDim2.new(1, 0, 0, UIKit.textSize("name") + 4)
+	name.TextXAlignment = Enum.TextXAlignment.Center
+	local words = text(content, tile.text, UIKit.textSize("small"), palette.inkSoft)
+	words.LayoutOrder = 3
+	words.Size = UDim2.new(1, 0, 0, 0)
+	words.AutomaticSize = Enum.AutomaticSize.Y
+	words.TextWrapped = true
+	words.TextXAlignment = Enum.TextXAlignment.Center
+	local speed = text(content, `Works: {tile.word}`, UIKit.textSize("small"), toneColor(tile.tone), true)
+	speed.LayoutOrder = 4
+	speed.Size = UDim2.new(1, 0, 0, UIKit.textSize("small") + 4)
+	speed.TextXAlignment = Enum.TextXAlignment.Center
+	button.Activated:Connect(function()
+		if jobTarget then
+			Remotes.AssignJob:FireServer(jobTarget, tile.job)
+		end
+		jobChooser.Visible = false
+	end)
+end
+
+-- Assign job (round 5, spec 2026-11-04-round5-design section 4, owner pick A "Two big tiles"): covers the panel under its
+-- band: "Assign job" and the slots used, one big tile per job for the chosen copy, and a pink Cancel
+local function showJobPicker()
+	local card, entry = currentCard, selectedEntry
+	if not card or not entry or not jobTarget then
+		return
 	end
-	local cancel = UIKit.iconButton(frame, "Cancel", "Close", UIKit.Colors.Secondary)
-	cancel.Position = UDim2.new(0, 12, 1, -56)
+	clear(jobChooser)
+	local band = header.AbsoluteSize.Y
+	jobChooser.Position = UDim2.new(0.5, 0, 0, band + 6)
+	jobChooser.Size = UDim2.new(1, -12, 1, -(band + 12))
+
+	local line = hList(jobChooser, 36, 8)
+	line.Position = UDim2.fromOffset(12, 10)
+	line.Size = UDim2.new(1, -24, 0, 36)
+	Icon.make(line, "Job", UDim2.fromOffset(30, 30)).ZIndex = line.ZIndex + 1
+	local title = text(line, "Assign job", UIKit.textSize("name"), palette.ink, true)
+	title.AutomaticSize = Enum.AutomaticSize.X
+	local slots = player:GetAttribute("JobSlots")
+	local used = player:GetAttribute("JobsUsed")
+	local slotsLine = text(jobChooser, `Job slots: {if typeof(used) == "number" then used else 0} / {if typeof(slots) == "number" then slots else 0} used`, UIKit.textSize("small"), palette.inkSoft, true)
+	slotsLine.AnchorPoint = Vector2.new(1, 0)
+	slotsLine.Position = UDim2.new(1, -12, 0, 18)
+	slotsLine.Size = UDim2.fromOffset(180, 20)
+	slotsLine.TextXAlignment = Enum.TextXAlignment.Right
+
+	local tiles = Instance.new("Frame")
+	tiles.Name = "Tiles"
+	tiles.BackgroundTransparency = 1
+	tiles.Position = UDim2.fromOffset(12, 54)
+	tiles.Size = UDim2.new(1, -24, 1, -(54 + 48 + 22))
+	tiles.ZIndex = jobChooser.ZIndex + 1
+	tiles.Parent = jobChooser
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.Padding = UDim.new(0, 10)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = tiles
+	local growth = growthOf(entry)
+	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, entry.grade)
+	for order, tile in JobRules.assignTiles(Jobs, stats.spd) do
+		jobTile(tiles, order, tile)
+	end
+
+	local cancel = UIKit.iconButton(jobChooser, "Cancel", "Close", UIKit.Colors.Danger)
+	cancel.AnchorPoint = Vector2.new(0.5, 1)
+	cancel.Position = UDim2.new(0.5, 0, 1, -10)
 	cancel.Size = UDim2.new(1, -24, 0, 48)
 	cancel.TextSize = UIKit.textSize("body")
-	cancel.ZIndex = frame.ZIndex + 1
+	cancel.ZIndex = jobChooser.ZIndex + 1
 	cancel.Activated:Connect(function()
-		frame.Visible = false
+		jobChooser.Visible = false
 	end)
-	return buttons
+	jobChooser.Visible = true
 end
 
 -- Builds the card view into the binder's panel; `from` lends the binder's data
@@ -729,20 +838,20 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	panel = Instance.new("Frame")
 	panel.Name = "CardDetail"
 	panel.AnchorPoint = Vector2.new(1, 0)
-	panel.BackgroundColor3 = UIStyle.PANEL
 	panel.ZIndex = 10
 	panel.Visible = false
 	panel.Active = true
 	panel.Parent = parent
-	UIKit.corner(panel, 16)
-	UIKit.outline(panel, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	UIKit.creamWindow(panel) -- the window turns cream; the big 3D card beside it keeps its look
+	palette = UIKit.colorsFor(panel)
 
 	header, nameLabel = UIKit.header(panel, "", "Cards")
 	header.ZIndex = panel.ZIndex + 1
 	nameLabel.ZIndex = header.ZIndex + 1
 	nameLabel.Size = UDim2.new(0.6, -18, 1, 0)
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	worthLabel = text(header, "", UIKit.textSize("body") + 2, UIStyle.MONEY, true, true)
+	worthLabel = text(header, "", UIKit.textSize("body") + 2, UIStyle.MONEY, true)
+	UIKit.outlined(worthLabel, 2) -- header text keeps its dark outline on the band
 	worthLabel.AnchorPoint = Vector2.new(1, 0)
 	worthLabel.Position = UDim2.new(1, -14, 0, 0)
 	worthLabel.Size = UDim2.new(0.4, -40, 1, 0)
@@ -770,22 +879,20 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	pillRow = hList(body, 26, 6)
 	pillRow.Name = "Pills"
 
-	copiesTitle = text(body, "Your copies, best first", UIKit.textSize("small"), UIKit.Colors.Subtext, true)
-	copiesTitle.Position = UDim2.fromOffset(0, 32)
-	copiesTitle.Size = UDim2.new(1, 0, 0, 18)
+	copiesTitle = text(body, "ALL COPIES, BEST FIRST", UIKit.textSize("small"), palette.hint, true)
+	copiesTitle.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
 
-	-- The chosen copy sits at the bottom of the body; the list fills what's left above it (and scrolls)
+	-- "This copy" sits at the top of the body in a gold box; the list fills what's left under it (and scrolls)
 	selectedBox = Instance.new("Frame")
 	selectedBox.Name = "Selected"
-	selectedBox.AnchorPoint = Vector2.new(0, 1)
-	selectedBox.Position = UDim2.fromScale(0, 1)
+	selectedBox.Position = UDim2.fromOffset(0, BOX_TOP)
 	selectedBox.Size = UDim2.new(1, 0, 0, 0)
 	selectedBox.AutomaticSize = Enum.AutomaticSize.Y
-	selectedBox.BackgroundColor3 = UIStyle.ROW
+	selectedBox.BackgroundColor3 = palette.row
 	selectedBox.ZIndex = body.ZIndex + 1
 	selectedBox.Parent = body
 	UIKit.corner(selectedBox, 10)
-	UIKit.outline(selectedBox, UIStyle.EDGE, 2)
+	UIKit.outline(selectedBox, UIStyle.GOLD, 3)
 	local boxPadding = Instance.new("UIPadding")
 	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
 		(boxPadding :: any)[side] = UDim.new(0, 8)
@@ -798,11 +905,10 @@ function CardDetailController.Build(parent: Frame, from: Source)
 
 	copiesList = Instance.new("ScrollingFrame")
 	copiesList.Name = "Copies"
-	copiesList.Position = UDim2.fromOffset(0, LIST_TOP)
 	copiesList.BackgroundTransparency = 1
 	copiesList.BorderSizePixel = 0
 	copiesList.ScrollBarThickness = 5
-	copiesList.ScrollBarImageColor3 = UIStyle.HINT
+	copiesList.ScrollBarImageColor3 = palette.hint
 	copiesList.CanvasSize = UDim2.new()
 	copiesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	copiesList.ZIndex = body.ZIndex + 1
@@ -818,11 +924,8 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	listPadding.PaddingLeft = UDim.new(0, LIST_PAD)
 	listPadding.PaddingRight = UDim.new(0, LIST_PAD + copiesList.ScrollBarThickness + 2)
 	listPadding.Parent = copiesList
-	local function fitList()
-		copiesList.Size = UDim2.new(1, 0, 1, -(listTop + selectedBox.AbsoluteSize.Y + GAP))
-	end
-	selectedBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitList)
-	fitList()
+	selectedBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeList)
+	placeList()
 
 	buttonRow = Instance.new("Frame")
 	buttonRow.Name = "Buttons"
@@ -842,7 +945,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 		return button
 	end
 	partyButton = bottomButton("Add to party", "Party", UIKit.Colors.Accent, 0)
-	jobButton = bottomButton("Give a job", "Job", UIKit.Colors.Secondary, 1)
+	jobButton = bottomButton("Assign job", "Job", UIKit.Colors.Secondary, 1)
 
 	-- Add to party: covers the panel; slot cards first, then the comparison for a filled slot
 	partyChooser = Instance.new("Frame")
@@ -850,14 +953,14 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	partyChooser.AnchorPoint = Vector2.new(0.5, 0.5)
 	partyChooser.Position = UDim2.fromScale(0.5, 0.5)
 	partyChooser.Size = UDim2.new(1, -12, 1, -12)
-	partyChooser.BackgroundColor3 = UIStyle.PANEL
+	partyChooser.BackgroundColor3 = palette.panel
 	partyChooser.Active = true
 	partyChooser.Visible = false
 	partyChooser.ZIndex = panel.ZIndex + 10
 	partyChooser.Parent = panel
 	UIKit.corner(partyChooser, 14)
-	UIKit.outline(partyChooser, UIStyle.HINT, UIStyle.EDGE_THICKNESS)
-	chooserTitle = text(partyChooser, "", UIKit.textSize("name"), WHITE, true, true)
+	UIKit.outline(partyChooser, UIStyle.GOLD, UIStyle.EDGE_THICKNESS)
+	chooserTitle = text(partyChooser, "", UIKit.textSize("name"), palette.ink, true, true)
 	chooserTitle.Position = UDim2.fromOffset(14, 8)
 	chooserTitle.Size = UDim2.new(1, -28, 0, 30)
 	chooserTitle.TextTruncate = Enum.TextTruncate.AtEnd
@@ -912,12 +1015,16 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	chooserHint.Position = UDim2.new(0, 14, 1, -10)
 	chooserHint.Size = UDim2.new(1, -(CHOOSER_BUTTON + 40), 0, 50)
 	chooserHint.TextWrapped = true
-	jobChooser = chooser("JobChooser", "Which job?", 150)
-	choiceButtons(jobChooser, Jobs.JOBS, function(index)
-		if jobTarget then
-			Remotes.AssignJob:FireServer(jobTarget, Jobs.JOBS[index])
-		end
-	end)
+	jobChooser = Instance.new("Frame")
+	jobChooser.Name = "JobPicker"
+	jobChooser.AnchorPoint = Vector2.new(0.5, 0)
+	jobChooser.BackgroundColor3 = palette.panel
+	jobChooser.Active = true
+	jobChooser.Visible = false
+	jobChooser.ZIndex = panel.ZIndex + 10
+	jobChooser.Parent = panel
+	UIKit.corner(jobChooser, 14)
+	UIKit.outline(jobChooser, palette.rowEdge, UIStyle.EDGE_THICKNESS)
 	partyButton.Activated:Connect(function()
 		if partyTarget then
 			jobChooser.Visible = false
@@ -928,7 +1035,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	jobButton.Activated:Connect(function()
 		if jobTarget then
 			partyChooser.Visible = false
-			jobChooser.Visible = true
+			showJobPicker()
 		end
 	end)
 

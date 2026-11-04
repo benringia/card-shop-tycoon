@@ -177,4 +177,16 @@ function CondenseRules.gradeCostToTop(grading: GradingConfig, grades: { string }
 	return total
 end
 
+-- The Condenser list's small line under a card's name and its bar's share (spec 2026-11-04-round4-design section 3):
+-- `owned` plain copies, `have` duplicates usable now, `need` duplicates for the next star (0 at max stars)
+function CondenseRules.rowLine(owned: number, have: number, need: number, ready: boolean): (string, number)
+	if need <= 0 then
+		return "Max stars", 1
+	end
+	if ready then
+		return `x{owned} · {need} copies for the next star`, 1
+	end
+	return `{have} of {need} copies`, math.clamp(have / need, 0, 1)
+end
+
 return CondenseRules

@@ -9,6 +9,23 @@ end
 
 local TEAL = band(Color3.fromRGB(54, 209, 196), Color3.fromRGB(26, 143, 158))
 
+-- The windows' cream & candy look (Config/CreamTheme, spec 2026-11-03-cream-windows-design) as Color3s
+local CreamTheme = require((script.Parent :: Instance):WaitForChild("CreamTheme"))
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+local creamHeaders = {}
+for name, colors in CreamTheme.headers do
+	creamHeaders[name] = band(rgb(colors.top), rgb(colors.bottom))
+end
+
+-- The cotton candy baby colours (Config/BabyColors, spec 2026-11-03-cotton-candy-ui-design) as Color3s
+local BabyColors = require((script.Parent :: Instance):WaitForChild("BabyColors"))
+local baby = {}
+for name, shades in BabyColors.COLORS do
+	baby[name] = { fill = rgb(shades.fill), light = rgb(shades.light), deep = rgb(shades.deep) }
+end
+
 return {
 	PANEL = Color3.fromRGB(27, 34, 51), -- window body
 	ROW = Color3.fromRGB(36, 45, 66), -- rows, tiles and stat cards on a window
@@ -57,4 +74,30 @@ return {
 	KEY_TINT_PRISM = Color3.fromRGB(235, 235, 255), -- the Hydra's key fragments (the others take their boss's element colour)
 	LONG_PRESS = 0.45, -- seconds a touch is held to show a tooltip
 	MIN_TAP = 48, -- px: the smallest button a finger gets (desktop-only buttons may be smaller)
+
+	-- Cream windows (UIKit.panel's default theme; the binder and fights keep the dark tokens above)
+	CREAM = {
+		BODY_TOP = rgb(CreamTheme.bodyTop),
+		BODY_BOTTOM = rgb(CreamTheme.bodyBottom),
+		ROW = rgb(CreamTheme.row),
+		ROW_EDGE = rgb(CreamTheme.rowEdge),
+		ROW_BASE = rgb(CreamTheme.rowBase),
+		SLOT_EMPTY = rgb(CreamTheme.slotEmpty),
+		INK = rgb(CreamTheme.ink),
+		INK_SOFT = rgb(CreamTheme.inkSoft),
+		HINT = rgb(CreamTheme.hint),
+		GOOD = rgb(CreamTheme.good),
+		BAD = rgb(CreamTheme.bad),
+		POWER = rgb(CreamTheme.power),
+		FAIR = rgb(CreamTheme.fair),
+		TRACK = rgb(CreamTheme.track),
+		OUTLINE = rgb(CreamTheme.outline),
+		OUTLINE_THICKNESS = CreamTheme.outlineThickness,
+		BUTTON_OUTLINE = CreamTheme.buttonOutline,
+		CORNER = CreamTheme.corner,
+		SHADOW = CreamTheme.shadow,
+		HEADERS = creamHeaders,
+	},
+	BABY = baby, -- { [name] = { fill, light, deep } }: pink, mint, sky, lilac, butter, peach, greyLilac, white
+	BABY_INK = rgb(BabyColors.INK),
 }

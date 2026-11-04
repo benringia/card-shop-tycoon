@@ -41,11 +41,6 @@ local LIST_WIDTH_SCALE = 0.55 -- listings table share of the panel width; detail
 local LISTING_ROW_HEIGHT = 64
 local DETAIL_FACE_SIZE = Vector2.new(120, 171)
 local TOOLTIP_WIDTH = 240
-local MARKET_COLORS = {
-	Under = Color3.fromRGB(120, 230, 120), -- at or under market: sells easily
-	Near = Color3.fromRGB(240, 200, 80), -- up to 1.5x market
-	Over = Color3.fromRGB(240, 110, 100), -- above that
-}
 local NEAR_MARKET_RATIO = 1.5
 
 local SEND_DELAY = 0.4 -- price taps are sent together once tapping stops
@@ -57,6 +52,7 @@ local KIND_DESCRIPTIONS = {
 local ShowcaseController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set when it's built
 local list: ScrollingFrame
 local detailPane: ScrollingFrame
 local tooltip: Frame
@@ -151,9 +147,7 @@ local function passesFilter(card: Card, foil: boolean): boolean
 end
 
 local STEP_BUTTON_WIDTH = 80
-local PRICE_BOX_COLOR = Color3.fromRGB(20, 20, 30)
-local PRICE_TEXT_COLOR = Color3.fromRGB(120, 230, 120)
-local STEP_BUTTON_COLOR = Color3.fromRGB(70, 110, 190)
+local STEP_BUTTON_COLOR = UIKit.Colors.Secondary -- other choices (sky in the cotton candy look)
 
 local function flush(token: number)
 	local part = casePart
@@ -203,8 +197,9 @@ local function placePriceBox(box: GuiObject)
 	box.Position = UDim2.fromOffset(STEP_BUTTON_WIDTH + 6, 0)
 	box.Size = UDim2.new(1, -2 * (STEP_BUTTON_WIDTH + 6), 1, 0)
 	box.BackgroundTransparency = 0
-	box.BackgroundColor3 = PRICE_BOX_COLOR
+	box.BackgroundColor3 = palette.row
 	UIKit.corner(box, 8)
+	UIKit.outline(box, palette.rowEdge, 2)
 end
 
 -- Everything about one listed card, read from its part
@@ -245,10 +240,11 @@ end
 
 local function getMarketColor(listing: Listing): Color3
 	local ratio = getMarketRatio(listing)
+	-- At or under market sells easily; up to NEAR_MARKET_RATIO is fair; above that is pricey
 	return if ratio <= 1 + 1e-6
-		then MARKET_COLORS.Under
-		elseif ratio <= NEAR_MARKET_RATIO then MARKET_COLORS.Near
-		else MARKET_COLORS.Over
+		then palette.good
+		elseif ratio <= NEAR_MARKET_RATIO then palette.fair
+		else palette.bad
 end
 
 local function describeGrowth(listing: Listing): string
@@ -305,7 +301,7 @@ local function makeListingRow(slot: number, selected: boolean): TextButton
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = slot
 	row.Size = UDim2.new(1, -6, 0, LISTING_ROW_HEIGHT)
-	row.BackgroundColor3 = UIKit.Colors.Row
+	row.BackgroundColor3 = palette.row
 	row.Text = ""
 	row.Parent = list
 	UIKit.corner(row, 8)
@@ -342,7 +338,7 @@ local function buildListingRow(listing: Listing, kind: string)
 	addRowLabel(row, name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + 104), 0, 20), Enum.Font.GothamBold, 15, UIKit.Colors.Text)
 	addRowLabel(row, describeGrowth(listing), UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 104), 0, 18), Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 
-	local price = addRowLabel(row, string.format("$%.2f", listing.price), UDim2.new(1, -100, 0, 6), UDim2.fromOffset(90, 24), Enum.Font.FredokaOne, 19, PRICE_TEXT_COLOR)
+	local price = addRowLabel(row, string.format("$%.2f", listing.price), UDim2.new(1, -100, 0, 6), UDim2.fromOffset(90, 24), Enum.Font.FredokaOne, 19, palette.good)
 	price.TextXAlignment = Enum.TextXAlignment.Right
 	local ratio = string.format("%d%% of market", math.round(getMarketRatio(listing) * 100))
 	local tag = addRowLabel(row, ratio, UDim2.new(1, -100, 0, 34), UDim2.fromOffset(90, 18), Enum.Font.GothamBold, 12, getMarketColor(listing))
@@ -411,14 +407,14 @@ local function buildPriceEditor(listing: Listing, kind: string, y: number): numb
 		box.Text = priceText
 		box.Font = Enum.Font.FredokaOne
 		box.TextSize = 22
-		box.TextColor3 = PRICE_TEXT_COLOR
+		box.TextColor3 = palette.good
 		box.FocusLost:Connect(function()
 			setTypedPrice(listing.slot, listing.card, listing.foil, listing.growth, box)
 		end)
 		box.Parent = stepper
 		placePriceBox(box)
 	else
-		local label = UIKit.label(stepper, priceText, Enum.Font.FredokaOne, 22, PRICE_TEXT_COLOR)
+		local label = UIKit.label(stepper, priceText, Enum.Font.FredokaOne, 22, palette.good)
 		label.TextXAlignment = Enum.TextXAlignment.Center
 		placePriceBox(label)
 	end
@@ -472,7 +468,7 @@ local function renderDetailPane(listings: { [number]: Listing }, kind: string, i
 	info.TextYAlignment = Enum.TextYAlignment.Top
 
 	local y = DETAIL_FACE_SIZE.Y + 16
-	local priceLine = UIKit.label(detailPane, string.format("Your price  $%.2f", listing.price), Enum.Font.FredokaOne, 22, PRICE_TEXT_COLOR)
+	local priceLine = UIKit.label(detailPane, string.format("Your price  $%.2f", listing.price), Enum.Font.FredokaOne, 22, palette.good)
 	priceLine.Position = UDim2.fromOffset(10, y)
 	priceLine.Size = UDim2.new(1, -20, 0, 28)
 	y += 34
@@ -533,7 +529,7 @@ end
 
 local function refreshFilterButtons()
 	for filter, button in filterButtons do
-		button.BackgroundColor3 = if filter == pickerFilter then UIKit.Colors.Accent else UIKit.Colors.Row
+		button.BackgroundColor3 = if filter == pickerFilter then UIKit.Colors.Accent else palette.row
 	end
 end
 
@@ -607,24 +603,12 @@ end
 
 local renderPicker: () -> ()
 
--- Hover only brightens a tile; selecting takes a click, so passing over other tiles never changes the choice
-local HOVER_COLOR = Color3.fromRGB(62, 62, 82)
-local function addHover(button: GuiButton)
-	local base = button.BackgroundColor3
-	button.MouseEnter:Connect(function()
-		button.BackgroundColor3 = HOVER_COLOR
-	end)
-	button.MouseLeave:Connect(function()
-		button.BackgroundColor3 = base
-	end)
-end
-
 -- Card face with grade/count and value underneath, so the grid stays readable
 local function buildPickerTile(entry: PickerEntry, order: number, selected: PickerEntry?, choose: (PickerEntry) -> ())
 	local tile = Instance.new("TextButton")
 	tile.Name = entry.key
 	tile.LayoutOrder = order
-	tile.BackgroundColor3 = UIKit.Colors.Row
+	tile.BackgroundColor3 = palette.row
 	tile.Text = ""
 	tile.Parent = pickerList
 	UIKit.corner(tile, 8)
@@ -651,7 +635,7 @@ local function buildPickerTile(entry: PickerEntry, order: number, selected: Pick
 	line.TextXAlignment = Enum.TextXAlignment.Center
 	line.TextTruncate = Enum.TextTruncate.AtEnd
 	local market = CardRules.getMarketValue(entry.card, entry.foil, growth.level, growth.stars, growth.grade)
-	local value = UIKit.label(tile, string.format("$%.2f", market), Enum.Font.FredokaOne, 15, PRICE_TEXT_COLOR)
+	local value = UIKit.label(tile, string.format("$%.2f", market), Enum.Font.FredokaOne, 15, palette.good)
 	value.Position = UDim2.fromOffset(2, PICKER_FACE_HEIGHT + 24)
 	value.Size = UDim2.new(1, -4, 0, 18)
 	value.TextXAlignment = Enum.TextXAlignment.Center
@@ -659,7 +643,6 @@ local function buildPickerTile(entry: PickerEntry, order: number, selected: Pick
 	tile.Activated:Connect(function()
 		choose(entry)
 	end)
-	addHover(tile)
 end
 
 -- Every copy the player can list: levelled cards (most valuable first), then plain stacks rarest first,
@@ -752,7 +735,7 @@ openPicker = function(slot: number)
 end
 
 local function buildPicker(parent: Instance)
-	picker, pickerList = UIKit.panel(parent, "CardPicker", "Pick a card")
+	picker, pickerList = UIKit.panel(parent, "CardPicker", "Pick a card", "Cards")
 	picker:SetAttribute("Overlay", true) -- opens over the case's panel
 	picker.ZIndex = UIKit.PANEL_Z_INDEX + 1 -- over the case manager it opens from
 	-- Same size as the case manager so it covers it completely
@@ -781,15 +764,17 @@ local function buildPicker(parent: Instance)
 	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	chipLayout.Parent = chips
 	for index, filter in getPickerFilters() do
-		local chip = UIKit.button(chips, filter, UIKit.Colors.Row)
+		local chip = UIKit.button(chips, filter, palette.row)
 		chip.LayoutOrder = index
 		chip.Size = UDim2.fromOffset(FILTER_CHIP_WIDTH, 40)
 		chip.TextSize = 15
+		-- A rarity's chip (and the Frontier's) wears its colour as the ring: as text it doesn't read on white
 		local tier = Rarities.Tiers[filter]
-		if tier then
-			chip.TextColor3 = tier.color
-		elseif filter == FRONTIER_FILTER then
-			chip.TextColor3 = CardEffects.FRONTIER.AURORA[1]
+		local ringColor = if tier then tier.color elseif filter == FRONTIER_FILTER then CardEffects.FRONTIER.AURORA[1] else nil
+		for _, ring in chip:GetChildren() do
+			if ringColor and ring:IsA("UIStroke") and ring.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
+				ring.Color = ringColor
+			end
 		end
 		chip.Activated:Connect(function()
 			pickerFilter = filter
@@ -817,8 +802,8 @@ local function buildPicker(parent: Instance)
 	pickerPane.Name = "Details"
 	pickerPane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 112)
 	pickerPane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -124)
-	pickerPane.BackgroundColor3 = UIKit.Colors.Row
-	pickerPane.BackgroundTransparency = 0.4
+	pickerPane.BackgroundColor3 = palette.slotEmpty -- a deeper cream
+	pickerPane.BackgroundTransparency = 0
 	pickerPane.BorderSizePixel = 0
 	pickerPane.ScrollBarThickness = 4
 	pickerPane.CanvasSize = UDim2.new()
@@ -876,7 +861,8 @@ end
 function ShowcaseController.Start()
 	local screenGui = UIController.GetScreenGui()
 
-	panel, list = UIKit.panel(screenGui, "CardCase", "Cards")
+	panel, list = UIKit.panel(screenGui, "CardCase", "Cards", "Cards")
+	palette = UIKit.colorsFor(panel)
 	titleLabel = panel:FindFirstChild("Title") :: TextLabel
 	subtitle = UIKit.label(panel, "", Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
 	subtitle.Position = UDim2.fromOffset(16, 56)
@@ -894,8 +880,8 @@ function ShowcaseController.Start()
 	detailPane.Name = "Details"
 	detailPane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 84)
 	detailPane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -96)
-	detailPane.BackgroundColor3 = UIKit.Colors.Row
-	detailPane.BackgroundTransparency = 0.4
+	detailPane.BackgroundColor3 = palette.slotEmpty -- a deeper cream
+	detailPane.BackgroundTransparency = 0
 	detailPane.BorderSizePixel = 0
 	detailPane.ScrollBarThickness = 4
 	detailPane.CanvasSize = UDim2.new()

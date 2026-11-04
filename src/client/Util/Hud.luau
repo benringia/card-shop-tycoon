@@ -1,14 +1,20 @@
 --!strict
 -- The HUD layout, in one place: controllers register their buttons here instead of positioning them.
---   Side:    blue icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
---   Bottom:  blue icon tiles in a centred row (Cards, Bag); Context tiles (orange) join the row while visible.
+--   Side:    candy icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
+--   Bottom:  candy icon tiles in a centred row (Cards, Bag, Bosses); Context tiles (orange) join the row while visible.
+-- Each tile in the cotton candy look (Config/SoftHud, HudLayout.CANDY; spec 2026-11-03-cotton-candy-ui-design): a
+-- squircle in a baby colour with its icon popping out over the top edge and a squishy hover.
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
 -- Numbers: Config/HudLayout. Motion: Util/Motion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
 local UIMotion = require(Shared:WaitForChild("Config"):WaitForChild("UIMotion"))
+
+local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 
 local Util = script.Parent :: Instance
 local UIKit = require(Util:WaitForChild("UIKit"))
@@ -23,7 +29,6 @@ export type TileSpec = {
 	key: string?,
 	group: Group,
 	order: number,
-	color: Color3?,
 	onClick: () -> (),
 }
 export type FanSpec = { id: string, icon: string, label: string, order: number, onClick: () -> () }
@@ -39,59 +44,264 @@ local tiles: { [string]: TextButton } = {}
 local fanButtons: { { order: number, button: TextButton } } = {}
 local screen: ScreenGui
 local scaled: { { scale: UIScale, min: number } } = {}
+local TILE = SoftHud.TILE
+local SQUISH = SoftHud.SQUISH
+local resets: { () -> () } = {} -- each tile's way back to rest (Hud.setHidden: hidden rows get no MouseLeave)
 
-local function iconAndLabel(button: GuiButton, icon: string, label: string, iconHeight: number)
-	local holder = Icon.make(button, icon, UDim2.fromScale(1, iconHeight))
-	holder.Position = UDim2.fromScale(0, 0.05)
-
-	local text = Instance.new("TextLabel")
-	text.Name = "Label"
-	text.BackgroundTransparency = 1
-	text.AnchorPoint = Vector2.new(0, 1)
-	text.Position = UDim2.fromScale(0, 0.96)
-	text.Size = UDim2.fromScale(1, 0.3)
-	text.Font = Enum.Font.FredokaOne
-	text.Text = label
-	text.TextScaled = true
-	text.TextColor3 = button.TextColor3
-	text.Parent = button
-	local limit = Instance.new("UITextSizeConstraint")
-	limit.MaxTextSize = 18
-	limit.Parent = text
-	button:GetPropertyChangedSignal("TextColor3"):Connect(function()
-		text.TextColor3 = button.TextColor3
-	end)
-end
-
-local function addKeyChip(button: GuiButton, key: string)
+-- The key letter in a small white circle on the tile's bottom-right corner
+local function addKeyChip(button: GuiObject, key: string)
 	local chip = Instance.new("TextLabel")
 	chip.Name = "Key"
-	chip.AnchorPoint = Vector2.new(1, 1)
-	chip.Position = UDim2.new(1, 10, 1, 10) -- just off the corner, clear of the label
-	chip.Size = UDim2.fromOffset(24, 24)
-	chip.BackgroundColor3 = HudLayout.KEY_CHIP
+	chip.AnchorPoint = Vector2.new(0.5, 0.5)
+	chip.Position = UDim2.new(1, -TILE.keyInset, 1, -TILE.keyInset)
+	chip.Size = UDim2.fromOffset(HudLayout.KEY_SIZE, HudLayout.KEY_SIZE)
+	chip.BackgroundColor3 = Color3.new(1, 1, 1)
 	chip.Font = Enum.Font.FredokaOne
 	chip.Text = key
 	chip.TextSize = 14
-	chip.TextColor3 = Color3.new(1, 1, 1)
-	chip.ZIndex = button.ZIndex + 2
+	chip.TextColor3 = HudLayout.KEY_CHIP
+	chip.ZIndex = 7
 	chip.Parent = button
-	UIKit.corner(chip, 6)
-	UIKit.outline(chip, Color3.new(1, 1, 1), 1.5)
+	UIKit.corner(chip, HudLayout.KEY_SIZE / 2)
 end
 
--- A blue (or given colour) square with a soft top-to-bottom gradient, icon above the label
-local function makeTile(parent: Instance, spec: TileSpec): TextButton
-	local color = spec.color or (if spec.group == "Context" then HudLayout.CONTEXT else HudLayout.TILE)
-	local tile = UIKit.button(parent, "", color)
+type Candy = { top: Color3, bottom: Color3, deep: Color3 }
+
+local function gradientOf(candy: Candy, shade: number): ColorSequence
+	local black = Color3.new(0, 0, 0)
+	return ColorSequence.new(candy.top:Lerp(black, shade), candy.bottom:Lerp(black, shade))
+end
+
+-- A piece of the tile (its body or face), `z` among its siblings
+local function piece(parent: Instance, name: string, z: number): Frame
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.BorderSizePixel = 0
+	frame.ZIndex = z
+	frame.Parent = parent
+	return frame
+end
+
+-- The icon's shadow is a dark, faded copy of its picture (an emoji icon gets none)
+local function shadeIcon(holder: GuiObject)
+	local glyph = holder:FindFirstChild("Glyph")
+	if glyph and glyph:IsA("ImageLabel") then
+		glyph.ImageColor3 = Color3.new(0, 0, 0)
+		glyph.ImageTransparency = TILE.iconShadow.transparency
+		holder.Visible = true
+	else
+		holder.Visible = false
+	end
+end
+
+-- Switches a tile's icon (and its shadow) to another picture: Manage turns into Close
+local function setTileIcon(tile: GuiObject, icon: string)
+	local body = tile:FindFirstChild("Body")
+	if not body then
+		return
+	end
+	local picture = body:FindFirstChild("Icon")
+	local shadow = body:FindFirstChild("IconShadow")
+	if picture and picture:IsA("GuiObject") then
+		Icon.set(picture, icon)
+		local glyph = picture:FindFirstChild("Glyph")
+		if glyph and glyph:IsA("GuiObject") then
+			glyph.ZIndex = picture.ZIndex
+		end
+	end
+	if shadow and shadow:IsA("GuiObject") then
+		Icon.set(shadow, icon)
+		shadeIcon(shadow)
+	end
+end
+
+-- A tile in the cotton candy look (spec 2026-11-03-cotton-candy-ui-design, tile pick 1): a transparent button holding
+-- a soft glow in its colour and a body (anchored at its bottom centre, so it squashes and hops from there) with the
+-- squircle face (gradient, white outline), the big icon over the top edge with its shadow, the label and the key
+-- circle. `candy` is the tile's colours (HudLayout.CANDY / CANDY_FAN). Hover plays SoftHud.SQUISH (mouse only); a
+-- press squashes it flat and springs back; the hovered or pressed tile draws over its neighbours.
+local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextButton
+	local width = HudLayout.TILE_SIZE.X
+	local tile = Instance.new("TextButton")
 	tile.Name = spec.id
 	tile.LayoutOrder = spec.order
-	tile.Size = UDim2.fromOffset(HudLayout.TILE_SIZE.X, HudLayout.TILE_SIZE.Y)
-	iconAndLabel(tile, spec.icon, spec.label, 0.5)
+	tile.Size = UDim2.fromOffset(width, HudLayout.TILE_SIZE.Y)
+	tile.BackgroundTransparency = 1
+	tile.AutoButtonColor = false
+	tile.Text = ""
+	tile.TextColor3 = Color3.new(1, 1, 1)
+	tile.Parent = parent
+
+	local glow = UIKit.glow(tile, candy.bottom, width * TILE.corner, TILE.glow.drop, TILE.glow.transparency)
+	glow.ZIndex = 1
+	local body = piece(tile, "Body", 2)
+	body.BackgroundTransparency = 1
+	body.AnchorPoint = Vector2.new(0.5, 1)
+	body.Position = UDim2.fromScale(0.5, 1)
+	body.Size = UDim2.fromScale(1, 1)
+	local face = piece(body, "Face", 3)
+	face.Size = UDim2.fromScale(1, 1)
+	face.BackgroundColor3 = Color3.new(1, 1, 1)
+	UIKit.corner(face, width * TILE.corner)
+	local fill = Instance.new("UIGradient")
+	fill.Name = "Fill"
+	fill.Rotation = 90
+	fill.Color = gradientOf(candy, 0)
+	fill.Parent = face
+	UIKit.outline(face, Color3.new(1, 1, 1), HudLayout.OUTLINE)
+
+	-- The big icon popping out over the top edge, with its shadow just under it
+	local iconSize = UDim2.fromScale(TILE.icon, TILE.icon)
+	local shadow = Icon.make(body, spec.icon, iconSize)
+	shadow.Name = "IconShadow"
+	shadow.AnchorPoint = Vector2.new(0.5, 0)
+	shadow.Position = UDim2.new(0.5, 0, -TILE.iconRise, TILE.iconShadow.drop)
+	shadow.ZIndex = 4
+	shadeIcon(shadow)
+	local picture = Icon.make(body, spec.icon, iconSize)
+	picture.AnchorPoint = Vector2.new(0.5, 0)
+	picture.Position = UDim2.fromScale(0.5, -TILE.iconRise)
+	picture.ZIndex = 5
+	local glyph = picture:FindFirstChild("Glyph")
+	if glyph and glyph:IsA("GuiObject") then
+		glyph.ZIndex = picture.ZIndex
+	end
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Label"
+	label.BackgroundTransparency = 1
+	label.AnchorPoint = Vector2.new(0, 1)
+	label.Position = UDim2.fromScale(0, 0.95)
+	label.Size = UDim2.fromScale(1, TILE.label)
+	label.Font = Enum.Font.FredokaOne
+	label.Text = spec.label
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.ZIndex = 6
+	label.Parent = body
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = 18
+	limit.Parent = label
+	local edge = Instance.new("UIStroke")
+	edge.Color = candy.deep -- white words outlined in the tile's deep shade
+	edge.Thickness = 1.5
+	edge.Parent = label
 	if spec.key then
-		addKeyChip(tile, spec.key)
+		addKeyChip(body, spec.key)
 	end
 	tile.Activated:Connect(spec.onClick)
+
+	-- The squishy motion (SoftHud.SQUISH): each newer hover, leave or press cancels what's running, so a tile never
+	-- stays squashed or lifted
+	local hovered, pressed = false, false
+	local token = 0
+	local baseZ: number? = nil -- the tile's own ZIndex while it's lifted over its neighbours (the tray sets its later)
+	local function lift()
+		if not baseZ then
+			baseZ = tile.ZIndex
+			tile.ZIndex += 1
+		end
+	end
+	local function drop()
+		if baseZ then
+			tile.ZIndex = baseZ
+			baseZ = nil
+		end
+	end
+	local running: Tween? = nil
+	local function pose(x: number, y: number, lift: number, seconds: number, style: Enum.EasingStyle): Tween
+		local tween = TweenService:Create(body, TweenInfo.new(seconds, style, Enum.EasingDirection.Out), {
+			Size = UDim2.fromScale(x, y),
+			Position = UDim2.new(0.5, 0, 1, -lift),
+		})
+		running = tween
+		tween:Play()
+		return tween
+	end
+	local function settle()
+		token += 1
+		local last = SQUISH.steps[#SQUISH.steps]
+		if hovered then
+			pose(last.x, last.y, last.lift, SQUISH.release, Enum.EasingStyle.Back)
+		else
+			pose(1, 1, 0, SQUISH.release, Enum.EasingStyle.Back)
+		end
+		if hovered then
+			lift()
+		else
+			drop()
+		end
+	end
+	local function playHover()
+		token += 1
+		local mine = token
+		lift()
+		local function step(index: number)
+			local frame = SQUISH.steps[index]
+			if mine ~= token or not frame then
+				return
+			end
+			pose(frame.x, frame.y, frame.lift, frame.seconds, Enum.EasingStyle.Sine).Completed:Once(function(state)
+				if state == Enum.PlaybackState.Completed then
+					step(index + 1)
+				end
+			end)
+		end
+		step(1)
+	end
+	tile.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			hovered = true
+			if not pressed then
+				playHover()
+			end
+		end
+	end)
+	tile.MouseLeave:Connect(function()
+		hovered = false
+		pressed = false -- dragged off while held: the press ends here (its release lands elsewhere)
+		settle()
+	end)
+	tile.MouseButton1Down:Connect(function()
+		pressed = true
+		token += 1
+		lift()
+		local press = SQUISH.press
+		pose(press.x, press.y, 0, press.seconds, Enum.EasingStyle.Quad)
+	end)
+	local function release()
+		if pressed then
+			pressed = false
+			settle()
+		end
+	end
+	tile.MouseButton1Up:Connect(release)
+	tile.Activated:Connect(release)
+	-- A release anywhere ends a press too (a finger lifted off the tile, a mouse let go outside it)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			release()
+		end
+	end)
+	-- Hidden mid-motion (Drop and Rip hide right after a click; the binder hides the whole HUD): back to rest at once,
+	-- the running tween cancelled so it can't finish into a hovered pose while nobody sees it
+	local function rest()
+		hovered, pressed = false, false
+		token += 1
+		local tween = running
+		if tween then
+			tween:Cancel()
+		end
+		body.Size = UDim2.fromScale(1, 1)
+		body.Position = UDim2.fromScale(0.5, 1)
+		drop()
+	end
+	table.insert(resets, rest)
+	tile:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not tile.Visible then
+			rest()
+		end
+	end)
 	if spec.group == "Context" then
 		tile.Visible = false
 		tile:GetPropertyChangedSignal("Visible"):Connect(function()
@@ -108,12 +318,13 @@ local function setFan(open: boolean)
 	fanOpen = open
 	local tile = manageTile
 	if tile then
-		local icon = tile:FindFirstChild("Icon") :: Frame?
-		local label = tile:FindFirstChild("Label") :: TextLabel?
-		tile.BackgroundColor3 = if open then HudLayout.TILE_DARK else HudLayout.TILE
-		if icon then
-			Icon.set(icon, if open then "Close" else "Manage")
+		local label = tile:FindFirstChild("Label", true) :: TextLabel?
+		local face = tile:FindFirstChild("Face", true)
+		local fill = if face then face:FindFirstChild("Fill") else nil
+		if fill and fill:IsA("UIGradient") then
+			fill.Color = gradientOf(HudLayout.CANDY.Manage, if open then HudLayout.CANDY_OPEN_SHADE else 0)
 		end
+		setTileIcon(tile, if open then "Close" else "Manage")
 		if label then
 			label.Text = if open then "Close" else "Manage"
 		end
@@ -157,7 +368,7 @@ local function ensureManageTile()
 		onClick = function()
 			setFan(not fanOpen)
 		end,
-	})
+	}, HudLayout.CANDY.Manage)
 end
 
 -- How big the HUD draws on this screen (HudLayout.SCALE): 1 on roomy screens, smaller on short ones, at least min
@@ -193,7 +404,7 @@ function Hud.mount(screenGui: ScreenGui)
 	side.AutomaticSize = Enum.AutomaticSize.Y
 	side.Parent = screenGui
 	local sideList = Instance.new("UIListLayout")
-	sideList.Padding = UDim.new(0, HudLayout.GAP)
+	sideList.Padding = UDim.new(0, HudLayout.SIDE_GAP)
 	sideList.SortOrder = Enum.SortOrder.LayoutOrder
 	sideList.Parent = side
 
@@ -254,12 +465,12 @@ end
 
 function Hud.tile(spec: TileSpec): TextButton
 	local parent = if spec.group == "Side" then side else bottom
-	local tile = makeTile(parent, spec)
+	local tile = makeTile(parent, spec, HudLayout.CANDY[spec.id] or HudLayout.CANDY.Manage)
 	tiles[spec.id] = tile
 	return tile
 end
 
--- A blue tile in the Manage tray; tapping it also folds the tray away
+-- A tile in the Manage tray (HudLayout.CANDY_FAN colours by its order); tapping it also folds the tray away
 function Hud.fanButton(spec: FanSpec): TextButton
 	ensureManageTile()
 	local button = makeTile(fan, {
@@ -272,7 +483,7 @@ function Hud.fanButton(spec: FanSpec): TextButton
 			setFan(false)
 			spec.onClick()
 		end,
-	})
+	}, HudLayout.CANDY_FAN[(math.max(spec.order, 1) - 1) % #HudLayout.CANDY_FAN + 1])
 	button.ZIndex = fan.ZIndex + 1
 	table.insert(fanButtons, { order = spec.order, button = button })
 	return button
@@ -280,7 +491,7 @@ end
 
 function Hud.setLabel(id: string, text: string)
 	local tile = tiles[id]
-	local label = if tile then tile:FindFirstChild("Label") else nil
+	local label = if tile then tile:FindFirstChild("Label", true) else nil
 	if label and label:IsA("TextLabel") then
 		label.Text = text
 	end
@@ -302,6 +513,11 @@ function Hud.setHidden(reason: string, hidden: boolean)
 	bottom.Visible = show
 	for _, object in hideWithHud do
 		object.Visible = show
+	end
+	if not show then
+		for _, rest in resets do
+			rest()
+		end
 	end
 	if not show and fanOpen then
 		setFan(false)

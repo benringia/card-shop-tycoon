@@ -4,7 +4,7 @@
 -- SPD sets work speed, Power sets how often it makes a (time-only) mistake (Util/JobRules).
 -- Workers share the owner's boxes (StockService) and checkouts (RegisterService) through their worker
 -- APIs, so cash, XP, stats and saves are exactly as if the owner did the work.
--- Slots: 1 at shop level 10, +1 with the Extra Job Slot pass (MonetizationService). Saved as data.jobs.
+-- Slots: 1 at shop level Jobs.UNLOCK_LEVEL (20), +1 with the Extra Job Slot pass (MonetizationService). Saved as data.jobs.
 -- Workers earn XP each minute and only run while the owner is online.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -243,6 +243,7 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 
 	-- Cards with a creature model (Party.CREATURE_MODELS) are drawn by each client on this rig, which then only
 	-- walks (WorkerVisualController): hide it and lift the name over the creature
+	model:SetAttribute("BeastId", profile.beast.id) -- the level-up pillar finds the worker by it (LevelUpController)
 	local creature = Party.CREATURE_MODELS[profile.card.name]
 	local models = ReplicatedStorage:FindFirstChild("CreatureModels")
 	local pack = if creature and models then models:FindFirstChild(creature.pack) else nil

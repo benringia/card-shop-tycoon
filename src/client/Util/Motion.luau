@@ -1,5 +1,6 @@
 --!strict
--- Snappy UI motion: pop in / out, press squash and number bumps, all on a UIScale named "MotionScale".
+-- Snappy UI motion: pop in / out, press squash and number bumps, all on a UIScale named "MotionScale". Hover never
+-- scales anything (round 5): UIKit's noGreyHover lights a button up instead.
 -- A newer motion on the same object cancels the running one, so fast repeated taps never leave anything
 -- stuck half-scaled. Numbers: Config/UIMotion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -70,19 +71,23 @@ function Motion.reset(gui: GuiObject)
 	end
 end
 
--- Squashes while held, springs back on release
-function Motion.press(button: GuiButton)
+-- Squashes while held, springs back on release. `squishy` (the cotton candy buttons; round 5, spec
+-- 2026-11-04-round5-design section 1): a small quick squish and straight back, no bounce past full size.
+function Motion.press(button: GuiButton, squishy: boolean?)
 	local pressInfo = TweenInfo.new(UIMotion.PRESS_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local releaseInfo = TweenInfo.new(UIMotion.PRESS_SECONDS * 2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local releaseInfo = if squishy
+		then TweenInfo.new(UIMotion.SQUISH_RELEASE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		else TweenInfo.new(UIMotion.PRESS_SECONDS * 2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	button.MouseButton1Down:Connect(function()
 		if not closing[button] then
-			play(button, UIMotion.PRESS_SCALE, pressInfo)
+			play(button, if squishy then UIMotion.SQUISH_PRESS else UIMotion.PRESS_SCALE, pressInfo)
 		end
 	end)
 	local function release()
-		if not closing[button] and getScale(button).Scale < 1 then
-			play(button, 1, releaseInfo)
+		if closing[button] or getScale(button).Scale >= 1 then
+			return
 		end
+		play(button, 1, releaseInfo)
 	end
 	button.MouseButton1Up:Connect(release)
 	button.MouseLeave:Connect(release)

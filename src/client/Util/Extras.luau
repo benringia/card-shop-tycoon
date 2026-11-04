@@ -29,4 +29,10 @@ function Extras.enabled(): boolean
 	return watchdog.on and not lowGraphics()
 end
 
+-- Whether the player picked a low graphics level (not the watchdog): for cheap motion that should keep going through
+-- the hitches of arriving somewhere new (the portals' swirls)
+function Extras.lowGraphics(): boolean
+	return lowGraphics()
+end
+
 return Extras

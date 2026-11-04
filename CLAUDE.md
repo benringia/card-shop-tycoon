@@ -30,6 +30,13 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
 - `assets/ui/card-art` (one painting per card, `docs/card-art.md`; half-size copies in `assets/ui/card-art-small`, ids for both in `Config/CardArt`), `assets/ui/card-scenes` (one JPEG per element; ids for both in `Config/CardDesign`) and `assets/ui/packs` (pack fronts, ids in
   `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
+- `assets/ui/covers`: the binder's set cover paintings (creature-free, Figma-generated, 680 wide; ids in
+  `Config/BinderCovers`). Not synced by Rojo.
+- `assets/ui/mascot`: the HUD mascot's stickers (peek and tail; ids in `Config/HudMascot`), Figma-generated on flat green
+  and cut out by `tools/ui-art/cutout.py`; swapping the mascot: `docs/hud-mascot.md`. Not synced by Rojo.
+- `assets/ui/product-pictures`: the menus' pack and deck box pictures (Order Stock, Prices; ids in
+  `Config/ProductPictures`): the real models rendered big in a ViewportFrame on magenta, captured with the Studio MCP and
+  cut out by `tools/ui-art/cut_product_picture.py <capture> <out.png> [box]`, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
   `tools/ui-icons/slice_icons.py <sheet> <1-4>` (needs Pillow). Not synced by Rojo.
 - `assets/packs` → ReplicatedStorage.PackModels: the pack, deck box and display box (`Pack.rbxm`, `DeckBox.rbxm`,
@@ -51,6 +58,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   rigs"; no upload).
   `assets/ui/combat`: the boss-fight HUD's slanted buttons, HP bars and red hit flash and the closing rings
   (`tools/textures/make_slant_buttons.py`, `make_hp_bars.py`, `make_ring_textures.py`), uploaded as images, not synced.
+  `assets/ui/fx-levelup`: the level-up pillar's rune circle, beam and mote (white with alpha), rendered by
+  `tools/blender/build_levelup_fx.py` (source `assets/blender/LevelUpFx/`) and finished by
+  `tools/textures/make_levelup_fx.py`; uploaded as images, ids in `Config/LevelUpFx` IMAGES, not synced.
   `assets/ui/fx-attack`: the fight effects' white textures (glow, streak, bolt, slash, shard...), made by
   `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced. Particle
   textures must be square; a beam runs a texture's height along its length (the bolt is upright).
@@ -82,7 +92,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   recommended Power, three ways: no sword yet, standing still, fighting well (targets: normal about 12.5 s, well ~90%,
   still ~75%, the Meadow ~75% with no sword; elite 25-35 s, well ~65%)
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, ShopDetail: every shop screen sets a draw distance, PortalTrails,
+  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, DebuffRules, SwapKeys, SummonMotion, DefeatRules, PetVoice, MusicRules, XpPill, SparkPath, HudMascotRules, ContrastRules, SoftColors, SquishRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, LevelRemap, LevelUpRules, BinderCovers, OrderRules, LevelUpFxConfig, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, HoverRules, ProductPictureRules, ShopDetail: every shop screen sets a draw distance, PortalTrails,
   TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
@@ -114,8 +124,13 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 ## UI
 - Mobile-first: tap targets ≥ 48px, test landscape phone in the Device emulator.
 - Build UI in code with `src/client/Util/UIKit.luau`; card faces with `CardFace.luau`.
+- Windows are cotton candy (`UIKit.panel`'s default theme, still named "cream" in code; the binder passes "dark" plus
+  `softButtons`, fight screens never use it). Inside one, take colours from `UIKit.colorsFor(frame)` (no white text or
+  slate rows on it); a plain frame that acts as a window calls `UIKit.creamWindow`. Buttons there are soft
+  (`UIKit.isSoft`): pass the kit's named colours (`Colors.Accent`...) and they become baby colours. Colours live in
+  `Config/CreamTheme` and `Config/BabyColors`, checked by `tests/ContrastRules` and `tests/SoftColors`.
 - ScreenGuis made in code default to `ZIndexBehavior.Global`; set `Sibling` (MainGui does) or a raised panel hides its own children.
-- Fonts: FredokaOne (titles, buttons) and Nunito Bold (body), applied by `Util/FontStyle` (code may keep naming Gotham). Fredoka does not load in Play.
+- Fonts: FredokaOne (titles, buttons) and Montserrat Bold (body; Nunito before 2026-11-03), applied by `Util/FontStyle` (code may keep naming Gotham). Fredoka does not load in Play.
 - Text: plain ASCII plus `·` and emoji only. Gotham/FredokaOne draw symbols like ✦ − ★ as empty boxes.
 - HUD buttons go through `Util/Hud` (Manage tray on the left, tiles at the bottom centre, context tiles for
   Drop/Rip), clear of the mobile thumbstick and jump button. Look and motion: `Util/UIKit`, `Util/Motion`.
@@ -146,7 +161,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   folder over `assets/creatures/Originals.rbxm`; Claude checks every model is in the synced pack before deleting the
   workspace copy. New card art (Figma, `docs/card-art.md`) when the design changes.
 - Studio-only chat commands (DevService; from the Studio MCP run them with
-  `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/testpack` (foil legendary),
+  `ServerStorage.DevCommand:Invoke(player, "/boss 1")`): `/cash <n>`, `/xp <n>`, `/level <n>`, `/setxp <n>` (XP total, down too), `/levelfx [level]` (the level-up pillar; 10, 20... the rainbow one), `/beastlevelfx` (on your summoned creature), `/levelsound <1-3> [volume]` (a level-up sound set, played once; 0: the default), `/testpack` (foil legendary),
   `/beastxp <n>`, `/givecard <number> <amount>` (plain copies for testing the Condenser), `/room <2-4>` (Dungeon window),
   `/jobslot` (toggle the Extra Job Slot pass in Studio), `/wild` (go to the wild map), `/rest` (wake resting
   cards), `/tire` (rest every party card but the summoned one, to lose a boss fight), `/elite` (an elite monster next to you), `/arena` (go to the arena stands), `/frontierdrop` (a Star Shard and a Frontier card),
@@ -154,7 +169,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   item), `/boss <1-6> [fight|group]` (to boss n's gate: in the main game's Wild valley its portal, in the Frontier its ring; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt; boss 7 is reached through the Dungeon run), `/crowd <0-60>` (players counted in every Wild valley biome on top of the real ones, to see its monsters grow), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
   max stars and Grade S, for testing fights), `/time <morning|afternoon|sunset|night|dawn>` (jump the town's day cycle),
-  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights).
+  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights), `/music <n> [volume]` (loop town music option n
+  from `Music.TOWN.options` over the ambience; `/music 0` for the normal tracks).
 - Admin panel (Studio only): the "Admin" tile on the left opens every dev command as a button (`Config/AdminPanel`,
   `AdminPanelController`, remote `DevPanel` handled only in Studio), plus +1/+10 of every item and Go/Fight/Group per boss.
 - Multiplayer: Test tab → Local Server, 2 players.

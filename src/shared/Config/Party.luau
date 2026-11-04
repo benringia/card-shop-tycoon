@@ -518,24 +518,115 @@ return {
 	SPARKLES_PER_STAR = 1,
 	GRADE_S_SPARKLES = 2,
 	MAX_OUTLINES = 31, -- Roblox draws at most 31 Highlights on a screen
+	-- A creature appearing, leaving and fainting (owner 2026-11-04; Util/SummonFx, Util/SummonMotion): a summon pops in
+	-- out of a ring and pillar of light over `pop` seconds when it was stamped (SummonedAt) at most `window` seconds ago;
+	-- an unsummon shrinks it away and a light flies back into its owner over `unsummon` seconds (the server waits that
+	-- long before removing it); a faint flashes, tips it over in `tip` seconds, spins dizzy stars for `stars` seconds,
+	-- then it fades in a puff over `fade` seconds (and comes back when the fight is over)
+	SUMMON_FX = { window = 1.5, pop = 0.4, pillar = 9, unsummon = 0.45, tip = 0.3, stars = 1.3, fade = 0.4 },
+	-- Their sounds (owner 2026-11-04; Pro Sound Effects, Roblox-licensed), played where the creature is, at a steady pitch:
+	-- one soft bell ding as it pops up (the owner found the first chime cluster loud and busy: "subtle, premium"), a
+	-- quiet airy whoosh as it flies back into you. Volume is the Sound's own; range in studs.
+	SUMMON_SOUNDS = {
+		summon = { id = "rbxassetid://9116395089", volume = 0.1, pitch = 1 }, -- "Quiet twinkle cluster" (owner's pick 2026-11-04): PSE "Magic Glows Soft Clusters Of Chiming Hits 4"
+		unsummon = { id = "rbxassetid://9117962385", volume = 0.1, pitch = 1 }, -- "Soft magic fade" (owner's pick 2026-11-04): PSE "Pulsing Tone Smooth Mid Range Synth Tone 3"
+		range = 60,
+		-- Sounds for the owner to choose from (2026-11-03): in Studio "/summonsound <n> [volume]" and
+		-- "/unsummonsound <n> [volume]" (or the admin panel) play option n and use it for your summons until "<cmd> 0"
+		options = {
+			summon = {
+				{ name = "Soft bell ding", id = "rbxassetid://9126073001", volume = 0.16, pitch = 0.82 }, -- PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 4"
+				{ name = "Long bell ring", id = "rbxassetid://9126073318", volume = 0.14, pitch = 0.9 }, -- PSE "... Bell Tone Ding 1"
+				{ name = "Echo sparkle ping", id = "rbxassetid://9126076030", volume = 0.14, pitch = 0.85 }, -- PSE "Synth Sparkle Tone High Pitch Tone Burst Ping 4"
+				{ name = "Airy magic swell", id = "rbxassetid://9117964708", volume = 0.12, pitch = 1 }, -- PSE "Pulsing Tone Smooth Mid Range Synth Tone 10"
+				{ name = "Quiet twinkle cluster (now)", id = "rbxassetid://9116395089", volume = 0.1, pitch = 1 }, -- PSE "Magic Glows Soft Clusters Of Chiming Hits 4"
+			},
+			unsummon = {
+				{ name = "Airy whoosh", id = "rbxassetid://9116400132", volume = 0.18, pitch = 1 }, -- PSE "Magic Movement Airy Whips Swooshes 24"
+				{ name = "Short soft whoosh", id = "rbxassetid://9116401003", volume = 0.18, pitch = 1 }, -- PSE "... Swooshes 37"
+				{ name = "Quick swish", id = "rbxassetid://9116401192", volume = 0.18, pitch = 1 }, -- PSE "... Swooshes 38"
+				{ name = "Shimmer pass", id = "rbxassetid://9125646918", volume = 0.14, pitch = 1 }, -- PSE "Magic Whooshes Pass Bys Metallic Shimmering 7"
+				{ name = "Soft magic fade (now)", id = "rbxassetid://9117962385", volume = 0.1, pitch = 1 }, -- PSE "Pulsing Tone Smooth Mid Range Synth Tone 3"
+			},
+		},
+	},
+	-- Your summoned creature's voice (Util/PetVoice, owner 2026-11-04 "an occasional chirp"): small creatures chirp,
+	-- Epics and Legendaries huff; pitched lower the bigger they are; only you hear your own, nearby. It says hello
+	-- `hello` seconds after popping up.
+	VOICE = {
+		small = { "rbxassetid://9117237144", "rbxassetid://9117010372" }, -- PSE "Parakeet Chirps 8", "Mouse Vocal 3"
+		big = { "rbxassetid://9113989919" }, -- PSE "Creature Vocal Spider Hiss Exhale 1", pitched down: a big beast's huff
+		bigRarities = { Epic = true, Legendary = true },
+		every = { 18, 40 }, -- seconds between chirps
+		volume = 0.3,
+		range = 45, -- studs it carries (RollOffMaxDistance)
+		pitch = { min = 0.55, max = 1.3, vary = 0.08, power = 0.45 },
+		bounce = 0.08,
+		bounceSeconds = 0.3,
+		hello = 0.5,
+	},
+	-- Your summoned creature while you stand at the healing spring (Util/HealFx, owner 2026-11-04): a "+ Healing" pill over
+	-- its name, green plus signs float up off it, sparkles rise, a green light breathes on it, a ring ripples at its feet.
+	-- Seconds, studs; colour { r, g, b }.
+	HEAL_FX = {
+		color = { 90, 235, 120 },
+		plusEvery = 0.22,
+		plusLife = 1.2,
+		plusSize = 64, -- pixels, give or take a quarter
+		plusRise = 2.6,
+		sparkleRate = 10,
+		light = 2.5, -- PointLight brightness at the top of a breath
+		pulse = 1.4, -- seconds per breath
+		ringEvery = 1.6,
+	},
 	-- Each client draws your own creatures plus the nearest others (Util/CreatureCull), so a full server stays light
 	CULL = { drawDistance = 140, hideDistance = 170, maxDrawn = 30 }, -- studs from the camera; creatures
 	CULL_INTERVAL = 0.5, -- seconds between checks
 	ACTION_COOLDOWN = 0.5,
 
 	-- The quick party bar in the bottom-right corner (PartyBarController). Pixels; colours as { r, g, b }.
+	-- The creature pals look (spec 2026-11-03-hud-creature-pals-design): a cream cushion with round portraits in white
+	-- rings, the summoned one bigger with an orange ring; the mascot peeks over its top (Config/HudMascot)
 	BAR = {
-		AVATAR = 54,
-		SLOT = { 48, 66 }, -- a party card, width and height
-		GAP = 8,
-		RIM = 2.5,
-		LIFT = 1.12, -- the summoned card grows this much
+		PORTRAIT = 48, -- a party portrait's size
+		PORTRAIT_OUT = 56, -- the summoned one
+		HIT = 70, -- a portrait's (and the Party pill's) tap area: 48 px even at the smallest HUD scale (0.7)
+		-- The portrait's 3D rim (owner 2026-11-03, avatar pick b; spec 2026-11-03-cotton-candy-ui-design): a rim in the
+		-- creature's element colour (Config/BabyColors ELEMENTS) RIM px wide, its deep shade showing RIM_BASE px under it,
+		-- a thin white ring (INNER_RING px) round the picture, a dark fade over the picture's top SINK share (sunk in), a
+		-- shine across the top (a share of the portrait wide and tall, from TOP down, see-through). The summoned one also
+		-- sits RIM_BASE px higher.
+		RIM = 5,
+		RIM_BASE = 4,
+		INNER_RING = 2,
+		SINK = { depth = 0.45, transparency = 0.55 },
+		SHINE = { width = 0.62, height = 0.24, top = -0.02, transparency = 0.68 },
 		POP = 1.35, -- a card joining the party pops up this much, then settles
 		POP_SECONDS = 0.5,
 		NAME_WAIT = 2, -- seconds the "joined your party" toast waits for a new card's name to arrive with the binder
-		TRAY = { 22, 26, 38 },
-		TRAY_TRANSPARENCY = 0.1,
-		EMPTY = { 36, 42, 58 },
-		EMPTY_EDGE = { 70, 78, 100 },
+		CUSHION = { top = { 255, 246, 234 }, bottom = { 246, 223, 196 }, base = { 233, 201, 162 } },
+		OUTLINE = 4, -- the cushion's white outline
+		EMPTY = { 238, 220, 196 }, -- an empty slot's fill
+		EMPTY_EDGE = { 214, 188, 156 }, -- its faint ring
+		TEXT = { 107, 74, 42 }, -- brown words on cream (levels, Party, the "+")
+		OUT = { 255, 138, 58 }, -- the summoned portrait's ring, glow and tag
+		PARTY_PILL = { 52, 28 }, -- the "Party" pill, drawn inside its HIT-sized tap area
+		PILL_HOVER = { scale = 1.05, lift = 3, seconds = 0.3 }, -- a small hop under a mouse, like the HUD tiles
+		-- The XP sparks after a monster win (spec 2026-11-03-windows-round3-design, Util/SparkPath): min to max sparks per
+		-- portrait (more for more XP), each `seconds` on a curve bowed `lift` px up, `stagger` s apart, `size` px, lilac;
+		-- then "+N XP" pops over the portrait (`popText` px), rising `popRise` px over `popSeconds`
+		SPARKS = {
+			min = 3,
+			max = 6,
+			seconds = 0.9,
+			stagger = 0.07,
+			lift = 140,
+			size = 22,
+			color = { 180, 139, 255 },
+			popText = 16,
+			popRise = 26,
+			popSeconds = 1.2,
+			levelRoll = 0.4, -- seconds the level chip counts up from the old level once the sparks land
+		},
 	},
 }

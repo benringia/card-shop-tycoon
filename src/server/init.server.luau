@@ -33,6 +33,7 @@ local WelcomeService = require(Services:WaitForChild("WelcomeService"))
 local DevService = require(Services:WaitForChild("DevService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
+local LevelUpService = require(Services:WaitForChild("LevelUpService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -50,6 +51,7 @@ if Place.isDungeon() then
 	BossService.Start() -- the Prism Hydra's chamber
 	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
+	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 elseif Place.isFrontier() then
@@ -67,6 +69,7 @@ elseif Place.isFrontier() then
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
+	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 else
@@ -97,6 +100,7 @@ else
 	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals
 	SceneryService.Start() -- terrain round the town and in the portal areas (after TownService)
 	WelcomeService.Start() -- the first-visit welcome cinematic's saved flag (before DataService.Start)
+	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end

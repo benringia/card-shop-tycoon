@@ -8,7 +8,7 @@ return {
 		Restocker = { icon = "Shelves", text = "Carries boxes from the delivery pad to empty shelves" },
 		Cashier = { icon = "Register", text = "Scans customers' cards at the register" },
 	},
-	UNLOCK_LEVEL = 10, -- shop level for the first job slot
+	UNLOCK_LEVEL = 20, -- shop level for the first job slot
 	FREE_SLOTS = 1,
 	PASS_SLOTS = 1, -- extra slots from the Extra Job Slot game pass
 	XP_PER_MINUTE = 2, -- per working card, while the owner is online

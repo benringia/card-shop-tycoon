@@ -34,9 +34,7 @@ local MAIN_ROW_HEIGHT = 48 -- tap target minimum
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
-local VALUE_COLOR = Color3.fromRGB(120, 230, 120)
-local READY_COLOR = Color3.fromRGB(60, 200, 110)
-local GOLD = Color3.fromRGB(255, 205, 90)
+local READY_FILL = Color3.fromRGB(60, 200, 110) -- the READY chip on a row
 local SUBTITLE_TEXT = "Raise a card's grade with duplicates and cash. Grade S is the best."
 local LIST_TOP = 124 -- below the subtitle and the search row
 
@@ -45,6 +43,7 @@ local player = Players.LocalPlayer
 local GradingController = {}
 
 local panel: Frame
+local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local subtitle: TextLabel
 local list: ScrollingFrame
 local pane: ScrollingFrame
@@ -304,7 +303,7 @@ local function renderPane(card: Card?)
 		elseif useSeals and not plan and reason and string.sub(reason, 1, 5) == "short" then `🏅 Too few duplicates even with seals (max half a step)`
 		elseif useSeals then `🏅 Using Grading Seals (you have {sealCount})`
 		else `🏅 Use Grading Seals (you have {sealCount})`
-	local sealButton = UIKit.button(pane, sealText, if useSeals and hasSeals then UIKit.Colors.Accent else UIKit.Colors.Row)
+	local sealButton = UIKit.button(pane, sealText, if useSeals and hasSeals then UIKit.Colors.Accent else palette.row)
 	sealButton.Position = UDim2.fromOffset(8, y)
 	sealButton.Size = UDim2.new(1, -16, 0, 48)
 	sealButton.TextSize = 14
@@ -324,7 +323,7 @@ local function renderPane(card: Card?)
 		elseif useGold and plan then `🥇 A Gold Seal pays the {formatCash(plan.cash)} (you have {goldCount})`
 		elseif useGold then `🥇 Using a Gold Seal (you have {goldCount})`
 		else `🥇 Use a Gold Seal: pays the cash (you have {goldCount})`
-	local goldButton = UIKit.button(pane, goldText, if goldPays then UIKit.Colors.Accent else UIKit.Colors.Row)
+	local goldButton = UIKit.button(pane, goldText, if goldPays then UIKit.Colors.Accent else palette.row)
 	goldButton.Position = UDim2.fromOffset(8, y)
 	goldButton.Size = UDim2.new(1, -16, 0, 48)
 	goldButton.TextSize = 14
@@ -340,7 +339,7 @@ local function renderPane(card: Card?)
 	-- The whole way to Grade S from here
 	if nextGrade then
 		local top = CondenseRules.gradeCostToTop(GradingConfig, Beasts.GRADES, card.rarity, chosen.grade)
-		local path = addLabel(pane, `To Grade S: {top.copies} {if top.copies == 1 then "copy" else "copies"} + {formatCash(top.cash)} in all`, UDim2.fromOffset(10, y), UDim2.new(1, -20, 0, 20), Enum.Font.GothamBold, 13, GOLD)
+		local path = addLabel(pane, `To Grade S: {top.copies} {if top.copies == 1 then "copy" else "copies"} + {formatCash(top.cash)} in all`, UDim2.fromOffset(10, y), UDim2.new(1, -20, 0, 20), Enum.Font.GothamBold, 13, palette.hint)
 		path.TextXAlignment = Enum.TextXAlignment.Left
 		y += 26
 	end
@@ -354,7 +353,7 @@ local function renderPane(card: Card?)
 		local row = Instance.new("TextButton")
 		row.Position = UDim2.fromOffset(8, y)
 		row.Size = UDim2.new(1, -16, 0, MAIN_ROW_HEIGHT)
-		row.BackgroundColor3 = UIKit.Colors.Row
+		row.BackgroundColor3 = palette.row
 		row.Text = ""
 		row.Parent = pane
 		UIKit.corner(row, 8)
@@ -370,7 +369,7 @@ local function renderPane(card: Card?)
 			title ..= ` · x{candidate.count}`
 		end
 		addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, UIKit.Colors.Text)
-		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, VALUE_COLOR)
+		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
 		power.TextXAlignment = Enum.TextXAlignment.Right
 		row.Activated:Connect(function()
 			mainKey = candidate.key
@@ -392,7 +391,7 @@ local function buildCardRow(card: Card, order: number, ready: boolean)
 	local row = Instance.new("TextButton")
 	row.LayoutOrder = order
 	row.Size = UDim2.new(1, -6, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = UIKit.Colors.Row
+	row.BackgroundColor3 = palette.row
 	row.Text = ""
 	row.Parent = list
 	UIKit.corner(row, 8)
@@ -421,7 +420,7 @@ local function buildCardRow(card: Card, order: number, ready: boolean)
 			status ..= ` · {main.grade} -> {nextGrade}: {step.copies} + {formatCash(step.cash)}`
 		end
 	end
-	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then READY_COLOR else UIKit.Colors.Subtext)
+	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then palette.good else UIKit.Colors.Subtext)
 
 	if ready then
 		local chip = UIKit.label(row, "READY", Enum.Font.GothamBold, 12, UIKit.Colors.Text)
@@ -429,7 +428,7 @@ local function buildCardRow(card: Card, order: number, ready: boolean)
 		chip.Position = UDim2.new(1, -8, 0, 8)
 		chip.Size = UDim2.fromOffset(68, 20)
 		chip.TextXAlignment = Enum.TextXAlignment.Center
-		chip.BackgroundColor3 = READY_COLOR
+		chip.BackgroundColor3 = READY_FILL
 		chip.BackgroundTransparency = 0
 		UIKit.corner(chip, 6)
 	end
@@ -483,7 +482,7 @@ render = function()
 	subtitle.Text = if readyCount > 0
 		then `{readyCount} {if readyCount == 1 then "card" else "cards"} ready to grade · {SUBTITLE_TEXT}`
 		else SUBTITLE_TEXT
-	subtitle.TextColor3 = if readyCount > 0 then READY_COLOR else UIKit.Colors.Subtext
+	subtitle.TextColor3 = if readyCount > 0 then palette.good else palette.inkSoft
 	local selected: Card? = nil
 	for _, card in cards do
 		if card.id == selectedCardId then
@@ -536,6 +535,7 @@ end
 function GradingController.Start()
 	local screenGui = UIController.GetScreenGui()
 	panel, list = UIKit.panel(screenGui, "GradingStation", "🏅 Grading Station")
+	palette = UIKit.colorsFor(panel)
 	panel.Size = UDim2.fromScale(0.94, 0.86)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then
@@ -548,16 +548,17 @@ function GradingController.Start()
 	search.Name = "Search"
 	search.Position = UDim2.fromOffset(16, 82)
 	search.Size = UDim2.fromOffset(220, 34)
-	search.BackgroundColor3 = UIKit.Colors.Row
+	search.BackgroundColor3 = palette.row
 	search.ClearTextOnFocus = false
 	search.PlaceholderText = "Search name or #"
 	search.Text = ""
 	search.Font = Enum.Font.Gotham
 	search.TextSize = 14
-	search.TextColor3 = UIKit.Colors.Text
-	search.PlaceholderColor3 = UIKit.Colors.Subtext
+	search.TextColor3 = palette.ink
+	search.PlaceholderColor3 = palette.inkSoft
 	search.Parent = panel
 	UIKit.corner(search, 8)
+	UIKit.outline(search, palette.rowEdge, 2)
 	search:GetPropertyChangedSignal("Text"):Connect(function()
 		searchText = search.Text
 		render()
@@ -570,8 +571,8 @@ function GradingController.Start()
 	pane.Name = "Details"
 	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, LIST_TOP)
 	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -(LIST_TOP + 12))
-	pane.BackgroundColor3 = UIKit.Colors.Row
-	pane.BackgroundTransparency = 0.4
+	pane.BackgroundColor3 = palette.slotEmpty -- a deeper cream; its rows are white
+	pane.BackgroundTransparency = 0
 	pane.BorderSizePixel = 0
 	pane.ScrollBarThickness = 4
 	pane.CanvasSize = UDim2.new()

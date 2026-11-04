@@ -89,4 +89,21 @@ return {
 		expect.equal(ratio >= 1 and ratio <= 1.6, true, `ratio {ratio}`)
 		expect.equal(SwordRules.comboPowerPerSecond({}), 0)
 	end,
+
+	-- A dodge goes through foes (owner 2026-11-04): one that would end inside a boss or monster carries on out of it
+	["a dash ending inside a foe carries on out the other side"] = function()
+		expect.equal(SwordRules.dashLength(0, 0, 0, -1, {}, 12, 1, 24), 12, "nothing in the way")
+		local off = { { id = "b:m", x = 20, z = -12, radius = 4 } }
+		expect.equal(SwordRules.dashLength(0, 0, 0, -1, off, 12, 1, 24), 12, "a foe beside the path")
+		local passed = { { id = "b:m", x = 0, z = -5, radius = 3 } }
+		expect.equal(SwordRules.dashLength(0, 0, 0, -1, passed, 12, 1, 24), 12, "already out of it by the end")
+		local inside = { { id = "b:m", x = 0, z = -12, radius = 4 } }
+		expect.near(SwordRules.dashLength(0, 0, 0, -1, inside, 12, 1, 24), 17, 1e-9, "its far edge (16) plus the margin")
+		local offCentre = { { id = "b:m", x = 3, z = -10, radius = 5 } }
+		expect.near(SwordRules.dashLength(0, 0, 0, -1, offCentre, 12, 1, 24), 10 + 4 + 1, 1e-9, "the chord's far end")
+		local chain = { { id = "a", x = 0, z = -12, radius = 3 }, { id = "b", x = 0, z = -17, radius = 3 } }
+		expect.near(SwordRules.dashLength(0, 0, 0, -1, chain, 12, 1, 24), 21, 1e-9, "out of one, into the next, out of that")
+		local huge = { { id = "b:m", x = 0, z = -12, radius = 20 } }
+		expect.equal(SwordRules.dashLength(0, 0, 0, -1, huge, 12, 1, 24), 24, "never longer than the cap")
+	end,
 }

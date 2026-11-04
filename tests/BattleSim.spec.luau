@@ -26,6 +26,21 @@ local function side(list: { any }, canRun: boolean?): any
 	return { fighters = list, abilities = true, canRun = canRun == true }
 end
 
+-- A special move pressed and its wind-up waited out (combat.ABILITY_WINDUP): the move's events, or nil and why not
+local function castNow(state: any, id: string, which: string, owner: string?): ({ any }?, string?)
+	local pressed, why = BattleSim.useAbility(state, id, which, owner)
+	if not pressed then
+		return nil, why
+	end
+	local out = {}
+	for _, event in BattleSim.step(state, combat.ABILITY_WINDUP) do
+		if event.type == "ability" then
+			table.insert(out, event)
+		end
+	end
+	return out, nil
+end
+
 -- Runs until the fight ends (or max seconds); returns the result and every event
 local function runToEnd(state: any, maxSeconds: number?): (string?, { any })
 	local all = {}
@@ -371,7 +386,7 @@ return {
 					attack = attack or event
 				end
 			end
-			local used = BattleSim.useAbility(state, "a:a", "element") :: any
+			local used = castNow(state, "a:a", "element") :: any
 			local blast = firstOf(used, "ability")
 			return blast.damage, attack and attack.to
 		end
@@ -386,7 +401,7 @@ return {
 		state.sides.b.fighters[1].hp = 6900
 		BattleSim.step(state, 0.1)
 		state.sides.b.fighters[1].hp = 1
-		BattleSim.useAbility(state, "a:a", "element")
+		castNow(state, "a:a", "element")
 		expect.equal(state.result, "a", "the boss is down: win")
 	end,
 
@@ -398,7 +413,7 @@ return {
 		}, { fighters = { monster("Bloom", 100000, 1, 1) }, abilities = false, canRun = false }, 1)
 		state.sides.a.fighters[1].hp = 500
 		state.sides.a.fighters[2].hp = 500
-		BattleSim.useAbility(state, "a:p1", "element", "1")
+		castNow(state, "a:p1", "element", "1")
 		expect.equal(state.sides.a.fighters[1].hp, 750, "the Tide owner's creature is healed")
 		expect.equal(state.sides.a.fighters[2].hp, 500, "the other player's is not")
 	end,
@@ -560,10 +575,64 @@ return {
 		expect.equal((BattleSim.callIn(late, "a:b")), false, "window closed")
 	end,
 
+	-- A Pet button move or super move winds up first (owner 2026-11-04): everyone sees it coming
+	-- The defeat screen's numbers (owner 2026-11-04): what each of the player's fighters dealt
+	["damageBy: each of an owner's fighters' damage, its sword under its player id, swapped-out ones too"] = function()
+		local state = bossFightWithPlayer(25, 1, nil, { every = 1000, warning = 1, big = 0, quick = 0 }, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(state, 4)
+		BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword")
+		local dealt = BattleSim.damageBy(state, "1")
+		expect.equal((dealt["a:p1"] or 0) > 0, true, "the creature's attacks")
+		expect.equal((dealt["a:@1"] or 0) > 0, true, "the sword's hits")
+		expect.equal(next(BattleSim.damageBy(state, "2")), nil, "nobody else's")
+	end,
+
+	["a special move winds up first: a cast now, the move after the wind-up"] = function()
+		local state = wild(fighter("a", "Ember", 100, 10, 10), {}, monster("Volt", 5000, 1, 1), 5)
+		local events = BattleSim.useAbility(state, "a:a", "element") :: { any }
+		expect.equal(#events, 1)
+		expect.equal(events[1].type, "cast")
+		expect.equal(events[1].from, "a:a")
+		expect.equal(events[1].kind, "Fireball")
+		expect.equal(events[1].seconds, combat.ABILITY_WINDUP)
+		local early = BattleSim.step(state, combat.ABILITY_WINDUP - 0.1)
+		for _, e in early do
+			expect.equal(e.type == "ability", false, "not before the wind-up")
+		end
+		local fired = false
+		for _ = 1, 3 do
+			for _, e in BattleSim.step(state, 0.1) do
+				fired = fired or (e.type == "ability" and e.kind == "Fireball" and e.from == "a:a")
+			end
+		end
+		expect.equal(fired, true, "fires when the wind-up ends")
+		local _, why = BattleSim.useAbility(state, "a:a", "element")
+		expect.equal(why, "cooldown", "the cooldown started at the press")
+	end,
+
+	["a second press during the wind-up is refused, and a caster that faints never fires"] = function()
+		local state = wild(fighter("a", "Ember", 100, 10, 10), {}, monster("Volt", 5000, 1, 1), 5)
+		BattleSim.useAbility(state, "a:a", "signature")
+		BattleSim.useAbility(state, "a:a", "element")
+		local _, why = BattleSim.useAbility(state, "a:a", "element")
+		expect.equal(why, "cooldown")
+		local fainting = wild(fighter("a", "Ember", 1, 10, 10), {}, monster("Volt", 5000, 500, 40), 5)
+		local pressed = BattleSim.useAbility(fainting, "a:a", "element") :: { any }
+		expect.equal(pressed[1].type, "cast", "the press only starts the wind-up")
+		fainting.sides.a.fighters[1].fainted = true -- knocked out mid wind-up
+		local fired = false
+		for _ = 1, 20 do
+			for _, e in BattleSim.step(fainting, 0.1) do
+				fired = fired or (e.type == "ability" and e.from == "a:a")
+			end
+		end
+		expect.equal(fired, false, "fainted during the wind-up")
+	end,
+
 	["abilities: cooldown, Fireball hits hard, Wave heals"] = function()
 		local state = wild(fighter("a", "Ember", 100, 10, 10), { fighter("b", "Tide", 100, 10, 10) }, monster("Volt", 5000, 30, 10), 5)
 		BattleSim.callIn(state, "a:b")
-		local events = BattleSim.useAbility(state, "a:a", "element") :: { any }
+		local events = castNow(state, "a:a", "element") :: { any }
 		assert(events and events[1].damage >= 22, "Fireball ~2.5x ATK")
 		local again, reason = BattleSim.useAbility(state, "a:a", "element")
 		expect.isNil(again, "cooldown")
@@ -571,7 +640,7 @@ return {
 		for _ = 1, 30 do
 			BattleSim.step(state, 0.1)
 		end
-		local healEvents = BattleSim.useAbility(state, "a:b", "element") :: { any }
+		local healEvents = castNow(state, "a:b", "element") :: { any }
 		assert(healEvents and (healEvents[1].heal or 0) > 0, "Wave heals")
 		local none, why = BattleSim.useAbility(state, "a:a", "signature")
 		expect.isNil(none, "no signature")
@@ -676,14 +745,17 @@ return {
 		local spd = 10
 		local normal = CombatMathInterval(spd)
 		local state = wild(fighter("a", "Volt", 1e6, 1, spd), {}, monster("Tide", 1e9, 0, 1), 13)
-		-- Let the first normal attack land, then overcharge
+		-- Let the first normal attack land, then overcharge; count from the moment it fires (after its wind-up)
 		local times = {}
+		local firedAt: number? = nil
 		local t = 0
 		local charged = false
 		while #times < 7 and t < 60 do
 			for _, e in BattleSim.step(state, 0.01) do
 				if e.type == "attack" and e.from == "a:a" then
 					table.insert(times, state.time)
+				elseif e.type == "ability" and e.kind == "Overcharge" then
+					firedAt = state.time
 				end
 			end
 			t += 0.01
@@ -692,10 +764,15 @@ return {
 				BattleSim.useAbility(state, "a:a", "element")
 			end
 		end
+		assert(firedAt, "it fired")
 		local fast = 0
-		for i = 2, #times do
-			if times[i] - times[i - 1] < normal * 0.75 then
-				fast += 1
+		local previous = firedAt :: number
+		for _, time in times do
+			if time > (firedAt :: number) then
+				if time - previous < normal * 0.75 then
+					fast += 1
+				end
+				previous = time
 			end
 		end
 		expect.equal(fast, combat.ABILITIES.Volt.attacks, "fast attacks")
@@ -728,7 +805,7 @@ return {
 		local state = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 1, 1), fighter("x", "Ember", 1000, 1, 1) }), side({ fighter("e", "Volt", 1000, 1, 1) }), 22)
 		state.sides.a.fighters[2].hp = 500
 		state.sides.b.fighters[1].hp = 500
-		BattleSim.useAbility(state, "a:t", "element")
+		castNow(state, "a:t", "element")
 		expect.equal(BattleSim.getFighter(state, "a:x").hp, 750, "ally healed 25%")
 		expect.equal(BattleSim.getFighter(state, "b:e").hp, 500, "enemy not healed")
 	end,
@@ -1013,10 +1090,13 @@ return {
 		expect.equal(events[1].from, "a:@1")
 		local _, again = BattleSim.dodge(state, "1")
 		expect.equal(again, "cooldown")
-		runFor(state, 1.1)
+		runFor(state, 2.3)
+		local _, early = BattleSim.dodge(state, "1")
+		expect.equal(early, "cooldown", "still waiting at 2.3 s (owner 2026-11-04: a 2.5 s cooldown, so mashing Shift stops working)")
+		runFor(state, 0.3)
 		expect.equal(BattleSim.dodge(state, "1") ~= nil, true, "ready again after the cooldown")
 		BattleSim._hurtPlayer(state, "a:@1", 100)
-		runFor(state, 1.1)
+		runFor(state, combat.DODGE_COOLDOWN + 0.1)
 		local _, down = BattleSim.dodge(state, "1")
 		expect.equal(down, "down")
 	end,
@@ -1444,6 +1524,15 @@ return {
 		expect.equal(firstOf(events, "debuff"), nil, "quick hits never debuff")
 	end,
 
+	["a swipe ring gives its debuff like a slam"] = function()
+		for _, shape in { "swipe", "slam" } do
+			local attacks = { every = 2, warning = 1, big = 0.1, quick = 0, shape = shape, debuff = "Poison" }
+			local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+			local debuff = firstOf(runFor(state, 3.4), "debuff")
+			expect.equal(debuff ~= nil and debuff.kind, "Poison", shape)
+		end
+	end,
+
 	["poison ticks then ends"] = function()
 		local attacks = { every = 2, warning = 1, big = 0.1, quick = 0, debuff = "Poison" }
 		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
@@ -1475,6 +1564,25 @@ return {
 		end
 		expect.equal(debuffs >= 4, true, "every ring hit sends it again")
 		expect.equal(burns >= 7, true, "kept burning while refreshed")
+	end,
+
+	["playerDebuff says the player's debuff and its seconds left, nothing once it ends"] = function()
+		local attacks = { every = 2, warning = 1, big = 0.05, quick = 0, debuff = "Entangled" }
+		local state = bossFightWithPlayer(25, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		expect.isNil(BattleSim.playerDebuff(state, "1"), "none before a ring lands")
+		stepUntil(state, function(e)
+			return e.type == "debuff"
+		end, 5)
+		state.sides.b.fighters[1].bigReady = math.huge -- just the one ring
+		local kind, left = BattleSim.playerDebuff(state, "1")
+		expect.equal(kind, "Entangled")
+		expect.near(left :: number, Bosses.DEBUFFS.Entangled.seconds, 0.15, "the full time just after it lands")
+		runFor(state, 1)
+		local _, later = BattleSim.playerDebuff(state, "1")
+		expect.near(later :: number, Bosses.DEBUFFS.Entangled.seconds - 1, 0.15, "counts down")
+		runFor(state, Bosses.DEBUFFS.Entangled.seconds)
+		expect.isNil(BattleSim.playerDebuff(state, "1"), "gone once it ends")
+		expect.isNil(BattleSim.playerDebuff(state, "2"), "a player not in the fight has none")
 	end,
 
 	["Shocked blocks sword and dodge for its seconds"] = function()

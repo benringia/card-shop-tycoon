@@ -1,76 +1,72 @@
 --!strict
--- A product's picture on the left of a UIKit.row (Set Price, Prices, Order Stock): packs and deck boxes show their 3D
--- model (Util/PackModels, the one on the shelves and the opening stage) turned a little in a ViewportFrame, other
--- products their icon (Products icon). The row's text moves over to make room.
+-- A product's picture on the left of a UIKit.row (Set Price, Prices, Order Stock): packs and deck boxes show a sharp
+-- picture of the real model (round 5, spec 2026-11-04-round5-design section 6: Config/ProductPictures, rendered once
+-- and uploaded), fitted with air around it; a look with no picture yet, and other products, show their icon. The row's
+-- text moves over to make room.
 local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Packs = require(Shared:WaitForChild("Config"):WaitForChild("Packs"))
-local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
+local ProductPictures = require(Shared:WaitForChild("Config"):WaitForChild("ProductPictures"))
+local ProductPictureRules = require(Shared:WaitForChild("Util"):WaitForChild("ProductPictureRules"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 
-local FOOTPRINT = Vector2.new(38, 56) -- px, a pack's picture (the icons are 56 x 56)
-local TURN_DEGREES = 22 -- the model turns this far so its side shows
-local FIELD_OF_VIEW = 20
-local MARGIN = 1.06 -- the model fills the picture but for this much air
+local ICON_SIZE = 56 -- px, an icon's picture
 
 local ProductPicture = {}
 
 ProductPicture.WIDTH = 66 -- how far the row's text moves right
 
--- The model framed in a ViewportFrame: a camera in front of it (models face -Z) far enough back that it fits both ways
-local function modelPicture(row: Frame, model: Model): ViewportFrame
-	local view = Instance.new("ViewportFrame")
-	view.Name = "PackModel"
-	view.Size = UDim2.fromOffset(FOOTPRINT.X, FOOTPRINT.Y)
-	view.BackgroundTransparency = 1
-	view.Ambient = Color3.fromRGB(190, 190, 200)
-	view.LightColor = Color3.new(1, 1, 1)
-	view.LightDirection = Vector3.new(-0.6, -0.8, 1)
-	view.Parent = row
-	model:PivotTo(CFrame.Angles(0, math.rad(TURN_DEGREES), 0))
-	model.Parent = view
-	local centre, size = model:GetBoundingBox()
-	local halfTan = math.tan(math.rad(FIELD_OF_VIEW / 2))
-	local aspect = FOOTPRINT.X / FOOTPRINT.Y
-	local distance = math.max(size.Y / 2 / halfTan, size.X / 2 / (halfTan * aspect)) * MARGIN + size.Z / 2
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = FIELD_OF_VIEW
-	camera.CFrame = CFrame.lookAt(centre.Position - Vector3.new(0, 0, distance), centre.Position)
-	camera.Parent = view
-	view.CurrentCamera = camera
-	-- The menus are built at start, before the model's meshes and maps have loaded, and the ViewportFrame doesn't
-	-- redraw when they arrive (the pictures stayed blank): load them, then put the model back in to redraw it
+-- The uploaded picture, fitted inside AREA with MARGIN of air on every side, over the drawn icon that shows until the
+-- picture has downloaded (ProductPictureRules.showIcon: still processing, or rejected). Its fetch decides, not IsLoaded:
+-- that only turns true once the window draws it, and its change signal never fires (the icon stayed over the pack). The
+-- label itself is preloaded (an image id given as a string reports Failure), and only the picture's own fetch counts
+-- (the icon's glyph is fetched with it).
+local function picture(row: Frame, image: string, fallback: string): ImageLabel
+	local fit = ProductPictures.AREA - 2 * ProductPictures.MARGIN
+	local label = Instance.new("ImageLabel")
+	label.Name = "ProductPicture"
+	label.BackgroundTransparency = 1
+	label.Image = image
+	label.ScaleType = Enum.ScaleType.Fit
+	label.Size = UDim2.fromOffset(fit, fit)
+	label.ZIndex = row.ZIndex + 2
+	label.Parent = row
+	local icon = Icon.make(label, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.ZIndex = row.ZIndex + 1
 	task.spawn(function()
-		ContentProvider:PreloadAsync({ model })
-		if model.Parent == view then
-			model.Parent = nil
-			model.Parent = view
-		end
+		ContentProvider:PreloadAsync({ label }, function(content: string, status: Enum.AssetFetchStatus)
+			if content == image then
+				icon.Visible = ProductPictureRules.showIcon(status == Enum.AssetFetchStatus.Success)
+			end
+		end)
 	end)
-	return view
+	return label
 end
 
 function ProductPicture.add(row: Frame, productId: string, iconName: string): GuiObject
 	local pack = Packs.ById[productId]
-	local picture: GuiObject
+	local shown: GuiObject
 	if pack then
-		picture = modelPicture(row, if pack.kind == "Deck" then PackModels.deckBox(productId) else PackModels.pack(productId, "High"))
+		local image, fallback = ProductPictureRules.pick(ProductPictures, pack.look, if pack.kind == "Deck" then "Deck" else "Pack")
+		shown = if image then picture(row, image, fallback) else Icon.make(row, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
 	else
-		picture = Icon.make(row, iconName, UDim2.fromOffset(56, 56))
+		shown = Icon.make(row, iconName, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
 	end
-	picture.AnchorPoint = Vector2.new(0.5, 0.5)
-	picture.Position = UDim2.new(0, 38, 0.5, 0)
+	shown.AnchorPoint = Vector2.new(0.5, 0.5)
+	shown.Position = UDim2.new(0, 38, 0.5, 0)
 	for _, label in row:GetChildren() do
 		if label:IsA("TextLabel") then
 			label.Position += UDim2.fromOffset(ProductPicture.WIDTH, 0)
 			label.Size -= UDim2.fromOffset(ProductPicture.WIDTH, 0)
 		end
 	end
-	return picture
+	return shown
 end
 
 return ProductPicture

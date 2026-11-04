@@ -3,8 +3,10 @@
 -- the portals, tagged TownPortal, with a still panel named Vortex in the opening carrying, per face, a glowing core, the
 -- swirl and a smaller inner swirl). The swirls turn in their own plane (ImageLabel.Rotation; the inner one the other way,
 -- faster) and the core and the portal's light breathe (Util/PortalLooks.animate), so nothing tilts. Only while the
--- camera is within Town.PORTAL_FX.SPIN_RANGE and the extras are on (Util/Extras); otherwise the layers stand still,
--- still showing. The panels are looked up every frame (three portals), so a portal that streamed back in still moves.
+-- camera is within Town.PORTAL_FX.SPIN_RANGE and the player hasn't picked low graphics (Util/Extras.lowGraphics);
+-- otherwise the layers stand still, still showing. Not the frame watchdog: arriving somewhere new hitches for a few
+-- seconds, which switched it off and left the swirl you walked up to frozen (2026-11-04), and two image rotations cost
+-- next to nothing. The panels are looked up every frame, so a portal that streamed back in still moves.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -50,7 +52,7 @@ function PortalFxController.Start()
 	RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera.CFrame.Position
 		local now = os.clock()
-		local enabled = Extras.enabled()
+		local enabled = not Extras.lowGraphics()
 		for _, model in CollectionService:GetTagged(TAG) do
 			local part = model:FindFirstChild("Vortex")
 			local look = lookFor(model)

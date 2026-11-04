@@ -100,7 +100,7 @@ end
 
 local function build()
 	local screenGui = UIController.GetScreenGui()
-	panel, list = UIKit.panel(screenGui, "SetPrice", "Set Price")
+	panel, list = UIKit.panel(screenGui, "SetPrice", "Set Price", "Prices")
 	panel.Size = UDim2.fromOffset(460, 172)
 	local limit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then

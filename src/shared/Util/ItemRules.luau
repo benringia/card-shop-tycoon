@@ -68,4 +68,16 @@ function ItemRules.bossOf(itemId: string, ladder: { string }): (number?, ("fragm
 	return index, if kind == "fragment" then "fragment" else "trophy"
 end
 
+-- The pack a Bag item opens (its `open` product id), or nil for a non-string, unknown or non-openable id
+function ItemRules.openablePack(config: Config, itemId: any): string?
+	if typeof(itemId) ~= "string" then
+		return nil
+	end
+	local info = config.ITEMS[itemId]
+	if typeof(info) ~= "table" or typeof(info.open) ~= "string" then
+		return nil
+	end
+	return info.open
+end
+
 return ItemRules

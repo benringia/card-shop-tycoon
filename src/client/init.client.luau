@@ -21,6 +21,7 @@ local WelcomeController = require(Controllers:WaitForChild("WelcomeController"))
 local CondenserFxController = require(Controllers:WaitForChild("CondenserFxController"))
 local CaseSpinController = require(Controllers:WaitForChild("CaseSpinController"))
 local WorkerVisualController = require(Controllers:WaitForChild("WorkerVisualController"))
+local LevelUpController = require(Controllers:WaitForChild("LevelUpController"))
 local RegisterController = require(Controllers:WaitForChild("RegisterController"))
 local CarryController = require(Controllers:WaitForChild("CarryController"))
 local PackOpeningController = require(Controllers:WaitForChild("PackOpeningController"))
@@ -48,6 +49,7 @@ local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevea
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
+local TownMusicController = require(Controllers:WaitForChild("TownMusicController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
@@ -74,6 +76,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
+	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
 	end
@@ -87,6 +90,7 @@ else
 	ShelfInfoController.Start()
 	ButterflyController.Start()
 	DayCycleController.Start()
+	TownMusicController.Start() -- gentle music in the town, under the birds and the wind
 	TreeSwayController.Start()
 	TownCritterController.Start()
 	PlazaNpcController.Start()
@@ -122,4 +126,5 @@ else
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
+	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 end

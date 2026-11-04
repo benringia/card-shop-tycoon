@@ -14,7 +14,7 @@ local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance)
 
 local WorkerVisualController = {}
 
-type Worker = { rig: Model, root: BasePart, humanoid: Humanoid, feet: Part, body: CreatureVisuals.Body }
+type Worker = { rig: Model, root: BasePart, humanoid: Humanoid, feet: Part, body: CreatureVisuals.Body, height: number }
 
 local workers: { [Model]: Worker } = {}
 
@@ -65,7 +65,18 @@ local function add(rig: Instance)
 	feet.Parent = workspace
 	local height = math.max(CreatureVisuals.cardHeight(card.name, card.rarity), Jobs.CREATURE_MIN_HEIGHT)
 	local flying = CreatureVisuals.isFlying(card.name)
-	workers[rig] = { rig = rig, root = root, humanoid = humanoid, feet = feet, body = CreatureVisuals.build(model, feet, height, flying, template.Name) }
+	workers[rig] = { rig = rig, root = root, humanoid = humanoid, feet = feet, body = CreatureVisuals.build(model, feet, height, flying, template.Name), height = height }
+end
+
+-- The drawn model's root of the worker whose card is `beastId` (the rig's BeastId attribute) and its height, for the
+-- level-up pillar; nil when it isn't drawn here
+function WorkerVisualController.GetRootForBeast(beastId: string): (BasePart?, number?)
+	for rig, worker in workers do
+		if rig:GetAttribute("BeastId") == beastId and worker.body.root.Parent then
+			return worker.body.root, worker.height
+		end
+	end
+	return nil, nil
 end
 
 function WorkerVisualController.Start()

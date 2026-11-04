@@ -27,7 +27,7 @@ export type Side = {
 	perk: string?,
 }
 
-local WHITE = Color3.new(1, 1, 1)
+local WHITE = Color3.new(1, 1, 1) -- a bar's number, over its fill
 local LOSER = Color3.fromRGB(74, 82, 104)
 local SAME = Color3.fromRGB(110, 118, 140)
 
@@ -39,7 +39,9 @@ local function label(parent: Instance, value: string, size: number, color: Color
 	text.AutomaticSize = Enum.AutomaticSize.X
 	text.Size = UDim2.fromOffset(0, size + 4)
 	text.ZIndex = (parent :: GuiObject).ZIndex + 1
-	UIKit.outlined(text, 2)
+	if UIKit.themeOf(parent) ~= "cream" then
+		UIKit.outlined(text, 2) -- outlined light text on dark windows; cream windows' brown text needs none
+	end
 	return text
 end
 
@@ -91,6 +93,7 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 		end
 	end
 	local phone = UIKit.isPhone()
+	local palette = UIKit.colorsFor(holder)
 	-- One column; phones (short) get two side by side: the verdict and cards left, the bars and perk right
 	local function column(position: UDim2, size: UDim2): Frame
 		local frame = Instance.new("Frame")
@@ -125,7 +128,7 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 	local powerIcon = Icon.make(because, "Power", UDim2.fromOffset(18, 18))
 	powerIcon.ZIndex = because.ZIndex + 1
 	Tooltip.icon(powerIcon, "Power")
-	local sentence = label(because, CompareRules.powerLine(incoming.card.name, incoming.power, outgoing.power, outgoing.card.name), UIKit.textSize("small"), WHITE)
+	local sentence = label(because, CompareRules.powerLine(incoming.card.name, incoming.power, outgoing.power, outgoing.card.name), UIKit.textSize("small"), palette.ink)
 	sentence.LayoutOrder = 2
 	if phone then -- a narrow column: the sentence wraps
 		sentence.AutomaticSize = Enum.AutomaticSize.None
@@ -200,7 +203,7 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 		Tooltip.icon(outElement, outgoing.card.element)
 	end
 	local perkText = if incoming.perk then `perk: {incoming.perk}` elseif outgoing.perk then "you lose its perk" else "no perk"
-	local perkColor = if incoming.perk then UIStyle.HINT else UIStyle.BAD
+	local perkColor = if incoming.perk then palette.hint else palette.bad
 	if not phone then
 		label(line, `· {perkText}`, UIKit.textSize("small"), perkColor).LayoutOrder = 4
 		return

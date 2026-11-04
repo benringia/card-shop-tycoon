@@ -10,22 +10,25 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
+local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
+local Levels = require(Shared:WaitForChild("Config"):WaitForChild("Levels"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
+local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
+local SquishRules = require(Shared:WaitForChild("Util"):WaitForChild("SquishRules"))
+local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 local UIStyle = require(Shared:WaitForChild("Config"):WaitForChild("UIStyle"))
 
 local TOAST_SECONDS = 2.5
 local LEVEL_UP_TOAST_SECONDS = 5
-local XP_FILL_COLOR = Color3.fromRGB(90, 160, 255)
 local PILL_COLOR = Color3.fromRGB(22, 26, 38)
 local PILL_HEIGHT = 42
 local PILL_GAP = 8
-local ICON_SIZE = 48 -- the icon pokes out a little past the pill's top and bottom
-local XP_BAR_WIDTH = 140
+local ICON_SIZE = HudLayout.STATUS_ICON -- the coin and the star poke out past the pill's top and bottom
 -- Status sits in the bottom-right corner (the top corners hold Roblox's menu, chat and the player list). The
 -- column, bottom up: level + XP (in line with the party bar), cash, then the buff badge; money toasts pop
 -- in just above it. Touch screens: see TOUCH_TOP.
@@ -75,8 +78,11 @@ local sideToasts: Frame
 local sideToastOrder = 0
 local cashLabel: TextLabel
 local levelLabel: TextLabel
-local xpLabel: TextLabel
-local xpFill: Frame
+local xpAmount: TextLabel -- the XP into the level, big ("99,800 XP")
+local xpTotal: TextLabel -- the level's total, small ("/ 226,000")
+local xpFill: Frame -- the thin bar's fill
+local shownXp: number? = nil -- the XP into the level the pill shows now (it counts up to the real value)
+local countToken = 0
 local cashPill: Frame
 local levelBadge: Frame
 type Toast = {
@@ -112,19 +118,44 @@ end
 local function updateXp()
 	if typeof(player:GetAttribute("XP")) ~= "number" then
 		levelLabel.Text = ""
-		xpLabel.Text = "Loading your shop..."
+		xpAmount.Text = "Loading..."
+		xpTotal.Text = ""
 		xpFill.Size = UDim2.fromScale(0, 1)
 		return
 	end
 	local xp = getNumber("XP", 0)
 	local level = tostring(getNumber("Level", 1))
-	if levelLabel.Text ~= level and levelLabel.Text ~= "" then
+	local levelled = levelLabel.Text ~= level and levelLabel.Text ~= ""
+	if levelled then
 		Motion.bump(levelBadge)
 	end
 	levelLabel.Text = level
 	local into, span = LevelRules.getProgress(xp)
-	xpLabel.Text = `XP {into} / {span}`
-	xpFill.Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1)
+	xpTotal.Text = XpPill.total(span)
+	xpFill.Size = UDim2.fromScale(if span > 0 then math.clamp(into / span, 0, 1) else 1, 1)
+	-- The number counts up from what it shows (a newer change restarts from there; a new level starts from 0)
+	countToken += 1
+	local token = countToken
+	local from = if shownXp == nil or levelled then into else shownXp
+	if from == into or span <= 0 then
+		shownXp = into
+		xpAmount.Text = XpPill.amount(into, span)
+		return
+	end
+	local look = HudLayout.XP_PILL
+	local started = os.clock()
+	task.spawn(function()
+		while token == countToken do
+			local t = (os.clock() - started) / look.countSeconds
+			local value = XpPill.countUp(from, into, t)
+			shownXp = value
+			xpAmount.Text = XpPill.amount(value, span)
+			if t >= 1 then
+				break
+			end
+			task.wait()
+		end
+	end)
 end
 
 function UIController.GetScreenGui(): ScreenGui
@@ -283,9 +314,11 @@ local function showLevelUps()
 	while #levelUpQueue > 0 do
 		local level = table.remove(levelUpQueue, 1) :: number
 		local unlocks = LevelRules.getUnlocks(level)
-		local message = if #unlocks > 0
-			then `Level {level}! Unlocked: {table.concat(unlocks, ", ")}`
-			else `Level {level}!`
+		-- "Level 7! +$70 · Unlocked: Deck Box" (the reward is paid on the server, Util/LevelUpRules)
+		local message = `Level {level}! {LevelUpRules.rewardText(Levels, level)}`
+		if #unlocks > 0 then
+			message ..= ` · Unlocked: {table.concat(unlocks, ", ")}`
+		end
 		UIController.Notify(message, false, LEVEL_UP_TOAST_SECONDS)
 		task.wait(LEVEL_UP_TOAST_SECONDS)
 	end
@@ -343,29 +376,34 @@ local function addValue(pill: Frame, color: Color3): TextLabel
 	return value
 end
 
--- The status pills in the corner column: cash (a green candy pill with outlined white text) and the level (its
--- number on the star icon, the XP bar inside the pill) at the bottom, in line with the party bar
+-- The status pills in the corner column (spec 2026-11-03-hud-creature-pals-design): cash in a green pill with a big
+-- gold coin, and the level on a gold star in a white pill with the XP big and a thin bar under it (owner 2026-11-03,
+-- round 3 pick B; Config/HudLayout XP_PILL), at the bottom, in line with the party bar
 local function buildStatusPills()
 	local column = statusFrame
 
-	cashPill = makePill(column, 2, "Cash")
+	cashPill = makePill(column, 2, "Coin")
 	cashPill.Name = "Cash"
-	cashPill.BackgroundColor3 = UIStyle.GREEN
+	cashPill.BackgroundColor3 = Color3.new(1, 1, 1)
 	cashPill.BackgroundTransparency = 0
 	local edge = cashPill:FindFirstChildOfClass("UIStroke") :: UIStroke
-	edge.Color = UIStyle.EDGE
-	edge.Thickness = UIStyle.EDGE_THICKNESS
+	edge.Color = Color3.new(1, 1, 1)
+	edge.Thickness = HudLayout.OUTLINE
 	local shade = Instance.new("UIGradient")
 	shade.Rotation = 90
-	shade.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+	shade.Color = ColorSequence.new(HudLayout.CASH.top, HudLayout.CASH.bottom)
 	shade.Parent = cashPill
 	cashLabel = addValue(cashPill, Color3.new(1, 1, 1))
 	UIKit.outlined(cashLabel, 2)
 
-	-- The level number sits on the star icon; the XP bar fills the pill
+	-- The level number sits on the star; the XP fills the white pill
 	local levelAnchor
 	levelBadge, levelAnchor = makePill(column, 4, "Level")
 	levelBadge.Name = "Level"
+	levelBadge.BackgroundColor3 = Color3.new(1, 1, 1)
+	levelBadge.BackgroundTransparency = 0
+	local levelStroke = levelBadge:FindFirstChildOfClass("UIStroke") :: UIStroke
+	levelStroke.Color = HudLayout.PILL_EDGE
 	levelLabel = UIKit.label(levelAnchor:FindFirstChild("Icon") :: Frame, "", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
 	levelLabel.Size = UDim2.fromScale(1, 0.9)
 	levelLabel.Position = UDim2.fromScale(0, 0.08)
@@ -375,30 +413,57 @@ local function buildStatusPills()
 	levelEdge.Color = Color3.fromRGB(120, 70, 0)
 	levelEdge.Thickness = 2
 	levelEdge.Parent = levelLabel
-	local xpBar = Instance.new("Frame")
-	xpBar.Name = "XP"
-	xpBar.LayoutOrder = 2
-	xpBar.Size = UDim2.fromOffset(XP_BAR_WIDTH, 22)
-	xpBar.BackgroundColor3 = Color3.fromRGB(42, 48, 66)
-	xpBar.ClipsDescendants = true
-	xpBar.Parent = levelBadge
-	UIKit.corner(xpBar, 11)
+
+	-- The XP into the level big, the level's total small after it, a thin bar under them (Config/HudLayout XP_PILL)
+	local look = HudLayout.XP_PILL
+	local xp = Instance.new("Frame")
+	xp.Name = "Xp"
+	xp.LayoutOrder = 2
+	xp.BackgroundTransparency = 1
+	xp.Size = UDim2.fromOffset(look.width, look.amountText + look.gap + look.bar + 2)
+	xp.Parent = levelBadge
+	local numbers = Instance.new("Frame")
+	numbers.Name = "Numbers"
+	numbers.BackgroundTransparency = 1
+	numbers.Size = UDim2.new(1, 0, 0, look.amountText)
+	numbers.Parent = xp
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	row.Padding = UDim.new(0, 4)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = numbers
+	xpAmount = UIKit.label(numbers, "", Enum.Font.FredokaOne, look.amountText, look.ink)
+	xpAmount.Name = "Amount"
+	xpAmount.LayoutOrder = 1
+	xpAmount.TextWrapped = false
+	xpAmount.AutomaticSize = Enum.AutomaticSize.X
+	xpAmount.Size = UDim2.fromOffset(0, look.amountText)
+	xpTotal = UIKit.label(numbers, "", Enum.Font.FredokaOne, look.totalText, look.soft)
+	xpTotal.Name = "Total"
+	xpTotal.LayoutOrder = 2
+	xpTotal.TextWrapped = false
+	xpTotal.AutomaticSize = Enum.AutomaticSize.X
+	xpTotal.Size = UDim2.fromOffset(0, look.totalText + 1)
+	local track = Instance.new("Frame")
+	track.Name = "Bar"
+	track.Position = UDim2.fromOffset(0, look.amountText + look.gap)
+	track.Size = UDim2.new(1, 0, 0, look.bar)
+	track.BackgroundColor3 = look.track
+	track.BorderSizePixel = 0
+	track.ClipsDescendants = true
+	track.Parent = xp
+	UIKit.corner(track, look.bar)
 	xpFill = Instance.new("Frame")
 	xpFill.Name = "Fill"
-	xpFill.BackgroundColor3 = XP_FILL_COLOR
-	xpFill.BorderSizePixel = 0
 	xpFill.Size = UDim2.fromScale(0, 1)
-	xpFill.Parent = xpBar
-	UIKit.corner(xpFill, 11)
-	xpLabel = UIKit.label(xpBar, "", Enum.Font.FredokaOne, 13, Color3.new(1, 1, 1))
-	xpLabel.Position = UDim2.fromScale(0.05, 0.12)
-	xpLabel.Size = UDim2.fromScale(0.9, 0.76)
-	xpLabel.TextScaled = true
-	xpLabel.TextXAlignment = Enum.TextXAlignment.Center
-	xpLabel.ZIndex = 2
-	local fit = Instance.new("UITextSizeConstraint")
-	fit.MaxTextSize = 14
-	fit.Parent = xpLabel
+	xpFill.BackgroundColor3 = Color3.new(1, 1, 1)
+	xpFill.BorderSizePixel = 0
+	xpFill.Parent = track
+	UIKit.corner(xpFill, look.bar)
+	local shine = Instance.new("UIGradient")
+	shine.Color = ColorSequence.new(look.fillLeft, look.fillRight)
+	shine.Parent = xpFill
 end
 
 -- The bottom-right corner (PC). On a narrow window the party bar would reach over the bottom-centre tiles (Cards,
@@ -419,7 +484,8 @@ local function placeStatusRow(rowLayout: UIListLayout)
 	local rowLeft = width - STATUS_MARGIN - rowLayout.AbsoluteContentSize.X
 	local scale = Hud.scaleFor()
 	if rowLeft < tilesRight + STATUS_MARGIN then
-		bottom = math.max(bottom, HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y * scale + PILL_GAP)
+		-- Clear of the tiles' popped-out icons, hovered too (SquishRules.rowTop)
+		bottom = math.max(bottom, SquishRules.rowTop(SoftHud.TILE, SoftHud.SQUISH, HudLayout.BOTTOM_MARGIN, scale) + PILL_GAP)
 	end
 	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
 	if sideToasts then
@@ -430,7 +496,7 @@ end
 -- The toast's pieces (see Notify); one, reused
 local function buildToast()
 	-- Above the bottom HUD row; a canvas group so the whole toast fades as one
-	local home = UDim2.new(0.5, 0, 1, -(HudLayout.BOTTOM_MARGIN + HudLayout.TILE_SIZE.Y + 16))
+	local home = UDim2.new(0.5, 0, 1, -(SquishRules.rowTop(SoftHud.TILE, SoftHud.SQUISH, HudLayout.BOTTOM_MARGIN, 1) + 8)) -- over the icons
 	local root = Instance.new("CanvasGroup")
 	root.Name = "Toast"
 	root.AnchorPoint = Vector2.new(0.5, 1)
