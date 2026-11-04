@@ -53,7 +53,7 @@ return {
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while
 	-- you're in it, in place of the boss fights' drone (Bosses.MUSIC_ID, kept for the Frontier and the Dungeon). The
-	-- owner picked each by ear (2026-11-04) from its options, with its volume (turned down after the first listen),
+	-- owner picked each by ear (2026-11-04) from its options, with its volume (turned down twice after listening),
 	-- through the leveler; each loops. Each area
 	-- also plays a Pro Sound Effects ambient loop under its music, crossfading the same way (the arenas have theirs
 	-- in Config/WildValley ARENA_DRESSING).
@@ -63,13 +63,16 @@ return {
 				key = "meadow", -- light, bright adventure
 				tracks = { "rbxassetid://1841593944" }, -- Enchanted Kingdom (the owner's pick)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9113444532", volume = 0.3 }, -- Birds Peaceful 2: singing birds, light wind
+				-- Field Birds Tweeting 1: cicadas, birds, insects buzzing by, light tree movement. About half the music's level
+				-- (PlaybackLoudness ignores Volume, so what you hear ~ loudness x volume: this loop ~11 x 0.4 against the
+				-- music's ~90-150 x 0.1); the first pick, Birds Peaceful 2 (~4.6 x 0.3), was lost under the music.
+				ambient = { id = "rbxassetid://9112779471", volume = 0.4 },
 				options = {
 					option("Enchanted Kingdom (magical fantasy adventure)", "1841593944"),
 					option("Pastures Green (English pastoral orchestra)", "130182237855242"),
 					option("Fancytale (fantasy adventure)", "1848093905"),
 				},
-				volume = 0.16,
+				volume = 0.1,
 			},
 			{
 				key = "gorge", -- the caves: mysterious, echoey
@@ -81,19 +84,19 @@ return {
 					option("Curious Shadows (dark fantasy)", "1843503016"),
 					option("Lair of the Wizard (magical fantasy)", "1841594242"),
 				},
-				volume = 0.15,
+				volume = 0.1,
 			},
 			{
 				key = "ridge", -- Ember Ridge: foreboding, volcanic
 				tracks = { "rbxassetid://1835286723" }, -- Foreboding Volcano (the owner's pick)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9112823197", volume = 0.18 }, -- Lava Rumble 1: rumbling, bubbling lava (0.3 too loud)
+				ambient = { id = "rbxassetid://9112823197", volume = 0.12 }, -- Lava Rumble 1: rumbling, bubbling lava (0.3, 0.18 too loud)
 				options = {
 					option("Foreboding Volcano (orchestral landscape)", "1835286723"),
 					option("Under The Volcano", "9038165770"),
 					option("Mythic Mountain (dark fantasy, no percussion)", "1843501727"),
 				},
-				volume = 0.17,
+				volume = 0.12,
 			},
 		},
 		arenas = {
@@ -106,7 +109,7 @@ return {
 					option("Battle Of Wonderland (epic fantasy)", "1845108839"),
 					option("Combat Of Giants (epic adventure trailer)", "1839391532"),
 				},
-				volume = 0.13,
+				volume = 0.1,
 			},
 			{
 				key = "brood", -- the Cave Brood Queen's hollow: dark and creepy
@@ -117,7 +120,7 @@ return {
 					option("Ghastly Unknown (dark fantasy underscore)", "1843501883"),
 					option("The Dark Walk (epic battle)", "119847251210739"),
 				},
-				volume = 0.16,
+				volume = 0.13,
 			},
 			{
 				key = "colossus", -- the Ember Colossus' lava field: big and fiery
@@ -128,7 +131,7 @@ return {
 					option("The Heroic Battle of Giants (symphonic metal)", "9039352479"),
 					option("Fuel to the Fire (distorted eruption)", "1837843587"),
 				},
-				volume = 0.14,
+				volume = 0.1,
 			},
 		},
 		fade = 2.5, -- seconds to crossfade from one place's music to the next
