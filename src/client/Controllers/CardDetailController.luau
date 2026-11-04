@@ -2,8 +2,9 @@
 -- The binder's card view (spec 2026-10-29-collection-screens-ui-design.md 4.2): the 3D card on the left
 -- (CardInspectorController: tilt, Flip, Legendary aura, a BEST COPY ribbon while your best copy shows), and right
 -- beside it (the pair centred on the screen) a panel in the style kit: the name in a blue band with the worth, rarity / element / number / copies
--- pills, "Your copies" best first (the first one wears a gold BEST ribbon), the chosen copy's Power, HP, ATK and SPD
--- tiles, its XP and next-star bars, and Add to party / Give a job (a disabled button says why; the binder's X closes it). Icons without
+-- pills, then "This copy" first (round 5, owner pick A: the chosen copy's grade, level, stars and worth over its Power,
+-- HP, ATK and SPD tiles and its XP and next-star bars, in a gold box), "All copies, best first" under it (the first one
+-- wears a gold BEST ribbon), and Add to party / Assign job (a disabled button says why; the binder's X closes it). Icons without
 -- a label have word tooltips (Util/Tooltip). Add to party opens a chooser: "Who should X replace?" over the three
 -- slot cards (each saying how much more or less Power X has), then the comparison for a filled slot. The binder
 -- owns the data (Source) and builds this once into its panel.
@@ -60,7 +61,8 @@ local GAP = 8
 local ROW_HEIGHT = 52
 local PHONE_ROW_HEIGHT = 48 -- a tap target, never smaller
 local PHONE_HEADER = 44 -- phones: a slimmer band, no pills row (the card face shows rarity and element) and no list title
-local LIST_TOP = 54 -- the copies list starts under the pills and its title
+local BOX_TOP = 32 -- the chosen copy's box starts under the pills (phones: no pills, at the top)
+local TITLE_HEIGHT = 18 -- "ALL COPIES, BEST FIRST" over the copies list
 local CARD_GAP = 16 -- between the 3D card and the panel
 local LIST_PAD = 4 -- room inside the copies list for the chosen row's outline
 local CHOOSER_BUTTON = 130 -- the chooser's Cancel / Back: compact, on the right
@@ -78,7 +80,7 @@ local header: Frame
 local body: Frame
 local copiesTitle: TextLabel
 local rowHeight = ROW_HEIGHT
-local listTop = LIST_TOP
+local listTop = BOX_TOP
 local nameLabel: TextLabel
 local worthLabel: TextLabel
 local pillRow: Frame
@@ -152,6 +154,18 @@ local function growthOf(entry: Entry): CardFace.Growth
 end
 
 -- Panel on the right, as wide as the screen allows; the 3D card's right edge goes just left of it
+-- "This copy" sits at the top of the body (under the pills on desktop); the copies list's title and the list fill what's
+-- left under it, and the list scrolls
+local function placeList()
+	local boxTop = if UIKit.isPhone() then 0 else BOX_TOP
+	selectedBox.Position = UDim2.fromOffset(0, boxTop)
+	local below = boxTop + selectedBox.AbsoluteSize.Y + GAP
+	copiesTitle.Position = UDim2.fromOffset(0, below)
+	listTop = if copiesTitle.Visible then below + TITLE_HEIGHT + 2 else below
+	copiesList.Position = UDim2.fromOffset(0, listTop)
+	copiesList.Size = UDim2.new(1, 0, 1, -listTop)
+end
+
 local function layout()
 	local camera = workspace.CurrentCamera
 	if not camera or not panel then
@@ -174,10 +188,8 @@ local function layout()
 	body.Size = UDim2.new(1, -24, 1, -(band + GAP + 66))
 	pillRow.Visible = not phone
 	copiesTitle.Visible = not phone
-	listTop = if phone then 0 else LIST_TOP
 	rowHeight = if phone then PHONE_ROW_HEIGHT else ROW_HEIGHT
-	copiesList.Position = UDim2.fromOffset(0, listTop)
-	copiesList.Size = UDim2.new(1, 0, 1, -(listTop + selectedBox.AbsoluteSize.Y + GAP))
+	placeList()
 end
 
 -- The disabled look for a button that can't be used now (its text says why)
@@ -194,7 +206,7 @@ local function targetOf(entry: Entry): Target
 	return { cardId = (currentCard :: Card).id, foil = entry.foil, grade = entry.grade }
 end
 
--- Add to party / Give a job for the chosen copy, or why not (an open chooser stays open: Refresh redraws it)
+-- Add to party / Assign job for the chosen copy, or why not (an open chooser stays open: Refresh redraws it)
 local function refreshButtons(selected: Entry?)
 	local beast = if selected then selected.beast else nil
 	local job = if beast then source.working()[beast.id] else nil
@@ -214,7 +226,7 @@ local function refreshButtons(selected: Entry?)
 	local used = player:GetAttribute("JobsUsed")
 	local slotCount = if typeof(slots) == "number" then slots else 0
 	local usedCount = if typeof(used) == "number" then used else 0
-	local jobText, jobReady = "Give a job", selected ~= nil
+	local jobText, jobReady = "Assign job", selected ~= nil
 	if job then
 		jobText, jobReady = `Working: {job}`, false
 	elseif inParty then
@@ -315,7 +327,8 @@ local function barRow(parent: Instance, order: number, icon: string, share: numb
 	label.TextTruncate = Enum.TextTruncate.AtEnd
 end
 
--- The chosen copy: four stat tiles, XP and next-star bars, and whether it's busy
+-- The chosen copy ("This copy"): its grade, level, stars and worth, four stat tiles, XP and next-star bars, and whether
+-- it's busy
 local function renderSelected(card: Card, entry: Entry?)
 	clear(selectedBox)
 	if not entry then
@@ -325,6 +338,36 @@ local function renderSelected(card: Card, entry: Entry?)
 	end
 	local growth = growthOf(entry)
 	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, entry.grade)
+
+	-- The top line: heading, grade, level, stars and foil on the left, the copy's worth on the right
+	local line = Instance.new("Frame")
+	line.LayoutOrder = 0
+	line.BackgroundTransparency = 1
+	line.Size = UDim2.new(1, 0, 0, 24)
+	line.ZIndex = selectedBox.ZIndex
+	line.Parent = selectedBox
+	local top = hList(line, 24, 6)
+	top.Size = UDim2.new(1, -116, 1, 0)
+	local heading = text(top, "THIS COPY", UIKit.textSize("small"), palette.hint, true)
+	heading.AutomaticSize = Enum.AutomaticSize.X
+	heading.LayoutOrder = 1
+	local grade = UIKit.pill(top, entry.grade, UIStyle.GRADES[entry.grade] or UIStyle.GRADES.C)
+	grade.LayoutOrder = 2
+	Tooltip.attach(grade, CardTips.gradeText(entry.grade))
+	local level = text(top, `Lv {growth.level}`, UIKit.textSize("body"), palette.ink, true, true)
+	level.AutomaticSize = Enum.AutomaticSize.X
+	level.LayoutOrder = 3
+	local stars = UIKit.stars(top, growth.stars, Beasts.MAX_STARS, 14)
+	stars.LayoutOrder = 4
+	Tooltip.icon(stars, "Star")
+	if entry.foil then
+		UIKit.pill(top, "FOIL", Color3.fromRGB(150, 110, 255)).LayoutOrder = 5
+	end
+	local worth = text(line, money(entry.value), UIKit.textSize("small"), palette.good, true, true)
+	worth.AnchorPoint = Vector2.new(1, 0)
+	worth.Position = UDim2.new(1, 0, 0, 0)
+	worth.Size = UDim2.fromOffset(110, 24)
+	worth.TextXAlignment = Enum.TextXAlignment.Right
 
 	local tiles = Instance.new("Frame")
 	tiles.LayoutOrder = 1
@@ -770,22 +813,20 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	pillRow = hList(body, 26, 6)
 	pillRow.Name = "Pills"
 
-	copiesTitle = text(body, "Your copies, best first", UIKit.textSize("small"), UIKit.Colors.Subtext, true)
-	copiesTitle.Position = UDim2.fromOffset(0, 32)
-	copiesTitle.Size = UDim2.new(1, 0, 0, 18)
+	copiesTitle = text(body, "ALL COPIES, BEST FIRST", UIKit.textSize("small"), palette.hint, true)
+	copiesTitle.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
 
-	-- The chosen copy sits at the bottom of the body; the list fills what's left above it (and scrolls)
+	-- "This copy" sits at the top of the body in a gold box; the list fills what's left under it (and scrolls)
 	selectedBox = Instance.new("Frame")
 	selectedBox.Name = "Selected"
-	selectedBox.AnchorPoint = Vector2.new(0, 1)
-	selectedBox.Position = UDim2.fromScale(0, 1)
+	selectedBox.Position = UDim2.fromOffset(0, BOX_TOP)
 	selectedBox.Size = UDim2.new(1, 0, 0, 0)
 	selectedBox.AutomaticSize = Enum.AutomaticSize.Y
 	selectedBox.BackgroundColor3 = palette.row
 	selectedBox.ZIndex = body.ZIndex + 1
 	selectedBox.Parent = body
 	UIKit.corner(selectedBox, 10)
-	UIKit.outline(selectedBox, palette.rowEdge, 2)
+	UIKit.outline(selectedBox, UIStyle.GOLD, 3)
 	local boxPadding = Instance.new("UIPadding")
 	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
 		(boxPadding :: any)[side] = UDim.new(0, 8)
@@ -798,7 +839,6 @@ function CardDetailController.Build(parent: Frame, from: Source)
 
 	copiesList = Instance.new("ScrollingFrame")
 	copiesList.Name = "Copies"
-	copiesList.Position = UDim2.fromOffset(0, LIST_TOP)
 	copiesList.BackgroundTransparency = 1
 	copiesList.BorderSizePixel = 0
 	copiesList.ScrollBarThickness = 5
@@ -818,11 +858,8 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	listPadding.PaddingLeft = UDim.new(0, LIST_PAD)
 	listPadding.PaddingRight = UDim.new(0, LIST_PAD + copiesList.ScrollBarThickness + 2)
 	listPadding.Parent = copiesList
-	local function fitList()
-		copiesList.Size = UDim2.new(1, 0, 1, -(listTop + selectedBox.AbsoluteSize.Y + GAP))
-	end
-	selectedBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitList)
-	fitList()
+	selectedBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeList)
+	placeList()
 
 	buttonRow = Instance.new("Frame")
 	buttonRow.Name = "Buttons"
@@ -842,7 +879,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 		return button
 	end
 	partyButton = bottomButton("Add to party", "Party", UIKit.Colors.Accent, 0)
-	jobButton = bottomButton("Give a job", "Job", UIKit.Colors.Secondary, 1)
+	jobButton = bottomButton("Assign job", "Job", UIKit.Colors.Secondary, 1)
 
 	-- Add to party: covers the panel; slot cards first, then the comparison for a filled slot
 	partyChooser = Instance.new("Frame")

@@ -1446,7 +1446,7 @@ bell, quieter and higher. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelso
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
 - **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
-  view ("Give a job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
+  view ("Assign job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
   in three chips (faster cards work quicker, stronger cards make fewer mistakes, +2 XP a minute), then one row per
   slot: the card's art (hover, or hold a finger, for its stats and perk), name, grade, level, a job chip (icon, and
   what the job does in its tooltip), a live status pill (green working, amber idle or waiting, red after a slip;
@@ -2120,10 +2120,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   on narrow screens the panel keeps its right margin first), the card's right edge just left of the panel
   (`UiLayout.inspectorCard`, both Lune-tested).
   The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
-  and copies pills; "Your copies, best first" (grade pill, level, star icons, FOIL or count, Power with its icon,
-  value; the first wears a gold BEST ribbon, the chosen one a gold outline, with room in the list so it isn't cut off); the chosen copy's Power / HP / ATK / SPD
-  tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
-  "In your party" or "Working: <job>"; buttons with icons: Add to party (gold), Give a job (blue; when it can't, it
+  and copies pills; then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
+  "THIS COPY", the chosen copy's grade pill, level, star icons, FOIL and its worth on one line, its Power / HP / ATK /
+  SPD tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
+  and "In your party" or "Working: <job>"; under it "ALL COPIES, BEST FIRST" (every copy: grade pill, level, star
+  icons, FOIL or count, Power with its icon, value; the first wears a gold BEST ribbon, the chosen one a gold outline,
+  with room in the list so it isn't cut off), filling the rest and scrolling; buttons with icons: Add to party (gold),
+  Assign job (blue; opens the Assign job picker; when it can't, it
   says why: In party, Working, Jobs at shop Lv N, Slots full (u/s)), side by side; the binder's X closes it. Phones get a slimmer band and no pills
   row (the card face shows rarity and element), so the stats and buttons always fit; the copies list scrolls.
   Closing puts the camera back where it was; dying closes it too. **Add to party** opens a chooser over the panel:
