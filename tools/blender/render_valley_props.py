@@ -1,7 +1,8 @@
 """Renders a preview of each Wild valley scenery prop (build_valley_props.py) for the owner to judge before importing:
 one PNG per prop, front three-quarter view, the Glow object lit up in a sample glow colour. Run in a background Blender:
   blender -b --factory-startup --python tools/blender/render_valley_props.py -- <out_dir>
-PROPS="A,B" renders only those. Nothing is saved to assets/ (EXPORT is forced to 0).
+PROPS="A,B" renders only those; MODULE=build_valley_backdrop renders the backdrop models. Nothing new is saved to
+assets/ (EXPORT is forced to 0; the palette PNGs are rewritten with the same bytes).
 """
 import math
 import os
@@ -13,7 +14,9 @@ from mathutils import Vector
 os.environ["EXPORT"] = "0"
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import portal_kit  # noqa: E402
-import build_valley_props as valley  # noqa: E402
+import importlib  # noqa: E402
+
+valley = importlib.import_module(os.environ.get("MODULE", "build_valley_props"))  # the builder to render
 
 # a sample glow per prop for the preview (the game picks each spot's colour from Config/WildValley GLOW)
 SAMPLE_GLOW = {"GlowMushroomCluster": (190, 120, 255), "GlowFlowers": (110, 190, 255), "EmberTree": (255, 130, 40),
