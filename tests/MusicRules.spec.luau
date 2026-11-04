@@ -79,9 +79,9 @@ return {
 	["the owner's picks play, each Wild one through a leveler, the valley's areas with their ambience"] = function()
 		expect.equal(Music.TOWN.tracks[1], "rbxassetid://9048757009", "the town: White Owl")
 		local picks = {
-			meadow = { "rbxassetid://1841593944", 0.01 }, -- Enchanted Kingdom
-			gorge = { "rbxassetid://1841594242", 0.01 }, -- Lair of the Wizard
-			ridge = { "rbxassetid://1835286723", 0.01 }, -- Foreboding Volcano
+			meadow = { "rbxassetid://1842176339", 0.003 }, -- Butterflies (solo guitar)
+			gorge = { "rbxassetid://1843514537", 0.003 }, -- Secret Waterfall (solo piano)
+			ridge = { "rbxassetid://9046646008", 0.003 }, -- Moonlight Sonata (solo piano)
 			warden = { "rbxassetid://1845205138", 0.1 }, -- Forest Chase
 			brood = { "rbxassetid://1841360723", 0.13 }, -- Creepy Crawlers
 			colossus = { "rbxassetid://96625587462633", 0.1 }, -- Giant's Grave
@@ -101,6 +101,14 @@ return {
 		end
 		-- The Meadow's birds were buried under its music (PlaybackLoudness ignores Volume: heard ~ loudness x volume, 4.6 x
 		-- 0.3 against ~98 x 0.1): a fuller field loop, about half the music's level (owner 2026-11-04: "add ambient sound")
+		-- The valley plays only solo piano or acoustic guitar (owner 2026-11-04), each option named for its instrument
+		for _, area in Music.WILD.areas do
+			for _, option in area.options do
+				local name = string.lower(option.name)
+				expect.equal(string.find(name, "solo piano", 1, true) ~= nil or string.find(name, "solo guitar", 1, true) ~= nil, true, `{area.key}: {option.name} is piano or guitar only`)
+			end
+			expect.equal(area.tracks[1], area.options[1].id, `{area.key} plays its first option`)
+		end
 		local meadow = MusicRules.find(Music, "meadow").ambient
 		expect.equal(meadow.id, "rbxassetid://9112779471", "the Meadow: Field Birds Tweeting 1")
 		expect.equal(meadow.volume, 0.05, "the Meadow's field loop")
