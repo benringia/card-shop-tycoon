@@ -7,6 +7,16 @@ local function rgb(r: number, g: number, b: number): { number }
 end
 
 return {
+	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py, assets/ui/fx-sword), white, tinted in
+	-- game: the swing arc's body (upright: a Beam runs a texture's height along its length), the hit's star burst (a
+	-- 4 x 4 flipbook), the dash slash's cut lines (upright) and the stars the arc sheds
+	TEXTURES = {
+		crescent = "rbxassetid://103655929836006",
+		burst = "rbxassetid://114900780647359",
+		line = "rbxassetid://111098556704939",
+		star = "rbxassetid://117269166059195",
+	},
+
 	-- Closing rings: a thin outline of the area and a glowing ring closing onto it (RingRules.closingScale)
 	RING_OUTLINE = "rbxassetid://127119552313668",
 	RING_GLOW = "rbxassetid://78616850376916",

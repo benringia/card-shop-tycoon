@@ -11,6 +11,14 @@ local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge",
 local SOUNDS = { "swing1", "swing2", "swing3", "hit", "draw", "dodge", "ring", "down", "getUp" }
 
 return {
+	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
+	["the sword effects' textures are uploaded images"] = function()
+		for _, key in { "crescent", "burst", "line", "star" } do
+			local id = (SwordFx.TEXTURES :: any)[key]
+			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `TEXTURES.{key}: {id}`)
+		end
+	end,
+
 	["drawing the sword gleams: a short flare at the blade's tip"] = function()
 		local gleam = SwordFx.GLEAM
 		expect.equal(gleam.seconds > 0 and gleam.seconds <= 0.5, true, "a short gleam")
