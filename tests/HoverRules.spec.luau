@@ -3,6 +3,7 @@
 local HoverRules = require("../src/shared/Util/HoverRules")
 local BabyColors = require("../src/shared/Config/BabyColors")
 local UIMotion = require("../src/shared/Config/UIMotion")
+local ContrastRules = require("../src/shared/Util/ContrastRules")
 local expect = require("./lib/expect")
 
 return {
@@ -45,10 +46,18 @@ return {
 		expect.equal(offset, 0, "never negative")
 	end,
 
-	["the hover look"] = function()
-		expect.equal(table.concat(BabyColors.HOVER.edge, ","), "217,194,242", "soft lilac edge")
-		expect.equal(BabyColors.HOVER.sheen >= 0.9, true, "the sheen is at most 10% white")
-		expect.equal(BabyColors.HOVER.tint >= 0.9, true, "a very light tint")
+	-- Owner 2026-11-04 after round 5: "Hover effects are unnoticeable, the softglow on gray and white is unnoticeable"
+	["the hover shows on white rows and pale slots"] = function()
+		local white = { 255, 255, 255 }
+		expect.equal(ContrastRules.ratio(BabyColors.HOVER.edge, white) >= 2.5, true, "the edge stands out from a white row")
+		expect.equal(BabyColors.HOVER.edgeGlow <= 0.45, true, "the edge glow is strong enough to see")
+		expect.equal(BabyColors.HOVER.tint <= 0.6, true, "the tint shows on white")
+		expect.equal(ContrastRules.ratio(BabyColors.HOVER.tintColor, white) > 1.15, true, "the tint colour isn't near-white")
+		expect.equal(BabyColors.HOVER.sheen >= 0.8, true, "the sheen stays soft (text keeps reading)")
+	end,
+
+	["a soft button's outline turns to its deep shade on hover (white outlines vanish on white rows)"] = function()
+		expect.equal(BabyColors.HOVER.buttonOutline, "deep")
 	end,
 
 	["the motion: about 0.15 s in, a little faster out, a press with no bounce"] = function()

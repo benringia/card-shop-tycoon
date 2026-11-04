@@ -538,6 +538,18 @@ local function setHover(button: GuiButton, on: boolean)
 				Size = UDim2.new(1, spread * 2 + left + right, 1, spread * 2 + top + bottom),
 			})
 		end
+		-- Its outline (UIKit's white one) turns to the button's own deep shade, so the hover reads on white rows too
+		for _, stroke in button:GetChildren() do
+			if stroke:IsA("UIStroke") and stroke.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
+				local restColor = stroke:GetAttribute("RestColor")
+				if typeof(restColor) ~= "Color3" then
+					restColor = stroke.Color
+					stroke:SetAttribute("RestColor", restColor)
+				end
+				local deep = fromRgb(SoftColors.deepOf(toRgb(button.BackgroundColor3), BabyColors.COLORS))
+				tweenTo(stroke, { Color = if lit and HOVER.buttonOutline == "deep" then deep else restColor })
+			end
+		end
 		local sheen = if lit then hoverLayer(button, "HoverSheen", Color3.new(1, 1, 1), 0) else button:FindFirstChild("HoverSheen")
 		if sheen and sheen:IsA("Frame") then
 			fitOver(sheen, button, 0)
@@ -551,7 +563,7 @@ local function setHover(button: GuiButton, on: boolean)
 		fitOver(edge, button, BabyColors.GLOW.margin * edge.SliceScale)
 		tweenTo(edge, { ImageTransparency = if lit then HOVER.edgeGlow else 1 })
 	end
-	local tint = if lit then hoverLayer(button, "HoverTint", fromRgb(HOVER.edge), HOVER.tintInset) else button:FindFirstChild("HoverTint")
+	local tint = if lit then hoverLayer(button, "HoverTint", fromRgb(HOVER.tintColor), HOVER.tintInset) else button:FindFirstChild("HoverTint")
 	if tint and tint:IsA("Frame") then
 		fitOver(tint, button, -HOVER.tintInset)
 		tweenTo(tint, { BackgroundTransparency = if lit then HOVER.tint else 1 })
@@ -785,6 +797,16 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	UIKit.outlined(titleLabel, 2.5)
 	titleLabel.ZIndex = header.ZIndex + 1
 	return header, titleLabel
+end
+
+-- Room inside a list for what draws past its rows (their outlines, their buttons' glow), which the list would clip
+function UIKit.padList(list: ScrollingFrame, pad: { side: number, right: number, top: number, bottom: number })
+	local padding = list:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, pad.side)
+	padding.PaddingRight = UDim.new(0, pad.right)
+	padding.PaddingTop = UDim.new(0, pad.top)
+	padding.PaddingBottom = UDim.new(0, pad.bottom)
+	padding.Parent = list
 end
 
 -- Closes a panel with a quick shrink (a panel shown again meanwhile stays open)

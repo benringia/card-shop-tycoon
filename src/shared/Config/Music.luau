@@ -18,9 +18,9 @@ return {
 			{ name = "Drifting Into Dreamland (underscore)", id = "rbxassetid://83889171451910" },
 			{ name = "Lakefront Days (ukulele underscore, the first pick)", id = "rbxassetid://9038622066" },
 		},
-		-- The owner: 0.12 overpowered the birds, wind and waterfall; 0.013, 0.022 and then 0.045 too low (round 5,
-		-- 2026-11-04: "still too low"), so 0.07, about +4 dB. Try others with "/music 4 <volume>".
-		volume = 0.07,
+		-- The owner's number (2026-11-04, after 0.07): 0.21. Before: 0.12 overpowered the birds, wind and waterfall (with
+		-- the first, louder track); 0.013, 0.022, 0.045 and 0.07 too low. Try others with "/music 4 <volume>".
+		volume = 0.21,
 		-- A CompressorSoundEffect on the music as a limiter: the track swells in its later parts (owner 2026-11-03: "too
 		-- loud, specially on later parts"), so above the threshold it barely grows (ratio 20). Round 5 kept the threshold,
 		-- so the loudest part rises with the volume (tests/MusicRules).

@@ -3,6 +3,7 @@
 -- picture of the real model (round 5, spec 2026-11-04-round5-design section 6: Config/ProductPictures, rendered once
 -- and uploaded), fitted with air around it; a look with no picture yet, and other products, show their icon. The row's
 -- text moves over to make room.
+local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -20,7 +21,10 @@ local ProductPicture = {}
 ProductPicture.WIDTH = 66 -- how far the row's text moves right
 
 -- The uploaded picture, fitted inside AREA with MARGIN of air on every side, over the drawn icon that shows until the
--- picture has loaded (ProductPictureRules.showIcon: still processing, or rejected)
+-- picture has downloaded (ProductPictureRules.showIcon: still processing, or rejected). Its fetch decides, not IsLoaded:
+-- that only turns true once the window draws it, and its change signal never fires (the icon stayed over the pack). The
+-- label itself is preloaded (an image id given as a string reports Failure), and only the picture's own fetch counts
+-- (the icon's glyph is fetched with it).
 local function picture(row: Frame, image: string, fallback: string): ImageLabel
 	local fit = ProductPictures.AREA - 2 * ProductPictures.MARGIN
 	local label = Instance.new("ImageLabel")
@@ -35,11 +39,13 @@ local function picture(row: Frame, image: string, fallback: string): ImageLabel
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = row.ZIndex + 1
-	local function showFallback()
-		icon.Visible = ProductPictureRules.showIcon(label.IsLoaded)
-	end
-	label:GetPropertyChangedSignal("IsLoaded"):Connect(showFallback)
-	showFallback()
+	task.spawn(function()
+		ContentProvider:PreloadAsync({ label }, function(content: string, status: Enum.AssetFetchStatus)
+			if content == image then
+				icon.Visible = ProductPictureRules.showIcon(status == Enum.AssetFetchStatus.Success)
+			end
+		end)
+	end)
 	return label
 end
 

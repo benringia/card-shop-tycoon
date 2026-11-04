@@ -46,16 +46,20 @@ return {
 	},
 	-- The mouse-over look (spec 2026-11-04-round5-design section 1, look A "Soft glow"; UIKit noGreyHover, HoverRules):
 	-- nothing changes size. A soft button's glow goes to glowTransparency and spreads glowGrow px out (its edge by the
-	-- button stays put: a scale pulled the glow away from wide buttons), and a white sheen
-	-- fades in to `sheen` (see-through share: at most 10 % white). A row, tile or slot gets a lilac copy of the soft glow
-	-- round it (`edge`, faded to edgeGlow) and a lilac tint (`tint`) inset tintInset px, under its gold ring.
+	-- button stays put: a scale pulled the glow away from wide buttons), a white sheen fades in to `sheen` (see-through
+	-- share), and its white outline turns to its own deep shade (buttonOutline: a white outline vanished on white rows).
+	-- A row, tile or slot gets a lilac copy of the soft glow round it (`edge`, faded to edgeGlow) and a lilac tint
+	-- (tintColor at `tint`) inset tintInset px, under its gold ring. Owner 2026-11-04: the first, fainter values were
+	-- "unnoticeable" on white rows and pale slots (tests/HoverRules).
 	HOVER = {
 		glowTransparency = 0,
 		glowGrow = 4,
-		sheen = 0.9,
-		edge = { 217, 194, 242 },
-		edgeGlow = 0.45,
-		tint = 0.94,
+		sheen = 0.85,
+		buttonOutline = "deep",
+		edge = { 162, 116, 255 },
+		edgeGlow = 0.35,
+		tint = 0.55,
+		tintColor = { 220, 203, 255 },
 		tintInset = 3,
 	},
 	-- A segmented switch (UIKit.segmented: the binder's Filters, round 3): the pill drawn `height` px tall inside a

@@ -179,7 +179,7 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	local stepper = Instance.new("Frame")
 	stepper.Name = "Price"
 	stepper.AnchorPoint = Vector2.new(1, 0.5)
-	stepper.Position = UDim2.new(1, -10, 0.5, 0)
+	stepper.Position = UDim2.new(1, -LOOK.BUTTON_INSET, 0.5, 0)
 	stepper.Size = UDim2.fromOffset(LOOK.STEPPER, LOOK.STEPPER_HEIGHT)
 	stepper.BackgroundColor3 = palette.slotEmpty
 	stepper.Parent = frame
@@ -237,6 +237,7 @@ function PricingController.Start()
 	local screenGui = UIController.GetScreenGui()
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(screenGui, "PricesMenu", "Prices", "Prices")
+	UIKit.padList(list, LOOK.LIST_PAD) -- the rows' outlines and the buttons' glow stay inside the list
 	palette = UIKit.colorsFor(panel)
 	Icon.header(panel, "Prices", UIKit.HEADER_HEIGHT)
 	for index, product in Products.List do

@@ -40,7 +40,7 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume >= 0.07 and town.volume <= 0.1, true, "louder than 0.045 (owner 2026-11-04: still too low)")
+		expect.equal(town.volume, 0.21, "the owner's number (2026-11-04, after 0.07)")
 		-- The limiter still flattens the swells: its threshold is unchanged, so the loudest part rises with the volume
 		-- (round 5: "still too low" outweighs 2026-11-03's "never louder on the loudest part")
 		expect.equal(town.compressor.threshold, -48.5)

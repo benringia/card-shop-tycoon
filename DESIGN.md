@@ -125,7 +125,7 @@ area's name stands where each trail leaves the island (gaps in the hedge), and "
 clearings). The scenery is built at server start from `Config/Scenery` (terrain via `Util/TownTerrain`, props by
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
 **Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `TownMusicController`, `Config/Music`,
-`Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.07 (round 5, owner 2026-11-04: 0.045 "still too low"; about +4 dB) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
+`Util/MusicRules`): APM "Drifting Into Dreamland - Underscore" (Roblox-licensed, 169 s) at volume 0.21 (the owner's number, 2026-11-04, after 0.045 and 0.07 were too low) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
 quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
 valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
 (`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
@@ -489,7 +489,10 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   show a sharp picture of the real pack and deck box (round 5, owner pick A: the 3D models rendered big in Studio, cut
   out by `tools/ui-art/cut_product_picture.py` and uploaded; `Config/ProductPictures`, `Util/ProductPictureRules`), fitted
   in 56 px with 4 px of air so nothing touches the row's edge; a pack look with no picture yet shows the drawn
-  BoosterPack / DeckBox icon (`Util/ProductPicture`), which also shows under a picture until it has loaded. The old live 3D picture was soft and clipped.
+  BoosterPack / DeckBox icon (`Util/ProductPicture`), which also shows under a picture until its download succeeds
+  (the label itself is preloaded: an image id preloaded as a string reports Failure, and `IsLoaded` never fires a
+  change). The old live 3D picture was soft and clipped. Order Stock and Prices pad their list (`Pricing.ROWS.LIST_PAD`,
+  `UIKit.padList`) so the rows' outlines and the buttons' glow aren't cut at its edges.
 - **Each tap flips the top card** (`Util/OpeningCards`, `PackOpening.FLIP`), hit slot last: it lifts and turns over
   with a little overshoot, landing big in the middle (its back is hidden once it's past halfway). The next tap zips it
   into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next. Only the
@@ -1950,9 +1953,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   every button and row in a themed window too). **Hover** (round 5, owner pick A "Soft glow", spec
   2026-11-04-round5-design section 1; `UIKit` `noGreyHover`, `Util/HoverRules`, `Config/BabyColors.HOVER`): nothing changes
   size, so nothing in a list or row moves and no text jumps a size (the old grow made the Condenser text pop and pushed
-  the Boss Ladder's bosses). A soft button's own glow brightens and spreads and a faint white sheen (10 %) lifts its
-  colour; a row, tile or slot gets a soft lilac edge (a lilac copy of the soft glow, round it, never over its gold
-  ring) and a light lilac tint; 0.15 s in, 0.12 s out, no overshoot. Invisible click areas and greyed-out buttons don't
+  the Boss Ladder's bosses). A soft button's own glow brightens and spreads 4 px, a white sheen (15 %) lifts its
+  colour and its white outline turns to its own deep shade; a row, tile or slot gets a lilac edge (a lilac copy of the
+  soft glow round it, never over its gold ring) and a lavender tint (owner 2026-11-04: the first, fainter values were
+  "unnoticeable" on white rows and pale slots; `tests/HoverRules` pins them visible); 0.15 s in, 0.12 s out, no overshoot. Invisible click areas and greyed-out buttons don't
   light up, and neither does a button that lays out its own children (its list or grid layout would stack the hover's
   pieces in with them: build such content in an inner frame). The pieces are the hover's own children (HoverSheen, HoverEdge, HoverTint), so a controller recolouring a
   button mid-hover is never undone. A press is a small quick squish (0.96) and straight back. The Shop's price buttons are mint (can buy), pink (short)

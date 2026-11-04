@@ -31,7 +31,6 @@ type Row = {
 
 local LOOK = PricingConfig.ROWS -- the Prices window's row sizes, so both windows match
 local BUTTON_WIDTH = 116
-local BUTTON_HEIGHT = 48 -- tap target minimum
 local LOCK_SIZE = 20
 
 local player = Players.LocalPlayer
@@ -111,8 +110,8 @@ local function buildRow(product: Product, parent: Instance, order: number): Row
 	local button = UIKit.button(frame, "", UIKit.Colors.Success)
 	button.Name = "Order"
 	button.AnchorPoint = Vector2.new(1, 0.5)
-	button.Position = UDim2.new(1, -10, 0.5, 0)
-	button.Size = UDim2.fromOffset(BUTTON_WIDTH, BUTTON_HEIGHT)
+	button.Position = UDim2.new(1, -LOOK.BUTTON_INSET, 0.5, 0)
+	button.Size = UDim2.fromOffset(BUTTON_WIDTH, LOOK.BUTTON_HEIGHT)
 	button.TextSize = 15
 	local padding = Instance.new("UIPadding")
 	padding.Parent = button
@@ -146,6 +145,7 @@ end
 function OrderController.Start()
 	local list: ScrollingFrame
 	panel, list = UIKit.panel(UIController.GetScreenGui(), "OrderMenu", "Order Stock")
+	UIKit.padList(list, LOOK.LIST_PAD) -- the rows' outlines and the buttons' glow stay inside the list
 	palette = UIKit.colorsFor(panel)
 	Icon.header(panel, "Order", UIKit.HEADER_HEIGHT)
 	for index, product in Products.List do
