@@ -42,6 +42,26 @@ joint's offset too: `T_r = M · (Fp⁻¹ · Fc) · M` with `F = pose_bone.matrix
 Keyframe per sample (linear easing) with a Pose per moved joint; a joint's parents are added at weight 0 when the move
 leaves them alone.
 
+## Natural motion (the sword moves, spec 2026-11-04-sword-moves-design)
+
+Moves that feel anime / hack-and-slash rather than stiff use three helpers in `anim_kit`:
+
+- **Per-key easing:** `key_pose(..., ease=SOFT|SNAP|HOLD)`, `key_root(..., ease=...)`, `key_foot(..., ease=...)` record how
+  each curve leaves that key; `apply_eases(rig)` writes them once the move is keyed. SOFT (sine in-out) for wind-ups and
+  recoveries, SNAP (exponential ease-out) into and out of a strike (a 3-frame swing that settles), HOLD (linear) through
+  a spin. Keys without an ease keep Blender's default curve, so the older moves export exactly as before.
+- **Overlap:** `key_pose(..., lag=LAG_SWORD)`: the hips lead, then the chest (1 frame), head (2), shoulder (1), elbow (2),
+  wrist (3), the free arm 2-4: a whip instead of every joint moving together.
+- **Two hands:** `two_hands(rig, F, on, full, release, off)`: the left forearm's IK reaches the sword's handle under the
+  right hand (an empty on the RightHand bone), its influence keyed in and out.
+
+Export these at every frame (`export_move(..., step=1)`, 60 a second) and **in place** (`in_place=True`): the root's
+travel stays keyed (it drives the preview and `Config/Swords` lunges) but is left out of the animation, because the
+game moves the character for real. `render_video(path, first, last, cam, target)` writes a 60 fps MP4 preview.
+
+Blender runs these in the **background** (`blender.exe -b --factory-startup --python <script>`), never in the owner's
+open file: `build()` empties the scene.
+
 ## Making or changing moves
 
 1. In Blender (through the Blender MCP), with `tools/blender` on `sys.path`:
