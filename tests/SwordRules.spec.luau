@@ -90,6 +90,57 @@ return {
 		expect.equal(SwordRules.comboPowerPerSecond({}), 0)
 	end,
 
+	-- The sword-moves round (spec 2026-11-04-sword-moves-design): cuts chain at their cancel point, lunges stop short of
+	-- a foe, the dash slash hits along its (clamped) path, and the damage a second is measured on the chained cycle
+	["a tap during the follow-through queues the next cut for the cancel point"] = function()
+		local combo = { { power = 0.3, hitAt = 0.2, cancelAt = 0.35, length = 0.6, reach = 9, arc = 80 }, { power = 0.3, hitAt = 0.2, length = 0.6, reach = 9, arc = 80 } }
+		local index, at = SwordRules.nextCut(combo, { index = 1, startedAt = 0 }, 0.25, 0.9)
+		expect.equal(index, 2)
+		expect.near(at :: number, 0.35, 1e-9, "at the cancel point, not the end")
+		index, at = SwordRules.nextCut(combo, { index = 1, startedAt = 0 }, 0.40, 0.9)
+		expect.equal(index, 2, "after the cancel point")
+		expect.near(at :: number, 0.40, 1e-9, "at once")
+		index, at = SwordRules.nextCut(combo, { index = 1, startedAt = 0 }, 0.6 + 0.9 + 0.01, 0.9)
+		expect.equal(index, 1, "too late: the combo starts again")
+		expect.near(at :: number, 1.51, 1e-9)
+	end,
+
+	["the damage a second runs on the chained cycle: cancel points, then the last cut's length"] = function()
+		local combo = {
+			{ power = 0.3, hitAt = 0.2, cancelAt = 0.34, length = 0.6, reach = 9, arc = 80 },
+			{ power = 0.3, hitAt = 0.2, cancelAt = 0.32, length = 0.58, reach = 9, arc = 80 },
+			{ power = 0.5, hitAt = 0.4, length = 0.88, reach = 10, arc = 70 },
+		}
+		expect.near(SwordRules.comboPowerPerSecond(combo), 1.1 / 1.54, 1e-9)
+	end,
+
+	["a lunge stops short of a foe, and goes its full length when nothing is ahead"] = function()
+		local foe = { { id = "b:m", x = 5, z = 0, radius = 2 } }
+		expect.near(SwordRules.lungeLength(0, 0, 1, 0, foe, 4, 1), 2, 1e-9, "its edge at 3, stopping 1 short")
+		expect.near(SwordRules.lungeLength(0, 0, 1, 0, {}, 4, 1), 4, 1e-9, "nothing ahead")
+		expect.near(SwordRules.lungeLength(2, 0, 1, 0, foe, 4, 1), 0, 1e-9, "already at the stop distance")
+		expect.near(SwordRules.lungeLength(0, 0, 1, 0, { { id = "x", x = 5, z = 3, radius = 2 } }, 4, 1), 4, 1e-9, "a foe off to the side")
+		expect.near(SwordRules.lungeLength(0, 0, 1, 0, { { id = "x", x = -5, z = 0, radius = 2 } }, 4, 1), 4, 1e-9, "a foe behind")
+	end,
+
+	["the dash slash hits every foe along its path"] = function()
+		expect.equal(SwordRules.inDashPath(0, 0, 9, 0, 5, 2.5, 1, 4), true, "beside the path, its edge inside the band")
+		expect.equal(SwordRules.inDashPath(0, 0, 9, 0, 5, 4, 1, 4), false, "too far to the side")
+		expect.equal(SwordRules.inDashPath(0, 0, 9, 0, 12, 0, 2, 4), true, "past the end, its edge reaching it")
+		expect.equal(SwordRules.inDashPath(0, 0, 9, 0, -4, 0, 1, 4), false, "behind the start")
+		expect.equal(SwordRules.inDashPath(3, 3, 3, 3, 4, 3, 0.5, 4), true, "a zero-length path is a circle")
+	end,
+
+	["the server pulls a too-long dash path back to its longest"] = function()
+		local x, z = SwordRules.clampPath(0, 0, 30, 0, 20)
+		expect.near(x, 20, 1e-9)
+		expect.near(z, 0, 1e-9)
+		x, z = SwordRules.clampPath(0, 0, 10, 0, 20)
+		expect.near(x, 10, 1e-9, "short enough: unchanged")
+		x, z = SwordRules.clampPath(1, 1, 1, 1, 20)
+		expect.near(x, 1, 1e-9, "no movement")
+	end,
+
 	-- A dodge goes through foes (owner 2026-11-04): one that would end inside a boss or monster carries on out of it
 	["a dash ending inside a foe carries on out the other side"] = function()
 		expect.equal(SwordRules.dashLength(0, 0, 0, -1, {}, 12, 1, 24), 12, "nothing in the way")

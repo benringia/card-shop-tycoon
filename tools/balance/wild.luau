@@ -107,7 +107,8 @@ local function fight(world: any, species: string, level: number, elite: boolean,
 					if roll() < uptime then
 						BattleSim.swordHit(state, "1", "b:m", cut.power * SWORD.power, "Sword")
 					end
-					nextCut = state.time + cut.length
+					-- chained: the next cut starts at this one's cancel point (the last cut runs to its end)
+					nextCut = state.time + (if cutIndex < #SWORD.combo then cut.cancelAt or cut.length else cut.length)
 					cutIndex = cutIndex % #SWORD.combo + 1
 				end
 			end

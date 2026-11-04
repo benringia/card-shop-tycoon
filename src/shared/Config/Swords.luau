@@ -2,10 +2,17 @@
 -- Swords the player fights bosses with (spec 2026-11-02-you-in-the-fight-design). Only the starter sword for now; the
 -- Forge (project 2) adds one per boss, each with its own combo and skill. Plain data so Lune tests can load it.
 -- A cut's damage: the summoned creature's ATK x the cut's power x the sword's power (BattleSim.swordHit). Times are
--- seconds from the cut's start: `hitAt` is the strike frame of its animation, `length` the whole cut. `reach` counts
--- from the target's edge; `arc` is the cone in front of you it hits (degrees).
-export type Cut = { power: number, hitAt: number, length: number, reach: number, arc: number }
-export type Skill = { power: number, hitAt: number, length: number, radius: number, cooldown: number }
+-- seconds from the cut's start: `hitAt` is the strike frame of its animation (its Hit marker), `cancelAt` the end of
+-- its follow-through (the next cut may start there; SwordRules.nextCut), `length` the whole cut. `reach` counts from
+-- the target's edge; `arc` is the cone in front of you it hits (degrees). `lunge`: how far the cut carries you forward
+-- for real, and when (the animations are exported in place; SwordController moves you, stopping short of a foe).
+export type Lunge = { studs: number, from: number, to: number }
+export type Cut = { power: number, hitAt: number, cancelAt: number?, length: number, reach: number, arc: number, lunge: Lunge? }
+-- The skill (the dash slash, sword-moves round): `dash` moves you `studs` forward from `from` to `to` (through foes
+-- like the dodge, never past `maxStuds`); at `hitAt` the cut lines appear and every foe whose edge is within `width` / 2
+-- of the path is hit (the server clamps the path to maxStuds + slack)
+export type Dash = { studs: number, maxStuds: number, margin: number, width: number, from: number, to: number, slack: number }
+export type Skill = { power: number, hitAt: number, length: number, radius: number, cooldown: number, dash: Dash }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
 -- sounds: asset ids by moment ("" plays nothing); slash: its hits' slash arc (colour { r, g, b }, size; Config/SwordFx
 -- SLASH, Util/HitFx), plain on the starter, bolder on the Forge's swords
@@ -28,12 +35,25 @@ local SWORDS: { [string]: Sword } = {
 		element = nil,
 		model = "StarterSword",
 		slash = { color = { 207, 230, 255 }, scale = 1 }, -- pale steel
+		-- Sword-moves round (spec 2026-11-04-sword-moves-design): powers scaled so the chained combo's damage a second is
+		-- what it was (tests/SwordsConfig), the Hit markers of the new animations
 		combo = {
-			{ power = 0.35, hitAt = 0.28, length = 0.56, reach = 9, arc = 70 }, -- crouched wind-up, a stepping cut down across the body
-			{ power = 0.35, hitAt = 0.2, length = 0.5, reach = 9, arc = 90 }, -- a sideways sweep
-			{ power = 0.6, hitAt = 0.35, length = 0.75, reach = 10, arc = 60 }, -- a leaping overhead slam
+			-- the forehand: coiled high, a snapped diagonal cut down across while lunging in
+			{ power = 0.298, hitAt = 0.217, cancelAt = 0.34, length = 0.60, reach = 9, arc = 80, lunge = { studs = 1.1, from = 0.167, to = 0.25 } },
+			-- the backhand: from low on the left, a rising sweep out to the right
+			{ power = 0.298, hitAt = 0.183, cancelAt = 0.32, length = 0.58, reach = 9, arc = 100, lunge = { studs = 0.8, from = 0.133, to = 0.22 } },
+			-- the finisher: both hands, a spinning leap into a slam
+			{ power = 0.51, hitAt = 0.40, length = 0.88, reach = 10, arc = 70, lunge = { studs = 2.6, from = 0.17, to = 0.40 } },
 		},
-		skill = { power = 0.9, hitAt = 0.3, length = 0.8, radius = 11, cooldown = 8 }, -- a spinning slash all round
+		-- the dash slash: a draw stance, a 9-stud dash, the cut lines (and the damage) at 0.62 s
+		skill = {
+			power = 0.9,
+			hitAt = 0.62,
+			length = 1.0,
+			radius = 11,
+			cooldown = 8,
+			dash = { studs = 9, maxStuds = 20, margin = 1.5, width = 4, from = 0.30, to = 0.42, slack = 3 },
+		},
 		animations = {
 			draw = "rbxassetid://94917864223617",
 			sheath = "rbxassetid://96323080543778",
@@ -71,6 +91,7 @@ return {
 	UNLOCK_SHOP_LEVEL = 4, -- everyone gets the starter sword here (when boss 1 opens)
 	SHEATH_SECONDS = 4, -- the sword goes back on your back after this long without attacking
 	COMBO_RESET = 0.9, -- a tap this long after a cut ends still continues the combo; later starts it again
+	LUNGE_STOP = 1.0, -- studs short of a foe's edge a cut's lunge stops (SwordRules.lungeLength)
 	SOFT_AIM_RANGE = 14, -- attacking turns you toward a target whose edge is this close...
 	SOFT_AIM_ANGLE = 75, -- ...and within this many degrees of where you face
 	PLAYER_DAMAGE_COLOR = { 255, 214, 92 }, -- your hits' numbers (your creature's stay white)

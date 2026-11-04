@@ -4,6 +4,7 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Swords = require("../src/shared/Config/Swords")
 local SwordFx = require("../src/shared/Config/SwordFx")
+local SwordRules = require("../src/shared/Util/SwordRules")
 local expect = require("./lib/expect")
 
 local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge", "flinch", "down", "getUp", "ready", "run" }
@@ -70,6 +71,36 @@ return {
 			expect.equal(sword.skill.hitAt > 0 and sword.skill.hitAt < sword.skill.length, true, `{sword.name} skill`)
 		end
 	end,
+	-- The sword-moves round (spec 2026-11-04-sword-moves-design)
+	["each cut strikes, then reaches its cancel point, inside its length; lunges and the dash come before the strike"] = function()
+		for _, sword in Swords.SWORDS do
+			for index, cut in sword.combo do
+				local cancel = cut.cancelAt or cut.length
+				expect.equal(cut.hitAt < cancel and cancel <= cut.length, true, `{sword.name} cut {index} cancel point`)
+				if cut.lunge then
+					expect.equal(cut.lunge.from < cut.lunge.to and cut.lunge.from <= cut.hitAt and cut.lunge.to <= cut.length, true, `{sword.name} cut {index} lunge`)
+					expect.equal(cut.lunge.studs > 0 and cut.lunge.studs <= 4, true, `{sword.name} cut {index} lunge length`)
+				end
+			end
+			local dash = sword.skill.dash
+			expect.equal(dash ~= nil, true, `{sword.name} skill dash`)
+			expect.equal(dash.from < dash.to and dash.to <= sword.skill.hitAt, true, `{sword.name} dash before the cut lines`)
+			expect.equal(dash.studs <= dash.maxStuds and dash.width > 0 and dash.slack > 0, true, `{sword.name} dash numbers`)
+		end
+		local starter = Swords.SWORDS.starterSword
+		expect.equal(starter.combo[1].hitAt, 0.217, "the forehand's Hit marker")
+		expect.equal(starter.combo[2].hitAt, 0.183, "the backhand's Hit marker")
+		expect.equal(starter.combo[3].hitAt, 0.40, "the finisher's Hit marker")
+		expect.equal(starter.skill.hitAt, 0.62, "the dash slash's cut lines")
+		expect.equal(Swords.LUNGE_STOP > 0, true)
+	end,
+
+	["the starter combo's damage a second is today's, within 2 % (chained on cancel points)"] = function()
+		local today = 1.30 / 1.81 -- 0.35 + 0.35 + 0.6 over 0.56 + 0.5 + 0.75 s (round before the sword-moves round)
+		local now = SwordRules.comboPowerPerSecond(Swords.SWORDS.starterSword.combo)
+		expect.equal(math.abs(now - today) / today <= 0.02, true, `{now} vs {today}`)
+	end,
+
 	["every sword has its slash look, the starter a plain steel one"] = function()
 		for id, sword in Swords.SWORDS do
 			expect.equal(sword.slash ~= nil and #sword.slash.color == 3, true, `{id} colour`)

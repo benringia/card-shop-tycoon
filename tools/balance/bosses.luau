@@ -190,7 +190,8 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 					if roll() < uptime then
 						BattleSim.swordHit(state, owner, target.id, cut.power * SWORD.power, "Sword")
 					end
-					nextCut[owner] = state.time + cut.length
+					-- chained: the next cut starts at this one's cancel point (the last cut runs to its end)
+					nextCut[owner] = state.time + (if index < #SWORD.combo then cut.cancelAt or cut.length else cut.length)
 					cutIndex[owner] = index % #SWORD.combo + 1
 				end
 			end
