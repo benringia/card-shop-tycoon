@@ -142,6 +142,11 @@ return {
 		-- the rock shelf jutting from the west cliff over the cave mouth and the biggest mushrooms (an overhang: drawn,
 		-- but nothing stands on it, so the ground under it stays the gorge's floor)
 		{ shape = "Block", x = -437.5, y = 45, z = 1420, size = { x = 35, y = 6, z = 70 }, material = "Limestone", overhang = true },
+		-- round 2 (Caves pick A: the crystal cave in a mossy rock face): moss over the shelf and two mossy clumps either side
+		-- of the mouth, above head height (the mouth and its carve unchanged)
+		{ shape = "Block", x = -437.5, y = 48.5, z = 1420, size = { x = 35, y = 1.5, z = 70 }, material = "LeafyGrass", overhang = true },
+		{ shape = "Ball", x = -452, y = 34, z = 1398, radius = 6, material = "LeafyGrass" },
+		{ shape = "Ball", x = -452, y = 34, z = 1442, radius = 6, material = "LeafyGrass" },
 		-- The ridge: its cracked-lava floor (turned along the second pass), basalt cliffs all round, jagged rims
 		{ shape = "Block", x = -43.31, y = 31, z = 1683.07, yaw = -122.28, size = { x = 310, y = 4, z = 340 }, material = "CrackedLava" },
 		{ shape = "Block", x = -58, y = 45.5, z = 1807, size = { x = 364, y = 33, z = 14 }, material = "Basalt" }, -- (10 trimmed)
@@ -551,7 +556,64 @@ return {
 	-- the skylines and beyond (giant trees, scaled-up glow mushrooms, ember trees; `glow` for glowing ones), standing on
 	-- the drawn ground, no colliders, streamed as whole models. MOUNTAINS: far range pieces at their own `y` (sunk so no
 	-- base shows), always loaded so they never pop in, at least 150 studs out from the valley
-	BACKDROP = {},
+	BACKDROP = {
+		-- the Meadow (pick B): giant trees on the hills all round, big town trees between them
+		{ model = "GiantTreeA", x = -150, z = 1097, height = 46, yaw = 20 },
+		{ model = "GiantTreeB", x = -40, z = 1097, height = 50, yaw = 140 },
+		{ model = "GiantTreeC", x = 70, z = 1097, height = 44, yaw = 260 },
+		{ model = "GiantTreeB", x = -214, z = 1145, height = 48, yaw = 80 },
+		{ model = "GiantTreeA", x = -214, z = 1232, height = 52, yaw = 200 },
+		{ model = "GiantTreeC", x = 109, z = 1150, height = 46, yaw = 300 },
+		{ model = "GiantTreeA", x = 109, z = 1262, height = 50, yaw = 30 },
+		{ model = "GiantTreeB", x = -120, z = 1330, height = 48, yaw = 170 },
+		{ model = "GiantTreeA", x = -10, z = 1330, height = 52, yaw = 60 },
+		{ model = "GiantTreeC", x = 75, z = 1330, height = 44, yaw = 230 },
+		{ model = "TreeA", x = -95, z = 1097, height = 34, yaw = 50 },
+		{ model = "TreeD", x = 15, z = 1097, height = 32, yaw = 210 },
+		{ model = "PineB", x = 100, z = 1100, height = 36, yaw = 0 },
+		{ model = "TreeB", x = -214, z = 1188, height = 36, yaw = 120 },
+		{ model = "TreeC", x = 109, z = 1205, height = 34, yaw = 250 },
+		{ model = "TreeD", x = -60, z = 1330, height = 38, yaw = 330 },
+		{ model = "TreeA", x = 35, z = 1330, height = 34, yaw = 90 },
+		-- the Caves (pick A): tree-sized glowing mushrooms on every wall, fading into the fog
+		{ model = "GlowMushroomTall", x = -460, z = 1310, height = 48, yaw = 10, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -460, z = 1350, height = 30, yaw = 120, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -460, z = 1385, height = 44, yaw = 230, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -460, z = 1460, height = 50, yaw = 60, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -460, z = 1500, height = 28, yaw = 300, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -460, z = 1535, height = 42, yaw = 150, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -440, z = 1561, height = 30, yaw = 20, glow = "teal" },
+		{ model = "GlowMushroomTall", x = -400, z = 1561, height = 46, yaw = 200, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -360, z = 1561, height = 40, yaw = 80, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -325, z = 1561, height = 28, yaw = 260, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -440, z = 1278, height = 40, yaw = 140, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -400, z = 1278, height = 26, yaw = 40, glow = "teal" },
+		{ model = "GlowMushroomTall", x = -355, z = 1278, height = 44, yaw = 310, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -300, z = 1278, height = 28, yaw = 190, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -208, z = 1370, height = 44, yaw = 100, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -208, z = 1420, height = 30, yaw = 220, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -208, z = 1470, height = 48, yaw = 340, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -208, z = 1515, height = 28, yaw = 70, glow = "teal" },
+		-- Ember Ridge (pick A): ember trees and charred trees on its hills, rising toward the volcano
+		{ model = "EmberTree", x = -110, z = 1808, height = 28, yaw = 30, glow = "ember" },
+		{ model = "EmberTree", x = -50, z = 1808, height = 30, yaw = 150, glow = "ember" },
+		{ model = "EmberTree", x = 10, z = 1808, height = 26, yaw = 270, glow = "ember" },
+		{ model = "EmberTree", x = 70, z = 1808, height = 28, yaw = 90, glow = "ember" },
+		{ model = "CharredTree", x = -80, z = 1808, height = 18, yaw = 210 },
+		{ model = "CharredTree", x = 40, z = 1808, height = 16, yaw = 330 },
+		{ model = "EmberTree", x = 109, z = 1600, height = 26, yaw = 40, glow = "ember" },
+		{ model = "EmberTree", x = 109, z = 1660, height = 28, yaw = 160, glow = "ember" },
+		{ model = "EmberTree", x = 109, z = 1720, height = 24, yaw = 280, glow = "ember" },
+		{ model = "EmberTree", x = 109, z = 1780, height = 30, yaw = 20, glow = "ember" },
+		{ model = "EmberTree", x = -227, z = 1670, height = 26, yaw = 120, glow = "ember" },
+		{ model = "EmberTree", x = -227, z = 1730, height = 28, yaw = 240, glow = "ember" },
+		{ model = "EmberTree", x = -227, z = 1780, height = 24, yaw = 0, glow = "ember" },
+		{ model = "EmberTree", x = -185, z = 1784, height = 26, yaw = 200, glow = "ember" },
+		{ model = "CharredTree", x = -165, z = 1797, height = 18, yaw = 60 },
+		{ model = "CharredTree", x = -80, z = 1550, height = 16, yaw = 110 },
+		{ model = "EmberTree", x = 0, z = 1550, height = 24, yaw = 230, glow = "ember" },
+		{ model = "CharredTree", x = 60, z = 1550, height = 18, yaw = 350 },
+	},
 	MOUNTAINS = {
 		-- snowy ranges south of the Meadow, west of the Caves and east of the Meadow
 		{ model = "MountainSnow", x = -180, z = 820, y = -20, height = 130, yaw = 0 },
