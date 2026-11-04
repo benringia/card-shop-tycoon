@@ -42,6 +42,18 @@ return {
 		expect.equal(spot.y, 148, "below the top-row pocket")
 		expect.equal(spot.x, 420, "centred on the pocket")
 	end,
+	-- Round 5 (spec section 2): the binder anchors its tooltip on the hovered pocket, so it sits beside that card
+	["beside: anchored on a pocket it sits right of that card, over the book"] = function()
+		local pocket = { x = 300, y = 120, w = 90, h = 126 }
+		local spot = UiLayout.beside(pocket, { w = 260, h = 200 }, { w = 1200, h = 700 }, 8, pocket)
+		expect.equal(spot.x, 398)
+		expect.equal(spot.y, 120)
+	end,
+	["beside: a pocket near the right edge puts it on the card's left, never over the card"] = function()
+		local pocket = { x = 1000, y = 120, w = 90, h = 126 }
+		local spot = UiLayout.beside(pocket, { w = 260, h = 200 }, { w = 1200, h = 700 }, 8, pocket)
+		expect.equal(spot.x, 1000 - 8 - 260)
+	end,
 	["inspectorCard: the card's right edge lands on the panel"] = function()
 		local offset, rect = UiLayout.inspectorCard({ w = 1000, h = 500 }, 70, 3, { w = 1.8, h = 2.57 }, 0, 480, 8)
 		expect.near(offset, -1.068, 0.01, "studs left of centre")

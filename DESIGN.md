@@ -2103,8 +2103,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   pocket near the screen's edge doesn't grow off it), then the card view opens on it (the camera moves to the card view's
   stage at the normal field of view); closing the card view brings the binder back on the same spread. The card tooltip (`Util/CardTips`: art, name, set number, rarity / element / best-grade pills, a 2x2 grid of
   strongest Power, copies with any on display, best level, best grade, the worth range and "Click for details") sits
-  just outside the binder, level with the pocket (`UiLayout.beside` with the binder's and pocket's screen rects), so
-  it never covers a card.
+  beside the hovered card (round 5, owner 2026-11-04: right of its pocket, else left, else above or under it;
+  `UiLayout.beside` anchored on the pocket's screen rect), so it never covers that card; it may cover its neighbours.
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
   every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare

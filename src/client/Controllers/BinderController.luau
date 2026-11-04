@@ -756,8 +756,9 @@ local function slotOf(tile: Tile): (BinderDesk.Side?, number?)
 	return if page == left then "Left" else "Right", index
 end
 
--- Level with its pocket, just outside the binder (right of it, else left; else above or under the pocket), never
--- over it. The binder's rects are in GUI space, like the tooltip's screen.
+-- Beside the hovered card (round 5, spec section 2): right of its pocket, else left of it, else above or under it;
+-- never over that card, though it may cover its neighbours. The binder's rects are in GUI space, like the tooltip's
+-- screen.
 local function placeTooltip()
 	local tile = tooltipTile
 	if not tile or not tooltip.Visible then
@@ -769,15 +770,14 @@ local function placeTooltip()
 	end
 	local screen = tooltip.Parent :: GuiObject
 	local origin = screen.AbsolutePosition
-	local bookRect = BinderDesk.bookRect()
 	local pocket = BinderDesk.pocketRect(side, index)
+	local anchor = { x = pocket.x - origin.X, y = pocket.y - origin.Y, w = pocket.w, h = pocket.h }
 	local spot = UiLayout.beside(
-		{ x = bookRect.x - origin.X, y = pocket.y - origin.Y, w = bookRect.w, h = pocket.h },
+		anchor,
 		{ w = tooltip.AbsoluteSize.X, h = tooltip.AbsoluteSize.Y },
 		{ w = screen.AbsoluteSize.X, h = screen.AbsoluteSize.Y },
 		TOOLTIP_GAP,
-		-- no room either side of the binder: above or under the pocket itself
-		{ x = pocket.x - origin.X, y = pocket.y - origin.Y, w = pocket.w, h = pocket.h }
+		anchor
 	)
 	tooltip.Position = UDim2.fromOffset(spot.x, spot.y)
 end
