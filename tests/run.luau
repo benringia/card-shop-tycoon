@@ -75,6 +75,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BossMoments = require("./BossMoments.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),
 	SwordRules = require("./SwordRules.spec"),
+	SwordArcRules = require("./SwordArcRules.spec"),
 	RingRules = require("./RingRules.spec"),
 	HpBarRules = require("./HpBarRules.spec"),
 	CombatPreload = require("./CombatPreload.spec"),

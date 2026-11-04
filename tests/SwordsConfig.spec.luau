@@ -19,6 +19,25 @@ return {
 		end
 	end,
 
+	-- Every swing's candy sparkle arc (Util/HitFx.swingArc): one Beam per arc, so a sweep of at most 180 degrees; it
+	-- wipes inside its move and shows before the strike lands
+	["every cut and the skill have a swing arc that wipes in before the strike"] = function()
+		local starter = Swords.SWORDS.starterSword
+		local moves: { [string]: { hitAt: number, length: number } } = { skill = starter.skill }
+		for index, cut in starter.combo do
+			moves[`cut{index}`] = cut
+		end
+		for key, move in moves do
+			local arc = SwordFx.ARCS[key]
+			expect.equal(arc ~= nil, true, `{key} has an arc`)
+			expect.equal(math.abs(arc.sweep) > 0 and math.abs(arc.sweep) <= 180, true, `{key} sweep {arc.sweep}`)
+			expect.equal(arc.radius > 0 and arc.width > 0 and arc.wipe > 0 and arc.fade > 0, true, `{key} sizes`)
+			expect.equal(arc.from >= 0 and arc.from <= move.hitAt and arc.from + arc.wipe <= move.length, true, `{key} timing`)
+		end
+		expect.equal(SwordFx.ARC_CORE > 0 and SwordFx.ARC_CORE < 1, true, "the white core is narrower")
+		expect.equal(SwordFx.BURST.big > SwordFx.BURST.size, true, "big hits burst bigger")
+	end,
+
 	["drawing the sword gleams: a short flare at the blade's tip"] = function()
 		local gleam = SwordFx.GLEAM
 		expect.equal(gleam.seconds > 0 and gleam.seconds <= 0.5, true, "a short gleam")

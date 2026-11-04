@@ -38,9 +38,33 @@ return {
 	SPARK_COLOR = rgb(255, 236, 170),
 	SHAKE = { cut = { seconds = 0.08, studs = 0.12 }, skill = { seconds = 0.18, studs = 0.3 }, hurt = { seconds = 0.15, studs = 0.25 } },
 
-	-- A sword hit's slash arc (Util/HitFx.cut; its colour and size are the sword's, Config/Swords slash): `size` studs,
-	-- this far in front of you (`ahead`), the combo's last cut and the skill bigger; the skill adds a ring at your feet
-	SLASH = { size = 4.2, ahead = 4, up = 1.2, finisher = 1.25, skill = 1.7, skillRing = 11, flash = 1.6 },
+	-- The candy sparkle arc on every swing (Util/HitFx.swingArc; sword-moves round), in the sword's slash colour
+	-- (Config/Swords slash) with a white core: a circle of `radius` studs in the swing's plane, centred `up` and `ahead`
+	-- of your root, the plane turned `yaw` and rolled `tilt` degrees about your forward axis (0: flat; 90: upright). It
+	-- runs from `start` degrees (0 your right, 90 ahead, 180 your left, in the rolled plane) through `sweep` degrees
+	-- (at most 180: one Beam), appears `from` seconds into the move, wipes along in `wipe` seconds and fades in `fade`.
+	ARCS = {
+		-- the forehand: high on the right, down across to low on the left
+		cut1 = { tilt = 40, yaw = 0, radius = 4.2, start = -10, sweep = 150, up = 0.8, ahead = 0.6, from = 0.15, wipe = 0.1, fade = 0.2, width = 2.8 },
+		-- the backhand: low on the left, rising out to the right
+		cut2 = { tilt = 25, yaw = 0, radius = 4.2, start = 190, sweep = -170, up = 0.5, ahead = 0.6, from = 0.12, wipe = 0.1, fade = 0.2, width = 2.8 },
+		-- the finisher: upright, from over your head down into the ground in front
+		cut3 = { tilt = 90, yaw = 0, radius = 4.4, start = -20, sweep = 170, up = 1.2, ahead = 1, from = 0.3, wipe = 0.12, fade = 0.28, width = 3.4 },
+		-- the dash slash's draw: flat, from your left round to your right, as the dash ends
+		skill = { tilt = 0, yaw = 0, radius = 5, start = 175, sweep = -170, up = 0.2, ahead = 0, from = 0.42, wipe = 0.1, fade = 0.3, width = 3.4 },
+	},
+	ARC_CORE = 0.4, -- the white core's width, a share of the arc's
+	ARC_GLOW = 0.4, -- the coloured body's light emission: lower shows its pastel colour on bright ground (the core is 1)
+	ARC_TRAIL = 0.65, -- the share of the arc lit behind the wipe's head
+	ARC_SOFT = 0.04, -- the head's soft edge, a share of the arc
+	ARC_STARS = { rate = 120, size = 0.55, life = { 0.3, 0.55 }, speed = { 1, 3 }, fall = 6 }, -- the stars it sheds
+	-- A sword hit (BattleController / your own predicted hit): a star burst (`big` for the finisher and the dash slash)
+	-- on the foe's side facing you (`share` of its radius out, `up` studs above your root), a ring snapping out on big
+	-- hits, two crossing cut lines on each foe the dash slash hits, a dust puff where the finisher lands
+	BURST = { size = 5, big = 7, seconds = 0.35, share = 0.7, up = 1 },
+	RING = { size = 10, seconds = 0.3 },
+	CUT_LINES = { length = 8, width = 1.1, delay = 0.06, grow = 0.06, hold = 0.12, fade = 0.25, angle = 35 },
+	DUST = { radius = 5, seconds = 0.4, puffs = 8, color = rgb(232, 222, 205) },
 
 	-- The slash trail on your blade while a cut or the skill swings
 	TRAIL_SECONDS = 0.35,

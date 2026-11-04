@@ -19,6 +19,7 @@ local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
 local SwordFx = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
+local SwordArcRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordArcRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -593,27 +594,55 @@ end
 
 -- The hit sound and the hit-stop the moment the blade lands, when your own reach check says it connects: the server's
 -- hit comes a round trip later (the spec's anti-goal: hits that land later than the swing shows)
--- move: the cut (1-3) or "skill"; its slash arc plays where your blade lands, at once (the server's hit follows)
+-- Where a hit's star burst goes: on target `id`'s side facing `from` (an attacker's root), or on the nearest target's
+-- when no id is given (SwordArcRules.hitPoint), a little above the attacker's root
+local function burstPoint(targets: { SwordRules.Target }, from: Vector3, id: string?): Vector3?
+	local best: SwordRules.Target? = nil
+	local nearest = math.huge
+	for _, target in targets do
+		local distance = Vector2.new(target.x - from.X, target.z - from.Z).Magnitude - target.radius
+		if (id == nil or target.id == id) and distance < nearest then
+			best, nearest = target, distance
+		end
+	end
+	if not best then
+		return nil
+	end
+	local x, z = SwordArcRules.hitPoint(best.x, best.z, best.radius, from.X, from.Z, SwordFx.BURST.share)
+	return Vector3.new(x, from.Y + SwordFx.BURST.up, z)
+end
+
+-- Boss fights: where a sword hit on target `id` bursts, struck from `from` (BattleController's hits)
+function SwordController.HitPoint(id: string, from: Vector3): Vector3?
+	return if combatTargets then burstPoint(combatTargets(), from, id) else nil
+end
+
+-- move: the cut (1-3) or "skill". A cut's star burst (and on the finisher its ring) pops at once; the dash slash's
+-- bursts and cut lines come with the server's hit, on each foe it reached (BattleController)
 local function predictHit(connects: (root: BasePart, targets: { SwordRules.Target }) -> boolean, move: number | string, last: boolean)
 	local character, root = ownParts()
 	if not root or not combatTargets then
 		return
 	end
-	if connects(root, combatTargets()) then
-		hitSoundAt = os.clock()
-		SwordController.PlaySound("hit")
-		if mine then
-			mine.hitStop(if move == "skill" or last then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
-		end
-		local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
-		if sword then
-			local cfg = SwordFx.SLASH
-			if move == "skill" then
-				HitFx.spin(root.Position, sword.slash)
-			else
-				HitFx.cut(root.Position + root.CFrame.LookVector * cfg.ahead + Vector3.new(0, cfg.up, 0), sword.slash, move :: number, last)
-			end
-		end
+	local targets = combatTargets()
+	if not connects(root, targets) then
+		return
+	end
+	hitSoundAt = os.clock()
+	SwordController.PlaySound("hit")
+	if mine then
+		mine.hitStop(if move == "skill" or last then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
+	end
+	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+	local at = burstPoint(targets, root.Position, nil)
+	if not sword or move == "skill" or not at then
+		return
+	end
+	local tint = Color3.fromRGB(sword.slash.color[1], sword.slash.color[2], sword.slash.color[3])
+	local burst = SwordFx.BURST
+	HitFx.burst(at, (if last then burst.big else burst.size) * sword.slash.scale, tint)
+	if last then
+		HitFx.ring(at, SwordFx.RING.size * sword.slash.scale, tint)
 	end
 end
 
@@ -662,6 +691,24 @@ function SwordController.Attack()
 		end
 		swingTrail()
 		SwordController.PlaySound(`swing{index}`)
+		-- The candy sparkle arc as the blade comes round, and the finisher's dust where it lands
+		local arc = (SwordFx.ARCS :: any)[`cut{index}`] :: HitFx.ArcLook?
+		if arc then
+			task.delay(arc.from, function()
+				local _, arcRoot = ownParts()
+				if arcRoot and stillSwinging(token) then
+					HitFx.swingArc(arcRoot.CFrame, arc, sword.slash)
+				end
+			end)
+		end
+		if index == #sword.combo then
+			task.delay(cut.hitAt, function()
+				local _, feetRoot, feetHumanoid = ownParts()
+				if feetRoot and feetHumanoid and stillSwinging(token) then
+					HitFx.dust(feetRoot.Position - Vector3.new(0, feetHumanoid.HipHeight + feetRoot.Size.Y / 2, 0))
+				end
+			end)
+		end
 		local lunge = cut.lunge
 		if lunge then
 			task.delay(lunge.from, function()
@@ -710,6 +757,13 @@ function SwordController.Skill()
 	end
 	swingTrail()
 	SwordController.PlaySound("swing3")
+	local arc = SwordFx.ARCS.skill :: HitFx.ArcLook
+	task.delay(arc.from, function()
+		local _, arcRoot = ownParts()
+		if arcRoot and stillSwinging(token) then
+			HitFx.swingArc(arcRoot.CFrame, arc, sword.slash)
+		end
+	end)
 	local dash = skill.dash
 	local startX, startZ = root.Position.X, root.Position.Z
 	task.delay(dash.from, function()
