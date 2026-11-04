@@ -1071,6 +1071,12 @@ group, checked before its fragments and every time (not only the first). Below i
     your own reach check connects; those two also shake harder. Strikes blend in over 0.04 s (`SwordFx.FADE`).
   - **The skill button** says DASH with a dash slash icon (`DashSkill`; tip "Dash through and slash everything in your
     path.").
+  - **Sounds** (owner 2026-11-04: a whoosh as the finisher jumps, fuller slashes; all Pro Sound Effects): each move
+    plays its sounds layered at set moments (`Swords` `cues`, stopped by a dodge): a cut's swish with an air layer at
+    the snap (not the tap); the finisher a rising whoosh as it leaps, its swish on the fall, a hard whoosh-impact on
+    the slam and a dirt hit as the sword stabs the ground; the dash slash a drawing shing, the dash's whoosh and a
+    searing slice with the cut lines. Every hit is the blade's slice with a thud under it, big hits (the finisher, the
+    dash slash) a beefy burst on top. Layers play quieter than the swish (`Swords.SOUND_VOLUMES`).
 - **Creature attacks** (spec `2026-11-02-attack-animations-design.md`): in every fight the sim sends a `charge` event
   0.6 s (`Combat.CHARGE_LEAD`) before each auto-attack lands (it draws no random: fights and the balance numbers are
   unchanged). Creatures circle their fight spot (marker attribute `InFight`, `Util/FightMotion`, `AttackFx.ORBIT`: 4

@@ -472,6 +472,16 @@ function SwordController.PlaySound(key: string)
 	sound:Play()
 end
 
+-- A sword hit's sound: the blade's slice with a thud under it, and on a big hit (the finisher, the dash slash) a beefy
+-- burst on top
+function SwordController.PlayHit(big: boolean)
+	SwordController.PlaySound("hit")
+	SwordController.PlaySound("hitThud")
+	if big then
+		SwordController.PlaySound("hitBig")
+	end
+end
+
 -- Boss fights: the share of the sword skill's cooldown it takes now (1 - an Express creature's perk)
 function SwordController.SetSkillScale(scale: number)
 	skillScale = math.clamp(scale, 0.1, 1)
@@ -636,7 +646,7 @@ local function predictHit(connects: (root: BasePart, targets: { SwordRules.Targe
 		return
 	end
 	hitSoundAt = os.clock()
-	SwordController.PlaySound("hit")
+	SwordController.PlayHit(move == "skill" or last)
 	if mine then
 		mine.hitStop(if move == "skill" or last then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
 	end
@@ -679,6 +689,18 @@ local function stillSwinging(token: number): boolean
 	return SwingGate.live(gate, token) and combatTargets ~= nil and not kneeling
 end
 
+-- A move's sounds at their moments (Config/Swords cues): the swish with the swing, the finisher's jump and slam, the
+-- dash slash's draw, dash and cut lines; a dodge or anything that ends the swing stops the ones still to come
+local function playCues(sword: Swords.Sword, move: string, token: number)
+	for _, cue in sword.cues[move] or {} do
+		task.delay(cue.at, function()
+			if stillSwinging(token) then
+				SwordController.PlaySound(cue.key)
+			end
+		end)
+	end
+end
+
 -- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target.
 -- Cuts chain at their cancel point (SwordRules.nextCut); each holds your walking until then and lunges you in, stopping
 -- short of a foe (SwordRules.lungeLength). The animations are in place: the lunge is the real movement.
@@ -714,7 +736,7 @@ function SwordController.Attack()
 			mine.play(`cut{index}`)
 		end
 		swingTrail()
-		SwordController.PlaySound(`swing{index}`)
+		playCues(sword, `cut{index}`, token)
 		-- The candy sparkle arc as the blade comes round, and the finisher's dust where it lands
 		local arc = (SwordFx.ARCS :: any)[`cut{index}`] :: HitFx.ArcLook?
 		if arc then
@@ -791,7 +813,7 @@ function SwordController.Skill()
 		mine.play("skill")
 	end
 	swingTrail()
-	SwordController.PlaySound("swing3")
+	playCues(sword, "skill", token)
 	local arc = SwordFx.ARCS.skill :: HitFx.ArcLook
 	task.delay(arc.from, function()
 		local _, arcRoot = ownParts()

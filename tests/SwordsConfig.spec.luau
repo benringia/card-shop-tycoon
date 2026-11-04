@@ -90,6 +90,44 @@ return {
 		expect.equal(Swords.UNLOCK_SHOP_LEVEL, Bosses.BOSSES[Bosses.LADDER[1]].shopLevel, "the sword comes when boss 1 opens")
 	end,
 
+	-- The sword's sound cues (owner 2026-11-04: a whoosh as the finisher jumps, better slash sounds overall): each move
+	-- plays its layered sounds at set moments, every cue is a sound the sword has, inside its move, and the cuts' swish
+	-- comes with the swing, not at the tap
+	["every move's sound cues play the sword's own sounds, inside the move"] = function()
+		for _, sword in Swords.SWORDS do
+			local lengths: { [string]: number } = { skill = sword.skill.length }
+			for index, cut in sword.combo do
+				lengths[`cut{index}`] = cut.length
+			end
+			for move, length in lengths do
+				local cues = sword.cues[move]
+				expect.equal(cues ~= nil and #cues > 0, true, `{sword.name} {move} has sound cues`)
+				for _, cue in cues do
+					local id = sword.sounds[cue.key]
+					expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{move} cue {cue.key}`)
+					expect.equal(cue.at >= 0 and cue.at < length, true, `{move} cue {cue.key} at {cue.at}`)
+				end
+			end
+		end
+	end,
+
+	["the finisher whooshes as it jumps and lands with a slam"] = function()
+		local sword = Swords.SWORDS.starterSword
+		local finisher = sword.combo[3]
+		local hang = finisher.hang :: Swords.Hang
+		local found: { [string]: number } = {}
+		for _, cue in sword.cues.cut3 do
+			found[cue.key] = cue.at
+		end
+		expect.equal(found.jump ~= nil and found.jump < hang.from, true, "the jump's whoosh comes with the launch")
+		expect.equal(found.slam ~= nil and math.abs(found.slam - finisher.hitAt) <= 0.06, true, "the slam lands with the hit")
+		for index = 1, 2 do
+			for _, cue in sword.cues[`cut{index}`] do
+				expect.equal(cue.at <= sword.combo[index].hitAt, true, `cut {index}'s {cue.key} before its strike`)
+			end
+		end
+	end,
+
 	["each cut lands inside its own length"] = function()
 		for _, sword in Swords.SWORDS do
 			for index, cut in sword.combo do

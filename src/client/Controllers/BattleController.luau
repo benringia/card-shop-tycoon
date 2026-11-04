@@ -912,7 +912,7 @@ local function swordHit(event: any)
 		local strength = if big then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
 		shake(strength.seconds, strength.studs)
 		if not SwordController.HitSoundJustPlayed() then
-			SwordController.PlaySound("hit") -- your reach check missed it: the server's hit still sounds
+			SwordController.PlayHit(big) -- your reach check missed it: the server's hit still sounds
 		end
 	end
 end

@@ -17,8 +17,10 @@ export type Cut = { power: number, hitAt: number, cancelAt: number?, length: num
 export type Dash = { studs: number, maxStuds: number, margin: number, width: number, from: number, to: number, slack: number }
 export type Skill = { power: number, hitAt: number, length: number, cooldown: number, dash: Dash }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
--- sounds: asset ids by moment ("" plays nothing); slash: its hits' slash arc (colour { r, g, b }, size; Config/SwordFx
--- SLASH, Util/HitFx), plain on the starter, bolder on the Forge's swords
+-- sounds: asset ids by moment ("" plays nothing); cues: each move's sounds layered at set moments, seconds from its
+-- start (SwordController; a dodge stops the ones still to come); slash: its swing arcs' and hits' colour
+-- ({ r, g, b }) and size (Config/SwordFx, Util/HitFx), plain on the starter, bolder on the Forge's swords
+export type Cue = { key: string, at: number }
 export type Sword = {
 	name: string,
 	power: number,
@@ -28,6 +30,7 @@ export type Sword = {
 	skill: Skill,
 	animations: { [string]: string },
 	sounds: { [string]: string },
+	cues: { [string]: { Cue } },
 	slash: { color: { number }, scale: number },
 }
 
@@ -69,11 +72,11 @@ local SWORDS: { [string]: Sword } = {
 		animations = {
 			draw = "rbxassetid://94917864223617",
 			sheath = "rbxassetid://96323080543778",
-			-- The sword-moves round (spec 2026-11-04-sword-moves-design): empty until the owner saves the new
-			-- KeyframeSequences to Roblox (Studio plays them unpublished, SwordAnims); then their ids go here
-			cut1 = "",
-			cut2 = "",
-			cut3 = "",
+			-- The sword-moves round (spec 2026-11-04-sword-moves-design), saved to Roblox by the owner; the skill
+			-- is empty until it's saved too (Studio plays it unpublished, SwordAnims)
+			cut1 = "rbxassetid://134918938054012",
+			cut2 = "rbxassetid://113721218431899",
+			cut3 = "rbxassetid://101353745325846", -- the big jump version (1.25 s, Hit 0.70)
 			skill = "",
 			dodge = "rbxassetid://110055662976350",
 			flinch = "rbxassetid://91049639458737",
@@ -82,17 +85,37 @@ local SWORDS: { [string]: Sword } = {
 			ready = "rbxassetid://106912114526036",
 			run = "rbxassetid://130791965340714",
 		},
-		-- Pro Sound Effects (Roblox's licensed library)
+		-- Pro Sound Effects (Roblox's licensed library). Owner 2026-11-04: a whoosh as the finisher jumps and
+		-- fuller slashes: each swish gets an air layer, the finisher a jump, slam and ground hit, the dash slash
+		-- a draw, a dash and its cut lines, every hit a thud under the blade and big hits a beefy burst
 		sounds = {
 			swing1 = "rbxassetid://9119750447", -- Sword Swishes 9: fast airy swipe
 			swing2 = "rbxassetid://9119749812", -- Sword Swishes 4: sharp swipe
-			swing3 = "rbxassetid://9119749263", -- Sword Swish 5: swing with a metal shing (the slam, the skill)
+			swing3 = "rbxassetid://9119749263", -- Sword Swish 5: swing with a metal shing (the finisher's fall)
+			air1 = "rbxassetid://9120704978", -- Whooshes Fast Wipes Quick Airy Slices 3: the forehand's air
+			air2 = "rbxassetid://9120704940", -- Whooshes Fast Wipes Quick Airy Slices 1: the backhand's air
+			jump = "rbxassetid://9125805579", -- Rising Whoosh Hissing Build Up Ascending Swoosh: the finisher's leap
+			slam = "rbxassetid://9120730138", -- Whoosh Impact 4: thick swish, hard reverberant impact
+			ground = "rbxassetid://9118678952", -- Rocks Dirt Impacts In Ground 29: the sword stabbing into the earth
+			dashDraw = "rbxassetid://9119749145", -- Sword Swish 102: a metal shing, drawing the sword
+			dash = "rbxassetid://9126229255", -- Whoosh By Fast Airy Swooshing Whipping Thuds: the dash
+			cutLines = "rbxassetid://9119384855", -- Soul Slice 15: searing, sharp, airy decay (the cut lines)
 			hit = "rbxassetid://9119746598", -- Sword Hit 1: a slice with a metal ring
+			hitThud = "rbxassetid://9113487341", -- Body Hit 1 (Sneaker Kicks): weight under the blade
+			hitBig = "rbxassetid://9116385079", -- Magic Burst 4: big beefy impact, glowing decay (finisher, dash slash)
 			draw = "rbxassetid://9119744642", -- Sword Draw Clang 29: unsheathing
 			dodge = "rbxassetid://9126013644", -- Swish Sharp 13: the dash
 			ring = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1: a ring appears under you
 			down = "rbxassetid://9113473249", -- Body Fall 31: knocked down
 			getUp = "rbxassetid://9126013811", -- Swish Sharp 17: back up
+		},
+		-- With the swing (the snap, not the tap), the finisher's launch, fall, slam and stab, the dash slash's draw,
+		-- dash and cut lines
+		cues = {
+			cut1 = { { key = "swing1", at = 0.12 }, { key = "air1", at = 0.13 } },
+			cut2 = { { key = "swing2", at = 0.10 }, { key = "air2", at = 0.11 } },
+			cut3 = { { key = "jump", at = 0.15 }, { key = "swing3", at = 0.56 }, { key = "slam", at = 0.66 }, { key = "ground", at = 0.68 } },
+			skill = { { key = "dashDraw", at = 0.26 }, { key = "dash", at = 0.30 }, { key = "cutLines", at = 0.60 } },
 		},
 	},
 }
@@ -120,5 +143,19 @@ return {
 	SOUND_VOLUME = 0.5, -- the sword's sounds (a few play over each other in a combo)
 	HIT_SOUND_WINDOW = 0.6, -- seconds: after your own reach check plays the hit sound, the server's hit plays none
 	SOUND_PITCH = { 0.88, 1.12 }, -- each sword sound plays at a pitch picked from this range (no clip on a loop)
-	SOUND_VOLUMES = { ring = 0.3, hit = 0.6 }, -- exceptions: the ring chime softer, a landed hit louder
+	-- exceptions: the ring chime softer, a landed hit louder, the layers under a swish or a hit quieter than it
+	SOUND_VOLUMES = {
+		ring = 0.3,
+		hit = 0.6,
+		air1 = 0.3,
+		air2 = 0.3,
+		jump = 0.45,
+		slam = 0.55,
+		ground = 0.4,
+		dashDraw = 0.4,
+		dash = 0.45,
+		cutLines = 0.45,
+		hitThud = 0.35,
+		hitBig = 0.4,
+	},
 }
