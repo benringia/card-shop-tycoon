@@ -98,6 +98,7 @@ type Fighter = {
 	abilityReady: number,
 	signatureReady: number,
 	overcharge: number, -- fast attacks left
+	orbs: number, -- Overcharge's orbs: fast attack slots still to come (each spends one, clients draw them)
 	dodgeUntil: number,
 	stunUntil: number,
 	slowUntil: number,
@@ -206,6 +207,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		abilityReady = time,
 		signatureReady = time,
 		overcharge = 0,
+		orbs = 0,
 		dodgeUntil = 0,
 		stunUntil = 0,
 		slowUntil = 0,
@@ -424,7 +426,8 @@ local function bringIn(state: State, side: Side, incoming: Fighter, events: { Ev
 			table.remove(side.fighters, table.find(side.fighters, out) :: number)
 			table.insert(side.reserves, out)
 		end
-		out.regenLeft = 0 -- Healing Rain stops when its creature leaves the field
+		out.regenLeft = 0 -- Healing Rain stops when its creature leaves the field, and its orbs go
+		out.orbs = 0
 	end
 	table.insert(events, { type = "swap", from = incoming.id, to = if out then out.id else nil })
 end
@@ -536,6 +539,7 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true
 		target.regenLeft = 0
+		target.orbs = 0
 		table.insert(events, { type = "faint", to = target.id })
 		local side = (state.sides :: any)[target.side] :: Side
 		if target.boss and not state.result then
@@ -947,8 +951,24 @@ function BattleSim.step(state: State, dt: number): { Event }
 			end
 			charge(state, fighter, events)
 			if state.time >= fighter.nextAttack then
+				-- An Overcharge slot spends an orb: its attack events say how many are left; stunned through it, it fizzles
+				local spent = fighter.orbs > 0
+				if spent then
+					fighter.orbs -= 1
+				end
 				if state.time >= fighter.stunUntil then
+					local first = #events + 1
 					attack(state, fighter, events)
+					if spent then
+						for index = first, #events do
+							local event = events[index]
+							if event.type == "attack" and event.from == fighter.id then
+								event.orb = fighter.orbs
+							end
+						end
+					end
+				elseif spent then
+					table.insert(events, { type = "orbs", from = fighter.id, left = fighter.orbs })
 				end
 				local next = interval(state, fighter)
 				if fighter.overcharge > 0 then
@@ -1138,6 +1158,7 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 	elseif kind == "Overcharge" then
 		-- Pulling the next attack in is the first fast one; the rest shorten the gaps after it
 		fighter.overcharge = ability.attacks - 1
+		fighter.orbs = ability.attacks
 		fighter.nextAttack = math.min(fighter.nextAttack, state.time + CombatMath.getAttackInterval(state.combat, fighter.spd) / ability.speed)
 		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
 	elseif kind == "Curse" then

@@ -680,6 +680,42 @@ return {
 		assert(monsterDamageIn("Bloom", 4) < plain, "Snare")
 	end,
 
+	-- Overcharge's orbs (owner 2026-11-05: "3 electric orbs, while active each attack cost one"): the fast attacks carry
+	-- how many orbs are left after them, so clients spend one each
+	["Overcharge: its three fast attacks each spend an orb"] = function()
+		local state = wild(fighter("a", "Volt", 100000, 10, 10), {}, monster("Tide", 1e6, 1, 1), 31)
+		castNow(state, "a:a", "element")
+		local orbs = {}
+		for _, e in runFor(state, 6) do
+			if e.type == "attack" and e.from == "a:a" then
+				table.insert(orbs, e.orb or -1)
+			end
+		end
+		expect.equal(orbs[1], 2, "first fast attack: 2 left")
+		expect.equal(orbs[2], 1, "second: 1 left")
+		expect.equal(orbs[3], 0, "third: none left")
+		expect.equal(orbs[4], -1, "the next normal attack spends nothing")
+	end,
+
+	["Overcharge: a fast attack missed while stunned fizzles its orb"] = function()
+		local state = wild(fighter("a", "Volt", 100000, 10, 10), {}, monster("Tide", 1e6, 1, 1), 32)
+		castNow(state, "a:a", "element")
+		state.sides.a.fighters[1].stunUntil = state.time + 1.2 -- through the first fast attack
+		local fizzled: any = nil
+		local orbs = {}
+		for _, e in runFor(state, 6) do
+			if e.type == "orbs" and e.from == "a:a" then
+				fizzled = e
+			elseif e.type == "attack" and e.from == "a:a" then
+				table.insert(orbs, e.orb or -1)
+			end
+		end
+		expect.equal(fizzled and fizzled.left, 2, "the stunned slot's orb fizzles, 2 left")
+		expect.equal(orbs[1], 1, "then 1 left")
+		expect.equal(orbs[2], 0, "then none")
+		expect.equal(orbs[3], -1, "a normal attack after")
+	end,
+
 	["Stampede stun skips monster attacks; Eclipse dodges"] = function()
 		local stunned = wild(fighter("a", "Volt", 100000, 1, 10, "Thunderhorn"), {}, monster("Tide", 100000, 50, 20), 7)
 		BattleSim.useAbility(stunned, "a:a", "signature")
