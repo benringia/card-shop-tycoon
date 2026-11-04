@@ -29,6 +29,22 @@ return {
 		expect.isNil((BabyColors.SOFT_BUTTON :: any).rowHoverScale)
 	end,
 
+	["the glow spreads a few px, never by a scale (a scale pulled it away from wide buttons)"] = function()
+		expect.isNil((BabyColors.HOVER :: any).glowScale)
+		expect.equal(BabyColors.HOVER.glowGrow > 0 and BabyColors.HOVER.glowGrow <= 8, true)
+	end,
+
+	["a hover layer keeps the button's corner: round stays round, an inset layer a little tighter"] = function()
+		local scale, offset = HoverRules.insetCorner(0.5, 0, 0)
+		expect.equal(scale, 0.5, "the round close X")
+		expect.equal(offset, 0)
+		scale, offset = HoverRules.insetCorner(0, 16, 3)
+		expect.equal(scale, 0)
+		expect.equal(offset, 13)
+		scale, offset = HoverRules.insetCorner(0, 2, 3)
+		expect.equal(offset, 0, "never negative")
+	end,
+
 	["the hover look"] = function()
 		expect.equal(table.concat(BabyColors.HOVER.edge, ","), "217,194,242", "soft lilac edge")
 		expect.equal(BabyColors.HOVER.sheen >= 0.9, true, "the sheen is at most 10% white")

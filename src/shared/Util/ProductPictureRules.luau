@@ -14,4 +14,10 @@ function ProductPictureRules.pick(cfg: Config, look: string, kind: "Pack" | "Dec
 	return if pictures then pictures[kind] else nil, cfg.FALLBACK[kind]
 end
 
+-- Whether the drawn icon shows under a picture: until the picture has loaded (still processing after the upload, or
+-- rejected), so the slot is never empty
+function ProductPictureRules.showIcon(imageLoaded: boolean): boolean
+	return not imageLoaded
+end
+
 return ProductPictureRules

@@ -300,6 +300,12 @@ function BossRules.nextStep(
 	return if keysFromPrevious then "keys" else "none"
 end
 
+-- The Boss Ladder's detail pane (round 5): on a phone the pills scroll with the left column and the travel hint goes in
+-- the Rewards column, so the two columns keep room beside the banner and the footer
+function BossRules.detailsLayout(phone: boolean): { pillsInColumn: boolean, hintInRewards: boolean }
+	return { pillsInColumn = phone, hintInRewards = phone }
+end
+
 -- The Boss Ladder banner's colour (a Config/BabyColors COLORS name): the baby colour of the boss's element, pink for a
 -- boss that changes element (the Prism Hydra), lilac when it has none
 function BossRules.bannerColor(elements: { [string]: string }, boss: { element: string?, phases: any? }): string

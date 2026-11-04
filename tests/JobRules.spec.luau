@@ -76,6 +76,14 @@ return {
 		expect.isNil(JobRules.minutesToNext(0, 0, 2), "max level")
 	end,
 
+	-- Round 5: the card view's button is "Assign job"; no screen may still tell players to press "Give a job"
+	["no screen still says Give a job"] = function()
+		local fs = require("@lune/fs")
+		for _, path in { "src/client/Controllers/JobsController.luau", "src/client/Controllers/CardDetailController.luau" } do
+			expect.equal(string.find(fs.readFile(path), "Give a job", 1, true), nil, path)
+		end
+	end,
+
 	-- Round 5 (spec section 4): the Assign job picker's tiles
 	["Assign job: a tile per job in order, with its icon, words and this copy's speed"] = function()
 		local tiles = JobRules.assignTiles(config, 10)

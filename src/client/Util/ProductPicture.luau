@@ -19,8 +19,9 @@ local ProductPicture = {}
 
 ProductPicture.WIDTH = 66 -- how far the row's text moves right
 
--- The uploaded picture, fitted inside AREA with MARGIN of air on every side
-local function picture(row: Frame, image: string): ImageLabel
+-- The uploaded picture, fitted inside AREA with MARGIN of air on every side, over the drawn icon that shows until the
+-- picture has loaded (ProductPictureRules.showIcon: still processing, or rejected)
+local function picture(row: Frame, image: string, fallback: string): ImageLabel
 	local fit = ProductPictures.AREA - 2 * ProductPictures.MARGIN
 	local label = Instance.new("ImageLabel")
 	label.Name = "ProductPicture"
@@ -28,8 +29,17 @@ local function picture(row: Frame, image: string): ImageLabel
 	label.Image = image
 	label.ScaleType = Enum.ScaleType.Fit
 	label.Size = UDim2.fromOffset(fit, fit)
-	label.ZIndex = row.ZIndex + 1
+	label.ZIndex = row.ZIndex + 2
 	label.Parent = row
+	local icon = Icon.make(label, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.ZIndex = row.ZIndex + 1
+	local function showFallback()
+		icon.Visible = ProductPictureRules.showIcon(label.IsLoaded)
+	end
+	label:GetPropertyChangedSignal("IsLoaded"):Connect(showFallback)
+	showFallback()
 	return label
 end
 
@@ -38,7 +48,7 @@ function ProductPicture.add(row: Frame, productId: string, iconName: string): Gu
 	local shown: GuiObject
 	if pack then
 		local image, fallback = ProductPictureRules.pick(ProductPictures, pack.look, if pack.kind == "Deck" then "Deck" else "Pack")
-		shown = if image then picture(row, image) else Icon.make(row, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+		shown = if image then picture(row, image, fallback) else Icon.make(row, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
 	else
 		shown = Icon.make(row, iconName, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
 	end

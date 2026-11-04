@@ -45,12 +45,13 @@ return {
 		textOutline = { thickness = 1, transparency = 0.4 },
 	},
 	-- The mouse-over look (spec 2026-11-04-round5-design section 1, look A "Soft glow"; UIKit noGreyHover, HoverRules):
-	-- nothing changes size. A soft button's glow goes to glowTransparency and spreads to glowScale, and a white sheen
+	-- nothing changes size. A soft button's glow goes to glowTransparency and spreads glowGrow px out (its edge by the
+	-- button stays put: a scale pulled the glow away from wide buttons), and a white sheen
 	-- fades in to `sheen` (see-through share: at most 10 % white). A row, tile or slot gets a lilac copy of the soft glow
 	-- round it (`edge`, faded to edgeGlow) and a lilac tint (`tint`) inset tintInset px, under its gold ring.
 	HOVER = {
 		glowTransparency = 0,
-		glowScale = 1.08,
+		glowGrow = 4,
 		sheen = 0.9,
 		edge = { 217, 194, 242 },
 		edgeGlow = 0.45,

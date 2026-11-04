@@ -54,7 +54,7 @@ local BUTTON = UIStyle.MIN_TAP
 local TIP_WIDTH = 250
 local TIP_GAP = 10
 local LIST_PAD = 4 -- the list clips outlines at its edges (the rule chips' tops)
-local PICK_HINT = "Tap a card, then Give a job."
+local PICK_HINT = "Tap a card, then Assign job."
 
 local player = Players.LocalPlayer
 

@@ -28,6 +28,11 @@ return {
 		expect.equal(deckIcon, "DeckBox")
 	end,
 
+	["the drawn icon shows until the picture has loaded (still processing, or rejected)"] = function()
+		expect.equal(ProductPictureRules.showIcon(false), true)
+		expect.equal(ProductPictureRules.showIcon(true), false)
+	end,
+
 	["the picture fits its row with air around it"] = function()
 		expect.equal(ProductPictures.MARGIN > 0, true)
 		expect.equal(ProductPictures.AREA + 2 * ProductPictures.MARGIN <= Pricing.ROWS.ROW_HEIGHT, true)

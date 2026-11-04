@@ -580,6 +580,17 @@ local function renderNeeds(column: ScrollingFrame, index: number, power: number,
 	end
 end
 
+-- How to get to a boss's place when there's no travel button from here (nil: there is one, or nothing to say)
+local function travelHint(bossId: string): string?
+	local choice = BossRules.travelChoice(Bosses.BOSSES[bossId].place, here())
+	if choice == "viaPortal" then
+		return "Enter the Dungeon portal in the Frontier."
+	elseif choice == "walkToFrontier" then
+		return "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza)."
+	end
+	return nil
+end
+
 -- Right column: what do I get? The loot timer, each win's drops with odds, the chests, cash and XP, the soft cap,
 -- and the way there
 local function renderRewards(column: ScrollingFrame, index: number, power: number)
@@ -643,7 +654,11 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 		local line = iconLine(column, 8, "Power", "Party very strong: fewer drops", palette.hint)
 		Tooltip.attach(line, `Over {threshold} Power this boss drops less. Climb to the next boss, or fight it with weaker cards.`)
 	end
-
+	-- Phones: the way to its place sits at the end of the column (BossRules.detailsLayout), not in the footer
+	local hint = travelHint(bossId)
+	if hint and BossRules.detailsLayout(UIKit.isPhone()).hintInRewards then
+		wrapped(column, 9, hint, palette.hint)
+	end
 end
 
 local function rgb(color: { number }): Color3
@@ -769,10 +784,7 @@ local function renderFooter(index: number, step: StepState, power: number): Fram
 		}
 	end
 	local choice = BossRules.travelChoice(boss.place, here())
-	local hint = if choice == "viaPortal"
-		then "Enter the Dungeon portal in the Frontier."
-		elseif choice == "walkToFrontier" then "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza)."
-		else nil
+	local hint = if BossRules.detailsLayout(phone).hintInRewards then nil else travelHint(bossId)
 	local travel = choice == "gate" or choice == "toMain"
 
 	local footer = Instance.new("Frame")
@@ -842,19 +854,23 @@ local function renderDetails(index: number, step: StepState, power: number, isNe
 	local bannerHeight = if phone then PHONE_BANNER_HEIGHT else BANNER_HEIGHT
 	local reveal = BossRules.revealTricks(step, isNext)
 	renderBanner(index, step, isNext, bannerHeight)
-	local pills = renderPills(details, index, reveal)
-	pills.Position = UDim2.fromOffset(GAP, bannerHeight + GAP)
-	pills.Size = UDim2.new(1, -GAP * 2, 0, 26)
+	local plan = BossRules.detailsLayout(phone)
 	local footer = renderFooter(index, step, power)
 	local left = scroller(details, UDim2.new(), UDim2.new(), gap)
 	local right = scroller(details, UDim2.new(), UDim2.new(), gap)
+	-- Phones: the pills scroll with the left column (BossRules.detailsLayout) so the columns keep their room
+	local pills = renderPills(if plan.pillsInColumn then left else details, index, reveal)
+	if not plan.pillsInColumn then
+		pills.Position = UDim2.fromOffset(GAP, bannerHeight + GAP)
+		pills.Size = UDim2.new(1, -GAP * 2, 0, 26)
+	end
 	local divider = Instance.new("Frame")
 	divider.BackgroundColor3 = palette.rowEdge
 	divider.BorderSizePixel = 0
 	divider.ZIndex = details.ZIndex + 1
 	divider.Parent = details
 	local function placeColumns()
-		local top = bannerHeight + GAP + pills.AbsoluteSize.Y + GAP
+		local top = bannerHeight + GAP + (if plan.pillsInColumn then 0 else pills.AbsoluteSize.Y + GAP)
 		local bottom = footer.AbsoluteSize.Y + GAP * 2
 		left.Position = UDim2.fromOffset(GAP, top)
 		left.Size = UDim2.new(0.5, -GAP * 1.5, 1, -(top + bottom))

@@ -423,7 +423,7 @@ end
 
 -- The mouse-over look (spec 2026-11-04-round5-design section 1, look A "Soft glow"; Config/BabyColors HOVER): nothing
 -- changes size, so nothing in a layout moves and no text jumps a size. Every piece lives in the hover's own children
--- (HoverSheen, HoverEdge, HoverTint, the Glow's HoverGrow), never in a property a controller sets.
+-- (HoverSheen, HoverEdge, HoverTint) and the soft glow UIKit made, never in a property a controller sets.
 local HOVER = BabyColors.HOVER
 local hoverSoft: { [GuiButton]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- a soft button (else a row)
 local hoverTweens: { [GuiButton]: { Tween } } = setmetatable({}, { __mode = "k" }) :: any
@@ -451,12 +451,19 @@ local function fitOver(piece: GuiObject, button: GuiButton, grow: number)
 	piece.Position = UDim2.new(0.5, (right - left) / 2, 0.5, (bottom - top) / 2)
 end
 
-local function cornerOffset(button: GuiButton): number
+local function cornerOf(button: GuiButton): UDim
 	local round = button:FindFirstChildOfClass("UICorner")
-	return if round then round.CornerRadius.Offset else 0
+	return if round then round.CornerRadius else UDim.new(0, 0)
 end
 
--- A plain hover layer over the button's face and under its other children, with the button's corner
+-- The button's corner in px (a round one's scale counts against its short side), for the glow's slices
+local function cornerPx(button: GuiButton): number
+	local corner = cornerOf(button)
+	return corner.Offset + corner.Scale * math.min(button.AbsoluteSize.X, button.AbsoluteSize.Y)
+end
+
+-- A plain hover layer over the button's face and under its other children, with the button's corner (a round button's
+-- stays round)
 local function hoverLayer(button: GuiButton, name: string, color: Color3, inset: number): Frame
 	local existing = button:FindFirstChild(name)
 	if existing and existing:IsA("Frame") then
@@ -469,7 +476,11 @@ local function hoverLayer(button: GuiButton, name: string, color: Color3, inset:
 	layer.BorderSizePixel = 0
 	layer.ZIndex = 0
 	layer.Parent = button
-	UIKit.corner(layer, math.max(0, cornerOffset(button) - inset))
+	local corner = cornerOf(button)
+	local scale, offset = HoverRules.insetCorner(corner.Scale, corner.Offset, inset)
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(scale, offset)
+	round.Parent = layer
 	return layer
 end
 
@@ -479,7 +490,7 @@ local function hoverEdge(button: GuiButton): ImageLabel
 	if existing and existing:IsA("ImageLabel") then
 		return existing
 	end
-	local edge = UIKit.glow(button, fromRgb(HOVER.edge), cornerOffset(button), 0, 1)
+	local edge = UIKit.glow(button, fromRgb(HOVER.edge), cornerPx(button), 0, 1)
 	edge.Name = "HoverEdge" -- not "Glow": the soft button's glow refit and the glow hover leave it alone
 	return edge
 end
@@ -507,18 +518,25 @@ local function setHover(button: GuiButton, on: boolean)
 		local glow = button:FindFirstChild("Glow")
 		if glow and glow:IsA("ImageLabel") then
 			local rest = glow:GetAttribute("RestTransparency")
-			if typeof(rest) ~= "number" then
+			local restSlice = glow:GetAttribute("RestSlice")
+			if typeof(rest) ~= "number" or typeof(restSlice) ~= "number" then
 				rest = glow.ImageTransparency
+				restSlice = glow.SliceScale
 				glow:SetAttribute("RestTransparency", rest)
+				glow:SetAttribute("RestSlice", restSlice)
 			end
-			local grow = glow:FindFirstChild("HoverGrow")
-			if not grow then
-				grow = Instance.new("UIScale")
-				grow.Name = "HoverGrow"
-				grow.Parent = glow
-			end
-			tweenTo(glow, { ImageTransparency = if lit then HOVER.glowTransparency else rest })
-			tweenTo(grow :: UIScale, { Scale = if lit then HOVER.glowScale else 1 })
+			-- Spread glowGrow px out with the cut-out centre where it is: the slices grow by as much as the size, so the
+			-- glow's inner edge stays on the button's (a scale moved it out and left a gap on wide buttons)
+			local look = BabyColors.GLOW
+			local grow = if lit then HOVER.glowGrow else 0
+			local slice = (restSlice :: number) + grow / (look.margin + look.corner)
+			local left, right, top, bottom = paddingOf(button)
+			local spread = look.margin * (restSlice :: number) + grow
+			tweenTo(glow, {
+				ImageTransparency = if lit then HOVER.glowTransparency else rest,
+				SliceScale = slice,
+				Size = UDim2.new(1, spread * 2 + left + right, 1, spread * 2 + top + bottom),
+			})
 		end
 		local sheen = if lit then hoverLayer(button, "HoverSheen", Color3.new(1, 1, 1), 0) else button:FindFirstChild("HoverSheen")
 		if sheen and sheen:IsA("Frame") then

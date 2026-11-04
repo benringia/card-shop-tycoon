@@ -489,7 +489,7 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   show a sharp picture of the real pack and deck box (round 5, owner pick A: the 3D models rendered big in Studio, cut
   out by `tools/ui-art/cut_product_picture.py` and uploaded; `Config/ProductPictures`, `Util/ProductPictureRules`), fitted
   in 56 px with 4 px of air so nothing touches the row's edge; a pack look with no picture yet shows the drawn
-  BoosterPack / DeckBox icon (`Util/ProductPicture`). The old live 3D picture was soft and clipped.
+  BoosterPack / DeckBox icon (`Util/ProductPicture`), which also shows under a picture until it has loaded. The old live 3D picture was soft and clipped.
 - **Each tap flips the top card** (`Util/OpeningCards`, `PackOpening.FLIP`), hit slot last: it lifts and turns over
   with a little overshoot, landing big in the middle (its back is hidden once it's past halfway). The next tap zips it
   into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next. Only the
@@ -1230,7 +1230,8 @@ group, checked before its fragments and every time (not only the first). Below i
   **Right:** the chosen boss. A **banner** in its element's baby colour (`BossRules.bannerColor`: Bloom mint, Tide sky,
   Ember peach, Volt butter, Shade lilac, the Hydra pink; plum text on butter, white outlined in the deep shade on the
   rest) with a big white disc and its icon, its name, title, status chip and "Next"; under it pills for its element,
-  where it lives
+  where it lives (phones: the pills scroll at the top of the left column and the way to its place sits at the end of
+  the Rewards column, `BossRules.detailsLayout`, so the columns keep their room)
   (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
   tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); then two columns, each scrolling when it doesn't fit. **To fight it:** a checklist of what it needs, each row with a
   check, cross or "!" mark: shop level (You: n), its key fragments (n/N tinted for that boss, "Opened" once used,

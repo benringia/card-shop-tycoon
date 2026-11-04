@@ -508,6 +508,15 @@ return {
 		end
 	end,
 	-- Round 5 (spec section 5): the Boss Ladder's footer and banner
+	["boss board on a phone: the pills and the travel hint move into the columns so they get the room"] = function()
+		local phone = BossRules.detailsLayout(true)
+		expect.equal(phone.pillsInColumn, true)
+		expect.equal(phone.hintInRewards, true)
+		local desktop = BossRules.detailsLayout(false)
+		expect.equal(desktop.pillsInColumn, false)
+		expect.equal(desktop.hintInRewards, false)
+	end,
+
 	["boss board next step: beaten, ready and too weak say so"] = function()
 		expect.equal(BossRules.nextStep("beaten", nil, true), "beaten")
 		expect.equal(BossRules.nextStep("ready", nil, true), "ready")

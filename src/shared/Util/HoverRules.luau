@@ -17,4 +17,10 @@ function HoverRules.kind(soft: boolean, backgroundTransparency: number, locked: 
 	return if soft then "glow" else "edge"
 end
 
+-- A hover layer's corner from its button's (a UDim's scale and offset), `inset` px in: a round button (scale 0.5) stays
+-- round, an offset corner gets a little tighter, never below 0
+function HoverRules.insetCorner(scale: number, offset: number, inset: number): (number, number)
+	return scale, math.max(0, offset - inset)
+end
+
 return HoverRules
