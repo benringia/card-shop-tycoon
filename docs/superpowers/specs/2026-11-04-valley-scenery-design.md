@@ -59,7 +59,7 @@ owner's pick as described.
 - **Performance (DESIGN 10.5).** Each new prop model under 2k triangles; the dragon skeleton is a landmark and may go to
   4k (as the portals). Glow comes from glowing materials (Neon parts), not lights: at most one PointLight per area
   *(my call)*. Small pieces cast no shadows. Particle effects reuse Scenery's effect kinds with their rates capped
-  and drop out under the frame watchdog like the town's extras. Pieces are anchored; small ones don't collide and are
+  (area effects have no watchdog today; Roblox already thins particles at lower graphics levels). Pieces are anchored; small ones don't collide and are
   skipped by raycasts (camera). Measured in Studio Play (focused window, the town's method: render CPU from a fixed
   spot in each area, before and after): each area within +1.5 ms of today and 60 fps. Measure before the build starts.
 - **Placement rules (tests/WildValley).** Every piece stays clear of the trail, the stream, the portals, the boards
