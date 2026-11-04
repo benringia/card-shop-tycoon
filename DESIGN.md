@@ -735,7 +735,7 @@ shards from the caldera, three smoking vents, embers, and the caldera's volcano 
 glowing like the canyon's). **The scenery round** (spec `2026-11-04-valley-scenery-design.md`, the owner's picks from
 concept pictures, 2026-11-04): the Meadow became **ancient ruins** (a circle of nine standing stones west of the trail
 as its landmark, two broken arches, standing, broken and fallen pillars, crumbled walls with vines and flowers, two
-red-and-white toadstool rings, flower drifts, more trees on its edges); the Caves a **glow mushroom hollow** (18
+red-and-white toadstool rings, flower drifts, more trees on its edges); the Caves a **glow mushroom hollow** (27
 glowing mushrooms in teal and purple, the four biggest under a new rock shelf over the cave mouth as its landmark, 30
 glowing plant and flower tufts along the trail, today's rocks mossy, fireflies and low mist) with a **darker, bluer
 look** while you're in them (owner: "darker"; `DayCycle.AREA_LOOKS[2]`, blended in over 2 s as you enter and out as you
@@ -2324,6 +2324,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Terrain memory 45-47 MB graphics in the valley (43 in round 1), 38 in an arena copy, 51 on the street; voxels 5.4-6.0
   MB (4.1 before). The valley's terrain with its 12 arena clearings is about 86.5k estimated cells (cap
   `WildValley.MAX_CELLS` 90k); town plus valley about 225.5k, so `Scenery.MAX_CELLS` rose from 180k to 230k.
+- Valley scenery round (measured 2026-11-05 in Play from fixed cameras over the meadow from the arrival, the gorge from
+  its entrance and the ridge from its pass; 148 new pieces: 27 mushrooms, 30 tufts, 10 moss rocks, the stone circle,
+  13 ruins, 16 toadstools, 12 ember trees, 10 crystal clusters, the skeleton): the pieces in place and hidden in turn in
+  one session cost within noise (render CPU on / off, two pairs: meadow 7.0, 6.6 / 6.9, 6.3 ms level 1, 7.4, 7.2 / 6.9,
+  8.2 level 10; gorge 6.4, 6.1 / 6.6, 6.1 and 6.9, 7.8 / 6.6, 7.0; ridge 6.2, 6.2 / 6.7, 6.3 and 7.2, 6.5 / 6.6, 6.3),
+  60 fps throughout; separate sessions drift by 1-3 ms, so compare on/off in one. Town memory by tag grew about 18 MB
+  (instances 159 to 171, mesh parts 32 to 33, textures 244 to 248). New models 212-1904 triangles each.
 - Wild monster models (measured 2026-11-01 in Play from fixed cameras at round 2's views): with the golems' lava
   pulsing, 60 fps at the arrival, gorge and ridge (render CPU 8.9 / 9.8, 9.0 / 9.5 and 8.7 / 9.0 ms at levels 1 / 10)
   but 57 fps in the crowded meadow (12.8 / 13.8 ms, 73 monsters across the valley with `/crowd 11`). Taking the models

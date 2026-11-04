@@ -196,6 +196,46 @@ return {
 		assert(#bad == 0, `town animals (Config/Ambient CRITTERS):\n    {table.concat(bad, "\n    ")}`)
 	end,
 
+	-- The valley scenery round (spec 2026-11-04-valley-scenery-design): each of the fifteen saved with the parts
+	-- SceneryService dresses (Frame; Glow on the glowing ones), and every model the valley places has a saved file
+	["the valley's props are saved with their named parts"] = function()
+		local glowing = { "Frame", "Glow" }
+		local plain = { "Frame" }
+		local wanted = {
+			GlowMushroomTall = glowing, GlowMushroomCluster = glowing, GlowMushroomSmall = glowing, GlowTuft = glowing,
+			GlowFlowers = glowing, MossRockA = plain, MossRockB = plain, RuinArch = plain, RuinPillar = plain,
+			RuinPillarBroken = plain, RuinPillarFallen = plain, RuinWall = plain, Toadstool = { "Frame" },
+			EmberTree = glowing, DragonSkeleton = glowing,
+		}
+		local bad = {}
+		for name, parts in wanted do
+			local path = `assets/props/{name}.rbxm`
+			if not fs.isFile(path) then
+				table.insert(bad, `{path}: not saved`)
+				continue
+			end
+			local model = roblox.deserializeModel(fs.readFile(path))[1]
+			if not model or model.Name ~= name then
+				table.insert(bad, `{path}: the model should be called {name}`)
+				continue
+			end
+			for _, part in parts do
+				local mesh = model:FindFirstChild(part)
+				if not mesh or not mesh:IsA("MeshPart") then
+					table.insert(bad, `{path}: no MeshPart {part}`)
+				end
+			end
+		end
+		local valley = require("../src/shared/Config/WildValley")
+		local WildValley = require("../src/shared/Util/WildValley")
+		for _, spot in WildValley.scenery(valley) do
+			if spot.model and not fs.isFile(`assets/props/{spot.model}.rbxm`) then
+				table.insert(bad, `{spot.model} at {spot.x}, {spot.z}: no assets/props/{spot.model}.rbxm`)
+			end
+		end
+		assert(#bad == 0, `valley scenery props (docs/props.md):\n    {table.concat(bad, "\n    ")}`)
+	end,
+
 	["the caldera's props carry the parts the game dresses"] = function()
 		-- optional until saved (the canyon builds without them); once saved, every part SceneryService looks for
 		local wanted = { Volcano = { "Body", "Lava", "Fx_Smoke" }, ObsidianShards = { "Frame", "Lava" }, CharredTree = { "Frame" } }
