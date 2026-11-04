@@ -16,6 +16,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	OrderRules = require("./OrderRules.spec"),
 	LevelUpFxConfig = require("./LevelUpFxConfig.spec"),
 	HoverRules = require("./HoverRules.spec"),
+	ProductPictureRules = require("./ProductPictureRules.spec"),
 	PartyRules = require("./PartyRules.spec"),
 	CreatureMotion = require("./CreatureMotion.spec"),
 	CreatureAssets = require("./CreatureAssets.spec"),

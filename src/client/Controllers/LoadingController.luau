@@ -24,13 +24,13 @@ local Packs = require(Config:WaitForChild("Packs"))
 local HudMascot = require(Config:WaitForChild("HudMascot"))
 local BinderCovers = require(Config:WaitForChild("BinderCovers"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
+local ProductPictures = require(Config:WaitForChild("ProductPictures"))
 local LoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("LoadingRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatAssets = require(ClientUtil:WaitForChild("CombatAssets"))
-local ProductPicture = require(ClientUtil:WaitForChild("ProductPicture"))
 
 local player = Players.LocalPlayer
 local started = os.clock()
@@ -107,10 +107,10 @@ local function preloadArt(payload: any)
 	end)
 end
 
--- The shop's first pictures: the pack, deck box and display box models (meshes and every look's maps), every UI icon,
--- the pack fronts, the mascot stickers, the binder covers and the level-up textures. Images are kept drawn (a picture
--- is only ready once something draws it); PreloadAsync reports each fetch, and a failed or timed-out one counts as
--- done (LoadingRules.settled). Then every product picture redraws.
+-- The shop's first pictures: the pack, deck box and display box models (meshes and every look's maps: the shelves and
+-- the opening stage draw them), every UI icon, the pack fronts, the menus' product pictures, the mascot stickers, the
+-- binder covers and the level-up textures. Images are kept drawn (a picture is only ready once something draws it);
+-- PreloadAsync reports each fetch, and a failed or timed-out one counts as done (LoadingRules.settled).
 local function preloadShop()
 	local items: { any } = {}
 	-- The whole folder: its meshes and every look's SurfaceAppearance (game scripts can't read a SurfaceAppearance's
@@ -137,6 +137,11 @@ local function preloadShop()
 	for _, id in LevelUpFx.IMAGES do
 		table.insert(images, id)
 	end
+	for _, pictures in ProductPictures.LOOKS do
+		for _, id in pictures do
+			table.insert(images, id)
+		end
+	end
 	for _, image in images do
 		if typeof(image) == "string" and string.sub(image, 1, 13) == "rbxassetid://" then
 			table.insert(items, keepDrawn(image))
@@ -158,7 +163,6 @@ local function preloadShop()
 		task.wait(0.1)
 	end
 	shopReady = true
-	ProductPicture.redrawAll()
 end
 
 -- A copy of the screen at its first step for teleports (the next place's loading screen carries it on)

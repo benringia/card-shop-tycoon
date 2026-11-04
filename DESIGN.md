@@ -486,7 +486,10 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   Very Rare 25, and a hit slot of Rare 45 / Very Rare 25 / Epic 22 / Legendary 8, against a pack's 68/15/14/3), for
   $9 against a pack's $3. On the stage it is the 3D deck box: "Tap the lid to open" lifts the lid, and its cards
   stack and flip like a pack's. On shelves deck boxes stand as 3D deck boxes; menus (Set Price, Prices, Order Stock)
-  show the 3D pack and deck box turned a little (`Util/ProductPicture`).
+  show a sharp picture of the real pack and deck box (round 5, owner pick A: the 3D models rendered big in Studio, cut
+  out by `tools/ui-art/cut_product_picture.py` and uploaded; `Config/ProductPictures`, `Util/ProductPictureRules`), fitted
+  in 56 px with 4 px of air so nothing touches the row's edge; a pack look with no picture yet shows the drawn
+  BoosterPack / DeckBox icon (`Util/ProductPicture`). The old live 3D picture was soft and clipped.
 - **Each tap flips the top card** (`Util/OpeningCards`, `PackOpening.FLIP`), hit slot last: it lifts and turns over
   with a little overshoot, landing big in the middle (its back is hidden once it's past halfway). The next tap zips it
   into a row at the bottom of the screen (`PackOpening.STOW`, `Config/PackOpeningLayout`) and flips the next. Only the
@@ -1672,7 +1675,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
     │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
     │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue
-    │       ├── ProductPicture.luau     # a product's picture in menu rows: 3D pack / deck box, or its icon
+    │       ├── ProductPicture.luau     # a product's picture in menu rows: the pack / deck box picture, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
     │       ├── LevelUpFx.luau          # the level-up light pillar: rune circle, beams, motes, light, star badge, sounds
@@ -1704,6 +1707,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Stock.luau      # delivery, carrying
         │   ├── Placement.luau  # grid, placement rules
         │   ├── Pricing.luau    # price limits, customer buy bands
+        │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
@@ -1792,6 +1796,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
+            ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
             ├── CaseLook.luau      # the code-built CardCase prop: support, carpet, frame, glass, strip
             ├── ShowcaseLayout.luau # upright case card slots in rows (pure, Lune-tested)
             ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
@@ -1913,9 +1918,8 @@ their saved data.
   the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
-  first-visit welcome cinematic starts when it fades. Product pictures (`Util/ProductPicture`, a 3D model in a
-  ViewportFrame) redraw once their model has loaded, again when the shop step is done and each time their window opens:
-  a ViewportFrame doesn't redraw by itself when maps arrive, nor while its window is hidden (the round 4 grey pictures).
+  first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
+  (`Config/ProductPictures`, uploaded images since round 5) with the other images.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**
