@@ -18,6 +18,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/monsters` → ReplicatedStorage.MonsterModels: wild monster models saved as `<Species>.rbxm`, boss models as
   `<bossId>.rbxm` (`prismHydra.rbxm`, built by `tools/blender/build_prismHydra.py`; the Wild bosses `meadowWarden`,
   `caveBroodQueen`, `emberColossus` from Meshy, rigged by `rig_<boss>.py`, docs/creatures.md "Wild bosses"), same rules.
+  The Wild valley's scenery props (glow mushrooms, ruins, ember tree, dragon skeleton) come from
+  `tools/blender/build_valley_props.py` (background Blender only; docs/props.md "Valley scenery props").
 - `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
   The town portals (`PortalWild`, `PortalFrontier`, `PortalArena`) are built by `tools/blender/build_portal_<world>.py` on

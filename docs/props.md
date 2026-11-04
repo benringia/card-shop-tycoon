@@ -96,6 +96,21 @@ small ones and collisions on the roof and the backdrop, and makes `Lava` parts g
 has a saved file. Under each copy a flat ground part runs on past the walls (`WildValley.arenaApron`, colours by zone in
 `ARENA_CLEARING.apronColors`, matched by eye: a part's material draws lighter or duller than the same terrain's).
 
+## Valley scenery props (GlowMushroomTall ... DragonSkeleton)
+
+The Wild valley's scenery round (spec 2026-11-04-valley-scenery-design): `GlowMushroomTall`, `GlowMushroomCluster`,
+`GlowMushroomSmall`, `GlowTuft`, `GlowFlowers`, `MossRockA`, `MossRockB` (the Caves); `RuinArch`, `RuinPillar`,
+`RuinPillarBroken`, `RuinPillarFallen`, `RuinWall`, `Toadstool` (the Meadow; its standing stones are the arenas'
+`StandingStone`); `EmberTree`, `DragonSkeleton` (Ember Ridge). Built by `tools/blender/build_valley_props.py` on
+`voxel_kit.py` and `portal_kit.py`, each its own `assets/blender/<Name>/<Name>.{blend,fbx}`: a `Frame` (palette texture)
+and, for the glowing ones, `Glow` (palette white). Run it in a **background** Blender, never the open one (`begin()`
+clears the scene): `blender -b --factory-startup --python tools/blender/build_valley_props.py` (`PROPS="A,B"`,
+`EXPORT=0` as above); each stays under 2000 triangles, the skeleton under 4000. `render_valley_props.py -- <out_dir>`
+renders a preview of each. Import each FBX with default settings, save it as `assets/props/<Name>.rbxm` unchanged and
+delete the Workspace copy: SceneryService (`dressValleyProp`) anchors each piece, turns off collisions, camera and touch
+on its parts, makes `Glow` Neon in the spot's `glow` colour (`Config/WildValley GLOW`), drops shadows from small ones
+and adds the invisible colliders in `COLLIDERS`. Positions are `Config/WildValley`'s scenery lists.
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models
