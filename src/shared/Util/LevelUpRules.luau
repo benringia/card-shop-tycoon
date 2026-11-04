@@ -56,6 +56,14 @@ function LevelUpRules.freeAt(cfg: { AFTER_BOSS: { win: number, lose: number } },
 	return now + cfg.AFTER_BOSS.lose -- lost or timed out: the defeat screen
 end
 
+-- Which level-up sound set plays (round 5, spec section 7): the picked one when it's a set's number, else the default
+function LevelUpRules.soundSet(sounds: { sets: { any }, default: number }, pick: any): number
+	if typeof(pick) == "number" and pick == math.floor(pick) and pick >= 1 and pick <= #sounds.sets then
+		return pick
+	end
+	return sounds.default
+end
+
 -- Why a Bag pack can't be opened now (the pack opening takes over the camera): in a fight, or in PvP; nil when free
 function LevelUpRules.openBlocked(fighting: boolean, inArena: boolean): string?
 	if fighting or inArena then

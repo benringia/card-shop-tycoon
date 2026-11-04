@@ -18,6 +18,7 @@ local BabyColors = require(Config:WaitForChild("BabyColors"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
+local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
 
 local IMAGES = LevelUpConfig.IMAGES
 local T = LevelUpConfig.TIMING
@@ -76,17 +77,17 @@ local function groundUnder(root: BasePart, model: Instance): Vector3
 	return if hit then hit.Position else root.Position - Vector3.new(0, root.Size.Y / 2 + 2, 0)
 end
 
--- A level-up sound: picked option (Studio /levelsound sets LevelSoundPick_<moment> on the player) or the configured one;
--- flat for your own, at `at` for others (quieter, fading with distance)
-local function play(moment: string, at: Vector3?, quiet: boolean, creature: boolean)
+-- A level-up sound (round 5: one per level-up, a sting on a 10th shop level): the "sound" or "sting" of the set picked in
+-- Studio (/levelsound sets LevelSoundSet, and LevelSoundVolume for the sound) or the default set; flat for your own, at
+-- `at` for others (quieter, fading with distance)
+local function play(part: "sound" | "sting", at: Vector3?, quiet: boolean, creature: boolean)
 	local player = Players.LocalPlayer
-	local spec = SOUNDS[moment]
-	local pick = if player then player:GetAttribute("LevelSoundPick_" .. moment) else nil
-	local option = if typeof(pick) == "number" then SOUNDS.options[moment][pick] else nil
+	local set = SOUNDS.sets[LevelUpRules.soundSet(SOUNDS, if player then player:GetAttribute("LevelSoundSet") else nil)]
+	local spec = set[part]
 	local id, volume, pitch = spec.id, spec.volume, spec.pitch
-	if option then
-		local picked = player:GetAttribute("LevelSoundPick_" .. moment .. "Volume")
-		id, volume, pitch = option.id, if typeof(picked) == "number" then picked else option.volume, option.pitch
+	local picked = if player then player:GetAttribute("LevelSoundVolume") else nil
+	if part == "sound" and typeof(picked) == "number" then
+		volume = picked
 	end
 	if creature then
 		volume *= SOUNDS.creature.volumeScale
@@ -350,16 +351,10 @@ local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, 
 	local creature = words.creature
 	local soundAt = if own then nil else root.Position
 
-	play("rise", soundAt, quiet, creature)
-	task.delay(T.beam, function()
-		if not creature then
-			play("beam", soundAt, quiet, false)
-		end
-	end)
 	task.delay(T.badge, function()
-		play("chime", soundAt, quiet, creature)
+		play("sound", soundAt, quiet, creature)
 		if words.milestone and not creature then
-			play("fanfare", soundAt, quiet, false)
+			play("sting", soundAt, quiet, false)
 		end
 	end)
 

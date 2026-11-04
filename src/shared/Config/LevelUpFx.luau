@@ -32,34 +32,31 @@ return {
 		rune = { 255, 216, 90 },
 		runeMilestone = { { 255, 201, 63 }, { 79, 180, 255 } }, -- the two-toned circle of a 10th level
 	},
+	-- One soft sound per level-up (round 5, spec 2026-11-04-round5-design section 7; owner: round 4's four stacked sounds
+	-- were "too loud, too much"), when the badge pops; a 10th shop level adds its sting. Three sets of licensed PSE / APM
+	-- sounds to pick in Studio ("/levelsound <1-3> [volume]", the Admin panel's "Level sound" buttons; the attribute
+	-- LevelSoundSet); `default` plays otherwise. Volumes about half of round 4's loudest, under maxVolume.
 	SOUNDS = {
-		rise = { id = "rbxassetid://9125635430", volume = 0.12, pitch = 1 },
-		beam = { id = "rbxassetid://9113122880", volume = 0.12, pitch = 1 },
-		chime = { id = "rbxassetid://9126073318", volume = 0.14, pitch = 1 },
-		fanfare = { id = "rbxassetid://1839881844", volume = 0.25, pitch = 1 },
-		creature = { volumeScale = 0.6, pitch = 1.25 }, -- a creature plays the rise and the chime, quieter and higher
-		options = {
-			rise = {
-				{ name = "Sparkling chimes whoosh (now)", id = "rbxassetid://9125635430", volume = 0.12, pitch = 1 }, -- PSE "Magical Exit Sparkling Pass Bys Clinking Chimes 5"
-				{ name = "Shimmer pass", id = "rbxassetid://9125646918", volume = 0.12, pitch = 1 }, -- PSE "Magic Whooshes Pass Bys Metallic Shimmering 7"
-				{ name = "Spinning chime", id = "rbxassetid://9125644676", volume = 0.1, pitch = 1 }, -- PSE "Magic Twirling Small High Pitch Spinning Chime 1"
+		sets = {
+			{
+				name = "Soft sparkle ping",
+				sound = { id = "rbxassetid://9126076030", volume = 0.07, pitch = 1 }, -- PSE "Synth Sparkle Tone High Pitch Tone Burst Ping 4"
+				sting = { id = "rbxassetid://9047103106", volume = 0.12, pitch = 1 }, -- APM "All It Takes Sting 2"
 			},
-			beam = {
-				{ name = "Angel sparkle burst (now)", id = "rbxassetid://9113122880", volume = 0.12, pitch = 1 }, -- PSE "Angel Sparkle 5"
-				{ name = "Airy magic swell", id = "rbxassetid://9117964708", volume = 0.12, pitch = 1 }, -- PSE "Pulsing Tone Smooth Mid Range Synth Tone 10"
-				{ name = "Swirling magic tone", id = "rbxassetid://9116409842", volume = 0.1, pitch = 1 }, -- PSE "Magic Swirling Tone 1"
+			{
+				name = "Bright bell ding",
+				sound = { id = "rbxassetid://9126073001", volume = 0.07, pitch = 1.1 }, -- PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 4"
+				sting = { id = "rbxassetid://9047103106", volume = 0.12, pitch = 1 }, -- APM "All It Takes Sting 2"
 			},
-			chime = {
-				{ name = "Long bell ring (now)", id = "rbxassetid://9126073318", volume = 0.14, pitch = 1 }, -- PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 1"
-				{ name = "Bright bell ding", id = "rbxassetid://9126073001", volume = 0.14, pitch = 1.1 }, -- PSE "... Bell Tone Ding 4"
-				{ name = "Sparkle ping", id = "rbxassetid://9126076030", volume = 0.12, pitch = 1 }, -- PSE "Synth Sparkle Tone High Pitch Tone Burst Ping 4"
-			},
-			fanfare = {
-				{ name = "Spinning Around (now)", id = "rbxassetid://1839881844", volume = 0.25, pitch = 1 }, -- APM "Spinning Around (b)", a 2 s lively link
-				{ name = "All It Takes sting", id = "rbxassetid://9047103106", volume = 0.22, pitch = 1 }, -- APM "All It Takes Sting 2"
-				{ name = "She's Got It All sting", id = "rbxassetid://1837713269", volume = 0.22, pitch = 1 }, -- APM "She's Got It All (sting)"
+			{
+				name = "Twirling chime",
+				sound = { id = "rbxassetid://9125644676", volume = 0.06, pitch = 1 }, -- PSE "Magic Twirling Small High Pitch Spinning Chime 1"
+				sting = { id = "rbxassetid://1839881844", volume = 0.1, pitch = 1 }, -- APM "Spinning Around (b)", a 2 s lively link
 			},
 		},
+		default = 1,
+		maxVolume = 0.15,
+		creature = { volumeScale = 0.6, pitch = 1.25 }, -- a creature plays its set's sound, quieter and higher
 	} :: any,
 	SPARK_WAIT = 4, -- seconds your own creature's level-up from a fight waits for its XP sparks to land, at most
 }

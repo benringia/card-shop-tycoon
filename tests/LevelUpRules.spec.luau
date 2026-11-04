@@ -58,6 +58,15 @@ return {
 		expect.equal(LevelUpRules.freeAt(fx, 100, true, "timeout"), 100 + fx.AFTER_BOSS.lose, "a timed-out boss fight ends on the defeat screen")
 	end,
 
+	["the picked sound set, else the default"] = function()
+		local sounds = { sets = { {}, {}, {} }, default = 1 }
+		expect.equal(LevelUpRules.soundSet(sounds, 2), 2)
+		expect.equal(LevelUpRules.soundSet(sounds, nil), 1)
+		expect.equal(LevelUpRules.soundSet(sounds, 7), 1)
+		expect.equal(LevelUpRules.soundSet(sounds, 1.5), 1)
+		expect.equal(LevelUpRules.soundSet(sounds, "2"), 1)
+	end,
+
 	["Bag packs don't open in any fight"] = function()
 		expect.equal(LevelUpRules.openBlocked(true, false), "Open it after the fight.", "a monster or boss fight")
 		expect.equal(LevelUpRules.openBlocked(false, true), "Open it after the fight.", "PvP in the arena")

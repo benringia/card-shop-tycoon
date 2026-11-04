@@ -1434,10 +1434,13 @@ a shop worker; markers and worker rigs carry `BeastId`); your own after a won fi
 the portrait. The server sends `LevelUpFx` to everyone; others within 60 studs of their camera see it and hear it
 quieter. A shop level-up never plays mid-fight (a glowing circle underfoot reads as "dodge"): `LevelUpService` holds it
 until the fight (or PvP) ends, and after a boss fight its end screen too (the victory screen 6 s, the defeat countdown and the trip home 8 s, `LevelUpFx.AFTER_BOSS`), and merges several into one; the cash, the pack and the toast come at once. Bag packs don't open in a fight or PvP, nor while a pack is on the stage or a rip is on its way. Sounds
-(Pro Sound Effects, APM Music, three options each to try): a sparkling whoosh as the circle opens, an angel-sparkle
-burst as the beam hits, a bell as the badge pops, a short fanfare on 10th levels; a creature plays the whoosh and the
-bell, quieter and higher. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelsound <rise|beam|chime|fanfare> <n>`
-(and the admin panel). Measured: about 59 fps during the effect against 60 without it.
+(round 5, owner: round 4's four stacked sounds were "too loud, too much"; Pro Sound Effects, APM Music): **one soft
+sound** as the badge pops, and on a 10th shop level a short sting with it, from one of three sets (`LevelUpFx.SOUNDS.sets`,
+`LevelUpRules.soundSet`): 1 soft sparkle ping (the default) with the "All It Takes" sting, 2 bright bell ding with the
+same sting, 3 twirling chime with the "Spinning Around" link; about half round 4's volume (sound 0.06-0.07, sting
+0.1-0.12, never over 0.15). A creature plays its set's sound, quieter and higher. They're preloaded on the loading
+screen. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelsound <1-3> [volume]` (picks a set and plays it once; 0
+for the default) and the admin panel's "Level sound" buttons. Measured: about 59 fps during the effect against 60 without it.
 
 ### 7.3 Upgrades (one-off purchases)
 

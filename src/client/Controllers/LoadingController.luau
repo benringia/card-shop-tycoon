@@ -147,6 +147,11 @@ local function preloadShop()
 			table.insert(items, keepDrawn(image))
 		end
 	end
+	-- The level-up sounds (round 5), so the first level-up isn't silent while they fetch
+	for _, set in LevelUpFx.SOUNDS.sets do
+		table.insert(items, set.sound.id)
+		table.insert(items, set.sting.id)
+	end
 	local statuses: { [string]: string } = {}
 	ContentProvider:PreloadAsync(items, function(content: string, status: Enum.AssetFetchStatus)
 		statuses[content] = status.Name
