@@ -2431,6 +2431,23 @@ boss models; the ranch and Heroic tiers come after those.
   RollOffMinDistance; inner pieces and crystals can overlap (separate rngs); wildroar still has no FIDGET_SECONDS entry
   (the bosses' roars run 2.2-2.8 s); BossMoments.anchors returns the config's own bones table; the dome isn't
   double-sided (a camera past it sees inside); the lava field's ambient is the town's fire loop.
+- [x] Fight polish and boss debuffs (on the way to the HUD branch): the bosses' ring debuffs (HUD chip and badge,
+  effects on the character, server walk slows), special-move wind-ups, the boss plate, the meteor slam, summon effects,
+  the unskippable defeat screen, varied fight sounds. Merged with the branch below on 2026-11-04.
+- [x] HUD and windows makeover (branch `hud-creature-pals`; specs `2026-11-03-hud-creature-pals-design.md`,
+  `2026-11-03-cream-windows-design.md`, `2026-11-03-cotton-candy-ui-design.md`, `2026-11-03-windows-round3-design.md`,
+  `2026-11-04-round4-design.md`, `2026-11-04-round5-design.md`): the creature pals HUD (mascot, candy tiles, element-rim
+  portraits, XP pill and sparks), cotton candy windows everywhere but the fights, round 3 (Filters column, Prices slim
+  rows, the Bag window, Return to town, sword on the back), round 4 (shop levels 1-100 with rewards, the level-up light
+  pillar, creature-free binder covers, Condenser two panes, Order Stock rows, summon sounds, the loading screen waiting
+  for pictures) and round 5 (calm, visible hovers, the binder tooltip by its card, "This copy" first, Assign job, the
+  Boss Ladder list and banner, sharp pack pictures, one soft level-up sound, town music 0.21). Approved by the owner
+  and merged 2026-11-04. Deferred minors: the lilac edge is cut straight at the ends of scrolling lists and may tint a
+  chosen row's gold ring; the Assign job picker isn't redrawn if the copy changes under it; picking a level sound set
+  never previews its sting; "This copy" can crowd on small phones; a creature's level-up after a boss fight waits 4 s
+  for sparks that don't come; other players' level-up sounds don't follow them; the toast's "+$1000" has no comma;
+  "Stocking the shelves..." shows in the Frontier and Dungeon too; the phone layouts of the round 5 windows weren't
+  checked in the emulator.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
