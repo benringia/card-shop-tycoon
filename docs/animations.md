@@ -9,6 +9,7 @@ KeyframeSequences. Spec: `docs/superpowers/specs/2026-11-02-you-in-the-fight-des
 |---|---|
 | Rig, keying helpers, preview renders, per-frame export | `tools/blender/anim_kit.py` |
 | The starter sword's 12 moves (one function each, timed to `Config/Swords`) | `tools/blender/anim_starter_sword.py` |
+| Background export and 60 fps MP4 previews of the sword moves | `tools/blender/run_sword_moves.py` |
 | Exported moves (JSON, not synced) | `assets/blender/Animations/<Sword>/<move>.json` |
 | JSON → KeyframeSequence `.rbxm` | `tools/anim/build_kfs.luau` |
 | KeyframeSequences (synced to `ReplicatedStorage.SwordAnimations`) | `assets/animations/<Sword>/<move>.rbxm` |
@@ -62,19 +63,37 @@ game moves the character for real. `render_video(path, first, last, cam, target)
 Blender runs these in the **background** (`blender.exe -b --factory-startup --python <script>`), never in the owner's
 open file: `build()` empties the scene.
 
+The four moves made this way (`anim_starter_sword.NATURAL`; the game's side is in DESIGN.md "Sword moves round"):
+
+| Move | Length | `Hit` | Cancel point | Lunge (the game's) |
+|---|---|---|---|---|
+| `cut1` forehand, a snapped diagonal cut down across | 0.60 s | 0.217 s | 0.34 s | 1.1 studs, 0.167-0.25 s |
+| `cut2` backhand, a rising sweep from low left | 0.58 s | 0.183 s | 0.32 s | 0.8 studs, 0.133-0.22 s |
+| `cut3` finisher, both hands: crouch, spinning leap, slam | 0.88 s | 0.40 s | (its end) | 2.6 studs, 0.17-0.40 s |
+| `skill` the dash slash: draw stance, dash, frozen follow-through | 1.0 s | 0.62 s (the cut lines) | (its end) | the dash: 9 studs, 0.30-0.42 s |
+
+Export them (and previews) with
+`"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/run_sword_moves.py -- [--preview <dir>] [move ...]`,
+then `lune run tools/anim/build_kfs`. The cancel points and lunges live only in `Config/Swords` (the next cut may start
+at the cancel point; `SwordController` moves the character); keep them in step with the keys' follow-through and root
+travel.
+
 ## Making or changing moves
 
-1. In Blender (through the Blender MCP), with `tools/blender` on `sys.path`:
+1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through
+   the Blender MCP in a scratch file, never the owner's open one:
    `import anim_starter_sword as moves; moves.make("cut2", json_dir, render_dir)` (`make_all` for every move).
 2. Show the front and side previews (GIFs at real speed) and get the look approved.
 3. `lune run tools/anim/build_kfs` → `assets/animations/StarterSword/*.rbxm` (Rojo syncs them).
 4. Studio plays them right away (`SwordAnims` registers a move that has no id yet).
 5. Publish: in Studio select each KeyframeSequence under `ReplicatedStorage.SwordAnimations.<Sword>`, right-click →
    Save to Roblox, owned by whoever owns the published game (or it won't play there). Put the ids in
-   `Config/Swords` (`"rbxassetid://<id>"`).
+   `Config/Swords` (`"rbxassetid://<id>"`). The sword moves round's `cut1`, `cut2`, `cut3` and `skill` are still `""`
+   (Studio only) until the owner does this; the branch merges after.
 
 Timing: a cut's `Hit` marker and `Config/Swords` `hitAt` must agree (the server lands damage at `hitAt`). If a move's
-timing changes, change both, and keep `tests/SwordRules.spec`'s combo power check green.
+timing changes, change both, and keep `tests/SwordRules.spec`'s combo power check and `tests/SwordsConfig.spec`'s
+damage-a-second check (the chained cycle within 2 % of before) green; re-run both balance sims.
 
 ## Bone rigs (monster and boss attacks)
 
