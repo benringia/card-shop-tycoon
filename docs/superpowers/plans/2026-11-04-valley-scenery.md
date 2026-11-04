@@ -53,7 +53,7 @@ each spot's colour, colliders for big pieces). The Caves' look is a `Config/DayC
 
 **Interfaces:**
 - Produces: config `PROP_LISTS = { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS", "MUSHROOMS", "TUFTS", "RUINS",
-  "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON" }`; each list holds spots `{ model: string?, x, z, height, yaw, glow: string?,
+  "MOSS_ROCKS", "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON" }`; each list holds spots `{ model: string?, x, z, height, yaw, glow: string?,
   clear: number? }`. `STONE_CIRCLE = { x, z, radius, count, model = "StandingStone", height, clear }`,
   `MUSHROOM_RINGS = { { x, z, radius, count, model = "Toadstool", height } }`.
 - Produces: `WildValley.ring(centre: { x: number, z: number }, radius: number, count: number, template: any): { any }`
@@ -72,15 +72,15 @@ each spot's colour, colliders for big pieces). The Caves' look is a `Config/DayC
   - `"the valley's scenery is every list plus the circle and the rings"`: `#WildValley.scenery(valley)` equals the sum
     of `#valley[name]` over `PROP_LISTS` plus `STONE_CIRCLE.count` plus each ring's `count`.
   - Change `allProps()` to `WildValley.scenery(valley)` and the in-biome check to cover `MUSHROOMS`/`TUFTS` (2),
-    `RUINS` and the circle and rings (1), `EMBER_TREES`/`EMBER_CRYSTALS`/`SKELETON` (3).
+    `MOSS_ROCKS` (2), `RUINS` and the circle and rings (1), `EMBER_TREES`/`EMBER_CRYSTALS`/`SKELETON` (3).
   - `"big pieces keep spawn spots their own distance away"`: for every scenery spot with `clear`, no
     `zoneSpots` spot of its biome lies closer than `clear`.
 - [ ] **Step 2: Run** `lune run tests/run` → the new tests FAIL (`ring`/`scenery` nil).
 - [ ] **Step 3: Implement** `ring` and `scenery` in `Util/WildValley.luau`; `zoneSpots` reads `WildValley.scenery(valley)`
-  and keeps `math.max(prop.clear or 0, valley.SPOT_PROP_CLEAR)` from each. Config: `PROP_LISTS`, the new lists empty
-  for now, `STONE_CIRCLE` and `MUSHROOM_RINGS` with `count = 0` placeholders are not allowed: put the real circle
-  (west of the trail, about `x = -130, z = 1195`, radius 13, 9 stones, height 9, `clear = 18`) and two rings (radius 3,
-  8 toadstools, height 1.4) in now, at spots that pass `clearOf`.
+  and keeps `math.max(prop.clear or 0, valley.SPOT_PROP_CLEAR)` from each. Config: `PROP_LISTS` and the new lists
+  (empty until Tasks 5-7), the real `STONE_CIRCLE` (west of the trail, about `x = -130, z = 1195`, radius 13, 9
+  stones, height 9, `clear = 18`) and two `MUSHROOM_RINGS` (radius 3, 8 toadstools, height 1.4), at spots that pass
+  `clearOf` (move them if a test says so).
 - [ ] **Step 4: Run** `lune run tests/run` → all pass (968 + 3 new).
 - [ ] **Step 5: Commit** `git commit -m "Valley scenery: scenery lists, rings, per-piece spawn clearance"`.
 
@@ -95,8 +95,8 @@ each spot's colour, colliders for big pieces). The Caves' look is a `Config/DayC
 - Consumes: `WildValley.scenery(valley)` (Task 1).
 - Produces: `GLOW = { teal = {r,g,b}, purple = {...}, blue = {...}, ember = {...} }`; a spot's `glow` names one.
   `COLLIDERS = { [model]: { radius: number, height: number } }` (shares of the spot's height, as
-  `Scenery.CALDERA_COLLIDERS`) for the big pieces (`GlowMushroomTall`, `GlowMushroomCluster`, `RuinArch`, `RuinPillar`,
-  `EmberTree`, `DragonSkeleton`). `EMBER_CRYSTAL_LOOK` shaped like `CRYSTAL_LOOK`.
+  `Scenery.CALDERA_COLLIDERS`) for the big pieces (`GlowMushroomTall`, `GlowMushroomCluster`, `MossRockA`, `MossRockB`,
+  `RuinArch`, `RuinPillar`, `RuinWall`, `EmberTree`, `DragonSkeleton`). `EMBER_CRYSTAL_LOOK` shaped like `CRYSTAL_LOOK`.
 - Produces (SceneryService, local): `dressValleyProp(model: Model, spot: any)`: every part anchored, `CanCollide`,
   `CanQuery`, `CanTouch` false; parts named `Glow` lose SurfaceAppearance/texture, become Neon in `GLOW[spot.glow]`
   (default `teal`), no shadow; a model under `Scenery.SMALL_DECOR_SIZE` studs tall casts no shadow; then a collider
@@ -106,9 +106,11 @@ each spot's colour, colliders for big pieces). The Caves' look is a `Config/DayC
   `valley.GLOW[spot.glow]`, three numbers 0-255); `"colliders are thin shares of a piece"` (each `COLLIDERS` entry:
   `0 < radius <= 0.5`, `0 < height <= 1`).
 - [ ] **Step 2: Run** → FAIL (`GLOW` nil).
-- [ ] **Step 3: Implement** the config and `dressValleyProp`; `buildWildValley` places every spot of
-  `WildValley.scenery` that has a `model` except today's `PROPS`/`CHARRED`/`SHARDS` handling (kept), dresses it, and
-  builds `EMBER_CRYSTALS` with `buildCrystalCluster(holder, spot, WildValleyConfig.EMBER_CRYSTAL_LOOK)`.
+- [ ] **Step 3: Implement** the config and `dressValleyProp`. Today's lists keep their code (`PROPS` placed as is,
+  `CHARRED`/`SHARDS` with `dressCalderaProp`, `CRYSTALS` and `VENTS` code-built). The new model lists (`MUSHROOMS`,
+  `TUFTS`, `MOSS_ROCKS`, `RUINS`, `EMBER_TREES`, `SKELETON`), the stone circle and the rings are each placed with
+  `placeModel` and dressed with `dressValleyProp` (freshly imported models arrive unanchored and colliding);
+  `EMBER_CRYSTALS` are built with `buildCrystalCluster(holder, spot, WildValleyConfig.EMBER_CRYSTAL_LOOK)`.
 - [ ] **Step 4: Run** `lune run tests/run` → PASS; `rojo build -o "$TEMP/claude_build.rbxl"` → builds.
 - [ ] **Step 5: Studio check (models not imported yet):** Play, `/wild`; Output has only `[ScenePieces] no prop model`
   warnings for the new models and no errors; `Scenery.WildValley` parts with `CanQuery == true`: none.
@@ -177,15 +179,15 @@ each spot's colour, colliders for big pieces). The Caves' look is a `Config/DayC
 ### Task 5: The Caves dressed
 
 **Files:**
-- Modify: `src/shared/Config/WildValley.luau` (`MUSHROOMS`, `TUFTS`, gorge `PROPS` rocks → `MossRockA`/`B`, the ledge in
-  `TERRAIN`), `src/shared/Config/Scenery.luau` (`EMITTERS`: WildGorge `fireflies` rate 8, `groundmist` rate 3)
+- Modify: `src/shared/Config/WildValley.luau` (`MUSHROOMS`, `TUFTS`, `MOSS_ROCKS` (today's ten gorge rocks move out of
+  `PROPS`), the ledge in `TERRAIN`), `src/shared/Config/Scenery.luau` (`EMITTERS`: WildGorge `fireflies` rate 8, `groundmist` rate 3)
 - Modify: `src/server/Services/SceneryService.luau` (`EFFECT_LOOKS.groundmist`: soft pale-blue puffs, Lifetime 6-9,
   Speed 0.2-0.6, Size 4-7, Transparency 0.85 → 1, LightEmission 0.2, low over the floor)
 
 - [ ] **Step 1:** Place about 18 mushrooms (4 `GlowMushroomTall` 14-20 high as the landmark under the ledge by the
   cave mouth, clusters 6-10, smalls 2-4; `glow` teal or purple, alternating by cluster; `clear` = half the height for
   the tall ones), 30 tufts (`GlowTuft`, `GlowFlowers`, glow blue/teal/purple) in patches along the trail's edges; today's
-  ten gorge rocks become moss rocks; the ledge: a Limestone block jutting about 25 studs east from the west cliff
+  ten gorge rocks leave `PROPS` and become `MOSS_ROCKS` spots (`MossRockA`/`B`, same places and sizes); the ledge: a Limestone block jutting about 25 studs east from the west cliff
   over the cave mouth, its underside at least 6 studs above the mouth's top (y 31).
 - [ ] **Step 2: Run** `lune run tests/run` → PASS (clearances, 24 spots, `MAX_CELLS`); `rojo build` OK.
 - [ ] **Step 3: Studio** (with whatever models are imported): screenshot CAVES camera and from the middle; compare
