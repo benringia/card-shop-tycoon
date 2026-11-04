@@ -293,6 +293,28 @@ return {
 	EMBER_TREES = {},
 	EMBER_CRYSTALS = {},
 	SKELETON = {},
+	-- The glowing parts' colours (a model's `Glow` part turns Neon in its spot's `glow`; teal when it names none)
+	GLOW = {
+		teal = { 80, 235, 215 },
+		purple = { 190, 120, 255 },
+		blue = { 110, 190, 255 },
+		ember = { 255, 130, 40 },
+	},
+	-- The ridge's crystal clusters (code-built like the Caves' CRYSTAL_LOOK ones), red with orange tips
+	EMBER_CRYSTAL_LOOK = { color = { 255, 70, 40 }, tip = { 255, 170, 70 }, transparency = 0.12 },
+	-- Invisible upright cylinders that stop players at a big piece (shares of the spot's height: `radius`, `height`; one
+	-- in the middle, or one at each `spread` offset along the piece's own X, so an arch's legs block and its gap doesn't)
+	COLLIDERS = {
+		GlowMushroomTall = { radius = 0.08, height = 0.6 },
+		GlowMushroomCluster = { radius = 0.18, height = 0.5 },
+		MossRockA = { radius = 0.45, height = 0.8 },
+		MossRockB = { radius = 0.45, height = 0.8 },
+		RuinArch = { radius = 0.12, height = 1, spread = { -0.38, 0.38 } },
+		RuinPillar = { radius = 0.12, height = 1 },
+		RuinWall = { radius = 0.4, height = 1, spread = { -0.9, 0, 0.9 } },
+		EmberTree = { radius = 0.06, height = 0.7 },
+		DragonSkeleton = { radius = 0.3, height = 0.5, spread = { -1, 0, 1 } },
+	},
 	-- Town prop models (PropModels), scaled to `height` on the drawn ground (y: a ground height of its own)
 	PROPS = {
 		-- The meadow (biome 1): trees round its edges and in clumps, bushes, flowers and rocks

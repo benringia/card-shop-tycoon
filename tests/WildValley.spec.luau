@@ -308,6 +308,34 @@ return {
 		end
 	end,
 
+	["every glowing piece names a known glow colour"] = function()
+		local function rgb(color: any, label: string)
+			expect.equal(type(color) == "table" and #color == 3, true, `{label} is three numbers`)
+			for _, value in color do
+				expect.equal(value >= 0 and value <= 255, true, `{label} channel {value}`)
+			end
+		end
+		for _, name in { "teal", "purple", "blue", "ember" } do
+			rgb(valley.GLOW[name], `glow {name}`)
+		end
+		for _, prop in WildValley.scenery(valley) do
+			if prop.glow then
+				rgb(valley.GLOW[prop.glow], `{prop.model or "piece"} at {prop.x}, {prop.z} glows {prop.glow}`)
+			end
+		end
+		rgb(valley.EMBER_CRYSTAL_LOOK.color, "ember crystal")
+		rgb(valley.EMBER_CRYSTAL_LOOK.tip, "ember crystal tip")
+	end,
+
+	["colliders are thin shares of a piece"] = function()
+		for _, name in { "GlowMushroomTall", "GlowMushroomCluster", "MossRockA", "MossRockB", "RuinArch", "RuinPillar", "RuinWall", "EmberTree", "DragonSkeleton" } do
+			local share = valley.COLLIDERS[name]
+			expect.equal(share ~= nil, true, `{name} has a collider`)
+			expect.equal(share.radius > 0 and share.radius <= 0.5, true, `{name} collider radius share`)
+			expect.equal(share.height > 0 and share.height <= 1, true, `{name} collider height share`)
+		end
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")

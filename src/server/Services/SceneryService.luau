@@ -233,27 +233,72 @@ local function dressCalderaProp(model: Model)
 	end
 end
 
--- An invisible upright cylinder that stops players at a tree's trunk or a shard cluster's base (Scenery.CALDERA_COLLIDERS)
-local function calderaCollider(model: Model, spot: any)
-	local share = Scenery.CALDERA_COLLIDERS[spot.model]
-	if not share then
-		return
-	end
+-- Invisible upright cylinders that stop players at a piece (`share`: radius and height as shares of the spot's height,
+-- one in the middle or one at each `spread` offset along the piece's own X)
+local function uprightColliders(model: Model, spot: any, share: any)
 	local radius, height = share.radius * spot.height, share.height * spot.height
 	local box, size = model:GetBoundingBox()
 	local foot = box.Position.Y - size.Y / 2
-	local collider = Instance.new("Part")
-	collider.Name = "Collider"
-	collider.Shape = Enum.PartType.Cylinder
-	collider.Size = Vector3.new(height, radius * 2, radius * 2)
-	collider.CFrame = CFrame.new(spot.x, foot + height / 2, spot.z) * CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X: stand it up
-	collider.Anchored = true
-	collider.Transparency = 1
-	collider.CanCollide = true
-	collider.CanQuery = false
-	collider.CanTouch = false
-	collider.CastShadow = false
-	collider.Parent = model
+	local base = CFrame.new(spot.x, foot + height / 2, spot.z) * CFrame.Angles(0, math.rad(spot.yaw or 0), 0)
+	for _, offset in share.spread or { 0 } do
+		local collider = Instance.new("Part")
+		collider.Name = "Collider"
+		collider.Shape = Enum.PartType.Cylinder
+		collider.Size = Vector3.new(height, radius * 2, radius * 2)
+		collider.CFrame = base * CFrame.new(offset * spot.height, 0, 0) * CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X: stand it up
+		collider.Anchored = true
+		collider.Transparency = 1
+		collider.CanCollide = true
+		collider.CanQuery = false
+		collider.CanTouch = false
+		collider.CastShadow = false
+		collider.Parent = model
+	end
+end
+
+-- An invisible upright cylinder that stops players at a tree's trunk or a shard cluster's base (Scenery.CALDERA_COLLIDERS)
+local function calderaCollider(model: Model, spot: any)
+	local share = Scenery.CALDERA_COLLIDERS[spot.model]
+	if share then
+		uprightColliders(model, spot, share)
+	end
+end
+
+-- A valley scenery piece as placed (spec 2026-11-04-valley-scenery-design): anchored and out of the camera's and
+-- players' way (big pieces get colliders, WildValley COLLIDERS), its `Glow` parts glowing in the spot's colour, no
+-- shadow from a small one
+local function dressValleyProp(model: Model, spot: any)
+	local glow = Props.color(WildValleyConfig.GLOW[spot.glow or "teal"])
+	local _, size = model:GetBoundingBox()
+	local small = size.Y < Scenery.SMALL_DECOR_SIZE
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			if small then
+				part.CastShadow = false
+			end
+			if part.Name == "Glow" then
+				for _, child in part:GetChildren() do
+					if child:IsA("SurfaceAppearance") then
+						child:Destroy()
+					end
+				end
+				if part:IsA("MeshPart") then
+					part.TextureID = ""
+				end
+				part.Material = Enum.Material.Neon
+				part.Color = glow
+				part.CastShadow = false
+			end
+		end
+	end
+	local share = WildValleyConfig.COLLIDERS[spot.model]
+	if share then
+		uprightColliders(model, spot, share)
+	end
 end
 
 -- The caldera's Blender props (Config/Scenery CHARRED_TREES, SHARDS, VOLCANO); one not saved yet is left out (placeModel
@@ -327,9 +372,10 @@ local function buildTrailMarkers(folder: Instance)
 	end
 end
 
--- A cluster of glowing blue crystals in the gorge: a tall one and two smaller leaning out of its foot
-local function buildCrystalCluster(folder: Instance, spot: any)
-	local look = WildValleyConfig.CRYSTAL_LOOK
+-- A cluster of glowing crystals: a tall one and two smaller leaning out of its foot (the gorge's blue CRYSTAL_LOOK
+-- unless another look is given, e.g. the ridge's EMBER_CRYSTAL_LOOK)
+local function buildCrystalCluster(folder: Instance, spot: any, given: any?)
+	local look = given or WildValleyConfig.CRYSTAL_LOOK
 	local color, tip = Props.color(look.color), Props.color(look.tip)
 	local base = CFrame.new(spot.x, groundAt(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
 	for index, shape in { { 1, 0, 0, 0 }, { 0.6, 0.9, 25, 40 }, { 0.5, -0.8, -20, 200 } } do
@@ -422,6 +468,29 @@ local function buildWildValley(folder: Folder)
 	end
 	for _, spot in WildValleyConfig.VENTS do
 		buildVent(holder, spot)
+	end
+	-- The scenery round (spec 2026-11-04-valley-scenery-design): the new pieces, the Meadow's stone circle and mushroom
+	-- rings, each dressed (freshly imported models arrive unanchored and colliding); the ridge's crystals code-built
+	local circle = WildValleyConfig.STONE_CIRCLE
+	local pieces = WildValley.ring(circle, circle.radius, circle.count, circle)
+	for _, ring in WildValleyConfig.MUSHROOM_RINGS do
+		for _, spot in WildValley.ring(ring, ring.radius, ring.count, ring) do
+			table.insert(pieces, spot)
+		end
+	end
+	for _, name in { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON" } do
+		for _, spot in WildValleyConfig[name] do
+			table.insert(pieces, spot)
+		end
+	end
+	for _, spot in pieces do
+		local model = placeModel(holder, spot, spot.model)
+		if model then
+			dressValleyProp(model, spot)
+		end
+	end
+	for _, spot in WildValleyConfig.EMBER_CRYSTALS do
+		buildCrystalCluster(holder, spot, WildValleyConfig.EMBER_CRYSTAL_LOOK)
 	end
 	local volcano = placeModel(holder, WildValleyConfig.VOLCANO, "Volcano")
 	if volcano then
