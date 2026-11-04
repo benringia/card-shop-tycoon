@@ -20,7 +20,9 @@ return {
 	RING_GROUND_RAY = 30, -- studs down from the ring's height to find the ground
 
 	-- Hits
-	HIT_STOP_SECONDS = 0.06, -- your sword's animation freezes this long on a hit
+	-- Your swing freezes this long on a hit (hit-stop; sword-moves round): a cut, and the finisher or the dash slash
+	HIT_STOP = { cut = 0.08, big = 0.12 },
+	FADE = { strike = 0.04 }, -- seconds a cut or the skill blends in (Util/SwordAnims): snappy, no mushy start
 	FLASH_SECONDS = 0.12, -- what you hit flashes white this long
 	SPARKS = 14, -- sparks per sword hit
 	SPARK_COLOR = rgb(255, 236, 170),

@@ -53,6 +53,87 @@ local skillReadyAt, dodgeReadyAt = 0, 0
 local jumpLock: RBXScriptConnection? = nil
 local kneeling = false -- your knocked-down pose is on
 local jumpBefore: number? = nil
+local stopPush: (() -> ())? = nil -- ends the push moving you now (a lunge, the dash slash or a dodge)
+local held: Humanoid? = nil -- your humanoid while a swing holds your walking (holdControls)
+local holdToken = 0
+local autoRotateBefore = true
+local wantedMove = Vector3.zero -- what your walking input asks for under a hold (a dodge goes that way)
+local HOLD_STEP = "SwordHold"
+
+-- Moves you `studs` along `direction` (flat, unit) over `seconds`: a velocity constraint in the ground plane (gravity
+-- stays free; walls, the arena's barrier, still stop it). Setting the velocity each frame lost half a dash to the
+-- character's own braking. One push at a time: a new one (a dodge mid-lunge) ends the last. `plant`: stop dead at the
+-- end (a lunge or the dash slash: the feet are planted, no slide; the dodge keeps its glide out).
+local function push(root: BasePart, direction: Vector3, studs: number, seconds: number, name: string, plant: boolean)
+	if stopPush then
+		stopPush()
+	end
+	local speed = studs / seconds
+	local attachment = Instance.new("Attachment")
+	attachment.Name = name
+	attachment.Parent = root
+	local velocity = Instance.new("LinearVelocity")
+	velocity.Attachment0 = attachment
+	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	velocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	velocity.PrimaryTangentAxis = Vector3.xAxis
+	velocity.SecondaryTangentAxis = Vector3.zAxis
+	velocity.PlaneVelocity = Vector2.new(direction.X * speed, direction.Z * speed)
+	velocity.MaxForce = Combat.DODGE_FORCE
+	velocity.Parent = root
+	local function stop()
+		if not velocity.Parent then
+			return
+		end
+		velocity:Destroy()
+		attachment:Destroy()
+		if stopPush == stop then
+			stopPush = nil
+		end
+		if plant and root.Parent then
+			root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+		end
+	end
+	stopPush = stop
+	task.delay(seconds, stop)
+end
+
+-- Gives your walking back (and auto-turning): at a swing's cancel point, on a dodge, a knock-down, the fight's end or
+-- a new character
+local function releaseHold()
+	holdToken += 1
+	if not held then
+		return
+	end
+	RunService:UnbindFromRenderStep(HOLD_STEP)
+	if held.Parent then
+		held.AutoRotate = autoRotateBefore
+	end
+	held = nil
+	wantedMove = Vector3.zero
+end
+
+-- Holds your walking input for `seconds` (spec 2026-11-04-sword-moves-design, "walking pauses during a swing"): the
+-- lunge carries you, planted feet don't slide and walking can't push you into a boss. After Roblox's controls each
+-- frame (they move the humanoid at Input priority) the move is set back to nothing. The latest hold wins.
+local function holdControls(humanoid: Humanoid, seconds: number)
+	releaseHold()
+	held = humanoid
+	autoRotateBefore = humanoid.AutoRotate
+	humanoid.AutoRotate = false
+	RunService:BindToRenderStep(HOLD_STEP, Enum.RenderPriority.Input.Value + 1, function()
+		if held and held.Parent then
+			wantedMove = held.MoveDirection
+			held:Move(Vector3.zero)
+		end
+	end)
+	local token = holdToken
+	task.delay(seconds, function()
+		if holdToken == token then
+			releaseHold()
+		end
+	end)
+end
 
 -- Your sword's sound for a moment, made once on your root part and kept (so it's loaded when it plays)
 local function soundFor(key: string, root: BasePart, id: string): Sound
@@ -306,9 +387,13 @@ local function watchCharacter(character: Model)
 	character.AncestryChanged:Connect(function(_, parent)
 		if not parent then
 			drop(character)
+			if held and held:IsDescendantOf(character) then
+				releaseHold()
+			end
 		end
 	end)
 	if character == player.Character then
+		releaseHold() -- a hold left on the last character
 		local humanoid = character:WaitForChild("Humanoid", 10)
 		if humanoid and humanoid:IsA("Humanoid") then
 			mine = SwordAnims.load(humanoid, Swords.STARTER)
@@ -413,6 +498,10 @@ function SwordController.Kneel()
 		return
 	end
 	kneeling = true
+	releaseHold()
+	if stopPush then
+		stopPush()
+	end
 	local set = mine
 	local track = if set then set.play("down") else nil
 	if track then
@@ -467,6 +556,7 @@ function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules
 	lastCut = nil
 	if not active then
 		SwordController.GetUp()
+		releaseHold()
 	end
 	if jumpLock then
 		jumpLock:Disconnect()
@@ -492,8 +582,17 @@ function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules
 	end
 end
 
--- The hit sound the moment the blade lands, when your own reach check says it connects: the server's hit comes a
--- round trip later
+-- Whether a hit of yours of this kind ("Sword" or "Skill", the server's) is a big one: the skill, or the combo's last
+-- cut (your latest). Big hits freeze longer (SwordFx.HIT_STOP) and shake harder.
+function SwordController.IsBigHit(kind: string): boolean
+	local character = player.Character
+	local swordId = if character then character:GetAttribute("Sword") else nil
+	local sword = if typeof(swordId) == "string" then Swords.SWORDS[swordId] else nil
+	return kind == "Skill" or (sword ~= nil and lastCut ~= nil and lastCut.index == #sword.combo)
+end
+
+-- The hit sound and the hit-stop the moment the blade lands, when your own reach check says it connects: the server's
+-- hit comes a round trip later (the spec's anti-goal: hits that land later than the swing shows)
 -- move: the cut (1-3) or "skill"; its slash arc plays where your blade lands, at once (the server's hit follows)
 local function predictHit(connects: (root: BasePart, targets: { SwordRules.Target }) -> boolean, move: number | string, last: boolean)
 	local character, root = ownParts()
@@ -503,6 +602,9 @@ local function predictHit(connects: (root: BasePart, targets: { SwordRules.Targe
 	if connects(root, combatTargets()) then
 		hitSoundAt = os.clock()
 		SwordController.PlaySound("hit")
+		if mine then
+			mine.hitStop(if move == "skill" or last then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
+		end
 		local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
 		if sword then
 			local cfg = SwordFx.SLASH
@@ -515,7 +617,22 @@ local function predictHit(connects: (root: BasePart, targets: { SwordRules.Targe
 	end
 end
 
--- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target
+-- Your flat facing (unit)
+local function facing(root: BasePart): Vector3
+	local look = root.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	return if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
+end
+
+-- Is this swing still the one playing (no newer cut, skill or dodge, still in the fight, still standing)?
+local swingToken = 0
+local function stillSwinging(token: number): boolean
+	return swingToken == token and combatTargets ~= nil and not kneeling
+end
+
+-- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target.
+-- Cuts chain at their cancel point (SwordRules.nextCut); each holds your walking until then and lunges you in, stopping
+-- short of a foe (SwordRules.lungeLength). The animations are in place: the lunge is the real movement.
 function SwordController.Attack()
 	local character, root = ownParts()
 	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
@@ -531,45 +648,88 @@ function SwordController.Attack()
 	SwordController.DrawNow()
 	Remotes.SwordAttack:FireServer()
 	task.delay(startAt - now, function()
-		softAim(root)
+		local _, at, humanoid = ownParts()
+		if not at or not humanoid then
+			return
+		end
+		swingToken += 1
+		local token = swingToken
+		local cut = sword.combo[index]
+		softAim(at)
+		holdControls(humanoid, cut.cancelAt or cut.length)
 		if mine then
 			mine.play(`cut{index}`)
 		end
 		swingTrail()
 		SwordController.PlaySound(`swing{index}`)
-		local cut = sword.combo[index]
-		task.delay(cut.hitAt, predictHit, function(at: BasePart, targets: { SwordRules.Target }): boolean
-			local look = at.CFrame.LookVector
-			return SwordRules.anyInReach(at.Position.X, at.Position.Z, look.X, look.Z, targets, cut)
+		local lunge = cut.lunge
+		if lunge then
+			task.delay(lunge.from, function()
+				local _, lungeRoot = ownParts()
+				if not lungeRoot or not stillSwinging(token) then
+					return
+				end
+				local direction = facing(lungeRoot)
+				local targets = if combatTargets then combatTargets() else {}
+				local studs = SwordRules.lungeLength(lungeRoot.Position.X, lungeRoot.Position.Z, direction.X, direction.Z, targets, lunge.studs, Swords.LUNGE_STOP)
+				if studs > 0.05 then
+					push(lungeRoot, direction, studs, lunge.to - lunge.from, "SwordLunge", true)
+				end
+			end)
+		end
+		task.delay(cut.hitAt, predictHit, function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
+			local look = hitRoot.CFrame.LookVector
+			return SwordRules.anyInReach(hitRoot.Position.X, hitRoot.Position.Z, look.X, look.Z, targets, cut)
 		end, index, index == #sword.combo)
 	end)
 end
 
--- The sword skill: a spin that hits everything round you, on its cooldown
+-- The sword skill, the dash slash (spec 2026-11-04-sword-moves-design), on its cooldown: a draw stance, then a dash
+-- along your facing that goes through foes (SwordRules.dashLength) with after-images, and at its hit frame every foe
+-- along the path from where you started is hit (the server checks the same path, clamped)
 function SwordController.Skill()
-	local character, root = ownParts()
+	local character, root, humanoid = ownParts()
 	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
-	if not character or not root or not sword or os.clock() < skillReadyAt then
+	if not character or not root or not humanoid or not sword or os.clock() < skillReadyAt then
 		return
 	end
-	local cooldown = sword.skill.cooldown * skillScale
+	local skill = sword.skill
+	local cooldown = skill.cooldown * skillScale
 	skillReadyAt = os.clock() + cooldown
 	if onCooldown then
 		onCooldown("skill", skillReadyAt, cooldown)
 	end
 	SwordController.DrawNow()
 	Remotes.SwordSkill:FireServer()
+	swingToken += 1
+	local token = swingToken
+	softAim(root)
+	holdControls(humanoid, skill.length)
 	if mine then
 		mine.play("skill")
 	end
 	swingTrail()
 	SwordController.PlaySound("swing3")
-	task.delay(sword.skill.hitAt, predictHit, function(at: BasePart, targets: { SwordRules.Target }): boolean
-		return SwordRules.anyInRadius(at.Position.X, at.Position.Z, targets, sword.skill.radius)
+	local dash = skill.dash
+	local startX, startZ = root.Position.X, root.Position.Z
+	task.delay(dash.from, function()
+		local own, at = ownParts()
+		if not own or not at or not stillSwinging(token) then
+			return
+		end
+		local direction = facing(at)
+		local targets = if combatTargets then combatTargets() else {}
+		local studs = SwordRules.dashLength(at.Position.X, at.Position.Z, direction.X, direction.Z, targets, dash.studs, dash.margin, dash.maxStuds)
+		AfterImage.spawn(own, 4, dash.to - dash.from + 0.15)
+		push(at, direction, studs, dash.to - dash.from, "SwordDash", true)
+	end)
+	task.delay(skill.hitAt, predictHit, function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
+		return SwordRules.anyInDashPath(startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, targets, dash.width)
 	end, "skill", false)
 end
 
--- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images
+-- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images.
+-- It cancels a swing: your walking comes back and the swing's lunge or dash stops.
 function SwordController.Dodge()
 	local character, root, humanoid = ownParts()
 	if not character or not root or not humanoid or os.clock() < dodgeReadyAt then
@@ -579,35 +739,20 @@ function SwordController.Dodge()
 	if onCooldown then
 		onCooldown("dodge", dodgeReadyAt, Combat.DODGE_COOLDOWN)
 	end
+	local input = if held then wantedMove else humanoid.MoveDirection
+	swingToken += 1
+	releaseHold()
 	Remotes.Dodge:FireServer()
 	SwordController.PlaySound("dodge")
-	local move = Vector3.new(humanoid.MoveDirection.X, 0, humanoid.MoveDirection.Z)
-	local direction = if move.Magnitude > 0.1 then move.Unit else -Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+	local move = Vector3.new(input.X, 0, input.Z)
+	local direction = if move.Magnitude > 0.1 then move.Unit else -facing(root)
 	-- Through foes: a dash that would end inside a boss or monster carries on out of it (SwordRules.dashLength)
 	local length = SwordRules.dashLength(root.Position.X, root.Position.Z, direction.X, direction.Z, if combatTargets then combatTargets() else {}, Combat.DODGE_STUDS, Combat.DODGE_PASS_MARGIN, Combat.DODGE_MAX_STUDS)
-	local speed = length / Combat.DODGE_SECONDS
 	if mine then
 		mine.play("dodge")
 	end
 	AfterImage.spawn(character, 4, Combat.DODGE_SECONDS + 0.15)
-	-- Pushed by a velocity constraint in the ground plane (gravity stays free; walls, the arena's barrier, still stop
-	-- it): setting the velocity each frame lost half the dash to the character's own braking
-	local attachment = Instance.new("Attachment")
-	attachment.Name = "DodgeAttachment"
-	attachment.Parent = root
-	local push = Instance.new("LinearVelocity")
-	push.Attachment0 = attachment
-	push.RelativeTo = Enum.ActuatorRelativeTo.World
-	push.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
-	push.PrimaryTangentAxis = Vector3.xAxis
-	push.SecondaryTangentAxis = Vector3.zAxis
-	push.PlaneVelocity = Vector2.new(direction.X * speed, direction.Z * speed)
-	push.MaxForce = Combat.DODGE_FORCE
-	push.Parent = root
-	task.delay(Combat.DODGE_SECONDS, function()
-		push:Destroy()
-		attachment:Destroy()
-	end)
+	push(root, direction, length, Combat.DODGE_SECONDS, "DodgeAttachment", false)
 end
 
 -- Shift dodges in boss fights, so Shift Lock moves to Ctrl (Roblox's camera reads its keys from this value)

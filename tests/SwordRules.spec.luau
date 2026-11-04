@@ -50,11 +50,6 @@ return {
 		expect.equal(SwordRules.inReach(0, 0, 0, 0, 0, -10, 6, 9, 70), false, "no look direction: no hit")
 	end,
 
-	["the skill hits everything round you"] = function()
-		expect.equal(SwordRules.inRadius(0, 0, 0, 15, 5, 11), true)
-		expect.equal(SwordRules.inRadius(0, 0, 0, 17, 5, 11), false)
-	end,
-
 	["soft aim picks the nearest target in front"] = function()
 		local targets = {
 			{ id = "b:m", x = 0, z = -20, radius = 9 },
@@ -77,11 +72,11 @@ return {
 		expect.equal(SwordRules.anyInReach(0, 0, 0, -1, {}, COMBO[1]), false)
 	end,
 
-	["the skill connects if any target is within its radius"] = function()
-		local targets = { { id = "b:m", x = 0, z = 15, radius = 5 }, { id = "b:add1", x = 30, z = 0, radius = 3 } }
-		expect.equal(SwordRules.anyInRadius(0, 0, targets, 11), true)
-		expect.equal(SwordRules.anyInRadius(0, 0, { targets[2] }, 11), false)
-		expect.equal(SwordRules.anyInRadius(0, 0, {}, 11), false)
+	["the dash slash connects if any target is along its path (the hit sound plays at once)"] = function()
+		local targets = { { id = "b:m", x = 5, z = 2, radius = 1 }, { id = "b:add1", x = 30, z = 0, radius = 3 } }
+		expect.equal(SwordRules.anyInDashPath(0, 0, 9, 0, targets, 4), true)
+		expect.equal(SwordRules.anyInDashPath(0, 0, 9, 0, { targets[2] }, 4), false, "the add is far past the end")
+		expect.equal(SwordRules.anyInDashPath(0, 0, 9, 0, {}, 4), false)
 	end,
 
 	["the starter combo out-damages a reference creature by 1.0-1.6x"] = function()

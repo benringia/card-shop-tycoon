@@ -49,12 +49,6 @@ function SwordRules.inReach(px: number, pz: number, lookX: number, lookZ: number
 	return (dx * lookX + dz * lookZ) / (distance * lookLength) >= math.cos(math.rad(arcDegrees / 2))
 end
 
--- The skill: every target whose edge is within `radius` of you
-function SwordRules.inRadius(px: number, pz: number, tx: number, tz: number, targetRadius: number, radius: number): boolean
-	local dx, dz = tx - px, tz - pz
-	return math.sqrt(dx * dx + dz * dz) - targetRadius <= radius
-end
-
 -- Does a cut from (px, pz) facing (lookX, lookZ) hit any of these targets? (the client plays the hit sound at once)
 function SwordRules.anyInReach(px: number, pz: number, lookX: number, lookZ: number, targets: { Target }, cut: Cut): boolean
 	for _, target in targets do
@@ -65,10 +59,10 @@ function SwordRules.anyInReach(px: number, pz: number, lookX: number, lookZ: num
 	return false
 end
 
--- Does the skill from (px, pz) hit any of these targets?
-function SwordRules.anyInRadius(px: number, pz: number, targets: { Target }, radius: number): boolean
+-- Does the dash slash along (sx, sz) -> (ex, ez) hit any of these targets? (the client plays the hit sound at once)
+function SwordRules.anyInDashPath(sx: number, sz: number, ex: number, ez: number, targets: { Target }, width: number): boolean
 	for _, target in targets do
-		if SwordRules.inRadius(px, pz, target.x, target.z, target.radius, radius) then
+		if SwordRules.inDashPath(sx, sz, ex, ez, target.x, target.z, target.radius, width) then
 			return true
 		end
 	end

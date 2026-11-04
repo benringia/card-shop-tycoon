@@ -871,7 +871,7 @@ end
 local PLAYER_DAMAGE_COLOR = Color3.fromRGB(Swords.PLAYER_DAMAGE_COLOR[1], Swords.PLAYER_DAMAGE_COLOR[2], Swords.PLAYER_DAMAGE_COLOR[3])
 
 -- A player's sword hit: their numbers in gold, sparks and a flash on what they hit; yours also freezes your swing a
--- moment (hit-stop) and shakes the camera, harder for the skill
+-- moment (hit-stop) and shakes the camera, longer and harder for the finisher and the skill
 local function swordHit(event: any)
 	local marker = markerFor(event.to)
 	local mine = event.from == `a:@{player.UserId}`
@@ -891,11 +891,14 @@ local function swordHit(event: any)
 		end
 	end
 	if event.from == `a:@{player.UserId}` then
+		-- The freeze already played when your own reach check connected (SwordController); a hit it missed freezes now
+		local big = SwordController.IsBigHit(event.kind)
 		local anims = SwordController.GetAnims()
-		if anims then
-			anims.hitStop(SwordFx.HIT_STOP_SECONDS)
+		if anims and not SwordController.HitSoundJustPlayed() then
+			anims.hitStop(if big then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
 		end
-		local strength = if event.kind == "Skill" then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
+		-- The finisher and the dash slash shake harder (sword-moves round)
+		local strength = if big then SwordFx.SHAKE.skill else SwordFx.SHAKE.cut
 		shake(strength.seconds, strength.studs)
 		if not SwordController.HitSoundJustPlayed() then
 			SwordController.PlaySound("hit") -- your reach check missed it: the server's hit still sounds

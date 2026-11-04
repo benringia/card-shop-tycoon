@@ -12,7 +12,7 @@ export type Cut = { power: number, hitAt: number, cancelAt: number?, length: num
 -- like the dodge, never past `maxStuds`); at `hitAt` the cut lines appear and every foe whose edge is within `width` / 2
 -- of the path is hit (the server clamps the path to maxStuds + slack)
 export type Dash = { studs: number, maxStuds: number, margin: number, width: number, from: number, to: number, slack: number }
-export type Skill = { power: number, hitAt: number, length: number, radius: number, cooldown: number, dash: Dash }
+export type Skill = { power: number, hitAt: number, length: number, cooldown: number, dash: Dash }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
 -- sounds: asset ids by moment ("" plays nothing); slash: its hits' slash arc (colour { r, g, b }, size; Config/SwordFx
 -- SLASH, Util/HitFx), plain on the starter, bolder on the Forge's swords
@@ -50,7 +50,6 @@ local SWORDS: { [string]: Sword } = {
 			power = 0.9,
 			hitAt = 0.62,
 			length = 1.0,
-			radius = 11,
 			cooldown = 8,
 			dash = { studs = 9, maxStuds = 20, margin = 1.5, width = 4, from = 0.30, to = 0.42, slack = 3 },
 		},
