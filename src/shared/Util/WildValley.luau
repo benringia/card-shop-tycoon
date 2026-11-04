@@ -386,6 +386,9 @@ function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: num
 			table.insert(ops, segment(from, to, width, valley.TRAIL_MATERIAL[zone]))
 		end
 	end
+	for _, path in valley.PATHS or {} do
+		table.insert(ops, segment(path.from, path.to, path.width, path.material))
+	end
 	for _, op in valley.CARVES do
 		table.insert(ops, op)
 	end

@@ -467,6 +467,32 @@ return {
 		end
 	end,
 
+	-- Round 2: the Meadow composed (the owner: "it has random stuffs on it"): one ruin site on a hill, a path up to it
+	["the ruins stand together on the ruin hill"] = function()
+		local circle = valley.STONE_CIRCLE
+		for _, spot in valley.RUINS do
+			local d = math.sqrt((spot.x - circle.x) ^ 2 + (spot.z - circle.z) ^ 2)
+			assert(d <= 32, `{spot.model} at {spot.x}, {spot.z} is {d} from the stone circle`)
+		end
+		local hill = false
+		for _, h in valley.HILLS do
+			hill = hill or math.sqrt((h.x - circle.x) ^ 2 + (h.z - circle.z) ^ 2) <= 5
+		end
+		expect.equal(hill, true, "a hill under the stone circle")
+	end,
+
+	["a path climbs from the trail to the ruins"] = function()
+		local path = valley.PATHS[1]
+		local trail = WildValley.trail(valley)
+		local near = math.huge
+		for index = 2, #trail do
+			near = math.min(near, distanceToSegment(path.from, trail[index - 1], trail[index]))
+		end
+		expect.equal(near <= valley.TRAIL_WIDTH, true, `starts {near} from the trail`)
+		local circle = valley.STONE_CIRCLE
+		expect.equal(math.sqrt((path.to.x - circle.x) ^ 2 + (path.to.z - circle.z) ^ 2) <= 20, true, "ends at the ruins")
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")

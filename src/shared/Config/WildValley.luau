@@ -56,6 +56,7 @@ return {
 		{ x = -95, z = 1165, radius = 16, height = 4, material = "Grass" },
 		{ x = -165, z = 1195, radius = 16, height = 4, material = "Grass" },
 		{ x = -40, z = 1300, radius = 16, height = 4, material = "Grass" },
+		{ x = -130, z = 1195, radius = 30, height = 6, material = "Grass" }, -- round 2: the ruin hill under the stone circle
 		{ x = -120, z = 1725, radius = 16, height = 4, material = "CrackedLava" },
 		{ x = 45, z = 1660, radius = 16, height = 4, material = "CrackedLava" },
 		{ x = -20, z = 1775, radius = 16, height = 4, material = "CrackedLava" },
@@ -90,7 +91,7 @@ return {
 		{ x = -310, z = 1535, arms = { { zone = 3, toward = { x = -195, z = 1605 } }, { text = "SHOP", toward = { x = -320, z = 1480 } } } },
 	},
 	-- The meadow's stream: out of the east hills, across the trail under a bridge, into a pond west of it
-	STREAM = { from = { x = 98, z = 1185 }, to = { x = -60, z = 1148 }, width = 6, pond = { x = -60, z = 1148, radius = 8 } },
+	STREAM = { from = { x = 98, z = 1185 }, to = { x = -60, z = 1148 }, width = 6, pond = { x = -60, z = 1148, radius = 13 } }, -- round 2: a bigger pond
 	-- The wooden footbridge where the trail crosses the stream (code-built: deck planks, rails and posts)
 	BRIDGE = { x = 0, z = 1162, length = 16, width = 9, rise = 1.2, wood = { 138, 96, 60 }, dark = { 96, 66, 42 } },
 	-- The trail's markers: small glowing stones along its edges, alternating sides
@@ -177,11 +178,11 @@ return {
 	-- carved first, then filled, then floored below so nobody sinks out of the world) and the gorge's cave mouth
 	CARVES = {
 		{ shape = "Block", x = 19, y = -4, z = 1166.5, yaw = -13.18, size = { x = 162, y = 8, z = 6 }, material = "Air" },
-		{ shape = "Block", x = -60, y = -4, z = 1148, yaw = 45, size = { x = 16, y = 8, z = 16 }, material = "Air" },
+		{ shape = "Block", x = -60, y = -4, z = 1148, yaw = 45, size = { x = 26, y = 8, z = 26 }, material = "Air" },
 		{ shape = "Block", x = 19, y = -5, z = 1166.5, yaw = -13.18, size = { x = 162, y = 6, z = 6 }, material = "Water" }, -- the stream
-		{ shape = "Block", x = -60, y = -5, z = 1148, yaw = 45, size = { x = 16, y = 6, z = 16 }, material = "Water" }, -- its pond
+		{ shape = "Block", x = -60, y = -5, z = 1148, yaw = 45, size = { x = 26, y = 6, z = 26 }, material = "Water" }, -- its pond
 		{ shape = "Block", x = 19, y = -10, z = 1166.5, yaw = -13.18, size = { x = 166, y = 4, z = 10 }, material = "Ground" },
-		{ shape = "Block", x = -60, y = -10, z = 1148, yaw = 45, size = { x = 20, y = 4, z = 20 }, material = "Ground" },
+		{ shape = "Block", x = -60, y = -10, z = 1148, yaw = 45, size = { x = 30, y = 4, z = 30 }, material = "Ground" },
 		{ shape = "Block", x = -454, y = 22, z = 1420, size = { x = 18, y = 18, z = 22 }, material = "Air" }, -- the cave mouth (from just under the gorge's floor, so it walks in level)
 	},
 	-- The crystal cave's mouth in the gorge's west cliff (the carved opening above, its floor at y): a dark wall on its
@@ -300,7 +301,7 @@ return {
 	-- kept off the trail and the rest (WildValley.clearOf) and away from monster spawn spots (SPOT_PROP_CLEAR, or a spot's
 	-- own `clear` for a big piece). A spot: `model` (PropModels; none for code-built ones), x, z, `height`, `yaw`, and
 	-- for glowing pieces `glow` (a GLOW colour)
-	PROP_LISTS = { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS", "MUSHROOMS", "TUFTS", "RUINS", "MOSS_ROCKS", "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON" },
+	PROP_LISTS = { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS", "MUSHROOMS", "TUFTS", "RUINS", "MOSS_ROCKS", "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON", "GIANT_TREES" },
 	-- The Caves' glow mushroom hollow (owner's pick C): glowing mushrooms (the four biggest under the rock shelf by the
 	-- cave mouth are the landmark; `clear` keeps spawn spots off them), glowing plant and flower tufts in patches along the
 	-- trail, mossy rocks (today's rocks, same places)
@@ -384,22 +385,30 @@ return {
 	-- The Meadow's ancient ruins (owner's pick B): arches, pillars, walls; a circle of standing stones as its landmark
 	-- (WildValley.ring: `count` stones round x, z) and red-and-white mushroom rings
 	RUINS = {
-		-- a broken arch beside the trail past the bridge (a frame for the view on), one by the west trees
-		{ model = "RuinArch", x = -40, z = 1200, height = 13, yaw = 310, clear = 9 },
-		{ model = "RuinArch", x = -165, z = 1225, height = 12, yaw = 40, clear = 9 },
-		-- pillars round the stone circle and the arches: four standing (two broken off), two fallen
-		{ model = "RuinPillar", x = -100, z = 1225, height = 12, yaw = 30 },
-		{ model = "RuinPillarBroken", x = -112, z = 1170, height = 9, yaw = 150 },
-		{ model = "RuinPillar", x = -150, z = 1170, height = 13, yaw = 260 },
-		{ model = "RuinPillarBroken", x = -70, z = 1265, height = 8, yaw = 90 },
-		{ model = "RuinPillarFallen", x = -100, z = 1275, height = 2, yaw = 20 },
-		{ model = "RuinPillarFallen", x = -60, z = 1170, height = 2, yaw = 110 },
-		-- two broken lines of low wall: east of the circle, and round the west arch
-		{ model = "RuinWall", x = -100, z = 1185, height = 3, yaw = 80 },
-		{ model = "RuinWall", x = -103, z = 1206, height = 2.8, yaw = 100 },
-		{ model = "RuinWall", x = -170, z = 1212, height = 3, yaw = 60 },
-		{ model = "RuinWall", x = -185, z = 1250, height = 2.8, yaw = 30 },
-		{ model = "RuinWall", x = -22, z = 1250, height = 2.6, yaw = 150 },
+		-- round 2 (the owner: "it has random stuffs on it"): every piece gathered round the stone circle on its hill, one old
+		-- site; the path from the trail (PATHS) comes up through the north arch
+		{ model = "RuinArch", x = -128, z = 1222, height = 13, yaw = 0, clear = 9 },
+		{ model = "RuinArch", x = -158, z = 1190, height = 12, yaw = 80, clear = 9 },
+		-- pillars round the circle: two whole, two broken off, two fallen
+		{ model = "RuinPillar", x = -108, z = 1180, height = 12, yaw = 30 },
+		{ model = "RuinPillar", x = -150, z = 1215, height = 13, yaw = 260 },
+		{ model = "RuinPillarBroken", x = -110, z = 1212, height = 9, yaw = 150 },
+		{ model = "RuinPillarBroken", x = -148, z = 1172, height = 8, yaw = 90 },
+		{ model = "RuinPillarFallen", x = -102, z = 1198, height = 2, yaw = 20 },
+		{ model = "RuinPillarFallen", x = -134, z = 1167, height = 2, yaw = 100 },
+		-- broken lines of low wall round the site
+		{ model = "RuinWall", x = -155, z = 1205, height = 3, yaw = 90 },
+		{ model = "RuinWall", x = -152, z = 1178, height = 2.8, yaw = 70 },
+		{ model = "RuinWall", x = -118, z = 1168, height = 3, yaw = 20 },
+		{ model = "RuinWall", x = -142, z = 1222, height = 2.6, yaw = 0 },
+		{ model = "RuinWall", x = -103, z = 1188, height = 2.8, yaw = 100 },
+	},
+	-- Round 2: giant ancient trees framing the trail (GiantTreeA/B/C, Blender; the owner's pick "framed by giant trees"),
+	-- solid at their trunks (COLLIDERS), spawn spots kept off their canopies (`clear`)
+	GIANT_TREES = {}, -- filled once the owner has imported the GiantTree models (a Lune test needs every placed model saved)
+	-- Round 2: footpaths off the trail (drawn like the trail, after it): up to the ruin hill through its north arch
+	PATHS = {
+		{ from = { x = -120, z = 1250, y = 0 }, to = { x = -129, z = 1212, y = 2 }, width = 5, material = "Ground" },
 	},
 	STONE_CIRCLE = { x = -130, z = 1195, radius = 13, count = 9, model = "StandingStone", height = 11 },
 	MUSHROOM_RINGS = {
@@ -460,6 +469,9 @@ return {
 		RuinPillar = { radius = 0.12, height = 1 },
 		RuinPillarBroken = { radius = 0.18, height = 0.8 },
 		StandingStone = { radius = 0.2, height = 1 }, -- the Meadow's stone circle (solid in the arenas too)
+		GiantTreeA = { radius = 0.08, height = 0.5 },
+		GiantTreeB = { radius = 0.08, height = 0.5 },
+		GiantTreeC = { radius = 0.08, height = 0.5 },
 		RuinWall = { radius = 0.4, height = 1, spread = { -0.9, 0, 0.9 } },
 		EmberTree = { radius = 0.06, height = 0.7 },
 		DragonSkeleton = { radius = 0.3, height = 0.5, spread = { -1, 0, 1 } },

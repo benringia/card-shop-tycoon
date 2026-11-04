@@ -481,7 +481,7 @@ local function buildWildValley(folder: Folder)
 			table.insert(pieces, spot)
 		end
 	end
-	for _, name in { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON" } do
+	for _, name in { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON", "GIANT_TREES" } do
 		for _, spot in WildValleyConfig[name] do
 			table.insert(pieces, spot)
 		end
