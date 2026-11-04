@@ -25,6 +25,17 @@ local GROUND = -TownTerrain.SURFACE_LIFT -- the fill top that draws the ground a
 return {
 	-- A ledge jutting over the ground (spec 2026-11-04-valley-scenery-design: the Caves' rock shelf) is drawn but
 	-- isn't ground: props, crystals and spawn spots under it stand on the floor
+	-- Round 2 (spec 2026-11-05-valley-natural-design): Roblox's clouds over the whole place, town included (owner "OK")
+	["the clouds are a soft cover"] = function()
+		local clouds = scenery.CLOUDS
+		expect.equal(clouds.cover > 0 and clouds.cover <= 1, true, "cover")
+		expect.equal(clouds.density > 0 and clouds.density <= 1, true, "density")
+		expect.equal(#clouds.color, 3)
+		for _, value in clouds.color do
+			expect.equal(value >= 0 and value <= 255, true, "colour")
+		end
+	end,
+
 	["an overhang doesn't lift the ground under it"] = function()
 		local ops = {
 			{ shape = "Block", x = 0, y = -2, z = 0, size = { x = 40, y = 4, z = 40 }, material = "Limestone" },

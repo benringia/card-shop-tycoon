@@ -265,9 +265,9 @@ local function calderaCollider(model: Model, spot: any)
 end
 
 -- A valley scenery piece as placed (spec 2026-11-04-valley-scenery-design): anchored and out of the camera's and
--- players' way (big pieces get colliders, WildValley COLLIDERS), its `Glow` parts glowing in the spot's colour, no
--- shadow from a small one
-local function dressValleyProp(model: Model, spot: any)
+-- players' way (big pieces get colliders, WildValley COLLIDERS, unless `solid` is false: round 2's backdrop pieces
+-- nobody can reach), its `Glow` parts glowing in the spot's colour, no shadow from a small one
+local function dressValleyProp(model: Model, spot: any, solid: boolean?)
 	local glow = Props.color(WildValleyConfig.GLOW[spot.glow or "teal"])
 	local _, size = model:GetBoundingBox()
 	local small = size.Y < Scenery.SMALL_DECOR_SIZE
@@ -296,7 +296,7 @@ local function dressValleyProp(model: Model, spot: any)
 		end
 	end
 	local share = WildValleyConfig.COLLIDERS[spot.model]
-	if share then
+	if share and solid ~= false then
 		uprightColliders(model, spot, share)
 	end
 end
@@ -538,6 +538,44 @@ local function buildVolcanoLava(scenery: Instance)
 	for _, part in parts do
 		part.CanQuery = false
 	end
+end
+
+-- What stands past the valley's walls (round 2, Config/WildValley BACKDROP and MOUNTAINS): backdrop pieces on the
+-- drawn ground, streamed as whole models; the far mountains at their own heights, no shadows, always loaded so they
+-- never pop in as you walk
+local function buildBackdrop(folder: Instance)
+	local holder = Instance.new("Folder")
+	holder.Name = "WildBackdrop"
+	holder.Parent = folder
+	for _, spot in WildValleyConfig.BACKDROP do
+		local model = placeModel(holder, spot, spot.model)
+		if model then
+			dressValleyProp(model, spot, false)
+			model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+		end
+	end
+	for _, spot in WildValleyConfig.MOUNTAINS do
+		local model = placeModel(holder, spot, spot.model)
+		if model then
+			dressValleyProp(model, spot, false)
+			for _, part in model:GetDescendants() do
+				if part:IsA("BasePart") then
+					part.CastShadow = false
+				end
+			end
+			model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+		end
+	end
+end
+
+-- Roblox's clouds over the whole place (Config/Scenery CLOUDS; round 2)
+local function buildClouds()
+	local look = Scenery.CLOUDS
+	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	clouds.Cover = look.cover
+	clouds.Density = look.density
+	clouds.Color = Props.color(look.color)
+	clouds.Parent = workspace.Terrain
 end
 
 local function buildCanyon(folder: Folder)
@@ -1009,6 +1047,7 @@ local function buildDressing()
 	buildFrozenFalls(folder)
 	buildSmallLife(folder)
 	buildWildValley(folder)
+	buildBackdrop(folder)
 	buildEffects(folder)
 	buildArenaEffects(folder)
 	buildSounds(folder)
@@ -1026,6 +1065,7 @@ function SceneryService.Start()
 	for _, op in WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) do
 		table.insert(terrainOps, op)
 	end
+	buildClouds()
 	-- Neither holds up the server's start (the players' data loads after the services start). The caldera's cracks
 	-- snap onto the terrain by raycast, so they wait for it to be filled.
 	task.spawn(function()

@@ -445,6 +445,28 @@ return {
 		expect.equal(front.origin.z < volcano.z, true, "the ridge's side")
 	end,
 
+	-- Round 2: the backdrops (giant trees, mushroom forests, ember slopes) and far mountains stand outside the walkable edge
+	["backdrops and mountains stand outside the walkable edge"] = function()
+		expect.equal(#valley.MOUNTAINS > 0, true, "far mountains round the valley")
+		for _, list in { valley.BACKDROP, valley.MOUNTAINS } do
+			for _, spot in list do
+				expect.equal(WildValley.inside(valley.EDGE, spot), false, `{spot.model} at {spot.x}, {spot.z}`)
+			end
+		end
+	end,
+
+	["mountains stand far out"] = function()
+		for _, spot in valley.MOUNTAINS do
+			expect.equal(type(spot.y) == "number", true, `{spot.model} at {spot.x}, {spot.z} has its own height`)
+			for _, biome in valley.BIOMES do
+				for _, p in biome.outline do
+					local d = math.sqrt((spot.x - p.x) ^ 2 + (spot.z - p.z) ^ 2)
+					assert(d >= 150, `{spot.model} at {spot.x}, {spot.z} is {d} from the valley`)
+				end
+			end
+		end
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")

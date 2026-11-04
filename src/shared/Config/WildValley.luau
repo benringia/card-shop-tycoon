@@ -535,6 +535,25 @@ return {
 	-- Past the ridge's far cliff: the caldera's volcano (dressed like the canyon's: anchored, its lava glowing), its foot
 	-- hidden behind the cliff, its lava streaks (its -Z side) toward the ridge
 	VOLCANO = { model = "Volcano", x = -55, z = 1890, y = 20, height = 90, yaw = 0 },
+	-- Round 2 (spec 2026-11-05-valley-natural-design): what stands past the walls, never reachable. BACKDROP: pieces on
+	-- the skylines and beyond (giant trees, scaled-up glow mushrooms, ember trees; `glow` for glowing ones), standing on
+	-- the drawn ground, no colliders, streamed as whole models. MOUNTAINS: far range pieces at their own `y` (sunk so no
+	-- base shows), always loaded so they never pop in, at least 150 studs out from the valley
+	BACKDROP = {},
+	MOUNTAINS = {
+		-- snowy ranges south of the Meadow, west of the Caves and east of the Meadow
+		{ model = "MountainSnow", x = -180, z = 820, y = -20, height = 130, yaw = 0 },
+		{ model = "MountainSnow", x = 150, z = 860, y = -20, height = 110, yaw = 15 },
+		{ model = "MountainSnow", x = -470, z = 900, y = -20, height = 120, yaw = -30 },
+		{ model = "MountainSnow", x = -720, z = 1250, y = -10, height = 140, yaw = 90 },
+		{ model = "MountainSnow", x = -700, z = 1560, y = -10, height = 120, yaw = 80 },
+		{ model = "MountainSnow", x = 330, z = 1180, y = -20, height = 110, yaw = 95 },
+		-- dark jagged ranges round Ember Ridge, the volcano among them
+		{ model = "MountainDark", x = 320, z = 1650, y = 10, height = 120, yaw = 90 },
+		{ model = "MountainDark", x = -200, z = 2050, y = 10, height = 130, yaw = 10 },
+		{ model = "MountainDark", x = 150, z = 2020, y = 10, height = 110, yaw = -15 },
+		{ model = "MountainDark", x = -430, z = 1900, y = 10, height = 120, yaw = -45 },
+	},
 	-- Round 2 (the owner's pick "burnt hills to the volcano"): glowing lava streams down the volcano's ridge-facing side
 	-- (WildValley.lavaRays cast onto its surface, joined by strips `width` wide), from near the crater to where the
 	-- ridge's far wall hides it
