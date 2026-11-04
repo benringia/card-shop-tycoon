@@ -410,7 +410,11 @@ return {
 	},
 	-- Round 2: giant ancient trees framing the trail (GiantTreeA/B/C, Blender; the owner's pick "framed by giant trees"),
 	-- solid at their trunks (COLLIDERS), spawn spots kept off their canopies (`clear`)
-	GIANT_TREES = {}, -- filled once the owner has imported the GiantTree models (a Lune test needs every placed model saved)
+	GIANT_TREES = {
+		{ model = "GiantTreeA", x = 30, z = 1192, height = 38, yaw = 30, clear = 12 },
+		{ model = "GiantTreeC", x = -95, z = 1225, height = 34, yaw = 200, clear = 12 }, -- with GiantTreeB, a gate the trail passes through
+		{ model = "GiantTreeB", x = -80, z = 1285, height = 40, yaw = 110, clear = 12 },
+	},
 	-- Round 2: footpaths off the trail (drawn like the trail, after it): up to the ruin hill through its north arch
 	PATHS = {
 		{ from = { x = -120, z = 1250, y = 0 }, to = { x = -129, z = 1212, y = 2 }, width = 5, material = "Ground" },
@@ -551,7 +555,7 @@ return {
 	},
 	-- Past the ridge's far cliff: the caldera's volcano (dressed like the canyon's: anchored, its lava glowing), its foot
 	-- hidden behind the cliff, its lava streaks (its -Z side) toward the ridge
-	VOLCANO = { model = "Volcano", x = -55, z = 1890, y = 20, height = 90, yaw = 0 },
+	VOLCANO = { model = "Volcano", x = -55, z = 1935, y = 20, height = 140, yaw = 0 }, -- round 2: bigger and further back (concept A: the volcano dominates), its foot still behind the north wall
 	-- Round 2 (spec 2026-11-05-valley-natural-design): what stands past the walls, never reachable. BACKDROP: pieces on
 	-- the skylines and beyond (giant trees, scaled-up glow mushrooms, ember trees; `glow` for glowing ones), standing on
 	-- the drawn ground, no colliders, streamed as whole models. MOUNTAINS: far range pieces at their own `y` (sunk so no
@@ -590,10 +594,10 @@ return {
 		{ model = "GlowMushroomCluster", x = -400, z = 1278, height = 26, yaw = 40, glow = "teal" },
 		{ model = "GlowMushroomTall", x = -355, z = 1278, height = 44, yaw = 310, glow = "teal" },
 		{ model = "GlowMushroomCluster", x = -300, z = 1278, height = 28, yaw = 190, glow = "purple" },
-		{ model = "GlowMushroomTall", x = -208, z = 1370, height = 44, yaw = 100, glow = "teal" },
-		{ model = "GlowMushroomCluster", x = -208, z = 1420, height = 30, yaw = 220, glow = "purple" },
-		{ model = "GlowMushroomTall", x = -208, z = 1470, height = 48, yaw = 340, glow = "purple" },
-		{ model = "GlowMushroomCluster", x = -208, z = 1515, height = 28, yaw = 70, glow = "teal" },
+		{ model = "GlowMushroomTall", x = -208, z = 1370, height = 30, yaw = 100, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -208, z = 1420, height = 24, yaw = 220, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -208, z = 1470, height = 32, yaw = 340, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -208, z = 1515, height = 22, yaw = 70, glow = "teal" },
 		-- Ember Ridge (pick A): ember trees and charred trees on its hills, rising toward the volcano
 		{ model = "EmberTree", x = -110, z = 1808, height = 28, yaw = 30, glow = "ember" },
 		{ model = "EmberTree", x = -50, z = 1808, height = 30, yaw = 150, glow = "ember" },

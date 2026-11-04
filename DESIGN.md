@@ -756,7 +756,7 @@ and charred trees on the Ridge's hills; no colliders, streamed as whole models) 
 (`MOUNTAINS`: snowy round the Meadow and the Caves, dark jagged round the Ridge; always loaded, no shadows); the Meadow
 is composed (every ruin on a hill round the stone circle, a footpath up through its north arch, `PATHS`; a bigger pond;
 giant trees framing the trail, `GIANT_TREES`); the Caves' look gets fog and its crystal cave a mossy face; Ember Ridge
-gets its own smoky orange look (`DayCycle.AREA_LOOKS[3]`) and lava streams down the volcano (`VOLCANO_LAVA`,
+gets its own smoky orange look (`DayCycle.AREA_LOOKS[3]`), a bigger volcano set further back (height 140) and lava streams down it (`VOLCANO_LAVA`,
 `WildValley.lavaRays` cast onto it); the area looks snap after a teleport (`DayCycle.jumped`); Roblox clouds over the
 whole place, town included (`Scenery.CLOUDS`). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
 either end). Signs are wood like the town's (`Server/Util/TrailProps.trailhead`): "THE WILD" by the arrival, a
@@ -2335,6 +2335,14 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Terrain memory 45-47 MB graphics in the valley (43 in round 1), 38 in an arena copy, 51 on the street; voxels 5.4-6.0
   MB (4.1 before). The valley's terrain with its 12 arena clearings is about 86.5k estimated cells (cap
   `WildValley.MAX_CELLS` 90k); town plus valley about 225.5k, so `Scenery.MAX_CELLS` rose from 180k to 230k.
+- Valley round 2, natural edges (measured 2026-11-05 in Play, the same cameras; round 2's 67 placed models (backdrop,
+  mountains, giant trees, the volcano's lava) and the clouds shown and hidden in turn, three pairs, one session):
+  meadow +0.02 ms render CPU at level 1 / +0.49 at level 10, gorge +0.14 / +0.10, ridge +0.16 / +0.12, 60 fps. The
+  skylines are terrain (not toggled): estimated cells 92.5k to 100.5k after trimming the walls' backs, valley terrain
+  graphics 48.0 to 46.3 MB and voxels 5.9 to 6.4 MB (`MAX_CELLS` 95k to 105k, `Scenery.MAX_CELLS` 235k to 245k). On the
+  town street at level 10: clouds +0.6 ms, the always-loaded far mountains +0.5 ms (none at level 1); street memory by
+  tag about +8 MB (instances 171 to 178, mesh parts 32 to 33, terrain 52 / 6). Streaming: every backdrop model present
+  from each area's far corner.
 - Valley scenery round (measured 2026-11-05 in Play from fixed cameras over the meadow from the arrival, the gorge from
   its entrance and the ridge from its pass; 148 new pieces: 27 mushrooms, 30 tufts, 10 moss rocks, the stone circle,
   13 ruins, 16 toadstools, 12 ember trees, 10 crystal clusters, the skeleton): the pieces in place and hidden in turn in

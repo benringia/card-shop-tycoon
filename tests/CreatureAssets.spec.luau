@@ -206,6 +206,7 @@ return {
 			GlowFlowers = glowing, MossRockA = plain, MossRockB = plain, RuinArch = plain, RuinPillar = plain,
 			RuinPillarBroken = plain, RuinPillarFallen = plain, RuinWall = plain, Toadstool = { "Frame" },
 			EmberTree = glowing, DragonSkeleton = glowing,
+			GiantTreeA = plain, GiantTreeB = plain, GiantTreeC = plain, MountainSnow = plain, MountainDark = plain, -- round 2
 		}
 		local bad = {}
 		for name, parts in wanted do
@@ -228,7 +229,13 @@ return {
 		end
 		local valley = require("../src/shared/Config/WildValley")
 		local WildValley = require("../src/shared/Util/WildValley")
-		for _, spot in WildValley.scenery(valley) do
+		local placed = WildValley.scenery(valley)
+		for _, list in { valley.BACKDROP, valley.MOUNTAINS } do -- round 2
+			for _, spot in list do
+				table.insert(placed, spot)
+			end
+		end
+		for _, spot in placed do
 			if spot.model and not fs.isFile(`assets/props/{spot.model}.rbxm`) then
 				table.insert(bad, `{spot.model} at {spot.x}, {spot.z}: no assets/props/{spot.model}.rbxm`)
 			end
