@@ -66,19 +66,28 @@ function SwordAnims.load(humanoid: Humanoid, swordId: string): Set
 		return tracks[key]
 	end
 
-	local function play(key: string, speed: number?, fade: number?): AnimationTrack?
-		local loaded = track(key)
-		if loaded then
-			loaded:Play(fade or (if IS_STRIKE[key] then SwordFx.FADE.strike else 0.05), 1, speed or 1)
-		end
-		return loaded
-	end
-
 	local function stop(key: string, fade: number?)
 		local loaded = tracks[key]
 		if loaded and loaded.IsPlaying then
 			loaded:Stop(fade or 0.15)
 		end
+	end
+
+	-- A strike or the dodge ends whatever strike was playing (they share a priority: left playing, a chained cut would
+	-- blend half-and-half with the one before and show half its swing)
+	local function play(key: string, speed: number?, fade: number?): AnimationTrack?
+		if IS_STRIKE[key] or key == "dodge" then
+			for _, other in STRIKES do
+				if other ~= key then
+					stop(other, SwordFx.FADE.strike)
+				end
+			end
+		end
+		local loaded = track(key)
+		if loaded then
+			loaded:Play(fade or (if IS_STRIKE[key] then SwordFx.FADE.strike else 0.05), 1, speed or 1)
+		end
+		return loaded
 	end
 
 	-- Every playing strike freezes for `seconds`, then carries on

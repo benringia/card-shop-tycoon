@@ -20,6 +20,7 @@ local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
 local SwordFx = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local SwordArcRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordArcRules"))
+local SwingGate = require(Shared:WaitForChild("Util"):WaitForChild("SwingGate"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -60,6 +61,9 @@ local holdToken = 0
 local autoRotateBefore = true
 local wantedMove = Vector3.zero -- what your walking input asks for under a hold (a dodge goes that way)
 local HOLD_STEP = "SwordHold"
+-- Which of your sword actions is still live: a dodge, a knock-down or the fight's end cancels a cut queued for its
+-- cancel point; no cut starts during the dash slash; the last cut that struck (Util/SwingGate)
+local gate = SwingGate.new()
 
 -- Moves you `studs` along `direction` (flat, unit) over `seconds`: a velocity constraint in the ground plane (gravity
 -- stays free; walls, the arena's barrier, still stop it). Setting the velocity each frame lost half a dash to the
@@ -499,6 +503,7 @@ function SwordController.Kneel()
 		return
 	end
 	kneeling = true
+	SwingGate.cancel(gate)
 	releaseHold()
 	if stopPush then
 		stopPush()
@@ -555,6 +560,7 @@ function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules
 	combatTargets = if active then targets else nil
 	onCooldown = if active then cooldown else nil
 	lastCut = nil
+	SwingGate.cancel(gate)
 	if not active then
 		SwordController.GetUp()
 		releaseHold()
@@ -584,12 +590,13 @@ function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules
 end
 
 -- Whether a hit of yours of this kind ("Sword" or "Skill", the server's) is a big one: the skill, or the combo's last
--- cut (your latest). Big hits freeze longer (SwordFx.HIT_STOP) and shake harder.
+-- cut (the last cut whose strike frame came, not your latest tap: the server's hit is a round trip behind). Big hits
+-- freeze longer (SwordFx.HIT_STOP) and shake harder.
 function SwordController.IsBigHit(kind: string): boolean
 	local character = player.Character
 	local swordId = if character then character:GetAttribute("Sword") else nil
 	local sword = if typeof(swordId) == "string" then Swords.SWORDS[swordId] else nil
-	return kind == "Skill" or (sword ~= nil and lastCut ~= nil and lastCut.index == #sword.combo)
+	return kind == "Skill" or (sword ~= nil and SwingGate.lastStruck(gate) == #sword.combo)
 end
 
 -- The hit sound and the hit-stop the moment the blade lands, when your own reach check says it connects: the server's
@@ -654,9 +661,8 @@ local function facing(root: BasePart): Vector3
 end
 
 -- Is this swing still the one playing (no newer cut, skill or dodge, still in the fight, still standing)?
-local swingToken = 0
 local function stillSwinging(token: number): boolean
-	return swingToken == token and combatTargets ~= nil and not kneeling
+	return SwingGate.live(gate, token) and combatTargets ~= nil and not kneeling
 end
 
 -- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target.
@@ -669,21 +675,25 @@ function SwordController.Attack()
 		return
 	end
 	local now = os.clock()
+	if not SwingGate.canAttack(gate, now) then
+		return -- the dash slash is playing
+	end
 	local index, startAt = SwordRules.nextCut(sword.combo, lastCut, now, Swords.COMBO_RESET)
 	if not index or not startAt then
 		return
 	end
 	lastCut = { index = index, startedAt = startAt }
+	local token = SwingGate.begin(gate)
+	local cut = sword.combo[index]
 	SwordController.DrawNow()
 	Remotes.SwordAttack:FireServer()
+	-- The server strikes this cut then whatever happens here: what landed is this cut (IsBigHit)
+	task.delay(startAt - now + cut.hitAt, SwingGate.struck, gate, index)
 	task.delay(startAt - now, function()
 		local _, at, humanoid = ownParts()
-		if not at or not humanoid then
-			return
+		if not at or not humanoid or not stillSwinging(token) then
+			return -- a dodge, the dash slash, a knock-down or the fight's end came first
 		end
-		swingToken += 1
-		local token = swingToken
-		local cut = sword.combo[index]
 		softAim(at)
 		holdControls(humanoid, cut.cancelAt or cut.length)
 		if mine then
@@ -724,10 +734,14 @@ function SwordController.Attack()
 				end
 			end)
 		end
-		task.delay(cut.hitAt, predictHit, function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
-			local look = hitRoot.CFrame.LookVector
-			return SwordRules.anyInReach(hitRoot.Position.X, hitRoot.Position.Z, look.X, look.Z, targets, cut)
-		end, index, index == #sword.combo)
+		task.delay(cut.hitAt, function()
+			if stillSwinging(token) then
+				predictHit(function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
+					local look = hitRoot.CFrame.LookVector
+					return SwordRules.anyInReach(hitRoot.Position.X, hitRoot.Position.Z, look.X, look.Z, targets, cut)
+				end, index, index == #sword.combo)
+			end
+		end)
 	end)
 end
 
@@ -748,8 +762,7 @@ function SwordController.Skill()
 	end
 	SwordController.DrawNow()
 	Remotes.SwordSkill:FireServer()
-	swingToken += 1
-	local token = swingToken
+	local token = SwingGate.startSkill(gate, os.clock(), skill.length)
 	softAim(root)
 	holdControls(humanoid, skill.length)
 	if mine then
@@ -777,9 +790,13 @@ function SwordController.Skill()
 		AfterImage.spawn(own, 4, dash.to - dash.from + 0.15)
 		push(at, direction, studs, dash.to - dash.from, "SwordDash", true)
 	end)
-	task.delay(skill.hitAt, predictHit, function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
-		return SwordRules.anyInDashPath(startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, targets, dash.width)
-	end, "skill", false)
+	task.delay(skill.hitAt, function()
+		if stillSwinging(token) then
+			predictHit(function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
+				return SwordRules.anyInDashPath(startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, targets, dash.width)
+			end, "skill", false)
+		end
+	end)
 end
 
 -- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images.
@@ -794,7 +811,7 @@ function SwordController.Dodge()
 		onCooldown("dodge", dodgeReadyAt, Combat.DODGE_COOLDOWN)
 	end
 	local input = if held then wantedMove else humanoid.MoveDirection
-	swingToken += 1
+	SwingGate.cancel(gate)
 	releaseHold()
 	Remotes.Dodge:FireServer()
 	SwordController.PlaySound("dodge")

@@ -76,6 +76,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SwordsConfig = require("./SwordsConfig.spec"),
 	SwordRules = require("./SwordRules.spec"),
 	SwordArcRules = require("./SwordArcRules.spec"),
+	SwingGate = require("./SwingGate.spec"),
 	RingRules = require("./RingRules.spec"),
 	HpBarRules = require("./HpBarRules.spec"),
 	CombatPreload = require("./CombatPreload.spec"),

@@ -1052,7 +1052,10 @@ group, checked before its fragments and every time (not only the first). Below i
   - **Chaining:** a tap during a cut queues the next at its cancel point (cut 1 0.34 s, cut 2 0.32 s;
     `SwordRules.nextCut`), so the recovery only plays when you stop. The damage a second is measured on that chained
     cycle (0.34 + 0.32 + 0.88 s) and kept what it was (within 2 %, tests/SwordsConfig); both balance sims chain on the
-    cancel points and their targets hold.
+    cancel points and their targets hold. A chained cut ends the one before (they'd blend at the same priority), a
+    dodge, a knock-down or the fight's end cancels a cut queued for its cancel point (its lunge, arc and hold never
+    come), and no cut starts while the dash slash plays (`Util/SwingGate`, Lune-tested). The server still lands a
+    queued cut a dodge cancelled on screen (a known gap, final review).
   - **Lunges:** each cut carries you forward for real (1.1 / 0.8 / 2.6 studs, `Swords` `lunge`), stopping 1 stud short
     of a foe's edge (`SwordRules.lungeLength`, `Swords.LUNGE_STOP`) and planting you at the end (no slide). The moves
     are exported in place; the game moves you, one push at a time shared with the dodge.
@@ -1877,6 +1880,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
             ├── SwordRules.luau    # the combo's next cut (cancel points), reach and arc, aiming, lunges, the dash and its path, combo damage per second (pure, Lune-tested)
             ├── SwordArcRules.luau # the swing arcs' curve, points, wipe and the hit burst's spot (pure, Lune-tested)
+            ├── SwingGate.luau     # which of your sword actions is still live: tokens, the dash slash's lock, the last cut that struck (pure, Lune-tested)
             ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
             ├── HpBarRules.luau    # HP bar ghost and heal timing, the red edge flash and low-HP pulse, the portrait shake (pure, Lune-tested)
             ├── CombatPreload.luau # every image, sound and animation id the boss fight needs, from its configs (pure, Lune-tested)
