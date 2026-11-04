@@ -2,7 +2,21 @@
 local MusicRules = require("../src/shared/Util/MusicRules")
 local Music = require("../src/shared/Config/Music")
 local Town = require("../src/shared/Config/Town")
+local Bosses = require("../src/shared/Config/Bosses")
+local WildValley = require("../src/shared/Config/WildValley")
 local expect = require("./lib/expect")
+
+-- Every place with music: the town, the Wild valley's areas and its boss arenas (owner 2026-11-04)
+local function places(): { any }
+	local list = { Music.TOWN }
+	for _, area in Music.WILD.areas do
+		table.insert(list, area)
+	end
+	for _, arena in Music.WILD.arenas do
+		table.insert(list, arena)
+	end
+	return list
+end
 
 local BOUNDS = { HALF_X = 130, HALF_Z = 110 }
 
@@ -22,16 +36,123 @@ return {
 		expect.equal(MusicRules.nextTrack(1, 1), 1, "one track: it repeats")
 	end,
 
-	["/music picks an option to hear (0 goes back), with an optional volume"] = function()
-		expect.equal(MusicRules.parsePreview("/music 2", 5), 2)
-		local index, volume = MusicRules.parsePreview("/music 3 0.08", 5)
+	["/music picks a place's option to hear (0 goes back), with an optional volume"] = function()
+		local counts = { town = 5, meadow = 3, warden = 3 }
+		local place, index, volume = MusicRules.parsePreview("/music 2", counts)
+		expect.equal(place, "town", "no place: the town")
+		expect.equal(index, 2)
+		expect.isNil(volume)
+		place, index, volume = MusicRules.parsePreview("/music 3 0.08", counts)
+		expect.equal(place, "town")
 		expect.equal(index, 3)
 		expect.equal(volume, 0.08)
-		expect.equal(MusicRules.parsePreview("/music 0", 5), 0, "back to the normal tracks")
-		expect.isNil(MusicRules.parsePreview("/music 6", 5), "no such option")
-		expect.isNil(MusicRules.parsePreview("/music", 5), "no number")
-		local _, loud = MusicRules.parsePreview("/music 1 9", 5)
+		place, index, volume = MusicRules.parsePreview("/music meadow 3 0.1", counts)
+		expect.equal(place, "meadow")
+		expect.equal(index, 3)
+		expect.equal(volume, 0.1)
+		place, index = MusicRules.parsePreview("/music warden 0", counts)
+		expect.equal(place, "warden")
+		expect.equal(index, 0, "back to the normal tracks")
+		place, index = MusicRules.parsePreview("/music 0", counts)
+		expect.equal(index, 0)
+		expect.isNil(MusicRules.parsePreview("/music 6", counts), "no such town option")
+		expect.isNil(MusicRules.parsePreview("/music meadow 4", counts), "no such meadow option")
+		expect.isNil(MusicRules.parsePreview("/music lava 1", counts), "no such place")
+		expect.isNil(MusicRules.parsePreview("/music meadow", counts), "no number")
+		expect.isNil(MusicRules.parsePreview("/music", counts), "nothing")
+		local _, _, loud = MusicRules.parsePreview("/music meadow 1 9", counts)
 		expect.equal(loud, 1, "a volume is kept within 0-1")
+	end,
+
+	["the music follows where you are: a boss arena, then the Wild's area, then the town"] = function()
+		expect.equal(MusicRules.place(Music, 2, 1, false, nil), "brood", "in an arena: its music")
+		expect.equal(MusicRules.place(Music, nil, 1, false, "town"), "meadow", "in the meadow")
+		expect.equal(MusicRules.place(Music, nil, 3, false, "meadow"), "ridge")
+		expect.equal(MusicRules.place(Music, nil, nil, true, "ridge"), "town", "back in town")
+		expect.equal(MusicRules.place(Music, nil, nil, false, "meadow"), "meadow", "on the pass between areas: keeps playing")
+		expect.isNil(MusicRules.place(Music, nil, nil, false, "town"), "nowhere with music after the town: quiet")
+		expect.isNil(MusicRules.place(Music, nil, nil, false, "warden"), "out of an arena, nowhere else: quiet")
+		expect.isNil(MusicRules.place(Music, nil, nil, false, nil))
+	end,
+
+	-- The owner's picks by ear (2026-11-04): the town's White Owl, and a track, volume and leveler for each Wild place
+	["the owner's picks play, each Wild one through a leveler, the valley's areas with their ambience"] = function()
+		expect.equal(Music.TOWN.tracks[1], "rbxassetid://9048757009", "the town: White Owl")
+		local picks = {
+			meadow = { "rbxassetid://1838420686", 0.005 }, -- Woodland Walk (classical solo guitar)
+			gorge = { "rbxassetid://1842181702", 0.01 }, -- Calm Waters (solo guitar)
+			ridge = { "rbxassetid://1842276365", 0.005 }, -- Air Currents (classical solo guitar)
+			warden = { "rbxassetid://1845205138", 0.1 }, -- Forest Chase
+			brood = { "rbxassetid://1841360723", 0.13 }, -- Creepy Crawlers
+			colossus = { "rbxassetid://96625587462633", 0.1 }, -- Giant's Grave
+		}
+		for key, pick in picks do
+			local place = MusicRules.find(Music, key)
+			expect.equal(place.tracks[1], pick[1], `{key} track`)
+			expect.equal(place.volume, pick[2], `{key} volume`)
+			local leveler = place.compressor
+			expect.equal(leveler ~= nil, true, `{key} has a leveler`)
+			expect.equal(leveler.threshold < 0 and leveler.ratio > 1 and leveler.makeup > 0, true, `{key} leveler evens it out and gives the level back`)
+		end
+		for _, area in Music.WILD.areas do
+			local ambient = area.ambient
+			expect.equal(ambient ~= nil and string.match(ambient.id, "^rbxassetid://%d+$") ~= nil, true, `{area.key} ambience`)
+			expect.equal(ambient.volume > 0 and ambient.volume <= 0.5, true, `{area.key} ambience volume`)
+		end
+		-- The Meadow's birds were buried under its music (PlaybackLoudness ignores Volume: heard ~ loudness x volume, 4.6 x
+		-- 0.3 against ~98 x 0.1): a fuller field loop, about half the music's level (owner 2026-11-04: "add ambient sound")
+		-- The valley plays only solo piano or acoustic guitar (owner 2026-11-04), each option named for its instrument
+		for _, area in Music.WILD.areas do
+			for _, option in area.options do
+				local name = string.lower(option.name)
+				expect.equal(string.find(name, "solo piano", 1, true) ~= nil or string.find(name, "solo guitar", 1, true) ~= nil, true, `{area.key}: {option.name} is piano or guitar only`)
+			end
+			local picked = false
+			for _, option in area.options do
+				picked = picked or option.id == area.tracks[1]
+			end
+			expect.equal(picked, true, `{area.key} plays one of its options`)
+		end
+		local meadow = MusicRules.find(Music, "meadow").ambient
+		expect.equal(meadow.id, "rbxassetid://9112779471", "the Meadow: Field Birds Tweeting 1")
+		expect.equal(meadow.volume, 0.03, "the Meadow's field loop")
+		for _, area in Music.WILD.areas do
+			local wanted = ({ meadow = 0.03, gorge = 0.05, ridge = 0.008 })[area.key] -- the lava rumble is a much louder loop
+			expect.equal(area.ambient.volume, wanted, `{area.key} ambience (owner 2026-11-04)`)
+		end
+	end,
+
+	["each place's music is found by its key"] = function()
+		expect.equal(MusicRules.find(Music, "town"), Music.TOWN)
+		expect.equal(MusicRules.find(Music, "gorge"), Music.WILD.areas[2])
+		expect.equal(MusicRules.find(Music, "colossus"), Music.WILD.arenas[3])
+		expect.isNil(MusicRules.find(Music, "lava"))
+	end,
+
+	["the Wild valley's areas and its boss arenas each have licensed music to pick from"] = function()
+		expect.equal(#Music.WILD.areas, #WildValley.BIOMES, "one per area of the valley")
+		local wildBosses = 0
+		for _, boss in Bosses.BOSSES do
+			if boss.place == "Wild" then
+				wildBosses += 1
+			end
+		end
+		expect.equal(#Music.WILD.arenas, wildBosses, "one per Wild boss arena")
+		local keys = {}
+		for _, place in places() do
+			expect.equal(typeof(place.key) == "string" and not keys[place.key], true, `unique key {place.key}`)
+			keys[place.key] = true
+			expect.equal(#place.tracks >= 1, true, `{place.key} plays something`)
+			for _, id in place.tracks do
+				expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{place.key} track {id}`)
+			end
+			expect.equal(#place.options >= 3, true, `{place.key}: options to pick from (/music {place.key} <n>)`)
+			for _, option in place.options do
+				expect.equal(string.match(option.id, "^rbxassetid://%d+$") ~= nil and #option.name > 0, true, option.name)
+			end
+			expect.equal(place.volume > 0 and place.volume <= 0.5, true, `{place.key} volume under the sounds`)
+		end
+		expect.equal(Music.WILD.fade >= 1, true)
 	end,
 
 	["the town music is quiet, licensed and fades gently"] = function()
@@ -40,7 +161,7 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume, 0.21, "the owner's number (2026-11-04, after 0.07)")
+		expect.equal(town.volume, 0.18, "the owner's number (2026-11-04, down from 0.21 with White Owl)")
 		-- The limiter still flattens the swells: its threshold is unchanged, so the loudest part rises with the volume
 		-- (round 5: "still too low" outweighs 2026-11-03's "never louder on the loudest part")
 		expect.equal(town.compressor.threshold, -48.5)

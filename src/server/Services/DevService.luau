@@ -311,17 +311,28 @@ function DevService.Start()
 	addCommand(folder, "buttonnames", function(player)
 		SwordService.ResetFights(player)
 	end)
-	-- Hear one of the town music options over the ambience (TownMusicController plays it while the attribute is set)
+	-- Hear one of a place's music options wherever you are (MusicController loops it while the attributes are set):
+	-- "/music <n> [volume]" the town's, "/music <place> <n> [volume]" the Wild's (meadow, gorge, ridge, warden, brood,
+	-- colossus), "/music [place] 0" back to the normal music
 	addCommand(folder, "music", function(player, text)
-		local options = Music.TOWN.options
-		local index, volume = MusicRules.parsePreview(text, #options)
-		if not index then
-			Remotes.Notify:FireClient(player, `Usage: /music <1-{#options}> [volume], /music 0 for the normal tracks`, true)
+		local counts: { [string]: number } = { [Music.TOWN.key] = #Music.TOWN.options }
+		local keys = { Music.TOWN.key }
+		for _, list in { Music.WILD.areas, Music.WILD.arenas } do
+			for _, place in list do
+				counts[place.key] = #place.options
+				table.insert(keys, place.key)
+			end
+		end
+		local key, index, volume = MusicRules.parsePreview(text, counts)
+		if not key or not index then
+			Remotes.Notify:FireClient(player, `Usage: /music [{table.concat(keys, "|")}] <option> [volume], 0 for the normal music`, true)
 			return
 		end
-		player:SetAttribute("TownMusicPreview", if index > 0 then index else nil)
-		player:SetAttribute("TownMusicPreviewVolume", volume)
-		local line = if index > 0 then `Music {index}: {options[index].name} at volume {volume or Music.TOWN.volume}` else "Town music: back to the normal tracks"
+		local place = MusicRules.find(Music, key)
+		player:SetAttribute("MusicPreviewPlace", if index > 0 then key else nil)
+		player:SetAttribute("MusicPreview", if index > 0 then index else nil)
+		player:SetAttribute("MusicPreviewVolume", volume)
+		local line = if index > 0 then `Music {key} {index}: {place.options[index].name} at volume {volume or place.volume}` else "Music: back to the normal tracks"
 		Remotes.Notify:FireClient(player, line, false)
 	end)
 	-- Hear a summon or unsummon sound option; it's used for your summons until "<command> 0" (SummonFx reads the picks)
@@ -456,7 +467,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume]")
 end
 
 return DevService

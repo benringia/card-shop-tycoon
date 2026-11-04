@@ -1519,7 +1519,11 @@ local function onStarted(payload: any)
 		prompt.Enabled = false
 	end
 	if boss then
-		playMusic()
+		-- The Wild's boss arenas have their own battle music (Config/Music WILD, MusicController); the drone is the
+		-- Frontier's and the Dungeon's
+		if boss.place ~= "Wild" then
+			playMusic()
+		end
 		-- A boss spawns the moment its fight starts, so its marker can arrive just after this message
 		if not markerFor(MONSTER_ID) and typeof(payload.monsterId) == "string" then
 			local folder = workspace:FindFirstChild("Monsters")
