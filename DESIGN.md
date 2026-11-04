@@ -647,10 +647,15 @@ Lune-tested).
 | Element | Ability | Effect |
 |---|---|---|
 | Ember | Fireball | 2.5× ATK hit |
-| Tide | Wave | heals your fighters 25% max HP |
+| Tide | Healing Rain | heals your fighters 25% max HP over 5 s (5 ticks of 5%, one a second; a recast restarts them; stops when the creature faints or is swapped out) |
 | Bloom | Vine Snare | monster attacks 40% slower for 4 s |
 | Volt | Overcharge | next 3 attacks twice as fast |
 | Shade | Curse | monster ATK −30% for 5 s |
+
+Healing Rain was Wave, an instant 25% (owner 2026-11-05: "Heals overtime for 25% not instant"). Measured with
+`tools/balance/bosses` (400 fights a row, before and after): heals over time waste less than the instant heal did, so
+parties that stand still at 0.8x the recommended Power win more (Cave Brood Queen 20% to 49%, Storm Sovereign 21% to
+46%, Ember Colossus 8% to 22%, Meadow Warden 6% to 14%); at 1x and fighting well nothing moved by more than 2 points.
 
 | Card | Signature | Effect |
 |---|---|---|

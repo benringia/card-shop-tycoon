@@ -44,7 +44,7 @@ return {
 	-- The pet button's tooltip by the creature's element (its ability, Config/Combat ABILITIES)
 	PET_TIPS = {
 		Ember = "Throw a fireball.",
-		Tide = "Heal your creature.",
+		Tide = "Heal your creature over time.",
 		Bloom = "Slow the boss down.",
 		Volt = "Attack super fast.",
 		Shade = "Make the boss hit weaker.",

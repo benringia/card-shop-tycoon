@@ -405,7 +405,7 @@ return {
 		expect.equal(state.result, "a", "the boss is down: win")
 	end,
 
-	["group: Wave heals only its owner's creatures"] = function()
+	["group: Healing Rain heals only its owner's creatures"] = function()
 		local state = BattleSim.new(combat, {
 			fighters = { { id = "p1", element = "Tide", hp = 1000, atk = 1, spd = 1, owner = "1" }, { id = "p2", element = "Ember", hp = 1000, atk = 1, spd = 1, owner = "2" } },
 			abilities = true,
@@ -414,8 +414,14 @@ return {
 		state.sides.a.fighters[1].hp = 500
 		state.sides.a.fighters[2].hp = 500
 		castNow(state, "a:p1", "element", "1")
-		expect.equal(state.sides.a.fighters[1].hp, 750, "the Tide owner's creature is healed")
-		expect.equal(state.sides.a.fighters[2].hp, 500, "the other player's is not")
+		local healed = { ["a:p1"] = 0, ["a:p2"] = 0 }
+		for _, entry in timedEvents(state, 6) do
+			if entry.event.type == "regen" then
+				healed[entry.event.to] = (healed[entry.event.to] or 0) + entry.event.heal
+			end
+		end
+		expect.equal(healed["a:p1"], 250, "the Tide owner's creature is healed 25% over time")
+		expect.equal(healed["a:p2"], 0, "the other player's is not")
 	end,
 
 	["boss swings: a boss with 2 swings hits two different creatures per attack"] = function()
@@ -629,7 +635,7 @@ return {
 		expect.equal(fired, false, "fainted during the wind-up")
 	end,
 
-	["abilities: cooldown, Fireball hits hard, Wave heals"] = function()
+	["abilities: cooldown, Fireball hits hard, Healing Rain heals"] = function()
 		local state = wild(fighter("a", "Ember", 100, 10, 10), { fighter("b", "Tide", 100, 10, 10) }, monster("Volt", 5000, 30, 10), 5)
 		BattleSim.callIn(state, "a:b")
 		local events = castNow(state, "a:a", "element") :: { any }
@@ -640,8 +646,16 @@ return {
 		for _ = 1, 30 do
 			BattleSim.step(state, 0.1)
 		end
-		local healEvents = castNow(state, "a:b", "element") :: { any }
-		assert(healEvents and (healEvents[1].heal or 0) > 0, "Wave heals")
+		local rainEvents = castNow(state, "a:b", "element") :: { any }
+		expect.equal(rainEvents and rainEvents[1].kind, "Rain", "Healing Rain lands")
+		expect.isNil(rainEvents and rainEvents[1].heal, "no heal at once")
+		local ticked = false
+		for _ = 1, 11 do
+			for _, e in BattleSim.step(state, 0.1) do
+				ticked = ticked or (e.type == "regen" and (e.heal or 0) > 0)
+			end
+		end
+		expect.equal(ticked, true, "Healing Rain heals a second later")
 		local none, why = BattleSim.useAbility(state, "a:a", "signature")
 		expect.isNil(none, "no signature")
 		expect.equal(why, "none", "reason none")
@@ -801,13 +815,96 @@ return {
 		expect.equal(again, log, "deterministic")
 	end,
 
-	["Wave heals only its own side"] = function()
-		local state = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 1, 1), fighter("x", "Ember", 1000, 1, 1) }), side({ fighter("e", "Volt", 1000, 1, 1) }), 22)
+	-- The owner (2026-11-05): Healing Rain heals 25% over time, not at once
+	["Healing Rain heals 25% over 5 ticks, one a second, only its own side"] = function()
+		local state = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 1, 1), fighter("x", "Ember", 1000, 1, 1) }), side({ fighter("e", "Volt", 1e6, 0, 1) }), 22)
 		state.sides.a.fighters[2].hp = 500
 		state.sides.b.fighters[1].hp = 500
 		castNow(state, "a:t", "element")
-		expect.equal(BattleSim.getFighter(state, "a:x").hp, 750, "ally healed 25%")
-		expect.equal(BattleSim.getFighter(state, "b:e").hp, 500, "enemy not healed")
+		expect.equal(BattleSim.getFighter(state, "a:x").hp, 500, "nothing at once")
+		local ticks = {}
+		local enemyHealed = false
+		for _, entry in timedEvents(state, 6) do
+			if entry.event.type == "regen" and entry.event.to == "a:x" then
+				table.insert(ticks, entry)
+			end
+			enemyHealed = enemyHealed or (entry.event.type == "regen" and entry.event.to == "b:e")
+		end
+		expect.equal(#ticks, 5, "five ticks")
+		expect.equal(ticks[1].event.heal, 50, "5% of 1000 a tick")
+		expect.equal(ticks[1].event.from, "a:t", "from the caster")
+		expect.near(ticks[1].time - 0.5, 1, 0.11, "the first a second after it lands")
+		expect.near(ticks[2].time - ticks[1].time, 1, 0.11, "one a second")
+		expect.equal(enemyHealed, false, "enemy not healed")
+	end,
+
+	["Healing Rain cast again restarts its ticks, never stacks"] = function()
+		local state = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 0, 1) }), side({ fighter("e", "Volt", 1e6, 0, 1) }), 24)
+		state.sides.a.fighters[1].hp = 100
+		castNow(state, "a:t", "element")
+		timedEvents(state, 2.5)
+		state.sides.a.fighters[1].abilityReady = 0
+		BattleSim.useAbility(state, "a:t", "element")
+		local after, landed = 0, false
+		for _, entry in timedEvents(state, 8) do
+			if entry.event.type == "ability" and entry.event.kind == "Rain" then
+				landed = true
+			elseif landed and entry.event.type == "regen" then
+				after += 1
+				expect.equal(entry.event.heal, 50, "each tick 5%")
+			end
+		end
+		expect.equal(landed, true, "the second Rain lands")
+		expect.equal(after, 5, "five fresh ticks after the recast, not more")
+	end,
+
+	["Healing Rain stops when its creature is swapped out or faints"] = function()
+		local leader: any = owned("p1", "1", 1000)
+		leader.element = "Tide"
+		local state = BattleSim.new(combat, {
+			fighters = { leader },
+			reserves = { owned("r1", "1", 1000) },
+			abilities = true,
+			canRun = true,
+			swapSeconds = 10,
+			callIn = false,
+		}, { fighters = { monster("Bloom", 1e6, 0, 1) }, abilities = false, canRun = false }, 25)
+		state.sides.a.fighters[1].hp = 100
+		castNow(state, "a:p1", "element", "1")
+		local before = 0
+		for _, entry in timedEvents(state, 2.05) do
+			if entry.event.type == "regen" and entry.event.to == "a:p1" then
+				before += 1
+			end
+		end
+		expect.equal(before, 2, "two ticks before the swap")
+		BattleSim.swap(state, "a:r1", "1")
+		local afterSwap = 0
+		for _, entry in timedEvents(state, 12) do
+			if entry.event.type == "regen" and entry.event.to == "a:p1" then
+				afterSwap += 1
+			end
+		end
+		state.sides.a.swapReadyAt["1"] = 0
+		BattleSim.swap(state, "a:p1", "1")
+		for _, entry in timedEvents(state, 6) do
+			if entry.event.type == "regen" and entry.event.to == "a:p1" then
+				afterSwap += 1
+			end
+		end
+		expect.equal(afterSwap, 0, "no ticks once swapped out, nor after coming back")
+
+		local fainting = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 0, 1) }), side({ fighter("e", "Volt", 1e6, 0, 1) }), 26)
+		castNow(fainting, "a:t", "element")
+		fainting.sides.a.fighters[1].hp = 1
+		fainting.sides.a.fighters[1].fainted = true
+		local ticksAfterFaint = 0
+		for _, entry in timedEvents(fainting, 6) do
+			if entry.event.type == "regen" then
+				ticksAfterFaint += 1
+			end
+		end
+		expect.equal(ticksAfterFaint, 0, "a fainted creature gets no ticks")
 	end,
 
 	["Curse hits the enemy the fighter targets"] = function()
@@ -1101,7 +1198,7 @@ return {
 		expect.equal(down, "down")
 	end,
 
-	["thunderclap, Wave and Tidal Shield leave the player alone"] = function()
+	["thunderclap, Healing Rain and Tidal Shield leave the player alone"] = function()
 		local clap = bossFightWithPlayer(11, 1, { thunderclap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } })
 		local events = runFor(clap, 5)
 		expect.equal(count(events, function(e)
@@ -1116,7 +1213,13 @@ return {
 		local wave = bossFightWithPlayer(12, 1, nil, nil, { tide, playerInput("1") })
 		BattleSim._hurtPlayer(wave, "a:@1", 30)
 		BattleSim.useAbility(wave, "a:p1", "element", "1")
-		expect.equal(viewOf(wave, "a:@1").hp, 70, "Wave heals creatures only")
+		local playerTicks = 0
+		for _, e in runFor(wave, 6) do
+			if e.type == "regen" and e.to == "a:@1" then
+				playerTicks += 1
+			end
+		end
+		expect.equal(playerTicks, 0, "Healing Rain heals creatures only")
 
 		local shielded = bossFightWithPlayer(13, 1)
 		shielded.sides.a.shield = 1000

@@ -52,7 +52,7 @@ return {
 	-- effect at once (style, colour, how long a lasting one stays, seconds)
 	SPECIALS = {
 		Fireball = { style = "bigball", color = rgb(255, 122, 58) },
-		Wave = { style = "wave", color = rgb(74, 168, 255) },
+		Rain = { style = "rain", color = rgb(74, 168, 255), seconds = 5 },
 		Snare = { style = "snare", color = rgb(74, 222, 128), seconds = 4 },
 		Overcharge = { style = "aura", color = rgb(250, 204, 21), seconds = 3 },
 		Curse = { style = "mist", color = rgb(167, 139, 250), seconds = 5 },
