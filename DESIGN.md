@@ -2342,7 +2342,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - Valley round 2, natural edges (measured 2026-11-05 in Play, the same cameras; round 2's 67 placed models (backdrop,
   mountains, giant trees, the volcano's lava) and the clouds shown and hidden in turn, three pairs, one session):
   meadow +0.02 ms render CPU at level 1 / +0.49 at level 10, gorge +0.14 / +0.10, ridge +0.16 / +0.12, 60 fps. The
-  skylines are terrain (not toggled): estimated cells 92.5k to 100.5k after trimming the walls' backs, valley terrain
+  skylines are terrain (not toggled): estimated cells 92.5k to 100.5k after trimming the walls' backs (101.5k with the Caves' grass patches), valley terrain
   graphics 48.0 to 46.3 MB and voxels 5.9 to 6.4 MB (`MAX_CELLS` 95k to 105k, `Scenery.MAX_CELLS` 235k to 245k). On the
   town street at level 10: clouds +0.6 ms, the always-loaded far mountains +0.5 ms (none at level 1); street memory by
   tag about +8 MB (instances 171 to 178, mesh parts 32 to 33, terrain 52 / 6). Streaming: every backdrop model present
@@ -2572,10 +2572,10 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
-- [ ] Valley scenery (branch `valley-scenery`): round 1, the Meadow's ancient ruins, the Caves' glow mushroom hollow
-  with its darker look, Ember Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural
-  edges, backdrops, far mountains, the composed Meadow, the Ridge's sky, lava streams, clouds (spec
-  `2026-11-05-valley-natural-design.md`). Waiting for the owner's import of the five round 2 models and Studio check.
+- [x] Valley scenery: round 1, the Meadow's ancient ruins, the Caves' glow mushroom hollow with its darker look, Ember
+  Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural edges, backdrops, far mountains,
+  the composed Meadow, the Ridge's sky, lava streams, clouds, the Caves' grass patches, pieces settled onto the terrain
+  (spec `2026-11-05-valley-natural-design.md`). Owner confirmed 2026-11-05.
 - [x] Wild music: a piece for each of the valley's three areas (the owner's solo guitar picks, very quiet, each with
   an ambient loop) and a battle piece in each Wild boss arena, crossfading as you move, each through a leveler
   (`Music.WILD`, `MusicController`); the town plays White Owl. Approved by the owner 2026-11-04.
