@@ -206,14 +206,14 @@ return {
 		-- the Caves: limestone on the west and north cliffs, the south wall and the central mass's gorge side
 		{ material = "Limestone", top = 52, seed = 21, points = { { x = -460, z = 1300 }, { x = -460, z = 1545 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
 		{ material = "Limestone", top = 52, seed = 22, points = { { x = -450, z = 1561 }, { x = -318, z = 1561 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
-		{ material = "Limestone", top = 32, seed = 23, points = { { x = -455, z = 1278 }, { x = -268, z = 1278 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Limestone", top = 32, seed = 23, points = { { x = -455, z = 1278 }, { x = -268, z = 1278 } }, spacing = 20, radius = { 9, 14 }, rise = { 10, 16 }, drift = 2 }, -- a low wall: lumps kept out of jump reach
 		{ material = "Limestone", top = 47, seed = 24, points = { { x = -208, z = 1352 }, { x = -208, z = 1525 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
 		-- Ember Ridge: basalt on its north, east, west and north-west walls and the central mass's ridge side
 		{ material = "Basalt", top = 62, seed = 31, points = { { x = -135, z = 1808 }, { x = 110, z = 1808 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
 		{ material = "Basalt", top = 60, seed = 32, points = { { x = 109, z = 1575 }, { x = 109, z = 1792 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
 		{ material = "Basalt", top = 60, seed = 33, points = { { x = -227, z = 1655 }, { x = -227, z = 1785 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
 		{ material = "Basalt", top = 60, seed = 34, points = { { x = -200, z = 1774 }, { x = -152, z = 1806 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
-		{ material = "Basalt", top = 47, seed = 35, points = { { x = -110, z = 1550 }, { x = 90, z = 1550 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Basalt", top = 47, seed = 35, points = { { x = -110, z = 1550 }, { x = 90, z = 1550 } }, spacing = 20, radius = { 9, 14 }, rise = { 12, 16 }, drift = 2 }, -- a low wall: lumps kept out of jump reach
 	},
 	-- Cut and filled after the trail: the meadow's stream and pond (water only fills empty space, so the channel is
 	-- carved first, then filled, then floored below so nobody sinks out of the world) and the gorge's cave mouth
@@ -453,7 +453,7 @@ return {
 	},
 	-- Round 2: footpaths off the trail (drawn like the trail, after it): up to the ruin hill through its north arch
 	PATHS = {
-		{ from = { x = -120, z = 1250, y = 0 }, to = { x = -129, z = 1212, y = 2 }, width = 5, material = "Ground" },
+		{ from = { x = -120, z = 1250, y = 0 }, to = { x = -129, z = 1212, y = 0 }, width = 5, material = "Ground" }, -- flat: the hill covers its last stretch
 	},
 	STONE_CIRCLE = { x = -130, z = 1195, radius = 13, count = 9, model = "StandingStone", height = 11 },
 	MUSHROOM_RINGS = {
@@ -582,10 +582,10 @@ return {
 		-- more trees in clumps on the edges
 		{ model = "TreeA", x = 70, z = 1295, height = 22, yaw = 40 },
 		{ model = "TreeC", x = 55, z = 1308, height = 19, yaw = 170 },
-		{ model = "TreeB", x = -198, z = 1205, height = 21, yaw = 300 },
+		{ model = "TreeB", x = -193, z = 1205, height = 21, yaw = 300 }, -- clear of the west wall's skyline lumps
 		{ model = "TreeD", x = -200, z = 1248, height = 20, yaw = 80 },
 		{ model = "TreeC", x = -150, z = 1112, height = 20, yaw = 210 },
-		{ model = "PineB", x = -100, z = 1110, height = 21, yaw = 20 },
+		{ model = "PineB", x = -100, z = 1115, height = 21, yaw = 20 }, -- clear of the south wall's skyline lumps
 		{ model = "TreeD", x = 90, z = 1225, height = 20, yaw = 140 },
 		{ model = "TreeA", x = -170, z = 1118, height = 18, yaw = 260 },
 	},

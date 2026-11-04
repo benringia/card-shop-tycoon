@@ -515,6 +515,48 @@ return {
 		assert(grass / area <= 0.12, `grass covers {grass / area} of the Caves`)
 	end,
 
+	-- Round 2's final review: the skylines and footpaths must not move anything that stood on the ground before them
+	["skylines and footpaths move nothing that stood on the ground"] = function()
+		local plain = table.clone(valley)
+		plain.SKYLINES = {}
+		plain.PATHS = {}
+		local before = WildValley.terrainOps(plain, TownTerrain.trailSegment)
+		local standing: { any } = WildValley.scenery(valley)
+		for index in valley.BIOMES do
+			for _, spot in WildValley.zoneSpots(valley, index) do
+				table.insert(standing, spot)
+			end
+			table.insert(standing, valley.BIOMES[index].board)
+			table.insert(standing, valley.BIOMES[index].portal)
+		end
+		table.insert(standing, valley.RETURN_SIGN)
+		for _, arrow in valley.ARROWS do
+			table.insert(standing, arrow)
+		end
+		for _, marker in WildValley.markers(WildValley.trail(valley), valley.MARKER_SPACING) do
+			table.insert(standing, marker)
+		end
+		for _, spot in standing do
+			local was, now = TownTerrain.groundAt(before, spot.x, spot.z), TownTerrain.groundAt(OPS, spot.x, spot.z)
+			assert(was == now, `{spot.model or "a spot"} at {spot.x}, {spot.z} moves from {was} to {now}`)
+		end
+	end,
+
+	-- ... and a lump that bulges into the walkable ground keeps its widest part out of jump reach (9 studs up)
+	["skyline lumps over the walkable ground can't be jumped onto"] = function()
+		for _, op in WildValley.skylineOps(valley) do
+			for k = 0, 7 do
+				local a = k / 8 * math.pi * 2
+				local p = { x = op.x + math.cos(a) * op.radius, z = op.z + math.sin(a) * op.radius }
+				local zone = WildValley.zoneAt(valley, p)
+				if zone and WildValley.inside(valley.EDGE, p) then
+					local reach = op.y - valley.BIOMES[zone].ground
+					assert(reach >= 9, `lump at {op.x}, {op.z} bulges in at {p.x}, {p.z} only {reach} above the floor`)
+				end
+			end
+		end
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")
