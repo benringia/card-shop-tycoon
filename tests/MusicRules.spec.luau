@@ -79,12 +79,12 @@ return {
 	["the owner's picks play, each Wild one through a leveler, the valley's areas with their ambience"] = function()
 		expect.equal(Music.TOWN.tracks[1], "rbxassetid://9048757009", "the town: White Owl")
 		local picks = {
-			meadow = { "rbxassetid://1841593944", 0.2 }, -- Enchanted Kingdom
-			gorge = { "rbxassetid://1841594242", 0.2 }, -- Lair of the Wizard
+			meadow = { "rbxassetid://1841593944", 0.16 }, -- Enchanted Kingdom
+			gorge = { "rbxassetid://1841594242", 0.15 }, -- Lair of the Wizard
 			ridge = { "rbxassetid://1835286723", 0.17 }, -- Foreboding Volcano
-			warden = { "rbxassetid://1845205138", 0.17 }, -- Forest Chase
-			brood = { "rbxassetid://1841360723", 0.2 }, -- Creepy Crawlers
-			colossus = { "rbxassetid://96625587462633", 0.16 }, -- Giant's Grave
+			warden = { "rbxassetid://1845205138", 0.13 }, -- Forest Chase
+			brood = { "rbxassetid://1841360723", 0.16 }, -- Creepy Crawlers
+			colossus = { "rbxassetid://96625587462633", 0.14 }, -- Giant's Grave
 		}
 		for key, pick in picks do
 			local place = MusicRules.find(Music, key)
@@ -99,6 +99,7 @@ return {
 			expect.equal(ambient ~= nil and string.match(ambient.id, "^rbxassetid://%d+$") ~= nil, true, `{area.key} ambience`)
 			expect.equal(ambient.volume > 0 and ambient.volume <= 0.5, true, `{area.key} ambience volume`)
 		end
+		expect.equal(MusicRules.find(Music, "ridge").ambient.volume, 0.18, "Ember Ridge's lava, turned down (owner 2026-11-04)")
 	end,
 
 	["each place's music is found by its key"] = function()
@@ -140,7 +141,7 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume, 0.21, "the owner's number (2026-11-04, after 0.07)")
+		expect.equal(town.volume, 0.18, "the owner's number (2026-11-04, down from 0.21 with White Owl)")
 		-- The limiter still flattens the swells: its threshold is unchanged, so the loudest part rises with the volume
 		-- (round 5: "still too low" outweighs 2026-11-03's "never louder on the loudest part")
 		expect.equal(town.compressor.threshold, -48.5)

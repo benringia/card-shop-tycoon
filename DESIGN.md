@@ -126,7 +126,7 @@ clearings). The scenery is built at server start from `Config/Scenery` (terrain 
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
 **Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `MusicController`, `Config/Music`,
 `Util/MusicRules`): APM "White Owl" (bells and piano, Roblox-licensed; the owner's pick 2026-11-04, after "Drifting
-Into Dreamland - Underscore") at volume 0.21 (the owner's number, 2026-11-04, after 0.045 and 0.07 were too low) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
+Into Dreamland - Underscore") at volume 0.18 (the owner's number, 2026-11-04: 0.045 and 0.07 too low, 0.21 a little loud with White Owl) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
 quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
 valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
 (`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
@@ -138,12 +138,12 @@ town; on a pass between two areas the last keeps playing; `MusicRules.place`), c
 sound; the Wild bosses' fights no longer play the drone (`Bosses.MUSIC_ID`, kept for the Frontier and the Dungeon).
 The owner picked each by ear from three options (2026-11-04; `/music <place> <n> [volume]` or the admin panel's
 Wild music buttons still try the others; places meadow, gorge, ridge, warden, brood, colossus): the Meadow "Enchanted
-Kingdom" at 0.2, the Caves "Lair of the Wizard" at 0.2, Ember Ridge "Foreboding Volcano" at 0.17; the Meadow Warden's
-arena "Forest Chase" at 0.17, the Cave Brood Queen's "Creepy Crawlers" at 0.2, the Ember Colossus' "Giant's Grave" at
-0.16. Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
+Kingdom" at 0.16, the Caves "Lair of the Wizard" at 0.15, Ember Ridge "Foreboding Volcano" at 0.17; the Meadow Warden's
+arena "Forest Chase" at 0.13, the Cave Brood Queen's "Creepy Crawlers" at 0.16, the Ember Colossus' "Giant's Grave" at
+0.14 (turned down after the owner's first listen). Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
 the average the owner heard and cuts the peaks; the town's limiter would crush these). Each area also has a Pro Sound
 Effects ambient loop under its music, crossfading the same way: singing birds and light wind in the Meadow (0.3),
-cave drips in the Caves (0.35), bubbling lava in Ember Ridge (0.3); the arenas keep their own (`ARENA_DRESSING`). A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
+cave drips in the Caves (0.35), bubbling lava in Ember Ridge (0.18; 0.3 was too loud); the arenas keep their own (`ARENA_DRESSING`). A grove of trees fills the hill between the east trails. **The portals grow out of their worlds**
 (portals remodel, spec `2026-10-30-town-portals-design`, the user's pick A of three concepts, 2026-10-30): Blender
 models about 28 studs tall in slots of their own (`Town.SLOTS` `PortalWild`, `PortalFrontier`, `PortalArena`;
 `tools/blender/build_portal_<world>.py` on `portal_kit.py`, sources in `assets/blender/Portal<World>/`, saved as
