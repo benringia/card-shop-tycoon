@@ -603,17 +603,6 @@ end
 
 local renderPicker: () -> ()
 
--- Hover only tints a tile; selecting takes a click, so passing over other tiles never changes the choice
-local function addHover(button: GuiButton)
-	local base = button.BackgroundColor3
-	button.MouseEnter:Connect(function()
-		button.BackgroundColor3 = palette.slotEmpty
-	end)
-	button.MouseLeave:Connect(function()
-		button.BackgroundColor3 = base
-	end)
-end
-
 -- Card face with grade/count and value underneath, so the grid stays readable
 local function buildPickerTile(entry: PickerEntry, order: number, selected: PickerEntry?, choose: (PickerEntry) -> ())
 	local tile = Instance.new("TextButton")
@@ -654,7 +643,6 @@ local function buildPickerTile(entry: PickerEntry, order: number, selected: Pick
 	tile.Activated:Connect(function()
 		choose(entry)
 	end)
-	addHover(tile)
 end
 
 -- Every copy the player can list: levelled cards (most valuable first), then plain stacks rarest first,

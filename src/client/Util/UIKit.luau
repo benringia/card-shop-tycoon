@@ -7,6 +7,7 @@
 -- made with Colors.Text / Colors.Subtext turn navy when the surface behind them is light.
 -- Sizes follow mobile-first rules: tap targets at least 48px.
 local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,6 +16,8 @@ local UIStyle = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("C
 local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
 local BabyColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("BabyColors"))
 local SoftColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("SoftColors"))
+local HoverRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("HoverRules"))
+local UIMotion = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIMotion"))
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
 
@@ -418,9 +421,130 @@ function UIKit.softText(label: TextLabel, fill: Color3)
 	stroke.Enabled = not light
 end
 
+-- The mouse-over look (spec 2026-11-04-round5-design section 1, look A "Soft glow"; Config/BabyColors HOVER): nothing
+-- changes size, so nothing in a layout moves and no text jumps a size. Every piece lives in the hover's own children
+-- (HoverSheen, HoverEdge, HoverTint, the Glow's HoverGrow), never in a property a controller sets.
+local HOVER = BabyColors.HOVER
+local hoverSoft: { [GuiButton]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- a soft button (else a row)
+local hoverTweens: { [GuiButton]: { Tween } } = setmetatable({}, { __mode = "k" }) :: any
+
+-- Drawn in the disabled colour (a controller greying it out): it doesn't light up
+local function isLocked(button: GuiButton): boolean
+	local color = button.BackgroundColor3
+	return color == UIKit.Colors.Locked or color == UIKit.softFill(UIKit.Colors.Locked)
+end
+
+-- The button's padding (a soft button pads its text; children move with it), to keep a hover piece on the whole button
+local function paddingOf(button: GuiButton): (number, number, number, number)
+	local padding = button:FindFirstChildOfClass("UIPadding")
+	if not padding then
+		return 0, 0, 0, 0
+	end
+	return padding.PaddingLeft.Offset, padding.PaddingRight.Offset, padding.PaddingTop.Offset, padding.PaddingBottom.Offset
+end
+
+-- Centres `piece` on the whole button, `grow` px bigger on every side (negative: inset), whatever its padding
+local function fitOver(piece: GuiObject, button: GuiButton, grow: number)
+	local left, right, top, bottom = paddingOf(button)
+	piece.AnchorPoint = Vector2.new(0.5, 0.5)
+	piece.Size = UDim2.new(1, grow * 2 + left + right, 1, grow * 2 + top + bottom)
+	piece.Position = UDim2.new(0.5, (right - left) / 2, 0.5, (bottom - top) / 2)
+end
+
+local function cornerOffset(button: GuiButton): number
+	local round = button:FindFirstChildOfClass("UICorner")
+	return if round then round.CornerRadius.Offset else 0
+end
+
+-- A plain hover layer over the button's face and under its other children, with the button's corner
+local function hoverLayer(button: GuiButton, name: string, color: Color3, inset: number): Frame
+	local existing = button:FindFirstChild(name)
+	if existing and existing:IsA("Frame") then
+		return existing
+	end
+	local layer = Instance.new("Frame")
+	layer.Name = name
+	layer.BackgroundColor3 = color
+	layer.BackgroundTransparency = 1
+	layer.BorderSizePixel = 0
+	layer.ZIndex = 0
+	layer.Parent = button
+	UIKit.corner(layer, math.max(0, cornerOffset(button) - inset))
+	return layer
+end
+
+-- A row's lilac edge: a lilac copy of the soft glow (its cut-out centre never covers the row or its gold ring)
+local function hoverEdge(button: GuiButton): ImageLabel
+	local existing = button:FindFirstChild("HoverEdge")
+	if existing and existing:IsA("ImageLabel") then
+		return existing
+	end
+	local edge = UIKit.glow(button, fromRgb(HOVER.edge), cornerOffset(button), 0, 1)
+	edge.Name = "HoverEdge" -- not "Glow": the soft button's glow refit and the glow hover leave it alone
+	return edge
+end
+
+-- Lights the button up (or puts it back): a soft button's glow brightens and spreads and a faint sheen lifts its
+-- colour; a row, tile or slot gets the lilac edge and a light tint. Decided now (HoverRules), so a greyed-out button
+-- stays dark.
+local function setHover(button: GuiButton, on: boolean)
+	for _, tween in hoverTweens[button] or {} do
+		tween:Cancel()
+	end
+	local tweens: { Tween } = {}
+	hoverTweens[button] = tweens
+	local soft = hoverSoft[button] == true
+	local kind = if on then HoverRules.kind(soft, button.BackgroundTransparency, isLocked(button)) else "none"
+	local info = TweenInfo.new(if on then UIMotion.HOVER_SECONDS else UIMotion.HOVER_OUT_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local function tweenTo(item: Instance, goal: { [string]: any })
+		local tween = TweenService:Create(item, info, goal)
+		table.insert(tweens, tween)
+		tween:Play()
+	end
+	if soft then
+		local lit = kind == "glow"
+		local glow = button:FindFirstChild("Glow")
+		if glow and glow:IsA("ImageLabel") then
+			local rest = glow:GetAttribute("RestTransparency")
+			if typeof(rest) ~= "number" then
+				rest = glow.ImageTransparency
+				glow:SetAttribute("RestTransparency", rest)
+			end
+			local grow = glow:FindFirstChild("HoverGrow")
+			if not grow then
+				grow = Instance.new("UIScale")
+				grow.Name = "HoverGrow"
+				grow.Parent = glow
+			end
+			tweenTo(glow, { ImageTransparency = if lit then HOVER.glowTransparency else rest })
+			tweenTo(grow :: UIScale, { Scale = if lit then HOVER.glowScale else 1 })
+		end
+		local sheen = if lit then hoverLayer(button, "HoverSheen", Color3.new(1, 1, 1), 0) else button:FindFirstChild("HoverSheen")
+		if sheen and sheen:IsA("Frame") then
+			fitOver(sheen, button, 0)
+			tweenTo(sheen, { BackgroundTransparency = if lit then HOVER.sheen else 1 })
+		end
+		return
+	end
+	local lit = kind == "edge"
+	local edge = if lit then hoverEdge(button) else button:FindFirstChild("HoverEdge")
+	if edge and edge:IsA("ImageLabel") then
+		fitOver(edge, button, BabyColors.GLOW.margin * edge.SliceScale)
+		tweenTo(edge, { ImageTransparency = if lit then HOVER.edgeGlow else 1 })
+	end
+	local tint = if lit then hoverLayer(button, "HoverTint", fromRgb(HOVER.edge), HOVER.tintInset) else button:FindFirstChild("HoverTint")
+	if tint and tint:IsA("Frame") then
+		fitOver(tint, button, -HOVER.tintInset)
+		tweenTo(tint, { BackgroundTransparency = if lit then HOVER.tint else 1 })
+	end
+end
+
 -- No grey hover in the soft look (owner 2026-11-03): Roblox's automatic darkening stays off, even when a controller
--- turns it back on to show a button can be used, and a mouse makes the button grow a little instead
-local function noGreyHover(button: GuiButton, hoverScale: number)
+-- turns it back on to show a button can be used, and a mouse lights the button up instead (setHover). `soft`: a
+-- cotton candy button (glow); a window's rows and slots are not (lilac edge). A button a window softened first and
+-- softButton styles after becomes soft.
+local function noGreyHover(button: GuiButton, soft: boolean)
+	hoverSoft[button] = soft or hoverSoft[button] == true
 	if button:GetAttribute("SoftHover") then
 		return
 	end
@@ -431,7 +555,14 @@ local function noGreyHover(button: GuiButton, hoverScale: number)
 			button.AutoButtonColor = false
 		end
 	end)
-	Motion.hover(button, hoverScale)
+	button.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			setHover(button, true)
+		end
+	end)
+	button.MouseLeave:Connect(function()
+		setHover(button, false)
+	end)
 end
 
 -- The cotton candy look on a new button (spec 2026-11-03-cotton-candy-ui-design): a flat baby colour (a named kit
@@ -440,7 +571,7 @@ end
 -- bright ones (a text colour a controller set itself is kept), and a squishy press. No dark lip.
 local function softButton(button: TextButton): TextButton
 	local look = BabyColors.SOFT_BUTTON
-	noGreyHover(button, look.hoverScale)
+	noGreyHover(button, true)
 	Motion.press(button, true)
 	local round = button:FindFirstChildOfClass("UICorner")
 	if round then
@@ -653,10 +784,10 @@ end
 -- windows built their own way (the Bag, the card detail). Returns the face and the outline.
 function UIKit.creamWindow(frame: Frame): (Frame, UIStroke)
 	frame:SetAttribute("Theme", "cream")
-	-- Rows, slots and other buttons built in the window lose Roblox's grey hover and grow a little instead
+	-- Rows, slots and other buttons built in the window lose Roblox's grey hover and get the lilac edge instead
 	local function soften(child: Instance)
 		if child:IsA("GuiButton") then
-			noGreyHover(child, BabyColors.SOFT_BUTTON.rowHoverScale)
+			noGreyHover(child, false)
 		end
 	end
 	for _, child in frame:GetDescendants() do

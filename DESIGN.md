@@ -865,7 +865,7 @@ is everything not ready), the cards as slim rows (a Ready tag, "x21 · 4 copies 
 and a thin bar, `CondenseRules.rowLine`), and the chosen card on the right: its stars, Power and Value before -> after,
 "Keeps Grade S · Lv 14 · uses 4 Grade C" with Change (the copies to keep), one big Condense +1 star and a small Star
 Shards toggle (off: Ready counts copies only and Condense never spends shards). Buttons sit 12 px in from the pane's
-edges and grow from their centre, so nothing is cut off on hover.
+edges and centre-anchored; hover never grows anything (round 5), so nothing is cut off.
 Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
 weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
 own card. One star per press. Duplicates per star (`STAR_COSTS`):
@@ -1807,6 +1807,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
             ├── ContrastRules.luau # WCAG contrast and hue of colours, for the window theme's text (pure, Lune-tested)
             ├── SoftColors.luau    # a soft button's text colour and deep outline from its fill (pure, Lune-tested)
+            ├── HoverRules.luau    # what a mouse over a window's button does: glow, lilac edge or nothing (pure, Lune-tested)
             ├── SquishRules.luau   # the HUD tiles' hover: length, widest, fits the gap (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
@@ -1931,8 +1932,14 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   (`BabyColors.ROLES`, `UIKit.softFill`): the main action butter, other choices sky, remove or leave pink, summoned or
   confirm mint, can't-use-now grey-lilac, neutral sky (never white; owner 2026-11-03: no white glossy buttons), also
   when a controller sets one later. No grey hover anywhere in the soft look (Roblox's `AutoButtonColor` stays off, on
-  every button and row in a themed window too): a mouse makes a button grow a little (`Motion.hover`). A press dips the
-  button and bounces it past full size before it settles. The Shop's price buttons are mint (can buy), pink (short)
+  every button and row in a themed window too). **Hover** (round 5, owner pick A "Soft glow", spec
+  2026-11-04-round5-design section 1; `UIKit` `noGreyHover`, `Util/HoverRules`, `Config/BabyColors.HOVER`): nothing changes
+  size, so nothing in a list or row moves and no text jumps a size (the old grow made the Condenser text pop and pushed
+  the Boss Ladder's bosses). A soft button's own glow brightens and spreads and a faint white sheen (10 %) lifts its
+  colour; a row, tile or slot gets a soft lilac edge (a lilac copy of the soft glow, round it, never over its gold
+  ring) and a light lilac tint; 0.15 s in, 0.12 s out, no overshoot. Invisible click areas and greyed-out buttons don't
+  light up. The pieces are the hover's own children (HoverSheen, HoverEdge, HoverTint), so a controller recolouring a
+  button mid-hover is never undone. A press is a small quick squish (0.96) and straight back. The Shop's price buttons are mint (can buy), pink (short)
   or grey-lilac (locked); tab names are plum on the open tab's butter and white on the others' sky (`UIKit.softText`). Pills and chips keep their colours with white
   outlines; rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail,
   small confirm boxes, the arena challenge popups) call `UIKit.creamWindow(frame)`. The window's `Theme` attribute
@@ -1962,7 +1969,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   premium body; it was Nunito Bold). Code still names Gotham; FontStyle switches each
   text object as it appears (Fredoka was tried: it only draws in Studio Edit mode, not in Play).
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
-  button shrinks them away; buttons squash while held (soft buttons dip to 0.9 and bounce to 1.05 before settling);
+  button shrinks them away; buttons squash while held (soft buttons dip to 0.96 and come straight back, no bounce);
   number pills bump when they change.
 - **Creature pals HUD** (owner 2026-11-03, pick C of three mockups; spec
   `docs/superpowers/specs/2026-11-03-hud-creature-pals-design.md`): the always-on HUD grows out of the core loop.

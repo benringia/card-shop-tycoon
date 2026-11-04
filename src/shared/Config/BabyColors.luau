@@ -36,16 +36,26 @@ return {
 	GLOW = { image = "rbxassetid://110423921326900", size = 128, margin = 32, corner = 24 },
 	-- A soft button (UIKit.button in a themed window or the binder), like the mockup's (owner 2026-11-03: exactly like
 	-- it, no gloss, no grey hover): its white outline and corner (px), a glow you can see dropped under it (px, see-through
-	-- share), a soft outline round white text (px, see-through share), and how much it grows under a mouse (a row in a
-	-- window grows a little less)
+	-- share) and a soft outline round white text (px, see-through share). Nothing grows under a mouse (round 5): see HOVER.
 	SOFT_BUTTON = {
 		outline = 3,
 		corner = 16,
 		glowDrop = 6,
 		glowTransparency = 0.2,
 		textOutline = { thickness = 1, transparency = 0.4 },
-		hoverScale = 1.04,
-		rowHoverScale = 1.015,
+	},
+	-- The mouse-over look (spec 2026-11-04-round5-design section 1, look A "Soft glow"; UIKit noGreyHover, HoverRules):
+	-- nothing changes size. A soft button's glow goes to glowTransparency and spreads to glowScale, and a white sheen
+	-- fades in to `sheen` (see-through share: at most 10 % white). A row, tile or slot gets a lilac copy of the soft glow
+	-- round it (`edge`, faded to edgeGlow) and a lilac tint (`tint`) inset tintInset px, under its gold ring.
+	HOVER = {
+		glowTransparency = 0,
+		glowScale = 1.08,
+		sheen = 0.9,
+		edge = { 217, 194, 242 },
+		edgeGlow = 0.45,
+		tint = 0.94,
+		tintInset = 3,
 	},
 	-- A segmented switch (UIKit.segmented: the binder's Filters, round 3): the pill drawn `height` px tall inside a
 	-- `hit` px tap row, inner padding, text size; and a dot tag (UIKit.dotTag: the rarity picks): drawn `height` px tall

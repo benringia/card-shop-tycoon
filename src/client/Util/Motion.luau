@@ -1,10 +1,10 @@
 --!strict
--- Snappy UI motion: pop in / out, press squash and number bumps, all on a UIScale named "MotionScale".
+-- Snappy UI motion: pop in / out, press squash and number bumps, all on a UIScale named "MotionScale". Hover never
+-- scales anything (round 5): UIKit's noGreyHover lights a button up instead.
 -- A newer motion on the same object cancels the running one, so fast repeated taps never leave anything
 -- stuck half-scaled. Numbers: Config/UIMotion.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local UIMotion = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIMotion"))
 
@@ -12,8 +12,6 @@ local Motion = {}
 
 local running: { [GuiObject]: Tween } = setmetatable({}, { __mode = "k" }) :: any
 local closing: { [GuiObject]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- popping out: presses leave it alone
-local hoverScales: { [GuiObject]: number } = setmetatable({}, { __mode = "k" }) :: any -- Motion.hover's size
-local hovering: { [GuiObject]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- under a mouse now
 
 local function getScale(gui: GuiObject): UIScale
 	local scale = gui:FindFirstChild("MotionScale")
@@ -73,13 +71,13 @@ function Motion.reset(gui: GuiObject)
 	end
 end
 
--- Squashes while held, springs back on release. `squishy` (the cotton candy buttons, spec
--- 2026-11-03-cotton-candy-ui-design): a deeper dip, and the release bounces past full size before it settles.
+-- Squashes while held, springs back on release. `squishy` (the cotton candy buttons; round 5, spec
+-- 2026-11-04-round5-design section 1): a small quick squish and straight back, no bounce past full size.
 function Motion.press(button: GuiButton, squishy: boolean?)
 	local pressInfo = TweenInfo.new(UIMotion.PRESS_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local releaseInfo = TweenInfo.new(UIMotion.PRESS_SECONDS * 2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-	local bounceInfo = TweenInfo.new(UIMotion.SQUISH_BOUNCE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local settleInfo = TweenInfo.new(UIMotion.SQUISH_SETTLE_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	local releaseInfo = if squishy
+		then TweenInfo.new(UIMotion.SQUISH_RELEASE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		else TweenInfo.new(UIMotion.PRESS_SECONDS * 2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	button.MouseButton1Down:Connect(function()
 		if not closing[button] then
 			play(button, if squishy then UIMotion.SQUISH_PRESS else UIMotion.PRESS_SCALE, pressInfo)
@@ -89,41 +87,11 @@ function Motion.press(button: GuiButton, squishy: boolean?)
 		if closing[button] or getScale(button).Scale >= 1 then
 			return
 		end
-		-- Back to its hover size while the mouse is still on it (Motion.hover), else full size
-		local rest = if hovering[button] then hoverScales[button] or 1 else 1
-		if not squishy then
-			play(button, rest, releaseInfo)
-			return
-		end
-		play(button, rest * UIMotion.RELEASE_OVERSHOOT, bounceInfo).Completed:Once(function(state)
-			if state == Enum.PlaybackState.Completed then
-				play(button, rest, settleInfo)
-			end
-		end)
+		play(button, 1, releaseInfo)
 	end
 	button.MouseButton1Up:Connect(release)
 	button.MouseLeave:Connect(release)
 	button.Activated:Connect(release)
-end
-
--- Grows a little under a mouse and settles back when it leaves (the soft look's hover instead of Roblox's grey one;
--- spec 2026-11-03-cotton-candy-ui-design). Touch has no hover.
-function Motion.hover(button: GuiButton, scale: number)
-	hoverScales[button] = scale
-	local info = TweenInfo.new(UIMotion.HOVER_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-	button.MouseEnter:Connect(function()
-		if not UserInputService.MouseEnabled or closing[button] then
-			return
-		end
-		hovering[button] = true
-		play(button, scale, info)
-	end)
-	button.MouseLeave:Connect(function()
-		hovering[button] = nil
-		if not closing[button] then
-			play(button, 1, info)
-		end
-	end)
 end
 
 -- A quick grow-and-settle, for a number that just changed

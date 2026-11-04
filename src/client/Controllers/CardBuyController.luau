@@ -317,14 +317,6 @@ local function buildRow(part: BasePart, order: number)
 		selectedPart = part
 		render()
 	end)
-	-- Hover only tints the row; selecting takes a click, so passing over rows never changes the choice
-	local base = row.BackgroundColor3
-	row.MouseEnter:Connect(function()
-		row.BackgroundColor3 = palette.slotEmpty
-	end)
-	row.MouseLeave:Connect(function()
-		row.BackgroundColor3 = base
-	end)
 end
 
 render = function()
