@@ -1360,18 +1360,24 @@ local function onSwordAttack(player: Player)
 	end)
 end
 
--- The sword skill: everything round you, on its own cooldown
+-- The sword skill, the dash slash (spec 2026-11-04-sword-moves-design), on its own cooldown: the client dashes you; when
+-- the cut lines appear every foe along the path from where you started to where you are is hit. The path is clamped to
+-- the dash's longest (maxStuds + slack): the server doesn't take the client's word for how far it went.
 local function onSwordSkill(player: Player)
 	local fight, member = swordFight(player)
 	local swordId = SwordService.GetSword(player)
-	if not allowSwordSkill(player) or not fight or not member or not swordId or os.clock() < member.skillReady then
+	local root = getRoot(player)
+	if not allowSwordSkill(player) or not fight or not member or not swordId or not root or os.clock() < member.skillReady then
 		return
 	end
 	local skill = Swords.SWORDS[swordId].skill
 	member.skillReady = os.clock() + skill.cooldown * (1 - BattleSim.perkOf(fight.sim, member.owner, "Express"))
 	SwordService.Touch(player)
+	local dash = skill.dash
+	local sx, sz = root.Position.X, root.Position.Z
 	task.delay(skill.hitAt, strike, fight, member, skill.power * Swords.SWORDS[swordId].power, "Skill", function(px, pz, _lookX, _lookZ, target)
-		return SwordRules.inRadius(px, pz, target.x, target.z, target.radius, skill.radius)
+		local ex, ez = SwordRules.clampPath(sx, sz, px, pz, dash.maxStuds + dash.slack)
+		return SwordRules.inDashPath(sx, sz, ex, ez, target.x, target.z, target.radius, dash.width)
 	end)
 end
 
