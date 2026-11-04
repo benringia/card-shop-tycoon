@@ -69,6 +69,21 @@ return {
 		{ x = -330, z = 1510, radius = 6 },
 		{ x = -285, z = 1500, radius = 6 },
 		{ x = -395, z = 1445, radius = 6 },
+		-- more, in mixed sizes (the owner: "add more. in different patch sizes"): small tufts to wide carpets
+		{ x = -266, z = 1378, radius = 8 },
+		{ x = -263, z = 1371, radius = 5 },
+		{ x = -276, z = 1334, radius = 3 },
+		{ x = -427, z = 1436, radius = 9 },
+		{ x = -434, z = 1431, radius = 5 },
+		{ x = -268, z = 1429, radius = 11 },
+		{ x = -263, z = 1436, radius = 7 },
+		{ x = -293, z = 1362, radius = 3 },
+		{ x = -380, z = 1375, radius = 3 },
+		{ x = -415, z = 1309, radius = 11 },
+		{ x = -410, z = 1317, radius = 7 },
+		{ x = -352, z = 1360, radius = 4 },
+		{ x = -398, z = 1520, radius = 7 },
+		{ x = -400, z = 1526, radius = 4 },
 	},
 	-- Gentle mounds: buried balls whose tops stand `height` above their biome's ground
 	HILLS = {
