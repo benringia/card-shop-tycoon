@@ -293,12 +293,53 @@ local function toward(a: Point, b: Point, distance: number): Point
 	return { x = a.x + dx / length * distance, z = a.z + dz / length * distance, y = a.y }
 end
 
--- The valley's terrain fills in order: Config/WildValley's TERRAIN, the hills, the trail (a pass where it climbs: a
+-- The walls' natural skylines (round 2, spec 2026-11-05-valley-natural-design): Ball lumps along each SKYLINES line,
+-- one every `spacing` studs along each of its segments, each `radius` in its range, its top rising `rise` above the
+-- wall's `top` and moved up to `drift` studs across the line; the sizes come from a seeded MINSTD generator (exact in
+-- doubles), so the lumps are the same every run
+function WildValley.skylineOps(valley: any): { any }
+	local ops = {}
+	for _, line in valley.SKYLINES or {} do
+		local seed = line.seed
+		local function random(): number
+			seed = (seed * 48271) % 2147483647
+			return seed / 2147483647
+		end
+		local points = line.points
+		for index = 2, #points do
+			local a, b = points[index - 1], points[index]
+			local dx, dz = b.x - a.x, b.z - a.z
+			local length = math.sqrt(dx * dx + dz * dz)
+			local count = math.floor(length / line.spacing) + 1
+			local acrossX, acrossZ = -dz / length, dx / length
+			for k = 0, count - 1 do
+				local t = if count > 1 then k / (count - 1) else 0.5
+				local radius = line.radius[1] + (line.radius[2] - line.radius[1]) * random()
+				local rise = line.rise[1] + (line.rise[2] - line.rise[1]) * random()
+				local drift = (random() * 2 - 1) * line.drift
+				table.insert(ops, {
+					shape = "Ball",
+					x = a.x + dx * t + acrossX * drift,
+					y = line.top + rise - radius,
+					z = a.z + dz * t + acrossZ * drift,
+					radius = radius,
+					material = line.material,
+				})
+			end
+		end
+	end
+	return ops
+end
+
+-- The valley's terrain fills in order: Config/WildValley's TERRAIN, the walls' skylines (skylineOps), the hills, the trail (a pass where it climbs: a
 -- wide ramp in the upper biome's floor, walls each side and the trail on it; elsewhere `segment`, TownTerrain's trail
 -- slab, started and ended half its width short of a climb so it never pokes up beside the ramp), then CARVES
 function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: number, material: string) -> any): { any }
 	local ops: { any } = {}
 	for _, op in valley.TERRAIN do
+		table.insert(ops, op)
+	end
+	for _, op in WildValley.skylineOps(valley) do
 		table.insert(ops, op)
 	end
 	for _, hill in valley.HILLS do

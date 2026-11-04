@@ -380,6 +380,47 @@ return {
 		end
 	end,
 
+	-- Round 2 (spec 2026-11-05-valley-natural-design): the walls get a natural skyline of terrain lumps
+	["a skyline's lumps are steady and rise above its wall"] = function()
+		local first, again = WildValley.skylineOps(valley), WildValley.skylineOps(valley)
+		expect.equal(#first > 0, true, "the walls have lumps")
+		expect.equal(#first, #again, "the same lumps every run")
+		local index = 0
+		for _, line in valley.SKYLINES do
+			local points = line.points
+			local function nearLine(op: any): number
+				local best = math.huge
+				for i = 2, #points do
+					best = math.min(best, distanceToSegment(op, points[i - 1], points[i]))
+				end
+				return best
+			end
+			local count = 0
+			for i = 2, #points do
+				local length = math.sqrt((points[i].x - points[i - 1].x) ^ 2 + (points[i].z - points[i - 1].z) ^ 2)
+				count += math.floor(length / line.spacing) + 1
+			end
+			for _ = 1, count do
+				index += 1
+				local op, same = first[index], again[index]
+				expect.equal(op.shape, "Ball")
+				expect.equal(op.material, line.material)
+				expect.equal(op.x == same.x and op.y == same.y and op.z == same.z and op.radius == same.radius, true, "steady")
+				expect.equal(op.radius >= line.radius[1] and op.radius <= line.radius[2], true, `radius {op.radius}`)
+				local rise = op.y + op.radius - line.top
+				expect.equal(rise >= line.rise[1] - 1e-9 and rise <= line.rise[2] + 1e-9, true, `rise {rise}`)
+				assert(nearLine(op) <= line.drift + 0.01, `lump at {op.x}, {op.z} strays {nearLine(op)} from its line`)
+			end
+		end
+		expect.equal(index, #first, "one run of lumps per line")
+	end,
+
+	["skyline lumps stand outside the walkable edge"] = function()
+		for _, op in WildValley.skylineOps(valley) do
+			expect.equal(WildValley.inside(valley.EDGE, op), false, `lump at {op.x}, {op.z}`)
+		end
+	end,
+
 	["the bridge carries the trail over the stream"] = function()
 		local s, b = valley.STREAM, valley.BRIDGE
 		assert(distanceToSegment(b, valley.TRAIL[1], valley.TRAIL[2]) <= 0.5, "the bridge's middle is off the trail")

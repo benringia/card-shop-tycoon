@@ -6,7 +6,7 @@
 -- Lune-tested with Util/WildValley (the ground modelled by TownTerrain.groundAt over WildValley.terrainOps). Main game
 -- only: the Frontier builds its own Wild without this.
 return {
-	MAX_CELLS = 95000, -- the valley's terrain with the boss arena clearings (estimated 4-stud cells; 90k -> 95k for the wider hollow and lava field clearings, measured 2026-11-02: terrain memory unchanged, 60 fps)
+	MAX_CELLS = 105000, -- the valley's terrain with the boss arena clearings (estimated 4-stud cells; 90k -> 95k for the wider hollow and lava field clearings, measured 2026-11-02: terrain memory unchanged, 60 fps; 95k -> 105k for round 2's skylines, about 100.5k after trimming the walls' hidden backs, measured 2026-11-05 in the valley: terrain graphics 48.0 -> 46.3 MB, voxels 5.9 -> 6.4 MB)
 	SURFACE_LIFT = 2, -- TownTerrain.SURFACE_LIFT: terrain draws this far above a fill's top (Lune-tested equal)
 	TRAIL_WIDTH = 10,
 	MARKER_SPACING = 12, -- studs between the trail's small glowing stones
@@ -102,18 +102,18 @@ return {
 	-- mass (three walls and a roof, topping out at y 47) stands between the meadow, the gorge and the ridge.
 	TERRAIN = {
 		{ shape = "Block", x = -55.5, y = -4, z = 1212.5, size = { x = 319, y = 4, z = 235 }, material = "Grass" }, -- the meadow's floor
-		{ shape = "Block", x = -45.5, y = 8, z = 1092, size = { x = 339, y = 28, z = 24 }, material = "Grass" }, -- the hills behind the arrival
-		{ shape = "Block", x = -220, y = 8, z = 1183, size = { x = 30, y = 28, z = 158 }, material = "Grass" }, -- the meadow's west hills
-		{ shape = "Block", x = 112, y = 8, z = 1213, size = { x = 24, y = 28, z = 218 }, material = "Grass" }, -- the meadow's east hills
+		{ shape = "Block", x = -45.5, y = 8, z = 1097, size = { x = 339, y = 28, z = 14 }, material = "Grass" }, -- the hills behind the arrival (round 2: 10 trimmed off the hidden back)
+		{ shape = "Block", x = -214, y = 8, z = 1183, size = { x = 18, y = 28, z = 158 }, material = "Grass" }, -- the meadow's west hills (12 trimmed)
+		{ shape = "Block", x = 107, y = 8, z = 1213, size = { x = 14, y = 28, z = 218 }, material = "Grass" }, -- the meadow's east hills (10 trimmed)
 		{ shape = "Ball", x = 60, y = 8, z = 1094, radius = 12, material = "Grass" },
 		{ shape = "Ball", x = -120, y = 10, z = 1095, radius = 14, material = "Grass" },
 		{ shape = "Ball", x = -222, y = 12, z = 1150, radius = 12, material = "Grass" },
 		{ shape = "Ball", x = 115, y = 10, z = 1250, radius = 12, material = "Grass" },
 		-- The central mass: grassy toward the meadow, limestone toward the gorge, basalt toward the ridge; its roof mossy
 		-- on the meadow's half and basalt on the ridge's (seen over the walls from each)
-		{ shape = "Block", x = -52.5, y = 20.5, z = 1332, size = { x = 305, y = 53, z = 20 }, material = "Grass" },
-		{ shape = "Block", x = -205, y = 28, z = 1440, size = { x = 20, y = 38, z = 196 }, material = "Limestone" },
-		{ shape = "Block", x = -57.5, y = 37, z = 1548, size = { x = 315, y = 20, z = 20 }, material = "Basalt" },
+		{ shape = "Block", x = -52.5, y = 20.5, z = 1328, size = { x = 305, y = 53, z = 12 }, material = "Grass" }, -- (8 trimmed off its hollow side)
+		{ shape = "Block", x = -209, y = 28, z = 1440, size = { x = 12, y = 38, z = 196 }, material = "Limestone" }, -- (8 trimmed off its hollow side)
+		{ shape = "Block", x = -57.5, y = 37, z = 1552, size = { x = 315, y = 20, z = 12 }, material = "Basalt" }, -- (8 trimmed off its hollow side)
 		{ shape = "Block", x = -57.5, y = 45, z = 1381, size = { x = 315, y = 4, z = 118 }, material = "Rock" },
 		{ shape = "Block", x = -57.5, y = 45, z = 1499, size = { x = 315, y = 4, z = 118 }, material = "Basalt" },
 		{ shape = "Ball", x = -150, y = 30, z = 1330, radius = 12, material = "Grass" },
@@ -128,8 +128,8 @@ return {
 		-- The gorge: its floor (turned along the first pass), tall limestone cliffs west and north, a hill south, low shelves
 		{ shape = "Block", x = -346.85, y = 11, z = 1432.99, yaw = 131.99, size = { x = 325, y = 4, z = 310 }, material = "Limestone" },
 		{ shape = "Block", x = -457.5, y = 30.5, z = 1420, size = { x = 25, y = 43, z = 280 }, material = "Limestone" },
-		{ shape = "Block", x = -389, y = 30.5, z = 1565, size = { x = 162, y = 43, z = 24 }, material = "Limestone" },
-		{ shape = "Block", x = -364, y = 13, z = 1277, size = { x = 212, y = 38, z = 26 }, material = "Limestone" },
+		{ shape = "Block", x = -389, y = 30.5, z = 1560, size = { x = 162, y = 43, z = 14 }, material = "Limestone" }, -- (10 trimmed)
+		{ shape = "Block", x = -364, y = 13, z = 1281, size = { x = 212, y = 38, z = 18 }, material = "Limestone" }, -- (8 trimmed)
 		{ shape = "Block", x = -233.7, y = 28, z = 1540.6, yaw = 17.46, size = { x = 41, y = 38, z = 12 }, material = "Limestone" }, -- closes the north-east corner up to the second pass's wall
 		{ shape = "Block", x = -435, y = 12.5, z = 1360, size = { x = 20, y = 7, z = 60 }, material = "Limestone" },
 		{ shape = "Block", x = -436, y = 13, z = 1470, size = { x = 18, y = 8, z = 44 }, material = "Limestone" },
@@ -143,14 +143,35 @@ return {
 		{ shape = "Block", x = -437.5, y = 45, z = 1420, size = { x = 35, y = 6, z = 70 }, material = "Limestone", overhang = true },
 		-- The ridge: its cracked-lava floor (turned along the second pass), basalt cliffs all round, jagged rims
 		{ shape = "Block", x = -43.31, y = 31, z = 1683.07, yaw = -122.28, size = { x = 310, y = 4, z = 340 }, material = "CrackedLava" },
-		{ shape = "Block", x = -58, y = 45.5, z = 1812, size = { x = 364, y = 33, z = 24 }, material = "Basalt" },
-		{ shape = "Block", x = 112, y = 44.5, z = 1679, size = { x = 24, y = 31, z = 242 }, material = "Basalt" },
-		{ shape = "Block", x = -227.5, y = 34.5, z = 1720, size = { x = 25, y = 51, z = 160 }, material = "Basalt" },
+		{ shape = "Block", x = -58, y = 45.5, z = 1807, size = { x = 364, y = 33, z = 14 }, material = "Basalt" }, -- (10 trimmed)
+		{ shape = "Block", x = 107, y = 44.5, z = 1679, size = { x = 14, y = 31, z = 242 }, material = "Basalt" }, -- (10 trimmed)
+		{ shape = "Block", x = -223.5, y = 34.5, z = 1720, size = { x = 17, y = 51, z = 160 }, material = "Basalt" }, -- (8 trimmed)
 		{ shape = "Block", x = -176.7, y = 44.5, z = 1790, yaw = -33.7, size = { x = 76, y = 31, z = 24 }, material = "Basalt" },
 		{ shape = "Block", x = -100, y = 64, z = 1810, yaw = 25, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
 		{ shape = "Block", x = 60, y = 63, z = 1812, yaw = -35, size = { x = 18, y = 14, z = 12 }, material = "Basalt" },
 		{ shape = "Block", x = 112, y = 62, z = 1640, yaw = 40, size = { x = 16, y = 12, z = 12 }, material = "Basalt" },
 		{ shape = "Block", x = -228, y = 62, z = 1700, yaw = -20, size = { x = 16, y = 14, z = 12 }, material = "Basalt" },
+	},
+	-- Round 2 (spec 2026-11-05-valley-natural-design, the owner: "it looks like its inside a box"): each wall's top gets
+	-- a natural skyline of terrain lumps (WildValley.skylineOps) along a line on the wall, outside the walkable edge and
+	-- off the passes: `top` is the wall's fill top, lumps rise `rise` above it
+	SKYLINES = {
+		-- the Meadow: grassy hills on its south, west, east walls and the central mass's meadow side
+		{ material = "Grass", top = 22, seed = 11, points = { { x = -200, z = 1097 }, { x = 110, z = 1097 } }, spacing = 20, radius = { 8, 16 }, rise = { 4, 12 }, drift = 2 },
+		{ material = "Grass", top = 22, seed = 12, points = { { x = -214, z = 1112 }, { x = -214, z = 1250 } }, spacing = 20, radius = { 8, 16 }, rise = { 4, 12 }, drift = 2 },
+		{ material = "Grass", top = 22, seed = 13, points = { { x = 109, z = 1112 }, { x = 109, z = 1290 } }, spacing = 20, radius = { 8, 16 }, rise = { 4, 12 }, drift = 2 },
+		{ material = "Grass", top = 47, seed = 14, points = { { x = -165, z = 1330 }, { x = 90, z = 1330 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		-- the Caves: limestone on the west and north cliffs, the south wall and the central mass's gorge side
+		{ material = "Limestone", top = 52, seed = 21, points = { { x = -460, z = 1300 }, { x = -460, z = 1545 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Limestone", top = 52, seed = 22, points = { { x = -450, z = 1561 }, { x = -318, z = 1561 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Limestone", top = 32, seed = 23, points = { { x = -455, z = 1278 }, { x = -268, z = 1278 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Limestone", top = 47, seed = 24, points = { { x = -208, z = 1352 }, { x = -208, z = 1525 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		-- Ember Ridge: basalt on its north, east, west and north-west walls and the central mass's ridge side
+		{ material = "Basalt", top = 62, seed = 31, points = { { x = -135, z = 1808 }, { x = 110, z = 1808 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Basalt", top = 60, seed = 32, points = { { x = 109, z = 1575 }, { x = 109, z = 1792 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Basalt", top = 60, seed = 33, points = { { x = -227, z = 1655 }, { x = -227, z = 1785 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Basalt", top = 60, seed = 34, points = { { x = -200, z = 1774 }, { x = -152, z = 1806 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
+		{ material = "Basalt", top = 47, seed = 35, points = { { x = -110, z = 1550 }, { x = 90, z = 1550 } }, spacing = 20, radius = { 9, 18 }, rise = { 5, 14 }, drift = 2 },
 	},
 	-- Cut and filled after the trail: the meadow's stream and pond (water only fills empty space, so the channel is
 	-- carved first, then filled, then floored below so nobody sinks out of the world) and the gorge's cave mouth
