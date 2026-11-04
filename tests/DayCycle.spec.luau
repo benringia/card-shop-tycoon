@@ -150,17 +150,36 @@ return {
 
 	["each area look has every field of the fixed look"] = function()
 		local fixed = DayCycle.fixedLook(cycle)
-		local caves = cycle.AREA_LOOKS[2]
-		assert(caves ~= nil, "the Caves (zone 2) have a look")
 		assert(cycle.AREA_BLEND > 0, "it blends over some seconds")
-		for key, value in fixed do
-			assert(caves[key] ~= nil, `the Caves look has no {key}`)
-			if type(value) == "table" and not value[1] then
-				for inner in value do
-					assert(caves[key][inner] ~= nil, `the Caves look has no {key}.{inner}`)
+		for zone, name in { [2] = "the Caves", [3] = "Ember Ridge" } do
+			local look = cycle.AREA_LOOKS[zone]
+			assert(look ~= nil, `{name} (zone {zone}) have a look`)
+			for key, value in fixed do
+				assert(look[key] ~= nil, `{name}'s look has no {key}`)
+				if type(value) == "table" and not value[1] then
+					for inner in value do
+						assert(look[key][inner] ~= nil, `{name}'s look has no {key}.{inner}`)
+					end
 				end
 			end
 		end
-		assert(caves.brightness < fixed.brightness, "the Caves are darker than the valley")
+		assert(cycle.AREA_LOOKS[2].brightness < fixed.brightness, "the Caves are darker than the valley")
+	end,
+
+	-- Round 2 (spec 2026-11-05-valley-natural-design): the Ridge's smoky sky, the Caves' fog, and no flash on a teleport
+	["the Ridge's sky is smoky and warm, the Caves foggier"] = function()
+		local fixed = DayCycle.fixedLook(cycle)
+		local ridge, caves = cycle.AREA_LOOKS[3], cycle.AREA_LOOKS[2]
+		expect.equal(ridge.tint[1] > ridge.tint[3], true, "a warm tint")
+		expect.equal(ridge.atmosphere.color[1] > ridge.atmosphere.color[3], true, "an orange haze")
+		expect.equal(caves.atmosphere.density > fixed.atmosphere.density, true, "the Caves foggier than the valley")
+	end,
+
+	["a teleport is a jump, walking isn't"] = function()
+		local speed = cycle.AREA_SNAP_SPEED
+		expect.equal(speed >= 100, true, "faster than any walk or dash")
+		expect.equal(DayCycle.jumped({ x = 0, z = 0 }, { x = 1.6, z = 0 }, 0.1, 150), false, "walking")
+		expect.equal(DayCycle.jumped({ x = 0, z = 0 }, { x = 300, z = 0 }, 0.1, 150), true, "a teleport")
+		expect.equal(DayCycle.jumped(nil, { x = 0, z = 0 }, 0.1, 150), true, "the first update")
 	end,
 }

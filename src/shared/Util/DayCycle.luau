@@ -121,6 +121,17 @@ function DayCycle.areaMix(mix: number, inside: boolean, dt: number, seconds: num
 	return math.clamp(if inside then mix + step else mix - step, 0, 1)
 end
 
+-- Whether the player jumped between two updates instead of walking (a teleport: an arena's way home, /wild, a
+-- respawn): faster than `speed` studs a second, or no position before. The area looks then snap instead of blending,
+-- so arriving never shows the wrong sky first (spec 2026-11-05-valley-natural-design)
+function DayCycle.jumped(from: { x: number, z: number }?, to: { x: number, z: number }, dt: number, speed: number): boolean
+	if not from then
+		return true
+	end
+	local distance = math.sqrt((to.x - from.x) ^ 2 + (to.z - from.z) ^ 2)
+	return distance > speed * math.max(dt, 1e-3)
+end
+
 function DayCycle.fixedLook(cycle: any): Look
 	return phaseLook(cycle, cycle.FIXED)
 end

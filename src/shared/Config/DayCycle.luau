@@ -98,6 +98,9 @@ return {
 	-- 2026-11-04-valley-scenery-design): blended in over AREA_BLEND seconds while you're in one (DayCycle.areaMix), out
 	-- again as you leave; the other areas keep the fixed afternoon look
 	AREA_BLEND = 2,
+	-- Studs a second past which the player jumped rather than walked (DayCycle.jumped: a teleport, a respawn); the
+	-- area looks then snap instead of blending, so nobody arrives under the wrong sky
+	AREA_SNAP_SPEED = 150,
 	AREA_LOOKS = {
 		[2] = { -- the Caves: darker and bluer (owner 2026-11-04: "darker"), so the glowing mushrooms stand out by day
 			clockTime = 14.5,
@@ -105,12 +108,26 @@ return {
 			exposure = -0.3,
 			ambient = { 75, 88, 112 },
 			outdoorAmbient = { 85, 98, 125 },
-			atmosphere = { density = 0.45, offset = 0.05, haze = 1.8, glare = 0, color = { 120, 145, 180 }, decay = { 60, 72, 105 } },
+			atmosphere = { density = 0.6, offset = 0.05, haze = 2.4, glare = 0, color = { 120, 145, 180 }, decay = { 60, 72, 105 } }, -- round 2: fog hides where the area ends
 			bloom = { intensity = 0.45, size = 28, threshold = 1.3 },
 			saturation = 0.15,
 			contrast = 0.1,
 			tint = { 225, 235, 250 },
 			sunRays = { intensity = 0, spread = 0 },
+		},
+		[3] = { -- Ember Ridge: a smoky orange sky (round 2, the owner's pick "burnt hills to the volcano"), from the Ember
+			-- Colossus' arena look
+			clockTime = 16.4,
+			brightness = 2.2,
+			exposure = 0.15,
+			ambient = { 150, 105, 90 },
+			outdoorAmbient = { 180, 125, 105 },
+			atmosphere = { density = 0.42, offset = 0.1, haze = 2.3, glare = 0.6, color = { 255, 140, 90 }, decay = { 115, 72, 70 } },
+			bloom = { intensity = 0.55, size = 30, threshold = 1.4 },
+			saturation = 0.2,
+			contrast = 0.12,
+			tint = { 255, 215, 190 },
+			sunRays = { intensity = 0.08, spread = 0.5 },
 		},
 	},
 	-- The Wild bosses' arenas (by zone; spec 2026-11-01-wild-bosses-arenas-design), each its painting's look while you're

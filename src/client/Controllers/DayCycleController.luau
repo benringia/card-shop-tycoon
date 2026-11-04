@@ -25,6 +25,8 @@ function DayCycleController.Start()
 	local mix = 0 -- how far the valley area's own look has blended in
 	local mixZone: number? = nil -- the area whose look is blending (kept while it blends out on the pass)
 	local lastUpdate = os.clock()
+	local lastAt: Vector3? = nil -- where the player was at the last update
+	local lastWasValley = false -- whether the last update was in the valley (not an arena or the town)
 	RunService.Heartbeat:Connect(function(dt)
 		elapsed += dt
 		if elapsed < 1 / Cycle.UPDATE_HZ then
@@ -42,12 +44,16 @@ function DayCycleController.Start()
 		local now = os.clock()
 		local step = now - lastUpdate
 		lastUpdate = now
+		local jumped = DayCycle.jumped(if lastAt then { x = lastAt.X, z = lastAt.Z } else nil, { x = at.X, z = at.Z }, step, Cycle.AREA_SNAP_SPEED)
+		lastAt = at
 		local arena = WildValley.arenaZoneAt(Valley, Bosses.ARENA_COPIES, at.X, at.Z)
 		if arena and Cycle.ARENA_LOOKS[arena] then
 			mix = 0
+			lastWasValley = false
 			SkyLook.apply(Cycle.ARENA_LOOKS[arena])
 		elseif DayCycle.inTown(Cycle, at.X, at.Z) then
 			mix = 0
+			lastWasValley = false
 			SkyLook.apply(DayCycle.lookAt(Cycle, workspace:GetServerTimeNow() - start))
 		else
 			local zone = WildValley.zoneAt(Valley, { x = at.X, z = at.Z })
@@ -55,7 +61,13 @@ function DayCycleController.Start()
 			if inside then
 				mixZone = zone
 			end
-			mix = DayCycle.areaMix(mix, inside, step, Cycle.AREA_BLEND)
+			if jumped or not lastWasValley then
+				-- arrived by a teleport (an arena's way home, /wild): this area's look at once, never a fade from the last
+				mix = if inside then 1 else 0
+			else
+				mix = DayCycle.areaMix(mix, inside, step, Cycle.AREA_BLEND)
+			end
+			lastWasValley = true
 			local fixed = DayCycle.fixedLook(Cycle)
 			if mix > 0 and mixZone then
 				SkyLook.apply(DayCycle.blend(fixed, Cycle.AREA_LOOKS[mixZone], mix))
