@@ -39,6 +39,7 @@ local AnnouncementController = require(Controllers:WaitForChild("AnnouncementCon
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local MovePreviewController = require(Controllers:WaitForChild("MovePreviewController"))
 local BossBoardController = require(Controllers:WaitForChild("BossBoardController"))
 local LootController = require(Controllers:WaitForChild("LootController"))
 local AdminPanelController = require(Controllers:WaitForChild("AdminPanelController"))
@@ -68,6 +69,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	MovePreviewController.Start() -- Studio only: /movefx plays a Pet button move at a grade
 	BossBoardController.Start() -- the boss ladder (the Frontier bosses' arenas are here)
 	LootController.Start() -- boss loot on the ground
 	AdminPanelController.Start() -- Studio only: the dev commands as buttons
@@ -117,6 +119,7 @@ else
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	MovePreviewController.Start() -- Studio only: /movefx plays a Pet button move at a grade
 	BossBoardController.Start() -- the boss ladder
 	LootController.Start() -- boss loot on the ground
 	AdminPanelController.Start() -- Studio only: the dev commands as buttons

@@ -35,6 +35,33 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- The Pet button moves at each grade (spec 2026-11-05-pet-moves-design): played on your summoned creature against a
+		-- dummy in front of it (MovePreviewController); "big" against a 14-stud dummy
+		title = "Pet moves",
+		buttons = {
+			{ label = "Healing Rain C", command = "/movefx rain C" },
+			{ label = "Healing Rain B", command = "/movefx rain B" },
+			{ label = "Healing Rain A", command = "/movefx rain A" },
+			{ label = "Healing Rain S", command = "/movefx rain S" },
+			{ label = "Healing Rain S, big target", command = "/movefx rain S big" },
+			{ label = "Vine Snare C", command = "/movefx vine C" },
+			{ label = "Vine Snare B", command = "/movefx vine B" },
+			{ label = "Vine Snare A", command = "/movefx vine A" },
+			{ label = "Vine Snare S", command = "/movefx vine S" },
+			{ label = "Vine Snare S, big target", command = "/movefx vine S big" },
+			{ label = "Overcharge C", command = "/movefx orbs C" },
+			{ label = "Overcharge B", command = "/movefx orbs B" },
+			{ label = "Overcharge A", command = "/movefx orbs A" },
+			{ label = "Overcharge S", command = "/movefx orbs S" },
+			{ label = "Overcharge S, big target", command = "/movefx orbs S big" },
+			{ label = "Curse C", command = "/movefx curse C" },
+			{ label = "Curse B", command = "/movefx curse B" },
+			{ label = "Curse A", command = "/movefx curse A" },
+			{ label = "Curse S", command = "/movefx curse S" },
+			{ label = "Curse S, big target", command = "/movefx curse S big" },
+		},
+	},
+	{
 		title = "Fights and places",
 		buttons = {
 			{ label = "Wake resting cards", command = "/rest" },

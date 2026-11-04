@@ -376,6 +376,29 @@ function DevService.Start()
 		end
 		Remotes.Notify:FireClient(player, "Summon a creature first.", true)
 	end)
+	-- The Pet button moves (spec 2026-11-05-pet-moves-design): one at a grade on your summoned creature against a dummy,
+	-- played by your client (MovePreviewController)
+	addCommand(folder, "movefx", function(player, text)
+		local move = string.match(text, "^/%w+%s+(%a+)")
+		local grade = string.upper(string.match(text, "^/%w+%s+%a+%s+(%a)%f[%A]") or "S")
+		local moves = { rain = true, vine = true, orbs = true, curse = true }
+		if not move or not moves[move] or not ({ C = true, B = true, A = true, S = true })[grade] then
+			Remotes.Notify:FireClient(player, "Usage: /movefx <rain|vine|orbs|curse> [C|B|A|S] [big]", true)
+			return
+		end
+		local summoned = false
+		for _, marker in workspace:GetDescendants() do
+			if marker:IsA("BasePart") and marker:GetAttribute("OwnerUserId") == player.UserId and typeof(marker:GetAttribute("BeastId")) == "string" then
+				summoned = true
+				break
+			end
+		end
+		if not summoned then
+			Remotes.Notify:FireClient(player, "Summon a creature first.", true)
+			return
+		end
+		Remotes.MovePreview:FireClient(player, { move = move, grade = grade, big = string.find(text, "%sbig") ~= nil })
+	end)
 	addCommand(folder, "levelsound", function(player, text)
 		-- Round 5: pick one of the level-up sound sets (Config/LevelUpFx SOUNDS.sets) and hear it once
 		local sets = LevelUpFx.SOUNDS.sets
@@ -467,7 +490,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big]")
 end
 
 return DevService
