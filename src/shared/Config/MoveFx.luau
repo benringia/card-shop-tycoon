@@ -76,6 +76,37 @@ return {
 
 	-- Textures (tools/textures/make_move_fx.py, uploaded; white with alpha, tinted in game) and Roblox-licensed sounds
 	-- (Pro Sound Effects / APM), filled move by move
-	TEXTURES = {},
-	SOUNDS = { Rain = {}, Snare = {}, Overcharge = {}, Curse = {} },
+	TEXTURES = {
+		raindrop = "rbxassetid://83707706646646", -- Healing Rain's drops
+		vine = "rbxassetid://108129567302096", -- Vine Snare's leafy vines (C, B)
+		bark = "rbxassetid://111998421915115", -- its thorny roots (A, S)
+		rune = "rbxassetid://119290018382435", -- Curse's rune circle (a seven-point star in rings)
+		sigil = "rbxassetid://104673189717381", -- Curse's mark over the foe (an eye in a broken ring, dripping)
+	},
+	SOUNDS = {
+		Rain = {
+			cast = "rbxassetid://9114369623", -- Fairy Dust 1
+			loop = "rbxassetid://9112852465", -- Rain Continuous Drizzle 1
+			layer = "rbxassetid://9112793880", -- Heavy Rain 1 (A and S)
+			tick = "rbxassetid://9125644310", -- Magic Twirling Small High Pitch Spinning Chime
+		},
+		Snare = {
+			burst = "rbxassetid://9118675035", -- Rocks Dirt Debris Pouring Bursts 1
+			wrap = "rbxassetid://9114519078", -- Foliage Rustle 1
+			creak = "rbxassetid://9125405388", -- Bow Stretches Wood Creaking Ripping Tearing
+			layer = "rbxassetid://9126239755", -- Wood Crack Thick Splintering Bursts Creaking (A and S)
+		},
+		Overcharge = {
+			cast = "rbxassetid://9116272073", -- Lightning Flashes Quick Electrical Bursts 1
+			hum = "rbxassetid://9114245570", -- Electric Hum 7 (while orbs remain)
+			zap = "rbxassetid://9116276946", -- Lightning Flashes Quick Electrical Bursts 21 (an orb spent)
+			thunder = "rbxassetid://9126082854", -- Synth Thunder Cracks Individual Explosion (S)
+		},
+		Curse = {
+			swell = "rbxassetid://9125637449", -- Magic Growl Eerie Tonal Swells (the circle opens)
+			hex = "rbxassetid://9120113588", -- Tonal Impact 2 (the curse lands)
+			drone = "rbxassetid://9114353377", -- Evil Drone Deep Unsetting Rumbly Keening 1 (while cursed)
+			layer = "rbxassetid://9113802079", -- Choral Drone Short Eerie Tones Hollow 1 (A and S)
+		},
+	},
 }
