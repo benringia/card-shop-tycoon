@@ -56,7 +56,8 @@ return {
 	-- loops through the leveler. The valley plays only solo piano or acoustic guitar (owner 2026-11-04, after the
 	-- orchestral picks: "acoustic guitars or piano only"), very quiet, the owner's pick of each by ear with its volume;
 	-- the arenas keep the owner's battle picks. Each area also plays a Pro Sound Effects ambient loop under its music
-	-- (turned down by the owner: the Meadow 0.03, the Caves 0.05, the lava 0.002), crossfading the same way (the arenas have theirs in Config/WildValley ARENA_DRESSING).
+	-- (turned down by the owner: the Meadow 0.03, the Caves 0.05, the lava 0.008), crossfading the same way (the
+	-- arenas have theirs in Config/WildValley ARENA_DRESSING).
 	WILD = {
 		areas = {
 			{
@@ -90,7 +91,7 @@ return {
 				key = "ridge", -- Ember Ridge: foreboding, volcanic
 				tracks = { "rbxassetid://1842276365" }, -- Air Currents (the owner's pick, option 4; Hombre Solo before)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9112823197", volume = 0.002 }, -- Lava Rumble 1: bubbling lava (~105 x 0.002, under the guitar)
+				ambient = { id = "rbxassetid://9112823197", volume = 0.008 }, -- Lava Rumble 1: bubbling lava (the owner's number)
 				options = {
 					option("Moonlight Sonata (Beethoven; solo piano)", "9046646008"),
 					option("Live Piano Stories 04 (drama, mysterious; solo piano)", "127337767677606"),

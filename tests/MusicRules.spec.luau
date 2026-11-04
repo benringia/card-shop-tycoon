@@ -117,7 +117,7 @@ return {
 		expect.equal(meadow.id, "rbxassetid://9112779471", "the Meadow: Field Birds Tweeting 1")
 		expect.equal(meadow.volume, 0.03, "the Meadow's field loop")
 		for _, area in Music.WILD.areas do
-			local wanted = ({ meadow = 0.03, gorge = 0.05, ridge = 0.002 })[area.key] -- the lava rumble is a much louder loop
+			local wanted = ({ meadow = 0.03, gorge = 0.05, ridge = 0.008 })[area.key] -- the lava rumble is a much louder loop
 			expect.equal(area.ambient.volume, wanted, `{area.key} ambience (owner 2026-11-04)`)
 		end
 	end,
