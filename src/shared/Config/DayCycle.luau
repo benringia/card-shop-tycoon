@@ -94,6 +94,25 @@ return {
 	TOWN_REGION = { HALF_X = 320, HALF_Z = 300 }, -- studs round the plaza: the town and its three portal areas
 	UPDATE_HZ = 10, -- each client updates the lighting this often
 	SPECULAR = 0.35, -- how much walls and floors reflect the sky (Roblox default 1 makes bright patches)
+	-- The Wild valley's areas with a look of their own (by zone, Config/WildValley BIOMES; spec
+	-- 2026-11-04-valley-scenery-design): blended in over AREA_BLEND seconds while you're in one (DayCycle.areaMix), out
+	-- again as you leave; the other areas keep the fixed afternoon look
+	AREA_BLEND = 2,
+	AREA_LOOKS = {
+		[2] = { -- the Caves: darker and bluer (owner 2026-11-04: "darker"), so the glowing mushrooms stand out by day
+			clockTime = 14.5,
+			brightness = 0.9,
+			exposure = -0.35,
+			ambient = { 70, 85, 115 },
+			outdoorAmbient = { 80, 95, 130 },
+			atmosphere = { density = 0.45, offset = 0.05, haze = 1.8, glare = 0, color = { 110, 140, 185 }, decay = { 55, 70, 110 } },
+			bloom = { intensity = 0.45, size = 28, threshold = 1.3 },
+			saturation = 0.1,
+			contrast = 0.08,
+			tint = { 215, 230, 255 },
+			sunRays = { intensity = 0, spread = 0 },
+		},
+	},
 	-- The Wild bosses' arenas (by zone; spec 2026-11-01-wild-bosses-arenas-design), each its painting's look while you're
 	-- in one of its copies (Util/WildValley.arenaZoneAt), never night; the haze hides what lies past its walls
 	ARENA_LOOKS = {

@@ -139,4 +139,28 @@ return {
 		end
 		assert(looks[2].brightness < fixed.brightness, "the hollow is dim")
 	end,
+
+	-- The Caves' darker look (spec 2026-11-04-valley-scenery-design): blended in over AREA_BLEND seconds as you come in
+	["an area's look blends in over its seconds and back out"] = function()
+		expect.near(DayCycle.areaMix(0, true, 1, 2), 0.5, 1e-9, "half way in after a second")
+		expect.near(DayCycle.areaMix(0.5, true, 5, 2), 1, 1e-9, "all the way in, never past")
+		expect.near(DayCycle.areaMix(1, false, 1, 2), 0.5, 1e-9, "half way out after a second")
+		expect.near(DayCycle.areaMix(0.2, false, 5, 2), 0, 1e-9, "all the way out, never below")
+	end,
+
+	["each area look has every field of the fixed look"] = function()
+		local fixed = DayCycle.fixedLook(cycle)
+		local caves = cycle.AREA_LOOKS[2]
+		assert(caves ~= nil, "the Caves (zone 2) have a look")
+		assert(cycle.AREA_BLEND > 0, "it blends over some seconds")
+		for key, value in fixed do
+			assert(caves[key] ~= nil, `the Caves look has no {key}`)
+			if type(value) == "table" and not value[1] then
+				for inner in value do
+					assert(caves[key][inner] ~= nil, `the Caves look has no {key}.{inner}`)
+				end
+			end
+		end
+		assert(caves.brightness < fixed.brightness, "the Caves are darker than the valley")
+	end,
 }

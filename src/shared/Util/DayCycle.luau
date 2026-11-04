@@ -114,6 +114,13 @@ local function phaseLook(cycle: any, name: string): Look
 end
 
 -- The look outside town (the Wild, the Arena, the boss arenas)
+-- How far an area's own look has blended in (0-1): toward 1 while you're inside it, back toward 0 once you leave, a
+-- whole blend taking `seconds` (spec 2026-11-04-valley-scenery-design: the Caves' darker look)
+function DayCycle.areaMix(mix: number, inside: boolean, dt: number, seconds: number): number
+	local step = dt / seconds
+	return math.clamp(if inside then mix + step else mix - step, 0, 1)
+end
+
 function DayCycle.fixedLook(cycle: any): Look
 	return phaseLook(cycle, cycle.FIXED)
 end
