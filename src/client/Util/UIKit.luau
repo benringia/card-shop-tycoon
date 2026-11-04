@@ -494,7 +494,8 @@ local function setHover(button: GuiButton, on: boolean)
 	local tweens: { Tween } = {}
 	hoverTweens[button] = tweens
 	local soft = hoverSoft[button] == true
-	local kind = if on then HoverRules.kind(soft, button.BackgroundTransparency, isLocked(button)) else "none"
+	local laysOut = button:FindFirstChildWhichIsA("UIGridStyleLayout") ~= nil
+	local kind = if on then HoverRules.kind(soft, button.BackgroundTransparency, isLocked(button), laysOut) else "none"
 	local info = TweenInfo.new(if on then UIMotion.HOVER_SECONDS else UIMotion.HOVER_OUT_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local function tweenTo(item: Instance, goal: { [string]: any })
 		local tween = TweenService:Create(item, info, goal)

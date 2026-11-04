@@ -20,6 +20,7 @@ local Jobs = require(Config:WaitForChild("Jobs"))
 local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
@@ -91,7 +92,7 @@ local partyButton: TextButton
 local jobButton: TextButton
 local flipButton: TextButton
 local partyChooser: Frame
-local jobChooser: Frame
+local jobChooser: Frame -- Assign job (showJobPicker)
 local chooserTitle: TextLabel
 local slotsHolder: Frame -- the three party slots, each with what swapping in would do
 local compareHolder: Frame -- the comparison against one slot's card
@@ -719,51 +720,116 @@ function CardDetailController.SetPartySlots(slots: { [number]: string })
 	end
 end
 
--- A small window over the panel's button row (party slot or job)
-local function chooser(name: string, title: string, height: number): Frame
-	local frame = Instance.new("Frame")
-	frame.Name = name
-	frame.AnchorPoint = Vector2.new(0.5, 1)
-	frame.Position = UDim2.new(0.5, 0, 1, -66)
-	frame.Size = UDim2.new(1, -24, 0, height)
-	frame.BackgroundColor3 = palette.panel
-	frame.Visible = false
-	frame.ZIndex = panel.ZIndex + 10
-	frame.Parent = panel
-	UIKit.corner(frame, 12)
-	UIKit.outline(frame, UIStyle.GOLD, UIStyle.EDGE_THICKNESS)
-	local label = text(frame, title, UIKit.textSize("body"), palette.ink, true, true)
-	label.Position = UDim2.fromOffset(12, 8)
-	label.Size = UDim2.new(1, -24, 0, 22)
-	label.TextTruncate = Enum.TextTruncate.AtEnd
-	return frame
+-- A job's speed word in its tone's colour, like the Jobs panel's: good green, bad red, anything else plain ink
+local function toneColor(tone: string): Color3
+	return if tone == "good" then palette.good elseif tone == "bad" then palette.bad else palette.ink
 end
 
--- A row of equal buttons across a chooser
-local function choiceButtons(frame: Frame, labels: { string }, onPick: (index: number) -> ()): { TextButton }
-	local buttons = {}
-	for index, label in labels do
-		local button = UIKit.button(frame, label, UIKit.Colors.Accent)
-		button.Position = UDim2.new((index - 1) / #labels, if index == 1 then 12 else 4, 0, 38)
-		button.Size = UDim2.new(1 / #labels, -16, 0, 52)
-		button.TextSize = UIKit.textSize("small")
-		button.TextWrapped = true
-		button.ZIndex = frame.ZIndex + 1
-		button.Activated:Connect(function()
-			frame.Visible = false
-			onPick(index)
-		end)
-		table.insert(buttons, button)
+-- One job in the Assign job picker: its picture, name, what it does and how fast this copy works it (the window's rows
+-- hover with the lilac edge: UIKit creamWindow)
+local function jobTile(parent: Instance, order: number, tile: JobRules.AssignTile)
+	local button = Instance.new("TextButton")
+	button.Name = tile.job
+	button.LayoutOrder = order
+	button.Size = UDim2.new(0.5, -5, 1, 0)
+	button.BackgroundColor3 = palette.row
+	button.Text = ""
+	button.ZIndex = (parent :: GuiObject).ZIndex + 1
+	button.Parent = parent
+	UIKit.corner(button, 16)
+	UIKit.outline(button, palette.rowEdge, 3)
+	-- The content stacks in an inner frame: a layout on the button itself would stack the hover's pieces in too
+	local content = Instance.new("Frame")
+	content.BackgroundTransparency = 1
+	content.Position = UDim2.fromOffset(8, 0)
+	content.Size = UDim2.new(1, -16, 1, 0)
+	content.ZIndex = button.ZIndex + 1
+	content.Parent = button
+	local stack = Instance.new("UIListLayout")
+	stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	stack.VerticalAlignment = Enum.VerticalAlignment.Center
+	stack.Padding = UDim.new(0, 3)
+	stack.SortOrder = Enum.SortOrder.LayoutOrder
+	stack.Parent = content
+	local picture = Icon.make(content, tile.icon, UDim2.fromOffset(56, 56))
+	picture.LayoutOrder = 1
+	picture.ZIndex = content.ZIndex + 1
+	local name = text(content, tile.job, UIKit.textSize("name"), palette.ink, true)
+	name.LayoutOrder = 2
+	name.Size = UDim2.new(1, 0, 0, UIKit.textSize("name") + 4)
+	name.TextXAlignment = Enum.TextXAlignment.Center
+	local words = text(content, tile.text, UIKit.textSize("small"), palette.inkSoft)
+	words.LayoutOrder = 3
+	words.Size = UDim2.new(1, 0, 0, 0)
+	words.AutomaticSize = Enum.AutomaticSize.Y
+	words.TextWrapped = true
+	words.TextXAlignment = Enum.TextXAlignment.Center
+	local speed = text(content, `Works: {tile.word}`, UIKit.textSize("small"), toneColor(tile.tone), true)
+	speed.LayoutOrder = 4
+	speed.Size = UDim2.new(1, 0, 0, UIKit.textSize("small") + 4)
+	speed.TextXAlignment = Enum.TextXAlignment.Center
+	button.Activated:Connect(function()
+		if jobTarget then
+			Remotes.AssignJob:FireServer(jobTarget, tile.job)
+		end
+		jobChooser.Visible = false
+	end)
+end
+
+-- Assign job (round 5, spec 2026-11-04-round5-design section 4, owner pick A "Two big tiles"): covers the panel under its
+-- band: "Assign job" and the slots used, one big tile per job for the chosen copy, and a pink Cancel
+local function showJobPicker()
+	local card, entry = currentCard, selectedEntry
+	if not card or not entry or not jobTarget then
+		return
 	end
-	local cancel = UIKit.iconButton(frame, "Cancel", "Close", UIKit.Colors.Secondary)
-	cancel.Position = UDim2.new(0, 12, 1, -56)
+	clear(jobChooser)
+	local band = header.AbsoluteSize.Y
+	jobChooser.Position = UDim2.new(0.5, 0, 0, band + 6)
+	jobChooser.Size = UDim2.new(1, -12, 1, -(band + 12))
+
+	local line = hList(jobChooser, 36, 8)
+	line.Position = UDim2.fromOffset(12, 10)
+	line.Size = UDim2.new(1, -24, 0, 36)
+	Icon.make(line, "Job", UDim2.fromOffset(30, 30)).ZIndex = line.ZIndex + 1
+	local title = text(line, "Assign job", UIKit.textSize("name"), palette.ink, true)
+	title.AutomaticSize = Enum.AutomaticSize.X
+	local slots = player:GetAttribute("JobSlots")
+	local used = player:GetAttribute("JobsUsed")
+	local slotsLine = text(jobChooser, `Job slots: {if typeof(used) == "number" then used else 0} / {if typeof(slots) == "number" then slots else 0} used`, UIKit.textSize("small"), palette.inkSoft, true)
+	slotsLine.AnchorPoint = Vector2.new(1, 0)
+	slotsLine.Position = UDim2.new(1, -12, 0, 18)
+	slotsLine.Size = UDim2.fromOffset(180, 20)
+	slotsLine.TextXAlignment = Enum.TextXAlignment.Right
+
+	local tiles = Instance.new("Frame")
+	tiles.Name = "Tiles"
+	tiles.BackgroundTransparency = 1
+	tiles.Position = UDim2.fromOffset(12, 54)
+	tiles.Size = UDim2.new(1, -24, 1, -(54 + 48 + 22))
+	tiles.ZIndex = jobChooser.ZIndex + 1
+	tiles.Parent = jobChooser
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.Padding = UDim.new(0, 10)
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Parent = tiles
+	local growth = growthOf(entry)
+	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, entry.grade)
+	for order, tile in JobRules.assignTiles(Jobs, stats.spd) do
+		jobTile(tiles, order, tile)
+	end
+
+	local cancel = UIKit.iconButton(jobChooser, "Cancel", "Close", UIKit.Colors.Danger)
+	cancel.AnchorPoint = Vector2.new(0.5, 1)
+	cancel.Position = UDim2.new(0.5, 0, 1, -10)
 	cancel.Size = UDim2.new(1, -24, 0, 48)
 	cancel.TextSize = UIKit.textSize("body")
-	cancel.ZIndex = frame.ZIndex + 1
+	cancel.ZIndex = jobChooser.ZIndex + 1
 	cancel.Activated:Connect(function()
-		frame.Visible = false
+		jobChooser.Visible = false
 	end)
-	return buttons
+	jobChooser.Visible = true
 end
 
 -- Builds the card view into the binder's panel; `from` lends the binder's data
@@ -949,12 +1015,16 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	chooserHint.Position = UDim2.new(0, 14, 1, -10)
 	chooserHint.Size = UDim2.new(1, -(CHOOSER_BUTTON + 40), 0, 50)
 	chooserHint.TextWrapped = true
-	jobChooser = chooser("JobChooser", "Which job?", 150)
-	choiceButtons(jobChooser, Jobs.JOBS, function(index)
-		if jobTarget then
-			Remotes.AssignJob:FireServer(jobTarget, Jobs.JOBS[index])
-		end
-	end)
+	jobChooser = Instance.new("Frame")
+	jobChooser.Name = "JobPicker"
+	jobChooser.AnchorPoint = Vector2.new(0.5, 0)
+	jobChooser.BackgroundColor3 = palette.panel
+	jobChooser.Active = true
+	jobChooser.Visible = false
+	jobChooser.ZIndex = panel.ZIndex + 10
+	jobChooser.Parent = panel
+	UIKit.corner(jobChooser, 14)
+	UIKit.outline(jobChooser, palette.rowEdge, UIStyle.EDGE_THICKNESS)
 	partyButton.Activated:Connect(function()
 		if partyTarget then
 			jobChooser.Visible = false
@@ -965,7 +1035,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	jobButton.Activated:Connect(function()
 		if jobTarget then
 			partyChooser.Visible = false
-			jobChooser.Visible = true
+			showJobPicker()
 		end
 	end)
 

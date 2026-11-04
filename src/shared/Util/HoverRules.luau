@@ -7,9 +7,11 @@ local HoverRules = {}
 export type Kind = "glow" | "edge" | "none"
 
 -- soft: a cotton candy button (UIKit softButton); backgroundTransparency: the button's own; locked: drawn in the
--- disabled colour. Invisible click areas and greyed-out buttons don't light up.
-function HoverRules.kind(soft: boolean, backgroundTransparency: number, locked: boolean): Kind
-	if locked or backgroundTransparency >= 0.99 then
+-- disabled colour; laysOut: the button lays out its own children (a list or grid layout in it), which would stack the
+-- hover's pieces in with them, so it gets none (build such content in an inner frame). Invisible click areas and
+-- greyed-out buttons don't light up.
+function HoverRules.kind(soft: boolean, backgroundTransparency: number, locked: boolean, laysOut: boolean?): Kind
+	if locked or laysOut or backgroundTransparency >= 0.99 then
 		return "none"
 	end
 	return if soft then "glow" else "edge"

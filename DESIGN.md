@@ -1446,7 +1446,10 @@ bell, quieter and higher. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelso
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
 - **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
-  view ("Assign job"). The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
+  view ("Assign job"): the **Assign job** picker (round 5, owner pick A "Two big tiles", `JobRules.assignTiles`) covers
+  the panel under its band with the Job icon, "Assign job" and "Job slots: used / total", one big tile per job side by
+  side (its picture, Restocker: Shelves, Cashier: Register; its name; what it does; "Works: <word>", this copy's speed
+  word in its colour, as the Jobs window says it) that assigns on a tap, and a full-width pink Cancel. The **Jobs** window (style kit, option B of the 2026-10-29 mockups) explains the rules once
   in three chips (faster cards work quicker, stronger cards make fewer mistakes, +2 XP a minute), then one row per
   slot: the card's art (hover, or hold a finger, for its stats and perk), name, grade, level, a job chip (icon, and
   what the job does in its tooltip), a live status pill (green working, amber idle or waiting, red after a slip;
@@ -1938,7 +1941,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   the Boss Ladder's bosses). A soft button's own glow brightens and spreads and a faint white sheen (10 %) lifts its
   colour; a row, tile or slot gets a soft lilac edge (a lilac copy of the soft glow, round it, never over its gold
   ring) and a light lilac tint; 0.15 s in, 0.12 s out, no overshoot. Invisible click areas and greyed-out buttons don't
-  light up. The pieces are the hover's own children (HoverSheen, HoverEdge, HoverTint), so a controller recolouring a
+  light up, and neither does a button that lays out its own children (its list or grid layout would stack the hover's
+  pieces in with them: build such content in an inner frame). The pieces are the hover's own children (HoverSheen, HoverEdge, HoverTint), so a controller recolouring a
   button mid-hover is never undone. A press is a small quick squish (0.96) and straight back. The Shop's price buttons are mint (can buy), pink (short)
   or grey-lilac (locked); tab names are plum on the open tab's butter and white on the others' sky (`UIKit.softText`). Pills and chips keep their colours with white
   outlines; rarity filter chips wear their rarity as the ring. Windows built their own way (the Bag, the card detail,

@@ -18,6 +18,12 @@ return {
 		expect.equal(HoverRules.kind(false, 0, true), "none")
 	end,
 
+	["a button that lays out its own children gets no hover pieces (they would join its layout)"] = function()
+		expect.equal(HoverRules.kind(false, 0, false, true), "none")
+		expect.equal(HoverRules.kind(true, 0, false, true), "none")
+		expect.equal(HoverRules.kind(false, 0, false, false), "edge")
+	end,
+
 	["nothing grows on hover"] = function()
 		expect.isNil((BabyColors.SOFT_BUTTON :: any).hoverScale)
 		expect.isNil((BabyColors.SOFT_BUTTON :: any).rowHoverScale)

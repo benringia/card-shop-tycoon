@@ -75,4 +75,18 @@ return {
 		expect.equal(JobRules.minutesToNext(49, 50, 2), 1, "almost there")
 		expect.isNil(JobRules.minutesToNext(0, 0, 2), "max level")
 	end,
+
+	-- Round 5 (spec section 4): the Assign job picker's tiles
+	["Assign job: a tile per job in order, with its icon, words and this copy's speed"] = function()
+		local tiles = JobRules.assignTiles(config, 10)
+		expect.equal(#tiles, #config.JOBS)
+		expect.equal(tiles[1].job, "Restocker")
+		expect.equal(tiles[1].icon, "Shelves")
+		expect.equal(tiles[2].job, "Cashier")
+		expect.equal(tiles[2].icon, "Register")
+		expect.equal(tiles[2].text, config.JOB_INFO.Cashier.text)
+		local word, tone = JobRules.speedWord(config, JobRules.getSpeedFactor(config, 10))
+		expect.equal(tiles[1].word, word)
+		expect.equal(tiles[1].tone, tone)
+	end,
 }
