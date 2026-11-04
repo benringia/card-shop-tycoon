@@ -53,9 +53,9 @@ return {
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while
 	-- you're in it, in place of the boss fights' drone (Bosses.MUSIC_ID, kept for the Frontier and the Dungeon). The
-	-- owner picked each by ear (2026-11-04) from its options, with its volume (turned down twice after listening),
-	-- through the leveler; each loops. Each area
-	-- also plays a Pro Sound Effects ambient loop under its music, crossfading the same way (the arenas have theirs
+	-- owner picked each by ear (2026-11-04) from its options, with its volume (turned down three times after listening:
+	-- the valley's music to 0.02, its ambience to 0.05), through the leveler; each loops. Each area also plays a Pro
+	-- Sound Effects ambient loop under its music, crossfading the same way (the arenas have theirs
 	-- in Config/WildValley ARENA_DRESSING).
 	WILD = {
 		areas = {
@@ -63,40 +63,40 @@ return {
 				key = "meadow", -- light, bright adventure
 				tracks = { "rbxassetid://1841593944" }, -- Enchanted Kingdom (the owner's pick)
 				compressor = LEVELER,
-				-- Field Birds Tweeting 1: cicadas, birds, insects buzzing by, light tree movement. About half the music's level
-				-- (PlaybackLoudness ignores Volume, so what you hear ~ loudness x volume: this loop ~11 x 0.4 against the
-				-- music's ~90-150 x 0.1); the first pick, Birds Peaceful 2 (~4.6 x 0.3), was lost under the music.
-				ambient = { id = "rbxassetid://9112779471", volume = 0.4 },
+				-- Field Birds Tweeting 1: cicadas, birds, insects buzzing by, light tree movement (PlaybackLoudness ignores
+				-- Volume, so what you hear ~ loudness x volume: this loop reads ~11, the music ~90-150); the first pick, Birds
+				-- Peaceful 2 (~4.6 x 0.3 against ~98 x 0.1), was lost under the music.
+				ambient = { id = "rbxassetid://9112779471", volume = 0.05 },
 				options = {
 					option("Enchanted Kingdom (magical fantasy adventure)", "1841593944"),
 					option("Pastures Green (English pastoral orchestra)", "130182237855242"),
 					option("Fancytale (fantasy adventure)", "1848093905"),
 				},
-				volume = 0.1,
+				volume = 0.02,
 			},
 			{
 				key = "gorge", -- the caves: mysterious, echoey
 				tracks = { "rbxassetid://1841594242" }, -- Lair of the Wizard (the owner's pick)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9120505513", volume = 0.35 }, -- Water Cave Trickle Very Thin 3: drips, echo
+				ambient = { id = "rbxassetid://9120505513", volume = 0.05 }, -- Water Cave Trickle Very Thin 3: drips, echo
 				options = {
 					option("Mysterious Cave", "9038404354"),
 					option("Curious Shadows (dark fantasy)", "1843503016"),
 					option("Lair of the Wizard (magical fantasy)", "1841594242"),
 				},
-				volume = 0.1,
+				volume = 0.02,
 			},
 			{
 				key = "ridge", -- Ember Ridge: foreboding, volcanic
 				tracks = { "rbxassetid://1835286723" }, -- Foreboding Volcano (the owner's pick)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9112823197", volume = 0.12 }, -- Lava Rumble 1: rumbling, bubbling lava (0.3, 0.18 too loud)
+				ambient = { id = "rbxassetid://9112823197", volume = 0.05 }, -- Lava Rumble 1: bubbling lava (0.3...0.12 too loud)
 				options = {
 					option("Foreboding Volcano (orchestral landscape)", "1835286723"),
 					option("Under The Volcano", "9038165770"),
 					option("Mythic Mountain (dark fantasy, no percussion)", "1843501727"),
 				},
-				volume = 0.12,
+				volume = 0.02,
 			},
 		},
 		arenas = {

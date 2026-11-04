@@ -79,9 +79,9 @@ return {
 	["the owner's picks play, each Wild one through a leveler, the valley's areas with their ambience"] = function()
 		expect.equal(Music.TOWN.tracks[1], "rbxassetid://9048757009", "the town: White Owl")
 		local picks = {
-			meadow = { "rbxassetid://1841593944", 0.1 }, -- Enchanted Kingdom
-			gorge = { "rbxassetid://1841594242", 0.1 }, -- Lair of the Wizard
-			ridge = { "rbxassetid://1835286723", 0.12 }, -- Foreboding Volcano
+			meadow = { "rbxassetid://1841593944", 0.02 }, -- Enchanted Kingdom
+			gorge = { "rbxassetid://1841594242", 0.02 }, -- Lair of the Wizard
+			ridge = { "rbxassetid://1835286723", 0.02 }, -- Foreboding Volcano
 			warden = { "rbxassetid://1845205138", 0.1 }, -- Forest Chase
 			brood = { "rbxassetid://1841360723", 0.13 }, -- Creepy Crawlers
 			colossus = { "rbxassetid://96625587462633", 0.1 }, -- Giant's Grave
@@ -103,8 +103,10 @@ return {
 		-- 0.3 against ~98 x 0.1): a fuller field loop, about half the music's level (owner 2026-11-04: "add ambient sound")
 		local meadow = MusicRules.find(Music, "meadow").ambient
 		expect.equal(meadow.id, "rbxassetid://9112779471", "the Meadow: Field Birds Tweeting 1")
-		expect.equal(meadow.volume, 0.4, "the Meadow's field loop")
-		expect.equal(MusicRules.find(Music, "ridge").ambient.volume, 0.12, "Ember Ridge's lava, turned down (owner 2026-11-04)")
+		expect.equal(meadow.volume, 0.05, "the Meadow's field loop")
+		for _, area in Music.WILD.areas do
+			expect.equal(area.ambient.volume, 0.05, `{area.key}: every Wild ambience at 0.05 (owner 2026-11-04)`)
+		end
 	end,
 
 	["each place's music is found by its key"] = function()
