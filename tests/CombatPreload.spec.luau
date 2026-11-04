@@ -38,7 +38,7 @@ return {
 		end
 		-- every published move (a move waiting to be published, its id empty, plays from its KeyframeSequence in Studio)
 		expect.equal(#ids.animations, published, "every published move, once")
-		expect.equal(published >= 8, true, "the starter sword's moves beyond the sword-moves round's four")
+		expect.equal(published >= 12, true, "all 12 of the starter sword's moves, published (the sword-moves round's too)")
 	end,
 
 	["no empty or repeated ids"] = function()

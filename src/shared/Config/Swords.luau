@@ -72,12 +72,11 @@ local SWORDS: { [string]: Sword } = {
 		animations = {
 			draw = "rbxassetid://94917864223617",
 			sheath = "rbxassetid://96323080543778",
-			-- The sword-moves round (spec 2026-11-04-sword-moves-design), saved to Roblox by the owner; the skill
-			-- is empty until it's saved too (Studio plays it unpublished, SwordAnims)
+			-- The sword-moves round (spec 2026-11-04-sword-moves-design), saved to Roblox by the owner
 			cut1 = "rbxassetid://134918938054012",
 			cut2 = "rbxassetid://113721218431899",
 			cut3 = "rbxassetid://101353745325846", -- the big jump version (1.25 s, Hit 0.70)
-			skill = "",
+			skill = "rbxassetid://103074431845414", -- the dash slash
 			dodge = "rbxassetid://110055662976350",
 			flinch = "rbxassetid://91049639458737",
 			down = "rbxassetid://117813163577525",

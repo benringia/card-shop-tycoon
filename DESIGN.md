@@ -2500,10 +2500,14 @@ boss models; the ranch and Heroic tiers come after those.
   for sparks that don't come; other players' level-up sounds don't follow them; the toast's "+$1000" has no comma;
   "Stocking the shelves..." shows in the Frontier and Dungeon too; the phone layouts of the round 5 windows weren't
   checked in the emulator.
-- [ ] Sword moves round (spec `2026-11-04-sword-moves-design.md`, plan `2026-11-04-sword-moves.md`, branch
-  `sword-moves`): four new moves (forehand, backhand, two-handed finisher, the dash slash), chained cuts, real lunges,
-  walking held mid-swing, candy sparkle arcs, star bursts, rings, cut lines, dust, the DASH button. Waiting for the
-  owner's look in Studio and for the four moves to be saved to Roblox (ids into `Config/Swords`) before merging.
+- [x] Sword moves round (spec `2026-11-04-sword-moves-design.md`, plan `2026-11-04-sword-moves.md`, branch
+  `sword-moves`): four new moves (forehand, backhand, a two-handed finisher with a big jump, a slow-motion hang and a
+  cool-down kneel, the dash slash), chained cuts, real lunges, walking held mid-swing, candy sparkle arcs, star bursts,
+  rings, cut lines, dust, layered sword sounds, the DASH button; all four moves published. Approved by the owner
+  2026-11-04. Deferred minors: the hit-sound window spans two chained cuts (a missed-then-landed cut can be silent);
+  your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
+  end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
+  boss toward the arena wall wasn't checked in Studio.
 - Bag on phones: the window shrinks as a whole, so the info panel's text gets very small (counts and boss numbers are
   kept at 14 px). A phone layout for the Bag (info under the grid, or bigger text) is still to do.
 - Fight juice: punchier floating damage numbers (size by damage, crit/strong pop, stacking so numbers don't
