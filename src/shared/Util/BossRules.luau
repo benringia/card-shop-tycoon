@@ -284,6 +284,31 @@ function BossRules.lockReason(step: Step): ("level" | "keys")?
 	return nil
 end
 
+-- The Boss Ladder footer's next step (round 5, spec 2026-11-04-round5-design section 5): beaten, ready and too weak say
+-- so; a locked boss asks for the shop level first, then the keys the boss before drops; "none" when neither applies
+function BossRules.nextStep(
+	step: "beaten" | "ready" | "tooWeak" | "locked",
+	reason: ("level" | "keys")?,
+	keysFromPrevious: boolean
+): "beaten" | "ready" | "tooWeak" | "level" | "keys" | "none"
+	if step ~= "locked" then
+		return step
+	end
+	if reason == "level" then
+		return "level"
+	end
+	return if keysFromPrevious then "keys" else "none"
+end
+
+-- The Boss Ladder banner's colour (a Config/BabyColors COLORS name): the baby colour of the boss's element, pink for a
+-- boss that changes element (the Prism Hydra), lilac when it has none
+function BossRules.bannerColor(elements: { [string]: string }, boss: { element: string?, phases: any? }): string
+	if boss.phases then
+		return "pink"
+	end
+	return if boss.element and elements[boss.element] then elements[boss.element] else "lilac"
+end
+
 -- The elements strong against `element` on the element wheel (Config/Combat BEATS), sorted
 function BossRules.counterElements(beats: { [string]: { string } }, element: string): { string }
 	local counters = {}

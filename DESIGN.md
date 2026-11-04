@@ -1215,23 +1215,25 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
   count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
-- **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, red band): a path of seven steps,
-  each a disc with the boss's icon (its element's; the Hydra a gem, `Util/BossTints`), its number and name, and a state
-  from `BossRules.stepState`: beaten (gold ring, trophy), ready (green glow, check: you can start it now, key fragments
-  in hand count, and your best party card's Power is enough), too weak (red ring) or locked (faded, lock: shop level or
-  fragments short). A legend under the ladder names the four badges, the path fills gold up to the last boss beaten
-  in a row, a gold "Next" tag sits on the first boss still to beat, and each step's tooltip says where it stands
-  ("built for 1500 Power", "opens at shop level 34", "needs 8 keys"). It opens on the first step still to beat.
-  Tapping a step shows it below in two columns (each scrolls when it doesn't fit, as on phones). **To fight it:** its
-  name with a status pill (Beaten / Ready / Too weak / Locked) and its title; pills for its element, where it lives
+- **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, lilac band; round 5, owner pick A
+  "List and detail, like the Condenser", spec 2026-11-04-round5-design section 5). **Left:** the seven bosses top to
+  bottom (270 px; phones 168 px, rows 48 px tall), one row each: a disc with the boss's icon (its element's; the Hydra
+  a gem, `Util/BossTints`) in the ring of its state from `BossRules.stepState`: beaten (gold), ready (green: you can
+  start it now, key fragments in hand count, and your best party card's Power is enough), too weak (red) or locked
+  (faded grey: shop level or fragments short); "N. Name"; a status chip in words (Beaten / Ready / Too weak / Locked;
+  phones: the state's small badge on the disc instead); a gold "Next" tag on the first boss still to beat; the chosen
+  row's gold ring. Each row's tooltip says where it stands ("built for 1500 Power", "opens at shop level 34", "needs
+  8 keys"). The old legend and climb path are gone (the chips say it). It opens on the first boss still to beat.
+  **Right:** the chosen boss. A **banner** in its element's baby colour (`BossRules.bannerColor`: Bloom mint, Tide sky,
+  Ember peach, Volt butter, Shade lilac, the Hydra pink; plum text on butter, white outlined in the deep shade on the
+  rest) with a big white disc and its icon, its name, title, status chip and "Next"; under it pills for its element,
+  where it lives
   (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
-  tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); a checklist of what it needs, each row with a
+  tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); then two columns, each scrolling when it doesn't fit. **To fight it:** a checklist of what it needs, each row with a
   check, cross or "!" mark: shop level (You: n), its key fragments (n/N tinted for that boss, "Opened" once used,
   "No key needed" for the first; tooltip: the item, that it's used up on the first fight, and where it drops; tapping
   the row while short shows the boss before), and Power (the Power it's built for against your best party card, with
-  a bar; a warning, not a lock); then a tinted box with what to do next (`BossRules.lockReason`: level up the shop,
-  beat the boss before for n more keys with a "See it" button, level up or change the party with a "Party" button,
-  go fight it, or fight again for loot); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
+  a bar; a warning, not a lock); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
   thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). A locked boss
   past the "Next" one keeps its tricks a surprise ("???: reach it to find out", `BossRules.revealTricks`; the Hydra's
   element pill reads "???" and shows no element to bring); its needs and rewards always show. **Rewards:** a
@@ -1242,8 +1244,10 @@ group, checked before its fragments and every time (not only the first). Below i
   day's first-win chest as small slots (the payload's `bonusReady`; "Daily bonus collected: back tomorrow" once
   taken); cash and XP every win; "Full drops: n more wins today" (`BossRules.fullDropsLeft`) or "Fewer drops today";
   "Party very strong: fewer drops" above the over-power line. Item slots have rich tooltips (`Tooltip.rich`: the gold
-  name, what it does, its odds or chest). Last comes the travel button
-  (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
+  name, what it does, its odds or chest). **Footer**, always in view: what to do next on a light tint of its colour
+  (`BossRules.nextStep` from `BossRules.lockReason`: level up the shop, beat the boss before for n more keys with a
+  "See it" button, level up or change the party with a "Party" button, go fight it, or fight again for loot) and the
+  travel button (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
   `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), "Go to the Frontier" / "Go home"
   (the normal Frontier travel), or for the Hydra "Enter the Dungeon portal in the Frontier". In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
@@ -1638,7 +1642,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
-    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: path of steps with legend and Next, To fight it checklist, Rewards with odds, Take me there
+    │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card

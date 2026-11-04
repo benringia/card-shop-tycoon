@@ -4,6 +4,9 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Frontier = require("../src/shared/Config/Frontier")
 local Wild = require("../src/shared/Config/Wild")
+local BabyColors = require("../src/shared/Config/BabyColors")
+local SoftColors = require("../src/shared/Util/SoftColors")
+local ContrastRules = require("../src/shared/Util/ContrastRules")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -501,6 +504,36 @@ return {
 		for id, boss in Bosses.BOSSES do
 			if boss.playerAttacks then
 				expect.equal(boss.playerAttacks.shape, shapes[id], id)
+			end
+		end
+	end,
+	-- Round 5 (spec section 5): the Boss Ladder's footer and banner
+	["boss board next step: beaten, ready and too weak say so"] = function()
+		expect.equal(BossRules.nextStep("beaten", nil, true), "beaten")
+		expect.equal(BossRules.nextStep("ready", nil, true), "ready")
+		expect.equal(BossRules.nextStep("tooWeak", nil, true), "tooWeak")
+	end,
+
+	["boss board next step: a locked boss asks for shop level first, then keys from the boss before"] = function()
+		expect.equal(BossRules.nextStep("locked", "level", true), "level")
+		expect.equal(BossRules.nextStep("locked", "keys", true), "keys")
+		expect.equal(BossRules.nextStep("locked", nil, false), "none")
+	end,
+
+	["boss banner: its element's baby colour, pink for the Prism Hydra"] = function()
+		for _, bossId in Bosses.LADDER do
+			local name = BossRules.bannerColor(BabyColors.ELEMENTS, Bosses.BOSSES[bossId])
+			assert(BabyColors.COLORS[name], `{bossId} banner is a baby colour`)
+		end
+		expect.equal(BossRules.bannerColor(BabyColors.ELEMENTS, Bosses.BOSSES.prismHydra), "pink")
+		expect.equal(BossRules.bannerColor(BabyColors.ELEMENTS, Bosses.BOSSES.frostTyrant), BabyColors.ELEMENTS[Bosses.BOSSES.frostTyrant.element])
+	end,
+
+	["boss banner: plum text reads where the banner takes it"] = function()
+		for _, bossId in Bosses.LADDER do
+			local fill = BabyColors.COLORS[BossRules.bannerColor(BabyColors.ELEMENTS, Bosses.BOSSES[bossId])].fill
+			if SoftColors.textOn(fill, BabyColors.LIGHT_LUMA) == "ink" then
+				expect.equal(ContrastRules.ratio(BabyColors.INK, fill) >= 4.5, true, bossId)
 			end
 		end
 	end,

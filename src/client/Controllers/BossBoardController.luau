@@ -1,15 +1,16 @@
 --!strict
--- The boss board (HUD tile "Bosses"; spec 2026-10-29-collection-screens-ui-design.md 4.7, reworked in UI feedback
--- round 3): the ladder (Config/Bosses) as a path of seven steps, each a disc with the boss's icon and a badge for its
--- state (BossRules.stepState): beaten (gold ring, trophy), ready (green glow, check), too weak (red ring) or locked
--- (faded, lock). A legend names the badges, the path fills gold as you climb and "Next" marks the first boss still to
--- beat. Tapping a step shows it below in two columns. To fight it: name, title and status, its element, where it
--- lives and the element to bring, a checklist (shop level, its key fragments, the Power it's built for), what to do
--- next, and its tricks (BossRules.watchOut). Rewards: when full loot is ready again, what each win can drop with its
--- odds (shrunk by the soft cap and the over-power rule, as the server rolls them), the first-win and daily chests,
--- cash and XP, full-drop wins left today, and "Take me there" (its gate here, BossTravel) or the normal travel to the
--- place it's in. Icons have tooltips (items: what they do and their odds). Data comes from BossService
--- (BossesChanged); the loot timer counts down here between updates.
+-- The boss board (HUD tile "Bosses"; spec 2026-10-29-collection-screens-ui-design.md 4.7, reworked in round 5: spec
+-- 2026-11-04-round5-design section 5, owner pick A "List and detail, like the Condenser"). Left: the ladder
+-- (Config/Bosses) top to bottom, one row per boss: a disc with its icon in its state's ring (BossRules.stepState: gold
+-- beaten, green ready, red too weak, grey locked), "N. Name" and a status chip (phones: a small badge on the disc),
+-- "Next" on the first boss still to beat. Right: the chosen boss. A banner in its element's baby colour
+-- (BossRules.bannerColor) with a big disc, its name, title and status; its element, where it lives and the element to
+-- bring; two columns: To fight it (a checklist: shop level, its key fragments, the Power it's built for; then its tricks,
+-- BossRules.watchOut) and Rewards (when full loot is ready again, what each win can drop with its odds, shrunk by the
+-- soft cap and the over-power rule as the server rolls them, the first-win and daily chests, cash and XP, full-drop
+-- wins left today); and a footer always in view: what to do next (BossRules.nextStep) with its button, and "Take me
+-- there" (its gate here, BossTravel) or the way to its place. Icons have tooltips (items: what they do and their odds).
+-- Data comes from BossService (BossesChanged); the loot timer counts down here between updates.
 -- Also: the leader of a group forming at a gate sees "Start now" on its group prompt.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -23,12 +24,14 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
+local BabyColors = require(Config:WaitForChild("BabyColors"))
 local WildConfig = require(Config:WaitForChild("Wild"))
 local FrontierConfig = require(Config:WaitForChild("Frontier"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
+local SoftColors = require(Shared:WaitForChild("Util"):WaitForChild("SoftColors"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -49,8 +52,14 @@ type Line = string | { text: string, color: Color3 }
 
 local MAX_SIZE = Vector2.new(900, 600)
 local LOCKED_FADE = 0.55
-local SELECTED_SCALE = 1.08 -- the chosen step's disc, grown from its centre so it stays clear of its name
-local STEP_ORDER: { StepState } = { "beaten", "ready", "tooWeak", "locked" }
+local LIST_WIDTH = 270 -- the bosses' list on the left (phones: PHONE_LIST_WIDTH)
+local PHONE_LIST_WIDTH = 168
+local ROW_HEIGHT = 52 -- a boss's row (phones: a tap target, PHONE_ROW_HEIGHT)
+local PHONE_ROW_HEIGHT = 48
+local DISC_SIZE = 38
+local BANNER_HEIGHT = 92 -- the chosen boss's banner (phones: PHONE_BANNER_HEIGHT)
+local PHONE_BANNER_HEIGHT = 64
+local GAP = 8
 local STEP_BADGES: { [StepState]: string? } = { beaten = "Trophy", ready = "Check", locked = "Lock" }
 local STEP_WORDS: { [StepState]: string } = { beaten = "Beaten", ready = "Ready", tooWeak = "Too weak", locked = "Locked" }
 local STATUS_ICONS: { [StepState]: string } = { beaten = "Trophy", ready = "Check", tooWeak = "Power", locked = "Lock" }
@@ -66,15 +75,12 @@ local panel: Frame
 local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local stepColors: { [StepState]: Color3 } -- a step's ring: gold beaten, green ready, red too weak, grey locked (Start)
 local markColors: { [Mark]: Color3 } -- a checklist row's mark and value (Start)
-local ladder: Frame
-local path: Frame -- the line the steps sit on
-local pathFill: Frame -- the part of it you've climbed
-local legend: Frame
-local details: Frame
+local list: ScrollingFrame -- the bosses, top to bottom
+local details: Frame -- the chosen boss
 local states: { [string]: BossState } = {}
 local receivedAt = 0 -- os.clock() when `states` arrived (lootIn counts down from then)
 local partyIds: { string } = {}
-local selected = 1 -- the step shown below the ladder
+local selected = 1 -- the boss shown beside the list
 local lootPill: TextLabel? = nil -- the shown boss's loot timer
 
 local function clock(seconds: number): string
@@ -293,48 +299,16 @@ local function choose(index: number)
 	render()
 end
 
--- One step of the ladder: a disc with the boss's icon, a state badge, its number and name under it
-local function buildStep(index: number, step: StepState, phone: boolean, isNext: boolean, power: number)
-	local bossId = Bosses.LADDER[index]
-	local boss = Bosses.BOSSES[bossId]
-	local discSize = if phone then 44 else 64
-	local node = Instance.new("TextButton")
-	node.Name = `Step{index}`
-	node.LayoutOrder = index
-	node.BackgroundTransparency = 1
-	node.Text = ""
-	node.Size = UDim2.new(1 / #Bosses.LADDER, -4, 1, 0)
-	node.ZIndex = ladder.ZIndex + 2
-	node.Parent = ladder
-	node.Activated:Connect(function()
-		choose(index)
-	end)
-	Tooltip.attach(node, stepWords(index, step, power))
-
+-- A disc with the boss's icon in its state's ring (faded when locked); phones add the state's small badge
+local function bossDisc(parent: Instance, bossId: string, step: StepState, size: number, badge: boolean): Frame
 	local disc = Instance.new("Frame")
-	disc.AnchorPoint = Vector2.new(0.5, 0.5)
-	disc.Position = UDim2.new(0.5, 0, 0, discSize / 2)
-	disc.Size = UDim2.fromOffset(discSize, discSize)
+	disc.Size = UDim2.fromOffset(size, size)
 	disc.BackgroundColor3 = palette.row
 	disc.BackgroundTransparency = if step == "locked" then LOCKED_FADE else 0
-	disc.ZIndex = node.ZIndex + 1
-	disc.Parent = node
-	UIKit.corner(disc, discSize)
-	UIKit.outline(disc, stepColors[step], 4)
-	local scale = Instance.new("UIScale")
-	scale.Scale = if index == selected then SELECTED_SCALE else 1
-	scale.Parent = disc
-	if step == "ready" then
-		local halo = Instance.new("Frame")
-		halo.AnchorPoint = Vector2.new(0.5, 0.5)
-		halo.Position = UDim2.fromScale(0.5, 0.5)
-		halo.Size = UDim2.new(1, 14, 1, 14)
-		halo.BackgroundColor3 = palette.good
-		halo.BackgroundTransparency = 0.7
-		halo.ZIndex = disc.ZIndex - 1
-		halo.Parent = disc
-		UIKit.corner(halo, discSize)
-	end
+	disc.ZIndex = (parent :: GuiObject).ZIndex + 1
+	disc.Parent = parent
+	UIKit.corner(disc, size)
+	UIKit.outline(disc, stepColors[step], 3)
 	local picture = Icon.make(disc, BossTints.icon(bossId), UDim2.fromScale(0.62, 0.62))
 	picture.AnchorPoint = Vector2.new(0.5, 0.5)
 	picture.Position = UDim2.fromScale(0.5, 0.5)
@@ -344,65 +318,77 @@ local function buildStep(index: number, step: StepState, phone: boolean, isNext:
 		glyph.ImageTransparency = LOCKED_FADE
 	end
 	local badgeIcon = STEP_BADGES[step]
-	if badgeIcon then
-		local badgeSize = if phone then 18 else 24
-		local badge = Instance.new("Frame")
-		badge.AnchorPoint = Vector2.new(1, 1)
-		badge.Position = UDim2.new(1, 4, 1, 4)
-		badge.Size = UDim2.fromOffset(badgeSize, badgeSize)
-		badge.BackgroundColor3 = palette.row
-		badge.ZIndex = disc.ZIndex + 2
-		badge.Parent = disc
-		UIKit.corner(badge, badgeSize)
-		UIKit.outline(badge, stepColors[step], 2)
-		local mark = Icon.make(badge, badgeIcon, UDim2.fromScale(0.8, 0.8))
+	if badge and badgeIcon then
+		local badgeSize = math.floor(size * 0.45)
+		local holder = Instance.new("Frame")
+		holder.AnchorPoint = Vector2.new(1, 1)
+		holder.Position = UDim2.new(1, 4, 1, 4)
+		holder.Size = UDim2.fromOffset(badgeSize, badgeSize)
+		holder.BackgroundColor3 = palette.row
+		holder.ZIndex = disc.ZIndex + 2
+		holder.Parent = disc
+		UIKit.corner(holder, badgeSize)
+		UIKit.outline(holder, stepColors[step], 2)
+		local mark = Icon.make(holder, badgeIcon, UDim2.fromScale(0.8, 0.8))
 		mark.AnchorPoint = Vector2.new(0.5, 0.5)
 		mark.Position = UDim2.fromScale(0.5, 0.5)
-		mark.ZIndex = badge.ZIndex + 1
+		mark.ZIndex = holder.ZIndex + 1
 	end
-	-- The first boss still to beat wears a "Next" tag on its disc
-	if isNext then
-		local tag = UIKit.pill(node, "Next", UIStyle.GOLD)
-		tag.AnchorPoint = Vector2.new(0.5, 0.5)
-		tag.Position = UDim2.fromScale(0.5, 0)
-		tag.Size = UDim2.fromOffset(0, if phone then 16 else 20)
-		tag.TextSize = UIKit.textSize("small") - (if phone then 3 else 1)
-		tag.ZIndex = disc.ZIndex + 4
-	end
-
-	local name = UIKit.label(node, `{index}. {boss.name}`, Enum.Font.FredokaOne, UIKit.textSize("small") - (if phone then 2 else 0), if index == selected then palette.hint else palette.ink)
-	name.AnchorPoint = Vector2.new(0.5, 0)
-	name.Position = UDim2.new(0.5, 0, 0, discSize + (if phone then 6 else 10))
-	name.Size = UDim2.new(1, 0, 0, if phone then 24 else 34)
-	name.TextXAlignment = Enum.TextXAlignment.Center
-	name.TextYAlignment = Enum.TextYAlignment.Top
-	name.TextWrapped = true
-	name.ZIndex = node.ZIndex + 1
+	return disc
 end
 
--- The badges' meanings, once, under the ladder
-local function buildLegend()
-	local phone = UIKit.isPhone()
-	local size = if phone then 14 else 18
-	for order, step in STEP_ORDER do
-		local entry = strip(legend, order, size, 5)
-		entry.AutomaticSize = Enum.AutomaticSize.X
-		entry.Size = UDim2.fromOffset(0, size)
-		local disc = Instance.new("Frame")
-		disc.Size = UDim2.fromOffset(size, size)
-		disc.BackgroundColor3 = palette.row
-		disc.ZIndex = entry.ZIndex + 1
-		disc.Parent = entry
-		UIKit.corner(disc, size)
-		UIKit.outline(disc, stepColors[step], 2)
-		local badge = STEP_BADGES[step]
-		if badge then
-			local mark = Icon.make(disc, badge, UDim2.fromScale(0.8, 0.8))
-			mark.AnchorPoint = Vector2.new(0.5, 0.5)
-			mark.Position = UDim2.fromScale(0.5, 0.5)
-			mark.ZIndex = disc.ZIndex + 1
-		end
-		text(entry, STEP_WORDS[step], UIKit.textSize("small") - (if phone then 2 else 0), palette.ink, true).LayoutOrder = 2
+-- A boss's status in words, in its colour (the chip on its row and in the banner)
+local function statusChip(parent: Instance, step: StepState, height: number): TextLabel
+	local chip = UIKit.pill(parent, STEP_WORDS[step], STATUS_FILLS[step], nil, STATUS_ICONS[step])
+	chip.Size = UDim2.fromOffset(0, height)
+	chip.ZIndex = (parent :: GuiObject).ZIndex + 2
+	return chip
+end
+
+-- One boss in the list: its disc, "N. Name", its status chip (phones: the disc's badge) and "Next" on the first boss
+-- still to beat; the chosen one wears the gold ring. No layout on the row itself (the window's hover adds its pieces
+-- to the row: UIKit noGreyHover).
+local function buildRow(index: number, step: StepState, phone: boolean, isNext: boolean, power: number)
+	local bossId = Bosses.LADDER[index]
+	local boss = Bosses.BOSSES[bossId]
+	local height = if phone then PHONE_ROW_HEIGHT else ROW_HEIGHT
+	local row = Instance.new("TextButton")
+	row.Name = `Boss{index}`
+	row.LayoutOrder = index
+	row.Size = UDim2.new(1, 0, 0, height)
+	row.BackgroundColor3 = palette.row
+	row.Text = ""
+	row.ZIndex = list.ZIndex + 1
+	row.Parent = list
+	UIKit.corner(row, 14)
+	UIKit.outline(row, if index == selected then UIStyle.GOLD else palette.rowEdge, if index == selected then 3 else 2)
+	row.Activated:Connect(function()
+		choose(index)
+	end)
+	Tooltip.attach(row, stepWords(index, step, power))
+
+	local disc = bossDisc(row, bossId, step, DISC_SIZE, phone)
+	disc.AnchorPoint = Vector2.new(0, 0.5)
+	disc.Position = UDim2.new(0, 8, 0.5, 0)
+	if isNext then
+		local tag = UIKit.pill(row, "Next", UIStyle.GOLD)
+		tag.AnchorPoint = Vector2.new(0.5, 0.5)
+		tag.Position = UDim2.new(0, 8 + DISC_SIZE / 2, 0, 6)
+		tag.Size = UDim2.fromOffset(0, 16)
+		tag.TextSize = UIKit.textSize("small") - 3
+		tag.ZIndex = row.ZIndex + 5
+	end
+	local chipRoom = if phone then 8 else 118 -- the widest chip ("Too weak" with its icon) never covers the name
+	local name = UIKit.label(row, `{index}. {boss.name}`, Enum.Font.FredokaOne, UIKit.textSize("small") - (if phone then 2 else 0), if index == selected then palette.hint else palette.ink)
+	name.AnchorPoint = Vector2.new(0, 0.5)
+	name.Position = UDim2.new(0, 8 + DISC_SIZE + 8, 0.5, 0)
+	name.Size = UDim2.new(1, -(8 + DISC_SIZE + 8 + chipRoom), 1, -6)
+	name.TextWrapped = true
+	name.ZIndex = row.ZIndex + 1
+	if not phone then
+		local chip = statusChip(row, step, 22)
+		chip.AnchorPoint = Vector2.new(1, 0.5)
+		chip.Position = UDim2.new(1, -8, 0.5, 0)
 	end
 end
 
@@ -459,42 +445,6 @@ local function needRow(parent: Instance, order: number, mark: Mark, icon: string
 		track.Size = UDim2.new(1, -44, 0, 7)
 	end
 	return row
-end
-
--- What to do next: a tinted box with the advice and, when there's somewhere to go, a button
-local function nextStep(parent: Instance, order: number, words: string, color: Color3, action: { label: string, icon: string, run: () -> () }?)
-	local phone = UIKit.isPhone()
-	local box = Instance.new("Frame")
-	box.LayoutOrder = order
-	box.AutomaticSize = Enum.AutomaticSize.Y
-	box.Size = UDim2.new(1, -6, 0, 0)
-	box.BackgroundColor3 = color:Lerp(palette.row, 0.85) -- a light tint of its colour
-	box.ZIndex = (parent :: GuiObject).ZIndex + 1
-	box.Parent = parent
-	UIKit.corner(box, 10)
-	UIKit.outline(box, color, 2)
-	local padding = Instance.new("UIPadding")
-	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
-		(padding :: any)[side] = UDim.new(0, 8)
-	end
-	padding.Parent = box
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 8)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = box
-	local buttonWidth = if action then 104 else 0
-	local label = wrapped(box, 1, words, palette.ink)
-	label.Size = UDim2.new(1, -(buttonWidth + (if action then 8 else 0)), 0, 0)
-	if action then
-		local button = UIKit.iconButton(box, action.label, action.icon, UIKit.Colors.Secondary)
-		button.LayoutOrder = 2
-		button.Size = UDim2.fromOffset(buttonWidth, if phone then UIStyle.MIN_TAP else 38)
-		button.TextSize = UIKit.textSize("small")
-		button.ZIndex = box.ZIndex + 1
-		button.Activated:Connect(action.run)
-	end
 end
 
 -- An item in a slot: its icon (a boss item in its boss's tint), a count badge, and a tooltip with what it does
@@ -580,39 +530,13 @@ local function trickLine(column: ScrollingFrame, order: number, icon: string, na
 	label.Size = UDim2.new(1, -26, 0, 0)
 end
 
--- Left column: can I fight it? Name, status, where, what to bring, the checklist, what to do next, its tricks.
--- reveal false (a locked boss past the next one, BossRules.revealTricks): its tricks, and the Hydra's elements, stay
--- a surprise
-local function renderFight(column: ScrollingFrame, index: number, step: StepState, power: number, reveal: boolean)
+-- Left column: can I fight it? The checklist, then its tricks. reveal false (a locked boss past the next one,
+-- BossRules.revealTricks): its tricks stay a surprise
+local function renderNeeds(column: ScrollingFrame, index: number, power: number, reveal: boolean)
 	local bossId = Bosses.LADDER[index]
 	local boss = Bosses.BOSSES[bossId]
 	local state = states[bossId]
-	local data = stepData(index, power)
 	local previous = Bosses.BOSSES[Bosses.LADDER[index - 1] or ""]
-
-	local top = strip(column, 1, 32, 8)
-	text(top, boss.name, UIKit.textSize("name"), palette.ink, true).LayoutOrder = 1
-	local status = UIKit.pill(top, STEP_WORDS[step], STATUS_FILLS[step], nil, STATUS_ICONS[step])
-	status.LayoutOrder = 2
-	status.Size = UDim2.fromOffset(0, 26)
-	status.ZIndex = top.ZIndex + 1
-	text(column, boss.title, UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
-
-	-- Its element (the Hydra changes element with each phase), where it lives, the element that hits it harder
-	local pills = wrappingStrip(column, 3, 26, 6)
-	local secret = boss.phases ~= nil and not reveal -- the Hydra's element changes are one of its tricks
-	local element = UIKit.pill(pills, if secret then "???" elseif boss.phases then "All elements" else boss.element, if boss.phases then UIStyle.PANEL else Cards.ELEMENTS[boss.element] or UIStyle.PANEL, nil, BossTints.icon(bossId))
-	element.LayoutOrder = 1
-	Tooltip.attach(element, if secret then "Reach it to find out." elseif boss.phases then "It changes element as it gets hurt." else `Its element: {boss.element}`)
-	local where = UIKit.pill(pills, whereText(bossId), UIStyle.PANEL, nil, "Travel")
-	where.LayoutOrder = 2
-	Tooltip.attach(where, whereTip(bossId))
-	if not secret then
-		local counters = if boss.phases then {} else BossRules.counterElements(Combat.BEATS, boss.element)
-		local bring = UIKit.pill(pills, if counters[1] then `Bring {table.concat(counters, " or ")}` else "Bring a mix", UIStyle.PANEL, UIStyle.GOOD, counters[1] or "Cards")
-		bring.LayoutOrder = 3
-		Tooltip.attach(bring, if counters[1] then `{table.concat(counters, " and ")} cards hit it {Combat.STRONG}x harder.` else "Bring cards of different elements: each part of the fight has its own.")
-	end
 
 	-- The checklist: shop level, key fragments, Power
 	heading(column, 4, "TO FIGHT IT")
@@ -641,26 +565,6 @@ local function renderFight(column: ScrollingFrame, index: number, step: StepStat
 	local strong = power >= boss.recommended
 	local powerRow = needRow(column, 7, if strong then "ok" else "warn", "Power", `Power {boss.recommended}`, `Your best: {power}`, power / math.max(boss.recommended, 1))
 	Tooltip.attach(powerRow, "Your strongest party card's Power against the Power this boss is built for. Under it, the fight is hard.")
-
-	-- What to do next
-	local reason = BossRules.lockReason(data)
-	if step == "beaten" then
-		nextStep(column, 8, "Beaten! Fight it again for more loot.", UIStyle.GOLD, nil)
-	elseif step == "ready" then
-		nextStep(column, 8, "You're ready! Go to its arena and press Fight.", palette.good, nil)
-	elseif step == "tooWeak" then
-		nextStep(column, 8, "Too weak for now: level up your cards or put stronger ones in your party.", palette.bad, { label = "Party", icon = "Party", run = PartyController.Toggle })
-	elseif reason == "level" then
-		nextStep(column, 8, `Reach shop level {need}: sell cards to level up.`, palette.bad, nil)
-	elseif unlock and previous then
-		nextStep(column, 8, `Beat the {previous.name} to collect {unlock.count - have} more keys.`, palette.bad, {
-			label = "See it",
-			icon = "Next",
-			run = function()
-				choose(index - 1)
-			end,
-		})
-	end
 
 	-- Its tricks, spelled out (no hovering needed), or a surprise until you can reach it
 	heading(column, 9, "WATCH OUT")
@@ -740,19 +644,183 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 		Tooltip.attach(line, `Over {threshold} Power this boss drops less. Climb to the next boss, or fight it with weaker cards.`)
 	end
 
-	-- Take me there (its gate here), or the normal travel to its place
+end
+
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- Its element (the Hydra changes element with each phase), where it lives, the element that hits it harder; reveal
+-- false: the Hydra's elements stay a surprise
+local function renderPills(parent: Instance, index: number, reveal: boolean): Frame
+	local bossId = Bosses.LADDER[index]
+	local boss = Bosses.BOSSES[bossId]
+	local pills = wrappingStrip(parent, 0, 26, 6)
+	local secret = boss.phases ~= nil and not reveal -- the Hydra's element changes are one of its tricks
+	local element = UIKit.pill(pills, if secret then "???" elseif boss.phases then "All elements" else boss.element, if boss.phases then UIStyle.PANEL else Cards.ELEMENTS[boss.element] or UIStyle.PANEL, nil, BossTints.icon(bossId))
+	element.LayoutOrder = 1
+	Tooltip.attach(element, if secret then "Reach it to find out." elseif boss.phases then "It changes element as it gets hurt." else `Its element: {boss.element}`)
+	local where = UIKit.pill(pills, whereText(bossId), UIStyle.PANEL, nil, "Travel")
+	where.LayoutOrder = 2
+	Tooltip.attach(where, whereTip(bossId))
+	if not secret then
+		local counters = if boss.phases then {} else BossRules.counterElements(Combat.BEATS, boss.element)
+		local bring = UIKit.pill(pills, if counters[1] then `Bring {table.concat(counters, " or ")}` else "Bring a mix", UIStyle.PANEL, UIStyle.GOOD, counters[1] or "Cards")
+		bring.LayoutOrder = 3
+		Tooltip.attach(bring, if counters[1] then `{table.concat(counters, " and ")} cards hit it {Combat.STRONG}x harder.` else "Bring cards of different elements: each part of the fight has its own.")
+	end
+	return pills
+end
+
+-- The banner across the top in the boss's baby colour (BossRules.bannerColor): a big disc with its icon, its name and
+-- title, its status and "Next"; plum text on light fills, white outlined in the deep shade on bright ones
+local function renderBanner(index: number, step: StepState, isNext: boolean, height: number): Frame
+	local bossId = Bosses.LADDER[index]
+	local boss = Bosses.BOSSES[bossId]
+	local shades = BabyColors.COLORS[BossRules.bannerColor(BabyColors.ELEMENTS, boss)]
+	local banner = Instance.new("Frame")
+	banner.Name = "Banner"
+	banner.Size = UDim2.new(1, 0, 0, height)
+	banner.BackgroundColor3 = Color3.new(1, 1, 1)
+	banner.ZIndex = details.ZIndex + 1
+	banner.Parent = details
+	UIKit.corner(banner, 14)
+	local fill = Instance.new("UIGradient")
+	fill.Rotation = 20
+	fill.Color = ColorSequence.new(rgb(shades.light), rgb(shades.fill))
+	fill.Parent = banner
+
+	local discSize = height - 24
+	local disc = Instance.new("Frame")
+	disc.AnchorPoint = Vector2.new(0, 0.5)
+	disc.Position = UDim2.new(0, 14, 0.5, 0)
+	disc.Size = UDim2.fromOffset(discSize, discSize)
+	disc.BackgroundColor3 = Color3.new(1, 1, 1)
+	disc.ZIndex = banner.ZIndex + 1
+	disc.Parent = banner
+	UIKit.corner(disc, discSize)
+	UIKit.outline(disc, Color3.new(1, 1, 1), 3)
+	local picture = Icon.make(disc, BossTints.icon(bossId), UDim2.fromScale(0.64, 0.64))
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.Position = UDim2.fromScale(0.5, 0.5)
+	picture.ZIndex = disc.ZIndex + 1
+
+	local white = SoftColors.textOn(shades.fill, BabyColors.LIGHT_LUMA) == "white"
+	local ink = if white then Color3.new(1, 1, 1) else UIStyle.BABY_INK
+	local textLeft = 14 + discSize + 12
+	local function bannerText(value: string, font: Enum.Font, size: number, y: number): TextLabel
+		local label = UIKit.label(banner, value, font, size, ink)
+		label.Position = UDim2.fromOffset(textLeft, y)
+		label.Size = UDim2.new(1, -(textLeft + 120), 0, size + 6)
+		label.TextTruncate = Enum.TextTruncate.AtEnd
+		label.ZIndex = banner.ZIndex + 1
+		if white then
+			UIKit.outlined(label, 2).Color = rgb(shades.deep)
+		end
+		return label
+	end
+	local nameSize = UIKit.textSize("name") + (if UIKit.isPhone() then 0 else 6)
+	local nameY = math.max(4, height / 2 - nameSize + (if UIKit.isPhone() then 0 else -4))
+	bannerText(boss.name, Enum.Font.FredokaOne, nameSize, nameY)
+	bannerText(boss.title, Enum.Font.GothamBold, UIKit.textSize("small"), nameY + nameSize + 6)
+	local chip = statusChip(banner, step, 24)
+	chip.AnchorPoint = Vector2.new(1, 0)
+	chip.Position = UDim2.new(1, -12, 0, 12)
+	if isNext then
+		local tag = UIKit.pill(banner, "Next", UIStyle.GOLD)
+		tag.AnchorPoint = Vector2.new(1, 0)
+		tag.Position = UDim2.new(1, -12, 0, 42)
+		tag.Size = UDim2.fromOffset(0, 20)
+		tag.ZIndex = banner.ZIndex + 2
+	end
+	return banner
+end
+
+-- The footer, always in view: what to do next (BossRules.nextStep) on a light tint of its colour, with its button,
+-- and the way to the boss: "Take me there" (its gate here) / "Go home", or how to get to its place
+local function renderFooter(index: number, step: StepState, power: number): Frame
+	local bossId = Bosses.LADDER[index]
+	local boss = Bosses.BOSSES[bossId]
+	local state = states[bossId]
+	local previous = Bosses.BOSSES[Bosses.LADDER[index - 1] or ""]
+	local unlock = boss.unlock
+	local have = if state then state.fragments else 0
+	local phone = UIKit.isPhone()
+	local kind = BossRules.nextStep(step, BossRules.lockReason(stepData(index, power)), unlock ~= nil and previous ~= nil)
+	local words, color = "", palette.rowEdge
+	local action: { label: string, icon: string, run: () -> () }? = nil
+	if kind == "beaten" then
+		words, color = "Beaten! Fight it again for more loot.", UIStyle.GOLD
+	elseif kind == "ready" then
+		words, color = "You're ready! Go to its arena and press Fight.", palette.good
+	elseif kind == "tooWeak" then
+		words, color = "Too weak for now: level up your cards or put stronger ones in your party.", palette.bad
+		action = { label = "Party", icon = "Party", run = PartyController.Toggle }
+	elseif kind == "level" then
+		words, color = `Reach shop level {boss.shopLevel}: sell cards to level up.`, palette.bad
+	elseif kind == "keys" and unlock and previous then
+		words, color = `Beat the {previous.name} to collect {unlock.count - have} more keys.`, palette.bad
+		action = {
+			label = "See it",
+			icon = "Next",
+			run = function()
+				choose(index - 1)
+			end,
+		}
+	end
 	local choice = BossRules.travelChoice(boss.place, here())
-	if choice == "viaPortal" then
-		wrapped(column, 9, "Enter the Dungeon portal in the Frontier.", palette.hint)
-	elseif choice == "walkToFrontier" then
-		wrapped(column, 9, "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza).", palette.hint)
-	elseif choice ~= "none" then
-		local label = if choice == "gate" then "Take me there" else "Go home"
-		local go = UIKit.iconButton(column, label, "Travel", if choice == "gate" then UIKit.Colors.Accent else UIKit.Colors.Secondary)
-		go.LayoutOrder = 9
-		go.Size = UDim2.new(1, -6, 0, if phone then UIStyle.MIN_TAP else 50)
-		go.TextSize = UIKit.textSize("body")
-		go.ZIndex = column.ZIndex + 1
+	local hint = if choice == "viaPortal"
+		then "Enter the Dungeon portal in the Frontier."
+		elseif choice == "walkToFrontier" then "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza)."
+		else nil
+	local travel = choice == "gate" or choice == "toMain"
+
+	local footer = Instance.new("Frame")
+	footer.Name = "Footer"
+	footer.AnchorPoint = Vector2.new(0, 1)
+	footer.Position = UDim2.new(0, GAP, 1, -GAP)
+	footer.Size = UDim2.new(1, -GAP * 2, 0, 0)
+	footer.AutomaticSize = Enum.AutomaticSize.Y
+	footer.BackgroundColor3 = color:Lerp(palette.row, 0.85) -- a light tint of its colour
+	footer.ZIndex = details.ZIndex + 1
+	footer.Parent = details
+	UIKit.corner(footer, 12)
+	UIKit.outline(footer, color, 2)
+	local padding = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(padding :: any)[side] = UDim.new(0, 8)
+	end
+	padding.Parent = footer
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = footer
+	local actionWidth = if action then 104 else 0
+	local travelWidth = if travel then (if phone then 128 else 160) else 0
+	local buttonsWidth = actionWidth + travelWidth + (if action then 8 else 0) + (if travel then 8 else 0)
+	local lines = words
+	if hint then
+		lines = (if words ~= "" then words .. "\n" else "") .. `<font color="#{palette.hint:ToHex()}">{hint}</font>`
+	end
+	local label = wrapped(footer, 1, lines, palette.ink, true)
+	label.Size = UDim2.new(1, -buttonsWidth, 0, 0)
+	local buttonHeight = if phone then UIStyle.MIN_TAP else 42
+	if action then
+		local button = UIKit.iconButton(footer, action.label, action.icon, UIKit.Colors.Secondary)
+		button.LayoutOrder = 2
+		button.Size = UDim2.fromOffset(actionWidth, buttonHeight)
+		button.TextSize = UIKit.textSize("small")
+		button.ZIndex = footer.ZIndex + 1
+		button.Activated:Connect(action.run)
+	end
+	if travel then
+		local go = UIKit.iconButton(footer, if choice == "gate" then "Take me there" else "Go home", "Travel", if choice == "gate" then UIKit.Colors.Accent else UIKit.Colors.Secondary)
+		go.LayoutOrder = 3
+		go.Size = UDim2.fromOffset(travelWidth, buttonHeight)
+		go.TextSize = UIKit.textSize("small")
+		go.ZIndex = footer.ZIndex + 1
 		go.Activated:Connect(function()
 			if choice == "gate" then
 				Remotes.BossTravel:FireServer(index)
@@ -762,23 +830,43 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 			UIKit.closePanel(panel)
 		end)
 	end
+	return footer
 end
 
+-- The chosen boss: the banner, its pills, the two columns (To fight it, Rewards; each scrolls) and the footer
 local function renderDetails(index: number, step: StepState, power: number, isNext: boolean)
 	clear(details)
 	lootPill = nil
 	local phone = UIKit.isPhone()
 	local gap = if phone then 5 else 7
-	local left = scroller(details, UDim2.fromOffset(10, 8), UDim2.new(0.56, -18, 1, -16), gap)
+	local bannerHeight = if phone then PHONE_BANNER_HEIGHT else BANNER_HEIGHT
+	local reveal = BossRules.revealTricks(step, isNext)
+	renderBanner(index, step, isNext, bannerHeight)
+	local pills = renderPills(details, index, reveal)
+	pills.Position = UDim2.fromOffset(GAP, bannerHeight + GAP)
+	pills.Size = UDim2.new(1, -GAP * 2, 0, 26)
+	local footer = renderFooter(index, step, power)
+	local left = scroller(details, UDim2.new(), UDim2.new(), gap)
+	local right = scroller(details, UDim2.new(), UDim2.new(), gap)
 	local divider = Instance.new("Frame")
-	divider.Position = UDim2.new(0.56, -1, 0, 12)
-	divider.Size = UDim2.new(0, 2, 1, -24)
 	divider.BackgroundColor3 = palette.rowEdge
 	divider.BorderSizePixel = 0
 	divider.ZIndex = details.ZIndex + 1
 	divider.Parent = details
-	local right = scroller(details, UDim2.new(0.56, 10, 0, 8), UDim2.new(0.44, -18, 1, -16), gap)
-	renderFight(left, index, step, power, BossRules.revealTricks(step, isNext))
+	local function placeColumns()
+		local top = bannerHeight + GAP + pills.AbsoluteSize.Y + GAP
+		local bottom = footer.AbsoluteSize.Y + GAP * 2
+		left.Position = UDim2.fromOffset(GAP, top)
+		left.Size = UDim2.new(0.5, -GAP * 1.5, 1, -(top + bottom))
+		right.Position = UDim2.new(0.5, GAP / 2, 0, top)
+		right.Size = UDim2.new(0.5, -GAP * 1.5, 1, -(top + bottom))
+		divider.Position = UDim2.new(0.5, -1, 0, top + 4)
+		divider.Size = UDim2.new(0, 2, 1, -(top + bottom + 8))
+	end
+	pills:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeColumns)
+	footer:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeColumns)
+	placeColumns()
+	renderNeeds(left, index, power, reveal)
 	renderRewards(right, index, power)
 end
 
@@ -786,14 +874,13 @@ render = function()
 	if not panel.Visible then
 		return
 	end
-	clear(ladder)
+	clear(list)
 	local power = bestPower()
 	local phone = UIKit.isPhone()
-	local nextIndex, beaten = climb(power)
+	local nextIndex = climb(power)
 	for index = 1, #Bosses.LADDER do
-		buildStep(index, stepOf(index, power), phone, index == nextIndex, power)
+		buildRow(index, stepOf(index, power), phone, index == nextIndex, power)
 	end
-	pathFill.Size = UDim2.fromScale(math.max(0, beaten - 1) / (#Bosses.LADDER - 1), 1)
 	renderDetails(selected, stepOf(selected, power), power, selected == nextIndex)
 end
 
@@ -812,7 +899,8 @@ local function defaultStep(): number
 	return lastBeaten
 end
 
--- Big on desktops (up to MAX_SIZE), nearly the whole screen on phones
+-- Big on desktops (up to MAX_SIZE), nearly the whole screen on phones: the bosses' list on the left, the chosen one
+-- beside it
 local function layout()
 	local phone = UIKit.isPhone()
 	panel.Size = if phone then UDim2.fromScale(0.97, 0.98) else UDim2.fromScale(0.92, 0.88)
@@ -820,19 +908,13 @@ local function layout()
 	if limit then
 		limit.MaxSize = MAX_SIZE
 	end
-	local ladderHeight = if phone then 74 else 110
-	local ladderTop = UIKit.HEADER_HEIGHT + (if phone then 10 else 16)
-	ladder.Position = UDim2.fromOffset(12, ladderTop)
-	ladder.Size = UDim2.new(1, -24, 0, ladderHeight)
-	path.Position = UDim2.new(0.07, 12, 0, ladderTop + (if phone then 44 else 64) / 2 - 3)
-	local legendHeight = if phone then 14 else 18
-	clear(legend)
-	legend.Position = UDim2.fromOffset(12, ladderTop + ladderHeight)
-	legend.Size = UDim2.new(1, -24, 0, legendHeight)
-	buildLegend()
-	local top = ladderTop + ladderHeight + legendHeight + (if phone then 6 else 10)
-	details.Position = UDim2.fromOffset(12, top)
-	details.Size = UDim2.new(1, -24, 1, -(top + (if phone then 10 else 16)))
+	local top = UIKit.HEADER_HEIGHT + (if phone then 8 else 12)
+	local bottom = if phone then 10 else 14
+	local width = if phone then PHONE_LIST_WIDTH else LIST_WIDTH
+	list.Position = UDim2.fromOffset(12, top)
+	list.Size = UDim2.new(0, width, 1, -(top + bottom))
+	details.Position = UDim2.fromOffset(12 + width + 10, top)
+	details.Size = UDim2.new(1, -(12 + width + 10 + 12), 1, -(top + bottom))
 end
 
 local function toggle()
@@ -868,55 +950,36 @@ function BossBoardController.Start()
 		watchGroupPrompt(prompt)
 	end
 	local screenGui = UIController.GetScreenGui()
-	local list: ScrollingFrame
-	panel, list = UIKit.panel(screenGui, "Bosses", "Boss Ladder", "Bosses")
+	local panelList: ScrollingFrame
+	panel, panelList = UIKit.panel(screenGui, "Bosses", "Boss Ladder", "Bosses")
 	palette = UIKit.colorsFor(panel)
 	stepColors = { beaten = UIStyle.GOLD, ready = palette.good, tooWeak = palette.bad, locked = UIKit.Colors.Locked }
 	markColors = { ok = palette.good, no = palette.bad, warn = palette.hint }
-	list:Destroy() -- the ladder and one boss's details, laid out here
+	panelList:Destroy() -- the bosses' list and one boss's details, laid out here
 	Icon.header(panel, "Trophy", UIKit.HEADER_HEIGHT)
 
-	ladder = Instance.new("Frame")
-	ladder.Name = "Ladder"
-	ladder.BackgroundTransparency = 1
-	ladder.ZIndex = panel.ZIndex + 1
-	ladder.Parent = panel
-	local steps = Instance.new("UIListLayout")
-	steps.FillDirection = Enum.FillDirection.Horizontal
-	steps.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	steps.Padding = UDim.new(0, 4)
-	steps.SortOrder = Enum.SortOrder.LayoutOrder
-	steps.Parent = ladder
-	-- The path the steps sit on: beside the ladder, under it (a child would join its layout and be cleared)
-	path = Instance.new("Frame")
-	path.Name = "Path"
-	path.Size = UDim2.new(0.86, -24, 0, 6)
-	path.BackgroundColor3 = UIKit.Colors.Locked
-	path.BorderSizePixel = 0
-	path.ZIndex = panel.ZIndex
-	path.Parent = panel
-	UIKit.corner(path, 3)
-	pathFill = Instance.new("Frame")
-	pathFill.Name = "Climbed"
-	pathFill.Size = UDim2.fromScale(0, 1)
-	pathFill.BackgroundColor3 = UIStyle.GOLD
-	pathFill.BorderSizePixel = 0
-	pathFill.ZIndex = path.ZIndex
-	pathFill.Parent = path
-	UIKit.corner(pathFill, 3)
-
-	legend = Instance.new("Frame")
-	legend.Name = "Legend"
-	legend.BackgroundTransparency = 1
-	legend.ZIndex = panel.ZIndex + 1
-	legend.Parent = panel
-	local entries = Instance.new("UIListLayout")
-	entries.FillDirection = Enum.FillDirection.Horizontal
-	entries.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	entries.VerticalAlignment = Enum.VerticalAlignment.Center
-	entries.Padding = UDim.new(0, 16)
-	entries.SortOrder = Enum.SortOrder.LayoutOrder
-	entries.Parent = legend
+	list = Instance.new("ScrollingFrame")
+	list.Name = "BossList"
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 4
+	list.ScrollBarImageColor3 = UIKit.Colors.Accent
+	list.CanvasSize = UDim2.new()
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.ScrollingDirection = Enum.ScrollingDirection.Y
+	list.ZIndex = panel.ZIndex + 1
+	list.Parent = panel
+	local rows = Instance.new("UIListLayout")
+	rows.Padding = UDim.new(0, 6)
+	rows.SortOrder = Enum.SortOrder.LayoutOrder
+	rows.Parent = list
+	-- Room inside the list for the chosen row's ring and the hover's edge
+	local listPadding = Instance.new("UIPadding")
+	listPadding.PaddingTop = UDim.new(0, 4)
+	listPadding.PaddingBottom = UDim.new(0, 4)
+	listPadding.PaddingLeft = UDim.new(0, 4)
+	listPadding.PaddingRight = UDim.new(0, 10)
+	listPadding.Parent = list
 
 	details = Instance.new("Frame")
 	details.Name = "Details"
