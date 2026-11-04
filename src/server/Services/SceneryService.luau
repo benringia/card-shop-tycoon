@@ -26,6 +26,7 @@ local PlazaBuild = require(ServerUtil:WaitForChild("PlazaBuild"))
 local SceneryService = {}
 
 local terrainOps: { TownTerrain.Op } = {} -- the fills, also used to stand props on the drawn ground
+local settling: { Model } = {} -- valley and backdrop pieces to settle onto the terrain once it's filled (settlePieces)
 local volcanoSmoke: Vector3? = nil -- the volcano's crater (its Fx_Smoke), where the canyon's smoke effect rises
 
 local OPS_PER_YIELD = 20 -- fills between waits, so a big fill never stalls the server
@@ -490,6 +491,7 @@ local function buildWildValley(folder: Folder)
 		local model = placeModel(holder, spot, spot.model)
 		if model then
 			dressValleyProp(model, spot)
+			table.insert(settling, model)
 		end
 	end
 	for _, spot in WildValleyConfig.EMBER_CRYSTALS do
@@ -540,6 +542,55 @@ local function buildVolcanoLava(scenery: Instance)
 	end
 end
 
+-- Drops a placed piece onto the terrain under its foot (Config/WildValley SETTLE, WildValley.settleDrop; the owner
+-- 2026-11-05: roots in the air over a rounded wall top): rays up from under its box find its lowest surfaces on a grid
+-- turned with it, rays down find the terrain under each, and it drops by the widest gap. Its parts take rays only for
+-- the moment (dressValleyProp turned them off); its colliders move with it.
+local function settle(model: Model)
+	local look = WildValleyConfig.SETTLE
+	local box, size = model:GetBoundingBox()
+	local queried = {}
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			queried[part] = part.CanQuery
+			part.CanQuery = part.Name ~= "Collider"
+		end
+	end
+	local own = RaycastParams.new()
+	own.FilterType = Enum.RaycastFilterType.Include
+	own.FilterDescendantsInstances = { model }
+	local reach = size.Y * look.band + 1
+	local gaps = {}
+	for i = 0, look.grid - 1 do
+		for j = 0, look.grid - 1 do
+			local column = box:PointToWorldSpace(Vector3.new(size.X * ((i + 0.5) / look.grid - 0.5), -size.Y / 2, size.Z * ((j + 0.5) / look.grid - 0.5)))
+			local surface = workspace:Raycast(column - Vector3.new(0, 1, 0), Vector3.new(0, reach, 0), own)
+			local ground = surface and snap(column + Vector3.new(0, size.Y, 0), Vector3.new(0, -2 * size.Y, 0))
+			if surface and ground then
+				table.insert(gaps, surface.Position.Y - ground.Position.Y)
+			end
+		end
+	end
+	for part, was in queried do
+		part.CanQuery = was
+	end
+	local drop = WildValley.settleDrop(gaps, size.Y, look)
+	if drop > 0 then
+		model:PivotTo(model:GetPivot() - Vector3.new(0, drop, 0))
+	end
+end
+
+-- Settles every valley and backdrop piece once the terrain is filled and the dressing is in the world (Start)
+local function settlePieces()
+	for index, model in settling do
+		settle(model)
+		if index % WildValleyConfig.SETTLE.perYield == 0 then
+			task.wait()
+		end
+	end
+	table.clear(settling)
+end
+
 -- What stands past the valley's walls (round 2, Config/WildValley BACKDROP and MOUNTAINS): backdrop pieces on the
 -- drawn ground, streamed as whole models; the far mountains at their own heights, no shadows, always loaded so they
 -- never pop in as you walk
@@ -552,6 +603,7 @@ local function buildBackdrop(folder: Instance)
 		if model then
 			dressValleyProp(model, spot, false)
 			model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+			table.insert(settling, model)
 		end
 	end
 	for _, spot in WildValleyConfig.MOUNTAINS do
@@ -1073,6 +1125,7 @@ function SceneryService.Start()
 		-- the Wild valley has ground now: WildService lets players travel there
 		workspace:SetAttribute(WildValleyConfig.TERRAIN_READY_ATTRIBUTE, true)
 		local scenery = workspace:WaitForChild("Scenery")
+		settlePieces()
 		buildCracks(scenery :: Folder)
 		buildRidgeCracks(scenery)
 		buildCave(scenery)

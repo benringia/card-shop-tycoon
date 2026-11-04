@@ -143,7 +143,7 @@ after hearing orchestral picks: "acoustic guitars or piano only"), very quiet; t
 Ridge "Air Currents" (floating classical solo guitar, after "Hombre Solo") at 0.005 (the other options: "Butterflies",
 "Running Through The Fields"; "Secret Waterfall", "Air Currents"; "Moonlight Sonata", "Live Piano Stories 04", "Hombre
 Solo"). The arenas keep the owner's battle picks: the Meadow Warden's "Forest Chase" at
-0.1, the Cave Brood Queen's "Creepy Crawlers" at 0.13, the Ember Colossus' "Giant's Grave" at 0.1. Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
+0.006, the Cave Brood Queen's "Creepy Crawlers" at 0.008, the Ember Colossus' "Giant's Grave" at 0.006 (owner 2026-11-05: down from 0.1, 0.13, 0.1). Each plays through a leveler (threshold -20 dB, ratio 6, +7 dB makeup: measured with PlaybackLoudness it keeps
 the average the owner heard and cuts the peaks; the town's limiter would crush these). Each area also has a Pro Sound
 Effects ambient loop under its music (turned down by the owner: the Meadow 0.03, the Caves 0.05, Ember Ridge's much
 louder lava 0.008), crossfading the same way: a field of cicadas, birds and insects in the Meadow
@@ -752,13 +752,17 @@ stands on the floor. **Round 2, natural edges** (spec `2026-11-05-valley-natural
 Meadow B, Caves A, Ridge A): every wall gets a rolling skyline of terrain lumps (`SKYLINES`, `WildValley.skylineOps`,
 seeded; paid for by trimming the walls' hidden backs, `MAX_CELLS` 95k to 105k after measuring); past the walls stand
 `BACKDROP` pieces (giant trees and big town trees round the Meadow, tree-sized glow mushrooms on the Caves' walls, ember
-and charred trees on the Ridge's hills; no colliders, streamed as whole models) and ten far mountain range pieces
+and charred trees on the Ridge's hills; no colliders, streamed as whole models; each wide one stands back from its
+wall's front so the roots or stems you see rest on the wall top, `FEET`, Lune-tested) and ten far mountain range pieces
 (`MOUNTAINS`: snowy round the Meadow and the Caves, dark jagged round the Ridge; always loaded, no shadows); the Meadow
 is composed (every ruin on a hill round the stone circle, a footpath up through its north arch, `PATHS`; a bigger pond;
 giant trees framing the trail, `GIANT_TREES`); the Caves' look gets fog and its crystal cave a mossy face; Ember Ridge
 gets its own smoky orange look (`DayCycle.AREA_LOOKS[3]`), a bigger volcano set further back (height 140) and lava streams down it (`VOLCANO_LAVA`,
 `WildValley.lavaRays` cast onto it); the area looks snap after a teleport (`DayCycle.jumped`); Roblox clouds over the
-whole place, town included (`Scenery.CLOUDS`). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
+whole place, town included (`Scenery.CLOUDS`). Every valley scenery and backdrop piece then settles onto the terrain
+under its foot once it is filled (`SETTLE`, `WildValley.settleDrop`: rays measure the gaps under its lowest surfaces and
+it drops by the widest, never more than a fifth of its height; the owner 2026-11-05: "floating trees/mushrooms";
+measured: 247 pieces, about 71k rays, 225 ms at server start, 10 pieces a frame). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
 either end). Signs are wood like the town's (`Server/Util/TrailProps.trailhead`): "THE WILD" by the arrival, a
 trailhead at each biome's entrance (MEADOW Lv 1-5, CAVES Lv 5-10, EMBER RIDGE Lv 10-15), each turned to face back
 down the trail the way players come, and an arrow post at each bend pointing on and back to the SHOP. **Monsters by

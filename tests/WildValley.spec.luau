@@ -467,6 +467,48 @@ return {
 		end
 	end,
 
+	-- The owner (2026-11-05, a giant tree's roots in the air over a wall top): a piece settles onto the lowest terrain under
+	-- its foot by the widest gap measured under it, sunk a little, never by more than the cap (a root out over a wall's
+	-- edge is left out)
+	["a piece settles by the widest gap under its foot, never past the cap"] = function()
+		local settle = { sink = 0.4, cap = 0.2 }
+		expect.equal(WildValley.settleDrop({}, 40, settle), 0, "nothing measured: stays")
+		expect.equal(WildValley.settleDrop({ -2, -0.5 }, 40, settle), 0, "resting (a little buried): stays")
+		expect.near(WildValley.settleDrop({ 1, 3, -1 }, 40, settle), 3.4, 1e-9, "floating 3: down 3, sunk a little")
+		expect.near(WildValley.settleDrop({ 2, 30 }, 40, settle), 2.4, 1e-9, "a root out over an edge (past the cap) left out")
+		expect.equal(WildValley.settleDrop({ 7.9 }, 40, settle), 8, "never more than the cap")
+	end,
+
+	["every wide backdrop piece's foot rests on its wall top on the side you see"] = function()
+		local function edgeDistance(p: any): number
+			local best = math.huge
+			for index, a in valley.EDGE do
+				best = math.min(best, distanceToSegment(p, a, valley.EDGE[index % #valley.EDGE + 1]))
+			end
+			return best
+		end
+		local checked = 0
+		for _, spot in valley.BACKDROP do
+			local share = valley.FEET[spot.model]
+			if share then
+				checked += 1
+				local radius = share * spot.height
+				local top = TownTerrain.topAt(OPS, spot.x, spot.z)
+				local own = edgeDistance(spot)
+				for step = 0, 15 do
+					local angle = step / 16 * math.pi * 2
+					local p = { x = spot.x + math.cos(angle) * radius, z = spot.z + math.sin(angle) * radius }
+					if WildValley.inside(valley.EDGE, p) or edgeDistance(p) < own then
+						local here = TownTerrain.topAt(OPS, p.x, p.z)
+						local hang = if top and here then top - here else math.huge
+						assert(hang <= valley.SETTLE.cap * spot.height, `{spot.model} at {spot.x}, {spot.z}: its foot toward the valley hangs {hang} over the ground at {math.round(p.x)}, {math.round(p.z)}`)
+					end
+				end
+			end
+		end
+		expect.equal(checked > 0, true, "wide-footed backdrop pieces checked")
+	end,
+
 	-- Round 2: the Meadow composed (the owner: "it has random stuffs on it"): one ruin site on a hill, a path up to it
 	["the ruins stand together on the ruin hill"] = function()
 		local circle = valley.STONE_CIRCLE

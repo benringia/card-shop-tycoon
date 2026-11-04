@@ -350,6 +350,24 @@ function WildValley.lavaRays(volcano: any, stream: any, steps: number, reach: nu
 	return rays
 end
 
+-- How far a placed piece drops to rest on the terrain under its foot (Config/WildValley SETTLE; the owner 2026-11-05:
+-- roots in the air over a rounded wall top): `gaps` are its lowest surfaces' heights over the terrain, measured by rays
+-- (negative: buried). It drops by the widest gap plus `sink`, never by more than `cap` of its `height`; a gap past the
+-- cap is a root out over a wall's edge and is left out.
+function WildValley.settleDrop(gaps: { number }, height: number, settle: { sink: number, cap: number }): number
+	local cap = settle.cap * height
+	local widest = 0
+	for _, gap in gaps do
+		if gap <= cap and gap > widest then
+			widest = gap
+		end
+	end
+	if widest <= 0 then
+		return 0
+	end
+	return math.min(widest + settle.sink, cap)
+end
+
 -- The valley's terrain fills in order: Config/WildValley's TERRAIN, the walls' skylines (skylineOps), the hills, the trail (a pass where it climbs: a
 -- wide ramp in the upper biome's floor, walls each side and the trail on it; elsewhere `segment`, TownTerrain's trail
 -- slab, started and ended half its width short of a climb so it never pokes up beside the ramp), then CARVES

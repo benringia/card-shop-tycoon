@@ -592,22 +592,32 @@ return {
 	-- Past the ridge's far cliff: the caldera's volcano (dressed like the canyon's: anchored, its lava glowing), its foot
 	-- hidden behind the cliff, its lava streaks (its -Z side) toward the ridge
 	VOLCANO = { model = "Volcano", x = -55, z = 1935, y = 20, height = 140, yaw = 0 }, -- round 2: bigger and further back (concept A: the volcano dominates), its foot still behind the north wall
+	-- Settling (the owner 2026-11-05: "floating trees/mushrooms", a giant tree's roots in the air over a rounded wall top):
+	-- a piece first stands at the drawn ground under its centre, then SceneryService measures its lowest surfaces (its
+	-- bottom `band` of height) against the terrain under them by rays, on a `grid` x `grid` square over its box, and drops
+	-- it by WildValley.settleDrop (the widest gap plus `sink`, never more than `cap` of its height); `perYield` pieces
+	-- between waits
+	SETTLE = { band = 0.04, grid = 15, sink = 0.4, cap = 0.2, perYield = 10 },
+	-- How far each wide-footed backdrop piece's roots or stems spread from its centre, as a share of its height (measured
+	-- in Studio 2026-11-05): each stands back from its wall's front so the foot on the side you see rests on the wall top
+	-- (Lune-tested; the side behind may reach out over the wall's hidden back)
+	FEET = { GiantTreeA = 0.28, GiantTreeB = 0.28, GiantTreeC = 0.28, GlowMushroomTall = 0.2, GlowMushroomCluster = 0.32, EmberTree = 0.18, CharredTree = 0.18 },
 	-- Round 2 (spec 2026-11-05-valley-natural-design): what stands past the walls, never reachable. BACKDROP: pieces on
 	-- the skylines and beyond (giant trees, scaled-up glow mushrooms, ember trees; `glow` for glowing ones), standing on
 	-- the drawn ground, no colliders, streamed as whole models. MOUNTAINS: far range pieces at their own `y` (sunk so no
 	-- base shows), always loaded so they never pop in, at least 150 studs out from the valley
 	BACKDROP = {
 		-- the Meadow (pick B): giant trees on the hills all round, big town trees between them
-		{ model = "GiantTreeA", x = -150, z = 1097, height = 46, yaw = 20 },
-		{ model = "GiantTreeB", x = -40, z = 1097, height = 50, yaw = 140 },
-		{ model = "GiantTreeC", x = 70, z = 1097, height = 44, yaw = 260 },
-		{ model = "GiantTreeB", x = -214, z = 1145, height = 48, yaw = 80 },
-		{ model = "GiantTreeA", x = -214, z = 1232, height = 52, yaw = 200 },
-		{ model = "GiantTreeC", x = 109, z = 1150, height = 46, yaw = 300 },
-		{ model = "GiantTreeA", x = 109, z = 1262, height = 50, yaw = 30 },
-		{ model = "GiantTreeB", x = -120, z = 1330, height = 48, yaw = 170 },
-		{ model = "GiantTreeA", x = -10, z = 1330, height = 52, yaw = 60 },
-		{ model = "GiantTreeC", x = 75, z = 1330, height = 44, yaw = 230 },
+		{ model = "GiantTreeA", x = -156, z = 1093, height = 46, yaw = 20 },
+		{ model = "GiantTreeB", x = -38, z = 1093, height = 50, yaw = 140 },
+		{ model = "GiantTreeC", x = 70, z = 1090, height = 44, yaw = 260 },
+		{ model = "GiantTreeB", x = -221, z = 1145, height = 48, yaw = 80 },
+		{ model = "GiantTreeA", x = -222, z = 1232, height = 52, yaw = 200 },
+		{ model = "GiantTreeC", x = 115, z = 1150, height = 46, yaw = 300 },
+		{ model = "GiantTreeA", x = 116, z = 1262, height = 50, yaw = 30 },
+		{ model = "GiantTreeB", x = -117, z = 1338, height = 48, yaw = 170 },
+		{ model = "GiantTreeA", x = -12, z = 1332, height = 52, yaw = 60 },
+		{ model = "GiantTreeC", x = 75, z = 1335, height = 44, yaw = 230 },
 		{ model = "TreeA", x = -95, z = 1097, height = 34, yaw = 50 },
 		{ model = "TreeD", x = 15, z = 1097, height = 32, yaw = 210 },
 		{ model = "PineB", x = 100, z = 1100, height = 36, yaw = 0 },
@@ -617,42 +627,42 @@ return {
 		{ model = "TreeA", x = 35, z = 1330, height = 34, yaw = 90 },
 		-- the Caves (pick A): tree-sized glowing mushrooms on every wall, fading into the fog
 		{ model = "GlowMushroomTall", x = -460, z = 1310, height = 48, yaw = 10, glow = "teal" },
-		{ model = "GlowMushroomCluster", x = -460, z = 1350, height = 30, yaw = 120, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -462, z = 1349, height = 30, yaw = 120, glow = "purple" },
 		{ model = "GlowMushroomTall", x = -460, z = 1385, height = 44, yaw = 230, glow = "purple" },
 		{ model = "GlowMushroomTall", x = -460, z = 1460, height = 50, yaw = 60, glow = "teal" },
-		{ model = "GlowMushroomCluster", x = -460, z = 1500, height = 28, yaw = 300, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -460, z = 1504, height = 28, yaw = 300, glow = "purple" },
 		{ model = "GlowMushroomTall", x = -460, z = 1535, height = 42, yaw = 150, glow = "teal" },
-		{ model = "GlowMushroomCluster", x = -440, z = 1561, height = 30, yaw = 20, glow = "teal" },
-		{ model = "GlowMushroomTall", x = -400, z = 1561, height = 46, yaw = 200, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -440, z = 1565, height = 30, yaw = 20, glow = "teal" },
+		{ model = "GlowMushroomTall", x = -399, z = 1565, height = 46, yaw = 200, glow = "purple" },
 		{ model = "GlowMushroomTall", x = -360, z = 1561, height = 40, yaw = 80, glow = "teal" },
-		{ model = "GlowMushroomCluster", x = -325, z = 1561, height = 28, yaw = 260, glow = "purple" },
-		{ model = "GlowMushroomTall", x = -440, z = 1278, height = 40, yaw = 140, glow = "purple" },
-		{ model = "GlowMushroomCluster", x = -400, z = 1278, height = 26, yaw = 40, glow = "teal" },
-		{ model = "GlowMushroomTall", x = -355, z = 1278, height = 44, yaw = 310, glow = "teal" },
-		{ model = "GlowMushroomCluster", x = -300, z = 1278, height = 28, yaw = 190, glow = "purple" },
-		{ model = "GlowMushroomTall", x = -208, z = 1370, height = 30, yaw = 100, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -326, z = 1564, height = 28, yaw = 260, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -438, z = 1275, height = 40, yaw = 140, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -401, z = 1278, height = 26, yaw = 40, glow = "teal" },
+		{ model = "GlowMushroomTall", x = -356, z = 1276, height = 44, yaw = 310, glow = "teal" },
+		{ model = "GlowMushroomCluster", x = -300, z = 1274, height = 28, yaw = 190, glow = "purple" },
+		{ model = "GlowMushroomTall", x = -207, z = 1371, height = 30, yaw = 100, glow = "teal" },
 		{ model = "GlowMushroomCluster", x = -208, z = 1420, height = 24, yaw = 220, glow = "purple" },
-		{ model = "GlowMushroomTall", x = -208, z = 1470, height = 32, yaw = 340, glow = "purple" },
-		{ model = "GlowMushroomCluster", x = -208, z = 1515, height = 22, yaw = 70, glow = "teal" },
+		{ model = "GlowMushroomTall", x = -206, z = 1470, height = 32, yaw = 340, glow = "purple" },
+		{ model = "GlowMushroomCluster", x = -207, z = 1515, height = 22, yaw = 70, glow = "teal" },
 		-- Ember Ridge (pick A): ember trees and charred trees on its hills, rising toward the volcano
 		{ model = "EmberTree", x = -110, z = 1808, height = 28, yaw = 30, glow = "ember" },
 		{ model = "EmberTree", x = -50, z = 1808, height = 30, yaw = 150, glow = "ember" },
 		{ model = "EmberTree", x = 10, z = 1808, height = 26, yaw = 270, glow = "ember" },
 		{ model = "EmberTree", x = 70, z = 1808, height = 28, yaw = 90, glow = "ember" },
-		{ model = "CharredTree", x = -80, z = 1808, height = 18, yaw = 210 },
-		{ model = "CharredTree", x = 40, z = 1808, height = 16, yaw = 330 },
+		{ model = "CharredTree", x = -82, z = 1809, height = 18, yaw = 210 },
+		{ model = "CharredTree", x = 40, z = 1809, height = 16, yaw = 330 },
 		{ model = "EmberTree", x = 109, z = 1600, height = 26, yaw = 40, glow = "ember" },
 		{ model = "EmberTree", x = 109, z = 1660, height = 28, yaw = 160, glow = "ember" },
 		{ model = "EmberTree", x = 109, z = 1720, height = 24, yaw = 280, glow = "ember" },
 		{ model = "EmberTree", x = 109, z = 1780, height = 30, yaw = 20, glow = "ember" },
-		{ model = "EmberTree", x = -227, z = 1670, height = 26, yaw = 120, glow = "ember" },
-		{ model = "EmberTree", x = -227, z = 1730, height = 28, yaw = 240, glow = "ember" },
+		{ model = "EmberTree", x = -227, z = 1673, height = 26, yaw = 120, glow = "ember" },
+		{ model = "EmberTree", x = -228, z = 1732, height = 28, yaw = 240, glow = "ember" },
 		{ model = "EmberTree", x = -227, z = 1780, height = 24, yaw = 0, glow = "ember" },
-		{ model = "EmberTree", x = -185, z = 1784, height = 26, yaw = 200, glow = "ember" },
+		{ model = "EmberTree", x = -186, z = 1784, height = 26, yaw = 200, glow = "ember" },
 		{ model = "CharredTree", x = -165, z = 1797, height = 18, yaw = 60 },
-		{ model = "CharredTree", x = -80, z = 1550, height = 16, yaw = 110 },
+		{ model = "CharredTree", x = -80, z = 1549, height = 16, yaw = 110 },
 		{ model = "EmberTree", x = 0, z = 1550, height = 24, yaw = 230, glow = "ember" },
-		{ model = "CharredTree", x = 60, z = 1550, height = 18, yaw = 350 },
+		{ model = "CharredTree", x = 61, z = 1548, height = 18, yaw = 350 },
 	},
 	MOUNTAINS = {
 		-- snowy ranges south of the Meadow, west of the Caves and east of the Meadow
