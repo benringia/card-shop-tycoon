@@ -284,9 +284,9 @@ return {
 	-- cave mouth are the landmark; `clear` keeps spawn spots off them), glowing plant and flower tufts in patches along the
 	-- trail, mossy rocks (today's rocks, same places)
 	MUSHROOMS = {
-		-- the landmark: the four biggest by the cave mouth, under the rock shelf (kept below its underside, y 42)
-		{ model = "GlowMushroomTall", x = -428, z = 1386, height = 24, yaw = 20, glow = "teal", clear = 12 },
-		{ model = "GlowMushroomTall", x = -427, z = 1458, height = 22, yaw = 200, glow = "purple", clear = 11 },
+		-- the landmark: the four biggest by the cave mouth, under the rock shelf (kept below its drawn underside, y 40)
+		{ model = "GlowMushroomTall", x = -428, z = 1386, height = 21, yaw = 20, glow = "teal", clear = 11 },
+		{ model = "GlowMushroomTall", x = -427, z = 1458, height = 20, yaw = 200, glow = "purple", clear = 10 },
 		{ model = "GlowMushroomTall", x = -412, z = 1374, height = 22, yaw = 80, glow = "purple", clear = 11 },
 		{ model = "GlowMushroomTall", x = -410, z = 1470, height = 21, yaw = 290, glow = "teal", clear = 10 },
 		-- more giants along the cliffs
@@ -426,7 +426,8 @@ return {
 		ember = { 255, 100, 25 }, -- redder than it looks: Neon and bloom push it toward yellow
 	},
 	-- The ridge's crystal clusters (code-built like the Caves' CRYSTAL_LOOK ones), red with orange tips
-	EMBER_CRYSTAL_LOOK = { color = { 255, 70, 40 }, tip = { 255, 170, 70 }, transparency = 0.12 },
+	-- (not `solid`: they neither block players nor catch the camera, like the round's other small pieces)
+	EMBER_CRYSTAL_LOOK = { color = { 255, 70, 40 }, tip = { 255, 170, 70 }, transparency = 0.12, solid = false },
 	-- Invisible upright cylinders that stop players at a big piece (shares of the spot's height: `radius`, `height`; one
 	-- in the middle, or one at each `spread` offset along the piece's own X, so an arch's legs block and its gap doesn't)
 	COLLIDERS = {
@@ -436,6 +437,8 @@ return {
 		MossRockB = { radius = 0.45, height = 0.8 },
 		RuinArch = { radius = 0.12, height = 1, spread = { -0.38, 0.38 } },
 		RuinPillar = { radius = 0.12, height = 1 },
+		RuinPillarBroken = { radius = 0.18, height = 0.8 },
+		StandingStone = { radius = 0.2, height = 1 }, -- the Meadow's stone circle (solid in the arenas too)
 		RuinWall = { radius = 0.4, height = 1, spread = { -0.9, 0, 0.9 } },
 		EmberTree = { radius = 0.06, height = 0.7 },
 		DragonSkeleton = { radius = 0.3, height = 0.5, spread = { -1, 0, 1 } },

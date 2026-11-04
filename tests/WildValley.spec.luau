@@ -328,11 +328,55 @@ return {
 	end,
 
 	["colliders are thin shares of a piece"] = function()
-		for _, name in { "GlowMushroomTall", "GlowMushroomCluster", "MossRockA", "MossRockB", "RuinArch", "RuinPillar", "RuinWall", "EmberTree", "DragonSkeleton" } do
+		for _, name in { "GlowMushroomTall", "GlowMushroomCluster", "MossRockA", "MossRockB", "RuinArch", "RuinPillar", "RuinPillarBroken", "RuinWall", "StandingStone", "EmberTree", "DragonSkeleton" } do
 			local share = valley.COLLIDERS[name]
 			expect.equal(share ~= nil, true, `{name} has a collider`)
 			expect.equal(share.radius > 0 and share.radius <= 0.5, true, `{name} collider radius share`)
 			expect.equal(share.height > 0 and share.height <= 1, true, `{name} collider height share`)
+		end
+	end,
+
+	-- The scenery round's final review: tall pieces block players (the Meadow's landmark stones were walk-through)
+	["every tall dressed piece blocks players"] = function()
+		local dressed = {}
+		for _, name in { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON" } do
+			for _, spot in valley[name] do
+				table.insert(dressed, spot)
+			end
+		end
+		local circle = valley.STONE_CIRCLE
+		for _, spot in WildValley.ring(circle, circle.radius, circle.count, circle) do
+			table.insert(dressed, spot)
+		end
+		for _, spot in dressed do
+			if spot.height >= 6 then
+				assert(valley.COLLIDERS[spot.model] ~= nil, `{spot.model} at {spot.x}, {spot.z} ({spot.height} tall) has no collider`)
+			end
+		end
+	end,
+
+	-- ... and the ridge's crystals neither block nor catch the camera (the gorge's old blue ones stay as they were)
+	["the ridge's crystals neither block nor catch the camera"] = function()
+		expect.equal(valley.EMBER_CRYSTAL_LOOK.solid, false)
+	end,
+
+	-- ... and nothing pokes into an overhang (its drawn underside sits SURFACE_LIFT below the fill's bottom); a piece's
+	-- reach is about 0.45 of its height (a giant mushroom's cap)
+	["pieces under an overhang stay below its drawn underside"] = function()
+		for _, op in valley.TERRAIN do
+			if op.overhang then
+				local size = op.size :: any
+				local underside = op.y - size.y / 2 - valley.SURFACE_LIFT
+				for _, spot in WildValley.scenery(valley) do
+					local reach = spot.height * 0.45
+					local overX = math.abs(spot.x - op.x) <= size.x / 2 + reach
+					local overZ = math.abs(spot.z - op.z) <= size.z / 2 + reach
+					if overX and overZ then
+						local top = (TownTerrain.groundAt(OPS, spot.x, spot.z) :: number) + spot.height
+						assert(top <= underside, `{spot.model or "piece"} at {spot.x}, {spot.z} reaches {top}, the overhang's underside draws at {underside}`)
+					end
+				end
+			end
 		end
 	end,
 

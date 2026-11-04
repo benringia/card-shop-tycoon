@@ -383,7 +383,10 @@ local function buildCrystalCluster(folder: Instance, spot: any, given: any?)
 		local lean = CFrame.Angles(math.rad(shape[3]), math.rad(shape[4]), 0)
 		local crystal = piece(folder, "GorgeCrystal", Vector3.new(height * 0.4, height, height * 0.4), base * CFrame.new(shape[2], 0, 0) * lean * CFrame.new(0, height * 0.42, 0) * CFrame.Angles(0, math.rad(45), 0), if index == 1 then color else tip, Enum.Material.Neon)
 		crystal.Transparency = look.transparency
-		crystal.CanCollide = index == 1
+		local solid = look.solid ~= false -- a look that isn't solid neither blocks players nor catches the camera
+		crystal.CanCollide = solid and index == 1
+		crystal.CanQuery = solid
+		crystal.CanTouch = solid
 		crystal.CastShadow = false
 	end
 end
