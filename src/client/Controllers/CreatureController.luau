@@ -489,11 +489,12 @@ function CreatureController.GetRootForBeast(beastId: string): (BasePart?, number
 	return nil, nil
 end
 
--- A fight pose on the creature drawn on this marker (charge, strike, combo, cast)
-function CreatureController.Pose(marker: BasePart, kind: string)
+-- A fight pose on the creature drawn on this marker (charge, strike, combo, cast, a Pet button move's pose); amount:
+-- how big (its grade, Config/MoveFx POSE_AMOUNT; 1 when nil)
+function CreatureController.Pose(marker: BasePart, kind: string, amount: number?)
 	local creature = creatures[marker]
 	if creature then
-		CreatureVisuals.pose(creature.body, kind, os.clock())
+		CreatureVisuals.pose(creature.body, kind, os.clock(), amount)
 	end
 end
 

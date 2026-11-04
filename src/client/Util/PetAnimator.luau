@@ -19,6 +19,7 @@ export type Rig = {
 	fidget: string?,
 	fidgetStart: number,
 	fidgetLength: number,
+	fidgetAmount: number?, -- a fight pose's size (PetRig.body amount); nil for idle fidgets
 	side: number,
 	tailPhase: number,
 	flying: boolean,
@@ -202,7 +203,7 @@ function PetAnimator.bodyPose(rig: Rig, now: number): PetRig.Body
 	if not rig.fidget then
 		return { lift = 0, yaw = 0, roll = 0, pitch = 0, forward = 0 }
 	end
-	return PetRig.body(Party.PET_ANIM, rig.fidget, (now - rig.fidgetStart) / rig.fidgetLength, rig.side, true)
+	return PetRig.body(Party.PET_ANIM, rig.fidget, (now - rig.fidgetStart) / rig.fidgetLength, rig.side, true, rig.fidgetAmount)
 end
 
 -- The playing fidget's effect, once, when it's due (Util/SignatureFx draws it); nil otherwise
@@ -220,9 +221,11 @@ function PetAnimator.flapLift(rig: Rig): number
 	return if rig.flying then PetRig.flapLift(Party.PET_ANIM, rig.flapPhase) else 0
 end
 
--- Starts this fidget now (a boss's intro roar), whatever was playing; its effect cues afresh
-function PetAnimator.play(rig: Rig, kind: string, now: number)
+-- Starts this fidget now (a boss's intro roar), whatever was playing; its effect cues afresh. amount: how big (a Pet
+-- button move's grade; 1 when nil)
+function PetAnimator.play(rig: Rig, kind: string, now: number, amount: number?)
 	rig.fidget = kind
+	rig.fidgetAmount = amount
 	rig.cued = false
 	rig.fidgetStart = now
 	rig.fidgetLength = Party.PET_ANIM.FIDGET_SECONDS[kind] or 2
@@ -255,6 +258,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 			kind = signature.fidget
 		end
 		rig.fidget = kind
+		rig.fidgetAmount = nil
 		rig.cued = false
 		rig.fidgetStart = now
 		rig.fidgetLength = cfg.FIDGET_SECONDS[kind] or 2

@@ -14,6 +14,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
+local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"))
+local MoveFxRules = require(Shared:WaitForChild("Util"):WaitForChild("MoveFxRules"))
 local AttackTiming = require(Shared:WaitForChild("Util"):WaitForChild("AttackTiming"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local MonsterMoves = require(Shared:WaitForChild("Util"):WaitForChild("MonsterMoves"))
@@ -31,7 +33,7 @@ export type Resolve = {
 	marker: (id: string) -> BasePart?, -- a fighter's marker by sim id
 	creature: (marker: BasePart) -> View?, -- the creature drawn on it (nil: a monster or boss, not handled here)
 	setCharging: (marker: BasePart, seconds: number) -> (),
-	pose: (marker: BasePart, kind: string) -> (),
+	pose: (marker: BasePart, kind: string, amount: number?) -> (), -- amount: how big (1 when nil)
 	dash: (marker: BasePart, toward: Vector3, share: number, seconds: number) -> (),
 	-- The boss or monster drawn on a marker, and playing its clips (nil: no monsters here, PvP)
 	monster: ((marker: BasePart) -> MonsterView?)?,
@@ -297,10 +299,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 		local seconds = math.max(0.1, tonumber(event.seconds) or 0.5)
 		local tint = color(spec.color)
+		-- The four finished Pet button moves wind up bigger with grade (Config/MoveFx WINDUP, POSE_AMOUNT)
+		local grade = MoveFxRules.grade(view.grade, Extras.enabled(), MoveFxConfig)
+		local finished = MoveFxConfig.POSES[event.kind] ~= nil
+		local windup = if finished then MoveFxConfig.WINDUP[grade] else { glow = 1.7, ring = 1 }
 		resolve.setCharging(marker, seconds)
-		resolve.pose(marker, "charge")
-		ElementFx.chargeGlow(view.root, tint, seconds, 1.7)
-		ElementFx.castRing(view.root.Position - Vector3.new(0, view.height * 0.45, 0), tint, math.max(2, view.height * 0.8), seconds)
+		resolve.pose(marker, "charge", if finished then MoveFxConfig.POSE_AMOUNT[grade] else nil)
+		ElementFx.chargeGlow(view.root, tint, seconds, windup.glow)
+		ElementFx.castRing(view.root.Position - Vector3.new(0, view.height * 0.45, 0), tint, math.max(2, view.height * 0.8) * windup.ring, seconds)
 		ElementFx.callout(view.root, view.height * 0.6, `{string.upper(MOVE_NAMES[event.kind] or event.kind)}!`, tint, seconds)
 		ElementFx.sound(AttackFx.SOUNDS.charge, view.root.Position)
 	end
@@ -317,7 +323,13 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
 		local target = targetPosition(event.to, caster)
 		local tint = color(spec.color)
-		resolve.pose(marker, "cast")
+		local movePose = MoveFxConfig.POSES[event.kind]
+		if movePose then
+			local grade = MoveFxRules.grade(view.grade, Extras.enabled(), MoveFxConfig)
+			resolve.pose(marker, movePose, MoveFxConfig.POSE_AMOUNT[grade])
+		else
+			resolve.pose(marker, "cast")
+		end
 		ElementFx.sound(AttackFx.SPECIAL_SOUND, caster)
 		hitSound(view.element, target)
 		ElementFx.sound(AttackFx.SOUNDS.big[view.element] or AttackFx.SOUNDS.boom, target, 0.6)
