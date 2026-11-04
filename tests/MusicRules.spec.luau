@@ -82,9 +82,9 @@ return {
 			meadow = { "rbxassetid://1838420686", 0.005 }, -- Woodland Walk (classical solo guitar)
 			gorge = { "rbxassetid://1842181702", 0.01 }, -- Calm Waters (solo guitar)
 			ridge = { "rbxassetid://1842276365", 0.005 }, -- Air Currents (classical solo guitar)
-			warden = { "rbxassetid://1845205138", 0.1 }, -- Forest Chase
-			brood = { "rbxassetid://1841360723", 0.13 }, -- Creepy Crawlers
-			colossus = { "rbxassetid://96625587462633", 0.1 }, -- Giant's Grave
+			warden = { "rbxassetid://1845205138", 0.006 }, -- Forest Chase (owner 2026-11-05: down from 0.1)
+			brood = { "rbxassetid://1841360723", 0.008 }, -- Creepy Crawlers (down with the warden, keeping its lift over it)
+			colossus = { "rbxassetid://96625587462633", 0.006 }, -- Giant's Grave (down with the warden)
 		}
 		for key, pick in picks do
 			local place = MusicRules.find(Music, key)

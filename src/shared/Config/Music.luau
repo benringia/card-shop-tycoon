@@ -111,7 +111,7 @@ return {
 					option("Battle Of Wonderland (epic fantasy)", "1845108839"),
 					option("Combat Of Giants (epic adventure trailer)", "1839391532"),
 				},
-				volume = 0.1,
+				volume = 0.006, -- owner 2026-11-05 (down from 0.1)
 			},
 			{
 				key = "brood", -- the Cave Brood Queen's hollow: dark and creepy
@@ -122,7 +122,7 @@ return {
 					option("Ghastly Unknown (dark fantasy underscore)", "1843501883"),
 					option("The Dark Walk (epic battle)", "119847251210739"),
 				},
-				volume = 0.13,
+				volume = 0.008, -- down with the warden (2026-11-05), keeping its lift over it
 			},
 			{
 				key = "colossus", -- the Ember Colossus' lava field: big and fiery
@@ -133,7 +133,7 @@ return {
 					option("The Heroic Battle of Giants (symphonic metal)", "9039352479"),
 					option("Fuel to the Fire (distorted eruption)", "1837843587"),
 				},
-				volume = 0.1,
+				volume = 0.006, -- down with the warden (2026-11-05)
 			},
 		},
 		fade = 2.5, -- seconds to crossfade from one place's music to the next
