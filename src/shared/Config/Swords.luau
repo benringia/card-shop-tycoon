@@ -37,10 +37,12 @@ local SWORDS: { [string]: Sword } = {
 		animations = {
 			draw = "rbxassetid://94917864223617",
 			sheath = "rbxassetid://96323080543778",
-			cut1 = "rbxassetid://117193257551574",
-			cut2 = "rbxassetid://109733338724474",
-			cut3 = "rbxassetid://103561363458410",
-			skill = "rbxassetid://95229782715567",
+			-- The sword-moves round (spec 2026-11-04-sword-moves-design): empty until the owner saves the new
+			-- KeyframeSequences to Roblox (Studio plays them unpublished, SwordAnims); then their ids go here
+			cut1 = "",
+			cut2 = "",
+			cut3 = "",
+			skill = "",
 			dodge = "rbxassetid://110055662976350",
 			flinch = "rbxassetid://91049639458737",
 			down = "rbxassetid://117813163577525",
