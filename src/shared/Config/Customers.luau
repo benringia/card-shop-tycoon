@@ -32,6 +32,9 @@ return {
 	BUBBLE_GAVE_UP = "⌛", -- waited too long in the queue
 	BUBBLE_HAPPY = "Happy", -- paid at the register
 	BUBBLE_DISAPPOINTED = "Thinking", -- a collector who didn't find their card at their price
+	BUBBLE_REFUSE = "🙅", -- a kid turning down your counter
+	OFFER_ACTION_COOLDOWN = 0.25, -- seconds between an owner's answers to an offer (OfferAction)
+	OFFER_CHECK_INTERVAL = 0.5, -- seconds between checks for unanswered offers running out
 
 	PATH_AGENT = {
 		AgentRadius = 2,
@@ -69,7 +72,9 @@ return {
 	TYPE_ORDER = { "plain", "kid", "collector", "bargain", "bigSpender" },
 	-- A kid buys this many of the cheapest pack; a big spender the booster box when stocked (else this many packs) and
 	-- tips `tip` of the total when every price is at or under market
-	KID = { units = { 1, 2 } },
+	-- Kids buy 1-2 of the cheapest pack and rip one at the counter: everyone sees the reveal for revealSeconds before
+	-- they leave or offer the card (OfferService)
+	KID = { units = { 1, 2 }, revealSeconds = 3 },
 	BIG_SPENDER = { box = "FirstSparkBox", packs = { 6, 12 }, tip = 0.1 },
 	-- Collectors want one card: ownedShare of the time one you own, else any card weighted by rarity (per card);
 	-- they pay up to premium x its worth

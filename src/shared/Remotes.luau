@@ -16,6 +16,11 @@ local NAMES = {
 	"SetPrices", -- client → server: ({ [productId: string]: number })
 	"CheckoutUpdate", -- server → client: (total: number?, remaining: number) nil total = checkout over
 	"Charge", -- client → server: take payment for the fully scanned checkout
+	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
+	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
+	-- triesLeft }
+	"OfferUpdate",
+	"OfferAction", -- client → server: (id: number, action: "accept"|"counter"|"decline", price: number?)
 	"LevelUp", -- server → client: (level: number)
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
@@ -113,6 +118,8 @@ return {
 	SetPrices = remotes.SetPrices,
 	CheckoutUpdate = remotes.CheckoutUpdate,
 	Charge = remotes.Charge,
+	OfferUpdate = remotes.OfferUpdate,
+	OfferAction = remotes.OfferAction,
 	LevelUp = remotes.LevelUp,
 	DropBox = remotes.DropBox,
 	RemoveStock = remotes.RemoveStock,

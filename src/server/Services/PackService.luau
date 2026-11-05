@@ -219,6 +219,12 @@ function PackService.OpenItemPack(player: Player, productId: string): boolean
 end
 
 -- Studio testing only (called by DevService): a normal roll with a foil legendary in the hit slot
+-- A pack a customer bought and rips at the counter: the same odds, no pity (it isn't a player's pack), nothing delivered
+function PackService.RollForCustomer(productId: string): { PullResult }
+	local pack = Packs.ById[productId]
+	return if pack then rollPack(pack) else {}
+end
+
 function PackService.OpenTestPack(player: Player)
 	local productId = "FirstSparkPack"
 	local results = rollPack(Packs.ById[productId])

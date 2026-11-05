@@ -2,11 +2,16 @@
 -- Checkout at the register: the front customer's items appear on the counter, the owner taps each
 -- one to scan it, then charges the total. A cashier worker (JobService) can do the same through the
 -- Worker API below; both end in completeSale. Cash and XP go through EconomyService.
+-- A bargain hunter, once everything is scanned, offers under the total instead (Util/HaggleRules): the owner answers
+-- through OfferService (OnHaggle / SettleHaggle); a cashier settles halfway. After each sale OnSaleCompleted fires
+-- (a kid rips their pack there).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RegisterConfig = require(Shared:WaitForChild("Config"):WaitForChild("Register"))
+local CustomerConfig = require(Shared:WaitForChild("Config"):WaitForChild("Customers"))
+local HaggleRules = require(Shared:WaitForChild("Util"):WaitForChild("HaggleRules"))
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Packs = require(Shared:WaitForChild("Config"):WaitForChild("Packs"))
 local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
@@ -31,7 +36,12 @@ type Checkout = {
 	remaining: number,
 	count: number, -- items at the start of checkout
 	total: number, -- sum of scanned items
+	haggleOffer: number?, -- a bargain hunter's offer once everything is scanned
+	haggling: boolean, -- the owner is answering that offer (OfferService)
 }
+
+type HaggleCallback = (plot: Plot, customer: Customer, offer: number, total: number) -> ()
+type SaleCallback = (customer: Customer, bought: { [string]: number }, byWorker: boolean) -> ()
 
 local RegisterService = {}
 
@@ -41,6 +51,9 @@ local FACE_UP = CFrame.fromMatrix(Vector3.zero, Vector3.new(-1, 0, 0), Vector3.n
 local checkouts: { [Plot]: Checkout } = {}
 local allowScan = RateLimiter.new(RegisterConfig.SCAN_COOLDOWN)
 local allowCharge = RateLimiter.new(RegisterConfig.CHARGE_COOLDOWN)
+local rng = Random.new()
+local haggleCallbacks: { HaggleCallback } = {}
+local saleCallbacks: { SaleCallback } = {}
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -89,8 +102,20 @@ local function endCheckout(plot: Plot)
 	end
 end
 
+-- The owner answers a bargain hunter's offer (OfferService opens the panel); Charge waits until it's settled
+local function openHaggle(plot: Plot, checkout: Checkout)
+	local offer = checkout.haggleOffer
+	if not offer or checkout.haggling then
+		return
+	end
+	checkout.haggling = true
+	for _, callback in haggleCallbacks do
+		task.spawn(callback, plot, checkout.customer, offer, checkout.total)
+	end
+end
+
 -- Scans one counter item: shared by the owner's taps and a cashier worker
-local function scanItem(plot: Plot, checkout: Checkout, part: BasePart)
+local function scanItem(plot: Plot, checkout: Checkout, part: BasePart, byWorker: boolean)
 	local unitPrice = checkout.pending[part]
 	if not unitPrice then
 		return
@@ -102,13 +127,27 @@ local function scanItem(plot: Plot, checkout: Checkout, part: BasePart)
 	checkout.customer.lastScanAt = os.clock()
 	playScanSound(plot)
 	sendUpdate(checkout)
+	-- All scanned: a bargain hunter makes their offer (to the owner now; a cashier settles it when charging)
+	if checkout.remaining == 0 and checkout.customer.kind == "bargain" and not checkout.haggleOffer then
+		checkout.haggleOffer = HaggleRules.offer(CustomerConfig, checkout.total, rng:NextNumber())
+		if not byWorker then
+			openHaggle(plot, checkout)
+		end
+	end
 end
 
--- Charges a fully scanned checkout: shared by the owner and a cashier worker
-local function completeSale(checkout: Checkout)
+-- Charges a fully scanned checkout at `total` (the scanned total, or a haggled price): shared by the owner and a
+-- cashier worker
+local function completeSale(checkout: Checkout, total: number, byWorker: boolean)
 	local customer = checkout.customer
 	local owner = customer.owner
-	local total = checkout.total
+	local bought: { [string]: number } = {}
+	for _, item in customer.items do
+		local productId = item.productId
+		if productId then
+			bought[productId] = (bought[productId] or 0) + item.units
+		end
+	end
 	endCheckout(customer.plot)
 	CustomerService.CompletePurchase(customer)
 	if total > 0 then
@@ -118,6 +157,9 @@ local function completeSale(checkout: Checkout)
 	DataService.AddStat(owner, "customersServed", 1)
 	DataService.AddStat(owner, "totalEarned", total)
 	Remotes.Notify:FireClient(owner, string.format("Sale! +$%.2f", total), false, "side")
+	for _, callback in saleCallbacks do
+		task.spawn(callback, customer, bought, byWorker)
+	end
 end
 
 local function onScan(player: Player, plot: Plot, part: BasePart)
@@ -136,7 +178,7 @@ local function onScan(player: Player, plot: Plot, part: BasePart)
 		notify(player, "Stand behind the register to scan.", true)
 		return
 	end
-	scanItem(plot, checkout, part)
+	scanItem(plot, checkout, part, false)
 end
 
 -- What a counter item looks like: a pack or deck box shows its 3D model (Util/PackModels) lying face up inside the
@@ -194,7 +236,7 @@ local function startCheckout(customer: Customer)
 		end
 	end
 
-	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0 }
+	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0, haggling = false }
 	checkouts[plot] = checkout
 
 	local register = plot.register
@@ -229,20 +271,7 @@ local function startCheckout(customer: Customer)
 	sendUpdate(checkout)
 end
 
-local function onCharge(player: Player)
-	if not allowCharge(player) then
-		return
-	end
-	local checkout: Checkout? = nil
-	for _, candidate in checkouts do
-		if candidate.customer.owner == player then
-			checkout = candidate
-			break
-		end
-	end
-	if not checkout then
-		return
-	end
+local function chargeAsOwner(player: Player, checkout: Checkout)
 	if checkout.remaining > 0 then
 		notify(player, "Scan every item first.", true)
 		return
@@ -251,7 +280,27 @@ local function onCharge(player: Player)
 		notify(player, "Stand behind the register to charge.", true)
 		return
 	end
-	completeSale(checkout)
+	-- A bargain hunter answers Charge with their offer (a cashier scanned the last item before the owner stepped in)
+	if checkout.haggling then
+		notify(player, "Answer their offer first.", true)
+		return
+	elseif checkout.haggleOffer then
+		openHaggle(checkout.customer.plot, checkout)
+		return
+	end
+	completeSale(checkout, checkout.total, false)
+end
+
+local function onCharge(player: Player)
+	if not allowCharge(player) then
+		return
+	end
+	for _, checkout in checkouts do
+		if checkout.customer.owner == player then
+			chargeAsOwner(player, checkout)
+			return
+		end
+	end
 end
 
 local function onCustomerLeftQueue(customer: Customer)
@@ -281,18 +330,60 @@ function RegisterService.ScanNext(plot: Plot): boolean
 	if not checkout or not part then
 		return false
 	end
-	scanItem(plot, checkout, part)
+	scanItem(plot, checkout, part, true)
 	return true
 end
 
--- Charges the checkout once every item is scanned; false if there's nothing to charge
+-- Charges the checkout once every item is scanned; false if there's nothing to charge. A cashier meets a bargain
+-- hunter halfway between their offer and the total, and they take it.
 function RegisterService.ChargeByWorker(plot: Plot): boolean
 	local checkout = checkouts[plot]
 	if not checkout or checkout.remaining > 0 then
 		return false
 	end
-	completeSale(checkout)
+	local offer = checkout.haggleOffer
+	completeSale(checkout, if offer then HaggleRules.cashierPrice(offer, checkout.total) else checkout.total, true)
 	return true
+end
+
+-- The owner's answer to a bargain hunter's offer (OfferService): the price agreed, or nil for no deal (they put their
+-- items back and leave). False when no haggle is open at this register.
+function RegisterService.SettleHaggle(plot: Plot, price: number?): boolean
+	local checkout = checkouts[plot]
+	if not checkout or not checkout.haggling then
+		return false
+	end
+	if price then
+		completeSale(checkout, price, false)
+	else
+		endCheckout(plot)
+		CustomerService.Refuse(checkout.customer)
+	end
+	return true
+end
+
+-- Studio's /serve: scans everything on the counter and presses Charge, as the owner (they must stand behind it)
+function RegisterService.ServeForTest(player: Player): boolean
+	local plot = PlotService.GetPlot(player)
+	local checkout = if plot then checkouts[plot] else nil
+	if not plot or not checkout then
+		return false
+	end
+	for part in table.clone(checkout.pending) do
+		scanItem(plot, checkout, part, false)
+	end
+	chargeAsOwner(player, checkout)
+	return true
+end
+
+-- A bargain hunter made an offer the owner should answer
+function RegisterService.OnHaggle(callback: HaggleCallback)
+	table.insert(haggleCallbacks, callback)
+end
+
+-- After every sale, with what the customer bought (product id -> units) and whether a cashier rang it up
+function RegisterService.OnSaleCompleted(callback: SaleCallback)
+	table.insert(saleCallbacks, callback)
 end
 
 function RegisterService.IsOwnerAtRegister(player: Player, plot: Plot): boolean

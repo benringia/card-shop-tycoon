@@ -351,6 +351,22 @@ is over UI (`UIKit.pointerBlocked`).
   target); other products are a box in the product's colour.
 - Payment: cash (make change, later feature) or card (instant). MVP = one tap to confirm total.
 - Later: hire a cashier to automate.
+- **Kid offers** (`OfferService`, `Util/OfferRules`, `Config/Customers` OFFER): after paying, a kid rips one of their
+  packs at the counter (same odds, no pity: `PackService.RollForCustomer`; model attribute `Pulled` for everyone's
+  reveal) and stays there `KID.revealSeconds`. A Very Rare or better pull may be offered to the owner (chance Very Rare
+  40%, Epic 30%, Legendary 30%, times the grade: C 1.15, B 1.0, A 0.85, S 0.7) when the owner rang the sale up from
+  behind the register (never through a cashier) and the shop is under the ceilings (at most 4 offers an hour, no two
+  Legendary offers within 3 hours, per session). The kid asks 90-100% of the card's worth and takes 75-90% (hidden).
+  The owner accepts (pays the asking price), counters (half the worth up to the asking price, steps of 5% of the
+  worth; at or over their lowest buys it, under costs one of two tries) or declines; unanswered for 25 s the kid
+  leaves with the card. The face the client shows comes from edges 5% of the worth around the lowest, so the lowest
+  never reaches the client.
+- **Haggling** (`Util/HaggleRules`, HAGGLE): once a bargain hunter's items are all scanned, they offer 10-25% under
+  the total instead of paying (Charge says "Answer their offer first."). Deal pays their offer; a counter (their
+  offer up to the total) is paid if it's at or under their hidden ceiling (40-80% of the way back up), otherwise, on
+  No or after 25 s, they put everything back and leave annoyed. A cashier meets them halfway and they take it.
+- Answers come through `OfferAction` (rate-limited, only the open offer's id, only from behind the register, a counter
+  only inside the range the server worked out); the open offer reaches the owner through `OfferUpdate`.
 
 ### 4.7 Shop level & rating
 - **Shop XP** from every sale. Levels unlock new products, shelves, expansions.

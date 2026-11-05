@@ -60,6 +60,8 @@ export type Customer = {
 	alive: boolean,
 	thread: thread?,
 	lastScanAt: number?, -- set by RegisterService on each scan; switches to checkout patience
+	heldUntil: number?, -- a kid who paid stays at the counter until then (the rip reveal, an open offer: OfferService)
+	inHand: boolean?, -- Studio's /customer only: arrives holding its list (no shelf stock used, nothing put back)
 }
 
 type CustomerCallback = (customer: Customer) -> ()
@@ -592,10 +594,21 @@ local function waitInQueue(customer: Customer)
 		return if lastScanAt then lastScanAt + CustomerConfig.CHECKOUT_PATIENCE else queueDeadline
 	end
 
-	while customer.alive and os.clock() < getDeadline() do
+	while customer.alive do
 		local index = table.find(state.queue, customer)
 		if not index then
 			return -- served by CompletePurchase
+		end
+		-- A kid who paid stays at the counter (rip, offer) until released or the hold runs out
+		local held = customer.heldUntil
+		if held then
+			if os.clock() >= held then
+				customer.heldUntil = nil
+				removeFromQueue(customer)
+				return
+			end
+		elseif os.clock() >= getDeadline() then
+			break
 		end
 		-- Step forward as people ahead leave
 		local target = getQueuePoint(customer.plot, index)
@@ -606,7 +619,7 @@ local function waitInQueue(customer: Customer)
 			customer.humanoid:MoveTo(target)
 		else
 			faceRegister(customer)
-			if index == 1 then
+			if index == 1 and not held then
 				-- Fired every check while waiting at the counter; RegisterService ignores repeats
 				runCallbacks(reachedCounterCallbacks, customer)
 			end
@@ -629,6 +642,17 @@ local function run(customer: Customer)
 	local icon = (CustomerConfig.TYPES[customer.kind] or {}).icon
 	if icon then
 		showBubble(customer, icon)
+	end
+	if customer.inHand then
+		-- No shelf: restoreItems finds none, so these never land on the owner's shelves
+		for productId, units in pickShoppingList(customer.owner, customer.kind) do
+			table.insert(customer.items, { shelfUid = "", productId = productId, units = units, unitPrice = PricingService.GetPrice(customer.owner, productId) })
+		end
+		waitInQueue(customer)
+		if customer.alive then
+			leaveShop(customer)
+		end
+		return
 	end
 	for productId, wanted in pickShoppingList(customer.owner, customer.kind) do
 		if not shopFor(customer, productId, wanted, visited) then
@@ -700,7 +724,7 @@ local function pickWanted(owner: Player): string
 end
 
 -- forcedKind / forcedWanted: Studio's /customer command only
-local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forcedKind: string?, forcedWanted: string?)
+local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forcedKind: string?, forcedWanted: string?, inHand: boolean?)
 	local entry = getEntryCFrame(plot)
 	local kind = forcedKind
 		or CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
@@ -720,6 +744,7 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forced
 		owner = owner,
 		kind = kind,
 		wanted = wanted,
+		inHand = inHand,
 		model = model,
 		humanoid = humanoid,
 		root = root,
@@ -819,18 +844,55 @@ function CustomerService.CompletePurchase(customer: Customer)
 		Remotes.Notify:FireClient(customer.owner, string.format("Tip! +$%.2f", tip), false, "side")
 	end
 	table.clear(customer.items)
-	removeFromQueue(customer)
+	-- A kid stays at the counter to rip a pack (OfferService); everyone else heads out
+	if customer.kind == "kid" then
+		customer.heldUntil = os.clock() + CustomerConfig.KID.revealSeconds
+	else
+		removeFromQueue(customer)
+	end
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
 	fireOutcome(customer.owner, "paid")
 end
 
+-- Keeps a customer who's still at the counter there for `seconds` more (a kid's open offer)
+function CustomerService.HoldAtCounter(customer: Customer, seconds: number)
+	if customer.alive and table.find(getPlotState(customer.plot).queue, customer) then
+		customer.heldUntil = os.clock() + seconds
+	end
+end
+
+-- Lets a held customer go: they leave the counter and the shop
+function CustomerService.ReleaseFromCounter(customer: Customer)
+	customer.heldUntil = nil
+	removeFromQueue(customer)
+end
+
+-- The customer won't pay (a haggle with no deal): their items go back on the shelves and they leave annoyed
+function CustomerService.Refuse(customer: Customer)
+	if not customer.alive then
+		return
+	end
+	restoreItems(customer)
+	removeFromQueue(customer)
+	showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+	fireOutcome(customer.owner, "annoyed")
+end
+
+-- A mood icon over a customer (Config/UIIcons name or text), for OfferService's reactions
+function CustomerService.ShowBubble(customer: Customer, icon: string)
+	if customer.alive then
+		showBubble(customer, icon)
+	end
+end
+
 -- Studio's /customer command: a customer of this type now (a collector wanting `wanted` when given)
-function CustomerService.SpawnForTest(owner: Player, kind: string, wanted: string?): boolean
+-- inHand: it arrives holding its shopping list instead of taking stock off the shelves (testing with empty shelves)
+function CustomerService.SpawnForTest(owner: Player, kind: string, wanted: string?, inHand: boolean?): boolean
 	local plot = PlotService.GetPlot(owner)
 	if not plot or not CustomerConfig.TYPES[kind] then
 		return false
 	end
-	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), kind, wanted)
+	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), kind, wanted, inHand)
 	return true
 end
 

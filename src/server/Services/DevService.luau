@@ -9,7 +9,10 @@
 -- /boss <n> [fight|group] (to boss n's arena gate; with fight or group, use that gate prompt there),
 -- /maxcard <name or number> [foil] (one copy at max level, max stars and Grade S), /crowd <0-60> (players counted in
 -- every Wild valley biome on top of the real ones, to see its monsters grow), /customer <type> [card id or number] (a
--- customer of that type now: plain, kid, collector, bargain, bigSpender; a collector wanting that card).
+-- customer of that type now: plain, kid, collector, bargain, bigSpender; a collector wanting that card; a kid whose
+-- rip has a card of that rarity (rare, veryrare, epic, legendary) and who offers it if it's Very Rare or better),
+-- /serve (scan everything on the counter and press Charge, as the owner behind the register). Add "hand" to /customer
+-- and it arrives holding its shopping list (empty shelves; nothing is taken from or put back on them).
 -- Does nothing outside Studio, so live players never get these commands.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -46,6 +49,8 @@ local BattleService = require(Services:WaitForChild("BattleService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local CustomerService = require(Services:WaitForChild("CustomerService"))
+local OfferService = require(Services:WaitForChild("OfferService"))
+local RegisterService = require(Services:WaitForChild("RegisterService"))
 local LevelUpService = require(Services:WaitForChild("LevelUpService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -498,11 +503,22 @@ function DevService.Start()
 		BattleService.TireParty(player)
 	end)
 	addCommand(folder, "elite", spawnElite)
+	addCommand(folder, "serve", function(player)
+		if not RegisterService.ServeForTest(player) then
+			Remotes.Notify:FireClient(player, "Nobody at the register.", true)
+		end
+	end)
+	local KID_RIPS = { rare = "Rare", veryrare = "Very Rare", vr = "Very Rare", epic = "Epic", legendary = "Legendary" }
 	addCommand(folder, "customer", function(player, text)
-		local kind, cardText = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
-		local card = if cardText and cardText ~= "" then (Cards.ById[cardText] or Cards.List[tonumber(cardText) or 0]) else nil
-		if not kind or not CustomerService.SpawnForTest(player, kind, if card then card.id else nil) then
-			Remotes.Notify:FireClient(player, "Usage: /customer <plain|kid|collector|bargain|bigSpender> [card id or number]", true)
+		local kind, extra = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
+		local inHand = string.find(string.lower(text), "%shand") ~= nil
+		local rip = if kind == "kid" and extra then KID_RIPS[string.lower(extra)] else nil
+		if rip then
+			OfferService.ForceNextKidRip(player, rip)
+		end
+		local card = if kind == "collector" and extra and extra ~= "" then (Cards.ById[extra] or Cards.List[tonumber(extra) or 0]) else nil
+		if not kind or not CustomerService.SpawnForTest(player, kind, if card then card.id else nil, inHand) then
+			Remotes.Notify:FireClient(player, "Usage: /customer <plain|kid|collector|bargain|bigSpender> [card for a collector, rarity for a kid]", true)
 		end
 	end)
 	addCommand(folder, "frontierdrop", function(player)
@@ -548,7 +564,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card], /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S]")
 end
 
 return DevService
