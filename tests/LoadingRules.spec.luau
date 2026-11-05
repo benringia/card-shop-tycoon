@@ -1,6 +1,8 @@
 --!strict
 local LoadingRules = require("../src/shared/Util/LoadingRules")
 local LoadingScreen = require("../src/shared/Config/LoadingScreen")
+local WildLoading = require("../src/shared/Config/WildLoading")
+local BinderCovers = require("../src/shared/Config/BinderCovers")
 local CardArt = require("../src/shared/Config/CardArt")
 local expect = require("./lib/expect")
 
@@ -99,5 +101,16 @@ return {
 		expect.equal(table.concat(ids, ","), "c1,c2,c3")
 		expect.equal(#LoadingRules.ownedCardIds({}), 0)
 		expect.equal(#LoadingRules.ownedCardIds("junk" :: any), 0)
+	end,
+	-- The owner (2026-11-05, option B): the join screen in the Wild's feel, the card fan in front of a turning swirl
+	-- over the First Spark cover's sky
+	["the join screen swirls the Wild's spiral over the First Spark cover's sky"] = function()
+		expect.equal(cfg.SWIRL, WildLoading.SWIRL, "the same spiral as the Wild's screen")
+		expect.equal(cfg.BACKDROP, BinderCovers.SETS["First Spark"].art)
+		local rect = cfg.BACKDROP_RECT
+		expect.equal(rect[1] >= 0 and rect[2] >= 0 and rect[1] + rect[3] <= 680 and rect[2] + rect[4] <= 1014, true, "inside the 680 x 1014 painting")
+		expect.equal(rect[2] < 300, true, "its sky: the golden star and the element orbs")
+		expect.equal(cfg.SWIRL_SECONDS[1] > 0 and cfg.SWIRL_SECONDS[2] > 0, true, "both copies turn")
+		expect.equal(#cfg.SWIRL_COLORS, 2)
 	end,
 }

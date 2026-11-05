@@ -1,6 +1,7 @@
 --!strict
--- Builds and runs the loading screen ("card fan", Config/LoadingScreen): three cards fanning out, the title, a slim
--- gold bar, the step, a note for a slow save and a tip. Lives in ReplicatedFirst so it can show from the first frame;
+-- Builds and runs the loading screen ("card fan", Config/LoadingScreen): three cards fanning out in front of two
+-- turning swirls over the First Spark cover's sky (the Wild screen's feel, owner's option B 2026-11-05), the title, a
+-- slim gold bar, the step, a note for a slow save and a tip. Lives in ReplicatedFirst so it can show from the first frame;
 -- the client also hands a copy to TeleportService so teleports show it, and the next place picks that copy up. Works
 -- on the gui's instances by name, so a copy that arrived through a teleport can be driven the same way.
 local TweenService = game:GetService("TweenService")
@@ -23,6 +24,7 @@ local function label(parent: Instance, name: string, font: Enum.Font, size: numb
 	text.AnchorPoint = Vector2.new(0.5, 0)
 	text.Size = UDim2.new(0.9, 0, 0, size + 6)
 	text.TextWrapped = true
+	text.ZIndex = 6 -- over the backdrop and the swirls
 	text.Parent = parent
 	return text
 end
@@ -47,6 +49,52 @@ function LoadingGui.build(cfg: any, images: { string }, firstStep: string): Scre
 	shade.Color = ColorSequence.new(color(cfg.BACKGROUND.top), color(cfg.BACKGROUND.bottom))
 	shade.Parent = back
 
+	-- The cover's sky, dimmed, darker at the top and bottom so the words read; the two swirls round the fan's middle
+	local backdrop = Instance.new("ImageLabel")
+	backdrop.Name = "Backdrop"
+	backdrop.BackgroundTransparency = 1
+	backdrop.Image = cfg.BACKDROP or ""
+	backdrop.ScaleType = Enum.ScaleType.Crop
+	local rect = cfg.BACKDROP_RECT
+	if rect then
+		backdrop.ImageRectOffset = Vector2.new(rect[1], rect[2])
+		backdrop.ImageRectSize = Vector2.new(rect[3], rect[4])
+	end
+	backdrop.ImageTransparency = cfg.BACKDROP_TRANSPARENCY or 0.55
+	backdrop.Size = UDim2.fromScale(1, 1)
+	backdrop.ZIndex = 1
+	backdrop.Parent = back
+	local dim = Instance.new("Frame")
+	dim.Name = "Dim"
+	dim.BackgroundColor3 = color(cfg.BACKGROUND.bottom)
+	dim.Size = UDim2.fromScale(1, 1)
+	dim.ZIndex = 2
+	dim.Parent = back
+	local dimShape = Instance.new("UIGradient")
+	dimShape.Rotation = 90
+	dimShape.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(0.4, 0.9),
+		NumberSequenceKeypoint.new(0.6, 0.85),
+		NumberSequenceKeypoint.new(1, 0.15),
+	})
+	dimShape.Parent = dim
+	for index, name in { "SwirlBack", "Swirl" } do
+		local swirl = Instance.new("ImageLabel")
+		swirl.Name = name
+		swirl.BackgroundTransparency = 1
+		swirl.Image = cfg.SWIRL or ""
+		swirl.ImageColor3 = color(cfg.SWIRL_COLORS[if index == 1 then 2 else 1])
+		swirl.ImageTransparency = if index == 1 then 0.5 else 0.05
+		local size = cfg.SWIRL_SIZE * (if index == 1 then 1.35 else 1)
+		swirl.AnchorPoint = Vector2.new(0.5, 0.5)
+		swirl.Position = UDim2.fromScale(0.5, 0.39)
+		swirl.Size = UDim2.fromScale(size, size)
+		swirl.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		swirl.ZIndex = 2 + index
+		swirl.Parent = back
+	end
+
 	-- The fan: three cards pivoting at their bottom, centred a bit above the middle
 	local fan = Instance.new("Frame")
 	fan.Name = "Fan"
@@ -54,6 +102,7 @@ function LoadingGui.build(cfg: any, images: { string }, firstStep: string): Scre
 	fan.AnchorPoint = Vector2.new(0.5, 1)
 	fan.Position = UDim2.fromScale(0.5, 0.5)
 	fan.Size = UDim2.fromScale(0.09, 0.22)
+	fan.ZIndex = 5
 	fan.Parent = back
 	local fanShape = Instance.new("UIAspectRatioConstraint")
 	fanShape.AspectRatio = 38 / 56
@@ -86,6 +135,7 @@ function LoadingGui.build(cfg: any, images: { string }, firstStep: string): Scre
 	bar.Size = UDim2.new(0.4, 0, 0, 6)
 	bar.BackgroundColor3 = Color3.new(1, 1, 1)
 	bar.BackgroundTransparency = 0.85
+	bar.ZIndex = 6
 	bar.Parent = back
 	local barWidth = Instance.new("UISizeConstraint")
 	barWidth.MaxSize = Vector2.new(360, 6)
@@ -115,11 +165,22 @@ function LoadingGui.build(cfg: any, images: { string }, firstStep: string): Scre
 	return gui
 end
 
--- Swings the side cards out and back forever, and cycles the tips; returns a stop
+-- Swings the side cards out and back forever, turns the swirls, and cycles the tips; returns a stop
 function LoadingGui.animate(gui: ScreenGui, cfg: any): () -> ()
 	local fan = gui:FindFirstChild("Fan", true)
 	local swing = TweenInfo.new(cfg.FAN_SECONDS, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 	local tweens: { Tween } = {}
+	for index, name in { "Swirl", "SwirlBack" } do
+		local swirl = gui:FindFirstChild(name, true)
+		local seconds = if cfg.SWIRL_SECONDS then cfg.SWIRL_SECONDS[index] else nil
+		if swirl and swirl:IsA("GuiObject") and seconds then
+			swirl.Rotation = 0
+			local spin = TweenInfo.new(seconds, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
+			local turn = TweenService:Create(swirl, spin, { Rotation = if index == 1 then 360 else -360 })
+			turn:Play()
+			table.insert(tweens, turn)
+		end
+	end
 	if fan then
 		for index, degrees in { -cfg.FAN_DEGREES, 0, cfg.FAN_DEGREES } do
 			local card = fan:FindFirstChild(`Card{index}`)
