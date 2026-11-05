@@ -13,6 +13,7 @@ local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperF
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
+local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRules"))
 
 local SuperFx = {}
 
@@ -21,8 +22,17 @@ export type View = { root: BasePart, element: string, height: number, grade: str
 -- One warded ally (Tidal Shield, Tidal Blessing): its fighter id, the part its bubble follows, its height and how far
 -- over the part the bubble's centre sits
 export type Ally = { id: string, part: BasePart, height: number, lift: number }
--- extra: what the landing event adds (the shields' warded allies and their seconds)
-export type Extra = { allies: { Ally }?, seconds: number? }
+-- extra: what the landing event adds: Tidal Shield's warded allies and their seconds; Tidal Blessing's healed and
+-- stood-up allies on the field and how many it stood up (benched ones too); Rift Step's way of putting its caster at a
+-- rift (nil: back home)
+export type Extra = {
+	allies: { Ally }?,
+	seconds: number?,
+	healed: { Ally }?,
+	revived: { Ally }?,
+	revivedCount: number?,
+	blink: ((at: Vector3?) -> ())?,
+}
 type Look = {
 	charge: (view: View, grade: string, seconds: number, target: Vector3?) -> () -> (),
 	impact: (view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, extra: Extra) -> () -> (),
@@ -785,9 +795,10 @@ local function tideImpact(view: View, grade: string, target: Vector3, _targetBod
 	end
 end
 
--- Tidal Blessing (Tideborne Kirin, Legendary, Tide, Frontier; spec "Tidal Blessing"): clouds part with rays of light, a
--- giant water lotus opens under your side, its petals rise and close into a dome of light-water, a soft rain of light
--- falls while it holds. By grade: lotus size, petal count, light rays; S: a halo over the Kirin and golden rain.
+-- Tidal Blessing (Tideborne Kirin, Legendary, Tide, Frontier; owner 2026-11-05 "Rebirth Spring"): clouds part with rays
+-- of light and a giant water lotus opens under the Kirin; as it lands the petals close into a column of light, a pillar
+-- of light comes down on each fainted creature as it stands back up, light shimmers up off everyone it heals and a soft
+-- rain of light falls. By grade: lotus size, petal count, light rays; S: a halo over the Kirin and golden rain.
 local BLESS = SuperFxConfig.LOOKS.TidalBlessing
 local BLESS_SOUNDS = SuperFxConfig.SOUNDS.TidalBlessing
 local GOLD = Color3.fromRGB(255, 226, 140)
@@ -864,7 +875,7 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(feet)), BLESS_SOUNDS.layer, 0.9)
 	end
-	-- The petals rise and close into the dome
+	-- The petals rise and close into a column of light
 	local radius = g.lotus * 0.75
 	local before = #b.items
 	local setPetals = petals(b, feet, g.petals, g.lotus * 0.5, light)
@@ -881,10 +892,31 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 			tween(leaf, 0.3, { Transparency = 1 })
 		end
 	end)
-	-- The lotus closes into light, and a bubble of light-water sets round every ally
 	local center = feet + UP * radius * 0.35
 	ElementFx.burst(center, GOLD, radius / 3)
-	local _, burstAll = makeDomes(view, extra, light, BLESS_SOUNDS.burst, BLESS_SOUNDS.hit)
+	ElementFx.pillar(feet, GOLD, 26 * g.scale, 1.4, "glow")
+	-- Each fainted creature on the field: a pillar of light comes down on it as it gets up (Util/SummonFx revive)
+	for _, ally in extra.revived or {} do
+		local at = groundAt(ally.part.Position)
+		ElementFx.pillar(at, GOLD, 30, 1.8, "glow")
+		ElementFx.burst(at + UP * ally.height * 0.5, GOLD, 1.4 * g.scale)
+		play(b, anchor(b, CFrame.new(at)), BLESS_SOUNDS.revive, 1)
+	end
+	local count = extra.revivedCount or 0
+	if count > 0 then
+		ElementFx.callout(view.root, view.height * 0.6, if count > 1 then `{count} REVIVED!` else "REVIVED!", GOLD, 1.8)
+	end
+	-- Everyone it healed: light shimmering up off them and a ring at their feet
+	for _, ally in extra.healed or {} do
+		local at = ally.part.Position + UP * ally.lift
+		local shimmer = ElementFx.emitter(anchor(b, CFrame.new(at)), "spark", GOLD, { size = { 0.5, 0.1 }, life = { 0.8, 1.3 }, speed = { 3, 6 }, spread = 35, accel = UP * 2 })
+		shimmer.Shape = Enum.ParticleEmitterShape.Sphere
+		shimmer:Emit(math.floor(g.particles * 0.5))
+		ElementFx.ring(groundAt(ally.part.Position) + UP * 0.2, light, ally.height * 0.7, 0.6)
+	end
+	if extra.healed and #extra.healed > 0 then
+		play(b, anchor(b, CFrame.new(center)), BLESS_SOUNDS.heal, 0.8)
+	end
 	-- A soft rain of light over your side for a while (S: golden)
 	local rain = ElementFx.emitter(anchor(b, CFrame.new(center + UP * radius * 0.8)), "spark", if g.extra then GOLD else light, {
 		size = { 0.35, 0.1 },
@@ -897,7 +929,7 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 	rain.Rate = g.particles
 	local hum = play(b, anchor(b, CFrame.new(center)), BLESS_SOUNDS.linger, 0.45, true)
 	if hum then
-		task.delay(4, function()
+		task.delay(2.5, function()
 			tween(hum, 1.5, { Volume = 0 })
 		end)
 	end
@@ -909,14 +941,13 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 			part(b, Vector3.new(0.45, 0.45, 0.45), GOLD, CFrame.new(crown + Vector3.new(math.cos(angle), 0, math.sin(angle)) * view.height * 0.35), 0, Enum.PartType.Ball)
 		end
 	end
-	task.delay(math.min(extra.seconds or 8, 6), function()
+	task.delay(3, function()
 		rain.Rate = 0
 		task.delay(2, function()
 			clear(b)
 		end)
 	end)
 	return function()
-		burstAll()
 		clear(b)
 	end
 end
@@ -1359,9 +1390,10 @@ local function eclipseImpact(view: View, grade: string, target: Vector3, _target
 	end
 end
 
--- Rift Step (Riftwalker, Epic, Shade, Frontier; spec "Rift Step"): space cracks like glass round it, the cracks open into
--- purple void, it shatters through a rift and blinks out, then blinks between rifts while attacks hit empty cracks
--- that seal up. By grade: more rifts and shards; S: the arena's edge cracks for a moment.
+-- Rift Step (Riftwalker, Epic, Shade, Frontier; owner 2026-11-05 "Blink Barrage"): space cracks like glass round it as it
+-- winds up; as it lands it shatters out of where it stands, rifts tear open round the boss and it bursts out of each in
+-- turn (behind, side to side, in front: SuperFxRules.riftSpots), striking with every hit the sim lands, then shatters
+-- back home and the rifts seal. By grade: more cracks and shards, bigger rifts; S: the arena's edge cracks too.
 local RIFT = SuperFxConfig.LOOKS.RiftStep
 local RIFT_SOUNDS = SuperFxConfig.SOUNDS.RiftStep
 
@@ -1406,60 +1438,130 @@ local function riftCharge(view: View, grade: string, seconds: number, _target: V
 	end
 end
 
-local function riftImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number): () -> ()
+-- A barrage under way, by its caster's root: its rifts (one a hit), the boss, how to put the caster at a rift
+type Barrage = { spots: { Vector3 }, target: Vector3, view: View, b: Bag, g: any, blink: ((at: Vector3?) -> ())?, gap: number, done: boolean }
+local barrages: { [BasePart]: Barrage } = {}
+
+local function vec(at: Vector3): SuperFxRules.Vec
+	return { x = at.X, y = at.Y, z = at.Z }
+end
+
+-- It bursts out of rift `index` and strikes the boss from that side
+local function riftStrike(barrage: Barrage, index: number)
+	local spot = barrage.spots[index]
+	if not spot or barrage.done then
+		return
+	end
+	local void = color(RIFT.color)
+	local g = barrage.g
+	if barrage.blink then
+		barrage.blink(groundAt(spot))
+	end
+	local shards = ElementFx.emitter(anchor(barrage.b, CFrame.new(spot)), "shard", void, { size = { 0.7, 0.15 }, life = { 0.4, 0.7 }, speed = { 10, 18 }, spread = 60, spin = { -400, 400 }, accel = -UP * 20 })
+	shards:Emit(math.floor(g.shards * 0.5))
+	play(barrage.b, anchor(barrage.b, CFrame.new(spot)), RIFT_SOUNDS.blink, 0.7)
+	play(barrage.b, anchor(barrage.b, CFrame.new(barrage.target)), RIFT_SOUNDS.slash, 1)
+	local s = g.scale
+	ElementFx.slash(barrage.target, spot, void, "claw", index, 1.2 * s)
+	ElementFx.slash(barrage.target, spot, WHITE, "claw", index + 1, 0.7 * s)
+	ElementFx.burst(barrage.target, void, 1.1 * s)
+	quake(g, barrage.target, 0.5)
+end
+
+-- The barrage is over (or cut short): it shatters back home and the rifts seal
+local function finishBarrage(root: BasePart, barrage: Barrage)
+	if barrage.done then
+		return
+	end
+	barrage.done = true
+	if barrages[root] == barrage then
+		barrages[root] = nil
+	end
+	if barrage.blink then
+		barrage.blink(nil)
+	end
+	local home = barrage.view.root.Position + UP * barrage.view.height * 0.5
+	ElementFx.burst(home, color(RIFT.color), 1.2 * barrage.g.scale)
+	play(barrage.b, anchor(barrage.b, CFrame.new(home)), RIFT_SOUNDS.blink, 0.8)
+	for _, item in barrage.b.items do
+		if item:IsA("BasePart") and item.Transparency < 1 then
+			tween(item, 0.4, { Size = Vector3.new(0.1, 0.1, 0.1) })
+		end
+	end
+	task.delay(0.6, function()
+		clear(barrage.b)
+	end)
+end
+
+local function riftImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number, extra: Extra): () -> ()
 	local g = RIFT.grades[grade]
 	local b = bag()
 	local void = color(RIFT.color)
-	local seconds = (SuperFx.abilityOf("RiftStep") or { seconds = 3 }).seconds
+	local ability = SuperFx.abilityOf("RiftStep") or { hits = 4, gap = 0.25 }
 	local center = view.root.Position + UP * view.height * 0.5
 	play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.impact, 1.1)
 	quake(g, center, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.layer, 1)
 	end
-	-- It shatters through: glass shards flying out, a flash of void
+	-- It shatters out of where it stands: glass shards flying out, a flash of void
 	local shards = ElementFx.emitter(anchor(b, CFrame.new(center)), "shard", void, { size = { 0.9, 0.2 }, life = { 0.5, 0.9 }, speed = { 16, 28 }, spread = 180, spin = { -400, 400 }, accel = -UP * 20 })
 	shards:Emit(g.shards)
 	ElementFx.burst(center, void, 1.6 * g.scale)
-	-- Rifts hanging round it while it blinks
-	for index = 1, g.rifts do
-		local a = index / g.rifts * 2 * math.pi
-		local spot = center + Vector3.new(math.cos(a), (math.random() - 0.5) * 0.8, math.sin(a)) * view.height * 1.2
-		riftPane(b, spot, spot - center, view.height * 0.5 * g.scale, void)
+	-- Rifts tear open round the boss, one a hit, facing it
+	local reach = math.max(5, targetHeight * 0.55) + view.height * 0.5
+	local size = view.height * 1.1 * g.scale
+	local spots = {}
+	for _, spot in SuperFxRules.riftSpots(vec(view.root.Position), vec(target), ability.hits, reach) do
+		local at = Vector3.new(spot.x, spot.y, spot.z)
+		table.insert(spots, at)
+		local pane = riftPane(b, at, target - at, size, void)
+		pane.Size = Vector3.new(0.1, 0.1, 0.1)
+		tween(pane, 0.15, { Size = Vector3.new(size * 0.55, size, 0.1) })
 	end
 	-- S: the arena's edge cracks for a moment (a ring of rifts far out)
 	if g.extra then
 		for index = 1, 12 do
 			local a = index / 12 * 2 * math.pi
-			local spot = center + Vector3.new(math.cos(a), 0.3, math.sin(a)) * 28
-			local pane = riftPane(b, spot, center - spot, 9, void)
+			local spot = target + Vector3.new(math.cos(a), 0.3, math.sin(a)) * 28
+			local pane = riftPane(b, spot, target - spot, 9, void)
 			task.delay(1.2, function()
 				tween(pane, 0.5, { Transparency = 1 })
 			end)
 		end
 	end
-	-- Attacks hit an empty crack that seals up
-	dodgers[view.root] = function(at: Vector3)
-		local pane = riftPane(b, at, (at - view.root.Position) * Vector3.new(1, 0, 1) + Vector3.new(0, 0, 0.01), 3, void)
-		play(b, pane, RIFT_SOUNDS.blink, 0.8)
-		tween(pane, 0.45, { Size = Vector3.new(0.1, 0.1, 0.1) })
-	end
-	task.delay(seconds, function()
-		dodgers[view.root] = nil
-		task.delay(0.6, function()
-			clear(b)
-		end)
+	local barrage: Barrage = { spots = spots, target = target, view = view, b = b, g = g, blink = extra.blink, gap = ability.gap, done = false }
+	barrages[view.root] = barrage
+	riftStrike(barrage, 1)
+	-- Home again after the last hit, or anyway if the rest never come (it fainted)
+	task.delay(ability.gap * ability.hits + 0.8, function()
+		finishBarrage(view.root, barrage)
 	end)
 	return function()
-		dodgers[view.root] = nil
-		clear(b)
+		finishBarrage(view.root, barrage)
 	end
 end
 
--- Supernova (Solarion, Legendary, Ember; spec "Supernova"): Solarion rises glowing as a small sun grows over its hands,
--- pulling light and sparks in, then hurls it down: a white-out and a dome of fire, shockwave rings, rays of light and
--- heat shimmer over the crater (the deep space and the impact frame are on the caster's screen). By grade: a bigger
--- sun, more rings and rays; S: two impact frames and pillars of light round the crater.
+-- One of Rift Step's later hits landed (the sim's `blink` index): it bursts out of that rift and strikes; after the
+-- last it comes home
+function SuperFx.blink(root: BasePart, index: number)
+	local barrage = barrages[root]
+	if not barrage then
+		return
+	end
+	riftStrike(barrage, index)
+	if index >= #barrage.spots then
+		task.delay(barrage.gap * 0.9, function()
+			finishBarrage(root, barrage)
+		end)
+	end
+end
+
+-- Supernova (Solarion, Legendary, Ember; owner 2026-11-05 "sun grows, rises up, then explodes. dont rush"): a small sun
+-- grows over Solarion's hands pulling light in, rises slowly high over the boss trailing sparks, hangs there swelling
+-- and throbbing, then bursts: a white-out in the sky, shockwave rings, fire raining down, then a dome of fire, rays of
+-- light and heat shimmer over the crater (the deep space and the impact frame are on the caster's screen). Its own
+-- pace (Config/SuperFx timing). By grade: a bigger sun, more rings and rays; S: two impact frames, pillars of light.
 local NOVA = SuperFxConfig.LOOKS.Supernova
 local NOVA_SOUNDS = SuperFxConfig.SOUNDS.Supernova
 local SUN_CORE = Color3.fromRGB(255, 250, 220)
@@ -1492,25 +1594,50 @@ local function novaCharge(view: View, grade: string, seconds: number, target: Ve
 	local sky = novaSky(target or (view.root.Position + view.root.CFrame.LookVector * 14), g)
 	play(b, anchor(b, CFrame.new(above)), NOVA_SOUNDS.call, 1)
 	play(b, anchor(b, CFrame.new(above)), NOVA_SOUNDS.charge, 0.9)
-	-- It grows over its hands (the first 60%), then rises high over the boss, trailing light
+	local grow = seconds * NOVA.timing.grow
+	local rise = seconds * NOVA.timing.rise
+	local swell = math.max(0.2, seconds - grow - rise)
+	-- It grows over its hands, light pulling in
 	local core, corona = sunBall(b, above, 0.5, gold)
-	local grow = seconds * 0.6
-	tween(core, grow, { Size = Vector3.one * g.sun })
-	tween(corona, grow, { Size = Vector3.one * g.sun * 1.6 })
+	local smooth = TweenInfo.new(grow, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	TweenService:Create(core, smooth, { Size = Vector3.one * g.sun }):Play()
+	TweenService:Create(corona, smooth, { Size = Vector3.one * g.sun * 1.6 }):Play()
+	local stopGather = ElementFx.gather(above, gold, grow, g.sun * 3)
+	local stopPull = nothing
+	-- Then it rises slowly high over the boss, trailing light
 	task.delay(grow, function()
 		if b.done then
 			return
 		end
-		local rise = TweenInfo.new(seconds - grow, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		TweenService:Create(core, rise, { CFrame = CFrame.new(sky), Size = Vector3.one * g.sun * 1.4 }):Play()
-		TweenService:Create(corona, rise, { CFrame = CFrame.new(sky), Size = Vector3.one * g.sun * 2.3 }):Play()
-		local trail = ElementFx.emitter(core, "spark", gold, { size = { 0.8, 0.1 }, life = 0.5, speed = 0, fade = 0.3 })
+		play(b, core, NOVA_SOUNDS.call, 0.6)
+		local lift = TweenInfo.new(rise, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+		TweenService:Create(core, lift, { CFrame = CFrame.new(sky), Size = Vector3.one * g.sun * 1.4 }):Play()
+		TweenService:Create(corona, lift, { CFrame = CFrame.new(sky), Size = Vector3.one * g.sun * 2.3 }):Play()
+		local trail = ElementFx.emitter(core, "spark", gold, { size = { 0.8, 0.1 }, life = 0.6, speed = 0, fade = 0.3 })
 		trail.Rate = 60
 	end)
-	local stopGather = ElementFx.gather(above, gold, grow, g.sun * 3)
+	-- And hangs there, swelling and throbbing as light pours into it, a last pull inward just before it bursts
+	task.delay(grow + rise, function()
+		if b.done then
+			return
+		end
+		stopPull = ElementFx.gather(sky, gold, swell, g.sun * 2.5)
+		local light = core:FindFirstChildOfClass("PointLight")
+		if light then
+			tween(light, swell, { Brightness = 12, Range = g.sun * 10 })
+		end
+		everyFrame(b, function(elapsed)
+			local p = math.clamp(elapsed / swell, 0, 1)
+			local throb = 1 + 0.18 * math.abs(math.sin(p * math.pi * 3)) + 0.25 * p
+			local squeeze = if p > 0.8 then 1 - (p - 0.8) / 0.2 * 0.45 else 1
+			core.Size = Vector3.one * g.sun * 1.4 * throb * squeeze
+			corona.Size = Vector3.one * g.sun * 2.3 * throb * squeeze
+		end)
+	end)
 	local stopGlow = ElementFx.chargeGlow(view.root, gold, seconds, 1.8 * g.scale)
 	return function()
 		stopGather()
+		stopPull()
 		stopGlow()
 		clear(b)
 	end
@@ -1524,26 +1651,35 @@ local function novaImpact(_view: View, grade: string, target: Vector3, _targetBo
 	local ground = groundAt(target)
 	local blast = math.max(8, targetHeight * 1.1) * g.scale
 	local sky = novaSky(target, g)
-	-- The risen sun explodes in the sky: a white-out burst up there and fire raining down onto the boss
+	-- The risen sun explodes in the sky: a big white-out up there, two shockwave rings, fire raining down onto the boss
 	local flash = part(b, Vector3.one * g.sun * 1.4, SUN_CORE, CFrame.new(sky), 0, Enum.PartType.Ball)
-	tween(flash, 0.3, { Size = Vector3.one * g.sun * 7, Transparency = 1 }, Enum.EasingStyle.Quart)
-	ElementFx.burst(sky, gold, 4 * g.scale)
-	ElementFx.ring(sky, gold, g.sun * 5, 0.5)
-	quake(g, target, 1.6)
-	for index = 1, math.floor(6 + 4 * g.scale) do
-		local a = index / (6 + 4 * g.scale) * 2 * math.pi
+	tween(flash, 0.5, { Size = Vector3.one * g.sun * 9, Transparency = 1 }, Enum.EasingStyle.Quart)
+	ElementFx.burst(sky, gold, 4.5 * g.scale)
+	ElementFx.ring(sky, gold, g.sun * 5, 0.6)
+	task.delay(0.15, function()
+		ElementFx.ring(sky, SUN_CORE, g.sun * 7, 0.7)
+		ElementFx.burst(sky, fire, 3 * g.scale)
+	end)
+	play(b, anchor(b, CFrame.new(sky)), NOVA_SOUNDS.layer, 0.9)
+	quake(g, target, 1.3)
+	local drops = math.floor(8 + 5 * g.scale)
+	for index = 1, drops do
+		local a = index / drops * 2 * math.pi
 		local spot = ground + Vector3.new(math.cos(a), 0, math.sin(a)) * blast * 0.5 * math.random()
-		ElementFx.projectile(sky, function()
-			return spot
-		end, gold, 0.18 + math.random() * 0.12, 0, function(at)
-			ElementFx.burst(at, fire, 0.8 * g.scale)
-		end, { scale = 1.1, flames = true })
+		task.delay(math.random() * 0.35, function()
+			ElementFx.projectile(sky, function()
+				return spot
+			end, gold, 0.35 + math.random() * 0.2, 0, function(at)
+				ElementFx.burst(at, fire, 0.8 * g.scale)
+			end, { scale = 1.1, flames = true })
+		end)
 	end
-	task.delay(0.22, function()
+	-- The fire comes down: a dome of fire over the boss
+	task.delay(0.55, function()
 		if b.done then
 			return
 		end
-		quake(g, ground, 1.2)
+		quake(g, ground, 1.6)
 		play(b, anchor(b, CFrame.new(target)), NOVA_SOUNDS.impact, 1.3)
 		if grade == "A" or grade == "S" then
 			play(b, anchor(b, CFrame.new(target)), NOVA_SOUNDS.layer, 1.1)

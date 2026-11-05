@@ -55,7 +55,7 @@ return {
 		for id, look in SuperFx.LOOKS do
 			expect.equal(rarityOf(look.card), look.tier, id)
 			assert(SuperFx.TIERS[look.tier], `{id}: tier {look.tier}`)
-			expect.equal(Combat.SIGNATURES[look.card].windup, SuperFx.TIERS[look.tier].windup, `{id} wind-up`)
+			expect.equal(Combat.SIGNATURES[look.card].windup, look.windup or SuperFx.TIERS[look.tier].windup, `{id} wind-up`)
 		end
 	end,
 
@@ -162,6 +162,19 @@ return {
 		end
 	end,
 
+	-- The owner (2026-11-05): Supernova was "really quick. sun grows, rises up, then explodes. dont rush the animations"
+	["Supernova takes its time: the sun grows, rises, then swells before it bursts"] = function()
+		local look = SuperFx.LOOKS.Supernova
+		expect.equal(look.windup >= 3, true, "a longer wind-up than the Legendary 2 s")
+		expect.equal(Combat.SIGNATURES.Solarion.windup, look.windup, "the sim lands it then")
+		local grow = look.windup * look.timing.grow
+		local rise = look.windup * look.timing.rise
+		local swell = look.windup - grow - rise
+		expect.equal(grow >= 1.2 and rise >= 1.2, true, "a second or more to grow and to rise")
+		expect.equal(swell >= 0.4, true, "a beat hanging over the boss before it bursts")
+		expect.equal(Combat.SIGNATURES.Stormking.windup, SuperFx.TIERS.Legendary.windup, "Thunderstorm keeps its own pace")
+	end,
+
 	["Supernova's S plays two impact frames, every other grade one"] = function()
 		for _, grade in GRADES do
 			local frames = SuperFx.LOOKS.Supernova.grades[grade].impactFrames
@@ -180,11 +193,28 @@ return {
 		for _, id in { "Inferno", "MagmaSlam", "TidalBlessing", "Stampede", "Eclipse", "Supernova", "Thunderstorm", "Devour" } do
 			assert(SuperFx.SOUNDS[id].linger, `{id}: linger`)
 		end
-		for _, id in { "TidalShield", "TidalBlessing" } do
-			assert(SuperFx.SOUNDS[id].hit and SuperFx.SOUNDS[id].burst, `{id}: hit and burst`)
-		end
-		assert(SuperFx.SOUNDS.RiftStep.blink, "RiftStep: blink")
+		assert(SuperFx.SOUNDS.TidalShield.hit and SuperFx.SOUNDS.TidalShield.burst, "TidalShield: hit and burst")
+		assert(SuperFx.SOUNDS.TidalBlessing.revive and SuperFx.SOUNDS.TidalBlessing.heal, "TidalBlessing: revive and heal")
+		assert(SuperFx.SOUNDS.RiftStep.blink and SuperFx.SOUNDS.RiftStep.slash, "RiftStep: blink and slash")
 	end,
+	-- The owner (2026-11-05, option C "Blink Barrage"): Rift Step blinks round the boss, a hit from each rift
+	["Rift Step's rifts ring the boss, the first behind it, then side to side"] = function()
+		local caster = { x = 0, y = 0, z = 0 }
+		local boss = { x = 0, y = 2, z = -20 }
+		local spots = SuperFxRules.riftSpots(caster, boss, 4, 6)
+		expect.equal(#spots, 4, "one rift a hit")
+		for index, spot in spots do
+			expect.near(math.sqrt((spot.x - boss.x) ^ 2 + (spot.z - boss.z) ^ 2), 6, 1e-6, `rift {index}: round the boss`)
+			expect.equal(spot.y, boss.y, `rift {index}: at the boss's height`)
+		end
+		expect.equal(spots[1].z < boss.z - 5, true, "the first behind the boss (away from the caster)")
+		expect.equal(spots[2].x * spots[3].x < 0, true, "then one side, then the other")
+		expect.equal(spots[4].z > boss.z + 5, true, "the last in front")
+		expect.equal(#SuperFxRules.riftSpots(caster, boss, 6, 6), 6, "any number of hits")
+		local same = SuperFxRules.riftSpots(boss, boss, 4, 6)
+		expect.equal(#same, 4, "a caster on top of the boss still gets its rifts")
+	end,
+
 	-- Final review: the dome's burst never played (a "shieldGone" has no `from`) and in boss and wild fights the dome's
 	-- ripples and the dodge puffs never played (the monster's hits went down another path). What an event means for the
 	-- lasting looks is read first, whoever sent it.

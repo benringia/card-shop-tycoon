@@ -398,6 +398,7 @@ local function enterField(fight: Fight, event: BattleSim.Event, markers: { [stri
 		if marker then
 			marker:SetAttribute("SummonedAt", workspace:GetServerTimeNow()) -- back in: clients pop it in again
 			marker:SetAttribute("Benched", nil)
+			marker:SetAttribute("Fainted", nil) -- a fainted leader Tidal Blessing stood back up
 		end
 		PartyService.SetHold(player, spot)
 	else
@@ -551,6 +552,15 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			local add = fight.adds[event.to]
 			if add then
 				task.delay(Bosses.ADD_FADE_SECONDS, WildService.Defeat, add)
+			end
+		elseif event.type == "ability" and event.kind == "Rebirth" and typeof(event.revived) == "table" then
+			-- Tidal Blessing stood fainted creatures up: one still on the field gets up where it lay (clients play
+			-- SummonFx.revive); a benched one went back to the reserves and clears its flag when it comes back in
+			for _, id in event.revived do
+				local marker = if BattleSim.getFighter(fight.sim, id) then markerFor(fight, id) else nil
+				if marker then
+					marker:SetAttribute("Fainted", nil)
+				end
 			end
 		elseif event.type == "spawn" and event.to then
 			spawnAdd(fight, event.to, markers, addMonsters)

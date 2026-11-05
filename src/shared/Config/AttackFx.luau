@@ -7,17 +7,18 @@ end
 
 return {
 	CHARGE_GRACE = 0.3, -- seconds a charge waits past its due time for its attack, then fades
-	FLIGHT = { Ember = 0.35, Tide = 0.25 }, -- seconds a projectile flies (elements that throw one)
+	FLIGHT = { Ember = 0.35, Tide = 0.25, Shade = 0.3 }, -- seconds a projectile or moon slash flies
 	COMBO = { count = 3, window = 0.45 }, -- a combo's hits over this many seconds, the last with the damage
 	EXTRA_SHOT_GAP = 0.08, -- seconds between a grade A / S Ember's extra fireballs (they land together)
-	-- Each element's normal attack: a thrown projectile, a 3-hit combo up close, or a lightning bolt shot from where it
-	-- stands (the owner's mockup; projectile and bolt attackers stand back, Combat.RANGED_BACK)
+	-- Each element's normal attack: a thrown projectile, a 3-hit combo up close, a lightning bolt shot from where it
+	-- stands (the owner's mockup) or a moon slash flung from a paw (owner 2026-11-05: Shade "a ranged moon slash dark
+	-- purple"); everything but the combo stands back (Combat.RANGED_BACK)
 	ELEMENT = {
 		Ember = { kind = "projectile", color = rgb(255, 122, 58) },
 		Tide = { kind = "projectile", color = rgb(74, 168, 255) },
 		Bloom = { kind = "combo", color = rgb(74, 222, 128) },
 		Volt = { kind = "bolt", color = rgb(250, 204, 21) },
-		Shade = { kind = "combo", color = rgb(167, 139, 250) },
+		Shade = { kind = "slash", color = rgb(126, 58, 242) },
 	},
 	MAX_ACTIVE = 12, -- effects playing at once (more are skipped; the damage numbers still show)
 	MAX_ACTIVE_LOW = 4, -- with the low-graphics switch off (Util/Extras)
@@ -28,7 +29,7 @@ return {
 		Tide = { release = "rbxassetid://9126013644", hit = "rbxassetid://9125703162" }, -- Swish Sharp 13, Mud Puddle Splash 19
 		Bloom = { hit = "rbxassetid://9113612888" }, -- Buggy Whip Quick Swish Crack 11
 		Volt = { hit = "rbxassetid://9114277757" }, -- Electric Zaps 12
-		Shade = { hit = "rbxassetid://9119749812" }, -- Sword Swishes 4
+		Shade = { release = "rbxassetid://9120717850", hit = "rbxassetid://9119749812" }, -- Whoosh Fast Swish By 4, Sword Swishes 4
 		-- The boom layer on big hits (grade S extras): per element, else `boom`
 		boom = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2
 		big = {
@@ -42,7 +43,11 @@ return {
 	VARY = { pitch = { 0.85, 1.15 }, volume = { 0.82, 1 } },
 	CHARGE_LIGHT = 3, -- a charging creature's glow (PointLight brightness at full charge)
 	PROJECTILE_SIZE = 1.2, -- studs
-	ARC = { Ember = 6, Tide = 0 }, -- studs a projectile rises at its midpoint
+	ARC = { Ember = 6, Tide = 0, Shade = 1 }, -- studs a projectile rises at its midpoint
+	-- The moon slash: a crescent `length` studs tip to tip and `width` thick (times the grade's scale), bowed `bow`
+	-- studs forward, tilted `tilt` degrees, trailing a shadow `trail` seconds long; grade A adds one crossed the
+	-- other way, S a third flat across
+	MOON_SLASH = { length = 4.6, width = 1.5, bow = 1.6, tilt = 28, trail = 0.22, shadow = rgb(46, 12, 82) },
 	BURST = 26, -- particles in an impact
 	DASH = { combo = 0.7 }, -- share of the way to its target a creature dashes for a combo
 	-- A Volt bolt: how long it flickers (seconds; the mockup's six flickers), and at grade S the strike from the sky
@@ -64,6 +69,8 @@ return {
 		Eclipse = { style = "super", color = rgb(167, 139, 250) },
 		Supernova = { style = "super", color = rgb(255, 209, 102) },
 		Devour = { style = "super", color = rgb(139, 92, 246) },
+		Rebirth = { style = "super", color = rgb(191, 230, 255) },
+		Barrage = { style = "super", color = rgb(192, 107, 255) },
 	},
 	SPECIAL_SOUND = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1 (with the element's hit sound)
 	-- Creatures circle their fight spot: this far (studs, times the creature's size), this fast (turns a second), with
@@ -115,6 +122,7 @@ return {
 		ring = "rbxassetid://130539210208283",
 		bolt = "rbxassetid://118502374622454", -- upright: a beam runs a texture's height along its length
 		slash = "rbxassetid://108229178074942",
+		moon = "rbxassetid://103655929836006", -- the sword's crescent (Config/SwordFx), the Shade moon slash
 		shard = "rbxassetid://128916396596028",
 		impact = "rbxassetid://134340523336604",
 		flame = "rbxassetid://103269035765808",

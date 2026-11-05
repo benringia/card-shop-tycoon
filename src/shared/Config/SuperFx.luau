@@ -44,6 +44,14 @@ local function withWindup(made: any, pose: string): any
 	return made
 end
 
+-- A look that winds up longer than its tier (owner 2026-11-05: Supernova "really quick ... dont rush the animations"):
+-- `seconds` (Config/Combat SIGNATURES windup matches) and the share of them each part of its charge takes
+local function withTiming(made: any, seconds: number, timing: { [string]: number }): any
+	made.windup = seconds
+	made.timing = timing
+	return made
+end
+
 -- A Legendary look's sky on the caster's screen during its cinematic (Util/SuperCinematic): a colour grade over the
 -- world (tint, brightness, saturation, contrast), eased in with the call and back with the camera
 local function withSky(made: any, tint: { number }, brightness: number, saturation: number, contrast: number): any
@@ -119,14 +127,15 @@ return {
 			rifts = { 3, 4, 5, 7 },
 			shards = { 8, 12, 16, 24 },
 		}, "riftroar"),
-		-- The sky turns to space; Solarion's sun rises over the boss and bursts (S: two impact frames, pillars of light)
-		Supernova = withSky(look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
+		-- The sky turns to space; Solarion's sun grows over its hands, rises slowly over the boss, swells and bursts (S:
+		-- two impact frames, pillars of light). Its own pace: grow, rise, then what's left hangs and swells.
+		Supernova = withTiming(withSky(look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
 			sun = { 4, 5, 6.5, 8.5 },
 			burst = { 17, 18, 20, 22 }, -- studs over the target the risen sun bursts (the cinematic frames it too)
 			rings = { 2, 2, 3, 4 },
 			rays = { 4, 6, 8, 12 },
 			impactFrames = { 1, 1, 1, 2 },
-		}, "sunburst"), rgb(96, 80, 170), -0.38, -0.25, 0.2), -- deep space
+		}, "sunburst"), rgb(96, 80, 170), -0.38, -0.25, 0.2), 3.5, { grow = 0.4, rise = 0.45 }), -- deep space
 		-- Storm clouds gather and a colossal bolt strikes (S: three bolts and a chain of lightning round the arena)
 		Thunderstorm = withSky(look("Legendary", "Stormking", "Volt", rgb(159, 214, 255), {
 			forks = { 3, 4, 6, 8 },
@@ -169,9 +178,9 @@ return {
 			charge = "rbxassetid://9125635430", -- Magical Exit Sparkling Pass Bys Clinking Chimes (the lotus opens)
 			impact = "rbxassetid://9116394876", -- Magic Glows Soft Clusters Of Chiming Hits 2
 			layer = "rbxassetid://9120611318", -- Wave Crashes Single Large Impacts 4 (A and S)
-			linger = "rbxassetid://9114791989", -- Heavenly Presence Thick Melodic Choir Pad 1 (while the dome forms)
-			hit = "rbxassetid://9112872239", -- Small Bubbles Water Surface Float Up Pop 5
-			burst = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1
+			linger = "rbxassetid://9114791989", -- Heavenly Presence Thick Melodic Choir Pad 1 (the light rain)
+			revive = "rbxassetid://9125602386", -- Heavenly Harmonic Presence Glowing Crystal (a pillar stands one up)
+			heal = "rbxassetid://9114369623", -- Fairy Dust 1 (the others' sparkle)
 		},
 		Stampede = {
 			call = "rbxassetid://9126100408", -- Thunder With Lion Roar Growl Low Rumble Roar (its bellow)
@@ -200,7 +209,8 @@ return {
 			charge = "rbxassetid://9125981170", -- Spaceship Pre Blast Electric Charge Up Glass
 			impact = "rbxassetid://9116422213", -- Magic Transformation 17 (it blinks out)
 			layer = "rbxassetid://9114591515", -- Glass Breaks 2 (A and S)
-			blink = "rbxassetid://9120749129", -- Wind Burst Alien Vortex Blasts 1 (a hit meets an empty rift)
+			blink = "rbxassetid://9120749129", -- Wind Burst Alien Vortex Blasts 1 (it bursts out of a rift)
+			slash = "rbxassetid://9120717850", -- Whoosh Fast Swish By 4 (each strike)
 		},
 		Supernova = {
 			call = "rbxassetid://9114055189", -- Descending Synth Burst Tonal Light Phasing 2 (it rises)

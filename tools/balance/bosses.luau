@@ -18,6 +18,11 @@
 --   3 maxed  (the Dungeon's boss only) three maxed Legendaries
 -- Every creature fights with its fight perk (Config/Party FIGHT_PERKS, from its element, rarity and stars), so the five
 -- elements' perks average out over the runs. NO_PERKS=1 runs without them, to compare.
+-- Epic and Legendary cards bring a super (Config/Combat SIGNATURES) of a card of their rarity and element, taking turns
+-- between the cards that fit (Ember Epics: Infernox, Cinder Titan...; Bloom has none), fired whenever ready like the Pet
+-- button moves; NO_SUPERS=1 runs without them, to compare, ONLY_SUPER=<card name> with that card's super alone.
+-- SET="<card>.<field>=<number>,..." tries other super numbers without editing Config/Combat (SET="Voidmaw.lifesteal=0.3"),
+-- BOSS_SET="<boss id>.<field>=<number>,..." other boss numbers without editing Config/Bosses (BOSS_SET="prismHydra.atk=36").
 -- A boss's landed rings leave its debuff (Config/Bosses DEBUFFS, through the sim: Poison and Burn ticks, Shocked, Weakened,
 -- Chilled); NO_DEBUFFS=1 runs without them, to compare. Walk slows (Entangled, Chilled) aren't modelled.
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
@@ -27,6 +32,7 @@ local BattleSim = require("../../src/server/Util/BattleSim")
 local BeastMath = require("../../src/shared/Util/BeastMath")
 local Beasts = require("../../src/shared/Config/Beasts")
 local Bosses = require("../../src/shared/Config/Bosses")
+local CardList = require("../../src/shared/Config/CardList")
 local Combat = require("../../src/shared/Config/Combat")
 local Dungeon = require("../../src/shared/Config/Dungeon")
 local Frontier = require("../../src/shared/Config/Frontier")
@@ -42,6 +48,22 @@ local PLAYERS = tonumber(process.args[2] or "") or 1
 local ONLY = tonumber(process.args[3] or "")
 local PERKS = process.env.NO_PERKS == nil
 local DEBUFFS = process.env.NO_DEBUFFS == nil
+local SUPERS = process.env.NO_SUPERS == nil
+local ONLY_SUPER = process.env.ONLY_SUPER
+for setting in string.gmatch(process.env.SET or "", "[^,]+") do
+	local card, field, value = string.match(setting, "^%s*(.-)%.(%w+)=([%d%.]+)%s*$")
+	local signature = if card then Combat.SIGNATURES[card] else nil
+	assert(signature and tonumber(value), `SET: can't read "{setting}"`)
+	signature[field] = tonumber(value)
+	print(`SET {card}.{field} = {value}`)
+end
+for setting in string.gmatch(process.env.BOSS_SET or "", "[^,]+") do
+	local id, field, value = string.match(setting, "^%s*(.-)%.(%w+)=([%d%.]+)%s*$")
+	local boss = if id then Bosses.BOSSES[id] else nil
+	assert(boss and tonumber(value), `BOSS_SET: can't read "{setting}"`)
+	boss[field] = tonumber(value)
+	print(`BOSS_SET {id}.{field} = {value}`)
+end
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 local DT = 0.1
 local SWORD_UPTIME = { 0.55, 0.9 }
@@ -85,21 +107,39 @@ local function legendaryAt(target: number): Card
 	return best
 end
 
-local function fighter(id: string, card: Card, element: string, owner: string): any
+-- The cards with a super, by rarity and element ("Epic Ember" = { "Infernox", "Cinder Titan" }), in card list order
+local supers: { [string]: { string } } = {}
+for _, list in { CardList.SET1, CardList.FRONTIER } do
+	for _, row in list do
+		if Combat.SIGNATURES[row[1]] then
+			local key = `{row[3]} {row[2]}`
+			supers[key] = supers[key] or {}
+			table.insert(supers[key], row[1])
+		end
+	end
+end
+
+-- pick: which of the fitting cards' supers it brings (any number; they take turns)
+local function fighter(id: string, card: Card, element: string, owner: string, pick: number): any
 	local s = stats(card, element)
 	local perk = if PERKS then PartyRules.getFightPerk(Party, element, card.rarity, card.stars) else nil
-	return { id = id, element = element, hp = s.hp, atk = s.atk, spd = s.spd, owner = owner, perk = perk }
+	local fits = supers[`{card.rarity} {element}`]
+	local signature = if SUPERS and fits then fits[(pick - 1) % #fits + 1] else nil
+	if ONLY_SUPER and signature ~= ONLY_SUPER then
+		signature = if fits and table.find(fits, ONLY_SUPER) then ONLY_SUPER else nil
+	end
+	return { id = id, element = element, hp = s.hp, atk = s.atk, spd = s.spd, owner = owner, perk = perk, signature = signature, grade = card.grade }
 end
 
 -- Every player brings the same party; the leader has the tested element (shifted per player), the others the next two.
 -- One list per player, leader first.
-local function parties(party: { Card }, element: string): { { any } }
+local function parties(party: { Card }, element: string, seed: number): { { any } }
 	local out = {}
 	for player = 1, PLAYERS do
 		local own = {}
 		for index, card in party do
 			local elementOf = ELEMENTS[(table.find(ELEMENTS, element) :: number + player + index - 3) % #ELEMENTS + 1]
-			table.insert(own, fighter(`p{player}c{index}`, card, elementOf, tostring(player)))
+			table.insert(own, fighter(`p{player}c{index}`, card, elementOf, tostring(player), seed // 5 + player + index))
 		end
 		table.insert(out, own)
 	end
@@ -208,6 +248,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		for _, own in side.fighters do
 			if not own.fainted and not own.benched then
 				BattleSim.useAbility(state, own.id, "element", own.owner)
+				BattleSim.useAbility(state, own.id, "signature", own.owner)
 			end
 		end
 	end
@@ -258,7 +299,7 @@ end
 
 local function fight(bossId: string, party: { Card }, element: string, seed: number, mode: string): (boolean, number, number)
 	local boss = Bosses.BOSSES[bossId]
-	local players = parties(party, element)
+	local players = parties(party, element, seed)
 	local hpLeft: { [string]: number } = {}
 	if bossId == Dungeon.BOSS then
 		local cleared
@@ -302,7 +343,7 @@ end
 
 local maxed: Card = { rarity = "Legendary", level = Beasts.MAX_LEVEL, stars = Beasts.MAX_STARS, grade = Beasts.GRADES[#Beasts.GRADES] }
 local junk: Card = { rarity = "Common", level = 1, stars = 0, grade = "C" }
-print(`{FIGHTS} fights per row, {PLAYERS} player(s) each with the row's party; maxed Legendary Power {math.round(power(maxed))}; fight perks {if PERKS then "on" else "off"}`)
+print(`{FIGHTS} fights per row, {PLAYERS} player(s) each with the row's party; maxed Legendary Power {math.round(power(maxed))}; fight perks {if PERKS then "on" else "off"}; supers {if SUPERS then "on" else "off"}`)
 for index, id in Bosses.LADDER do
 	if ONLY and index ~= ONLY then
 		continue

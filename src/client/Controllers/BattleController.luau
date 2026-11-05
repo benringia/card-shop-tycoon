@@ -966,6 +966,7 @@ local function newFightFx(): FightFx.Dispatcher
 		setCharging = CreatureController.SetCharging,
 		pose = CreatureController.Pose,
 		dash = CreatureController.Dash,
+		blink = CreatureController.Blink,
 		monster = MonsterController.GetFightView,
 		playClip = MonsterController.PlayClip,
 	})

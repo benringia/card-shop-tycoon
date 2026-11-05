@@ -39,6 +39,8 @@ export type Resolve = {
 	setCharging: (marker: BasePart, seconds: number) -> (),
 	pose: (marker: BasePart, kind: string, amount: number?) -> (), -- amount: how big (1 when nil)
 	dash: (marker: BasePart, toward: Vector3, share: number, seconds: number) -> (),
+	-- Rift Step: put the creature on a marker at a rift facing a point (nil: back home); nil where it can't
+	blink: ((marker: BasePart, at: Vector3?, face: Vector3?) -> ())?,
 	-- The boss or monster drawn on a marker, and playing its clips (nil: no monsters here, PvP)
 	monster: ((marker: BasePart) -> MonsterView?)?,
 	playClip: ((marker: BasePart, name: string, speed: number, hold: number) -> ())?,
@@ -214,12 +216,11 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local toward = targetPosition(entry.to, view.root.Position)
 				resolve.dash(marker, toward, AttackFx.DASH.combo, window + 0.2)
 				resolve.pose(marker, "combo")
-				local style = if view.element == "Shade" then "claw" else "vine"
 				for index, at in times do
 					task.delay(at, function()
 						local function slash()
 							local spot = targetPosition(entry.to, toward)
-							ElementFx.slash(spot, view.root.Position, tint, style, index, s)
+							ElementFx.slash(spot, view.root.Position, tint, "vine", index, s)
 							if index < #times then
 								hitSound(view.element, spot)
 								if view.mine then
@@ -230,8 +231,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 							impact(view, tier, spot, tint, true)
 							if tier.extra >= 2 then
 								-- The finishing X
-								ElementFx.slash(spot, view.root.Position, Color3.new(1, 1, 1), style, 1, s * 1.5, 45)
-								ElementFx.slash(spot, view.root.Position, tint, style, 2, s * 1.5, -45)
+								ElementFx.slash(spot, view.root.Position, Color3.new(1, 1, 1), "vine", 1, s * 1.5, 45)
+								ElementFx.slash(spot, view.root.Position, tint, "vine", 2, s * 1.5, -45)
 							end
 						end
 						if index == #times then
@@ -239,6 +240,39 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						else
 							slash()
 						end
+					end)
+				end
+			end)
+		elseif kind == "slash" then
+			-- A moon slash (owner 2026-11-05): a paw swipes and flings a crescent of dark purple moonlight that flies
+			-- like a projectile; grade A flings a second crossed the other way, S a third flat across, all landing together
+			local schedule = AttackTiming.schedule(lead, AttackFx.FLIGHT[view.element] or 0.3)
+			task.delay(schedule.releaseIn, function()
+				if not alive then
+					return
+				end
+				entry.stopGlow()
+				resolve.pose(marker, "combo")
+				local sounds = AttackFx.SOUNDS[view.element]
+				ElementFx.sound(if sounds then sounds.release else nil, view.root.Position)
+				local from = view.root.Position + Vector3.new(0, view.height * 0.55, 0)
+				local flight = schedule.impactIn - schedule.releaseIn
+				local tilts = { AttackFx.MOON_SLASH.tilt, -AttackFx.MOON_SLASH.tilt, 0 }
+				for shot = 1, 1 + tier.extra do
+					local wait = (shot - 1) * AttackFx.EXTRA_SHOT_GAP
+					task.delay(wait, function()
+						ElementFx.moonSlash(from, function()
+							return targetPosition(entry.to, from)
+						end, tint, math.max(0.1, flight - wait), function(at)
+							if shot == 1 then
+								whenAttacked(entry, function()
+									impact(view, tier, at, tint, false)
+									ElementFx.slash(at, from, tint, "vine", 1, s, tilts[1])
+								end)
+							else
+								ElementFx.slash(at, from, tint, "vine", shot, s * 0.8, tilts[shot])
+							end
+						end, s * (if shot == 1 then 1 else 0.8), tilts[shot])
 					end)
 				end
 			end)
@@ -486,10 +520,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local target = targetPosition(event.to, caster)
 		local body, height = targetBody(event.to)
 		stopSuperLinger(event.from)
-		-- The shields: a bubble round every ally the sim warded (a creature's at its middle, a player's at its root)
-		local allies = {}
-		if typeof(event.shielded) == "table" then
-			for _, id in event.shielded do
+		-- The allies a super names: Tidal Shield's warded ones (a bubble round each), Tidal Blessing's healed and stood-up
+		-- ones on the field (a creature at its middle, a player at its root)
+		local function alliesOf(list: any): { SuperFx.Ally }
+			local allies = {}
+			if typeof(list) ~= "table" then
+				return allies
+			end
+			for _, id in list do
 				local allyMarker = if typeof(id) == "string" then resolve.marker(id) else nil
 				local creature = if allyMarker then resolve.creature(allyMarker) else nil
 				if creature then
@@ -498,8 +536,19 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					table.insert(allies, { id = id, part = allyMarker, height = 6, lift = 0 })
 				end
 			end
+			return allies
 		end
-		local extra = { allies = allies, seconds = if typeof(event.seconds) == "number" then event.seconds else nil }
+		local blink = resolve.blink
+		local extra: SuperFx.Extra = {
+			allies = alliesOf(event.shielded),
+			seconds = if typeof(event.seconds) == "number" then event.seconds else nil,
+			healed = alliesOf(event.healed),
+			revived = alliesOf(event.revived),
+			revivedCount = if typeof(event.revived) == "table" then #event.revived else 0,
+			blink = if blink then function(at: Vector3?)
+				blink(marker, at, target)
+			end else nil,
+		}
 		local ok, stop = pcall(SuperFx.impact, event.look, view, grade, target, body, height, extra)
 		if ok and stop then
 			superLingers[event.from] = stop
@@ -513,6 +562,15 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	local function onSpecial(event: any)
 		if typeof(event.look) == "string" and SuperFxConfig.LOOKS[event.look] then
 			onSuperImpact(event)
+			return
+		end
+		if event.kind == "Barrage" then
+			-- Rift Step's later hits (no look): it bursts out of the next rift and strikes
+			local caster = resolve.marker(event.from)
+			local casterView = if caster then resolve.creature(caster) else nil
+			if casterView and typeof(event.blink) == "number" then
+				SuperFx.blink(casterView.root, event.blink)
+			end
 			return
 		end
 		local spec = AttackFx.SPECIALS[event.kind]

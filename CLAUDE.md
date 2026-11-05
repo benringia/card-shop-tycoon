@@ -99,7 +99,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   each for a player who stands still and one who fights well with the sword (targets: well 85% at 1x / 50% at 0.8x,
   still 60% / 15%); with players > 1 every row is a group of that many players against the scaled boss. Every creature
   fights with its fight perk; `NO_PERKS=1` in front runs without them, to compare (`NO_DEBUFFS=1`: without the
-  bosses' ring debuffs)
+  bosses' ring debuffs). Epic and Legendary cards fire their supers when ready (`NO_SUPERS=1`: without,
+  `ONLY_SUPER="<card>"`: that one alone); `SET="Voidmaw.healCap=0.05"` / `BOSS_SET="prismHydra.atk=40"` try numbers
+  without editing the configs
 - `lune run tools/balance/wild [fights] [wild|frontier|both]` — wild monster balance: win rate and fight length per
   species at its zone's lowest, middle and highest level, normal and elite, against the card nearest the zone boss's
   recommended Power, three ways: no sword yet, standing still, fighting well (targets: normal about 12.5 s, well ~90%,

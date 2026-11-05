@@ -28,7 +28,8 @@ return {
 		expect.equal(FightFxRules.isRanged("Tide", AttackFx), true, "Tide throws water")
 		expect.equal(FightFxRules.isRanged("Volt", AttackFx), true, "Volt shoots a bolt")
 		expect.equal(FightFxRules.isRanged("Bloom", AttackFx), false, "Bloom lashes up close")
-		expect.equal(FightFxRules.isRanged("Shade", AttackFx), false, "Shade claws up close")
+		-- The owner (2026-11-05): "Remodel shade basic attack, change it to a ranged moon slash dark purple"
+		expect.equal(FightFxRules.isRanged("Shade", AttackFx), true, "Shade flings a moon slash")
 		expect.equal(FightFxRules.isRanged("Plasma", AttackFx), false, "an unknown element stands close")
 		expect.equal(Combat.RANGED_BACK > 0, true, "ranged creatures stand further back")
 	end,

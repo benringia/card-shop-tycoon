@@ -123,6 +123,7 @@ type Fighter = {
 	regenBy: string?, -- the caster's id
 	ward: number, -- Tidal Shield: damage this fighter's own shield still absorbs (before its side's)
 	wardUntil: number, -- fight time it runs out
+	revived: boolean, -- Tidal Blessing: this caster has stood its owner's fainted creatures up (once a fight)
 	fainted: boolean,
 	mechanics: Mechanics?,
 	boss: boolean,
@@ -236,6 +237,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		regenBy = nil,
 		ward = 0,
 		wardUntil = 0,
+		revived = false,
 		fainted = false,
 		mechanics = mechanics,
 		boss = input.boss == true,
@@ -1276,13 +1278,76 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 			target.stunUntil = state.time + (if target.boss then math.min(ability.stun, state.combat.BOSS_MAX_STUN) else ability.stun)
 			target.nextAttack = math.max(target.nextAttack, target.stunUntil)
 		end
+	elseif kind == "Rebirth" then
+		-- Tidal Blessing (owner 2026-11-05, "Rebirth Spring"): its owner's fainted creatures stand back up (once a fight:
+		-- the first blessing that finds one down), a benched one back into the reserves; the rest of its owner's party
+		-- heals. Its owner's only, like Healing Rain: stacked blessings in a group would out-heal any boss.
+		local revived, healed = {}, {}
+		for _, ally in table.clone(side.fighters) do
+			if ally.owner ~= fighter.owner or ally.left then
+				continue
+			elseif ally.fainted and not ally.player then
+				if not fighter.revived then
+					table.insert(revived, ally)
+				end
+			elseif not ally.down and not ally.out then
+				local before = ally.hp
+				ally.hp = math.min(ally.maxHp, ally.hp + math.round(ally.maxHp * ability.heal))
+				if ally.hp > before then
+					table.insert(healed, ally.id)
+				end
+			end
+		end
+		local revivedIds = {}
+		for _, ally in revived do
+			ally.fainted = false
+			ally.hp = math.max(1, math.round(ally.maxHp * ability.revive))
+			ally.nextAttack = state.time + interval(state, ally)
+			if ally.benched then
+				ally.benched = false
+				table.remove(side.fighters, table.find(side.fighters, ally) :: number)
+				table.insert(side.reserves, ally)
+			end
+			table.insert(revivedIds, ally.id)
+		end
+		fighter.revived = fighter.revived or #revived > 0
+		table.insert(events, {
+			type = "ability",
+			kind = kind,
+			from = fighter.id,
+			revived = if #revivedIds > 0 then revivedIds else nil,
+			healed = healed,
+		})
+	elseif kind == "Barrage" then
+		-- Rift Step (owner 2026-11-05, "Blink Barrage"): one hit now, the next `gap` seconds later, `hits` in all (a hit
+		-- the caster doesn't live to land never comes); each hit says which it is
+		if target then
+			local blink = ability.blink or 1
+			local first = #events + 1
+			hit(state, fighter, target, ability.power, events, kind)
+			for index = first, #events do
+				if events[index].type == "ability" and events[index].kind == kind then
+					events[index].blink = blink
+				end
+			end
+			if blink < ability.hits then
+				-- Due a gap after this one was due (not after the step it landed on), so long steps don't stretch it
+				local nextBlink = table.clone(ability)
+				nextBlink.blink = blink + 1
+				nextBlink.look = nil
+				nextBlink.dueAt = (ability.dueAt or state.time) + ability.gap
+				table.insert(state.casts, { fighter = fighter, side = side, ability = nextBlink, at = nextBlink.dueAt })
+			end
+		end
 	elseif kind == "Eclipse" then
 		fighter.dodgeUntil = state.time + ability.seconds
 		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
 	elseif kind == "Devour" then
 		if target then
+			-- It heals a share of what it took, at most `healCap` of its max HP (the boss balance, 2026-11-05)
 			local damage = hit(state, fighter, target, ability.power, events, kind)
-			fighter.hp = math.min(fighter.maxHp, fighter.hp + math.round(damage * ability.lifesteal))
+			local heal = math.min(math.round(damage * ability.lifesteal), math.round(fighter.maxHp * (ability.healCap or 1)))
+			fighter.hp = math.min(fighter.maxHp, fighter.hp + heal)
 		end
 	end
 end
@@ -1292,7 +1357,10 @@ releaseCasts = function(state: State, events: { Event })
 		return
 	end
 	local waiting = {}
-	for _, cast in state.casts do
+	local due = state.casts
+	-- Moves that queue more of themselves as they fire (Rift Step's next hits) add to the new list
+	state.casts = waiting
+	for _, cast in due do
 		if state.time < cast.at and not (cast.super and (cast.fighter.fainted or cast.fighter.left)) then
 			table.insert(waiting, cast)
 		elseif not state.result and not cast.fighter.fainted and not cast.fighter.left then
@@ -1314,7 +1382,6 @@ releaseCasts = function(state: State, events: { Event })
 			end
 		end
 	end
-	state.casts = waiting
 end
 
 function BattleSim.useAbility(state: State, id: string, which: string, owner: string?): ({ Event }?, string?)

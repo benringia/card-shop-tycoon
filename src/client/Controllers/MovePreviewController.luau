@@ -98,11 +98,17 @@ local function superTimeline(lookId: string): ({ { at: number, event: any } }, n
 	local look = SuperFxConfig.LOOKS[lookId]
 	local ability = Combat.SIGNATURES[look.card]
 	local windup = ability.windup
-	local onSelf = ability.kind == "TidalShield" or ability.kind == "Eclipse"
+	local onSelf = ability.kind == "TidalShield" or ability.kind == "Eclipse" or ability.kind == "Rebirth"
 	local landing: any = { type = "ability", kind = ability.kind, look = lookId, from = ME, to = if onSelf then nil else FOE }
 	if ability.kind == "TidalShield" then
 		landing.shielded = { ME } -- the preview's only ally: its bubble
 		landing.seconds = ability.seconds
+	elseif ability.kind == "Rebirth" then
+		landing.healed = { ME } -- it heals itself, and stands up a creature off the field (its callout)
+		landing.revived = { "a:benched" }
+	elseif ability.kind == "Barrage" then
+		landing.blink = 1
+		landing.damage = 10
 	end
 	local timeline: { { at: number, event: any } } = {
 		{ at = 0, event = { type = "cast", from = ME, kind = ability.kind, look = lookId, seconds = windup, protect = windup + Combat.SUPER_PROTECT_TAIL, to = FOE } },
@@ -113,6 +119,11 @@ local function superTimeline(lookId: string): ({ { at: number, event: any } }, n
 	if ability.kind == "TidalShield" then
 		table.insert(timeline, { at = windup + 1, event = { type = "attack", from = FOE, to = ME, damage = 0, absorbed = 40 } })
 		table.insert(timeline, { at = windup + 2.2, event = { type = "shieldGone", to = ME } })
+	elseif ability.kind == "Barrage" then
+		-- Its later hits, a gap apart, each from the next rift
+		for blink = 2, ability.hits do
+			table.insert(timeline, { at = windup + ability.gap * (blink - 1), event = { type = "ability", kind = "Barrage", from = ME, to = FOE, blink = blink, damage = 10 } })
+		end
 	elseif ability.kind == "Eclipse" then
 		table.insert(timeline, { at = windup + 1, event = { type = "attack", from = FOE, to = ME, damage = 0, dodged = true } })
 		-- Its attacks while it lasts: the mirror image strikes with it (owner 2026-11-05)
@@ -157,6 +168,7 @@ local function play(payload: any)
 		setCharging = CreatureController.SetCharging,
 		pose = CreatureController.Pose,
 		dash = CreatureController.Dash,
+		blink = CreatureController.Blink,
 		monster = function(target: BasePart): any
 			return if target == dummy then { root = dummy, height = height, key = "preview", lengths = {} } else nil
 		end,

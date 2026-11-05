@@ -454,7 +454,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   smoking rifts instead; Epics stand
   1.5x, `Party.SIZE_BY_RARITY`), and between their idle, now and then roar (rear back, lunge, an element-coloured
   shockwave ring and sparks) or stomp (a dust ring). The pets' bones are animated in code on
-  each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping, breathing, tail wags,
+  each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping (Thunderhorn gallops, owner
+  2026-11-05 "make it like its running": `CREATURE_STYLE` `gait = "gallop"`, `PET_ANIM.GALLOP`: the front legs reach
+  together and the hind legs half a stride later, longer swings, the body rocking and bounding), breathing, tail wags,
   ear flops, hip sways for tails without bones, and idle fidgets (look around, tilt, sniff, stretch, happy wag,
   hop, spin, shake, sit, scratch, yawn); the Ultra pack's bones have generic names, so `Util/RigGuess` works out
   pelvis, spine, neck, head, tail, legs (front and hind) with their IK feet, arms and ears from where they sit
@@ -660,11 +662,19 @@ parties that stand still at 0.8x the recommended Power win more (Cave Brood Quee
 | Card | Signature | Effect |
 |---|---|---|
 | Infernox | Inferno | burns 6 s (0.4× ATK per second) |
-| Abyssal Koi | Tidal Shield | every ally (you too) a shield of 30% of its own max HP for 8 s |
+| Abyssal Koi | Tidal Shield | every ally (you too) a shield of 25% of its own max HP for 6 s |
 | Thunderhorn | Stampede | 2× ATK hit + 2 s stun |
 | Eclipse Fox | Eclipse | dodges everything for 5 s |
-| Solarion | Supernova | 4× ATK hit |
-| Voidmaw | Devour | 2× ATK hit, heals half the damage |
+| Solarion | Supernova | 4× ATK hit (a 3.5 s wind-up, the other Legendaries 2 s) |
+| Voidmaw | Devour | 2× ATK hit, heals half the damage, at most 10% of its max HP |
+
+The Frontier four share their base move's kind, except two that got their own (owner 2026-11-05): Cinder Titan's
+Magma Slam is a Stampede, Stormking's Thunderstorm a Supernova; Tideborne Kirin's Tidal Blessing ("Rebirth Spring",
+kind `Rebirth`) stands its owner's fainted creatures back up at 35% of their HP, once a fight (the first blessing that
+finds one down; a benched one goes back to the reserves), and heals the rest of its owner's party, the player too, 15%;
+Riftwalker's Rift Step ("Blink Barrage", kind `Barrage`) is 4 hits of 0.8x ATK, 0.25 s apart, each from another side of
+the boss (the sim queues the next hit as a cast; a caster that faints stops them). Both stay with their owner only,
+like Healing Rain: stacked blessings in a group would out-heal any boss.
 
 | Zone | Monster Lv | Species (element) | Chases you |
 |---|---|---|---|
@@ -982,9 +992,9 @@ and rewards in `BossService`.
 | 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 26 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 43 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 33 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 46 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 71 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 42 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -1156,8 +1166,11 @@ group, checked before its fragments and every time (not only the first). Below i
   pulling in. Then the element's attack (`Config/AttackFx`, `Util/FightFx`, pieces in `Util/ElementFx`, poses `charge`,
   `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
   3-hit vine lash, Volt a flickering lightning bolt shot from where it stands (the owner's mockup: flares at both
-  ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after), Shade a dash in and 3 claw
-  slashes. The limbs attack with the body (owner 2026-11-05: the Eclipse Fox "doesnt have a basic attack
+  ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after), Shade a moon slash (owner
+  2026-11-05: "a ranged moon slash dark purple"; kind `slash`, `AttackFx.MOON_SLASH`, `ElementFx.moonSlash`): a paw
+  swipes and flings a crescent of dark purple moonlight with a white core, dragging a shadow behind it, that flies like
+  a projectile (0.3 s) and lands in a slash; grade A flings a second crossed the other way, S a third flat across. Shade
+  creatures stand back like the other ranged ones (`FightFxRules.isRanged`). The limbs attack with the body (owner 2026-11-05: the Eclipse Fox "doesnt have a basic attack
   animation"; `Party.PET_ANIM` `ATTACK_*`): the charge lowers the head and raises the tail, a strike bites, a combo
   swipes a front paw (two-legged rigs: an arm) each third, left, right, left, the head dipping with each, and a cast
   rears the head back then thrusts it forward. Studio: `/attackfx [C|B|A|S]` plays three of your summoned creature's
@@ -1179,13 +1192,13 @@ group, checked before its fragments and every time (not only the first). Below i
   the caster's player can't be hit from the press until control returns (the wind-up + `Combat.SUPER_PROTECT_TAIL`
   0.6 s): hits due then miss and the boss starts no new quick hits or rings at them meanwhile; a super whose caster
   faints first fizzles (a `fizzle` event) and the protection ends with it; its creature can't be swapped out until it
-  lands; a creature winding up its super doesn't auto-attack until it lands (owner 2026-11-05). Tidal Shield (and
-  Tidal Blessing until its own move is picked) wards every ally on the caster's side still in the fight (players and
-  benched creatures too): a shield of `shield` of its own max HP for `seconds` (Koi 30% for 8 s, Kirin 35% for 10 s;
+  lands; a creature winding up its super doesn't auto-attack until it lands (owner 2026-11-05). Tidal Shield wards
+  every ally on the caster's side still in the fight (players and benched creatures too): a shield of `shield` of its
+  own max HP for `seconds` (25% for 6 s;
   the sim's per-fighter `ward`, taken before a boss's side shield, on creature hits and on the boss's hits on
   players), a `shieldGone` naming whose when it breaks or runs out; before, one shared pool covered the creatures only
-  and never ran out. The boss balance tool's numbers didn't move (its parties only press the Pet button, so supers
-  never fire there). Meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
+  and never ran out. The boss balance tool fires every Epic and Legendary card's super whenever it's ready (see the
+  balance note below). Meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
   it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
   everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
   event: Fireball a blast and a fire ring on the ground; the other four Pet button moves are finished (spec
@@ -1221,17 +1234,24 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   switch off). Every look grows with grade (`SuperFxRules`, Lune-tested) and has an S extra: Inferno's fire tornado,
   torrent and burning ring (S: lava cracks); Magma Slam's racing lava cracks, geysers, falling rocks and crust (S: a
   lava ring at the landing); Tidal Shield's wave crashing over your side, leaving a water bubble with spirit koi round
-  every warded ally (S: rainbow sheen); Tidal Blessing's parting clouds, light rays and a lotus closing into light,
-  leaving a bubble of light-water round every warded ally (S: a halo, golden rain), each bubble following its ally,
-  rippling with each hit its ward soaks (the sim's `absorbed`) and bursting when that ward ends (`shieldGone`) or the
-  fight ends; Stampede's lightning dash through the boss with afterimages and stun rings (S: a
+  every warded ally (S: rainbow sheen), each bubble following its ally, rippling with each hit its ward soaks (the
+  sim's `absorbed`) and bursting when that ward ends (`shieldGone`) or the fight ends; Tidal Blessing's parting clouds,
+  light rays and a lotus closing into a column of light, a pillar of light coming down on each creature it stands back
+  up on the field (clients play `SummonFx.revive` as the server clears the marker's `Fainted`; a benched one clears it
+  when it comes back in), "REVIVED!" over the Kirin, light shimmering up off everyone it heals and a soft rain of light
+  (S: a halo, golden rain); Stampede's lightning dash through the boss with afterimages and stun rings (S: a
   sky bolt); Eclipse (owner 2026-11-05): the fox holds still (`windupPose` "still") as a five-point star sigil
   draws itself under it and a black moon slides over the sun, then it glows dark purple and a see-through mirror image
   at its side copies its every pose and move (its bones copied each frame) and strikes with it (`SuperFx.echoHit`, a
-  shadow slash with each of its hits) while hits pass through in shadow, for 5 s (S: two mirror images); Rift Step's cracks in space, hits meeting empty rifts (S: the arena's edge cracks); Supernova's sun
-  growing over its hands, rising over the boss and bursting there (`grades.burst` studs up; the cinematic's charge and
-  impact shots frame that point, `SuperFxRules.shot` sky), raining fire into a dome of fire, rings, rays and shimmer
-  (S: light pillars); Stampede's thunder crack and roll on impact; Thunderstorm's storm clouds, colossal
+  shadow slash with each of its hits) while hits pass through in shadow, for 5 s (S: two mirror images); Rift Step's
+  cracks in space round it, then it shatters out of where it stands, rifts tear open round the boss (one a hit:
+  behind, side to side, in front; `SuperFxRules.riftSpots`) and it bursts out of each in turn as the sim lands that hit
+  (`SuperFx.blink`, the creature put at the rift by `CreatureController.Blink`), striking in a void slash, then shatters
+  back home and the rifts seal (S: the arena's edge cracks); Supernova at its own pace (owner 2026-11-05: "dont rush",
+  `LOOKS.Supernova.windup` 3.5 s and `timing`): the sun grows over its hands (40%), rises slowly high over the boss
+  (45%), hangs there throbbing and swelling, pulls in and bursts there (`grades.burst` studs up; the cinematic's charge
+  and impact shots frame that point, `SuperFxRules.shot` sky): a big white-out and two rings in the sky, fire raining
+  down, then a dome of fire, rings, rays and shimmer (S: light pillars); Stampede's thunder crack and roll on impact; Thunderstorm's storm clouds, colossal
   bolt and forks, rain and crawling sparks (S: three bolts, a chain round the arena); Devour's black hole, spectral
   jaws and streams of life back to Voidmaw (S: two bites). Each look has its own licensed sounds (`SOUNDS.<look>`: call,
   charge, impact, an A/S layer, a linger loop where it lasts), kept loaded (`CombatPreload`/`SoundBank`); new textures
@@ -1347,7 +1367,17 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   bosses were retuned to keep the targets (solo, still / well at 0.8x | 1x): Meadow Warden HP 1300 (7/60 | 100/100),
   Cave Brood Queen HP 2600 (23/60 | 60/90), Ember Colossus HP 6300 (6/60 | 60/86), Frost Tyrant unchanged (0/63 |
   49/91), Storm Sovereign 28000 / ATK 43 (20/60 | 60/90), Rift Devourer HP 34000 (23/60 | 58/82), Prism Hydra
-  60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x).
+  60000 / ATK 33 (28/68 | 61/100). Pairs stay as before (good players win about 100% at 1x). Super moves
+  (2026-11-05, owner: "make sure bosses are not too easy now that we have heals"): the tool now fires each Epic and
+  Legendary card's super whenever it's ready (a card of its rarity and element, taking turns; `NO_SUPERS=1`,
+  `ONLY_SUPER=<card>`, `SET=` and `BOSS_SET=` to compare). Alone, two made bosses too easy: Voidmaw's Devour (the Prism
+  Hydra standing still at 1x 68% to 100%, at 0.8x fighting well 60% to 99%; its heal now stops at 10% of its max HP)
+  and Abyssal Koi's Tidal Shield (Rift Devourer standing still at 0.8x 27% to 60%; trimmed to 25% for 6 s, but any ward
+  tips those fights, so that row stays). The rest moved a few points (Eclipse Fox the most: Rift Devourer fighting well
+  at 1x 84% to 98%, its 5 s is the owner's). Late bosses then took more ATK so parties with their supers land on the
+  targets (all supers on, still / well at 0.8x | 1x): Storm Sovereign ATK 46 (60/60 | 60/85), Rift Devourer ATK 71
+  (60/60 | 60/85), Prism Hydra ATK 42 (0/60 | 60/94: still at 0.8x runs out of time); without supers they read Storm Sovereign 11/60 | 60/84, Rift Devourer
+  6/53 | 60/69, Prism Hydra 27/60 | 60/92. Bosses 1-4 unchanged (their rows' parties have no supers, or hit the targets).
 - **Defeat screen** (owner 2026-11-04, design A "Defeated card"; `Util/DefeatScreen`, `Util/DefeatRules`,
   `Config/Defeat`), a lost boss fight: the world goes grey with a red edge (a ColorCorrectionEffect and the hit-flash
   vignette) and a quiet piano sting plays (APM "Moonlight Tides (sting)", Roblox-licensed, volume 0.22); "DEFEATED" drops in with

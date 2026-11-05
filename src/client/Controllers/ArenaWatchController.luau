@@ -68,6 +68,7 @@ function ArenaWatchController.Start()
 				setCharging = CreatureController.SetCharging,
 				pose = CreatureController.Pose,
 				dash = CreatureController.Dash,
+		blink = CreatureController.Blink,
 			})
 		end
 		local current = dispatcher :: FightFx.Dispatcher

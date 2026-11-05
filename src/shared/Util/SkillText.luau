@@ -33,6 +33,10 @@ function SkillText.describe(ability: any): string
 		return `Shields you and your party: {percent(ability.shield)} HP for {seconds(ability.seconds)}`
 	elseif kind == "Stampede" then
 		return `A {ability.power}x hit and a {seconds(ability.stun)} stun`
+	elseif kind == "Rebirth" then
+		return `Revives your fainted creatures at {percent(ability.revive)} once a fight, heals the rest {percent(ability.heal)}`
+	elseif kind == "Barrage" then
+		return `{ability.hits} hits of {ability.power}x ATK from every side`
 	elseif kind == "Eclipse" then
 		return `Dodges everything for {seconds(ability.seconds)}`
 	elseif kind == "Supernova" then

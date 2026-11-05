@@ -64,7 +64,7 @@ return {
 				local signature = combat.SIGNATURES[name]
 				assert(signature, `{name} has no signature`)
 				local known = false
-				for _, existing in { "Inferno", "TidalShield", "Stampede", "Eclipse", "Supernova", "Devour" } do
+				for _, existing in { "Inferno", "TidalShield", "Stampede", "Eclipse", "Supernova", "Devour", "Rebirth", "Barrage" } do
 					known = known or signature.kind == existing
 				end
 				assert(known, `{name}: unknown ability kind {signature.kind}`)

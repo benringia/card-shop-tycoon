@@ -39,6 +39,7 @@ type Creature = {
 	seed: number,
 	chargingUntil: number, -- os.clock: holds still to charge an attack until then
 	dash: { start: number, seconds: number, toward: Vector3, share: number }?, -- an attack's dash in and back
+	blink: { at: Vector3, face: Vector3 }?, -- Rift Step: standing at a rift (world), facing the boss, until cleared
 	element: string,
 	foil: boolean,
 	rarity: string,
@@ -312,6 +313,7 @@ local function add(marker: BasePart)
 		seed = (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name,
 		chargingUntil = 0,
 		dash = nil,
+		blink = nil,
 		element = card.element,
 		foil = marker:GetAttribute("Foil") == true,
 		rarity = card.rarity,
@@ -426,8 +428,15 @@ local function refreshCull()
 end
 
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
+	-- Rift Step: it stands at a rift, facing the boss, until it blinks home (in a fight, or a Studio preview of it)
+	local blink = creature.blink
+	if blink then
+		local spot = creature.marker.CFrame:PointToObjectSpace(blink.at)
+		local face = creature.marker.CFrame:VectorToObjectSpace(blink.face - blink.at)
+		creature.yaw = if Vector3.new(face.X, 0, face.Z).Magnitude > 1e-3 then math.atan2(-face.X, -face.Z) else creature.yaw
+		creature.body.offset = CFrame.new(spot.X, 0, spot.Z) * CFrame.Angles(0, creature.yaw, 0)
 	-- In a fight it circles its spot (the same path on every client) and stops to charge
-	if creature.marker:GetAttribute("InFight") == true then
+	elseif creature.marker:GetAttribute("InFight") == true then
 		local charging = now < creature.chargingUntil
 		local t = FightMotion.advance(creature.clock, now, charging)
 		local scale = creature.height / Party.CREATURE_HEIGHT
@@ -511,6 +520,14 @@ function CreatureController.Dash(marker: BasePart, toward: Vector3, share: numbe
 	local creature = creatures[marker]
 	if creature then
 		creature.dash = { start = os.clock(), seconds = math.max(seconds, 0.05), toward = toward, share = share }
+	end
+end
+
+-- Rift Step (FightFx): the creature drawn on this marker stands at `at` facing `face` (world), at once; nil: back home
+function CreatureController.Blink(marker: BasePart, at: Vector3?, face: Vector3?)
+	local creature = creatures[marker]
+	if creature then
+		creature.blink = if at then { at = at, face = face or marker.Position } else nil
 	end
 end
 

@@ -80,6 +80,8 @@ return {
 		Fireball = "MoveFireball", Rain = "MoveRain", Snare = "MoveSnare", Overcharge = "MoveOvercharge", Curse = "MoveCurse",
 		Inferno = "MoveInferno", TidalShield = "MoveTidalShield", Stampede = "MoveStampede", Eclipse = "MoveEclipse",
 		Supernova = "MoveSupernova", Devour = "MoveDevour",
+		-- Tidal Blessing and Rift Step's own moves (owner 2026-11-05) borrow the kit's sparkle and dash glyphs
+		Rebirth = "Sparkle", Barrage = "Dodge",
 	},
 
 	-- Textures (tools/textures/make_move_fx.py, uploaded; white with alpha, tinted in game) and Roblox-licensed sounds

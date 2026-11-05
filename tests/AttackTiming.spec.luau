@@ -38,7 +38,7 @@ return {
 	end,
 
 	["every element has a known attack kind"] = function()
-		local known = { projectile = true, combo = true, bolt = true }
+		local known = { projectile = true, combo = true, bolt = true, slash = true }
 		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
 			local entry = AttackFx.ELEMENT[element]
 			expect.equal(entry ~= nil and known[entry.kind] == true, true, element)
@@ -46,5 +46,11 @@ return {
 		expect.equal(AttackFx.ELEMENT.Ember.kind, "projectile")
 		expect.equal(AttackFx.ELEMENT.Bloom.kind, "combo")
 		expect.equal(AttackFx.ELEMENT.Volt.kind, "bolt") -- shot from where it stands (the owner's mockup), no dash
+		-- A crescent of dark purple moonlight flung at the foe (owner 2026-11-05), flying like a projectile
+		expect.equal(AttackFx.ELEMENT.Shade.kind, "slash")
+		expect.equal(AttackFx.FLIGHT.Shade ~= nil and AttackFx.FLIGHT.Shade > 0, true, "it flies a while")
+		expect.equal(AttackFx.SOUNDS.Shade.release ~= nil, true, "a whoosh as it's flung")
+		local c = AttackFx.ELEMENT.Shade.color
+		expect.equal(c[1] < 150 and c[3] > c[1] and c[3] > c[2], true, "dark purple")
 	end,
 }

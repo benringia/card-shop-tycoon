@@ -30,6 +30,26 @@ function SuperFxRules.beats(tier: string, tail: number, cfg: any): Beats
 	return { call = spec.call, impact = spec.windup, back = spec.windup + tail }
 end
 
+-- Rift Step's rifts (owner 2026-11-05, "Blink Barrage"): `hits` spots `radius` studs round the boss at its height, one
+-- a hit: the first behind it (away from the caster), then zig-zagging side to side round to the last in front
+function SuperFxRules.riftSpots(caster: Vec, target: Vec, hits: number, radius: number): { Vec }
+	local dx, dz = target.x - caster.x, target.z - caster.z
+	local length = math.sqrt(dx * dx + dz * dz)
+	if length < 1e-3 then
+		dx, dz, length = 0, -1, 1
+	end
+	dx, dz = dx / length, dz / length
+	local spots = {}
+	for index = 1, hits do
+		local along = if hits > 1 then (index - 1) / (hits - 1) else 0
+		local angle = along * math.pi * (if index % 2 == 0 then 1 else -1)
+		local c, s = math.cos(angle), math.sin(angle)
+		local x, z = dx * c - dz * s, dx * s + dz * c
+		table.insert(spots, { x = target.x + x * radius, y = target.y, z = target.z + z * radius })
+	end
+	return spots
+end
+
 local function add(a: Vec, b: Vec, k: number?): Vec
 	local s = k or 1
 	return { x = a.x + b.x * s, y = a.y + b.y * s, z = a.z + b.z * s }

@@ -1928,7 +1928,7 @@ return {
 	end,
 
 	["a Legendary super winds up 2 s and its landing carries its look"] = function()
-		local state = wild(fighter("a", "Ember", 1e6, 10, 1, "Solarion"), {}, monster("Bloom", 1e6, 0, 1), 13)
+		local state = wild(fighter("a", "Volt", 1e6, 10, 1, "Stormking"), {}, monster("Bloom", 1e6, 0, 1), 13)
 		local pressed = BattleSim.useAbility(state, "a:a", "signature") :: { any }
 		expect.near(pressed[1].seconds, 2, 1e-9)
 		local landed = nil
@@ -1939,7 +1939,7 @@ return {
 		end
 		assert(landed, "the 4x hit landed")
 		expect.equal(landed.time >= 1.9 and landed.time <= 2.1 + 1e-9, true, `landed at {landed.time}`)
-		expect.equal(landed.event.look, "Supernova")
+		expect.equal(landed.event.look, "Thunderstorm")
 	end,
 
 	["the caster's player can't be hit until control returns"] = function()
@@ -2068,7 +2068,7 @@ return {
 	["Tidal Shield wards every ally on its side, the player too"] = function()
 		local koi: any = fighter("k", "Tide", 1e6, 10, 1, "Abyssal Koi")
 		koi.owner = "1"
-		local state = bossFightWithPlayer(44, 30, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { koi, playerInput("1") })
+		local state = bossFightWithPlayer(45, 30, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { koi, playerInput("1") })
 		local landed = castNow(state, "a:k", "signature", "1") :: { any }
 		local spec = combat.SIGNATURES["Abyssal Koi"]
 		local cast = landed[1]
@@ -2111,7 +2111,7 @@ return {
 	end,
 
 	["Tidal Shield's numbers: a third of each ally's HP or so, for some seconds"] = function()
-		for _, card in { "Abyssal Koi", "Tideborne Kirin" } do
+		for _, card in { "Abyssal Koi" } do
 			local spec = combat.SIGNATURES[card]
 			expect.equal(spec.shield >= 0.2 and spec.shield <= 0.5, true, `{card}: shield share`)
 			expect.equal(spec.seconds >= 5 and spec.seconds < combat.SIGNATURE_COOLDOWN, true, `{card}: lasts a while, not always up`)
@@ -2135,5 +2135,100 @@ return {
 		end
 		expect.equal(during, 0, "no auto-attacks during the wind-up")
 		expect.equal(after > 0, true, "attacking again once it lands")
+	end,
+	-- The owner (2026-11-05, option B "Rebirth Spring"): Tidal Blessing stands its caster's fainted creatures back up
+	-- at a share of their HP (once a fight) and heals the rest of its owner's party a share of theirs
+	["Tidal Blessing revives its owner's fainted creatures into the reserves and heals the rest"] = function()
+		local spec = combat.SIGNATURES["Tideborne Kirin"]
+		expect.equal(spec.kind, "Rebirth")
+		local kirin: any = fighter("k", "Tide", 1e6, 10, 1, "Tideborne Kirin")
+		kirin.owner = "1"
+		local state = bossFightWithPlayer(47, 60, nil, nil, { owned("p1", "1", 50), playerInput("1") }, { kirin })
+		runFor(state, 8)
+		expect.equal((BattleSim.getFighter(state, "a:p1") :: any).fainted, true, "p1 fainted first")
+		BattleSim._hurtPlayer(state, "a:@1", 50)
+		local landed = castNow(state, "a:k", "signature", "1") :: { any }
+		local cast = landed[1]
+		expect.equal(cast.kind, "Rebirth")
+		expect.equal(cast.revived and cast.revived[1], "a:p1", "says who stood back up")
+		expect.equal(BattleSim.hpLeft(state, "a").p1, math.round(50 * spec.revive), "standing again at its share of its HP")
+		expect.equal(table.find(BattleSim.snapshot(state).sides.a.reserves, "a:p1") ~= nil, true, "back in the reserves")
+		expect.equal(viewOf(state, "a:@1").hp, 50 + math.round(combat.PLAYER_HP * spec.heal), "its player healed")
+		expect.equal(table.find(BattleSim.getFainted(state, "a"), "p1"), nil, "it won't rest after the fight")
+	end,
+
+	["Tidal Blessing's revive is spent once, only when it stands someone up"] = function()
+		local kirin: any = fighter("k", "Tide", 1e6, 10, 1, "Tideborne Kirin")
+		kirin.owner = "1"
+		local state = bossFightWithPlayer(48, 60, nil, nil, { kirin, playerInput("1") }, { owned("r1", "1", 50) })
+		local first = (castNow(state, "a:k", "signature", "1") :: { any })[1]
+		expect.equal(first.revived, nil, "nobody to stand up: not spent")
+		-- r1 comes in and faints; the second blessing stands it up
+		runFor(state, combat.SIGNATURE_COOLDOWN)
+		BattleSim.swap(state, "a:r1", "1")
+		runFor(state, 8)
+		expect.equal((BattleSim.getFighter(state, "a:r1") :: any).fainted, true, "r1 fainted")
+		local second = (castNow(state, "a:k", "signature", "1") :: { any })[1]
+		expect.equal(second.revived and second.revived[1], "a:r1", "stood up")
+		-- once a fight: it faints again and the third blessing only heals
+		runFor(state, combat.SIGNATURE_COOLDOWN)
+		BattleSim.swap(state, "a:r1", "1")
+		runFor(state, 8)
+		expect.equal((BattleSim.getFighter(state, "a:r1") :: any).fainted, true, "r1 fainted again")
+		local third = (castNow(state, "a:k", "signature", "1") :: { any })[1]
+		expect.equal(third.revived, nil, "once a fight")
+		expect.equal((BattleSim.getFighter(state, "a:r1") :: any).fainted, true, "still down")
+	end,
+
+	-- The owner (2026-11-05): "make sure bosses are not too easy now that we have heals". Devour's heal was half its hit
+	-- with no limit (tools/balance/bosses: Voidmaw alone took the Prism Hydra's still-player wins from 68% to 100%)
+	["Devour heals a share of its hit, never more than its cap of max HP"] = function()
+		local spec = combat.SIGNATURES.Voidmaw
+		expect.equal(spec.healCap > 0 and spec.healCap <= 0.15, true, "a modest cap")
+		local state = wild(fighter("v", "Shade", 1000, 400, 1, "Voidmaw"), {}, monster("Shade", 1e6, 0, 1), 51)
+		local raw = state.sides.a.fighters[1]
+		raw.hp = 100
+		local landed = (castNow(state, "a:v", "signature") :: { any })[1]
+		expect.equal(landed.kind, "Devour")
+		local healed = raw.hp - 100
+		expect.equal(healed, math.min(math.round(landed.damage * spec.lifesteal), math.round(1000 * spec.healCap)), "the smaller of the two")
+		expect.equal(healed <= 1000 * spec.healCap, true, "capped")
+	end,
+
+	-- The owner (2026-11-05, option C "Blink Barrage"): Rift Step blinks round the foe for quick hits from every side
+	["Rift Step lands its hits one after another, each a share of ATK"] = function()
+		local spec = combat.SIGNATURES.Riftwalker
+		expect.equal(spec.kind, "Barrage")
+		local state = wild(fighter("r", "Shade", 1e6, 100, 1, "Riftwalker"), {}, monster("Shade", 1e6, 0, 1), 49)
+		BattleSim.useAbility(state, "a:r", "signature")
+		local hits = {}
+		for _, entry in timedEvents(state, spec.windup + spec.gap * spec.hits + 0.5) do
+			local e = entry.event
+			if e.type == "ability" and e.kind == "Barrage" then
+				table.insert(hits, { time = entry.time, event = e })
+			end
+		end
+		expect.equal(#hits, spec.hits, "every hit lands")
+		for index, entry in hits do
+			expect.equal(entry.event.blink, index, "numbered")
+			expect.equal(entry.event.look, if index == 1 then "RiftStep" else nil, "the first carries the look")
+			expect.equal(entry.event.damage > 0 and entry.event.damage < 100 * spec.power * 2, true, "a share of ATK")
+		end
+		expect.near(hits[#hits].time - hits[1].time, spec.gap * (spec.hits - 1), 0.15, "spaced by its gap")
+		expect.equal(spec.hits * spec.power > 2.5 and spec.hits * spec.power < 4, true, "more than Stampede's 2x in all")
+	end,
+
+	["Rift Step's last hits stop if the caster faints"] = function()
+		local spec = combat.SIGNATURES.Riftwalker
+		local state = wild(fighter("r", "Shade", 1e6, 100, 1, "Riftwalker"), {}, monster("Shade", 1e6, 0, 1), 50)
+		castNow(state, "a:r", "signature")
+		state.sides.a.fighters[1].fainted = true
+		local later = 0
+		for _, e in runFor(state, spec.gap * spec.hits + 0.5) do
+			if e.type == "ability" and e.kind == "Barrage" then
+				later += 1
+			end
+		end
+		expect.equal(later, 0, "no hits from a fainted caster")
 	end,
 }

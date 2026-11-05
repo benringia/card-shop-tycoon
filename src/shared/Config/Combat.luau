@@ -53,17 +53,25 @@ return {
 	-- (Epic 1.5, Legendary 2: the caster's cinematic plays meanwhile)
 	SIGNATURES = {
 		Infernox = { kind = "Inferno", name = "Inferno", seconds = 6, perSecond = 0.4, look = "Inferno", windup = 1.5 },
-		-- Tidal Shield: every ally (players too) a ward of `shield` of its own max HP for `seconds` (owner 2026-11-05)
-		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3, seconds = 8, look = "TidalShield", windup = 1.5 },
+		-- Tidal Shield: every ally (players too) a ward of `shield` of its own max HP for `seconds` (owner 2026-11-05;
+		-- boss balance the same day: 25% for 6 s, was 30% for 8)
+		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.25, seconds = 6, look = "TidalShield", windup = 1.5 },
 		Thunderhorn = { kind = "Stampede", name = "Stampede", power = 2, stun = 2, look = "Stampede", windup = 1.5 },
 		-- Eclipse: its mirror image evades everything for `seconds` (owner 2026-11-05: 5)
 		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 5, look = "Eclipse", windup = 1.5 },
-		Solarion = { kind = "Supernova", name = "Supernova", power = 4, look = "Supernova", windup = 2 },
-		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5, look = "Devour", windup = 2 },
+		-- Supernova winds up longer than the other Legendaries (owner 2026-11-05: "dont rush"; Config/SuperFx timing)
+		Solarion = { kind = "Supernova", name = "Supernova", power = 4, look = "Supernova", windup = 3.5 },
+		-- Devour heals `lifesteal` of the hit, at most `healCap` of its max HP (boss balance 2026-11-05: uncapped, Voidmaw
+		-- alone made the Prism Hydra a sure win standing still)
+		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5, healCap = 0.1, look = "Devour", windup = 2 },
 		-- Frontier cards: same ability kinds, their own names and looks
-		Riftwalker = { kind = "Eclipse", name = "Rift Step", seconds = 3, look = "RiftStep", windup = 1.5 },
+		-- Rift Step (owner 2026-11-05, option C "Blink Barrage"): `hits` hits of `power` x ATK, `gap` seconds apart, each
+		-- from another side of the foe (the first lands as the wind-up ends)
+		Riftwalker = { kind = "Barrage", name = "Rift Step", hits = 4, power = 0.8, gap = 0.25, look = "RiftStep", windup = 1.5 },
 		["Cinder Titan"] = { kind = "Stampede", name = "Magma Slam", power = 2, stun = 2, look = "MagmaSlam", windup = 1.5 },
-		["Tideborne Kirin"] = { kind = "TidalShield", name = "Tidal Blessing", shield = 0.35, seconds = 10, look = "TidalBlessing", windup = 2 },
+		-- Tidal Blessing (owner 2026-11-05, option B "Rebirth Spring"): its owner's fainted creatures stand back up at
+		-- `revive` of their max HP (once a fight), the rest of its owner's party (the player too) heals `heal` of theirs
+		["Tideborne Kirin"] = { kind = "Rebirth", name = "Tidal Blessing", revive = 0.35, heal = 0.15, look = "TidalBlessing", windup = 2 },
 		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4, look = "Thunderstorm", windup = 2 },
 	},
 	-- The caster's player can't be hit from a super's press until control returns: its wind-up plus this (the impact

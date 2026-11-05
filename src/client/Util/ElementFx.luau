@@ -323,6 +323,74 @@ function ElementFx.projectile(from: Vector3, target: () -> Vector3, color: Color
 	end)
 end
 
+-- A crescent of moonlight flung from `from` at a (moving) target over `seconds` (Shade's basic attack, AttackFx
+-- MOON_SLASH): a glowing crescent bowed forward and tilted, a white core, a dark shadow sheet trailing behind it and
+-- motes; `onArrive` where it lands. tilt: degrees (the default's own tilt when nil)
+function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, onArrive: (Vector3) -> (), scale: number?, tilt: number?)
+	local cfg = AttackFx.MOON_SLASH
+	local s = scale or 1
+	local half = cfg.length * 0.5 * s
+	local turn = math.rad(tilt or cfg.tilt)
+	local carrier = holder(from, seconds + 1)
+	-- The two tips, across the flight and tilted; each one's X axis points ahead so the beam bows forward between them
+	local function tip(side: number): Attachment
+		local a = Instance.new("Attachment")
+		a.CFrame = CFrame.fromMatrix(Vector3.new(math.cos(turn), math.sin(turn), 0) * half * side, Vector3.new(0, 0, -1), Vector3.new(-math.sin(turn), math.cos(turn), 0))
+		a.Parent = carrier
+		return a
+	end
+	local left, right = tip(-1), tip(1)
+	local function crescent(width: number, tint: Color3, glow: number, z: number): Beam
+		local b = Instance.new("Beam")
+		b.Attachment0, b.Attachment1 = left, right
+		b.CurveSize0, b.CurveSize1 = cfg.bow * s, -cfg.bow * s
+		b.Texture = TEX.moon
+		b.TextureMode = Enum.TextureMode.Stretch
+		b.TextureLength = 1
+		b.Width0, b.Width1 = width, width
+		b.Color = ColorSequence.new(tint)
+		b.LightEmission = glow
+		b.LightInfluence = 0
+		b.FaceCamera = true
+		b.Segments = 16
+		b.ZOffset = z
+		b.Parent = carrier
+		return b
+	end
+	local beams = { crescent(cfg.width * s, color, 1, 0), crescent(cfg.width * 0.45 * s, WHITE, 1, 0.05) }
+	-- The shadow it drags behind it: a dark sheet between the tips, not lit
+	local trail = Instance.new("Trail")
+	trail.Attachment0, trail.Attachment1 = left, right
+	trail.Color = ColorSequence.new(color, Color3.fromRGB(cfg.shadow[1], cfg.shadow[2], cfg.shadow[3]))
+	trail.Transparency = NumberSequence.new(0.35, 1)
+	trail.Lifetime = cfg.trail
+	trail.LightEmission = 0.2
+	trail.LightInfluence = 0
+	trail.Parent = carrier
+	local motes = emitter(carrier, "spark", color, { size = { 0.6 * s, 0.1 }, life = { 0.25, 0.45 }, speed = { 1, 3 }, spread = 180, brightness = 2 })
+	motes.Rate = detail(40)
+	light(carrier, color, 9 * s, 2, seconds + 0.2)
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = if seconds <= 0 then 1 else math.clamp((os.clock() - started) / seconds, 0, 1)
+		local goal = target()
+		local now = from:Lerp(goal, t) + Vector3.new(0, (AttackFx.ARC.Shade or 0) * math.sin(t * math.pi), 0)
+		local flat = Vector3.new(goal.X - now.X, 0, goal.Z - now.Z)
+		carrier.CFrame = if flat.Magnitude > 1e-3 then CFrame.lookAt(now, now + flat) else CFrame.new(now)
+		if t >= 1 then
+			connection:Disconnect()
+			motes.Rate = 0
+			trail.Enabled = false
+			for _, b in beams do
+				b.Enabled = false
+			end
+			Debris:AddItem(carrier, 0.6)
+			onArrive(goal)
+		end
+	end)
+end
+
 -- A flickering lightning beam between two points for `seconds`, flares at both ends
 function ElementFx.bolt(from: Vector3, to: Vector3, color: Color3, seconds: number, scale: number?)
 	local s = scale or 1
