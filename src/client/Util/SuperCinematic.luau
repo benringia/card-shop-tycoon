@@ -214,6 +214,7 @@ local function finish(run: Running)
 	RunService:UnbindFromRenderStep(RENDER_NAME)
 	local camera = workspace.CurrentCamera
 	if camera then
+		camera.CFrame = run.saved.cframe -- the player's own view, also when cut short (final review)
 		camera.CameraType = run.saved.cameraType
 		camera.FieldOfView = run.saved.fov
 		if run.saved.subject and run.saved.subject.Parent then
@@ -381,7 +382,16 @@ function SuperCinematic.impact()
 	end
 end
 
--- Back to the player now (a fizzle, the fight ending, leaving)
+-- The fight ended: once the move has landed (often the killing blow) the cinematic plays out and eases back; before
+-- that it cuts back now
+function SuperCinematic.release()
+	local run = running
+	if run and not run.impactAt then
+		finish(run)
+	end
+end
+
+-- Back to the player now (a fizzle, the character gone, leaving)
 function SuperCinematic.cut()
 	local run = running
 	if run then

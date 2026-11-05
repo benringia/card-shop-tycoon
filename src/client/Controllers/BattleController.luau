@@ -1510,7 +1510,7 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 end
 
 local function stopCombat()
-	SuperCinematic.cut()
+	SuperCinematic.release()
 	local hud = combatHud
 	combatHud = nil
 	if hud then
@@ -1636,7 +1636,7 @@ end
 
 local function onEnded(summary: any)
 	fighting = false
-	SuperCinematic.cut() -- the fight ended mid-cinematic: everything back first
+	SuperCinematic.release() -- the fight ended mid-cinematic: a landed super plays out, else everything back now
 	local wasBoss = bossId ~= nil
 	-- Where the monster stood on screen, for the XP sparks (taken before the fight's markers go)
 	local monsterAt: Vector2? = nil

@@ -658,6 +658,22 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		for _, event in events do
+			-- The supers' lasting looks react to any sender's events first (final review: a shield running out has no
+			-- sender, a boss's hits take the monster path below)
+			local decor = SuperFxRules.decorations(event)
+			if decor.gone then
+				SuperFx.shieldGone(decor.gone)
+			end
+			if decor.soaked then
+				SuperFx.shieldHit(decor.soaked, targetPosition(event.from, Vector3.zero))
+			end
+			if decor.dodged then
+				local dodger = resolve.marker(decor.dodged)
+				local dodgerView = if dodger then resolve.creature(dodger) else nil
+				if dodgerView then
+					SuperFx.dodged(dodgerView.root, dodgerView.root.Position + Vector3.new(0, dodgerView.height * 0.5, 0))
+				end
+			end
 			if typeof(event) == "table" then
 				if event.type == "regen" then
 					onRegen(event)
@@ -701,20 +717,6 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				onSpecial(event)
 			elseif event.type == "fizzle" and typeof(event.from) == "string" then
 				stopSuperCharge(event.from) -- its caster fainted mid wind-up
-			elseif event.type == "shieldGone" and typeof(event.side) == "string" then
-				SuperFx.shieldGone(event.side) -- a Tidal Shield / Blessing dome bursts
-			end
-			if event.dodged and typeof(event.to) == "string" then
-				-- A hit passing through a dodging super (Eclipse's shadow, Rift Step's rifts)
-				local marker = resolve.marker(event.to)
-				local view = if marker then resolve.creature(marker) else nil
-				if view then
-					SuperFx.dodged(view.root, view.root.Position + Vector3.new(0, view.height * 0.5, 0))
-				end
-			end
-			if typeof(event.absorbed) == "number" and event.absorbed > 0 and typeof(event.to) == "string" then
-				-- A hit the side's shield soaked: its dome ripples where it struck
-				SuperFx.shieldHit(string.sub(event.to, 1, 1), targetPosition(event.from, Vector3.zero))
 			end
 		end
 	end
@@ -743,9 +745,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		for id in superCharges do
 			stopSuperCharge(id)
 		end
-		for id in superLingers do
-			stopSuperLinger(id)
-		end
+		-- A super that just landed (often the killing blow) plays out on its own timers (final review: the fight's end
+		-- wiped its impact); only the shields' domes burst now
+		superLingers = {}
+		SuperFx.burstDomes()
 	end
 
 	return { onEvents = onEvents, destroy = destroy }

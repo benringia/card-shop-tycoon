@@ -604,6 +604,13 @@ function SuperFx.shieldHit(side: string, from: Vector3)
 	play(dome.b, anchor(dome.b, CFrame.new(on)), (dome :: any).hitSound, 0.7)
 end
 
+-- The fight is over: every dome bursts
+function SuperFx.burstDomes()
+	for _, dome in domes do
+		dome.burst()
+	end
+end
+
 -- The side's shield ran out: its dome bursts
 function SuperFx.shieldGone(side: string)
 	local dome = domes[side]
