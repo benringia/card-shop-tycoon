@@ -5,13 +5,13 @@
 -- attack effects' textures (a beam draws as a blank slab until its texture is in) and every attack sound; with
 -- Config/Victory, the end screen's sounds (made on the spot they played late); with `more`, the pet moves' sounds and
 -- textures (Config/MoveFx), the bosses' roars (Config/Bosses moments), summon sounds and creature voices (Config/Party)
--- and the level-up sounds (Config/LevelUpFx default set): every sound a fight can play (owner 2026-11-05: "some are
+-- the level-up sounds (Config/LevelUpFx default set) and the super moves' (Config/SuperFx): every sound a fight can play (owner 2026-11-05: "some are
 -- delay some doesnt play"), kept loaded by Util/SoundBank. Pure (callers pass the configs in), so tests/ can run it in
 -- Lune.
 local CombatPreload = {}
 
 export type Ids = { images: { string }, sounds: { string }, animations: { string } }
-export type More = { moveFx: any?, bosses: any?, party: any?, levelUp: any? }
+export type More = { moveFx: any?, bosses: any?, party: any?, levelUp: any?, superFx: any? }
 
 local PREFIX = "rbxassetid://"
 
@@ -72,6 +72,11 @@ function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attack
 		add(ids.sounds, seenSounds, more.party.SUMMON_SOUNDS.unsummon.id)
 		scan(more.party.VOICE.small, ids.sounds, seenSounds)
 		scan(more.party.VOICE.big, ids.sounds, seenSounds)
+	end
+	if more and more.superFx then
+		-- The super moves' sounds and textures (Config/SuperFx, spec 2026-11-05-super-moves-design)
+		scan(more.superFx.SOUNDS, ids.sounds, seenSounds)
+		scan(more.superFx.TEXTURES, ids.images, seenImages)
 	end
 	if more and more.levelUp then
 		local set = more.levelUp.SOUNDS.sets[more.levelUp.SOUNDS.default]

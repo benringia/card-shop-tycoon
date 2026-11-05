@@ -19,6 +19,7 @@ local MoveFx = require(Config:WaitForChild("MoveFx"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Party = require(Config:WaitForChild("Party"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
+local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 local CombatPreload = require(Shared:WaitForChild("Util"):WaitForChild("CombatPreload"))
 
@@ -49,7 +50,7 @@ function CombatAssets.ensure(images: { string })
 end
 
 function CombatAssets.preload()
-	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory, { moveFx = MoveFx, bosses = Bosses, party = Party, levelUp = LevelUpFx })
+	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory, { moveFx = MoveFx, bosses = Bosses, party = Party, levelUp = LevelUpFx, superFx = SuperFxConfig })
 	local cache = Instance.new("ScreenGui")
 	cache.Name = "CombatCache"
 	cache.ResetOnSpawn = false

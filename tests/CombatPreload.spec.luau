@@ -9,6 +9,7 @@ local MoveFx = require("../src/shared/Config/MoveFx")
 local Bosses = require("../src/shared/Config/Bosses")
 local Party = require("../src/shared/Config/Party")
 local LevelUpFx = require("../src/shared/Config/LevelUpFx")
+local SuperFx = require("../src/shared/Config/SuperFx")
 local expect = require("./lib/expect")
 
 local function has(list: { string }, id: string): boolean
@@ -106,5 +107,14 @@ return {
 		expect.equal(has(ids.sounds, set.sound.id), true, "level-up")
 		expect.equal(has(ids.sounds, set.sting.id), true, "level-up sting")
 		expect.equal(has(ids.sounds, Party.SUMMON_SOUNDS.options.summon[1].id), false, "not the Studio-only options")
+	end,
+	-- Super moves (spec 2026-11-05-super-moves-design): their sounds and textures kept loaded like every fight sound
+	["the super moves' sounds and textures are fetched ahead too"] = function()
+		local copy = table.clone(SuperFx)
+		copy.SOUNDS = { Inferno = { call = "rbxassetid://123" } }
+		copy.TEXTURES = { crack = "rbxassetid://456" }
+		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords, AttackFx, Victory, { superFx = copy })
+		expect.equal(has(ids.sounds, "rbxassetid://123"), true, "a super's sound")
+		expect.equal(has(ids.images, "rbxassetid://456"), true, "a super's texture")
 	end,
 }
