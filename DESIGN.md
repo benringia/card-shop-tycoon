@@ -660,7 +660,7 @@ parties that stand still at 0.8x the recommended Power win more (Cave Brood Quee
 | Card | Signature | Effect |
 |---|---|---|
 | Infernox | Inferno | burns 6 s (0.4× ATK per second) |
-| Abyssal Koi | Tidal Shield | absorbs damage up to 30% of its max HP |
+| Abyssal Koi | Tidal Shield | every ally (you too) a shield of 30% of its own max HP for 8 s |
 | Thunderhorn | Stampede | 2× ATK hit + 2 s stun |
 | Eclipse Fox | Eclipse | dodges everything for 3 s |
 | Solarion | Supernova | 4× ATK hit |
@@ -1046,7 +1046,8 @@ group, checked before its fragments and every time (not only the first). Below i
   coin so fights draw the same randoms) (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
-  creatures stands. Boss shields, heals, thunderclaps, Wave and Tidal Shield never touch players. You lose when you're
+  creatures stands. Boss shields, heals, thunderclaps and Healing Rain never touch players; Tidal Shield does (owner
+  2026-11-05: its ward covers the caster's player and every ally, the boss's hits on players hit it first). You lose when you're
   down and none of your creatures can fight: the defeat screen counts down `Combat.LOSS_COUNTDOWN` 5 s (it can't be
   skipped; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
@@ -1172,8 +1173,13 @@ group, checked before its fragments and every time (not only the first). Below i
   the caster's player can't be hit from the press until control returns (the wind-up + `Combat.SUPER_PROTECT_TAIL`
   0.6 s): hits due then miss and the boss starts no new quick hits or rings at them meanwhile; a super whose caster
   faints first fizzles (a `fizzle` event) and the protection ends with it; its creature can't be swapped out until it
-  lands. The boss balance tool's numbers didn't move (its parties only press the Pet button, so supers never fire
-  there). Meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
+  lands; a creature winding up its super doesn't auto-attack until it lands (owner 2026-11-05). Tidal Shield (and
+  Tidal Blessing until its own move is picked) wards every ally on the caster's side still in the fight (players and
+  benched creatures too): a shield of `shield` of its own max HP for `seconds` (Koi 30% for 8 s, Kirin 35% for 10 s;
+  the sim's per-fighter `ward`, taken before a boss's side shield, on creature hits and on the boss's hits on
+  players), a `shieldGone` naming whose when it breaks or runs out; before, one shared pool covered the creatures only
+  and never ran out. The boss balance tool's numbers didn't move (its parties only press the Pet button, so supers
+  never fire there). Meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
   it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
   everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
   event: Fireball a blast and a fire ring on the ground; the other four Pet button moves are finished (spec
@@ -1196,7 +1202,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
 - **Super moves** (spec `2026-11-05-super-moves-design.md`; the owner: "way epic/cooler looking" than the pet moves,
   "screen shakes / cinematics / particle effect / sound effects"): ten looks (`Config/SuperFx` LOOKS, by the super's
   `look`; the Frontier four have their own), drawn in the world for everyone by `Util/SuperFx` (routed from
-  `Util/FightFx`: the charge from the press, the impact and linger with the landing, a lighter shake for anyone near)
+  `Util/FightFx`: the charge from the press, the impact and linger with the landing; every look's big moment shakes
+  the screens near it, `AttackFx.SHAKE.super` times its grade's shake; Inferno and Magma Slam's creature leaps high to
+  wind up (`LOOKS.<look>.windupPose`, PetRig "leap") and drops back down as the move lands)
   and, on the caster's screen only, `Util/SuperCinematic` (driven by BattleController): the camera swoops to the
   creature (40 degrees off straight ahead, pulled in front of walls every frame), the card's painting slides across
   with the move's name in a wash of its colour, then the camera snaps to an impact shot framing the creature and its
@@ -1206,13 +1214,16 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   clouds parting) and a black-and-white impact frame (twice for Supernova at S; a soft white flash with the extras
   switch off). Every look grows with grade (`SuperFxRules`, Lune-tested) and has an S extra: Inferno's fire tornado,
   torrent and burning ring (S: lava cracks); Magma Slam's racing lava cracks, geysers, falling rocks and crust (S: a
-  lava ring at the landing); Tidal Shield's wave crashing into a water dome with spirit koi (S: rainbow sheen, a
-  second ring); Tidal Blessing's parting clouds, light rays and a lotus closing into a dome of light (S: a halo,
-  golden rain), both domes rippling with each hit the shield soaks (the sim's `absorbed`) and bursting when it runs out
-  (`shieldGone`) or the fight ends; Stampede's lightning dash through the boss with afterimages and stun rings (S: a
+  lava ring at the landing); Tidal Shield's wave crashing over your side, leaving a water bubble with spirit koi round
+  every warded ally (S: rainbow sheen); Tidal Blessing's parting clouds, light rays and a lotus closing into light,
+  leaving a bubble of light-water round every warded ally (S: a halo, golden rain), each bubble following its ally,
+  rippling with each hit its ward soaks (the sim's `absorbed`) and bursting when that ward ends (`shieldGone`) or the
+  fight ends; Stampede's lightning dash through the boss with afterimages and stun rings (S: a
   sky bolt); Eclipse's black moon over the sun, the fox in shadow with afterimages, hits passing through in shadow (S:
-  two clones); Rift Step's cracks in space, hits meeting empty rifts (S: the arena's edge cracks); Supernova's growing
-  sun hurled into a dome of fire, rings, rays and shimmer (S: light pillars); Thunderstorm's storm clouds, colossal
+  two clones); Rift Step's cracks in space, hits meeting empty rifts (S: the arena's edge cracks); Supernova's sun
+  growing over its hands, rising over the boss and bursting there (`grades.burst` studs up; the cinematic's charge and
+  impact shots frame that point, `SuperFxRules.shot` sky), raining fire into a dome of fire, rings, rays and shimmer
+  (S: light pillars); Stampede's thunder crack and roll on impact; Thunderstorm's storm clouds, colossal
   bolt and forks, rain and crawling sparks (S: three bolts, a chain round the arena); Devour's black hole, spectral
   jaws and streams of life back to Voidmaw (S: two bites). Each look has its own licensed sounds (`SOUNDS.<look>`: call,
   charge, impact, an A/S layer, a linger loop where it lasts), kept loaded (`CombatPreload`/`SoundBank`); new textures

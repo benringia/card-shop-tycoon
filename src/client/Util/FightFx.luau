@@ -483,7 +483,21 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local target = targetPosition(event.to, caster)
 		local body, height = targetBody(event.to)
 		stopSuperLinger(event.from)
-		local ok, stop = pcall(SuperFx.impact, event.look, view, grade, target, body, height, string.sub(event.from, 1, 1))
+		-- The shields: a bubble round every ally the sim warded (a creature's at its middle, a player's at its root)
+		local allies = {}
+		if typeof(event.shielded) == "table" then
+			for _, id in event.shielded do
+				local allyMarker = if typeof(id) == "string" then resolve.marker(id) else nil
+				local creature = if allyMarker then resolve.creature(allyMarker) else nil
+				if creature then
+					table.insert(allies, { id = id, part = creature.root, height = creature.height, lift = creature.height * 0.45 })
+				elseif allyMarker then
+					table.insert(allies, { id = id, part = allyMarker, height = 6, lift = 0 })
+				end
+			end
+		end
+		local extra = { allies = allies, seconds = if typeof(event.seconds) == "number" then event.seconds else nil }
+		local ok, stop = pcall(SuperFx.impact, event.look, view, grade, target, body, height, extra)
 		if ok and stop then
 			superLingers[event.from] = stop
 		elseif not ok then

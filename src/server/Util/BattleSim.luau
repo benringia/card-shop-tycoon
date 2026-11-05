@@ -10,7 +10,7 @@
 -- Boss fights also put each player on side A as a player fighter ("a:@<owner>", spec 2026-11-02-you-in-the-fight):
 -- it never auto-attacks and nothing targets it as a creature; its sword hits (swordHit) use its owner's creature's ATK;
 -- at 0 HP it goes down instead of fainting and gets back up after DOWN_SECONDS while one of its owner's creatures
--- stands (else it's out for the fight). Thunderclaps, Healing Rain and Tidal Shield leave it alone. A boss with playerAttacks
+-- stands (else it's out for the fight). Thunderclaps and Healing Rain leave it alone; Tidal Shield wards it. A boss with playerAttacks
 -- hits players two ways: some of its swings become quick hits on a player (a warning, then the hit), and every few
 -- seconds a big attack puts a closing ring on each player (State.ringCheck says who stepped out). Both land
 -- HIT_GRACE after clients show them, so a last-moment dodge still counts. A landed ring leaves the boss's debuff on the
@@ -83,8 +83,9 @@ export type Event = {
 	-- (Config/SuperFx); a cast's `protect`: seconds its caster's player can't be hit
 	look: string?,
 	protect: number?,
-	absorbed: number?, -- a hit's share the side's shield took
-	side: string?, -- "shieldGone": whose shield ran out ("a" | "b")
+	absorbed: number?, -- a hit's share its ward (Tidal Shield) and its side's shield took
+	-- Tidal Shield's "ability": the allies it warded, for `seconds`; "shieldGone" (to: whose ward broke or ran out)
+	shielded: { string }?,
 }
 
 type Fighter = {
@@ -120,6 +121,8 @@ type Fighter = {
 	regenNext: number, -- fight time of the next one
 	regenAmount: number, -- HP each tick heals
 	regenBy: string?, -- the caster's id
+	ward: number, -- Tidal Shield: damage this fighter's own shield still absorbs (before its side's)
+	wardUntil: number, -- fight time it runs out
 	fainted: boolean,
 	mechanics: Mechanics?,
 	boss: boolean,
@@ -231,6 +234,8 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		regenNext = 0,
 		regenAmount = 0,
 		regenBy = nil,
+		ward = 0,
+		wardUntil = 0,
 		fainted = false,
 		mechanics = mechanics,
 		boss = input.boss == true,
@@ -595,6 +600,20 @@ local function shieldBroke(state: State, side: Side, events: { Event })
 	end
 end
 
+-- A fighter's own ward (Tidal Shield) takes what it can of `damage`; says so when it breaks. Returns what it took
+local function soakWard(target: Fighter, damage: number, events: { Event }): number
+	if target.ward <= 0 or damage <= 0 then
+		return 0
+	end
+	local absorbed = math.min(target.ward, damage)
+	target.ward -= absorbed
+	if target.ward <= 0 then
+		target.ward = 0
+		table.insert(events, { type = "shieldGone", to = target.id })
+	end
+	return absorbed
+end
+
 -- One hit from `from` on `target`: element, curse, dodge and the target side's shield all apply
 -- asAttack: the event is an "attack" even with a kind (sword hits)
 local function hit(state: State, from: Fighter, target: Fighter, multiplier: number, events: { Event }, kind: string?, asAttack: boolean?): number
@@ -614,14 +633,15 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 		raw *= 2
 	end
 	local damage = math.round(raw * (1 - perkOf(state, target, "Calm")))
+	-- Its own ward first (Tidal Shield), then its side's shield (a boss's)
+	local warded = soakWard(target, damage, events)
 	local hadShield = side.shield > 0
-	local absorbed = math.min(side.shield, damage)
+	local absorbed = math.min(side.shield, damage - warded)
 	side.shield -= absorbed
 	if hadShield and side.shield <= 0 then
 		shieldBroke(state, side, events)
-		-- Tidal Shield's dome bursts (super moves): which side's shield just ran out
-		table.insert(events, { type = "shieldGone", side = if side == state.sides.a then "a" else "b" })
 	end
+	absorbed += warded
 	local taken = damage - absorbed
 	table.insert(events, {
 		type = eventType,
@@ -631,7 +651,7 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 		damage = taken,
 		strength = strength,
 		crit = if crit then true else nil,
-		absorbed = if absorbed > 0 then absorbed else nil, -- what the side's shield took (the dome ripples)
+		absorbed = if absorbed > 0 then absorbed else nil, -- what its ward and its side's shield took (the ward ripples)
 	})
 	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events)
@@ -800,8 +820,17 @@ local function landPending(state: State, events: { Event })
 		if missed then
 			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = 0, dodged = true })
 		else
-			local damage = math.round(pending.damage * (1 - perkOf(state, target, "Calm")))
-			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = damage })
+			local raw = math.round(pending.damage * (1 - perkOf(state, target, "Calm")))
+			local warded = soakWard(target, raw, events) -- Tidal Shield covers its caster's player too
+			local damage = raw - warded
+			table.insert(events, {
+				type = "attack",
+				kind = pending.kind,
+				from = pending.from.id,
+				to = target.id,
+				damage = damage,
+				absorbed = if warded > 0 then warded else nil,
+			})
 			pending.from.dealt += math.min(damage, target.hp)
 			hurtPlayer(state, target, damage, events)
 			if pending.ring then
@@ -835,6 +864,14 @@ local function regen(state: State, fighter: Fighter, events: { Event })
 			fighter.hp = math.min(fighter.maxHp, fighter.hp + fighter.regenAmount)
 			table.insert(events, { type = "regen", from = fighter.regenBy, to = fighter.id, heal = fighter.regenAmount })
 		end
+	end
+end
+
+-- Tidal Shield's ward runs out after its seconds, hit or not
+local function wardEnd(state: State, fighter: Fighter, events: { Event })
+	if fighter.ward > 0 and state.time >= fighter.wardUntil - 1e-9 then
+		fighter.ward = 0
+		table.insert(events, { type = "shieldGone", to = fighter.id })
 	end
 end
 
@@ -968,6 +1005,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 			tickDebuff(state, fighter, events)
 			burn(state, fighter, events)
 			regen(state, fighter, events)
+			wardEnd(state, fighter, events)
 			bossMechanics(state, fighter, events)
 			getUp(state, side, fighter, events)
 			bigAttack(state, fighter, events)
@@ -1221,8 +1259,17 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 			table.insert(events, { type = "ability", kind = kind, from = fighter.id, to = target.id })
 		end
 	elseif kind == "TidalShield" then
-		side.shield = math.round(fighter.maxHp * ability.shield)
-		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
+		-- Every ally still in the fight (players, benched creatures) gets its own ward: its share of its own max HP, for
+		-- the move's seconds (owner 2026-11-05: "you and your whole party")
+		local shielded = {}
+		for _, ally in side.fighters do
+			if not ally.fainted and not ally.left and not ally.out then
+				ally.ward = math.round(ally.maxHp * ability.shield)
+				ally.wardUntil = state.time + ability.seconds
+				table.insert(shielded, ally.id)
+			end
+		end
+		table.insert(events, { type = "ability", kind = kind, from = fighter.id, shielded = shielded, seconds = ability.seconds })
 	elseif kind == "Stampede" then
 		if target then
 			hit(state, fighter, target, ability.power, events, kind)

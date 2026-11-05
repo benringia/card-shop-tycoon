@@ -188,18 +188,20 @@ return {
 	-- Final review: the dome's burst never played (a "shieldGone" has no `from`) and in boss and wild fights the dome's
 	-- ripples and the dodge puffs never played (the monster's hits went down another path). What an event means for the
 	-- lasting looks is read first, whoever sent it.
+	-- Owner 2026-11-05: Tidal Shield wards every ally, each its own bubble (a ward breaking or running out names whose)
 	["what an event means for the lasting looks, whoever sent it"] = function()
-		local gone = SuperFxRules.decorations({ type = "shieldGone", side = "a" })
-		expect.equal(gone.gone, "a", "a shield running out, with no sender")
+		local gone = SuperFxRules.decorations({ type = "shieldGone", to = "a:@1" })
+		expect.equal(gone.gone, "a:@1", "a ward running out, with no sender: whose")
+		expect.isNil(SuperFxRules.decorations({ type = "shieldGone", side = "b" }).gone, "a side's shield has no bubble")
 		local soaked = SuperFxRules.decorations({ type = "attack", from = "b:m", to = "a:p1", damage = 3, absorbed = 40 })
-		expect.equal(soaked.soaked, "a", "a boss's hit the dome soaked: the target's side")
+		expect.equal(soaked.soaked, "a:p1", "a boss's hit a ward soaked: whose bubble ripples")
 		local dodged = SuperFxRules.decorations({ type = "attack", from = "b:m", to = "a:p1", damage = 0, dodged = true })
 		expect.equal(dodged.dodged, "a:p1", "a boss's hit passing through a dodging super")
 		local plain = SuperFxRules.decorations({ type = "attack", from = "b:m", to = "a:p1", damage = 9 })
 		expect.isNil(plain.gone)
 		expect.isNil(plain.soaked)
 		expect.isNil(plain.dodged)
-		expect.isNil(SuperFxRules.decorations({ type = "shieldGone", side = "x" }).gone, "only a real side")
+		expect.isNil(SuperFxRules.decorations({ type = "shieldGone", to = 5 }).gone, "only a fighter id")
 		expect.isNil(SuperFxRules.decorations("junk" :: any).gone)
 	end,
 	-- Owner 2026-11-05: Inferno and Magma Slam leap high to wind up (the others crouch), and every super's big moment

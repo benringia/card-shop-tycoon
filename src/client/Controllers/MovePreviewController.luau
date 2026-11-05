@@ -92,15 +92,20 @@ local function superTimeline(lookId: string): ({ { at: number, event: any } }, n
 	local ability = Combat.SIGNATURES[look.card]
 	local windup = ability.windup
 	local onSelf = ability.kind == "TidalShield" or ability.kind == "Eclipse"
+	local landing: any = { type = "ability", kind = ability.kind, look = lookId, from = ME, to = if onSelf then nil else FOE }
+	if ability.kind == "TidalShield" then
+		landing.shielded = { ME } -- the preview's only ally: its bubble
+		landing.seconds = ability.seconds
+	end
 	local timeline = {
 		{ at = 0, event = { type = "cast", from = ME, kind = ability.kind, look = lookId, seconds = windup, protect = windup + Combat.SUPER_PROTECT_TAIL, to = FOE } },
-		{ at = windup, event = { type = "ability", kind = ability.kind, look = lookId, from = ME, to = if onSelf then nil else FOE } },
+		{ at = windup, event = landing },
 	}
-	-- What happens after, from the dummy (a monster, as in a boss fight): a hit the shield soaks then the shield running
-	-- out (the dome ripples, then bursts), or a hit passing through a dodging super
+	-- What happens after, from the dummy (a monster, as in a boss fight): a hit the ward soaks then the ward running
+	-- out (the bubble ripples, then bursts), or a hit passing through a dodging super
 	if ability.kind == "TidalShield" then
 		table.insert(timeline, { at = windup + 1, event = { type = "attack", from = FOE, to = ME, damage = 0, absorbed = 40 } })
-		table.insert(timeline, { at = windup + 2.2, event = { type = "shieldGone", side = "a" } })
+		table.insert(timeline, { at = windup + 2.2, event = { type = "shieldGone", to = ME } })
 	elseif ability.kind == "Eclipse" then
 		table.insert(timeline, { at = windup + 1, event = { type = "attack", from = FOE, to = ME, damage = 0, dodged = true } })
 	end

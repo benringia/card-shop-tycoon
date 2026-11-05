@@ -109,19 +109,19 @@ end
 
 export type Decorations = { gone: string?, soaked: string?, dodged: string? }
 
--- What a fight event means for the supers' lasting looks, whoever sent it (a side's shield running out has no sender; a
--- boss's or monster's hit goes down its own path): `gone` the side whose shield ran out (its dome bursts), `soaked` the
--- side whose shield took the hit (its dome ripples), `dodged` the fighter a hit passed through (Eclipse, Rift Step)
+-- What a fight event means for the supers' lasting looks, whoever sent it (a ward running out has no sender; a boss's
+-- or monster's hit goes down its own path): `gone` the fighter whose ward broke or ran out (its bubble bursts), `soaked`
+-- the fighter whose ward took the hit (its bubble ripples), `dodged` the fighter a hit passed through (Eclipse, Rift Step)
 function SuperFxRules.decorations(event: any): Decorations
 	local out: Decorations = {}
 	if typeof(event) ~= "table" then
 		return out
 	end
-	if event.type == "shieldGone" and (event.side == "a" or event.side == "b") then
-		out.gone = event.side
+	if event.type == "shieldGone" and typeof(event.to) == "string" then
+		out.gone = event.to
 	end
 	if typeof(event.absorbed) == "number" and event.absorbed > 0 and typeof(event.to) == "string" then
-		out.soaked = string.sub(event.to, 1, 1)
+		out.soaked = event.to
 	end
 	if event.dodged == true and typeof(event.to) == "string" then
 		out.dodged = event.to

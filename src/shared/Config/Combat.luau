@@ -53,7 +53,8 @@ return {
 	-- (Epic 1.5, Legendary 2: the caster's cinematic plays meanwhile)
 	SIGNATURES = {
 		Infernox = { kind = "Inferno", name = "Inferno", seconds = 6, perSecond = 0.4, look = "Inferno", windup = 1.5 },
-		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3, look = "TidalShield", windup = 1.5 },
+		-- Tidal Shield: every ally (players too) a ward of `shield` of its own max HP for `seconds` (owner 2026-11-05)
+		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3, seconds = 8, look = "TidalShield", windup = 1.5 },
 		Thunderhorn = { kind = "Stampede", name = "Stampede", power = 2, stun = 2, look = "Stampede", windup = 1.5 },
 		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 3, look = "Eclipse", windup = 1.5 },
 		Solarion = { kind = "Supernova", name = "Supernova", power = 4, look = "Supernova", windup = 2 },
@@ -61,7 +62,7 @@ return {
 		-- Frontier cards: same ability kinds, their own names and looks
 		Riftwalker = { kind = "Eclipse", name = "Rift Step", seconds = 3, look = "RiftStep", windup = 1.5 },
 		["Cinder Titan"] = { kind = "Stampede", name = "Magma Slam", power = 2, stun = 2, look = "MagmaSlam", windup = 1.5 },
-		["Tideborne Kirin"] = { kind = "TidalShield", name = "Tidal Blessing", shield = 0.35, look = "TidalBlessing", windup = 2 },
+		["Tideborne Kirin"] = { kind = "TidalShield", name = "Tidal Blessing", shield = 0.35, seconds = 10, look = "TidalBlessing", windup = 2 },
 		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4, look = "Thunderstorm", windup = 2 },
 	},
 	-- The caster's player can't be hit from a super's press until control returns: its wind-up plus this (the impact

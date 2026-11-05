@@ -2028,7 +2028,7 @@ return {
 		expect.equal(soaked > 0, true, "hits report what the shield took")
 	end,
 
-	["the side's shield running out says so"] = function()
+	["a ward broken by hits says whose it was"] = function()
 		local state = wild(fighter("a", "Tide", 1000, 10, 1, "Abyssal Koi"), {}, monster("Ember", 1e6, 200, 20), 42)
 		castNow(state, "a:a", "signature")
 		local gone = nil
@@ -2038,7 +2038,62 @@ return {
 			end
 		end
 		assert(gone, "a shieldGone event")
-		expect.equal(gone.side, "a")
+		expect.equal(gone.to, "a:a")
+	end,
+	-- The owner (2026-11-05): "Tidal Shield should give you and your whole party a shield that lasts for some time".
+	-- Every ally on the caster's side gets its own ward (its share of its own max HP) for the move's seconds; before,
+	-- one shared pool covered the creatures only and never ran out.
+	["Tidal Shield wards every ally on its side, the player too"] = function()
+		local koi: any = fighter("k", "Tide", 1e6, 10, 1, "Abyssal Koi")
+		koi.owner = "1"
+		local state = bossFightWithPlayer(44, 30, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { koi, playerInput("1") })
+		local landed = castNow(state, "a:k", "signature", "1") :: { any }
+		local spec = combat.SIGNATURES["Abyssal Koi"]
+		local cast = landed[1]
+		expect.equal(cast.kind, "TidalShield")
+		expect.equal(cast.seconds, spec.seconds, "it says how long")
+		local wards = {}
+		for _, id in cast.shielded do
+			wards[id] = true
+		end
+		expect.equal(wards["a:k"] and wards["a:@1"], true, "the creature and its player")
+		local soaked = 0
+		for _, e in runFor(state, spec.seconds - 0.5) do
+			if e.to == "a:@1" and typeof(e.absorbed) == "number" then
+				soaked += e.absorbed
+			end
+		end
+		expect.equal(soaked > 0, true, "the boss's hits on the player hit its ward first")
+		expect.equal(soaked <= math.round(combat.PLAYER_HP * spec.shield), true, "no more than its ward")
+	end,
+
+	["a ward runs out after its seconds, hit or not"] = function()
+		local koi: any = fighter("k", "Tide", 1e6, 10, 1, "Abyssal Koi")
+		koi.owner = "1"
+		local state = bossFightWithPlayer(45, 0, nil, nil, { koi, playerInput("1") })
+		castNow(state, "a:k", "signature", "1")
+		local castAt = state.time
+		local seconds = combat.SIGNATURES["Abyssal Koi"].seconds
+		local gone = {}
+		for _, entry in timedEvents(state, seconds + 1) do
+			if entry.event.type == "shieldGone" then
+				gone[entry.event.to] = entry.time - castAt
+			end
+		end
+		for _, id in { "a:k", "a:@1" } do
+			assert(gone[id], `{id}: its ward ran out`)
+			expect.near(gone[id], seconds, 0.15, `{id}: after its seconds`)
+		end
+		BattleSim._hurtPlayer(state, "a:@1", 10)
+		expect.equal(viewOf(state, "a:@1").hp, combat.PLAYER_HP - 10, "no ward left")
+	end,
+
+	["Tidal Shield's numbers: a third of each ally's HP or so, for some seconds"] = function()
+		for _, card in { "Abyssal Koi", "Tideborne Kirin" } do
+			local spec = combat.SIGNATURES[card]
+			expect.equal(spec.shield >= 0.2 and spec.shield <= 0.5, true, `{card}: shield share`)
+			expect.equal(spec.seconds >= 5 and spec.seconds < combat.SIGNATURE_COOLDOWN, true, `{card}: lasts a while, not always up`)
+		end
 	end,
 	-- The owner (2026-11-05): "if Super spells are clicked, the creature should stop attacking and perform the windup"
 	["a creature winding up its super doesn't auto-attack until it lands"] = function()

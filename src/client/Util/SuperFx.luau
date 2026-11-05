@@ -18,10 +18,14 @@ local SuperFx = {}
 
 -- The caster as Util/FightFx sees it
 export type View = { root: BasePart, element: string, height: number, grade: string?, mine: boolean }
--- side: the caster's side ("a" | "b"), for the shields' domes
+-- One warded ally (Tidal Shield, Tidal Blessing): its fighter id, the part its bubble follows, its height and how far
+-- over the part the bubble's centre sits
+export type Ally = { id: string, part: BasePart, height: number, lift: number }
+-- extra: what the landing event adds (the shields' warded allies and their seconds)
+export type Extra = { allies: { Ally }?, seconds: number? }
 type Look = {
 	charge: (view: View, grade: string, seconds: number, target: Vector3?) -> () -> (),
-	impact: (view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, side: string) -> () -> (),
+	impact: (view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, extra: Extra) -> () -> (),
 }
 
 local function color(rgb: { number }): Color3
@@ -561,80 +565,117 @@ local function magmaImpact(view: View, grade: string, target: Vector3, _targetBo
 	end
 end
 
--- The shields' domes (Tidal Shield, Tidal Blessing): one per side, rippling where a hit it soaks lands and bursting in
--- a splash when the side's shield runs out (the sim's "shieldGone"), a new cast or the fight ends
-type Dome = { center: Vector3, radius: number, tint: Color3, b: Bag, burst: () -> () }
+-- The shields' bubbles (Tidal Shield, Tidal Blessing; the sim's per-fighter ward, owner 2026-11-05 "you and your
+-- whole party"): one round each warded ally that follows it, rippling where a hit its ward soaks lands and bursting in a
+-- splash when that ward breaks or runs out (the sim's "shieldGone"), a new cast or the fight ends
+type Dome = { ally: Ally, radius: number, tint: Color3, b: Bag, burst: () -> (), hitSound: string? }
 local domes: { [string]: Dome } = {}
 
-local function makeDome(b: Bag, side: string, center: Vector3, radius: number, tint: Color3, burstSound: string?, hitSound: string?): Dome
-	local old = domes[side]
+local function domeCenter(dome: Dome): Vector3
+	return dome.ally.part.Position + UP * dome.ally.lift
+end
+
+-- A bubble round `ally` for `seconds` (its ward's; the sim's "shieldGone" usually bursts it first); `b` holds it and
+-- whatever the look hangs on it
+local function makeDome(ally: Ally, tint: Color3, seconds: number, burstSound: string?, hitSound: string?): Dome
+	local old = domes[ally.id]
 	if old then
 		old.burst()
 	end
-	local shell = part(b, Vector3.one * radius * 2, tint, CFrame.new(center), 0.15, Enum.PartType.Ball)
+	local b = bag()
+	local radius = math.max(3, ally.height * 0.8)
+	local center = ally.part.Position + UP * ally.lift
+	local shell = part(b, Vector3.one * 0.5, tint, CFrame.new(center), 0.15, Enum.PartType.Ball)
 	shell.Material = Enum.Material.ForceField
-	shell.Size = Vector3.one * 0.5
 	tween(shell, 0.35, { Size = Vector3.one * radius * 2 }, Enum.EasingStyle.Back)
 	local inner = part(b, Vector3.one * radius * 1.96, tint, CFrame.new(center), 0.88, Enum.PartType.Ball)
 	inner.Material = Enum.Material.Glass
 	local dome: Dome
 	local function burst()
-		if domes[side] == dome then
-			domes[side] = nil
+		if domes[ally.id] == dome then
+			domes[ally.id] = nil
 		end
 		if b.done then
 			return
 		end
-		ElementFx.burst(center + UP * radius * 0.5, tint, radius / 4)
-		local spray = ElementFx.emitter(anchor(b, CFrame.new(center + UP * radius * 0.4)), "spark", tint, { size = { 0.6, 0.1 }, life = { 0.6, 1.1 }, speed = { 18, 30 }, spread = 180, accel = -UP * 30 })
-		spray:Emit(60)
-		play(b, anchor(b, CFrame.new(center)), burstSound, 1)
+		local at = if ally.part.Parent then domeCenter(dome) else center
+		for _, connection in b.connections do
+			connection:Disconnect() -- it stops following and bursts where it is
+		end
+		ElementFx.burst(at + UP * radius * 0.5, tint, radius / 4)
+		local spray = ElementFx.emitter(anchor(b, CFrame.new(at + UP * radius * 0.4)), "spark", tint, { size = { 0.6, 0.1 }, life = { 0.6, 1.1 }, speed = { 18, 30 }, spread = 180, accel = -UP * 30 })
+		spray:Emit(40)
+		play(b, anchor(b, CFrame.new(at)), burstSound, 0.9)
 		tween(shell, 0.25, { Size = Vector3.one * radius * 2.3, Transparency = 1 })
 		tween(inner, 0.25, { Transparency = 1 })
 		task.delay(1.4, function()
 			clear(b)
 		end)
 	end
-	dome = { center = center, radius = radius, tint = tint, b = b, burst = burst }
-	domes[side] = dome
-	;(dome :: any).hitSound = hitSound
+	dome = { ally = ally, radius = radius, tint = tint, b = b, burst = burst, hitSound = hitSound }
+	domes[ally.id] = dome
+	everyFrame(b, function()
+		if not ally.part.Parent then
+			burst()
+			return
+		end
+		local now = CFrame.new(domeCenter(dome))
+		shell.CFrame, inner.CFrame = now, now
+	end)
+	task.delay(seconds + 0.5, burst)
 	return dome
 end
 
--- A hit the side's shield soaked (the sim's `absorbed`): a ripple where it struck the dome, toward `from`
-function SuperFx.shieldHit(side: string, from: Vector3)
-	local dome = domes[side]
-	if not dome or dome.b.done then
+-- Every warded ally's bubble (none listed: the caster's own); returns them and a stop that bursts them all
+local function makeDomes(view: View, extra: Extra, tint: Color3, burstSound: string?, hitSound: string?): ({ Dome }, () -> ())
+	local allies = extra.allies
+	if not allies or #allies == 0 then
+		allies = { { id = "caster", part = view.root, height = view.height, lift = view.height * 0.45 } }
+	end
+	local made = {}
+	for _, ally in allies :: { Ally } do
+		table.insert(made, makeDome(ally, tint, extra.seconds or 8, burstSound, hitSound))
+	end
+	return made, function()
+		for _, dome in made do
+			dome.burst()
+		end
+	end
+end
+
+-- A hit a ward soaked (the sim's `absorbed`): a ripple where it struck that fighter's bubble, toward `from`
+function SuperFx.shieldHit(id: string, from: Vector3)
+	local dome = domes[id]
+	if not dome or dome.b.done or not dome.ally.part.Parent then
 		return
 	end
-	local direction = from - dome.center
-	local on = dome.center + (if direction.Magnitude > 0.1 then direction.Unit else UP) * dome.radius
+	local center = domeCenter(dome)
+	local direction = from - center
+	local on = center + (if direction.Magnitude > 0.1 then direction.Unit else UP) * dome.radius
 	local flash = ElementFx.emitter(anchor(dome.b, CFrame.new(on)), "ring", dome.tint, { size = { 1, dome.radius * 0.5 }, life = 0.35, fade = 0.2, rotation = 0 })
 	flash:Emit(1)
 	ElementFx.burst(on, dome.tint, 0.5)
-	play(dome.b, anchor(dome.b, CFrame.new(on)), (dome :: any).hitSound, 0.7)
+	play(dome.b, anchor(dome.b, CFrame.new(on)), dome.hitSound, 0.7)
 end
 
--- The fight is over: every dome bursts
+-- The fight is over: every bubble bursts
 function SuperFx.burstDomes()
 	for _, dome in domes do
 		dome.burst()
 	end
 end
 
--- The side's shield ran out: its dome bursts
-function SuperFx.shieldGone(side: string)
-	local dome = domes[side]
+-- That fighter's ward broke or ran out: its bubble bursts
+function SuperFx.shieldGone(id: string)
+	local dome = domes[id]
 	if dome then
 		dome.burst()
 	end
 end
 
-local SHIELD_CAP = 25 -- seconds a dome stays at most if its shield never runs out (the fight's end clears it too)
-
 -- Tidal Shield (Abyssal Koi, Epic, Tide; spec "Tidal Shield"): the koi leaps from a swirl of water as a huge wave rises
--- behind your side, the wave crashes over you and sets into a shining water dome with spirit koi swimming round it.
--- By grade: a thicker dome, more spirit koi; S: a rainbow sheen and a second ring.
+-- behind your side and crashes over it, and every ally (you, your creatures) is left in a shining water bubble with
+-- spirit koi swimming round it for the ward's seconds. By grade: a bigger wave, more spirit koi; S: a rainbow sheen.
 local TIDE = SuperFxConfig.LOOKS.TidalShield
 local TIDE_SOUNDS = SuperFxConfig.SOUNDS.TidalShield
 
@@ -685,7 +726,7 @@ local function tideCharge(view: View, grade: string, seconds: number, target: Ve
 	end
 end
 
-local function tideImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, _targetHeight: number, side: string): () -> ()
+local function tideImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, _targetHeight: number, extra: Extra): () -> ()
 	local g = TIDE.grades[grade]
 	local b = bag()
 	local water = color(TIDE.color)
@@ -702,39 +743,46 @@ local function tideImpact(view: View, grade: string, target: Vector3, _targetBod
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(feet)), TIDE_SOUNDS.layer, 0.9)
 	end
-	-- The dome sets, spirit koi swimming round it
-	local radius = g.dome
-	local center = feet + UP * radius * 0.35
-	local dome = makeDome(b, side, center, radius, water, TIDE_SOUNDS.burst, TIDE_SOUNDS.hit)
-	local swimmers = {}
-	for index = 1, g.koi do
-		local fish = part(b, Vector3.new(0.7, 0.7, 1.8), Color3.fromRGB(255, 160, 80), CFrame.new(center), 0.1, Enum.PartType.Ball)
-		local glint = ElementFx.emitter(fish, "spark", Color3.fromRGB(255, 225, 190), { size = { 0.4, 0.05 }, life = 0.6, speed = 0, fade = 0.3 })
-		glint.Rate = 25
-		table.insert(swimmers, { fish = fish, tilt = (index / g.koi) * math.pi, speed = 0.9 + index * 0.12, phase = index * 1.7 })
+	-- A bubble sets round every ally, spirit koi swimming round each (S: a rainbow sheen)
+	local made, burstAll = makeDomes(view, extra, water, TIDE_SOUNDS.burst, TIDE_SOUNDS.hit)
+	local each = math.max(1, math.ceil(g.koi / #made))
+	for _, dome in made do
+		local swimmers = {}
+		for index = 1, each do
+			local fish = part(dome.b, Vector3.new(0.7, 0.7, 1.8), Color3.fromRGB(255, 160, 80), CFrame.new(domeCenter(dome)), 0.1, Enum.PartType.Ball)
+			local glint = ElementFx.emitter(fish, "spark", Color3.fromRGB(255, 225, 190), { size = { 0.4, 0.05 }, life = 0.6, speed = 0, fade = 0.3 })
+			glint.Rate = 25
+			table.insert(swimmers, { fish = fish, tilt = (index / each) * math.pi, speed = 0.9 + index * 0.12, phase = index * 1.7 })
+		end
+		local sheen: Part? = nil
+		if g.extra then
+			sheen = part(dome.b, Vector3.one * dome.radius * 2.08, WHITE, CFrame.new(domeCenter(dome)), 0.8, Enum.PartType.Ball)
+			;(sheen :: Part).Material = Enum.Material.Glass
+		end
+		everyFrame(dome.b, function(elapsed)
+			if not dome.ally.part.Parent then
+				return
+			end
+			local center = domeCenter(dome)
+			for _, s in swimmers do
+				local a = elapsed * s.speed + s.phase
+				local orbit = CFrame.Angles(s.tilt, 0, 0) * Vector3.new(math.cos(a), 0, math.sin(a)) * dome.radius * 0.98
+				local nextOrbit = CFrame.Angles(s.tilt, 0, 0) * Vector3.new(math.cos(a + 0.1), 0, math.sin(a + 0.1)) * dome.radius * 0.98
+				s.fish.CFrame = CFrame.lookAt(center + orbit, center + nextOrbit)
+			end
+			if sheen then
+				sheen.CFrame = CFrame.new(center)
+				sheen.Color = Color3.fromHSV((elapsed * 0.25) % 1, 0.45, 1)
+			end
+		end)
 	end
-	local sheen: Part? = nil
-	if g.extra then
-		sheen = part(b, Vector3.one * radius * 2.08, WHITE, CFrame.new(center), 0.8, Enum.PartType.Ball)
-		;(sheen :: Part).Material = Enum.Material.Glass
-		local ring = fireRing(b, center, radius * 1.15, 18, Color3.fromRGB(190, 240, 255), 1.4)
-		for _, flame in ring do
-			flame.Texture = AttackFx.TEXTURES.spark
-		end
-	end
-	everyFrame(b, function(elapsed)
-		for _, s in swimmers do
-			local a = elapsed * s.speed + s.phase
-			local orbit = CFrame.Angles(s.tilt, 0, 0) * Vector3.new(math.cos(a), 0, math.sin(a)) * radius * 0.98
-			local nextOrbit = CFrame.Angles(s.tilt, 0, 0) * Vector3.new(math.cos(a + 0.1), 0, math.sin(a + 0.1)) * radius * 0.98
-			s.fish.CFrame = CFrame.lookAt(center + orbit, center + nextOrbit)
-		end
-		if sheen then
-			sheen.Color = Color3.fromHSV((elapsed * 0.25) % 1, 0.45, 1)
-		end
+	task.delay(1.5, function()
+		clear(b) -- the wave's spray; the bubbles hold on their own
 	end)
-	task.delay(SHIELD_CAP, dome.burst)
-	return dome.burst
+	return function()
+		burstAll()
+		clear(b)
+	end
 end
 
 -- Tidal Blessing (Tideborne Kirin, Legendary, Tide, Frontier; spec "Tidal Blessing"): clouds part with rays of light, a
@@ -806,7 +854,7 @@ local function blessCharge(view: View, grade: string, seconds: number, _target: 
 	end
 end
 
-local function blessImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number, side: string): () -> ()
+local function blessImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number, extra: Extra): () -> ()
 	local g = BLESS.grades[grade]
 	local b = bag()
 	local light = color(BLESS.color)
@@ -833,10 +881,11 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 			tween(leaf, 0.3, { Transparency = 1 })
 		end
 	end)
+	-- The lotus closes into light, and a bubble of light-water sets round every ally
 	local center = feet + UP * radius * 0.35
-	local dome = makeDome(b, side, center, radius, light, BLESS_SOUNDS.burst, BLESS_SOUNDS.hit)
 	ElementFx.burst(center, GOLD, radius / 3)
-	-- A soft rain of light over your side while it holds (S: golden)
+	local _, burstAll = makeDomes(view, extra, light, BLESS_SOUNDS.burst, BLESS_SOUNDS.hit)
+	-- A soft rain of light over your side for a while (S: golden)
 	local rain = ElementFx.emitter(anchor(b, CFrame.new(center + UP * radius * 0.8)), "spark", if g.extra then GOLD else light, {
 		size = { 0.35, 0.1 },
 		life = { 1.2, 1.8 },
@@ -860,8 +909,16 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 			part(b, Vector3.new(0.45, 0.45, 0.45), GOLD, CFrame.new(crown + Vector3.new(math.cos(angle), 0, math.sin(angle)) * view.height * 0.35), 0, Enum.PartType.Ball)
 		end
 	end
-	task.delay(SHIELD_CAP, dome.burst)
-	return dome.burst
+	task.delay(math.min(extra.seconds or 8, 6), function()
+		rain.Rate = 0
+		task.delay(2, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		burstAll()
+		clear(b)
+	end
 end
 
 -- See-through copies of the creature's model along a path (afterimages), fading over `life`
@@ -1644,13 +1701,13 @@ function SuperFx.charge(lookId: string, view: View, grade: string, seconds: numb
 end
 
 -- The impact and what lingers on the field for the move's seconds; returns a stop
-function SuperFx.impact(lookId: string, view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, side: string?): () -> ()
+function SuperFx.impact(lookId: string, view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, extra: Extra?): () -> ()
 	local own = LOOKS[lookId]
 	if not own then
 		warn(`[SuperFx] no look for {lookId}`)
 		return nothing
 	end
-	return own.impact(view, grade, target, targetBody, targetHeight, side or "a")
+	return own.impact(view, grade, target, targetBody, targetHeight, extra or {})
 end
 
 return SuperFx
