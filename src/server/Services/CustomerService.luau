@@ -120,8 +120,9 @@ local function onCharacterAdded(character: Model)
 	end)
 end
 
-local function pickColor(colors: { Color3 }): Color3
-	return colors[rng:NextInteger(1, #colors)]
+local function pickColor(colors: { { number } }): Color3
+	local rgb = colors[rng:NextInteger(1, #colors)]
+	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
 local function createModel(spawnCFrame: CFrame): Model
