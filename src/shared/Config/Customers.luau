@@ -104,6 +104,10 @@ return {
 		retries = 1,
 		patience = 25,
 	},
+	-- Reactions (Util/ReactionRules): passing within `reach` studs of a case holding an Epic, Legendary or foil card a
+	-- customer stops `seconds` with a whoa (a Legendary holds `crowd` at once); within `petReach` of your summoned
+	-- creature, petChance of them stop to pet it (once per visit)
+	REACTIONS = { reach = 6, seconds = 1.5, crowd = 3, petChance = 0.35, petReach = 8, whoa = "😮", heart = "Heart", checkEvery = 0.25 },
 	-- Bargain hunters (Util/HaggleRules): offer offLow-offHigh under the total, pay up to gapLow-gapHigh of the way back
 	HAGGLE = { offLow = 0.10, offHigh = 0.25, gapLow = 0.4, gapHigh = 0.8 },
 	-- The offer panel at the register (RegisterController), in pixels; buttons and chips at least 48 tall for phones

@@ -80,6 +80,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CollectorRules = require("./CollectorRules.spec"),
 	OfferRules = require("./OfferRules.spec"),
 	HaggleRules = require("./HaggleRules.spec"),
+	ReactionRules = require("./ReactionRules.spec"),
 	SoundLevel = require("./SoundLevel.spec"),
 	WildLoadingRules = require("./WildLoadingRules.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),

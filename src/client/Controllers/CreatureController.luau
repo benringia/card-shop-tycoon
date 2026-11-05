@@ -366,6 +366,12 @@ local function add(marker: BasePart)
 			SummonFx.revive(body)
 		end
 	end))
+	-- A customer petting it (CustomerService sets PetMe): a happy wag
+	table.insert(creature.connections, marker:GetAttributeChangedSignal("PetMe"):Connect(function()
+		if marker:GetAttribute("InFight") ~= true and marker:GetAttribute("Fainted") ~= true then
+			CreatureVisuals.pose(body, "wag", os.clock())
+		end
+	end))
 	if marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId and Players.LocalPlayer:GetAttribute("CreatureReady") ~= true then
 		-- Your own creature, the first time: the loading screen waits until its model has downloaded
 		task.spawn(function()

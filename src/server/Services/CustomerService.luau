@@ -20,6 +20,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("CollectorRules"))
 local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
+local ReactionRules = require(Shared:WaitForChild("Util"):WaitForChild("ReactionRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -62,6 +63,9 @@ export type Customer = {
 	lastScanAt: number?, -- set by RegisterService on each scan; switches to checkout patience
 	heldUntil: number?, -- a kid who paid stays at the counter until then (the rip reveal, an open offer: OfferService)
 	inHand: boolean?, -- Studio's /customer only: arrives holding its list (no shelf stock used, nothing put back)
+	seen: { [string]: boolean }, -- cards on display this customer already stopped at ("<shelf uid>#<slot>")
+	petted: boolean, -- already had their one chance to pet the owner's creature
+	reacting: boolean, -- stopped for a reaction right now
 }
 
 type CustomerCallback = (customer: Customer) -> ()
@@ -70,6 +74,7 @@ type PlotState = {
 	customers: { Customer },
 	queue: { Customer },
 	nextSpawnAt: number,
+	watching: { [string]: number }, -- customers stopped at each card on display ("<shelf uid>#<slot>")
 }
 
 local CustomerService = {}
@@ -97,7 +102,7 @@ end
 local function getPlotState(plot: Plot): PlotState
 	local state = plotStates[plot]
 	if not state then
-		state = { customers = {}, queue = {}, nextSpawnAt = 0 }
+		state = { customers = {}, queue = {}, nextSpawnAt = 0, watching = {} }
 		plotStates[plot] = state
 	end
 	return state
@@ -233,8 +238,15 @@ local function showBubble(customer: Customer, icon: string)
 end
 
 -- Walks along a computed path; falls back to a straight line if no path is found
+local react: (customer: Customer) -> ()
+
+-- Walks along a computed path; falls back to a straight line if no path is found. At each waypoint it may stop for
+-- the best cards on display or the owner's creature it's passing (react), then walks on.
 local function walkTo(customer: Customer, target: Vector3): boolean
 	return NpcMotion.walkTo(customer.humanoid, customer.root, target, CustomerConfig.PATH_AGENT, function()
+		if customer.alive and not customer.reacting then
+			react(customer)
+		end
 		return customer.alive
 	end)
 end
@@ -368,6 +380,85 @@ local function faceShelf(customer: Customer, shelf: PlacedShelf)
 	if flat.Magnitude > 0.1 then
 		root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit)
 	end
+end
+
+-- Turns a customer (standing still) toward a point
+local function faceToward(customer: Customer, point: Vector3)
+	local root = customer.root
+	local flat = Vector3.new(point.X - root.Position.X, 0, point.Z - root.Position.Z)
+	if flat.Magnitude > 0.1 then
+		root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit)
+	end
+end
+
+local function flatDistance(a: Vector3, b: Vector3): number
+	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
+end
+
+-- A "whoa" at an Epic, Legendary or foil card on display within reach (Util/ReactionRules), at most one card per stop;
+-- a Legendary holds a small crowd. True when the customer stopped.
+local function admireCard(customer: Customer): boolean
+	local reactions = CustomerConfig.REACTIONS
+	local state = getPlotState(customer.plot)
+	for _, shelf in PlacementService.GetShelves(customer.owner) do
+		if not PlacementService.IsCardCase(shelf) then
+			continue
+		end
+		for slot, displayed in shelf.cards do
+			local key = `{shelf.uid}#{slot}`
+			local part = shelf.cardParts[slot]
+			local card = Cards.ById[displayed.cardId]
+			if customer.seen[key] or not part or not card or flatDistance(part.Position, customer.root.Position) > reactions.reach then
+				continue
+			end
+			local shown = { rarity = card.rarity, foil = displayed.foil }
+			if not ReactionRules.drawsAWhoa(shown) or not ReactionRules.room(CustomerConfig, state.watching[key] or 0, shown) then
+				continue
+			end
+			customer.seen[key] = true
+			state.watching[key] = (state.watching[key] or 0) + 1
+			-- Released on a timer, so a customer removed mid-stop can't hold a place in the crowd
+			task.delay(reactions.seconds, function()
+				state.watching[key] = math.max(0, (state.watching[key] or 1) - 1)
+			end)
+			faceToward(customer, part.Position)
+			showBubble(customer, reactions.whoa)
+			fireOutcome(customer.owner, "happyMoment")
+			task.wait(reactions.seconds)
+			return true
+		end
+	end
+	return false
+end
+
+-- Once a visit, close to the owner's summoned creature: some stop to pet it (a heart; the creature wags, client-side)
+local function petCreature(customer: Customer)
+	local reactions = CustomerConfig.REACTIONS
+	local marker = PartyService.GetMarker(customer.owner)
+	if customer.petted or not marker then
+		return
+	end
+	local distance = flatDistance(marker.Position, customer.root.Position)
+	if distance > reactions.petReach then
+		return
+	end
+	customer.petted = true
+	if not ReactionRules.pets(CustomerConfig, distance, rng:NextNumber()) then
+		return
+	end
+	faceToward(customer, marker.Position)
+	showBubble(customer, reactions.heart)
+	marker:SetAttribute("PetMe", os.clock())
+	fireOutcome(customer.owner, "happyMoment")
+	task.wait(reactions.seconds)
+end
+
+react = function(customer: Customer)
+	customer.reacting = true
+	if not admireCard(customer) and customer.alive then
+		petCreature(customer)
+	end
+	customer.reacting = false
 end
 
 -- Shelves a customer may buy from and that have something on them: stocked product shelves and Glass
@@ -745,6 +836,9 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forced
 		kind = kind,
 		wanted = wanted,
 		inHand = inHand,
+		seen = {},
+		petted = false,
+		reacting = false,
 		model = model,
 		humanoid = humanoid,
 		root = root,

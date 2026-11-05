@@ -342,6 +342,11 @@ is over UI (`UIKit.pointerBlocked`).
   shows in a thought bubble over their head the whole visit (client `CustomerController`). After the shelves they walk
   the Glass Showcases looking for it (the owner can still put it out), re-check it on arrival and buy the cheapest copy
   at up to 1.3x its worth; otherwise a disappointed bubble (counts as no stock).
+- **Reactions** (`Util/ReactionRules`, `REACTIONS`): at each waypoint of their walk a customer within 6 studs of a
+  card case holding an Epic, Legendary or foil card stops 1.5 s facing it with a 😮 bubble (one stop per card per
+  visit; a Legendary holds up to 3 watchers, any other card 1). Once a visit, within 8 studs of the owner's summoned
+  creature, 35% stop to pet it (Heart bubble; the creature wags: marker attribute `PetMe`, `CreatureController`).
+  Each reaction is a happy moment for the rating.
 - Customer spawn rate scales with **shop rating** (cleanliness of stock, price fairness, decor score).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 
