@@ -133,6 +133,28 @@ return {
 		happy = { good = "Happy customers", fix = "Keep stock in and serve the queue quickly" },
 		decor = { good = "A cosy shop", fix = "Decorate your shop" },
 	},
+	-- Town walkers (Util/WalkerRules, TownWalkerService): up to `max` in town, one more every spawnEvery s while a player
+	-- is in town; they stroll the plaza for linger s (sitting on a free bench sitChance of the time), then pick an open
+	-- shop weighted by rating^ratingPower (x wantedBonus for a collector's card on show) and become its customer;
+	-- gone after lifetime s
+	-- (plaza stops: 4 fountain spots fountainRadius out, laneStops spots laneRadius out; they appear edgeRadius out; "in
+	-- town" is within townRadius of the plaza centre)
+	WALKERS = {
+		max = 8,
+		spawnEvery = 20,
+		linger = { 30, 90 },
+		sitChance = 0.4,
+		ratingPower = 2,
+		wantedBonus = 3,
+		lifetime = 240,
+		stopSeconds = { 4, 9 },
+		fountainStops = 4,
+		fountainRadius = 9,
+		laneStops = 6,
+		laneRadius = 21,
+		edgeRadius = 30,
+		townRadius = 260,
+	},
 	-- Reactions (Util/ReactionRules): passing within `reach` studs of a case holding an Epic, Legendary or foil card a
 	-- customer stops `seconds` with a whoa (a Legendary holds `crowd` at once); within `petReach` of your summoned
 	-- creature, petChance of them stop to pet it (once per visit)

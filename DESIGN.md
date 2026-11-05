@@ -347,6 +347,13 @@ is over UI (`UIKit.pointerBlocked`).
   visit; a Legendary holds up to 3 watchers, any other card 1). Once a visit, within 8 studs of the owner's summoned
   creature, 35% stop to pet it (Heart bubble; the creature wags: marker attribute `PetMe`, `CreatureController`).
   Each reaction is a happy moment for the rating.
+- **Town walkers** (`TownWalkerService`, `Util/WalkerRules`, `WALKERS`): while a player is in town, up to 8 customers
+  of every type (one more every 20 s) appear at the plaza's edge, stop at the fountain rim and lane spots, and sit on
+  a free bench 40% of the time (Roblox's sit animation, as the cafe townsfolk). After 30-90 s each picks an open shop
+  (its owner in the game), weighted by rating squared and x3 for a collector whose card is on show there, walks to
+  its door and becomes its customer (`CustomerService.Adopt`); a full shop sends it strolling again; gone after
+  4 minutes. They add to each shop's street customers. Measured 2026-11-06 (one player, Studio): server heartbeat work
+  0.45 ms before, 0.15-0.27 ms with 4 walkers on the plaza; client 16.7 ms a frame (60 fps cap), worst 24 ms.
 - Customer spawn rate scales with **shop rating** (4.7).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 
@@ -2851,4 +2858,4 @@ boss models; the ranch and Heroic tiers come after those.
 - [ ] Customers with personalities (spec `2026-11-06-customers-design.md`, plan `2026-11-06-customers.md`, branch
   `customers`): phase 1 in the shop built 2026-11-06 (types and looks, collectors, kid rips and offers, haggling with
   a counter, reactions, the shop rating on the sign and the HUD chip, economy check), waiting for the owner's Studio
-  check; phase 2 town walkers (plaza strollers who pick an open shop by rating) next.
+  check; phase 2 town walkers built the same day (4.5).

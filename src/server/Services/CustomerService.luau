@@ -819,6 +819,8 @@ local function pickWanted(owner: Player): string
 	return CollectorRules.wanted(CustomerConfig, owned, all, rng:NextNumber(), rng:NextNumber())
 end
 
+local startCustomer: (plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?) -> ()
+
 -- forcedKind / forcedWanted: Studio's /customer command only
 local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forcedKind: string?, forcedWanted: string?, inHand: boolean?)
 	local entry = getEntryCFrame(plot)
@@ -826,6 +828,11 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forced
 		or CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
 	local model = createModel(entry, kind)
 	local wanted = if kind == "collector" then forcedWanted or pickWanted(owner) else nil
+	startCustomer(plot, owner, state, model, kind, wanted, inHand)
+end
+
+-- Makes `model` (a fresh rig or a town walker) a customer of this shop and starts its visit
+startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?)
 	if wanted then
 		model:SetAttribute("WantedCard", wanted)
 	end
@@ -854,10 +861,13 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forced
 	}
 	table.insert(state.customers, customer)
 
+	local adopted = model.Parent == customersFolder -- a town walker already walks and animates
 	model.Parent = customersFolder
 	-- Server-owned physics so clients can't fling or teleport customers
 	root:SetNetworkOwner(nil)
-	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
+	if not adopted then
+		NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
+	end
 
 	customer.thread = task.spawn(run, customer)
 
@@ -983,6 +993,29 @@ function CustomerService.ShowBubble(customer: Customer, icon: string)
 	if customer.alive then
 		showBubble(customer, icon)
 	end
+end
+
+-- A customer rig of this type at `spawnCFrame`, not yet anyone's customer (TownWalkerService's strollers)
+function CustomerService.BuildModel(spawnCFrame: CFrame, kind: string): Model
+	return createModel(spawnCFrame, kind)
+end
+
+-- Where a shop's customers arrive from and leave to, on the street in front of it
+function CustomerService.EntryPoint(plot: Plot): Vector3
+	return getEntryCFrame(plot).Position
+end
+
+-- A town walker at this shop's door becomes its customer (a collector keeps the card on its WantedCard attribute, or
+-- picks one from this shop); false when the shop has no room or isn't this owner's any more
+function CustomerService.Adopt(model: Model, plot: Plot, owner: Player, kind: string): boolean
+	local state = getPlotState(plot)
+	if plot.owner ~= owner or not CustomerConfig.TYPES[kind] or #state.customers >= CustomerConfig.MAX_PER_PLOT then
+		return false
+	end
+	local wanted = model:GetAttribute("WantedCard")
+	local card = if kind == "collector" then (if typeof(wanted) == "string" then wanted else pickWanted(owner)) else nil
+	startCustomer(plot, owner, state, model, kind, card)
+	return true
 end
 
 -- Studio's /customer command: a customer of this type now (a collector wanting `wanted` when given)
