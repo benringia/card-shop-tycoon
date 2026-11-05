@@ -47,6 +47,23 @@ function SkillText.describe(ability: any): string
 	return ability.name
 end
 
+-- A fight button's tooltip (owner 2026-11-05: "explain what the skill does on the tooltips"): the Pet button says what
+-- the creature's element move does, the Super button what its super does (found by the move's name); nil for any
+-- other button, or a creature without that move
+function SkillText.buttonTip(combat: any, button: string, element: string, superName: string?): string?
+	if button == "pet" then
+		local ability = combat.ABILITIES[element]
+		return if ability then SkillText.describe(ability) else nil
+	elseif button == "signature" and superName then
+		for _, ability in combat.SIGNATURES do
+			if ability.name == superName then
+				return SkillText.describe(ability)
+			end
+		end
+	end
+	return nil
+end
+
 local function skill(ability: any): Skill
 	return { kind = ability.kind, name = ability.name, text = SkillText.describe(ability) }
 end

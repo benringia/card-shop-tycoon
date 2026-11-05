@@ -82,6 +82,9 @@ return {
 		impactReach = 0.55, -- the impact shot backs off at least this share of the creature-target distance
 		fov = 62,
 		ease = 0.35,
+		-- A player, creature or boss between the camera and the caster fades this much, on the caster's screen only
+		-- (owner 2026-11-05: the creature was sometimes covered); the shots also stand off to the side with fewer
+		fade = 0.8,
 	},
 	LOOKS = {
 		-- A fire tornado leaps onto the boss and leaves a ring of fire (S: the ground cracks into lava)

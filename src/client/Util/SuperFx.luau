@@ -10,6 +10,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperFx"))
+local SoundLevels = require(Shared:WaitForChild("Config"):WaitForChild("SoundLevels"))
+local SoundLevel = require(Shared:WaitForChild("Util"):WaitForChild("SoundLevel"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
@@ -145,7 +147,7 @@ local function play(b: Bag, parent: Instance, id: string?, volume: number, loope
 		return nil
 	end
 	local s = SoundBank.make(id)
-	s.Volume = AttackFx.VOLUME * volume
+	s.Volume = AttackFx.VOLUME * volume * SoundLevel.gain(SoundLevels, id) -- loud ones brought down (Config/SoundLevels)
 	s.PlaybackSpeed = 0.96 + math.random() * 0.08
 	s.Looped = looped == true
 	s.RollOffMaxDistance = 180

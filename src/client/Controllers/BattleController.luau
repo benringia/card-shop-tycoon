@@ -38,6 +38,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
 local HpBar = require(ClientUtil:WaitForChild("HpBar"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local RingFx = require(ClientUtil:WaitForChild("RingFx"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -1954,6 +1955,7 @@ local function build()
 	homeHolder.Size = UDim2.fromOffset(Combat.HOME_BUTTON.width, Combat.HOME_BUTTON.height)
 	homeHolder:SetAttribute("SoftButtons", true)
 	homeHolder.Parent = screenGui
+	Hud.hideWith(homeHolder) -- out of the way while the binder (or a pack opening) fills the screen (owner 2026-11-05)
 	shopButton = UIKit.iconButton(homeHolder, "Return to town", "Travel", UIKit.Colors.Secondary)
 	shopButton.Name = "ShopButton"
 	shopButton.Size = UDim2.fromScale(1, 1)

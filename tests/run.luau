@@ -76,6 +76,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	MoveFx = require("./MoveFx.spec"),
 	SkillText = require("./SkillText.spec"),
 	SuperFx = require("./SuperFx.spec"),
+	SoundLevel = require("./SoundLevel.spec"),
 	WildLoadingRules = require("./WildLoadingRules.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),
 	SwordRules = require("./SwordRules.spec"),

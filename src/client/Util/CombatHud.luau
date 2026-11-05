@@ -25,6 +25,7 @@ local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local CardDesign = require(Shared:WaitForChild("Config"):WaitForChild("CardDesign"))
 local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
+local SkillText = require(Shared:WaitForChild("Util"):WaitForChild("SkillText"))
 local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local HpBar = require((script.Parent :: Instance):WaitForChild("HpBar"))
@@ -68,7 +69,7 @@ export type View = {
 	creatureId: string,
 	creatureName: string,
 	creatureArt: string?, -- its card's painting, for the badge
-	creatureElement: string, -- for the pet button's tooltip (Config/CombatHud PET_TIPS)
+	creatureElement: string, -- for the pet button's tooltip (Util/SkillText.buttonTip)
 	petMove: string, -- its element ability's name ("Vine Snare"), for the pet button's name and tooltip
 	signatureMove: string?, -- its signature's name, when it has one
 	perkText: string?, -- its fight perk working now ("🔥 Hype: hits 23% harder"), for the chip under its bar
@@ -806,7 +807,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tipTitle.Text = title
 		tipTitle.TextColor3 = color(spec.color)
 		local view = latest
-		tipBody.Text = if name == "pet" and view then CombatHudConfig.PET_TIPS[view.creatureElement] or spec.tip else spec.tip
+		tipBody.Text = (if view then SkillText.buttonTip(Combat, name, view.creatureElement, view.signatureMove) else nil) or spec.tip
 		tipEdge.Color = color(spec.color)
 		local half = CombatHudConfig.TIP_WIDTH / 2 + 8
 		local x = anchor.AbsolutePosition.X - root.AbsolutePosition.X + anchor.AbsoluteSize.X / 2

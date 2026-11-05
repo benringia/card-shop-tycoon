@@ -139,6 +139,36 @@ return {
 			assert(string.match(id, "^rbxassetid://%d+$"), `SOUNDS{path}`)
 		end, "")
 	end,
+	-- The owner (2026-11-05): "sometimes when cinematic is played the creature gets covered by the player or the boss".
+	-- The cinematic picks the side nothing stands on; every shot can go to either side, mirrored
+	["the shots can stand off to either side, mirrored across the creature's line"] = function()
+		local origin, facing, target = { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 1 }, { x = 0, y = 0, z = 40 }
+		for _, beat in { "call", "charge", "impact" } do
+			local right = SuperFxRules.shot(beat, origin, 10, facing, target, SuperFx, nil, 1)
+			local left = SuperFxRules.shot(beat, origin, 10, facing, target, SuperFx, nil, -1)
+			local plain = SuperFxRules.shot(beat, origin, 10, facing, target, SuperFx)
+			expect.near(left.x, -right.x, 1e-6, `{beat}: the other side`)
+			expect.near(left.z, right.z, 1e-6, `{beat}: as far along`)
+			expect.near(left.y, right.y, 1e-6, `{beat}: as high`)
+			expect.near(plain.x, right.x, 1e-6, `{beat}: the first side by default`)
+			expect.equal(math.abs(right.x) > 1, true, `{beat}: off the line`)
+		end
+	end,
+
+	-- What stands between the camera and the creature (a body's bounding box, in its own space) gets faded
+	["a sight line crossing a body's box, or not"] = function()
+		local half = { x = 1, y = 2, z = 1 }
+		local function v(x: number, y: number, z: number): any
+			return { x = x, y = y, z = z }
+		end
+		expect.equal(SuperFxRules.segmentHitsBox(v(-5, 0, 0), v(5, 0, 0), half), true, "straight through")
+		expect.equal(SuperFxRules.segmentHitsBox(v(-5, 3, 0), v(5, 3, 0), half), false, "over the top")
+		expect.equal(SuperFxRules.segmentHitsBox(v(-5, 0, 0), v(-2, 0, 0), half), false, "stops short of it")
+		expect.equal(SuperFxRules.segmentHitsBox(v(0, 0, 0), v(9, 9, 9), half), true, "starts inside it")
+		expect.equal(SuperFxRules.segmentHitsBox(v(-5, 0, 3), v(5, 0, 3), half), false, "passes beside")
+		expect.equal(SuperFxRules.segmentHitsBox(v(0.5, -9, 0.5), v(0.5, 9, 0.5), half), true, "straight down through it")
+	end,
+
 	-- Found in Studio (Task 4): straight in front of a big creature the close shot sat at the boss, which hid it
 	["the close shots stand off to one side, so the target isn't in the way"] = function()
 		local origin, facing = { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 1 }

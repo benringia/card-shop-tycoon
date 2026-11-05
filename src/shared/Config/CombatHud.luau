@@ -29,25 +29,17 @@ return {
 		},
 		pet = {
 			color = rgb(74, 222, 128), icon = "Paw", emoji = "🐾", key = "R", name = "PET MOVE",
-			tip = "Your creature's special move.", -- PET_TIPS says what each element's does
+			tip = "Your creature's special move.", -- what the creature's move does instead, when it has one (SkillText)
 		},
 		signature = {
 			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = nil, name = "SUPER MOVE",
-			tip = "Your creature's super move.",
+			tip = "Your creature's super move.", -- likewise
 		},
 		swap = {
 			color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1-3", name = "SWAP",
 			tip = "Switch to another creature.",
 		},
 		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil, name = "RUN", tip = "Leave the fight." },
-	},
-	-- The pet button's tooltip by the creature's element (its ability, Config/Combat ABILITIES)
-	PET_TIPS = {
-		Ember = "Throw a fireball.",
-		Tide = "Heal your creature over time.",
-		Bloom = "Slow the boss down.",
-		Volt = "Attack super fast.",
-		Shade = "Make the boss hit weaker.",
 	},
 	NAME_FIGHTS = 3, -- boss fights that show the buttons' names (saved per player: swordFights)
 	TIP_HOLD = 0.4, -- seconds a phone tap is held to show the tooltip (that press doesn't act)

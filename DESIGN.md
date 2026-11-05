@@ -179,7 +179,8 @@ arches and glowing paths. The travel rings keep their prompts, hidden behind the
 3 studs over whichever model stands and shows within 80 studs (`Town.PORTAL_LABEL_DISTANCE`), so it comes into view
 down the trail before it climbs off the top of the default camera's view. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
 Wild goes through its prompt only (the WildTravel remote accepts just "home", sent by the Wild's sky "Return to town"
-pill top centre; owner 2026-11-03, round 3, `Combat.HOME_BUTTON`), and the Frontier menu's choices only count
+pill top centre; owner 2026-11-03, round 3, `Combat.HOME_BUTTON`; it hides with the HUD while the binder or a pack
+opening fills the screen, owner 2026-11-05, `Hud.hideWith`), and the Frontier menu's choices only count
 within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
 z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
 and plain ground under and 5 studs round each shop, so no blades poke through; Roblox draws terrain 2 studs above its
@@ -1119,7 +1120,8 @@ group, checked before its fragments and every time (not only the first). Below i
   `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
   mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
-  in one short line (the pet move's by element, `CombatHud.PET_TIPS`).
+  in one short line; the Pet and Super buttons say what the creature's own moves do, with their numbers (owner
+  2026-11-05: "explain what the skill does on the tooltips"; `SkillText.buttonTip`, the card view's words).
 - **Sword moves round** (spec `2026-11-04-sword-moves-design.md`, plan `2026-11-04-sword-moves.md`; owner: "satisfying,
   smooth, dramatic, anime-ish, hack and slash, not Roblox-stiff"): four new Steel Sword moves keyed with per-key easing,
   joint overlap and 60 fps export (`tools/blender/anim_kit.py`, `anim_starter_sword.py`, exported in place in a
@@ -1225,7 +1227,11 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   the screens near it, `AttackFx.SHAKE.super` times its grade's shake; Inferno and Magma Slam's creature leaps high to
   wind up (`LOOKS.<look>.windupPose`, PetRig "leap") and drops back down as the move lands)
   and, on the caster's screen only, `Util/SuperCinematic` (driven by BattleController): the camera swoops to the
-  creature (40 degrees off straight ahead, pulled in front of walls every frame), the card's painting slides across
+  creature (40 degrees off straight ahead, pulled in front of walls every frame; owner 2026-11-05, "sometimes ... the
+  creature gets covered by the player or the boss": the shots stand off to whichever side has fewer players,
+  creatures or bosses in front of it, `SuperFxRules.shot` side, and any still between the camera and the creature
+  fades out on the caster's screen, `CAMERA.fade` through `LocalTransparencyModifier`, tested on their bounding boxes
+  because creature parts can't be raycast), the card's painting slides across
   with the move's name in a wash of its colour, then the camera snaps to an impact shot framing the creature and its
   target with a shake and a flash, and eases back; the HUD hides, the character holds still and the sword waits
   (`SwordController.Pause`) until control returns; a fizzle, the fight ending or leaving cuts back at once. Legendary
@@ -1254,7 +1260,12 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   down, then a dome of fire, rings, rays and shimmer (S: light pillars); Stampede's thunder crack and roll on impact; Thunderstorm's storm clouds, colossal
   bolt and forks, rain and crawling sparks (S: three bolts, a chain round the arena); Devour's black hole, spectral
   jaws and streams of life back to Voidmaw (S: two bites). Each look has its own licensed sounds (`SOUNDS.<look>`: call,
-  charge, impact, an A/S layer, a linger loop where it lasts), kept loaded (`CombatPreload`/`SoundBank`); new textures
+  charge, impact, an A/S layer, a linger loop where it lasts), kept loaded (`CombatPreload`/`SoundBank`); every super
+  and Pet button move sound is turned down by how loud it measured (owner 2026-11-05: "adjust skill volumes make sure
+  its not too loud"; `Config/SoundLevels`, `Util/SoundLevel`: PlaybackLoudness measured in Studio, the 70 combat sounds
+  ranged from about 1 to 450; above the target 120 a sound plays at (120 / level) ^ 0.75 of its volume, so the
+  Avalanche, Gas Fire Explosion, Glass Breaks, Wolf Howl and Rock Impact layers come down to 35-50% while chimes keep
+  theirs; `tools/audio/sound_ids` and `measure_loudness` for new ones); new textures
   from `tools/textures/make_super_fx.py` (`assets/ui/fx-super`). Studio: `/superfx <move> [C|B|A|S]` and the admin
   panel's "Super moves" buttons play any of them with the cinematic on your summoned creature against a dummy. Cost
   measured 2026-11-05 (render CPU, each look at S from the client): a 9.6 ms idle baseline, at most 11.8 ms average

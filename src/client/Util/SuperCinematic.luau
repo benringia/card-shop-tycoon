@@ -57,6 +57,8 @@ type Running = {
 	lastFacing: Vector3,
 	removing: RBXScriptConnection?,
 	ignore: { Instance }, -- what the camera may pass through: characters, monsters, the caster and its target
+	side: number, -- which side of the creature the shots stand off to (1 or -1): the one nobody stands in front of
+	faded: { [Model]: boolean }, -- characters, creatures and monsters faded out of the way this frame
 }
 
 local running: Running? = nil
@@ -106,6 +108,70 @@ local function ignoreFor(args: Args): { Instance }
 	return ignore
 end
 
+-- Players' characters, creatures and monsters near the creature: what may stand between the camera and it and gets
+-- faded out of the way (owner 2026-11-05: "sometimes ... the creature gets covered by the player or the boss").
+-- Creatures and monsters are drawn as models at the top of the workspace with an AnimationController (Util/
+-- CreatureVisuals); their parts can't be raycast (CanQuery off), so their bounding boxes are tested instead.
+local bodies: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local function candidates(): { Model }
+	local list: { Model } = {}
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(list, player.Character)
+		end
+	end
+	for _, child in workspace:GetChildren() do
+		if child:IsA("Model") then
+			local known = bodies[child]
+			if known == nil then
+				known = child:FindFirstChildWhichIsA("AnimationController", true) ~= nil
+				bodies[child] = known
+			end
+			if known then
+				table.insert(list, child)
+			end
+		end
+	end
+	return list
+end
+
+local REACH = 80 -- studs from the creature a body is checked within
+local SHRINK = 0.8 -- of a body's bounding box counts (boxes are bigger than the bodies in them)
+
+-- The bodies between `eye` and any of `points` (the caster's own model left out)
+local function blockers(eye: Vector3, points: { Vector3 }, own: Instance): { Model }
+	local found: { Model } = {}
+	for _, body in candidates() do
+		if body ~= own and body.Parent and (body:GetPivot().Position - points[1]).Magnitude < REACH then
+			local box, size = body:GetBoundingBox()
+			local half = vec(size * 0.5 * SHRINK)
+			local from = vec(box:PointToObjectSpace(eye))
+			for _, point in points do
+				if SuperFxRules.segmentHitsBox(from, vec(box:PointToObjectSpace(point)), half) then
+					table.insert(found, body)
+					break
+				end
+			end
+		end
+	end
+	return found
+end
+
+-- The caster's chest and head: what the camera must see
+local function creaturePoints(run: Running): { Vector3 }
+	local base, height = run.lastBase, run.args.height
+	return { base + Vector3.new(0, height * SuperFxConfig.CAMERA.focusHeight, 0), base + Vector3.new(0, height * 0.8, 0) }
+end
+
+-- A body faded (or back): every part's LocalTransparencyModifier, this screen only
+local function fade(model: Model, amount: number)
+	for _, item in model:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.LocalTransparencyModifier = amount
+		end
+	end
+end
+
 -- A beat's shot (Util/SuperFxRules.shot); the frame's camera is pulled in front of walls afterwards
 local function shotFor(run: Running, beat: string): CFrame
 	local args = run.args
@@ -117,8 +183,43 @@ local function shotFor(run: Running, beat: string): CFrame
 	-- A look that bursts high over the boss (Supernova's sun) keeps that point in frame too
 	local burst = if SuperFxConfig.LOOKS[args.look] then SuperFxRules.look(SuperFxConfig, args.look, args.grade, Extras.enabled()).burst else nil
 	local sky = if target and burst then { x = target.x, y = target.y + burst, z = target.z } else nil
-	local eye, focus = SuperFxRules.shot(beat, vec(run.lastBase), args.height, vec(run.lastFacing), target, SuperFxConfig, sky)
+	local eye, focus = SuperFxRules.shot(beat, vec(run.lastBase), args.height, vec(run.lastFacing), target, SuperFxConfig, sky, run.side)
 	return CFrame.lookAt(v3(eye), v3(focus))
+end
+
+-- The side whose close shots have fewer bodies in front of the creature (the first side on a tie)
+local function pickSide(run: Running): number
+	local own = run.args.creature:FindFirstAncestorOfClass("Model") or run.args.creature
+	local points = creaturePoints(run)
+	local counts = {}
+	for _, side in { 1, -1 } do
+		run.side = side
+		local count = 0
+		for _, beat in { "call", "charge" } do
+			count += #blockers(shotFor(run, beat).Position, points, own)
+		end
+		counts[side] = count
+	end
+	return if counts[-1] < counts[1] then -1 else 1
+end
+
+-- Each frame: whatever body still stands between the camera and the creature fades out, the ones no longer in the way
+-- come back
+local function clearView(run: Running, eye: Vector3)
+	local own = run.args.creature:FindFirstAncestorOfClass("Model") or run.args.creature
+	local now: { [Model]: boolean } = {}
+	for _, body in blockers(eye, creaturePoints(run), own) do
+		now[body] = true
+		if not run.faded[body] then
+			fade(body, SuperFxConfig.CAMERA.fade)
+		end
+	end
+	for body in run.faded do
+		if not now[body] and body.Parent then
+			fade(body, 0)
+		end
+	end
+	run.faded = now
 end
 
 -- The overlay: the colour wash, the card cut-in with the move's name, Legendary's bars
@@ -230,6 +331,12 @@ local function finish(run: Running)
 	if run.removing then
 		run.removing:Disconnect()
 	end
+	for body in run.faded do
+		if body.Parent then
+			fade(body, 0)
+		end
+	end
+	run.faded = {}
 	if run.grade then
 		run.grade:Destroy()
 	end
@@ -298,7 +405,10 @@ function SuperCinematic.play(args: Args)
 		lastFacing = args.creature.CFrame.LookVector,
 		removing = nil,
 		ignore = ignoreFor(args),
+		side = 1,
+		faded = {},
 	}
+	run.side = pickSide(run)
 	running = run
 	local ok, err = pcall(args.hideHud, true)
 	if not ok then
@@ -363,6 +473,7 @@ function SuperCinematic.play(args: Args)
 		-- Every frame (the eases between shots too) in front of any wall between it and the creature (review focus 4)
 		local chest = run.lastBase + Vector3.new(0, args.height * cfg.focusHeight, 0)
 		camera.CFrame = CFrame.new(pullIn(chest, view.Position, run.ignore)) * view.Rotation
+		clearView(run, camera.CFrame.Position)
 		camera.FieldOfView = cfg.fov
 		if t >= back - ease and not run.gui:GetAttribute("Leaving") then
 			run.gui:SetAttribute("Leaving", true)

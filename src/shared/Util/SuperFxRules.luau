@@ -87,14 +87,14 @@ end
 
 -- The camera's eye and focus for a beat: "call" and "charge" a low, close shot in front of the creature (`facing`, its
 -- look direction) and round to one side; "impact" a wide shot from behind and beside it framing it and its target (no target: a wide shot
--- of the creature from the front). Distances in multiples of `height`.
-local function baseShot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any): (Vec, Vec)
+-- of the creature from the front). Distances in multiples of `height`. side: 1 or -1, which side the shot stands off to
+local function baseShot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any, side: number): (Vec, Vec)
 	local cam = cfg.CAMERA
 	local front = flat(facing)
 	local chest = add(creature, UP, cam.focusHeight * height)
 	if beat == "call" or beat == "charge" then
 		-- Round to one side of straight ahead, so what it faces (its target) isn't between the camera and it
-		local turn = math.rad(cam.callAngle)
+		local turn = math.rad(cam.callAngle) * side
 		local aside: Vec = {
 			x = front.x * math.cos(turn) + front.z * math.sin(turn),
 			y = 0,
@@ -111,20 +111,45 @@ local function baseShot(beat: string, creature: Vec, height: number, facing: Vec
 	local toward = flat({ x = target.x - creature.x, y = 0, z = target.z - creature.z })
 	local apart = math.sqrt((target.x - creature.x) ^ 2 + (target.z - creature.z) ^ 2)
 	local back = math.max(cam.impactDistance * height, apart * cam.impactReach)
-	local side: Vec = { x = toward.z, y = 0, z = -toward.x } -- to its right
-	local eye = add(add(add(creature, toward, -back), side, cam.impactSide * height), UP, cam.impactHeight * height)
+	local beside: Vec = { x = toward.z * side, y = 0, z = -toward.x * side } -- to its right (side 1) or left
+	local eye = add(add(add(creature, toward, -back), beside, cam.impactSide * height), UP, cam.impactHeight * height)
 	local focus = add({ x = (creature.x + target.x) / 2, y = (creature.y + target.y) / 2, z = (creature.z + target.z) / 2 }, UP, cam.focusHeight * height)
 	return eye, focus
 end
 
 -- The same with `sky`, a point high over the boss it must also show (Supernova's burst): the charge and impact shots
--- look up to it as well (the call's close-up stays as it is)
-function SuperFxRules.shot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any, sky: Vec?): (Vec, Vec)
-	local eye, focus = baseShot(beat, creature, height, facing, target, cfg)
+-- look up to it as well (the call's close-up stays as it is). side: 1 (default) or -1, the side the shot stands off to
+-- (the cinematic picks the one no player or boss stands in front of)
+function SuperFxRules.shot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any, sky: Vec?, side: number?): (Vec, Vec)
+	local eye, focus = baseShot(beat, creature, height, facing, target, cfg, if side == -1 then -1 else 1)
 	if sky and beat ~= "call" then
 		return withSky(eye, focus, sky, facing, cfg.CAMERA)
 	end
 	return eye, focus
+end
+
+-- Whether the segment from `a` to `b` crosses a box centred on the origin with half-sizes `half` (both points in the
+-- box's own space): the cinematic fades a body standing between its camera and the creature
+function SuperFxRules.segmentHitsBox(a: Vec, b: Vec, half: Vec): boolean
+	local enter, leave = 0, 1
+	for _, axis in { "x", "y", "z" } do
+		local from, step, size = (a :: any)[axis], (b :: any)[axis] - (a :: any)[axis], (half :: any)[axis]
+		if math.abs(step) < 1e-9 then
+			if math.abs(from) > size then
+				return false
+			end
+		else
+			local t1, t2 = (-size - from) / step, (size - from) / step
+			if t1 > t2 then
+				t1, t2 = t2, t1
+			end
+			enter, leave = math.max(enter, t1), math.min(leave, t2)
+			if enter > leave then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 export type Decorations = { gone: string?, soaked: string?, dodged: string? }

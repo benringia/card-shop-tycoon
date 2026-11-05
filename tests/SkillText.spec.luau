@@ -28,6 +28,16 @@ return {
 		end
 	end,
 
+	-- The owner (2026-11-05): the fight buttons' tooltips "explain what the skill does"
+	["the Pet and Super buttons' tooltips say what the creature's moves do"] = function()
+		expect.equal(SkillText.buttonTip(Combat, "pet", "Shade", nil), "Foe hits 30% weaker for 5 s")
+		expect.equal(SkillText.buttonTip(Combat, "signature", "Tide", "Tidal Blessing"), SkillText.describe(Combat.SIGNATURES["Tideborne Kirin"]))
+		expect.equal(SkillText.buttonTip(Combat, "signature", "Shade", "Rift Step"), "4 hits of 0.8x ATK from every side")
+		expect.isNil(SkillText.buttonTip(Combat, "signature", "Tide", nil), "no super")
+		expect.isNil(SkillText.buttonTip(Combat, "pet", "None", nil), "no element move")
+		expect.isNil(SkillText.buttonTip(Combat, "dodge", "Tide", nil), "other buttons keep their own tip")
+	end,
+
 	-- The owner (2026-11-05): "weakness/strength" on the card view
 	["an element's matchups: who it beats and who beats it, from the element wheel"] = function()
 		local ember = SkillText.matchups(Combat, "Ember")
