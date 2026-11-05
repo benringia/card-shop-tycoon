@@ -1227,7 +1227,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   the screens near it, `AttackFx.SHAKE.super` times its grade's shake; Inferno and Magma Slam's creature leaps high to
   wind up (`LOOKS.<look>.windupPose`, PetRig "leap") and drops back down as the move lands)
   and, on the caster's screen only, `Util/SuperCinematic` (driven by BattleController): the camera swoops to the
-  creature (40 degrees off straight ahead, pulled in front of walls every frame; owner 2026-11-05, "sometimes ... the
+  creature (40 degrees off straight ahead, 2.2 of its heights out and 0.6 up, then backing off to 2.7 and 0.8 as it
+  charges so a wind-up or leap fits, never nearer than 10 studs or lower than 4: owner 2026-11-06, "sometimes camera is
+  too low or too close"; pulled in front of walls every frame; owner 2026-11-05, "sometimes ... the
   creature gets covered by the player or the boss": the shots stand off to whichever side has fewer players,
   creatures or bosses in front of it, `SuperFxRules.shot` side, and any still between the camera and the creature
   fades out on the caster's screen, `CAMERA.fade` through `LocalTransparencyModifier`, tested on their bounding boxes
@@ -1237,7 +1239,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   (`SwordController.Pause`) until control returns; a fizzle, the fight ending or leaving cuts back at once. Legendary
   adds letterbox bars, its own sky grade over the world (`LOOKS.<look>.sky`: deep space, a storm, the world dimming,
   clouds parting) and a black-and-white impact frame (twice for Supernova at S; a soft white flash with the extras
-  switch off). Every look grows with grade (`SuperFxRules`, Lune-tested) and has an S extra: Inferno's fire tornado,
+  switch off). Every look grows with grade (`SuperFxRules`, Lune-tested) and has an S extra: Inferno's fire tornado
+  (owner 2026-11-06 "make it more visible": a wide funnel of flame round the boss with a white-hot core spinning the
+  other way, flames pouring up it, a dark smoke cap and a strong light, standing 2.8-3.8 s by grade),
   torrent and burning ring (S: lava cracks); Magma Slam's racing lava cracks, geysers, falling rocks and crust (S: a
   lava ring at the landing); Tidal Shield's wave crashing over your side, leaving a water bubble with spirit koi round
   every warded ally (S: rainbow sheen), each bubble following its ally, rippling with each hit its ward soaks (the

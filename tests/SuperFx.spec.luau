@@ -155,6 +155,35 @@ return {
 		end
 	end,
 
+	-- The owner (2026-11-06): "sometimes, camera is too low or too close that animations are hard to see". The charge
+	-- shot backs off from the call (a wind-up, a leap, needs room), and small creatures get a floor in studs
+	["the shots stay far and high enough to see the whole move"] = function()
+		local cam = SuperFx.CAMERA
+		local origin, facing, target = { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 1 }, { x = 0, y = 0, z = 40 }
+		local function flatDistance(a: any): number
+			return math.sqrt(a.x * a.x + a.z * a.z)
+		end
+		for _, height in { 2, 4, 10, 20 } do
+			local call = SuperFxRules.shot("call", origin, height, facing, target, SuperFx)
+			local charge = SuperFxRules.shot("charge", origin, height, facing, target, SuperFx)
+			expect.equal(flatDistance(call) >= cam.minReach - 1e-6, true, `{height}: the call no closer than {cam.minReach} studs`)
+			expect.equal(flatDistance(charge) >= flatDistance(call) - 1e-6, true, `{height}: the charge backs off, never closer`)
+			expect.equal(call.y >= cam.minHeight - 1e-6 and charge.y >= call.y - 1e-6, true, `{height}: above the creature's feet`)
+			expect.equal(call.y >= height * 0.5 or call.y >= cam.minHeight, true, `{height}: not down at its feet`)
+			local impact = SuperFxRules.shot("impact", origin, height, facing, target, SuperFx)
+			expect.equal(impact.y >= height, true, `{height}: the impact looks down on both`)
+		end
+	end,
+
+	-- The owner (2026-11-06): "infernox tornado: make it more visible" (it was 4-7 thin beams for about 2 s)
+	["Inferno's tornado is wide and lasts a while, more so with grade"] = function()
+		local grades = SuperFx.LOOKS.Inferno.grades
+		expect.equal(grades.C.tornadoWidth >= 3, true, "wide flame beams")
+		expect.equal(grades.C.tornadoSeconds >= 2.5, true, "up long enough to see")
+		expect.equal(grades.S.tornadoWidth > grades.C.tornadoWidth and grades.S.tornadoSeconds > grades.C.tornadoSeconds, true, "S bigger and longer")
+		expect.equal(SuperFx.SOUNDS.Inferno.tornado ~= nil, true, "a roar as it spins up")
+	end,
+
 	-- What stands between the camera and the creature (a body's bounding box, in its own space) gets faded
 	["a sight line crossing a body's box, or not"] = function()
 		local half = { x = 1, y = 2, z = 1 }

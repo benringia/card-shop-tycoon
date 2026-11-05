@@ -70,14 +70,20 @@ return {
 	-- The caster's camera, in multiples of the creature's height: the call's low close shot in front of it and to one
 	-- side (the charge drifts closer), then the impact's wide shot from behind it framing it and its target; fov in degrees, ease in
 	-- seconds (the swoop in and the ease back)
+	-- Distances and heights in the creature's heights; minReach / minHeight: studs the close shots never come nearer
+	-- than or sink below (owner 2026-11-06: "sometimes camera is too low or too close that animations are hard to
+	-- see": the charge backs off from the call so a wind-up or leap fits, small creatures get the floors)
 	CAMERA = {
-		callDistance = 1.6,
-		callHeight = 0.35,
+		callDistance = 2.2,
+		callHeight = 0.6,
 		callAngle = 40, -- degrees round from straight in front, so its target never stands in the shot
-		chargeDistance = 1.3,
-		focusHeight = 0.3,
-		impactDistance = 3.2,
-		impactHeight = 1.1,
+		chargeDistance = 2.7,
+		chargeHeight = 0.8,
+		minReach = 10,
+		minHeight = 4,
+		focusHeight = 0.45,
+		impactDistance = 3.4,
+		impactHeight = 1.3,
 		impactSide = 0.8,
 		impactReach = 0.55, -- the impact shot backs off at least this share of the creature-target distance
 		fov = 62,
@@ -90,6 +96,9 @@ return {
 		-- A fire tornado leaps onto the boss and leaves a ring of fire (S: the ground cracks into lava)
 		Inferno = withWindup(look("Epic", "Infernox", "Ember", rgb(255, 106, 26), {
 			tornadoHeight = { 14, 18, 23, 30 },
+			-- owner 2026-11-06 "make it more visible": its flame beams' width (studs) and how long it stands
+			tornadoWidth = { 3.2, 3.8, 4.5, 5.4 },
+			tornadoSeconds = { 2.8, 3, 3.3, 3.8 },
 			embers = { 20, 30, 44, 64 },
 			fireRing = { 1.5, 1.7, 1.95, 2.3 }, -- the ring of fire's radius, in the target's size (its width, 3-12 studs)
 		}, "firebreath"), "leap"),
@@ -167,6 +176,7 @@ return {
 			impact = "rbxassetid://9114554567", -- Gas Fire Explosion 3
 			layer = "rbxassetid://9114446802", -- Fire Whoosh 13 (A and S)
 			linger = "rbxassetid://9112780193", -- Fireplace Constant Burning Flame 1 (the 6 s burn)
+			tornado = "rbxassetid://9114438917", -- Fire Sheet 3 (the tornado roars up)
 		},
 		TidalShield = {
 			call = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1 (the koi leaps)

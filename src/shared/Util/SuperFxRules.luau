@@ -100,8 +100,14 @@ local function baseShot(beat: string, creature: Vec, height: number, facing: Vec
 			y = 0,
 			z = front.z * math.cos(turn) - front.x * math.sin(turn),
 		}
-		local reach = (if beat == "call" then cam.callDistance else cam.chargeDistance) * height
-		local eye = add(add(creature, aside, reach), UP, cam.callHeight * height)
+		local reach = math.max((if beat == "call" then cam.callDistance else cam.chargeDistance) * height, cam.minReach)
+		local rise = math.max((if beat == "call" then cam.callHeight else cam.chargeHeight) * height, cam.minHeight)
+		if beat == "charge" then
+			-- never nearer or lower than the call's floors either, so the charge only ever backs off
+			reach = math.max(reach, cam.callDistance * height)
+			rise = math.max(rise, cam.callHeight * height)
+		end
+		local eye = add(add(creature, aside, reach), UP, rise)
 		return eye, chest
 	end
 	if not target then

@@ -193,7 +193,8 @@ end
 -- height, twisting as they rise; `set(height, bottom, top)` reshapes it, and it spins `turn` degrees a second
 type Funnel = { holder: Part, set: (height: number, bottom: number, top: number) -> (), beams: { Beam } }
 
-local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence, width: number, turn: number, texture: string?): Funnel
+local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence, width: number, turn: number, texture: string?, o: any?): Funnel
+	local opts = o or {}
 	local holder = anchor(b, CFrame.new(base))
 	local ends: { { Attachment } } = {}
 	local beams: { Beam } = {}
@@ -201,7 +202,15 @@ local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence,
 		local a0 = attachment(holder, Vector3.zero)
 		local a1 = attachment(holder, Vector3.zero)
 		table.insert(ends, { a0, a1 })
-		table.insert(beams, beam(a0, a1, texture or TEX.firestrip, tint, width * 0.7, width * 1.4, { speed = 2.5, length = 5, curve0 = 2, curve1 = -2 }))
+		table.insert(beams, beam(a0, a1, texture or TEX.firestrip, tint, width * 0.7, width * 1.4, {
+			speed = 2.5,
+			length = 5,
+			curve0 = 2,
+			curve1 = -2,
+			brightness = opts.brightness,
+			transparency = opts.transparency,
+			segments = opts.segments,
+		}))
 	end
 	local shape = { height = 1, bottom = 1, top = 1 }
 	local function set(height: number, bottom: number, top: number)
@@ -379,20 +388,56 @@ local function infernoImpact(view: View, grade: string, target: Vector3, targetB
 		play(b, streamEnd, INFERNO_SOUNDS.layer, 1)
 	end
 	quake(g, target, 0.6)
-	-- Then the fire tornado erupts round the boss and engulfs it (owner: "breath fire then tornado"), then dies down
-	task.delay(0.45, function()
+	-- Then the fire tornado erupts round the boss and engulfs it (owner: "breath fire then tornado"; 2026-11-06 "make it
+	-- more visible"): a wide funnel of flame round it, a white-hot core spinning the other way inside, flames pouring up
+	-- the column, a dark smoke cap on top so it stands out against a bright sky, and a strong light, for its seconds
+	task.delay(0.4, function()
 		if b.done then
 			return
 		end
 		quake(g, target, 1.2)
-		local spin = funnel(b, ground, math.floor(4 + 2 * g.scale), flames, 2 * g.scale, 320)
+		play(b, anchor(b, CFrame.new(ground)), INFERNO_SOUNDS.tornado, 1.1)
 		local height = g.tornadoHeight * math.max(1, targetHeight / 10)
+		local strong = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.8, 0.2), NumberSequenceKeypoint.new(1, 0.6) })
+		local outer = funnel(b, ground, math.floor(6 + 2 * g.scale), flames, g.tornadoWidth, 320, nil, { brightness = 3, transparency = strong, segments = 16 })
+		local hot = sequence(Color3.fromRGB(255, 250, 220), Color3.fromRGB(255, 190, 60))
+		local core = funnel(b, ground, 4, hot, g.tornadoWidth * 0.55, -460, nil, { brightness = 4, transparency = strong, segments = 16 })
+		local column = anchor(b, CFrame.new(ground + UP * height * 0.4))
+		column.Size = Vector3.new(fit * 1.6, height * 0.8, fit * 1.6)
+		local pour = ElementFx.emitter(column, "flame", base, { size = { 3.5 * g.scale, 0.6 }, life = { 0.5, 0.9 }, speed = { 8, 14 }, spread = 15, accel = UP * 6, brightness = 2.5 })
+		pour.Shape = Enum.ParticleEmitterShape.Box
+		pour.Rate = 45 * g.scale
+		local smoke = ElementFx.emitter(anchor(b, CFrame.new(ground + UP * height)), "smoke", Color3.fromRGB(58, 34, 26), {
+			size = { fit * 1.2, fit * 2.4 },
+			life = { 1.2, 1.8 },
+			speed = { 3, 6 },
+			spread = 50,
+			accel = UP * 2,
+			light = 0,
+		})
+		smoke.Rate = 10
+		local glow = Instance.new("PointLight")
+		glow.Color = base
+		glow.Range = math.max(30, fit * 5)
+		glow.Brightness = 6
+		glow.Parent = column
+		local stands = g.tornadoSeconds
 		everyFrame(b, function(elapsed)
-			local rise = math.clamp(elapsed / 0.3, 0, 1)
-			local fade = math.clamp((elapsed - 1.4) / 0.6, 0, 1)
-			spin.set(height * (0.3 + 0.7 * rise) * (1 - fade), fit * 0.6 * (1 - fade * 0.5), fit * 1.3)
+			local rise = math.clamp(elapsed / 0.35, 0, 1)
+			local fade = math.clamp((elapsed - stands) / 0.6, 0, 1)
+			local tall = height * (0.3 + 0.7 * rise) * (1 - fade)
+			outer.set(tall, fit * 0.9 * (1 - fade * 0.5), fit * 2)
+			core.set(tall * 0.9, fit * 0.45 * (1 - fade * 0.5), fit * 0.9)
+			if fade > 0 then
+				pour.Rate = 0
+				smoke.Rate = 0
+				glow.Brightness = 6 * (1 - fade)
+			end
 			if fade >= 1 then
-				for _, each in spin.beams do
+				for _, each in outer.beams do
+					each.Enabled = false
+				end
+				for _, each in core.beams do
 					each.Enabled = false
 				end
 			end
