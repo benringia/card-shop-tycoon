@@ -40,7 +40,7 @@ local NAMES = {
 	"Summon", -- client → server: (slot: number?) nil unsummons
 	"PartyChanged", -- server → owner: { slots = { { slot, beastId } }, summoned: number?, perk = { kind, value, text }? }
 	"RequestParty", -- client → server: () resend PartyChanged
-	"WildTravel", -- client → server: (where: "wild" | "home"); server → client: (where) after moving you
+	"WildTravel", -- client → server: (where: "wild" | "home"); server → client: (where) after moving you, "loading" as a trip to the Wild starts, "stay" if it doesn't happen
 	"StartFight", -- client → server: (monsterId: string)
 	"CallIn", -- client → server: (beastId: string) second party card joins, first seconds only
 	"UseAbility", -- client → server: (fighterId: string, which: "element" | "signature")

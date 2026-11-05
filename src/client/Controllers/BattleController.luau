@@ -1968,7 +1968,9 @@ function BattleController.Start()
 	end)
 	Remotes.BattleEnded.OnClientEvent:Connect(onEnded)
 	Remotes.WildTravel.OnClientEvent:Connect(function(where)
-		shopButton.Visible = where == "wild" and not fighting
+		if where == "wild" or where == "home" then -- not "loading" / "stay" (the Wild's loading screen)
+			shopButton.Visible = where == "wild" and not fighting
+		end
 	end)
 
 	local folder = workspace:WaitForChild("Monsters")

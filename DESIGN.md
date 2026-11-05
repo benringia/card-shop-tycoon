@@ -1752,6 +1752,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── init.client.luau
     │   ├── Controllers/
     │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear), the teleport screen
+    │   │   ├── WildLoadingController.luau # the Wild's loading screen: portal swirl, holds you still until the valley round you is in
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -1882,6 +1883,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
+        │   ├── WildLoading.luau # the Wild's loading screen: steps, tips, times, swirl and colours (plain data)
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
@@ -1945,6 +1947,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
             ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
+            ├── WildLoadingRules.luau # the Wild's loading screen's step, bar share and when it may close (pure, Lune-tested)
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
@@ -2064,6 +2067,17 @@ their saved data.
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
   first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
   (`Config/ProductPictures`, uploaded images since round 5) with the other images.
+- **The Wild's loading screen** (owner 2026-11-05: "when entering wilds can we do a loading screen that make sure
+  everything is loaded before player can walk in", look A "Portal swirl"; `Config/WildLoading`,
+  `Controllers/WildLoadingController`): the moment a trip to the Wild starts (the portal, `/wild`, a boss gate's Take
+  me) WildService fires `WildTravel` "loading" and the screen covers everything: two copies of a white spiral
+  (`tools/textures/make_portal_swirl.py`, `assets/ui/fx-portal`) turning against each other in the portal's greens
+  over the First Spark cover's hills, "The Wild", a green bar, the step and a tip. After the move ("wild") your root is
+  anchored on your device until the ground under you, the valley's scenery (its meshes and textures), the monsters'
+  models and the arrival area's music and ambience are in ("Opening the portal...", "Growing the valley...", "Waking
+  the monsters...", "Tuning the sounds..."; `Util/WildLoadingRules`, Lune-tested), then it fades and you walk. It
+  stays up at least 1.2 s, never holds you more than 12 s after arriving or 30 s before; "stay" (the trip didn't
+  happen) or "home" closes it. Its pictures are kept drawn from the start, so the first trip's swirl is there at once.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**

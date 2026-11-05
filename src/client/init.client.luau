@@ -51,6 +51,7 @@ local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
+local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
@@ -93,6 +94,7 @@ else
 	ButterflyController.Start()
 	DayCycleController.Start()
 	MusicController.Start() -- music in the town, the Wild valley's areas and its boss arenas
+	WildLoadingController.Start() -- the Wild's loading screen: holds you still until the valley round you is in
 	TreeSwayController.Start()
 	TownCritterController.Start()
 	PlazaNpcController.Start()
