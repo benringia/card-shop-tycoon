@@ -2,11 +2,16 @@
 -- Economy simulator: how long players take to reach pull goals, using the game's real numbers (pack odds and pity,
 -- grade chances, grading costs, card list, product prices, customer timing). Monte Carlo over many players.
 -- Usage: lune run tools/economy/sim [players]
+--   NO_KIDS=1 in front: no kid offers (spec 2026-11-06-customers-design); RATING=<1-5>: the shop rating (default 4, a
+--   well-run shop; 3 is the customer flow before the rating existed)
 --
 -- The player modelled (an early-game shop, DESIGN.md 7.5): stocks only First Spark packs at market price, so customers
 -- buy them; the shop earns while the player opens packs with the profit, one every OPEN_SECONDS. No monsters, no card
--- sales, no other products. Change the assumptions below to model other stages.
-local fs = require("@lune/fs")
+-- sales, no other products. Kids (Config/Customers TYPES.kid share of customers) buy 1-2 packs, rip one at the counter
+-- (real odds, no pity) and offer a Very Rare or better pull by OfferRules (chance x grade, under the ceilings); the
+-- player buys every offer at the asking price, paid from the shop's spare cash first, then from the pack budget. Other
+-- customer types are left out (collectors need a Glass Showcase, big spenders shop level 11). Foil kid pulls are left
+-- out too. Change the assumptions below to model other stages.
 local process = require("@lune/process")
 
 local PackOdds = require("../../src/shared/Config/PackOdds")
@@ -18,6 +23,9 @@ local Pricing = require("../../src/shared/Config/Pricing")
 local BeastMath = require("../../src/shared/Util/BeastMath")
 local PityRules = require("../../src/shared/Util/PityRules")
 local CondenseRules = require("../../src/shared/Util/CondenseRules")
+local Customers = require("../../src/shared/Config/Customers")
+local OfferRules = require("../../src/shared/Util/OfferRules")
+local RatingRules = require("../../src/shared/Util/RatingRules")
 
 -- Assumptions ---------------------------------------------------------------------------------------------------
 local PACK_ID = "FirstSparkPack"
@@ -25,16 +33,15 @@ local OPEN_SECONDS = 6 -- carrying, tearing and the reveal, per pack
 local STAR_DUPLICATES = Beasts.STAR_COSTS[1] -- the first star
 local MAX_HOURS = 400 -- a player who hasn't reached a goal by then counts as this
 local PLAYERS = tonumber((process.args[1])) or 2000
+local KIDS = process.env.NO_KIDS ~= "1"
+local RATING = tonumber(process.env.RATING or "") or 4
 
--- Customer timing from Config/Customers (it holds Color3 values, so Lune reads the numbers from its text)
-local customersSource = fs.readFile("src/shared/Config/Customers.luau")
-local function readNumber(name: string): number
-	local value = string.match(customersSource, name .. " = ([%d%.]+)")
-	assert(value, `Config/Customers has no {name}`)
-	return tonumber(value) :: number
-end
-local customersPerMinute = 60 / ((readNumber("SPAWN_INTERVAL_MIN") + readNumber("SPAWN_INTERVAL_MAX")) / 2)
-local itemsPerCustomer = (readNumber("ITEMS_MIN") + readNumber("ITEMS_MAX")) / 2
+-- Customer timing from Config/Customers, the gap scaled by the shop rating (RatingRules)
+local customersPerMinute = 60 / ((Customers.SPAWN_INTERVAL_MIN + Customers.SPAWN_INTERVAL_MAX) / 2) / RatingRules.spawnScale(Customers, RATING)
+local kidShare = if KIDS then Customers.TYPES.kid.weight else 0
+local kidUnits = (Customers.KID.units[1] + Customers.KID.units[2]) / 2
+local itemsPerCustomer = (1 - kidShare) * (Customers.ITEMS_MIN + Customers.ITEMS_MAX) / 2 + kidShare * kidUnits
+local kidsPerHour = customersPerMinute * 60 * kidShare * Pricing.BUY_BANDS[1].chance -- kids who bought (and rip)
 
 local product = nil
 for _, entry in Products.List or Products do
@@ -47,12 +54,14 @@ local packCost = product.boxCost / product.unitsPerBox
 local buyChance = Pricing.BUY_BANDS[1].chance -- at market price
 local profitPerMinute = customersPerMinute * itemsPerCustomer * buyChance * (product.marketPrice - packCost)
 
--- The cards in packs, by rarity
+-- The cards in packs, by rarity, and their values
 local byRarity: { [string]: { string } } = {}
+local valueOf: { [string]: number } = {}
 for _, row in CardList.SET1 do
 	local name, rarity = row[1], row[3]
 	byRarity[rarity] = byRarity[rarity] or {}
 	table.insert(byRarity[rarity], name)
+	valueOf[name] = row[4]
 end
 
 -- Lune has no Random class: math.random, seeded so runs repeat
@@ -107,25 +116,76 @@ local function openPack(state: PityRules.State): ({ Pull }, PityRules.State)
 	return pulls, after
 end
 
-type Result = { firstEpic: number, firstLegendary: number, luckyS: number, goal: number, goalByGrading: boolean, packs: number }
+-- A kid's rip at the counter: the best card of one pack, real odds, no pity
+local function kidRip(): Pull
+	local best: Pull? = nil
+	for _, slot in PackOdds.SLOTS[PACK_ID] do
+		local rarity = rollRarity(slot)
+		local pool = byRarity[rarity]
+		local pull = { card = pool[rng:NextInteger(1, #pool)], rarity = rarity, grade = BeastMath.rollGrade(Beasts, rng:NextNumber(), rarity) }
+		if not best or (PackOdds.RANK[rarity] or 0) > (PackOdds.RANK[best.rarity] or 0) then
+			best = pull
+		end
+	end
+	return best :: Pull
+end
+
+type Result = { firstEpic: number, firstLegendary: number, luckyS: number, goal: number, goalByGrading: boolean, packs: number, kidCards: number, kidLegendaries: number, kidSpent: number, hours: number }
 
 -- Hours for one player to reach each goal. The goal is a Grade S Legendary with 1 star: by luck (pull an S, then
 -- STAR_DUPLICATES more copies of it) or by grading (enough copies of one Legendary to grade it to S and star it, then
 -- the grading cash, saved from the shop's profit after the packs stop)
 local function simulatePlayer(): Result
 	local state: PityRules.State = { legendary = 0, epic = 0, firstDone = false }
-	local packsPerHour = math.min(3600 / OPEN_SECONDS, profitPerMinute * 60 / packCost) -- time or cash, whichever runs out first
+	local profitPerHour = profitPerMinute * 60
+	local packsPerHour = math.min(3600 / OPEN_SECONDS, profitPerHour / packCost) -- time or cash, whichever runs out first
 	local hoursPerPack = 1 / packsPerHour
+	local sparePerHour = math.max(0, profitPerHour - packsPerHour * packCost) -- cash the packs don't use
 	local copies: { [string]: { [string]: number } } = {} -- legendary name -> grade -> count
-	local result: Result = { firstEpic = MAX_HOURS, firstLegendary = MAX_HOURS, luckyS = MAX_HOURS, goal = MAX_HOURS, goalByGrading = false, packs = 0 }
+	local result: Result = { firstEpic = MAX_HOURS, firstLegendary = MAX_HOURS, luckyS = MAX_HOURS, goal = MAX_HOURS, goalByGrading = false, packs = 0, kidCards = 0, kidLegendaries = 0, kidSpent = 0, hours = 0 }
 	local luckyCard: string? = nil
 	local done = false -- the goal's time is settled
 	local packs = 0
-	while packs * hoursPerPack < MAX_HOURS do
+	local now = 0
+	local kidsDue = 0 -- fractional kids who've ripped since the last pack
+	local spare = 0
+	local history: OfferRules.History = { offers = {} }
+	while now < MAX_HOURS do
 		packs += 1
-		local now = packs * hoursPerPack
+		now += hoursPerPack
+		spare += sparePerHour * hoursPerPack
 		local pulls
 		pulls, state = openPack(state)
+		-- The kids who ripped a pack at the counter meanwhile; the player buys every offer
+		kidsDue += kidsPerHour * hoursPerPack
+		while kidsDue >= 1 do
+			kidsDue -= 1
+			local pull = kidRip()
+			local seconds = now * 3600
+			for index = #history.offers, 1, -1 do
+				if seconds - history.offers[index] >= 3600 then
+					table.remove(history.offers, index)
+				end
+			end
+			if OfferRules.wantsToSell(Customers, pull.rarity, pull.grade, rng:NextNumber()) and OfferRules.allowed(Customers, history, seconds, pull.rarity) then
+				table.insert(history.offers, seconds)
+				if pull.rarity == "Legendary" then
+					history.lastLegendary = seconds
+				end
+				local worth = BeastMath.getValue(Beasts, valueOf[pull.card], 1, false, 1, Beasts.START_STARS or 0, pull.grade)
+				local asking = OfferRules.asking(Customers, worth, rng:NextNumber())
+				-- Spare cash first, then it comes out of the pack budget (the next packs wait)
+				local fromSpare = math.min(spare, asking)
+				spare -= fromSpare
+				now += (asking - fromSpare) / profitPerHour
+				result.kidCards += 1
+				result.kidSpent += asking
+				table.insert(pulls, pull)
+				if pull.rarity == "Legendary" then
+					result.kidLegendaries += 1
+				end
+			end
+		end
 		for _, pull in pulls do
 			if (pull.rarity == "Epic" or pull.rarity == "Legendary") and result.firstEpic == MAX_HOURS then
 				result.firstEpic = now
@@ -176,12 +236,14 @@ local function simulatePlayer(): Result
 		end
 		-- Keep opening until the lucky S shows up too, so its time isn't cut short by the goal
 		if done and luckyCard then
+			result.hours = now
 			return result
 		end
 	end
 	if result.packs == 0 then
 		result.packs = packs
 	end
+	result.hours = now
 	return result
 end
 
@@ -199,6 +261,7 @@ end
 
 local firstEpic, firstLegendary, luckyS, goal, packsOpened = {}, {}, {}, {}, {}
 local byGrading = 0
+local kidCards, kidLegendaries, kidSpent, kidHours = 0, 0, 0, 0
 for _ = 1, PLAYERS do
 	local result = simulatePlayer()
 	table.insert(firstEpic, result.firstEpic)
@@ -209,9 +272,14 @@ for _ = 1, PLAYERS do
 	if result.goalByGrading then
 		byGrading += 1
 	end
+	kidCards += result.kidCards
+	kidLegendaries += result.kidLegendaries
+	kidSpent += result.kidSpent
+	kidHours += result.hours -- every hour simulated, so the rates are per hour of play
 end
 
 print(`Economy simulator: {PLAYERS} players, {PACK_ID} only, opening one every {OPEN_SECONDS}s`)
+print(string.format("Shop rating %.1f (customer gap x%.2f), kid offers %s", RATING, RatingRules.spawnScale(Customers, RATING), if KIDS then "on" else "off"))
 print(string.format("Shop profit: %.1f customers/min x %.1f items x %.0f%% buy x $%.2f = $%.0f an hour", customersPerMinute, itemsPerCustomer, buyChance * 100, product.marketPrice - packCost, profitPerMinute * 60))
 print(string.format("Packs opened: %.0f an hour (cash-limited at $%.2f each)", math.min(3600 / OPEN_SECONDS, profitPerMinute * 60 / packCost), packCost))
 print("")
@@ -224,3 +292,6 @@ row("First Legendary", firstLegendary)
 row("A Grade S Legendary pulled (luck only)", luckyS)
 row("Grade S Legendary with 1 star", goal)
 print(string.format("  reached by grading: %d%% of players; packs opened (median): %d", math.floor(byGrading / PLAYERS * 100 + 0.5), percentile(packsOpened, 0.5)))
+if KIDS then
+	print(string.format("Kid offers bought: %.2f an hour ($%.2f an hour), a Legendary every %.0f hours", kidCards / kidHours, kidSpent / kidHours, if kidLegendaries > 0 then kidHours / kidLegendaries else math.huge))
+end

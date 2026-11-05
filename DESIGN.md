@@ -1783,6 +1783,11 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
 - Shop Lv 7 in about 1–1.5 hours of play.
 - Lv 20 in about 8–10 hours.
 - These are targets. Tune after playtesting, keep numbers in config files so it's easy.
+- Customers round check (`lune run tools/economy/sim 2000`, 2026-11-06): before (`NO_KIDS=1 RATING=3`): first
+  Legendary 15 min, Grade S Legendary with 1 star 21.0 h (median). After (kid offers on, a well-run 4-star shop): 13
+  min and 19.6 h (-7%). The 4 stars alone (`NO_KIDS=1`) would make it 12 min and 16.8 h; buying every kid offer
+  (about 3.5 an hour, $34 an hour, a Legendary offer every ~13 hours) gives some of that back. At 3 stars with kids:
+  16 min and 24.1 h. The first Legendary is pity-bound (within 130 packs), so its minutes move with packs per hour.
 
 ---
 
@@ -1873,8 +1878,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
     │   │   ├── PricingService.luau   # player sell prices per product
-    │   │   ├── CustomerService.luau  # NPC spawn, pathing, buying, queue
-    │   │   ├── RegisterService.luau  # checkout flow
+    │   │   ├── CustomerService.luau  # NPC spawn, types and props, pathing, buying, collectors, reactions, queue
+    │   │   ├── RegisterService.luau  # checkout flow; a bargain hunter's offer (OnHaggle / SettleHaggle), OnSaleCompleted
+    │   │   ├── OfferService.luau     # kid rips and offers, haggles: the open offer per shop, OfferAction
+    │   │   ├── RatingService.luau    # shop rating: parts, smoothing, the sign's stars, RatingUpdate, the spawn gap
     │   │   ├── PackService.luau      # server-side pack rolls
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
@@ -1918,7 +1925,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
-    │   │   ├── RegisterController.luau
+    │   │   ├── RegisterController.luau # checkout panel; the offer panel (kid offer, haggle, counter)
+    │   │   ├── CustomerController.luau # collectors' thought bubbles, kids' rip reveals
+    │   │   ├── RatingController.luau   # the rating chip and its tips window
     │   │   ├── CarryController.luau    # drop carried box
     │   │   ├── PackOpeningController.luau # the 3D pack opening: OpeningFlow, taps and swipes, server results, closes on fights
     │   │   ├── AnnouncementController.luau # big-pull chat messages
@@ -2630,7 +2639,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 ## 12. Open questions
 - Final game name and card game name (Glimmerbeasts is placeholder).
 - Card art style and who makes it.
-- Should customers sometimes ask for specific singles ("got any Voidmaw?") as a quest-like hook?
+- Should customers sometimes ask for specific singles ("got any Voidmaw?") as a quest-like hook? (Collectors now do,
+  4.5.)
 - Offline earnings: yes/no? (Usually boosts retention but needs care with balance.)
 - Cash payment with making change, or keep checkout one-tap?
 
@@ -2838,3 +2848,7 @@ boss models; the ranch and Heroic tiers come after those.
   a leaderboard of the highest tier and the fastest clear.
 - The ranch (its own project, after the Dungeon): a place just for showing creatures off, unlocked early in the main
   game (about shop level 20); clearing the Dungeon adds a special Legendary habitat there.
+- [ ] Customers with personalities (spec `2026-11-06-customers-design.md`, plan `2026-11-06-customers.md`, branch
+  `customers`): phase 1 in the shop built 2026-11-06 (types and looks, collectors, kid rips and offers, haggling with
+  a counter, reactions, the shop rating on the sign and the HUD chip, economy check), waiting for the owner's Studio
+  check; phase 2 town walkers (plaza strollers who pick an open shop by rating) next.
