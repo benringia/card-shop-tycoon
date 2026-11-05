@@ -367,6 +367,13 @@ is over UI (`UIKit.pointerBlocked`).
   No or after 25 s, they put everything back and leave annoyed. A cashier meets them halfway and they take it.
 - Answers come through `OfferAction` (rate-limited, only the open offer's id, only from behind the register, a counter
   only inside the range the server worked out); the open offer reaches the owner through `OfferUpdate`.
+- The offer panel (`RegisterController`, `Customers.PANEL`) replaces the checkout panel while an offer is open: a
+  cotton candy window with the kid's card, name, rarity, grade and "$asking (worth $worth)" or "Offers $x for $total
+  (-N%)", and Buy/Deal, Counter, No. Counter shows - / + (one step each), chips (-20%, -15%, -10%, Worth/Full), the
+  price and their face (😀 Sure! / 😐 Hmm, maybe / 😠 No way), Offer and Back. Every button is 48 px tall. On phones it
+  sits below the cash row and left of the jump button. The kid's rip (`CustomerController`, `Customers.REVEAL`): their
+  best card grows in over their head for everyone nearby and holds 2.5 s; Very Rare or better adds a cheer and the
+  pack opening's hit sound, a Legendary a fading column of light.
 
 ### 4.7 Shop level & rating
 - **Shop XP** from every sale. Levels unlock new products, shelves, expansions.

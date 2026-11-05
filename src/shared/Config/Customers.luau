@@ -106,6 +106,24 @@ return {
 	},
 	-- Bargain hunters (Util/HaggleRules): offer offLow-offHigh under the total, pay up to gapLow-gapHigh of the way back
 	HAGGLE = { offLow = 0.10, offHigh = 0.25, gapLow = 0.4, gapHigh = 0.8 },
+	-- The offer panel at the register (RegisterController), in pixels; buttons and chips at least 48 tall for phones
+	-- On phones it sits below the cash row (phoneTop) and left of the jump button's column (phoneRight)
+	PANEL = { width = 230, padding = 10, gap = 6, buttonHeight = 48, cardWidth = 54, cardHeight = 76, topOffset = -20, phoneTop = 44, phoneRight = 100 },
+	-- The counter's face for the price you picked (from the server's edges, never the exact price they'd take)
+	FACES = { sure = "😀 Sure!", maybe = "😐 Hmm, maybe", no = "😠 No way" },
+	-- A kid's rip over the counter (CustomerController): the card grows in, holds, then shrinks away; Very Rare or
+	-- better gets a cheer bubble and the pack opening's hit sound, a Legendary a light beam too
+	REVEAL = {
+		cardWidth = 64,
+		cardHeight = 90,
+		offsetY = 4.2,
+		growSeconds = 0.35,
+		holdSeconds = 2.5,
+		maxDistance = 90,
+		cheer = "🎉",
+		cheerFrom = "Very Rare",
+		beam = { height = 26, width = 2.2, transparency = 0.6, seconds = 2.8, color = { 255, 214, 92 } },
+	},
 	TYPES = {
 		plain = { weight = 0.55, props = {} },
 		kid = {
