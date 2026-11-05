@@ -67,8 +67,9 @@ return {
 	},
 	SPECIAL_SOUND = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1 (with the element's hit sound)
 	-- Creatures circle their fight spot: this far (studs, times the creature's size), this fast (turns a second), with
-	-- darts out to `dart` studs more
-	ORBIT = { radius = 4, speed = 0.15, dart = 1.5 },
+	-- darts out to `dart` studs more, facing the way they go and turning back to the foe to attack at `turn` (how fast
+	-- the turn eases in, per second)
+	ORBIT = { radius = 4, speed = 0.15, dart = 1.5, turn = 6 },
 	-- Bosses' moves (keyed clips in ReplicatedStorage.MonsterAnimations/<boss id>, Util/MonsterMoves): `strike` the
 	-- effect where a normal attack lands, `release` where a ring's attack lands, `color` both and the particles pulling
 	-- in while it winds up a ring; Pro Sound Effects for each. No Prism Hydra yet (it will be remodelled).

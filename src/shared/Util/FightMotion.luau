@@ -15,6 +15,26 @@ function FightMotion.offset(seed: number, t: number, cfg: any): (number, number)
 	return math.cos(angle) * radius, math.sin(angle) * radius
 end
 
+-- The way it's going at motion time `t`, as a turn about the vertical (radians; 0 faces its marker's look, -z): it
+-- faces its path while it circles (owner 2026-11-05: "Thunderhorn is walking sideways")
+function FightMotion.heading(seed: number, t: number, cfg: any): number
+	local omega = cfg.speed * 2 * math.pi
+	local angle = (seed * 2.399 + t * cfg.speed) * 2 * math.pi
+	local wave = math.sin(t * 1.7 + seed * 5.1)
+	local burst = math.max(0, wave) ^ 6
+	local radius = cfg.radius + cfg.dart * burst
+	local grow = if wave > 0 then cfg.dart * 6 * wave ^ 5 * math.cos(t * 1.7 + seed * 5.1) * 1.7 else 0
+	local dx = -math.sin(angle) * radius * omega + math.cos(angle) * grow
+	local dz = math.cos(angle) * radius * omega + math.sin(angle) * grow
+	return math.atan2(-dx, -dz)
+end
+
+-- `current` turned toward `target` (radians) the short way round, easing in at `rate` (a long frame gets all the way)
+function FightMotion.turn(current: number, target: number, dt: number, rate: number): number
+	local diff = (target - current + math.pi) % (2 * math.pi) - math.pi
+	return current + diff * (1 - math.exp(-rate * dt))
+end
+
 function FightMotion.newClock(): Clock
 	return { t = 0, last = nil }
 end

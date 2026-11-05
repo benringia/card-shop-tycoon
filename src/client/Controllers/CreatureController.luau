@@ -35,6 +35,7 @@ type Creature = {
 	marker: BasePart,
 	body: CreatureVisuals.Body,
 	clock: FightMotion.Clock, -- its moving about in a fight
+	yaw: number, -- its turn off its marker's look in a fight (it faces its path while it circles)
 	seed: number,
 	chargingUntil: number, -- os.clock: holds still to charge an attack until then
 	dash: { start: number, seconds: number, toward: Vector3, share: number }?, -- an attack's dash in and back
@@ -307,6 +308,7 @@ local function add(marker: BasePart)
 		marker = marker,
 		body = body,
 		clock = FightMotion.newClock(),
+		yaw = 0,
 		seed = (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name,
 		chargingUntil = 0,
 		dash = nil,
@@ -426,7 +428,8 @@ end
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
 	-- In a fight it circles its spot (the same path on every client) and stops to charge
 	if creature.marker:GetAttribute("InFight") == true then
-		local t = FightMotion.advance(creature.clock, now, now < creature.chargingUntil)
+		local charging = now < creature.chargingUntil
+		local t = FightMotion.advance(creature.clock, now, charging)
 		local scale = creature.height / Party.CREATURE_HEIGHT
 		local x, z = FightMotion.offset(creature.seed, t, AttackFx.ORBIT)
 		local offset = Vector3.new(x * scale, 0, z * scale)
@@ -443,8 +446,13 @@ local function step(creature: Creature, dt: number, now: number, origin: Vector3
 				offset = offset * (1 - out) + local3 * out
 			end
 		end
-		creature.body.offset = CFrame.new(offset)
+		-- It faces the way it goes while it circles, and turns back to the foe to charge or dash (owner 2026-11-05:
+		-- "Thunderhorn is walking sideways")
+		local want = if charging or creature.dash then 0 else FightMotion.heading(creature.seed, t, AttackFx.ORBIT)
+		creature.yaw = FightMotion.turn(creature.yaw, want, dt, AttackFx.ORBIT.turn)
+		creature.body.offset = CFrame.new(offset) * CFrame.Angles(0, creature.yaw, 0)
 	else
+		creature.yaw = 0
 		creature.body.offset = nil
 	end
 	if creature.voice then

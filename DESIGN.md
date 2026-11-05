@@ -1150,7 +1150,9 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Creature attacks** (spec `2026-11-02-attack-animations-design.md`): in every fight the sim sends a `charge` event
   0.6 s (`Combat.CHARGE_LEAD`) before each auto-attack lands (it draws no random: fights and the balance numbers are
   unchanged). Creatures circle their fight spot (marker attribute `InFight`, `Util/FightMotion`, `AttackFx.ORBIT`: 4
-  studs, a lap about every 7 s, darts) and stop to charge: a crouch and a glow in their element colour with sparks
+  studs, a lap about every 7 s, darts) facing the way they go (`FightMotion.heading`; owner 2026-11-05: they used to
+  keep facing the foe and strafe, "Thunderhorn is walking sideways"), and turn back to the foe and stop to charge: a
+  crouch and a glow in their element colour with sparks
   pulling in. Then the element's attack (`Config/AttackFx`, `Util/FightFx`, pieces in `Util/ElementFx`, poses `charge`,
   `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
   3-hit vine lash, Volt a flickering lightning bolt shot from where it stands (the owner's mockup: flares at both
