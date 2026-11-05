@@ -27,6 +27,7 @@ local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
 local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
+local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
@@ -399,6 +400,34 @@ function DevService.Start()
 		end
 		Remotes.MovePreview:FireClient(player, { move = move, grade = grade, big = string.find(text, "%sbig") ~= nil })
 	end)
+	-- The super moves (spec 2026-11-05-super-moves-design): one at a grade on your summoned creature against a dummy,
+	-- with the caster's cinematic, played by your client (MovePreviewController)
+	addCommand(folder, "superfx", function(player, text)
+		local name = string.lower(string.match(text, "^/%w+%s+(%a+)") or "")
+		local grade = string.upper(string.match(text, "^/%w+%s+%a+%s+(%a)%f[%A]") or "S")
+		local look: string? = nil
+		for id in SuperFxConfig.LOOKS do
+			if string.lower(id) == name then
+				look = id
+			end
+		end
+		if not look or not ({ C = true, B = true, A = true, S = true })[grade] then
+			Remotes.Notify:FireClient(player, "Usage: /superfx <inferno|magmaslam|tidalshield|tidalblessing|stampede|eclipse|riftstep|supernova|thunderstorm|devour> [C|B|A|S]", true)
+			return
+		end
+		local summoned = false
+		for _, marker in workspace:GetDescendants() do
+			if marker:IsA("BasePart") and marker:GetAttribute("OwnerUserId") == player.UserId and typeof(marker:GetAttribute("BeastId")) == "string" then
+				summoned = true
+				break
+			end
+		end
+		if not summoned then
+			Remotes.Notify:FireClient(player, "Summon a creature first.", true)
+			return
+		end
+		Remotes.MovePreview:FireClient(player, { super = look, grade = grade })
+	end)
 	addCommand(folder, "levelsound", function(player, text)
 		-- Round 5: pick one of the level-up sound sets (Config/LevelUpFx SOUNDS.sets) and hear it once
 		local sets = LevelUpFx.SOUNDS.sets
@@ -490,7 +519,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S]")
 end
 
 return DevService

@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
+local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperFx"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -82,8 +83,21 @@ local function myMarker(): BasePart?
 	return nil
 end
 
+-- A super's events (spec 2026-11-05-super-moves-design): its cast with the wind-up the sim gives it, its landing
+local function superTimeline(lookId: string): ({ { at: number, event: any } }, number)
+	local look = SuperFxConfig.LOOKS[lookId]
+	local ability = Combat.SIGNATURES[look.card]
+	local windup = ability.windup
+	local onSelf = ability.kind == "TidalShield" or ability.kind == "Eclipse"
+	return {
+		{ at = 0, event = { type = "cast", from = ME, kind = ability.kind, look = lookId, seconds = windup, protect = windup + Combat.SUPER_PROTECT_TAIL, to = FOE } },
+		{ at = windup, event = { type = "ability", kind = ability.kind, look = lookId, from = ME, to = if onSelf then nil else FOE } },
+	}, math.max(ability.seconds or 0, 4)
+end
+
 local function play(payload: any)
-	local kind = KINDS[payload.move]
+	local superLook = if typeof(payload.super) == "string" and SuperFxConfig.LOOKS[payload.super] then payload.super else nil
+	local kind = if superLook then Combat.SIGNATURES[SuperFxConfig.LOOKS[superLook].card].kind else KINDS[payload.move]
 	local grade = payload.grade
 	if not kind or typeof(grade) ~= "string" then
 		return
@@ -95,7 +109,8 @@ local function play(payload: any)
 	if not marker then
 		return
 	end
-	local dummy, height, model = makeDummy(marker.CFrame, payload.big == true)
+	local big = payload.big == true or (superLook ~= nil and SuperFxConfig.LOOKS[superLook].tier == "Legendary")
+	local dummy, height, model = makeDummy(marker.CFrame, big)
 	local dispatcher = FightFx.new({
 		marker = function(id: string): BasePart?
 			return if id == ME then marker elseif id == FOE then dummy else nil
@@ -136,7 +151,12 @@ local function play(payload: any)
 		{ at = 0, event = { type = "cast", from = ME, kind = kind, seconds = windup } },
 		{ at = windup, event = { type = "ability", kind = kind, from = ME, to = if kind == "Rain" then nil else FOE } },
 	}
-	if kind == "Rain" then
+	local linger = LINGER
+	if superLook then
+		local lasts
+		timeline, lasts = superTimeline(superLook)
+		linger = lasts + 2
+	elseif kind == "Rain" then
 		for tick = 1, Combat.ABILITIES.Tide.ticks do
 			table.insert(timeline, { at = windup + tick * Combat.ABILITIES.Tide.every, event = { type = "regen", from = ME, to = ME, heal = 50 } })
 		end
@@ -159,7 +179,7 @@ local function play(payload: any)
 			end
 			dispatcher.onEvents({ entry.event })
 		end
-		task.wait(math.max(0, last + LINGER - (os.clock() - start)))
+		task.wait(math.max(0, last + linger - (os.clock() - start)))
 		stop()
 	end)
 end

@@ -22,6 +22,9 @@ local MonsterMoves = require(Shared:WaitForChild("Util"):WaitForChild("MonsterMo
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local MoveFx = require((script.Parent :: Instance):WaitForChild("MoveFx"))
+local SuperFx = require((script.Parent :: Instance):WaitForChild("SuperFx"))
+local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperFx"))
+local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRules"))
 local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 
@@ -288,10 +291,64 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		hitSound(view.element, spot)
 	end
 
+	-- Super moves (spec 2026-11-05-super-moves-design): their charge from the press to the impact and what lingers after,
+	-- by caster id (Util/SuperFx). Always played (the cue everyone watches for); an onlooker's capped at C while the
+	-- effects are over budget.
+	local superCharges: { [string]: () -> () } = {}
+	local superLingers: { [string]: () -> () } = {}
+
+	local function stopSuperCharge(id: string)
+		local stop = superCharges[id]
+		if stop then
+			superCharges[id] = nil
+			stop()
+		end
+	end
+
+	local function stopSuperLinger(id: string)
+		local stop = superLingers[id]
+		if stop then
+			superLingers[id] = nil
+			stop()
+		end
+	end
+
+	local function superGrade(view: View): string
+		local grade = SuperFxRules.grade(view.grade, Extras.enabled(), SuperFxConfig)
+		if not view.mine and not FightFxRules.budget(active, Extras.enabled(), AttackFx) then
+			return "C"
+		end
+		return grade
+	end
+
+	local function onSuperCast(event: any)
+		local marker = resolve.marker(event.from)
+		local view = if marker then resolve.creature(marker) else nil
+		if not marker or not view then
+			return
+		end
+		local seconds = math.max(0.1, tonumber(event.seconds) or 1.5)
+		local grade = superGrade(view)
+		stopSuperCharge(event.from)
+		resolve.setCharging(marker, seconds)
+		resolve.pose(marker, "charge", SuperFxConfig.LOOKS[event.look].grades[grade].scale)
+		local target = if typeof(event.to) == "string" then targetPosition(event.to, view.root.Position) else nil
+		local ok, stop = pcall(SuperFx.charge, event.look, view, grade, seconds, target)
+		if ok and stop then
+			superCharges[event.from] = stop
+		elseif not ok then
+			warn("[FightFx] super charge:", stop)
+		end
+	end
+
 	-- A Pet button move or super move winding up (Combat.ABILITY_WINDUP, owner 2026-11-04 design A): the creature
 	-- holds still in a big glow, a ring in the move's colour spins under it and the move's name pops above it; the move
 	-- itself lands with its "ability" event. Always shown (it's the cue everyone watches for).
 	local function onCast(event: any)
+		if typeof(event.look) == "string" and SuperFxConfig.LOOKS[event.look] then
+			onSuperCast(event)
+			return
+		end
 		local spec = AttackFx.SPECIALS[event.kind]
 		local marker = resolve.marker(event.from)
 		local view = if marker then resolve.creature(marker) else nil
@@ -404,9 +461,37 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		MoveFx.rainTick(view, grade, tonumber(event.heal) or 0)
 	end
 
+	-- A super landing: its impact and linger (Util/SuperFx), a shake for everyone near it (the caster's own, bigger, is
+	-- Util/SuperCinematic's)
+	local function onSuperImpact(event: any)
+		stopSuperCharge(event.from)
+		local marker = resolve.marker(event.from)
+		local view = if marker then resolve.creature(marker) else nil
+		if not marker or not view then
+			return
+		end
+		local grade = superGrade(view)
+		resolve.pose(marker, "cast", SuperFxConfig.LOOKS[event.look].grades[grade].scale)
+		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
+		local target = targetPosition(event.to, caster)
+		local body, height = targetBody(event.to)
+		stopSuperLinger(event.from)
+		local ok, stop = pcall(SuperFx.impact, event.look, view, grade, target, body, height)
+		if ok and stop then
+			superLingers[event.from] = stop
+		elseif not ok then
+			warn("[FightFx] super impact:", stop)
+		end
+		ScreenFx.shakeAt(AttackFx.SHAKE.special * SuperFxConfig.LOOKS[event.look].grades[grade].shake * 0.5, target)
+	end
+
 	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event), a
 	-- shake near it and a flash on your screen when it's your creature's
 	local function onSpecial(event: any)
+		if typeof(event.look) == "string" and SuperFxConfig.LOOKS[event.look] then
+			onSuperImpact(event)
+			return
+		end
 		local spec = AttackFx.SPECIALS[event.kind]
 		local marker = resolve.marker(event.from)
 		local view = if marker then resolve.creature(marker) else nil
@@ -609,6 +694,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				onAttack(event)
 			elseif event.type == "ability" and event.kind and AttackFx.SPECIALS[event.kind] then
 				onSpecial(event)
+			elseif event.type == "fizzle" and typeof(event.from) == "string" then
+				stopSuperCharge(event.from) -- its caster fainted mid wind-up
 			end
 		end
 	end
@@ -633,6 +720,12 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 		for id in curses do
 			stopCurse(id)
+		end
+		for id in superCharges do
+			stopSuperCharge(id)
+		end
+		for id in superLingers do
+			stopSuperLinger(id)
 		end
 	end
 

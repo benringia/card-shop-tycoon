@@ -62,6 +62,33 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- The super moves at grade C and S (spec 2026-11-05-super-moves-design): played on your summoned creature against a
+		-- dummy in front of it, with the caster's cinematic (MovePreviewController)
+		title = "Super moves",
+		buttons = {
+			{ label = "Inferno C", command = "/superfx inferno C" },
+			{ label = "Inferno S", command = "/superfx inferno S" },
+			{ label = "Magma Slam C", command = "/superfx magmaslam C" },
+			{ label = "Magma Slam S", command = "/superfx magmaslam S" },
+			{ label = "Tidal Shield C", command = "/superfx tidalshield C" },
+			{ label = "Tidal Shield S", command = "/superfx tidalshield S" },
+			{ label = "Tidal Blessing C", command = "/superfx tidalblessing C" },
+			{ label = "Tidal Blessing S", command = "/superfx tidalblessing S" },
+			{ label = "Stampede C", command = "/superfx stampede C" },
+			{ label = "Stampede S", command = "/superfx stampede S" },
+			{ label = "Eclipse C", command = "/superfx eclipse C" },
+			{ label = "Eclipse S", command = "/superfx eclipse S" },
+			{ label = "Rift Step C", command = "/superfx riftstep C" },
+			{ label = "Rift Step S", command = "/superfx riftstep S" },
+			{ label = "Supernova C", command = "/superfx supernova C" },
+			{ label = "Supernova S", command = "/superfx supernova S" },
+			{ label = "Thunderstorm C", command = "/superfx thunderstorm C" },
+			{ label = "Thunderstorm S", command = "/superfx thunderstorm S" },
+			{ label = "Devour C", command = "/superfx devour C" },
+			{ label = "Devour S", command = "/superfx devour S" },
+		},
+	},
+	{
 		title = "Fights and places",
 		buttons = {
 			{ label = "Wake resting cards", command = "/rest" },
