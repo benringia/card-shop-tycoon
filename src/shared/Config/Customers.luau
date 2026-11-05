@@ -31,6 +31,7 @@ return {
 	BUBBLE_NO_STOCK = "Thinking", -- nothing they wanted on the shelves
 	BUBBLE_GAVE_UP = "⌛", -- waited too long in the queue
 	BUBBLE_HAPPY = "Happy", -- paid at the register
+	BUBBLE_DISAPPOINTED = "Thinking", -- a collector who didn't find their card at their price
 
 	PATH_AGENT = {
 		AgentRadius = 2,
@@ -76,6 +77,8 @@ return {
 		premium = 1.3,
 		ownedShare = 0.5,
 		wantWeights = { Common = 30, Rare = 25, ["Very Rare"] = 20, Epic = 15, Legendary = 10 },
+		-- The thought bubble over a collector holding the wanted card's face (CustomerController), in pixels and studs
+		thought = { cardWidth = 54, cardHeight = 76, padding = 5, offsetY = 3.4, maxDistance = 70 },
 	},
 	TYPES = {
 		plain = { weight = 0.55, props = {} },

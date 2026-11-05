@@ -18,12 +18,14 @@ local Products = require(Config:WaitForChild("Products"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("CollectorRules"))
 local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local NpcMotion = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("NpcMotion"))
+local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -50,6 +52,7 @@ export type Customer = {
 	plot: Plot,
 	owner: Player,
 	kind: string, -- its type (Config/Customers TYPES: plain, kid, collector, bargain, bigSpender)
+	wanted: string?, -- a collector's card id (model attribute WantedCard, shown in a thought bubble by the client)
 	model: Model,
 	humanoid: Humanoid,
 	root: BasePart,
@@ -414,6 +417,13 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 	return true
 end
 
+-- What a displayed copy is worth: a levelled card against its own (higher) value
+local function displayedWorth(displayed: DisplayedCard): number
+	local level = if displayed.beast then displayed.beast.level else 1
+	local stars = if displayed.beast then displayed.beast.stars else BeastRules.START_STARS
+	return CardRules.getMarketValue(Cards.ById[displayed.cardId], displayed.foil, level, stars, displayed.grade)
+end
+
 -- Looks at one card in a Glass Showcase and maybe takes it, judged on price like packs.
 -- Returns whether there was a card to look at.
 local function shopForCard(customer: Customer, visited: { [string]: boolean }): boolean
@@ -434,11 +444,7 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 	if PlacementService.GetShelf(customer.owner, shelf.uid) ~= shelf or not displayed then
 		return true
 	end
-	local card = Cards.ById[displayed.cardId]
-	-- A levelled card is judged against its own (higher) value
-	local level = if displayed.beast then displayed.beast.level else 1
-	local stars = if displayed.beast then displayed.beast.stars else BeastRules.START_STARS
-	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil, level, stars, displayed.grade))
+	local band = PriceRules.getBand(displayed.price, displayedWorth(displayed))
 	if not band then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
 		fireOutcome(customer.owner, "annoyed")
@@ -454,6 +460,77 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 		table.insert(customer.items, { shelfUid = shelf.uid, units = 1, unitPrice = taken.price, card = taken, slot = slot })
 	end
 	return true
+end
+
+-- The Glass Showcases in this shop that still exist, in a random order
+local function glassShowcases(owner: Player): { PlacedShelf }
+	local result: { PlacedShelf } = {}
+	for _, shelf in PlacementService.GetShelves(owner) do
+		if shelf.def.kind == "CustomerCards" then
+			table.insert(result, rng:NextInteger(1, #result + 1), shelf)
+		end
+	end
+	return result
+end
+
+-- At the showcase holding the wanted card: takes it if it's still there at a price the collector pays
+local function tryWantedCard(customer: Customer, shelf: PlacedShelf, slot: number, wanted: string): boolean
+	walkTo(customer, getShelfStandPoint(customer.plot, shelf))
+	faceShelf(customer, shelf)
+	if not customer.alive then
+		return true
+	end
+	task.wait(CustomerConfig.BROWSE_SECONDS)
+	-- The owner may have moved, swapped or repriced it while the collector walked over
+	local displayed = if PlacementService.GetShelf(customer.owner, shelf.uid) == shelf then shelf.cards[slot] else nil
+	if not displayed or not CollectorRules.stillThere(displayed, wanted, displayedWorth(displayed), CustomerConfig) then
+		return false
+	end
+	local taken = ShowcaseService.TakeForCustomer(shelf, slot)
+	if not taken then
+		return false
+	end
+	table.insert(customer.items, { shelfUid = shelf.uid, units = 1, unitPrice = taken.price, card = taken, slot = slot })
+	return true
+end
+
+-- A collector walks the Glass Showcases looking for the one card they want (the owner can still put it out while they
+-- look), buys it at up to the premium over its worth, or leaves disappointed
+local function huntCard(customer: Customer, visited: { [string]: boolean })
+	local wanted = customer.wanted
+	if not wanted then
+		return
+	end
+	local tours = glassShowcases(customer.owner)
+	local index = 0
+	while customer.alive do
+		local shelf, slot = ShowcaseService.FindCardForCollector(customer.owner, wanted)
+		if shelf and slot then
+			visited[shelf.uid] = true
+			if tryWantedCard(customer, shelf, slot, wanted) then
+				return
+			end
+			break
+		end
+		index += 1
+		local showcase = tours[index]
+		if not showcase then
+			break
+		end
+		visited[showcase.uid] = true
+		walkTo(customer, getShelfStandPoint(customer.plot, showcase))
+		faceShelf(customer, showcase)
+		if not customer.alive then
+			return
+		end
+		task.wait(CustomerConfig.BROWSE_SECONDS)
+	end
+	if not customer.alive then
+		return
+	end
+	showBubble(customer, CustomerConfig.BUBBLE_DISAPPOINTED)
+	fireOutcome(customer.owner, "noStock")
+	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
 
 -- Something they wanted wasn't on the shelves: look at a few more shelves they haven't checked yet,
@@ -561,8 +638,10 @@ local function run(customer: Customer)
 			return
 		end
 	end
-	-- Only some customers care about singles
-	if rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE then
+	-- A collector hunts the card they want; of the rest only some care about singles
+	if customer.wanted then
+		huntCard(customer, visited)
+	elseif rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE then
 		shopForCard(customer, visited)
 	end
 	if not customer.alive then
@@ -598,10 +677,38 @@ local function showsCards(owner: Player): boolean
 	return false
 end
 
-local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
+-- A collector's wanted card (Util/CollectorRules): half the time one the owner has (binder, beasts or on display)
+local function pickWanted(owner: Player): string
+	local ownedSet = CardService.GetOwnedCardIds(owner)
+	for _, shelf in PlacementService.GetShelves(owner) do
+		if PlacementService.IsCardCase(shelf) then
+			for _, displayed in shelf.cards do
+				ownedSet[displayed.cardId] = true
+			end
+		end
+	end
+	local owned: { string } = {}
+	for cardId in ownedSet do
+		table.insert(owned, cardId)
+	end
+	table.sort(owned)
+	local all: { CollectorRules.CardEntry } = {}
+	for _, card in Cards.BySet["First Spark"] do
+		table.insert(all, { id = card.id, rarity = card.rarity })
+	end
+	return CollectorRules.wanted(CustomerConfig, owned, all, rng:NextNumber(), rng:NextNumber())
+end
+
+-- forcedKind / forcedWanted: Studio's /customer command only
+local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forcedKind: string?, forcedWanted: string?)
 	local entry = getEntryCFrame(plot)
-	local kind = CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
+	local kind = forcedKind
+		or CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
 	local model = createModel(entry, kind)
+	local wanted = if kind == "collector" then forcedWanted or pickWanted(owner) else nil
+	if wanted then
+		model:SetAttribute("WantedCard", wanted)
+	end
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	humanoid.WalkSpeed = CustomerConfig.WALK_SPEED
@@ -612,6 +719,7 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 		plot = plot,
 		owner = owner,
 		kind = kind,
+		wanted = wanted,
 		model = model,
 		humanoid = humanoid,
 		root = root,
@@ -714,6 +822,16 @@ function CustomerService.CompletePurchase(customer: Customer)
 	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
 	fireOutcome(customer.owner, "paid")
+end
+
+-- Studio's /customer command: a customer of this type now (a collector wanting `wanted` when given)
+function CustomerService.SpawnForTest(owner: Player, kind: string, wanted: string?): boolean
+	local plot = PlotService.GetPlot(owner)
+	if not plot or not CustomerConfig.TYPES[kind] then
+		return false
+	end
+	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), kind, wanted)
+	return true
 end
 
 -- Each visit's outcome ("paid", "annoyed", "gaveUp", "noStock", "happyMoment"), for the shop rating

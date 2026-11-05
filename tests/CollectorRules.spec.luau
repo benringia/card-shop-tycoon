@@ -45,6 +45,14 @@ return {
 		assert((counts.Legendary or 0) < (counts.Common or 0) / 2, "one Legendary card less than one Common card")
 	end,
 
+	-- Between finding the card and reaching the showcase the owner may move it, swap it or reprice it
+	["collector rechecks"] = function()
+		expect.equal(CollectorRules.stillThere({ cardId = "e1", price = 120 }, "e1", 100, Customers), true)
+		expect.equal(CollectorRules.stillThere(nil, "e1", 100, Customers), false, "the slot emptied")
+		expect.equal(CollectorRules.stillThere({ cardId = "c1", price = 1 }, "e1", 100, Customers), false, "another card")
+		expect.equal(CollectorRules.stillThere({ cardId = "e1", price = 140 }, "e1", 100, Customers), false, "now over the premium")
+	end,
+
 	["pays up to 1.3x what it's worth"] = function()
 		expect.equal(Customers.COLLECTOR.premium, 1.3)
 		expect.equal(CollectorRules.buys(Customers, 129, 100), true)

@@ -37,6 +37,7 @@ local PartyBarController = require(Controllers:WaitForChild("PartyBarController"
 local CardEffectsController = require(Controllers:WaitForChild("CardEffectsController"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
+local CustomerController = require(Controllers:WaitForChild("CustomerController"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
 local MovePreviewController = require(Controllers:WaitForChild("MovePreviewController"))
@@ -119,6 +120,7 @@ else
 	CardEffectsController.Start()
 	AnnouncementController.Start()
 	CreatureController.Start()
+	CustomerController.Start() -- collectors' thought bubbles
 	MonsterController.Start()
 	BattleController.Start()
 	MovePreviewController.Start() -- Studio only: /movefx plays a Pet button move at a grade

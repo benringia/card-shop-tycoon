@@ -41,4 +41,12 @@ function CollectorRules.buys(cfg: any, price: number, worth: number): boolean
 	return price <= worth * cfg.COLLECTOR.premium + 1e-9
 end
 
+-- On reaching the showcase: whether the wanted card is still in its slot at a price the collector pays
+function CollectorRules.stillThere(displayed: { cardId: string, price: number }?, wantedId: string, worth: number, cfg: any): boolean
+	if not displayed or displayed.cardId ~= wantedId then
+		return false
+	end
+	return CollectorRules.buys(cfg, displayed.price, worth)
+end
+
 return CollectorRules

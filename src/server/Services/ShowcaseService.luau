@@ -280,6 +280,24 @@ function ShowcaseService.PickCardForCustomer(owner: Player): (PlacedShelf?, numb
 	return pick.shelf, pick.slot
 end
 
+-- The cheapest copy of `cardId` in the owner's Glass Showcases, for a collector who wants that card
+function ShowcaseService.FindCardForCollector(owner: Player, cardId: string): (PlacedShelf?, number?)
+	local bestShelf: PlacedShelf? = nil
+	local bestSlot: number? = nil
+	local bestPrice = math.huge
+	for _, shelf in PlacementService.GetShelves(owner) do
+		if shelf.def.kind ~= "CustomerCards" then
+			continue
+		end
+		for slot, displayed in shelf.cards do
+			if displayed.cardId == cardId and displayed.price < bestPrice then
+				bestShelf, bestSlot, bestPrice = shelf, slot, displayed.price
+			end
+		end
+	end
+	return bestShelf, bestSlot
+end
+
 -- Customer picks the card up to pay for it. Returns nil if it's gone (someone else took it).
 function ShowcaseService.TakeForCustomer(shelf: PlacedShelf, slot: number): DisplayedCard?
 	local displayed = shelf.cards[slot]

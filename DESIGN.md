@@ -337,6 +337,11 @@ is over UI (`UIKit.pointerBlocked`).
   higher than plain customers (`Pricing.BUY_BANDS`, past the last band more bands as wide as the last); past that
   they won't buy and get annoyed. Big spenders buy a display box (`BIG_SPENDER.box`) or a stack of 6-12 packs and
   tip 10% at the register.
+- **Collectors** (`Util/CollectorRules`, `COLLECTOR` config) want one card, half the time one the owner has (binder,
+  beasts or on display), else any First Spark card weighted by rarity (Common 30 ... Legendary 10 per card). The card
+  shows in a thought bubble over their head the whole visit (client `CustomerController`). After the shelves they walk
+  the Glass Showcases looking for it (the owner can still put it out), re-check it on arrival and buy the cheapest copy
+  at up to 1.3x its worth; otherwise a disappointed bubble (counts as no stock).
 - Customer spawn rate scales with **shop rating** (cleanliness of stock, price fairness, decor score).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 
