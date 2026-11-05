@@ -36,7 +36,7 @@ return {
 		expect.equal(tiles[1].simId, "a:b3")
 		expect.equal(tiles[2].state, "active")
 		expect.equal(tiles[2].simId, "a:b1")
-		expect.equal(tiles[3].state, "resting")
+		expect.equal(tiles[3].state, "fainted", "b2 fainted in this fight")
 		local cooling = SwapKeys.party(slots, 3, { "a:b3" }, FIGHTERS, true, 2.5)
 		expect.equal(cooling[1].state, "cooling")
 		expect.near(cooling[1].seconds :: number, 2.5, 1e-9)
@@ -48,5 +48,13 @@ return {
 		expect.equal(#tiles, 1)
 		expect.equal(tiles[1].slot, 2)
 		expect.equal(#SwapKeys.party({}, 3, {}, {}, true, 0), 0)
+	end,
+	-- The owner (2026-11-05, option C): a fainted card lies face down with dizzy stars, one resting since an earlier fight
+	-- with a Zzz
+	["the party strip tells a card that fainted in this fight from one resting since an earlier fight"] = function()
+		local tiles = SwapKeys.party({ [1] = "b2", [2] = "b9" }, 3, {}, FIGHTERS, true, 0)
+		expect.equal(tiles[1].state, "fainted")
+		expect.equal(tiles[2].state, "resting")
+		expect.equal(SwapKeys.pick("b2", {}, FIGHTERS, true, 0), "resting", "a key still says it's resting")
 	end,
 }

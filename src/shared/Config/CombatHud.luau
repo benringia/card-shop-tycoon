@@ -73,27 +73,27 @@ return {
 	STATUS_MAX_WIDTH = 340,
 	DOWN_COLOR = rgb(248, 113, 113),
 	-- Boss fights: your party under the status (owner 2026-11-05, option A: "add an indication who to summon, for good
-	-- UX not just numbers"). One tile per party card: its painting and name, its key on PC, OUT on the one fighting,
-	-- STRONG / WEAK against the boss's element (Util/SkillText.matchup), the swap's cooldown over the others, a resting
-	-- card faded. A tap swaps; the strip replaces the Swap button.
+	-- UX not just numbers"; its look option C: "Remove strong/weak/out just add an effect or animation or icons for
+	-- who's out/dead"). One tile per party card: its painting and name and its key on PC; the one fighting has a light
+	-- running round its edge and a heartbeat pulse in place of its name; a fainted card lies face down (the card back's
+	-- colours, Config/CardDesign BACK) with dizzy stars, one resting since an earlier fight with a Zzz; while swaps cool
+	-- down the others dim with the seconds left. A tap swaps; the strip replaces the Swap button.
 	PARTY_STRIP = {
 		TILE = 72, -- pixels wide (phones PHONE_TILE)
 		PHONE_TILE = 58,
 		ART = 0.7, -- the painting's height, of the tile's width
 		NAME = 12, -- text size (phones one less)
 		GAP = 10, -- pixels between tiles
-		TOP = 14, -- pixels below the status (the tags and keys stick out above the tiles)
+		TOP = 14, -- pixels below the status (the keys stick out above the tiles)
 		EDGE = rgb(74, 64, 96),
-		OUT_EDGE = rgb(74, 222, 128),
 		KEY = rgb(244, 195, 58),
 		KEY_INK = rgb(43, 37, 64),
-		TAGS = {
-			out = { text = "OUT", back = rgb(255, 255, 255), ink = rgb(43, 37, 64) },
-			strong = { text = "STRONG", back = rgb(74, 222, 128), ink = rgb(18, 54, 31) },
-			weak = { text = "WEAK", back = rgb(248, 113, 113), ink = rgb(59, 13, 13) },
-		},
-		COOLING_SHADE = 0.45, -- the painting's brightness while the swap cools down
-		RESTING_FADE = 0.6, -- a resting card's transparency
+		RUN = { color = rgb(74, 222, 128), dark = rgb(27, 22, 38), turn = 200 }, -- the running light; degrees a second
+		BEAT = { height = 6, color = rgb(74, 222, 128), seconds = 1.1 }, -- the heartbeat: a bright pulse sweeping across
+		FAINTED = "💫",
+		RESTING = "Zzz",
+		DOWN_NAME = 0.4, -- a face-down card's name transparency
+		COOLING_SHADE = 0.45, -- the painting's darkness while the swap cools down
 	},
 	-- HP bars in the "slanted neon" look (tools/textures/make_hp_bars.py, uploaded): parallelograms slanted like the
 	-- buttons, a dark rim around a sunken well, a glowing edge in the bar's colour, a tick every 20% and a shaded fill

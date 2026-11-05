@@ -54,7 +54,6 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
-local SkillText = require(Shared:WaitForChild("Util"):WaitForChild("SkillText"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local DefeatScreen = require(ClientUtil:WaitForChild("DefeatScreen"))
@@ -103,6 +102,7 @@ type Snapshot = {
 	monster: { hp: number, maxHp: number, element: string, elite: boolean },
 	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean, perk: { kind: string, value: number }? } },
 	reserves: { string },
+	benched: { string }, -- yours that fainted and were swapped out (the party strip shows them face down)
 	callInFor: number,
 	swaps: boolean, -- boss fights: reserves may be brought in any time (a swap)
 	swapIn: number, -- seconds until my next swap
@@ -266,14 +266,18 @@ local function toView(raw: any): Snapshot
 	-- Group fights: side A holds everyone's creatures (each tagged with its owner); yours get buttons, the others go in
 	-- the ally row. Untagged fighters (PvP) are all yours.
 	local myOwner = tostring(player.UserId)
-	local own, allies = {}, {}
+	local own, allies, benched = {}, {}, {}
 	local me = nil
 	for _, fighter in mine.fighters do
 		local owner = (fighter :: any).owner
 		if (fighter :: any).player then
 			me = if owner == myOwner then fighter else me
 			continue -- boss fights: the players themselves (yours shows on the combat HUD)
-		elseif not (fighter :: any).benched then -- fainted and swapped out
+		elseif (fighter :: any).benched then -- fainted and swapped out
+			if owner == nil or owner == myOwner then
+				table.insert(benched, fighter.id)
+			end
+		else
 			table.insert(if owner == nil or owner == myOwner then own else allies, fighter)
 		end
 	end
@@ -291,6 +295,7 @@ local function toView(raw: any): Snapshot
 		fighters = own,
 		allies = allies,
 		reserves = reserves,
+		benched = benched,
 		callInFor = mine.callInFor,
 		swaps = mine.swaps == true,
 		swapIn = if typeof(mine.swapIn) == "table" then mine.swapIn[myOwner] or 0 else 0,
@@ -660,13 +665,20 @@ local function secondCreature(snapshot: Snapshot, lead: any?): any?
 	return nil
 end
 
--- Boss fights' party strip (owner 2026-11-05, option A): each party slot's card, what its key does now and its edge
--- against the boss's element
+-- Boss fights' party strip (owner 2026-11-05, option A, look C): each party slot's card and what its key does now
 local function partyTiles(snapshot: Snapshot): { CombatHud.PartyTile }
 	local tiles = {}
 	local beasts = BinderController.GetBeasts()
 	local tileArt = if UIKit.isPhone() then CombatHudConfig.PARTY_STRIP.PHONE_TILE else CombatHudConfig.PARTY_STRIP.TILE
-	for _, slot in SwapKeys.party(PartyController.GetSlots(), Party.PARTY_SIZE, snapshot.reserves, snapshot.fighters, snapshot.swaps, snapshot.swapIn) do
+	-- The ones that fainted and were swapped out count as fainted fighters (they're face down, not resting)
+	local roster: { { id: string, fainted: boolean } } = {}
+	for _, fighter in snapshot.fighters do
+		table.insert(roster, { id = fighter.id, fainted = fighter.fainted })
+	end
+	for _, id in snapshot.benched do
+		table.insert(roster, { id = id, fainted = true })
+	end
+	for _, slot in SwapKeys.party(PartyController.GetSlots(), Party.PARTY_SIZE, snapshot.reserves, roster, snapshot.swaps, snapshot.swapIn) do
 		local beast = beasts[slot.beastId]
 		local card = if beast then Cards.ById[beast.cardId] else nil
 		local name = fightNames[slot.simId] or (if card then card.name else nil)
@@ -677,7 +689,6 @@ local function partyTiles(snapshot: Snapshot): { CombatHud.PartyTile }
 			art = if name then CardArt.pick(name, tileArt, CardArtConfig) else nil,
 			color = if card then Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3) else Color3.new(0.3, 0.3, 0.3),
 			state = slot.state,
-			matchup = if card then SkillText.matchup(Combat, card.element, snapshot.monster.element) else nil,
 		})
 	end
 	return tiles

@@ -29,14 +29,22 @@ end
 export type Tile = { slot: number, beastId: string, simId: string, state: string, seconds: number? }
 
 -- The fight's party strip (owner 2026-11-05, option A: "add an indication who to summon"): one tile per filled party
--- slot, 1 to `size`, in the party bar's order, each with what its key or a tap does now (pick's action; `seconds` only
--- while it's cooling)
+-- slot, 1 to `size`, in the party bar's order, each with what its key or a tap does now (pick's action, except that a
+-- card that fainted in this fight is "fainted", not "resting": option C shows it face down with dizzy stars; `seconds`
+-- only while it's cooling)
 function SwapKeys.party(slots: { [number]: string }, size: number, reserves: { string }, fighters: { { id: string, fainted: boolean } }, swaps: boolean, swapIn: number): { Tile }
 	local tiles = {}
 	for slot = 1, size do
 		local beastId = slots[slot]
 		if beastId then
 			local state, value = SwapKeys.pick(beastId, reserves, fighters, swaps, swapIn)
+			if state == "resting" then
+				for _, fighter in fighters do
+					if fighter.id == `a:{beastId}` and fighter.fainted then
+						state = "fainted"
+					end
+				end
+			end
 			table.insert(tiles, { slot = slot, beastId = beastId, simId = `a:{beastId}`, state = state, seconds = if state == "cooling" then value else nil })
 		end
 	end

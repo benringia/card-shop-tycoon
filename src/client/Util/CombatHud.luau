@@ -22,6 +22,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
+local CardDesign = require(Shared:WaitForChild("Config"):WaitForChild("CardDesign"))
 local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"))
@@ -56,9 +57,9 @@ local function setButtonIcon(frame: GuiObject, image: string?)
 end
 
 export type Reserve = { id: string, name: string, hp: number, maxHp: number, art: string? }
--- One party strip tile: state is Util/SwapKeys.pick's ("swap" or "cooling": waiting to come in, "active", "resting");
--- matchup "strong" / "weak" against the boss (nil: neither)
-export type PartyTile = { slot: number, simId: string, name: string, art: string?, color: Color3, state: string, matchup: string? }
+-- One party strip tile: state is Util/SwapKeys.party's ("swap" or "cooling": waiting to come in, "active", "fainted"
+-- in this fight, "resting" since an earlier one)
+export type PartyTile = { slot: number, simId: string, name: string, art: string?, color: Color3, state: string }
 export type View = {
 	playerHp: number,
 	playerMax: number,
@@ -348,10 +349,24 @@ local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIS
 	return ring, shading, glow, badge, face, debuffBadge, debuffEdge
 end
 
-type Tile = { frame: ImageButton, art: ImageLabel, name: TextLabel, overlay: TextLabel, tag: TextLabel, edge: UIStroke, scale: UIScale, info: PartyTile }
+type Tile = {
+	frame: ImageButton,
+	art: ImageLabel,
+	back: Frame,
+	mark: TextLabel,
+	name: TextLabel,
+	overlay: TextLabel,
+	beat: Frame,
+	pulse: UIGradient,
+	edge: UIStroke,
+	run: UIGradient,
+	scale: UIScale,
+	info: PartyTile,
+}
 
--- A party strip tile: the card's painting over its name in a dark rounded panel, its key on a gold chip (PC) and a tag
--- (OUT, STRONG, WEAK) on its top corners, and an overlay on the painting for the swap's seconds or a resting card's Zzz
+-- A party strip tile (option C): the card's painting over its name in a dark rounded panel, its key on a gold chip
+-- (PC), an overlay on the painting for the swap's seconds; under the painting a heartbeat pulse (shown while it
+-- fights), and a face-down card in the painting's place (shown when it's fainted or resting)
 local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTile) -> ()): Tile
 	local spec = CombatHudConfig.PARTY_STRIP
 	local phone = UIKit.isPhone()
@@ -367,9 +382,21 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 	frame.Size = UDim2.fromOffset(width, artHeight + nameSize + 12)
 	frame.Parent = parent
 	UIKit.corner(frame, 10)
+	-- The edge; while it fights a light runs round it (a turning gradient over a white stroke)
 	local edge = Instance.new("UIStroke")
 	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	edge.Parent = frame
+	local run = Instance.new("UIGradient")
+	local light, dark = color(spec.RUN.color), color(spec.RUN.dark)
+	run.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, light),
+		ColorSequenceKeypoint.new(0.3, dark),
+		ColorSequenceKeypoint.new(0.5, light),
+		ColorSequenceKeypoint.new(0.8, dark),
+		ColorSequenceKeypoint.new(1, light),
+	})
+	run.Enabled = false
+	run.Parent = edge
 	local scale = Instance.new("UIScale")
 	scale.Parent = frame
 	local art = Instance.new("ImageLabel")
@@ -385,6 +412,29 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 	overlay.TextXAlignment = Enum.TextXAlignment.Center
 	overlay.Size = UDim2.fromScale(1, 1)
 	UIKit.outlined(overlay)
+	-- Face down: the card back's colours and rim, with dizzy stars (fainted) or a Zzz (resting)
+	local back = Instance.new("Frame")
+	back.Name = "Back"
+	back.BackgroundColor3 = Color3.new(1, 1, 1)
+	back.Position = art.Position
+	back.Size = art.Size
+	back.Visible = false
+	back.Parent = frame
+	UIKit.corner(back, 7)
+	local backFill = Instance.new("UIGradient")
+	backFill.Color = ColorSequence.new(CardDesign.BACK.INSIDE[1], CardDesign.BACK.INSIDE[2])
+	backFill.Rotation = 90
+	backFill.Parent = back
+	local rim = Instance.new("UIStroke")
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Thickness = 2
+	rim.Color = CardDesign.BACK.RIM[1]
+	rim.Parent = back
+	local mark = UIKit.label(back, "", Enum.Font.FredokaOne, math.round(artHeight * 0.42), Color3.new(1, 1, 1))
+	mark.Name = "Mark"
+	mark.TextXAlignment = Enum.TextXAlignment.Center
+	mark.Size = UDim2.fromScale(1, 1)
+	UIKit.outlined(mark)
 	local name = UIKit.label(frame, info.name, Enum.Font.GothamBold, nameSize, Color3.new(1, 1, 1))
 	name.Name = "CardName"
 	name.TextWrapped = false
@@ -392,6 +442,25 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.Position = UDim2.fromOffset(3, artHeight + 6)
 	name.Size = UDim2.new(1, -6, 0, nameSize + 2)
+	-- The heartbeat: a bright pulse sweeping across a dim bar where the name was
+	local beat = Instance.new("Frame")
+	beat.Name = "Heartbeat"
+	beat.BackgroundColor3 = color(spec.BEAT.color)
+	beat.AnchorPoint = Vector2.new(0.5, 0.5)
+	beat.Position = UDim2.new(0.5, 0, 0, artHeight + 6 + (nameSize + 2) / 2)
+	beat.Size = UDim2.new(1, -14, 0, spec.BEAT.height)
+	beat.Visible = false
+	beat.Parent = frame
+	UIKit.corner(beat, spec.BEAT.height)
+	local pulse = Instance.new("UIGradient")
+	pulse.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(0.35, 0.8),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(0.65, 0.8),
+		NumberSequenceKeypoint.new(1, 0.8),
+	})
+	pulse.Parent = beat
 	if not phone then
 		local key = UIKit.label(frame, tostring(info.slot), Enum.Font.FredokaOne, 13, color(spec.KEY_INK))
 		key.Name = "Key"
@@ -408,27 +477,20 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 		keyEdge.Color = color(spec.KEY_INK)
 		keyEdge.Parent = key
 	end
-	local tag = UIKit.label(frame, "", Enum.Font.FredokaOne, 10, Color3.new(1, 1, 1))
-	tag.Name = "Tag"
-	tag.TextWrapped = false
-	tag.TextXAlignment = Enum.TextXAlignment.Center
-	tag.BackgroundTransparency = 0
-	tag.AnchorPoint = Vector2.new(1, 0)
-	tag.Position = UDim2.new(1, 6, 0, -8)
-	tag.Size = UDim2.fromOffset(0, 16)
-	tag.AutomaticSize = Enum.AutomaticSize.X
-	tag.ZIndex = 3
-	tag.Visible = false
-	UIKit.corner(tag, 8)
-	local tagPad = Instance.new("UIPadding")
-	tagPad.PaddingLeft, tagPad.PaddingRight = UDim.new(0, 5), UDim.new(0, 5)
-	tagPad.Parent = tag
-	local tagEdge = Instance.new("UIStroke")
-	tagEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	tagEdge.Thickness = 2
-	tagEdge.Color = color(CombatHudConfig.PANEL_COLOR)
-	tagEdge.Parent = tag
-	local tile: Tile = { frame = frame, art = art, name = name, overlay = overlay, tag = tag, edge = edge, scale = scale, info = info }
+	local tile: Tile = {
+		frame = frame,
+		art = art,
+		back = back,
+		mark = mark,
+		name = name,
+		overlay = overlay,
+		beat = beat,
+		pulse = pulse,
+		edge = edge,
+		run = run,
+		scale = scale,
+		info = info,
+	}
 	frame.Activated:Connect(function()
 		onTap(tile.info)
 	end)
@@ -784,27 +846,30 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
-	-- A tile's look for its state; a waiting card shows the swap's seconds while it cools down
-	local function paintTile(tile: Tile)
+	-- A tile's look for its state (option C) at `now`: the fighter's running light and heartbeat, a face-down card for a
+	-- fainted or resting one, the swap's seconds over a waiting one while it cools down
+	local function paintTile(tile: Tile, now: number)
 		local info = tile.info
-		local active, resting = info.state == "active", info.state == "resting"
-		local wait = if active or resting then 0 else swapWait()
-		tile.edge.Color = color(if active then stripSpec.OUT_EDGE else stripSpec.EDGE)
+		local active = info.state == "active"
+		local down = info.state == "fainted" or info.state == "resting"
+		local wait = if active or down then 0 else swapWait()
+		tile.edge.Color = if active then Color3.new(1, 1, 1) else color(stripSpec.EDGE)
 		tile.edge.Thickness = if active then 3 else 2
-		local fade = if resting then stripSpec.RESTING_FADE else 0
-		tile.frame.BackgroundTransparency = 0.12 + fade * 0.6
-		tile.art.ImageTransparency = fade
-		tile.art.BackgroundTransparency = fade
-		tile.art.ImageColor3 = if wait > 0.05 then Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), stripSpec.COOLING_SHADE) else Color3.new(1, 1, 1)
-		tile.name.TextTransparency = fade
-		tile.overlay.Text = if resting then "Zzz" elseif wait > 0.05 then tostring(math.ceil(wait)) else ""
-		local look = if active then stripSpec.TAGS.out elseif resting then nil elseif info.matchup then stripSpec.TAGS[info.matchup] else nil
-		tile.tag.Visible = look ~= nil
-		if look then
-			tile.tag.Text = look.text
-			tile.tag.BackgroundColor3 = color(look.back)
-			tile.tag.TextColor3 = color(look.ink)
+		tile.run.Enabled = active
+		tile.beat.Visible = active
+		tile.name.Visible = not active
+		if active then
+			tile.run.Rotation = (now * stripSpec.RUN.turn) % 360
+			local sweep = (now % stripSpec.BEAT.seconds) / stripSpec.BEAT.seconds
+			tile.pulse.Offset = Vector2.new(sweep * 1.4 - 0.7, 0)
 		end
+		tile.art.Visible = not down
+		tile.back.Visible = down
+		tile.mark.Text = if info.state == "fainted" then stripSpec.FAINTED elseif down then stripSpec.RESTING else ""
+		tile.mark.Rotation = if info.state == "fainted" then math.sin(now * 3) * 12 else 0
+		tile.name.TextTransparency = if down then stripSpec.DOWN_NAME else 0
+		tile.art.ImageColor3 = if wait > 0.05 then Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), stripSpec.COOLING_SHADE) else Color3.new(1, 1, 1)
+		tile.overlay.Text = if wait > 0.05 then tostring(math.ceil(wait)) else ""
 	end
 
 	-- The strip's tiles: rebuilt when the party's cards change, repainted every update
@@ -833,7 +898,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			tile.info = info
 			tile.name.Text = info.name
 			tile.art.Image = info.art or ""
-			paintTile(tile)
+			paintTile(tile, os.clock())
 		end
 	end
 
@@ -933,7 +998,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			button.seconds.Text = if left > 0.05 then tostring(math.ceil(left)) else ""
 		end
 		for _, tile in tiles do
-			paintTile(tile)
+			paintTile(tile, now)
 		end
 	end)
 

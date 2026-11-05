@@ -1077,9 +1077,11 @@ group, checked before its fragments and every time (not only the first). Below i
   Signature (Epic and Legendary cards) and Run. Swaps are the **party strip** under the status (the owner 2026-11-05,
   option A: "add an indication who to summon, for good UX not just numbers"; it replaced the small Swap button): a tile
   per party card with its painting and name, its key 1-3 on a gold chip (PC; the party slot as the party bar numbers
-  it, `SwapKeys.party`/`pick`, Lune-tested), OUT on the one fighting (green edge), a green STRONG or red WEAK tag
-  against the boss's element (`SkillText.matchup`), a resting card faded with "Zzz", and while swaps cool down the
-  others dimmed with the seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). A key while swaps cool
+  it, `SwapKeys.party`/`pick`, Lune-tested). Its look (option C, the owner: "Remove strong/weak/out just add an effect
+  or animation or icons for who's out/dead"): the one fighting has a green light running round its edge and a
+  heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's blue) with
+  dizzy stars, one resting since an earlier fight face down with "Zzz"; while swaps cool down the others dim with the
+  seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). A key while swaps cool
   down still says "Swap ready in 4s", a resting card says so (2026-11-04). The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
   lost half of it to the character's braking), and one that would end inside a boss or monster carries on through it
   to 1.5 studs past its edge, up to 26 studs (`SwordRules.dashLength`, owner 2026-11-04). With a mouse a click attacks and there's no Attack
