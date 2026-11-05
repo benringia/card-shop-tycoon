@@ -2630,8 +2630,16 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
-- [ ] Pet moves round (branch `pet-moves`, spec `2026-11-05-pet-moves-design.md`): Healing Rain (heals over time),
-  Vine Snare, Overcharge and Curse finished, each better with grade. Waiting for the owner's Studio check.
+- [x] Pet moves round (branch `pet-moves`, spec `2026-11-05-pet-moves-design.md`): Healing Rain (heals over time; a
+  Grade S caster heals its player 15% too), Vine Snare, Overcharge and Curse finished, each better with grade; skill
+  icons (a Figma glyph sheet) on the fight buttons and the card view; the card view as one scrolling column with
+  Skills, Buffs and Elements boxes; the fight's party strip (look C: a running light and heartbeat on the fighter,
+  fainted cards face down); every fight sound kept loaded (`Util/SoundBank`); the Wild's portal-swirl loading screen;
+  the valley's passes as rolling banks. Approved by the owner 2026-11-05 ("merge and push"). Deferred minors: a
+  withdrawn group member's creature keeps its regen and orbs for up to 5-8 s; Curse's hex flight and late vine leaves
+  can start after an early stop; "+N" shows the full tick when the heal is capped at max HP; Overcharge has no extra
+  sound layer at A; the Overcharge preview shows the plain hit; a Rain cloud skipped by the effects budget has no sound
+  and a recast's cloud lingers ~3 s.
 - [x] Valley scenery: round 1, the Meadow's ancient ruins, the Caves' glow mushroom hollow with its darker look, Ember
   Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural edges, backdrops, far mountains,
   the composed Meadow, the Ridge's sky, lava streams, clouds, the Caves' grass patches, pieces settled onto the terrain
