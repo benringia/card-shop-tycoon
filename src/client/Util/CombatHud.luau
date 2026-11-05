@@ -98,12 +98,24 @@ export type Callbacks = {
 export type Hud = {
 	update: (view: View) -> (),
 	setCooldown: (name: string, readyAt: number, total: number) -> (),
+	setMeter: (name: string, share: number) -> (), -- the Super button's meter, 0 to 1 (full: it can fire)
 	setVisible: (visible: boolean) -> (),
 	setDebuff: (kind: string?, seconds: number?) -> (), -- a boss's debuff on you for `seconds` (nil: none)
 	destroy: () -> (),
 }
 
-type Button = { frame: ImageButton, drain: Frame, shade: ImageLabel, seconds: TextLabel, label: TextLabel, readyAt: number, total: number }
+type Button = {
+	frame: ImageButton,
+	drain: Frame,
+	shade: ImageLabel,
+	seconds: TextLabel,
+	label: TextLabel,
+	readyAt: number,
+	total: number,
+	meter: number?, -- the Super button: its meter's share (owner 2026-11-06, option A), filling gold from the bottom
+	fill: ImageLabel?,
+	fillShape: UIGradient?,
+}
 
 local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
 local WILD_ORDER = { "pet", "signature", "swap", "run" }
@@ -256,7 +268,43 @@ local function makeButton(parent: Instance, name: string, onPress: () -> (), sho
 		end
 		onPress()
 	end)
-	return { frame = frame, drain = drain, shade = shade, seconds = seconds, label = label, readyAt = 0, total = 1 }
+	-- The Super button's meter: a gold copy of the panel shown up to the share filled (a gradient's hard edge), glowing
+	-- when full
+	local fill: ImageLabel? = nil
+	local fillShape: UIGradient? = nil
+	if name == "signature" then
+		local gold = Instance.new("ImageLabel")
+		gold.Name = "Meter"
+		gold.BackgroundTransparency = 1
+		gold.Image = CombatHudConfig.SLANT_FILL
+		gold.ImageColor3 = color(CombatHudConfig.METER.color)
+		gold.ImageTransparency = CombatHudConfig.METER.transparency
+		gold.Size = UDim2.fromScale(1, 1)
+		gold.ZIndex = 2
+		gold.Parent = frame
+		local shape = Instance.new("UIGradient")
+		shape.Rotation = -90 -- 0 at the bottom, 1 at the top
+		shape.Transparency = NumberSequence.new(1)
+		shape.Parent = gold
+		fill, fillShape = gold, shape
+	end
+	return { frame = frame, drain = drain, shade = shade, seconds = seconds, label = label, readyAt = 0, total = 1, fill = fill, fillShape = fillShape }
+end
+
+-- The meter's gradient: shown from the bottom up to `share`, hidden above
+local function meterShape(share: number): NumberSequence
+	if share <= 0 then
+		return NumberSequence.new(1)
+	elseif share >= 1 then
+		return NumberSequence.new(0)
+	end
+	local edge = math.min(share + 0.004, 0.999)
+	return NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(share, 0),
+		NumberSequenceKeypoint.new(edge, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
 end
 
 -- One HP line: a label over a slanted bar `height` pixels tall
@@ -808,6 +856,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tipTitle.TextColor3 = color(spec.color)
 		local view = latest
 		tipBody.Text = (if view then SkillText.buttonTip(Combat, name, view.creatureElement, view.signatureMove) else nil) or spec.tip
+		if name == "signature" then
+			tipBody.Text ..= `\n{CombatHudConfig.METER.tip}`
+		end
 		tipEdge.Color = color(spec.color)
 		local half = CombatHudConfig.TIP_WIDTH / 2 + 8
 		local x = anchor.AbsolutePosition.X - root.AbsolutePosition.X + anchor.AbsoluteSize.X / 2
@@ -932,6 +983,18 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
+	local function setMeter(name: string, share: number)
+		local button = buttons[name]
+		if not button or not button.fillShape then
+			return
+		end
+		local clamped = math.clamp(share, 0, 1)
+		if button.meter ~= clamped then
+			button.meter = clamped
+			button.fillShape.Transparency = meterShape(clamped)
+		end
+	end
+
 	-- The red edges (a hit's flash or the low-HP pulse), the portrait's shake and its red ring
 	local function feedback(now: number)
 		local view = latest
@@ -993,6 +1056,16 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			end
 		end
 		for _, button in buttons do
+			local meter = button.meter
+			if meter and button.fill then
+				-- The Super button: its meter's percent while it fills, a soft glow pulse once it's full
+				button.seconds.Text = if meter < 1 then `{math.floor(meter * 100)}%` else ""
+				local pulse = CombatHudConfig.METER.pulse
+				button.fill.ImageTransparency = if meter >= 1
+					then pulse[1] + (pulse[2] - pulse[1]) * (0.5 + 0.5 * math.sin(now * pulse[3]))
+					else CombatHudConfig.METER.transparency
+				continue
+			end
 			local left = button.readyAt - now
 			local share = math.clamp(left / button.total, 0, 1)
 			button.drain.Size = UDim2.fromScale(1, share)
@@ -1134,7 +1207,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
-	return { update = update, setCooldown = setCooldown, setVisible = setVisible, setDebuff = setDebuff, destroy = destroy }
+	return { update = update, setCooldown = setCooldown, setMeter = setMeter, setVisible = setVisible, setDebuff = setDebuff, destroy = destroy }
 end
 
 return CombatHud

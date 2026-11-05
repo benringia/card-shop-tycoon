@@ -26,9 +26,23 @@ local function side(list: { any }, canRun: boolean?): any
 	return { fighters = list, abilities = true, canRun = canRun == true }
 end
 
+-- Every owner's super meter full on both sides (a super needs a full meter: owner 2026-11-06, option A)
+local function charge(state: any)
+	for _, side in { state.sides.a, state.sides.b } do
+		for _, list in { side.fighters, side.reserves } do
+			for _, fighter in list do
+				side.meters[fighter.owner or ""] = combat.SUPER_METER.full
+			end
+		end
+	end
+end
+
 -- A special move pressed and its wind-up waited out (its cast's own seconds: combat.ABILITY_WINDUP for a Pet button
 -- move, the super's own wind-up for a super): the move's events, or nil and why not
 local function castNow(state: any, id: string, which: string, owner: string?): ({ any }?, string?)
+	if which == "signature" then
+		charge(state)
+	end
 	local pressed, why = BattleSim.useAbility(state, id, which, owner)
 	if not pressed then
 		return nil, why
@@ -637,6 +651,7 @@ return {
 
 	["a second press during the wind-up is refused, and a caster that faints never fires"] = function()
 		local state = wild(fighter("a", "Ember", 100, 10, 10), {}, monster("Volt", 5000, 1, 1), 5)
+		charge(state)
 		BattleSim.useAbility(state, "a:a", "signature")
 		BattleSim.useAbility(state, "a:a", "element")
 		local _, why = BattleSim.useAbility(state, "a:a", "element")
@@ -675,6 +690,7 @@ return {
 			end
 		end
 		expect.equal(ticked, true, "Healing Rain heals a second later")
+		charge(state)
 		local none, why = BattleSim.useAbility(state, "a:a", "signature")
 		expect.isNil(none, "no signature")
 		expect.equal(why, "none", "reason none")
@@ -737,6 +753,7 @@ return {
 
 	["Stampede stun skips monster attacks; Eclipse dodges"] = function()
 		local stunned = wild(fighter("a", "Volt", 100000, 1, 10, "Thunderhorn"), {}, monster("Tide", 100000, 50, 20), 7)
+		charge(stunned)
 		BattleSim.useAbility(stunned, "a:a", "signature")
 		BattleSim.step(stunned, combat.SIGNATURES.Thunderhorn.windup) -- counted from its landing (supers wind up first)
 		local hits = 0
@@ -750,6 +767,7 @@ return {
 		expect.equal(hits, 0, "stunned 1.5 s")
 
 		local dodger = wild(fighter("a", "Shade", 1000, 1, 10, "Eclipse Fox"), {}, monster("Tide", 100000, 50, 20), 8)
+		charge(dodger)
 		BattleSim.useAbility(dodger, "a:a", "signature")
 		BattleSim.step(dodger, combat.SIGNATURES["Eclipse Fox"].windup)
 		local damage = 0
@@ -768,6 +786,7 @@ return {
 	["Eclipse Fox evades everything for 5 s, then gets hit again"] = function()
 		expect.equal(combat.SIGNATURES["Eclipse Fox"].seconds, 5)
 		local dodger = wild(fighter("a", "Shade", 1e6, 1, 10, "Eclipse Fox"), {}, monster("Tide", 100000, 50, 20), 46)
+		charge(dodger)
 		BattleSim.useAbility(dodger, "a:a", "signature")
 		BattleSim.step(dodger, combat.SIGNATURES["Eclipse Fox"].windup)
 		local during, after = 0, 0
@@ -817,6 +836,7 @@ return {
 
 	["Inferno burns for every second, even with uneven frames"] = function()
 		local state = wild(fighter("a", "Ember", 1e6, 10, 1, "Infernox"), {}, monster("Tide", 1e6, 0, 1), 12)
+		charge(state)
 		BattleSim.useAbility(state, "a:a", "signature")
 		local burns = 0
 		local steps = { 0.033, 0.017, 0.05, 0.1, 0.25, 0.033 }
@@ -1915,12 +1935,13 @@ return {
 	-- camera is away, a fizzle when the caster faints, no swapping it out mid wind-up
 	["a super winds up its own time and lands at the end"] = function()
 		local state = wild(fighter("a", "Ember", 1e6, 10, 1, "Infernox"), {}, monster("Tide", 1e6, 0, 1), 12)
+		charge(state)
 		local pressed = BattleSim.useAbility(state, "a:a", "signature") :: { any }
 		expect.equal(pressed[1].type, "cast")
 		expect.equal(pressed[1].look, "Inferno")
 		expect.near(pressed[1].seconds, 1.5, 1e-9)
 		expect.near(pressed[1].protect, 1.5 + combat.SUPER_PROTECT_TAIL, 1e-9)
-		expect.near(raw(state, "a:a").signatureReady - state.time, combat.SIGNATURE_COOLDOWN, 1e-9, "the cooldown starts at the press")
+		expect.equal(state.sides.a.meters[""], 0, "the press empties the meter")
 		runFor(state, 1.4)
 		expect.equal(raw(state, "b:m").burnUntil, 0, "not landed during the wind-up")
 		runFor(state, 0.2)
@@ -1929,6 +1950,7 @@ return {
 
 	["a Legendary super winds up 2 s and its landing carries its look"] = function()
 		local state = wild(fighter("a", "Volt", 1e6, 10, 1, "Stormking"), {}, monster("Bloom", 1e6, 0, 1), 13)
+		charge(state)
 		local pressed = BattleSim.useAbility(state, "a:a", "signature") :: { any }
 		expect.near(pressed[1].seconds, 2, 1e-9)
 		local landed = nil
@@ -1948,6 +1970,7 @@ return {
 		local state = bossFightWithPlayer(31, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { caster, playerInput("1") })
 		local player, boss = raw(state, "a:@1"), raw(state, "b:m")
 		local start = state.time
+		charge(state)
 		BattleSim.useAbility(state, "a:p1", "signature", "1")
 		table.insert(state.pending, { kind = "Quick", at = start + 1.0, target = player, from = boss, damage = 10 })
 		table.insert(state.pending, { kind = "Quick", at = start + 2.3, target = player, from = boss, damage = 10 })
@@ -1975,6 +1998,7 @@ return {
 			owned("p2", "2", 1e9),
 			playerInput("2"),
 		}, {})
+		charge(state)
 		BattleSim.useAbility(state, "a:p1", "signature", "1")
 		local atCaster, atOther = 0, 0
 		for _, e in runFor(state, 2.0) do
@@ -1999,6 +2023,7 @@ return {
 		local caster = owned("p1", "1", 1e9)
 		caster.signature = "Infernox"
 		local state = bossFightWithPlayer(33, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { caster, playerInput("1") })
+		charge(state)
 		BattleSim.useAbility(state, "a:p1", "signature", "1")
 		runFor(state, 0.5)
 		raw(state, "a:p1").fainted = true -- knocked out mid wind-up
@@ -2021,6 +2046,7 @@ return {
 		local caster = owned("p1", "1", 1e9)
 		caster.signature = "Infernox"
 		local state = bossFightWithPlayer(34, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { caster, playerInput("1") })
+		charge(state)
 		BattleSim.useAbility(state, "a:p1", "signature", "1")
 		local none, why = BattleSim.swap(state, "a:r1", "1")
 		expect.isNil(none)
@@ -2114,13 +2140,14 @@ return {
 		for _, card in { "Abyssal Koi" } do
 			local spec = combat.SIGNATURES[card]
 			expect.equal(spec.shield >= 0.2 and spec.shield <= 0.5, true, `{card}: shield share`)
-			expect.equal(spec.seconds >= 5 and spec.seconds < combat.SIGNATURE_COOLDOWN, true, `{card}: lasts a while, not always up`)
+			expect.equal(spec.seconds >= 5 and spec.seconds <= 10, true, `{card}: lasts a while, not always up`)
 		end
 	end,
 	-- The owner (2026-11-05): "if Super spells are clicked, the creature should stop attacking and perform the windup"
 	["a creature winding up its super doesn't auto-attack until it lands"] = function()
 		local state = wild(fighter("a", "Volt", 1e6, 10, 40, "Thunderhorn"), {}, monster("Tide", 1e6, 0, 1), 43)
 		runFor(state, 0.3)
+		charge(state)
 		BattleSim.useAbility(state, "a:a", "signature")
 		local during, after = 0, 0
 		for _, entry in timedEvents(state, 3) do
@@ -2164,14 +2191,14 @@ return {
 		local first = (castNow(state, "a:k", "signature", "1") :: { any })[1]
 		expect.equal(first.revived, nil, "nobody to stand up: not spent")
 		-- r1 comes in and faints; the second blessing stands it up
-		runFor(state, combat.SIGNATURE_COOLDOWN)
+		runFor(state, 15)
 		BattleSim.swap(state, "a:r1", "1")
 		runFor(state, 8)
 		expect.equal((BattleSim.getFighter(state, "a:r1") :: any).fainted, true, "r1 fainted")
 		local second = (castNow(state, "a:k", "signature", "1") :: { any })[1]
 		expect.equal(second.revived and second.revived[1], "a:r1", "stood up")
 		-- once a fight: it faints again and the third blessing only heals
-		runFor(state, combat.SIGNATURE_COOLDOWN)
+		runFor(state, 15)
 		BattleSim.swap(state, "a:r1", "1")
 		runFor(state, 8)
 		expect.equal((BattleSim.getFighter(state, "a:r1") :: any).fainted, true, "r1 fainted again")
@@ -2195,11 +2222,110 @@ return {
 		expect.equal(healed <= 1000 * spec.healCap, true, "capped")
 	end,
 
+	-- The owner (2026-11-06, option A "Super meter"): supers are earned, not pressed every 15 s. One meter per player
+	-- fills from the fighting; a super needs it full and empties it
+	["a super needs a full meter, and the press empties it"] = function()
+		local state = wild(fighter("a", "Volt", 1e6, 10, 1, "Thunderhorn"), {}, monster("Tide", 1e6, 0, 1), 60)
+		expect.equal(state.sides.a.meters[""], 0, "empty at the start")
+		local none, why = BattleSim.useAbility(state, "a:a", "signature")
+		expect.isNil(none)
+		expect.equal(why, "charging")
+		state.sides.a.meters[""] = combat.SUPER_METER.full - 1
+		expect.equal(select(2, BattleSim.useAbility(state, "a:a", "signature")), "charging", "one short")
+		state.sides.a.meters[""] = combat.SUPER_METER.full
+		expect.equal(BattleSim.useAbility(state, "a:a", "signature") ~= nil, true, "full: it goes")
+		expect.equal(state.sides.a.meters[""], 0, "and the meter's empty")
+		expect.equal(select(2, BattleSim.useAbility(state, "a:a", "signature")), "charging", "no second press right after")
+	end,
+
+	["the meter fills from its creature's hits and from damage taken, never past full"] = function()
+		local spec = combat.SUPER_METER
+		local state = wild(fighter("a", "Volt", 1000, 10, 20, "Thunderhorn"), {}, monster("Volt", 1e9, 50, 5), 61)
+		local hits, hurt = 0, 0
+		for _, e in runFor(state, 6) do
+			if e.type == "attack" and e.from == "a:a" and not e.dodged then
+				hits += 1
+			elseif e.type == "attack" and e.to == "a:a" then
+				hurt += e.damage
+			end
+		end
+		expect.equal(hits > 0 and hurt > 0, true, "both happened")
+		expect.near(state.sides.a.meters[""], hits * spec.hit + spec.hurt * hurt / 1000, 1e-6, "a share a hit, a share of the HP lost")
+		state.sides.a.meters[""] = spec.full - 0.5
+		runFor(state, 4)
+		expect.equal(state.sides.a.meters[""], spec.full, "capped at full")
+	end,
+
+	["the sword's hits and dodged boss hits fill the player's meter"] = function()
+		local spec = combat.SUPER_METER
+		local state = bossFightWithPlayer(62, 0, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 })
+		state.sides.a.meters["1"] = 0
+		BattleSim.swordHit(state, "1", "b:m", 1, "Sword")
+		expect.near(state.sides.a.meters["1"], spec.sword, 1e-6, "a sword hit")
+		-- a quick hit dodged: wait for its warning, dodge, let it land
+		local dodged, dodgeAt = false, nil
+		for _ = 1, 400 do
+			local events = BattleSim.step(state, 0.05)
+			if dodgeAt and state.time >= dodgeAt then
+				dodgeAt = nil
+				BattleSim.dodge(state, "1")
+			end
+			for _, e in events do
+				if e.type == "telegraph" and e.to == "a:@1" then
+					dodgeAt = state.time + combat.QUICK_WARNING - 0.1 -- just before it lands, as a player would
+				elseif e.type == "attack" and e.to == "a:@1" and e.dodged then
+					dodged = true
+				end
+			end
+			if dodged then
+				break
+			end
+		end
+		expect.equal(dodged, true, "a quick hit was dodged")
+		expect.equal(state.sides.a.meters["1"] >= spec.sword + spec.dodge, true, "a dodge fills more than a hit")
+	end,
+
+	["a super's own hits don't fill the meter"] = function()
+		local state = wild(fighter("a", "Ember", 1e6, 100, 1, "Solarion"), {}, monster("Bloom", 1e6, 0, 1), 63)
+		castNow(state, "a:a", "signature")
+		expect.equal(state.sides.a.meters[""] < combat.SUPER_METER.hit, true, "its 4x hit added nothing (a scratch taken at most)")
+	end,
+
+	["each player in a group has their own meter, and the snapshot shows each fighter its owner's share"] = function()
+		local state = group(64)
+		state.sides.a.meters["1"] = combat.SUPER_METER.full / 2
+		state.sides.a.meters["2"] = 0
+		local shares = {}
+		for _, view in BattleSim.snapshot(state).sides.a.fighters do
+			shares[view.owner] = view.superMeter
+		end
+		expect.near(shares["1"], 0.5, 1e-9)
+		expect.near(shares["2"], 0, 1e-9)
+	end,
+
+	["Express fills the meter faster"] = function()
+		local spec = combat.SUPER_METER
+		local quick: any = fighter("a", "Volt", 1e6, 10, 20, "Thunderhorn")
+		quick.perk = { kind = "Express", value = 0.2 }
+		local state = wild(quick, {}, monster("Volt", 1e9, 0, 1), 65)
+		local hits, hurt = 0, 0
+		for _, e in runFor(state, 4) do
+			if e.type == "attack" and e.from == "a:a" and not e.dodged then
+				hits += 1
+			elseif e.type == "attack" and e.to == "a:a" then
+				hurt += e.damage
+			end
+		end
+		expect.equal(hits > 0, true, "it hit")
+		expect.near(state.sides.a.meters[""], (hits * spec.hit + spec.hurt * hurt / 1e6) * 1.2, 1e-6, "20% more a hit")
+	end,
+
 	-- The owner (2026-11-05, option C "Blink Barrage"): Rift Step blinks round the foe for quick hits from every side
 	["Rift Step lands its hits one after another, each a share of ATK"] = function()
 		local spec = combat.SIGNATURES.Riftwalker
 		expect.equal(spec.kind, "Barrage")
 		local state = wild(fighter("r", "Shade", 1e6, 100, 1, "Riftwalker"), {}, monster("Shade", 1e6, 0, 1), 49)
+		charge(state)
 		BattleSim.useAbility(state, "a:r", "signature")
 		local hits = {}
 		for _, entry in timedEvents(state, spec.windup + spec.gap * spec.hits + 0.5) do

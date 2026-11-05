@@ -103,7 +103,7 @@ local INFO_SHARE = 0.4 -- of a creature's card: name and HP; the rest is buttons
 type Snapshot = {
 	time: number,
 	monster: { hp: number, maxHp: number, element: string, elite: boolean },
-	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, signatureIn: number, fainted: boolean, perk: { kind: string, value: number }? } },
+	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, superMeter: number, fainted: boolean, perk: { kind: string, value: number }? } },
 	reserves: { string },
 	benched: { string }, -- yours that fainted and were swapped out (the party strip shows them face down)
 	callInFor: number,
@@ -546,9 +546,9 @@ local function refreshTimers()
 			view.ability.AutoButtonColor = ready
 			local signature = if fighter.signature then Combat.SIGNATURES[fighter.signature] else nil
 			if view.signature and signature then
-				local signatureWait = fighter.signatureIn - elapsed
-				view.signature.Text = abilityLabel(signature.name, signatureWait)
-				local signatureReady = signatureWait <= 0.05 and not fighter.fainted
+				local full = fighter.superMeter >= 1
+				view.signature.Text = if full then signature.name else `{signature.name}\n{math.floor(fighter.superMeter * 100)}%`
+				local signatureReady = full and not fighter.fainted
 				view.signature.BackgroundColor3 = if signatureReady then ELITE_COLOR:Lerp(Color3.new(0, 0, 0), 0.35) else UIKit.Colors.Locked
 				view.signature.AutoButtonColor = signatureReady
 			end
@@ -739,15 +739,15 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 	})
 	if combatWild then
 		-- The Pet button acts for whichever creature on the field is ready first (usePet), so its wait is the soonest
-		local soonest, soonestSignature = math.huge, math.huge
+		local soonest, meter = math.huge, 0
 		for _, fighter in snapshot.fighters do
 			if not fighter.fainted then
 				soonest = math.min(soonest, fighter.abilityIn)
-				soonestSignature = math.min(soonestSignature, if fighter.signature then fighter.signatureIn else math.huge)
+				meter = math.max(meter, if fighter.signature then fighter.superMeter else 0)
 			end
 		end
 		hud.setCooldown("pet", latestAt + (if soonest < math.huge then soonest else 0), Combat.ABILITY_COOLDOWN)
-		hud.setCooldown("signature", latestAt + (if soonestSignature < math.huge then soonestSignature else 0), Combat.SIGNATURE_COOLDOWN)
+		hud.setMeter("signature", meter)
 		hud.setCooldown("run", latestAt + snapshot.runIn, Combat.RUN_RETRY_SECONDS)
 		return
 	end
@@ -755,7 +755,7 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 	SwordController.SetSkillScale(1 - express) -- Express: the sword skill recharges faster too
 	if creature then
 		hud.setCooldown("pet", latestAt + creature.abilityIn, Combat.ABILITY_COOLDOWN * (1 - express))
-		hud.setCooldown("signature", latestAt + creature.signatureIn, Combat.SIGNATURE_COOLDOWN * (1 - express))
+		hud.setMeter("signature", creature.superMeter)
 	end
 	hud.setCooldown("swap", latestAt + snapshot.swapIn, Combat.BOSS_SWAP_SECONDS)
 end
@@ -1433,8 +1433,8 @@ local function usePet(which: string)
 		-- Wild fights can have a called-in creature on the field too: the first one ready acts
 		local elapsed = os.clock() - latestAt
 		for _, fighter in snapshot.fighters do
-			local wait = if which == "signature" then fighter.signatureIn else fighter.abilityIn
-			if not fighter.fainted and (which ~= "signature" or fighter.signature) and wait - elapsed <= 0.05 then
+			local ready = if which == "signature" then fighter.signature ~= nil and fighter.superMeter >= 1 else fighter.abilityIn - elapsed <= 0.05
+			if not fighter.fainted and ready then
 				creature = fighter
 				break
 			end

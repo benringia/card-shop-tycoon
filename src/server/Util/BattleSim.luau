@@ -104,7 +104,6 @@ type Fighter = {
 	elite: boolean,
 	nextAttack: number,
 	abilityReady: number,
-	signatureReady: number,
 	overcharge: number, -- fast attacks left
 	orbs: number, -- Overcharge's orbs: fast attack slots still to come (each spends one, clients draw them)
 	dodgeUntil: number,
@@ -172,6 +171,7 @@ type Side = {
 	callIn: boolean, -- false: no call-in window (boss fights)
 	lastAtk: { [string]: number }, -- by owner: the ATK of their last creature on the field (their sword's damage)
 	creaturesDecide: boolean, -- lost once no creature stands (SideInput.creaturesDecide)
+	meters: { [string]: number }, -- by owner: the super meter (combat.SUPER_METER; a super needs it full)
 }
 
 export type State = {
@@ -218,7 +218,6 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		nextAttack = if input.player then math.huge else time + CombatMath.getAttackInterval(combat, input.spd),
 		chargedFor = -1,
 		abilityReady = time,
-		signatureReady = time,
 		overcharge = 0,
 		orbs = 0,
 		dodgeUntil = 0,
@@ -282,6 +281,12 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 	for _, fighter in input.reserves or {} do
 		table.insert(reserves, makeFighter(combat, fighter, name, 0))
 	end
+	local meters: { [string]: number } = {}
+	for _, list in { fighters, reserves } do
+		for _, fighter in list do
+			meters[fighter.owner or ""] = combat.SUPER_METER.start
+		end
+	end
 	return {
 		name = name,
 		fighters = fighters,
@@ -296,6 +301,7 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		callIn = input.callIn ~= false,
 		lastAtk = lastAtk,
 		creaturesDecide = input.creaturesDecide == true,
+		meters = meters,
 	}
 end
 
@@ -406,6 +412,31 @@ local function perkOf(state: State, fighter: Fighter, kind: string): number
 	return if perk and perk.kind == kind then perk.value else 0
 end
 
+-- The super meter (owner 2026-11-06, option A "Super meter": supers are earned, not pressed every 15 s): `amount` more
+-- for `fighter`'s owner, its Express perk filling it faster, never past full
+local function fillMeter(state: State, fighter: Fighter, amount: number)
+	if amount <= 0 then
+		return
+	end
+	local side = (state.sides :: any)[fighter.side] :: Side
+	local key = ownerKey(fighter)
+	local spec = state.combat.SUPER_METER
+	side.meters[key] = math.min(spec.full, (side.meters[key] or spec.start) + amount * (1 + perkOf(state, fighter, "Express")))
+end
+
+-- Whether `kind` is a super move's (their own hits don't fill the meter)
+local function isSuper(combat: any, kind: string?): boolean
+	if not kind then
+		return false
+	end
+	for _, ability in combat.SIGNATURES do
+		if ability.kind == kind then
+			return true
+		end
+	end
+	return false
+end
+
 -- One owner's creatures on the field (fainted ones too, until benched)
 local function onField(side: Side, key: string): { Fighter }
 	local list = {}
@@ -480,6 +511,7 @@ end
 
 -- A player fighter at 0 HP goes down (never fainted); with nobody left standing its side loses
 local function hurtPlayer(state: State, target: Fighter, amount: number, events: { Event })
+	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
 	if target.hp > 0 or target.down then
@@ -557,6 +589,7 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 		hurtPlayer(state, target, amount, events)
 		return
 	end
+	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
 	if target.hp <= 0 and not target.fainted then
@@ -635,6 +668,10 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 		raw *= 2
 	end
 	local damage = math.round(raw * (1 - perkOf(state, target, "Calm")))
+	if damage > 0 and not isSuper(state.combat, kind) then
+		local meter = state.combat.SUPER_METER
+		fillMeter(state, from, if kind == "Sword" or kind == "Skill" then meter.sword else meter.hit)
+	end
 	-- Its own ward first (Tidal Shield), then its side's shield (a boss's)
 	local warded = soakWard(target, damage, events)
 	local hadShield = side.shield > 0
@@ -814,10 +851,15 @@ local function landPending(state: State, events: { Event })
 		end
 		-- A dodge counts if its window still covered the moment clients showed the hit (HIT_GRACE before it lands),
 		-- give or take a step: the server only sees time move a tick at a time
-		local missed = state.time - state.combat.HIT_GRACE - 1 / state.combat.TICK_RATE < target.dodgeUntil
-			or state.time < target.protectedUntil
+		local dodged = state.time - state.combat.HIT_GRACE - 1 / state.combat.TICK_RATE < target.dodgeUntil
+		local missed = dodged or state.time < target.protectedUntil
+		local escaped = false
 		if not missed and pending.ring and state.ringCheck then
-			missed = not state.ringCheck({ id = pending.ring, target = target.id, shape = pending.shape :: string })
+			escaped = not state.ringCheck({ id = pending.ring, target = target.id, shape = pending.shape :: string })
+			missed = escaped
+		end
+		if dodged or escaped then
+			fillMeter(state, target, state.combat.SUPER_METER.dodge) -- not a miss while a super's cinematic protects them
 		end
 		if missed then
 			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = 0, dodged = true })
@@ -1406,12 +1448,13 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		fighter.abilityReady = state.time + combat.ABILITY_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
 	elseif which == "signature" then
 		ability = if fighter.signature then combat.SIGNATURES[fighter.signature] else nil
+		local key = ownerKey(fighter)
 		if not ability then
 			return nil, "none"
-		elseif state.time < fighter.signatureReady then
-			return nil, "cooldown"
+		elseif (side.meters[key] or 0) < combat.SUPER_METER.full then
+			return nil, "charging"
 		end
-		fighter.signatureReady = state.time + combat.SIGNATURE_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
+		side.meters[key] = 0
 	else
 		return nil, "none"
 	end
@@ -1637,7 +1680,7 @@ function BattleSim.snapshot(state: State): any
 				abilityIn = math.max(0, fighter.abilityReady - state.time),
 				perk = fighter.perk, -- its fight perk (the HUD chip)
 				signature = fighter.signature,
-				signatureIn = math.max(0, fighter.signatureReady - state.time),
+				superMeter = (side.meters[ownerKey(fighter)] or 0) / state.combat.SUPER_METER.full, -- its owner's, 0 to 1
 				fainted = fighter.fainted,
 				owner = fighter.owner,
 				left = fighter.left,

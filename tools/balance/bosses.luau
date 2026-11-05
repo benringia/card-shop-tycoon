@@ -23,6 +23,8 @@
 -- button moves; NO_SUPERS=1 runs without them, to compare, ONLY_SUPER=<card name> with that card's super alone.
 -- SET="<card>.<field>=<number>,..." tries other super numbers without editing Config/Combat (SET="Voidmaw.lifesteal=0.3"),
 -- BOSS_SET="<boss id>.<field>=<number>,..." other boss numbers without editing Config/Bosses (BOSS_SET="prismHydra.atk=36").
+-- Supers need a full meter (Combat.SUPER_METER, filled by the fight itself); each row ends with how many seconds apart
+-- the supers fired on average.
 -- A boss's landed rings leave its debuff (Config/Bosses DEBUFFS, through the sim: Poison and Burn ticks, Shocked, Weakened,
 -- Chilled); NO_DEBUFFS=1 runs without them, to compare. Walk slows (Entangled, Chilled) aren't modelled.
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
@@ -150,6 +152,8 @@ end
 -- and hpLeft after it
 -- mode: nil (creatures only: Dungeon rooms; each player's call-in), "still" or "well" (a boss: the player fights beside
 -- one creature, no call-in)
+local superCasts, superSeconds = 0, 0 -- over a row: supers fired and fight seconds they had
+
 local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: number }, seed: number, mode: string?): (boolean, number, { [string]: number })
 	local leaders, reserves = {}, {}
 	for _, own in players do
@@ -248,10 +252,13 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		for _, own in side.fighters do
 			if not own.fainted and not own.benched then
 				BattleSim.useAbility(state, own.id, "element", own.owner)
-				BattleSim.useAbility(state, own.id, "signature", own.owner)
+				if BattleSim.useAbility(state, own.id, "signature", own.owner) then
+					superCasts += 1
+				end
 			end
 		end
 	end
+	superSeconds += state.time * #players
 	return state.result == "a", state.time, DungeonRules.merge(hpLeft, BattleSim.hpLeft(state, "a"))
 end
 
@@ -335,10 +342,15 @@ local function run(bossId: string, party: { Card }, mode: string): (number, numb
 end
 
 local function row(bossId: string, label: string, party: { Card })
+	superCasts, superSeconds = 0, 0
 	local still, stillSeconds, share, reached = run(bossId, party, "still")
+	local stillEvery = if superCasts > 0 then superSeconds / superCasts else 0
+	superCasts, superSeconds = 0, 0
 	local well, wellSeconds = run(bossId, party, "well")
+	local wellEvery = if superCasts > 0 then superSeconds / superCasts else 0
 	local before = if bossId == Dungeon.BOSS then string.format("  reached it %3d%%, HP left %3d%%", math.round(reached * 100), math.round(share * 100)) else ""
-	print(string.format("  %-30s still %3d%% %3ds   well %3d%% %3ds%s", label, math.round(still * 100), math.round(stillSeconds), math.round(well * 100), math.round(wellSeconds), before))
+	local supers = if stillEvery > 0 or wellEvery > 0 then string.format("  supers every %3ds / %3ds", math.round(stillEvery), math.round(wellEvery)) else ""
+	print(string.format("  %-30s still %3d%% %3ds   well %3d%% %3ds%s%s", label, math.round(still * 100), math.round(stillSeconds), math.round(well * 100), math.round(wellSeconds), before, supers))
 end
 
 local maxed: Card = { rarity = "Legendary", level = Beasts.MAX_LEVEL, stars = Beasts.MAX_STARS, grade = Beasts.GRADES[#Beasts.GRADES] }

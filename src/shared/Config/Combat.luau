@@ -47,23 +47,28 @@ return {
 		Shade = { kind = "Curse", name = "Curse", weaken = 0.3, seconds = 5 },
 	},
 	-- Signature abilities on Epic and Legendary cards, by card name
-	SIGNATURE_COOLDOWN = 15,
+	-- The super meter (owner 2026-11-06, option A: "there should be some kind of condition ... instead of just spamming
+	-- it"): one per player, `start` at a fight's start, `full` to fire a super (which empties it). It fills `hit` for each
+	-- of its creatures' hits that lands (Pet button moves too, never a super's own), `sword` for each sword hit, `dodge`
+	-- for each boss hit dodged or ring stepped out of, and `hurt` for each full max HP its creatures or player lose (a
+	-- comeback); a creature's Express perk fills it that much faster. About 25 s fighting well, 45 s standing still.
+	SUPER_METER = { start = 0, full = 100, hit = 1.5, sword = 2, dodge = 8, hurt = 10 },
 	-- Super moves (spec 2026-11-05-super-moves-design): `look` picks its effects (Config/SuperFx LOOKS; the Frontier
 	-- four share their base move's kind but have looks of their own), `windup` the seconds it winds up before landing
 	-- (Epic 1.5, Legendary 2: the caster's cinematic plays meanwhile)
 	SIGNATURES = {
 		Infernox = { kind = "Inferno", name = "Inferno", seconds = 6, perSecond = 0.4, look = "Inferno", windup = 1.5 },
 		-- Tidal Shield: every ally (players too) a ward of `shield` of its own max HP for `seconds` (owner 2026-11-05;
-		-- boss balance the same day: 25% for 6 s, was 30% for 8)
-		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.25, seconds = 6, look = "TidalShield", windup = 1.5 },
+		-- trimmed to 25% / 6 s while supers came every 15 s, back to 30% / 8 s with the super meter)
+		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3, seconds = 8, look = "TidalShield", windup = 1.5 },
 		Thunderhorn = { kind = "Stampede", name = "Stampede", power = 2, stun = 2, look = "Stampede", windup = 1.5 },
 		-- Eclipse: its mirror image evades everything for `seconds` (owner 2026-11-05: 5)
 		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 5, look = "Eclipse", windup = 1.5 },
 		-- Supernova winds up longer than the other Legendaries (owner 2026-11-05: "dont rush"; Config/SuperFx timing)
 		Solarion = { kind = "Supernova", name = "Supernova", power = 4, look = "Supernova", windup = 3.5 },
 		-- Devour heals `lifesteal` of the hit, at most `healCap` of its max HP (boss balance 2026-11-05: uncapped, Voidmaw
-		-- alone made the Prism Hydra a sure win standing still)
-		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5, healCap = 0.1, look = "Devour", windup = 2 },
+		-- alone made the Prism Hydra a sure win standing still; 15% with the super meter)
+		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5, healCap = 0.15, look = "Devour", windup = 2 },
 		-- Frontier cards: same ability kinds, their own names and looks
 		-- Rift Step (owner 2026-11-05, option C "Blink Barrage"): `hits` hits of `power` x ATK, `gap` seconds apart, each
 		-- from another side of the foe (the first lands as the wind-up ends)

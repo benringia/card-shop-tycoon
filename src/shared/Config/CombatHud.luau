@@ -46,6 +46,14 @@ return {
 	TIP_HOVER = 0.25, -- seconds the mouse rests on a button before its tooltip shows
 	TIP_WIDTH = 230,
 	COOLDOWN_SHADE = 0.45, -- transparency of the dark drain over a button cooling down
+	-- The Super button's meter (owner 2026-11-06, option A): gold filling it from the bottom with its percent, then a
+	-- glow pulsing between `pulse[1]` and `pulse[2]` transparency (`pulse[3]` radians a second) once it's full
+	METER = {
+		color = rgb(255, 196, 46),
+		transparency = 0.35,
+		pulse = { 0, 0.4, 4 },
+		tip = "Charges as you fight: hits, sword hits and dodges.", -- under the super's own line in its tooltip
+	},
 	READY_FLASH = 0.25, -- seconds a button glows when it's ready again
 	PERK_CHIP_HEIGHT = 20, -- pixels: the fight perk chip under your creature's bar
 	PERK_TOAST_SECONDS = 1.8, -- a swap shows the new creature's perk this long

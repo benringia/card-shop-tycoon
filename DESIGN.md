@@ -638,7 +638,15 @@ the party vs a one-monster side.
 from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
 summoned creature fights (it must be rested); in the first 5 s you may call in one more party card (max 2 of yours
 vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD, `2 x (10 / SPD)^0.62` between 0.55 and 2.5 s: SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s, so every bit of SPD counts; a fast attacker charges for at most 75% of its gap); each has an element
-ability (8 s cooldown) and the 6 Epic/Legendary cards a signature ability (15 s). Element wheel: Ember > Bloom >
+ability (8 s cooldown) and the Epic/Legendary cards a super move, fired from a full super meter (owner 2026-11-06,
+option A "Super meter": it was every 15 s and got pressed on cooldown). One meter per player (`Combat.SUPER_METER`,
+`BattleSim` `side.meters`), empty at a fight's start: each of its creatures' hits that lands adds 1.5 (Pet button
+moves too, never a super's own), each sword hit 2, each boss hit dodged or ring stepped out of 8, and every full max HP
+its creatures or player lose 10; a creature's Express perk fills it that much faster. Full (100) fires the summoned
+creature's super and empties it, so a full meter can wait for a swap to the creature whose super fits. About every
+20-25 s fighting well, 40-45 s standing still (`tools/balance/bosses` prints how often). The Super button fills gold
+from the bottom with its percent and pulses gold when full (`CombatHud.METER`); its tooltip says how it charges.
+Element wheel: Ember > Bloom >
 Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
 (`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
 Win: XP `12 × level^1.3` (×3 elite) split evenly across all 3 party cards, $0.40 × level, 5% (elite 20%) chance of a
@@ -663,11 +671,11 @@ parties that stand still at 0.8x the recommended Power win more (Cave Brood Quee
 | Card | Signature | Effect |
 |---|---|---|
 | Infernox | Inferno | burns 6 s (0.4× ATK per second) |
-| Abyssal Koi | Tidal Shield | every ally (you too) a shield of 25% of its own max HP for 6 s |
+| Abyssal Koi | Tidal Shield | every ally (you too) a shield of 30% of its own max HP for 8 s |
 | Thunderhorn | Stampede | 2× ATK hit + 2 s stun |
 | Eclipse Fox | Eclipse | dodges everything for 5 s |
 | Solarion | Supernova | 4× ATK hit (a 3.5 s wind-up, the other Legendaries 2 s) |
-| Voidmaw | Devour | 2× ATK hit, heals half the damage, at most 10% of its max HP |
+| Voidmaw | Devour | 2× ATK hit, heals half the damage, at most 15% of its max HP |
 
 The Frontier four share their base move's kind, except two that got their own (owner 2026-11-05): Cinder Titan's
 Magma Slam is a Stampede, Stormking's Thunderstorm a Supernova; Tideborne Kirin's Tidal Blessing ("Rebirth Spring",
@@ -993,9 +1001,9 @@ and rewards in `BossService`.
 | 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 26 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 46 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 71 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 42 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 38 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".
@@ -1187,7 +1195,8 @@ group, checked before its fragments and every time (not only the first). Below i
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
   once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
   Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
-  Pet button moves and super moves wind up first (owner 2026-11-04, design A): the press spends the cooldown and the
+  Pet button moves and super moves wind up first (owner 2026-11-04, design A): the press spends the cooldown (a
+  super: the meter) and the
   sim sends a `cast` event, then fires the move `Combat.ABILITY_WINDUP` 0.5 s later unless the caster has fainted or
   left (`BattleSim` casts). Super moves wind up their own time (spec `2026-11-05-super-moves-design.md`): Epic 1.5 s,
   Legendary 2 s (`Combat.SIGNATURES.<card>.windup`, the cast carrying its `look`), while the caster's cinematic plays;
@@ -1196,7 +1205,7 @@ group, checked before its fragments and every time (not only the first). Below i
   faints first fizzles (a `fizzle` event) and the protection ends with it; its creature can't be swapped out until it
   lands; a creature winding up its super doesn't auto-attack until it lands (owner 2026-11-05). Tidal Shield wards
   every ally on the caster's side still in the fight (players and benched creatures too): a shield of `shield` of its
-  own max HP for `seconds` (25% for 6 s;
+  own max HP for `seconds` (30% for 8 s;
   the sim's per-fighter `ward`, taken before a boss's side shield, on creature hits and on the boss's hits on
   players), a `shieldGone` naming whose when it breaks or runs out; before, one shared pool covered the creatures only
   and never ran out. The boss balance tool fires every Epic and Legendary card's super whenever it's ready (see the
@@ -1389,10 +1398,11 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   Hydra standing still at 1x 68% to 100%, at 0.8x fighting well 60% to 99%; its heal now stops at 10% of its max HP)
   and Abyssal Koi's Tidal Shield (Rift Devourer standing still at 0.8x 27% to 60%; trimmed to 25% for 6 s, but any ward
   tips those fights, so that row stays). The rest moved a few points (Eclipse Fox the most: Rift Devourer fighting well
-  at 1x 84% to 98%, its 5 s is the owner's). Late bosses then took more ATK so parties with their supers land on the
-  targets (all supers on, still / well at 0.8x | 1x): Storm Sovereign ATK 46 (60/60 | 60/85), Rift Devourer ATK 71
-  (60/60 | 60/85), Prism Hydra ATK 42 (0/60 | 60/94: still at 0.8x runs out of time); without supers they read Storm Sovereign 11/60 | 60/84, Rift Devourer
-  6/53 | 60/69, Prism Hydra 27/60 | 60/92. Bosses 1-4 unchanged (their rows' parties have no supers, or hit the targets).
+  at 1x 84% to 98%, its 5 s is the owner's). Late bosses then took more ATK (Storm Sovereign 46, Rift Devourer 71, Prism Hydra 42). Then
+  the super meter (2026-11-06, owner's option A) made supers come about every 40 s standing still and 20 s fighting
+  well instead of every 15 s, so Tidal Shield went back to 30% for 8 s, Devour's cap to 15%, and the bosses to (all
+  supers on, still / well at 1x): Storm Sovereign ATK 44 (60/88), Rift Devourer ATK 66 as before (60/86), Prism Hydra
+  ATK 38 (63/100). Bosses 1-4 unchanged (their rows' parties have no supers, or hit the targets).
 - **Defeat screen** (owner 2026-11-04, design A "Defeated card"; `Util/DefeatScreen`, `Util/DefeatRules`,
   `Config/Defeat`), a lost boss fight: the world goes grey with a red edge (a ColorCorrectionEffect and the hit-flash
   vignette) and a quiet piano sting plays (APM "Moonlight Tides (sting)", Roblox-licensed, volume 0.22); "DEFEATED" drops in with
