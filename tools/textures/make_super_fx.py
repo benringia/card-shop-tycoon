@@ -3,6 +3,7 @@ them per look. Written to assets/ui/fx-super (uploaded as images; ids in Config/
 
   firestrip  tongues of flame rising along a strip, for beams (a beam runs a texture's height along its length)
   crack      glowing cracks spreading from the middle, for the ground (Inferno's S lava, Magma Slam)
+  waterstrip rippling water bands, for beams (Tidal Shield's swirl)
 
 Particle textures are square. Usage: python tools/textures/make_super_fx.py [out dir]. Needs Pillow."""
 import math
@@ -91,9 +92,25 @@ def crack():
     return white(ImageChops.multiply(mask, fade))
 
 
+def waterstrip():
+    """Rippling water bands for a beam (the texture tiles along the beam's length): wavy bright crests over a softer
+    body, brightest down the middle."""
+    size = 256
+    mask = Image.new("L", (size, size), 0)
+    px = mask.load()
+    for y in range(size):
+        for x in range(size):
+            wave = math.sin((y / size) * 2 * math.pi * 3 + math.sin(x / 22) * 1.4)
+            crest = max(0.0, wave) ** 6
+            body = 0.35 + 0.25 * (0.5 + 0.5 * wave)
+            edge = max(0.0, 1 - (abs(x - size / 2) / (size / 2)) ** 2.4)
+            px[x, y] = int(255 * min(1.0, (body + crest) * edge))
+    return white(mask.filter(ImageFilter.GaussianBlur(1.5)))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
-    for name, make in (("firestrip", firestrip), ("crack", crack)):
+    for name, make in (("firestrip", firestrip), ("crack", crack), ("waterstrip", waterstrip)):
         make().save(os.path.join(OUT, f"{name}.png"))
         print("wrote", name)
 

@@ -18,9 +18,10 @@ local SuperFx = {}
 
 -- The caster as Util/FightFx sees it
 export type View = { root: BasePart, element: string, height: number, grade: string?, mine: boolean }
+-- side: the caster's side ("a" | "b"), for the shields' domes
 type Look = {
 	charge: (view: View, grade: string, seconds: number, target: Vector3?) -> () -> (),
-	impact: (view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number) -> () -> (),
+	impact: (view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, side: string) -> () -> (),
 }
 
 local function color(rgb: { number }): Color3
@@ -170,7 +171,7 @@ end
 -- height, twisting as they rise; `set(height, bottom, top)` reshapes it, and it spins `turn` degrees a second
 type Funnel = { holder: Part, set: (height: number, bottom: number, top: number) -> (), beams: { Beam } }
 
-local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence, width: number, turn: number): Funnel
+local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence, width: number, turn: number, texture: string?): Funnel
 	local holder = anchor(b, CFrame.new(base))
 	local ends: { { Attachment } } = {}
 	local beams: { Beam } = {}
@@ -178,7 +179,7 @@ local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence,
 		local a0 = attachment(holder, Vector3.zero)
 		local a1 = attachment(holder, Vector3.zero)
 		table.insert(ends, { a0, a1 })
-		table.insert(beams, beam(a0, a1, TEX.firestrip, tint, width * 0.7, width * 1.4, { speed = 2.5, length = 5, curve0 = 2, curve1 = -2 }))
+		table.insert(beams, beam(a0, a1, texture or TEX.firestrip, tint, width * 0.7, width * 1.4, { speed = 2.5, length = 5, curve0 = 2, curve1 = -2 }))
 	end
 	local shape = { height = 1, bottom = 1, top = 1 }
 	local function set(height: number, bottom: number, top: number)
@@ -579,10 +580,306 @@ local function magmaImpact(view: View, grade: string, target: Vector3, _targetBo
 	end
 end
 
+-- The shields' domes (Tidal Shield, Tidal Blessing): one per side, rippling where a hit it soaks lands and bursting in
+-- a splash when the side's shield runs out (the sim's "shieldGone"), a new cast or the fight ends
+type Dome = { center: Vector3, radius: number, tint: Color3, b: Bag, burst: () -> () }
+local domes: { [string]: Dome } = {}
+
+local function makeDome(b: Bag, side: string, center: Vector3, radius: number, tint: Color3, burstSound: string?, hitSound: string?): Dome
+	local old = domes[side]
+	if old then
+		old.burst()
+	end
+	local shell = part(b, Vector3.one * radius * 2, tint, CFrame.new(center), 0.15, Enum.PartType.Ball)
+	shell.Material = Enum.Material.ForceField
+	shell.Size = Vector3.one * 0.5
+	tween(shell, 0.35, { Size = Vector3.one * radius * 2 }, Enum.EasingStyle.Back)
+	local inner = part(b, Vector3.one * radius * 1.96, tint, CFrame.new(center), 0.88, Enum.PartType.Ball)
+	inner.Material = Enum.Material.Glass
+	local dome: Dome
+	local function burst()
+		if domes[side] == dome then
+			domes[side] = nil
+		end
+		if b.done then
+			return
+		end
+		ElementFx.burst(center + UP * radius * 0.5, tint, radius / 4)
+		local spray = ElementFx.emitter(anchor(b, CFrame.new(center + UP * radius * 0.4)), "spark", tint, { size = { 0.6, 0.1 }, life = { 0.6, 1.1 }, speed = { 18, 30 }, spread = 180, accel = -UP * 30 })
+		spray:Emit(60)
+		play(b, anchor(b, CFrame.new(center)), burstSound, 1)
+		tween(shell, 0.25, { Size = Vector3.one * radius * 2.3, Transparency = 1 })
+		tween(inner, 0.25, { Transparency = 1 })
+		task.delay(1.4, function()
+			clear(b)
+		end)
+	end
+	dome = { center = center, radius = radius, tint = tint, b = b, burst = burst }
+	domes[side] = dome
+	;(dome :: any).hitSound = hitSound
+	return dome
+end
+
+-- A hit the side's shield soaked (the sim's `absorbed`): a ripple where it struck the dome, toward `from`
+function SuperFx.shieldHit(side: string, from: Vector3)
+	local dome = domes[side]
+	if not dome or dome.b.done then
+		return
+	end
+	local direction = from - dome.center
+	local on = dome.center + (if direction.Magnitude > 0.1 then direction.Unit else UP) * dome.radius
+	local flash = ElementFx.emitter(anchor(dome.b, CFrame.new(on)), "ring", dome.tint, { size = { 1, dome.radius * 0.5 }, life = 0.35, fade = 0.2, rotation = 0 })
+	flash:Emit(1)
+	ElementFx.burst(on, dome.tint, 0.5)
+	play(dome.b, anchor(dome.b, CFrame.new(on)), (dome :: any).hitSound, 0.7)
+end
+
+-- The side's shield ran out: its dome bursts
+function SuperFx.shieldGone(side: string)
+	local dome = domes[side]
+	if dome then
+		dome.burst()
+	end
+end
+
+local SHIELD_CAP = 25 -- seconds a dome stays at most if its shield never runs out (the fight's end clears it too)
+
+-- Tidal Shield (Abyssal Koi, Epic, Tide; spec "Tidal Shield"): the koi leaps from a swirl of water as a huge wave rises
+-- behind your side, the wave crashes over you and sets into a shining water dome with spirit koi swimming round it.
+-- By grade: a thicker dome, more spirit koi; S: a rainbow sheen and a second ring.
+local TIDE = SuperFxConfig.LOOKS.TidalShield
+local TIDE_SOUNDS = SuperFxConfig.SOUNDS.TidalShield
+
+-- The way from the caster away from what it faces (where the wave rises, behind your side)
+local function behind(view: View, target: Vector3?): Vector3
+	local toward = if target then Vector3.new(target.X - view.root.Position.X, 0, target.Z - view.root.Position.Z) else Vector3.zero
+	if toward.Magnitude < 0.5 then
+		toward = view.root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	end
+	return -toward.Unit
+end
+
+local function tideCharge(view: View, grade: string, seconds: number, target: Vector3?): () -> ()
+	local g = TIDE.grades[grade]
+	local b = bag()
+	local water = color(TIDE.color)
+	local feet = view.root.Position
+	local source = anchor(b, CFrame.new(feet + UP * 2))
+	play(b, source, TIDE_SOUNDS.call, 1)
+	play(b, source, TIDE_SOUNDS.charge, 0.9)
+	local swirl = funnel(b, groundAt(feet), math.floor(3 + 2 * g.scale), sequence(Color3.fromRGB(220, 245, 255), water), 1.2 * g.scale, 300, TEX.waterstrip)
+	-- The koi leaps out of the swirl and arcs back in
+	local koi = part(b, Vector3.new(0.9, 0.9, 2.2) * g.scale, Color3.fromRGB(255, 150, 70), CFrame.new(feet), 0.05, Enum.PartType.Ball)
+	local trail = ElementFx.emitter(koi, "spark", Color3.fromRGB(255, 220, 180), { size = { 0.5, 0.1 }, life = 0.5, speed = 0, fade = 0.3 })
+	trail.Rate = 40
+	-- The wave rises behind your side
+	local back = behind(view, target)
+	local wavePos = groundAt(feet + back * g.dome * 0.9)
+	local wave = part(b, Vector3.new(g.dome * 2.2, 0.5, 2.5), water, CFrame.lookAt(wavePos, wavePos - back), 0.25)
+	wave.Material = Enum.Material.Glass
+	local foam = ElementFx.emitter(wave, "spark", WHITE, { size = { 0.6, 0.1 }, life = { 0.4, 0.8 }, speed = { 3, 6 }, spread = 40 })
+	foam.Shape = Enum.ParticleEmitterShape.Box
+	foam.Rate = g.particles
+	everyFrame(b, function(elapsed)
+		local t = math.clamp(elapsed / math.max(0.1, seconds), 0, 1)
+		swirl.set(view.height * (0.4 + 0.6 * t), view.height * 0.4, view.height * (0.6 + 0.4 * t))
+		local hop = math.clamp(elapsed / (seconds * 0.7), 0, 1)
+		local arc = math.sin(hop * math.pi) * view.height * 1.6
+		koi.CFrame = CFrame.lookAt(feet + UP * (arc + 1), feet + UP * (arc + 1) + back * -1 + UP * math.cos(hop * math.pi) * 2)
+		local height = g.waveHeight * t
+		wave.Size = Vector3.new(g.dome * 2.2, math.max(0.5, height), 2.5)
+		wave.CFrame = CFrame.lookAt(wavePos + UP * height / 2, wavePos + UP * height / 2 - back)
+	end)
+	local stopGlow = ElementFx.chargeGlow(view.root, water, seconds, 1.4 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function tideImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, _targetHeight: number, side: string): () -> ()
+	local g = TIDE.grades[grade]
+	local b = bag()
+	local water = color(TIDE.color)
+	local feet = groundAt(view.root.Position)
+	local back = behind(view, target)
+	-- The wave crashes over your side
+	local crash = part(b, Vector3.new(g.dome * 2.2, g.waveHeight, 2.5), water, CFrame.lookAt(feet + back * g.dome * 0.9 + UP * g.waveHeight / 2, feet + UP * g.waveHeight / 2), 0.25)
+	crash.Material = Enum.Material.Glass
+	tween(crash, 0.35, { CFrame = CFrame.lookAt(feet + UP * 1, feet + UP * 1 - back) * CFrame.Angles(math.rad(-80), 0, 0), Transparency = 1 }, Enum.EasingStyle.Quad)
+	local spray = ElementFx.emitter(anchor(b, CFrame.new(feet + UP * 2)), "spark", Color3.fromRGB(220, 245, 255), { size = { 0.7, 0.1 }, life = { 0.6, 1.2 }, speed = { 14, 24 }, spread = 90, accel = -UP * 25 })
+	spray:Emit(g.particles)
+	play(b, anchor(b, CFrame.new(feet)), TIDE_SOUNDS.impact, 1.1)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(feet)), TIDE_SOUNDS.layer, 0.9)
+	end
+	-- The dome sets, spirit koi swimming round it
+	local radius = g.dome
+	local center = feet + UP * radius * 0.35
+	local dome = makeDome(b, side, center, radius, water, TIDE_SOUNDS.burst, TIDE_SOUNDS.hit)
+	local swimmers = {}
+	for index = 1, g.koi do
+		local fish = part(b, Vector3.new(0.7, 0.7, 1.8), Color3.fromRGB(255, 160, 80), CFrame.new(center), 0.1, Enum.PartType.Ball)
+		local glint = ElementFx.emitter(fish, "spark", Color3.fromRGB(255, 225, 190), { size = { 0.4, 0.05 }, life = 0.6, speed = 0, fade = 0.3 })
+		glint.Rate = 25
+		table.insert(swimmers, { fish = fish, tilt = (index / g.koi) * math.pi, speed = 0.9 + index * 0.12, phase = index * 1.7 })
+	end
+	local sheen: Part? = nil
+	if g.extra then
+		sheen = part(b, Vector3.one * radius * 2.08, WHITE, CFrame.new(center), 0.8, Enum.PartType.Ball)
+		;(sheen :: Part).Material = Enum.Material.Glass
+		local ring = fireRing(b, center, radius * 1.15, 18, Color3.fromRGB(190, 240, 255), 1.4)
+		for _, flame in ring do
+			flame.Texture = AttackFx.TEXTURES.spark
+		end
+	end
+	everyFrame(b, function(elapsed)
+		for _, s in swimmers do
+			local a = elapsed * s.speed + s.phase
+			local orbit = CFrame.Angles(s.tilt, 0, 0) * Vector3.new(math.cos(a), 0, math.sin(a)) * radius * 0.98
+			local nextOrbit = CFrame.Angles(s.tilt, 0, 0) * Vector3.new(math.cos(a + 0.1), 0, math.sin(a + 0.1)) * radius * 0.98
+			s.fish.CFrame = CFrame.lookAt(center + orbit, center + nextOrbit)
+		end
+		if sheen then
+			sheen.Color = Color3.fromHSV((elapsed * 0.25) % 1, 0.45, 1)
+		end
+	end)
+	task.delay(SHIELD_CAP, dome.burst)
+	return dome.burst
+end
+
+-- Tidal Blessing (Tideborne Kirin, Legendary, Tide, Frontier; spec "Tidal Blessing"): clouds part with rays of light, a
+-- giant water lotus opens under your side, its petals rise and close into a dome of light-water, a soft rain of light
+-- falls while it holds. By grade: lotus size, petal count, light rays; S: a halo over the Kirin and golden rain.
+local BLESS = SuperFxConfig.LOOKS.TidalBlessing
+local BLESS_SOUNDS = SuperFxConfig.SOUNDS.TidalBlessing
+local GOLD = Color3.fromRGB(255, 226, 140)
+
+-- The petals of a lotus round `center`: flat leaves pointing out, `open` 0 (closed up) to 1 (flat out)
+local function petals(b: Bag, center: Vector3, count: number, length: number, tint: Color3): (open: number, lift: number) -> ()
+	local list = {}
+	for index = 1, count do
+		local leaf = part(b, Vector3.new(length * 0.42, 0.25, length), tint, CFrame.new(center), 0.2, Enum.PartType.Ball)
+		table.insert(list, { leaf = leaf, angle = (index - 1) / count * 2 * math.pi })
+	end
+	return function(open: number, lift: number)
+		for _, p in list do
+			local out = CFrame.new(center + UP * lift) * CFrame.Angles(0, p.angle, 0)
+			local tilt = math.rad(90 - 75 * open) -- 90: standing up (closed), 15: nearly flat (open)
+			p.leaf.CFrame = out * CFrame.Angles(tilt, 0, 0) * CFrame.new(0, 0, -length * 0.5)
+		end
+	end
+end
+
+-- Light rays from the sky onto `at`: `count` beams fanning down from parted clouds `height` studs up
+local function skyRays(b: Bag, at: Vector3, height: number, count: number, tint: Color3, width: number)
+	for index = 1, count do
+		local angle = index / count * 2 * math.pi
+		local top = anchor(b, CFrame.new(at + UP * height + Vector3.new(math.cos(angle), 0, math.sin(angle)) * height * 0.25))
+		local foot = anchor(b, CFrame.new(at + Vector3.new(math.cos(angle), 0, math.sin(angle)) * width))
+		beam(attachment(top, Vector3.zero), attachment(foot, Vector3.zero), AttackFx.TEXTURES.streak, sequence(WHITE, tint), width * 0.6, width * 1.4, {
+			speed = 0.4,
+			length = height,
+			brightness = 1.5,
+			transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.7, 0.75), NumberSequenceKeypoint.new(1, 1) }),
+		})
+	end
+	-- the clouds parting: puffs drifting apart overhead
+	for index = 1, 10 do
+		local angle = index / 10 * 2 * math.pi
+		local puff = part(b, Vector3.new(9, 4, 7), Color3.fromRGB(235, 242, 255), CFrame.new(at + UP * height + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 4), 0.35, Enum.PartType.Ball)
+		puff.Material = Enum.Material.SmoothPlastic
+		tween(puff, 1.6, { CFrame = CFrame.new(at + UP * height + Vector3.new(math.cos(angle), 0, math.sin(angle)) * height * 0.6) })
+	end
+end
+
+local function blessCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = BLESS.grades[grade]
+	local b = bag()
+	local light = color(BLESS.color)
+	local feet = groundAt(view.root.Position)
+	local source = anchor(b, CFrame.new(feet + UP * 2))
+	play(b, source, BLESS_SOUNDS.call, 0.9)
+	play(b, source, BLESS_SOUNDS.charge, 0.9)
+	skyRays(b, feet, 34, g.rays, GOLD, 2.2 * g.scale)
+	local setPetals = petals(b, feet + UP * 0.3, g.petals, g.lotus * 0.5, light)
+	everyFrame(b, function(elapsed)
+		local open = math.clamp(elapsed / math.max(0.1, seconds * 0.8), 0, 1)
+		setPetals(open, 0.2)
+	end)
+	local motes = ElementFx.emitter(anchor(b, CFrame.new(feet + UP * 12)), "spark", GOLD, { size = { 0.4, 0.1 }, life = { 1, 1.6 }, speed = { 2, 4 }, spread = 180, accel = -UP * 3 })
+	motes.Shape = Enum.ParticleEmitterShape.Sphere
+	motes.Rate = g.particles
+	local stopGlow = ElementFx.chargeGlow(view.root, light, seconds, 1.6 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function blessImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number, side: string): () -> ()
+	local g = BLESS.grades[grade]
+	local b = bag()
+	local light = color(BLESS.color)
+	local feet = groundAt(view.root.Position)
+	play(b, anchor(b, CFrame.new(feet)), BLESS_SOUNDS.impact, 1.1)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(feet)), BLESS_SOUNDS.layer, 0.9)
+	end
+	-- The petals rise and close into the dome
+	local radius = g.lotus * 0.75
+	local before = #b.items
+	local setPetals = petals(b, feet, g.petals, g.lotus * 0.5, light)
+	local leaves = table.move(b.items, before + 1, #b.items, 1, {})
+	everyFrame(b, function(elapsed)
+		local close = math.clamp(elapsed / 0.4, 0, 1)
+		setPetals(1 - close, close * radius * 0.5)
+	end)
+	task.delay(0.45, function()
+		if b.done then
+			return
+		end
+		for _, leaf in leaves do
+			tween(leaf, 0.3, { Transparency = 1 })
+		end
+	end)
+	local center = feet + UP * radius * 0.35
+	local dome = makeDome(b, side, center, radius, light, BLESS_SOUNDS.burst, BLESS_SOUNDS.hit)
+	ElementFx.burst(center, GOLD, radius / 3)
+	-- A soft rain of light over your side while it holds (S: golden)
+	local rain = ElementFx.emitter(anchor(b, CFrame.new(center + UP * radius * 0.8)), "spark", if g.extra then GOLD else light, {
+		size = { 0.35, 0.1 },
+		life = { 1.2, 1.8 },
+		speed = { 6, 9 },
+		spread = 25,
+		direction = Enum.NormalId.Bottom,
+	})
+	rain.Shape = Enum.ParticleEmitterShape.Disc
+	rain.Rate = g.particles
+	local hum = play(b, anchor(b, CFrame.new(center)), BLESS_SOUNDS.linger, 0.45, true)
+	if hum then
+		task.delay(4, function()
+			tween(hum, 1.5, { Volume = 0 })
+		end)
+	end
+	if g.extra then
+		-- A halo over the Kirin
+		local crown = view.root.Position + UP * (view.height * 1.25)
+		for index = 1, 16 do
+			local angle = index / 16 * 2 * math.pi
+			part(b, Vector3.new(0.45, 0.45, 0.45), GOLD, CFrame.new(crown + Vector3.new(math.cos(angle), 0, math.sin(angle)) * view.height * 0.35), 0, Enum.PartType.Ball)
+		end
+	end
+	task.delay(SHIELD_CAP, dome.burst)
+	return dome.burst
+end
+
 -- The finished looks (spec "The ten moves"), by look id; the rest play the first pass
 local LOOKS: { [string]: Look } = {
 	Inferno = { charge = infernoCharge, impact = infernoImpact },
 	MagmaSlam = { charge = magmaCharge, impact = magmaImpact },
+	TidalShield = { charge = tideCharge, impact = tideImpact },
+	TidalBlessing = { charge = blessCharge, impact = blessImpact },
 }
 
 -- Everything from the press to the impact on the caster; returns a stop
@@ -595,10 +892,10 @@ function SuperFx.charge(lookId: string, view: View, grade: string, seconds: numb
 end
 
 -- The impact and what lingers on the field for the move's seconds; returns a stop
-function SuperFx.impact(lookId: string, view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number): () -> ()
+function SuperFx.impact(lookId: string, view: View, grade: string, target: Vector3, targetBody: BasePart?, targetHeight: number, side: string?): () -> ()
 	local own = LOOKS[lookId]
 	if own then
-		return own.impact(view, grade, target, targetBody, targetHeight)
+		return own.impact(view, grade, target, targetBody, targetHeight, side or "a")
 	end
 	return placeholderImpact(lookId, view, target)
 end

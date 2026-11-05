@@ -2015,4 +2015,29 @@ return {
 		expect.isNil(pressed[1].protect)
 		expect.isNil(pressed[1].look)
 	end,
+	-- Tidal Shield's dome ripples with each hit it soaks and bursts when it's used up (super moves Task 7)
+	["a hit the side's shield soaks says how much it absorbed"] = function()
+		local state = wild(fighter("a", "Tide", 1e6, 10, 1, "Abyssal Koi"), {}, monster("Ember", 1e6, 50, 20), 41)
+		castNow(state, "a:a", "signature")
+		local soaked = 0
+		for _, e in runFor(state, 2) do
+			if e.to == "a:a" and typeof(e.absorbed) == "number" then
+				soaked += e.absorbed
+			end
+		end
+		expect.equal(soaked > 0, true, "hits report what the shield took")
+	end,
+
+	["the side's shield running out says so"] = function()
+		local state = wild(fighter("a", "Tide", 1000, 10, 1, "Abyssal Koi"), {}, monster("Ember", 1e6, 200, 20), 42)
+		castNow(state, "a:a", "signature")
+		local gone = nil
+		for _, e in runFor(state, 6) do
+			if e.type == "shieldGone" then
+				gone = e
+			end
+		end
+		assert(gone, "a shieldGone event")
+		expect.equal(gone.side, "a")
+	end,
 }

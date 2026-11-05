@@ -83,6 +83,8 @@ export type Event = {
 	-- (Config/SuperFx); a cast's `protect`: seconds its caster's player can't be hit
 	look: string?,
 	protect: number?,
+	absorbed: number?, -- a hit's share the side's shield took
+	side: string?, -- "shieldGone": whose shield ran out ("a" | "b")
 }
 
 type Fighter = {
@@ -617,9 +619,20 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 	side.shield -= absorbed
 	if hadShield and side.shield <= 0 then
 		shieldBroke(state, side, events)
+		-- Tidal Shield's dome bursts (super moves): which side's shield just ran out
+		table.insert(events, { type = "shieldGone", side = if side == state.sides.a then "a" else "b" })
 	end
 	local taken = damage - absorbed
-	table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = taken, strength = strength, crit = if crit then true else nil })
+	table.insert(events, {
+		type = eventType,
+		kind = kind,
+		from = from.id,
+		to = target.id,
+		damage = taken,
+		strength = strength,
+		crit = if crit then true else nil,
+		absorbed = if absorbed > 0 then absorbed else nil, -- what the side's shield took (the dome ripples)
+	})
 	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events)
 	return taken

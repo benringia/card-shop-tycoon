@@ -477,7 +477,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local target = targetPosition(event.to, caster)
 		local body, height = targetBody(event.to)
 		stopSuperLinger(event.from)
-		local ok, stop = pcall(SuperFx.impact, event.look, view, grade, target, body, height)
+		local ok, stop = pcall(SuperFx.impact, event.look, view, grade, target, body, height, string.sub(event.from, 1, 1))
 		if ok and stop then
 			superLingers[event.from] = stop
 		elseif not ok then
@@ -697,6 +697,12 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				onSpecial(event)
 			elseif event.type == "fizzle" and typeof(event.from) == "string" then
 				stopSuperCharge(event.from) -- its caster fainted mid wind-up
+			elseif event.type == "shieldGone" and typeof(event.side) == "string" then
+				SuperFx.shieldGone(event.side) -- a Tidal Shield / Blessing dome bursts
+			end
+			if typeof(event.absorbed) == "number" and event.absorbed > 0 and typeof(event.to) == "string" then
+				-- A hit the side's shield soaked: its dome ripples where it struck
+				SuperFx.shieldHit(string.sub(event.to, 1, 1), targetPosition(event.from, Vector3.zero))
 			end
 		end
 	end

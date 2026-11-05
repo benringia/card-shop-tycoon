@@ -73,13 +73,13 @@ return {
 			koi = { 2, 3, 4, 6 },
 			dome = { 12, 13, 14.5, 16 },
 			waveHeight = { 10, 12, 15, 19 },
-		}),
+		}, "abysschomp"),
 		-- Clouds part, a giant water lotus closes into a dome of light (S: a halo over the Kirin, golden rain)
 		TidalBlessing = look("Legendary", "Tideborne Kirin", "Tide", rgb(191, 230, 255), {
 			petals = { 8, 10, 12, 16 },
 			lotus = { 10, 12, 15, 19 },
 			rays = { 3, 4, 6, 8 },
-		}),
+		}, "blessing"),
 		-- A lightning dash through the boss with afterimages, electric rings for the stun (S: a bolt from the sky)
 		Stampede = look("Epic", "Thunderhorn", "Volt", rgb(255, 216, 74), {
 			afterimages = { 2, 3, 4, 6 },
@@ -125,6 +125,7 @@ return {
 	TEXTURES = {
 		firestrip = "rbxassetid://98322968420111", -- flame tongues for beams (the tornadoes, the torrent)
 		crack = "rbxassetid://118892821263938", -- glowing cracks spreading out (Inferno's S lava)
+		waterstrip = "rbxassetid://135040662984540", -- rippling water bands for beams (Tidal Shield's swirl)
 	},
 	-- Licensed sounds per look (Pro Sound Effects / APM): call, charge, impact, layer, linger; filled look by look
 	SOUNDS = {
@@ -135,8 +136,23 @@ return {
 			layer = "rbxassetid://9114446802", -- Fire Whoosh 13 (A and S)
 			linger = "rbxassetid://9112780193", -- Fireplace Constant Burning Flame 1 (the 6 s burn)
 		},
-		TidalShield = {},
-		TidalBlessing = {},
+		TidalShield = {
+			call = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1 (the koi leaps)
+			charge = "rbxassetid://9116317695", -- Liquid Shake 1 (the swirl, the wave rising)
+			impact = "rbxassetid://9120611318", -- Wave Crashes Single Large Impacts 4
+			layer = "rbxassetid://9125409816", -- Bubbles Small Underwater Above Water Quality (A and S)
+			hit = "rbxassetid://9112872239", -- Small Bubbles Water Surface Float Up Pop 5 (a hit soaked)
+			burst = "rbxassetid://9120585252", -- the splash as the dome bursts
+		},
+		TidalBlessing = {
+			call = "rbxassetid://9125602386", -- Heavenly Harmonic Presence Glowing Crystal (the clouds part)
+			charge = "rbxassetid://9125635430", -- Magical Exit Sparkling Pass Bys Clinking Chimes (the lotus opens)
+			impact = "rbxassetid://9116394876", -- Magic Glows Soft Clusters Of Chiming Hits 2
+			layer = "rbxassetid://9120611318", -- Wave Crashes Single Large Impacts 4 (A and S)
+			linger = "rbxassetid://9114791989", -- Heavenly Presence Thick Melodic Choir Pad 1 (while the dome forms)
+			hit = "rbxassetid://9112872239", -- Small Bubbles Water Surface Float Up Pop 5
+			burst = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1
+		},
 		Stampede = {},
 		MagmaSlam = {
 			call = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2
