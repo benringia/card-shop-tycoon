@@ -45,7 +45,7 @@ export type Body = {
 	keyframes: KeyframePlayer.Player?, -- a model with its own saved Idle/Walk/Run animations (Util/KeyframePlayer)
 	size: number, -- height / Party.CREATURE_HEIGHT
 	-- Creatures without bones: a whole-body fidget now and then while standing (PET_ANIM.BODY_FIDGETS)
-	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random, fired: boolean },
+	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random, fired: boolean, amount: number? },
 	fxColor: Color3, -- roar shockwaves and sparks (the card's element colour)
 	aura: BeastAura.Aura?, -- Legendaries and grade S/A copies: element fire, lightning, footstep dust (addBeastFx)
 	grow: number?, -- popping in or shrinking away (Util/SummonFx): drawn at this share of its size
@@ -488,6 +488,7 @@ local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 	elseif not idle.kind and now >= idle.nextAt then
 		local kinds = if body.keyframes then anim.TITAN_FIDGETS else anim.BODY_FIDGETS
 		idle.kind = kinds[idle.random:NextInteger(1, #kinds)]
+		idle.amount = nil
 		idle.fired = false
 		idle.start = now
 		idle.length = anim.FIDGET_SECONDS[idle.kind] or 1.5
@@ -506,18 +507,19 @@ local function stepIdle(body: Body, now: number, walking: boolean): PetRig.Body
 		local _, size = body.model:GetBoundingBox()
 		groundRing(body.cframe.Position, Color3.fromRGB(190, 180, 165), math.max(size.X, size.Z) * 0.9, false)
 	end
-	return PetRig.body(anim, idle.kind, progress, idle.side, false)
+	return PetRig.body(anim, idle.kind, progress, idle.side, false, idle.amount)
 end
 
 -- One frame: follow the marker smoothly, then pose (motion kit or animations), or lie down when fainted
 -- A fight pose now (Party.PET_ANIM charge, strike, combo, cast): on its bones, or the whole body for one without
-function CreatureVisuals.pose(body: Body, kind: string, now: number)
+function CreatureVisuals.pose(body: Body, kind: string, now: number, amount: number?)
 	if body.pet then
-		PetAnimator.play(body.pet, kind, now)
+		PetAnimator.play(body.pet, kind, now, amount)
 		return
 	end
 	local idle = body.idle
 	idle.kind = kind
+	idle.amount = amount
 	idle.fired = false
 	idle.start = now
 	idle.length = Party.PET_ANIM.FIDGET_SECONDS[kind] or 0.6

@@ -647,10 +647,15 @@ Lune-tested).
 | Element | Ability | Effect |
 |---|---|---|
 | Ember | Fireball | 2.5× ATK hit |
-| Tide | Wave | heals your fighters 25% max HP |
+| Tide | Healing Rain | heals your fighters 25% max HP over 5 s (5 ticks of 5%, one a second; a recast restarts them; stops when the creature faints or is swapped out); a Grade S caster also heals its own player 15% over the same ticks (owner 2026-11-05; none while down) |
 | Bloom | Vine Snare | monster attacks 40% slower for 4 s |
 | Volt | Overcharge | next 3 attacks twice as fast |
 | Shade | Curse | monster ATK −30% for 5 s |
+
+Healing Rain was Wave, an instant 25% (owner 2026-11-05: "Heals overtime for 25% not instant"). Measured with
+`tools/balance/bosses` (400 fights a row, before and after): heals over time waste less than the instant heal did, so
+parties that stand still at 0.8x the recommended Power win more (Cave Brood Queen 20% to 49%, Storm Sovereign 21% to
+46%, Ember Colossus 8% to 22%, Meadow Warden 6% to 14%); at 1x and fighting well nothing moved by more than 2 points.
 
 | Card | Signature | Effect |
 |---|---|---|
@@ -762,7 +767,10 @@ gets its own smoky orange look (`DayCycle.AREA_LOOKS[3]`), a bigger volcano set 
 whole place, town included (`Scenery.CLOUDS`). Every valley scenery and backdrop piece then settles onto the terrain
 under its foot once it is filled (`SETTLE`, `WildValley.settleDrop`: rays measure the gaps under its lowest surfaces and
 it drops by the widest, never more than a fifth of its height; the owner 2026-11-05: "floating trees/mushrooms";
-measured: 247 pieces, about 71k rays, 225 ms at server start, 10 pieces a frame). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
+measured: 247 pieces, about 71k rays, 225 ms at server start, 10 pieces a frame). Each pass is an exact ramp lined with rolling terrain banks, not walls (the owner 2026-11-05: "this wall leading to
+caves is awkward ... no walls"; `PASS_BANKS`, seeded lumps grassy where the trail leaves the lower biome, the upper
+biome's rock beyond, rock outcrops, trees and rocks on top from `WildValley.passProps`; about 1.3k more terrain cells,
+102.8k in all) (`WildValley.terrainOps`: no step at
 either end). Signs are wood like the town's (`Server/Util/TrailProps.trailhead`): "THE WILD" by the arrival, a
 trailhead at each biome's entrance (MEADOW Lv 1-5, CAVES Lv 5-10, EMBER RIDGE Lv 10-15), each turned to face back
 down the trail the way players come, and an arrow post at each bend pointing on and back to the SHOP. **Monsters by
@@ -1055,14 +1063,26 @@ group, checked before its fragments and every time (not only the first). Below i
   as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`; the round's four
   new moves play unpublished in Studio until the owner saves them);
   the HUD's art, the sword's sounds, its moves and model download behind the loading screen (`Util/CombatAssets`, ids listed
-  by `Util/CombatPreload`), so the first fight starts ready; players wear the standard body
+  by `Util/CombatPreload`: every attack, pet move, boss roar, summon, creature voice and level-up sound too), so the first
+  fight starts ready. Every one of those sounds stays loaded all session (`Util/SoundBank` keeps one silent copy each;
+  one-shots are made from it): measured 2026-11-05, Roblox drops a sound's audio once no Sound holds it, so a sound made
+  on the spot loaded again each time (a boss move 0.3-0.5 s late every time, the first plays of a fight 3-5 s late or
+  silent when their holder was gone first; the owner: "some are delay some doesnt play"). After: every fight sound
+  starts within 2 frames, for about 22 MB more sound memory (half of it four long loop beds: Healing Rain's rain, the
+  Curse's drones). Players wear the standard body
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
   `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
-  Signature (Epic and Legendary cards), small Swap (1-3: the party slot as the party bar numbers it, `Util/SwapKeys`;
-  while swaps cool down the button drains and a key says "Swap ready in 4s", a resting card says so; 2026-11-04) and
-  Run. The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
+  Signature (Epic and Legendary cards) and Run. Swaps are the **party strip** under the status (the owner 2026-11-05,
+  option A: "add an indication who to summon, for good UX not just numbers"; it replaced the small Swap button): a tile
+  per party card with its painting and name, its key 1-3 on a gold chip (PC; the party slot as the party bar numbers
+  it, `SwapKeys.party`/`pick`, Lune-tested). Its look (option C, the owner: "Remove strong/weak/out just add an effect
+  or animation or icons for who's out/dead"): the one fighting has a green light running round its edge and a
+  heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's blue) with
+  dizzy stars, one resting since an earlier fight face down with "Zzz"; while swaps cool down the others dim with the
+  seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). A key while swaps cool
+  down still says "Swap ready in 4s", a resting card says so (2026-11-04). The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
   lost half of it to the character's braking), and one that would end inside a boss or monster carries on through it
   to 1.5 studs past its edge, up to 26 studs (`SwordRules.dashLength`, owner 2026-11-04). With a mouse a click attacks and there's no Attack
   button (owner 2026-11-03: phones, tablets and devices without a mouse keep it); the Pet button takes its corner and
@@ -1150,8 +1170,23 @@ group, checked before its fragments and every time (not only the first). Below i
   left (`BattleSim` casts); meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
   it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
   everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
-  event: Fireball a blast and a fire ring on the ground, Wave a swelling water dome, Snare five vines round the target
-  (4 s), Overcharge a crackling aura on the caster (3 s), Curse a purple mist (5 s); the super moves Inferno a fire
+  event: Fireball a blast and a fire ring on the ground; the other four Pet button moves are finished (spec
+  `2026-11-05-pet-moves-design.md`; the owner: "the higher the creature grade the better the skill must look and feel"):
+  each is drawn by `Util/MoveFx` from `Config/MoveFx`, a look per grade C, B, A, S (every grade a step up, Lune-tested;
+  `Util/MoveFxRules` plays C for a creature with no grade and caps at B with the low-graphics switch off), its own
+  Roblox-licensed sounds, and the creature's wind-up and cast pose growing with grade (`PetRig.body` amount). Healing
+  Rain: a cartoon cloud over each creature it heals with rain falling on it (beams with a scrolling drop texture), a
+  glow, a rising "+N" each tick (gold at S); ripples (B), healing motes (A), rising water rings and a rainbow (S). Vine
+  Snare: vines (C, B) or thorny roots (A, S) climbing round the target on helices for its 4 s, then withering; leaves,
+  thorns, dirt, a glowing crack and flowers by grade. Overcharge: three orbs circling the caster, one spent with each
+  fast attack (the sim's `orb` field; a missed one fizzles on an `orbs` event), arcs between them (A), a bolt with
+  each hit (A) or a thunderbolt and flash (S). Curse: a seven-point rune circle under the caster as it casts, then a
+  hex (B), shadow chains (A), a dripping eye sigil over the target, a dark aura and smoke, the target darkened, for its
+  5 s. Studio: `/movefx <rain|vine|orbs|curse> [C|B|A|S] [big]` and the admin panel's "Pet moves" buttons play any of
+  them on your summoned creature against a dummy. Cost measured 2026-11-05 (render CPU, a fixed camera on the 14-stud
+dummy, each move at grade S): at most +0.34 ms at graphics level 10 and +0.63 ms at level 1 over a 13.2 ms baseline.
+Vine Snare's vines are solid tapering stems (cylinders with ball joints, wood at A and S) winding fewer turns round
+a foe wider than it is tall. The super moves Inferno a fire
   pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
   the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
   nothing (`FightFxRules.hasEffect`).
@@ -1717,6 +1752,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── init.client.luau
     │   ├── Controllers/
     │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear), the teleport screen
+    │   │   ├── WildLoadingController.luau # the Wild's loading screen: portal swirl, holds you still until the valley round you is in
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -1790,9 +1826,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── HudMascotView.luau      # the mascot peeking over the party cushion: breathes, blinks, ducks on a summon, chirps on a tap
     │       ├── DefeatScreen.luau       # a lost boss fight: grey world, the fight's numbers, a tip, the countdown to town
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
-    │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the red hit flash
+    │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
+    │       ├── SoundBank.luau          # keeps one silent loaded copy of each fight sound all session; one-shots are made from it
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, star bursts, rings, cut lines, dust
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
@@ -1846,6 +1883,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
+        │   ├── WildLoading.luau # the Wild's loading screen: steps, tips, times, swirl and colours (plain data)
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
@@ -1909,6 +1947,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
             ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
+            ├── WildLoadingRules.luau # the Wild's loading screen's step, bar share and when it may close (pure, Lune-tested)
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
@@ -2028,6 +2067,17 @@ their saved data.
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
   first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
   (`Config/ProductPictures`, uploaded images since round 5) with the other images.
+- **The Wild's loading screen** (owner 2026-11-05: "when entering wilds can we do a loading screen that make sure
+  everything is loaded before player can walk in", look A "Portal swirl"; `Config/WildLoading`,
+  `Controllers/WildLoadingController`): the moment a trip to the Wild starts (the portal, `/wild`, a boss gate's Take
+  me) WildService fires `WildTravel` "loading" and the screen covers everything: two copies of a white spiral
+  (`tools/textures/make_portal_swirl.py`, `assets/ui/fx-portal`) turning against each other in the portal's greens
+  over the First Spark cover's hills, "The Wild", a green bar, the step and a tip. After the move ("wild") your root is
+  anchored on your device until the ground under you, the valley's scenery (its meshes and textures), the monsters'
+  models and the arrival area's music and ambience are in ("Opening the portal...", "Growing the valley...", "Waking
+  the monsters...", "Tuning the sounds..."; `Util/WildLoadingRules`, Lune-tested), then it fades and you walk. It
+  stays up at least 1.2 s, never holds you more than 12 s after arriving or 30 s before; "stay" (the trip didn't
+  happen) or "home" closes it. Its pictures are kept drawn from the start, so the first trip's swirl is there at once.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**
@@ -2241,7 +2291,15 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   on narrow screens the panel keeps its right margin first), the card's right edge just left of the panel
   (`UiLayout.inspectorCard`, both Lune-tested).
   The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
-  and copies pills; then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
+  and copies pills; then a blue **Skills** box (the owner 2026-11-05, option A of `skills-on-card.html`): the card's
+  Pet move (its element's) and, for Epic and Legendary cards, its super move, each with its icon on a badge, its name,
+  a line from the fight's numbers (`Util/SkillText`, Lune-tested) and the button that uses it (icons from
+  `Config/MoveFx` SKILL_ICONS: a Figma sheet of white glyphs, icon sheet 6, the owner's pick over script-drawn ones);
+  the fight's Pet and Super buttons show the summoned creature's own move icon the same way; a green **Buffs** box
+  (this copy's town perk while it's out with you and its fight perk, PartyRules); a red **Elements** box (who it
+  deals 1.5x to and takes 0.75x from, and the reverse, `SkillText.matchups`); everything under the band scrolls as one
+  column (the owner 2026-11-05: "I cant scroll down to other copies ... add all the details", option A), the buttons
+  pinned below; then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
   "THIS COPY", the chosen copy's grade pill, level, star icons, FOIL and its worth on one line, its Power / HP / ATK /
   SPD tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
   and "In your party" or "Working: <job>"; under it "ALL COPIES, BEST FIRST" (every copy: grade pill, level, star
@@ -2572,6 +2630,16 @@ boss models; the ranch and Heroic tiers come after those.
   your own burst goes on the nearest foe even if it isn't the one in reach; a fight ending mid-lunge leaves the push to
   end by itself (0.23 s); a cut or dash slash a dodge cancelled on screen still lands on the server; the dash through a
   boss toward the arena wall wasn't checked in Studio.
+- [x] Pet moves round (branch `pet-moves`, spec `2026-11-05-pet-moves-design.md`): Healing Rain (heals over time; a
+  Grade S caster heals its player 15% too), Vine Snare, Overcharge and Curse finished, each better with grade; skill
+  icons (a Figma glyph sheet) on the fight buttons and the card view; the card view as one scrolling column with
+  Skills, Buffs and Elements boxes; the fight's party strip (look C: a running light and heartbeat on the fighter,
+  fainted cards face down); every fight sound kept loaded (`Util/SoundBank`); the Wild's portal-swirl loading screen;
+  the valley's passes as rolling banks. Approved by the owner 2026-11-05 ("merge and push"). Deferred minors: a
+  withdrawn group member's creature keeps its regen and orbs for up to 5-8 s; Curse's hex flight and late vine leaves
+  can start after an early stop; "+N" shows the full tick when the heal is capped at max HP; Overcharge has no extra
+  sound layer at A; the Overcharge preview shows the plain hit; a Rain cloud skipped by the effects budget has no sound
+  and a recast's cloud lingers ~3 s.
 - [x] Valley scenery: round 1, the Meadow's ancient ruins, the Caves' glow mushroom hollow with its darker look, Ember
   Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural edges, backdrops, far mountains,
   the composed Meadow, the Ridge's sky, lava streams, clouds, the Caves' grass patches, pieces settled onto the terrain

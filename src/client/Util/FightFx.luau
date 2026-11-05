@@ -14,11 +14,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
+local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"))
+local MoveFxRules = require(Shared:WaitForChild("Util"):WaitForChild("MoveFxRules"))
 local AttackTiming = require(Shared:WaitForChild("Util"):WaitForChild("AttackTiming"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local MonsterMoves = require(Shared:WaitForChild("Util"):WaitForChild("MonsterMoves"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local MoveFx = require((script.Parent :: Instance):WaitForChild("MoveFx"))
 local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 
@@ -31,7 +34,7 @@ export type Resolve = {
 	marker: (id: string) -> BasePart?, -- a fighter's marker by sim id
 	creature: (marker: BasePart) -> View?, -- the creature drawn on it (nil: a monster or boss, not handled here)
 	setCharging: (marker: BasePart, seconds: number) -> (),
-	pose: (marker: BasePart, kind: string) -> (),
+	pose: (marker: BasePart, kind: string, amount: number?) -> (), -- amount: how big (1 when nil)
 	dash: (marker: BasePart, toward: Vector3, share: number, seconds: number) -> (),
 	-- The boss or monster drawn on a marker, and playing its clips (nil: no monsters here, PvP)
 	monster: ((marker: BasePart) -> MonsterView?)?,
@@ -297,12 +300,108 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 		local seconds = math.max(0.1, tonumber(event.seconds) or 0.5)
 		local tint = color(spec.color)
+		-- The four finished Pet button moves wind up bigger with grade (Config/MoveFx WINDUP, POSE_AMOUNT)
+		local grade = MoveFxRules.grade(view.grade, Extras.enabled(), MoveFxConfig)
+		local finished = MoveFxConfig.POSES[event.kind] ~= nil
+		local windup = if finished then MoveFxConfig.WINDUP[grade] else { glow = 1.7, ring = 1 }
 		resolve.setCharging(marker, seconds)
-		resolve.pose(marker, "charge")
-		ElementFx.chargeGlow(view.root, tint, seconds, 1.7)
-		ElementFx.castRing(view.root.Position - Vector3.new(0, view.height * 0.45, 0), tint, math.max(2, view.height * 0.8), seconds)
+		resolve.pose(marker, "charge", if finished then MoveFxConfig.POSE_AMOUNT[grade] else nil)
+		ElementFx.chargeGlow(view.root, tint, seconds, windup.glow)
+		ElementFx.castRing(view.root.Position - Vector3.new(0, view.height * 0.45, 0), tint, math.max(2, view.height * 0.8) * windup.ring, seconds)
 		ElementFx.callout(view.root, view.height * 0.6, `{string.upper(MOVE_NAMES[event.kind] or event.kind)}!`, tint, seconds)
+		if event.kind == "Curse" then
+			-- Its rune circle opens under the caster as it winds up and stays through the hex (Util/MoveFx)
+			MoveFx.curseCircle(view, grade, seconds + 0.9)
+		end
 		ElementFx.sound(AttackFx.SOUNDS.charge, view.root.Position)
+	end
+
+	-- Healing Rain's clouds (Util/MoveFx), one per creature it heals, by sim id
+	local rains: { [string]: { stop: () -> (), ends: number } } = {}
+	local RAIN = Combat.ABILITIES.Tide
+	local RAIN_SECONDS = RAIN.ticks * RAIN.every + 0.4
+
+	local function stopRain(id: string)
+		local rain = rains[id]
+		if rain then
+			rains[id] = nil
+			rain.stop()
+		end
+	end
+
+	-- Overcharge's orbs (Util/MoveFx), by the caster's sim id: the sim's attack events say when one is spent
+	local orbSets: { [string]: MoveFx.OrbSet } = {}
+
+	local function clearOrbs(id: string)
+		local set = orbSets[id]
+		if set then
+			orbSets[id] = nil
+			MoveFx.clearOrbs(set)
+		end
+	end
+
+	-- Vine Snare's vines on their target (Util/MoveFx), by the target's sim id
+	local snares: { [string]: () -> () } = {}
+
+	local function stopSnare(id: string)
+		local stop = snares[id]
+		if stop then
+			snares[id] = nil
+			stop()
+		end
+	end
+
+	-- Curses on their targets (Util/MoveFx), by the target's sim id
+	local curses: { [string]: () -> () } = {}
+
+	local function stopCurse(id: string)
+		local stop = curses[id]
+		if stop then
+			curses[id] = nil
+			stop()
+		end
+	end
+
+	-- A target's root part and height: a boss or monster (its view), a creature (the arena), else its marker
+	local function targetBody(id: string?): (BasePart?, number)
+		local marker = if typeof(id) == "string" then resolve.marker(id) else nil
+		if not marker then
+			return nil, 0
+		end
+		local lookup = resolve.monster
+		local monster = if lookup then lookup(marker) else nil
+		if monster then
+			return monster.root, monster.height
+		end
+		local creature = resolve.creature(marker)
+		if creature then
+			return creature.root, creature.height
+		end
+		return marker, 6
+	end
+
+	local function startRain(id: string, view: View, grade: string, seconds: number, withSounds: boolean)
+		stopRain(id)
+		rains[id] = { stop = MoveFx.rain(view, grade, seconds, withSounds), ends = os.clock() + seconds }
+	end
+
+	-- A Healing Rain tick: its rising number on the healed creature (always shown: it's what the heal is), and a cloud
+	-- over a creature the caster healed that has none yet (the caster's own starts as the move lands)
+	local function onRegen(event: any)
+		local to = event.to
+		local marker = if typeof(to) == "string" then resolve.marker(to) else nil
+		local view = if marker then resolve.creature(marker) else nil
+		if not view then
+			return
+		end
+		local casterMarker = if typeof(event.from) == "string" then resolve.marker(event.from) else nil
+		local casterView = if casterMarker then resolve.creature(casterMarker) else nil
+		local grade = MoveFxRules.grade((casterView or view).grade, Extras.enabled(), MoveFxConfig)
+		local rain = rains[to]
+		if (not rain or os.clock() > rain.ends) and FightFxRules.budget(active, Extras.enabled(), AttackFx) then
+			startRain(to, view, grade, RAIN_SECONDS - RAIN.every, false)
+		end
+		MoveFx.rainTick(view, grade, tonumber(event.heal) or 0)
 	end
 
 	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event), a
@@ -317,7 +416,55 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
 		local target = targetPosition(event.to, caster)
 		local tint = color(spec.color)
-		resolve.pose(marker, "cast")
+		local movePose = MoveFxConfig.POSES[event.kind]
+		local grade = MoveFxRules.grade(view.grade, Extras.enabled(), MoveFxConfig)
+		if movePose then
+			resolve.pose(marker, movePose, MoveFxConfig.POSE_AMOUNT[grade])
+		else
+			resolve.pose(marker, "cast")
+		end
+		-- The finished moves play their own looks and sounds (Util/MoveFx)
+		if event.kind == "Rain" then
+			startRain(event.from, view, grade, RAIN_SECONDS, true)
+			if view.mine then
+				ScreenFx.flash(tint, AttackFx.FLASH.special.strength * 0.6, AttackFx.FLASH.special.seconds)
+			end
+			return
+		elseif event.kind == "Overcharge" then
+			clearOrbs(event.from)
+			local set = MoveFx.orbs(view, grade)
+			orbSets[event.from] = set
+			task.delay(MoveFxConfig.ORB_TIMEOUT, function()
+				if orbSets[event.from] == set then
+					clearOrbs(event.from)
+				end
+			end)
+			if view.mine then
+				ScreenFx.flash(tint, AttackFx.FLASH.special.strength * 0.6, AttackFx.FLASH.special.seconds)
+			end
+			return
+		elseif event.kind == "Curse" then
+			local body, height = targetBody(event.to)
+			if body and typeof(event.to) == "string" then
+				stopCurse(event.to)
+				curses[event.to] = MoveFx.curse(caster, body, height, grade, Combat.ABILITIES.Shade.seconds)
+			end
+			if view.mine then
+				ScreenFx.flash(tint, AttackFx.FLASH.special.strength * 0.6, AttackFx.FLASH.special.seconds)
+			end
+			return
+		elseif event.kind == "Snare" then
+			local body, height = targetBody(event.to)
+			if body and typeof(event.to) == "string" then
+				stopSnare(event.to)
+				snares[event.to] = MoveFx.vines(body, height, grade, Combat.ABILITIES.Bloom.seconds)
+			end
+			ScreenFx.shakeAt(AttackFx.SHAKE.special * MoveFxConfig.POSE_AMOUNT[grade], target)
+			if view.mine then
+				ScreenFx.flash(tint, AttackFx.FLASH.special.strength * 0.6, AttackFx.FLASH.special.seconds)
+			end
+			return
+		end
 		ElementFx.sound(AttackFx.SPECIAL_SOUND, caster)
 		hitSound(view.element, target)
 		ElementFx.sound(AttackFx.SOUNDS.big[view.element] or AttackFx.SOUNDS.boom, target, 0.6)
@@ -421,6 +568,19 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		for _, event in events do
+			if typeof(event) == "table" then
+				if event.type == "regen" then
+					onRegen(event)
+					continue
+				elseif (event.type == "faint" or event.type == "swap") and typeof(event.to) == "string" then
+					stopRain(event.to) -- the heal stops with it (BattleSim)
+					clearOrbs(event.to)
+					if event.type == "faint" then
+						stopSnare(event.to)
+						stopCurse(event.to)
+					end
+				end
+			end
 			if typeof(event) ~= "table" or typeof(event.from) ~= "string" then
 				continue
 			end
@@ -433,6 +593,18 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				onCharge(event)
 			elseif event.type == "cast" then
 				onCast(event)
+			elseif event.type == "attack" and not event.kind and typeof(event.orb) == "number" and orbSets[event.from] then
+				-- An Overcharge fast attack spends an orb: it flies at the target with the hit
+				local set = orbSets[event.from]
+				MoveFx.spendOrb(set, targetPosition(event.to, set.view.root.Position), set.view.mine)
+				if event.orb <= 0 then
+					clearOrbs(event.from) -- the last fast attack: whatever's left goes (review: a set could outlive its fight)
+				end
+				if not event.dodged then
+					onAttack(event)
+				end
+			elseif event.type == "orbs" and orbSets[event.from] then
+				MoveFx.fizzleOrb(orbSets[event.from])
 			elseif event.type == "attack" and not event.kind and not event.dodged then
 				onAttack(event)
 			elseif event.type == "ability" and event.kind and AttackFx.SPECIALS[event.kind] then
@@ -449,6 +621,18 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		pending = {}
 		for marker in gathering do
 			stopGathering(marker)
+		end
+		for id in rains do
+			stopRain(id)
+		end
+		for id in snares do
+			stopSnare(id)
+		end
+		for id in orbSets do
+			clearOrbs(id)
+		end
+		for id in curses do
+			stopCurse(id)
 		end
 	end
 

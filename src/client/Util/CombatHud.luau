@@ -21,6 +21,9 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
+local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
+local CardDesign = require(Shared:WaitForChild("Config"):WaitForChild("CardDesign"))
+local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
@@ -29,7 +32,34 @@ local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 
 local CombatHud = {}
 
+-- A move's own icon (Config/MoveFx SKILL_ICONS; the owner 2026-11-05: "Add Icons to skills"), nil if it has none yet
+local function moveIcon(kind: string?): string?
+	local name = if kind then MoveFxConfig.SKILL_ICONS[kind] else nil
+	return if name then UIIcons[name] else nil
+end
+
+-- The kind of the move with this name in a Config/Combat list (ABILITIES or SIGNATURES)
+local function kindNamed(list: { [string]: any }, name: string?): string?
+	for _, ability in list do
+		if ability.name == name then
+			return ability.kind
+		end
+	end
+	return nil
+end
+
+-- The Pet / Super button shows the summoned creature's own move (the paw or sparkle when there's no icon for it)
+local function setButtonIcon(frame: GuiObject, image: string?)
+	local icon = frame:FindFirstChild("Icon")
+	if image and icon and icon:IsA("ImageLabel") then
+		icon.Image = image
+	end
+end
+
 export type Reserve = { id: string, name: string, hp: number, maxHp: number, art: string? }
+-- One party strip tile: state is Util/SwapKeys.party's ("swap" or "cooling": waiting to come in, "active", "fainted"
+-- in this fight, "resting" since an earlier one)
+export type PartyTile = { slot: number, simId: string, name: string, art: string?, color: Color3, state: string }
 export type View = {
 	playerHp: number,
 	playerMax: number,
@@ -47,6 +77,7 @@ export type View = {
 	creatureMax: number,
 	hasSignature: boolean,
 	reserves: { Reserve },
+	party: { PartyTile }?, -- boss fights: the party strip (owner 2026-11-05, option A)
 	-- Wild fights: a called-in creature on the field too, the call-in window's seconds left, the run chance
 	secondName: string?,
 	secondHp: number?,
@@ -318,6 +349,154 @@ local function portrait(parent: Instance, size: number): (Frame, UIGradient, UIS
 	return ring, shading, glow, badge, face, debuffBadge, debuffEdge
 end
 
+type Tile = {
+	frame: ImageButton,
+	art: ImageLabel,
+	back: Frame,
+	mark: TextLabel,
+	name: TextLabel,
+	overlay: TextLabel,
+	beat: Frame,
+	pulse: UIGradient,
+	edge: UIStroke,
+	run: UIGradient,
+	scale: UIScale,
+	info: PartyTile,
+}
+
+-- A party strip tile (option C): the card's painting over its name in a dark rounded panel, its key on a gold chip
+-- (PC), an overlay on the painting for the swap's seconds; under the painting a heartbeat pulse (shown while it
+-- fights), and a face-down card in the painting's place (shown when it's fainted or resting)
+local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTile) -> ()): Tile
+	local spec = CombatHudConfig.PARTY_STRIP
+	local phone = UIKit.isPhone()
+	local width = if phone then spec.PHONE_TILE else spec.TILE
+	local artHeight = math.round(width * spec.ART)
+	local nameSize = if phone then spec.NAME - 1 else spec.NAME
+	local frame = Instance.new("ImageButton")
+	frame.Name = `Slot{info.slot}`
+	frame.LayoutOrder = info.slot
+	frame.AutoButtonColor = false
+	frame.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+	frame.BackgroundTransparency = 0.12
+	frame.Size = UDim2.fromOffset(width, artHeight + nameSize + 12)
+	frame.Parent = parent
+	UIKit.corner(frame, 10)
+	-- The edge; while it fights a light runs round it (a turning gradient over a white stroke)
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Parent = frame
+	local run = Instance.new("UIGradient")
+	local light, dark = color(spec.RUN.color), color(spec.RUN.dark)
+	run.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, light),
+		ColorSequenceKeypoint.new(0.3, dark),
+		ColorSequenceKeypoint.new(0.5, light),
+		ColorSequenceKeypoint.new(0.8, dark),
+		ColorSequenceKeypoint.new(1, light),
+	})
+	run.Enabled = false
+	run.Parent = edge
+	local scale = Instance.new("UIScale")
+	scale.Parent = frame
+	local art = Instance.new("ImageLabel")
+	art.Name = "Art"
+	art.BackgroundColor3 = info.color
+	art.ScaleType = Enum.ScaleType.Crop
+	art.Position = UDim2.fromOffset(4, 4)
+	art.Size = UDim2.new(1, -8, 0, artHeight)
+	art.Parent = frame
+	UIKit.corner(art, 7)
+	local overlay = UIKit.label(art, "", Enum.Font.FredokaOne, math.round(artHeight * 0.48), Color3.new(1, 1, 1))
+	overlay.Name = "Overlay"
+	overlay.TextXAlignment = Enum.TextXAlignment.Center
+	overlay.Size = UDim2.fromScale(1, 1)
+	UIKit.outlined(overlay)
+	-- Face down: the card back's colours and rim, with dizzy stars (fainted) or a Zzz (resting)
+	local back = Instance.new("Frame")
+	back.Name = "Back"
+	back.BackgroundColor3 = Color3.new(1, 1, 1)
+	back.Position = art.Position
+	back.Size = art.Size
+	back.Visible = false
+	back.Parent = frame
+	UIKit.corner(back, 7)
+	local backFill = Instance.new("UIGradient")
+	backFill.Color = ColorSequence.new(CardDesign.BACK.INSIDE[1], CardDesign.BACK.INSIDE[2])
+	backFill.Rotation = 90
+	backFill.Parent = back
+	local rim = Instance.new("UIStroke")
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Thickness = 2
+	rim.Color = CardDesign.BACK.RIM[1]
+	rim.Parent = back
+	local mark = UIKit.label(back, "", Enum.Font.FredokaOne, math.round(artHeight * 0.42), Color3.new(1, 1, 1))
+	mark.Name = "Mark"
+	mark.TextXAlignment = Enum.TextXAlignment.Center
+	mark.Size = UDim2.fromScale(1, 1)
+	UIKit.outlined(mark)
+	local name = UIKit.label(frame, info.name, Enum.Font.GothamBold, nameSize, Color3.new(1, 1, 1))
+	name.Name = "CardName"
+	name.TextWrapped = false
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	name.TextXAlignment = Enum.TextXAlignment.Center
+	name.Position = UDim2.fromOffset(3, artHeight + 6)
+	name.Size = UDim2.new(1, -6, 0, nameSize + 2)
+	-- The heartbeat: a bright pulse sweeping across a dim bar where the name was
+	local beat = Instance.new("Frame")
+	beat.Name = "Heartbeat"
+	beat.BackgroundColor3 = color(spec.BEAT.color)
+	beat.AnchorPoint = Vector2.new(0.5, 0.5)
+	beat.Position = UDim2.new(0.5, 0, 0, artHeight + 6 + (nameSize + 2) / 2)
+	beat.Size = UDim2.new(1, -14, 0, spec.BEAT.height)
+	beat.Visible = false
+	beat.Parent = frame
+	UIKit.corner(beat, spec.BEAT.height)
+	local pulse = Instance.new("UIGradient")
+	pulse.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(0.35, 0.8),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(0.65, 0.8),
+		NumberSequenceKeypoint.new(1, 0.8),
+	})
+	pulse.Parent = beat
+	if not phone then
+		local key = UIKit.label(frame, tostring(info.slot), Enum.Font.FredokaOne, 13, color(spec.KEY_INK))
+		key.Name = "Key"
+		key.TextXAlignment = Enum.TextXAlignment.Center
+		key.BackgroundColor3 = color(spec.KEY)
+		key.BackgroundTransparency = 0
+		key.Position = UDim2.fromOffset(-7, -7)
+		key.Size = UDim2.fromOffset(20, 20)
+		key.ZIndex = 3
+		UIKit.corner(key, 6)
+		local keyEdge = Instance.new("UIStroke")
+		keyEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		keyEdge.Thickness = 2
+		keyEdge.Color = color(spec.KEY_INK)
+		keyEdge.Parent = key
+	end
+	local tile: Tile = {
+		frame = frame,
+		art = art,
+		back = back,
+		mark = mark,
+		name = name,
+		overlay = overlay,
+		beat = beat,
+		pulse = pulse,
+		edge = edge,
+		run = run,
+		scale = scale,
+		info = info,
+	}
+	frame.Activated:Connect(function()
+		onTap(tile.info)
+	end)
+	return tile
+end
+
 -- showNames: name the buttons (the player's first boss fights; the server decides); wild: a wild monster fight's HUD;
 -- sword: the player fights in it (always in boss fights; a wild fight once they have one)
 function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boolean, wild: boolean?, sword: boolean?): Hud
@@ -483,6 +662,26 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	local wasHurt = false
 	local swapped = false -- the first creature isn't a swap: no toast for it
 
+	-- Boss fights: the party strip under the status (owner 2026-11-05, option A); built again when the party changes
+	local stripSpec = CombatHudConfig.PARTY_STRIP
+	local strip: Frame? = nil
+	if not wild then
+		local holder = Instance.new("Frame")
+		holder.Name = "PartyStrip"
+		holder.BackgroundTransparency = 1
+		holder.Position = UDim2.new(0, 0, 1, stripSpec.TOP)
+		holder.AutomaticSize = Enum.AutomaticSize.XY
+		holder.Parent = status
+		local list = Instance.new("UIListLayout")
+		list.FillDirection = Enum.FillDirection.Horizontal
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Padding = UDim.new(0, stripSpec.GAP)
+		list.Parent = holder
+		strip = holder
+	end
+	local tiles: { Tile } = {}
+	local tilesKey = ""
+
 	local latest: View? = nil
 	local picker: Frame? = nil
 	local function closePicker()
@@ -621,6 +820,87 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			buttons[name] = makeButton(root, name, presses[name], onTip)
 		end
 	end
+	if strip then
+		buttons.swap.frame.Visible = false -- the party strip is the swap
+	end
+
+	-- Seconds until a swap is allowed (the Swap button's cooldown, still fed by setCooldown)
+	local function swapWait(): number
+		return buttons.swap.readyAt - os.clock()
+	end
+
+	-- A tap on a tile: a waiting card comes in once the swap is ready; anything else gives a small nudge
+	local function onTile(info: PartyTile)
+		local tile: Tile? = nil
+		for _, each in tiles do
+			if each.info.simId == info.simId then
+				tile = each
+			end
+		end
+		local waiting = info.state == "swap" or info.state == "cooling"
+		if waiting and swapWait() <= 0.05 then
+			callbacks.swap(info.simId)
+		elseif tile then
+			tile.scale.Scale = 0.9
+			TweenService:Create(tile.scale, CHIP_POP, { Scale = 1 }):Play()
+		end
+	end
+
+	-- A tile's look for its state (option C) at `now`: the fighter's running light and heartbeat, a face-down card for a
+	-- fainted or resting one, the swap's seconds over a waiting one while it cools down
+	local function paintTile(tile: Tile, now: number)
+		local info = tile.info
+		local active = info.state == "active"
+		local down = info.state == "fainted" or info.state == "resting"
+		local wait = if active or down then 0 else swapWait()
+		tile.edge.Color = if active then Color3.new(1, 1, 1) else color(stripSpec.EDGE)
+		tile.edge.Thickness = if active then 3 else 2
+		tile.run.Enabled = active
+		tile.beat.Visible = active
+		tile.name.Visible = not active
+		if active then
+			tile.run.Rotation = (now * stripSpec.RUN.turn) % 360
+			local sweep = (now % stripSpec.BEAT.seconds) / stripSpec.BEAT.seconds
+			tile.pulse.Offset = Vector2.new(sweep * 1.4 - 0.7, 0)
+		end
+		tile.art.Visible = not down
+		tile.back.Visible = down
+		tile.mark.Text = if info.state == "fainted" then stripSpec.FAINTED elseif down then stripSpec.RESTING else ""
+		tile.mark.Rotation = if info.state == "fainted" then math.sin(now * 3) * 12 else 0
+		tile.name.TextTransparency = if down then stripSpec.DOWN_NAME else 0
+		tile.art.ImageColor3 = if wait > 0.05 then Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), stripSpec.COOLING_SHADE) else Color3.new(1, 1, 1)
+		tile.overlay.Text = if wait > 0.05 then tostring(math.ceil(wait)) else ""
+	end
+
+	-- The strip's tiles: rebuilt when the party's cards change, repainted every update
+	local function updateParty(party: { PartyTile }?)
+		if not strip then
+			return
+		end
+		local list = party or {}
+		local keyParts = {}
+		for _, info in list do
+			table.insert(keyParts, `{info.slot}={info.simId}`)
+		end
+		local key = table.concat(keyParts, ",")
+		if key ~= tilesKey then
+			tilesKey = key
+			for _, tile in tiles do
+				tile.frame:Destroy()
+			end
+			tiles = {}
+			for _, info in list do
+				table.insert(tiles, makeTile(strip, info, onTile))
+			end
+		end
+		for index, tile in tiles do
+			local info = list[index]
+			tile.info = info
+			tile.name.Text = info.name
+			tile.art.Image = info.art or ""
+			paintTile(tile, os.clock())
+		end
+	end
 
 	-- Laid out in the HUD's own frame (the screen below Roblox's top bar), so nothing hangs off its bottom; each name
 	-- just under its button
@@ -717,6 +997,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			button.drain.Size = UDim2.fromScale(1, share)
 			button.seconds.Text = if left > 0.05 then tostring(math.ceil(left)) else ""
 		end
+		for _, tile in tiles do
+			paintTile(tile, now)
+		end
 	end)
 
 	-- Wild fights: Call in (the Swap button) only while the window is open, showing the card it brings
@@ -756,6 +1039,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		if wild then
 			updateCallIn(view)
 		end
+		updateParty(view.party)
 		if creatureOnly then
 			updateCreatureOnly(view)
 		else
@@ -808,6 +1092,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			creatureBar.set(view.creatureHp, view.creatureMax)
 		end
 		buttons.signature.frame.Visible = view.hasSignature
+		local ability = Combat.ABILITIES[view.creatureElement]
+		setButtonIcon(buttons.pet.frame, moveIcon(if ability then ability.kind else nil))
+		setButtonIcon(buttons.signature.frame, moveIcon(kindNamed(Combat.SIGNATURES, view.signatureMove)))
 		for name, button in buttons do
 			button.label.Text = string.upper(moveName(name))
 			button.label.Visible = showNames and button.frame.Visible

@@ -230,7 +230,7 @@ return {
 		local valley = require("../src/shared/Config/WildValley")
 		local WildValley = require("../src/shared/Util/WildValley")
 		local placed = WildValley.scenery(valley)
-		for _, list in { valley.BACKDROP, valley.MOUNTAINS } do -- round 2
+		for _, list in { valley.BACKDROP, valley.MOUNTAINS, WildValley.passProps(valley) } do -- round 2, the passes' banks
 			for _, spot in list do
 				table.insert(placed, spot)
 			end

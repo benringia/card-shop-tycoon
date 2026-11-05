@@ -40,7 +40,7 @@ local NAMES = {
 	"Summon", -- client → server: (slot: number?) nil unsummons
 	"PartyChanged", -- server → owner: { slots = { { slot, beastId } }, summoned: number?, perk = { kind, value, text }? }
 	"RequestParty", -- client → server: () resend PartyChanged
-	"WildTravel", -- client → server: (where: "wild" | "home"); server → client: (where) after moving you
+	"WildTravel", -- client → server: (where: "wild" | "home"); server → client: (where) after moving you, "loading" as a trip to the Wild starts, "stay" if it doesn't happen
 	"StartFight", -- client → server: (monsterId: string)
 	"CallIn", -- client → server: (beastId: string) second party card joins, first seconds only
 	"UseAbility", -- client → server: (fighterId: string, which: "element" | "signature")
@@ -69,6 +69,7 @@ local NAMES = {
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"OpenBagPack", -- client → server: (itemId: string) open one pack item from the Bag (LevelUpService; main game)
 	"LevelUpFx", -- server → clients: { kind = "shop", userId, from, to } or { kind = "creature", userId, beastId, element, from, to, fromFight }
+	"MovePreview", -- server → one client, Studio only: { move = "rain" | "vine" | "orbs" | "curse", grade = "C" | "B" | "A" | "S", big } (DevService /movefx)
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped
 	"SwordState", -- server → client: { sword: string?, popup: boolean } your sword and whether to show the first-sword popup; client → server: () ask
@@ -165,6 +166,7 @@ return {
 	UseXpTonic = remotes.UseXpTonic,
 	OpenBagPack = remotes.OpenBagPack,
 	LevelUpFx = remotes.LevelUpFx,
+	MovePreview = remotes.MovePreview,
 	FrontierTravel = remotes.FrontierTravel,
 	WelcomeSeen = remotes.WelcomeSeen,
 	SwordState = remotes.SwordState,

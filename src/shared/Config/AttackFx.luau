@@ -52,10 +52,11 @@ return {
 	-- effect at once (style, colour, how long a lasting one stays, seconds)
 	SPECIALS = {
 		Fireball = { style = "bigball", color = rgb(255, 122, 58) },
-		Wave = { style = "wave", color = rgb(74, 168, 255) },
-		Snare = { style = "snare", color = rgb(74, 222, 128), seconds = 4 },
-		Overcharge = { style = "aura", color = rgb(250, 204, 21), seconds = 3 },
-		Curse = { style = "mist", color = rgb(167, 139, 250), seconds = 5 },
+		-- The finished Pet button moves: their looks are Util/MoveFx's (style "move"; spec 2026-11-05-pet-moves-design)
+		Rain = { style = "move", color = rgb(74, 168, 255), seconds = 5 },
+		Snare = { style = "move", color = rgb(74, 222, 128), seconds = 4 },
+		Overcharge = { style = "move", color = rgb(250, 204, 21), seconds = 3 },
+		Curse = { style = "move", color = rgb(167, 139, 250), seconds = 5 },
 		Inferno = { style = "inferno", color = rgb(255, 90, 26), seconds = 6 },
 		TidalShield = { style = "shield", color = rgb(96, 196, 255), seconds = 4 },
 		Stampede = { style = "stampede", color = rgb(250, 204, 21) },

@@ -49,6 +49,22 @@ local function assertBounded(pose: { [string]: PetRig.Angles }, label: string)
 end
 
 return {
+	-- Pet moves (spec 2026-11-05-pet-moves-design): a higher grade casts with more motion (Config/MoveFx POSE_AMOUNT)
+	["a bigger amount moves the body further"] = function()
+		for _, kind in { "cast", "stomp", "zaphop", "charge" } do
+			for _, p in { 0.3, 0.5 } do
+				local plain = PetRig.body(CFG, kind, p, 1, false)
+				local one = PetRig.body(CFG, kind, p, 1, false, 1)
+				local big = PetRig.body(CFG, kind, p, 1, false, 1.8)
+				for _, key in { "lift", "pitch", "forward" } do
+					expect.near(one[key], plain[key], 1e-9, `{kind} {key}: amount 1 is the plain pose`)
+					expect.near(big[key], plain[key] * 1.8, 1e-9, `{kind} {key} at {p}: 1.8 times`)
+				end
+				assert(math.abs(big.lift) + math.abs(big.pitch) + math.abs(big.forward) > math.abs(plain.lift) + math.abs(plain.pitch) + math.abs(plain.forward), `{kind} moves further at {p}`)
+			end
+		end
+	end,
+
 	["bone names map to roles"] = function()
 		local leg = PetRig.role("0_Left_Limb_1") :: PetRig.Role
 		expect.equal(leg.kind, "leg", "kind")

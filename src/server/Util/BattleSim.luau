@@ -10,7 +10,7 @@
 -- Boss fights also put each player on side A as a player fighter ("a:@<owner>", spec 2026-11-02-you-in-the-fight):
 -- it never auto-attacks and nothing targets it as a creature; its sword hits (swordHit) use its owner's creature's ATK;
 -- at 0 HP it goes down instead of fainting and gets back up after DOWN_SECONDS while one of its owner's creatures
--- stands (else it's out for the fight). Thunderclaps, Wave and Tidal Shield leave it alone. A boss with playerAttacks
+-- stands (else it's out for the fight). Thunderclaps, Healing Rain and Tidal Shield leave it alone. A boss with playerAttacks
 -- hits players two ways: some of its swings become quick hits on a player (a warning, then the hit), and every few
 -- seconds a big attack puts a closing ring on each player (State.ringCheck says who stepped out). Both land
 -- HIT_GRACE after clients show them, so a last-moment dodge still counts. A landed ring leaves the boss's debuff on the
@@ -52,7 +52,7 @@ export type RingInfo = { id: number, target: string, shape: string }
 -- player: a player fighter (boss fights; its owner's player in the fight)
 -- A fight perk (Config/Party FIGHT_PERKS): its kind ("Hype", "Calm", "Express", "Hustle", "Haggle") and value
 export type Perk = { kind: string, value: number }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
 -- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
 -- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean? }
@@ -93,11 +93,13 @@ type Fighter = {
 	atk: number,
 	spd: number,
 	signature: string?,
+	grade: string?, -- a creature's card copy grade (Healing Rain at Grade S heals its player too)
 	elite: boolean,
 	nextAttack: number,
 	abilityReady: number,
 	signatureReady: number,
 	overcharge: number, -- fast attacks left
+	orbs: number, -- Overcharge's orbs: fast attack slots still to come (each spends one, clients draw them)
 	dodgeUntil: number,
 	stunUntil: number,
 	slowUntil: number,
@@ -107,6 +109,10 @@ type Fighter = {
 	burnUntil: number,
 	burnPerSecond: number,
 	burnTick: number,
+	regenLeft: number, -- Healing Rain: heal ticks still to come
+	regenNext: number, -- fight time of the next one
+	regenAmount: number, -- HP each tick heals
+	regenBy: string?, -- the caster's id
 	fainted: boolean,
 	mechanics: Mechanics?,
 	boss: boolean,
@@ -196,12 +202,14 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		atk = input.atk,
 		spd = input.spd,
 		signature = input.signature,
+		grade = input.grade,
 		elite = input.elite == true,
 		nextAttack = if input.player then math.huge else time + CombatMath.getAttackInterval(combat, input.spd),
 		chargedFor = -1,
 		abilityReady = time,
 		signatureReady = time,
 		overcharge = 0,
+		orbs = 0,
 		dodgeUntil = 0,
 		stunUntil = 0,
 		slowUntil = 0,
@@ -211,6 +219,10 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		burnUntil = 0,
 		burnPerSecond = 0,
 		burnTick = 0,
+		regenLeft = 0,
+		regenNext = 0,
+		regenAmount = 0,
+		regenBy = nil,
 		fainted = false,
 		mechanics = mechanics,
 		boss = input.boss == true,
@@ -416,6 +428,8 @@ local function bringIn(state: State, side: Side, incoming: Fighter, events: { Ev
 			table.remove(side.fighters, table.find(side.fighters, out) :: number)
 			table.insert(side.reserves, out)
 		end
+		out.regenLeft = 0 -- Healing Rain stops when its creature leaves the field, and its orbs go
+		out.orbs = 0
 	end
 	table.insert(events, { type = "swap", from = incoming.id, to = if out then out.id else nil })
 end
@@ -526,6 +540,8 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 	target.hp = math.max(0, target.hp - amount)
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true
+		target.regenLeft = 0
+		target.orbs = 0
 		table.insert(events, { type = "faint", to = target.id })
 		local side = (state.sides :: any)[target.side] :: Side
 		if target.boss and not state.result then
@@ -784,6 +800,18 @@ local function burn(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
+-- Healing Rain's ticks (Combat ABILITIES Tide): each due one heals its share, capped at max HP; a long frame catches up
+local function regen(state: State, fighter: Fighter, events: { Event })
+	while not fighter.fainted and fighter.regenLeft > 0 and fighter.regenNext <= state.time + 1e-9 do
+		fighter.regenLeft -= 1
+		fighter.regenNext += state.combat.ABILITIES.Tide.every
+		if not fighter.down and not fighter.out then -- a downed player gets no tick (getting up is its own heal)
+			fighter.hp = math.min(fighter.maxHp, fighter.hp + fighter.regenAmount)
+			table.insert(events, { type = "regen", from = fighter.regenBy, to = fighter.id, heal = fighter.regenAmount })
+		end
+	end
+end
+
 -- A boss with phases moves on when its HP share drops under the next one's: its element and mechanics switch, their
 -- timers start again, phase 1's shield goes away
 local function nextPhase(state: State, fighter: Fighter, events: { Event })
@@ -913,6 +941,7 @@ function BattleSim.step(state: State, dt: number): { Event }
 		for _, fighter in side.fighters do
 			tickDebuff(state, fighter, events)
 			burn(state, fighter, events)
+			regen(state, fighter, events)
 			bossMechanics(state, fighter, events)
 			getUp(state, side, fighter, events)
 			bigAttack(state, fighter, events)
@@ -926,8 +955,24 @@ function BattleSim.step(state: State, dt: number): { Event }
 			end
 			charge(state, fighter, events)
 			if state.time >= fighter.nextAttack then
+				-- An Overcharge slot spends an orb: its attack events say how many are left; stunned through it, it fizzles
+				local spent = fighter.orbs > 0
+				if spent then
+					fighter.orbs -= 1
+				end
 				if state.time >= fighter.stunUntil then
+					local first = #events + 1
 					attack(state, fighter, events)
+					if spent then
+						for index = first, #events do
+							local event = events[index]
+							if event.type == "attack" and event.from == fighter.id then
+								event.orb = fighter.orbs
+							end
+						end
+					end
+				elseif spent then
+					table.insert(events, { type = "orbs", from = fighter.id, left = fighter.orbs })
 				end
 				local next = interval(state, fighter)
 				if fighter.overcharge > 0 then
@@ -1096,18 +1141,30 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 		if target then
 			hit(state, fighter, target, ability.power, events, kind)
 		end
-	elseif kind == "Wave" then
-		-- Heals the user's own creatures (in a group, not the other players': stacked Waves would out-heal any boss)
-		local healed = 0
+	elseif kind == "Rain" then
+		-- Healing Rain (owner 2026-11-05: over time, not at once): the user's own creatures heal `heal` of their max HP in
+		-- `ticks` ticks (in a group, not the other players': stacked rains would out-heal any boss); a recast restarts them
 		for _, ally in standingCreatures(side) do
 			if ally.owner ~= fighter.owner then
 				continue
 			end
-			local amount = math.round(ally.maxHp * ability.heal)
-			ally.hp = math.min(ally.maxHp, ally.hp + amount)
-			healed += amount
+			ally.regenLeft = ability.ticks
+			ally.regenNext = state.time + ability.every
+			ally.regenAmount = math.round(ally.maxHp * ability.heal / ability.ticks)
+			ally.regenBy = fighter.id
 		end
-		table.insert(events, { type = "ability", kind = kind, from = fighter.id, heal = healed })
+		-- A Grade S caster's rain heals its owner's player too (never another player's)
+		if ability.playerHeal and fighter.grade == ability.playerGrade and fighter.owner then
+			for _, other in side.fighters do
+				if other.player and other.owner == fighter.owner and not other.out then
+					other.regenLeft = ability.ticks
+					other.regenNext = state.time + ability.every
+					other.regenAmount = math.round(other.maxHp * ability.playerHeal / ability.ticks)
+					other.regenBy = fighter.id
+				end
+			end
+		end
+		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
 	elseif kind == "Snare" then
 		if target then
 			target.slowUntil, target.slow = state.time + ability.seconds, ability.slow
@@ -1116,6 +1173,7 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 	elseif kind == "Overcharge" then
 		-- Pulling the next attack in is the first fast one; the rest shorten the gaps after it
 		fighter.overcharge = ability.attacks - 1
+		fighter.orbs = ability.attacks
 		fighter.nextAttack = math.min(fighter.nextAttack, state.time + CombatMath.getAttackInterval(state.combat, fighter.spd) / ability.speed)
 		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
 	elseif kind == "Curse" then

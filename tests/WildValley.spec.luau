@@ -509,6 +509,44 @@ return {
 		expect.equal(checked > 0, true, "wide-footed backdrop pieces checked")
 	end,
 
+	-- The owner (2026-11-05, the pass up to the Caves): "this wall leading to caves is awkward ... no walls": each climbing
+	-- pass is lined with rolling terrain banks instead of straight walls, the same every run, grassy where it leaves the
+	-- Meadow; trees and rocks stand on them, never in the walkable pass
+	["the passes are lined with rolling banks, not walls"] = function()
+		local first = WildValley.terrainOps(valley, TownTerrain.trailSegment)
+		local again = WildValley.terrainOps(valley, TownTerrain.trailSegment)
+		local banks, grass = 0, 0
+		for index, op in first do
+			if op.bank then
+				banks += 1
+				expect.equal(op.shape, "Ball", "a bank is a rounded lump")
+				expect.equal(again[index].radius, op.radius, "the same every run")
+				if op.material == "Grass" then
+					grass += 1
+				end
+			end
+		end
+		expect.isNil(valley.PASS.wall, "no pass walls left")
+		assert(banks >= 20, `the passes have banks ({banks})`)
+		assert(grass >= 4, "grassy banks where the trail leaves the Meadow")
+	end,
+
+	["the banks' trees and rocks stand outside the walkable pass"] = function()
+		local spots = WildValley.passProps(valley)
+		assert(#spots >= 8, `trees and rocks on the banks ({#spots})`)
+		local trees = 0
+		for _, spot in spots do
+			expect.equal(WildValley.inside(valley.EDGE, spot), false, `{spot.model} at {spot.x}, {spot.z} is off the walkable pass`)
+			assert(TownTerrain.topAt(OPS, spot.x, spot.z), `{spot.model} at {spot.x}, {spot.z} stands on terrain`)
+			if string.find(spot.model, "Tree") or string.find(spot.model, "Pine") then
+				trees += 1
+			end
+		end
+		assert(trees >= 4, "trees on the banks")
+		local again = WildValley.passProps(valley)
+		expect.equal(again[1].x, spots[1].x, "the same every run")
+	end,
+
 	-- Round 2: the Meadow composed (the owner: "it has random stuffs on it"): one ruin site on a hill, a path up to it
 	["the ruins stand together on the ruin hill"] = function()
 		local circle = valley.STONE_CIRCLE

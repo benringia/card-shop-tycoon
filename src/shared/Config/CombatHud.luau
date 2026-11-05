@@ -44,7 +44,7 @@ return {
 	-- The pet button's tooltip by the creature's element (its ability, Config/Combat ABILITIES)
 	PET_TIPS = {
 		Ember = "Throw a fireball.",
-		Tide = "Heal your creature.",
+		Tide = "Heal your creature over time.",
 		Bloom = "Slow the boss down.",
 		Volt = "Attack super fast.",
 		Shade = "Make the boss hit weaker.",
@@ -72,6 +72,29 @@ return {
 	STATUS_WIDTH = 0.32, -- of the screen's width
 	STATUS_MAX_WIDTH = 340,
 	DOWN_COLOR = rgb(248, 113, 113),
+	-- Boss fights: your party under the status (owner 2026-11-05, option A: "add an indication who to summon, for good
+	-- UX not just numbers"; its look option C: "Remove strong/weak/out just add an effect or animation or icons for
+	-- who's out/dead"). One tile per party card: its painting and name and its key on PC; the one fighting has a light
+	-- running round its edge and a heartbeat pulse in place of its name; a fainted card lies face down (the card back's
+	-- colours, Config/CardDesign BACK) with dizzy stars, one resting since an earlier fight with a Zzz; while swaps cool
+	-- down the others dim with the seconds left. A tap swaps; the strip replaces the Swap button.
+	PARTY_STRIP = {
+		TILE = 72, -- pixels wide (phones PHONE_TILE)
+		PHONE_TILE = 58,
+		ART = 0.7, -- the painting's height, of the tile's width
+		NAME = 12, -- text size (phones one less)
+		GAP = 10, -- pixels between tiles
+		TOP = 14, -- pixels below the status (the keys stick out above the tiles)
+		EDGE = rgb(74, 64, 96),
+		KEY = rgb(244, 195, 58),
+		KEY_INK = rgb(43, 37, 64),
+		RUN = { color = rgb(74, 222, 128), dark = rgb(27, 22, 38), turn = 200 }, -- the running light; degrees a second
+		BEAT = { height = 6, color = rgb(74, 222, 128), seconds = 1.1 }, -- the heartbeat: a bright pulse sweeping across
+		FAINTED = "💫",
+		RESTING = "Zzz",
+		DOWN_NAME = 0.4, -- a face-down card's name transparency
+		COOLING_SHADE = 0.45, -- the painting's darkness while the swap cools down
+	},
 	-- HP bars in the "slanted neon" look (tools/textures/make_hp_bars.py, uploaded): parallelograms slanted like the
 	-- buttons, a dark rim around a sunken well, a glowing edge in the bar's colour, a tick every 20% and a shaded fill
 	-- (top to bottom colours). A hit drops the fill at once, leaves a ghost of the lost HP that holds, then drains, and

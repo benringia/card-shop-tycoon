@@ -39,6 +39,7 @@ local AnnouncementController = require(Controllers:WaitForChild("AnnouncementCon
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local MonsterController = require(Controllers:WaitForChild("MonsterController"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local MovePreviewController = require(Controllers:WaitForChild("MovePreviewController"))
 local BossBoardController = require(Controllers:WaitForChild("BossBoardController"))
 local LootController = require(Controllers:WaitForChild("LootController"))
 local AdminPanelController = require(Controllers:WaitForChild("AdminPanelController"))
@@ -50,6 +51,7 @@ local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
+local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
 
 -- One rounded font for every text in the game, before any screen is built
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
@@ -68,6 +70,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	MovePreviewController.Start() -- Studio only: /movefx plays a Pet button move at a grade
 	BossBoardController.Start() -- the boss ladder (the Frontier bosses' arenas are here)
 	LootController.Start() -- boss loot on the ground
 	AdminPanelController.Start() -- Studio only: the dev commands as buttons
@@ -91,6 +94,7 @@ else
 	ButterflyController.Start()
 	DayCycleController.Start()
 	MusicController.Start() -- music in the town, the Wild valley's areas and its boss arenas
+	WildLoadingController.Start() -- the Wild's loading screen: holds you still until the valley round you is in
 	TreeSwayController.Start()
 	TownCritterController.Start()
 	PlazaNpcController.Start()
@@ -117,6 +121,7 @@ else
 	CreatureController.Start()
 	MonsterController.Start()
 	BattleController.Start()
+	MovePreviewController.Start() -- Studio only: /movefx plays a Pet button move at a grade
 	BossBoardController.Start() -- the boss ladder
 	LootController.Start() -- boss loot on the ground
 	AdminPanelController.Start() -- Studio only: the dev commands as buttons

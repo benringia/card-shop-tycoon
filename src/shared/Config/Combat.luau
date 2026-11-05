@@ -38,7 +38,10 @@ return {
 	ABILITY_WINDUP = 0.5,
 	ABILITIES = {
 		Ember = { kind = "Fireball", name = "Fireball", power = 2.5 },
-		Tide = { kind = "Wave", name = "Wave", heal = 0.25 },
+		-- Healing Rain (was Wave; owner 2026-11-05): `heal` of max HP over `ticks` ticks, one every `every` seconds, the
+		-- first `every` after it lands (BattleSim regen); a `playerGrade` caster's rain also heals its owner's player
+		-- `playerHeal` of their HP over the same ticks (the owner 2026-11-05: "S healing rain also heal player")
+		Tide = { kind = "Rain", name = "Healing Rain", heal = 0.25, ticks = 5, every = 1, playerHeal = 0.15, playerGrade = "S" },
 		Bloom = { kind = "Snare", name = "Vine Snare", slow = 0.4, seconds = 4 },
 		Volt = { kind = "Overcharge", name = "Overcharge", attacks = 3, speed = 2 },
 		Shade = { kind = "Curse", name = "Curse", weaken = 0.3, seconds = 5 },

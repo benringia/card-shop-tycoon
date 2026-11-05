@@ -1098,6 +1098,9 @@ function WildService.TravelToWild(player: Player, at: CFrame?)
 	if not canTravel(player) then
 		return
 	end
+	-- The loading screen goes up at once (Controllers/WildLoadingController, owner 2026-11-05): it covers the waits
+	-- below, and after the move holds you still until the valley round you is in on your device. "stay": no trip.
+	Remotes.WildTravel:FireClient(player, "loading")
 	-- The valley's terrain fills in the background at start: wait for its ground (SceneryService sets the attribute)
 	local ready = WildValleyConfig.TERRAIN_READY_ATTRIBUTE
 	if VALLEY and not workspace:GetAttribute(ready) then
@@ -1107,6 +1110,7 @@ function WildService.TravelToWild(player: Player, at: CFrame?)
 		end
 		if not workspace:GetAttribute(ready) then
 			notify(player, "The Wild is still loading. Try again in a moment.", true)
+			Remotes.WildTravel:FireClient(player, "stay")
 			return
 		end
 	end
@@ -1114,6 +1118,8 @@ function WildService.TravelToWild(player: Player, at: CFrame?)
 	if moveCharacter(player, at or CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))) then
 		inWild[player] = true
 		Remotes.WildTravel:FireClient(player, "wild")
+	else
+		Remotes.WildTravel:FireClient(player, "stay")
 	end
 end
 

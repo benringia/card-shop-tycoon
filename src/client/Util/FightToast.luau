@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Victory = require(Shared:WaitForChild("Config"):WaitForChild("Victory"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 
 local FightToast = {}
 
@@ -43,8 +44,7 @@ local function sound(id: string)
 	if id == "" then
 		return
 	end
-	local s = Instance.new("Sound")
-	s.SoundId = id
+	local s = SoundBank.make(id)
 	s.Volume = Victory.VOLUME * 0.7
 	s.Parent = SoundService
 	s:Play()

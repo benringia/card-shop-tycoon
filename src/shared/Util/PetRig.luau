@@ -355,8 +355,9 @@ function PetRig.cue(cfg: any, kind: string?, progress: number): boolean
 end
 
 -- The whole creature's part of a fidget: lift and forward (studs at size 1), yaw, roll and pitch (radians, positive rears back). boned: a rigged pet, whose
--- look-around is its head's job, not the body's
-function PetRig.body(cfg: any, kind: string?, progress: number, side: number, boned: boolean?): Body
+-- look-around is its head's job, not the body's. amount: how big the move is (a Pet button move's grade, Config/MoveFx
+-- POSE_AMOUNT; 1 when nil): lift, forward, roll and pitch grow with it
+function PetRig.body(cfg: any, kind: string?, progress: number, side: number, boned: boolean?, amount: number?): Body
 	local p = math.clamp(progress, 0, 1)
 	local lift, yaw, roll, pitch, forward = 0, 0, 0, 0, 0
 	if kind and ROARS[kind] then
@@ -578,7 +579,8 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 	elseif kind == "bounce" then
 		lift = cfg.BOUNCE * math.abs(math.sin(p * TAU * 1.5)) * (1 - p)
 	end
-	return { lift = lift, yaw = yaw, roll = roll, pitch = pitch, forward = forward }
+	local scale = amount or 1
+	return { lift = lift * scale, yaw = yaw, roll = roll * scale, pitch = pitch * scale, forward = forward * scale }
 end
 
 function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): { [string]: Angles }

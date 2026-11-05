@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AttackFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("AttackFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 
 local ElementFx = {}
 
@@ -183,8 +184,7 @@ function ElementFx.sound(id: string?, at: Vector3, volume: number?)
 		return
 	end
 	local anchor = holder(at, 4)
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
+	local sound = SoundBank.make(id) -- loaded already (a fresh Sound of a dropped id started late or not at all)
 	-- A little different every time (pitch and loudness), so repeated hits don't sound like one clip on a loop
 	local vary = AttackFx.VARY
 	sound.Volume = AttackFx.VOLUME * (volume or 1) * (vary.volume[1] + math.random() * (vary.volume[2] - vary.volume[1]))
@@ -554,37 +554,6 @@ function ElementFx.special(style: string, caster: Vector3, target: Vector3, colo
 			shockwave(at - Vector3.new(0, 2, 0), color, 9, 0.5)
 			ElementFx.pillar(at - Vector3.new(0, 2, 0), color, 10, 0.4, "flame")
 		end, { scale = 1.8, flames = true })
-	elseif style == "wave" then
-		local base = caster - Vector3.new(0, 2, 0)
-		for step = 0, 2 do
-			task.delay(step * 0.1, function()
-				shockwave(base, color, 6 + step * 2, 0.5)
-			end)
-		end
-		ElementFx.burst(caster, color, 1.4)
-		sparks(caster, color:Lerp(WHITE, 0.4), 30, 30, 1.2, 40)
-	elseif style == "snare" then
-		shockwave(ground, color, 4, 0.4)
-		for index = 1, 5 do
-			local angle = index / 5 * math.pi * 2
-			local root = ground + Vector3.new(math.cos(angle) * 2.5, 0, math.sin(angle) * 2.5)
-			local vine = lasting(Enum.PartType.Block, Vector3.new(0.45, 0.2, 0.45), color, CFrame.new(root), seconds, 0)
-			TweenService:Create(vine, TweenInfo.new(0.35, Enum.EasingStyle.Back), {
-				Size = Vector3.new(0.45, 6, 0.45),
-				CFrame = CFrame.new(root + Vector3.new(0, 3, 0)) * CFrame.Angles(0, angle, math.rad(18)),
-			}):Play()
-		end
-		haze(target, color, seconds, "spark", 2.5, 0.8, 18)
-	elseif style == "aura" then
-		haze(caster, color, seconds, "glow", 2.5, 1.2, 30)
-		for step = 0, 3 do
-			task.delay(step * 0.35, function()
-				ElementFx.bolt(caster + Vector3.new(math.random() * 4 - 2, 4, math.random() * 4 - 2), caster - Vector3.new(0, 1, 0), color, 0.15, 0.6)
-			end)
-		end
-	elseif style == "mist" then
-		haze(target, color, seconds, "smoke", 2.5, 3, 16, false)
-		haze(target, color, seconds, "spark", 2, 0.6, 14)
 	elseif style == "inferno" then
 		ElementFx.pillar(ground, color, 14, seconds, "flame")
 		shockwave(ground, color, 7, 0.6)

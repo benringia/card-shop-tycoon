@@ -19,6 +19,7 @@ local UIStyle = require(Config:WaitForChild("UIStyle"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
 local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 
 local IMAGES = LevelUpConfig.IMAGES
 local T = LevelUpConfig.TIMING
@@ -96,8 +97,7 @@ local function play(part: "sound" | "sting", at: Vector3?, quiet: boolean, creat
 	if quiet then
 		volume *= 0.5
 	end
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
+	local sound = SoundBank.make(id)
 	sound.Volume = volume
 	sound.PlaybackSpeed = pitch
 	local holder: Instance = SoundService

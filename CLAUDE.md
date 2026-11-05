@@ -41,7 +41,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `Config/ProductPictures`): the real models rendered big in a ViewportFrame on magenta, captured with the Studio MCP and
   cut out by `tools/ui-art/cut_product_picture.py <capture> <out.png> [box]`, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
-  `tools/ui-icons/slice_icons.py <sheet> <1-4>` (needs Pillow). Not synced by Rojo.
+  `tools/ui-icons/slice_icons.py <sheet> <1-6>` (needs Pillow); white glyph sheets (5, 6) then
+  `tools/ui-icons/clean_glyphs.py <Name>[:open] ...` (rebuilds the outline the magenta keying eats). Not synced by Rojo.
 - `assets/packs` → ReplicatedStorage.PackModels: the pack, deck box and display box (`Pack.rbxm`, `DeckBox.rbxm`,
   `DisplayBox.rbxm`, each with `Looks/<look>` SurfaceAppearances), built by `tools/blender/build_pack.py`,
   `build_deckbox.py`, `build_displaybox.py` on `pack_kit.py`, textures by `tools/textures/make_pack_textures.py`;
@@ -67,6 +68,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `tools/textures/make_levelup_fx.py`; uploaded as images, ids in `Config/LevelUpFx` IMAGES, not synced.
   `assets/ui/fx-attack`: the fight effects' white textures (glow, streak, bolt, slash, shard...), made by
   `tools/textures/make_attack_fx.py`, uploaded as images (ids in `Config/AttackFx` TEXTURES), not synced.
+  `assets/ui/fx-moves`: the Pet button moves' textures (raindrop, vine, bark, rune, sigil), made by
+  `tools/textures/make_move_fx.py`, uploaded as images (ids in `Config/MoveFx` TEXTURES), not synced.
+  `assets/ui/fx-portal`: the Wild loading screen's spiral (white), made by `tools/textures/make_portal_swirl.py`,
+  uploaded as an image (id in `Config/WildLoading` SWIRL), not synced.
   `assets/ui/fx-sword`: the sword effects' white textures (crescent, burst flipbook, line, star), made by
   `tools/textures/make_sword_fx.py`, uploaded as images (ids in `Config/SwordFx` TEXTURES), not synced. Particle
   textures must be square; a beam runs a texture's height along its length (the bolt is upright).
@@ -99,7 +104,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   still ~75%, the Meadow ~75% with no sword; elite 25-35 s, well ~65%)
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
   CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, SwordArcRules, SwingGate, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, DebuffRules, SwapKeys, SummonMotion, DefeatRules, PetVoice, MusicRules, XpPill, SparkPath, HudMascotRules, ContrastRules, SoftColors, SquishRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, LevelRemap, LevelUpRules, BinderCovers, OrderRules, LevelUpFxConfig, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, HoverRules, ProductPictureRules, ShopDetail: every shop screen sets a draw distance, PortalTrails,
-  TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
+  TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments, MoveFx: the Pet button moves' looks by grade and MoveFxRules, SkillText: a card's skills in words, WildLoadingRules: the Wild's loading screen) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.
 
@@ -175,7 +180,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   item), `/boss <1-6> [fight|group]` (to boss n's gate: in the main game's Wild valley its portal, in the Frontier its ring; 1-3 in the main game, 4-6 in the Frontier; with fight or group, use that prompt; boss 7 is reached through the Dungeon run), `/crowd <0-60>` (players counted in every Wild valley biome on top of the real ones, to see its monsters grow), `/legendarys [foil]` (a Grade S
   copy of every Legendary, to see the lightning on display), `/maxcard <name or number> [foil]` (one copy at max level,
   max stars and Grade S, for testing fights), `/time <morning|afternoon|sunset|night|dawn>` (jump the town's day cycle),
-  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights), `/music [place] <n> [volume]` (loop music option n of a place anywhere: no place the town's `Music.TOWN.options`, or meadow, gorge, ridge, warden, brood, colossus from `Music.WILD`; `/music [place] 0` for the normal tracks).
+  `/intro` (replay the first-visit welcome cinematic), `/swordpopup` (show the first-sword popup again), `/buttonnames` (the combat buttons' names again for 3 boss fights), `/movefx <rain|vine|orbs|curse> [C|B|A|S] [big]` (a Pet button move at a grade on your summoned creature against a dummy, a 14-stud one with big; the admin panel's "Pet moves" buttons), `/music [place] <n> [volume]` (loop music option n of a place anywhere: no place the town's `Music.TOWN.options`, or meadow, gorge, ridge, warden, brood, colossus from `Music.WILD`; `/music [place] 0` for the normal tracks).
 - Admin panel (Studio only): the "Admin" tile on the left opens every dev command as a button (`Config/AdminPanel`,
   `AdminPanelController`, remote `DevPanel` handled only in Studio), plus +1/+10 of every item and Go/Fight/Group per boss.
 - Multiplayer: Test tab → Local Server, 2 players.

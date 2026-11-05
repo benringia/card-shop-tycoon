@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Party = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
 local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 
 local SummonFx = {}
 
@@ -76,8 +77,7 @@ local function play(spec: { id: string, volume: number, pitch: number }, at: Vec
 	local anchor = Instance.new("Attachment")
 	anchor.Position = at -- Terrain sits at the origin, so this is the world position
 	anchor.Parent = workspace.Terrain
-	local sound = Instance.new("Sound")
-	sound.SoundId = spec.id
+	local sound = SoundBank.make(spec.id)
 	sound.Volume = spec.volume
 	sound.PlaybackSpeed = spec.pitch
 	sound.RollOffMode = Enum.RollOffMode.InverseTapered
