@@ -2052,7 +2052,10 @@ their saved data.
 
 ### 10.6 UI style and HUD
 - **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
-  Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on: "Opening your
+  Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on (since
+  2026-11-05 in the Wild screen's feel, the owner's option B "the card fan in the swirl": the fan in front of the Wild
+  screen's spiral twice, gold in front and pink behind, turning against each other, over the First Spark cover's sky
+  dimmed and darker at the top and bottom; the teleport copy too): "Opening your
   shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Stocking the shelves...", "Waking up your creature...",
   "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
   your own cards' paintings (small copies from the first `CollectionChanged`, kept drawn tiny in a hidden
