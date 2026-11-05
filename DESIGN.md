@@ -328,6 +328,15 @@ is over UI (`UIKit.pointerBlocked`).
   Cases or the Card Condenser). If something on their list isn't stocked, they check up to 2 more shelves
   (`SEARCH_SHELVES`) before showing the "no stock" bubble. In the queue they face the register.
 - If they wait too long in the queue they leave (no sale).
+- **Types** (`Config/Customers` TYPES, picked by `Util/CustomerTypes`, Lune-tested; spec
+  `docs/superpowers/specs/2026-11-06-customers-design.md`): plain 55%, kid 20%, collector 10% (only with a Glass
+  Showcase), bargain hunter 10%, big spender 5% (from shop level 11). Types a shop can't have share their weight out.
+  Each wears simple welded props (kid: cap and a pack, smaller at 0.82 scale; collector: glasses and a binder;
+  bargain hunter: bucket hat and coupon; big spender: shades and a gold chain) and shows its icon in a bubble on
+  arrival. Kids buy 1-2 of the cheapest pack the shop sells. Bargain hunters and big spenders buy one price band
+  higher than plain customers (`Pricing.BUY_BANDS`, past the last band more bands as wide as the last); past that
+  they won't buy and get annoyed. Big spenders buy a display box (`BIG_SPENDER.box`) or a stack of 6-12 packs and
+  tip 10% at the register.
 - Customer spawn rate scales with **shop rating** (cleanliness of stock, price fairness, decor score).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 

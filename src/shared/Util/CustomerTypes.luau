@@ -44,22 +44,36 @@ function CustomerTypes.tolerance(cfg: any, kind: string): number
 	return if spec and spec.tolerance then spec.tolerance else 0
 end
 
--- Whether this type buys at `price` against `market`: its band (past the last band counts as one more), shifted
--- `tolerance` bands cheaper; past the last band it never buys, else the band's chance (raised by a perk) against roll
-function CustomerTypes.buys(cfg: any, kind: string, price: number, market: number, roll: number, perkBonus: number, bands: { Band }): boolean
-	if market <= 0 then
-		return false
+-- The band a price falls in for this type: its index in `bands` (past the last band, more bands follow as wide as the
+-- last one), shifted `tolerance` bands cheaper; past the last band means it won't buy
+local function shiftedBand(cfg: any, kind: string, price: number, market: number, bands: { Band }): number
+	if market <= 0 or #bands == 0 then
+		return #bands + 1
 	end
 	local ratio = price / market
-	local index = #bands + 1
+	local index: number? = nil
 	for i, band in bands do
 		if ratio <= band.maxRatio + 1e-9 then
 			index = i
 			break
 		end
 	end
-	index = math.max(1, index - CustomerTypes.tolerance(cfg, kind))
-	local band = bands[index]
+	if not index then
+		local last = bands[#bands].maxRatio
+		local width = last - (if #bands > 1 then bands[#bands - 1].maxRatio else 0)
+		index = #bands + math.max(1, math.ceil((ratio - last) / math.max(width, 1e-6) - 1e-9))
+	end
+	return math.max(1, (index :: number) - CustomerTypes.tolerance(cfg, kind))
+end
+
+-- Whether this type won't buy at all at `price` (past its last band): the annoyed bubble
+function CustomerTypes.outOfReach(cfg: any, kind: string, price: number, market: number, bands: { Band }): boolean
+	return shiftedBand(cfg, kind, price, market, bands) > #bands
+end
+
+-- Whether this type buys at `price` against `market`: its shifted band's chance (raised by a perk) against roll
+function CustomerTypes.buys(cfg: any, kind: string, price: number, market: number, roll: number, perkBonus: number, bands: { Band }): boolean
+	local band = bands[shiftedBand(cfg, kind, price, market, bands)]
 	if not band then
 		return false
 	end

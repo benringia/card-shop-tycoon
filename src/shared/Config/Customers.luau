@@ -66,6 +66,10 @@ return {
 	-- instead); scale: the rig's size; colors: their clothes (rgb, picked at random); props: parts welded to a body
 	-- part, size and offset in studs (offset from the part's centre, -Z the front), plain colours
 	TYPE_ORDER = { "plain", "kid", "collector", "bargain", "bigSpender" },
+	-- A kid buys this many of the cheapest pack; a big spender the booster box when stocked (else this many packs) and
+	-- tips `tip` of the total when every price is at or under market
+	KID = { units = { 1, 2 } },
+	BIG_SPENDER = { box = "FirstSparkBox", packs = { 6, 12 }, tip = 0.1 },
 	TYPES = {
 		plain = { weight = 0.55, props = {} },
 		kid = {

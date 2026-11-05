@@ -10,13 +10,17 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
+local Packs = require(Config:WaitForChild("Packs"))
+local Pricing = require(Config:WaitForChild("Pricing"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local NpcMotion = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("NpcMotion"))
@@ -45,6 +49,7 @@ type Item = {
 export type Customer = {
 	plot: Plot,
 	owner: Player,
+	kind: string, -- its type (Config/Customers TYPES: plain, kid, collector, bargain, bigSpender)
 	model: Model,
 	humanoid: Humanoid,
 	root: BasePart,
@@ -69,6 +74,14 @@ local rng = Random.new()
 local customersFolder: Folder
 local reachedCounterCallbacks: { CustomerCallback } = {}
 local leftQueueCallbacks: { CustomerCallback } = {}
+-- How each visit went, for the shop rating (RatingService): "paid", "annoyed", "gaveUp", "noStock", "happyMoment"
+local outcomeCallbacks: { (owner: Player, outcome: string) -> () } = {}
+
+local function fireOutcome(owner: Player, outcome: string)
+	for _, callback in outcomeCallbacks do
+		task.spawn(callback, owner, outcome)
+	end
+end
 
 local function runCallbacks(callbacks: { CustomerCallback }, customer: Customer)
 	for _, callback in callbacks do
@@ -125,18 +138,58 @@ local function pickColor(colors: { { number } }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
-local function createModel(spawnCFrame: CFrame): Model
+-- A type's props (Config/Customers TYPES props): plain parts welded to a body part, sized with the rig
+local function addProps(model: Model, props: { any }, scale: number)
+	for _, prop in props do
+		local base = model:FindFirstChild(prop.part)
+		if not base or not base:IsA("BasePart") then
+			continue
+		end
+		local part = Instance.new("Part")
+		part.Name = "Prop"
+		part.Shape = if prop.shape == "Ball" then Enum.PartType.Ball elseif prop.shape == "Cylinder" then Enum.PartType.Cylinder else Enum.PartType.Block
+		part.Size = Vector3.new(prop.size[1], prop.size[2], prop.size[3]) * scale
+		part.Color = Color3.fromRGB(prop.color[1], prop.color[2], prop.color[3])
+		part.Material = Enum.Material.SmoothPlastic
+		part.Massless = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.CFrame = base.CFrame * CFrame.new(Vector3.new(prop.offset[1], prop.offset[2], prop.offset[3]) * scale)
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = base
+		weld.Part1 = part
+		weld.Parent = part
+		part.Parent = model
+	end
+end
+
+-- Today's blocky customer in its type's clothes, size and props (spec 2026-11-06-customers-design, option B)
+local function createModel(spawnCFrame: CFrame, kind: string): Model
+	local spec = CustomerConfig.TYPES[kind] or CustomerConfig.TYPES.plain
+	local colors = spec.colors
 	local description = Instance.new("HumanoidDescription")
 	local skin = pickColor(CustomerConfig.SKIN_COLORS)
 	description.HeadColor = skin
 	description.LeftArmColor = skin
 	description.RightArmColor = skin
-	description.TorsoColor = pickColor(CustomerConfig.CLOTHES_COLORS)
-	local legs = pickColor(CustomerConfig.CLOTHES_COLORS)
+	description.TorsoColor = pickColor(if colors then colors.torso else CustomerConfig.CLOTHES_COLORS)
+	local legs = pickColor(if colors then colors.legs else CustomerConfig.CLOTHES_COLORS)
 	description.LeftLegColor = legs
 	description.RightLegColor = legs
+	local scale = spec.scale or 1
+	if scale ~= 1 then
+		description.HeightScale = scale
+		description.WidthScale = scale
+		description.DepthScale = scale
+		description.HeadScale = scale
+	end
 
-	return NpcMotion.createRig(description, "Customer", spawnCFrame)
+	local model = NpcMotion.createRig(description, "Customer", spawnCFrame)
+	model:SetAttribute("CustomerType", kind)
+	addProps(model, spec.props, scale)
+	return model
 end
 
 -- A mood icon over the customer's head (Config/UIIcons name), or the text itself if there's no such icon
@@ -236,9 +289,38 @@ local function leaveShop(customer: Customer)
 	despawn(customer, true)
 end
 
--- Products this shop has unlocked, so customers only ask for things the owner could stock
-local function pickShoppingList(owner: Player): { [string]: number }
+-- The cheapest pack (a product that opens into cards, Config/Packs) this shop has unlocked
+local function cheapestPack(level: number): string?
+	local best: any = nil
+	for _, product in Products.List do
+		if product.unlockLevel <= level and Packs.ById[product.id] and (not best or product.marketPrice < best.marketPrice) then
+			best = product
+		end
+	end
+	return if best then best.id else nil
+end
+
+local findStockedShelf: (owner: Player, productId: string) -> PlacedShelf?
+
+-- Products this shop has unlocked, so customers only ask for things the owner could stock. A kid wants a pack or two,
+-- a big spender a booster box when one is stocked (else a stack of packs)
+local function pickShoppingList(owner: Player, kind: string): { [string]: number }
 	local level = EconomyService.GetLevel(owner)
+	if kind == "kid" or kind == "bigSpender" then
+		local list: { [string]: number } = {}
+		local box = CustomerConfig.BIG_SPENDER.box
+		local boxProduct = Products.ById[box]
+		if kind == "bigSpender" and boxProduct and boxProduct.unlockLevel <= level and findStockedShelf(owner, box) then
+			list[box] = 1
+			return list
+		end
+		local pack = cheapestPack(level)
+		if pack then
+			local units = if kind == "kid" then CustomerConfig.KID.units else CustomerConfig.BIG_SPENDER.packs
+			list[pack] = rng:NextInteger(units[1], units[2])
+		end
+		return list
+	end
 	local unlocked = {}
 	for _, product in Products.List do
 		if product.unlockLevel <= level then
@@ -257,7 +339,7 @@ local function pickShoppingList(owner: Player): { [string]: number }
 	return list
 end
 
-local function findStockedShelf(owner: Player, productId: string): PlacedShelf?
+findStockedShelf = function(owner: Player, productId: string): PlacedShelf?
 	local candidates = {}
 	for _, shelf in PlacementService.GetShelves(owner) do
 		if shelf.productId == productId and shelf.units > 0 then
@@ -312,13 +394,15 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 
 	local product = Products.ById[productId]
 	local price = PricingService.GetPrice(customer.owner, productId)
-	local band = PriceRules.getBand(price, product.marketPrice)
-	if not band then
+	-- By its type (Util/CustomerTypes): bargain hunters and big spenders still buy a band higher than the rest
+	if CustomerTypes.outOfReach(CustomerConfig, customer.kind, price, product.marketPrice, Pricing.BUY_BANDS) then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+		fireOutcome(customer.owner, "annoyed")
 		return true
 	end
 	-- Haggle (Shade creature summoned): more willing to buy at the owner's price
-	if rng:NextNumber() > math.min(1, band.chance * (1 + PartyService.GetPerk(customer.owner, "Haggle"))) then
+	local haggle = PartyService.GetPerk(customer.owner, "Haggle")
+	if not CustomerTypes.buys(CustomerConfig, customer.kind, price, product.marketPrice, rng:NextNumber(), haggle, Pricing.BUY_BANDS) then
 		return true
 	end
 
@@ -357,6 +441,7 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 	local band = PriceRules.getBand(displayed.price, CardRules.getMarketValue(card, displayed.foil, level, stars, displayed.grade))
 	if not band then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+		fireOutcome(customer.owner, "annoyed")
 		return true
 	end
 	-- Haggle (Shade creature summoned): more willing to buy at the owner's price
@@ -399,6 +484,7 @@ local function searchShelves(customer: Customer, visited: { [string]: boolean })
 		task.wait(CustomerConfig.BROWSE_SECONDS)
 	end
 	showBubble(customer, CustomerConfig.BUBBLE_NO_STOCK)
+	fireOutcome(customer.owner, "noStock")
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
 
@@ -456,12 +542,18 @@ local function waitInQueue(customer: Customer)
 
 	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_GAVE_UP)
+	fireOutcome(customer.owner, "gaveUp")
 end
 
 local function run(customer: Customer)
 	local visited: { [string]: boolean } = {} -- shelf uids this customer has looked at
 	local missing = false -- something on their list wasn't on any shelf
-	for productId, wanted in pickShoppingList(customer.owner) do
+	-- Its type's icon pops over it as it walks in (the collector shows the card it wants instead, CustomerController)
+	local icon = (CustomerConfig.TYPES[customer.kind] or {}).icon
+	if icon then
+		showBubble(customer, icon)
+	end
+	for productId, wanted in pickShoppingList(customer.owner, customer.kind) do
 		if not shopFor(customer, productId, wanted, visited) then
 			missing = true
 		end
@@ -496,9 +588,20 @@ local function run(customer: Customer)
 	end
 end
 
+-- Whether the owner shows a card to customers (a Glass Showcase holding one): collectors only come then
+local function showsCards(owner: Player): boolean
+	for _, shelf in PlacementService.GetShelves(owner) do
+		if shelf.def.kind == "CustomerCards" and next(shelf.cards) ~= nil then
+			return true
+		end
+	end
+	return false
+end
+
 local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 	local entry = getEntryCFrame(plot)
-	local model = createModel(entry)
+	local kind = CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
+	local model = createModel(entry, kind)
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	humanoid.WalkSpeed = CustomerConfig.WALK_SPEED
@@ -508,6 +611,7 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState)
 	local customer: Customer = {
 		plot = plot,
 		owner = owner,
+		kind = kind,
 		model = model,
 		humanoid = humanoid,
 		root = root,
@@ -580,14 +684,41 @@ function CustomerService.OnLeftQueue(callback: CustomerCallback)
 	table.insert(leftQueueCallbacks, callback)
 end
 
+-- A big spender tips a share of the total when every product was at or under market (Config/Customers BIG_SPENDER)
+local function tipFor(customer: Customer): number
+	if customer.kind ~= "bigSpender" then
+		return 0
+	end
+	local total = 0
+	for _, item in customer.items do
+		local product = if item.productId then Products.ById[item.productId] else nil
+		if product and item.unitPrice > product.marketPrice + 1e-9 then
+			return 0
+		end
+		total += item.unitPrice * item.units
+	end
+	return math.round(total * CustomerConfig.BIG_SPENDER.tip * 100) / 100
+end
+
 -- The customer paid: their items are sold (not returned to shelves) and they head out happy
 function CustomerService.CompletePurchase(customer: Customer)
 	if not customer.alive then
 		return
 	end
+	local tip = tipFor(customer)
+	if tip > 0 then
+		EconomyService.AddCash(customer.owner, tip)
+		Remotes.Notify:FireClient(customer.owner, string.format("Tip! +$%.2f", tip), false, "side")
+	end
 	table.clear(customer.items)
 	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
+	fireOutcome(customer.owner, "paid")
+end
+
+-- Each visit's outcome ("paid", "annoyed", "gaveUp", "noStock", "happyMoment"), for the shop rating
+function CustomerService.OnOutcome(callback: (owner: Player, outcome: string) -> ())
+	table.insert(outcomeCallbacks, callback)
 end
 
 function CustomerService.Start()

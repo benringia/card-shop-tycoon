@@ -38,6 +38,17 @@ return {
 		expect.equal(CustomerTypes.buys(Customers, "plain", 1.3, 1, 0.16, 0.1, BANDS), true, "a perk bonus (Haggle) raises the chance")
 	end,
 
+	-- Past even a tolerant type's last band they won't buy and get annoyed, as a plain customer does past the last band
+	["out of reach: past the last band, a tolerant type's one band later"] = function()
+		expect.equal(CustomerTypes.outOfReach(Customers, "plain", 1.6, 1, BANDS), true)
+		expect.equal(CustomerTypes.outOfReach(Customers, "plain", 1.5, 1, BANDS), false)
+		expect.equal(CustomerTypes.outOfReach(Customers, "bargain", 1.6, 1, BANDS), false, "one band more")
+		expect.equal(CustomerTypes.outOfReach(Customers, "bargain", 1.8, 1, BANDS), false, "the next band is as wide as the last (1.5 to 1.8)")
+		expect.equal(CustomerTypes.outOfReach(Customers, "bargain", 1.81, 1, BANDS), true, "past that, out of reach")
+		expect.equal(CustomerTypes.buys(Customers, "bargain", 9, 1, 0, 0, BANDS), false, "far past every band: never")
+		expect.equal(CustomerTypes.outOfReach(Customers, "kid", 1.6, 1, BANDS), true)
+	end,
+
 	["every type has an icon and props"] = function()
 		for _, kind in Customers.TYPE_ORDER do
 			local spec = Customers.TYPES[kind]

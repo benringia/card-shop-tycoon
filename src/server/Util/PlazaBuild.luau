@@ -364,16 +364,15 @@ local function buildSitter(parent: Instance, seatTop: CFrame, index: number)
 	local sitter = Plaza.SITTER
 	local description = Instance.new("HumanoidDescription")
 	-- Config/Customers keeps its colours as { r, g, b } (plain data for the Lune tests)
-	local function rgb(colors: { { number } }, at: number): Color3
-		local c = colors[at % #colors + 1]
-		return Color3.fromRGB(c[1], c[2], c[3])
+	local function pick(colors: { { number } }, slot: number): Color3
+		return rgb(colors[slot % #colors + 1])
 	end
-	local skin = rgb(Customers.SKIN_COLORS, index * 2)
+	local skin = pick(Customers.SKIN_COLORS, index * 2)
 	description.HeadColor = skin
 	description.LeftArmColor = skin
 	description.RightArmColor = skin
-	description.TorsoColor = rgb(Customers.CLOTHES_COLORS, index * 3)
-	local legs = rgb(Customers.CLOTHES_COLORS, index * 5 + 1)
+	description.TorsoColor = pick(Customers.CLOTHES_COLORS, index * 3)
+	local legs = pick(Customers.CLOTHES_COLORS, index * 5 + 1)
 	description.LeftLegColor = legs
 	description.RightLegColor = legs
 	local rig = NpcMotion.createRig(description, "Townsfolk", seatTop)
