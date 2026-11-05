@@ -21,7 +21,8 @@ local NAMES = {
 	-- triesLeft }
 	"OfferUpdate",
 	"OfferAction", -- client → server: (id: number, action: "accept"|"counter"|"decline", price: number?)
-	-- server → owner: { rating: number, parts: { { name, score, weight } } } (RatingService, heaviest part first)
+	-- server → owner: { rating: number, parts: { { name, score, weight, known } } } (RatingService, heaviest part first;
+	-- known false: scored neutral for want of anything to score, so no tip)
 	"RatingUpdate",
 	"LevelUp", -- server → client: (level: number)
 	"DropBox", -- client → server: put carried boxes back on the delivery pad

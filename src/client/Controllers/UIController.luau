@@ -35,7 +35,7 @@ local ICON_SIZE = HudLayout.STATUS_ICON -- the coin and the star poke out past t
 local STATUS_MARGIN = 12
 -- Fixed sizes, not AutomaticSize: an auto-sized frame anchored to the right edge can lay out past the screen edge
 local STATUS_WIDTH = 250
-local STATUS_HEIGHT = 48 + 2 * 42 + 2 * 8 -- buff badge + two pills (cash, level) + gaps
+local STATUS_HEIGHT = 48 + 2 * 42 + 48 + 3 * 8 -- buff badge + two pills (cash, level) + the rating chip (RatingController) + gaps
 local STATUS_ROW_WIDTH = 500 -- party bar + gap + status column; spare width is empty and lets clicks through
 -- Everything in the corner shrinks with the screen's height (Hud.scaleWith, HudLayout.SCALE). On touch screens
 -- (landscape phones are short, the jump button takes the bottom right) it is one column down the right edge from

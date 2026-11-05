@@ -389,7 +389,13 @@ is over UI (`UIKit.pointerBlocked`).
   last 20 visits; neutral with none) and decor at weight 0 until the Decor system (then a config weight plus its
   score). 1 + 4 x the weighted mean, smoothed over about 90 s (a fresh join starts at its score). Not saved. The stars
   show on the shop's sign, filled by quarters (`PlotService.SetSignRating`); the gap between customers is x1.4 at 1
-  star, x1.0 at 3, x0.6 at 5. The owner gets `RatingUpdate` (rating and parts) for the tips chip.
+  star, x1.0 at 3, x0.6 at 5. The owner gets `RatingUpdate` (rating and parts; a part with nothing to score yet, like
+  prices with nothing stocked, is marked unknown). Scoring starts once the shop has loaded (RatingService registers
+  with DataService after PlacementService).
+- **Rating chip** (`RatingController`): a white pill in the status column between cash and XP with five stars filled
+  by quarters and the number (48 px tap area). Tapping opens a cotton candy "Shop rating" window: the stars and
+  whether customers come more or less often, then a line per part that counts, heaviest first: ✅ what's good or ⚠️
+  what to fix (`Customers.RATING_TIPS`); unknown parts get no line.
 
 ---
 

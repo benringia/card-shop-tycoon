@@ -121,6 +121,17 @@ return {
 		sendStep = 0.05,
 		-- The stars on the shop's sign (PlotService.SetSignRating): a row along the sign's bottom, filled by quarters
 		sign = { rowHeight = 0.32, nameHeight = 0.68, dim = 0.72, color = { 255, 205, 60 } },
+		-- The HUD chip (RatingController): a white pill of stars and the number in a 48 px tap area
+		chip = { height = 36, hit = 48, star = 18, text = 18 },
+		tipsHeight = 250, -- the tips window's height in pixels
+	},
+	-- The tips window's lines per rating part: good when it scores RATING.goodFrom or more, else the fix
+	RATING_TIPS = {
+		stocked = { good = "Shelves stocked", fix = "Restock empty shelves" },
+		prices = { good = "Fair prices", fix = "Lower the prices customers find too high" },
+		displays = { good = "Great cards on display", fix = "Put a rare card in a Glass Showcase to draw collectors" },
+		happy = { good = "Happy customers", fix = "Keep stock in and serve the queue quickly" },
+		decor = { good = "A cosy shop", fix = "Decorate your shop" },
 	},
 	-- Reactions (Util/ReactionRules): passing within `reach` studs of a case holding an Epic, Legendary or foil card a
 	-- customer stops `seconds` with a whoa (a Legendary holds `crowd` at once); within `petReach` of your summoned

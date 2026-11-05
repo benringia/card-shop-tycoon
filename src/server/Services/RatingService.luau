@@ -19,6 +19,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local CustomerService = require(Services:WaitForChild("CustomerService"))
+local DataService = require(Services:WaitForChild("DataService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
@@ -27,17 +28,19 @@ type State = {
 	rating: number?, -- nil until the first tick (then it starts at the shop's score, not at 3)
 	history: { string }, -- the last visits' outcomes, newest last
 	parts: { [string]: number },
+	unknown: { [string]: boolean }, -- parts scored neutral for want of anything to score (no tip for them)
 	lastSent: number?,
 }
 
 local RatingService = {}
 
 local states: { [Player]: State } = {}
+local loaded: { [Player]: boolean } = {} -- shops whose shelves and cases have loaded (scored only then)
 
 local function stateOf(owner: Player): State
 	local state = states[owner]
 	if not state then
-		state = { history = {}, parts = {} }
+		state = { history = {}, parts = {}, unknown = {} }
 		states[owner] = state
 	end
 	return state
@@ -66,6 +69,7 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 		end
 	end
 	local chances: { number } = {}
+	state.unknown = { happy = #state.history == 0 }
 	for productId in stockedProducts do
 		local product = Products.ById[productId]
 		if product then
@@ -73,6 +77,7 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 			table.insert(chances, if band then band.chance else 0)
 		end
 	end
+	state.unknown.prices = #chances == 0
 	return {
 		stocked = RatingRules.stocked(stocked, productShelves),
 		prices = RatingRules.prices(chances, Pricing.BUY_BANDS[1].chance),
@@ -84,9 +89,9 @@ end
 
 local function send(owner: Player, state: State)
 	local weights = CustomerConfig.RATING.parts
-	local parts: { { name: string, score: number, weight: number } } = {}
+	local parts: { { name: string, score: number, weight: number, known: boolean } } = {}
 	for _, tip in RatingRules.tips(state.parts, weights, CustomerConfig.RATING.goodFrom) do
-		table.insert(parts, { name = tip.name, score = state.parts[tip.name] or 0, weight = weights[tip.name] })
+		table.insert(parts, { name = tip.name, score = state.parts[tip.name] or 0, weight = weights[tip.name], known = not state.unknown[tip.name] })
 	end
 	Remotes.RatingUpdate:FireClient(owner, { rating = state.rating, parts = parts })
 end
@@ -95,7 +100,7 @@ local function tick()
 	local cfg = CustomerConfig.RATING
 	for _, plot in PlotService.GetPlots() do
 		local owner = plot.owner
-		if not owner then
+		if not owner or not loaded[owner] then
 			continue
 		end
 		local state = stateOf(owner)
@@ -125,6 +130,18 @@ function RatingService.SpawnScale(owner: Player): number
 end
 
 function RatingService.Start()
+	-- Registered after PlacementService, so a shop is first scored with its shelves and cases loaded. Nothing is saved.
+	DataService.Register({
+		name = "RatingService",
+		load = function(player)
+			loaded[player] = true
+		end,
+		save = function() end,
+		unload = function(player)
+			loaded[player] = nil
+			states[player] = nil
+		end,
+	})
 	CustomerService.UseSpawnScale(RatingService.SpawnScale)
 	CustomerService.OnOutcome(function(owner, outcome)
 		if not owner.Parent then
