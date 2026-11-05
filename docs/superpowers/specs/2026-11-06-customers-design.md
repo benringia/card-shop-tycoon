@@ -94,12 +94,15 @@ glance at one showcase card). This round gives customers reasons to be noticed a
 - A kid only offers a **Very Rare or better** pull (every pack's last card is already Rare or better, so "Rare or
   better" would mean every kid offers; Very Rare or better is about 3 rips in 10), at about what it's worth for its
   grade (a small "friend" discount at most, ~10%).
-- **Ceilings, never guarantees**: nothing makes a kid pull anything; the pull is the pack's real odds. The limits only
-  stop lucky streaks from piling up *(my call for the numbers: at most 4 kid offers an hour per shop, and never two
-  Legendary offers within 3 hours, counted per session)*. For scale: a busy shop sees maybe 20-40 kid rips an hour, a
-  Legendary is about 1 rip in 100, so a Legendary offer comes roughly once every 2.5-5 hours of busy play; the ceiling
-  only trims the rare hour with two. A Legendary offer is a celebrated moment (spotlight, sound). The economy simulator
-  decides whether these numbers move its targets.
+- **Not every kid sells** (owner 2026-11-06): a kid with a Very Rare or better pull offers it only by chance, by its
+  rarity: Very Rare 40%, Epic 30%, Legendary 30% (the owner's number); and by its grade, a shinier copy being kept more
+  often *(my call: chance x1.15 for C, x1.0 B, x0.85 A, x0.7 S; a Legendary averages about 30%)*. Offers then come at
+  random through the hour: about 2 an hour with 20 kid rips, 4 with 40.
+- **Ceilings, never guarantees**: nothing makes a kid pull or sell anything. The limits are a safety net against lucky
+  streaks that the chances above should almost never reach *(my call: at most 4 kid offers an hour per shop, never two
+  Legendary offers within 3 hours, counted per session)*. For scale: a Legendary is about 1 rip in 100 and 30% of those
+  are offered, so a Legendary offer comes roughly once every 8-17 hours of busy play: a celebrated moment (spotlight,
+  sound). All of these are config numbers; the economy simulator decides whether they move its targets.
 - **Collectors pay a modest premium** (about 1.3x what the card's worth) so buy-from-kid, sell-to-collector isn't a
   reliable loop.
 - The economy simulator gets kid offers added and its targets are checked.
@@ -119,7 +122,8 @@ glance at one showcase card). This round gives customers reasons to be noticed a
   has a Glass Showcase), 10% bargain hunter, 5% big spender (from shop level 11, when the booster box unlocks).
 - **Kid**: shops for the cheapest pack product (1-2 packs). After paying they rip one pack at the counter (a short
   reveal over the counter everyone nearby sees: their best card pops up, a cheer for Very Rare or better). If it's Very
-  Rare or better and under the ceilings, the offer comes up in your panel; otherwise they leave happy.
+  Rare or better, they want to sell (the chance above) and it's under the ceilings, the offer comes up in your panel;
+  otherwise they leave happy with their card.
 - **Collector** *(my call)*: wants one card: half the time one you own (binder or display) so it can happen, half any
   Set 1 card weighted by rarity (something to chase). Walks the Glass Showcases; buys the wanted card at up to about
   1.3x its worth; otherwise leaves with a disappointed bubble. Also buys from the shelves like a plain customer.
