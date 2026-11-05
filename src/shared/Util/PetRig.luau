@@ -389,6 +389,14 @@ function PetRig.body(cfg: any, kind: string?, progress: number, side: number, bo
 		else
 			lift = -cfg.ZAPHOP_CROUCH * 0.5 * math.sin((p - 0.75) / 0.25 * math.pi)
 		end
+	elseif kind == "leap" then
+		-- A super's wind-up (owner 2026-11-05: "jump high up"): springs up by LEAP_RISE, hovers there bobbing, arms raised
+		-- (the sunburst's arms in PetRig.pose), and drops over the last LEAP_FALL to land as the move hits
+		local rise = math.sin(math.min(1, p / cfg.LEAP_RISE) * math.pi / 2)
+		local fall = math.clamp((p - (1 - cfg.LEAP_FALL)) / cfg.LEAP_FALL, 0, 1)
+		rise *= 1 - fall * fall
+		lift = cfg.LEAP_HEIGHT * rise + 0.12 * math.sin(p * TAU * 2) * rise
+		pitch = math.rad(8) * rise
 	elseif kind == "charge" then
 		-- Crouch and draw back over the first third, then hold it (the attack's charge)
 		local held = math.sin(math.min(1, p / 0.35) * math.pi / 2)
@@ -622,6 +630,10 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local slamming = if fidget == "lavaslam" then idle else 0
 	-- A sunburst: both arms swing up overhead, straight, and hold there while the sun forms and bursts
 	local sunning = if fidget == "sunburst" then sunRaise(progress) * idle else 0
+	-- A super's leap: both arms up overhead together, like the sunburst's, held while it hovers
+	if fidget == "leap" then
+		sunning = math.sin(math.min(1, progress / cfg.LEAP_RISE) * math.pi / 2) * idle
+	end
 	-- Sea otter fidgets: sitting up on its hind legs to rub its face with its front paws, or to tap a shell
 	local grooming = if fidget == "groom" then hold(progress) * idle else 0
 	local cracking = if fidget == "shellcrack" then hold(progress) * idle else 0

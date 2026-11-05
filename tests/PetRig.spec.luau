@@ -1109,4 +1109,18 @@ return {
 			expect.equal(typeof(CFG.FIDGET_SECONDS[kind]), "number", kind)
 		end
 	end,
+	-- Super moves (owner 2026-11-05): Inferno and Magma Slam "jump high up" for their wind-up, then land into the move
+	-- Studio check: holding it up to the end snapped the creature 11 studs down as the move fired; it drops fast at
+	-- the end instead and lands as the move hits (Magma Slam's slam)
+	["a leap rises high, hovers, then drops to land as the wind-up ends"] = function()
+		local top = PetRig.body(CFG, "leap", 0.4, 1)
+		expect.equal(top.lift > CFG.ZAPHOP_HEIGHT, true, "higher than a hop")
+		local hover = PetRig.body(CFG, "leap", 0.7, 1)
+		expect.equal(hover.lift > CFG.ZAPHOP_HEIGHT, true, "still up while it hovers")
+		local falling = PetRig.body(CFG, "leap", 0.95, 1)
+		expect.equal(falling.lift < hover.lift * 0.6, true, "dropping fast near the end")
+		expect.near(PetRig.body(CFG, "leap", 1, 1).lift, 0, 0.01, "landed as it ends")
+		expect.equal(PetRig.body(CFG, "leap", 0, 1).lift, 0, "starts on the ground")
+		expect.equal(CFG.FIDGET_SECONDS.leap, 1.5, "as long as an Epic wind-up")
+	end,
 }

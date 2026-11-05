@@ -326,7 +326,7 @@ return {
 		FLY_FIDGETS = { "look", "tilt", "spin", "wag" },
 		FIDGET_GAP = { 2.5, 6 },
 		FIDGET_SECONDS = {
-			charge = 0.6, strike = 0.5, combo = 0.6, cast = 0.6,
+			charge = 0.6, strike = 0.5, combo = 0.6, cast = 0.6, leap = 1.5,
 			look = 2.4, tilt = 1.6, sniff = 1.8, stretch = 2, wag = 1.6,
 			hop = 1.1, spin = 1.2, shake = 1.2, sit = 3, scratch = 1.8, yawn = 2, bounce = 1, roar = 2.2, stomp = 1, rootslam = 1.6,
 			butterfly = 4.5, voidroar = 3, thunderroar = 2.6, stormroar = 3, firebreath = 3.2, sneeze = 1.6, kungfu = 2.6,
@@ -423,6 +423,9 @@ return {
 		SPORE_LEAN = 8,
 		-- Zappit's zap hop: how high it springs and how low it crouches first (studs at size 1)
 		ZAPHOP_HEIGHT = 1.4,
+		LEAP_HEIGHT = 3.2, -- a super's wind-up leap (Inferno, Magma Slam): studs at size 1, risen by LEAP_RISE of it,
+		LEAP_RISE = 0.35, -- dropping back down over the last LEAP_FALL (it lands as the move hits)
+		LEAP_FALL = 0.2,
 		ZAPHOP_CROUCH = 0.15,
 		-- Cindercub's hiccups: when each one comes (fractions of the fidget), how sharp, the hop (studs at size 1),
 		-- the body's tip back and the head's jolt back (degrees)

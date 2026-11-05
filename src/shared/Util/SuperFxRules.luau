@@ -45,10 +45,30 @@ end
 
 local UP: Vec = { x = 0, y = 1, z = 0 }
 
+local function gap(a: Vec, b: Vec): number
+	return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
+end
+
+-- A shot that must also show `sky` (a look bursting high over the boss): it aims halfway up to it and backs off
+-- level (never down into the ground) until both fit in the frame, never closer than it was
+local function withSky(eye: Vec, focus: Vec, sky: Vec, facing: Vec, cam: any): (Vec, Vec)
+	local mid = { x = (focus.x + sky.x) / 2, y = (focus.y + sky.y) / 2, z = (focus.z + sky.z) / 2 }
+	local want = math.max(gap(focus, sky) / 2 / math.tan(math.rad(cam.fov / 2) * 0.6), gap(eye, focus))
+	if gap(eye, mid) >= want then
+		return eye, mid
+	end
+	local dx, dz = eye.x - mid.x, eye.z - mid.z
+	local level = math.sqrt(dx * dx + dz * dz)
+	local away = if level > 1e-6 then { x = dx / level, y = 0, z = dz / level } else flat({ x = -facing.x, y = 0, z = -facing.z })
+	local rise = eye.y - mid.y
+	local reach = math.sqrt(math.max(0, want * want - rise * rise))
+	return add(add(mid, away, reach), UP, rise), mid
+end
+
 -- The camera's eye and focus for a beat: "call" and "charge" a low, close shot in front of the creature (`facing`, its
 -- look direction) and round to one side; "impact" a wide shot from behind and beside it framing it and its target (no target: a wide shot
 -- of the creature from the front). Distances in multiples of `height`.
-function SuperFxRules.shot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any): (Vec, Vec)
+local function baseShot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any): (Vec, Vec)
 	local cam = cfg.CAMERA
 	local front = flat(facing)
 	local chest = add(creature, UP, cam.focusHeight * height)
@@ -74,6 +94,16 @@ function SuperFxRules.shot(beat: string, creature: Vec, height: number, facing: 
 	local side: Vec = { x = toward.z, y = 0, z = -toward.x } -- to its right
 	local eye = add(add(add(creature, toward, -back), side, cam.impactSide * height), UP, cam.impactHeight * height)
 	local focus = add({ x = (creature.x + target.x) / 2, y = (creature.y + target.y) / 2, z = (creature.z + target.z) / 2 }, UP, cam.focusHeight * height)
+	return eye, focus
+end
+
+-- The same with `sky`, a point high over the boss it must also show (Supernova's burst): the charge and impact shots
+-- look up to it as well (the call's close-up stays as it is)
+function SuperFxRules.shot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any, sky: Vec?): (Vec, Vec)
+	local eye, focus = baseShot(beat, creature, height, facing, target, cfg)
+	if sky and beat ~= "call" then
+		return withSky(eye, focus, sky, facing, cfg.CAMERA)
+	end
 	return eye, focus
 end
 

@@ -1312,6 +1312,8 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 			player.protectedUntil = math.max(player.protectedUntil, state.time + protect)
 		end
 		local target = targetOf(state, fighter)
+		-- It stops attacking to wind up (owner 2026-11-05): its next auto-attack comes half an attack after it lands
+		fighter.nextAttack = math.max(fighter.nextAttack, state.time + windup + interval(state, fighter) * 0.5)
 		table.insert(state.casts, { fighter = fighter, side = side, ability = ability, at = state.time + windup, super = true })
 		table.insert(events, {
 			type = "cast",

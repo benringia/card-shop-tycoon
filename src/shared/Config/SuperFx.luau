@@ -38,6 +38,12 @@ local function look(tier: string, card: string, element: string, color: { number
 	return { tier = tier, card = card, element = element, color = color, grades = grades(fields), pose = pose, dash = dash }
 end
 
+-- A look's wind-up pose instead of the plain charge crouch (owner 2026-11-05: Inferno and Magma Slam "jump high up")
+local function withWindup(made: any, pose: string): any
+	made.windupPose = pose
+	return made
+end
+
 -- A Legendary look's sky on the caster's screen during its cinematic (Util/SuperCinematic): a colour grade over the
 -- world (tint, brightness, saturation, contrast), eased in with the call and back with the camera
 local function withSky(made: any, tint: { number }, brightness: number, saturation: number, contrast: number): any
@@ -71,11 +77,11 @@ return {
 	},
 	LOOKS = {
 		-- A fire tornado leaps onto the boss and leaves a ring of fire (S: the ground cracks into lava)
-		Inferno = look("Epic", "Infernox", "Ember", rgb(255, 106, 26), {
+		Inferno = withWindup(look("Epic", "Infernox", "Ember", rgb(255, 106, 26), {
 			tornadoHeight = { 14, 18, 23, 30 },
 			embers = { 20, 30, 44, 64 },
 			fireRing = { 1.5, 1.7, 1.95, 2.3 }, -- the ring of fire's radius, in the target's size (its width, 3-12 studs)
-		}, "firebreath"),
+		}, "firebreath"), "leap"),
 		-- A wave crashes over your side and sets into a water dome with spirit koi (S: a rainbow sheen, a second ring)
 		TidalShield = look("Epic", "Abyssal Koi", "Tide", rgb(79, 183, 255), {
 			koi = { 2, 3, 4, 6 },
@@ -94,12 +100,12 @@ return {
 			trailWidth = { 2, 2.5, 3.2, 4 },
 		}, "thundercall", true),
 		-- The titan leaps and crashes down, lava cracks race to the boss, geysers (S: a ring of lava round the landing)
-		MagmaSlam = look("Epic", "Cinder Titan", "Ember", rgb(255, 122, 42), {
+		MagmaSlam = withWindup(look("Epic", "Cinder Titan", "Ember", rgb(255, 122, 42), {
 			cracks = { 4, 5, 7, 9 },
 			crackLength = { 14, 18, 23, 30 },
 			geysers = { 2, 3, 4, 6 },
 			rocks = { 6, 9, 13, 18 },
-		}, "lavaslam"),
+		}, "lavaslam"), "leap"),
 		-- A black moon covers the sun and the fox turns to shadow (S: two shadow clones)
 		Eclipse = look("Epic", "Eclipse Fox", "Shade", rgb(167, 139, 250), {
 			corona = { 10, 12, 15, 19 },
@@ -110,9 +116,10 @@ return {
 			rifts = { 3, 4, 5, 7 },
 			shards = { 8, 12, 16, 24 },
 		}, "riftroar"),
-		-- The sky turns to space and Solarion hurls a small sun down (S: two impact frames, pillars of light)
+		-- The sky turns to space; Solarion's sun rises over the boss and bursts (S: two impact frames, pillars of light)
 		Supernova = withSky(look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
 			sun = { 4, 5, 6.5, 8.5 },
+			burst = { 17, 18, 20, 22 }, -- studs over the target the risen sun bursts (the cinematic frames it too)
 			rings = { 2, 2, 3, 4 },
 			rays = { 4, 6, 8, 12 },
 			impactFrames = { 1, 1, 1, 2 },
@@ -166,7 +173,8 @@ return {
 		Stampede = {
 			call = "rbxassetid://9126100408", -- Thunder With Lion Roar Growl Low Rumble Roar (its bellow)
 			charge = "rbxassetid://9125980435", -- Spaceship Pre Blast Electric Charge Up Buzzy
-			impact = "rbxassetid://9120016256", -- Thunder Cracks Big Rumbling Blasts Booming 3 (the thunderclap)
+			impact = "rbxassetid://9126082854", -- Synth Thunder Cracks Individual Explosion (owner: "thunder on impact")
+			thunder = "rbxassetid://9120016256", -- Thunder Cracks Big Rumbling Blasts Booming 3 (the roll under it, every grade)
 			layer = "rbxassetid://9116276946", -- Lightning Flashes Quick Electrical Bursts 21 (A and S)
 			linger = "rbxassetid://9114245570", -- Electric Hum 7 (the stun)
 		},

@@ -12,6 +12,7 @@ local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperFx"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
+local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 
 local SuperFx = {}
 
@@ -138,6 +139,12 @@ local function play(b: Bag, parent: Instance, id: string?, volume: number, loope
 	s:Play()
 	table.insert(b.items, s)
 	return s
+end
+
+-- A look's big moment shakes everyone's screen near it (owner 2026-11-05: "add screenshake on impact"): its grade's
+-- shake times `mult`, less the further you are (the caster's own cinematic adds its shake on top)
+local function quake(g: any, at: Vector3, mult: number?)
+	ScreenFx.shakeAt(AttackFx.SHAKE.super * g.shake * (mult or 1), at)
 end
 
 local function tween(item: Instance, seconds: number, goal: { [string]: any }, style: Enum.EasingStyle?)
@@ -314,12 +321,8 @@ local function infernoCharge(view: View, grade: string, seconds: number, _target
 			play(b, source, INFERNO_SOUNDS.charge, 0.9)
 		end
 	end)
-	local spin = funnel(b, feet, math.floor(3 + 2 * g.scale), flames, 1.5 * g.scale, 260)
-	local reach = math.max(2.5, view.height * 0.45)
-	everyFrame(b, function(elapsed)
-		local grow = math.clamp(elapsed / math.max(0.1, seconds), 0, 1)
-		spin.set(view.height * (0.6 + 0.8 * grow), reach * 0.5, reach * (0.9 + 0.4 * grow))
-	end)
+	-- It leaps high (its wind-up pose) as fire gathers in its jaws
+	local stopGather = ElementFx.gather(feet + UP * view.height * 1.4, base, seconds, view.height * 0.8 * g.scale)
 	local embers = ElementFx.emitter(source, "spark", base, {
 		size = { 0.5, 0.1 },
 		life = { 0.6, 1.2 },
@@ -331,6 +334,7 @@ local function infernoCharge(view: View, grade: string, seconds: number, _target
 	embers.Rate = g.embers
 	local stopGlow = ElementFx.chargeGlow(view.root, base, seconds, 1.6 * g.scale)
 	return function()
+		stopGather()
 		stopGlow()
 		clear(b)
 	end
@@ -358,20 +362,25 @@ local function infernoImpact(view: View, grade: string, target: Vector3, targetB
 	if grade == "A" or grade == "S" then
 		play(b, streamEnd, INFERNO_SOUNDS.layer, 1)
 	end
-	-- The tornado leaps from it onto the boss and engulfs it, then dies down
-	local spin = funnel(b, feet, math.floor(4 + 2 * g.scale), flames, 2 * g.scale, 320)
-	local height = g.tornadoHeight * math.max(1, targetHeight / 10)
-	everyFrame(b, function(elapsed)
-		local leap = math.clamp(elapsed / 0.3, 0, 1)
-		local foot = feet:Lerp(ground, leap)
-		spin.holder.CFrame = CFrame.new(foot) * spin.holder.CFrame.Rotation
-		local fade = math.clamp((elapsed - 1.4) / 0.6, 0, 1)
-		spin.set(height * (0.5 + 0.5 * leap) * (1 - fade), fit * 0.6 * (1 - fade * 0.5), fit * 1.3)
-		if fade >= 1 then
-			for _, each in spin.beams do
-				each.Enabled = false
-			end
+	quake(g, target, 0.6)
+	-- Then the fire tornado erupts round the boss and engulfs it (owner: "breath fire then tornado"), then dies down
+	task.delay(0.45, function()
+		if b.done then
+			return
 		end
+		quake(g, target, 1.2)
+		local spin = funnel(b, ground, math.floor(4 + 2 * g.scale), flames, 2 * g.scale, 320)
+		local height = g.tornadoHeight * math.max(1, targetHeight / 10)
+		everyFrame(b, function(elapsed)
+			local rise = math.clamp(elapsed / 0.3, 0, 1)
+			local fade = math.clamp((elapsed - 1.4) / 0.6, 0, 1)
+			spin.set(height * (0.3 + 0.7 * rise) * (1 - fade), fit * 0.6 * (1 - fade * 0.5), fit * 1.3)
+			if fade >= 1 then
+				for _, each in spin.beams do
+					each.Enabled = false
+				end
+			end
+		end)
 	end)
 	ElementFx.burst(target, base, 2 * g.scale)
 	ElementFx.ring(ground + UP * 0.2, base, fit * 2.2, 0.5)
@@ -490,6 +499,7 @@ local function magmaImpact(view: View, grade: string, target: Vector3, _targetBo
 		play(b, boom, MAGMA_SOUNDS.layer, 1)
 	end
 	-- The slam: a shockwave and dust where it lands, then glowing cracks racing out to the boss
+	quake(g, landing, 1.3)
 	ElementFx.ring(landing + UP * 0.2, lava, view.height * 1.4 * g.scale, 0.45)
 	ElementFx.burst(landing + UP, Color3.fromRGB(120, 90, 70), 1.4 * g.scale)
 	local reach = (ground - landing).Magnitude
@@ -505,6 +515,7 @@ local function magmaImpact(view: View, grade: string, target: Vector3, _targetBo
 		if b.done then
 			return
 		end
+		quake(g, ground, 0.8)
 		ElementFx.eruption(ground, lava, fit * 1.3, g.geysers * 2)
 		for index = 1, g.geysers do
 			local angle = index / g.geysers * 2 * math.pi
@@ -687,6 +698,7 @@ local function tideImpact(view: View, grade: string, target: Vector3, _targetBod
 	local spray = ElementFx.emitter(anchor(b, CFrame.new(feet + UP * 2)), "spark", Color3.fromRGB(220, 245, 255), { size = { 0.7, 0.1 }, life = { 0.6, 1.2 }, speed = { 14, 24 }, spread = 90, accel = -UP * 25 })
 	spray:Emit(g.particles)
 	play(b, anchor(b, CFrame.new(feet)), TIDE_SOUNDS.impact, 1.1)
+	quake(g, feet, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(feet)), TIDE_SOUNDS.layer, 0.9)
 	end
@@ -800,6 +812,7 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 	local light = color(BLESS.color)
 	local feet = groundAt(view.root.Position)
 	play(b, anchor(b, CFrame.new(feet)), BLESS_SOUNDS.impact, 1.1)
+	quake(g, feet, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(feet)), BLESS_SOUNDS.layer, 0.9)
 	end
@@ -964,10 +977,12 @@ local function stampImpact(view: View, grade: string, target: Vector3, _targetBo
 	local ground = groundAt(target)
 	local flat = Vector3.new(ground.X - start.X, 0, ground.Z - start.Z)
 	local past = ground + (if flat.Magnitude > 0.5 then flat.Unit else Vector3.zero) * math.max(4, targetHeight * 0.5)
-	play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.impact, 1.2)
+	play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.impact, 1.5)
+	play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.thunder, 1.2)
 	if grade == "A" or grade == "S" then
-		play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.layer, 1)
+		play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.layer, 0.7)
 	end
+	quake(g, target, 1.1)
 	-- The dash: afterimages along the way, a lightning trail, a thunderclap at the boss
 	afterimages(b, view, start, past, g.afterimages, volt, 0.5)
 	local a0 = anchor(b, CFrame.new(start + UP * view.height * 0.5))
@@ -1060,6 +1075,7 @@ local function eclipseImpact(view: View, grade: string, _target: Vector3, _targe
 	local seconds = (SuperFx.abilityOf("Eclipse") or { seconds = 3 }).seconds
 	local feet = groundAt(view.root.Position)
 	play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.impact, 1.1)
+	quake(g, feet, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.layer, 0.9)
 	end
@@ -1162,6 +1178,7 @@ local function riftImpact(view: View, grade: string, _target: Vector3, _targetBo
 	local seconds = (SuperFx.abilityOf("RiftStep") or { seconds = 3 }).seconds
 	local center = view.root.Position + UP * view.height * 0.5
 	play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.impact, 1.1)
+	quake(g, center, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.layer, 1)
 	end
@@ -1226,17 +1243,36 @@ local function sunBall(b: Bag, at: Vector3, size: number, tint: Color3): (Part, 
 	return core, corona
 end
 
-local function novaCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+-- Where the sun bursts: high over the boss (owner 2026-11-05: "make the ball rise then explode"); the caster's
+-- cinematic frames the same point (Util/SuperCinematic)
+local function novaSky(target: Vector3, g: any): Vector3
+	return target + UP * g.burst
+end
+
+local function novaCharge(view: View, grade: string, seconds: number, target: Vector3?): () -> ()
 	local g = NOVA.grades[grade]
 	local b = bag()
 	local gold = color(NOVA.color)
 	local above = view.root.Position + UP * (view.height * 1.35 + 2)
+	local sky = novaSky(target or (view.root.Position + view.root.CFrame.LookVector * 14), g)
 	play(b, anchor(b, CFrame.new(above)), NOVA_SOUNDS.call, 1)
 	play(b, anchor(b, CFrame.new(above)), NOVA_SOUNDS.charge, 0.9)
+	-- It grows over its hands (the first 60%), then rises high over the boss, trailing light
 	local core, corona = sunBall(b, above, 0.5, gold)
-	tween(core, seconds, { Size = Vector3.one * g.sun })
-	tween(corona, seconds, { Size = Vector3.one * g.sun * 1.6 })
-	local stopGather = ElementFx.gather(above, gold, seconds, g.sun * 3)
+	local grow = seconds * 0.6
+	tween(core, grow, { Size = Vector3.one * g.sun })
+	tween(corona, grow, { Size = Vector3.one * g.sun * 1.6 })
+	task.delay(grow, function()
+		if b.done then
+			return
+		end
+		local rise = TweenInfo.new(seconds - grow, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(core, rise, { CFrame = CFrame.new(sky), Size = Vector3.one * g.sun * 1.4 }):Play()
+		TweenService:Create(corona, rise, { CFrame = CFrame.new(sky), Size = Vector3.one * g.sun * 2.3 }):Play()
+		local trail = ElementFx.emitter(core, "spark", gold, { size = { 0.8, 0.1 }, life = 0.5, speed = 0, fade = 0.3 })
+		trail.Rate = 60
+	end)
+	local stopGather = ElementFx.gather(above, gold, grow, g.sun * 3)
 	local stopGlow = ElementFx.chargeGlow(view.root, gold, seconds, 1.8 * g.scale)
 	return function()
 		stopGather()
@@ -1245,23 +1281,34 @@ local function novaCharge(view: View, grade: string, seconds: number, _target: V
 	end
 end
 
-local function novaImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+local function novaImpact(_view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
 	local g = NOVA.grades[grade]
 	local b = bag()
 	local gold = color(NOVA.color)
 	local fire = Color3.fromRGB(255, 120, 40)
-	local above = view.root.Position + UP * (view.height * 1.35 + 2)
 	local ground = groundAt(target)
 	local blast = math.max(8, targetHeight * 1.1) * g.scale
-	-- It hurls the sun down onto the boss
-	local core, corona = sunBall(b, above, g.sun, gold)
-	tween(core, 0.28, { CFrame = CFrame.new(target) }, Enum.EasingStyle.Quad)
-	tween(corona, 0.28, { CFrame = CFrame.new(target) }, Enum.EasingStyle.Quad)
-	task.delay(0.28, function()
+	local sky = novaSky(target, g)
+	-- The risen sun explodes in the sky: a white-out burst up there and fire raining down onto the boss
+	local flash = part(b, Vector3.one * g.sun * 1.4, SUN_CORE, CFrame.new(sky), 0, Enum.PartType.Ball)
+	tween(flash, 0.3, { Size = Vector3.one * g.sun * 7, Transparency = 1 }, Enum.EasingStyle.Quart)
+	ElementFx.burst(sky, gold, 4 * g.scale)
+	ElementFx.ring(sky, gold, g.sun * 5, 0.5)
+	quake(g, target, 1.6)
+	for index = 1, math.floor(6 + 4 * g.scale) do
+		local a = index / (6 + 4 * g.scale) * 2 * math.pi
+		local spot = ground + Vector3.new(math.cos(a), 0, math.sin(a)) * blast * 0.5 * math.random()
+		ElementFx.projectile(sky, function()
+			return spot
+		end, gold, 0.18 + math.random() * 0.12, 0, function(at)
+			ElementFx.burst(at, fire, 0.8 * g.scale)
+		end, { scale = 1.1, flames = true })
+	end
+	task.delay(0.22, function()
 		if b.done then
 			return
 		end
-		core.Transparency, corona.Transparency = 1, 1
+		quake(g, ground, 1.2)
 		play(b, anchor(b, CFrame.new(target)), NOVA_SOUNDS.impact, 1.3)
 		if grade == "A" or grade == "S" then
 			play(b, anchor(b, CFrame.new(target)), NOVA_SOUNDS.layer, 1.1)
@@ -1388,6 +1435,7 @@ local function stormImpact(view: View, grade: string, target: Vector3, _targetBo
 				return
 			end
 			ElementFx.skyStrike(target, volt, 2.2 * g.scale)
+			quake(g, target, 1.2)
 			local column = anchor(b, CFrame.new(sky))
 			local foot = anchor(b, CFrame.new(ground))
 			local bolt = beam(attachment(column, Vector3.zero), attachment(foot, Vector3.zero), AttackFx.TEXTURES.bolt, sequence(WHITE, volt), 4 * g.scale, 2.5 * g.scale, { speed = 8, length = 10, brightness = 4, faceCamera = true })
@@ -1531,6 +1579,7 @@ local function devourImpact(view: View, grade: string, target: Vector3, _targetB
 	local width = math.max(5, targetHeight * 0.7)
 	blackHole(b, target, view.root.Position, g.hole, violet)
 	play(b, anchor(b, CFrame.new(target)), DEVOUR_SOUNDS.impact, 1.3)
+	quake(g, target, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(target)), DEVOUR_SOUNDS.layer, 1)
 	end

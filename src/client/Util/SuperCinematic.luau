@@ -114,7 +114,10 @@ local function shotFor(run: Running, beat: string): CFrame
 		run.lastFacing = args.creature.CFrame.LookVector
 	end
 	local target = if args.target and args.target.Parent then vec(args.target.Position) else nil
-	local eye, focus = SuperFxRules.shot(beat, vec(run.lastBase), args.height, vec(run.lastFacing), target, SuperFxConfig)
+	-- A look that bursts high over the boss (Supernova's sun) keeps that point in frame too
+	local burst = if SuperFxConfig.LOOKS[args.look] then SuperFxRules.look(SuperFxConfig, args.look, args.grade, Extras.enabled()).burst else nil
+	local sky = if target and burst then { x = target.x, y = target.y + burst, z = target.z } else nil
+	local eye, focus = SuperFxRules.shot(beat, vec(run.lastBase), args.height, vec(run.lastFacing), target, SuperFxConfig, sky)
 	return CFrame.lookAt(v3(eye), v3(focus))
 end
 

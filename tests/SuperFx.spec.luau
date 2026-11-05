@@ -202,4 +202,46 @@ return {
 		expect.isNil(SuperFxRules.decorations({ type = "shieldGone", side = "x" }).gone, "only a real side")
 		expect.isNil(SuperFxRules.decorations("junk" :: any).gone)
 	end,
+	-- Owner 2026-11-05: Inferno and Magma Slam leap high to wind up (the others crouch), and every super's big moment
+	-- shakes harder than a Pet button move
+	["Inferno and Magma Slam leap to wind up; supers shake harder than Pet moves"] = function()
+		expect.equal(SuperFx.LOOKS.Inferno.windupPose, "leap")
+		expect.equal(SuperFx.LOOKS.MagmaSlam.windupPose, "leap")
+		for id, made in SuperFx.LOOKS do
+			if id ~= "Inferno" and id ~= "MagmaSlam" then
+				expect.isNil(made.windupPose, id)
+			end
+		end
+		local AttackFx = require("../src/shared/Config/AttackFx")
+		assert(AttackFx.SHAKE.super > AttackFx.SHAKE.special, "a super shakes harder than a Pet move")
+	end,
+	-- Studio check (owner 2026-11-05 "make the ball rise then explode"): the low charge shot never showed Supernova's
+	-- sun, over its hands or risen over the boss. A look that bursts in the sky frames the burst point too.
+	["Supernova bursts in the sky, and its charge and impact shots keep the sky in frame"] = function()
+		for _, grade in GRADES do
+			local burst = SuperFx.LOOKS.Supernova.grades[grade].burst
+			expect.equal(typeof(burst) == "number" and burst >= 12, true, `{grade}: studs over the target`)
+		end
+		local origin, facing = { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 1 }
+		local target = { x = 0, y = 5, z = 30 }
+		local sky = { x = 0, y = 5 + SuperFx.LOOKS.Supernova.grades.S.burst, z = 30 }
+		local half = math.rad(SuperFx.CAMERA.fov / 2)
+		local function inFrame(eye: any, focus: any, point: any): boolean
+			local a = { x = focus.x - eye.x, y = focus.y - eye.y, z = focus.z - eye.z }
+			local b = { x = point.x - eye.x, y = point.y - eye.y, z = point.z - eye.z }
+			local cos = (a.x * b.x + a.y * b.y + a.z * b.z) / (distance(eye, focus) * distance(eye, point))
+			return math.acos(math.clamp(cos, -1, 1)) <= half
+		end
+		for _, beat in { "charge", "impact" } do
+			local plainEye, plainFocus = SuperFxRules.shot(beat, origin, 10, facing, target, SuperFx)
+			local eye, focus = SuperFxRules.shot(beat, origin, 10, facing, target, SuperFx, sky)
+			expect.equal(inFrame(eye, focus, sky), true, `{beat}: the burst point in frame`)
+			expect.equal(inFrame(eye, focus, plainFocus), true, `{beat}: what it framed before still in frame`)
+			expect.equal(focus.y > plainFocus.y, true, `{beat}: it looks up`)
+			expect.equal(distance(eye, focus) >= distance(plainEye, plainFocus), true, `{beat}: never closer`)
+		end
+		local callEye = SuperFxRules.shot("call", origin, 10, facing, target, SuperFx, sky)
+		local plainCall = SuperFxRules.shot("call", origin, 10, facing, target, SuperFx)
+		expect.near(distance(callEye, plainCall), 0, 1e-9, "the call's close-up is unchanged")
+	end,
 }

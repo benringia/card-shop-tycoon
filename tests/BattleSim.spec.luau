@@ -2040,4 +2040,23 @@ return {
 		assert(gone, "a shieldGone event")
 		expect.equal(gone.side, "a")
 	end,
+	-- The owner (2026-11-05): "if Super spells are clicked, the creature should stop attacking and perform the windup"
+	["a creature winding up its super doesn't auto-attack until it lands"] = function()
+		local state = wild(fighter("a", "Volt", 1e6, 10, 40, "Thunderhorn"), {}, monster("Tide", 1e6, 0, 1), 43)
+		runFor(state, 0.3)
+		BattleSim.useAbility(state, "a:a", "signature")
+		local during, after = 0, 0
+		for _, entry in timedEvents(state, 3) do
+			local e = entry.event
+			if e.type == "attack" and e.from == "a:a" then
+				if entry.time < 0.3 + combat.SIGNATURES.Thunderhorn.windup then
+					during += 1
+				else
+					after += 1
+				end
+			end
+		end
+		expect.equal(during, 0, "no auto-attacks during the wind-up")
+		expect.equal(after > 0, true, "attacking again once it lands")
+	end,
 }

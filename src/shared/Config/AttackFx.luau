@@ -138,6 +138,7 @@ return {
 		creatureHit = 0.12, -- times the grade's shake
 		creatureFinisher = 0.2, -- a combo's last hit, an S extra
 		special = 0.3, -- a Pet button move or super move
+		super = 0.65, -- a super move's big moment (times its grade's shake; owner 2026-11-05: "add screenshake on impact")
 		bossStrike = 0.3,
 		bossSlam = 0.75,
 		hurt = 0.45, -- a boss's hit on you

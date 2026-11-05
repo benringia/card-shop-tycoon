@@ -331,7 +331,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local grade = superGrade(view)
 		stopSuperCharge(event.from)
 		resolve.setCharging(marker, seconds)
-		resolve.pose(marker, "charge", SuperFxConfig.LOOKS[event.look].grades[grade].scale)
+		local look = SuperFxConfig.LOOKS[event.look]
+		-- Its wind-up pose (owner 2026-11-05: Inferno and Magma Slam leap high), else the charge crouch
+		resolve.pose(marker, look.windupPose or "charge", if look.windupPose then 1 else look.grades[grade].scale)
 		local target = if typeof(event.to) == "string" then targetPosition(event.to, view.root.Position) else nil
 		local ok, stop = pcall(SuperFx.charge, event.look, view, grade, seconds, target)
 		if ok and stop then
@@ -487,7 +489,6 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		elseif not ok then
 			warn("[FightFx] super impact:", stop)
 		end
-		ScreenFx.shakeAt(AttackFx.SHAKE.special * SuperFxConfig.LOOKS[event.look].grades[grade].shake * 0.5, target)
 	end
 
 	-- A Pet button move or super move: a cast pose on the caster and its effect, all landing now (with the event), a
