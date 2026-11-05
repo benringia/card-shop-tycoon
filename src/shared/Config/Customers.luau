@@ -70,6 +70,13 @@ return {
 	-- tips `tip` of the total when every price is at or under market
 	KID = { units = { 1, 2 } },
 	BIG_SPENDER = { box = "FirstSparkBox", packs = { 6, 12 }, tip = 0.1 },
+	-- Collectors want one card: ownedShare of the time one you own, else any card weighted by rarity (per card);
+	-- they pay up to premium x its worth
+	COLLECTOR = {
+		premium = 1.3,
+		ownedShare = 0.5,
+		wantWeights = { Common = 30, Rare = 25, ["Very Rare"] = 20, Epic = 15, Legendary = 10 },
+	},
 	TYPES = {
 		plain = { weight = 0.55, props = {} },
 		kid = {
