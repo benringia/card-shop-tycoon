@@ -56,7 +56,8 @@ return {
 		-- Tidal Shield: every ally (players too) a ward of `shield` of its own max HP for `seconds` (owner 2026-11-05)
 		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3, seconds = 8, look = "TidalShield", windup = 1.5 },
 		Thunderhorn = { kind = "Stampede", name = "Stampede", power = 2, stun = 2, look = "Stampede", windup = 1.5 },
-		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 3, look = "Eclipse", windup = 1.5 },
+		-- Eclipse: its mirror image evades everything for `seconds` (owner 2026-11-05: 5)
+		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 5, look = "Eclipse", windup = 1.5 },
 		Solarion = { kind = "Supernova", name = "Supernova", power = 4, look = "Supernova", windup = 2 },
 		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5, look = "Devour", windup = 2 },
 		-- Frontier cards: same ability kinds, their own names and looks

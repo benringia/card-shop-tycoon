@@ -1123,4 +1123,58 @@ return {
 		expect.equal(PetRig.body(CFG, "leap", 0, 1).lift, 0, "starts on the ground")
 		expect.equal(CFG.FIDGET_SECONDS.leap, 1.5, "as long as an Epic wind-up")
 	end,
+	-- Owner 2026-11-05: Eclipse Fox "doesnt have a basic attack animation". The fight poses only moved the whole body;
+	-- now the limbs attack too: a coil for the charge, a bite for a strike, alternating paw swipes (or claws on two-legged
+	-- rigs) for a combo, rear back and thrust for a cast
+	["attacks move the limbs: coil, bite, alternating swipes, rear and thrust"] = function()
+		local FOX = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Jaw_0", "0_Left_Limb_0", "0_Left_Limb_1", "0_Right_Limb_0",
+			"0_Right_Limb_1", "1_Left_Limb_0", "1_Right_Limb_0", "Tails_0_0", "Tails_0_1" }
+		local function at(names: { string }, kind: string, progress: number): { [string]: PetRig.Angles }
+			return poseAt(names, { time = 0, phase = 0, moving = 0, fidget = kind, fidgetProgress = progress,
+				armDrop = { Left = math.rad(70), Right = math.rad(70) } })
+		end
+		local rest = at(FOX, "look", 0)
+		local function moved(pose: { [string]: PetRig.Angles }, key: string): number
+			return pose[key].x - rest[key].x
+		end
+		-- The charge: head low and the tails raised, held
+		local coiled = at(FOX, "charge", 0.6)
+		expect.equal(moved(coiled, "head:0") > math.rad(6), true, "charge: head low")
+		expect.equal(moved(coiled, "tails:0:0") < -math.rad(6), true, "charge: tails up")
+		assertBounded(coiled, "charge")
+		-- A strike: the head snaps down into a bite, the jaw open
+		local bite = at(FOX, "strike", 0.4)
+		expect.equal(moved(bite, "head:0") > math.rad(10), true, "strike: a bite")
+		expect.equal(moved(bite, "jaw:0") < -math.rad(10), true, "strike: the jaw opens")
+		assertBounded(bite, "strike")
+		-- A combo: the front paws swipe one after the other, the head dipping with each
+		local leftFirst, rightFirst, dipped = false, false, false
+		for step = 0, 30 do
+			local pose = at(FOX, "combo", step / 30)
+			assertBounded(pose, "combo")
+			local left, right = moved(pose, "leg:0:Left:0"), moved(pose, "leg:0:Right:0")
+			leftFirst = leftFirst or (left > math.rad(30) and right < math.rad(10))
+			rightFirst = rightFirst or (right > math.rad(30) and left < math.rad(10))
+			dipped = dipped or moved(pose, "head:0") > math.rad(8)
+		end
+		expect.equal(leftFirst and rightFirst, true, "combo: the paws swipe in turn")
+		expect.equal(dipped, true, "combo: the head dips with the swipes")
+		-- A cast: rearing back (head up), then thrusting forward
+		expect.equal(moved(at(FOX, "cast", 0.3), "head:0") < -math.rad(8), true, "cast: rears back")
+		expect.equal(moved(at(FOX, "cast", 0.75), "head:0") > math.rad(6), true, "cast: thrusts forward")
+		-- Two-legged rigs claw with their arms in turn
+		local BIPED = { "Pelvis", "Spine_0", "Neck", "Head_0", "Arm_Left_0", "Arm_Left_1", "Arm_Right_0", "Arm_Right_1",
+			"0_Left_Limb_0", "0_Right_Limb_0" }
+		local bipedRest = at(BIPED, "look", 0)
+		local armLeft, armRight = false, false
+		for step = 0, 30 do
+			local pose = at(BIPED, "combo", step / 30)
+			assertBounded(pose, "biped combo")
+			local left = pose["arm:Left:0"].x - bipedRest["arm:Left:0"].x
+			local right = pose["arm:Right:0"].x - bipedRest["arm:Right:0"].x
+			armLeft = armLeft or (left > math.rad(30) and right < math.rad(10))
+			armRight = armRight or (right > math.rad(30) and left < math.rad(10))
+		end
+		expect.equal(armLeft and armRight, true, "biped combo: the arms claw in turn")
+	end,
 }

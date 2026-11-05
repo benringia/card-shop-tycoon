@@ -210,7 +210,7 @@ return {
 		expect.equal(SuperFx.LOOKS.Inferno.windupPose, "leap")
 		expect.equal(SuperFx.LOOKS.MagmaSlam.windupPose, "leap")
 		for id, made in SuperFx.LOOKS do
-			if id ~= "Inferno" and id ~= "MagmaSlam" then
+			if id ~= "Inferno" and id ~= "MagmaSlam" and id ~= "Eclipse" then
 				expect.isNil(made.windupPose, id)
 			end
 		end
@@ -245,5 +245,19 @@ return {
 		local callEye = SuperFxRules.shot("call", origin, 10, facing, target, SuperFx, sky)
 		local plainCall = SuperFxRules.shot("call", origin, 10, facing, target, SuperFx)
 		expect.near(distance(callEye, plainCall), 0, 1e-9, "the call's close-up is unchanged")
+	end,
+	-- Owner 2026-11-05: "Eclipse: creature stands still, Pentagram appears underneath it then every move from this
+	-- creature has a mirror image for 5 seconds evading everything while glowing dark purple"
+	["Eclipse winds up standing still over a star sigil, then mirror images: one, two at S"] = function()
+		local eclipse = SuperFx.LOOKS.Eclipse
+		expect.equal(eclipse.windupPose, "still")
+		for index, grade in GRADES do
+			local g = eclipse.grades[grade]
+			expect.equal(g.mirrors, if grade == "S" then 2 else 1, `{grade}: mirror images`)
+			expect.equal(typeof(g.sigil) == "number" and g.sigil > 0, true, `{grade}: the sigil's size`)
+			if index > 1 then
+				expect.equal(g.sigil > eclipse.grades[GRADES[index - 1]].sigil, true, `{grade}: a bigger sigil`)
+			end
+		end
 	end,
 }

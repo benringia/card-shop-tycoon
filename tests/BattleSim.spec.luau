@@ -763,6 +763,28 @@ return {
 		expect.equal(damage, 0, "dodged for 2.5 s")
 	end,
 
+	-- The owner (2026-11-05): Eclipse's mirror image evades everything "for 5 seconds" (Rift Step keeps its 3 until its
+	-- own rework is picked)
+	["Eclipse Fox evades everything for 5 s, then gets hit again"] = function()
+		expect.equal(combat.SIGNATURES["Eclipse Fox"].seconds, 5)
+		local dodger = wild(fighter("a", "Shade", 1e6, 1, 10, "Eclipse Fox"), {}, monster("Tide", 100000, 50, 20), 46)
+		BattleSim.useAbility(dodger, "a:a", "signature")
+		BattleSim.step(dodger, combat.SIGNATURES["Eclipse Fox"].windup)
+		local during, after = 0, 0
+		for _, entry in timedEvents(dodger, 7) do
+			local e = entry.event
+			if e.type == "attack" and e.from == "b:m" and e.damage > 0 then
+				if entry.time - combat.SIGNATURES["Eclipse Fox"].windup < 4.95 then
+					during += 1
+				else
+					after += 1
+				end
+			end
+		end
+		expect.equal(during, 0, "nothing lands for 5 s")
+		expect.equal(after > 0, true, "hits land again after")
+	end,
+
 	["failed run gives the monster a free hit and waits"] = function()
 		-- Very slow leader vs fast monster: run chance at the floor (20%); seed chosen so the first roll fails
 		local state = wild(fighter("a", "Ember", 1000, 1, 1), {}, monster("Tide", 100000, 20, 100), 9)

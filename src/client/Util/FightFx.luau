@@ -105,6 +105,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean)
 		local s = tier.scale
 		ElementFx.burst(at, tint, s * (if finisher then 1.15 else 1))
+		SuperFx.echoHit(view.root, at, s) -- Eclipse's mirror image strikes with it
 		hitSound(view.element, at)
 		if view.mine then
 			ScreenFx.shakeAt((if finisher or tier.extra >= 2 then AttackFx.SHAKE.creatureFinisher else AttackFx.SHAKE.creatureHit) * tier.shake, at)
@@ -332,8 +333,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		stopSuperCharge(event.from)
 		resolve.setCharging(marker, seconds)
 		local look = SuperFxConfig.LOOKS[event.look]
-		-- Its wind-up pose (owner 2026-11-05: Inferno and Magma Slam leap high), else the charge crouch
-		resolve.pose(marker, look.windupPose or "charge", if look.windupPose then 1 else look.grades[grade].scale)
+		-- Its wind-up pose (owner 2026-11-05: Inferno and Magma Slam leap high; Eclipse holds still), else the charge crouch
+		if look.windupPose ~= "still" then
+			resolve.pose(marker, look.windupPose or "charge", if look.windupPose then 1 else look.grades[grade].scale)
+		end
 		local target = if typeof(event.to) == "string" then targetPosition(event.to, view.root.Position) else nil
 		local ok, stop = pcall(SuperFx.charge, event.look, view, grade, seconds, target)
 		if ok and stop then

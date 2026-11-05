@@ -106,11 +106,14 @@ return {
 			geysers = { 2, 3, 4, 6 },
 			rocks = { 6, 9, 13, 18 },
 		}, "lavaslam"), "leap"),
-		-- A black moon covers the sun and the fox turns to shadow (S: two shadow clones)
-		Eclipse = look("Epic", "Eclipse Fox", "Shade", rgb(167, 139, 250), {
+		-- It holds still as a star sigil draws itself under it and a black moon covers the sun, then it glows dark purple
+		-- and a mirror image copies its every move while it evades everything (owner 2026-11-05; S: two mirror images)
+		Eclipse = withWindup(look("Epic", "Eclipse Fox", "Shade", rgb(167, 139, 250), {
 			corona = { 10, 12, 15, 19 },
 			afterimages = { 2, 3, 4, 6 },
-		}, "eclipse"),
+			sigil = { 1.1, 1.25, 1.4, 1.6 }, -- the star sigil's radius, in the creature's height
+			mirrors = { 1, 1, 1, 2 },
+		}, "eclipse"), "still"),
 		-- Space cracks like glass and it blinks between rifts (S: the arena's edge cracks for a moment)
 		RiftStep = look("Epic", "Riftwalker", "Shade", rgb(192, 107, 255), {
 			rifts = { 3, 4, 5, 7 },
@@ -190,7 +193,7 @@ return {
 			charge = "rbxassetid://9120697982", -- Whoosh By Howling Wind Light Rumbling 5
 			impact = "rbxassetid://9113551598", -- Boom Pass By Low End Multiple Variations 2
 			layer = "rbxassetid://9125637449", -- Magic Growl Eerie Tonal Swells (A and S)
-			linger = "rbxassetid://9114353377", -- Evil Drone Deep Unsettling Rumbly Keening 1 (the 3 s)
+			linger = "rbxassetid://9114353377", -- Evil Drone Deep Unsettling Rumbly Keening 1 (the 5 s)
 		},
 		RiftStep = {
 			call = "rbxassetid://9114590297", -- Glass Break 1 (space cracks)

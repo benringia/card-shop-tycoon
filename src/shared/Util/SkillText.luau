@@ -30,7 +30,7 @@ function SkillText.describe(ability: any): string
 	elseif kind == "Inferno" then
 		return `Burns the foe for {seconds(ability.seconds)}`
 	elseif kind == "TidalShield" then
-		return `A shield worth {percent(ability.shield)} of its HP`
+		return `Shields you and your party: {percent(ability.shield)} HP for {seconds(ability.seconds)}`
 	elseif kind == "Stampede" then
 		return `A {ability.power}x hit and a {seconds(ability.stun)} stun`
 	elseif kind == "Eclipse" then

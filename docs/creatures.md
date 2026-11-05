@@ -388,7 +388,9 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   Size 1.7. 20 bones, 9,000 triangles.
 - **Infernox** (`rig_infernox.py`, Meshy, Epic; was the voxel `build_infernox.py`): a massive red fire T-rex with black
   tiger stripes, a cream belly and jaw, a flame crest down its neck, small arms held in front as modelled (`ARM_POSE`
-  hang 0) and its lower jaw on `Jaw_0` (`rig_kit.reweight`) for the fire breath. Remeshed and baked; its turned head
+  hang 0) and its lower jaw on `Jaw_0` (`rig_kit.reweight`) for the fire breath: the jaw region stops at the chin and
+  its top slopes down along the mouth line (2026-11-05: a flat cut took the overhanging upper snout and teeth, and the
+  whole snout stretched down with the jaw). Remeshed and baked; its turned head
   and curved tail were straightened by hand (steps in the script). Size 1.8. 24 bones, 10,000 triangles.
 - **Puffpuddle** (`rig_puffpuddle.py`, Meshy, Common; was the voxel `build_puffpuddle.py`): a cute baby sea otter
   standing upright with its paws on its cream belly and a glowing aqua pearl on its forehead. Coat warmed from rusty

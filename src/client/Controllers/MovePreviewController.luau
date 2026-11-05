@@ -1,8 +1,8 @@
 --!strict
 -- Studio only: plays a Pet button move at a chosen grade on your summoned creature against a dummy in front of it (spec
--- 2026-11-05-pet-moves-design "Seeing it in Studio"; DevService /movefx, the admin panel's "Pet moves" buttons). It
--- feeds Util/FightFx the sim's real event shapes (cast, ability, regen ticks, attacks spending orbs), so what plays is
--- what a fight plays.
+-- 2026-11-05-pet-moves-design "Seeing it in Studio"; DevService /movefx, the admin panel's "Pet moves" buttons), a
+-- super (/superfx) or three of its basic attacks (/attackfx). It feeds Util/FightFx the sim's real event shapes (cast,
+-- ability, regen ticks, charges and attacks), so what plays is what a fight plays.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -26,6 +26,7 @@ local ME, FOE = "a:preview", "b:preview" -- sided like a fight's ids (a shield's
 local DUMMY_DISTANCE = 14 -- studs in front of the creature
 local BIG_HEIGHT = 14 -- studs: the big dummy (an Ember Colossus)
 local LINGER = 6 -- seconds the dummy stays after the last event (Curse lasts 5)
+local CHARGE_LEAD = 0.6 -- seconds a basic attack's charge leads its hit (about the sim's)
 
 local playing: (() -> ())? = nil -- stops the preview running now
 
@@ -86,6 +87,12 @@ local function myMarker(): BasePart?
 	return nil
 end
 
+-- One basic attack at `at`: its charge, then the hit landing CHARGE_LEAD later
+local function basicAttack(timeline: { { at: number, event: any } }, at: number)
+	table.insert(timeline, { at = at, event = { type = "charge", from = ME, to = FOE, seconds = CHARGE_LEAD } })
+	table.insert(timeline, { at = at + CHARGE_LEAD, event = { type = "attack", from = ME, to = FOE, damage = 10 } })
+end
+
 -- A super's events (spec 2026-11-05-super-moves-design): its cast with the wind-up the sim gives it, its landing
 local function superTimeline(lookId: string): ({ { at: number, event: any } }, number)
 	local look = SuperFxConfig.LOOKS[lookId]
@@ -97,7 +104,7 @@ local function superTimeline(lookId: string): ({ { at: number, event: any } }, n
 		landing.shielded = { ME } -- the preview's only ally: its bubble
 		landing.seconds = ability.seconds
 	end
-	local timeline = {
+	local timeline: { { at: number, event: any } } = {
 		{ at = 0, event = { type = "cast", from = ME, kind = ability.kind, look = lookId, seconds = windup, protect = windup + Combat.SUPER_PROTECT_TAIL, to = FOE } },
 		{ at = windup, event = landing },
 	}
@@ -108,13 +115,21 @@ local function superTimeline(lookId: string): ({ { at: number, event: any } }, n
 		table.insert(timeline, { at = windup + 2.2, event = { type = "shieldGone", to = ME } })
 	elseif ability.kind == "Eclipse" then
 		table.insert(timeline, { at = windup + 1, event = { type = "attack", from = FOE, to = ME, damage = 0, dodged = true } })
+		-- Its attacks while it lasts: the mirror image strikes with it (owner 2026-11-05)
+		basicAttack(timeline, windup + 1.6)
+		basicAttack(timeline, windup + 3.2)
+		table.sort(timeline, function(a, b)
+			return a.at < b.at
+		end)
 	end
 	return timeline, math.max(ability.seconds or 0, 4)
 end
 
 local function play(payload: any)
 	local superLook = if typeof(payload.super) == "string" and SuperFxConfig.LOOKS[payload.super] then payload.super else nil
-	local kind = if superLook then Combat.SIGNATURES[SuperFxConfig.LOOKS[superLook].card].kind else KINDS[payload.move]
+	local kind = if superLook then Combat.SIGNATURES[SuperFxConfig.LOOKS[superLook].card].kind
+		elseif payload.attack == true then "attack"
+		else KINDS[payload.move]
 	local grade = payload.grade
 	if not kind or typeof(grade) ~= "string" then
 		return
@@ -176,6 +191,12 @@ local function play(payload: any)
 		local lasts
 		timeline, lasts = superTimeline(superLook)
 		linger = lasts + 2
+	elseif kind == "attack" then
+		timeline = {}
+		for index = 0, 2 do
+			basicAttack(timeline, index * 1.4)
+		end
+		linger = 2
 	elseif kind == "Rain" then
 		for tick = 1, Combat.ABILITIES.Tide.ticks do
 			table.insert(timeline, { at = windup + tick * Combat.ABILITIES.Tide.every, event = { type = "regen", from = ME, to = ME, heal = 50 } })

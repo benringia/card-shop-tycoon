@@ -662,7 +662,7 @@ parties that stand still at 0.8x the recommended Power win more (Cave Brood Quee
 | Infernox | Inferno | burns 6 s (0.4× ATK per second) |
 | Abyssal Koi | Tidal Shield | every ally (you too) a shield of 30% of its own max HP for 8 s |
 | Thunderhorn | Stampede | 2× ATK hit + 2 s stun |
-| Eclipse Fox | Eclipse | dodges everything for 3 s |
+| Eclipse Fox | Eclipse | dodges everything for 5 s |
 | Solarion | Supernova | 4× ATK hit |
 | Voidmaw | Devour | 2× ATK hit, heals half the damage |
 
@@ -1155,7 +1155,11 @@ group, checked before its fragments and every time (not only the first). Below i
   `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
   3-hit vine lash, Volt a flickering lightning bolt shot from where it stands (the owner's mockup: flares at both
   ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after), Shade a dash in and 3 claw
-  slashes. Ranged attackers (a projectile or a bolt: Ember, Tide, Volt, `FightFxRules.isRanged`) stand
+  slashes. The limbs attack with the body (owner 2026-11-05: the Eclipse Fox "doesnt have a basic attack
+  animation"; `Party.PET_ANIM` `ATTACK_*`): the charge lowers the head and raises the tail, a strike bites, a combo
+  swipes a front paw (two-legged rigs: an arm) each third, left, right, left, the head dipping with each, and a cast
+  rears the head back then thrusts it forward. Studio: `/attackfx [C|B|A|S]` plays three of your summoned creature's
+  basic attacks at a dummy. Ranged attackers (a projectile or a bolt: Ember, Tide, Volt, `FightFxRules.isRanged`) stand
   `Combat.RANGED_BACK` 7 studs further back from the foe than their ring spot (owner 2026-11-03, "ranged, not
   melee": 13 studs from a wild monster, 22-28 from a boss), set on the server (`BattleService` `standSpot`; a swap or
   call-in takes over the ring spot, `ringSpots`); Bloom and Shade stay close. A creature that joins mid-fight (a
@@ -1219,8 +1223,10 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   leaving a bubble of light-water round every warded ally (S: a halo, golden rain), each bubble following its ally,
   rippling with each hit its ward soaks (the sim's `absorbed`) and bursting when that ward ends (`shieldGone`) or the
   fight ends; Stampede's lightning dash through the boss with afterimages and stun rings (S: a
-  sky bolt); Eclipse's black moon over the sun, the fox in shadow with afterimages, hits passing through in shadow (S:
-  two clones); Rift Step's cracks in space, hits meeting empty rifts (S: the arena's edge cracks); Supernova's sun
+  sky bolt); Eclipse (owner 2026-11-05): the fox holds still (`windupPose` "still") as a five-point star sigil
+  draws itself under it and a black moon slides over the sun, then it glows dark purple and a see-through mirror image
+  at its side copies its every pose and move (its bones copied each frame) and strikes with it (`SuperFx.echoHit`, a
+  shadow slash with each of its hits) while hits pass through in shadow, for 5 s (S: two mirror images); Rift Step's cracks in space, hits meeting empty rifts (S: the arena's edge cracks); Supernova's sun
   growing over its hands, rising over the boss and bursting there (`grades.burst` studs up; the cinematic's charge and
   impact shots frame that point, `SuperFxRules.shot` sky), raining fire into a dome of fire, rings, rays and shimmer
   (S: light pillars); Stampede's thunder crack and roll on impact; Thunderstorm's storm clouds, colossal

@@ -1084,12 +1084,134 @@ function SuperFx.dodged(root: BasePart, at: Vector3)
 	end
 end
 
--- Eclipse (Eclipse Fox, Epic, Shade; spec "Eclipse"): the fox howls at the sky, a black moon slides over the sun, a ring
--- of violet light bursts out and the fox turns to shadow: attacks pass through it in puffs of shadow, afterimages
--- trail it and the eclipse hangs above for the 3 s. By grade: a bigger corona, more afterimages; S: two shadow clones.
+-- Eclipse (Eclipse Fox, Epic, Shade; spec "Eclipse", owner 2026-11-05): the fox holds still as a five-point star sigil
+-- draws itself on the ground under it and a black moon slides over the sun; then it glows dark purple and a mirror image
+-- at its side copies its every move (its hits echoed by a shadow slash) while attacks pass through it in puffs of
+-- shadow, for the move's 5 s. By grade: a bigger sigil and corona, more afterimages; S: two mirror images.
 local ECLIPSE = SuperFxConfig.LOOKS.Eclipse
 local ECLIPSE_SOUNDS = SuperFxConfig.SOUNDS.Eclipse
 local SHADOW = Color3.fromRGB(40, 24, 70)
+local DUSK = Color3.fromRGB(88, 36, 160) -- the dark purple glow
+
+-- The creatures whose mirror images are out (Eclipse), and the images
+local mirrors: { [BasePart]: { Model } } = {}
+
+-- A star sigil on the ground at `at`: two rings and an upright five-point star (one point toward `facing`), its lines
+-- drawing themselves in one after another over `seconds` (0: at once), glowing points where they meet
+local function starSigil(b: Bag, at: Vector3, radius: number, facing: Vector3, tint: Color3, seconds: number): { Instance }
+	local made: { Instance } = {}
+	local ground = groundAt(at)
+	local function ring(size: number)
+		local decal = groundDecal(b, ground, size, AttackFx.TEXTURES.ring, tint, math.max(0.05, seconds * 0.4))
+		table.insert(made, decal)
+	end
+	ring(radius * 2.3)
+	ring(radius * 2.05)
+	local flat = Vector3.new(facing.X, 0, facing.Z)
+	local start = if flat.Magnitude > 0.01 then math.atan2(flat.Z, flat.X) else 0
+	local points = {}
+	for index = 0, 4 do
+		local a = start + index * 2 * math.pi / 5
+		points[index] = ground + UP * 0.12 + Vector3.new(math.cos(a), 0, math.sin(a)) * radius
+	end
+	for index = 0, 4 do
+		local from, to = points[index], points[(index + 2) % 5]
+		local line = part(b, Vector3.new(0.28, 0.06, 0.05), tint, CFrame.lookAt(from, to), 0.05)
+		line.Material = Enum.Material.Neon
+		table.insert(made, line)
+		local length = (to - from).Magnitude
+		local delay = seconds * 0.7 * index / 5
+		local draw = math.max(0.01, seconds * 0.7 / 5)
+		everyFrame(b, function(elapsed)
+			local t = math.clamp((elapsed - delay) / draw, 0, 1)
+			local reach = math.max(0.05, length * t)
+			line.Size = Vector3.new(0.28, 0.06, reach)
+			line.CFrame = CFrame.lookAt(from, to) * CFrame.new(0, 0, -reach / 2)
+		end)
+		local dot = part(b, Vector3.one * 0.7, tint, CFrame.new(from), 1, Enum.PartType.Ball)
+		dot.Material = Enum.Material.Neon
+		table.insert(made, dot)
+		task.delay(delay, function()
+			if not b.done then
+				tween(dot, 0.2, { Transparency = 0 })
+			end
+		end)
+	end
+	local light = Instance.new("PointLight")
+	light.Color = tint
+	light.Range = radius * 2.4
+	light.Brightness = 2
+	light.Shadows = false
+	light.Parent = anchor(b, CFrame.new(ground + UP * 1))
+	table.insert(made, light)
+	return made
+end
+
+-- A see-through dark copy of the creature `side` studs to its right (negative: its left) that moves and poses with it
+-- every frame (its bones copied over): Eclipse's mirror image
+local function mirrorImage(b: Bag, view: View, side: number, tint: Color3): Model?
+	local model = view.root:FindFirstAncestorOfClass("Model")
+	if not model then
+		return nil
+	end
+	local copy = model:Clone()
+	local fromBones, toBones = {}, {}
+	local twins = copy:GetDescendants()
+	for index, item in model:GetDescendants() do
+		local twin = twins[index]
+		if item:IsA("Bone") and twin and twin:IsA("Bone") and twin.Name == item.Name then
+			table.insert(fromBones, item)
+			table.insert(toBones, twin)
+		end
+	end
+	for _, item in twins do
+		if item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+			item.CastShadow = false
+			item.Material = Enum.Material.Neon
+			item.Color = tint
+			item.Transparency = 0.5
+			if item:IsA("MeshPart") then
+				item.TextureID = ""
+			end
+		elseif item:IsA("Decal") or item:IsA("Texture") or item:IsA("SurfaceAppearance") or item:IsA("Script") or item:IsA("LocalScript")
+			or item:IsA("ParticleEmitter") or item:IsA("Beam") or item:IsA("Light") or item:IsA("BillboardGui") or item:IsA("Highlight")
+			or item:IsA("AnimationController") then
+			item:Destroy()
+		end
+	end
+	copy.Name = "MirrorImage"
+	copy.Parent = folder()
+	table.insert(b.items, copy)
+	everyFrame(b, function()
+		if not model.Parent then
+			return
+		end
+		copy:PivotTo(model:GetPivot() * CFrame.new(side, 0, 0))
+		for index, bone in fromBones do
+			toBones[index].Transform = bone.Transform
+		end
+	end)
+	return copy
+end
+
+-- A hit by `root`'s creature landed at `at` (Util/FightFx): its mirror images strike with it, a shadow slash each
+function SuperFx.echoHit(root: BasePart, at: Vector3, scale: number)
+	local images = mirrors[root]
+	if not images then
+		return
+	end
+	for index, image in images do
+		if image.Parent then
+			local from = image:GetPivot().Position
+			ElementFx.slash(at + (from - root.Position).Unit * 0.6, from, color(ECLIPSE.color), "claw", index, scale * 0.9)
+			ElementFx.burst(at, DUSK, 0.5 * scale)
+		end
+	end
+end
 
 -- The eclipse in the sky over `at`: a black moon in a glowing corona, `size` studs, `height` up
 local function eclipseSky(b: Bag, at: Vector3, size: number, tint: Color3, height: number): (Part, Part)
@@ -1102,13 +1224,16 @@ local function eclipseSky(b: Bag, at: Vector3, size: number, tint: Color3, heigh
 	return moon, corona
 end
 
-local function eclipseCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+local function eclipseCharge(view: View, grade: string, seconds: number, target: Vector3?): () -> ()
 	local g = ECLIPSE.grades[grade]
 	local b = bag()
 	local violet = color(ECLIPSE.color)
 	local source = anchor(b, CFrame.new(view.root.Position + UP * view.height))
 	play(b, source, ECLIPSE_SOUNDS.call, 1)
 	play(b, source, ECLIPSE_SOUNDS.charge, 0.8)
+	-- It holds still (Config windupPose "still") as the star sigil draws itself under it
+	local facing = if target then target - view.root.Position else view.root.CFrame.LookVector
+	starSigil(b, view.root.Position, view.height * g.sigil, facing, violet, seconds)
 	-- The moon slides over the sun: a pale sun high above, the black disc moving across it
 	local sky = view.root.Position + UP * 30
 	local sun = part(b, Vector3.one * g.corona, Color3.fromRGB(255, 236, 170), CFrame.new(sky), 0.1, Enum.PartType.Ball)
@@ -1116,8 +1241,10 @@ local function eclipseCharge(view: View, grade: string, seconds: number, _target
 	moon.Material = Enum.Material.SmoothPlastic
 	tween(moon, seconds, { CFrame = CFrame.new(sky - (sky - workspace.CurrentCamera.CFrame.Position).Unit * 2) }, Enum.EasingStyle.Sine)
 	tween(sun, seconds, { Color = violet })
-	local wisps = ElementFx.emitter(anchor(b, CFrame.new(view.root.Position)), "smoke", SHADOW, { size = { 1.5, 3 }, life = { 0.6, 1 }, speed = { 1, 3 }, spread = 180, accel = UP * 2, light = 0 })
-	wisps.Rate = g.particles * 0.5
+	local motes = ElementFx.emitter(anchor(b, CFrame.new(groundAt(view.root.Position) + UP * 0.3)), "spark", violet, { size = { 0.4, 0.1 }, life = { 0.8, 1.3 }, speed = { 2, 4 }, spread = 15, accel = UP * 2 })
+	motes.Shape = Enum.ParticleEmitterShape.Disc
+	motes.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	motes.Rate = g.particles * 0.6
 	local stopGlow = ElementFx.chargeGlow(view.root, violet, seconds, 1.4 * g.scale)
 	return function()
 		stopGlow()
@@ -1125,25 +1252,67 @@ local function eclipseCharge(view: View, grade: string, seconds: number, _target
 	end
 end
 
-local function eclipseImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number): () -> ()
+local function eclipseImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, _targetHeight: number, extra: Extra): () -> ()
 	local g = ECLIPSE.grades[grade]
 	local b = bag()
 	local violet = color(ECLIPSE.color)
-	local seconds = (SuperFx.abilityOf("Eclipse") or { seconds = 3 }).seconds
+	local seconds = extra.seconds or (SuperFx.abilityOf("Eclipse") or { seconds = 5 }).seconds
 	local feet = groundAt(view.root.Position)
 	play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.impact, 1.1)
 	quake(g, feet, 0.8)
 	if grade == "A" or grade == "S" then
 		play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.layer, 0.9)
 	end
-	-- The eclipse hangs above, a ring of violet light bursts out
+	-- The sigil flares and fades, the eclipse hangs above, a ring of violet light bursts out
+	local flare = starSigil(b, view.root.Position, view.height * g.sigil, target - view.root.Position, violet, 0)
+	task.delay(0.5, function()
+		for _, item in flare do
+			if item:IsA("BasePart") then
+				tween(item, 0.6, { Transparency = 1 })
+			elseif item:IsA("Decal") then
+				tween(item, 0.6, { Transparency = 1 })
+			elseif item:IsA("PointLight") then
+				tween(item, 0.6, { Brightness = 0 })
+			end
+		end
+	end)
 	eclipseSky(b, view.root.Position, g.corona, violet, 30)
 	ElementFx.ring(feet + UP * 0.2, violet, view.height * 2 * g.scale, 0.5)
 	ElementFx.burst(view.root.Position + UP * view.height * 0.5, violet, 1.6 * g.scale)
-	-- The fox turned to shadow: a dark haze round it, afterimages trailing it
-	local haze = ElementFx.emitter(view.root, "smoke", SHADOW, { size = { view.height * 0.5, view.height * 0.8 }, life = { 0.4, 0.7 }, speed = { 0.5, 1.5 }, spread = 180, light = 0 })
-	haze.Rate = g.particles * 0.6
+	-- It glows dark purple
+	local model = view.root:FindFirstAncestorOfClass("Model")
+	if model then
+		local glow = Instance.new("Highlight")
+		glow.FillColor = DUSK
+		glow.FillTransparency = 0.45
+		glow.OutlineColor = Color3.fromRGB(196, 160, 255)
+		glow.OutlineTransparency = 0.15
+		glow.DepthMode = Enum.HighlightDepthMode.Occluded
+		glow.Adornee = model
+		glow.Parent = folder()
+		table.insert(b.items, glow)
+	end
+	local aura = Instance.new("PointLight")
+	aura.Color = DUSK
+	aura.Range = view.height * 2.5
+	aura.Brightness = 2.5
+	aura.Shadows = false
+	aura.Parent = view.root
+	table.insert(b.items, aura)
+	local haze = ElementFx.emitter(view.root, "smoke", SHADOW, { size = { view.height * 0.4, view.height * 0.7 }, life = { 0.4, 0.7 }, speed = { 0.5, 1.5 }, spread = 180, light = 0 })
+	haze.Rate = g.particles * 0.4
 	table.insert(b.items, haze)
+	-- Its mirror image (S: one each side), copying its every move; afterimages trail it as it darts
+	local images = {}
+	for index = 1, g.mirrors do
+		local side = view.height * 1.1 * (if index == 1 then -1 else 1)
+		local image = mirrorImage(b, view, side, DUSK)
+		if image then
+			table.insert(images, image)
+			ElementFx.burst(image:GetPivot().Position, violet, 1)
+		end
+	end
+	mirrors[view.root] = images
 	local last = view.root.Position
 	everyFrame(b, function()
 		local now = view.root.Position
@@ -1152,22 +1321,29 @@ local function eclipseImpact(view: View, grade: string, _target: Vector3, _targe
 			last = now
 		end
 	end)
-	-- S: two shadow clones beside it
-	if g.extra then
-		local side = view.root.CFrame.RightVector * view.height * 0.9
-		afterimages(b, view, view.root.Position - side, view.root.Position - side, 1, SHADOW, seconds)
-		afterimages(b, view, view.root.Position + side, view.root.Position + side, 1, SHADOW, seconds)
-	end
 	local drone = play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.linger, 0.6, true)
 	-- Attacks pass through it in a puff of shadow
 	dodgers[view.root] = function(at: Vector3)
 		ElementFx.emitter(anchor(b, CFrame.new(at)), "smoke", SHADOW, { size = { 2, 4 }, life = 0.5, speed = { 3, 6 }, spread = 180, light = 0 }):Emit(10)
 	end
-	task.delay(seconds, function()
+	local function done()
+		if mirrors[view.root] == images then
+			mirrors[view.root] = nil
+		end
 		if dodgers[view.root] then
 			dodgers[view.root] = nil
 		end
+	end
+	task.delay(seconds, function()
+		done()
 		haze.Rate = 0
+		for _, image in images do
+			for _, item in image:GetDescendants() do
+				if item:IsA("BasePart") then
+					tween(item, 0.5, { Transparency = 1 })
+				end
+			end
+		end
 		if drone then
 			tween(drone, 0.4, { Volume = 0 })
 		end
@@ -1176,7 +1352,7 @@ local function eclipseImpact(view: View, grade: string, _target: Vector3, _targe
 		end)
 	end)
 	return function()
-		dodgers[view.root] = nil
+		done()
 		clear(b)
 	end
 end

@@ -67,17 +67,23 @@ params.tail_from = 0.25
 params.head_from = -0.38
 
 # The lower jaw hinges under the back of the head and drops for its fire breath. Its vertices (the open mouth's bottom
-# half: in front of y -0.57, under z 0.615) go to Jaw_0, blending over 3 cm into the head's weights
+# half: in front of y -0.57, under the mouth line, z 0.615 at the hinge sloping down toward the front) go to Jaw_0,
+# blending over 2 cm into the head's weights. It stops at the chin (y -0.705): the upper snout runs on to y -0.78 with
+# its underside and teeth below z 0.615, and a flat cut that took them dragged the whole snout down with the jaw (owner
+# 2026-11-05: "infernox head is stretching")
 BONES.append(("Jaw_0", "Head_0", (0.02, -0.55, 0.6), (0.02, -0.74, 0.53)))
-JAW_FRONT, JAW_TOP, JAW_BLEND = -0.57, 0.615, 0.03
+JAW_FRONT, JAW_TOP, JAW_BLEND = -0.57, 0.615, 0.02
+JAW_TIP, TIP_BLEND, JAW_SLOPE = -0.705, 0.015, 0.385
 
 
 def jaw_share(p):
-    if p.y > JAW_FRONT + JAW_BLEND or p.z > JAW_TOP + JAW_BLEND:
+    top = JAW_TOP + (p.y - JAW_FRONT) * JAW_SLOPE
+    if p.y > JAW_FRONT + JAW_BLEND or p.y < JAW_TIP - TIP_BLEND or p.z > top + JAW_BLEND:
         return 0.0
     along = min(1.0, (JAW_FRONT + JAW_BLEND - p.y) / JAW_BLEND)
-    below = min(1.0, (JAW_TOP + JAW_BLEND - p.z) / JAW_BLEND)
-    return along * below
+    tip = min(1.0, (p.y - (JAW_TIP - TIP_BLEND)) / TIP_BLEND)
+    below = min(1.0, (top + JAW_BLEND - p.z) / JAW_BLEND)
+    return along * tip * below
 
 
 mesh = bpy.data.objects["Infernox_Rex"]

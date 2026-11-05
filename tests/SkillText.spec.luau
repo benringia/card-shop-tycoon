@@ -15,10 +15,11 @@ return {
 
 	["each super move says what it does"] = function()
 		expect.equal(SkillText.describe(Combat.SIGNATURES.Infernox), "Burns the foe for 6 s")
-		expect.equal(SkillText.describe(Combat.SIGNATURES["Abyssal Koi"]), "A shield worth 30% of its HP")
-		expect.equal(SkillText.describe(Combat.SIGNATURES["Tideborne Kirin"]), "A shield worth 35% of its HP")
+		expect.equal(SkillText.describe(Combat.SIGNATURES["Abyssal Koi"]), "Shields you and your party: 30% HP for 8 s")
+		expect.equal(SkillText.describe(Combat.SIGNATURES["Tideborne Kirin"]), "Shields you and your party: 35% HP for 10 s")
 		expect.equal(SkillText.describe(Combat.SIGNATURES.Thunderhorn), "A 2x hit and a 2 s stun")
-		expect.equal(SkillText.describe(Combat.SIGNATURES["Eclipse Fox"]), "Dodges everything for 3 s")
+		expect.equal(SkillText.describe(Combat.SIGNATURES["Eclipse Fox"]), "Dodges everything for 5 s")
+		expect.equal(SkillText.describe(Combat.SIGNATURES.Riftwalker), "Dodges everything for 3 s")
 		expect.equal(SkillText.describe(Combat.SIGNATURES.Solarion), "A huge 4x hit")
 		expect.equal(SkillText.describe(Combat.SIGNATURES.Voidmaw), "A 2x hit that heals it for half")
 		for name, ability in Combat.SIGNATURES do

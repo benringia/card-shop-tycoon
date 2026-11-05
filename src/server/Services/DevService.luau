@@ -400,6 +400,26 @@ function DevService.Start()
 		end
 		Remotes.MovePreview:FireClient(player, { move = move, grade = grade, big = string.find(text, "%sbig") ~= nil })
 	end)
+	-- Three basic attacks at a grade from your summoned creature at a dummy, played by your client (MovePreviewController)
+	addCommand(folder, "attackfx", function(player, text)
+		local grade = string.upper(string.match(text, "^/%w+%s+(%a)%f[%A]") or "S")
+		if not ({ C = true, B = true, A = true, S = true })[grade] then
+			Remotes.Notify:FireClient(player, "Usage: /attackfx [C|B|A|S]", true)
+			return
+		end
+		local summoned = false
+		for _, marker in workspace:GetDescendants() do
+			if marker:IsA("BasePart") and marker:GetAttribute("OwnerUserId") == player.UserId and typeof(marker:GetAttribute("BeastId")) == "string" then
+				summoned = true
+				break
+			end
+		end
+		if not summoned then
+			Remotes.Notify:FireClient(player, "Summon a creature first.", true)
+			return
+		end
+		Remotes.MovePreview:FireClient(player, { attack = true, grade = grade })
+	end)
 	-- The super moves (spec 2026-11-05-super-moves-design): one at a grade on your summoned creature against a dummy,
 	-- with the caster's cinematic, played by your client (MovePreviewController)
 	addCommand(folder, "superfx", function(player, text)
@@ -519,7 +539,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /boss <n> [fight|group], /jobslot, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S]")
 end
 
 return DevService

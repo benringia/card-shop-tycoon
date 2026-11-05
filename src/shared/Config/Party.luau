@@ -390,6 +390,17 @@ return {
 		COMBO_LUNGE = 0.9,
 		CAST_PITCH = 18,
 		CAST_LUNGE = 0.6,
+		-- ...and the limbs with them (degrees; owner 2026-11-05: the Eclipse Fox "doesnt have a basic attack animation"):
+		-- the charge lowers the head and raises the tail, a strike bites, a combo swipes a front paw (or arm) each third,
+		-- left, right, left, and a cast rears the head back, then thrusts it forward
+		ATTACK_COIL = 14,
+		ATTACK_TAIL = 16,
+		ATTACK_BITE = 22,
+		ATTACK_DIP = 18,
+		ATTACK_PAW = 55,
+		ATTACK_ARM = 60,
+		CAST_REAR = 22,
+		CAST_THRUST = 16,
 		CHOMP_DRAW = 0.4,
 		CHOMP_LUNGE = 1.6,
 		-- Briarhorn's thorn charge: how far its head goes down (degrees) and how far it lunges forward (studs at size 1)

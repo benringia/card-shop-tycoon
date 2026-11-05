@@ -647,6 +647,26 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	-- legs turn back to stay planted
 	-- Gazing up at an eclipse: sitting back on its haunches, head raised to the sky
 	local gazing = if fidget == "eclipse" then hold(progress) * idle else 0
+	-- Fight poses (FightFx): the limbs attack with the body. A charge coils (held), a strike bites (peaking at 0.4), a
+	-- combo swipes once a third, left, right, left, and a cast rears the head back to 0.5, thrusts it to 0.75, settles
+	local coil = if fidget == "charge" then math.sin(math.min(1, progress / 0.35) * math.pi / 2) else 0
+	local bite = if fidget ~= "strike" then 0
+		elseif progress < 0.4 then math.sin(progress / 0.4 * math.pi / 2)
+		else math.cos((progress - 0.4) / 0.6 * math.pi / 2)
+	local swipeIndex = math.clamp(math.floor(progress * 3), 0, 2)
+	local swipe = if fidget == "combo" then math.sin(math.clamp(progress * 3 - swipeIndex, 0, 1) * math.pi) else 0
+	local swipeSide = if swipeIndex % 2 == 0 then "Left" else "Right"
+	local castHead = 0
+	if fidget == "cast" then
+		if progress < 0.5 then
+			castHead = -rad(cfg.CAST_REAR) * math.sin(progress / 0.5 * math.pi / 2)
+		elseif progress < 0.75 then
+			local q = (progress - 0.5) / 0.25
+			castHead = -rad(cfg.CAST_REAR) + (rad(cfg.CAST_REAR) + rad(cfg.CAST_THRUST)) * (1 - math.cos(q * math.pi)) / 2
+		else
+			castHead = rad(cfg.CAST_THRUST) * (1 + math.cos((progress - 0.75) / 0.25 * math.pi)) / 2
+		end
+	end
 	local sitUp = if biped then 0 else grooming + cracking + gazing * 0.45
 	-- No tail bones: the tails are skinned to the hips, so the hips sway them and the spine turns back. Two-legged
 	-- rigs without a tail have no tail to swish: they shift their weight slowly from foot to foot instead
@@ -696,6 +716,9 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 						+ (rad(cfg.GROOM_PAW) - rad(cfg.SHELL_TAP) * (1 - math.max(0, math.sin(progress * TAU * 4)))) * cracking
 				elseif fidget == "hop" then
 					x -= rad(10) * math.abs(math.sin(progress * TAU)) * idle
+				elseif role.pair == 0 and not biped then
+					-- Attacking: a combo's paw raised and slashed down in turn, braced forward for a charge
+					x += (if role.side == swipeSide then rad(cfg.ATTACK_PAW) * swipe else 0) - rad(8) * coil
 				end
 			else
 				-- The lower leg bends as the leg comes forward, then straightens to land
@@ -705,6 +728,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 					x += (rad(cfg.SIT) * 2 * sitting + rad(cfg.SIT_UP) * 0.6 * sitUp) / role.segment
 				elseif role.pair == 0 and not biped then
 					x -= rad(30) * (grooming + cracking) / role.segment -- paws curled
+					x -= rad(25) * (if role.side == swipeSide then swipe else 0) / role.segment -- claws out on the swipe
 				elseif fidget == "scratch" and hind and role.side == "Right" then
 					-- The quick scratching
 					x += rad(18) * math.sin(progress * TAU * 8) * amount
@@ -732,6 +756,9 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			elseif roaring then
 				x += rad(cfg.ROAR_NECK) * 0.15 * roarCurve(cfg, progress) * idle
 			end
+			-- Attacking: hunched for the charge, turning into each swipe
+			x += rad(5) * coil
+			y += rad(8) * swipe * (if swipeSide == "Left" then 1 else -1)
 			z += shake * 0.6
 		elseif role.kind == "neck" or role.kind == "head" then
 			local share = if role.kind == "neck" then 0.45 else 0.55
@@ -772,6 +799,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				x -= rad(cfg.BUTTERFLY_LOOK) * share * lifted
 				y += rad(cfg.BUTTERFLY_FOLLOW) * share * math.sin((progress - 0.2) * TAU * 1.2) * lifted
 			end
+			-- Attacking: head low for the charge, a bite, a dip with each swipe, rearing back and thrusting for a cast
+			x += (rad(cfg.ATTACK_COIL) * coil + rad(cfg.ATTACK_BITE) * bite + rad(cfg.ATTACK_DIP) * swipe + castHead) * share
 			if role.kind == "head" and role.segment > 0 then
 				-- The tip of the head only follows a little
 				x *= 0.3
@@ -800,7 +829,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 		elseif role.kind == "jaw" then
 			-- Many-headed rigs snap open now and then, each head at its own moment; any jaw gapes in a yawn or roar
 			local snap = if hasHydra then math.max(0, math.sin(state.time * TAU / cfg.JAW_SNAP_SECONDS + role.pair * cfg.HYDRA_SPREAD * 2)) ^ 4 else 0
-			x = -rad(cfg.JAW_SNAP) * snap
+			x = -rad(cfg.JAW_SNAP) * snap - rad(cfg.JAW_YAWN) * 0.8 * math.max(bite, swipe * 0.6, math.max(0, castHead) / rad(cfg.CAST_THRUST) * 0.6)
 			if fidget == "yawn" then
 				x = math.min(x, -rad(cfg.JAW_YAWN) * amount)
 			elseif roaring then
@@ -818,10 +847,11 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			local amplitude = rad(cfg.TAIL_WAG) * (1 + cfg.TAIL_GROW * role.segment) * wagScale * cfg.TAILS_AMOUNT
 			y = amplitude * math.sin(wag - role.segment * cfg.TAIL_LAG + role.pair * cfg.TAILS_SPREAD)
 			x = -breath * 0.5 + rad(cfg.TAILS_RISE) * math.sin(wag * 0.5 + role.pair * 1.3) * (1 - 0.5 * moving)
+				- rad(cfg.ATTACK_TAIL) * coil -- raised for the charge
 		elseif role.kind == "tail" then
 			local amplitude = rad(cfg.TAIL_WAG) * (1 + cfg.TAIL_GROW * role.segment) * wagScale
 			y = amplitude * math.sin(wag - role.segment * cfg.TAIL_LAG)
-			x = -breath * 0.5
+			x = -breath * 0.5 - rad(cfg.ATTACK_TAIL) * coil -- raised for the charge
 			if fidget == "thunderroar" then
 				x -= rad(14) * hold(progress) * idle -- the tail lifts stiff
 			end
@@ -857,6 +887,11 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			if sunning > 0 and role.segment == 0 then
 				x += rad(cfg.SUN_RAISE) * sunning
 			end
+			-- Attacking: a combo claws with each arm in turn, a strike swings both, a charge draws them back, a cast
+			-- raises them as it rears and throws them forward
+			local clawing = (if role.side == swipeSide then swipe else 0) * rad(cfg.ATTACK_ARM) + bite * rad(40)
+				+ math.max(0, castHead) / rad(cfg.CAST_THRUST) * rad(35) - coil * rad(15)
+			x += if role.segment == 0 then clawing else clawing * 0.5 / role.segment
 			if slamming > 0 then
 				local p = progress
 				local lift = 0
