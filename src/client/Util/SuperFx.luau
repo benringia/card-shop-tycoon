@@ -1313,12 +1313,14 @@ local function eclipseImpact(view: View, grade: string, target: Vector3, _target
 		end
 	end
 	mirrors[view.root] = images
-	local last = view.root.Position
-	everyFrame(b, function()
+	-- Afterimages trail it as it darts, one copy every 0.15 s at most (each is a whole copy of its model: a dash cloned
+	-- one a frame and hitched the frame in Studio)
+	local last, lastAt = view.root.Position, 0
+	everyFrame(b, function(elapsed)
 		local now = view.root.Position
-		if (now - last).Magnitude > 2 then
+		if (now - last).Magnitude > 2 and elapsed - lastAt >= 0.15 then
 			afterimages(b, view, last, now, 1, violet, 0.4)
-			last = now
+			last, lastAt = now, elapsed
 		end
 	end)
 	local drone = play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.linger, 0.6, true)
