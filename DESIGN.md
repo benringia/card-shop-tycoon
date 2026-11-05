@@ -1171,7 +1171,10 @@ group, checked before its fragments and every time (not only the first). Below i
   each hit (A) or a thunderbolt and flash (S). Curse: a seven-point rune circle under the caster as it casts, then a
   hex (B), shadow chains (A), a dripping eye sigil over the target, a dark aura and smoke, the target darkened, for its
   5 s. Studio: `/movefx <rain|vine|orbs|curse> [C|B|A|S] [big]` and the admin panel's "Pet moves" buttons play any of
-  them on your summoned creature against a dummy. The super moves Inferno a fire
+  them on your summoned creature against a dummy. Cost measured 2026-11-05 (render CPU, a fixed camera on the 14-stud
+dummy, each move at grade S): at most +0.34 ms at graphics level 10 and +0.63 ms at level 1 over a 13.2 ms baseline.
+Vine Snare's vines are solid tapering stems (cylinders with ball joints, wood at A and S) winding fewer turns round
+a foe wider than it is tall. The super moves Inferno a fire
   pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
   the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
   nothing (`FightFxRules.hasEffect`).

@@ -424,6 +424,27 @@ function WildValley.passProps(valley: any): { { model: string, x: number, z: num
 						end
 						along += dress.every
 					end
+					local behind = dress.behind
+					if behind then
+						local far = valley.PASS.width / 2 + banks.out + behind.back
+						local back = 0
+						along = behind.every * 0.25
+						while along <= run do
+							back += 1
+							local spot = {
+								model = behind.trees[(back - 1) % #behind.trees + 1],
+								x = a.x + dx * along / run + acrossX * far * side,
+								z = a.z + dz * along / run + acrossZ * far * side,
+								height = behind.height[1] + (behind.height[2] - behind.height[1]) * roll(),
+								yaw = math.floor(roll() * 360),
+								glow = dress.glow,
+							}
+							if not WildValley.inside(valley.EDGE, spot) then
+								table.insert(spots, spot)
+							end
+							along += behind.every
+						end
+					end
 				end
 			end
 		end

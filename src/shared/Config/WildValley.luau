@@ -57,7 +57,9 @@ return {
 		spacing = 9, out = 4, drift = 4, radius = { 10, 13 }, rise = { 6, 12 }, grassShare = 0.6, outcrop = 3, seed = 4242,
 		props = {
 			-- the Meadow up to the Caves: trees and mossy rocks
-			{ every = 14, back = 6, trees = { "TreeA", "PineB", "TreeC", "TreeD" }, rocks = { "MossRockA", "MossRockB" }, height = { 15, 21 }, rockHeight = { 4, 6 } },
+			{ every = 14, back = 6, trees = { "TreeA", "PineB", "TreeC", "TreeD" }, rocks = { "MossRockA", "MossRockB" }, height = { 15, 21 }, rockHeight = { 4, 6 },
+				-- a taller row behind, screening the biome walls' ends behind the banks
+				behind = { every = 11, back = 9, trees = { "PineB", "TreeD", "TreeA" }, height = { 22, 28 } } },
 			-- the Caves up to Ember Ridge: charred and ember trees, obsidian
 			{ every = 16, back = 6, trees = { "CharredTree", "EmberTree" }, rocks = { "ObsidianShards" }, height = { 12, 17 }, rockHeight = { 4, 6 }, glow = "ember" },
 		},

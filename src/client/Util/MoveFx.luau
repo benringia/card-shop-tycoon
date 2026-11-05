@@ -307,7 +307,7 @@ end
 -- ===================================================================================================================
 -- Vine Snare (Bloom)
 
-local VINE_STEPS = 12 -- straight beams per vine, bottom to top
+local VINE_STEPS = 10 -- stem pieces per vine, bottom to top
 local VINE_GROW = 0.4 -- seconds a vine takes to climb
 local VINE_WITHER = 0.6 -- seconds it takes to wither at the end
 local BROWN = Color3.fromRGB(110, 78, 46)
@@ -339,68 +339,49 @@ function MoveFx.vines(target: BasePart, height: number, grade: string, seconds: 
 	local groundY = groundUnder(centre, centre.Y - tall * 0.5)
 	local base = Vector3.new(centre.X, groundY, centre.Z)
 	local radius = MoveFxRules.wrapRadius(halfWidth, tall)
-	local thick = look.thickness * math.clamp(tall / 4, 0.8, 3)
+	local thick = look.thickness * math.clamp(tall / 5, 1, 1.7) -- thicker on a big foe, but never a wall of green
 	local color = rgb(look.color)
 	local woody = grade == "A" or grade == "S"
 	local items: { Instance } = {}
 	local holder = part(Vector3.new(0.2, 0.2, 0.2), WHITE, CFrame.new(base), 1)
 	table.insert(items, holder)
 
-	local beams: { Beam } = {}
+	-- The vines: solid tapering stems (lit, not flat ribbons; the owner: "make the vines more visible"), a rounded joint
+	-- at each bend, climbing piece by piece. On a foe wider than it is tall they wind fewer times, so they climb it
+	-- rather than ring it like a cage
+	local stopped = false
+	local segments: { Part } = {}
 	local tips: { Vector3 } = {} -- points along the vines, for leaves, thorns and flowers
+	local material = if woody then Enum.Material.Wood else Enum.Material.SmoothPlastic
+	local turns = look.turns * math.clamp(tall * look.reach / (radius * 2.2), 0.45, 1)
 	for index = 1, look.count do
-		local path = MoveFxRules.vinePath(index, look.count, tall * look.reach, radius, look.turns, VINE_STEPS)
-		local previous: Attachment? = nil
-		for step, point in path do
-			local attachment = Instance.new("Attachment")
-			attachment.Position = Vector3.new(point.x, point.y + 0.1, point.z)
-			attachment.Parent = holder
+		local path = MoveFxRules.vinePath(index, look.count, tall * look.reach, radius, turns, VINE_STEPS)
+		for step = 2, #path do
+			local p0, p1 = path[step - 1], path[step]
+			local from = base + Vector3.new(p0.x, p0.y + 0.1, p0.z)
+			local to = base + Vector3.new(p1.x, p1.y + 0.1, p1.z)
+			local share = (step - 2) / VINE_STEPS
+			local width = thick * (1 - share * 0.5)
+			local stem = part(Vector3.new((to - from).Magnitude + width * 0.3, width, width), color, CFrame.lookAt((from + to) / 2, to) * CFrame.Angles(0, math.rad(90), 0), 1)
+			stem.Shape = Enum.PartType.Cylinder
+			stem.Material = material
+			local joint = part(Vector3.one * width, color, CFrame.new(to), 1)
+			joint.Shape = Enum.PartType.Ball
+			joint.Material = material
+			for _, piece in { stem, joint } do
+				table.insert(items, piece)
+				table.insert(segments, piece)
+			end
 			if step % 3 == 0 then
-				table.insert(tips, holder.Position + attachment.Position)
+				table.insert(tips, to)
 			end
-			if previous then
-				local share = (step - 1) / VINE_STEPS
-				-- A dark outline behind each piece, so the vine reads against any foe (the owner: "make the vines more visible")
-				local outline = Instance.new("Beam")
-				outline.Attachment0 = previous
-				outline.Attachment1 = attachment
-				outline.Width0 = thick * (1 - share * 0.55) + 0.35
-				outline.Width1 = thick * (1 - (share + 1 / VINE_STEPS) * 0.55) + 0.35
-				outline.Color = ColorSequence.new(Color3.fromRGB(20, 40, 16))
-				outline.LightInfluence = 0
-				outline.Brightness = 1
-				outline.ZOffset = -0.2
-				outline.FaceCamera = true
-				outline.Segments = 1
-				outline.Enabled = false
-				outline.Parent = holder
-				table.insert(beams, outline)
-				task.delay(VINE_GROW * share, function()
-					outline.Enabled = true
-				end)
-				local beam = Instance.new("Beam")
-				beam.Attachment0 = previous
-				beam.Attachment1 = attachment
-				beam.Texture = if woody then MoveFxConfig.TEXTURES.bark else MoveFxConfig.TEXTURES.vine
-				beam.TextureMode = Enum.TextureMode.Static
-				beam.TextureLength = thick * 3
-				beam.Width0 = thick * (1 - share * 0.55)
-				beam.Width1 = thick * (1 - (share + 1 / VINE_STEPS) * 0.55)
-				beam.Color = ColorSequence.new(color)
-				beam.LightInfluence = 0.25
-				beam.LightEmission = 0.15
-				beam.Brightness = 2.2
-				beam.FaceCamera = true
-				beam.Segments = 1
-				beam.Enabled = false
-				beam.Parent = holder
-				table.insert(beams, beam)
-				-- It climbs: each piece appears as the vine reaches it
-				task.delay(VINE_GROW * share, function()
-					beam.Enabled = true
-				end)
-			end
-			previous = attachment
+			-- It climbs: each piece appears as the vine reaches it
+			task.delay(VINE_GROW * share, function()
+				if not stopped then
+					stem.Transparency = 0
+					joint.Transparency = 0
+				end
+			end)
 		end
 	end
 
@@ -415,19 +396,20 @@ function MoveFx.vines(target: BasePart, height: number, grade: string, seconds: 
 		end)
 		return piece
 	end
-	local leafSize = thick * 1.3
+	local leafSize = math.clamp(thick * 1.3, 0.6, 2)
 	for index = 1, look.leaves do
 		local at = tips[(index * 3) % #tips + 1]
 		dot(Enum.PartType.Block, Vector3.new(leafSize, leafSize * 0.12, leafSize * 0.6), Color3.fromRGB(134, 239, 172), at)
 	end
 	for index = 1, look.thorns do
 		local at = tips[(index * 5 + 2) % #tips + 1]
-		dot(Enum.PartType.Block, Vector3.new(thick * 0.25, thick * 0.9, thick * 0.25), Color3.fromRGB(231, 229, 228), at)
+		dot(Enum.PartType.Block, Vector3.new(0.25, 0.9, 0.25) * math.min(thick, 1.6), Color3.fromRGB(231, 229, 228), at)
 	end
 	for index = 1, look.blossoms do
 		local at = tips[(index * 7 + 1) % #tips + 1]
-		dot(Enum.PartType.Ball, Vector3.one * thick * 1.1, Color3.fromRGB(249, 168, 212), at)
-		dot(Enum.PartType.Ball, Vector3.one * thick * 0.45, Color3.fromRGB(253, 224, 71), at + Vector3.new(0, thick * 0.3, 0), Enum.Material.Neon)
+		local bloom = math.clamp(thick * 0.9, 0.5, 1.6)
+		dot(Enum.PartType.Ball, Vector3.one * bloom, Color3.fromRGB(249, 168, 212), at)
+		dot(Enum.PartType.Ball, Vector3.one * bloom * 0.4, Color3.fromRGB(253, 224, 71), at + Vector3.new(0, bloom * 0.3, 0), Enum.Material.Neon)
 	end
 
 	-- The ground breaking: dirt flying (A), a glowing crack and pollen (S)
@@ -461,14 +443,13 @@ function MoveFx.vines(target: BasePart, height: number, grade: string, seconds: 
 		sound(holder, sounds.layer, 0.6)
 	end
 
-	local stopped = false
 	local function stop()
 		if stopped then
 			return
 		end
 		stopped = true
-		for _, beam in beams do
-			beam.Color = ColorSequence.new(BROWN)
+		for _, piece in segments do
+			TweenService:Create(piece, TweenInfo.new(VINE_WITHER * 0.5), { Color = BROWN }):Play()
 		end
 		for _, item in items do
 			if item:IsA("BasePart") and item ~= holder then
