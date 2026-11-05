@@ -487,6 +487,9 @@ local function buildWildValley(folder: Folder)
 			table.insert(pieces, spot)
 		end
 	end
+	for _, spot in WildValley.passProps(WildValleyConfig) do -- trees and rocks on the passes' banks
+		table.insert(pieces, spot)
+	end
 	for _, spot in pieces do
 		local model = placeModel(holder, spot, spot.model)
 		if model then

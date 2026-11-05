@@ -253,36 +253,51 @@ local function ramp(a: Point, b: Point, width: number, depth: number, lift: numb
 	}
 end
 
--- A wall along each side of a climbing pass, from the lower floor's bottom to above the upper ground. It starts where
--- it leaves the lower biome (inside it, it would stand free like a pillar) and reaches its own thickness past its ends
--- otherwise, so it meets the cliffs round the biomes it joins
-local function passWalls(ops: { any }, a: Point, b: Point, valley: any, material: string, lowerZone: number)
-	local pass = valley.PASS
+-- A seeded 0..1 random (MINSTD, exact in doubles): the same numbers every run
+local function minstd(seed: number): () -> number
+	local state = seed
+	return function(): number
+		state = (state * 48271) % 2147483647
+		return state / 2147483647
+	end
+end
+
+-- Rolling banks along each side of a climbing pass (the owner 2026-11-05: "this wall leading to caves is awkward ...
+-- no walls"; Config/WildValley PASS_BANKS): terrain lumps every `spacing` studs from where the pass leaves the lower
+-- biome to a step past its top, each a seeded size, rising over the ramp's ground there; grassy (the lower biome's
+-- cliff) over the first `grassShare` of the climb, the upper biome's rock beyond, a smaller rock outcrop every
+-- `outcrop` lumps. Ops are marked `bank`.
+local function passBanks(ops: { any }, a: Point, b: Point, valley: any, lowerZone: number, upperZone: number, seed: number)
+	local banks = valley.PASS_BANKS
 	local dx, dz = b.x - a.x, b.z - a.z
 	local run = math.sqrt(dx * dx + dz * dz)
 	local yaw = math.atan2(-dx, -dz)
-	local acrossX, acrossZ = math.cos(yaw), -math.sin(yaw) -- the slab's own +X, square to the trail
-	local bottom = math.min(a.y :: number, b.y :: number) - valley.SURFACE_LIFT - 4
-	local top = math.max(a.y :: number, b.y :: number) + pass.wallHeight
-	local offset = pass.width / 2 + pass.wall / 2
+	local acrossX, acrossZ = math.cos(yaw), -math.sin(yaw) -- square to the trail
 	local lower = valley.BIOMES[lowerZone].outline
+	local upper = valley.BIOMES[upperZone].outline
+	local roll = minstd(seed)
+	local count = 0
 	for _, side in { -1, 1 } do
-		local startT = 0
-		while startT < 1 and WildValley.inside(lower, { x = a.x + dx * startT + acrossX * offset * side, z = a.z + dz * startT + acrossZ * offset * side }) do
-			startT += 1 / 64
+		local along = -banks.spacing
+		while along <= run + banks.spacing do
+			local t = math.clamp(along / run, 0, 1)
+			local radius = banks.radius[1] + (banks.radius[2] - banks.radius[1]) * roll()
+			local rise = banks.rise[1] + (banks.rise[2] - banks.rise[1]) * roll()
+			local out = valley.PASS.width / 2 + banks.out + (roll() - 0.5) * banks.drift
+			local x = a.x + dx * along / run + acrossX * out * side
+			local z = a.z + dz * along / run + acrossZ * out * side
+			if not WildValley.inside(lower, { x = x, z = z }) and not WildValley.inside(upper, { x = x, z = z }) then
+				count += 1
+				local ground = (a.y :: number) + ((b.y :: number) - (a.y :: number)) * t - valley.SURFACE_LIFT
+				local material = if t < banks.grassShare then valley.BIOME_CLIFF[lowerZone] else valley.BIOME_CLIFF[upperZone]
+				table.insert(ops, { shape = "Ball", x = x, y = ground + rise - radius, z = z, radius = radius, material = material, bank = true })
+				if count % banks.outcrop == 0 then
+					local rock = radius * 0.45
+					table.insert(ops, { shape = "Ball", x = x - acrossX * side * radius * 0.35, y = ground + rise + 1 - rock, z = z - acrossZ * side * radius * 0.35, radius = rock, material = valley.BIOME_CLIFF[upperZone], bank = true })
+				end
+			end
+			along += banks.spacing
 		end
-		local from = startT * run - (if startT == 0 then pass.wall else 0)
-		local to = run + pass.wall
-		local middle = (from + to) / 2 / run
-		table.insert(ops, {
-			shape = "Block",
-			x = a.x + dx * middle + acrossX * offset * side,
-			y = (bottom + top) / 2,
-			z = a.z + dz * middle + acrossZ * offset * side,
-			size = { x = pass.wall, y = top - bottom, z = to - from },
-			yaw = math.deg(yaw),
-			material = material,
-		})
 	end
 end
 
@@ -368,6 +383,54 @@ function WildValley.settleDrop(gaps: { number }, height: number, settle: { sink:
 	return math.min(widest + settle.sink, cap)
 end
 
+-- The trees and rocks standing on the passes' banks (Config/WildValley PASS_BANKS props, one list per pass in trail
+-- order): every `every` studs up each side, a tree or (every third) a rock, a seeded size and turn, set back `back`
+-- studs past the bank line so they stand on its slope, off the walkable pass
+function WildValley.passProps(valley: any): { { model: string, x: number, z: number, height: number, yaw: number, glow: string? } }
+	local spots = {}
+	local banks = valley.PASS_BANKS
+	local trail = valley.TRAIL
+	local passIndex = 0
+	for index = 2, #trail do
+		local a, b = trail[index - 1], trail[index]
+		if a.y ~= b.y then
+			passIndex += 1
+			local dress = banks.props[passIndex]
+			if dress then
+				local roll = minstd(banks.seed * 7 + index)
+				local dx, dz = b.x - a.x, b.z - a.z
+				local run = math.sqrt(dx * dx + dz * dz)
+				local yaw = math.atan2(-dx, -dz)
+				local acrossX, acrossZ = math.cos(yaw), -math.sin(yaw)
+				local out = valley.PASS.width / 2 + banks.out + dress.back
+				local n = 0
+				for _, side in { -1, 1 } do
+					local along = dress.every * 0.5
+					while along <= run do
+						n += 1
+						local rock = n % 3 == 0
+						local list = if rock then dress.rocks else dress.trees
+						local range = if rock then dress.rockHeight else dress.height
+						local spot = {
+							model = list[(n - 1) % #list + 1],
+							x = a.x + dx * along / run + acrossX * out * side,
+							z = a.z + dz * along / run + acrossZ * out * side,
+							height = range[1] + (range[2] - range[1]) * roll(),
+							yaw = math.floor(roll() * 360),
+							glow = dress.glow,
+						}
+						if not WildValley.inside(valley.EDGE, spot) then -- never in the walkable pass or a biome
+							table.insert(spots, spot)
+						end
+						along += dress.every
+					end
+				end
+			end
+		end
+	end
+	return spots
+end
+
 -- The valley's terrain fills in order: Config/WildValley's TERRAIN, the walls' skylines (skylineOps), the hills, the trail (a pass where it climbs: a
 -- wide ramp in the upper biome's floor, walls each side and the trail on it; elsewhere `segment`, TownTerrain's trail
 -- slab, started and ended half its width short of a climb so it never pokes up beside the ramp), then CARVES
@@ -399,7 +462,7 @@ function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: num
 			local upper = WildValley.zoneAt(valley, if b.y > a.y then b else a) or 1
 			local lower = WildValley.zoneAt(valley, if b.y > a.y then a else b) or 1
 			table.insert(ops, ramp(a, b, valley.PASS.width, valley.PASS.depth, valley.SURFACE_LIFT, valley.BIOME_FLOOR[upper]))
-			passWalls(ops, a, b, valley, valley.BIOME_CLIFF[upper], lower)
+			passBanks(ops, a, b, valley, lower, upper, valley.PASS_BANKS.seed + index)
 			table.insert(ops, ramp(a, b, width, 4, valley.SURFACE_LIFT, valley.TRAIL_MATERIAL[upper]))
 		else
 			local zone = WildValley.zoneAt(valley, { x = (a.x + b.x) / 2, z = (a.z + b.z) / 2 }) or WildValley.zoneAt(valley, b) or 1

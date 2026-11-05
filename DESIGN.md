@@ -767,7 +767,10 @@ gets its own smoky orange look (`DayCycle.AREA_LOOKS[3]`), a bigger volcano set 
 whole place, town included (`Scenery.CLOUDS`). Every valley scenery and backdrop piece then settles onto the terrain
 under its foot once it is filled (`SETTLE`, `WildValley.settleDrop`: rays measure the gaps under its lowest surfaces and
 it drops by the widest, never more than a fifth of its height; the owner 2026-11-05: "floating trees/mushrooms";
-measured: 247 pieces, about 71k rays, 225 ms at server start, 10 pieces a frame). Each pass is an exact ramp with walls each side (`WildValley.terrainOps`: no step at
+measured: 247 pieces, about 71k rays, 225 ms at server start, 10 pieces a frame). Each pass is an exact ramp lined with rolling terrain banks, not walls (the owner 2026-11-05: "this wall leading to
+caves is awkward ... no walls"; `PASS_BANKS`, seeded lumps grassy where the trail leaves the lower biome, the upper
+biome's rock beyond, rock outcrops, trees and rocks on top from `WildValley.passProps`; about 1.3k more terrain cells,
+102.8k in all) (`WildValley.terrainOps`: no step at
 either end). Signs are wood like the town's (`Server/Util/TrailProps.trailhead`): "THE WILD" by the arrival, a
 trailhead at each biome's entrance (MEADOW Lv 1-5, CAVES Lv 5-10, EMBER RIDGE Lv 10-15), each turned to face back
 down the trail the way players come, and an arrow post at each bend pointing on and back to the SHOP. **Monsters by

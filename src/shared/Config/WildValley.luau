@@ -46,9 +46,22 @@ return {
 	TRAIL_MATERIAL = { "Ground", "Ground", "Basalt" }, -- a dirt trail through the meadow and the gorge, basalt on the ridge
 	BIOME_FLOOR = { "Grass", "Limestone", "CrackedLava" },
 	BIOME_CLIFF = { "Grass", "Limestone", "Basalt" },
-	-- Where the trail climbs (WildValley.terrainOps): a ramp `width` wide and `depth` deep in the upper biome's floor,
-	-- and a wall `wall` thick on each side rising `wallHeight` above the upper ground
-	PASS = { width = 44, depth = 24, wall = 12, wallHeight = 12 },
+	-- Where the trail climbs (WildValley.terrainOps): a ramp `width` wide and `depth` deep in the upper biome's floor
+	PASS = { width = 44, depth = 24 },
+	-- ...lined with rolling banks, not walls (the owner 2026-11-05: "this wall leading to caves is awkward. make it more
+	-- natural trees grass rocks terrain anything just no walls"): lumps every `spacing` studs `out` past the ramp's
+	-- edge (moved up to `drift` across), `radius` and `rise` (over the ramp's ground) in their ranges, seeded; grassy
+	-- over the first `grassShare` of the climb, then the upper biome's rock, a rock outcrop every `outcrop` lumps.
+	-- `props`, per pass in trail order: trees and rocks on the banks (WildValley.passProps), `back` studs further out
+	PASS_BANKS = {
+		spacing = 9, out = 4, drift = 4, radius = { 10, 13 }, rise = { 6, 12 }, grassShare = 0.6, outcrop = 3, seed = 4242,
+		props = {
+			-- the Meadow up to the Caves: trees and mossy rocks
+			{ every = 14, back = 6, trees = { "TreeA", "PineB", "TreeC", "TreeD" }, rocks = { "MossRockA", "MossRockB" }, height = { 15, 21 }, rockHeight = { 4, 6 } },
+			-- the Caves up to Ember Ridge: charred and ember trees, obsidian
+			{ every = 16, back = 6, trees = { "CharredTree", "EmberTree" }, rocks = { "ObsidianShards" }, height = { 12, 17 }, rockHeight = { 4, 6 }, glow = "ember" },
+		},
+	},
 	-- Low grass patches on the Caves' floor (the owner 2026-11-05: "short grass patches too ... not as much as the
 	-- meadow"): terrain Grass, where Roblox draws its grass blades, as flat domes standing GRASS_PATCH_RISE above the
 	-- floor, two or three overlapping per patch; about a tenth of the floor (Lune-tested)
