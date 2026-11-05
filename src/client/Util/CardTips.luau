@@ -113,6 +113,30 @@ local function iconText(parent: Instance, order: number, icon: string, value: st
 	return line
 end
 
+-- The same, as wide as its parent with the words wrapping onto more lines (a perk's sentence: owner 2026-11-05, "Haggle:
+-- customers 17% more likely to buy" ran past the party tooltip's edge)
+local function iconSentence(parent: Instance, order: number, icon: string, value: string, color: Color3, kind: "body" | "small"): Frame
+	local size = UIKit.textSize(kind)
+	local line = Instance.new("Frame")
+	line.LayoutOrder = order
+	line.BackgroundTransparency = 1
+	line.Size = UDim2.new(1, 0, 0, size + 6)
+	line.AutomaticSize = Enum.AutomaticSize.Y
+	line.ZIndex = (parent :: GuiObject).ZIndex
+	line.Parent = parent
+	local picture = Icon.make(line, icon, UDim2.fromOffset(size + 4, size + 4))
+	picture.Position = UDim2.fromOffset(0, 1)
+	picture.ZIndex = line.ZIndex + 1
+	local words = text(line, value, kind, color, true)
+	words.AutomaticSize = Enum.AutomaticSize.Y
+	words.TextWrapped = true
+	words.TextXAlignment = Enum.TextXAlignment.Left
+	words.TextYAlignment = Enum.TextYAlignment.Top
+	words.Position = UDim2.fromOffset(size + 9, 2)
+	words.Size = UDim2.new(1, -(size + 9), 0, size + 4)
+	return line
+end
+
 local function rarityPill(parent: Instance, card: Card): TextLabel
 	return UIKit.pill(parent, card.rarity, CardFace.getRarityColor(card.rarity))
 end
@@ -296,9 +320,9 @@ function CardTips.copy(holder: Frame, info: CopyInfo)
 	UIKit.statRow(bars, "Atk", CompareRules.share(info.stats.atk, info.reference.atk)).LayoutOrder = 2
 	UIKit.statRow(bars, "Spd", CompareRules.share(info.stats.spd, info.reference.spd)).LayoutOrder = 3
 
-	iconText(content, 3, card.element, info.perk or "No perk", UIKit.Colors.Text, "small")
+	iconSentence(content, 3, card.element, info.perk or "No perk", UIKit.Colors.Text, "small")
 	if info.fightPerk then
-		iconText(content, 4, "Sword", `Fights: {info.fightPerk}`, UIKit.Colors.Text, "small")
+		iconSentence(content, 4, "Sword", `Fights: {info.fightPerk}`, UIKit.Colors.Text, "small")
 	end
 	local rest = info.restSeconds
 	if rest and rest > 0 then

@@ -143,4 +143,13 @@ function UiLayout.filtersFrame(height: number, look: FiltersLook, body: number):
 	return look.shortTop, math.min(want, height - look.shortTop - look.shortBottom)
 end
 
+-- How much to shrink content `needed` px tall to fit `available` px (1: it fits, or nothing's measured yet), never below
+-- `minimum`
+function UiLayout.fitScale(needed: number, available: number, minimum: number): number
+	if needed <= 0 or available <= 0 or needed <= available then
+		return 1
+	end
+	return math.max(minimum, available / needed)
+end
+
 return UiLayout

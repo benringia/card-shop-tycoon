@@ -164,4 +164,13 @@ return {
 			expect.equal(size > chrome, true, `a landscape phone {height} px tall: a body to scroll`)
 		end
 	end,
+	-- Owner 2026-11-05 (a screenshot): the swap comparison's last row sat under the Swap and Back buttons on a short
+	-- screen. Content taller than its space shrinks to fit, never below a floor, and never grows
+	["content taller than its space shrinks to fit, within a floor"] = function()
+		expect.near(UiLayout.fitScale(306, 300, 0.65), 300 / 306, 1e-9, "a little too tall: just enough smaller")
+		expect.equal(UiLayout.fitScale(200, 300, 0.65), 1, "fits: as it is")
+		expect.equal(UiLayout.fitScale(1000, 300, 0.65), 0.65, "far too tall: no smaller than the floor")
+		expect.equal(UiLayout.fitScale(0, 300, 0.65), 1, "nothing laid out yet")
+		expect.equal(UiLayout.fitScale(300, 0, 0.65), 1, "no space measured yet")
+	end,
 }

@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 
 local ClientUtil = script.Parent :: Instance
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -28,6 +29,30 @@ export type Side = {
 }
 
 local WHITE = Color3.new(1, 1, 1) -- a bar's number, over its fill
+local FIT_FLOOR = 0.65 -- a column taller than its space shrinks to fit, no smaller than this
+
+-- A column taller than the holder (a short screen) shrinks to fit above the chooser's buttons (owner 2026-11-05: the
+-- last row sat under Swap and Back), staying as wide as its share of the holder
+local function fit(frame: Frame, list: UIListLayout, holder: Frame)
+	local scale = Instance.new("UIScale")
+	scale.Parent = frame
+	local widthShare = frame.Size.X.Scale
+	local function refit()
+		local natural = list.AbsoluteContentSize.Y / scale.Scale
+		local want = UiLayout.fitScale(natural, holder.AbsoluteSize.Y, FIT_FLOOR)
+		if math.abs(want - scale.Scale) < 0.01 then
+			return
+		end
+		scale.Scale = want
+		frame.Size = UDim2.fromScale(widthShare / want, 1 / want)
+	end
+	list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refit)
+	local resized = holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+	frame.Destroying:Connect(function()
+		resized:Disconnect() -- rebuilt for the next comparison
+	end)
+	task.defer(refit)
+end
 local LOSER = Color3.fromRGB(74, 82, 104)
 local SAME = Color3.fromRGB(110, 118, 140)
 
@@ -108,6 +133,7 @@ function CopyCompare.build(holder: Frame, incoming: Side, outgoing: Side)
 		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		list.VerticalAlignment = if phone then Enum.VerticalAlignment.Center else Enum.VerticalAlignment.Top
 		list.Parent = frame
+		fit(frame, list, holder)
 		return frame
 	end
 	local top = if phone then column(UDim2.new(), UDim2.fromScale(0.42, 1)) else column(UDim2.new(), UDim2.fromScale(1, 1))
