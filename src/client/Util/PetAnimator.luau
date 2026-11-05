@@ -45,6 +45,7 @@ export type Rig = {
 	sway: number?, -- Party.CREATURE_STYLE: a heavy gait's hip roll and leg swing
 	legSwing: number?,
 	gait: string?, -- Party.CREATURE_STYLE: "gallop", else a trot
+	jawAmount: number?, -- Party.CREATURE_STYLE jaw: its share of a full gape
 	phase: number, -- the walk cycle this frame, radians
 	cued: boolean, -- the playing fidget's effect has gone off
 }
@@ -198,6 +199,7 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		sway = style and style.sway,
 		legSwing = style and style.legSwing,
 		gait = style and style.gait,
+		jawAmount = style and style.jaw,
 		phase = 0,
 	}
 end
@@ -294,6 +296,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		sway = rig.sway,
 		legSwing = rig.legSwing,
 		gait = rig.gait,
+		jawAmount = rig.jawAmount,
 		undulate = rig.undulate,
 		swimPhase = rig.swimPhase,
 	}

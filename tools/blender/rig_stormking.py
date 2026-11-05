@@ -49,6 +49,13 @@ for side, sx in (("Left", 1), ("Right", -1)):
         (f"1_{side}_Limb_2", f"1_{side}_Limb_1", (sx * 0.25, 0.24, 0.1), (sx * 0.27, 0.2, 0.02)),
     ]
 
+# The lower mouth plate under its snout, with the gold teeth on its edge (owner 2026-11-06: bites and roars open the
+# mouth): hinged at the back of the mouth, split from the head along the mouth line with a dark mouth behind it
+# (rig_kit.jaw_share, rig_kit.mouth_cut)
+MOUTH = dict(hinge_y=-0.70, tip_y=-0.80, top_hinge=0.45, top_tip=0.45)
+BONES.append(("Jaw_0", "Head_0", (0, -0.69, 0.45), (0, -0.79, 0.42)))
+JAW = rig_kit.jaw_share(bottom=0.37, half_width=0.07, top_blend=0.003, **MOUTH)
+
 params = rig_kit.Params()
 params.leg_top = 0.42
 params.leg_full = 0.26
@@ -60,7 +67,9 @@ params.head_from = -0.5
 
 # Already remeshed and baked, so it skips rig_kit.run's optimize step
 mesh = bpy.data.objects["Stormking_Beetle"]
+rig_kit.mouth_cut(mesh, JAW, cavity_color=(0.07, 0.04, 0.1), **MOUTH)
 rig = rig_kit.build_rig("StormkingRig", BONES)
 rig_kit.skin(mesh, rig, BONES, params)
+rig_kit.reweight_jaw(mesh, JAW)
 if os.environ.get("EXPORT", "1") == "1":
     rig_kit.export("Stormking", rig, mesh)

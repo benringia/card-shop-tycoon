@@ -392,6 +392,14 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   its top slopes down along the mouth line (2026-11-05: a flat cut took the overhanging upper snout and teeth, and the
   whole snout stretched down with the jaw). Remeshed and baked; its turned head
   and curved tail were straightened by hand (steps in the script). Size 1.8. 24 bones, 10,000 triangles.
+- **Jaws added later (2026-11-06, the owner: bites and roars open the mouth)**: Eclipse Fox, Thunderhorn and Stormking
+  got a `Jaw_0` from `rig_kit.jaw_share` (the vertices from the mouth's corner to its chin, under the mouth line, above
+  the throat). The fox's mouth was modelled a little open with its fangs showing, so a plain `reweight` works. The
+  stag's mouth (a painted line) and the beetle's lower mouth plate were modelled shut, and opening them only stretched
+  the snout: `rig_kit.mouth_cut` splits the surface along the line and joins each split edge to its copy with a dark
+  face (no area shut, a dark mouth as it opens), and `rig_kit.reweight_jaw` keeps the head's side of the cut off the jaw.
+  A closed mouth still creases if it gapes wide, so each opens only its share (`Party.CREATURE_STYLE` jaw: fox 0.6,
+  stag 0.4, beetle 0.45). Checked with shut and open renders before export.
 - **Puffpuddle** (`rig_puffpuddle.py`, Meshy, Common; was the voxel `build_puffpuddle.py`): a cute baby sea otter
   standing upright with its paws on its cream belly and a glowing aqua pearl on its forehead. Coat warmed from rusty
   red to the card's brown by hand; its lumpy left foot replaced by a mirror of the right (seam-only merge, on the full

@@ -1258,7 +1258,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   light rays and a lotus closing into a column of light, a pillar of light coming down on each creature it stands back
   up on the field (clients play `SummonFx.revive` as the server clears the marker's `Fainted`; a benched one clears it
   when it comes back in), "REVIVED!" over the Kirin, light shimmering up off everyone it heals and a soft rain of light
-  (S: a halo, golden rain); Stampede's lightning dash through the boss with afterimages and stun rings (S: a
+  (S: a halo, golden rain); Stampede's lightning dash through the boss with afterimages (one stripped copy of the model,
+  then one copy a frame: six full clones in one frame cost a 45 ms hitch) and stun rings (S: a
   sky bolt); Eclipse (owner 2026-11-05): the fox holds still (`windupPose` "still") as a five-point star sigil
   draws itself under it and a black moon slides over the sun, then it glows dark purple and a see-through mirror image
   at its side copies its every pose and move (its bones copied each frame) and strikes with it (`SuperFx.echoHit`, a

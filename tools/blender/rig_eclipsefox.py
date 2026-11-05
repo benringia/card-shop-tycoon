@@ -82,6 +82,11 @@ for tail, curve in enumerate(TAILS):
         parent = "Pelvis" if i == 0 else f"Tails_{tail}_{i - 1}"
         BONES.append((f"Tails_{tail}_{i}", parent, tuple(points[i]), tuple(points[i + 1])))
 
+# The lower jaw (owner 2026-11-06: bites and roars open the mouth): hinged at the mouth's corner, its vertices from
+# there to the chin under the mouth line, above the ruff (rig_kit.jaw_share)
+BONES.append(("Jaw_0", "Head_0", (0.02, -0.47, 0.645), (0.02, -0.535, 0.62)))
+JAW = rig_kit.jaw_share(hinge_y=-0.485, tip_y=-0.545, top_hinge=0.643, top_tip=0.648, bottom=0.585, half_width=0.07, mid_x=0.02)
+
 params = rig_kit.Params()
 params.leg_top = 0.34
 params.leg_full = 0.24
@@ -113,5 +118,6 @@ for v in mesh.data.vertices[mesh["body_verts"]:]:
     total = sum(scores.values())
     for n, w in scores.items():
         mesh.vertex_groups[n].add([v.index], w / total, "REPLACE")
+rig_kit.reweight(mesh, "Jaw_0", JAW)
 if os.environ.get("EXPORT", "1") == "1":
     rig_kit.export("EclipseFox", rig, mesh)

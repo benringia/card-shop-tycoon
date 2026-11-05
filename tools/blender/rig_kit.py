@@ -656,6 +656,132 @@ def reweight(mesh, bone, share_of):
             g.remove([v.index])
 
 
+def jaw_share(hinge_y, tip_y, top_hinge, top_tip, bottom, half_width, mid_x=0.0, blend=0.012, top_blend=None):
+    """A lower jaw's share for reweight(): the vertices from the mouth's corner (hinge_y) forward to its tip (tip_y,
+    further toward -y), under the mouth line (top_hinge at the corner sloping to top_tip at the tip), above the throat
+    (bottom) and within half_width of mid_x, each edge blending over `blend` into the head (the mouth line over
+    `top_blend`, small where mouth_cut() split it). For a closed or only slightly open mouth (Eclipse Fox, Thunderhorn,
+    Stormking's lower mouth plate); Infernox keeps its own sloped cut."""
+    lip = blend if top_blend is None else top_blend
+
+    def share(p):
+        if p.y > hinge_y + blend or p.y < tip_y - blend or abs(p.x - mid_x) > half_width + blend:
+            return 0.0
+        t = min(1.0, max(0.0, (p.y - hinge_y) / (tip_y - hinge_y)))
+        top = top_hinge + (top_tip - top_hinge) * t
+        if p.z > top + lip or p.z < bottom - blend:
+            return 0.0
+        along = min(1.0, (hinge_y + blend - p.y) / blend)
+        tip = min(1.0, (p.y - (tip_y - blend)) / blend)
+        below = min(1.0, (top + lip - p.z) / lip)
+        above = min(1.0, (p.z - (bottom - blend)) / blend)
+        side = min(1.0, (half_width + blend - abs(p.x - mid_x)) / blend)
+        return max(0.0, along * tip * below * above * side)
+
+    return share
+
+
+def mouth_cut(mesh, share, hinge_y, tip_y, top_hinge, top_tip, cavity_color):
+    """Opens a closed mouth (owner 2026-11-06: a jaw on a closed mouth only stretched the snout): splits the surface along
+    the mouth line from just in front of its corner (hinge_y) to its tip (tip_y), where faces under the line (share of
+    their centre over a half) meet faces above it, and joins each split edge to its copy with a face in cavity_color: shut,
+    those faces have no area; as the jaw drops they open into a dark mouth instead of showing the head's hollow. Marks
+    each vertex's side in the "mouth_side" attribute (1 the jaw's side of the cut, 0 the head's, -1 elsewhere) for
+    reweight_jaw(). Runs once (mesh["mouth_cut"])."""
+    import bmesh
+
+    if mesh.get("mouth_cut"):
+        return
+    uv_cavity = paint_patch(mesh, cavity_color)
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    mw = mesh.matrix_world
+
+    def top_at(y):
+        t = min(1.0, max(0.0, (y - hinge_y) / (tip_y - hinge_y)))
+        return top_hinge + (top_tip - top_hinge) * t
+
+    jaw_face = {f: share(mw @ f.calc_center_median()) > 0.5 for f in bm.faces}
+    cut = []
+    for e in bm.edges:
+        if len(e.link_faces) != 2 or jaw_face[e.link_faces[0]] == jaw_face[e.link_faces[1]]:
+            continue
+        mid = mw @ ((e.verts[0].co + e.verts[1].co) / 2)
+        if tip_y - 0.004 < mid.y < hinge_y - 0.004 and abs(mid.z - top_at(mid.y)) < 0.02:
+            cut.append(e)
+    bmesh.ops.split_edges(bm, edges=cut)
+    side = bm.verts.layers.int.get("mouth_side") or bm.verts.layers.int.new("mouth_side")
+    for v in bm.verts:
+        faces = [jaw_face.get(f, False) for f in v.link_faces]
+        v[side] = 1 if faces and all(faces) else (0 if faces and not any(faces) else -1)
+    # Each split edge now lies on its copy: the head's edge (its face above the line) and the jaw's (below). A dark face
+    # between them, facing out the way the head's face does, fills the gap as it opens
+    def key(e):
+        a, b = (tuple(round(c, 6) for c in v.co) for v in e.verts)
+        return (a, b) if a < b else (b, a)
+
+    pairs = {}
+    for e in bm.edges:
+        if len(e.link_faces) == 1:
+            pairs.setdefault(key(e), []).append(e)
+    uv_layer = bm.loops.layers.uv.active
+    bridged = 0
+    for edges in pairs.values():
+        if len(edges) != 2:
+            continue
+        head = next((e for e in edges if not jaw_face.get(e.link_faces[0], False)), None)
+        jaw = next((e for e in edges if jaw_face.get(e.link_faces[0], False)), None)
+        if not head or not jaw:
+            continue
+        h0, h1 = head.verts
+        j0 = min(jaw.verts, key=lambda v: (v.co - h0.co).length)
+        j1 = jaw.verts[1] if jaw.verts[0] == j0 else jaw.verts[0]
+        corners = []
+        for v in (h0, h1, j1, j0):  # at the cut's two ends the copies share a vertex: a triangle there
+            if v not in corners:
+                corners.append(v)
+        if len(corners) < 3:
+            continue
+        face = bm.faces.new(corners)
+        face.normal_update()
+        if face.normal.dot(head.link_faces[0].normal) < 0:
+            face.normal_flip()
+        for loop in face.loops:
+            loop[uv_layer].uv = uv_cavity
+        bridged += 1
+    print("mouth bridged:", bridged)
+    bm.to_mesh(mesh.data)
+    bm.free()
+    mesh.data.update()
+    mesh["mouth_cut"] = True
+    print("mouth cut:", len(cut), "edges split")
+
+
+def reweight_jaw(mesh, share):
+    """reweight() for a mouth opened by mouth_cut(): the head's side of the cut keeps nothing on Jaw_0, everything else
+    takes `share` (the jaw's other edges still blend into the head)."""
+    attr = mesh.data.attributes.get("mouth_side")
+    sides = [d.value for d in attr.data] if attr else None
+
+    def cut_share(p, index):
+        if sides is not None and sides[index] == 0:
+            return 0.0
+        return share(p)
+
+    group = mesh.vertex_groups.get("Jaw_0") or mesh.vertex_groups.new(name="Jaw_0")
+    names = {g.index: g for g in mesh.vertex_groups}
+    for v in mesh.data.vertices:
+        s = cut_share(mesh.matrix_world @ v.co, v.index)
+        if s <= 0:
+            continue
+        for g in [g for g in v.groups if g.group != group.index]:
+            names[g.group].add([v.index], g.weight * (1 - s), "REPLACE")
+        group.add([v.index], s, "REPLACE")
+        kept = sorted(((names[g.group], g.weight) for g in v.groups), key=lambda gw: -gw[1])
+        for g, _ in kept[MAX_BONES:]:
+            g.remove([v.index])
+
+
 def export(name, rig, mesh):
     out = os.path.join(REPO, "assets", "blender", name, name + ".fbx")
     bpy.ops.object.select_all(action="DESELECT")

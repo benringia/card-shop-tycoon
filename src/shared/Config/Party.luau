@@ -146,7 +146,9 @@ return {
 	-- (else PET_ANIM.FIDGETS), its tail's swish speed and size (times PET_ANIM's), and how much it bounces walking
 	-- (times PET_ANIM.HOP_SCALE), and its wingbeat's size (wingAmount, times WING_FLAP). Big beasts swish slowly, don't hop or spin, and walk heavily; Infernox stomps.
 	-- A heavy gait: stride (times PET_ANIM.STRIDE: longer, slower steps), legSwing (times LEG_SWING) and sway (times
-	-- the two-legged hip roll; above 1 it also sinks onto a bent standing knee, PET_ANIM.HEAVY_KNEE).
+	-- the two-legged hip roll; above 1 it also sinks onto a bent standing knee, PET_ANIM.HEAVY_KNEE). gait "gallop":
+	-- PET_ANIM.GALLOP. jaw: the share of a full gape its Jaw_0 opens (mouths modelled shut and cut open by
+	-- rig_kit.mouth_cut crease if they gape wide; 1 when nil).
 	CREATURE_STYLE = {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
 		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.4, stride = 1.2 }, -- a huge prowling dragon
@@ -178,11 +180,11 @@ return {
 		Tidecaller = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake" }, tailSpeed = 0.45, tailAmount = 1.1, bounce = 0.4 }, -- a proud sea dragon
 		Briarhorn = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.5, tailAmount = 0.9, bounce = 0.6, stride = 1.25, legSwing = 0.75, sway = 1.8 }, -- a heavy bison on short legs: shorter swings so it plods instead of crouching
 		AbyssalKoi = { fidgets = { "look", "tilt", "shake" }, tailSpeed = 0.5 }, -- a lurking swimmer
-		Thunderhorn = { fidgets = { "look", "sniff", "shake", "stomp", "tilt" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.5, stride = 1.9, gait = "gallop" }, -- a proud stag on long legs, galloping (long strides)
+		Thunderhorn = { fidgets = { "look", "sniff", "shake", "stomp", "tilt" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.5, stride = 1.9, gait = "gallop", jaw = 0.4 }, -- a proud stag on long legs, galloping (long strides)
 		Riftwalker = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.4, tailAmount = 0.8, bounce = 0.3 }, -- a prowling dragon
 		CinderTitan = { fidgets = { "look", "sniff", "shake", "stomp", "yawn", "stretch" }, bounce = 0.9, stride = 1.35, legSwing = 0.75, sway = 2.6 }, -- a heavy brute: long slow lumbering steps, rolling from foot to foot
 		Kirin = { fidgets = { "look", "tilt", "sniff", "shake", "stretch" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.6, stride = 1.2 }, -- a graceful, unhurried divine beast
-		Stormking = { fidgets = { "look", "sniff", "shake", "stomp" }, tailSpeed = 0.4, tailAmount = 0.7, bounce = 0.3, stride = 1.3 }, -- a colossal armoured plodder
+		Stormking = { fidgets = { "look", "sniff", "shake", "stomp" }, tailSpeed = 0.4, tailAmount = 0.7, bounce = 0.3, stride = 1.3, jaw = 0.45 }, -- a colossal armoured plodder
 		Nightowl = { fidgets = { "look", "tilt", "tilt", "shake" }, tailSpeed = 0.6 }, -- a watchful owl, head tilting
 		Hushmoth = { fidgets = { "look", "tilt", "spin", "shake" } }, -- a fluttering flyer
 		GaleSprite = { fidgets = { "look", "tilt", "spin", "shake" }, tailSpeed = 0.9 }, -- a darting flyer
@@ -197,11 +199,11 @@ return {
 		Puffpuddle = { fidgets = { "look", "tilt", "sniff", "yawn", "wag", "shake", "hop" }, tailSpeed = 0.6, bounce = 1.1 }, -- an upright sea otter (rolling over would cartwheel it)
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "sniff", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 1.1, tailAmount = 0.7, bounce = 0.7 }, -- a snuffling boar, its curly tail flicking
-		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7 },
+		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7, jaw = 0.6 },
 		Duskstalker = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.7, tailAmount = 0.9, stride = 1.1 }, -- a prowling wolf
 		Solarion = { fidgets = { "look", "stomp", "stretch", "shake", "look" }, bounce = 0.5, stride = 1.25, legSwing = 0.7, sway = 1.6 }, -- a fire god: slow, heavy, majestic steps
 		Voltkit = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.6, tailAmount = 0.8, bounce = 0.7, stride = 0.9 }, -- an armoured pangolin waddle
-	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, wingAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number? } },
+	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, wingAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number?, gait: string?, jaw: number? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
 		HeronDemon = 0.55,

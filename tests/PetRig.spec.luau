@@ -1213,6 +1213,22 @@ return {
 		assertBounded(p, "gallop")
 	end,
 
+	-- The owner (2026-11-06): jaws for Eclipse Fox, Thunderhorn and Stormking; a mouth modelled shut (cut open by
+	-- rig_kit.mouth_cut) creases if it gapes as wide as a modelled-open one, so each creature's jaw opens its own share
+	["a creature's jaw opens only its own share of a full gape"] = function()
+		local names = table.clone(QUAD)
+		table.insert(names, "Jaw_0")
+		local function gape(share: number?): number
+			local state: PetRig.State = { time = 0, phase = 0, moving = 0, fidget = "yawn", fidgetProgress = 0.5, jawAmount = share }
+			return poseAt(names, state)["jaw:0"].x
+		end
+		expect.equal(gape(nil) < -math.rad(10), true, "a full yawn opens wide")
+		expect.near(gape(0.4), gape(nil) * 0.4, 1e-9, "a 0.4 jaw opens 40% as far")
+		for name, share in { EclipseFox = 0.6, Thunderhorn = 0.4, Stormking = 0.45 } do
+			expect.equal(party.CREATURE_STYLE[name].jaw, share, `{name}'s jaw`)
+		end
+	end,
+
 	["Thunderhorn gallops"] = function()
 		expect.equal(party.CREATURE_STYLE.Thunderhorn.gait, "gallop")
 	end,

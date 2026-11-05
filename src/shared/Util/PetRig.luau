@@ -28,6 +28,7 @@ export type State = {
 	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
 	legSwing: number?, -- and how much of PET_ANIM.LEG_SWING its legs use, else 1
 	gait: string?, -- "gallop" (Party.CREATURE_STYLE gait): four legs going in pairs, the body rocking; else a trot
+	jawAmount: number?, -- how far its jaw opens of a full gape (Party.CREATURE_STYLE jaw: mouths cut open later), else 1
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
 	swimPhase: number?, -- that wave, radians, built up frame by frame (PetRig.swimSpeed)
 }
@@ -858,6 +859,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				local delay = if hasHydra then role.pair * cfg.ROAR_RIPPLE else 0
 				x = math.min(x, -rad(cfg.JAW_YAWN) * gape(cfg, progress - delay) * settle * idle)
 			end
+			x *= state.jawAmount or 1
 		elseif role.kind == "cape" then
 			-- A cape hanging from the shoulders (Cape_<bone>): it billows out behind as the creature runs, flutters in
 			-- the breeze standing, each bone a little behind the one above. Negative x swings it back

@@ -999,44 +999,62 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 	end
 end
 
--- See-through copies of the creature's model along a path (afterimages), fading over `life`
+-- A see-through copy of the creature's model to make afterimages from: its parts in one glowing colour, no textures,
+-- effects, scripts or gui
+local function ghostOf(model: Model, tint: Color3): Model
+	local copy = model:Clone()
+	for _, item in copy:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+			item.CastShadow = false
+			item.Material = Enum.Material.Neon
+			item.Color = tint
+			item.Transparency = 0.55
+			if item:IsA("MeshPart") then
+				item.TextureID = ""
+			end
+		elseif item:IsA("Decal") or item:IsA("Texture") or item:IsA("SurfaceAppearance") or item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ParticleEmitter") or item:IsA("Beam") or item:IsA("Light") or item:IsA("BillboardGui") then
+			item:Destroy()
+		end
+	end
+	return copy
+end
+
+-- See-through copies of the creature's model along a path (afterimages), fading over `life`. The model is stripped
+-- once and the copies come one a frame: six full clones in one frame cost Stampede's impact a 45 ms hitch
 local function afterimages(b: Bag, view: View, from: Vector3, to: Vector3, count: number, tint: Color3, life: number)
 	local model = view.root:FindFirstAncestorOfClass("Model")
-	if not model then
+	if not model or count <= 0 then
 		return
 	end
 	local pivot = model:GetPivot()
-	for index = 1, count do
-		local copy = model:Clone()
-		for _, item in copy:GetDescendants() do
-			if item:IsA("BasePart") then
-				item.Anchored = true
-				item.CanCollide = false
-				item.CanQuery = false
-				item.CanTouch = false
-				item.CastShadow = false
-				item.Material = Enum.Material.Neon
-				item.Color = tint
-				item.Transparency = 0.55
-				if item:IsA("MeshPart") then
-					item.TextureID = ""
-				end
-			elseif item:IsA("Decal") or item:IsA("Texture") or item:IsA("SurfaceAppearance") or item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ParticleEmitter") or item:IsA("Beam") or item:IsA("Light") or item:IsA("BillboardGui") then
-				item:Destroy()
+	local offset = pivot.Position - view.root.Position
+	local ghost = ghostOf(model, tint)
+	table.insert(b.items, ghost)
+	task.spawn(function()
+		for index = 1, count do
+			if b.done then
+				return
 			end
-		end
-		local spot = from:Lerp(to, index / (count + 1))
-		copy:PivotTo(pivot.Rotation + spot + (pivot.Position - view.root.Position))
-		copy.Parent = folder()
-		table.insert(b.items, copy)
-		task.delay(index * 0.03, function()
+			local copy = if index == count then ghost else ghost:Clone()
+			if copy ~= ghost then
+				table.insert(b.items, copy)
+			end
+			copy:PivotTo(pivot.Rotation + from:Lerp(to, index / (count + 1)) + offset)
+			copy.Parent = folder()
 			for _, item in copy:GetDescendants() do
 				if item:IsA("BasePart") then
 					tween(item, life, { Transparency = 1 })
 				end
 			end
-		end)
-	end
+			if index < count then
+				RunService.Heartbeat:Wait()
+			end
+		end
+	end)
 end
 
 -- Electric rings spinning round a point (a stun): `count` rings of sparks for `seconds`

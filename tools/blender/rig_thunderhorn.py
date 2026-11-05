@@ -58,6 +58,13 @@ BONES = [
     ("1_Right_Limb_2", "1_Right_Limb_1", (-0.101, 0.292, 0.13), (-0.114, 0.25, 0.01)),
 ]
 
+# The lower jaw (owner 2026-11-06: bites and roars open the mouth): hinged at the mouth's corner, the vertices from
+# there to the chin under the painted mouth line, above the throat (rig_kit.jaw_share). Its mouth was modelled shut, so
+# the surface is split along that line and a dark mouth put inside (rig_kit.mouth_cut): opening only stretched the snout
+MOUTH = dict(hinge_y=-0.322, tip_y=-0.372, top_hinge=0.533, top_tip=0.519)
+BONES.append(("Jaw_0", "Head_0", (0, -0.31, 0.53), (0, -0.36, 0.51)))
+JAW = rig_kit.jaw_share(bottom=0.49, half_width=0.05, top_blend=0.003, **MOUTH)
+
 params = rig_kit.Params()
 params.mid_x = 0.03  # between the front legs (the right one stands near the middle)
 params.leg_top = 0.38
@@ -69,11 +76,13 @@ params.tail_from = 0.33
 params.head_from = -0.15
 
 mesh = bpy.data.objects["Thunderhorn_Stag"]
+rig_kit.mouth_cut(mesh, JAW, cavity_color=(0.16, 0.05, 0.06), **MOUTH)
 rig = rig_kit.build_rig("ThunderhornRig", BONES)
 rig_kit.skin(mesh, rig, BONES, params)
 # The right antler sweeps back past head_from: each antler, from its base up, belongs wholly to its own bone
 for side, sign in (("Left", 1), ("Right", -1)):
     rig_kit.reweight(mesh, f"Ear_{side}_0",
                      lambda p, sign=sign: rig_kit._ramp(p.z, 0.69, 0.73) if p.x * sign > 0 else 0.0)
+rig_kit.reweight_jaw(mesh, JAW)
 if os.environ.get("EXPORT", "1") == "1":
     rig_kit.export("Thunderhorn", rig, mesh)
