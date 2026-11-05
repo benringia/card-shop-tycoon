@@ -91,11 +91,15 @@ glance at one showcase card). This round gives customers reasons to be noticed a
 ### Fairness of kid offers (agreed)
 
 - Kids open the pack they just bought from you with that pack's real odds; their pulls never touch your pity counters.
-- A kid only offers a **Rare or better** pull, at about what it's worth for its grade (a small "friend" discount at
-  most, ~10%).
-- **A cap** on offers per hour; a Legendary offer is a rare celebrated moment (spotlight, sound) that can't repeat soon.
-  *(My call for the numbers: at most 4 kid offers an hour per shop, at most one Legendary offer every 3 hours, both
-  counted per session; the economy simulator decides if they move.)*
+- A kid only offers a **Very Rare or better** pull (every pack's last card is already Rare or better, so "Rare or
+  better" would mean every kid offers; Very Rare or better is about 3 rips in 10), at about what it's worth for its
+  grade (a small "friend" discount at most, ~10%).
+- **Ceilings, never guarantees**: nothing makes a kid pull anything; the pull is the pack's real odds. The limits only
+  stop lucky streaks from piling up *(my call for the numbers: at most 4 kid offers an hour per shop, and never two
+  Legendary offers within 3 hours, counted per session)*. For scale: a busy shop sees maybe 20-40 kid rips an hour, a
+  Legendary is about 1 rip in 100, so a Legendary offer comes roughly once every 2.5-5 hours of busy play; the ceiling
+  only trims the rare hour with two. A Legendary offer is a celebrated moment (spotlight, sound). The economy simulator
+  decides whether these numbers move its targets.
 - **Collectors pay a modest premium** (about 1.3x what the card's worth) so buy-from-kid, sell-to-collector isn't a
   reliable loop.
 - The economy simulator gets kid offers added and its targets are checked.
@@ -114,8 +118,8 @@ glance at one showcase card). This round gives customers reasons to be noticed a
 - **Mix** *(my call)*: of customers arriving at a shop, about 55% plain, 20% kid, 10% collector (only when the shop
   has a Glass Showcase), 10% bargain hunter, 5% big spender (from shop level 11, when the booster box unlocks).
 - **Kid**: shops for the cheapest pack product (1-2 packs). After paying they rip one pack at the counter (a short
-  reveal over the counter everyone nearby sees: the card pops up, a cheer for Rare+). If it's Rare or better, the offer
-  comes up in your panel; otherwise they leave happy.
+  reveal over the counter everyone nearby sees: their best card pops up, a cheer for Very Rare or better). If it's Very
+  Rare or better and under the ceilings, the offer comes up in your panel; otherwise they leave happy.
 - **Collector** *(my call)*: wants one card: half the time one you own (binder or display) so it can happen, half any
   Set 1 card weighted by rarity (something to chase). Walks the Glass Showcases; buys the wanted card at up to about
   1.3x its worth; otherwise leaves with a disappointed bubble. Also buys from the shelves like a plain customer.
@@ -130,10 +134,15 @@ glance at one showcase card). This round gives customers reasons to be noticed a
 
 ## Rating (my calls)
 
-- Four parts, weighted: **shelves stocked** (share of product shelves with stock) 35%, **fair prices** (average of
-  your current prices' customer bands vs market) 25%, **displays** (Epic or better / foil cards on display, Legendaries
+- Parts, weighted: **shelves stocked** (share of product shelves with stock) 35%, **fair prices** (average of your
+  current prices' customer bands vs market) 25%, **displays** (Epic or better / foil cards on display, Legendaries
   count most) 15%, **happy customers** (paid, happy reactions vs annoyed, gave up, no stock, over the last 20
   customers) 25%.
+- **Room for decor** (owner 2026-11-06: "the shop will have a Decor system soon"): the rating is a list of parts, each
+  a 0-1 score with a weight in config (`Config/Customers` RATING), worked out by one pure rule module. Decor is a part
+  already, weight 0 until the Decor system exists (it then takes its share, e.g. 15-20%, and the others shrink to
+  match: a config change plus the decor score function, no rework). The tips chip lists every part with a weight above
+  0, so decor tips appear when it does.
 - Mapped to 1.0-5.0 and smoothed so it moves over a minute or two, not per customer.
 - Effect: the spawn gap scales from ×1.4 (1 star) to ×0.6 (5 stars), with 3 stars equal to today's flow (so a shop
   run the way most are today doesn't change); town walkers choose shops by rating (phase 2). More customers is more
