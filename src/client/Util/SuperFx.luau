@@ -874,12 +874,368 @@ local function blessImpact(view: View, grade: string, _target: Vector3, _targetB
 	return dome.burst
 end
 
+-- See-through copies of the creature's model along a path (afterimages), fading over `life`
+local function afterimages(b: Bag, view: View, from: Vector3, to: Vector3, count: number, tint: Color3, life: number)
+	local model = view.root:FindFirstAncestorOfClass("Model")
+	if not model then
+		return
+	end
+	local pivot = model:GetPivot()
+	for index = 1, count do
+		local copy = model:Clone()
+		for _, item in copy:GetDescendants() do
+			if item:IsA("BasePart") then
+				item.Anchored = true
+				item.CanCollide = false
+				item.CanQuery = false
+				item.CanTouch = false
+				item.CastShadow = false
+				item.Material = Enum.Material.Neon
+				item.Color = tint
+				item.Transparency = 0.55
+				if item:IsA("MeshPart") then
+					item.TextureID = ""
+				end
+			elseif item:IsA("Decal") or item:IsA("Texture") or item:IsA("SurfaceAppearance") or item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ParticleEmitter") or item:IsA("Beam") or item:IsA("Light") or item:IsA("BillboardGui") then
+				item:Destroy()
+			end
+		end
+		local spot = from:Lerp(to, index / (count + 1))
+		copy:PivotTo(pivot.Rotation + spot + (pivot.Position - view.root.Position))
+		copy.Parent = folder()
+		table.insert(b.items, copy)
+		task.delay(index * 0.03, function()
+			for _, item in copy:GetDescendants() do
+				if item:IsA("BasePart") then
+					tween(item, life, { Transparency = 1 })
+				end
+			end
+		end)
+	end
+end
+
+-- Electric rings spinning round a point (a stun): `count` rings of sparks for `seconds`
+local function stunRings(b: Bag, at: Vector3, radius: number, count: number, tint: Color3, seconds: number)
+	local holder = anchor(b, CFrame.new(at))
+	local dots = {}
+	for ring = 1, count do
+		for index = 1, 8 do
+			local dot = part(b, Vector3.one * 0.45, tint, CFrame.new(at), 0, Enum.PartType.Ball)
+			table.insert(dots, { dot = dot, ring = ring, angle = index / 8 * 2 * math.pi })
+		end
+	end
+	local zap = ElementFx.emitter(holder, "spark", tint, { size = { 0.5, 0.1 }, life = 0.25, speed = { 6, 10 }, spread = 180 })
+	zap.Rate = 20
+	everyFrame(b, function(elapsed)
+		for _, d in dots do
+			local a = d.angle + elapsed * (5 + d.ring)
+			local tilt = CFrame.Angles(d.ring * 0.7, 0, d.ring * 0.4)
+			d.dot.CFrame = CFrame.new(at) * tilt * CFrame.new(math.cos(a) * radius, 0, math.sin(a) * radius)
+		end
+		if elapsed > seconds then
+			for _, d in dots do
+				d.dot.Transparency = 1
+			end
+			zap.Rate = 0
+		end
+	end)
+end
+
+-- Stampede (Thunderhorn, Epic, Volt; spec "Stampede"): it paws the ground as sparks fly and lightning wraps it, then a
+-- lightning dash through the boss with afterimages and a thunderclap, electric rings spinning round its head for the
+-- stun and a scorched trail. By grade: more afterimages, a wider trail; S: a bolt from the sky as it passes.
+local STAMP = SuperFxConfig.LOOKS.Stampede
+local STAMP_SOUNDS = SuperFxConfig.SOUNDS.Stampede
+
+local function stampCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = STAMP.grades[grade]
+	local b = bag()
+	local volt = color(STAMP.color)
+	local feet = groundAt(view.root.Position)
+	local source = anchor(b, CFrame.new(view.root.Position + UP * view.height * 0.5))
+	play(b, source, STAMP_SOUNDS.call, 1)
+	task.delay(seconds * 0.4, function()
+		if not b.done then
+			play(b, source, STAMP_SOUNDS.charge, 1)
+		end
+	end)
+	-- Sparks kicked up from the ground as it paws, lightning crawling round it
+	local kick = ElementFx.emitter(anchor(b, CFrame.new(feet)), "spark", volt, { size = { 0.5, 0.1 }, life = { 0.3, 0.6 }, speed = { 8, 14 }, spread = 50, accel = -UP * 20 })
+	kick.Rate = g.particles
+	local reach = view.height * 0.6
+	everyFrame(b, function(elapsed)
+		if math.floor(elapsed * 6) ~= math.floor((elapsed - 1 / 60) * 6) then
+			local a = math.random() * 2 * math.pi
+			local from = view.root.Position + UP * view.height * (0.2 + math.random() * 0.6) + Vector3.new(math.cos(a), 0, math.sin(a)) * reach
+			local to = view.root.Position + UP * view.height * (0.2 + math.random() * 0.6) + Vector3.new(math.cos(a + 2), 0, math.sin(a + 2)) * reach
+			ElementFx.bolt(from, to, volt, 0.12, 0.6 * g.scale)
+		end
+	end)
+	local stopGlow = ElementFx.chargeGlow(view.root, volt, seconds, 1.5 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function stampImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = STAMP.grades[grade]
+	local b = bag()
+	local volt = color(STAMP.color)
+	local ability = SuperFx.abilityOf("Stampede") or { stun = 2 }
+	local start = groundAt(view.root.Position)
+	local ground = groundAt(target)
+	local flat = Vector3.new(ground.X - start.X, 0, ground.Z - start.Z)
+	local past = ground + (if flat.Magnitude > 0.5 then flat.Unit else Vector3.zero) * math.max(4, targetHeight * 0.5)
+	play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.impact, 1.2)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(target)), STAMP_SOUNDS.layer, 1)
+	end
+	-- The dash: afterimages along the way, a lightning trail, a thunderclap at the boss
+	afterimages(b, view, start, past, g.afterimages, volt, 0.5)
+	local a0 = anchor(b, CFrame.new(start + UP * view.height * 0.5))
+	local a1 = anchor(b, CFrame.new(past + UP * view.height * 0.5))
+	local trail = beam(attachment(a0, Vector3.zero), attachment(a1, Vector3.zero), AttackFx.TEXTURES.streak, sequence(WHITE, volt), g.trailWidth * 1.5, g.trailWidth, { speed = 6, length = 8 })
+	tween(trail, 0.5, { Width0 = 0, Width1 = 0 })
+	for _ = 1, 3 do
+		ElementFx.bolt(start + UP * view.height * 0.5, past + UP * view.height * 0.5, volt, 0.25, g.scale)
+	end
+	ElementFx.burst(target, volt, 1.8 * g.scale)
+	ElementFx.ring(ground + UP * 0.2, volt, math.max(5, targetHeight * 0.6) * g.scale, 0.4)
+	-- The scorched trail on the ground
+	crackLine(b, start, past, g.trailWidth * 0.6, Color3.fromRGB(40, 30, 20), 0.15, 0.3)
+	-- S: a bolt from the sky as it passes
+	if g.extra then
+		ElementFx.skyStrike(target, volt, 1.6)
+	end
+	-- The stun: electric rings round its head
+	local head = target + UP * math.max(1.5, targetHeight * 0.45)
+	stunRings(b, head, math.max(1.5, targetHeight * 0.25), 2, volt, ability.stun)
+	local hum = play(b, anchor(b, CFrame.new(head)), STAMP_SOUNDS.linger, 0.6, true)
+	task.delay(ability.stun + 0.3, function()
+		if hum then
+			tween(hum, 0.3, { Volume = 0 })
+		end
+		task.delay(0.5, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
+-- A dodge's puff: what a dodging super does when a hit passes through it (Eclipse's shadow, Rift Step's empty rift)
+local dodgers: { [BasePart]: (at: Vector3) -> () } = {}
+
+function SuperFx.dodged(root: BasePart, at: Vector3)
+	local react = dodgers[root]
+	if react then
+		react(at)
+	end
+end
+
+-- Eclipse (Eclipse Fox, Epic, Shade; spec "Eclipse"): the fox howls at the sky, a black moon slides over the sun, a ring
+-- of violet light bursts out and the fox turns to shadow: attacks pass through it in puffs of shadow, afterimages
+-- trail it and the eclipse hangs above for the 3 s. By grade: a bigger corona, more afterimages; S: two shadow clones.
+local ECLIPSE = SuperFxConfig.LOOKS.Eclipse
+local ECLIPSE_SOUNDS = SuperFxConfig.SOUNDS.Eclipse
+local SHADOW = Color3.fromRGB(40, 24, 70)
+
+-- The eclipse in the sky over `at`: a black moon in a glowing corona, `size` studs, `height` up
+local function eclipseSky(b: Bag, at: Vector3, size: number, tint: Color3, height: number): (Part, Part)
+	local center = at + UP * height
+	local corona = part(b, Vector3.one * size * 1.35, tint, CFrame.new(center), 0.35, Enum.PartType.Ball)
+	local moon = part(b, Vector3.one * size, Color3.fromRGB(8, 4, 16), CFrame.new(center), 0, Enum.PartType.Ball)
+	moon.Material = Enum.Material.SmoothPlastic
+	local glow = ElementFx.emitter(corona, "glow", tint, { size = { size * 1.6, size * 1.9 }, life = 0.8, fade = 0.3, locked = true, rotation = 0 })
+	glow.Rate = 3
+	return moon, corona
+end
+
+local function eclipseCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = ECLIPSE.grades[grade]
+	local b = bag()
+	local violet = color(ECLIPSE.color)
+	local source = anchor(b, CFrame.new(view.root.Position + UP * view.height))
+	play(b, source, ECLIPSE_SOUNDS.call, 1)
+	play(b, source, ECLIPSE_SOUNDS.charge, 0.8)
+	-- The moon slides over the sun: a pale sun high above, the black disc moving across it
+	local sky = view.root.Position + UP * 30
+	local sun = part(b, Vector3.one * g.corona, Color3.fromRGB(255, 236, 170), CFrame.new(sky), 0.1, Enum.PartType.Ball)
+	local moon = part(b, Vector3.one * g.corona * 0.95, Color3.fromRGB(8, 4, 16), CFrame.new(sky + Vector3.new(g.corona * 1.5, 0, 0)), 0, Enum.PartType.Ball)
+	moon.Material = Enum.Material.SmoothPlastic
+	tween(moon, seconds, { CFrame = CFrame.new(sky - (sky - workspace.CurrentCamera.CFrame.Position).Unit * 2) }, Enum.EasingStyle.Sine)
+	tween(sun, seconds, { Color = violet })
+	local wisps = ElementFx.emitter(anchor(b, CFrame.new(view.root.Position)), "smoke", SHADOW, { size = { 1.5, 3 }, life = { 0.6, 1 }, speed = { 1, 3 }, spread = 180, accel = UP * 2, light = 0 })
+	wisps.Rate = g.particles * 0.5
+	local stopGlow = ElementFx.chargeGlow(view.root, violet, seconds, 1.4 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function eclipseImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number): () -> ()
+	local g = ECLIPSE.grades[grade]
+	local b = bag()
+	local violet = color(ECLIPSE.color)
+	local seconds = (SuperFx.abilityOf("Eclipse") or { seconds = 3 }).seconds
+	local feet = groundAt(view.root.Position)
+	play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.impact, 1.1)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.layer, 0.9)
+	end
+	-- The eclipse hangs above, a ring of violet light bursts out
+	eclipseSky(b, view.root.Position, g.corona, violet, 30)
+	ElementFx.ring(feet + UP * 0.2, violet, view.height * 2 * g.scale, 0.5)
+	ElementFx.burst(view.root.Position + UP * view.height * 0.5, violet, 1.6 * g.scale)
+	-- The fox turned to shadow: a dark haze round it, afterimages trailing it
+	local haze = ElementFx.emitter(view.root, "smoke", SHADOW, { size = { view.height * 0.5, view.height * 0.8 }, life = { 0.4, 0.7 }, speed = { 0.5, 1.5 }, spread = 180, light = 0 })
+	haze.Rate = g.particles * 0.6
+	table.insert(b.items, haze)
+	local last = view.root.Position
+	everyFrame(b, function()
+		local now = view.root.Position
+		if (now - last).Magnitude > 2 then
+			afterimages(b, view, last, now, 1, violet, 0.4)
+			last = now
+		end
+	end)
+	-- S: two shadow clones beside it
+	if g.extra then
+		local side = view.root.CFrame.RightVector * view.height * 0.9
+		afterimages(b, view, view.root.Position - side, view.root.Position - side, 1, SHADOW, seconds)
+		afterimages(b, view, view.root.Position + side, view.root.Position + side, 1, SHADOW, seconds)
+	end
+	local drone = play(b, anchor(b, CFrame.new(feet)), ECLIPSE_SOUNDS.linger, 0.6, true)
+	-- Attacks pass through it in a puff of shadow
+	dodgers[view.root] = function(at: Vector3)
+		ElementFx.emitter(anchor(b, CFrame.new(at)), "smoke", SHADOW, { size = { 2, 4 }, life = 0.5, speed = { 3, 6 }, spread = 180, light = 0 }):Emit(10)
+	end
+	task.delay(seconds, function()
+		if dodgers[view.root] then
+			dodgers[view.root] = nil
+		end
+		haze.Rate = 0
+		if drone then
+			tween(drone, 0.4, { Volume = 0 })
+		end
+		task.delay(0.8, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		dodgers[view.root] = nil
+		clear(b)
+	end
+end
+
+-- Rift Step (Riftwalker, Epic, Shade, Frontier; spec "Rift Step"): space cracks like glass round it, the cracks open into
+-- purple void, it shatters through a rift and blinks out, then blinks between rifts while attacks hit empty cracks
+-- that seal up. By grade: more rifts and shards; S: the arena's edge cracks for a moment.
+local RIFT = SuperFxConfig.LOOKS.RiftStep
+local RIFT_SOUNDS = SuperFxConfig.SOUNDS.RiftStep
+
+-- A crack in space at `at` facing `facing`: a dark void pane with a glowing rim, `size` studs
+local function riftPane(b: Bag, at: Vector3, facing: Vector3, size: number, tint: Color3): Part
+	local pane = part(b, Vector3.new(size * 0.55, size, 0.1), Color3.fromRGB(10, 2, 20), CFrame.lookAt(at, at + facing) * CFrame.Angles(0, 0, math.random() - 0.5), 0.1)
+	pane.Material = Enum.Material.SmoothPlastic
+	local decal = Instance.new("Decal")
+	decal.Texture = TEX.crack
+	decal.Color3 = tint
+	decal.Face = Enum.NormalId.Front
+	decal.Parent = pane
+	local back = decal:Clone()
+	back.Face = Enum.NormalId.Back
+	back.Parent = pane
+	return pane
+end
+
+local function riftCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = RIFT.grades[grade]
+	local b = bag()
+	local void = color(RIFT.color)
+	local center = view.root.Position + UP * view.height * 0.5
+	play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.call, 1)
+	play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.charge, 0.9)
+	for index = 1, g.rifts do
+		task.delay((index - 1) / g.rifts * seconds * 0.8, function()
+			if b.done then
+				return
+			end
+			local a = index / g.rifts * 2 * math.pi
+			local spot = center + Vector3.new(math.cos(a), (math.random() - 0.5) * 0.6, math.sin(a)) * view.height * 0.9
+			local pane = riftPane(b, spot, spot - center, view.height * 0.4 * g.scale, void)
+			pane.Size = Vector3.new(0.1, 0.1, 0.1)
+			tween(pane, 0.3, { Size = Vector3.new(view.height * 0.22 * g.scale, view.height * 0.4 * g.scale, 0.1) })
+		end)
+	end
+	local stopGlow = ElementFx.chargeGlow(view.root, void, seconds, 1.4 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function riftImpact(view: View, grade: string, _target: Vector3, _targetBody: BasePart?, _targetHeight: number): () -> ()
+	local g = RIFT.grades[grade]
+	local b = bag()
+	local void = color(RIFT.color)
+	local seconds = (SuperFx.abilityOf("RiftStep") or { seconds = 3 }).seconds
+	local center = view.root.Position + UP * view.height * 0.5
+	play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.impact, 1.1)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(center)), RIFT_SOUNDS.layer, 1)
+	end
+	-- It shatters through: glass shards flying out, a flash of void
+	local shards = ElementFx.emitter(anchor(b, CFrame.new(center)), "shard", void, { size = { 0.9, 0.2 }, life = { 0.5, 0.9 }, speed = { 16, 28 }, spread = 180, spin = { -400, 400 }, accel = -UP * 20 })
+	shards:Emit(g.shards)
+	ElementFx.burst(center, void, 1.6 * g.scale)
+	-- Rifts hanging round it while it blinks
+	for index = 1, g.rifts do
+		local a = index / g.rifts * 2 * math.pi
+		local spot = center + Vector3.new(math.cos(a), (math.random() - 0.5) * 0.8, math.sin(a)) * view.height * 1.2
+		riftPane(b, spot, spot - center, view.height * 0.5 * g.scale, void)
+	end
+	-- S: the arena's edge cracks for a moment (a ring of rifts far out)
+	if g.extra then
+		for index = 1, 12 do
+			local a = index / 12 * 2 * math.pi
+			local spot = center + Vector3.new(math.cos(a), 0.3, math.sin(a)) * 28
+			local pane = riftPane(b, spot, center - spot, 9, void)
+			task.delay(1.2, function()
+				tween(pane, 0.5, { Transparency = 1 })
+			end)
+		end
+	end
+	-- Attacks hit an empty crack that seals up
+	dodgers[view.root] = function(at: Vector3)
+		local pane = riftPane(b, at, (at - view.root.Position) * Vector3.new(1, 0, 1) + Vector3.new(0, 0, 0.01), 3, void)
+		play(b, pane, RIFT_SOUNDS.blink, 0.8)
+		tween(pane, 0.45, { Size = Vector3.new(0.1, 0.1, 0.1) })
+	end
+	task.delay(seconds, function()
+		dodgers[view.root] = nil
+		task.delay(0.6, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		dodgers[view.root] = nil
+		clear(b)
+	end
+end
+
 -- The finished looks (spec "The ten moves"), by look id; the rest play the first pass
 local LOOKS: { [string]: Look } = {
 	Inferno = { charge = infernoCharge, impact = infernoImpact },
 	MagmaSlam = { charge = magmaCharge, impact = magmaImpact },
 	TidalShield = { charge = tideCharge, impact = tideImpact },
 	TidalBlessing = { charge = blessCharge, impact = blessImpact },
+	Stampede = { charge = stampCharge, impact = stampImpact },
+	Eclipse = { charge = eclipseCharge, impact = eclipseImpact },
+	RiftStep = { charge = riftCharge, impact = riftImpact },
 }
 
 -- Everything from the press to the impact on the caster; returns a stop

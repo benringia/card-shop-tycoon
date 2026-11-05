@@ -28,13 +28,14 @@ local PARTICLES = { 24, 36, 52, 72 }
 local SHAKE = { 0.6, 0.8, 1.05, 1.4 }
 local EXTRA = { false, false, false, true }
 
--- pose: the creature's own signature pose it strikes as the move lands (Util/PetRig, Party.SIGNATURE), else "cast"
-local function look(tier: string, card: string, element: string, color: { number }, own: { [string]: { any } }, pose: string?): any
+-- pose: the creature's own signature pose it strikes as the move lands (Util/PetRig, Party.SIGNATURE), else "cast";
+-- dash: it charges through its target and back as it lands
+local function look(tier: string, card: string, element: string, color: { number }, own: { [string]: { any } }, pose: string?, dash: boolean?): any
 	local fields: { [string]: { any } } = { scale = SCALE, particles = PARTICLES, shake = SHAKE, extra = EXTRA }
 	for field, values in own do
 		fields[field] = values
 	end
-	return { tier = tier, card = card, element = element, color = color, grades = grades(fields), pose = pose }
+	return { tier = tier, card = card, element = element, color = color, grades = grades(fields), pose = pose, dash = dash }
 end
 
 return {
@@ -84,7 +85,7 @@ return {
 		Stampede = look("Epic", "Thunderhorn", "Volt", rgb(255, 216, 74), {
 			afterimages = { 2, 3, 4, 6 },
 			trailWidth = { 2, 2.5, 3.2, 4 },
-		}),
+		}, "thundercall", true),
 		-- The titan leaps and crashes down, lava cracks race to the boss, geysers (S: a ring of lava round the landing)
 		MagmaSlam = look("Epic", "Cinder Titan", "Ember", rgb(255, 122, 42), {
 			cracks = { 4, 5, 7, 9 },
@@ -96,12 +97,12 @@ return {
 		Eclipse = look("Epic", "Eclipse Fox", "Shade", rgb(167, 139, 250), {
 			corona = { 10, 12, 15, 19 },
 			afterimages = { 2, 3, 4, 6 },
-		}),
+		}, "eclipse"),
 		-- Space cracks like glass and it blinks between rifts (S: the arena's edge cracks for a moment)
 		RiftStep = look("Epic", "Riftwalker", "Shade", rgb(192, 107, 255), {
 			rifts = { 3, 4, 5, 7 },
 			shards = { 8, 12, 16, 24 },
-		}),
+		}, "riftroar"),
 		-- The sky turns to space and Solarion hurls a small sun down (S: two impact frames, pillars of light)
 		Supernova = look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
 			sun = { 4, 5, 6.5, 8.5 },
@@ -153,7 +154,13 @@ return {
 			hit = "rbxassetid://9112872239", -- Small Bubbles Water Surface Float Up Pop 5
 			burst = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1
 		},
-		Stampede = {},
+		Stampede = {
+			call = "rbxassetid://9126100408", -- Thunder With Lion Roar Growl Low Rumble Roar (its bellow)
+			charge = "rbxassetid://9125980435", -- Spaceship Pre Blast Electric Charge Up Buzzy
+			impact = "rbxassetid://9120016256", -- Thunder Cracks Big Rumbling Blasts Booming 3 (the thunderclap)
+			layer = "rbxassetid://9116276946", -- Lightning Flashes Quick Electrical Bursts 21 (A and S)
+			linger = "rbxassetid://9114245570", -- Electric Hum 7 (the stun)
+		},
 		MagmaSlam = {
 			call = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2
 			charge = "rbxassetid://9118617342", -- Rock Impact Large Hit Scrape 1
@@ -161,8 +168,20 @@ return {
 			layer = "rbxassetid://9118587494", -- Rock Drop On Concrete Drops Breaks 2 (A and S)
 			linger = "rbxassetid://9125883906", -- Rocks Tumble Falling Down Cliff Grit Scatter
 		},
-		Eclipse = {},
-		RiftStep = {},
+		Eclipse = {
+			call = "rbxassetid://9120790529", -- Wolf Howl Two Versions 1
+			charge = "rbxassetid://9120697982", -- Whoosh By Howling Wind Light Rumbling 5
+			impact = "rbxassetid://9113551598", -- Boom Pass By Low End Multiple Variations 2
+			layer = "rbxassetid://9125637449", -- Magic Growl Eerie Tonal Swells (A and S)
+			linger = "rbxassetid://9114353377", -- Evil Drone Deep Unsettling Rumbly Keening 1 (the 3 s)
+		},
+		RiftStep = {
+			call = "rbxassetid://9114590297", -- Glass Break 1 (space cracks)
+			charge = "rbxassetid://9125981170", -- Spaceship Pre Blast Electric Charge Up Glass
+			impact = "rbxassetid://9116422213", -- Magic Transformation 17 (it blinks out)
+			layer = "rbxassetid://9114591515", -- Glass Breaks 2 (A and S)
+			blink = "rbxassetid://9120749129", -- Wind Burst Alien Vortex Blasts 1 (a hit meets an empty rift)
+		},
 		Supernova = {},
 		Thunderstorm = {},
 		Devour = {},

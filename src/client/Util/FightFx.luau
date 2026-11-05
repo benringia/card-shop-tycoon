@@ -473,6 +473,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local grade = superGrade(view)
 		local look = SuperFxConfig.LOOKS[event.look]
 		resolve.pose(marker, look.pose or "cast", look.grades[grade].scale)
+		if look.dash and typeof(event.to) == "string" then
+			-- Stampede: the creature itself charges through its target and back
+			resolve.dash(marker, targetPosition(event.to, view.root.Position), 1.25, 0.45)
+		end
 		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
 		local target = targetPosition(event.to, caster)
 		local body, height = targetBody(event.to)
@@ -699,6 +703,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				stopSuperCharge(event.from) -- its caster fainted mid wind-up
 			elseif event.type == "shieldGone" and typeof(event.side) == "string" then
 				SuperFx.shieldGone(event.side) -- a Tidal Shield / Blessing dome bursts
+			end
+			if event.dodged and typeof(event.to) == "string" then
+				-- A hit passing through a dodging super (Eclipse's shadow, Rift Step's rifts)
+				local marker = resolve.marker(event.to)
+				local view = if marker then resolve.creature(marker) else nil
+				if view then
+					SuperFx.dodged(view.root, view.root.Position + Vector3.new(0, view.height * 0.5, 0))
+				end
 			end
 			if typeof(event.absorbed) == "number" and event.absorbed > 0 and typeof(event.to) == "string" then
 				-- A hit the side's shield soaked: its dome ripples where it struck
