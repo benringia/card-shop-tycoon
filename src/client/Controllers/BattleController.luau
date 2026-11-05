@@ -26,6 +26,7 @@ local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
+local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 local CombatHudConfig = require(Config:WaitForChild("CombatHud"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
@@ -54,6 +55,7 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
+local SuperCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local DefeatScreen = require(ClientUtil:WaitForChild("DefeatScreen"))
@@ -997,6 +999,50 @@ local function showDebuff(event: any, me: string)
 	end
 end
 
+-- While your super's cinematic plays: the fight HUD out and your sword held (Util/SuperCinematic)
+local function hideForSuper(hidden: boolean)
+	if combatHud then
+		combatHud.setVisible(not hidden)
+	end
+	SwordController.Pause(hidden)
+end
+
+-- Your own creature's super (spec 2026-11-05-super-moves-design): its cast plays the cinematic on your screen, its
+-- landing the impact beat, a fizzle (it fainted first) cuts back at once
+local function onSuperEvent(event: any)
+	local marker = if typeof(event.from) == "string" then markerFor(event.from) else nil
+	local view = if marker then CreatureController.GetFightView(marker) else nil
+	if not view or not view.mine then
+		return
+	end
+	if event.type == "cast" then
+		local look = SuperFxConfig.LOOKS[event.look]
+		if not look then
+			return
+		end
+		local name = fightNames[event.from] or look.card
+		local seconds = tonumber(event.seconds) or SuperFxConfig.TIERS[look.tier].windup
+		SuperCinematic.play({
+			look = event.look,
+			tier = look.tier,
+			grade = view.grade or "C",
+			cardName = look.card,
+			art = CardArt.pick(name, 320, CardArtConfig),
+			color = Color3.fromRGB(look.color[1], look.color[2], look.color[3]),
+			creature = view.root,
+			height = view.height,
+			target = if typeof(event.to) == "string" then markerFor(event.to) else nil,
+			seconds = seconds,
+			protect = tonumber(event.protect) or seconds + Combat.SUPER_PROTECT_TAIL,
+			hideHud = hideForSuper,
+		})
+	elseif event.type == "ability" then
+		SuperCinematic.impact()
+	elseif event.type == "fizzle" then
+		SuperCinematic.cut()
+	end
+end
+
 local function onEvents(events: { any })
 	if fightFx then
 		-- Pictures only: a broken effect must never stop the damage numbers and HUD below
@@ -1008,6 +1054,12 @@ local function onEvents(events: { any })
 	local me = `a:@{player.UserId}`
 	for _, event in events do
 		showDebuff(event, me)
+		if typeof(event.look) == "string" then
+			local ok, err = pcall(onSuperEvent, event)
+			if not ok then
+				warn("[BattleController] super cinematic failed:", err)
+			end
+		end
 		if event.type == "attack" and event.to and typeof(event.from) == "string" and string.sub(event.from, 1, 3) == "a:@" then
 			if event.crit then
 				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
@@ -1400,6 +1452,9 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 	if state ~= Enum.UserInputState.Begin or not combatHud or introCard.Visible then
 		return Enum.ContextActionResult.Pass
 	end
+	if SuperCinematic.isPlaying() then
+		return Enum.ContextActionResult.Sink -- your super's cinematic: fight keys wait for control to come back
+	end
 	local key = input.KeyCode
 	if not combatSword and (key == Enum.KeyCode.LeftShift or key == Enum.KeyCode.E) then
 		return Enum.ContextActionResult.Pass -- no sword in this fight yet
@@ -1455,6 +1510,7 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 end
 
 local function stopCombat()
+	SuperCinematic.cut()
 	local hud = combatHud
 	combatHud = nil
 	if hud then
@@ -1580,6 +1636,7 @@ end
 
 local function onEnded(summary: any)
 	fighting = false
+	SuperCinematic.cut() -- the fight ended mid-cinematic: everything back first
 	local wasBoss = bossId ~= nil
 	-- Where the monster stood on screen, for the XP sparks (taken before the fight's markers go)
 	local monsterAt: Vector2? = nil

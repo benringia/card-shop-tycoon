@@ -46,15 +46,22 @@ end
 local UP: Vec = { x = 0, y = 1, z = 0 }
 
 -- The camera's eye and focus for a beat: "call" and "charge" a low, close shot in front of the creature (`facing`, its
--- look direction); "impact" a wide shot from behind and beside it framing it and its target (no target: a wide shot
+-- look direction) and round to one side; "impact" a wide shot from behind and beside it framing it and its target (no target: a wide shot
 -- of the creature from the front). Distances in multiples of `height`.
 function SuperFxRules.shot(beat: string, creature: Vec, height: number, facing: Vec, target: Vec?, cfg: any): (Vec, Vec)
 	local cam = cfg.CAMERA
 	local front = flat(facing)
 	local chest = add(creature, UP, cam.focusHeight * height)
 	if beat == "call" or beat == "charge" then
+		-- Round to one side of straight ahead, so what it faces (its target) isn't between the camera and it
+		local turn = math.rad(cam.callAngle)
+		local aside: Vec = {
+			x = front.x * math.cos(turn) + front.z * math.sin(turn),
+			y = 0,
+			z = front.z * math.cos(turn) - front.x * math.sin(turn),
+		}
 		local reach = (if beat == "call" then cam.callDistance else cam.chargeDistance) * height
-		local eye = add(add(creature, front, reach), UP, cam.callHeight * height)
+		local eye = add(add(creature, aside, reach), UP, cam.callHeight * height)
 		return eye, chest
 	end
 	if not target then

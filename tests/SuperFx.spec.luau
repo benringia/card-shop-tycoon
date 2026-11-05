@@ -139,4 +139,13 @@ return {
 			assert(string.match(id, "^rbxassetid://%d+$"), `SOUNDS{path}`)
 		end, "")
 	end,
+	-- Found in Studio (Task 4): straight in front of a big creature the close shot sat at the boss, which hid it
+	["the close shots stand off to one side, so the target isn't in the way"] = function()
+		local origin, facing = { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 1 }
+		for _, beat in { "call", "charge" } do
+			local eye = SuperFxRules.shot(beat, origin, 10, facing, { x = 0, y = 0, z = 40 }, SuperFx)
+			expect.equal(math.abs(eye.x) >= 5, true, `{beat}: off the line to the target`)
+			expect.equal(eye.z > 0, true, `{beat}: still in front`)
+		end
+	end,
 }

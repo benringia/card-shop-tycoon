@@ -14,6 +14,9 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local FightFx = require(ClientUtil:WaitForChild("FightFx"))
+local SuperCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
+local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local CardArtConfig = require(Shared:WaitForChild("Config"):WaitForChild("CardArt"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 
 local MovePreviewController = {}
@@ -135,6 +138,9 @@ local function play(payload: any)
 			return
 		end
 		stopped = true
+		if superLook then
+			SuperCinematic.cut()
+		end
 		dispatcher.destroy()
 		dummy:Destroy()
 		if model then
@@ -178,6 +184,29 @@ local function play(payload: any)
 				return
 			end
 			dispatcher.onEvents({ entry.event })
+			if superLook then
+				-- The caster's cinematic, as in a fight (BattleController does this for your real supers)
+				local event = entry.event
+				if event.type == "cast" then
+					local look = SuperFxConfig.LOOKS[superLook]
+					SuperCinematic.play({
+						look = superLook,
+						tier = look.tier,
+						grade = grade,
+						cardName = look.card,
+						art = CardArt.pick(look.card, 320, CardArtConfig),
+						color = Color3.fromRGB(look.color[1], look.color[2], look.color[3]),
+						creature = (CreatureController.GetFightView(marker) or { root = marker }).root,
+						height = (CreatureController.GetFightView(marker) or { height = 4 }).height,
+						target = dummy,
+						seconds = event.seconds,
+						protect = event.protect,
+						hideHud = function() end,
+					})
+				elseif event.type == "ability" then
+					SuperCinematic.impact()
+				end
+			end
 		end
 		task.wait(math.max(0, last + linger - (os.clock() - start)))
 		stop()

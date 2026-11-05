@@ -44,12 +44,13 @@ return {
 		Legendary = { windup = 2, call = 0.3, bars = true, impactFrame = true, sky = true, swoop = 14 },
 	},
 	LOW_GRAPHICS_GRADE = "B", -- extras off: a look plays no richer than its B grade (and no black-and-white frame)
-	-- The caster's camera, in multiples of the creature's height: the call's low close shot in front of it (the charge
-	-- drifts closer), then the impact's wide shot from behind it framing it and its target; fov in degrees, ease in
+	-- The caster's camera, in multiples of the creature's height: the call's low close shot in front of it and to one
+	-- side (the charge drifts closer), then the impact's wide shot from behind it framing it and its target; fov in degrees, ease in
 	-- seconds (the swoop in and the ease back)
 	CAMERA = {
 		callDistance = 1.6,
 		callHeight = 0.35,
+		callAngle = 40, -- degrees round from straight in front, so its target never stands in the shot
 		chargeDistance = 1.3,
 		focusHeight = 0.3,
 		impactDistance = 3.2,

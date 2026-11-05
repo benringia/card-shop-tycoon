@@ -64,6 +64,7 @@ local HOLD_STEP = "SwordHold"
 -- Which of your sword actions is still live: a dodge, a knock-down or the fight's end cancels a cut queued for its
 -- cancel point; no cut starts during the dash slash; the last cut that struck (Util/SwingGate)
 local gate = SwingGate.new()
+local paused = false -- a super's cinematic is playing on your screen: no cuts, skill or dodge (Util/SuperCinematic)
 
 -- Moves you `studs` along `direction` (flat, unit) over `seconds`: a velocity constraint in the ground plane (gravity
 -- stays free; walls, the arena's barrier, still stop it). Setting the velocity each frame lost half a dash to the
@@ -704,7 +705,15 @@ end
 -- An Attack tap: the combo's next cut (the server picks the same one and checks reach), facing the nearest target.
 -- Cuts chain at their cancel point (SwordRules.nextCut); each holds your walking until then and lunges you in, stopping
 -- short of a foe (SwordRules.lungeLength). The animations are in place: the lunge is the real movement.
+-- Holds your sword still while a super's cinematic plays (spec 2026-11-05-super-moves-design)
+function SwordController.Pause(on: boolean)
+	paused = on
+end
+
 function SwordController.Attack()
+	if paused then
+		return
+	end
 	local character, root = ownParts()
 	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
 	if not character or not root or not sword then
@@ -793,6 +802,9 @@ end
 -- along your facing that goes through foes (SwordRules.dashLength) with after-images, and at its hit frame every foe
 -- along the path from where you started is hit (the server checks the same path, clamped)
 function SwordController.Skill()
+	if paused then
+		return
+	end
 	local character, root, humanoid = ownParts()
 	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
 	if not character or not root or not humanoid or not sword or os.clock() < skillReadyAt then
@@ -846,6 +858,9 @@ end
 -- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images.
 -- It cancels a swing: your walking comes back and the swing's lunge or dash stops.
 function SwordController.Dodge()
+	if paused then
+		return
+	end
 	local character, root, humanoid = ownParts()
 	if not character or not root or not humanoid or os.clock() < dodgeReadyAt then
 		return
