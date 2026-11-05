@@ -328,9 +328,17 @@ function MoveFx.vines(target: BasePart, height: number, grade: string, seconds: 
 	local look = MoveFxConfig.VINES[grade]
 	local tall = math.max(height, 2)
 	local centre = target.Position
+	-- Wrap the foe's real body (its model's box), not a share of its height: bulky foes hid vines sized by height
+	local model = target:FindFirstAncestorOfClass("Model")
+	local halfWidth: number? = nil
+	if model then
+		local box, size = model:GetBoundingBox()
+		centre = Vector3.new(box.Position.X, centre.Y, box.Position.Z)
+		halfWidth = math.max(size.X, size.Z) / 2
+	end
 	local groundY = groundUnder(centre, centre.Y - tall * 0.5)
 	local base = Vector3.new(centre.X, groundY, centre.Z)
-	local radius = math.clamp(tall * 0.32, 0.9, 9)
+	local radius = MoveFxRules.wrapRadius(halfWidth, tall)
 	local thick = look.thickness * math.clamp(tall / 4, 0.8, 3)
 	local color = rgb(look.color)
 	local woody = grade == "A" or grade == "S"
@@ -352,6 +360,24 @@ function MoveFx.vines(target: BasePart, height: number, grade: string, seconds: 
 			end
 			if previous then
 				local share = (step - 1) / VINE_STEPS
+				-- A dark outline behind each piece, so the vine reads against any foe (the owner: "make the vines more visible")
+				local outline = Instance.new("Beam")
+				outline.Attachment0 = previous
+				outline.Attachment1 = attachment
+				outline.Width0 = thick * (1 - share * 0.55) + 0.35
+				outline.Width1 = thick * (1 - (share + 1 / VINE_STEPS) * 0.55) + 0.35
+				outline.Color = ColorSequence.new(Color3.fromRGB(20, 40, 16))
+				outline.LightInfluence = 0
+				outline.Brightness = 1
+				outline.ZOffset = -0.2
+				outline.FaceCamera = true
+				outline.Segments = 1
+				outline.Enabled = false
+				outline.Parent = holder
+				table.insert(beams, outline)
+				task.delay(VINE_GROW * share, function()
+					outline.Enabled = true
+				end)
 				local beam = Instance.new("Beam")
 				beam.Attachment0 = previous
 				beam.Attachment1 = attachment
@@ -361,8 +387,9 @@ function MoveFx.vines(target: BasePart, height: number, grade: string, seconds: 
 				beam.Width0 = thick * (1 - share * 0.55)
 				beam.Width1 = thick * (1 - (share + 1 / VINE_STEPS) * 0.55)
 				beam.Color = ColorSequence.new(color)
-				beam.LightInfluence = 0.6
-				beam.Brightness = 1.4
+				beam.LightInfluence = 0.25
+				beam.LightEmission = 0.15
+				beam.Brightness = 2.2
 				beam.FaceCamera = true
 				beam.Segments = 1
 				beam.Enabled = false

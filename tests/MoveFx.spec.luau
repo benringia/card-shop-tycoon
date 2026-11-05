@@ -147,6 +147,14 @@ return {
 		end
 	end,
 
+	-- Final review: vines sized from the target's height alone ran inside bulky foes; they wrap its real width
+	["vines wrap a target at its width, or a share of its height without one"] = function()
+		expect.near(MoveFxRules.wrapRadius(5, 10), 4.5, 1e-9, "just inside a 10-wide foe's box (bodies are rounder)")
+		expect.near(MoveFxRules.wrapRadius(nil, 10), 3.2, 1e-9, "no model: a share of its height")
+		expect.equal(MoveFxRules.wrapRadius(0.2, 2), 0.9, "never thinner than 0.9")
+		expect.equal(MoveFxRules.wrapRadius(40, 30), 14, "never wider than 14")
+	end,
+
 	["every texture and sound is an asset id"] = function()
 		assetIds(MoveFx.TEXTURES, "TEXTURES")
 		assetIds(MoveFx.SOUNDS, "SOUNDS")

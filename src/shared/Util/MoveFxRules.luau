@@ -22,6 +22,13 @@ function MoveFxRules.look(cfg: any, move: string, grade: string?, extrasOn: bool
 	return cfg[move][MoveFxRules.grade(grade, extrasOn, cfg)]
 end
 
+-- How far from a target's axis its vines wind: just inside its box's half-width (bodies are rounder than their box),
+-- or without a model a share of its height; between 0.9 and 14 studs
+function MoveFxRules.wrapRadius(halfWidth: number?, height: number): number
+	local radius = if halfWidth then halfWidth * 0.9 else height * 0.32
+	return math.clamp(radius, 0.9, 14)
+end
+
 -- Vine `index` of `count` climbing round a target: `steps + 1` points on a helix of `radius` round its axis (the
 -- origin), from the ground (y 0) up to `height`, starting `index / count` of a turn round and winding `turns` turns
 function MoveFxRules.vinePath(index: number, count: number, height: number, radius: number, turns: number, steps: number): { { x: number, y: number, z: number } }

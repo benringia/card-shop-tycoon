@@ -38,13 +38,13 @@ return {
 
 	-- Vine Snare: vines or roots burst up round the target, wrap it, hold, wither. `reach`: share of its height they climb
 	VINES = {
-		C = { count = 2, thickness = 0.3, reach = 0.45, turns = 1, leaves = 0, thorns = 0, blossoms = 0, dirt = false, crack = false,
+		C = { count = 2, thickness = 0.55, reach = 0.6, turns = 1, leaves = 0, thorns = 0, blossoms = 0, dirt = false, crack = false,
 			pollen = false, color = rgb(74, 222, 128) },
-		B = { count = 3, thickness = 0.45, reach = 0.7, turns = 1.4, leaves = 4, thorns = 0, blossoms = 0, dirt = false, crack = false,
+		B = { count = 3, thickness = 0.75, reach = 0.8, turns = 1.4, leaves = 4, thorns = 0, blossoms = 0, dirt = false, crack = false,
 			pollen = false, color = rgb(34, 197, 94) },
-		A = { count = 4, thickness = 0.65, reach = 0.9, turns = 1.8, leaves = 5, thorns = 8, blossoms = 0, dirt = true, crack = false,
+		A = { count = 4, thickness = 1, reach = 0.95, turns = 1.8, leaves = 5, thorns = 8, blossoms = 0, dirt = true, crack = false,
 			pollen = false, color = rgb(77, 124, 47) },
-		S = { count = 5, thickness = 0.9, reach = 1, turns = 2.2, leaves = 6, thorns = 10, blossoms = 5, dirt = true, crack = true,
+		S = { count = 5, thickness = 1.35, reach = 1.05, turns = 2.2, leaves = 6, thorns = 10, blossoms = 5, dirt = true, crack = true,
 			pollen = true, color = rgb(91, 140, 53) },
 	},
 

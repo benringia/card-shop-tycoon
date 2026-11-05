@@ -398,7 +398,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local casterView = if casterMarker then resolve.creature(casterMarker) else nil
 		local grade = MoveFxRules.grade((casterView or view).grade, Extras.enabled(), MoveFxConfig)
 		local rain = rains[to]
-		if not rain or os.clock() > rain.ends then
+		if (not rain or os.clock() > rain.ends) and FightFxRules.budget(active, Extras.enabled(), AttackFx) then
 			startRain(to, view, grade, RAIN_SECONDS - RAIN.every, false)
 		end
 		MoveFx.rainTick(view, grade, tonumber(event.heal) or 0)
@@ -598,7 +598,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local set = orbSets[event.from]
 				MoveFx.spendOrb(set, targetPosition(event.to, set.view.root.Position), set.view.mine)
 				if event.orb <= 0 then
-					orbSets[event.from] = nil
+					clearOrbs(event.from) -- the last fast attack: whatever's left goes (review: a set could outlive its fight)
 				end
 				if not event.dodged then
 					onAttack(event)

@@ -65,7 +65,7 @@ local function makeDummy(from: CFrame, big: boolean): (BasePart, number, Model?)
 	root.Transparency = 1
 	root.Size = Vector3.new(height * 0.6, height, height * 0.6)
 	root.CFrame = CFrame.new(spot.X, ground + height / 2, spot.Z)
-	root.Parent = workspace
+	root.Parent = model or workspace -- inside the model, so effects that darken the foe's model find it
 	return root, height, model
 end
 
