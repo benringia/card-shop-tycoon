@@ -21,6 +21,8 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local UIIcons = require(Shared:WaitForChild("Config"):WaitForChild("UIIcons"))
+local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
+local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
@@ -28,6 +30,30 @@ local HpBar = require((script.Parent :: Instance):WaitForChild("HpBar"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 
 local CombatHud = {}
+
+-- A move's own icon (Config/MoveFx SKILL_ICONS; the owner 2026-11-05: "Add Icons to skills"), nil if it has none yet
+local function moveIcon(kind: string?): string?
+	local name = if kind then MoveFxConfig.SKILL_ICONS[kind] else nil
+	return if name then UIIcons[name] else nil
+end
+
+-- The kind of the move with this name in a Config/Combat list (ABILITIES or SIGNATURES)
+local function kindNamed(list: { [string]: any }, name: string?): string?
+	for _, ability in list do
+		if ability.name == name then
+			return ability.kind
+		end
+	end
+	return nil
+end
+
+-- The Pet / Super button shows the summoned creature's own move (the paw or sparkle when there's no icon for it)
+local function setButtonIcon(frame: GuiObject, image: string?)
+	local icon = frame:FindFirstChild("Icon")
+	if image and icon and icon:IsA("ImageLabel") then
+		icon.Image = image
+	end
+end
 
 export type Reserve = { id: string, name: string, hp: number, maxHp: number, art: string? }
 export type View = {
@@ -808,6 +834,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			creatureBar.set(view.creatureHp, view.creatureMax)
 		end
 		buttons.signature.frame.Visible = view.hasSignature
+		local ability = Combat.ABILITIES[view.creatureElement]
+		setButtonIcon(buttons.pet.frame, moveIcon(if ability then ability.kind else nil))
+		setButtonIcon(buttons.signature.frame, moveIcon(kindNamed(Combat.SIGNATURES, view.signatureMove)))
 		for name, button in buttons do
 			button.label.Text = string.upper(moveName(name))
 			button.label.Visible = showNames and button.frame.Visible

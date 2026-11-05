@@ -2267,7 +2267,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   and copies pills; then a blue **Skills** box (the owner 2026-11-05, option A of `skills-on-card.html`): the card's
   Pet move (its element's) and, for Epic and Legendary cards, its super move, each with its icon on a badge, its name,
   a line from the fight's numbers (`Util/SkillText`, Lune-tested) and the button that uses it (icons from
-  `Config/MoveFx` SKILL_ICONS, the element's icon until they're uploaded); then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
+  `Config/MoveFx` SKILL_ICONS: a Figma sheet of white glyphs, icon sheet 6, the owner's pick over script-drawn ones);
+  the fight's Pet and Super buttons show the summoned creature's own move icon the same way; then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
   "THIS COPY", the chosen copy's grade pill, level, star icons, FOIL and its worth on one line, its Power / HP / ATK /
   SPD tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
   and "In your party" or "Working: <job>"; under it "ALL COPIES, BEST FIRST" (every copy: grade pill, level, star

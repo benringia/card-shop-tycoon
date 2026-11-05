@@ -90,4 +90,22 @@ return {
 	Skull = "rbxassetid://132753062323343",
 	Target = "rbxassetid://108873595886586",
 	Bolt = "rbxassetid://76880717046930",
+	-- Sheet 6 (pet moves round 2026-11-05, Figma white glyphs, cleaned by tools/ui-icons/clean_glyphs.py): each Pet
+	-- button move and super move (Config/MoveFx SKILL_ICONS), and spares
+	MoveFireball = "rbxassetid://105384345785736",
+	MoveRain = "rbxassetid://132488378387420",
+	MoveSnare = "rbxassetid://91914411424987",
+	MoveOvercharge = "rbxassetid://111591327113562",
+	MoveCurse = "rbxassetid://82412942234990",
+	MoveInferno = "rbxassetid://132158364006449",
+	MoveTidalShield = "rbxassetid://120701620426449",
+	MoveStampede = "rbxassetid://131667398792914",
+	MoveEclipse = "rbxassetid://115168793428709",
+	MoveSupernova = "rbxassetid://83922572764913",
+	MoveDevour = "rbxassetid://116225621379655",
+	Crown = "rbxassetid://121105327731098",
+	Crit = "rbxassetid://122025919001490",
+	Stunned = "rbxassetid://85327022293820",
+	Chain = "rbxassetid://115024970663355",
+	Cooldown = "rbxassetid://118622690810395",
 } :: { [string]: string }

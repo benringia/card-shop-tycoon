@@ -1,7 +1,7 @@
 """Cuts the UI icon sheet (a 4x4 grid on a magenta background, made with Figma's image generator) into separate
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
-Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-5, default 1]
+Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-6, default 1]
        python tools/ui-icons/slice_icons.py <icon.png> single <Name>   (one icon on magenta, e.g. DashSkill)
 """
 import os
@@ -40,6 +40,13 @@ SHEETS = {
         "Sparkle", "Swap", "Run", "Shield",
         "Potion", "Food", "Heal", "Sword",
         "Forge", "Skull", "Target", "Bolt",
+    ],
+    # The Pet button moves and super moves (white glyphs, pet moves round 2026-11-05; Config/MoveFx SKILL_ICONS) and spares
+    6: [
+        "MoveFireball", "MoveRain", "MoveSnare", "MoveOvercharge",
+        "MoveCurse", "MoveInferno", "MoveTidalShield", "MoveStampede",
+        "MoveEclipse", "MoveSupernova", "MoveDevour", "Crown",
+        "Crit", "Stunned", "Chain", "Cooldown",
     ],
 }
 GRID = 4
