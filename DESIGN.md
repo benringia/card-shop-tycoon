@@ -2755,9 +2755,13 @@ boss models; the ranch and Heroic tiers come after those.
   Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural edges, backdrops, far mountains,
   the composed Meadow, the Ridge's sky, lava streams, clouds, the Caves' grass patches, pieces settled onto the terrain
   (spec `2026-11-05-valley-natural-design.md`). Owner confirmed 2026-11-05.
-- [ ] Super moves round (branch `super-moves`, spec `2026-11-05-super-moves-design.md`): every super winds up its own
-  time (Epic 1.5 s, Legendary 2 s) with a cinematic on the caster's screen while their player can't be hit, ten
-  distinct looks with their own sounds, each bigger by grade with an S extra. Waiting for the owner's Studio check.
+- [x] Super moves round (spec `2026-11-05-super-moves-design.md`): every super winds up its own time (Epic 1.5 s,
+  Legendary 2 s, Supernova 3.5 s) with a cinematic on the caster's screen while their player can't be hit, ten
+  distinct looks with their own sounds, each bigger by grade with an S extra; then four rounds of owner feedback:
+  leaps and slams, Tidal Shield on every ally, Eclipse's star sigil and mirror image, Tidal Blessing as Rebirth Spring,
+  Rift Step as Blink Barrage, Thunderhorn's gallop, Shade's moon slash, limb attacks for every creature, skill sounds
+  brought to one level, move tooltips, a cinematic camera that keeps the creature in view, and the super meter in
+  place of the 15 s cooldown with the bosses rebalanced around it. Owner approved ("merge and push") 2026-11-06.
 - [x] Wild music: a piece for each of the valley's three areas (the owner's solo guitar picks, very quiet, each with
   an ambient loop) and a battle piece in each Wild boss arena, crossfading as you move, each through a leveler
   (`Music.WILD`, `MusicController`); the town plays White Owl. Approved by the owner 2026-11-04.
