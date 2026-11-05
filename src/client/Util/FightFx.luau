@@ -471,7 +471,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		local grade = superGrade(view)
-		resolve.pose(marker, "cast", SuperFxConfig.LOOKS[event.look].grades[grade].scale)
+		local look = SuperFxConfig.LOOKS[event.look]
+		resolve.pose(marker, look.pose or "cast", look.grades[grade].scale)
 		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
 		local target = targetPosition(event.to, caster)
 		local body, height = targetBody(event.to)

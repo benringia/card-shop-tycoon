@@ -28,12 +28,13 @@ local PARTICLES = { 24, 36, 52, 72 }
 local SHAKE = { 0.6, 0.8, 1.05, 1.4 }
 local EXTRA = { false, false, false, true }
 
-local function look(tier: string, card: string, element: string, color: { number }, own: { [string]: { any } }): any
+-- pose: the creature's own signature pose it strikes as the move lands (Util/PetRig, Party.SIGNATURE), else "cast"
+local function look(tier: string, card: string, element: string, color: { number }, own: { [string]: { any } }, pose: string?): any
 	local fields: { [string]: { any } } = { scale = SCALE, particles = PARTICLES, shake = SHAKE, extra = EXTRA }
 	for field, values in own do
 		fields[field] = values
 	end
-	return { tier = tier, card = card, element = element, color = color, grades = grades(fields) }
+	return { tier = tier, card = card, element = element, color = color, grades = grades(fields), pose = pose }
 end
 
 return {
@@ -65,8 +66,8 @@ return {
 		Inferno = look("Epic", "Infernox", "Ember", rgb(255, 106, 26), {
 			tornadoHeight = { 14, 18, 23, 30 },
 			embers = { 20, 30, 44, 64 },
-			fireRing = { 8, 10, 12, 15 },
-		}),
+			fireRing = { 1.5, 1.7, 1.95, 2.3 }, -- the ring of fire's radius, in the target's size (its width, 3-12 studs)
+		}, "firebreath"),
 		-- A wave crashes over your side and sets into a water dome with spirit koi (S: a rainbow sheen, a second ring)
 		TidalShield = look("Epic", "Abyssal Koi", "Tide", rgb(79, 183, 255), {
 			koi = { 2, 3, 4, 6 },
@@ -121,10 +122,19 @@ return {
 		}),
 	},
 	-- White textures with the shape in the alpha (tools/textures/make_super_fx.py, uploaded), filled look by look
-	TEXTURES = {},
+	TEXTURES = {
+		firestrip = "rbxassetid://98322968420111", -- flame tongues for beams (the tornadoes, the torrent)
+		crack = "rbxassetid://118892821263938", -- glowing cracks spreading out (Inferno's S lava)
+	},
 	-- Licensed sounds per look (Pro Sound Effects / APM): call, charge, impact, layer, linger; filled look by look
 	SOUNDS = {
-		Inferno = {},
+		Inferno = {
+			call = "rbxassetid://9113985717", -- Creature Roar Mix Of Animals Gate Creaks 1
+			charge = "rbxassetid://9114446277", -- Fire Whoosh 6
+			impact = "rbxassetid://9114554567", -- Gas Fire Explosion 3
+			layer = "rbxassetid://9114446802", -- Fire Whoosh 13 (A and S)
+			linger = "rbxassetid://9112780193", -- Fireplace Constant Burning Flame 1 (the 6 s burn)
+		},
 		TidalShield = {},
 		TidalBlessing = {},
 		Stampede = {},
