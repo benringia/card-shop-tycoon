@@ -27,6 +27,7 @@ export type State = {
 	wingAmount: number?, -- and the wingbeat's (a flat manta's broad wings beat shallow), else 1
 	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
 	legSwing: number?, -- and how much of PET_ANIM.LEG_SWING its legs use, else 1
+	gait: string?, -- "gallop" (Party.CREATURE_STYLE gait): four legs going in pairs, the body rocking; else a trot
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
 	swimPhase: number?, -- that wave, radians, built up frame by frame (PetRig.swimSpeed)
 }
@@ -116,8 +117,13 @@ function PetRig.swimSpeed(cfg: any, moving: number): number
 end
 
 -- Where a leg is in the walk cycle: trot (front-left with hind-right) or, on two legs, left then right. Many-legged rigs
--- (the Wild's crab and beetle) alternate pair by pair: odd pairs step opposite the even ones (six legs: two tripods)
-local function legOffset(role: Role, biped: boolean): number
+-- (the Wild's crab and beetle) alternate pair by pair: odd pairs step opposite the even ones (six legs: two tripods).
+-- A gallop (four legs): the front pair reaches together, the hind pair half a stride later, each right leg a little
+-- behind its left (cfg.GALLOP.lead of a stride)
+local function legOffset(cfg: any, role: Role, biped: boolean, gait: string?): number
+	if gait == "gallop" and not biped then
+		return (if role.pair % 2 == 1 then math.pi else 0) + (if role.side == "Left" then 0 else cfg.GALLOP.lead * TAU)
+	end
 	local offset = if role.side == "Left" then 0 else math.pi
 	if not biped and role.pair % 2 == 1 then
 		offset += math.pi
@@ -131,7 +137,15 @@ function PetRig.footLift(cfg: any, role: Role, biped: boolean, state: State): nu
 	if state.flying then
 		return 0
 	end
-	return cfg.FOOT_LIFT * math.max(0, math.cos(state.phase + legOffset(role, biped))) * math.clamp(state.moving, 0, 1)
+	return cfg.FOOT_LIFT * math.max(0, math.cos(state.phase + legOffset(cfg, role, biped, state.gait))) * math.clamp(state.moving, 0, 1)
+end
+
+-- How far a gallop lifts the whole body (studs at size 1): one bound a stride; 0 for any other gait
+function PetRig.gaitLift(cfg: any, state: State): number
+	if state.gait ~= "gallop" then
+		return 0
+	end
+	return cfg.GALLOP.lift * (0.5 + 0.5 * math.sin(state.phase)) * math.clamp(state.moving, 0, 1)
 end
 
 -- Where a middle bone sits along a waving body (larger is further back) and how much it sways; nil: not part of it
@@ -683,6 +697,13 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	-- What's left of the twist at the shoulders, undone by the neck (or the head without one)
 	local shoulderTwist = walkTwist * (0.5 - (if hasUpperSpine then cfg.SHOULDER_COUNTER else 0))
 
+	-- A gallop: longer swings, deeper knee folds, the body rocking front to back once a stride (front up as the front
+	-- legs reach), the neck holding the head steadier against it
+	local galloping = state.gait == "gallop" and not biped and not flying
+	local gallopSwing = if galloping then cfg.GALLOP.swing else 1
+	local gallopKnee = if galloping then cfg.GALLOP.knee else 1
+	local rock = if galloping then rad(cfg.GALLOP.rock) * math.sin(state.phase) * moving else 0
+
 	local undulating = state.undulate ~= nil
 	local swim = state.swimPhase or 0
 	local strength = if state.undulate == "slither" then cfg.SLITHER_STILL + (1 - cfg.SLITHER_STILL) * moving else 1 + 0.3 * moving
@@ -695,14 +716,14 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			x = if role.segment == 0 then rad(cfg.LEG_TUCK) + rad(4) * flap else rad(cfg.KNEE_TUCK) / role.segment
 		elseif role.kind == "leg" and state.undulate == "swim" then
 			-- Swimmers paddle slowly with the stroke
-			x = if role.segment == 0 then rad(cfg.LEG_SWING) * 0.5 * math.sin(swim + legOffset(role, biped)) else 0
+			x = if role.segment == 0 then rad(cfg.LEG_SWING) * 0.5 * math.sin(swim + legOffset(cfg, role, biped)) else 0
 		elseif role.kind == "leg" then
-			-- Trot: front-left with hind-right; two legs: left, right
-			local offset = legOffset(role, biped)
+			-- Trot: front-left with hind-right; two legs: left, right; a gallop: in pairs, reaching further
+			local offset = legOffset(cfg, role, biped, state.gait)
 			local swing = math.sin(state.phase + offset) * moving
 			local hind = not biped and role.pair == 1
 			if role.segment == 0 then
-				x = rad(cfg.LEG_SWING) * (state.legSwing or 1) * swing
+				x = rad(cfg.LEG_SWING) * (state.legSwing or 1) * gallopSwing * swing
 				if fidget == "stretch" and role.pair == 0 and not biped then
 					x -= rad(cfg.STRETCH) * amount
 				elseif (sitting > 0 or sitUp > 0) and hind then
@@ -722,7 +743,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				end
 			else
 				-- The lower leg bends as the leg comes forward, then straightens to land
-				x = -rad(cfg.KNEE_LIFT) * math.max(0, math.cos(state.phase + offset)) * moving / role.segment
+				x = -rad(cfg.KNEE_LIFT) * gallopKnee * math.max(0, math.cos(state.phase + offset)) * moving / role.segment
 					- rad(cfg.HEAVY_KNEE) * heavy * math.max(0, -math.cos(state.phase + offset)) * moving / role.segment
 				if (sitting > 0 or sitUp > 0) and hind then
 					x += (rad(cfg.SIT) * 2 * sitting + rad(cfg.SIT_UP) * 0.6 * sitUp) / role.segment
@@ -739,7 +760,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			z = walkRoll + weight
 			x = rad(cfg.SIT) * sitting + rad(cfg.SIT_UP) * sitUp
 		elseif role.kind == "spine" then
-			x = (if flying then rad(cfg.FLAP_PITCH) * flap else breath * idle + bob * 0.5)
+			x = (if flying then rad(cfg.FLAP_PITCH) * flap else breath * idle + bob * 0.5) + (if role.segment == 0 then rock else 0)
 			if role.segment == 0 then
 				y = -hips - walkTwist * 0.5
 				z = -(walkRoll + weight) * 0.7
@@ -767,6 +788,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				y -= shoulderTwist
 			end
 			x = if flying then -rad(cfg.FLAP_PITCH) * flap * share else -bob * share
+			x -= rock * cfg.GALLOP.steady * share
 			z = shake * share
 			if fidget == "sniff" then
 				x += rad(cfg.SNIFF) * share * amount
@@ -864,7 +886,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			local drop = if state.armDrop then state.armDrop[role.side] or 0 else 0
 			if role.segment == 0 then
 				z = if role.side == "Left" then drop else -drop
-				x = (state.armSwing or rad(cfg.ARM_SWING)) * math.sin(state.phase + legOffset(role, biped) + math.pi) * moving + breath * idle
+				x = (state.armSwing or rad(cfg.ARM_SWING)) * math.sin(state.phase + legOffset(cfg, role, biped) + math.pi) * moving + breath * idle
 					+ (state.armForward or 0)
 			elseif drop > 0 then
 				x = (state.armBend or rad(cfg.ARM_BEND)) / role.segment -- elbows forward

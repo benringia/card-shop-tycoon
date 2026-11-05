@@ -178,7 +178,7 @@ return {
 		Tidecaller = { fidgets = { "look", "tilt", "sniff", "stretch", "yawn", "shake" }, tailSpeed = 0.45, tailAmount = 1.1, bounce = 0.4 }, -- a proud sea dragon
 		Briarhorn = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.5, tailAmount = 0.9, bounce = 0.6, stride = 1.25, legSwing = 0.75, sway = 1.8 }, -- a heavy bison on short legs: shorter swings so it plods instead of crouching
 		AbyssalKoi = { fidgets = { "look", "tilt", "shake" }, tailSpeed = 0.5 }, -- a lurking swimmer
-		Thunderhorn = { fidgets = { "look", "sniff", "shake", "stomp", "tilt" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.5, stride = 1.15 }, -- a proud stag on long legs
+		Thunderhorn = { fidgets = { "look", "sniff", "shake", "stomp", "tilt" }, tailSpeed = 0.6, tailAmount = 0.6, bounce = 0.5, stride = 1.9, gait = "gallop" }, -- a proud stag on long legs, galloping (long strides)
 		Riftwalker = { fidgets = { "look", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 0.4, tailAmount = 0.8, bounce = 0.3 }, -- a prowling dragon
 		CinderTitan = { fidgets = { "look", "sniff", "shake", "stomp", "yawn", "stretch" }, bounce = 0.9, stride = 1.35, legSwing = 0.75, sway = 2.6 }, -- a heavy brute: long slow lumbering steps, rolling from foot to foot
 		Kirin = { fidgets = { "look", "tilt", "sniff", "shake", "stretch" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.6, stride = 1.2 }, -- a graceful, unhurried divine beast
@@ -225,6 +225,10 @@ return {
 	-- breathes, tails wag in a wave, ears flop; standing, a random fidget plays every FIDGET_GAP seconds.
 	PET_ANIM = {
 		STRIDE = 1.6, -- studs per full leg cycle at size 1 (scaled with the creature)
+		-- A gallop (CREATURE_STYLE gait "gallop"; owner 2026-11-05: Thunderhorn "make it like its running"): each right
+		-- leg `lead` of a stride behind its left, LEG_SWING and KNEE_LIFT times `swing` and `knee`, the spine rocking
+		-- `rock` degrees each way, the head kept `steady` (a share of the rock undone), the body bounding `lift` studs
+		GALLOP = { lead = 0.08, swing = 1.5, knee = 1.4, rock = 6, steady = 0.6, lift = 0.35 },
 		LEG_SWING = 28, -- upper leg, forward and back
 		KNEE_LIFT = 32, -- lower leg bends as it swings forward
 		BREATH = math.rad(2.5), -- spine pitch, radians

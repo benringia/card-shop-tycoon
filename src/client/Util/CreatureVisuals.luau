@@ -606,7 +606,7 @@ function CreatureVisuals.step(body: Body, dt: number, now: number, origin: Vecto
 		local pose = CreatureMotion.getPose(motion, now, body.speed, body.walked, body.flying)
 		local hop = if body.flying then pose.offsetY else pose.offsetY * anim.HOP_SCALE * pet.bounce
 		local extra = PetAnimator.bodyPose(pet, now)
-		hop += PetAnimator.flapLift(pet) * body.size
+		hop += (PetAnimator.flapLift(pet) + PetAnimator.gaitLift(pet)) * body.size
 		-- A fidget's pitch (a backflip) turns the creature round its middle, so its head doesn't go into the ground
 		local middle = CFrame.new(0, Party.CREATURE_HEIGHT * body.size * 0.5, 0)
 		body.model:PivotTo(body.cframe * CFrame.new(0, hop + extra.lift * body.size, -extra.forward * body.size) * CFrame.Angles(0, extra.yaw, 0)

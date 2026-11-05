@@ -44,6 +44,8 @@ export type Rig = {
 	bounce: number,
 	sway: number?, -- Party.CREATURE_STYLE: a heavy gait's hip roll and leg swing
 	legSwing: number?,
+	gait: string?, -- Party.CREATURE_STYLE: "gallop", else a trot
+	phase: number, -- the walk cycle this frame, radians
 	cued: boolean, -- the playing fidget's effect has gone off
 }
 
@@ -195,6 +197,8 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		bounce = style and style.bounce or 1,
 		sway = style and style.sway,
 		legSwing = style and style.legSwing,
+		gait = style and style.gait,
+		phase = 0,
 	}
 end
 
@@ -219,6 +223,11 @@ end
 -- How far this frame's wingbeat lifts the body (studs at size 1); 0 for pets on the ground
 function PetAnimator.flapLift(rig: Rig): number
 	return if rig.flying then PetRig.flapLift(Party.PET_ANIM, rig.flapPhase) else 0
+end
+
+-- How far this frame's gallop bound lifts the body (studs at size 1); 0 for any other gait
+function PetAnimator.gaitLift(rig: Rig): number
+	return PetRig.gaitLift(Party.PET_ANIM, { time = 0, phase = rig.phase, moving = rig.moving, gait = rig.gait, fidgetProgress = 0 })
 end
 
 -- Starts this fidget now (a boss's intro roar), whatever was playing; its effect cues afresh. amount: how big (a Pet
@@ -264,9 +273,10 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		rig.fidgetLength = cfg.FIDGET_SECONDS[kind] or 2
 		rig.side = if rig.random:NextNumber() < 0.5 then 1 else -1
 	end
+	rig.phase = walked / math.max(rig.stride, 0.1) * math.pi * 2
 	local state: PetRig.State = {
 		time = now,
-		phase = walked / math.max(rig.stride, 0.1) * math.pi * 2,
+		phase = rig.phase,
 		moving = rig.moving,
 		fidget = rig.fidget,
 		fidgetProgress = if rig.fidget then (now - rig.fidgetStart) / rig.fidgetLength else 0,
@@ -283,6 +293,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		wingAmount = rig.wingAmount,
 		sway = rig.sway,
 		legSwing = rig.legSwing,
+		gait = rig.gait,
 		undulate = rig.undulate,
 		swimPhase = rig.swimPhase,
 	}

@@ -1177,4 +1177,43 @@ return {
 		end
 		expect.equal(armLeft and armRight, true, "biped combo: the arms claw in turn")
 	end,
+
+	-- The owner (2026-11-05): "Update thunderhorn walk/run animation. make it like its running". A gallop: the front
+	-- legs reach nearly together, the hind legs half a stride later, longer swings, the body rocking and bounding
+	["a galloping creature's legs go in pairs with a longer reach, its body rocking and bounding"] = function()
+		local function gallop(phase: number): (PetRig.State, { [string]: PetRig.Angles })
+			local state = walking(phase)
+			state.gait = "gallop"
+			return state, poseAt(QUAD, state)
+		end
+		local _, p = gallop(math.pi / 2)
+		local fl, fr = p["leg:0:Left:0"].x, p["leg:0:Right:0"].x
+		local hl, hr = p["leg:1:Left:0"].x, p["leg:1:Right:0"].x
+		expect.equal(fl * fr > 0, true, "the front legs reach together")
+		expect.equal(hl * hr > 0, true, "the hind legs together")
+		expect.equal(fl * hl < 0, true, "front and hind half a stride apart")
+		expect.equal(fl ~= fr, true, "one front leg leads a little")
+		local trotReach, gallopReach = 0, 0
+		for step = 0, 15 do
+			local phase = step / 16 * math.pi * 2
+			trotReach = math.max(trotReach, math.abs(poseAt(QUAD, walking(phase))["leg:0:Left:0"].x))
+			local _, g = gallop(phase)
+			gallopReach = math.max(gallopReach, math.abs(g["leg:0:Left:0"].x))
+		end
+		expect.equal(gallopReach > trotReach * 1.3, true, "a longer reach than a trot")
+		local _, up = gallop(math.pi / 2)
+		local _, down = gallop(math.pi * 1.5)
+		expect.equal(math.abs(up["spine:0"].x - down["spine:0"].x) > math.rad(8), true, "the body rocks front to back")
+		local high, low = gallop(math.pi / 2), gallop(math.pi * 1.5)
+		expect.equal(PetRig.gaitLift(CFG, high) > PetRig.gaitLift(CFG, low) + 0.1, true, "it bounds")
+		expect.near(PetRig.gaitLift(CFG, walking(math.pi / 2)), 0, 1e-9, "a trot doesn't bound")
+		local foot = PetRig.role("1_Right_Limb_1") :: PetRig.Role
+		local stateAt = gallop(math.pi)
+		expect.near(PetRig.footLift(CFG, foot, false, stateAt), CFG.FOOT_LIFT * math.max(0, math.cos(math.pi + math.pi + CFG.GALLOP.lead * math.pi * 2)), 1e-9, "the feet lift in the gallop's timing")
+		assertBounded(p, "gallop")
+	end,
+
+	["Thunderhorn gallops"] = function()
+		expect.equal(party.CREATURE_STYLE.Thunderhorn.gait, "gallop")
+	end,
 }
