@@ -248,16 +248,21 @@ local function impactNow(run: Running, t: number)
 	ScreenFx.shake(AttackFx.SHAKE.special * look.shake * 1.6)
 	tween(run.cutIn, 0.18, { Position = UDim2.fromScale(-0.5, 0.42) }, Enum.EasingStyle.Quint)
 	if tier.impactFrame and Extras.enabled() then
-		local frame = Instance.new("ColorCorrectionEffect")
-		frame.Name = "SuperImpactFrame"
-		frame.Saturation = -1
-		frame.Contrast = 1.6
-		frame.Brightness = 0.08
-		frame.Parent = Lighting
-		task.delay(IMPACT_FRAME, function()
-			frame:Destroy()
-			ScreenFx.flash(Color3.new(1, 1, 1), AttackFx.FLASH.special.strength, AttackFx.FLASH.special.seconds * 1.4)
-		end)
+		-- The black-and-white frame (Supernova's S: twice)
+		for index = 1, look.impactFrames or 1 do
+			task.delay((index - 1) * 0.16, function()
+				local frame = Instance.new("ColorCorrectionEffect")
+				frame.Name = "SuperImpactFrame"
+				frame.Saturation = -1
+				frame.Contrast = 1.6
+				frame.Brightness = 0.08
+				frame.Parent = Lighting
+				task.delay(IMPACT_FRAME, function()
+					frame:Destroy()
+					ScreenFx.flash(Color3.new(1, 1, 1), AttackFx.FLASH.special.strength, AttackFx.FLASH.special.seconds * 1.4)
+				end)
+			end)
+		end
 	else
 		ScreenFx.flash(Color3.new(1, 1, 1), AttackFx.FLASH.special.strength * (if Extras.enabled() then 1 else 0.6), AttackFx.FLASH.special.seconds)
 	end
@@ -311,13 +316,19 @@ function SuperCinematic.play(args: Args)
 	for _, bar in bars do
 		tween(bar, call, { Size = UDim2.fromScale(1, 0.11) })
 	end
-	if tier.sky then
+	local sky = SuperFxConfig.LOOKS[args.look].sky
+	if tier.sky and sky then
+		-- The look's own sky over the world (deep space, a storm, the world dimming, clouds parting), this screen only
 		local grade = Instance.new("ColorCorrectionEffect")
 		grade.Name = "SuperGrade"
-		grade.TintColor = Color3.new(1, 1, 1):Lerp(args.color, 0.35)
 		grade.Brightness = 0
 		grade.Parent = Lighting
-		tween(grade, call, { Brightness = -0.12, Saturation = -0.15 })
+		tween(grade, call, {
+			TintColor = Color3.fromRGB(sky.tint[1], sky.tint[2], sky.tint[3]),
+			Brightness = sky.brightness,
+			Saturation = sky.saturation,
+			Contrast = sky.contrast,
+		})
 		run.grade = grade
 	end
 	local home = run.saved.cframe

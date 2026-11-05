@@ -1227,6 +1227,372 @@ local function riftImpact(view: View, grade: string, _target: Vector3, _targetBo
 	end
 end
 
+-- Supernova (Solarion, Legendary, Ember; spec "Supernova"): Solarion rises glowing as a small sun grows over its hands,
+-- pulling light and sparks in, then hurls it down: a white-out and a dome of fire, shockwave rings, rays of light and
+-- heat shimmer over the crater (the deep space and the impact frame are on the caster's screen). By grade: a bigger
+-- sun, more rings and rays; S: two impact frames and pillars of light round the crater.
+local NOVA = SuperFxConfig.LOOKS.Supernova
+local NOVA_SOUNDS = SuperFxConfig.SOUNDS.Supernova
+local SUN_CORE = Color3.fromRGB(255, 250, 220)
+
+-- A small sun: a white-hot core in a golden corona with a light
+local function sunBall(b: Bag, at: Vector3, size: number, tint: Color3): (Part, Part)
+	local corona = part(b, Vector3.one * size * 1.6, tint, CFrame.new(at), 0.45, Enum.PartType.Ball)
+	local core = part(b, Vector3.one * size, SUN_CORE, CFrame.new(at), 0, Enum.PartType.Ball)
+	local light = Instance.new("PointLight")
+	light.Color = tint
+	light.Range = size * 6
+	light.Brightness = 5
+	light.Parent = core
+	local flare = ElementFx.emitter(core, "flare", tint, { size = { size * 2, size * 3 }, life = 0.4, fade = 0.3, locked = true, spin = { 60, 120 }, brightness = 2 })
+	flare.Rate = 6
+	return core, corona
+end
+
+local function novaCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = NOVA.grades[grade]
+	local b = bag()
+	local gold = color(NOVA.color)
+	local above = view.root.Position + UP * (view.height * 1.35 + 2)
+	play(b, anchor(b, CFrame.new(above)), NOVA_SOUNDS.call, 1)
+	play(b, anchor(b, CFrame.new(above)), NOVA_SOUNDS.charge, 0.9)
+	local core, corona = sunBall(b, above, 0.5, gold)
+	tween(core, seconds, { Size = Vector3.one * g.sun })
+	tween(corona, seconds, { Size = Vector3.one * g.sun * 1.6 })
+	local stopGather = ElementFx.gather(above, gold, seconds, g.sun * 3)
+	local stopGlow = ElementFx.chargeGlow(view.root, gold, seconds, 1.8 * g.scale)
+	return function()
+		stopGather()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function novaImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = NOVA.grades[grade]
+	local b = bag()
+	local gold = color(NOVA.color)
+	local fire = Color3.fromRGB(255, 120, 40)
+	local above = view.root.Position + UP * (view.height * 1.35 + 2)
+	local ground = groundAt(target)
+	local blast = math.max(8, targetHeight * 1.1) * g.scale
+	-- It hurls the sun down onto the boss
+	local core, corona = sunBall(b, above, g.sun, gold)
+	tween(core, 0.28, { CFrame = CFrame.new(target) }, Enum.EasingStyle.Quad)
+	tween(corona, 0.28, { CFrame = CFrame.new(target) }, Enum.EasingStyle.Quad)
+	task.delay(0.28, function()
+		if b.done then
+			return
+		end
+		core.Transparency, corona.Transparency = 1, 1
+		play(b, anchor(b, CFrame.new(target)), NOVA_SOUNDS.impact, 1.3)
+		if grade == "A" or grade == "S" then
+			play(b, anchor(b, CFrame.new(target)), NOVA_SOUNDS.layer, 1.1)
+		end
+		-- The white-out and the dome of fire
+		local dome = part(b, Vector3.one * 2, SUN_CORE, CFrame.new(ground), 0, Enum.PartType.Ball)
+		tween(dome, 0.35, { Size = Vector3.one * blast * 2, Color = fire }, Enum.EasingStyle.Quart)
+		task.delay(0.35, function()
+			tween(dome, 0.6, { Transparency = 1 })
+		end)
+		ElementFx.burst(target, gold, 3 * g.scale)
+		ElementFx.eruption(ground, fire, blast * 0.8, 14)
+		-- Shockwave rings, one after another
+		for ring = 1, g.rings do
+			task.delay((ring - 1) * 0.18, function()
+				ElementFx.ring(ground + UP * 0.2, gold, blast * (1 + ring * 0.35), 0.6)
+			end)
+		end
+		-- Rays of light up out of the crater, heat shimmer, a scorched crater
+		for index = 1, g.rays do
+			local a = index / g.rays * 2 * math.pi + math.random() * 0.3
+			local top = anchor(b, CFrame.new(ground + Vector3.new(math.cos(a), 0, math.sin(a)) * blast * 0.6 + UP * (20 + 10 * g.scale)))
+			local foot = anchor(b, CFrame.new(ground))
+			local ray = beam(attachment(foot, Vector3.zero), attachment(top, Vector3.zero), AttackFx.TEXTURES.streak, sequence(SUN_CORE, gold), 2.5 * g.scale, 0.6, { speed = 2, length = 12 })
+			task.delay(1.6, function()
+				tween(ray, 0.8, { Width0 = 0, Width1 = 0 })
+			end)
+		end
+		local shimmer = ElementFx.emitter(anchor(b, CFrame.new(ground + UP)), "smoke", fire, { size = { blast * 0.4, blast * 0.7 }, life = { 0.8, 1.4 }, speed = { 2, 5 }, spread = 60, accel = UP * 3, light = 0.4 })
+		shimmer.Rate = g.particles * 0.4
+		groundDecal(b, ground, blast * 2, TEX.crack, fire, 0.2)
+		local rumble = play(b, anchor(b, CFrame.new(ground)), NOVA_SOUNDS.linger, 0.9)
+		-- S: pillars of light round the crater
+		if g.extra then
+			for index = 1, 6 do
+				local a = index / 6 * 2 * math.pi
+				ElementFx.pillar(ground + Vector3.new(math.cos(a), 0, math.sin(a)) * blast * 1.1, gold, 24, 1.6, "glow")
+			end
+		end
+		task.delay(2.6, function()
+			shimmer.Rate = 0
+			if rumble then
+				tween(rumble, 0.6, { Volume = 0 })
+			end
+			task.delay(1, function()
+				clear(b)
+			end)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
+-- Thunderstorm (Stormking, Legendary, Volt, Frontier; spec "Thunderstorm"): storm clouds swirl in above the boss and
+-- lightning crawls across them as Stormking raises its horns, then a colossal bolt and forked strikes hit the boss;
+-- rain and sparks crawling over the ground as the thunder rolls away (the storm sky is on the caster's screen). By
+-- grade: more forks, a wider storm; S: three bolts and a chain of lightning round the arena.
+local STORM = SuperFxConfig.LOOKS.Thunderstorm
+local STORM_SOUNDS = SuperFxConfig.SOUNDS.Thunderstorm
+local CLOUD = Color3.fromRGB(70, 78, 96)
+
+-- Storm clouds circling `height` studs over `at`, `radius` wide; returns the cloud puffs
+local function stormClouds(b: Bag, at: Vector3, radius: number, height: number): { Part }
+	local puffs = {}
+	for index = 1, 14 do
+		local a = index / 14 * 2 * math.pi
+		local reach = radius * (0.4 + math.random() * 0.6)
+		local puff = part(b, Vector3.new(9, 4, 8) * (0.8 + math.random() * 0.6), CLOUD, CFrame.new(at + UP * height + Vector3.new(math.cos(a), 0, math.sin(a)) * reach), 0.25, Enum.PartType.Ball)
+		puff.Material = Enum.Material.SmoothPlastic
+		table.insert(puffs, puff)
+	end
+	local holder = at + UP * height
+	everyFrame(b, function(_, dt)
+		for _, puff in puffs do
+			local offset = puff.Position - holder
+			local turned = CFrame.Angles(0, math.rad(25) * dt, 0) * offset
+			puff.CFrame = CFrame.new(holder + turned)
+		end
+	end)
+	return puffs
+end
+
+local function stormCharge(view: View, grade: string, seconds: number, target: Vector3?): () -> ()
+	local g = STORM.grades[grade]
+	local b = bag()
+	local volt = color(STORM.color)
+	local over = target or (view.root.Position + view.root.CFrame.LookVector * 12)
+	play(b, anchor(b, CFrame.new(over + UP * 20)), STORM_SOUNDS.call, 1)
+	play(b, anchor(b, CFrame.new(over + UP * 20)), STORM_SOUNDS.charge, 0.8)
+	local puffs = stormClouds(b, over, g.storm * 0.5, 26)
+	everyFrame(b, function(elapsed)
+		if math.floor(elapsed * 5) ~= math.floor((elapsed - 1 / 60) * 5) and #puffs > 1 then
+			local a, c = puffs[math.random(#puffs)], puffs[math.random(#puffs)]
+			if a ~= c then
+				ElementFx.bolt(a.Position, c.Position, volt, 0.12, 0.8 * g.scale)
+			end
+		end
+	end)
+	local horns = ElementFx.emitter(anchor(b, CFrame.new(view.root.Position + UP * view.height)), "spark", volt, { size = { 0.6, 0.1 }, life = 0.3, speed = { 8, 14 }, spread = 180 })
+	horns.Rate = g.particles
+	local stopGlow = ElementFx.chargeGlow(view.root, volt, seconds, 1.6 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function stormImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = STORM.grades[grade]
+	local b = bag()
+	local volt = color(STORM.color)
+	local ground = groundAt(target)
+	local sky = ground + UP * 26
+	stormClouds(b, ground, g.storm * 0.5, 26)
+	play(b, anchor(b, CFrame.new(target)), STORM_SOUNDS.impact, 1.3)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(target)), STORM_SOUNDS.layer, 1)
+	end
+	-- The colossal bolt and its forks
+	for strike = 1, g.bolts do
+		task.delay((strike - 1) * 0.22, function()
+			if b.done then
+				return
+			end
+			ElementFx.skyStrike(target, volt, 2.2 * g.scale)
+			local column = anchor(b, CFrame.new(sky))
+			local foot = anchor(b, CFrame.new(ground))
+			local bolt = beam(attachment(column, Vector3.zero), attachment(foot, Vector3.zero), AttackFx.TEXTURES.bolt, sequence(WHITE, volt), 4 * g.scale, 2.5 * g.scale, { speed = 8, length = 10, brightness = 4, faceCamera = true })
+			tween(bolt, 0.35, { Width0 = 0, Width1 = 0 })
+			for _ = 1, g.forks do
+				local a = math.random() * 2 * math.pi
+				local spot = ground + Vector3.new(math.cos(a), 0, math.sin(a)) * math.max(4, targetHeight * 0.6) * (0.5 + math.random())
+				ElementFx.bolt(sky + Vector3.new(math.cos(a), 0, math.sin(a)) * 4, spot, volt, 0.2, 1.2 * g.scale)
+			end
+			ElementFx.burst(target, volt, 2 * g.scale)
+			ElementFx.ring(ground + UP * 0.2, volt, math.max(6, targetHeight * 0.8) * g.scale, 0.45)
+		end)
+	end
+	-- The rain, sparks crawling over the ground
+	local rain = ElementFx.emitter(anchor(b, CFrame.new(sky - UP * 2)), "streak", Color3.fromRGB(190, 210, 235), {
+		size = { 0.25, 0.25 },
+		life = { 0.8, 1 },
+		speed = { 28, 34 },
+		direction = Enum.NormalId.Bottom,
+		orientation = Enum.ParticleOrientation.VelocityParallel,
+		light = 0.3,
+	})
+	rain.Shape = Enum.ParticleEmitterShape.Disc
+	rain.Rate = g.particles * 2
+	local crawl = ElementFx.emitter(anchor(b, CFrame.new(ground + UP * 0.3)), "spark", volt, { size = { 0.5, 0.1 }, life = 0.3, speed = { 4, 8 }, spread = 80 })
+	crawl.Shape = Enum.ParticleEmitterShape.Disc
+	crawl.Rate = g.particles
+	local drizzle = play(b, anchor(b, CFrame.new(ground + UP * 6)), STORM_SOUNDS.linger, 0.6, true)
+	-- S: a chain of lightning round the arena
+	if g.extra then
+		local ring = {}
+		for index = 1, 10 do
+			local a = index / 10 * 2 * math.pi
+			table.insert(ring, ground + Vector3.new(math.cos(a), 0.5, math.sin(a)) * g.storm * 0.7)
+		end
+		for index = 1, #ring do
+			task.delay(0.6 + index * 0.05, function()
+				ElementFx.bolt(ring[index], ring[index % #ring + 1], volt, 0.3, 1.2)
+			end)
+		end
+	end
+	task.delay(3.5, function()
+		rain.Rate = 0
+		crawl.Rate = 0
+		if drizzle then
+			tween(drizzle, 1, { Volume = 0 })
+		end
+		task.delay(1.2, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
+-- Devour (Voidmaw, Legendary, Shade; spec "Devour"): the world dims and Voidmaw's eyes burn violet as a black hole opens
+-- behind the boss pulling everything in, then giant spectral jaws rise from the ground and clamp shut, and streams of
+-- life flow from the boss into Voidmaw (its heal). By grade: a bigger black hole, more life streams; S: the jaws bite
+-- twice.
+local DEVOUR = SuperFxConfig.LOOKS.Devour
+local DEVOUR_SOUNDS = SuperFxConfig.SOUNDS.Devour
+local VOID = Color3.fromRGB(14, 6, 26)
+
+-- The black hole behind `at` (away from `from`): a dark disc in a turning violet swirl, `size` studs
+local function blackHole(b: Bag, at: Vector3, from: Vector3, size: number, tint: Color3): Part
+	local away = Vector3.new(at.X - from.X, 0, at.Z - from.Z)
+	local spot = at + (if away.Magnitude > 0.5 then away.Unit else Vector3.new(0, 0, 1)) * size * 0.7 + UP * size * 0.4
+	local swirl = part(b, Vector3.new(size * 2.2, size * 2.2, 0.1), WHITE, CFrame.lookAt(spot, from + UP * size * 0.4), 1)
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local decal = Instance.new("Decal")
+		decal.Texture = TEX.swirl
+		decal.Color3 = tint
+		decal.Face = face
+		decal.Parent = swirl
+	end
+	local hole = part(b, Vector3.one * size * 0.75, VOID, CFrame.new(spot), 0, Enum.PartType.Ball)
+	hole.Material = Enum.Material.SmoothPlastic
+	everyFrame(b, function(_, dt)
+		swirl.CFrame = swirl.CFrame * CFrame.Angles(0, 0, math.rad(-120) * dt)
+	end)
+	swirl.Size = Vector3.new(0.5, 0.5, 0.1)
+	tween(swirl, 0.5, { Size = Vector3.new(size * 2.2, size * 2.2, 0.1) }, Enum.EasingStyle.Back)
+	return hole
+end
+
+-- Spectral jaws round `at`: two rows of fangs rising from the ground either side, clamping shut; `bites` times
+local function jaws(b: Bag, at: Vector3, width: number, tint: Color3, bites: number)
+	for bite = 1, bites do
+		task.delay((bite - 1) * 0.42, function()
+			if b.done then
+				return
+			end
+			for _, side in { -1, 1 } do
+				local base = at + Vector3.new(0, -width * 0.6, 0)
+				local jaw = part(b, Vector3.new(width * 1.6, width * 0.35, width * 0.5), tint, CFrame.new(base + Vector3.new(0, 0, side * width * 0.9)), 0.3)
+				for fang = 1, 5 do
+					local tooth = part(b, Vector3.new(width * 0.18, width * 0.5, width * 0.18), Color3.fromRGB(235, 220, 255), jaw.CFrame * CFrame.new((fang - 3) * width * 0.3, width * 0.4, -side * width * 0.15), 0.2, Enum.PartType.Wedge)
+					local weld = Instance.new("WeldConstraint")
+					weld.Part0, weld.Part1 = jaw, tooth
+					weld.Parent = tooth
+					tooth.Anchored = false
+				end
+				TweenService:Create(jaw, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = CFrame.new(at + Vector3.new(0, 0, side * width * 0.25)) * CFrame.Angles(side * math.rad(25), 0, 0) }):Play()
+				task.delay(0.32, function()
+					tween(jaw, 0.25, { Transparency = 1 })
+					for _, child in jaw:GetConnectedParts() do
+						tween(child, 0.25, { Transparency = 1 })
+					end
+				end)
+			end
+			ElementFx.burst(at, tint, width / 3)
+		end)
+	end
+end
+
+local function devourCharge(view: View, grade: string, seconds: number, target: Vector3?): () -> ()
+	local g = DEVOUR.grades[grade]
+	local b = bag()
+	local violet = color(DEVOUR.color)
+	local foe = target or (view.root.Position + view.root.CFrame.LookVector * 12)
+	play(b, anchor(b, CFrame.new(view.root.Position)), DEVOUR_SOUNDS.call, 0.9)
+	play(b, anchor(b, CFrame.new(foe)), DEVOUR_SOUNDS.charge, 1)
+	local hole = blackHole(b, foe, view.root.Position, g.hole, violet)
+	local stopGather = ElementFx.gather(hole.Position, violet, seconds, g.hole * 2)
+	-- Its eyes burn violet
+	local eyes = ElementFx.emitter(anchor(b, CFrame.new(view.root.Position + UP * view.height * 0.8 + view.root.CFrame.LookVector * view.height * 0.3)), "glow", violet, { size = { 1.2 * g.scale, 1.8 * g.scale }, life = 0.3, fade = 0.3, locked = true, brightness = 3 })
+	eyes.Rate = 10
+	local stopGlow = ElementFx.chargeGlow(view.root, violet, seconds, 1.6 * g.scale)
+	return function()
+		stopGather()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function devourImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = DEVOUR.grades[grade]
+	local b = bag()
+	local violet = color(DEVOUR.color)
+	local width = math.max(5, targetHeight * 0.7)
+	blackHole(b, target, view.root.Position, g.hole, violet)
+	play(b, anchor(b, CFrame.new(target)), DEVOUR_SOUNDS.impact, 1.3)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(target)), DEVOUR_SOUNDS.layer, 1)
+	end
+	jaws(b, target, width, violet, g.bites)
+	-- Life flowing back from the boss into Voidmaw
+	task.delay(0.35, function()
+		if b.done then
+			return
+		end
+		local mouth = view.root.Position + UP * view.height * 0.6
+		for index = 1, g.streams do
+			local from = anchor(b, CFrame.new(target + Vector3.new(math.random() - 0.5, math.random(), math.random() - 0.5) * width * 0.6))
+			local to = anchor(b, CFrame.new(mouth))
+			local stream = beam(attachment(from, Vector3.zero), attachment(to, Vector3.zero), AttackFx.TEXTURES.streak, sequence(Color3.fromRGB(170, 255, 190), violet), 0.8 * g.scale, 0.4, {
+				speed = 5,
+				length = 4,
+				curve0 = (index % 2 * 2 - 1) * 6,
+				curve1 = (index % 3 - 1) * 4,
+			})
+			task.delay(1.6, function()
+				tween(stream, 0.4, { Width0 = 0, Width1 = 0 })
+			end)
+		end
+		ElementFx.burst(mouth, Color3.fromRGB(170, 255, 190), 1.2 * g.scale)
+	end)
+	local drone = play(b, anchor(b, CFrame.new(target)), DEVOUR_SOUNDS.linger, 0.6, true)
+	task.delay(2.4, function()
+		if drone then
+			tween(drone, 0.6, { Volume = 0 })
+		end
+		task.delay(0.8, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
 -- The finished looks (spec "The ten moves"), by look id; the rest play the first pass
 local LOOKS: { [string]: Look } = {
 	Inferno = { charge = infernoCharge, impact = infernoImpact },
@@ -1236,6 +1602,9 @@ local LOOKS: { [string]: Look } = {
 	Stampede = { charge = stampCharge, impact = stampImpact },
 	Eclipse = { charge = eclipseCharge, impact = eclipseImpact },
 	RiftStep = { charge = riftCharge, impact = riftImpact },
+	Supernova = { charge = novaCharge, impact = novaImpact },
+	Thunderstorm = { charge = stormCharge, impact = stormImpact },
+	Devour = { charge = devourCharge, impact = devourImpact },
 }
 
 -- Everything from the press to the impact on the caster; returns a stop

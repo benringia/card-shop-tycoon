@@ -38,6 +38,13 @@ local function look(tier: string, card: string, element: string, color: { number
 	return { tier = tier, card = card, element = element, color = color, grades = grades(fields), pose = pose, dash = dash }
 end
 
+-- A Legendary look's sky on the caster's screen during its cinematic (Util/SuperCinematic): a colour grade over the
+-- world (tint, brightness, saturation, contrast), eased in with the call and back with the camera
+local function withSky(made: any, tint: { number }, brightness: number, saturation: number, contrast: number): any
+	made.sky = { tint = tint, brightness = brightness, saturation = saturation, contrast = contrast }
+	return made
+end
+
 return {
 	-- The cinematic by rarity: wind-up seconds (the sim's, Config/Combat SIGNATURES), the call beat's seconds, and what
 	-- only Legendary gets; swoop: studs the camera travels in its swoop to the creature
@@ -76,11 +83,11 @@ return {
 			waveHeight = { 10, 12, 15, 19 },
 		}, "abysschomp"),
 		-- Clouds part, a giant water lotus closes into a dome of light (S: a halo over the Kirin, golden rain)
-		TidalBlessing = look("Legendary", "Tideborne Kirin", "Tide", rgb(191, 230, 255), {
+		TidalBlessing = withSky(look("Legendary", "Tideborne Kirin", "Tide", rgb(191, 230, 255), {
 			petals = { 8, 10, 12, 16 },
 			lotus = { 10, 12, 15, 19 },
 			rays = { 3, 4, 6, 8 },
-		}, "blessing"),
+		}, "blessing"), rgb(255, 246, 222), 0.06, 0.05, 0.08), -- the clouds part: warm, bright
 		-- A lightning dash through the boss with afterimages, electric rings for the stun (S: a bolt from the sky)
 		Stampede = look("Epic", "Thunderhorn", "Volt", rgb(255, 216, 74), {
 			afterimages = { 2, 3, 4, 6 },
@@ -104,29 +111,31 @@ return {
 			shards = { 8, 12, 16, 24 },
 		}, "riftroar"),
 		-- The sky turns to space and Solarion hurls a small sun down (S: two impact frames, pillars of light)
-		Supernova = look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
+		Supernova = withSky(look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
 			sun = { 4, 5, 6.5, 8.5 },
 			rings = { 2, 2, 3, 4 },
 			rays = { 4, 6, 8, 12 },
-		}),
+			impactFrames = { 1, 1, 1, 2 },
+		}, "sunburst"), rgb(96, 80, 170), -0.38, -0.25, 0.2), -- deep space
 		-- Storm clouds gather and a colossal bolt strikes (S: three bolts and a chain of lightning round the arena)
-		Thunderstorm = look("Legendary", "Stormking", "Volt", rgb(159, 214, 255), {
+		Thunderstorm = withSky(look("Legendary", "Stormking", "Volt", rgb(159, 214, 255), {
 			forks = { 3, 4, 6, 8 },
 			storm = { 24, 30, 38, 48 },
 			bolts = { 1, 1, 1, 3 },
-		}),
+		}, "hornstorm"), rgb(140, 160, 200), -0.28, -0.35, 0.18), -- a storm sky
 		-- A black hole opens and spectral jaws clamp the boss, life flows back (S: the jaws bite twice)
-		Devour = look("Legendary", "Voidmaw", "Shade", rgb(139, 92, 246), {
+		Devour = withSky(look("Legendary", "Voidmaw", "Shade", rgb(139, 92, 246), {
 			hole = { 8, 10, 13, 17 },
 			streams = { 4, 6, 8, 12 },
 			bites = { 1, 1, 1, 2 },
-		}),
+		}, "voidroar"), rgb(150, 110, 210), -0.32, -0.45, 0.22), -- the world dims
 	},
 	-- White textures with the shape in the alpha (tools/textures/make_super_fx.py, uploaded), filled look by look
 	TEXTURES = {
 		firestrip = "rbxassetid://98322968420111", -- flame tongues for beams (the tornadoes, the torrent)
 		crack = "rbxassetid://118892821263938", -- glowing cracks spreading out (Inferno's S lava)
 		waterstrip = "rbxassetid://135040662984540", -- rippling water bands for beams (Tidal Shield's swirl)
+		swirl = "rbxassetid://82162011115712", -- five spiral arms (Config/WildLoading's): Devour's black hole
 	},
 	-- Licensed sounds per look (Pro Sound Effects / APM): call, charge, impact, layer, linger; filled look by look
 	SOUNDS = {
@@ -182,8 +191,26 @@ return {
 			layer = "rbxassetid://9114591515", -- Glass Breaks 2 (A and S)
 			blink = "rbxassetid://9120749129", -- Wind Burst Alien Vortex Blasts 1 (a hit meets an empty rift)
 		},
-		Supernova = {},
-		Thunderstorm = {},
-		Devour = {},
+		Supernova = {
+			call = "rbxassetid://9114055189", -- Descending Synth Burst Tonal Light Phasing 2 (it rises)
+			charge = "rbxassetid://9116420139", -- Magic Tones Harmonic Tonal Swells Atonal 2 (the sun grows)
+			impact = "rbxassetid://9113216700", -- Avalanche Crashing 3
+			layer = "rbxassetid://9114554531", -- Gas Fire Explosion 1 (A and S)
+			linger = "rbxassetid://9113224030", -- Avalanche Rumbling 2 (the crater)
+		},
+		Thunderstorm = {
+			call = "rbxassetid://9120742493", -- Whoosh Sweeteners Tearing Atmosphere 1 (the clouds swirl in)
+			charge = "rbxassetid://9126069838", -- Synth Lightning Crack Sharp Some Rolling Tail
+			impact = "rbxassetid://9120016037", -- Thunder Cracks Big Rumbling Blasts Booming 1
+			layer = "rbxassetid://9126082854", -- Synth Thunder Cracks Individual Explosion (A and S)
+			linger = "rbxassetid://9112852465", -- Rain Continuous Drizzle 1
+		},
+		Devour = {
+			call = "rbxassetid://9125603019", -- Heavenly Presence Eerie Choral Tones Dark (the world dims)
+			charge = "rbxassetid://9120749463", -- Wind Burst Alien Vortex Blasts 11 (the black hole pulls)
+			impact = "rbxassetid://9118617328", -- Rock Impact Large Hit Scrape 3 (the jaws clamp)
+			layer = "rbxassetid://9126100173", -- Thunder With Lion Roar Growl Low Rumble Roar (A and S)
+			linger = "rbxassetid://9114353377", -- Evil Drone Deep Unsettling Rumbly Keening 1 (life flowing back)
+		},
 	},
 } :: any

@@ -148,4 +148,24 @@ return {
 			expect.equal(eye.z > 0, true, `{beat}: still in front`)
 		end
 	end,
+	-- Legendary looks change the sky on the caster's screen, each its own way (spec: Supernova's deep space, Devour's
+	-- dimmed world, Thunderstorm's storm, Tidal Blessing's clouds parting)
+	["every Legendary look has its own sky grade, and only Legendary looks have one"] = function()
+		for id, look in SuperFx.LOOKS do
+			if look.tier == "Legendary" then
+				assert(look.sky, `{id}: its sky`)
+				assert(typeof(look.sky.brightness) == "number" and typeof(look.sky.saturation) == "number", `{id}: brightness and saturation`)
+				expect.equal(#look.sky.tint, 3, `{id}: an rgb tint`)
+			else
+				expect.isNil(look.sky, `{id}: Epic looks leave the sky alone`)
+			end
+		end
+	end,
+
+	["Supernova's S plays two impact frames, every other grade one"] = function()
+		for _, grade in GRADES do
+			local frames = SuperFx.LOOKS.Supernova.grades[grade].impactFrames
+			expect.equal(frames, if grade == "S" then 2 else 1, grade)
+		end
+	end,
 }
