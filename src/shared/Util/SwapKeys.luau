@@ -26,4 +26,21 @@ function SwapKeys.pick(beastId: string?, reserves: { string }, fighters: { { id:
 	return "resting", nil
 end
 
+export type Tile = { slot: number, beastId: string, simId: string, state: string, seconds: number? }
+
+-- The fight's party strip (owner 2026-11-05, option A: "add an indication who to summon"): one tile per filled party
+-- slot, 1 to `size`, in the party bar's order, each with what its key or a tap does now (pick's action; `seconds` only
+-- while it's cooling)
+function SwapKeys.party(slots: { [number]: string }, size: number, reserves: { string }, fighters: { { id: string, fainted: boolean } }, swaps: boolean, swapIn: number): { Tile }
+	local tiles = {}
+	for slot = 1, size do
+		local beastId = slots[slot]
+		if beastId then
+			local state, value = SwapKeys.pick(beastId, reserves, fighters, swaps, swapIn)
+			table.insert(tiles, { slot = slot, beastId = beastId, simId = `a:{beastId}`, state = state, seconds = if state == "cooling" then value else nil })
+		end
+	end
+	return tiles
+end
+
 return SwapKeys

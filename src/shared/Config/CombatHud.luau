@@ -72,6 +72,29 @@ return {
 	STATUS_WIDTH = 0.32, -- of the screen's width
 	STATUS_MAX_WIDTH = 340,
 	DOWN_COLOR = rgb(248, 113, 113),
+	-- Boss fights: your party under the status (owner 2026-11-05, option A: "add an indication who to summon, for good
+	-- UX not just numbers"). One tile per party card: its painting and name, its key on PC, OUT on the one fighting,
+	-- STRONG / WEAK against the boss's element (Util/SkillText.matchup), the swap's cooldown over the others, a resting
+	-- card faded. A tap swaps; the strip replaces the Swap button.
+	PARTY_STRIP = {
+		TILE = 72, -- pixels wide (phones PHONE_TILE)
+		PHONE_TILE = 58,
+		ART = 0.7, -- the painting's height, of the tile's width
+		NAME = 12, -- text size (phones one less)
+		GAP = 10, -- pixels between tiles
+		TOP = 14, -- pixels below the status (the tags and keys stick out above the tiles)
+		EDGE = rgb(74, 64, 96),
+		OUT_EDGE = rgb(74, 222, 128),
+		KEY = rgb(244, 195, 58),
+		KEY_INK = rgb(43, 37, 64),
+		TAGS = {
+			out = { text = "OUT", back = rgb(255, 255, 255), ink = rgb(43, 37, 64) },
+			strong = { text = "STRONG", back = rgb(74, 222, 128), ink = rgb(18, 54, 31) },
+			weak = { text = "WEAK", back = rgb(248, 113, 113), ink = rgb(59, 13, 13) },
+		},
+		COOLING_SHADE = 0.45, -- the painting's brightness while the swap cools down
+		RESTING_FADE = 0.6, -- a resting card's transparency
+	},
 	-- HP bars in the "slanted neon" look (tools/textures/make_hp_bars.py, uploaded): parallelograms slanted like the
 	-- buttons, a dark rim around a sunken well, a glowing edge in the bar's colour, a tick every 20% and a shaded fill
 	-- (top to bottom colours). A hit drops the fill at once, leaves a ghost of the lost HP that holds, then drains, and

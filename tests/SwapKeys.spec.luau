@@ -25,4 +25,28 @@ return {
 		expect.equal(SwapKeys.pick("b9", { "a:b3" }, FIGHTERS, true, 0), "resting", "not in the fight: resting from before")
 		expect.equal(SwapKeys.pick(nil, { "a:b3" }, FIGHTERS, true, 0), "none")
 	end,
+	-- The owner (2026-11-05, option A): the fight's party strip shows every slot's card and what tapping it does
+	["the party strip: each filled slot in order, with what its key would do"] = function()
+		local slots = { [1] = "b3", [2] = "b1", [3] = "b2" }
+		local tiles = SwapKeys.party(slots, 3, { "a:b3" }, FIGHTERS, true, 0)
+		expect.equal(#tiles, 3)
+		expect.equal(tiles[1].slot, 1)
+		expect.equal(tiles[1].beastId, "b3")
+		expect.equal(tiles[1].state, "swap")
+		expect.equal(tiles[1].simId, "a:b3")
+		expect.equal(tiles[2].state, "active")
+		expect.equal(tiles[2].simId, "a:b1")
+		expect.equal(tiles[3].state, "resting")
+		local cooling = SwapKeys.party(slots, 3, { "a:b3" }, FIGHTERS, true, 2.5)
+		expect.equal(cooling[1].state, "cooling")
+		expect.near(cooling[1].seconds :: number, 2.5, 1e-9)
+		expect.isNil(cooling[2].seconds, "only a cooling tile counts down")
+	end,
+
+	["the party strip skips empty slots"] = function()
+		local tiles = SwapKeys.party({ [2] = "b1" }, 3, {}, FIGHTERS, true, 0)
+		expect.equal(#tiles, 1)
+		expect.equal(tiles[1].slot, 2)
+		expect.equal(#SwapKeys.party({}, 3, {}, {}, true, 0), 0)
+	end,
 }

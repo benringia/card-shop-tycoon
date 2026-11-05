@@ -54,6 +54,8 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
+local SkillText = require(Shared:WaitForChild("Util"):WaitForChild("SkillText"))
+local BinderController = require(Controllers:WaitForChild("BinderController"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local DefeatScreen = require(ClientUtil:WaitForChild("DefeatScreen"))
 local DefeatRules = require(Shared:WaitForChild("Util"):WaitForChild("DefeatRules"))
@@ -658,6 +660,29 @@ local function secondCreature(snapshot: Snapshot, lead: any?): any?
 	return nil
 end
 
+-- Boss fights' party strip (owner 2026-11-05, option A): each party slot's card, what its key does now and its edge
+-- against the boss's element
+local function partyTiles(snapshot: Snapshot): { CombatHud.PartyTile }
+	local tiles = {}
+	local beasts = BinderController.GetBeasts()
+	local tileArt = if UIKit.isPhone() then CombatHudConfig.PARTY_STRIP.PHONE_TILE else CombatHudConfig.PARTY_STRIP.TILE
+	for _, slot in SwapKeys.party(PartyController.GetSlots(), Party.PARTY_SIZE, snapshot.reserves, snapshot.fighters, snapshot.swaps, snapshot.swapIn) do
+		local beast = beasts[slot.beastId]
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		local name = fightNames[slot.simId] or (if card then card.name else nil)
+		table.insert(tiles, {
+			slot = slot.slot,
+			simId = slot.simId,
+			name = name or "Card",
+			art = if name then CardArt.pick(name, tileArt, CardArtConfig) else nil,
+			color = if card then Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3) else Color3.new(0.3, 0.3, 0.3),
+			state = slot.state,
+			matchup = if card then SkillText.matchup(Combat, card.element, snapshot.monster.element) else nil,
+		})
+	end
+	return tiles
+end
+
 -- The combat HUD's picture of a snapshot, and the pet skill, signature and swap cooldowns
 local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 	local me = snapshot.me
@@ -691,6 +716,7 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 			then Combat.SIGNATURES[creature.signature].name
 			else nil,
 		reserves = reserves,
+		party = if snapshot.swaps then partyTiles(snapshot) else nil,
 		secondName = if second then fightNames[second.id] or "Creature" else nil,
 		secondHp = if second then second.hp else nil,
 		secondMax = if second then second.maxHp else nil,
