@@ -66,7 +66,6 @@ local GAP = 8
 local ROW_HEIGHT = 52
 local PHONE_ROW_HEIGHT = 48 -- a tap target, never smaller
 local PHONE_HEADER = 44 -- phones: a slimmer band, no pills row (the card face shows rarity and element) and no list title
-local BOX_TOP = 32 -- the chosen copy's box starts under the pills (phones: no pills, at the top)
 local TITLE_HEIGHT = 18 -- "ALL COPIES, BEST FIRST" over the copies list
 local CARD_GAP = 16 -- between the 3D card and the panel
 local LIST_PAD = 4 -- room inside the copies list for the chosen row's outline
@@ -82,15 +81,16 @@ local source: Source
 local panel: Frame
 local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Build
 local header: Frame
-local body: Frame
+local body: ScrollingFrame -- everything under the band scrolls as one (owner 2026-11-05, option A)
 local copiesTitle: TextLabel
 local rowHeight = ROW_HEIGHT
-local listTop = BOX_TOP
 local nameLabel: TextLabel
 local worthLabel: TextLabel
 local pillRow: Frame
 local skillsBox: Frame -- the card's Pet move and super move (owner 2026-11-05, option A)
-local copiesList: ScrollingFrame
+local copiesList: Frame
+local buffsBox: Frame -- the copy's town and fight buffs
+local elementsBox: Frame -- strong and weak against
 local selectedBox: Frame
 local buttonRow: Frame
 local partyButton: TextButton
@@ -159,21 +159,9 @@ local function growthOf(entry: Entry): CardFace.Growth
 	}
 end
 
--- Panel on the right, as wide as the screen allows; the 3D card's right edge goes just left of it
--- "This copy" sits at the top of the body (under the pills on desktop); the copies list's title and the list fill what's
--- left under it, and the list scrolls
-local function placeList()
-	local boxTop = if UIKit.isPhone() then 0 else BOX_TOP
-	skillsBox.Position = UDim2.fromOffset(0, boxTop)
-	local selectedTop = boxTop + skillsBox.AbsoluteSize.Y + GAP
-	selectedBox.Position = UDim2.fromOffset(0, selectedTop)
-	local below = selectedTop + selectedBox.AbsoluteSize.Y + GAP
-	copiesTitle.Position = UDim2.fromOffset(0, below)
-	listTop = if copiesTitle.Visible then below + TITLE_HEIGHT + 2 else below
-	copiesList.Position = UDim2.fromOffset(0, listTop)
-	copiesList.Size = UDim2.new(1, 0, 1, -listTop)
-end
-
+-- Panel on the right, as wide as the screen allows; the 3D card's right edge goes just left of it. The body scrolls as
+-- one column: pills, skills, buffs, elements, this copy, then all copies (owner 2026-11-05: "I cant scroll down to
+-- other copies")
 local function layout()
 	local camera = workspace.CurrentCamera
 	if not camera or not panel then
@@ -195,9 +183,7 @@ local function layout()
 	body.Position = UDim2.fromOffset(12, band + GAP)
 	body.Size = UDim2.new(1, -24, 1, -(band + GAP + 66))
 	pillRow.Visible = not phone
-	copiesTitle.Visible = not phone
 	rowHeight = if phone then PHONE_ROW_HEIGHT else ROW_HEIGHT
-	placeList()
 end
 
 -- The disabled look for a button that can't be used now (its text says why)
@@ -335,6 +321,73 @@ local function barRow(parent: Instance, order: number, icon: string, share: numb
 	label.TextTruncate = Enum.TextTruncate.AtEnd
 end
 
+-- A section box in the body's column: a rounded box with an edge colour, padded, its rows stacked
+local function sectionBox(name: string, order: number, edge: Color3): Frame
+	local box = Instance.new("Frame")
+	box.Name = name
+	box.LayoutOrder = order
+	box.Size = UDim2.new(1, 0, 0, 0)
+	box.AutomaticSize = Enum.AutomaticSize.Y
+	box.BackgroundColor3 = palette.row
+	box.ZIndex = body.ZIndex + 1
+	box.Parent = body
+	UIKit.corner(box, 10)
+	UIKit.outline(box, edge, 3)
+	local padding = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(padding :: any)[side] = UDim.new(0, 8)
+	end
+	padding.Parent = box
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 4)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = box
+	return box
+end
+
+-- A box's title line ("SKILLS", "BUFFS (THIS COPY)", ...)
+local function sectionTitle(box: Frame, title: string, color: Color3)
+	local label = text(box, title, UIKit.textSize("small"), color, true)
+	label.LayoutOrder = 0
+	label.Size = UDim2.new(1, 0, 0, 16)
+	label.TextXAlignment = Enum.TextXAlignment.Left
+end
+
+-- One detail row: an icon on a badge, a bold first line and a smaller second one
+local function detailRow(box: Frame, order: number, iconName: string, badgeColor: Color3, title: string, line: string)
+	local row = Instance.new("Frame")
+	row.LayoutOrder = order
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, 38)
+	row.ZIndex = box.ZIndex
+	row.Parent = box
+	local badge = Instance.new("Frame")
+	badge.Size = UDim2.fromOffset(36, 36)
+	badge.Position = UDim2.fromOffset(0, 1)
+	badge.BackgroundColor3 = badgeColor
+	badge.ZIndex = row.ZIndex + 1
+	badge.Parent = row
+	UIKit.corner(badge, 10)
+	local picture = Icon.make(badge, iconName, UDim2.fromOffset(26, 26))
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.Position = UDim2.fromScale(0.5, 0.5)
+	picture.ZIndex = badge.ZIndex + 1
+	for _, image in picture:GetDescendants() do
+		if image:IsA("GuiObject") then
+			image.ZIndex = badge.ZIndex + 2
+		end
+	end
+	local name = text(row, title, UIKit.textSize("body"), palette.ink, true)
+	name.Position = UDim2.fromOffset(44, 0)
+	name.Size = UDim2.new(1, -44, 0, 20)
+	name.TextXAlignment = Enum.TextXAlignment.Left
+	local second = text(row, line, UIKit.textSize("small"), palette.hint)
+	second.Position = UDim2.fromOffset(44, 20)
+	second.Size = UDim2.new(1, -44, 0, 16)
+	second.TextXAlignment = Enum.TextXAlignment.Left
+	second.TextTruncate = Enum.TextTruncate.AtEnd
+end
+
 -- One skill row in the Skills box: its icon on a badge, its name and what it does, and which button uses it
 local function skillRow(order: number, skill: SkillText.Skill?, element: string, badgeColor: Color3, button: string)
 	local row = Instance.new("Frame")
@@ -399,6 +452,44 @@ local function renderSkills(card: Card)
 	-- on short screens)
 	if skills.super then
 		skillRow(2, skills.super, card.element, UIStyle.GOLD, "SUPER MOVE")
+	end
+end
+
+-- The copy's buffs (owner 2026-11-05: "townbuff/combat buff"): its element's perk in town while it's out with you,
+-- and the same perk's fight value, both grown by its rarity and this copy's stars
+local function renderBuffs(card: Card, entry: Entry?)
+	clear(buffsBox)
+	local stars = if entry then growthOf(entry).stars else BeastRules.START_STARS
+	sectionTitle(buffsBox, "BUFFS (THIS COPY)", Color3.fromRGB(47, 143, 79))
+	local town = PartyRules.getPerk(Party, card.element, card.rarity, stars)
+	local fight = PartyRules.getFightPerk(Party, card.element, card.rarity, stars)
+	local tint = Color3.fromRGB(220, 252, 231)
+	if town then
+		-- "Hype: customers 8% more often" -> "Customers 8% more often" (the title already names the perk)
+		local line = string.gsub(PartyRules.describe(town), "^%a+: ", "")
+		detailRow(buffsBox, 1, "Shop", tint, `In town: {town.kind}`, `{string.upper(string.sub(line, 1, 1))}{string.sub(line, 2)} while it's out with you`)
+	end
+	if fight then
+		local line = PartyRules.describeFight(fight)
+		detailRow(buffsBox, 2, "Atk", tint, `In fights: {fight.kind}`, `{string.upper(string.sub(line, 1, 1))}{string.sub(line, 2)} while it fights for you`)
+	end
+end
+
+-- Its place on the element wheel (owner 2026-11-05: "weakness/strength"): who it hits hard, who hits it hard
+local function renderElements(card: Card)
+	clear(elementsBox)
+	sectionTitle(elementsBox, "ELEMENTS", Color3.fromRGB(192, 70, 63))
+	local wheel = SkillText.matchups(Combat, card.element)
+	local order = 1
+	for _, other in wheel.strong do
+		detailRow(elementsBox, order, other, Color3.fromRGB(220, 252, 231), `Strong vs {other}`,
+			`Deals {Combat.STRONG}x damage to {other} foes, takes {Combat.WEAK}x from them`)
+		order += 1
+	end
+	for _, other in wheel.weak do
+		detailRow(elementsBox, order, other, Color3.fromRGB(254, 226, 226), `Weak vs {other}`,
+			`Deals {Combat.WEAK}x damage to {other} foes, takes {Combat.STRONG}x from them`)
+		order += 1
 	end
 end
 
@@ -743,6 +834,8 @@ function CardDetailController.Refresh()
 	footer.Size = UDim2.new(1, -8, 0, 36)
 
 	renderSkills(card)
+	renderBuffs(card, selected)
+	renderElements(card)
 	renderSelected(card, selected)
 	refreshButtons(selected)
 	-- A shop sale or a binder update mustn't close a chooser someone is reading: redraw it, or close it if the copy
@@ -943,86 +1036,59 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	worthLabel:GetPropertyChangedSignal("TextBounds"):Connect(placeCash)
 	worthLabel:GetPropertyChangedSignal("Text"):Connect(placeCash)
 
-	body = Instance.new("Frame")
+	body = Instance.new("ScrollingFrame")
 	body.Name = "Body"
 	body.BackgroundTransparency = 1
+	body.BorderSizePixel = 0
+	body.ScrollBarThickness = 5
+	body.ScrollBarImageColor3 = palette.hint
+	body.CanvasSize = UDim2.new()
+	body.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	body.ScrollingDirection = Enum.ScrollingDirection.Y
 	body.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + GAP)
 	body.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + GAP + 66))
 	body.ZIndex = panel.ZIndex + 1
 	body.Parent = panel
+	local column = Instance.new("UIListLayout")
+	column.Padding = UDim.new(0, GAP)
+	column.SortOrder = Enum.SortOrder.LayoutOrder
+	column.Parent = body
+	-- Room for the outlines (drawn outside each box) and the scroll bar
+	local bodyPadding = Instance.new("UIPadding")
+	bodyPadding.PaddingTop = UDim.new(0, LIST_PAD)
+	bodyPadding.PaddingBottom = UDim.new(0, LIST_PAD)
+	bodyPadding.PaddingLeft = UDim.new(0, LIST_PAD)
+	bodyPadding.PaddingRight = UDim.new(0, LIST_PAD + body.ScrollBarThickness + 2)
+	bodyPadding.Parent = body
 
 	pillRow = hList(body, 26, 6)
 	pillRow.Name = "Pills"
+	pillRow.LayoutOrder = 1
+
+	-- The sections (owner 2026-11-05, option A): skills, buffs, elements, this copy, then all copies
+	skillsBox = sectionBox("Skills", 2, Color3.fromRGB(156, 198, 255))
+	buffsBox = sectionBox("Buffs", 3, Color3.fromRGB(147, 224, 168))
+	elementsBox = sectionBox("Elements", 4, Color3.fromRGB(243, 176, 176))
+	selectedBox = sectionBox("Selected", 5, UIStyle.GOLD)
+	local selectedList = selectedBox:FindFirstChildOfClass("UIListLayout") :: UIListLayout
+	selectedList.Padding = UDim.new(0, 6)
 
 	copiesTitle = text(body, "ALL COPIES, BEST FIRST", UIKit.textSize("small"), palette.hint, true)
 	copiesTitle.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
+	copiesTitle.LayoutOrder = 6
 
-	-- The card's skills in a blue box under the pills (owner 2026-11-05, option A), then "This copy"
-	skillsBox = Instance.new("Frame")
-	skillsBox.Name = "Skills"
-	skillsBox.Position = UDim2.fromOffset(0, BOX_TOP)
-	skillsBox.Size = UDim2.new(1, 0, 0, 0)
-	skillsBox.AutomaticSize = Enum.AutomaticSize.Y
-	skillsBox.BackgroundColor3 = palette.row
-	skillsBox.ZIndex = body.ZIndex + 1
-	skillsBox.Parent = body
-	UIKit.corner(skillsBox, 10)
-	UIKit.outline(skillsBox, Color3.fromRGB(156, 198, 255), 3)
-	local skillsPadding = Instance.new("UIPadding")
-	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
-		(skillsPadding :: any)[side] = UDim.new(0, 8)
-	end
-	skillsPadding.Parent = skillsBox
-	local skillsList = Instance.new("UIListLayout")
-	skillsList.Padding = UDim.new(0, 4)
-	skillsList.SortOrder = Enum.SortOrder.LayoutOrder
-	skillsList.Parent = skillsBox
-
-	-- "This copy" sits under the skills in a gold box; the list fills what's left under it (and scrolls)
-	selectedBox = Instance.new("Frame")
-	selectedBox.Name = "Selected"
-	selectedBox.Position = UDim2.fromOffset(0, BOX_TOP)
-	selectedBox.Size = UDim2.new(1, 0, 0, 0)
-	selectedBox.AutomaticSize = Enum.AutomaticSize.Y
-	selectedBox.BackgroundColor3 = palette.row
-	selectedBox.ZIndex = body.ZIndex + 1
-	selectedBox.Parent = body
-	UIKit.corner(selectedBox, 10)
-	UIKit.outline(selectedBox, UIStyle.GOLD, 3)
-	local boxPadding = Instance.new("UIPadding")
-	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
-		(boxPadding :: any)[side] = UDim.new(0, 8)
-	end
-	boxPadding.Parent = selectedBox
-	local boxList = Instance.new("UIListLayout")
-	boxList.Padding = UDim.new(0, 6)
-	boxList.SortOrder = Enum.SortOrder.LayoutOrder
-	boxList.Parent = selectedBox
-
-	copiesList = Instance.new("ScrollingFrame")
+	copiesList = Instance.new("Frame")
 	copiesList.Name = "Copies"
+	copiesList.LayoutOrder = 7
 	copiesList.BackgroundTransparency = 1
-	copiesList.BorderSizePixel = 0
-	copiesList.ScrollBarThickness = 5
-	copiesList.ScrollBarImageColor3 = palette.hint
-	copiesList.CanvasSize = UDim2.new()
-	copiesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	copiesList.Size = UDim2.new(1, 0, 0, 0)
+	copiesList.AutomaticSize = Enum.AutomaticSize.Y
 	copiesList.ZIndex = body.ZIndex + 1
 	copiesList.Parent = body
 	local rows = Instance.new("UIListLayout")
 	rows.Padding = UDim.new(0, 6)
 	rows.SortOrder = Enum.SortOrder.LayoutOrder
 	rows.Parent = copiesList
-	-- The chosen row's outline draws outside it: leave room so the list doesn't clip it (and the scroll bar)
-	local listPadding = Instance.new("UIPadding")
-	listPadding.PaddingTop = UDim.new(0, LIST_PAD)
-	listPadding.PaddingBottom = UDim.new(0, LIST_PAD)
-	listPadding.PaddingLeft = UDim.new(0, LIST_PAD)
-	listPadding.PaddingRight = UDim.new(0, LIST_PAD + copiesList.ScrollBarThickness + 2)
-	listPadding.Parent = copiesList
-	selectedBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeList)
-	skillsBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeList)
-	placeList()
 
 	buttonRow = Instance.new("Frame")
 	buttonRow.Name = "Buttons"

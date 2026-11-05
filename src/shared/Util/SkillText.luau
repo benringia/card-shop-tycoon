@@ -47,6 +47,34 @@ local function skill(ability: any): Skill
 	return { kind = ability.kind, name = ability.name, text = SkillText.describe(ability) }
 end
 
+-- An element's place on the element wheel (Config/Combat BEATS): the elements it deals STRONG damage to, and the ones
+-- that deal STRONG damage to it (it deals them WEAK damage), sorted
+function SkillText.matchups(combat: any, element: string): { strong: { string }, weak: { string } }
+	local strong = table.clone(combat.BEATS[element] or {})
+	local weak = {}
+	for other, beaten in combat.BEATS do
+		if table.find(beaten, element) then
+			table.insert(weak, other)
+		end
+	end
+	table.sort(strong)
+	table.sort(weak)
+	return { strong = strong, weak = weak }
+end
+
+-- One creature's edge against a foe: "strong" (it beats the foe's element), "weak" (the foe's beats it), or nil
+function SkillText.matchup(combat: any, mine: string, foe: string?): string?
+	if not foe then
+		return nil
+	end
+	if table.find(combat.BEATS[mine] or {}, foe) then
+		return "strong"
+	elseif table.find(combat.BEATS[foe] or {}, mine) then
+		return "weak"
+	end
+	return nil
+end
+
 -- A card's skills: `pet` from its element, `super` from its name (nil: it has none)
 function SkillText.forCard(combat: any, element: string, cardName: string): { pet: Skill, super: Skill? }
 	local signature = combat.SIGNATURES[cardName]

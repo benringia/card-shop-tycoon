@@ -27,6 +27,20 @@ return {
 		end
 	end,
 
+	-- The owner (2026-11-05): "weakness/strength" on the card view, and who to swap to in fights
+	["an element's matchups: who it beats and who beats it, from the element wheel"] = function()
+		local ember = SkillText.matchups(Combat, "Ember")
+		expect.equal(table.concat(ember.strong, ","), "Bloom")
+		expect.equal(table.concat(ember.weak, ","), "Tide")
+		local volt = SkillText.matchups(Combat, "Volt")
+		expect.equal(table.concat(volt.strong, ","), "Shade")
+		expect.equal(table.concat(volt.weak, ","), "Shade")
+		expect.equal(SkillText.matchup(Combat, "Ember", "Bloom"), "strong")
+		expect.equal(SkillText.matchup(Combat, "Ember", "Tide"), "weak")
+		expect.isNil(SkillText.matchup(Combat, "Ember", "Volt"), "no edge")
+		expect.isNil(SkillText.matchup(Combat, "Ember", nil), "an unknown foe")
+	end,
+
 	["a card's skills: its element's Pet move, and a super move for the cards that have one"] = function()
 		local plain = SkillText.forCard(Combat, "Tide", "Puffpuddle")
 		expect.equal(plain.pet.name, "Healing Rain")
