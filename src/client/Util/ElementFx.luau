@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AttackFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("AttackFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 
 local ElementFx = {}
 
@@ -183,8 +184,7 @@ function ElementFx.sound(id: string?, at: Vector3, volume: number?)
 		return
 	end
 	local anchor = holder(at, 4)
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
+	local sound = SoundBank.make(id) -- loaded already (a fresh Sound of a dropped id started late or not at all)
 	-- A little different every time (pitch and loudness), so repeated hits don't sound like one clip on a loop
 	local vary = AttackFx.VARY
 	sound.Volume = AttackFx.VOLUME * (volume or 1) * (vary.volume[1] + math.random() * (vary.volume[2] - vary.volume[1]))

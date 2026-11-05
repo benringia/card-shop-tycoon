@@ -1,6 +1,7 @@
 --!strict
 -- Downloads the boss fight's art, sounds, moves and sword models while the loading screen is up (LoadingController;
--- Util/CombatPreload lists the ids), so the first fight's HUD isn't blank and its first swing isn't silent. Images
+-- Util/CombatPreload lists the ids), so the first fight's HUD isn't blank and its first swing isn't silent; the sounds
+-- stay loaded all session (Util/SoundBank). Images
 -- stay drawn, tiny and nearly invisible in a corner (like Util/Icon): Roblox only finishes loading an image once
 -- something draws it.
 local ContentProvider = game:GetService("ContentProvider")
@@ -14,6 +15,11 @@ local SwordFx = require(Config:WaitForChild("SwordFx"))
 local Swords = require(Config:WaitForChild("Swords"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local Victory = require(Config:WaitForChild("Victory"))
+local MoveFx = require(Config:WaitForChild("MoveFx"))
+local Bosses = require(Config:WaitForChild("Bosses"))
+local Party = require(Config:WaitForChild("Party"))
+local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 local CombatPreload = require(Shared:WaitForChild("Util"):WaitForChild("CombatPreload"))
 
 local CombatAssets = {}
@@ -43,7 +49,7 @@ function CombatAssets.ensure(images: { string })
 end
 
 function CombatAssets.preload()
-	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory)
+	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory, { moveFx = MoveFx, bosses = Bosses, party = Party, levelUp = LevelUpFx })
 	local cache = Instance.new("ScreenGui")
 	cache.Name = "CombatCache"
 	cache.ResetOnSpawn = false
@@ -58,9 +64,8 @@ function CombatAssets.preload()
 		keep.Parent = cache
 		table.insert(list, keep)
 	end
-	for _, id in ids.sounds do
-		local sound = Instance.new("Sound")
-		sound.SoundId = id
+	-- Kept for the session (Util/SoundBank): a preloaded sound whose Sound is thrown away is dropped again
+	for _, sound in SoundBank.keep(ids.sounds) do
 		table.insert(list, sound)
 	end
 	for _, id in ids.animations do

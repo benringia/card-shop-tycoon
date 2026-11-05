@@ -1063,7 +1063,13 @@ group, checked before its fragments and every time (not only the first). Below i
   as KeyframeSequences (`assets/animations`, docs/animations.md), published (ids in `Config/Swords`; the round's four
   new moves play unpublished in Studio until the owner saves them);
   the HUD's art, the sword's sounds, its moves and model download behind the loading screen (`Util/CombatAssets`, ids listed
-  by `Util/CombatPreload`), so the first fight starts ready; players wear the standard body
+  by `Util/CombatPreload`: every attack, pet move, boss roar, summon, creature voice and level-up sound too), so the first
+  fight starts ready. Every one of those sounds stays loaded all session (`Util/SoundBank` keeps one silent copy each;
+  one-shots are made from it): measured 2026-11-05, Roblox drops a sound's audio once no Sound holds it, so a sound made
+  on the spot loaded again each time (a boss move 0.3-0.5 s late every time, the first plays of a fight 3-5 s late or
+  silent when their holder was gone first; the owner: "some are delay some doesnt play"). After: every fight sound
+  starts within 2 frames, for about 22 MB more sound memory (half of it four long loop beds: Healing Rain's rain, the
+  Curse's drones). Players wear the standard body
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
   backpacks) hide.
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
@@ -1820,6 +1826,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
+    │       ├── SoundBank.luau          # keeps one silent loaded copy of each fight sound all session; one-shots are made from it
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, star bursts, rings, cut lines, dust
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars

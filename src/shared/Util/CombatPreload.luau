@@ -3,11 +3,15 @@
 -- HUD, the sword's sounds and its moves are ready the first time a fight starts: every image id in Config/CombatHud
 -- and Config/SwordFx, and every sword's sounds and published animations (Config/Swords); with Config/AttackFx, the
 -- attack effects' textures (a beam draws as a blank slab until its texture is in) and every attack sound; with
--- Config/Victory, the end screen's sounds (made on the spot they played late). Pure (callers pass the configs in), so
--- tests/ can run it in Lune.
+-- Config/Victory, the end screen's sounds (made on the spot they played late); with `more`, the pet moves' sounds and
+-- textures (Config/MoveFx), the bosses' roars (Config/Bosses moments), summon sounds and creature voices (Config/Party)
+-- and the level-up sounds (Config/LevelUpFx default set): every sound a fight can play (owner 2026-11-05: "some are
+-- delay some doesnt play"), kept loaded by Util/SoundBank. Pure (callers pass the configs in), so tests/ can run it in
+-- Lune.
 local CombatPreload = {}
 
 export type Ids = { images: { string }, sounds: { string }, animations: { string } }
+export type More = { moveFx: any?, bosses: any?, party: any?, levelUp: any? }
 
 local PREFIX = "rbxassetid://"
 
@@ -29,7 +33,7 @@ local function scan(value: any, list: { string }, seen: { [string]: boolean })
 	end
 end
 
-function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attackFx: any?, victory: any?): Ids
+function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attackFx: any?, victory: any?, more: More?): Ids
 	local ids: Ids = { images = {}, sounds = {}, animations = {} }
 	local seenImages, seenSounds, seenAnimations = {}, {}, {}
 	scan(combatHud, ids.images, seenImages)
@@ -51,6 +55,30 @@ function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attack
 	end
 	if victory then
 		scan(victory.SOUNDS, ids.sounds, seenSounds)
+	end
+	if more and more.moveFx then
+		scan(more.moveFx.SOUNDS, ids.sounds, seenSounds)
+		scan(more.moveFx.TEXTURES, ids.images, seenImages)
+	end
+	if more and more.bosses then
+		for _, boss in more.bosses.BOSSES do
+			if boss.moments then
+				add(ids.sounds, seenSounds, boss.moments.roar)
+			end
+		end
+	end
+	if more and more.party then
+		add(ids.sounds, seenSounds, more.party.SUMMON_SOUNDS.summon.id)
+		add(ids.sounds, seenSounds, more.party.SUMMON_SOUNDS.unsummon.id)
+		scan(more.party.VOICE.small, ids.sounds, seenSounds)
+		scan(more.party.VOICE.big, ids.sounds, seenSounds)
+	end
+	if more and more.levelUp then
+		local set = more.levelUp.SOUNDS.sets[more.levelUp.SOUNDS.default]
+		if set then
+			add(ids.sounds, seenSounds, set.sound.id)
+			add(ids.sounds, seenSounds, set.sting.id)
+		end
 	end
 	return ids
 end

@@ -14,6 +14,7 @@ local MoveFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("MoveFx"
 local MoveFxRules = require(Shared:WaitForChild("Util"):WaitForChild("MoveFxRules"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
+local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 
 export type View = { root: BasePart, element: string, height: number, grade: string?, mine: boolean }
 
@@ -58,8 +59,7 @@ local function sound(parent: Instance, id: string?, volume: number, looped: bool
 	if not id or id == "" then
 		return nil
 	end
-	local s = Instance.new("Sound")
-	s.SoundId = id
+	local s = SoundBank.make(id)
 	s.Volume = AttackFx.VOLUME * volume
 	s.PlaybackSpeed = 0.95 + math.random() * 0.1
 	s.Looped = looped == true

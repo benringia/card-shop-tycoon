@@ -28,6 +28,7 @@ local ClipPlayer = require(((script.Parent :: Instance).Parent :: Instance):Wait
 local MonsterController = {}
 local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
 local HitFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HitFx"))
+local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
@@ -352,8 +353,7 @@ local function startMoments(monster: Monster, moments: any)
 			if body.pet then
 				PetAnimator.play(body.pet, "wildroar", os.clock())
 			end
-			local sound = Instance.new("Sound")
-			sound.SoundId = moments.roar
+			local sound = SoundBank.make(moments.roar)
 			sound.Volume = moments.roarVolume or Bosses.ROAR_VOLUME
 			sound.Parent = body.root
 			sound.Ended:Once(function()

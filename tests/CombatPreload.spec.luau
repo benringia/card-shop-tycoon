@@ -5,6 +5,10 @@ local SwordFx = require("../src/shared/Config/SwordFx")
 local Swords = require("../src/shared/Config/Swords")
 local AttackFx = require("../src/shared/Config/AttackFx")
 local Victory = require("../src/shared/Config/Victory")
+local MoveFx = require("../src/shared/Config/MoveFx")
+local Bosses = require("../src/shared/Config/Bosses")
+local Party = require("../src/shared/Config/Party")
+local LevelUpFx = require("../src/shared/Config/LevelUpFx")
 local expect = require("./lib/expect")
 
 local function has(list: { string }, id: string): boolean
@@ -69,5 +73,38 @@ return {
 		for moment, id in Victory.SOUNDS do
 			expect.equal(has(ids.sounds, id), true, moment)
 		end
+	end,
+	-- The owner (2026-11-05): "some are delay some doesnt play specially on combat (skills/attack/bosses)". A sound made
+	-- on the spot waits for its download (seconds at a fight's start, longer than its holder lives: silent), so every
+	-- sound a fight can play is fetched ahead and kept loaded (Util/SoundBank)
+	["the pet moves, the bosses' roars, summons, creature voices and level-ups are fetched ahead too"] = function()
+		local more = { moveFx = MoveFx, bosses = Bosses, party = Party, levelUp = LevelUpFx }
+		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords, AttackFx, Victory, more)
+		for move, set in MoveFx.SOUNDS do
+			for moment, id in set do
+				expect.equal(has(ids.sounds, id), true, `{move} {moment}`)
+			end
+		end
+		for name, id in MoveFx.TEXTURES do
+			expect.equal(has(ids.images, id), true, name)
+		end
+		local roars = 0
+		for bossId, boss in Bosses.BOSSES do
+			if boss.moments then
+				roars += 1
+				expect.equal(has(ids.sounds, boss.moments.roar), true, bossId)
+			end
+		end
+		expect.equal(roars >= 3, true, "the three Wild bosses roar")
+		expect.equal(has(ids.sounds, Party.SUMMON_SOUNDS.summon.id), true, "summon")
+		expect.equal(has(ids.sounds, Party.SUMMON_SOUNDS.unsummon.id), true, "unsummon")
+		for _, id in Party.VOICE.small do
+			expect.equal(has(ids.sounds, id), true, "a small creature's chirp")
+		end
+		expect.equal(has(ids.sounds, Party.VOICE.big[1]), true, "a big creature's huff")
+		local set = LevelUpFx.SOUNDS.sets[LevelUpFx.SOUNDS.default]
+		expect.equal(has(ids.sounds, set.sound.id), true, "level-up")
+		expect.equal(has(ids.sounds, set.sting.id), true, "level-up sting")
+		expect.equal(has(ids.sounds, Party.SUMMON_SOUNDS.options.summon[1].id), false, "not the Studio-only options")
 	end,
 }

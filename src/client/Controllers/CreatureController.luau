@@ -25,6 +25,7 @@ local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMot
 local PetVoice = require(Shared:WaitForChild("Util"):WaitForChild("PetVoice"))
 local HealFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HealFx"))
 local RestTimers = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RestTimers"))
+local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
 
 local CreatureController = {}
 
@@ -219,8 +220,7 @@ end
 -- A chirp (owner 2026-11-04): its own voice, pitched for its size, from where it stands, and a little bounce
 local function chirp(creature: Creature, now: number)
 	local cfg = Party.VOICE
-	local sound = Instance.new("Sound")
-	sound.SoundId = creature.voice :: string
+	local sound = SoundBank.make(creature.voice :: string)
 	sound.Volume = cfg.volume
 	sound.PlaybackSpeed = PetVoice.pitch(creature.height, Party.CREATURE_HEIGHT, math.random(), cfg)
 	sound.RollOffMode = Enum.RollOffMode.InverseTapered
