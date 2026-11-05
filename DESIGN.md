@@ -347,7 +347,7 @@ is over UI (`UIKit.pointerBlocked`).
   visit; a Legendary holds up to 3 watchers, any other card 1). Once a visit, within 8 studs of the owner's summoned
   creature, 35% stop to pet it (Heart bubble; the creature wags: marker attribute `PetMe`, `CreatureController`).
   Each reaction is a happy moment for the rating.
-- Customer spawn rate scales with **shop rating** (cleanliness of stock, price fairness, decor score).
+- Customer spawn rate scales with **shop rating** (4.7).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 
 ### 4.6 Register / checkout
@@ -382,7 +382,14 @@ is over UI (`UIKit.pointerBlocked`).
 
 ### 4.7 Shop level & rating
 - **Shop XP** from every sale. Levels unlock new products, shelves, expansions.
-- **Shop rating** (1–5 stars) affects customer flow. Factors: % shelves stocked, prices vs market, decor points.
+- **Shop rating** (1-5 stars, `RatingService`, `Util/RatingRules`, `Config/Customers` RATING): every 5 s each open
+  shop is scored on weighted 0-1 parts: product shelves stocked 35%, fair prices 25% (each stocked product's buy chance
+  at its price against the best band's; neutral with nothing stocked), cards on display 15% (Epic 1, Legendary 3, foil
+  +1 point, full at 6), happy customers 25% (paid and happy moments against annoyed, gave up and no stock over the
+  last 20 visits; neutral with none) and decor at weight 0 until the Decor system (then a config weight plus its
+  score). 1 + 4 x the weighted mean, smoothed over about 90 s (a fresh join starts at its score). Not saved. The stars
+  show on the shop's sign, filled by quarters (`PlotService.SetSignRating`); the gap between customers is x1.4 at 1
+  star, x1.0 at 3, x0.6 at 5. The owner gets `RatingUpdate` (rating and parts) for the tips chip.
 
 ---
 

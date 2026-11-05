@@ -104,6 +104,24 @@ return {
 		retries = 1,
 		patience = 25,
 	},
+	-- Shop rating (Util/RatingRules, RatingService): parts scored 0-1 with these weights (decor waits at 0 for the Decor
+	-- system), over the last `history` visits for happiness, smoothed over smoothSeconds, worked out every `tick` s; the
+	-- spawn gap is spawnAt1 x at 1 star and spawnAt5 x at 5 (3 stars: today's flow); display points per card shown,
+	-- displayFull points = a full score; a tip is good from goodFrom
+	RATING = {
+		parts = { stocked = 0.35, prices = 0.25, displays = 0.15, happy = 0.25, decor = 0 },
+		history = 20,
+		smoothSeconds = 90,
+		tick = 5,
+		spawnAt1 = 1.4,
+		spawnAt5 = 0.6,
+		displayPoints = { Epic = 1, Legendary = 3, foil = 1 },
+		displayFull = 6,
+		goodFrom = 0.7,
+		sendStep = 0.05,
+		-- The stars on the shop's sign (PlotService.SetSignRating): a row along the sign's bottom, filled by quarters
+		sign = { rowHeight = 0.32, nameHeight = 0.68, dim = 0.72, color = { 255, 205, 60 } },
+	},
 	-- Reactions (Util/ReactionRules): passing within `reach` studs of a case holding an Epic, Legendary or foil card a
 	-- customer stops `seconds` with a whoa (a Legendary holds `crowd` at once); within `petReach` of your summoned
 	-- creature, petChance of them stop to pet it (once per visit)

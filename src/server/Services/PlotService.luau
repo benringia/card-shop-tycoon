@@ -8,8 +8,10 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Customers = require(Config:WaitForChild("Customers"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
@@ -629,6 +631,74 @@ end
 
 function PlotService.GetPlot(player: Player): Plot?
 	return plotByPlayer[player]
+end
+
+-- The shop rating's stars along the bottom of the sign (RatingService), filled by quarters; nil takes them off
+function PlotService.SetSignRating(plot: Plot, rating: number?)
+	local gui = plot.signLabel.Parent :: Instance
+	local row = gui:FindFirstChild("Rating") :: Frame?
+	local look = Customers.RATING.sign
+	if not rating then
+		if row then
+			row:Destroy()
+		end
+		plot.signLabel.Size = UDim2.fromScale(1, 1)
+		return
+	end
+	if not row then
+		local newRow = Instance.new("Frame")
+		newRow.Name = "Rating"
+		newRow.BackgroundTransparency = 1
+		newRow.AnchorPoint = Vector2.new(0, 1)
+		newRow.Position = UDim2.fromScale(0, 1)
+		newRow.Size = UDim2.fromScale(1, look.rowHeight)
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Parent = newRow
+		local lit = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
+		for index = 1, 5 do
+			local slot = Instance.new("Frame")
+			slot.Name = "Star" .. index
+			slot.BackgroundTransparency = 1
+			slot.Size = UDim2.fromScale(1, 1)
+			slot.SizeConstraint = Enum.SizeConstraint.RelativeYY
+			slot.LayoutOrder = index
+			slot.Parent = newRow
+			local dim = Instance.new("ImageLabel")
+			dim.BackgroundTransparency = 1
+			dim.Size = UDim2.fromScale(1, 1)
+			dim.Image = UIIcons.Star
+			dim.ImageTransparency = look.dim
+			dim.Parent = slot
+			-- The lit star, cut to its fill by a clipping frame
+			local clip = Instance.new("Frame")
+			clip.Name = "Fill"
+			clip.BackgroundTransparency = 1
+			clip.ClipsDescendants = true
+			clip.Size = UDim2.fromScale(0, 1)
+			clip.Parent = slot
+			local star = Instance.new("ImageLabel")
+			star.BackgroundTransparency = 1
+			star.Size = UDim2.fromScale(1, 1)
+			star.SizeConstraint = Enum.SizeConstraint.RelativeYY
+			star.Image = UIIcons.Star
+			star.ImageColor3 = lit
+			star.Parent = clip
+		end
+		newRow.Parent = gui
+		row = newRow
+	end
+	plot.signLabel.Size = UDim2.fromScale(1, look.nameHeight)
+	for index = 1, 5 do
+		local fill = math.floor(math.clamp(rating - (index - 1), 0, 1) * 4) / 4
+		local slot = (row :: Frame):FindFirstChild("Star" .. index)
+		local clip = if slot then slot:FindFirstChild("Fill") :: Frame? else nil
+		if clip then
+			clip.Size = UDim2.fromScale(fill, 1)
+		end
+	end
 end
 
 function PlotService.OnReleased(callback: PlotCallback)

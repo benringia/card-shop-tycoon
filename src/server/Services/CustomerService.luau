@@ -86,6 +86,11 @@ local reachedCounterCallbacks: { CustomerCallback } = {}
 local leftQueueCallbacks: { CustomerCallback } = {}
 -- How each visit went, for the shop rating (RatingService): "paid", "annoyed", "gaveUp", "noStock", "happyMoment"
 local outcomeCallbacks: { (owner: Player, outcome: string) -> () } = {}
+-- The spawn gap's multiplier per shop: RatingService plugs in the rating's (CustomerService can't require it: it
+-- listens to OnOutcome here)
+local spawnScale: (owner: Player) -> number = function()
+	return 1
+end
 
 local function fireOutcome(owner: Player, outcome: string)
 	for _, callback in outcomeCallbacks do
@@ -894,7 +899,8 @@ local function spawnTick()
 			state.nextSpawnAt = now + CustomerConfig.FIRST_SPAWN_DELAY
 		elseif now >= state.nextSpawnAt and #state.customers < CustomerConfig.MAX_PER_PLOT then
 			-- Hype (Ember creature summoned): customers arrive more often
-			local interval = rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX)
+			-- The shop rating (RatingService) shortens or stretches it
+			local interval = rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX) * spawnScale(owner)
 			state.nextSpawnAt = now + interval / (1 + PartyService.GetPerk(owner, "Hype"))
 			task.spawn(spawnCustomer, plot, owner, state)
 		end
@@ -988,6 +994,11 @@ function CustomerService.SpawnForTest(owner: Player, kind: string, wanted: strin
 	end
 	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), kind, wanted, inHand)
 	return true
+end
+
+-- How the gap between customers scales per shop (RatingService.SpawnScale)
+function CustomerService.UseSpawnScale(scale: (owner: Player) -> number)
+	spawnScale = scale
 end
 
 -- Each visit's outcome ("paid", "annoyed", "gaveUp", "noStock", "happyMoment"), for the shop rating
