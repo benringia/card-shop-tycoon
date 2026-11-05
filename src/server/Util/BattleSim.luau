@@ -79,6 +79,10 @@ export type Event = {
 	ring: number?,
 	seconds: number?,
 	crit: boolean?, -- a Haggle critical hit (double damage)
+	-- A super's "cast" (its wind-up), its landing events and its "fizzle" (the caster fainted first): the look it plays
+	-- (Config/SuperFx); a cast's `protect`: seconds its caster's player can't be hit
+	look: string?,
+	protect: number?,
 }
 
 type Fighter = {
@@ -101,6 +105,7 @@ type Fighter = {
 	overcharge: number, -- fast attacks left
 	orbs: number, -- Overcharge's orbs: fast attack slots still to come (each spends one, clients draw them)
 	dodgeUntil: number,
+	protectedUntil: number, -- a player whose creature's super is playing its cinematic: nothing hits them till then
 	stunUntil: number,
 	slowUntil: number,
 	slow: number,
@@ -180,7 +185,7 @@ export type State = {
 -- A boss's hit on a player, warned of and landing at `at`
 type Pending = { kind: string, at: number, target: Fighter, from: Fighter, damage: number, ring: number?, shape: string? }
 -- A Pet button move or super move winding up: it fires at `at` unless its caster has fainted or left by then
-type Cast = { fighter: Fighter, side: Side, ability: any, at: number }
+type Cast = { fighter: Fighter, side: Side, ability: any, at: number, super: boolean? }
 
 -- Small deterministic generator (LCG) so fights replay identically in Lune and Roblox
 local function random(state: State): number
@@ -211,6 +216,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		overcharge = 0,
 		orbs = 0,
 		dodgeUntil = 0,
+		protectedUntil = 0,
 		stunUntil = 0,
 		slowUntil = 0,
 		slow = 0,
@@ -367,6 +373,12 @@ end
 
 local function ownerKey(fighter: Fighter): string
 	return fighter.owner or ""
+end
+
+-- An owner's player fighter, if it's still in the fight
+local function playerOf(state: State, owner: string): Fighter?
+	local fighter = find(state, `a:@{owner}`)
+	return if fighter and fighter.player and not fighter.left then fighter else nil
 end
 
 -- A fighter's fight perk of this kind (0 if none): a creature's own; a player's is their first standing creature's
@@ -631,7 +643,7 @@ local function swingAtPlayer(state: State, fighter: Fighter, enemySide: Side, sw
 	end
 	local players = {}
 	for _, enemy in standing(enemySide) do
-		if enemy.player and not swungAt[enemy] then
+		if enemy.player and not swungAt[enemy] and state.time >= enemy.protectedUntil then
 			table.insert(players, enemy)
 		end
 	end
@@ -721,7 +733,7 @@ local function bigAttack(state: State, fighter: Fighter, events: { Event })
 	fighter.bigReady = state.time + attacks.every
 	local players = {}
 	for _, enemy in standing(other(state, (state.sides :: any)[fighter.side])) do
-		if enemy.player then
+		if enemy.player and state.time >= enemy.protectedUntil then
 			table.insert(players, enemy)
 		end
 	end
@@ -768,6 +780,7 @@ local function landPending(state: State, events: { Event })
 		-- A dodge counts if its window still covered the moment clients showed the hit (HIT_GRACE before it lands),
 		-- give or take a step: the server only sees time move a tick at a time
 		local missed = state.time - state.combat.HIT_GRACE - 1 / state.combat.TICK_RATE < target.dodgeUntil
+			or state.time < target.protectedUntil
 		if not missed and pending.ring and state.ringCheck then
 			missed = not state.ringCheck({ id = pending.ring, target = target.id, shape = pending.shape :: string })
 		end
@@ -1040,6 +1053,11 @@ function BattleSim.swap(state: State, id: string, owner: string?): ({ Event }?, 
 		return nil, "missing"
 	end
 	local key = ownerKey(incoming)
+	for _, cast in state.casts do
+		if cast.super and ownerKey(cast.fighter) == key and cast.side == side then
+			return nil, "casting" -- its super lands first (spec 2026-11-05-super-moves-design)
+		end
+	end
 	if side.callIn and not side.calledBy[key] and state.time <= state.combat.CALL_IN_SECONDS then
 		BattleSim.callIn(state, id, owner)
 		return { { type = "callin", from = id } }, nil
@@ -1215,10 +1233,25 @@ releaseCasts = function(state: State, events: { Event })
 	end
 	local waiting = {}
 	for _, cast in state.casts do
-		if state.time < cast.at then
+		if state.time < cast.at and not (cast.super and (cast.fighter.fainted or cast.fighter.left)) then
 			table.insert(waiting, cast)
 		elseif not state.result and not cast.fighter.fainted and not cast.fighter.left then
+			local first = #events + 1
 			applyAbility(state, cast.fighter, cast.side, cast.ability, events)
+			if cast.super then
+				for index = first, #events do
+					if events[index].kind == cast.ability.kind then
+						events[index].look = cast.ability.look
+					end
+				end
+			end
+		elseif cast.super and not state.result then
+			-- Its caster fainted (or left) mid wind-up: it fizzles at once and its player's protection ends with it
+			table.insert(events, { type = "fizzle", from = cast.fighter.id, look = cast.ability.look })
+			local player = playerOf(state, ownerKey(cast.fighter))
+			if player then
+				player.protectedUntil = math.min(player.protectedUntil, state.time)
+			end
 		end
 	end
 	state.casts = waiting
@@ -1256,6 +1289,28 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		return nil, "none"
 	end
 	local events: { Event } = {}
+	if which == "signature" then
+		-- A super winds up its own time while its caster's cinematic plays; their player can't be hit until control
+		-- returns (spec 2026-11-05-super-moves-design)
+		local windup = ability.windup or combat.ABILITY_WINDUP
+		local protect = windup + combat.SUPER_PROTECT_TAIL
+		local player = playerOf(state, ownerKey(fighter))
+		if player then
+			player.protectedUntil = math.max(player.protectedUntil, state.time + protect)
+		end
+		local target = targetOf(state, fighter)
+		table.insert(state.casts, { fighter = fighter, side = side, ability = ability, at = state.time + windup, super = true })
+		table.insert(events, {
+			type = "cast",
+			from = fighter.id,
+			kind = ability.kind,
+			look = ability.look,
+			seconds = windup,
+			protect = protect,
+			to = if target then target.id else nil,
+		})
+		return events, nil
+	end
 	-- It winds up first (owner 2026-11-04: everyone sees it coming): a "cast" now, the move when the wind-up ends
 	local windup = combat.ABILITY_WINDUP or 0
 	if windup <= 0 then
@@ -1265,12 +1320,6 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 	table.insert(state.casts, { fighter = fighter, side = side, ability = ability, at = state.time + windup })
 	table.insert(events, { type = "cast", from = fighter.id, kind = ability.kind, seconds = windup })
 	return events, nil
-end
-
--- An owner's player fighter, if it's still in the fight
-local function playerOf(state: State, owner: string): Fighter?
-	local fighter = find(state, `a:@{owner}`)
-	return if fighter and fighter.player and not fighter.left then fighter else nil
 end
 
 -- The ATK an owner's sword hits with: their first standing creature's (remembered), else the last one's

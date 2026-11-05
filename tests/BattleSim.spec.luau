@@ -26,14 +26,21 @@ local function side(list: { any }, canRun: boolean?): any
 	return { fighters = list, abilities = true, canRun = canRun == true }
 end
 
--- A special move pressed and its wind-up waited out (combat.ABILITY_WINDUP): the move's events, or nil and why not
+-- A special move pressed and its wind-up waited out (its cast's own seconds: combat.ABILITY_WINDUP for a Pet button
+-- move, the super's own wind-up for a super): the move's events, or nil and why not
 local function castNow(state: any, id: string, which: string, owner: string?): ({ any }?, string?)
 	local pressed, why = BattleSim.useAbility(state, id, which, owner)
 	if not pressed then
 		return nil, why
 	end
+	local windup = combat.ABILITY_WINDUP
+	for _, event in pressed do
+		if event.type == "cast" then
+			windup = event.seconds
+		end
+	end
 	local out = {}
-	for _, event in BattleSim.step(state, combat.ABILITY_WINDUP) do
+	for _, event in BattleSim.step(state, windup) do
 		if event.type == "ability" then
 			table.insert(out, event)
 		end
@@ -189,6 +196,18 @@ local function viewOf(state: any, id: string): any
 	for _, view in BattleSim.snapshot(state).sides.a.fighters do
 		if view.id == id then
 			return view
+		end
+	end
+	return nil
+end
+
+-- The sim's own record of a fighter (for fields the snapshot leaves out: burnUntil, protectedUntil...)
+local function raw(state: any, id: string): any
+	for _, s in { state.sides.a, state.sides.b } do
+		for _, f in s.fighters do
+			if f.id == id then
+				return f
+			end
 		end
 	end
 	return nil
@@ -719,6 +738,7 @@ return {
 	["Stampede stun skips monster attacks; Eclipse dodges"] = function()
 		local stunned = wild(fighter("a", "Volt", 100000, 1, 10, "Thunderhorn"), {}, monster("Tide", 100000, 50, 20), 7)
 		BattleSim.useAbility(stunned, "a:a", "signature")
+		BattleSim.step(stunned, combat.SIGNATURES.Thunderhorn.windup) -- counted from its landing (supers wind up first)
 		local hits = 0
 		for _ = 1, 15 do
 			for _, e in BattleSim.step(stunned, 0.1) do
@@ -731,6 +751,7 @@ return {
 
 		local dodger = wild(fighter("a", "Shade", 1000, 1, 10, "Eclipse Fox"), {}, monster("Tide", 100000, 50, 20), 8)
 		BattleSim.useAbility(dodger, "a:a", "signature")
+		BattleSim.step(dodger, combat.SIGNATURES["Eclipse Fox"].windup)
 		local damage = 0
 		for _ = 1, 25 do
 			for _, e in BattleSim.step(dodger, 0.1) do
@@ -1867,5 +1888,131 @@ return {
 		end
 		expect.equal(play(true), "b", "lost when the creature fainted")
 		expect.equal(play(nil), nil, "a boss fight goes on with the player up")
+	end,
+	-- Super moves (spec 2026-11-05-super-moves-design): their own wind-up, the caster's player protected while their
+	-- camera is away, a fizzle when the caster faints, no swapping it out mid wind-up
+	["a super winds up its own time and lands at the end"] = function()
+		local state = wild(fighter("a", "Ember", 1e6, 10, 1, "Infernox"), {}, monster("Tide", 1e6, 0, 1), 12)
+		local pressed = BattleSim.useAbility(state, "a:a", "signature") :: { any }
+		expect.equal(pressed[1].type, "cast")
+		expect.equal(pressed[1].look, "Inferno")
+		expect.near(pressed[1].seconds, 1.5, 1e-9)
+		expect.near(pressed[1].protect, 1.5 + combat.SUPER_PROTECT_TAIL, 1e-9)
+		expect.near(raw(state, "a:a").signatureReady - state.time, combat.SIGNATURE_COOLDOWN, 1e-9, "the cooldown starts at the press")
+		runFor(state, 1.4)
+		expect.equal(raw(state, "b:m").burnUntil, 0, "not landed during the wind-up")
+		runFor(state, 0.2)
+		expect.equal(raw(state, "b:m").burnUntil > 0, true, "landed at the end")
+	end,
+
+	["a Legendary super winds up 2 s and its landing carries its look"] = function()
+		local state = wild(fighter("a", "Ember", 1e6, 10, 1, "Solarion"), {}, monster("Bloom", 1e6, 0, 1), 13)
+		local pressed = BattleSim.useAbility(state, "a:a", "signature") :: { any }
+		expect.near(pressed[1].seconds, 2, 1e-9)
+		local landed = nil
+		for _, entry in timedEvents(state, 2.5) do
+			if entry.event.type == "ability" and entry.event.kind == "Supernova" then
+				landed = entry
+			end
+		end
+		assert(landed, "the 4x hit landed")
+		expect.equal(landed.time >= 1.9 and landed.time <= 2.1 + 1e-9, true, `landed at {landed.time}`)
+		expect.equal(landed.event.look, "Supernova")
+	end,
+
+	["the caster's player can't be hit until control returns"] = function()
+		local caster = owned("p1", "1", 1e9)
+		caster.signature = "Infernox"
+		local state = bossFightWithPlayer(31, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { caster, playerInput("1") })
+		local player, boss = raw(state, "a:@1"), raw(state, "b:m")
+		local start = state.time
+		BattleSim.useAbility(state, "a:p1", "signature", "1")
+		table.insert(state.pending, { kind = "Quick", at = start + 1.0, target = player, from = boss, damage = 10 })
+		table.insert(state.pending, { kind = "Quick", at = start + 2.3, target = player, from = boss, damage = 10 })
+		local dodged, landed = 0, 0
+		for _, e in runFor(state, 2.6) do
+			if e.type == "attack" and e.kind == "Quick" and e.to == "a:@1" then
+				if e.dodged then
+					dodged += 1
+				else
+					landed += 1
+				end
+			end
+		end
+		expect.equal(dodged, 1, "the hit due inside the window misses")
+		expect.equal(landed, 1, "the hit due after it (1.5 + 0.6 s) lands")
+		expect.equal(viewOf(state, "a:@1").hp, combat.PLAYER_HP - 10)
+	end,
+
+	["no new quick hits or rings at the caster's player while protected"] = function()
+		local caster = owned("p1", "1", 1e9)
+		caster.signature = "Infernox"
+		local state = bossFightWithPlayer(32, 1, nil, { every = 0.4, warning = 1, big = 0.01, quick = 0.001 }, {
+			caster,
+			playerInput("1"),
+			owned("p2", "2", 1e9),
+			playerInput("2"),
+		}, {})
+		BattleSim.useAbility(state, "a:p1", "signature", "1")
+		local atCaster, atOther = 0, 0
+		for _, e in runFor(state, 2.0) do
+			if (e.type == "ring" or e.type == "telegraph") and e.to == "a:@1" then
+				atCaster += 1
+			elseif (e.type == "ring" or e.type == "telegraph") and e.to == "a:@2" then
+				atOther += 1
+			end
+		end
+		expect.equal(atCaster, 0, "nothing new aimed at the caster's player")
+		expect.equal(atOther > 0, true, "the other player still gets them")
+		local after = 0
+		for _, e in runFor(state, 1.5) do
+			if e.type == "ring" and e.to == "a:@1" then
+				after += 1
+			end
+		end
+		expect.equal(after > 0, true, "rings on the caster's player again once control is back")
+	end,
+
+	["a super whose caster faints fizzles and ends the protection"] = function()
+		local caster = owned("p1", "1", 1e9)
+		caster.signature = "Infernox"
+		local state = bossFightWithPlayer(33, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { caster, playerInput("1") })
+		BattleSim.useAbility(state, "a:p1", "signature", "1")
+		runFor(state, 0.5)
+		raw(state, "a:p1").fainted = true -- knocked out mid wind-up
+		local fizzled, fired = nil, false
+		for _, e in runFor(state, 1.5) do
+			if e.type == "fizzle" then
+				fizzled = e
+			elseif e.type == "ability" and e.kind == "Inferno" then
+				fired = true
+			end
+		end
+		assert(fizzled, "a fizzle event")
+		expect.equal(fizzled.from, "a:p1")
+		expect.equal(fizzled.look, "Inferno")
+		expect.equal(fired, false, "never lands")
+		expect.equal(raw(state, "a:@1").protectedUntil <= state.time, true, "the protection ended with it")
+	end,
+
+	["a creature winding up its super can't be swapped out"] = function()
+		local caster = owned("p1", "1", 1e9)
+		caster.signature = "Infernox"
+		local state = bossFightWithPlayer(34, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0 }, { caster, playerInput("1") })
+		BattleSim.useAbility(state, "a:p1", "signature", "1")
+		local none, why = BattleSim.swap(state, "a:r1", "1")
+		expect.isNil(none)
+		expect.equal(why, "casting")
+		runFor(state, 1.6)
+		local swapped = BattleSim.swap(state, "a:r1", "1")
+		expect.equal(swapped ~= nil, true, "fine once it has landed")
+	end,
+
+	["pet moves still wind up 0.5 s, with no protection"] = function()
+		local state = wild(fighter("a", "Ember", 1e6, 10, 1, "Infernox"), {}, monster("Tide", 1e6, 0, 1), 14)
+		local pressed = BattleSim.useAbility(state, "a:a", "element") :: { any }
+		expect.near(pressed[1].seconds, combat.ABILITY_WINDUP, 1e-9)
+		expect.isNil(pressed[1].protect)
+		expect.isNil(pressed[1].look)
 	end,
 }

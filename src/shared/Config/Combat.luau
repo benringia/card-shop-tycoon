@@ -48,19 +48,26 @@ return {
 	},
 	-- Signature abilities on Epic and Legendary cards, by card name
 	SIGNATURE_COOLDOWN = 15,
+	-- Super moves (spec 2026-11-05-super-moves-design): `look` picks its effects (Config/SuperFx LOOKS; the Frontier
+	-- four share their base move's kind but have looks of their own), `windup` the seconds it winds up before landing
+	-- (Epic 1.5, Legendary 2: the caster's cinematic plays meanwhile)
 	SIGNATURES = {
-		Infernox = { kind = "Inferno", name = "Inferno", seconds = 6, perSecond = 0.4 },
-		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3 },
-		Thunderhorn = { kind = "Stampede", name = "Stampede", power = 2, stun = 2 },
-		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 3 },
-		Solarion = { kind = "Supernova", name = "Supernova", power = 4 },
-		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5 },
-		-- Frontier cards: same ability kinds, their own names
-		Riftwalker = { kind = "Eclipse", name = "Rift Step", seconds = 3 },
-		["Cinder Titan"] = { kind = "Stampede", name = "Magma Slam", power = 2, stun = 2 },
-		["Tideborne Kirin"] = { kind = "TidalShield", name = "Tidal Blessing", shield = 0.35 },
-		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4 },
+		Infernox = { kind = "Inferno", name = "Inferno", seconds = 6, perSecond = 0.4, look = "Inferno", windup = 1.5 },
+		["Abyssal Koi"] = { kind = "TidalShield", name = "Tidal Shield", shield = 0.3, look = "TidalShield", windup = 1.5 },
+		Thunderhorn = { kind = "Stampede", name = "Stampede", power = 2, stun = 2, look = "Stampede", windup = 1.5 },
+		["Eclipse Fox"] = { kind = "Eclipse", name = "Eclipse", seconds = 3, look = "Eclipse", windup = 1.5 },
+		Solarion = { kind = "Supernova", name = "Supernova", power = 4, look = "Supernova", windup = 2 },
+		Voidmaw = { kind = "Devour", name = "Devour", power = 2, lifesteal = 0.5, look = "Devour", windup = 2 },
+		-- Frontier cards: same ability kinds, their own names and looks
+		Riftwalker = { kind = "Eclipse", name = "Rift Step", seconds = 3, look = "RiftStep", windup = 1.5 },
+		["Cinder Titan"] = { kind = "Stampede", name = "Magma Slam", power = 2, stun = 2, look = "MagmaSlam", windup = 1.5 },
+		["Tideborne Kirin"] = { kind = "TidalShield", name = "Tidal Blessing", shield = 0.35, look = "TidalBlessing", windup = 2 },
+		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4, look = "Thunderstorm", windup = 2 },
 	},
+	-- The caster's player can't be hit from a super's press until control returns: its wind-up plus this (the impact
+	-- beat and the camera's ease back); the boss starts nothing new at them meanwhile (owner 2026-11-05: "while your
+	-- camera is away, boss attacks can't hit you")
+	SUPER_PROTECT_TAIL = 0.6,
 
 	-- Run: clamp(RUN_BASE + RUN_PER_SPD * (leaderSPD - monsterSPD), RUN_MIN, RUN_MAX) - elite penalty (>= RUN_MIN)
 	RUN_BASE = 0.5,

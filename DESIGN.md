@@ -1167,7 +1167,13 @@ group, checked before its fragments and every time (not only the first). Below i
   Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
   Pet button moves and super moves wind up first (owner 2026-11-04, design A): the press spends the cooldown and the
   sim sends a `cast` event, then fires the move `Combat.ABILITY_WINDUP` 0.5 s later unless the caster has fainted or
-  left (`BattleSim` casts); meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
+  left (`BattleSim` casts). Super moves wind up their own time (spec `2026-11-05-super-moves-design.md`): Epic 1.5 s,
+  Legendary 2 s (`Combat.SIGNATURES.<card>.windup`, the cast carrying its `look`), while the caster's cinematic plays;
+  the caster's player can't be hit from the press until control returns (the wind-up + `Combat.SUPER_PROTECT_TAIL`
+  0.6 s): hits due then miss and the boss starts no new quick hits or rings at them meanwhile; a super whose caster
+  faints first fizzles (a `fizzle` event) and the protection ends with it; its creature can't be swapped out until it
+  lands. The boss balance tool's numbers didn't move (its parties only press the Pet button, so supers never fire
+  there). Meanwhile the creature holds still in a big glow, a ring in the move's colour spins under
   it (`ElementFx.castRing`) and the move's name pops above it on a plate ("VINE SNARE!", `ElementFx.callout`), so
   everyone sees it coming. The moves (`AttackFx.SPECIALS`, `ElementFx.special`) land with their `ability`
   event: Fireball a blast and a fire ring on the ground; the other four Pet button moves are finished (spec
