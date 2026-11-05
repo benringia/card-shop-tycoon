@@ -52,7 +52,7 @@ export type RingInfo = { id: number, target: string, shape: string }
 -- player: a player fighter (boss fights; its owner's player in the fight)
 -- A fight perk (Config/Party FIGHT_PERKS): its kind ("Hype", "Calm", "Express", "Hustle", "Haggle") and value
 export type Perk = { kind: string, value: number }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
 -- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
 -- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean? }
@@ -93,6 +93,7 @@ type Fighter = {
 	atk: number,
 	spd: number,
 	signature: string?,
+	grade: string?, -- a creature's card copy grade (Healing Rain at Grade S heals its player too)
 	elite: boolean,
 	nextAttack: number,
 	abilityReady: number,
@@ -201,6 +202,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		atk = input.atk,
 		spd = input.spd,
 		signature = input.signature,
+		grade = input.grade,
 		elite = input.elite == true,
 		nextAttack = if input.player then math.huge else time + CombatMath.getAttackInterval(combat, input.spd),
 		chargedFor = -1,
@@ -803,8 +805,10 @@ local function regen(state: State, fighter: Fighter, events: { Event })
 	while not fighter.fainted and fighter.regenLeft > 0 and fighter.regenNext <= state.time + 1e-9 do
 		fighter.regenLeft -= 1
 		fighter.regenNext += state.combat.ABILITIES.Tide.every
-		fighter.hp = math.min(fighter.maxHp, fighter.hp + fighter.regenAmount)
-		table.insert(events, { type = "regen", from = fighter.regenBy, to = fighter.id, heal = fighter.regenAmount })
+		if not fighter.down and not fighter.out then -- a downed player gets no tick (getting up is its own heal)
+			fighter.hp = math.min(fighter.maxHp, fighter.hp + fighter.regenAmount)
+			table.insert(events, { type = "regen", from = fighter.regenBy, to = fighter.id, heal = fighter.regenAmount })
+		end
 	end
 end
 
@@ -1148,6 +1152,17 @@ local function applyAbility(state: State, fighter: Fighter, side: Side, ability:
 			ally.regenNext = state.time + ability.every
 			ally.regenAmount = math.round(ally.maxHp * ability.heal / ability.ticks)
 			ally.regenBy = fighter.id
+		end
+		-- A Grade S caster's rain heals its owner's player too (never another player's)
+		if ability.playerHeal and fighter.grade == ability.playerGrade and fighter.owner then
+			for _, other in side.fighters do
+				if other.player and other.owner == fighter.owner and not other.out then
+					other.regenLeft = ability.ticks
+					other.regenNext = state.time + ability.every
+					other.regenAmount = math.round(other.maxHp * ability.playerHeal / ability.ticks)
+					other.regenBy = fighter.id
+				end
+			end
 		end
 		table.insert(events, { type = "ability", kind = kind, from = fighter.id })
 	elseif kind == "Snare" then

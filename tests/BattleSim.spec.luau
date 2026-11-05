@@ -1234,6 +1234,31 @@ return {
 		expect.equal(down, "down")
 	end,
 
+	-- The owner (2026-11-05): "S healing rain also heal player": a Grade S caster's rain heals its owner's player too,
+	-- 15% over the same ticks; lower grades leave the player alone, and never another player
+	["Grade S Healing Rain also heals its owner's player 15% over its ticks"] = function()
+		local function playerHealed(grade: string?, owner: string): number
+			local tide: any = fighter("p1", "Tide", 500, 20, 10)
+			tide.owner = owner
+			tide.grade = grade
+			local state = bossFightWithPlayer(14, 1, nil, nil, { tide, playerInput("1"), playerInput("2") })
+			BattleSim._hurtPlayer(state, "a:@1", 30)
+			BattleSim._hurtPlayer(state, "a:@2", 30)
+			castNow(state, "a:p1", "element", owner)
+			local healed = { ["a:@1"] = 0, ["a:@2"] = 0 }
+			for _, e in runFor(state, 6) do
+				if e.type == "regen" and healed[e.to] then
+					healed[e.to] += e.heal
+				end
+			end
+			expect.equal(healed["a:@2"], 0, "never another player")
+			return healed["a:@1"]
+		end
+		expect.equal(playerHealed("S", "1"), 15, "Grade S: 15% of the player's 100 HP")
+		expect.equal(playerHealed("A", "1"), 0, "Grade A: creatures only")
+		expect.equal(playerHealed(nil, "1"), 0, "no grade: creatures only")
+	end,
+
 	["thunderclap, Healing Rain and Tidal Shield leave the player alone"] = function()
 		local clap = bossFightWithPlayer(11, 1, { thunderclap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5 } })
 		local events = runFor(clap, 5)

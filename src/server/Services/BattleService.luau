@@ -221,6 +221,7 @@ local function fighterInput(beast: Beast, withPerk: boolean?): BattleSim.Fighter
 		atk = stats.atk,
 		spd = stats.spd,
 		signature = if Combat.SIGNATURES[card.name] then card.name else nil,
+		grade = beast.grade,
 		perk = if withPerk then PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars) else nil,
 	}
 end

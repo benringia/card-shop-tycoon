@@ -647,7 +647,7 @@ Lune-tested).
 | Element | Ability | Effect |
 |---|---|---|
 | Ember | Fireball | 2.5× ATK hit |
-| Tide | Healing Rain | heals your fighters 25% max HP over 5 s (5 ticks of 5%, one a second; a recast restarts them; stops when the creature faints or is swapped out) |
+| Tide | Healing Rain | heals your fighters 25% max HP over 5 s (5 ticks of 5%, one a second; a recast restarts them; stops when the creature faints or is swapped out); a Grade S caster also heals its own player 15% over the same ticks (owner 2026-11-05; none while down) |
 | Bloom | Vine Snare | monster attacks 40% slower for 4 s |
 | Volt | Overcharge | next 3 attacks twice as fast |
 | Shade | Curse | monster ATK −30% for 5 s |
