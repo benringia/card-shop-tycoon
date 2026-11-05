@@ -74,6 +74,14 @@ return {
 			flames = true, color = rgb(233, 213, 255) },
 	},
 
+	-- Each move's icon (Config/UIIcons name) on the card view's Skills box and the fight's Pet / Super buttons; a name
+	-- UIIcons doesn't have yet falls back to the creature's element icon
+	SKILL_ICONS = {
+		Fireball = "MoveFireball", Rain = "MoveRain", Snare = "MoveSnare", Overcharge = "MoveOvercharge", Curse = "MoveCurse",
+		Inferno = "MoveInferno", TidalShield = "MoveTidalShield", Stampede = "MoveStampede", Eclipse = "MoveEclipse",
+		Supernova = "MoveSupernova", Devour = "MoveDevour",
+	},
+
 	-- Textures (tools/textures/make_move_fx.py, uploaded; white with alpha, tinted in game) and Roblox-licensed sounds
 	-- (Pro Sound Effects / APM), filled move by move
 	TEXTURES = {

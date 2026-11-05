@@ -74,6 +74,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	MonsterLooks = require("./MonsterLooks.spec"),
 	BossMoments = require("./BossMoments.spec"),
 	MoveFx = require("./MoveFx.spec"),
+	SkillText = require("./SkillText.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),
 	SwordRules = require("./SwordRules.spec"),
 	SwordArcRules = require("./SwordArcRules.spec"),

@@ -2264,7 +2264,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   on narrow screens the panel keeps its right margin first), the card's right edge just left of the panel
   (`UiLayout.inspectorCard`, both Lune-tested).
   The panel (style kit, blue band): the name and worth range (green, Cash icon) in the band; rarity, element, number
-  and copies pills; then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
+  and copies pills; then a blue **Skills** box (the owner 2026-11-05, option A of `skills-on-card.html`): the card's
+  Pet move (its element's) and, for Epic and Legendary cards, its super move, each with its icon on a badge, its name,
+  a line from the fight's numbers (`Util/SkillText`, Lune-tested) and the button that uses it (icons from
+  `Config/MoveFx` SKILL_ICONS, the element's icon until they're uploaded); then **"This copy" first** (round 5, owner pick A of the `round5.html` mockups): a gold box with
   "THIS COPY", the chosen copy's grade pill, level, star icons, FOIL and its worth on one line, its Power / HP / ATK /
   SPD tiles, an XP bar to the next level and a next-star bar (duplicates you have / need, red when short; "Max stars"),
   and "In your party" or "Working: <job>"; under it "ALL COPIES, BEST FIRST" (every copy: grade pill, level, star

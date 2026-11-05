@@ -155,6 +155,14 @@ return {
 		expect.equal(MoveFxRules.wrapRadius(40, 30), 14, "never wider than 14")
 	end,
 
+	["every Pet move and super move has an icon name"] = function()
+		for _, list in { Combat.ABILITIES, Combat.SIGNATURES } do
+			for _, ability in list do
+				assert(type(MoveFx.SKILL_ICONS[ability.kind]) == "string", `{ability.kind} has an icon`)
+			end
+		end
+	end,
+
 	["every texture and sound is an asset id"] = function()
 		assetIds(MoveFx.TEXTURES, "TEXTURES")
 		assetIds(MoveFx.SOUNDS, "SOUNDS")

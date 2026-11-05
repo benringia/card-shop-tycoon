@@ -18,6 +18,10 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Jobs = require(Config:WaitForChild("Jobs"))
 local Party = require(Config:WaitForChild("Party"))
+local Combat = require(Config:WaitForChild("Combat"))
+local MoveFxConfig = require(Config:WaitForChild("MoveFx"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
+local SkillText = require(Shared:WaitForChild("Util"):WaitForChild("SkillText"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
@@ -85,6 +89,7 @@ local listTop = BOX_TOP
 local nameLabel: TextLabel
 local worthLabel: TextLabel
 local pillRow: Frame
+local skillsBox: Frame -- the card's Pet move and super move (owner 2026-11-05, option A)
 local copiesList: ScrollingFrame
 local selectedBox: Frame
 local buttonRow: Frame
@@ -159,8 +164,10 @@ end
 -- left under it, and the list scrolls
 local function placeList()
 	local boxTop = if UIKit.isPhone() then 0 else BOX_TOP
-	selectedBox.Position = UDim2.fromOffset(0, boxTop)
-	local below = boxTop + selectedBox.AbsoluteSize.Y + GAP
+	skillsBox.Position = UDim2.fromOffset(0, boxTop)
+	local selectedTop = boxTop + skillsBox.AbsoluteSize.Y + GAP
+	selectedBox.Position = UDim2.fromOffset(0, selectedTop)
+	local below = selectedTop + selectedBox.AbsoluteSize.Y + GAP
 	copiesTitle.Position = UDim2.fromOffset(0, below)
 	listTop = if copiesTitle.Visible then below + TITLE_HEIGHT + 2 else below
 	copiesList.Position = UDim2.fromOffset(0, listTop)
@@ -326,6 +333,73 @@ local function barRow(parent: Instance, order: number, icon: string, share: numb
 	label.Position = UDim2.new(0.5, 8, 0, 0)
 	label.Size = UDim2.new(0.5, -8, 1, 0)
 	label.TextTruncate = Enum.TextTruncate.AtEnd
+end
+
+-- One skill row in the Skills box: its icon on a badge, its name and what it does, and which button uses it
+local function skillRow(order: number, skill: SkillText.Skill?, element: string, badgeColor: Color3, button: string)
+	local row = Instance.new("Frame")
+	row.LayoutOrder = order
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, 38)
+	row.ZIndex = skillsBox.ZIndex
+	row.Parent = skillsBox
+	local badge = Instance.new("Frame")
+	badge.Size = UDim2.fromOffset(36, 36)
+	badge.Position = UDim2.fromOffset(0, 1)
+	badge.BackgroundColor3 = if skill then badgeColor else palette.slotEmpty
+	badge.ZIndex = row.ZIndex + 1
+	badge.Parent = row
+	UIKit.corner(badge, 10)
+	local iconName = if skill then MoveFxConfig.SKILL_ICONS[skill.kind] else nil
+	if not iconName or not (UIIcons :: any)[iconName] then
+		iconName = if skill then element else "Sparkle"
+	end
+	local picture = Icon.make(badge, iconName :: string, UDim2.fromOffset(26, 26))
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.Position = UDim2.fromScale(0.5, 0.5)
+	picture.ZIndex = badge.ZIndex + 1
+	for _, image in picture:GetDescendants() do
+		if image:IsA("GuiObject") then
+			image.ZIndex = badge.ZIndex + 2
+		end
+	end
+	if not skill then
+		for _, image in picture:GetDescendants() do
+			if image:IsA("ImageLabel") then
+				image.ImageTransparency = 0.55
+			end
+		end
+	end
+	local name = text(row, if skill then skill.name else "Super move", UIKit.textSize("body"), if skill then palette.ink else palette.hint, true)
+	name.Position = UDim2.fromOffset(44, 0)
+	name.Size = UDim2.new(1, -170, 0, 20)
+	name.TextXAlignment = Enum.TextXAlignment.Left
+	local line = text(row, if skill then skill.text else "Epic and Legendary cards only", UIKit.textSize("small"), palette.hint)
+	line.Position = UDim2.fromOffset(44, 20)
+	line.Size = UDim2.new(1, -170, 0, 16)
+	line.TextXAlignment = Enum.TextXAlignment.Left
+	line.TextTruncate = Enum.TextTruncate.AtEnd
+	if skill then
+		local chip = UIKit.pill(row, button, palette.row)
+		chip.AnchorPoint = Vector2.new(1, 0.5)
+		chip.Position = UDim2.new(1, 0, 0.5, 0)
+	end
+end
+
+-- The card's skills (owner 2026-11-05, option A): its element's Pet move, and its super move (Epic and Legendary)
+local function renderSkills(card: Card)
+	clear(skillsBox)
+	local title = text(skillsBox, "SKILLS", UIKit.textSize("small"), palette.hint, true)
+	title.LayoutOrder = 0
+	title.Size = UDim2.new(1, 0, 0, 16)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	local skills = SkillText.forCard(Combat, card.element, card.name)
+	skillRow(1, skills.pet, card.element, Cards.ELEMENTS[card.element], "PET MOVE")
+	-- Only cards with a super move get its row (a greyed "Epic and Legendary only" row cost the copies list its room
+	-- on short screens)
+	if skills.super then
+		skillRow(2, skills.super, card.element, UIStyle.GOLD, "SUPER MOVE")
+	end
 end
 
 -- The chosen copy ("This copy"): its grade, level, stars and worth, four stat tiles, XP and next-star bars, and whether
@@ -668,6 +742,7 @@ function CardDetailController.Refresh()
 	footer.TextWrapped = true
 	footer.Size = UDim2.new(1, -8, 0, 36)
 
+	renderSkills(card)
 	renderSelected(card, selected)
 	refreshButtons(selected)
 	-- A shop sale or a binder update mustn't close a chooser someone is reading: redraw it, or close it if the copy
@@ -882,7 +957,28 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	copiesTitle = text(body, "ALL COPIES, BEST FIRST", UIKit.textSize("small"), palette.hint, true)
 	copiesTitle.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
 
-	-- "This copy" sits at the top of the body in a gold box; the list fills what's left under it (and scrolls)
+	-- The card's skills in a blue box under the pills (owner 2026-11-05, option A), then "This copy"
+	skillsBox = Instance.new("Frame")
+	skillsBox.Name = "Skills"
+	skillsBox.Position = UDim2.fromOffset(0, BOX_TOP)
+	skillsBox.Size = UDim2.new(1, 0, 0, 0)
+	skillsBox.AutomaticSize = Enum.AutomaticSize.Y
+	skillsBox.BackgroundColor3 = palette.row
+	skillsBox.ZIndex = body.ZIndex + 1
+	skillsBox.Parent = body
+	UIKit.corner(skillsBox, 10)
+	UIKit.outline(skillsBox, Color3.fromRGB(156, 198, 255), 3)
+	local skillsPadding = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(skillsPadding :: any)[side] = UDim.new(0, 8)
+	end
+	skillsPadding.Parent = skillsBox
+	local skillsList = Instance.new("UIListLayout")
+	skillsList.Padding = UDim.new(0, 4)
+	skillsList.SortOrder = Enum.SortOrder.LayoutOrder
+	skillsList.Parent = skillsBox
+
+	-- "This copy" sits under the skills in a gold box; the list fills what's left under it (and scrolls)
 	selectedBox = Instance.new("Frame")
 	selectedBox.Name = "Selected"
 	selectedBox.Position = UDim2.fromOffset(0, BOX_TOP)
@@ -925,6 +1021,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	listPadding.PaddingRight = UDim.new(0, LIST_PAD + copiesList.ScrollBarThickness + 2)
 	listPadding.Parent = copiesList
 	selectedBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeList)
+	skillsBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeList)
 	placeList()
 
 	buttonRow = Instance.new("Frame")
