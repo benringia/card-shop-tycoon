@@ -80,6 +80,27 @@ return {
 		-- The thought bubble over a collector holding the wanted card's face (CustomerController), in pixels and studs
 		thought = { cardWidth = 54, cardHeight = 76, padding = 5, offsetY = 3.4, maxDistance = 70 },
 	},
+	-- Kid offers (Util/OfferRules): a kid sells a Very Rare or better pull by rarity chance x grade factor, asks
+	-- askLow-askHigh of its worth and takes lowestLow-lowestHigh; at most perHour offers an hour and one Legendary per
+	-- legendaryGap seconds per shop; the counter moves in steps of `step` x worth (chips: under the worth), the face
+	-- shows sure / maybe moodBand x worth around the lowest; retries counters before leaving; patience seconds to answer
+	OFFER = {
+		chance = { ["Very Rare"] = 0.4, Epic = 0.3, Legendary = 0.3 },
+		gradeFactor = { C = 1.15, B = 1.0, A = 0.85, S = 0.7 },
+		askLow = 0.90,
+		askHigh = 1.0,
+		lowestLow = 0.75,
+		lowestHigh = 0.90,
+		perHour = 4,
+		legendaryGap = 10800,
+		step = 0.05,
+		chips = { -0.20, -0.15, -0.10, 0 },
+		moodBand = 0.05,
+		retries = 1,
+		patience = 25,
+	},
+	-- Bargain hunters (Util/HaggleRules): offer offLow-offHigh under the total, pay up to gapLow-gapHigh of the way back
+	HAGGLE = { offLow = 0.10, offHigh = 0.25, gapLow = 0.4, gapHigh = 0.8 },
 	TYPES = {
 		plain = { weight = 0.55, props = {} },
 		kid = {
