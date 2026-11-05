@@ -168,4 +168,21 @@ return {
 			expect.equal(frames, if grade == "S" then 2 else 1, grade)
 		end
 	end,
+	-- Every look has its own layered sounds (spec "Sound"): a call, a charge, the impact and a layer for A and S; what
+	-- lasts on the field its linger, the shields a hit and a burst, Rift Step a blink
+	["every look has its sounds"] = function()
+		for id in SuperFx.LOOKS do
+			local sounds = SuperFx.SOUNDS[id]
+			for _, moment in { "call", "charge", "impact", "layer" } do
+				assert(sounds[moment], `{id}: {moment}`)
+			end
+		end
+		for _, id in { "Inferno", "MagmaSlam", "TidalBlessing", "Stampede", "Eclipse", "Supernova", "Thunderstorm", "Devour" } do
+			assert(SuperFx.SOUNDS[id].linger, `{id}: linger`)
+		end
+		for _, id in { "TidalShield", "TidalBlessing" } do
+			assert(SuperFx.SOUNDS[id].hit and SuperFx.SOUNDS[id].burst, `{id}: hit and burst`)
+		end
+		assert(SuperFx.SOUNDS.RiftStep.blink, "RiftStep: blink")
+	end,
 }

@@ -57,12 +57,13 @@ return {
 		Snare = { style = "move", color = rgb(74, 222, 128), seconds = 4 },
 		Overcharge = { style = "move", color = rgb(250, 204, 21), seconds = 3 },
 		Curse = { style = "move", color = rgb(167, 139, 250), seconds = 5 },
-		Inferno = { style = "inferno", color = rgb(255, 90, 26), seconds = 6 },
-		TidalShield = { style = "shield", color = rgb(96, 196, 255), seconds = 4 },
-		Stampede = { style = "stampede", color = rgb(250, 204, 21) },
-		Eclipse = { style = "eclipse", color = rgb(167, 139, 250), seconds = 3 },
-		Supernova = { style = "nova", color = rgb(255, 209, 102) },
-		Devour = { style = "devour", color = rgb(139, 92, 246) },
+		-- The super moves: their looks are Util/SuperFx's (Config/SuperFx, spec 2026-11-05-super-moves-design)
+		Inferno = { style = "super", color = rgb(255, 90, 26) },
+		TidalShield = { style = "super", color = rgb(96, 196, 255) },
+		Stampede = { style = "super", color = rgb(250, 204, 21) },
+		Eclipse = { style = "super", color = rgb(167, 139, 250) },
+		Supernova = { style = "super", color = rgb(255, 209, 102) },
+		Devour = { style = "super", color = rgb(139, 92, 246) },
 	},
 	SPECIAL_SOUND = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1 (with the element's hit sound)
 	-- Creatures circle their fight spot: this far (studs, times the creature's size), this fast (turns a second), with

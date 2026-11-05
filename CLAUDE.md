@@ -72,6 +72,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `tools/textures/make_move_fx.py`, uploaded as images (ids in `Config/MoveFx` TEXTURES), not synced.
   `assets/ui/fx-portal`: the Wild loading screen's spiral (white), made by `tools/textures/make_portal_swirl.py`,
   uploaded as an image (id in `Config/WildLoading` SWIRL), not synced.
+  `assets/ui/fx-super`: the super moves' white textures (firestrip, crack, waterstrip), made by
+  `tools/textures/make_super_fx.py`, uploaded as images (ids in `Config/SuperFx` TEXTURES), not synced.
   `assets/ui/fx-sword`: the sword effects' white textures (crescent, burst flipbook, line, star), made by
   `tools/textures/make_sword_fx.py`, uploaded as images (ids in `Config/SwordFx` TEXTURES), not synced. Particle
   textures must be square; a beam runs a texture's height along its length (the bolt is upright).

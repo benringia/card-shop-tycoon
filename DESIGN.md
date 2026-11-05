@@ -1192,10 +1192,34 @@ group, checked before its fragments and every time (not only the first). Below i
   them on your summoned creature against a dummy. Cost measured 2026-11-05 (render CPU, a fixed camera on the 14-stud
 dummy, each move at grade S): at most +0.34 ms at graphics level 10 and +0.63 ms at level 1 over a 13.2 ms baseline.
 Vine Snare's vines are solid tapering stems (cylinders with ball joints, wood at A and S) winding fewer turns round
-a foe wider than it is tall. The super moves Inferno a fire
-  pillar (6 s), Tidal Shield a force-field bubble (4 s), Stampede a double streak and a burst, Eclipse a dark sun over
-  the caster (3 s), Supernova a falling star that bursts, Devour shadow jaws snapping shut. A kind with no entry plays
-  nothing (`FightFxRules.hasEffect`).
+a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.hasEffect`).
+- **Super moves** (spec `2026-11-05-super-moves-design.md`; the owner: "way epic/cooler looking" than the pet moves,
+  "screen shakes / cinematics / particle effect / sound effects"): ten looks (`Config/SuperFx` LOOKS, by the super's
+  `look`; the Frontier four have their own), drawn in the world for everyone by `Util/SuperFx` (routed from
+  `Util/FightFx`: the charge from the press, the impact and linger with the landing, a lighter shake for anyone near)
+  and, on the caster's screen only, `Util/SuperCinematic` (driven by BattleController): the camera swoops to the
+  creature (40 degrees off straight ahead, pulled in front of walls every frame), the card's painting slides across
+  with the move's name in a wash of its colour, then the camera snaps to an impact shot framing the creature and its
+  target with a shake and a flash, and eases back; the HUD hides, the character holds still and the sword waits
+  (`SwordController.Pause`) until control returns; a fizzle, the fight ending or leaving cuts back at once. Legendary
+  adds letterbox bars, its own sky grade over the world (`LOOKS.<look>.sky`: deep space, a storm, the world dimming,
+  clouds parting) and a black-and-white impact frame (twice for Supernova at S; a soft white flash with the extras
+  switch off). Every look grows with grade (`SuperFxRules`, Lune-tested) and has an S extra: Inferno's fire tornado,
+  torrent and burning ring (S: lava cracks); Magma Slam's racing lava cracks, geysers, falling rocks and crust (S: a
+  lava ring at the landing); Tidal Shield's wave crashing into a water dome with spirit koi (S: rainbow sheen, a
+  second ring); Tidal Blessing's parting clouds, light rays and a lotus closing into a dome of light (S: a halo,
+  golden rain), both domes rippling with each hit the shield soaks (the sim's `absorbed`) and bursting when it runs out
+  (`shieldGone`) or the fight ends; Stampede's lightning dash through the boss with afterimages and stun rings (S: a
+  sky bolt); Eclipse's black moon over the sun, the fox in shadow with afterimages, hits passing through in shadow (S:
+  two clones); Rift Step's cracks in space, hits meeting empty rifts (S: the arena's edge cracks); Supernova's growing
+  sun hurled into a dome of fire, rings, rays and shimmer (S: light pillars); Thunderstorm's storm clouds, colossal
+  bolt and forks, rain and crawling sparks (S: three bolts, a chain round the arena); Devour's black hole, spectral
+  jaws and streams of life back to Voidmaw (S: two bites). Each look has its own licensed sounds (`SOUNDS.<look>`: call,
+  charge, impact, an A/S layer, a linger loop where it lasts), kept loaded (`CombatPreload`/`SoundBank`); new textures
+  from `tools/textures/make_super_fx.py` (`assets/ui/fx-super`). Studio: `/superfx <move> [C|B|A|S]` and the admin
+  panel's "Super moves" buttons play any of them with the cinematic on your summoned creature against a dummy. Cost
+  measured 2026-11-05 (render CPU, each look at S from the client): a 9.6 ms idle baseline, at most 11.8 ms average
+  (Magma Slam) and no frame over 18.3 ms; four at once 10.6 ms average, 14.4 ms worst.
 - **Boss moves** (same spec): a boss with keyed clips has four (`ReplicatedStorage.MonsterAnimations/<boss
   id>`, docs/animations.md "Bone rigs") played by `Util/MonsterMoves`: a `windup` before each hit (0.6 s before a
   creature hit, over the 0.5 s warning before a quick hit on a player, no glow), the `strike` as it lands with an
@@ -1836,6 +1860,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── SoundBank.luau          # keeps one silent loaded copy of each fight sound all session; one-shots are made from it
+    │       ├── SuperFx.luau            # the ten super move looks in the world (charge, impact, linger), the shields' domes
+    │       ├── SuperCinematic.luau     # a super's cinematic on the caster's screen: camera, card cut-in, wash, bars, sky, impact frame
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, star bursts, rings, cut lines, dust
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
@@ -1890,6 +1916,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── WildLoading.luau # the Wild's loading screen: steps, tips, times, swirl and colours (plain data)
+        │   ├── SuperFx.luau    # the super moves: ten looks by grade, cinematic tiers, camera, skies, textures, sounds (plain data)
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
         │   ├── Frontier.luau   # Frontier zones, species, drops (same shape as Wild)
@@ -1954,6 +1981,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
             ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
             ├── WildLoadingRules.luau # the Wild's loading screen's step, bar share and when it may close (pure, Lune-tested)
+            ├── SuperFxRules.luau # a super's grade, cinematic beats and camera framing (pure, Lune-tested)
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
@@ -2653,6 +2681,9 @@ boss models; the ranch and Heroic tiers come after those.
   Ridge's ember forest (spec `2026-11-04-valley-scenery-design.md`); round 2, natural edges, backdrops, far mountains,
   the composed Meadow, the Ridge's sky, lava streams, clouds, the Caves' grass patches, pieces settled onto the terrain
   (spec `2026-11-05-valley-natural-design.md`). Owner confirmed 2026-11-05.
+- [ ] Super moves round (branch `super-moves`, spec `2026-11-05-super-moves-design.md`): every super winds up its own
+  time (Epic 1.5 s, Legendary 2 s) with a cinematic on the caster's screen while their player can't be hit, ten
+  distinct looks with their own sounds, each bigger by grade with an S extra. Waiting for the owner's Studio check.
 - [x] Wild music: a piece for each of the valley's three areas (the owner's solo guitar picks, very quiet, each with
   an ambient loop) and a battle piece in each Wild boss arena, crossfading as you move, each through a leveler
   (`Music.WILD`, `MusicController`); the town plays White Owl. Approved by the owner 2026-11-04.
