@@ -197,6 +197,71 @@ local function funnel(b: Bag, base: Vector3, count: number, tint: ColorSequence,
 	return { holder = holder, set = set, beams = beams }
 end
 
+-- A glowing crack racing along the ground from `from` to `to` over `seconds`: jagged neon segments appearing one after
+-- another, `jag` studs either side of the straight line
+local function crackLine(b: Bag, from: Vector3, to: Vector3, width: number, tint: Color3, seconds: number, jag: number)
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	if flat.Magnitude < 0.5 then
+		return
+	end
+	local side = Vector3.new(-flat.Z, 0, flat.X).Unit
+	local steps = math.clamp(math.floor(flat.Magnitude / 3), 4, 24)
+	local points = {}
+	for index = 0, steps do
+		local wobble = if index > 0 and index < steps then (math.random() * 2 - 1) * jag else 0
+		table.insert(points, groundAt(from:Lerp(to, index / steps) + side * wobble) + UP * 0.07)
+	end
+	for index = 1, steps do
+		task.delay((index - 1) / steps * seconds, function()
+			if b.done then
+				return
+			end
+			local a, c = points[index], points[index + 1]
+			part(b, Vector3.new(width, 0.12, (c - a).Magnitude + width * 0.6), tint, CFrame.lookAt((a + c) / 2, c), 0.05)
+		end)
+	end
+end
+
+-- A flat picture on the ground at `at` (TEXTURES), `size` studs across, fading in
+local function groundDecal(b: Bag, at: Vector3, size: number, texture: string, tint: Color3, seconds: number): Decal
+	local holder = part(b, Vector3.new(size, 0.05, size), WHITE, CFrame.new(at + UP * 0.08), 1)
+	local decal = Instance.new("Decal")
+	decal.Texture = texture
+	decal.Face = Enum.NormalId.Top
+	decal.Color3 = tint
+	decal.Transparency = 1
+	decal.Parent = holder
+	tween(decal, seconds, { Transparency = 0 })
+	return decal
+end
+
+-- `count` rocks falling over `seconds` onto a disc of `radius` round `center`, each with a trail of fire, bursting as it lands
+local function rockRain(b: Bag, center: Vector3, radius: number, count: number, size: number, trail: Color3, seconds: number)
+	for index = 1, count do
+		task.delay(math.random() * seconds, function()
+			if b.done then
+				return
+			end
+			local angle, reach = math.random() * 2 * math.pi, math.sqrt(math.random()) * radius
+			local land = groundAt(center + Vector3.new(math.cos(angle) * reach, 0, math.sin(angle) * reach))
+			local rock = part(b, Vector3.one * size * (0.6 + math.random() * 0.7), Color3.fromRGB(58, 44, 38), CFrame.new(land + UP * 26), 0, Enum.PartType.Ball)
+			rock.Material = Enum.Material.Slate
+			local flames = ElementFx.emitter(rock, "flame", trail, { size = { size, 0.2 }, life = 0.35, speed = 0, fade = 0.4 })
+			flames.Rate = 30
+			local fall = 0.45 + math.random() * 0.25
+			TweenService:Create(rock, TweenInfo.new(fall, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(land + UP * size * 0.3) }):Play()
+			task.delay(fall, function()
+				if b.done then
+					return
+				end
+				flames.Rate = 0
+				ElementFx.burst(land + UP * 0.5, trail, 0.6)
+				tween(rock, 1.2, { Transparency = 1 })
+			end)
+		end)
+	end
+end
+
 -- A ring of `count` flame emitters round `center` (on the ground), each rising
 local function fireRing(b: Bag, center: Vector3, radius: number, count: number, tint: Color3, size: number): { ParticleEmitter }
 	local holder = anchor(b, CFrame.new(center))
@@ -404,9 +469,120 @@ local function infernoImpact(view: View, grade: string, target: Vector3, targetB
 	end
 end
 
+-- Magma Slam (Cinder Titan, Epic, Ember, Frontier; spec "Magma Slam"): lava glows through its cracks and the ground
+-- splits under it as it winds up, then it crashes down (its own lava-slam pose): glowing cracks race to the boss, lava
+-- geysers erupt under it, rocks rain down and a cooling crust holds its feet for the stun. By grade: longer cracks,
+-- more geysers and rocks; S: a ring of lava bursts round the landing.
+local MAGMA = SuperFxConfig.LOOKS.MagmaSlam
+local MAGMA_SOUNDS = SuperFxConfig.SOUNDS.MagmaSlam
+
+local function magmaCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = MAGMA.grades[grade]
+	local b = bag()
+	local lava = color(MAGMA.color)
+	local feet = view.root.Position
+	local source = anchor(b, CFrame.new(feet + UP * view.height * 0.5))
+	play(b, source, MAGMA_SOUNDS.call, 1)
+	task.delay(seconds * 0.5, function()
+		if not b.done then
+			play(b, source, MAGMA_SOUNDS.charge, 1)
+		end
+	end)
+	local glow = Instance.new("PointLight")
+	glow.Color = lava
+	glow.Range = view.height * 2.5
+	glow.Brightness = 0
+	glow.Parent = source
+	tween(glow, seconds, { Brightness = 4 })
+	groundDecal(b, groundAt(feet), view.height * 1.6 * g.scale, TEX.crack, lava, seconds)
+	local embers = ElementFx.emitter(source, "spark", lava, { size = { 0.5, 0.1 }, life = { 0.5, 1 }, speed = { 4, 8 }, spread = 70, accel = UP * 4 })
+	embers.Shape = Enum.ParticleEmitterShape.Sphere
+	embers.Rate = g.particles
+	local stopGlow = ElementFx.chargeGlow(view.root, lava, seconds, 1.5 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function magmaImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = MAGMA.grades[grade]
+	local b = bag()
+	local lava = color(MAGMA.color)
+	local stun = (SuperFx.abilityOf("MagmaSlam") or { stun = 2 }).stun
+	local landing = groundAt(view.root.Position)
+	local ground = groundAt(target)
+	local fit = math.clamp(targetHeight * 0.45, 3, 12)
+	local boom = anchor(b, CFrame.new(landing + UP * 2))
+	play(b, boom, MAGMA_SOUNDS.impact, 1.2)
+	if grade == "A" or grade == "S" then
+		play(b, boom, MAGMA_SOUNDS.layer, 1)
+	end
+	-- The slam: a shockwave and dust where it lands, then glowing cracks racing out to the boss
+	ElementFx.ring(landing + UP * 0.2, lava, view.height * 1.4 * g.scale, 0.45)
+	ElementFx.burst(landing + UP, Color3.fromRGB(120, 90, 70), 1.4 * g.scale)
+	local reach = (ground - landing).Magnitude
+	for index = 1, g.cracks do
+		local spread = (index - (g.cracks + 1) / 2) * 0.22
+		local flat = Vector3.new(ground.X - landing.X, 0, ground.Z - landing.Z)
+		local aim = if flat.Magnitude > 0.5 then CFrame.lookAt(landing, landing + flat) * CFrame.Angles(0, spread, 0) else CFrame.new(landing)
+		local length = math.max(reach + fit, g.crackLength) * (0.85 + math.random() * 0.3)
+		crackLine(b, landing, landing + aim.LookVector * length, 0.35 + 0.15 * g.scale, lava, 0.35, 1.2)
+	end
+	-- Under the boss: lava geysers once the cracks reach it
+	task.delay(0.35, function()
+		if b.done then
+			return
+		end
+		ElementFx.eruption(ground, lava, fit * 1.3, g.geysers * 2)
+		for index = 1, g.geysers do
+			local angle = index / g.geysers * 2 * math.pi
+			local spot = ground + Vector3.new(math.cos(angle), 0, math.sin(angle)) * fit * 0.7 * math.random()
+			ElementFx.pillar(spot, lava, (8 + targetHeight) * (0.8 + 0.3 * g.scale), 0.9, "flame")
+		end
+		groundDecal(b, ground, fit * 3, TEX.crack, lava, 0.25)
+	end)
+	-- The linger: rocks raining down and a cooling crust round its feet for the stun
+	rockRain(b, ground, fit * 1.6, g.rocks, 0.9 + 0.3 * g.scale, lava, 1.6)
+	local rumble = play(b, anchor(b, CFrame.new(ground + UP * 2)), MAGMA_SOUNDS.linger, 0.8)
+	local crust = part(b, Vector3.new(1.4, fit * 1.9, fit * 1.9), Color3.fromRGB(52, 40, 36), CFrame.new(ground + UP * 0.6) * CFrame.Angles(0, 0, math.rad(90)), 0, Enum.PartType.Cylinder)
+	crust.Material = Enum.Material.Basalt
+	local seam = part(b, Vector3.new(0.2, fit * 2, fit * 2), lava, CFrame.new(ground + UP * 1.35) * CFrame.Angles(0, 0, math.rad(90)), 0.35, Enum.PartType.Cylinder)
+	task.delay(stun, function()
+		if b.done then
+			return
+		end
+		tween(crust, 0.5, { Transparency = 1 })
+		tween(seam, 0.5, { Transparency = 1 })
+		ElementFx.burst(ground + UP, Color3.fromRGB(90, 70, 60), 1)
+	end)
+	-- S: a ring of lava bursts round the landing
+	if g.extra then
+		ElementFx.eruption(landing, lava, view.height * 1.3, 10)
+		local ring = fireRing(b, landing + UP * 0.3, view.height * 1.1, 14, lava, 1.8)
+		task.delay(1.4, function()
+			for _, flame in ring do
+				flame.Rate = 0
+			end
+		end)
+	end
+	task.delay(math.max(stun, 2.2) + 1, function()
+		if rumble then
+			tween(rumble, 0.4, { Volume = 0 })
+		end
+		task.delay(0.5, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
 -- The finished looks (spec "The ten moves"), by look id; the rest play the first pass
 local LOOKS: { [string]: Look } = {
 	Inferno = { charge = infernoCharge, impact = infernoImpact },
+	MagmaSlam = { charge = magmaCharge, impact = magmaImpact },
 }
 
 -- Everything from the press to the impact on the caster; returns a stop

@@ -91,7 +91,7 @@ return {
 			crackLength = { 14, 18, 23, 30 },
 			geysers = { 2, 3, 4, 6 },
 			rocks = { 6, 9, 13, 18 },
-		}),
+		}, "lavaslam"),
 		-- A black moon covers the sun and the fox turns to shadow (S: two shadow clones)
 		Eclipse = look("Epic", "Eclipse Fox", "Shade", rgb(167, 139, 250), {
 			corona = { 10, 12, 15, 19 },
@@ -138,7 +138,13 @@ return {
 		TidalShield = {},
 		TidalBlessing = {},
 		Stampede = {},
-		MagmaSlam = {},
+		MagmaSlam = {
+			call = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2
+			charge = "rbxassetid://9118617342", -- Rock Impact Large Hit Scrape 1
+			impact = "rbxassetid://9114554531", -- Gas Fire Explosion 1
+			layer = "rbxassetid://9118587494", -- Rock Drop On Concrete Drops Breaks 2 (A and S)
+			linger = "rbxassetid://9125883906", -- Rocks Tumble Falling Down Cliff Grit Scatter
+		},
 		Eclipse = {},
 		RiftStep = {},
 		Supernova = {},
