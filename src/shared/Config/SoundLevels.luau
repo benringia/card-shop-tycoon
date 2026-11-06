@@ -84,5 +84,10 @@ return {
 		["9114463410"] = 110, -- flameLicks
 		["9114446277"] = 114, -- fireSwing
 		["9117985933"] = 149, -- fireBurst
+		-- The Verdant Blade's (2026-11-07)
+		["9114518070"] = 116, -- leafRustle
+		["9120258724"] = 74, -- rootCrack
+		["9118676043"] = 35, -- vinesTear
+		["9113582284"] = 77, -- vineSnap
 	} :: { [string]: number },
 }

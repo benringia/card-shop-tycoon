@@ -200,6 +200,21 @@ return {
 		expect.equal(SwordRules.skillImpact({ kind = "spin", radius = 9 }, 0, 0, 0, -1, { t("boss", 3, -5) }), nil)
 	end,
 
+	["how long a skill takes to reach its foe: a wave's first contact at its speed, its full run when none"] = function()
+		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
+		local vines = { kind = "wave", length = 18, width = 4, speed = 20, blast = 4 }
+		expect.near(SwordRules.skillTravel(vines, 0, 0, 0, -1, { t("boss", 0, -12) }), 11 / 20, 1e-9)
+		expect.near(SwordRules.skillTravel(vines, 0, 0, 0, -1, {}), 18 / 20, 1e-9, "no foe: to the end of its run")
+		expect.equal(SwordRules.skillTravel({ kind = "spin", radius = 9 }, 0, 0, 0, -1, { t("boss", 0, -5) }), 0, "lands at once")
+	end,
+
+	["a held skill pose waits for the skill to reach its foe, never less than nothing"] = function()
+		-- Thornline: the blade stays in the ground (held at 0.5 s) until the vines reach the foe; the snap key (0.58 s)
+		-- plays as they arrive (hit 0.45 s + travel)
+		expect.near(SwordRules.holdFor(0.45, 0.6, 0.58), 0.47, 1e-9)
+		expect.equal(SwordRules.holdFor(0.45, 0.05, 0.58), 0, "a foe right in front: no hold")
+	end,
+
 	["judgment: five strikes a fifth each on the aimed foe within 24 (in front first), none in range: nothing"] = function()
 		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
 		local shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 }

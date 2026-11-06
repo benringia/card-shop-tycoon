@@ -23,7 +23,7 @@ combo is a later animation round", section 3.5).
 | Sword | Slashes (cuts 1-3) | Finisher (cut 3's slam) | Skill |
 |---|---|---|---|
 | **Forge Sword** (Common, the element picked when forged) | a trail in its element's colour, small sparks of its element on hit | a burst of its element where the slam lands: a flame puff (Ember), a splash (Tide), leaves (Bloom), sparks (Volt), shadow (Shade) | **Elemental Spin**: a full spin slash that throws a ring wave of its element out along the ground |
-| **Verdant Blade** (Rare, Bloom) | leaves and petals shed off each swing | roots and thorns burst up out of the ground under the foe | **Thornline**: stab the blade into the ground; a line of thorny vines erupts toward the foe and snaps shut |
+| **Verdant Blade** (Rare, Bloom) | leaves and petals shed off each swing | roots and thorns burst up out of the ground under the foe | **Thornline** (owner 2026-11-07): a short hop, the blade plunged vertical into the ground and held there while thick thorny vines race out toward the foe and snap shut on it |
 | **Sunforged Blade** (Epic, Ember) | a fire trail on every slash | the ground cracks open with glowing lava where the slam lands | **Sunfall Cleave** (owner 2026-11-07): jump high, hang at the top while sunlight gathers into the blade, one huge cleave in the air (screen shake) launches an upright fire crescent that glides slowly down toward the boss and explodes on contact (screen shake), with a camera moment on your screen |
 | **Prism Blade** (Legendary, every element) | rainbow arcs | prism shards in all five colours burst out | **Prism Judgment**: point the blade at the boss; five ghost blades (Ember, Tide, Bloom, Volt, Shade) appear in a ring above, strike down one after another, then a rainbow pillar |
 
@@ -35,8 +35,10 @@ The skills grow in scale with rarity: the Common's is a simple spin, the Legenda
   cooldown (8 s), so boss balance doesn't move. Only the motion, the shape it hits and the look change.
 - **Their shapes** (what the server counts as hit; pure rules in `Util/SwordRules`, Lune-tested, like the dash's):
   - Elemental Spin: every foe within 9 studs of you, all at once.
-  - Thornline: a straight line from you toward your aim (the existing `aimTarget` pick, else where you face), 18 studs
-    long and 4 wide, at the hit moment. You don't move.
+  - Thornline (owner 2026-11-07: "pierce the ground until the vines reach the enemy"): a line from you toward your aim,
+    18 studs long and 4 wide; the vines race along it at 20 studs a second and snap shut on the first foe they reach,
+    catching every foe within 4 studs of it (none in the line: they snap at its end, no damage). You don't move; your
+    blade stays in the ground until they arrive.
   - Sunfall Cleave (owner 2026-11-07): a line toward your aim, 24 studs long and 6 wide; the crescent glides at 14
     studs a second and bursts on the first foe it touches, every foe within 6 studs of the burst taking its damage then
     (none in its path: it bursts at the end of its run, no damage).
@@ -71,8 +73,9 @@ with four skills), front and side GIF previews at real speed shown to the owner 
 before they're published.
 
 - Elemental Spin: a planted full turn with the blade held out at waist height (about 0.9 s).
-- Thornline: a short hop, both hands driving the blade down into the ground in front, a beat holding it there (about
-  1.1 s).
+- Thornline (owner 2026-11-07): a short hop with the blade hanging vertical, point down, plunged straight into the
+  ground (0.42 s), held there crouched over the hilt (a Hold marker: the game freezes the move until the vines reach the
+  foe), a shove on the hilt as they snap, wrenched free (0.95 s plus the hold).
 - Sunfall Cleave (owner 2026-11-07, after the first preview): a crouch, a high jump (about 5 studs) arched back like a
   drawn bow, a long hang at the top charging (about 1.2 s: "make the charging more longer"), one cleave in the air, a low
   landing (2.45 s, the Hit at 1.78 s). A

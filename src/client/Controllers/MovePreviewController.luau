@@ -207,6 +207,12 @@ local function playSword(payload: any)
 		local dummyTarget = { id = "dummy", x = dummy.Position.X, z = dummy.Position.Z, radius = dummy.Size.X / 2 }
 		local x, z = SwordRules.skillImpact(moveset.skill.shape, root.Position.X, root.Position.Z, look.X, look.Z, { dummyTarget })
 		local aim = if x and z then Vector3.new(x, root.Position.Y, z) else dummy.Position
+		-- a held skill (Thornline) keeps its pose until it reaches the dummy, as in a fight
+		local travel = SwordRules.skillTravel(moveset.skill.shape, root.Position.X, root.Position.Z, look.X, look.Z, { dummyTarget })
+		local track = anims.track(move)
+		if track then
+			length += SwordController.HoldSkill(track, moveset.skill, travel)
+		end
 		local shake = SwordSkillFxConfig.SHAKE
 		SwordSkillFx.skill(character, fx.skill, colors, scale, aim, {
 			blade = blade,
@@ -214,7 +220,7 @@ local function playSword(payload: any)
 				ScreenFx.shake(shake.release)
 			end,
 			burst = function()
-				ScreenFx.shake(shake.impact)
+				ScreenFx.shake((shake :: any)[fx.skill] or shake.impact)
 				local spec = SwordSkillFxConfig.LOOKS[fx.skill]
 				if spec and spec.burstSound then
 					SwordController.PlaySound(spec.burstSound)

@@ -48,6 +48,10 @@ for name in names:
     print("EXPORTED", name, count)
     if preview:
         fn, length = moves.MOVES[name][0], moves.MOVES[name][1]
+        # a move the game holds at runtime (Thornline until its vines arrive) shows a typical hold in its preview
+        if hasattr(moves, "PREVIEW_HOLD_SHOWN"):
+            moves.PREVIEW_HOLD = moves.PREVIEW_HOLD_SHOWN
+            length += moves.PREVIEW_HOLD
         rig = kit.build()
         first = 1 + LEAD
         fn(rig, first)

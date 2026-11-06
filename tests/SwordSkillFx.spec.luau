@@ -94,6 +94,16 @@ return {
 		expect.equal(SwordSkillFx.SHAKE.release > 0 and SwordSkillFx.SHAKE.impact >= SwordSkillFx.SHAKE.release, true, "a shake on the cleave, a bigger one on the burst")
 	end,
 
+	["Thornline's vines keep time with its moveset: they leave at the hit, race at the shape's speed, snap with its catch"] = function()
+		local beats = SwordSkillFx.LOOKS.thornline.beats :: { [string]: number }
+		local skill = Swords.SWORDS.verdantBlade.skill
+		expect.equal(beats.release, skill.hitAt, "the vines leave at the Hit marker")
+		expect.equal(beats.speed, skill.shape.speed)
+		expect.equal(beats.blast, skill.shape.blast)
+		expect.equal(beats.spacing > 0 and beats.height > 0, true, "rows of vines, standing tall")
+		expect.equal(SwordSkillFx.SHAKE.thornline > 0 and SwordSkillFx.SHAKE.thornline < SwordSkillFx.SHAKE.impact, true, "a small shake on the snap")
+	end,
+
 	["the skill cinematic: up to the low angle, held through the charge, chasing the crescent, held on the burst, back"] = function()
 		local cfg = SwordSkillFx.CINEMATIC
 		local function beat(t: number): (string, number)

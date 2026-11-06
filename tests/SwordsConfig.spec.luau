@@ -73,12 +73,38 @@ return {
 		end
 	end,
 
+	["the Verdant Blade's cuts carry a leafy rustle, its skill the vines tearing up and snapping shut"] = function()
+		local verdant = Swords.SWORDS.verdantBlade
+		local starter = Swords.SWORDS.starterSword
+		local function keys(list: { any }): { [string]: boolean }
+			local found = {}
+			for _, cue in list do
+				found[cue.key] = true
+			end
+			return found
+		end
+		for _, move in { "cut1", "cut2", "cut3" } do
+			expect.equal(keys(verdant.cues[move]).leafRustle, true, `{move}: the rustle`)
+		end
+		expect.equal(keys(verdant.cues.cut3).rootCrack, true, "the finisher's roots cracking")
+		expect.equal(keys(verdant.cues.skill).vinesTear, true, "the vines tearing up")
+		for _, key in { "leafRustle", "rootCrack", "vinesTear", "vineSnap" } do
+			expect.equal(string.sub(verdant.sounds[key] or "", 1, 13), "rbxassetid://", key)
+			expect.equal(starter.sounds[key], nil, `the Steel Sword has no {key}`)
+		end
+	end,
+
 	["each new skill has the spec's shape"] = function()
 		local shapes = Swords.SWORDS
 		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")
 		expect.equal(shapes.forgeSword.skill.shape.radius, 9)
 		local thorn = shapes.verdantBlade.skill.shape
-		expect.equal(thorn.kind, "line"); expect.equal(thorn.length, 18); expect.equal(thorn.width, 4)
+		expect.equal(thorn.length, 18); expect.equal(thorn.width, 4)
+		-- owner 2026-11-07: the blade stays in the ground until the vines reach the foe, where they snap shut
+		expect.equal(thorn.kind, "wave"); expect.equal(thorn.speed, 20); expect.equal(thorn.blast, 4)
+		local hold = shapes.verdantBlade.skill.hold :: { at: number, snap: number }
+		expect.equal(hold.at, 0.5); expect.equal(hold.snap, 0.58)
+		expect.equal(shapes.verdantBlade.skill.hitAt < hold.at and hold.at < hold.snap, true, "the vines leave, the pose holds, then the snap")
 		local sun = shapes.sunforgedBlade.skill.shape
 		expect.equal(sun.kind, "wave"); expect.equal(sun.length, 24); expect.equal(sun.width, 6)
 		-- owner 2026-11-07: the crescent glides slowly (14 studs a second) and bursts on contact, foes within 6 studs

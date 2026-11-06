@@ -34,7 +34,10 @@ export type SkillShape = {
 	slack: number?,
 	blast: number?,
 }
-export type Skill = { power: number, hitAt: number, length: number, cooldown: number, shape: SkillShape, dash: Dash? }
+-- A skill whose animation holds its pose until it reaches its foe (Thornline: the blade in the ground until the vines
+-- arrive): frozen at track time `at`, its `snap` key playing as they arrive (SwordRules.holdFor)
+export type Hold = { at: number, snap: number }
+export type Skill = { power: number, hitAt: number, length: number, cooldown: number, shape: SkillShape, dash: Dash?, hold: Hold? }
 -- A sword's effects (Config/SwordSkillFx looks): on its slashes, its finisher (cut 3) and its skill
 export type SwordFx = { slash: string, finisher: string, skill: string }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
@@ -192,16 +195,33 @@ SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", {
 	{ key = "swing3", at = 0.2 },
 	{ key = "hitBig", at = 0.44 },
 })
--- Thornline: the blade driven into the ground, a line of thorny vines toward the foe (18 x 4 studs)
+-- Thornline (owner 2026-11-07): a short hop, the blade plunged point-down into the ground (its Hit marker: the vines
+-- leave, tools/blender/anim_verdant_blade.py) and held there until thorny vines racing along the ground toward your aim
+-- (18 x 4 studs, 20 studs a second) reach the first foe and snap shut on it, catching every foe within 4 studs
 SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", {
 	power = 0.9,
-	hitAt = 0.55,
-	length = 1.1,
+	hitAt = 0.45,
+	length = 0.95,
 	cooldown = 8,
-	shape = { kind = "line", length = 18, width = 4 },
+	shape = { kind = "wave", length = 18, width = 4, speed = 20, blast = 4 },
+	hold = { at = 0.5, snap = 0.58 },
 }, { slash = "leafShed", finisher = "rootBurst", skill = "thornline" }, {
-	{ key = "swing2", at = 0.3 },
-	{ key = "ground", at = 0.54 },
+	{ key = "air1", at = 0.12 }, -- the hop
+	{ key = "ground", at = 0.42 }, -- the blade plunging into the earth
+	{ key = "vinesTear", at = 0.45 }, -- the vines tearing up (their snap plays vineSnap where they close)
+}, {
+	-- Pro Sound Effects, kept quiet (SOUND_VOLUMES; levelled by Config/SoundLevels)
+	sounds = {
+		leafRustle = "rbxassetid://9114518070", -- Foliage Movement 2: a leafy rustle under every cut's swish
+		rootCrack = "rbxassetid://9120258724", -- Tree Branches Breaking Snapping Cracking 1: the finisher's roots
+		vinesTear = "rbxassetid://9118676043", -- Rocks Dirt Debris Pouring Bursts 13: the vines tearing up the ground
+		vineSnap = "rbxassetid://9113582284", -- Branch Snap Wood Stick Crack Various Sizes 7: the vines snapping shut
+	},
+	cutCues = {
+		cut1 = { { key = "leafRustle", at = 0.12 } },
+		cut2 = { { key = "leafRustle", at = 0.10 } },
+		cut3 = { { key = "leafRustle", at = 0.56 }, { key = "rootCrack", at = 0.68 } },
+	},
 })
 -- Sunfall Cleave (owner 2026-11-07): a high jump, a long charge hanging at the top, one cleave in the air (its Hit
 -- marker: tools/blender/anim_sunforged_blade.py) launching a fiery crescent that glides down toward your aim at 14 studs
@@ -289,5 +309,10 @@ return {
 		flameLicks = 0.25,
 		fireSwing = 0.35,
 		fireBurst = 0.4,
+		-- the Verdant Blade's
+		leafRustle = 0.3,
+		rootCrack = 0.35,
+		vinesTear = 0.5, -- a quiet clip (its level 35)
+		vineSnap = 0.4,
 	},
 }

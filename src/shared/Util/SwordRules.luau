@@ -267,6 +267,23 @@ function SwordRules.skillHits(shape: SkillShape, sx: number, sz: number, px: num
 	return hits
 end
 
+-- How long after its hit moment a skill reaches its first foe (seconds): a wave's first contact at its speed, the end
+-- of its run when none is in its path; 0 for the shapes that land at once
+function SwordRules.skillTravel(shape: SkillShape, px: number, pz: number, lookX: number, lookZ: number, targets: { Target }): number
+	if shape.kind ~= "wave" or (shape.speed or 0) <= 0 then
+		return 0
+	end
+	local dirX, dirZ = unit(lookX, lookZ)
+	local contact = firstContact(shape, px, pz, dirX, dirZ, targets) or shape.length or 0
+	return contact / (shape.speed :: number)
+end
+
+-- How long a skill's animation holds its pose (frozen at its `hold.at`) so its next key (`snap`, track time) plays
+-- just as the skill reaches its foe (`hitAt` + `travel`); 0 when the foe is reached before then
+function SwordRules.holdFor(hitAt: number, travel: number, snap: number): number
+	return math.max(0, hitAt + travel - snap)
+end
+
 -- Where a skill's effect lands (the client draws it there): a wave's burst on the first foe it touches, else the end of
 -- its run; the judged foe; nil for the shapes drawn around you or along your path
 function SwordRules.skillImpact(shape: SkillShape, px: number, pz: number, lookX: number, lookZ: number, targets: { Target }): (number?, number?)

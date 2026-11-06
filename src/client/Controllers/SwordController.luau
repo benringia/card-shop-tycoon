@@ -849,6 +849,35 @@ local function playCues(sword: Swords.Sword, move: string, token: number)
 	end
 end
 
+-- A held skill's pose (Config/Swords skill.hold: Thornline's blade in the ground) frozen at its `at` for `seconds`
+-- (SwordRules.holdFor), so its next key plays as the skill reaches its foe; `live()` false (a dodge): no hold
+local function holdPose(track: AnimationTrack, hold: Swords.Hold?, seconds: number, live: () -> boolean)
+	if not hold or seconds <= 0 then
+		return
+	end
+	task.delay(hold.at, function()
+		if not live() or not track.IsPlaying then
+			return
+		end
+		track:AdjustSpeed(0)
+		task.delay(seconds, function()
+			if track.IsPlaying then
+				track:AdjustSpeed(1)
+			end
+		end)
+	end)
+end
+
+-- A skill's held pose on a track playing it (MovePreviewController): held until the skill reaches its foe `travel`
+-- seconds after its hit moment; returns how much longer the move runs
+function SwordController.HoldSkill(track: AnimationTrack, skill: Swords.Skill, travel: number): number
+	local held = if skill.hold then SwordRules.holdFor(skill.hitAt, travel, skill.hold.snap) else 0
+	holdPose(track, skill.hold, held, function(): boolean
+		return track.IsPlaying
+	end)
+	return held
+end
+
 -- A move's sound cues on your character without swinging (MovePreviewController's /skillfx, out of a fight): the
 -- equipped sword's sounds at their moments, as a fight plays them
 function SwordController.PlayCues(move: string)
@@ -981,11 +1010,18 @@ function SwordController.Skill()
 	end
 	SwordController.DrawNow()
 	Remotes.SwordSkill:FireServer()
-	local token = SwingGate.startSkill(gate, os.clock(), skill.length)
 	softAim(root)
-	holdControls(humanoid, skill.length)
-	if mine then
-		mine.play("skill")
+	-- A held skill (Thornline: the blade in the ground until the vines reach the foe) keeps its pose that much longer
+	local facingNow = root.CFrame.LookVector
+	local travel = SwordRules.skillTravel(skill.shape, root.Position.X, root.Position.Z, facingNow.X, facingNow.Z, if combatTargets then combatTargets() else {})
+	local held = if skill.hold then SwordRules.holdFor(skill.hitAt, travel, skill.hold.snap) else 0
+	local token = SwingGate.startSkill(gate, os.clock(), skill.length + held)
+	holdControls(humanoid, skill.length + held)
+	local track = if mine then mine.play("skill") else nil
+	if track then
+		holdPose(track, skill.hold, held, function(): boolean
+			return stillSwinging(token)
+		end)
 	end
 	swingTrail()
 	playCues(sword, "skill", token)
@@ -1000,7 +1036,7 @@ function SwordController.Skill()
 				ScreenFx.shake(shake.release)
 			end,
 			burst = function()
-				ScreenFx.shake(shake.impact)
+				ScreenFx.shake((shake :: any)[effects.fx.skill] or shake.impact)
 				local spec = SwordSkillFxConfig.LOOKS[effects.fx.skill]
 				if spec and spec.burstSound then
 					SwordController.PlaySound(spec.burstSound)

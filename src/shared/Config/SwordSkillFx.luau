@@ -27,9 +27,35 @@ local LOOKS: { [string]: Look } = {
 	elementBurst = { kind = "finisher", textures = { "impact", "spark" }, seconds = 0.8, size = 6, count = 14 },
 	elementalSpin = { kind = "skill", textures = { "ring", "spark" }, seconds = 1, size = 18, count = 24, form = "around" },
 	-- Verdant Blade: leaves off each swing, roots and thorns under the foe, Thornline's vines
-	leafShed = { kind = "slash", textures = { "shard", "glow" }, seconds = 0.7, size = 4, count = 8 },
-	rootBurst = { kind = "finisher", textures = { "vine", "bark" }, seconds = 1, size = 6, count = 12 },
-	thornline = { kind = "skill", textures = { "vine", "bark" }, seconds = 1.2, size = 18, count = 24, form = "ahead" },
+	-- Verdant Blade (storyboard 2026-11-07). Leaves: leaves (`size` studs) and a few pink petals peel off the blade for
+	-- `seconds` of each swing, `count` a second, tumbling down
+	leafShed = { kind = "slash", textures = { "shard", "glow" }, seconds = 0.3, size = 0.9, count = 40 },
+	-- Roots: thorny bark roots (beats: `roots` of them, `height` studs tall) spike up in a ring `size` studs across where
+	-- the finisher slams down, a puff of dirt and leaves, and sink back over `seconds`
+	rootBurst = {
+		kind = "finisher",
+		textures = { "shard", "smoke" },
+		seconds = 1,
+		size = 6,
+		count = 16,
+		beats = { roots = 6, height = 3.6, thick = 0.7 },
+	},
+	-- Thornline (owner 2026-11-07: the vines racing out from the blade, "make the vines noticeable", the blade held in the
+	-- ground until they reach the enemy): at `release` (the Hit marker) thick thorny vines burst up in rows `spacing` studs
+	-- apart, a pair `side` studs either side of your aim line, `height` studs tall and `thick` thick, racing out at `speed`
+	-- studs a second (the shape's) to the first foe (else the end of the run, `size` studs); there they snap shut over the
+	-- line and a ring of them clamps the foe (`trap` studs round, the catch `blast`, the shape's); they wither over
+	-- `wither` seconds after `linger`
+	thornline = {
+		kind = "skill",
+		textures = { "shard", "glow", "smoke" },
+		seconds = 1.2,
+		size = 18,
+		count = 24,
+		form = "ahead",
+		burstSound = "vineSnap",
+		beats = { release = 0.45, speed = 20, blast = 4, spacing = 2, side = 1.4, height = 5.2, thick = 0.9, trap = 2.6, linger = 0.35, wither = 0.45 },
+	},
 	-- Sunforged Blade (storyboard 2026-11-07). Fire trail: flames stream off the blade for `seconds` of each swing, `size`
 	-- studs, `count` a second
 	fireTrail = { kind = "slash", textures = { "flame", "spark" }, seconds = 0.3, size = 1.3, count = 90 },
@@ -61,8 +87,10 @@ local LOOKS: { [string]: Look } = {
 
 return {
 	LOOKS = LOOKS,
+	-- The Verdant's colours beside its weapon's greens: bark for roots and vine stems, pale thorns, pink petals
+	VERDANT = { bark = { 104, 72, 40 }, thorn = { 236, 232, 222 }, petal = { 255, 179, 209 } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
-	SHAKE = { release = 0.45, impact = 0.7 },
+	SHAKE = { release = 0.45, impact = 0.7, thornline = 0.3 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit), seconds
 	-- and studs: eased over `rise` to a low angle beside and behind you (`low`) looking up `lookUp` studs above your root,
 	-- drifting closer (`close`) through the charge; at the cleave it chases the crescent from `chase` behind and above it,
