@@ -5,6 +5,12 @@ local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 
 return {
+	["equipping: refused in a fight and before your first sword, with the reason to show"] = function()
+		expect.equal(WeaponRules.equipBlock(5, 4, true), "You can't change weapons in a fight.")
+		expect.equal(WeaponRules.equipBlock(3, 4, false), "Your first sword comes at shop level 4.")
+		expect.equal(WeaponRules.equipBlock(4, 4, false), nil)
+	end,
+
 	["a Grade S weapon can't be reforged (the roll can never beat it); any lower grade can"] = function()
 		expect.equal(WeaponRules.canReforge({ grade = "S", level = 3 }), false)
 		expect.equal(WeaponRules.canReforge({ grade = "A", level = 0 }), true)

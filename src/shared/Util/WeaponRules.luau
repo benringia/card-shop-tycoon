@@ -72,6 +72,16 @@ function WeaponRules.shownPower(cfg: any, combat: any, weaponId: string, grade: 
 	return if weapon and weapon.prism then power * combat.STRONG * cfg.BOND.damage else power
 end
 
+-- Why changing weapons isn't allowed now (nil: it is): in a fight, or before the shop level that gives the first sword
+function WeaponRules.equipBlock(shopLevel: number, unlockLevel: number, fighting: boolean): string?
+	if fighting then
+		return "You can't change weapons in a fight."
+	elseif shopLevel < unlockLevel then
+		return `Your first sword comes at shop level {unlockLevel}.`
+	end
+	return nil
+end
+
 -- A reforge rolls a new grade and keeps the better: a Grade S can never improve, so it isn't offered (nor paid for)
 function WeaponRules.canReforge(owned: Owned): boolean
 	return owned.grade ~= "S"

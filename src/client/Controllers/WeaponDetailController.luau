@@ -2,12 +2,14 @@
 -- A weapon's card view (weapons round 1, Task 10), over the binder's Armory: its card (Util/WeaponFace), its stats in
 -- words (WeaponText.stats), where it comes from and the progress toward forging it, and Equip (Remotes.EquipWeapon;
 -- the server checks it's yours and you're not fighting). Upgrades and reforges are the Forge's, in your shop.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Swords = require(Config:WaitForChild("Swords"))
 local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
@@ -154,11 +156,15 @@ function WeaponDetailController.Refresh()
 		end
 	end
 	local equipped = state.equipped == weaponId
-	equip.Visible = mine and weapon.ready
+	-- Before the first sword's shop level there's nothing to equip yet: say when it comes instead
+	local level = Players.LocalPlayer:GetAttribute("Level")
+	local blocked = WeaponRules.equipBlock(if typeof(level) == "number" then level else 0, Swords.UNLOCK_SHOP_LEVEL, false)
+	equip.Visible = mine and weapon.ready and blocked == nil
 	equip.Text = if equipped then "Equipped" else "Equip"
 	equip.Active = not equipped
 	equip.AutoButtonColor = not equipped
-	note.Visible = weapon.ready and weaponId ~= Weapons.STARTER
+	note.Text = blocked or "Upgrade and reforge it at the Forge in your shop."
+	note.Visible = blocked ~= nil or (weapon.ready and weaponId ~= Weapons.STARTER)
 end
 
 function WeaponDetailController.IsOpen(): boolean

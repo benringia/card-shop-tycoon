@@ -159,7 +159,12 @@ local function onEquip(player: Player, weaponId: unknown)
 		return
 	end
 	local weapon = Weapons.ById[weaponId]
-	if not weapon or not weapon.ready or isFighting(player) or not WeaponService.GetEquipped(player) then
+	if not weapon or not weapon.ready or not WeaponService.GetEquipped(player) then
+		return
+	end
+	local blocked = WeaponRules.equipBlock(EconomyService.GetLevel(player), Swords.UNLOCK_SHOP_LEVEL, isFighting(player))
+	if blocked then
+		Remotes.Notify:FireClient(player, blocked, true)
 		return
 	end
 	if weaponId ~= Weapons.STARTER and not WeaponService.GetOwned(player, weaponId) then
