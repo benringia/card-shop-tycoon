@@ -1746,7 +1746,11 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   carried group members never roll it. A weapon you have turns into
   10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
   stage: rune circle, a light column in the rarity's colour, the weapon rising with its glow, "RARE! Verdant Blade",
-  its grade, a line); Epic and Legendary drops are toasted to the server (not a duplicate: it says "Already yours").
+  its grade, a line; a new weapon's card pops in face down beside it and turns over to its face and grade), and players
+  within 150 studs of the winner see a column of light in its rarity's colour rise where they stand (WeaponBeacon); Epic
+  and Legendary drops are toasted to the server (not a duplicate: it says "Already yours", no card or column). A
+  weapon's pity resets only once it was really given; the server refuses to reforge a Grade S weapon, and anything
+  failing after a Forge payment gives it back.
   The weapon is scaled to 3.2 studs on the stage so all of it shows. The Forge's results play the same stage with the
   anvil's face under the weapon and a 1.5 s build-up with its own sounds (a fire whoosh, three rising hammer strikes),
   the hit by the grade (an anvil clank; A adds a fire burst, S and +10 a deep boom), a sword's ring as the banner pops;
@@ -1765,7 +1769,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   - the budget: your own sword and the 3 nearest others within 60 studs get the full aura (checked every 0.5 s,
     `SwordController`), every other sword the cheap glow. Studio, max graphics: 20 +10 swords in view add 1.98 ms of
     render CPU all blazing, 0.33 ms with the budget (4 blazing), 0.17 ms all cheap.
-  - a wider trail and a burst on every hit from +7. Roblox thins particles on low graphics (most phones), so there the
+  - a wider trail and a burst on every hit from +7; in a fight the Prism Blade's trail and slashes take the colour of
+    the element strong against the foe (`SwordController.SetFoeElement`). Roblox thins particles on low graphics (most phones), so there the
     blaze is a few flames.
 - **Pickup toasts**: a boss material reads "Warden Heartwood +2 (9/15)" toward what it's for next
   (`WeaponRules.materialGoal`: making its weapon, then its next upgrade).
@@ -3039,9 +3044,9 @@ boss models; the ranch and Heroic tiers come after those.
 - [x] Weapons round 1 (5.11, spec `2026-11-06-weapons-round1-design.md`, branch `weapons-round1`): the Forge, the four
   new swords, drops with pity, the Armory, the aura glow (the owner's reference look, hybrid for performance), the
   material icons (sheet 7, owner's pick A). Approved by the owner in Studio 2026-11-06.
-  Still for later, spec items moved to later by rulings: the weapon's card flipping over with its grade in the drop cinematic (a
-  "Grade X" line for now), other players nearby seeing the drop's light column (the Epic/Legendary toast tells them),
-  the Prism Blade's trail taking the strong element's colour (its own colour for now).
+  Follow-ups (branch `weapons-followups`): the drop's card turning over, the light column for others nearby, the
+  Prism Blade's trail by the foe, and the review's small fixes (pity, Grade S reforge, Forge refunds, equip toasts,
+  the Forge window's redraws, the Forge Sword's source model out of the synced folder).
 - [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
   Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
   and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.
