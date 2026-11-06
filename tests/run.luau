@@ -91,6 +91,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	WeaponsConfig = require("./WeaponsConfig.spec"),
 	WeaponRules = require("./WeaponRules.spec"),
 	WeaponLookRules = require("./WeaponLookRules.spec"),
+	WeaponText = require("./WeaponText.spec"),
 	SoundLevel = require("./SoundLevel.spec"),
 	WildLoadingRules = require("./WildLoadingRules.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),

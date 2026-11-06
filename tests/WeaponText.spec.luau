@@ -1,0 +1,60 @@
+--!strict
+local WeaponText = require("../src/shared/Util/WeaponText")
+local Weapons = require("../src/shared/Config/Weapons")
+local Items = require("../src/shared/Config/Items")
+local Combat = require("../src/shared/Config/Combat")
+local expect = require("./lib/expect")
+
+local function valueOf(rows: { { label: string, value: string } }, label: string): string?
+	for _, row in rows do
+		if row.label == label then
+			return row.value
+		end
+	end
+	return nil
+end
+
+return {
+	["stats: Power to 2 decimals, the element and its bond, the perk in words"] = function()
+		local rows = WeaponText.stats(Weapons, "verdantBlade", nil, Combat)
+		expect.equal(valueOf(rows, "Power"), "x1.25")
+		expect.equal(valueOf(rows, "Element"), "Bloom · bonds with Bloom creatures")
+		expect.equal(valueOf(rows, "Perk"), "Every 4th hit heals your creature 2%")
+		expect.equal(valueOf(rows, "Grade"), nil, "not owned: no grade or level")
+		local owned = WeaponText.stats(Weapons, "verdantBlade", { grade = "S", level = 4 }, Combat)
+		expect.equal(valueOf(owned, "Power"), "x1.61") -- 1.25 x 1.15 x 1.12
+		expect.equal(valueOf(owned, "Perk"), "Every 4th hit heals your creature 2.4%", "Grade S perks are stronger")
+		expect.equal(valueOf(owned, "Grade"), "S")
+		expect.equal(valueOf(owned, "Level"), "+4")
+	end,
+
+	["stats: the burn, the prism and the plain Steel Sword"] = function()
+		expect.equal(valueOf(WeaponText.stats(Weapons, "sunforgedBlade", nil, Combat), "Perk"), "Sets the foe burning for 3 s")
+		local prism = WeaponText.stats(Weapons, "prismBlade", nil, Combat)
+		expect.equal(valueOf(prism, "Perk"), "Always strong against the foe's element")
+		expect.equal(valueOf(prism, "Element"), "Every element · bonds with every creature")
+		local steel = WeaponText.stats(Weapons, "starterSword", nil, Combat)
+		expect.equal(valueOf(steel, "Power"), "x1.00")
+		expect.equal(valueOf(steel, "Element"), "None")
+		expect.equal(valueOf(steel, "Perk"), nil)
+		expect.equal(#WeaponText.stats(Weapons, "nope", nil, Combat), 0)
+	end,
+
+	["cost lines: cash first, then each item with have/need and whether it's enough"] = function()
+		local cost = { cash = 2000, items = { material_meadowWarden = 15, starShard = 1 } }
+		local lines = WeaponText.cost(cost, { material_meadowWarden = 9, starShard = 3 }, 2500, Items)
+		expect.equal(#lines, 3)
+		expect.equal(lines[1].text, "$2,000")
+		expect.equal(lines[1].enough, true)
+		expect.equal(lines[2].text, "Warden Heartwood 9/15")
+		expect.equal(lines[2].enough, false)
+		expect.equal(lines[3].text, "Star Shard 3/1")
+		expect.equal(lines[3].enough, true)
+		local poor = WeaponText.cost({ cash = 25000, items = {} }, {}, 900, Items)
+		expect.equal(poor[1].text, "$25,000")
+		expect.equal(poor[1].enough, false)
+		local unknown = WeaponText.cost({ cash = 0, items = { mystery = 2 } }, {}, 0, Items)
+		expect.equal(#unknown, 1, "no cash line for a free cost")
+		expect.equal(unknown[1].text, "mystery 0/2")
+	end,
+}
