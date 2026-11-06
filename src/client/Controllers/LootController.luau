@@ -1,7 +1,8 @@
 --!strict
 -- Boss loot on the ground (BossService): this player's own drops pop out of the boss and scatter round it; walking
 -- over one asks the server to pick it up (it checks the drop is yours and you're close). Nothing here replicates, so
--- nobody else sees your drops. Nothing is collected by itself: loot has to be picked up.
+-- nobody else sees your drops. Nothing is collected by itself: loot has to be picked up. A weapon material's toast
+-- shows its progress toward what it's for (WeaponRules.materialGoal: "Warden Heartwood +2 (9/15)").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -11,7 +12,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Items = require(Config:WaitForChild("Items"))
+local Weapons = require(Config:WaitForChild("Weapons"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
+local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
 
 local Controllers = script.Parent :: Instance
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -29,6 +33,14 @@ local DROP_COLOR = Color3.fromRGB(255, 205, 80)
 
 type Drop = { part: BasePart, item: string, count: number, from: Vector3, target: Vector3, born: number, askedAt: number }
 local drops: { [string]: Drop } = {}
+local itemCounts: { [string]: number } = {} -- the Bag, from ItemsChanged
+local ownedWeapons: { [string]: WeaponRules.Owned } = {} -- from WeaponsChanged
+
+-- The boss materials (Config/Weapons MATERIALS)
+local weaponMaterial: { [string]: boolean } = {}
+for _, material in Weapons.MATERIALS do
+	weaponMaterial[material] = true
+end
 
 local function itemName(id: string): (string, string)
 	local item = Items.ITEMS[id]
@@ -95,7 +107,12 @@ local function taken(id: string)
 		drop.part:Destroy()
 	end
 	local name, icon = itemName(drop.item)
-	UIController.Notify(`{icon} +{drop.count} {name}`, false, 1.5)
+	if weaponMaterial[drop.item] then
+		local _, need = WeaponRules.materialGoal(Weapons, drop.item, ownedWeapons)
+		UIController.Notify(`{icon} {WeaponText.pickup(name, drop.count, itemCounts[drop.item] or 0, need)}`, false, 1.5)
+	else
+		UIController.Notify(`{icon} +{drop.count} {name}`, false, 1.5)
+	end
 end
 
 local function onLoot(payload: any)
@@ -150,6 +167,17 @@ end
 
 function LootController.Start()
 	Remotes.BossLoot.OnClientEvent:Connect(onLoot)
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items: unknown)
+		if typeof(items) == "table" then
+			itemCounts = items :: any
+		end
+	end)
+	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
+		if typeof(state) == "table" and typeof((state :: any).owned) == "table" then
+			ownedWeapons = (state :: any).owned
+		end
+	end)
+	Remotes.WeaponsChanged:FireServer() -- the weapons now, if their first send came before this listened
 	RunService.RenderStepped:Connect(step)
 end
 

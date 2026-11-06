@@ -116,6 +116,30 @@ return {
 		expect.isNil(WeaponRules.material(W, "nope"))
 	end,
 
+	["a material's goal: making its weapon first, then its next upgrade (the loot toast's progress)"] = function()
+		local id, need = WeaponRules.materialGoal(W, "material_meadowWarden", {})
+		expect.equal(id, "verdantBlade")
+		expect.equal(need, 15)
+		id, need = WeaponRules.materialGoal(W, "material_meadowWarden", { verdantBlade = { grade = "A", level = 4 } })
+		expect.equal(id, "verdantBlade")
+		expect.equal(need, 4, "its +5 needs 4")
+		id, need = WeaponRules.materialGoal(W, "material_emberColossus", {})
+		expect.equal(id, "sunforgedBlade", "the masterwork's recipe (the Magma Halberd isn't built)")
+		expect.equal(need, 20)
+		id, need = WeaponRules.materialGoal(W, "wildOre", {})
+		expect.equal(id, "forgeSword_Ember", "the first Forge Sword")
+		expect.equal(need, 20)
+		id, need = WeaponRules.materialGoal(W, "wildOre", { forgeSword_Ember = { grade = "C", level = 0 } })
+		expect.equal(id, "forgeSword_Ember", "once owned: its next upgrade")
+		expect.equal(need, 2)
+		expect.isNil((WeaponRules.materialGoal(W, "material_frostTyrant", {})), "no built weapon uses it yet")
+		id, need = WeaponRules.materialGoal(W, "material_meadowWarden", { verdantBlade = { grade = "S", level = 10 } })
+		expect.equal(id, "sunforgedBlade", "the Verdant Blade maxed: the masterwork takes Heartwood too")
+		expect.equal(need, 10)
+		local done = { verdantBlade = { grade = "S", level = 10 }, sunforgedBlade = { grade = "C", level = 0 } }
+		expect.isNil((WeaponRules.materialGoal(W, "material_meadowWarden", done)), "nothing left needs it")
+	end,
+
 	["paying is all or nothing"] = function()
 		local cost = { cash = 100, items = { a = 2, b = 1 } }
 		local ok, why = WeaponRules.pay(cost, 100, { a = 2 })

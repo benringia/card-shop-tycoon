@@ -40,6 +40,11 @@ return {
 		expect.equal(#WeaponText.stats(Weapons, "nope", nil, Combat), 0)
 	end,
 
+	["a material's pickup line shows its progress toward what it's for"] = function()
+		expect.equal(WeaponText.pickup("Warden Heartwood", 2, 9, 15), "Warden Heartwood +2 (9/15)")
+		expect.equal(WeaponText.pickup("Wild Ore", 1, 3, nil), "Wild Ore +1")
+	end,
+
 	["what each upgrade adds to the glow (the forge reveal's line)"] = function()
 		local Looks = require("../src/shared/Config/WeaponLooks")
 		expect.equal(WeaponText.ladderStep(Looks, 1), "Its edges glow brighter")

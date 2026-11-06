@@ -167,6 +167,26 @@ function WeaponRules.upgradeCost(cfg: any, weaponId: string, toLevel: number): C
 	return { cash = math.round(cfg.UPGRADE.cash[toLevel] * share), items = items }
 end
 
+-- What a material is for next (the loot toast's "9/15"): the first built weapon, in the Armory's order, that still
+-- needs it: making it (a boss weapon, a Forge weapon, a masterwork's recipe) when not owned, else its next upgrade.
+-- Returns that weapon and how many it needs, or nil when nothing does.
+function WeaponRules.materialGoal(cfg: any, material: string, owned: { [string]: Owned }): (string?, number?)
+	for _, weapon in cfg.WEAPONS do
+		if not weapon.ready then
+			continue
+		end
+		local have = owned[weapon.id]
+		local cost = if have
+			then (if have.level < cfg.MAX_LEVEL then WeaponRules.upgradeCost(cfg, weapon.id, have.level + 1) else nil)
+			else WeaponRules.makeCost(cfg, weapon.id)
+		local need = if cost then cost.items[material] else nil
+		if need and need > 0 then
+			return weapon.id, need
+		end
+	end
+	return nil, nil
+end
+
 -- Whether the cash and items cover a cost: all or nothing; the reason names the first thing missing ("cash" or an
 -- item id, in id order so it's always the same one)
 function WeaponRules.pay(cost: Cost, cash: number, items: { [string]: number }): (boolean, string?)

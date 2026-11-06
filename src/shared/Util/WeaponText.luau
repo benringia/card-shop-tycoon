@@ -77,6 +77,11 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	return rows
 end
 
+-- A material picked up, with its progress toward what it's for (WeaponRules.materialGoal): "Warden Heartwood +2 (9/15)"
+function WeaponText.pickup(name: string, gained: number, have: number, need: number?): string
+	return if need then `{name} +{gained} ({have}/{need})` else `{name} +{gained}`
+end
+
 -- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER), for the forge reveal
 function WeaponText.ladderStep(looks: any, level: number): string
 	local ladder = looks.LADDER
