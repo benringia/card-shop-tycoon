@@ -134,25 +134,40 @@ return {
 		decor = { good = "A cosy shop", fix = "Decorate your shop" },
 	},
 	-- Town walkers (Util/WalkerRules, TownWalkerService): up to `max` in town, one more every spawnEvery s while a player
-	-- is in town; they stroll the plaza for linger s (sitting on a free bench sitChance of the time), then pick an open
-	-- shop weighted by rating^ratingPower (x wantedBonus for a collector's card on show) and become its customer;
-	-- gone after lifetime s
-	-- (plaza stops: 4 fountain spots fountainRadius out, laneStops spots laneRadius out; they appear edgeRadius out; "in
-	-- town" is within townRadius of the plaza centre)
+	-- is in town; they walk in from a street end and stroll the whole street for linger s (sitting on a free bench
+	-- sitChance of the time), then pick an open shop weighted by rating^ratingPower (x wantedBonus for a collector's card
+	-- on show) and become its customer; after lifetime s they walk off at the nearest street end.
+	-- Stops (WalkerRules.townStops): window spots windowOffsets studs either side of each shop's door on its sidewalk,
+	-- road spots at roadXs, roadZ out from the middle line, plaza spots plazaRadius out at plazaAngles (degrees, 0 = +X;
+	-- 180 is the spawn pad) and the plaza benches. They appear and leave exitInset studs inside the street's ends.
+	-- walkSpeed is a stroll (owner 2026-11-06: "walk slowly, not run"); the walk clip plays at walkSpeed / walkClipPace
+	-- (the default R15 walk is made for about 6.4 studs a second). Their paths never jump (they hopped onto the fountain)
+	-- and keep off grass and water; a waypoint they can't reach in stuckSeconds past its walk time is given up.
+	-- "In town" is within townRadius of the plaza centre.
 	WALKERS = {
 		max = 8,
 		spawnEvery = 20,
-		linger = { 30, 90 },
-		sitChance = 0.4,
+		linger = { 40, 120 },
+		sitChance = 0.3,
 		ratingPower = 2,
 		wantedBonus = 3,
-		lifetime = 240,
+		lifetime = 300,
 		stopSeconds = { 4, 9 },
-		fountainStops = 4,
-		fountainRadius = 9,
-		laneStops = 6,
-		laneRadius = 21,
-		edgeRadius = 30,
+		walkSpeed = 6,
+		walkClipPace = 6.4,
+		stuckSeconds = 2,
+		agent = {
+			AgentRadius = 2,
+			AgentHeight = 5,
+			AgentCanJump = false,
+			Costs = { Water = math.huge, Grass = 6, LeafyGrass = 6, Mud = 6, Ground = 6 },
+		},
+		windowOffsets = { -11, 11 },
+		roadXs = { -96, -64, -32, 32, 64, 96 },
+		roadZ = 32,
+		plazaRadius = 16,
+		plazaAngles = { 0, 90, 270 },
+		exitInset = 4,
 		townRadius = 260,
 	},
 	-- Reactions (Util/ReactionRules): passing within `reach` studs of a case holding an Epic, Legendary or foil card a

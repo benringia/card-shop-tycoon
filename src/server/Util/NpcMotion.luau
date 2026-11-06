@@ -40,7 +40,8 @@ function NpcMotion.createRig(description: HumanoidDescription, name: string, spa
 	return model
 end
 
-function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, idleAnimationId: string)
+-- walkClipSpeed: how fast the walk clip plays (1 = its own pace), so the steps match a slower walk
+function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, idleAnimationId: string, walkClipSpeed: number?)
 	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator")
 	animator.Parent = humanoid
 
@@ -57,7 +58,7 @@ function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, 
 		if speed > 0.5 then
 			if not walk.IsPlaying then
 				idle:Stop()
-				walk:Play()
+				walk:Play(0.1, 1, walkClipSpeed or 1)
 			end
 		elseif not idle.IsPlaying then
 			walk:Stop()
@@ -73,29 +74,43 @@ local function moveDirect(humanoid: Humanoid, root: BasePart, target: Vector3, g
 		humanoid:MoveTo(target)
 		return humanoid.MoveToFinished:Wait()
 	end
-	local finished, reached = false, false
-	local connection = humanoid.MoveToFinished:Connect(function(didReach)
-		finished, reached = true, didReach
-	end)
-	humanoid:MoveTo(target)
+	-- Woken the moment the step ends (polling left the NPC standing still a moment at every waypoint)
+	local thread = coroutine.running()
+	local settled, reached = false, false
+	local function settle(didReach: boolean)
+		if settled then
+			return
+		end
+		settled, reached = true, didReach
+		-- (a despawn may have cancelled the walking thread meanwhile)
+		if coroutine.status(thread) == "suspended" then
+			task.spawn(thread)
+		end
+	end
+	local connection = humanoid.MoveToFinished:Connect(settle)
 	local limit = (root.Position - target).Magnitude / math.max(humanoid.WalkSpeed, 1) * 2 + graceSeconds
-	local started = os.clock()
-	while not finished and os.clock() - started < limit do
-		task.wait(0.1)
+	local timer = task.delay(limit, settle, false)
+	humanoid:MoveTo(target)
+	if not settled then
+		coroutine.yield()
 	end
 	connection:Disconnect()
-	return finished and reached
+	if coroutine.status(timer) == "suspended" then
+		task.cancel(timer)
+	end
+	return reached
 end
 
--- Walks along a computed path; falls back to a straight line if no path is found.
--- isAlive lets the caller stop the walk early (NPC removed). graceSeconds: see moveDirect.
+-- Walks along a computed path; falls back to a straight line if no path is found, unless straightLine is false (then
+-- it gives up: false). isAlive lets the caller stop the walk early (NPC removed). graceSeconds: see moveDirect.
 function NpcMotion.walkTo(
 	humanoid: Humanoid,
 	root: BasePart,
 	target: Vector3,
 	agentParams: { [string]: any },
 	isAlive: () -> boolean,
-	graceSeconds: number?
+	graceSeconds: number?,
+	straightLine: boolean?
 ): boolean
 	local path = PathfindingService:CreatePath(agentParams)
 	local ok = pcall(function()
@@ -105,6 +120,9 @@ function NpcMotion.walkTo(
 		return false
 	end
 	if not ok or path.Status ~= Enum.PathStatus.Success then
+		if straightLine == false then
+			return false
+		end
 		return moveDirect(humanoid, root, target, graceSeconds)
 	end
 

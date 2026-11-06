@@ -1,9 +1,10 @@
 --!strict
 -- Town walkers (spec 2026-11-06-customers-design, phase 2; Util/WalkerRules, Config/Customers WALKERS): a few customers
--- of every type stroll the plaza while players are in town, stop at the fountain and along the lanes, sit on a free
--- bench now and then, and after a while pick an open shop (its owner in the game) by its rating, a collector by the
--- card it wants on show. At the shop's door they become its customer (CustomerService.Adopt); a full shop sends them
--- strolling again. They add to each shop's street customers, never replace them; gone after WALKERS.lifetime.
+-- of every type walk in from the street's ends while players are in town and stroll the whole street at an easy pace:
+-- looking in the shop windows, standing about on the road and the plaza, sitting on a free bench now and then. After a
+-- while they pick an open shop (its owner in the game) by its rating, a collector by the card it wants on show. At the
+-- shop's door they become its customer (CustomerService.Adopt); a full shop sends them strolling again. They add to
+-- each shop's street customers, never replace them; after WALKERS.lifetime they walk off at the nearest street end.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,6 +13,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local Plaza = require(Config:WaitForChild("Plaza"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
 local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("CollectorRules"))
@@ -42,6 +44,7 @@ local TownWalkerService = {}
 local rng = Random.new()
 local walkers: { Walker } = {}
 local stops: { Stop } = {}
+local exits: { Vector3 } = {}
 local folder: Instance
 local sitAnimation: Animation
 
@@ -49,27 +52,25 @@ local function spring(): Vector3
 	return Vector3.new(Wild.SPRING.x, Wild.SPRING.y, Wild.SPRING.z)
 end
 
-local function ring(radius: number, degrees: number): Vector3
-	local angle = math.rad(degrees)
-	return spring() + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+local function ground(x: number, z: number): Vector3
+	return Vector3.new(x, Wild.SPRING.y, z)
 end
 
--- The plaza's stops: its benches (TownLayout puts them round the spring), the fountain rim and spots along the lanes
+-- The street's stops (WalkerRules.townStops) and its two ends
 local function buildStops()
-	local look = CustomerConfig.WALKERS
-	local centre = spring()
-	for _, degrees in Town.LAYOUT.BENCH_ANGLES do
-		local at = ring(Town.LAYOUT.BENCH_RADIUS, degrees)
-		table.insert(stops, { kind = "bench", position = at, face = centre, taken = false })
+	local world: WalkerRules.World = {
+		perRow = PlotConfig.PER_ROW,
+		plotWidth = PlotConfig.WIDTH,
+		plotDepth = PlotConfig.DEPTH,
+		gap = PlotConfig.GAP,
+		streetWidth = PlotConfig.STREET_WIDTH,
+		spring = { x = Wild.SPRING.x, z = Wild.SPRING.z },
+	}
+	for _, stop in WalkerRules.townStops(CustomerConfig, Town, world) do
+		table.insert(stops, { kind = stop.kind, position = ground(stop.x, stop.z), face = ground(stop.faceX, stop.faceZ), taken = false })
 	end
-	for index = 1, look.fountainStops do
-		local at = ring(look.fountainRadius, index * 360 / look.fountainStops + 20)
-		table.insert(stops, { kind = "fountain", position = at, face = centre, taken = false })
-	end
-	for index = 1, look.laneStops do
-		local degrees = index * 360 / look.laneStops
-		local at = ring(look.laneRadius, degrees)
-		table.insert(stops, { kind = "spot", position = at, face = ring(look.laneRadius + 10, degrees + 40), taken = false })
+	for _, exit in WalkerRules.exits(CustomerConfig, Town) do
+		table.insert(exits, ground(exit.x, exit.z))
 	end
 end
 
@@ -97,10 +98,12 @@ local function despawn(walker: Walker)
 	walker.model:Destroy()
 end
 
+-- Along a path that never jumps and keeps off grass; false when there's none or the walker got stuck on the way
 local function walkTo(walker: Walker, target: Vector3): boolean
-	return NpcMotion.walkTo(walker.humanoid, walker.root, target, CustomerConfig.PATH_AGENT, function()
+	local look = CustomerConfig.WALKERS
+	return NpcMotion.walkTo(walker.humanoid, walker.root, target, look.agent, function()
 		return walker.alive
-	end)
+	end, look.stuckSeconds, false)
 end
 
 local function face(walker: Walker, point: Vector3)
@@ -143,7 +146,8 @@ local function sit(walker: Walker, stop: Stop, seconds: number)
 	end
 end
 
--- One stroll stop: the next free stop, walked to, then sat on or stood at a few seconds
+-- One stroll stop: the next free stop, walked to, then sat on or stood at a few seconds; a stop it can't reach is
+-- skipped after a short pause
 local function stroll(walker: Walker)
 	local look = CustomerConfig.WALKERS
 	local view: { WalkerRules.Stop } = {}
@@ -160,16 +164,16 @@ local function stroll(walker: Walker)
 	local seconds = rng:NextNumber(look.stopSeconds[1], look.stopSeconds[2])
 	if stop.kind == "bench" then
 		local toward = (stop.face - stop.position).Unit
-		walkTo(walker, stop.position + toward * 1.5)
-		if walker.alive then
+		if walkTo(walker, stop.position + toward * 1.5) and walker.alive then
 			sit(walker, stop, seconds * 2)
+		elseif walker.alive then
+			task.wait(1)
 		end
-	else
-		walkTo(walker, stop.position)
-		if walker.alive then
-			face(walker, stop.face)
-			task.wait(seconds)
-		end
+	elseif walkTo(walker, stop.position) and walker.alive then
+		face(walker, stop.face)
+		task.wait(seconds)
+	elseif walker.alive then
+		task.wait(1)
 	end
 	stop.taken = false
 end
@@ -192,6 +196,19 @@ local function pickShop(walker: Walker): (any, Player?)
 	return plot, if plot then plot.owner else nil
 end
 
+-- Off at the nearest street end, then gone
+local function leave(walker: Walker)
+	if walker.alive then
+		local at = walker.root.Position
+		local points: { WalkerRules.Point } = {}
+		for _, exit in exits do
+			table.insert(points, { x = exit.X, z = exit.Z })
+		end
+		walkTo(walker, exits[WalkerRules.nearestExit(points, at.X, at.Z)])
+	end
+	despawn(walker)
+end
+
 local function run(walker: Walker)
 	local look = CustomerConfig.WALKERS
 	while walker.alive and os.clock() - walker.bornAt < look.lifetime do
@@ -200,8 +217,7 @@ local function run(walker: Walker)
 			stroll(walker)
 		end
 		local plot, owner = pickShop(walker)
-		if plot and owner and walker.alive then
-			walkTo(walker, CustomerService.EntryPoint(plot))
+		if plot and owner and walker.alive and walkTo(walker, CustomerService.EntryPoint(plot)) then
 			if walker.alive and plot.owner == owner and CustomerService.Adopt(walker.model, plot, owner, walker.kind) then
 				-- The shop's customer now: CustomerService owns the model from here
 				walker.alive = false
@@ -213,7 +229,7 @@ local function run(walker: Walker)
 			end
 		end
 	end
-	despawn(walker)
+	leave(walker)
 end
 
 local function highestShopLevel(): number
@@ -230,7 +246,7 @@ end
 local function spawnWalker()
 	local look = CustomerConfig.WALKERS
 	local kind = CustomerTypes.pick(CustomerConfig, { hasShowcase = true, shopLevel = highestShopLevel() }, rng:NextNumber())
-	local edge = ring(look.edgeRadius, rng:NextNumber(0, 360))
+	local edge = exits[rng:NextInteger(1, #exits)]
 	local model = CustomerService.BuildModel(CFrame.lookAt(edge + Vector3.new(0, 3, 0), spring() + Vector3.new(0, 3, 0)), kind)
 	local wanted: string? = nil
 	if kind == "collector" then
@@ -243,14 +259,14 @@ local function spawnWalker()
 	end
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
-	humanoid.WalkSpeed = CustomerConfig.WALK_SPEED
+	humanoid.WalkSpeed = look.walkSpeed
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	local walker: Walker = { model = model, humanoid = humanoid, root = root, kind = kind, wanted = wanted, alive = true, bornAt = os.clock() }
 	table.insert(walkers, walker)
 	model.Parent = folder
 	root:SetNetworkOwner(nil)
-	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
+	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION, look.walkSpeed / look.walkClipPace)
 	task.spawn(run, walker)
 end
 
