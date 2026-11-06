@@ -49,6 +49,7 @@ local ChallengeController = require(Controllers:WaitForChild("ChallengeControlle
 local ArenaWatchController = require(Controllers:WaitForChild("ArenaWatchController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
+local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
@@ -79,6 +80,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	FrontierController.Start() -- the home button
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
+	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
@@ -133,6 +135,7 @@ else
 	ArenaWatchController.Start() -- PvP from the stands: the fight's attacks
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
+	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby

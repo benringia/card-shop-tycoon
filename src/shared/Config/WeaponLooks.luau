@@ -75,6 +75,26 @@ return {
 		wisps = { texture = "smoke", size = 1.4, lifetime = { 1, 1.8 }, speed = { 0.2, 0.5 }, rise = 0.8 },
 		prism = { texture = "shard", size = 0.9, lifetime = { 0.8, 1.3 }, speed = { 0.2, 0.6 }, rise = 0.4 },
 	},
+	-- The drop cinematic and the forge reveal (WeaponRevealController, on the pack opening's stage): the circle opens,
+	-- a light column in the rarity's colour shoots up, the weapon rises out of it spinning, the banner and its grade
+	-- pop, a line under it. Seconds from the start; studs on the stage (its camera is 8 studs from the middle).
+	REVEAL = {
+		seconds = 6, -- it closes by itself
+		skipAfter = 2, -- a tap closes it from here
+		beamAt = 0.35,
+		riseAt = 0.7,
+		riseSeconds = 0.9,
+		bannerAt = 1.5,
+		lineAt = 2,
+		riseFrom = -6.5, -- the grip starts this far under the middle
+		lift = -1.6, -- and ends here, so the whole blade shows between the bars (checked in Studio)
+		spin = 70, -- degrees a second
+		tilt = 12, -- degrees: leaning a little toward the camera
+		bob = { studs = 0.12, seconds = 2.2 },
+		circle = { size = 6, under = 2.6, spin = 0.8 }, -- the rune circle: width, studs under the middle, turns a second
+		beam = { width = 2.6, core = 0.8, height = 14, after = 0.35 }, -- after: its width once the weapon is up (it hid the blade)
+		dim = 0.6,
+	},
 	-- Grade S: the card-style twinkle, a few star glints a second along the blade
 	TWINKLE = { texture = "flare", rate = 3, size = 1.6, lifetime = 0.5 },
 	-- +10 Awakened: a ring of its effect circling the blade (round 1: one emitter each; owner to judge in Studio)

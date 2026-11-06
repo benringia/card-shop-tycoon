@@ -12,6 +12,7 @@ export type Record = {
 	day: number, -- UTC day number of rewardedToday
 	rewardedToday: number, -- rewarded kills that day (the soft cap)
 	bonusDay: number, -- UTC day the daily bonus chest was last given
+	weaponPity: number, -- full-loot kills since its weapon last dropped (Config/Weapons DROP: bad-luck protection)
 }
 type Config = { SOFT_CAP_AFTER: number, SOFT_CAP_STEP: number, SOFT_CAP_FLOOR: number, OVERPOWER_RATIO: number, OVERPOWER_FACTOR: number }
 type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, GROUP_SWINGS_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
@@ -30,6 +31,7 @@ function BossRules.read(saved: unknown, startsOpen: boolean): Record
 		day = readCount(data.day),
 		rewardedToday = readCount(data.rewardedToday),
 		bonusDay = readCount(data.bonusDay),
+		weaponPity = readCount(data.weaponPity),
 	}
 end
 

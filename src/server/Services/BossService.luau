@@ -15,8 +15,11 @@ local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a re
 local WildValleyConfig = require(Config:WaitForChild("WildValley")) -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
+local Weapons = require(Config:WaitForChild("Weapons"))
+local Victory = require(Config:WaitForChild("Victory"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
+local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local Combat = require(Config:WaitForChild("Combat"))
@@ -28,6 +31,7 @@ local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
+local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -260,6 +264,56 @@ local function announceEverywhere(player: Player, bossId: string)
 	end)
 end
 
+-- Each boss's own weapon (Config/Weapons, built ones only): bossId -> weapon id
+local weaponOf: { [string]: string } = {}
+for _, weapon in Weapons.WEAPONS do
+	if weapon.ready and weapon.source.kind == "boss" and weapon.source.boss then
+		weaponOf[weapon.source.boss] = weapon.id
+	end
+end
+
+-- A boss's weapon drops for this player (weapons round 1): its grade rolled like a card's, given (one already owned
+-- turns into DUPLICATE_MATERIAL of its material), the drop cinematic on their screen and, for an Epic or Legendary,
+-- the whole server hears. `delay`: seconds before the cinematic and the announcement (a win's: after its victory
+-- screen; the weapon is given at once). Studio's /weapondrop forces it through here too.
+function BossService.DropWeapon(player: Player, weaponId: string, delay: number?): { weaponId: string, grade: string, refund: number, material: string? }?
+	local weapon = Weapons.ById[weaponId]
+	if not weapon or not WeaponService.IsLoaded(player) then
+		return nil
+	end
+	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
+	local _, refund = WeaponService.Give(player, weaponId, grade, "drop")
+	local payload = { weaponId = weaponId, grade = grade, refund = refund, material = WeaponRules.material(Weapons, weaponId) }
+	task.delay(delay or 0, function()
+		if not player.Parent then
+			return
+		end
+		Remotes.WeaponDropped:FireClient(player, payload)
+		if Weapons.ANNOUNCE[weapon.rarity] then
+			Remotes.WeaponAnnouncement:FireAllClients(player.DisplayName, weaponId, grade, player.UserId)
+		end
+	end)
+	return payload
+end
+
+-- On a full-loot win: the boss's weapon at WeaponRules.dropChance of its pity; a drop resets the pity, a miss adds one
+local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): any
+	local weaponId = weaponOf[bossId]
+	if not weaponId then
+		return nil
+	end
+	if rng:NextNumber() >= WeaponRules.dropChance(Weapons, record.weaponPity) then
+		record.weaponPity += 1
+		return nil
+	end
+	record.weaponPity = 0
+	return BossService.DropWeapon(player, weaponId, Victory.SECONDS)
+end
+
+function BossService.WeaponOf(bossId: string): string?
+	return weaponOf[bossId]
+end
+
 local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }): any
 	local bossId = monster.boss :: string
 	local boss = Bosses.BOSSES[bossId]
@@ -307,6 +361,10 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 			end
 		end
 		grant(player, drops, result.items)
+		-- Its weapon: those who helped only (carried members never roll it, like key fragments)
+		if not carried then
+			result.weapon = rollWeapon(player, bossId, record)
+		end
 		if record.bonusDay ~= today and not carried then
 			record.bonusDay = today
 			result.bonus = true

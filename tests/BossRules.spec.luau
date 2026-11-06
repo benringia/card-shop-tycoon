@@ -20,6 +20,14 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["weapon pity: kills since its weapon last dropped, read safely (weapons round 1)"] = function()
+		expect.equal(BossRules.read(nil, false).weaponPity, 0, "missing")
+		expect.equal(BossRules.read({ weaponPity = 7 }, false).weaponPity, 7)
+		expect.equal(BossRules.read({ weaponPity = -2 }, false).weaponPity, 0, "negative")
+		expect.equal(BossRules.read({ weaponPity = "x" }, false).weaponPity, 0, "junk")
+		expect.equal(BossRules.read({ weaponPity = 3.9 }, false).weaponPity, 3, "whole kills")
+	end,
+
 	["insideRing: who gets moved out of a sealed arena"] = function()
 		expect.equal(BossRules.insideRing(10, 20, Bosses.ARENA_RADIUS), true, "well inside")
 		expect.equal(BossRules.insideRing(Bosses.ARENA_RADIUS + 0.5, 0, Bosses.ARENA_RADIUS), true, "on the wall line still counts")

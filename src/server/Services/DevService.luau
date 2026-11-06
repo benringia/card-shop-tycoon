@@ -206,6 +206,18 @@ local function giveWeapon(player: Player, text: string)
 	Remotes.Notify:FireClient(player, `Gave the {weapon.name}, Grade {grade} +{level}`, false)
 end
 
+-- "/weapondrop meadowWarden": that boss's weapon drops for you now, through the real drop (the cinematic, a refund
+-- when you have it)
+local function forceWeaponDrop(player: Player, text: string)
+	local bossId = string.match(text, "%s+([%w_]+)")
+	local weaponId = if bossId then BossService.WeaponOf(bossId) else nil
+	if not weaponId then
+		Remotes.Notify:FireClient(player, "Usage: /weapondrop <boss id with a built weapon> (meadowWarden, prismHydra)", true)
+		return
+	end
+	BossService.DropWeapon(player, weaponId)
+end
+
 -- "/material meadowWarden 20": a boss's weapon material (Config/Weapons MATERIALS)
 local function giveMaterial(player: Player, text: string)
 	local bossId, amountText = string.match(text, "%s+([%w_]+)%s+(%d+)")
@@ -316,6 +328,7 @@ function DevService.Start()
 	addCommand(folder, "item", giveItems)
 	addCommand(folder, "weapon", giveWeapon)
 	addCommand(folder, "material", giveMaterial)
+	addCommand(folder, "weapondrop", forceWeaponDrop)
 	addCommand(folder, "boss", function(player, text)
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)
@@ -600,7 +613,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S]")
 end
 
 return DevService

@@ -156,6 +156,7 @@ return {
 	DUPLICATE_MATERIAL = 10, -- a boss dropping a weapon you own gives this many of its material instead
 	-- A boss's direct drop: base + step x full-loot kills since its weapon last dropped (bad-luck protection)
 	DROP = { base = 0.01, step = 0.005 },
+	ANNOUNCE = { Epic = true, Legendary = true }, -- a dropped weapon of these rarities is announced to the server
 	-- Upgrades +1..+10: cash x the rarity's share and the weapon's material (Forge weapons: Wild Ore), Star Shards at +5
 	-- and +10. They never fail.
 	UPGRADE = {
