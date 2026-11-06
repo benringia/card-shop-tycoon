@@ -63,10 +63,16 @@ type View = {
 
 local views: { [Model]: View } = {}
 
--- The moves a weapon swings (its Config/Swords moveset); nil for anything that isn't a built weapon
-local function swordOf(weaponId: unknown): Swords.Sword?
+-- A weapon's moveset id (Config/Swords); nil for anything that isn't a built weapon
+local function movesetOf(weaponId: unknown): string?
 	local weapon = if typeof(weaponId) == "string" then Weapons.ById[weaponId] else nil
 	local moveset = if weapon then weapon.moveset else nil
+	return if moveset and Swords.SWORDS[moveset] then moveset else nil
+end
+
+-- The moves a weapon swings (its Config/Swords moveset); nil for anything that isn't a built weapon
+local function swordOf(weaponId: unknown): Swords.Sword?
+	local moveset = movesetOf(weaponId)
 	return if moveset then Swords.SWORDS[moveset] else nil
 end
 
@@ -506,20 +512,26 @@ local function watchCharacter(character: Model)
 	if character == player.Character then
 		releaseHold() -- a hold left on the last character
 		local humanoid = character:WaitForChild("Humanoid", 10)
-		if humanoid and humanoid:IsA("Humanoid") then
-			mine = SwordAnims.load(humanoid, Swords.STARTER)
-			kneeling = false
-		end
-		-- Every sound ready on the new root part before the first swing
 		local root = character:WaitForChild("HumanoidRootPart", 10)
-		local sword = Swords.SWORDS[Swords.STARTER]
-		if root and root:IsA("BasePart") and sword then
-			for key, id in sword.sounds do
-				if id ~= "" then
-					soundFor(key, root, id)
+		-- Your moves and sounds are your equipped sword's moveset's (its own skill: Sunfall Cleave's jump, not the dash
+		-- slash), loaded again whenever you equip another; every sound ready on the root part before the first swing
+		local function loadMoves()
+			local moveset = movesetOf(character:GetAttribute("Sword")) or Swords.STARTER
+			local sword = Swords.SWORDS[moveset]
+			if humanoid and humanoid:IsA("Humanoid") then
+				mine = SwordAnims.load(humanoid, moveset)
+			end
+			if root and root:IsA("BasePart") then
+				for key, id in sword.sounds do
+					if id ~= "" then
+						soundFor(key, root, id)
+					end
 				end
 			end
 		end
+		loadMoves()
+		kneeling = false
+		character:GetAttributeChangedSignal("Sword"):Connect(loadMoves)
 		-- The server clearing Downed (you got up, or the fight ended) always stands you up
 		character:GetAttributeChangedSignal("Downed"):Connect(function()
 			if not character:GetAttribute("Downed") then

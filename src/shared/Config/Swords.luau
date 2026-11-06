@@ -208,14 +208,14 @@ SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", {
 -- a second (24 x 6 studs) and bursts on the first foe it touches, hitting every foe within 6 studs of the burst
 SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", {
 	power = 0.9,
-	hitAt = 1.18,
-	length = 1.85,
+	hitAt = 1.78,
+	length = 2.45,
 	cooldown = 8,
 	shape = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 },
 }, { slash = "fireTrail", finisher = "lavaCrack", skill = "sunfallCleave" }, {
 	{ key = "jump", at = 0.15 }, -- the leap
 	{ key = "flameLicks", at = 0.42 }, -- sunlight gathering as you hang
-	{ key = "fireSwing", at = 1.1 }, -- the cleave (the crescent's burst plays fireBurst where it lands)
+	{ key = "fireSwing", at = 1.7 }, -- the cleave (the crescent's burst plays fireBurst where it lands)
 }, {
 	-- Pro Sound Effects, kept quiet (SOUND_VOLUMES; levelled by Config/SoundLevels)
 	sounds = {

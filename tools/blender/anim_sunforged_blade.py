@@ -21,8 +21,11 @@ READY = kit.READY
 FOOT_Z = kit.FOOT_Z
 FOLDER = "SunforgedBlade"
 NATURAL = ("skill",)
-LENGTH = 1.85
-HIT = 1.18
+# The charge at the top lasts from 0.42 s to CHARGED (owner 2026-11-07: "make the charging more longer"); the cleave's
+# Hit follows, then the fall and landing
+CHARGED = 1.65
+HIT = 1.78
+LENGTH = HIT + 0.67
 
 
 def _pose(rig, f, t, p, lift, ease=kit.SOFT):
@@ -66,27 +69,30 @@ def _skill(rig, f):
     _pose(rig, f, 0.18, CROUCH, -1.05, kit.SNAP)
     _pose(rig, f, 0.30, RISING, 3.5, kit.HOLD)
     # The hang arched back like a drawn bow (owner 2026-11-07: "arch the body more on jump"), deepening as it charges
+    # (a slow float up and settling while the sunlight gathers, the bow drawn tighter)
     _pose(rig, f, 0.42, dict(OVERHEAD, W=(30, 0, 0), N=(20, 0, 0)), TOP)
-    _pose(rig, f, 0.75, dict(OVERHEAD, W=(34, 0, 0), N=(22, 0, 0)), TOP + 0.2)
-    _pose(rig, f, 1.05, dict(OVERHEAD, W=(38, 0, 0), N=(24, 0, 0)), TOP + 0.1, kit.SNAP)
+    _pose(rig, f, 0.85, dict(OVERHEAD, W=(33, 0, 0), N=(21, 0, 0)), TOP + 0.25)
+    _pose(rig, f, 1.25, dict(OVERHEAD, W=(36, 0, 0), N=(23, 0, 0)), TOP + 0.2)
+    _pose(rig, f, CHARGED, dict(OVERHEAD, W=(40, 0, 0), N=(25, 0, 0)), TOP + 0.1, kit.SNAP)
     _pose(rig, f, HIT, STRIKE, TOP - 0.6, kit.SNAP)
-    _pose(rig, f, 1.26, LOW, 3.0, ("EXPO", "EASE_IN"))
-    _pose(rig, f, 1.40, LOW, -0.9, kit.SNAP)
-    _pose(rig, f, 1.60, dict(LOW, W=(-28, 0, 0)), -0.8)
+    _pose(rig, f, HIT + 0.08, LOW, 3.0, ("EXPO", "EASE_IN"))
+    _pose(rig, f, HIT + 0.22, LOW, -0.9, kit.SNAP)
+    _pose(rig, f, HIT + 0.42, dict(LOW, W=(-28, 0, 0)), -0.8)
     _pose(rig, f, LENGTH, READY, 0)
-    kit.two_hands(rig, lambda t: kit.frame_at(f, t), 0.05, 0.25, 1.55, 1.7)
+    kit.two_hands(rig, lambda t: kit.frame_at(f, t), 0.05, 0.25, HIT + 0.37, HIT + 0.52)
     kit.key_root(rig, kit.frame_at(f, 0), 0)
     _feet(f, 0, 0, 0)
     _feet(f, 0.12, -0.3, 0.3)
     _feet(f, 0.18, -0.3, 0.3, kit.SNAP)
     _air_feet(f, 0.30, 3.5, 0.8, kit.HOLD, 0.4)
     _air_feet(f, 0.42, TOP, 1.25, kit.SOFT, 0.9)
-    _air_feet(f, 1.05, TOP + 0.1, 1.3, kit.SNAP, 1.1)
+    _air_feet(f, 0.85, TOP + 0.25, 1.3, kit.SOFT, 1.0)
+    _air_feet(f, CHARGED, TOP + 0.1, 1.3, kit.SNAP, 1.1)
     _air_feet(f, HIT, TOP - 0.6, 0.9, ("EXPO", "EASE_IN"))
-    _air_feet(f, 1.26, 3.0, 0.3, ("EXPO", "EASE_IN"))
-    _foot("Left", f, 1.40, (0.55, -1.2, FOOT_Z), kit.SNAP)
-    _foot("Right", f, 1.40, (-0.5, 0.6, FOOT_Z), kit.SNAP)
-    _feet(f, 1.60, -0.6, 1.2)
+    _air_feet(f, HIT + 0.08, 3.0, 0.3, ("EXPO", "EASE_IN"))
+    _foot("Left", f, HIT + 0.22, (0.55, -1.2, FOOT_Z), kit.SNAP)
+    _foot("Right", f, HIT + 0.22, (-0.5, 0.6, FOOT_Z), kit.SNAP)
+    _feet(f, HIT + 0.42, -0.6, 1.2)
     _feet(f, LENGTH, 0, 0)
 
 

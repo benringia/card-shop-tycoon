@@ -74,7 +74,8 @@ before they're published.
 - Thornline: a short hop, both hands driving the blade down into the ground in front, a beat holding it there (about
   1.1 s).
 - Sunfall Cleave (owner 2026-11-07, after the first preview): a crouch, a high jump (about 5 studs) arched back like a
-  drawn bow, a long hang at the top charging, one cleave in the air, a low landing (1.85 s, the Hit at 1.18 s). A
+  drawn bow, a long hang at the top charging (about 1.2 s: "make the charging more longer"), one cleave in the air, a low
+  landing (2.45 s, the Hit at 1.78 s). A
   camera moment on your screen only (the owner's pick: camera only, the fight runs on and you can still be hit): a low
   angle as you jump, the chase after the crescent, held on the burst, back to your view.
 - Prism Judgment: blade swept up, then pointed at the boss and held (the command pose) while the ghost blades strike

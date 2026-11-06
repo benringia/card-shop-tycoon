@@ -50,7 +50,7 @@ local LOOKS: { [string]: Look } = {
 		form = "ahead",
 		cinematic = true,
 		burstSound = "fireBurst",
-		beats = { charge = 0.42, charged = 1.05, release = 1.18, glow = 2.6, gather = 4, launch = 5.5, ahead = 2.5, speed = 14, height = 6, width = 2.4, blast = 6 },
+		beats = { charge = 0.42, charged = 1.65, release = 1.78, glow = 2.6, gather = 4, launch = 5.5, ahead = 2.5, speed = 14, height = 6, width = 2.4, blast = 6 },
 	},
 	-- Prism Blade: rainbow arcs, prism shards, Prism Judgment's ghost blades and pillar
 	rainbowArc = { kind = "slash", textures = { "star", "glow" }, seconds = 0.5, size = 4, count = 8 },
