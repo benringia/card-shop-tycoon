@@ -40,6 +40,17 @@ return {
 		expect.equal(#WeaponText.stats(Weapons, "nope", nil, Combat), 0)
 	end,
 
+	["what each upgrade adds to the glow (the forge reveal's line)"] = function()
+		local Looks = require("../src/shared/Config/WeaponLooks")
+		expect.equal(WeaponText.ladderStep(Looks, 1), "Its edges glow brighter")
+		expect.equal(WeaponText.ladderStep(Looks, 3), "Its edges glow brighter")
+		expect.equal(WeaponText.ladderStep(Looks, 4), "Its aura appears!")
+		expect.equal(WeaponText.ladderStep(Looks, 6), "A stronger aura")
+		expect.equal(WeaponText.ladderStep(Looks, 7), "A bigger trail and a burst on every hit!")
+		expect.equal(WeaponText.ladderStep(Looks, 9), "A bigger trail")
+		expect.equal(WeaponText.ladderStep(Looks, 10), "AWAKENED!")
+	end,
+
 	["cost lines: cash first, then each item with have/need and whether it's enough"] = function()
 		local cost = { cash = 2000, items = { material_meadowWarden = 15, starShard = 1 } }
 		local lines = WeaponText.cost(cost, { material_meadowWarden = 9, starShard = 3 }, 2500, Items)

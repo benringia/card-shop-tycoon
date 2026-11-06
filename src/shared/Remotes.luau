@@ -90,7 +90,7 @@ local NAMES = {
 	"ForgeWeapon", -- client → server: (shelfUid: string, weaponId: string) make a weapon at your Forge (ForgeService)
 	"UpgradeWeapon", -- client → server: (shelfUid: string, weaponId: string) one more upgrade level on an owned weapon
 	"ReforgeWeapon", -- client → server: (shelfUid: string, weaponId: string) a new grade roll on an owned weapon, the better kept
-	"ForgeResult", -- server → client: { action = "forge" | "reforge" | "upgrade", weaponId, grade, level, kept } (kept: the old grade stayed)
+	"ForgeResult", -- server → client: { action = "forge" | "reforge" | "upgrade", weaponId, grade (rolled), level, kept, owned (its grade now) } (kept: the old grade stayed)
 	"WeaponDropped", -- server → client: { weaponId, grade, refund, material } a boss dropped its weapon (refund > 0: you had it)
 	"WeaponAnnouncement", -- server → all clients: (displayName, weaponId, grade, userId) an Epic or Legendary weapon dropped
 }

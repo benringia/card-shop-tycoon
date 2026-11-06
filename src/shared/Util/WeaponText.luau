@@ -77,6 +77,23 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	return rows
 end
 
+-- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER), for the forge reveal
+function WeaponText.ladderStep(looks: any, level: number): string
+	local ladder = looks.LADDER
+	if level >= ladder.awakenedAt then
+		return "AWAKENED!"
+	elseif level == ladder.trailFrom then
+		return "A bigger trail and a burst on every hit!"
+	elseif level > ladder.trailFrom then
+		return "A bigger trail"
+	elseif level == ladder.auraFrom then
+		return "Its aura appears!"
+	elseif level > ladder.auraFrom then
+		return "A stronger aura"
+	end
+	return "Its edges glow brighter"
+end
+
 -- A cost's lines: its cash (when there is any), then each item by name with have/need, each marked enough or not
 function WeaponText.cost(cost: { cash: number, items: { [string]: number } }, have: { [string]: number }, cashNow: number, items: any): { Line }
 	local lines: { Line } = {}

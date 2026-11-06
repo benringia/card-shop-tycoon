@@ -94,6 +94,14 @@ return {
 		circle = { size = 6, under = 2.6, spin = 0.8 }, -- the rune circle: width, studs under the middle, turns a second
 		beam = { width = 2.6, core = 0.8, height = 14, after = 0.35 }, -- after: its width once the weapon is up (it hid the blade)
 		dim = 0.6,
+		-- The Forge's reveal: the anvil's glow builds up this long first, then the hit by the grade rolled (the pack
+		-- pulls' sounds, Config/PackOpening SOUNDS) and its flash; an upgrade hits small (B), +10 big (S)
+		forge = {
+			buildUp = 1.5,
+			disc = 4.5, -- the glow under the anvil (studs across)
+			hit = { S = "hitLegendary", A = "hitEpic", B = "hitRare", C = "hitRare" },
+			flash = { S = 1, A = 0.8, B = 0.45, C = 0.35 },
+		},
 	},
 	-- Grade S: the card-style twinkle, a few star glints a second along the blade
 	TWINKLE = { texture = "flare", rate = 3, size = 1.6, lifetime = 0.5 },

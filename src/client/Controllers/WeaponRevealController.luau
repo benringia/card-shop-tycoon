@@ -1,10 +1,12 @@
 --!strict
 -- A new weapon's big moment (spec 2026-11-06-weapons-round1-design 4.4): a boss dropped its weapon (WeaponDropped,
--- sent after the victory screen) and, from the Forge, a weapon made or reforged (Task 9). On the pack opening's
--- stage (Util/OpeningStage): bars and a dim, a spinning rune circle, a light column in the rarity's colour, the weapon
--- rising out of it spinning with its glow (Util/WeaponLook), the banner "<RARITY>! <Name>", its grade, and a line
--- under it (a weapon you had already: the material it turned into). About 6 s; a tap closes it after 2 s. Others hear
--- of an Epic or Legendary drop in a toast (WeaponAnnouncement). Timing and sizes: Config/WeaponLooks REVEAL.
+-- sent after the victory screen) and, from the Forge (ForgeResult), a weapon made, reforged or upgraded. On the pack
+-- opening's stage (Util/OpeningStage): bars and a dim, a spinning rune circle (the Forge: an anvil on a glow that
+-- builds up first), a light column in the rarity's colour, the weapon rising out of it spinning with its glow
+-- (Util/WeaponLook), the banner, its grade, and a line under it. The Forge's hit is the pack pulls' by grade (S the
+-- Legendary's, A the Epic's, B and C a small one); an upgrade names the glow layer it adds; a reforge that rolled
+-- lower says it kept the grade. About 6 s; a tap closes it after 2 s. Others hear of an Epic or Legendary drop in a
+-- toast (WeaponAnnouncement). Timing and sizes: Config/WeaponLooks REVEAL.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -14,10 +16,13 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Items = require(Config:WaitForChild("Items"))
 local LevelUpConfig = require(Config:WaitForChild("LevelUpFx"))
+local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local Town = require(Config:WaitForChild("Town"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -30,7 +35,19 @@ local player = Players.LocalPlayer
 local REVEAL = WeaponLooks.REVEAL
 local WHITE = Color3.new(1, 1, 1)
 
-export type Reveal = { weaponId: string, grade: string, level: number?, line: string? }
+-- forge: the Forge's anvil and build-up; banner and gradeText replace "<RARITY>! <Name>" and "Grade X"; hit: a
+-- Config/PackOpening sound at the hit, flash its peak
+export type Reveal = {
+	weaponId: string,
+	grade: string,
+	level: number?,
+	line: string?,
+	forge: boolean?,
+	banner: string?,
+	gradeText: string?,
+	hit: string?,
+	flash: number?,
+}
 
 local WeaponRevealController = {}
 
@@ -127,7 +144,7 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	skip.Text = ""
 	skip.AutoButtonColor = false
 	skip.Parent = gui
-	local banner = UIKit.label(gui, `{string.upper(weapon.rarity)}! {weapon.name}`, Enum.Font.FredokaOne, 40, color)
+	local banner = UIKit.label(gui, reveal.banner or `{string.upper(weapon.rarity)}! {weapon.name}`, Enum.Font.FredokaOne, 40, color)
 	banner.AnchorPoint = Vector2.new(0.5, 0)
 	banner.Position = UDim2.fromScale(0.5, 0.13)
 	banner.Size = UDim2.new(0.9, 0, 0, 50)
@@ -138,7 +155,7 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	local bannerScale = Instance.new("UIScale")
 	bannerScale.Scale = 0.4
 	bannerScale.Parent = banner
-	local grade = UIKit.label(gui, `Grade {reveal.grade}`, Enum.Font.FredokaOne, 26, WHITE)
+	local grade = UIKit.label(gui, reveal.gradeText or `Grade {reveal.grade}`, Enum.Font.FredokaOne, 26, WHITE)
 	grade.AnchorPoint = Vector2.new(0.5, 0)
 	grade.Position = UDim2.fromScale(0.5, 0.22)
 	grade.Size = UDim2.new(0.4, 0, 0, 34)
@@ -163,6 +180,41 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	return gui, skip, popBanner, showLine
 end
 
+-- The Forge's pedestal: the Forge's anvil (Town.FORGE_LOOK sizes) on a glowing disc; returns the disc to pulse
+local function anvil(at: CFrame, parent: Instance): Part
+	local look = Town.FORGE_LOOK
+	local steel = Color3.fromRGB(look.STEEL[1], look.STEEL[2], look.STEEL[3])
+	local function block(size: { number }, y: number)
+		local part = Instance.new("Part")
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Size = Vector3.new(size[1], size[2], size[3])
+		part.CFrame = at * CFrame.new(0, y + size[2] / 2, 0)
+		part.Color = steel
+		part.Material = Enum.Material.Metal
+		part.Parent = parent
+	end
+	local foot, waist, face = look.ANVIL_FOOT, look.ANVIL_WAIST, look.ANVIL_FACE
+	block(foot, 0)
+	block(waist, foot[2])
+	block(face, foot[2] + waist[2])
+	local disc = Instance.new("Part")
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Anchored = true
+	disc.CanCollide = false
+	disc.CanQuery = false
+	disc.CanTouch = false
+	disc.Size = Vector3.new(0.1, REVEAL.forge.disc, REVEAL.forge.disc)
+	disc.CFrame = at * CFrame.Angles(0, 0, math.rad(90))
+	disc.Color = Color3.fromRGB(look.EMBER[1], look.EMBER[2], look.EMBER[3])
+	disc.Material = Enum.Material.Neon
+	disc.Transparency = 0.9
+	disc.Parent = parent
+	return disc
+end
+
 local function play(reveal: Reveal)
 	local weapon = Weapons.ById[reveal.weaponId]
 	if not weapon then
@@ -179,6 +231,10 @@ local function play(reveal: Reveal)
 	local circleAt = CFrame.new(middle - Vector3.new(0, REVEAL.circle.under, 0))
 	local outer, outerFace = flatCircle(REVEAL.circle.size, color, stage)
 	local inner, innerFace = flatCircle(REVEAL.circle.size * 0.78, color:Lerp(WHITE, 0.5), stage)
+	-- The Forge's build-up: everything after it waits `delay`; the anvil's glow brightens meanwhile
+	local delay = if reveal.forge then REVEAL.forge.buildUp else 0
+	local disc = if reveal.forge then anvil(circleAt, stage) else nil
+	local hit = reveal.hit or (if weapon.rarity == "Legendary" then "hitLegendary" elseif weapon.rarity == "Epic" then "hitEpic" else "hitRare")
 	local a0 = Instance.new("Attachment")
 	a0.Parent = outer
 	local a1 = Instance.new("Attachment")
@@ -188,13 +244,14 @@ local function play(reveal: Reveal)
 	local model = weaponModel(weapon.id, reveal.grade, reveal.level or 0)
 	model.Parent = stage
 	local gui, skip, popBanner, showLine = words(reveal, color)
-	if weapon.rarity == "Legendary" then
-		OpeningStage.play("hitLegendary")
-	elseif weapon.rarity == "Epic" then
-		OpeningStage.play("hitEpic")
+	if reveal.forge then
+		OpeningStage.play("tease")
 	else
-		OpeningStage.play("hitRare")
+		OpeningStage.play(hit)
 	end
+	local beamAt, riseAt = REVEAL.beamAt + delay, REVEAL.riseAt + delay
+	local bannerAt, lineAt, seconds = REVEAL.bannerAt + delay, REVEAL.lineAt + delay, REVEAL.seconds + delay
+	local struck = not reveal.forge
 
 	local started = os.clock()
 	local done = false
@@ -217,42 +274,53 @@ local function play(reveal: Reveal)
 	end)
 	connection = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - started
-		if t >= REVEAL.seconds then
+		if t >= seconds then
 			finish()
 			return
 		end
+		-- The Forge: the anvil's glow brightens through the build-up, then the hit lands
+		if disc then
+			disc.Transparency = 0.9 - 0.75 * math.clamp(t / delay, 0, 1)
+		end
+		if not struck and t >= delay then
+			struck = true
+			OpeningStage.fade("tease", PackOpening.TEASE_FADE_SECONDS)
+			OpeningStage.play(hit)
+			OpeningStage.flash(reveal.flash or 0.7, 0.5)
+			OpeningStage.shake(0.04 + 0.06 * (reveal.flash or 0.7), 0.35)
+		end
 		-- The circle fades in and turns; the column shoots up at beamAt
-		local shown = math.min(1, t / 0.3)
+		local shown = if reveal.forge then 0 else math.min(1, t / 0.3)
 		outerFace.Transparency = 1 - 0.95 * shown
 		innerFace.Transparency = 1 - 0.8 * shown
 		outer.CFrame = circleAt * CFrame.Angles(0, t * REVEAL.circle.spin * math.pi * 2, 0)
 		inner.CFrame = (circleAt + Vector3.new(0, 0.01, 0)) * CFrame.Angles(0, -t * REVEAL.circle.spin * math.pi * 2.8, 0)
-		local open = if t < REVEAL.beamAt then 0 else math.min(1, (t - REVEAL.beamAt) / 0.2)
+		local open = if t < beamAt then 0 else math.min(1, (t - beamAt) / 0.2)
 		a1.Position = Vector3.new(0, REVEAL.beam.height * open, 0)
 		-- Once the weapon is up the column thins, so the blade shows in front of it
-		local up = REVEAL.riseAt + REVEAL.riseSeconds
+		local up = riseAt + REVEAL.riseSeconds
 		local thin = 1 - (1 - REVEAL.beam.after) * math.clamp((t - up) / 0.5, 0, 1)
 		open *= thin
 		glow.Width0, glow.Width1 = REVEAL.beam.width * open, REVEAL.beam.width * open * 0.8
 		core.Width0, core.Width1 = REVEAL.beam.core * open, REVEAL.beam.core * open * 0.6
 		-- The weapon rises out of the circle (easing out with a little overshoot), spinning and bobbing
-		local rise = math.clamp((t - REVEAL.riseAt) / REVEAL.riseSeconds, 0, 1)
+		local rise = math.clamp((t - riseAt) / REVEAL.riseSeconds, 0, 1)
 		local eased = 1 - (1 - rise) ^ 3
 		local y = REVEAL.riseFrom + (REVEAL.lift - REVEAL.riseFrom) * eased
 		y += math.sin(t / REVEAL.bob.seconds * math.pi * 2) * REVEAL.bob.studs * rise
 		local spin = math.rad(t * REVEAL.spin)
 		model:PivotTo(CFrame.new(middle + Vector3.new(0, y, 0)) * CFrame.Angles(0, spin, 0) * CFrame.Angles(math.rad(-REVEAL.tilt), 0, 0))
-		if not flashed and t >= REVEAL.riseAt + REVEAL.riseSeconds * 0.6 then
+		if not flashed and not reveal.forge and t >= riseAt + REVEAL.riseSeconds * 0.6 then
 			flashed = true
 			OpeningStage.flash(0.7, 0.5)
 			OpeningStage.shake(0.06, 0.35)
 		end
-		if not popped and t >= REVEAL.bannerAt then
+		if not popped and t >= bannerAt then
 			popped = true
 			popBanner()
 			OpeningStage.play("shimmer")
 		end
-		if not lined and t >= REVEAL.lineAt then
+		if not lined and t >= lineAt then
 			lined = true
 			showLine()
 		end
@@ -302,8 +370,48 @@ function WeaponRevealController.Drop(payload: any)
 	WeaponRevealController.Show({ weaponId = payload.weaponId, grade = payload.grade, level = 0, line = line })
 end
 
+-- The Forge's result (ForgeResult): forged, reforged (a higher grade, or the one it kept) or upgraded
+function WeaponRevealController.Forge(result: any)
+	if typeof(result) ~= "table" or typeof(result.weaponId) ~= "string" or typeof(result.grade) ~= "string" then
+		return
+	end
+	local weapon = Weapons.ById[result.weaponId]
+	if not weapon then
+		return
+	end
+	local level = tonumber(result.level) or 0
+	local owned = if typeof(result.owned) == "string" then result.owned else result.grade
+	local forge = REVEAL.forge
+	local reveal: Reveal = {
+		weaponId = weapon.id,
+		grade = owned,
+		level = level,
+		forge = true,
+		hit = forge.hit[result.grade],
+		flash = forge.flash[result.grade],
+	}
+	if result.action == "upgrade" then
+		reveal.banner = `+{level} {weapon.name}`
+		reveal.gradeText = WeaponText.ladderStep(WeaponLooks, level)
+		reveal.hit = if level >= WeaponLooks.LADDER.awakenedAt then forge.hit.S else forge.hit.B
+		reveal.flash = if level >= WeaponLooks.LADDER.awakenedAt then forge.flash.S else forge.flash.A
+	elseif result.action == "reforge" and result.kept == true then
+		reveal.banner = `Rolled Grade {result.grade}`
+		reveal.gradeText = `Kept your Grade {owned}`
+		reveal.hit = forge.hit.C
+		reveal.flash = forge.flash.C
+	elseif result.action == "reforge" then
+		reveal.banner = `NEW GRADE {result.grade}!`
+		reveal.line = `Your {weapon.name} is Grade {result.grade} now.`
+	else
+		reveal.line = "Forged! Equip it in the Armory."
+	end
+	WeaponRevealController.Show(reveal)
+end
+
 function WeaponRevealController.Start()
 	Remotes.WeaponDropped.OnClientEvent:Connect(WeaponRevealController.Drop)
+	Remotes.ForgeResult.OnClientEvent:Connect(WeaponRevealController.Forge)
 	Remotes.WeaponAnnouncement.OnClientEvent:Connect(function(name: unknown, weaponId: unknown, grade: unknown, userId: unknown)
 		if userId == player.UserId or typeof(name) ~= "string" or typeof(weaponId) ~= "string" then
 			return

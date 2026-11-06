@@ -133,7 +133,7 @@ local function perform(player: Player, action: Action, weapon: Weapons.Weapon, s
 		local owned = WeaponService.GetOwned(player, weapon.id) :: WeaponService.Owned
 		local level = owned.level + 1
 		WeaponService.SetLevel(player, weapon.id, level)
-		Remotes.ForgeResult:FireClient(player, { action = action, weaponId = weapon.id, grade = owned.grade, level = level, kept = false })
+		Remotes.ForgeResult:FireClient(player, { action = action, weaponId = weapon.id, grade = owned.grade, level = level, kept = false, owned = owned.grade })
 		return
 	end
 	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
@@ -145,6 +145,7 @@ local function perform(player: Player, action: Action, weapon: Weapons.Weapon, s
 		grade = grade,
 		level = if now then now.level else 0,
 		kept = record == nil, -- a reforge that didn't beat the grade it had
+		owned = if now then now.grade else grade, -- the grade it has now
 	})
 end
 
