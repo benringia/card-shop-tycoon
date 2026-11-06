@@ -73,6 +73,7 @@ local items: { [string]: number } = {}
 local inFlight = false
 local inFlightToken = 0
 local reopenAfterReveal = false
+local shown: { weaponId: string, view: string }? = nil -- the pane's weapon and what it drew from the cash
 local render: () -> ()
 
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
@@ -156,6 +157,40 @@ local function costFor(weaponId: string): WeaponRules.Cost?
 	end
 	local record = owned[weaponId]
 	return if record then WeaponRules.upgradeCost(Weapons, weaponId, record.level + 1) else nil
+end
+
+-- The one button for this tab: what it does when everything's there, else what's missing (WeaponText.button)
+local function buttonFor(weapon: Weapons.Weapon, record: Owned?, cost: WeaponRules.Cost?): (string, boolean)
+	local action = if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" else "reforge"
+	local text, ready = WeaponText.button(action, cost, items, cash(), Items, {
+		level = if record then record.level + 1 else nil,
+		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
+		shopLevel = shopLevel(),
+	})
+	if tab == REFORGE and record and not WeaponRules.canReforge(record) then
+		return "Already Grade S", false
+	end
+	return text, ready
+end
+
+-- What a weapon's pane draws from the cash (its cost lines' colours and its button): a cash change redraws the window
+-- only when this changes (in a staffed shop sales land every few seconds; a redraw then could swallow a tap)
+local function cashView(weaponId: string): string
+	local weapon = Weapons.ById[weaponId]
+	local cost = costFor(weaponId)
+	if not weapon then
+		return ""
+	end
+	local parts = {}
+	if cost then
+		for _, line in WeaponText.cost(cost, items, cash(), Items) do
+			table.insert(parts, if line.enough then "1" else "0")
+		end
+	end
+	local text, ready = buttonFor(weapon, owned[weaponId], cost)
+	table.insert(parts, text)
+	table.insert(parts, tostring(ready))
+	return table.concat(parts, "|")
 end
 
 local function addLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, order: number?): TextLabel
@@ -261,6 +296,7 @@ local function renderPane(entry: Entry?)
 	padding.PaddingRight = UDim.new(0, EDGE)
 	padding.Parent = pane
 	if not entry then
+		shown = nil
 		local message = if tab == FORGE then "You have every weapon you can make. Upgrade them!"
 			else "No weapons yet. Forge one, or win one from a boss."
 		addLabel(pane, message, Enum.Font.GothamBold, 15, palette.inkSoft, 1)
@@ -347,15 +383,8 @@ local function renderPane(entry: Entry?)
 	end
 
 	-- The one button
-	local action = if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" else "reforge"
-	local text, ready = WeaponText.button(action, cost, items, cash(), Items, {
-		level = if record then record.level + 1 else nil,
-		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
-		shopLevel = shopLevel(),
-	})
-	if tab == REFORGE and record and not WeaponRules.canReforge(record) then
-		text, ready = "Already Grade S", false
-	end
+	local text, ready = buttonFor(weapon, record, cost)
+	shown = { weaponId = weaponId, view = cashView(weaponId) }
 	local canPress = ready and not inFlight
 	local button = UIKit.button(actionBar, if inFlight then "Working..." else text, if canPress then UIKit.Colors.Accent else UIKit.Colors.Locked)
 	button.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -537,7 +566,12 @@ function ForgeController.Start()
 	end)
 	Remotes.RequestItems:FireServer() -- our own copy of the Bag's counts, whatever order the controllers start in
 	Remotes.ForgeResult.OnClientEvent:Connect(onResult)
-	player:GetAttributeChangedSignal("Cash"):Connect(render)
+	player:GetAttributeChangedSignal("Cash"):Connect(function()
+		local current = shown
+		if panel.Visible and current and cashView(current.weaponId) ~= current.view then
+			render()
+		end
+	end)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not panel.Visible and not reopenAfterReveal then
 			machine = nil
