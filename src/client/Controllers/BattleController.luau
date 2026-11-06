@@ -1523,6 +1523,7 @@ local function stopCombat()
 		if combatSword then
 			SwordController.SetCombat(false)
 		end
+		SwordController.SetFoeElement(nil)
 		ContextActionService:UnbindAction(COMBAT_ACTION)
 	end
 end
@@ -1564,6 +1565,9 @@ local function onStarted(payload: any)
 	end
 	local boss = if mode == "wild" and typeof(payload.boss) == "string" then Bosses.BOSSES[payload.boss] else nil
 	bossId = if boss then payload.boss else nil
+	-- Your Prism Blade's trail takes the colour strong against this foe
+	local foeElement = if boss then boss.element elseif typeof(payload.element) == "string" then payload.element else nil
+	SwordController.SetFoeElement(if mode == "wild" then foeElement else nil)
 	-- The top bar: the plate for a boss, the slim bar for a monster (an elite's gold with its tag)
 	local topBar = if boss then plate else slim
 	local otherBar = if boss then slim else plate

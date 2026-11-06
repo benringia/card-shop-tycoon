@@ -14,9 +14,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local AttackFx = require(Config:WaitForChild("AttackFx"))
+local Combat = require(Config:WaitForChild("Combat"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
+local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 
 local WeaponLook = {}
 
@@ -70,10 +72,18 @@ function WeaponLook.layers(weaponId: string, grade: string, level: number, place
 	return WeaponLookRules.layers(WeaponLooks, weapon.rarity, level, grade, place)
 end
 
--- The swing trail and hit colour of a weapon (nil: the moves' own, the Steel Sword's pale steel)
-function WeaponLook.trailColor(weaponId: string): { number }?
+-- The swing trail and hit colour of a weapon (nil: the moves' own, the Steel Sword's pale steel). In a fight the Prism
+-- Blade takes the colour of the element strong against the foe (spec 3.4: the element its hits count as,
+-- WeaponRules.hitElement)
+function WeaponLook.trailColor(weaponId: string, foeElement: string?): { number }?
 	local look = lookOf(weaponId)
-	return if look then look.trail else nil
+	if not look then
+		return nil
+	end
+	local weapon = Weapons.ById[weaponId]
+	local hit = if weapon and weapon.prism and foeElement then WeaponRules.hitElement(Weapons, weaponId, foeElement, Combat) else nil
+	local strong = if hit then WeaponLooks.BY_ELEMENT[hit] else nil
+	return if strong then strong.trail else look.trail
 end
 
 -- A plain sword from parts, the size of the real models, for while WeaponModels has no model for it: steel and gold

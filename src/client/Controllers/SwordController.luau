@@ -63,10 +63,14 @@ local function swordOf(weaponId: unknown): Swords.Sword?
 	return if moveset then Swords.SWORDS[moveset] else nil
 end
 
--- A character's slash colour and size: its weapon's trail colour (the Steel Sword keeps its moves' pale steel)
+local foeElement: string? = nil -- the element of what you're fighting (BattleController), for the Prism Blade's colour
+
+-- A character's slash colour and size: its weapon's trail colour (the Steel Sword keeps its moves' pale steel; your
+-- own Prism Blade takes the colour strong against your foe)
 local function slashOf(character: Model?, sword: Swords.Sword): { color: { number }, scale: number }
 	local weaponId = if character then character:GetAttribute("Sword") else nil
-	local trail = if typeof(weaponId) == "string" then WeaponLook.trailColor(weaponId) else nil
+	local foe = if character ~= nil and character == player.Character then foeElement else nil
+	local trail = if typeof(weaponId) == "string" then WeaponLook.trailColor(weaponId, foe) else nil
 	return if trail then { color = trail, scale = sword.slash.scale } else sword.slash
 end
 
@@ -318,7 +322,7 @@ local function refresh(character: Model)
 			trail.Attachment0, trail.Attachment1 = base, tip
 			trail.Lifetime = SwordFx.TRAIL_LIFETIME
 			-- In the weapon's trail colour, wider from +7 (its look's layers); the Steel Sword keeps its pale steel
-			local trailColor = WeaponLook.trailColor(swordId) or SwordFx.TRAIL_COLOR
+			local trailColor = WeaponLook.trailColor(swordId, foeElement) or SwordFx.TRAIL_COLOR
 			local layers = WeaponLook.layers(swordId, grade, level, "hand")
 			trail.Color = ColorSequence.new(Color3.fromRGB(trailColor[1], trailColor[2], trailColor[3]))
 			trail.WidthScale = NumberSequence.new(if layers then layers.trailScale else 1)
@@ -525,6 +529,17 @@ end
 -- Whether the hit sound just played from your own reach check (BattleController skips the server's late copy)
 function SwordController.HitSoundJustPlayed(): boolean
 	return os.clock() - hitSoundAt < Swords.HIT_SOUND_WINDOW
+end
+
+-- What you're fighting's element (BattleController, nil when the fight ends): your Prism Blade's trail and slashes take
+-- the colour strong against it
+function SwordController.SetFoeElement(element: string?)
+	foeElement = element
+	local view = if player.Character then views[player.Character] else nil
+	if view and view.trail then
+		local color = WeaponLook.trailColor(view.swordId, element) or SwordFx.TRAIL_COLOR
+		view.trail.Color = ColorSequence.new(Color3.fromRGB(color[1], color[2], color[3]))
+	end
 end
 
 -- The trail along your blade for one swing
