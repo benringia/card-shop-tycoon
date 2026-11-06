@@ -2,19 +2,28 @@
 -- Studio only: plays a Pet button move at a chosen grade on your summoned creature against a dummy in front of it (spec
 -- 2026-11-05-pet-moves-design "Seeing it in Studio"; DevService /movefx, the admin panel's "Pet moves" buttons), a
 -- super (/superfx) or three of its basic attacks (/attackfx). It feeds Util/FightFx the sim's real event shapes (cast,
--- ability, regen ticks, charges and attacks), so what plays is what a fight plays.
+-- ability, regen ticks, charges and attacks), so what plays is what a fight plays. /skillfx: your character swings a
+-- round 1 sword's cut or skill at a dummy with that sword's effects (Util/SwordSkillFx, spec 2026-11-06-sword-skills).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperFx"))
+local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local SwordFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
+local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
+local WeaponLooks = require(Shared:WaitForChild("Config"):WaitForChild("WeaponLooks"))
+local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
+local SwordSkillFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordSkillFxRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local FightFx = require(ClientUtil:WaitForChild("FightFx"))
 local SuperCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
+local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
+local SwordSkillFx = require(ClientUtil:WaitForChild("SwordSkillFx"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 local CardArtConfig = require(Shared:WaitForChild("Config"):WaitForChild("CardArt"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
@@ -136,7 +145,79 @@ local function superTimeline(lookId: string): ({ { at: number, event: any } }, n
 	return timeline, math.max(ability.seconds or 0, 4)
 end
 
+local SWORD_MOVES = { cut1 = 1, cut2 = 2, cut3 = 3, skill = 0 }
+
+-- /skillfx: your character swings the moveset's cut or skill (its own animation) at a dummy in front of you, with the
+-- weapon's effects at its colours and level
+local function playSword(payload: any)
+	local moveset = if typeof(payload.skillFx) == "string" then Swords.SWORDS[payload.skillFx] else nil
+	local weapon = if typeof(payload.weapon) == "string" then Weapons.ById[payload.weapon] else nil
+	local cut = if typeof(payload.move) == "string" then SWORD_MOVES[payload.move] else nil
+	local character = game:GetService("Players").LocalPlayer.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not moveset or not moveset.fx or not weapon or not cut or typeof(payload.level) ~= "number" or typeof(payload.grade) ~= "string" then
+		return
+	elseif not character or not humanoid or not root or not root:IsA("BasePart") then
+		return
+	end
+	if playing then
+		playing()
+	end
+	local fx = moveset.fx
+	local dummy, _, model = makeDummy(root.CFrame, false)
+	local anims = SwordAnims.load(humanoid, payload.skillFx)
+	local colors = SwordSkillFx.colorsOf(weapon.id)
+	local layers = WeaponLookRules.layers(WeaponLooks, weapon.rarity, payload.level, payload.grade, "hand")
+	local scale = SwordSkillFxRules.scale(layers.trailScale)
+	local move = payload.move
+	local stopped = false
+	local function stop()
+		if stopped then
+			return
+		end
+		stopped = true
+		local track = anims.track(move)
+		if track then
+			track:Stop(0.1)
+			track:Destroy()
+		end
+		dummy:Destroy()
+		if model then
+			model:Destroy()
+		end
+		if playing == stop then
+			playing = nil
+		end
+	end
+	playing = stop
+	anims.play(move)
+	local length = if cut == 0 then moveset.skill.length else moveset.combo[cut].length
+	if cut == 0 then
+		SwordSkillFx.skill(character, fx.skill, colors, scale, dummy.Position)
+	else
+		task.delay(SwordFxConfig.ARCS[move].from, function()
+			if not stopped then
+				SwordSkillFx.slash(character, fx.slash, cut, colors, scale)
+			end
+		end)
+		if cut == 3 then
+			task.delay(moveset.combo[3].hitAt, function()
+				local at = SwordSkillFx.slamPoint(character)
+				if at and not stopped then
+					SwordSkillFx.finisher(at, fx.finisher, colors, scale)
+				end
+			end)
+		end
+	end
+	task.delay(length + 2, stop)
+end
+
 local function play(payload: any)
+	if payload.skillFx ~= nil then
+		playSword(payload)
+		return
+	end
 	local superLook = if typeof(payload.super) == "string" and SuperFxConfig.LOOKS[payload.super] then payload.super else nil
 	local kind = if superLook then Combat.SIGNATURES[SuperFxConfig.LOOKS[superLook].card].kind
 		elseif payload.attack == true then "attack"

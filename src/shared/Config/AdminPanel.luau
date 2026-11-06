@@ -101,6 +101,22 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- The round 1 swords' effects (spec 2026-11-06-sword-skills-design 7): your character casts the sword's finisher or
+		-- skill at a dummy in front of you (MovePreviewController), coloured and scaled like that weapon at that level
+		title = "Sword skills",
+		buttons = {
+			{ label = "Sunforged finisher", command = "/skillfx sunforged cut3" },
+			{ label = "Sunfall Cleave", command = "/skillfx sunforged skill" },
+			{ label = "Verdant finisher", command = "/skillfx verdant cut3" },
+			{ label = "Thornline", command = "/skillfx verdant skill" },
+			{ label = "Prism finisher", command = "/skillfx prism cut3" },
+			{ label = "Prism Judgment", command = "/skillfx prism skill" },
+			{ label = "Forge finisher", command = "/skillfx forge cut3" },
+			{ label = "Elemental Spin", command = "/skillfx forge skill" },
+			{ label = "Any sword move", command = "/skillfx %s", placeholder = "sword [cut1|cut2|cut3|skill] [level] (tide skill 10)" },
+		},
+	},
+	{
 		title = "Fights and places",
 		buttons = {
 			{ label = "Wake resting cards", command = "/rest" },

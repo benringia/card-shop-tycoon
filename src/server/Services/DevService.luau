@@ -32,6 +32,7 @@ local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
+local SwordSkillFx = require(Config:WaitForChild("SwordSkillFx"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -518,6 +519,27 @@ function DevService.Start()
 		end
 		Remotes.MovePreview:FireClient(player, { super = look, grade = grade })
 	end)
+	-- The round 1 swords' effects (spec 2026-11-06-sword-skills-design 7): your character casts a sword's cut or skill at
+	-- a dummy in front of you, coloured and scaled like that weapon at that level (Grade S), played by your client
+	-- (MovePreviewController). "/skillfx sunforged skill", "/skillfx tide cut3 10"
+	addCommand(folder, "skillfx", function(player, text)
+		local name = string.lower(string.match(text, "^/%w+%s+(%a+)") or "")
+		local move = string.lower(string.match(text, "^/%w+%s+%a+%s+(%w+)") or "skill")
+		local level = tonumber(string.match(text, "%s(%d+)%s*$") or "0") or 0
+		local weaponId = SwordSkillFx.PREVIEW[name]
+		local weapon = if weaponId then Weapons.ById[weaponId] else nil
+		if not weapon or not weapon.moveset or not ({ cut1 = true, cut2 = true, cut3 = true, skill = true })[move] then
+			Remotes.Notify:FireClient(player, "Usage: /skillfx <sunforged|verdant|prism|forge|ember|tide|bloom|volt|shade> [cut1|cut2|cut3|skill] [level]", true)
+			return
+		end
+		Remotes.MovePreview:FireClient(player, {
+			skillFx = weapon.moveset,
+			weapon = weaponId,
+			move = move,
+			grade = "S",
+			level = math.clamp(math.floor(level), 0, Weapons.MAX_LEVEL),
+		})
+	end)
 	addCommand(folder, "levelsound", function(player, text)
 		-- Round 5: pick one of the level-up sound sets (Config/LevelUpFx SOUNDS.sets) and hear it once
 		local sets = LevelUpFx.SOUNDS.sets
@@ -627,7 +649,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level]")
 end
 
 return DevService
