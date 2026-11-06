@@ -20,6 +20,11 @@ function PetVoice.voice(rarity: string, seed: number, cfg: Config): string
 	return list[math.floor(seed) % #list + 1]
 end
 
+-- How loud it is: big rarities' huff at cfg.bigVolume (a pitched-down hiss was harsh at a chirp's volume), else cfg.volume
+function PetVoice.volume(rarity: string, cfg: { bigRarities: { [string]: boolean }, volume: number, bigVolume: number }): number
+	return if cfg.bigRarities[rarity] then cfg.bigVolume else cfg.volume
+end
+
 -- Seconds until the next chirp, `roll` 0-1 picking within cfg.every
 function PetVoice.nextChirp(roll: number, cfg: Config): number
 	return cfg.every[1] + (cfg.every[2] - cfg.every[1]) * math.clamp(roll, 0, 1)

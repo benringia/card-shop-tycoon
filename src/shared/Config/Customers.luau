@@ -42,9 +42,17 @@ return {
 		AgentCanJump = true, -- the plot floor is a 1-stud step up from the street
 	},
 
-	-- Roblox default R15 animations
-	WALK_ANIMATION = "rbxassetid://507777826",
+	-- Roblox's default R15 animations: today's walk (the old 507777826 looked like a jog, owner 2026-11-06) and idle.
+	-- The walk clip is made for WALK_CLIP_PACE studs a second (Roblox's Animate: "normalizedWalkSpeed 0.5"), so NPCs
+	-- play it at their speed over that (Util/WalkStep.clipSpeed)
+	WALK_ANIMATION = "rbxassetid://913402848",
 	IDLE_ANIMATION = "rbxassetid://507766666",
+	WALK_CLIP_PACE = 6.4,
+	-- Following a path (Util/WalkStep, server Util/NpcMotion): a waypoint on the way counts as reached `lookahead` studs
+	-- early so the next step goes out before the NPC stops; the walk's end within `finish`. Trying to walk but covering
+	-- under stallStuds in stallSeconds is being stuck (it gives that walk up). A step may take twice its walk time plus
+	-- `grace` s; position checked every `check` s; the idle clip waits idleDelay s after stopping (no flicker at turns)
+	NPC_STEP = { lookahead = 1.25, finish = 0.6, stallSeconds = 1, stallStuds = 0.5, grace = 4, check = 0.05, idleDelay = 0.25 },
 
 	SKIN_COLORS = {
 		{ 255, 220, 185 },
@@ -140,10 +148,10 @@ return {
 	-- Stops (WalkerRules.townStops): window spots windowOffsets studs either side of each shop's door on its sidewalk,
 	-- road spots at roadXs, roadZ out from the middle line, plaza spots plazaRadius out at plazaAngles (degrees, 0 = +X;
 	-- 180 is the spawn pad) and the plaza benches. They appear and leave exitInset studs inside the street's ends.
-	-- walkSpeed is a stroll (owner 2026-11-06: "walk slowly, not run"); the walk clip plays at walkSpeed / walkClipPace
-	-- (the default R15 walk is made for about 6.4 studs a second). Their paths never jump (they hopped onto the fountain)
-	-- and keep off grass and water; a waypoint they can't reach in stuckSeconds past its walk time is given up.
-	-- "In town" is within townRadius of the plaza centre.
+	-- walkSpeed is a stroll (owner 2026-11-06: "walk slowly, not run"); the walk clip keeps pace (WALK_CLIP_PACE).
+	-- Their paths never jump (they hopped onto the fountain) and keep off grass and water; a waypoint they can't reach
+	-- in stuckSeconds past its walk time is given up. A collector keeps its card to itself until it's in a shop (no
+	-- thought bubbles on the street). "In town" is within townRadius of the plaza centre.
 	WALKERS = {
 		max = 8,
 		spawnEvery = 20,
@@ -154,7 +162,6 @@ return {
 		lifetime = 300,
 		stopSeconds = { 4, 9 },
 		walkSpeed = 6,
-		walkClipPace = 6.4,
 		stuckSeconds = 2,
 		agent = {
 			AgentRadius = 2,

@@ -578,7 +578,10 @@ return {
 		big = { "rbxassetid://9113989919" }, -- PSE "Creature Vocal Spider Hiss Exhale 1", pitched down: a big beast's huff
 		bigRarities = { Epic = true, Legendary = true },
 		every = { 18, 40 }, -- seconds between chirps
-		volume = 0.3,
+		-- Sound volumes (owner 2026-11-06: the screech on summon too loud, Epics and Legendaries most): small chirps, then
+		-- the big rarities' huff, a pitched-down hiss that carries much more
+		volume = 0.22,
+		bigVolume = 0.1,
 		range = 45, -- studs it carries (RollOffMaxDistance)
 		pitch = { min = 0.55, max = 1.3, vary = 0.08, power = 0.45 },
 		bounce = 0.08,

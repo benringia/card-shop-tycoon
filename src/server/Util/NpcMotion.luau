@@ -4,6 +4,11 @@
 local PathfindingService = game:GetService("PathfindingService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local CustomerConfig = require(Shared:WaitForChild("Config"):WaitForChild("Customers"))
+local WalkStep = require(Shared:WaitForChild("Util"):WaitForChild("WalkStep"))
 
 local NpcMotion = {}
 
@@ -40,8 +45,9 @@ function NpcMotion.createRig(description: HumanoidDescription, name: string, spa
 	return model
 end
 
--- walkClipSpeed: how fast the walk clip plays (1 = its own pace), so the steps match a slower walk
-function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, idleAnimationId: string, walkClipSpeed: number?)
+-- The walk clip plays at the feet's pace (Util/WalkStep.clipSpeed over Customers.WALK_CLIP_PACE), and the idle clip
+-- only once the NPC has stood still a moment (NPC_STEP.idleDelay), so a turn on the path doesn't flicker to idle
+function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, idleAnimationId: string)
 	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator")
 	animator.Parent = humanoid
 
@@ -54,55 +60,75 @@ function NpcMotion.setupAnimations(humanoid: Humanoid, walkAnimationId: string, 
 	local idle = animator:LoadAnimation(idleAnimation)
 	idle:Play()
 
+	local stopping: {}? = nil -- the stop that will switch to idle unless the NPC moves again first
 	humanoid.Running:Connect(function(speed)
 		if speed > 0.5 then
-			if not walk.IsPlaying then
-				idle:Stop()
-				walk:Play(0.1, 1, walkClipSpeed or 1)
+			stopping = nil
+			local rate = WalkStep.clipSpeed(speed, CustomerConfig.WALK_CLIP_PACE)
+			if walk.IsPlaying then
+				walk:AdjustSpeed(rate)
+			else
+				idle:Stop(0.2)
+				walk:Play(0.2, 1, rate)
 			end
-		elseif not idle.IsPlaying then
-			walk:Stop()
-			idle:Play()
+			return
 		end
+		if not walk.IsPlaying or stopping then
+			return
+		end
+		local stop = {}
+		stopping = stop
+		task.delay(CustomerConfig.NPC_STEP.idleDelay, function()
+			if stopping == stop then
+				stopping = nil
+				walk:Stop(0.25)
+				idle:Play(0.25)
+			end
+		end)
 	end)
 end
 
--- graceSeconds nil: Roblox's own timeout (MoveToFinished fires false after 8 seconds).
--- Otherwise give up after the expected walk time plus graceSeconds, so a blocked NPC isn't stuck for long.
-local function moveDirect(humanoid: Humanoid, root: BasePart, target: Vector3, graceSeconds: number?): boolean
-	if not graceSeconds then
-		humanoid:MoveTo(target)
-		return humanoid.MoveToFinished:Wait()
+-- One step toward `point`: true once it's there (WalkStep.reached: a waypoint on the way a little early, so the next
+-- step goes out before the NPC stops), false when it's stuck (walking without getting anywhere) or past its time
+-- (twice the walk time plus graceSeconds, NPC_STEP.grace when nil)
+local function step(humanoid: Humanoid, root: BasePart, point: Vector3, isLast: boolean, graceSeconds: number?): boolean
+	local look = CustomerConfig.NPC_STEP
+	local function flatTo(): number
+		local here = root.Position
+		return Vector2.new(point.X - here.X, point.Z - here.Z).Magnitude
 	end
-	-- Woken the moment the step ends (polling left the NPC standing still a moment at every waypoint)
-	local thread = coroutine.running()
-	local settled, reached = false, false
-	local function settle(didReach: boolean)
-		if settled then
-			return
+	local limit = WalkStep.limit(flatTo(), humanoid.WalkSpeed, graceSeconds or look.grace)
+	local started = os.clock()
+	local askedAt, checkedAt, checkedFrom = started, started, root.Position
+	humanoid:MoveTo(point)
+	while not WalkStep.reached(flatTo(), isLast, look) do
+		task.wait(look.check)
+		if not root.Parent then
+			return false
 		end
-		settled, reached = true, didReach
-		-- (a despawn may have cancelled the walking thread meanwhile)
-		if coroutine.status(thread) == "suspended" then
-			task.spawn(thread)
+		local now = os.clock()
+		if now - started > limit then
+			return false
+		end
+		if now - checkedAt >= look.stallSeconds then
+			local moved = (root.Position - checkedFrom).Magnitude
+			if WalkStep.stalled(moved, now - checkedAt, look) then
+				return false
+			end
+			checkedAt, checkedFrom = now, root.Position
+		end
+		-- Roblox's MoveTo gives up after 8 s of walking: ask again before that on a long step
+		if now - askedAt > 6 then
+			humanoid:MoveTo(point)
+			askedAt = now
 		end
 	end
-	local connection = humanoid.MoveToFinished:Connect(settle)
-	local limit = (root.Position - target).Magnitude / math.max(humanoid.WalkSpeed, 1) * 2 + graceSeconds
-	local timer = task.delay(limit, settle, false)
-	humanoid:MoveTo(target)
-	if not settled then
-		coroutine.yield()
-	end
-	connection:Disconnect()
-	if coroutine.status(timer) == "suspended" then
-		task.cancel(timer)
-	end
-	return reached
+	return true
 end
 
 -- Walks along a computed path; falls back to a straight line if no path is found, unless straightLine is false (then
--- it gives up: false). isAlive lets the caller stop the walk early (NPC removed). graceSeconds: see moveDirect.
+-- it gives up: false). isAlive (asked before each waypoint) lets the caller stop the walk early (NPC removed).
+-- graceSeconds: see step.
 function NpcMotion.walkTo(
 	humanoid: Humanoid,
 	root: BasePart,
@@ -123,17 +149,18 @@ function NpcMotion.walkTo(
 		if straightLine == false then
 			return false
 		end
-		return moveDirect(humanoid, root, target, graceSeconds)
+		return step(humanoid, root, target, true, graceSeconds)
 	end
 
-	for _, waypoint in path:GetWaypoints() do
+	local waypoints = path:GetWaypoints()
+	for index, waypoint in waypoints do
 		if not isAlive() then
 			return false
 		end
 		if waypoint.Action == Enum.PathWaypointAction.Jump then
 			humanoid.Jump = true
 		end
-		if not moveDirect(humanoid, root, waypoint.Position, graceSeconds) then
+		if not step(humanoid, root, waypoint.Position, index == #waypoints, graceSeconds) then
 			return false
 		end
 	end

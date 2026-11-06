@@ -52,6 +52,7 @@ type Creature = {
 	height: number,
 	connections: { RBXScriptConnection },
 	voice: string?, -- your own creature's chirp (Util/PetVoice); nil on everyone else's
+	voiceVolume: number, -- how loud it chirps (PetVoice.volume: the big rarities' huff quieter)
 	nextChirp: number, -- os.clock of its next chirp
 	chirpStart: number?, -- os.clock its chirp's little bounce began
 	healStop: (() -> ())?, -- stops its spring healing effect (Util/HealFx)
@@ -223,7 +224,7 @@ end
 local function chirp(creature: Creature, now: number)
 	local cfg = Party.VOICE
 	local sound = SoundBank.make(creature.voice :: string)
-	sound.Volume = cfg.volume
+	sound.Volume = creature.voiceVolume
 	sound.PlaybackSpeed = PetVoice.pitch(creature.height, Party.CREATURE_HEIGHT, math.random(), cfg)
 	sound.RollOffMode = Enum.RollOffMode.InverseTapered
 	sound.RollOffMaxDistance = cfg.range
@@ -328,6 +329,7 @@ local function add(marker: BasePart)
 		voice = if marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId
 			then PetVoice.voice(card.rarity, (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name, Party.VOICE)
 			else nil,
+		voiceVolume = PetVoice.volume(card.rarity, Party.VOICE),
 		nextChirp = os.clock() + PetVoice.nextChirp(math.random(), Party.VOICE),
 		chirpStart = nil,
 		healStop = nil,

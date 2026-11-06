@@ -206,6 +206,12 @@ local function watch(model: Instance)
 	if model:GetAttribute("WantedCard") ~= nil then
 		task.spawn(showWanted, model)
 	end
+	-- A town walker becomes a shop's collector on the way in: its card arrives then
+	model:GetAttributeChangedSignal("WantedCard"):Connect(function()
+		if model:GetAttribute("WantedCard") ~= nil then
+			showWanted(model)
+		end
+	end)
 	-- A kid rips their pack after paying, so Pulled arrives later
 	model:GetAttributeChangedSignal("Pulled"):Connect(function()
 		showPull(model)

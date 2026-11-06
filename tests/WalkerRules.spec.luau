@@ -136,7 +136,7 @@ return {
 	["walkers walk, never run or jump"] = function()
 		local walkers = Customers.WALKERS
 		assert(walkers.walkSpeed < Customers.WALK_SPEED, "slower than shoppers")
-		assert(walkers.walkSpeed <= walkers.walkClipPace, "no faster than the walk clip's own pace")
+		assert(walkers.walkSpeed <= Customers.WALK_CLIP_PACE, "no faster than the walk clip's own pace")
 		expect.equal(walkers.agent.AgentCanJump, false, "the path never jumps")
 	end,
 }

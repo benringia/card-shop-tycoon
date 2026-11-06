@@ -218,7 +218,7 @@ local function run(walker: Walker)
 		end
 		local plot, owner = pickShop(walker)
 		if plot and owner and walker.alive and walkTo(walker, CustomerService.EntryPoint(plot)) then
-			if walker.alive and plot.owner == owner and CustomerService.Adopt(walker.model, plot, owner, walker.kind) then
+			if walker.alive and plot.owner == owner and CustomerService.Adopt(walker.model, plot, owner, walker.kind, walker.wanted) then
 				-- The shop's customer now: CustomerService owns the model from here
 				walker.alive = false
 				local index = table.find(walkers, walker)
@@ -254,8 +254,8 @@ local function spawnWalker()
 		for _, card in Cards.BySet["First Spark"] do
 			table.insert(all, { id = card.id, rarity = card.rarity })
 		end
+		-- Kept to itself until it's in a shop (CustomerService.Adopt shows the thought bubble): no cards over heads on the street
 		wanted = CollectorRules.wanted(CustomerConfig, {}, all, 1, rng:NextNumber())
-		model:SetAttribute("WantedCard", wanted)
 	end
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
@@ -266,7 +266,7 @@ local function spawnWalker()
 	table.insert(walkers, walker)
 	model.Parent = folder
 	root:SetNetworkOwner(nil)
-	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION, look.walkSpeed / look.walkClipPace)
+	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
 	task.spawn(run, walker)
 end
 

@@ -21,6 +21,16 @@ return {
 		expect.equal(PetVoice.voice("Legendary", 0, CFG), "huff")
 	end,
 
+	["the big creatures' huff is quieter than a small chirp (owner 2026-11-06: too loud on summon)"] = function()
+		local voice = Party.VOICE
+		expect.equal(PetVoice.volume("Common", voice), voice.volume)
+		expect.equal(PetVoice.volume("Very Rare", voice), voice.volume)
+		expect.equal(PetVoice.volume("Epic", voice), voice.bigVolume)
+		expect.equal(PetVoice.volume("Legendary", voice), voice.bigVolume)
+		assert(voice.bigVolume <= voice.volume * 0.6, "a big beast's huff well under a chirp")
+		assert(voice.volume <= 0.25, "chirps stay soft")
+	end,
+
 	["the next chirp comes 18-40 s later"] = function()
 		expect.equal(PetVoice.nextChirp(0, CFG), 18)
 		expect.equal(PetVoice.nextChirp(1, CFG), 40)

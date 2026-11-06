@@ -1005,15 +1005,15 @@ function CustomerService.EntryPoint(plot: Plot): Vector3
 	return getEntryCFrame(plot).Position
 end
 
--- A town walker at this shop's door becomes its customer (a collector keeps the card on its WantedCard attribute, or
--- picks one from this shop); false when the shop has no room or isn't this owner's any more
-function CustomerService.Adopt(model: Model, plot: Plot, owner: Player, kind: string): boolean
+-- A town walker at this shop's door becomes its customer (a collector keeps the card it wanted on the street, or
+-- picks one from this shop; its thought bubble shows from here); false when the shop has no room or isn't this
+-- owner's any more
+function CustomerService.Adopt(model: Model, plot: Plot, owner: Player, kind: string, wanted: string?): boolean
 	local state = getPlotState(plot)
 	if plot.owner ~= owner or not CustomerConfig.TYPES[kind] or #state.customers >= CustomerConfig.MAX_PER_PLOT then
 		return false
 	end
-	local wanted = model:GetAttribute("WantedCard")
-	local card = if kind == "collector" then (if typeof(wanted) == "string" then wanted else pickWanted(owner)) else nil
+	local card = if kind == "collector" then (wanted or pickWanted(owner)) else nil
 	startCustomer(plot, owner, state, model, kind, card)
 	return true
 end

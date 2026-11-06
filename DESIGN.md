@@ -357,9 +357,17 @@ is over UI (`UIKit.pointerBlocked`).
   fallback). After 40-120 s each picks an open shop (its owner in the game), weighted by rating squared and x3 for a
   collector whose card is on show there, walks to its door and becomes its customer (`CustomerService.Adopt`); a full
   shop sends it strolling again; after 5 minutes it walks off at the nearest street end. They add to each shop's
-  street customers. Measured 2026-11-06 (one player, Studio): server heartbeat work 0.45 ms before, 0.15-0.27 ms with
-  4 walkers on the plaza; client 16.7 ms a frame (60 fps cap), worst 24 ms. After the street round: 5-7 walkers spread
-  from x -90 to 99 on both sides, no jumps, a steady 6 studs a second.
+  street customers. A collector keeps its card to itself on the street: the thought bubble shows once it's a shop's
+  customer (`Adopt` takes the card; the client watches `WantedCard` change). Measured 2026-11-06 (one player,
+  Studio): server heartbeat work 0.45 ms before, 0.15-0.27 ms with 4 walkers on the plaza; client 16.7 ms a frame (60
+  fps cap), worst 24 ms. After the street round: 5-8 walkers spread from x -90 to 99 on both sides, no jumps, a steady
+  6 studs a second, nobody walking in place over 80 s.
+- **How NPCs walk** (customers, walkers, shop workers; `Util/NpcMotion`, `Util/WalkStep`, `Customers.NPC_STEP`):
+  Roblox's own R15 walk (913402848; the old 507777826 looked like a jog) played at the feet's pace (speed / 6.4, the
+  clip's own pace; walkers 0.94x, shoppers 1.56x), and the idle clip only after 0.25 s standing, so turns don't
+  flicker. Along a path each waypoint counts as reached 1.25 studs early so the next step goes out before the NPC
+  stops (they stopped ~0.2 s at every one), the walk's end within 0.6. Trying to walk but covering under 0.5 studs in
+  1 s is being stuck: that walk is given up (a walker picks another stop) instead of walking in place.
 - Customer spawn rate scales with **shop rating** (4.7).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 
@@ -1497,8 +1505,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   says hello 0.5 s after it pops up, then chirps every 18-40 s while it's out and about (not in a fight, fainted,
   swapped out or leaving) with an 8% squash-bounce. Small creatures chirp (PSE "Parakeet Chirps 8", "Mouse Vocal 3",
   one per creature), Epics and Legendaries give a low huff (PSE "Creature Vocal Spider Hiss Exhale 1"); pitched lower
-  the bigger it is ((3 / height) ^ 0.45, kept within 0.55-1.3, +-8%), volume 0.3, heard within 45 studs. Only you hear
-  your own (client-side).
+  the bigger it is ((3 / height) ^ 0.45, kept within 0.55-1.3, +-8%), volume 0.22 for a chirp and 0.1 for the big
+  huff (`PetVoice.volume`; owner 2026-11-06: the screech on summon was too loud, Epics and Legendaries most), heard
+  within 45 studs. Only you hear your own (client-side).
 - **Healing at the spring** (owner 2026-11-04; `Util/HealFx`, `Party.HEAL_FX`): while you stand in the spring's
   12-stud area (`RestChanged.nearSpring`, from the server's spring tick) your summoned creature, out and about, shows
   a green "+ Healing" pill above its name tag, green plus signs floating up off it, rising green sparkles, a green light
@@ -2146,7 +2155,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── VictoryRules.luau  # the end screen's reward tiles, notes and subtitle from a fight summary (pure, Lune-tested)
             ├── DefeatRules.luau   # the defeat screen's rows, subtitle and tip (pure, Lune-tested)
             ├── SummonMotion.luau  # a summon's pop, an unsummon's shrink, a faint's tip-over, fresh stamps (pure, Lune-tested)
-            ├── PetVoice.luau      # your creature's chirp: voice, timing, pitch by size, bounce, when it may (pure, Lune-tested)
+            ├── PetVoice.luau      # your creature's chirp: voice, volume, timing, pitch by size, bounce, when it may (pure, Lune-tested)
+            ├── WalkStep.luau      # NPCs following a path: waypoint reached early, stuck when walking in place, walk clip pace (pure, Lune-tested)
             ├── MusicRules.luau    # where the town is for its music, which track is next (pure, Lune-tested)
             ├── XpPill.luau        # the level pill's XP text ("99,800 XP", "/ 226,000") and its count-up (pure, Lune-tested)
             ├── SparkPath.luau     # the XP sparks' curved flight and how many fly (pure, Lune-tested)
