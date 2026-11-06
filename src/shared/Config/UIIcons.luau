@@ -77,6 +77,10 @@ return {
 	Dodge = "rbxassetid://104854282079703",
 	SpinSkill = "rbxassetid://109096062504328", -- a spare since the dash slash (kept for the Forge's swords)
 	DashSkill = "rbxassetid://75416269570120", -- the dash slash (sword-moves round; a single icon, slice_icons single)
+	-- The round 1 swords' skill buttons (sheet 8, owner's picks 2026-11-07; Elemental Spin uses SpinSkill)
+	Thornline = "rbxassetid://97945764069946",
+	Sunfall = "rbxassetid://91027604638860",
+	PrismJudgment = "rbxassetid://94329390139564",
 	Paw = "rbxassetid://127023045019616",
 	Sparkle = "rbxassetid://90976268345911",
 	Swap = "rbxassetid://122501337503529",

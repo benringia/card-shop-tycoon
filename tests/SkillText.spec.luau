@@ -2,9 +2,44 @@
 -- A card's skills as the card view shows them (the owner 2026-11-05: "Add Creature Skill to the creature card", option A)
 local SkillText = require("../src/shared/Util/SkillText")
 local Combat = require("../src/shared/Config/Combat")
+local CombatHud = require("../src/shared/Config/CombatHud")
+local Swords = require("../src/shared/Config/Swords")
+local UIIcons = require("../src/shared/Config/UIIcons")
 local expect = require("./lib/expect")
 
 return {
+	-- The skill button per sword (owner's picks 2026-11-07): its own icon, name and tooltip, plus the dodge rule
+	["each round 1 sword's skill button has its own icon, name and tooltip"] = function()
+		local seen = {}
+		for moveset in Swords.SWORDS do
+			if moveset ~= Swords.STARTER then
+				local button = SkillText.swordSkill(CombatHud, moveset)
+				expect.equal(UIIcons[button.icon] ~= nil, true, `{moveset}'s icon is uploaded`)
+				expect.equal(button.name ~= CombatHud.BUTTONS.skill.name, true, `{moveset} has its own name`)
+				expect.equal(#button.tip <= 140, true, `{moveset}'s tooltip fits the tooltip box`)
+				expect.isNil(seen[button.icon], `{moveset}'s icon is its own`)
+				seen[button.icon] = true
+			end
+		end
+		expect.equal(SkillText.swordSkill(CombatHud, "sunforgedBlade").name, "Sunfall Cleave")
+		expect.equal(SkillText.swordSkill(CombatHud, "prismBlade").icon, "PrismJudgment")
+	end,
+
+	["the Steel Sword and anything unknown keep the dash slash's button"] = function()
+		for _, moveset in { Swords.STARTER, "noSuchSword", nil :: string? } do
+			local button = SkillText.swordSkill(CombatHud, moveset)
+			expect.equal(button.icon, CombatHud.BUTTONS.skill.icon)
+			expect.equal(button.name, CombatHud.BUTTONS.skill.name)
+		end
+	end,
+
+	["every skill's tooltip says a dodge before it lands cancels it"] = function()
+		for _, moveset in { Swords.STARTER, "verdantBlade", "forgeSword" } do
+			local tip = SkillText.swordSkill(CombatHud, moveset).tip
+			expect.equal(string.find(tip, CombatHud.SKILL_DODGE_TIP, 1, true) ~= nil, true, moveset)
+		end
+	end,
+
 	["each Pet move says what it does, from the fight's numbers"] = function()
 		expect.equal(SkillText.describe(Combat.ABILITIES.Ember), "A big hit: 2.5x ATK")
 		expect.equal(SkillText.describe(Combat.ABILITIES.Tide), "Heals your creature 25% over 5 s")

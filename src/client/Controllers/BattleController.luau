@@ -1512,6 +1512,7 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 	combatHud = hud
 	if combatSword then
 		SwordController.SetCombat(true, swordTargets, hud.setCooldown)
+		hud.setSkill(SwordController.EquippedMoveset())
 	end
 	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
 end

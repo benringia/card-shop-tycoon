@@ -101,6 +101,7 @@ export type Hud = {
 	setMeter: (name: string, share: number) -> (), -- the Super button's meter, 0 to 1 (full: it can fire)
 	setVisible: (visible: boolean) -> (),
 	setDebuff: (kind: string?, seconds: number?) -> (), -- a boss's debuff on you for `seconds` (nil: none)
+	setSkill: (moveset: string?) -> (), -- the skill button for your sword's moveset (Config/CombatHud SKILLS)
 	destroy: () -> (),
 }
 
@@ -822,11 +823,15 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	tipBody.TextWrapped = true
 	tipBody.ZIndex = 21
 	local tipFor: string? = nil
+	local skillButton = SkillText.swordSkill(CombatHudConfig, nil) -- your sword's skill (setSkill)
 
-	-- What a button is called right now: the pet and signature buttons are named after the creature's moves
+	-- What a button is called right now: the pet and signature buttons are named after the creature's moves, the skill
+	-- button after your sword's skill
 	local function moveName(name: string): string
 		local view = latest
-		if name == "pet" and view then
+		if name == "skill" then
+			return skillButton.name
+		elseif name == "pet" and view then
 			return view.petMove
 		elseif name == "signature" and view and view.signatureMove then
 			return view.signatureMove
@@ -855,7 +860,11 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tipTitle.Text = title
 		tipTitle.TextColor3 = color(spec.color)
 		local view = latest
-		tipBody.Text = (if view then SkillText.buttonTip(Combat, name, view.creatureElement, view.signatureMove) else nil) or spec.tip
+		if name == "skill" then
+			tipBody.Text = skillButton.tip
+		else
+			tipBody.Text = (if view then SkillText.buttonTip(Combat, name, view.creatureElement, view.signatureMove) else nil) or spec.tip
+		end
 		if name == "signature" then
 			tipBody.Text ..= `\n{CombatHudConfig.METER.tip}`
 		end
@@ -1207,7 +1216,20 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
-	return { update = update, setCooldown = setCooldown, setMeter = setMeter, setVisible = setVisible, setDebuff = setDebuff, destroy = destroy }
+	-- The skill button for your sword (owner's picks 2026-11-07): its icon, its name under it, its tooltip
+	local function setSkill(moveset: string?)
+		skillButton = SkillText.swordSkill(CombatHudConfig, moveset)
+		local button = buttons.skill
+		if button then
+			setButtonIcon(button.frame, UIIcons[skillButton.icon])
+			button.label.Text = string.upper(skillButton.name)
+		end
+		if tipFor == "skill" then
+			onTip("skill", true)
+		end
+	end
+
+	return { update = update, setCooldown = setCooldown, setMeter = setMeter, setVisible = setVisible, setDebuff = setDebuff, setSkill = setSkill, destroy = destroy }
 end
 
 return CombatHud

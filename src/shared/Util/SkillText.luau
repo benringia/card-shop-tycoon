@@ -64,6 +64,14 @@ function SkillText.buttonTip(combat: any, button: string, element: string, super
 	return nil
 end
 
+-- The skill button for a sword's moveset (Config/CombatHud SKILLS; the Steel Sword and anything unknown: the dash
+-- slash's BUTTONS.skill): its icon, name and tooltip, the tooltip ending with the dodge rule (SKILL_DODGE_TIP)
+function SkillText.swordSkill(hud: any, moveset: string?): { icon: string, name: string, tip: string }
+	local own = if moveset then hud.SKILLS[moveset] else nil
+	local spec = own or hud.BUTTONS.skill
+	return { icon = spec.icon, name = spec.name, tip = `{spec.tip}\n{hud.SKILL_DODGE_TIP}` }
+end
+
 local function skill(ability: any): Skill
 	return { kind = ability.kind, name = ability.name, text = SkillText.describe(ability) }
 end

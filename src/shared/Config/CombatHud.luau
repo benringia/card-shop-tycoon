@@ -41,6 +41,29 @@ return {
 		},
 		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil, name = "RUN", tip = "Leave the fight." },
 	},
+	-- The skill button per sword (owner's picks 2026-11-07): a round 1 sword's own icon (Config/UIIcons), name (its
+	-- tooltip's title; shown in capitals under the button) and tooltip, by its Config/Swords moveset; the Steel Sword
+	-- (and anything else) keeps BUTTONS.skill. Util/SkillText.swordSkill picks one
+	SKILLS = {
+		forgeSword = {
+			icon = "SpinSkill", name = "Elemental Spin",
+			tip = "Spin twice and blast a ring of your sword's element into every foe around you.",
+		},
+		verdantBlade = {
+			icon = "Thornline", name = "Thornline",
+			tip = "Plunge your blade into the ground: thorny vines race to the first foe and snap shut on it.",
+		},
+		sunforgedBlade = {
+			icon = "Sunfall", name = "Sunfall Cleave",
+			tip = "Leap, charge in the sun, then cleave a fire crescent that bursts on the first foe it hits.",
+		},
+		prismBlade = {
+			icon = "PrismJudgment", name = "Prism Judgment",
+			tip = "Five ghost swords circle your target and dive in one by one, then a rainbow pillar.",
+		},
+	} :: { [string]: { icon: string, name: string, tip: string } },
+	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
+	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",
 	NAME_FIGHTS = 3, -- boss fights that show the buttons' names (saved per player: swordFights)
 	TIP_HOLD = 0.4, -- seconds a phone tap is held to show the tooltip (that press doesn't act)
 	TIP_HOVER = 0.25, -- seconds the mouse rests on a button before its tooltip shows

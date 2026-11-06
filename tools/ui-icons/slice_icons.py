@@ -1,7 +1,7 @@
 """Cuts the UI icon sheet (a 4x4 grid on a magenta background, made with Figma's image generator) into separate
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
-Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-7, default 1]
+Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-8, default 1]
        python tools/ui-icons/slice_icons.py <icon.png> single <Name>   (one icon on magenta, e.g. DashSkill)
 """
 import os
@@ -54,6 +54,14 @@ SHEETS = {
         "StormCrystal", "RiftShard", "PrismScale", "WildOre",
         "Anvil", "Hammer", "Upgrade", "Reforge",
         "Spear", "Scythe", "Elements", "Awakened",
+    ],
+    # The sword skill button per sword (white glyphs, owner's picks 2026-11-07; Config/CombatHud SKILLS): four takes of
+    # each skill's icon, the used ones Thornline, Sunfall and PrismJudgment (Elemental Spin uses sheet 5's SpinSkill)
+    8: [
+        "Thornline", "ThornWrap", "ThornBurst", "ThornCrack",
+        "Sunfall", "FireCrescent", "CrescentSparks", "SunCrescent",
+        "SwordRain", "PrismJudgment", "SwordGem", "SwordCrown",
+        "ThornlineBold", "CrescentBold", "SwordRing", "Tornado",
     ],
 }
 GRID = 4

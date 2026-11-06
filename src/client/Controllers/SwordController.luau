@@ -780,6 +780,12 @@ function SwordController.BladeOf(character: Model): SwordSkillFx.Blade?
 	return bladeOf(character)
 end
 
+-- Your equipped sword's moveset (Config/Swords; the combat HUD's skill button), nil with no built sword
+function SwordController.EquippedMoveset(): string?
+	local character = player.Character
+	return movesetOf(if character then character:GetAttribute("Sword") else nil)
+end
+
 -- A character's own skill look (a round 1 sword's, Config/SwordSkillFx), nil for the Steel Sword's dash slash
 function SwordController.SkillLook(character: Model?): string?
 	local effects = if character then effectsOf(character) else nil

@@ -1250,7 +1250,8 @@ group, checked before its fragments and every time (not only the first). Below i
   - **Hit-stop:** 0.08 s on a cut, 0.12 s on the finisher and the dash slash (`SwordFx.HIT_STOP`), played the moment
     your own reach check connects; those two also shake harder. Strikes blend in over 0.04 s (`SwordFx.FADE`).
   - **The skill button** says DASH with a dash slash icon (`DashSkill`; tip "Dash through and slash everything in your
-    path.").
+    path."); a round 1 sword's own skill shows its own icon, name and tip instead (5.11 "Sword skills"), and every
+    skill's tip ends "Dodging before it lands cancels it."
   - **Sounds** (owner 2026-11-04: a whoosh as the finisher jumps, fuller slashes; all Pro Sound Effects): each move
     plays its sounds layered at set moments (`Swords` `cues`, stopped by a dodge): a cut's swish with an air layer at
     the snap (not the tap); the finisher a rising whoosh as it leaps, its swish on the fall, a hard whoosh-impact on
@@ -1811,7 +1812,11 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   Sunfall Cleave 1.78 s as the crescent leaves, Prism Judgment 1.2 s at the last dive; the Steel Sword's dash at its
   end); its effects and hit play on, its pose fades when you walk and its camera moment ends when you cut
   (`SwingGate.uncancelled`). A dodge before the hit moment cancels its damage on the server (`SwordRules.skillDodged`)
-  and its damaging part on your screen (the crescent, vines, dives or ring wave). Effects (numbers in
+  and its damaging part on your screen (the crescent, vines, dives or ring wave). The HUD's skill button shows the
+  equipped sword's skill (owner's picks 2026-11-07; `Config/CombatHud` SKILLS, picked by `SkillText.swordSkill`,
+  Lune-tested): Elemental Spin the swirl `SpinSkill`, Thornline `Thornline` (the blade in the ground between thorny
+  vines), Sunfall Cleave `Sunfall` (the fire crescent), Prism Judgment `PrismJudgment` (five swords ringed over a target);
+  white glyphs from icon sheet 8 (`slice_icons.py`, the spare takes kept). Effects (numbers in
   `Config/SwordSkillFx`, drawing in client `Util/SwordSkillFx`, rules in `Util/SwordSkillFxRules`): charge-ups, ground
   fissures, eruptions, pillars, shockwaves and particle storms in the sword's colours (a Forge Sword's in its element),
   thinned on low graphics; your own get screen shakes (`SwordSkillFx.SHAKE`: every finisher, Sunfall's cleave and
