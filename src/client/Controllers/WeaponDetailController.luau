@@ -25,15 +25,20 @@ export type State = { owned: { [string]: WeaponRules.Owned }, equipped: string, 
 local WeaponDetailController = {}
 
 local Z_INDEX = 8 -- over the binder, like the rarity guide
-local CARD_HEIGHT = 250
+local CARD_HEIGHT = 250 -- at most; shorter windows (phones) get a smaller card so Equip stays in view
+local MIN_CARD_HEIGHT = 140
 local CARD_ASPECT = 0.7
 local ROW_HEIGHT = 26
+local MAX_SIZE = Vector2.new(760, 460)
+local DESKTOP_SCALE, PHONE_SCALE = Vector2.new(0.86, 0.82), Vector2.new(0.97, 0.96)
 
 local panel: Frame? = nil
 local list: ScrollingFrame
+local row: Frame
 local cardFrame: Frame
 local cardStroke: UIStroke
-local rows: Frame
+local side: Frame
+local rows: ScrollingFrame
 local equip: TextButton
 local note: TextLabel
 local current: string? = nil
@@ -45,36 +50,36 @@ local function build(): Frame
 	local frame, scroll = UIKit.panel(UIController.GetScreenGui(), "WeaponDetail", "⚔️ Weapon")
 	frame:SetAttribute("Overlay", true) -- opens over the binder without closing it
 	frame.ZIndex = Z_INDEX
-	frame.Size = UDim2.fromScale(0.86, 0.82)
 	local limit = frame:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
-		limit.MaxSize = Vector2.new(760, 460)
+		limit.MaxSize = MAX_SIZE
 	end
 	list = scroll
 	local colors = UIKit.colorsFor(frame)
-	local row = Instance.new("Frame")
+	row = Instance.new("Frame")
 	row.Name = "Row"
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, -8, 0, CARD_HEIGHT)
 	row.Parent = list
 	cardFrame = Instance.new("Frame")
 	cardFrame.Name = "Card"
-	cardFrame.Size = UDim2.fromOffset(CARD_HEIGHT * CARD_ASPECT, CARD_HEIGHT)
 	cardFrame.BackgroundTransparency = 1
 	cardFrame.Parent = row
 	cardStroke = Instance.new("UIStroke")
 	cardStroke.Transparency = 1
 	cardStroke.Parent = cardFrame
-	local side = Instance.new("Frame")
+	side = Instance.new("Frame")
 	side.Name = "Side"
 	side.BackgroundTransparency = 1
-	side.Position = UDim2.fromOffset(CARD_HEIGHT * CARD_ASPECT + 16, 0)
-	side.Size = UDim2.new(1, -(CARD_HEIGHT * CARD_ASPECT + 16), 1, 0)
 	side.Parent = row
-	rows = Instance.new("Frame")
+	-- The stats scroll when they don't fit (a short phone), so Equip under them always shows
+	rows = Instance.new("ScrollingFrame")
 	rows.Name = "Stats"
 	rows.BackgroundTransparency = 1
-	rows.Size = UDim2.new(1, 0, 1, -70)
+	rows.BorderSizePixel = 0
+	rows.ScrollBarThickness = 4
+	rows.CanvasSize = UDim2.new()
+	rows.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	rows.Size = UDim2.new(1, 0, 1, -76)
 	rows.Parent = side
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -160,6 +165,22 @@ function WeaponDetailController.IsOpen(): boolean
 	return panel ~= nil and (panel :: Frame).Visible
 end
 
+-- Sized for this screen: nearly all of a phone's, and the card as tall as the window leaves room for (from the screen's
+-- size, not the window's, which is still popping in)
+local function fit(frame: Frame)
+	local phone = UIKit.isPhone()
+	local scale = if phone then PHONE_SCALE else DESKTOP_SCALE
+	frame.Size = UDim2.fromScale(scale.X, scale.Y)
+	local screen = UIController.GetScreenGui().AbsoluteSize
+	local windowHeight = math.min(screen.Y * scale.Y, MAX_SIZE.Y)
+	local height = math.clamp(windowHeight - (UIKit.HEADER_HEIGHT + 24) - 12, MIN_CARD_HEIGHT, CARD_HEIGHT)
+	local width = height * CARD_ASPECT
+	row.Size = UDim2.new(1, -8, 0, height)
+	cardFrame.Size = UDim2.fromOffset(width, height)
+	side.Position = UDim2.fromOffset(width + 16, 0)
+	side.Size = UDim2.new(1, -(width + 16), 1, 0)
+end
+
 function WeaponDetailController.Open(weaponId: string)
 	if not Weapons.ById[weaponId] then
 		return
@@ -170,6 +191,7 @@ function WeaponDetailController.Open(weaponId: string)
 		panel = frame
 	end
 	current = weaponId
+	fit(frame)
 	frame.Visible = true
 	WeaponDetailController.Refresh()
 end
