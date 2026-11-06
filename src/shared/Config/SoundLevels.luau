@@ -95,5 +95,12 @@ return {
 		["9120747619"] = 32, -- prismSummon
 		["9116393976"] = 109, -- prismStrike
 		["9114224721"] = 190, -- prismBoom
+		-- The Forge Sword's element sounds (2026-11-07; Ember's and Bloom's reuse the Sunforged's and the Verdant's)
+		["9118859146"] = 115, -- elementLayer_Tide
+		["9120585252"] = 96, -- elementBlast_Tide
+		["9114277757"] = 52, -- elementLayer_Volt
+		["9114277402"] = 82, -- elementBlast_Volt
+		["9125404581"] = 46, -- elementLayer_Shade
+		["9113551598"] = 51, -- elementBlast_Shade
 	} :: { [string]: number },
 }

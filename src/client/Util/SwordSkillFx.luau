@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local SwordSkillFxConfig = require(Config:WaitForChild("SwordSkillFx"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
+local Weapons = require(Config:WaitForChild("Weapons"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local MoveFx = require(Config:WaitForChild("MoveFx"))
 local SuperFx = require(Config:WaitForChild("SuperFx"))
@@ -20,7 +21,8 @@ local SwordFx = require(Config:WaitForChild("SwordFx"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 
-export type Colors = { deep: Color3, glow: Color3 }
+-- A weapon's effect colours, and its element (a Forge Sword's looks are drawn in it)
+export type Colors = { deep: Color3, glow: Color3, element: string? }
 -- A character's sword blade: its handle part and the blade's base and tip in the handle's space
 export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
 -- A skill's moments for its caster (your own: the screen shakes and sounds): the cleave, each strike of a skill made of
@@ -42,6 +44,7 @@ local VINE_PIECES = 3 -- stem pieces in a Verdant vine or root, bottom to top
 local VINE_SNAP = 0.1 -- seconds a vine takes to snap shut
 local VERDANT = SwordSkillFxConfig.VERDANT
 local PRISM = SwordSkillFxConfig.PRISM
+local ELEMENTS = SwordSkillFxConfig.ELEMENTS
 
 local function texture(key: string): string?
 	for _, list in TEXTURE_TABLES do
@@ -60,7 +63,8 @@ end
 -- A weapon's effect colours (its own look; a Forge Sword's is its element's)
 function SwordSkillFx.colorsOf(weaponId: string): Colors
 	local look = WeaponLooks.WEAPONS[weaponId] or WeaponLooks.WEAPONS.starterSword
-	return { deep = rgb(look.deep), glow = rgb(look.glow) }
+	local weapon = Weapons.ById[weaponId]
+	return { deep = rgb(look.deep), glow = rgb(look.glow), element = if weapon then weapon.element else nil }
 end
 
 -- An invisible anchored part under the camera, gone after `life` seconds
@@ -964,8 +968,91 @@ local function prismJudgment(root: BasePart, spec: SwordSkillFxConfig.Look, scal
 	end)
 end
 
+-- Forge Sword: its element (Ember when it has none) and that element's particle (ELEMENTS)
+local function elementOf(colors: Colors): (string, string)
+	local element = if colors.element and ELEMENTS[colors.element] then colors.element else "Ember"
+	return element, ELEMENTS[element].particle
+end
+
+-- How an element's particles move: flames and shadow rise, water and leaves fall, sparks fly
+local function elementMotion(element: string): (Vector3, { number })
+	if element == "Ember" then
+		return UP * 6, { 1, 3 }
+	elseif element == "Shade" then
+		return UP * 3, { 0.5, 2 }
+	elseif element == "Volt" then
+		return Vector3.zero, { 4, 9 }
+	end
+	return -UP * 9, { 2, 5 }
+end
+
+-- Forge Sword: its element's particles streaming off the blade for the swing, a bright core in its colour
+local function elementTrail(spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, blade: Blade)
+	local element, particle = elementOf(colors)
+	local accel, speed = elementMotion(element)
+	local points: { Attachment } = {}
+	for _, share in { 0.3, 0.65, 0.95 } do
+		local point = Instance.new("Attachment")
+		point.CFrame = blade.base:Lerp(blade.tip, share)
+		point.Parent = blade.part
+		table.insert(points, point)
+		local stream = emitter(point, particle, colors.deep, {
+			size = { spec.size * scale, 0.2 },
+			life = { 0.3, 0.55 },
+			speed = speed,
+			spread = 180,
+			spin = { -120, 120 },
+			accel = accel,
+			light = if element == "Shade" then 0.3 else 1,
+			brightness = if element == "Shade" then 1 else 2,
+			fade = 0.4,
+		})
+		stream.Rate = spec.count * scale / 3
+		local core = emitter(point, "glow", colors.glow, { size = { spec.size * 0.5 * scale, 0.1 }, life = { 0.15, 0.25 }, spread = 180, brightness = 2.2 })
+		core.Rate = spec.count * scale / 4
+	end
+	task.delay(spec.seconds, function()
+		for _, point in points do
+			for _, item in point:GetChildren() do
+				if item:IsA("ParticleEmitter") then
+					item.Rate = 0
+				end
+			end
+		end
+	end)
+	for _, point in points do
+		Debris:AddItem(point, spec.seconds + 1)
+	end
+end
+
+-- Forge Sword: its element blasting up out of the ground at `ground` (`size` studs), a shockwave in its colour
+local function elementBlast(ground: Vector3, size: number, colors: Colors, scale: number, count: number)
+	local element, particle = elementOf(colors)
+	ElementFx.ring(ground, colors.glow, size, 0.45)
+	if element == "Ember" then
+		ElementFx.burst(ground + UP * 2, colors.glow, 1.3 * scale)
+		ElementFx.pillar(ground, colors.deep, size * 1.2, 0.3, "flame")
+	elseif element == "Tide" then
+		ElementFx.eruption(ground, colors.glow, size * 0.4, 12)
+		local anchor = holder(CFrame.new(ground + UP * 0.5), Vector3.new(size * 0.5, 0.2, size * 0.5), 2.5)
+		local geyser = emitter(anchor, particle, colors.glow, { size = { 0.8 * scale, 0.3 }, life = { 0.8, 1.3 }, speed = { 16, 26 }, spread = 18, accel = -UP * 30, brightness = 2 })
+		geyser.Shape = Enum.ParticleEmitterShape.Box
+		geyser:Emit(detail(count * 2))
+	elseif element == "Bloom" then
+		ElementFx.eruption(ground, colors.glow, size * 0.35, 10)
+		leafBurst(ground, colors, count, scale, math.round(count / 3))
+	elseif element == "Volt" then
+		ElementFx.skyStrike(ground + UP * 2, colors.glow, 1.2 * scale)
+		ElementFx.burst(ground + UP * 2, colors.glow, scale)
+	else
+		ElementFx.burst(ground + UP * 2, colors.glow, 1.2 * scale)
+		local anchor = holder(CFrame.new(ground + UP), Vector3.one, 2.5)
+		emitter(anchor, "smoke", colors.deep, { size = { 3 * scale, 8 * scale }, life = { 0.7, 1.2 }, speed = { 5, 11 }, spread = 70, light = 0.4, brightness = 1.2, start = 0.3 }):Emit(detail(count))
+	end
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
--- the Sunforged's flames, the Verdant's leaves or the Prism's rainbow stream off it
+-- the Sunforged's flames, the Verdant's leaves, the Prism's rainbow or the Forge Sword's element stream off it
 function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?)
 	local spec = SwordSkillFxConfig.LOOKS[look]
 	local root = rootOf(character)
@@ -980,6 +1067,9 @@ function SwordSkillFx.slash(character: Model, look: string, cut: number, colors:
 		return
 	elseif look == "rainbowArc" and blade and blade.part.Parent then
 		rainbowArc(spec, scale, blade)
+		return
+	elseif look == "elementTrail" and blade and blade.part.Parent then
+		elementTrail(spec, colors, scale, blade)
 		return
 	end
 	local ahead = root.CFrame * CFrame.new(0, 0.5, -2.5)
@@ -1016,6 +1106,9 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 		return
 	elseif look == "prismShatter" and spec.beats then
 		prismShatter(groundAt(at), spec, scale)
+		return
+	elseif look == "elementBurst" then
+		elementBlast(groundAt(at), size, colors, scale, spec.count)
 		return
 	end
 	sketch(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
@@ -1266,6 +1359,125 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 	end)
 end
 
+-- Elemental Spin (option B, built big): a ring of the element opens under you and its particles spiral in as you wind
+-- up; through the two turns a three-tier tornado of it whips round you and the blade leaves a blazing disc; at the Hit a
+-- wall of it races out along the ground to the spin's reach, cracks splitting out with it, the element's own extra
+-- (lightning out to the ring, a pillar of fire, a splash eruption, a ring of vines, a smoke ring), the burst's shake
+local function elementalSpin(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local element, particle = elementOf(colors)
+	local feet = groundAt(root.Position - UP * ROOT_TO_GROUND)
+	local turning = beats.release - beats.spinFrom
+	-- the wind-up
+	ElementFx.castRing(feet, colors.glow, 4 * scale, beats.release)
+	swirl(function(): Vector3
+		return root.Position
+	end, 2.4 * scale, colors.glow, particle, beats.spinFrom + 0.1, 1 * scale)
+	-- the turns: a tornado of the element round you, the blade's blazing disc
+	task.delay(beats.spinFrom, function()
+		for tier = 1, 3 do
+			local height = beats.tornadoHeight * scale * (tier - 0.5) / 3
+			swirl(function(): Vector3
+				return feet + UP * height
+			end, beats.tornado * scale * (0.8 + tier * 0.15), if tier == 2 then colors.glow else colors.deep, particle, turning + 0.1, 1.5 * scale)
+		end
+		local blade = hooks.blade
+		if blade and blade.part.Parent then
+			local base, tip = Instance.new("Attachment"), Instance.new("Attachment")
+			base.CFrame, tip.CFrame = blade.base, blade.tip
+			base.Parent, tip.Parent = blade.part, blade.part
+			local disc = Instance.new("Trail")
+			disc.Attachment0, disc.Attachment1 = base, tip
+			disc.Color = ColorSequence.new(colors.glow:Lerp(WHITE, 0.4), colors.deep)
+			disc.Transparency = NumberSequence.new(0.1, 1)
+			disc.Lifetime = 0.25
+			disc.LightEmission = 1
+			disc.Parent = blade.part
+			task.delay(turning, function()
+				disc.Enabled = false
+			end)
+			Debris:AddItem(disc, turning + 0.5)
+			Debris:AddItem(base, turning + 0.5)
+			Debris:AddItem(tip, turning + 0.5)
+		end
+	end)
+	-- the ring wave
+	task.delay(beats.release, function()
+		if hooks.burst then
+			hooks.burst(feet)
+		end
+		local reach = beats.ring * scale
+		local accel, _ = elementMotion(element)
+		local jets: { { part: Part, angle: number } } = {}
+		for index = 1, beats.wall do
+			local angle = index / beats.wall * math.pi * 2
+			local jet = holder(CFrame.new(feet), Vector3.one, beats.grow + 1.5)
+			local spray = emitter(jet, particle, colors.deep, {
+				size = { 1.6 * scale, 0.3 },
+				life = { 0.35, 0.6 },
+				speed = { beats.wallHeight * 1.8, beats.wallHeight * 2.6 },
+				spread = 12,
+				spin = { -120, 120 },
+				accel = if accel.Y > 0 then accel else -UP * 12,
+				light = if element == "Shade" then 0.3 else 1,
+				brightness = 2,
+			})
+			spray.Rate = detail(40)
+			table.insert(jets, { part = jet, angle = angle })
+			task.delay(beats.grow + 0.15, function()
+				spray.Rate = 0
+			end)
+			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			if index % 3 == 0 then
+				fissure(feet, feet + out * reach, 1.1 * scale, colors.glow, colors.deep, beats.grow, 0.4, 0.5, "spark")
+			end
+		end
+		local started = os.clock()
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local a = math.clamp((os.clock() - started) / beats.grow, 0, 1)
+			local radius = 1 + (reach - 1) * smooth(a)
+			for _, jet in jets do
+				if jet.part.Parent then
+					jet.part.CFrame = CFrame.new(feet + Vector3.new(math.cos(jet.angle), 0, math.sin(jet.angle)) * radius)
+				end
+			end
+			if a >= 1 then
+				connection:Disconnect()
+			end
+		end)
+		ElementFx.ring(feet, colors.glow, reach * 1.15, 0.5)
+		ElementFx.ring(feet, WHITE, reach * 0.8, 0.35)
+		if element == "Volt" then
+			for index = 1, 6 do
+				local angle = index / 6 * math.pi * 2
+				ElementFx.bolt(feet + UP * 2, feet + Vector3.new(math.cos(angle), 0, math.sin(angle)) * reach + UP, colors.glow, 0.3, scale)
+			end
+		elseif element == "Ember" then
+			ElementFx.pillar(feet, colors.deep, 12 * scale, 0.4, "flame")
+		elseif element == "Tide" then
+			ElementFx.eruption(feet, colors.glow, reach * 0.6, 16)
+		elseif element == "Bloom" then
+			leafBurst(feet, colors, 40, scale, 12)
+			local vines: { Vine } = {}
+			for index = 1, 8 do
+				local angle = index / 8 * math.pi * 2
+				local at = feet + Vector3.new(math.cos(angle), 0, math.sin(angle)) * reach * 0.8
+				local vine = makeVine(groundAt(at), (feet - at).Unit, 6 * scale, 1 * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow)
+				vine.growAt = beats.grow * 0.8
+				vine.lean = -0.3
+				table.insert(vines, vine)
+			end
+			animateVines(vines, nil, beats.grow + 0.6, 0.4)
+		else
+			local anchor = holder(CFrame.new(feet + UP), Vector3.new(reach * 1.6, 0.2, reach * 1.6), 2.5)
+			local smoke = emitter(anchor, "smoke", colors.deep, { size = { 3 * scale, 7 * scale }, life = { 0.7, 1.1 }, speed = { 3, 6 }, spread = 30, light = 0.4, brightness = 1.2, start = 0.3 })
+			smoke.Shape = Enum.ParticleEmitterShape.Box
+			smoke:Emit(detail(30))
+		end
+	end)
+end
+
 -- The skill: Sunfall Cleave its own; the looks still waiting for their round around you, along the ground toward
 -- `aim` (else ahead), or on the aimed foe
 function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks?)
@@ -1282,6 +1494,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "prismJudgment" and spec.beats then
 		prismJudgment(root, spec, scale, aim, hooks or {})
+		return
+	elseif look == "elementalSpin" and spec.beats then
+		elementalSpin(root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)

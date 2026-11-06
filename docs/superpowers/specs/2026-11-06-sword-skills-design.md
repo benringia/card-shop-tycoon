@@ -22,7 +22,7 @@ combo is a later animation round", section 3.5).
 
 | Sword | Slashes (cuts 1-3) | Finisher (cut 3's slam) | Skill |
 |---|---|---|---|
-| **Forge Sword** (Common, the element picked when forged) | a trail in its element's colour, small sparks of its element on hit | a burst of its element where the slam lands: a flame puff (Ember), a splash (Tide), leaves (Bloom), sparks (Volt), shadow (Shade) | **Elemental Spin**: a full spin slash that throws a ring wave of its element out along the ground |
+| **Forge Sword** (Common, the element picked when forged) | a trail in its element's colour, small sparks of its element on hit | a burst of its element where the slam lands: a flame puff (Ember), a splash (Tide), leaves (Bloom), sparks (Volt), shadow (Shade) | **Elemental Spin** (owner 2026-11-07: option B): two fast turns whipping up a tornado of its element round you, the blade leaving a blazing disc, then a wall of the element races out along the ground to 9 studs with cracks and its element's extra (lightning, a fire pillar, a splash, vines, shadow) |
 | **Verdant Blade** (Rare, Bloom) | leaves and petals shed off each swing | roots and thorns burst up out of the ground under the foe | **Thornline** (owner 2026-11-07): a short hop, the blade plunged vertical into the ground and held there while thick thorny vines race out toward the foe and snap shut on it |
 | **Sunforged Blade** (Epic, Ember) | a fire trail on every slash | the ground cracks open with glowing lava where the slam lands | **Sunfall Cleave** (owner 2026-11-07): jump high, hang at the top while sunlight gathers into the blade, one huge cleave in the air (screen shake) launches an upright fire crescent that glides slowly down toward the boss and explodes on contact (screen shake), with a camera moment on your screen |
 | **Prism Blade** (Legendary, every element) | rainbow arcs | prism shards in all five colours burst out | **Prism Judgment** (owner 2026-11-07: the ring spinning, each blade diving in turn; "make everything exaggerated ... DO NOT MAKE BORING"): the blade swept to the sky summons five glowing ghost Forge Swords (Ember, Tide, Bloom, Volt, Shade) in a spinning ring over a rune circle above the boss; pointed at it, the ring spins faster and each blade dives in a streak of its colour, bursting in its element; a twisting rainbow pillar, shards everywhere, a shake on every strike; a camera moment from the side |
@@ -72,7 +72,8 @@ with four skills), front and side GIF previews at real speed shown to the owner 
 `lune run tools/anim/build_kfs`, published by the owner (Save to Roblox), ids into `Config/Swords`. Studio plays them
 before they're published.
 
-- Elemental Spin: a planted full turn with the blade held out at waist height (about 0.9 s).
+- Elemental Spin (option B): a low crouch wound back, two fast turns on the spot with the blade out at waist height, a
+  crouched finish as the ring wave bursts (the Hit at 0.8 s; 1.1 s).
 - Thornline (owner 2026-11-07): a short hop with the blade hanging vertical, point down, plunged straight into the
   ground (0.42 s), held there crouched over the hilt (a Hold marker: the game freezes the move until the vines reach the
   foe), a shove on the hilt as they snap, wrenched free (0.95 s plus the hold).

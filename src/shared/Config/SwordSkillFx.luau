@@ -22,10 +22,26 @@ export type Look = {
 }
 
 local LOOKS: { [string]: Look } = {
-	-- Forge Sword: its element's trail, a burst of its element, the Elemental Spin's ring wave
-	elementTrail = { kind = "slash", textures = { "spark", "glow" }, seconds = 0.5, size = 4, count = 8 },
-	elementBurst = { kind = "finisher", textures = { "impact", "spark" }, seconds = 0.8, size = 6, count = 14 },
-	elementalSpin = { kind = "skill", textures = { "ring", "spark" }, seconds = 1, size = 18, count = 24, form = "around" },
+	-- Forge Sword (storyboard 2026-11-07, all five elements; built big): each look in the sword's element (ELEMENTS).
+	-- Element trail: its element's particles streaming off the blade for `seconds`, `size` studs, `count` a second
+	elementTrail = { kind = "slash", textures = { "flame", "raindrop", "shard", "spark", "smoke", "glow" }, seconds = 0.3, size = 1.5, count = 120 },
+	-- Element burst: where the finisher slams, a blast of its element `size` studs across (a fire spurt, a splash geyser,
+	-- leaves and roots, a lightning strike, a shadow eruption), a shockwave, `count` particles
+	elementBurst = { kind = "finisher", textures = { "flame", "raindrop", "shard", "spark", "smoke", "impact" }, seconds = 1, size = 7, count = 30 },
+	-- Elemental Spin (option B): a ring of the element opens under you as you wind up; from `spinFrom` the two turns whip
+	-- up a tornado of it round you (`tornado` studs round, `tornadoHeight` tall) and the blade leaves a blazing disc; at
+	-- `release` (the Hit marker) a wall of it (`wall` jets, `wallHeight` tall) races out along the ground to `ring` studs
+	-- (the shape's radius) over `grow` seconds, cracks splitting out with it, its element's extra (lightning bolts out to
+	-- the ring, a pillar of fire, a splash eruption, vines, a smoke ring)
+	elementalSpin = {
+		kind = "skill",
+		textures = { "flame", "raindrop", "shard", "spark", "smoke", "ring", "glow" },
+		seconds = 1.2,
+		size = 18,
+		count = 40,
+		form = "around",
+		beats = { spinFrom = 0.25, release = 0.8, tornado = 3, tornadoHeight = 7, ring = 9, wall = 16, wallHeight = 6, grow = 0.25 },
+	},
 	-- Verdant Blade: leaves off each swing, roots and thorns under the foe, Thornline's vines
 	-- Verdant Blade (storyboard 2026-11-07). Leaves: leaves (`size` studs) and a few pink petals peel off the blade for
 	-- `seconds` of each swing, `count` a second, tumbling down
@@ -147,8 +163,16 @@ return {
 	VERDANT = { bark = { 104, 72, 40 }, thorn = { 236, 232, 222 }, petal = { 255, 179, 209 } },
 	-- The Prism Blade's colours: the elements in its ghost blades' order (their colours: WeaponLooks.BY_ELEMENT)
 	PRISM = { order = { "Ember", "Tide", "Bloom", "Volt", "Shade" } },
+	-- Each element's particle for the Forge Sword's looks (a texture key of the four TEXTURES tables)
+	ELEMENTS = {
+		Ember = { particle = "flame" },
+		Tide = { particle = "raindrop" },
+		Bloom = { particle = "shard" },
+		Volt = { particle = "spark" },
+		Shade = { particle = "smoke" },
+	} :: { [string]: { particle: string } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
-	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1 },
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over

@@ -184,16 +184,42 @@ local function withSkill(name: string, model: string, skill: Skill, fx: SwordFx,
 	}
 end
 
--- Elemental Spin: a full spin slash, a ring wave of its element along the ground; every foe within 9 studs
+-- Elemental Spin (owner 2026-11-07: option B, a double spin whipping up an element tornado): two fast turns with the
+-- blade out, then a ring wave of its element blasts out along the ground (its Hit marker,
+-- tools/blender/anim_forge_sword.py); every foe within 9 studs. The five Forge Swords share it, each in its element:
+-- a sound key with an `_<Element>` version plays that one for that element's sword (SwordController.PlaySound)
 SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", {
 	power = 0.9,
-	hitAt = 0.45,
-	length = 0.9,
+	hitAt = 0.8,
+	length = 1.1,
 	cooldown = 8,
 	shape = { kind = "spin", radius = 9 },
 }, { slash = "elementTrail", finisher = "elementBurst", skill = "elementalSpin" }, {
-	{ key = "swing3", at = 0.2 },
-	{ key = "hitBig", at = 0.44 },
+	{ key = "dash", at = 0.25 }, -- the first turn
+	{ key = "dodge", at = 0.5 }, -- the second
+	{ key = "elementBlast", at = 0.8 }, -- the ring wave
+}, {
+	-- Pro Sound Effects, kept quiet (SOUND_VOLUMES; levelled by Config/SoundLevels): per element a layer under each
+	-- cut's swish and a blast for the finisher and the ring wave (the plain keys: Ember's, for a sword with none)
+	sounds = {
+		elementLayer = "rbxassetid://9114446852",
+		elementBlast = "rbxassetid://9117985933",
+		elementLayer_Ember = "rbxassetid://9114446852", -- Fire Whoosh 15
+		elementBlast_Ember = "rbxassetid://9117985933", -- Pyro Fire Ball Burst 7
+		elementLayer_Tide = "rbxassetid://9118859146", -- Seahorse Splash Fast 402
+		elementBlast_Tide = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1
+		elementLayer_Bloom = "rbxassetid://9114518070", -- Foliage Movement 2
+		elementBlast_Bloom = "rbxassetid://9120258724", -- Tree Branches Breaking Snapping Cracking 1
+		elementLayer_Volt = "rbxassetid://9114277757", -- Electric Zaps 12
+		elementBlast_Volt = "rbxassetid://9114277402", -- Electric Zaps 6
+		elementLayer_Shade = "rbxassetid://9125404581", -- Boom Pass By Subtle Low End
+		elementBlast_Shade = "rbxassetid://9113551598", -- Boom Pass By Low End Multiple Variations 2
+	},
+	cutCues = {
+		cut1 = { { key = "elementLayer", at = 0.12 } },
+		cut2 = { { key = "elementLayer", at = 0.10 } },
+		cut3 = { { key = "elementLayer", at = 0.56 }, { key = "elementBlast", at = 0.68 } },
+	},
 })
 -- Thornline (owner 2026-11-07): a short hop, the blade plunged point-down into the ground (its Hit marker: the vines
 -- leave, tools/blender/anim_verdant_blade.py) and held there until thorny vines racing along the ground toward your aim
@@ -337,5 +363,8 @@ return {
 		prismSummon = 0.5, -- a quiet clip (its level 32)
 		prismStrike = 0.35,
 		prismBoom = 0.4,
+		-- the Forge Sword's (each element's version at the same volume)
+		elementLayer = 0.3,
+		elementBlast = 0.4,
 	},
 }

@@ -116,6 +116,28 @@ return {
 		expect.equal(prism.skill.length, 1.75, "the animation's length")
 	end,
 
+	["the Forge Sword's sounds are its element's: a layer under every cut, a blast on the finisher and the ring wave"] = function()
+		local forge = Swords.SWORDS.forgeSword
+		local function keys(list: { any }): { [string]: boolean }
+			local found = {}
+			for _, cue in list do
+				found[cue.key] = true
+			end
+			return found
+		end
+		for _, move in { "cut1", "cut2", "cut3" } do
+			expect.equal(keys(forge.cues[move]).elementLayer, true, `{move}: the element layer`)
+		end
+		expect.equal(keys(forge.cues.cut3).elementBlast and keys(forge.cues.skill).elementBlast, true, "the blast on the finisher and the wave")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			for _, key in { "elementLayer", "elementBlast" } do
+				expect.equal(string.sub(forge.sounds[`{key}_{element}`] or "", 1, 13), "rbxassetid://", `{key}_{element}`)
+			end
+		end
+		expect.equal(forge.skill.hitAt, 0.8, "the ring wave")
+		expect.equal(forge.skill.length, 1.1, "the animation's length")
+	end,
+
 	["each new skill has the spec's shape"] = function()
 		local shapes = Swords.SWORDS
 		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")

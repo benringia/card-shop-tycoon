@@ -173,6 +173,9 @@ local function cutEffects(character: Model, sword: Swords.Sword, effects: Effect
 			local at = SwordSkillFx.slamPoint(character)
 			if at and live() then
 				SwordSkillFx.finisher(at, effects.fx.finisher, effects.colors, effects.scale)
+				if character == player.Character then
+					ScreenFx.shake(SwordSkillFxConfig.SHAKE.finisher) -- your own finisher's slam
+				end
 			end
 		end)
 	end
@@ -575,8 +578,12 @@ end
 -- loaded, and replays from the start: a new Sound per swing could start late while it loaded.
 function SwordController.PlaySound(key: string)
 	local character = player.Character
-	local sword = swordOf(if character then character:GetAttribute("Sword") else nil) or Swords.SWORDS[Swords.STARTER]
-	local id = if sword then sword.sounds[key] else nil
+	local weaponId = if character then character:GetAttribute("Sword") else nil
+	local sword = swordOf(weaponId) or Swords.SWORDS[Swords.STARTER]
+	-- a Forge Sword plays its element's version of a sound when it has one (`<key>_<Element>`)
+	local weapon = if typeof(weaponId) == "string" then Weapons.ById[weaponId] else nil
+	local element = if weapon then weapon.element else nil
+	local id = if sword then (if element then sword.sounds[`{key}_{element}`] else nil) or sword.sounds[key] else nil
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	if not id or id == "" or not root then
 		return

@@ -110,6 +110,7 @@ return {
 			thornline = { "release", "speed", "blast", "spacing", "side", "height", "thick", "trap", "trapVines", "trapTall", "linger", "wither", "gather", "swirl", "fissure" },
 			rootBurst = { "roots", "height", "thick" },
 			prismShatter = { "crystals", "height", "thick" },
+			elementalSpin = { "spinFrom", "release", "tornado", "tornadoHeight", "ring", "wall", "wallHeight", "grow" },
 			prismJudgment = { "summon", "command", "release", "gap", "strikes", "pillar", "ringRadius", "ringHeight", "blade", "spin", "spinUp", "dive", "rune", "pillarHeight", "pillarWidth", "pillarSeconds", "camAt", "camHold", "camLookUp", "camUp" },
 		}
 		for look, keys in needs do
@@ -136,6 +137,20 @@ return {
 			expect.equal(WeaponLooks.BY_ELEMENT[element] ~= nil, true, element)
 		end
 		expect.equal(SwordSkillFx.SHAKE.prismStrike > 0 and SwordSkillFx.SHAKE.prismJudgment > SwordSkillFx.SHAKE.impact, true, "a shake per strike, the biggest on the pillar")
+	end,
+
+	["Elemental Spin keeps time with its moveset and every element has its look (Review Focus 5)"] = function()
+		local beats = SwordSkillFx.LOOKS.elementalSpin.beats :: { [string]: number }
+		local skill = Swords.SWORDS.forgeSword.skill
+		expect.equal(beats.release, skill.hitAt, "the ring wave at the Hit marker")
+		expect.equal(beats.ring, skill.shape.radius, "the wave reaches as far as the spin hits")
+		expect.equal(beats.spinFrom < beats.release, true, "the turns before the wave")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			local look = SwordSkillFx.ELEMENTS[element]
+			assert(look, `{element} has an element look`)
+			expect.equal(textureExists(look.particle), true, `{element}: its particle`)
+		end
+		expect.equal(SwordSkillFx.SHAKE.elementalSpin > 0 and SwordSkillFx.SHAKE.finisher > 0, true, "a shake on the wave and on every finisher")
 	end,
 
 	["the skill cinematic: up to the low angle, held through the charge, chasing the crescent, held on the burst, back"] = function()
