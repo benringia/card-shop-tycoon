@@ -289,15 +289,15 @@ local function fireCrescent(from: Vector3, to: Vector3, seconds: number, beats: 
 	trail.Lifetime = 0.35
 	trail.LightEmission = 1
 	trail.Parent = carrier
-	local flames = emitter(carrier, "flame", colors.deep, { size = { 1.4 * scale, 0.2 }, life = { 0.3, 0.5 }, speed = { 0.5, 2 }, spread = 180, accel = UP * 5, spin = { -60, 60 } })
+	local flames = emitter(carrier, "flame", colors.deep, { size = { beats.flame * scale, 0.2 }, life = { 0.3, 0.5 }, speed = { 0.5, 2 }, spread = 180, accel = UP * 5, spin = { -60, 60 } })
 	flames.Shape = Enum.ParticleEmitterShape.Box
-	flames.Rate = 70 * scale
+	flames.Rate = 10 * beats.height * scale
 	local embers = emitter(carrier, "spark", colors.glow, { size = { 0.35, 0.05 }, life = { 0.4, 0.8 }, speed = { 2, 5 }, spread = 180 })
 	embers.Shape = Enum.ParticleEmitterShape.Box
-	embers.Rate = 40 * scale
+	embers.Rate = 6 * beats.height * scale
 	local light = Instance.new("PointLight")
 	light.Color = colors.deep
-	light.Range = 14 * scale
+	light.Range = 2.2 * beats.height * scale
 	light.Brightness = 2.5
 	light.Parent = carrier
 	local started = os.clock()

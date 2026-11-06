@@ -37,7 +37,8 @@ local LOOKS: { [string]: Look } = {
 	lavaCrack = { kind = "finisher", textures = { "crack", "flame", "spark", "smoke" }, seconds = 1.2, size = 8, count = 24 },
 	-- Sunfall Cleave (owner 2026-11-07): sunlight gathers at the blade's tip from `charge` to `charged` (a glow `glow`
 	-- studs, motes pulled in from `gather` studs); at `release` (the cleave's Hit, Config/Swords hitAt) an upright fire
-	-- crescent `height` studs tall leaves the cleave `launch` studs above you and `ahead` in front, and glides down toward
+	-- crescent `height` studs tall (its beams `width` across, flames `flame` studs; owner 2026-11-07: "make the crescent
+	-- bigger") leaves the cleave `launch` studs above you and `ahead` in front, and glides down toward
 	-- the aim at `speed` studs a second (the shape's
 	-- `length` at most); on contact it bursts: flames `blast` studs round (the shape's blast) and a lava crack. Your own
 	-- plays the camera moment (CINEMATIC).
@@ -50,7 +51,7 @@ local LOOKS: { [string]: Look } = {
 		form = "ahead",
 		cinematic = true,
 		burstSound = "fireBurst",
-		beats = { charge = 0.42, charged = 1.65, release = 1.78, glow = 2.6, gather = 4, launch = 5.5, ahead = 2.5, speed = 14, height = 6, width = 2.4, blast = 6 },
+		beats = { charge = 0.42, charged = 1.65, release = 1.78, glow = 2.6, gather = 4, launch = 5.5, ahead = 2.5, speed = 14, height = 10, width = 3.8, flame = 2.2, blast = 6 },
 	},
 	-- Prism Blade: rainbow arcs, prism shards, Prism Judgment's ghost blades and pillar
 	rainbowArc = { kind = "slash", textures = { "star", "glow" }, seconds = 0.5, size = 4, count = 8 },
