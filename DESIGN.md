@@ -1819,7 +1819,10 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
 - Working cards are locked: no display, condensing or second job until unassigned.
 - In the shop they walk as invisible R15 rigs (pathfinding) that each client draws as the card's creature model
   (`WorkerVisualController`, `Party.CREATURE_MODELS`; at least `Jobs.CREATURE_MIN_HEIGHT` 3.4 tall), with the motion
-  kit; cards without a model show the R15 rig in the element colour, sized by rarity. The cashier stands on a low
+  kit; cards without a model show the R15 rig in the element colour, sized by rarity. Their name tag (`Jobs.TAG`, 190 x
+  66 px, a solid text outline) sits 1.4 studs over the drawn creature's top, a flying one's hover included
+  (`Util/CreatureFlight`, shared with the client's drawing; owner 2026-11-06: Nightowl's name sat in its wings). An
+  on-top tag isn't drawn at all on the invisible rig (tried in Studio), so lamps can still cover it from some angles. The cashier stands on a low
   charcoal step behind the counter (`Town.COUNTER.STEP`, solid, 1 tall) so even a small pet shows over it.
 
 ### 7.5 Tuning goals
@@ -2135,6 +2138,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CondenseRules.luau # which duplicates a star or a grade-up uses (pure, Lune-tested)
             ├── JobRules.luau      # job speed, mistakes and slots, their kid words, next job, minutes to a level (pure, Lune-tested)
             ├── TiredRules.luau    # shop workers' tired spells: work stretch, tired time, slower and more mistakes (pure, Lune-tested)
+            ├── CreatureFlight.luau # which creatures fly and how high a drawn creature's top is (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)

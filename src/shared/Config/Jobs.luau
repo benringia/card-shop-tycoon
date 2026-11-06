@@ -39,6 +39,9 @@ return {
 	-- Workers drawn with a creature model (WorkerVisualController) are at least this tall, so a cashier shows
 	-- over the counter (2.5 tall) even as a small Common
 	CREATURE_MIN_HEIGHT = 3.4,
+	-- A worker's name tag (name, grade and level, job): pixels, studs over a rig's head or over the drawn creature's
+	-- top (its hover included, Util/CreatureFlight), a solid text outline (0) so it reads against light walls
+	TAG = { width = 190, height = 66, overHead = 2.6, overCreature = 1.4, stroke = 0, maxDistance = 70 },
 	-- The words the Jobs panel shows for a worker's speed and mistakes (the first entry that matches, from the top),
 	-- with a tone for their colour
 	SPEED_WORDS = {

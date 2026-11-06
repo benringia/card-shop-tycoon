@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureMotion = require(Shared:WaitForChild("Util"):WaitForChild("CreatureMotion"))
+local CreatureFlight = require(Shared:WaitForChild("Util"):WaitForChild("CreatureFlight"))
 local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 local Party = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
 local Ambient = require(Shared:WaitForChild("Config"):WaitForChild("Ambient"))
@@ -178,14 +179,9 @@ end
 
 -- Whether a card's creature flies: a pack model flies only if its pack does (Party.FLYING_PACKS), its entry says so
 -- (an original with its own Wing_ bones) or it has wings listed; a card's own model or the placeholder flies if the
--- card is in Party.FLYING
+-- card is in Party.FLYING (Util/CreatureFlight, shared with the server's worker name tags)
 function CreatureVisuals.isFlying(cardName: string): boolean
-	local entry = Party.CREATURE_MODELS[cardName]
-	if entry then
-		return entry.flies == true or table.find(Party.FLYING_PACKS, entry.pack) ~= nil or Party.WINGS[entry.model] ~= nil
-			or Party.UNDULATE[entry.model] == "swim"
-	end
-	return table.find(Party.FLYING, cardName) ~= nil
+	return CreatureFlight.isFlying(Party, cardName)
 end
 
 -- A card's creature model: the one Party.CREATURE_MODELS gives it (in a pack, maybe with a colour variant), or one
@@ -415,7 +411,7 @@ function CreatureVisuals.makeTag(root: BasePart, above: number, color: Color3): 
 	label.Font = Enum.Font.GothamBold
 	label.TextScaled = true
 	label.TextColor3 = color
-	label.TextStrokeTransparency = 0.4
+	label.TextStrokeTransparency = 0 -- a solid outline: it reads against light walls (owner 2026-11-06)
 	label.Parent = gui
 	gui.Parent = root
 	return label

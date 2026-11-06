@@ -23,6 +23,7 @@ local Products = require(Config:WaitForChild("Products"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
 local TiredRules = require(Shared:WaitForChild("Util"):WaitForChild("TiredRules"))
+local CreatureFlight = require(Shared:WaitForChild("Util"):WaitForChild("CreatureFlight"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -242,17 +243,20 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 
 	local head = model:FindFirstChild("Head")
+	-- The name tag (Jobs.TAG): a solid outline so it reads on light walls too (owner 2026-11-06: hard to see)
+	local tag = Jobs.TAG
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(150, 54)
-	gui.StudsOffset = Vector3.new(0, 2.6, 0)
-	gui.MaxDistance = 70
+	gui.Size = UDim2.fromOffset(tag.width, tag.height)
+	gui.StudsOffset = Vector3.new(0, tag.overHead, 0)
+	gui.MaxDistance = tag.maxDistance
+	gui.LightInfluence = 0
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.GothamBold
 	label.TextScaled = true
 	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
+	label.TextStrokeTransparency = tag.stroke
 	label.Parent = gui
 	gui.Parent = head or root
 
@@ -275,7 +279,8 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 		local height = math.max(size, Jobs.CREATURE_MIN_HEIGHT)
 		local feet = humanoid.HipHeight + root.Size.Y / 2
 		gui.Parent = root
-		gui.StudsOffset = Vector3.new(0, height - feet + 1.6, 0)
+		-- Over the drawn creature's top: a flying one hovers, its name went in its wings (Util/CreatureFlight)
+		gui.StudsOffset = Vector3.new(0, CreatureFlight.top(Party, profile.card.name, height) - feet + tag.overCreature, 0)
 	end
 
 	model.Parent = workersFolder
