@@ -26,5 +26,13 @@ return {
 			fill = { { 231, 246, 255 }, { 159, 214, 255 }, { 180, 139, 255 } },
 			drop = { 59, 42, 138 },
 		},
+		-- The Armory (weapons round 1, owner's pick A 2026-11-06): a sunlit armory hall, glowing swords, a spear and a
+		-- scythe on a rack, an anvil in front
+		Armory = {
+			art = "rbxassetid://89537455400132",
+			lines = { "ARMORY" },
+			fill = { { 255, 240, 170 }, { 255, 196, 92 }, { 238, 128, 54 } },
+			drop = { 112, 58, 22 },
+		},
 	} :: { [string]: Cover },
 }

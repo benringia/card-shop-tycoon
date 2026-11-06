@@ -42,4 +42,12 @@ return {
 			assert(isColor(cover.drop), `{set} drop is an RGB colour`)
 		end
 	end,
+
+	["the Armory (weapons) has its cover too"] = function()
+		local cover = BinderCovers.SETS.Armory
+		assert(cover, "no Armory cover")
+		assert(string.match(cover.art, "^rbxassetid://%d+$"), "uploaded art")
+		expect.equal(cover.lines[1], "ARMORY")
+		expect.equal(#cover.fill, 3)
+	end,
 }
