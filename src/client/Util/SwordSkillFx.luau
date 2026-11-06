@@ -18,6 +18,7 @@ local MoveFx = require(Config:WaitForChild("MoveFx"))
 local SuperFx = require(Config:WaitForChild("SuperFx"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
+local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 
 export type Colors = { deep: Color3, glow: Color3 }
 -- A character's sword blade: its handle part and the blade's base and tip in the handle's space
@@ -216,6 +217,97 @@ local function smooth(a: number): number
 	return a * a * (3 - 2 * a)
 end
 
+-- Fewer particles with the low-graphics switch off (as ElementFx's)
+local function detail(count: number): number
+	return math.max(1, math.round(if Extras.enabled() then count else count * 0.45))
+end
+
+-- Three trails of `key` particles swirling round `center()` (`radius` studs, a little bob) for `seconds`: a charge's
+-- spiral of flames or leaves
+local function swirl(center: () -> Vector3, radius: number, color: Color3, key: string, seconds: number, size: number)
+	local anchor = holder(CFrame.new(center()), Vector3.one, seconds + 1)
+	local points: { { point: Attachment, emitter: ParticleEmitter, phase: number } } = {}
+	for index = 1, 3 do
+		local point = Instance.new("Attachment")
+		point.Parent = anchor
+		local trail = emitter(point, key, color, { size = { size, size * 0.2 }, life = { 0.35, 0.55 }, spread = 10, spin = { -90, 90 }, fade = 0.5 })
+		trail.Rate = detail(45)
+		table.insert(points, { point = point, emitter = trail, phase = index / 3 * math.pi * 2 })
+	end
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		if t > seconds or not anchor.Parent then
+			connection:Disconnect()
+			for _, entry in points do
+				entry.emitter.Rate = 0
+			end
+			return
+		end
+		anchor.CFrame = CFrame.new(center())
+		local spin = t * math.pi * 2 * 1.6
+		for _, entry in points do
+			local angle = spin + entry.phase
+			entry.point.Position = Vector3.new(math.cos(angle) * radius, math.sin(t * 6 + entry.phase) * 0.6, math.sin(angle) * radius)
+		end
+	end)
+end
+
+-- A glowing fissure tearing along the ground from `from` to `to` over `grow` seconds (a tiled crack over a bright seam,
+-- `spark` particles spitting up out of it, a light), held `linger` seconds, then fading over `fade`
+local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, deep: Color3, grow: number, linger: number, fade: number, spark: string)
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local length = flat.Magnitude
+	if length < 0.5 then
+		return
+	end
+	local direction = flat.Unit
+	local y = from.Y + 0.07
+	local life = grow + linger + fade + 0.3
+	local plate = holder(CFrame.new(from), Vector3.new(width, 0.05, 0.05), life)
+	local crack = Instance.new("Texture")
+	crack.Texture = texture("crack") or ""
+	crack.Face = Enum.NormalId.Top
+	crack.StudsPerTileU = width
+	crack.StudsPerTileV = width
+	crack.Color3 = glow
+	crack.Parent = plate
+	local seam = holder(CFrame.new(from), Vector3.new(width * 0.18, 0.06, 0.05), life)
+	seam.Material = Enum.Material.Neon
+	seam.Color = glow
+	seam.Transparency = 0.15
+	local spit = emitter(seam, spark, glow, { size = { 0.55, 0.1 }, life = { 0.5, 0.9 }, speed = { 3, 8 }, spread = 25, accel = UP * 2, brightness = 2.2 })
+	spit.Shape = Enum.ParticleEmitterShape.Box
+	spit.Rate = detail(80)
+	local light = Instance.new("PointLight")
+	light.Color = deep
+	light.Range = math.max(width * 4, length * 0.6)
+	light.Brightness = 2.5
+	light.Parent = seam
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local a = if grow <= 0 then 1 else math.clamp((os.clock() - started) / grow, 0, 1)
+		local shown = math.max(length * smooth(a), 0.05)
+		local middle = from + direction * shown / 2
+		local frame = CFrame.lookAt(Vector3.new(middle.X, y, middle.Z), Vector3.new(middle.X, y, middle.Z) + direction)
+		plate.Size = Vector3.new(width, 0.05, shown)
+		plate.CFrame = frame
+		seam.Size = Vector3.new(width * 0.18, 0.06, shown)
+		seam.CFrame = frame
+		if a >= 1 or not plate.Parent then
+			connection:Disconnect()
+		end
+	end)
+	task.delay(grow + linger, function()
+		spit.Rate = 0
+		tween(crack, fade, { Transparency = 1 })
+		tween(seam, fade, { Transparency = 1 })
+		tween(light, fade, { Brightness = 0 })
+	end)
+end
+
 -- Verdant: leaves and a few pink petals peeling off the blade for the swing, tumbling down behind it
 local function leafShed(spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, blade: Blade)
 	local points: { Attachment } = {}
@@ -253,17 +345,22 @@ local function leafShed(spec: SwordSkillFxConfig.Look, colors: Colors, scale: nu
 	end
 end
 
--- Verdant: a burst of leaves and dirt at `at` on the ground
-local function leafBurst(at: Vector3, colors: Colors, count: number, scale: number)
-	local anchor = holder(CFrame.new(at + UP * 0.5), Vector3.one, 2)
-	local leaves = emitter(anchor, "shard", colors.glow, { size = { 0.7 * scale, 0.4 * scale }, life = { 0.8, 1.3 }, speed = { 4, 9 }, spread = 60, spin = { -180, 180 }, accel = -UP * 8, drag = 1.5, light = 0.3 })
-	leaves:Emit(count)
-	local dirt = emitter(anchor, "smoke", rgb(VERDANT.bark), { size = { 1.5 * scale, 3 * scale }, life = { 0.5, 0.8 }, speed = { 2, 4 }, spread = 50, light = 0, brightness = 1, start = 0.4 })
-	dirt:Emit(math.max(1, math.round(count / 3)))
+-- Verdant: a burst of leaves (and `petals` pink petals) and dirt at `at` on the ground
+local function leafBurst(at: Vector3, colors: Colors, count: number, scale: number, petals: number?)
+	local anchor = holder(CFrame.new(at + UP * 0.5), Vector3.one, 2.5)
+	local leaves = emitter(anchor, "shard", colors.glow, { size = { 0.9 * scale, 0.5 * scale }, life = { 0.9, 1.5 }, speed = { 6, 14 }, spread = 70, spin = { -220, 220 }, accel = -UP * 9, drag = 1.4, light = 0.3 })
+	leaves:Emit(detail(count))
+	local dirt = emitter(anchor, "smoke", rgb(VERDANT.bark), { size = { 2 * scale, 4 * scale }, life = { 0.5, 0.9 }, speed = { 2, 5 }, spread = 50, light = 0, brightness = 1, start = 0.4 })
+	dirt:Emit(detail(math.max(1, math.round(count / 3))))
+	if petals and petals > 0 then
+		local pink = emitter(anchor, "glow", rgb(VERDANT.petal), { size = { 0.5 * scale, 0.2 }, life = { 1, 1.6 }, speed = { 4, 10 }, spread = 80, accel = -UP * 4, drag = 1.2 })
+		pink:Emit(detail(petals))
+	end
 end
 
--- A Verdant vine or root: solid lit stem pieces with thorns and a leaf (the owner wanted the Vine Snare's vines "more
--- visible" and Thornline's "noticeable"), growing out of the ground at `base`, leaning and curling toward `inward`
+-- A Verdant vine or root: solid lit stem pieces with thorns, a leaf and a glowing bulb at its tip (the owner wanted the
+-- Vine Snare's vines "more visible", Thornline's "noticeable", then everything exaggerated), growing out of the ground
+-- at `base`, leaning and curling toward `inward`
 type Vine = {
 	base: Vector3,
 	inward: Vector3,
@@ -272,12 +369,14 @@ type Vine = {
 	stems: { Part },
 	thorns: { Part },
 	leaf: Part,
+	bulb: Part?,
 	growAt: number, -- seconds into the effect it starts growing
 	grow: number, -- seconds it takes
 	lean: number, -- radians toward `inward` standing, and its curl per piece; then when snapped shut
 	curl: number,
 	snapLean: number,
 	snapCurl: number,
+	last: number, -- its last drawn state (grow and snap), so a still vine isn't redrawn every frame
 }
 
 local function piece(color: Color3, material: Enum.Material): Part
@@ -296,14 +395,21 @@ local function piece(color: Color3, material: Enum.Material): Part
 	return p
 end
 
-local function makeVine(base: Vector3, inward: Vector3, height: number, thick: number, color: Color3, leafColor: Color3, material: Enum.Material): Vine
+-- `bulb`: a glowing bud on its tip in that colour
+local function makeVine(base: Vector3, inward: Vector3, height: number, thick: number, color: Color3, leafColor: Color3, material: Enum.Material, bulb: Color3?): Vine
 	local stems: { Part } = {}
+	local thorns: { Part } = {}
 	for _ = 1, VINE_PIECES do
 		local stem = piece(color, material)
 		stem.Shape = Enum.PartType.Cylinder
 		table.insert(stems, stem)
+		table.insert(thorns, piece(rgb(VERDANT.thorn), Enum.Material.SmoothPlastic))
 	end
-	local thorns = { piece(rgb(VERDANT.thorn), Enum.Material.SmoothPlastic), piece(rgb(VERDANT.thorn), Enum.Material.SmoothPlastic) }
+	local bud: Part? = nil
+	if bulb then
+		bud = piece(bulb, Enum.Material.Neon)
+		bud.Shape = Enum.PartType.Ball
+	end
 	return {
 		base = base,
 		inward = inward,
@@ -312,12 +418,14 @@ local function makeVine(base: Vector3, inward: Vector3, height: number, thick: n
 		stems = stems,
 		thorns = thorns,
 		leaf = piece(leafColor, Enum.Material.SmoothPlastic),
+		bulb = bud,
 		growAt = 0,
 		grow = 0.12,
 		lean = -0.22,
 		curl = 0.12,
 		snapLean = 0.5,
 		snapCurl = 0.42,
+		last = -1,
 	}
 end
 
@@ -336,57 +444,82 @@ local function placeVine(v: Vine, grow: number, lean: number, curl: number)
 		stem.Size = Vector3.new(math.max(length + width * 0.3, 0.05), width, width)
 		stem.CFrame = CFrame.lookAt((at + to) / 2, to) * CFrame.Angles(0, math.rad(90), 0)
 		stem.Transparency = if shown then 0 else 1
+		-- a pale thorn sticking out from each joint, alternately left and right
 		local thorn = v.thorns[index]
-		if thorn then
-			-- a pale thorn sticking out from the joint, alternately left and right
-			local out = (side * (if index % 2 == 0 then 1 else -1) - v.inward * 0.4 + UP * 0.3).Unit
-			local long = 0.7 * v.thick * grow
-			thorn.Size = Vector3.new(0.22 * v.thick, 0.22 * v.thick, math.max(long, 0.05))
-			thorn.CFrame = CFrame.lookAt(to, to + out) * CFrame.new(0, 0, -long / 2)
-			thorn.Transparency = if shown then 0 else 1
-		end
+		local out = (side * (if index % 2 == 0 then 1 else -1) - v.inward * 0.4 + UP * 0.3).Unit
+		local long = 0.8 * v.thick * grow
+		thorn.Size = Vector3.new(0.24 * v.thick, 0.24 * v.thick, math.max(long, 0.05))
+		thorn.CFrame = CFrame.lookAt(to, to + out) * CFrame.new(0, 0, -long / 2)
+		thorn.Transparency = if shown then 0 else 1
 		if index == 2 then
-			local out = (-side + UP * 0.4).Unit
-			local leafSize = 1.4 * v.thick * grow
+			local leafOut = (-side + UP * 0.4).Unit
+			local leafSize = 1.6 * v.thick * grow
 			v.leaf.Size = Vector3.new(math.max(leafSize * 0.5, 0.05), 0.08, math.max(leafSize, 0.05))
-			v.leaf.CFrame = CFrame.lookAt(at, at + out) * CFrame.new(0, 0, -leafSize / 2)
+			v.leaf.CFrame = CFrame.lookAt(at, at + leafOut) * CFrame.new(0, 0, -leafSize / 2)
 			v.leaf.Transparency = if shown then 0 else 1
 		end
 		at = to
 	end
+	local bud = v.bulb
+	if bud then
+		bud.Size = Vector3.one * math.max(v.thick * 1.1 * grow, 0.05)
+		bud.CFrame = CFrame.new(at)
+		bud.Transparency = if shown then 0.1 else 1
+	end
+end
+
+local function dropVine(v: Vine)
+	for _, part in v.stems do
+		part:Destroy()
+	end
+	for _, part in v.thorns do
+		part:Destroy()
+	end
+	v.leaf:Destroy()
+	if v.bulb then
+		v.bulb:Destroy()
+	end
 end
 
 -- Drives `vines` from now: each grows from its `growAt` over its `grow`, snaps shut from `snapAt` (nil: never), and
--- all wither back into the ground from `witherAt` over `wither` seconds, then are gone
-local function animateVines(vines: { Vine }, snapAt: number?, witherAt: number, wither: number)
+-- all wither back into the ground from `witherAt` over `wither` seconds (`withered(vine)` as each starts), then are gone
+local function animateVines(vines: { Vine }, snapAt: number?, witherAt: number, wither: number, withered: ((Vine) -> ())?)
 	local started = os.clock()
+	local withering = false
 	local connection: RBXScriptConnection
 	connection = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - started
+		if t > witherAt and not withering then
+			withering = true
+			if withered then
+				for _, v in vines do
+					withered(v)
+				end
+			end
+		end
 		for _, v in vines do
 			local grow = smooth(math.clamp((t - v.growAt) / v.grow, 0, 1))
-			if t > witherAt then
+			if withering then
 				grow = math.min(grow, 1 - smooth(math.clamp((t - witherAt) / wither, 0, 1)))
 			end
 			local shut = if snapAt then smooth(math.clamp((t - snapAt) / VINE_SNAP, 0, 1)) else 0
-			placeVine(v, grow, v.lean + (v.snapLean - v.lean) * shut, v.curl + (v.snapCurl - v.curl) * shut)
+			local state = grow * 2 + shut
+			if state ~= v.last then
+				v.last = state
+				placeVine(v, grow, v.lean + (v.snapLean - v.lean) * shut, v.curl + (v.snapCurl - v.curl) * shut)
+			end
 		end
 		if t > witherAt + wither then
 			connection:Disconnect()
 			for _, v in vines do
-				for _, part in v.stems do
-					part:Destroy()
-				end
-				for _, part in v.thorns do
-					part:Destroy()
-				end
-				v.leaf:Destroy()
+				dropVine(v)
 			end
 		end
 	end)
 end
 
--- Verdant: thorny bark roots spiking up in a ring round `ground`, dirt and leaves, sinking back
+-- Verdant: thorny bark roots spiking up in a ring round `ground` with a burst of earth, a green shockwave, leaves and
+-- petals flying, sinking back
 local function rootBurst(ground: Vector3, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
 	local beats = spec.beats :: { [string]: number }
 	local roots: { Vine } = {}
@@ -394,15 +527,17 @@ local function rootBurst(ground: Vector3, spec: SwordSkillFxConfig.Look, colors:
 	for index = 1, beats.roots do
 		local angle = index / beats.roots * math.pi * 2
 		local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * radius
-		local root = makeVine(groundAt(ground + offset), -offset.Unit, beats.height * scale, beats.thick * scale, rgb(VERDANT.bark), colors.glow, Enum.Material.Wood)
+		local root = makeVine(groundAt(ground + offset), -offset.Unit, beats.height * scale, beats.thick * scale, rgb(VERDANT.bark), colors.glow, Enum.Material.Wood, colors.glow)
 		root.growAt = (index % 3) * 0.03
 		root.grow = 0.1
 		root.lean = -0.35 -- spiking outward
 		root.curl = 0.12
 		table.insert(roots, root)
 	end
-	animateVines(roots, nil, spec.seconds * 0.5, spec.seconds * 0.5)
-	leafBurst(ground, colors, spec.count, scale)
+	animateVines(roots, nil, spec.seconds * 0.55, spec.seconds * 0.45)
+	ElementFx.eruption(ground, rgb(VERDANT.bark), radius * 1.2, 10)
+	ElementFx.ring(ground, colors.glow, spec.size * scale, 0.45)
+	leafBurst(ground, colors, spec.count, scale, 12)
 end
 
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
@@ -442,7 +577,12 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 	end
 	local size = spec.size * scale
 	if look == "lavaCrack" then
-		lavaCrack(groundAt(at), size, spec, colors, scale)
+		-- the slam bursts the ground open: lava, a spurt of fire, a shockwave
+		local ground = groundAt(at)
+		lavaCrack(ground, size, spec, colors, scale)
+		ElementFx.eruption(ground, colors.deep, size * 0.35, 10)
+		ElementFx.pillar(ground, colors.deep, 7 * scale, 0.25, "flame")
+		ElementFx.ring(ground, colors.glow, size * 1.1, 0.45)
 		return
 	elseif look == "rootBurst" and spec.beats then
 		rootBurst(groundAt(at), spec, colors, scale)
@@ -522,8 +662,10 @@ local function fireCrescent(from: Vector3, to: Vector3, seconds: number, beats: 
 	end)
 end
 
--- Sunfall Cleave: sunlight gathers at the blade's tip as you hang charging, the cleave launches the fire crescent
--- toward `aim` (else straight ahead its full run), it glides down and bursts there: flames, a lava crack
+-- Sunfall Cleave (exaggerated, owner 2026-11-07): a heat ring and glowing cracks open under you with embers rising as
+-- you leap, a sun swells at the blade's tip with fire swirling round you while you hang charging, the cleave flashes
+-- and sends a shockwave out, the fire crescent glides down toward `aim` (else straight ahead its full run) tearing a
+-- burning fissure along the ground, and bursts there: a pillar of fire, an eruption, a double flash, a lava crack
 local function sunfallCleave(character: Model, root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks)
 	local beats = spec.beats :: { [string]: number }
 	local direction = flatLook(root)
@@ -531,20 +673,46 @@ local function sunfallCleave(character: Model, root: BasePart, spec: SwordSkillF
 	local feet = start - UP * ROOT_TO_GROUND
 	local finish = if aim then Vector3.new(aim.X, feet.Y, aim.Z) else feet + direction * spec.size
 	local ground = groundAt(finish)
+	local base = groundAt(feet)
+	-- The leap: a heat ring spinning under you, cracks glowing out from your feet, embers rising
+	ElementFx.castRing(base, colors.deep, beats.heat * scale, beats.release)
+	for index = 1, 3 do
+		local angle = index / 3 * math.pi * 2 + 0.4
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		fissure(base, base + out * beats.heat * 1.3 * scale, beats.fissure * 0.6 * scale, colors.glow, colors.deep, beats.release * 0.7, 0.4, 0.5, "spark")
+	end
+	local heat = holder(CFrame.new(base + UP * 0.3), Vector3.new(beats.heat * 2 * scale, 0.2, beats.heat * 2 * scale), beats.release + 1.5)
+	local embers = emitter(heat, "spark", colors.glow, { size = { 0.45, 0.05 }, life = { 0.8, 1.4 }, speed = { 3, 8 }, spread = 15, accel = UP * 3, brightness = 2.2 })
+	embers.Shape = Enum.ParticleEmitterShape.Box
+	embers.Rate = detail(70)
+	task.delay(beats.release, function()
+		embers.Rate = 0
+	end)
 	task.delay(beats.charge, function()
 		if not character.Parent then
 			return
 		end
-		local sun = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, beats.charged - beats.charge + 1)
-		local stopGlow = ElementFx.chargeGlow(sun, colors.glow, beats.release - beats.charge, beats.glow / 2.6 * scale)
+		local charge = beats.release - beats.charge
+		local sun = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, charge + 1)
+		local stopGlow = ElementFx.chargeGlow(sun, colors.glow, charge, beats.glow / 2.6 * scale)
 		local stopGather = ElementFx.gather(sun.Position, colors.glow, beats.charged - beats.charge, beats.gather * scale)
+		local glare = Instance.new("PointLight")
+		glare.Color = colors.glow
+		glare.Range = 6 * beats.glow * scale
+		glare.Brightness = 0
+		glare.Parent = sun
+		tween(glare, charge, { Brightness = 4 })
+		-- fire swirling round you as you hang
+		swirl(function(): Vector3
+			return tipOf(hooks.blade, root) - UP * 2.5
+		end, beats.swirl * scale, colors.deep, "flame", charge, 1.8 * scale)
 		-- the sun rides the blade's tip while you hang
 		local follow = RunService.RenderStepped:Connect(function()
 			if sun.Parent then
 				sun.CFrame = CFrame.new(tipOf(hooks.blade, root))
 			end
 		end)
-		task.delay(beats.release - beats.charge, function()
+		task.delay(charge, function()
 			follow:Disconnect()
 			stopGlow()
 			stopGather()
@@ -555,25 +723,35 @@ local function sunfallCleave(character: Model, root: BasePart, spec: SwordSkillF
 		if hooks.released then
 			hooks.released()
 		end
+		-- the cleave: a flash at the blade, a shockwave rolling out under you
+		ElementFx.burst(tipOf(hooks.blade, root), colors.glow, 1.4 * scale)
+		ElementFx.ring(base, colors.deep, 10 * scale, 0.5)
 		-- From the top of the cleave, in front of you: it glides down from there, reaching the burst when the server's
 		-- hit lands (its distance from you at the shape's speed, SwordRules.skillHits)
 		local from = root.Position + flatLook(root) * beats.ahead + UP * beats.launch
 		local seconds = Vector3.new(ground.X - start.X, 0, ground.Z - start.Z).Magnitude / math.max(beats.speed, 1)
+		-- a burning fissure tearing along the ground under it
+		fissure(base + direction * beats.ahead, ground, beats.fissure * scale, colors.glow, colors.deep, seconds, 0.7, 0.8, "spark")
 		fireCrescent(from, ground + UP * beats.height * 0.5 * scale, seconds, beats, colors, scale, function()
 			if hooks.burst then
 				hooks.burst(ground)
 			end
 			local blast = beats.blast * scale
-			ElementFx.burst(ground + UP * 2, colors.glow, scale)
-			ElementFx.eruption(ground, colors.deep, blast * 0.7, 10)
-			lavaCrack(ground, blast * 1.4, spec, colors, scale)
+			ElementFx.burst(ground + UP * 2, colors.glow, beats.boom * scale)
+			ElementFx.burst(ground + UP * 5, colors.glow:Lerp(WHITE, 0.5), beats.boom * 0.6 * scale)
+			ElementFx.eruption(ground, colors.deep, blast * 1.1, 18)
+			ElementFx.pillar(ground, colors.deep, beats.pillar * scale, 0.6, "flame")
+			ElementFx.ring(ground, colors.glow, blast * 1.8, 0.6)
+			lavaCrack(ground, blast * 2.2, spec, colors, scale)
 		end)
 	end)
 end
 
--- Thornline: from the blade in the ground a green ring pulses, then thick thorny vines burst up in rows either side of
--- the line, racing out to where they reach the first foe (`aim`; else the end of their run); there they all snap shut
--- over the line and a ring of them clamps the foe (green burst, leaves), then they wither
+-- Thornline (exaggerated, owner 2026-11-07): green energy gathers on the blade and leaves swirl round you through the
+-- hop; the pierce sends a shockwave and a burst of earth out and a glowing green fissure tears toward the foe while big
+-- thorny vines with glowing buds burst up in rows either side of it, racing out to where they reach the first foe
+-- (`aim`; else the end of their run); there they all snap shut and a ring of giant vines clamps the foe (an eruption, a
+-- storm of leaves and petals), then each withers in a puff of leaves
 local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks)
 	local beats = spec.beats :: { [string]: number }
 	local feet = root.Position - UP * ROOT_TO_GROUND
@@ -587,40 +765,74 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 	-- the vines reach the foe when the server lands the hit (its distance from you at the shape's speed)
 	local snapAt = beats.release + reach / beats.speed
 	local right = direction:Cross(UP)
+	local trap = groundAt(finish)
+	-- The hop: green energy gathering on the blade, leaves swirling round you
+	local orb = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, beats.release + 1)
+	local stopGlow = ElementFx.chargeGlow(orb, colors.glow, beats.release, 0.9 * scale)
+	ElementFx.gather(root.Position + UP, colors.glow, beats.release, beats.gather * scale)
+	local follow = RunService.RenderStepped:Connect(function()
+		if orb.Parent then
+			orb.CFrame = CFrame.new(tipOf(hooks.blade, root))
+		end
+	end)
+	swirl(function(): Vector3
+		return root.Position
+	end, beats.swirl * scale, colors.glow, "shard", beats.release + 0.15, 1 * scale)
+	-- Each row's vines are made as it bursts (not all at once: a 200-part hitch), joining the ones already growing
 	local vines: { Vine } = {}
 	local distance = SLAM_AHEAD
 	while distance <= reach + 0.01 do
-		local at = groundAt(feet + direction * distance)
-		local burstAt = beats.release + distance / beats.speed
-		for _, side in { -1, 1 } do
-			local vine = makeVine(at + right * side * beats.side * scale, -right * side, beats.height * scale, beats.thick * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic)
-			vine.growAt = burstAt
-			table.insert(vines, vine)
-		end
-		task.delay(burstAt, leafBurst, at, colors, 4, scale)
+		local along = distance
+		local burstAt = beats.release + along / beats.speed
+		task.delay(burstAt, function()
+			local at = groundAt(feet + direction * along)
+			for _, side in { -1, 1 } do
+				local vine = makeVine(at + right * side * beats.side * scale, -right * side, beats.height * scale, beats.thick * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow)
+				vine.growAt = burstAt
+				table.insert(vines, vine)
+			end
+			leafBurst(at, colors, 10, scale, 3)
+		end)
 		distance += beats.spacing
 	end
-	local trap = groundAt(finish)
-	for index = 1, 6 do
-		local angle = index / 6 * math.pi * 2
-		local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * beats.trap * scale
-		local vine = makeVine(groundAt(trap + offset), -offset.Unit, beats.height * 1.15 * scale, beats.thick * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic)
-		vine.growAt = snapAt - 0.1
-		vine.grow = 0.1
-		vine.lean, vine.curl = -0.15, 0.1
-		vine.snapLean, vine.snapCurl = 0.55, 0.45
-		table.insert(vines, vine)
-	end
-	animateVines(vines, snapAt, snapAt + beats.linger, beats.wither)
+	task.delay(math.max(0, snapAt - 0.1), function()
+		for index = 1, beats.trapVines do
+			local angle = index / beats.trapVines * math.pi * 2
+			local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * beats.trap * scale
+			local vine = makeVine(groundAt(trap + offset), -offset.Unit, beats.height * beats.trapTall * scale, beats.thick * 1.2 * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, rgb(VERDANT.petal))
+			vine.growAt = snapAt - 0.1
+			vine.grow = 0.1
+			vine.lean, vine.curl = -0.15, 0.1
+			vine.snapLean, vine.snapCurl = 0.55, 0.45
+			table.insert(vines, vine)
+		end
+	end)
+	animateVines(vines, snapAt, snapAt + beats.linger, beats.wither, function(vine: Vine)
+		-- each vine goes in a puff of leaves (every other one: plenty)
+		if (vine.base.X + vine.base.Z) % 2 < 1 then
+			leafBurst(vine.base, colors, 4, scale)
+		end
+	end)
 	task.delay(beats.release, function()
-		ElementFx.castRing(groundAt(feet + direction * SLAM_AHEAD), colors.glow, 2.5 * scale, 0.4)
+		follow:Disconnect()
+		stopGlow()
+		orb:Destroy()
+		-- The pierce: a shockwave, a burst of earth, a green fissure tearing toward the foe ahead of the vines
+		local stab = groundAt(feet + direction * SLAM_AHEAD)
+		ElementFx.ring(stab, colors.glow, 7 * scale, 0.5)
+		ElementFx.castRing(stab, colors.glow, 3 * scale, 0.5)
+		ElementFx.eruption(stab, rgb(VERDANT.bark), 2.5 * scale, 8)
+		leafBurst(stab, colors, 16, scale, 6)
+		fissure(stab, trap, beats.fissure * scale, colors.glow, colors.deep, math.max(0.05, (reach - SLAM_AHEAD) / beats.speed), beats.linger + 0.3, 0.5, "spark")
 	end)
 	task.delay(snapAt, function()
 		if hooks.burst then
 			hooks.burst(trap)
 		end
-		ElementFx.burst(trap + UP * 2, colors.glow, 0.8 * scale)
-		leafBurst(trap, colors, 22, scale)
+		ElementFx.eruption(trap, colors.deep, beats.blast * 1.2 * scale, 16)
+		ElementFx.burst(trap + UP * 3, colors.glow, 1.6 * scale)
+		ElementFx.ring(trap, colors.glow, 8 * scale, 0.5)
+		leafBurst(trap + UP * 2, colors, 60, scale, 24)
 	end)
 end
 

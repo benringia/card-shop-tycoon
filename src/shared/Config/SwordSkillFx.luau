@@ -29,23 +29,25 @@ local LOOKS: { [string]: Look } = {
 	-- Verdant Blade: leaves off each swing, roots and thorns under the foe, Thornline's vines
 	-- Verdant Blade (storyboard 2026-11-07). Leaves: leaves (`size` studs) and a few pink petals peel off the blade for
 	-- `seconds` of each swing, `count` a second, tumbling down
-	leafShed = { kind = "slash", textures = { "shard", "glow" }, seconds = 0.3, size = 0.9, count = 40 },
+	leafShed = { kind = "slash", textures = { "shard", "glow" }, seconds = 0.3, size = 1.2, count = 70 },
 	-- Roots: thorny bark roots (beats: `roots` of them, `height` studs tall) spike up in a ring `size` studs across where
 	-- the finisher slams down, a puff of dirt and leaves, and sink back over `seconds`
 	rootBurst = {
 		kind = "finisher",
 		textures = { "shard", "smoke" },
-		seconds = 1,
-		size = 6,
-		count = 16,
-		beats = { roots = 6, height = 3.6, thick = 0.7 },
+		seconds = 1.1,
+		size = 7,
+		count = 26,
+		beats = { roots = 8, height = 5, thick = 0.9 },
 	},
 	-- Thornline (owner 2026-11-07: the vines racing out from the blade, "make the vines noticeable", the blade held in the
 	-- ground until they reach the enemy): at `release` (the Hit marker) thick thorny vines burst up in rows `spacing` studs
 	-- apart, a pair `side` studs either side of your aim line, `height` studs tall and `thick` thick, racing out at `speed`
 	-- studs a second (the shape's) to the first foe (else the end of the run, `size` studs); there they snap shut over the
-	-- line and a ring of them clamps the foe (`trap` studs round, the catch `blast`, the shape's); they wither over
-	-- `wither` seconds after `linger`
+	-- line and a ring of `trapVines` vines `trapTall` times as tall clamps the foe (`trap` studs round, the catch `blast`,
+	-- the shape's); they wither over `wither` seconds after `linger`. Exaggerated (owner 2026-11-07): green energy
+	-- gathering (`gather` studs) and leaves swirling `swirl` studs round you through the hop, a glowing fissure `fissure`
+	-- studs wide tearing toward the foe, glowing buds on the vines, eruptions and leaf storms
 	thornline = {
 		kind = "skill",
 		textures = { "shard", "glow", "smoke" },
@@ -54,20 +56,23 @@ local LOOKS: { [string]: Look } = {
 		count = 24,
 		form = "ahead",
 		burstSound = "vineSnap",
-		beats = { release = 0.45, speed = 20, blast = 4, spacing = 2, side = 1.4, height = 5.2, thick = 0.9, trap = 2.6, linger = 0.35, wither = 0.45 },
+		beats = { release = 0.45, speed = 20, blast = 4, spacing = 1.6, side = 1.8, height = 8, thick = 1.4, trap = 3.2, trapVines = 8, trapTall = 1.6, linger = 0.4, wither = 0.5, gather = 4, swirl = 2.6, fissure = 2.6 },
 	},
 	-- Sunforged Blade (storyboard 2026-11-07). Fire trail: flames stream off the blade for `seconds` of each swing, `size`
 	-- studs, `count` a second
-	fireTrail = { kind = "slash", textures = { "flame", "spark" }, seconds = 0.3, size = 1.3, count = 90 },
+	fireTrail = { kind = "slash", textures = { "flame", "spark" }, seconds = 0.3, size = 1.7, count = 140 },
 	-- Lava crack: glowing cracks `size` studs across where the finisher slams down, embers and smoke, cooling over `seconds`
-	lavaCrack = { kind = "finisher", textures = { "crack", "flame", "spark", "smoke" }, seconds = 1.2, size = 8, count = 24 },
+	lavaCrack = { kind = "finisher", textures = { "crack", "flame", "spark", "smoke" }, seconds = 1.2, size = 10, count = 36 },
 	-- Sunfall Cleave (owner 2026-11-07): sunlight gathers at the blade's tip from `charge` to `charged` (a glow `glow`
 	-- studs, motes pulled in from `gather` studs); at `release` (the cleave's Hit, Config/Swords hitAt) an upright fire
 	-- crescent `height` studs tall (its beams `width` across, flames `flame` studs; owner 2026-11-07: "make the crescent
 	-- bigger") leaves the cleave `launch` studs above you and `ahead` in front, and glides down toward
 	-- the aim at `speed` studs a second (the shape's
 	-- `length` at most); on contact it bursts: flames `blast` studs round (the shape's blast) and a lava crack. Your own
-	-- plays the camera moment (CINEMATIC).
+	-- plays the camera moment (CINEMATIC). Exaggerated (owner 2026-11-07:
+	-- "exaggerate everything"): a heat ring `heat` studs round and cracks under you as you leap, fire swirling `swirl`
+	-- studs round you through the charge, a burning fissure `fissure` studs wide along the crescent's path, and at the
+	-- burst a pillar of fire `pillar` studs tall and flashes `boom` times a plain burst
 	sunfallCleave = {
 		kind = "skill",
 		textures = { "glow", "spark", "moon", "flame", "crack", "impact", "smoke" },
@@ -77,7 +82,7 @@ local LOOKS: { [string]: Look } = {
 		form = "ahead",
 		cinematic = true,
 		burstSound = "fireBurst",
-		beats = { charge = 0.42, charged = 1.65, release = 1.78, glow = 2.6, gather = 4, launch = 5.5, ahead = 2.5, speed = 14, height = 10, width = 3.8, flame = 2.2, blast = 6 },
+		beats = { charge = 0.42, charged = 1.65, release = 1.78, glow = 4.5, gather = 7, launch = 5.5, ahead = 2.5, speed = 14, height = 10, width = 3.8, flame = 2.2, blast = 6, heat = 5, swirl = 3.5, fissure = 3.5, pillar = 16, boom = 1.8 },
 	},
 	-- Prism Blade: rainbow arcs, prism shards, Prism Judgment's ghost blades and pillar
 	rainbowArc = { kind = "slash", textures = { "star", "glow" }, seconds = 0.5, size = 4, count = 8 },
@@ -90,7 +95,7 @@ return {
 	-- The Verdant's colours beside its weapon's greens: bark for roots and vine stems, pale thorns, pink petals
 	VERDANT = { bark = { 104, 72, 40 }, thorn = { 236, 232, 222 }, petal = { 255, 179, 209 } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
-	SHAKE = { release = 0.45, impact = 0.7, thornline = 0.3 },
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit), seconds
 	-- and studs: eased over `rise` to a low angle beside and behind you (`low`) looking up `lookUp` studs above your root,
 	-- drifting closer (`close`) through the charge; at the cleave it chases the crescent from `chase` behind and above it,

@@ -104,6 +104,20 @@ return {
 		expect.equal(SwordSkillFx.SHAKE.thornline > 0 and SwordSkillFx.SHAKE.thornline < SwordSkillFx.SHAKE.impact, true, "a small shake on the snap")
 	end,
 
+	["every number the exaggerated looks read is set (a missing one would break the effect mid-fight)"] = function()
+		local needs = {
+			sunfallCleave = { "charge", "charged", "release", "glow", "gather", "launch", "ahead", "speed", "height", "width", "flame", "blast", "heat", "swirl", "fissure", "pillar", "boom" },
+			thornline = { "release", "speed", "blast", "spacing", "side", "height", "thick", "trap", "trapVines", "trapTall", "linger", "wither", "gather", "swirl", "fissure" },
+			rootBurst = { "roots", "height", "thick" },
+		}
+		for look, keys in needs do
+			local beats = SwordSkillFx.LOOKS[look].beats :: { [string]: number }
+			for _, key in keys do
+				expect.equal(type(beats[key]), "number", `{look}.{key}`)
+			end
+		end
+	end,
+
 	["the skill cinematic: up to the low angle, held through the charge, chasing the crescent, held on the burst, back"] = function()
 		local cfg = SwordSkillFx.CINEMATIC
 		local function beat(t: number): (string, number)
