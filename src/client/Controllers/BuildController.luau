@@ -23,6 +23,7 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
 local CondenserController = require(Controllers:WaitForChild("CondenserController"))
+local ForgeController = require(Controllers:WaitForChild("ForgeController"))
 local GradingController = require(Controllers:WaitForChild("GradingController"))
 
 type ShelfDef = typeof(Shelves.List[1])
@@ -454,7 +455,7 @@ end
 -- Card cases never take stock, so they always show Edit.
 local function applyPromptMode(part: BasePart, prompts: ShelfPrompts)
 	local def = Shelves.ById[part.Name]
-	if def and (def.kind == "Condenser" or def.kind == "Grading") then
+	if def and (def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge") then
 		-- A machine's use prompt (E) and Edit (F) both show; Edit is offset so they don't overlap
 		prompts.stock.Enabled = true
 		prompts.edit.Enabled = true
@@ -483,14 +484,17 @@ local function addShelfPrompts(child: Instance)
 
 	local isCondenser = def.kind == "Condenser"
 	local isGrading = def.kind == "Grading"
+	local isForge = def.kind == "Forge"
 	-- E: stock a product shelf, or open the Condenser or the Grading Station
-	local action = if isCondenser then "Condense" elseif isGrading then "Grade" else "Stock shelf"
+	local action = if isCondenser then "Condense" elseif isGrading then "Grade" elseif isForge then "Forge" else "Stock shelf"
 	local stock = makePrompt(child, action, def.name, Enum.KeyCode.E)
 	stock.Triggered:Connect(function()
-		if isCondenser or isGrading then
+		if isCondenser or isGrading or isForge then
 			if not PlacementController.IsActive() then
 				if isCondenser then
 					CondenserController.Open(child)
+				elseif isForge then
+					ForgeController.Open(child)
 				else
 					GradingController.Open(child)
 				end
@@ -505,7 +509,7 @@ local function addShelfPrompts(child: Instance)
 
 	local edit = makePrompt(child, "Edit", def.name, Enum.KeyCode.F)
 	edit.GamepadKeyCode = Enum.KeyCode.ButtonY
-	if isCondenser or isGrading then
+	if isCondenser or isGrading or isForge then
 		edit.UIOffset = Vector2.new(0, CONDENSER_EDIT_OFFSET)
 	end
 	edit.Triggered:Connect(function()

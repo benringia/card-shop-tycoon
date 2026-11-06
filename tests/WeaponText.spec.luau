@@ -56,6 +56,25 @@ return {
 		expect.equal(WeaponText.pickup("Wild Ore", 1, 3, nil), "Wild Ore +1")
 	end,
 
+	["the Forge's one button says what it does, or what's missing"] = function()
+		local cost = { cash = 2000, items = { material_meadowWarden = 15 } }
+		local text, ready = WeaponText.button("forge", cost, { material_meadowWarden = 9 }, 5000, Items, {})
+		expect.equal(text, "Need 6 more Warden Heartwood")
+		expect.equal(ready, false)
+		text, ready = WeaponText.button("forge", cost, { material_meadowWarden = 15 }, 1500, Items, {})
+		expect.equal(text, "Need $500 more")
+		expect.equal(ready, false)
+		text, ready = WeaponText.button("forge", cost, { material_meadowWarden = 20 }, 2000, Items, {})
+		expect.equal(text, "Forge · $2,000")
+		expect.equal(ready, true)
+		expect.equal((WeaponText.button("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { level = 4 })), "Upgrade to +4 · $1,200")
+		expect.equal((WeaponText.button("reforge", { cash = 1000, items = {} }, {}, 9000, Items, {})), "Reforge · $1,000")
+		expect.equal((WeaponText.button("upgrade", nil, {}, 9000, Items, {})), "Maxed at +10")
+		text, ready = WeaponText.button("forge", { cash = 1500, items = {} }, {}, 9000, Items, { unlockLevel = 6, shopLevel = 5 })
+		expect.equal(text, "Opens at shop level 6")
+		expect.equal(ready, false)
+	end,
+
 	["what each upgrade adds to the glow (the forge reveal's line)"] = function()
 		local Looks = require("../src/shared/Config/WeaponLooks")
 		expect.equal(WeaponText.ladderStep(Looks, 1), "Its edges glow brighter")

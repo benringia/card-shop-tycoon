@@ -350,6 +350,11 @@ local function drain()
 	playing = false
 end
 
+-- Whether a reveal is playing or waiting (the Forge window steps aside meanwhile)
+function WeaponRevealController.IsPlaying(): boolean
+	return playing or #queue > 0
+end
+
 function WeaponRevealController.Show(reveal: Reveal)
 	if not Weapons.ById[reveal.weaponId] then
 		return

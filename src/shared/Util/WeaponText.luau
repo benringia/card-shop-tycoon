@@ -113,6 +113,47 @@ function WeaponText.pickup(name: string, gained: number, have: number, need: num
 	return if need then `{name} +{gained} ({have}/{need})` else `{name} +{gained}`
 end
 
+-- The Forge's one button (owner's pick B): what it does when everything's there ("Forge · $2,000", "Upgrade to +4 ·
+-- $1,200", "Reforge · $1,000"), else what's missing first: the shop level, an item ("Need 6 more Warden Heartwood"),
+-- then cash ("Need $500 more"). `cost` nil: an upgrade past +10. Returns the text and whether it can be pressed.
+function WeaponText.button(
+	action: "forge" | "upgrade" | "reforge",
+	cost: { cash: number, items: { [string]: number } }?,
+	have: { [string]: number },
+	cashNow: number,
+	items: any,
+	opts: { level: number?, unlockLevel: number?, shopLevel: number? }
+): (string, boolean)
+	if not cost then
+		return if action == "upgrade" then "Maxed at +10" else "Not available", false
+	end
+	if opts.unlockLevel and (opts.shopLevel or 0) < opts.unlockLevel then
+		return `Opens at shop level {opts.unlockLevel}`, false
+	end
+	local ids = {}
+	for id in cost.items do
+		table.insert(ids, id)
+	end
+	table.sort(ids)
+	for _, id in ids do
+		local short = cost.items[id] - (have[id] or 0)
+		if short > 0 then
+			local item = items.ITEMS[id]
+			return `Need {short} more {if item then item.name else id}`, false
+		end
+	end
+	if cashNow < cost.cash then
+		return `Need {cash(math.ceil(cost.cash - cashNow))} more`, false
+	end
+	local price = cash(cost.cash)
+	if action == "upgrade" then
+		return `Upgrade to +{opts.level or 1} · {price}`, true
+	elseif action == "reforge" then
+		return `Reforge · {price}`, true
+	end
+	return `Forge · {price}`, true
+end
+
 -- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER), for the forge reveal
 function WeaponText.ladderStep(looks: any, level: number): string
 	local ladder = looks.LADDER
