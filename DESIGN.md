@@ -3095,10 +3095,10 @@ boss models; the ranch and Heroic tiers come after those.
   Follow-ups (branch `weapons-followups`): the drop's card turning over, the light column for others nearby, the
   Prism Blade's trail by the foe, and the review's small fixes (pity, Grade S reforge, Forge refunds, equip toasts,
   the Forge window's redraws, the Forge Sword's source model out of the synced folder).
-- [ ] Sword skills round (5.11 "Sword skills", spec `2026-11-06-sword-skills-design.md`, branch `sword-skills`): each round
-  1 sword's own skill, animation, effects (exaggerated), sounds and camera moments; others see them. Waiting on the
-  owner's Studio check of the Forge Sword. The four skill animations are published (owner 2026-11-07; ids in
-  `Config/Swords`).
+- [x] Sword skills round (5.11 "Sword skills", spec `2026-11-06-sword-skills-design.md`, merged 2026-11-07): each
+  round 1 sword's own skill, animation, effects (exaggerated), sounds and camera moments; others see them; free after
+  the hit (a dodge before it cancels it); each skill's own HUD button. The four skill animations are published (ids in
+  `Config/Swords`). Not yet checked: others' effects in a 2-player Local Server.
 - [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
   Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
   and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.
