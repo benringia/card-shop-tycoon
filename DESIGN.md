@@ -2928,6 +2928,8 @@ boss models; the ranch and Heroic tiers come after those.
 - [x] Tired shop workers (owner's idea 2026-11-06, 5.8): 5 slower minutes after every 10-15 of work, a toast and a
   "Tired" pill, so the owner steps in at the register; worker name tags clear of flying creatures. Merged 2026-11-06.
   Not built: a snack in the Bag that ends a tired spell early.
+- [x] Toasts as Cindercub's speech bubbles over the cash pill (owner's pick A of three mockups, 2026-11-06; 10.6
+  HUD): one stack for messages and sales, 6 s (errors 8), a close "x" and tap-to-close. Merged 2026-11-06.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
