@@ -26,6 +26,11 @@ return {
 	MISTAKE_MIN = 0.03, -- at Power >= MISTAKE_POWER_HIGH
 	MISTAKE_POWER_LOW = 170,
 	MISTAKE_POWER_HIGH = 485,
+	-- Tired spells (Util/TiredRules, owner 2026-11-06): after `every` seconds of work (random in the range) a worker is
+	-- tired for `seconds`: it works and walks at `speed` and its mistake chance is x`mistakes` (at most mistakeCap);
+	-- then it's rested. It never stops; the owner gets a toast and can step in at the register meanwhile. The server
+	-- steps each worker's clock every `tick` seconds
+	TIRED = { every = { 600, 900 }, seconds = 300, speed = 0.6, mistakes = 1.5, mistakeCap = 0.3, tick = 1 },
 	IDLE_RECHECK_SECONDS = 2,
 	STUCK_GRACE_SECONDS = 1, -- extra time per path step before a worker counts as stuck and re-paths
 	ACTION_COOLDOWN = 0.5, -- seconds between assign/unassign requests (server)

@@ -1807,6 +1807,14 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
 - **SPD = speed**: (SPD / 14)^1.5, clamped ×0.4 to ×2.5, so a fresh Grade C Common scans in ~2.0 s and a fresh
   Legendary in ~0.7 s (base 1.2 s); levelling raises SPD. **Power = fewer mistakes** (20% for a fresh Common down to 3%):
   a dropped box goes back to the pad, a mis-scan is scanned again. Mistakes cost time only.
+- **Tired spells** (owner 2026-11-06; `Util/TiredRules`, `Jobs.TIRED`): after 10-15 minutes of work (random) a worker
+  is tired for 5 minutes: it works and walks at x0.6 and its mistake chance is x1.5 (at most 30%), never stopping;
+  then it's rested and works a new stretch. A toast tells the owner ("Nightowl is tired: scanning slower for 5 min.
+  Take the register?"; restocking for a Restocker, and when it's rested again), its name tag adds "😴 Tired" and the
+  Jobs panel a "😴 Tired 4:17" pill counting down. It's the owner's moment to step in at the register, where kid
+  offers and haggles only come to them; the cashier steps aside as always. The clock runs while the card works (the
+  owner online) and isn't saved: a worker put back to work starts rested. Studio: `/jobtired` (admin panel "Workers
+  tired / rested") tires every worker now, or rests them.
 - **XP:** 2 per minute per working card, only while you're online. Battles and quests will be the main way to level.
 - Working cards are locked: no display, condensing or second job until unassigned.
 - In the shop they walk as invisible R15 rigs (pathfinding) that each client draws as the card's creature model
@@ -2126,6 +2134,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BeastRules.luau    # BeastMath bound to the game configs
             ├── CondenseRules.luau # which duplicates a star or a grade-up uses (pure, Lune-tested)
             ├── JobRules.luau      # job speed, mistakes and slots, their kid words, next job, minutes to a level (pure, Lune-tested)
+            ├── TiredRules.luau    # shop workers' tired spells: work stretch, tired time, slower and more mistakes (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)

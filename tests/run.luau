@@ -85,6 +85,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	WalkerRules = require("./WalkerRules.spec"),
 	StageRules = require("./StageRules.spec"),
 	WalkStep = require("./WalkStep.spec"),
+	TiredRules = require("./TiredRules.spec"),
 	SoundLevel = require("./SoundLevel.spec"),
 	WildLoadingRules = require("./WildLoadingRules.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),

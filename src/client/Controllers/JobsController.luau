@@ -33,7 +33,8 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
 type Card = typeof(Cards.List[1])
-type SlotInfo = { slot: number, beastId: string, job: string, status: string }
+-- tiredUntil: server time its tired spell ends (Util/TiredRules), nil while rested
+type SlotInfo = { slot: number, beastId: string, job: string, status: string, tiredUntil: number? }
 type JobsState = {
 	slotCount: number,
 	maxSlots: number,
@@ -67,6 +68,7 @@ local tip: Frame -- the card tooltip
 local state: JobsState? = nil
 local drawn = "" -- what the rows show (slots, cards, jobs); a payload that only changes statuses keeps the rows
 local statusLines: { [number]: Frame } = {} -- slot -> the line its status pill sits in
+local tiredClocks: { [TextLabel]: number } = {} -- each tired pill's time label -> the server time its spell ends
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -269,6 +271,47 @@ local function statusPill(parent: Instance, order: number, status: string): Fram
 	return pill
 end
 
+-- "m:ss" left until `untilTime` (server time)
+local function timeLeft(untilTime: number): string
+	local seconds = math.max(0, math.ceil(untilTime - workspace:GetServerTimeNow()))
+	return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
+-- A tired worker's pill beside its status, counting down (owner 2026-11-06: tired spells, Util/TiredRules); none
+-- while it's rested
+local function tiredPill(parent: Instance, order: number, tiredUntil: number?)
+	local old = parent:FindFirstChild("Tired")
+	if old then
+		for label in tiredClocks do
+			if label:IsDescendantOf(old) then
+				tiredClocks[label] = nil
+			end
+		end
+		old:Destroy()
+	end
+	if typeof(tiredUntil) ~= "number" then
+		return
+	end
+	local look = statusLook(palette.bad)
+	local pill = Instance.new("Frame")
+	pill.Name = "Tired"
+	pill.LayoutOrder = order
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, 24)
+	pill.BackgroundColor3 = look.fill
+	pill.ZIndex = (parent :: GuiObject).ZIndex + 1
+	pill.Parent = parent
+	UIKit.corner(pill, 10)
+	UIKit.outline(pill, palette.rowEdge, 2)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 8)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = pill
+	local label = text(pill, `😴 Tired {timeLeft(tiredUntil)}`, UIKit.textSize("small"), look.text)
+	tiredClocks[label] = tiredUntil
+	Tooltip.attach(pill, "Tired: working slower for a while. Step in at the register meanwhile.")
+end
+
 local function buildWorkerRow(slot: number, info: SlotInfo)
 	local phone = UIKit.isPhone()
 	local row = makeRow(slot, ROW_HEIGHT)
@@ -368,6 +411,7 @@ local function buildWorkerRow(slot: number, info: SlotInfo)
 		Tooltip.attach(jobChip, `{info.job}: {jobInfo.text}`)
 	end
 	statusPill(jobLine, 2, info.status)
+	tiredPill(jobLine, 3, info.tiredUntil)
 	statusLines[slot] = jobLine
 
 	local xpLine = Instance.new("Frame")
@@ -568,11 +612,25 @@ function JobsController.Start()
 				local line = statusLines[info.slot]
 				if line and typeof(info.status) == "string" then
 					statusPill(line, 2, info.status)
+					tiredPill(line, 3, info.tiredUntil)
 				end
 			end
 			return
 		end
 		render()
+	end)
+	-- The tired pills count down each second (the server only says when a spell starts and ends)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			for label, untilTime in tiredClocks do
+				if label.Parent then
+					label.Text = `😴 Tired {timeLeft(untilTime)}`
+				else
+					tiredClocks[label] = nil
+				end
+			end
+		end
 	end)
 	-- Levels and XP change as cards work; redraw with the new binder
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()

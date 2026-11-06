@@ -97,6 +97,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Go to the Wild", command = "/wild" },
 			{ label = "Go to the arena", command = "/arena" },
 			{ label = "Toggle Extra Job Slot", command = "/jobslot" },
+			{ label = "Workers tired / rested", command = "/jobtired" },
 		},
 	},
 	{

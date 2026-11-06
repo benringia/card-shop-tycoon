@@ -5,7 +5,8 @@
 -- Workers share the owner's boxes (StockService) and checkouts (RegisterService) through their worker
 -- APIs, so cash, XP, stats and saves are exactly as if the owner did the work.
 -- Slots: 1 at shop level Jobs.UNLOCK_LEVEL (20), +1 with the Extra Job Slot pass (MonetizationService). Saved as data.jobs.
--- Workers earn XP each minute and only run while the owner is online.
+-- Workers earn XP each minute and only run while the owner is online. After a stretch of work a worker is tired for
+-- a while (Util/TiredRules, Jobs.TIRED): slower, a few more mistakes, a toast to the owner, then back to normal.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -21,6 +22,7 @@ local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
+local TiredRules = require(Shared:WaitForChild("Util"):WaitForChild("TiredRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -51,6 +53,7 @@ type Worker = {
 	carrying: Part?,
 	alive: boolean,
 	status: string,
+	tired: TiredRules.Clock, -- its work / tired cycle (Util/TiredRules)
 }
 
 type PlayerJobs = {
@@ -73,6 +76,15 @@ local states: { [Player]: PlayerJobs } = {}
 local allowAction = RateLimiter.new(Jobs.ACTION_COOLDOWN)
 local rng = Random.new()
 local workersFolder: Folder
+
+-- A worker in `slot`, not running yet, rested with a fresh stretch of work ahead
+local function newWorker(slot: number, beastId: string, job: string): Worker
+	return { slot = slot, beastId = beastId, job = job, alive = false, status = "Starting", tired = TiredRules.start(Jobs.TIRED, rng:NextNumber()) }
+end
+
+local function isTired(worker: Worker): boolean
+	return TiredRules.isTired(worker.tired)
+end
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -161,7 +173,9 @@ local function sendJobs(player: Player)
 	-- A list, not a slot-keyed table: remotes mangle tables with gaps in their number keys
 	local slots = {}
 	for slot, worker in state.slots do
-		table.insert(slots, { slot = slot, beastId = worker.beastId, job = worker.job, status = worker.status })
+		-- tiredUntil: server time its tired spell ends (the panel counts down), nil while rested
+		local tiredUntil = if isTired(worker) then workspace:GetServerTimeNow() + worker.tired.tiredLeft else nil
+		table.insert(slots, { slot = slot, beastId = worker.beastId, job = worker.job, status = worker.status, tiredUntil = tiredUntil })
 	end
 	local used = #slots
 	local hasPass = MonetizationService.HasPass(player, PASS_KEY) -- one check per update
@@ -196,7 +210,8 @@ local function updateLabel(player: Player, worker: Worker)
 	local profile = getProfile(player, worker)
 	if label and profile then
 		local beast = profile.beast
-		label.Text = `{profile.card.name}\n{BeastRules.describeGrade(beast.grade)} · Lv {beast.level}\n{worker.job}`
+		local job = if isTired(worker) then `{worker.job} · 😴 Tired` else worker.job
+		label.Text = `{profile.card.name}\n{BeastRules.describeGrade(beast.grade)} · Lv {beast.level}\n{job}`
 	end
 end
 
@@ -222,7 +237,7 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 	local model = NpcMotion.createRig(description, `Worker_{worker.job}`, getEntryCFrame(state.plot))
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
-	humanoid.WalkSpeed = Jobs.WALK_SPEED * JobRules.getSpeedFactor(Jobs, profile.spd)
+	humanoid.WalkSpeed = Jobs.WALK_SPEED * JobRules.getSpeedFactor(Jobs, profile.spd) * TiredRules.speed(Jobs.TIRED, isTired(worker))
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 
@@ -294,13 +309,14 @@ end
 
 local function waitWork(player: Player, worker: Worker, baseSeconds: number): boolean
 	local profile = getProfile(player, worker)
-	task.wait(JobRules.getDuration(Jobs, baseSeconds, if profile then profile.spd else Jobs.REFERENCE_SPD))
+	local seconds = JobRules.getDuration(Jobs, baseSeconds, if profile then profile.spd else Jobs.REFERENCE_SPD)
+	task.wait(seconds / TiredRules.speed(Jobs.TIRED, isTired(worker)))
 	return worker.alive
 end
 
 local function rollMistake(player: Player, worker: Worker): boolean
 	local profile = getProfile(player, worker)
-	return profile ~= nil and rng:NextNumber() < profile.mistake
+	return profile ~= nil and rng:NextNumber() < TiredRules.mistake(Jobs.TIRED, profile.mistake, isTired(worker))
 end
 
 -- Restocker -------------------------------------------------------------------------------------------
@@ -571,7 +587,7 @@ local function onAssign(player: Player, target: unknown, job: unknown)
 		return
 	end
 
-	local worker: Worker = { slot = freeSlotNumber, beastId = beastId, job = job :: string, alive = false, status = "Starting" }
+	local worker = newWorker(freeSlotNumber, beastId, job :: string)
 	state.slots[freeSlotNumber] = worker
 	CardService.SetWorking(player, beastId, job :: string)
 	startWorker(player, state, worker)
@@ -599,7 +615,7 @@ local function onSwitch(player: Player, slot: unknown)
 		return
 	end
 	stopWorker(player, worker)
-	local fresh: Worker = { slot = worker.slot, beastId = worker.beastId, job = job, alive = false, status = "Starting" }
+	local fresh = newWorker(worker.slot, worker.beastId, job)
 	state.slots[worker.slot] = fresh
 	CardService.SetWorking(player, fresh.beastId, job)
 	startWorker(player, state, fresh)
@@ -637,7 +653,7 @@ local function load(player: Player, data: PlayerData)
 			and isJob(job) and not state.slots[slot]
 		if valid then
 			seen[beastId] = true
-			state.slots[slot] = { slot = slot, beastId = beastId, job = job, alive = false, status = "Starting" }
+			state.slots[slot] = newWorker(slot, beastId, job)
 			CardService.SetWorking(player, beastId, job)
 		end
 	end
@@ -704,6 +720,65 @@ local function statusLoop()
 	end
 end
 
+-- Its tired spell starting or ending: a toast to the owner, and its label, walking speed and the Jobs panel follow
+local function onTiredTurn(player: Player, worker: Worker, event: string)
+	local profile = getProfile(player, worker)
+	local name = if profile then profile.card.name else "Your worker"
+	if event == "tired" then
+		local minutes = math.ceil(Jobs.TIRED.seconds / 60)
+		if worker.job == "Cashier" then
+			notify(player, `😴 {name} is tired: scanning slower for {minutes} min. Take the register?`, false)
+		else
+			notify(player, `😴 {name} is tired: restocking slower for {minutes} min.`, false)
+		end
+	else
+		notify(player, `{name} is rested and back to full speed.`, false)
+	end
+	local humanoid = worker.humanoid
+	if humanoid and profile then
+		humanoid.WalkSpeed = Jobs.WALK_SPEED * JobRules.getSpeedFactor(Jobs, profile.spd) * TiredRules.speed(Jobs.TIRED, isTired(worker))
+	end
+	updateLabel(player, worker)
+	local state = states[player]
+	if state then
+		state.dirty = true
+	end
+end
+
+-- Each working card's work / tired clock, stepped every TIRED.tick seconds while it works (the owner online)
+local function tiredLoop()
+	local tick = Jobs.TIRED.tick
+	while true do
+		task.wait(tick)
+		for player, state in states do
+			for _, worker in state.slots do
+				if worker.alive then
+					local clock, event = TiredRules.step(worker.tired, tick, Jobs.TIRED, rng:NextNumber())
+					worker.tired = clock
+					if event then
+						onTiredTurn(player, worker, event)
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Studio's /jobtired: every working card of this player tires now, or is rested again when it already is
+function JobService.ToggleTiredForTest(player: Player)
+	local state = states[player]
+	if not state then
+		return
+	end
+	for _, worker in state.slots do
+		if worker.alive then
+			local wasTired = isTired(worker)
+			worker.tired = if wasTired then TiredRules.start(Jobs.TIRED, rng:NextNumber()) else { workLeft = 0, tiredLeft = Jobs.TIRED.seconds }
+			onTiredTurn(player, worker, if wasTired then "rested" else "tired")
+		end
+	end
+end
+
 -- Frontier place: no shop jobs run there, but cards with a saved job stay locked, so they can't join a party
 -- and come home in a different state. Read-only: it never saves, so the saved jobs come back untouched.
 function JobService.StartLocksOnly()
@@ -750,6 +825,7 @@ function JobService.Start()
 	end
 	task.spawn(xpLoop)
 	task.spawn(statusLoop)
+	task.spawn(tiredLoop)
 end
 
 return JobService
