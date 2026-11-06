@@ -84,6 +84,7 @@ local NAMES = {
 	"SwordSeen", -- client → server: () the first-sword popup was closed
 	"SwordAttack", -- client → server: () an Attack tap in a boss fight (the server picks the cut and checks reach)
 	"SwordSkill", -- client → server: () the sword skill in a boss fight
+	"SwordCast", -- server → all clients: (userId, move, x, z) a round 1 sword's cut ("cut1"-"cut3") or "skill" starts there: its effects for others
 	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
 	"EquipWeapon", -- client → server: (weaponId: string) hold an owned weapon (WeaponService; not in a fight)
 	"WeaponsChanged", -- server → client: { owned = { [weaponId]: { grade, level } }, equipped = weaponId }; client → server: () ask
@@ -193,6 +194,7 @@ return {
 	SwordSeen = remotes.SwordSeen,
 	SwordAttack = remotes.SwordAttack,
 	SwordSkill = remotes.SwordSkill,
+	SwordCast = remotes.SwordCast,
 	Dodge = remotes.Dodge,
 	EquipWeapon = remotes.EquipWeapon,
 	WeaponsChanged = remotes.WeaponsChanged,

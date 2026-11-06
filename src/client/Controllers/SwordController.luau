@@ -25,6 +25,8 @@ local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"
 local SwordArcRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordArcRules"))
 local SwingGate = require(Shared:WaitForChild("Util"):WaitForChild("SwingGate"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
+local SwordSkillFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SwordSkillFx"))
+local SwordSkillFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordSkillFxRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -32,6 +34,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local AfterImage = require(ClientUtil:WaitForChild("AfterImage"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
+local SwordSkillFx = require(ClientUtil:WaitForChild("SwordSkillFx"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -106,6 +109,59 @@ local HOLD_STEP = "SwordHold"
 -- cancel point; no cut starts during the dash slash; the last cut that struck (Util/SwingGate)
 local gate = SwingGate.new()
 local paused = false -- a super's cinematic is playing on your screen: no cuts, skill or dodge (Util/SuperCinematic)
+local othersFull = 0 -- other players' sword effects drawing in full now (SwordSkillFxRules.drawsOthers)
+
+-- A character's round 1 sword effects (spec 2026-11-06-sword-skills-design 4): its moveset's looks, its weapon's
+-- colours and the size its level gives; nil for the Steel Sword (none)
+type Effects = { fx: Swords.SwordFx, colors: SwordSkillFx.Colors, scale: number }
+local function effectsOf(character: Model): Effects?
+	local weaponId = character:GetAttribute("Sword")
+	local weapon = if typeof(weaponId) == "string" then Weapons.ById[weaponId] else nil
+	local sword = swordOf(weaponId)
+	if not weapon or not sword or not sword.fx then
+		return nil
+	end
+	local grade, level = gradeAndLevel(character)
+	local layers = WeaponLookRules.layers(WeaponLooks, weapon.rarity, level, grade, "hand")
+	return { fx = sword.fx, colors = SwordSkillFx.colorsOf(weapon.id), scale = SwordSkillFxRules.scale(layers.trailScale) }
+end
+
+-- Where a character's skill aims (boss fights): the first foe its shape reaches from where it stands, as the server
+-- will count it (SwordRules.skillHits); nil: along its facing
+local function skillAim(character: Model, sword: Swords.Sword): Vector3?
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not combatTargets or not root or not root:IsA("BasePart") then
+		return nil
+	end
+	local targets = combatTargets()
+	local look = root.CFrame.LookVector
+	local hits = SwordRules.skillHits(sword.skill.shape, root.Position.X, root.Position.Z, root.Position.X, root.Position.Z, look.X, look.Z, targets)
+	for _, target in targets do
+		if hits[1] and target.id == hits[1].id then
+			return Vector3.new(target.x, root.Position.Y, target.z)
+		end
+	end
+	return nil
+end
+
+-- A cut's effects on a character: its slash as the blade comes round, and on the finisher the slam's burst
+-- (`finisher` false: the slash only, another player's light version)
+local function cutEffects(character: Model, sword: Swords.Sword, effects: Effects, index: number, finisher: boolean, live: () -> boolean)
+	local arc = (SwordFx.ARCS :: any)[`cut{index}`]
+	task.delay(if arc then arc.from else 0, function()
+		if live() then
+			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale)
+		end
+	end)
+	if finisher and index == #sword.combo then
+		task.delay(sword.combo[index].hitAt, function()
+			local at = SwordSkillFx.slamPoint(character)
+			if at and live() then
+				SwordSkillFx.finisher(at, effects.fx.finisher, effects.colors, effects.scale)
+			end
+		end)
+	end
+end
 
 -- Moves you `studs` along `direction` (flat, unit) over `seconds`: a velocity constraint in the ground plane (gravity
 -- stays free; walls, the arena's barrier, still stop it). Setting the velocity each frame lost half a dash to the
@@ -804,6 +860,12 @@ function SwordController.Attack()
 		end
 		swingTrail()
 		playCues(sword, `cut{index}`, token)
+		local effects = effectsOf(character)
+		if effects then
+			cutEffects(character, sword, effects, index, true, function(): boolean
+				return stillSwinging(token)
+			end)
+		end
 		-- The candy sparkle arc as the blade comes round, and the finisher's dust where it lands
 		local arc = (SwordFx.ARCS :: any)[`cut{index}`] :: HitFx.ArcLook?
 		if arc then
@@ -884,6 +946,10 @@ function SwordController.Skill()
 	end
 	swingTrail()
 	playCues(sword, "skill", token)
+	local effects = effectsOf(character)
+	if effects then
+		SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword))
+	end
 	local arc = SwordFx.ARCS.skill :: HitFx.ArcLook
 	task.delay(arc.from, function()
 		local _, arcRoot = ownParts()
@@ -1050,7 +1116,46 @@ local function auraBudget()
 	end
 end
 
+-- Another player's round 1 sword cut or skill starting at (x, z) (BattleService): its effects on their character, full
+-- within range while only a few are, light (the slash only) past that, none far away (SwordSkillFxRules.drawsOthers)
+local function onSwordCast(userId: unknown, move: unknown, x: unknown, z: unknown)
+	if typeof(userId) ~= "number" or userId == player.UserId or typeof(move) ~= "string" or typeof(x) ~= "number" or typeof(z) ~= "number" then
+		return
+	end
+	local other = Players:GetPlayerByUserId(userId)
+	local character = if other then other.Character else nil
+	local camera = workspace.CurrentCamera
+	local sword = if character then swordOf(character:GetAttribute("Sword")) else nil
+	local effects = if character then effectsOf(character) else nil
+	if not character or not camera or not sword or not effects then
+		return
+	end
+	local focus = camera.Focus.Position
+	local mode = SwordSkillFxRules.drawsOthers(Vector2.new(x - focus.X, z - focus.Z).Magnitude, othersFull, SwordSkillFxConfig.OTHERS)
+	local index = tonumber(string.match(move, "^cut(%d)$"))
+	local cut = if index then sword.combo[index] else nil
+	if mode == "none" or (move ~= "skill" and not cut) then
+		return
+	end
+	if mode == "full" then
+		othersFull += 1
+		task.delay(if cut then cut.length else sword.skill.length, function()
+			othersFull -= 1
+		end)
+	end
+	if move == "skill" then
+		if mode == "full" then
+			SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword))
+		end
+	elseif index then
+		cutEffects(character, sword, effects, index, mode == "full", function(): boolean
+			return character.Parent ~= nil
+		end)
+	end
+end
+
 function SwordController.Start()
+	Remotes.SwordCast.OnClientEvent:Connect(onSwordCast)
 	Remotes.SwordState.OnClientEvent:Connect(function(state: any)
 		if typeof(state) == "table" and state.popup == true and typeof(state.sword) == "string" and Swords.SWORDS[state.sword] then
 			showPopup(state.sword)

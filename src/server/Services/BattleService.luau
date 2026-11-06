@@ -1360,6 +1360,16 @@ local function strike(fight: Fight, member: Member, power: number, kind: string,
 	end
 end
 
+-- A round 1 sword's cut or skill starting: every client draws its effects on that player's character (spec
+-- 2026-11-06-sword-skills-design 4 "Everyone sees them"; each client checks its distance and budget). The Steel Sword
+-- has none.
+local function swordCast(player: Player, sword: Swords.Sword, move: string)
+	local root = getRoot(player)
+	if sword.fx and root then
+		Remotes.SwordCast:FireAllClients(player.UserId, move, root.Position.X, root.Position.Z)
+	end
+end
+
 -- An Attack tap: the next cut of the combo (SwordRules.nextCut), landing at its strike frame
 local function onSwordAttack(player: Player)
 	local fight, member = swordFight(player)
@@ -1376,6 +1386,7 @@ local function onSwordAttack(player: Player)
 	member.lastCut = { index = index, startedAt = startAt }
 	SwordService.Touch(player)
 	local cut = sword.combo[index]
+	task.delay(startAt - now, swordCast, player, sword, `cut{index}`)
 	task.delay(startAt - now + cut.hitAt, strike, fight, member, cut.power * WeaponService.Power(player), "Sword", function(px, pz, lookX, lookZ, target)
 		return SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc)
 	end)
@@ -1393,9 +1404,11 @@ local function onSwordSkill(player: Player)
 	if not allowSwordSkill(player) or not fight or not member or not swordId or not root or os.clock() < member.skillReady then
 		return
 	end
-	local skill = Swords.SWORDS[swordId].skill
+	local sword = Swords.SWORDS[swordId]
+	local skill = sword.skill
 	member.skillReady = os.clock() + skill.cooldown * (1 - BattleSim.perkOf(fight.sim, member.owner, "Express"))
 	SwordService.Touch(player)
+	swordCast(player, sword, "skill")
 	local sx, sz = root.Position.X, root.Position.Z
 	local power = skill.power * WeaponService.Power(player)
 	task.delay(skill.hitAt, function()
