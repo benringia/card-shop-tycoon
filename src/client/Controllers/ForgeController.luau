@@ -353,7 +353,7 @@ local function renderPane(entry: Entry?)
 		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
 		shopLevel = shopLevel(),
 	})
-	if tab == REFORGE and record and record.grade == "S" then
+	if tab == REFORGE and record and not WeaponRules.canReforge(record) then
 		text, ready = "Already Grade S", false
 	end
 	local canPress = ready and not inFlight

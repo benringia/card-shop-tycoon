@@ -72,6 +72,11 @@ function WeaponRules.shownPower(cfg: any, combat: any, weaponId: string, grade: 
 	return if weapon and weapon.prism then power * combat.STRONG * cfg.BOND.damage else power
 end
 
+-- A reforge rolls a new grade and keeps the better: a Grade S can never improve, so it isn't offered (nor paid for)
+function WeaponRules.canReforge(owned: Owned): boolean
+	return owned.grade ~= "S"
+end
+
 -- A dropped weapon told to the whole server: its rarity is announced and it's new (a duplicate became its material)
 function WeaponRules.announces(cfg: any, weaponId: string, refund: number): boolean
 	local weapon = cfg.ById[weaponId]

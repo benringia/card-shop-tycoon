@@ -96,6 +96,16 @@ local function take(player: Player, cost: Cost): boolean
 	return true
 end
 
+-- Gives a taken cost back (an error after paying: the player keeps what they had)
+local function refund(player: Player, cost: Cost)
+	for id, n in cost.items do
+		ItemService.GiveItem(player, id, n)
+	end
+	if cost.cash > 0 then
+		EconomyService.AddCash(player, cost.cash)
+	end
+end
+
 -- The cost of this action on this weapon, or nil (with a message when the player can fix it)
 local function costOf(player: Player, action: Action, weapon: Weapons.Weapon): Cost?
 	local owned = WeaponService.GetOwned(player, weapon.id)
@@ -109,12 +119,38 @@ local function costOf(player: Player, action: Action, weapon: Weapons.Weapon): C
 		notify(player, `Forge the {weapon.name} first.`)
 		return nil
 	elseif action == "reforge" then
+		if not WeaponRules.canReforge(owned) then
+			notify(player, `Your {weapon.name} is already Grade S.`)
+			return nil
+		end
 		return WeaponRules.reforgeCost(Weapons, weapon.id)
 	elseif owned.level >= Weapons.MAX_LEVEL then
 		notify(player, `The {weapon.name} is already +{Weapons.MAX_LEVEL}.`)
 		return nil
 	end
 	return WeaponRules.upgradeCost(Weapons, weapon.id, owned.level + 1)
+end
+
+-- What the paid action does: a level up, or a grade rolled and given (forge, reforge); returns what ForgeResult tells
+-- the client
+local function give(player: Player, action: Action, weapon: Weapons.Weapon): { [string]: any }
+	if action == "upgrade" then
+		local owned = WeaponService.GetOwned(player, weapon.id) :: WeaponService.Owned
+		local level = owned.level + 1
+		WeaponService.SetLevel(player, weapon.id, level)
+		return { action = action, weaponId = weapon.id, grade = owned.grade, level = level, kept = false, owned = owned.grade }
+	end
+	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
+	local record = WeaponService.Give(player, weapon.id, grade, action)
+	local now = WeaponService.GetOwned(player, weapon.id)
+	return {
+		action = action,
+		weaponId = weapon.id,
+		grade = grade,
+		level = if now then now.level else 0,
+		kept = record == nil, -- a reforge that didn't beat the grade it had
+		owned = if now then now.grade else grade, -- the grade it has now
+	}
 end
 
 local function perform(player: Player, action: Action, weapon: Weapons.Weapon, shelfUid: unknown)
@@ -129,24 +165,14 @@ local function perform(player: Player, action: Action, weapon: Weapons.Weapon, s
 	if not cost or not take(player, cost) then
 		return
 	end
-	if action == "upgrade" then
-		local owned = WeaponService.GetOwned(player, weapon.id) :: WeaponService.Owned
-		local level = owned.level + 1
-		WeaponService.SetLevel(player, weapon.id, level)
-		Remotes.ForgeResult:FireClient(player, { action = action, weaponId = weapon.id, grade = owned.grade, level = level, kept = false, owned = owned.grade })
-		return
+	-- Paid: the weapon is given, or (anything failing on the way) the cost goes back
+	local ok, result = pcall(give, player, action, weapon)
+	if not ok then
+		refund(player, cost)
+		notify(player, "The Forge hiccuped. Nothing was spent.")
+		error(result, 0)
 	end
-	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
-	local record = WeaponService.Give(player, weapon.id, grade, action)
-	local now = WeaponService.GetOwned(player, weapon.id)
-	Remotes.ForgeResult:FireClient(player, {
-		action = action,
-		weaponId = weapon.id,
-		grade = grade,
-		level = if now then now.level else 0,
-		kept = record == nil, -- a reforge that didn't beat the grade it had
-		owned = if now then now.grade else grade, -- the grade it has now
-	})
+	Remotes.ForgeResult:FireClient(player, result)
 end
 
 -- Every request: rate-limited, a built weapon, one at a time per player (the flag clears on every path)

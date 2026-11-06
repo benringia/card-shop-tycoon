@@ -20,6 +20,12 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["a boss weapon's pity resets only when the weapon was really given; a miss or a failed give counts up"] = function()
+		expect.equal(BossRules.nextWeaponPity(4, false, false), 5, "no drop")
+		expect.equal(BossRules.nextWeaponPity(4, true, true), 0, "dropped and given")
+		expect.equal(BossRules.nextWeaponPity(4, true, false), 5, "rolled but not given (its data not loaded): kept, counted as a miss")
+	end,
+
 	["a boss's weapon is rolled only on a full-loot kill: no soft cap or over-power shrink, never for the carried"] = function()
 		expect.equal(BossRules.rollsWeapon(1, false), true)
 		expect.equal(BossRules.rollsWeapon(0.5, false), false, "past the daily soft cap")

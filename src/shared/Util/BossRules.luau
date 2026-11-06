@@ -176,6 +176,12 @@ function BossRules.rollsWeapon(factor: number, carried: boolean): boolean
 	return factor >= 1 and not carried
 end
 
+-- A boss weapon's pity after a full-loot roll: back to 0 only once the weapon was really given; a miss, or a drop
+-- that couldn't be given (its owner's weapons not loaded), counts as one more kill without it
+function BossRules.nextWeaponPity(pity: number, rolled: boolean, given: boolean): number
+	return if rolled and given then 0 else pity + 1
+end
+
 function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
 end

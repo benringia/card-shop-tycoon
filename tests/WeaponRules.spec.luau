@@ -5,6 +5,12 @@ local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 
 return {
+	["a Grade S weapon can't be reforged (the roll can never beat it); any lower grade can"] = function()
+		expect.equal(WeaponRules.canReforge({ grade = "S", level = 3 }), false)
+		expect.equal(WeaponRules.canReforge({ grade = "A", level = 0 }), true)
+		expect.equal(WeaponRules.canReforge({ grade = "C", level = 10 }), true)
+	end,
+
 	["shown Power: the Prism Blade's counts its always-on strong hit and bond; the others are their Power"] = function()
 		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0), 1 * Combat.STRONG * W.BOND.damage, 1e-9)
 		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "S", 10), 1.15 * 1.3 * Combat.STRONG * W.BOND.damage, 1e-9)

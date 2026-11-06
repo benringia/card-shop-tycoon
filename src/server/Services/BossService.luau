@@ -297,18 +297,17 @@ function BossService.DropWeapon(player: Player, weaponId: string, delay: number?
 	return payload
 end
 
--- On a full-loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity; a drop resets the pity, a miss adds one
+-- On a full-loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity; a drop given
+-- resets the pity, anything else adds one (BossRules.nextWeaponPity)
 local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): any
 	local weaponId = weaponOf[bossId]
 	if not weaponId then
 		return nil
 	end
-	if rng:NextNumber() >= WeaponRules.dropChance(Weapons, weaponId, record.weaponPity) then
-		record.weaponPity += 1
-		return nil
-	end
-	record.weaponPity = 0
-	return BossService.DropWeapon(player, weaponId, Victory.SECONDS)
+	local rolled = rng:NextNumber() < WeaponRules.dropChance(Weapons, weaponId, record.weaponPity)
+	local payload = if rolled then BossService.DropWeapon(player, weaponId, Victory.SECONDS) else nil
+	record.weaponPity = BossRules.nextWeaponPity(record.weaponPity, rolled, payload ~= nil)
+	return payload
 end
 
 function BossService.WeaponOf(bossId: string): string?
