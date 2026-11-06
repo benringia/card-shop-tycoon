@@ -3,7 +3,9 @@
 -- grade chances, grading costs, card list, product prices, customer timing). Monte Carlo over many players.
 -- Usage: lune run tools/economy/sim [players]
 --   NO_KIDS=1 in front: no kid offers (spec 2026-11-06-customers-design); RATING=<1-5>: the shop rating (default 4, a
---   well-run shop; 3 is the customer flow before the rating existed)
+--   well-run shop; 3 is the customer flow before the rating existed); WEAPONS=1: the weapons' cash sink first (an
+--   Ember Forge Sword, the Verdant Blade and its upgrades to +5, Config/Weapons through WeaponRules), paid from the
+--   shop's profit before the packs (weapons round 1, spec 4.6)
 --
 -- The player modelled (an early-game shop, DESIGN.md 7.5): stocks only First Spark packs at market price, so customers
 -- buy them; the shop earns while the player opens packs with the profit, one every OPEN_SECONDS. No monsters, no card
@@ -26,6 +28,8 @@ local CondenseRules = require("../../src/shared/Util/CondenseRules")
 local Customers = require("../../src/shared/Config/Customers")
 local OfferRules = require("../../src/shared/Util/OfferRules")
 local RatingRules = require("../../src/shared/Util/RatingRules")
+local Weapons = require("../../src/shared/Config/Weapons")
+local WeaponRules = require("../../src/shared/Util/WeaponRules")
 
 -- Assumptions ---------------------------------------------------------------------------------------------------
 local PACK_ID = "FirstSparkPack"
@@ -35,6 +39,16 @@ local MAX_HOURS = 400 -- a player who hasn't reached a goal by then counts as th
 local PLAYERS = tonumber((process.args[1])) or 2000
 local KIDS = process.env.NO_KIDS ~= "1"
 local RATING = tonumber(process.env.RATING or "") or 4
+
+-- The weapons' cash by the goal (WEAPONS=1): a Forge Sword, a boss weapon made from its material and upgraded to +5
+local function weaponSink(): number
+	local total = (WeaponRules.makeCost(Weapons, "forgeSword_Ember") :: any).cash + (WeaponRules.makeCost(Weapons, "verdantBlade") :: any).cash
+	for level = 1, 5 do
+		total += (WeaponRules.upgradeCost(Weapons, "verdantBlade", level) :: any).cash
+	end
+	return total
+end
+local WEAPON_SINK = if process.env.WEAPONS == "1" then weaponSink() else 0
 
 -- Customer timing from Config/Customers, the gap scaled by the shop rating (RatingRules)
 local customersPerMinute = 60 / ((Customers.SPAWN_INTERVAL_MIN + Customers.SPAWN_INTERVAL_MAX) / 2) / RatingRules.spawnScale(Customers, RATING)
@@ -146,7 +160,7 @@ local function simulatePlayer(): Result
 	local luckyCard: string? = nil
 	local done = false -- the goal's time is settled
 	local packs = 0
-	local now = 0
+	local now = WEAPON_SINK / profitPerHour -- the weapons' cash comes first (0 without WEAPONS=1)
 	local kidsDue = 0 -- fractional kids who've ripped since the last pack
 	local spare = 0
 	local history: OfferRules.History = { offers = {} }
@@ -280,6 +294,9 @@ end
 
 print(`Economy simulator: {PLAYERS} players, {PACK_ID} only, opening one every {OPEN_SECONDS}s`)
 print(string.format("Shop rating %.1f (customer gap x%.2f), kid offers %s", RATING, RatingRules.spawnScale(Customers, RATING), if KIDS then "on" else "off"))
+if WEAPON_SINK > 0 then
+	print(string.format("Weapons' cash first: $%d (%.1f h of shop profit)", WEAPON_SINK, WEAPON_SINK / (profitPerMinute * 60)))
+end
 print(string.format("Shop profit: %.1f customers/min x %.1f items x %.0f%% buy x $%.2f = $%.0f an hour", customersPerMinute, itemsPerCustomer, buyChance * 100, product.marketPrice - packCost, profitPerMinute * 60))
 print(string.format("Packs opened: %.0f an hour (cash-limited at $%.2f each)", math.min(3600 / OPEN_SECONDS, profitPerMinute * 60 / packCost), packCost))
 print("")

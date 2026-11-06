@@ -1715,6 +1715,27 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   1.8; the Prism Blade has its own base 1.0 (always strong and bonded makes it x1.73 against every foe). The spec's
   starting numbers (1.15 / 1.35 / 1.55 / 1.8 / 2.1, +5% a level) broke both limits: the Prism Blade at +0 won 93% at
   0.8x and +10 S cut the Hydra fight to 37%; the Verdant Blade +10 S won 97% at 0.8x.
+- **The Forge** (a Fixture, $1,500, shop level 6; `ForgeService`, a code-built stand-in look until its model): forge
+  (a weapon you don't have), upgrade (+1 at a time, never fails), reforge (half the making cost, rounded up: a new
+  grade roll, the better kept). Its own Forge within 12 studs, one request at a time, costs checked and taken all or
+  nothing on the server.
+- **Drops** (`BossService`): each full-loot win of a boss with a built weapon rolls it at 1% + 0.5% per full-loot win
+  since the last (`weaponPity` in its saved record); carried group members never roll it. A weapon you have turns into
+  10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
+  stage: rune circle, a light column in the rarity's colour, the weapon rising with its glow, "RARE! Verdant Blade",
+  its grade, a line); Epic and Legendary drops are toasted to the server. The Forge's results play the same stage with
+  an anvil and a 1.5 s build-up, the hit by the grade (S the Legendary pull's); an upgrade names the glow layer it adds.
+- **Glow ladder** (`Util/WeaponLookRules`, client `Util/WeaponLook`, numbers in `Config/WeaponLooks`): a Neon glow shell
+  (rest by rarity, brighter +1 to +3), the element's aura from +4 (6 / 10 / 14 particles a second, a third of that on
+  the back), a wider trail and a burst on every hit from +7, the +10 Awakened effect, the Grade S twinkle, a light in
+  hand for Epic and Legendary. Studio's automatic quality thins particles a lot: sizes are about a stud so +4 reads.
+  5 extra +10 S weapons on backs cost 0.15 ms a frame.
+- **Pickup toasts**: a boss material reads "Warden Heartwood +2 (9/15)" toward what it's for next
+  (`WeaponRules.materialGoal`: making its weapon, then its next upgrade).
+- **Economy** (`WEAPONS=1 lune run tools/economy/sim 2000`: an Ember Forge Sword, the Verdant Blade and its upgrades to
+  +5, $11,100, paid first from an early packs-only shop's $706 an hour): the Grade S Legendary goal moves from 19.6 h to
+  35.4 h median (+81%). That shop earns no boss cash (players chasing weapons fight bosses), and the weapons are their
+  own chase; kept as is for the owner to judge (2026-11-06).
 - **Balance rows** (`WEAPON="<id>:<level>:<grade>" lune run tools/balance/bosses 60 1 <boss>`, "well" column, solo;
   the Steel Sword's row first):
 
@@ -1969,6 +1990,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WildService.luau      # wild map (the valley's spawn spots, wooden signs, edges, return portal, boss portals and arena copies), plaza portal, healing spring, monsters (spawn, wander, chase, the valley's crowd-sized population)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── SwordService.luau     # the sword: unlock, drawn/sheathed, standard body, back accessories hidden in boss fights (BattleService handles the attack/skill/dodge remotes)
+    │   │   ├── WeaponService.luau    # owned and equipped weapons (saves), EquipWeapon, the Sword/SwordGrade/SwordLevel attributes, HitInfo for sword hits
+    │   │   ├── ForgeService.luau     # the Forge machine: forge, upgrade, reforge (costs from WeaponRules, all or nothing, grade rolled here)
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
@@ -2032,7 +2055,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
-    │   │   ├── SwordController.luau     # draws swords on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
+    │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
+    │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
@@ -2257,10 +2281,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v15)
+### 10.4 Player data schema (v16)
 ```lua
 {
-    version = 15,
+    version = 16,
     cash = 200,
     xp = 0,
     level = 1,
@@ -2287,6 +2311,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
+    weapons = {},           -- weaponId -> { grade, level } (WeaponService; the Steel Sword is everyone's, never saved)
+    equippedWeapon = "starterSword", -- the weapon in hand (Config/Weapons id)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -2305,7 +2331,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
