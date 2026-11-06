@@ -127,6 +127,7 @@ local function auraEmitter(parent: BasePart, kind: string, rate: number, colors:
 	made.Speed = if spec.speed then NumberRange.new(spec.speed[1], spec.speed[2]) else NumberRange.new(0)
 	made.Rate = 0
 	made.Enabled = false
+	made.LockedToPart = true -- the glow sticks to the sword: no trail left behind as you walk (owner 2026-11-06)
 	if kind == "flame" or kind == "smoke" then
 		made.Acceleration = Vector3.new(0, spec.rise, 0)
 		made.Drag = spec.drag or 1
@@ -222,6 +223,7 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	sparkles.Rate = 0
+	sparkles.LockedToPart = true
 	sparkles.Parent = blade
 	local light = Instance.new("PointLight")
 	light.Name = "WeaponLight"

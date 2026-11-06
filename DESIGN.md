@@ -1759,7 +1759,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   - the full aura: flame wisps filling the weapon from its element's deep colour to its bright one, a bright core,
     drifting smoke and sparks (the Prism Blade's flames in every element's colour); it starts at +4 (Epic and
     Legendary at +2), thickens each level and is full from +7; +10 Awakened adds ribbons streaming off the blade;
-    half the aura on the back below +10;
+    half the aura on the back below +10; every particle is locked to the sword, so walking leaves no trail (owner);
   - the cheap glow: creature-style sparkles a second (1-5 by rarity, more per level and for Grade S) and a light
     (Epic and Legendary, in hand; on the back too once Awakened);
   - the budget: your own sword and the 3 nearest others within 60 studs get the full aura (checked every 0.5 s,
