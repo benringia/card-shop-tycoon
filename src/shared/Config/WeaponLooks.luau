@@ -115,6 +115,9 @@ return {
 		spark = { texture = "spark", rate = 14, lifetime = { 0.6, 1.1 }, size = 0.3, speed = { 0.4, 1.4 }, brightness = 4 },
 		ribbon = { texture = "streak", rate = 10, lifetime = { 0.7, 1.1 }, size = { 0.25, 0.5 }, speed = { 2, 4 }, transparency = 0.2, brightness = 1.6 },
 	},
+	-- A new boss weapon drop seen by others nearby (spec 4.4): a column of light in the rarity's colour rising where the
+	-- winner stands, for players within `range` studs (studs, seconds; the column's width grows by `swell`)
+	BEACON = { range = 150, height = 40, width = 3, swell = 1.6, seconds = 4, fadeIn = 0.3, fadeOut = 1.2 },
 	-- The cheap glow's sparkle look
 	SPARKLE_LOOK = { texture = "spark", lifetime = { 0.8, 1.4 }, size = 0.3, speed = { 0.3, 0.9 }, brightness = 3 },
 	-- The drop cinematic and the forge reveal (WeaponRevealController, on the pack opening's stage): the circle opens,

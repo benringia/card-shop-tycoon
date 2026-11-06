@@ -23,6 +23,7 @@ local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
+local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -534,9 +535,66 @@ function WeaponRevealController.Forge(result: any)
 	WeaponRevealController.Show(reveal)
 end
 
+-- A new boss weapon dropped near you (someone else's win, spec 4.4): a column of light in its rarity's colour rises
+-- where they stand, swells, then fades
+local function beacon(userId: unknown, weaponId: unknown, position: unknown)
+	local weapon = if typeof(weaponId) == "string" then Weapons.ById[weaponId] else nil
+	local camera = workspace.CurrentCamera
+	if not weapon or typeof(position) ~= "Vector3" or not camera then
+		return
+	end
+	local spec = WeaponLooks.BEACON
+	local distance = (camera.Focus.Position - position).Magnitude
+	if not WeaponLookRules.seesBeacon(distance, spec.range, userId == player.UserId) then
+		return
+	end
+	local color = rarityColor(weapon.rarity)
+	local anchor = Instance.new("Part")
+	anchor.Name = "WeaponBeacon"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.CFrame = CFrame.new(position - Vector3.new(0, 3, 0))
+	anchor.Parent = workspace
+	local a0 = Instance.new("Attachment")
+	a0.Parent = anchor
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, 0.1, 0)
+	a1.Parent = anchor
+	local glow = lightBeam(a0, a1, color, anchor)
+	local core = lightBeam(a0, a1, WHITE, anchor)
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = 16
+	light.Brightness = 0
+	light.Parent = anchor
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		if t >= spec.seconds or not anchor.Parent then
+			connection:Disconnect()
+			anchor:Destroy()
+			return
+		end
+		local rise = math.clamp(t / spec.fadeIn, 0, 1)
+		local fade = math.clamp((spec.seconds - t) / spec.fadeOut, 0, 1)
+		local open = math.min(rise, fade)
+		local width = spec.width * (1 + (spec.swell - 1) * math.clamp(t / spec.seconds, 0, 1)) * open
+		a1.Position = Vector3.new(0, spec.height * rise, 0)
+		glow.Width0, glow.Width1 = width, width * 0.7
+		core.Width0, core.Width1 = width * 0.3, width * 0.2
+		light.Brightness = 2 * open
+	end)
+end
+
 function WeaponRevealController.Start()
 	Remotes.WeaponDropped.OnClientEvent:Connect(WeaponRevealController.Drop)
 	Remotes.ForgeResult.OnClientEvent:Connect(WeaponRevealController.Forge)
+	Remotes.WeaponBeacon.OnClientEvent:Connect(beacon)
 	Remotes.WeaponAnnouncement.OnClientEvent:Connect(function(name: unknown, weaponId: unknown, grade: unknown, userId: unknown)
 		if userId == player.UserId or typeof(name) ~= "string" or typeof(weaponId) ~= "string" then
 			return

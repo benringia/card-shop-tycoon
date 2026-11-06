@@ -100,6 +100,13 @@ return {
 		expect.equal(next(none), nil)
 	end,
 
+	["a new drop's light column: everyone near the winner sees it, the winner has the cinematic instead"] = function()
+		expect.equal(WeaponLookRules.seesBeacon(40, Looks.BEACON.range, false), true)
+		expect.equal(WeaponLookRules.seesBeacon(Looks.BEACON.range + 1, Looks.BEACON.range, false), false, "too far")
+		expect.equal(WeaponLookRules.seesBeacon(0, Looks.BEACON.range, true), false, "the winner")
+		assert(Looks.BEACON.height > 10 and Looks.BEACON.seconds > Looks.BEACON.fadeIn + Looks.BEACON.fadeOut)
+	end,
+
 	["the budget's numbers are set"] = function()
 		assert(Looks.BUDGET.nearest >= 1 and Looks.BUDGET.range > 0 and Looks.BUDGET.every > 0)
 	end,

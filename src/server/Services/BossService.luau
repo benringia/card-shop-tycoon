@@ -290,6 +290,11 @@ function BossService.DropWeapon(player: Player, weaponId: string, delay: number?
 			return
 		end
 		Remotes.WeaponDropped:FireClient(player, payload)
+		-- A new weapon: its light column for everyone near (each client checks the distance, WeaponLookRules.seesBeacon)
+		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") else nil
+		if refund <= 0 and root and root:IsA("BasePart") then
+			Remotes.WeaponBeacon:FireAllClients(player.UserId, weaponId, root.Position)
+		end
 		if WeaponRules.announces(Weapons, weaponId, refund) then
 			Remotes.WeaponAnnouncement:FireAllClients(player.DisplayName, weaponId, grade, player.UserId)
 		end

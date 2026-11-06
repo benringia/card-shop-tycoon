@@ -208,7 +208,8 @@ end
 
 -- "/weapondrop meadowWarden": that boss's weapon drops for you now, through the real drop (the cinematic, a refund
 -- when you have it). "/weapondrop meadowWarden preview [grade]": only the cinematic of a new drop (its card turning
--- over), nothing given, to see it when you already own the weapon
+-- over), nothing given, to see it when you already own the weapon. "/weapondrop meadowWarden beacon": the light
+-- column others nearby see of a new drop, in front of you
 local function forceWeaponDrop(player: Player, text: string)
 	local bossId, preview, grade = string.match(text, "%s+([%w_]+)%s*(%a*)%s*(%a?)")
 	local weaponId = if bossId then BossService.WeaponOf(bossId) else nil
@@ -219,6 +220,13 @@ local function forceWeaponDrop(player: Player, text: string)
 	if preview == "preview" then
 		local shown = if BeastRules.isGrade(string.upper(grade)) then string.upper(grade) else "A"
 		Remotes.WeaponDropped:FireClient(player, { weaponId = weaponId, grade = shown, refund = 0, material = Weapons.MATERIALS[bossId] })
+		return
+	elseif preview == "beacon" then
+		-- What others nearby see of a new drop: its light column 12 studs in front of you (as if someone else won it)
+		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") else nil
+		if root and root:IsA("BasePart") then
+			Remotes.WeaponBeacon:FireClient(player, 0, weaponId, root.Position + root.CFrame.LookVector * 12)
+		end
 		return
 	end
 	BossService.DropWeapon(player, weaponId)

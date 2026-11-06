@@ -93,6 +93,7 @@ local NAMES = {
 	"ForgeResult", -- server → client: { action = "forge" | "reforge" | "upgrade", weaponId, grade (rolled), level, kept, owned (its grade now) } (kept: the old grade stayed)
 	"WeaponDropped", -- server → client: { weaponId, grade, refund, material } a boss dropped its weapon (refund > 0: you had it)
 	"WeaponAnnouncement", -- server → all clients: (displayName, weaponId, grade, userId) an Epic or Legendary weapon dropped
+	"WeaponBeacon", -- server → all clients: (userId, weaponId, position) a new boss weapon dropped there: its light column
 }
 
 local isServer = RunService:IsServer()
@@ -201,4 +202,5 @@ return {
 	ForgeResult = remotes.ForgeResult,
 	WeaponDropped = remotes.WeaponDropped,
 	WeaponAnnouncement = remotes.WeaponAnnouncement,
+	WeaponBeacon = remotes.WeaponBeacon,
 }

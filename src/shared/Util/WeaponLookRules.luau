@@ -75,6 +75,11 @@ function WeaponLookRules.layers(looks: any, rarity: string, level: number, grade
 	}
 end
 
+-- A new drop's light column (spec 4.4): seen by everyone within range of the winner, who has the cinematic instead
+function WeaponLookRules.seesBeacon(distance: number, range: number, mine: boolean): boolean
+	return not mine and distance <= range
+end
+
 -- Which swords get the full aura: your own always, then the nearest `nearest` others within `range` studs (set of keys)
 function WeaponLookRules.fullAuras(candidates: { Candidate }, nearest: number, range: number): { [string]: boolean }
 	local full: { [string]: boolean } = {}
