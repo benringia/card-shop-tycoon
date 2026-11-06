@@ -62,3 +62,19 @@ uploaded; their ids are `Config/WeaponLooks` `FORGE_COLOR_MAPS`.
    element's colour map (the names `Config/Weapons` uses).
 4. Rojo syncs `assets/weapons` to `ReplicatedStorage.WeaponModels`; `SwordController` and the reveals draw them,
    `Util/WeaponLook` adds the glow shell on the Blade and the ladder's effects. Until a model exists, a tinted stand-in.
+
+## 5. Portraits (the card's picture)
+
+Each weapon with a model has a portrait: the model alone in a 360 x 500 ViewportFrame on a full-screen magenta frame
+(Play, Client datamodel; Ambient 190,190,200, LightDirection (-0.5,-0.7,-1), FOV 20), tilted 30 degrees blade up-right
+and turned 12, captured with the Studio MCP's `screen_capture`, then cut out:
+
+```
+python tools/ui-art/cut_product_picture.py <capture> assets/ui/weapon-portraits/<Model>.png 630 0 1000 516
+```
+
+A model with colours near magenta (the Shade Forge Sword's purple gems) is captured on green and cut with
+`--key 0,255,0`. The PNGs (256 px tall) are uploaded (serve the folder on 127.0.0.1, `upload_image`) and their ids go
+in `Config/WeaponLooks` (`portrait`; the Forge Sword's per element in `FORGE_PORTRAITS`). `Util/WeaponFace` draws the
+portrait over the weapon's glow gradient; a weapon with no model yet keeps the big sword emoji (tested in
+`WeaponsConfig`).

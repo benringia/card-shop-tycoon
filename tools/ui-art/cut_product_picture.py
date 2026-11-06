@@ -5,7 +5,10 @@ key-colour background (RGB 255, 0, 255) and captured with the Studio MCP's scree
 by each pixel's distance from it (so purple surfaces stay), un-mixes the key from the soft edge pixels, trims to the
 picture and scales it to 256 px tall.
 
-Usage: python tools/ui-art/cut_product_picture.py <capture> <out.png> [left top right bottom]
+Also the weapon portraits (weapons round 1, docs/weapons.md): a model whose colours sit near magenta (the Shade Forge
+Sword's purple gems) is captured on green instead and cut with --key 0,255,0.
+
+Usage: python tools/ui-art/cut_product_picture.py [--key R,G,B] <capture> <out.png> [left top right bottom]
 The optional box crops the capture first (when it holds more than one model). Needs Pillow.
 """
 import math
@@ -19,7 +22,7 @@ CLEAR = 70  # this close to the key colour (RGB distance): transparent
 OPAQUE = 150  # this far or more: fully the picture; in between, an edge pixel
 
 
-def cut(source, box=None):
+def cut(source, box=None, key=KEY):
     image = Image.open(source).convert('RGBA')
     if box:
         image = image.crop(box)
@@ -27,13 +30,13 @@ def cut(source, box=None):
     for y in range(image.size[1]):
         for x in range(image.size[0]):
             r, g, b, _ = pixels[x, y]
-            distance = math.dist((r, g, b), KEY)
+            distance = math.dist((r, g, b), key)
             if distance <= CLEAR:
                 pixels[x, y] = (0, 0, 0, 0)
             elif distance < OPAQUE:
                 alpha = (distance - CLEAR) / (OPAQUE - CLEAR)
                 # the edge pixel is picture * alpha + key * (1 - alpha): take the key back out
-                colour = tuple(max(0, min(255, round((c - k * (1 - alpha)) / alpha))) for c, k in zip((r, g, b), KEY))
+                colour = tuple(max(0, min(255, round((c - k * (1 - alpha)) / alpha))) for c, k in zip((r, g, b), key))
                 pixels[x, y] = (*colour, round(alpha * 255))
     bounds = image.getbbox()
     if bounds:
@@ -43,12 +46,17 @@ def cut(source, box=None):
 
 
 def main():
-    if len(sys.argv) not in (3, 7):
+    args = sys.argv[1:]
+    key = KEY
+    if len(args) >= 2 and args[0] == '--key':
+        key = tuple(int(v) for v in args[1].split(','))
+        args = args[2:]
+    if len(args) not in (2, 6) or len(key) != 3:
         print(__doc__)
         sys.exit(1)
-    box = tuple(int(v) for v in sys.argv[3:7]) if len(sys.argv) == 7 else None
-    cut(sys.argv[1], box).save(sys.argv[2])
-    print('saved', sys.argv[2])
+    box = tuple(int(v) for v in args[2:6]) if len(args) == 6 else None
+    cut(args[0], box, key).save(args[1])
+    print('saved', args[1])
 
 
 if __name__ == '__main__':

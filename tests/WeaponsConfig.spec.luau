@@ -22,6 +22,17 @@ return {
 		end
 	end,
 
+	["every weapon with a model has its portrait (the card's picture); the rest wait for theirs"] = function()
+		for _, w in Weapons.WEAPONS do
+			local portrait = WeaponLooks.WEAPONS[w.id].portrait
+			if w.model then
+				assert(string.match(portrait, "^rbxassetid://%d+$"), `{w.id} needs its portrait`)
+			else
+				expect.equal(portrait, "", `{w.id}: no model yet, so no portrait`)
+			end
+		end
+	end,
+
 	["each boss drops its own material with full loot, and its daily chest adds 2"] = function()
 		local count = 0
 		for bossId, item in Weapons.MATERIALS do

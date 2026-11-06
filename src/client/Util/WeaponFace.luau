@@ -49,19 +49,24 @@ local function centered(label: TextLabel): TextLabel
 	return label
 end
 
--- The picture: the portrait, else the weapon's glow colour (light at the top, deeper at the bottom) behind a big sword
+-- The picture: the weapon's glow colour (light at the top, deeper at the bottom) behind its portrait (the model cut
+-- out), else behind a big sword
 local function picture(art: Frame, weaponId: string)
 	local look = WeaponLooks.WEAPONS[weaponId]
-	if look and look.portrait ~= "" then
-		P.image(art, "Picture", look.portrait, 3)
-		return
-	end
 	local glow = if look then rgb(look.glow) else Color3.fromRGB(207, 230, 255)
 	art.BackgroundColor3 = WHITE
 	local shade = Instance.new("UIGradient")
 	shade.Color = ColorSequence.new(glow:Lerp(WHITE, 0.6), glow:Lerp(BLACK, 0.3))
 	shade.Rotation = 90
 	shade.Parent = art
+	if look and look.portrait ~= "" then
+		local portrait = P.image(art, "Picture", look.portrait, 3)
+		portrait.ScaleType = Enum.ScaleType.Fit
+		portrait.AnchorPoint = Vector2.new(0.5, 0)
+		portrait.Position = UDim2.fromScale(0.5, 0.06)
+		portrait.Size = UDim2.fromScale(0.9, 0.7) -- clear of the Power line at the bottom
+		return
+	end
 	centered(P.text(art, SWORD, { x = 0.15, y = 0.24, w = 0.7, h = 0.42 }, WHITE, 3))
 end
 

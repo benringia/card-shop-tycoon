@@ -2,7 +2,8 @@
 -- How weapons glow (spec 2026-11-06-weapons-round1-design 5.1; Util/WeaponLookRules, client Util/WeaponLook): one
 -- job per thing, not piled up. Element = the colours (each weapon's glow and trail), rarity = the resting glow (REST),
 -- upgrades = layers over time (LADDER), grade S = the card-style twinkle. One particle aura per weapon; on the back in
--- town fewer particles and no light (BACK). Colours { r, g, b }; portraits are uploaded image ids ("" until made).
+-- town fewer particles and no light (BACK). Colours { r, g, b }; portraits are uploaded image ids ("" until made): the model rendered
+-- on magenta, cut out (assets/ui/weapon-portraits, docs/weapons.md), drawn on the card over its glow.
 -- Plain data so Lune tests can load it.
 
 export type Look = {
@@ -22,10 +23,10 @@ local BY_ELEMENT: { [string]: { glow: { number }, trail: { number }, aura: strin
 }
 
 local WEAPONS: { [string]: Look } = {
-	starterSword = { glow = { 207, 230, 255 }, trail = { 207, 230, 255 }, aura = "none", awakened = "elementRunes", portrait = "" },
-	verdantBlade = { glow = { 150, 240, 120 }, trail = { 120, 225, 110 }, aura = "petals", awakened = "vineCrown", portrait = "" },
-	sunforgedBlade = { glow = { 255, 190, 80 }, trail = { 255, 140, 40 }, aura = "embers", awakened = "sunHalo", portrait = "" },
-	prismBlade = { glow = { 230, 200, 255 }, trail = { 200, 170, 255 }, aura = "prism", awakened = "prismWings", portrait = "" },
+	starterSword = { glow = { 207, 230, 255 }, trail = { 207, 230, 255 }, aura = "none", awakened = "elementRunes", portrait = "rbxassetid://92121287059017" },
+	verdantBlade = { glow = { 150, 240, 120 }, trail = { 120, 225, 110 }, aura = "petals", awakened = "vineCrown", portrait = "rbxassetid://136327582593705" },
+	sunforgedBlade = { glow = { 255, 190, 80 }, trail = { 255, 140, 40 }, aura = "embers", awakened = "sunHalo", portrait = "rbxassetid://123708775303650" },
+	prismBlade = { glow = { 230, 200, 255 }, trail = { 200, 170, 255 }, aura = "prism", awakened = "prismWings", portrait = "rbxassetid://119112031121278" },
 	-- Rounds 2 and 3 (their looks get tuned when they're built)
 	forgeSpear = { glow = { 207, 230, 255 }, trail = { 207, 230, 255 }, aura = "none", awakened = "elementRunes", portrait = "" },
 	magmaHalberd = { glow = BY_ELEMENT.Ember.glow, trail = BY_ELEMENT.Ember.trail, aura = "embers", awakened = "elementRunes", portrait = "" },
@@ -36,9 +37,17 @@ local WEAPONS: { [string]: Look } = {
 	stormReaper = { glow = BY_ELEMENT.Volt.glow, trail = BY_ELEMENT.Volt.trail, aura = "sparks", awakened = "elementRunes", portrait = "" },
 	riftReaper = { glow = BY_ELEMENT.Shade.glow, trail = BY_ELEMENT.Shade.trail, aura = "wisps", awakened = "elementRunes", portrait = "" },
 }
+-- The Forge Sword's portrait per element (its model with that element's colour map)
+local FORGE_PORTRAITS: { [string]: string } = {
+	Ember = "rbxassetid://139776462314751",
+	Tide = "rbxassetid://79239373113325",
+	Bloom = "rbxassetid://136741091731329",
+	Volt = "rbxassetid://101378627438832",
+	Shade = "rbxassetid://81995315859743",
+}
 -- The five Forge Swords take their element's colours
 for element, look in BY_ELEMENT do
-	WEAPONS[`forgeSword_{element}`] = { glow = look.glow, trail = look.trail, aura = look.aura, awakened = "elementRunes", portrait = "" }
+	WEAPONS[`forgeSword_{element}`] = { glow = look.glow, trail = look.trail, aura = look.aura, awakened = "elementRunes", portrait = FORGE_PORTRAITS[element] }
 end
 
 return {
