@@ -552,4 +552,21 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 	lift(frame, face)
 end
 
+-- The cards' drawing pieces, for other faces in the same style (Util/WeaponFace: weapon cards look like creature
+-- cards, the owner's pick 2026-11-06)
+CardFace.parts = {
+	clear = clear,
+	removeAurora = removeAurora,
+	newFace = newFace,
+	addRim = addRim,
+	addArtWindow = addArtWindow,
+	image = image,
+	text = text,
+	chip = chip,
+	addTextShade = addTextShade,
+	addShine = addShine,
+	addSupremeRim = addSupremeRim,
+	lift = lift,
+}
+
 return CardFace

@@ -140,6 +140,20 @@ return {
 		expect.isNil((WeaponRules.materialGoal(W, "material_meadowWarden", done)), "nothing left needs it")
 	end,
 
+	["forge progress: the weapon's main material, have over need (capped)"] = function()
+		local have, need = WeaponRules.makeProgress(W, "verdantBlade", { material_meadowWarden = 9 })
+		expect.equal(have, 9)
+		expect.equal(need, 15)
+		have, need = WeaponRules.makeProgress(W, "forgeSword_Volt", { wildOre = 33 })
+		expect.equal(have, 20, "capped at the need")
+		expect.equal(need, 20)
+		have, need = WeaponRules.makeProgress(W, "sunforgedBlade", {})
+		expect.equal(have, 0)
+		expect.equal(need, 20, "its main material (Colossus Core)")
+		expect.isNil((WeaponRules.makeProgress(W, "starterSword", {})))
+		expect.isNil((WeaponRules.makeProgress(W, "riftReaper", {})), "not built yet")
+	end,
+
 	["paying is all or nothing"] = function()
 		local cost = { cash = 100, items = { a = 2, b = 1 } }
 		local ok, why = WeaponRules.pay(cost, 100, { a = 2 })

@@ -7,12 +7,13 @@ return {
 	REQUEST_COOLDOWN = 2, -- seconds between "send me my collection" requests
 
 	-- One set at a time, in this order (divider tabs on the binder's right edge)
-	SETS = { "First Spark", "Frontier" },
+	SETS = { "First Spark", "Frontier", "Armory" }, -- the Armory: weapons (weapons round 1; BinderController)
 	SET_COLORS = {
 		["First Spark"] = Color3.fromRGB(235, 110, 40),
 		Frontier = Color3.fromRGB(110, 70, 200),
+		Armory = Color3.fromRGB(96, 104, 128), -- steel
 	} :: { [string]: Color3 },
-	SET_EMBLEMS = { ["First Spark"] = "✨", Frontier = "🌌" } :: { [string]: string },
+	SET_EMBLEMS = { ["First Spark"] = "✨", Frontier = "🌌", Armory = "⚔️" } :: { [string]: string },
 
 	BOOK = {
 		-- Where the binder goes on screen (its shape comes from the 3D binder, BinderDesk.aspect). On roomy screens

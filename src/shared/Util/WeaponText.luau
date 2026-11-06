@@ -77,6 +77,37 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	return rows
 end
 
+-- Where a weapon comes from (`bosses` is Config/Bosses): "Drops from the Meadow Warden", "Forge: Wild Ore",
+-- "Masterwork: 3 bosses' materials + Star Shards"
+function WeaponText.source(cfg: any, bosses: any, weaponId: string): string
+	local weapon = cfg.ById[weaponId]
+	local source = if weapon then weapon.source else nil
+	if not source or source.kind == "starter" then
+		return "Everyone's first sword"
+	elseif source.kind == "forge" then
+		return "Forge: Wild Ore"
+	elseif source.kind == "boss" then
+		local boss = bosses.BOSSES[source.boss]
+		return `Drops from the {if boss then boss.name else source.boss}`
+	end
+	local materials, shards = 0, false
+	for id in (if source.cost then source.cost.items else {}) do
+		if id == "starShard" then
+			shards = true
+		else
+			for _, material in cfg.MATERIALS do
+				if material == id then
+					materials += 1
+				end
+			end
+		end
+	end
+	if materials == 0 then
+		return "Masterwork" -- its recipe isn't set yet (a later round)
+	end
+	return `Masterwork: {materials} bosses' materials{if shards then " + Star Shards" else ""}`
+end
+
 -- A material picked up, with its progress toward what it's for (WeaponRules.materialGoal): "Warden Heartwood +2 (9/15)"
 function WeaponText.pickup(name: string, gained: number, have: number, need: number?): string
 	return if need then `{name} +{gained} ({have}/{need})` else `{name} +{gained}`

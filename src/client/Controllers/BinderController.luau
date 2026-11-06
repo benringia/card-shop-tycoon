@@ -32,6 +32,8 @@ local BinderGesture = require(Shared:WaitForChild("Util"):WaitForChild("BinderGe
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local Bosses = require(Config:WaitForChild("Bosses"))
+local Weapons = require(Config:WaitForChild("Weapons"))
+local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
@@ -39,6 +41,7 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local BossTints = require(ClientUtil:WaitForChild("BossTints"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -50,6 +53,7 @@ local PageTurner = require(ClientUtil:WaitForChild("PageTurner"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local RarityGuideController = require(Controllers:WaitForChild("RarityGuideController"))
 local CardDetailController = require(Controllers:WaitForChild("CardDetailController"))
+local WeaponDetailController = require(Controllers:WaitForChild("WeaponDetailController"))
 
 type Card = typeof(Cards.List[1])
 type Owned = { normal: number, foil: number }
@@ -97,6 +101,35 @@ local displayed: { [string]: Owned } = {}
 local tiles: { Tile } = {}
 local panel: Frame
 local currentSet = Collection.SETS[1]
+
+-- The Armory (weapons round 1, Task 10): a third set holding a card per Config/Weapons weapon (WeaponFace draws
+-- them), owned ones from WeaponsChanged, locked ones with their forge progress from the Bag's counts
+local ARMORY = "Armory"
+local ownedWeapons: { [string]: WeaponRules.Owned } = {}
+local equippedWeapon = Weapons.STARTER
+local armoryItems: { [string]: number } = {}
+local armoryCards: { Card } = {}
+for index, weapon in Weapons.WEAPONS do
+	table.insert(armoryCards, {
+		id = `weapon:{weapon.id}`,
+		name = weapon.name,
+		number = index,
+		set = ARMORY,
+		rarity = weapon.rarity,
+		element = weapon.element or "None",
+		weaponId = weapon.id,
+	} :: any)
+end
+
+-- A set's cards (the Armory's are its weapons)
+local function setCards(set: string): { Card }?
+	return if set == ARMORY then armoryCards else Cards.BySet[set]
+end
+
+-- The weapon an Armory card stands for (nil for a creature card)
+local function weaponOf(card: Card): string?
+	return (card :: any).weaponId
+end
 local coverPage: Frame
 local coverProgress: TextLabel
 local coverArt: ImageLabel
@@ -284,12 +317,39 @@ local function getOwnedCounts(cardId: string): (number, number)
 end
 
 local function isCollected(cardId: string): boolean
+	local weaponId = string.match(cardId, "^weapon:(.+)$")
+	if weaponId then
+		return ownedWeapons[weaponId] ~= nil or weaponId == Weapons.STARTER
+	end
 	local owned, onDisplay = getOwnedCounts(cardId)
 	return owned + onDisplay > 0
 end
 
 -- Draws one pocket; true when its face had to be built (it changed), false when only its chips were updated
+-- An Armory pocket: the weapon's card, "Equipped" on the one in hand
+local function renderWeaponTile(tile: Tile, weaponId: string): boolean
+	local record = ownedWeapons[weaponId]
+	local have, need = WeaponRules.makeProgress(Weapons, weaponId, armoryItems)
+	local progress = if not record and have and need then { have = have, need = need } else nil
+	local drawn = WeaponFace.key(weaponId, record, progress)
+	local built = tile.drawn ~= drawn
+	if built then
+		WeaponFace.render(tile.inner, tile.stroke, weaponId, record, progress)
+		tile.drawn = drawn
+	end
+	local mine = record ~= nil or weaponId == Weapons.STARTER
+	tile.levelLabel.Visible = false
+	tile.countLabel.Visible = mine
+	tile.countLabel.Size = UDim2.new(1, 0, 0, CHIP_ROW - 3)
+	tile.countLabel.Text = if equippedWeapon == weaponId then "Equipped" else "Owned"
+	return built
+end
+
 local function renderTile(tile: Tile): boolean
+	local weaponId = weaponOf(tile.card)
+	if weaponId then
+		return renderWeaponTile(tile, weaponId)
+	end
 	local cardId = tile.card.id
 	local inBinder = getCount(collection, cardId)
 	local shown = getCount(displayed, cardId)
@@ -644,7 +704,7 @@ local function refreshFilterButtons()
 	end
 	local count = filterCount
 	if count then
-		count.Text = `{#visibleTiles} of {#(Cards.BySet[currentSet] or {})} cards` -- the open set's, not every set's
+		count.Text = `{#visibleTiles} of {#(setCards(currentSet) or {})} {if currentSet == ARMORY then "weapons" else "cards"}` -- the open set's, not every set's
 	end
 end
 
@@ -665,7 +725,7 @@ end
 -- The current set's cover page, set tabs and the progress card
 local function refreshSet()
 	local owned, total, value = 0, 0, 0
-	for _, card in Cards.BySet[currentSet] or {} do
+	for _, card in setCards(currentSet) or {} do
 		total += 1
 		if isCollected(card.id) then
 			owned += 1
@@ -689,15 +749,15 @@ local function refreshSet()
 		end
 	end
 	coverProgress.Text = `{owned} / {total}`
-	coverValue.Text = `Worth ${wholeDollars(value)}`
+	coverValue.Text = if currentSet == ARMORY then "Weapons" else `Worth ${wholeDollars(value)}`
 	progressName.Text = currentSet
 	progressCount.Text = `📖 {owned} / {total}`
-	progressValue.Text = string.format("$%.2f", value)
+	progressValue.Text = if currentSet == ARMORY then "" else string.format("$%.2f", value)
 	progressFill.Size = UDim2.fromScale(if total > 0 then owned / total else 0, 1)
 	progressFill.BackgroundColor3 = color
 	local sets = {}
 	for _, set in Collection.SETS do
-		if Cards.BySet[set] then
+		if setCards(set) then
 			table.insert(sets, set)
 		end
 	end
@@ -712,7 +772,7 @@ local function refresh()
 end
 
 local function openSet(set: string)
-	if not Cards.BySet[set] then
+	if not setCards(set) then
 		return
 	end
 	currentSet = set
@@ -784,8 +844,8 @@ end
 
 -- touch: a finger held on the card (phones have no mouse)
 local function showTooltip(tile: Tile, touch: boolean?)
-	-- No tooltip through the open card view, the Bag or the rarity guide
-	if not (UserInputService.MouseEnabled or touch) or not tile.root.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
+	-- No tooltip through the open card view, the Bag or the rarity guide, nor on weapons (their card says it all)
+	if weaponOf(tile.card) or not (UserInputService.MouseEnabled or touch) or not tile.root.Parent or CardDetailController.IsOpen() or bagOverlay.Visible or RarityGuideController.IsOpen() then
 		return
 	end
 	tooltipTile = tile
@@ -800,6 +860,11 @@ local function hideTooltip()
 end
 
 local function openDetail(card: Card)
+	local weaponId = weaponOf(card)
+	if weaponId then
+		WeaponDetailController.Open(weaponId)
+		return
+	end
 	-- The card view lays itself out by the camera's field of view: give it the normal one before it opens
 	BinderDesk.setInspecting(true)
 	CardDetailController.Open(card)
@@ -1857,6 +1922,12 @@ local function buildPanel(parent: Instance)
 	for _, card in Cards.List do
 		table.insert(tiles, buildTile(card))
 	end
+	for _, card in armoryCards do
+		table.insert(tiles, buildTile(card))
+	end
+	WeaponDetailController.SetSource(function()
+		return { owned = ownedWeapons, equipped = equippedWeapon, items = armoryItems }
+	end)
 	CardDetailController.Build(panel, {
 		getEntries = getEntries,
 		displayedCount = function(cardId: string): number
@@ -2273,6 +2344,20 @@ function BinderController.Start()
 	end, false, Enum.ContextActionPriority.High.Value + BAG_PRIORITY_MARGIN, BAG_KEY)
 
 	Remotes.CollectionChanged.OnClientEvent:Connect(onCollectionChanged)
+	-- The Armory: owned weapons and the one in hand
+	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
+		if typeof(state) ~= "table" then
+			return
+		end
+		local data = state :: any
+		ownedWeapons = if typeof(data.owned) == "table" then data.owned else {}
+		equippedWeapon = if typeof(data.equipped) == "string" then data.equipped else Weapons.STARTER
+		if panel.Visible then
+			refresh()
+		end
+		WeaponDetailController.Refresh()
+	end)
+	Remotes.WeaponsChanged:FireServer() -- the weapons now, if their first send came before this listened
 	-- A fight starting (an elite, an aggro zone) closes the binder (and the card view) so the fight camera takes over
 	Remotes.BattleStarted.OnClientEvent:Connect(function()
 		if panel.Visible then
@@ -2294,6 +2379,11 @@ function BinderController.Start()
 	end)
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
 		bagItems = if typeof(items) == "table" then items else {}
+		armoryItems = bagItems
+		if currentSet == ARMORY and panel.Visible then
+			refresh() -- forge progress on the locked weapons
+		end
+		WeaponDetailController.Refresh()
 		if bagOverlay.Visible then
 			renderBag()
 		end

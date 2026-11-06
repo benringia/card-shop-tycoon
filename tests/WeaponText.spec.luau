@@ -40,6 +40,17 @@ return {
 		expect.equal(#WeaponText.stats(Weapons, "nope", nil, Combat), 0)
 	end,
 
+	["where a weapon comes from, in words (the Armory's locked cards)"] = function()
+		local Bosses = require("../src/shared/Config/Bosses")
+		expect.equal(WeaponText.source(Weapons, Bosses, "verdantBlade"), "Drops from the Meadow Warden")
+		expect.equal(WeaponText.source(Weapons, Bosses, "prismBlade"), "Drops from the Prism Hydra")
+		expect.equal(WeaponText.source(Weapons, Bosses, "forgeSword_Tide"), "Forge: Wild Ore")
+		expect.equal(WeaponText.source(Weapons, Bosses, "sunforgedBlade"), "Masterwork: 3 bosses' materials + Star Shards")
+		expect.equal(WeaponText.source(Weapons, Bosses, "starterSword"), "Everyone's first sword")
+		expect.equal(WeaponText.source(Weapons, Bosses, "tidalTrident"), "Drops from the Frost Tyrant")
+		expect.equal(WeaponText.source(Weapons, Bosses, "titansLance"), "Masterwork", "no recipe yet")
+	end,
+
 	["a material's pickup line shows its progress toward what it's for"] = function()
 		expect.equal(WeaponText.pickup("Warden Heartwood", 2, 9, 15), "Warden Heartwood +2 (9/15)")
 		expect.equal(WeaponText.pickup("Wild Ore", 1, 3, nil), "Wild Ore +1")

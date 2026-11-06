@@ -167,6 +167,18 @@ function WeaponRules.upgradeCost(cfg: any, weaponId: string, toLevel: number): C
 	return { cash = math.round(cfg.UPGRADE.cash[toLevel] * share), items = items }
 end
 
+-- Progress toward making a weapon (the Armory's locked cards): its main material, have (capped at the need) and need;
+-- nil for the Steel Sword and weapons not built yet
+function WeaponRules.makeProgress(cfg: any, weaponId: string, items: { [string]: number }): (number?, number?)
+	local cost = WeaponRules.makeCost(cfg, weaponId)
+	local material = WeaponRules.material(cfg, weaponId)
+	local need = if cost and material then cost.items[material] else nil
+	if not need or need <= 0 then
+		return nil, nil
+	end
+	return math.min(items[material :: string] or 0, need), need
+end
+
 -- What a material is for next (the loot toast's "9/15"): the first built weapon, in the Armory's order, that still
 -- needs it: making it (a boss weapon, a Forge weapon, a masterwork's recipe) when not owned, else its next upgrade.
 -- Returns that weapon and how many it needs, or nil when nothing does.
