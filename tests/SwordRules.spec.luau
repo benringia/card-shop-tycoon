@@ -152,4 +152,39 @@ return {
 		local huge = { { id = "b:m", x = 0, z = -12, radius = 20 } }
 		expect.equal(SwordRules.dashLength(0, 0, 0, -1, huge, 12, 1, 24), 24, "never longer than the cap")
 	end,
+
+	["skill shapes: dash is today's path, spin hits all around, a line ahead, the wave arrives by distance"] = function()
+		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
+		local targets = { t("ahead", 0, -10), t("behind", 0, 6), t("far", 0, -30), t("side", 8, 0) }
+		-- dash: the same foes as SwordRules.anyInDashPath along the path from start to now (clamped to maxStuds + slack)
+		local dash = SwordRules.skillHits({ kind = "dash", width = 4, maxStuds = 20, slack = 3 }, 0, 0, 0, -12, 0, -1, targets)
+		expect.equal(#dash, 1); expect.equal(dash[1].id, "ahead"); expect.equal(dash[1].share, 1); expect.equal(dash[1].after, 0)
+		-- spin: within 9 (+ the foe's radius) of where you are, all at once
+		local spin = SwordRules.skillHits({ kind = "spin", radius = 9 }, 0, 0, 0, 0, 0, -1, targets)
+		local ids = {}
+		for _, hit in spin do ids[hit.id] = hit.after end
+		expect.equal(ids.behind, 0); expect.equal(ids.side, 0); expect.equal(ids.ahead, nil); expect.equal(ids.far, nil)
+		-- line: 18 long, 4 wide ahead of you
+		local line = SwordRules.skillHits({ kind = "line", length = 18, width = 4 }, 0, 0, 0, 0, 0, -1, targets)
+		expect.equal(#line, 1); expect.equal(line[1].id, "ahead")
+		-- wave: 24 long, 6 wide, each foe when the 40 stud-a-second wave reaches it
+		local wave = SwordRules.skillHits({ kind = "wave", length = 24, width = 6, speed = 40 }, 0, 0, 0, 0, 0, -1, targets)
+		expect.equal(#wave, 1); expect.near(wave[1].after, 10 / 40, 1e-6)
+	end,
+
+	["judgment: five strikes a fifth each on the aimed foe within 24 (in front first), none in range: nothing"] = function()
+		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
+		local shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 }
+		local hits = SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("front", 0, -20), t("back", 0, 5) })
+		expect.equal(#hits, 5)
+		local total = 0
+		for index, hit in hits do
+			expect.equal(hit.id, "front"); expect.near(hit.after, (index - 1) * 0.15, 1e-9); total += hit.share
+		end
+		expect.near(total, 1, 1e-9)
+		local around = SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("back", 0, 5) })
+		expect.equal(around[1].id, "back", "none in front: the nearest around")
+		expect.equal(#SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("away", 0, 40) }), 0, "out of range")
+		expect.equal(#SwordRules.skillHits({ kind = "spin", radius = 9 }, 0, 0, 0, 0, 0, -1, {}), 0, "no foes")
+	end,
 }

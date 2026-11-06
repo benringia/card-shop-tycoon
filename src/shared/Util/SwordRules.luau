@@ -160,4 +160,81 @@ function SwordRules.clampPath(sx: number, sz: number, ex: number, ez: number, ma
 	return sx + vx * maxLength / length, sz + vz * maxLength / length
 end
 
+-- A sword skill's shape (sword skills round, spec 2026-11-06-sword-skills-design 3): what the server counts as hit.
+-- dash: the path from where you started to where you are (clamped to maxStuds + slack), `width` wide; spin: every foe
+-- within `radius` of you; line: `length` x `width` straight ahead; wave: the same, each foe when a wave at `speed`
+-- reaches it; judgment: the foe you aim at within `range` (within `angle` of your facing, else the nearest around you),
+-- `strikes` hits `gap` seconds apart
+export type SkillShape = {
+	kind: "dash" | "spin" | "line" | "wave" | "judgment",
+	radius: number?,
+	length: number?,
+	width: number?,
+	speed: number?,
+	range: number?,
+	angle: number?,
+	strikes: number?,
+	gap: number?,
+	maxStuds: number?,
+	slack: number?,
+}
+
+-- One foe hit by a skill: `after` seconds after the skill's hit moment, for `share` of its damage
+export type SkillHit = { id: string, after: number, share: number }
+
+-- The nearest foe (by its edge) within `range` of (px, pz), any direction
+local function nearestWithin(px: number, pz: number, targets: { Target }, range: number): string?
+	local best: string? = nil
+	local bestEdge = math.huge
+	for _, target in targets do
+		local dx, dz = target.x - px, target.z - pz
+		local edge = math.sqrt(dx * dx + dz * dz) - target.radius
+		if edge <= range and edge < bestEdge then
+			best, bestEdge = target.id, edge
+		end
+	end
+	return best
+end
+
+-- Who a skill hits, when and for what share: (sx, sz) where it started, (px, pz) where you are at its hit moment and
+-- (lookX, lookZ) your facing then. The server lands damage from this; the client predicts its bursts from it.
+function SwordRules.skillHits(shape: SkillShape, sx: number, sz: number, px: number, pz: number, lookX: number, lookZ: number, targets: { Target }): { SkillHit }
+	local hits: { SkillHit } = {}
+	local size = math.sqrt(lookX * lookX + lookZ * lookZ)
+	local dirX, dirZ = if size > 1e-9 then lookX / size else 0, if size > 1e-9 then lookZ / size else -1
+	if shape.kind == "judgment" then
+		local range = shape.range or 0
+		local id = SwordRules.aimTarget(px, pz, dirX, dirZ, targets, range, shape.angle or 0) or nearestWithin(px, pz, targets, range)
+		if id then
+			local strikes = math.max(1, shape.strikes or 1)
+			for index = 1, strikes do
+				table.insert(hits, { id = id, after = (index - 1) * (shape.gap or 0), share = 1 / strikes })
+			end
+		end
+		return hits
+	end
+	for _, target in targets do
+		local reached = false
+		local after = 0
+		if shape.kind == "dash" then
+			local ex, ez = SwordRules.clampPath(sx, sz, px, pz, (shape.maxStuds or 0) + (shape.slack or 0))
+			reached = SwordRules.inDashPath(sx, sz, ex, ez, target.x, target.z, target.radius, shape.width or 0)
+		elseif shape.kind == "spin" then
+			local dx, dz = target.x - px, target.z - pz
+			reached = math.sqrt(dx * dx + dz * dz) - target.radius < (shape.radius or 0)
+		elseif shape.kind == "line" or shape.kind == "wave" then
+			local length = shape.length or 0
+			reached = SwordRules.inDashPath(px, pz, px + dirX * length, pz + dirZ * length, target.x, target.z, target.radius, shape.width or 0)
+			if reached and shape.kind == "wave" and (shape.speed or 0) > 0 then
+				local along = math.max(0, (target.x - px) * dirX + (target.z - pz) * dirZ)
+				after = along / (shape.speed :: number)
+			end
+		end
+		if reached then
+			table.insert(hits, { id = target.id, after = after, share = 1 })
+		end
+	end
+	return hits
+end
+
 return SwordRules
