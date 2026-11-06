@@ -83,6 +83,15 @@ return {
 		expect.equal(toast.line, "New card! Petalpaw · Grade B · +1 Star Shard")
 	end,
 
+	["Wild Ore joins the line but isn't a gold one by itself (it's common)"] = function()
+		local plain = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 1, xpEach = 1, ore = 1 }, {})
+		expect.equal(plain.kind, "win")
+		expect.equal(plain.line, "+1 Wild Ore")
+		local rare = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 1, xpEach = 1, shards = 1, ore = 1 }, {})
+		expect.equal(rare.kind, "rare")
+		expect.equal(rare.line, "+1 Star Shard · +1 Wild Ore")
+	end,
+
 	["losing or running away are toasts too"] = function()
 		local lose = VictoryRules.toast({ result = "lose" }, {}, "resting 5:00")
 		expect.equal(lose.kind, "lose")

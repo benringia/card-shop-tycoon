@@ -55,6 +55,64 @@ return {
 			source = "Rift Devourer (boss)",
 			use = "Opens the Prism Hydra the first time you fight it",
 		},
+		-- Weapons (Config/Weapons): each boss's weapon material (full loot only, 80%, 1-2; its daily chest 2) and Wild
+		-- Ore for the Forge weapons. Account-bound. Emoji icons until the picture icons are made (weapons round 1).
+		material_meadowWarden = {
+			name = "Warden Heartwood",
+			icon = "🪵",
+			description = "Forges and upgrades the Verdant Blade.",
+			source = "Meadow Warden (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		material_caveBroodQueen = {
+			name = "Brood Silk",
+			icon = "🕸️",
+			description = "Forges the Widow's Reaper (coming soon) and the Sunforged Blade.",
+			source = "Cave Brood Queen (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		material_emberColossus = {
+			name = "Colossus Core",
+			icon = "🔥",
+			description = "Forges the Magma Halberd (coming soon) and the Sunforged Blade.",
+			source = "Ember Colossus (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		material_frostTyrant = {
+			name = "Frost Heart",
+			icon = "❄️",
+			description = "Forges the Tidal Trident (coming soon).",
+			source = "Frost Tyrant (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		material_stormSovereign = {
+			name = "Storm Crystal",
+			icon = "⚡",
+			description = "Forges the Storm Reaper (coming soon).",
+			source = "Storm Sovereign (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		material_riftDevourer = {
+			name = "Rift Shard",
+			icon = "🌀",
+			description = "Forges the Rift Reaper (coming soon).",
+			source = "Rift Devourer (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		material_prismHydra = {
+			name = "Prism Scale",
+			icon = "💎",
+			description = "Forges and upgrades the Prism Blade.",
+			source = "Prism Hydra (boss) · full loot",
+			use = "The Forge in your shop",
+		},
+		wildOre = {
+			name = "Wild Ore",
+			icon = "⛏️",
+			description = "Forges and upgrades the Forge weapons.",
+			source = "Wild and Frontier monsters · 15% (elites 60%)",
+			use = "The Forge in your shop",
+		},
 		-- Shop level rewards (Config/Levels PACK_ITEM): opened from the Bag (remote OpenBagPack, LevelUpService)
 		sparkPack = {
 			name = "First Spark Pack",

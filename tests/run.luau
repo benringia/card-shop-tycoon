@@ -88,6 +88,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	TiredRules = require("./TiredRules.spec"),
 	CreatureFlight = require("./CreatureFlight.spec"),
 	ToastRules = require("./ToastRules.spec"),
+	WeaponsConfig = require("./WeaponsConfig.spec"),
 	SoundLevel = require("./SoundLevel.spec"),
 	WildLoadingRules = require("./WildLoadingRules.spec"),
 	SwordsConfig = require("./SwordsConfig.spec"),

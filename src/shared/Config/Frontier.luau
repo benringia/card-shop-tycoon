@@ -70,6 +70,9 @@ return {
 	CASH_PER_LEVEL = 0.4,
 	DROP_CHANCE = 0.05, -- a Set 1 card of the zone's elements, as in the wild
 	ELITE_DROP_CHANCE = 0.2,
+	-- Wild Ore (Config/Weapons WILD_ORE: the Forge weapons) per win, as in the wild
+	ORE_CHANCE = 0.15,
+	ELITE_ORE_CHANCE = 0.6,
 	DROP_RARITY = { Common = 50, Rare = 30, ["Very Rare"] = 12, Epic = 6, Legendary = 2 },
 
 	-- Frontier-only drops

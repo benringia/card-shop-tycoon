@@ -70,8 +70,8 @@ function VictoryRules.notes(boss: any): { string }
 	return notes
 end
 
--- A normal monster fight's end as a toast: who fell with the cash and XP, a gold line for a card or shards; a loss
--- (`restLine`: when the party is back) or a run
+-- A normal monster fight's end as a toast: who fell with the cash and XP, a gold line for a card or shards (Wild Ore
+-- joins the line but is common, so it alone keeps the plain look); a loss (`restLine`: when the party is back) or a run
 function VictoryRules.toast(summary: any, cardsById: { [string]: any }, restLine: string?): Toast
 	if summary.result == "lose" then
 		return { kind = "lose", title = "Your party fainted", line = restLine, pills = {} }
@@ -88,9 +88,14 @@ function VictoryRules.toast(summary: any, cardsById: { [string]: any }, restLine
 	if shards > 0 then
 		table.insert(extras, `+{shards} Star Shard{if shards == 1 then "" else "s"}`)
 	end
+	local rare = #extras > 0
+	local ore = tonumber(summary.ore) or 0
+	if ore > 0 then
+		table.insert(extras, `+{ore} Wild Ore`)
+	end
 	local foe = if typeof(summary.foe) == "string" and summary.foe ~= "" then summary.foe else "Monster"
 	return {
-		kind = if #extras > 0 then "rare" else "win",
+		kind = if rare then "rare" else "win",
 		title = `{foe} defeated`,
 		line = if #extras > 0 then table.concat(extras, " · ") else nil,
 		pills = {

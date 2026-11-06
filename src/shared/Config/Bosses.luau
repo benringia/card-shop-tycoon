@@ -95,11 +95,12 @@ local BOSSES: { [string]: Boss } = {
 		fragment = "fragment_caveBroodQueen",
 		mechanics = {},
 		drops = {
+			{ item = "material_meadowWarden", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "xpTonic", chance = 0.6, min = 1, max = 2 },
 			{ item = "fragment_caveBroodQueen", chance = 0.7, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_caveBroodQueen", count = 3 }, { item = "trophy_meadowWarden", count = 1 }, { item = "xpTonic", count = 3 } },
-		dailyBonus = { { item = "xpTonic", count = 2 } },
+		dailyBonus = { { item = "xpTonic", count = 2 }, { item = "material_meadowWarden", count = 2 } },
 		cash = 36,
 		xp = 620,
 	},
@@ -133,12 +134,13 @@ local BOSSES: { [string]: Boss } = {
 		fragment = "fragment_emberColossus",
 		mechanics = { heal = { below = 0.5, fraction = 0.15, cooldown = 12, uses = 3 } },
 		drops = {
+			{ item = "material_caveBroodQueen", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "xpTonic", chance = 0.6, min = 1, max = 3 },
 			{ item = "starShard", chance = 0.15, min = 1, max = 1 },
 			{ item = "fragment_emberColossus", chance = 0.6, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_emberColossus", count = 3 }, { item = "trophy_caveBroodQueen", count = 1 }, { item = "xpTonic", count = 3 } },
-		dailyBonus = { { item = "xpTonic", count = 2 } },
+		dailyBonus = { { item = "xpTonic", count = 2 }, { item = "material_caveBroodQueen", count = 2 } },
 		cash = 66,
 		xp = 1360,
 	},
@@ -173,12 +175,13 @@ local BOSSES: { [string]: Boss } = {
 		fragment = "fragment_frostTyrant",
 		mechanics = { enrage = { below = 0.5, atkMultiplier = 1.5 } },
 		drops = {
+			{ item = "material_emberColossus", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "gradingSeal", chance = 0.35, min = 1, max = 1 },
 			{ item = "xpTonic", chance = 0.4, min = 2, max = 3 },
 			{ item = "fragment_frostTyrant", chance = 0.6, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_frostTyrant", count = 3 }, { item = "trophy_emberColossus", count = 1 }, { item = "gradingSeal", count = 3 } },
-		dailyBonus = { { item = "gradingSeal", count = 2 } },
+		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_emberColossus", count = 2 } },
 		cash = 96,
 		xp = 2220,
 	},
@@ -204,12 +207,13 @@ local BOSSES: { [string]: Boss } = {
 		fragment = "fragment_stormSovereign",
 		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
 		drops = {
+			{ item = "material_frostTyrant", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "gradingSeal", chance = 0.4, min = 1, max = 1 },
 			{ item = "starShard", chance = 0.25, min = 1, max = 2 },
 			{ item = "fragment_stormSovereign", chance = 0.6, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_stormSovereign", count = 3 }, { item = "trophy_frostTyrant", count = 1 }, { item = "gradingSeal", count = 3 } },
-		dailyBonus = { { item = "gradingSeal", count = 2 } },
+		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_frostTyrant", count = 2 } },
 		cash = 150,
 		xp = 3600,
 	},
@@ -234,11 +238,12 @@ local BOSSES: { [string]: Boss } = {
 		fragment = "fragment_riftDevourer",
 		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } },
 		drops = {
+			{ item = "material_stormSovereign", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "goldSeal", chance = 0.25, min = 1, max = 1 },
 			{ item = "fragment_riftDevourer", chance = 0.55, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_riftDevourer", count = 3 }, { item = "trophy_stormSovereign", count = 1 }, { item = "goldSeal", count = 1 } },
-		dailyBonus = { { item = "goldSeal", count = 1 } },
+		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_stormSovereign", count = 2 } },
 		cash = 210,
 		xp = 5200,
 	},
@@ -263,12 +268,13 @@ local BOSSES: { [string]: Boss } = {
 		fragment = "fragment_prismHydra",
 		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
 		drops = {
+			{ item = "material_riftDevourer", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "goldSeal", chance = 0.3, min = 1, max = 1 },
 			{ item = "starShard", chance = 0.3, min = 1, max = 2 },
 			{ item = "fragment_prismHydra", chance = 0.5, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_prismHydra", count = 3 }, { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
-		dailyBonus = { { item = "goldSeal", count = 1 } },
+		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_riftDevourer", count = 2 } },
 		cash = 280,
 		xp = 7400,
 	},
@@ -307,6 +313,7 @@ local BOSSES: { [string]: Boss } = {
 			{ below = 0.2, element = "Ember", mechanics = { enrage = { below = 0.2, atkMultiplier = 1.15 } } },
 		},
 		drops = {
+			{ item = "material_prismHydra", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "goldSeal", chance = 0.4, min = 1, max = 1 },
 			{ item = "starShard", chance = 0.4, min = 1, max = 2 },
 			{ item = "gradingSeal", chance = 0.4, min = 1, max = 2 },
@@ -319,7 +326,7 @@ local BOSSES: { [string]: Boss } = {
 			{ item = "gradingSeal", count = 5 },
 			{ item = "xpTonic", count = 5 },
 		},
-		dailyBonus = { { item = "goldSeal", count = 2 } },
+		dailyBonus = { { item = "goldSeal", count = 2 }, { item = "material_prismHydra", count = 2 } },
 		cash = 400,
 		xp = 10000,
 	},

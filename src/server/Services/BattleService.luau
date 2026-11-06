@@ -40,6 +40,7 @@ local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerName
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Swords = require(Config:WaitForChild("Swords"))
+local Weapons = require(Config:WaitForChild("Weapons"))
 local RingRules = require(Shared:WaitForChild("Util"):WaitForChild("RingRules"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 
@@ -724,6 +725,11 @@ local function payOut(fight: Fight, member: Member): any
 			CardService.AddFresh(player, { dropped })
 		end
 	end
+	-- Wild Ore for the Forge weapons (the Wild valley and the Frontier)
+	local ore = 0
+	if rng:NextNumber() < rewards.oreChance then
+		ore = ItemService.GiveItem(player, Weapons.WILD_ORE, 1)
+	end
 	-- Frontier only: Star Shards and Frontier cards
 	local world: any = Wild
 	local shards = 0
@@ -748,7 +754,7 @@ local function payOut(fight: Fight, member: Member): any
 			end
 		end
 	end
-	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards, party = party }
+	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards, ore = ore, party = party }
 end
 
 -- Ending --------------------------------------------------------------------------------------------------
@@ -864,6 +870,7 @@ local function endFight(fight: Fight, result: string)
 		if result == "win" and player.Parent then
 			local paid = payOut(fight, member)
 			summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
+			summary.ore = paid.ore
 			summary.partyIds = member.partyIds
 			summary.party = paid.party -- each card's XP bar before and after (the victory screen)
 			summary.seconds = fight.sim.time

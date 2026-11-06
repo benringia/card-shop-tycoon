@@ -31,6 +31,8 @@ type Wild = {
 	CASH_PER_LEVEL: number,
 	DROP_CHANCE: number,
 	ELITE_DROP_CHANCE: number,
+	ORE_CHANCE: number,
+	ELITE_ORE_CHANCE: number,
 }
 
 function CombatMath.getAttackInterval(combat: Combat, spd: number): number
@@ -99,12 +101,13 @@ function CombatMath.getMonsterStats(wild: Wild, species: string, level: number, 
 	}
 end
 
-function CombatMath.getRewards(wild: Wild, level: number, elite: boolean): { xp: number, cash: number, dropChance: number }
+function CombatMath.getRewards(wild: Wild, level: number, elite: boolean): { xp: number, cash: number, dropChance: number, oreChance: number }
 	local boost = if elite then wild.ELITE_REWARD_MULTIPLIER else 1
 	return {
 		xp = math.round(wild.XP_BASE * math.max(1, level) ^ wild.XP_EXPONENT) * boost,
 		cash = math.round(wild.CASH_PER_LEVEL * math.max(1, level) * 100) / 100 * boost,
 		dropChance = if elite then wild.ELITE_DROP_CHANCE else wild.DROP_CHANCE,
+		oreChance = if elite then wild.ELITE_ORE_CHANCE else wild.ORE_CHANCE, -- Wild Ore (weapons round 1)
 	}
 end
 

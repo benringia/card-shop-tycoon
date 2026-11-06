@@ -114,4 +114,11 @@ return {
 			expect.equal(normal.every, math.huge, "no rings at all")
 		end
 	end,
+
+	["a Wild win's rewards carry the Wild Ore chance: 15%, an elite 60% (weapons round 1)"] = function()
+		for _, world in { wild, require("../src/shared/Config/Frontier") } do
+			expect.equal(CombatMath.getRewards(world, 5, false).oreChance, 0.15)
+			expect.equal(CombatMath.getRewards(world, 5, true).oreChance, 0.6)
+		end
+	end,
 }
