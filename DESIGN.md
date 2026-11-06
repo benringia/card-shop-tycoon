@@ -2914,6 +2914,9 @@ boss models; the ranch and Heroic tiers come after those.
   the sign and the HUD chip, economy check) and phase 2 town walkers, plus the owner's rounds (walkers on the whole
   street at a walk, stages right above the player, Roblox's walk clip and smooth paths, customers arriving from the
   street and walking off, stuck walkers retracing); approved and merged 2026-11-06.
+- [x] Tired shop workers (owner's idea 2026-11-06, 5.8): 5 slower minutes after every 10-15 of work, a toast and a
+  "Tired" pill, so the owner steps in at the register; worker name tags clear of flying creatures. Merged 2026-11-06.
+  Not built: a snack in the Bag that ends a tired spell early.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
