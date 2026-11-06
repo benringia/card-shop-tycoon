@@ -213,7 +213,7 @@ function WeaponLook.setPlace(model: Model, weaponId: string, grade: string, leve
 	if not layers then
 		return
 	end
-	local share = if place == "back" then WeaponLooks.BACK.auraShare else 1
+	local share = if place == "back" and level < WeaponLooks.LADDER.awakenedAt then WeaponLooks.BACK.auraShare else 1
 	for _, item in model:GetDescendants() do
 		if item:IsA("ParticleEmitter") then
 			if item.Name == "Aura" then

@@ -1163,7 +1163,8 @@ group, checked before its fragments and every time (not only the first). Below i
   kneeling, until the fight ends, and a win counts for them too.
 - **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 4 (`Swords.UNLOCK_SHOP_LEVEL`,
   when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
-  (`seenSword`). It rests on the back everywhere, 1.4x bigger there so it and the looks the shop will sell later stand
+  (`seenSword`). It rests on the back everywhere (hilt over the right shoulder, the blade across to the left hip, every
+  sword's tip clear of the ground), 1.2x bigger there so it and the looks the shop will sell later stand
   out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
   (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
   starter combo and skill are the sword moves round's (below). Every sword gets its own combo and skill (Forge swords,
@@ -1743,12 +1744,16 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   since the last (`weaponPity` in its saved record); carried group members never roll it. A weapon you have turns into
   10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
   stage: rune circle, a light column in the rarity's colour, the weapon rising with its glow, "RARE! Verdant Blade",
-  its grade, a line); Epic and Legendary drops are toasted to the server. The Forge's results play the same stage with
-  an anvil and a 1.5 s build-up, the hit by the grade (S the Legendary pull's); an upgrade names the glow layer it adds.
+  its grade, a line); Epic and Legendary drops are toasted to the server (not a duplicate: it says "Already yours").
+  The weapon is scaled to 3.2 studs on the stage so all of it shows. The Forge's results play the same stage with the
+  anvil's face under the weapon and a 1.5 s build-up with its own sounds (a fire whoosh, three rising hammer strikes),
+  the hit by the grade (an anvil clank; A adds a fire burst, S and +10 a deep boom), a sword's ring as the banner pops;
+  an upgrade names the glow layer it adds.
 - **Glow ladder** (`Util/WeaponLookRules`, client `Util/WeaponLook`, numbers in `Config/WeaponLooks`): a Neon glow shell
-  (rest by rarity, brighter +1 to +3), the element's aura from +4 (6 / 10 / 14 particles a second, a third of that on
-  the back), a wider trail and a burst on every hit from +7, the +10 Awakened effect, the Grade S twinkle, a light in
-  hand for Epic and Legendary. Studio's automatic quality thins particles a lot: sizes are about a stud so +4 reads.
+  (rest by rarity, brighter +1 to +3), the element's aura from +4 (6 / 10 / 14 particles a second, half that on the
+  back), a wider trail and a burst on every hit from +7, the +10 Awakened effect, the Grade S twinkle, a light in
+  hand for Epic and Legendary. An Awakened (+10) weapon keeps its whole aura and its light on the back too (owner
+  2026-11-06: a +10 S Epic glowed too little there). Studio's automatic quality thins particles a lot: sizes are about a stud so +4 reads.
   5 extra +10 S weapons on backs cost 0.15 ms a frame.
 - **Pickup toasts**: a boss material reads "Warden Heartwood +2 (9/15)" toward what it's for next
   (`WeaponRules.materialGoal`: making its weapon, then its next upgrade).

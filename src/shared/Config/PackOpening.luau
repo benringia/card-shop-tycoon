@@ -168,10 +168,18 @@ return {
 		shimmer = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects): a shown card comes alive
 		land = "rbxassetid://106984966606682", -- Cartoon Pop (Daily Sounds): each lineup card landing
 		chime = "rbxassetid://9116395089", -- Magic Glows Soft Clusters Of Chiming Hits 4 (Pro Sound Effects): lineup done
+		-- The Forge's reveal on the same stage (Config/WeaponLooks REVEAL.forge), all Pro Sound Effects but the boom
+		forgeFire = "rbxassetid://9114446277", -- Fire Whoosh 6: the forge flares up as the build-up starts
+		forgeStrike = "rbxassetid://9125361455", -- Anvil Hits Ringing Metal Clinks Blacksmith 1: each hammer strike
+		forgeClank = "rbxassetid://9113132724", -- Anvil Hit Sharp Metallic Clanks Bouncing 4: the hit
+		forgeBurst = "rbxassetid://9117985933", -- Pyro Fire Ball Burst 7: sparks and flame (A and S)
+		forgeBoom = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds): a Grade S or +10
+		forgeRing = "rbxassetid://9119742466", -- Sword Draw Clang Unsheathing Two Sabers 1: the banner
 	},
 	VOLUMES = {
 		crinkle = 0.5, snap = 0.6, stack = 0.35, flip = 0.45, tease = 0.5,
 		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.35, chime = 0.5,
+		forgeFire = 0.45, forgeStrike = 0.5, forgeClank = 0.65, forgeBurst = 0.5, forgeBoom = 0.6, forgeRing = 0.4,
 	},
 	TEASE_FADE_SECONDS = 0.12, -- the tease's rise fades out this fast when the hit lands
 }

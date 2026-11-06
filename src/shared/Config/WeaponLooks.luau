@@ -77,7 +77,9 @@ return {
 	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too)
 	LIGHT = { Epic = true, Legendary = true },
 	-- On the back (in town and between fights): this share of the aura's particles and no light
-	BACK = { auraShare = 0.35, light = false },
+	-- On the back in town: this share of the aura and no light, except an Awakened (+10) weapon, which keeps both
+	-- (owner 2026-11-06: a +10 Grade S Epic glowed too little there)
+	BACK = { auraShare = 0.5 },
 	-- Drawing it (client Util/WeaponLook). The glow shell: each glowing part's copy this much bigger, in Neon. Particle
 	-- textures are Config/AttackFx or Config/MoveFx TEXTURES keys (square, white: tinted the weapon's glow; prism
 	-- runs through every element's colour). Sizes in studs at their biggest (a particle grows to it, then shrinks
@@ -107,20 +109,34 @@ return {
 		riseSeconds = 0.9,
 		bannerAt = 1.5,
 		lineAt = 2,
-		riseFrom = -6.5, -- the grip starts this far under the middle
-		lift = -1.6, -- and ends here, so the whole blade shows between the bars (checked in Studio)
+		-- The weapon is scaled to `length` studs on the stage (the camera sees about 5.8 studs top to bottom, less the
+		-- bars, the banner and the line; a real 5-stud sword at full size ran off the frame) and rises until its lowest
+		-- point is `lift` under the middle; `riseFrom`: where that point starts
+		length = 3.2,
+		riseFrom = -6.5,
+		lift = -1.65,
 		spin = 70, -- degrees a second
 		tilt = 12, -- degrees: leaning a little toward the camera
 		bob = { studs = 0.12, seconds = 2.2 },
 		circle = { size = 6, under = 2.6, spin = 0.8 }, -- the rune circle: width, studs under the middle, turns a second
 		beam = { width = 2.6, core = 0.8, height = 14, after = 0.35 }, -- after: its width once the weapon is up (it hid the blade)
 		dim = 0.6,
-		-- The Forge's reveal: the anvil's glow builds up this long first, then the hit by the grade rolled (the pack
-		-- pulls' sounds, Config/PackOpening SOUNDS) and its flash; an upgrade hits small (B), +10 big (S)
+		-- The Forge's reveal: the anvil's glow builds up this long first (a fire's whoosh and hammer strikes, each a
+		-- little higher), then the hit by the grade rolled (its sounds together) and its flash; an upgrade hits small
+		-- (B), +10 big (S); the banner pops with a sword's ring. Sound names are Config/PackOpening SOUNDS (the stage's)
 		forge = {
 			buildUp = 1.5,
 			disc = 4.5, -- the glow under the anvil (studs across)
-			hit = { S = "hitLegendary", A = "hitEpic", B = "hitRare", C = "hitRare" },
+			anvilTop = -1.85, -- the anvil's face this far under the middle, just below the weapon (its foot under the bars)
+			sounds = { fire = "forgeFire", strike = "forgeStrike", ring = "forgeRing" },
+			strikes = { 0.15, 0.6, 1.05 }, -- seconds into the build-up
+			strikeRise = 0.08, -- each strike's pitch this much higher than the one before
+			hit = {
+				S = { "forgeClank", "forgeBurst", "forgeBoom" },
+				A = { "forgeClank", "forgeBurst" },
+				B = { "forgeClank" },
+				C = { "forgeClank" },
+			},
 			flash = { S = 1, A = 0.8, B = 0.45, C = 0.35 },
 		},
 	},

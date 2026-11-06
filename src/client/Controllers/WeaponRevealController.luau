@@ -35,8 +35,8 @@ local player = Players.LocalPlayer
 local REVEAL = WeaponLooks.REVEAL
 local WHITE = Color3.new(1, 1, 1)
 
--- forge: the Forge's anvil and build-up; banner and gradeText replace "<RARITY>! <Name>" and "Grade X"; hit: a
--- Config/PackOpening sound at the hit, flash its peak
+-- forge: the Forge's anvil, build-up and sounds; banner and gradeText replace "<RARITY>! <Name>" and "Grade X"; hit:
+-- Config/PackOpening sounds played together at the hit, flash its peak
 export type Reveal = {
 	weaponId: string,
 	grade: string,
@@ -45,7 +45,7 @@ export type Reveal = {
 	forge: boolean?,
 	banner: string?,
 	gradeText: string?,
-	hit: string?,
+	hit: { string }?,
 	flash: number?,
 }
 
@@ -74,9 +74,12 @@ local function weaponModel(weaponId: string, grade: string, level: number): Mode
 	WeaponLook.setPlace(model, weaponId, grade, level, "hand")
 	local handle = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	assert(handle and handle:IsA("BasePart"), "a weapon model needs a part")
+	-- Held by its Grip attachment, else the model's own pivot: an imported model's is the grip's centre, blade up,
+	-- while its parts keep the FBX turn (with the part's frame the blade pointed at the camera inside the anvil)
+	local pivot = model:GetPivot()
 	local grip = handle:FindFirstChild("Grip")
 	model.PrimaryPart = handle
-	handle.PivotOffset = if grip and grip:IsA("Attachment") then grip.CFrame else CFrame.new()
+	handle.PivotOffset = if grip and grip:IsA("Attachment") then grip.CFrame else handle.CFrame:ToObjectSpace(pivot)
 	for _, item in model:GetDescendants() do
 		if item:IsA("BasePart") then
 			item.Anchored = true
@@ -86,6 +89,26 @@ local function weaponModel(weaponId: string, grade: string, level: number): Mode
 		end
 	end
 	return model
+end
+
+-- How far a weapon reaches under and over its grip along the blade (its pivot's up), from every part's corners
+local function alongBlade(model: Model): (number, number)
+	local pivot = model:GetPivot()
+	local low, high = math.huge, -math.huge
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			local half = part.Size / 2
+			for _, x in { -1, 1 } do
+				for _, y in { -1, 1 } do
+					for _, z in { -1, 1 } do
+						local point = pivot:PointToObjectSpace(part.CFrame:PointToWorldSpace(half * Vector3.new(x, y, z)))
+						low, high = math.min(low, point.Y), math.max(high, point.Y)
+					end
+				end
+			end
+		end
+	end
+	return low, high
 end
 
 local function flatCircle(size: number, color: Color3, parent: Instance): (Part, Decal)
@@ -180,9 +203,11 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	return gui, skip, popBanner, showLine
 end
 
--- The Forge's pedestal: the Forge's anvil (Town.FORGE_LOOK sizes) on a glowing disc; returns the disc to pulse
-local function anvil(at: CFrame, parent: Instance): Part
+-- The Forge's pedestal: the Forge's anvil (Town.FORGE_LOOK sizes) on a glowing disc, its face at `top`; returns the
+-- disc to pulse
+local function anvil(top: Vector3, parent: Instance): Part
 	local look = Town.FORGE_LOOK
+	local at = CFrame.new(top - Vector3.new(0, look.ANVIL_FOOT[2] + look.ANVIL_WAIST[2] + look.ANVIL_FACE[2], 0))
 	local steel = Color3.fromRGB(look.STEEL[1], look.STEEL[2], look.STEEL[3])
 	local function block(size: { number }, y: number)
 		local part = Instance.new("Part")
@@ -233,8 +258,9 @@ local function play(reveal: Reveal)
 	local inner, innerFace = flatCircle(REVEAL.circle.size * 0.78, color:Lerp(WHITE, 0.5), stage)
 	-- The Forge's build-up: everything after it waits `delay`; the anvil's glow brightens meanwhile
 	local delay = if reveal.forge then REVEAL.forge.buildUp else 0
-	local disc = if reveal.forge then anvil(circleAt, stage) else nil
-	local hit = reveal.hit or (if weapon.rarity == "Legendary" then "hitLegendary" elseif weapon.rarity == "Epic" then "hitEpic" else "hitRare")
+	local disc = if reveal.forge then anvil(middle + Vector3.new(0, REVEAL.forge.anvilTop, 0), stage) else nil
+	local hit = reveal.hit or { if weapon.rarity == "Legendary" then "hitLegendary" elseif weapon.rarity == "Epic" then "hitEpic" else "hitRare" }
+	local forgeSounds = REVEAL.forge.sounds
 	local a0 = Instance.new("Attachment")
 	a0.Parent = outer
 	local a1 = Instance.new("Attachment")
@@ -242,12 +268,27 @@ local function play(reveal: Reveal)
 	local glow = lightBeam(a0, a1, color, stage)
 	local core = lightBeam(a0, a1, WHITE, stage)
 	local model = weaponModel(weapon.id, reveal.grade, reveal.level or 0)
+	-- Fitted to the stage: REVEAL.length studs along its blade (its pivot's up: the grip, blade up)
+	local low, high = alongBlade(model)
+	local fit = REVEAL.length / math.max(high - low, 0.1)
+	model:ScaleTo(model:GetScale() * fit)
+	local below = low * fit -- its lowest point, under the grip
 	model.Parent = stage
 	local gui, skip, popBanner, showLine = words(reveal, color)
 	if reveal.forge then
-		OpeningStage.play("tease")
+		-- The forge flares up, then hammer strikes, each a little higher, until the hit
+		OpeningStage.play(forgeSounds.fire)
+		for index, at in REVEAL.forge.strikes do
+			task.delay(at, function()
+				if stage.Parent then
+					OpeningStage.play(forgeSounds.strike, 1 + REVEAL.forge.strikeRise * (index - 1))
+				end
+			end)
+		end
 	else
-		OpeningStage.play(hit)
+		for _, name in hit do
+			OpeningStage.play(name)
+		end
 	end
 	local beamAt, riseAt = REVEAL.beamAt + delay, REVEAL.riseAt + delay
 	local bannerAt, lineAt, seconds = REVEAL.bannerAt + delay, REVEAL.lineAt + delay, REVEAL.seconds + delay
@@ -284,8 +325,10 @@ local function play(reveal: Reveal)
 		end
 		if not struck and t >= delay then
 			struck = true
-			OpeningStage.fade("tease", PackOpening.TEASE_FADE_SECONDS)
-			OpeningStage.play(hit)
+			OpeningStage.fade(forgeSounds.fire, PackOpening.TEASE_FADE_SECONDS)
+			for _, name in hit do
+				OpeningStage.play(name)
+			end
 			OpeningStage.flash(reveal.flash or 0.7, 0.5)
 			OpeningStage.shake(0.04 + 0.06 * (reveal.flash or 0.7), 0.35)
 		end
@@ -306,7 +349,7 @@ local function play(reveal: Reveal)
 		-- The weapon rises out of the circle (easing out with a little overshoot), spinning and bobbing
 		local rise = math.clamp((t - riseAt) / REVEAL.riseSeconds, 0, 1)
 		local eased = 1 - (1 - rise) ^ 3
-		local y = REVEAL.riseFrom + (REVEAL.lift - REVEAL.riseFrom) * eased
+		local y = REVEAL.riseFrom + (REVEAL.lift - REVEAL.riseFrom) * eased - below
 		y += math.sin(t / REVEAL.bob.seconds * math.pi * 2) * REVEAL.bob.studs * rise
 		local spin = math.rad(t * REVEAL.spin)
 		model:PivotTo(CFrame.new(middle + Vector3.new(0, y, 0)) * CFrame.Angles(0, spin, 0) * CFrame.Angles(math.rad(-REVEAL.tilt), 0, 0))
@@ -318,7 +361,7 @@ local function play(reveal: Reveal)
 		if not popped and t >= bannerAt then
 			popped = true
 			popBanner()
-			OpeningStage.play("shimmer")
+			OpeningStage.play(if reveal.forge then forgeSounds.ring else "shimmer")
 		end
 		if not lined and t >= lineAt then
 			lined = true

@@ -10,6 +10,35 @@ local Frontier = require("../src/shared/Config/Frontier")
 local expect = require("./lib/expect")
 
 return {
+	["the forge reveal's sounds are all stage sounds with a volume (Config/PackOpening)"] = function()
+		-- Config/PackOpening builds Vector3s, so Lune reads its text: each name's id line and its volume
+		local source = require("@lune/fs").readFile("src/shared/Config/PackOpening.luau")
+		local PackOpening = { SOUNDS = {} :: { [string]: string }, VOLUMES = {} :: { [string]: number } }
+		for name, id in string.gmatch(source, "(forge%w+) = \"(rbxassetid://%d+)\"") do
+			PackOpening.SOUNDS[name] = id
+		end
+		for name, volume in string.gmatch(source, "(forge%w+) = ([%d%.]+)") do
+			PackOpening.VOLUMES[name] = tonumber(volume) :: number
+		end
+		local forge = WeaponLooks.REVEAL.forge
+		local names = { forge.sounds.fire, forge.sounds.strike, forge.sounds.ring }
+		for _, grade in { "C", "B", "A", "S" } do
+			assert(#forge.hit[grade] > 0, `{grade} has a hit`)
+			for _, name in forge.hit[grade] do
+				table.insert(names, name)
+			end
+		end
+		for _, name in names do
+			assert(string.match(PackOpening.SOUNDS[name] or "", "^rbxassetid://%d+$"), `{name} is a stage sound`)
+			assert(PackOpening.VOLUMES[name], `{name} has a volume`)
+			assert(string.sub(name, 1, 5) == "forge", `{name}: the Forge's own sounds, not the pack pulls'`)
+		end
+		assert(#forge.strikes >= 2, "hammer strikes through the build-up")
+		for _, at in forge.strikes do
+			assert(at < forge.buildUp, "every strike lands before the hit")
+		end
+	end,
+
 	["every weapon is complete and in the Armory order"] = function()
 		expect.equal(#Weapons.WEAPONS, 17) -- Steel, 5 Forge Swords, 3 new swords, 4 spears, 4 scythes
 		for _, w in Weapons.WEAPONS do

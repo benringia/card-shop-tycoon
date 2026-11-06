@@ -53,6 +53,16 @@ return {
 		expect.equal(WeaponLookRules.layers(Looks, "Rare", 6, "C", "hand").light, false, "lights are Epic and Legendary only")
 	end,
 
+	["on the back an Awakened (+10) weapon still shows off: its whole aura and, Epic or Legendary, its light"] = function()
+		local hand = WeaponLookRules.layers(Looks, "Epic", 10, "S", "hand")
+		local back = WeaponLookRules.layers(Looks, "Epic", 10, "S", "back")
+		expect.equal(back.aura, hand.aura, "the whole aura")
+		expect.equal(back.light, true, "an Epic's light")
+		expect.equal(WeaponLookRules.layers(Looks, "Rare", 10, "S", "back").light, false, "lights are Epic and Legendary only")
+		expect.equal(WeaponLookRules.layers(Looks, "Epic", 9, "S", "back").light, false, "+9 isn't Awakened")
+		assert(Looks.BACK.auraShare >= 0.5, "below +10 at least half the aura shows on the back")
+	end,
+
 	["edges never glow past full, odd levels are clamped"] = function()
 		local looks = table.clone(Looks) :: any
 		looks.REST = { Common = 1.4 }

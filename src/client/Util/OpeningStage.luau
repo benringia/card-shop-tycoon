@@ -359,7 +359,7 @@ end
 
 -- Plays one of Config/PackOpening SOUNDS (nothing while its id is empty) as a one-shot of its own, so quick repeats
 -- (a card per 0.19s) overlap instead of cutting each other off. Made on the client, so only this player hears it.
-function OpeningStage.play(name: string)
+function OpeningStage.play(name: string, speed: number?)
 	local id = (PackOpening.SOUNDS :: any)[name]
 	if typeof(id) ~= "string" or id == "" then
 		return
@@ -367,6 +367,7 @@ function OpeningStage.play(name: string)
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
 	sound.Volume = volumeOf(name)
+	sound.PlaybackSpeed = speed or 1 -- the Forge's hammer strikes climb
 	sound.Parent = SoundService
 	live[sound] = name
 	sound.Ended:Once(function()

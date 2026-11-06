@@ -36,12 +36,13 @@ function WeaponLookRules.layers(looks: any, rarity: string, level: number, grade
 	local trailStep = step(whole, ladder.trailFrom, #ladder.trailScale)
 	return {
 		edge = math.min(edge, 1),
-		aura = if place == "back" then aura * looks.BACK.auraShare else aura,
+		-- On the back fewer particles and no light, except an Awakened weapon: it shows off (owner, 2026-11-06)
+		aura = if place == "back" and whole < ladder.awakenedAt then aura * looks.BACK.auraShare else aura,
 		trailScale = if trailStep > 0 then ladder.trailScale[trailStep] else 1,
 		burst = whole >= ladder.trailFrom,
 		awakened = whole >= ladder.awakenedAt,
 		twinkle = grade == "S",
-		light = place == "hand" and looks.LIGHT[rarity] == true,
+		light = looks.LIGHT[rarity] == true and (place == "hand" or whole >= ladder.awakenedAt),
 	}
 end
 
