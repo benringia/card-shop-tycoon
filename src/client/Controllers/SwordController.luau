@@ -20,9 +20,11 @@ local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
 local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
 local SwordFx = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
+local WeaponLooks = require(Shared:WaitForChild("Config"):WaitForChild("WeaponLooks"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local SwordArcRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordArcRules"))
 local SwingGate = require(Shared:WaitForChild("Util"):WaitForChild("SwingGate"))
+local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -999,6 +1001,35 @@ local function showPopup(swordId: string)
 	frame.Visible = true
 end
 
+-- The weapon glow's budget (Config/WeaponLooks BUDGET): your own sword and the nearest few others within range get the
+-- full aura, every other sword the cheap creature-style glow, checked every few tenths of a second
+local function auraBudget()
+	local budget = WeaponLooks.BUDGET
+	while true do
+		task.wait(budget.every)
+		local camera = workspace.CurrentCamera
+		local from = if camera then camera.Focus.Position else Vector3.zero
+		local candidates: { WeaponLookRules.Candidate } = {}
+		local byKey: { [string]: View } = {}
+		for character, view in views do
+			if not view.model.Parent then
+				continue
+			end
+			local key = tostring(#candidates + 1)
+			byKey[key] = view
+			table.insert(candidates, {
+				key = key,
+				distance = (view.handle.Position - from).Magnitude,
+				mine = character == player.Character,
+			})
+		end
+		local full = WeaponLookRules.fullAuras(candidates, budget.nearest, budget.range)
+		for key, view in byKey do
+			WeaponLook.setDetail(view.model, full[key] == true)
+		end
+	end
+end
+
 function SwordController.Start()
 	Remotes.SwordState.OnClientEvent:Connect(function(state: any)
 		if typeof(state) == "table" and state.popup == true and typeof(state.sword) == "string" and Swords.SWORDS[state.sword] then
@@ -1007,6 +1038,7 @@ function SwordController.Start()
 	end)
 	Remotes.SwordState:FireServer()
 	task.spawn(moveShiftLock)
+	task.spawn(auraBudget)
 	Players.PlayerAdded:Connect(watchPlayer)
 	for _, other in Players:GetPlayers() do
 		watchPlayer(other)

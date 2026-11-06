@@ -76,15 +76,17 @@ return {
 		expect.equal(ready, false)
 	end,
 
-	["what each upgrade adds to the glow (the forge reveal's line)"] = function()
+	["what each upgrade adds to the glow (the forge reveal's line), by rarity"] = function()
 		local Looks = require("../src/shared/Config/WeaponLooks")
-		expect.equal(WeaponText.ladderStep(Looks, 1), "Its edges glow brighter")
-		expect.equal(WeaponText.ladderStep(Looks, 3), "Its edges glow brighter")
-		expect.equal(WeaponText.ladderStep(Looks, 4), "Its aura appears!")
-		expect.equal(WeaponText.ladderStep(Looks, 6), "A stronger aura")
-		expect.equal(WeaponText.ladderStep(Looks, 7), "A bigger trail and a burst on every hit!")
-		expect.equal(WeaponText.ladderStep(Looks, 9), "A bigger trail")
-		expect.equal(WeaponText.ladderStep(Looks, 10), "AWAKENED!")
+		expect.equal(WeaponText.ladderStep(Looks, 1, "Rare"), "It glows brighter")
+		expect.equal(WeaponText.ladderStep(Looks, 3, "Rare"), "It glows brighter")
+		expect.equal(WeaponText.ladderStep(Looks, 4, "Rare"), "Its aura appears!")
+		expect.equal(WeaponText.ladderStep(Looks, 2, "Epic"), "Its aura appears!", "Epic and Legendary start at +2")
+		expect.equal(WeaponText.ladderStep(Looks, 2, "Rare"), "It glows brighter")
+		expect.equal(WeaponText.ladderStep(Looks, 6, "Rare"), "A stronger aura")
+		expect.equal(WeaponText.ladderStep(Looks, 7, "Rare"), "The full blaze, a bigger trail and a burst on every hit!")
+		expect.equal(WeaponText.ladderStep(Looks, 9, "Rare"), "A bigger trail")
+		expect.equal(WeaponText.ladderStep(Looks, 10, "Legendary"), "AWAKENED! Flames stream off it")
 	end,
 
 	["cost lines: cash first, then each item with have/need and whether it's enough"] = function()

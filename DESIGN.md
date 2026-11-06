@@ -1751,12 +1751,22 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   anvil's face under the weapon and a 1.5 s build-up with its own sounds (a fire whoosh, three rising hammer strikes),
   the hit by the grade (an anvil clank; A adds a fire burst, S and +10 a deep boom), a sword's ring as the banner pops;
   an upgrade names the glow layer it adds.
-- **Glow ladder** (`Util/WeaponLookRules`, client `Util/WeaponLook`, numbers in `Config/WeaponLooks`): a Neon glow shell
-  (rest by rarity, brighter +1 to +3), the element's aura from +4 (6 / 10 / 14 particles a second, half that on the
-  back), a wider trail and a burst on every hit from +7, the +10 Awakened effect, the Grade S twinkle, a light in
-  hand for Epic and Legendary. An Awakened (+10) weapon keeps its whole aura and its light on the back too (owner
-  2026-11-06: a +10 S Epic glowed too little there). Studio's automatic quality thins particles a lot: sizes are about a stud so +4 reads.
-  5 extra +10 S weapons on backs cost 0.15 ms a frame.
+- **Glow** (owner 2026-11-06: an aura like their reference picture, hybrid for performance; `Util/WeaponLookRules`,
+  client `Util/WeaponLook`, numbers in `Config/WeaponLooks`):
+  - the inner glow: each model's glow map (emissive mask: the Sunforged's molten runes, the Verdant's crystal, the
+    Prism's rainbow edge, the Forge Sword's gems) baked into its SurfaceAppearances, lit by rarity and level (full at
+    +10, tinted its glow colour); a game script can't set the maps, so they live in the model files;
+  - the full aura: flame wisps filling the weapon from its element's deep colour to its bright one, a bright core,
+    drifting smoke and sparks (the Prism Blade's flames in every element's colour); it starts at +4 (Epic and
+    Legendary at +2), thickens each level and is full from +7; +10 Awakened adds ribbons streaming off the blade;
+    half the aura on the back below +10;
+  - the cheap glow: creature-style sparkles a second (1-5 by rarity, more per level and for Grade S) and a light
+    (Epic and Legendary, in hand; on the back too once Awakened);
+  - the budget: your own sword and the 3 nearest others within 60 studs get the full aura (checked every 0.5 s,
+    `SwordController`), every other sword the cheap glow. Studio, max graphics: 20 +10 swords in view add 1.98 ms of
+    render CPU all blazing, 0.33 ms with the budget (4 blazing), 0.17 ms all cheap.
+  - a wider trail and a burst on every hit from +7. Roblox thins particles on low graphics (most phones), so there the
+    blaze is a few flames.
 - **Pickup toasts**: a boss material reads "Warden Heartwood +2 (9/15)" toward what it's for next
   (`WeaponRules.materialGoal`: making its weapon, then its next upgrade).
 - **Economy** (`WEAPONS=1 lune run tools/economy/sim 2000`: an Ember Forge Sword, the Verdant Blade and its upgrades to
@@ -1987,6 +1997,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
 ├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels: StarterSword, ForgeSword_<Element>, VerdantBlade, SunforgedBlade, PrismBlade (docs/weapons.md, docs/animations.md "The sword model")
 ├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
+├── assets/ui/weapon-glow-maps/ # each weapon model's glow map (tools/textures/make_glow_maps.py), uploaded (WeaponLooks GLOW_MAPS), baked in by tools/weapons/add_glow_maps
 ├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)

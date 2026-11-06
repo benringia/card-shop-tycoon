@@ -309,7 +309,7 @@ local function renderPane(entry: Entry?)
 			local now = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level)
 			local after = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level + 1)
 			addLabel(words, string.format("+%d -> +%d: Power x%.2f -> x%.2f", record.level, record.level + 1, now, after), Enum.Font.FredokaOne, 16, palette.good, 3)
-			addLabel(words, WeaponText.ladderStep(WeaponLooks, record.level + 1), Enum.Font.GothamBold, 13, palette.hint, 4)
+			addLabel(words, WeaponText.ladderStep(WeaponLooks, record.level + 1, weapon.rarity), Enum.Font.GothamBold, 13, palette.hint, 4)
 		else
 			addLabel(words, "Fully upgraded: Awakened!", Enum.Font.FredokaOne, 16, palette.good, 3)
 		end

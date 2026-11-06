@@ -154,21 +154,23 @@ function WeaponText.button(
 	return `Forge · {price}`, true
 end
 
--- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER), for the forge reveal
-function WeaponText.ladderStep(looks: any, level: number): string
+-- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER; the aura starts earlier for
+-- the rarest), for the forge reveal
+function WeaponText.ladderStep(looks: any, level: number, rarity: string): string
 	local ladder = looks.LADDER
+	local auraFrom = ladder.auraFrom[rarity] or ladder.auraFrom.default
 	if level >= ladder.awakenedAt then
-		return "AWAKENED!"
+		return "AWAKENED! Flames stream off it"
 	elseif level == ladder.trailFrom then
-		return "A bigger trail and a burst on every hit!"
+		return "The full blaze, a bigger trail and a burst on every hit!"
 	elseif level > ladder.trailFrom then
 		return "A bigger trail"
-	elseif level == ladder.auraFrom then
+	elseif level == auraFrom then
 		return "Its aura appears!"
-	elseif level > ladder.auraFrom then
+	elseif level > auraFrom then
 		return "A stronger aura"
 	end
-	return "Its edges glow brighter"
+	return "It glows brighter"
 end
 
 -- A cost's lines: its cash (when there is any), then each item by name with have/need, each marked enough or not

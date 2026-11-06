@@ -61,7 +61,7 @@ uploaded; their ids are `Config/WeaponLooks` `FORGE_COLOR_MAPS`.
 3. The Forge Sword: `lune run tools/weapons/forge_variants` writes `ForgeSword_<Element>.rbxm`, each with its
    element's colour map (the names `Config/Weapons` uses).
 4. Rojo syncs `assets/weapons` to `ReplicatedStorage.WeaponModels`; `SwordController` and the reveals draw them,
-   `Util/WeaponLook` adds the glow shell on the Blade and the ladder's effects. Until a model exists, a tinted stand-in.
+   `Util/WeaponLook` adds the glow (section 6). Until a model exists, a tinted stand-in.
 
 ## 5. Portraits (the card's picture)
 
@@ -78,3 +78,19 @@ A model with colours near magenta (the Shade Forge Sword's purple gems) is captu
 in `Config/WeaponLooks` (`portrait`; the Forge Sword's per element in `FORGE_PORTRAITS`). `Util/WeaponFace` draws the
 portrait over the weapon's glow gradient; a weapon with no model yet keeps the big sword emoji (tested in
 `WeaponsConfig`).
+
+## 6. Glow maps (the inner glow)
+
+The weapon glow (owner 2026-11-06) lights each model's own painting: its runes, gems or crystal. A glow map is a
+grayscale emissive mask (white glows) made from the model's colour map by `tools/textures/make_glow_maps.py` (one rule
+per model; the Forge Sword's is wherever an element's map differs from the base: its gems), saved in
+`assets/ui/weapon-glow-maps/<Model>.png` and uploaded; the ids go in `Config/WeaponLooks` `GLOW_MAPS`.
+
+A game script can't set a SurfaceAppearance's maps (PluginSecurity), so `lune run tools/weapons/add_glow_maps` bakes
+them into the model files: every MeshPart gets a SurfaceAppearance named "Glow" with its colour map and the glow map,
+strength 0. `Util/WeaponLook` sets the strength (`INNER.strength` x the level's inner glow) and the tint. Run it again
+after re-importing a model or running `forge_variants`.
+
+The aura (flames, core, smoke, sparks, +10 ribbons) and the cheap glow (sparkles, light) are particles and a light made
+in code (`Util/WeaponLook`, numbers in `WeaponLooks.AURA` and `SPARKLES`); `SwordController` gives the full aura to
+your own sword and the nearest few (`BUDGET`).

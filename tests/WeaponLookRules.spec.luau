@@ -1,74 +1,106 @@
 --!strict
+-- The weapon glow (owner 2026-11-06: an aura like the reference picture, hybrid for performance): the inner glow, the
+-- aura's density by upgrade, the +10 ribbons, the cheap creature-style sparkles, and which swords get the full aura
 local WeaponLookRules = require("../src/shared/Util/WeaponLookRules")
 local Looks = require("../src/shared/Config/WeaponLooks")
 local expect = require("./lib/expect")
 
 return {
-	["+0: the rarity's resting glow and no aura"] = function()
+	["+0: the rarity's resting inner glow, no aura"] = function()
 		local layers = WeaponLookRules.layers(Looks, "Common", 0, "C", "hand")
 		expect.near(layers.edge, Looks.REST.Common, 1e-9)
 		expect.equal(layers.aura, 0)
+		expect.equal(layers.ribbons, false)
 		expect.equal(layers.trailScale, 1)
 		expect.equal(layers.burst, false)
-		expect.equal(layers.awakened, false)
 		expect.equal(layers.twinkle, false)
 	end,
 
-	["+1 to +3: brighter edges, never dimmer than the rarity's rest"] = function()
-		expect.near(WeaponLookRules.layers(Looks, "Common", 3, "C", "hand").edge, Looks.LADDER.edge[3], 1e-9)
-		expect.near(WeaponLookRules.layers(Looks, "Rare", 1, "C", "hand").edge, Looks.LADDER.edge[1], 1e-9)
-		expect.near(WeaponLookRules.layers(Looks, "Legendary", 1, "C", "hand").edge, Looks.REST.Legendary, 1e-9)
-		expect.near(WeaponLookRules.layers(Looks, "Common", 9, "C", "hand").edge, Looks.LADDER.edge[3], 1e-9, "kept after +3")
+	["the inner glow brightens with upgrades up to full at +10, never dimmer than the rarity's rest"] = function()
+		local last = -1
+		for level = 0, 10 do
+			local edge = WeaponLookRules.layers(Looks, "Rare", level, "C", "hand").edge
+			assert(edge >= last, `+{level} never dims`)
+			last = edge
+		end
+		expect.equal(WeaponLookRules.layers(Looks, "Rare", 10, "C", "hand").edge, 1)
+		expect.near(WeaponLookRules.layers(Looks, "Legendary", 1, "C", "hand").edge, Looks.REST.Legendary, 1e-9, "its rest is above +1's step")
 	end,
 
-	["+4 to +6: the aura, the last rate kept after"] = function()
+	["the aura starts at +4 (Epic and Legendary at +2) and is full from +7"] = function()
 		expect.equal(WeaponLookRules.layers(Looks, "Rare", 3, "C", "hand").aura, 0)
-		expect.equal(WeaponLookRules.layers(Looks, "Rare", 4, "C", "hand").aura, Looks.LADDER.auraRate[1])
-		expect.equal(WeaponLookRules.layers(Looks, "Rare", 6, "C", "hand").aura, Looks.LADDER.auraRate[3])
-		expect.equal(WeaponLookRules.layers(Looks, "Rare", 10, "C", "hand").aura, Looks.LADDER.auraRate[3])
+		local four = WeaponLookRules.layers(Looks, "Rare", 4, "C", "hand").aura
+		assert(four > 0 and four < 1, "+4 starts thin")
+		assert(WeaponLookRules.layers(Looks, "Rare", 6, "C", "hand").aura > four, "thicker each level")
+		expect.equal(WeaponLookRules.layers(Looks, "Rare", 7, "C", "hand").aura, 1)
+		expect.equal(WeaponLookRules.layers(Looks, "Rare", 10, "C", "hand").aura, 1)
+		assert(WeaponLookRules.layers(Looks, "Epic", 2, "C", "hand").aura > 0, "an Epic's starts at +2")
+		assert(WeaponLookRules.layers(Looks, "Legendary", 2, "C", "hand").aura > 0, "a Legendary's starts at +2")
+		expect.equal(WeaponLookRules.layers(Looks, "Common", 2, "C", "hand").aura, 0)
+		assert(
+			WeaponLookRules.layers(Looks, "Epic", 5, "C", "hand").aura > WeaponLookRules.layers(Looks, "Rare", 5, "C", "hand").aura,
+			"at the same level an Epic blazes more"
+		)
 	end,
 
-	["+7 to +9: a bigger trail and a burst on hits; +10 Awakened"] = function()
+	["+7 to +9: a bigger trail and a burst on hits; +10 Awakened adds the streaming ribbons"] = function()
 		local seven = WeaponLookRules.layers(Looks, "Epic", 7, "C", "hand")
 		expect.near(seven.trailScale, 1.2, 1e-9)
 		expect.equal(seven.burst, true)
-		expect.equal(seven.awakened, false)
+		expect.equal(seven.ribbons, false)
 		expect.near(WeaponLookRules.layers(Looks, "Epic", 9, "C", "hand").trailScale, 1.5, 1e-9)
 		local ten = WeaponLookRules.layers(Looks, "Epic", 10, "C", "hand")
+		expect.equal(ten.ribbons, true)
 		expect.equal(ten.awakened, true)
-		expect.near(ten.trailScale, 1.5, 1e-9)
 	end,
 
-	["Grade S twinkles"] = function()
+	["the cheap glow: sparkles by rarity, more with upgrades and Grade S (like the creatures')"] = function()
+		local common = WeaponLookRules.layers(Looks, "Common", 0, "C", "hand").sparkles
+		local legendary = WeaponLookRules.layers(Looks, "Legendary", 0, "C", "hand").sparkles
+		assert(common > 0 and legendary > common, "rarer sparkles more")
+		assert(WeaponLookRules.layers(Looks, "Common", 10, "C", "hand").sparkles > common, "upgrades add some")
+		expect.equal(WeaponLookRules.layers(Looks, "Common", 0, "S", "hand").sparkles, common + Looks.SPARKLES.gradeS)
 		expect.equal(WeaponLookRules.layers(Looks, "Common", 0, "S", "hand").twinkle, true)
-		expect.equal(WeaponLookRules.layers(Looks, "Common", 0, "A", "hand").twinkle, false)
 	end,
 
-	["on the back: fewer aura particles and no light"] = function()
+	["on the back: half the aura and no light, except an Awakened weapon, which keeps both"] = function()
 		local hand = WeaponLookRules.layers(Looks, "Legendary", 6, "C", "hand")
 		local back = WeaponLookRules.layers(Looks, "Legendary", 6, "C", "back")
 		expect.equal(hand.light, true, "a Legendary lights up in hand")
 		expect.equal(back.light, false)
 		expect.near(back.aura, hand.aura * Looks.BACK.auraShare, 1e-9)
-		expect.equal(WeaponLookRules.layers(Looks, "Rare", 6, "C", "hand").light, false, "lights are Epic and Legendary only")
-	end,
-
-	["on the back an Awakened (+10) weapon still shows off: its whole aura and, Epic or Legendary, its light"] = function()
-		local hand = WeaponLookRules.layers(Looks, "Epic", 10, "S", "hand")
-		local back = WeaponLookRules.layers(Looks, "Epic", 10, "S", "back")
-		expect.equal(back.aura, hand.aura, "the whole aura")
-		expect.equal(back.light, true, "an Epic's light")
+		local awakened = WeaponLookRules.layers(Looks, "Epic", 10, "S", "back")
+		expect.equal(awakened.aura, 1)
+		expect.equal(awakened.light, true)
 		expect.equal(WeaponLookRules.layers(Looks, "Rare", 10, "S", "back").light, false, "lights are Epic and Legendary only")
-		expect.equal(WeaponLookRules.layers(Looks, "Epic", 9, "S", "back").light, false, "+9 isn't Awakened")
-		assert(Looks.BACK.auraShare >= 0.5, "below +10 at least half the aura shows on the back")
 	end,
 
-	["edges never glow past full, odd levels are clamped"] = function()
-		local looks = table.clone(Looks) :: any
-		looks.REST = { Common = 1.4 }
-		expect.equal(WeaponLookRules.layers(looks, "Common", 0, "C", "hand").edge, 1)
-		expect.equal(WeaponLookRules.layers(Looks, "Common", 99, "C", "hand").awakened, true)
+	["odd input: clamped levels, an unknown rarity rests dark"] = function()
+		expect.equal(WeaponLookRules.layers(Looks, "Common", 99, "C", "hand").ribbons, true)
 		expect.equal(WeaponLookRules.layers(Looks, "Common", -3, "C", "hand").aura, 0)
-		expect.equal(WeaponLookRules.layers(Looks, "Nope", 0, "C", "hand").edge, 0, "an unknown rarity rests dark")
+		expect.equal(WeaponLookRules.layers(Looks, "Nope", 0, "C", "hand").edge, 0)
+	end,
+
+	["the full aura goes on your own sword and the nearest few in range; the rest get the cheap glow"] = function()
+		local full = WeaponLookRules.fullAuras({
+			{ key = "me", distance = 500, mine = true },
+			{ key = "near", distance = 10, mine = false },
+			{ key = "mid", distance = 30, mine = false },
+			{ key = "close", distance = 5, mine = false },
+			{ key = "four", distance = 40, mine = false },
+			{ key = "far", distance = 900, mine = false },
+		}, 3, 60)
+		expect.equal(full.me, true, "your own always blazes, however far the camera is")
+		expect.equal(full.close, true)
+		expect.equal(full.near, true)
+		expect.equal(full.mid, true)
+		expect.equal(full.four, nil, "only the nearest 3")
+		expect.equal(full.far, nil, "out of range")
+		local none = WeaponLookRules.fullAuras({}, 3, 60)
+		expect.equal(next(none), nil)
+	end,
+
+	["the budget's numbers are set"] = function()
+		assert(Looks.BUDGET.nearest >= 1 and Looks.BUDGET.range > 0 and Looks.BUDGET.every > 0)
 	end,
 }

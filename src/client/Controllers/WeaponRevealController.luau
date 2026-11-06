@@ -446,7 +446,7 @@ function WeaponRevealController.Forge(result: any)
 	}
 	if result.action == "upgrade" then
 		reveal.banner = `+{level} {weapon.name}`
-		reveal.gradeText = WeaponText.ladderStep(WeaponLooks, level)
+		reveal.gradeText = WeaponText.ladderStep(WeaponLooks, level, weapon.rarity)
 		reveal.hit = if level >= WeaponLooks.LADDER.awakenedAt then forge.hit.S else forge.hit.B
 		reveal.flash = if level >= WeaponLooks.LADDER.awakenedAt then forge.flash.S else forge.flash.A
 	elseif result.action == "reforge" and result.kept == true then

@@ -1,41 +1,46 @@
 --!strict
--- How weapons glow (spec 2026-11-06-weapons-round1-design 5.1; Util/WeaponLookRules, client Util/WeaponLook): one
--- job per thing, not piled up. Element = the colours (each weapon's glow and trail), rarity = the resting glow (REST),
--- upgrades = layers over time (LADDER), grade S = the card-style twinkle. One particle aura per weapon; on the back in
--- town fewer particles and no light (BACK). Colours { r, g, b }; portraits are uploaded image ids ("" until made): the model rendered
--- on magenta, cut out (assets/ui/weapon-portraits, docs/weapons.md), drawn on the card over its glow.
--- Plain data so Lune tests can load it.
+-- How weapons glow (owner 2026-11-06: an aura like the reference picture, hybrid for performance; Util/WeaponLookRules,
+-- client Util/WeaponLook). Element = the colours (each weapon's glow, deep and trail), rarity = the resting inner glow
+-- (REST) and how early the aura starts, upgrades = the inner glow brightening and the aura thickening (LADDER), +10 =
+-- streaming ribbons, grade S = more sparkles. The full aura (flames, core, smoke, sparks) is drawn on your own sword and
+-- the nearest few (BUDGET); every other sword shows the cheap creature-style glow (inner glow, light, sparkles).
+-- Colours { r, g, b }; portraits are uploaded image ids ("" until made): the model rendered on magenta, cut out
+-- (assets/ui/weapon-portraits, docs/weapons.md), drawn on the card over its glow. Plain data so Lune tests can load it.
 
 export type Look = {
-	glow: { number }, -- edges, gem and aura
+	glow: { number }, -- the bright colour: the aura's tips and core, the inner glow's tint, the light, sparkles
+	deep: { number }, -- the aura's deep colour (its flames start in it)
 	trail: { number }, -- swing trail and hit sparks
-	aura: string, -- "embers" | "frost" | "petals" | "sparks" | "wisps" | "prism" | "none"
-	awakened: string, -- the +10 effect: "sunHalo" | "vineCrown" | "prismWings" | "elementRunes"
 	portrait: string,
 }
 
-local BY_ELEMENT: { [string]: { glow: { number }, trail: { number }, aura: string } } = {
-	Ember = { glow = { 255, 150, 60 }, trail = { 255, 120, 40 }, aura = "embers" },
-	Tide = { glow = { 120, 210, 255 }, trail = { 90, 180, 255 }, aura = "frost" },
-	Bloom = { glow = { 140, 235, 120 }, trail = { 110, 220, 110 }, aura = "petals" },
-	Volt = { glow = { 255, 225, 90 }, trail = { 255, 210, 70 }, aura = "sparks" },
-	Shade = { glow = { 185, 120, 255 }, trail = { 160, 100, 240 }, aura = "wisps" },
+local BY_ELEMENT: { [string]: { glow: { number }, deep: { number }, trail: { number } } } = {
+	Ember = { glow = { 255, 150, 60 }, deep = { 255, 70, 20 }, trail = { 255, 120, 40 } },
+	Tide = { glow = { 120, 210, 255 }, deep = { 40, 110, 255 }, trail = { 90, 180, 255 } },
+	Bloom = { glow = { 140, 235, 120 }, deep = { 40, 220, 80 }, trail = { 110, 220, 110 } },
+	Volt = { glow = { 255, 225, 90 }, deep = { 255, 200, 20 }, trail = { 255, 210, 70 } },
+	Shade = { glow = { 185, 120, 255 }, deep = { 150, 40, 255 }, trail = { 160, 100, 240 } },
 }
 
+local function element(name: string, portrait: string): Look
+	local look = BY_ELEMENT[name]
+	return { glow = look.glow, deep = look.deep, trail = look.trail, portrait = portrait }
+end
+
 local WEAPONS: { [string]: Look } = {
-	starterSword = { glow = { 207, 230, 255 }, trail = { 207, 230, 255 }, aura = "none", awakened = "elementRunes", portrait = "rbxassetid://92121287059017" },
-	verdantBlade = { glow = { 150, 240, 120 }, trail = { 120, 225, 110 }, aura = "petals", awakened = "vineCrown", portrait = "rbxassetid://136327582593705" },
-	sunforgedBlade = { glow = { 255, 190, 80 }, trail = { 255, 140, 40 }, aura = "embers", awakened = "sunHalo", portrait = "rbxassetid://123708775303650" },
-	prismBlade = { glow = { 230, 200, 255 }, trail = { 200, 170, 255 }, aura = "prism", awakened = "prismWings", portrait = "rbxassetid://119112031121278" },
+	starterSword = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "rbxassetid://92121287059017" },
+	verdantBlade = { glow = { 150, 240, 120 }, deep = { 40, 220, 80 }, trail = { 120, 225, 110 }, portrait = "rbxassetid://136327582593705" },
+	sunforgedBlade = { glow = { 255, 190, 80 }, deep = { 255, 120, 20 }, trail = { 255, 140, 40 }, portrait = "rbxassetid://123708775303650" },
+	prismBlade = { glow = { 230, 200, 255 }, deep = { 150, 40, 255 }, trail = { 200, 170, 255 }, portrait = "rbxassetid://119112031121278" },
 	-- Rounds 2 and 3 (their looks get tuned when they're built)
-	forgeSpear = { glow = { 207, 230, 255 }, trail = { 207, 230, 255 }, aura = "none", awakened = "elementRunes", portrait = "" },
-	magmaHalberd = { glow = BY_ELEMENT.Ember.glow, trail = BY_ELEMENT.Ember.trail, aura = "embers", awakened = "elementRunes", portrait = "" },
-	tidalTrident = { glow = BY_ELEMENT.Tide.glow, trail = BY_ELEMENT.Tide.trail, aura = "frost", awakened = "elementRunes", portrait = "" },
-	titansLance = { glow = BY_ELEMENT.Bloom.glow, trail = BY_ELEMENT.Bloom.trail, aura = "petals", awakened = "elementRunes", portrait = "" },
-	forgeScythe = { glow = { 207, 230, 255 }, trail = { 207, 230, 255 }, aura = "none", awakened = "elementRunes", portrait = "" },
-	widowsReaper = { glow = BY_ELEMENT.Shade.glow, trail = BY_ELEMENT.Shade.trail, aura = "wisps", awakened = "elementRunes", portrait = "" },
-	stormReaper = { glow = BY_ELEMENT.Volt.glow, trail = BY_ELEMENT.Volt.trail, aura = "sparks", awakened = "elementRunes", portrait = "" },
-	riftReaper = { glow = BY_ELEMENT.Shade.glow, trail = BY_ELEMENT.Shade.trail, aura = "wisps", awakened = "elementRunes", portrait = "" },
+	forgeSpear = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "" },
+	magmaHalberd = element("Ember", ""),
+	tidalTrident = element("Tide", ""),
+	titansLance = element("Bloom", ""),
+	forgeScythe = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "" },
+	widowsReaper = element("Shade", ""),
+	stormReaper = element("Volt", ""),
+	riftReaper = element("Shade", ""),
 }
 -- The Forge Sword's portrait per element (its model with that element's colour map)
 local FORGE_PORTRAITS: { [string]: string } = {
@@ -46,21 +51,22 @@ local FORGE_PORTRAITS: { [string]: string } = {
 	Shade = "rbxassetid://81995315859743",
 }
 -- The five Forge Swords take their element's colours
-for element, look in BY_ELEMENT do
-	WEAPONS[`forgeSword_{element}`] = { glow = look.glow, trail = look.trail, aura = look.aura, awakened = "elementRunes", portrait = FORGE_PORTRAITS[element] }
+for name in BY_ELEMENT do
+	WEAPONS[`forgeSword_{name}`] = element(name, FORGE_PORTRAITS[name])
 end
 
 return {
 	WEAPONS = WEAPONS,
 	BY_ELEMENT = BY_ELEMENT,
-	-- The resting glow by rarity (0-1: how strongly the edges glow at +0)
+	-- The resting inner glow by rarity (0-1), at +0
 	REST = { Common = 0.1, Rare = 0.25, ["Very Rare"] = 0.3, Epic = 0.4, Legendary = 0.5 },
-	-- Upgrades: +1..+3 the edges glow brighter (edge at that level), from +4 its aura (particles a second at +4/+5/+6,
-	-- the last kept after), from +7 a bigger trail (scale at +7/+8/+9, then kept) and a burst on every hit, +10 Awakened
+	-- Upgrades: the inner glow brightens ({ level, glow }: the highest reached counts, full at +10); the aura starts at
+	-- auraFrom (Epic and Legendary earlier) and thickens each level until auraFull; from +7 a bigger trail (scale at
+	-- +7/+8/+9, then kept) and a burst on every hit; +10 Awakened (the ribbons)
 	LADDER = {
-		edge = { [1] = 0.25, [2] = 0.4, [3] = 0.55 },
-		auraFrom = 4,
-		auraRate = { 6, 10, 14 }, -- Studio's automatic quality thins these a lot: tuned so +4 still reads there
+		edge = { { 1, 0.25 }, { 2, 0.4 }, { 3, 0.55 }, { 7, 0.8 }, { 10, 1 } },
+		auraFrom = { default = 4, Epic = 2, Legendary = 2 },
+		auraFull = 7,
 		trailFrom = 7,
 		trailScale = { 1.2, 1.35, 1.5 },
 		awakenedAt = 10,
@@ -74,30 +80,43 @@ return {
 		Volt = "rbxassetid://80913028012621",
 		Shade = "rbxassetid://117614328562391",
 	},
-	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too)
-	LIGHT = { Epic = true, Legendary = true },
-	-- On the back (in town and between fights): this share of the aura's particles and no light
-	-- On the back in town: this share of the aura and no light, except an Awakened (+10) weapon, which keeps both
-	-- (owner 2026-11-06: a +10 Grade S Epic glowed too little there)
-	BACK = { auraShare = 0.5 },
-	-- Drawing it (client Util/WeaponLook). The glow shell: each glowing part's copy this much bigger, in Neon. Particle
-	-- textures are Config/AttackFx or Config/MoveFx TEXTURES keys (square, white: tinted the weapon's glow; prism
-	-- runs through every element's colour). Sizes in studs at their biggest (a particle grows to it, then shrinks
-	-- away; the textures are mostly clear round a small shape), lifetimes in seconds, speeds in studs a second.
-	-- Checked in Studio 2026-11-06: smaller ones vanished against the sky.
-	SHELL_SCALE = 1.03,
-	-- On a made model's painted blade the shell glows this share of the ladder's edge (at full it washed the painting
-	-- flat in Studio, 2026-11-06); a stand-in's plain blade takes it all
-	MODEL_SHELL = 0.6,
-	LIGHT_LOOK = { range = 7, brightness = 0.8 },
-	AURA = {
-		embers = { texture = "flame", size = 1.2, lifetime = { 0.6, 1.1 }, speed = { 0.4, 1.2 }, rise = 2.5 },
-		frost = { texture = "shard", size = 0.9, lifetime = { 0.8, 1.4 }, speed = { 0.1, 0.4 }, rise = -0.6 },
-		petals = { texture = "glow", size = 0.9, lifetime = { 1, 1.6 }, speed = { 0.2, 0.6 }, rise = -0.8 },
-		sparks = { texture = "spark", size = 0.8, lifetime = { 0.3, 0.6 }, speed = { 1, 2.5 }, rise = 0 },
-		wisps = { texture = "smoke", size = 1.4, lifetime = { 1, 1.8 }, speed = { 0.2, 0.5 }, rise = 0.8 },
-		prism = { texture = "shard", size = 0.9, lifetime = { 0.8, 1.3 }, speed = { 0.2, 0.6 }, rise = 0.4 },
+	-- Each model's glow map (emissive mask: the runes, gems, crystal; tools/textures/make_glow_maps.py, uploaded),
+	-- baked into its SurfaceAppearances by `lune run tools/weapons/add_glow_maps` (a game script can't set them).
+	-- The Forge Sword's five copies share one (the same UVs). INNER: the emissive strength at full inner glow.
+	GLOW_MAPS = {
+		SunforgedBlade = "rbxassetid://140219127116399",
+		VerdantBlade = "rbxassetid://104844593841366",
+		PrismBlade = "rbxassetid://107028137030194",
+		ForgeSword = "rbxassetid://87373640011460",
 	},
+	INNER = { strength = 4 },
+	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too), as strong as its
+	-- inner glow
+	LIGHT = { Epic = true, Legendary = true },
+	LIGHT_LOOK = { range = 7, brightness = 1 },
+	-- On the back (in town and between fights): this share of the aura and no light, except an Awakened (+10) weapon,
+	-- which keeps both (owner 2026-11-06)
+	BACK = { auraShare = 0.5 },
+	-- The cheap glow (every sword outside the budget, and under the aura on yours): sparkles a second by rarity, more
+	-- per level, more for Grade S (like the creatures' Party.GLOW)
+	SPARKLES = { byRarity = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }, perLevel = 0.3, gradeS = 2 },
+	-- The full aura: who gets it (your own sword and the nearest `nearest` others within `range` studs, checked every
+	-- `every` seconds; Studio 2026-11-06: 20 full auras in view cost about 2 ms of render CPU at max graphics)
+	BUDGET = { nearest = 3, range = 60, every = 0.5 },
+	-- The aura's emitters at full density (studs, seconds; textures are Config/AttackFx TEXTURES keys). They fill the
+	-- blade's box (the guard and grip get `otherParts` of each rate); flames rise from the deep colour to the bright,
+	-- the core hugs the blade, smoke drifts, sparks fly; +10 adds ribbons streaming off the blade. Brightness over 1
+	-- reaches the town's bloom. Tuned in Studio 2026-11-06 against the owner's reference picture (night and day).
+	AURA = {
+		otherParts = 0.55,
+		flame = { texture = "flame", rate = 70, lifetime = { 0.45, 0.85 }, size = { 0.35, 0.8, 0.1 }, rise = 3, drag = 1.5, transparency = 0.35, brightness = 1.3 },
+		core = { texture = "glow", rate = 22, lifetime = { 0.3, 0.5 }, size = { 0.55, 0.8 }, transparency = 0.6, brightness = 1.1 },
+		smoke = { texture = "smoke", rate = 18, lifetime = { 0.9, 1.5 }, size = { 0.6, 1.5 }, rise = 1.8, transparency = 0.6, brightness = 1, emission = 0.5 },
+		spark = { texture = "spark", rate = 14, lifetime = { 0.6, 1.1 }, size = 0.3, speed = { 0.4, 1.4 }, brightness = 4 },
+		ribbon = { texture = "streak", rate = 10, lifetime = { 0.7, 1.1 }, size = { 0.25, 0.5 }, speed = { 2, 4 }, transparency = 0.2, brightness = 1.6 },
+	},
+	-- The cheap glow's sparkle look
+	SPARKLE_LOOK = { texture = "spark", lifetime = { 0.8, 1.4 }, size = 0.3, speed = { 0.3, 0.9 }, brightness = 3 },
 	-- The drop cinematic and the forge reveal (WeaponRevealController, on the pack opening's stage): the circle opens,
 	-- a light column in the rarity's colour shoots up, the weapon rises out of it spinning, the banner and its grade
 	-- pop, a line under it. Seconds from the start; studs on the stage (its camera is 8 studs from the middle).
@@ -139,14 +158,5 @@ return {
 			},
 			flash = { S = 1, A = 0.8, B = 0.45, C = 0.35 },
 		},
-	},
-	-- Grade S: the card-style twinkle, a few star glints a second along the blade
-	TWINKLE = { texture = "flare", rate = 3, size = 1.6, lifetime = 0.5 },
-	-- +10 Awakened: a ring of its effect circling the blade (round 1: one emitter each; owner to judge in Studio)
-	AWAKENED = {
-		sunHalo = { texture = "ring", rate = 3, size = 2.6, lifetime = 1.2, spin = 40 },
-		vineCrown = { texture = "vine", rate = 4, size = 1.8, lifetime = 1.4, spin = 60 },
-		prismWings = { texture = "shard", rate = 10, size = 1, lifetime = 1, spin = 120 },
-		elementRunes = { texture = "rune", rate = 3, size = 1.6, lifetime = 1.6, spin = 90 },
 	},
 }
