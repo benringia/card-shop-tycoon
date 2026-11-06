@@ -78,5 +78,11 @@ return {
 		["9126100173"] = 148, -- Devour.layer
 		["9126100408"] = 187, -- Stampede.call
 		["9126239755"] = 19, -- Snare.layer
+		-- The Sunforged Blade's (Config/Swords sunforgedBlade sounds, 2026-11-07)
+		["9114446852"] = 77, -- fireWhoosh
+		["9125615451"] = 106, -- lavaBurst
+		["9114463410"] = 110, -- flameLicks
+		["9114446277"] = 114, -- fireSwing
+		["9117985933"] = 149, -- fireBurst
 	} :: { [string]: number },
 }

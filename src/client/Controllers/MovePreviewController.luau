@@ -16,6 +16,8 @@ local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
 local WeaponLooks = require(Shared:WaitForChild("Config"):WaitForChild("WeaponLooks"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 local SwordSkillFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordSkillFxRules"))
+local SwordSkillFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SwordSkillFx"))
+local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -24,9 +26,12 @@ local FightFx = require(ClientUtil:WaitForChild("FightFx"))
 local SuperCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
 local SwordSkillFx = require(ClientUtil:WaitForChild("SwordSkillFx"))
+local SkillCinematic = require(ClientUtil:WaitForChild("SkillCinematic"))
+local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 local CardArtConfig = require(Shared:WaitForChild("Config"):WaitForChild("CardArt"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
+local SwordController = require(Controllers:WaitForChild("SwordController"))
 
 local MovePreviewController = {}
 
@@ -191,14 +196,44 @@ local function playSword(payload: any)
 		end
 	end
 	playing = stop
+	SwordController.DrawNow() -- the sword in your hand, as in a fight
 	anims.play(move)
+	SwordController.PlayCues(move) -- the equipped sword's sounds (equip the previewed one to hear its own)
 	local length = if cut == 0 then moveset.skill.length else moveset.combo[cut].length
+	local blade = SwordController.BladeOf(character)
 	if cut == 0 then
-		SwordSkillFx.skill(character, fx.skill, colors, scale, dummy.Position)
+		-- Aimed at the dummy as a fight aims at a boss (SwordRules.skillImpact), with your shakes and camera moment
+		local look = root.CFrame.LookVector
+		local dummyTarget = { id = "dummy", x = dummy.Position.X, z = dummy.Position.Z, radius = dummy.Size.X / 2 }
+		local x, z = SwordRules.skillImpact(moveset.skill.shape, root.Position.X, root.Position.Z, look.X, look.Z, { dummyTarget })
+		local aim = if x and z then Vector3.new(x, root.Position.Y, z) else dummy.Position
+		local shake = SwordSkillFxConfig.SHAKE
+		SwordSkillFx.skill(character, fx.skill, colors, scale, aim, {
+			blade = blade,
+			released = function()
+				ScreenFx.shake(shake.release)
+			end,
+			burst = function()
+				ScreenFx.shake(shake.impact)
+				local spec = SwordSkillFxConfig.LOOKS[fx.skill]
+				if spec and spec.burstSound then
+					SwordController.PlaySound(spec.burstSound)
+				end
+			end,
+		})
+		local spec = SwordSkillFxConfig.LOOKS[fx.skill]
+		local beats = if spec and spec.cinematic then spec.beats else nil
+		if beats then
+			local travel = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z).Magnitude / math.max(beats.speed, 1)
+			SkillCinematic.play(root, aim - Vector3.new(0, 3, 0), beats.release, travel, function(): boolean
+				return not stopped
+			end)
+			length += travel + SwordSkillFxConfig.CINEMATIC.hold
+		end
 	else
 		task.delay(SwordFxConfig.ARCS[move].from, function()
 			if not stopped then
-				SwordSkillFx.slash(character, fx.slash, cut, colors, scale)
+				SwordSkillFx.slash(character, fx.slash, cut, colors, scale, blade)
 			end
 		end)
 		if cut == 3 then

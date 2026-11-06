@@ -934,8 +934,8 @@ local function swordHit(event: any)
 				HitFx.ring(at, SwordFx.RING.size * slash.scale, tint)
 			end
 		end
-		if event.kind == "Skill" then
-			HitFx.cutLines(at, slash.scale, tint)
+		if event.kind == "Skill" and not SwordController.SkillLook(character) then
+			HitFx.cutLines(at, slash.scale, tint) -- the dash slash's; a round 1 sword's skill draws its own (SwordSkillFx)
 		end
 		local model = MonsterController.GetModel(marker)
 		if model then

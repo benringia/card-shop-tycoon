@@ -2,10 +2,12 @@
 -- The round 1 swords' own effects (sword skills round, spec 2026-11-06-sword-skills-design 4): each sword's slash on
 -- cuts 1-3, its finisher where cut 3 slams down and its skill, by the looks in Config/SwordSkillFx, coloured by the
 -- weapon (Config/WeaponLooks) and grown by SwordSkillFxRules.scale. Effects stay low and short (never over the boss's
--- rings), live under the camera and clean themselves up. Each builder draws its look's basic shape until its sword's
--- round gives it its own (Tasks 5-8).
+-- rings), live under the camera and clean themselves up. The Sunforged Blade's looks are its own (storyboard
+-- 2026-11-07); the other swords draw their look's basic shape until their round (Tasks 6-8).
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -15,16 +17,25 @@ local AttackFx = require(Config:WaitForChild("AttackFx"))
 local MoveFx = require(Config:WaitForChild("MoveFx"))
 local SuperFx = require(Config:WaitForChild("SuperFx"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
+local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 
 export type Colors = { deep: Color3, glow: Color3 }
+-- A character's sword blade: its handle part and the blade's base and tip in the handle's space
+export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
+-- A skill's moments for its caster (your own: the screen shakes): the cleave, and where the effect bursts
+export type Hooks = { blade: Blade?, released: (() -> ())?, burst: ((at: Vector3) -> ())? }
 
 local SwordSkillFx = {}
 
 local TEXTURE_TABLES = { AttackFx.TEXTURES, MoveFx.TEXTURES, SuperFx.TEXTURES, SwordFx.TEXTURES } :: { any }
 local WHITE = Color3.new(1, 1, 1)
+local UP = Vector3.yAxis
+local COOLED = Color3.fromRGB(110, 22, 0) -- a lava crack's colour once it has cooled
 local GROUND_LIFT = 0.3 -- studs above the ground a finisher or skill draws (low: under the boss's rings)
 local ROOT_TO_GROUND = 3 -- studs from a character's root down to its feet
 local SLAM_AHEAD = 2.5 -- studs in front of you cut 3's blade meets the ground
+local AIR_TIP = 8.5 -- studs above the root the blade's tip is at the top of a jump, when the blade isn't known
+local GROUND_REACH = 6 -- studs up or down from a character's feet the ground under an effect is looked for
 
 local function texture(key: string): string?
 	for _, list in TEXTURE_TABLES do
@@ -46,8 +57,8 @@ function SwordSkillFx.colorsOf(weaponId: string): Colors
 	return { deep = rgb(look.deep), glow = rgb(look.glow) }
 end
 
--- One burst of a look's particles from a flat box `width` x `depth` studs at `cframe`, then gone
-local function burst(cframe: CFrame, width: number, depth: number, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
+-- An invisible anchored part under the camera, gone after `life` seconds
+local function holder(cframe: CFrame, size: Vector3, life: number): Part
 	local part = Instance.new("Part")
 	part.Name = "SwordSkillFx"
 	part.Anchored = true
@@ -56,32 +67,49 @@ local function burst(cframe: CFrame, width: number, depth: number, spec: SwordSk
 	part.CanTouch = false
 	part.CastShadow = false
 	part.Transparency = 1
-	part.Size = Vector3.new(math.max(width, 0.2), 0.2, math.max(depth, 0.2))
+	part.Size = size
 	part.CFrame = cframe
 	part.Parent = workspace.CurrentCamera
+	Debris:AddItem(part, life)
+	return part
+end
+
+-- One emitter of a look's texture (any of the four TEXTURES tables) with ElementFx's options
+local function emitter(parent: Instance, key: string, color: Color3, o: any): ParticleEmitter
+	local e = ElementFx.emitter(parent, "glow", color, o)
+	e.Texture = texture(key) or e.Texture
+	return e
+end
+
+local function tween(item: Instance, seconds: number, goal: { [string]: any })
+	TweenService:Create(item, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal):Play()
+end
+
+-- The terrain under `at` within `GROUND_REACH` studs of it (never a boss's or creature's model), else `at` itself
+local function groundAt(at: Vector3): Vector3
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain }
+	local hit = workspace:Raycast(at + UP * GROUND_REACH, -UP * GROUND_REACH * 2, params)
+	return if hit then hit.Position else at
+end
+
+-- One burst of a look's particles from a flat box `width` x `depth` studs at `cframe`, then gone (the looks still
+-- waiting for their sword's round)
+local function sketch(cframe: CFrame, width: number, depth: number, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
+	local part = holder(cframe, Vector3.new(math.max(width, 0.2), 0.2, math.max(depth, 0.2)), spec.seconds + 0.2)
 	local share = math.max(1, math.round(spec.count * scale / #spec.textures))
 	for index, key in spec.textures do
-		local id = texture(key)
-		if id then
-			local emitter = Instance.new("ParticleEmitter")
-			emitter.Texture = id
-			emitter.Color = ColorSequence.new(if index == 1 then colors.glow else WHITE, colors.deep)
-			emitter.LightEmission = 1
-			emitter.Size = NumberSequence.new(0.9 * scale, 0)
-			emitter.Transparency = NumberSequence.new(0.1, 1)
-			emitter.Lifetime = NumberRange.new(spec.seconds * 0.5, spec.seconds)
-			emitter.Speed = NumberRange.new(2, 6)
-			emitter.SpreadAngle = Vector2.new(40, 40)
-			emitter.Rotation = NumberRange.new(0, 360)
-			emitter.RotSpeed = NumberRange.new(-90, 90)
-			emitter.Shape = Enum.ParticleEmitterShape.Box
-			emitter.EmissionDirection = Enum.NormalId.Top
-			emitter.Rate = 0
-			emitter.Parent = part
-			emitter:Emit(share)
-		end
+		local e = emitter(part, key, if index == 1 then colors.glow else WHITE, {
+			size = { 0.9 * scale, 0 },
+			life = { spec.seconds * 0.5, spec.seconds },
+			speed = { 2, 6 },
+			spread = 40,
+			spin = { -90, 90 },
+		})
+		e.Shape = Enum.ParticleEmitterShape.Box
+		e:Emit(share)
 	end
-	Debris:AddItem(part, spec.seconds + 0.2)
 end
 
 local function rootOf(character: Model): BasePart?
@@ -95,16 +123,107 @@ local function flatLook(root: BasePart): Vector3
 	return if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
 end
 
--- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across)
-function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number)
+-- The blade's tip in the world now (the animated hand's), else above the character
+local function tipOf(blade: Blade?, root: BasePart): Vector3
+	if blade and blade.part.Parent then
+		return (blade.part.CFrame * blade.tip).Position
+	end
+	return root.Position + UP * AIR_TIP
+end
+
+-- Sunforged: flames streaming off the blade for the swing, left behind in the air as it moves (a fire trail)
+local function fireTrail(spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, blade: Blade)
+	local points: { Attachment } = {}
+	for _, share in { 0.25, 0.6, 0.95 } do
+		local point = Instance.new("Attachment")
+		point.CFrame = blade.base:Lerp(blade.tip, share)
+		point.Parent = blade.part
+		table.insert(points, point)
+		local flame = emitter(point, "flame", colors.deep, {
+			size = { spec.size * scale, 0.2 },
+			life = { 0.25, 0.4 },
+			speed = { 0.5, 1.5 },
+			spread = 180,
+			spin = { -60, 60 },
+			accel = UP * 6,
+			fade = 0.3,
+		})
+		flame.Rate = spec.count * scale / 3
+		local core = emitter(point, "flame", colors.glow:Lerp(WHITE, 0.4), {
+			size = { spec.size * 0.5 * scale, 0.1 },
+			life = { 0.15, 0.25 },
+			spread = 180,
+			brightness = 2.2,
+		})
+		core.Rate = spec.count * scale / 4
+		local embers = emitter(point, "spark", colors.glow, { size = { 0.25, 0.05 }, life = { 0.4, 0.7 }, speed = { 2, 5 }, spread = 180, accel = UP * 4 })
+		embers.Rate = spec.count * scale / 8
+	end
+	task.delay(spec.seconds, function()
+		for _, point in points do
+			for _, item in point:GetChildren() do
+				if item:IsA("ParticleEmitter") then
+					item.Rate = 0
+				end
+			end
+		end
+	end)
+	for _, point in points do
+		Debris:AddItem(point, spec.seconds + 0.8)
+	end
+end
+
+-- Sunforged: the ground cracks open with glowing lava `size` studs across at `ground`, cooling to dark red as it fades
+local function lavaCrack(ground: Vector3, size: number, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
+	local seconds = spec.seconds
+	local plate = holder(CFrame.new(ground + UP * 0.06), Vector3.new(size, 0.05, size), seconds + 0.6)
+	local decal = Instance.new("Decal")
+	decal.Texture = texture("crack") or ""
+	decal.Face = Enum.NormalId.Top
+	decal.Color3 = colors.glow
+	decal.Parent = plate
+	tween(decal, seconds * 0.6, { Color3 = colors.deep })
+	task.delay(seconds * 0.6, function()
+		tween(decal, seconds * 0.4, { Color3 = COOLED, Transparency = 1 })
+	end)
+	local light = Instance.new("PointLight")
+	light.Color = colors.deep
+	light.Range = size * 1.4
+	light.Brightness = 3
+	light.Parent = plate
+	tween(light, seconds, { Brightness = 0 })
+	local disc = holder(CFrame.new(ground + UP * 0.4) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, size * 0.8, size * 0.8), seconds + 0.6)
+	local function fromDisc(e: ParticleEmitter)
+		e.Shape = Enum.ParticleEmitterShape.Disc
+		e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		e.EmissionDirection = Enum.NormalId.Right
+	end
+	local licks = emitter(disc, "flame", colors.deep, { size = { 1.6 * scale, 0.3 }, life = { 0.35, 0.6 }, speed = { 3, 6 }, spread = 20, accel = UP * 4 })
+	fromDisc(licks)
+	licks:Emit(math.round(spec.count * 0.5 * scale))
+	local embers = emitter(disc, "spark", colors.glow, { size = { 0.35, 0.05 }, life = { 0.6, 1.1 }, speed = { 5, 10 }, spread = 35, accel = -UP * 6 })
+	fromDisc(embers)
+	embers:Emit(math.round(spec.count * scale))
+	local smoke = emitter(disc, "smoke", Color3.fromRGB(70, 50, 40), { size = { 2.5 * scale, 5 * scale }, life = { 0.8, 1.2 }, speed = { 1, 3 }, spread = 30, light = 0, brightness = 1, start = 0.4 })
+	fromDisc(smoke)
+	smoke:Emit(math.round(spec.count * 0.25 * scale))
+end
+
+-- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
+-- the Sunforged's flames stream off it
+function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?)
 	local spec = SwordSkillFxConfig.LOOKS[look]
 	local root = rootOf(character)
 	if not spec or not root then
 		return
 	end
+	if look == "fireTrail" and blade and blade.part.Parent then
+		fireTrail(spec, colors, scale, blade)
+		return
+	end
 	local ahead = root.CFrame * CFrame.new(0, 0.5, -2.5)
 	local turn = if cut == 3 then CFrame.Angles(0, 0, math.rad(90)) elseif cut == 2 then CFrame.Angles(0, 0, math.rad(-25)) else CFrame.Angles(0, 0, math.rad(25))
-	burst(ahead * turn, spec.size * scale, 0.6, spec, colors, scale)
+	sketch(ahead * turn, 4 * scale, 0.6, spec, colors, scale)
 end
 
 -- Where cut 3's slam lands: on the ground just ahead of you
@@ -123,20 +242,149 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 		return
 	end
 	local size = spec.size * scale
-	burst(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
+	if look == "lavaCrack" then
+		lavaCrack(groundAt(at), size, spec, colors, scale)
+		return
+	end
+	sketch(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
 end
 
--- The skill: around you, along the ground toward `aim` (else ahead), or on the aimed foe
-function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scale: number, aim: Vector3?)
+-- Sunfall Cleave's upright fire crescent: from `from` it glides to `to` (on the ground, ahead) in `seconds` (when the
+-- server lands its hit), its two tips above and below with fire beams bowing forward between them, flames and embers
+-- streaming off; then `arrive()`
+local function fireCrescent(from: Vector3, to: Vector3, seconds: number, beats: { [string]: number }, colors: Colors, scale: number, arrive: () -> ())
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local half = beats.height * 0.5 * scale
+	local carrier = holder(CFrame.new(from), Vector3.new(0.4, half * 2, 0.4), seconds + 1)
+	local function tip(side: number): Attachment
+		local a = Instance.new("Attachment")
+		-- X along the flight (the beams bow that way), the tips above and below
+		a.CFrame = CFrame.fromMatrix(UP * half * side, Vector3.new(0, 0, -1), UP)
+		a.Parent = carrier
+		return a
+	end
+	local top, bottom = tip(1), tip(-1)
+	local beams: { Beam } = {}
+	for _, layer in { { width = beats.width, color = colors.deep, z = 0 }, { width = beats.width * 0.5, color = colors.glow, z = 0.04 }, { width = beats.width * 0.2, color = WHITE, z = 0.08 } } do
+		local b = Instance.new("Beam")
+		b.Attachment0, b.Attachment1 = top, bottom
+		b.CurveSize0, b.CurveSize1 = half * 0.7, -half * 0.7
+		b.Texture = texture("moon") or ""
+		b.TextureMode = Enum.TextureMode.Stretch
+		b.TextureLength = 1
+		b.Width0, b.Width1 = layer.width * scale, layer.width * scale
+		b.Color = ColorSequence.new(layer.color)
+		b.LightEmission = 1
+		b.LightInfluence = 0
+		b.FaceCamera = true
+		b.Segments = 18
+		b.ZOffset = layer.z
+		b.Parent = carrier
+		table.insert(beams, b)
+	end
+	local trail = Instance.new("Trail")
+	trail.Attachment0, trail.Attachment1 = top, bottom
+	trail.Color = ColorSequence.new(colors.glow, colors.deep)
+	trail.Transparency = NumberSequence.new(0.4, 1)
+	trail.Lifetime = 0.35
+	trail.LightEmission = 1
+	trail.Parent = carrier
+	local flames = emitter(carrier, "flame", colors.deep, { size = { 1.4 * scale, 0.2 }, life = { 0.3, 0.5 }, speed = { 0.5, 2 }, spread = 180, accel = UP * 5, spin = { -60, 60 } })
+	flames.Shape = Enum.ParticleEmitterShape.Box
+	flames.Rate = 70 * scale
+	local embers = emitter(carrier, "spark", colors.glow, { size = { 0.35, 0.05 }, life = { 0.4, 0.8 }, speed = { 2, 5 }, spread = 180 })
+	embers.Shape = Enum.ParticleEmitterShape.Box
+	embers.Rate = 40 * scale
+	local light = Instance.new("PointLight")
+	light.Color = colors.deep
+	light.Range = 14 * scale
+	light.Brightness = 2.5
+	light.Parent = carrier
+	local started = os.clock()
+	local direction = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = if seconds <= 0 then 1 else math.clamp((os.clock() - started) / seconds, 0, 1)
+		local now = from:Lerp(to, t)
+		carrier.CFrame = CFrame.lookAt(now, now + direction)
+		if t >= 1 or not carrier.Parent then
+			connection:Disconnect()
+			flames.Rate, embers.Rate = 0, 0
+			trail.Enabled = false
+			for _, b in beams do
+				b.Enabled = false
+			end
+			light.Enabled = false
+			arrive()
+		end
+	end)
+end
+
+-- Sunfall Cleave: sunlight gathers at the blade's tip as you hang charging, the cleave launches the fire crescent
+-- toward `aim` (else straight ahead its full run), it glides down and bursts there: flames, a lava crack
+local function sunfallCleave(character: Model, root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local direction = flatLook(root)
+	local start = root.Position
+	local feet = start - UP * ROOT_TO_GROUND
+	local finish = if aim then Vector3.new(aim.X, feet.Y, aim.Z) else feet + direction * spec.size
+	local ground = groundAt(finish)
+	task.delay(beats.charge, function()
+		if not character.Parent then
+			return
+		end
+		local sun = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, beats.charged - beats.charge + 1)
+		local stopGlow = ElementFx.chargeGlow(sun, colors.glow, beats.release - beats.charge, beats.glow / 2.6 * scale)
+		local stopGather = ElementFx.gather(sun.Position, colors.glow, beats.charged - beats.charge, beats.gather * scale)
+		-- the sun rides the blade's tip while you hang
+		local follow = RunService.RenderStepped:Connect(function()
+			if sun.Parent then
+				sun.CFrame = CFrame.new(tipOf(hooks.blade, root))
+			end
+		end)
+		task.delay(beats.release - beats.charge, function()
+			follow:Disconnect()
+			stopGlow()
+			stopGather()
+			sun:Destroy()
+		end)
+	end)
+	task.delay(beats.release, function()
+		if hooks.released then
+			hooks.released()
+		end
+		-- From the top of the cleave, in front of you: it glides down from there, reaching the burst when the server's
+		-- hit lands (its distance from you at the shape's speed, SwordRules.skillHits)
+		local from = root.Position + flatLook(root) * beats.ahead + UP * beats.launch
+		local seconds = Vector3.new(ground.X - start.X, 0, ground.Z - start.Z).Magnitude / math.max(beats.speed, 1)
+		fireCrescent(from, ground + UP * beats.height * 0.5 * scale, seconds, beats, colors, scale, function()
+			if hooks.burst then
+				hooks.burst(ground)
+			end
+			local blast = beats.blast * scale
+			ElementFx.burst(ground + UP * 2, colors.glow, scale)
+			ElementFx.eruption(ground, colors.deep, blast * 0.7, 10)
+			lavaCrack(ground, blast * 1.4, spec, colors, scale)
+		end)
+	end)
+end
+
+-- The skill: Sunfall Cleave its own; the looks still waiting for their round around you, along the ground toward
+-- `aim` (else ahead), or on the aimed foe
+function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks?)
 	local spec = SwordSkillFxConfig.LOOKS[look]
 	local root = rootOf(character)
 	if not spec or not root then
 		return
 	end
+	if look == "sunfallCleave" and spec.beats then
+		sunfallCleave(character, root, spec, colors, scale, aim, hooks or {})
+		return
+	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)
 	local size = spec.size * scale
 	if spec.form == "around" then
-		burst(CFrame.new(feet), size, size, spec, colors, scale)
+		sketch(CFrame.new(feet), size, size, spec, colors, scale)
 		return
 	end
 	local direction = flatLook(root)
@@ -147,11 +395,11 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		end
 	end
 	if spec.form == "on" and aim then
-		burst(CFrame.new(Vector3.new(aim.X, feet.Y, aim.Z)), size, size, spec, colors, scale)
+		sketch(CFrame.new(Vector3.new(aim.X, feet.Y, aim.Z)), size, size, spec, colors, scale)
 		return
 	end
 	local middle = feet + direction * size / 2
-	burst(CFrame.lookAt(middle, middle + direction), size * 0.25, size, spec, colors, scale)
+	sketch(CFrame.lookAt(middle, middle + direction), size * 0.25, size, spec, colors, scale)
 end
 
 return SwordSkillFx

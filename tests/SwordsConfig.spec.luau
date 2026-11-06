@@ -49,6 +49,30 @@ return {
 		end
 	end,
 
+	["the Sunforged Blade's cuts carry a fire layer, its skill its own sounds; the Steel Sword's are untouched"] = function()
+		local sun = Swords.SWORDS.sunforgedBlade
+		local starter = Swords.SWORDS.starterSword
+		local function keys(list: { any }): { [string]: boolean }
+			local found = {}
+			for _, cue in list do
+				found[cue.key] = true
+			end
+			return found
+		end
+		for _, move in { "cut1", "cut2", "cut3" } do
+			expect.equal(keys(sun.cues[move]).fireWhoosh, true, `{move}: the fire whoosh`)
+			expect.equal(keys(starter.cues[move]).fireWhoosh, nil, `the Steel Sword's {move}`)
+			expect.equal(#sun.cues[move], #starter.cues[move] + (if move == "cut3" then 2 else 1), `{move}: the starter's cues kept`)
+		end
+		expect.equal(keys(sun.cues.cut3).lavaBurst, true, "the finisher's lava burst")
+		local skill = keys(sun.cues.skill)
+		expect.equal(skill.flameLicks and skill.fireSwing, true, "the charge and the cleave")
+		for _, key in { "fireWhoosh", "lavaBurst", "flameLicks", "fireSwing", "fireBurst" } do
+			expect.equal(string.sub(sun.sounds[key] or "", 1, 13), "rbxassetid://", key)
+			expect.equal(starter.sounds[key], nil, `the Steel Sword has no {key}`)
+		end
+	end,
+
 	["each new skill has the spec's shape"] = function()
 		local shapes = Swords.SWORDS
 		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")
@@ -56,7 +80,9 @@ return {
 		local thorn = shapes.verdantBlade.skill.shape
 		expect.equal(thorn.kind, "line"); expect.equal(thorn.length, 18); expect.equal(thorn.width, 4)
 		local sun = shapes.sunforgedBlade.skill.shape
-		expect.equal(sun.kind, "wave"); expect.equal(sun.length, 24); expect.equal(sun.width, 6); expect.equal(sun.speed, 40)
+		expect.equal(sun.kind, "wave"); expect.equal(sun.length, 24); expect.equal(sun.width, 6)
+		-- owner 2026-11-07: the crescent glides slowly (14 studs a second) and bursts on contact, foes within 6 studs
+		expect.equal(sun.speed, 14); expect.equal(sun.blast, 6)
 		local prism = shapes.prismBlade.skill.shape
 		expect.equal(prism.kind, "judgment"); expect.equal(prism.range, 24); expect.equal(prism.strikes, 5); expect.equal(prism.gap, 0.15)
 	end,

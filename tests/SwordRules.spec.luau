@@ -167,9 +167,37 @@ return {
 		-- line: 18 long, 4 wide ahead of you
 		local line = SwordRules.skillHits({ kind = "line", length = 18, width = 4 }, 0, 0, 0, 0, 0, -1, targets)
 		expect.equal(#line, 1); expect.equal(line[1].id, "ahead")
-		-- wave: 24 long, 6 wide, each foe when the 40 stud-a-second wave reaches it
-		local wave = SwordRules.skillHits({ kind = "wave", length = 24, width = 6, speed = 40 }, 0, 0, 0, 0, 0, -1, targets)
-		expect.equal(#wave, 1); expect.near(wave[1].after, 10 / 40, 1e-6)
+		-- wave: a crescent 24 long, 6 wide at 14 studs a second that bursts on the first foe it touches (owner 2026-11-07)
+		local wave = SwordRules.skillHits({ kind = "wave", length = 24, width = 6, speed = 14, blast = 6 }, 0, 0, 0, 0, 0, -1, targets)
+		expect.equal(#wave, 1); expect.equal(wave[1].id, "ahead"); expect.near(wave[1].after, 9 / 14, 1e-6)
+	end,
+
+	["the crescent bursts on the first foe it touches: foes near the burst are hit with it, farther ones aren't"] = function()
+		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
+		local shape = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 }
+		local hits = SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("boss", 0, -12), t("add", 6, -13), t("far", 0, -22), t("beside", 9, -3) })
+		local ids = {}
+		for _, hit in hits do
+			ids[hit.id] = hit.after
+			expect.equal(hit.share, 1)
+		end
+		expect.near(ids.boss, 11 / 14, 1e-6, "the first foe, when the crescent touches it")
+		expect.near(ids.add, 11 / 14, 1e-6, "off the path but near the burst: hit with it")
+		expect.equal(ids.far, nil, "in the path past the burst")
+		expect.equal(ids.beside, nil, "never near the crescent")
+		expect.equal(#SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("away", 0, 30) }), 0, "nothing in reach")
+	end,
+
+	["where a skill lands: the crescent's burst (or its end), the judged foe, nothing for the others"] = function()
+		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
+		local wave = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 }
+		local x, z = SwordRules.skillImpact(wave, 0, 0, 0, -1, { t("boss", 0, -12) })
+		expect.near(x :: number, 0, 1e-9); expect.near(z :: number, -11, 1e-9)
+		local ex, ez = SwordRules.skillImpact(wave, 0, 0, 0, -1, {})
+		expect.near(ex :: number, 0, 1e-9); expect.near(ez :: number, -24, 1e-9, "no foe: the end of its run")
+		local jx, jz = SwordRules.skillImpact({ kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 }, 0, 0, 0, -1, { t("boss", 3, -15) })
+		expect.equal(jx, 3); expect.equal(jz, -15)
+		expect.equal(SwordRules.skillImpact({ kind = "spin", radius = 9 }, 0, 0, 0, -1, { t("boss", 3, -5) }), nil)
 	end,
 
 	["judgment: five strikes a fifth each on the aimed foe within 24 (in front first), none in range: nothing"] = function()

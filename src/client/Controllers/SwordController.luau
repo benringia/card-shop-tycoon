@@ -27,6 +27,8 @@ local SwingGate = require(Shared:WaitForChild("Util"):WaitForChild("SwingGate"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 local SwordSkillFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SwordSkillFx"))
 local SwordSkillFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordSkillFxRules"))
+local SoundLevel = require(Shared:WaitForChild("Util"):WaitForChild("SoundLevel"))
+local SoundLevels = require(Shared:WaitForChild("Config"):WaitForChild("SoundLevels"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -35,6 +37,8 @@ local AfterImage = require(ClientUtil:WaitForChild("AfterImage"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
 local SwordSkillFx = require(ClientUtil:WaitForChild("SwordSkillFx"))
+local SkillCinematic = require(ClientUtil:WaitForChild("SkillCinematic"))
+local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -126,22 +130,27 @@ local function effectsOf(character: Model): Effects?
 	return { fx = sword.fx, colors = SwordSkillFx.colorsOf(weapon.id), scale = SwordSkillFxRules.scale(layers.trailScale) }
 end
 
--- Where a character's skill aims (boss fights): the first foe its shape reaches from where it stands, as the server
--- will count it (SwordRules.skillHits); nil: along its facing
+-- Where a character's skill lands, as the server will count it from where it stands now (SwordRules.skillImpact, at
+-- its root's height): a crescent's burst on the first foe it touches (the end of its run when none, or outside a boss
+-- fight), the judged foe; nil for the skills drawn around it or along its facing
 local function skillAim(character: Model, sword: Swords.Sword): Vector3?
 	local root = character:FindFirstChild("HumanoidRootPart")
-	if not combatTargets or not root or not root:IsA("BasePart") then
+	if not root or not root:IsA("BasePart") then
 		return nil
 	end
-	local targets = combatTargets()
 	local look = root.CFrame.LookVector
-	local hits = SwordRules.skillHits(sword.skill.shape, root.Position.X, root.Position.Z, root.Position.X, root.Position.Z, look.X, look.Z, targets)
-	for _, target in targets do
-		if hits[1] and target.id == hits[1].id then
-			return Vector3.new(target.x, root.Position.Y, target.z)
-		end
+	local x, z = SwordRules.skillImpact(sword.skill.shape, root.Position.X, root.Position.Z, look.X, look.Z, if combatTargets then combatTargets() else {})
+	return if x and z then Vector3.new(x, root.Position.Y, z) else nil
+end
+
+-- A character's blade (its sword in the world): the handle and the blade's base and tip, for effects along it
+local function bladeOf(character: Model): SwordSkillFx.Blade?
+	local view = views[character]
+	if not view or not view.handle.Parent then
+		return nil
 	end
-	return nil
+	local blade = SwordFx.TRAIL_BLADE
+	return { part = view.handle, base = view.grip * CFrame.new(0, blade.base, 0), tip = view.grip * CFrame.new(0, blade.tip, 0) }
 end
 
 -- A cut's effects on a character: its slash as the blade comes round, and on the finisher the slam's burst
@@ -150,7 +159,7 @@ local function cutEffects(character: Model, sword: Swords.Sword, effects: Effect
 	local arc = (SwordFx.ARCS :: any)[`cut{index}`]
 	task.delay(if arc then arc.from else 0, function()
 		if live() then
-			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale)
+			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character))
 		end
 	end)
 	if finisher and index == #sword.combo then
@@ -250,7 +259,8 @@ local function soundFor(key: string, root: BasePart, id: string): Sound
 	local made = Instance.new("Sound")
 	made.Name = `Sword_{key}`
 	made.SoundId = id
-	made.Volume = (Swords.SOUND_VOLUMES :: any)[key] or Swords.SOUND_VOLUME
+	-- Its level, a loud one turned down to the others' (Config/SoundLevels; an unmeasured sound as it is)
+	made.Volume = ((Swords.SOUND_VOLUMES :: any)[key] or Swords.SOUND_VOLUME) * SoundLevel.gain(SoundLevels, id)
 	made.Parent = root
 	sounds[key] = made
 	return made
@@ -740,6 +750,17 @@ function SwordController.SlashOf(character: Model?): { color: { number }, scale:
 	return slashOf(character, sword)
 end
 
+-- A character's blade in the world (its drawn or carried sword), for effects along it (MovePreviewController)
+function SwordController.BladeOf(character: Model): SwordSkillFx.Blade?
+	return bladeOf(character)
+end
+
+-- A character's own skill look (a round 1 sword's, Config/SwordSkillFx), nil for the Steel Sword's dash slash
+function SwordController.SkillLook(character: Model?): string?
+	local effects = if character then effectsOf(character) else nil
+	return if effects then effects.fx.skill else nil
+end
+
 -- Boss fights: where a sword hit on target `id` bursts, struck from `from` (BattleController's hits)
 function SwordController.HitPoint(id: string, from: Vector3): Vector3?
 	return if combatTargets then burstPoint(combatTargets(), from, id) else nil
@@ -813,6 +834,16 @@ local function playCues(sword: Swords.Sword, move: string, token: number)
 				SwordController.PlaySound(cue.key)
 			end
 		end)
+	end
+end
+
+-- A move's sound cues on your character without swinging (MovePreviewController's /skillfx, out of a fight): the
+-- equipped sword's sounds at their moments, as a fight plays them
+function SwordController.PlayCues(move: string)
+	local character = player.Character
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
+	for _, cue in (if sword then sword.cues[move] else nil) or {} do
+		task.delay(cue.at, SwordController.PlaySound, cue.key)
 	end
 end
 
@@ -948,15 +979,41 @@ function SwordController.Skill()
 	playCues(sword, "skill", token)
 	local effects = effectsOf(character)
 	if effects then
-		SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword))
-	end
-	local arc = SwordFx.ARCS.skill :: HitFx.ArcLook
-	task.delay(arc.from, function()
-		local _, arcRoot = ownParts()
-		if arcRoot and stillSwinging(token) then
-			HitFx.swingArc(arcRoot.CFrame, arc, slashOf(character, sword))
+		-- Your own: a shake on the cleave and on the burst, and the look's camera moment (Sunfall Cleave)
+		local aim = skillAim(character, sword)
+		local shake = SwordSkillFxConfig.SHAKE
+		SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, aim, {
+			blade = bladeOf(character),
+			released = function()
+				ScreenFx.shake(shake.release)
+			end,
+			burst = function()
+				ScreenFx.shake(shake.impact)
+				local spec = SwordSkillFxConfig.LOOKS[effects.fx.skill]
+				if spec and spec.burstSound then
+					SwordController.PlaySound(spec.burstSound)
+				end
+			end,
+		})
+		local look = SwordSkillFxConfig.LOOKS[effects.fx.skill]
+		local beats = if look and look.cinematic then look.beats else nil
+		if beats and aim then
+			local travel = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z).Magnitude / math.max(beats.speed, 1)
+			SkillCinematic.play(root, aim - Vector3.new(0, 3, 0), beats.release, travel, function(): boolean
+				return stillSwinging(token)
+			end)
 		end
-	end)
+	end
+	-- The dash slash's flat arc (a round 1 sword's skill draws its own effects instead)
+	local arc = SwordFx.ARCS.skill :: HitFx.ArcLook
+	if not effects then
+		task.delay(arc.from, function()
+			local _, arcRoot = ownParts()
+			if arcRoot and stillSwinging(token) then
+				HitFx.swingArc(arcRoot.CFrame, arc, slashOf(character, sword))
+			end
+		end)
+	end
 	local startX, startZ = root.Position.X, root.Position.Z
 	-- Only the Steel Sword's skill moves you (its dash slash); the round 1 swords' skills are cast where you stand
 	local dash = skill.dash
@@ -973,14 +1030,23 @@ function SwordController.Skill()
 			push(at, direction, studs, dash.to - dash.from, "SwordDash", true)
 		end)
 	end
-	-- The server's rule (SwordRules.skillHits) on what you see here: a burst on a foe the skill will reach
+	-- The server's rule (SwordRules.skillHits) on what you see here: the hit's sound and freeze when the skill reaches its
+	-- first foe (a crescent's when it gets there)
 	task.delay(skill.hitAt, function()
-		if stillSwinging(token) then
-			predictHit(function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
-				local look = facing(hitRoot)
-				return #SwordRules.skillHits(skill.shape, startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, look.X, look.Z, targets) > 0
-			end, "skill", false)
+		local _, hitRoot = ownParts()
+		if not hitRoot or not combatTargets or not stillSwinging(token) then
+			return
 		end
+		local look = facing(hitRoot)
+		local hits = SwordRules.skillHits(skill.shape, startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, look.X, look.Z, combatTargets())
+		if #hits == 0 then
+			return
+		end
+		task.delay(hits[1].after, function()
+			predictHit(function(): boolean
+				return true
+			end, "skill", false)
+		end)
 	end)
 end
 
@@ -1145,7 +1211,7 @@ local function onSwordCast(userId: unknown, move: unknown, x: unknown, z: unknow
 	end
 	if move == "skill" then
 		if mode == "full" then
-			SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword))
+			SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword), { blade = bladeOf(character) })
 		end
 	elseif index then
 		cutEffects(character, sword, effects, index, mode == "full", function(): boolean

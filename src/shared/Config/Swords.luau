@@ -32,6 +32,7 @@ export type SkillShape = {
 	gap: number?,
 	maxStuds: number?,
 	slack: number?,
+	blast: number?,
 }
 export type Skill = { power: number, hitAt: number, length: number, cooldown: number, shape: SkillShape, dash: Dash? }
 -- A sword's effects (Config/SwordSkillFx looks): on its slashes, its finisher (cut 3) and its skill
@@ -146,11 +147,25 @@ local SWORDS: { [string]: Sword } = {
 -- matched to its animation's Hit marker), skill animation (from ReplicatedStorage.SwordAnimations.<model> until
 -- published), skill cues and effects (`fx`, Config/SwordSkillFx)
 local starter = SWORDS.starterSword
-local function withSkill(name: string, model: string, skill: Skill, fx: SwordFx, skillCues: { Cue }): Sword
+-- `own`: a sword's own sounds (added to the starter's) and cues added to its cuts' (the starter's kept)
+type Own = { sounds: { [string]: string }?, cutCues: { [string]: { Cue } }? }
+local function withSkill(name: string, model: string, skill: Skill, fx: SwordFx, skillCues: { Cue }, own: Own?): Sword
 	local animations = table.clone(starter.animations)
 	animations.skill = ""
 	local cues = table.clone(starter.cues)
 	cues.skill = skillCues
+	local sounds = starter.sounds
+	if own and own.sounds then
+		sounds = table.clone(starter.sounds)
+		for key, id in own.sounds do
+			sounds[key] = id
+		end
+	end
+	for move, extra in (if own then own.cutCues else nil) or {} do
+		local list = table.clone(starter.cues[move])
+		table.move(extra, 1, #extra, #list + 1, list)
+		cues[move] = list
+	end
 	return {
 		name = name,
 		power = starter.power,
@@ -160,7 +175,7 @@ local function withSkill(name: string, model: string, skill: Skill, fx: SwordFx,
 		combo = starter.combo,
 		skill = skill,
 		animations = animations,
-		sounds = starter.sounds,
+		sounds = sounds,
 		cues = cues,
 		fx = fx,
 	}
@@ -188,16 +203,33 @@ SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", {
 	{ key = "swing2", at = 0.3 },
 	{ key = "ground", at = 0.54 },
 })
--- Sunfall Cleave: a charged overhead swing, a fiery crescent wave (24 x 6 studs, 40 studs a second)
+-- Sunfall Cleave (owner 2026-11-07): a high jump, a long charge hanging at the top, one cleave in the air (its Hit
+-- marker: tools/blender/anim_sunforged_blade.py) launching a fiery crescent that glides down toward your aim at 14 studs
+-- a second (24 x 6 studs) and bursts on the first foe it touches, hitting every foe within 6 studs of the burst
 SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", {
 	power = 0.9,
-	hitAt = 0.8,
-	length = 1.3,
+	hitAt = 1.18,
+	length = 1.85,
 	cooldown = 8,
-	shape = { kind = "wave", length = 24, width = 6, speed = 40 },
+	shape = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 },
 }, { slash = "fireTrail", finisher = "lavaCrack", skill = "sunfallCleave" }, {
-	{ key = "jump", at = 0.2 },
-	{ key = "swing3", at = 0.75 },
+	{ key = "jump", at = 0.15 }, -- the leap
+	{ key = "flameLicks", at = 0.42 }, -- sunlight gathering as you hang
+	{ key = "fireSwing", at = 1.1 }, -- the cleave (the crescent's burst plays fireBurst where it lands)
+}, {
+	-- Pro Sound Effects, kept quiet (SOUND_VOLUMES; levelled by Config/SoundLevels)
+	sounds = {
+		fireWhoosh = "rbxassetid://9114446852", -- Fire Whoosh 15: a fire layer under every cut's swish
+		lavaBurst = "rbxassetid://9125615451", -- Kerosene Explosion Whooshing Poofs Crackling: the finisher's lava crack
+		flameLicks = "rbxassetid://9114463410", -- Flame Licks 10: sunlight gathering into the blade
+		fireSwing = "rbxassetid://9114446277", -- Fire Whoosh 6: the cleave launching the crescent
+		fireBurst = "rbxassetid://9117985933", -- Pyro Fire Ball Burst 7: the crescent bursting
+	},
+	cutCues = {
+		cut1 = { { key = "fireWhoosh", at = 0.12 } },
+		cut2 = { { key = "fireWhoosh", at = 0.10 } },
+		cut3 = { { key = "fireWhoosh", at = 0.56 }, { key = "lavaBurst", at = 0.68 } },
+	},
 })
 -- Prism Judgment: the blade pointed at the boss, five ghost blades strike it 0.15 s apart (within 24 studs)
 SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", {
@@ -251,5 +283,11 @@ return {
 		cutLines = 0.45,
 		hitThud = 0.35,
 		hitBig = 0.4,
+		-- the Sunforged Blade's (owner 2026-11-06: the forge's quiet level)
+		fireWhoosh = 0.25,
+		lavaBurst = 0.35,
+		flameLicks = 0.25,
+		fireSwing = 0.35,
+		fireBurst = 0.4,
 	},
 }

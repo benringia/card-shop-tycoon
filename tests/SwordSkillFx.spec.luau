@@ -84,6 +84,34 @@ return {
 		end
 	end,
 
+	["Sunfall Cleave's effect keeps time with its moveset: the crescent leaves at the hit, at the shape's speed and blast"] = function()
+		local beats = SwordSkillFx.LOOKS.sunfallCleave.beats :: { [string]: number }
+		local skill = Swords.SWORDS.sunforgedBlade.skill
+		expect.equal(beats.release, skill.hitAt, "the cleave's Hit marker")
+		expect.equal(beats.speed, skill.shape.speed)
+		expect.equal(beats.blast, skill.shape.blast)
+		expect.equal(beats.charge < beats.charged and beats.charged < beats.release, true, "charging before the cleave")
+		expect.equal(SwordSkillFx.SHAKE.release > 0 and SwordSkillFx.SHAKE.impact >= SwordSkillFx.SHAKE.release, true, "a shake on the cleave, a bigger one on the burst")
+	end,
+
+	["the skill cinematic: up to the low angle, held through the charge, chasing the crescent, held on the burst, back"] = function()
+		local cfg = SwordSkillFx.CINEMATIC
+		local function beat(t: number): (string, number)
+			return SwordSkillFxRules.cinematicBeat(t, 1.18, 0.8, cfg)
+		end
+		expect.equal((beat(0)), "rise")
+		local name, alpha = beat(cfg.rise / 2)
+		expect.equal(name, "rise"); expect.near(alpha, 0.5, 1e-9)
+		expect.equal((beat(1.0)), "charge")
+		name, alpha = beat(1.18 + 0.4)
+		expect.equal(name, "chase"); expect.near(alpha, 0.5, 1e-9)
+		expect.equal((beat(1.18 + 0.8 + cfg.hold / 2)), "impact")
+		expect.equal((beat(1.18 + 0.8 + cfg.hold + cfg.back / 2)), "back")
+		name, alpha = beat(1.18 + 0.8 + cfg.hold + cfg.back + 0.01)
+		expect.equal(name, "done"); expect.equal(alpha, 1)
+		expect.equal((SwordSkillFxRules.cinematicBeat(1.18, 1.18, 0, cfg)), "impact", "no travel: straight to the burst")
+	end,
+
 	["the admin panel has a Sword skills section of /skillfx buttons"] = function()
 		local found = false
 		for _, section in AdminPanel.SECTIONS do

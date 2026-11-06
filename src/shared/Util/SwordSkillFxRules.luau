@@ -18,4 +18,24 @@ function SwordSkillFxRules.drawsOthers(distance: number, fullDrawn: number, othe
 	return if fullDrawn < others.full then "full" else "light"
 end
 
+-- Your skill's camera moment at `t` seconds into the skill (Config/SwordSkillFx CINEMATIC): "rise" to the low angle,
+-- "charge" held there until the cleave at `release`, "chase" after the crescent for its `travel` seconds, "impact" held
+-- on the burst, "back" to your view, then "done"; and how far through that beat it is (0-1)
+function SwordSkillFxRules.cinematicBeat(t: number, release: number, travel: number, cfg: { rise: number, hold: number, back: number }): (string, number)
+	local landed = release + travel
+	local beats = {
+		{ name = "rise", from = 0, to = cfg.rise },
+		{ name = "charge", from = cfg.rise, to = release },
+		{ name = "chase", from = release, to = landed },
+		{ name = "impact", from = landed, to = landed + cfg.hold },
+		{ name = "back", from = landed + cfg.hold, to = landed + cfg.hold + cfg.back },
+	}
+	for _, beat in beats do
+		if t < beat.to then
+			return beat.name, if beat.to > beat.from then math.clamp((t - beat.from) / (beat.to - beat.from), 0, 1) else 1
+		end
+	end
+	return "done", 1
+end
+
 return SwordSkillFxRules
