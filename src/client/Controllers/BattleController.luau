@@ -1135,6 +1135,9 @@ local function onEvents(events: { any })
 		elseif event.type == "regen" and typeof(event.to) == "string" and string.sub(event.to, 1, 3) == "a:@" and event.heal then
 			-- A Grade S Healing Rain tick on a player (creatures' ticks show through FightFx)
 			floatText(event.to, `+{event.heal}`, HEAL_COLOR, false, "heal")
+		elseif event.type == "swordHeal" and event.to and event.heal then
+			-- A weapon's heal perk (the Verdant Blade's every 4th hit) on the creature
+			floatText(event.to, `+{event.heal}`, HEAL_COLOR, false, "heal")
 		elseif event.type == "run" and event.ok == false and event.kind == "failed" then
 			UIController.Notify("Couldn't get away!", true, 1.5)
 		elseif event.type == "callin" and event.from then

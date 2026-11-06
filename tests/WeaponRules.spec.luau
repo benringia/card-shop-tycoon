@@ -7,9 +7,15 @@ local expect = require("./lib/expect")
 return {
 	["Power: rarity x grade x levels; the Steel Sword stays 1"] = function()
 		expect.equal(WeaponRules.power(W, "starterSword", "C", 0), 1)
-		expect.near(WeaponRules.power(W, "verdantBlade", "C", 0), 1.35, 1e-9)
-		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 2.1 * 1.15 * 1.5, 1e-9)
+		expect.near(WeaponRules.power(W, "verdantBlade", "C", 0), 1.25, 1e-9)
+		expect.near(WeaponRules.power(W, "sunforgedBlade", "S", 10), 1.6 * 1.15 * 1.3, 1e-9)
+		expect.near(WeaponRules.power(W, "forgeSword_Volt", "B", 4), 1.15 * 1.05 * 1.12, 1e-9)
 		expect.equal(WeaponRules.power(W, "nope", "S", 3), 1, "an unknown weapon hits like the Steel Sword")
+	end,
+
+	["the Prism Blade's own base replaces its rarity's (always strong and bonded is its edge)"] = function()
+		expect.near(WeaponRules.power(W, "prismBlade", "C", 0), 1, 1e-9)
+		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 1.15 * 1.3, 1e-9)
 	end,
 
 	["bond: same element x1.15 damage and x1.5 meter; prism bonds with any; Steel never"] = function()
@@ -41,6 +47,13 @@ return {
 		assert(prism, "the prism perk")
 		expect.equal(prism.kind, "prism")
 		expect.isNil(WeaponRules.perk(W, "starterSword", "S"))
+	end,
+
+	["the element strong against each one (nil for none)"] = function()
+		expect.equal(WeaponRules.strongAgainst(Combat, "Bloom"), "Ember")
+		expect.equal(WeaponRules.strongAgainst(Combat, "Shade"), "Volt")
+		expect.isNil(WeaponRules.strongAgainst(Combat, "None"))
+		expect.isNil(WeaponRules.strongAgainst(Combat, nil))
 	end,
 
 	["the Prism Blade is always strong against the foe's element"] = function()

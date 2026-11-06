@@ -58,10 +58,23 @@ function WeaponRules.power(cfg: any, weaponId: string, grade: string, level: num
 	if not weapon or weapon.source.kind == "starter" then
 		return cfg.STARTER_POWER
 	end
-	local base = cfg.RARITY_POWER[weapon.rarity] or cfg.STARTER_POWER
+	local base = weapon.power or cfg.RARITY_POWER[weapon.rarity] or cfg.STARTER_POWER
 	local gradePower = cfg.GRADE_POWER[grade] or 1
 	local steps = math.clamp(math.floor(level), 0, cfg.MAX_LEVEL)
 	return base * gradePower * (1 + cfg.UPGRADE_STEP * steps)
+end
+
+-- The element strong against this one on the wheel (combat.BEATS), nil if none is
+function WeaponRules.strongAgainst(combat: any, element: string?): string?
+	if not element then
+		return nil
+	end
+	for strong, beats in combat.BEATS do
+		if table.find(beats, element) then
+			return strong
+		end
+	end
+	return nil
 end
 
 -- The element a weapon's hit counts as on the wheel: the Prism Blade picks the one strong against the foe, a plain
@@ -71,18 +84,7 @@ function WeaponRules.hitElement(cfg: any, weaponId: string, foeElement: string?,
 	if not weapon then
 		return nil
 	end
-	if not weapon.prism then
-		return weapon.element
-	end
-	if not foeElement then
-		return nil
-	end
-	for element, beats in combat.BEATS do
-		if table.find(beats, foeElement) then
-			return element
-		end
-	end
-	return nil
+	return if weapon.prism then WeaponRules.strongAgainst(combat, foeElement) else weapon.element
 end
 
 -- The summoned creature sharing the weapon's element (the Prism Blade: any): (damage, meter) multipliers

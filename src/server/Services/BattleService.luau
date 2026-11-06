@@ -1345,7 +1345,8 @@ local function strike(fight: Fight, member: Member, power: number, kind: string,
 	local events: { BattleSim.Event } = {}
 	for _, target in swordTargets(fight) do
 		if reaches(root.Position.X, root.Position.Z, look.X, look.Z, target) then
-			for _, event in BattleSim.swordHit(fight.sim, member.owner, target.id, power, kind) or {} do
+			local weapon = WeaponService.HitInfo(member.player, BattleSim.creatureElement(fight.sim, member.owner))
+			for _, event in BattleSim.swordHit(fight.sim, member.owner, target.id, power, kind, weapon) or {} do
 				table.insert(events, event)
 			end
 		end

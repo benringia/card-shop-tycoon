@@ -1695,6 +1695,36 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
   the published game.
 
+### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md, in progress)
+- **Catalogue** (`Config/Weapons`, looks in `Config/WeaponLooks`): the Steel Sword (everyone's), the Forge Sword in five
+  elements (Common, $1,500 + 20 Wild Ore, shop level 6), the Verdant Blade (Rare, Meadow Warden), the Sunforged Blade
+  (Epic Masterwork: $25,000, 20 Colossus Core, 10 Warden Heartwood, 10 Brood Silk, 5 Star Shards) and the Prism Blade
+  (Legendary, Prism Hydra); spears and scythes are listed as coming soon. Saved per copy: grade and upgrade level
+  (`weapons`, `equippedWeapon`, schema 16; `WeaponService`). Rules: `Util/WeaponRules` (Lune-tested).
+- **Materials**: each boss's own (80% on full loot, 1-2; its daily chest 2) and Wild Ore (15% from Wild and Frontier
+  monsters, 60% from elites, shown in the fight toast).
+- **In fights** (`BattleSim.swordHit`'s weapon, `WeaponService.HitInfo`): sword damage = the creature's ATK x the cut x
+  the weapon's Power; the weapon's element goes on the wheel (x1.5 strong / x0.75 weak; the Prism Blade always strong),
+  a bond with the creature fighting (same element; the Prism Blade any) adds x1.15 damage and x1.5 super meter from
+  sword hits; perks: the Verdant Blade heals the creature 2% every 4th hit (a green "+N"), the Sunforged Blade burns
+  3% of the creature's ATK a second for 3 s (refreshed, never stacked; its own clock beside Inferno's). Grade S perks
+  are x1.2.
+- **Power** = rarity base x grade (C 1, B 1.05, A 1.1, S 1.15) x (1 + 0.03 a level, +10 = x1.3). Bases tuned
+  2026-11-06 against the spec's limits (no weapon lets a 0.8x party win more than 85% fighting well on its tier
+  boss; +10 Grade S never more than halves a 1x fight): Common 1.15, Rare 1.25, Very Rare 1.4, Epic 1.6, Legendary
+  1.8; the Prism Blade has its own base 1.0 (always strong and bonded makes it x1.73 against every foe). The spec's
+  starting numbers (1.15 / 1.35 / 1.55 / 1.8 / 2.1, +5% a level) broke both limits: the Prism Blade at +0 won 93% at
+  0.8x and +10 S cut the Hydra fight to 37%; the Verdant Blade +10 S won 97% at 0.8x.
+- **Balance rows** (`WEAPON="<id>:<level>:<grade>" lune run tools/balance/bosses 60 1 <boss>`, "well" column, solo;
+  the Steel Sword's row first):
+
+  | Weapon on its tier boss | 0.8x win: Steel / +0 C / +10 S | 1x fight: Steel / +10 S |
+  |---|---|---|
+  | Ember Forge Sword, Meadow Warden (strong) | 100% / 100% / 100% (Steel already above 85%) | 79 s / 43 s (54%) |
+  | Verdant Blade, Cave Brood Queen | 60% / 62% / 82% | 117 s / 81 s (69%) |
+  | Sunforged Blade, Frost Tyrant (weak) | 47% / 53% / 62% | 129 s / 90 s (70%) |
+  | Prism Blade, Prism Hydra (after the rooms) | 62% / 70% / 80% | 178 s / 118 s (66%) |
+
 ---
 
 ## 6. Products (stock you sell)

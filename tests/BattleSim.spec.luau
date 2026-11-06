@@ -2357,4 +2357,103 @@ return {
 		end
 		expect.equal(later, 0, "no hits from a fainted caster")
 	end,
+
+	-- Weapons round 1: the equipped weapon's element, bond and perk on sword hits
+	["a weapon of the strong element hits x1.5, bonded another x1.15"] = function()
+		local plain = bossFightWithPlayer(3, 1)
+		local strong = bossFightWithPlayer(3, 1)
+		local bonded = bossFightWithPlayer(3, 1)
+		local weak = bossFightWithPlayer(3, 1)
+		local a = (BattleSim.swordHit(plain, "1", "b:m", 5, "Sword") :: { any })[1]
+		local b = (BattleSim.swordHit(strong, "1", "b:m", 5, "Sword", { element = "Ember", prism = false, bond = 1, meter = 1 }) :: { any })[1]
+		local c = (BattleSim.swordHit(bonded, "1", "b:m", 5, "Sword", { element = "Ember", prism = false, bond = 1.15, meter = 1.5 }) :: { any })[1]
+		local d = (BattleSim.swordHit(weak, "1", "b:m", 5, "Sword", { element = "Tide", prism = false, bond = 1, meter = 1 }) :: { any })[1]
+		expect.near(b.damage, a.damage * 1.5, 2)
+		expect.equal(b.strength, "strong")
+		expect.near(c.damage, a.damage * 1.5 * 1.15, 2)
+		expect.near(d.damage, a.damage * 0.75, 2)
+		expect.equal(d.strength, "weak")
+		local start = combat.SUPER_METER.start
+		local plainGain = plain.sides.a.meters["1"] - start
+		expect.near(plainGain, combat.SUPER_METER.sword, 1e-9)
+		expect.near(bonded.sides.a.meters["1"] - start, plainGain * 1.5, 1e-9, "a bonded weapon fills the meter faster")
+	end,
+
+	["the Prism Blade always counts as strong"] = function()
+		local prism = { prism = true, bond = 1, meter = 1 }
+		local plain = bossFightWithPlayer(4, 1)
+		local bloom = bossFightWithPlayer(4, 1)
+		local a = (BattleSim.swordHit(plain, "1", "b:m", 5, "Sword") :: { any })[1]
+		local b = (BattleSim.swordHit(bloom, "1", "b:m", 5, "Sword", prism) :: { any })[1]
+		expect.equal(b.strength, "strong")
+		expect.near(b.damage, a.damage * 1.5, 2)
+		local volt = bossFightWithPlayer(4, 1)
+		raw(volt, "b:m").element = "Volt" -- a boss that changes element (a phase) is still beaten
+		local c = (BattleSim.swordHit(volt, "1", "b:m", 5, "Sword", prism) :: { any })[1]
+		expect.equal(c.strength, "strong")
+	end,
+
+	["Verdant Blade heals the creature 2% on every 4th hit"] = function()
+		local state = bossFightWithPlayer(5, 1)
+		local creature = raw(state, "a:p1")
+		creature.hp = 100
+		local weapon = { element = "Bloom", prism = false, bond = 1, meter = 1, perk = { kind = "heal", every = 4, share = 0.02 } }
+		local heals = {}
+		for i = 1, 8 do
+			for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+				if e.type == "swordHeal" then
+					table.insert(heals, { at = i, event = e })
+				end
+			end
+		end
+		expect.equal(#heals, 2)
+		expect.equal(heals[1].at, 4)
+		expect.equal(heals[2].at, 8)
+		expect.equal(heals[1].event.to, "a:p1")
+		expect.equal(heals[1].event.from, "a:@1")
+		expect.equal(heals[1].event.heal, 10, "2% of 500")
+		expect.equal(creature.hp, 120)
+	end,
+
+	["Sunforged Blade's burn refreshes, never stacks"] = function()
+		local state = bossFightWithPlayer(6, 1)
+		local weapon = { element = "Ember", prism = false, bond = 1, meter = 1, perk = { kind = "burn", share = 0.5, seconds = 3 } }
+		local all = {}
+		for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+			table.insert(all, e)
+		end
+		for _, e in runFor(state, 1.5) do
+			table.insert(all, e)
+		end
+		for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+			table.insert(all, e)
+		end
+		for _, e in runFor(state, 3.5) do
+			table.insert(all, e)
+		end
+		local ticks = 0
+		for _, e in all do
+			if e.type == "ability" and e.kind == "Burn" and e.to == "b:m" then
+				ticks += 1
+				expect.equal(e.damage, 10, "half the creature's ATK of 20 a second")
+			end
+		end
+		expect.equal(ticks, 4, "ticks at 1, 2, 3 and 4 s: the second hit pushed the end to 4.5 s")
+	end,
+
+	["the bond follows the creature fighting for the owner"] = function()
+		local state = bossFightWithPlayer(8, 1)
+		expect.equal(BattleSim.creatureElement(state, "1"), "Ember")
+		expect.isNil(BattleSim.creatureElement(state, "9"))
+	end,
+
+	["no weapon: the same damage as before"] = function()
+		local a = bossFightWithPlayer(7, 1)
+		local b = bossFightWithPlayer(7, 1)
+		local x = (BattleSim.swordHit(a, "1", "b:m", 0.5, "Sword") :: { any })[1]
+		local y = (BattleSim.swordHit(b, "1", "b:m", 0.5, "Sword", { prism = false, bond = 1, meter = 1 }) :: { any })[1]
+		expect.equal(y.damage, x.damage)
+		expect.equal(y.strength, x.strength)
+		expect.equal(b.sides.a.meters["1"], a.sides.a.meters["1"])
+	end,
 }

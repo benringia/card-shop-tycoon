@@ -26,6 +26,9 @@ local BossRules = if game ~= nil
 local Bosses = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Bosses")) :: any
 	else require("../../shared/Config/Bosses") :: any
+local WeaponRules = if game ~= nil
+	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("WeaponRules")) :: any
+	else require("../../shared/Util/WeaponRules") :: any
 
 local BattleSim = {}
 
@@ -52,6 +55,15 @@ export type RingInfo = { id: number, target: string, shape: string }
 -- player: a player fighter (boss fights; its owner's player in the fight)
 -- A fight perk (Config/Party FIGHT_PERKS): its kind ("Hype", "Calm", "Express", "Hustle", "Haggle") and value
 export type Perk = { kind: string, value: number }
+-- The equipped weapon on a sword hit (WeaponService.HitInfo): its element on the wheel (prism: the one strong against
+-- the target), the bond's damage and meter multipliers, its perk (Config/Weapons: heal every Nth hit, a burn)
+export type SwordWeapon = {
+	element: string?,
+	prism: boolean,
+	bond: number,
+	meter: number,
+	perk: { kind: string, every: number?, share: number?, seconds: number? }?,
+}
 export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
 -- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
 -- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
@@ -66,6 +78,7 @@ export type Event = {
 	-- second of those debuffs, with no `from`) | "debuff" (to: a player fighter, kind: its DEBUFFS kind, seconds) |
 	-- "charge" (from: a fighter
 	-- whose auto-attack lands in `seconds`, to: its likely target; clients wind up and fire their effects to land with it)
+	-- | "swordHeal" (from: the player fighter, to: its creature, heal: HP back; a weapon's heal perk)
 	type: string,
 	from: string?,
 	to: string?,
@@ -143,6 +156,11 @@ type Fighter = {
 	dealt: number, -- damage it did
 	taken: number, -- damage it took
 	burnBy: Fighter?, -- who set its burn (credited with the burn damage)
+	swordBurnUntil: number, -- a weapon's burn perk (its own, so it never replaces an Inferno): until, size, next tick, by
+	swordBurnPerSecond: number,
+	swordBurnTick: number,
+	swordBurnBy: Fighter?,
+	swordHits: number, -- player fighter: sword hits landed (a heal perk's every Nth)
 	player: boolean, -- a player fighter
 	down: boolean, -- player fighter: at 0 HP, kneeling (not targeted, can't act)
 	downUntil: number, -- player fighter: when it gets back up (if one of its owner's creatures stands)
@@ -257,6 +275,11 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		dealt = 0,
 		taken = 0,
 		burnBy = nil,
+		swordBurnUntil = 0,
+		swordBurnPerSecond = 0,
+		swordBurnTick = 0,
+		swordBurnBy = nil,
+		swordHits = 0,
 		player = input.player == true,
 		down = false,
 		downUntil = 0,
@@ -651,14 +674,25 @@ end
 
 -- One hit from `from` on `target`: element, curse, dodge and the target side's shield all apply
 -- asAttack: the event is an "attack" even with a kind (sword hits)
-local function hit(state: State, from: Fighter, target: Fighter, multiplier: number, events: { Event }, kind: string?, asAttack: boolean?): number
+-- `element` and `meterScale`: a sword hit's weapon (its element on the wheel, its bond's meter multiplier)
+local function hit(
+	state: State,
+	from: Fighter,
+	target: Fighter,
+	multiplier: number,
+	events: { Event },
+	kind: string?,
+	asAttack: boolean?,
+	element: string?,
+	meterScale: number?
+): number
 	local eventType = if kind and not asAttack then "ability" else "attack"
 	if state.time < target.dodgeUntil then
 		table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
 		return 0
 	end
 	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype"))
-	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, from.element, target.element)
+	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, element or from.element, target.element)
 	local side = (state.sides :: any)[target.side] :: Side
 	local raw = CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target)
 	-- Haggle rolls only when there's a chance, so fights without it draw the same randoms as before
@@ -670,7 +704,7 @@ local function hit(state: State, from: Fighter, target: Fighter, multiplier: num
 	local damage = math.round(raw * (1 - perkOf(state, target, "Calm")))
 	if damage > 0 and not isSuper(state.combat, kind) then
 		local meter = state.combat.SUPER_METER
-		fillMeter(state, from, if kind == "Sword" or kind == "Skill" then meter.sword else meter.hit)
+		fillMeter(state, from, (if kind == "Sword" or kind == "Skill" then meter.sword else meter.hit) * (meterScale or 1))
 	end
 	-- Its own ward first (Tidal Shield), then its side's shield (a boss's)
 	local warded = soakWard(target, damage, events)
@@ -885,18 +919,26 @@ local function landPending(state: State, events: { Event })
 	state.pending = waiting
 end
 
--- One burn per second of Inferno; a long frame catches up on every tick it covered
-local function burn(state: State, fighter: Fighter, events: { Event })
-	while not fighter.fainted and fighter.burnUntil > 0 and fighter.burnTick <= math.min(state.time, fighter.burnUntil) + 1e-9 do
-		fighter.burnTick += 1
-		local damage = math.max(1, math.round(fighter.burnPerSecond))
+-- A burn's ticks due by now (one a second until `untilTime`; a long frame catches up on every tick it covered); returns
+-- the next tick's time
+local function burnTicks(state: State, fighter: Fighter, untilTime: number, tick: number, perSecond: number, by: Fighter?, events: { Event }): number
+	while not fighter.fainted and untilTime > 0 and tick <= math.min(state.time, untilTime) + 1e-9 do
+		tick += 1
+		local damage = math.max(1, math.round(perSecond))
 		table.insert(events, { type = "ability", kind = "Burn", to = fighter.id, damage = damage })
-		local source = fighter.burnBy
-		if source then
-			source.dealt += math.min(damage, fighter.hp)
+		if by then
+			by.dealt += math.min(damage, fighter.hp)
 		end
 		takeDamage(state, fighter, damage, events)
 	end
+	return tick
+end
+
+-- Inferno's burn and a weapon's burn perk, each on its own clock
+local function burn(state: State, fighter: Fighter, events: { Event })
+	fighter.burnTick = burnTicks(state, fighter, fighter.burnUntil, fighter.burnTick, fighter.burnPerSecond, fighter.burnBy, events)
+	fighter.swordBurnTick =
+		burnTicks(state, fighter, fighter.swordBurnUntil, fighter.swordBurnTick, fighter.swordBurnPerSecond, fighter.swordBurnBy, events)
 end
 
 -- Healing Rain's ticks (Combat ABILITIES Tide): each due one heals its share, capped at max HP; a long frame catches up
@@ -1217,6 +1259,16 @@ function BattleSim.perkOf(state: State, owner: string, kind: string): number
 	return 0
 end
 
+-- The element of the creature fighting for `owner` now (its first standing one; a weapon's bond), nil if none stands
+function BattleSim.creatureElement(state: State, owner: string): string?
+	for _, creature in standingCreatures(state.sides.a) do
+		if ownerKey(creature) == owner then
+			return creature.element
+		end
+	end
+	return nil
+end
+
 -- What each of `owner`'s fighters dealt, by sim id (its player's sword hits under "a:@<owner>"), the ones swapped out
 -- too: the defeat screen's numbers
 function BattleSim.damageBy(state: State, owner: string): { [string]: number }
@@ -1505,10 +1557,40 @@ local function creatureAtk(state: State, side: Side, key: string): number
 	return side.lastAtk[key] or state.combat.SWORD_IDLE_ATK
 end
 
+-- A weapon's perk after a sword hit landed: heal (every `every`-th hit by this owner heals their creature `share` of its
+-- max HP) or burn (the target takes `share` x the creature's ATK a second for `seconds`; a new hit refreshes it, never
+-- stacks)
+local function swordPerk(state: State, fighter: Fighter, target: Fighter, perk: any, events: { Event })
+	if perk.kind == "heal" and perk.every and perk.share then
+		fighter.swordHits += 1
+		if fighter.swordHits % perk.every ~= 0 then
+			return
+		end
+		for _, creature in standingCreatures((state.sides :: any)[fighter.side]) do
+			if ownerKey(creature) == ownerKey(fighter) then
+				local amount = math.min(creature.maxHp - creature.hp, math.max(1, math.round(creature.maxHp * perk.share)))
+				if amount > 0 then
+					creature.hp += amount
+					table.insert(events, { type = "swordHeal", from = fighter.id, to = creature.id, heal = amount })
+				end
+				return
+			end
+		end
+	elseif perk.kind == "burn" and perk.share and perk.seconds and not target.fainted then
+		if target.swordBurnUntil <= state.time then
+			target.swordBurnTick = state.time + 1
+		end
+		target.swordBurnUntil = state.time + perk.seconds
+		target.swordBurnPerSecond = fighter.atk * perk.share
+		target.swordBurnBy = fighter
+	end
+end
+
 -- One sword hit (a cut, or the skill) from `owner`'s player fighter on a standing side-B fighter: their creature's ATK
--- x `power`, neutral element, through the usual hit (a boss's adds guard and its side's shield apply). kind: "Sword"
--- or "Skill". The server checks reach and timing first (SwordRules).
-function BattleSim.swordHit(state: State, owner: string, targetId: string, power: number, kind: string): ({ Event }?, string?)
+-- x `power`, through the usual hit (a boss's adds guard and its side's shield apply). kind: "Sword" or "Skill". The
+-- equipped `weapon` (nil: the old neutral hit) adds its element on the wheel, its bond and its perk. The server checks
+-- reach and timing first (SwordRules).
+function BattleSim.swordHit(state: State, owner: string, targetId: string, power: number, kind: string, weapon: SwordWeapon?): ({ Event }?, string?)
 	if state.result then
 		return nil, "ended"
 	end
@@ -1529,7 +1611,17 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	local side = (state.sides :: any)[fighter.side] :: Side
 	fighter.atk = creatureAtk(state, side, ownerKey(fighter))
 	local events: { Event } = {}
-	hit(state, fighter, target, power * (if spec and spec.sword then spec.sword else 1), events, kind, true)
+	local multiplier = power * (if spec and spec.sword then spec.sword else 1)
+	if not weapon then
+		hit(state, fighter, target, multiplier, events, kind, true)
+		return events, nil
+	end
+	local element = if weapon.prism then WeaponRules.strongAgainst(state.combat, target.element) else weapon.element
+	local dodged = state.time < target.dodgeUntil
+	hit(state, fighter, target, multiplier * weapon.bond, events, kind, true, element, weapon.meter)
+	if weapon.perk and not dodged then
+		swordPerk(state, fighter, target, weapon.perk, events)
+	end
 	return events, nil
 end
 

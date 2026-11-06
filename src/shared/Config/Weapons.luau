@@ -16,6 +16,7 @@ export type Weapon = {
 	prism: boolean?, -- every element at once (the Prism Blade)
 	ready: boolean, -- built: forgeable and drawn; false: "Coming soon" in the Armory
 	moveset: string?, -- its moves: a Config/Swords entry
+	power: number?, -- its own base Power, replacing its rarity's (the Prism Blade: its perks are its edge)
 	model: string?, -- ReplicatedStorage.WeaponModels child
 	source: Source,
 	perk: Perk?,
@@ -102,6 +103,9 @@ local REST: { Weapon } = {
 		moveset = "starterSword",
 		model = "PrismBlade",
 		source = { kind = "boss", boss = "prismHydra" },
+		-- Always strong (x1.5) and bonded with any creature (x1.15) makes it about 1.7 against every foe at +0; its own
+		-- base keeps +10 Grade S inside the Hydra's balance limit (spec 4.6; DESIGN.md weapons balance rows)
+		power = 1,
 		perk = { kind = "prism" }, -- always strong against the foe's element
 	},
 	-- Round 2: spears
@@ -129,10 +133,13 @@ return {
 	ById = ById,
 	STARTER = "starterSword",
 	STARTER_POWER = 1, -- the Steel Sword's Power: today's sword hits
-	-- Power = rarity's base x grade x (1 + UPGRADE_STEP x level)
-	RARITY_POWER = { Common = 1.15, Rare = 1.35, ["Very Rare"] = 1.55, Epic = 1.8, Legendary = 2.1 },
+	-- Power = rarity's base (or the weapon's own) x grade x (1 + UPGRADE_STEP x level). Tuned with tools/balance/bosses
+	-- WEAPON (spec 4.6: no weapon lets a party at 0.8x the recommended Power win more than 85% fighting well on its
+	-- tier boss, and +10 Grade S never more than halves a fight at 1x); the spec's starting numbers (1.15 / 1.35 / 1.55
+	-- / 1.8 / 2.1, +5% a level) broke both (DESIGN.md weapons balance rows)
+	RARITY_POWER = { Common = 1.15, Rare = 1.25, ["Very Rare"] = 1.4, Epic = 1.6, Legendary = 1.8 },
 	GRADE_POWER = { C = 1, B = 1.05, A = 1.1, S = 1.15 },
-	UPGRADE_STEP = 0.05,
+	UPGRADE_STEP = 0.03,
 	MAX_LEVEL = 10,
 	-- Your summoned creature shares the weapon's element (the Prism Blade: any): weapon hits x damage, the super meter's
 	-- fill from sword hits x meter

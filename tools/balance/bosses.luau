@@ -27,6 +27,10 @@
 -- the supers fired on average.
 -- A boss's landed rings leave its debuff (Config/Bosses DEBUFFS, through the sim: Poison and Burn ticks, Shocked, Weakened,
 -- Chilled); NO_DEBUFFS=1 runs without them, to compare. Walk slows (Entangled, Chilled) aren't modelled.
+-- WEAPON="<weapon id>:<level>:<grade>" (WEAPON="verdantBlade:10:S") gives every player that weapon (Config/Weapons): its
+-- Power on every cut and skill, its element on the wheel, the bond with the creature fighting for them and its perk;
+-- without it they hold the Steel Sword (Power 1, no element), as in today's game.
+-- WEAPON_SET="<path>=<number>,..." tries other Config/Weapons numbers (WEAPON_SET="RARITY_POWER.Legendary=1.6,UPGRADE_STEP=0.04").
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
 -- has left (fainted ones stay out), as in a real run; its rows also print the party's HP share left before the boss.
 local process = require("@lune/process")
@@ -40,10 +44,12 @@ local Dungeon = require("../../src/shared/Config/Dungeon")
 local Frontier = require("../../src/shared/Config/Frontier")
 local Party = require("../../src/shared/Config/Party")
 local Swords = require("../../src/shared/Config/Swords")
+local Weapons = require("../../src/shared/Config/Weapons")
 local BossRules = require("../../src/shared/Util/BossRules")
 local CombatMath = require("../../src/shared/Util/CombatMath")
 local DungeonRules = require("../../src/shared/Util/DungeonRules")
 local PartyRules = require("../../src/shared/Util/PartyRules")
+local WeaponRules = require("../../src/shared/Util/WeaponRules")
 
 local FIGHTS = tonumber(process.args[1] or "") or 200
 local PLAYERS = tonumber(process.args[2] or "") or 1
@@ -72,6 +78,46 @@ local SWORD_UPTIME = { 0.55, 0.9 }
 local QUICK_DODGE = { 0.4, 0.8 }
 local RING_ESCAPE = { 0.8, 0.97 }
 local SWORD = Swords.SWORDS[Swords.STARTER]
+
+for setting in string.gmatch(process.env.WEAPON_SET or "", "[^,]+") do
+	local path, value = string.match(setting, "^([%w_.]+)=([%d.]+)$")
+	assert(path and value, `WEAPON_SET wants <path>=<number>, got {setting}`)
+	local parts = string.split(path, ".")
+	local into: any = Weapons
+	for index = 1, #parts - 1 do
+		into = into[parts[index]]
+		assert(typeof(into) == "table", `WEAPON_SET: no table at {path}`)
+	end
+	into[parts[#parts]] = tonumber(value)
+	print(`WEAPON_SET {path} = {value}`)
+end
+
+-- The weapon every player holds (WEAPON env), its Power and what a sword hit carries
+local WEAPON: { id: string, level: number, grade: string }? = nil
+if process.env.WEAPON then
+	local id, level, grade = string.match(process.env.WEAPON, "^([%w_]+):(%d+):(%a)$")
+	assert(id and level and grade and Weapons.ById[id] and Weapons.GRADE_POWER[grade], `WEAPON="<id>:<level>:<grade>" with a Config/Weapons id, got {process.env.WEAPON}`)
+	WEAPON = { id = id, level = tonumber(level) :: number, grade = grade }
+end
+local WEAPON_POWER = if WEAPON then WeaponRules.power(Weapons, WEAPON.id, WEAPON.grade, WEAPON.level) else Weapons.STARTER_POWER
+if WEAPON then
+	print(string.format("WEAPON %s +%d Grade %s: Power %.3f", WEAPON.id, WEAPON.level, WEAPON.grade, WEAPON_POWER))
+end
+
+local function weaponHit(state: any, owner: string): any
+	if not WEAPON then
+		return nil
+	end
+	local weapon = Weapons.ById[WEAPON.id]
+	local bond, meter = WeaponRules.bond(Weapons, WEAPON.id, BattleSim.creatureElement(state, owner))
+	return {
+		element = if weapon.prism then nil else weapon.element,
+		prism = weapon.prism == true,
+		bond = bond,
+		meter = meter,
+		perk = WeaponRules.perk(Weapons, WEAPON.id, WEAPON.grade),
+	}
+end
 
 -- The tool's own dice (the player's choices), so the sim's seeded random stays the sim's
 local dice = 1
@@ -224,7 +270,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 					continue
 				end
 				if state.time >= (skillReady[owner] or 0) then
-					if BattleSim.swordHit(state, owner, target.id, SWORD.skill.power * SWORD.power, "Skill") then
+					if BattleSim.swordHit(state, owner, target.id, SWORD.skill.power * WEAPON_POWER, "Skill", weaponHit(state, owner)) then
 						skillReady[owner] = state.time + SWORD.skill.cooldown * (1 - BattleSim.perkOf(state, owner, "Express"))
 						nextCut[owner] = math.max(nextCut[owner] or 0, state.time + SWORD.skill.length)
 					end
@@ -232,7 +278,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 					local index = cutIndex[owner] or 1
 					local cut = SWORD.combo[index]
 					if roll() < uptime then
-						BattleSim.swordHit(state, owner, target.id, cut.power * SWORD.power, "Sword")
+						BattleSim.swordHit(state, owner, target.id, cut.power * WEAPON_POWER, "Sword", weaponHit(state, owner))
 					end
 					-- chained: the next cut starts at this one's cancel point (the last cut runs to its end)
 					nextCut[owner] = state.time + (if index < #SWORD.combo then cut.cancelAt or cut.length else cut.length)

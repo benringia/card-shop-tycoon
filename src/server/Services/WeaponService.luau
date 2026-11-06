@@ -18,6 +18,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local BattleSim = require(Util:WaitForChild("BattleSim"))
 
 type PlayerData = DataService.PlayerData
 export type Owned = WeaponRules.Owned
@@ -58,6 +59,22 @@ function WeaponService.Power(player: Player): number
 	end
 	local record = WeaponService.GetOwned(player, weaponId)
 	return WeaponRules.power(Weapons, weaponId, if record then record.grade else "C", if record then record.level else 0)
+end
+
+-- The equipped weapon on a sword hit (BattleSim.SwordWeapon): its element (the Prism Blade's is picked per target in
+-- the sim), the bond with the creature fighting for the player and its perk at the weapon's grade
+function WeaponService.HitInfo(player: Player, creatureElement: string?): BattleSim.SwordWeapon
+	local weaponId = WeaponService.GetEquipped(player) or Weapons.STARTER
+	local weapon = Weapons.ById[weaponId]
+	local record = WeaponService.GetOwned(player, weaponId)
+	local bond, meter = WeaponRules.bond(Weapons, weaponId, creatureElement)
+	return {
+		element = if weapon and not weapon.prism then weapon.element else nil,
+		prism = weapon ~= nil and weapon.prism == true,
+		bond = bond,
+		meter = meter,
+		perk = WeaponRules.perk(Weapons, weaponId, if record then record.grade else "C"),
+	}
 end
 
 -- The character's Sword, SwordGrade and SwordLevel attributes from the weapon in hand
