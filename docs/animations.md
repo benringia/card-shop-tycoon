@@ -79,6 +79,33 @@ then `lune run tools/anim/build_kfs`. In these angles a positive x tips the wais
 at the cancel point; `SwordController` moves the character); keep them in step with the keys' follow-through and root
 travel.
 
+## The round 1 swords' skills (sword skills round, spec 2026-11-06-sword-skills-design)
+
+Each round 1 sword swings the starter sword's cuts (shared ids) and its own skill, keyed on `anim_kit` in its own file
+and exported in place at 60 fps. In a background Blender:
+`"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/run_sword_moves.py -- --sword <name> [--preview <dir>]`
+(`<name>` is the file's: `forge_sword`, `verdant_blade`, `sunforged_blade`, `prism_blade`; previews are
+`<name>-skill-<front|side>.mp4`), then `lune run tools/anim/build_kfs assets/blender/Animations/<Folder> assets/animations/<Folder>`.
+The file's `FOLDER` is the moveset's `model` in `Config/Swords` (where `SwordAnims` finds the move in Studio).
+
+| Sword (file) | Skill | Length | Markers (`Config/Swords` skill) |
+|---|---|---|---|
+| Forge Sword (`anim_forge_sword.py`) | Elemental Spin: wound back, two turns with the blade out at waist height, a crouched finish | 1.1 s | `Hit` 0.8 (`hitAt`) |
+| Verdant Blade (`anim_verdant_blade.py`) | Thornline: a hop with the blade hanging vertical, plunged into the ground, held, a shove as the vines snap, wrenched free | 0.95 s + the hold | `Hit` 0.45 (`hitAt`: the vines leave), `Hold` 0.5 (`hold.at`; the next key at 0.58 is `hold.snap`) |
+| Sunforged Blade (`anim_sunforged_blade.py`) | Sunfall Cleave: crouch, a 5-stud jump arched back, a 1.2 s charge at the top, a cleave in the air, a low landing | 2.45 s | `Hit` 1.78 (`hitAt`) |
+| Prism Blade (`anim_prism_blade.py`) | Prism Judgment: crouch, the blade swept to the sky, snapped down pointing at the boss, a punch per strike, swept up for the pillar | 1.75 s | `Hit` 0.6 (`hitAt`: the first strike; the rest `shape.gap` apart) |
+
+- **Held moves**: Thornline's length doesn't include its hold. The game freezes the track at `hold.at` for
+  `SwordRules.holdFor(hitAt, travel, hold.snap)` seconds so its snap key plays as the vines reach the foe
+  (`SwordController`'s `holdPose`; the preview the same through `SwordController.HoldSkill`). Its preview video keys a
+  typical 0.5 s hold in (`PREVIEW_HOLD_SHOWN`); the export never does.
+- **Blade vertical**: with the sword's grip, a blade hanging point-down needs the wrist bent well down, more the higher
+  the hands (Thornline: -135 at the chest, -195 overhead), keyed without the overlap lag (a trailing wrist tips it).
+- **Whole-body turns** (Elemental Spin): a key every quarter turn on the hips' yaw (quaternions stay on their side),
+  the feet turned with it round the spot (`_feet_turned`).
+- Studio plays these from their KeyframeSequences until the owner publishes them (Save to Roblox under
+  `ReplicatedStorage.SwordAnimations.<Folder>`; the id goes in that moveset's `animations.skill`).
+
 ## Making or changing moves
 
 1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through

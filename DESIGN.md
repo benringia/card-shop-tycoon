@@ -1789,6 +1789,37 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   | Verdant Blade, Cave Brood Queen | 60% / 62% / 82% | 117 s / 81 s (69%) |
   | Sunforged Blade, Frost Tyrant (weak) | 47% / 53% / 62% | 129 s / 90 s (70%) |
   | Prism Blade, Prism Hydra (after the rooms) | 62% / 70% / 80% | 178 s / 118 s (66%) |
+- **Sword skills** (weapons round 1.5; spec `2026-11-06-sword-skills-design.md`, plan `2026-11-06-sword-skills.md`,
+  branch `sword-skills`; owner 2026-11-07: "exaggerate everything, that's what kids want"): each round 1 sword has its own
+  moveset (`Config/Swords`: the Steel Sword's three cuts, their animations and sounds shared, its own skill, skill
+  animation, sounds and looks `fx`; `Config/Weapons` points each weapon at it, the five Forge Swords share one). Every
+  skill keeps today's damage in total (0.9 x the weapon's Power) and 8 s cooldown; only the shape it hits, the motion
+  and the look change. The server counts the shape from its own record of where you stand (`SwordRules.skillHits`,
+  Lune-tested; `BattleService.onSwordSkill` lands each hit `after` its moment with its share):
+
+  | Sword | Skill (shape) | Slashes / finisher | Moments |
+  |---|---|---|---|
+  | Steel Sword | the dash slash (its path, as before) | today's | - |
+  | Forge Sword (its element) | Elemental Spin: two turns whipping up a tornado of its element, a wall of it racing out to 9 studs (every foe within 9) | its element streaming off the blade / a blast of it (fire spurt, splash geyser, leaves, lightning, shadow) | hit 0.8 s, 1.1 s |
+  | Verdant Blade | Thornline: the blade plunged vertical into the ground and held until thorny vines racing out (20 studs/s, 18 x 4) reach the first foe and snap shut, catching foes within 4 | leaves and petals / thorny roots | vines leave 0.45 s, the move held (`skill.hold`) until they arrive |
+  | Sunforged Blade | Sunfall Cleave: a high jump, a long charge at the top, a cleave in the air launching an upright fire crescent that glides down (14 studs/s, 24 x 6) and bursts on the first foe it touches, foes within 6 | a fire trail / a lava crack and a fire spurt | hit 1.78 s, 2.45 s |
+  | Prism Blade | Prism Judgment: five ghost Forge Swords in a spinning ring over the boss, each diving in turn (0.15 s apart, a fifth each, the aimed foe within 24), then a rainbow pillar | rainbow bands / crystal spikes in every colour | first strike 0.6 s, pillar 1.28 s, 1.75 s |
+
+  A split skill's strikes fill the super meter as one hit (`BattleSim.swordHit`'s share). Effects (numbers in
+  `Config/SwordSkillFx`, drawing in client `Util/SwordSkillFx`, rules in `Util/SwordSkillFxRules`): charge-ups, ground
+  fissures, eruptions, pillars, shockwaves and particle storms in the sword's colours (a Forge Sword's in its element),
+  thinned on low graphics; your own get screen shakes (`SwordSkillFx.SHAKE`: every finisher, Sunfall's cleave and
+  burst, Thornline's snap, each Prism strike and its pillar) and Sunfall Cleave and Prism Judgment a camera moment on
+  your screen (`Util/SkillCinematic`; camera only, the fight runs on): from the side, a wide shot framing you, the
+  effect's whole path and the boss, on whichever side is clear. Other players' cuts and skills reach every client
+  (`SwordCast` remote) and draw on their character within 90 studs, the first 3 in full and the rest slash-only
+  (`SwordSkillFxRules.drawsOthers`). Sounds: each sword's own, licensed and quiet, a `<key>_<Element>` version for a
+  Forge Sword's element; every sword sound is measured into `Config/SoundLevels` and loud ones are turned down. The
+  skill animations are keyed in a background Blender (`tools/blender/anim_<sword>.py`, docs/animations.md) and play from
+  their KeyframeSequences in Studio until the owner publishes them. Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
+  [level]` and the admin panel's "Sword skills". Balance: `lune run tools/balance/bosses 300` gives identical rows before
+  and after (2026-11-07). Measured in a Warden fight: about 60 fps through each skill (Thornline was building ~200 vine
+  parts at once, now row by row).
 
 ---
 
@@ -2000,13 +2031,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/ui/fx/               # pack opening effect sheets rendered in Blender, uploaded as images (Config/PackFx)
 ├── assets/ui/combat/           # the boss-fight HUD's slanted button, HP bar, hit flash and ring textures, uploaded as images (Config/CombatHud, Config/SwordFx)
 ├── assets/ui/fx-sword/         # the sword effects' textures (crescent, burst flipbook, line, star), made by tools/textures/make_sword_fx.py, uploaded as images (SwordFx.TEXTURES)
-├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
+├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations: StarterSword/<move>, each round 1 sword's own skill (ForgeSword, VerdantBlade, SunforgedBlade, PrismBlade /skill) (docs/animations.md)
 ├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
 ├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels: StarterSword, ForgeSword_<Element>, VerdantBlade, SunforgedBlade, PrismBlade (docs/weapons.md, docs/animations.md "The sword model")
 ├── assets/weapons-source/     # ForgeSword.rbxm, the source of the Forge Sword's five element copies (tools/weapons/forge_variants); not synced
 ├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
 ├── assets/ui/weapon-glow-maps/ # each weapon model's glow map (tools/textures/make_glow_maps.py), uploaded (WeaponLooks GLOW_MAPS), baked in by tools/weapons/add_glow_maps
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)
 ├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings, the sword effects (make_sword_fx.py) (Pillow)
@@ -2148,6 +2179,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── HudMascotView.luau      # the mascot peeking over the party cushion: breathes, blinks, ducks on a summon, chirps on a tap
     │       ├── DefeatScreen.luau       # a lost boss fight: grey world, the fight's numbers, a tip, the countdown to town
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
+    │       ├── SwordSkillFx.luau       # the round 1 swords' slash, finisher and skill effects (Config/SwordSkillFx), coloured and sized by the weapon
+    │       ├── SkillCinematic.luau     # your own skill's camera moment (Sunfall Cleave, Prism Judgment): side shots, restored after
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
@@ -2210,6 +2243,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── WeaponLooks.luau # each weapon's glow, trail, aura, Awakened effect and portrait; the glow ladder, the reveal's timings (plain data)
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
+        │   ├── SwordSkillFx.luau # the round 1 swords' looks: slash, finisher and skill numbers, element particles, shakes, the camera moment (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
         │   ├── WildLoading.luau # the Wild's loading screen: steps, tips, times, swirl and colours (plain data)
         │   ├── SuperFx.luau    # the super moves: ten looks by grade, cinematic tiers, camera, skies, textures, sounds (plain data)
@@ -2314,7 +2348,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── WeaponRules.luau   # weapon Power, element wheel, bond, perks, costs, paying, material goals, drop chance (pure, Lune-tested)
             ├── WeaponText.luau    # a weapon in words: stats, source, cost lines, the Forge's button, pickup and upgrade lines (pure, Lune-tested)
             ├── WeaponLookRules.luau # which glow layers a weapon shows at its rarity, level, grade and place (pure, Lune-tested)
-            ├── SwordRules.luau    # the combo's next cut (cancel points), reach and arc, aiming, lunges, the dash and its path, combo damage per second (pure, Lune-tested)
+            ├── SwordRules.luau    # the combo's next cut (cancel points), reach and arc, aiming, lunges, the dash and its path, combo damage per second, each skill's shape (skillHits, skillImpact, skillTravel, holdFor) (pure, Lune-tested)
+            ├── SwordSkillFxRules.luau # effect size by the trail, others' effects budget, the camera moment's beats and wide-shot distance (pure, Lune-tested)
             ├── SwordArcRules.luau # the swing arcs' curve, points, wipe and the hit burst's spot (pure, Lune-tested)
             ├── SwingGate.luau     # which of your sword actions is still live: tokens, the dash slash's lock, the last cut that struck (pure, Lune-tested)
             ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
@@ -3049,6 +3084,10 @@ boss models; the ranch and Heroic tiers come after those.
   Follow-ups (branch `weapons-followups`): the drop's card turning over, the light column for others nearby, the
   Prism Blade's trail by the foe, and the review's small fixes (pity, Grade S reforge, Forge refunds, equip toasts,
   the Forge window's redraws, the Forge Sword's source model out of the synced folder).
+- [ ] Sword skills round (5.11 "Sword skills", spec `2026-11-06-sword-skills-design.md`, branch `sword-skills`): each round
+  1 sword's own skill, animation, effects (exaggerated), sounds and camera moments; others see them. Waiting on the
+  owner's Studio check of the Forge Sword, then the four skill animations published (Save to Roblox under
+  `ReplicatedStorage.SwordAnimations.<Sword>`; ids into `Config/Swords` animations.skill).
 - [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
   Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
   and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.

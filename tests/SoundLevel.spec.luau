@@ -5,6 +5,7 @@ local SoundLevel = require("../src/shared/Util/SoundLevel")
 local SoundLevels = require("../src/shared/Config/SoundLevels")
 local SuperFx = require("../src/shared/Config/SuperFx")
 local MoveFx = require("../src/shared/Config/MoveFx")
+local Swords = require("../src/shared/Config/Swords")
 local expect = require("./lib/expect")
 
 local function eachId(value: any, visit: (id: string, path: string) -> (), path: string)
@@ -24,6 +25,19 @@ return {
 				local key = string.match(id, "%d+") :: string
 				assert(SoundLevels.LEVELS[key], `{name}{path} ({id}): measure it (tools/audio/measure_loudness)`)
 			end, "")
+		end
+	end,
+
+	-- Sword skills round (spec 2026-11-06-sword-skills-design 6): every sword's sounds too (they're levelled the same way,
+	-- SwordController's soundFor)
+	["every sword sound has its loudness measured"] = function()
+		for id, sword in Swords.SWORDS do
+			for moment, sound in sword.sounds do
+				if sound ~= "" then
+					local key = string.match(sound, "%d+") :: string
+					assert(SoundLevels.LEVELS[key], `{id}.sounds.{moment} ({sound}): measure it (tools/audio/measure_loudness)`)
+				end
+			end
 		end
 	end,
 

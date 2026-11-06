@@ -102,5 +102,21 @@ return {
 		["9114277402"] = 82, -- elementBlast_Volt
 		["9125404581"] = 46, -- elementLayer_Shade
 		["9113551598"] = 51, -- elementBlast_Shade
+		-- The Steel Sword's moves (shared by every moveset; 2026-11-07, tests/SoundLevel: every sword sound measured)
+		["9119750447"] = 106, -- swing1
+		["9119749263"] = 12, -- swing3
+		["9120704978"] = 63, -- air1
+		["9120704940"] = 27, -- air2
+		["9125805579"] = 62, -- jump
+		["9120730138"] = 167, -- slam
+		["9118678952"] = 10, -- ground
+		["9119749145"] = 127, -- dashDraw
+		["9126229255"] = 226, -- dash
+		["9119384855"] = 99, -- cutLines
+		["9113487341"] = 72, -- hitThud
+		["9116385079"] = 84, -- hitBig
+		["9119744642"] = 37, -- draw
+		["9113473249"] = 94, -- down
+		["9126013811"] = 96, -- getUp
 	} :: { [string]: number },
 }

@@ -1,10 +1,11 @@
 --!strict
--- Every combat sound id the super moves, Pet button moves and basic attacks play (Config/SuperFx, Config/MoveFx,
--- Config/AttackFx SOUNDS), one per line as "<config>.<path> <id>", for measuring their loudness in Studio
+-- Every combat sound id the super moves, Pet button moves, basic attacks and swords play (Config/SuperFx, Config/MoveFx,
+-- Config/AttackFx SOUNDS, Config/Swords each sword's sounds), one per line as "<config>.<path> <id>", for measuring their loudness in Studio
 -- (docs/sounds.md "Skill loudness"). Usage: lune run tools/audio/sound_ids
 local SuperFx = require("../../src/shared/Config/SuperFx")
 local MoveFx = require("../../src/shared/Config/MoveFx")
 local AttackFx = require("../../src/shared/Config/AttackFx")
+local Swords = require("../../src/shared/Config/Swords")
 
 local function walk(prefix: string, value: any)
 	if type(value) == "string" then
@@ -24,3 +25,6 @@ end
 walk("SuperFx", SuperFx.SOUNDS)
 walk("MoveFx", MoveFx.SOUNDS)
 walk("AttackFx", AttackFx.SOUNDS)
+for id, sword in Swords.SWORDS do
+	walk(`Swords.{id}`, sword.sounds)
+end
