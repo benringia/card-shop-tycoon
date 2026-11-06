@@ -348,12 +348,18 @@ is over UI (`UIKit.pointerBlocked`).
   creature, 35% stop to pet it (Heart bubble; the creature wags: marker attribute `PetMe`, `CreatureController`).
   Each reaction is a happy moment for the rating.
 - **Town walkers** (`TownWalkerService`, `Util/WalkerRules`, `WALKERS`): while a player is in town, up to 8 customers
-  of every type (one more every 20 s) appear at the plaza's edge, stop at the fountain rim and lane spots, and sit on
-  a free bench 40% of the time (Roblox's sit animation, as the cafe townsfolk). After 30-90 s each picks an open shop
-  (its owner in the game), weighted by rating squared and x3 for a collector whose card is on show there, walks to
-  its door and becomes its customer (`CustomerService.Adopt`); a full shop sends it strolling again; gone after
-  4 minutes. They add to each shop's street customers. Measured 2026-11-06 (one player, Studio): server heartbeat work
-  0.45 ms before, 0.15-0.27 ms with 4 walkers on the plaza; client 16.7 ms a frame (60 fps cap), worst 24 ms.
+  of every type (one more every 20 s) walk in from either end of the street and stroll all of it at 6 studs a second
+  (shoppers walk 10; the walk clip slowed to match, owner 2026-11-06: "walk slowly, not run"): they look in every
+  shop's window from its sidewalk (two spots a shop), stand about on the road and on the plaza's three open lanes, and
+  sit on a free bench 30% of the time (Roblox's sit animation, as the cafe townsfolk). Their paths never jump and keep
+  off grass and water, and a stop they can't reach is skipped, so nobody climbs the fountain or runs in place against
+  it; a waypoint they can't reach in 2 s past its walk time is given up (`NpcMotion.walkTo`, no straight-line
+  fallback). After 40-120 s each picks an open shop (its owner in the game), weighted by rating squared and x3 for a
+  collector whose card is on show there, walks to its door and becomes its customer (`CustomerService.Adopt`); a full
+  shop sends it strolling again; after 5 minutes it walks off at the nearest street end. They add to each shop's
+  street customers. Measured 2026-11-06 (one player, Studio): server heartbeat work 0.45 ms before, 0.15-0.27 ms with
+  4 walkers on the plaza; client 16.7 ms a frame (60 fps cap), worst 24 ms. After the street round: 5-7 walkers spread
+  from x -90 to 99 on both sides, no jumps, a steady 6 studs a second.
 - Customer spawn rate scales with **shop rating** (4.7).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
 
@@ -546,7 +552,8 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 
 ### 5.7 Pack opening feel (important)
 - **A 3D stage** (UI project 3, spec `docs/superpowers/specs/2026-10-29-cards-in-world-and-pack-opening-design.md`):
-  client-only parts far above the world (`Util/OpeningStage`, `PackOpening.STAGE_POSITION`): a violet glow fading to
+  client-only parts right above the player while it shows (`Util/OpeningStage`, `Util/StageSpot`; see the binder's
+  stage note in 10.6; far away at `PackOpening.STAGE_POSITION` otherwise): a violet glow fading to
   near-black behind, a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
   bloom, a colour grade that dims for big pulls and a depth-of-field blur for the push-ins; letterbox bars and a
   white flash sit on top. The world stays where it is (sound stays at the character, `Util/ListenAtCharacter`; the
@@ -1984,6 +1991,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
     │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
     │       ├── BinderDesk.luau         # the 3D binder's scene: desk, painted lamp light, case, rings, page canvases, set tabs, camera framing, picking by raycast
+    │       ├── StageSpot.luau          # puts the binder, card view and pack opening stages right above the player (clear box, claims) and moves their parts
     │       ├── PageTurner.luau         # the binder's turning page: bending strips with light cards on both sides, shade, shadow, page sound, drag
     │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
     │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
@@ -2030,6 +2038,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
+        │   ├── Stages.luau     # how high above the player the client stages go (and why: the camera's light)
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # the 3D opening: stage, camera, tear, stack, flips, alive, results, sounds (client)
@@ -2152,6 +2161,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── PageCurl.luau      # a turning page's bend, its strips, drag-to-turn, fast-turn pacing, swipes and taps (pure, Lune-tested)
             ├── BinderFit.luau     # the 3D binder's pockets on a page and the camera fit for a screen rectangle (pure, Lune-tested)
+            ├── StageRules.luau    # a client stage's spot: the first clear height above the player, else the far stage (pure, Lune-tested)
             ├── BinderGesture.luau # who owns a press on the 3D binder: one pointer, lost releases, holds vs swipes (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
@@ -2393,9 +2403,16 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   as Prices (`Pricing.ROWS`): picture, name, "Box of 24" and a mint "sells ~$3.00" tag, and one mint button with the
   box price (tap it to order). It greys out with "Need $48" when you can't afford the box and shows the lock and
   "Lv 11" while locked (`Util/OrderRules`, Lune-tested); the server re-checks both.
+- **Stages right above the player** (`Config/Stages`, `Util/StageRules`, client `Util/StageSpot`): the binder, the card
+  view and the pack opening each show on a client-only stage. Roblox works the world's light out round the camera, and
+  a stage thousands of studs up made it drop the shop's: after closing, the room showed lit like the open air for
+  about 20 s (owner 2026-11-06). So while shown each stage sits straight above the player, at the first of 120 / 160 /
+  200 studs whose box (`STAGE_BOX` in its config) holds no part, terrain or other stage, and only falls back to its far
+  `STAGE_POSITION` when all are blocked; on closing it goes back there, out of sight. Measured: 150 and 220 studs up
+  for 12-15 s kept the shop's light, 400 lost it. The card view opened from the binder lands 200 up, clear of the desk.
 - **Binder** (`Config/Collection`, `Config/BinderDesk`, `Util/BinderSpreads`, `Util/BinderDesk`, `Util/BinderFit`;
   spec `2026-10-29-3d-binder-design.md`, "Collector's Desk"): a real 3D ring binder lying open on a wooden desk on a
-  client-only stage far above the world (`BinderDesk.STAGE_POSITION`), seen by a Scriptable camera from a little in
+  client-only stage, seen by a Scriptable camera from a little in
   front (the binder leans back 24 degrees, field of view 30) that frames it in the screen area the corner buttons
   leave free. The desk, case and pages are drawn with SurfaceGuis that ignore the world's light: wood planks, a
   painted warm lamp pool, darker edges, a rounded black leather case with a fine, faint dashed seam and a soft shadow on the desk, dark pages (the binder's own
@@ -2466,8 +2483,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
 - **Card view** (`CardDetailController` with `CardInspectorController`, `Config/Inspector`): tapping a binder card
   shows it as a real 3D card (about 60% of the screen's height) close in front of the camera (front: the card face;
-  back: the card back). While it's up the camera waits at an empty stage high above the world
-  (`Inspector.STAGE_POSITION`) with a solid dark sheet behind the card, so nothing of the world (customers, your pet)
+  back: the card back). While it's up the camera waits at an empty spot right above the player (`Util/StageSpot`;
+  `Inspector.STAGE_POSITION` far above the world when none is clear) with a solid dark sheet behind the card, so
+  nothing of the world (customers, your pet)
   shows; always-on-top tags switch off too. Drag to tilt (it eases back), drag far sideways or press Flip (under the
   card) to turn it over; Legendaries keep their element aura; a gold "BEST COPY" ribbon sits on the card while your
   best copy is shown. The card and the info panel are centred on the screen as a pair (`UiLayout.detailPanelLeft`;

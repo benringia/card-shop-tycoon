@@ -1,9 +1,9 @@
 --!strict
 -- Card inspector: the card as a real 3D card in front of the camera. Drag to tilt it (it eases back when you
 -- let go), drag far sideways or press Flip to turn it over. Legendaries keep their element aura, foil its holo.
--- While it's up the camera waits at an empty stage high above the world (Inspector.STAGE_POSITION), with a solid
--- dark sheet just behind the card, so nothing of the world shows (its sounds are still heard at the character) (solid: a see-through sheet hides the card's
--- faces). The card's right edge follows the info panel (SetCardRight, UiLayout.inspectorCard); the card view
+-- While it's up the camera waits at an empty spot right above the player (Util/StageSpot; Inspector.STAGE_POSITION
+-- far above the world when that's blocked), with a solid dark sheet just behind the card, so nothing of the world
+-- shows (its sounds are still heard at the character) (solid: a see-through sheet hides the card's faces). The card's right edge follows the info panel (SetCardRight, UiLayout.inspectorCard); the card view
 -- (CardDetailController) puts its Flip button under it (GetCardRect).
 local GuiService = game:GetService("GuiService")
 -- Local only: the card part lives under the camera, so nobody else sees it.
@@ -24,6 +24,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local ElementAura = require(ClientUtil:WaitForChild("ElementAura"))
+local StageSpot = require(ClientUtil:WaitForChild("StageSpot"))
 local WorldTags = require(ClientUtil:WaitForChild("WorldTags"))
 local ListenAtCharacter = require(ClientUtil:WaitForChild("ListenAtCharacter"))
 
@@ -267,7 +268,9 @@ function CardInspectorController.Show(card: Card, foil: boolean, growth: Growth?
 		savedCameraType = camera.CameraType
 		savedCameraCFrame = camera.CFrame
 		camera.CameraType = Enum.CameraType.Scriptable -- the camera holds still; drags turn the card
-		camera.CFrame = CFrame.new(Inspector.STAGE_POSITION) -- away from the world: no customers walk past
+		-- Away from the world (no customers walk past), but right above the player: a far camera left the shop lit like
+		-- the open air for a while after closing (Util/StageSpot)
+		camera.CFrame = CFrame.new(StageSpot.near("CardView", Inspector.STAGE_BOX, Vector3.zero, Inspector.STAGE_POSITION, {}))
 		yaw, pitch, flipped = 0, 0, false
 		renderConnection = RunService.RenderStepped:Connect(onRender)
 		table.insert(inputConnections, UserInputService.InputBegan:Connect(onInputBegan))
@@ -321,6 +324,7 @@ function CardInspectorController.Close()
 		backdrop = nil
 		WorldTags.show("CardView")
 		ListenAtCharacter.release("CardView")
+		StageSpot.release("CardView")
 	end
 	local camera = workspace.CurrentCamera
 	if camera and savedCameraCFrame then

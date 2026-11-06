@@ -13,6 +13,11 @@ return {
 	-- ===== The 3D opening (UI project 3, spec section 4; the approved preview's timings). Studs and seconds. =====
 	-- A client-only stage far above the world, a Scriptable camera looking along +Z at its middle
 	STAGE_POSITION = Vector3.new(0, 3600, 0), -- apart from the card view's (2500) and the binder's (3200)
+	-- While shown the stage moves right above the player (Config/Stages, Util/StageSpot); this box (its middle
+	-- STAGE_BOX_OFFSET from the stage's middle) must be clear of the world there: the camera, the row of cards and the
+	-- view out to the backdrop
+	STAGE_BOX = Vector3.new(80, 50, 60),
+	STAGE_BOX_OFFSET = Vector3.new(0, 0, 18),
 	FIELD_OF_VIEW = 40,
 	CAMERA_DISTANCE = 8, -- the camera's distance from the stage's middle
 	LETTERBOX = 0.11, -- each cinematic bar, share of the screen height

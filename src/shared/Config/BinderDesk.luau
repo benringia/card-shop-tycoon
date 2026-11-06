@@ -4,6 +4,11 @@
 -- pages, chrome) stay in Config/Collection.BOOK. See DESIGN.md section 10.6.
 return {
 	STAGE_POSITION = Vector3.new(0, 3200, 0), -- apart from the card view's (Inspector.STAGE_POSITION): it opens from here
+	-- While shown it moves right above the player (Config/Stages, Util/StageSpot); this box round the book (its middle
+	-- STAGE_BOX_OFFSET up from the book's centre) must be clear of the world there: the camera and what it sees above
+	-- the desk, which hides everything under it
+	STAGE_BOX = Vector3.new(40, 40, 40),
+	STAGE_BOX_OFFSET = Vector3.new(0, 16, 0),
 	FIELD_OF_VIEW = 30, -- narrow, so the far page doesn't look much smaller than the near one
 	TILT = 24, -- degrees the open binder leans back from facing the camera (it lies on the desk)
 

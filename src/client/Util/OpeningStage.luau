@@ -2,7 +2,9 @@
 -- The 3D pack opening's stage (UI project 3 spec section 4): client-only parts far above the world (a violet glow
 -- backdrop and two lights), a Scriptable camera looking along +Z at the stage's middle, and the cinema on top: black
 -- letterbox bars, a white flash, a dim (ColorCorrection), bloom and a push-in blur on the camera. Built once and kept;
--- show() takes the camera (saving it, like the binder) and hide() gives it back. Numbers: Config/PackOpening.
+-- show() takes the camera (saving it, like the binder) and moves the stage right above the player (Util/StageSpot: a
+-- far camera left the shop lit like the open air for a while after closing); hide() gives the camera back and puts
+-- the stage far away again. Numbers: Config/PackOpening.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,15 +18,21 @@ local CardDesign = require(Config:WaitForChild("CardDesign"))
 local ClientUtil = script.Parent :: Instance
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local ListenAtCharacter = require(ClientUtil:WaitForChild("ListenAtCharacter"))
+local StageSpot = require(ClientUtil:WaitForChild("StageSpot"))
 local WorldTags = require(ClientUtil:WaitForChild("WorldTags"))
 
 local REASON = "PackOpening"
 
 local OpeningStage = {}
 
-local root = CFrame.new(PackOpening.STAGE_POSITION)
 -- The camera sits in front of the stage's middle (at -Z) and looks along +Z, so models whose fronts face -Z face it
-local home = CFrame.lookAt(PackOpening.STAGE_POSITION - Vector3.new(0, 0, PackOpening.CAMERA_DISTANCE), PackOpening.STAGE_POSITION)
+local function homeFor(middle: Vector3): CFrame
+	return CFrame.lookAt(middle - Vector3.new(0, 0, PackOpening.CAMERA_DISTANCE), middle)
+end
+
+-- Far above the world while hidden; right above the player while shown (moveStage)
+local root = CFrame.new(PackOpening.STAGE_POSITION)
+local home = homeFor(PackOpening.STAGE_POSITION)
 
 local folder: Folder? = nil
 local gui: ScreenGui? = nil
@@ -164,6 +172,16 @@ function OpeningStage.build()
 	base.Value = home
 end
 
+-- Moves the scene (and whatever the opening put on it) so the stage's middle is at `to`
+local function moveStage(to: Vector3)
+	local target = CFrame.new(to)
+	if folder then
+		StageSpot.shift(folder, root, target)
+	end
+	root = target
+	home = homeFor(to)
+end
+
 -- The world stays away while the stage shows: the camera's own copy of the scene's offset, plus any shake
 local function step()
 	local camera = workspace.CurrentCamera
@@ -190,6 +208,7 @@ function OpeningStage.show()
 	if shown or not camera then
 		return
 	end
+	moveStage(StageSpot.near(REASON, PackOpening.STAGE_BOX, PackOpening.STAGE_BOX_OFFSET, PackOpening.STAGE_POSITION, { folder :: Folder }))
 	saved = { cameraType = camera.CameraType, cframe = camera.CFrame, fov = camera.FieldOfView }
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.FieldOfView = PackOpening.FIELD_OF_VIEW
@@ -250,6 +269,9 @@ function OpeningStage.hide()
 		end
 	end
 	saved = nil
+	-- Back out of sight: from the town its backdrop would hang over the player's head
+	moveStage(PackOpening.STAGE_POSITION)
+	StageSpot.release(REASON)
 	ListenAtCharacter.release(REASON)
 	WorldTags.show(REASON)
 	Hud.setHidden(REASON, false)

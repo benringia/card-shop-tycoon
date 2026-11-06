@@ -1,10 +1,12 @@
 --!strict
 -- The 3D binder's scene (spec 2026-10-29-3d-binder-design.md sections 3 and 6): an open ring binder lying on a
 -- wooden desk under painted lamp light, built once on a client-only stage far above the world (Config/BinderDesk
--- STAGE_POSITION) and kept for reuse. The desk, case and pages are drawn with SurfaceGuis that ignore the world's
--- lighting, so the scene looks the same at night and at every graphics quality. Each page carries a canvas with
--- nine pocket slots (BinderFit) that the binder fills with card faces. While shown, a Scriptable camera frames the
--- binder inside a rectangle of the screen, world sound stays at the character and on-top world tags are off.
+-- STAGE_POSITION) and kept for reuse. While shown the stage sits right above the player (Util/StageSpot: a far camera
+-- left the shop lit like the open air for a while after closing). The desk, case and pages are drawn with SurfaceGuis
+-- that ignore the world's lighting, so the scene looks the same at night and at every graphics quality. Each page
+-- carries a canvas with nine pocket slots (BinderFit) that the binder fills with card faces. While shown, a Scriptable
+-- camera frames the binder inside a rectangle of the screen, world sound stays at the character and on-top world tags
+-- are off.
 -- Input is by raycast: pick() says which pocket, page or set tab is under a screen point.
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -20,6 +22,7 @@ local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 
 local ClientUtil = script.Parent :: Instance
 local ListenAtCharacter = require(ClientUtil:WaitForChild("ListenAtCharacter"))
+local StageSpot = require(ClientUtil:WaitForChild("StageSpot"))
 local WorldTags = require(ClientUtil:WaitForChild("WorldTags"))
 
 export type Side = "Left" | "Right"
@@ -335,12 +338,22 @@ local function stopTween()
 	end
 end
 
+-- Moves the whole scene (tabs and a lifted card too) so the book's centre is at `to`
+local function moveStage(to: Vector3)
+	local target = CFrame.new(to)
+	if folder then
+		StageSpot.shift(folder, centre, target)
+	end
+	centre = target
+end
+
 function BinderDesk.show()
 	BinderDesk.build()
 	local camera = workspace.CurrentCamera
 	if shown or not camera then
 		return
 	end
+	moveStage(StageSpot.near("Binder", Desk.STAGE_BOX, Desk.STAGE_BOX_OFFSET, Desk.STAGE_POSITION, { folder :: Folder }))
 	saved = { cameraType = camera.CameraType, cframe = camera.CFrame, fov = camera.FieldOfView }
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.FieldOfView = Desk.FIELD_OF_VIEW
@@ -411,6 +424,9 @@ function BinderDesk.hide()
 		end
 	end
 	saved = nil
+	-- Back out of sight: from the town it would float over the player's head
+	moveStage(Desk.STAGE_POSITION)
+	StageSpot.release("Binder")
 	ListenAtCharacter.release("Binder")
 	WorldTags.show("Binder")
 end
