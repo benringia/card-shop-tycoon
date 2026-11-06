@@ -290,14 +290,14 @@ function BossService.DropWeapon(player: Player, weaponId: string, delay: number?
 			return
 		end
 		Remotes.WeaponDropped:FireClient(player, payload)
-		if Weapons.ANNOUNCE[weapon.rarity] then
+		if WeaponRules.announces(Weapons, weaponId, refund) then
 			Remotes.WeaponAnnouncement:FireAllClients(player.DisplayName, weaponId, grade, player.UserId)
 		end
 	end)
 	return payload
 end
 
--- On a full-loot win: the boss's weapon at WeaponRules.dropChance of its pity; a drop resets the pity, a miss adds one
+-- On a full-loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity; a drop resets the pity, a miss adds one
 local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): any
 	local weaponId = weaponOf[bossId]
 	if not weaponId then
@@ -362,8 +362,9 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 			end
 		end
 		grant(player, drops, result.items)
-		-- Its weapon: those who helped only (carried members never roll it, like key fragments)
-		if not carried then
+		-- Its weapon: full loot only (no soft cap or over-power shrink), and those who helped only (carried members never
+		-- roll it, like key fragments)
+		if BossRules.rollsWeapon(factor, carried) then
 			result.weapon = rollWeapon(player, bossId, record)
 		end
 		if record.bonusDay ~= today and not carried then

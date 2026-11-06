@@ -5,6 +5,21 @@ local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 
 return {
+	["shown Power: the Prism Blade's counts its always-on strong hit and bond; the others are their Power"] = function()
+		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0), 1 * Combat.STRONG * W.BOND.damage, 1e-9)
+		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "S", 10), 1.15 * 1.3 * Combat.STRONG * W.BOND.damage, 1e-9)
+		assert(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0) > WeaponRules.shownPower(W, Combat, "sunforgedBlade", "C", 0), "the Legendary reads strongest")
+		expect.equal(WeaponRules.shownPower(W, Combat, "verdantBlade", "A", 3), WeaponRules.power(W, "verdantBlade", "A", 3))
+		expect.equal(WeaponRules.shownPower(W, Combat, "starterSword", "C", 0), 1)
+	end,
+
+	["a dropped Epic or Legendary is told to the server only when it's new (a duplicate became its material)"] = function()
+		expect.equal(WeaponRules.announces(W, "prismBlade", 0), true)
+		expect.equal(WeaponRules.announces(W, "prismBlade", 10), false, "already owned")
+		expect.equal(WeaponRules.announces(W, "verdantBlade", 0), false, "a Rare")
+		expect.equal(WeaponRules.announces(W, "nope", 0), false)
+	end,
+
 	["Power: rarity x grade x levels; the Steel Sword stays 1"] = function()
 		expect.equal(WeaponRules.power(W, "starterSword", "C", 0), 1)
 		expect.near(WeaponRules.power(W, "verdantBlade", "C", 0), 1.25, 1e-9)

@@ -31,6 +31,7 @@ return {
 	["stats: the burn, the prism and the plain Steel Sword"] = function()
 		expect.equal(valueOf(WeaponText.stats(Weapons, "sunforgedBlade", nil, Combat), "Perk"), "Sets the foe burning for 3 s")
 		local prism = WeaponText.stats(Weapons, "prismBlade", nil, Combat)
+		expect.equal(valueOf(prism, "Power"), "x1.72", "always strong and bonded (1.725)")
 		expect.equal(valueOf(prism, "Perk"), "Always strong against the foe's element")
 		expect.equal(valueOf(prism, "Element"), "Every element · bonds with every creature")
 		local steel = WeaponText.stats(Weapons, "starterSword", nil, Combat)

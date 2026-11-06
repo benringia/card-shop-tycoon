@@ -51,7 +51,7 @@ local function perkWords(perk: any): string?
 end
 
 -- Power, element and bond, the perk; grade and level when owned. Empty for an unknown weapon.
-function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, level: number }?, _combat: any): { Row }
+function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, level: number }?, combat: any): { Row }
 	local weapon = cfg.ById[weaponId]
 	if not weapon then
 		return {}
@@ -59,7 +59,7 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	local grade = if owned then owned.grade else "C"
 	local level = if owned then owned.level else 0
 	local rows: { Row } = {
-		{ label = "Power", value = string.format("x%.2f", WeaponRules.power(cfg, weaponId, grade, level)) },
+		{ label = "Power", value = string.format("x%.2f", WeaponRules.shownPower(cfg, combat, weaponId, grade, level)) },
 	}
 	local element = if weapon.prism then "Every element · bonds with every creature"
 		elseif weapon.element then `{weapon.element} · bonds with {weapon.element} creatures`

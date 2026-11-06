@@ -20,6 +20,13 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	["a boss's weapon is rolled only on a full-loot kill: no soft cap or over-power shrink, never for the carried"] = function()
+		expect.equal(BossRules.rollsWeapon(1, false), true)
+		expect.equal(BossRules.rollsWeapon(0.5, false), false, "past the daily soft cap")
+		expect.equal(BossRules.rollsWeapon(0.2, false), false, "an over-powered party")
+		expect.equal(BossRules.rollsWeapon(1, true), false, "a carried group member")
+	end,
+
 	["weapon pity: kills since its weapon last dropped, read safely (weapons round 1)"] = function()
 		expect.equal(BossRules.read(nil, false).weaponPity, 0, "missing")
 		expect.equal(BossRules.read({ weaponPity = 7 }, false).weaponPity, 7)

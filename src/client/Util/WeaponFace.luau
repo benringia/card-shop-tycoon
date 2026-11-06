@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
+local Combat = require(Config:WaitForChild("Combat"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
@@ -91,7 +92,7 @@ local function owned(frame: Frame, weapon: Weapons.Weapon, record: Owned)
 	if weapon.id ~= Weapons.STARTER then
 		P.chip(face, "Level", `+{record.level}`, layout.LEVEL, CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
 	end
-	local power = WeaponRules.power(Weapons, weapon.id, record.grade, record.level)
+	local power = WeaponRules.shownPower(Weapons, Combat, weapon.id, record.grade, record.level)
 	centered(P.text(face, string.format("Power x%.2f", power), layout.VALUE, CardDesign.VALUE_TEXT, 7)).Name = "Power"
 	P.lift(frame, face)
 end

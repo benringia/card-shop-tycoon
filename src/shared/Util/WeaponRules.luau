@@ -64,6 +64,20 @@ function WeaponRules.power(cfg: any, weaponId: string, grade: string, level: num
 	return base * gradePower * (1 + cfg.UPGRADE_STEP * steps)
 end
 
+-- The Power a card shows: its Power, and for the Prism Blade its always-on strong hit and bond too (they apply against
+-- every foe with every creature, so its own base alone would read weaker than a Common)
+function WeaponRules.shownPower(cfg: any, combat: any, weaponId: string, grade: string, level: number): number
+	local power = WeaponRules.power(cfg, weaponId, grade, level)
+	local weapon = cfg.ById[weaponId]
+	return if weapon and weapon.prism then power * combat.STRONG * cfg.BOND.damage else power
+end
+
+-- A dropped weapon told to the whole server: its rarity is announced and it's new (a duplicate became its material)
+function WeaponRules.announces(cfg: any, weaponId: string, refund: number): boolean
+	local weapon = cfg.ById[weaponId]
+	return weapon ~= nil and cfg.ANNOUNCE[weapon.rarity] == true and refund <= 0
+end
+
 -- The element strong against this one on the wheel (combat.BEATS), nil if none is
 function WeaponRules.strongAgainst(combat: any, element: string?): string?
 	if not element then

@@ -372,7 +372,13 @@ function WeaponRevealController.Drop(payload: any)
 	local material = if typeof(payload.material) == "string" then Items.ITEMS[payload.material] else nil
 	local line = if refund > 0 then `Already yours: +{refund} {if material then material.name else "material"}`
 		else "New weapon! Equip it in the Armory."
-	WeaponRevealController.Show({ weaponId = payload.weaponId, grade = payload.grade, level = 0, line = line })
+	WeaponRevealController.Show({
+		weaponId = payload.weaponId,
+		grade = payload.grade,
+		level = 0,
+		line = line,
+		gradeText = if refund > 0 then "Already yours" else nil, -- the rolled grade isn't kept
+	})
 end
 
 -- The Forge's result (ForgeResult): forged, reforged (a higher grade, or the one it kept) or upgraded

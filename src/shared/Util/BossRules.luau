@@ -170,6 +170,12 @@ function BossRules.contributed(config: GroupConfig, dealt: number, taken: number
 end
 
 -- A carried member's chance at a drop: a fraction of it, never a fragment
+-- A boss's own weapon is rolled (and its pity counted) only on a full-loot kill (spec 4.4): none of the soft cap's
+-- or the over-power shrink's reduction, and never for a carried group member
+function BossRules.rollsWeapon(factor: number, carried: boolean): boolean
+	return factor >= 1 and not carried
+end
+
 function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
 end

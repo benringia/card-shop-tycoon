@@ -232,9 +232,9 @@ local function elementButtons(parent: Instance, entry: Entry, order: number)
 		button.Size = UDim2.fromOffset(ELEMENT_BUTTON, ELEMENT_BUTTON)
 		button.TextSize = 22
 		button.AutoButtonColor = open
-		-- The picked one stands out bigger, the others a little smaller
+		-- The picked one stands out bigger; the others keep the 48 px tap size
 		local scale = Instance.new("UIScale")
-		scale.Scale = if weaponOf(entry) == id then 1.12 else 0.88
+		scale.Scale = if weaponOf(entry) == id then 1.12 else 1
 		scale.Parent = button
 		button.Activated:Connect(function()
 			if open then
@@ -306,8 +306,8 @@ local function renderPane(entry: Entry?)
 		hint = "Forged at a random grade, C to S, like a card."
 	elseif tab == UPGRADE and record then
 		if record.level < Weapons.MAX_LEVEL then
-			local now = WeaponRules.power(Weapons, weaponId, record.grade, record.level)
-			local after = WeaponRules.power(Weapons, weaponId, record.grade, record.level + 1)
+			local now = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level)
+			local after = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level + 1)
 			addLabel(words, string.format("+%d -> +%d: Power x%.2f -> x%.2f", record.level, record.level + 1, now, after), Enum.Font.FredokaOne, 16, palette.good, 3)
 			addLabel(words, WeaponText.ladderStep(WeaponLooks, record.level + 1), Enum.Font.GothamBold, 13, palette.hint, 4)
 		else

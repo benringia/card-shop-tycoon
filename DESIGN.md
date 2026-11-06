@@ -3018,6 +3018,9 @@ boss models; the ranch and Heroic tiers come after those.
   HUD): one stack for messages and sales, 6 s (errors 8), a close "x" and tap-to-close. Merged 2026-11-06.
 - [ ] Weapons round 1 (5.11, spec `2026-11-06-weapons-round1-design.md`, branch `weapons-round1`): the Forge, the four
   new swords, drops with pity, the Armory, the glow ladder. Left: the material icons (two sheets made, owner to pick).
+  Spec items moved to later by rulings: the weapon's card flipping over with its grade in the drop cinematic (a
+  "Grade X" line for now), other players nearby seeing the drop's light column (the Epic/Legendary toast tells them),
+  the Prism Blade's trail taking the strong element's colour (its own colour for now).
 - [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
   Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
   and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.
