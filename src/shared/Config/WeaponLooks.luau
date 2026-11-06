@@ -143,6 +143,21 @@ return {
 		circle = { size = 6, under = 2.6, spin = 0.8 }, -- the rune circle: width, studs under the middle, turns a second
 		beam = { width = 2.6, core = 0.8, height = 14, after = 0.35 }, -- after: its width once the weapon is up (it hid the blade)
 		dim = 0.6,
+		-- The drop cinematic's own sounds (owner 2026-11-06: not the pack pulls'; Config/PackOpening SOUNDS names): a rise
+		-- as the column opens, the weapon's arrival by rarity (a magic burst and a long ringing blade, a cymbal swell for
+		-- Epic and Legendary) as it flashes into view, the card's turn; the ring fades as the cinematic ends
+		drop = {
+			rise = "dropRise",
+			ring = "dropRing",
+			ringFade = 0.8,
+			arrive = {
+				Rare = { "dropBurst" },
+				["Very Rare"] = { "dropBurst" },
+				Epic = { "dropBurst", "dropSting" },
+				Legendary = { "dropBurst", "dropSting", "dropBoom" },
+			},
+			card = "flip",
+		},
 		-- A new drop's card beside the weapon (spec 4.4): screen spot, its height (a share of the screen's), the flip's
 		-- seconds; it pops in face down once the weapon is up and turns over turnAfter seconds later
 		card = { x = 0.77, y = 0.5, height = 0.42, flip = 0.36, turnAfter = 0.45 },

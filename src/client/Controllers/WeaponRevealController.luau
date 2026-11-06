@@ -7,6 +7,7 @@
 -- Legendary's, A the Epic's, B and C a small one); an upgrade names the glow layer it adds; a reforge that rolled
 -- lower says it kept the grade. About 6 s; a tap closes it after 2 s. Others hear of an Epic or Legendary drop in a
 -- toast (WeaponAnnouncement). Timing and sizes: Config/WeaponLooks REVEAL.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -317,7 +318,8 @@ local function play(reveal: Reveal)
 	-- The Forge's build-up: everything after it waits `delay`; the anvil's glow brightens meanwhile
 	local delay = if reveal.forge then REVEAL.forge.buildUp else 0
 	local disc = if reveal.forge then anvil(middle + Vector3.new(0, REVEAL.forge.anvilTop, 0), stage) else nil
-	local hit = reveal.hit or { if weapon.rarity == "Legendary" then "hitLegendary" elseif weapon.rarity == "Epic" then "hitEpic" else "hitRare" }
+	local hit = reveal.hit or {}
+	local dropSounds = REVEAL.drop
 	local forgeSounds = REVEAL.forge.sounds
 	local a0 = Instance.new("Attachment")
 	a0.Parent = outer
@@ -349,9 +351,8 @@ local function play(reveal: Reveal)
 			end)
 		end
 	else
-		for _, name in hit do
-			OpeningStage.play(name)
-		end
+		-- A drop: the column's rise now, the weapon's arrival when it flashes into view
+		OpeningStage.play(dropSounds.rise)
 	end
 	local beamAt, riseAt = REVEAL.beamAt + delay, REVEAL.riseAt + delay
 	local bannerAt, lineAt, seconds = REVEAL.bannerAt + delay, REVEAL.lineAt + delay, REVEAL.seconds + delay
@@ -359,7 +360,7 @@ local function play(reveal: Reveal)
 
 	local started = os.clock()
 	local done = false
-	local flashed, popped, lined = false, false, false
+	local flashed, popped, lined, ringFaded = false, false, false, false
 	local connection: RBXScriptConnection
 	local function finish()
 		if done then
@@ -420,6 +421,14 @@ local function play(reveal: Reveal)
 			flashed = true
 			OpeningStage.flash(0.7, 0.5)
 			OpeningStage.shake(0.06, 0.35)
+			for _, name in dropSounds.arrive[weapon.rarity] or dropSounds.arrive.Rare do
+				OpeningStage.play(name)
+			end
+			OpeningStage.play(dropSounds.ring)
+		end
+		if flashed and not ringFaded and t >= seconds - dropSounds.ringFade then
+			ringFaded = true
+			OpeningStage.fade(dropSounds.ring, dropSounds.ringFade)
 		end
 		if showCard and not cardShown and t >= up then
 			cardShown = true
@@ -428,11 +437,14 @@ local function play(reveal: Reveal)
 		if turnCard and not cardTurned and t >= up + REVEAL.card.turnAfter then
 			cardTurned = true
 			turnCard()
+			OpeningStage.play(dropSounds.card)
 		end
 		if not popped and t >= bannerAt then
 			popped = true
 			popBanner()
-			OpeningStage.play(if reveal.forge then forgeSounds.ring else "shimmer")
+			if reveal.forge then
+				OpeningStage.play(forgeSounds.ring)
+			end
 		end
 		if not lined and t >= lineAt then
 			lined = true
@@ -592,6 +604,17 @@ local function beacon(userId: unknown, weaponId: unknown, position: unknown)
 end
 
 function WeaponRevealController.Start()
+	-- The stage's sounds fetched in the background, so a first drop or forge doesn't start them late (as Sound
+	-- instances: an id given as a string fetches nothing)
+	task.spawn(function()
+		local sounds = {}
+		for _, id in OpeningStage.soundIds() do
+			local sound = Instance.new("Sound")
+			sound.SoundId = id
+			table.insert(sounds, sound)
+		end
+		pcall(ContentProvider.PreloadAsync, ContentProvider, sounds)
+	end)
 	Remotes.WeaponDropped.OnClientEvent:Connect(WeaponRevealController.Drop)
 	Remotes.ForgeResult.OnClientEvent:Connect(WeaponRevealController.Forge)
 	Remotes.WeaponBeacon.OnClientEvent:Connect(beacon)

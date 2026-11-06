@@ -175,12 +175,20 @@ return {
 		forgeBurst = "rbxassetid://9117985933", -- Pyro Fire Ball Burst 7: sparks and flame (A and S)
 		forgeBoom = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds): a Grade S or +10
 		forgeRing = "rbxassetid://9119742466", -- Sword Draw Clang Unsheathing Two Sabers 1: the banner
+		-- A boss weapon's drop cinematic (Config/WeaponLooks REVEAL.drop), Pro Sound Effects but the boom
+		dropRise = "rbxassetid://9120732821", -- Whoosh Rising Swish Airy Various Pitches 3: the light column opens
+		dropBurst = "rbxassetid://9116385087", -- Magic Burst 5: the weapon flashes into view
+		dropRing = "rbxassetid://9119747485", -- Sword Long Metallic Ring Decay 3: its blade rings on (faded at the end)
+		dropSting = "rbxassetid://9114023753", -- Cymbal Sting 1: an Epic or Legendary's swell
+		dropBoom = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds): a Legendary's weight
 	},
 	VOLUMES = {
 		crinkle = 0.5, snap = 0.6, stack = 0.35, flip = 0.45, tease = 0.5,
 		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.35, chime = 0.5,
 		-- The Forge's: half their first levels (owner 2026-11-06: good, but loud)
 		forgeFire = 0.22, forgeStrike = 0.25, forgeClank = 0.32, forgeBurst = 0.25, forgeBoom = 0.3, forgeRing = 0.2,
+		-- The drop cinematic's: kept as low as the Forge's (owner 2026-11-06)
+		dropRise = 0.25, dropBurst = 0.3, dropRing = 0.15, dropSting = 0.22, dropBoom = 0.25,
 	},
 	TEASE_FADE_SECONDS = 0.12, -- the tease's rise fades out this fast when the hit lands
 }

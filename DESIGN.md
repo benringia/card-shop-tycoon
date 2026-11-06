@@ -1746,7 +1746,9 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   carried group members never roll it. A weapon you have turns into
   10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
   stage: rune circle, a light column in the rarity's colour, the weapon rising with its glow, "RARE! Verdant Blade",
-  its grade, a line; a new weapon's card pops in face down beside it and turns over to its face and grade), and players
+  its grade, a line; a new weapon's card pops in face down beside it and turns over to its face and grade; its own
+  sounds: an airy rise as the column opens, a magic burst and a long ringing blade as the weapon flashes into view, a
+  cymbal swell for Epic and Legendary and a deep boom for Legendary, a card flip as the card turns), and players
   within 150 studs of the winner see a column of light in its rarity's colour rise where they stand (WeaponBeacon); Epic
   and Legendary drops are toasted to the server (not a duplicate: it says "Already yours", no card or column). A
   weapon's pity resets only once it was really given; the server refuses to reforge a Grade S weapon, and anything

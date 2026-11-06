@@ -23,6 +23,25 @@ return {
 		end
 	end,
 
+	["the drop cinematic's own sounds (not the pack pulls'): a rise, an arrival by rarity, the card's turn"] = function()
+		local source = require("@lune/fs").readFile("src/shared/Config/PackOpening.luau")
+		local drop = WeaponLooks.REVEAL.drop
+		local names = { drop.rise, drop.ring }
+		for _, rarity in { "Rare", "Very Rare", "Epic", "Legendary" } do
+			assert(#drop.arrive[rarity] > 0, `{rarity} has an arrival sound`)
+			for _, name in drop.arrive[rarity] do
+				table.insert(names, name)
+			end
+		end
+		for _, name in names do
+			assert(string.sub(name, 1, 4) == "drop", `{name}: the drop's own sound`)
+			assert(string.match(source, name .. ' = "rbxassetid://%d+"'), `{name} is a stage sound`)
+			assert(string.match(source, name .. " = [%d%.]+"), `{name} has a volume`)
+		end
+		assert(#drop.arrive.Legendary > #drop.arrive.Rare, "a Legendary arrives bigger")
+		assert(string.match(source, drop.card .. ' = "rbxassetid://%d+"'), "the card's turn is a stage sound")
+	end,
+
 	["the forge reveal's sounds are all stage sounds with a volume (Config/PackOpening)"] = function()
 		-- Config/PackOpening builds Vector3s, so Lune reads its text: each name's id line and its volume
 		local source = require("@lune/fs").readFile("src/shared/Config/PackOpening.luau")
