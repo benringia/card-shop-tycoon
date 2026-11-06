@@ -1,7 +1,9 @@
 --!strict
--- Swords the player fights bosses with (spec 2026-11-02-you-in-the-fight-design). Only the starter sword for now; the
--- Forge (project 2) adds one per boss, each with its own combo and skill. Plain data so Lune tests can load it.
--- A cut's damage: the summoned creature's ATK x the cut's power x the sword's power (BattleSim.swordHit). Times are
+-- The movesets the player fights bosses with (spec 2026-11-02-you-in-the-fight-design): each weapon in Config/Weapons
+-- names the moveset it swings (weapons round 1's swords all swing the starter's; spears and scythes get their own in
+-- rounds 2-3). Plain data so Lune tests can load it.
+-- A cut's damage: the summoned creature's ATK x the cut's power x the equipped weapon's Power (WeaponRules.power via
+-- WeaponService.Power; BattleSim.swordHit); a moveset's own `power` is no longer part of it. Times are
 -- seconds from the cut's start: `hitAt` is the strike frame of its animation (its Hit marker), `cancelAt` the end of
 -- its follow-through (the next cut may start there; SwordRules.nextCut), `length` the whole cut. `reach` counts from
 -- the target's edge; `arc` is the cone in front of you it hits (degrees). `lunge`: how far the cut carries you forward
@@ -23,7 +25,7 @@ export type Skill = { power: number, hitAt: number, length: number, cooldown: nu
 export type Cue = { key: string, at: number }
 export type Sword = {
 	name: string,
-	power: number,
+	power: number, -- kept for old data; damage uses the weapon's Power (Config/Weapons) instead
 	element: string?,
 	model: string, -- ReplicatedStorage.WeaponModels child
 	combo: { Cut },

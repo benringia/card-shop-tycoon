@@ -1,6 +1,7 @@
 --!strict
 -- The Forge Sword's five element copies (weapons round 1; docs/weapons.md): reads the imported, finished
--- assets/weapons/ForgeSword.rbxm and writes ForgeSword_<Element>.rbxm for each element, the model renamed and every
+-- assets/weapons-source/ForgeSword.rbxm (not synced: players only need the five copies) and writes
+-- assets/weapons/ForgeSword_<Element>.rbxm for each element, the model renamed and every
 -- colour map (SurfaceAppearance ColorMap, a MeshPart's TextureID) swapped for that element's
 -- (Config/WeaponLooks FORGE_COLOR_MAPS: the gems tinted). Config/Weapons names those models.
 -- Usage: lune run tools/weapons/forge_variants
@@ -9,7 +10,7 @@ local roblox = require("@lune/roblox")
 
 local WeaponLooks = require("../../src/shared/Config/WeaponLooks")
 
-local SOURCE = "assets/weapons/ForgeSword.rbxm"
+local SOURCE = "assets/weapons-source/ForgeSword.rbxm"
 
 for element, colorMap in WeaponLooks.FORGE_COLOR_MAPS :: { [string]: string } do
 	local roots = roblox.deserializeModel(fs.readFile(SOURCE))

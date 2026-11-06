@@ -1996,6 +1996,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
 ├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
 ├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels: StarterSword, ForgeSword_<Element>, VerdantBlade, SunforgedBlade, PrismBlade (docs/weapons.md, docs/animations.md "The sword model")
+├── assets/weapons-source/     # ForgeSword.rbxm, the source of the Forge Sword's five element copies (tools/weapons/forge_variants); not synced
 ├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
 ├── assets/ui/weapon-glow-maps/ # each weapon model's glow map (tools/textures/make_glow_maps.py), uploaded (WeaponLooks GLOW_MAPS), baked in by tools/weapons/add_glow_maps
 ├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender)

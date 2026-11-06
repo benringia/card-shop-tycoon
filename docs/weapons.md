@@ -55,7 +55,8 @@ uploaded; their ids are `Config/WeaponLooks` `FORGE_COLOR_MAPS`.
 ## 4. Into the game
 
 1. The owner imports `<Name>.fbx` in Studio (3D Importer, Rig Type None); the model's pivot lands on the grip's centre.
-   Right-click the model, Save to File, `assets/weapons/<Name>.rbxm` (the Forge Sword as `ForgeSword.rbxm`).
+   Right-click the model, Save to File, `assets/weapons/<Name>.rbxm` (the Forge Sword as
+   `assets/weapons-source/ForgeSword.rbxm`: not synced, only its five element copies go to players).
 2. `lune run tools/weapons/finish_sword assets/weapons/<Name>.rbxm`: straightens the pivots and makes Grip the
    PrimaryPart (textured parts keep their texture).
 3. The Forge Sword: `lune run tools/weapons/forge_variants` writes `ForgeSword_<Element>.rbxm`, each with its

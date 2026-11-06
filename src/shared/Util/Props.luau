@@ -175,11 +175,8 @@ local function frontStrip(model: Model, radius: number, y: number, width: number
 	label.Parent = gui
 end
 
--- The Card Condenser (Town.CONDENSER_LOOK), bottom centre at the origin, front -Z, in the Grading Station's style: a
--- dark plinth with a violet rim, a white body with a light band, a card slot and a CONDENSER strip, a see-through
--- chamber with a glowing floor, a white cap. Its Rotors (the crystal with three cards, and a ring of small cards
--- below it and one above it turning the other way) are Models of their own that CondenserFxController moves.
--- The Forge stand-in (Town.FORGE_LOOK)
+-- The Forge stand-in (Town.FORGE_LOOK), bottom centre at the origin, front -Z, the Condenser's pod in ember orange:
+-- a coal bed with an anvil on it, glowing (until the Forge's own model)
 local function buildForge(model: Model)
 	local look = Town.FORGE_LOOK
 	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
@@ -219,6 +216,10 @@ local function buildForge(model: Model)
 	embers.Parent = bed
 end
 
+-- The Card Condenser (Town.CONDENSER_LOOK), bottom centre at the origin, front -Z, in the Grading Station's style: a
+-- dark plinth with a violet rim, a white body with a light band, a card slot and a CONDENSER strip, a see-through
+-- chamber with a glowing floor, a white cap. Its Rotors (the crystal with three cards, and a ring of small cards
+-- below it and one above it turning the other way) are Models of their own that CondenserFxController moves.
 local function buildCondenser(model: Model)
 	local look = Town.CONDENSER_LOOK
 	local block = Enum.PartType.Block

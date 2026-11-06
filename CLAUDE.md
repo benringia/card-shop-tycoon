@@ -54,7 +54,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/weapons` → ReplicatedStorage.WeaponModels: sword models (`StarterSword.rbxm`, built by
   `tools/blender/build_starter_sword.py`; `ForgeSword_<Element>`, `VerdantBlade`, `SunforgedBlade`, `PrismBlade` from
   Meshy, cleaned by `tools/blender/build_weapon_<id>.py` on `weapon_kit.py`, the Forge Sword's elements made by
-  `lune run tools/weapons/forge_variants`; docs/weapons.md), imported in Studio, finished by
+  `lune run tools/weapons/forge_variants` from `assets/weapons-source/ForgeSword.rbxm`, not synced; docs/weapons.md), imported in Studio, finished by
   `lune run tools/weapons/finish_sword`: the FBX importer drops colours and turns pivots).
   `assets/ui/weapon-glow-maps`: each sword's glow map (its painted runes, gems, crystal), made by
   `tools/textures/make_glow_maps.py`, uploaded (ids in `Config/WeaponLooks` GLOW_MAPS) and baked into the models'
