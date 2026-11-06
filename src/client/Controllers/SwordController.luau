@@ -891,23 +891,28 @@ function SwordController.Skill()
 			HitFx.swingArc(arcRoot.CFrame, arc, slashOf(character, sword))
 		end
 	end)
-	local dash = skill.dash
 	local startX, startZ = root.Position.X, root.Position.Z
-	task.delay(dash.from, function()
-		local own, at = ownParts()
-		if not own or not at or not stillSwinging(token) then
-			return
-		end
-		local direction = facing(at)
-		local targets = if combatTargets then combatTargets() else {}
-		local studs = SwordRules.dashLength(at.Position.X, at.Position.Z, direction.X, direction.Z, targets, dash.studs, dash.margin, dash.maxStuds)
-		AfterImage.spawn(own, 4, dash.to - dash.from + 0.15)
-		push(at, direction, studs, dash.to - dash.from, "SwordDash", true)
-	end)
+	-- Only the Steel Sword's skill moves you (its dash slash); the round 1 swords' skills are cast where you stand
+	local dash = skill.dash
+	if dash then
+		task.delay(dash.from, function()
+			local own, at = ownParts()
+			if not own or not at or not stillSwinging(token) then
+				return
+			end
+			local direction = facing(at)
+			local targets = if combatTargets then combatTargets() else {}
+			local studs = SwordRules.dashLength(at.Position.X, at.Position.Z, direction.X, direction.Z, targets, dash.studs, dash.margin, dash.maxStuds)
+			AfterImage.spawn(own, 4, dash.to - dash.from + 0.15)
+			push(at, direction, studs, dash.to - dash.from, "SwordDash", true)
+		end)
+	end
+	-- The server's rule (SwordRules.skillHits) on what you see here: a burst on a foe the skill will reach
 	task.delay(skill.hitAt, function()
 		if stillSwinging(token) then
 			predictHit(function(hitRoot: BasePart, targets: { SwordRules.Target }): boolean
-				return SwordRules.anyInDashPath(startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, targets, dash.width)
+				local look = facing(hitRoot)
+				return #SwordRules.skillHits(skill.shape, startX, startZ, hitRoot.Position.X, hitRoot.Position.Z, look.X, look.Z, targets) > 0
 			end, "skill", false)
 		end
 	end)

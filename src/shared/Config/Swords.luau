@@ -17,7 +17,25 @@ export type Cut = { power: number, hitAt: number, cancelAt: number?, length: num
 -- like the dodge, never past `maxStuds`); at `hitAt` the cut lines appear and every foe whose edge is within `width` / 2
 -- of the path is hit (the server clamps the path to maxStuds + slack)
 export type Dash = { studs: number, maxStuds: number, margin: number, width: number, from: number, to: number, slack: number }
-export type Skill = { power: number, hitAt: number, length: number, cooldown: number, dash: Dash }
+-- What a skill hits (sword skills round, spec 2026-11-06-sword-skills-design 3; the same fields as
+-- Util/SwordRules.SkillShape, which decides it): the dash's path, a spin around you, a line or a travelling wave ahead,
+-- or strikes on the foe you aim at. Only a dash-shaped skill has a `dash` (it moves you).
+export type SkillShape = {
+	kind: "dash" | "spin" | "line" | "wave" | "judgment",
+	radius: number?,
+	length: number?,
+	width: number?,
+	speed: number?,
+	range: number?,
+	angle: number?,
+	strikes: number?,
+	gap: number?,
+	maxStuds: number?,
+	slack: number?,
+}
+export type Skill = { power: number, hitAt: number, length: number, cooldown: number, shape: SkillShape, dash: Dash? }
+-- A sword's effects (Config/SwordSkillFx looks): on its slashes, its finisher (cut 3) and its skill
+export type SwordFx = { slash: string, finisher: string, skill: string }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
 -- sounds: asset ids by moment ("" plays nothing); cues: each move's sounds layered at set moments, seconds from its
 -- start (SwordController; a dodge stops the ones still to come); slash: its swing arcs' and hits' colour
@@ -33,6 +51,7 @@ export type Sword = {
 	animations: { [string]: string },
 	sounds: { [string]: string },
 	cues: { [string]: { Cue } },
+	fx: SwordFx?, -- the round 1 swords' own effects (the Steel Sword has none: today's look)
 	slash: { color: { number }, scale: number },
 }
 
@@ -70,6 +89,7 @@ local SWORDS: { [string]: Sword } = {
 			length = 1.0,
 			cooldown = 8,
 			dash = { studs = 9, maxStuds = 20, margin = 1.5, width = 4, from = 0.30, to = 0.42, slack = 3 },
+			shape = { kind = "dash", width = 4, maxStuds = 20, slack = 3 }, -- the dash's path (SwordRules.skillHits)
 		},
 		animations = {
 			draw = "rbxassetid://94917864223617",
@@ -120,6 +140,76 @@ local SWORDS: { [string]: Sword } = {
 		},
 	},
 }
+
+-- The round 1 swords (sword skills round, spec 2026-11-06-sword-skills-design): the Steel Sword's cuts, animations and
+-- sounds (the same tables, not copies), each its own skill (today's damage and cooldown, its own shape; timings
+-- matched to its animation's Hit marker), skill animation (from ReplicatedStorage.SwordAnimations.<model> until
+-- published), skill cues and effects (`fx`, Config/SwordSkillFx)
+local starter = SWORDS.starterSword
+local function withSkill(name: string, model: string, skill: Skill, fx: SwordFx, skillCues: { Cue }): Sword
+	local animations = table.clone(starter.animations)
+	animations.skill = ""
+	local cues = table.clone(starter.cues)
+	cues.skill = skillCues
+	return {
+		name = name,
+		power = starter.power,
+		element = nil,
+		model = model,
+		slash = starter.slash,
+		combo = starter.combo,
+		skill = skill,
+		animations = animations,
+		sounds = starter.sounds,
+		cues = cues,
+		fx = fx,
+	}
+end
+
+-- Elemental Spin: a full spin slash, a ring wave of its element along the ground; every foe within 9 studs
+SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", {
+	power = 0.9,
+	hitAt = 0.45,
+	length = 0.9,
+	cooldown = 8,
+	shape = { kind = "spin", radius = 9 },
+}, { slash = "elementTrail", finisher = "elementBurst", skill = "elementalSpin" }, {
+	{ key = "swing3", at = 0.2 },
+	{ key = "hitBig", at = 0.44 },
+})
+-- Thornline: the blade driven into the ground, a line of thorny vines toward the foe (18 x 4 studs)
+SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", {
+	power = 0.9,
+	hitAt = 0.55,
+	length = 1.1,
+	cooldown = 8,
+	shape = { kind = "line", length = 18, width = 4 },
+}, { slash = "leafShed", finisher = "rootBurst", skill = "thornline" }, {
+	{ key = "swing2", at = 0.3 },
+	{ key = "ground", at = 0.54 },
+})
+-- Sunfall Cleave: a charged overhead swing, a fiery crescent wave (24 x 6 studs, 40 studs a second)
+SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", {
+	power = 0.9,
+	hitAt = 0.8,
+	length = 1.3,
+	cooldown = 8,
+	shape = { kind = "wave", length = 24, width = 6, speed = 40 },
+}, { slash = "fireTrail", finisher = "lavaCrack", skill = "sunfallCleave" }, {
+	{ key = "jump", at = 0.2 },
+	{ key = "swing3", at = 0.75 },
+})
+-- Prism Judgment: the blade pointed at the boss, five ghost blades strike it 0.15 s apart (within 24 studs)
+SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", {
+	power = 0.9,
+	hitAt = 0.6,
+	length = 1.4,
+	cooldown = 8,
+	shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 },
+}, { slash = "rainbowArc", finisher = "prismShatter", skill = "prismJudgment" }, {
+	{ key = "dashDraw", at = 0.2 },
+	{ key = "cutLines", at = 0.6 },
+})
 
 return {
 	STARTER = "starterSword",

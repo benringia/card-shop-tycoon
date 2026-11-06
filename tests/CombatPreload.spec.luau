@@ -29,10 +29,12 @@ return {
 
 	["every sword's sounds and published moves are preloaded"] = function()
 		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords)
-		local published = 0
+		-- the round 1 swords share the starter's cut animations (sword skills round): each id counts once
+		local published, seen = 0, {}
 		for _, sword in Swords.SWORDS do
 			for move, id in sword.animations do
-				if id ~= "" then
+				if id ~= "" and not seen[id] then
+					seen[id] = true
 					published += 1
 					expect.equal(has(ids.animations, id), true, move)
 				end

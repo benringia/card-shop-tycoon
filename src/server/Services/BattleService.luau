@@ -1335,8 +1335,9 @@ local function swordTargets(fight: Fight): { SwordRules.Target }
 	return list
 end
 
--- A cut or the skill lands: every target `reaches` says is hit (from where the player stands and faces now) takes it
-local function strike(fight: Fight, member: Member, power: number, kind: string, reaches: (px: number, pz: number, lookX: number, lookZ: number, target: SwordRules.Target) -> boolean)
+-- A cut or the skill lands: every target `reaches` says is hit (from where the player stands and faces now) takes it.
+-- `share` (default 1): this strike's part of one hit (BattleSim.swordHit), for a skill split into strikes
+local function strike(fight: Fight, member: Member, power: number, kind: string, reaches: (px: number, pz: number, lookX: number, lookZ: number, target: SwordRules.Target) -> boolean, share: number?)
 	local root = getRoot(member.player)
 	if fight.ended or fight.members[member.player] ~= member or not root then
 		return
@@ -1346,7 +1347,7 @@ local function strike(fight: Fight, member: Member, power: number, kind: string,
 	for _, target in swordTargets(fight) do
 		if reaches(root.Position.X, root.Position.Z, look.X, look.Z, target) then
 			local weapon = WeaponService.HitInfo(member.player, BattleSim.creatureElement(fight.sim, member.owner))
-			for _, event in BattleSim.swordHit(fight.sim, member.owner, target.id, power, kind, weapon) or {} do
+			for _, event in BattleSim.swordHit(fight.sim, member.owner, target.id, power, kind, weapon, share) or {} do
 				table.insert(events, event)
 			end
 		end
@@ -1380,9 +1381,11 @@ local function onSwordAttack(player: Player)
 	end)
 end
 
--- The sword skill, the dash slash (spec 2026-11-04-sword-moves-design), on its own cooldown: the client dashes you; when
--- the cut lines appear every foe along the path from where you started to where you are is hit. The path is clamped to
--- the dash's longest (maxStuds + slack): the server doesn't take the client's word for how far it went.
+-- The sword skill, on its own cooldown, each sword's own shape (SwordRules.skillHits, spec 2026-11-06-sword-skills-design
+-- 3): the Steel Sword's dash slash (the client dashes you; every foe along the path from where you started to where you
+-- are when the cut lines appear, clamped to the dash's longest: the server doesn't take the client's word for how far it
+-- went), a spin around you, a line or a travelling wave ahead, or strikes on your aimed foe. Where you stand and face
+-- comes from the server's own record of your character; each hit lands `after` the hit moment with its share of the power.
 local function onSwordSkill(player: Player)
 	local fight, member = swordFight(player)
 	local swordId = SwordService.GetSword(player)
@@ -1393,11 +1396,20 @@ local function onSwordSkill(player: Player)
 	local skill = Swords.SWORDS[swordId].skill
 	member.skillReady = os.clock() + skill.cooldown * (1 - BattleSim.perkOf(fight.sim, member.owner, "Express"))
 	SwordService.Touch(player)
-	local dash = skill.dash
 	local sx, sz = root.Position.X, root.Position.Z
-	task.delay(skill.hitAt, strike, fight, member, skill.power * WeaponService.Power(player), "Skill", function(px, pz, _lookX, _lookZ, target)
-		local ex, ez = SwordRules.clampPath(sx, sz, px, pz, dash.maxStuds + dash.slack)
-		return SwordRules.inDashPath(sx, sz, ex, ez, target.x, target.z, target.radius, dash.width)
+	local power = skill.power * WeaponService.Power(player)
+	task.delay(skill.hitAt, function()
+		local now = getRoot(player)
+		if fight.ended or fight.members[player] ~= member or not now then
+			return
+		end
+		local look = now.CFrame.LookVector
+		local hits = SwordRules.skillHits(skill.shape, sx, sz, now.Position.X, now.Position.Z, look.X, look.Z, swordTargets(fight))
+		for _, hit in hits do
+			task.delay(hit.after, strike, fight, member, power * hit.share, "Skill", function(_px, _pz, _lookX, _lookZ, target)
+				return target.id == hit.id
+			end, hit.share)
+		end
 	end)
 end
 

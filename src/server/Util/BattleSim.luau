@@ -1589,8 +1589,9 @@ end
 -- One sword hit (a cut, or the skill) from `owner`'s player fighter on a standing side-B fighter: their creature's ATK
 -- x `power`, through the usual hit (a boss's adds guard and its side's shield apply). kind: "Sword" or "Skill". The
 -- equipped `weapon` (nil: the old neutral hit) adds its element on the wheel, its bond and its perk. The server checks
--- reach and timing first (SwordRules).
-function BattleSim.swordHit(state: State, owner: string, targetId: string, power: number, kind: string, weapon: SwordWeapon?): ({ Event }?, string?)
+-- reach and timing first (SwordRules). `share` (default 1): this strike's part of one hit (Prism Judgment's five
+-- strikes are a fifth each), so together they fill the super meter as one hit.
+function BattleSim.swordHit(state: State, owner: string, targetId: string, power: number, kind: string, weapon: SwordWeapon?, share: number?): ({ Event }?, string?)
 	if state.result then
 		return nil, "ended"
 	end
@@ -1612,13 +1613,14 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	fighter.atk = creatureAtk(state, side, ownerKey(fighter))
 	local events: { Event } = {}
 	local multiplier = power * (if spec and spec.sword then spec.sword else 1)
+	local part = share or 1
 	if not weapon then
-		hit(state, fighter, target, multiplier, events, kind, true)
+		hit(state, fighter, target, multiplier, events, kind, true, nil, part)
 		return events, nil
 	end
 	local element = if weapon.prism then WeaponRules.strongAgainst(state.combat, target.element) else weapon.element
 	local dodged = state.time < target.dodgeUntil
-	hit(state, fighter, target, multiplier * weapon.bond, events, kind, true, element, weapon.meter)
+	hit(state, fighter, target, multiplier * weapon.bond, events, kind, true, element, weapon.meter * part)
 	if weapon.perk and not dodged then
 		swordPerk(state, fighter, target, weapon.perk, events)
 	end

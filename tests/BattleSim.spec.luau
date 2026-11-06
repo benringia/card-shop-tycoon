@@ -2285,6 +2285,41 @@ return {
 		expect.equal(state.sides.a.meters["1"] >= spec.sword + spec.dodge, true, "a dodge fills more than a hit")
 	end,
 
+	-- Sword skills round: Prism Judgment lands as five strikes a fifth each; together they fill the meter as one hit
+	-- (spec 3: same strength as today's skill), with or without a weapon
+	["a skill's split strikes fill the meter as one hit together"] = function()
+		local spec = combat.SUPER_METER
+		local state = bossFightWithPlayer(62, 0, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 })
+		state.sides.a.meters["1"] = 0
+		for _ = 1, 5 do
+			BattleSim.swordHit(state, "1", "b:m", 0.2, "Skill", nil, 0.2)
+		end
+		expect.near(state.sides.a.meters["1"], spec.sword, 1e-6, "five fifths: one hit's meter")
+		state.sides.a.meters["1"] = 0
+		local weapon = { element = "Ember", prism = false, bond = 1, meter = 1.5 }
+		for _ = 1, 5 do
+			BattleSim.swordHit(state, "1", "b:m", 0.2, "Skill", weapon, 0.2)
+		end
+		expect.near(state.sides.a.meters["1"], spec.sword * 1.5, 1e-6, "with a weapon's meter bonus")
+	end,
+
+	["a skill's split strikes deal one hit's damage together (within rounding)"] = function()
+		local spread = combat.DAMAGE_SPREAD
+		combat.DAMAGE_SPREAD = 0
+		local function lost(strikes: number): number
+			local state = bossFightWithPlayer(64, 0, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 })
+			local before = BattleSim.getFighter(state, "b:m").hp
+			for _ = 1, strikes do
+				BattleSim.swordHit(state, "1", "b:m", 1 / strikes, "Skill", nil, 1 / strikes)
+			end
+			return before - BattleSim.getFighter(state, "b:m").hp
+		end
+		local one, five = lost(1), lost(5)
+		combat.DAMAGE_SPREAD = spread
+		expect.equal(one > 0, true, "the skill landed")
+		expect.equal(math.abs(one - five) <= 2.5, true, `one hit {one}, five fifths {five}`)
+	end,
+
 	["a super's own hits don't fill the meter"] = function()
 		local state = wild(fighter("a", "Ember", 1e6, 100, 1, "Solarion"), {}, monster("Bloom", 1e6, 0, 1), 63)
 		castNow(state, "a:a", "signature")

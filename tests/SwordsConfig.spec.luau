@@ -11,6 +11,56 @@ local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge",
 local SOUNDS = { "swing1", "swing2", "swing3", "hit", "draw", "dodge", "ring", "down", "getUp" }
 
 return {
+	-- Sword skills round (spec 2026-11-06-sword-skills-design): each round 1 sword its own moveset, the starter's cuts
+	["each round 1 sword has its own moveset: the starter's cuts and animations, its own skill at today's strength"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		expect.equal(Weapons.ById.sunforgedBlade.moveset, "sunforgedBlade")
+		expect.equal(Weapons.ById.verdantBlade.moveset, "verdantBlade")
+		expect.equal(Weapons.ById.prismBlade.moveset, "prismBlade")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			expect.equal(Weapons.ById[`forgeSword_{element}`].moveset, "forgeSword", element)
+		end
+		expect.equal(Weapons.ById.starterSword.moveset, "starterSword")
+		local starter = Swords.SWORDS.starterSword
+		local kinds = { dash = true, spin = true, line = true, wave = true, judgment = true }
+		for id, sword in Swords.SWORDS do
+			expect.equal(sword.combo, starter.combo, `{id} swings the starter's cuts`)
+			for _, key in { "cut1", "cut2", "cut3" } do
+				expect.equal(sword.animations[key], starter.animations[key], `{id} {key}`)
+			end
+			expect.equal(sword.skill.power, 0.9, `{id} skill power`)
+			expect.equal(sword.skill.cooldown, 8, `{id} skill cooldown`)
+			assert(sword.skill.shape and kinds[sword.skill.shape.kind], `{id} skill shape`)
+		end
+		expect.equal(starter.skill.shape.kind, "dash")
+		expect.equal(starter.fx, nil, "the Steel Sword keeps today's look")
+		local fx = {
+			forgeSword = { "elementTrail", "elementBurst", "elementalSpin" },
+			verdantBlade = { "leafShed", "rootBurst", "thornline" },
+			sunforgedBlade = { "fireTrail", "lavaCrack", "sunfallCleave" },
+			prismBlade = { "rainbowArc", "prismShatter", "prismJudgment" },
+		}
+		for id, names in fx do
+			local sword = Swords.SWORDS[id]
+			assert(sword and sword.fx, id)
+			expect.equal(sword.fx.slash, names[1])
+			expect.equal(sword.fx.finisher, names[2])
+			expect.equal(sword.fx.skill, names[3])
+		end
+	end,
+
+	["each new skill has the spec's shape"] = function()
+		local shapes = Swords.SWORDS
+		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")
+		expect.equal(shapes.forgeSword.skill.shape.radius, 9)
+		local thorn = shapes.verdantBlade.skill.shape
+		expect.equal(thorn.kind, "line"); expect.equal(thorn.length, 18); expect.equal(thorn.width, 4)
+		local sun = shapes.sunforgedBlade.skill.shape
+		expect.equal(sun.kind, "wave"); expect.equal(sun.length, 24); expect.equal(sun.width, 6); expect.equal(sun.speed, 40)
+		local prism = shapes.prismBlade.skill.shape
+		expect.equal(prism.kind, "judgment"); expect.equal(prism.range, 24); expect.equal(prism.strikes, 5); expect.equal(prism.gap, 0.15)
+	end,
+
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
 	["the sword effects' textures are uploaded images"] = function()
 		for _, key in { "crescent", "burst", "line", "star" } do
@@ -147,10 +197,13 @@ return {
 					expect.equal(cut.lunge.studs > 0 and cut.lunge.studs <= 4, true, `{sword.name} cut {index} lunge length`)
 				end
 			end
+			-- Only a dash-shaped skill (the Steel Sword's dash slash) moves you; the round 1 swords' skills stand
 			local dash = sword.skill.dash
-			expect.equal(dash ~= nil, true, `{sword.name} skill dash`)
-			expect.equal(dash.from < dash.to and dash.to <= sword.skill.hitAt, true, `{sword.name} dash before the cut lines`)
-			expect.equal(dash.studs <= dash.maxStuds and dash.width > 0 and dash.slack > 0, true, `{sword.name} dash numbers`)
+			expect.equal(dash ~= nil, sword.skill.shape.kind == "dash", `{sword.name} dashes only with a dash shape`)
+			if dash then
+				expect.equal(dash.from < dash.to and dash.to <= sword.skill.hitAt, true, `{sword.name} dash before the cut lines`)
+				expect.equal(dash.studs <= dash.maxStuds and dash.width > 0 and dash.slack > 0, true, `{sword.name} dash numbers`)
+			end
 		end
 		local starter = Swords.SWORDS.starterSword
 		expect.equal(starter.combo[1].hitAt, 0.217, "the forehand's Hit marker")

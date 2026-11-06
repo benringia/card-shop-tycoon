@@ -57,7 +57,7 @@ for _, element in ELEMENTS do
 		rarity = "Common",
 		element = element,
 		ready = true,
-		moveset = "starterSword",
+		moveset = "forgeSword",
 		model = `ForgeSword_{element}`,
 		source = { kind = "forge", cost = FORGE_COST },
 	})
@@ -70,7 +70,7 @@ local REST: { Weapon } = {
 		rarity = "Rare",
 		element = "Bloom",
 		ready = true,
-		moveset = "starterSword",
+		moveset = "verdantBlade",
 		model = "VerdantBlade",
 		source = { kind = "boss", boss = "meadowWarden" },
 		perk = { kind = "heal", every = 4, share = 0.02 }, -- every 4th hit heals your creature 2% of its max HP
@@ -82,7 +82,7 @@ local REST: { Weapon } = {
 		rarity = "Epic",
 		element = "Ember",
 		ready = true,
-		moveset = "starterSword",
+		moveset = "sunforgedBlade",
 		model = "SunforgedBlade",
 		source = {
 			kind = "masterwork",
@@ -100,7 +100,7 @@ local REST: { Weapon } = {
 		rarity = "Legendary",
 		prism = true,
 		ready = true,
-		moveset = "starterSword",
+		moveset = "prismBlade",
 		model = "PrismBlade",
 		source = { kind = "boss", boss = "prismHydra" },
 		-- Always strong (x1.5) and bonded with any creature (x1.15) makes it about 1.7 against every foe at +0; its own
