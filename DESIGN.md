@@ -1695,7 +1695,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
   the published game.
 
-### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md, in progress)
+### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md; rounds 2-3, spears and scythes, in 13)
 - **Catalogue** (`Config/Weapons`, looks in `Config/WeaponLooks`): the Steel Sword (everyone's), the Forge Sword in five
   elements (Common, $1,500 + 20 Wild Ore, shop level 6), the Verdant Blade (Rare, Meadow Warden), the Sunforged Blade
   (Epic Masterwork: $25,000, 20 Colossus Core, 10 Warden Heartwood, 10 Brood Silk, 5 Star Shards) and the Prism Blade
@@ -1719,6 +1719,26 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (a weapon you don't have), upgrade (+1 at a time, never fails), reforge (half the making cost, rounded up: a new
   grade roll, the better kept). Its own Forge within 12 studs, one request at a time, costs checked and taken all or
   nothing on the server.
+- **The Forge window** (`ForgeController`, owner's layout B): tabs Forge / Upgrade / Reforge; the weapons for the tab
+  on the left as slim rows with their card (the Forge tab previews Grade C +0), the chosen one on the right: its card,
+  and beside it what the tab does ("+8 -> +9: Power x1.43 -> x1.46" and the glow layer it adds, "Now Grade C"), the
+  Forge Sword's five element buttons (48 px; the picked one bigger, the owned ones greyed) and its cost with have /
+  need in green or red; the hint and the stats in words below. One pinned button says what it does ("Upgrade to +9 ·
+  $8,000") or what's missing first ("Opens at shop level 6", "Need 5 more Wild Ore", "Need $500 more";
+  `WeaponText.button`). The window steps aside for the forge reveal and comes back after it; it closes when you walk
+  away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band, the cost on one line.
+- **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
+  catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`): owned ones show
+  their portrait over their glow, Power, grade and +level, "Owned" / "Equipped"; locked ones a dark sword with
+  where they come from and the progress toward them ("Forge: Wild Ore 15/20"); rounds 2-3's "Coming soon". Tapping
+  an owned one opens its card view (`WeaponDetailController`: stats in words, Equip).
+- **The Boss Board**: each boss with a weapon shows its card under the drops, "Drop chance now: 1.0%" (with the
+  pity) and its material's chance.
+- **Models** (`assets/weapons`, docs/weapons.md): Figma concepts picked by the owner, Meshy image-to-3D, cleaned in
+  a background Blender (`tools/blender/weapon_kit.py`, `build_weapon_<id>.py`: about 4,000 triangles, Blade / Guard
+  / Grip, the grip's centre on the origin), imported by the owner, finished by `tools/weapons/finish_sword`; the
+  Forge Sword's five elements are one model with five colour maps (`tools/weapons/forge_variants`). Portraits: each
+  model rendered on magenta, cut out, uploaded (`assets/ui/weapon-portraits`, `WeaponLooks` portrait ids).
 - **Drops** (`BossService`): each full-loot win of a boss with a built weapon rolls it at 1% + 0.5% per full-loot win
   since the last (`weaponPity` in its saved record); carried group members never roll it. A weapon you have turns into
   10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
@@ -1958,10 +1978,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/ui/fx-sword/         # the sword effects' textures (crescent, burst flipbook, line, star), made by tools/textures/make_sword_fx.py, uploaded as images (SwordFx.TEXTURES)
 ├── assets/animations/          # sword moves as KeyframeSequences (.rbxm) → ReplicatedStorage.SwordAnimations (docs/animations.md)
 ├── assets/monster-animations/  # monster and boss attack clips (.rbxm) → ReplicatedStorage.MonsterAnimations (docs/animations.md "Bone rigs")
-├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels (docs/animations.md "The sword model")
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender)
+├── assets/weapons/             # sword models (.rbxm) → ReplicatedStorage.WeaponModels: StarterSword, ForgeSword_<Element>, VerdantBlade, SunforgedBlade, PrismBlade (docs/weapons.md, docs/animations.md "The sword model")
+├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
-├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model (Lune)
+├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)
 ├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings, the sword effects (make_sword_fx.py) (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
@@ -2057,6 +2078,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
+    │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs, weapon rows, the chosen weapon's card, cost and one button
+    │   │   ├── WeaponDetailController.luau # an Armory weapon's card view: its stats in words, Equip
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
@@ -2083,6 +2106,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
     │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
+    │       ├── WeaponFace.luau         # draws a weapon's card (owned: portrait, Power, grade, +level; locked: source and progress) on CardFace's parts
+    │       ├── WeaponLook.luau         # a weapon model's glow ladder: shell, aura, trail, burst, Awakened effect, twinkle, light; the stand-in model
     │       ├── OpeningStage.luau       # the opening's 3D stage: backdrop, lights, camera, post effects, bars, flash, shake, sounds
     │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid
     │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
@@ -2155,6 +2180,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── AttackFx.luau   # attack effects: each element's attack kind and colour, flight, combo, orbit, budget, sounds
         │   ├── Victory.luau    # the fight end screen: timings, sizes, colours by result, sounds
         │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
+        │   ├── Weapons.luau    # the weapons: rarity, element, source and cost, Power bases, perks, upgrade and reforge costs, drop chance (plain data)
+        │   ├── WeaponLooks.luau # each weapon's glow, trail, aura, Awakened effect and portrait; the glow ladder, the reveal's timings (plain data)
         │   ├── CombatHud.luau  # the boss-fight HUD's buttons, icons, keys, colours, HP bars, portrait and hit flash (plain data)
         │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
@@ -2258,6 +2285,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
+            ├── WeaponRules.luau   # weapon Power, element wheel, bond, perks, costs, paying, material goals, drop chance (pure, Lune-tested)
+            ├── WeaponText.luau    # a weapon in words: stats, source, cost lines, the Forge's button, pickup and upgrade lines (pure, Lune-tested)
+            ├── WeaponLookRules.luau # which glow layers a weapon shows at its rarity, level, grade and place (pure, Lune-tested)
             ├── SwordRules.luau    # the combo's next cut (cancel points), reach and arc, aiming, lunges, the dash and its path, combo damage per second (pure, Lune-tested)
             ├── SwordArcRules.luau # the swing arcs' curve, points, wipe and the hit burst's spot (pure, Lune-tested)
             ├── SwingGate.luau     # which of your sword actions is still live: tokens, the dash slash's lock, the last cut that struck (pure, Lune-tested)
@@ -2986,6 +3016,11 @@ boss models; the ranch and Heroic tiers come after those.
   Not built: a snack in the Bag that ends a tired spell early.
 - [x] Toasts as Cindercub's speech bubbles over the cash pill (owner's pick A of three mockups, 2026-11-06; 10.6
   HUD): one stack for messages and sales, 6 s (errors 8), a close "x" and tap-to-close. Merged 2026-11-06.
+- [ ] Weapons round 1 (5.11, spec `2026-11-06-weapons-round1-design.md`, branch `weapons-round1`): the Forge, the four
+  new swords, drops with pity, the Armory, the glow ladder. Left: the material icons (two sheets made, owner to pick).
+- [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
+  Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
+  and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow

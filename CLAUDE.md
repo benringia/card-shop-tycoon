@@ -52,8 +52,13 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `tools/blender/build_pack_fx.py` and cut into flipbooks by `tools/textures/make_flipbooks.py`; ids in
   `Config/PackFx`. Uploaded as images, not synced by Rojo.
 - `assets/weapons` → ReplicatedStorage.WeaponModels: sword models (`StarterSword.rbxm`, built by
-  `tools/blender/build_starter_sword.py`, imported in Studio, finished by `lune run tools/weapons/finish_sword`: the FBX
-  importer drops colours and turns pivots). `assets/animations` → ReplicatedStorage.SwordAnimations: the sword moves as
+  `tools/blender/build_starter_sword.py`; `ForgeSword_<Element>`, `VerdantBlade`, `SunforgedBlade`, `PrismBlade` from
+  Meshy, cleaned by `tools/blender/build_weapon_<id>.py` on `weapon_kit.py`, the Forge Sword's elements made by
+  `lune run tools/weapons/forge_variants`; docs/weapons.md), imported in Studio, finished by
+  `lune run tools/weapons/finish_sword`: the FBX importer drops colours and turns pivots).
+  `assets/ui/weapon-portraits`: the swords' card pictures, rendered on magenta in Studio and cut out by
+  `tools/ui-art/cut_product_picture.py` (`--key 0,255,0` for a model shot on green), uploaded (ids in
+  `Config/WeaponLooks` portrait), not synced. `assets/animations` → ReplicatedStorage.SwordAnimations: the sword moves as
   KeyframeSequences (`<Sword>/<move>.rbxm`), keyed in Blender by `tools/blender/anim_<sword>.py` on `anim_kit.py`,
   converted by `lune run tools/anim/build_kfs` (the sword moves exported in a background Blender by
   `tools/blender/run_sword_moves.py`); published ids go in `Config/Swords` (docs/animations.md).
