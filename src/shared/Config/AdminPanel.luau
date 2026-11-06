@@ -43,6 +43,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Boss material", command = "/material %s", placeholder = "boss id amount (meadowWarden 20)" },
 			{ label = "+50 Wild Ore", command = "/item wildOre 50" },
 			{ label = "Boss weapon drop", command = "/weapondrop %s", placeholder = "boss id (meadowWarden, prismHydra)" },
+			{ label = "Drop cinematic (preview)", command = "/weapondrop %s preview", placeholder = "boss id (meadowWarden, prismHydra)" },
 		},
 	},
 	{

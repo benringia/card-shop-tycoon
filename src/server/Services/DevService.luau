@@ -207,12 +207,18 @@ local function giveWeapon(player: Player, text: string)
 end
 
 -- "/weapondrop meadowWarden": that boss's weapon drops for you now, through the real drop (the cinematic, a refund
--- when you have it)
+-- when you have it). "/weapondrop meadowWarden preview [grade]": only the cinematic of a new drop (its card turning
+-- over), nothing given, to see it when you already own the weapon
 local function forceWeaponDrop(player: Player, text: string)
-	local bossId = string.match(text, "%s+([%w_]+)")
+	local bossId, preview, grade = string.match(text, "%s+([%w_]+)%s*(%a*)%s*(%a?)")
 	local weaponId = if bossId then BossService.WeaponOf(bossId) else nil
 	if not weaponId then
-		Remotes.Notify:FireClient(player, "Usage: /weapondrop <boss id with a built weapon> (meadowWarden, prismHydra)", true)
+		Remotes.Notify:FireClient(player, "Usage: /weapondrop <boss id with a built weapon> [preview [C|B|A|S]] (meadowWarden, prismHydra)", true)
+		return
+	end
+	if preview == "preview" then
+		local shown = if BeastRules.isGrade(string.upper(grade)) then string.upper(grade) else "A"
+		Remotes.WeaponDropped:FireClient(player, { weaponId = weaponId, grade = shown, refund = 0, material = Weapons.MATERIALS[bossId] })
 		return
 	end
 	BossService.DropWeapon(player, weaponId)

@@ -108,7 +108,7 @@ local function preloadArt(payload: any)
 end
 
 -- The shop's first pictures: the pack, deck box and display box models (meshes and every look's maps: the shelves and
--- the opening stage draw them), every UI icon, the pack fronts, the menus' product pictures, the mascot stickers, the
+-- the opening stage draw them), the weapon models, every UI icon, the pack fronts, the menus' product pictures, the mascot stickers, the
 -- binder covers and the level-up textures. Images are kept drawn (a picture is only ready once something draws it);
 -- PreloadAsync reports each fetch, and a failed or timed-out one counts as done (LoadingRules.settled).
 local function preloadShop()
@@ -118,6 +118,12 @@ local function preloadShop()
 	local packModels = ReplicatedStorage:FindFirstChild("PackModels")
 	if packModels then
 		table.insert(items, packModels)
+	end
+	-- The weapons too: their colours and glow maps are SurfaceAppearances, so a freshly cloned sword (on the back, the
+	-- drop and forge reveals) would show untextured until they're fetched
+	local weaponModels = ReplicatedStorage:FindFirstChild("WeaponModels")
+	if weaponModels then
+		table.insert(items, weaponModels)
 	end
 	local images: { string } = {}
 	for _, id in UIIcons do

@@ -26,8 +26,10 @@ local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -45,6 +47,7 @@ export type Reveal = {
 	forge: boolean?,
 	banner: string?,
 	gradeText: string?,
+	card: boolean?, -- a new drop: its card flips over beside it
 	hit: { string }?,
 	flash: number?,
 }
@@ -240,6 +243,60 @@ local function anvil(top: Vector3, parent: Instance): Part
 	return disc
 end
 
+-- A new drop's card beside the weapon (spec 4.4): it pops in face down once the weapon is up, then turns over to its
+-- face and grade as the banner pops. Returns show and turn.
+local function gradeCard(gui: ScreenGui, reveal: Reveal): (() -> (), () -> ())
+	local spec = REVEAL.card
+	local holder = Instance.new("Frame")
+	holder.Name = "Card"
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(spec.x, spec.y)
+	holder.Size = UDim2.fromScale(spec.height * 0.7, spec.height)
+	holder.SizeConstraint = Enum.SizeConstraint.RelativeYY -- both sides follow the screen's height: a card's shape
+	holder.BackgroundTransparency = 1
+	holder.Visible = false
+	holder.Parent = gui
+	local grow = Instance.new("UIScale")
+	grow.Scale = 0.6
+	grow.Parent = holder
+	-- The part that squashes to nothing and back as it turns over
+	local turning = Instance.new("Frame")
+	turning.AnchorPoint = Vector2.new(0.5, 0.5)
+	turning.Position = UDim2.fromScale(0.5, 0.5)
+	turning.Size = UDim2.fromScale(1, 1)
+	turning.BackgroundTransparency = 1
+	turning.Parent = holder
+	local function side(name: string): (Frame, UIStroke)
+		local frame = Instance.new("Frame")
+		frame.Name = name
+		frame.Size = UDim2.fromScale(1, 1)
+		frame.BackgroundTransparency = 1
+		frame.Parent = turning
+		local stroke = Instance.new("UIStroke")
+		stroke.Parent = frame
+		return frame, stroke
+	end
+	local back, backStroke = side("Back")
+	CardFace.renderBack(back, backStroke)
+	local front, frontStroke = side("Front")
+	front.Visible = false
+	WeaponFace.render(front, frontStroke, reveal.weaponId, { grade = reveal.grade, level = reveal.level or 0 }, nil)
+	local function show()
+		holder.Visible = true
+		TweenService:Create(grow, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	end
+	local function turn()
+		local close = TweenService:Create(turning, TweenInfo.new(spec.flip / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.fromScale(0, 1) })
+		close.Completed:Once(function()
+			back.Visible = false
+			front.Visible = true
+			TweenService:Create(turning, TweenInfo.new(spec.flip / 2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromScale(1, 1) }):Play()
+		end)
+		close:Play()
+	end
+	return show, turn
+end
+
 local function play(reveal: Reveal)
 	local weapon = Weapons.ById[reveal.weaponId]
 	if not weapon then
@@ -275,6 +332,11 @@ local function play(reveal: Reveal)
 	local below = low * fit -- its lowest point, under the grip
 	model.Parent = stage
 	local gui, skip, popBanner, showLine = words(reveal, color)
+	local showCard: (() -> ())?, turnCard: (() -> ())? = nil, nil
+	if reveal.card then
+		showCard, turnCard = gradeCard(gui, reveal)
+	end
+	local cardShown, cardTurned = false, false
 	if reveal.forge then
 		-- The forge flares up, then hammer strikes, each a little higher, until the hit
 		OpeningStage.play(forgeSounds.fire)
@@ -358,6 +420,14 @@ local function play(reveal: Reveal)
 			OpeningStage.flash(0.7, 0.5)
 			OpeningStage.shake(0.06, 0.35)
 		end
+		if showCard and not cardShown and t >= up then
+			cardShown = true
+			showCard()
+		end
+		if turnCard and not cardTurned and t >= up + REVEAL.card.turnAfter then
+			cardTurned = true
+			turnCard()
+		end
 		if not popped and t >= bannerAt then
 			popped = true
 			popBanner()
@@ -421,6 +491,7 @@ function WeaponRevealController.Drop(payload: any)
 		level = 0,
 		line = line,
 		gradeText = if refund > 0 then "Already yours" else nil, -- the rolled grade isn't kept
+		card = refund <= 0, -- a new weapon's card turns over beside it
 	})
 end
 
