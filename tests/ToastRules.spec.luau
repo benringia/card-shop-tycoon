@@ -18,11 +18,12 @@ return {
 		end
 	end,
 
-	["about 3 s, errors 4, and a toast that asks for longer keeps it"] = function()
-		expect.equal(ToastRules.seconds(Toasts, "news", nil), 3)
-		expect.equal(ToastRules.seconds(Toasts, "money", nil), 3)
-		expect.equal(ToastRules.seconds(Toasts, "error", nil), 4)
-		expect.equal(ToastRules.seconds(Toasts, "news", 5), 5, "the level-up toast")
+	["they last longer (owner 2026-11-06): 6 s, errors 8, a toast's own time doubled"] = function()
+		expect.equal(ToastRules.seconds(Toasts, "news", nil), 6)
+		expect.equal(ToastRules.seconds(Toasts, "money", nil), 6)
+		expect.equal(ToastRules.seconds(Toasts, "error", nil), 8)
+		expect.equal(ToastRules.seconds(Toasts, "news", 5), 10, "the level-up toast")
+		expect.equal(ToastRules.seconds(Toasts, "news", 1.5), 3, "a quick loot pickup stays quick")
 	end,
 
 	["a new toast joins the stack; past the most, the oldest goes"] = function()

@@ -253,8 +253,23 @@ local function buildBubble(id: number, message: string, kind: string, icon: stri
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.ZIndex = 4
 	local wrap = Instance.new("UISizeConstraint")
-	wrap.MaxSize = Vector2.new(Toasts.WIDTH - Toasts.CHIP - Toasts.PAD * 3, math.huge)
+	wrap.MaxSize = Vector2.new(Toasts.WIDTH - Toasts.CHIP - Toasts.CLOSE - Toasts.PAD * 4, math.huge)
 	wrap.Parent = label
+
+	-- The close button at the right end: an "x" in a lilac circle (the whole bubble closes it on a click or tap, below)
+	local close = Instance.new("Frame")
+	close.Name = "Close"
+	close.LayoutOrder = 3
+	close.Size = UDim2.fromOffset(Toasts.CLOSE, Toasts.CLOSE)
+	close.BackgroundColor3 = rgb(Toasts.CLOSE_FILL)
+	close.ZIndex = 4
+	close.Parent = body
+	UIKit.corner(close, Toasts.CLOSE / 2)
+	local cross = UIKit.label(close, "x", Enum.Font.FredokaOne, Toasts.CLOSE * 0.7, rgb(Toasts.KINDS.news.ink))
+	cross.Size = UDim2.fromScale(1, 1)
+	cross.TextXAlignment = Enum.TextXAlignment.Center
+	cross.TextYAlignment = Enum.TextYAlignment.Center
+	cross.ZIndex = 5
 
 	-- The shadow under the body, the same shape a little lower
 	local shadow = Instance.new("Frame")
@@ -290,8 +305,28 @@ local function buildBubble(id: number, message: string, kind: string, icon: stri
 	join.ZIndex = 6
 	join.Parent = root
 
+	-- The whole bubble is the close button (finger-sized on phones); the "x" darkens while the pointer is over it
+	local hit = Instance.new("TextButton")
+	hit.Name = "CloseHit"
+	hit.Text = ""
+	hit.AutoButtonColor = false
+	hit.BackgroundTransparency = 1
+	hit.Size = UDim2.fromScale(1, 1)
+	hit.ZIndex = 8
+	hit.Parent = root
+	hit.MouseEnter:Connect(function()
+		close.BackgroundColor3 = rgb(Toasts.CLOSE_HOVER)
+	end)
+	hit.MouseLeave:Connect(function()
+		close.BackgroundColor3 = rgb(Toasts.CLOSE_FILL)
+	end)
+
 	root.Parent = toastStack
-	return { id = id, message = message, root = root, scale = scale, closing = false, closeAt = 0 }
+	local bubble: Bubble = { id = id, message = message, root = root, scale = scale, closing = false, closeAt = 0 }
+	hit.Activated:Connect(function()
+		closeBubble(bubble)
+	end)
+	return bubble
 end
 
 -- Pops up from small: overshoots, squashes, settles (Toasts.POP)

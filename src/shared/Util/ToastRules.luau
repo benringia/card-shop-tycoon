@@ -10,10 +10,11 @@ function ToastRules.kind(isError: boolean, money: boolean): string
 	return if isError then "error" elseif money then "money" else "news"
 end
 
--- Seconds a toast stays: `duration` when it asks for one, else ERROR_SECONDS for errors and SECONDS for the rest
+-- Seconds a toast stays: its own `duration` times LONGER when it sets one, else ERROR_SECONDS for errors and SECONDS
+-- for the rest
 function ToastRules.seconds(cfg: any, kind: string, duration: number?): number
 	if duration then
-		return duration
+		return duration * cfg.LONGER
 	end
 	return if kind == "error" then cfg.ERROR_SECONDS else cfg.SECONDS
 end

@@ -3,8 +3,16 @@
 -- the coin, sales and messages alike (client UIController, Util/ToastRules). Plain data (colours { r, g, b }), read by
 -- Lune tests. Seconds, pixels at full HUD scale.
 return {
-	SECONDS = 3,
-	ERROR_SECONDS = 4,
+	-- How long they stay (owner 2026-11-06: "last longer", with a close button): SECONDS, ERROR_SECONDS for errors, and
+	-- a toast that sets its own time (a quick loot pickup 1.5 s, the level-up 5 s) gets it times LONGER
+	SECONDS = 6,
+	ERROR_SECONDS = 8,
+	LONGER = 2,
+	-- The close button: an "x" in a lilac circle at the bubble's top right (the whole bubble closes it on a tap);
+	-- CLOSE px, its fill and the fill while the pointer is over the bubble
+	CLOSE = 20,
+	CLOSE_FILL = { 244, 230, 250 },
+	CLOSE_HOVER = { 230, 205, 238 },
 	MAX = 3, -- bubbles at once; a new one past this pushes the oldest out early
 	MAX_TOUCH = 2, -- landscape phones are short
 	-- A bubble: white with the windows' white outline and soft lilac edge, a soft plum shadow and a tail at its

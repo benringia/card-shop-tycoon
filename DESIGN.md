@@ -2432,9 +2432,11 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   pushes the oldest out). A white bubble with the windows' soft lilac edge, a soft plum shadow and a tail pointing at
   the cash (up on phones), an icon chip in its kind's colour (mint money with the coin, butter news with Info, pink
   errors with Close; a message's own leading emoji moves into the chip) and the words in its kind's ink (plum, green,
-  dark red). It pops up from small with an overshoot and a squash before it settles, stays 3 s (errors 4 s, longer
-  when a message asks: the level-up's 5 s) and leaves shrinking and fading; the same message again bumps the newest
-  bubble instead of stacking a copy. The HUD's Cindercub hops (silent, `HudMascotView.hop`) once per burst. Toasts
+  dark red), then a small "x" in a lilac circle. It pops up from small with an overshoot and a squash before it
+  settles, stays 6 s (errors 8 s; a toast that sets its own time gets it doubled: a loot pickup 3 s, the level-up
+  10 s; owner 2026-11-06 "last longer, with a close button") and leaves shrinking and fading; a click or tap anywhere
+  on it closes it at once (the "x" darkens under the pointer). The same message again bumps the newest bubble instead
+  of stacking a copy. The HUD's Cindercub hops (silent, `HudMascotView.hop`) once per burst. Toasts
   stay up over the binder and the pack opening (the corner hides, they don't). The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
