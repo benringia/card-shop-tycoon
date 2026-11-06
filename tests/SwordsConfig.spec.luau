@@ -151,6 +151,20 @@ return {
 		expect.equal(Swords.SWORDS.starterSword.animations.skill ~= ids.forgeSword, true, "the Steel Sword keeps its dash slash")
 	end,
 
+	["each round 1 skill frees you once its damage is committed, inside the move (owner 2026-11-07)"] = function()
+		local wants = { forgeSword = 0.8, verdantBlade = 0.45, sunforgedBlade = 1.78, prismBlade = 1.2 }
+		for moveset, at in wants do
+			local skill = Swords.SWORDS[moveset].skill
+			local free = skill.free :: { at: number, reach: boolean? }
+			expect.equal(free.at, at, moveset)
+			expect.equal(free.at >= skill.hitAt and free.at <= skill.length, true, `{moveset}: after its hit, inside its move`)
+		end
+		expect.equal((Swords.SWORDS.verdantBlade.skill.free :: any).reach, true, "Thornline: once the vines reach the foe")
+		local prism = Swords.SWORDS.prismBlade.skill
+		expect.near(prism.free.at, prism.hitAt + (prism.shape.strikes - 1) * prism.shape.gap, 1e-9, "the Prism: its last strike")
+		expect.equal(Swords.SWORDS.starterSword.skill.free, nil, "the Steel Sword: as before")
+	end,
+
 	["each new skill has the spec's shape"] = function()
 		local shapes = Swords.SWORDS
 		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")

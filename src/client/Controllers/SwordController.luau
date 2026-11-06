@@ -885,15 +885,34 @@ local function stillSwinging(token: number): boolean
 end
 
 -- A move's sounds at their moments (Config/Swords cues): the swish with the swing, the finisher's jump and slam, the
--- dash slash's draw, dash and cut lines; a dodge or anything that ends the swing stops the ones still to come
-local function playCues(sword: Swords.Sword, move: string, token: number)
+-- dash slash's draw, dash and cut lines; a dodge or anything that ends the swing (`live()` false) stops the ones to come
+local function playCues(sword: Swords.Sword, move: string, live: () -> boolean)
 	for _, cue in sword.cues[move] or {} do
 		task.delay(cue.at, function()
-			if stillSwinging(token) then
+			if live() then
 				SwordController.PlaySound(cue.key)
 			end
 		end)
 	end
+end
+
+-- After a skill frees you (SwordRules.skillFreeAt) its pose plays on until you walk: then it fades, so you don't slide
+-- in it (a cut or a dodge ends it anyway: SwordAnims.play)
+local function releaseOnWalk(track: AnimationTrack, humanoid: Humanoid, after: number)
+	task.delay(after, function()
+		if not track.IsPlaying then
+			return
+		end
+		local watch: RBXScriptConnection
+		watch = RunService.Heartbeat:Connect(function()
+			if not track.IsPlaying or not humanoid.Parent then
+				watch:Disconnect()
+			elseif humanoid.MoveDirection.Magnitude > 0.1 then
+				watch:Disconnect()
+				track:Stop(SwordFx.FADE.strike)
+			end
+		end)
+	end)
 end
 
 -- A held skill's pose (Config/Swords skill.hold: Thornline's blade in the ground) frozen at its `at` for `seconds`
@@ -961,6 +980,9 @@ function SwordController.Attack()
 		return
 	end
 	lastCut = { index = index, startedAt = startAt }
+	if SkillCinematic.isPlaying() then
+		SkillCinematic.stop() -- a cut after a skill's free point: its camera moment ends (its effects play on)
+	end
 	local token = SwingGate.begin(gate)
 	local cut = sword.combo[index]
 	SwordController.DrawNow()
@@ -978,7 +1000,9 @@ function SwordController.Attack()
 			mine.play(`cut{index}`)
 		end
 		swingTrail()
-		playCues(sword, `cut{index}`, token)
+		playCues(sword, `cut{index}`, function(): boolean
+			return stillSwinging(token)
+		end)
 		local effects = effectsOf(character)
 		if effects then
 			cutEffects(character, sword, effects, index, true, function(): boolean
@@ -1058,20 +1082,25 @@ function SwordController.Skill()
 	SwordController.DrawNow()
 	Remotes.SwordSkill:FireServer()
 	softAim(root)
-	-- A held skill (Thornline: the blade in the ground until the vines reach the foe) keeps its pose that much longer
+	-- A held skill (Thornline: the blade in the ground until the vines reach the foe) keeps its pose that much longer.
+	-- "Free after the hit" (owner 2026-11-07): you can cut and walk again once its damage is committed
+	-- (SwordRules.skillFreeAt); its effects and its hit carry on unless a dodge came before the hit (as on the server)
 	local facingNow = root.CFrame.LookVector
 	local travel = SwordRules.skillTravel(skill.shape, root.Position.X, root.Position.Z, facingNow.X, facingNow.Z, if combatTargets then combatTargets() else {})
 	local held = if skill.hold then SwordRules.holdFor(skill.hitAt, travel, skill.hold.snap) else 0
-	local token = SwingGate.startSkill(gate, os.clock(), skill.length + held)
-	holdControls(humanoid, skill.length + held)
+	local freeAt = SwordRules.skillFreeAt(skill, travel)
+	local token = SwingGate.startSkill(gate, os.clock(), freeAt)
+	local function skillLive(): boolean
+		return SwingGate.uncancelled(gate, token) and combatTargets ~= nil and not kneeling
+	end
+	holdControls(humanoid, freeAt)
 	local track = if mine then mine.play("skill") else nil
 	if track then
-		holdPose(track, skill.hold, held, function(): boolean
-			return stillSwinging(token)
-		end)
+		holdPose(track, skill.hold, held, skillLive)
+		releaseOnWalk(track, humanoid, freeAt)
 	end
 	swingTrail()
-	playCues(sword, "skill", token)
+	playCues(sword, "skill", skillLive)
 	local effects = effectsOf(character)
 	if effects then
 		-- Your own: a shake on the cleave and on the burst, and the look's camera moment (Sunfall Cleave)
@@ -1079,6 +1108,7 @@ function SwordController.Skill()
 		local shake = SwordSkillFxConfig.SHAKE
 		SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, aim, {
 			blade = bladeOf(character),
+			live = skillLive,
 			released = function()
 				ScreenFx.shake(shake.release)
 			end,
@@ -1132,7 +1162,7 @@ function SwordController.Skill()
 	-- first foe (a crescent's when it gets there)
 	task.delay(skill.hitAt, function()
 		local _, hitRoot = ownParts()
-		if not hitRoot or not combatTargets or not stillSwinging(token) then
+		if not hitRoot or not combatTargets or not skillLive() then
 			return
 		end
 		local look = facing(hitRoot)

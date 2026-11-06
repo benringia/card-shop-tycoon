@@ -73,6 +73,7 @@ type Member = {
 	leashWarnedAt: number,
 	lastCut: SwordRules.LastCut?, -- boss fights: their sword's last cut (os.clock times)
 	skillReady: number, -- boss fights: os.clock when their sword skill is ready again
+	dodgedAt: number?, -- boss fights: os.clock of their last dodge (one before a skill's hit cancels it)
 	down: boolean, -- their player fighter is down (can't walk or jump)
 	rings: number, -- big attacks aimed at them (the defeat screen)
 	dodged: number, -- of those, dodged or stepped out of
@@ -1411,9 +1412,14 @@ local function onSwordSkill(player: Player)
 	swordCast(player, sword, "skill")
 	local sx, sz = root.Position.X, root.Position.Z
 	local power = skill.power * WeaponService.Power(player)
+	local castAt = os.clock()
 	task.delay(skill.hitAt, function()
 		local now = getRoot(player)
 		if fight.ended or fight.members[player] ~= member or not now then
+			return
+		end
+		-- a dodge before the hit cancelled the move (owner 2026-11-07)
+		if SwordRules.skillDodged(castAt, skill.hitAt, member.dodgedAt) then
 			return
 		end
 		local look = now.CFrame.LookVector
@@ -1434,6 +1440,7 @@ local function onDodge(player: Player)
 	end
 	local events = BattleSim.dodge(fight.sim, member.owner)
 	if events then
+		member.dodgedAt = os.clock()
 		handleEvents(fight, events)
 	end
 end

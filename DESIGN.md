@@ -1805,7 +1805,13 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   | Sunforged Blade | Sunfall Cleave: a high jump, a long charge at the top, a cleave in the air launching an upright fire crescent that glides down (14 studs/s, 24 x 6) and bursts on the first foe it touches, foes within 6 | a fire trail / a lava crack and a fire spurt | hit 1.78 s, 2.45 s |
   | Prism Blade | Prism Judgment: five ghost Forge Swords in a spinning ring over the boss, each diving in turn (0.15 s apart, a fifth each, the aimed foe within 24), then a rainbow pillar | rainbow bands / crystal spikes in every colour | first strike 0.6 s, pillar 1.28 s, 1.75 s |
 
-  A split skill's strikes fill the super meter as one hit (`BattleSim.swordHit`'s share). Effects (numbers in
+  A split skill's strikes fill the super meter as one hit (`BattleSim.swordHit`'s share). Free after the hit (owner
+  2026-11-07, so every skill costs about the same attack time): you can cut and walk again once a skill's damage is
+  committed (`skill.free`, `SwordRules.skillFreeAt`: Elemental Spin 0.8 s, Thornline when its vines reach the foe,
+  Sunfall Cleave 1.78 s as the crescent leaves, Prism Judgment 1.2 s at the last dive; the Steel Sword's dash at its
+  end); its effects and hit play on, its pose fades when you walk and its camera moment ends when you cut
+  (`SwingGate.uncancelled`). A dodge before the hit moment cancels its damage on the server (`SwordRules.skillDodged`)
+  and its damaging part on your screen (the crescent, vines, dives or ring wave). Effects (numbers in
   `Config/SwordSkillFx`, drawing in client `Util/SwordSkillFx`, rules in `Util/SwordSkillFxRules`): charge-ups, ground
   fissures, eruptions, pillars, shockwaves and particle storms in the sword's colours (a Forge Sword's in its element),
   thinned on low graphics; your own get screen shakes (`SwordSkillFx.SHAKE`: every finisher, Sunfall's cleave and

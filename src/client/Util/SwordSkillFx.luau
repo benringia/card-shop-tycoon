@@ -28,8 +28,13 @@ export type Colors = { deep: Color3, glow: Color3, element: string? }
 export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
 -- A skill's moments for its caster (your own: the screen shakes and sounds): the cleave, each strike of a skill made of
 -- several (Prism Judgment's blades), and where the effect bursts
--- `lite`: another player's cast (drawn lighter: SwordSkillFxRules.vineBudget)
-export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, lite: boolean? }
+-- `lite`: another player's cast (drawn lighter: SwordSkillFxRules.vineBudget); `live()` false at the skill's hit moment
+-- (your dodge cancelled it): the damaging part (the crescent, the vines, the dives, the wave) isn't launched
+export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, lite: boolean?, live: (() -> boolean)? }
+
+local function cancelled(hooks: Hooks): boolean
+	return hooks.live ~= nil and not hooks.live()
+end
 
 local SwordSkillFx = {}
 
@@ -907,13 +912,21 @@ local function prismJudgment(root: BasePart, spec: SwordSkillFxConfig.Look, scal
 	local started = os.clock()
 	local spinAngle = 0
 	local last = started
+	local aborted = false -- your dodge cancelled it before the first dive: the blades fade, no strikes, no pillar
 	local connection: RBXScriptConnection
 	connection = RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		local t = now - started
 		local dt = now - last
 		last = now
-		if t > beats.pillar + 0.1 or not orb.Parent then
+		if not aborted and t >= beats.release - beats.dive and cancelled(hooks) then
+			aborted = true
+			for _, entry in blades do
+				entry.model:Destroy()
+			end
+			orb:Destroy()
+		end
+		if aborted or t > beats.pillar + 0.1 or not orb.Parent then
 			connection:Disconnect()
 			return
 		end
@@ -962,6 +975,9 @@ local function prismJudgment(root: BasePart, spec: SwordSkillFxConfig.Look, scal
 	end)
 	-- The pillar: a twisting rainbow column, shockwaves, an eruption, shards everywhere; the blades shatter
 	task.delay(beats.pillar, function()
+		if aborted then
+			return
+		end
 		if hooks.burst then
 			hooks.burst(ground)
 		end
@@ -1255,6 +1271,9 @@ local function sunfallCleave(character: Model, root: BasePart, spec: SwordSkillF
 		end)
 	end)
 	task.delay(beats.release, function()
+		if cancelled(hooks) then
+			return
+		end
 		if hooks.released then
 			hooks.released()
 		end
@@ -1302,6 +1321,7 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 	local right = direction:Cross(UP)
 	local trap = groundAt(finish)
 	local budget = SwordSkillFxRules.vineBudget(not Extras.enabled(), hooks.lite == true)
+	local launched = true -- false: your dodge cancelled it before the pierce (no vines)
 	-- The hop: green energy gathering on the blade, leaves swirling round you
 	local orb = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, beats.release + 1)
 	local stopGlow = ElementFx.chargeGlow(orb, colors.glow, beats.release, 0.9 * scale)
@@ -1321,6 +1341,9 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 		local along = distance
 		local burstAt = beats.release + along / beats.speed
 		task.delay(burstAt, function()
+			if not launched then
+				return
+			end
 			local at = groundAt(feet + direction * along)
 			for _, side in { -1, 1 } do
 				local vine = makeVine(at + right * side * beats.side * scale, -right * side, beats.height * scale, beats.thick * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow, budget.details)
@@ -1332,6 +1355,9 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 		distance += beats.spacing * budget.spacing
 	end
 	task.delay(math.max(0, snapAt - 0.1), function()
+		if not launched then
+			return
+		end
 		local count = math.max(3, math.round(beats.trapVines * budget.share))
 		for index = 1, count do
 			local angle = index / count * math.pi * 2
@@ -1354,6 +1380,10 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 		follow:Disconnect()
 		stopGlow()
 		orb:Destroy()
+		if cancelled(hooks) then
+			launched = false
+			return
+		end
 		-- The pierce: a shockwave, a burst of earth, a green fissure tearing toward the foe ahead of the vines
 		local stab = groundAt(feet + direction * SLAM_AHEAD)
 		ElementFx.ring(stab, colors.glow, 7 * scale, 0.5)
@@ -1363,6 +1393,9 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 		fissure(stab, trap, beats.fissure * scale, colors.glow, colors.deep, math.max(0.05, (reach - SLAM_AHEAD) / beats.speed), beats.linger + 0.3, 0.5, "spark")
 	end)
 	task.delay(snapAt, function()
+		if not launched then
+			return
+		end
 		if hooks.burst then
 			hooks.burst(trap)
 		end
@@ -1417,6 +1450,9 @@ local function elementalSpin(root: BasePart, spec: SwordSkillFxConfig.Look, colo
 	end)
 	-- the ring wave
 	task.delay(beats.release, function()
+		if cancelled(hooks) then
+			return
+		end
 		if hooks.burst then
 			hooks.burst(feet)
 		end

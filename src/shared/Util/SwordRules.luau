@@ -284,6 +284,23 @@ function SwordRules.holdFor(hitAt: number, travel: number, snap: number): number
 	return math.max(0, hitAt + travel - snap)
 end
 
+-- When a skill frees you to attack and move again (owner 2026-11-07, "free after the hit": every skill costs about the
+-- same attack time): its `free.at` (plus its `travel` with `reach`: Thornline, once the vines reach the foe), else its
+-- whole length (the Steel Sword's dash, as before)
+function SwordRules.skillFreeAt(skill: { hitAt: number, length: number, free: { at: number, reach: boolean? }? }, travel: number): number
+	local free = skill.free
+	if not free then
+		return skill.length
+	end
+	return free.at + (if free.reach then travel else 0)
+end
+
+-- Whether a dodge (at `dodgedAt`, os.clock) between a skill's cast (`castAt`) and its hit moment (`hitAt` after it)
+-- cancels its damage (the dodge cancels the move on your screen; owner 2026-11-07); one after the hit doesn't
+function SwordRules.skillDodged(castAt: number, hitAt: number, dodgedAt: number?): boolean
+	return dodgedAt ~= nil and dodgedAt >= castAt and dodgedAt < castAt + hitAt
+end
+
 -- Where a skill's effect lands (the client draws it there): a wave's burst on the first foe it touches, else the end of
 -- its run; the judged foe; nil for the shapes drawn around you or along your path
 function SwordRules.skillImpact(shape: SkillShape, px: number, pz: number, lookX: number, lookZ: number, targets: { Target }): (number?, number?)

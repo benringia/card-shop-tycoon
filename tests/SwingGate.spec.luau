@@ -46,4 +46,20 @@ return {
 		SwingGate.struck(gate, 1)
 		expect.equal(SwingGate.lastStruck(gate), 1)
 	end,
+
+	-- "Free after the hit" (owner 2026-11-07): a cut after a skill's free point doesn't stop the skill's damage moment and
+	-- effects, a dodge, a knock-down or the fight's end does
+	["a skill carries on after a later cut but not after a dodge"] = function()
+		local gate = SwingGate.new()
+		local skill = SwingGate.startSkill(gate, 10, 0.8)
+		expect.equal(SwingGate.uncancelled(gate, skill), true, "playing")
+		expect.equal(SwingGate.canAttack(gate, 10.8), true, "free once its damage is committed")
+		SwingGate.begin(gate) -- a cut tapped after the free point
+		expect.equal(SwingGate.live(gate, skill), false, "the cut takes over the swing")
+		expect.equal(SwingGate.uncancelled(gate, skill), true, "the skill's moment still comes")
+		local later = SwingGate.startSkill(gate, 20, 0.8)
+		SwingGate.cancel(gate)
+		expect.equal(SwingGate.uncancelled(gate, later), false, "a dodge cancels it")
+		expect.equal(SwingGate.uncancelled(gate, SwingGate.begin(gate)), true, "an action after the dodge is live")
+	end,
 }

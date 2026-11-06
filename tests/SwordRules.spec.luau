@@ -215,6 +215,19 @@ return {
 		expect.equal(SwordRules.holdFor(0.45, 0.05, 0.58), 0, "a foe right in front: no hold")
 	end,
 
+	["a skill frees you once its damage is committed (owner 2026-11-07: free after the hit); no free point: its length"] = function()
+		expect.equal(SwordRules.skillFreeAt({ hitAt = 0.62, length = 1 }, 0), 1, "the Steel Sword's dash: as before")
+		expect.equal(SwordRules.skillFreeAt({ hitAt = 0.8, length = 1.1, free = { at = 0.8 } }, 0), 0.8, "the spin: at the wave")
+		expect.near(SwordRules.skillFreeAt({ hitAt = 0.45, length = 0.95, free = { at = 0.45, reach = true } }, 0.55), 1.0, 1e-9, "Thornline: when the vines reach the foe")
+	end,
+
+	["a dodge between the cast and the hit cancels the skill's damage; before the cast or after the hit it doesn't"] = function()
+		expect.equal(SwordRules.skillDodged(10, 0.8, nil), false, "no dodge")
+		expect.equal(SwordRules.skillDodged(10, 0.8, 10.3), true, "dodged in the wind-up")
+		expect.equal(SwordRules.skillDodged(10, 0.8, 10.9), false, "after the hit: it landed")
+		expect.equal(SwordRules.skillDodged(10, 0.8, 9.5), false, "a dodge before casting")
+	end,
+
 	["judgment: five strikes a fifth each on the aimed foe within 24 (in front first), none in range: nothing"] = function()
 		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
 		local shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 }

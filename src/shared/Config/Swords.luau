@@ -37,7 +37,10 @@ export type SkillShape = {
 -- A skill whose animation holds its pose until it reaches its foe (Thornline: the blade in the ground until the vines
 -- arrive): frozen at track time `at`, its `snap` key playing as they arrive (SwordRules.holdFor)
 export type Hold = { at: number, snap: number }
-export type Skill = { power: number, hitAt: number, length: number, cooldown: number, shape: SkillShape, dash: Dash?, hold: Hold? }
+-- When the skill frees you to attack and move again (owner 2026-11-07, "free after the hit"): `at` seconds in, plus the
+-- skill's travel to its foe with `reach` (SwordRules.skillFreeAt); none: its length
+export type Free = { at: number, reach: boolean? }
+export type Skill = { power: number, hitAt: number, length: number, cooldown: number, shape: SkillShape, dash: Dash?, hold: Hold?, free: Free? }
 -- A sword's effects (Config/SwordSkillFx looks): on its slashes, its finisher (cut 3) and its skill
 export type SwordFx = { slash: string, finisher: string, skill: string }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
@@ -195,6 +198,7 @@ SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", "rbxassetid://8754082
 	length = 1.1,
 	cooldown = 8,
 	shape = { kind = "spin", radius = 9 },
+	free = { at = 0.8 }, -- the wave
 }, { slash = "elementTrail", finisher = "elementBurst", skill = "elementalSpin" }, {
 	{ key = "dash", at = 0.25 }, -- the first turn
 	{ key = "dodge", at = 0.5 }, -- the second
@@ -232,6 +236,7 @@ SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", "rbxassetid://1
 	cooldown = 8,
 	shape = { kind = "wave", length = 18, width = 4, speed = 20, blast = 4 },
 	hold = { at = 0.5, snap = 0.58 },
+	free = { at = 0.45, reach = true }, -- the vines snapping shut on the foe
 }, { slash = "leafShed", finisher = "rootBurst", skill = "thornline" }, {
 	{ key = "air1", at = 0.12 }, -- the hop
 	{ key = "ground", at = 0.42 }, -- the blade plunging into the earth
@@ -259,6 +264,7 @@ SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", "rbxasset
 	length = 2.45,
 	cooldown = 8,
 	shape = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 },
+	free = { at = 1.78 }, -- the crescent launched (it flies on by itself)
 }, { slash = "fireTrail", finisher = "lavaCrack", skill = "sunfallCleave" }, {
 	{ key = "jump", at = 0.15 }, -- the leap
 	{ key = "flameLicks", at = 0.42 }, -- sunlight gathering as you hang
@@ -288,6 +294,7 @@ SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", "rbxassetid://1363919
 	length = 1.75,
 	cooldown = 8,
 	shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 },
+	free = { at = 1.2 }, -- the last strike
 }, { slash = "rainbowArc", finisher = "prismShatter", skill = "prismJudgment" }, {
 	{ key = "prismSummon", at = 0.12 }, -- the summon (each strike plays prismStrike, the pillar prismBoom)
 	{ key = "dashDraw", at = 0.5 }, -- the blade snapped down to point at the boss
