@@ -87,7 +87,8 @@ local function chirp()
 end
 
 -- A tap: a little bounce (HudMascotRules.bounce) and its chirp
-local function bounce()
+-- Its squash-and-bounce, silent
+local function hop()
 	local scale = bounceScale
 	if not scale then
 		return
@@ -104,6 +105,14 @@ local function bounce()
 			bounceConnection = nil
 		end
 	end)
+end
+
+-- A tap: it bounces and chirps
+local function bounce()
+	if not bounceScale then
+		return
+	end
+	hop()
 	chirp()
 end
 
@@ -185,6 +194,11 @@ function HudMascotView.mount(cushion: GuiObject)
 	tap.ZIndex = 6
 	tap.Parent = host
 	tap.Activated:Connect(bounce)
+end
+
+-- A silent hop (a toast arriving over the cash pill, UIController); nothing before it's mounted
+function HudMascotView.hop()
+	hop()
 end
 
 -- Ducks behind the cushion and pops back up; called again mid-duck it carries on from where it is

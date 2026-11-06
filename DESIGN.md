@@ -1967,7 +1967,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   ├── Controllers/
     │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear), the teleport screen
     │   │   ├── WildLoadingController.luau # the Wild's loading screen: portal swirl, holds you still until the valley round you is in
-    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), toasts, money toasts
+    │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), the toasts' speech bubbles over the cash
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
     │   │   ├── PlacementController.luau
@@ -2072,6 +2072,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
         │   ├── Stages.luau     # how high above the player the client stages go (and why: the camera's light)
+        │   ├── Toasts.luau     # the toasts' bubbles: kinds and colours, sizes, how many, timings, the pop
         │   ├── Register.luau   # checkout reach, counter items
         │   ├── Packs.luau      # pack slots and odds
         │   ├── PackOpening.luau # the 3D opening: stage, camera, tear, stack, flips, alive, results, sounds (client)
@@ -2139,6 +2140,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── JobRules.luau      # job speed, mistakes and slots, their kid words, next job, minutes to a level (pure, Lune-tested)
             ├── TiredRules.luau    # shop workers' tired spells: work stretch, tired time, slower and more mistakes (pure, Lune-tested)
             ├── CreatureFlight.luau # which creatures fly and how high a drawn creature's top is (pure, Lune-tested)
+            ├── ToastRules.luau    # toasts as bubbles: kind, seconds, stacking (bump a repeat, drop the oldest), the chip's emoji, the mascot's hop (pure, Lune-tested)
             ├── CombatMath.luau    # attack interval, damage, elements, run chance, XP split, rewards (pure, Lune-tested)
             ├── PvpRules.luau      # PvP bet cap, valid bets, payouts, record (pure, Lune-tested)
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
@@ -2409,10 +2411,10 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Bottom right, one corner cluster (above the jump button on touch screens; on a narrow screen where the party bar
   would reach over the bottom-centre tiles, it lifts above the tile row too): the party bar, and beside it a
   right-aligned column, bottom up: level (number on a star icon, the XP and a thin bar inside the pill, in line
-  with the party bar), cash (a green pill with a gold coin and outlined white text), then the buff badge; money toasts pop in just
-  above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
+  with the party bar), cash (a green pill with a gold coin and outlined white text), then the buff badge; the toasts pop
+  in just above. Star Shards have no pill (they show in the Bag and where they're spent). On touch screens (short
   landscape phones, the jump button in the bottom right) it is one column down the right edge from the top right to
-  the middle: buff, cash, level, then the party bar, then the money toasts. Nothing sits in the middle of
+  the middle: buff, cash, level, then the party bar, then the toasts. Nothing sits in the middle of
   the screen. The whole HUD (tiles, Manage
   tray, corner, toasts) shrinks with the screen's height (`HudLayout.SCALE`, `Hud.scaleWith`): full size from 560 px
   tall, down to 70% on short phones (tiles stay over 48 px to tap). Each icon sits over its
@@ -2423,10 +2425,17 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale, tinted per boss in code), XpTonic, GradingSeal,
   GoldSeal, Travel, Best and Pvp; Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
-  their icons ready. Names without a picture show as text (⌛ in a bubble). Toasts sit above the bottom row:
-  a candy pill (gold, red for errors) with an icon in a round badge (`UIController.Notify(message, isError,
-  duration, icon)`; Info by default), popping up from below with a bounce, the icon wiggling in, a shine sweeping
-  across, a thin bar counting its time down, then fading and shrinking away; a new toast while one shows bumps it. The fight screen hides the HUD groups.
+  their icons ready. Names without a picture show as text (⌛ in a bubble). **Toasts** (owner's pick A, 2026-11-06;
+  `Config/Toasts`, `Util/ToastRules`, `UIController.Notify(message, isError, duration, icon)` and `NotifySide` for
+  money): Cindercub's speech bubbles stacked right over the cash pill (over the buff badge while one shows; under the
+  column on touch screens), newest nearest the coin, messages and sales alike, at most 3 (2 on phones; a new one
+  pushes the oldest out). A white bubble with the windows' soft lilac edge, a soft plum shadow and a tail pointing at
+  the cash (up on phones), an icon chip in its kind's colour (mint money with the coin, butter news with Info, pink
+  errors with Close; a message's own leading emoji moves into the chip) and the words in its kind's ink (plum, green,
+  dark red). It pops up from small with an overshoot and a squash before it settles, stays 3 s (errors 4 s, longer
+  when a message asks: the level-up's 5 s) and leaves shrinking and fading; the same message again bumps the newest
+  bubble instead of stacking a copy. The HUD's Cindercub hops (silent, `HudMascotView.hop`) once per burst. Toasts
+  stay up over the binder and the pack opening (the corner hides, they don't). The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without
   closing anything. While the Rarity guide is open, Q/E and swipes don't turn binder pages.
