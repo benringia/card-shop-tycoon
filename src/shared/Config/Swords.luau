@@ -133,10 +133,11 @@ return {
 	-- space (the grip the animations were keyed with), and on the back, in the UpperTorso's space (the handle up over
 	-- the right shoulder, the blade down to the left hip)
 	HAND_GRIP = { y = -0.18, angleX = -140 },
-	-- 2026-11-06 (owner: the longer new swords pierced the ground): higher and more across the back, a little smaller,
-	-- so every sword's tip clears the ground (the Sunforged Blade, the longest, by about half a stud on an R15 body)
-	BACK_GRIP = { x = 0.65, y = 1.7, z = 0.68, angleZ = 130 },
-	BACK_SCALE = 1.2, -- the sword is this much bigger on the back, so it (and the looks the shop will sell) stands out
+	-- 2026-11-06 (owner: the longer new swords pierced the ground; keep the original angle, just higher): the grip
+	-- higher and the size near life-size, so every sword's tip clears the ground (the Sunforged Blade, the longest, by
+	-- about 0.3 studs on an R15 body) with the hilt under a stud over the head; at 1.4x the hilt would stand 2+ studs up
+	BACK_GRIP = { x = 0.65, y = 1.9, z = 0.68, angleZ = 150 },
+	BACK_SCALE = 1.05, -- the sword's size on the back
 	BODY_WAIT = 10, -- seconds a new character's sword waits for its UpperTorso to arrive before going on it
 	GRAB_SECONDS = 0.16, -- into the draw, the hand reaches the sword (the draw move's Grab marker)
 	RELEASE_SECONDS = 0.25, -- into the put-away, the sword is back on the back (the sheath move's Release marker)

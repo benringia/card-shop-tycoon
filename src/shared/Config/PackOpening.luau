@@ -179,7 +179,8 @@ return {
 	VOLUMES = {
 		crinkle = 0.5, snap = 0.6, stack = 0.35, flip = 0.45, tease = 0.5,
 		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.35, chime = 0.5,
-		forgeFire = 0.45, forgeStrike = 0.5, forgeClank = 0.65, forgeBurst = 0.5, forgeBoom = 0.6, forgeRing = 0.4,
+		-- The Forge's: half their first levels (owner 2026-11-06: good, but loud)
+		forgeFire = 0.22, forgeStrike = 0.25, forgeClank = 0.32, forgeBurst = 0.25, forgeBoom = 0.3, forgeRing = 0.2,
 	},
 	TEASE_FADE_SECONDS = 0.12, -- the tease's rise fades out this fast when the hit lands
 }

@@ -1163,9 +1163,8 @@ group, checked before its fragments and every time (not only the first). Below i
   kneeling, until the fight ends, and a win counts for them too.
 - **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 4 (`Swords.UNLOCK_SHOP_LEVEL`,
   when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
-  (`seenSword`). It rests on the back everywhere (hilt over the right shoulder, the blade across to the left hip, every
-  sword's tip clear of the ground), 1.2x bigger there so it and the looks the shop will sell later stand
-  out (`Swords.BACK_SCALE`), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
+  (`seenSword`). It rests on the back everywhere (hilt over the right shoulder, the blade down to the left hip, every
+  sword's tip clear of the ground, near life-size: `Swords.BACK_SCALE` 1.05), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
   (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
   starter combo and skill are the sword moves round's (below). Every sword gets its own combo and skill (Forge swords,
   project 2, also their own look and effects). Weapons come in families (owner 2026-11-04: sword, spear, scythe, maybe
