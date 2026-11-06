@@ -51,11 +51,37 @@ return {
 	LADDER = {
 		edge = { [1] = 0.25, [2] = 0.4, [3] = 0.55 },
 		auraFrom = 4,
-		auraRate = { 4, 6, 8 },
+		auraRate = { 6, 10, 14 }, -- Studio's automatic quality thins these a lot: tuned so +4 still reads there
 		trailFrom = 7,
 		trailScale = { 1.2, 1.35, 1.5 },
 		awakenedAt = 10,
 	},
+	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too)
+	LIGHT = { Epic = true, Legendary = true },
 	-- On the back (in town and between fights): this share of the aura's particles and no light
 	BACK = { auraShare = 0.35, light = false },
+	-- Drawing it (client Util/WeaponLook). The glow shell: each glowing part's copy this much bigger, in Neon. Particle
+	-- textures are Config/AttackFx or Config/MoveFx TEXTURES keys (square, white: tinted the weapon's glow; prism
+	-- runs through every element's colour). Sizes in studs at their biggest (a particle grows to it, then shrinks
+	-- away; the textures are mostly clear round a small shape), lifetimes in seconds, speeds in studs a second.
+	-- Checked in Studio 2026-11-06: smaller ones vanished against the sky.
+	SHELL_SCALE = 1.03,
+	LIGHT_LOOK = { range = 7, brightness = 0.8 },
+	AURA = {
+		embers = { texture = "flame", size = 1.2, lifetime = { 0.6, 1.1 }, speed = { 0.4, 1.2 }, rise = 2.5 },
+		frost = { texture = "shard", size = 0.9, lifetime = { 0.8, 1.4 }, speed = { 0.1, 0.4 }, rise = -0.6 },
+		petals = { texture = "glow", size = 0.9, lifetime = { 1, 1.6 }, speed = { 0.2, 0.6 }, rise = -0.8 },
+		sparks = { texture = "spark", size = 0.8, lifetime = { 0.3, 0.6 }, speed = { 1, 2.5 }, rise = 0 },
+		wisps = { texture = "smoke", size = 1.4, lifetime = { 1, 1.8 }, speed = { 0.2, 0.5 }, rise = 0.8 },
+		prism = { texture = "shard", size = 0.9, lifetime = { 0.8, 1.3 }, speed = { 0.2, 0.6 }, rise = 0.4 },
+	},
+	-- Grade S: the card-style twinkle, a few star glints a second along the blade
+	TWINKLE = { texture = "flare", rate = 3, size = 1.6, lifetime = 0.5 },
+	-- +10 Awakened: a ring of its effect circling the blade (round 1: one emitter each; owner to judge in Studio)
+	AWAKENED = {
+		sunHalo = { texture = "ring", rate = 3, size = 2.6, lifetime = 1.2, spin = 40 },
+		vineCrown = { texture = "vine", rate = 4, size = 1.8, lifetime = 1.4, spin = 60 },
+		prismWings = { texture = "shard", rate = 10, size = 1, lifetime = 1, spin = 120 },
+		elementRunes = { texture = "rune", rate = 3, size = 1.6, lifetime = 1.6, spin = 90 },
+	},
 }

@@ -921,21 +921,21 @@ local function swordHit(event: any)
 		HitFx.sparks(marker.Position + Vector3.new(0, 3, 0))
 		local attacker = Players:GetPlayerByUserId(tonumber(string.sub(event.from or "", 4)) or 0)
 		local character = if attacker then attacker.Character else nil
-		local sword = Swords.SWORDS[(if character then character:GetAttribute("Sword") else nil) :: string] or Swords.SWORDS.starterSword
-		local tint = Color3.fromRGB(sword.slash.color[1], sword.slash.color[2], sword.slash.color[3])
+		local slash = SwordController.SlashOf(character)
+		local tint = Color3.fromRGB(slash.color[1], slash.color[2], slash.color[3])
 		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 		local at = (if root then SwordController.HitPoint(event.to, root.Position) else nil) or marker.Position + Vector3.new(0, 3, 0)
 		-- Your own cuts burst as the blade landed (SwordController's reach check); everyone else's, every dash slash
 		-- (on each foe it reached) and yours the reach check missed burst here
 		if not mine or event.kind == "Skill" or not SwordController.HitSoundJustPlayed() then
 			local burst = SwordFx.BURST
-			HitFx.burst(at, (if big then burst.big else burst.size) * sword.slash.scale, tint)
+			HitFx.burst(at, (if big then burst.big else burst.size) * slash.scale, tint)
 			if big then
-				HitFx.ring(at, SwordFx.RING.size * sword.slash.scale, tint)
+				HitFx.ring(at, SwordFx.RING.size * slash.scale, tint)
 			end
 		end
 		if event.kind == "Skill" then
-			HitFx.cutLines(at, sword.slash.scale, tint)
+			HitFx.cutLines(at, slash.scale, tint)
 		end
 		local model = MonsterController.GetModel(marker)
 		if model then

@@ -1,8 +1,9 @@
 --!strict
 -- The swords on everyone's characters and the first-sword popup (spec 2026-11-02-you-in-the-fight-design). Every
--- client draws a sword for each character whose Sword attribute is set (SwordService): on the back, or in the right
--- hand while SwordDrawn. The model comes from ReplicatedStorage.WeaponModels (its origin the grip's centre, the
--- blade along +Y; a code-built stand-in until it's saved). Your own draw and put-away play their moves and move the
+-- client draws a sword for each character whose Sword attribute is set (WeaponService: a Config/Weapons id, with
+-- SwordGrade and SwordLevel): on the back, or in the right hand while SwordDrawn. The model comes from
+-- ReplicatedStorage.WeaponModels (its origin the grip's centre, the blade along +Y; a code-built stand-in until it's
+-- saved), with its glow ladder (Util/WeaponLook); its moves are its moveset's (Config/Swords). Your own draw and put-away play their moves and move the
 -- sword at the Grab / Release moment; others' swords move that long after their attribute changes.
 -- In boss fights (BattleController calls SetCombat) it also runs your sword: Attack (soft aim, the combo's next cut
 -- as the server will pick it), Skill, Dodge (a dash with after-images) on their own cooldowns, and no jumping (the
@@ -17,6 +18,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
 local SwordFx = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local SwordArcRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordArcRules"))
@@ -28,6 +30,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local AfterImage = require(ClientUtil:WaitForChild("AfterImage"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
+local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -35,10 +38,42 @@ local player = Players.LocalPlayer
 
 local SwordController = {}
 
--- One character's sword
-type View = { swordId: string, model: Model, handle: BasePart, weld: Weld, grip: CFrame, inHand: boolean, token: number, trail: Trail? }
+-- One character's sword: its weapon (a Config/Weapons id), grade and level
+type View = {
+	swordId: string,
+	grade: string,
+	level: number,
+	model: Model,
+	handle: BasePart,
+	weld: Weld,
+	grip: CFrame,
+	inHand: boolean,
+	token: number,
+	trail: Trail?,
+}
 
 local views: { [Model]: View } = {}
+
+-- The moves a weapon swings (its Config/Swords moveset); nil for anything that isn't a built weapon
+local function swordOf(weaponId: unknown): Swords.Sword?
+	local weapon = if typeof(weaponId) == "string" then Weapons.ById[weaponId] else nil
+	local moveset = if weapon then weapon.moveset else nil
+	return if moveset then Swords.SWORDS[moveset] else nil
+end
+
+-- A character's slash colour and size: its weapon's trail colour (the Steel Sword keeps its moves' pale steel)
+local function slashOf(character: Model?, sword: Swords.Sword): { color: { number }, scale: number }
+	local weaponId = if character then character:GetAttribute("Sword") else nil
+	local trail = if typeof(weaponId) == "string" then WeaponLook.trailColor(weaponId) else nil
+	return if trail then { color = trail, scale = sword.slash.scale } else sword.slash
+end
+
+-- A character's weapon grade and level (C, +0 when unset)
+local function gradeAndLevel(character: Model): (string, number)
+	local grade = character:GetAttribute("SwordGrade")
+	local level = character:GetAttribute("SwordLevel")
+	return if typeof(grade) == "string" then grade else "C", if typeof(level) == "number" then level else 0
+end
 local predictedUntil = 0 -- os.clock: your sword shows drawn until then, ahead of the server's SwordDrawn (an attack)
 local snapToHand = false -- the next draw of yours goes straight into the hand (an attack doesn't wait for the draw move)
 local mine: SwordAnims.Set? = nil -- your character's sword moves
@@ -159,45 +194,19 @@ local function soundFor(key: string, root: BasePart, id: string): Sound
 	return made
 end
 
--- A plain sword from parts, the same size as the real model, for while WeaponModels has no model yet
-local function standIn(): Model
-	local model = Instance.new("Model")
-	model.Name = "StandInSword"
-	local function part(name: string, shape: Enum.PartType, size: Vector3, y: number, color: Color3, material: Enum.Material): BasePart
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Shape = shape
-		p.Size = size
-		p.CFrame = CFrame.new(0, y, 0)
-		p.Color = color
-		p.Material = material
-		p.Parent = model
-		return p
-	end
-	local steel, gold = Color3.fromRGB(204, 217, 235), Color3.fromRGB(235, 179, 71)
-	local grip = part("Handle", Enum.PartType.Cylinder, Vector3.new(0.9, 0.26, 0.26), 0, Color3.fromRGB(92, 56, 36), Enum.Material.SmoothPlastic)
-	grip.CFrame = CFrame.Angles(0, 0, math.rad(90)) -- a cylinder lies along X: stand it up
-	part("Guard", Enum.PartType.Block, Vector3.new(1.25, 0.24, 0.34), 0.52, gold, Enum.Material.SmoothPlastic)
-	part("Blade", Enum.PartType.Block, Vector3.new(0.5, 3.6, 0.13), 2.42, steel, Enum.Material.Metal)
-	part("Pommel", Enum.PartType.Ball, Vector3.new(0.4, 0.4, 0.4), -0.62, gold, Enum.Material.SmoothPlastic)
-	local attachment = Instance.new("Attachment")
-	attachment.Name = "Grip"
-	attachment.CFrame = grip.CFrame:Inverse() -- the grip's centre, blade up
-	attachment.Parent = grip
-	model.PrimaryPart = grip
-	return model
-end
-
--- A fresh copy of a sword's model, every part welded to its handle and taking no part in physics
-local function makeModel(swordId: string): (Model, BasePart, CFrame)
+-- A fresh copy of a weapon's model (a stand-in in its colours while WeaponModels has none) with its glow ladder,
+-- every part welded to its handle and taking no part in physics
+local function makeModel(weaponId: string, grade: string, level: number): (Model, BasePart, CFrame)
 	local folder = ReplicatedStorage:FindFirstChild("WeaponModels")
-	local template = if folder then folder:FindFirstChild(Swords.SWORDS[swordId].model) else nil
-	local model = if template and template:IsA("Model") then template:Clone() else standIn()
+	local modelName = (Weapons.ById[weaponId] :: Weapons.Weapon).model
+	local template = if folder and modelName then folder:FindFirstChild(modelName) else nil
+	local model = if template and template:IsA("Model") then template:Clone() else WeaponLook.standIn(weaponId)
 	for _, item in model:GetDescendants() do
 		if item:IsA("LuaSourceContainer") then
 			item:Destroy() -- bought or imported models can carry scripts: none may run
 		end
 	end
+	WeaponLook.apply(model, weaponId, grade, level)
 	local handle = model.PrimaryPart or model:FindFirstChild("Handle") or model:FindFirstChild("Grip") or model:FindFirstChildWhichIsA("BasePart", true)
 	assert(handle and handle:IsA("BasePart"), "a sword model needs a part")
 	-- Where the hand holds it: its Grip attachment, else the model's pivot (an imported model's: the grip's centre,
@@ -255,6 +264,7 @@ local function place(view: View, character: Model, inHand: boolean)
 	end
 	view.weld.C1 = view.grip
 	view.inHand = inHand
+	WeaponLook.setPlace(view.model, view.swordId, view.grade, view.level, if inHand then "hand" else "back")
 end
 
 local function drop(character: Model)
@@ -268,22 +278,34 @@ end
 -- The character's Sword or SwordDrawn changed (or it just appeared): make, move or remove its sword
 local function refresh(character: Model)
 	local swordId = character:GetAttribute("Sword")
-	if typeof(swordId) ~= "string" or not Swords.SWORDS[swordId] then
+	if typeof(swordId) ~= "string" or not swordOf(swordId) then
 		drop(character)
 		return
 	end
+	local grade, level = gradeAndLevel(character)
 	local view = views[character]
-	if view and view.swordId ~= swordId then
+	if view and (view.swordId ~= swordId or view.grade ~= grade or view.level ~= level) then
 		drop(character)
 		view = nil
 	end
 	local drawn = character:GetAttribute("SwordDrawn") == true or (character == player.Character and os.clock() < predictedUntil)
 	if not view then
-		local model, handle, grip = makeModel(swordId)
+		local model, handle, grip = makeModel(swordId, grade, level)
 		local weld = Instance.new("Weld")
 		weld.Part1 = handle
 		weld.Parent = handle
-		local fresh: View = { swordId = swordId, model = model, handle = handle, weld = weld, grip = grip, inHand = drawn, token = 0, trail = nil }
+		local fresh: View = {
+			swordId = swordId,
+			grade = grade,
+			level = level,
+			model = model,
+			handle = handle,
+			weld = weld,
+			grip = grip,
+			inHand = drawn,
+			token = 0,
+			trail = nil,
+		}
 		if character == player.Character then
 			-- The slash trail along your blade, on while a cut or the skill swings
 			local blade = SwordFx.TRAIL_BLADE
@@ -293,7 +315,11 @@ local function refresh(character: Model)
 			local trail = Instance.new("Trail")
 			trail.Attachment0, trail.Attachment1 = base, tip
 			trail.Lifetime = SwordFx.TRAIL_LIFETIME
-			trail.Color = ColorSequence.new(Color3.fromRGB(SwordFx.TRAIL_COLOR[1], SwordFx.TRAIL_COLOR[2], SwordFx.TRAIL_COLOR[3]))
+			-- In the weapon's trail colour, wider from +7 (its look's layers); the Steel Sword keeps its pale steel
+			local trailColor = WeaponLook.trailColor(swordId) or SwordFx.TRAIL_COLOR
+			local layers = WeaponLook.layers(swordId, grade, level, "hand")
+			trail.Color = ColorSequence.new(Color3.fromRGB(trailColor[1], trailColor[2], trailColor[3]))
+			trail.WidthScale = NumberSequence.new(if layers then layers.trailScale else 1)
 			trail.Transparency = NumberSequence.new(0.2, 1)
 			trail.LightEmission = 1
 			trail.FaceCamera = true
@@ -390,6 +416,13 @@ local function watchCharacter(character: Model)
 	character:GetAttributeChangedSignal("SwordDrawn"):Connect(function()
 		refresh(character)
 	end)
+	-- An upgrade or a reforge: the look rebuilt at its new level or grade
+	character:GetAttributeChangedSignal("SwordGrade"):Connect(function()
+		refresh(character)
+	end)
+	character:GetAttributeChangedSignal("SwordLevel"):Connect(function()
+		refresh(character)
+	end)
 	character.AncestryChanged:Connect(function(_, parent)
 		if not parent then
 			drop(character)
@@ -458,8 +491,7 @@ end
 -- loaded, and replays from the start: a new Sound per swing could start late while it loaded.
 function SwordController.PlaySound(key: string)
 	local character = player.Character
-	local swordId = if character then character:GetAttribute("Sword") else nil
-	local sword = if typeof(swordId) == "string" then Swords.SWORDS[swordId] else Swords.SWORDS[Swords.STARTER]
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil) or Swords.SWORDS[Swords.STARTER]
 	local id = if sword then sword.sounds[key] else nil
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	if not id or id == "" or not root then
@@ -605,8 +637,7 @@ end
 -- freeze longer (SwordFx.HIT_STOP) and shake harder.
 function SwordController.IsBigHit(kind: string): boolean
 	local character = player.Character
-	local swordId = if character then character:GetAttribute("Sword") else nil
-	local sword = if typeof(swordId) == "string" then Swords.SWORDS[swordId] else nil
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
 	return kind == "Skill" or (sword ~= nil and SwingGate.lastStruck(gate) == #sword.combo)
 end
 
@@ -630,6 +661,12 @@ local function burstPoint(targets: { SwordRules.Target }, from: Vector3, id: str
 	return Vector3.new(x, from.Y + SwordFx.BURST.up, z)
 end
 
+-- A character's sword hit colour and size (BattleController's hit bursts): its weapon's trail colour
+function SwordController.SlashOf(character: Model?): { color: { number }, scale: number }
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil) or Swords.SWORDS[Swords.STARTER]
+	return slashOf(character, sword)
+end
+
 -- Boss fights: where a sword hit on target `id` bursts, struck from `from` (BattleController's hits)
 function SwordController.HitPoint(id: string, from: Vector3): Vector3?
 	return if combatTargets then burstPoint(combatTargets(), from, id) else nil
@@ -651,16 +688,20 @@ local function predictHit(connects: (root: BasePart, targets: { SwordRules.Targe
 	if mine then
 		mine.hitStop(if move == "skill" or last then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
 	end
-	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
 	local at = burstPoint(targets, root.Position, nil)
 	if not sword or move == "skill" or not at then
 		return
 	end
-	local tint = Color3.fromRGB(sword.slash.color[1], sword.slash.color[2], sword.slash.color[3])
+	local slash = slashOf(character, sword)
+	local tint = Color3.fromRGB(slash.color[1], slash.color[2], slash.color[3])
 	local burst = SwordFx.BURST
-	HitFx.burst(at, (if last then burst.big else burst.size) * sword.slash.scale, tint)
-	if last then
-		HitFx.ring(at, SwordFx.RING.size * sword.slash.scale, tint)
+	HitFx.burst(at, (if last then burst.big else burst.size) * slash.scale, tint)
+	-- The finisher's ring; from +7 an element burst on every hit (the weapon's layers)
+	local view = if character then views[character] else nil
+	local layers = if view then WeaponLook.layers(view.swordId, view.grade, view.level, "hand") else nil
+	if last or (layers and layers.burst) then
+		HitFx.ring(at, SwordFx.RING.size * slash.scale, tint)
 	end
 end
 
@@ -715,7 +756,7 @@ function SwordController.Attack()
 		return
 	end
 	local character, root = ownParts()
-	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
 	if not character or not root or not sword then
 		return
 	end
@@ -752,7 +793,7 @@ function SwordController.Attack()
 			task.delay(arc.from, function()
 				local _, arcRoot = ownParts()
 				if arcRoot and stillSwinging(token) then
-					HitFx.swingArc(arcRoot.CFrame, arc, sword.slash)
+					HitFx.swingArc(arcRoot.CFrame, arc, slashOf(character, sword))
 				end
 			end)
 		end
@@ -806,7 +847,7 @@ function SwordController.Skill()
 		return
 	end
 	local character, root, humanoid = ownParts()
-	local sword = if character then Swords.SWORDS[character:GetAttribute("Sword") :: string] else nil
+	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
 	if not character or not root or not humanoid or not sword or os.clock() < skillReadyAt then
 		return
 	end
@@ -830,7 +871,7 @@ function SwordController.Skill()
 	task.delay(arc.from, function()
 		local _, arcRoot = ownParts()
 		if arcRoot and stillSwinging(token) then
-			HitFx.swingArc(arcRoot.CFrame, arc, sword.slash)
+			HitFx.swingArc(arcRoot.CFrame, arc, slashOf(character, sword))
 		end
 	end)
 	local dash = skill.dash
