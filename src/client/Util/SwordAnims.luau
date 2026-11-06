@@ -18,6 +18,7 @@ export type Set = {
 	stop: (key: string, fade: number?) -> (),
 	track: (key: string) -> AnimationTrack?,
 	hitStop: (seconds: number) -> (),
+	destroy: () -> (),
 }
 
 -- Moves a hit freezes for a moment (hit-stop); they blend in fast (SwordFx.FADE.strike)
@@ -105,7 +106,17 @@ function SwordAnims.load(humanoid: Humanoid, swordId: string): Set
 		end
 	end
 
-	return { play = play, stop = stop, track = track, hitStop = hitStop }
+	-- Every loaded track stopped and destroyed (a set replaced when you equip another moveset: no orphaned loop, no
+	-- tracks piling up on the Animator)
+	local function destroy()
+		for key, loaded in tracks do
+			loaded:Stop(0)
+			loaded:Destroy()
+			tracks[key] = nil
+		end
+	end
+
+	return { play = play, stop = stop, track = track, hitStop = hitStop, destroy = destroy }
 end
 
 return SwordAnims

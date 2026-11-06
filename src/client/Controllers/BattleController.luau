@@ -57,6 +57,7 @@ local PartyController = require(Controllers:WaitForChild("PartyController"))
 local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local SwapKeys = require(Shared:WaitForChild("Util"):WaitForChild("SwapKeys"))
 local SuperCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
+local SkillCinematic = require(ClientUtil:WaitForChild("SkillCinematic"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local VictoryScreen = require(ClientUtil:WaitForChild("VictoryScreen"))
 local DefeatScreen = require(ClientUtil:WaitForChild("DefeatScreen"))
@@ -1024,6 +1025,7 @@ local function onSuperEvent(event: any)
 		end
 		local name = fightNames[event.from] or look.card
 		local seconds = tonumber(event.seconds) or SuperFxConfig.TIERS[look.tier].windup
+		SkillCinematic.stop() -- your skill's camera moment gives the camera back first (else the super keeps it stuck)
 		SuperCinematic.play({
 			look = event.look,
 			tier = look.tier,

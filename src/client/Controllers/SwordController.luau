@@ -518,11 +518,17 @@ local function watchCharacter(character: Model)
 		local root = character:WaitForChild("HumanoidRootPart", 10)
 		-- Your moves and sounds are your equipped sword's moveset's (its own skill: Sunfall Cleave's jump, not the dash
 		-- slash), loaded again whenever you equip another; every sound ready on the root part before the first swing
+		local loadedMoveset: string? = nil
 		local function loadMoves()
 			local moveset = movesetOf(character:GetAttribute("Sword")) or Swords.STARTER
 			local sword = Swords.SWORDS[moveset]
-			if humanoid and humanoid:IsA("Humanoid") then
+			-- only for a new moveset (the five Forge Swords share one), the last set's tracks stopped and destroyed
+			if humanoid and humanoid:IsA("Humanoid") and moveset ~= loadedMoveset then
+				if mine and loadedMoveset then
+					mine.destroy()
+				end
 				mine = SwordAnims.load(humanoid, moveset)
+				loadedMoveset = moveset
 			end
 			if root and root:IsA("BasePart") then
 				for key, id in sword.sounds do
@@ -827,15 +833,49 @@ end
 
 -- A finisher's hang (Swords cut `hang`): your camera eases in a little over `seconds`, then back as the fall starts,
 -- whatever happened meanwhile (a dodge mid-hang still gets the view back)
+-- The field of view the hang zoom leaves from and returns to while one is running, its tweens (final review
+-- 2026-11-07: a camera moment starting mid-zoom saved and restored a narrowed view, and it drifted)
+local hangBase: number? = nil
+local hangTweens: { Tween } = {}
+
+-- Any hang zoom running cut short, the camera back to its view's width (a skill's camera moment starting)
+local function cancelHang()
+	for _, tween in hangTweens do
+		tween:Cancel()
+	end
+	table.clear(hangTweens)
+	local base = hangBase
+	if base then
+		workspace.CurrentCamera.FieldOfView = base
+		hangBase = nil
+	end
+end
+
 local function hangZoom(seconds: number)
+	if SkillCinematic.isPlaying() then
+		return -- a skill's camera moment owns the view
+	end
 	local camera = workspace.CurrentCamera
 	local zoom = SwordFx.HANG_ZOOM
-	local before = camera.FieldOfView
+	local before = hangBase or camera.FieldOfView
+	hangBase = before
 	local easeIn = TweenService:Create(camera, TweenInfo.new(seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { FieldOfView = before - zoom.degrees })
+	table.insert(hangTweens, easeIn)
 	easeIn:Play()
 	task.delay(seconds, function()
+		if hangBase ~= before then
+			return -- cut short
+		end
 		easeIn:Cancel()
-		TweenService:Create(camera, TweenInfo.new(zoom.back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = before }):Play()
+		local easeOut = TweenService:Create(camera, TweenInfo.new(zoom.back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = before })
+		table.insert(hangTweens, easeOut)
+		easeOut.Completed:Once(function()
+			if hangBase == before then
+				hangBase = nil
+				table.clear(hangTweens)
+			end
+		end)
+		easeOut:Play()
 	end)
 end
 
@@ -1055,7 +1095,8 @@ function SwordController.Skill()
 			end,
 		})
 		local look = SwordSkillFxConfig.LOOKS[effects.fx.skill]
-		if look and aim then
+		if look and look.cinematic and aim then
+			cancelHang()
 			SkillCinematic.forLook(root, look, aim, function(): boolean
 				return stillSwinging(token)
 			end)
@@ -1268,7 +1309,7 @@ local function onSwordCast(userId: unknown, move: unknown, x: unknown, z: unknow
 	end
 	if move == "skill" then
 		if mode == "full" then
-			SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword), { blade = bladeOf(character) })
+			SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, skillAim(character, sword), { blade = bladeOf(character), lite = true })
 		end
 	elseif index then
 		cutEffects(character, sword, effects, index, mode == "full", function(): boolean

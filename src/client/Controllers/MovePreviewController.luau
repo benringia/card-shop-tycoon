@@ -360,6 +360,7 @@ local function play(payload: any)
 				local event = entry.event
 				if event.type == "cast" then
 					local look = SuperFxConfig.LOOKS[superLook]
+					SkillCinematic.stop()
 					SuperCinematic.play({
 						look = superLook,
 						tier = look.tier,

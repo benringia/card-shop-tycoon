@@ -12,6 +12,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local SwordSkillFxConfig = require(Config:WaitForChild("SwordSkillFx"))
+local SwordSkillFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordSkillFxRules"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
@@ -27,7 +28,8 @@ export type Colors = { deep: Color3, glow: Color3, element: string? }
 export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
 -- A skill's moments for its caster (your own: the screen shakes and sounds): the cleave, each strike of a skill made of
 -- several (Prism Judgment's blades), and where the effect bursts
-export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())? }
+-- `lite`: another player's cast (drawn lighter: SwordSkillFxRules.vineBudget)
+export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, lite: boolean? }
 
 local SwordSkillFx = {}
 
@@ -375,7 +377,7 @@ type Vine = {
 	thick: number,
 	stems: { Part },
 	thorns: { Part },
-	leaf: Part,
+	leaf: Part?,
 	bulb: Part?,
 	growAt: number, -- seconds into the effect it starts growing
 	grow: number, -- seconds it takes
@@ -402,18 +404,21 @@ local function piece(color: Color3, material: Enum.Material): Part
 	return p
 end
 
--- `bulb`: a glowing bud on its tip in that colour
-local function makeVine(base: Vector3, inward: Vector3, height: number, thick: number, color: Color3, leafColor: Color3, material: Enum.Material, bulb: Color3?): Vine
+-- `bulb`: a glowing bud on its tip in that colour; `details` false: stems only (no thorns, leaf or bud)
+local function makeVine(base: Vector3, inward: Vector3, height: number, thick: number, color: Color3, leafColor: Color3, material: Enum.Material, bulb: Color3?, details: boolean?): Vine
+	local full = details ~= false
 	local stems: { Part } = {}
 	local thorns: { Part } = {}
 	for _ = 1, VINE_PIECES do
 		local stem = piece(color, material)
 		stem.Shape = Enum.PartType.Cylinder
 		table.insert(stems, stem)
-		table.insert(thorns, piece(rgb(VERDANT.thorn), Enum.Material.SmoothPlastic))
+		if full then
+			table.insert(thorns, piece(rgb(VERDANT.thorn), Enum.Material.SmoothPlastic))
+		end
 	end
 	local bud: Part? = nil
-	if bulb then
+	if bulb and full then
 		bud = piece(bulb, Enum.Material.Neon)
 		bud.Shape = Enum.PartType.Ball
 	end
@@ -424,7 +429,7 @@ local function makeVine(base: Vector3, inward: Vector3, height: number, thick: n
 		thick = thick,
 		stems = stems,
 		thorns = thorns,
-		leaf = piece(leafColor, Enum.Material.SmoothPlastic),
+		leaf = if full then piece(leafColor, Enum.Material.SmoothPlastic) else nil,
 		bulb = bud,
 		growAt = 0,
 		grow = 0.12,
@@ -453,17 +458,20 @@ local function placeVine(v: Vine, grow: number, lean: number, curl: number)
 		stem.Transparency = if shown then 0 else 1
 		-- a pale thorn sticking out from each joint, alternately left and right
 		local thorn = v.thorns[index]
-		local out = (side * (if index % 2 == 0 then 1 else -1) - v.inward * 0.4 + UP * 0.3).Unit
-		local long = 0.8 * v.thick * grow
-		thorn.Size = Vector3.new(0.24 * v.thick, 0.24 * v.thick, math.max(long, 0.05))
-		thorn.CFrame = CFrame.lookAt(to, to + out) * CFrame.new(0, 0, -long / 2)
-		thorn.Transparency = if shown then 0 else 1
-		if index == 2 then
+		if thorn then
+			local out = (side * (if index % 2 == 0 then 1 else -1) - v.inward * 0.4 + UP * 0.3).Unit
+			local long = 0.8 * v.thick * grow
+			thorn.Size = Vector3.new(0.24 * v.thick, 0.24 * v.thick, math.max(long, 0.05))
+			thorn.CFrame = CFrame.lookAt(to, to + out) * CFrame.new(0, 0, -long / 2)
+			thorn.Transparency = if shown then 0 else 1
+		end
+		local leaf = v.leaf
+		if index == 2 and leaf then
 			local leafOut = (-side + UP * 0.4).Unit
 			local leafSize = 1.6 * v.thick * grow
-			v.leaf.Size = Vector3.new(math.max(leafSize * 0.5, 0.05), 0.08, math.max(leafSize, 0.05))
-			v.leaf.CFrame = CFrame.lookAt(at, at + leafOut) * CFrame.new(0, 0, -leafSize / 2)
-			v.leaf.Transparency = if shown then 0 else 1
+			leaf.Size = Vector3.new(math.max(leafSize * 0.5, 0.05), 0.08, math.max(leafSize, 0.05))
+			leaf.CFrame = CFrame.lookAt(at, at + leafOut) * CFrame.new(0, 0, -leafSize / 2)
+			leaf.Transparency = if shown then 0 else 1
 		end
 		at = to
 	end
@@ -482,7 +490,9 @@ local function dropVine(v: Vine)
 	for _, part in v.thorns do
 		part:Destroy()
 	end
-	v.leaf:Destroy()
+	if v.leaf then
+		v.leaf:Destroy()
+	end
 	if v.bulb then
 		v.bulb:Destroy()
 	end
@@ -529,12 +539,14 @@ end
 -- petals flying, sinking back
 local function rootBurst(ground: Vector3, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
 	local beats = spec.beats :: { [string]: number }
+	local budget = SwordSkillFxRules.vineBudget(not Extras.enabled(), false)
 	local roots: { Vine } = {}
 	local radius = spec.size * 0.3 * scale
-	for index = 1, beats.roots do
-		local angle = index / beats.roots * math.pi * 2
+	local count = math.max(3, math.round(beats.roots * budget.share))
+	for index = 1, count do
+		local angle = index / count * math.pi * 2
 		local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * radius
-		local root = makeVine(groundAt(ground + offset), -offset.Unit, beats.height * scale, beats.thick * scale, rgb(VERDANT.bark), colors.glow, Enum.Material.Wood, colors.glow)
+		local root = makeVine(groundAt(ground + offset), -offset.Unit, beats.height * scale, beats.thick * scale, rgb(VERDANT.bark), colors.glow, Enum.Material.Wood, colors.glow, budget.details)
 		root.growAt = (index % 3) * 0.03
 		root.grow = 0.1
 		root.lean = -0.35 -- spiking outward
@@ -1289,6 +1301,7 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 	local snapAt = beats.release + reach / beats.speed
 	local right = direction:Cross(UP)
 	local trap = groundAt(finish)
+	local budget = SwordSkillFxRules.vineBudget(not Extras.enabled(), hooks.lite == true)
 	-- The hop: green energy gathering on the blade, leaves swirling round you
 	local orb = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, beats.release + 1)
 	local stopGlow = ElementFx.chargeGlow(orb, colors.glow, beats.release, 0.9 * scale)
@@ -1310,19 +1323,20 @@ local function thornline(root: BasePart, spec: SwordSkillFxConfig.Look, colors: 
 		task.delay(burstAt, function()
 			local at = groundAt(feet + direction * along)
 			for _, side in { -1, 1 } do
-				local vine = makeVine(at + right * side * beats.side * scale, -right * side, beats.height * scale, beats.thick * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow)
+				local vine = makeVine(at + right * side * beats.side * scale, -right * side, beats.height * scale, beats.thick * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow, budget.details)
 				vine.growAt = burstAt
 				table.insert(vines, vine)
 			end
 			leafBurst(at, colors, 10, scale, 3)
 		end)
-		distance += beats.spacing
+		distance += beats.spacing * budget.spacing
 	end
 	task.delay(math.max(0, snapAt - 0.1), function()
-		for index = 1, beats.trapVines do
-			local angle = index / beats.trapVines * math.pi * 2
+		local count = math.max(3, math.round(beats.trapVines * budget.share))
+		for index = 1, count do
+			local angle = index / count * math.pi * 2
 			local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * beats.trap * scale
-			local vine = makeVine(groundAt(trap + offset), -offset.Unit, beats.height * beats.trapTall * scale, beats.thick * 1.2 * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, rgb(VERDANT.petal))
+			local vine = makeVine(groundAt(trap + offset), -offset.Unit, beats.height * beats.trapTall * scale, beats.thick * 1.2 * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, rgb(VERDANT.petal), budget.details)
 			vine.growAt = snapAt - 0.1
 			vine.grow = 0.1
 			vine.lean, vine.curl = -0.15, 0.1
@@ -1460,10 +1474,12 @@ local function elementalSpin(root: BasePart, spec: SwordSkillFxConfig.Look, colo
 		elseif element == "Bloom" then
 			leafBurst(feet, colors, 40, scale, 12)
 			local vines: { Vine } = {}
-			for index = 1, 8 do
-				local angle = index / 8 * math.pi * 2
+			local budget = SwordSkillFxRules.vineBudget(not Extras.enabled(), hooks.lite == true)
+			local count = math.max(3, math.round(8 * budget.share))
+			for index = 1, count do
+				local angle = index / count * math.pi * 2
 				local at = feet + Vector3.new(math.cos(angle), 0, math.sin(angle)) * reach * 0.8
-				local vine = makeVine(groundAt(at), (feet - at).Unit, 6 * scale, 1 * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow)
+				local vine = makeVine(groundAt(at), (feet - at).Unit, 6 * scale, 1 * scale, colors.deep, colors.glow, Enum.Material.SmoothPlastic, colors.glow, budget.details)
 				vine.growAt = beats.grow * 0.8
 				vine.lean = -0.3
 				table.insert(vines, vine)

@@ -181,6 +181,17 @@ return {
 		expect.equal(SwordSkillFxRules.wideDistance(40, 5, 62, 1, 4) > SwordSkillFxRules.wideDistance(40, 5, 62, 16 / 9, 4), true, "a narrow screen stands further out")
 	end,
 
+	["the Verdant's vines: every one in full for your own, a light version on low graphics and for another player's"] = function()
+		local own = SwordSkillFxRules.vineBudget(false, false)
+		expect.equal(own.spacing, 1); expect.equal(own.share, 1); expect.equal(own.details, true)
+		for _, case in { { true, false }, { false, true }, { true, true } } do
+			local lite = SwordSkillFxRules.vineBudget(case[1], case[2])
+			expect.equal(lite.spacing, 2, "rows twice as far apart")
+			expect.equal(lite.share, 0.5, "half the trap and the roots")
+			expect.equal(lite.details, false, "stems only: no thorns, leaf or bud")
+		end
+	end,
+
 	["the admin panel has a Sword skills section of /skillfx buttons"] = function()
 		local found = false
 		for _, section in AdminPanel.SECTIONS do

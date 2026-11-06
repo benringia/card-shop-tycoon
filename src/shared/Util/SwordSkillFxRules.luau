@@ -45,4 +45,14 @@ function SwordSkillFxRules.wideDistance(length: number, margin: number, fov: num
 	return math.max(least, (length / 2 + margin) / math.tan(across / 2))
 end
 
+-- How much of a Verdant look's vines to draw (final review 2026-11-07: phones): all of them, in full, for your own; on
+-- low graphics (or a struggling frame rate) or for another player's cast, rows `spacing` times as far apart, `share` of
+-- the trap ring's and roots' vines, and stems only (`details` off: no thorns, leaf or bud)
+function SwordSkillFxRules.vineBudget(lowGraphics: boolean, others: boolean): { spacing: number, share: number, details: boolean }
+	if lowGraphics or others then
+		return { spacing = 2, share = 0.5, details = false }
+	end
+	return { spacing = 1, share = 1, details = true }
+end
+
 return SwordSkillFxRules

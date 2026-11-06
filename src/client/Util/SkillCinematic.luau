@@ -49,7 +49,13 @@ local function shot(focus: Vector3, eye: Vector3): CFrame
 	return CFrame.lookAt(at, focus)
 end
 
--- Your camera back as it was
+-- Whether your skill's camera moment is playing (the finisher's hang zoom stays off the camera then)
+function SkillCinematic.isPlaying(): boolean
+	return saved ~= nil
+end
+
+-- Your camera back as it was (also before a super's cinematic takes the camera: final review 2026-11-07, else the super
+-- saves this moment's scripted camera and restores it, leaving the camera stuck)
 function SkillCinematic.stop()
 	local was = saved
 	if not was then
