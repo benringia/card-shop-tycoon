@@ -181,14 +181,15 @@ return {
 		dropRing = "rbxassetid://9119747485", -- Sword Long Metallic Ring Decay 3: its blade rings on (faded at the end)
 		dropSting = "rbxassetid://9114023753", -- Cymbal Sting 1: an Epic or Legendary's swell
 		dropBoom = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds): a Legendary's weight
+		dropFlip = "rbxassetid://3456145589", -- card_flip (the opening's flip, quieter here): its card turns over
 	},
 	VOLUMES = {
 		crinkle = 0.5, snap = 0.6, stack = 0.35, flip = 0.45, tease = 0.5,
 		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.35, chime = 0.5,
 		-- The Forge's: half their first levels (owner 2026-11-06: good, but loud)
 		forgeFire = 0.22, forgeStrike = 0.25, forgeClank = 0.32, forgeBurst = 0.25, forgeBoom = 0.3, forgeRing = 0.2,
-		-- The drop cinematic's: kept as low as the Forge's (owner 2026-11-06)
-		dropRise = 0.25, dropBurst = 0.3, dropRing = 0.15, dropSting = 0.22, dropBoom = 0.25,
+		-- The drop cinematic's: half again (owner 2026-11-06: good, but loud)
+		dropRise = 0.12, dropBurst = 0.15, dropRing = 0.08, dropSting = 0.11, dropBoom = 0.12, dropFlip = 0.2,
 	},
 	TEASE_FADE_SECONDS = 0.12, -- the tease's rise fades out this fast when the hit lands
 }

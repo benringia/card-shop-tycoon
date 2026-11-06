@@ -156,7 +156,7 @@ return {
 				Epic = { "dropBurst", "dropSting" },
 				Legendary = { "dropBurst", "dropSting", "dropBoom" },
 			},
-			card = "flip",
+			card = "dropFlip",
 		},
 		-- A new drop's card beside the weapon (spec 4.4): screen spot, its height (a share of the screen's), the flip's
 		-- seconds; it pops in face down once the weapon is up and turns over turnAfter seconds later
