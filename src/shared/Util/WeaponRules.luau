@@ -255,8 +255,13 @@ function WeaponRules.give(
 end
 
 -- A boss's chance to drop its weapon after `pity` full-loot kills without one
-function WeaponRules.dropChance(cfg: any, pity: number): number
-	return math.min(1, cfg.DROP.base + cfg.DROP.step * math.max(0, pity))
+function WeaponRules.dropChance(cfg: any, weaponId: string, pity: number): number
+	local weapon = cfg.ById[weaponId]
+	local odds = if weapon then cfg.DROP[weapon.rarity] else nil
+	if not odds then
+		return 0
+	end
+	return math.min(1, odds.base + odds.step * math.max(0, pity))
 end
 
 -- Cleans a saved weapons table: unknown ids dropped (and named, to log), bad grades to C, levels whole and in range;

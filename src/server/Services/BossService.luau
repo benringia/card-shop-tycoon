@@ -303,7 +303,7 @@ local function rollWeapon(player: Player, bossId: string, record: BossRules.Reco
 	if not weaponId then
 		return nil
 	end
-	if rng:NextNumber() >= WeaponRules.dropChance(Weapons, record.weaponPity) then
+	if rng:NextNumber() >= WeaponRules.dropChance(Weapons, weaponId, record.weaponPity) then
 		record.weaponPity += 1
 		return nil
 	end

@@ -667,7 +667,8 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 		local weapon = Weapons.ById[weaponId]
 		wrapped(words, 1, `Its weapon: {weapon.name}{if record then " (yours)" else ""}`, palette.ink)
 		local pity = if state then state.weaponPity or 0 else 0
-		local chance = wrapped(words, 2, string.format("Drop chance now: %.1f%%", WeaponRules.dropChance(Weapons, pity) * 100), palette.good)
+		local share = WeaponRules.dropChance(Weapons, weaponId, pity)
+		local chance = wrapped(words, 2, string.format(if share < 0.01 then "Drop chance now: %.2f%%" else "Drop chance now: %.1f%%", share * 100), palette.good)
 		Tooltip.attach(chance, "Each win with full loot can drop it. Every one that doesn't makes the next more likely.")
 		local material = WeaponRules.material(Weapons, weaponId)
 		for _, drop in boss.drops do

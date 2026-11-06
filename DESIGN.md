@@ -1740,8 +1740,11 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   / Grip, the grip's centre on the origin), imported by the owner, finished by `tools/weapons/finish_sword`; the
   Forge Sword's five elements are one model with five colour maps (`tools/weapons/forge_variants`). Portraits: each
   model rendered on magenta, cut out, uploaded (`assets/ui/weapon-portraits`, `WeaponLooks` portrait ids).
-- **Drops** (`BossService`): each full-loot win of a boss with a built weapon rolls it at 1% + 0.5% per full-loot win
-  since the last (`weaponPity` in its saved record); carried group members never roll it. A weapon you have turns into
+- **Drops** (`BossService`): each full-loot win of a boss with a built weapon (no soft cap or over-power shrink,
+  `BossRules.rollsWeapon`) rolls it at its rarity's odds plus a step per full-loot win since the last (`weaponPity` in
+  its saved record; `Weapons.DROP`, owner 2026-11-06): Rare 1% + 0.5% (median 15 kills, about 2.5 days at the soft
+  cap), Very Rare 0.5% + 0.2%, Epic 0.2% + 0.05% (about a week), Legendary 0.1% + 0.02% (median 79, about 2 weeks);
+  carried group members never roll it. A weapon you have turns into
   10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
   stage: rune circle, a light column in the rarity's colour, the weapon rising with its glow, "RARE! Verdant Blade",
   its grade, a line); Epic and Legendary drops are toasted to the server (not a duplicate: it says "Already yours").
@@ -1760,7 +1763,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 - **Economy** (`WEAPONS=1 lune run tools/economy/sim 2000`: an Ember Forge Sword, the Verdant Blade and its upgrades to
   +5, $11,100, paid first from an early packs-only shop's $706 an hour): the Grade S Legendary goal moves from 19.6 h to
   35.4 h median (+81%). That shop earns no boss cash (players chasing weapons fight bosses), and the weapons are their
-  own chase; kept as is for the owner to judge (2026-11-06).
+  own chase; the owner kept the costs (2026-11-06).
 - **Balance rows** (`WEAPON="<id>:<level>:<grade>" lune run tools/balance/bosses 60 1 <boss>`, "well" column, solo;
   the Steel Sword's row first):
 

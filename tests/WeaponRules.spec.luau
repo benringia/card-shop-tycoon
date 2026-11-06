@@ -198,10 +198,26 @@ return {
 		expect.equal(none, 0)
 	end,
 
-	["drop chance: 1% plus 0.5% a kill without one"] = function()
-		expect.near(WeaponRules.dropChance(W, 0), 0.01, 1e-9)
-		expect.near(WeaponRules.dropChance(W, 10), 0.06, 1e-9)
-		expect.equal(WeaponRules.dropChance(W, 500), 1)
+	["drop chance by rarity (owner 2026-11-06): a Rare 1% plus 0.5% a kill without one, a Legendary about 2 weeks"] = function()
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.01, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.06, 1e-9)
+		expect.equal(WeaponRules.dropChance(W, "verdantBlade", 500), 1)
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.001, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.003, 1e-9)
+		expect.equal(WeaponRules.dropChance(W, "nope", 0), 0)
+		-- Median full-loot kills to a drop (6 a day at the daily soft cap): Rare ~15 (2.5 days), Legendary ~79 (13 days)
+		local function median(rarity: string): number
+			local odds = W.DROP[rarity]
+			local miss, kills = 1, 0
+			repeat
+				kills += 1
+				miss *= 1 - math.min(1, odds.base + odds.step * (kills - 1))
+			until miss <= 0.5
+			return kills
+		end
+		expect.equal(median("Rare"), 15)
+		expect.equal(median("Legendary"), 79)
+		assert(median("Rare") < median("Very Rare") and median("Very Rare") < median("Epic") and median("Epic") < median("Legendary"), "rarer is slower")
 	end,
 
 	["loading: unknown weapons dropped and named, levels clamped, a missing equip falls back to the Steel Sword"] = function()

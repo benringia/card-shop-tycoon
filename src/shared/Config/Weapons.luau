@@ -154,8 +154,15 @@ return {
 	},
 	REFORGE_SHARE = 0.5, -- a reforge (a new grade roll, the better kept) costs this share of making it, rounded up
 	DUPLICATE_MATERIAL = 10, -- a boss dropping a weapon you own gives this many of its material instead
-	-- A boss's direct drop: base + step x full-loot kills since its weapon last dropped (bad-luck protection)
-	DROP = { base = 0.01, step = 0.005 },
+	-- A boss's own weapon dropping outright on a full-loot kill: `base`, plus `step` for every full-loot kill since without
+	-- one (pity). By rarity (owner 2026-11-06), median kills at 6 a day: Rare 15 (2.5 days), Very Rare 25, Epic 50 (about
+	-- a week), Legendary 79 (about 2 weeks, like forging it)
+	DROP = {
+		Rare = { base = 0.01, step = 0.005 },
+		["Very Rare"] = { base = 0.005, step = 0.002 },
+		Epic = { base = 0.002, step = 0.0005 },
+		Legendary = { base = 0.001, step = 0.0002 },
+	},
 	ANNOUNCE = { Epic = true, Legendary = true }, -- a dropped weapon of these rarities is announced to the server
 	-- Upgrades +1..+10: cash x the rarity's share and the weapon's material (Forge weapons: Wild Ore), Star Shards at +5
 	-- and +10. They never fail.
