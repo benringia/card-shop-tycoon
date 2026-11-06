@@ -3035,9 +3035,10 @@ boss models; the ranch and Heroic tiers come after those.
   Not built: a snack in the Bag that ends a tired spell early.
 - [x] Toasts as Cindercub's speech bubbles over the cash pill (owner's pick A of three mockups, 2026-11-06; 10.6
   HUD): one stack for messages and sales, 6 s (errors 8), a close "x" and tap-to-close. Merged 2026-11-06.
-- [ ] Weapons round 1 (5.11, spec `2026-11-06-weapons-round1-design.md`, branch `weapons-round1`): the Forge, the four
-  new swords, drops with pity, the Armory, the glow ladder, the material icons (sheet 7, owner's pick A).
-  Spec items moved to later by rulings: the weapon's card flipping over with its grade in the drop cinematic (a
+- [x] Weapons round 1 (5.11, spec `2026-11-06-weapons-round1-design.md`, branch `weapons-round1`): the Forge, the four
+  new swords, drops with pity, the Armory, the aura glow (the owner's reference look, hybrid for performance), the
+  material icons (sheet 7, owner's pick A). Approved by the owner in Studio 2026-11-06.
+  Still for later, spec items moved to later by rulings: the weapon's card flipping over with its grade in the drop cinematic (a
   "Grade X" line for now), other players nearby seeing the drop's light column (the Epic/Legendary toast tells them),
   the Prism Blade's trail taking the strong element's colour (its own colour for now).
 - [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
