@@ -75,6 +75,9 @@ return {
 	-- away; the textures are mostly clear round a small shape), lifetimes in seconds, speeds in studs a second.
 	-- Checked in Studio 2026-11-06: smaller ones vanished against the sky.
 	SHELL_SCALE = 1.03,
+	-- On a made model's painted blade the shell glows this share of the ladder's edge (at full it washed the painting
+	-- flat in Studio, 2026-11-06); a stand-in's plain blade takes it all
+	MODEL_SHELL = 0.6,
 	LIGHT_LOOK = { range = 7, brightness = 0.8 },
 	AURA = {
 		embers = { texture = "flame", size = 1.2, lifetime = { 0.6, 1.1 }, speed = { 0.4, 1.2 }, rise = 2.5 },

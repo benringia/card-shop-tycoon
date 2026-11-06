@@ -136,7 +136,7 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 		shell.CFrame = item.CFrame
 		shell.Material = Enum.Material.Neon
 		shell.Color = glow
-		shell.Transparency = 1 - layers.edge
+		shell.Transparency = 1 - layers.edge * (if onlyBlade then WeaponLooks.MODEL_SHELL else 1)
 		shell.CastShadow = false
 		shell:SetAttribute("Glow", nil)
 		if shell:IsA("MeshPart") then

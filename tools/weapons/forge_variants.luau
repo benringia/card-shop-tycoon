@@ -20,14 +20,25 @@ for element, colorMap in WeaponLooks.FORGE_COLOR_MAPS :: { [string]: string } do
 	for _, item in model:GetDescendants() do
 		if item:IsA("SurfaceAppearance") then
 			local ok = pcall(function()
-				(item :: any).ColorMap = colorMap
+				local look = item :: any
+				look.ColorMap = colorMap
 			end)
 			if not ok then
-				(item :: any).ColorMapContent = roblox.Content.fromUri(colorMap)
+				local look = item :: any
+				look.ColorMapContent = roblox.Content.fromUri(colorMap)
 			end
 			swapped += 1
-		elseif item:IsA("MeshPart") and (item :: any).TextureID ~= "" then
-			(item :: any).TextureID = colorMap
+		elseif item:IsA("MeshPart") then
+			-- Newer files keep the texture as TextureContent (a Content), older ones as TextureID
+			local ok = pcall(function()
+				local part = item :: any
+				assert(part.TextureID ~= "")
+				part.TextureID = colorMap
+			end)
+			if not ok then
+				local part = item :: any
+				part.TextureContent = roblox.Content.fromUri(colorMap)
+			end
 			swapped += 1
 		end
 	end
