@@ -53,6 +53,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
+local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
@@ -1373,7 +1374,7 @@ local function onSwordAttack(player: Player)
 	member.lastCut = { index = index, startedAt = startAt }
 	SwordService.Touch(player)
 	local cut = sword.combo[index]
-	task.delay(startAt - now + cut.hitAt, strike, fight, member, cut.power * sword.power, "Sword", function(px, pz, lookX, lookZ, target)
+	task.delay(startAt - now + cut.hitAt, strike, fight, member, cut.power * WeaponService.Power(player), "Sword", function(px, pz, lookX, lookZ, target)
 		return SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc)
 	end)
 end
@@ -1393,7 +1394,7 @@ local function onSwordSkill(player: Player)
 	SwordService.Touch(player)
 	local dash = skill.dash
 	local sx, sz = root.Position.X, root.Position.Z
-	task.delay(skill.hitAt, strike, fight, member, skill.power * Swords.SWORDS[swordId].power, "Skill", function(px, pz, _lookX, _lookZ, target)
+	task.delay(skill.hitAt, strike, fight, member, skill.power * WeaponService.Power(player), "Skill", function(px, pz, _lookX, _lookZ, target)
 		local ex, ez = SwordRules.clampPath(sx, sz, px, pz, dash.maxStuds + dash.slack)
 		return SwordRules.inDashPath(sx, sz, ex, ez, target.x, target.z, target.radius, dash.width)
 	end)
@@ -1541,6 +1542,7 @@ end
 function BattleService.Start()
 	DataService.Register({ name = "BattleService", load = load, save = save, unload = unload })
 	WildService.SetFightCheck(BattleService.IsFighting)
+	WeaponService.SetFightCheck(BattleService.IsFighting)
 	-- End a fight before the leave save, so cards that fainted in it are saved as resting
 	DataService.OnBeforeLeave(function(player)
 		local fight = fights[player]

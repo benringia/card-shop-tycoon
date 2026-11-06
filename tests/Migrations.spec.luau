@@ -205,6 +205,19 @@ return {
 		expect.equal(kept.resting.abc, 123, "kept")
 	end,
 
+	["v16: an empty Armory and the Steel Sword equipped; junk cleaned"] = function()
+		local data: any = { version = 15 }
+		Migrations.run(data, 16)
+		expect.equal(typeof(data.weapons), "table")
+		expect.equal(next(data.weapons), nil)
+		expect.equal(data.equippedWeapon, "starterSword")
+		expect.equal(data.version, 16)
+		local junk: any = { version = 15, weapons = "x", equippedWeapon = 5 }
+		Migrations.run(junk, 16)
+		expect.equal(typeof(junk.weapons), "table")
+		expect.equal(junk.equippedWeapon, "starterSword")
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))

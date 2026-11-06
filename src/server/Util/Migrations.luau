@@ -165,6 +165,15 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.swordFights = 0
 		end
 	end,
+	-- v16: weapons (WeaponService): an empty Armory and the Steel Sword equipped; anything else starts over
+	[15] = function(data)
+		if typeof(data.weapons) ~= "table" then
+			data.weapons = {}
+		end
+		if typeof(data.equippedWeapon) ~= "string" then
+			data.equippedWeapon = "starterSword"
+		end
+	end,
 }
 
 local function lowestGrade(): string

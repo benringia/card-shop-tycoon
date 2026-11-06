@@ -1,8 +1,9 @@
 --!strict
 -- The player's sword and look (spec 2026-11-02-you-in-the-fight-design). Everyone gets the standard body (torso, arms
 -- and legs at standard scale, their own head, face, hair and accessories kept), so the sword animations fit every
--- avatar. From shop level Swords.UNLOCK_SHOP_LEVEL (4) the character carries the starter sword (character attribute Sword; SwordDrawn while
--- attacking, back on the back SHEATH_SECONDS later); clients draw it. The first time, a popup says so: saved as
+-- avatar. From shop level Swords.UNLOCK_SHOP_LEVEL (4) the character carries its equipped weapon (WeaponService: character
+-- attributes Sword, SwordGrade, SwordLevel; SwordDrawn while attacking, back on the back SHEATH_SECONDS later); clients
+-- draw it. The first time, a popup says so: saved as
 -- data.seenSword once the client closes it (Remotes.SwordState / SwordSeen). Boss fights hide back accessories
 -- (capes, wings, backpacks) that would clash with the sword on the back.
 local Players = game:GetService("Players")
@@ -10,13 +11,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
 local CombatHud = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local DataService = require(Services:WaitForChild("DataService"))
-local EconomyService = require(Services:WaitForChild("EconomyService"))
+local WeaponService = require(Services:WaitForChild("WeaponService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type PlayerData = DataService.PlayerData
@@ -32,9 +34,15 @@ local sheathTokens: { [Player]: number } = {}
 local allowRequest = RateLimiter.new(REQUEST_COOLDOWN)
 local allowSeen = RateLimiter.new(REQUEST_COOLDOWN)
 
--- The sword this player fights with: the starter from the shop level that opens boss 1 (the Forge adds more later)
+-- The moves this player fights with (a Config/Swords entry): the equipped weapon's moveset, from the shop level that
+-- opens boss 1
 function SwordService.GetSword(player: Player): string?
-	return if EconomyService.GetLevel(player) >= Swords.UNLOCK_SHOP_LEVEL then Swords.STARTER else nil
+	local weaponId = WeaponService.GetEquipped(player)
+	if not weaponId then
+		return nil
+	end
+	local weapon = Weapons.ById[weaponId]
+	return if weapon and weapon.moveset and Swords.SWORDS[weapon.moveset] then weapon.moveset else Swords.STARTER
 end
 
 local function sendState(player: Player)
@@ -43,10 +51,7 @@ local function sendState(player: Player)
 end
 
 local function setSwordAttribute(player: Player)
-	local character = player.Character
-	if character then
-		character:SetAttribute("Sword", SwordService.GetSword(player))
-	end
+	WeaponService.ApplyAttributes(player)
 end
 
 -- An attack: the sword is in the hand now and goes back on the back SHEATH_SECONDS after the last one

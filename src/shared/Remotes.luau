@@ -85,6 +85,8 @@ local NAMES = {
 	"SwordAttack", -- client → server: () an Attack tap in a boss fight (the server picks the cut and checks reach)
 	"SwordSkill", -- client → server: () the sword skill in a boss fight
 	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
+	"EquipWeapon", -- client → server: (weaponId: string) hold an owned weapon (WeaponService; not in a fight)
+	"WeaponsChanged", -- server → client: { owned = { [weaponId]: { grade, level } }, equipped = weaponId }; client → server: () ask
 }
 
 local isServer = RunService:IsServer()
@@ -185,4 +187,6 @@ return {
 	SwordAttack = remotes.SwordAttack,
 	SwordSkill = remotes.SwordSkill,
 	Dodge = remotes.Dodge,
+	EquipWeapon = remotes.EquipWeapon,
+	WeaponsChanged = remotes.WeaponsChanged,
 }

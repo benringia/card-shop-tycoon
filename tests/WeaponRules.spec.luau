@@ -95,6 +95,14 @@ return {
 		expect.equal(sun.items.material_emberColossus, 2, "a masterwork pays in its recipe's main material")
 	end,
 
+	["each weapon's material: its boss's, Wild Ore for the Forge, a masterwork's main one; none for the Steel Sword"] = function()
+		expect.equal(WeaponRules.material(W, "verdantBlade"), "material_meadowWarden")
+		expect.equal(WeaponRules.material(W, "forgeSword_Shade"), "wildOre")
+		expect.equal(WeaponRules.material(W, "sunforgedBlade"), "material_emberColossus")
+		expect.isNil(WeaponRules.material(W, "starterSword"))
+		expect.isNil(WeaponRules.material(W, "nope"))
+	end,
+
 	["paying is all or nothing"] = function()
 		local cost = { cash = 100, items = { a = 2, b = 1 } }
 		local ok, why = WeaponRules.pay(cost, 100, { a = 2 })

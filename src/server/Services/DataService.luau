@@ -76,6 +76,8 @@ export type PlayerData = {
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
+	weapons: { [string]: { grade: string, level: number } }, -- weaponId -> its grade and upgrade level (WeaponService)
+	equippedWeapon: string, -- the weapon in hand (Config/Weapons id; the Steel Sword until another is equipped)
 }
 
 export type Handler = {
@@ -110,6 +112,8 @@ local TEMPLATE: PlayerData = {
 	seenWelcome = false,
 	seenSword = false,
 	swordFights = 0,
+	weapons = {},
+	equippedWeapon = "starterSword",
 }
 
 local DataService = {}

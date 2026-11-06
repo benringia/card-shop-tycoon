@@ -47,6 +47,12 @@ local function materialOf(cfg: any, weapon: any): string?
 	return nil
 end
 
+-- The material a weapon's upgrades, reforges and duplicate drops are counted in (nil: the Steel Sword, unknown ids)
+function WeaponRules.material(cfg: any, weaponId: string): string?
+	local weapon = cfg.ById[weaponId]
+	return if weapon then materialOf(cfg, weapon) else nil
+end
+
 function WeaponRules.power(cfg: any, weaponId: string, grade: string, level: number): number
 	local weapon = cfg.ById[weaponId]
 	if not weapon or weapon.source.kind == "starter" then
