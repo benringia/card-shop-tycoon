@@ -23,6 +23,7 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
+local Weapons = require(Config:WaitForChild("Weapons"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
 local WildConfig = require(Config:WaitForChild("Wild"))
@@ -31,6 +32,7 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
+local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local SoftColors = require(Shared:WaitForChild("Util"):WaitForChild("SoftColors"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -41,11 +43,12 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local BossTints = require(ClientUtil:WaitForChild("BossTints"))
 local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
+local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 
-type BossState = { unlocked: boolean, cleared: boolean, lootIn: number, rewardedToday: number, fragments: number, bonusReady: boolean }
+type BossState = { unlocked: boolean, cleared: boolean, lootIn: number, rewardedToday: number, fragments: number, bonusReady: boolean, weaponPity: number? }
 type StepState = "beaten" | "ready" | "tooWeak" | "locked"
 type Mark = "ok" | "no" | "warn"
 type Line = string | { text: string, color: Color3 }
@@ -66,6 +69,8 @@ local STATUS_ICONS: { [StepState]: string } = { beaten = "Trophy", ready = "Chec
 local STATUS_FILLS: { [StepState]: Color3 } = { beaten = UIStyle.GOLD, ready = UIStyle.GREEN, tooWeak = UIStyle.RED, locked = UIStyle.PANEL }
 local TRICK_ICONS: { [string]: string } = { phases = "Gem", shield = "Lock", thunderclap = "Volt", adds = "Customer", heal = "Heart", enrage = "Angry" }
 local DROP_SIZE = 46
+local WEAPON_CARD = 112 -- the boss's weapon card's height in Rewards (phones: PHONE_WEAPON_CARD)
+local PHONE_WEAPON_CARD = 88
 local PHONE_DROP_SIZE = 38
 local CHEST_SIZE = 32
 
@@ -78,6 +83,16 @@ local markColors: { [Mark]: Color3 } -- a checklist row's mark and value (Start)
 local list: ScrollingFrame -- the bosses, top to bottom
 local details: Frame -- the chosen boss
 local states: { [string]: BossState } = {}
+local ownedWeapons: { [string]: WeaponRules.Owned } = {} -- from WeaponsChanged: the boss weapons you have
+local bagItems: { [string]: number } = {} -- from ItemsChanged: the forge progress on its weapon
+
+-- Each boss's own weapon (Config/Weapons, built ones): bossId -> weapon id
+local weaponOf: { [string]: string } = {}
+for _, weapon in Weapons.WEAPONS do
+	if weapon.ready and weapon.source.kind == "boss" and weapon.source.boss then
+		weaponOf[weapon.source.boss] = weapon.id
+	end
+end
 local receivedAt = 0 -- os.clock() when `states` arrived (lootIn counts down from then)
 local partyIds: { string } = {}
 local selected = 1 -- the boss shown beside the list
@@ -622,16 +637,59 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 		end
 	end
 
-	if not (state and state.cleared) then
-		chestRow(column, 4, "First win", palette.hint, UIStyle.HINT, boss.firstClear, "Once, on your first win")
-	end
-	if not state or state.bonusReady then
-		chestRow(column, 5, "First win today", palette.good, UIStyle.GOOD, boss.dailyBonus, "Your first win each day")
-	else
-		iconLine(column, 5, "Gift", "Daily bonus collected: back tomorrow", UIKit.Colors.Subtext)
+	-- Its weapon (weapons round 1): its card, the chance your next full-loot win drops it (it grows every full-loot
+	-- win without it), its material's odds and the forge progress
+	local weaponId = weaponOf[bossId]
+	if weaponId then
+		local cardHeight = if phone then PHONE_WEAPON_CARD else WEAPON_CARD
+		local row = strip(column, 4, cardHeight + 6, 10)
+		local card = Instance.new("Frame")
+		card.Name = "WeaponCard"
+		card.LayoutOrder = 1
+		card.BackgroundTransparency = 1
+		card.Size = UDim2.fromOffset(math.floor(cardHeight * 0.7), cardHeight)
+		card.ZIndex = row.ZIndex + 1
+		card.Parent = row
+		local record = ownedWeapons[weaponId]
+		local have, need = WeaponRules.makeProgress(Weapons, weaponId, bagItems)
+		WeaponFace.render(card, nil, weaponId, record, if not record and have and need then { have = have, need = need } else nil)
+		local words = Instance.new("Frame")
+		words.LayoutOrder = 2
+		words.BackgroundTransparency = 1
+		words.Size = UDim2.new(1, -(math.floor(cardHeight * 0.7) + 10), 1, 0)
+		words.ZIndex = row.ZIndex
+		words.Parent = row
+		local list = Instance.new("UIListLayout")
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Padding = UDim.new(0, 2)
+		list.VerticalAlignment = Enum.VerticalAlignment.Center
+		list.Parent = words
+		local weapon = Weapons.ById[weaponId]
+		wrapped(words, 1, `Its weapon: {weapon.name}{if record then " (yours)" else ""}`, palette.ink)
+		local pity = if state then state.weaponPity or 0 else 0
+		local chance = wrapped(words, 2, string.format("Drop chance now: %.1f%%", WeaponRules.dropChance(Weapons, pity) * 100), palette.good)
+		Tooltip.attach(chance, "Each win with full loot can drop it. Every one that doesn't makes the next more likely.")
+		local material = WeaponRules.material(Weapons, weaponId)
+		for _, drop in boss.drops do
+			if drop.item == material and Items.ITEMS[material] then
+				wrapped(words, 3, `Its material: {Items.ITEMS[material].name}, {math.round(drop.chance * 100)}% with full loot`, palette.inkSoft)
+			end
+		end
+		if not record and have and need then
+			wrapped(words, 4, `Or forge it: {have}/{need}`, palette.inkSoft)
+		end
 	end
 
-	local pay = strip(column, 6, 24, 6)
+	if not (state and state.cleared) then
+		chestRow(column, 5, "First win", palette.hint, UIStyle.HINT, boss.firstClear, "Once, on your first win")
+	end
+	if not state or state.bonusReady then
+		chestRow(column, 6, "First win today", palette.good, UIStyle.GOOD, boss.dailyBonus, "Your first win each day")
+	else
+		iconLine(column, 6, "Gift", "Daily bonus collected: back tomorrow", UIKit.Colors.Subtext)
+	end
+
+	local pay = strip(column, 7, 24, 6)
 	Icon.make(pay, "Cash", UDim2.fromOffset(22, 22)).ZIndex = pay.ZIndex + 1
 	local cash = text(pay, `{boss.cash}`, UIKit.textSize("small"), palette.good, true)
 	cash.LayoutOrder = 2
@@ -646,18 +704,18 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 
 	if state then
 		local left = BossRules.fullDropsLeft(Bosses, state.rewardedToday)
-		local line = iconLine(column, 7, "Trophy", if left > 0 then `Full drops: {left} more {if left == 1 then "win" else "wins"} today` else "Fewer drops today: full again tomorrow", if left > 0 then palette.ink else palette.hint)
+		local line = iconLine(column, 8, "Trophy", if left > 0 then `Full drops: {left} more {if left == 1 then "win" else "wins"} today` else "Fewer drops today: full again tomorrow", if left > 0 then palette.ink else palette.hint)
 		Tooltip.attach(line, `After {Bosses.SOFT_CAP_AFTER} loot wins in a day, drops get rarer. Every day starts fresh.`)
 	end
 	local threshold = math.floor(boss.recommended * Bosses.OVERPOWER_RATIO)
 	if power > threshold then
-		local line = iconLine(column, 8, "Power", "Party very strong: fewer drops", palette.hint)
+		local line = iconLine(column, 9, "Power", "Party very strong: fewer drops", palette.hint)
 		Tooltip.attach(line, `Over {threshold} Power this boss drops less. Climb to the next boss, or fight it with weaker cards.`)
 	end
 	-- Phones: the way to its place sits at the end of the column (BossRules.detailsLayout), not in the footer
 	local hint = travelHint(bossId)
 	if hint and BossRules.detailsLayout(UIKit.isPhone()).hintInRewards then
-		wrapped(column, 9, hint, palette.hint)
+		wrapped(column, 10, hint, palette.hint)
 	end
 end
 
@@ -1007,6 +1065,17 @@ function BossBoardController.Start()
 
 	Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, onClick = toggle })
 
+	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
+		if typeof(state) == "table" and typeof((state :: any).owned) == "table" then
+			ownedWeapons = (state :: any).owned
+			render()
+		end
+	end)
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items: unknown)
+		if typeof(items) == "table" then
+			bagItems = items :: any
+		end
+	end)
 	Remotes.BossesChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" then
 			return
