@@ -56,6 +56,15 @@ return {
 		trailScale = { 1.2, 1.35, 1.5 },
 		awakenedAt = 10,
 	},
+	-- The Forge Sword's colour map per element (its gems tinted; tools/blender/build_weapon_forgeSword.py, uploaded):
+	-- tools/weapons/forge_variants swaps them into the five copies of the imported ForgeSword model
+	FORGE_COLOR_MAPS = {
+		Ember = "rbxassetid://114763697571749",
+		Tide = "rbxassetid://71880534733338",
+		Bloom = "rbxassetid://91159934303024",
+		Volt = "rbxassetid://80913028012621",
+		Shade = "rbxassetid://117614328562391",
+	},
 	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too)
 	LIGHT = { Epic = true, Legendary = true },
 	-- On the back (in town and between fights): this share of the aura's particles and no light

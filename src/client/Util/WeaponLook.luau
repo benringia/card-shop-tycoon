@@ -109,8 +109,9 @@ local function emitter(name: string, parent: BasePart, textureKey: string, color
 	return made
 end
 
--- Adds the look to a fresh model (before it's welded: the shells are its parts too). Every glowing part (its
--- MeshParts, or a stand-in's Glow parts) gets a shell; the effects go on the biggest of them.
+-- Adds the look to a fresh model (before it's welded: the shells are its parts too). The glowing parts get a shell:
+-- its Blade when it has one (the made models: Blade, Guard, Grip), else every MeshPart, and a stand-in's Glow parts;
+-- the effects go on the biggest of them.
 function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: number)
 	local look = lookOf(weaponId)
 	local layers = WeaponLook.layers(weaponId, grade, level, "hand")
@@ -119,8 +120,13 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 	end
 	local glow = rgb(look.glow)
 	local blade: BasePart? = nil
+	local named = model:FindFirstChild("Blade", true)
+	local onlyBlade = named ~= nil and named:IsA("MeshPart")
 	for _, item in model:GetDescendants() do
 		if not item:IsA("BasePart") or not (item:IsA("MeshPart") or item:GetAttribute("Glow") == true) then
+			continue
+		end
+		if onlyBlade and item.Name ~= "Blade" then
 			continue
 		end
 		local shell = item:Clone()

@@ -1,6 +1,7 @@
 --!strict
--- Finishes an imported sword model file (docs/animations.md "The sword model"): Roblox's FBX importer drops the
--- Blender colours, so this sets each part's colour and material by name, straightens each mesh's PivotOffset (the
+-- Finishes an imported sword model file (docs/animations.md "The sword model", docs/weapons.md): Roblox's FBX importer
+-- drops the Blender colours, so this sets each plain part's colour and material by name (textured parts, the Meshy
+-- weapons, keep their texture), straightens each mesh's PivotOffset (the
 -- importer turns it) and makes the grip the model's PrimaryPart (the game reads where the hand holds it from the
 -- model's pivot: the grip's centre, blade up). Rewrites the file in place.
 -- Usage: lune run tools/weapons/finish_sword [file] (default assets/weapons/StarterSword.rbxm)
@@ -26,7 +27,8 @@ for _, part in model:GetDescendants() do
 		part.PivotOffset = roblox.CFrame.new()
 	end
 	local look = (LOOK :: any)[part.Name]
-	if look and part:IsA("BasePart") then
+	local textured = part:FindFirstChildOfClass("SurfaceAppearance") ~= nil or (part:IsA("MeshPart") and (part :: any).TextureID ~= "")
+	if look and part:IsA("BasePart") and not textured then
 		part.Color = roblox.Color3.fromRGB(look.color[1], look.color[2], look.color[3])
 		part.Material = (roblox.Enum.Material :: any)[look.material]
 		print(`{part.Name}: {look.material}`)
