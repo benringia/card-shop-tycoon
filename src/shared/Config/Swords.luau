@@ -150,11 +150,12 @@ local SWORDS: { [string]: Sword } = {
 -- matched to its animation's Hit marker), skill animation (from ReplicatedStorage.SwordAnimations.<model> until
 -- published), skill cues and effects (`fx`, Config/SwordSkillFx)
 local starter = SWORDS.starterSword
--- `own`: a sword's own sounds (added to the starter's) and cues added to its cuts' (the starter's kept)
+-- `own`: a sword's own sounds (added to the starter's) and cues added to its cuts' (the starter's kept). `skillAnimation`:
+-- its published skill move (the owner's Save to Roblox id; "" plays its KeyframeSequence in Studio only)
 type Own = { sounds: { [string]: string }?, cutCues: { [string]: { Cue } }? }
-local function withSkill(name: string, model: string, skill: Skill, fx: SwordFx, skillCues: { Cue }, own: Own?): Sword
+local function withSkill(name: string, model: string, skillAnimation: string, skill: Skill, fx: SwordFx, skillCues: { Cue }, own: Own?): Sword
 	local animations = table.clone(starter.animations)
-	animations.skill = ""
+	animations.skill = skillAnimation
 	local cues = table.clone(starter.cues)
 	cues.skill = skillCues
 	local sounds = starter.sounds
@@ -188,7 +189,7 @@ end
 -- blade out, then a ring wave of its element blasts out along the ground (its Hit marker,
 -- tools/blender/anim_forge_sword.py); every foe within 9 studs. The five Forge Swords share it, each in its element:
 -- a sound key with an `_<Element>` version plays that one for that element's sword (SwordController.PlaySound)
-SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", {
+SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", "rbxassetid://87540825929374", {
 	power = 0.9,
 	hitAt = 0.8,
 	length = 1.1,
@@ -224,7 +225,7 @@ SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", {
 -- Thornline (owner 2026-11-07): a short hop, the blade plunged point-down into the ground (its Hit marker: the vines
 -- leave, tools/blender/anim_verdant_blade.py) and held there until thorny vines racing along the ground toward your aim
 -- (18 x 4 studs, 20 studs a second) reach the first foe and snap shut on it, catching every foe within 4 studs
-SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", {
+SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", "rbxassetid://101505841745641", {
 	power = 0.9,
 	hitAt = 0.45,
 	length = 0.95,
@@ -252,7 +253,7 @@ SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", {
 -- Sunfall Cleave (owner 2026-11-07): a high jump, a long charge hanging at the top, one cleave in the air (its Hit
 -- marker: tools/blender/anim_sunforged_blade.py) launching a fiery crescent that glides down toward your aim at 14 studs
 -- a second (24 x 6 studs) and bursts on the first foe it touches, hitting every foe within 6 studs of the burst
-SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", {
+SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", "rbxassetid://135525152609348", {
 	power = 0.9,
 	hitAt = 1.78,
 	length = 2.45,
@@ -281,7 +282,7 @@ SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", {
 -- swept to the sky summoning five ghost blades in a ring above the boss, then pointed at it; they dive one by one 0.15 s
 -- apart (the first at its Hit marker, tools/blender/anim_prism_blade.py), a fifth of the damage each, on the foe you aim
 -- at within 24 studs; a rainbow pillar after
-SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", {
+SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", "rbxassetid://136391900364573", {
 	power = 0.9,
 	hitAt = 0.6,
 	length = 1.75,

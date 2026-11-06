@@ -1815,8 +1815,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (`SwordCast` remote) and draw on their character within 90 studs, the first 3 in full and the rest slash-only
   (`SwordSkillFxRules.drawsOthers`). Sounds: each sword's own, licensed and quiet, a `<key>_<Element>` version for a
   Forge Sword's element; every sword sound is measured into `Config/SoundLevels` and loud ones are turned down. The
-  skill animations are keyed in a background Blender (`tools/blender/anim_<sword>.py`, docs/animations.md) and play from
-  their KeyframeSequences in Studio until the owner publishes them. Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
+  skill animations are keyed in a background Blender (`tools/blender/anim_<sword>.py`, docs/animations.md), published by
+  the owner (2026-11-07; ids in `Config/Swords`). Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
   [level]` and the admin panel's "Sword skills". Balance: `lune run tools/balance/bosses 300` gives identical rows before
   and after (2026-11-07). Measured in a Warden fight: about 60 fps through each skill (Thornline was building ~200 vine
   parts at once, now row by row).
@@ -3086,8 +3086,8 @@ boss models; the ranch and Heroic tiers come after those.
   the Forge window's redraws, the Forge Sword's source model out of the synced folder).
 - [ ] Sword skills round (5.11 "Sword skills", spec `2026-11-06-sword-skills-design.md`, branch `sword-skills`): each round
   1 sword's own skill, animation, effects (exaggerated), sounds and camera moments; others see them. Waiting on the
-  owner's Studio check of the Forge Sword, then the four skill animations published (Save to Roblox under
-  `ReplicatedStorage.SwordAnimations.<Sword>`; ids into `Config/Swords` animations.skill).
+  owner's Studio check of the Forge Sword. The four skill animations are published (owner 2026-11-07; ids in
+  `Config/Swords`).
 - [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
   Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
   and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.

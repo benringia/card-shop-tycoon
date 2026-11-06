@@ -138,6 +138,19 @@ return {
 		expect.equal(forge.skill.length, 1.1, "the animation's length")
 	end,
 
+	["each round 1 sword's skill animation is published (the owner's ids, 2026-11-07)"] = function()
+		local ids = {
+			forgeSword = "rbxassetid://87540825929374",
+			verdantBlade = "rbxassetid://101505841745641",
+			sunforgedBlade = "rbxassetid://135525152609348",
+			prismBlade = "rbxassetid://136391900364573",
+		}
+		for moveset, id in ids do
+			expect.equal(Swords.SWORDS[moveset].animations.skill, id, moveset)
+		end
+		expect.equal(Swords.SWORDS.starterSword.animations.skill ~= ids.forgeSword, true, "the Steel Sword keeps its dash slash")
+	end,
+
 	["each new skill has the spec's shape"] = function()
 		local shapes = Swords.SWORDS
 		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")
