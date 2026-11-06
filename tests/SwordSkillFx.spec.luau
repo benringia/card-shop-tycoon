@@ -136,6 +136,16 @@ return {
 		expect.equal((SwordSkillFxRules.cinematicBeat(1.18, 1.18, 0, cfg)), "impact", "no travel: straight to the burst")
 	end,
 
+	["the wide side shot stands far enough out to fit the whole flight, never closer than its least"] = function()
+		-- 16 studs of flight (plus you) with a 5-stud margin either side, 62 degrees tall on a 16:9 screen
+		local half = math.rad(62) / 2
+		local across = 2 * math.atan(math.tan(half) * 16 / 9)
+		local want = (20 / 2 + 5) / math.tan(across / 2)
+		expect.near(SwordSkillFxRules.wideDistance(20, 5, 62, 16 / 9, 4), want, 1e-9)
+		expect.equal(SwordSkillFxRules.wideDistance(2, 1, 62, 16 / 9, 14), 14, "a short flight: its least")
+		expect.equal(SwordSkillFxRules.wideDistance(40, 5, 62, 1, 4) > SwordSkillFxRules.wideDistance(40, 5, 62, 16 / 9, 4), true, "a narrow screen stands further out")
+	end,
+
 	["the admin panel has a Sword skills section of /skillfx buttons"] = function()
 		local found = false
 		for _, section in AdminPanel.SECTIONS do

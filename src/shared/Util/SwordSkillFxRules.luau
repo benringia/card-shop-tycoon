@@ -38,4 +38,11 @@ function SwordSkillFxRules.cinematicBeat(t: number, release: number, travel: num
 	return "done", 1
 end
 
+-- How far out to the side the skill cinematic's wide shot stands so a flight `length` studs long, plus `margin` studs
+-- either side, fits across a camera `fov` degrees tall on a screen `aspect` wide to tall; never nearer than `least`
+function SwordSkillFxRules.wideDistance(length: number, margin: number, fov: number, aspect: number, least: number): number
+	local across = 2 * math.atan(math.tan(math.rad(fov) / 2) * aspect)
+	return math.max(least, (length / 2 + margin) / math.tan(across / 2))
+end
+
 return SwordSkillFxRules

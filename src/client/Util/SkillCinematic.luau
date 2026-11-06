@@ -1,10 +1,13 @@
 --!strict
 -- Your own sword skill's camera moment (Sunfall Cleave, owner 2026-11-07: camera only, the fight runs on and you can
--- still be hit; Config/SwordSkillFx CINEMATIC, the beats in SwordSkillFxRules.cinematicBeat): the camera eases to a low
--- angle beside and behind you looking up as you jump, drifts closer through the charge, at the cleave chases the fire
--- crescent down to where it bursts, holds there, then eases back to your view. A super's cinematic, a dodge before the
--- cleave, the fight's end or your character going cuts it short; your camera is always restored.
+-- still be hit; Config/SwordSkillFx CINEMATIC, the beats in SwordSkillFxRules.cinematicBeat), all from the side so the
+-- crescent shows whole: the camera eases to a side shot of you looking up as you jump, drifts closer through the charge,
+-- at the cleave swings out to a wide side shot framing you, the crescent's flight and the burst, holds there, then eases
+-- back to your view. It takes your left or right, whichever a wall or hill blocks least, and comes in front of anything
+-- still in the way. A super's cinematic, a dodge before the cleave, the fight's end or your character going cuts it
+-- short; your camera is always restored.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -16,13 +19,34 @@ local SkillCinematic = {}
 
 local RENDER_NAME = "SwordSkillCinematic"
 local UP = Vector3.yAxis
-local LATCH = 0.25 -- seconds the camera takes to swing from the charge shot onto the crescent
 
 type Saved = { cameraType: Enum.CameraType, cframe: CFrame, fov: number, subject: Instance? }
 local saved: Saved? = nil
 
 local function smooth(a: number): number
 	return a * a * (3 - 2 * a)
+end
+
+-- How much of the way from `focus` to `eye` is clear of walls and terrain (characters and effects ignored), 0-1
+local function clearShare(focus: Vector3, eye: Vector3): number
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore: { Instance } = { workspace.CurrentCamera }
+	for _, other in Players:GetPlayers() do
+		if other.Character then
+			table.insert(ignore, other.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(focus, eye - focus, params)
+	return if hit then (hit.Position - focus).Magnitude / math.max((eye - focus).Magnitude, 1e-3) else 1
+end
+
+-- A shot from `eye` at `focus`, brought in front of anything in the way
+local function shot(focus: Vector3, eye: Vector3): CFrame
+	local clear = clearShare(focus, eye)
+	local at = if clear < 1 then focus + (eye - focus) * math.max(0.25, clear - 0.08) else eye
+	return CFrame.lookAt(at, focus)
 end
 
 -- Your camera back as it was
@@ -60,18 +84,26 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 	local forward = if look.Magnitude > 1e-3 then look.Unit else Vector3.zAxis
 	local right = forward:Cross(UP)
+	-- You, up in the jump; the flight from under you to the burst, and its middle
 	local focus = base + UP * cfg.lookUp
-	local function aside(o: { side: number, back: number, up: number }): CFrame
-		return CFrame.lookAt(base + right * o.side - forward * o.back + UP * o.up, focus)
+	local feet = base - UP * 3
+	local flight = Vector3.new(impact.X - feet.X, 0, impact.Z - feet.Z).Magnitude
+	local middle = feet:Lerp(impact, 0.5) + UP * cfg.wide.lookUp
+	local viewport = camera.ViewportSize
+	local out = SwordSkillFxRules.wideDistance(flight + 4, cfg.wide.margin, cfg.fov, viewport.X / math.max(viewport.Y, 1), cfg.wide.least)
+	local function eyes(side: number): (Vector3, Vector3)
+		local hero = base + right * side * cfg.hero.side + forward * cfg.hero.ahead + UP * cfg.hero.up
+		return hero, middle + right * side * out + UP * cfg.wide.up
 	end
-	local low, close = aside(cfg.low), aside(cfg.close)
-	local from = base + UP * (cfg.lookUp - 1)
-	local to = impact + UP * 2
-	local function chase(a: number): CFrame
-		local point = from:Lerp(to, a)
-		local c = cfg.chase
-		return CFrame.lookAt(point - forward * c.back + UP * c.up, point + forward * c.ahead)
-	end
+	-- the side a wall or hill blocks least
+	local heroRight, wideRight = eyes(1)
+	local heroLeft, wideLeft = eyes(-1)
+	local rightClear = math.min(clearShare(focus, heroRight), clearShare(middle, wideRight))
+	local leftClear = math.min(clearShare(focus, heroLeft), clearShare(middle, wideLeft))
+	local heroEye, wideEye = if leftClear > rightClear then heroLeft else heroRight, if leftClear > rightClear then wideLeft else wideRight
+	local low = shot(focus, heroEye)
+	local close = shot(focus, heroEye:Lerp(focus, cfg.push))
+	local wide = shot(middle, wideEye)
 	camera.CameraType = Enum.CameraType.Scriptable
 	RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, function()
 		local t = os.clock() - started
@@ -88,11 +120,11 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 		elseif beat == "charge" then
 			view = low:Lerp(close, smooth(a))
 		elseif beat == "chase" then
-			view = close:Lerp(chase(a), smooth(math.clamp((t - release) / LATCH, 0, 1)))
+			view = close:Lerp(wide, smooth(math.clamp((t - release) / cfg.latch, 0, 1)))
 		elseif beat == "impact" then
-			view = chase(1)
+			view = close:Lerp(wide, smooth(math.clamp((t - release) / cfg.latch, 0, 1)))
 		elseif beat == "back" then
-			view = chase(1):Lerp(was.cframe, smooth(a))
+			view = wide:Lerp(was.cframe, smooth(a))
 		else
 			SkillCinematic.stop()
 			return

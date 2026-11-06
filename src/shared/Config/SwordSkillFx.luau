@@ -96,18 +96,23 @@ return {
 	VERDANT = { bark = { 104, 72, 40 }, thorn = { 236, 232, 222 }, petal = { 255, 179, 209 } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
 	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55 },
-	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit), seconds
-	-- and studs: eased over `rise` to a low angle beside and behind you (`low`) looking up `lookUp` studs above your root,
-	-- drifting closer (`close`) through the charge; at the cleave it chases the crescent from `chase` behind and above it,
-	-- holds `hold` on the burst and eases back to your view over `back`. `fov` while it plays.
+	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
+	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
+	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over
+	-- `rise` to a side shot of you (`hero`: out to the side, a little ahead, up) looking `lookUp` studs above your root,
+	-- drifting `push` of the way closer through the charge; at the cleave it swings out over `latch` to a wide side shot
+	-- (`wide`) framing you, the crescent's whole flight and the burst (SwordSkillFxRules.wideDistance: `margin` studs
+	-- spare either side, never nearer than `least`), holds `hold` on the burst and eases back to your view over `back`.
+	-- `fov` while it plays.
 	CINEMATIC = {
 		rise = 0.42,
-		hold = 0.4,
+		hold = 0.5,
 		back = 0.45,
-		low = { side = 9, back = 7, up = 0.8 },
-		close = { side = 6.5, back = 5, up = 1.6 },
-		lookUp = 6.2,
-		chase = { back = 11, up = 5.5, ahead = 3 },
+		latch = 0.35,
+		hero = { side = 11, ahead = 2, up = 2.5 },
+		push = 0.15,
+		lookUp = 5.5,
+		wide = { margin = 6, least = 14, up = 6, lookUp = 3.5 },
 		fov = 62,
 	},
 	-- Other players' effects (spec 4 "Everyone sees them"): drawn within `range` studs of your camera, at most `full`
