@@ -1,7 +1,7 @@
 --!strict
--- The game's UI icons, by name. Made as five sheets with Figma's image generator and cut up by
--- tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. Sheets 1-4 are glossy cartoon icons, sheet 5 white
--- line art. HUD tiles, the top bar and customer bubbles use these names; anything not listed here is drawn as text (an
+-- The game's UI icons, by name. Made as seven sheets with Figma's image generator and cut up by
+-- tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. Sheets 1-4 and 7 are glossy cartoon icons, sheets 5 and 6
+-- white line art. HUD tiles, the top bar and customer bubbles use these names; anything not listed here is drawn as text (an
 -- emoji). See DESIGN.md 10.6.
 return {
 	Cash = "rbxassetid://116750244422885",
@@ -108,4 +108,22 @@ return {
 	Stunned = "rbxassetid://85327022293820",
 	Chain = "rbxassetid://115024970663355",
 	Cooldown = "rbxassetid://118622690810395",
+
+	-- Sheet 7 (weapons round 1, owner's pick A): the boss materials and Wild Ore, then spare Forge icons
+	WardenHeartwood = "rbxassetid://73947101359694",
+	BroodSilk = "rbxassetid://123373384043329",
+	ColossusCore = "rbxassetid://93066093623738",
+	FrostHeart = "rbxassetid://73854302210553",
+	StormCrystal = "rbxassetid://122578467843693",
+	RiftShard = "rbxassetid://85069626140134",
+	PrismScale = "rbxassetid://77252227169707",
+	WildOre = "rbxassetid://112288459098075",
+	Anvil = "rbxassetid://98210408412200",
+	Hammer = "rbxassetid://114443140878120",
+	Upgrade = "rbxassetid://104877565840473",
+	Reforge = "rbxassetid://74273963472550",
+	Spear = "rbxassetid://102894739239168",
+	Scythe = "rbxassetid://108828969595376",
+	Elements = "rbxassetid://119331400498090",
+	Awakened = "rbxassetid://75384398964475",
 } :: { [string]: string }

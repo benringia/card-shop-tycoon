@@ -10,6 +10,19 @@ local Frontier = require("../src/shared/Config/Frontier")
 local expect = require("./lib/expect")
 
 return {
+	["every weapon material has its picture icon from sheet 7 (Config/UIIcons), not an emoji"] = function()
+		local UIIcons = require("../src/shared/Config/UIIcons")
+		local ids = { "wildOre" }
+		for _, material in Weapons.MATERIALS do
+			table.insert(ids, material)
+		end
+		for _, id in ids do
+			local item = Items.ITEMS[id]
+			assert(item, `{id} is an item`)
+			assert(string.match(UIIcons[item.icon] or "", "^rbxassetid://%d+$"), `{id}'s icon {item.icon} is a UIIcons picture`)
+		end
+	end,
+
 	["the forge reveal's sounds are all stage sounds with a volume (Config/PackOpening)"] = function()
 		-- Config/PackOpening builds Vector3s, so Lune reads its text: each name's id line and its volume
 		local source = require("@lune/fs").readFile("src/shared/Config/PackOpening.luau")

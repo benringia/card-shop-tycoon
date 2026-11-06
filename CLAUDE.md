@@ -41,7 +41,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `Config/ProductPictures`): the real models rendered big in a ViewportFrame on magenta, captured with the Studio MCP and
   cut out by `tools/ui-art/cut_product_picture.py <capture> <out.png> [box]`, uploaded as images. Not synced by Rojo.
 - `assets/ui/icons`: UI icon PNGs (ids in `Config/UIIcons`), cut from Figma-generated sheets by
-  `tools/ui-icons/slice_icons.py <sheet> <1-6>` (needs Pillow); white glyph sheets (5, 6) then
+  `tools/ui-icons/slice_icons.py <sheet> <1-7>` (needs Pillow); white glyph sheets (5, 6) then
   `tools/ui-icons/clean_glyphs.py <Name>[:open] ...` (rebuilds the outline the magenta keying eats). Not synced by Rojo.
 - `assets/packs` → ReplicatedStorage.PackModels: the pack, deck box and display box (`Pack.rbxm`, `DeckBox.rbxm`,
   `DisplayBox.rbxm`, each with `Looks/<look>` SurfaceAppearances), built by `tools/blender/build_pack.py`,

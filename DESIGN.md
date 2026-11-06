@@ -2517,7 +2517,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   (Angry, Thinking, Happy); made as four sheets with Figma's image generator and cut by
   `tools/ui-icons/slice_icons.py <sheet> <1-4>` (PNGs in `assets/ui/icons`). Sheet 4 (the style kit) adds Power, Hp,
   Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale, tinted per boss in code), XpTonic, GradingSeal,
-  GoldSeal, Travel, Best and Pvp; Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
+  GoldSeal, Travel, Best and Pvp; sheet 7 (weapons round 1) the boss materials and Wild Ore (WardenHeartwood ...
+  WildOre) and spare Forge icons (Anvil, Hammer, Upgrade, Reforge, Spear, Scythe, Elements, Awakened); Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). **Toasts** (owner's pick A, 2026-11-06;
   `Config/Toasts`, `Util/ToastRules`, `UIController.Notify(message, isError, duration, icon)` and `NotifySide` for
@@ -3025,7 +3026,7 @@ boss models; the ranch and Heroic tiers come after those.
 - [x] Toasts as Cindercub's speech bubbles over the cash pill (owner's pick A of three mockups, 2026-11-06; 10.6
   HUD): one stack for messages and sales, 6 s (errors 8), a close "x" and tap-to-close. Merged 2026-11-06.
 - [ ] Weapons round 1 (5.11, spec `2026-11-06-weapons-round1-design.md`, branch `weapons-round1`): the Forge, the four
-  new swords, drops with pity, the Armory, the glow ladder. Left: the material icons (two sheets made, owner to pick).
+  new swords, drops with pity, the Armory, the glow ladder, the material icons (sheet 7, owner's pick A).
   Spec items moved to later by rulings: the weapon's card flipping over with its grade in the drop cinematic (a
   "Grade X" line for now), other players nearby seeing the drop's light column (the Epic/Legendary toast tells them),
   the Prism Blade's trail taking the strong element's colour (its own colour for now).
