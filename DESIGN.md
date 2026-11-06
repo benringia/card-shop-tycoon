@@ -349,7 +349,7 @@ is over UI (`UIKit.pointerBlocked`).
   Each reaction is a happy moment for the rating.
 - **Town walkers** (`TownWalkerService`, `Util/WalkerRules`, `WALKERS`): while a player is in town, up to 8 customers
   of every type (one more every 20 s) walk in from either end of the street and stroll all of it at 6 studs a second
-  (shoppers walk 10; the walk clip slowed to match, owner 2026-11-06: "walk slowly, not run"): they look in every
+  (shoppers too since 2026-11-06, were 10: "walk at a normal speed"; the walk clip keeps pace): they look in every
   shop's window from its sidewalk (two spots a shop), stand about on the road and on the plaza's three open lanes, and
   sit on a free bench 30% of the time (Roblox's sit animation, as the cafe townsfolk). Their paths never jump and keep
   off grass and water, and a stop they can't reach is skipped, so nobody climbs the fountain or runs in place against
@@ -362,9 +362,22 @@ is over UI (`UIKit.pointerBlocked`).
   Studio): server heartbeat work 0.45 ms before, 0.15-0.27 ms with 4 walkers on the plaza; client 16.7 ms a frame (60
   fps cap), worst 24 ms. After the street round: 5-8 walkers spread from x -90 to 99 on both sides, no jumps, a steady
   6 studs a second, nobody walking in place over 80 s.
+  A walk that can't start (a tight spot: between a bench and the gazebo, where a walker stood after sitting, or by a
+  planted tree) failed every time, so the walker stood there for good. Now after 2 failed walks in a row it retraces
+  the route it came in on (`NpcMotion.walkRoute`, open: it just walked it), and after 5 it's removed (`WALKERS`
+  unstickAfter, giveUpAfter). Measured: nobody still for 14 s off a seat over 170 s.
+- **Shop customers come from the street** (owner 2026-11-06: "not at the front of the shop, random";
+  `CustomerService.UseStreet`, `TownWalkerService`, `WalkerRules.spawnPoint`): when a shop's next customer is due
+  (same rate as before) it walks in from a random street stop or end at least 40 studs from the shop's door and every
+  player, and becomes the shop's customer at the door (`Adopt`; it doesn't count toward the 4 until then, and strolls
+  the town if the shop is full or closed). Done shopping, it walks out of the door and off to the nearest street end
+  (its thought bubble left in the shop). Past 24 town NPCs at once (`crowdCap`) they appear and vanish at the door
+  as before; Studio's `/customer` still puts one at the door. Measured: 22 arrivals from 58-174 studs away, 11 NPCs at
+  most with one shop open; the walk in adds up to ~30 s before a customer reaches the shop (the flow per hour stays
+  the spawn rate's).
 - **How NPCs walk** (customers, walkers, shop workers; `Util/NpcMotion`, `Util/WalkStep`, `Customers.NPC_STEP`):
   Roblox's own R15 walk (913402848; the old 507777826 looked like a jog) played at the feet's pace (speed / 6.4, the
-  clip's own pace; walkers 0.94x, shoppers 1.56x), and the idle clip only after 0.25 s standing, so turns don't
+  clip's own pace: 0.94x at 6 studs a second), and the idle clip only after 0.25 s standing, so turns don't
   flicker. Along a path each waypoint counts as reached 1.25 studs early so the next step goes out before the NPC
   stops (they stopped ~0.2 s at every one), the walk's end within 0.6. Trying to walk but covering under 0.5 studs in
   1 s is being stuck: that walk is given up (a walker picks another stop) instead of walking in place.

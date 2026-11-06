@@ -5,6 +5,8 @@
 -- while they pick an open shop (its owner in the game) by its rating, a collector by the card it wants on show. At the
 -- shop's door they become its customer (CustomerService.Adopt); a full shop sends them strolling again. They add to
 -- each shop's street customers, never replace them; after WALKERS.lifetime they walk off at the nearest street end.
+-- The street side of every shop's own customers too (CustomerService.UseStreet): each walks in from a random street
+-- stop or end out of sight of the shop and the players, and walks off to the nearest street end when it's done.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -37,6 +39,10 @@ type Walker = {
 	wanted: string?,
 	alive: boolean,
 	bornAt: number,
+	heading: { plot: any, owner: Player }?, -- a shop's customer on its way in (CustomerService arrivals)
+	leaving: boolean, -- a shop's customer walking off down the street (departures)
+	fails: number, -- walks failed in a row (WALKERS.unstickAfter, giveUpAfter)
+	route: { Vector3 }?, -- the last route it walked, to retrace out of a tight spot
 }
 
 local TownWalkerService = {}
@@ -98,12 +104,35 @@ local function despawn(walker: Walker)
 	walker.model:Destroy()
 end
 
--- Along a path that never jumps and keeps off grass; false when there's none or the walker got stuck on the way
+-- Along a path that never jumps and keeps off grass; false when there's none or the walker got stuck on the way. A
+-- walker that keeps failing is in a spot no path starts from (between a bench and the gazebo, by a planted tree): it
+-- retraces the route it came in on (open, it just walked it), and is removed if even that keeps failing
 local function walkTo(walker: Walker, target: Vector3): boolean
 	local look = CustomerConfig.WALKERS
-	return NpcMotion.walkTo(walker.humanoid, walker.root, target, look.agent, function()
+	local function alive(): boolean
 		return walker.alive
-	end, look.stuckSeconds, false)
+	end
+	local ok, route = NpcMotion.walkTo(walker.humanoid, walker.root, target, look.agent, alive, look.stuckSeconds, false)
+	if ok then
+		walker.fails = 0
+		walker.route = route
+		return true
+	end
+	if not walker.alive then
+		return false
+	end
+	walker.fails += 1
+	if walker.fails >= look.giveUpAfter then
+		despawn(walker)
+	elseif walker.fails >= look.unstickAfter and walker.route then
+		local back: { Vector3 } = {}
+		for index = #walker.route, 1, -1 do
+			table.insert(back, walker.route[index])
+		end
+		walker.route = nil
+		NpcMotion.walkRoute(walker.humanoid, walker.root, back, alive, look.stuckSeconds)
+	end
+	return false
 end
 
 local function face(walker: Walker, point: Vector3)
@@ -209,8 +238,45 @@ local function leave(walker: Walker)
 	despawn(walker)
 end
 
+-- The shop's customer now: CustomerService owns the model from here
+local function handOver(walker: Walker)
+	walker.alive = false
+	local index = table.find(walkers, walker)
+	if index then
+		table.remove(walkers, index)
+	end
+end
+
+-- A shop's customer on its way in: to the door (a few tries), where it becomes the shop's customer; a full or
+-- closed shop, or no way there, and it strolls the town like any walker
+local function arrive(walker: Walker)
+	local heading = walker.heading :: { plot: any, owner: Player }
+	for _ = 1, 3 do
+		if not walker.alive or heading.plot.owner ~= heading.owner then
+			break
+		end
+		if walkTo(walker, CustomerService.EntryPoint(heading.plot)) then
+			if walker.alive and heading.plot.owner == heading.owner then
+				if CustomerService.Adopt(walker.model, heading.plot, heading.owner, walker.kind, walker.wanted) then
+					handOver(walker)
+					return
+				end
+			end
+			break
+		end
+	end
+	walker.heading = nil
+	walker.bornAt = os.clock()
+end
+
 local function run(walker: Walker)
 	local look = CustomerConfig.WALKERS
+	if walker.heading then
+		arrive(walker)
+		if not walker.alive then
+			return
+		end
+	end
 	while walker.alive and os.clock() - walker.bornAt < look.lifetime do
 		local lingerUntil = os.clock() + rng:NextNumber(look.linger[1], look.linger[2])
 		while walker.alive and os.clock() < lingerUntil do
@@ -219,12 +285,7 @@ local function run(walker: Walker)
 		local plot, owner = pickShop(walker)
 		if plot and owner and walker.alive and walkTo(walker, CustomerService.EntryPoint(plot)) then
 			if walker.alive and plot.owner == owner and CustomerService.Adopt(walker.model, plot, owner, walker.kind, walker.wanted) then
-				-- The shop's customer now: CustomerService owns the model from here
-				walker.alive = false
-				local index = table.find(walkers, walker)
-				if index then
-					table.remove(walkers, index)
-				end
+				handOver(walker)
 				return
 			end
 		end
@@ -243,11 +304,36 @@ local function highestShopLevel(): number
 	return best
 end
 
+-- A new walker at `at` (looking at the plaza), set off on its way
+local function startWalker(at: Vector3, kind: string, wanted: string?, heading: { plot: any, owner: Player }?)
+	local model = CustomerService.BuildModel(CFrame.lookAt(at + Vector3.new(0, 3, 0), spring() + Vector3.new(0, 3, 0)), kind)
+	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	humanoid.WalkSpeed = CustomerConfig.WALKERS.walkSpeed
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	local walker: Walker = {
+		model = model,
+		humanoid = humanoid,
+		root = root,
+		kind = kind,
+		wanted = wanted,
+		alive = true,
+		bornAt = os.clock(),
+		heading = heading,
+		leaving = false,
+		fails = 0,
+		route = nil,
+	}
+	table.insert(walkers, walker)
+	model.Parent = folder
+	root:SetNetworkOwner(nil)
+	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
+	task.spawn(run, walker)
+end
+
 local function spawnWalker()
-	local look = CustomerConfig.WALKERS
 	local kind = CustomerTypes.pick(CustomerConfig, { hasShowcase = true, shopLevel = highestShopLevel() }, rng:NextNumber())
-	local edge = exits[rng:NextInteger(1, #exits)]
-	local model = CustomerService.BuildModel(CFrame.lookAt(edge + Vector3.new(0, 3, 0), spring() + Vector3.new(0, 3, 0)), kind)
 	local wanted: string? = nil
 	if kind == "collector" then
 		local all: { CollectorRules.CardEntry } = {}
@@ -257,17 +343,79 @@ local function spawnWalker()
 		-- Kept to itself until it's in a shop (CustomerService.Adopt shows the thought bubble): no cards over heads on the street
 		wanted = CollectorRules.wanted(CustomerConfig, {}, all, 1, rng:NextNumber())
 	end
-	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
-	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	startWalker(exits[rng:NextInteger(1, #exits)], kind, wanted, nil)
+end
+
+-- Walkers strolling for themselves (not a shop's customer on its way in or out)
+local function strolling(): number
+	local count = 0
+	for _, walker in walkers do
+		if not walker.heading and not walker.leaving then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- CustomerService's arrivals: a shop's customer walks in from a random street stop or end, away from the shop's door
+-- and every player (WalkerRules.spawnPoint); false (it appears at the door) past crowdCap or with nowhere far enough
+local function sendCustomer(plot: any, owner: Player, kind: string, wanted: string?): boolean
+	local look = CustomerConfig.WALKERS
+	if #walkers >= look.crowdCap then
+		return false
+	end
+	local points: { WalkerRules.Point } = {}
+	for _, stop in stops do
+		if stop.kind ~= "bench" then
+			table.insert(points, { x = stop.position.X, z = stop.position.Z })
+		end
+	end
+	for _, exit in exits do
+		table.insert(points, { x = exit.X, z = exit.Z })
+	end
+	local door = CustomerService.EntryPoint(plot)
+	local avoid: { WalkerRules.Point } = { { x = door.X, z = door.Z } }
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			table.insert(avoid, { x = root.Position.X, z = root.Position.Z })
+		end
+	end
+	local from = WalkerRules.spawnPoint(points, avoid, look.arriveAway, rng:NextNumber())
+	if not from then
+		return false
+	end
+	startWalker(ground(from.x, from.z), kind, wanted, { plot = plot, owner = owner })
+	return true
+end
+
+-- CustomerService's departures: a customer done with a shop walks off to the nearest street end; false (it vanishes at
+-- the door) past crowdCap
+local function walkOff(model: Model): boolean
+	local look = CustomerConfig.WALKERS
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if #walkers >= look.crowdCap or not humanoid or not root or not root:IsA("BasePart") then
+		return false
+	end
 	humanoid.WalkSpeed = look.walkSpeed
-	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-	local walker: Walker = { model = model, humanoid = humanoid, root = root, kind = kind, wanted = wanted, alive = true, bornAt = os.clock() }
+	local walker: Walker = {
+		model = model,
+		humanoid = humanoid,
+		root = root,
+		kind = "plain",
+		wanted = nil,
+		alive = true,
+		bornAt = os.clock(),
+		heading = nil,
+		leaving = true,
+		fails = 0,
+		route = nil,
+	}
 	table.insert(walkers, walker)
-	model.Parent = folder
-	root:SetNetworkOwner(nil)
-	NpcMotion.setupAnimations(humanoid, CustomerConfig.WALK_ANIMATION, CustomerConfig.IDLE_ANIMATION)
-	task.spawn(run, walker)
+	task.spawn(leave, walker)
+	return true
 end
 
 function TownWalkerService.Start()
@@ -275,10 +423,12 @@ function TownWalkerService.Start()
 	sitAnimation = Instance.new("Animation")
 	sitAnimation.AnimationId = Plaza.SITTER.animation
 	buildStops()
+	CustomerService.UseStreet(sendCustomer, walkOff)
 	task.spawn(function()
+		local look = CustomerConfig.WALKERS
 		while true do
-			task.wait(CustomerConfig.WALKERS.spawnEvery)
-			if #walkers < CustomerConfig.WALKERS.max and anyoneInTown() then
+			task.wait(look.spawnEvery)
+			if strolling() < look.max and #walkers < look.crowdCap and anyoneInTown() then
 				spawnWalker()
 			end
 		end

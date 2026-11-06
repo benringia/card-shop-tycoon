@@ -10,11 +10,14 @@ return {
 	ITEMS_MIN = 1, -- shopping list size
 	ITEMS_MAX = 3,
 
-	WALK_SPEED = 10,
+	WALK_SPEED = 6, -- a normal walk, as the town walkers (owner 2026-11-06: 10 looked hurried)
 	BROWSE_SECONDS = 1.5, -- time spent looking at a shelf
 	SHELF_STAND_DISTANCE = 2.5, -- studs in front of a shelf's front face
 	SEARCH_SHELVES = 2, -- more shelves a customer checks when something on their list isn't on the shelves
-	ENTRY_DISTANCE = 8, -- studs out on the street from the shop front, where customers appear and leave
+	-- Studs out on the street from the shop front: the shop's door, where customers become its customers and leave it.
+	-- They walk there from somewhere random on the street (TownWalkerService, WALKERS.arriveAway) and walk off to the
+	-- nearest street end after; only without the town walkers (or past WALKERS.crowdCap) do they appear and vanish here
+	ENTRY_DISTANCE = 8,
 
 	QUEUE_PATIENCE = 40, -- seconds in the register queue before giving up (Bigger Queue upgrade +50% later)
 	CHECKOUT_PATIENCE = 60, -- once scanning starts, seconds after the latest scan before giving up
@@ -176,6 +179,15 @@ return {
 		plazaAngles = { 0, 90, 270 },
 		exitInset = 4,
 		townRadius = 260,
+		-- A shop's customers walk in from a random street stop or end at least arriveAway studs from the shop's door and
+		-- every player (WalkerRules.spawnPoint), and walk off to the nearest end after. Past crowdCap town NPCs at once
+		-- (strolling, arriving and leaving) they appear and vanish at the door instead (fewer rigs on screen).
+		arriveAway = 40,
+		crowdCap = 24,
+		-- A walk that can't start (no path out of a tight spot, like the gap between a bench and the gazebo) counts as
+		-- failed; after unstickAfter in a row the walker retraces the route it came in on, after giveUpAfter it's removed
+		unstickAfter = 2,
+		giveUpAfter = 5,
 	},
 	-- Reactions (Util/ReactionRules): passing within `reach` studs of a case holding an Epic, Legendary or foil card a
 	-- customer stops `seconds` with a whoa (a Legendary holds `crowd` at once); within `petReach` of your summoned

@@ -133,10 +133,27 @@ return {
 		expect.equal(WalkerRules.nearestExit(exits, 50, -30), 3 - west, "the east end is nearer")
 	end,
 
-	["walkers walk, never run or jump"] = function()
+	["walkers and shoppers walk, never run or jump"] = function()
 		local walkers = Customers.WALKERS
-		assert(walkers.walkSpeed < Customers.WALK_SPEED, "slower than shoppers")
-		assert(walkers.walkSpeed <= Customers.WALK_CLIP_PACE, "no faster than the walk clip's own pace")
+		assert(walkers.walkSpeed <= Customers.WALK_SPEED, "no faster than shoppers")
+		-- owner 2026-11-06: the shoppers "walking faster", make them walk at a normal speed
+		assert(Customers.WALK_SPEED <= Customers.WALK_CLIP_PACE, "shoppers no faster than the walk clip's own pace")
 		expect.equal(walkers.agent.AgentCanJump, false, "the path never jumps")
+	end,
+
+	["a shop's customer arrives from somewhere random on the street, out of sight"] = function()
+		local points = { { x = -100, z = 0 }, { x = 0, z = 44 }, { x = 64, z = -44 }, { x = 100, z = 0 } }
+		local avoid = { { x = 64, z = -56 }, { x = 5, z = 40 } } -- the shop's door, a player
+		local seen: { [number]: boolean } = {}
+		for step = 0, 99 do
+			local point = WalkerRules.spawnPoint(points, avoid, 30, (step + 0.5) / 100)
+			assert(point ~= nil, "somewhere to come from")
+			for _, near in avoid do
+				assert(math.sqrt((point.x - near.x) ^ 2 + (point.z - near.z) ^ 2) >= 30, "not by the door or a player")
+			end
+			seen[point.x] = true
+		end
+		assert(seen[-100] and seen[100], "both street ends used: random")
+		expect.isNil(WalkerRules.spawnPoint(points, { { x = 0, z = 0 } }, 500, 0.5), "nowhere far enough")
 	end,
 }

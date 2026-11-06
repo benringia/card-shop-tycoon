@@ -54,6 +54,29 @@ function WalkerRules.exits(cfg: any, town: any): { Point }
 	return { { x = -x, z = 0 }, { x = x, z = 0 } }
 end
 
+-- Where a shop's customer walks in from (owner 2026-11-06: not out of thin air at the shop front, somewhere random): one
+-- of `points` picked by `roll` among those at least `minDistance` from every point in `avoid` (the shop's door, the
+-- players); nil when none is that far
+function WalkerRules.spawnPoint(points: { Point }, avoid: { Point }, minDistance: number, roll: number): Point?
+	local far: { Point } = {}
+	for _, point in points do
+		local clear = true
+		for _, near in avoid do
+			if (point.x - near.x) ^ 2 + (point.z - near.z) ^ 2 < minDistance * minDistance then
+				clear = false
+				break
+			end
+		end
+		if clear then
+			table.insert(far, point)
+		end
+	end
+	if #far == 0 then
+		return nil
+	end
+	return far[math.clamp(math.floor(roll * #far) + 1, 1, #far)]
+end
+
 -- The exit nearest (x, z)
 function WalkerRules.nearestExit(exits: { Point }, x: number, z: number): number
 	local best, bestDistance = 1, math.huge

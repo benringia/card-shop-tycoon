@@ -66,6 +66,7 @@ export type Customer = {
 	seen: { [string]: boolean }, -- cards on display this customer already stopped at ("<shelf uid>#<slot>")
 	petted: boolean, -- already had their one chance to pet the owner's creature
 	reacting: boolean, -- stopped for a reaction right now
+	handedOff: boolean?, -- its model left with the street (departures), so despawn keeps it
 }
 
 type CustomerCallback = (customer: Customer) -> ()
@@ -91,6 +92,11 @@ local outcomeCallbacks: { (owner: Player, outcome: string) -> () } = {}
 local spawnScale: (owner: Player) -> number = function()
 	return 1
 end
+-- The street (TownWalkerService plugs these in; it requires this service): `arrivals` sends a customer of this kind
+-- walking to the shop's door from somewhere random (false: it can't, so the customer appears at the door), and
+-- `departures` walks a leaving customer's model off down the street (false: it vanishes at the door)
+local arrivals: ((plot: Plot, owner: Player, kind: string, wanted: string?) -> boolean)? = nil
+local departures: ((model: Model) -> boolean)? = nil
 
 local function fireOutcome(owner: Player, outcome: string)
 	for _, callback in outcomeCallbacks do
@@ -248,12 +254,12 @@ local react: (customer: Customer) -> ()
 -- Walks along a computed path; falls back to a straight line if no path is found. At each waypoint it may stop for
 -- the best cards on display or the owner's creature it's passing (react), then walks on.
 local function walkTo(customer: Customer, target: Vector3): boolean
-	return NpcMotion.walkTo(customer.humanoid, customer.root, target, CustomerConfig.PATH_AGENT, function()
+	return (NpcMotion.walkTo(customer.humanoid, customer.root, target, CustomerConfig.PATH_AGENT, function()
 		if customer.alive and not customer.reacting then
 			react(customer)
 		end
 		return customer.alive
-	end)
+	end))
 end
 
 -- Puts picked items back on the shelves they came from (customer left without paying)
@@ -298,7 +304,9 @@ local function despawn(customer: Customer, restore: boolean)
 	if index then
 		table.remove(state.customers, index)
 	end
-	customer.model:Destroy()
+	if not customer.handedOff then
+		customer.model:Destroy()
+	end
 
 	local thread = customer.thread
 	if thread and thread ~= coroutine.running() then
@@ -306,8 +314,19 @@ local function despawn(customer: Customer, restore: boolean)
 	end
 end
 
+-- Out to the shop's door, then off down the street (departures) or gone
 local function leaveShop(customer: Customer)
 	walkTo(customer, getEntryCFrame(customer.plot).Position)
+	local model = customer.model
+	if customer.alive and departures then
+		customer.handedOff = true
+		model:SetAttribute("WantedCard", nil) -- its thought bubble stays in the shop
+		despawn(customer, true)
+		if not departures(model) then
+			model:Destroy()
+		end
+		return
+	end
 	despawn(customer, true)
 end
 
@@ -912,7 +931,12 @@ local function spawnTick()
 			-- The shop rating (RatingService) shortens or stretches it
 			local interval = rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX) * spawnScale(owner)
 			state.nextSpawnAt = now + interval / (1 + PartyService.GetPerk(owner, "Hype"))
-			task.spawn(spawnCustomer, plot, owner, state)
+			-- Walking in from somewhere on the street (it counts once it's at the door: Adopt), else at the door now
+			local kind = CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
+			local wanted = if kind == "collector" then pickWanted(owner) else nil
+			if not (arrivals and arrivals(plot, owner, kind, wanted)) then
+				task.spawn(spawnCustomer, plot, owner, state, kind, wanted)
+			end
 		end
 	end
 end
@@ -1032,6 +1056,12 @@ end
 -- How the gap between customers scales per shop (RatingService.SpawnScale)
 function CustomerService.UseSpawnScale(scale: (owner: Player) -> number)
 	spawnScale = scale
+end
+
+-- The street's side of a visit (TownWalkerService): sending customers in from somewhere random and walking them off
+function CustomerService.UseStreet(arrive: (plot: Plot, owner: Player, kind: string, wanted: string?) -> boolean, depart: (model: Model) -> boolean)
+	arrivals = arrive
+	departures = depart
 end
 
 -- Each visit's outcome ("paid", "annoyed", "gaveUp", "noStock", "happyMoment"), for the shop rating

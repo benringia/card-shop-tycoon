@@ -137,7 +137,7 @@ function NpcMotion.walkTo(
 	isAlive: () -> boolean,
 	graceSeconds: number?,
 	straightLine: boolean?
-): boolean
+): (boolean, { Vector3 }?)
 	local path = PathfindingService:CreatePath(agentParams)
 	local ok = pcall(function()
 		path:ComputeAsync(root.Position, target)
@@ -153,6 +153,7 @@ function NpcMotion.walkTo(
 	end
 
 	local waypoints = path:GetWaypoints()
+	local route: { Vector3 } = {}
 	for index, waypoint in waypoints do
 		if not isAlive() then
 			return false
@@ -160,7 +161,23 @@ function NpcMotion.walkTo(
 		if waypoint.Action == Enum.PathWaypointAction.Jump then
 			humanoid.Jump = true
 		end
+		table.insert(route, waypoint.Position)
 		if not step(humanoid, root, waypoint.Position, index == #waypoints, graceSeconds) then
+			return false
+		end
+	end
+	-- (the second result: the route walked, so a caller stuck at its end can retrace it)
+	return true, route
+end
+
+-- Walks straight through `points` in order (no path search), as smoothly as a path; false when it gets stuck. Used
+-- to retrace a route walked before, out of a tight spot no path can start from
+function NpcMotion.walkRoute(humanoid: Humanoid, root: BasePart, points: { Vector3 }, isAlive: () -> boolean, graceSeconds: number?): boolean
+	for index, point in points do
+		if not isAlive() then
+			return false
+		end
+		if not step(humanoid, root, point, index == #points, graceSeconds) then
 			return false
 		end
 	end
