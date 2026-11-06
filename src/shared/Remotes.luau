@@ -87,6 +87,10 @@ local NAMES = {
 	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
 	"EquipWeapon", -- client → server: (weaponId: string) hold an owned weapon (WeaponService; not in a fight)
 	"WeaponsChanged", -- server → client: { owned = { [weaponId]: { grade, level } }, equipped = weaponId }; client → server: () ask
+	"ForgeWeapon", -- client → server: (shelfUid: string, weaponId: string) make a weapon at your Forge (ForgeService)
+	"UpgradeWeapon", -- client → server: (shelfUid: string, weaponId: string) one more upgrade level on an owned weapon
+	"ReforgeWeapon", -- client → server: (shelfUid: string, weaponId: string) a new grade roll on an owned weapon, the better kept
+	"ForgeResult", -- server → client: { action = "forge" | "reforge" | "upgrade", weaponId, grade, level, kept } (kept: the old grade stayed)
 }
 
 local isServer = RunService:IsServer()
@@ -189,4 +193,8 @@ return {
 	Dodge = remotes.Dodge,
 	EquipWeapon = remotes.EquipWeapon,
 	WeaponsChanged = remotes.WeaponsChanged,
+	ForgeWeapon = remotes.ForgeWeapon,
+	UpgradeWeapon = remotes.UpgradeWeapon,
+	ReforgeWeapon = remotes.ReforgeWeapon,
+	ForgeResult = remotes.ForgeResult,
 }

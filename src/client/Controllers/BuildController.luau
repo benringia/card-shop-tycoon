@@ -197,6 +197,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 		then `Holds {def.capacity}`
 		elseif def.kind == "Condenser" then "Duplicates to stars"
 		elseif def.kind == "Grading" then "Duplicates to grades"
+		elseif def.kind == "Forge" then "Make and upgrade weapons"
 		elseif def.kind == "Trophy" then `Beat the {trophyBoss(def)}`
 		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
@@ -330,7 +331,7 @@ local function openEditPanel(part: BasePart)
 	removeStockRow.Visible = def.kind == "Products"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
-		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Trophy" then "Pick a new spot."
+		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Trophy" then "Pick a new spot."
 		else "Pick a new spot. Stock stays on it."
 	sellDetail.Text = if def.requiresItem
 		then "Put it back in your bag."

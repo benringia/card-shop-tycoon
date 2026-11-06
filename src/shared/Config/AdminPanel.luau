@@ -35,6 +35,16 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- Weapons round 1 (Config/Weapons): weapons set exactly, boss materials, Wild Ore for the Forge weapons
+		title = "Weapons",
+		buttons = {
+			{ label = "Give a weapon", command = "/weapon %s", placeholder = "id [grade] [level] (verdantBlade S 4)" },
+			{ label = "Prism Blade +10 S", command = "/weapon prismBlade S 10" },
+			{ label = "Boss material", command = "/material %s", placeholder = "boss id amount (meadowWarden 20)" },
+			{ label = "+50 Wild Ore", command = "/item wildOre 50" },
+		},
+	},
+	{
 		-- The Pet button moves at each grade (spec 2026-11-05-pet-moves-design): played on your summoned creature against a
 		-- dummy in front of it (MovePreviewController); "big" against a 14-stud dummy
 		title = "Pet moves",

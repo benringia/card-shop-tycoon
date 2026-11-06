@@ -30,6 +30,7 @@ return {
 		Computer = { height = 0, collide = false, built = true }, -- the order computer: a modern workstation
 		Condenser = { height = 0, collide = false, built = true }, -- the Card Condenser (CONDENSER_LOOK)
 		GradingStation = { height = 0, collide = false, built = true }, -- the Grading Station (GRADING_LOOK)
+		Forge = { height = 0, collide = false, built = true }, -- the Forge (FORGE_LOOK), until its model is made
 		Trophy = { height = 0, collide = false, built = true }, -- a boss trophy (TROPHY_LOOK; its Gem in the boss's colour)
 		-- each product shelf's look (Config/Shelves prop): code-built modern shelving (Util/ShelfLooks, SHELF_LOOK)
 		Shelf = { height = 0, collide = false, built = true }, -- Small Pack Rack: a one-sided gondola
@@ -349,6 +350,28 @@ return {
 		POST = 0.12, -- corner post and rail thickness
 		BED = 0.06, -- bed thickness
 		STRIP_HEIGHT = 0.1,
+	},
+
+	-- The Forge (Props, code-built stand-in, weapons round 1): the machines' pod (a dark plinth with a glowing rim, a
+	-- white body with a light band and a FORGE strip) in ember orange, topped by a dark rim round a bed of glowing coals
+	-- with a steel anvil on it (foot, waist, face, and a horn to the right), embers rising. Studs; colours { r, g, b }.
+	FORGE_LOOK = {
+		BASE_RADIUS = 2.6,
+		PLINTH_HEIGHT = 0.5,
+		BASE_HEIGHT = 2.2, -- plinth and body together
+		BODY_RADIUS = 2.25,
+		BED_RADIUS = 1.8,
+		ANVIL_FOOT = { 1.9, 0.5, 1.2 },
+		ANVIL_WAIST = { 1.0, 0.7, 0.75 },
+		ANVIL_FACE = { 2.5, 0.55, 1.1 },
+		HORN = { length = 0.9, radius = 0.24 },
+		SHELL = { 236, 240, 247 },
+		DARK = { 28, 32, 46 },
+		GLOW = { 255, 140, 60 },
+		STEEL = { 72, 80, 98 },
+		EMBER = { 255, 110, 40 },
+		SCREEN_TEXT = "⚒️ FORGE",
+		EMBER_RATE = 5, -- rising embers a second
 	},
 
 	-- The Card Condenser (Props, code-built), restyled to match the Grading Station's scan pod (2026-10-30): a dark

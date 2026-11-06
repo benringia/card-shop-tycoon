@@ -6,8 +6,9 @@
 --   kind "PlayerCards":   displays single cards that only other players can buy
 --   kind "Condenser":     a machine that combines duplicate cards for stars (holds nothing)
 --   kind "Grading":       the Grading Station, a machine that raises a card's grade (holds nothing)
+--   kind "Forge":         the Forge, a machine that makes, upgrades and reforges weapons (holds nothing)
 --   kind "Trophy":        a boss trophy (holds nothing): placing it takes its trophy item, selling gives it back
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Trophy"
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Trophy"
 
 export type Shelf = {
 	id: string,
@@ -97,6 +98,19 @@ local List: { Shelf } = {
 		unlockLevel = 14,
 		size = Vector3.new(6, 9, 6), -- a square spot for the round pod, made bigger (saved ones too big for their spot move over)
 		color = Color3.fromRGB(230, 185, 80),
+	},
+	{
+		-- Weapons round 1 (Config/Weapons, ForgeService): forge, upgrade and reforge weapons
+		id = "Forge",
+		prop = "Forge",
+		name = "Forge",
+		kind = "Forge",
+		category = "Fixtures", -- Build menu tab
+		capacity = 0,
+		cost = 1500,
+		unlockLevel = 6,
+		size = Vector3.new(6, 6, 6),
+		color = Color3.fromRGB(235, 120, 60),
 	},
 	{
 		id = "trophy_meadowWarden",

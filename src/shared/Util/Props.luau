@@ -179,6 +179,46 @@ end
 -- dark plinth with a violet rim, a white body with a light band, a card slot and a CONDENSER strip, a see-through
 -- chamber with a glowing floor, a white cap. Its Rotors (the crystal with three cards, and a ring of small cards
 -- below it and one above it turning the other way) are Models of their own that CondenserFxController moves.
+-- The Forge stand-in (Town.FORGE_LOOK)
+local function buildForge(model: Model)
+	local look = Town.FORGE_LOOK
+	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
+	local shell, dark, glow = Props.color(look.SHELL), Props.color(look.DARK), Props.color(look.GLOW)
+	local steel, ember = Props.color(look.STEEL), Props.color(look.EMBER)
+	local plinthTop = look.PLINTH_HEIGHT
+	local baseTop = look.BASE_HEIGHT
+	disc(model, look.BASE_RADIUS, plinthTop, plinthTop / 2, dark, Enum.Material.SmoothPlastic)
+	disc(model, look.BASE_RADIUS + 0.03, 0.07, 0.06, glow, Enum.Material.Neon)
+	disc(model, look.BODY_RADIUS, baseTop - plinthTop, (plinthTop + baseTop) / 2, shell, Enum.Material.SmoothPlastic).Reflectance = 0.08
+	disc(model, look.BODY_RADIUS + 0.02, 0.08, baseTop - 0.15, glow, Enum.Material.Neon)
+	frontStrip(model, look.BODY_RADIUS, plinthTop + 0.45, 1.7, look.SCREEN_TEXT, glow:Lerp(Color3.new(1, 1, 1), 0.4))
+	-- The coal bed: a dark rim round glowing coals
+	disc(model, look.BODY_RADIUS - 0.05, 0.16, baseTop + 0.08, dark, Enum.Material.SmoothPlastic)
+	local bed = disc(model, look.BED_RADIUS, 0.05, baseTop + 0.18, ember, Enum.Material.Neon)
+	bed.Name = "Embers"
+	-- The anvil: foot, waist, face, and the horn sticking out to the right
+	local foot, waist, face = look.ANVIL_FOOT, look.ANVIL_WAIST, look.ANVIL_FACE
+	local y = baseTop + 0.2
+	addPart(model, block, Vector3.new(foot[1], foot[2], foot[3]), CFrame.new(0, y + foot[2] / 2, 0), steel, Enum.Material.Metal)
+	y += foot[2]
+	addPart(model, block, Vector3.new(waist[1], waist[2], waist[3]), CFrame.new(0, y + waist[2] / 2, 0), steel, Enum.Material.Metal)
+	y += waist[2]
+	addPart(model, block, Vector3.new(face[1], face[2], face[3]), CFrame.new(0, y + face[2] / 2, 0), steel, Enum.Material.Metal)
+	local horn = look.HORN
+	addPart(model, cylinder, Vector3.new(horn.length, horn.radius * 2, horn.radius * 2), CFrame.new(face[1] / 2 + horn.length / 2, y + face[2] * 0.6, 0), steel, Enum.Material.Metal)
+	local embers = Instance.new("ParticleEmitter")
+	embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	embers.Color = ColorSequence.new(ember, glow)
+	embers.Rate = look.EMBER_RATE
+	embers.Lifetime = NumberRange.new(0.8, 1.4)
+	embers.Speed = NumberRange.new(1, 2)
+	embers.SpreadAngle = Vector2.new(25, 25)
+	embers.EmissionDirection = Enum.NormalId.Right -- the bed is an upright disc: its X axis points up
+	embers.Size = NumberSequence.new(0.18, 0)
+	embers.LightEmission = 1
+	embers.Parent = bed
+end
+
 local function buildCondenser(model: Model)
 	local look = Town.CONDENSER_LOOK
 	local block = Enum.PartType.Block
@@ -414,6 +454,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		buildCondenser(model)
 	elseif slot == "GradingStation" then
 		buildGradingStation(model)
+	elseif slot == "Forge" then
+		buildForge(model)
 	elseif slot == "Trophy" then
 		buildTrophy(model)
 	elseif slot == "Computer" then

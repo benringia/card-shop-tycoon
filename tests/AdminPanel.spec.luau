@@ -28,6 +28,20 @@ return {
 		expect.equal(aliases.item and aliases.boss, true, "items and bosses (built from their configs) exist too")
 	end,
 
+	["admin panel: a Weapons section gives weapons and boss materials (weapons round 1)"] = function()
+		local aliases = registered()
+		expect.equal(aliases.weapon and aliases.material, true, "/weapon and /material exist")
+		local commands = {}
+		for _, section in AdminPanel.SECTIONS do
+			if section.title == "Weapons" then
+				for _, button in section.buttons do
+					commands[string.match(button.command, "^/(%w+)") or ""] = true
+				end
+			end
+		end
+		expect.equal(commands.weapon and commands.material and commands.item, true, "weapon, material and Wild Ore buttons")
+	end,
+
 	["admin panel: typed commands fill in the text box"] = function()
 		expect.equal(AdminPanel.fill("/maxcard %s foil", "solarion"), "/maxcard solarion foil", "fills the input")
 		expect.equal(AdminPanel.fill("/maxcard %s", "  "), nil, "an empty input sends nothing")

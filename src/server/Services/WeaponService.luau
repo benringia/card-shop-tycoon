@@ -46,6 +46,10 @@ function WeaponService.GetEquipped(player: Player): string?
 	return equipped[player] or Weapons.STARTER
 end
 
+function WeaponService.IsLoaded(player: Player): boolean
+	return owned[player] ~= nil
+end
+
 function WeaponService.GetOwned(player: Player, weaponId: string): Owned?
 	local mine = owned[player]
 	return if mine then mine[weaponId] else nil
@@ -128,6 +132,16 @@ function WeaponService.Give(player: Player, weaponId: string, grade: string, how
 		WeaponService.Changed(player)
 	end
 	return record, refund
+end
+
+-- Studio's /weapon: owns this weapon at exactly this grade and level
+function WeaponService.SetForTesting(player: Player, weaponId: string, grade: string, level: number)
+	local mine = owned[player]
+	if not mine or not Weapons.ById[weaponId] then
+		return
+	end
+	mine[weaponId] = { grade = grade, level = math.clamp(math.floor(level), 0, Weapons.MAX_LEVEL) }
+	WeaponService.Changed(player)
 end
 
 -- An upgrade: the owned weapon's new level (whole, 0..MAX_LEVEL)

@@ -168,6 +168,8 @@ return {
 	WILD_ORE = WILD_ORE,
 	FORGE_UNLOCK_LEVEL = 6,
 	EQUIP_COOLDOWN = 0.5, -- seconds between Equip requests (WeaponService)
+	FORGE_COOLDOWN = 1, -- seconds between Forge, Upgrade and Reforge requests (ForgeService)
+	FORGE_DISTANCE = 12, -- studs from your own Forge machine
 	REQUEST_COOLDOWN = 1, -- seconds between a client's asks for its weapons
 	-- The boss each round-1 weapon is balanced against (tools/balance/bosses WEAPON)
 	TIER_BOSS = { forgeSword = "meadowWarden", verdantBlade = "caveBroodQueen", sunforgedBlade = "frostTyrant", prismBlade = "prismHydra" },

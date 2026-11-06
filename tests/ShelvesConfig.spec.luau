@@ -31,7 +31,7 @@ return {
 	end,
 
 	["every shelf sits in a Build menu category that matches its kind"] = function()
-		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Trophy = "Trophies" }
+		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Forge = "Fixtures", Trophy = "Trophies" }
 		for _, entry in entries() do
 			local kind = string.match(entry.body, 'kind = "([%w_]+)"')
 			local category = string.match(entry.body, 'category = "([%w_]+)"')
@@ -72,6 +72,21 @@ return {
 			end
 		end
 		error("no Condenser entry")
+	end,
+
+	["the Forge is a Fixture from shop level 6 for $1,500 (weapons round 1)"] = function()
+		for _, entry in entries() do
+			if entry.id == "Forge" then
+				assert(string.find(entry.body, 'kind = "Forge"', 1, true), "kind Forge")
+				assert(string.find(entry.body, 'prop = "Forge"', 1, true), "prop Forge")
+				assert(string.match(entry.body, "cost = (%d+)") == "1500", "costs $1,500")
+				assert(string.match(entry.body, "unlockLevel = (%d+)") == "6", "opens at shop level 6")
+				local x, y, z = string.match(entry.body, "size = Vector3.new%((%d+), (%d+), (%d+)%)")
+				assert(tonumber(x) == 6 and tonumber(y) == 6 and tonumber(z) == 6, `Forge size {x} x {y} x {z}`)
+				return
+			end
+		end
+		error("no Forge entry")
 	end,
 
 	["the Collector Case is the spinning-card case in its own colours"] = function()

@@ -118,9 +118,13 @@ local function isGradingStation(def: ShelfDef): boolean
 	return def.kind == "Grading"
 end
 
--- Machines (the Condenser, the Grading Station) hold nothing and are only used by their owner
+local function isForge(def: ShelfDef): boolean
+	return def.kind == "Forge"
+end
+
+-- Machines (the Condenser, the Grading Station, the Forge) hold nothing and are only used by their owner
 local function isMachine(def: ShelfDef): boolean
-	return isCondenser(def) or isGradingStation(def)
+	return isCondenser(def) or isGradingStation(def) or isForge(def)
 end
 
 -- Boss trophies: decorations placed from a trophy item (Config/Shelves requiresItem)
@@ -432,7 +436,7 @@ local function updateInfo(shelf: PlacedShelf)
 	local part = shelf.part
 	part:SetAttribute("ProductId", if shelf.units > 0 then shelf.productId else nil)
 	if isMachine(shelf.def) then
-		part:SetAttribute("Info", `{if isGradingStation(shelf.def) then "🏅" else "✨"} {shelf.def.name}`)
+		part:SetAttribute("Info", `{if isGradingStation(shelf.def) then "🏅" elseif isForge(shelf.def) then "⚒️" else "✨"} {shelf.def.name}`)
 		return
 	end
 	if isTrophy(shelf.def) then
@@ -1035,6 +1039,10 @@ end
 
 function PlacementService.IsGradingStation(shelf: PlacedShelf): boolean
 	return isGradingStation(shelf.def)
+end
+
+function PlacementService.IsForge(shelf: PlacedShelf): boolean
+	return isForge(shelf.def)
 end
 
 function PlacementService.GetFreeSlot(shelf: PlacedShelf): number?
