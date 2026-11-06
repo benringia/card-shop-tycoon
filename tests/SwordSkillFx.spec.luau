@@ -109,6 +109,8 @@ return {
 			sunfallCleave = { "charge", "charged", "release", "glow", "gather", "launch", "ahead", "speed", "height", "width", "flame", "blast", "heat", "swirl", "fissure", "pillar", "boom" },
 			thornline = { "release", "speed", "blast", "spacing", "side", "height", "thick", "trap", "trapVines", "trapTall", "linger", "wither", "gather", "swirl", "fissure" },
 			rootBurst = { "roots", "height", "thick" },
+			prismShatter = { "crystals", "height", "thick" },
+			prismJudgment = { "summon", "command", "release", "gap", "strikes", "pillar", "ringRadius", "ringHeight", "blade", "spin", "spinUp", "dive", "rune", "pillarHeight", "pillarWidth", "pillarSeconds", "camAt", "camHold", "camLookUp", "camUp" },
 		}
 		for look, keys in needs do
 			local beats = SwordSkillFx.LOOKS[look].beats :: { [string]: number }
@@ -116,6 +118,24 @@ return {
 				expect.equal(type(beats[key]), "number", `{look}.{key}`)
 			end
 		end
+	end,
+
+	["Prism Judgment keeps time with its moveset: the first blade strikes at the hit, the rest its gap apart"] = function()
+		local spec = SwordSkillFx.LOOKS.prismJudgment
+		local beats = spec.beats :: { [string]: number }
+		local skill = Swords.SWORDS.prismBlade.skill
+		expect.equal(beats.release, skill.hitAt, "the first strike at the Hit marker")
+		expect.equal(beats.gap, skill.shape.gap)
+		expect.equal(beats.strikes, skill.shape.strikes)
+		expect.equal(beats.summon < beats.command and beats.command < beats.release, true, "summoned, then commanded, then the strikes")
+		expect.equal(beats.release + (beats.strikes - 1) * beats.gap < beats.pillar and beats.pillar < skill.length, true, "the pillar after the last strike, inside the move")
+		expect.equal(spec.cinematic, true, "the Legendary's camera moment")
+		-- one ghost blade per element, in the storyboard's order, each with its colours
+		expect.equal(table.concat(SwordSkillFx.PRISM.order, ","), "Ember,Tide,Bloom,Volt,Shade")
+		for _, element in SwordSkillFx.PRISM.order do
+			expect.equal(WeaponLooks.BY_ELEMENT[element] ~= nil, true, element)
+		end
+		expect.equal(SwordSkillFx.SHAKE.prismStrike > 0 and SwordSkillFx.SHAKE.prismJudgment > SwordSkillFx.SHAKE.impact, true, "a shake per strike, the biggest on the pillar")
 	end,
 
 	["the skill cinematic: up to the low angle, held through the charge, chasing the crescent, held on the burst, back"] = function()

@@ -23,8 +23,9 @@ local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 export type Colors = { deep: Color3, glow: Color3 }
 -- A character's sword blade: its handle part and the blade's base and tip in the handle's space
 export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
--- A skill's moments for its caster (your own: the screen shakes): the cleave, and where the effect bursts
-export type Hooks = { blade: Blade?, released: (() -> ())?, burst: ((at: Vector3) -> ())? }
+-- A skill's moments for its caster (your own: the screen shakes and sounds): the cleave, each strike of a skill made of
+-- several (Prism Judgment's blades), and where the effect bursts
+export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())? }
 
 local SwordSkillFx = {}
 
@@ -40,6 +41,7 @@ local GROUND_REACH = 6 -- studs up or down from a character's feet the ground un
 local VINE_PIECES = 3 -- stem pieces in a Verdant vine or root, bottom to top
 local VINE_SNAP = 0.1 -- seconds a vine takes to snap shut
 local VERDANT = SwordSkillFxConfig.VERDANT
+local PRISM = SwordSkillFxConfig.PRISM
 
 local function texture(key: string): string?
 	for _, list in TEXTURE_TABLES do
@@ -222,17 +224,18 @@ local function detail(count: number): number
 	return math.max(1, math.round(if Extras.enabled() then count else count * 0.45))
 end
 
--- Three trails of `key` particles swirling round `center()` (`radius` studs, a little bob) for `seconds`: a charge's
--- spiral of flames or leaves
-local function swirl(center: () -> Vector3, radius: number, color: Color3, key: string, seconds: number, size: number)
+-- Trails of `key` particles swirling round `center()` (`radius` studs, a little bob) for `seconds`: a charge's spiral of
+-- flames or leaves; three in `color`, or one per colour of `colors` (the Prism's rainbow)
+local function swirl(center: () -> Vector3, radius: number, color: Color3, key: string, seconds: number, size: number, colors: { Color3 }?)
 	local anchor = holder(CFrame.new(center()), Vector3.one, seconds + 1)
 	local points: { { point: Attachment, emitter: ParticleEmitter, phase: number } } = {}
-	for index = 1, 3 do
+	local tints = colors or { color, color, color }
+	for index, tint in tints do
 		local point = Instance.new("Attachment")
 		point.Parent = anchor
-		local trail = emitter(point, key, color, { size = { size, size * 0.2 }, life = { 0.35, 0.55 }, spread = 10, spin = { -90, 90 }, fade = 0.5 })
+		local trail = emitter(point, key, tint, { size = { size, size * 0.2 }, life = { 0.35, 0.55 }, spread = 10, spin = { -90, 90 }, fade = 0.5 })
 		trail.Rate = detail(45)
-		table.insert(points, { point = point, emitter = trail, phase = index / 3 * math.pi * 2 })
+		table.insert(points, { point = point, emitter = trail, phase = index / #tints * math.pi * 2 })
 	end
 	local started = os.clock()
 	local connection: RBXScriptConnection
@@ -540,8 +543,429 @@ local function rootBurst(ground: Vector3, spec: SwordSkillFxConfig.Look, colors:
 	leafBurst(ground, colors, spec.count, scale, 12)
 end
 
+-- Prism: each element's colours in its ghost blades' order (PRISM.order)
+local function prismColors(): { Colors }
+	local list: { Colors } = {}
+	for _, element in PRISM.order do
+		local look = WeaponLooks.BY_ELEMENT[element]
+		table.insert(list, { deep = rgb(look.deep), glow = rgb(look.glow) })
+	end
+	return list
+end
+
+-- Prism: five bands of the elements' colours streaming off the blade for the swing, white sparkles at its tip
+local function rainbowArc(spec: SwordSkillFxConfig.Look, scale: number, blade: Blade)
+	local points: { Attachment } = {}
+	for index, colors in prismColors() do
+		local point = Instance.new("Attachment")
+		point.CFrame = blade.base:Lerp(blade.tip, 0.3 + index * 0.13)
+		point.Parent = blade.part
+		table.insert(points, point)
+		local band = emitter(point, "glow", colors.glow, { size = { spec.size * scale, 0.1 }, life = { 0.25, 0.4 }, spread = 180, brightness = 2.4, fade = 0.4 })
+		band.Rate = spec.count * scale / 5
+		if index == 5 then
+			local sparkle = emitter(point, "star", WHITE, { size = { 0.6 * scale, 0.1 }, life = { 0.3, 0.6 }, speed = { 2, 5 }, spread = 180, spin = { -180, 180 }, brightness = 2.6 })
+			sparkle.Rate = spec.count * scale / 3
+		end
+	end
+	task.delay(spec.seconds, function()
+		for _, point in points do
+			for _, item in point:GetChildren() do
+				if item:IsA("ParticleEmitter") then
+					item.Rate = 0
+				end
+			end
+		end
+	end)
+	for _, point in points do
+		Debris:AddItem(point, spec.seconds + 0.8)
+	end
+end
+
+-- Prism: rainbow shockwaves rolling out from `ground`, one per colour, a little apart, out to `radius`
+local function rainbowRings(ground: Vector3, radius: number, seconds: number)
+	for index, colors in prismColors() do
+		task.delay((index - 1) * 0.05, ElementFx.ring, ground, colors.glow, radius * (0.75 + index * 0.08), seconds)
+	end
+end
+
+-- Prism: a spray of shards in every colour and white sparkles from `at`
+local function prismShards(at: Vector3, count: number, scale: number)
+	local anchor = holder(CFrame.new(at), Vector3.one, 2.5)
+	for _, colors in prismColors() do
+		local shards = emitter(anchor, "shard", colors.glow, { size = { 0.8 * scale, 0.3 * scale }, life = { 0.7, 1.3 }, speed = { 10, 22 }, spread = 180, spin = { -300, 300 }, accel = -UP * 14, drag = 0.8, brightness = 2.2 })
+		shards:Emit(detail(math.round(count / 5)))
+	end
+	local sparkles = emitter(anchor, "star", WHITE, { size = { 0.8 * scale, 0.1 }, life = { 0.5, 1 }, speed = { 6, 16 }, spread = 180, spin = { -200, 200 }, brightness = 2.8 })
+	sparkles:Emit(detail(math.round(count / 2)))
+end
+
+-- Prism: `crystals` crystal spikes in the five colours bursting up in a ring round `ground`, rainbow shockwaves, shards and
+-- sparkles flying, then each shatters into its colour
+local function prismShatter(ground: Vector3, spec: SwordSkillFxConfig.Look, scale: number)
+	local beats = spec.beats :: { [string]: number }
+	local colors = prismColors()
+	local radius = spec.size * 0.3 * scale
+	for index = 1, beats.crystals do
+		local angle = index / beats.crystals * math.pi * 2
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local tint = colors[(index - 1) % #colors + 1]
+		local base = groundAt(ground + out * radius * (0.6 + (index % 2) * 0.5))
+		local height = beats.height * scale * (0.7 + (index % 3) * 0.2)
+		local thick = beats.thick * scale
+		-- leaning out, a crystal's long axis
+		local tilt = CFrame.lookAt(base, base + UP + out * 0.45) * CFrame.Angles(-math.pi / 2, 0, 0)
+		local crystal = piece(tint.glow, Enum.Material.Neon)
+		crystal.Transparency = 0.15
+		crystal.Size = Vector3.new(thick, 0.1, thick)
+		crystal.CFrame = tilt
+		TweenService:Create(crystal, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = Vector3.new(thick, height, thick),
+			CFrame = tilt * CFrame.new(0, height / 2, 0),
+		}):Play()
+		task.delay(spec.seconds * (0.5 + (index % 3) * 0.1), function()
+			local at = crystal.Position
+			crystal:Destroy()
+			local anchor = holder(CFrame.new(at), Vector3.one, 1.5)
+			emitter(anchor, "shard", tint.glow, { size = { 0.7 * scale, 0.2 }, life = { 0.5, 0.9 }, speed = { 6, 12 }, spread = 180, spin = { -300, 300 }, accel = -UP * 18, brightness = 2 }):Emit(detail(10))
+		end)
+	end
+	rainbowRings(ground, spec.size * scale, 0.5)
+	prismShards(ground + UP, spec.count, scale)
+	ElementFx.eruption(ground, WHITE, radius, 8)
+	local flare = holder(CFrame.new(ground + UP * 3), Vector3.one, 1)
+	local light = Instance.new("PointLight")
+	light.Color = colors[3].glow
+	light.Range = spec.size * 3 * scale
+	light.Brightness = 4
+	light.Parent = flare
+	tween(light, 0.7, { Brightness = 0 })
+end
+
+-- A glowing see-through ghost of an element's Forge Sword (its model, else a blade of light) `length` studs long, in
+-- `color`, a light and sparkles on it and a streak behind it as it moves; its pivot is the grip, blade along +Y
+local function ghostBlade(element: string, length: number, color: Color3): Model
+	local folder = ReplicatedStorage:FindFirstChild("WeaponModels")
+	local template = if folder then folder:FindFirstChild("ForgeSword_" .. element) else nil
+	local model: Model
+	if template and template:IsA("Model") then
+		model = template:Clone()
+	else
+		model = Instance.new("Model")
+		local blade = piece(color, Enum.Material.Neon)
+		blade.Size = Vector3.new(0.4, length, 1.2)
+		blade.CFrame = CFrame.new(0, length / 2, 0)
+		blade.Parent = model
+		model.PrimaryPart = blade
+		model.WorldPivot = CFrame.new()
+	end
+	for _, item in model:GetDescendants() do
+		if item:IsA("LuaSourceContainer") or item:IsA("SurfaceAppearance") or item:IsA("Decal") or item:IsA("Texture") or item:IsA("ParticleEmitter") or item:IsA("Light") or item:IsA("Beam") or item:IsA("Trail") then
+			item:Destroy()
+		elseif item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+			item.CastShadow = false
+			item.Material = Enum.Material.Neon
+			item.Color = color
+			item.Transparency = 1
+		end
+	end
+	local _, size = model:GetBoundingBox()
+	local long = math.max(size.X, size.Y, size.Z)
+	if long > 0 then
+		model:ScaleTo(model:GetScale() * length / long)
+	end
+	local body = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if body and body:IsA("BasePart") then
+		local pivot = body.CFrame:ToObjectSpace(model:GetPivot())
+		local grip, tip = Instance.new("Attachment"), Instance.new("Attachment")
+		grip.CFrame = pivot
+		tip.CFrame = pivot * CFrame.new(0, length, 0)
+		grip.Parent, tip.Parent = body, body
+		local streak = Instance.new("Trail")
+		streak.Attachment0, streak.Attachment1 = grip, tip
+		streak.Color = ColorSequence.new(color:Lerp(WHITE, 0.4), color)
+		streak.Transparency = NumberSequence.new(0.2, 1)
+		streak.Lifetime = 0.3
+		streak.LightEmission = 1
+		streak.FaceCamera = true
+		streak.Parent = body
+		local light = Instance.new("PointLight")
+		light.Color = color
+		light.Range = length * 1.4
+		light.Brightness = 2.5
+		light.Parent = body
+		local sparkle = emitter(tip, "star", color:Lerp(WHITE, 0.5), { size = { 0.5, 0.1 }, life = { 0.3, 0.6 }, speed = { 1, 3 }, spread = 180, brightness = 2.4 })
+		sparkle.Rate = detail(20)
+	end
+	model.Parent = workspace.CurrentCamera
+	return model
+end
+
+local function fadeModel(model: Model, transparency: number)
+	for _, item in model:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.Transparency = transparency
+		end
+	end
+end
+
+-- Prism Judgment's strike in an element: its own burst where the blade lands on the ground at `ground`
+local function elementStrike(element: string, ground: Vector3, colors: Colors, scale: number)
+	ElementFx.ring(ground, colors.glow, 7 * scale, 0.4)
+	if element == "Ember" then
+		ElementFx.burst(ground + UP * 2, colors.glow, 1.5 * scale)
+		ElementFx.pillar(ground, colors.deep, 10 * scale, 0.25, "flame")
+	elseif element == "Tide" then
+		ElementFx.burst(ground + UP * 2, colors.glow, 1.5 * scale)
+		ElementFx.eruption(ground, colors.glow, 3 * scale, 12)
+	elseif element == "Bloom" then
+		ElementFx.burst(ground + UP * 2, colors.glow, 1.5 * scale)
+		leafBurst(ground, colors, 30, scale, 10)
+	elseif element == "Volt" then
+		ElementFx.skyStrike(ground + UP * 2, colors.glow, 1.3 * scale)
+	else
+		ElementFx.burst(ground + UP * 2, colors.glow, 1.5 * scale)
+		local anchor = holder(CFrame.new(ground + UP), Vector3.one, 2)
+		emitter(anchor, "smoke", colors.deep, { size = { 3 * scale, 7 * scale }, life = { 0.6, 1.1 }, speed = { 4, 9 }, spread = 70, light = 0.4, brightness = 1.2, start = 0.3 }):Emit(detail(14))
+	end
+end
+
+-- A spinning rune circle `radius` studs round on the ground at `ground`, its colour running through the rainbow, for
+-- `seconds` (fading in and out)
+local function runeCircle(ground: Vector3, radius: number, seconds: number)
+	local colors = prismColors()
+	local plates: { { part: Part, decal: Decal, spin: number } } = {}
+	for index, spec in { { key = "sigil", size = radius * 2, spin = 0.8 }, { key = "rune", size = radius * 1.4, spin = -1.4 } } do
+		local plate = holder(CFrame.new(ground + UP * (0.08 + index * 0.02)), Vector3.new(spec.size, 0.05, spec.size), seconds + 0.5)
+		local decal = Instance.new("Decal")
+		decal.Texture = texture(spec.key) or ""
+		decal.Face = Enum.NormalId.Top
+		decal.Transparency = 1
+		decal.Parent = plate
+		table.insert(plates, { part = plate, decal = decal, spin = spec.spin })
+	end
+	local light = Instance.new("PointLight")
+	light.Range = radius * 2.5
+	light.Brightness = 3
+	light.Parent = plates[1].part
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		if t > seconds then
+			connection:Disconnect()
+			for _, entry in plates do
+				entry.part:Destroy()
+			end
+			return
+		end
+		local show = math.min(1, t / 0.25, (seconds - t) / 0.3)
+		local hue = (t * 1.5) % #colors
+		local from, to = colors[math.floor(hue) + 1], colors[math.floor(hue + 1) % #colors + 1]
+		local tint = from.glow:Lerp(to.glow, hue % 1)
+		for _, entry in plates do
+			entry.part.CFrame = CFrame.new(entry.part.Position) * CFrame.Angles(0, t * entry.spin * math.pi, 0)
+			entry.decal.Color3 = tint
+			entry.decal.Transparency = 1 - show * 0.95
+		end
+		light.Color = tint
+	end)
+end
+
+-- A twisting rainbow pillar blasting up from `ground`: a beam of each colour spiralling round a white core, `height`
+-- studs tall and `width` wide, for `seconds`, then fading
+local function rainbowPillar(ground: Vector3, height: number, width: number, seconds: number)
+	local colors = prismColors()
+	local anchor = holder(CFrame.new(ground), Vector3.one, seconds + 1)
+	local beams: { { bottom: Attachment, top: Attachment, beam: Beam, phase: number } } = {}
+	local function beam(tint: Color3, phase: number, wide: number, z: number)
+		local bottom, top = Instance.new("Attachment"), Instance.new("Attachment")
+		bottom.Parent, top.Parent = anchor, anchor
+		local b = Instance.new("Beam")
+		b.Attachment0, b.Attachment1 = bottom, top
+		b.Color = ColorSequence.new(tint)
+		b.Width0, b.Width1 = wide, wide * 1.4
+		b.LightEmission = 1
+		b.LightInfluence = 0
+		b.FaceCamera = true
+		b.Segments = 12
+		b.Transparency = NumberSequence.new(0.05, 0.4)
+		b.ZOffset = z
+		b.Parent = anchor
+		table.insert(beams, { bottom = bottom, top = top, beam = b, phase = phase })
+	end
+	for index, tint in colors do
+		beam(tint.glow, index / #colors * math.pi * 2, width * 0.55, 0)
+	end
+	beam(WHITE, 0, width * 0.6, 0.1)
+	local light = Instance.new("PointLight")
+	light.Range = 60
+	light.Brightness = 6
+	light.Color = colors[1].glow
+	light.Parent = anchor
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		if t > seconds + 0.4 then
+			connection:Disconnect()
+			anchor:Destroy()
+			return
+		end
+		local rise = math.min(1, t / 0.12)
+		local fade = math.clamp((t - seconds) / 0.4, 0, 1)
+		for _, entry in beams do
+			local angle = entry.phase + t * 9
+			local swing = if entry.beam.ZOffset > 0 then 0 else width * 0.5
+			entry.bottom.Position = Vector3.new(math.cos(angle) * swing, 0, math.sin(angle) * swing)
+			entry.top.Position = Vector3.new(math.cos(angle + 2) * swing, height * rise, math.sin(angle + 2) * swing)
+			entry.beam.Transparency = NumberSequence.new(0.05 + 0.95 * fade, 0.4 + 0.6 * fade)
+		end
+		light.Brightness = 6 * (1 - fade)
+	end)
+end
+
+-- Prism Judgment (owner 2026-11-07: the spinning ring, each blade diving in turn; "make everything exaggerated/big/
+-- particles everywhere/screen shake/flashy"): the blade's tip blazes, rainbow sparks swirl round you and beams of each
+-- colour shoot to a ring of five ghost Forge Swords forming high above the foe (`aim`, else ahead) over a spinning rune
+-- circle; the ring spins faster and faster, then each blade in turn peels off and dives in a streak of its colour to
+-- burst on the foe in its element; a twisting rainbow pillar blasts up, rainbow shockwaves and shards everywhere, the
+-- blades shatter
+local function prismJudgment(root: BasePart, spec: SwordSkillFxConfig.Look, scale: number, aim: Vector3?, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local colors = prismColors()
+	local feet = root.Position - UP * ROOT_TO_GROUND
+	local target = if aim then Vector3.new(aim.X, feet.Y, aim.Z) else feet + flatLook(root) * 12
+	local ground = groundAt(target)
+	local center = ground + UP * beats.ringHeight * scale
+	local radius = beats.ringRadius * scale
+	local length = beats.blade * scale
+	local strikeAt = function(index: number): number
+		return beats.release + (index - 1) * beats.gap
+	end
+	local lastStrike = strikeAt(beats.strikes)
+	-- The summon: the tip blazes, rainbow sparks swirl round you, a rune circle opens under the foe
+	local orb = holder(CFrame.new(tipOf(hooks.blade, root)), Vector3.one, beats.pillar + 1)
+	local summonFor = beats.command - beats.summon + 0.15
+	task.delay(beats.summon, function()
+		ElementFx.chargeGlow(orb, WHITE, summonFor, 1.3 * scale)
+		ElementFx.gather(orb.Position, WHITE, summonFor, 5 * scale)
+	end)
+	local tints: { Color3 } = {}
+	for _, tint in colors do
+		table.insert(tints, tint.glow)
+	end
+	swirl(function(): Vector3
+		return root.Position
+	end, 3 * scale, WHITE, "star", beats.command + 0.2, 0.9 * scale, tints)
+	runeCircle(ground, beats.rune * scale, beats.pillar + beats.pillarSeconds - beats.summon)
+	-- The ring: five ghost blades over the foe, fading in, spinning faster and faster
+	local blades: { { model: Model, element: string, colors: Colors, phase: number, landed: CFrame? } } = {}
+	for index, element in PRISM.order do
+		table.insert(blades, { model = ghostBlade(element, length, colors[index].glow), element = element, colors = colors[index], phase = (index - 1) / #PRISM.order * math.pi * 2 })
+	end
+	-- beams of each colour from the blade's tip to its ghost blade while they form
+	local links: { Beam } = {}
+	local from = Instance.new("Attachment")
+	from.Parent = orb
+	for _, entry in blades do
+		local body = entry.model.PrimaryPart or entry.model:FindFirstChildWhichIsA("BasePart", true)
+		if body and body:IsA("BasePart") then
+			local to = Instance.new("Attachment")
+			to.Parent = body
+			local link = Instance.new("Beam")
+			link.Attachment0, link.Attachment1 = from, to
+			link.Color = ColorSequence.new(WHITE, entry.colors.glow)
+			link.Width0, link.Width1 = 0.3 * scale, 0.9 * scale
+			link.LightEmission = 1
+			link.FaceCamera = true
+			link.Transparency = NumberSequence.new(1)
+			link.Parent = orb
+			table.insert(links, link)
+		end
+	end
+	local started = os.clock()
+	local spinAngle = 0
+	local last = started
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local now = os.clock()
+		local t = now - started
+		local dt = now - last
+		last = now
+		if t > beats.pillar + 0.1 or not orb.Parent then
+			connection:Disconnect()
+			return
+		end
+		orb.CFrame = CFrame.new(tipOf(hooks.blade, root))
+		-- the beams show while the ring forms
+		local linkShow = math.clamp((t - beats.summon) / 0.15, 0, 1) * (1 - math.clamp((t - beats.command - 0.05) / 0.2, 0, 1))
+		for _, link in links do
+			link.Transparency = NumberSequence.new(1 - linkShow * 0.9)
+		end
+		local spinRate = beats.spin + (beats.spinUp - beats.spin) * math.clamp((t - beats.command) / (lastStrike - beats.command), 0, 1)
+		spinAngle += spinRate * math.pi * 2 * dt
+		local appear = math.clamp((t - beats.summon) / (beats.command - beats.summon), 0, 1)
+		for index, entry in blades do
+			local hit = strikeAt(index)
+			local dive = hit - beats.dive
+			local angle = entry.phase + spinAngle
+			local ring = center + Vector3.new(math.cos(angle), 0, math.sin(angle)) * radius * (0.4 + 0.6 * appear)
+			if t < dive then
+				-- hanging point-down in the ring (the pivot is the grip: the blade along +Y, turned over)
+				entry.model:PivotTo(CFrame.new(ring) * CFrame.Angles(math.pi, angle, 0))
+				fadeModel(entry.model, 1 - appear * 0.75)
+			elseif t < hit then
+				-- diving: a curve swooping out and down onto the foe, the tip leading
+				local a = (t - dive) / beats.dive
+				local landing = ground + UP * length * 0.55
+				local swoop = ring + (ring - center) * 0.8 + UP * 4 * scale
+				local p0, p1 = ring:Lerp(swoop, a), swoop:Lerp(landing, a)
+				local at = p0:Lerp(p1, a)
+				local heading = (p1 - p0)
+				local tipward = if heading.Magnitude > 1e-3 then heading.Unit else -UP
+				local across = tipward:Cross(UP)
+				entry.model:PivotTo(CFrame.fromMatrix(at, if across.Magnitude > 1e-3 then across.Unit else Vector3.xAxis, tipward))
+				fadeModel(entry.model, 0.15)
+			elseif not entry.landed then
+				-- struck: stuck in the ground at the foe, a little tilted, in its element's burst
+				local tilt = CFrame.new(ground + UP * length * 0.45 + Vector3.new(math.cos(entry.phase), 0, math.sin(entry.phase)) * 0.8 * scale)
+					* CFrame.Angles(math.pi + math.cos(entry.phase) * 0.25, entry.phase, math.sin(entry.phase) * 0.25)
+				entry.landed = tilt
+				entry.model:PivotTo(tilt)
+				elementStrike(entry.element, ground, entry.colors, scale)
+				if hooks.strike then
+					hooks.strike(index, ground)
+				end
+			end
+		end
+	end)
+	-- The pillar: a twisting rainbow column, shockwaves, an eruption, shards everywhere; the blades shatter
+	task.delay(beats.pillar, function()
+		if hooks.burst then
+			hooks.burst(ground)
+		end
+		rainbowPillar(ground, beats.pillarHeight * scale, beats.pillarWidth * scale, beats.pillarSeconds)
+		ElementFx.pillar(ground, WHITE, 24 * scale, 0.5, "glow")
+		ElementFx.eruption(ground, colors[5].glow:Lerp(WHITE, 0.4), 6 * scale, 18)
+		rainbowRings(ground, 22 * scale, 0.7)
+		prismShards(ground + UP * 4, 120, scale)
+		for _, entry in blades do
+			local at = entry.model:GetPivot().Position
+			entry.model:Destroy()
+			local anchor = holder(CFrame.new(at), Vector3.one, 1.5)
+			emitter(anchor, "shard", entry.colors.glow, { size = { 0.9 * scale, 0.2 }, life = { 0.5, 1 }, speed = { 8, 16 }, spread = 180, spin = { -300, 300 }, accel = -UP * 16, brightness = 2.2 }):Emit(detail(14))
+		end
+		orb:Destroy()
+	end)
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
--- the Sunforged's flames or the Verdant's leaves stream off it
+-- the Sunforged's flames, the Verdant's leaves or the Prism's rainbow stream off it
 function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?)
 	local spec = SwordSkillFxConfig.LOOKS[look]
 	local root = rootOf(character)
@@ -553,6 +977,9 @@ function SwordSkillFx.slash(character: Model, look: string, cut: number, colors:
 		return
 	elseif look == "leafShed" and blade and blade.part.Parent then
 		leafShed(spec, colors, scale, blade)
+		return
+	elseif look == "rainbowArc" and blade and blade.part.Parent then
+		rainbowArc(spec, scale, blade)
 		return
 	end
 	local ahead = root.CFrame * CFrame.new(0, 0.5, -2.5)
@@ -586,6 +1013,9 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 		return
 	elseif look == "rootBurst" and spec.beats then
 		rootBurst(groundAt(at), spec, colors, scale)
+		return
+	elseif look == "prismShatter" and spec.beats then
+		prismShatter(groundAt(at), spec, scale)
 		return
 	end
 	sketch(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
@@ -849,6 +1279,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "thornline" and spec.beats then
 		thornline(root, spec, colors, scale, aim, hooks or {})
+		return
+	elseif look == "prismJudgment" and spec.beats then
+		prismJudgment(root, spec, scale, aim, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)

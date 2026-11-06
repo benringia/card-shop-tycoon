@@ -25,7 +25,7 @@ combo is a later animation round", section 3.5).
 | **Forge Sword** (Common, the element picked when forged) | a trail in its element's colour, small sparks of its element on hit | a burst of its element where the slam lands: a flame puff (Ember), a splash (Tide), leaves (Bloom), sparks (Volt), shadow (Shade) | **Elemental Spin**: a full spin slash that throws a ring wave of its element out along the ground |
 | **Verdant Blade** (Rare, Bloom) | leaves and petals shed off each swing | roots and thorns burst up out of the ground under the foe | **Thornline** (owner 2026-11-07): a short hop, the blade plunged vertical into the ground and held there while thick thorny vines race out toward the foe and snap shut on it |
 | **Sunforged Blade** (Epic, Ember) | a fire trail on every slash | the ground cracks open with glowing lava where the slam lands | **Sunfall Cleave** (owner 2026-11-07): jump high, hang at the top while sunlight gathers into the blade, one huge cleave in the air (screen shake) launches an upright fire crescent that glides slowly down toward the boss and explodes on contact (screen shake), with a camera moment on your screen |
-| **Prism Blade** (Legendary, every element) | rainbow arcs | prism shards in all five colours burst out | **Prism Judgment**: point the blade at the boss; five ghost blades (Ember, Tide, Bloom, Volt, Shade) appear in a ring above, strike down one after another, then a rainbow pillar |
+| **Prism Blade** (Legendary, every element) | rainbow arcs | prism shards in all five colours burst out | **Prism Judgment** (owner 2026-11-07: the ring spinning, each blade diving in turn; "make everything exaggerated ... DO NOT MAKE BORING"): the blade swept to the sky summons five glowing ghost Forge Swords (Ember, Tide, Bloom, Volt, Shade) in a spinning ring over a rune circle above the boss; pointed at it, the ring spins faster and each blade dives in a streak of its colour, bursting in its element; a twisting rainbow pillar, shards everywhere, a shake on every strike; a camera moment from the side |
 
 The skills grow in scale with rarity: the Common's is a simple spin, the Legendary's a full summoning.
 
@@ -81,8 +81,8 @@ before they're published.
   landing (2.45 s, the Hit at 1.78 s). A
   camera moment on your screen only (the owner's pick: camera only, the fight runs on and you can still be hit): a low
   angle as you jump, the chase after the crescent, held on the burst, back to your view.
-- Prism Judgment: blade swept up, then pointed at the boss and held (the command pose) while the ghost blades strike
-  (about 1.4 s).
+- Prism Judgment: a crouch, the blade swept up to the sky (the summon), snapped down pointing at the boss (the command
+  pose, 0.55 s) with a punch of the arm on each strike (0.6-1.2 s), swept up again as the pillar erupts (1.28 s); 1.75 s.
 
 Each skill's `hitAt` (and Judgment's five strike times) must match its animation's Hit markers (as the cuts' do).
 

@@ -1035,6 +1035,10 @@ function SwordController.Skill()
 			released = function()
 				ScreenFx.shake(shake.release)
 			end,
+			strike = function()
+				ScreenFx.shake(shake.prismStrike)
+				SwordController.PlaySound("prismStrike")
+			end,
 			burst = function()
 				ScreenFx.shake((shake :: any)[effects.fx.skill] or shake.impact)
 				local spec = SwordSkillFxConfig.LOOKS[effects.fx.skill]
@@ -1044,10 +1048,8 @@ function SwordController.Skill()
 			end,
 		})
 		local look = SwordSkillFxConfig.LOOKS[effects.fx.skill]
-		local beats = if look and look.cinematic then look.beats else nil
-		if beats and aim then
-			local travel = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z).Magnitude / math.max(beats.speed, 1)
-			SkillCinematic.play(root, aim - Vector3.new(0, 3, 0), beats.release, travel, function(): boolean
+		if look and aim then
+			SkillCinematic.forLook(root, look, aim, function(): boolean
 				return stillSwinging(token)
 			end)
 		end

@@ -94,6 +94,28 @@ return {
 		end
 	end,
 
+	["the Prism Blade's cuts carry a crystal chime, its skill its summon, strikes and pillar"] = function()
+		local prism = Swords.SWORDS.prismBlade
+		local starter = Swords.SWORDS.starterSword
+		local function keys(list: { any }): { [string]: boolean }
+			local found = {}
+			for _, cue in list do
+				found[cue.key] = true
+			end
+			return found
+		end
+		for _, move in { "cut1", "cut2", "cut3" } do
+			expect.equal(keys(prism.cues[move]).crystalChime, true, `{move}: the chime`)
+		end
+		expect.equal(keys(prism.cues.cut3).prismShatter, true, "the finisher's shatter")
+		expect.equal(keys(prism.cues.skill).prismSummon, true, "the summon")
+		for _, key in { "crystalChime", "prismShatter", "prismSummon", "prismStrike", "prismBoom" } do
+			expect.equal(string.sub(prism.sounds[key] or "", 1, 13), "rbxassetid://", key)
+			expect.equal(starter.sounds[key], nil, `the Steel Sword has no {key}`)
+		end
+		expect.equal(prism.skill.length, 1.75, "the animation's length")
+	end,
+
 	["each new skill has the spec's shape"] = function()
 		local shapes = Swords.SWORDS
 		expect.equal(shapes.forgeSword.skill.shape.kind, "spin")

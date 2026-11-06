@@ -219,6 +219,10 @@ local function playSword(payload: any)
 			released = function()
 				ScreenFx.shake(shake.release)
 			end,
+			strike = function()
+				ScreenFx.shake(shake.prismStrike)
+				SwordController.PlaySound("prismStrike")
+			end,
 			burst = function()
 				ScreenFx.shake((shake :: any)[fx.skill] or shake.impact)
 				local spec = SwordSkillFxConfig.LOOKS[fx.skill]
@@ -228,13 +232,11 @@ local function playSword(payload: any)
 			end,
 		})
 		local spec = SwordSkillFxConfig.LOOKS[fx.skill]
-		local beats = if spec and spec.cinematic then spec.beats else nil
-		if beats then
-			local travel = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z).Magnitude / math.max(beats.speed, 1)
-			SkillCinematic.play(root, aim - Vector3.new(0, 3, 0), beats.release, travel, function(): boolean
+		if spec and spec.cinematic then
+			SkillCinematic.forLook(root, spec, aim, function(): boolean
 				return not stopped
 			end)
-			length += travel + SwordSkillFxConfig.CINEMATIC.hold
+			length += 2
 		end
 	else
 		task.delay(SwordFxConfig.ARCS[move].from, function()

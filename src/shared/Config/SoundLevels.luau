@@ -89,5 +89,11 @@ return {
 		["9120258724"] = 74, -- rootCrack
 		["9118676043"] = 35, -- vinesTear
 		["9113582284"] = 77, -- vineSnap
+		-- The Prism Blade's (2026-11-07)
+		["9116394876"] = 28, -- crystalChime
+		["9114591515"] = 336, -- prismShatter
+		["9120747619"] = 32, -- prismSummon
+		["9116393976"] = 109, -- prismStrike
+		["9114224721"] = 190, -- prismBoom
 	} :: { [string]: number },
 }

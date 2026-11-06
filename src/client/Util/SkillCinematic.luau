@@ -68,15 +68,22 @@ function SkillCinematic.stop()
 	end
 end
 
--- Plays for your character's `root`: the crescent leaves `release` seconds in and bursts at `impact` (on the ground)
--- `travel` seconds later; `live()` false before the cleave (a dodge) cuts it short
-function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, travel: number, live: () -> boolean)
+-- A look's own framing (its beats): how long the wide shot holds, how high it looks and stands
+export type Framing = { hold: number?, lookUp: number?, up: number? }
+
+-- Plays for your character's `root`: the skill's effect leaves `release` seconds in and lands at `impact` (on the
+-- ground) `travel` seconds later; `live()` false before then (a dodge) cuts it short
+function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, travel: number, live: () -> boolean, framing: Framing?)
 	local camera = workspace.CurrentCamera
 	if not camera or SuperCinematic.isPlaying() then
 		return
 	end
 	SkillCinematic.stop()
 	local cfg = SwordSkillFxConfig.CINEMATIC
+	local frame = framing or {}
+	local timing = { rise = cfg.rise, hold = frame.hold or cfg.hold, back = cfg.back }
+	local wideLookUp = frame.lookUp or cfg.wide.lookUp
+	local wideUp = frame.up or cfg.wide.up
 	local was: Saved = { cameraType = camera.CameraType, cframe = camera.CFrame, fov = camera.FieldOfView, subject = camera.CameraSubject }
 	saved = was
 	local started = os.clock()
@@ -88,12 +95,12 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	local focus = base + UP * cfg.lookUp
 	local feet = base - UP * 3
 	local flight = Vector3.new(impact.X - feet.X, 0, impact.Z - feet.Z).Magnitude
-	local middle = feet:Lerp(impact, 0.5) + UP * cfg.wide.lookUp
+	local middle = feet:Lerp(impact, 0.5) + UP * wideLookUp
 	local viewport = camera.ViewportSize
 	local out = SwordSkillFxRules.wideDistance(flight + 4, cfg.wide.margin, cfg.fov, viewport.X / math.max(viewport.Y, 1), cfg.wide.least)
 	local function eyes(side: number): (Vector3, Vector3)
 		local hero = base + right * side * cfg.hero.side + forward * cfg.hero.ahead + UP * cfg.hero.up
-		return hero, middle + right * side * out + UP * cfg.wide.up
+		return hero, middle + right * side * out + UP * wideUp
 	end
 	-- the side a wall or hill blocks least
 	local heroRight, wideRight = eyes(1)
@@ -107,7 +114,7 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	camera.CameraType = Enum.CameraType.Scriptable
 	RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, function()
 		local t = os.clock() - started
-		local beat, a = SwordSkillFxRules.cinematicBeat(t, release, travel, cfg)
+		local beat, a = SwordSkillFxRules.cinematicBeat(t, release, travel, timing)
 		if saved ~= was or not root.Parent or SuperCinematic.isPlaying() or ((beat == "rise" or beat == "charge") and not live()) then
 			if saved == was then
 				SkillCinematic.stop()
@@ -133,6 +140,23 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 		local zoom = if beat == "rise" then smooth(a) elseif beat == "back" then 1 - smooth(a) else 1
 		camera.FieldOfView = was.fov + (cfg.fov - was.fov) * zoom
 	end)
+end
+
+-- The camera moment for a skill look with one (Config/SwordSkillFx `cinematic`) aimed at `aim`: its effect leaves at
+-- `camAt` (else `release`) and lands after its flight (`speed`; none: at once), held `camHold`, the wide shot
+-- `camLookUp` / `camUp` (else CINEMATIC's)
+function SkillCinematic.forLook(root: BasePart, look: SwordSkillFxConfig.Look, aim: Vector3, live: () -> boolean)
+	local beats = look.beats
+	if not look.cinematic or not beats then
+		return
+	end
+	local flat = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z).Magnitude
+	local travel = if beats.speed then flat / math.max(beats.speed, 1) else 0
+	SkillCinematic.play(root, aim - UP * 3, beats.camAt or beats.release, travel, live, {
+		hold = beats.camHold,
+		lookUp = beats.camLookUp,
+		up = beats.camUp,
+	})
 end
 
 return SkillCinematic

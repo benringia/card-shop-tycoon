@@ -84,18 +84,71 @@ local LOOKS: { [string]: Look } = {
 		burstSound = "fireBurst",
 		beats = { charge = 0.42, charged = 1.65, release = 1.78, glow = 4.5, gather = 7, launch = 5.5, ahead = 2.5, speed = 14, height = 10, width = 3.8, flame = 2.2, blast = 6, heat = 5, swirl = 3.5, fissure = 3.5, pillar = 16, boom = 1.8 },
 	},
-	-- Prism Blade: rainbow arcs, prism shards, Prism Judgment's ghost blades and pillar
-	rainbowArc = { kind = "slash", textures = { "star", "glow" }, seconds = 0.5, size = 4, count = 8 },
-	prismShatter = { kind = "finisher", textures = { "shard", "star" }, seconds = 0.9, size = 7, count = 16 },
-	prismJudgment = { kind = "skill", textures = { "star", "glow" }, seconds = 1.6, size = 10, count = 30, form = "on" },
+	-- Prism Blade (storyboard 2026-11-07; owner: "make everything exaggerated/big/particles everywhere/screen shake/
+	-- flashy"). Rainbow arcs: five bands of the elements' colours (PRISM.order) streaming off the blade for `seconds` of
+	-- each swing, `size` studs, `count` a second, with white sparkles
+	rainbowArc = { kind = "slash", textures = { "glow", "star" }, seconds = 0.3, size = 1.3, count = 150 },
+	-- Prism shatter: `crystals` crystal spikes (`height` studs, `thick` thick) in the five colours burst up in a ring
+	-- `size` studs across where the finisher slams, rainbow shockwaves, shards and sparkles; they shatter over `seconds`
+	prismShatter = {
+		kind = "finisher",
+		textures = { "shard", "star", "ring" },
+		seconds = 1.1,
+		size = 9,
+		count = 40,
+		beats = { crystals = 9, height = 6, thick = 1.1 },
+	},
+	-- Prism Judgment: from `summon` the blade's tip blazes, beams of each colour shoot up to a ring of five ghost Forge
+	-- Swords (`blade` studs long) forming `ringHeight` studs above the foe, `ringRadius` round, spinning from `spin` up to
+	-- `spinUp` turns a second, over a spinning rune circle `rune` studs round on the ground; from `release` (the Hit
+	-- marker) one blade every `gap` seconds (the shape's, `strikes` of them) peels off and dives in a streak of its
+	-- colour (`dive` seconds) to burst on the foe in its element; at `pillar` a rainbow pillar `pillarHeight` studs tall
+	-- and `pillarWidth` wide blasts up for `pillarSeconds`, shards everywhere; the blades shatter. Your own plays the camera
+	-- moment (CINEMATIC: the wide shot from the command, `camAt`, held `camHold`, looking `camLookUp` studs up from
+	-- `camUp` higher, so the ring and the pillar show) and shakes on each strike
+	-- (SHAKE.prismStrike) and the pillar (SHAKE.prismJudgment, its burstSound)
+	prismJudgment = {
+		kind = "skill",
+		textures = { "glow", "star", "shard", "sigil", "rune", "ring" },
+		seconds = 2,
+		size = 24,
+		count = 60,
+		form = "on",
+		cinematic = true,
+		burstSound = "prismBoom",
+		beats = {
+			summon = 0.12,
+			command = 0.55,
+			release = 0.6,
+			gap = 0.15,
+			strikes = 5,
+			pillar = 1.28,
+			ringRadius = 6,
+			ringHeight = 14,
+			blade = 8,
+			spin = 1,
+			spinUp = 5,
+			dive = 0.18,
+			rune = 10,
+			pillarHeight = 70,
+			pillarWidth = 3,
+			pillarSeconds = 0.9,
+			camAt = 0.55,
+			camHold = 1.6,
+			camLookUp = 7,
+			camUp = 10,
+		},
+	},
 }
 
 return {
 	LOOKS = LOOKS,
 	-- The Verdant's colours beside its weapon's greens: bark for roots and vine stems, pale thorns, pink petals
 	VERDANT = { bark = { 104, 72, 40 }, thorn = { 236, 232, 222 }, petal = { 255, 179, 209 } },
+	-- The Prism Blade's colours: the elements in its ghost blades' order (their colours: WeaponLooks.BY_ELEMENT)
+	PRISM = { order = { "Ember", "Tide", "Bloom", "Volt", "Shade" } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
-	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55 },
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over

@@ -251,16 +251,33 @@ SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", {
 		cut3 = { { key = "fireWhoosh", at = 0.56 }, { key = "lavaBurst", at = 0.68 } },
 	},
 })
--- Prism Judgment: the blade pointed at the boss, five ghost blades strike it 0.15 s apart (within 24 studs)
+-- Prism Judgment (owner 2026-11-07: the spinning ring, each blade diving in turn; everything exaggerated): the blade
+-- swept to the sky summoning five ghost blades in a ring above the boss, then pointed at it; they dive one by one 0.15 s
+-- apart (the first at its Hit marker, tools/blender/anim_prism_blade.py), a fifth of the damage each, on the foe you aim
+-- at within 24 studs; a rainbow pillar after
 SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", {
 	power = 0.9,
 	hitAt = 0.6,
-	length = 1.4,
+	length = 1.75,
 	cooldown = 8,
 	shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 },
 }, { slash = "rainbowArc", finisher = "prismShatter", skill = "prismJudgment" }, {
-	{ key = "dashDraw", at = 0.2 },
-	{ key = "cutLines", at = 0.6 },
+	{ key = "prismSummon", at = 0.12 }, -- the summon (each strike plays prismStrike, the pillar prismBoom)
+	{ key = "dashDraw", at = 0.5 }, -- the blade snapped down to point at the boss
+}, {
+	-- Pro Sound Effects, kept quiet (SOUND_VOLUMES; levelled by Config/SoundLevels)
+	sounds = {
+		crystalChime = "rbxassetid://9116394876", -- Magic Glows Soft Clusters Of Chiming Hits 2: a chime under every cut
+		prismShatter = "rbxassetid://9114591515", -- Glass Breaks 2: the finisher's crystals shattering
+		prismSummon = "rbxassetid://9120747619", -- Whooshy Magic Sucks Somewhat Phasey 8: the ghost blades summoned
+		prismStrike = "rbxassetid://9116393976", -- Magic Glow Short Pulsing Bursts 9: each ghost blade striking
+		prismBoom = "rbxassetid://9114224721", -- Earthquake Explosion 1: the rainbow pillar
+	},
+	cutCues = {
+		cut1 = { { key = "crystalChime", at = 0.12 } },
+		cut2 = { { key = "crystalChime", at = 0.10 } },
+		cut3 = { { key = "crystalChime", at = 0.56 }, { key = "prismShatter", at = 0.68 } },
+	},
 })
 
 return {
@@ -314,5 +331,11 @@ return {
 		rootCrack = 0.35,
 		vinesTear = 0.5, -- a quiet clip (its level 35)
 		vineSnap = 0.4,
+		-- the Prism Blade's
+		crystalChime = 0.45, -- a quiet clip (its level 28)
+		prismShatter = 0.35,
+		prismSummon = 0.5, -- a quiet clip (its level 32)
+		prismStrike = 0.35,
+		prismBoom = 0.4,
 	},
 }
