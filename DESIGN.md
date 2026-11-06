@@ -2896,7 +2896,14 @@ boss models; the ranch and Heroic tiers come after those.
   a leaderboard of the highest tier and the fastest clear.
 - The ranch (its own project, after the Dungeon): a place just for showing creatures off, unlocked early in the main
   game (about shop level 20); clearing the Dungeon adds a special Legendary habitat there.
-- [ ] Customers with personalities (spec `2026-11-06-customers-design.md`, plan `2026-11-06-customers.md`, branch
-  `customers`): phase 1 in the shop built 2026-11-06 (types and looks, collectors, kid rips and offers, haggling with
-  a counter, reactions, the shop rating on the sign and the HUD chip, economy check), waiting for the owner's Studio
-  check; phase 2 town walkers built the same day (4.5).
+- [x] Customers with personalities (spec `2026-11-06-customers-design.md`, plan `2026-11-06-customers.md`): phase 1
+  in the shop (types and looks, collectors, kid rips and offers, haggling with a counter, reactions, the shop rating on
+  the sign and the HUD chip, economy check) and phase 2 town walkers, plus the owner's rounds (walkers on the whole
+  street at a walk, stages right above the player, Roblox's walk clip and smooth paths, customers arriving from the
+  street and walking off, stuck walkers retracing); approved and merged 2026-11-06.
+- Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
+  builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
+- Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
+  Warden makes about $2000 an hour. Owner to decide: the loot cooldown or the overpower shrink on cash too.
+- Phone instead of the Manage tray (owner's idea 2026-11-06): the manage buttons as phone apps, the shop rating as a
+  Reviews app (a feed of customer reviews from real visits, each with its tip). Brainstorm with mockups first.
