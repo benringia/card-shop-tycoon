@@ -32,6 +32,18 @@ return {
 		expect.equal(SkillText.swordSkill(CombatHud, "prismBlade").icon, "PrismJudgment")
 	end,
 
+	-- Weapons round 2: every spear's skill button is Piercing Rush's (the owner's pick C, 2026-11-07: a spear with its
+	-- afterimages)
+	["the spear's skill button: Piercing Rush, its afterimage icon and the dodge rule"] = function()
+		local button = SkillText.swordSkill(CombatHud, "spear")
+		expect.equal(button.icon, "PiercingRush")
+		expect.equal(UIIcons[button.icon] ~= nil, true, "its icon is uploaded")
+		expect.equal(button.name, "Piercing Rush")
+		expect.equal(#button.tip <= 140, true, "its tooltip fits the tooltip box")
+		local ending = CombatHud.SKILL_DODGE_TIP
+		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
+	end,
+
 	["the Steel Sword and anything unknown keep the dash slash's button"] = function()
 		for _, moveset in { Swords.STARTER, "noSuchSword", nil :: string? } do
 			local button = SkillText.swordSkill(CombatHud, moveset)

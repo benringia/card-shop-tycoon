@@ -61,6 +61,11 @@ return {
 			icon = "PrismJudgment", name = "Prism Judgment",
 			tip = "Five ghost swords circle your target and dive in one by one, then a rainbow pillar.",
 		},
+		-- every spear (weapons round 2; the owner's pick C, 2026-11-07: a spear with its afterimages)
+		spear = {
+			icon = "PiercingRush", name = "Piercing Rush",
+			tip = "Rush forward tip-first and pierce every foe in a line.",
+		},
 	} :: { [string]: { icon: string, name: string, tip: string } },
 	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
 	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",

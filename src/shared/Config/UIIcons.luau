@@ -81,6 +81,7 @@ return {
 	Thornline = "rbxassetid://97945764069946",
 	Sunfall = "rbxassetid://91027604638860",
 	PrismJudgment = "rbxassetid://94329390139564",
+	PiercingRush = "rbxassetid://88995370586159", -- RushGhosts.png, sheet 9 (weapons round 2: the spear's skill)
 	Paw = "rbxassetid://127023045019616",
 	Sparkle = "rbxassetid://90976268345911",
 	Swap = "rbxassetid://122501337503529",

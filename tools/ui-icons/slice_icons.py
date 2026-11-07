@@ -1,7 +1,7 @@
 """Cuts the UI icon sheet (a 4x4 grid on a magenta background, made with Figma's image generator) into separate
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
-Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-8, default 1]
+Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-9, default 1]
        python tools/ui-icons/slice_icons.py <icon.png> single <Name>   (one icon on magenta, e.g. DashSkill)
 """
 import os
@@ -62,6 +62,13 @@ SHEETS = {
         "Sunfall", "FireCrescent", "CrescentSparks", "SunCrescent",
         "SwordRain", "PrismJudgment", "SwordGem", "SwordCrown",
         "ThornlineBold", "CrescentBold", "SwordRing", "Tornado",
+    ],
+    # weapons round 2: the spear skill button (owner's pick C: afterimages) and spares for the next spear skills
+    9: [
+        "RushGhosts", "RushGhosts3", "RushSpeed", "RushBold",
+        "HalberdFlames", "HalberdCrack", "Volcano", "HalberdSpin",
+        "TridentWave", "TridentDrops", "TridentIcicles", "Whirlpool",
+        "LanceBloom", "LanceLeaves", "GiantThorn", "LanceSun",
     ],
 }
 GRID = 4
