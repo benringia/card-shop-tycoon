@@ -97,12 +97,14 @@ numbers are the storyboard's; timings follow the animations' markers.
 | Ready | upright at the side, one hand | - | the idle between moves |
 | Cut 1, Thrust | swing down into both hands, stab straight ahead with a step | arc, reach 12, 30 degrees | a short lunge like the sword's cut 1 |
 | Cut 2, Sweep | pull back low, sweep the head across the front | arc, reach 11, 120 degrees | the group-hitter |
-| Cut 3, Sky Pierce | crouch, leap with it raised, plunge tip-first into the ground ahead, pull it out | line, 12 studs, width 3, plus a 4-stud burst at the tip | slower, hits hardest (like the sword finisher), a shockwave on the ground |
+| Cut 3, Sky Pierce | crouch, leap with it raised, plunge tip-first into the ground ahead, pull it out | line, 8 studs to the plunge point, width 3, and a 4-stud burst there (12 in all) | slower, hits hardest (like the sword finisher), a shockwave on the ground |
 | Skill, Piercing Rush | crouch and aim, rush 12 studs tip-first, stop upright | dash, 12 studs (max 20 with the existing slack rules), width 3 | power 0.9, cooldown 8: today's skill strength |
 | Draw / put away | from the back into the upright guard / back over the shoulder | - | `GRAB_SECONDS` / `RELEASE_SECONDS` style markers |
 | Run | holding it upright, slightly forward | - | |
 | Dodge, flinch, down, get up | today's body moves, spear in hand | - | reused, checked for the spear clipping the body |
 
+- No spear move reaches past 12 studs, so a boss's swipe (its ring radius + 8) still reaches anyone who can hit it
+  (a 12-stud line plus a 4-stud burst would have let the finisher land from outside it; my call, from the plan's review).
 - The server checks every hit with `SwordRules` shapes (`line` exists; the finisher's line-plus-burst may need a small
   addition) and `BattleService`, as for swords. Free after the hit (the sword skills round) applies to Piercing Rush.
 - Animations are keyed in Blender on `anim_kit` (`anim_spear.py`, the spear prop at its grip), previews shown to the
