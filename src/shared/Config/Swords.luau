@@ -388,6 +388,40 @@ do
 		},
 		fx = { slash = "spearStreak", finisher = "skyPierce", skill = "piercingRush" },
 	}
+	-- Titan's Wrath (weapons round 2.5, spec 2026-11-08-forge-relayout-and-titans-wrath-design 3; owner 2026-11-08: the
+	-- storyboard, exaggerated): the Titan's Lance's own skill in place of Piercing Rush. A long, loud charge in a low
+	-- stance (a dodge or a switch before the thrust cancels it), then one huge thrust at its Hit marker
+	-- (tools/blender/anim_titans_lance.py): every foe on the 14 x 4 line ahead. You stay put: the beam and the fissure
+	-- carry the reach. The spear's cuts, moves and sounds, the same tables.
+	local spear = SWORDS.spear
+	local lanceAnimations = table.clone(animations)
+	lanceAnimations.skill = "" -- until the owner publishes it Studio plays SwordAnimations.TitansLance.skill
+	SWORDS.titansLance = {
+		name = "Titan's Lance",
+		power = starter.power,
+		element = nil,
+		model = "TitansLance",
+		slash = starter.slash,
+		combo = spear.combo,
+		skill = {
+			power = 0.9,
+			hitAt = 1.35,
+			length = 2.2,
+			cooldown = 8,
+			shape = { kind = "line", length = 14, width = 4 },
+			free = { at = 1.35 }, -- the thrust
+		},
+		animations = lanceAnimations,
+		sounds = sounds,
+		-- the skill's own sounds come with its effects; until then the rush's charge and the plunge's slam and rocks
+		cues = {
+			cut1 = spear.cues.cut1,
+			cut2 = spear.cues.cut2,
+			cut3 = spear.cues.cut3,
+			skill = { { key = "rushCharge", at = 0.1 }, { key = "slam", at = 1.35 }, { key = "rockBurst", at = 1.37 } },
+		},
+		fx = { slash = "spearStreak", finisher = "skyPierce", skill = "piercingRush" },
+	}
 end
 
 return {

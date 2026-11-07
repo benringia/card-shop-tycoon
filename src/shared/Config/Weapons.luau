@@ -160,7 +160,7 @@ REST = {
 		rarity = "Legendary",
 		element = "Bloom",
 		ready = true,
-		moveset = "spear",
+		moveset = "titansLance", -- the spear's cuts, its own skill: Titan's Wrath
 		model = "TitansLance",
 		-- my call (spec 4): about the Prism Blade's two weeks, from three bosses' materials, Star Shards and cash
 		source = {

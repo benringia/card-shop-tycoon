@@ -44,6 +44,17 @@ return {
 		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
 	end,
 
+	-- Weapons round 2.5: the Titan's Lance's own skill button (owner 2026-11-08: the LanceLeaves glyph)
+	["the Titan's Lance's skill button: Titan's Wrath, its lance-in-vines icon and the dodge rule"] = function()
+		local button = SkillText.swordSkill(CombatHud, "titansLance")
+		expect.equal(button.icon, "LanceLeaves")
+		expect.equal(UIIcons[button.icon] ~= nil, true, "its icon is uploaded")
+		expect.equal(button.name, "Titan's Wrath")
+		expect.equal(#button.tip <= 140, true, "its tooltip fits the tooltip box")
+		local ending = CombatHud.SKILL_DODGE_TIP
+		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
+	end,
+
 	["the Steel Sword and anything unknown keep the dash slash's button"] = function()
 		for _, moveset in { Swords.STARTER, "noSuchSword", nil :: string? } do
 			local button = SkillText.swordSkill(CombatHud, moveset)

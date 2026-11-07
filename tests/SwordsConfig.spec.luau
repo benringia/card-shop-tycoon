@@ -62,6 +62,51 @@ return {
 		expect.equal(dash.to, 0.42, "and arrives")
 	end,
 
+	-- Weapons round 2.5 (spec 2026-11-08-forge-relayout-and-titans-wrath-design 3): the Titan's Lance its own skill, the
+	-- Halberd and the Trident keep Piercing Rush
+	["the Titan's Lance: the spear's cuts and moves, its own skill Titan's Wrath (a 14 x 4 line at today's strength)"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		expect.equal(Weapons.ById.titansLance.moveset, "titansLance")
+		expect.equal(Weapons.ById.magmaHalberd.moveset, "spear", "the Halberd keeps Piercing Rush")
+		expect.equal(Weapons.ById.tidalTrident.moveset, "spear", "the Trident keeps Piercing Rush")
+		local lance, spear = Swords.SWORDS.titansLance, Swords.SWORDS.spear
+		expect.equal(lance.combo, spear.combo, "the spear's cuts, the same table")
+		expect.equal(lance.sounds.thrustAir, spear.sounds.thrustAir, "the spear's sounds")
+		for _, key in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3" } do
+			expect.equal(lance.animations[key], spear.animations[key], key)
+		end
+		expect.equal(lance.model, "TitansLance", "its skill's animation folder")
+		local skill = lance.skill
+		expect.equal(skill.power, 0.9)
+		expect.equal(skill.cooldown, 8)
+		expect.equal(skill.shape.kind, "line")
+		expect.equal(skill.shape.length, 14)
+		expect.equal(skill.shape.width, 4)
+		expect.equal(skill.hitAt, 1.35, "the thrust, after the long charge")
+		expect.equal(skill.hitAt < skill.length, true)
+		expect.isNil(skill.dash, "no rush: you stay put")
+		expect.equal((skill.free :: Swords.Free).at, skill.hitAt, "free from the thrust")
+	end,
+
+	-- The line's ends are rounded by half its width (SwordRules.inDashPath, as the dash's path): past its end means more
+	-- than 14 + 2 studs out, plus the foe's own radius
+	["Titan's Wrath hits every foe on the 14-stud line ahead and none beside or past it"] = function()
+		local shape = Swords.SWORDS.titansLance.skill.shape
+		local function t(id: string, x: number, z: number): SwordRules.Target
+			return { id = id, x = x, z = z, radius = 1 }
+		end
+		local hits = SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("near", 0, -3), t("far", 0, -14.5), t("past", 0, -17.5), t("side", 6, -5), t("edge", 2.5, -8) })
+		local got = {}
+		for _, hit in hits do
+			got[hit.id] = hit.share
+		end
+		expect.equal(got.near, 1, "close ahead")
+		expect.equal(got.far, 1, "its edge inside 14 studs")
+		expect.equal(got.edge, 1, "its edge inside the 4-stud width")
+		expect.isNil(got.past, "past the end")
+		expect.isNil(got.side, "beside you")
+	end,
+
 	-- No spear move reaches past a boss's swipe (its ring radius + RING_SWIPE_EXTRA, measured from the boss's centre), so
 	-- reach never buys a spot the boss can't hit
 	["a spear's reach never makes a spot a boss's swipe can't reach"] = function()
