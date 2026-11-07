@@ -155,6 +155,43 @@ local LOOKS: { [string]: Look } = {
 			camUp = 10,
 		},
 	},
+	-- The spear (weapons round 2, the owner's storyboard OK and "more exaggerated, with particles and all", 2026-11-07),
+	-- shared by the four spears in each one's colours and element. Spear streak: the head's element streaming off every
+	-- cut; the thrust a straight light streak `streak` studs ahead (its reach) with a star flash and sparks at the tip;
+	-- the sweep a glowing crescent `arc` studs round (its reach) over `arcAngle` degrees, sparks flying off it; `flash`
+	-- seconds the streak and crescent shine, `sparks` at each end
+	spearStreak = {
+		kind = "slash",
+		textures = { "glow", "streak", "spark", "star", "shard" },
+		seconds = 0.35,
+		size = 1.6,
+		count = 160,
+		beats = { streak = 12, arc = 11, arcAngle = 120, flash = 0.25, sparks = 40 },
+	},
+	-- Sky Pierce: where the plunge's line ends (`ahead` studs, its `burst` across): the element blasting up, `rings`
+	-- shockwave rings out to `ring` studs, `cracks` glowing fissures `crackLength` long, `rocks` thrown up at `rockSpeed`,
+	-- a dust cloud of `dust`, a white flash for `flash` seconds
+	skyPierce = {
+		kind = "finisher",
+		textures = { "crack", "glow", "spark", "smoke", "impact", "shard" },
+		seconds = 1.4,
+		size = 9,
+		count = 70,
+		beats = { ahead = 8, burst = 4, rings = 2, ring = 13, cracks = 6, crackLength = 7, rocks = 10, rockSpeed = 26, dust = 30, flash = 0.18 },
+	},
+	-- Piercing Rush: from `charge` light gathers on the head (a `glow`-stud orb, a `swirl` of the element round it, dust
+	-- at your feet); from `leave` to `arrive` the rush (its dash) leaves `afterimages` of you and a light trail; at `hit` a
+	-- flash runs the whole `length` x `width` line for `flashSeconds` with `bursts` bursts along it; then a skid of dust
+	-- for `skid` seconds
+	piercingRush = {
+		kind = "skill",
+		textures = { "glow", "streak", "spark", "star", "smoke", "ring" },
+		seconds = 1.2,
+		size = 3,
+		count = 120,
+		form = "ahead",
+		beats = { charge = 0.05, leave = 0.28, arrive = 0.42, hit = 0.45, length = 12, width = 3, afterimages = 4, glow = 1.6, swirl = 2.2, flashSeconds = 0.35, bursts = 6, skid = 0.4 },
+	},
 }
 
 return {
@@ -207,5 +244,10 @@ return {
 		bloom = "forgeSword_Bloom",
 		volt = "forgeSword_Volt",
 		shade = "forgeSword_Shade",
+		-- the spears (weapons round 2)
+		spear = "forgeSpear_Ember",
+		halberd = "magmaHalberd",
+		trident = "tidalTrident",
+		lance = "titansLance",
 	} :: { [string]: string },
 }

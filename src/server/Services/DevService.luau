@@ -529,7 +529,7 @@ function DevService.Start()
 		local weaponId = SwordSkillFx.PREVIEW[name]
 		local weapon = if weaponId then Weapons.ById[weaponId] else nil
 		if not weapon or not weapon.moveset or not ({ cut1 = true, cut2 = true, cut3 = true, skill = true })[move] then
-			Remotes.Notify:FireClient(player, "Usage: /skillfx <sunforged|verdant|prism|forge|ember|tide|bloom|volt|shade> [cut1|cut2|cut3|skill] [level]", true)
+			Remotes.Notify:FireClient(player, "Usage: /skillfx <sunforged|verdant|prism|forge|ember|tide|bloom|volt|shade|spear|halberd|trident|lance> [cut1|cut2|cut3|skill] [level]", true)
 			return
 		end
 		Remotes.MovePreview:FireClient(player, {

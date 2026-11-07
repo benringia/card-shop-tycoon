@@ -76,6 +76,9 @@ return {
 	TRAIL_LIFETIME = 0.16,
 	TRAIL_COLOR = rgb(210, 235, 255),
 	TRAIL_BLADE = { base = 0.8, tip = 4.3 }, -- studs up the blade from the grip
+	-- a spear's head (weapons round 2): its bottom and tip over the grip (31% up the spear; measured on the four models:
+	-- the heads start 2.4-3.0 studs up, the tips 5.9-6.4)
+	TRAIL_BLADE_SPEAR = { base = 2.6, tip = 5.9 },
 	-- Drawing your sword: a flash of light and a glint at the blade's tip
 	GLEAM = { seconds = 0.3, brightness = 4, range = 8, size = 2.2, color = rgb(255, 250, 225) },
 

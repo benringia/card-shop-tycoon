@@ -41,7 +41,7 @@ return {
 				end
 			end
 		end
-		expect.equal(named, 12, "four swords x slash, finisher, skill")
+		expect.equal(named, 15, "four swords and the spear x slash, finisher, skill")
 	end,
 
 	["every element has its look colours, so each Forge Sword is coloured (Review Focus 5)"] = function()
@@ -79,7 +79,7 @@ return {
 			assert(weapon and weapon.moveset, `{name}: {weaponId} is a weapon with a moveset`)
 			expect.equal(Swords.SWORDS[weapon.moveset].fx ~= nil, true, `{name}: its moveset has effects`)
 		end
-		for _, name in { "sunforged", "verdant", "prism", "forge", "ember", "tide", "bloom", "volt", "shade" } do
+		for _, name in { "sunforged", "verdant", "prism", "forge", "ember", "tide", "bloom", "volt", "shade", "spear", "halberd", "trident", "lance" } do
 			expect.equal(SwordSkillFx.PREVIEW[name] ~= nil, true, name)
 		end
 	end,
@@ -112,6 +112,9 @@ return {
 			prismShatter = { "crystals", "height", "thick" },
 			elementalSpin = { "spinFrom", "release", "tornado", "tornadoHeight", "ring", "wall", "wallHeight", "grow" },
 			prismJudgment = { "summon", "command", "release", "gap", "strikes", "pillar", "ringRadius", "ringHeight", "blade", "spin", "spinUp", "dive", "rune", "pillarHeight", "pillarWidth", "pillarSeconds", "camAt", "camHold", "camLookUp", "camUp" },
+			spearStreak = { "streak", "arc", "arcAngle", "flash", "sparks" },
+			skyPierce = { "ahead", "burst", "rings", "ring", "cracks", "crackLength", "rocks", "rockSpeed", "dust", "flash" },
+			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
 		}
 		for look, keys in needs do
 			local beats = SwordSkillFx.LOOKS[look].beats :: { [string]: number }
@@ -119,6 +122,29 @@ return {
 				expect.equal(type(beats[key]), "number", `{look}.{key}`)
 			end
 		end
+	end,
+
+	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 5.2; the owner's storyboard OK and "more exaggerated, with
+	-- particles and all", 2026-11-07): the spear's effects keep time and place with its moves
+	["the spear's effects keep time with its moves: the rush along its dash, the plunge's burst where its line ends"] = function()
+		local spear = Swords.SWORDS.spear
+		expect.equal(spear.fx and spear.fx.slash, "spearStreak")
+		local rush = SwordSkillFx.LOOKS.piercingRush.beats :: { [string]: number }
+		local dash = spear.skill.dash :: any
+		expect.equal(rush.hit, spear.skill.hitAt, "the line flashes at the Hit marker")
+		expect.equal(rush.leave, dash.from, "the rush leaves with the dash")
+		expect.equal(rush.arrive, dash.to, "and arrives with it")
+		expect.equal(rush.length, dash.studs)
+		expect.equal(rush.width, dash.width)
+		expect.equal(rush.charge < rush.leave and rush.leave < rush.arrive and rush.arrive <= rush.hit, true, "charge, rush, flash")
+		local plunge = SwordSkillFx.LOOKS.skyPierce.beats :: { [string]: number }
+		local line = spear.combo[3].line :: any
+		expect.equal(plunge.ahead, line.length, "the burst where the plunge's line ends")
+		expect.equal(plunge.burst, line.burst)
+		local streak = SwordSkillFx.LOOKS.spearStreak.beats :: { [string]: number }
+		expect.equal(streak.streak, spear.combo[1].reach, "the thrust's streak as long as its reach")
+		expect.equal(streak.arc, spear.combo[2].reach, "the sweep's crescent as wide as its reach")
+		expect.equal(streak.arcAngle, spear.combo[2].arc)
 	end,
 
 	["Prism Judgment keeps time with its moveset: the first blade strikes at the hit, the rest its gap apart"] = function()

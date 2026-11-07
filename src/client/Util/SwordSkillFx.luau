@@ -1079,15 +1079,330 @@ local function elementBlast(ground: Vector3, size: number, colors: Colors, scale
 	end
 end
 
+-- The spear (weapons round 2, the owner's storyboard and "more exaggerated, with particles and all", 2026-11-07) -----
+
+-- A glowing beam part (neon core, a soft outer glow) from `from` to `to`, `thick` studs, fading over `seconds`
+local function beam(from: Vector3, to: Vector3, thick: number, colors: Colors, seconds: number)
+	local length = (to - from).Magnitude
+	if length < 0.1 then
+		return
+	end
+	local frame = CFrame.lookAt((from + to) / 2, to)
+	local core = holder(frame, Vector3.new(thick * 0.45, thick * 0.45, length), seconds + 0.2)
+	core.Material = Enum.Material.Neon
+	core.Color = colors.glow:Lerp(WHITE, 0.55)
+	core.Transparency = 0.05
+	local glow = holder(frame, Vector3.new(thick * 1.6, thick * 1.6, length + thick), seconds + 0.2)
+	glow.Material = Enum.Material.Neon
+	glow.Color = colors.deep
+	glow.Transparency = 0.6
+	tween(core, seconds, { Transparency = 1, Size = Vector3.new(0.02, 0.02, length) })
+	tween(glow, seconds, { Transparency = 1, Size = Vector3.new(thick * 3, thick * 3, length + thick) })
+end
+
+-- A star flash at `at` with sparks bursting out and a flash of light
+local function starFlash(at: Vector3, colors: Colors, size: number, sparks: number)
+	local anchor = holder(CFrame.new(at), Vector3.one, 1.5)
+	local star = emitter(anchor, "star", colors.glow:Lerp(WHITE, 0.4), { size = { size, 0 }, life = { 0.18, 0.28 }, speed = { 0, 0 }, spread = 0, spin = { -30, 30 }, brightness = 3 })
+	star:Emit(2)
+	local spray = emitter(anchor, "spark", colors.glow, { size = { 0.45, 0.05 }, life = { 0.35, 0.7 }, speed = { 10, 22 }, spread = 180, accel = -UP * 10, brightness = 2.5 })
+	spray:Emit(detail(sparks))
+	local light = Instance.new("PointLight")
+	light.Color = colors.glow
+	light.Range = size * 3
+	light.Brightness = 4
+	light.Parent = anchor
+	tween(light, 0.3, { Brightness = 0 })
+end
+
+-- The thrust: a straight streak of light along its reach with streaks flying along it, a star flash at its tip
+local function thrustStreak(root: BasePart, beats: { [string]: number }, colors: Colors, scale: number)
+	local direction = flatLook(root)
+	local from = root.Position + direction * 1.2
+	local to = from + direction * beats.streak
+	beam(from, to, 0.7 * scale, colors, beats.flash)
+	local lane = holder(CFrame.lookAt((from + to) / 2, to), Vector3.new(0.6, 0.6, beats.streak), 1.2)
+	local streaks = emitter(lane, "streak", colors.glow, { size = { 0.6 * scale, 0 }, life = { 0.15, 0.3 }, speed = { 25, 45 }, spread = 4, brightness = 2.5 })
+	streaks.Shape = Enum.ParticleEmitterShape.Box
+	streaks.EmissionDirection = Enum.NormalId.Front
+	streaks:Emit(detail(40))
+	local _, particle = elementOf(colors)
+	local trail = emitter(lane, particle, colors.deep, { size = { 0.9 * scale, 0.1 }, life = { 0.3, 0.55 }, speed = { 2, 5 }, spread = 180, brightness = 2 })
+	trail.Shape = Enum.ParticleEmitterShape.Box
+	trail:Emit(detail(50))
+	starFlash(to, colors, 6 * scale, beats.sparks)
+end
+
+-- The sweep: a glowing crescent round you from your right to your left across `arcAngle`, a band of light laid piece
+-- by piece in the swing's direction, sparks and streaks flying out of it
+local function sweepCrescent(root: BasePart, beats: { [string]: number }, colors: Colors, scale: number)
+	local direction = flatLook(root)
+	local center = root.Position - UP * 0.4
+	local radius = beats.arc * 0.62 * scale -- the head's path; its particles fly on out to the reach
+	local half = math.rad(beats.arcAngle / 2)
+	local pieces = 14
+	local base = math.atan2(direction.X, direction.Z)
+	local function point(a: number): Vector3
+		return center + Vector3.new(math.sin(base + a), 0, math.cos(base + a)) * radius
+	end
+	for index = 0, pieces - 1 do
+		local a0 = -half + (index / pieces) * 2 * half
+		local a1 = -half + ((index + 1) / pieces) * 2 * half
+		task.delay(index * 0.008, function()
+			local p0, p1 = point(a0), point(a1)
+			beam(p0, p1, 0.55 * scale * (0.6 + 0.4 * math.sin(math.pi * (index + 0.5) / pieces)), colors, beats.flash)
+			if index % 2 == 0 then
+				local anchor = holder(CFrame.lookAt(p1, p1 + (p1 - center).Unit), Vector3.one * 0.5, 1.2)
+				local out = emitter(anchor, "streak", colors.glow, { size = { 0.5 * scale, 0 }, life = { 0.2, 0.35 }, speed = { 14, 26 }, spread = 25, brightness = 2.5 })
+				out.EmissionDirection = Enum.NormalId.Front
+				out:Emit(detail(6))
+				local sparks = emitter(anchor, "spark", colors.glow, { size = { 0.35, 0.05 }, life = { 0.3, 0.6 }, speed = { 8, 16 }, spread = 60, accel = -UP * 8, brightness = 2.5 })
+				sparks.EmissionDirection = Enum.NormalId.Front
+				sparks:Emit(detail(math.round(beats.sparks / pieces * 2)))
+			end
+		end)
+	end
+end
+
+-- The spear's slash: the head's element streaming off it for every cut, then on the thrust its streak and on the sweep
+-- its crescent `hitIn` seconds later (at the cut's strike)
+local function spearStreak(spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, blade: Blade?, root: BasePart, cut: number, hitIn: number)
+	local beats = spec.beats :: { [string]: number }
+	if blade and blade.part.Parent then
+		elementTrail(spec, colors, scale, blade)
+	end
+	if cut > 2 then
+		return
+	end
+	task.delay(math.max(0, hitIn), function()
+		if not root.Parent then
+			return
+		end
+		if cut == 1 then
+			thrustStreak(root, beats, colors, scale)
+		else
+			sweepCrescent(root, beats, colors, scale)
+		end
+	end)
+end
+
+-- Rocks of the ground thrown up out of `ground` (loose, falling back, fading)
+local function rocks(ground: Vector3, count: number, speed: number, scale: number)
+	local color = Color3.fromRGB(110, 92, 74)
+	for index = 1, count do
+		local rock = Instance.new("Part")
+		rock.Name = "SwordSkillFx"
+		rock.Size = Vector3.new(0.5, 0.4, 0.5) * scale * (0.6 + (index % 3) * 0.3)
+		rock.Color = color:Lerp(Color3.new(), (index % 4) * 0.08)
+		rock.Material = Enum.Material.Slate
+		rock.CanCollide = false
+		rock.CanQuery = false
+		rock.CanTouch = false
+		rock.CastShadow = false
+		local angle = index / count * math.pi * 2
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		rock.CFrame = CFrame.new(ground + UP * 0.5 + out * 0.8) * CFrame.Angles(index, index * 2, 0)
+		rock.Parent = workspace.CurrentCamera
+		rock.AssemblyLinearVelocity = out * speed * 0.35 + UP * speed * (0.7 + (index % 3) * 0.15)
+		rock.AssemblyAngularVelocity = Vector3.new(index, -index, index * 0.5)
+		task.delay(0.6, function()
+			tween(rock, 0.35, { Transparency = 1 })
+		end)
+		Debris:AddItem(rock, 1.1)
+	end
+end
+
+-- Sky Pierce: where the spear drives into the ground, the ground bursts: its element erupting, a white flash, rings
+-- racing out, glowing cracks, rocks thrown up, a cloud of dust, sparks and a big light
+local function skyPierce(ground: Vector3, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
+	local beats = spec.beats :: { [string]: number }
+	local size = beats.burst * 2 * scale
+	elementBlast(ground, size, colors, scale, spec.count)
+	ElementFx.burst(ground + UP * 1.5, colors.glow, 1.6 * scale)
+	local flash = holder(CFrame.new(ground + UP), Vector3.one * 2, beats.flash + 0.3)
+	flash.Shape = Enum.PartType.Ball
+	flash.Material = Enum.Material.Neon
+	flash.Color = WHITE
+	flash.Transparency = 0.1
+	tween(flash, beats.flash, { Size = Vector3.one * size * 2.2, Transparency = 1 })
+	for index = 1, beats.rings do
+		task.delay((index - 1) * 0.12, function()
+			ElementFx.ring(ground, if index == 1 then WHITE else colors.glow, beats.ring * scale * (0.6 + 0.4 * index), 0.5)
+		end)
+	end
+	for index = 1, beats.cracks do
+		local angle = index / beats.cracks * math.pi * 2 + 0.3
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		fissure(ground, ground + out * beats.crackLength * scale * (0.7 + (index % 3) * 0.15), 1.1 * scale, colors.glow, colors.deep, 0.18, 0.5, 0.5, "spark")
+	end
+	rocks(ground, detail(beats.rocks), beats.rockSpeed, scale)
+	local disc = holder(CFrame.new(ground + UP * 0.4) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, size, size), spec.seconds + 1)
+	local dust = emitter(disc, "smoke", Color3.fromRGB(184, 164, 138), { size = { 2.5 * scale, 6 * scale }, life = { 0.8, 1.3 }, speed = { 4, 9 }, spread = 70, light = 0, brightness = 1, start = 0.35 })
+	dust.Shape = Enum.ParticleEmitterShape.Disc
+	dust.EmissionDirection = Enum.NormalId.Right
+	dust:Emit(detail(beats.dust))
+	local shower = emitter(disc, "spark", colors.glow, { size = { 0.5, 0.05 }, life = { 0.6, 1.1 }, speed = { 14, 26 }, spread = 30, accel = -UP * 18, brightness = 2.5 })
+	shower.EmissionDirection = Enum.NormalId.Right
+	shower:Emit(detail(spec.count))
+	local light = Instance.new("PointLight")
+	light.Color = colors.glow
+	light.Range = size * 3
+	light.Brightness = 6
+	light.Parent = flash
+	tween(light, spec.seconds * 0.6, { Brightness = 0 })
+end
+
+-- A see-through glowing copy of `character` where it stands now, fading (Piercing Rush's afterimages)
+local function afterimage(character: Model, colors: Colors, seconds: number)
+	local ghost = Instance.new("Model")
+	ghost.Name = "SwordSkillFx"
+	for _, item in character:GetDescendants() do
+		if item:IsA("BasePart") and item.Name ~= "HumanoidRootPart" and item.Transparency < 1 then
+			local copy = item:Clone()
+			copy:ClearAllChildren()
+			copy.Anchored = true
+			copy.CanCollide = false
+			copy.CanQuery = false
+			copy.CanTouch = false
+			copy.CastShadow = false
+			copy.Material = Enum.Material.Neon
+			copy.Color = colors.glow
+			copy.Transparency = 0.55
+			copy.CFrame = item.CFrame
+			if copy:IsA("MeshPart") then
+				copy.TextureID = ""
+			end
+			copy.Parent = ghost
+			tween(copy, seconds, { Transparency = 1 })
+		end
+	end
+	ghost.Parent = workspace.CurrentCamera
+	Debris:AddItem(ghost, seconds + 0.1)
+end
+
+-- Piercing Rush: light gathers on the head (an orb, the element swirling round it, dust at your feet), the rush leaves
+-- afterimages and streaks behind you, then a flash runs the whole line with a burst along it every few studs, and you
+-- skid to a stop in a cloud of dust
+local function piercingRush(character: Model, root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local _, particle = elementOf(colors)
+	local start = root.Position
+	local direction = flatLook(root)
+	local feet = groundAt(start - UP * ROOT_TO_GROUND)
+	local dustColor = Color3.fromRGB(184, 164, 138)
+	local function head(): Vector3
+		return tipOf(hooks.blade, root)
+	end
+	-- the charge
+	local charging = beats.leave - beats.charge
+	task.delay(beats.charge, function()
+		local orb = holder(CFrame.new(head()), Vector3.one * 0.3, charging + 0.3)
+		orb.Shape = Enum.PartType.Ball
+		orb.Material = Enum.Material.Neon
+		orb.Color = colors.glow:Lerp(WHITE, 0.4)
+		orb.Transparency = 0.15
+		local light = Instance.new("PointLight")
+		light.Color = colors.glow
+		light.Range = 10
+		light.Brightness = 3
+		light.Parent = orb
+		local started = os.clock()
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local a = math.clamp((os.clock() - started) / charging, 0, 1)
+			if a >= 1 or not orb.Parent then
+				connection:Disconnect()
+				orb:Destroy()
+				return
+			end
+			orb.CFrame = CFrame.new(head())
+			orb.Size = Vector3.one * (0.3 + beats.glow * scale * smooth(a))
+		end)
+		swirl(head, beats.swirl * scale, colors.glow, particle, charging, 0.9 * scale)
+		local ground = holder(CFrame.new(feet + UP * 0.3) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, 3, 3), charging + 1.5)
+		local dust = emitter(ground, "smoke", dustColor, { size = { 1.2 * scale, 2.5 * scale }, life = { 0.5, 0.8 }, speed = { 2, 4 }, spread = 80, light = 0, brightness = 1, start = 0.4 })
+		dust.Shape = Enum.ParticleEmitterShape.Disc
+		dust.Rate = detail(30)
+		task.delay(charging, function()
+			dust.Rate = 0
+		end)
+	end)
+	-- the rush
+	task.delay(beats.leave, function()
+		if cancelled(hooks) then
+			return
+		end
+		local behind = holder(CFrame.new(feet + UP * 0.5), Vector3.new(2, 0.5, 2), 2)
+		emitter(behind, "smoke", dustColor, { size = { 2 * scale, 4.5 * scale }, life = { 0.5, 0.9 }, speed = { 6, 12 }, spread = 60, light = 0, brightness = 1, start = 0.35 }):Emit(detail(18))
+		ElementFx.ring(feet, colors.glow, 5 * scale, 0.35)
+		local rushing = beats.arrive - beats.leave
+		local streaks = emitter(root, "streak", colors.glow, { size = { 0.7 * scale, 0 }, life = { 0.12, 0.25 }, speed = { 0, 2 }, spread = 10, brightness = 2.5 })
+		streaks.Shape = Enum.ParticleEmitterShape.Box
+		streaks.Rate = detail(160)
+		local trail = emitter(root, particle, colors.deep, { size = { 1.1 * scale, 0.1 }, life = { 0.3, 0.6 }, speed = { 1, 3 }, spread = 180, brightness = 2 })
+		trail.Rate = detail(120)
+		task.delay(rushing + 0.05, function()
+			streaks.Rate = 0
+			trail.Rate = 0
+		end)
+		Debris:AddItem(streaks, rushing + 1)
+		Debris:AddItem(trail, rushing + 1)
+		if not hooks.lite and Extras.enabled() then
+			for index = 0, beats.afterimages - 1 do
+				task.delay(index * rushing / beats.afterimages, function()
+					if character.Parent then
+						afterimage(character, colors, 0.35)
+					end
+				end)
+			end
+		end
+	end)
+	-- the line flashes: every foe along it, then the skid
+	task.delay(beats.hit, function()
+		if cancelled(hooks) then
+			return
+		end
+		local finish = Vector3.new(root.Position.X, start.Y, root.Position.Z)
+		if (finish - start).Magnitude < 1 then
+			finish = start + direction * beats.length
+		end
+		local along = (finish - start).Unit
+		if hooks.burst then
+			hooks.burst(finish)
+		end
+		local from, to = start + along * 0.5, finish + along * 1.5
+		beam(from, to, beats.width * 0.3 * scale, colors, beats.flashSeconds)
+		for index = 1, beats.bursts do
+			local at = from:Lerp(to, index / (beats.bursts + 1))
+			task.delay(index * 0.02, function()
+				ElementFx.burst(at, colors.glow, 0.7 * scale)
+			end)
+		end
+		starFlash(to, colors, 7 * scale, 40)
+		local landing = groundAt(finish - UP * ROOT_TO_GROUND)
+		ElementFx.ring(landing, colors.glow, 7 * scale, 0.45)
+		local skid = holder(CFrame.new(landing + UP * 0.4), Vector3.new(2, 0.4, 2), beats.skid + 1.5)
+		local cloud = emitter(skid, "smoke", dustColor, { size = { 1.5 * scale, 4 * scale }, life = { 0.5, 0.9 }, speed = { 3, 7 }, spread = 70, light = 0, brightness = 1, start = 0.35 })
+		cloud.Rate = detail(70)
+		task.delay(beats.skid, function()
+			cloud.Rate = 0
+		end)
+	end)
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
 -- the Sunforged's flames, the Verdant's leaves, the Prism's rainbow or the Forge Sword's element stream off it
-function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?)
+-- `hitIn`: seconds from now to the cut's strike (the spear's streak and crescent land then)
+function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?, hitIn: number?)
 	local spec = SwordSkillFxConfig.LOOKS[look]
 	local root = rootOf(character)
 	if not spec or not root then
 		return
 	end
-	if look == "fireTrail" and blade and blade.part.Parent then
+	if look == "spearStreak" and spec.beats then
+		spearStreak(spec, colors, scale, blade, root, cut, hitIn or 0)
+		return
+	elseif look == "fireTrail" and blade and blade.part.Parent then
 		fireTrail(spec, colors, scale, blade)
 		return
 	elseif look == "leafShed" and blade and blade.part.Parent then
@@ -1105,13 +1420,13 @@ function SwordSkillFx.slash(character: Model, look: string, cut: number, colors:
 	sketch(ahead * turn, 4 * scale, 0.6, spec, colors, scale)
 end
 
--- Where cut 3's slam lands: on the ground just ahead of you
-function SwordSkillFx.slamPoint(character: Model): Vector3?
+-- Where cut 3's slam lands: on the ground just ahead of you (`ahead` studs: the spear's plunge, at its line's end)
+function SwordSkillFx.slamPoint(character: Model, ahead: number?): Vector3?
 	local root = rootOf(character)
 	if not root then
 		return nil
 	end
-	return root.Position + flatLook(root) * SLAM_AHEAD - Vector3.new(0, ROOT_TO_GROUND, 0)
+	return root.Position + flatLook(root) * (ahead or SLAM_AHEAD) - Vector3.new(0, ROOT_TO_GROUND, 0)
 end
 
 -- The finisher where cut 3's slam lands (`at`: on the ground)
@@ -1137,6 +1452,9 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 		return
 	elseif look == "elementBurst" then
 		elementBlast(groundAt(at), size, colors, scale, spec.count)
+		return
+	elseif look == "skyPierce" and spec.beats then
+		skyPierce(groundAt(at), spec, colors, scale)
 		return
 	end
 	sketch(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
@@ -1549,6 +1867,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "elementalSpin" and spec.beats then
 		elementalSpin(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "piercingRush" and spec.beats then
+		piercingRush(character, root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)

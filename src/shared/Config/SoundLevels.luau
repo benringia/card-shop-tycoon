@@ -118,5 +118,12 @@ return {
 		["9119744642"] = 37, -- draw
 		["9113473249"] = 94, -- down
 		["9126013811"] = 96, -- getUp
+		-- the spear (weapons round 2), measured 2026-11-07
+		["9114326590"] = 75, -- thrustAir: Energy Cloud Whooshing By Very Fast 3
+		["9119226861"] = 46, -- spinWhoosh: Slow Whoosh Airy Rumble Slicing Spinning 2
+		["9118631275"] = 92, -- rockBurst: Rock Impacts 12
+		["9118159097"] = 116, -- rushCharge: Reverse Suck 3
+		["9120629528"] = 115, -- rushDash: Web Whoosh Fast Heavy Swooshes 3
+		["9114658416"] = 123, -- skid: Gravel Slide 1
 	} :: { [string]: number },
 }

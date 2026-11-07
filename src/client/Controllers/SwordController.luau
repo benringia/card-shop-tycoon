@@ -150,13 +150,19 @@ local function skillAim(character: Model, sword: Swords.Sword): Vector3?
 	return if x and z then Vector3.new(x, root.Position.Y, z) else nil
 end
 
+-- Where a weapon's blade runs, up from the grip (a spear's: its head, SwordFx.TRAIL_BLADE_SPEAR)
+local function trailBladeOf(weaponId: string): { base: number, tip: number }
+	local weapon = Weapons.ById[weaponId]
+	return if weapon and weapon.family == "spear" then SwordFx.TRAIL_BLADE_SPEAR else SwordFx.TRAIL_BLADE
+end
+
 -- A character's blade (its sword in the world): the handle and the blade's base and tip, for effects along it
 local function bladeOf(character: Model): SwordSkillFx.Blade?
 	local view = views[character]
 	if not view or not view.handle.Parent then
 		return nil
 	end
-	local blade = SwordFx.TRAIL_BLADE
+	local blade = trailBladeOf(view.swordId)
 	return { part = view.handle, base = view.grip * CFrame.new(0, blade.base, 0), tip = view.grip * CFrame.new(0, blade.tip, 0) }
 end
 
@@ -164,14 +170,16 @@ end
 -- (`finisher` false: the slash only, another player's light version)
 local function cutEffects(character: Model, sword: Swords.Sword, effects: Effects, index: number, finisher: boolean, live: () -> boolean)
 	local arc = (SwordFx.ARCS :: any)[`cut{index}`]
-	task.delay(if arc then arc.from else 0, function()
+	local from = if arc then arc.from else 0
+	local cut = sword.combo[index]
+	task.delay(from, function()
 		if live() then
-			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character))
+			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), cut.hitAt - from)
 		end
 	end)
 	if finisher and index == #sword.combo then
-		task.delay(sword.combo[index].hitAt, function()
-			local at = SwordSkillFx.slamPoint(character)
+		task.delay(cut.hitAt, function()
+			local at = SwordSkillFx.slamPoint(character, if cut.line then cut.line.length else nil)
 			if at and live() then
 				SwordSkillFx.finisher(at, effects.fx.finisher, effects.colors, effects.scale)
 				if character == player.Character then
@@ -396,8 +404,8 @@ local function refresh(character: Model)
 			trail = nil,
 		}
 		if character == player.Character then
-			-- The slash trail along your blade, on while a cut or the skill swings
-			local blade = SwordFx.TRAIL_BLADE
+			-- The slash trail along your blade (a spear's head), on while a cut or the skill swings
+			local blade = trailBladeOf(swordId)
 			local base, tip = Instance.new("Attachment"), Instance.new("Attachment")
 			base.CFrame, tip.CFrame = grip * CFrame.new(0, blade.base, 0), grip * CFrame.new(0, blade.tip, 0)
 			base.Parent, tip.Parent = handle, handle

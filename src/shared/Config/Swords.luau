@@ -330,6 +330,15 @@ do
 	for _, move in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3", "skill" } do
 		animations[move] = ""
 	end
+	-- Its own sounds on top of the sword's (Pro Sound Effects, measured into Config/SoundLevels): the thrust's air, the
+	-- sweep's spin, rocks bursting on the plunge, the rush's charge, dash and skid
+	local sounds = table.clone(starter.sounds)
+	sounds.thrustAir = "rbxassetid://9114326590" -- Energy Cloud Whooshing By Very Fast 3
+	sounds.spinWhoosh = "rbxassetid://9119226861" -- Slow Whoosh Airy Rumble Slicing Spinning 2
+	sounds.rockBurst = "rbxassetid://9118631275" -- Rock Impacts 12
+	sounds.rushCharge = "rbxassetid://9118159097" -- Reverse Suck 3
+	sounds.rushDash = "rbxassetid://9120629528" -- Web Whoosh Fast Heavy Swooshes 3
+	sounds.skid = "rbxassetid://9114658416" -- Gravel Slide 1
 	SWORDS.spear = {
 		name = "Spear",
 		power = starter.power,
@@ -363,8 +372,15 @@ do
 			free = { at = 0.45 },
 		},
 		animations = animations,
-		sounds = starter.sounds,
-		cues = starter.cues,
+		sounds = sounds,
+		-- with the swing, the thrust's stab, the sweep's spin, the leap, the plunge's slam and rocks, the rush
+		cues = {
+			cut1 = { { key = "swing1", at = 0.16 }, { key = "thrustAir", at = 0.18 } },
+			cut2 = { { key = "swing2", at = 0.12 }, { key = "spinWhoosh", at = 0.14 } },
+			cut3 = { { key = "jump", at = 0.17 }, { key = "swing3", at = 0.56 }, { key = "slam", at = 0.68 }, { key = "ground", at = 0.70 }, { key = "rockBurst", at = 0.70 } },
+			skill = { { key = "rushCharge", at = 0.05 }, { key = "rushDash", at = 0.28 }, { key = "cutLines", at = 0.45 }, { key = "skid", at = 0.47 } },
+		},
+		fx = { slash = "spearStreak", finisher = "skyPierce", skill = "piercingRush" },
 	}
 end
 
@@ -443,5 +459,12 @@ return {
 		-- the Forge Sword's (each element's version at the same volume)
 		elementLayer = 0.3,
 		elementBlast = 0.4,
+		-- the spear's
+		thrustAir = 0.3,
+		spinWhoosh = 0.35,
+		rockBurst = 0.4,
+		rushCharge = 0.35,
+		rushDash = 0.4,
+		skid = 0.3,
 	},
 }
