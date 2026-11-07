@@ -106,6 +106,20 @@ The file's `FOLDER` is the moveset's `model` in `Config/Swords` (where `SwordAni
 - Studio plays these from their KeyframeSequences until the owner publishes them (Save to Roblox under
   `ReplicatedStorage.SwordAnimations.<Folder>`; the id goes in that moveset's `animations.skill`).
 
+## The spear moves (weapons round 2, spec 2026-11-07-weapons-round2-design)
+
+`tools/blender/anim_spear.py` (`PROP = "spear"`, `FOLDER = "Spear"`) keys the spear moveset on `anim_kit.build("spear")`:
+a spear prop (8.5 studs, held 31% up from the butt) at `hand_grip("spear")`, angleX -90, so a hanging arm holds it
+straight ahead. A pose names the spear's pitch, not the wrist: `arm(shoulder, elbow, pitch)` sets the wrist so the
+pitch is about the sum of the three x angles; its yaw comes from turning the hips and waist. The right arm is keyed
+without the sword's overlap lag (`LAG_SPEAR`: only the waist, the neck and the free left arm trail; a lagging wrist
+pointed the spear up on every snap). Two-handed moves bring the left hand 1.5 studs up the shaft (`two_hands(...,
+family="spear")`). Moves: ready (upright at the right side), draw, sheath, run, Thrust (a deep 2-stud lunge), Sweep (a
+full spin, the hit on its first pass across the front), Sky Pierce (a 6-stud spinning leap, a plunge) and Piercing Rush
+(a 12-stud rush, the Hit as it arrives); dodge, flinch, down and get up reuse the Steel Sword's. Export and previews:
+`run_sword_moves.py -- --sword spear [--preview <dir>]`, then `lune run tools/anim/build_kfs assets/blender/Animations/Spear
+assets/animations/Spear`; `Config/Swords spear` timings follow the markers (tests/SwordsConfig).
+
 ## Making or changing moves
 
 1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through

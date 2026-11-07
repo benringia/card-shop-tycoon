@@ -50,7 +50,15 @@ longest narrow run under it), puts the grip's centre on the origin, and splits t
 
 The Forge Sword's five elements share one model: `weapon_kit.recolor` tints the bright pale texels on its gems' faces
 (the guard's centre and the pommel, never the blade) into each element's colour, `ForgeSword_<Element>_color.png`,
-uploaded; their ids are `Config/WeaponLooks` `FORGE_COLOR_MAPS`.
+uploaded; their ids are `Config/WeaponLooks` `FORGE_COLOR_MAPS` (by model).
+
+**Spears** (weapons round 2): `weapon_kit.build_spear(name, length)` instead of `build`: the same reduction, scaled to
+the spear's length (Forge Spear 8.5, Magma Halberd 8.5, Tidal Trident 8.7, Titan's Lance 9.2), the head found from the
+width (`find_head`: the first slice above 55% of the length wider than 1.35x the shaft's median, its collar counted),
+the origin on the grip 31% up from the butt (held upright at the side, the butt by the foot), split into **Head** and
+**Shaft**. `finish_sword` makes the Shaft the PrimaryPart. The Forge Spear's collar gems are tinted like the Forge
+Sword's (`weapon_kit.FORGE_GEMS`; `forge_variants ForgeSpear`). In the game a spear's grip is `Config/Swords GRIPS.spear`
+and its effects run along `SwordFx.TRAIL_BLADE_SPEAR` (the head, 2.6-5.9 studs up from the grip).
 
 ## 4. Into the game
 

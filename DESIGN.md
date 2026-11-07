@@ -1834,6 +1834,37 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   [level]` and the admin panel's "Sword skills". Balance: `lune run tools/balance/bosses 300` gives identical rows before
   and after (2026-11-07). Measured in a Warden fight: about 60 fps through each skill (Thornline was building ~200 vine
   parts at once, now row by row).
+- **Spears** (weapons round 2; spec `2026-11-07-weapons-round2-design.md`, plan `2026-11-07-weapons-round2.md`, branch
+  `weapons-round2`; the owner's picks 2026-11-07): the Forge Spear in five elements (Common, the Forge like the Forge
+  Sword), the Magma Halberd (Very Rare, Ember Colossus), the Tidal Trident (Epic, Frost Tyrant) and the Titan's Lance
+  (Legendary Masterwork: $60,000, 30 Warden Heartwood, 20 Frost Heart, 20 Storm Crystal, 10 Star Shards). Heroic size
+  (8.5 / 8.5 / 8.7 / 9.2 studs, the owner's pick B), held upright at your right side between moves (pick C: the grip 31%
+  up from the butt, `Config/Swords GRIPS.spear`; the hand's tilt -90, as keyed), on the back diagonally at scale 1.
+  Perks: the Halberd's Eruption (every 5th hit bursts for 60% of it more, a lava burst), the Trident's Chill (the foe's
+  attacks 10% slower for 3 s, never weakening a stronger slow) and the Lance's Titan's Bloom (every hit heals your
+  creature 1%); Grade S x1.2 as for swords (`BattleSim` swordPerk, `WeaponText` words). One moveset for all four
+  (`Config/Swords` `spear`, the same damage a second as the sword combo; the owner asked for it more exaggerated):
+  Thrust (a deep coil, a 2-stud lunge, reach 12 in 30 degrees), Sweep (a full spin, 11 in 120 degrees), Sky Pierce (a
+  6-stud spinning leap and a plunge: a line to 8 studs ahead and a 4-stud burst there, `SwordRules.cutReaches`), and the
+  skill Piercing Rush (a 12-stud rush, every foe along a 3-stud line as it arrives; free after the hit). No spear move
+  reaches past 12 studs, so a boss's swipe still reaches anyone who can hit it (tests/SwordsConfig). Moves keyed on
+  `tools/blender/anim_spear.py` (a spear prop on `anim_kit`, the arm without the sword's wrist lag), built into
+  `assets/animations/Spear`. Effects (`spearStreak`, `skyPierce`, `piercingRush` in `Config/SwordSkillFx`, drawn by
+  `Util/SwordSkillFx` along the spear's head, `SwordFx.TRAIL_BLADE_SPEAR`): a light beam along the thrust with a star
+  flash, a crescent of light round the sweep, Sky Pierce's element eruption, white flash, shockwave rings, glowing
+  cracks, rocks and dust, Piercing Rush's charge orb, afterimages, line flash with bursts and dust skid; six own sounds
+  (Pro Sound Effects, measured). The skill button: the owner's pick C, a spear with its afterimages (`UIIcons`
+  `PiercingRush`, icon sheet 9 with spares for the next spear skills). Models: Figma concepts A (the owner's picks),
+  Meshy, cleaned by `weapon_kit.build_spear` (Head and Shaft, the Shaft the PrimaryPart), the Forge Spear's collar gems
+  tinted per element; glow maps for the gems, lava cracks, crystal prongs and emerald veins.
+- **Quick weapon switch** (weapons round 2, the owner's pick A): a round chip on the right edge at mid height with your
+  weapon's portrait in its rarity's ring, `<` and `>` either side, Q / Shift+Q on keyboards, a swipe on the chip; it
+  steps through every weapon you own (swords, spears, scythes; by rarity, then name: `Util/WeaponSwitch`, Lune-tested)
+  and asks the server to equip it (`EquipWeapon`), its name under the chip for 1.5 s. Shown with two weapons or more,
+  never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
+  switch is allowed but costs `Weapons.SWAP_SECONDS` (1 s) with no cut or skill (the dodge still works), the combo
+  starts again, the old weapon's cut or skill still on its way is cancelled (the server checks `SwordRules.skillDodged`
+  with the switch time), the skill's cooldown carries over, and the HUD's skill button follows the new weapon.
 
 ---
 
@@ -2051,7 +2082,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/weapons-source/     # ForgeSword.rbxm, the source of the Forge Sword's five element copies (tools/weapons/forge_variants); not synced
 ├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
 ├── assets/ui/weapon-glow-maps/ # each weapon model's glow map (tools/textures/make_glow_maps.py), uploaded (WeaponLooks GLOW_MAPS), baked in by tools/weapons/add_glow_maps
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py; spears: build_spear), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py; `--sword spear` for the spear moveset, anim_spear.py)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)
 ├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings, the sword effects (make_sword_fx.py) (Pillow)
@@ -2148,6 +2179,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
+    │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Shift+Q (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs, weapon rows, the chosen weapon's card, cost and one button
     │   │   ├── WeaponDetailController.luau # an Armory weapon's card view: its stats in words, Equip
@@ -2361,6 +2393,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
             ├── WeaponRules.luau   # weapon Power, element wheel, bond, perks, costs, paying, material goals, drop chance (pure, Lune-tested)
             ├── WeaponText.luau    # a weapon in words: stats, source, cost lines, the Forge's button, pickup and upgrade lines (pure, Lune-tested)
+            ├── WeaponSwitch.luau  # the quick switch's weapons in order and the step through them (pure, Lune-tested)
             ├── WeaponLookRules.luau # which glow layers a weapon shows at its rarity, level, grade and place (pure, Lune-tested)
             ├── SwordRules.luau    # the combo's next cut (cancel points), reach and arc, aiming, lunges, the dash and its path, combo damage per second, each skill's shape (skillHits, skillImpact, skillTravel, holdFor) (pure, Lune-tested)
             ├── SwordSkillFxRules.luau # effect size by the trail, others' effects budget, the camera moment's beats and wide-shot distance (pure, Lune-tested)
