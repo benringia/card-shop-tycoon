@@ -1389,7 +1389,7 @@ local function onSwordAttack(player: Player)
 	local cut = sword.combo[index]
 	task.delay(startAt - now, swordCast, player, sword, `cut{index}`)
 	task.delay(startAt - now + cut.hitAt, strike, fight, member, cut.power * WeaponService.Power(player), "Sword", function(px, pz, lookX, lookZ, target)
-		return SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc)
+		return SwordRules.cutReaches(cut, px, pz, lookX, lookZ, target)
 	end)
 end
 

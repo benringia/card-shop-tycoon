@@ -14,8 +14,46 @@ return {
 	-- Weapons round 2 (owner 2026-11-07: "hold the sword the right way, not flat"): every sword model has its edge along
 	-- X and its flat along Z, so the hand's grip turns it a quarter turn about the blade, the flat facing the palm. Measured
 	-- in Studio over the starter's cuts: without the turn the flat led every cut (0.63-0.79 of the swing), with it the edge
-	["the hand holds a sword with its flat to the palm, so the edge leads the cuts"] = function()
-		expect.equal(Swords.HAND_GRIP.twist, 90)
+	-- Grips are per weapon family since spears (spec 2026-11-07-weapons-round2-design 5.1)
+	["every family has a hand grip, a back grip and a back size"] = function()
+		expect.equal(Swords.GRIPS.sword.hand.twist, 90, "the sword's flat to the palm")
+		expect.equal(Swords.GRIPS.sword.backScale, 1.05)
+		expect.equal(Swords.GRIPS.spear.backScale, 1)
+	end,
+
+	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 5.2): one moveset for all four spears, owner's storyboard
+	["the spear moveset: thrust, sweep, sky pierce and piercing rush at the sword's damage a second"] = function()
+		local spear = Swords.SWORDS.spear
+		expect.equal(#spear.combo, 3)
+		expect.equal(spear.combo[1].reach, 12, "the thrust's reach")
+		expect.equal(spear.combo[1].arc, 30)
+		expect.equal(spear.combo[2].reach, 11, "the sweep's reach")
+		expect.equal(spear.combo[2].arc, 120)
+		local line = spear.combo[3].line :: Swords.Line
+		expect.equal(line.length, 8, "the plunge point")
+		expect.equal(line.width, 3)
+		expect.equal(line.burst, 4)
+		expect.near(SwordRules.comboPowerPerSecond(spear.combo), SwordRules.comboPowerPerSecond(Swords.SWORDS.starterSword.combo), 1e-3)
+		expect.equal(spear.skill.power, 0.9)
+		expect.equal(spear.skill.cooldown, 8)
+		expect.equal(spear.skill.shape.kind, "dash")
+		local dash = spear.skill.dash :: Swords.Dash
+		expect.equal(dash.studs, 12)
+		expect.equal(dash.width, 3)
+		expect.equal(spear.model, "Spear", "its animation folder")
+	end,
+
+	-- No spear move reaches past a boss's swipe (its ring radius + RING_SWIPE_EXTRA, measured from the boss's centre), so
+	-- reach never buys a spot the boss can't hit
+	["a spear's reach never makes a spot a boss's swipe can't reach"] = function()
+		local longest = 0
+		for _, cut in Swords.SWORDS.spear.combo do
+			longest = math.max(longest, if cut.line then cut.line.length + cut.line.burst else cut.reach)
+		end
+		for id, boss in Bosses.BOSSES do
+			local ring = boss.ringRadius or Bosses.RING_RADIUS
+			expect.equal(longest + ring * Bosses.HIT_RADIUS_SHARE <= ring + Bosses.RING_SWIPE_EXTRA, true, id)
+		end
 	end,
 
 	-- Sword skills round (spec 2026-11-06-sword-skills-design): each round 1 sword its own moveset, the starter's cuts
@@ -30,7 +68,17 @@ return {
 		expect.equal(Weapons.ById.starterSword.moveset, "starterSword")
 		local starter = Swords.SWORDS.starterSword
 		local kinds = { dash = true, spin = true, line = true, wave = true, judgment = true }
+		-- the swords' movesets (the spear has its own cuts: weapons round 2)
+		local swordMovesets = {}
+		for _, weapon in Weapons.WEAPONS do
+			if weapon.family == "sword" and weapon.moveset then
+				swordMovesets[weapon.moveset] = true
+			end
+		end
 		for id, sword in Swords.SWORDS do
+			if not swordMovesets[id] then
+				continue
+			end
 			expect.equal(sword.combo, starter.combo, `{id} swings the starter's cuts`)
 			for _, key in { "cut1", "cut2", "cut3" } do
 				expect.equal(sword.animations[key], starter.animations[key], `{id} {key}`)

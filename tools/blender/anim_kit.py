@@ -29,11 +29,19 @@ EXPORT_STEP = 2  # export every other frame: 30 keyframes a second
 HRP_Z = 3.0  # HumanoidRootPart centre above the ground (HipHeight 2 + half its 2-stud height)
 
 
-def hand_grip():
-    """The game's sword grip (Config/Swords HAND_GRIP) in the RightHand's frame: 0.18 down, tilted -140 degrees about X,
-    then a quarter turn about the blade (+Y) so the flat faces the palm and the edge leads the cuts."""
-    return (Matrix.Translation(Vector((0, -0.18, 0))) @ Matrix.Rotation(math.radians(-140), 4, "X")
-            @ Matrix.Rotation(math.radians(90), 4, "Y"))
+# The game's hand grips by weapon family (Config/Swords GRIPS[family].hand): keep these numbers in step with it
+HAND_GRIPS = {
+    "sword": {"y": -0.18, "angleX": -140, "twist": 90},
+    "spear": {"y": -0.18, "angleX": 0, "twist": 0},
+}
+
+
+def hand_grip(family="sword"):
+    """A weapon's grip in the RightHand's frame (Config/Swords GRIPS): `y` down, tilted `angleX` degrees about X, then
+    `twist` about the blade or shaft (+Y). The sword's quarter turn puts its flat to the palm, the edge leading the cuts."""
+    grip = HAND_GRIPS[family]
+    return (Matrix.Translation(Vector((0, grip["y"], 0))) @ Matrix.Rotation(math.radians(grip["angleX"]), 4, "X")
+            @ Matrix.Rotation(math.radians(grip["twist"]), 4, "Y"))
 M = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))
 
 # The standard R15 body, from the game (pivot = the joint's position, Roblox coords from the HumanoidRootPart centre)

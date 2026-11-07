@@ -5,7 +5,10 @@
 -- Pure (no requires, no Roblox APIs) so tests/ run it in Lune: positions are plain x, z numbers on the ground plane.
 local SwordRules = {}
 
-export type Cut = { power: number, hitAt: number, cancelAt: number?, length: number, reach: number, arc: number }
+-- A line-shaped cut (the spear's Sky Pierce, spec 2026-11-07-weapons-round2-design 5.2): everything within `width` / 2 of
+-- the line from you to `length` ahead, and within `burst` of its end; `reach` and `arc` are unused then
+export type Line = { length: number, width: number, burst: number }
+export type Cut = { power: number, hitAt: number, cancelAt: number?, length: number, reach: number, arc: number, line: Line? }
 export type LastCut = { index: number, startedAt: number }
 export type Target = { id: string, x: number, z: number, radius: number }
 
@@ -52,7 +55,7 @@ end
 -- Does a cut from (px, pz) facing (lookX, lookZ) hit any of these targets? (the client plays the hit sound at once)
 function SwordRules.anyInReach(px: number, pz: number, lookX: number, lookZ: number, targets: { Target }, cut: Cut): boolean
 	for _, target in targets do
-		if SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc) then
+		if SwordRules.cutReaches(cut, px, pz, lookX, lookZ, target) then
 			return true
 		end
 	end
@@ -147,6 +150,25 @@ function SwordRules.inDashPath(sx: number, sz: number, ex: number, ez: number, t
 	local cx, cz = sx + vx * t, sz + vz * t
 	local dx, dz = tx - cx, tz - cz
 	return math.sqrt(dx * dx + dz * dz) <= targetRadius + width / 2
+end
+
+-- Is a target hit by a cut from (px, pz) facing (lookX, lookZ)? A line cut (`line`): its edge within half the line's
+-- width of the line from you to its length ahead, or within its burst of that end; any other cut: SwordRules.inReach
+function SwordRules.cutReaches(cut: Cut, px: number, pz: number, lookX: number, lookZ: number, target: Target): boolean
+	local line = cut.line
+	if not line then
+		return SwordRules.inReach(px, pz, lookX, lookZ, target.x, target.z, target.radius, cut.reach, cut.arc)
+	end
+	local lookLength = math.sqrt(lookX * lookX + lookZ * lookZ)
+	if lookLength < 1e-6 then
+		return false
+	end
+	local ex, ez = px + lookX / lookLength * line.length, pz + lookZ / lookLength * line.length
+	if SwordRules.inDashPath(px, pz, ex, ez, target.x, target.z, target.radius, line.width) then
+		return true
+	end
+	local dx, dz = target.x - ex, target.z - ez
+	return math.sqrt(dx * dx + dz * dz) <= line.burst + target.radius
 end
 
 -- The end of a path from (sx, sz) to (ex, ez), pulled back to `maxLength` from its start when it's longer (the server

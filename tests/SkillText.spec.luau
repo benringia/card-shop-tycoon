@@ -11,8 +11,15 @@ return {
 	-- The skill button per sword (owner's picks 2026-11-07): its own icon, name and tooltip, plus the dodge rule
 	["each round 1 sword's skill button has its own icon, name and tooltip"] = function()
 		local seen = {}
+		local Weapons = require("../src/shared/Config/Weapons")
+		local swordMovesets = {} -- the swords' (the spear's button: weapons round 2, its own test)
+		for _, weapon in Weapons.WEAPONS do
+			if weapon.family == "sword" and weapon.moveset then
+				swordMovesets[weapon.moveset] = true
+			end
+		end
 		for moveset in Swords.SWORDS do
-			if moveset ~= Swords.STARTER then
+			if moveset ~= Swords.STARTER and swordMovesets[moveset] then
 				local button = SkillText.swordSkill(CombatHud, moveset)
 				expect.equal(UIIcons[button.icon] ~= nil, true, `{moveset}'s icon is uploaded`)
 				expect.equal(button.name ~= CombatHud.BUTTONS.skill.name, true, `{moveset} has its own name`)

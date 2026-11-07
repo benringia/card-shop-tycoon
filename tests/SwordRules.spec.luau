@@ -9,6 +9,22 @@ local COMBO = {
 }
 
 return {
+	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 5.2): the spear's Sky Pierce hits a line to its plunge point
+	-- and a burst there; every other cut is a cone (reach from the target's edge, arc)
+	["a line cut hits along its length and in the burst at its end, not beside it"] = function()
+		local cut = { power = 1, hitAt = 0.5, length = 1, reach = 0, arc = 0, line = { length = 8, width = 3, burst = 4 } }
+		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "a", x = 0, z = -5, radius = 0.5 }), true, "on the line")
+		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "b", x = 3, z = -10, radius = 0.5 }), true, "in the burst at its end")
+		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "c", x = 4, z = -4, radius = 0.5 }), false, "beside the line")
+		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "d", x = 0, z = 4, radius = 0.5 }), false, "behind")
+	end,
+
+	["a cone cut still uses reach and arc"] = function()
+		local cut = { power = 1, hitAt = 0.5, length = 1, reach = 12, arc = 30 }
+		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "a", x = 0, z = -11, radius = 0.5 }), true)
+		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "b", x = 6, z = -6, radius = 0.5 }), false, "outside 30 degrees")
+	end,
+
 	["the first tap starts cut 1 now"] = function()
 		local index, at = SwordRules.nextCut(COMBO, nil, 5, 0.9)
 		expect.equal(index, 1)

@@ -325,9 +325,16 @@ local function makeModel(weaponId: string, grade: string, level: number): (Model
 	return model, handle, grip
 end
 
--- Into the right hand, or onto the back (bigger there: BACK_SCALE, so the sword, and any look on it, shows)
+-- Where a weapon's family sits (Config/Swords GRIPS; a sword's unless its family has its own)
+local function gripOf(weaponId: string)
+	local weapon = Weapons.ById[weaponId]
+	return Swords.GRIPS[if weapon then weapon.family else "sword"] or Swords.GRIPS.sword
+end
+
+-- Into the right hand, or onto the back (a sword bigger there: its family's backScale, so it and any look on it shows)
 local function place(view: View, character: Model, inHand: boolean)
-	local scale = if inHand then 1 else Swords.BACK_SCALE
+	local grips = gripOf(view.swordId)
+	local scale = if inHand then 1 else grips.backScale
 	if math.abs(view.model:GetScale() - scale) > 1e-3 then
 		view.model:ScaleTo(scale)
 	end
@@ -335,7 +342,7 @@ local function place(view: View, character: Model, inHand: boolean)
 	view.grip = if attachment and attachment:IsA("Attachment") then attachment.CFrame else view.grip
 	local hand = character:FindFirstChild("RightHand")
 	local torso = character:FindFirstChild("UpperTorso")
-	local hold, back = Swords.HAND_GRIP, Swords.BACK_GRIP
+	local hold, back = grips.hand, grips.back
 	if inHand and hand and hand:IsA("BasePart") then
 		view.weld.Part0 = hand
 		view.weld.C0 = CFrame.new(0, hold.y, 0) * CFrame.Angles(math.rad(hold.angleX), 0, 0) * CFrame.Angles(0, math.rad(hold.twist), 0)

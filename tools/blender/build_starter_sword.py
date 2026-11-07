@@ -4,7 +4,7 @@ origin; the blade points up +Z, its flat faces along Y), renders previews, expor
 StarterSword.blend in assets/blender/StarterSword/ (set CARD_SHOP_REPO if the repo isn't at the default path).
 
 In Roblox the model's origin is where the hand holds it: Blender +Z becomes Roblox +Y (the blade), matching the grip
-the animations were keyed with (Config/Swords HAND_GRIP). Import: docs/animations.md "The sword model".
+the animations were keyed with (Config/Swords GRIPS.sword.hand). Import: docs/animations.md "The sword model".
 """
 import math
 import os
