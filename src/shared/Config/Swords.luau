@@ -416,11 +416,13 @@ return {
 			backScale = 1.05,
 		},
 		-- Upright at your side (owner's pick C, 2026-11-07): the grip 31% up from the butt; the hand's tilt of -90 makes a
-		-- hanging arm hold it straight ahead (the spear's moves are keyed with it, tools/blender/anim_spear.py); on the back
-		-- diagonally at its own size. The back's numbers are starting values, set in Studio with the models (spec 5.1)
+		-- hanging arm hold it straight ahead (the spear's moves are keyed with it, tools/blender/anim_spear.py): in the
+		-- ready pose it leans 14 degrees, the butt by the right foot. On the back at its own size, the head up over the
+		-- right shoulder 40 degrees from upright (measured in Studio on the longest, the 9.2-stud Titan's Lance: its butt
+		-- 0.3 studs over the ground, its tip 3 over the head; 20 degrees from upright put the butt 2.5 into the ground)
 		spear = {
 			hand = { y = -0.18, angleX = -90, twist = 0 },
-			back = { x = 0, y = 0.6, z = 0.7, angleZ = 160 },
+			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
 			backScale = 1,
 		},
 	},
