@@ -3,7 +3,7 @@
     "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/run_sword_moves.py -- [--sword <name>] [--preview <dir>] [move ...]
 
 --sword picks the moves file tools/blender/anim_<name>.py (default starter_sword; a round 1 sword's own skill, e.g.
-sunforged_blade). With no moves it exports that file's NATURAL moves. JSON goes to assets/blender/Animations/<its
+sunforged_blade; `spear` for the spear moveset, anim_spear.py, weapons round 2). With no moves it exports that file's NATURAL moves. JSON goes to assets/blender/Animations/<its
 FOLDER> (then `lune run tools/anim/build_kfs <that folder> assets/animations/<FOLDER>`). --preview <dir> also writes
 <dir>/moves-<move>-<front|side>.mp4 (the travel shows in the preview; the export is in place). Never run this in the
 owner's open Blender: anim_kit.build() empties the scene.
@@ -52,7 +52,7 @@ for name in names:
         if hasattr(moves, "PREVIEW_HOLD_SHOWN"):
             moves.PREVIEW_HOLD = moves.PREVIEW_HOLD_SHOWN
             length += moves.PREVIEW_HOLD
-        rig = kit.build()
+        rig = kit.build(getattr(moves, "PROP", "sword"))
         first = 1 + LEAD
         fn(rig, first)
         if name in moves.NATURAL:

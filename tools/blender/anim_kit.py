@@ -32,7 +32,7 @@ HRP_Z = 3.0  # HumanoidRootPart centre above the ground (HipHeight 2 + half its 
 # The game's hand grips by weapon family (Config/Swords GRIPS[family].hand): keep these numbers in step with it
 HAND_GRIPS = {
     "sword": {"y": -0.18, "angleX": -140, "twist": 90},
-    "spear": {"y": -0.18, "angleX": 0, "twist": 0},
+    "spear": {"y": -0.18, "angleX": -90, "twist": 0},  # the arm hanging, the spear points straight ahead
 }
 
 
@@ -117,9 +117,26 @@ def box(name, center, size, rgba):
     return obj
 
 
-def build():
-    """An empty scene with the rig (armature "Rig" = the HumanoidRootPart), block body parts, a sword in the right hand
-    (the game's grip), IK legs with planted foot targets, a ground, a sun and a camera."""
+# The weapon in the right hand while keying, by family: (name, offset from the grip along the weapon, size, colour). The
+# sword's blade runs up from its guard; the spear (weapons round 2: SPEAR_LENGTH studs, held 31% up from the butt, the
+# Forge Spear's proportions) has its shaft through the grip, a collar and a leaf head on top.
+SPEAR_LENGTH = 8.5
+SPEAR_GRIP = 0.31
+PROPS = {
+    "sword": [("Handle", (0, 0, 0), (0.26, 1.1, 0.26), (0.27, 0.17, 0.12, 1)), ("Guard", (0, 0.62, 0), (1.15, 0.2, 0.34), (0.84, 0.69, 0.32, 1)),
+              ("Blade", (0, 2.55, 0), (0.24, 3.7, 0.07), (0.88, 0.92, 0.96, 1))],
+    "spear": [
+        ("Shaft", (0, SPEAR_LENGTH * (0.5 - SPEAR_GRIP) - 0.75, 0), (0.24, SPEAR_LENGTH - 1.5, 0.24), (0.36, 0.22, 0.12, 1)),
+        ("Collar", (0, SPEAR_LENGTH * (1 - SPEAR_GRIP) - 1.55, 0), (0.42, 0.3, 0.42), (0.55, 0.57, 0.62, 1)),
+        ("Head", (0, SPEAR_LENGTH * (1 - SPEAR_GRIP) - 0.7, 0), (0.62, 1.4, 0.1), (0.88, 0.92, 0.96, 1)),
+    ],
+}
+
+
+def build(prop="sword"):
+    """An empty scene with the rig (armature "Rig" = the HumanoidRootPart), block body parts, a weapon (`prop`: "sword"
+    or "spear") in the right hand at the game's grip for its family, IK legs with planted foot targets, a ground, a sun
+    and a camera."""
     EASES.clear()
     for obj in list(bpy.data.objects):
         bpy.data.objects.remove(obj)
@@ -156,13 +173,11 @@ def build():
         part.parent_type = "BONE"
         part.parent_bone = name
         part.matrix_world = keep
-    # The sword in the right hand: the game's grip (hand_grip), blade along +Y
+    # The weapon in the right hand: the game's grip for its family (hand_grip), blade or head along +Y
     hand_cf = Matrix.Translation(Vector(PARTS["RightHand"]["center"]))
-    grip = hand_grip()
-    sword_parts = [("Handle", (0, 0, 0), (0.26, 1.1, 0.26), (0.27, 0.17, 0.12, 1)), ("Guard", (0, 0.62, 0), (1.15, 0.2, 0.34), (0.84, 0.69, 0.32, 1)),
-                   ("Blade", (0, 2.55, 0), (0.24, 3.7, 0.07), (0.88, 0.92, 0.96, 1))]
+    grip = hand_grip(prop)
     M4 = M.to_4x4()
-    for pname, off, size, rgba in sword_parts:
+    for pname, off, size, rgba in PROPS[prop]:
         world_r = hand_cf @ grip @ Matrix.Translation(Vector(off))
         world_b = Matrix.Translation(Vector((0, 0, HRP_Z))) @ M4 @ world_r @ M4
         bpy.ops.mesh.primitive_cube_add(size=1)
@@ -299,13 +314,14 @@ def apply_eases(rig):
             fc.update()
 
 
-def two_hands(rig, frame_of, on, full, release, off, along=-0.55):
-    """The left hand grips the sword's handle under the right one: the left forearm's IK reaches a point `along` studs
-    from the right hand's grip towards the pommel (an empty on the RightHand bone), the elbow bent out and down. Its
-    influence blends in from `on` to `full` seconds and out from `release` to `off`; frame_of(t) gives a move's frame."""
+def two_hands(rig, frame_of, on, full, release, off, along=-0.55, family="sword"):
+    """The left hand grips the weapon too: the left forearm's IK reaches a point `along` studs from the right hand's grip
+    along the weapon (negative: towards the sword's pommel, under the right hand; a spear's positive: up the shaft), an
+    empty on the RightHand bone, the elbow bent out and down. Its influence blends in from `on` to `full` seconds and
+    out from `release` to `off`; frame_of(t) gives a move's frame."""
     M4 = M.to_4x4()
     hand_cf = Matrix.Translation(Vector(PARTS["RightHand"]["center"]))
-    grip = hand_grip()
+    grip = hand_grip(family)
     world_r = hand_cf @ grip @ Matrix.Translation(Vector((0, along, 0)))
     world_b = Matrix.Translation(Vector((0, 0, HRP_Z))) @ M4 @ world_r @ M4
     target = bpy.data.objects.new("LeftGrip", None)
