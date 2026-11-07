@@ -98,6 +98,11 @@ return {
 		VerdantBlade = "rbxassetid://104844593841366",
 		PrismBlade = "rbxassetid://107028137030194",
 		ForgeSword = "rbxassetid://87373640011460",
+		-- the spears (weapons round 2, uploaded 2026-11-07)
+		ForgeSpear = "rbxassetid://112194653990987",
+		MagmaHalberd = "rbxassetid://99891722202960",
+		TidalTrident = "rbxassetid://80363641113517",
+		TitansLance = "rbxassetid://122751631291942",
 	},
 	INNER = { strength = 4 },
 	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too), as strong as its

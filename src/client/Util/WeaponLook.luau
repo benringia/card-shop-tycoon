@@ -203,7 +203,7 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 		if not item:IsA("BasePart") or not (item:IsA("MeshPart") or item:GetAttribute("Glow") == true) then
 			continue
 		end
-		local isBlade = item.Name == "Blade"
+		local isBlade = item.Name == "Blade" or item.Name == "Head" -- a spear's head carries its aura
 		auraEmitters(item, if isBlade then 1 else WeaponLooks.AURA.otherParts, weaponId, look)
 		if isBlade or not blade then
 			blade = item

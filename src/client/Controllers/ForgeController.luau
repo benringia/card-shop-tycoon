@@ -101,19 +101,22 @@ local function rarityOrder(rarity: string): number
 	return if tier then tier.order else 0
 end
 
--- The rows a tab lists: Forge, every built weapon you don't have yet that can be made (the Forge Sword as one row
--- while any element is missing); Upgrade and Reforge, the ones you have (not the Steel Sword)
+-- The rows a tab lists: Forge, every built weapon you don't have yet that can be made (each Forge weapon, the Forge
+-- Sword and the Forge Spear, as one row while any element is missing; its key `forge<Family>`, its ids' prefix);
+-- Upgrade and Reforge, the ones you have (not the Steel Sword)
 local function entries(): { Entry }
 	local found: { Entry } = {}
-	local forgeIds = {}
+	local forgeIds: { [string]: { string } } = {} -- by family
 	for _, weapon in Weapons.WEAPONS do
 		if not weapon.ready or weapon.id == Weapons.STARTER then
 			continue
 		end
 		local have = owned[weapon.id] ~= nil
-		if weapon.source.kind == "forge" and weapon.family == "sword" then
+		if weapon.source.kind == "forge" then
 			if (tab == FORGE) ~= have then
-				table.insert(forgeIds, weapon.id)
+				local ids = forgeIds[weapon.family] or {}
+				forgeIds[weapon.family] = ids
+				table.insert(ids, weapon.id)
 			end
 		elseif tab == FORGE and not have and WeaponRules.makeCost(Weapons, weapon.id) then
 			table.insert(found, { key = weapon.id, name = weapon.name, rarity = weapon.rarity, ids = { weapon.id } })
@@ -121,11 +124,12 @@ local function entries(): { Entry }
 			table.insert(found, { key = weapon.id, name = weapon.name, rarity = weapon.rarity, ids = { weapon.id } })
 		end
 	end
-	if #forgeIds > 0 then
+	for family, ids in forgeIds do
 		if tab == FORGE then
-			table.insert(found, { key = "forgeSword", name = "Forge Sword", rarity = "Common", ids = forgeIds })
+			local title = string.upper(string.sub(family, 1, 1)) .. string.sub(family, 2)
+			table.insert(found, { key = `forge{title}`, name = `Forge {title}`, rarity = "Common", ids = ids })
 		else
-			for _, id in forgeIds do
+			for _, id in ids do
 				local weapon = Weapons.ById[id]
 				table.insert(found, { key = id, name = weapon.name, rarity = weapon.rarity, ids = { id } })
 			end
@@ -140,12 +144,12 @@ local function entries(): { Entry }
 	return found
 end
 
--- The weapon an entry stands for now (the Forge Sword: the element picked, if it's one still listed)
+-- The weapon an entry stands for now (a Forge weapon's row: the element picked, if it's one still listed)
 local function weaponOf(entry: Entry): string
 	if #entry.ids == 1 then
 		return entry.ids[1]
 	end
-	local wanted = `forgeSword_{selectedElement}`
+	local wanted = `{entry.key}_{selectedElement}`
 	return if table.find(entry.ids, wanted) then wanted else entry.ids[1]
 end
 
@@ -243,7 +247,7 @@ local function buildRow(entry: Entry, order: number)
 	end)
 end
 
--- The Forge Sword's element buttons: an emoji each, the picked one ringed, the ones you have greyed out
+-- A Forge weapon's element buttons: an emoji each, the picked one ringed, the ones you have greyed out
 local function elementButtons(parent: Instance, entry: Entry, order: number)
 	local holder = Instance.new("Frame")
 	holder.Name = "Elements"
@@ -259,7 +263,7 @@ local function elementButtons(parent: Instance, entry: Entry, order: number)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
 	for index, element in ELEMENTS do
-		local id = `forgeSword_{element}`
+		local id = `{entry.key}_{element}`
 		local open = table.find(entry.ids, id) ~= nil
 		local look = WeaponLooks.BY_ELEMENT[element]
 		local button = UIKit.button(holder, CardDesign.EMOJI[element] or element, if open then Color3.fromRGB(look.glow[1], look.glow[2], look.glow[3]) else UIKit.Colors.Locked)

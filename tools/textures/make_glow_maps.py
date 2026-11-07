@@ -9,6 +9,12 @@ Rules (hue, saturation, value 0-1), per model:
 - VerdantBlade: the pale green crystal and seed gems; the wood and vines stay matte.
 - PrismBlade: the rainbow facets and gems (saturated colour), the pearl body faintly.
 - ForgeSword: its gems: wherever an element's colour map differs from the base map (one map for all five; same UVs).
+Spears (weapons round 2):
+- ForgeSpear: its collar gems, as the Forge Sword's.
+- MagmaHalberd: its lava cracks, molten spike and fire gem (the Sunforged's molten rule); the obsidian stays matte.
+- TidalTrident: the frosted crystal prongs and the aquamarine gem (pale to bright blue-cyan); the pearl shaft and the
+  silver spiral stay matte.
+- TitansLance: the emerald veins and gem (saturated green); the gold and the wood stay matte.
 
 Usage: python tools/textures/make_glow_maps.py   (needs Pillow; writes assets/ui/weapon-glow-maps/<Model>.png)
 """
@@ -40,7 +46,22 @@ def prism(h, s, v):
     return max(clamp((s - 0.35) / 0.3) * clamp((v - 0.5) / 0.35), clamp((v - 0.9) / 0.1) * 0.25)
 
 
-RULES = {"SunforgedBlade": sunforged, "VerdantBlade": verdant, "PrismBlade": prism}
+def tidal(h, s, v):
+    return clamp(1 - abs(h - 0.53) / 0.09) * clamp((s - 0.15) / 0.2) * clamp((v - 0.6) / 0.3)
+
+
+def emerald(h, s, v):
+    return clamp(1 - abs(h - 0.42) / 0.1) * clamp((s - 0.25) / 0.25) * clamp((v - 0.3) / 0.3)
+
+
+RULES = {
+    "SunforgedBlade": sunforged,
+    "VerdantBlade": verdant,
+    "PrismBlade": prism,
+    "MagmaHalberd": sunforged,
+    "TidalTrident": tidal,
+    "TitansLance": emerald,
+}
 
 
 def by_colour(name, rule):
@@ -56,12 +77,12 @@ def by_colour(name, rule):
     return mask
 
 
-def forge_gems():
-    folder = os.path.join(SOURCES, "ForgeSword")
-    base = Image.open(os.path.join(folder, "ForgeSword_color.png")).convert("RGB")
+def forge_gems(name):
+    folder = os.path.join(SOURCES, name)
+    base = Image.open(os.path.join(folder, f"{name}_color.png")).convert("RGB")
     mask = Image.new("L", base.size, 0)
     for element in ("Ember", "Tide", "Bloom", "Volt", "Shade"):
-        tinted = Image.open(os.path.join(folder, f"ForgeSword_{element}_color.png")).convert("RGB")
+        tinted = Image.open(os.path.join(folder, f"{name}_{element}_color.png")).convert("RGB")
         difference = ImageChops.difference(base, tinted).convert("L").point(lambda d: 255 if d > 24 else 0)
         mask = ImageChops.lighter(mask, difference)
     return mask
@@ -70,7 +91,8 @@ def forge_gems():
 def main():
     os.makedirs(OUT, exist_ok=True)
     maps = {name: by_colour(name, rule) for name, rule in RULES.items()}
-    maps["ForgeSword"] = forge_gems()
+    maps["ForgeSword"] = forge_gems("ForgeSword")
+    maps["ForgeSpear"] = forge_gems("ForgeSpear")
     for name, mask in maps.items():
         mask.filter(ImageFilter.GaussianBlur(1)).save(os.path.join(OUT, f"{name}.png"))
         print("saved", name)
