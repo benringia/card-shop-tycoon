@@ -41,7 +41,12 @@ end
 
 local function perkWords(perk: any): string?
 	if perk.kind == "heal" and perk.every and perk.share then
-		return `Every {ordinal(perk.every)} hit heals your creature {percent(perk.share)}`
+		local which = if perk.every == 1 then "Every hit" else `Every {ordinal(perk.every)} hit`
+		return `{which} heals your creature {percent(perk.share)}`
+	elseif perk.kind == "erupt" and perk.every and perk.share then
+		return `Every {ordinal(perk.every)} hit erupts for {percent(perk.share)} more`
+	elseif perk.kind == "chill" and perk.share and perk.seconds then
+		return `Hits slow the foe's attacks {percent(perk.share)} for {perk.seconds} s`
 	elseif perk.kind == "burn" and perk.seconds then
 		return `Sets the foe burning for {perk.seconds} s`
 	elseif perk.kind == "prism" then

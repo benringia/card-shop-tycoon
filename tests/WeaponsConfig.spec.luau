@@ -71,8 +71,41 @@ return {
 		end
 	end,
 
+	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 4)
+	["the spears: the Forge Spear in five elements, one moveset, their perks, tiers and the swap time"] = function()
+		expect.isNil(Weapons.ById.forgeSpear, "the Forge Spear comes in elements")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			local spear = Weapons.ById[`forgeSpear_{element}`]
+			assert(spear, element)
+			expect.equal(spear.family, "spear")
+			expect.equal(spear.element, element)
+			expect.equal(spear.moveset, "spear")
+			expect.equal(spear.source.kind, "forge")
+		end
+		for _, id in { "magmaHalberd", "tidalTrident", "titansLance" } do
+			expect.equal(Weapons.ById[id].moveset, "spear", id)
+		end
+		local erupt = Weapons.ById.magmaHalberd.perk :: any
+		expect.equal(erupt.kind, "erupt")
+		expect.equal(erupt.every, 5)
+		expect.equal(erupt.share, 0.6)
+		local chill = Weapons.ById.tidalTrident.perk :: any
+		expect.equal(chill.kind, "chill")
+		expect.equal(chill.share, 0.1)
+		expect.equal(chill.seconds, 3)
+		local bloom = Weapons.ById.titansLance.perk :: any
+		expect.equal(bloom.kind, "heal")
+		expect.equal(bloom.every, 1)
+		expect.equal(bloom.share, 0.01)
+		expect.equal(Weapons.TIER_BOSS.forgeSpear, "meadowWarden")
+		expect.equal(Weapons.TIER_BOSS.magmaHalberd, "emberColossus")
+		expect.equal(Weapons.TIER_BOSS.tidalTrident, "frostTyrant")
+		expect.equal(Weapons.TIER_BOSS.titansLance, "prismHydra")
+		expect.equal(Weapons.SWAP_SECONDS, 1)
+	end,
+
 	["every weapon is complete and in the Armory order"] = function()
-		expect.equal(#Weapons.WEAPONS, 17) -- Steel, 5 Forge Swords, 3 new swords, 4 spears, 4 scythes
+		expect.equal(#Weapons.WEAPONS, 21) -- Steel, 5 Forge Swords, 3 new swords, 5 Forge Spears, 3 spears, 4 scythes
 		for _, w in Weapons.WEAPONS do
 			assert(Weapons.ById[w.id] == w, w.id)
 			assert(Weapons.RARITY_POWER[w.rarity] or w.id == "starterSword", w.id)

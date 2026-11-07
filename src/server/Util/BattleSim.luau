@@ -1557,11 +1557,25 @@ local function creatureAtk(state: State, side: Side, key: string): number
 	return side.lastAtk[key] or state.combat.SWORD_IDLE_ATK
 end
 
--- A weapon's perk after a sword hit landed: heal (every `every`-th hit by this owner heals their creature `share` of its
--- max HP) or burn (the target takes `share` x the creature's ATK a second for `seconds`; a new hit refreshes it, never
--- stacks)
-local function swordPerk(state: State, fighter: Fighter, target: Fighter, perk: any, events: { Event })
-	if perk.kind == "heal" and perk.every and perk.share then
+-- A weapon's perk after a sword hit landed (`multiplier`: that hit's, `element`: its element): heal (every `every`-th hit
+-- by this owner heals their creature `share` of its max HP; every 1: each hit), burn (the target takes `share` x the
+-- creature's ATK a second for `seconds`; a new hit refreshes it, never stacks), erupt (every `every`-th hit bursts for
+-- `share` of that hit more, no super meter) or chill (the target's attacks `share` slower for `seconds`; refreshed, and
+-- never weakening a stronger slow still running, like a Snare's)
+local function swordPerk(state: State, fighter: Fighter, target: Fighter, perk: any, events: { Event }, multiplier: number, element: string?)
+	if perk.kind == "erupt" and perk.every and perk.share and not target.fainted then
+		fighter.swordHits += 1
+		if fighter.swordHits % perk.every == 0 then
+			table.insert(events, { type = "swordErupt", from = fighter.id, to = target.id })
+			hit(state, fighter, target, multiplier * perk.share, events, "Sword", true, element, 0)
+		end
+	elseif perk.kind == "chill" and perk.share and perk.seconds and not target.fainted then
+		if state.time < target.slowUntil and target.slow > perk.share then
+			return
+		end
+		target.slow = perk.share
+		target.slowUntil = state.time + perk.seconds
+	elseif perk.kind == "heal" and perk.every and perk.share then
 		fighter.swordHits += 1
 		if fighter.swordHits % perk.every ~= 0 then
 			return
@@ -1622,7 +1636,7 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	local dodged = state.time < target.dodgeUntil
 	hit(state, fighter, target, multiplier * weapon.bond, events, kind, true, element, weapon.meter * part)
 	if weapon.perk and not dodged then
-		swordPerk(state, fighter, target, weapon.perk, events)
+		swordPerk(state, fighter, target, weapon.perk, events, multiplier * weapon.bond, element)
 	end
 	return events, nil
 end

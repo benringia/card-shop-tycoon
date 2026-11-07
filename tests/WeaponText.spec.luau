@@ -15,6 +15,12 @@ local function valueOf(rows: { { label: string, value: string } }, label: string
 end
 
 return {
+	["the spears' perks in words (weapons round 2)"] = function()
+		expect.equal(valueOf(WeaponText.stats(Weapons, "magmaHalberd", nil, Combat), "Perk"), "Every 5th hit erupts for 60% more")
+		expect.equal(valueOf(WeaponText.stats(Weapons, "tidalTrident", nil, Combat), "Perk"), "Hits slow the foe's attacks 10% for 3 s")
+		expect.equal(valueOf(WeaponText.stats(Weapons, "titansLance", nil, Combat), "Perk"), "Every hit heals your creature 1%")
+	end,
+
 	["stats: Power to 2 decimals, the element and its bond, the perk in words"] = function()
 		local rows = WeaponText.stats(Weapons, "verdantBlade", nil, Combat)
 		expect.equal(valueOf(rows, "Power"), "x1.25")
@@ -49,7 +55,7 @@ return {
 		expect.equal(WeaponText.source(Weapons, Bosses, "sunforgedBlade"), "Masterwork: 3 bosses' materials + Star Shards")
 		expect.equal(WeaponText.source(Weapons, Bosses, "starterSword"), "Everyone's first sword")
 		expect.equal(WeaponText.source(Weapons, Bosses, "tidalTrident"), "Drops from the Frost Tyrant")
-		expect.equal(WeaponText.source(Weapons, Bosses, "titansLance"), "Masterwork", "no recipe yet")
+		expect.equal(WeaponText.source(Weapons, Bosses, "titansLance"), "Masterwork: 3 bosses' materials + Star Shards")
 	end,
 
 	["a material's pickup line shows its progress toward what it's for"] = function()

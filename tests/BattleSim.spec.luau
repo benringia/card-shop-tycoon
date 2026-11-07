@@ -2450,6 +2450,59 @@ return {
 		expect.equal(creature.hp, 120)
 	end,
 
+	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 4): the spears' perks
+	["Magma Halberd erupts on every 5th hit for 60% more"] = function()
+		local state = bossFightWithPlayer(5, 1)
+		local weapon = { element = "Ember", prism = false, bond = 1, meter = 1, perk = { kind = "erupt", every = 5, share = 0.6 } }
+		local erupts, fifth = 0, {}
+		for i = 1, 10 do
+			local damage = {}
+			for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+				if e.type == "swordErupt" then
+					erupts += 1
+				end
+				if e.damage and e.to == "b:m" then
+					table.insert(damage, e.damage)
+				end
+			end
+			if i == 5 then
+				fifth = damage
+			end
+		end
+		expect.equal(erupts, 2)
+		expect.equal(#fifth, 2, "the hit and its eruption")
+		expect.near(fifth[2], fifth[1] * 0.6, 2)
+	end,
+
+	["Tidal Trident chills the foe 10% for 3 s and never weakens a stronger slow"] = function()
+		local state = bossFightWithPlayer(6, 1)
+		local weapon = { element = "Tide", prism = false, bond = 1, meter = 1, perk = { kind = "chill", share = 0.1, seconds = 3 } }
+		BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon)
+		local boss = raw(state, "b:m")
+		expect.near(boss.slow, 0.1, 1e-9)
+		expect.near(boss.slowUntil, state.time + 3, 1e-6)
+		boss.slow, boss.slowUntil = 0.3, state.time + 10 -- a Snare
+		BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon)
+		expect.near(boss.slow, 0.3, 1e-9, "the Snare's 30% stays")
+		expect.near(boss.slowUntil, state.time + 10, 1e-6, "and its end")
+	end,
+
+	["Titan's Lance heals the creature 1% on every hit"] = function()
+		local state = bossFightWithPlayer(5, 1)
+		raw(state, "a:p1").hp = 100
+		local weapon = { element = "Bloom", prism = false, bond = 1, meter = 1, perk = { kind = "heal", every = 1, share = 0.01 } }
+		local heals = 0
+		for _ = 1, 3 do
+			for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+				if e.type == "swordHeal" then
+					heals += 1
+					expect.equal(e.heal, 5, "1% of 500")
+				end
+			end
+		end
+		expect.equal(heals, 3)
+	end,
+
 	["Sunforged Blade's burn refreshes, never stacks"] = function()
 		local state = bossFightWithPlayer(6, 1)
 		local weapon = { element = "Ember", prism = false, bond = 1, meter = 1, perk = { kind = "burn", share = 0.5, seconds = 3 } }

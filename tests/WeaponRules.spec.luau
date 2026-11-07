@@ -91,6 +91,26 @@ return {
 		expect.isNil(WeaponRules.hitElement(W, "prismBlade", nil, Combat), "a foe with no element: no wheel")
 	end,
 
+	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 4): Grade S makes the Trident's chill stronger; the Titan's
+	-- Lance recipe (checked on a copy with the Lance built, as it isn't until its model is in)
+	["the spears: a Grade S chill, the Titan's Lance recipe"] = function()
+		local chill = WeaponRules.perk(W, "tidalTrident", "S")
+		assert(chill, "the Trident has a perk")
+		expect.equal(chill.kind, "chill")
+		expect.near(chill.share :: number, 0.12, 1e-9)
+		local built = table.clone(W)
+		built.ById = table.clone(W.ById)
+		built.ById.titansLance = table.clone(W.ById.titansLance)
+		built.ById.titansLance.ready = true
+		local cost = WeaponRules.makeCost(built, "titansLance")
+		assert(cost, "the Lance has a recipe")
+		expect.equal(cost.cash, 60000)
+		expect.equal(cost.items.material_meadowWarden, 30)
+		expect.equal(cost.items.material_frostTyrant, 20)
+		expect.equal(cost.items.material_stormSovereign, 20)
+		expect.equal(cost.items.starShard, 10)
+	end,
+
 	["costs: boss weapons by rarity, the masterwork's recipe, reforge half rounded up"] = function()
 		local rare = WeaponRules.makeCost(W, "verdantBlade")
 		assert(rare, "the Verdant Blade has a cost")

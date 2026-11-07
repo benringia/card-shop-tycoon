@@ -65,6 +65,8 @@ return {
 	-- on the foe's side facing you (`share` of its radius out, `up` studs above your root), a ring snapping out on big
 	-- hits, two crossing cut lines on each foe the dash slash hits, a dust puff where the finisher lands
 	BURST = { size = 5, big = 7, seconds = 0.35, share = 0.7, up = 1 },
+	-- The Magma Halberd's Eruption perk (weapons round 2): a lava burst and ring on the foe, on top of the extra hit's own
+	ERUPT = { color = { 255, 120, 40 }, size = 9, ring = 10 },
 	RING = { size = 10, seconds = 0.3 },
 	CUT_LINES = { length = 8, width = 1.1, delay = 0.06, grow = 0.06, hold = 0.12, fade = 0.25, angle = 35 },
 	DUST = { radius = 5, seconds = 0.4, puffs = 8, color = rgb(232, 222, 205) },

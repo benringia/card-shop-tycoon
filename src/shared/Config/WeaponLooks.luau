@@ -33,7 +33,6 @@ local WEAPONS: { [string]: Look } = {
 	sunforgedBlade = { glow = { 255, 190, 80 }, deep = { 255, 120, 20 }, trail = { 255, 140, 40 }, portrait = "rbxassetid://123708775303650" },
 	prismBlade = { glow = { 230, 200, 255 }, deep = { 150, 40, 255 }, trail = { 200, 170, 255 }, portrait = "rbxassetid://119112031121278" },
 	-- Rounds 2 and 3 (their looks get tuned when they're built)
-	forgeSpear = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "" },
 	magmaHalberd = element("Ember", ""),
 	tidalTrident = element("Tide", ""),
 	titansLance = element("Bloom", ""),
@@ -50,9 +49,10 @@ local FORGE_PORTRAITS: { [string]: string } = {
 	Volt = "rbxassetid://101378627438832",
 	Shade = "rbxassetid://81995315859743",
 }
--- The five Forge Swords take their element's colours
+-- The five Forge Swords take their element's colours; the five Forge Spears too (their portraits come with the model)
 for name in BY_ELEMENT do
 	WEAPONS[`forgeSword_{name}`] = element(name, FORGE_PORTRAITS[name])
+	WEAPONS[`forgeSpear_{name}`] = element(name, "")
 end
 
 return {

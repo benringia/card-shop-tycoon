@@ -6,7 +6,8 @@
 
 export type Cost = { cash: number, items: { [string]: number }, unlockLevel: number? }
 export type Source = { kind: string, boss: string?, cost: Cost? } -- kind: "starter" | "forge" | "boss" | "masterwork"
-export type Perk = { kind: string, every: number?, share: number?, seconds: number? } -- kind: "heal" | "burn" | "prism"
+-- kind: "heal" | "burn" | "prism" | "erupt" | "chill" (BattleSim swordPerk)
+export type Perk = { kind: string, every: number?, share: number?, seconds: number? }
 export type Weapon = {
 	id: string,
 	name: string,
@@ -108,11 +109,65 @@ local REST: { Weapon } = {
 		power = 1,
 		perk = { kind = "prism" }, -- always strong against the foe's element
 	},
-	-- Round 2: spears
-	{ id = "forgeSpear", name = "Forge Spear", family = "spear", rarity = "Common", ready = false, source = { kind = "forge", cost = FORGE_COST } },
-	{ id = "magmaHalberd", name = "Magma Halberd", family = "spear", rarity = "Very Rare", element = "Ember", ready = false, source = { kind = "boss", boss = "emberColossus" } },
-	{ id = "tidalTrident", name = "Tidal Trident", family = "spear", rarity = "Epic", element = "Tide", ready = false, source = { kind = "boss", boss = "frostTyrant" } },
-	{ id = "titansLance", name = "Titan's Lance", family = "spear", rarity = "Legendary", element = "Bloom", ready = false, source = { kind = "masterwork" } },
+}
+for _, weapon in REST do
+	table.insert(WEAPONS, weapon)
+end
+-- Round 2: spears (spec 2026-11-07-weapons-round2-design 4), all swinging the spear moveset (Config/Swords). Built
+-- (`ready`) with their models; until then "Coming soon". The Forge Spear in every element, like the Forge Sword.
+for _, element in ELEMENTS do
+	table.insert(WEAPONS, {
+		id = `forgeSpear_{element}`,
+		name = `{element} Forge Spear`,
+		family = "spear",
+		rarity = "Common",
+		element = element,
+		ready = false,
+		moveset = "spear",
+		source = { kind = "forge", cost = FORGE_COST },
+	})
+end
+REST = {
+	{
+		id = "magmaHalberd",
+		name = "Magma Halberd",
+		family = "spear",
+		rarity = "Very Rare",
+		element = "Ember",
+		ready = false,
+		moveset = "spear",
+		source = { kind = "boss", boss = "emberColossus" },
+		perk = { kind = "erupt", every = 5, share = 0.6 }, -- every 5th hit bursts for 60% of that hit more
+	},
+	{
+		id = "tidalTrident",
+		name = "Tidal Trident",
+		family = "spear",
+		rarity = "Epic",
+		element = "Tide",
+		ready = false,
+		moveset = "spear",
+		source = { kind = "boss", boss = "frostTyrant" },
+		perk = { kind = "chill", share = 0.1, seconds = 3 }, -- the foe's attacks 10% slower for 3 s, refreshed
+	},
+	{
+		id = "titansLance",
+		name = "Titan's Lance",
+		family = "spear",
+		rarity = "Legendary",
+		element = "Bloom",
+		ready = false,
+		moveset = "spear",
+		-- my call (spec 4): about the Prism Blade's two weeks, from three bosses' materials, Star Shards and cash
+		source = {
+			kind = "masterwork",
+			cost = {
+				cash = 60000,
+				items = { [MATERIALS.meadowWarden] = 30, [MATERIALS.frostTyrant] = 20, [MATERIALS.stormSovereign] = 20, starShard = 10 },
+			},
+		},
+		perk = { kind = "heal", every = 1, share = 0.01 }, -- every hit heals your creature 1% of its max HP
+	},
 	-- Round 3: scythes
 	{ id = "forgeScythe", name = "Forge Scythe", family = "scythe", rarity = "Common", ready = false, source = { kind = "forge", cost = FORGE_COST } },
 	{ id = "widowsReaper", name = "Widow's Reaper", family = "scythe", rarity = "Very Rare", element = "Shade", ready = false, source = { kind = "boss", boss = "caveBroodQueen" } },
@@ -180,5 +235,18 @@ return {
 	FORGE_DISTANCE = 12, -- studs from your own Forge machine
 	REQUEST_COOLDOWN = 1, -- seconds between a client's asks for its weapons
 	-- The boss each round-1 weapon is balanced against (tools/balance/bosses WEAPON)
-	TIER_BOSS = { forgeSword = "meadowWarden", verdantBlade = "caveBroodQueen", sunforgedBlade = "frostTyrant", prismBlade = "prismHydra" },
+	TIER_BOSS = {
+		forgeSword = "meadowWarden",
+		verdantBlade = "caveBroodQueen",
+		sunforgedBlade = "frostTyrant",
+		prismBlade = "prismHydra",
+		-- the spears (spec 2026-11-07-weapons-round2-design 4): the swords' tiers by rarity
+		forgeSpear = "meadowWarden",
+		magmaHalberd = "emberColossus",
+		tidalTrident = "frostTyrant",
+		titansLance = "prismHydra",
+	},
+	-- A weapon switched in a fight (the quick switch, spec 2026-11-07-weapons-round2-design 6): this long with no cut or
+	-- skill (the dodge still works)
+	SWAP_SECONDS = 1,
 }

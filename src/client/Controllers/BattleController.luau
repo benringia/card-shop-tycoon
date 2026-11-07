@@ -1140,6 +1140,16 @@ local function onEvents(events: { any })
 		elseif event.type == "swordHeal" and event.to and event.heal then
 			-- A weapon's heal perk (the Verdant Blade's every 4th hit) on the creature
 			floatText(event.to, `+{event.heal}`, HEAL_COLOR, false, "heal")
+		elseif event.type == "swordErupt" and event.to then
+			-- The Magma Halberd's Eruption on the foe (its extra hit shows as a sword hit of its own)
+			local marker = markerFor(event.to)
+			if marker then
+				local erupt = SwordFx.ERUPT
+				local tint = Color3.fromRGB(erupt.color[1], erupt.color[2], erupt.color[3])
+				local at = marker.Position + Vector3.new(0, 3, 0)
+				HitFx.burst(at, erupt.size, tint)
+				HitFx.ring(at, erupt.ring, tint)
+			end
 		elseif event.type == "run" and event.ok == false and event.kind == "failed" then
 			UIController.Notify("Couldn't get away!", true, 1.5)
 		elseif event.type == "callin" and event.from then
