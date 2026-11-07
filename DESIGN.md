@@ -3152,9 +3152,13 @@ boss models; the ranch and Heroic tiers come after those.
   round 1 sword's own skill, animation, effects (exaggerated), sounds and camera moments; others see them; free after
   the hit (a dodge before it cancels it); each skill's own HUD button. The four skill animations are published (ids in
   `Config/Swords`). Not yet checked: others' effects in a 2-player Local Server.
-- [ ] Weapons rounds 2-3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the spears (Forge Spear, Magma Halberd, Tidal Trident,
-  Titan's Lance) and scythes (Forge Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own movesets, models
-  and portraits; the Masterwork recipes for the Titan's Lance; the Forge's own model.
+- [x] Weapons round 2 (spec `2026-11-07-weapons-round2-design.md`, merged 2026-11-08): the sword hold fix, the spears
+  (Forge Spear in five elements, Magma Halberd, Tidal Trident, Titan's Lance) with their shared moveset (Thrust, Sweep,
+  Sky Pierce, Piercing Rush), effects, sounds, models, portraits and glow maps; their perks; the Titan's Lance's
+  Masterwork recipe; the quick weapon switch. Open: the Titan's Lance shows Power x1.20 (no Legendary Power passes the
+  Hydra limit; owner to decide), the Forge window's Upgrade panel relayout and the Lance's own skill (Titan's Wrath).
+- [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
+  Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
