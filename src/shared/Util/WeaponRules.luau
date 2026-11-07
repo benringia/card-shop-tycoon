@@ -73,10 +73,8 @@ function WeaponRules.shownPower(cfg: any, combat: any, weaponId: string, grade: 
 end
 
 -- Why changing weapons isn't allowed now (nil: it is): in a fight, or before the shop level that gives the first sword
-function WeaponRules.equipBlock(shopLevel: number, unlockLevel: number, fighting: boolean): string?
-	if fighting then
-		return "You can't change weapons in a fight."
-	elseif shopLevel < unlockLevel then
+function WeaponRules.equipBlock(shopLevel: number, unlockLevel: number): string?
+	if shopLevel < unlockLevel then
 		return `Your first sword comes at shop level {unlockLevel}.`
 	end
 	return nil

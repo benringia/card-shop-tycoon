@@ -90,6 +90,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ToastRules = require("./ToastRules.spec"),
 	WeaponsConfig = require("./WeaponsConfig.spec"),
 	WeaponRules = require("./WeaponRules.spec"),
+	WeaponSwitch = require("./WeaponSwitch.spec"),
 	WeaponLookRules = require("./WeaponLookRules.spec"),
 	WeaponText = require("./WeaponText.spec"),
 	SoundLevel = require("./SoundLevel.spec"),

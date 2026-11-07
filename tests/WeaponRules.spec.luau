@@ -5,10 +5,13 @@ local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 
 return {
-	["equipping: refused in a fight and before your first sword, with the reason to show"] = function()
-		expect.equal(WeaponRules.equipBlock(5, 4, true), "You can't change weapons in a fight.")
-		expect.equal(WeaponRules.equipBlock(3, 4, false), "Your first sword comes at shop level 4.")
-		expect.equal(WeaponRules.equipBlock(4, 4, false), nil)
+	-- The quick switch (spec 2026-11-07-weapons-round2-design 6): switching in a fight is allowed (the server's swap lock
+	-- makes it cost 1 s), only the first sword's shop level blocks
+	["equipping: refused before your first sword, with the reason to show; allowed in a fight"] = function()
+		expect.equal(WeaponRules.equipBlock(3, 4), "Your first sword comes at shop level 4.")
+		expect.equal(WeaponRules.equipBlock(4, 4), nil)
+		expect.equal(WeaponRules.equipBlock(10, 4), nil)
+		expect.equal((WeaponRules.equipBlock :: any)(10, 4, true), nil, "a fight no longer blocks (the old third argument)")
 	end,
 
 	["a Grade S weapon can't be reforged (the roll can never beat it); any lower grade can"] = function()

@@ -30,12 +30,19 @@ local equipped: { [Player]: string } = {}
 local isFighting: (Player) -> boolean = function()
 	return false
 end
+local onSwap: (Player) -> () = function() end
 local allowEquip = RateLimiter.new(Weapons.EQUIP_COOLDOWN)
 local allowRequest = RateLimiter.new(Weapons.REQUEST_COOLDOWN)
 
 -- BattleService hands its check in (it requires this service, so this one can't require it)
 function WeaponService.SetFightCheck(check: (Player) -> boolean)
 	isFighting = check
+end
+
+-- BattleService's swap lock: told when a player in a fight switches weapon (the quick switch, spec
+-- 2026-11-07-weapons-round2-design 6)
+function WeaponService.SetSwapHook(hook: (Player) -> ())
+	onSwap = hook
 end
 
 -- The weapon in hand: nil below the sword's shop level, otherwise the equipped one (the Steel Sword by default)
@@ -162,7 +169,7 @@ local function onEquip(player: Player, weaponId: unknown)
 	if not weapon or not weapon.ready or not WeaponService.GetEquipped(player) then
 		return
 	end
-	local blocked = WeaponRules.equipBlock(EconomyService.GetLevel(player), Swords.UNLOCK_SHOP_LEVEL, isFighting(player))
+	local blocked = WeaponRules.equipBlock(EconomyService.GetLevel(player), Swords.UNLOCK_SHOP_LEVEL)
 	if blocked then
 		Remotes.Notify:FireClient(player, blocked, true)
 		return
@@ -170,8 +177,13 @@ local function onEquip(player: Player, weaponId: unknown)
 	if weaponId ~= Weapons.STARTER and not WeaponService.GetOwned(player, weaponId) then
 		return
 	end
+	local switched = equipped[player] ~= weaponId
 	equipped[player] = weaponId
 	WeaponService.Changed(player)
+	-- a switch mid-fight costs SWAP_SECONDS with no cut or skill (BattleService)
+	if switched and isFighting(player) then
+		onSwap(player)
+	end
 end
 
 local function load(player: Player, data: PlayerData)

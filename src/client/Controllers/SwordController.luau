@@ -119,6 +119,7 @@ local HOLD_STEP = "SwordHold"
 -- cancel point; no cut starts during the dash slash; the last cut that struck (Util/SwingGate)
 local gate = SwingGate.new()
 local paused = false -- a super's cinematic is playing on your screen: no cuts, skill or dodge (Util/SuperCinematic)
+local swapUntil = 0 -- os.clock: a weapon switched mid-fight allows no cut or skill until then (the server holds them too)
 local othersFull = 0 -- other players' sword effects drawing in full now (SwordSkillFxRules.drawsOthers)
 
 -- A character's round 1 sword effects (spec 2026-11-06-sword-skills-design 4): its moveset's looks, its weapon's
@@ -486,6 +487,24 @@ local function refresh(character: Model)
 	end)
 end
 
+-- Your weapon changed during a fight (the quick switch, spec 2026-11-07-weapons-round2-design 6): no cut or skill for
+-- SWAP_SECONDS (the HUD's attack and skill buttons drain over it), the combo starts again and the old weapon's swing
+-- stops, as the server cancels its hit
+local function swapped()
+	if not combatTargets then
+		return
+	end
+	swapUntil = os.clock() + Weapons.SWAP_SECONDS
+	lastCut = nil
+	SwingGate.cancel(gate)
+	if onCooldown then
+		onCooldown("attack", swapUntil, Weapons.SWAP_SECONDS)
+		if skillReadyAt < swapUntil then
+			onCooldown("skill", swapUntil, Weapons.SWAP_SECONDS)
+		end
+	end
+end
+
 local function watchCharacter(character: Model)
 	-- The body arrives after CharacterAdded: a sword placed before its UpperTorso exists hangs on nothing and falls out
 	-- of the world (the owner's sword vanished from their back), so wait for the torso first
@@ -548,6 +567,7 @@ local function watchCharacter(character: Model)
 		loadMoves()
 		kneeling = false
 		character:GetAttributeChangedSignal("Sword"):Connect(loadMoves)
+		character:GetAttributeChangedSignal("Sword"):Connect(swapped)
 		-- The server clearing Downed (you got up, or the fight ended) always stands you up
 		character:GetAttributeChangedSignal("Downed"):Connect(function()
 			if not character:GetAttribute("Downed") then
@@ -985,8 +1005,8 @@ function SwordController.Attack()
 		return
 	end
 	local now = os.clock()
-	if not SwingGate.canAttack(gate, now) then
-		return -- the dash slash is playing
+	if not SwingGate.canAttack(gate, now) or now < swapUntil then
+		return -- the dash slash is playing, or a weapon switch
 	end
 	local index, startAt = SwordRules.nextCut(sword.combo, lastCut, now, Swords.COMBO_RESET)
 	if not index or not startAt then
@@ -1083,7 +1103,7 @@ function SwordController.Skill()
 	end
 	local character, root, humanoid = ownParts()
 	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
-	if not character or not root or not humanoid or not sword or os.clock() < skillReadyAt then
+	if not character or not root or not humanoid or not sword or os.clock() < skillReadyAt or os.clock() < swapUntil then
 		return
 	end
 	local skill = sword.skill

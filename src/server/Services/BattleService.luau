@@ -72,6 +72,7 @@ type Member = {
 	died: RBXScriptConnection?,
 	leashWarnedAt: number,
 	lastCut: SwordRules.LastCut?, -- boss fights: their sword's last cut (os.clock times)
+	swappedAt: number?, -- when they last switched weapon in this fight (no cut or skill for Weapons.SWAP_SECONDS)
 	skillReady: number, -- boss fights: os.clock when their sword skill is ready again
 	dodgedAt: number?, -- boss fights: os.clock of their last dodge (one before a skill's hit cancels it)
 	down: boolean, -- their player fighter is down (can't walk or jump)
@@ -1371,6 +1372,22 @@ local function swordCast(player: Player, sword: Swords.Sword, move: string)
 	end
 end
 
+-- Still in a weapon switch's lock (the quick switch, spec 2026-11-07-weapons-round2-design 6): no cut or skill
+local function swapping(member: Member, now: number): boolean
+	return member.swappedAt ~= nil and now < member.swappedAt + Weapons.SWAP_SECONDS
+end
+
+-- A player in a fight switched weapon (WeaponService): the lock starts, the combo starts again, and a cut or skill
+-- of the old weapon still on its way is cancelled (each checks swappedAt when it lands)
+local function onSwap(player: Player)
+	local fight = fights[player]
+	local member = if fight then fight.members[player] else nil
+	if member then
+		member.swappedAt = os.clock()
+		member.lastCut = nil
+	end
+end
+
 -- An Attack tap: the next cut of the combo (SwordRules.nextCut), landing at its strike frame
 local function onSwordAttack(player: Player)
 	local fight, member = swordFight(player)
@@ -1380,6 +1397,9 @@ local function onSwordAttack(player: Player)
 	end
 	local sword = Swords.SWORDS[swordId]
 	local now = os.clock()
+	if swapping(member, now) then
+		return
+	end
 	local index, startAt = SwordRules.nextCut(sword.combo, member.lastCut, now, Swords.COMBO_RESET)
 	if not index or not startAt then
 		return
@@ -1388,8 +1408,15 @@ local function onSwordAttack(player: Player)
 	SwordService.Touch(player)
 	local cut = sword.combo[index]
 	task.delay(startAt - now, swordCast, player, sword, `cut{index}`)
-	task.delay(startAt - now + cut.hitAt, strike, fight, member, cut.power * WeaponService.Power(player), "Sword", function(px, pz, lookX, lookZ, target)
-		return SwordRules.cutReaches(cut, px, pz, lookX, lookZ, target)
+	local power = cut.power * WeaponService.Power(player)
+	task.delay(startAt - now + cut.hitAt, function()
+		-- a switch after the tap, before the hit, cancels the old weapon's cut
+		if SwordRules.skillDodged(now, startAt - now + cut.hitAt, member.swappedAt) then
+			return
+		end
+		strike(fight, member, power, "Sword", function(px, pz, lookX, lookZ, target)
+			return SwordRules.cutReaches(cut, px, pz, lookX, lookZ, target)
+		end)
 	end)
 end
 
@@ -1403,6 +1430,8 @@ local function onSwordSkill(player: Player)
 	local swordId = SwordService.GetSword(player)
 	local root = getRoot(player)
 	if not allowSwordSkill(player) or not fight or not member or not swordId or not root or os.clock() < member.skillReady then
+		return
+	elseif swapping(member, os.clock()) then
 		return
 	end
 	local sword = Swords.SWORDS[swordId]
@@ -1418,8 +1447,8 @@ local function onSwordSkill(player: Player)
 		if fight.ended or fight.members[player] ~= member or not now then
 			return
 		end
-		-- a dodge before the hit cancelled the move (owner 2026-11-07)
-		if SwordRules.skillDodged(castAt, skill.hitAt, member.dodgedAt) then
+		-- a dodge before the hit cancelled the move (owner 2026-11-07), as does a weapon switch
+		if SwordRules.skillDodged(castAt, skill.hitAt, member.dodgedAt) or SwordRules.skillDodged(castAt, skill.hitAt, member.swappedAt) then
 			return
 		end
 		local look = now.CFrame.LookVector
@@ -1576,6 +1605,7 @@ function BattleService.Start()
 	DataService.Register({ name = "BattleService", load = load, save = save, unload = unload })
 	WildService.SetFightCheck(BattleService.IsFighting)
 	WeaponService.SetFightCheck(BattleService.IsFighting)
+	WeaponService.SetSwapHook(onSwap)
 	-- End a fight before the leave save, so cards that fainted in it are saved as resting
 	DataService.OnBeforeLeave(function(player)
 		local fight = fights[player]

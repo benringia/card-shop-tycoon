@@ -1499,6 +1499,9 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 	return Enum.ContextActionResult.Sink
 end
 
+-- Your weapon changing mid-fight (the quick switch): the skill button follows it
+local weaponWatch: RBXScriptConnection? = nil
+
 -- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD, its buttons
 -- always named, the sword on once the player has one (`sword`)
 local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
@@ -1523,6 +1526,17 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 	if combatSword then
 		SwordController.SetCombat(true, swordTargets, hud.setCooldown)
 		hud.setSkill(SwordController.EquippedMoveset())
+		local character = player.Character
+		if weaponWatch then
+			weaponWatch:Disconnect()
+		end
+		weaponWatch = if character
+			then character:GetAttributeChangedSignal("Sword"):Connect(function()
+				if combatHud == hud then
+					hud.setSkill(SwordController.EquippedMoveset())
+				end
+			end)
+			else nil
 	end
 	ContextActionService:BindActionAtPriority(COMBAT_ACTION, onCombatKey, false, Enum.ContextActionPriority.High.Value + 1, table.unpack(COMBAT_KEYS))
 end
@@ -1531,6 +1545,10 @@ local function stopCombat()
 	SuperCinematic.release()
 	local hud = combatHud
 	combatHud = nil
+	if weaponWatch then
+		weaponWatch:Disconnect()
+		weaponWatch = nil
+	end
 	if hud then
 		hud.destroy()
 		if combatSword then

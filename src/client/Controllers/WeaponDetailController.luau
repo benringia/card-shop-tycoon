@@ -158,7 +158,7 @@ function WeaponDetailController.Refresh()
 	local equipped = state.equipped == weaponId
 	-- Before the first sword's shop level there's nothing to equip yet: say when it comes instead
 	local level = Players.LocalPlayer:GetAttribute("Level")
-	local blocked = WeaponRules.equipBlock(if typeof(level) == "number" then level else 0, Swords.UNLOCK_SHOP_LEVEL, false)
+	local blocked = WeaponRules.equipBlock(if typeof(level) == "number" then level else 0, Swords.UNLOCK_SHOP_LEVEL)
 	equip.Visible = mine and weapon.ready and blocked == nil
 	equip.Text = if equipped then "Equipped" else "Equip"
 	equip.Active = not equipped

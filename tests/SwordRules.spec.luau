@@ -19,6 +19,14 @@ return {
 		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "d", x = 0, z = 4, radius = 0.5 }), false, "behind")
 	end,
 
+	-- A weapon switched mid-fight cancels the old weapon's strike still on its way, like a dodge (the server passes the
+	-- switch time in place of the dodge's)
+	["a weapon switch before a strike lands cancels it"] = function()
+		expect.equal(SwordRules.skillDodged(10, 0.2, 10.1), true, "switched before the hit")
+		expect.equal(SwordRules.skillDodged(10, 0.2, 9.5), false, "switched before the cut began")
+		expect.equal(SwordRules.skillDodged(10, 0.2, nil), false, "never switched")
+	end,
+
 	["a cone cut still uses reach and arc"] = function()
 		local cut = { power = 1, hitAt = 0.5, length = 1, reach = 12, arc = 30 }
 		expect.equal(SwordRules.cutReaches(cut, 0, 0, 0, -1, { id = "a", x = 0, z = -11, radius = 0.5 }), true)

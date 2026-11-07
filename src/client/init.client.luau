@@ -54,6 +54,7 @@ local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealCon
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
+local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
 local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
 
@@ -84,6 +85,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
+	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
@@ -140,5 +142,6 @@ else
 	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
+	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 end

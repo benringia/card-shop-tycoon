@@ -61,4 +61,8 @@ return {
 	-- The whole HUD shrinks with the screen's height on small screens (landscape phones): 1 at REFERENCE_HEIGHT
 	-- and up, never below MIN (tiles stay over 48 px to tap)
 	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7 },
+	-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6, the owner's pick A): a round chip on the right
+	-- edge at mid height with your weapon's picture in its rarity's ring, < and > either side; its name shows under it
+	-- for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too
+	WEAPON_SWITCH = { chip = 64, arrow = 48, gap = 6, right = 12, ring = 3, nameSeconds = 1.5, swipe = 30 },
 }
