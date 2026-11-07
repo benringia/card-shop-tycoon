@@ -192,10 +192,59 @@ local LOOKS: { [string]: Look } = {
 		form = "ahead",
 		beats = { charge = 0.05, leave = 0.28, arrive = 0.42, hit = 0.45, length = 12, width = 3, afterimages = 4, glow = 1.6, swirl = 2.2, flashSeconds = 0.35, bursts = 6, skid = 0.4 },
 	},
+	-- Titan's Wrath (the Titan's Lance; owner 2026-11-08: the storyboard, exaggerated). From `charge` gold and green light
+	-- spirals into the tip (an orb growing to `glow` studs, sparks streaming in from `inflow` studs round it, two spirals of
+	-- sparks and leaves `swirl` studs round you), `cracks` glowing cracks creep out from your feet to `crackReach` studs and
+	-- the screen rumbles harder and harder (SHAKE.titansRumble, a pulse every `rumbleEvery` s); at `peak` the tip flashes
+	-- white, a shockwave ring `ring` studs round bursts at your feet and `rocks` rocks lift off the ground; at `hit` one
+	-- huge thrust: a lance-shaped beam `beam` studs thick shoots the whole `length` ahead with a gold shockwave, the lifted
+	-- rocks fly with it, and a fissure tears along the `length` x `width` line in `tear` seconds, green light and `thorns`
+	-- thorns (`thornHeight` studs) bursting out of it (SHAKE.titansWrath and its burstSound); it glows on until `close`,
+	-- closing over `fade`, `petals` petals drifting down. Your own plays the camera moment: the side shot of your stance
+	-- (looking `camFocus` studs above your root) through the charge, the wide shot of the whole line from `camAt` (looking
+	-- `camLookUp` studs up), held `camHold`.
+	titansWrath = {
+		kind = "skill",
+		textures = { "glow", "spark", "star", "shard", "smoke", "ring", "crack" },
+		seconds = 2.2,
+		size = 14,
+		count = 120,
+		form = "ahead",
+		cinematic = true,
+		burstSound = "wrathFissure",
+		beats = {
+			charge = 0.1,
+			peak = 1.22,
+			hit = 1.35,
+			close = 2.7,
+			fade = 0.7,
+			tear = 0.22,
+			length = 14,
+			width = 4,
+			glow = 2.4,
+			inflow = 4,
+			swirl = 3.2,
+			cracks = 7,
+			crackReach = 6,
+			rumbleEvery = 0.12,
+			ring = 11,
+			rocks = 12,
+			beam = 2.2,
+			thorns = 9,
+			thornHeight = 4.5,
+			petals = 45,
+			camAt = 1.35,
+			camHold = 0.9,
+			camFocus = 0.5, -- the hero shot looks at your stance (CINEMATIC.lookUp is for a jump)
+			camLookUp = 1.2, -- the wide shot looks low, along the fissure
+		},
+	},
 }
 
 return {
 	LOOKS = LOOKS,
+	-- Titan's Wrath's colours beside the Lance's greens: its gold light, the thorns' bark and pale spikes, pink petals
+	TITAN = { gold = { 255, 206, 84 }, bark = { 92, 64, 36 }, thorn = { 240, 232, 214 }, petal = { 255, 179, 209 } },
 	-- The Verdant's colours beside its weapon's greens: bark for roots and vine stems, pale thorns, pink petals
 	VERDANT = { bark = { 104, 72, 40 }, thorn = { 236, 232, 222 }, petal = { 255, 179, 209 } },
 	-- The Prism Blade's colours: the elements in its ghost blades' order (their colours: WeaponLooks.BY_ELEMENT)
@@ -209,7 +258,9 @@ return {
 		Shade = { particle = "smoke" },
 	} :: { [string]: { particle: string } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
-	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35 },
+	-- Titan's Wrath: each rumble pulse through the charge grows to titansRumble (they decay between pulses: it throbs and
+	-- builds), the fissure's shake is titansWrath (the peak's flash shakes `release`)
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.5, titansWrath = 1 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over

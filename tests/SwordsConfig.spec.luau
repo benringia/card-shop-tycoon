@@ -88,6 +88,22 @@ return {
 		expect.equal((skill.free :: Swords.Free).at, skill.hitAt, "free from the thrust")
 	end,
 
+	["Titan's Wrath has its own sounds: the charge, the rumble, the thrust, thorns and the fissure; the spear's are untouched"] = function()
+		local lance, spear = Swords.SWORDS.titansLance, Swords.SWORDS.spear
+		local keys = {}
+		for _, cue in lance.cues.skill do
+			keys[cue.key] = cue.at
+		end
+		for _, key in { "wrathCharge", "wrathRumble", "wrathThrust", "thornsTear" } do
+			assert(keys[key], `the skill cues {key}`)
+			expect.equal(lance.sounds[key] ~= nil and lance.sounds[key] ~= "", true, `{key} has a sound`)
+			expect.isNil(spear.sounds[key], `the spear's sounds stay its own ({key})`)
+		end
+		expect.equal(keys.wrathThrust < lance.skill.hitAt and lance.skill.hitAt - keys.wrathThrust < 0.1, true, "the thrust's boom on the hit")
+		expect.equal(lance.sounds.wrathFissure ~= nil, true, "the fissure's (its burst sound)")
+		expect.equal(lance.sounds.thrustAir, spear.sounds.thrustAir, "the spear's cut sounds")
+	end,
+
 	-- The line's ends are rounded by half its width (SwordRules.inDashPath, as the dash's path): past its end means more
 	-- than 14 + 2 studs out, plus the foe's own radius
 	["Titan's Wrath hits every foe on the 14-stud line ahead and none beside or past it"] = function()

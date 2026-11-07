@@ -394,6 +394,13 @@ do
 	-- (tools/blender/anim_titans_lance.py): every foe on the 14 x 4 line ahead. You stay put: the beam and the fissure
 	-- carry the reach. The spear's cuts, moves and sounds, the same tables.
 	local spear = SWORDS.spear
+	-- Its own sounds on top of the spear's (Pro Sound Effects, measured into Config/SoundLevels)
+	local lanceSounds = table.clone(sounds)
+	lanceSounds.wrathCharge = "rbxassetid://9125973984" -- Spaceship Blast High Pitch Energy Charge Up: light into the tip
+	lanceSounds.wrathRumble = "rbxassetid://9114344093" -- Energy Presence 8: the ground rumbling through the charge
+	lanceSounds.wrathThrust = "rbxassetid://9120023325" -- Thunder With Lion Roar Searing Blast 5: the thrust
+	lanceSounds.thornsTear = "rbxassetid://9118676043" -- Rocks Dirt Debris Pouring Bursts 13: thorns tearing up
+	lanceSounds.wrathFissure = "rbxassetid://9113216700" -- Avalanche Crashing 3: the fissure tearing open (its burst)
 	local lanceAnimations = table.clone(animations)
 	lanceAnimations.skill = "" -- until the owner publishes it Studio plays SwordAnimations.TitansLance.skill
 	SWORDS.titansLance = {
@@ -412,15 +419,16 @@ do
 			free = { at = 1.35 }, -- the thrust
 		},
 		animations = lanceAnimations,
-		sounds = sounds,
-		-- the skill's own sounds come with its effects; until then the rush's charge and the plunge's slam and rocks
+		sounds = lanceSounds,
+		-- the spear's cuts; the skill: light gathering, the ground rumbling, the thrust's roar, thorns tearing up (the
+		-- fissure's crash plays where it bursts: Config/SwordSkillFx titansWrath burstSound)
 		cues = {
 			cut1 = spear.cues.cut1,
 			cut2 = spear.cues.cut2,
 			cut3 = spear.cues.cut3,
-			skill = { { key = "rushCharge", at = 0.1 }, { key = "slam", at = 1.35 }, { key = "rockBurst", at = 1.37 } },
+			skill = { { key = "wrathCharge", at = 0.05 }, { key = "wrathRumble", at = 0.15 }, { key = "wrathThrust", at = 1.31 }, { key = "thornsTear", at = 1.42 } },
 		},
-		fx = { slash = "spearStreak", finisher = "skyPierce", skill = "piercingRush" },
+		fx = { slash = "spearStreak", finisher = "skyPierce", skill = "titansWrath" },
 	}
 end
 
@@ -508,5 +516,10 @@ return {
 		rushCharge = 0.35,
 		rushDash = 0.4,
 		skid = 0.3,
+		wrathCharge = 0.35,
+		wrathRumble = 0.45,
+		wrathThrust = 0.5,
+		thornsTear = 0.4,
+		wrathFissure = 0.5,
 	},
 }

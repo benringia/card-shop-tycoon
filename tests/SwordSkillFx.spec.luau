@@ -231,4 +231,33 @@ return {
 		end
 		expect.equal(found, true, "a Sword skills section")
 	end,
+
+	-- Weapons round 2.5 (spec 2026-11-08-forge-relayout-and-titans-wrath-design 3; the owner's storyboard): Titan's Wrath
+	["Titan's Wrath: the Lance's skill look, its beats in the storyboard's order, its hit and fissure the skill's"] = function()
+		local lance = Swords.SWORDS.titansLance
+		expect.equal(lance.fx.skill, "titansWrath")
+		local look = SwordSkillFx.LOOKS.titansWrath
+		assert(look, "the titansWrath look")
+		expect.equal(look.kind, "skill")
+		expect.equal(look.form, "ahead")
+		expect.equal(look.cinematic, true, "your own plays the camera moment")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.charge < b.peak and b.peak < b.hit and b.hit < b.close, true, "charge, peak, thrust, then the fissure closes")
+		expect.equal(b.hit, lance.skill.hitAt, "the thrust is the skill's hit")
+		expect.equal(b.camAt, b.hit, "the wide shot at the thrust")
+		expect.equal(b.length, lance.skill.shape.length, "the fissure runs the hit's whole line")
+		expect.equal(b.width, lance.skill.shape.width)
+		expect.equal(lance.sounds[look.burstSound :: string] ~= nil, true, "its burst sound is the Lance's")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.titansRumble > 0 and shake.titansRumble < shake.titansWrath, true, "a rumble under the fissure's big shake")
+		expect.equal(shake.titansWrath >= shake.impact, true, "the fissure shakes at least as hard as a burst")
+	end,
+
+	-- Studio 2026-11-08: the cinematic's hero shot looked 5.5 studs above you (Sunfall Cleave's jump), so Titan's Wrath's
+	-- low stance sat at the screen's bottom edge: it frames your stance, and its wide shot looks low along the fissure
+	["Titan's Wrath's camera moment frames the low stance and the fissure on the ground"] = function()
+		local b = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		expect.equal(b.camFocus ~= nil and b.camFocus < SwordSkillFx.CINEMATIC.lookUp, true, "the hero shot at your stance")
+		expect.equal(b.camLookUp ~= nil and b.camLookUp < SwordSkillFx.CINEMATIC.wide.lookUp, true, "the wide shot low, on the ground")
+	end,
 }

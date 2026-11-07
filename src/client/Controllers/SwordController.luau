@@ -1173,6 +1173,9 @@ function SwordController.Skill()
 				ScreenFx.shake(shake.prismStrike)
 				SwordController.PlaySound("prismStrike")
 			end,
+			rumble = function(share: number)
+				ScreenFx.shake(shake.titansRumble * share) -- Titan's Wrath's charge
+			end,
 			burst = function()
 				ScreenFx.shake((shake :: any)[effects.fx.skill] or shake.impact)
 				local spec = SwordSkillFxConfig.LOOKS[effects.fx.skill]

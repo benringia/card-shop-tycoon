@@ -123,6 +123,9 @@ return {
 		["9119226861"] = 46, -- spinWhoosh: Slow Whoosh Airy Rumble Slicing Spinning 2
 		["9118631275"] = 92, -- rockBurst: Rock Impacts 12
 		["9118159097"] = 116, -- rushCharge: Reverse Suck 3
+		["9114344093"] = 93, -- wrathRumble: Energy Presence 8 (2026-11-08)
+		["9125973984"] = 102, -- wrathCharge: Spaceship Blast High Pitch Energy Charge Up
+		["9120023325"] = 104, -- wrathThrust: Thunder With Lion Roar Searing Blast 5
 		["9120629528"] = 115, -- rushDash: Web Whoosh Fast Heavy Swooshes 3
 		["9114658416"] = 123, -- skid: Gravel Slide 1
 	} :: { [string]: number },

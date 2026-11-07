@@ -30,7 +30,8 @@ export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
 -- several (Prism Judgment's blades), and where the effect bursts
 -- `lite`: another player's cast (drawn lighter: SwordSkillFxRules.vineBudget); `live()` false at the skill's hit moment
 -- (your dodge cancelled it): the damaging part (the crescent, the vines, the dives, the wave) isn't launched
-export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, lite: boolean?, live: (() -> boolean)? }
+-- `rumble(share)`: a pulse of a long charge's growing rumble (Titan's Wrath), `share` 0-1 of its strongest
+export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, rumble: ((share: number) -> ())?, lite: boolean?, live: (() -> boolean)? }
 
 local function cancelled(hooks: Hooks): boolean
 	return hooks.live ~= nil and not hooks.live()
@@ -52,6 +53,9 @@ local VINE_SNAP = 0.1 -- seconds a vine takes to snap shut
 local VERDANT = SwordSkillFxConfig.VERDANT
 local PRISM = SwordSkillFxConfig.PRISM
 local ELEMENTS = SwordSkillFxConfig.ELEMENTS
+local TITAN = SwordSkillFxConfig.TITAN
+local DUST = Color3.fromRGB(184, 164, 138)
+local STONE = Color3.fromRGB(110, 92, 74)
 
 local function texture(key: string): string?
 	for _, list in TEXTURE_TABLES do
@@ -1390,6 +1394,237 @@ local function piercingRush(character: Model, root: BasePart, spec: SwordSkillFx
 	end)
 end
 
+-- The lance-shaped beam of Titan's Wrath's thrust: a long shaft of light from `from` to `to`, a wider head near its
+-- end and a fine point, all fading over `seconds`
+local function lanceBeam(from: Vector3, to: Vector3, thick: number, colors: Colors, seconds: number)
+	local along = to - from
+	beam(from, from + along * 0.78, thick, colors, seconds)
+	beam(from + along * 0.76, from + along * 0.94, thick * 1.7, colors, seconds)
+	beam(from + along * 0.92, to, thick * 0.55, colors, seconds)
+end
+
+-- A shockwave ring standing across the thrust at `at` (facing `ahead`), racing out to `size` studs and fading
+local function thrustRing(at: Vector3, ahead: Vector3, color: Color3, size: number, seconds: number)
+	local ring = holder(CFrame.lookAt(at, at + ahead) * CFrame.Angles(0, math.rad(90), 0), Vector3.new(0.25, 1, 1), seconds + 0.2)
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Material = Enum.Material.Neon
+	ring.Color = color
+	ring.Transparency = 0.25
+	tween(ring, seconds, { Size = Vector3.new(0.05, size, size), Transparency = 1 })
+end
+
+-- Titan's Wrath (the Titan's Lance; the owner's storyboard 2026-11-08, exaggerated): a long, loud charge (gold and green
+-- light pouring into the tip, sparks and leaves swirling round you, glowing cracks creeping out from your feet, the
+-- screen rumbling harder and harder), the peak's white flash, ring and rocks lifting off the ground, then the thrust: a
+-- lance-shaped beam and a gold shockwave down the whole line, the rocks flung along it, a fissure tearing open the line's
+-- length with green light and thorns bursting out of it, glowing on and closing as petals drift down. A dodge or a
+-- switch before the thrust (`live()` false) stops the charge and nothing is launched. Others see it lighter (`lite`:
+-- no lifted rocks, half the thorns, stems only).
+local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local gold = rgb(TITAN.gold)
+	local green = colors.glow
+	local goldLight: Colors = { deep = gold, glow = gold:Lerp(WHITE, 0.25), element = colors.element }
+	local feet = groundAt(root.Position - UP * ROOT_TO_GROUND)
+	local charging = beats.peak - beats.charge
+	local full = not hooks.lite and Extras.enabled()
+	local function tip(): Vector3
+		return tipOf(hooks.blade, root)
+	end
+	local function stopped(): boolean
+		return cancelled(hooks) or not root.Parent
+	end
+
+	-- the charge
+	task.delay(beats.charge, function()
+		if stopped() then
+			return
+		end
+		local orb = holder(CFrame.new(tip()), Vector3.one * 0.3, charging + 0.5)
+		orb.Shape = Enum.PartType.Ball
+		orb.Material = Enum.Material.Neon
+		orb.Color = gold:Lerp(WHITE, 0.3)
+		orb.Transparency = 0.1
+		local light = Instance.new("PointLight")
+		light.Color = gold
+		light.Range = 6
+		light.Brightness = 2
+		light.Parent = orb
+		-- sparks of gold and green light streaming into the tip from all round it
+		local inflow = holder(CFrame.new(tip()), Vector3.one * beats.inflow * 2 * scale, charging + 0.5)
+		inflow.Shape = Enum.PartType.Ball
+		for index, tint in { gold, green } do
+			local stream = emitter(inflow, if index == 1 then "spark" else "glow", tint, {
+				size = { 0.45 * scale, 0.05 },
+				life = { 0.3, 0.45 },
+				speed = { beats.inflow * 2.2 * scale, beats.inflow * 2.8 * scale },
+				spread = 0,
+				brightness = 2.5,
+			})
+			stream.Shape = Enum.ParticleEmitterShape.Sphere
+			stream.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+			stream.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
+			stream.Rate = detail(80)
+		end
+		local function body(): Vector3
+			return root.Position - UP * 1.2
+		end
+		swirl(body, beats.swirl * scale, gold, "spark", charging, 0.8 * scale)
+		swirl(body, beats.swirl * 0.7 * scale, green, "shard", charging, 0.9 * scale)
+		-- glowing cracks creeping out from your feet the whole charge, glowing on until the fissure closes
+		for index = 1, beats.cracks do
+			local angle = index / beats.cracks * math.pi * 2 + 0.4
+			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			local reach = beats.crackReach * scale * (0.7 + (index % 3) * 0.15)
+			fissure(feet, feet + out * reach, 0.9 * scale, gold, green, charging, beats.close - beats.peak, beats.fade, "spark")
+		end
+		local ground = holder(CFrame.new(feet + UP * 0.3) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, 4, 4), charging + 1.5)
+		local dust = emitter(ground, "smoke", DUST, { size = { 1.4 * scale, 3 * scale }, life = { 0.5, 0.9 }, speed = { 2, 5 }, spread = 80, light = 0, brightness = 1, start = 0.4 })
+		dust.Shape = Enum.ParticleEmitterShape.Disc
+		dust.Rate = detail(30)
+		-- the orb and its light grow, the rumble pulses harder (your own)
+		local started = os.clock()
+		local nextPulse = 0
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = os.clock() - started
+			local a = math.clamp(t / charging, 0, 1)
+			if a >= 1 or stopped() or not orb.Parent then
+				connection:Disconnect()
+				orb:Destroy()
+				inflow:Destroy()
+				dust.Rate = 0
+				return
+			end
+			local at = tip()
+			orb.CFrame = CFrame.new(at)
+			inflow.CFrame = CFrame.new(at)
+			orb.Size = Vector3.one * (0.3 + beats.glow * scale * smooth(a))
+			light.Range = 6 + 16 * a
+			light.Brightness = 2 + 5 * a
+			if hooks.rumble and t >= nextPulse then
+				nextPulse = t + beats.rumbleEvery
+				hooks.rumble(0.2 + 0.8 * a)
+			end
+		end)
+	end)
+
+	-- the peak: the tip flashes white, a ring bursts round your feet, rocks lift off the ground
+	local lifted: { Part } = {}
+	task.delay(beats.peak, function()
+		if stopped() then
+			return
+		end
+		starFlash(tip(), { deep = WHITE, glow = WHITE, element = nil }, 8 * scale, 50)
+		ElementFx.ring(feet, WHITE, beats.ring * scale, 0.4)
+		task.delay(0.08, function()
+			ElementFx.ring(feet, gold, beats.ring * 0.8 * scale, 0.5)
+		end)
+		if hooks.released then
+			hooks.released()
+		end
+		if not full then
+			return
+		end
+		for index = 1, beats.rocks do
+			local angle = index / beats.rocks * math.pi * 2
+			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			local rock = piece(STONE:Lerp(Color3.new(), (index % 4) * 0.08), Enum.Material.Slate)
+			rock.Size = Vector3.new(0.6, 0.5, 0.6) * scale * (0.6 + (index % 3) * 0.35)
+			rock.Transparency = 0
+			local base = feet + out * (1.6 + (index % 4) * 0.9) * scale
+			rock.CFrame = CFrame.new(base) * CFrame.Angles(index, index * 2, 0)
+			tween(rock, beats.hit - beats.peak + 0.05, { CFrame = CFrame.new(base + UP * (1.2 + (index % 3) * 0.8) * scale) * CFrame.Angles(index + 1, index * 2 + 1, 0.5) })
+			table.insert(lifted, rock)
+			Debris:AddItem(rock, 3)
+		end
+	end)
+
+	-- the thrust: the beam and the shockwave, the rocks flung along the line, the fissure, green light and thorns
+	task.delay(beats.hit, function()
+		if stopped() then
+			for _, rock in lifted do
+				rock:Destroy()
+			end
+			return
+		end
+		local ahead = flatLook(root)
+		local from = Vector3.new(root.Position.X, feet.Y, root.Position.Z)
+		local finish = from + ahead * beats.length
+		local middle = from + ahead * beats.length / 2
+		local at = tip()
+		local height = math.max(at.Y - feet.Y, 1.5)
+		local shaftFrom = Vector3.new(at.X, feet.Y + height, at.Z)
+		lanceBeam(shaftFrom, finish + UP * height, beats.beam * scale, goldLight, 0.55)
+		thrustRing(shaftFrom + ahead * 1.5, ahead, gold, 9 * scale, 0.35)
+		task.delay(0.06, function()
+			thrustRing(shaftFrom + ahead * beats.length * 0.5, ahead, gold:Lerp(WHITE, 0.4), 12 * scale, 0.4)
+		end)
+		starFlash(finish + UP * height, goldLight, 9 * scale, 60)
+		for index, rock in lifted do
+			local landing = from + ahead * (5 + (index % 5) * 2.2) + ahead:Cross(UP) * ((index % 3) - 1) * 1.4 + UP * 0.4
+			tween(rock, 0.32, { CFrame = CFrame.new(landing) * CFrame.Angles(index * 3, index, 1) })
+			task.delay(0.6, function()
+				tween(rock, 0.4, { Transparency = 1 })
+			end)
+		end
+		if hooks.burst then
+			hooks.burst(middle)
+		end
+		-- the fissure tearing open the whole line, a gold seam in it (a little above the ground: 14 studs of rocky ground
+		-- would bury a flat crack in its bumps)
+		local linger = beats.close - beats.hit - beats.tear
+		local lift = UP * 0.25
+		fissure(from + ahead * 0.8 + lift, finish + lift, beats.width * 0.65 * scale, green, gold, beats.tear, linger, beats.fade, "shard")
+		fissure(from + ahead * 0.8 + lift * 1.2, finish + lift * 1.2, beats.width * 0.2 * scale, gold, green, beats.tear, linger, beats.fade, "spark")
+		-- green light bursting up out of it, dust and earth along it
+		local strip = holder(CFrame.lookAt(middle + UP * 0.3, middle + UP * 0.3 + ahead), Vector3.new(beats.width * scale, 0.3, beats.length), linger + beats.fade + 1.5)
+		local rays = emitter(strip, "glow", green, { size = { 1.6 * scale, 0.2 }, life = { 0.5, 0.9 }, speed = { 8, 16 }, spread = 12, brightness = 3 })
+		rays.Shape = Enum.ParticleEmitterShape.Box
+		rays.EmissionDirection = Enum.NormalId.Top
+		rays:Emit(detail(spec.count))
+		rays.Rate = detail(40)
+		local earth = emitter(strip, "smoke", DUST, { size = { 2 * scale, 4.5 * scale }, life = { 0.6, 1.1 }, speed = { 3, 8 }, spread = 40, light = 0, brightness = 1, start = 0.35 })
+		earth.Shape = Enum.ParticleEmitterShape.Box
+		earth.EmissionDirection = Enum.NormalId.Top
+		earth:Emit(detail(40))
+		for index = 1, 5 do
+			task.delay(index * 0.04, function()
+				ElementFx.burst(from + ahead * beats.length * index / 6, green, 0.9 * scale)
+			end)
+		end
+		task.delay(linger, function()
+			rays.Rate = 0
+		end)
+		-- thorns bursting up along it, alternately left and right, sinking back as it closes
+		local side = ahead:Cross(UP)
+		local vines: { Vine } = {}
+		local count = if full then beats.thorns else math.ceil(beats.thorns / 2)
+		for index = 1, count do
+			local sign = if index % 2 == 0 then 1 else -1
+			local base = from + ahead * (beats.length * (index - 0.4) / count) + side * sign * beats.width * 0.3 * scale
+			local inward = (ahead * 0.6 - side * sign * 0.4).Unit
+			local thorn = makeVine(base, inward, beats.thornHeight * scale * (0.7 + (index % 3) * 0.2), 0.5 * scale, rgb(TITAN.bark), green, Enum.Material.Wood, gold, full)
+			thorn.growAt = beats.tear * (index - 1) / count
+			thorn.grow = 0.12
+			thorn.lean = -0.1
+			thorn.curl = 0.16
+			table.insert(vines, thorn)
+		end
+		animateVines(vines, nil, linger, beats.fade)
+		-- petals drifting down over the line
+		task.delay(0.3, function()
+			local sky = holder(CFrame.lookAt(middle + UP * 7, middle + UP * 7 + ahead), Vector3.new(beats.width * 2 * scale, 0.2, beats.length), linger + 2.5)
+			local petals = emitter(sky, "glow", rgb(TITAN.petal), { size = { 0.45 * scale, 0.25 * scale }, life = { 1.6, 2.4 }, speed = { 0.5, 1.5 }, spread = 180, spin = { -120, 120 }, accel = -UP * 2.2, drag = 1 })
+			petals.Shape = Enum.ParticleEmitterShape.Box
+			petals.Rate = detail(beats.petals)
+			task.delay(linger, function()
+				petals.Rate = 0
+			end)
+		end)
+	end)
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
 -- the Sunforged's flames, the Verdant's leaves, the Prism's rainbow or the Forge Sword's element stream off it
 -- `hitIn`: seconds from now to the cut's strike (the spear's streak and crescent land then)
@@ -1870,6 +2105,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "piercingRush" and spec.beats then
 		piercingRush(character, root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "titansWrath" and spec.beats then
+		titansWrath(root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)
