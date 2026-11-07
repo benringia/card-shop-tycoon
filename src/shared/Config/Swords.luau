@@ -323,13 +323,19 @@ SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", "rbxassetid://1363919
 -- leap and a plunge 8 studs ahead with a 4-stud burst there; nothing reaches past 12 (a boss's swipe still reaches you).
 -- The same damage a second as the sword combo (tests/SwordsConfig). Timings are its animations' (tools/blender/
 -- anim_spear.py, exaggerated on the owner's ask 2026-11-07: a deep lunge, a spinning sweep, a big spinning leap); its
--- moves play from ReplicatedStorage.SwordAnimations.Spear until published. Piercing Rush: a 12-stud rush tip-first,
+-- moves were published by the owner (2026-11-07). Piercing Rush: a 12-stud rush tip-first,
 -- every foe along a 3-stud-wide line as it arrives.
 do
+	-- its own moves (published by the owner 2026-11-07); dodge, flinch, down and get up stay the Steel Sword's
 	local animations = table.clone(starter.animations)
-	for _, move in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3", "skill" } do
-		animations[move] = ""
-	end
+	animations.ready = "rbxassetid://108741829282686"
+	animations.draw = "rbxassetid://137638158886237"
+	animations.sheath = "rbxassetid://75538804804480"
+	animations.run = "rbxassetid://83298416937626"
+	animations.cut1 = "rbxassetid://132162880960663"
+	animations.cut2 = "rbxassetid://129170104368589"
+	animations.cut3 = "rbxassetid://100993680318049"
+	animations.skill = "rbxassetid://97504016219341"
 	-- Its own sounds on top of the sword's (Pro Sound Effects, measured into Config/SoundLevels): the thrust's air, the
 	-- sweep's spin, rocks bursting on the plunge, the rush's charge, dash and skid
 	local sounds = table.clone(starter.sounds)
