@@ -392,10 +392,11 @@ return {
 			back = { x = 0.65, y = 1.9, z = 0.68, angleZ = 150 },
 			backScale = 1.05,
 		},
-		-- Upright at your side (owner's pick C, 2026-11-07): the grip 31% up from the butt, the head along the forearm;
-		-- on the back diagonally at its own size. Starting values, set in Studio with the models (spec 5.1)
+		-- Upright at your side (owner's pick C, 2026-11-07): the grip 31% up from the butt; the hand's tilt of -90 makes a
+		-- hanging arm hold it straight ahead (the spear's moves are keyed with it, tools/blender/anim_spear.py); on the back
+		-- diagonally at its own size. The back's numbers are starting values, set in Studio with the models (spec 5.1)
 		spear = {
-			hand = { y = -0.18, angleX = 0, twist = 0 },
+			hand = { y = -0.18, angleX = -90, twist = 0 },
 			back = { x = 0, y = 0.6, z = 0.7, angleZ = 160 },
 			backScale = 1,
 		},
