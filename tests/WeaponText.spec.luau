@@ -112,4 +112,27 @@ return {
 		expect.equal(#unknown, 1, "no cash line for a free cost")
 		expect.equal(unknown[1].text, "mystery 0/2")
 	end,
+
+	["the Forge window's tab lines say what each tab does (owner's pick A, 2026-11-08)"] = function()
+		expect.equal(WeaponText.tabLine("Forge"), "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).")
+		expect.equal(WeaponText.tabLine("Upgrade"), "Level a weapon you own up, +0 to +10: more Power and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.")
+		expect.equal(WeaponText.tabLine("Reforge"), "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.")
+	end,
+
+	["cost chips: cash first, then each item with its icon, need and what you have"] = function()
+		local chips = WeaponText.costChips({ cash = 250, items = { wildOre = 2 } }, { wildOre = 11 }, 100, Items)
+		expect.equal(#chips, 2)
+		expect.equal(chips[1].icon, "Cash")
+		expect.equal(chips[1].text, "$250")
+		expect.equal(chips[1].enough, false, "$100 of $250")
+		expect.equal(chips[2].icon, "WildOre")
+		expect.equal(chips[2].text, "2 Wild Ore (you have 11)")
+		expect.equal(chips[2].enough, true)
+		local free = WeaponText.costChips({ cash = 0, items = { starShard = 1, mystery = 2 } }, {}, 0, Items)
+		expect.equal(#free, 2, "no cash chip for a cost without cash")
+		expect.equal(free[1].text, "2 mystery (you have 0)", "sorted by id; an unknown item shows its id")
+		expect.equal(free[1].icon, "")
+		expect.equal(free[2].text, "1 Star Shard (you have 0)")
+		expect.equal(free[2].enough, false)
+	end,
 }

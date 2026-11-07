@@ -198,4 +198,40 @@ function WeaponText.cost(cost: { cash: number, items: { [string]: number } }, ha
 	return lines
 end
 
+-- The Forge window's line under its tabs: what the tab does (owner's pick A, 2026-11-08)
+local TAB_LINES = {
+	Forge = "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).",
+	Upgrade = "Level a weapon you own up, +0 to +10: more Power and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.",
+	Reforge = "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.",
+}
+function WeaponText.tabLine(tab: string): string
+	return TAB_LINES[tab] or ""
+end
+
+-- The Forge window's cost chips: cash first ("$250"), then each item by id ("2 Wild Ore (you have 11)"), each with its
+-- picture (a Config/UIIcons name, or an emoji; "" for an unknown item) and whether you have enough
+export type Chip = { icon: string, text: string, enough: boolean }
+function WeaponText.costChips(cost: { cash: number, items: { [string]: number } }, have: { [string]: number }, cashNow: number, items: any): { Chip }
+	local chips: { Chip } = {}
+	if cost.cash > 0 then
+		table.insert(chips, { icon = "Cash", text = cash(cost.cash), enough = cashNow >= cost.cash })
+	end
+	local ids = {}
+	for id in cost.items do
+		table.insert(ids, id)
+	end
+	table.sort(ids)
+	for _, id in ids do
+		local need = cost.items[id]
+		local count = have[id] or 0
+		local item = items.ITEMS[id]
+		table.insert(chips, {
+			icon = if item then item.icon or "" else "",
+			text = `{need} {if item then item.name else id} (you have {count})`,
+			enough = count >= need,
+		})
+	end
+	return chips
+end
+
 return WeaponText
