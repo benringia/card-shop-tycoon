@@ -107,6 +107,25 @@ return {
 		expect.equal(Weapons.SWAP_SECONDS, 1)
 	end,
 
+	-- Weapons round 2: the spears are built (their models in, spec 2026-11-07-weapons-round2-design 7); every built
+	-- weapon's model (a Forge copy: its base model's) has its glow map
+	["the spears are built, and every built weapon has its glow map"] = function()
+		local models = { magmaHalberd = "MagmaHalberd", tidalTrident = "TidalTrident", titansLance = "TitansLance" }
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			models[`forgeSpear_{element}`] = `ForgeSpear_{element}`
+		end
+		for id, model in models do
+			expect.equal(Weapons.ById[id].ready, true, `{id} is built`)
+			expect.equal(Weapons.ById[id].model, model, id)
+		end
+		for _, w in Weapons.WEAPONS do
+			if w.ready and w.model and w.id ~= Weapons.STARTER then
+				local base = string.gsub(w.model, "_%a+$", "")
+				assert(WeaponLooks.GLOW_MAPS[base], `{w.id}: no glow map for {base}`)
+			end
+		end
+	end,
+
 	["every weapon is complete and in the Armory order"] = function()
 		expect.equal(#Weapons.WEAPONS, 21) -- Steel, 5 Forge Swords, 3 new swords, 5 Forge Spears, 3 spears, 4 scythes
 		for _, w in Weapons.WEAPONS do

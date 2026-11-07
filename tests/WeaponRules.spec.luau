@@ -182,11 +182,14 @@ return {
 		id, need = WeaponRules.materialGoal(W, "wildOre", { forgeSword_Ember = { grade = "C", level = 0 } })
 		expect.equal(id, "forgeSword_Ember", "once owned: its next upgrade")
 		expect.equal(need, 2)
-		expect.isNil((WeaponRules.materialGoal(W, "material_frostTyrant", {})), "no built weapon uses it yet")
+		id, need = WeaponRules.materialGoal(W, "material_frostTyrant", {})
+		expect.equal(id, "tidalTrident", "the Frost Tyrant's own weapon (weapons round 2)")
+		expect.equal(need, 40)
 		id, need = WeaponRules.materialGoal(W, "material_meadowWarden", { verdantBlade = { grade = "S", level = 10 } })
 		expect.equal(id, "sunforgedBlade", "the Verdant Blade maxed: the masterwork takes Heartwood too")
 		expect.equal(need, 10)
-		local done = { verdantBlade = { grade = "S", level = 10 }, sunforgedBlade = { grade = "C", level = 0 } }
+		-- the Titan's Lance takes Heartwood too (weapons round 2): maxed as well, nothing is left
+		local done = { verdantBlade = { grade = "S", level = 10 }, sunforgedBlade = { grade = "C", level = 0 }, titansLance = { grade = "S", level = 10 } }
 		expect.isNil((WeaponRules.materialGoal(W, "material_meadowWarden", done)), "nothing left needs it")
 	end,
 

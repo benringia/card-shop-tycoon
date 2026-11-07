@@ -113,8 +113,8 @@ local REST: { Weapon } = {
 for _, weapon in REST do
 	table.insert(WEAPONS, weapon)
 end
--- Round 2: spears (spec 2026-11-07-weapons-round2-design 4), all swinging the spear moveset (Config/Swords). Built
--- (`ready`) with their models; until then "Coming soon". The Forge Spear in every element, like the Forge Sword.
+-- Round 2: spears (spec 2026-11-07-weapons-round2-design 4), all swinging the spear moveset (Config/Swords), built
+-- with their models (2026-11-07). The Forge Spear in every element, like the Forge Sword.
 for _, element in ELEMENTS do
 	table.insert(WEAPONS, {
 		id = `forgeSpear_{element}`,
@@ -122,8 +122,9 @@ for _, element in ELEMENTS do
 		family = "spear",
 		rarity = "Common",
 		element = element,
-		ready = false,
+		ready = true,
 		moveset = "spear",
+		model = `ForgeSpear_{element}`,
 		source = { kind = "forge", cost = FORGE_COST },
 	})
 end
@@ -134,8 +135,9 @@ REST = {
 		family = "spear",
 		rarity = "Very Rare",
 		element = "Ember",
-		ready = false,
+		ready = true,
 		moveset = "spear",
+		model = "MagmaHalberd",
 		source = { kind = "boss", boss = "emberColossus" },
 		perk = { kind = "erupt", every = 5, share = 0.6 }, -- every 5th hit bursts for 60% of that hit more
 	},
@@ -145,8 +147,9 @@ REST = {
 		family = "spear",
 		rarity = "Epic",
 		element = "Tide",
-		ready = false,
+		ready = true,
 		moveset = "spear",
+		model = "TidalTrident",
 		source = { kind = "boss", boss = "frostTyrant" },
 		perk = { kind = "chill", share = 0.1, seconds = 3 }, -- the foe's attacks 10% slower for 3 s, refreshed
 	},
@@ -156,8 +159,9 @@ REST = {
 		family = "spear",
 		rarity = "Legendary",
 		element = "Bloom",
-		ready = false,
+		ready = true,
 		moveset = "spear",
+		model = "TitansLance",
 		-- my call (spec 4): about the Prism Blade's two weeks, from three bosses' materials, Star Shards and cash
 		source = {
 			kind = "masterwork",

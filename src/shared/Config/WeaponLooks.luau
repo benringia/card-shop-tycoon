@@ -33,9 +33,10 @@ local WEAPONS: { [string]: Look } = {
 	sunforgedBlade = { glow = { 255, 190, 80 }, deep = { 255, 120, 20 }, trail = { 255, 140, 40 }, portrait = "rbxassetid://123708775303650" },
 	prismBlade = { glow = { 230, 200, 255 }, deep = { 150, 40, 255 }, trail = { 200, 170, 255 }, portrait = "rbxassetid://119112031121278" },
 	-- Rounds 2 and 3 (their looks get tuned when they're built)
-	magmaHalberd = element("Ember", ""),
-	tidalTrident = element("Tide", ""),
-	titansLance = element("Bloom", ""),
+	-- the spears (weapons round 2; portraits rendered and uploaded 2026-11-07)
+	magmaHalberd = element("Ember", "rbxassetid://120186001087571"),
+	tidalTrident = element("Tide", "rbxassetid://128008717184531"),
+	titansLance = element("Bloom", "rbxassetid://132598528291002"),
 	forgeScythe = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "" },
 	widowsReaper = element("Shade", ""),
 	stormReaper = element("Volt", ""),
@@ -49,10 +50,18 @@ local FORGE_PORTRAITS: { [string]: string } = {
 	Volt = "rbxassetid://101378627438832",
 	Shade = "rbxassetid://81995315859743",
 }
--- The five Forge Swords take their element's colours; the five Forge Spears too (their portraits come with the model)
+-- The Forge Spear's portrait per element (weapons round 2)
+local FORGE_SPEAR_PORTRAITS: { [string]: string } = {
+	Ember = "rbxassetid://84746132640429",
+	Tide = "rbxassetid://90908019364928",
+	Bloom = "rbxassetid://128007924995183",
+	Volt = "rbxassetid://110373205086963",
+	Shade = "rbxassetid://135950698141778",
+}
+-- The five Forge Swords take their element's colours; the five Forge Spears too
 for name in BY_ELEMENT do
 	WEAPONS[`forgeSword_{name}`] = element(name, FORGE_PORTRAITS[name])
-	WEAPONS[`forgeSpear_{name}`] = element(name, "")
+	WEAPONS[`forgeSpear_{name}`] = element(name, FORGE_SPEAR_PORTRAITS[name])
 end
 
 return {

@@ -34,7 +34,7 @@ return {
 	end,
 
 	["not-ready and unknown weapons are left out"] = function()
-		local list = WeaponSwitch.list(Weapons, { titansLance = {}, nothing = {} }, true)
+		local list = WeaponSwitch.list(Weapons, { riftReaper = {}, nothing = {} }, true) -- a scythe: not built yet
 		expect.equal(table.concat(list, ","), "starterSword")
 	end,
 
