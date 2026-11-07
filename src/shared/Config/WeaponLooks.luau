@@ -71,14 +71,24 @@ return {
 		trailScale = { 1.2, 1.35, 1.5 },
 		awakenedAt = 10,
 	},
-	-- The Forge Sword's colour map per element (its gems tinted; tools/blender/build_weapon_forgeSword.py, uploaded):
-	-- tools/weapons/forge_variants swaps them into the five copies of the imported ForgeSword model
+	-- Each Forge weapon's colour map per element, by model (its gems tinted; tools/blender/build_weapon_forgeSword.py /
+	-- build_weapon_forgeSpear.py, uploaded): `lune run tools/weapons/forge_variants <model>` swaps them into the five
+	-- copies of the imported model
 	FORGE_COLOR_MAPS = {
-		Ember = "rbxassetid://114763697571749",
-		Tide = "rbxassetid://71880534733338",
-		Bloom = "rbxassetid://91159934303024",
-		Volt = "rbxassetid://80913028012621",
-		Shade = "rbxassetid://117614328562391",
+		ForgeSword = {
+			Ember = "rbxassetid://114763697571749",
+			Tide = "rbxassetid://71880534733338",
+			Bloom = "rbxassetid://91159934303024",
+			Volt = "rbxassetid://80913028012621",
+			Shade = "rbxassetid://117614328562391",
+		},
+		ForgeSpear = { -- weapons round 2 (tools/blender/build_weapon_forgeSpear.py, uploaded 2026-11-07)
+			Ember = "rbxassetid://127102602536831",
+			Tide = "rbxassetid://90518898718880",
+			Bloom = "rbxassetid://84660632595110",
+			Volt = "rbxassetid://122146092260533",
+			Shade = "rbxassetid://74237076352651",
+		},
 	},
 	-- Each model's glow map (emissive mask: the runes, gems, crystal; tools/textures/make_glow_maps.py, uploaded),
 	-- baked into its SurfaceAppearances by `lune run tools/weapons/add_glow_maps` (a game script can't set them).

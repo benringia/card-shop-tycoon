@@ -10,15 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import weapon_kit  # noqa: E402
 
 NAME = "ForgeSword"
-# The gems' colours, 0-1: deeper than Config/WeaponLooks BY_ELEMENT's glow (the pale glow colours read pastel on a gem;
-# checked in renders 2026-11-06)
-ELEMENTS = {
-    "Ember": (1.0, 0.42, 0.08),
-    "Tide": (0.15, 0.58, 1.0),
-    "Bloom": (0.25, 0.82, 0.25),
-    "Volt": (1.0, 0.8, 0.05),
-    "Shade": (0.58, 0.25, 1.0),
-}
+ELEMENTS = weapon_kit.FORGE_GEMS
 
 parts, guard_bottom, guard_top = weapon_kit.build(NAME, 5.0)
 lowest = min((o.matrix_world @ v.co).z for o in parts for v in o.data.vertices)

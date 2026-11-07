@@ -48,8 +48,9 @@ for _, part in model:GetDescendants() do
 		print(`{part.Name}: {look.material}`)
 	end
 end
-local grip = model:FindFirstChild("Grip")
-assert(grip, "the sword needs a part named Grip")
+-- A sword is held by its Grip; a spear by its Shaft (its origin 31% up from the butt, weapons round 2)
+local grip = model:FindFirstChild("Grip") or model:FindFirstChild("Shaft")
+assert(grip and grip:IsA("BasePart"), "the weapon needs a part named Grip (a sword) or Shaft (a spear)")
 model.PrimaryPart = grip
 fs.writeFile(FILE, roblox.serializeModel(roots))
-print(`{FILE}: finished (PrimaryPart Grip)`)
+print(`{FILE}: finished (PrimaryPart {grip.Name})`)
