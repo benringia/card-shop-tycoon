@@ -321,9 +321,10 @@ SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", "rbxassetid://1363919
 -- shared by all four spears. Held upright at your side between moves; every attack swings it down into both hands
 -- first. Long and narrow where the sword is wide: the thrust 12 studs in 30 degrees, the sweep 11 in 120, Sky Pierce a
 -- leap and a plunge 8 studs ahead with a 4-stud burst there; nothing reaches past 12 (a boss's swipe still reaches you).
--- The same damage a second as the sword combo (tests/SwordsConfig). Timings start as the sword's until the spear's
--- animations (tools/blender/anim_spear.py) give theirs; its moves play from ReplicatedStorage.SwordAnimations.Spear
--- until published. Piercing Rush: a 12-stud rush tip-first, every foe along a 3-stud-wide line.
+-- The same damage a second as the sword combo (tests/SwordsConfig). Timings are its animations' (tools/blender/
+-- anim_spear.py, exaggerated on the owner's ask 2026-11-07: a deep lunge, a spinning sweep, a big spinning leap); its
+-- moves play from ReplicatedStorage.SwordAnimations.Spear until published. Piercing Rush: a 12-stud rush tip-first,
+-- every foe along a 3-stud-wide line as it arrives.
 do
 	local animations = table.clone(starter.animations)
 	for _, move in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3", "skill" } do
@@ -336,11 +337,11 @@ do
 		model = "Spear",
 		slash = starter.slash,
 		combo = {
-			-- Thrust: swung down into both hands, a straight stab with a step
-			{ power = 0.304, hitAt = 0.22, cancelAt = 0.36, length = 0.62, reach = 12, arc = 30, lunge = { studs = 1.2, from = 0.15, to = 0.22 } },
-			-- Sweep: pulled back low, the head swept across the front (for groups)
-			{ power = 0.304, hitAt = 0.20, cancelAt = 0.34, length = 0.62, reach = 11, arc = 120, lunge = { studs = 0.6, from = 0.12, to = 0.2 } },
-			-- Sky Pierce: a leap with it raised, a plunge tip-first into the ground ahead, a shockwave there
+			-- Thrust: swung down into both hands, coiled far back, a straight stab in a deep lunge
+			{ power = 0.304, hitAt = 0.22, cancelAt = 0.36, length = 0.62, reach = 12, arc = 30, lunge = { studs = 2.0, from = 0.16, to = 0.22 } },
+			-- Sweep: pulled back low, a full spin on the spot, the head slicing across the front (for groups)
+			{ power = 0.304, hitAt = 0.20, cancelAt = 0.34, length = 0.62, reach = 11, arc = 120, lunge = { studs = 0.4, from = 0.12, to = 0.36 } },
+			-- Sky Pierce: a big spinning leap with it raised, a plunge tip-first into the ground ahead, a shockwave there
 			{
 				power = 0.792,
 				hitAt = 0.70,
@@ -348,18 +349,18 @@ do
 				reach = 12,
 				arc = 30,
 				line = { length = 8, width = 3, burst = 4 },
-				lunge = { studs = 3.0, from = 0.17, to = 0.66 },
+				lunge = { studs = 3.0, from = 0.17, to = 0.70 },
 				hang = { from = 0.31, to = 0.56 },
 			},
 		},
 		skill = {
 			power = 0.9,
-			hitAt = 0.62,
+			hitAt = 0.45,
 			length = 1.0,
 			cooldown = 8,
-			dash = { studs = 12, maxStuds = 20, margin = 1.5, width = 3, from = 0.30, to = 0.42, slack = 3 },
+			dash = { studs = 12, maxStuds = 20, margin = 1.5, width = 3, from = 0.28, to = 0.42, slack = 3 },
 			shape = { kind = "dash", width = 3, maxStuds = 20, slack = 3 },
-			free = { at = 0.62 },
+			free = { at = 0.45 },
 		},
 		animations = animations,
 		sounds = starter.sounds,

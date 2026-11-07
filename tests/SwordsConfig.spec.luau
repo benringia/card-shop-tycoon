@@ -43,6 +43,25 @@ return {
 		expect.equal(spear.model, "Spear", "its animation folder")
 	end,
 
+	-- The spear's timings are its animations' (tools/blender/anim_spear.py, built by tools/anim/build_kfs: their Hit
+	-- markers and lengths) and its moves carry you as they were keyed (the lunges, the leap, the rush)
+	["the spear's timings are its animations' markers"] = function()
+		local spear = Swords.SWORDS.spear
+		expect.equal(spear.combo[1].hitAt, 0.22, "the thrust's Hit marker")
+		expect.equal(spear.combo[1].length, 0.62, "the thrust's length")
+		expect.equal(spear.combo[2].hitAt, 0.20, "the sweep's Hit marker")
+		expect.equal(spear.combo[2].length, 0.62, "the sweep's length")
+		expect.equal(spear.combo[3].hitAt, 0.70, "Sky Pierce's Hit marker")
+		expect.equal(spear.combo[3].length, 1.25, "Sky Pierce's length")
+		expect.equal(spear.skill.hitAt, 0.45, "Piercing Rush's Hit marker (as the rush arrives)")
+		expect.equal(spear.skill.length, 1.0, "Piercing Rush's length")
+		local thrust = spear.combo[1].lunge :: Swords.Lunge
+		expect.equal(thrust.studs, 2.0, "the thrust's deep lunge")
+		local dash = spear.skill.dash :: Swords.Dash
+		expect.equal(dash.from, 0.28, "the rush leaves")
+		expect.equal(dash.to, 0.42, "and arrives")
+	end,
+
 	-- No spear move reaches past a boss's swipe (its ring radius + RING_SWIPE_EXTRA, measured from the boss's centre), so
 	-- reach never buys a spot the boss can't hit
 	["a spear's reach never makes a spot a boss's swipe can't reach"] = function()

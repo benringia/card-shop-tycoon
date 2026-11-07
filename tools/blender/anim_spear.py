@@ -13,6 +13,7 @@ the right side between moves (the owner's pick C); every attack swings it down i
 left hand up the shaft).
 """
 import importlib
+import math
 import os
 
 import anim_kit as kit
@@ -68,91 +69,101 @@ def _body(r, w, n):
     return {"R": r, "W": w, "N": n}
 
 
+def _spin_feet(f, t, yaw, travel=0.0, lift=0.0, ease=kit.SOFT):
+    """Both feet round the body turned `yaw` degrees (a spin), `travel` studs forward and `lift` up."""
+    a = math.radians(yaw)
+    for side, sx in (("Right", -0.5), ("Left", 0.5)):
+        _foot(side, f, t, (sx * math.cos(a), -travel + sx * math.sin(a), FOOT_Z + lift), ease)
+
+
 def _cut1(rig, f):
-    """Thrust: swung down from upright into both hands at the hip, drawn back with the hips turned, then a straight stab
-    ahead with a step, the arms out long; a short hold and back up to upright."""
+    """Thrust (exaggerated, owner 2026-11-07): swung down into both hands and coiled far back, the body wound and low,
+    then exploding forward into a deep lunge, both arms out long and the body leaning into it; a held push and back up
+    to upright."""
     _pose(rig, f, 0, READY, 0)
-    _pose(rig, f, 0.10, dict(_body((0, 14, 0), (6, 10, 0), (0, -12, 0)), **arm((-25, 0, 8), 30, 2)), -0.35)
-    _pose(rig, f, 0.16, dict(_body((0, 18, 0), (8, 12, 0), (0, -14, 0)), **arm((-32, 0, 8), 28, 0)), -0.4, kit.SNAP)
-    _pose(rig, f, 0.22, dict(_body((0, -6, 0), (-6, -8, 0), (0, 10, 0)), **arm((62, 0, 4), 4, -2)), -0.5, kit.SNAP)
-    _pose(rig, f, 0.34, dict(_body((0, -7, 0), (-8, -9, 0), (0, 11, 0)), **arm((66, 0, 4), 2, -3)), -0.52)
-    _pose(rig, f, 0.46, dict(_body((0, -6, 0), (0, -8, 0), (0, 6, 0)), **arm((20, 0, 10), 40, 50)), -0.2)
+    _pose(rig, f, 0.10, dict(_body((0, 30, 0), (12, 26, 0), (0, -26, 0)), **arm((-45, 0, 8), 42, 4)), -0.55)
+    _pose(rig, f, 0.16, dict(_body((0, 34, 0), (14, 30, 0), (0, -30, 0)), **arm((-52, 0, 8), 44, 2)), -0.62, kit.SNAP)
+    _pose(rig, f, 0.22, dict(_body((0, -10, 0), (-16, -12, 0), (8, 12, 0)), **arm((82, 0, 3), 0, -2)), -0.8, kit.SNAP)
+    _pose(rig, f, 0.32, dict(_body((0, -12, 0), (-18, -14, 0), (8, 14, 0)), **arm((86, 0, 3), 0, -4)), -0.84)
+    _pose(rig, f, 0.46, dict(_body((0, -4, 0), (-4, -4, 0), (0, 4, 0)), **arm((24, 0, 10), 44, 55)), -0.3)
     _pose(rig, f, 0.62, READY, 0)
     _both(rig, f, 0.04, 0.10, 0.36, 0.46)
     _root(rig, f, 0, 0)
-    _root(rig, f, 0.16, -0.2, kit.SNAP)
-    _root(rig, f, 0.22, 1.2)
+    _root(rig, f, 0.16, -0.45, kit.SNAP)
+    _root(rig, f, 0.22, 2.0)
     _feet(f, 0, 0, 0)
-    _feet(f, 0.10, 0.4, -0.3)
-    _foot("Left", f, 0.16, (0.5, 0.3, 0.35), kit.SNAP)
-    _foot("Left", f, 0.22, (0.55, -1.9, FOOT_Z))
-    _foot("Right", f, 0.22, (-0.5, 0.2, FOOT_Z))
-    _feet(f, 0.62, 1.2, 1.2)
+    _feet(f, 0.10, 0.6, -0.5)
+    _foot("Left", f, 0.16, (0.5, 0.5, 0.45), kit.SNAP)
+    _foot("Left", f, 0.22, (0.6, -3.2, FOOT_Z))
+    _foot("Right", f, 0.22, (-0.55, 0.6, FOOT_Z))
+    _feet(f, 0.62, 2.0, 2.0)
 
 
 def _cut2(rig, f):
-    """Sweep: pulled back low with the body turned right, the head trailing behind; the hips and waist unwind and the
-    head sweeps across the front from right to left at hip height; follow through, back up to upright."""
+    """Sweep (exaggerated, owner 2026-11-07): pulled back low with the body wound right, then a full spin on the spot,
+    the head slicing across the front at hip height (the Hit) and on round behind, a low finish facing front again, back
+    up to upright."""
     _pose(rig, f, 0, READY, 0)
-    _pose(rig, f, 0.08, dict(_body((0, 42, 0), (10, 48, 0), (0, -40, 0)), **arm((-15, 0, 12), 22, -4)), -0.5)
-    _pose(rig, f, 0.13, dict(_body((0, 46, 0), (12, 52, 0), (0, -44, 0)), **arm((-18, 0, 12), 22, -6)), -0.55, kit.SNAP)
-    _pose(rig, f, 0.20, dict(_body((0, -28, 0), (8, -42, 0), (0, 30, 0)), **arm((14, 0, 22), 10, -4)), -0.5, kit.SNAP)
-    _pose(rig, f, 0.30, dict(_body((0, -36, 0), (6, -60, 0), (0, 40, 0)), **arm((22, 0, 28), 12, 0)), -0.45)
-    _pose(rig, f, 0.44, dict(_body((0, -14, 0), (2, -20, 0), (0, 12, 0)), **arm((10, 0, 16), 45, 55)), -0.2)
-    _pose(rig, f, 0.62, READY, 0)
-    _both(rig, f, 0.03, 0.08, 0.32, 0.44)
+    _pose(rig, f, 0.08, dict(_body((0, 55, 0), (12, 40, 0), (0, -40, 0)), **arm((-15, 0, 14), 22, -4)), -0.6)
+    _pose(rig, f, 0.12, dict(_body((0, 60, 0), (14, 44, 0), (0, -44, 0)), **arm((-18, 0, 14), 22, -6)), -0.65, kit.SNAP)
+    spin = [(0.20, -10, kit.SNAP), (0.28, -150, kit.HOLD), (0.36, -270, kit.HOLD), (0.44, -345, kit.SOFT)]
+    for t, yaw, ease in spin:
+        _pose(rig, f, t, dict(_body((0, yaw, 0), (8, -30, 0), (0, 24, 0)), **arm((16, 0, 26), 10, -4)), -0.6, ease)
+        _spin_feet(f, t, yaw, 0.4, 0.0, ease)
+    _pose(rig, f, 0.52, dict(_body((0, -360, 0), (6, -16, 0), (0, 10, 0)), **arm((12, 0, 18), 40, 50)), -0.3)
+    _pose(rig, f, 0.62, dict(READY, R=(0, -360, 0)), 0)
+    _both(rig, f, 0.03, 0.08, 0.44, 0.52)
     _root(rig, f, 0, 0)
-    _root(rig, f, 0.13, 0, kit.SNAP)
-    _root(rig, f, 0.20, 0.6)
+    _root(rig, f, 0.12, 0, kit.SNAP)
+    _root(rig, f, 0.36, 0.4)
     _feet(f, 0, 0, 0)
-    _foot("Right", f, 0.08, (-0.7, 0.3, FOOT_Z))
-    _foot("Left", f, 0.13, (0.5, -0.1, 0.35), kit.SNAP)
-    _foot("Left", f, 0.20, (0.75, -1.2, FOOT_Z))
-    _foot("Right", f, 0.44, (-0.55, -0.4, FOOT_Z))
-    _feet(f, 0.62, 0.6, 0.6)
+    _foot("Right", f, 0.08, (-0.8, 0.4, FOOT_Z))
+    _foot("Left", f, 0.08, (0.6, -0.3, FOOT_Z))
+    _spin_feet(f, 0.62, -360, 0.4)
 
 
 # Sky Pierce's air poses: the spear raised high in both hands, upright (the tip up), then swung down tip-first
 RAISED = dict({"W": (-14, 0, 0), "N": (-8, 0, 0)}, **arm((165, 0, -10), 20, 95))
-HANG = dict({"W": (-24, 0, 0), "N": (-14, 0, 0)}, **arm((172, 0, -8), 14, 100))
-# Landing: crouched over the spear driven tip-first into the ground ahead, both hands on it
-PLUNGE = dict({"W": (-30, 0, 0), "N": (-24, 0, 0)}, **arm((70, 0, 4), 10, -55))
+HANG = dict({"W": (-26, 0, 0), "N": (-16, 0, 0)}, **arm((174, 0, -8), 14, 104))
+# Landing: crouched low over the spear driven tip-first into the ground ahead, both hands on it
+PLUNGE = dict({"W": (-34, 0, 0), "N": (-26, 0, 0)}, **arm((74, 0, 4), 8, -62))
 
 
 def _cut3(rig, f):
-    """Sky Pierce (finisher): a crouch with the spear swung up, a leap (about 4 studs) holding it high, a short hang at
-    the top, then a fall that drives it tip-first into the ground ahead (the Hit), crouched over it, and a pull out back
-    up to upright. Slower, so it hits hardest (the damage a second stays)."""
+    """Sky Pierce (finisher, exaggerated, owner 2026-11-07): a deep crouch with the spear swung up, a big leap (about 6
+    studs) spinning a full turn with it held high, a slow hang at the top, then a fall that drives it tip-first into the
+    ground ahead (the Hit), crouched low over it with a bounce, and a pull out back up to upright. Slower, so it hits
+    hardest (the damage a second stays)."""
     _pose(rig, f, 0, READY, 0)
-    _pose(rig, f, 0.12, dict({"W": (28, 0, 0), "N": (10, 0, 0)}, **arm((60, 0, -6), 70, 95)), -1.0)
-    _pose(rig, f, 0.17, dict({"W": (30, 0, 0), "N": (12, 0, 0)}, **arm((70, 0, -6), 70, 98)), -1.05, kit.SNAP)
+    _pose(rig, f, 0.12, dict({"W": (32, 0, 0), "N": (12, 0, 0)}, **arm((60, 0, -6), 70, 95)), -1.2)
+    _pose(rig, f, 0.17, dict({"W": (34, 0, 0), "N": (14, 0, 0)}, **arm((70, 0, -6), 70, 98)), -1.25, kit.SNAP)
     air = [
-        (0.24, 2.4, RAISED, kit.HOLD, 0.8),
-        (0.31, 3.8, HANG, kit.HOLD, 1.3),
-        (0.44, 4.1, HANG, kit.HOLD, 1.7),
-        (0.56, 3.6, dict(HANG, **arm((150, 0, -8), 10, 60)), ("EXPO", "EASE_IN"), 2.2),
+        (0.24, -110, 2.8, RAISED, kit.HOLD, 0.8),
+        (0.31, -220, 5.2, HANG, kit.HOLD, 1.3),
+        (0.44, -300, 5.9, HANG, kit.HOLD, 1.7),
+        (0.56, -350, 5.2, dict(HANG, **arm((150, 0, -8), 10, 60)), ("EXPO", "EASE_IN"), 2.2),
     ]
-    for t, lift, pose, ease, travel in air:
-        _pose(rig, f, t, pose, lift, ease)
-        tuck = 0.55 if t < 0.5 else 0.35
-        for side, sx in (("Right", -0.5), ("Left", 0.5)):
-            _foot(side, f, t, (sx, -travel, FOOT_Z + lift - tuck - 0.2), kit.HOLD)
-    _pose(rig, f, 0.70, PLUNGE, -1.2, kit.SNAP)
-    _pose(rig, f, 0.86, dict(PLUNGE, W=(-34, 0, 0), N=(-30, 0, 0)), -1.3)
-    _pose(rig, f, 1.02, dict({"W": (-10, 0, 0), "N": (-6, 0, 0)}, **arm((50, 0, 8), 30, 30)), -0.7)
-    _pose(rig, f, 1.25, READY, 0)
-    _both(rig, f, 0.05, 0.14, 1.0, 1.1)
+    for t, yaw, lift, pose, ease, travel in air:
+        _pose(rig, f, t, dict(pose, R=(0, yaw, 0)), lift, ease)
+        tuck = 0.6 if t < 0.5 else 0.35
+        _spin_feet(f, t, yaw, travel, lift - tuck - 0.2, kit.HOLD)
+    _pose(rig, f, 0.70, dict(PLUNGE, R=(0, -360, 0)), -1.45, kit.SNAP)
+    _pose(rig, f, 0.78, dict(PLUNGE, R=(0, -360, 0), W=(-30, 0, 0)), -1.25)
+    _pose(rig, f, 0.88, dict(PLUNGE, R=(0, -360, 0), W=(-38, 0, 0), N=(-32, 0, 0)), -1.5)
+    _pose(rig, f, 1.04, dict({"R": (0, -360, 0), "W": (-10, 0, 0), "N": (-6, 0, 0)}, **arm((50, 0, 8), 30, 30)), -0.7)
+    _pose(rig, f, 1.25, dict(READY, R=(0, -360, 0)), 0)
+    _both(rig, f, 0.05, 0.14, 1.02, 1.12)
     _root(rig, f, 0, 0)
-    _root(rig, f, 0.17, -0.2, kit.HOLD)
+    _root(rig, f, 0.17, -0.3, kit.HOLD)
     _root(rig, f, 0.31, 1.3, kit.HOLD)
     _root(rig, f, 0.56, 2.2, ("EXPO", "EASE_IN"))
     _root(rig, f, 0.70, 3.0, kit.SNAP)
     _feet(f, 0, 0, 0)
     _feet(f, 0.12, 0.5, -0.4)
     _feet(f, 0.17, 0.5, -0.4, kit.HOLD)
-    _foot("Right", f, 0.70, (-0.55, -3.6, FOOT_Z), kit.SNAP)
-    _foot("Left", f, 0.70, (0.6, -2.3, FOOT_Z), kit.SNAP)
-    _feet(f, 1.02, 3.6, 2.6)
+    _foot("Right", f, 0.70, (-0.6, -3.7, FOOT_Z), kit.SNAP)
+    _foot("Left", f, 0.70, (0.65, -2.2, FOOT_Z), kit.SNAP)
+    _feet(f, 1.04, 3.7, 2.4)
     _feet(f, 1.25, 3.0, 3.0)
 
 
