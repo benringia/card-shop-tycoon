@@ -120,6 +120,14 @@ full spin, the hit on its first pass across the front), Sky Pierce (a 6-stud spi
 `run_sword_moves.py -- --sword spear [--preview <dir>]`, then `lune run tools/anim/build_kfs assets/blender/Animations/Spear
 assets/animations/Spear`; `Config/Swords spear` timings follow the markers (tests/SwordsConfig).
 
+**Titan's Wrath** (weapons round 2.5, the Titan's Lance's own skill): `tools/blender/anim_titans_lance.py`
+(`FOLDER = "TitansLance"`, skill only) keys it on anim_spear's helpers: into both hands and a low wide stance, the
+lance drawn far back, a trembling charge (alternating keys every 0.07 s, growing) that sinks and coils further to the
+deepest coil at 1.22 s, the thrust's "Hit" at 1.35 s, held while the fissure tears, back to the guard by 2.2 s; no
+root travel. `run_sword_moves.py -- --sword titans_lance [--preview <dir>]`, then `lune run tools/anim/build_kfs
+assets/blender/Animations/TitansLance assets/animations/TitansLance`; `Config/Swords titansLance` (moveset `model`
+"TitansLance": the skill plays its KeyframeSequence in Studio until its id is published; the cuts use the spear's ids).
+
 ## Making or changing moves
 
 1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through
