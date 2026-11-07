@@ -61,7 +61,7 @@ check in Studio with the synced code.
 | Forge Spear | Common | any (five, picked when forging) | the Forge, `FORGE_COST` like the Forge Sword | 8.5 | polished steel leaf head, square iron collar with round gems (the element's colour), wood shaft with three steel bands, ring butt cap | none |
 | Magma Halberd | Very Rare | Ember | Ember Colossus (material + drops, `BOSS_COST` / `DROP` by rarity) | 8.5 | obsidian axe blade with lava cracks, molten spike tip, back hook, charred shaft, fire gem | **Eruption**: every 5th hit bursts for +60% of that hit |
 | Tidal Trident | Epic | Tide | Frost Tyrant | 8.7 | three frosted ice-crystal prongs, sea-glass wave collar, pearl shaft with a silver spiral, aquamarine gem | **Chill**: hits slow the foe's attacks 10% for 3 s (refreshed, no stacking) |
-| Titan's Lance | Legendary | Bloom | Masterwork (recipe below) | 9.2 | gold-white lance head with emerald veins, leaf-carved cone guard, living-wood shaft with golden flowers, emerald gem | **Titan's Bloom**: every hit heals your creature 1% of its max HP |
+| Titan's Lance | Legendary | Bloom | Masterwork (recipe below) | 9.2 | gold-white lance head with emerald veins, leaf-carved cone guard, living-wood shaft with golden flowers, emerald gem | **Titan's Bloom**: every 4th hit heals your creature 1% of its max HP (tuned from every hit; its own base Power 1.2, as the Prism Blade has its own) |
 
 - Power, grades, upgrades, element bond and Grade S perk (x1.2) work exactly as round 1 (`Config/Weapons`
   `RARITY_POWER` etc.); the catalogue entries already exist with `ready = false` and turn `ready = true`, gaining

@@ -166,7 +166,11 @@ REST = {
 				items = { [MATERIALS.meadowWarden] = 30, [MATERIALS.frostTyrant] = 20, [MATERIALS.stormSovereign] = 20, starShard = 10 },
 			},
 		},
-		perk = { kind = "heal", every = 1, share = 0.01 }, -- every hit heals your creature 1% of its max HP
+		-- its own base Power and a heal every 4th hit (tools/balance/bosses on the Prism Hydra: at the Legendary 1.8 with a
+		-- heal on every hit a 0.8x party won 100% even at +0; this: +0 C 72%, +10 S 83%, a 1x fight 75% of the Steel
+		-- Sword's; DESIGN.md weapons balance rows)
+		power = 1.2,
+		perk = { kind = "heal", every = 4, share = 0.01 }, -- every 4th hit heals your creature 1% of its max HP
 	},
 	-- Round 3: scythes
 	{ id = "forgeScythe", name = "Forge Scythe", family = "scythe", rarity = "Common", ready = false, source = { kind = "forge", cost = FORGE_COST } },

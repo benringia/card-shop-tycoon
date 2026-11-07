@@ -1841,8 +1841,19 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (8.5 / 8.5 / 8.7 / 9.2 studs, the owner's pick B), held upright at your right side between moves (pick C: the grip 31%
   up from the butt, `Config/Swords GRIPS.spear`; the hand's tilt -90, as keyed), on the back diagonally at scale 1.
   Perks: the Halberd's Eruption (every 5th hit bursts for 60% of it more, a lava burst), the Trident's Chill (the foe's
-  attacks 10% slower for 3 s, never weakening a stronger slow) and the Lance's Titan's Bloom (every hit heals your
-  creature 1%); Grade S x1.2 as for swords (`BattleSim` swordPerk, `WeaponText` words). One moveset for all four
+  attacks 10% slower for 3 s, never weakening a stronger slow) and the Lance's Titan's Bloom (every 4th hit heals your
+  creature 1%; the Lance has its own base Power 1.2, as the Prism Blade has its own); Grade S x1.2 as for swords
+  (`BattleSim` swordPerk, `WeaponText` words). Balance rows (as round 1's, 60 fights solo, "well"):
+
+  | Spear on its tier boss | 0.8x win: Steel / +0 C / +10 S | 1x fight: Steel / +10 S |
+  |---|---|---|
+  | Ember Forge Spear, Meadow Warden | 100% / 100% / 100% (Steel already above 85%) | 79 s / 43 s (54%) |
+  | Magma Halberd, Ember Colossus | 60% / 62% / 83% | 67 s / 49 s (73%) |
+  | Tidal Trident, Frost Tyrant | 47% / 62% / 78% | 129 s / 72 s (56%) |
+  | Titan's Lance, Prism Hydra (after the rooms) | 62% / 72% / 83% | 178 s / 134 s (75%) |
+
+  The Titan's Lance first had the Legendary 1.8 and a heal on every hit: a 0.8x party won 100% even at +0 (the heal
+  carried the long Hydra fight; at 1.0 with half the heal still 97% at +10 S). One moveset for all four
   (`Config/Swords` `spear`, the same damage a second as the sword combo; the owner asked for it more exaggerated):
   Thrust (a deep coil, a 2-stud lunge, reach 12 in 30 degrees), Sweep (a full spin, 11 in 120 degrees), Sky Pierce (a
   6-stud spinning leap and a plunge: a line to 8 studs ahead and a 4-stud burst there, `SwordRules.cutReaches`), and the

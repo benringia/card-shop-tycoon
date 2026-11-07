@@ -18,7 +18,7 @@ return {
 	["the spears' perks in words (weapons round 2)"] = function()
 		expect.equal(valueOf(WeaponText.stats(Weapons, "magmaHalberd", nil, Combat), "Perk"), "Every 5th hit erupts for 60% more")
 		expect.equal(valueOf(WeaponText.stats(Weapons, "tidalTrident", nil, Combat), "Perk"), "Hits slow the foe's attacks 10% for 3 s")
-		expect.equal(valueOf(WeaponText.stats(Weapons, "titansLance", nil, Combat), "Perk"), "Every hit heals your creature 1%")
+		expect.equal(valueOf(WeaponText.stats(Weapons, "titansLance", nil, Combat), "Perk"), "Every 4th hit heals your creature 1%")
 	end,
 
 	["stats: Power to 2 decimals, the element and its bond, the perk in words"] = function()

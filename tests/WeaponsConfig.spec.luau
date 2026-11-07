@@ -93,9 +93,12 @@ return {
 		expect.equal(chill.kind, "chill")
 		expect.equal(chill.share, 0.1)
 		expect.equal(chill.seconds, 3)
+		-- the Lance's own base Power and a heal every 4th hit keep it inside the Hydra's balance limit (tools/balance/bosses:
+		-- at 1.8 with a heal on every hit a 0.8x party won 100% even at +0; DESIGN.md weapons balance rows)
+		expect.equal(Weapons.ById.titansLance.power, 1.2)
 		local bloom = Weapons.ById.titansLance.perk :: any
 		expect.equal(bloom.kind, "heal")
-		expect.equal(bloom.every, 1)
+		expect.equal(bloom.every, 4)
 		expect.equal(bloom.share, 0.01)
 		expect.equal(Weapons.TIER_BOSS.forgeSpear, "meadowWarden")
 		expect.equal(Weapons.TIER_BOSS.magmaHalberd, "emberColossus")
