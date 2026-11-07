@@ -338,7 +338,7 @@ local function place(view: View, character: Model, inHand: boolean)
 	local hold, back = Swords.HAND_GRIP, Swords.BACK_GRIP
 	if inHand and hand and hand:IsA("BasePart") then
 		view.weld.Part0 = hand
-		view.weld.C0 = CFrame.new(0, hold.y, 0) * CFrame.Angles(math.rad(hold.angleX), 0, 0)
+		view.weld.C0 = CFrame.new(0, hold.y, 0) * CFrame.Angles(math.rad(hold.angleX), 0, 0) * CFrame.Angles(0, math.rad(hold.twist), 0)
 	elseif torso and torso:IsA("BasePart") then
 		view.weld.Part0 = torso
 		view.weld.C0 = CFrame.new(back.x, back.y, back.z) * CFrame.Angles(0, 0, math.rad(back.angleZ))

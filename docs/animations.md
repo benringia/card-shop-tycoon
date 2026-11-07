@@ -173,5 +173,6 @@ The starter sword is built in Blender by `tools/blender/build_starter_sword.py` 
    makes Grip the PrimaryPart (`tests/CreatureAssets.spec` checks it, and that no script is inside).
 4. Rojo syncs `assets/weapons` to `ReplicatedStorage.WeaponModels` (restart `rojo serve` after adding the mapping).
 
-The game (`SwordController`) welds the model by its grip: in the right hand at `Swords.HAND_GRIP`, on the back at
+The game (`SwordController`) welds the model by its grip: in the right hand at `Swords.HAND_GRIP` (tilted, then a
+quarter turn about the blade so its flat faces the palm; Blender's `anim_kit.hand_grip()` matches), on the back at
 `Swords.BACK_GRIP`, `Swords.BACK_SCALE` times bigger there. Until a model exists it draws a code-built stand-in.

@@ -11,6 +11,13 @@ local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge",
 local SOUNDS = { "swing1", "swing2", "swing3", "hit", "draw", "dodge", "ring", "down", "getUp" }
 
 return {
+	-- Weapons round 2 (owner 2026-11-08: "hold the sword the right way, not flat"): every sword model has its edge along
+	-- X and its flat along Z, so the hand's grip turns it a quarter turn about the blade, the flat facing the palm. Measured
+	-- in Studio over the starter's cuts: without the turn the flat led every cut (0.63-0.79 of the swing), with it the edge
+	["the hand holds a sword with its flat to the palm, so the edge leads the cuts"] = function()
+		expect.equal(Swords.HAND_GRIP.twist, 90)
+	end,
+
 	-- Sword skills round (spec 2026-11-06-sword-skills-design): each round 1 sword its own moveset, the starter's cuts
 	["each round 1 sword has its own moveset: the starter's cuts and animations, its own skill at today's strength"] = function()
 		local Weapons = require("../src/shared/Config/Weapons")

@@ -27,6 +27,13 @@ from mathutils import Matrix, Vector
 FPS = 60
 EXPORT_STEP = 2  # export every other frame: 30 keyframes a second
 HRP_Z = 3.0  # HumanoidRootPart centre above the ground (HipHeight 2 + half its 2-stud height)
+
+
+def hand_grip():
+    """The game's sword grip (Config/Swords HAND_GRIP) in the RightHand's frame: 0.18 down, tilted -140 degrees about X,
+    then a quarter turn about the blade (+Y) so the flat faces the palm and the edge leads the cuts."""
+    return (Matrix.Translation(Vector((0, -0.18, 0))) @ Matrix.Rotation(math.radians(-140), 4, "X")
+            @ Matrix.Rotation(math.radians(90), 4, "Y"))
 M = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))
 
 # The standard R15 body, from the game (pivot = the joint's position, Roblox coords from the HumanoidRootPart centre)
@@ -141,9 +148,9 @@ def build():
         part.parent_type = "BONE"
         part.parent_bone = name
         part.matrix_world = keep
-    # The sword in the right hand: the game's grip (hand frame: 0.18 down, turned -140 degrees about X), blade along +Y
+    # The sword in the right hand: the game's grip (hand_grip), blade along +Y
     hand_cf = Matrix.Translation(Vector(PARTS["RightHand"]["center"]))
-    grip = Matrix.Translation(Vector((0, -0.18, 0))) @ Matrix.Rotation(math.radians(-140), 4, "X")
+    grip = hand_grip()
     sword_parts = [("Handle", (0, 0, 0), (0.26, 1.1, 0.26), (0.27, 0.17, 0.12, 1)), ("Guard", (0, 0.62, 0), (1.15, 0.2, 0.34), (0.84, 0.69, 0.32, 1)),
                    ("Blade", (0, 2.55, 0), (0.24, 3.7, 0.07), (0.88, 0.92, 0.96, 1))]
     M4 = M.to_4x4()
@@ -290,7 +297,7 @@ def two_hands(rig, frame_of, on, full, release, off, along=-0.55):
     influence blends in from `on` to `full` seconds and out from `release` to `off`; frame_of(t) gives a move's frame."""
     M4 = M.to_4x4()
     hand_cf = Matrix.Translation(Vector(PARTS["RightHand"]["center"]))
-    grip = Matrix.Translation(Vector((0, -0.18, 0))) @ Matrix.Rotation(math.radians(-140), 4, "X")
+    grip = hand_grip()
     world_r = hand_cf @ grip @ Matrix.Translation(Vector((0, along, 0)))
     world_b = Matrix.Translation(Vector((0, 0, HRP_Z))) @ M4 @ world_r @ M4
     target = bpy.data.objects.new("LeftGrip", None)

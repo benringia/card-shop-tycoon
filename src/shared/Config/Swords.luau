@@ -327,7 +327,9 @@ return {
 	-- Where a sword sits (its model's origin is the grip's centre, the blade along +Y): in the right hand, in the hand's
 	-- space (the grip the animations were keyed with), and on the back, in the UpperTorso's space (the handle up over
 	-- the right shoulder, the blade down to the left hip)
-	HAND_GRIP = { y = -0.18, angleX = -140 },
+	-- twist: degrees about the blade after the tilt (owner 2026-11-08: "hold the sword the right way, not flat"): every
+	-- sword model has its edge along X, so a quarter turn puts the flat to the palm and the edge leading the cuts
+	HAND_GRIP = { y = -0.18, angleX = -140, twist = 90 },
 	-- 2026-11-06 (owner: the longer new swords pierced the ground; keep the original angle, just higher): the grip
 	-- higher and the size near life-size, so every sword's tip clears the ground (the Sunforged Blade, the longest, by
 	-- about 0.3 studs on an R15 body) with the hilt under a stud over the head; at 1.4x the hilt would stand 2+ studs up

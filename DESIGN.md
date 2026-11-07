@@ -1740,6 +1740,9 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   / Grip, the grip's centre on the origin), imported by the owner, finished by `tools/weapons/finish_sword`; the
   Forge Sword's five elements are one model with five colour maps (`tools/weapons/forge_variants`). Portraits: each
   model rendered on magenta, cut out, uploaded (`assets/ui/weapon-portraits`, `WeaponLooks` portrait ids).
+  Every sword model has its edge along X and its flat along Z; the hand's grip (`Swords.HAND_GRIP`: 0.18 down, tilted
+  -140 degrees about X, then `twist` 90 about the blade) puts the flat to the palm so the edge leads every cut (owner
+  2026-11-08: "hold the sword the right way, not flat"; before it the flat led 63-92% of each swing).
 - **Drops** (`BossService`): each full-loot win of a boss with a built weapon (no soft cap or over-power shrink,
   `BossRules.rollsWeapon`) rolls it at its rarity's odds plus a step per full-loot win since the last (`weaponPity` in
   its saved record; `Weapons.DROP`, owner 2026-11-06): Rare 1% + 0.5% (median 15 kills, about 2.5 days at the soft
