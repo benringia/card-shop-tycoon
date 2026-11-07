@@ -260,4 +260,32 @@ return {
 		expect.equal(b.camFocus ~= nil and b.camFocus < SwordSkillFx.CINEMATIC.lookUp, true, "the hero shot at your stance")
 		expect.equal(b.camLookUp ~= nil and b.camLookUp < SwordSkillFx.CINEMATIC.wide.lookUp, true, "the wide shot low, on the ground")
 	end,
+
+	-- Final review 2026-11-08: the rumble's pulses stacked to the shake's cap before the thrust, so the fissure's big
+	-- shake barely stood out. Pulses every rumbleEvery s grow from a fifth to all of titansRumble (SwordController's rumble
+	-- hook) against the shake's decay (Util/ScreenFx): it must build, stay well under the cap, and have died down by the
+	-- thrust so the fissure lands as a jump
+	["Titan's Wrath's rumble builds through the charge and leaves room for the fissure's big shake"] = function()
+		local ShakeRules = require("../src/shared/Util/ShakeRules")
+		local b = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		local shake, strongest, early = 0, 0, 0
+		local charging = b.peak - b.charge
+		local dt = 1 / 60
+		local t, nextPulse = 0, 0
+		while t < b.hit - b.charge do
+			if t < charging and t >= nextPulse then
+				nextPulse += b.rumbleEvery
+				shake = ShakeRules.add(shake, SwordSkillFx.SHAKE.titansRumble * (0.2 + 0.8 * t / charging))
+			end
+			if t < charging * 0.3 then
+				early = math.max(early, shake)
+			end
+			strongest = math.max(strongest, shake)
+			shake = ShakeRules.decay(shake, dt, AttackFx.SHAKE.DECAY)
+			t += dt
+		end
+		expect.equal(strongest > early * 1.5, true, `it builds ({early} early, {strongest} at most)`)
+		expect.equal(strongest <= 0.5, true, `under half the cap ({strongest})`)
+		expect.equal(ShakeRules.add(shake, SwordSkillFx.SHAKE.titansWrath) - shake >= 0.6, true, `the fissure jumps the shake (from {shake})`)
+	end,
 }

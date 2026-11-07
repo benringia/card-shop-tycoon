@@ -17,6 +17,7 @@ local BabyColors = require(Config:WaitForChild("BabyColors"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Combat = require(Config:WaitForChild("Combat"))
+local ForgeLayout = require(Config:WaitForChild("ForgeLayout"))
 local Items = require(Config:WaitForChild("Items"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
@@ -44,7 +45,7 @@ local PANEL_MAX_SIZE = Vector2.new(820, 540)
 local LIST_WIDTH_SCALE = 0.42
 local ROW_HEIGHT = 66
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
-local CARD_SIZE = Vector2.new(84, 120) -- small enough that what the tab does and costs sits beside it on a phone
+local CARD_SIZE = Vector2.new(84, 120) -- the pane's card on desktops (phones: Config/ForgeLayout CARD)
 local ELEMENT_BUTTON = 48 -- tap targets are 48 px or more
 local ACTION_HEIGHT = 52
 local EDGE = 12
@@ -298,7 +299,8 @@ end
 -- A box of the before/after row: a small title, a big value, its lines (`good`: the After box, in green)
 type Box = { title: string, big: string, lines: { string }, good: boolean? }
 
-local function box(parent: Instance, spec: Box, order: number, width: UDim)
+-- `compact` (phones): Config/ForgeLayout's fonts and padding, its first `lines` lines only
+local function box(parent: Instance, spec: Box, order: number, width: UDim, compact: boolean)
 	local frame = Instance.new("Frame")
 	frame.Name = spec.title
 	frame.LayoutOrder = order
@@ -308,23 +310,30 @@ local function box(parent: Instance, spec: Box, order: number, width: UDim)
 	frame.Parent = parent
 	UIKit.corner(frame, 10)
 	UIKit.outline(frame, if spec.good then palette.good else palette.rowEdge, 2)
+	local look = ForgeLayout.BOX
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop, padding.PaddingBottom = UDim.new(0, 6), UDim.new(0, 8)
-	padding.PaddingLeft, padding.PaddingRight = UDim.new(0, 10), UDim.new(0, 10)
+	padding.PaddingTop = UDim.new(0, if compact then look.pad / 2 else 6)
+	padding.PaddingBottom = UDim.new(0, if compact then look.pad / 2 else 8)
+	padding.PaddingLeft = UDim.new(0, if compact then look.side else 10)
+	padding.PaddingRight = UDim.new(0, if compact then look.side else 10)
 	padding.Parent = frame
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 2)
+	layout.Padding = UDim.new(0, look.gap)
 	layout.Parent = frame
-	addLabel(frame, spec.title, Enum.Font.GothamBold, 12, palette.inkSoft, 1)
-	addLabel(frame, spec.big, Enum.Font.FredokaOne, 22, if spec.good then palette.good else palette.ink, 2)
+	-- a label is its font size + 4 px tall (addLabel), so the compact fonts are ForgeLayout's heights less 4
+	addLabel(frame, spec.title, Enum.Font.GothamBold, if compact then look.title - 4 else 12, palette.inkSoft, 1)
+	addLabel(frame, spec.big, Enum.Font.FredokaOne, if compact then look.big - 4 else 22, if spec.good then palette.good else palette.ink, 2)
 	for index, line in spec.lines do
-		addLabel(frame, line, Enum.Font.GothamBold, 13, if spec.good then palette.good else palette.ink, 2 + index)
+		if compact and index > look.lines then
+			break
+		end
+		addLabel(frame, line, Enum.Font.GothamBold, if compact then look.line - 4 else 13, if spec.good then palette.good else palette.ink, 2 + index)
 	end
 end
 
 -- Two boxes side by side with the arrow picture between them, the same height; one box alone fills the row
-local function compare(parent: Instance, order: number, boxes: { Box })
+local function compare(parent: Instance, order: number, boxes: { Box }, compact: boolean)
 	local row = Instance.new("Frame")
 	row.Name = "Compare"
 	row.LayoutOrder = order
@@ -340,20 +349,21 @@ local function compare(parent: Instance, order: number, boxes: { Box })
 	layout.Padding = UDim.new(0, BOX_GAP)
 	layout.Parent = row
 	if #boxes == 1 then
-		box(row, boxes[1], 1, UDim.new(1, 0))
+		box(row, boxes[1], 1, UDim.new(1, 0), compact)
 		return
 	end
-	local half = UDim.new(0.5, -(ARROW_SIZE / 2 + BOX_GAP))
-	box(row, boxes[1], 1, half)
+	local arrowSize = if compact then ARROW_SIZE * 0.7 else ARROW_SIZE
+	local half = UDim.new(0.5, -(arrowSize / 2 + BOX_GAP))
+	box(row, boxes[1], 1, half, compact)
 	local arrow = Instance.new("ImageLabel")
 	arrow.Name = "Arrow"
 	arrow.LayoutOrder = 2
 	arrow.BackgroundTransparency = 1
 	arrow.Image = UIIcons.Next
 	arrow.ScaleType = Enum.ScaleType.Fit
-	arrow.Size = UDim2.fromOffset(ARROW_SIZE, ARROW_SIZE)
+	arrow.Size = UDim2.fromOffset(arrowSize, arrowSize)
 	arrow.Parent = row
-	box(row, boxes[2], 3, half)
+	box(row, boxes[2], 3, half, compact)
 end
 
 -- What this tab shows: Upgrade, now and after the next level (or Awakened at +10); Reforge, the grade now and the
@@ -460,20 +470,23 @@ local function renderPane(entry: Entry?)
 	local record = owned[weaponId]
 	local cost = costFor(weaponId)
 
-	if phone then
-		addLabel(pane, WeaponText.tabLine(tab), Enum.Font.GothamBold, 12, palette.hint, 0)
-	end
+	local hasElements = tab == FORGE and (#entry.ids > 1 or weapon.source.kind == "forge")
+	local done = tab == REFORGE and record ~= nil and not WeaponRules.canReforge(record) -- nothing to pay for
+	local cardSize = if phone then Vector2.new(ForgeLayout.CARD.w, ForgeLayout.CARD.h) else CARD_SIZE
+	local besideX = cardSize.X + (if phone then 8 else 12)
 
-	-- The header: its card (tap it for its stats), its name, grade and level, rarity and element
+	-- The header: its card (tap it for its stats) and beside it, on desktops its name, grade and level, rarity and
+	-- element; on phones (short screens: Config/ForgeLayout; the list's row already names it) the Now / After boxes,
+	-- or a Forge weapon's element buttons
 	local top = Instance.new("Frame")
 	top.Name = "Top"
 	top.LayoutOrder = 1
 	top.BackgroundTransparency = 1
-	top.Size = UDim2.new(1, 0, 0, CARD_SIZE.Y)
+	top.Size = UDim2.new(1, 0, 0, cardSize.Y)
 	top.AutomaticSize = Enum.AutomaticSize.Y
 	top.Parent = pane
 	local card = Instance.new("Frame")
-	card.Size = UDim2.fromOffset(CARD_SIZE.X, CARD_SIZE.Y)
+	card.Size = UDim2.fromOffset(cardSize.X, cardSize.Y)
 	card.BackgroundTransparency = 1
 	card.Parent = top
 	WeaponFace.render(card, nil, weaponId, record or (if tab == FORGE then { grade = "C", level = 0 } else nil), nil)
@@ -487,37 +500,49 @@ local function renderPane(entry: Entry?)
 	openCard.Activated:Connect(function()
 		WeaponDetailController.Open(weaponId)
 	end)
-	local words = Instance.new("Frame")
-	words.BackgroundTransparency = 1
-	words.Position = UDim2.fromOffset(CARD_SIZE.X + 12, 0)
-	words.Size = UDim2.new(1, -(CARD_SIZE.X + 12), 0, 0)
-	words.AutomaticSize = Enum.AutomaticSize.Y
-	words.Parent = top
-	local wordsLayout = Instance.new("UIListLayout")
-	wordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	wordsLayout.Padding = UDim.new(0, 4)
-	wordsLayout.Parent = words
-	addLabel(words, weapon.name, Enum.Font.FredokaOne, 20, palette.ink, 1)
-	local gradeLine = if tab == FORGE then "Grade C to S · +0" elseif record then `Grade {record.grade} · +{record.level}` else nil
-	if gradeLine then
-		addLabel(words, gradeLine, Enum.Font.FredokaOne, 15, palette.ink, 2)
+	local beside = Instance.new("Frame")
+	beside.BackgroundTransparency = 1
+	beside.Position = UDim2.fromOffset(besideX, 0)
+	beside.Size = UDim2.new(1, -besideX, 0, 0)
+	beside.AutomaticSize = Enum.AutomaticSize.Y
+	beside.Parent = top
+	if phone then
+		if hasElements then
+			elementButtons(beside, entry, 1)
+		else
+			compare(beside, 1, boxesFor(weaponId, weapon, record), true)
+		end
+	else
+		local wordsLayout = Instance.new("UIListLayout")
+		wordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		wordsLayout.Padding = UDim.new(0, 4)
+		wordsLayout.Parent = beside
+		addLabel(beside, weapon.name, Enum.Font.FredokaOne, 20, palette.ink, 1)
+		local gradeLine = if tab == FORGE then "Grade C to S · +0" elseif record then `Grade {record.grade} · +{record.level}` else nil
+		if gradeLine then
+			addLabel(beside, gradeLine, Enum.Font.FredokaOne, 15, palette.ink, 2)
+		end
+		local kind = if weapon.prism then `{weapon.rarity} · every element` elseif weapon.element then `{weapon.rarity} · {weapon.element}` else weapon.rarity
+		addLabel(beside, kind, Enum.Font.GothamBold, 13, palette.inkSoft, 3)
+		addLabel(beside, "Tap the card for its stats", Enum.Font.GothamBold, 11, palette.hint, 4)
+		-- a Forge weapon's element first, then what it is now and what it becomes
+		if hasElements then
+			elementButtons(pane, entry, 2)
+			addLabel(pane, "Pick its element: it bonds with creatures of that element.", Enum.Font.GothamBold, 12, palette.hint, 3)
+		end
+		compare(pane, 4, boxesFor(weaponId, weapon, record), false)
 	end
-	local kind = if weapon.prism then `{weapon.rarity} · every element` elseif weapon.element then `{weapon.rarity} · {weapon.element}` else weapon.rarity
-	addLabel(words, kind, Enum.Font.GothamBold, 13, palette.inkSoft, 3)
-	addLabel(words, "Tap the card for its stats", Enum.Font.GothamBold, 11, palette.hint, 4)
 
-	-- A Forge weapon's element first, then what it is now and what it becomes
-	if tab == FORGE and (#entry.ids > 1 or weapon.source.kind == "forge") then
-		elementButtons(pane, entry, 2)
-		addLabel(pane, "Pick its element: it bonds with creatures of that element.", Enum.Font.GothamBold, 12, palette.hint, 3)
-	end
-	compare(pane, 4, boxesFor(weaponId, weapon, record))
-
-	-- What it costs: a picture chip each, green when you have enough, red when not (nothing for a Grade S reforge)
-	local done = tab == REFORGE and record ~= nil and not WeaponRules.canReforge(record)
+	-- What it costs: a picture chip each, green when you have enough, red when not
 	if cost and not done then
-		addLabel(pane, "You pay", Enum.Font.FredokaOne, 15, palette.ink, 5)
+		if not phone then
+			addLabel(pane, "You pay", Enum.Font.FredokaOne, 15, palette.ink, 5)
+		end
 		costChips(pane, 6, cost)
+	end
+	-- Phones: what the tab does last, under the fold if need be
+	if phone then
+		addLabel(pane, WeaponText.tabLine(tab), Enum.Font.GothamBold, 12, palette.hint, 20)
 	end
 
 	-- The one button

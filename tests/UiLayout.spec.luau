@@ -175,6 +175,20 @@ return {
 		end
 	end,
 
+	-- Final review 2026-11-08: on a 667 x 375 phone the Forge pane opened with the Now/After boxes and the costs below
+	-- the fold. On phones the boxes (or a Forge weapon's element buttons) sit beside a small card and the cost chips
+	-- under them; the tab's line goes last
+	["the Forge window on a phone: the card, Now and After (or the elements) and the costs fit above the fold"] = function()
+		local look = require("../src/shared/Config/ForgeLayout")
+		for _, view in { { w = 667, h = 375 }, { w = 740, h = 360 }, { w = 844, h = 390 } } do
+			local pane = UiLayout.forgePhonePane(look, view.h)
+			for _, tab in { "Forge", "Upgrade", "Reforge" } do
+				local content = UiLayout.forgePhoneContent(look, tab)
+				expect.equal(content <= pane, true, `{tab} at {view.w}x{view.h}: {content} px in a {pane} px pane`)
+			end
+		end
+	end,
+
 	["the binder's Filters window fits its content, and the screen"] = function()
 		local look = require("../src/shared/Config/FiltersLayout")
 		local baby = require("../src/shared/Config/BabyColors")

@@ -1732,7 +1732,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   green when you have enough, red when not; `WeaponText.costChips`; none for a Grade S reforge). One pinned button says
   what it does ("Upgrade to +9 · $8,000") or what's missing first ("Opens at shop level 6", "Need 5 more Wild Ore",
   "Need $500 more"; `WeaponText.button`). The window steps aside for the forge reveal and comes back after it; it
-  closes when you walk away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band.
+  closes when you walk away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band; the
+  pane shows a small card with the Now / After boxes (their first line only) or a Forge weapon's element buttons
+  beside it, the cost chips under them and the tab's line last, so a 667 x 375 phone sees it all without scrolling
+  (`Config/ForgeLayout`, `UiLayout.forgePhonePane` / `forgePhoneContent`, tests/UiLayout).
 - **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
   catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`): owned ones show
   their portrait over their glow, Power, grade and +level, "Owned" / "Equipped"; locked ones a dark sword with
@@ -1882,7 +1885,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   rocks lifting off the ground (1.22 s), one huge thrust (the hit, 1.35 s): a lance-shaped beam and a gold shockwave,
   every foe on the 14 x 4 line ahead (`SwordRules` line: its ends rounded by half its width), a fissure tearing open
   the whole line with green light and thorns bursting out of it, the rocks flung along it, a big shake; it glows on to
-  2.7 s and closes under drifting petals. You stay put (no rush). Its camera moment frames the stance from the side
+  2.7 s and closes under drifting petals. You stay put (no rush). The rumble pulses grow to `SHAKE.titansRumble` 0.28
+  and die down before the thrust (no shake at the peak), so the fissure's shake lands as a jump (tests/SwordSkillFx); a
+  dodge or a switch during the charge stops all of it, its sounds too (`playCues` stops a skill's cue sounds when it is
+  cancelled before its hit). Its camera moment frames the stance from the side
   (`camFocus`) and the whole fissure low (`camLookUp`). Its own sounds (charge-up, rumble, the thrust's roar, thorns,
   the fissure's crash; Pro Sound Effects, measured). Keyed in `tools/blender/anim_titans_lance.py` (on anim_spear's
   helpers), built into `assets/animations/TitansLance`; the HUD button "Titan's Wrath" with the lance-in-vines icon

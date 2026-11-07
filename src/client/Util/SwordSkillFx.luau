@@ -240,8 +240,9 @@ local function detail(count: number): number
 end
 
 -- Trails of `key` particles swirling round `center()` (`radius` studs, a little bob) for `seconds`: a charge's spiral of
--- flames or leaves; three in `color`, or one per colour of `colors` (the Prism's rainbow)
-local function swirl(center: () -> Vector3, radius: number, color: Color3, key: string, seconds: number, size: number, colors: { Color3 }?)
+-- flames or leaves; three in `color`, or one per colour of `colors` (the Prism's rainbow). Returns a stop (a cancelled
+-- charge: no more particles, the ones out fade on their own)
+local function swirl(center: () -> Vector3, radius: number, color: Color3, key: string, seconds: number, size: number, colors: { Color3 }?): () -> ()
 	local anchor = holder(CFrame.new(center()), Vector3.one, seconds + 1)
 	local points: { { point: Attachment, emitter: ParticleEmitter, phase: number } } = {}
 	local tints = colors or { color, color, color }
@@ -254,13 +255,16 @@ local function swirl(center: () -> Vector3, radius: number, color: Color3, key: 
 	end
 	local started = os.clock()
 	local connection: RBXScriptConnection
+	local function stop()
+		connection:Disconnect()
+		for _, entry in points do
+			entry.emitter.Rate = 0
+		end
+	end
 	connection = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - started
 		if t > seconds or not anchor.Parent then
-			connection:Disconnect()
-			for _, entry in points do
-				entry.emitter.Rate = 0
-			end
+			stop()
 			return
 		end
 		anchor.CFrame = CFrame.new(center())
@@ -270,15 +274,18 @@ local function swirl(center: () -> Vector3, radius: number, color: Color3, key: 
 			entry.point.Position = Vector3.new(math.cos(angle) * radius, math.sin(t * 6 + entry.phase) * 0.6, math.sin(angle) * radius)
 		end
 	end)
+	return stop
 end
 
 -- A glowing fissure tearing along the ground from `from` to `to` over `grow` seconds (a tiled crack over a bright seam,
--- `spark` particles spitting up out of it, a light), held `linger` seconds, then fading over `fade`
-local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, deep: Color3, grow: number, linger: number, fade: number, spark: string)
+-- `spark` particles spitting up out of it, a light), held `linger` seconds, then fading over `fade`. Returns a stop (a
+-- cancelled charge: it stops growing and fades out at once)
+local CRACK_STOP = 0.25 -- seconds a stopped fissure takes to fade
+local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, deep: Color3, grow: number, linger: number, fade: number, spark: string): () -> ()
 	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
 	local length = flat.Magnitude
 	if length < 0.5 then
-		return
+		return function() end
 	end
 	local direction = flat.Unit
 	local y = from.Y + 0.07
@@ -318,12 +325,24 @@ local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, 
 			connection:Disconnect()
 		end
 	end)
-	task.delay(grow + linger, function()
+	local faded = false
+	local function fadeOut(seconds: number)
+		if faded then
+			return
+		end
+		faded = true
 		spit.Rate = 0
-		tween(crack, fade, { Transparency = 1 })
-		tween(seam, fade, { Transparency = 1 })
-		tween(light, fade, { Brightness = 0 })
+		tween(crack, seconds, { Transparency = 1 })
+		tween(seam, seconds, { Transparency = 1 })
+		tween(light, seconds, { Brightness = 0 })
+	end
+	task.delay(grow + linger, function()
+		fadeOut(fade)
 	end)
+	return function()
+		connection:Disconnect()
+		fadeOut(CRACK_STOP)
+	end
 end
 
 -- Verdant: leaves and a few pink petals peeling off the blade for the swing, tumbling down behind it
@@ -1469,14 +1488,16 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 		local function body(): Vector3
 			return root.Position - UP * 1.2
 		end
-		swirl(body, beats.swirl * scale, gold, "spark", charging, 0.8 * scale)
-		swirl(body, beats.swirl * 0.7 * scale, green, "shard", charging, 0.9 * scale)
+		-- a dodge or switch during the charge stops all of it (final review 2026-11-08: the cracks and swirls ran on)
+		local stops: { () -> () } = {}
+		table.insert(stops, swirl(body, beats.swirl * scale, gold, "spark", charging, 0.8 * scale))
+		table.insert(stops, swirl(body, beats.swirl * 0.7 * scale, green, "shard", charging, 0.9 * scale))
 		-- glowing cracks creeping out from your feet the whole charge, glowing on until the fissure closes
 		for index = 1, beats.cracks do
 			local angle = index / beats.cracks * math.pi * 2 + 0.4
 			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
 			local reach = beats.crackReach * scale * (0.7 + (index % 3) * 0.15)
-			fissure(feet, feet + out * reach, 0.9 * scale, gold, green, charging, beats.close - beats.peak, beats.fade, "spark")
+			table.insert(stops, fissure(feet, feet + out * reach, 0.9 * scale, gold, green, charging, beats.close - beats.peak, beats.fade, "spark"))
 		end
 		local ground = holder(CFrame.new(feet + UP * 0.3) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, 4, 4), charging + 1.5)
 		local dust = emitter(ground, "smoke", DUST, { size = { 1.4 * scale, 3 * scale }, life = { 0.5, 0.9 }, speed = { 2, 5 }, spread = 80, light = 0, brightness = 1, start = 0.4 })
@@ -1489,11 +1510,17 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 		connection = RunService.RenderStepped:Connect(function()
 			local t = os.clock() - started
 			local a = math.clamp(t / charging, 0, 1)
-			if a >= 1 or stopped() or not orb.Parent then
+			local cancel = stopped()
+			if a >= 1 or cancel or not orb.Parent then
 				connection:Disconnect()
 				orb:Destroy()
 				inflow:Destroy()
 				dust.Rate = 0
+				if cancel then
+					for _, stop in stops do
+						stop()
+					end
+				end
 				return
 			end
 			local at = tip()
@@ -1520,9 +1547,7 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 		task.delay(0.08, function()
 			ElementFx.ring(feet, gold, beats.ring * 0.8 * scale, 0.5)
 		end)
-		if hooks.released then
-			hooks.released()
-		end
+		-- no shake here: the rumble dies down so the fissure's big shake lands as a jump (tests/SwordSkillFx)
 		if not full then
 			return
 		end
