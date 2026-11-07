@@ -11,7 +11,7 @@ local ANIMATIONS = { "draw", "sheath", "cut1", "cut2", "cut3", "skill", "dodge",
 local SOUNDS = { "swing1", "swing2", "swing3", "hit", "draw", "dodge", "ring", "down", "getUp" }
 
 return {
-	-- Weapons round 2 (owner 2026-11-08: "hold the sword the right way, not flat"): every sword model has its edge along
+	-- Weapons round 2 (owner 2026-11-07: "hold the sword the right way, not flat"): every sword model has its edge along
 	-- X and its flat along Z, so the hand's grip turns it a quarter turn about the blade, the flat facing the palm. Measured
 	-- in Studio over the starter's cuts: without the turn the flat led every cut (0.63-0.79 of the swing), with it the edge
 	["the hand holds a sword with its flat to the palm, so the edge leads the cuts"] = function()
