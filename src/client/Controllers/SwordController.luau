@@ -381,11 +381,14 @@ local function refresh(character: Model)
 	end
 	local grade, level = gradeAndLevel(character)
 	local view = views[character]
+	local own = character == player.Character
+	local drawn = character:GetAttribute("SwordDrawn") == true or (own and os.clock() < predictedUntil)
+	-- your weapon switched in hand (the quick switch): the new one starts on the back and the draw move brings it out
+	local switched = own and view ~= nil and SwordRules.switchDraw(view.swordId, swordId, drawn)
 	if view and (view.swordId ~= swordId or view.grade ~= grade or view.level ~= level) then
 		drop(character)
 		view = nil
 	end
-	local drawn = character:GetAttribute("SwordDrawn") == true or (character == player.Character and os.clock() < predictedUntil)
 	if not view then
 		local model, handle, grip = makeModel(swordId, grade, level)
 		local weld = Instance.new("Weld")
@@ -399,7 +402,7 @@ local function refresh(character: Model)
 			handle = handle,
 			weld = weld,
 			grip = grip,
-			inHand = drawn,
+			inHand = drawn and not switched,
 			token = 0,
 			trail = nil,
 		}
@@ -425,9 +428,12 @@ local function refresh(character: Model)
 			fresh.trail = trail
 		end
 		views[character] = fresh
-		place(fresh, character, drawn)
+		place(fresh, character, fresh.inHand)
 		model.Parent = character
-		return
+		if not switched then
+			return
+		end
+		view = fresh
 	end
 	if view.inHand == drawn then
 		return
@@ -466,7 +472,6 @@ local function refresh(character: Model)
 	-- Draw or put away: the move plays (yours here; others' replicate) and the sword changes place at its moment
 	view.token += 1
 	local token = view.token
-	local own = character == player.Character
 	if own and drawn and snapToHand then
 		snapToHand = false
 		place(view, character, true) -- an attack: straight into the hand, the cut is the move
@@ -477,12 +482,23 @@ local function refresh(character: Model)
 		gleam()
 		return
 	end
-	if own and mine then
+	local function moves()
+		if not mine then
+			return
+		end
 		mine.play(if drawn then "draw" else "sheath")
 		if drawn then
 			mine.play("ready", 1, 0.2)
 		else
 			mine.stop("ready")
+		end
+	end
+	if own then
+		-- after a switch the new weapon's moves load first (loadMoves, on the same attribute change)
+		if switched then
+			task.defer(moves)
+		else
+			moves()
 		end
 	end
 	task.delay(if drawn then Swords.GRAB_SECONDS else Swords.RELEASE_SECONDS, function()

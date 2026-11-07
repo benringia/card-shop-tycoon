@@ -1339,7 +1339,8 @@ end
 
 -- A cut or the skill lands: every target `reaches` says is hit (from where the player stands and faces now) takes it.
 -- `share` (default 1): this strike's part of one hit (BattleSim.swordHit), for a skill split into strikes
-local function strike(fight: Fight, member: Member, power: number, kind: string, reaches: (px: number, pz: number, lookX: number, lookZ: number, target: SwordRules.Target) -> boolean, share: number?)
+-- `weaponId`: the weapon the cut or skill started with (its element, bond and perk, even if switched since)
+local function strike(fight: Fight, member: Member, power: number, kind: string, reaches: (px: number, pz: number, lookX: number, lookZ: number, target: SwordRules.Target) -> boolean, share: number?, weaponId: string?)
 	local root = getRoot(member.player)
 	if fight.ended or fight.members[member.player] ~= member or not root then
 		return
@@ -1348,7 +1349,7 @@ local function strike(fight: Fight, member: Member, power: number, kind: string,
 	local events: { BattleSim.Event } = {}
 	for _, target in swordTargets(fight) do
 		if reaches(root.Position.X, root.Position.Z, look.X, look.Z, target) then
-			local weapon = WeaponService.HitInfo(member.player, BattleSim.creatureElement(fight.sim, member.owner))
+			local weapon = WeaponService.HitInfo(member.player, BattleSim.creatureElement(fight.sim, member.owner), weaponId)
 			for _, event in BattleSim.swordHit(fight.sim, member.owner, target.id, power, kind, weapon, share) or {} do
 				table.insert(events, event)
 			end
@@ -1409,6 +1410,7 @@ local function onSwordAttack(player: Player)
 	local cut = sword.combo[index]
 	task.delay(startAt - now, swordCast, player, sword, `cut{index}`)
 	local power = cut.power * WeaponService.Power(player)
+	local weaponId = WeaponService.GetEquipped(player)
 	task.delay(startAt - now + cut.hitAt, function()
 		-- a switch after the tap, before the hit, cancels the old weapon's cut
 		if SwordRules.skillDodged(now, startAt - now + cut.hitAt, member.swappedAt) then
@@ -1416,7 +1418,7 @@ local function onSwordAttack(player: Player)
 		end
 		strike(fight, member, power, "Sword", function(px, pz, lookX, lookZ, target)
 			return SwordRules.cutReaches(cut, px, pz, lookX, lookZ, target)
-		end)
+		end, nil, weaponId)
 	end)
 end
 
@@ -1441,6 +1443,7 @@ local function onSwordSkill(player: Player)
 	swordCast(player, sword, "skill")
 	local sx, sz = root.Position.X, root.Position.Z
 	local power = skill.power * WeaponService.Power(player)
+	local weaponId = WeaponService.GetEquipped(player) -- its later hits keep this weapon's element, bond and perk
 	local castAt = os.clock()
 	task.delay(skill.hitAt, function()
 		local now = getRoot(player)
@@ -1456,7 +1459,7 @@ local function onSwordSkill(player: Player)
 		for _, hit in hits do
 			task.delay(hit.after, strike, fight, member, power * hit.share, "Skill", function(_px, _pz, _lookX, _lookZ, target)
 				return target.id == hit.id
-			end, hit.share)
+			end, hit.share, weaponId)
 		end
 	end)
 end

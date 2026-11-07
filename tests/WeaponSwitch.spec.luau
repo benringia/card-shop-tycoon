@@ -47,4 +47,12 @@ return {
 		expect.equal(WeaponSwitch.step(list, nil, -1), "a")
 		expect.isNil(WeaponSwitch.step({}, nil, 1))
 	end,
+
+	["equip sends: at once after a quiet spell, else when the server's cooldown (plus slack) has passed"] = function()
+		local gap = Weapons.EQUIP_COOLDOWN + Weapons.EQUIP_SEND_SLACK
+		expect.equal(gap > Weapons.EQUIP_COOLDOWN, true, "a little past the server's cooldown")
+		expect.equal(WeaponSwitch.sendAt(10, nil, gap), 10, "the first send goes now")
+		expect.equal(WeaponSwitch.sendAt(10, 10 - gap - 0.01, gap), 10, "long after the last one: now")
+		expect.near(WeaponSwitch.sendAt(10, 9.8, gap), 9.8 + gap, 1e-9, "too soon: when the gap has passed")
+	end,
 }

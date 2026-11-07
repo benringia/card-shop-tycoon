@@ -108,6 +108,38 @@ function UiLayout.wildButtons(view: Size): WildButtons
 	return { pet = pet, signature = signature, swap = swap, run = run }
 end
 
+-- The quick weapon switch (Config/HudLayout WEAPON_SWITCH: < chip > with the weapon's name under it) on the right edge
+-- at mid height. Its HUD scale never shrinks the arrows under 48 px. In a fight it moves up above any fight button in
+-- its way (boss buttons by touch or mouse, wild buttons), so it never covers the Pet or Signature buttons.
+export type SwitchLook = { chip: number, arrow: number, gap: number, right: number, name: number }
+export type SwitchRect = { x: number, y: number, w: number, h: number, scale: number }
+function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean): SwitchRect
+	local s = math.max(scale, 48 / look.arrow)
+	local w = (look.chip + 2 * (look.arrow + look.gap)) * s
+	local h = (look.chip + look.name) * s
+	local x = view.w - look.right - w
+	local y = view.h / 2 - h / 2
+	if fight then
+		local avoid: { Rect } = {}
+		for _, rects in { UiLayout.combatButtons(view) :: any, UiLayout.combatButtons(view, true), UiLayout.wildButtons(view) } do
+			for _, rect in rects do
+				table.insert(avoid, rect)
+			end
+		end
+		local moved = true
+		while moved do
+			moved = false
+			for _, b in avoid do
+				if x < b.x + b.w and b.x < x + w and y < b.y + b.h and b.y < y + h then
+					y = b.y - look.gap - h
+					moved = true
+				end
+			end
+		end
+	end
+	return { x = x, y = math.max(0, y), w = w, h = h, scale = s }
+end
+
 export type FiltersLook = {
 	top: number,
 	bottom: number,

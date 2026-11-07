@@ -140,6 +140,21 @@ function WeaponRules.perk(cfg: any, weaponId: string, grade: string): Perk?
 	return { kind = perk.kind, every = perk.every, share = share, seconds = perk.seconds }
 end
 
+-- A sword hit's weapon (BattleSim.SwordWeapon): its element (the Prism Blade's is picked per foe in the sim), the bond
+-- with the creature fighting for the player and its perk at `grade`. The server passes the weapon a cut or skill was
+-- started with, so a switch mid-skill can't give its later hits the new weapon's element, bond or perk.
+function WeaponRules.hitInfo(cfg: any, weaponId: string, grade: string, creatureElement: string?): any
+	local weapon = cfg.ById[weaponId]
+	local bond, meter = WeaponRules.bond(cfg, weaponId, creatureElement)
+	return {
+		element = if weapon and not weapon.prism then weapon.element else nil,
+		prism = weapon ~= nil and weapon.prism == true,
+		bond = bond,
+		meter = meter,
+		perk = WeaponRules.perk(cfg, weaponId, grade),
+	}
+end
+
 -- What making a weapon costs: the Forge's price, a boss weapon's by its rarity, a masterwork's recipe; nil for the
 -- Steel Sword and weapons not built yet
 function WeaponRules.makeCost(cfg: any, weaponId: string): Cost?

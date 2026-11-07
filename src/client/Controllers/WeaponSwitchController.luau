@@ -16,6 +16,7 @@ local Swords = require(Config:WaitForChild("Swords"))
 local HudLayout = require(Config:WaitForChild("HudLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WeaponSwitch = require(Shared:WaitForChild("Util"):WaitForChild("WeaponSwitch"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -34,6 +35,7 @@ local owned: { [string]: any } = {}
 local equipped: string? = nil
 local list: { string } = {}
 local holder: Frame
+local holderScale: UIScale
 local portrait: ImageLabel
 local ring: UIStroke
 local nameLabel: TextLabel
@@ -56,6 +58,28 @@ local function render()
 	nameLabel.Text = if weapon then string.upper(weapon.name) else ""
 end
 
+-- The server drops equips inside its cooldown, so the latest pick goes at once or when the cooldown has passed:
+-- quick steps send only the weapon they land on, and the server's replies don't move the chip while one waits
+local SEND_GAP = Weapons.EQUIP_COOLDOWN + Weapons.EQUIP_SEND_SLACK
+local pendingId: string? = nil
+local lastSentAt: number? = nil
+local function send(weaponId: string)
+	local waiting = pendingId ~= nil
+	pendingId = weaponId
+	if waiting then
+		return
+	end
+	local now = os.clock()
+	task.delay(WeaponSwitch.sendAt(now, lastSentAt, SEND_GAP) - now, function()
+		local id = pendingId
+		pendingId = nil
+		if id then
+			lastSentAt = os.clock()
+			Remotes.EquipWeapon:FireServer(id)
+		end
+	end)
+end
+
 -- One step through your weapons: the server equips it (and redraws your character); the name shows for a moment
 local function step(delta: number)
 	if not WeaponSwitch.visible(list) then
@@ -68,7 +92,18 @@ local function step(delta: number)
 	equipped = nextId -- shown at once; the server's WeaponsChanged confirms or puts it back
 	nameUntil = os.clock() + LOOK.nameSeconds
 	render()
-	Remotes.EquipWeapon:FireServer(nextId)
+	send(nextId)
+end
+
+-- On the right edge, and in a fight above the fight buttons (UiLayout.weaponSwitch); redone when the screen's size
+-- changes or a fight's controls come or go
+local laidOutSize = Vector2.zero
+local laidOutFight = false
+local function relayout(view: Vector2, fight: boolean)
+	laidOutSize, laidOutFight = view, fight
+	local rect = UiLayout.weaponSwitch({ w = view.X, h = view.Y }, LOOK, Hud.scaleFor(), fight)
+	holder.Position = UDim2.fromOffset(rect.x, rect.y)
+	holderScale.Scale = rect.scale
 end
 
 local function build()
@@ -81,13 +116,12 @@ local function build()
 	Hud.hideWith(layer)
 	holder = Instance.new("Frame")
 	holder.Name = "Switch"
-	holder.AnchorPoint = Vector2.new(1, 0.5)
-	holder.Position = UDim2.new(1, -LOOK.right, 0.5, 0)
-	holder.Size = UDim2.fromOffset(LOOK.chip + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + 22)
+	holder.Size = UDim2.fromOffset(LOOK.chip + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)
 	holder.BackgroundTransparency = 1
 	holder.Visible = false
 	holder.Parent = layer
-	Hud.scaleWith(holder)
+	holderScale = Instance.new("UIScale") -- set by relayout (UiLayout.weaponSwitch)
+	holderScale.Parent = holder
 
 	local previous = UIKit.button(holder, "<", UIKit.Colors.Secondary)
 	previous.Name = "Previous"
@@ -175,7 +209,7 @@ function WeaponSwitchController.Start()
 		if typeof(data.owned) == "table" then
 			owned = data.owned
 		end
-		if typeof(data.equipped) == "string" then
+		if typeof(data.equipped) == "string" and not pendingId then -- a waiting send is newer than this reply
 			equipped = data.equipped
 		end
 		render()
@@ -193,7 +227,13 @@ function WeaponSwitchController.Start()
 		step(if shift then -1 else 1)
 	end)
 
+	local screenGui = UIController.GetScreenGui()
 	RunService.Heartbeat:Connect(function()
+		local view = (holder.Parent :: GuiObject).AbsoluteSize
+		local fight = screenGui:FindFirstChild("CombatHud") ~= nil
+		if view ~= laidOutSize or fight ~= laidOutFight then
+			relayout(view, fight)
+		end
 		holder.Visible = WeaponSwitch.visible(list) and not UIKit.anyPanelOpen() and not PlacementController.IsActive()
 		nameLabel.Visible = os.clock() < nameUntil
 	end)

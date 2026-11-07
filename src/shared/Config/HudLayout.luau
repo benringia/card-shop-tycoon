@@ -63,6 +63,7 @@ return {
 	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7 },
 	-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6, the owner's pick A): a round chip on the right
 	-- edge at mid height with your weapon's picture in its rarity's ring, < and > either side; its name shows under it
-	-- for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too
-	WEAPON_SWITCH = { chip = 64, arrow = 48, gap = 6, right = 12, ring = 3, nameSeconds = 1.5, swipe = 30 },
+	-- (in `name` px of room) for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too. Placed by
+	-- UiLayout.weaponSwitch: never scaled under 48 px arrows, above the fight buttons in a fight
+	WEAPON_SWITCH = { chip = 64, arrow = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30 },
 }

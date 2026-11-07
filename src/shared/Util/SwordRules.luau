@@ -323,6 +323,12 @@ function SwordRules.skillDodged(castAt: number, hitAt: number, dodgedAt: number?
 	return dodgedAt ~= nil and dodgedAt >= castAt and dodgedAt < castAt + hitAt
 end
 
+-- Whether a weapon change shows as a draw (the quick switch mid-fight: the new weapon starts on the back and the draw
+-- move brings it to the hand): only a different weapon replacing one that was drawn
+function SwordRules.switchDraw(previous: string?, current: string?, drawn: boolean): boolean
+	return drawn and previous ~= nil and current ~= nil and previous ~= current
+end
+
 -- Where a skill's effect lands (the client draws it there): a wave's burst on the first foe it touches, else the end of
 -- its run; the judged foe; nil for the shapes drawn around you or along your path
 function SwordRules.skillImpact(shape: SkillShape, px: number, pz: number, lookX: number, lookZ: number, targets: { Target }): (number?, number?)

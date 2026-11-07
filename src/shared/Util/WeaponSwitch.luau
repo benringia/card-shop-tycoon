@@ -49,6 +49,12 @@ function WeaponSwitch.step(list: { string }, current: string?, delta: number): s
 	return list[(index - 1 + delta) % #list + 1]
 end
 
+-- When the chip may send its next equip: now, or once `gap` seconds have passed since the last send (the server drops
+-- equips inside its cooldown, so quick steps wait and send only the latest pick)
+function WeaponSwitch.sendAt(now: number, lastSentAt: number?, gap: number): number
+	return if lastSentAt then math.max(now, lastSentAt + gap) else now
+end
+
 -- The chip shows when there's something to switch to
 function WeaponSwitch.visible(list: { string }): boolean
 	return #list >= 2

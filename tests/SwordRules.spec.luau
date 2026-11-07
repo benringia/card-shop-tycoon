@@ -267,4 +267,12 @@ return {
 		expect.equal(#SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { t("away", 0, 40) }), 0, "out of range")
 		expect.equal(#SwordRules.skillHits({ kind = "spin", radius = 9 }, 0, 0, 0, 0, 0, -1, {}), 0, "no foes")
 	end,
+
+	["a weapon switched while drawn comes off the back with the draw move; nothing else does"] = function()
+		expect.equal(SwordRules.switchDraw("starterSword", "titansLance", true), true, "switched in hand")
+		expect.equal(SwordRules.switchDraw("starterSword", "titansLance", false), false, "on the back: stays there")
+		expect.equal(SwordRules.switchDraw(nil, "titansLance", true), false, "the first weapon of a fresh character")
+		expect.equal(SwordRules.switchDraw("titansLance", "titansLance", true), false, "the same weapon (an upgrade)")
+		expect.equal(SwordRules.switchDraw("titansLance", nil, true), false, "no weapon now")
+	end,
 }

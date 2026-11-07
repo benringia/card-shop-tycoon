@@ -239,6 +239,7 @@ return {
 	WILD_ORE = WILD_ORE,
 	FORGE_UNLOCK_LEVEL = 6,
 	EQUIP_COOLDOWN = 0.5, -- seconds between Equip requests (WeaponService)
+	EQUIP_SEND_SLACK = 0.1, -- the switch chip sends no sooner than the cooldown plus this, so a send isn't dropped
 	FORGE_COOLDOWN = 1, -- seconds between Forge, Upgrade and Reforge requests (ForgeService)
 	FORGE_DISTANCE = 12, -- studs from your own Forge machine
 	REQUEST_COOLDOWN = 1, -- seconds between a client's asks for its weapons

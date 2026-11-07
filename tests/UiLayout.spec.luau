@@ -142,6 +142,38 @@ return {
 			expect.equal(rects.pet.x > view.w / 2 and rects.pet.y > view.h / 2, true, "it sits bottom-right")
 		end
 	end,
+	["weapon switch: in a fight, clear of every button layout, on screen, arrows big enough to tap"] = function()
+		-- Config/HudLayout WEAPON_SWITCH (not loadable in Lune) and its SCALE.MIN, the smallest HUD scale
+		local look = { chip = 64, arrow = 48, gap = 6, right = 12, name = 22 }
+		local phones = { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 740, h = 360 } }
+		local tablets = { { w = 1180, h = 820 }, { w = 1024, h = 768 }, { w = 1366, h = 1024 } }
+		local desktops = { { w = 1920, h = 1080 }, { w = 1280, h = 720 } }
+		for _, views in { phones, tablets, desktops } do
+			for _, view in views do
+				local scale = math.clamp(view.h / 560, 0.7, 1)
+				local r = UiLayout.weaponSwitch(view, look, scale, true)
+				local where = `{view.w}x{view.h}`
+				expect.equal(look.arrow * r.scale >= 48, true, `{where}: arrows are tap targets`)
+				expect.near(r.w, (look.chip + 2 * (look.arrow + look.gap)) * r.scale, 1e-6, `{where}: width`)
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{where}: on screen`)
+				expect.near(r.x + r.w, view.w - look.right, 1e-6, `{where}: on the right edge`)
+				for _, rects in { UiLayout.combatButtons(view), UiLayout.combatButtons(view, true), UiLayout.wildButtons(view) } do
+					for name, b in rects :: any do
+						local overlap = r.x < b.x + b.w and b.x < r.x + r.w and r.y < b.y + b.h and b.y < r.y + r.h
+						expect.equal(overlap, false, `{where}: clear of {name}`)
+					end
+				end
+			end
+		end
+	end,
+	["weapon switch: out of a fight, at mid height on the right edge"] = function()
+		local look = { chip = 64, arrow = 48, gap = 6, right = 12, name = 22 }
+		for _, view in { { w = 844, h = 390 }, { w = 1180, h = 820 }, { w = 1920, h = 1080 } } do
+			local r = UiLayout.weaponSwitch(view, look, 0.7, false)
+			expect.near(r.y + r.h / 2, view.h / 2, 1e-6, `{view.w}x{view.h}: mid height`)
+			expect.near(r.x + r.w, view.w - look.right, 1e-6, `{view.w}x{view.h}: right edge`)
+		end
+	end,
 
 	["the binder's Filters window fits its content, and the screen"] = function()
 		local look = require("../src/shared/Config/FiltersLayout")

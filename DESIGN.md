@@ -1875,7 +1875,13 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
   switch is allowed but costs `Weapons.SWAP_SECONDS` (1 s) with no cut or skill (the dodge still works), the combo
   starts again, the old weapon's cut or skill still on its way is cancelled (the server checks `SwordRules.skillDodged`
-  with the switch time), the skill's cooldown carries over, and the HUD's skill button follows the new weapon.
+  with the switch time), the skill's cooldown carries over, and the HUD's skill button follows the new weapon. A
+  switch while the weapon is drawn shows as a draw: the new one starts on the back and its draw and ready moves bring it
+  to the hand (`SwordRules.switchDraw`). A skill's later hits keep the weapon it was cast with (element, bond, perk:
+  `WeaponRules.hitInfo`), so switching mid-skill gains nothing. In a fight the chip moves up above every fight button
+  (`UiLayout.weaponSwitch`, Lune-tested on phones, tablets and desktops) and never scales its arrows under 48 px. Quick
+  steps send only the weapon they land on (the server drops equips inside `Weapons.EQUIP_COOLDOWN`, so the chip waits
+  the cooldown plus `EQUIP_SEND_SLACK`: `WeaponSwitch.sendAt`).
 
 ---
 

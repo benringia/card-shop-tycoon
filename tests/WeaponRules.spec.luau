@@ -48,6 +48,25 @@ return {
 		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 1.15 * 1.3, 1e-9)
 	end,
 
+	["a hit's weapon info is the weapon it's given (a skill's caster weapon), not whatever is equipped by then"] = function()
+		local halberd = WeaponRules.hitInfo(W, "magmaHalberd", "S", "Ember")
+		expect.equal(halberd.element, "Ember", "its element")
+		expect.equal(halberd.prism, false)
+		expect.equal(halberd.bond, W.BOND.damage, "bonded with an Ember creature")
+		expect.equal((halberd.perk :: any).kind, "erupt", "its perk")
+		local lance = WeaponRules.hitInfo(W, "titansLance", "C", "Ember")
+		expect.equal(lance.element, "Bloom")
+		expect.equal(lance.bond, 1, "not bonded with an Ember creature")
+		expect.equal((lance.perk :: any).kind, "heal")
+		local prism = WeaponRules.hitInfo(W, "prismBlade", "C", nil)
+		expect.equal(prism.element, nil, "the sim picks the Prism Blade's element per foe")
+		expect.equal(prism.prism, true)
+		local steel = WeaponRules.hitInfo(W, W.STARTER, "C", "Bloom")
+		expect.equal(steel.element, nil)
+		expect.equal(steel.perk, nil)
+		expect.equal(steel.bond, 1)
+	end,
+
 	["bond: same element x1.15 damage and x1.5 meter; prism bonds with any; Steel never"] = function()
 		local d, m = WeaponRules.bond(W, "forgeSword_Ember", "Ember")
 		expect.equal(d, 1.15)
