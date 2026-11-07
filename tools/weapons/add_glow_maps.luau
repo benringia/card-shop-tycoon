@@ -19,6 +19,15 @@ local MODELS = {
 	ForgeSword_Bloom = "ForgeSword",
 	ForgeSword_Volt = "ForgeSword",
 	ForgeSword_Shade = "ForgeSword",
+	-- the spears (weapons round 2; the Forge Spear's five copies share ForgeSpear's)
+	MagmaHalberd = "MagmaHalberd",
+	TidalTrident = "TidalTrident",
+	TitansLance = "TitansLance",
+	ForgeSpear_Ember = "ForgeSpear",
+	ForgeSpear_Tide = "ForgeSpear",
+	ForgeSpear_Bloom = "ForgeSpear",
+	ForgeSpear_Volt = "ForgeSpear",
+	ForgeSpear_Shade = "ForgeSpear",
 }
 
 -- A MeshPart's colour map: newer files keep it as TextureContent (a Content), older ones as TextureID
