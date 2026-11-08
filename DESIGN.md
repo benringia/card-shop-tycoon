@@ -1443,7 +1443,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
     shedding small stars, then fading.
   - **Hits:** an impact on the foe's side facing you (owner 2026-11-08, picked in game from the free Yona VFX Pack:
     `SwordFx.IMPACT`, `HitFx.impact`; it replaced the spiky star burst): a white flash, sparks and a shockwave with gold
-    specks, streaks flung out and a star, x1.35 on the finisher and the dash slash, which also snap out a ring facing
+    specks, streaks flung out and a star, plus white slash streaks across the foe (the Euphoric pack's Slash-Impact-01
+    and Yona's Slash-01, owner 2026-11-08), facing your camera, x1.35 on the finisher and the dash slash, which also snap out a ring facing
     you (flat rings stay the boss's); the white flash on what you hit and the sparks as before. Your own cut hits burst the moment your reach check connects; other players' hits, every dash
     slash and yours the check missed burst when the server's hit arrives.
   - **Dash slash:** after-images along the dash and two crossing cut lines on each foe hit, a beat after you pass.

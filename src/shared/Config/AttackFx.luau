@@ -140,6 +140,9 @@ return {
 		goldDot = "rbxassetid://17088300017",
 		goldStreak = "rbxassetid://6763809313",
 		goldStar = "rbxassetid://1084970835",
+		-- the white slash streaks (Euphoric Slash-Impact-01 and Yona Slash-01; owner 2026-11-08)
+		slashStreak = "rbxassetid://16923007448",
+		slashArc = "rbxassetid://13780268621",
 	},
 	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
 	-- S: the big ones; Util/FightFx)

@@ -192,11 +192,18 @@ function HitFx.burst(at: Vector3, size: number, tint: Color3)
 	end
 end
 
--- A landed cut's impact at `at` (Config/SwordFx IMPACT, the Yona VFX Pack's hit and golden sparks): every emitter
--- bursts once, its sizes and speeds `scale` times the pack's
+local FACINGS = {
+	camera = Enum.ParticleOrientation.FacingCamera,
+	perpendicular = Enum.ParticleOrientation.VelocityPerpendicular,
+	parallel = Enum.ParticleOrientation.VelocityParallel,
+}
+
+-- A landed cut's impact at `at` (Config/SwordFx IMPACT: the packs' hit, golden sparks and slash streaks): every emitter
+-- bursts once from a holder facing your camera, its sizes and speeds `scale` times the pack's
 function HitFx.impact(at: Vector3, scale: number)
 	local impact = SwordFx.IMPACT
-	local part = holder(CFrame.new(at), impact.seconds)
+	local eye = workspace.CurrentCamera.CFrame.Position
+	local part = holder(if (eye - at).Magnitude > 1e-3 then CFrame.lookAt(at, eye) else CFrame.new(at), impact.seconds)
 	for _, spec in impact.emitters do
 		local emitter = Instance.new("ParticleEmitter")
 		emitter.Texture = (AttackFx.TEXTURES :: any)[spec.texture] or ""
@@ -212,8 +219,11 @@ function HitFx.impact(at: Vector3, scale: number)
 		emitter.SpreadAngle = Vector2.new(spread[1], spread[2])
 		local rotation = spec.rotation or { 0, 0 }
 		emitter.Rotation = NumberRange.new(rotation[1], rotation[2])
-		emitter.Acceleration = Vector3.new(0, -(spec.fall or 0), 0)
+		local accel = spec.accel or { 0, 0, 0 }
+		emitter.Acceleration = Vector3.new(accel[1], accel[2], accel[3])
 		emitter.Drag = spec.drag or 0
+		emitter.EmissionDirection = (Enum.NormalId :: any)[spec.direction or "Top"]
+		emitter.Orientation = FACINGS[spec.facing or "camera"]
 		local size = {}
 		for _, point in spec.size do
 			table.insert(size, NumberSequenceKeypoint.new(point[1], point[2] * scale, point[3] * scale))
@@ -230,9 +240,6 @@ function HitFx.impact(at: Vector3, scale: number)
 				table.insert(squash, NumberSequenceKeypoint.new(point[1], point[2], point[3]))
 			end
 			emitter.Squash = NumberSequence.new(squash)
-		end
-		if spec.alongFlight then
-			emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
 		end
 		if spec.flipbook then
 			emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4

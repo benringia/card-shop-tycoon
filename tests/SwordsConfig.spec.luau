@@ -334,6 +334,23 @@ return {
 		assert(impact.seconds >= 1, "it cleans up after the longest emitter")
 	end,
 
+	-- Owner 2026-11-08 ("I can't see this effect when I hit an enemy"): the white slash streaks from the in-game test
+	-- (the Euphoric pack's Slash-Impact-01 and the Yona pack's Slash-01) burst with every landed cut too. They fly a set
+	-- way from the impact's holder, which faces your camera.
+	["a landed cut's impact carries the slash streaks, each flying a valid way"] = function()
+		local textures: { [string]: boolean } = {}
+		local directions = { Top = true, Bottom = true, Left = true, Right = true, Front = true, Back = true }
+		local facings = { camera = true, perpendicular = true, parallel = true }
+		for index, emitter in SwordFx.IMPACT.emitters do
+			textures[emitter.texture] = true
+			assert(emitter.direction == nil or directions[emitter.direction], `emitter {index}: direction {emitter.direction}`)
+			assert(emitter.facing == nil or facings[emitter.facing], `emitter {index}: facing {emitter.facing}`)
+			assert(emitter.accel == nil or #emitter.accel == 3, `emitter {index}: accel x, y, z`)
+		end
+		expect.equal(textures.slashStreak, true, "Slash-Impact's streak")
+		expect.equal(textures.slashArc, true, "Slash-01's arc")
+	end,
+
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
 	["the sword effects' textures are uploaded images"] = function()
 		for _, key in { "crescent", "burst", "line", "star" } do
