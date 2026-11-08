@@ -22,6 +22,7 @@ local MonsterMoves = require(Shared:WaitForChild("Util"):WaitForChild("MonsterMo
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local MoveFx = require((script.Parent :: Instance):WaitForChild("MoveFx"))
+local PackHit = require((script.Parent :: Instance):WaitForChild("PackHit"))
 local SuperFx = require((script.Parent :: Instance):WaitForChild("SuperFx"))
 local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperFx"))
 local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRules"))
@@ -72,6 +73,18 @@ for _, list in { Combat.ABILITIES, Combat.SIGNATURES } do
 	end
 end
 
+-- A basic attack's hit picture at `at`, `size` times the packs' (owner 2026-11-09: the sword hit's pack effects on
+-- creature attacks, "slashes on slash attacks and no slash on non slash attacks", on all elements): a cut (the Bloom
+-- combo, the Shade moon slash) lands with the slash streaks and arc, a fireball or bolt with its star burst and the
+-- spark streaks; the element's own particles on both. `share`: of the pack particles (a combo's lighter hits).
+local function hitPicture(element: string, at: Vector3, size: number, tint: Color3, share: number)
+	local cut = FightFxRules.cuts(element, AttackFx)
+	if not cut then
+		ElementFx.burst(at, tint, size)
+	end
+	PackHit.play(ElementFx.folder(), at, size, tint, element, cut, share * ElementFx.detailShare())
+end
+
 function FightFx.new(resolve: Resolve): Dispatcher
 	local pending: { [string]: Pending } = {}
 	local active = 0
@@ -97,16 +110,30 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end)
 	end
 
+	-- How big hits look on the fighter `id` (Util/PackHit.scaleFor its model: a boss's are bigger; 1 when not drawn)
+	local function foeScale(id: string?): number
+		local marker = if id then resolve.marker(id) else nil
+		if not marker then
+			return 1
+		end
+		local body: { root: BasePart }? = if resolve.monster then resolve.monster(marker) else nil
+		if not body then
+			body = resolve.creature(marker)
+		end
+		return PackHit.scaleFor(if body then body.root:FindFirstAncestorOfClass("Model") else nil)
+	end
+
 	local function hitSound(element: string, at: Vector3)
 		local sounds = AttackFx.SOUNDS[element]
 		ElementFx.sound(if sounds then sounds.hit else nil, at)
 	end
 
-	-- A creature's hit landing at `at`: the impact at its grade's size, its sound, shake on your own creature's hits,
-	-- and at grade S the boom layer, a flash on your screen and the element's big extra
-	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean)
+	-- A creature's hit landing at `at` on a foe `foe` times the usual size (foeScale): the hit picture at its grade's
+	-- size, its sound, shake on your own creature's hits, and at grade S the boom layer, a flash on your screen and the
+	-- element's big extra
+	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean, foe: number)
 		local s = tier.scale
-		ElementFx.burst(at, tint, s * (if finisher then 1.15 else 1))
+		hitPicture(view.element, at, s * foe * (if finisher then 1.15 else 1), tint, 1)
 		SuperFx.echoHit(view.root, at, s) -- Eclipse's mirror image strikes with it
 		hitSound(view.element, at)
 		if view.mine then
@@ -195,10 +222,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						end, tint, math.max(0.1, flight - wait), (AttackFx.ARC[view.element] or 0) + (shot - 1) * 2, function(at)
 							if shot == 1 then
 								whenAttacked(entry, function()
-									impact(view, tier, at, tint, false)
+									impact(view, tier, at, tint, false, foeScale(entry.to))
 								end)
 							else
-								ElementFx.burst(at, tint, s * 0.6)
+								ElementFx.burst(at, tint, s * 0.6 * foeScale(entry.to))
 							end
 						end, if shot == 1 then opts else { scale = s * 0.75, flames = ember, sparkle = opts.sparkle })
 					end)
@@ -220,15 +247,15 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					task.delay(at, function()
 						local function slash()
 							local spot = targetPosition(entry.to, toward)
-							ElementFx.slash(spot, view.root.Position, tint, "vine", index, s)
 							if index < #times then
+								hitPicture(view.element, spot, s * foeScale(entry.to) * AttackFx.LIGHT_HIT.size, tint, AttackFx.LIGHT_HIT.share)
 								hitSound(view.element, spot)
 								if view.mine then
 									ScreenFx.shakeAt(AttackFx.SHAKE.creatureHit * 0.5 * tier.shake, spot)
 								end
 								return
 							end
-							impact(view, tier, spot, tint, true)
+							impact(view, tier, spot, tint, true, foeScale(entry.to))
 							if tier.extra >= 2 then
 								-- The finishing X
 								ElementFx.slash(spot, view.root.Position, Color3.new(1, 1, 1), "vine", 1, s * 1.5, 45)
@@ -266,11 +293,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						end, tint, math.max(0.1, flight - wait), function(at)
 							if shot == 1 then
 								whenAttacked(entry, function()
-									impact(view, tier, at, tint, false)
-									ElementFx.slash(at, from, tint, "vine", 1, s, tilts[1])
+									impact(view, tier, at, tint, false, foeScale(entry.to))
 								end)
 							else
-								ElementFx.slash(at, from, tint, "vine", shot, s * 0.8, tilts[shot])
+								hitPicture(view.element, at, s * foeScale(entry.to) * AttackFx.LIGHT_HIT.size, tint, AttackFx.LIGHT_HIT.share)
 							end
 						end, s * (if shot == 1 then 1 else 0.8), tilts[shot])
 					end)
@@ -294,7 +320,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						local up = Vector3.new(0, if fork == 1 then 2.5 else -1.5, 0) * s
 						ElementFx.bolt(from + up * 0.5, spot + up, tint:Lerp(Color3.new(1, 1, 1), 0.4), AttackFx.BOLT.seconds, s * 0.65)
 					end
-					impact(view, tier, spot, tint, false)
+					impact(view, tier, spot, tint, false, foeScale(entry.to))
 				end)
 			end)
 		end
@@ -322,7 +348,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local spot = targetPosition(event.to, view.root.Position)
 		resolve.pose(marker, "strike")
 		local tier = FightFxRules.tier(view.grade, AttackFx)
-		ElementFx.burst(spot, tint, 0.7 * tier.scale)
+		hitPicture(view.element, spot, 0.7 * tier.scale * foeScale(event.to), tint, 1)
 		hitSound(view.element, spot)
 	end
 

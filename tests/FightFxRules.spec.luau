@@ -4,6 +4,7 @@ local AttackFx = require("../src/shared/Config/AttackFx")
 local Combat = require("../src/shared/Config/Combat")
 local Bosses = require("../src/shared/Config/Bosses")
 local Wild = require("../src/shared/Config/Wild")
+local SwordFx = require("../src/shared/Config/SwordFx")
 local expect = require("./lib/expect")
 
 return {
@@ -96,5 +97,41 @@ return {
 		expect.equal(c.shake < b.shake and b.shake < a.shake and a.shake < s.shake, true, "more shake each grade")
 		expect.equal(FightFxRules.tier(nil, AttackFx), c, "no grade: C")
 		expect.equal(FightFxRules.tier("Z", AttackFx), c, "unknown: C")
+	end,
+
+	-- Owner 2026-11-09: creature hits get the sword hit's pack effects, "slashes on slash attacks and no slash on non
+	-- slash attacks", the element's own particles on all
+	["a creature's cut lands with the slash streaks, its other attacks without"] = function()
+		expect.equal(FightFxRules.cuts("Bloom", AttackFx), true, "the Bloom combo")
+		expect.equal(FightFxRules.cuts("Shade", AttackFx), true, "the moon slash")
+		for _, element in { "Ember", "Tide", "Volt" } do
+			expect.equal(FightFxRules.cuts(element, AttackFx), false, element)
+		end
+		expect.equal(FightFxRules.cuts("Plasma", AttackFx), false, "an unknown element")
+	end,
+
+	["a combo's earlier hits and the extra moon slashes land lighter than the hit with the damage"] = function()
+		local light = AttackFx.LIGHT_HIT
+		assert(light.size > 0 and light.size < 1, `size {light.size}`)
+		assert(light.share > 0 and light.share < 1, `share {light.share}`)
+	end,
+
+	["a hit's pack emitters: the streaks and arc only on a cut, the sparks and the element's own always"] = function()
+		local slashTextures = { slashStreak = true, slashArc = true }
+		for element, own in SwordFx.ELEMENT_HIT do
+			local cut = FightFxRules.hitSpecs(SwordFx, element, true)
+			expect.equal(#cut, #SwordFx.IMPACT.emitters + #own, `{element} cut`)
+			local plain = FightFxRules.hitSpecs(SwordFx, element, false)
+			local textures: { [string]: boolean } = {}
+			for _, spec in plain do
+				assert(not slashTextures[spec.texture], `{element}: a {spec.texture} on a hit that isn't a cut`)
+				textures[spec.texture] = true
+			end
+			assert(textures.sparkStreak, `{element}: the spark streaks stay`)
+			for index, spec in own do
+				assert(table.find(plain, spec) ~= nil, `{element}: its particle {index}`)
+			end
+		end
+		expect.equal(#FightFxRules.hitSpecs(SwordFx, nil, true), #SwordFx.IMPACT.emitters, "no element: the cut alone")
 	end,
 }

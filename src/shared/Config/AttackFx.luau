@@ -49,6 +49,9 @@ return {
 	-- other way, S a third flat across
 	MOON_SLASH = { length = 4.6, width = 1.5, bow = 1.6, tilt = 28, trail = 0.22, shadow = rgb(46, 12, 82) },
 	BURST = 26, -- particles in an impact
+	-- A combo's earlier hits and the extra moon slashes (grade A, S) land lighter than the hit with the damage: this size
+	-- of it and share of its pack particles (Util/FightFx; owner 2026-11-09, the sword hit's pack effects on creatures)
+	LIGHT_HIT = { size = 0.8, share = 0.5 },
 	DASH = { combo = 0.7 }, -- share of the way to its target a creature dashes for a combo
 	-- A Volt bolt: how long it flickers (seconds; the mockup's six flickers), and at grade S the strike from the sky
 	-- this long after it
