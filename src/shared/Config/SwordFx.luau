@@ -79,7 +79,8 @@ return {
 	-- `whiten` of the way to white); flipbook: a 4x4 sheet played once over each particle's life; `direction`: the
 	-- holder's face it flies from (Front: toward your camera; default Top); `facing`: camera (default), perpendicular
 	-- (faces its flight: a flat streak) or parallel (stretched along its flight); `accel` { x, y, z } in studs a second
-	-- squared.
+	-- squared; `cut`: a slash streak or arc, left out where a creature's fireball or bolt lands (Util/PackHit, owner
+	-- 2026-11-09: "slashes on slash attacks and no slash on non slash attacks").
 	IMPACT = {
 		big = 1.35,
 		seconds = 1.5, -- the holder lasts past the longest particle (1 s) and the echo
@@ -87,11 +88,11 @@ return {
 		-- sized to what was hit (SwordArcRules.impactScale; the ring and cut lines too): a 5-stud body at the packs' size
 		bySize = { reference = 5, power = 0.85, min = 0.7, max = 4 },
 		emitters = {
-			{ texture = "slashStreak", count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 2, 0 }, { 1, 2, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", flipbook = {} },
-			{ texture = "slashStreak", count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Right", facing = "parallel", flipbook = {} },
-			{ texture = "slashStreak", count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Left", facing = "parallel", flipbook = {} },
-			{ texture = "slashArc", count = 5, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 5, 5 }, size = { { 0, 5, 0 }, { 1, 5, 0 } }, transparency = { { 0, 1 }, { 0.293, 1 }, { 0.5, 0 }, { 0.612, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 10, zOffset = 0, rotation = { -100, -100 }, direction = "Bottom", facing = "perpendicular", flipbook = {} },
-			{ texture = "slashStreak", count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 6, 0 }, { 1, 6, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", squash = { { 0, 0, 0 }, { 1, 2.1, 0 } }, flipbook = {} },
+			{ texture = "slashStreak", cut = true, count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 2, 0 }, { 1, 2, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", flipbook = {} },
+			{ texture = "slashStreak", cut = true, count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Right", facing = "parallel", flipbook = {} },
+			{ texture = "slashStreak", cut = true, count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Left", facing = "parallel", flipbook = {} },
+			{ texture = "slashArc", cut = true, count = 5, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 5, 5 }, size = { { 0, 5, 0 }, { 1, 5, 0 } }, transparency = { { 0, 1 }, { 0.293, 1 }, { 0.5, 0 }, { 0.612, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 10, zOffset = 0, rotation = { -100, -100 }, direction = "Bottom", facing = "perpendicular", flipbook = {} },
+			{ texture = "slashStreak", cut = true, count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 6, 0 }, { 1, 6, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", squash = { { 0, 0, 0 }, { 1, 2.1, 0 } }, flipbook = {} },
 			{ texture = "sparkStreak", count = 25, lifetime = { 0.5, 1 }, speed = { 25, 25 }, spread = { 100, 100 }, size = { { 0, 0.875, 0.875 }, { 1, 0, 0 } }, transparency = { { 0, 1 }, { 0.25, 0 }, { 1, 1 } }, color = "tint", whiten = 0.05, brightness = 10, zOffset = 2, rotation = { -90, -90 }, accel = { 10, -10, 0 }, drag = 5, direction = "Back", facing = "parallel", squash = { { 0, 0.188, 1 }, { 1, -0.488, 1 } } },
 		},
 	},

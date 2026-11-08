@@ -61,9 +61,14 @@ local function holder(at: Vector3, life: number): Part
 	return p
 end
 
--- Fewer particles with the low-graphics switch off
+-- The share of particles drawn: all, fewer with the low-graphics switch off
+local LOW_DETAIL = 0.45
+local function detailShare(): number
+	return if Extras.enabled() then 1 else LOW_DETAIL
+end
+
 local function detail(count: number): number
-	return math.max(1, math.round(if Extras.enabled() then count else count * 0.45))
+	return math.max(1, math.round(count * detailShare()))
 end
 
 local function range(value: any): NumberRange
@@ -170,6 +175,16 @@ local function light(parent: Instance, color: Color3, rangeStuds: number, bright
 	glow.Shadows = false
 	glow.Parent = parent
 	TweenService:Create(glow, TweenInfo.new(seconds), { Brightness = 0 }):Play()
+end
+
+-- The folder fight effects live in (workspace.FightFx) and the share of particles to draw (fewer with the
+-- low-graphics switch off), for effects built elsewhere (Util/PackHit from Util/FightFx)
+function ElementFx.folder(): Folder
+	return folder()
+end
+
+function ElementFx.detailShare(): number
+	return detailShare()
 end
 
 -- A positional sound at `at` (a slightly random pitch, so repeats don't drone), removed once played

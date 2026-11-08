@@ -26,6 +26,29 @@ function FightFxRules.tier(grade: string?, cfg: any): { scale: number, sparks: n
 	return (if grade then cfg.GRADE[grade] else nil) or cfg.GRADE.C
 end
 
+-- Whether an element's basic attack cuts (the Bloom combo, the Shade moon slash): its hits land with the slash
+-- streaks; a fireball or bolt lands without them (owner 2026-11-09)
+function FightFxRules.cuts(element: string, cfg: any): boolean
+	local kind = FightFxRules.kindFor(element, cfg)
+	return kind == "combo" or kind == "slash"
+end
+
+-- A hit's pack emitters (Config/SwordFx IMPACT and ELEMENT_HIT): the impact's, less the slash streaks and arc (`cut`
+-- flagged) when it isn't a cut, then `element`'s own particles
+function FightFxRules.hitSpecs(swordFx: any, element: string?, cut: boolean): { any }
+	local specs = {}
+	for _, spec in swordFx.IMPACT.emitters do
+		if cut or not spec.cut then
+			table.insert(specs, spec)
+		end
+	end
+	local own = if element then swordFx.ELEMENT_HIT[element] else nil
+	for _, spec in own or {} do
+		table.insert(specs, spec)
+	end
+	return specs
+end
+
 -- Whether a Pet button move or super move (its kind: "Fireball", "Inferno", ...) has an effect (AttackFx.SPECIALS)
 function FightFxRules.hasEffect(kind: string, cfg: any): boolean
 	return cfg.SPECIALS[kind] ~= nil

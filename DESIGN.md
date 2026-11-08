@@ -1284,7 +1284,14 @@ group, checked before its fragments and every time (not only the first). Below i
   (until 2026-11-03 such a creature had no attack effects). Each lands with the
   sim's `attack` event and its damage number (`Util/AttackTiming`); the final hit waits for that event, so a charge
   whose attack never comes (a stun, a faint, a swap) fades without a hit, and an attack that comes uncharged strikes at
-  once. At most 12 effects play at once (4 with the low-graphics switch off, `Util/FightFxRules`). Sounds: Pro Sound
+  once. The hit lands in the sword hit's pack look (owner 2026-11-09, "slashes on slash attacks and no slash on non
+  slash attacks", all elements; `Util/PackHit`, `FightFxRules.cuts` / `hitSpecs`): a cut (the Bloom combo, the Shade
+  moon slash) with the slash streaks and arc in its colour, a fireball or bolt (Ember, Tide, Volt) with its star burst
+  and the spark streaks; the element's own particles on both (`SwordFx.ELEMENT_HIT`); sized to the foe like a sword
+  hit (`PackHit.scaleFor`: a wolf about 1.2, the Meadow Warden about 3, times the grade); a combo's earlier hits and
+  the extra moon slashes lighter (`AttackFx.LIGHT_HIT`: 0.8 the size, half the particles; the old vine slash sprites
+  only for grade S's finishing X). At most 12 effects play at once (4 with the low-graphics switch off,
+  `Util/FightFxRules`; the pack particles thin out too, `ElementFx.detailShare`). Sounds: Pro Sound
   Effects (`AttackFx.SOUNDS`). A broken effect never stops the damage numbers (the call is guarded).
   Pet button moves and super moves wind up first (owner 2026-11-04, design A): the press spends the cooldown (a
   super: the meter) and the
@@ -2295,6 +2302,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
     │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, hit impacts, rings, cut lines, dust
     │       ├── PackEmitter.luau        # a particle emitter from a VFX pack effect's spec (the hit impact, pack auras)
+    │       ├── PackHit.luau            # a hit in the packs' look, sized to the foe: sword cuts and creature attacks
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
