@@ -264,7 +264,7 @@ local LOOKS: { [string]: Look } = {
 	-- hero shot `camFocus` above your root, the wide one `camLookUp` up from `camUp` high).
 	torrentStrike = {
 		kind = "skill",
-		textures = { "raindrop", "ring", "glow", "smoke", "crack" },
+		textures = { "raindrop", "ring", "glow", "smoke", "crack", "waterAura" },
 		seconds = 1.9,
 		size = 24,
 		count = 120,

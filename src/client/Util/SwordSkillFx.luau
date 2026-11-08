@@ -2196,12 +2196,24 @@ local function magmaCleave(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 	end)
 end
 
--- One column of water bursting up from `ground`, `height` studs (Torrent Strike): a pillar of light in the water's
--- colour, spray thrown up and falling back, a splash ring at its foot and mist (none in the light version)
+-- One column of water bursting up from `ground`, `height` studs (Torrent Strike): the pack's water flipbook rushing up
+-- in the weapon's water colour round a pale core (Studio 2026-11-09: a pillar of glow light bloomed into a white blob,
+-- and lit a PointLight per column), spray thrown up and falling back, a splash ring at its foot and mist (none in the
+-- light version)
+local COLUMN_RISE = 0.4 -- seconds the water keeps rushing up
 local function waterColumn(ground: Vector3, height: number, colors: Colors, scale: number, lite: boolean)
-	local water = colors.glow:Lerp(WHITE, 0.3)
-	ElementFx.pillar(ground, water, height, 0.45, "glow")
-	local anchor = holder(CFrame.new(ground + UP * 0.3), Vector3.new(1.5, 0.2, 1.5) * scale, 3)
+	local water = colors.deep:Lerp(colors.glow, 0.6)
+	local anchor = holder(CFrame.new(ground + UP * 0.3), Vector3.new(1.2, 0.2, 1.2) * scale, 3)
+	local rise = emitter(anchor, "waterAura", water, { size = { 2.6 * scale, 1.6 * scale }, life = { 0.45, 0.6 }, speed = { height * 1.4, height * 1.9 }, spread = 6, rotation = { -15, 15 }, accel = -UP * 6, light = 0.4, brightness = 1.4 })
+	rise.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+	rise.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+	rise.Rate = detail(if lite then 18 else 40)
+	local core = emitter(anchor, "glow", water:Lerp(WHITE, 0.5), { size = { 1.2 * scale, 0.4 }, life = { 0.3, 0.4 }, speed = { height * 1.6, height * 2 }, spread = 3, light = 0.8, brightness = 1.2 })
+	core.Rate = detail(if lite then 8 else 20)
+	task.delay(COLUMN_RISE, function()
+		rise.Rate = 0
+		core.Rate = 0
+	end)
 	local spray = emitter(anchor, "raindrop", colors.glow:Lerp(WHITE, 0.4), { size = { 0.7 * scale, 0.3 }, life = { 0.8, 1.3 }, speed = { height * 1.2, height * 1.8 }, spread = 14, accel = -UP * 40, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 2 })
 	spray:Emit(detail(if lite then 10 else 26))
 	ElementFx.ring(ground + UP * 0.2, colors.glow, 2.6 * scale, 0.5)
