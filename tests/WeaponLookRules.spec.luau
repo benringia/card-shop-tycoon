@@ -113,11 +113,13 @@ return {
 	end,
 
 	-- Owner 2026-11-08 (free VFX packs, picked in game): Ember weapons blaze with the Euphoric pack's fire, Tide weapons
-	-- with its water; every other element and the Prism Blade keep our flames
-	["Ember and Tide weapons wear the pack's fire and water auras; the rest keep our flames"] = function()
+	-- with its water, Bloom weapons glow with the Yona pack's aura in green ("apply this glow to all green weapons");
+	-- Volt, Shade and the Prism Blade keep our flames
+	["Ember, Tide and Bloom weapons wear the pack auras; the rest keep our flames"] = function()
 		expect.equal(WeaponLookRules.auraStyle(Looks, "Ember", false), "Ember")
 		expect.equal(WeaponLookRules.auraStyle(Looks, "Tide", false), "Tide")
-		for _, element in { "Bloom", "Volt", "Shade" } do
+		expect.equal(WeaponLookRules.auraStyle(Looks, "Bloom", false), "Bloom")
+		for _, element in { "Volt", "Shade" } do
 			expect.equal(WeaponLookRules.auraStyle(Looks, element, false), nil, element)
 		end
 		expect.equal(WeaponLookRules.auraStyle(Looks, nil, false), nil, "the Steel Sword")
@@ -125,10 +127,25 @@ return {
 	end,
 
 	["the element auras' textures are effect textures and they burn"] = function()
-		for element, spec in Looks.ELEMENT_AURA do
-			local id = (AttackFx.TEXTURES :: any)[spec.texture]
-			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element}: {spec.texture}`)
-			assert(spec.rate > 0 and spec.lifetime > 0 and spec.size > 0, element)
+		for element, aura in Looks.ELEMENT_AURA do
+			assert(#aura.emitters >= 1, element)
+			for index, spec in aura.emitters do
+				local id = (AttackFx.TEXTURES :: any)[spec.texture]
+				expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element} {index}: {spec.texture}`)
+				assert(spec.rate > 0 and spec.lifetime[1] > 0 and #spec.size >= 2, `{element} {index}`)
+			end
 		end
+	end,
+
+	-- Owner 2026-11-08: "tone it down for low grades, then gradually to its max glow" (the green glow; on top of the
+	-- upgrade ladder's thickening)
+	["a Bloom weapon's glow is toned down at low grades and full at Grade S"] = function()
+		local c = WeaponLookRules.auraGrade(Looks, "Bloom", "C")
+		local b = WeaponLookRules.auraGrade(Looks, "Bloom", "B")
+		local a = WeaponLookRules.auraGrade(Looks, "Bloom", "A")
+		assert(c > 0 and c < b and b < a and a < 1, `C {c} < B {b} < A {a} < S`)
+		expect.equal(WeaponLookRules.auraGrade(Looks, "Bloom", "S"), 1)
+		expect.equal(WeaponLookRules.auraGrade(Looks, "Ember", "C"), 1, "the fire isn't graded")
+		expect.equal(WeaponLookRules.auraGrade(Looks, nil, "C"), 1, "our flames aren't graded")
 	end,
 }

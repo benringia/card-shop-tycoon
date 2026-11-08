@@ -69,4 +69,14 @@ function SwordArcRules.hitPoint(tx: number, tz: number, radius: number, fx: numb
 	return tx + dx / distance * reach, tz + dz / distance * reach
 end
 
+-- Where a hit's impact holder looks (Util/HitFx.impact; owner 2026-11-08): toward the camera at (`eyeX`, `eyeZ`) but
+-- level, at the hit's own height (turned up, the flat slash arc showed edge-on); nil with the camera straight above
+function SwordArcRules.impactFacing(atX: number, atY: number, atZ: number, eyeX: number, eyeZ: number): (number?, number?, number?)
+	local dx, dz = eyeX - atX, eyeZ - atZ
+	if dx * dx + dz * dz < 1e-6 then
+		return nil, nil, nil
+	end
+	return eyeX, atY, eyeZ
+end
+
 return SwordArcRules

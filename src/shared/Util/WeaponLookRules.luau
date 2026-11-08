@@ -84,6 +84,16 @@ function WeaponLookRules.auraStyle(looks: any, element: string?, prism: boolean?
 	return element
 end
 
+-- How much of its pack aura a weapon of `grade` shows (looks.ELEMENT_AURA[style].byGrade, owner 2026-11-08: the green
+-- glow toned down at low grades, full at S); 1 for an aura without grades and for our flames (style nil)
+function WeaponLookRules.auraGrade(looks: any, style: string?, grade: string): number
+	local aura = if style then looks.ELEMENT_AURA[style] else nil
+	if not aura or not aura.byGrade then
+		return 1
+	end
+	return aura.byGrade[grade] or 1
+end
+
 -- A new drop's light column (spec 4.4): seen by everyone within range of the winner, who has the cinematic instead
 function WeaponLookRules.seesBeacon(distance: number, range: number, mine: boolean): boolean
 	return not mine and distance <= range

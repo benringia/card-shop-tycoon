@@ -351,6 +351,18 @@ return {
 		expect.equal(textures.slashArc, true, "Slash-01's arc")
 	end,
 
+	-- Owner 2026-11-08 ("make it look exactly like these"): the picked picture is the slash streaks alone, its arcs
+	-- layered (the test burst them back to back), so each hit bursts again a beat later, lighter
+	["a landed cut's impact is the slash streaks alone, echoed a beat later"] = function()
+		for index, emitter in SwordFx.IMPACT.emitters do
+			local slash = emitter.texture == "slashStreak" or emitter.texture == "slashArc" or emitter.texture == "sparkStreak"
+			expect.equal(slash, true, `emitter {index}: {emitter.texture}`)
+		end
+		local echo = SwordFx.IMPACT.echo
+		assert(echo.after > 0 and echo.after < 0.4, "inside the streaks' 0.4 s life")
+		assert(echo.share > 0 and echo.share <= 1, "lighter or the same")
+	end,
+
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
 	["the sword effects' textures are uploaded images"] = function()
 		for _, key in { "crescent", "burst", "line", "star" } do

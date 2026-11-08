@@ -111,13 +111,15 @@ Some effects come from free Creator Store VFX packs (owner 2026-11-08, picked fr
 | Pack | Store id | Used for | Our config |
 |---|---|---|---|
 | Euphoric Games VFX Pack | 112672322113504 | the Ember and Tide weapon auras (its Fire-Aura-01 and Water-Aura-01) | `WeaponLooks.ELEMENT_AURA` |
-| Yona VFX Pack | 18170940328 | a landed cut's impact (its Hit-01, Golden-Sparks-01 and Slash-01) | `SwordFx.IMPACT` |
-| Euphoric Games VFX Pack | 112672322113504 | the impact's slash streaks (its Slash-Impact-01) | `SwordFx.IMPACT` |
+| Yona VFX Pack | 18170940328 | the Bloom weapon aura (its Player-VFX Aura, recoloured green) | `WeaponLooks.ELEMENT_AURA` |
+| Euphoric Games VFX Pack and Yona VFX Pack | both | a landed cut's slash streaks (Slash-Impact-01 and Slash-01) | `SwordFx.IMPACT` |
 
 Nothing from a pack is inserted into the game: its emitters' settings were copied into our configs and our code builds
-them, pointing at the pack's texture ids (`AttackFx.TEXTURES`: `fireAura`, `waterAura`, `hitFlash`, `hitSparks`,
-`shockwave`, `gold*`, `slashStreak`, `slashArc`). Some impact emitters fly a set way from their holder (`direction`,
-`facing`): `HitFx.impact` turns the holder to face your camera, as in the test the owner picked from. Those are public images other people uploaded: if one is ever deleted it shows blank, and we
+them (`Util/PackEmitter`), pointing at the pack's texture ids (`AttackFx.TEXTURES`: `fireAura`, `waterAura`,
+`auraSmoke`, `auraEmber`, `auraLight`, `slashStreak`, `slashArc`, `sparkStreak`). The six identical limb emitters a
+pack puts on a body are one emitter on the weapon at six times the rate. Some impact emitters fly a set way from their
+holder (`direction`, `facing`): `HitFx.impact` stands the holder level and turns it to face your camera, as in the test
+the owner picked from (tilted up toward the camera, the flat arc showed edge-on and vanished). Those are public images other people uploaded: if one is ever deleted it shows blank, and we
 draw a replacement with our texture tools (`tools/textures/`) and swap the id.
 
 Vetting a pack before using it, without touching the place: from the Studio MCP, `game:GetObjects("rbxassetid://<id>")`

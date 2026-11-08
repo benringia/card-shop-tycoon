@@ -14,6 +14,7 @@ local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
 local SwordFx = require(Shared:WaitForChild("Config"):WaitForChild("SwordFx"))
 local SwordArcRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordArcRules"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
+local PackEmitter = require((script.Parent :: Instance):WaitForChild("PackEmitter"))
 
 local HitFx = {}
 
@@ -192,65 +193,30 @@ function HitFx.burst(at: Vector3, size: number, tint: Color3)
 	end
 end
 
-local FACINGS = {
-	camera = Enum.ParticleOrientation.FacingCamera,
-	perpendicular = Enum.ParticleOrientation.VelocityPerpendicular,
-	parallel = Enum.ParticleOrientation.VelocityParallel,
-}
-
--- A landed cut's impact at `at` (Config/SwordFx IMPACT: the packs' hit, golden sparks and slash streaks): every emitter
--- bursts once from a holder facing your camera, its sizes and speeds `scale` times the pack's
+-- A landed cut's impact at `at` (Config/SwordFx IMPACT: the packs' slash streaks): every emitter bursts from a holder
+-- standing level and turned to face your camera, again a beat later (the echo), sizes and speeds `scale` times the
+-- packs'
 function HitFx.impact(at: Vector3, scale: number)
 	local impact = SwordFx.IMPACT
 	local eye = workspace.CurrentCamera.CFrame.Position
-	local part = holder(if (eye - at).Magnitude > 1e-3 then CFrame.lookAt(at, eye) else CFrame.new(at), impact.seconds)
+	local x, y, z = SwordArcRules.impactFacing(at.X, at.Y, at.Z, eye.X, eye.Z)
+	local frame = if x and y and z then CFrame.lookAt(at, Vector3.new(x, y, z)) else CFrame.new(at)
+	local part = holder(frame, impact.seconds)
+	local bursts: { { emitter: ParticleEmitter, count: number } } = {}
 	for _, spec in impact.emitters do
-		local emitter = Instance.new("ParticleEmitter")
-		emitter.Texture = (AttackFx.TEXTURES :: any)[spec.texture] or ""
-		emitter.Color = ColorSequence.new(color(spec.color))
-		emitter.LightEmission = 1
-		emitter.LightInfluence = 0
-		emitter.Brightness = spec.brightness
-		emitter.ZOffset = spec.zOffset
-		emitter.Lifetime = NumberRange.new(spec.lifetime[1], spec.lifetime[2])
-		local speed = spec.speed or { 0, 0 }
-		emitter.Speed = NumberRange.new(speed[1] * scale, speed[2] * scale)
-		local spread = spec.spread or { 0, 0 }
-		emitter.SpreadAngle = Vector2.new(spread[1], spread[2])
-		local rotation = spec.rotation or { 0, 0 }
-		emitter.Rotation = NumberRange.new(rotation[1], rotation[2])
-		local accel = spec.accel or { 0, 0, 0 }
-		emitter.Acceleration = Vector3.new(accel[1], accel[2], accel[3])
-		emitter.Drag = spec.drag or 0
-		emitter.EmissionDirection = (Enum.NormalId :: any)[spec.direction or "Top"]
-		emitter.Orientation = FACINGS[spec.facing or "camera"]
-		local size = {}
-		for _, point in spec.size do
-			table.insert(size, NumberSequenceKeypoint.new(point[1], point[2] * scale, point[3] * scale))
-		end
-		emitter.Size = NumberSequence.new(size)
-		local transparency = {}
-		for _, point in spec.transparency do
-			table.insert(transparency, keypoint(point[1], point[2]))
-		end
-		emitter.Transparency = NumberSequence.new(transparency)
-		if spec.squash then
-			local squash = {}
-			for _, point in spec.squash do
-				table.insert(squash, NumberSequenceKeypoint.new(point[1], point[2], point[3]))
-			end
-			emitter.Squash = NumberSequence.new(squash)
-		end
-		if spec.flipbook then
-			emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
-			emitter.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
-			emitter.FlipbookFramerate = NumberRange.new(spec.flipbook.fps)
-			emitter.FlipbookStartRandom = spec.flipbook.random == true
-		end
-		emitter.Rate = 0
+		local emitter = PackEmitter.make(spec, scale, nil)
 		emitter.Parent = part
 		emitter:Emit(spec.count)
+		table.insert(bursts, { emitter = emitter, count = spec.count })
 	end
+	task.delay(impact.echo.after, function()
+		if not part.Parent then
+			return
+		end
+		for _, burst in bursts do
+			burst.emitter:Emit(math.max(1, math.round(burst.count * impact.echo.share)))
+		end
+	end)
 end
 
 -- A ring snapping out from `at` to `size` studs across, facing you (a big hit; flat ground rings are the boss's)

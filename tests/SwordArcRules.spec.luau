@@ -85,4 +85,14 @@ return {
 		expect.near(x, 5, 1e-9, "on top of it: its centre")
 		expect.near(z, 5, 1e-9)
 	end,
+
+	-- Owner 2026-11-08 ("it's still missing an arch"): the impact's holder turned up toward the camera put the flat slash
+	-- arc edge-on; it stands level, turned only round, like the test the owner picked from
+	["a hit's impact stands level, turned to face the camera"] = function()
+		local x, y, z = SwordArcRules.impactFacing(10, 3, 0, 10, 20)
+		expect.near(x, 10, 1e-9); expect.near(y, 3, 1e-9, "at the hit's own height, not the camera's"); expect.near(z, 20, 1e-9)
+		local ax, ay, az = SwordArcRules.impactFacing(10, 3, 0, 10.0001, 0)
+		expect.equal(ax, nil, "a camera straight above: no way to turn")
+		expect.equal(ay, nil); expect.equal(az, nil)
+	end,
 }

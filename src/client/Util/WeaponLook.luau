@@ -19,6 +19,7 @@ local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
+local PackEmitter = require((script.Parent :: Instance):WaitForChild("PackEmitter"))
 
 local WeaponLook = {}
 
@@ -170,50 +171,31 @@ local function auraEmitter(parent: BasePart, kind: string, rate: number, colors:
 	return made
 end
 
--- An Ember or Tide weapon's pack aura (Config/WeaponLooks ELEMENT_AURA): the pack's fire or water flipbook filling the
--- part's box in the weapon's deep colour, a "kind" of the aura like the flames (setPlace scales its rate the same way)
-local function elementAuraEmitter(parent: BasePart, spec: any, rate: number, deep: Color3): ParticleEmitter
-	local made = Instance.new("ParticleEmitter")
-	made.Name = "Aura"
-	made:SetAttribute("Kind", "element")
-	made:SetAttribute("FullRate", rate)
-	made.Texture = texture(spec.texture)
-	made.Shape = Enum.ParticleEmitterShape.Box
-	made.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
-	made.Color = ColorSequence.new(deep)
-	made.LightEmission = spec.emission
-	made.LightInfluence = 0
-	made.Brightness = spec.brightness
-	made.ZOffset = spec.zOffset
-	made.Lifetime = NumberRange.new(spec.lifetime)
-	made.Speed = NumberRange.new(0)
-	made.Rotation = NumberRange.new(-360, 360)
-	made.Size = NumberSequence.new(spec.size)
-	made.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.5, 0),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	made.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
-	made.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
-	made.Rate = 0
-	made.Enabled = false
-	made.LockedToPart = true
-	made.Parent = parent
-	return made
-end
-
 -- The aura's colours: deep to bright for the flames (the Prism Blade: one flame emitter per element), its core and
--- sparks bright, its smoke deep. Ember and Tide weapons wear their pack aura in place of the flames, core and smoke.
-local function auraEmitters(parent: BasePart, share: number, weaponId: string, look: WeaponLooks.Look)
+-- sparks bright, its smoke deep. Ember, Tide and Bloom weapons wear their pack aura (Config/WeaponLooks ELEMENT_AURA)
+-- in place of the flames, core and smoke: each emitter an "Aura" of kind "element" filling the part's box, its rate
+-- scaled by setPlace like the flames', thinner at low grades for an aura with `byGrade`, sizes `otherScale` on the
+-- guard and grip (`blade`: the part carrying the aura at full rate)
+local function auraEmitters(parent: BasePart, share: number, weaponId: string, look: WeaponLooks.Look, grade: string, blade: boolean)
 	local deep, glow = rgb(look.deep), rgb(look.glow)
 	local weapon = Weapons.ById[weaponId]
 	local aura = WeaponLooks.AURA :: any
 	local style = WeaponLookRules.auraStyle(WeaponLooks, if weapon then weapon.element else nil, if weapon then weapon.prism else nil)
 	if style then
-		local spec = (WeaponLooks.ELEMENT_AURA :: any)[style]
-		elementAuraEmitter(parent, spec, spec.rate * share, deep)
-		auraEmitter(parent, "spark", aura.spark.rate * share, ColorSequence.new(WHITE, glow))
+		local pack = (WeaponLooks.ELEMENT_AURA :: any)[style]
+		local strength = WeaponLookRules.auraGrade(WeaponLooks, style, grade)
+		for _, spec in pack.emitters do
+			local made = PackEmitter.make(spec, if blade then 1 else pack.otherScale or 1, deep)
+			made.Name = "Aura"
+			made:SetAttribute("Kind", "element")
+			made:SetAttribute("FullRate", spec.rate * share * strength)
+			made.Enabled = false
+			made.LockedToPart = true -- the glow sticks to the weapon: no trail left behind as you walk
+			made.Parent = parent
+		end
+		if pack.sparks then
+			auraEmitter(parent, "spark", aura.spark.rate * share, ColorSequence.new(WHITE, glow))
+		end
 		return
 	end
 	if weapon and weapon.prism then
@@ -244,7 +226,7 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 			continue
 		end
 		local isBlade = item.Name == "Blade" or item.Name == "Head" -- a spear's head carries its aura
-		auraEmitters(item, if isBlade then 1 else WeaponLooks.AURA.otherParts, weaponId, look)
+		auraEmitters(item, if isBlade then 1 else WeaponLooks.AURA.otherParts, weaponId, look, grade, isBlade)
 		if isBlade or not blade then
 			blade = item
 		end

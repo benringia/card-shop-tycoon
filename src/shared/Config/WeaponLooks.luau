@@ -139,15 +139,41 @@ return {
 		spark = { texture = "spark", rate = 14, lifetime = { 0.6, 1.1 }, size = 0.3, speed = { 0.4, 1.4 }, brightness = 4 },
 		ribbon = { texture = "streak", rate = 10, lifetime = { 0.7, 1.1 }, size = { 0.25, 0.5 }, speed = { 2, 4 }, transparency = 0.2, brightness = 1.6 },
 	},
-	-- Ember and Tide weapons' auras (owner 2026-11-08, picked in game from the free Euphoric Games VFX Pack, Creator
-	-- Store 112672322113504; WeaponLookRules.auraStyle): the pack's fire or water flipbook (a 4x4 sheet played once over
-	-- each particle's life, turned at random, fading in and out) in the weapon's deep colour, in place of our flames,
-	-- core and smoke; the sparks, ribbons and the upgrade ladder stay. `rate` at full density like AURA's (the guard and
-	-- grip get `otherParts` of it); `zOffset` keeps the blade in front of it. Sizes from the in-game test on the Titan's
-	-- Lance (the pack's 1.1 times 0.75); the pack's own brightness (fire 2, water 1).
+	-- Pack auras by element (owner 2026-11-08, picked in game from free Creator Store packs; WeaponLookRules.auraStyle),
+	-- in place of our flames, core and smoke; the ribbons and the upgrade ladder stay:
+	-- - Ember and Tide: the Euphoric Games VFX Pack's (112672322113504) fire or water flipbook in the weapon's deep
+	--   colour, our sparks kept;
+	-- - Bloom ("apply this glow to all green weapons"): the Yona VFX Pack's (18170940328) Aura as the owner saw it on the
+	--   Titan's Lance: embers, a dark smoke under a bright one and a soft light, recoloured green (the test's tint), no
+	--   sparks of ours; toned down by grade (`byGrade`, WeaponLookRules.auraGrade: "tone it down for low grades, then
+	--   gradually to its max glow").
+	-- Emitters as Util/PackEmitter reads them (Config/SwordFx IMPACT's fields, plus `rate` a second at full density, the
+	-- guard and grip getting AURA.otherParts of it; `color` "deep": the weapon's deep colour; `inOut`: from the part's
+	-- surface both ways; `timeScale`). Sizes are the test's: the pack's times 0.75 on the blade, `otherScale` more on
+	-- the other parts. The six identical limb emitters the packs put on a body are one emitter here at six times the rate.
 	ELEMENT_AURA = {
-		Ember = { texture = "fireAura", rate = 120, lifetime = 1, size = 0.8, brightness = 2, emission = 0.5, zOffset = -1 },
-		Tide = { texture = "waterAura", rate = 120, lifetime = 1, size = 0.8, brightness = 1, emission = 0.5, zOffset = -1 },
+		Ember = {
+			sparks = true,
+			emitters = {
+				{ texture = "fireAura", rate = 120, lifetime = { 1, 1 }, size = { { 0, 0.8, 0 }, { 1, 0.8, 0 } }, transparency = { { 0, 1 }, { 0.5, 0 }, { 1, 1 } }, color = "deep", emission = 0.5, brightness = 2, zOffset = -1, rotation = { -360, 360 }, flipbook = {} },
+			},
+		},
+		Tide = {
+			sparks = true,
+			emitters = {
+				{ texture = "waterAura", rate = 120, lifetime = { 1, 1 }, size = { { 0, 0.8, 0 }, { 1, 0.8, 0 } }, transparency = { { 0, 1 }, { 0.5, 0 }, { 1, 1 } }, color = "deep", emission = 0.5, brightness = 1, zOffset = -1, rotation = { -360, 360 }, flipbook = {} },
+			},
+		},
+		Bloom = {
+			byGrade = { C = 0.3, B = 0.5, A = 0.75, S = 1 }, -- 0.4 at C looked too close to S in Studio
+			otherScale = 0.8,
+			emitters = {
+				{ texture = "auraEmber", rate = 552, lifetime = { 0.45, 0.9 }, speed = { 0.001, 0.001 }, size = { { 0, 0, 0 }, { 0.508, 0.0375, 0.0375 }, { 1, 0, 0 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = { 123, 255, 163 }, emission = 1, brightness = 3, zOffset = 4, drag = 5, direction = "Bottom", squash = { { 0, -0.1, 0 }, { 1, -0.1, 0 } } },
+				{ texture = "auraSmoke", rate = 120, lifetime = { 1, 1 }, speed = { 0, 2 }, spread = { 5, 5 }, size = { { 0, 0.235, 0 }, { 1, 0.797, 0 } }, transparency = { { 0, 1 }, { 0.486, 0 }, { 0.615, 0 }, { 1, 1 } }, color = { 0, 0, 0 }, emission = 0.6, brightness = 10, zOffset = -1.05, rotation = { -360, 360 }, rotSpeed = { -30, 30 }, drag = 5, inOut = true, timeScale = 0.6, flipbook = { layout = "Grid8x8" } },
+				{ texture = "auraSmoke", rate = 66, lifetime = { 1, 1 }, speed = { 0, 1 }, spread = { 5, 5 }, size = { { 0, 0.235, 0 }, { 1, 1.079, 0 } }, transparency = { { 0, 1 }, { 0.486, 0 }, { 0.605, 0 }, { 1, 1 } }, color = { 123, 255, 163 }, emission = 1, brightness = 10, zOffset = -1, rotation = { -360, 360 }, rotSpeed = { -30, 30 }, drag = 5, inOut = true, timeScale = 0.6, flipbook = { layout = "Grid8x8" } },
+				{ texture = "auraLight", rate = 2, lifetime = { 1.3, 1.3 }, speed = { 0.001, 0.001 }, size = { { 0, 3.375, 0 }, { 1, 3.375, 0 } }, transparency = { { 0, 1 }, { 0.499, 0.736 }, { 1, 1 } }, color = { 123, 255, 163 }, emission = 0.6, brightness = 5, zOffset = -1, rotation = { -360, 360 }, direction = "Front" },
+			},
+		},
 	},
 	-- A new boss weapon drop seen by others nearby (spec 4.4): a column of light in the rarity's colour rising where the
 	-- winner stands, for players within `range` studs (studs, seconds; the column's width grows by `swell`)

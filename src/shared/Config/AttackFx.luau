@@ -132,17 +132,14 @@ return {
 		-- Euphoric Games VFX Pack (112672322113504): the Ember and Tide weapon auras (white, tinted per use)
 		fireAura = "rbxassetid://16676455805",
 		waterAura = "rbxassetid://16664715772",
-		-- Yona VFX Pack (18170940328): a landed cut's impact (Config/SwordFx IMPACT)
-		hitFlash = "rbxassetid://15442057794",
-		hitSparks = "rbxassetid://10198439352",
-		shockwave = "rbxassetid://16477162837",
-		goldSpeck = "rbxassetid://17086409913", -- single images from here on
-		goldDot = "rbxassetid://17088300017",
-		goldStreak = "rbxassetid://6763809313",
-		goldStar = "rbxassetid://1084970835",
-		-- the white slash streaks (Euphoric Slash-Impact-01 and Yona Slash-01; owner 2026-11-08)
+		-- Yona VFX Pack (18170940328): the Bloom weapon aura (an 8x8 smoke flipbook, embers, a soft light)
+		auraSmoke = "rbxassetid://13410359900",
+		auraEmber = "rbxassetid://1084996976", -- single images from here on
+		auraLight = "rbxassetid://1075864321",
+		-- a landed cut's slash streaks (Config/SwordFx IMPACT: Euphoric Slash-Impact-01 and Yona Slash-01)
 		slashStreak = "rbxassetid://16923007448",
 		slashArc = "rbxassetid://13780268621",
+		sparkStreak = "rbxassetid://6763809313", -- a single image
 	},
 	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
 	-- S: the big ones; Util/FightFx)
