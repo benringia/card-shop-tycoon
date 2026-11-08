@@ -402,7 +402,7 @@ do
 	lanceSounds.thornsTear = "rbxassetid://9118676043" -- Rocks Dirt Debris Pouring Bursts 13: thorns tearing up
 	lanceSounds.wrathFissure = "rbxassetid://9113216700" -- Avalanche Crashing 3: the fissure tearing open (its burst)
 	local lanceAnimations = table.clone(animations)
-	lanceAnimations.skill = "" -- until the owner publishes it Studio plays SwordAnimations.TitansLance.skill
+	lanceAnimations.skill = "rbxassetid://108621386304529" -- Titan's Wrath (SwordAnimations.TitansLance.skill)
 	SWORDS.titansLance = {
 		name = "Titan's Lance",
 		power = starter.power,

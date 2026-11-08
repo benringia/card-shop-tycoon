@@ -126,7 +126,7 @@ lance drawn far back, a trembling charge (alternating keys every 0.07 s, growing
 deepest coil at 1.22 s, the thrust's "Hit" at 1.35 s, held while the fissure tears, back to the guard by 2.2 s; no
 root travel. `run_sword_moves.py -- --sword titans_lance [--preview <dir>]`, then `lune run tools/anim/build_kfs
 assets/blender/Animations/TitansLance assets/animations/TitansLance`; `Config/Swords titansLance` (moveset `model`
-"TitansLance": the skill plays its KeyframeSequence in Studio until its id is published; the cuts use the spear's ids).
+"TitansLance": the skill's published id 108621386304529, 2026-11-08; the cuts use the spear's ids).
 
 ## Making or changing moves
 
