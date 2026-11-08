@@ -1441,9 +1441,17 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
     (`SwordFx.ARCS` per cut and the skill: diagonal down, rising, upright, flat; `Util/SwordArcRules`), in the sword's
     slash colour (`Swords.slash`, pale steel on the starter) with a white core, wiped along the way the swing goes,
     shedding small stars, then fading.
-  - **Hits:** a spiky star burst (a 4 x 4 flipbook) on the foe's side facing you, bigger on the finisher and the dash
-    slash, which also snap out a ring facing you (flat rings stay the boss's); the white flash on what you hit and the
-    sparks as before. Your own cut hits burst the moment your reach check connects; other players' hits, every dash
+  - **Hits:** white slash streaks on the foe's side facing you (owner 2026-11-08, picked in game from free Creator
+    Store packs, "make it look exactly like these": the Euphoric Games pack's Slash-Impact-01 and the Yona pack's
+    Slash-01; `SwordFx.IMPACT`, `HitFx.impact`; they replaced the spiky star burst): a streak facing you, specks flung
+    left and right, a big flat arc, a long stretched streak and sparks into the foe, standing level and turned to face
+    your camera, burst again half as strong 0.12 s later, x1.35 on the finisher and the dash slash. In the weapon's
+    colour with a white core, its element's particles on top (`SwordFx.ELEMENT_HIT`: Ember flames and embers, Tide
+    droplets and a splash ring, Bloom leaves and motes, Volt crackling streaks and a flicker, Shade dark wisps; the
+    Prism Blade a random element each hit, the Steel Sword none), and sized to what was hit
+    (`SwordArcRules.impactScale`: the model's size against a 5-stud body, eased, 0.7 to 4: a Cave Bat 0.7, an Ash Wolf
+    1, a Magma Golem 1.35, the Meadow Warden about 3; the ring and the dash slash's cut lines too) (owner 2026-11-08), which also snap out a ring facing
+    you (flat rings stay the boss's); the white flash on what you hit and the sparks as before. Your own cut hits burst the moment your reach check connects; other players' hits, every dash
     slash and yours the check missed burst when the server's hit arrives.
   - **Dash slash:** after-images along the dash and two crossing cut lines on each foe hit, a beat after you pass.
   - **The finisher's landing** puffs a small dust ring at your feet.
@@ -1775,7 +1783,14 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     Prism's rainbow edge, the Forge Sword's gems) baked into its SurfaceAppearances, lit by rarity and level (full at
     +10, tinted its glow colour); a game script can't set the maps, so they live in the model files;
   - the full aura: flame wisps filling the weapon from its element's deep colour to its bright one, a bright core,
-    drifting smoke and sparks (the Prism Blade's flames in every element's colour); it starts at +4 (Epic and
+    drifting smoke and sparks (the Prism Blade's flames in every element's colour). Pack auras replace the flames, core
+    and smoke (owner 2026-11-08, picked in game; `WeaponLooks.ELEMENT_AURA`, `WeaponLookRules.auraStyle`): Ember and
+    Tide weapons wear the free Euphoric Games VFX Pack's fire or water flipbook in their deep colour; Bloom weapons the
+    Yona VFX Pack's aura in green (embers, dark and bright smoke, a soft light), thinner at low grades (C 0.3, B 0.5,
+    A 0.75, S 1 of its rate: "tone it down for low grades, then gradually to its max glow"); pack layers draw at their
+    part, not a stud behind as in the packs (on the back that sank the fire into the torso: "the glow is blocked by
+    the body"), and a stud nearer the camera while the wearer's body hides the part (seen from the front; a camera ray
+    each frame against the body's visible parts, `WeaponLook.drawPastBody`, `WeaponLooks.BEHIND_BODY`); it starts at +4 (Epic and
     Legendary at +2), thickens each level and is full from +7; +10 Awakened adds ribbons streaming off the blade;
     half the aura on the back below +10; every particle is locked to the sword, so walking leaves no trail (owner);
   - the cheap glow: creature-style sparkles a second (1-5 by rarity, more per level and for Grade S) and a light
@@ -2278,7 +2293,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SuperFx.luau            # the ten super move looks in the world (charge, impact, linger), the shields' domes
     │       ├── SuperCinematic.luau     # a super's cinematic on the caster's screen: camera, card cut-in, wash, bars, sky, impact frame
     │       ├── RingFx.luau             # closing rings: slam circles and swipe cones on the ground
-    │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, star bursts, rings, cut lines, dust
+    │       ├── HitFx.luau              # sword feel: sparks, flash, the swing arcs, hit impacts, rings, cut lines, dust
+    │       ├── PackEmitter.luau        # a particle emitter from a VFX pack effect's spec (the hit impact, pack auras)
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit

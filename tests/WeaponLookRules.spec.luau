@@ -3,6 +3,7 @@
 -- aura's density by upgrade, the +10 ribbons, the cheap creature-style sparkles, and which swords get the full aura
 local WeaponLookRules = require("../src/shared/Util/WeaponLookRules")
 local Looks = require("../src/shared/Config/WeaponLooks")
+local AttackFx = require("../src/shared/Config/AttackFx")
 local expect = require("./lib/expect")
 
 return {
@@ -107,7 +108,84 @@ return {
 		assert(Looks.BEACON.height > 10 and Looks.BEACON.seconds > Looks.BEACON.fadeIn + Looks.BEACON.fadeOut)
 	end,
 
+	-- The element a hit's particles come from (owner 2026-11-08): the weapon's; the Prism Blade's from every element in
+	-- turn (`roll`: 1-5, picked at random by the caller); the Steel Sword none
+	["a hit's element: the weapon's own, the Prism Blade's any of the five"] = function()
+		expect.equal(WeaponLookRules.hitElement("Ember", false, 1), "Ember")
+		expect.equal(WeaponLookRules.hitElement(nil, false, 1), nil, "the Steel Sword")
+		local seen: { [string]: boolean } = {}
+		for roll = 1, 5 do
+			local element = WeaponLookRules.hitElement(nil, true, roll)
+			assert(element and Looks.BY_ELEMENT[element], `roll {roll}`)
+			seen[element :: string] = true
+		end
+		local count = 0
+		for _ in seen do
+			count += 1
+		end
+		expect.equal(count, 5, "every element")
+	end,
+
 	["the budget's numbers are set"] = function()
 		assert(Looks.BUDGET.nearest >= 1 and Looks.BUDGET.range > 0 and Looks.BUDGET.every > 0)
+	end,
+
+	-- Owner 2026-11-08 (free VFX packs, picked in game): Ember weapons blaze with the Euphoric pack's fire, Tide weapons
+	-- with its water, Bloom weapons glow with the Yona pack's aura in green ("apply this glow to all green weapons");
+	-- Volt, Shade and the Prism Blade keep our flames
+	["Ember, Tide and Bloom weapons wear the pack auras; the rest keep our flames"] = function()
+		expect.equal(WeaponLookRules.auraStyle(Looks, "Ember", false), "Ember")
+		expect.equal(WeaponLookRules.auraStyle(Looks, "Tide", false), "Tide")
+		expect.equal(WeaponLookRules.auraStyle(Looks, "Bloom", false), "Bloom")
+		for _, element in { "Volt", "Shade" } do
+			expect.equal(WeaponLookRules.auraStyle(Looks, element, false), nil, element)
+		end
+		expect.equal(WeaponLookRules.auraStyle(Looks, nil, false), nil, "the Steel Sword")
+		expect.equal(WeaponLookRules.auraStyle(Looks, nil, true), nil, "the Prism Blade")
+	end,
+
+	["the element auras' textures are effect textures and they burn"] = function()
+		for element, aura in Looks.ELEMENT_AURA do
+			assert(#aura.emitters >= 1, element)
+			for index, spec in aura.emitters do
+				local id = (AttackFx.TEXTURES :: any)[spec.texture]
+				expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element} {index}: {spec.texture}`)
+				assert(spec.rate > 0 and spec.lifetime[1] > 0 and #spec.size >= 2, `{element} {index}`)
+			end
+		end
+	end,
+
+	-- Owner 2026-11-08: "the glow is blocked by the body" (a sword on the back, seen from behind). The packs drew their
+	-- layers a stud behind the body they wrapped; a blade rides a fifth of a stud off the wearer's back, so that sank
+	-- the fire into the torso. Layers draw at their part (zOffset >= 0). While the wearer's body stands between the
+	-- camera and the part (seen from the front) they draw BEHIND_BODY.shift nearer: past a torso's half depth (an R15
+	-- UpperTorso is a stud deep), short of the face (Studio renders: a stud in front of the part clears the shoulders
+	-- and hat, 1.5 buries the face in fire)
+	["a pack aura draws at its part, and past the wearer's body while the body hides it"] = function()
+		for element, aura in Looks.ELEMENT_AURA do
+			for index, spec in aura.emitters do
+				local base = spec.zOffset or 0
+				assert(base >= 0, `{element} {index}: zOffset {base} sinks into the wearer's back`)
+				expect.equal(WeaponLookRules.packZOffset(Looks, base, false), base, `{element} {index} in view`)
+				local past = WeaponLookRules.packZOffset(Looks, base, true)
+				assert(past >= 0.5, `{element} {index}: {past} stays behind the torso`)
+				assert(base >= 0.5 or past <= 1.2, `{element} {index}: {past} buries the face`)
+			end
+		end
+		local bloom = Looks.ELEMENT_AURA.Bloom.emitters
+		local dark = WeaponLookRules.packZOffset(Looks, bloom[2].zOffset, true)
+		assert(dark < WeaponLookRules.packZOffset(Looks, bloom[3].zOffset, true), "the dark smoke draws under the bright smoke")
+	end,
+
+	-- Owner 2026-11-08: "tone it down for low grades, then gradually to its max glow" (the green glow; on top of the
+	-- upgrade ladder's thickening)
+	["a Bloom weapon's glow is toned down at low grades and full at Grade S"] = function()
+		local c = WeaponLookRules.auraGrade(Looks, "Bloom", "C")
+		local b = WeaponLookRules.auraGrade(Looks, "Bloom", "B")
+		local a = WeaponLookRules.auraGrade(Looks, "Bloom", "A")
+		assert(c > 0 and c < b and b < a and a < 1, `C {c} < B {b} < A {a} < S`)
+		expect.equal(WeaponLookRules.auraGrade(Looks, "Bloom", "S"), 1)
+		expect.equal(WeaponLookRules.auraGrade(Looks, "Ember", "C"), 1, "the fire isn't graded")
+		expect.equal(WeaponLookRules.auraGrade(Looks, nil, "C"), 1, "our flames aren't graded")
 	end,
 }

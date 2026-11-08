@@ -19,6 +19,7 @@ local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
+local PackEmitter = require((script.Parent :: Instance):WaitForChild("PackEmitter"))
 
 local WeaponLook = {}
 
@@ -171,11 +172,33 @@ local function auraEmitter(parent: BasePart, kind: string, rate: number, colors:
 end
 
 -- The aura's colours: deep to bright for the flames (the Prism Blade: one flame emitter per element), its core and
--- sparks bright, its smoke deep
-local function auraEmitters(parent: BasePart, share: number, weaponId: string, look: WeaponLooks.Look)
+-- sparks bright, its smoke deep. Ember, Tide and Bloom weapons wear their pack aura (Config/WeaponLooks ELEMENT_AURA)
+-- in place of the flames, core and smoke: each emitter an "Aura" of kind "element" filling the part's box, its rate
+-- scaled by setPlace like the flames', thinner at low grades for an aura with `byGrade`, sizes `otherScale` on the
+-- guard and grip (`blade`: the part carrying the aura at full rate)
+local function auraEmitters(parent: BasePart, share: number, weaponId: string, look: WeaponLooks.Look, grade: string, blade: boolean)
 	local deep, glow = rgb(look.deep), rgb(look.glow)
 	local weapon = Weapons.ById[weaponId]
 	local aura = WeaponLooks.AURA :: any
+	local style = WeaponLookRules.auraStyle(WeaponLooks, if weapon then weapon.element else nil, if weapon then weapon.prism else nil)
+	if style then
+		local pack = (WeaponLooks.ELEMENT_AURA :: any)[style]
+		local strength = WeaponLookRules.auraGrade(WeaponLooks, style, grade)
+		for _, spec in pack.emitters do
+			local made = PackEmitter.make(spec, if blade then 1 else pack.otherScale or 1, deep)
+			made.Name = "Aura"
+			made:SetAttribute("Kind", "element")
+			made:SetAttribute("FullRate", spec.rate * share * strength)
+			made:SetAttribute("BaseZ", made.ZOffset) -- drawPastBody moves it nearer while the wearer's body hides it
+			made.Enabled = false
+			made.LockedToPart = true -- the glow sticks to the weapon: no trail left behind as you walk
+			made.Parent = parent
+		end
+		if pack.sparks then
+			auraEmitter(parent, "spark", aura.spark.rate * share, ColorSequence.new(WHITE, glow))
+		end
+		return
+	end
 	if weapon and weapon.prism then
 		for _, element in PRISM_ORDER do
 			local colors = WeaponLooks.BY_ELEMENT[element]
@@ -204,7 +227,7 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 			continue
 		end
 		local isBlade = item.Name == "Blade" or item.Name == "Head" -- a spear's head carries its aura
-		auraEmitters(item, if isBlade then 1 else WeaponLooks.AURA.otherParts, weaponId, look)
+		auraEmitters(item, if isBlade then 1 else WeaponLooks.AURA.otherParts, weaponId, look, grade, isBlade)
 		if isBlade or not blade then
 			blade = item
 		end
@@ -289,6 +312,50 @@ function WeaponLook.setPlace(model: Model, weaponId: string, grade: string, leve
 		end
 	end
 	refresh(model)
+end
+
+-- A model's parts wearing pack aura layers, with those layers (found once per model) and whether the body hid them
+type PackPart = { part: BasePart, emitters: { ParticleEmitter }, hidden: boolean }
+local packParts: { [Model]: { PackPart } } = setmetatable({}, { __mode = "k" }) :: any
+
+local function packPartsOf(model: Model): { PackPart }
+	local found = packParts[model]
+	if found then
+		return found
+	end
+	local list: { PackPart } = {}
+	local byPart: { [Instance]: PackPart } = {}
+	for _, item in model:GetDescendants() do
+		local part = item.Parent
+		if not item:IsA("ParticleEmitter") or item:GetAttribute("BaseZ") == nil or not part or not part:IsA("BasePart") then
+			continue
+		end
+		local entry = byPart[part]
+		if not entry then
+			entry = { part = part, emitters = {}, hidden = false }
+			byPart[part] = entry
+			table.insert(list, entry)
+		end
+		table.insert(entry.emitters, item)
+	end
+	packParts[model] = list
+	return list
+end
+
+-- The pack aura layers draw past the wearer's body while it stands between the camera at `eye` and their part (owner
+-- 2026-11-08: "the glow is blocked by the body", a sword on the back seen from the front; WeaponLookRules.packZOffset).
+-- `body` hits only the wearer's body and accessories.
+function WeaponLook.drawPastBody(model: Model, eye: Vector3, body: RaycastParams)
+	for _, entry in packPartsOf(model) do
+		local hidden = workspace:Raycast(eye, entry.part.Position - eye, body) ~= nil
+		if hidden == entry.hidden then
+			continue
+		end
+		entry.hidden = hidden
+		for _, emitter in entry.emitters do
+			emitter.ZOffset = WeaponLookRules.packZOffset(WeaponLooks, (emitter:GetAttribute("BaseZ") :: number?) or 0, hidden)
+		end
+	end
 end
 
 -- The full aura on or off (SwordController's budget: your own sword and the nearest few get it, the rest stay cheap)

@@ -69,4 +69,23 @@ function SwordArcRules.hitPoint(tx: number, tz: number, radius: number, fx: numb
 	return tx + dx / distance * reach, tz + dz / distance * reach
 end
 
+-- Where a hit's impact holder looks (Util/HitFx.impact; owner 2026-11-08): toward the camera at (`eyeX`, `eyeZ`) but
+-- level, at the hit's own height (turned up, the flat slash arc showed edge-on); nil with the camera straight above
+function SwordArcRules.impactFacing(atX: number, atY: number, atZ: number, eyeX: number, eyeZ: number): (number?, number?, number?)
+	local dx, dz = eyeX - atX, eyeZ - atZ
+	if dx * dx + dz * dz < 1e-6 then
+		return nil, nil, nil
+	end
+	return eyeX, atY, eyeZ
+end
+
+-- How big a hit's effects are on a foe whose model is `width` x `height` x `depth` studs (owner 2026-11-08: "adjust the
+-- effect sizes to the size of monsters, bigger on bosses"): its size (its height, or its average width when that's
+-- bigger: a long wolf) against `look.reference` (the packs' effects were made on a 5-stud body), eased by `power` so a
+-- boss's don't swallow the screen, kept between `min` and `max` (Config/SwordFx IMPACT bySize)
+function SwordArcRules.impactScale(width: number, height: number, depth: number, look: { reference: number, power: number, min: number, max: number }): number
+	local size = math.max(height, (width + depth) / 2)
+	return math.clamp((size / look.reference) ^ look.power, look.min, look.max)
+end
+
 return SwordArcRules

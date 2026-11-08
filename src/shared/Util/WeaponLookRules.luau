@@ -75,12 +75,51 @@ function WeaponLookRules.layers(looks: any, rarity: string, level: number, grade
 	}
 end
 
+-- Which pack aura a weapon wears (looks.ELEMENT_AURA, owner 2026-11-08): its element's, when it has one; nil keeps our
+-- flames (no element, an element without one, or the Prism Blade's every-element flames)
+function WeaponLookRules.auraStyle(looks: any, element: string?, prism: boolean?): string?
+	if prism or not element or not looks.ELEMENT_AURA[element] then
+		return nil
+	end
+	return element
+end
+
+-- How much of its pack aura a weapon of `grade` shows (looks.ELEMENT_AURA[style].byGrade, owner 2026-11-08: the green
+-- glow toned down at low grades, full at S); 1 for an aura without grades and for our flames (style nil)
+function WeaponLookRules.auraGrade(looks: any, style: string?, grade: string): number
+	local aura = if style then looks.ELEMENT_AURA[style] else nil
+	if not aura or not aura.byGrade then
+		return 1
+	end
+	return aura.byGrade[grade] or 1
+end
+
+local HIT_ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
+
+-- The element a sword hit's particles come from (Config/SwordFx ELEMENT_HIT, owner 2026-11-08): the weapon's own; the
+-- Prism Blade's any of the five (`roll` 1-5, picked at random by the caller); nil for a weapon without one
+function WeaponLookRules.hitElement(element: string?, prism: boolean?, roll: number): string?
+	if element then
+		return element
+	end
+	if prism then
+		return HIT_ELEMENTS[math.clamp(math.floor(roll), 1, #HIT_ELEMENTS)]
+	end
+	return nil
+end
+
 -- A new drop's light column (spec 4.4): seen by everyone within range of the winner, who has the cinematic instead
 function WeaponLookRules.seesBeacon(distance: number, range: number, mine: boolean): boolean
 	return not mine and distance <= range
 end
 
 -- Which swords get the full aura: your own always, then the nearest `nearest` others within `range` studs (set of keys)
+-- A pack aura layer's ZOffset: its own (`base`, from Config/WeaponLooks ELEMENT_AURA) while its part is in view,
+-- BEHIND_BODY.shift studs nearer the camera while the wearer's body hides the part
+function WeaponLookRules.packZOffset(looks: any, base: number, hidden: boolean): number
+	return if hidden then base + looks.BEHIND_BODY.shift else base
+end
+
 function WeaponLookRules.fullAuras(candidates: { Candidate }, nearest: number, range: number): { [string]: boolean }
 	local full: { [string]: boolean } = {}
 	local others: { Candidate } = {}

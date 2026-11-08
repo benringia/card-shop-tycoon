@@ -4,6 +4,7 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Swords = require("../src/shared/Config/Swords")
 local SwordFx = require("../src/shared/Config/SwordFx")
+local AttackFx = require("../src/shared/Config/AttackFx")
 local SwordRules = require("../src/shared/Util/SwordRules")
 local expect = require("./lib/expect")
 
@@ -317,6 +318,71 @@ return {
 		expect.equal(sun.speed, 14); expect.equal(sun.blast, 6)
 		local prism = shapes.prismBlade.skill.shape
 		expect.equal(prism.kind, "judgment"); expect.equal(prism.range, 24); expect.equal(prism.strikes, 5); expect.equal(prism.gap, 0.15)
+	end,
+
+	-- Owner 2026-11-08 (free VFX packs, picked in game): a landed cut bursts with the Yona pack's hit (a white flash,
+	-- sparks and a shockwave) and its golden sparks; bigger on the finisher and the skill
+	["a landed cut's impact: every emitter bursts with a known effect texture"] = function()
+		local impact = SwordFx.IMPACT
+		assert(#impact.emitters >= 2, "a flash and sparks at least")
+		for index, emitter in impact.emitters do
+			local id = (AttackFx.TEXTURES :: any)[emitter.texture]
+			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `emitter {index}: {emitter.texture}`)
+			assert(emitter.count >= 1 and emitter.lifetime[1] > 0 and emitter.lifetime[2] >= emitter.lifetime[1], `emitter {index}`)
+		end
+		assert(impact.big > 1, "the finisher and the skill hit bigger")
+		assert(impact.seconds >= 1, "it cleans up after the longest emitter")
+	end,
+
+	-- Owner 2026-11-08 ("I can't see this effect when I hit an enemy"): the white slash streaks from the in-game test
+	-- (the Euphoric pack's Slash-Impact-01 and the Yona pack's Slash-01) burst with every landed cut too. They fly a set
+	-- way from the impact's holder, which faces your camera.
+	["a landed cut's impact carries the slash streaks, each flying a valid way"] = function()
+		local textures: { [string]: boolean } = {}
+		local directions = { Top = true, Bottom = true, Left = true, Right = true, Front = true, Back = true }
+		local facings = { camera = true, perpendicular = true, parallel = true }
+		for index, emitter in SwordFx.IMPACT.emitters do
+			textures[emitter.texture] = true
+			assert(emitter.direction == nil or directions[emitter.direction], `emitter {index}: direction {emitter.direction}`)
+			assert(emitter.facing == nil or facings[emitter.facing], `emitter {index}: facing {emitter.facing}`)
+			assert(emitter.accel == nil or #emitter.accel == 3, `emitter {index}: accel x, y, z`)
+		end
+		expect.equal(textures.slashStreak, true, "Slash-Impact's streak")
+		expect.equal(textures.slashArc, true, "Slash-01's arc")
+	end,
+
+	-- Owner 2026-11-08 ("make it look exactly like these"): the picked picture is the slash streaks alone, its arcs
+	-- layered (the test burst them back to back), so each hit bursts again a beat later, lighter
+	["a landed cut's impact is the slash streaks alone, echoed a beat later"] = function()
+		for index, emitter in SwordFx.IMPACT.emitters do
+			local slash = emitter.texture == "slashStreak" or emitter.texture == "slashArc" or emitter.texture == "sparkStreak"
+			expect.equal(slash, true, `emitter {index}: {emitter.texture}`)
+		end
+		local echo = SwordFx.IMPACT.echo
+		assert(echo.after > 0 and echo.after < 0.4, "inside the streaks' 0.4 s life")
+		assert(echo.share > 0 and echo.share <= 1, "lighter or the same")
+	end,
+
+	-- Owner 2026-11-08: "update the effect colors/particles based on weapon elements": the streaks take the weapon's
+	-- colour (its trail colour, a white core kept), and each element adds its own particles
+	["a hit takes the weapon's colour, and each element adds its own particles"] = function()
+		local tinted = 0
+		for _, emitter in SwordFx.IMPACT.emitters do
+			if emitter.color == "tint" then
+				tinted += 1
+				assert(emitter.whiten == nil or (emitter.whiten >= 0 and emitter.whiten < 1), "a share toward white")
+			end
+		end
+		expect.equal(tinted, #SwordFx.IMPACT.emitters, "every streak, the arc and the sparks")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			local set = (SwordFx.ELEMENT_HIT :: any)[element]
+			assert(set and #set >= 1, element)
+			for index, emitter in set do
+				local id = (AttackFx.TEXTURES :: any)[emitter.texture]
+				expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element} {index}: {emitter.texture}`)
+				assert(emitter.count >= 1 and emitter.lifetime[1] > 0, `{element} {index}`)
+			end
+		end
 	end,
 
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images

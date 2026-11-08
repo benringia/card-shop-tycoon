@@ -127,6 +127,20 @@ return {
 		impact = "rbxassetid://134340523336604",
 		flame = "rbxassetid://103269035765808",
 		smoke = "rbxassetid://73731160930304",
+		-- From free Creator Store VFX packs (owner 2026-11-08, picked in game; docs/weapons.md "Pack effects"): public
+		-- images other people uploaded, referenced by id. 4x4 flipbooks unless noted.
+		-- Euphoric Games VFX Pack (112672322113504): the Ember and Tide weapon auras (white, tinted per use)
+		fireAura = "rbxassetid://16676455805",
+		waterAura = "rbxassetid://16664715772",
+		-- Yona VFX Pack (18170940328): the Bloom weapon aura (an 8x8 smoke flipbook, embers, a soft light)
+		auraSmoke = "rbxassetid://13410359900",
+		auraEmber = "rbxassetid://1084996976", -- single images from here on
+		auraLight = "rbxassetid://1075864321",
+		-- a landed cut's slash streaks (Config/SwordFx IMPACT: Euphoric Slash-Impact-01 and Yona Slash-01)
+		slashStreak = "rbxassetid://16923007448",
+		slashArc = "rbxassetid://13780268621",
+		sparkStreak = "rbxassetid://6763809313", -- a single image
+		raindrop = "rbxassetid://83707706646646", -- the Tide hit's droplets (Config/SwordFx ELEMENT_HIT; MoveFx's raindrop)
 	},
 	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
 	-- S: the big ones; Util/FightFx)

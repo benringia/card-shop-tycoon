@@ -103,3 +103,34 @@ after re-importing a model or running `forge_variants`.
 The aura (flames, core, smoke, sparks, +10 ribbons) and the cheap glow (sparkles, light) are particles and a light made
 in code (`Util/WeaponLook`, numbers in `WeaponLooks.AURA` and `SPARKLES`); `SwordController` gives the full aura to
 your own sword and the nearest few (`BUDGET`).
+
+## Pack effects
+
+Some effects come from free Creator Store VFX packs (owner 2026-11-08, picked from renders in town):
+
+| Pack | Store id | Used for | Our config |
+|---|---|---|---|
+| Euphoric Games VFX Pack | 112672322113504 | the Ember and Tide weapon auras (its Fire-Aura-01 and Water-Aura-01) | `WeaponLooks.ELEMENT_AURA` |
+| Yona VFX Pack | 18170940328 | the Bloom weapon aura (its Player-VFX Aura, recoloured green) | `WeaponLooks.ELEMENT_AURA` |
+| Euphoric Games VFX Pack and Yona VFX Pack | both | a landed cut's slash streaks (Slash-Impact-01 and Slash-01) | `SwordFx.IMPACT` |
+
+Nothing from a pack is inserted into the game: its emitters' settings were copied into our configs and our code builds
+them (`Util/PackEmitter`), pointing at the pack's texture ids (`AttackFx.TEXTURES`: `fireAura`, `waterAura`,
+`auraSmoke`, `auraEmber`, `auraLight`, `slashStreak`, `slashArc`, `sparkStreak`). The six identical limb emitters a
+pack puts on a body are one emitter on the weapon at six times the rate. The packs draw an aura a stud behind the body
+it wraps (`zOffset = -1`); a sword on the back rides a fifth of a stud off the torso, so that sank the fire into it
+(owner: "the glow is blocked by the body"). Our layers start at 0, and each frame `WeaponLook.drawPastBody` moves a
+part's layers `WeaponLooks.BEHIND_BODY.shift` nearer while the wearer's body (visible parts only: a hat brim or waist
+accessory would count from behind) stands between the camera and that part; 1.5 studs buried the face. Some impact emitters fly a set way from their
+holder (`direction`, `facing`): `HitFx.impact` stands the holder level and turns it to face your camera, as in the test
+the owner picked from (tilted up toward the camera, the flat arc showed edge-on and vanished). The impact takes the
+weapon's colour (`color = "tint"`, `whiten` toward white) and its element's particles (`SwordFx.ELEMENT_HIT`, our own
+textures), and grows with the foe's model (`HitFx.scaleFor`, `SwordFx.IMPACT.bySize`). Those are public images other people uploaded: if one is ever deleted it shows blank, and we
+draw a replacement with our texture tools (`tools/textures/`) and swap the id.
+
+Vetting a pack before using it, without touching the place: from the Studio MCP, `game:GetObjects("rbxassetid://<id>")`
+returns unparented copies; read every script (none may `require`, `loadstring`, `getfenv`, or call HTTP, teleport or
+purchase APIs), PreloadAsync every particle, beam and trail texture, and check the creator (no reuploads of paid packs,
+deleted accounts or other games' characters). Render candidates in a Play test (thrown away on Stop). Rejected
+2026-11-08: the "Aura Pack Premium Sanzzzzz" reuploads, the "Content Deleted" account's packs, "not mine" and anime
+character packs, a pack with 64 scripts.
