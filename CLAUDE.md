@@ -69,7 +69,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   converted by `lune run tools/anim/build_kfs` (the sword moves exported in a background Blender by
   `tools/blender/run_sword_moves.py`, `--sword <name>` for a round 1 sword's own skill, `--sword spear` for the spear
   moveset, `anim_spear.py`, into `assets/animations/Spear`; `--sword titans_lance` for the Titan's Lance's skill,
-  `anim_titans_lance.py`, into `assets/animations/TitansLance`); published ids go in
+  `anim_titans_lance.py`, into `assets/animations/TitansLance`; `--sword magma_halberd` / `tidal_trident` for the
+  Halberd's and Trident's skills, `anim_magma_halberd.py` / `anim_tidal_trident.py`, into `assets/animations/MagmaHalberd`
+  / `TidalTrident`); published ids go in
   `Config/Swords` (docs/animations.md). The round 1 swords' effects: `Config/SwordSkillFx`, client `Util/SwordSkillFx`
   and `Util/SkillCinematic` (DESIGN.md 5.11 "Sword skills").
   `assets/monster-animations` → ReplicatedStorage.MonsterAnimations: monster and boss attack clips

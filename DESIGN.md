@@ -1900,7 +1900,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   tinted per element; glow maps for the gems, lava cracks, crystal prongs and emerald veins.
 - **Titan's Wrath** (weapons round 2.5, spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`; the owner's
   storyboard, exaggerated): the Titan's Lance's own skill in place of Piercing Rush (its own moveset
-  `Config/Swords` `titansLance`: the spear's cuts, moves and sounds; the Halberd and the Trident keep Piercing Rush).
+  `Config/Swords` `titansLance`: the spear's cuts, moves and sounds; the Halberd's and the Trident's own skills below).
   Same rules as every skill (0.9 of a hit, 8 s cooldown, a dodge or a switch before the hit cancels it). A long, loud
   charge in a low stance (gold and green light pouring into the tip, sparks and leaves swirling round you, glowing
   cracks creeping out from your feet, the screen rumbling harder and harder), the peak's white flash with a ring and
@@ -1917,6 +1917,28 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (`UIIcons.LanceLeaves`, the owner's pick 2026-11-08). The Lance's Power stays x1.20: its Legendary edge is this skill
   (owner 2026-11-08). Balance re-run with it (tools/balance/bosses, Prism Hydra, 60 fights): unchanged, +10 S 83% and
   +0 C 72% at 0.8x, the 1x fight 134 s.
+- **Magma Cleave and Torrent Strike** (weapons round 2.5 part 2, spec `2026-11-09-halberd-and-trident-skills-design.md`,
+  plan `2026-11-09-halberd-and-trident-skills.md`; the owner's ideas 2026-11-09, storyboard approved): the Magma
+  Halberd's and the Tidal Trident's own skills in place of Piercing Rush (their own movesets `magmaHalberd`,
+  `tidalTrident`: the spear's cuts, moves and sounds; the Forge Spear keeps Piercing Rush). Same rules as every skill;
+  neither moves you. The skill's size follows the rarity:
+  - Magma Cleave (Very Rare, "something simple is fine ... one big swipe with flaming horizontal slash effects"): pulled
+    back over the right shoulder (the blade's glow brightening, embers gathering), one huge swing right to left (the
+    hit, 0.6 s; 1.2 s in all): a fire crescent (a white-hot core with the pack's flame flipbook along it, flames,
+    embers and smoke shedding off it) and a thinner flame slash behind it, every foe in the half circle in front of you
+    11 studs out (the `arc` skill shape: a foe counts when any of it is inside, so one right beside you is swept,
+    `SwordRules.skillHits`), `SHAKE.magmaCleave` 0.8; no camera moment. Sounds: a big whoosh and Fire Sheet 3.
+  - Torrent Strike (Epic, "strike the ground with the trident, while the trident is stuck to the ground, torrents of
+    water appears from the ground"): raised high, water swirling round the prongs, driven tip-first into the ground
+    ahead (0.55 s: a splash ring, glowing blue cracks, the release shake), leaning on the stuck shaft as columns of
+    water burst up on a ring 6 studs round you and a bigger one under every foe in reach (the hit, 0.75 s: every foe
+    within 12 studs, `spin`; `SHAKE.torrentStrike` 0.9 and a camera pull-back framed on where you stand), a wider ring
+    at 12 studs for show (1.0 s), the water falling back as rain (1.5 s), pulled free (1.9 s). Sounds: a deep boom, a
+    big splash, Water Surge 3, Heavy Rain 1.
+  Keyed in `tools/blender/anim_magma_halberd.py` and `anim_tidal_trident.py` (on anim_spear's helpers), built into
+  `assets/animations/MagmaHalberd` and `TidalTrident`; HUD buttons with the spare glyphs `HalberdFlames` and
+  `TridentWave`. Balance re-run (tools/balance/bosses, 60 fights solo, "well"): unchanged from the rows above, the
+  skill's damage is the same.
 - **Quick weapon switch** (weapons round 2, the owner's pick A): a round chip on the right edge at mid height with your
   weapon's portrait in its rarity's ring, `<` and `>` either side, Q / Shift+Q on keyboards, a swipe on the chip; it
   steps through every weapon you own (swords, spears, scythes; by rarity, then name: `Util/WeaponSwitch`, Lune-tested)
@@ -3211,6 +3233,9 @@ boss models; the ranch and Heroic tiers come after those.
 - [x] Weapons round 2.5 part 1 (spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`): the Forge window relaid
   out (the owner's pick A) and the Titan's Lance's own skill, Titan's Wrath. The skill animation is published
   (2026-11-08, id in `Config/Swords` titansLance). Merged to main 2026-11-08.
+- [ ] Weapons round 2.5 part 2 (spec `2026-11-09-halberd-and-trident-skills-design.md`): the Magma Halberd's Magma
+  Cleave and the Tidal Trident's Torrent Strike (own movesets, the `arc` shape, animations, effects, sounds, HUD
+  buttons). Waiting on the owner: publishing both skill animations, judging them in Studio.
 - [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
   Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server

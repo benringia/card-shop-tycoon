@@ -128,6 +128,19 @@ root travel. `run_sword_moves.py -- --sword titans_lance [--preview <dir>]`, the
 assets/blender/Animations/TitansLance assets/animations/TitansLance`; `Config/Swords titansLance` (moveset `model`
 "TitansLance": the skill's published id 108621386304529, 2026-11-08; the cuts use the spear's ids).
 
+**Magma Cleave and Torrent Strike** (weapons round 2.5 part 2, the Halberd's and the Trident's own skills):
+`tools/blender/anim_magma_halberd.py` (`FOLDER = "MagmaHalberd"`) and `anim_tidal_trident.py` (`FOLDER =
+"TidalTrident"`), skill only, on anim_spear's helpers. The Halberd: into both hands, pulled back over the right shoulder
+(the torso wound right), one huge swing right to left ("Hit" at 0.6), carried round low on the left, back up by 1.2.
+The Trident: up into both hands and high overhead (Sky Pierce's raised poses, no leap), whipped down tip-first into
+the ground ahead ("Slam" at 0.55), crouched leaning on the stuck shaft ("Hit" at 0.75) and held to 1.5, pulled free by
+1.9. The stuck shaft leans about 37 degrees (the waist's bend adds to the arm's pitch: Sky Pierce's -62 sank it straight
+down 4 studs into the ground). `run_sword_moves.py -- --sword magma_halberd` / `tidal_trident`, then `build_kfs` into
+`assets/animations/<FOLDER>`. Publish `ReplicatedStorage.SwordAnimations.MagmaHalberd.skill` and `.TidalTrident.skill`;
+their ids go in `Config/Swords` `magmaHalberd` / `tidalTrident` `animations.skill` (empty until then: Studio plays the
+KeyframeSequences). Without ffmpeg, preview stills come from the module's own `make(name, json_dir, render_dir)` in a
+background Blender (PNG frames every other frame).
+
 ## Making or changing moves
 
 1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through
