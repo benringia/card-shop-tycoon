@@ -302,4 +302,20 @@ return {
 		local shake = SwordSkillFx.SHAKE :: any
 		expect.equal(shake.magmaCleave > shake.finisher and shake.magmaCleave < shake.titansWrath, true, "between a finisher's and Titan's Wrath's")
 	end,
+
+	-- Weapons round 2.5 part 2 (spec 4): Torrent Strike, the trident stuck in the ground and the torrents bursting up
+	["Torrent Strike: the Trident's look, its beats in the storyboard's order, the torrents on the hit's circle"] = function()
+		local trident = Swords.SWORDS.tidalTrident
+		local look = SwordSkillFx.LOOKS.torrentStrike
+		expect.equal(look.form, "around")
+		expect.equal(look.cinematic, true, "your own plays the camera pull-back")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.raise < b.slam and b.slam < b.hit and b.hit < b.second and b.second < b.fall, true, "raise, slam, torrents, second wave, fall back")
+		expect.equal(b.fall < trident.skill.length, true, "the water falls back before the move ends")
+		expect.equal(b.radius, trident.skill.shape.radius, "the second wave on the hit's circle")
+		expect.equal(b.inner < b.radius, true, "the first ring inside it")
+		expect.equal(b.camAt, b.hit, "the pull-back on the torrents")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.torrentStrike > shake.release and shake.torrentStrike <= shake.titansWrath, true, "the torrents shake harder than the slam (release), no harder than Titan's Wrath")
+	end,
 }

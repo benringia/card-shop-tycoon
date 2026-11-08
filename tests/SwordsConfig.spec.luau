@@ -147,6 +147,23 @@ return {
 		expect.equal(halberd.sounds.thrustAir, spear.sounds.thrustAir, "the spear's cut sounds")
 	end,
 
+	["Torrent Strike has its own sounds: the slam, the splash, the torrents surging, the rain falling back"] = function()
+		local trident, spear = Swords.SWORDS.tidalTrident, Swords.SWORDS.spear
+		local keys = {}
+		for _, cue in trident.cues.skill do
+			keys[cue.key] = cue.at
+		end
+		for _, key in { "torrentSlam", "torrentSplash", "torrentSurge", "torrentRain" } do
+			assert(keys[key], `the skill cues {key}`)
+			expect.equal(trident.sounds[key] ~= nil and trident.sounds[key] ~= "", true, `{key} has a sound`)
+			expect.isNil(spear.sounds[key], `the spear's sounds stay its own ({key})`)
+		end
+		local beats = require("../src/shared/Config/SwordSkillFx").LOOKS.torrentStrike.beats :: { [string]: number }
+		expect.equal(math.abs(keys.torrentSlam - beats.slam) < 0.05, true, "the boom on the slam")
+		expect.equal(math.abs(keys.torrentSurge - trident.skill.hitAt) < 0.05, true, "the surge on the torrents")
+		expect.equal(keys.torrentRain >= beats.second, true, "the rain as it falls back")
+	end,
+
 	["Titan's Wrath has its own sounds: the charge, the rumble, the thrust, thorns and the fissure; the spear's are untouched"] = function()
 		local lance, spear = Swords.SWORDS.titansLance, Swords.SWORDS.spear
 		local keys = {}

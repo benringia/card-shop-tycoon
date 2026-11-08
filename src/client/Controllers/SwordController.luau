@@ -1224,9 +1224,11 @@ function SwordController.Skill()
 			end,
 		})
 		local look = SwordSkillFxConfig.LOOKS[effects.fx.skill]
-		if look and look.cinematic and aim then
+		-- a look drawn round you (Torrent Strike) has no aim: its camera moment frames you where you stand
+		local framed = aim or (if look and look.form == "around" then root.Position else nil)
+		if look and look.cinematic and framed then
 			cancelHang()
-			SkillCinematic.forLook(root, look, aim, function(): boolean
+			SkillCinematic.forLook(root, look, framed, function(): boolean
 				return stillSwinging(token)
 			end)
 		end

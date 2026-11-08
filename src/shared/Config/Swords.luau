@@ -481,7 +481,19 @@ do
 		cooldown = 8,
 		shape = { kind = "spin", radius = 12 },
 		free = { at = 0.75 },
-	}, "torrentStrike", { { key = "swing2", at = 0.4 }, { key = "slam", at = 0.55 }, { key = "ground", at = 0.57 } }, {})
+	}, "torrentStrike", {
+		{ key = "swing2", at = 0.4 },
+		{ key = "torrentSlam", at = 0.55 },
+		{ key = "torrentSplash", at = 0.57 },
+		{ key = "torrentSurge", at = 0.75 },
+		{ key = "torrentRain", at = 1.45 },
+	}, {
+		-- Pro Sound Effects already measured (Config/SoundLevels)
+		torrentSlam = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2: the prongs hit the ground
+		torrentSplash = "rbxassetid://9120585252", -- Water Splash Big Water Splash Dive In 1: the splash ring
+		torrentSurge = "rbxassetid://9120607089", -- Water Surge 3: the torrents bursting up
+		torrentRain = "rbxassetid://9112793880", -- Heavy Rain 1: the water falling back
+	})
 end
 
 return {

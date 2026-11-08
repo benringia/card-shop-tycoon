@@ -2194,6 +2194,98 @@ local function magmaCleave(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 	end)
 end
 
+-- One column of water bursting up from `ground`, `height` studs (Torrent Strike): a pillar of light in the water's
+-- colour, spray thrown up and falling back, a splash ring at its foot and mist (none in the light version)
+local function waterColumn(ground: Vector3, height: number, colors: Colors, scale: number, lite: boolean)
+	local water = colors.glow:Lerp(WHITE, 0.3)
+	ElementFx.pillar(ground, water, height, 0.45, "glow")
+	local anchor = holder(CFrame.new(ground + UP * 0.3), Vector3.new(1.5, 0.2, 1.5) * scale, 3)
+	local spray = emitter(anchor, "raindrop", colors.glow:Lerp(WHITE, 0.4), { size = { 0.7 * scale, 0.3 }, life = { 0.8, 1.3 }, speed = { height * 1.2, height * 1.8 }, spread = 14, accel = -UP * 40, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 2 })
+	spray:Emit(detail(if lite then 10 else 26))
+	ElementFx.ring(ground + UP * 0.2, colors.glow, 2.6 * scale, 0.5)
+	if not lite then
+		local mist = emitter(anchor, "smoke", colors.glow:Lerp(WHITE, 0.6), { size = { 2 * scale, 4.5 * scale }, life = { 0.9, 1.4 }, speed = { 1, 3 }, spread = 80, light = 0.3, brightness = 1, start = 0.5 })
+		mist:Emit(detail(4))
+	end
+end
+
+-- Torrent Strike (the Tidal Trident; spec 2026-11-09-halberd-and-trident-skills-design 4: "strike the ground with the
+-- trident, while the trident is stuck to the ground, torrents of water appears from the ground"). From `raise` water
+-- swirls round the prongs; at `slam` (the released hook: your shake) a splash ring and `cracks` glowing blue cracks
+-- spread from where the prongs went in; at `hit` (the burst hook: your bigger shake) `columns` columns of water burst up
+-- on a ring `inner` studs round you, a bigger one under every foe in reach (found from the drawn monsters: only the
+-- look, the server decides the hits); at `second` a wider ring on the hit's `radius`, only for show; from `fall` the
+-- water falls back as rain. A dodge or switch before the torrents stops it after the slam. The light version: fewer
+-- particles, no mist.
+local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local lite = hooks.lite == true
+	local stopSwirl = swirl(function(): Vector3
+		return tipOf(hooks.blade, root)
+	end, 1.3 * scale, colors.glow, "raindrop", beats.slam - beats.raise, 0.6 * scale)
+	local stopCracks: { () -> () } = {}
+	task.delay(beats.slam, function()
+		stopSwirl()
+		if cancelled(hooks) then
+			return
+		end
+		if hooks.released then
+			hooks.released()
+		end
+		local forward = flatLook(root)
+		local prongs = groundAt(root.Position + forward * SLAM_AHEAD - UP * ROOT_TO_GROUND)
+		ElementFx.ring(prongs + UP * GROUND_LIFT, colors.glow:Lerp(WHITE, 0.5), 5 * scale, 0.45)
+		local splash = holder(CFrame.new(prongs + UP * 0.3), Vector3.one, 2)
+		local drops = emitter(splash, "raindrop", colors.glow:Lerp(WHITE, 0.4), { size = { 0.6 * scale, 0.25 }, life = { 0.5, 0.9 }, speed = { 10, 18 }, spread = 40, accel = -UP * 40, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 2 })
+		drops:Emit(detail(if lite then 10 else 24))
+		local turn = math.atan2(forward.X, forward.Z)
+		for index = 1, beats.cracks do
+			local a = turn + (index - 0.5) * 2 * math.pi / beats.cracks
+			local to = prongs + Vector3.new(math.sin(a), 0, math.cos(a)) * beats.inner
+			table.insert(stopCracks, fissure(prongs, to, 0.5 * scale, colors.glow, colors.deep, 0.2, beats.fall - beats.slam, 0.4, "raindrop"))
+		end
+	end)
+	task.delay(beats.hit, function()
+		if cancelled(hooks) then
+			for _, stop in stopCracks do
+				stop()
+			end
+			return
+		end
+		if hooks.burst then
+			hooks.burst(root.Position)
+		end
+		local feet = groundAt(root.Position - UP * ROOT_TO_GROUND)
+		local turn = math.atan2(flatLook(root).X, flatLook(root).Z)
+		local function ring(radius: number, height: number, offset: number)
+			for index = 1, beats.columns do
+				local a = turn + (index - 1 + offset) * 2 * math.pi / beats.columns
+				waterColumn(groundAt(feet + Vector3.new(math.sin(a), 0, math.cos(a)) * radius), height * scale, colors, scale, lite)
+			end
+		end
+		ring(beats.inner, beats.columnHeight, 0)
+		local monsters = workspace:FindFirstChild("Monsters")
+		for _, marker in if monsters then monsters:GetChildren() else {} do
+			if marker:IsA("BasePart") then
+				local flat = Vector3.new(marker.Position.X - feet.X, 0, marker.Position.Z - feet.Z)
+				if flat.Magnitude - marker.Size.X / 2 <= beats.radius then
+					waterColumn(groundAt(marker.Position), beats.columnHeight * 1.5 * scale, colors, scale * 1.3, lite)
+				end
+			end
+		end
+		task.delay(beats.second - beats.hit, function()
+			ring(beats.radius, beats.outerHeight, 0.5)
+		end)
+		task.delay(beats.fall - beats.hit, function()
+			local sky = holder(CFrame.new(feet + UP * beats.outerHeight * scale), Vector3.new(beats.radius * 2, 0.2, beats.radius * 2), 3)
+			local rain = emitter(sky, "raindrop", colors.glow:Lerp(WHITE, 0.5), { size = { 0.5 * scale, 0.3 }, life = { 0.7, 1.1 }, speed = { 4, 8 }, spread = 5, accel = -UP * 30, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 1.6 })
+			rain.Shape = Enum.ParticleEmitterShape.Box
+			rain.EmissionDirection = Enum.NormalId.Bottom
+			rain:Emit(detail(if lite then 20 else 60))
+		end)
+	end)
+end
+
 -- The skill: Sunfall Cleave its own; the looks still waiting for their round around you, along the ground toward
 -- `aim` (else ahead), or on the aimed foe
 function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks?)
@@ -2222,6 +2314,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "magmaCleave" and spec.beats then
 		magmaCleave(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "torrentStrike" and spec.beats then
+		torrentStrike(root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)
