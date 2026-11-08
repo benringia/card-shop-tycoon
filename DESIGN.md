@@ -3184,10 +3184,9 @@ boss models; the ranch and Heroic tiers come after those.
   Sky Pierce, Piercing Rush), effects, sounds, models, portraits and glow maps; their perks; the Titan's Lance's
   Masterwork recipe; the quick weapon switch. The Titan's Lance keeps Power x1.20 (no Legendary Power passes the Hydra
   limit; owner 2026-11-08: its own skill makes it Legendary).
-- [ ] Weapons round 2.5 part 1 (spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`): the Forge window relaid
+- [x] Weapons round 2.5 part 1 (spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`): the Forge window relaid
   out (the owner's pick A) and the Titan's Lance's own skill, Titan's Wrath. The skill animation is published
-  (2026-11-08, id in `Config/Swords` titansLance). Waiting on the owner: a phone check of the Forge window, judging the
-  effects.
+  (2026-11-08, id in `Config/Swords` titansLance). Merged to main 2026-11-08.
 - [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
   Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
