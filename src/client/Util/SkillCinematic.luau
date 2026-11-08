@@ -74,8 +74,9 @@ function SkillCinematic.stop()
 	end
 end
 
--- A look's own framing (its beats): how long the wide shot holds, how high it looks and stands
-export type Framing = { hold: number?, lookUp: number?, up: number? }
+-- A look's own framing (its beats): how long the wide shot holds, how high it looks and stands, and how high above your
+-- root the hero shot looks (`focusUp`; a jump's look up by default)
+export type Framing = { hold: number?, lookUp: number?, up: number?, focusUp: number? }
 
 -- Plays for your character's `root`: the skill's effect leaves `release` seconds in and lands at `impact` (on the
 -- ground) `travel` seconds later; `live()` false before then (a dodge) cuts it short
@@ -98,7 +99,7 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	local forward = if look.Magnitude > 1e-3 then look.Unit else Vector3.zAxis
 	local right = forward:Cross(UP)
 	-- You, up in the jump; the flight from under you to the burst, and its middle
-	local focus = base + UP * cfg.lookUp
+	local focus = base + UP * (frame.focusUp or cfg.lookUp)
 	local feet = base - UP * 3
 	local flight = Vector3.new(impact.X - feet.X, 0, impact.Z - feet.Z).Magnitude
 	local middle = feet:Lerp(impact, 0.5) + UP * wideLookUp
@@ -150,7 +151,7 @@ end
 
 -- The camera moment for a skill look with one (Config/SwordSkillFx `cinematic`) aimed at `aim`: its effect leaves at
 -- `camAt` (else `release`) and lands after its flight (`speed`; none: at once), held `camHold`, the wide shot
--- `camLookUp` / `camUp` (else CINEMATIC's)
+-- `camLookUp` / `camUp`, the hero shot looking `camFocus` above your root (else CINEMATIC's)
 function SkillCinematic.forLook(root: BasePart, look: SwordSkillFxConfig.Look, aim: Vector3, live: () -> boolean)
 	local beats = look.beats
 	if not look.cinematic or not beats then
@@ -162,6 +163,7 @@ function SkillCinematic.forLook(root: BasePart, look: SwordSkillFxConfig.Look, a
 		hold = beats.camHold,
 		lookUp = beats.camLookUp,
 		up = beats.camUp,
+		focusUp = beats.camFocus,
 	})
 end
 

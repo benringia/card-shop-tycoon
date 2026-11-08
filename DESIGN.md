@@ -1720,14 +1720,22 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (a weapon you don't have), upgrade (+1 at a time, never fails), reforge (half the making cost, rounded up: a new
   grade roll, the better kept). Its own Forge within 12 studs, one request at a time, costs checked and taken all or
   nothing on the server.
-- **The Forge window** (`ForgeController`, owner's layout B): tabs Forge / Upgrade / Reforge; the weapons for the tab
-  on the left as slim rows with their card (the Forge tab previews Grade C +0), the chosen one on the right: its card,
-  and beside it what the tab does ("+8 -> +9: Power x1.43 -> x1.46" and the glow layer it adds, "Now Grade C"), the
-  Forge Sword's five element buttons (48 px; the picked one bigger, the owned ones greyed) and its cost with have /
-  need in green or red; the hint and the stats in words below. One pinned button says what it does ("Upgrade to +9 ·
-  $8,000") or what's missing first ("Opens at shop level 6", "Need 5 more Wild Ore", "Need $500 more";
-  `WeaponText.button`). The window steps aside for the forge reveal and comes back after it; it closes when you walk
-  away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band, the cost on one line.
+- **The Forge window** (`ForgeController`, owner's layout B; its pane relaid out 2026-11-08, the owner's pick A):
+  tabs Forge / Upgrade / Reforge with one line under them saying what the tab does (`WeaponText.tabLine`; on phones the
+  pane's first line); the weapons for the tab on the left as slim rows with their card (the Forge tab previews Grade C
+  +0); the chosen one on the right: its card (tap it for its stats: the weapon card view, `WeaponDetailController`,
+  which now sinks taps so none reach the window under it), its name, "Grade S · +0" and "Common · Ember"; the Forge
+  weapons' element buttons (48 px; the picked one bigger, the owned ones greyed); two boxes, Now and After, with the
+  kit's blue arrow picture between them (Upgrade: "+0, Power x1.32" and "+1, Power x1.36, It glows brighter"; Reforge:
+  "Grade B" and "C to S, you keep the better"; one box at +10 "Fully upgraded, Awakened!", for a Grade S reforge and
+  for the Forge tab's "You get: Grade C to S"); then "You pay" as picture chips ("$250", "2 Wild Ore (you have 11)",
+  green when you have enough, red when not; `WeaponText.costChips`; none for a Grade S reforge). One pinned button says
+  what it does ("Upgrade to +9 · $8,000") or what's missing first ("Opens at shop level 6", "Need 5 more Wild Ore",
+  "Need $500 more"; `WeaponText.button`). The window steps aside for the forge reveal and comes back after it; it
+  closes when you walk away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band; the
+  pane shows a small card with the Now / After boxes (their first line only) or a Forge weapon's element buttons
+  beside it, the cost chips under them and the tab's line last, so a 667 x 375 phone sees it all without scrolling
+  (`Config/ForgeLayout`, `UiLayout.forgePhonePane` / `forgePhoneContent`, tests/UiLayout).
 - **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
   catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`): owned ones show
   their portrait over their glow, Power, grade and +level, "Owned" / "Equipped"; locked ones a dark sword with
@@ -1868,6 +1876,25 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   `PiercingRush`, icon sheet 9 with spares for the next spear skills). Models: Figma concepts A (the owner's picks),
   Meshy, cleaned by `weapon_kit.build_spear` (Head and Shaft, the Shaft the PrimaryPart), the Forge Spear's collar gems
   tinted per element; glow maps for the gems, lava cracks, crystal prongs and emerald veins.
+- **Titan's Wrath** (weapons round 2.5, spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`; the owner's
+  storyboard, exaggerated): the Titan's Lance's own skill in place of Piercing Rush (its own moveset
+  `Config/Swords` `titansLance`: the spear's cuts, moves and sounds; the Halberd and the Trident keep Piercing Rush).
+  Same rules as every skill (0.9 of a hit, 8 s cooldown, a dodge or a switch before the hit cancels it). A long, loud
+  charge in a low stance (gold and green light pouring into the tip, sparks and leaves swirling round you, glowing
+  cracks creeping out from your feet, the screen rumbling harder and harder), the peak's white flash with a ring and
+  rocks lifting off the ground (1.22 s), one huge thrust (the hit, 1.35 s): a lance-shaped beam and a gold shockwave,
+  every foe on the 14 x 4 line ahead (`SwordRules` line: its ends rounded by half its width), a fissure tearing open
+  the whole line with green light and thorns bursting out of it, the rocks flung along it, a big shake; it glows on to
+  2.7 s and closes under drifting petals. You stay put (no rush). The rumble pulses grow to `SHAKE.titansRumble` 0.28
+  and die down before the thrust (no shake at the peak), so the fissure's shake lands as a jump (tests/SwordSkillFx); a
+  dodge or a switch during the charge stops all of it, its sounds too (`playCues` stops a skill's cue sounds when it is
+  cancelled before its hit). Its camera moment frames the stance from the side
+  (`camFocus`) and the whole fissure low (`camLookUp`). Its own sounds (charge-up, rumble, the thrust's roar, thorns,
+  the fissure's crash; Pro Sound Effects, measured). Keyed in `tools/blender/anim_titans_lance.py` (on anim_spear's
+  helpers), built into `assets/animations/TitansLance`; the HUD button "Titan's Wrath" with the lance-in-vines icon
+  (`UIIcons.LanceLeaves`, the owner's pick 2026-11-08). The Lance's Power stays x1.20: its Legendary edge is this skill
+  (owner 2026-11-08). Balance re-run with it (tools/balance/bosses, Prism Hydra, 60 fights): unchanged, +10 S 83% and
+  +0 C 72% at 0.8x, the 1x fight 134 s.
 - **Quick weapon switch** (weapons round 2, the owner's pick A): a round chip on the right edge at mid height with your
   weapon's portrait in its rarity's ring, `<` and `>` either side, Q / Shift+Q on keyboards, a swipe on the chip; it
   steps through every weapon you own (swords, spears, scythes; by rarity, then name: `Util/WeaponSwitch`, Lune-tested)
@@ -2198,7 +2225,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Shift+Q (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
-    │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs, weapon rows, the chosen weapon's card, cost and one button
+    │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
     │   │   ├── WeaponDetailController.luau # an Armory weapon's card view: its stats in words, Equip
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
@@ -3155,8 +3182,12 @@ boss models; the ranch and Heroic tiers come after those.
 - [x] Weapons round 2 (spec `2026-11-07-weapons-round2-design.md`, merged 2026-11-08): the sword hold fix, the spears
   (Forge Spear in five elements, Magma Halberd, Tidal Trident, Titan's Lance) with their shared moveset (Thrust, Sweep,
   Sky Pierce, Piercing Rush), effects, sounds, models, portraits and glow maps; their perks; the Titan's Lance's
-  Masterwork recipe; the quick weapon switch. Open: the Titan's Lance shows Power x1.20 (no Legendary Power passes the
-  Hydra limit; owner to decide), the Forge window's Upgrade panel relayout and the Lance's own skill (Titan's Wrath).
+  Masterwork recipe; the quick weapon switch. The Titan's Lance keeps Power x1.20 (no Legendary Power passes the Hydra
+  limit; owner 2026-11-08: its own skill makes it Legendary).
+- [ ] Weapons round 2.5 part 1 (spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`): the Forge window relaid
+  out (the owner's pick A) and the Titan's Lance's own skill, Titan's Wrath. The skill animation is published
+  (2026-11-08, id in `Config/Swords` titansLance). Waiting on the owner: a phone check of the Forge window, judging the
+  effects.
 - [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
   Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server

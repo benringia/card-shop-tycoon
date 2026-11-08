@@ -108,6 +108,34 @@ function UiLayout.wildButtons(view: Size): WildButtons
 	return { pet = pet, signature = signature, swap = swap, run = run }
 end
 
+-- The Forge window's pane on a phone (Config/ForgeLayout): its height on a screen `viewH` px tall, and the height of
+-- what it shows first: the card beside the Now / After boxes (the Forge tab: beside the element buttons), the cost
+-- chips under them
+export type ForgeLook = {
+	HEADER: number,
+	INSET: number,
+	PANEL: number,
+	LIST_GAP: number,
+	ACTION: number,
+	ACTION_ROOM: number,
+	PAD: number,
+	GAP: number,
+	CARD: { w: number, h: number },
+	BOX: { pad: number, title: number, big: number, line: number, gap: number, lines: number, side: number },
+	CHIP: number,
+	ELEMENT: number,
+}
+function UiLayout.forgePhonePane(look: ForgeLook, viewH: number): number
+	return (viewH - look.INSET) * look.PANEL - (look.HEADER + look.LIST_GAP) - (look.ACTION + look.ACTION_ROOM)
+end
+
+function UiLayout.forgePhoneContent(look: ForgeLook, tab: string): number
+	local box = look.BOX
+	local boxHeight = box.pad + box.title + box.gap + box.big + (box.gap + box.line) * box.lines
+	local beside = if tab == "Forge" then look.ELEMENT else boxHeight
+	return look.PAD * 2 + math.max(look.CARD.h, beside) + look.GAP + look.CHIP
+end
+
 -- The quick weapon switch (Config/HudLayout WEAPON_SWITCH: < chip > with the weapon's name under it) on the right edge
 -- at mid height. Its HUD scale never shrinks the arrows under 48 px. In a fight it moves up above any fight button in
 -- its way (boss buttons by touch or mouse, wild buttons), so it never covers the Pet or Signature buttons.

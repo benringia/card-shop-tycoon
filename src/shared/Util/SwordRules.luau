@@ -330,7 +330,8 @@ function SwordRules.switchDraw(previous: string?, current: string?, drawn: boole
 end
 
 -- Where a skill's effect lands (the client draws it there): a wave's burst on the first foe it touches, else the end of
--- its run; the judged foe; nil for the shapes drawn around you or along your path
+-- its run; the judged foe; a line's far end (Titan's Wrath's camera frames it); nil for the shapes drawn around you or
+-- along your path
 function SwordRules.skillImpact(shape: SkillShape, px: number, pz: number, lookX: number, lookZ: number, targets: { Target }): (number?, number?)
 	local dirX, dirZ = unit(lookX, lookZ)
 	if shape.kind == "wave" then
@@ -344,6 +345,9 @@ function SwordRules.skillImpact(shape: SkillShape, px: number, pz: number, lookX
 				end
 			end
 		end
+	elseif shape.kind == "line" then
+		local length = shape.length or 0
+		return px + dirX * length, pz + dirZ * length
 	end
 	return nil, nil
 end

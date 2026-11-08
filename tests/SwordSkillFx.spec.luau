@@ -41,7 +41,7 @@ return {
 				end
 			end
 		end
-		expect.equal(named, 15, "four swords and the spear x slash, finisher, skill")
+		expect.equal(named, 18, "four swords, the spear and the Titan's Lance x slash, finisher, skill")
 	end,
 
 	["every element has its look colours, so each Forge Sword is coloured (Review Focus 5)"] = function()
@@ -230,5 +230,62 @@ return {
 			end
 		end
 		expect.equal(found, true, "a Sword skills section")
+	end,
+
+	-- Weapons round 2.5 (spec 2026-11-08-forge-relayout-and-titans-wrath-design 3; the owner's storyboard): Titan's Wrath
+	["Titan's Wrath: the Lance's skill look, its beats in the storyboard's order, its hit and fissure the skill's"] = function()
+		local lance = Swords.SWORDS.titansLance
+		expect.equal(lance.fx.skill, "titansWrath")
+		local look = SwordSkillFx.LOOKS.titansWrath
+		assert(look, "the titansWrath look")
+		expect.equal(look.kind, "skill")
+		expect.equal(look.form, "ahead")
+		expect.equal(look.cinematic, true, "your own plays the camera moment")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.charge < b.peak and b.peak < b.hit and b.hit < b.close, true, "charge, peak, thrust, then the fissure closes")
+		expect.equal(b.hit, lance.skill.hitAt, "the thrust is the skill's hit")
+		expect.equal(b.camAt, b.hit, "the wide shot at the thrust")
+		expect.equal(b.length, lance.skill.shape.length, "the fissure runs the hit's whole line")
+		expect.equal(b.width, lance.skill.shape.width)
+		expect.equal(lance.sounds[look.burstSound :: string] ~= nil, true, "its burst sound is the Lance's")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.titansRumble > 0 and shake.titansRumble < shake.titansWrath, true, "a rumble under the fissure's big shake")
+		expect.equal(shake.titansWrath >= shake.impact, true, "the fissure shakes at least as hard as a burst")
+	end,
+
+	-- Studio 2026-11-08: the cinematic's hero shot looked 5.5 studs above you (Sunfall Cleave's jump), so Titan's Wrath's
+	-- low stance sat at the screen's bottom edge: it frames your stance, and its wide shot looks low along the fissure
+	["Titan's Wrath's camera moment frames the low stance and the fissure on the ground"] = function()
+		local b = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		expect.equal(b.camFocus ~= nil and b.camFocus < SwordSkillFx.CINEMATIC.lookUp, true, "the hero shot at your stance")
+		expect.equal(b.camLookUp ~= nil and b.camLookUp < SwordSkillFx.CINEMATIC.wide.lookUp, true, "the wide shot low, on the ground")
+	end,
+
+	-- Final review 2026-11-08: the rumble's pulses stacked to the shake's cap before the thrust, so the fissure's big
+	-- shake barely stood out. Pulses every rumbleEvery s grow from a fifth to all of titansRumble (SwordController's rumble
+	-- hook) against the shake's decay (Util/ScreenFx): it must build, stay well under the cap, and have died down by the
+	-- thrust so the fissure lands as a jump
+	["Titan's Wrath's rumble builds through the charge and leaves room for the fissure's big shake"] = function()
+		local ShakeRules = require("../src/shared/Util/ShakeRules")
+		local b = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		local shake, strongest, early = 0, 0, 0
+		local charging = b.peak - b.charge
+		local dt = 1 / 60
+		local t, nextPulse = 0, 0
+		while t < b.hit - b.charge do
+			if t < charging and t >= nextPulse then
+				nextPulse += b.rumbleEvery
+				shake = ShakeRules.add(shake, SwordSkillFx.SHAKE.titansRumble * (0.2 + 0.8 * t / charging))
+			end
+			if t < charging * 0.3 then
+				early = math.max(early, shake)
+			end
+			strongest = math.max(strongest, shake)
+			shake = ShakeRules.decay(shake, dt, AttackFx.SHAKE.DECAY)
+			t += dt
+		end
+		expect.equal(strongest > early * 1.5, true, `it builds ({early} early, {strongest} at most)`)
+		expect.equal(strongest <= 0.5, true, `under half the cap ({strongest})`)
+		expect.equal(ShakeRules.add(shake, SwordSkillFx.SHAKE.titansWrath) - shake >= 0.6, true, `the fissure jumps the shake (from {shake})`)
 	end,
 }

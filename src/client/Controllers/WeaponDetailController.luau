@@ -50,8 +50,9 @@ end
 
 local function build(): Frame
 	local frame, scroll = UIKit.panel(UIController.GetScreenGui(), "WeaponDetail", "⚔️ Weapon")
-	frame:SetAttribute("Overlay", true) -- opens over the binder without closing it
+	frame:SetAttribute("Overlay", true) -- opens over the binder (or the Forge) without closing it
 	frame.ZIndex = Z_INDEX
+	frame.Active = true -- taps on it never reach the window under it (the Forge's Upgrade button)
 	local limit = frame:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
 		limit.MaxSize = MAX_SIZE

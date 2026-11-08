@@ -66,6 +66,11 @@ return {
 			icon = "PiercingRush", name = "Piercing Rush",
 			tip = "Rush forward tip-first and pierce every foe in a line.",
 		},
+		-- the Titan's Lance (weapons round 2.5; owner 2026-11-08: the lance wrapped in vines)
+		titansLance = {
+			icon = "LanceLeaves", name = "Titan's Wrath",
+			tip = "Charge in a low stance, then one huge thrust tears a fissure through every foe ahead.",
+		},
 	} :: { [string]: { icon: string, name: string, tip: string } },
 	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
 	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",

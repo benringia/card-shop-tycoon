@@ -275,4 +275,11 @@ return {
 		expect.equal(SwordRules.switchDraw("titansLance", "titansLance", true), false, "the same weapon (an upgrade)")
 		expect.equal(SwordRules.switchDraw("titansLance", nil, true), false, "no weapon now")
 	end,
+
+	-- Titan's Wrath's camera aims at the far end of its line (SwordController skillAim)
+	["a line skill lands at the far end of its line"] = function()
+		local x, z = SwordRules.skillImpact({ kind = "line", length = 14, width = 4 }, 2, 3, 0, -1, {})
+		expect.near(x :: number, 2, 1e-9)
+		expect.near(z :: number, 3 - 14, 1e-9)
+	end,
 }

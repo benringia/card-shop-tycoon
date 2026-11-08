@@ -633,7 +633,7 @@ end
 
 -- One of your sword's sounds (Config/Swords sounds; silent while its id is empty). Each stays on your root part,
 -- loaded, and replays from the start: a new Sound per swing could start late while it loaded.
-function SwordController.PlaySound(key: string)
+function SwordController.PlaySound(key: string): Sound?
 	local character = player.Character
 	local weaponId = if character then character:GetAttribute("Sword") else nil
 	local sword = swordOf(weaponId) or Swords.SWORDS[Swords.STARTER]
@@ -643,7 +643,7 @@ function SwordController.PlaySound(key: string)
 	local id = if sword then (if element then sword.sounds[`{key}_{element}`] else nil) or sword.sounds[key] else nil
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	if not id or id == "" or not root then
-		return
+		return nil
 	end
 	local sound = soundFor(key, root :: BasePart, id)
 	sound.TimePosition = 0
@@ -651,6 +651,7 @@ function SwordController.PlaySound(key: string)
 	local pitch = Swords.SOUND_PITCH
 	sound.PlaybackSpeed = pitch[1] + math.random() * (pitch[2] - pitch[1])
 	sound:Play()
+	return sound
 end
 
 -- A sword hit's sound: the blade's slice with a thud under it, and on a big hit (the finisher, the dash slash) a beefy
@@ -943,12 +944,29 @@ end
 
 -- A move's sounds at their moments (Config/Swords cues): the swish with the swing, the finisher's jump and slam, the
 -- dash slash's draw, dash and cut lines; a dodge or anything that ends the swing (`live()` false) stops the ones to come
-local function playCues(sword: Swords.Sword, move: string, live: () -> boolean)
+-- `stopUntil`: a move cancelled before then (a dodge or switch during a skill's charge) also stops its sounds already
+-- playing (final review 2026-11-08: Titan's Wrath's charge-up and rumble played on after a dodge); later ones finish
+local function playCues(sword: Swords.Sword, move: string, live: () -> boolean, stopUntil: number?)
+	local started = os.clock()
 	for _, cue in sword.cues[move] or {} do
 		task.delay(cue.at, function()
-			if live() then
-				SwordController.PlaySound(cue.key)
+			if not live() then
+				return
 			end
+			local sound = SwordController.PlaySound(cue.key)
+			if not sound or not stopUntil or cue.at >= stopUntil then
+				return
+			end
+			local playing = sound :: Sound
+			local watch: RBXScriptConnection
+			watch = RunService.Heartbeat:Connect(function()
+				if not playing.IsPlaying or os.clock() - started >= (stopUntil :: number) then
+					watch:Disconnect()
+				elseif not live() then
+					watch:Disconnect()
+					playing:Stop()
+				end
+			end)
 		end)
 	end
 end
@@ -1157,7 +1175,7 @@ function SwordController.Skill()
 		releaseOnWalk(track, humanoid, freeAt)
 	end
 	swingTrail()
-	playCues(sword, "skill", skillLive)
+	playCues(sword, "skill", skillLive, skill.hitAt)
 	local effects = effectsOf(character)
 	if effects then
 		-- Your own: a shake on the cleave and on the burst, and the look's camera moment (Sunfall Cleave)
@@ -1172,6 +1190,9 @@ function SwordController.Skill()
 			strike = function()
 				ScreenFx.shake(shake.prismStrike)
 				SwordController.PlaySound("prismStrike")
+			end,
+			rumble = function(share: number)
+				ScreenFx.shake(shake.titansRumble * share) -- Titan's Wrath's charge
 			end,
 			burst = function()
 				ScreenFx.shake((shake :: any)[effects.fx.skill] or shake.impact)

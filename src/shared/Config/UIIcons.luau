@@ -82,6 +82,7 @@ return {
 	Sunfall = "rbxassetid://91027604638860",
 	PrismJudgment = "rbxassetid://94329390139564",
 	PiercingRush = "rbxassetid://88995370586159", -- RushGhosts.png, sheet 9 (weapons round 2: the spear's skill)
+	LanceLeaves = "rbxassetid://73931008782377", -- sheet 9 (round 2.5: the Titan's Lance's skill, Titan's Wrath)
 	Paw = "rbxassetid://127023045019616",
 	Sparkle = "rbxassetid://90976268345911",
 	Swap = "rbxassetid://122501337503529",
