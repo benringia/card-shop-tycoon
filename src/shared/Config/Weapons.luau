@@ -136,7 +136,7 @@ REST = {
 		rarity = "Very Rare",
 		element = "Ember",
 		ready = true,
-		moveset = "spear",
+		moveset = "magmaHalberd", -- the spear's cuts, its own skill: Magma Cleave
 		model = "MagmaHalberd",
 		source = { kind = "boss", boss = "emberColossus" },
 		perk = { kind = "erupt", every = 5, share = 0.6 }, -- every 5th hit bursts for 60% of that hit more
@@ -148,7 +148,7 @@ REST = {
 		rarity = "Epic",
 		element = "Tide",
 		ready = true,
-		moveset = "spear",
+		moveset = "tidalTrident", -- the spear's cuts, its own skill: Torrent Strike
 		model = "TidalTrident",
 		source = { kind = "boss", boss = "frostTyrant" },
 		perk = { kind = "chill", share = 0.1, seconds = 3 }, -- the foe's attacks 10% slower for 3 s, refreshed

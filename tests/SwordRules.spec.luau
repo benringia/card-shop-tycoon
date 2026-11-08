@@ -196,6 +196,40 @@ return {
 		expect.equal(#wave, 1); expect.equal(wave[1].id, "ahead"); expect.near(wave[1].after, 9 / 14, 1e-6)
 	end,
 
+	-- Weapons round 2.5 part 2 (spec 2026-11-09-halberd-and-trident-skills-design 3): Magma Cleave's half circle in
+	-- front, 11 studs out; a foe counts when any of it is inside (so one right beside you is swept)
+	["the arc shape: every foe in the half circle in front of you, none behind it or past it"] = function()
+		local shape = { kind = "arc", radius = 11, angle = 180 }
+		local function t(id: string, x: number, z: number, radius: number?): SwordRules.Target
+			return { id = id, x = x, z = z, radius = radius or 1 }
+		end
+		local targets = {
+			t("ahead", 0, -10),
+			t("beside", 10, 0),
+			t("onYou", 0.5, 0, 2),
+			t("behindSide", 7.07, 7.07),
+			t("past", 0, -12.5),
+		}
+		local got = {}
+		for _, hit in SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, targets) do
+			got[hit.id] = hit
+			expect.equal(hit.after, 0)
+			expect.equal(hit.share, 1)
+		end
+		assert(got.ahead, "ahead at 10 studs")
+		assert(got.beside, "at 90 degrees to your side, 10 studs out")
+		assert(got.onYou, "a foe standing on you")
+		expect.isNil(got.behindSide, "at 135 degrees")
+		expect.isNil(got.past, "its edge past 11 studs")
+	end,
+
+	-- Torrent Strike's spin (radius 12): a big boss counts by its edge
+	["a spin of 12 reaches a radius-8 boss 19 studs away, not one 21 away"] = function()
+		local shape = { kind = "spin", radius = 12 }
+		expect.equal(#SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { { id = "boss", x = 0, z = -19, radius = 8 } }), 1)
+		expect.equal(#SwordRules.skillHits(shape, 0, 0, 0, 0, 0, -1, { { id = "boss", x = 0, z = -21, radius = 8 } }), 0)
+	end,
+
 	["the crescent bursts on the first foe it touches: foes near the burst are hit with it, farther ones aren't"] = function()
 		local t = function(id, x, z) return { id = id, x = x, z = z, radius = 1 } end
 		local shape = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 }

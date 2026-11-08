@@ -83,6 +83,8 @@ return {
 	PrismJudgment = "rbxassetid://94329390139564",
 	PiercingRush = "rbxassetid://88995370586159", -- RushGhosts.png, sheet 9 (weapons round 2: the spear's skill)
 	LanceLeaves = "rbxassetid://73931008782377", -- sheet 9 (round 2.5: the Titan's Lance's skill, Titan's Wrath)
+	HalberdFlames = "rbxassetid://74007321357515", -- sheet 9 (round 2.5 part 2: the Magma Halberd's skill, Magma Cleave)
+	TridentWave = "rbxassetid://77166574700023", -- sheet 9 (round 2.5 part 2: the Tidal Trident's skill, Torrent Strike)
 	Paw = "rbxassetid://127023045019616",
 	Sparkle = "rbxassetid://90976268345911",
 	Swap = "rbxassetid://122501337503529",

@@ -71,6 +71,15 @@ return {
 			icon = "LanceLeaves", name = "Titan's Wrath",
 			tip = "Charge in a low stance, then one huge thrust tears a fissure through every foe ahead.",
 		},
+		-- the Magma Halberd and the Tidal Trident (weapons round 2.5 part 2; spare glyphs, spec 5)
+		magmaHalberd = {
+			icon = "HalberdFlames", name = "Magma Cleave",
+			tip = "One huge flaming swipe hits every foe in front of you.",
+		},
+		tidalTrident = {
+			icon = "TridentWave", name = "Torrent Strike",
+			tip = "Slam the trident into the ground: torrents of water burst up round you, hitting every foe near you.",
+		},
 	} :: { [string]: { icon: string, name: string, tip: string } },
 	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
 	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",

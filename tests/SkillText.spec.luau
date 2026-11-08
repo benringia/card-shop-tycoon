@@ -55,6 +55,19 @@ return {
 		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
 	end,
 
+	-- Weapons round 2.5 part 2: the Halberd's and the Trident's own skill buttons (spare glyphs, spec 5)
+	["the Halberd's and the Trident's skill buttons: Magma Cleave and Torrent Strike, their icons and the dodge rule"] = function()
+		for moveset, want in { magmaHalberd = { "Magma Cleave", "HalberdFlames" }, tidalTrident = { "Torrent Strike", "TridentWave" } } do
+			local button = SkillText.swordSkill(CombatHud, moveset)
+			expect.equal(button.name, want[1], moveset)
+			expect.equal(button.icon, want[2], moveset)
+			expect.equal(UIIcons[button.icon] ~= nil, true, `{moveset}: its icon is uploaded`)
+			expect.equal(#button.tip <= 140, true, `{moveset}: its tooltip fits the tooltip box`)
+			local ending = CombatHud.SKILL_DODGE_TIP
+			expect.equal(string.sub(button.tip, -#ending), ending, `{moveset}: ends with the dodge rule`)
+		end
+	end,
+
 	["the Steel Sword and anything unknown keep the dash slash's button"] = function()
 		for _, moveset in { Swords.STARTER, "noSuchSword", nil :: string? } do
 			local button = SkillText.swordSkill(CombatHud, moveset)

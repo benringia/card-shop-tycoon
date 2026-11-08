@@ -239,6 +239,53 @@ local LOOKS: { [string]: Look } = {
 			camLookUp = 1.2, -- the wide shot looks low, along the fissure
 		},
 	},
+	-- Magma Cleave (the Magma Halberd; spec 2026-11-09-halberd-and-trident-skills-design 3: "one big swipe. with flaming
+	-- horizontal slash effects"). From `windup` the blade's glow brightens and embers gather on it; at `hit` a big fire
+	-- crescent `radius` studs round your front over `angle` degrees and `crescent` studs thick (orange-red, a white-hot
+	-- core, `embers` flames and embers shedding along it), a thinner flame slash a beat behind (SHAKE.magmaCleave); then
+	-- smoke and falling embers over `smoke` seconds. No camera moment.
+	magmaCleave = {
+		kind = "skill",
+		textures = { "flame", "spark", "smoke", "glow", "crescent" },
+		seconds = 1.2,
+		size = 22,
+		count = 120,
+		form = "around",
+		beats = { windup = 0.1, hit = 0.6, radius = 11, angle = 180, crescent = 2.2, embers = 40, smoke = 0.8 },
+	},
+	-- Torrent Strike (the Tidal Trident; spec 4: "strike the ground with the trident, while the trident is stuck to the
+	-- ground, torrents of water appears from the ground"). From `raise` water swirls round the prongs; at `slam` a splash
+	-- ring and `cracks` glowing blue cracks spread from the prongs (SHAKE.torrentSlam); at `hit` `columns` columns burst
+	-- up on a ring `inner` studs round you (`columnHeight` tall: spray, falling droplets, mist, a splash ring at each
+	-- foot) and a big one under every foe hit (SHAKE.torrentStrike); at `second` a wider ring at `radius` studs
+	-- (`outerHeight` tall), only for show; from `fall` they fall back as rain and mist. Your own plays the camera
+	-- pull-back from `camAt`, held `camHold` (the hero shot `camFocus` above your root, the wide one `camLookUp` up).
+	torrentStrike = {
+		kind = "skill",
+		textures = { "raindrop", "ring", "glow", "smoke", "crack" },
+		seconds = 1.9,
+		size = 24,
+		count = 120,
+		form = "around",
+		cinematic = true,
+		beats = {
+			raise = 0.05,
+			slam = 0.55,
+			hit = 0.75,
+			second = 1.0,
+			fall = 1.5,
+			radius = 12,
+			inner = 6,
+			columns = 8,
+			columnHeight = 9,
+			outerHeight = 11,
+			cracks = 6,
+			camAt = 0.75,
+			camHold = 0.7,
+			camFocus = 0.5,
+			camLookUp = 2,
+		},
+	},
 }
 
 return {

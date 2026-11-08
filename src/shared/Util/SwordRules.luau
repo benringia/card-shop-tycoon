@@ -187,9 +187,10 @@ end
 -- dash: the path from where you started to where you are (clamped to maxStuds + slack), `width` wide; spin: every foe
 -- within `radius` of you; line: `length` x `width` straight ahead; wave: a crescent along the same line at `speed` that
 -- bursts on the first foe it touches, hitting every foe within `blast` of that point when it gets there; judgment: the foe you aim at within `range` (within `angle` of your facing, else the nearest around you),
--- `strikes` hits `gap` seconds apart
+-- `strikes` hits `gap` seconds apart; arc: every foe any of which is within `radius` of you and inside the `angle`
+-- (degrees) centred on your facing (Magma Cleave's half circle: a foe right beside you is swept)
 export type SkillShape = {
-	kind: "dash" | "spin" | "line" | "wave" | "judgment",
+	kind: "dash" | "spin" | "line" | "wave" | "judgment" | "arc",
 	radius: number?,
 	length: number?,
 	width: number?,
@@ -223,6 +224,21 @@ end
 local function unit(x: number, z: number): (number, number)
 	local size = math.sqrt(x * x + z * z)
 	return if size > 1e-9 then x / size else 0, if size > 1e-9 then z / size else -1
+end
+
+-- Whether any of `target` is within `radius` of (px, pz) and inside the `angle` (degrees) centred on the unit facing
+-- (dirX, dirZ): its centre's angle off the facing less the angle its body spans from you
+local function inArc(px: number, pz: number, dirX: number, dirZ: number, target: Target, radius: number, angle: number): boolean
+	local dx, dz = target.x - px, target.z - pz
+	local distance = math.sqrt(dx * dx + dz * dz)
+	if distance <= target.radius then
+		return true
+	elseif distance - target.radius > radius then
+		return false
+	end
+	local off = math.deg(math.acos(math.clamp((dx * dirX + dz * dirZ) / distance, -1, 1)))
+	local spans = math.deg(math.asin(math.clamp(target.radius / distance, 0, 1)))
+	return off - spans <= angle / 2
 end
 
 -- How far along a wave's line its crescent first touches a foe (studs from you), or nil when none is in its path
@@ -282,6 +298,8 @@ function SwordRules.skillHits(shape: SkillShape, sx: number, sz: number, px: num
 		elseif shape.kind == "line" then
 			local length = shape.length or 0
 			reached = SwordRules.inDashPath(px, pz, px + dirX * length, pz + dirZ * length, target.x, target.z, target.radius, shape.width or 0)
+		elseif shape.kind == "arc" then
+			reached = inArc(px, pz, dirX, dirZ, target, shape.radius or 0, shape.angle or 0)
 		end
 		if reached then
 			table.insert(hits, { id = target.id, after = 0, share = 1 })

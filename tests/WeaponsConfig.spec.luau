@@ -82,10 +82,9 @@ return {
 			expect.equal(spear.moveset, "spear")
 			expect.equal(spear.source.kind, "forge")
 		end
-		for _, id in { "magmaHalberd", "tidalTrident" } do
-			expect.equal(Weapons.ById[id].moveset, "spear", id)
+		for _, id in { "magmaHalberd", "tidalTrident", "titansLance" } do
+			expect.equal(Weapons.ById[id].moveset, id, `{id}: its own skill (round 2.5)`)
 		end
-		expect.equal(Weapons.ById.titansLance.moveset, "titansLance", "its own skill (round 2.5)")
 		local erupt = Weapons.ById.magmaHalberd.perk :: any
 		expect.equal(erupt.kind, "erupt")
 		expect.equal(erupt.every, 5)

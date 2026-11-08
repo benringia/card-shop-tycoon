@@ -22,9 +22,9 @@ export type Cut = { power: number, hitAt: number, cancelAt: number?, length: num
 export type Dash = { studs: number, maxStuds: number, margin: number, width: number, from: number, to: number, slack: number }
 -- What a skill hits (sword skills round, spec 2026-11-06-sword-skills-design 3; the same fields as
 -- Util/SwordRules.SkillShape, which decides it): the dash's path, a spin around you, a line or a travelling wave ahead,
--- or strikes on the foe you aim at. Only a dash-shaped skill has a `dash` (it moves you).
+-- strikes on the foe you aim at, or an arc in front of you. Only a dash-shaped skill has a `dash` (it moves you).
 export type SkillShape = {
-	kind: "dash" | "spin" | "line" | "wave" | "judgment",
+	kind: "dash" | "spin" | "line" | "wave" | "judgment" | "arc",
 	radius: number?,
 	length: number?,
 	width: number?,
@@ -430,6 +430,50 @@ do
 		},
 		fx = { slash = "spearStreak", finisher = "skyPierce", skill = "titansWrath" },
 	}
+	-- The Halberd's and the Trident's own skills (weapons round 2.5 part 2, spec 2026-11-09-halberd-and-trident-skills-
+	-- design; owner 2026-11-09), in place of Piercing Rush; the spear's cuts, moves and sounds, the same tables. Neither
+	-- moves you. Their animations (tools/blender/anim_magma_halberd.py, anim_tidal_trident.py) play from
+	-- SwordAnimations.<model> in Studio until published.
+	local function ownSkill(name: string, model: string, skill: Skill, look: string, skillCues: { Cue }): Sword
+		local own = table.clone(spear.animations)
+		own.skill = ""
+		return {
+			name = name,
+			power = starter.power,
+			element = nil,
+			model = model,
+			slash = starter.slash,
+			combo = spear.combo,
+			skill = skill,
+			animations = own,
+			sounds = spear.sounds,
+			cues = { cut1 = spear.cues.cut1, cut2 = spear.cues.cut2, cut3 = spear.cues.cut3, skill = skillCues },
+			fx = { slash = "spearStreak", finisher = "skyPierce", skill = look },
+		}
+	end
+	-- Magma Cleave ("since magma halberd is very rare something simple is fine. we can just do one big swipe. with
+	-- flaming horizontal slash effects"): a short wind-up over the shoulder, one huge swing right to left at its Hit
+	-- marker: every foe in the half circle in front of you, 11 studs out
+	SWORDS.magmaHalberd = ownSkill("Magma Halberd", "MagmaHalberd", {
+		power = 0.9,
+		hitAt = 0.6,
+		length = 1.2,
+		cooldown = 8,
+		shape = { kind = "arc", radius = 11, angle = 180 },
+		free = { at = 0.6 },
+	}, "magmaCleave", { { key = "spinWhoosh", at = 0.5 }, { key = "swing3", at = 0.58 } })
+	-- Torrent Strike ("the player strike the ground with the trident, while the trident is stuck to the ground,
+	-- torrents of water appears from the ground"): raised overhead, slammed prongs-first into the ground (its Slam
+	-- marker), torrents bursting up round you at its Hit marker: every foe within 12 studs, once (a second, wider ring of
+	-- torrents is only for show)
+	SWORDS.tidalTrident = ownSkill("Tidal Trident", "TidalTrident", {
+		power = 0.9,
+		hitAt = 0.75,
+		length = 1.9,
+		cooldown = 8,
+		shape = { kind = "spin", radius = 12 },
+		free = { at = 0.75 },
+	}, "torrentStrike", { { key = "swing2", at = 0.4 }, { key = "slam", at = 0.55 }, { key = "ground", at = 0.57 } })
 end
 
 return {

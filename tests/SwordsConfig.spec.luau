@@ -68,8 +68,6 @@ return {
 	["the Titan's Lance: the spear's cuts and moves, its own skill Titan's Wrath (a 14 x 4 line at today's strength)"] = function()
 		local Weapons = require("../src/shared/Config/Weapons")
 		expect.equal(Weapons.ById.titansLance.moveset, "titansLance")
-		expect.equal(Weapons.ById.magmaHalberd.moveset, "spear", "the Halberd keeps Piercing Rush")
-		expect.equal(Weapons.ById.tidalTrident.moveset, "spear", "the Trident keeps Piercing Rush")
 		local lance, spear = Swords.SWORDS.titansLance, Swords.SWORDS.spear
 		expect.equal(lance.combo, spear.combo, "the spear's cuts, the same table")
 		expect.equal(lance.sounds.thrustAir, spear.sounds.thrustAir, "the spear's sounds")
@@ -87,6 +85,50 @@ return {
 		expect.equal(skill.hitAt < skill.length, true)
 		expect.isNil(skill.dash, "no rush: you stay put")
 		expect.equal((skill.free :: Swords.Free).at, skill.hitAt, "free from the thrust")
+	end,
+
+	-- Weapons round 2.5 part 2 (spec 2026-11-09-halberd-and-trident-skills-design): the Halberd and the Trident their
+	-- own skills, the Forge Spear keeps Piercing Rush
+	["the Halberd's Magma Cleave and the Trident's Torrent Strike: the spear's cuts, their own skills"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		local SkillFx = require("../src/shared/Config/SwordSkillFx")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			expect.equal(Weapons.ById[`forgeSpear_{element}`].moveset, "spear", `the {element} Forge Spear keeps Piercing Rush`)
+		end
+		local spear = Swords.SWORDS.spear
+		local cases = {
+			{ id = "magmaHalberd", model = "MagmaHalberd", look = "magmaCleave", hitAt = 0.6, length = 1.2 },
+			{ id = "tidalTrident", model = "TidalTrident", look = "torrentStrike", hitAt = 0.75, length = 1.9 },
+		}
+		for _, case in cases do
+			expect.equal(Weapons.ById[case.id].moveset, case.id, `{case.id}: its own moveset`)
+			local moves = Swords.SWORDS[case.id]
+			expect.equal(moves.combo, spear.combo, `{case.id}: the spear's cuts, the same table`)
+			for _, key in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3" } do
+				expect.equal(moves.animations[key], spear.animations[key], `{case.id} {key}`)
+			end
+			expect.equal(moves.model, case.model, `{case.id}: its skill's animation folder`)
+			local skill = moves.skill
+			expect.equal(skill.power, 0.9, case.id)
+			expect.equal(skill.cooldown, 8, case.id)
+			expect.equal(skill.hitAt, case.hitAt, case.id)
+			expect.equal(skill.length, case.length, case.id)
+			expect.isNil(skill.dash, `{case.id}: you stay put`)
+			expect.equal((skill.free :: Swords.Free).at, skill.hitAt, `{case.id}: free from the hit`)
+			expect.equal(moves.fx.skill, case.look, case.id)
+			local look = SkillFx.LOOKS[case.look]
+			assert(look, `{case.look} exists`)
+			expect.equal(look.kind, "skill", case.look)
+			expect.equal((look.beats :: any).hit, skill.hitAt, `{case.look}: its hit on the skill's`)
+		end
+		local cleave = Swords.SWORDS.magmaHalberd.skill.shape
+		expect.equal(cleave.kind, "arc")
+		expect.equal(cleave.radius, 11)
+		expect.equal(cleave.angle, 180)
+		local torrent = Swords.SWORDS.tidalTrident.skill.shape
+		expect.equal(torrent.kind, "spin")
+		expect.equal(torrent.radius, 12)
+		expect.equal(SkillFx.LOOKS.torrentStrike.cinematic, true, "your own Torrent Strike's camera pull-back")
 	end,
 
 	["Titan's Wrath has its own sounds: the charge, the rumble, the thrust, thorns and the fissure; the spear's are untouched"] = function()
